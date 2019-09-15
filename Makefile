@@ -1,5 +1,8 @@
 all: build examples docker-test
 
+BUILD_DIR ?= $(shell cygpath -w `pwd`)
+# BUILD_DIR ?= $(shell pwd)
+
 .PHONY: docker-env
 docker-env:
 	cd docker-toolchain && docker build \
@@ -14,7 +17,7 @@ examples: docker-env
 	docker run \
 		--rm \
 		--user builder \
-		-v $(shell cygpath -w `pwd`):/home/builder/oxidize:rw \
+		-v $(BUILD_DIR):/home/builder/oxidize:rw \
 		-v cargo-registry:/home/builder/.cargo/registry \
 		-w /home/builder/oxidize \
 		rust-build-remarkable:latest \
@@ -25,7 +28,7 @@ build: docker-env
 	docker run \
 		--rm \
 		--user builder \
-		-v $(shell cygpath -w `pwd`):/home/builder/oxidize:rw \
+		-v $(BUILD_DIR):/home/builder/oxidize:rw \
 		-v cargo-registry:/home/builder/.cargo/registry \
 		-w /home/builder/oxidize \
 		rust-build-remarkable:latest \
@@ -36,14 +39,14 @@ test: docker-env
 	docker run \
 		--rm \
 		--user builder \
-		-v $(shell cygpath -w `pwd`):/home/builder/oxidize:rw \
+		-v $(BUILD_DIR):/home/builder/oxidize:rw \
 		-v cargo-registry:/home/builder/.cargo/registry \
 		-w /home/builder/oxidize \
 		rust-build-remarkable:latest \
 		cargo test
 
-DEVICE_IP ?= "10.11.99.1"
-# DEVICE_IP ?= "192.168.0.34"
+# DEVICE_IP ?= "10.11.99.1"
+DEVICE_IP ?= "192.168.0.34"
 # DEVICE_SERVICE ?= "xochitl"
 DEVICE_SERVICE ?= "draft"
 deploy:
