@@ -42,16 +42,17 @@ test: docker-env
 		rust-build-remarkable:latest \
 		cargo test
 
-# DEVICE_IP ?= "10.11.99.1"
-DEVICE_IP ?= "192.168.0.34"
+DEVICE_IP ?= "10.11.99.1"
+# DEVICE_IP ?= "192.168.0.34"
 # DEVICE_SERVICE ?= "xochitl"
 DEVICE_SERVICE ?= "draft"
 deploy:
-	ssh root@$(DEVICE_IP) 'killall oxidize || true; systemctl stop $(DEVICE_SERVICE) || true'
+	ssh root@$(DEVICE_IP) 'killall oxidize || true;'
 	scp ./target/armv7-unknown-linux-gnueabihf/release/oxidize root@$(DEVICE_IP):~/
 	scp ./assets/Roboto-NotoEmoji-Regular.ttf root@$(DEVICE_IP):~/font.ttf
 
 exec:
+	ssh root@$(DEVICE_IP) 'killall oxidize || true; systemctl stop $(DEVICE_SERVICE) || true'
 	ssh root@$(DEVICE_IP) './oxidize'
 	ssh root@$(DEVICE_IP) 'systemctl restart $(DEVICE_SERVICE) || true'
 
