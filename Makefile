@@ -49,6 +49,7 @@ DEVICE_SERVICE ?= "draft"
 deploy:
 	ssh root@$(DEVICE_IP) 'killall oxidize || true; systemctl stop $(DEVICE_SERVICE) || true'
 	scp ./target/armv7-unknown-linux-gnueabihf/release/oxidize root@$(DEVICE_IP):~/
+	scp ./assets/Roboto-NotoEmoji-Regular.ttf root@$(DEVICE_IP):~/font.ttf
 
 exec:
 	ssh root@$(DEVICE_IP) './oxidize'
