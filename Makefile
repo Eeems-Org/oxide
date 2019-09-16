@@ -2,6 +2,12 @@ all: build examples docker-test
 
 BUILD_DIR ?= $(shell cygpath -w `pwd`)
 # BUILD_DIR ?= $(shell pwd)
+#
+DEVICE_IP ?= "10.11.99.1"
+# DEVICE_IP ?= "192.168.0.34"
+
+# DEVICE_SERVICE ?= "xochitl"
+DEVICE_SERVICE ?= "draft"
 
 .PHONY: docker-env
 docker-env:
@@ -67,10 +73,6 @@ check-json: docker-env
 		rust-build-remarkable:latest \
 		cargo check --message-format=json
 
-# DEVICE_IP ?= "10.11.99.1"
-DEVICE_IP ?= "192.168.0.34"
-# DEVICE_SERVICE ?= "xochitl"
-DEVICE_SERVICE ?= "draft"
 deploy:
 	ssh root@$(DEVICE_IP) 'killall oxidize || true;'
 	scp ./target/armv7-unknown-linux-gnueabihf/release/{oxidize,wifitoggle,corrode} root@$(DEVICE_IP):~/
