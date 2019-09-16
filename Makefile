@@ -45,6 +45,28 @@ test: docker-env
 		rust-build-remarkable:latest \
 		cargo test
 
+check: docker-env
+	docker volume create cargo-registry
+	docker run \
+		--rm \
+		--user builder \
+		-v $(BUILD_DIR):/home/builder/oxidize:rw \
+		-v cargo-registry:/home/builder/.cargo/registry \
+		-w /home/builder/oxidize \
+		rust-build-remarkable:latest \
+		cargo check
+
+check-json: docker-env
+	docker volume create cargo-registry
+	docker run \
+		--rm \
+		--user builder \
+		-v $(BUILD_DIR):/home/builder/oxidize:rw \
+		-v cargo-registry:/home/builder/.cargo/registry \
+		-w /home/builder/oxidize \
+		rust-build-remarkable:latest \
+		cargo check --message-format=json
+
 # DEVICE_IP ?= "10.11.99.1"
 DEVICE_IP ?= "192.168.0.34"
 # DEVICE_SERVICE ?= "xochitl"
