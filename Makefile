@@ -73,7 +73,7 @@ DEVICE_IP ?= "192.168.0.34"
 DEVICE_SERVICE ?= "draft"
 deploy:
 	ssh root@$(DEVICE_IP) 'killall oxidize || true;'
-	scp ./target/armv7-unknown-linux-gnueabihf/release/oxidize root@$(DEVICE_IP):~/
+	scp ./target/armv7-unknown-linux-gnueabihf/release/{oxidize,wifitoggle,corrode} root@$(DEVICE_IP):~/
 	scp ./assets/Roboto-NotoEmoji-Regular.ttf root@$(DEVICE_IP):~/font.ttf
 
 exec:
