@@ -3,8 +3,9 @@ all: build examples docker-test
 BUILD_DIR ?= $(shell cygpath -w `pwd`)
 # BUILD_DIR ?= $(shell pwd)
 
-SSH_DIR ?= $(shell cygpath -w ~/.ssh)
-SSH_DIR ?= "~/.ssh"
+SSH_DIR ?= G:\cygwin64\home\Eeems\.ssh
+# SSH_DIR ?= $(shell cygpath -w ~/.ssh)
+# SSH_DIR ?= "~/.ssh"
 
 DEVICE_IP ?= "10.11.99.1"
 # DEVICE_IP ?= "192.168.0.34"
