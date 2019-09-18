@@ -19,5 +19,9 @@ COPY files/config .config
 
 COPY files/start-qt.sh .
 RUN chmod +x ./start-qt.sh
+COPY files/libqsgepaper.a .
+RUN cd /usr/lib/x86_64-linux-gnu/qt5/plugins/
+
+WORKDIR /root/project
 
 CMD ["/root/start-qt.sh"]
