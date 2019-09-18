@@ -101,7 +101,7 @@ qtcreator: docker-qtcreator
 	docker run \
 		--name qtcreator \
 		-v '$(BUILD_DIR):/root/project:rw' \
-		-v '$(SSH_DIR):/root/.ssh:rw' \
+		-v '$(SSH_DIR):/root/.ssh' \
 		-w /root/project \
 		-e DISPLAY=$(DISPLAY) \
 		rm-qtcreator:latest
