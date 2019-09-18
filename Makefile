@@ -2,7 +2,10 @@ all: build examples docker-test
 
 BUILD_DIR ?= $(shell cygpath -w `pwd`)
 # BUILD_DIR ?= $(shell pwd)
-#
+
+SSH_DIR ?= $(shell cygpath -w ~/.ssh)
+SSH_DIR ?= "~/.ssh"
+
 DEVICE_IP ?= "10.11.99.1"
 # DEVICE_IP ?= "192.168.0.34"
 
@@ -98,6 +101,7 @@ qtcreator: docker-qtcreator
 	docker run \
 		--name qtcreator \
 		-v '$(BUILD_DIR):/root/project:rw' \
+		-v '$(SSH_DIR):/root/.ssh:rw' \
 		-w /root/project \
 		-e DISPLAY=$(DISPLAY) \
 		rm-qtcreator:latest
