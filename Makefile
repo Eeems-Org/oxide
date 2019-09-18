@@ -9,6 +9,9 @@ DEVICE_IP ?= "10.11.99.1"
 # DEVICE_SERVICE ?= "xochitl"
 DEVICE_SERVICE ?= "draft"
 
+DISPLAY ?= 192.168.0.27:0.0
+# DISPLAY ?= :0
+
 .PHONY: docker-cargo
 docker-cargo:
 	cd docker-toolchain/cargo && docker build \
@@ -17,6 +20,11 @@ docker-cargo:
 		--build-arg GID=$(shell id -g) \
 		--build-arg ostype=${shell uname} \
 		--tag rust-build-remarkable:latest .
+
+.PHONY: docker-qtcreator
+docker-qtcreator:
+	cd docker-toolchain/qtcreator && docker build \
+		--tag rm-qtcreator .
 
 examples: docker-cargo
 	docker volume create cargo-registry
@@ -85,6 +93,11 @@ exec:
 
 run: build deploy exec
 
-qtcreator:
-	cd docker-toolchain/qtcreator \
-	&& docker-compose --file qtcreator/qt.docker-compose.yml up --build
+qtcreator: docker-qtcreator
+	docker start -a qtcreator || \
+	docker run \
+		--name qtcreator \
+		-v $(BUILD_DIR):/root/projects:rw \
+		-w /root/projects \
+		-e DISPLAY=$(DISPLAY) \
+		rm-qtcreator:latest

@@ -20,4 +20,4 @@ COPY files/config .config
 COPY files/start-qt.sh .
 RUN chmod +x ./start-qt.sh
 
-CMD ["./start-qt.sh"]
+CMD ["/root/start-qt.sh"]
