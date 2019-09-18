@@ -31,7 +31,7 @@ examples: docker-cargo
 	docker run \
 		--rm \
 		--user builder \
-		-v $(BUILD_DIR):/home/builder/oxidize:rw \
+		-v '$(BUILD_DIR):/home/builder/oxidize:rw' \
 		-v cargo-registry:/home/builder/.cargo/registry \
 		-w /home/builder/oxidize \
 		rust-build-remarkable:latest \
@@ -42,7 +42,7 @@ build: docker-cargo
 	docker run \
 		--rm \
 		--user builder \
-		-v $(BUILD_DIR):/home/builder/oxidize:rw \
+		-v '$(BUILD_DIR):/home/builder/oxidize:rw' \
 		-v cargo-registry:/home/builder/.cargo/registry \
 		-w /home/builder/oxidize \
 		rust-build-remarkable:latest \
@@ -53,7 +53,7 @@ test: docker-cargo
 	docker run \
 		--rm \
 		--user builder \
-		-v $(BUILD_DIR):/home/builder/oxidize:rw \
+		-v '$(BUILD_DIR):/home/builder/oxidize:rw' \
 		-v cargo-registry:/home/builder/.cargo/registry \
 		-w /home/builder/oxidize \
 		rust-build-remarkable:latest \
@@ -64,7 +64,7 @@ check: docker-cargo
 	docker run \
 		--rm \
 		--user builder \
-		-v $(BUILD_DIR):/home/builder/oxidize:rw \
+		-v '$(BUILD_DIR):/home/builder/oxidize:rw' \
 		-v cargo-registry:/home/builder/.cargo/registry \
 		-w /home/builder/oxidize \
 		rust-build-remarkable:latest \
@@ -75,7 +75,7 @@ check-json: docker-cargo
 	docker run \
 		--rm \
 		--user builder \
-		-v $(BUILD_DIR):/home/builder/oxidize:rw \
+		-v '$(BUILD_DIR):/home/builder/oxidize:rw' \
 		-v cargo-registry:/home/builder/.cargo/registry \
 		-w /home/builder/oxidize \
 		rust-build-remarkable:latest \
@@ -97,7 +97,7 @@ qtcreator: docker-qtcreator
 	docker start -a qtcreator || \
 	docker run \
 		--name qtcreator \
-		-v $(BUILD_DIR):/root/projects:rw \
-		-w /root/projects \
+		-v '$(BUILD_DIR):/root/project:rw' \
+		-w /root/project \
 		-e DISPLAY=$(DISPLAY) \
 		rm-qtcreator:latest
