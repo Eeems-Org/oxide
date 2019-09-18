@@ -11,7 +11,7 @@ DEVICE_SERVICE ?= "draft"
 
 .PHONY: docker-env
 docker-env:
-	cd docker-toolchain && docker build \
+	cd docker-toolchain/cargo && docker build \
 		--build-arg UNAME=builder \
 		--build-arg UID=$(shell id -u) \
 		--build-arg GID=$(shell id -g) \
