@@ -13,8 +13,9 @@ DEVICE_IP ?= "10.11.99.1"
 # DEVICE_SERVICE ?= "xochitl"
 DEVICE_SERVICE ?= "draft"
 
-DISPLAY ?= 192.168.0.27:0.0
+# DISPLAY ?= 192.168.0.27:0.0
 # DISPLAY ?= :0
+DISPLAY ?= host.docker.internal:0.0
 
 .PHONY: docker-cargo
 docker-cargo:
@@ -52,6 +53,20 @@ build: docker-cargo
 		rust-build-remarkable:latest \
 		cargo build --release --verbose --target=armv7-unknown-linux-gnueabihf
 
+build-applications: docker-cargo
+	ls applications | while read APP; do \
+		echo "Building $${APP}"; \
+		docker volume create cargo-registry; \
+		docker run \
+			--rm \
+			--user builder \
+			-v "$(BUILD_DIR)/applications/$${APP}:/home/builder/$${APP}:rw" \
+			-v cargo-registry:/home/builder/.cargo/registry \
+			-w /home/builder/$${APP} \
+			rust-build-remarkable:latest \
+			cargo build --release --verbose --target=armv7-unknown-linux-gnueabihf; \
+	done
+
 test: docker-cargo
 	docker volume create cargo-registry
 	docker run \
@@ -71,6 +86,18 @@ check: docker-cargo
 		-v '$(BUILD_DIR):/home/builder/oxidize:rw' \
 		-v cargo-registry:/home/builder/.cargo/registry \
 		-w /home/builder/oxidize \
+		rust-build-remarkable:latest \
+		cargo check
+
+check-applications: docker-cargo $(BUILD_DIR)/applications/*
+	APP ?= $^
+	docker volume create cargo-registry
+	docker run \
+		--rm \
+		--user builder \
+		-v '$(APP):/home/builder/$(shell basename $(APP)):rw' \
+		-v cargo-registry:/home/builder/.cargo/registry \
+		-w /home/builder/$(shell basename $(APP)) \
 		rust-build-remarkable:latest \
 		cargo check
 
