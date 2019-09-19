@@ -3,8 +3,8 @@ all: build examples docker-test
 BUILD_DIR ?= $(shell cygpath -w `pwd`)
 # BUILD_DIR ?= $(shell pwd)
 
-SSH_DIR ?= G:\cygwin64\home\Eeems\.ssh
-# SSH_DIR ?= $(shell cygpath -w ~/.ssh)
+# SSH_DIR ?= G:\cygwin64\home\Eeems\.ssh
+SSH_DIR ?= $(shell cygpath -w ~/.ssh)
 # SSH_DIR ?= "~/.ssh"
 
 DEVICE_IP ?= "10.11.99.1"
@@ -12,10 +12,6 @@ DEVICE_IP ?= "10.11.99.1"
 
 # DEVICE_SERVICE ?= "xochitl"
 DEVICE_SERVICE ?= "draft"
-
-# DISPLAY ?= 192.168.0.27:0.0
-# DISPLAY ?= :0
-DISPLAY ?= host.docker.internal:0.0
 
 .PHONY: docker-cargo
 docker-cargo:
@@ -131,5 +127,5 @@ qtcreator: docker-qtcreator
 		-v '$(BUILD_DIR):/root/project:rw' \
 		-v '$(SSH_DIR):/root/.ssh' \
 		-w /root/project \
-		-e DISPLAY=$(DISPLAY) \
+		-e DISPLAY=host.docker.internal:0.0 \
 		rm-qtcreator:latest
