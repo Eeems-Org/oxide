@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProfiles>
-<!-- Written by QtCreator 4.5.2, 2019-09-21T02:38:14. -->
+<!-- Written by QtCreator 4.5.2, 2019-09-21T02:40:28. -->
 <qtcreator>
  <data>
   <variable>Profile.0</variable>
@@ -70,8 +70,8 @@
     <valuelist type="QVariantList" key="PE.Profile.Environment"/>
     <value type="QString" key="PE.Profile.SysRoot">/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi</value>
     <valuemap type="QVariantMap" key="PE.Profile.ToolChainsV3">
-     <value type="QByteArray" key="C"></value>
-     <value type="QByteArray" key="Cxx"></value>
+     <value type="QByteArray" key="C">{e21e76dc-a73e-4a82-9dfe-08df5c19ae4c}</value>
+     <value type="QByteArray" key="Cxx">{12fcabfa-541c-4196-a6bd-7693cfe0d415}</value>
     </valuemap>
     <value type="QString" key="QtPM4.mkSpecInformation">linux-oe-g++</value>
     <value type="int" key="QtSupport.QtInformation">1</value>
