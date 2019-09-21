@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorDevices>
-<!-- Written by QtCreator 4.5.2, 2019-09-16T17:08:25. -->
+<!-- Written by QtCreator 4.5.2, 2019-09-21T02:38:14. -->
 <qtcreator>
  <data>
   <variable>DeviceManager</variable>
@@ -33,7 +33,7 @@
      <value type="int" key="Authentication">1</value>
      <value type="QString" key="DebugServerKey"></value>
      <value type="QString" key="FreePortsSpec">10000-10100</value>
-     <value type="QString" key="Host">remarkable</value>
+     <value type="QString" key="Host">10.11.99.1</value>
      <value type="int" key="HostKeyChecking">0</value>
      <value type="QString" key="InternalId">{6f6eab9f-527e-4dc9-b30a-9fa53efbaa24}</value>
      <value type="QString" key="KeyFile">/root/.ssh/id_rsa</value>

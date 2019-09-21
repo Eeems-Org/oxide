@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorQtVersions>
-<!-- Written by QtCreator 4.5.2, 2019-09-16T17:07:52. -->
+<!-- Written by QtCreator 4.5.2, 2019-09-21T02:38:14. -->
 <qtcreator>
  <data>
   <variable>QtVersion.0</variable>
   <valuemap type="QVariantMap">
    <value type="int" key="Id">1</value>
-   <value type="QString" key="Name">reMarkable 5.6.2</value>
-   <value type="QString" key="QMakePath">/opt/poky/2.1.3/sysroots/x86_64-pokysdk-linux/usr/bin/qt5/qmake</value>
+   <value type="QString" key="Name">reMarkable 5.12</value>
+   <value type="QString" key="QMakePath">/opt/poky/2.1.3/sysroots/x86_64-oesdk-linux/usr/bin/qt5/qmake</value>
    <value type="QString" key="QtVersion.Type">RemoteLinux.EmbeddedLinuxQt</value>
    <value type="bool" key="isAutodetected">false</value>
   </valuemap>

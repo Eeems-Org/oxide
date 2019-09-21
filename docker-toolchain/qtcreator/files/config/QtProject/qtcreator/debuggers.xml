@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorDebuggers>
-<!-- Written by QtCreator 4.5.2, 2019-09-16T17:07:52. -->
+<!-- Written by QtCreator 4.5.2, 2019-09-21T02:38:14. -->
 <qtcreator>
  <data>
   <variable>DebuggerItem.0</variable>
@@ -27,12 +27,12 @@
    </valuelist>
    <value type="bool" key="AutoDetected">false</value>
    <value type="QString" key="AutoDetectionSource"></value>
-   <value type="QString" key="Binary">/opt/poky/2.1.3/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi/arm-poky-linux-gnueabi-gdb</value>
+   <value type="QString" key="Binary">/opt/poky/2.1.3/sysroots/x86_64-oesdk-linux/usr/bin/arm-oe-linux-gnueabi/arm-oe-linux-gnueabi-gdb</value>
    <value type="QString" key="DisplayName">reMarkable GDB</value>
    <value type="int" key="EngineType">1</value>
    <value type="QString" key="Id">{eb694cbe-9dd0-410a-b54f-aa96ee68ea4c}</value>
    <value type="QDateTime" key="LastModified"></value>
-   <value type="QString" key="Version">7.10.1</value>
+   <value type="QString" key="Version">8.0.1</value>
    <value type="QString" key="WorkingDirectory"></value>
   </valuemap>
  </data>

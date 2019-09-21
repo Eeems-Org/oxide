@@ -14,23 +14,23 @@ Module {
 
     Depends { name: "cpp" }
 
-    version: "5.6.2"
+    version: "5.12.0"
     property string architecture: "arm"
     property string libInfix: ""
-    property stringList config: ["file_copies", "qt", "warn_on", "release", "link_prl", "incremental", "cross_compile", "shared", "qpa", "no_mocdepend", "release", "qt_no_framework", "linux", "unix", "posix", "gcc"]
-    property stringList qtConfig: ["minimal-config", "small-config", "medium-config", "large-config", "full-config", "fontconfig", "libudev", "evdev", "gbm", "linuxfb", "c++11", "c++14", "c++1z", "egl", "opengl", "opengles2", "shared", "qpa", "reduce_exports", "clock-gettime", "clock-monotonic", "posix_fallocate", "mremap", "getaddrinfo", "ipv6ifname", "getifaddrs", "inotify", "eventfd", "threadsafe-cloexec", "system-jpeg", "system-png", "png", "system-freetype", "system-harfbuzz", "system-zlib", "dbus", "dbus-linked", "openssl", "concurrent", "audio-backend", "release"]
-    property path binPath: "/opt/poky/2.1.3/sysroots/x86_64-pokysdk-linux/usr/bin/qt5"
-    property path incPath: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5"
-    property path libPath: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/lib"
-    property path pluginPath: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/lib/qt5/plugins"
-    property string mkspecName: "linux-g++"
-    property path mkspecPath: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/lib/qt5/mkspecs/linux-g++"
+    property stringList config: ["file_copies", "qmake_use", "qt", "warn_on", "release", "link_prl", "incremental", "cross_compile", "shared", "release", "linux", "unix", "posix", "gcc"]
+    property stringList qtConfig: ["shared", "release", "c++11", "c++14", "c++1z", "concurrent", "dbus", "reduce_exports", "stl", "no-widgets", "properties", "animation", "textcodec", "big_codecs", "clock-monotonic", "codecs", "textdate", "datestring", "doubleconversion", "eventfd", "filesystemiterator", "filesystemwatcher", "gestures", "itemmodel", "proxymodel", "identityproxymodel", "inotify", "library", "mimetype", "process", "statemachine", "regularexpression", "settings", "sharedmemory", "sortfilterproxymodel", "stringlistmodel", "systemsemaphore", "temporaryfile", "threadsafe-cloexec", "translation", "xmlstream", "xmlstreamreader", "xmlstreamwriter", "accessibility", "action", "clipboard", "colornames", "cssparser", "cursor", "desktopservices", "imageformat_xpm", "draganddrop", "freetype", "fontconfig", "harfbuzz", "highdpiscaling", "im", "image_heuristic_mask", "image_text", "imageformat_bmp", "imageformat_jpeg", "imageformat_png", "imageformat_ppm", "imageformat_xbm", "imageformatplugin", "movie", "pdf", "picture", "shortcut", "standarditemmodel", "systemtrayicon", "tabletevent", "texthtmlparser", "textodfwriter", "validator", "whatsthis", "wheelevent", "networkinterface", "bearermanagement", "openssl", "ftp", "getifaddrs", "http", "ipv6ifname", "localserver", "networkdiskcache", "networkproxy", "socks5", "ssl", "udpsocket", "dom"]
+    property path binPath: "/opt/poky/2.1.3/sysroots/x86_64-oesdk-linux/usr/bin/qt5"
+    property path incPath: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5"
+    property path libPath: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/lib"
+    property path pluginPath: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/lib/qt5/plugins"
+    property string mkspecName: "linux-oe-g++"
+    property path mkspecPath: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/lib/qt5/mkspecs/linux-oe-g++"
     property string mocName: "moc"
     property stringList mocFlags: []
     property string lreleaseName: "lrelease"
     property string qdocName: versionMajor >= 5 ? "qdoc" : "qdoc3"
     property stringList qdocEnvironment
-    property path docPath: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/share/doc/qt5"
+    property path docPath: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/share/doc/qt5"
     property stringList helpGeneratorArgs: versionMajor >= 5 ? ["-platform", "minimal"] : []
     property var versionParts: version ? version.split('.').map(function(item) { return parseInt(item, 10); }) : []
     property int versionMajor: versionParts[0]
@@ -73,7 +73,7 @@ Module {
     property string libNameForLinker: qtBuildVariant === "debug"
                                       ? libNameForLinkerDebug : libNameForLinkerRelease
     property string libFilePathDebug: ""
-    property string libFilePathRelease: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/lib/libQt5Core.so.5.6.2"
+    property string libFilePathRelease: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/lib/libQt5Core.so.5.12.0"
     property string libFilePath: qtBuildVariant === "debug"
                                       ? libFilePathDebug : libFilePathRelease
 
@@ -111,7 +111,7 @@ Module {
         return defines;
     }
     cpp.includePaths: {
-        var paths = ["/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5/QtCore"];
+        var paths = ["/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5/QtCore"];
         paths.push(mkspecPath, generatedHeadersDir);
         return paths;
     }

@@ -22,7 +22,7 @@ QtModule {
     libFilePathDebug: ""
     libFilePathRelease: ""
     cpp.defines: []
-    cpp.includePaths: ["/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5/QtXml/5.6.2", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5/QtXml/5.6.2/QtXml"]
+    cpp.includePaths: ["/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5/QtXml/5.12.0", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5/QtXml/5.12.0/QtXml"]
     cpp.libraryPaths: []
     
 }

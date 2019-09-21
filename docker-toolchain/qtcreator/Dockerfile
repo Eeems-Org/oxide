@@ -33,11 +33,9 @@ COPY files/.cargo/config /root/.cargo/config
 RUN rustup update
 
 RUN rm -rf .config
-COPY files/config .config
-COPY files/libqsgepaper.a .
 COPY files/start-qt.sh .
+RUN sed -i 's/\r//' ./start-qt.sh
 RUN chmod +x ./start-qt.sh
-
 WORKDIR /root/project
 
 CMD ["/root/start-qt.sh"]

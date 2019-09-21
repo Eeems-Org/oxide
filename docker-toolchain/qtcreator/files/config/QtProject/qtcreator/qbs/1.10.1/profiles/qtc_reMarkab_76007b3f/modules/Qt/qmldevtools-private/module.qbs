@@ -8,7 +8,7 @@ QtModule {
     architecture: "arm"
     hasLibrary: true
     staticLibsDebug: []
-    staticLibsRelease: ["/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/lib/libQt5Bootstrap.a", "pthread"]
+    staticLibsRelease: ["/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/lib/libQt5Bootstrap.a", "pthread"]
     dynamicLibsDebug: []
     dynamicLibsRelease: []
     linkerFlagsDebug: []
@@ -20,9 +20,9 @@ QtModule {
     libNameForLinkerDebug: "Qt5QmlDevTools"
     libNameForLinkerRelease: "Qt5QmlDevTools"
     libFilePathDebug: ""
-    libFilePathRelease: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/lib/libQt5QmlDevTools.a"
+    libFilePathRelease: "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/lib/libQt5QmlDevTools.a"
     cpp.defines: ["QT_QMLDEVTOOLS_LIB"]
-    cpp.includePaths: ["/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5/QtQmlDevTools", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5/QtQmlDevTools/5.6.2", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5/QtQmlDevTools/5.6.2/QtQmlDevTools"]
-    cpp.libraryPaths: ["/var/lib/buildbot/slaves/slave0/xochitl-device/yocto/build/tmp/sysroots/imx6slevk/usr/lib"]
+    cpp.includePaths: ["/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5/QtQml", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5/QtQml/5.12.0", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5/QtQml/5.12.0/QtQml"]
+    cpp.libraryPaths: []
     isStaticLibrary: true
 }

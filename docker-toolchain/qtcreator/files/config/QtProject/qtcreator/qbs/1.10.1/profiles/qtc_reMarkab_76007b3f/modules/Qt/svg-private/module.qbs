@@ -3,7 +3,7 @@ import '../QtModule.qbs' as QtModule
 
 QtModule {
     qtModuleName: "Svg"
-    Depends { name: "Qt"; submodules: ["core-private", "gui-private", "widgets-private", "svg"]}
+    Depends { name: "Qt"; submodules: ["core-private", "gui-private", "svg"]}
 
     architecture: "arm"
     hasLibrary: false
@@ -22,7 +22,7 @@ QtModule {
     libFilePathDebug: ""
     libFilePathRelease: ""
     cpp.defines: []
-    cpp.includePaths: ["/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5/QtSvg/5.6.2", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-poky-linux-gnueabi/usr/include/qt5/QtSvg/5.6.2/QtSvg"]
+    cpp.includePaths: ["/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5/QtSvg/5.12.0", "/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi/usr/include/qt5/QtSvg/5.12.0/QtSvg"]
     cpp.libraryPaths: []
     
 }

@@ -3,8 +3,8 @@ all: build examples docker-test
 BUILD_DIR ?= $(shell cygpath -w `pwd`)
 # BUILD_DIR ?= $(shell pwd)
 
-# SSH_DIR ?= G:\cygwin64\home\Eeems\.ssh
-SSH_DIR ?= $(shell cygpath -w ~/.ssh)
+SSH_DIR ?= G:\cygwin64\home\Eeems\.ssh
+# SSH_DIR ?= $(shell cygpath -w ~/.ssh)
 # SSH_DIR ?= "~/.ssh"
 
 DEVICE_IP ?= "10.11.99.1"
@@ -126,6 +126,7 @@ qtcreator: docker-qtcreator
 		--name qtcreator \
 		-v '$(BUILD_DIR):/root/project:rw' \
 		-v '$(SSH_DIR):/root/.ssh' \
+		-v '$(BUILD_DIR)/docker-toolchain/qtcreator/files/config:/root/.config' \
 		-w /root/project \
 		-e DISPLAY=host.docker.internal:0.0 \
 		rm-qtcreator:latest
