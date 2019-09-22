@@ -15,11 +15,7 @@ Rectangle {
     border.color: "#cccccc"
     border.width: 3
 
-    MouseArea {
-        id: ma
-        anchors.fill: parent
-    }
-
+    MouseArea { id: ma; anchors.fill: parent }
     Text {
         id: tname
         anchors.top: parent.top

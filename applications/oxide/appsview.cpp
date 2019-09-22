@@ -42,8 +42,8 @@ void AppsView::load(){
             if(line.length() > 0) {
                 size_t sep = line.find("=");
                 if(sep != line.npos) {
-                    std::string lhs = line.substr(0,sep);
-                    std::string rhs = line.substr(sep+1);
+                    std::string lhs = line.substr(0, sep);
+                    std::string rhs = line.substr(sep + 1);
 
                     if(lhs == "name"){
                         opt.name = rhs;
@@ -75,8 +75,8 @@ void AppsView::load(){
         }
         createOption(opt, appsList.size());
         appsList.push_back(opt);
-        std::cout << "Finished parsing files" << std::endl;
     }
+    std::cout << "Finished parsing files" << std::endl;
 }
 void AppsView::createOption(OptionItem &option, size_t index) {
 
@@ -88,8 +88,8 @@ void AppsView::createOption(OptionItem &option, size_t index) {
     root->setProperty("itemNumber", QVariant(index));
     root->setProperty("t_name", QVariant(option.name.c_str()));
     root->setProperty("t_desc", QVariant(option.desc.c_str()));
-    std::string iconPath("file://" +configDir+"/icons/"+option.imgFile+".png");
-    root->setProperty("t_imgFile",QVariant(iconPath.c_str()));
+    std::string iconPath("file://" + configDir + "/icons/" + option.imgFile + ".png");
+    root->setProperty("t_imgFile", QVariant(iconPath.c_str()));
 
     QObject* mouseArea = root->children().at(0);
     Handler* handler = new Handler(this, option.call, option.term, app, engine, mouseArea);

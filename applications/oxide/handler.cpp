@@ -23,6 +23,7 @@ Handler::Handler(
 }
 
 bool Handler::eventFilter(QObject* obj, QEvent* event){
+    std::cout << "Event" << std::endl;
     if (event->type() != QEvent::MouseButtonRelease){
         return false;
     }
@@ -45,11 +46,10 @@ void Handler::handleEvent(){
     system((link).c_str());
 
     // Don't exit any more - just head back to the launcher!
-    std::cout << "Running again" << std::endl;
-
+    std::cout << "Running again..." << std::endl;
     engine->rootObjects().first()->setProperty("reloaded", QVariant(true));
     app->processEvents();
-    std::cout << "Screen repaint forced" << std::endl;
+    std::cout << "Repaint requested..." << std::endl;
 
     // Cooldown
     time(&lastReturn);
