@@ -1,7 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
-        <file>qtquickcontrols2.conf</file>
-        <file>MenuItem.qml</file>
+        <file>icon.png</file>
     </qresource>
 </RCC>

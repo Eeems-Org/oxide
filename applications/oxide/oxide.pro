@@ -14,8 +14,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     main.cpp \
-    appsview.cpp \
-    handler.cpp
+    controller.cpp \
+    appitem.cpp
 
 RESOURCES += qml.qrc
 
@@ -40,5 +40,5 @@ linux-oe-g++ {
 DISTFILES +=
 
 HEADERS += \
-    appsview.h \
-    handler.h
+    controller.h \
+    appitem.h
