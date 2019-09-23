@@ -14,17 +14,17 @@ ApplicationWindow {
 //        background: Rectangle { color: "black" }
         Menu {
             title: qsTr("File")
-            Action { text: qsTr("Shutdown") }
             Action { text: qsTr("Reload"); onTriggered: appsView.model = controller.getApps() }
             MenuSeparator {}
-            Action { text: qsTr("Quit"); onTriggered: Qt.quit() }
+            Action { text: qsTr("Suspend"); onTriggered: stateController.state = "suspended" }
+            Action { text: qsTr("Shutdown"); onTriggered: controller.powerOff() }
         }
     }
-    header: TabBar {
+//    header: TabBar {
 //        background: Rectangle { color: "black" }
-        TabButton { text: qsTr("Applications") }
-        TabButton { text: qsTr("Settings") }
-    }
+//        TabButton { text: qsTr("Applications") }
+//        TabButton { text: qsTr("Settings") }
+//    }
     background: Rectangle {
         color: "white"
     }
@@ -126,7 +126,27 @@ ApplicationWindow {
                     }
                 ]
             }
+        },
+        Rectangle {
+            id: suspendMessage
+            visible: false
+            anchors.fill: parent
+            color: "black"
+            opacity: 0.5
+            Rectangle {
+                anchors.centerIn: parent
+                color: "black"
+                width: 250
+                height: 250
+                Text {
+                    id: suspendLabel
+                    anchors.centerIn: parent
+                    color: "white"
+                    text: "Suspended..."
+                }
+            }
         }
+
     ]
     footer: ToolBar {
         background: Rectangle { color: "black" }
@@ -143,7 +163,8 @@ ApplicationWindow {
         state: "loaded"
         states: [
             State { name: "loaded" },
-            State { name: "loading" }
+            State { name: "loading" },
+            State { name: "suspended" }
         ]
         transitions: [
             Transition {
@@ -167,6 +188,21 @@ ApplicationWindow {
                     PropertyAction { target: window; property: "visible"; value: true }
                     PropertyAction { target: window.contentItem; property: "visible"; value: true }
                     ScriptAction { script: console.log("loaded.") }
+                }
+            },
+            Transition {
+                from: "loaded"; to: "suspended"
+                SequentialAnimation {
+                    PropertyAction { target: window; property: "visible"; value: true }
+                    PropertyAction { target: window.contentItem; property: "visible"; value: true }
+                    PropertyAction { target: suspendMessage; property: "visible"; value: true }
+                    PauseAnimation { duration: 1000 }
+                    ScriptAction { script: console.log("suspending...") }
+                    ScriptAction { script: controller.suspend() }
+                    PauseAnimation { duration: 1000 }
+                    ScriptAction { script: console.log("waking up...") }
+                    PropertyAction { target: suspendMessage; property: "visible"; value: false }
+                    PropertyAction { target: stateController; property: "state"; value: "loaded" }
                 }
             }
         ]

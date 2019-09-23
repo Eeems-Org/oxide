@@ -65,3 +65,9 @@ QList<QObject*> Controller::getApps(){
     }
     return result;
 }
+void Controller::powerOff(){
+    system("systemctl poweroff");
+}
+void Controller::suspend(){
+    system("systemctl suspend");
+}

@@ -2,11 +2,17 @@
 #include <QQmlApplicationEngine>
 #include <QtPlugin>
 #include <QtQuick>
+#include <fstream>
 #include "controller.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
+
+bool exists(const std::string& name) {
+    std::fstream file(name.c_str());
+    return file.good();
+}
 
 const char *qt_version = qVersion();
 
@@ -22,6 +28,12 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
+    if(exists("/opt/bin/button-capture")){
+        qDebug() << "Starting button-capture";
+        system("/opt/bin/button-capture&");
+    }else{
+        qDebug() << "button-capture not found";
+    }
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
@@ -42,6 +54,5 @@ int main(int argc, char *argv[]){
         qDebug() << "Can't find appsView";
         return -1;
     }
-//    QObject::connect(root, SIGNAL(quit()), &app, SLOT(quit()));
     return app.exec();
 }
