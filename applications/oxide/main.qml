@@ -14,6 +14,7 @@ ApplicationWindow {
 //        background: Rectangle { color: "black" }
         Menu {
             title: qsTr("File")
+            enabled: stateController.state === "loaded"
             Action { text: qsTr("Reload"); onTriggered: appsView.model = controller.getApps() }
             MenuSeparator {}
             Action { text: qsTr("Suspend"); onTriggered: stateController.state = "suspended" }
@@ -32,6 +33,7 @@ ApplicationWindow {
         MouseArea { anchors.fill: parent },
         ListView {
             id: appsView
+            enabled: stateController.state === "loaded"
             objectName: "appsView"
             anchors.fill: parent
             clip: true
@@ -58,6 +60,7 @@ ApplicationWindow {
             model: apps
             delegate: Rectangle {
                 id: root
+                enabled: parent.enabled
                 width: parent.width - scrollbar.width
                 height: 180
                 color: "white"
@@ -98,6 +101,7 @@ ApplicationWindow {
                 }
                 MouseArea {
                     anchors.fill: parent
+                    enabled: parent.enabled
                     onPressed: parent.state = "pressed"
                     onReleased: parent.state = "released"
                     onCanceled: parent.state = "released"
