@@ -51,16 +51,18 @@ build: docker-cargo
 
 build-applications: docker-cargo
 	ls applications | while read APP; do \
-		echo "Building $${APP}"; \
-		docker volume create cargo-registry; \
-		docker run \
-			--rm \
-			--user builder \
-			-v "$(BUILD_DIR)/applications/$${APP}:/home/builder/$${APP}:rw" \
-			-v cargo-registry:/home/builder/.cargo/registry \
-			-w /home/builder/$${APP} \
-			rust-build-remarkable:latest \
-			cargo build --release --verbose --target=armv7-unknown-linux-gnueabihf; \
+		if [ -f "$${APP}/Cargo.toml" ];then \
+			echo "Building $${APP}"; \
+			docker volume create cargo-registry; \
+			docker run \
+				--rm \
+				--user builder \
+				-v "$(BUILD_DIR)/applications/$${APP}:/home/builder/$${APP}:rw" \
+				-v cargo-registry:/home/builder/.cargo/registry \
+				-w /home/builder/$${APP} \
+				rust-build-remarkable:latest \
+				cargo build --release --verbose --target=armv7-unknown-linux-gnueabihf; \
+		fi; \
 	done
 
 test: docker-cargo
@@ -86,16 +88,19 @@ check: docker-cargo
 		cargo check
 
 check-applications: docker-cargo $(BUILD_DIR)/applications/*
-	APP ?= $^
-	docker volume create cargo-registry
-	docker run \
-		--rm \
-		--user builder \
-		-v '$(APP):/home/builder/$(shell basename $(APP)):rw' \
-		-v cargo-registry:/home/builder/.cargo/registry \
-		-w /home/builder/$(shell basename $(APP)) \
-		rust-build-remarkable:latest \
-		cargo check
+	ls applications | while read APP; do \
+		if [ -f "$${APP}/Cargo.toml" ];then \
+			docker volume create cargo-registry
+			docker run \
+				--rm \
+				--user builder \
+				-v '$(APP):/home/builder/$(shell basename $(APP)):rw' \
+				-v cargo-registry:/home/builder/.cargo/registry \
+				-w /home/builder/$(shell basename $(APP)) \
+				rust-build-remarkable:latest \
+				cargo check \
+		fi; \
+	done
 
 check-json: docker-cargo
 	docker volume create cargo-registry
