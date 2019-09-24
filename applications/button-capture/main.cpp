@@ -92,5 +92,7 @@ int main()
 
     eventsfile.close();
 
+    cout << "Quitting." << endl;
+
     return 0;
 }

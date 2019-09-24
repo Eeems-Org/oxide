@@ -28,11 +28,12 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
+    system("killall button-capture");
     if(exists("/opt/bin/button-capture")){
         qDebug() << "Starting button-capture";
-        system("/opt/bin/button-capture&");
+        system("/opt/bin/button-capture &");
     }else{
-        qDebug() << "button-capture not found";
+        qDebug() << "button-capture not found or is running";
     }
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
