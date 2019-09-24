@@ -14,6 +14,7 @@ ApplicationWindow {
 //        background: Rectangle { color: "black" }
         Menu {
             title: qsTr("File")
+            enabled: stateController.state === "loaded"
             Action { text: qsTr("Reload"); onTriggered: appsView.model = controller.getApps() }
             MenuSeparator {}
             Action { text: qsTr("Suspend"); onTriggered: stateController.state = "suspended" }
@@ -32,6 +33,7 @@ ApplicationWindow {
         MouseArea { anchors.fill: parent },
         ListView {
             id: appsView
+            enabled: stateController.state === "loaded"
             objectName: "appsView"
             anchors.fill: parent
             clip: true
@@ -58,6 +60,7 @@ ApplicationWindow {
             model: apps
             delegate: Rectangle {
                 id: root
+                enabled: parent.enabled
                 width: parent.width - scrollbar.width
                 height: 180
                 color: "white"
@@ -98,6 +101,7 @@ ApplicationWindow {
                 }
                 MouseArea {
                     anchors.fill: parent
+                    enabled: parent.enabled
                     onPressed: parent.state = "pressed"
                     onReleased: parent.state = "released"
                     onCanceled: parent.state = "released"
@@ -110,7 +114,7 @@ ApplicationWindow {
                 transitions: [
                     Transition {
                         from: "pressed"; to: "released"
-                        SequentialAnimation {
+                        ParallelAnimation {
                             PropertyAction { target: root; property: "color"; value: "white" }
                             PropertyAction { target: name; property: "color"; value: "black" }
                             PropertyAction { target: description; property: "color"; value: "black" }
@@ -118,7 +122,7 @@ ApplicationWindow {
                     },
                     Transition {
                         from: "released"; to: "pressed"
-                        SequentialAnimation {
+                        ParallelAnimation {
                             PropertyAction { target: root; property: "color"; value: "black" }
                             PropertyAction { target: name; property: "color"; value: "white" }
                             PropertyAction { target: description; property: "color"; value: "white" }
@@ -170,39 +174,51 @@ ApplicationWindow {
             Transition {
                 from: "loaded"; to: "loading"
                 SequentialAnimation {
-                    PropertyAction { target: window; property: "visible"; value: true }
-                    PropertyAction { target: window.contentItem; property: "visible"; value: true }
+                    ParallelAnimation {
+                        PropertyAction { target: window; property: "visible"; value: true }
+                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
+                    }
                     PauseAnimation { duration: 10 }
-                    PropertyAction { target: window; property: "visible"; value: false }
-                    PropertyAction { target: window.contentItem; property: "visible"; value: false }
-                    PropertyAction { target: stateController; property: "state"; value: "loaded" }
+                    ParallelAnimation {
+                        PropertyAction { target: window; property: "visible"; value: false }
+                        PropertyAction { target: window.contentItem; property: "visible"; value: false }
+                        PropertyAction { target: stateController; property: "state"; value: "loaded" }
+                    }
                     ScriptAction { script: console.log("loading...") }
                 }
             },
             Transition {
                 from: "loading"; to: "loaded"
                 SequentialAnimation {
-                    PropertyAction { target: window; property: "visible"; value: false }
-                    PropertyAction { target: window.contentItem; property: "visible"; value: false }
+                    ParallelAnimation {
+                        PropertyAction { target: window; property: "visible"; value: false }
+                        PropertyAction { target: window.contentItem; property: "visible"; value: false }
+                    }
                     PauseAnimation { duration: 10 }
-                    PropertyAction { target: window; property: "visible"; value: true }
-                    PropertyAction { target: window.contentItem; property: "visible"; value: true }
+                    ParallelAnimation {
+                        PropertyAction { target: window; property: "visible"; value: true }
+                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
+                    }
                     ScriptAction { script: console.log("loaded.") }
                 }
             },
             Transition {
                 from: "loaded"; to: "suspended"
                 SequentialAnimation {
-                    PropertyAction { target: window; property: "visible"; value: true }
-                    PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                    PropertyAction { target: suspendMessage; property: "visible"; value: true }
+                    ParallelAnimation {
+                        PropertyAction { target: window; property: "visible"; value: true }
+                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
+                        PropertyAction { target: suspendMessage; property: "visible"; value: true }
+                    }
                     PauseAnimation { duration: 1000 }
                     ScriptAction { script: console.log("suspending...") }
                     ScriptAction { script: controller.suspend() }
                     PauseAnimation { duration: 1000 }
                     ScriptAction { script: console.log("waking up...") }
-                    PropertyAction { target: suspendMessage; property: "visible"; value: false }
-                    PropertyAction { target: stateController; property: "state"; value: "loaded" }
+                    ParallelAnimation {
+                        PropertyAction { target: suspendMessage; property: "visible"; value: false }
+                        PropertyAction { target: stateController; property: "state"; value: "loaded" }
+                    }
                 }
             }
         ]
