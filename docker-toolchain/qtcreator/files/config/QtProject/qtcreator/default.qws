@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorSession>
-<!-- Written by QtCreator 4.5.2, 2019-09-24T03:54:45. -->
+<!-- Written by QtCreator 4.5.2, 2019-09-25T05:24:23. -->
 <qtcreator>
  <data>
   <variable>CascadeSetActive</variable>
@@ -12,7 +12,7 @@
  </data>
  <data>
   <variable>EditorSettings</variable>
-  <value type="QByteArray">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</value>
+  <value type="QByteArray">AAAAD0VkaXRvck1hbmFnZXJWNAAAAAQAAABkAC8AcgBvAG8AdAAvAHAAcgBvAGoAZQBjAHQALwBhAHAAcABsAGkAYwBhAHQAaQBvAG4AcwAvAGIAdQB0AHQAbwBuAC0AYwBhAHAAdAB1AHIAZQAvAG0AYQBpAG4ALgBjAHAAcAAAAAwAAAAAGAAAAAEAAACCAAAAAAAAAJIAAAArAAAAAAAAAHgALwByAG8AbwB0AC8AcAByAG8AagBlAGMAdAAvAGEAcABwAGwAaQBjAGEAdABpAG8AbgBzAC8AYgB1AHQAdABvAG4ALQBjAGEAcAB0AHUAcgBlAC8AYgB1AHQAdABvAG4ALQBjAGEAcAB0AHUAcgBlAC4AcAByAG8AAAAMAAAAABgAAAABAAAAAAAAAAAAAAAKAAAAEwAAAAAAAACmAC8AbwBwAHQALwBwAG8AawB5AC8AMgAuADEALgAzAC8AcwB5AHMAcgBvAG8AdABzAC8AYwBvAHIAdABlAHgAYQA5AGgAZgAtAG4AZQBvAG4ALQBvAGUALQBsAGkAbgB1AHgALQBnAG4AdQBlAGEAYgBpAC8AdQBzAHIALwBpAG4AYwBsAHUAZABlAC8AbABpAG4AdQB4AC8AaQBuAHAAdQB0AC4AaAAAAAwAAAAAHAAAAAEAAABXAAAAAAAAABcAAAAHAAAAAQAAAAAAAADGAC8AbwBwAHQALwBwAG8AawB5AC8AMgAuADEALgAzAC8AcwB5AHMAcgBvAG8AdABzAC8AYwBvAHIAdABlAHgAYQA5AGgAZgAtAG4AZQBvAG4ALQBvAGUALQBsAGkAbgB1AHgALQBnAG4AdQBlAGEAYgBpAC8AdQBzAHIALwBpAG4AYwBsAHUAZABlAC8AYwArACsALwA3AC4AMwAuADAALwBlAHgAdAAvAHMAdABkAGkAbwBfAGYAaQBsAGUAYgB1AGYALgBoAAAADAAAAAAYAAAAAQAAADoAAAAAAAAAMgAAAAoAAAAAAAAABAAAAHgALwByAG8AbwB0AC8AcAByAG8AagBlAGMAdAAvAGEAcABwAGwAaQBjAGEAdABpAG8AbgBzAC8AYgB1AHQAdABvAG4ALQBjAGEAcAB0AHUAcgBlAC8AYgB1AHQAdABvAG4ALQBjAGEAcAB0AHUAcgBlAC4AcAByAG8AAAAkAGIAdQB0AHQAbwBuAC0AYwBhAHAAdAB1AHIAZQAuAHAAcgBvAAAAEVF0NC5wcm9GaWxlRWRpdG9yAAAApgAvAG8AcAB0AC8AcABvAGsAeQAvADIALgAxAC4AMwAvAHMAeQBzAHIAbwBvAHQAcwAvAGMAbwByAHQAZQB4AGEAOQBoAGYALQBuAGUAbwBuAC0AbwBlAC0AbABpAG4AdQB4AC0AZwBuAHUAZQBhAGIAaQAvAHUAcwByAC8AaQBuAGMAbAB1AGQAZQAvAGwAaQBuAHUAeAAvAGkAbgBwAHUAdAAuAGgAAAAOAGkAbgBwAHUAdAAuAGgAAAATQ3BwRWRpdG9yLkMrK0VkaXRvcgAAAGQALwByAG8AbwB0AC8AcAByAG8AagBlAGMAdAAvAGEAcABwAGwAaQBjAGEAdABpAG8AbgBzAC8AYgB1AHQAdABvAG4ALQBjAGEAcAB0AHUAcgBlAC8AbQBhAGkAbgAuAGMAcABwAAAAEABtAGEAaQBuAC4AYwBwAHAAAAATQ3BwRWRpdG9yLkMrK0VkaXRvcgAAAMYALwBvAHAAdAAvAHAAbwBrAHkALwAyAC4AMQAuADMALwBzAHkAcwByAG8AbwB0AHMALwBjAG8AcgB0AGUAeABhADkAaABmAC0AbgBlAG8AbgAtAG8AZQAtAGwAaQBuAHUAeAAtAGcAbgB1AGUAYQBiAGkALwB1AHMAcgAvAGkAbgBjAGwAdQBkAGUALwBjACsAKwAvADcALgAzAC4AMAAvAGUAeAB0AC8AcwB0AGQAaQBvAF8AZgBpAGwAZQBiAHUAZgAuAGgAAAAeAHMAdABkAGkAbwBfAGYAaQBsAGUAYgB1AGYALgBoAAAAE0NwcEVkaXRvci5DKytFZGl0b3IAAAC/AAAADWN1cnJlbnRlZGl0b3IAAABkAC8AcgBvAG8AdAAvAHAAcgBvAGoAZQBjAHQALwBhAHAAcABsAGkAYwBhAHQAaQBvAG4AcwAvAGIAdQB0AHQAbwBuAC0AYwBhAHAAdAB1AHIAZQAvAG0AYQBpAG4ALgBjAHAAcAAAACYAQwBwAHAARQBkAGkAdABvAHIALgBDACsAKwBFAGQAaQB0AG8AcgAAABgAAAABAAAAggAAAAAAAACSAAAAKwAAAAA=</value>
  </data>
  <data>
   <variable>ProjectDependencies</variable>
@@ -21,15 +21,12 @@
  <data>
   <variable>ProjectList</variable>
   <valuelist type="QVariantList">
-   <value type="QString">/root/project/applications/fingerterm/fingerterm.pro</value>
    <value type="QString">/root/project/applications/button-capture/button-capture.pro</value>
-   <value type="QString">/root/project/applications/corrode/corrode.pro</value>
-   <value type="QString">/root/project/applications/oxide/oxide.pro</value>
   </valuelist>
  </data>
  <data>
   <variable>StartupProject</variable>
-  <value type="QString">/root/project/applications/fingerterm/fingerterm.pro</value>
+  <value type="QString">/root/project/applications/button-capture/button-capture.pro</value>
  </data>
  <data>
   <variable>value-ActiveMode</variable>
@@ -51,64 +48,12 @@
   <variable>value-ProjectTree.ExpandData</variable>
   <valuelist type="QVariantList">
    <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/oxide</value>
-    <value type="QString">oxide</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/oxide/qml.qrc//</value>
-    <value type="QString">/</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/oxide/qml.qrc</value>
-    <value type="QString">qml.qrc</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/fingerterm</value>
+    <value type="QString">/root/project/applications/button-capture</value>
     <value type="QString">Sources</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/oxide</value>
-    <value type="QString">Resources</value>
    </valuelist>
    <valuelist type="QVariantList">
     <value type="QString">/root/project/applications/button-capture</value>
     <value type="QString">button-capture</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/fingerterm</value>
-    <value type="QString">Resources</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/fingerterm/qml</value>
-    <value type="QString">qml</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/oxide</value>
-    <value type="QString">Sources</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/fingerterm</value>
-    <value type="QString">QML</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/fingerterm</value>
-    <value type="QString">fingerterm</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/fingerterm/resources.qrc</value>
-    <value type="QString">resources.qrc</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/fingerterm/resources.qrc//</value>
-    <value type="QString">/</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/fingerterm/data</value>
-    <value type="QString">data</value>
-   </valuelist>
-   <valuelist type="QVariantList">
-    <value type="QString">/root/project/applications/button-capture</value>
-    <value type="QString">Sources</value>
    </valuelist>
   </valuelist>
  </data>

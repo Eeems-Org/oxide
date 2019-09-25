@@ -66,7 +66,7 @@ ApplicationWindow {
                     enabled: parent.enabled
                     width: parent.width - scrollbar.width
                     height: 180
-                    color: "transparent"
+                    color: "white"
                     border.color: "#cccccc"
                     border.width: 3
                     state: "released"
