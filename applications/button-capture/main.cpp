@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <cstring>
 #include <fstream>
-#include <iostream>
 #include <unordered_map>
 #include <sys/time.h>
 #include <ext/stdio_filebuf.h>
