@@ -1,5 +1,0 @@
-name=shutdown
-desc=Switch off the reMarkable.
-call=shutdown now
-term=:
-imgFile=power
