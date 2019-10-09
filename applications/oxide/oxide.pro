@@ -38,11 +38,11 @@ linux-oe-g++ {
 }
 
 # Installs draft files to /opt/etc/draft and the oxide sysctl service
-configFiles.files = extras/draft
+configFiles.files = ../../assets/oxide_extras/draft
 configFiles.path  = /opt/etc/
 INSTALLS += configFiles
 
-service.files = extras/oxide.service
+service.files = ../../assets/oxide_extras/oxide.service
 service.path=/lib/systemd/system/
 INSTALLS += service
 
