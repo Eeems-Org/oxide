@@ -1,0 +1,13 @@
+[Unit]
+Description=oxide launcher
+#StartLimitIntervalSec=600
+#StartLimitBurst=4
+After=home.mount
+
+[Service]
+ExecStart=/opt/oxide/bin/oxide
+
+[Install]
+WantedBy=multi-user.target
+
+
