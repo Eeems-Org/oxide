@@ -1,17 +1,24 @@
 all: build examples docker-test
 
-BUILD_DIR ?= $(shell cygpath -w `pwd`)
-# BUILD_DIR ?= $(shell pwd)
-
-SSH_DIR ?= G:\cygwin64\home\Eeems\.ssh
-# SSH_DIR ?= $(shell cygpath -w ~/.ssh)
-# SSH_DIR ?= "~/.ssh"
-
 DEVICE_IP ?= "10.11.99.1"
 # DEVICE_IP ?= "192.168.0.34"
 
 # DEVICE_SERVICE ?= "xochitl"
 DEVICE_SERVICE ?= "draft"
+
+SSH_DIR ?= $(HOME)/.ssh
+# SSH_DIR ?= $(shell cygpath -w ~/.ssh)
+# SSH_DIR ?= G:\cygwin64\home\Eeems\.ssh
+
+ifeq ($(OS),Windows_NT)
+	BUILD_DIR ?= $(shell cygpath -w `pwd`)
+	DISPLAY ?= host.docker.internal:0.0
+	DISPLAY_ARGS ?=
+else
+	BUILD_DIR ?= $(shell pwd)
+	DISPLAY ?= unix$(DISPLAY)
+	DISPLAY_ARGS ?= -v /tmp/.X11-unix:/tmp/.X11-unix --device /dev/snd
+endif
 
 .PHONY: docker-cargo
 docker-cargo:
@@ -133,5 +140,6 @@ qtcreator: docker-qtcreator
 		-v '$(SSH_DIR):/root/.ssh' \
 		-v '$(BUILD_DIR)/docker-toolchain/qtcreator/files/config:/root/.config' \
 		-w /root/project \
-		-e DISPLAY=host.docker.internal:0.0 \
+		-e DISPLAY=$(DISPLAY) \
+		$(DISPLAY_ARGS) \
 		rm-qtcreator:latest

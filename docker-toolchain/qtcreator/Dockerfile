@@ -9,7 +9,8 @@ RUN apt-get install -y \
   curl \
   qtcreator \
   build-essential \
-  gcc-arm-linux-gnueabihf
+  gcc-arm-linux-gnueabihf \
+  python
 
 # reMarkable 1.7 toolchain
 # RUN curl https://remarkable.engineering/deploy/sdk/poky-glibc-x86_64-meta-toolchain-qt5-cortexa9hf-neon-toolchain-2.1.3.sh \
