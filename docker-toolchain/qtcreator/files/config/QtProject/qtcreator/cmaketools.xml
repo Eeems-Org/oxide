@@ -1,14 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorCMakeTools>
-<!-- Written by QtCreator 4.5.2, 2019-09-30T02:09:55. -->
+<!-- Written by QtCreator 4.5.2, 2020-01-15T02:15:10. -->
 <qtcreator>
  <data>
+  <variable>CMakeTools.0</variable>
+  <valuemap type="QVariantMap">
+   <value type="bool" key="AutoCreateBuildDirectory">false</value>
+   <value type="bool" key="AutoDetected">true</value>
+   <value type="bool" key="AutoRun">true</value>
+   <value type="QString" key="Binary">/opt/poky/2.1.3/sysroots/x86_64-oesdk-linux/usr/bin/cmake</value>
+   <value type="QString" key="DisplayName">System CMake at /opt/poky/2.1.3/sysroots/x86_64-oesdk-linux/usr/bin/cmake</value>
+   <value type="QString" key="Id">{6b8a6bb3-21aa-46d1-930a-f5813fec68ad}</value>
+  </valuemap>
+ </data>
+ <data>
   <variable>CMakeTools.Count</variable>
-  <value type="int">0</value>
+  <value type="int">1</value>
  </data>
  <data>
   <variable>CMakeTools.Default</variable>
-  <value type="QString"></value>
+  <value type="QString">{6b8a6bb3-21aa-46d1-930a-f5813fec68ad}</value>
  </data>
  <data>
   <variable>Version</variable>

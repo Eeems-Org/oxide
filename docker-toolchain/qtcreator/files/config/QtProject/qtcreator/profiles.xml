@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProfiles>
-<!-- Written by QtCreator 4.5.2, 2019-09-30T02:09:54. -->
+<!-- Written by QtCreator 4.5.2, 2020-01-15T02:15:10. -->
 <qtcreator>
  <data>
   <variable>Profile.0</variable>
@@ -17,12 +17,12 @@
      <value type="QString">CMAKE_CXX_COMPILER:STRING=%{Compiler:Executable:Cxx}</value>
     </valuelist>
     <valuemap type="QVariantMap" key="CMake.GeneratorKitInformation">
-     <value type="QString" key="ExtraGenerator"></value>
-     <value type="QString" key="Generator"></value>
+     <value type="QString" key="ExtraGenerator">CodeBlocks</value>
+     <value type="QString" key="Generator">Unix Makefiles</value>
      <value type="QString" key="Platform"></value>
      <value type="QString" key="Toolset"></value>
     </valuemap>
-    <value type="QString" key="CMakeProjectManager.CMakeKitInformation"></value>
+    <value type="QString" key="CMakeProjectManager.CMakeKitInformation">{6b8a6bb3-21aa-46d1-930a-f5813fec68ad}</value>
     <value type="QString" key="Debugger.Information">{3be14988-88ed-4cb8-a16e-a1cb1d3ef0e6}</value>
     <value type="QString" key="PE.Profile.Device">Desktop Device</value>
     <value type="QByteArray" key="PE.Profile.DeviceType">Desktop</value>
@@ -58,12 +58,12 @@
      <value type="QString">CMAKE_CXX_COMPILER:STRING=%{Compiler:Executable:Cxx}</value>
     </valuelist>
     <valuemap type="QVariantMap" key="CMake.GeneratorKitInformation">
-     <value type="QString" key="ExtraGenerator"></value>
-     <value type="QString" key="Generator"></value>
+     <value type="QString" key="ExtraGenerator">CodeBlocks</value>
+     <value type="QString" key="Generator">Unix Makefiles</value>
      <value type="QString" key="Platform"></value>
      <value type="QString" key="Toolset"></value>
     </valuemap>
-    <value type="QString" key="CMakeProjectManager.CMakeKitInformation"></value>
+    <value type="QString" key="CMakeProjectManager.CMakeKitInformation">{6b8a6bb3-21aa-46d1-930a-f5813fec68ad}</value>
     <value type="QString" key="Debugger.Information">{eb694cbe-9dd0-410a-b54f-aa96ee68ea4c}</value>
     <value type="QString" key="PE.Profile.Device">{6f6eab9f-527e-4dc9-b30a-9fa53efbaa24}</value>
     <value type="QString" key="PE.Profile.DeviceType">GenericLinuxOsType</value>
