@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM nvidia/cuda:latest
 LABEL maintainer='Nathaniel van Diepen'
 
 WORKDIR /root

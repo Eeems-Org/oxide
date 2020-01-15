@@ -10,6 +10,9 @@ SSH_DIR ?= $(HOME)/.ssh
 # SSH_DIR ?= $(shell cygpath -w ~/.ssh)
 # SSH_DIR ?= G:\cygwin64\home\Eeems\.ssh
 
+QTCREATOR_RUN_ARGS ?= --gpus all
+# QTCREATOR_RUN_ARGS ?=
+
 ifeq ($(OS),Windows_NT)
 	BUILD_DIR ?= $(shell cygpath -w `pwd`)
 	DISPLAY ?= host.docker.internal:0.0
@@ -135,6 +138,7 @@ run: build deploy exec
 qtcreator: docker-qtcreator
 	docker start -a qtcreator || \
 	docker run \
+		$(QTCREATOR_RUN_ARGS) \
 		--name qtcreator \
 		-v '$(BUILD_DIR):/root/project:rw' \
 		-v '$(SSH_DIR):/root/.ssh' \
