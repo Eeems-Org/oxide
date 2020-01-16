@@ -68,13 +68,13 @@ void flush_stream(istream* stream){
     streamsize sie = static_cast<streamsize>(sizeof(struct input_event));
     stream->read((char*)&ie, sie);
 }
-void ev_syn(event_device evdev, istream* stream){
+void ev_syn(event_device evdev){
     struct input_event key_input_event;
     key_input_event.type = EV_SYN;
     key_input_event.code = SYN_REPORT;
     write_event(evdev, key_input_event);
 }
-void ev_key(event_device evdev, istream* stream, int code, int value = 0){
+void ev_key(event_device evdev, int code, int value = 0){
     struct input_event key_input_event;
     key_input_event.type = EV_KEY;
     key_input_event.code = code;
@@ -84,13 +84,13 @@ void ev_key(event_device evdev, istream* stream, int code, int value = 0){
 void press_button(event_device evdev, int code, istream* stream){
     cout << "inject button " << code << endl;
     unlock_device(evdev);
-    ev_key(evdev, stream, code, 1);
+    ev_key(evdev, code, 1);
     flush_stream(stream);
-    ev_syn(evdev, stream);
+    ev_syn(evdev);
     flush_stream(stream);
-    ev_key(evdev, stream, code, 0);
+    ev_key(evdev, code, 0);
     flush_stream(stream);
-    ev_syn(evdev, stream);
+    ev_syn(evdev);
     flush_stream(stream);
     lock_device(evdev);
 }
