@@ -2,8 +2,10 @@
 #include <QQmlApplicationEngine>
 #include <QtPlugin>
 #include <QtQuick>
+#include <QObject>
 #include <fstream>
 #include "controller.h"
+#include "eventfilter.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
@@ -36,6 +38,8 @@ int main(int argc, char *argv[]){
         qDebug() << "button-capture not found or is running";
     }
     QGuiApplication app(argc, argv);
+    EventFilter filter;
+    app.installEventFilter(&filter);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller controller;
@@ -50,10 +54,23 @@ int main(int argc, char *argv[]){
         return -1;
     }
     QObject* root = engine.rootObjects().first();
+    controller.root = root;
     QQuickItem* appsView = root->findChild<QQuickItem*>("appsView");
     if(!appsView){
         qDebug() << "Can't find appsView";
         return -1;
     }
+    QObject* stateController = root->findChild<QObject*>("stateController");
+    if(!stateController){
+        qDebug() << "Can't find stateController";
+        return -1;
+    }
+    filter.timer = new QTimer(root);
+    filter.timer->setInterval(60 * 1000); // 60 seconds
+    QObject::connect(filter.timer, &QTimer::timeout, [stateController](){
+        qDebug() << "Suspending due to inactivity...";
+        stateController->setProperty("state", QString("suspended"));
+    });
+    filter.timer->start();
     return app.exec();
 }

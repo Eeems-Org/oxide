@@ -13,7 +13,7 @@ ApplicationWindow {
     menuBar: MenuBar {
         background: Rectangle { color: "black" }
         Menu {
-            title: qsTr("File")
+            title: "<font color=\"white\">File</font>"
             enabled: stateController.state === "loaded"
             Action { text: qsTr("Reload"); onTriggered: appsView.model = controller.getApps() }
             MenuSeparator {}
@@ -29,6 +29,7 @@ ApplicationWindow {
     background: Rectangle {
         color: "white"
     }
+
     contentData: [
         MouseArea { anchors.fill: parent },
         Rectangle {
@@ -132,7 +133,7 @@ ApplicationWindow {
                         }
                     ]
                 }
-        }
+            }
         },
         Rectangle {
             id: suspendMessage
@@ -168,6 +169,7 @@ ApplicationWindow {
     Component.onCompleted: stateController.state = "loaded"
     StateGroup {
         id: stateController
+        objectName: "stateController"
         state: "loading"
         states: [
             State { name: "loaded" },

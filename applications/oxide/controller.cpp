@@ -66,8 +66,10 @@ QList<QObject*> Controller::getApps(){
     return result;
 }
 void Controller::powerOff(){
+    qDebug() << "Powering off...";
     system("systemctl poweroff");
 }
 void Controller::suspend(){
+    qDebug() << "Suspending...";
     system("systemctl suspend");
 }

@@ -8,6 +8,7 @@ class Controller : public QObject
     Q_OBJECT
 
 public:
+    QObject* root;
     explicit Controller(QObject* parent = 0) : QObject(parent){}
     Q_INVOKABLE QList<QObject*> getApps();
     Q_INVOKABLE void powerOff();
