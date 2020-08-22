@@ -165,6 +165,14 @@ ApplicationWindow {
             color: "white"
             anchors.centerIn: parent
         }
+        Label {
+            id: batteryLevel
+            objectName: "batteryLevel"
+            text: controller.getBatteryLevel()
+            color: "white"
+            anchors.right: parent.right
+            rightPadding: 10
+        }
     }
     Component.onCompleted: stateController.state = "loaded"
     StateGroup {

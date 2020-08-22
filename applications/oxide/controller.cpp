@@ -73,3 +73,33 @@ void Controller::suspend(){
     qDebug() << "Suspending...";
     system("systemctl suspend");
 }
+
+int readInt(std::string path) {
+
+    QFile file(path.c_str());
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "Couldn't find the file " << path.c_str();
+        return 0;
+    }
+    QTextStream in(&file);
+    std::string text = in.readLine().toStdString();
+    int number = std::stoi(text);
+
+    return number;
+}
+
+QString Controller::getBatteryLevel() {
+    int charge_now = readInt(
+        "/sys/class/power_supply/bq27441-0/charge_now"
+    );
+    int charge_full = readInt(
+        "/sys/class/power_supply/bq27441-0/charge_full_design"
+    );
+
+    int battery_level = 100;
+    if (charge_now < charge_full) {
+        battery_level = (charge_now * 100/ charge_full);
+    }
+    qDebug() << "Got battery level " << battery_level;
+    return QString::fromStdString(std::to_string(battery_level) + "%");
+}

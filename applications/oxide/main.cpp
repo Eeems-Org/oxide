@@ -65,12 +65,23 @@ int main(int argc, char *argv[]){
         qDebug() << "Can't find stateController";
         return -1;
     }
+    QObject* batteryLevel = root->findChild<QObject*>("batteryLevel");
+    if(!stateController){
+        qDebug() << "Can't find batteryLevel";
+        return -1;
+    }
     filter.timer = new QTimer(root);
     filter.timer->setInterval(60 * 1000); // 60 seconds
     QObject::connect(filter.timer, &QTimer::timeout, [stateController](){
         qDebug() << "Suspending due to inactivity...";
         stateController->setProperty("state", QString("suspended"));
     });
+    QTimer* timer = new QTimer(root);
+    timer->setInterval(10 * 60 * 1000); // 10 minutes
+    QObject::connect(timer, &QTimer::timeout, [batteryLevel, &controller](){
+        batteryLevel->setProperty("text", controller.getBatteryLevel());
+    });
     filter.timer->start();
+    timer->start();
     return app.exec();
 }
