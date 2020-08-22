@@ -103,3 +103,8 @@ QString Controller::getBatteryLevel() {
     qDebug() << "Got battery level " << battery_level;
     return QString::fromStdString(std::to_string(battery_level) + "%");
 }
+
+void Controller::resetInactiveTimer(){
+    filter->timer->stop();
+    filter->timer->start();
+}

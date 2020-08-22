@@ -29,7 +29,6 @@ ApplicationWindow {
     background: Rectangle {
         color: "white"
     }
-
     contentData: [
         MouseArea { anchors.fill: parent },
         Rectangle {
@@ -228,7 +227,7 @@ ApplicationWindow {
                     ScriptAction { script: console.log("suspending...") }
                     ScriptAction { script: controller.suspend() }
                     PauseAnimation { duration: 1000 }
-                    ScriptAction { script: console.log("waking up...") }
+                    ScriptAction { script: controller.resetInactiveTimer() && console.log("waking up...") }
                     ParallelAnimation {
                         PropertyAction { target: suspendMessage; property: "visible"; value: false }
                         PropertyAction { target: stateController; property: "state"; value: "loaded" }

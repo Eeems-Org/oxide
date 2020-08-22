@@ -43,6 +43,7 @@ int main(int argc, char *argv[]){
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller controller;
+    controller.filter = &filter;
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
@@ -54,7 +55,6 @@ int main(int argc, char *argv[]){
         return -1;
     }
     QObject* root = engine.rootObjects().first();
-    controller.root = root;
     QQuickItem* appsView = root->findChild<QQuickItem*>("appsView");
     if(!appsView){
         qDebug() << "Can't find appsView";
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
     filter.timer = new QTimer(root);
-    filter.timer->setInterval(60 * 1000); // 60 seconds
+    filter.timer->setInterval(5 * 60 * 1000); // 5 minutes
     QObject::connect(filter.timer, &QTimer::timeout, [stateController](){
         qDebug() << "Suspending due to inactivity...";
         stateController->setProperty("state", QString("suspended"));
