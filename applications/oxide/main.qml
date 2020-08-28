@@ -12,6 +12,9 @@ ApplicationWindow {
     height: screenGeometry.height
     title: qsTr("Oxide")
     property bool reloaded: true
+    property int columns: 5
+    property int itemFontSize: 25
+    property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     header: Rectangle {
         color: "black"
@@ -34,7 +37,7 @@ ApplicationWindow {
                     title: "";
                     font: iconFont.name
                     width: 250
-                    Action { text: qsTr(" Suspend"); onTriggered: stateController.state = "suspended" }
+                    Action { text: qsTr(" Suspend"); onTriggered: stateController.state = "suspended" }
                     Action { text: qsTr(" Shutdown"); onTriggered: controller.powerOff() }
                 }
             }
@@ -50,7 +53,7 @@ ApplicationWindow {
             anchors.fill: parent
             color: "white"
         },
-        ListView {
+        GridView {
             id: appsView
             enabled: stateController.state === "loaded"
             objectName: "appsView"
@@ -59,6 +62,9 @@ ApplicationWindow {
             snapMode: ListView.SnapOneItem
             maximumFlickVelocity: 0
             boundsBehavior: Flickable.StopAtBounds
+            cellWidth: parent.width / window.columns
+            cellHeight: cellWidth + window.itemFontSize
+            model: apps
             ScrollBar.vertical: ScrollBar {
                 id: scrollbar
                 snapMode: ScrollBar.SnapAlways
@@ -76,76 +82,78 @@ ApplicationWindow {
                     radius: width / 2
                 }
             }
-            model: apps
-            delegate: Rectangle {
+            delegate: Item {
                 id: root
-                enabled: parent.enabled
-                width: parent.width - scrollbar.width
-                height: 180
-                color: "white"
-                border.color: "#cccccc"
-                border.width: 3
+                enabled: appsView.enabled
+                width: appsView.cellWidth
                 state: "released"
                 states: [
                     State { name: "released" },
                     State { name: "pressed" }
                 ]
+                Image {
+                    id: image
+                    fillMode: Image.PreserveAspectFit
+                    y: window.itemPadding
+                    width: parent.width - window.itemPadding * 2
+                    height: parent.width - window.itemPadding * 2 - window.itemFontSize
+                    source: model.modelData.imgFile
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
                 Text {
                     id: name
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    font.family: "Noto Serif"
-                    font.pixelSize: 80
-                    font.italic: true
                     text: model.modelData.name
-                }
-                Text {
-                    id: description
-                    anchors.top: name.bottom
-                    anchors.left: name.left
                     font.family: "Noto Serif"
-                    font.pixelSize: 40
                     font.italic: true
-                    text: model.modelData.desc
+                    font.pixelSize: window.itemFontSize
+                    width: parent.width - window.itemPadding * 2
+                    anchors.top: image.bottom
+                    anchors.horizontalCenter: image.horizontalCenter
+                    horizontalAlignment: Text.AlignHCenter
+                    clip: true
                 }
-                Image {
-                    fillMode: Image.PreserveAspectFit
-                    width: height
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.margins: 15
-                    source: model.modelData.imgFile
-                }
+//                Text {
+//                    id: description
+//                    anchors.top: name.bottom
+//                    anchors.left: name.left
+//                    font.family: "Noto Serif"
+//                    font.pixelSize: 40
+//                    font.italic: true
+//                    text: model.modelData.desc
+//                }
                 MouseArea {
-                    anchors.fill: parent
-                    enabled: parent.enabled
-                    onPressed: parent.state = "pressed"
-                    onReleased: parent.state = "released"
-                    onCanceled: parent.state = "released"
+                    width: root.width
+                    height: appsView.cellHeight
+                    enabled: root.enabled
+                    onPressed: root.state = "pressed"
+                    onReleased: root.state = "released"
+                    onCanceled: root.state = "released"
                     onClicked: {
                         model.modelData.execute();
                         stateController.state = "loading"
-                        parent.state = "released"
+                        root.state = "released"
                     }
                 }
                 transitions: [
                     Transition {
                         from: "pressed"; to: "released"
                         ParallelAnimation {
-                            PropertyAction { target: root; property: "color"; value: "white" }
-                            PropertyAction { target: name; property: "color"; value: "black" }
-                            PropertyAction { target: description; property: "color"; value: "black" }
+                            PropertyAction { target: image; property: "width"; value: root.width - window.itemPadding * 2 }
+                            PropertyAction { target: image; property: "height"; value: root.width - window.itemPadding * 2 - window.itemFontSize }
+                            SequentialAnimation {
+                                PauseAnimation { duration: 1500 }
+                                ScriptAction { script: controller.killXochitl() }
+                            }
                         }
                     },
                     Transition {
                         from: "released"; to: "pressed"
                         ParallelAnimation {
-                            PropertyAction { target: root; property: "color"; value: "black" }
-                            PropertyAction { target: name; property: "color"; value: "white" }
-                            PropertyAction { target: description; property: "color"; value: "white" }
+                            PropertyAction { target: image; property: "width"; value: image.width - 10}
+                            PropertyAction { target: image; property: "height"; value: image.height - 10 }
                         }
                     }
+
                 ]
             }
         },
@@ -218,6 +226,7 @@ ApplicationWindow {
         state: "loading"
         states: [
             State { name: "loaded" },
+            State { name: "settings" },
             State { name: "loading" },
             State { name: "suspended" }
         ]

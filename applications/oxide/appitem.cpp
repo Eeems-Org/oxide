@@ -15,8 +15,4 @@ void AppItem::execute(){
     termfile.open("/opt/etc/draft/.terminate");
     termfile << _term.toStdString() << std::endl;
     system(_call.toUtf8());
-    sleep(1);
-    if(system("systemctl is-active --quiet xochitl")){
-        system("systemctl stop xochtil");
-    }
 }

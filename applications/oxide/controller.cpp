@@ -73,6 +73,12 @@ void Controller::suspend(){
     qDebug() << "Suspending...";
     system("systemctl suspend");
 }
+void Controller::killXochitl(){
+    if(system("systemctl is-active --quiet xochitl")){
+        qDebug() << "Killing xochtil";
+        system("systemctl stop xochtil");
+    }
+}
 
 int readInt(std::string path) {
 
