@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.12.4, 2020-08-22T14:39:49. -->
+<!-- Written by QtCreator 4.12.4, 2020-08-22T17:17:34. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -265,9 +265,11 @@
        <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/systemd/system/oxide.service</value>
        <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/draft/icons/xochitl.png</value>
        <value type="QString">/home/eeems/git/Github/Eeems/oxidize/applications/build-oxide-reMarkable-Debug/oxide</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/.build/build-oxide-reMarkable-Debug/oxide</value>
        <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/draft/01-xochitl</value>
       </valuelist>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedHosts">
+       <value type="QString">remarkable</value>
        <value type="QString">remarkable</value>
        <value type="QString">remarkable</value>
        <value type="QString">remarkable</value>
@@ -281,9 +283,11 @@
        <value type="QString">/lib/systemd/system/</value>
        <value type="QString">/opt/etc//draft/icons</value>
        <value type="QString">/opt/oxide/bin</value>
+       <value type="QString">/opt/oxide/bin</value>
        <value type="QString">/opt/etc//draft</value>
       </valuelist>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedSysroots">
+       <value type="QString">/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi</value>
        <value type="QString">/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi</value>
        <value type="QString">/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi</value>
        <value type="QString">/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi</value>
@@ -299,14 +303,16 @@
        <value type="QDateTime">2020-01-13T20:30:08.744</value>
        <value type="QDateTime">2020-01-13T20:30:08.744</value>
        <value type="QDateTime">2020-01-14T19:33:21.171</value>
+       <value type="QDateTime">2020-08-22T17:12:32.992</value>
        <value type="QDateTime">2020-01-13T20:30:08.744</value>
       </valuelist>
       <valuelist type="QVariantList" key="RemoteLinux.LastDeployedRemoteTimes">
        <value type="QDateTime">2019-09-13T21:10:23.000</value>
-       <value type="QDateTime">2020-01-14T19:38:36.000</value>
-       <value type="QDateTime">2020-01-14T19:38:36.000</value>
+       <value type="QDateTime">2020-08-22T14:41:28.000</value>
+       <value type="QDateTime">2020-08-22T14:41:28.000</value>
        <value type="QDateTime">2020-01-14T19:38:36.000</value>
        <value type="QDateTime">2020-01-14T19:38:37.000</value>
+       <value type="QDateTime">2020-08-22T17:12:39.000</value>
        <value type="QDateTime">2020-01-14T19:38:36.000</value>
       </valuelist>
      </valuemap>
