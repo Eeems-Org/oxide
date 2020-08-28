@@ -30,6 +30,9 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
+    if(system("systemctl is-active --quiet xochitl")){
+        system("systemctl stop xochtil");
+    }
     system("killall button-capture");
     if(exists("/opt/bin/button-capture")){
         qDebug() << "Starting button-capture";
@@ -79,7 +82,7 @@ int main(int argc, char *argv[]){
     QTimer* timer = new QTimer(root);
     timer->setInterval(10 * 60 * 1000); // 10 minutes
     QObject::connect(timer, &QTimer::timeout, [batteryLevel, &controller](){
-        batteryLevel->setProperty("text", controller.getBatteryLevel());
+        batteryLevel->setProperty("batterylevel", controller.getBatteryLevel());
     });
     filter.timer->start();
     timer->start();

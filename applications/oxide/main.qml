@@ -203,7 +203,9 @@ ApplicationWindow {
         Label {
             id: batteryLevel
             objectName: "batteryLevel"
-            text: controller.getBatteryLevel()
+            property string batterylevel: controller.getBatteryLevel()
+            font: iconFont.name
+            text: "" + batterylevel + "%"
             color: "white"
             anchors.right: parent.right
             rightPadding: 10

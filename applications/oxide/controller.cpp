@@ -101,7 +101,7 @@ QString Controller::getBatteryLevel() {
         battery_level = (charge_now * 100/ charge_full);
     }
     qDebug() << "Got battery level " << battery_level;
-    return QString::fromStdString(std::to_string(battery_level) + "%");
+    return QString::fromStdString(std::to_string(battery_level));
 }
 
 void Controller::resetInactiveTimer(){
