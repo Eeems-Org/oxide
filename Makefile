@@ -136,6 +136,7 @@ exec:
 run: build deploy exec
 
 qtcreator: docker-qtcreator
+	xhost +SI:localuser:root > /dev/null
 	docker start -a qtcreator || \
 	docker run \
 		$(QTCREATOR_RUN_ARGS) \
