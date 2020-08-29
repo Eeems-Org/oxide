@@ -4,8 +4,8 @@ LABEL maintainer='Nathaniel van Diepen'
 WORKDIR /root
 
 RUN apt-get update
-RUN apt-get dist-upgrade -y
-RUN apt-get install -y \
+RUN DEBIAN_FRONTEND="noninteractive" apt-get dist-upgrade -y
+RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
   curl \
   qtcreator \
   build-essential \
