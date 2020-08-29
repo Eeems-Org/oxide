@@ -58,6 +58,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
     QObject* root = engine.rootObjects().first();
+    controller.root = root;
     QQuickItem* appsView = root->findChild<QQuickItem*>("appsView");
     if(!appsView){
         qDebug() << "Can't find appsView";
@@ -84,7 +85,7 @@ int main(int argc, char *argv[]){
     QObject::connect(timer, &QTimer::timeout, [batteryLevel, &controller](){
         batteryLevel->setProperty("batterylevel", controller.getBatteryLevel());
     });
-    filter.timer->start();
     timer->start();
+    controller.loadSettings();
     return app.exec();
 }

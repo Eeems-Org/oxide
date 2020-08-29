@@ -6,41 +6,39 @@
 #include <QDir>
 #include <QSet>
 #include <QDebug>
+#include <unistd.h>
+#include <sstream>
 
-QList<QObject*> Controller::getApps(){
+QString configDirectoryPath = "/opt/etc/draft";
+QDir configDirectory(configDirectoryPath);
+QString configFilePath = configDirectoryPath + "/conf";
+QFile configFile(configFilePath);
+QSet<QString> settings = { "automaticSleep", "columns" };
+bool reading = false;
 
-    QString configDir = "/opt/etc/draft";
-    QList<QObject*> result;
+bool validateConfigFolder(){
+    if (!configDirectory.exists() || configDirectoryPath.isEmpty())
+    {
+        qCritical() << "Failed to read directory - it does not exist. " << configDirectoryPath;
+        return false;
+    }
+    return true;
+}
+void Controller::loadSettings(){
     // If the config directory doesn't exist,
     // then print an error and stop.
-    QDir directory(configDir);
-    if (!directory.exists() || configDir.isEmpty())
-    {
-        qCritical() << "Failed to read directory - it does not exist.> " << configDir;
-        return result;
+    qDebug() << "parsing config file ";
+    if(!validateConfigFolder()){
+        return;
     }
-
-
-    directory.setFilter( QDir::Files | QDir::NoSymLinks | QDir::NoDot | QDir::NoDotDot);
-
-    auto images = directory.entryInfoList(QDir::NoFilter,QDir::SortFlag::Name);
-    foreach(QFileInfo fi, images) {
-        auto f = fi.absoluteFilePath();
-
-        qDebug() << "parsing file " << f;
-
-        QFile file(fi.absoluteFilePath());
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            qCritical() << "Couldn't find the file " << f;
-            continue;
-        }
-
-        QTextStream in(&file);
-
-        AppItem* app = new AppItem();
-
-        while (!in.atEnd()) {
-            QString line = in.readLine();
+    if (!configFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCritical() << "Couldn't read the config file. " << configFile.fileName();
+        return;
+    }
+    QTextStream in(&configFile);
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        if(!line.startsWith("#") && !line.isEmpty()){
             QStringList parts = line.split("=");
             if(parts.length() != 2){
                 qWarning() << "wrong format on " << line;
@@ -48,19 +46,123 @@ QList<QObject*> Controller::getApps(){
             }
             QString lhs = parts.at(0);
             QString rhs = parts.at(1);
-            QSet<QString> known = { "name", "desc", "call", "term" };
-            if (known.contains(lhs)){
-                app->setProperty(lhs.toUtf8(), rhs);
-            }else if (lhs == "imgFile"){
-                if(rhs != ":" && rhs != ""){
-                    app->setProperty(lhs.toUtf8(), "file:" + configDir + "/icons/" + rhs + ".png");
-                }else{
-                    app->setProperty(lhs.toUtf8(), "qrc:/icon.png");
-                }
+            if (lhs == "automaticSleep"){
+                auto value = rhs.toLower();
+                setAutomaticSleep(value == "true" || value == "t" || value == "y" || value == "yes" || value == "1");
+            }else if(settings.contains(lhs)){
+                setProperty(lhs.toStdString().c_str(), rhs);
             }
         }
-        if(app ->ok()){
-            result.append(app );
+    }
+    configFile.close();
+    // Populate settings in UI
+    QObject* columnsSpinBox = root->findChild<QObject*>("columnsSpinBox");
+    if(!columnsSpinBox){
+        qDebug() << "Can't find columnsSpinBox";
+    }else{
+        columnsSpinBox->setProperty("value", columns());
+    }
+    QObject* fontSizeSpinBox = root->findChild<QObject*>("fontSizeSpinBox");
+    if(!fontSizeSpinBox){
+        qDebug() << "Can't find fontSizeSpinBox";
+    }else{
+        fontSizeSpinBox->setProperty("value", fontSize());
+    }
+}
+void Controller::saveSettings(){
+    if(!validateConfigFolder()){
+        return;
+    }
+    if (!configFile.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        qCritical() << "Unable to read the config file. " << configFile.fileName();
+        return;
+    }
+    QTextStream stream(&configFile);
+    QSet<QString> items = settings;
+    items.detach();
+    std::stringstream buffer;
+    while (!stream.atEnd()) {
+        QString line = stream.readLine();
+        if(line.startsWith("#")){
+            buffer << line.toStdString() << std::endl;
+            continue;
+        }
+        QStringList parts = line.split("=");
+        if(parts.length() != 2){
+            buffer << line.toStdString() << std::endl;
+            continue;
+        }
+        QString lhs = parts.at(0);
+        QString rhs = parts.at(1);
+        if (lhs == "automaticSleep"){
+            if(automaticSleep()){
+                rhs = "yes";
+            }else{
+                rhs = "no";
+            }
+            items.remove("automaticSleep");
+        }else if(items.contains(lhs)){
+            rhs = property(lhs.toStdString().c_str()).toString();
+            items.remove(lhs);
+        }
+        buffer << lhs.toStdString() << "=" << rhs.toStdString() << std::endl;
+    }
+    for(QString item : items){
+        buffer << item.toStdString() << property(item.toStdString().c_str()).toString().toStdString() << std::endl;
+    }
+    configFile.resize(0);
+    stream << QString::fromStdString(buffer.str());
+    configFile.close();
+}
+QList<QObject*> Controller::getApps(){
+    QList<QObject*> result;
+    // If the config directory doesn't exist,
+    // then print an error and stop.
+    if(!validateConfigFolder()){
+        return result;
+    }
+    configDirectory.setFilter( QDir::Files | QDir::NoSymLinks | QDir::NoDot | QDir::NoDotDot);
+    auto images = configDirectory.entryInfoList(QDir::NoFilter,QDir::SortFlag::Name);
+    foreach(QFileInfo fi, images){
+        if(fi.fileName() != "conf"){
+            auto f = fi.absoluteFilePath();
+
+            qDebug() << "parsing file " << f;
+
+            QFile file(fi.absoluteFilePath());
+            if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                qCritical() << "Couldn't find the file " << f;
+                continue;
+            }
+
+            QTextStream in(&file);
+
+            AppItem* app = new AppItem();
+
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                QStringList parts = line.split("=");
+                if(parts.length() != 2){
+                    qWarning() << "wrong format on " << line;
+                    continue;
+                }
+                QString lhs = parts.at(0);
+                QString rhs = parts.at(1);
+                QSet<QString> known = { "name", "desc", "call", "term" };
+                if (known.contains(lhs)){
+                    app->setProperty(lhs.toUtf8(), rhs);
+                }else if (lhs == "imgFile"){
+                    if(rhs != ":" && rhs != ""){
+                        app->setProperty(lhs.toUtf8(), "file:" + configDirectoryPath + "/icons/" + rhs + ".png");
+                    }else{
+                        app->setProperty(lhs.toUtf8(), "qrc:/icon.png");
+                    }
+                }
+            }
+            if(app ->ok()){
+                result.append(app );
+            }
+            file.close();
         }
     }
     return result;
@@ -79,7 +181,6 @@ void Controller::killXochitl(){
         system("systemctl stop xochtil");
     }
 }
-
 int readInt(std::string path) {
 
     QFile file(path.c_str());
@@ -93,7 +194,6 @@ int readInt(std::string path) {
 
     return number;
 }
-
 QString Controller::getBatteryLevel() {
     int charge_now = readInt(
         "/sys/class/power_supply/bq27441-0/charge_now"
@@ -109,8 +209,29 @@ QString Controller::getBatteryLevel() {
     qDebug() << "Got battery level " << battery_level;
     return QString::fromStdString(std::to_string(battery_level));
 }
-
 void Controller::resetInactiveTimer(){
     filter->timer->stop();
     filter->timer->start();
+}
+void Controller::setAutomaticSleep(bool state){
+    m_automaticSleep = state;
+    if(state){
+        qDebug() << "Enabling automatic sleep";
+        filter->timer->start();
+    }else{
+        qDebug() << "Disabling automatic sleep";
+        filter->timer->stop();
+    }
+    emit automaticSleepChanged(state);
+}
+
+void Controller::setColumns(int columns){
+    m_columns = columns;
+    qDebug() << "Columns: " << columns;
+    emit columnsChanged(columns);
+}
+void Controller::setFontSize(int fontSize){
+    m_fontSize= fontSize;
+    qDebug() << "Font Size: " << fontSize;
+    emit fontSizeChanged(fontSize);
 }

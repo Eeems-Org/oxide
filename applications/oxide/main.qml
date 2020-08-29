@@ -12,10 +12,9 @@ ApplicationWindow {
     height: screenGeometry.height
     title: qsTr("Oxide")
     property bool reloaded: true
-    property int columns: 5
-    property int itemFontSize: 25
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
+
     header: Rectangle {
         color: "black"
         height: menu.height
@@ -62,8 +61,8 @@ ApplicationWindow {
             snapMode: ListView.SnapOneItem
             maximumFlickVelocity: 0
             boundsBehavior: Flickable.StopAtBounds
-            cellWidth: parent.width / window.columns
-            cellHeight: cellWidth + window.itemFontSize
+            cellWidth: parent.width / controller.columns
+            cellHeight: cellWidth + controller.fontSize
             model: apps
             ScrollBar.vertical: ScrollBar {
                 id: scrollbar
@@ -96,7 +95,7 @@ ApplicationWindow {
                     fillMode: Image.PreserveAspectFit
                     y: window.itemPadding
                     width: parent.width - window.itemPadding * 2
-                    height: parent.width - window.itemPadding * 2 - window.itemFontSize
+                    height: parent.width - window.itemPadding * 2 - controller.fontSize
                     source: model.modelData.imgFile
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
@@ -105,7 +104,7 @@ ApplicationWindow {
                     text: model.modelData.name
                     font.family: "Noto Serif"
                     font.italic: true
-                    font.pixelSize: window.itemFontSize
+                    font.pixelSize: controller.fontSize
                     width: parent.width - window.itemPadding * 2
                     anchors.top: image.bottom
                     anchors.horizontalCenter: image.horizontalCenter
@@ -139,7 +138,7 @@ ApplicationWindow {
                         from: "pressed"; to: "released"
                         ParallelAnimation {
                             PropertyAction { target: image; property: "width"; value: root.width - window.itemPadding * 2 }
-                            PropertyAction { target: image; property: "height"; value: root.width - window.itemPadding * 2 - window.itemFontSize }
+                            PropertyAction { target: image; property: "height"; value: root.width - window.itemPadding * 2 - controller.fontSize }
                             SequentialAnimation {
                                 PauseAnimation { duration: 1500 }
                                 ScriptAction { script: controller.killXochitl() }
@@ -160,41 +159,107 @@ ApplicationWindow {
         Popup {
             id: settings
             visible: false
-            width: 500
+            width: 1000
             height: 1000
             x: (parent.width / 2) - (width / 2)
             y: (parent.height / 2) - (height / 2)
             closePolicy: Popup.NoAutoClose
-            modal: true
             focus: true
             onClosed: stateController.state = "loaded"
-            Button{
-                text: "Close"
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                leftPadding: 20
-                rightPadding: 20
-                bottomPadding: 20
-                onClicked: settings.close()
+            GridLayout {
+                columns: 3
+                rows: 10
+                anchors.fill: parent
+                RowLayout {
+                    Layout.columnSpan: parent.columns
+                    Label {
+                        text: "Automatic sleep"
+                        Layout.columnSpan: parent.columns - 1
+                        Layout.fillWidth: true
+                    }
+                    BetterCheckBox {
+                        tristate: false
+                        checkState: controller.automaticSleep ? Qt.Checked : Qt.Unchecked
+                        onClicked: controller.automaticSleep = this.checkState === Qt.Checked
+                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                        Layout.fillWidth: false
+                    }
+                }
+                RowLayout {
+                    Layout.columnSpan: 2
+                    Label {
+                        text: "Home Screen Columns"
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: parent.width / 2
+                    }
+                    BetterSpinBox {
+                        id: columnsSpinBox
+                        objectName: "columnsSpinBox"
+                        from: 2
+                        to: 10
+                        stepSize: 2
+                        onValueChanged: controller.columns = this.value
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: parent.width / 2
+                    }
+                }
+                RowLayout {
+                    Layout.columnSpan: 2
+                    Label {
+                        text: "Font Size"
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: parent.width / 2
+                    }
+                    BetterSpinBox {
+                        id: fontSizeSpinBox
+                        objectName: "fontSizeSpinBox"
+                        from: 20
+                        to: 35
+                        stepSize: 3
+                        onValueChanged: controller.fontSize = this.value
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: parent.width / 2
+                    }
+                }
+                Item {
+                    Layout.rowSpan: 6
+                    Layout.columnSpan: parent.columns
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                }
+                BetterButton {
+                    text: "Reset"
+                    Layout.columnSpan: parent.columns
+                    Layout.fillWidth: true
+                    onClicked: controller.loadSettings()
+                }
+                BetterButton {
+                    text: "Close"
+                    Layout.columnSpan: parent.columns
+                    Layout.fillWidth: true
+                    onClicked: {
+                        controller.saveSettings();
+                        settings.close();
+                    }
+                }
             }
         },
-        Rectangle {
+        Popup {
             id: suspendMessage
             visible: false
-            anchors.fill: parent
-            color: "black"
-            opacity: 0.5
-            Rectangle {
-                anchors.centerIn: parent
+            width: 250
+            height: 250
+            x: (parent.width / 2) - (width / 2)
+            y: (parent.height / 2) - (height / 2)
+            modal: true
+            background: Rectangle {
                 color: "black"
-                width: 250
-                height: 250
-                Text {
-                    anchors.centerIn: parent
-                    color: "white"
-                    text: "Suspended..."
-                }
+                anchors.fill: parent
+            }
+            Text {
+                anchors.centerIn: parent
+                color: "white"
+                text: "Suspended..."
             }
         }
 
@@ -306,7 +371,6 @@ ApplicationWindow {
                     ParallelAnimation {
                         PropertyAction { target: window; property: "visible"; value: true }
                         PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                        PropertyAction { target: appsView; property: "visible"; value: false }
                         PropertyAction { target: settings; property: "visible"; value: true }
                     }
                     PropertyAction { target: menu; property: "focus"; value: false }
@@ -318,7 +382,6 @@ ApplicationWindow {
                     ParallelAnimation {
                         PropertyAction { target: window; property: "visible"; value: true }
                         PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                        PropertyAction { target: appsView; property: "visible"; value: true }
                         PropertyAction { target: settings; property: "visible"; value: false }
                     }
                     PropertyAction { target: appsView; property: "focus"; value: true }
