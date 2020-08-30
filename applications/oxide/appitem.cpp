@@ -10,9 +10,9 @@ bool AppItem::ok(){
 }
 
 void AppItem::execute(){
-    qDebug() << "Setting termfile /opt/etc/draft/.terminate";
+    qDebug() << "Setting termfile /tmp/.terminate";
     std::ofstream termfile;
-    termfile.open("/opt/etc/draft/.terminate");
+    termfile.open("/tmp/.terminate");
     termfile << _term.toStdString() << std::endl;
     system(_call.toUtf8());
 }

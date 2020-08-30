@@ -148,12 +148,12 @@ int main(){
                 cout << map[ie.code].name << " UP (" << usecs << " microseconds)" << endl;
                 if(usecs > 1000000L && map[ie.code].name == "Left"){
                     ifstream termfile;
-                    // Then execute the contents of /etc/draft/.terminate
-                    termfile.open("/opt/etc/draft/.terminate", ios::in);
+                    // Then execute the contents of /tmp/.terminate
+                    termfile.open("/tmp/.terminate", ios::in);
                     if(termfile.is_open()){
                         cout << "Termfile exists and can be read." << endl;
                         termfile.close();
-                        system("/bin/bash /opt/etc/draft/.terminate");
+                        system("/bin/bash /tmp/.terminate");
                     }else{
                         cout << "Termfile couldn't be read." << endl;
                     }

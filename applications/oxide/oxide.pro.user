@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.12.4, 2020-08-30T15:58:56. -->
+<!-- Written by QtCreator 4.12.4, 2020-08-30T16:06:11. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -260,22 +260,24 @@
       <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">RemoteLinux.DirectUploadStep</value>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedFiles">
-       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/draft/icons/fingerterm.png</value>
-       <value type="QString">/home/eeems/git/Github/Eeems/oxide/assets/etc/systemd/system/oxide.service</value>
-       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/draft/01-xochitl</value>
-       <value type="QString">/home/eeems/git/Github/Eeems/oxide/assets/etc/draft/02-fingerterm</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxide/assets/etc/draft/01-xochitl</value>
        <value type="QString">/home/eeems/git/Github/Eeems/oxide/assets/etc/draft/conf</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/applications/build-oxide-reMarkable-Release/oxide</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxide/assets/etc/draft/icons/xochitl.png</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/draft/icons/xochitl.png</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxide/assets/etc/systemd/system/oxide.service</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/.build/build-oxide-reMarkable-Debug/oxide</value>
        <value type="QString">/home/eeems/git/Github/Eeems/oxide/.build/build-oxide-reMarkable-Release/oxide</value>
        <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/draft/conf</value>
-       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/systemd/system/oxide.service</value>
-       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/draft/icons/xochitl.png</value>
-       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/applications/build-oxide-reMarkable-Release/oxide</value>
-       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/applications/build-oxide-reMarkable-Debug/oxide</value>
-       <value type="QString">/home/eeems/git/Github/Eeems/oxide/assets/etc/draft/icons/xochitl.png</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/draft/icons/fingerterm.png</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxide/.build/build-oxide-reMarkable-Debug/oxide</value>
        <value type="QString">/home/eeems/git/Github/Eeems/oxide/assets/etc/draft/icons/fingerterm.png</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/systemd/system/oxide.service</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/draft/01-xochitl</value>
        <value type="QString">/home/eeems/git/Github/Eeems/oxidize/assets/etc/draft/02-fingerterm</value>
-       <value type="QString">/home/eeems/git/Github/Eeems/oxide/assets/etc/draft/01-xochitl</value>
-       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/.build/build-oxide-reMarkable-Debug/oxide</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxidize/applications/build-oxide-reMarkable-Debug/oxide</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxide/assets/etc/draft/02-fingerterm</value>
+       <value type="QString">/home/eeems/git/Github/Eeems/oxide/.build/build-oxide-reMarkable-Profile/oxide</value>
       </valuelist>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedHosts">
        <value type="QString">remarkable</value>
@@ -294,22 +296,26 @@
        <value type="QString">remarkable</value>
        <value type="QString">remarkable</value>
        <value type="QString">remarkable</value>
+       <value type="QString">remarkable</value>
+       <value type="QString">remarkable</value>
       </valuelist>
       <valuelist type="QVariantList" key="ProjectExplorer.RunConfiguration.LastDeployedRemotePaths">
+       <value type="QString">/opt/etc//draft</value>
+       <value type="QString">/opt/etc//draft</value>
+       <value type="QString">/opt/oxide/bin</value>
+       <value type="QString">/opt/etc//draft/icons</value>
+       <value type="QString">/opt/etc//draft/icons</value>
+       <value type="QString">/lib/systemd/system/</value>
+       <value type="QString">/opt/oxide/bin</value>
+       <value type="QString">/opt/oxide/bin</value>
+       <value type="QString">/opt/etc//draft</value>
+       <value type="QString">/opt/etc//draft/icons</value>
+       <value type="QString">/opt/oxide/bin</value>
        <value type="QString">/opt/etc//draft/icons</value>
        <value type="QString">/lib/systemd/system/</value>
        <value type="QString">/opt/etc//draft</value>
        <value type="QString">/opt/etc//draft</value>
-       <value type="QString">/opt/etc//draft</value>
        <value type="QString">/opt/oxide/bin</value>
-       <value type="QString">/opt/etc//draft</value>
-       <value type="QString">/lib/systemd/system/</value>
-       <value type="QString">/opt/etc//draft/icons</value>
-       <value type="QString">/opt/oxide/bin</value>
-       <value type="QString">/opt/oxide/bin</value>
-       <value type="QString">/opt/etc//draft/icons</value>
-       <value type="QString">/opt/etc//draft/icons</value>
-       <value type="QString">/opt/etc//draft</value>
        <value type="QString">/opt/etc//draft</value>
        <value type="QString">/opt/oxide/bin</value>
       </valuelist>
@@ -330,44 +336,50 @@
        <value type="QString">/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi</value>
        <value type="QString">/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi</value>
        <value type="QString">/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi</value>
+       <value type="QString">/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi</value>
+       <value type="QString">/opt/poky/2.1.3/sysroots/cortexa9hf-neon-oe-linux-gnueabi</value>
       </valuelist>
       <value type="bool" key="RemoteLinux.GenericDirectUploadStep.IgnoreMissingFiles">false</value>
       <value type="bool" key="RemoteLinux.GenericDirectUploadStep.Incremental">true</value>
       <valuelist type="QVariantList" key="RemoteLinux.LastDeployedLocalTimes">
-       <value type="QDateTime">2020-01-13T20:30:08.744</value>
-       <value type="QDateTime">2020-08-30T15:41:45.979</value>
-       <value type="QDateTime">2020-01-13T20:30:08.744</value>
        <value type="QDateTime">2020-08-30T15:41:45.979</value>
        <value type="QDateTime">2020-08-30T15:41:45.979</value>
-       <value type="QDateTime">2020-08-30T15:58:47.576</value>
-       <value type="QDateTime">2020-08-29T17:25:27.506</value>
-       <value type="QDateTime">2020-01-13T20:30:08.744</value>
-       <value type="QDateTime">2020-01-13T20:30:08.744</value>
        <value type="QDateTime">2020-08-29T21:06:31.501</value>
-       <value type="QDateTime">2020-01-14T19:33:21.171</value>
        <value type="QDateTime">2020-08-30T15:41:45.979</value>
-       <value type="QDateTime">2020-08-30T15:41:45.979</value>
-       <value type="QDateTime">2020-08-29T18:14:06.299</value>
+       <value type="QDateTime">2020-01-13T20:30:08.744</value>
        <value type="QDateTime">2020-08-30T15:41:45.979</value>
        <value type="QDateTime">2020-08-30T15:57:29.823</value>
+       <value type="QDateTime">2020-08-30T16:05:36.253</value>
+       <value type="QDateTime">2020-08-29T17:25:27.506</value>
+       <value type="QDateTime">2020-01-13T20:30:08.744</value>
+       <value type="QDateTime">2020-08-30T15:59:12.866</value>
+       <value type="QDateTime">2020-08-30T15:41:45.979</value>
+       <value type="QDateTime">2020-01-13T20:30:08.744</value>
+       <value type="QDateTime">2020-01-13T20:30:08.744</value>
+       <value type="QDateTime">2020-08-29T18:14:06.299</value>
+       <value type="QDateTime">2020-01-14T19:33:21.171</value>
+       <value type="QDateTime">2020-08-30T15:41:45.979</value>
+       <value type="QDateTime">2020-08-30T15:59:06.069</value>
       </valuelist>
       <valuelist type="QVariantList" key="RemoteLinux.LastDeployedRemoteTimes">
-       <value type="QDateTime">2019-09-13T21:10:23.000</value>
-       <value type="QDateTime">2020-08-30T15:57:31.000</value>
-       <value type="QDateTime">2020-01-14T19:38:36.000</value>
        <value type="QDateTime">2020-08-30T15:57:31.000</value>
        <value type="QDateTime">2020-08-30T15:57:31.000</value>
-       <value type="QDateTime">2020-08-30T15:58:50.000</value>
-       <value type="QDateTime">2020-08-30T14:20:49.000</value>
-       <value type="QDateTime">2020-08-22T14:41:28.000</value>
-       <value type="QDateTime">2020-01-14T19:38:36.000</value>
        <value type="QDateTime">2020-08-29T21:06:36.000</value>
-       <value type="QDateTime">2020-01-14T19:38:37.000</value>
        <value type="QDateTime">2020-08-30T15:57:31.000</value>
-       <value type="QDateTime">2019-09-13T21:10:23.000</value>
-       <value type="QDateTime">2020-08-29T18:18:32.000</value>
+       <value type="QDateTime">2020-01-14T19:38:36.000</value>
        <value type="QDateTime">2020-08-30T15:57:31.000</value>
        <value type="QDateTime">2020-08-30T15:57:32.000</value>
+       <value type="QDateTime">2020-08-30T16:05:38.000</value>
+       <value type="QDateTime">2020-08-30T14:20:49.000</value>
+       <value type="QDateTime">2019-09-13T21:10:23.000</value>
+       <value type="QDateTime">2020-08-30T15:59:15.000</value>
+       <value type="QDateTime">2019-09-13T21:10:23.000</value>
+       <value type="QDateTime">2020-08-22T14:41:28.000</value>
+       <value type="QDateTime">2020-01-14T19:38:36.000</value>
+       <value type="QDateTime">2020-08-29T18:18:32.000</value>
+       <value type="QDateTime">2020-01-14T19:38:37.000</value>
+       <value type="QDateTime">2020-08-30T15:57:31.000</value>
+       <value type="QDateTime">2020-08-30T15:59:08.000</value>
       </valuelist>
      </valuemap>
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.3">
