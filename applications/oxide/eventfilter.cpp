@@ -111,8 +111,10 @@ bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
       || type == QEvent::TouchEnd
       || type == QEvent::TouchCancel
     ){
-        timer->stop();
-        timer->start();
+        if(timer->isActive()){
+            timer->stop();
+            timer->start();
+        }
     }else if(!filtered){
         if(type == QEvent::TabletPress){
             qDebug() << ev;

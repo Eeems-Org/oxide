@@ -48,6 +48,7 @@ int main(int argc, char *argv[]){
     controller.filter = &filter;
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
+    controller.loadSettings();
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("apps", QVariant::fromValue(controller.getApps()));
     context->setContextProperty("controller", &controller);
@@ -78,7 +79,7 @@ int main(int argc, char *argv[]){
     filter.timer->setInterval(5 * 60 * 1000); // 5 minutes
     QObject::connect(filter.timer, &QTimer::timeout, [stateController](){
         qDebug() << "Suspending due to inactivity...";
-        stateController->setProperty("state", QString("suspended"));
+        stateController->setProperty("state", QString("suspending"));
     });
     QTimer* timer = new QTimer(root);
     timer->setInterval(10 * 60 * 1000); // 10 minutes
@@ -86,6 +87,5 @@ int main(int argc, char *argv[]){
         batteryLevel->setProperty("batterylevel", controller.getBatteryLevel());
     });
     timer->start();
-    controller.loadSettings();
     return app.exec();
 }

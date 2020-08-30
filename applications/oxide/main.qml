@@ -22,7 +22,8 @@ ApplicationWindow {
             id: menu
             width: parent.width
             CustomMenu {
-                Menu {
+                BetterMenu {
+                    id: optionsMenu
                     title: "";
                     font: iconFont.name
                     width: 250
@@ -32,11 +33,12 @@ ApplicationWindow {
             }
             Item { Layout.fillWidth: true }
             CustomMenu {
-                Menu {
+                BetterMenu {
+                    id: powerMenu
                     title: "";
                     font: iconFont.name
                     width: 250
-                    Action { text: qsTr(" Suspend"); onTriggered: stateController.state = "suspended" }
+                    Action { text: qsTr(" Suspend"); onTriggered: stateController.suspend() }
                     Action { text: qsTr(" Shutdown"); onTriggered: controller.powerOff() }
                 }
             }
@@ -244,6 +246,7 @@ ApplicationWindow {
                         from: 2
                         to: 10
                         stepSize: 2
+                        value: 6
                         onValueChanged: controller.columns = this.value
                         Layout.preferredWidth: 300
                     }
@@ -261,6 +264,7 @@ ApplicationWindow {
                         from: 20
                         to: 35
                         stepSize: 3
+                        value: 23
                         onValueChanged: controller.fontSize = this.value
                         Layout.preferredWidth: 300
                     }
@@ -303,7 +307,7 @@ ApplicationWindow {
             Text {
                 anchors.centerIn: parent
                 color: "white"
-                text: "Suspended..."
+                text: "suspended..."
             }
         }
 
@@ -331,6 +335,19 @@ ApplicationWindow {
     Component.onCompleted: stateController.state = "loaded"
     StateGroup {
         id: stateController
+        property string previousState;
+        function suspend(){
+            console.log("suspended...");
+            this.previousState = this.state;
+            this.state = "suspended";
+        }
+        function resume(){
+            controller.resetInactiveTimer();
+            console.log("waking up...")
+            suspendMessage.visible = false;
+            this.state = this.previousState;
+        }
+
         objectName: "stateController"
         state: "loading"
         states: [
@@ -380,15 +397,6 @@ ApplicationWindow {
                         PropertyAction { target: window.contentItem; property: "visible"; value: true }
                         PropertyAction { target: suspendMessage; property: "visible"; value: true }
                     }
-                    PauseAnimation { duration: 1000 }
-                    ScriptAction { script: console.log("suspending...") }
-                    ScriptAction { script: controller.suspend() }
-                    PauseAnimation { duration: 1000 }
-                    ScriptAction { script: controller.resetInactiveTimer() && console.log("waking up...") }
-                    ParallelAnimation {
-                        PropertyAction { target: suspendMessage; property: "visible"; value: false }
-                        PropertyAction { target: stateController; property: "state"; value: "settings" }
-                    }
                 }
             },
             Transition {
@@ -399,15 +407,9 @@ ApplicationWindow {
                         PropertyAction { target: window.contentItem; property: "visible"; value: true }
                         PropertyAction { target: suspendMessage; property: "visible"; value: true }
                     }
+                    ScriptAction {script: controller.suspend() }
                     PauseAnimation { duration: 1000 }
-                    ScriptAction { script: console.log("suspending...") }
-                    ScriptAction { script: controller.suspend() }
-                    PauseAnimation { duration: 1000 }
-                    ScriptAction { script: controller.resetInactiveTimer() && console.log("waking up...") }
-                    ParallelAnimation {
-                        PropertyAction { target: suspendMessage; property: "visible"; value: false }
-                        PropertyAction { target: stateController; property: "state"; value: "loaded" }
-                    }
+                    ScriptAction {script: stateController.resume() }
                 }
             },
             Transition {

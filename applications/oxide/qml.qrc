@@ -8,5 +8,6 @@
         <file>widgets/BetterButton.qml</file>
         <file>widgets/BetterCheckBox.qml</file>
         <file>widgets/BetterSpinBox.qml</file>
+        <file>widgets/BetterMenu.qml</file>
     </qresource>
 </RCC>
