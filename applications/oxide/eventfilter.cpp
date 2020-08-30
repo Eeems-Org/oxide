@@ -46,17 +46,24 @@ QMouseEvent* toMouseEvent(QEvent::Type type, QEvent* ev){
         tabletEvent->modifiers()
     );
 }
+bool isAt(QQuickItem* item, QPointF pos){
+    auto itemPos = globalPos(item);
+    auto otherItemPos = QPointF(itemPos.x() + item->width(), itemPos.y() + item->height());
+    return pos.x() >= itemPos.x() && pos.x() <= otherItemPos.x() && pos.y() >= itemPos.y() && pos.y() <= otherItemPos.y();
+}
 QList<QObject*> widgetsAt(QQuickItem* root, QPointF pos){
     QList<QObject*> result;
     auto children = root->findChildren<QQuickItem*>();
     for(auto child : children){
-        auto childPos = globalPos(child);
-        auto otherChildPos = QPointF(childPos.x() + child->width(), childPos.y() + child->height());
-        if(pos.x() >= childPos.x() && pos.x() <= otherChildPos.x() && pos.y() >= childPos.y() && pos.y() <= otherChildPos.y()){
+        if(isAt(child, pos)){
             if(child->isVisible() && child->isEnabled() && child->acceptedMouseButtons() & Qt::LeftButton){
-                result.append((QObject*)child);
-                for(auto item : widgetsAt(child, pos)){
-                    result.append(item);
+                if(!result.contains(child)){
+                    result.append((QObject*)child);
+                    for(auto item : widgetsAt(child, pos)){
+                        if(!result.contains(item)){
+                            result.append(item);
+                        }
+                    }
                 }
             }
         }
