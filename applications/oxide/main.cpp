@@ -35,6 +35,12 @@ int main(int argc, char *argv[]){
     if(exists("/opt/bin/button-capture")){
         qDebug() << "Starting button-capture";
         system("/opt/bin/button-capture &");
+    }else if(exists("/bin/button-capture")){
+        qDebug() << "Starting button-capture";
+        system("/bin/button-capture &");
+    }else if(exists("~/.local/button-capture")){
+        qDebug() << "Starting button-capture";
+        system("~/.local/button-capture &");
     }else{
         qDebug() << "button-capture not found or is running";
     }
