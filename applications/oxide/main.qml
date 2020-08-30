@@ -338,7 +338,6 @@ ApplicationWindow {
         property string previousState;
         function suspend(){
             console.log("suspended...");
-            this.previousState = this.state;
             this.state = "suspended";
         }
         function resume(){
@@ -403,6 +402,7 @@ ApplicationWindow {
                 from: "loaded"; to: "suspended"
                 SequentialAnimation {
                     ParallelAnimation {
+                        ScriptAction { script: this.previousState = "loaded" }
                         PropertyAction { target: window; property: "visible"; value: true }
                         PropertyAction { target: window.contentItem; property: "visible"; value: true }
                         PropertyAction { target: suspendMessage; property: "visible"; value: true }
@@ -416,6 +416,7 @@ ApplicationWindow {
                 from: "loaded"; to: "settings"
                 SequentialAnimation {
                     ParallelAnimation {
+                        ScriptAction { script: this.previousState = "settings" }
                         PropertyAction { target: window; property: "visible"; value: true }
                         PropertyAction { target: window.contentItem; property: "visible"; value: true }
                         PropertyAction { target: settings; property: "visible"; value: true }

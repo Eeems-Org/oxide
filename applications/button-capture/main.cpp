@@ -9,8 +9,30 @@
 #include <unordered_map>
 #include <sys/time.h>
 #include <ext/stdio_filebuf.h>
+#include "fb2png.h"
 
 using namespace std;
+
+const char* pngpath = "/tmp/fb.png";
+
+bool exists(const std::string& name) {
+    std::fstream file(name.c_str());
+    return file.good();
+}
+
+void removeScreenshot(){
+    if(exists(pngpath)){
+        cout << "Removing framebuffer image" << endl;
+        remove(pngpath);
+    }
+}
+void takeScreenshot(){
+    cout << "Taking screenshot" << endl;
+    int res = fb2png_defaults();
+    if(res){
+        cout << "Failed to take screenshot: " << res << endl;
+    }
+}
 
 //Keeping track of presses.
 struct PressRecord {
@@ -147,15 +169,32 @@ int main(){
                               +ctime.tv_usec) -  map[ie.code].pressTime.tv_usec;
                 cout << map[ie.code].name << " UP (" << usecs << " microseconds)" << endl;
                 if(usecs > 1000000L && map[ie.code].name == "Left"){
-                    ifstream termfile;
-                    // Then execute the contents of /tmp/.terminate
-                    termfile.open("/tmp/.terminate", ios::in);
-                    if(termfile.is_open()){
-                        cout << "Termfile exists and can be read." << endl;
-                        termfile.close();
-                        system("/bin/bash /tmp/.terminate");
-                    }else{
-                        cout << "Termfile couldn't be read." << endl;
+                    if(exists("/tmp/.terminate")){
+                        ifstream termfile;
+                        // Then execute the contents of /tmp/.terminate
+                        termfile.open("/tmp/.terminate", ios::in);
+                        if(termfile.is_open()){
+                            cout << "Termfile exists and can be read." << endl;
+                            termfile.close();
+                            system("/bin/bash /tmp/.terminate");
+                        }else{
+                            cout << "Termfile couldn't be read." << endl;
+                        }
+                    }
+                }else if(usecs > 1000000L && map[ie.code].name == "Right"){
+                    removeScreenshot();
+                    takeScreenshot();
+                    if(exists("/tmp/.screenshot")){
+                        ifstream screenshotfile;
+                        // Then execute the contents of /tmp/.terminate
+                        screenshotfile.open("/tmp/.screenshot", ios::in);
+                        if(screenshotfile.is_open()){
+                            cout << "Screenshot file exists and can be read." << endl;
+                            screenshotfile.close();
+                            system("/bin/bash /tmp/.screenshot");
+                        }else{
+                            cout << "Screenshot file couldn't be read." << endl;
+                        }
                     }
                 }else{
                     press_button(evdev, ie.code, &stream);

@@ -5,7 +5,7 @@ Menu {
     delegate: MenuItem {
         id: menuItem
         implicitWidth: 250
-        implicitHeight: 40
+        implicitHeight: 60
         arrow: Canvas {
             x: parent.width - width
             implicitWidth: 40
@@ -53,8 +53,8 @@ Menu {
             elide: Text.ElideRight
         }
         background: Rectangle {
-            implicitWidth: 200
-            implicitHeight: 40
+            implicitWidth: menuItem.implicitWidth
+            implicitHeight: menuItem.implicitHeight
             opacity: enabled ? 1 : 0.3
             color: "transparent"
         }
