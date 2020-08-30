@@ -111,15 +111,6 @@ ApplicationWindow {
                     horizontalAlignment: Text.AlignHCenter
                     clip: true
                 }
-//                Text {
-//                    id: description
-//                    anchors.top: name.bottom
-//                    anchors.left: name.left
-//                    font.family: "Noto Serif"
-//                    font.pixelSize: 40
-//                    font.italic: true
-//                    text: model.modelData.desc
-//                }
                 MouseArea {
                     width: root.width
                     height: appsView.cellHeight
@@ -132,6 +123,10 @@ ApplicationWindow {
                         stateController.state = "loading"
                         root.state = "released"
                     }
+                    onPressAndHold: {
+                        itemInfo.model = model.modelData;
+                        stateController.state = "itemInfo"
+                    }
                 }
                 transitions: [
                     Transition {
@@ -139,10 +134,6 @@ ApplicationWindow {
                         ParallelAnimation {
                             PropertyAction { target: image; property: "width"; value: root.width - window.itemPadding * 2 }
                             PropertyAction { target: image; property: "height"; value: root.width - window.itemPadding * 2 - controller.fontSize }
-                            SequentialAnimation {
-                                PauseAnimation { duration: 1500 }
-                                ScriptAction { script: controller.killXochitl() }
-                            }
                         }
                     },
                     Transition {
@@ -157,6 +148,62 @@ ApplicationWindow {
             }
         },
         Popup {
+            id: itemInfo
+            visible: false
+            x: (parent.width / 2) - (width / 2)
+            y: (parent.height / 2) - (height / 2)
+            closePolicy: Popup.CloseOnPressOutside
+            onClosed: stateController.state = "loaded"
+            property var model;
+            property int textPadding: 10
+            function getModel(){
+                return itemInfo.model || {
+                    imgFile: "",
+                    name: "(Unknown)",
+                    desc: ""
+                }
+            }
+            width: window.width > (itemImage.width + itemContent.width + (itemInfo.textPadding * 2))
+                   ? (itemImage.width + itemContent.width + (itemInfo.textPadding * 2))
+                   : window.width - 10
+            height: itemContent.height
+            contentItem: Item {
+                anchors.fill: parent
+                Item {
+                    id: itemImage
+                    width: itemContent.height
+                    height: itemContent.height
+                    Image {
+                        fillMode: Image.PreserveAspectFit
+                        source: itemInfo.model ? itemInfo.model.imgFile : ""
+                        anchors.centerIn: parent
+                        width: parent.with - itemInfo.textPadding
+                        height: parent.height - itemInfo.textPadding
+                    }
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                ColumnLayout {
+                    id: itemContent
+                    anchors.left: itemImage.right
+                    Label {
+                        text: (itemInfo.model ? itemInfo.model.name : "")
+                        topPadding: 0
+                        leftPadding: itemInfo.textPadding
+                        rightPadding: itemInfo.textPadding
+                        bottomPadding: 0
+                    }
+                    Label {
+                        text: (itemInfo.model ? itemInfo.model.desc : "")
+                        topPadding: 0
+                        leftPadding: itemInfo.textPadding
+                        rightPadding: itemInfo.textPadding
+                        bottomPadding: 0
+                    }
+                }
+            }
+        },
+        Popup {
             id: settings
             visible: false
             width: 1000
@@ -164,7 +211,6 @@ ApplicationWindow {
             x: (parent.width / 2) - (width / 2)
             y: (parent.height / 2) - (height / 2)
             closePolicy: Popup.NoAutoClose
-            focus: true
             onClosed: stateController.state = "loaded"
             GridLayout {
                 columns: 3
@@ -186,11 +232,11 @@ ApplicationWindow {
                     }
                 }
                 RowLayout {
-                    Layout.columnSpan: 2
+                    Layout.columnSpan: parent.columns
+                    Layout.preferredWidth: parent.width
                     Label {
                         text: "Home Screen Columns"
                         Layout.fillWidth: true
-                        Layout.preferredWidth: parent.width / 2
                     }
                     BetterSpinBox {
                         id: columnsSpinBox
@@ -199,16 +245,15 @@ ApplicationWindow {
                         to: 10
                         stepSize: 2
                         onValueChanged: controller.columns = this.value
-                        Layout.fillWidth: true
-                        Layout.preferredWidth: parent.width / 2
+                        Layout.preferredWidth: 300
                     }
                 }
                 RowLayout {
-                    Layout.columnSpan: 2
+                    Layout.columnSpan: parent.columns
+                    Layout.preferredWidth: parent.width
                     Label {
                         text: "Font Size"
                         Layout.fillWidth: true
-                        Layout.preferredWidth: parent.width / 2
                     }
                     BetterSpinBox {
                         id: fontSizeSpinBox
@@ -217,8 +262,7 @@ ApplicationWindow {
                         to: 35
                         stepSize: 3
                         onValueChanged: controller.fontSize = this.value
-                        Layout.fillWidth: true
-                        Layout.preferredWidth: parent.width / 2
+                        Layout.preferredWidth: 300
                     }
                 }
                 Item {
@@ -292,6 +336,7 @@ ApplicationWindow {
         states: [
             State { name: "loaded" },
             State { name: "settings" },
+            State { name: "itemInfo" },
             State { name: "loading" },
             State { name: "suspended" }
         ]
@@ -383,6 +428,28 @@ ApplicationWindow {
                         PropertyAction { target: window; property: "visible"; value: true }
                         PropertyAction { target: window.contentItem; property: "visible"; value: true }
                         PropertyAction { target: settings; property: "visible"; value: false }
+                    }
+                    PropertyAction { target: appsView; property: "focus"; value: true }
+                }
+            },
+            Transition {
+                from: "loaded"; to: "itemInfo"
+                SequentialAnimation {
+                    ParallelAnimation {
+                        PropertyAction { target: window; property: "visible"; value: true }
+                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
+                        PropertyAction { target: itemInfo; property: "visible"; value: true }
+                    }
+                    PropertyAction { target: menu; property: "focus"; value: false }
+                }
+            },
+            Transition {
+                from: "itemInfo"; to: "loaded"
+                SequentialAnimation {
+                    ParallelAnimation {
+                        PropertyAction { target: window; property: "visible"; value: true }
+                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
+                        PropertyAction { target: itemInfo; property: "visible"; value: false }
                     }
                     PropertyAction { target: appsView; property: "focus"; value: true }
                 }

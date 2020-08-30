@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QtPlugin>
 #include <QtQuick>
+#include <QQuickItem>
 #include <QObject>
 #include <fstream>
 #include "controller.h"
@@ -30,9 +31,6 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
-    if(system("systemctl is-active --quiet xochitl")){
-        system("systemctl stop xochtil");
-    }
     system("killall button-capture");
     if(exists("/opt/bin/button-capture")){
         qDebug() << "Starting button-capture";
@@ -46,6 +44,7 @@ int main(int argc, char *argv[]){
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller controller;
+    controller.killXochitl();
     controller.filter = &filter;
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
@@ -59,6 +58,7 @@ int main(int argc, char *argv[]){
     }
     QObject* root = engine.rootObjects().first();
     controller.root = root;
+    filter.root = (QQuickItem*)root;
     QQuickItem* appsView = root->findChild<QQuickItem*>("appsView");
     if(!appsView){
         qDebug() << "Can't find appsView";

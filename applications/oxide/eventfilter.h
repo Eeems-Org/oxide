@@ -4,12 +4,15 @@
 #include <QObject>
 #include <QEvent>
 #include <QTimer>
+#include <QGuiApplication>
+#include <QQuickItem>
 
 class EventFilter : public QObject
 {
     Q_OBJECT
 public:
     QTimer* timer;
+    QQuickItem* root;
     explicit EventFilter(QObject* parent = nullptr);
 signals:
     void suspend();

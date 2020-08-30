@@ -1,0 +1,8 @@
+# Should the launcher automatically sleep or not
+automaticSleep=yes
+
+# How many columns to display
+columns=6
+
+# Font size for application names
+fontSize=23
