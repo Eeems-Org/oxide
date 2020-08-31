@@ -5,7 +5,7 @@ Description=oxide launcher
 After=home.mount
 
 [Service]
-ExecStart=/opt/oxide/bin/oxide
+ExecStart=/opt/bin/oxide
 
 [Install]
 WantedBy=multi-user.target
