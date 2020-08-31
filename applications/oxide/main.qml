@@ -402,7 +402,7 @@ ApplicationWindow {
                 from: "loaded"; to: "suspended"
                 SequentialAnimation {
                     ParallelAnimation {
-                        ScriptAction { script: this.previousState = "loaded" }
+                        ScriptAction { script: stateController.previousState = "loaded" }
                         PropertyAction { target: window; property: "visible"; value: true }
                         PropertyAction { target: window.contentItem; property: "visible"; value: true }
                         PropertyAction { target: suspendMessage; property: "visible"; value: true }
@@ -416,7 +416,7 @@ ApplicationWindow {
                 from: "loaded"; to: "settings"
                 SequentialAnimation {
                     ParallelAnimation {
-                        ScriptAction { script: this.previousState = "settings" }
+                        ScriptAction { script: stateController.previousState = "settings" }
                         PropertyAction { target: window; property: "visible"; value: true }
                         PropertyAction { target: window.contentItem; property: "visible"; value: true }
                         PropertyAction { target: settings; property: "visible"; value: true }

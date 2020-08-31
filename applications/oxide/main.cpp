@@ -93,6 +93,8 @@ int main(int argc, char *argv[]){
         batteryLevel->setProperty("batterylevel", controller.getBatteryLevel());
     });
     timer->start();
-    filter.timer->start();
+    if(controller.automaticSleep()){
+        filter.timer->start();
+    }
     return app.exec();
 }
