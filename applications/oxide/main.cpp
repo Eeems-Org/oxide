@@ -85,7 +85,7 @@ int main(int argc, char *argv[]){
     filter.timer->setInterval(5 * 60 * 1000); // 5 minutes
     QObject::connect(filter.timer, &QTimer::timeout, [stateController](){
         qDebug() << "Suspending due to inactivity...";
-        stateController->setProperty("state", QString("suspending"));
+        stateController->setProperty("state", QString("suspended"));
     });
     QTimer* timer = new QTimer(root);
     timer->setInterval(10 * 60 * 1000); // 10 minutes
@@ -93,5 +93,6 @@ int main(int argc, char *argv[]){
         batteryLevel->setProperty("batterylevel", controller.getBatteryLevel());
     });
     timer->start();
+    filter.timer->start();
     return app.exec();
 }
