@@ -46,6 +46,11 @@ public:
         return m_showBatteryPercent;
     };
     void setShowBatteryPercent(bool);
+    Q_PROPERTY(bool showBatteryTemperature MEMBER m_showBatteryTemperature WRITE setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged);
+    bool showBatteryTemperature() const {
+        return m_showBatteryTemperature;
+    };
+    void setShowBatteryTemperature(bool);
     Q_PROPERTY(int sleepAfter MEMBER m_sleepAfter WRITE setSleepAfter NOTIFY sleepAfterChanged);
     int sleepAfter() const {
         return m_sleepAfter;
@@ -57,6 +62,7 @@ signals:
     void fontSizeChanged(int);
     void showWifiDbChanged(bool);
     void showBatteryPercentChanged(bool);
+    void showBatteryTemperatureChanged(bool);
     void sleepAfterChanged(int);
 private:
     bool m_automaticSleep = true;
@@ -64,6 +70,7 @@ private:
     int m_fontSize = 23;
     bool m_showWifiDb = false;
     bool m_showBatteryPercent = false;
+    bool m_showBatteryTemperature = false;
     int m_sleepAfter = 5;
 
     bool batteryAlert = false;

@@ -206,18 +206,15 @@ void Controller::killXochitl(){
         system("systemctl stop xochtil");
     }
 }
-int readInt(std::string path) {
-
+int readInt(std::string path){
     QFile file(path.c_str());
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
         qDebug() << "Couldn't find the file " << path.c_str();
         return 0;
     }
     QTextStream in(&file);
     std::string text = in.readLine().toStdString();
-    int number = std::stoi(text);
-
-    return number;
+    return std::stoi(text);
 }
 void rtrim(std::string &s) {
     s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
@@ -306,11 +303,13 @@ void Controller::updateBatteryLevel() {
             ui->setProperty("warning", warning);
         }
     }
-    auto temperature = readInt("/sys/class/power_supply/bq27441-0/temp") / 10;
-    if(batteryTemperature != temperature){
-        batteryTemperature = temperature;
-        if(ui){
-            ui->setProperty("temperature", temperature);
+    if(showBatteryTemperature()){
+        int temperature = readInt("/sys/class/power_supply/bq27441-0/temp") / 10;
+        if(batteryTemperature != temperature){
+            batteryTemperature = temperature;
+            if(ui){
+                ui->setProperty("temperature", temperature);
+            }
         }
     }
     return;
@@ -361,11 +360,13 @@ void Controller::updateWifiState(){
             ui->setProperty("link", link);
         }
     }
-    auto level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
-    if(wifiLevel != level){
-        wifiLevel = level;
-        if(ui){
-            ui->setProperty("level", level);
+    if(showWifiDb()){
+        auto level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
+        if(wifiLevel != level){
+            wifiLevel = level;
+            if(ui){
+                ui->setProperty("level", level);
+            }
         }
     }
 }
@@ -414,6 +415,13 @@ void Controller::setShowBatteryPercent(bool state){
     if(root != nullptr){
         qDebug() << "Show Battery Percentage: " << state;
         emit showBatteryPercentChanged(state);
+    }
+}
+void Controller::setShowBatteryTemperature(bool state){
+    m_showBatteryTemperature = state;
+    if(root != nullptr){
+        qDebug() << "Show Battery Temperature: " << state;
+        emit showBatteryTemperatureChanged(state);
     }
 }
 void Controller::setSleepAfter(int sleepAfter){

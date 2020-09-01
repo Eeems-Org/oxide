@@ -102,7 +102,7 @@ ApplicationWindow {
                     }
                     return "qrc:/img/battery/" + icon + ".png";
                 }
-                text: controller.showBatteryPercent ? level + "%" : ""
+                text: (controller.showBatteryPercent ? level + "% " : "") + (controller.showBatteryTemperature ? temperature + "C" : "")
             }
             CustomMenu {
                 BetterMenu {
@@ -332,6 +332,21 @@ ApplicationWindow {
                         tristate: false
                         checkState: controller.showBatteryPercent ? Qt.Checked : Qt.Unchecked
                         onClicked: controller.showBatteryPercent = this.checkState === Qt.Checked
+                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                        Layout.fillWidth: false
+                    }
+                }
+                RowLayout {
+                    Layout.columnSpan: parent.columns
+                    Label {
+                        text: "Show Battery Temperature"
+                        Layout.columnSpan: parent.columns - 1
+                        Layout.fillWidth: true
+                    }
+                    BetterCheckBox {
+                        tristate: false
+                        checkState: controller.showBatteryTemperature ? Qt.Checked : Qt.Unchecked
+                        onClicked: controller.showBatteryTemperature = this.checkState === Qt.Checked
                         Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
                         Layout.fillWidth: false
                     }
