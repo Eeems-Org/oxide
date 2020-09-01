@@ -16,7 +16,8 @@ SOURCES += \
     eventfilter.cpp \
     main.cpp \
     controller.cpp \
-    appitem.cpp
+    appitem.cpp \
+    sysobject.cpp
 
 RESOURCES += qml.qrc
 
@@ -52,4 +53,5 @@ ls
 HEADERS += \
     controller.h \
     appitem.h \
-    eventfilter.h
+    eventfilter.h \
+    sysobject.h

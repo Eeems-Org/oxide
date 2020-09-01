@@ -4,6 +4,7 @@
 #include <QJsonObject>
 #include "appitem.h"
 #include "eventfilter.h"
+#include "sysobject.h"
 
 class Controller : public QObject
 {
@@ -11,7 +12,7 @@ class Controller : public QObject
 public:
     EventFilter* filter;
     QObject* root = nullptr;
-    explicit Controller(QObject* parent = 0) : QObject(parent){}
+    explicit Controller(QObject* parent = 0) : QObject(parent), battery("/sys/class/power_supply/bq27441-0"), wifi("/sys/class/net/wlan0"){}
     Q_INVOKABLE void loadSettings();
     Q_INVOKABLE void saveSettings();
     Q_INVOKABLE QList<QObject*> getApps();
@@ -84,5 +85,7 @@ private:
     int wifiLevel = 0;
     bool wifiConnected = false;
 
+    SysObject battery;
+    SysObject wifi;
+
 };
-bool exists(const std::string& name);

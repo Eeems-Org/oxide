@@ -10,6 +10,7 @@
 #include <sstream>
 #include <memory>
 #include <fstream>
+#include "sysobject.h"
 
 QSet<QString> settings = { "columns", "fontSize", "sleepAfter" };
 QSet<QString> booleanSettings {"automaticSleep", "showWifiDb", "showBatteryPercentage" };
@@ -206,47 +207,12 @@ void Controller::killXochitl(){
         system("systemctl stop xochtil");
     }
 }
-int readInt(std::string path){
-    QFile file(path.c_str());
-    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
-        qDebug() << "Couldn't find the file " << path.c_str();
-        return 0;
-    }
-    QTextStream in(&file);
-    std::string text = in.readLine().toStdString();
-    return std::stoi(text);
-}
-void rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
-        return !std::isspace(ch);
-    }).base(), s.end());
-}
-std::string readStr(std::string path){
-    std::ifstream stream(path);
-    if(!stream.is_open()){
-        return "";
-    }
-    std::stringstream buffer;
-    char c = stream.get();
-    while (stream.good()) {
-        buffer << c;
-        c = stream.get();
-    }
-    stream.close();
-    std::string result = buffer.str();
-    rtrim(result);
-    return result;
-}
-bool exists(const std::string& path) {
-    QFile file(path.c_str());
-    return file.exists();
-}
 void Controller::updateBatteryLevel() {
     QObject* ui = root->findChild<QObject*>("batteryLevel");
     if(!ui){
         qDebug() << "Can't find batteryLevel";
     }
-    if(!exists("/sys/class/power_supply/bq27441-0/present")){
+    if(!battery.exists()){
         if(!batteryWarning){
             qWarning() << "Can't find battery information";
             batteryWarning = true;
@@ -256,7 +222,7 @@ void Controller::updateBatteryLevel() {
         }
         return;
     }
-    if(!readInt("/sys/class/power_supply/bq27441-0/present")){
+    if(!battery.intProperty("present")){
         qWarning() << "Battery is somehow not in the device?";
         if(!batteryWarning){
             qWarning() << "Can't find battery information";
@@ -267,14 +233,14 @@ void Controller::updateBatteryLevel() {
         }
         return;
     }
-    int battery_level = readInt("/sys/class/power_supply/bq27441-0/capacity");
+    int battery_level = battery.intProperty("capacity");
     if(batteryLevel != battery_level){
         batteryLevel = battery_level;
         if(ui){
             ui->setProperty("level", batteryLevel);
         }
     }
-    std::string status = readStr("/sys/class/power_supply/bq27441-0/status");
+    std::string status = battery.strProperty("status");
     auto charging = status == "Charging";
     if(batteryCharging != charging){
         batteryCharging = charging;
@@ -282,7 +248,7 @@ void Controller::updateBatteryLevel() {
             ui->setProperty("charging", charging);
         }
     }
-    std::string capacityLevel = readStr("/sys/class/power_supply/bq27441-0/capacity_level");
+    std::string capacityLevel = battery.strProperty("capacity_level");
     auto alert = capacityLevel == "Critical" || capacityLevel == "";
     if(batteryAlert != alert){
         batteryAlert = alert;
@@ -298,7 +264,7 @@ void Controller::updateBatteryLevel() {
         }
     }
     if(showBatteryTemperature()){
-        int temperature = readInt("/sys/class/power_supply/bq27441-0/temp") / 10;
+        int temperature = battery.intProperty("temp") / 10;
         if(batteryTemperature != temperature){
             batteryTemperature = temperature;
             if(ui){
@@ -325,7 +291,17 @@ void Controller::updateWifiState(){
     if(!ui){
         qDebug() << "Can't find wifiState";
     }
-    auto state = readStr("/sys/class/net/wlan0/operstate");
+    if(!wifi.exists()){
+        if(wifiState != "unknown"){
+            qDebug() << "Unable to get wifi information";
+            wifiState = "unknown";
+            if(ui){
+                ui->setProperty("state", "unkown");
+            }
+        }
+        return;
+    }
+    auto state = wifi.strProperty("operstate");
     if(wifiState.toStdString() != state){
         wifiState = state.c_str();
         if(ui){
