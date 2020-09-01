@@ -207,6 +207,11 @@ void Controller::killXochitl(){
         system("systemctl stop xochtil");
     }
 }
+inline void updateUI(QObject* ui, const char* name, const QVariant& value){
+    if(ui){
+        ui->setProperty(name, value);
+    }
+}
 void Controller::updateBatteryLevel() {
     QObject* ui = root->findChild<QObject*>("batteryLevel");
     if(!ui){
@@ -216,9 +221,7 @@ void Controller::updateBatteryLevel() {
         if(!batteryWarning){
             qWarning() << "Can't find battery information";
             batteryWarning = true;
-            if(ui){
-                ui->setProperty("warning", true);
-            }
+            updateUI(ui, "warning", true);
         }
         return;
     }
@@ -227,49 +230,37 @@ void Controller::updateBatteryLevel() {
         if(!batteryWarning){
             qWarning() << "Can't find battery information";
             batteryWarning = true;
-            if(ui){
-                ui->setProperty("warning", true);
-            }
+            updateUI(ui, "warning", true);
         }
         return;
     }
     int battery_level = battery.intProperty("capacity");
     if(batteryLevel != battery_level){
         batteryLevel = battery_level;
-        if(ui){
-            ui->setProperty("level", batteryLevel);
-        }
+        updateUI(ui, "level", batteryLevel);
     }
     std::string status = battery.strProperty("status");
     auto charging = status == "Charging";
     if(batteryCharging != charging){
         batteryCharging = charging;
-        if(ui){
-            ui->setProperty("charging", charging);
-        }
+        updateUI(ui, "charging", batteryCharging);
     }
     std::string capacityLevel = battery.strProperty("capacity_level");
     auto alert = capacityLevel == "Critical" || capacityLevel == "";
     if(batteryAlert != alert){
         batteryAlert = alert;
-        if(ui){
-            ui->setProperty("alert", alert);
-        }
+        updateUI(ui, "alert", batteryAlert);
     }
     auto warning = status == "Unknown" || status == "" || capacityLevel == "Unknown";
     if(batteryWarning != warning){
         batteryWarning = warning;
-        if(ui){
-            ui->setProperty("warning", warning);
-        }
+        updateUI(ui, "warning", warning);
     }
     if(showBatteryTemperature()){
         int temperature = battery.intProperty("temp") / 10;
         if(batteryTemperature != temperature){
             batteryTemperature = temperature;
-            if(ui){
-                ui->setProperty("temperature", temperature);
-            }
+            updateUI(ui, "temperature", temperature);
         }
     }
     return;
@@ -295,18 +286,14 @@ void Controller::updateWifiState(){
         if(wifiState != "unknown"){
             qDebug() << "Unable to get wifi information";
             wifiState = "unknown";
-            if(ui){
-                ui->setProperty("state", "unkown");
-            }
+            updateUI(ui, "state", wifiState);
         }
         return;
     }
     auto state = wifi.strProperty("operstate");
     if(wifiState.toStdString() != state){
         wifiState = state.c_str();
-        if(ui){
-            ui->setProperty("state", wifiState);
-        }
+        updateUI(ui, "state", wifiState);
     }
     if(state == "" || state == "down"){
         return;
@@ -319,24 +306,18 @@ void Controller::updateWifiState(){
     auto connected = !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/53").c_str());
     if(wifiConnected != connected){
         wifiConnected = connected;
-        if(ui){
-            ui->setProperty("connected", connected);
-        }
+        updateUI(ui, "connected", connected);
     }
     auto link = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $3}'"));
     if(wifiLink != link){
         wifiLink = link;
-        if(ui){
-            ui->setProperty("link", link);
-        }
+        updateUI(ui, "link", link);
     }
     if(showWifiDb()){
         auto level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
         if(wifiLevel != level){
             wifiLevel = level;
-            if(ui){
-                ui->setProperty("level", level);
-            }
+            updateUI(ui, "level", level);
         }
     }
 }
