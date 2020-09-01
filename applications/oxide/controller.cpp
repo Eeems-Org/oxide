@@ -267,28 +267,22 @@ void Controller::updateBatteryLevel() {
         }
         return;
     }
-    int charge_now = readInt("/sys/class/power_supply/bq27441-0/charge_now");
-    int charge_full = readInt("/sys/class/power_supply/bq27441-0/charge_full_design");
-    int battery_level = 100;
-    if (charge_now < charge_full) {
-        battery_level = (charge_now * 100/ charge_full);
-    }
-    std::string capacityLevel = readStr("/sys/class/power_supply/bq27441-0/capacity_level");
-    std::string status = readStr("/sys/class/power_supply/bq27441-0/status");
-
+    int battery_level = readInt("/sys/class/power_supply/bq27441-0/capacity");
     if(batteryLevel != battery_level){
         batteryLevel = battery_level;
         if(ui){
             ui->setProperty("level", batteryLevel);
         }
     }
+    std::string status = readStr("/sys/class/power_supply/bq27441-0/status");
     auto charging = status == "Charging";
     if(batteryCharging != charging){
-        batteryLevel = charging;
+        batteryCharging = charging;
         if(ui){
             ui->setProperty("charging", charging);
         }
     }
+    std::string capacityLevel = readStr("/sys/class/power_supply/bq27441-0/capacity_level");
     auto alert = capacityLevel == "Critical" || capacityLevel == "";
     if(batteryAlert != alert){
         batteryAlert = alert;
