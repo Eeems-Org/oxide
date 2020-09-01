@@ -92,7 +92,7 @@ int main(int argc, char *argv[]){
         int hour = now->tm_hour;
         std::string ampm;
         if(hour > 12){
-            hour -= hour;
+            hour -= 12;
             ampm = "pm";
         }else{
             ampm = "am";
