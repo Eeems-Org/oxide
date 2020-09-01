@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QJsonObject>
 #include "appitem.h"
 #include "eventfilter.h"
 
@@ -17,7 +18,8 @@ public:
     Q_INVOKABLE void powerOff();
     Q_INVOKABLE void suspend();
     Q_INVOKABLE void killXochitl();
-    Q_INVOKABLE QString getBatteryLevel();
+    void updateBatteryLevel();
+    void updateWifiState();
     Q_INVOKABLE void resetInactiveTimer();
     Q_PROPERTY(bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep NOTIFY automaticSleepChanged);
     bool automaticSleep() const {
@@ -34,12 +36,46 @@ public:
         return m_fontSize;
     };
     void setFontSize(int);
+    Q_PROPERTY(bool showWifiDb MEMBER m_showWifiDb WRITE setShowWifiDb NOTIFY showWifiDbChanged);
+    bool showWifiDb() const {
+        return m_showWifiDb;
+    };
+    void setShowWifiDb(bool);
+    Q_PROPERTY(bool showBatteryPercent MEMBER m_showBatteryPercent WRITE setShowBatteryPercent NOTIFY showBatteryPercentChanged);
+    bool showBatteryPercent() const {
+        return m_showBatteryPercent;
+    };
+    void setShowBatteryPercent(bool);
+    Q_PROPERTY(int sleepAfter MEMBER m_sleepAfter WRITE setSleepAfter NOTIFY sleepAfterChanged);
+    int sleepAfter() const {
+        return m_sleepAfter;
+    };
+    void setSleepAfter(int);
 signals:
     void automaticSleepChanged(bool);
     void columnsChanged(int);
     void fontSizeChanged(int);
+    void showWifiDbChanged(bool);
+    void showBatteryPercentChanged(bool);
+    void sleepAfterChanged(int);
 private:
     bool m_automaticSleep = true;
     int m_columns = 6;
     int m_fontSize = 23;
+    bool m_showWifiDb = false;
+    bool m_showBatteryPercent = false;
+    int m_sleepAfter = 5;
+
+    bool batteryAlert = false;
+    bool batteryWarning = false;
+    bool batteryCharging = false;
+    int batteryLevel = 0;
+    int batteryTemperature = 0;
+
+    QString wifiState = "Unknown";
+    int wifiLink = 0;
+    int wifiLevel = 0;
+    bool wifiConnected = false;
+
 };
+bool exists(const std::string& name);

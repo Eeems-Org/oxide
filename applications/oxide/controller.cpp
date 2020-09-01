@@ -8,10 +8,13 @@
 #include <QDebug>
 #include <unistd.h>
 #include <sstream>
+#include <memory>
+#include <fstream>
 
+QSet<QString> settings = { "columns", "fontSize", "sleepAfter" };
+QSet<QString> booleanSettings {"automaticSleep", "showWifiDb", "showBatteryPercentage" };
+QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
 
-QSet<QString> settings = { "automaticSleep", "columns" };
-QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "~/.config/draft" };
 
 QFile* getConfigFile(){
     for(auto path : configDirectoryPaths){
@@ -29,7 +32,6 @@ bool configFileExists(){
     auto configFile = getConfigFile();
     return configFile != nullptr && configFile->exists();
 }
-
 void Controller::loadSettings(){
     // If the config directory doesn't exist,
     // then print an error and stop.
@@ -51,9 +53,9 @@ void Controller::loadSettings(){
                 }
                 QString lhs = parts.at(0);
                 QString rhs = parts.at(1);
-                if (lhs == "automaticSleep"){
+                if (booleanSettings.contains(lhs)){
                     auto value = rhs.toLower();
-                    setAutomaticSleep(value == "true" || value == "t" || value == "y" || value == "yes" || value == "1");
+                    setProperty(lhs.toStdString().c_str(), value == "true" || value == "t" || value == "y" || value == "yes" || value == "1");
                 }else if(settings.contains(lhs)){
                     setProperty(lhs.toStdString().c_str(), rhs);
                 }
@@ -75,12 +77,20 @@ void Controller::loadSettings(){
         }else{
             fontSizeSpinBox->setProperty("value", fontSize());
         }
+        QObject* sleepAfterSpinBox = root->findChild<QObject*>("sleepAfterSpinBox");
+        if(!sleepAfterSpinBox){
+            qDebug() << "Can't find sleepAfterSpinBox";
+        }else{
+            sleepAfterSpinBox->setProperty("value", sleepAfter());
+        }
     }
 }
 void Controller::saveSettings(){
     qDebug() << "Saving configuration";
     QSet<QString> items = settings;
     items.detach();
+    QSet<QString> booleanItems = booleanSettings;
+    booleanItems.detach();
     std::stringstream buffer;
     auto configFile = getConfigFile();
     if(configFile == nullptr){
@@ -105,13 +115,13 @@ void Controller::saveSettings(){
             }
             QString lhs = parts.at(0);
             QString rhs = parts.at(1);
-            if (lhs == "automaticSleep"){
-                if(automaticSleep()){
+            if (booleanItems.contains(lhs)){
+                if(property(lhs.toStdString().c_str()).toBool()){
                     rhs = "yes";
                 }else{
                     rhs = "no";
                 }
-                items.remove("automaticSleep");
+                items.remove(lhs);
             }else if(items.contains(lhs)){
                 rhs = property(lhs.toStdString().c_str()).toString();
                 items.remove(lhs);
@@ -169,7 +179,7 @@ QList<QObject*> Controller::getApps(){
                         if(rhs != ":" && rhs != ""){
                             app->setProperty(lhs.toUtf8(), "file:" + configDirectoryPath + "/icons/" + rhs + ".png");
                         }else{
-                            app->setProperty(lhs.toUtf8(), "qrc:/icon.png");
+                            app->setProperty(lhs.toUtf8(), "qrc:/img/icon.png");
                         }
                     }
                 }
@@ -209,20 +219,155 @@ int readInt(std::string path) {
 
     return number;
 }
-QString Controller::getBatteryLevel() {
-    int charge_now = readInt(
-        "/sys/class/power_supply/bq27441-0/charge_now"
-    );
-    int charge_full = readInt(
-        "/sys/class/power_supply/bq27441-0/charge_full_design"
-    );
-
+void rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+}
+std::string readStr(std::string path){
+    std::ifstream stream(path);
+    if(!stream.is_open()){
+        return "";
+    }
+    std::stringstream buffer;
+    char c = stream.get();
+    while (stream.good()) {
+        buffer << c;
+        c = stream.get();
+    }
+    stream.close();
+    std::string result = buffer.str();
+    rtrim(result);
+    return result;
+}
+bool exists(const std::string& path) {
+    QFile file(path.c_str());
+    return file.exists();
+}
+void Controller::updateBatteryLevel() {
+    QObject* ui = root->findChild<QObject*>("batteryLevel");
+    if(!ui){
+        qDebug() << "Can't find batteryLevel";
+    }
+    if(!exists("/sys/class/power_supply/bq27441-0/present")){
+        if(!batteryWarning){
+            qWarning() << "Can't find battery information";
+            batteryWarning = true;
+            if(ui){
+                ui->setProperty("warning", true);
+            }
+        }
+        return;
+    }
+    if(!readInt("/sys/class/power_supply/bq27441-0/present")){
+        qWarning() << "Battery is somehow not in the device?";
+        if(!batteryWarning){
+            qWarning() << "Can't find battery information";
+            batteryWarning = true;
+            if(ui){
+                ui->setProperty("warning", true);
+            }
+        }
+        return;
+    }
+    int charge_now = readInt("/sys/class/power_supply/bq27441-0/charge_now");
+    int charge_full = readInt("/sys/class/power_supply/bq27441-0/charge_full_design");
     int battery_level = 100;
     if (charge_now < charge_full) {
         battery_level = (charge_now * 100/ charge_full);
     }
-    qDebug() << "Got battery level " << battery_level;
-    return QString::fromStdString(std::to_string(battery_level));
+    std::string capacityLevel = readStr("/sys/class/power_supply/bq27441-0/capacity_level");
+    std::string status = readStr("/sys/class/power_supply/bq27441-0/status");
+
+    if(batteryLevel != battery_level){
+        batteryLevel = battery_level;
+        if(ui){
+            ui->setProperty("level", batteryLevel);
+        }
+    }
+    auto charging = status == "Charging";
+    if(batteryCharging != charging){
+        batteryLevel = charging;
+        if(ui){
+            ui->setProperty("charging", charging);
+        }
+    }
+    auto alert = capacityLevel == "Critical" || capacityLevel == "";
+    if(batteryAlert != alert){
+        batteryAlert = alert;
+        if(ui){
+            ui->setProperty("alert", alert);
+        }
+    }
+    auto warning = status == "Unknown" || status == "" || capacityLevel == "Unknown";
+    if(batteryWarning != warning){
+        batteryWarning = warning;
+        if(ui){
+            ui->setProperty("warning", warning);
+        }
+    }
+    auto temperature = readInt("/sys/class/power_supply/bq27441-0/temp") / 10;
+    if(batteryTemperature != temperature){
+        batteryTemperature = temperature;
+        if(ui){
+            ui->setProperty("temperature", temperature);
+        }
+    }
+    return;
+}
+std::string exec(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+void Controller::updateWifiState(){
+    QObject* ui = root->findChild<QObject*>("wifiState");
+    if(!ui){
+        qDebug() << "Can't find wifiState";
+    }
+    auto state = readStr("/sys/class/net/wlan0/operstate");
+    if(wifiState.toStdString() != state){
+        wifiState = state.c_str();
+        if(ui){
+            ui->setProperty("state", wifiState);
+        }
+    }
+    if(state == "" || state == "down"){
+        return;
+    }
+    if(state != "up"){
+        qDebug() << "Unknown wifi state: " << state.c_str();
+        return;
+    }
+    auto ip = exec("ip r | grep default | awk '{print $3}'");
+    auto connected = !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/53").c_str());
+    if(wifiConnected != connected){
+        wifiConnected = connected;
+        if(ui){
+            ui->setProperty("connected", connected);
+        }
+    }
+    auto link = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $3}'"));
+    if(wifiLink != link){
+        wifiLink = link;
+        if(ui){
+            ui->setProperty("link", link);
+        }
+    }
+    auto level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
+    if(wifiLevel != level){
+        wifiLevel = level;
+        if(ui){
+            ui->setProperty("level", level);
+        }
+    }
 }
 void Controller::resetInactiveTimer(){
     if(filter->timer->isActive()){
@@ -243,7 +388,6 @@ void Controller::setAutomaticSleep(bool state){
         emit automaticSleepChanged(state);
     }
 }
-
 void Controller::setColumns(int columns){
     m_columns = columns;
     if(root != nullptr){
@@ -256,5 +400,27 @@ void Controller::setFontSize(int fontSize){
     if(root != nullptr){
         qDebug() << "Font Size: " << fontSize;
         emit fontSizeChanged(fontSize);
+    }
+}
+void Controller::setShowWifiDb(bool state){
+    m_showWifiDb = state;
+    if(root != nullptr){
+        qDebug() << "Show Wifi DB: " << state;
+        emit showWifiDbChanged(state);
+    }
+}
+void Controller::setShowBatteryPercent(bool state){
+    m_showBatteryPercent = state;
+    if(root != nullptr){
+        qDebug() << "Show Battery Percentage: " << state;
+        emit showBatteryPercentChanged(state);
+    }
+}
+void Controller::setSleepAfter(int sleepAfter){
+    m_sleepAfter= sleepAfter;
+    if(root != nullptr){
+        qDebug() << "Sleep After: " << sleepAfter << " minutes";
+        filter->timer->setInterval(sleepAfter * 60 * 1000);
+        emit sleepAfterChanged(sleepAfter);
     }
 }

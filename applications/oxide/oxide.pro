@@ -27,8 +27,8 @@ QML_IMPORT_PATH =
 QML_DESIGNER_IMPORT_PATH =
 
 # Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
+qnx: target.path = /tmp/bin
+else: unix:!android: target.path = /opt//bin
 !isEmpty(target.path): INSTALLS += target
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
@@ -44,11 +44,11 @@ configFiles.path  = /opt/etc/
 INSTALLS += configFiles
 
 service.files = ../../assets/etc/systemd/system/oxide.service
-service.path = /lib/systemd/system/
+service.path = /opt/etc/systemd/system/
 INSTALLS += service
 
 DISTFILES +=
-
+ls
 HEADERS += \
     controller.h \
     appitem.h \

@@ -6,3 +6,10 @@ columns=6
 
 # Font size for application names
 fontSize=23
+
+# How many minutes of inactivity to wait before suspending
+sleepAfter=5
+
+# UI Toggles
+showWifiDb=no
+showBatteryPercentage=no

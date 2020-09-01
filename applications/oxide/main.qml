@@ -18,6 +18,11 @@ ApplicationWindow {
     header: Rectangle {
         color: "black"
         height: menu.height
+        Label {
+            objectName: "clock"
+            color: "white"
+            anchors.centerIn: parent
+        }
         RowLayout {
             id: menu
             width: parent.width
@@ -31,7 +36,74 @@ ApplicationWindow {
                     Action { text: qsTr(" Options"); onTriggered: stateController.state = "settings" }
                 }
             }
-            Item { Layout.fillWidth: true }
+            Label { Layout.fillWidth: true }
+            Label { Layout.fillWidth: true }
+            StatusIcon {
+                id: wifiState
+                objectName: "wifiState"
+                property string state: "unknown"
+                property int link: 0
+                property int level: 0
+                property bool connected: false
+                source: {
+                    var icon;
+                    if(state === "unknown" || !connected){
+                        icon = "disconnected";
+                    }else if(state === "down"){
+                        icon = "down";
+                    }else if(link < 20){
+                        icon = "0_bar";
+                    }else if(link < 40){
+                        icon = "1_bar";
+                    }else if(link < 60){
+                        icon = "2_bar";
+                    }else if(link < 80){
+                        icon = "3_bar";
+                    }else{
+                        icon = "4_bar";
+                    }
+                    return "qrc:/img/wifi/" + icon + ".png";
+                }
+                text: controller.showWifiDb ? level + "dBm" : ""
+            }
+            StatusIcon {
+                id: batteryLevel
+                objectName: "batteryLevel"
+                property bool alert: false
+                property bool warning: false
+                property bool charging: false
+                property int level: 0
+                property int temperature: 0
+                source: {
+                    var icon = "";
+                    if(alert){
+                        icon = "alert";
+                    }else if(warning){
+                        icon = "unknown";
+                    }else{
+                        if(charging){
+                            icon = "charging_";
+                        }
+                        if(level < 25){
+                            icon += "20";
+                        }else if(level < 35){
+                            icon += "30";
+                        }else if(level < 55){
+                            icon += "50";
+                        }else if(level < 65){
+                            icon += "60";
+                        }else if(level < 85){
+                            icon += "80";
+                        }else if(level < 95){
+                            icon += "90";
+                        }else{
+                            icon += 100;
+                        }
+                    }
+                    return "qrc:/img/battery/" + icon + ".png";
+                }
+                text: controller.showBatteryPercent ? level + "%" : ""
+            }
             CustomMenu {
                 BetterMenu {
                     id: powerMenu
@@ -42,12 +114,9 @@ ApplicationWindow {
                     Action { text: qsTr(" Shutdown"); onTriggered: controller.powerOff() }
                 }
             }
-
         }
     }
-    background: Rectangle {
-        color: "white"
-    }
+    background: Rectangle { color: "white" }
     contentData: [
         MouseArea { anchors.fill: parent },
         Rectangle {
@@ -236,6 +305,55 @@ ApplicationWindow {
                 RowLayout {
                     Layout.columnSpan: parent.columns
                     Layout.preferredWidth: parent.width
+                    enabled: controller.automaticSleep
+                    Label {
+                        text: "Sleep After (minutes)"
+                        Layout.fillWidth: true
+                    }
+                    BetterSpinBox {
+                        id: sleepAfterSpinBox
+                        objectName: "sleepAfterSpinBox"
+                        from: 1
+                        to: 10
+                        stepSize: 1
+                        value: 5
+                        onValueChanged: controller.sleepAfter = this.value
+                        Layout.preferredWidth: 300
+                    }
+                }
+                RowLayout {
+                    Layout.columnSpan: parent.columns
+                    Label {
+                        text: "Show Battery Percent"
+                        Layout.columnSpan: parent.columns - 1
+                        Layout.fillWidth: true
+                    }
+                    BetterCheckBox {
+                        tristate: false
+                        checkState: controller.showBatteryPercent ? Qt.Checked : Qt.Unchecked
+                        onClicked: controller.showBatteryPercent = this.checkState === Qt.Checked
+                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                        Layout.fillWidth: false
+                    }
+                }
+                RowLayout {
+                    Layout.columnSpan: parent.columns
+                    Label {
+                        text: "Show Wifi DB"
+                        Layout.columnSpan: parent.columns - 1
+                        Layout.fillWidth: true
+                    }
+                    BetterCheckBox {
+                        tristate: false
+                        checkState: controller.showWifiDb ? Qt.Checked : Qt.Unchecked
+                        onClicked: controller.showWifiDb = this.checkState === Qt.Checked
+                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                        Layout.fillWidth: false
+                    }
+                }
+                RowLayout {
+                    Layout.columnSpan: parent.columns
+                    Layout.preferredWidth: parent.width
                     Label {
                         text: "Home Screen Columns"
                         Layout.fillWidth: true
@@ -312,26 +430,6 @@ ApplicationWindow {
         }
 
     ]
-    footer: ToolBar {
-        background: Rectangle { color: "black" }
-        contentHeight: title.implicitHeight
-        Label {
-            id: title
-            text: window.title
-            color: "white"
-            anchors.centerIn: parent
-        }
-        Label {
-            id: batteryLevel
-            objectName: "batteryLevel"
-            property string batterylevel: controller.getBatteryLevel()
-            font: iconFont.name
-            text: "" + batterylevel + "%"
-            color: "white"
-            anchors.right: parent.right
-            rightPadding: 10
-        }
-    }
     Component.onCompleted: stateController.state = "loaded"
     StateGroup {
         id: stateController

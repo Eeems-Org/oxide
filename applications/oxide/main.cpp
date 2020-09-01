@@ -5,17 +5,14 @@
 #include <QQuickItem>
 #include <QObject>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 #include "controller.h"
 #include "eventfilter.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
-
-bool exists(const std::string& name) {
-    std::fstream file(name.c_str());
-    return file.good();
-}
 
 const char *qt_version = qVersion();
 
@@ -76,9 +73,9 @@ int main(int argc, char *argv[]){
         qDebug() << "Can't find stateController";
         return -1;
     }
-    QObject* batteryLevel = root->findChild<QObject*>("batteryLevel");
-    if(!stateController){
-        qDebug() << "Can't find batteryLevel";
+    QObject* clock = root->findChild<QObject*>("clock");
+    if(!clock){
+        qDebug() << "Can't find clock";
         return -1;
     }
     filter.timer = new QTimer(root);
@@ -87,12 +84,31 @@ int main(int argc, char *argv[]){
         qDebug() << "Suspending due to inactivity...";
         stateController->setProperty("state", QString("suspended"));
     });
-    QTimer* timer = new QTimer(root);
-    timer->setInterval(10 * 60 * 1000); // 10 minutes
-    QObject::connect(timer, &QTimer::timeout, [batteryLevel, &controller](){
-        batteryLevel->setProperty("batterylevel", controller.getBatteryLevel());
+    QTimer* uiStatusTimer = new QTimer(root);
+    uiStatusTimer ->setInterval(1000); // 1 seconds
+    QObject::connect(uiStatusTimer , &QTimer::timeout, [clock](){
+        std::time_t t = std::time(0);   // get time now
+        std::tm* now = std::localtime(&t);
+        int hour = now->tm_hour;
+        std::string ampm;
+        if(hour > 12){
+            hour -= hour;
+            ampm = "pm";
+        }else{
+            ampm = "am";
+        }
+        std::stringstream buffer;
+        buffer << hour << ":" << std::setw(2) << std::setfill('0') << now->tm_min << " " << ampm;
+        clock->setProperty("text", buffer.str().c_str());
     });
-    timer->start();
+    uiStatusTimer ->start();
+    QTimer* uiStatusTimer2 = new QTimer(root);
+    uiStatusTimer2 ->setInterval(3 * 1000); // 3 seconds
+    QObject::connect(uiStatusTimer , &QTimer::timeout, [&controller](){
+        controller.updateBatteryLevel();
+        controller.updateWifiState();
+    });
+    uiStatusTimer2 ->start();
     if(controller.automaticSleep()){
         filter.timer->start();
     }
