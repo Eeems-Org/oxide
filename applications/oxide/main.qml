@@ -21,6 +21,7 @@ ApplicationWindow {
         Label {
             objectName: "clock"
             color: "white"
+            visible: !suspendMessage.visible
             anchors.centerIn: parent
         }
         RowLayout {
@@ -110,9 +111,20 @@ ApplicationWindow {
                     title: "";
                     font: iconFont.name
                     width: 250
-                    Action { text: qsTr(" Suspend"); onTriggered: stateController.suspend() }
+                    Action { text: qsTr(" Suspend"); onTriggered: stateController.state = "suspended" }
                     Action { text: qsTr(" Shutdown"); onTriggered: controller.powerOff() }
                 }
+            }
+        }
+        Rectangle {
+            id: suspendMessage
+            color: "black"
+            anchors.fill: parent
+            visible: false
+            Label {
+                anchors.centerIn: parent
+                color: "white"
+                text: "Suspended..."
             }
         }
     }
@@ -424,42 +436,25 @@ ApplicationWindow {
                     }
                 }
             }
-        },
-        Popup {
-            id: suspendMessage
-            visible: false
-            width: 250
-            height: 250
-            x: (parent.width / 2) - (width / 2)
-            y: (parent.height / 2) - (height / 2)
-            modal: true
-            background: Rectangle {
-                color: "black"
-                anchors.fill: parent
-            }
-            Text {
-                anchors.centerIn: parent
-                color: "white"
-                text: "suspended..."
-            }
         }
-
     ]
     Component.onCompleted: stateController.state = "loaded"
+    Timer {
+        id: sleepTimer
+        repeat: false
+        interval: 1100
+        onTriggered: {
+            if(stateController.state == "suspended"){
+                controller.suspend();
+                stateController.state = "resumed";
+            }else{
+                stateController.state = stateController.previousState
+            }
+        }
+    }
     StateGroup {
         id: stateController
         property string previousState;
-        function suspend(){
-            console.log("suspended...");
-            this.state = "suspended";
-        }
-        function resume(){
-            controller.resetInactiveTimer();
-            console.log("waking up...")
-            suspendMessage.visible = false;
-            this.state = this.previousState;
-        }
-
         objectName: "stateController"
         state: "loading"
         states: [
@@ -467,7 +462,8 @@ ApplicationWindow {
             State { name: "settings" },
             State { name: "itemInfo" },
             State { name: "loading" },
-            State { name: "suspended" }
+            State { name: "suspended" },
+            State { name: "resumed" }
         ]
         transitions: [
             Transition {
@@ -502,31 +498,44 @@ ApplicationWindow {
                 }
             },
             Transition {
-                from: "settings"; to: "suspended"
-                SequentialAnimation {
-                    ParallelAnimation {
-                        PropertyAction { target: window; property: "visible"; value: true }
-                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                        PropertyAction { target: suspendMessage; property: "visible"; value: true }
-                    }
-                }
-            },
-            Transition {
                 from: "loaded"; to: "suspended"
                 SequentialAnimation {
-                    ParallelAnimation {
-                        ScriptAction { script: stateController.previousState = "loaded" }
-                        PropertyAction { target: window; property: "visible"; value: true }
-                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                        PropertyAction { target: suspendMessage; property: "visible"; value: true }
-                    }
-                    ScriptAction {script: controller.suspend() }
-                    PauseAnimation { duration: 1000 }
-                    ScriptAction {script: stateController.resume() }
+                    PropertyAction { target: stateController; property: "previousState"; value: "loaded" }
+                    PropertyAction { target: suspendMessage; property: "visible"; value: true }
+                    ScriptAction { script: sleepTimer.start() }
                 }
             },
             Transition {
-                from: "loaded"; to: "settings"
+                from: "settings"; to: "suspended"
+                SequentialAnimation {
+                    PropertyAction { target: stateController; property: "previousState"; value: "settings" }
+                    PropertyAction { target: suspendMessage; property: "visible"; value: true }
+                    ScriptAction { script: sleepTimer.start() }
+                }
+            },
+            Transition {
+                from: "itemInfo"; to: "suspended"
+                SequentialAnimation {
+                    PropertyAction { target: stateController; property: "previousState"; value: "itemInfo" }
+                    PropertyAction { target: suspendMessage; property: "visible"; value: true }
+                    ScriptAction { script: sleepTimer.start() }
+                }
+            },
+            Transition {
+                from: "suspended"; to: "resumed"
+                SequentialAnimation {
+                    ScriptAction { script: sleepTimer.start() }
+                }
+            },
+            Transition {
+                from: "resumed"; to: "*"
+                SequentialAnimation {
+                    ScriptAction {script: controller.resetInactiveTimer() }
+                    PropertyAction { target: suspendMessage; property: "visible"; value: false }
+                }
+            },
+            Transition {
+                from: "*"; to: "settings"
                 SequentialAnimation {
                     ParallelAnimation {
                         ScriptAction { script: stateController.previousState = "settings" }
