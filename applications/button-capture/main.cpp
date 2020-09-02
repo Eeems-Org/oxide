@@ -225,6 +225,7 @@ int main(int argc, char *argv[]){
                     }
                 }else if(argc > 1 && usecs > 1000000L && map[ie.code].name == "Middle"){
                     string ppid = argv[1];
+                    auto i_ppid = stoi(ppid);
                     string my_pid = to_string(getpid());
                     auto path = "/proc/" + ppid + "/status";
                     auto procDir = opendir("/proc");
@@ -232,15 +233,17 @@ int main(int argc, char *argv[]){
                         cout << "Pausing child tasks..." << endl;
                         while(auto entry = readdir(procDir)){
                           string pid = entry->d_name;
-                          if(my_pid != pid && is_uint(pid) && exec(("cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'").c_str()) == ppid){
+                          if(my_pid != pid && is_uint(pid) && exec(("cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'").c_str()) == ppid + "\n"){
                               cout << "  " << pid << endl;
                               // Found a child process
                               auto i_pid = stoi(pid);
                               // Pause the process
-                              sigpause(i_pid);
+                              kill(i_pid, SIGSTOP);
                           }
                         }
                     }
+                    closedir(procDir);
+                    kill(i_ppid, SIGSTOP);
                     cout << "Running task manager." << endl;
                     // Todo - record screenshot
                     if(exists("/opt/bin/erode")){
@@ -253,11 +256,14 @@ int main(int argc, char *argv[]){
                         cout << "Could not find task manager." << endl;
                     }
                     // Todo - redraw screenshot
+                    // Todo - flush out touchscreen events from the buffer
+                    kill(i_ppid, SIGCONT);
+                    procDir = opendir("/proc");
                     if(procDir != NULL){
                         cout << "Resuming child tasks..." << endl;
                         while(auto entry = readdir(procDir)){
                           string pid = entry->d_name;
-                          if(my_pid != pid && is_uint(pid) && exec(("cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'").c_str()) == ppid){
+                          if(my_pid != pid && is_uint(pid) && exec(("cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'").c_str()) == ppid + "\n"){
                               cout << "  " << pid << endl;
                               // Found a child process
                               auto i_pid = stoi(pid);
