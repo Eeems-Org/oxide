@@ -9,6 +9,7 @@
 #define DISPLAYHEIGHT 1872.0
 #define WACOM_X_SCALAR (float(DISPLAYWIDTH) / float(DISPLAYHEIGHT))
 #define WACOM_Y_SCALAR (float(DISPLAYHEIGHT) / float(DISPLAYWIDTH))
+//#define DEBUG_EVENTS
 
 EventFilter::EventFilter(QObject *parent) : QObject(parent){ }
 
@@ -83,7 +84,9 @@ void postEvent(QEvent::Type type, QEvent* ev, QQuickItem* root){
     auto pos = mouseEvent->globalPos();
     for(auto postWidget : widgetsAt(root, pos)){
         if(parentCount((QQuickItem*)postWidget)){
+#ifdef DEBUG_EVENTS
             qDebug() << "postWidget: " << postWidget;
+#endif
             auto event = new QMouseEvent(
                 mouseEvent->type(), mouseEvent->localPos(), mouseEvent->windowPos(),
                 mouseEvent->screenPos(), mouseEvent->button(), mouseEvent->buttons(),
@@ -117,15 +120,23 @@ bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
         }
     }else if(!filtered){
         if(type == QEvent::TabletPress){
+#ifdef DEBUG_EVENTS
             qDebug() << ev;
+#endif
             postEvent(QMouseEvent::MouseButtonPress, ev, root);
         }else if(type == QEvent::TabletRelease){
+#ifdef DEBUG_EVENTS
             qDebug() << ev;
+#endif
             postEvent(QMouseEvent::MouseButtonRelease, ev, root);
         }else if(type == QEvent::TabletMove){
+#ifdef DEBUG_EVENTS
             qDebug() << ev;
+#endif
             postEvent(QMouseEvent::MouseMove, ev, root);
-        }else if(
+        }
+#ifdef DEBUG_EVENTS
+        else if(
             type == QEvent::MouseMove
             || type == QEvent::MouseButtonPress
             || type == QEvent::MouseButtonRelease
@@ -138,6 +149,7 @@ bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
             qDebug() << obj;
             qDebug() << ev;
         }
+#endif
     }
     return filtered;
 }
