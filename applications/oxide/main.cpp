@@ -92,19 +92,7 @@ int main(int argc, char *argv[]){
     QTimer* uiStatusTimer = new QTimer(root);
     uiStatusTimer ->setInterval(1000); // 1 seconds
     QObject::connect(uiStatusTimer , &QTimer::timeout, [clock](){
-        std::time_t t = std::time(0);   // get time now
-        std::tm* now = std::localtime(&t);
-        int hour = now->tm_hour;
-        std::string ampm;
-        if(hour > 12){
-            hour -= 12;
-            ampm = "pm";
-        }else{
-            ampm = "am";
-        }
-        std::stringstream buffer;
-        buffer << hour << ":" << std::setw(2) << std::setfill('0') << now->tm_min << " " << ampm;
-        clock->setProperty("text", buffer.str().c_str());
+        clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
     });
     uiStatusTimer ->start();
     QTimer* uiStatusTimer2 = new QTimer(root);
