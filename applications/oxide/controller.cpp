@@ -313,11 +313,31 @@ void Controller::updateWifiState(){
         wifiLink = link;
         updateUI(ui, "link", link);
     }
+}
+void Controller::updateUIElements(){
+    updateBatteryLevel();
+    updateWifiState();
+    updateHiddenUIElements();
+}
+void Controller::updateHiddenUIElements(){
     if(showWifiDb()){
-        auto level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
-        if(wifiLevel != level){
-            wifiLevel = level;
-            updateUI(ui, "level", level);
+        QObject* ui = root->findChild<QObject*>("wifiState");
+        if(ui){
+            auto level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
+            if(wifiLevel != level){
+                wifiLevel = level;
+                ui->setProperty("level", level);
+            }
+        }
+    }
+    if(showBatteryTemperature()){
+        QObject* ui = root->findChild<QObject*>("batteryLevel");
+        if(ui){
+            int temperature = battery.intProperty("temp") / 10;
+            if(batteryTemperature != temperature){
+                batteryTemperature = temperature;
+                ui->setProperty("temperature", temperature);
+            }
         }
     }
 }
@@ -360,6 +380,9 @@ void Controller::setShowWifiDb(bool state){
         qDebug() << "Show Wifi DB: " << state;
         emit showWifiDbChanged(state);
     }
+    if(state){
+        updateHiddenUIElements();
+    }
 }
 void Controller::setShowBatteryPercent(bool state){
     m_showBatteryPercent = state;
@@ -373,6 +396,9 @@ void Controller::setShowBatteryTemperature(bool state){
     if(root != nullptr){
         qDebug() << "Show Battery Temperature: " << state;
         emit showBatteryTemperatureChanged(state);
+    }
+    if(state){
+        updateHiddenUIElements();
     }
 }
 void Controller::setSleepAfter(int sleepAfter){

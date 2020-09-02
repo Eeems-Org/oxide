@@ -12,7 +12,11 @@ class Controller : public QObject
 public:
     EventFilter* filter;
     QObject* root = nullptr;
-    explicit Controller(QObject* parent = 0) : QObject(parent), battery("/sys/class/power_supply/bq27441-0"), wifi("/sys/class/net/wlan0"){}
+    explicit Controller(QObject* parent = 0) : QObject(parent), battery("/sys/class/power_supply/bq27441-0"), wifi("/sys/class/net/wlan0"){
+        uiTimer = new QTimer(this);
+        uiTimer->setInterval(3 * 1000); // 3 seconds
+        connect(uiTimer, &QTimer::timeout, this, QOverload<>::of(&Controller::updateUIElements));
+    }
     Q_INVOKABLE void loadSettings();
     Q_INVOKABLE void saveSettings();
     Q_INVOKABLE QList<QObject*> getApps();
@@ -65,7 +69,11 @@ signals:
     void showBatteryPercentChanged(bool);
     void showBatteryTemperatureChanged(bool);
     void sleepAfterChanged(int);
+private slots:
+    void updateUIElements();
 private:
+    void updateHiddenUIElements();
+    void checkUITimer();
     bool m_automaticSleep = true;
     int m_columns = 6;
     int m_fontSize = 23;
@@ -75,7 +83,7 @@ private:
     int m_sleepAfter = 5;
 
     bool batteryAlert = false;
-    bool batteryWarning = false;
+    bool batteryWarning = true;
     bool batteryCharging = false;
     int batteryLevel = 0;
     int batteryTemperature = 0;
@@ -87,5 +95,6 @@ private:
 
     SysObject battery;
     SysObject wifi;
+    QTimer* uiTimer;
 
 };
