@@ -15,13 +15,14 @@
 QSet<QString> settings = { "columns", "fontSize", "sleepAfter" };
 QSet<QString> booleanSettings {"automaticSleep", "showWifiDb", "showBatteryPercentage" };
 QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
+QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root /.config" };
 
 
 QFile* getConfigFile(){
-    for(auto path : configDirectoryPaths){
+    for(auto path : configFileDirectoryPaths){
         QDir dir(path);
         if(dir.exists() && !dir.isEmpty()){
-            QFile* file = new QFile(path + "/conf");
+            QFile* file = new QFile(path + "/oxide.conf");
             if(file->exists()){
                 return file;
             }
@@ -95,7 +96,7 @@ void Controller::saveSettings(){
     std::stringstream buffer;
     auto configFile = getConfigFile();
     if(configFile == nullptr){
-        configFile = new QFile(configDirectoryPaths.last() + "/conf");
+        configFile = new QFile(configFileDirectoryPaths.last() + "/oxide.conf");
     }
     QTextStream stream(configFile);
     if(configFile->exists()){
