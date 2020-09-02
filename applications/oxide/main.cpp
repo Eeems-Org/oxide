@@ -68,11 +68,6 @@ int main(int argc, char *argv[]){
     QObject* root = engine.rootObjects().first();
     controller.root = root;
     filter.root = (QQuickItem*)root;
-    QQuickItem* appsView = root->findChild<QQuickItem*>("appsView");
-    if(!appsView){
-        qDebug() << "Can't find appsView";
-        return -1;
-    }
     QObject* stateController = root->findChild<QObject*>("stateController");
     if(!stateController){
         qDebug() << "Can't find stateController";
