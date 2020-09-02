@@ -10,6 +10,11 @@
 #include <sys/time.h>
 #include <ext/stdio_filebuf.h>
 #include "fb2png.h"
+#include <sstream>
+#include <memory>
+#include <experimental/filesystem>
+#include <signal.h>
+#include <dirent.h>
 
 using namespace std;
 
@@ -42,7 +47,6 @@ struct PressRecord {
     PressRecord (string name) : name(name) {}
     PressRecord(){}
 };
-//
 struct event_device {
     string device;
     int fd;
@@ -117,7 +121,30 @@ void press_button(event_device evdev, int code, istream* stream){
     lock_device(evdev);
 }
 
-int main(){
+
+string exec(const char* cmd) {
+    array<char, 128> buffer;
+    string result;
+    unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+int is_uint(string input){
+    unsigned int i;
+    for (i=0; i < input.length(); i++){
+        if(!isdigit(input.at(i))){
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int main(int argc, char *argv[]){
     // Mapping the correct button IDs.
     unordered_map<int, PressRecord> map;
     map[105] = PressRecord("Left");
@@ -196,6 +223,50 @@ int main(){
                             cout << "Screenshot file couldn't be read." << endl;
                         }
                     }
+                }else if(argc > 1 && usecs > 1000000L && map[ie.code].name == "Middle"){
+                    string ppid = argv[1];
+                    string my_pid = to_string(getpid());
+                    auto path = "/proc/" + ppid + "/status";
+                    auto procDir = opendir("/proc");
+                    if(procDir != NULL){
+                        cout << "Pausing child tasks..." << endl;
+                        while(auto entry = readdir(procDir)){
+                          string pid = entry->d_name;
+                          if(my_pid != pid && is_uint(pid) && exec(("cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'").c_str()) == ppid){
+                              cout << "  " << pid << endl;
+                              // Found a child process
+                              auto i_pid = stoi(pid);
+                              // Pause the process
+                              sigpause(i_pid);
+                          }
+                        }
+                    }
+                    cout << "Running task manager." << endl;
+                    // Todo - record screenshot
+                    if(exists("/opt/bin/erode")){
+                        system("/opt/bin/erode");
+                    }else if(exists("/bin/erode")){
+                        system("/bin/erode");
+                    }else if(exists("/usr/bin/erode")){
+                        system("/usr/bin/erode");
+                    }else{
+                        cout << "Could not find task manager." << endl;
+                    }
+                    // Todo - redraw screenshot
+                    if(procDir != NULL){
+                        cout << "Resuming child tasks..." << endl;
+                        while(auto entry = readdir(procDir)){
+                          string pid = entry->d_name;
+                          if(my_pid != pid && is_uint(pid) && exec(("cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'").c_str()) == ppid){
+                              cout << "  " << pid << endl;
+                              // Found a child process
+                              auto i_pid = stoi(pid);
+                              // Resume the process
+                              kill(i_pid, SIGCONT);
+                          }
+                        }
+                    }
+                    closedir(procDir);
                 }else{
                     press_button(evdev, ie.code, &stream);
                 }

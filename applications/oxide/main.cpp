@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <unistd.h>
 #include "controller.h"
 #include "eventfilter.h"
 
@@ -36,7 +37,8 @@ int main(int argc, char *argv[]){
     system("killall button-capture");
     if(exists("/opt/bin/button-capture")){
         qDebug() << "Starting button-capture";
-        system("/opt/bin/button-capture &");
+        auto cmd = "/opt/bin/button-capture " + std::to_string(getpid()) + " &";
+        system(cmd.c_str());
     }else if(exists("/bin/button-capture")){
         qDebug() << "Starting button-capture";
         system("/bin/button-capture &");
