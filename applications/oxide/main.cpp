@@ -89,19 +89,25 @@ int main(int argc, char *argv[]){
         qDebug() << "Suspending due to inactivity...";
         stateController->setProperty("state", QString("suspended"));
     });
-    QTimer* uiStatusTimer = new QTimer(root);
-    uiStatusTimer ->setInterval(1000); // 1 seconds
-    QObject::connect(uiStatusTimer , &QTimer::timeout, [clock](){
+    QTimer* clockTimer = new QTimer(root);
+    auto currentTime = QTime::currentTime();
+    QTime nextTime = currentTime.addSecs(60 - currentTime.second());
+    clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
+    clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
+    QObject::connect(clockTimer , &QTimer::timeout, [clock, &clockTimer](){
         clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
+        if(clockTimer->interval() != 60 * 1000){
+            clockTimer->setInterval(60 * 1000); // 1 minute
+        }
     });
-    uiStatusTimer ->start();
-    QTimer* uiStatusTimer2 = new QTimer(root);
-    uiStatusTimer2 ->setInterval(3 * 1000); // 3 seconds
-    QObject::connect(uiStatusTimer , &QTimer::timeout, [&controller](){
+    clockTimer ->start();
+    QTimer* uiStatusTimer = new QTimer(root);
+    uiStatusTimer ->setInterval(3 * 1000); // 3 seconds
+    QObject::connect(clockTimer , &QTimer::timeout, [&controller](){
         controller.updateBatteryLevel();
         controller.updateWifiState();
     });
-    uiStatusTimer2 ->start();
+    uiStatusTimer ->start();
     if(controller.automaticSleep()){
         filter.timer->start();
     }
