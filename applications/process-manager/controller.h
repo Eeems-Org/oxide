@@ -8,6 +8,7 @@ class Controller : public QObject
     Q_OBJECT
 
 public:
+    int protectPid;
     explicit Controller(QQmlApplicationEngine* engine) : QObject(nullptr), _engine(engine), tasks(){
         _sortBy = "name";
     }

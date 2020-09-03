@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 int Controller::is_uint(std::string input){
     unsigned int i;
@@ -55,6 +56,8 @@ QList<QObject*> Controller::getTasks(){
             continue;
         }
         auto taskItem = new TaskItem(pid);
+        auto taskPid = taskItem->pid();
+        taskItem->setKillable(taskPid != getpid() && taskPid != getppid() && taskPid != protectPid);
         tasks.append(taskItem);
     }
     sort();

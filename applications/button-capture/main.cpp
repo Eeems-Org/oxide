@@ -224,6 +224,9 @@ int main(int argc, char *argv[]){
                         }
                     }
                 }else if(argc > 1 && usecs > 1000000L && map[ie.code].name == "Middle"){
+                    removeScreenshot();
+                    takeScreenshot();
+                    // TODO Show some sort of message on screen letting them know that the process manager is starting
                     string ppid = argv[1];
                     auto i_ppid = stoi(ppid);
                     string my_pid = to_string(getpid());
@@ -245,17 +248,16 @@ int main(int argc, char *argv[]){
                     closedir(procDir);
                     kill(i_ppid, SIGSTOP);
                     cout << "Running task manager." << endl;
-                    // Todo - record screenshot
                     if(exists("/opt/bin/erode")){
-                        system("/opt/bin/erode");
+                        system(("/opt/bin/erode " + ppid).c_str());
                     }else if(exists("/bin/erode")){
-                        system("/bin/erode");
+                        system(("/bin/erode " + ppid).c_str());
                     }else if(exists("/usr/bin/erode")){
-                        system("/usr/bin/erode");
+                        system(("/usr/bin/erode " + ppid).c_str());
                     }else{
                         cout << "Could not find task manager." << endl;
                     }
-                    // Todo - redraw screenshot
+                    removeScreenshot();
                     // Todo - flush out touchscreen events from the buffer
                     kill(i_ppid, SIGCONT);
                     procDir = opendir("/proc");

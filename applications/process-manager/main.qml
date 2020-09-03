@@ -15,7 +15,16 @@ ApplicationWindow {
             width: parent.width
             BetterButton {
                 text: "⬅️"
-                onClicked: Qt.quit()
+                onClicked: {
+                    window.menuBar.visible = false;
+                    background.visible = true;
+                    quitTimer.start();
+                }
+                Timer {
+                    id: quitTimer
+                    interval: 1000
+                    onTriggered: Qt.quit()
+                }
             }
             Item { Layout.fillWidth: true }
             BetterButton {
@@ -48,15 +57,6 @@ ApplicationWindow {
                     MouseArea { anchors.fill: parent; onClicked: controller.sortBy("name") }
                 }
                 Label {
-                    text: "PPID"
-                    color: "black"
-                    font.pointSize: 8
-                    Layout.alignment: Qt.AlignLeft
-                    leftPadding: 10
-                    Layout.preferredWidth: 200
-                    MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
-                }
-                Label {
                     text: "PID"
                     color: "black"
                     font.pointSize: 8
@@ -64,6 +64,15 @@ ApplicationWindow {
                     leftPadding: 10
                     Layout.preferredWidth: 200
                     MouseArea { anchors.fill: parent; onClicked: controller.sortBy("pid") }
+                }
+                Label {
+                    text: "Parent PID"
+                    color: "black"
+                    font.pointSize: 8
+                    Layout.alignment: Qt.AlignLeft
+                    leftPadding: 10
+                    Layout.preferredWidth: 200
+                    MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
                 }
                 BetterButton {
                     opacity: 0 // Only using this to space out the rows properly
@@ -132,15 +141,15 @@ ApplicationWindow {
                             rightPadding: 10
                         }
                         Label {
-                            id: ppid
-                            text: model.modelData.ppid
+                            id: pid
+                            text: model.modelData.pid
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
                             Layout.preferredWidth: 200
                         }
                         Label {
-                            id: pid
-                            text: model.modelData.pid
+                            id: ppid
+                            text: model.modelData.ppid
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
                             Layout.preferredWidth: 200
@@ -242,6 +251,14 @@ ApplicationWindow {
                     }
                 }
             }
+        },
+        Image {
+            id: background
+            visible: false
+            objectName: "background"
+            anchors.fill: parent
+            cache: false
+            source: "file:/tmp/fb.png"
         }
     ]
     footer: ToolBar {

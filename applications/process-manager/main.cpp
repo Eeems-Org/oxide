@@ -2,12 +2,41 @@
 #include <QQmlApplicationEngine>
 #include <QtQuick>
 #include <QtPlugin>
+#include <linux/input.h>
+#include <ostream>
+#include <fcntl.h>
 #include "controller.h"
 #include "eventfilter.h"
+
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
+
+struct event_device {
+    std::string device;
+    int fd;
+    event_device(std::string path, int flags){
+        device = path;
+        fd = open(path.c_str(), flags);
+    }
+};
+
+const event_device touchScreen("/dev/input/touchscreen0", O_RDWR);
+
+
+int lock_device(event_device evdev){
+    qDebug() << "locking " << evdev.device.c_str();
+    int result = ioctl(evdev.fd, EVIOCGRAB, 1);
+    if(result == EBUSY){
+        qWarning() << "Device is busy";
+    }else if(result != 0){
+        qWarning() << "Unknown error: " << result;
+    }else{
+        qDebug() << evdev.device.c_str() << " locked";
+    }
+    return result;
+}
 
 const char *qt_version = qVersion();
 
@@ -29,6 +58,9 @@ int main(int argc, char *argv[]){
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller controller(&engine);
+    if(argc > 1){
+        controller.protectPid = std::stoi(argv[1]);
+    }
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("tasks", QVariant::fromValue(controller.getTasks()));
     context->setContextProperty("controller", &controller);
@@ -44,5 +76,6 @@ int main(int argc, char *argv[]){
         qDebug() << "Can't find tasksView";
         return -1;
     }
+    lock_device(touchScreen);
     return app.exec();
 }

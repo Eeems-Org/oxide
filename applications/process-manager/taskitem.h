@@ -10,11 +10,14 @@ class TaskItem : public QObject {
 public:
     explicit TaskItem(std::string pid);
     Q_PROPERTY(QString name MEMBER _name NOTIFY nameChanged);
-    Q_PROPERTY(int pid MEMBER _pid NOTIFY pidChanged);
+    Q_PROPERTY(int pid MEMBER _pid READ pid NOTIFY pidChanged);
     Q_PROPERTY(int ppid MEMBER _ppid NOTIFY ppidChanged);
     Q_PROPERTY(bool killable MEMBER _killable WRITE setKillable NOTIFY killableChanged);
     void setKillable(bool killable){
         _killable = _ppid && killable;
+    }
+    int pid(){
+        return _pid;
     }
     Q_INVOKABLE bool signal(int signal);
 
