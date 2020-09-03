@@ -4,11 +4,14 @@ import QtQuick.Controls 2.4
 Button {
     id: control
     flat: true
+    property color backgroundColor: "black"
+    property color borderColor: "black"
+    property color color: "white"
     contentItem: Text {
         text: control.text
         font: control.font
         opacity: enabled ? 1.0 : 0.3
-        color: "white"
+        color: control.color
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
@@ -18,8 +21,8 @@ Button {
         implicitWidth: 100
         implicitHeight: 40
         opacity: enabled ? 1 : 0.3
-        color: "black"
-        border.color: "black"
+        color: control.backgroundColor
+        border.color: control.borderColor
         border.width: 1
         radius: 2
     }

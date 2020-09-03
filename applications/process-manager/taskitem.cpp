@@ -4,20 +4,34 @@
 #include <fstream>
 #include <iostream>
 #include <stdio.h>
+#include <memory>
+#include <signal.h>
 
-TaskItem::TaskItem(std::string pid) : QObject(nullptr), _pid(pid.c_str()){
-    std::string path = "/proc/" + _pid.toStdString() + "/status";
-    FILE* file = fopen(path.c_str(), "r");
-    if(!file){
-        return;
+using namespace std;
+
+string exec(const char* cmd) {
+    array<char, 128> buffer;
+    string result;
+    unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw runtime_error("popen() failed!");
     }
-    std::ifstream stream(path.c_str());
-    // Get the second line
-    std::string line;
-    std::getline(stream, line);
-    line = line.substr(6, line.length() - 6);
-    _name = QString(line.c_str());
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    result.erase(std::find_if(result.rbegin(), result.rend(), [](int ch) {
+        return !std::isspace(ch);
+    }).base(), result.end());
+    return result;
 }
-bool TaskItem::ok(){
-    return _name.length();
+
+TaskItem::TaskItem(std::string pid) : QObject(nullptr), _pid(stoi(pid)){
+    std::string path = "/proc/" + to_string(_pid) + "/status";
+    _name = QString::fromStdString(exec(("cat " + path + " | grep Name: | awk '{print$2}'").c_str())).trimmed();
+    _ppid = stoi(exec(("cat " + path + " | grep PPid: | awk '{print$2}'").c_str()));
+    _killable = _ppid;
+}
+
+bool TaskItem::signal(int signal){
+    return kill(_pid, signal);
 }

@@ -24,33 +24,45 @@ int Controller::is_uint(std::string input){
 void Controller::sortBy(QString key){
     _sortBy = key;
     QQmlContext* context = _engine->rootContext();
-    context->setContextProperty("tasks", QVariant::fromValue(getTasks()));
+    sort();
+    context->setContextProperty("tasks", QVariant::fromValue(tasks));
 }
 
 QList<QObject*> Controller::getTasks(){
-    QList<QObject*> result;
+    tasks.clear();
     QDir directory("/proc");
     if (!directory.exists() || directory.isEmpty()){
         qCritical() << "Unable to access /proc";
-        return result;
+        return tasks;
     }
     directory.setFilter( QDir::Dirs | QDir::NoDot | QDir::NoDotDot);
     auto processes = directory.entryInfoList(QDir::NoFilter, QDir::SortFlag::Name);
     for(QFileInfo fi : processes){
         std::string pid = fi.baseName().toStdString();
-        if(is_uint(pid)){
-            TaskItem* task = new TaskItem(pid);
-            if(task->ok()){
-                result.append(task);
-            }
+        if(!is_uint(pid)){
+            continue;
         }
+        QFile statm(("/proc/" + pid + "/statm").c_str());
+        QTextStream stream(&statm);
+        if(!statm.open(QIODevice::ReadOnly | QIODevice::Text)){
+            qDebug() << "Unable to open statm for pid " << pid.c_str();
+            continue;
+        }
+        QString content = stream.readAll().trimmed();
+        statm.close();
+        // Ignore kernel processes
+        if(content == "0 0 0 0 0 0 0"){
+            continue;
+        }
+        auto taskItem = new TaskItem(pid);
+        tasks.append(taskItem);
     }
+    sort();
+    return tasks;
+}
+void Controller::sort(){
     std::string sortBy = _sortBy.toStdString();
-    std::sort(result.begin(), result.end(), [sortBy](const QObject* a, const QObject* b) -> bool {
-        if(sortBy == "name"){
-            return a->property("name") < b->property("name");
-        }
-        return a->property("pid") < b->property("pid");
+    std::sort(tasks.begin(), tasks.end(), [sortBy](const QObject* a, const QObject* b) -> bool {
+        return a->property(sortBy.c_str()) < b->property(sortBy.c_str());
     });
-    return result;
 }

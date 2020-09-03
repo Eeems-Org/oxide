@@ -8,7 +8,7 @@ class Controller : public QObject
     Q_OBJECT
 
 public:
-    explicit Controller(QQmlApplicationEngine* engine) : QObject(nullptr), _engine(engine){
+    explicit Controller(QQmlApplicationEngine* engine) : QObject(nullptr), _engine(engine), tasks(){
         _sortBy = "name";
     }
     Q_INVOKABLE QList<QObject*> getTasks();
@@ -22,4 +22,6 @@ private:
     int is_uint(std::string input);
     QString _sortBy;
     QQmlApplicationEngine* _engine;
+    QList<QObject*> tasks;
+    void sort();
 };

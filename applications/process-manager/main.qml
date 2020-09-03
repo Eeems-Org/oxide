@@ -9,7 +9,6 @@ ApplicationWindow {
     visible: true
     width: screenGeometry.width
     height: screenGeometry.height
-    title: qsTr("Erode")
     menuBar: ToolBar {
         background: Rectangle { color: "black" }
         RowLayout {
@@ -21,7 +20,10 @@ ApplicationWindow {
             Item { Layout.fillWidth: true }
             BetterButton {
                 text: "Reload"
-                onClicked: tasksView.model = controller.getTasks()
+                onClicked: {
+                    console.log("Reloading...");
+                    tasksView.model = controller.getTasks();
+                }
             }
         }
     }
@@ -32,28 +34,42 @@ ApplicationWindow {
             id: tasksViewHeader
             anchors.top: parent.top
             width: parent.width
-//            height: tasksViewHeaderContent.implicitHeight
             height: window.menuBar.height
             RowLayout {
                 id: tasksViewHeaderContent
                 anchors.fill: parent
-                Text {
-                    text: "PID"
-                    color: "black"
-                    font.pointSize: 8
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignLeft
-                    leftPadding: 10
-                    MouseArea { anchors.fill: parent; onClicked: controller.sortBy("pid") }
-                }
-                Text {
+                Label {
                     text: "Process"
                     color: "black"
                     font.pointSize: 8
-                    Layout.alignment: Qt.AlignRight
-                    rightPadding: 10 + scrollbar.width
+                    Layout.alignment: Qt.AlignLeft
+                    rightPadding: 10
+                    Layout.fillWidth: true
                     MouseArea { anchors.fill: parent; onClicked: controller.sortBy("name") }
                 }
+                Label {
+                    text: "PPID"
+                    color: "black"
+                    font.pointSize: 8
+                    Layout.alignment: Qt.AlignLeft
+                    leftPadding: 10
+                    Layout.preferredWidth: 200
+                    MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
+                }
+                Label {
+                    text: "PID"
+                    color: "black"
+                    font.pointSize: 8
+                    Layout.alignment: Qt.AlignLeft
+                    leftPadding: 10
+                    Layout.preferredWidth: 200
+                    MouseArea { anchors.fill: parent; onClicked: controller.sortBy("pid") }
+                }
+                BetterButton {
+                    opacity: 0 // Only using this to space out the rows properly
+                    text: "Kill"
+                }
+                Item { width: scrollbar.width }
             }
             Rectangle {
                 color: "grey"
@@ -77,12 +93,10 @@ ApplicationWindow {
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
                 model: tasks
-                ScrollBar.vertical: ScrollBar {
+                onMovementEnded: console.log("Moved")
+                ScrollIndicator.vertical: ScrollIndicator {
                     id: scrollbar
-                    snapMode: ScrollBar.SnapAlways
-                    policy: ScrollBar.AsNeeded
                     width: 10
-                    stepSize: 1
                     contentItem: Rectangle {
                         color: "black"
                         implicitWidth: 6
@@ -110,33 +124,113 @@ ApplicationWindow {
                     RowLayout {
                         id: tasksRow
                         anchors.fill: parent
-                        Text {
+                        Label {
+                            id: name
+                            text: model.modelData.name
+                            Layout.alignment: Qt.AlignLeft
+                            Layout.fillWidth: true
+                            rightPadding: 10
+                        }
+                        Label {
+                            id: ppid
+                            text: model.modelData.ppid
+                            Layout.alignment: Qt.AlignLeft
+                            leftPadding: 10
+                            Layout.preferredWidth: 200
+                        }
+                        Label {
                             id: pid
                             text: model.modelData.pid
                             Layout.alignment: Qt.AlignLeft
-                            Layout.fillWidth: true
                             leftPadding: 10
+                            Layout.preferredWidth: 200
                         }
-                        Item { Layout.fillWidth: true }
-                        Text {
-                            id: name
-                            text: model.modelData.name
-                            Layout.alignment: Qt.AlignRight
+                        BetterButton {
+                            text: "Kill"
+                            enabled: model.modelData.killable
+                            leftPadding: 10
                             rightPadding: 10
+                            backgroundColor: "white"
+                            color: "black"
+                            opacity: enabled ? 1 : 0
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: killPrompt.open()
+                            }
+                            Popup {
+                                id: killPrompt
+                                visible: false
+                                parent: Overlay.overlay
+                                x: Math.round((parent.width - width) / 2)
+                                y: Math.round((parent.height - height) / 2)
+                                focus: true
+                                closePolicy: Popup.CloseOnPressOutsideParent
+                                onClosed: console.log("Closed")
+                                onOpened: console.log("Opened")
+                                contentItem: ColumnLayout {
+                                    Label {
+                                        text: "Are you sure you want to kill " + model.modelData.name + " (" + model.modelData.pid + ")"
+                                    }
+                                    RowLayout {
+                                        BetterButton {
+                                            backgroundColor: "white"
+                                            color: "black"
+                                            text: "Force Quit"
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onClicked: {
+                                                    model.modelData.signal(15);
+                                                    tasksView.model = controller.getTasks();
+                                                    killPrompt.close()
+                                                }
+                                            }
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                        BetterButton {
+                                            text: "Yes"
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onClicked: {
+                                                    model.modelData.signal(9);
+                                                    tasksView.model = controller.getTasks();
+                                                    killPrompt.close()
+                                                }
+                                            }
+                                        }
+                                        BetterButton {
+                                            text: "No"
+                                            backgroundColor: "white"
+                                            color: "black"
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onClicked: killPrompt.close()
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
                 SwipeArea {
                     anchors.fill: parent
+                    propagateComposedEvents: true
                     property int currentIndex: tasksView.currentIndex
-                    property int pageSize: (tasksView.height / tasksView.itemAt(0, 0).height).toFixed(0);
+                    property int pageSize: 0
                     onSwipe: {
+                        if(!pageSize && !tasksView.itemAt(0, 0)){
+                            return;
+                        }else if(!pageSize){
+                            pageSize = (tasksView.height / tasksView.itemAt(0, 0).height).toFixed(0);
+                        }
                         if(direction == "down"){
+                            console.log("Scroll up");
                             currentIndex = currentIndex - pageSize;
                             if(currentIndex < 0){
                                 currentIndex = 0;
                             }
                         }else if(direction == "up"){
+                            console.log("Scroll down");
                             currentIndex = currentIndex + pageSize;
                             if(currentIndex > tasksView.count){
                                 currentIndex = tasksView.count;
@@ -144,7 +238,6 @@ ApplicationWindow {
                         }else{
                             return;
                         }
-                        console.log(currentIndex);
                         tasksView.positionViewAtIndex(currentIndex, ListView.Beginning);
                     }
                 }
