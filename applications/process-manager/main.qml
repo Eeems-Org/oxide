@@ -25,7 +25,6 @@ ApplicationWindow {
             }
         }
     }
-    header: TabBar { }
     background: Rectangle { color: "white" }
     contentData: [
         MouseArea { anchors.fill: parent },
@@ -33,7 +32,8 @@ ApplicationWindow {
             id: tasksViewHeader
             anchors.top: parent.top
             width: parent.width
-            height: tasksViewHeaderContent.implicitHeight
+//            height: tasksViewHeaderContent.implicitHeight
+            height: window.menuBar.height
             RowLayout {
                 id: tasksViewHeaderContent
                 anchors.fill: parent
@@ -51,7 +51,7 @@ ApplicationWindow {
                     color: "black"
                     font.pointSize: 8
                     Layout.alignment: Qt.AlignRight
-                    rightPadding: 26
+                    rightPadding: 10 + scrollbar.width
                     MouseArea { anchors.fill: parent; onClicked: controller.sortBy("name") }
                 }
             }
@@ -74,26 +74,28 @@ ApplicationWindow {
                 anchors.fill: parent
                 clip: true
                 snapMode: ListView.SnapOneItem
-                maximumFlickVelocity: 0
+                interactive: false
                 boundsBehavior: Flickable.StopAtBounds
+                model: tasks
                 ScrollBar.vertical: ScrollBar {
                     id: scrollbar
                     snapMode: ScrollBar.SnapAlways
-                    policy: ScrollBar.AlwaysOn
+                    policy: ScrollBar.AsNeeded
+                    width: 10
+                    stepSize: 1
                     contentItem: Rectangle {
-                        color: "white"
-                        implicitWidth: 6
-                        implicitHeight: 100
-                        radius: width / 2
-                    }
-                    background: Rectangle {
                         color: "black"
                         implicitWidth: 6
                         implicitHeight: 100
-                        radius: width / 2
+                    }
+                    background: Rectangle {
+                        color: "white"
+                        border.color: "black"
+                        border.width: 1
+                        implicitWidth: 6
+                        implicitHeight: 100
                     }
                 }
-                model: tasks
                 delegate: Rectangle {
                     id: root
                     enabled: parent.enabled
@@ -115,13 +117,35 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             leftPadding: 10
                         }
+                        Item { Layout.fillWidth: true }
                         Text {
                             id: name
                             text: model.modelData.name
                             Layout.alignment: Qt.AlignRight
-                            Layout.fillWidth: true
                             rightPadding: 10
                         }
+                    }
+                }
+                SwipeArea {
+                    anchors.fill: parent
+                    property int currentIndex: tasksView.currentIndex
+                    property int pageSize: (tasksView.height / tasksView.itemAt(0, 0).height).toFixed(0);
+                    onSwipe: {
+                        if(direction == "down"){
+                            currentIndex = currentIndex - pageSize;
+                            if(currentIndex < 0){
+                                currentIndex = 0;
+                            }
+                        }else if(direction == "up"){
+                            currentIndex = currentIndex + pageSize;
+                            if(currentIndex > tasksView.count){
+                                currentIndex = tasksView.count;
+                            }
+                        }else{
+                            return;
+                        }
+                        console.log(currentIndex);
+                        tasksView.positionViewAtIndex(currentIndex, ListView.Beginning);
                     }
                 }
             }
