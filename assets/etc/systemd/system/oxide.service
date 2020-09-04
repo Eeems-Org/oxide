@@ -5,7 +5,8 @@ Description=oxide launcher
 After=home.mount
 
 [Service]
-ExecStart=/opt/bin/oxide
+# Run /opt/bin/oxide if found, if not start xochitl instead (failsafe)
+ExecStart=/bin/sh -c 'if [ -f /opt/bin/oxide ]; then /opt/bin/oxide; else systemctl start xochitl; fi'
 
 [Install]
 WantedBy=multi-user.target
