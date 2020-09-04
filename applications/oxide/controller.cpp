@@ -186,6 +186,7 @@ QList<QObject*> Controller::getApps(){
                     }
                 }
                 if(app ->ok()){
+                    app->inputManager = &inputManager;
                     result.append(app );
                 }
                 file.close();

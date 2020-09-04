@@ -11,11 +11,11 @@ ApplicationWindow {
     width: screenGeometry.width
     height: screenGeometry.height
     title: qsTr("Oxide")
-    property bool reloaded: true
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
-
+    Component.onCompleted: stateController.state = "loaded"
     header: Rectangle {
+        enabled: stateController.state === "loaded"
         color: "black"
         height: menu.height
         Label {
@@ -130,7 +130,6 @@ ApplicationWindow {
     }
     background: Rectangle { color: "white" }
     contentData: [
-        MouseArea { anchors.fill: parent },
         Rectangle {
             anchors.fill: parent
             color: "white"
@@ -438,7 +437,6 @@ ApplicationWindow {
             }
         }
     ]
-    Component.onCompleted: stateController.state = "loaded"
     Timer {
         id: sleepTimer
         repeat: false
@@ -469,32 +467,8 @@ ApplicationWindow {
             Transition {
                 from: "loaded"; to: "loading"
                 SequentialAnimation {
-                    ParallelAnimation {
-                        PropertyAction { target: window; property: "visible"; value: true }
-                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                    }
-                    PauseAnimation { duration: 10 }
-                    ParallelAnimation {
-                        PropertyAction { target: window; property: "visible"; value: false }
-                        PropertyAction { target: window.contentItem; property: "visible"; value: false }
-                        PropertyAction { target: stateController; property: "state"; value: "loaded" }
-                    }
-                    ScriptAction { script: console.log("loading...") }
-                }
-            },
-            Transition {
-                from: "loading"; to: "loaded"
-                SequentialAnimation {
-                    ParallelAnimation {
-                        PropertyAction { target: window; property: "visible"; value: false }
-                        PropertyAction { target: window.contentItem; property: "visible"; value: false }
-                    }
-                    PauseAnimation { duration: 10 }
-                    ParallelAnimation {
-                        PropertyAction { target: window; property: "visible"; value: true }
-                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                    }
-                    ScriptAction { script: console.log("loaded.") }
+                    PauseAnimation { duration: 500 }
+                    PropertyAction { target: stateController; property: "state"; value: "loaded" }
                 }
             },
             Transition {
@@ -537,45 +511,29 @@ ApplicationWindow {
             Transition {
                 from: "*"; to: "settings"
                 SequentialAnimation {
-                    ParallelAnimation {
-                        ScriptAction { script: stateController.previousState = "settings" }
-                        PropertyAction { target: window; property: "visible"; value: true }
-                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                        PropertyAction { target: settings; property: "visible"; value: true }
-                    }
+                    ScriptAction { script: stateController.previousState = "settings" }
+                    PropertyAction { target: settings; property: "visible"; value: true }
                     PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
             Transition {
                 from: "settings"; to: "loaded"
                 SequentialAnimation {
-                    ParallelAnimation {
-                        PropertyAction { target: window; property: "visible"; value: true }
-                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                        PropertyAction { target: settings; property: "visible"; value: false }
-                    }
+                    PropertyAction { target: settings; property: "visible"; value: false }
                     PropertyAction { target: appsView; property: "focus"; value: true }
                 }
             },
             Transition {
                 from: "loaded"; to: "itemInfo"
                 SequentialAnimation {
-                    ParallelAnimation {
-                        PropertyAction { target: window; property: "visible"; value: true }
-                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                        PropertyAction { target: itemInfo; property: "visible"; value: true }
-                    }
+                    PropertyAction { target: itemInfo; property: "visible"; value: true }
                     PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
             Transition {
                 from: "itemInfo"; to: "loaded"
                 SequentialAnimation {
-                    ParallelAnimation {
-                        PropertyAction { target: window; property: "visible"; value: true }
-                        PropertyAction { target: window.contentItem; property: "visible"; value: true }
-                        PropertyAction { target: itemInfo; property: "visible"; value: false }
-                    }
+                    PropertyAction { target: itemInfo; property: "visible"; value: false }
                     PropertyAction { target: appsView; property: "focus"; value: true }
                 }
             }

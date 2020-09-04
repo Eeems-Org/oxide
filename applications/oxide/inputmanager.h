@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <linux/input.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -22,7 +23,7 @@ inline input_event createEvent(ushort type, ushort code, int value){
 class InputManager {
 public:
     input_event *touch_flood;
-    InputManager() {
+    InputManager() : touchScreenFd(open("/dev/input/even1", O_WRONLY)) {
         this->touch_flood = build_touch_flood();
     }
 
@@ -43,9 +44,11 @@ public:
         return ev;
     }
 
-    void clear_touch_buffer(int fd) {
-        write(fd, touch_flood, 512 * 8 * 4 * sizeof(input_event));
+    void clear_touch_buffer() {
+        write(touchScreenFd, touch_flood, 512 * 8 * 4 * sizeof(input_event));
     }
+private:
+    int touchScreenFd;
 };
 
 

@@ -2,9 +2,11 @@
 
 #include <QObject>
 #include <QJsonObject>
+
 #include "appitem.h"
 #include "eventfilter.h"
 #include "sysobject.h"
+#include "inputmanager.h"
 
 class Controller : public QObject
 {
@@ -12,7 +14,7 @@ class Controller : public QObject
 public:
     EventFilter* filter;
     QObject* root = nullptr;
-    explicit Controller(QObject* parent = 0) : QObject(parent), battery("/sys/class/power_supply/bq27441-0"), wifi("/sys/class/net/wlan0"){
+    explicit Controller(QObject* parent = 0) : QObject(parent), battery("/sys/class/power_supply/bq27441-0"), wifi("/sys/class/net/wlan0"), inputManager(){
         uiTimer = new QTimer(this);
         uiTimer->setInterval(3 * 1000); // 3 seconds
         connect(uiTimer, &QTimer::timeout, this, QOverload<>::of(&Controller::updateUIElements));
@@ -99,5 +101,5 @@ private:
     SysObject battery;
     SysObject wifi;
     QTimer* uiTimer;
-
+    InputManager inputManager;
 };

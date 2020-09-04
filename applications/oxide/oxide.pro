@@ -59,4 +59,6 @@ HEADERS += \
     controller.h \
     appitem.h \
     eventfilter.h \
+    inputmanager.h \
+    mxcfb.h \
     sysobject.h

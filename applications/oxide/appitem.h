@@ -2,9 +2,12 @@
 #define APP_H
 #include <QObject>
 
+#include "inputmanager.h"
+
 class AppItem : public QObject {
     Q_OBJECT
 public:
+    InputManager* inputManager;
 
     Q_PROPERTY(QString name MEMBER _name NOTIFY nameChanged)
     Q_PROPERTY(QString desc MEMBER _desc NOTIFY descChanged)

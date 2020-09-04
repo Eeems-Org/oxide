@@ -25,8 +25,6 @@
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
-#define EPDC_FLAG_EXP1 0x270ce20
-#define WAVEFORM_MODE_DU 0x1
 
 using namespace std;
 
