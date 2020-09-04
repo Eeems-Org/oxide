@@ -58,8 +58,9 @@ struct event_device {
     }
 };
 
+//const event_device wacom("/dev/input/event0", O_WRONLY);
 const event_device buttons("/dev/input/event2", O_RDWR);
-const event_device touchScreen("/dev/input/touchscreen0", O_WRONLY);
+const event_device touchScreen("/dev/input/event1", O_WRONLY);
 
 int lock_device(event_device evdev){
     cout << "locking " << evdev.device << endl;
@@ -263,7 +264,7 @@ int main(int argc, char *argv[]){
                     }
                     removeScreenshot();
                     inputManager.clear_touch_buffer(touchScreen.fd);
-                    inputManager.clear_button_buffer(buttons.fd);
+                    lock_device(touchScreen);
                     kill(i_ppid, SIGCONT);
                     procDir = opendir("/proc");
                     if(procDir != NULL){
@@ -280,6 +281,7 @@ int main(int argc, char *argv[]){
                         }
                     }
                     closedir(procDir);
+                    unlock_device(touchScreen);
                 }else{
                     press_button(buttons, ie.code, &stream);
                 }
