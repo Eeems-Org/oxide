@@ -14,9 +14,19 @@
 #include <experimental/filesystem>
 #include <signal.h>
 #include <dirent.h>
+#include <sys/mman.h>
+#include <linux/fb.h>
+#include <sys/ioctl.h>
 
 #include "fb2png.h"
 #include "inputmanager.h"
+#include "mxcfb.h"
+
+#define DISPLAYWIDTH 1404
+#define DISPLAYHEIGHT 1872
+#define TEMP_USE_REMARKABLE_DRAW 0x0018
+#define EPDC_FLAG_EXP1 0x270ce20
+#define WAVEFORM_MODE_DU 0x1
 
 using namespace std;
 
@@ -61,6 +71,8 @@ struct event_device {
 //const event_device wacom("/dev/input/event0", O_WRONLY);
 const event_device buttons("/dev/input/event2", O_RDWR);
 const event_device touchScreen("/dev/input/event1", O_WRONLY);
+
+const size_t size = DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(uint16_t);
 
 int lock_device(event_device evdev){
     cout << "locking " << evdev.device << endl;
@@ -123,7 +135,33 @@ void press_button(event_device evdev, int code, istream* stream){
     flush_stream(stream);
     lock_device(evdev);
 }
+void redraw_screen(int fd){
+    mxcfb_update_data update_data;
+    mxcfb_rect update_rect;
+    update_rect.top = 0;
+    update_rect.left = 0;
+    update_rect.width = DISPLAYWIDTH;
+    update_rect.height = DISPLAYHEIGHT;
+    update_data.update_marker = 0;
+    update_data.update_region = update_rect;
+    update_data.waveform_mode = WAVEFORM_MODE_DU;
+    update_data.update_mode = UPDATE_MODE_FULL;
+    update_data.dither_mode = EPDC_FLAG_EXP1;
+    update_data.temp = TEMP_USE_REMARKABLE_DRAW;
+    update_data.flags = 0;
+    ioctl(fd, MXCFB_SEND_UPDATE, &update_data);
+}
 
+std::vector<std::string> split_string_by_newline(const std::string& str)
+{
+    auto result = std::vector<std::string>{};
+    auto ss = std::stringstream{str};
+
+    for (std::string line; std::getline(ss, line, '\n');)
+        result.push_back(line);
+
+    return result;
+}
 
 string exec(const char* cmd) {
     array<char, 128> buffer;
@@ -180,6 +218,7 @@ int main(int argc, char *argv[]){
     // Get the size of an input event in the right format!
     input_event ie;
     streamsize sie = static_cast<streamsize>(sizeof(struct input_event));
+    static char* privateBuffer = new char[size];
 
     __gnu_cxx::stdio_filebuf<char> filebuf(buttons.fd, std::ios::in);
     istream stream(&filebuf);
@@ -214,7 +253,6 @@ int main(int argc, char *argv[]){
                         }
                     }
                 }else if(usecs > 1000000L && map[ie.code].name == "Right"){
-                    removeScreenshot();
                     takeScreenshot();
                     if(exists("/tmp/.screenshot")){
                         ifstream screenshotfile;
@@ -229,28 +267,25 @@ int main(int argc, char *argv[]){
                         }
                     }
                 }else if(argc > 1 && usecs > 1000000L && map[ie.code].name == "Middle"){
-                    removeScreenshot();
-                    takeScreenshot();
+                    cout << "Cloning screen..." << endl;
+                    int frameBufferHandle = open("/dev/fb0", O_RDWR);
+                    char* frameBuffer = (char*)mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
+                    memcpy(privateBuffer, frameBuffer, size);
                     // TODO Show some sort of message on screen letting them know that the process manager is starting
                     string ppid = argv[1];
                     auto i_ppid = stoi(ppid);
                     string my_pid = to_string(getpid());
-                    auto path = "/proc/" + ppid + "/status";
-                    auto procDir = opendir("/proc");
-                    if(procDir != NULL){
-                        cout << "Pausing child tasks..." << endl;
-                        while(auto entry = readdir(procDir)){
-                          string pid = entry->d_name;
-                          if(my_pid != pid && is_uint(pid) && exec(("cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'").c_str()) == ppid + "\n"){
-                              cout << "  " << pid << endl;
-                              // Found a child process
-                              auto i_pid = stoi(pid);
-                              // Pause the process
-                              kill(i_pid, SIGSTOP);
-                          }
-                        }
+                    auto procs  = split_string_by_newline(exec(("grep -Erl /proc/*/status --regexp='PPid:\\s+" + ppid + "' | awk '{print substr($1, 7, length($1) - 13)}'").c_str()));
+                    cout << "Pausing child tasks..." << endl;
+                    for(auto pid : procs){
+                      if(my_pid != pid && is_uint(pid) && exec(("cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'").c_str()) == ppid + "\n"){
+                          cout << "  " << pid << endl;
+                          // Found a child process
+                          auto i_pid = stoi(pid);
+                          // Pause the process
+                          kill(i_pid, SIGSTOP);
+                      }
                     }
-                    closedir(procDir);
                     kill(i_ppid, SIGSTOP);
                     cout << "Running task manager." << endl;
                     if(exists("/opt/bin/erode")){
@@ -262,25 +297,23 @@ int main(int argc, char *argv[]){
                     }else{
                         cout << "Could not find task manager." << endl;
                     }
-                    removeScreenshot();
+                    cout << "Restoring screen..." << endl;
+                    memcpy(frameBuffer, privateBuffer, size);
+                    redraw_screen(frameBufferHandle);
+                    close(frameBufferHandle);
                     inputManager.clear_touch_buffer(touchScreen.fd);
                     lock_device(touchScreen);
+                    cout << "Resuming child tasks..." << endl;
                     kill(i_ppid, SIGCONT);
-                    procDir = opendir("/proc");
-                    if(procDir != NULL){
-                        cout << "Resuming child tasks..." << endl;
-                        while(auto entry = readdir(procDir)){
-                          string pid = entry->d_name;
-                          if(my_pid != pid && is_uint(pid) && exec(("cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'").c_str()) == ppid + "\n"){
-                              cout << "  " << pid << endl;
-                              // Found a child process
-                              auto i_pid = stoi(pid);
-                              // Resume the process
-                              kill(i_pid, SIGCONT);
-                          }
-                        }
+                    for(auto pid : procs){
+                      if(my_pid != pid && is_uint(pid) && exec(("cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'").c_str()) == ppid + "\n"){
+                          cout << "  " << pid << endl;
+                          // Found a child process
+                          auto i_pid = stoi(pid);
+                          // Pause the process
+                          kill(i_pid, SIGCONT);
+                      }
                     }
-                    closedir(procDir);
                     unlock_device(touchScreen);
                 }else{
                     press_button(buttons, ie.code, &stream);

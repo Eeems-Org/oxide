@@ -34,7 +34,7 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
-    system("killall button-capture");
+    system("killall button-capture erode");
     if(exists("/opt/bin/button-capture")){
         qDebug() << "Starting button-capture";
         auto cmd = "/opt/bin/button-capture " + std::to_string(getpid()) + " &";
@@ -87,9 +87,11 @@ int main(int argc, char *argv[]){
     // Setup suspend timer
     filter.timer = new QTimer(root);
     filter.timer->setInterval(5 * 60 * 1000); // 5 minutes
-    QObject::connect(filter.timer, &QTimer::timeout, [stateController](){
-        qDebug() << "Suspending due to inactivity...";
-        stateController->setProperty("state", QString("suspended"));
+    QObject::connect(filter.timer, &QTimer::timeout, [stateController, &controller](){
+        if(!controller.getBatteryCharging()){
+            qDebug() << "Suspending due to inactivity...";
+            stateController->setProperty("state", QString("suspended"));
+        }
     });
     // Setup clock
     QTimer* clockTimer = new QTimer(root);

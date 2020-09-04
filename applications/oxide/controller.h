@@ -61,6 +61,9 @@ public:
         return m_sleepAfter;
     };
     void setSleepAfter(int);
+    int getBatteryCharging(){
+        return batteryCharging;
+    }
 signals:
     void automaticSleepChanged(bool);
     void columnsChanged(int);

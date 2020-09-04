@@ -13,7 +13,8 @@ INSTALLS += target
 
 HEADERS += \
     fb2png.h \
-    inputmanager.h
+    inputmanager.h \
+    mxcfb.h
 
 linux-oe-g++ {
     LIBS += -lpng16

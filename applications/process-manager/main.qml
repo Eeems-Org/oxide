@@ -15,11 +15,7 @@ ApplicationWindow {
             width: parent.width
             BetterButton {
                 text: "⬅️"
-                onClicked: {
-                    window.menuBar.visible = false;
-                    background.visible = true;
-                    quitTimer.start();
-                }
+                onClicked: quitTimer.start()
                 Timer {
                     id: quitTimer
                     interval: 1000
@@ -251,14 +247,6 @@ ApplicationWindow {
                     }
                 }
             }
-        },
-        Image {
-            id: background
-            visible: false
-            objectName: "background"
-            anchors.fill: parent
-            cache: false
-            source: "file:/tmp/fb.png"
         }
     ]
     footer: ToolBar {
