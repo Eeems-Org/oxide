@@ -168,6 +168,7 @@ ApplicationWindow {
                 id: root
                 enabled: appsView.enabled
                 width: appsView.cellWidth
+                height: appsView.cellHeight
                 state: "released"
                 states: [
                     State { name: "released" },
@@ -195,8 +196,7 @@ ApplicationWindow {
                     clip: true
                 }
                 MouseArea {
-                    width: root.width
-                    height: appsView.cellHeight
+                    anchors.fill: root
                     enabled: root.enabled
                     onPressed: root.state = "pressed"
                     onReleased: root.state = "released"
