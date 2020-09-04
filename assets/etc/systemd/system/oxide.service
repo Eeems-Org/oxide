@@ -1,14 +1,14 @@
 [Unit]
 Description=oxide launcher
-#StartLimitIntervalSec=600
-#StartLimitBurst=4
 After=home.mount
+StartLimitInterval=30
+StartLimitBurst=5
 OnFailure=xochitl.service
 
 [Service]
 ExecStart=/opt/bin/oxide
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-
-
