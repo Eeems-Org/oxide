@@ -3,10 +3,10 @@ Description=oxide launcher
 #StartLimitIntervalSec=600
 #StartLimitBurst=4
 After=home.mount
+OnFailure=xochitl.service
 
 [Service]
-# Run /opt/bin/oxide if found, if not start xochitl instead (failsafe)
-ExecStart=/bin/sh -c 'if [ -f /opt/bin/oxide ]; then /opt/bin/oxide; else systemctl start xochitl; fi'
+ExecStart=/opt/bin/oxide
 
 [Install]
 WantedBy=multi-user.target
