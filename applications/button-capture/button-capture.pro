@@ -12,7 +12,8 @@ target.path = /opt/bin
 INSTALLS += target
 
 HEADERS += \
-    fb2png.h
+    fb2png.h \
+    inputmanager.h
 
 linux-oe-g++ {
     LIBS += -lpng16

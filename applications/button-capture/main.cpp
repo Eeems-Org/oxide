@@ -9,12 +9,14 @@
 #include <unordered_map>
 #include <sys/time.h>
 #include <ext/stdio_filebuf.h>
-#include "fb2png.h"
 #include <sstream>
 #include <memory>
 #include <experimental/filesystem>
 #include <signal.h>
 #include <dirent.h>
+
+#include "fb2png.h"
+#include "inputmanager.h"
 
 using namespace std;
 
@@ -56,8 +58,8 @@ struct event_device {
     }
 };
 
-const event_device evdev("/dev/input/event2", O_RDWR);
-
+const event_device buttons("/dev/input/event2", O_RDWR);
+const event_device touchScreen("/dev/input/touchscreen0", O_WRONLY);
 
 int lock_device(event_device evdev){
     cout << "locking " << evdev.device << endl;
@@ -82,8 +84,8 @@ int unlock_device(event_device evdev){
 }
 void exit_handler(){
     // Release lock
-    unlock_device(evdev);
-    close(evdev.fd);
+    unlock_device(buttons);
+    close(buttons.fd);
 }
 void write_event(event_device evdev, input_event ie){
     cout << "WRITE: " << ie.type << ", " << ie.code << ", " << ie.value << " to " << evdev.device << endl;
@@ -145,6 +147,8 @@ int is_uint(string input){
 }
 
 int main(int argc, char *argv[]){
+    InputManager inputManager;
+
     // Mapping the correct button IDs.
     unordered_map<int, PressRecord> map;
     map[105] = PressRecord("Left");
@@ -153,17 +157,17 @@ int main(int argc, char *argv[]){
     map[116] = PressRecord("Power");
 
     // Get event devices
-    if(evdev.fd == -1){
-        cout << "Failed to open event device: " << evdev.device << endl;
+    if(buttons.fd == -1){
+        cout << "Failed to open event device: " << buttons.device << endl;
         return EXIT_FAILURE;
     }
     // Aquire lock
     char name[256];
     int result = 0;
     memset(name, 0, sizeof(name));
-    result = ioctl(evdev.fd, EVIOCGNAME(sizeof(name)), name);
-    cout << "Reading From : " << evdev.device << " (" << name << ")" << endl;
-    lock_device(evdev);
+    result = ioctl(buttons.fd, EVIOCGNAME(sizeof(name)), name);
+    cout << "Reading From : " << buttons.device << " (" << name << ")" << endl;
+    lock_device(buttons);
     cout << "Registering exit handler..." << endl;
     result = atexit(exit_handler);
     if(result != 0){
@@ -176,7 +180,7 @@ int main(int argc, char *argv[]){
     input_event ie;
     streamsize sie = static_cast<streamsize>(sizeof(struct input_event));
 
-    __gnu_cxx::stdio_filebuf<char> filebuf(evdev.fd, std::ios::in);
+    __gnu_cxx::stdio_filebuf<char> filebuf(buttons.fd, std::ios::in);
     istream stream(&filebuf);
     while(stream.read((char*)&ie, sie)){
         // TODO - Properly pass through non-button presses
@@ -258,7 +262,8 @@ int main(int argc, char *argv[]){
                         cout << "Could not find task manager." << endl;
                     }
                     removeScreenshot();
-                    // Todo - flush out touchscreen events from the buffer
+                    inputManager.clear_touch_buffer(touchScreen.fd);
+                    inputManager.clear_button_buffer(buttons.fd);
                     kill(i_ppid, SIGCONT);
                     procDir = opendir("/proc");
                     if(procDir != NULL){
@@ -276,7 +281,7 @@ int main(int argc, char *argv[]){
                     }
                     closedir(procDir);
                 }else{
-                    press_button(evdev, ie.code, &stream);
+                    press_button(buttons, ie.code, &stream);
                 }
             }
         }
