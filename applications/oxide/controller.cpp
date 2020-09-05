@@ -13,7 +13,7 @@
 #include "sysobject.h"
 
 QSet<QString> settings = { "columns", "fontSize", "sleepAfter" };
-QSet<QString> booleanSettings {"automaticSleep", "showWifiDb", "showBatteryPercentage" };
+QSet<QString> booleanSettings {"automaticSleep", "showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
 QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
 QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root /.config" };
 
@@ -37,7 +37,7 @@ bool configFileExists(){
 void Controller::loadSettings(){
     // If the config directory doesn't exist,
     // then print an error and stop.
-    qDebug() << "parsing config file ";
+    qDebug() << "parsing config file...";
     if(configFileExists()){
         auto configFile = getConfigFile();
         if (!configFile->open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -50,22 +50,29 @@ void Controller::loadSettings(){
             if(!line.startsWith("#") && !line.isEmpty()){
                 QStringList parts = line.split("=");
                 if(parts.length() != 2){
-                    qWarning() << "wrong format on " << line;
+                    qWarning() << "  Wrong format on " << line;
                     continue;
                 }
-                QString lhs = parts.at(0);
-                QString rhs = parts.at(1);
+                QString lhs = parts.at(0).trimmed();
+                QString rhs = parts.at(1).trimmed();
                 if (booleanSettings.contains(lhs)){
+                    auto property = lhs.toStdString();
                     auto value = rhs.toLower();
-                    setProperty(lhs.toStdString().c_str(), value == "true" || value == "t" || value == "y" || value == "yes" || value == "1");
+                    auto boolValue = value == "true" || value == "t" || value == "y" || value == "yes" || value == "1";
+                    setProperty(property.c_str(), boolValue);
+                    qDebug() << "  " << property.c_str() << ": " << boolValue;
                 }else if(settings.contains(lhs)){
-                    setProperty(lhs.toStdString().c_str(), rhs);
+                    auto property = lhs.toStdString();
+                    setProperty(property.c_str(), rhs);
+                    qDebug() << "  " << property.c_str() << ": " << rhs.toStdString().c_str();
                 }
             }
         }
         configFile->close();
     }
+    qDebug() << "Finished parsing config file.";
     if(root){
+        qDebug() << "Updating UI with settings from config file...";
         // Populate settings in UI
         QObject* columnsSpinBox = root->findChild<QObject*>("columnsSpinBox");
         if(!columnsSpinBox){
@@ -85,10 +92,11 @@ void Controller::loadSettings(){
         }else{
             sleepAfterSpinBox->setProperty("value", sleepAfter());
         }
+        qDebug() << "Finished updating UI.";
     }
 }
 void Controller::saveSettings(){
-    qDebug() << "Saving configuration";
+    qDebug() << "Saving configuration...";
     QSet<QString> items = settings;
     items.detach();
     QSet<QString> booleanItems = booleanSettings;
@@ -117,29 +125,36 @@ void Controller::saveSettings(){
             }
             QString lhs = parts.at(0);
             QString rhs = parts.at(1);
+            auto propertyName = lhs.toStdString();
             if (booleanItems.contains(lhs)){
-                if(property(lhs.toStdString().c_str()).toBool()){
+                if(property(propertyName.c_str()).toBool()){
                     rhs = "yes";
                 }else{
                     rhs = "no";
                 }
                 items.remove(lhs);
             }else if(items.contains(lhs)){
-                rhs = property(lhs.toStdString().c_str()).toString();
+                rhs = property(propertyName.c_str()).toString();
                 items.remove(lhs);
             }
-            buffer << lhs.toStdString() << "=" << rhs.toStdString() << std::endl;
+            auto value = rhs.toStdString();
+            qDebug() <<  " " << propertyName.c_str() << ": " << value.c_str();
+            buffer << propertyName << "=" << value << std::endl;
         }
     }else if (!configFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
         qCritical() << "Unable to create the config file. " << configFile->fileName();
         return;
     }
     for(QString item : items){
-        buffer << item.toStdString() << "=" << property(item.toStdString().c_str()).toString().toStdString() << std::endl;
+        auto propertyName = item.toStdString();
+        auto value = property(item.toStdString().c_str()).toString().toStdString();
+        qDebug() <<  " " << propertyName.c_str() << ": " << value.c_str();
+        buffer << propertyName << "=" << value << std::endl;
     }
     configFile->resize(0);
     stream << QString::fromStdString(buffer.str());
     configFile->close();
+    qDebug() << "Dont saving configuration.";
 }
 QList<QObject*> Controller::getApps(){
     QList<QObject*> result;
