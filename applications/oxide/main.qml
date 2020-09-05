@@ -327,7 +327,7 @@ ApplicationWindow {
                         from: 1
                         to: 10
                         stepSize: 1
-                        value: 5
+                        value: controller.sleepAfter
                         onValueChanged: controller.sleepAfter = this.value
                         Layout.preferredWidth: 300
                     }
@@ -390,7 +390,7 @@ ApplicationWindow {
                         from: 2
                         to: 10
                         stepSize: 2
-                        value: 6
+                        value: controller.columns
                         onValueChanged: controller.columns = this.value
                         Layout.preferredWidth: 300
                     }
@@ -408,7 +408,7 @@ ApplicationWindow {
                         from: 20
                         to: 35
                         stepSize: 3
-                        value: 23
+                        value: controller.fontSize
                         onValueChanged: controller.fontSize = this.value
                         Layout.preferredWidth: 300
                     }
