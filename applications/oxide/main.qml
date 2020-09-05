@@ -48,10 +48,13 @@ ApplicationWindow {
                 property bool connected: false
                 source: {
                     var icon;
-                    if(state === "unknown" || !connected){
-                        icon = "disconnected";
+                    console.log(state);
+                    if(state === "unknown"){
+                        icon = "unknown";
                     }else if(state === "down"){
                         icon = "down";
+                    }else if(!connected){
+                        icon = "disconnected";
                     }else if(link < 20){
                         icon = "0_bar";
                     }else if(link < 40){

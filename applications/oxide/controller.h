@@ -16,8 +16,10 @@ public:
     QObject* root = nullptr;
     explicit Controller(QObject* parent = 0) : QObject(parent), battery("/sys/class/power_supply/bq27441-0"), wifi("/sys/class/net/wlan0"), inputManager(){
         uiTimer = new QTimer(this);
+        uiTimer->setSingleShot(false);
         uiTimer->setInterval(3 * 1000); // 3 seconds
         connect(uiTimer, &QTimer::timeout, this, QOverload<>::of(&Controller::updateUIElements));
+        uiTimer->start();
     }
     Q_INVOKABLE void loadSettings();
     Q_INVOKABLE void saveSettings();

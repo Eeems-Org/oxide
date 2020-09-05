@@ -320,7 +320,7 @@ void Controller::updateWifiState(){
         return;
     }
     auto ip = exec("ip r | grep default | awk '{print $3}'");
-    auto connected = !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/53").c_str());
+    auto connected = ip != "" && !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/53").c_str());
     if(wifiConnected != connected){
         wifiConnected = connected;
         updateUI(ui, "connected", connected);
@@ -340,7 +340,10 @@ void Controller::updateHiddenUIElements(){
     if(showWifiDb()){
         QObject* ui = root->findChild<QObject*>("wifiState");
         if(ui){
-            auto level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
+            int level = 0;
+            if(wifiConnected){
+                level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
+            }
             if(wifiLevel != level){
                 wifiLevel = level;
                 ui->setProperty("level", level);

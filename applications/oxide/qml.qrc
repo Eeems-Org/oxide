@@ -33,5 +33,6 @@
         <file>img/battery/charging_100.png</file>
         <file>img/battery/unkown.png</file>
         <file>widgets/StatusIcon.qml</file>
+        <file>img/wifi/unknown.png</file>
     </qresource>
 </RCC>

@@ -4,6 +4,9 @@
 #include <QtQuick>
 #include <QQuickItem>
 #include <QObject>
+#include <QMap>
+#include <QSettings>
+
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -24,6 +27,19 @@ bool exists(const std::string& path) {
 }
 
 int main(int argc, char *argv[]){
+
+//    QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
+//    xochitlSettings.sync();
+
+//    qDebug() << xochitlSettings.value("Password").toString();
+
+//    xochitlSettings.beginGroup("wifinetworks");
+//    for(const QString& childKey : xochitlSettings.allKeys()){
+//        QVariantMap network = xochitlSettings.value(childKey).toMap();
+//        qDebug() << network["ssid"].toString() << network["protocol"].toString() << network["password"].toString();
+//    }
+//    xochitlSettings.endGroup();
+
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
     }
@@ -54,22 +70,22 @@ int main(int argc, char *argv[]){
     app.installEventFilter(&filter);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
-    Controller controller;
-    controller.killXochitl();
-    controller.filter = &filter;
+    Controller* controller = new Controller();
+    controller->killXochitl();
+    controller->filter = &filter;
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
-    controller.loadSettings();
+    controller->loadSettings();
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
-    context->setContextProperty("apps", QVariant::fromValue(controller.getApps()));
-    context->setContextProperty("controller", &controller);
+    context->setContextProperty("apps", QVariant::fromValue(controller->getApps()));
+    context->setContextProperty("controller", controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty()){
         qDebug() << "Nothing to display";
         return -1;
     }
     QObject* root = engine.rootObjects().first();
-    controller.root = root;
+    controller->root = root;
     filter.root = (QQuickItem*)root;
     QObject* stateController = root->findChild<QObject*>("stateController");
     if(!stateController){
@@ -83,13 +99,13 @@ int main(int argc, char *argv[]){
     }
     // Update UI
     clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
-    controller.updateBatteryLevel();
-    controller.updateWifiState();
+    controller->updateBatteryLevel();
+    controller->updateWifiState();
     // Setup suspend timer
     filter.timer = new QTimer(root);
     filter.timer->setInterval(5 * 60 * 1000); // 5 minutes
-    QObject::connect(filter.timer, &QTimer::timeout, [stateController, &controller](){
-        if(!controller.getBatteryCharging()){
+    QObject::connect(filter.timer, &QTimer::timeout, [stateController, controller](){
+        if(!controller->getBatteryCharging()){
             qDebug() << "Suspending due to inactivity...";
             stateController->setProperty("state", QString("suspended"));
         }
@@ -106,7 +122,7 @@ int main(int argc, char *argv[]){
         }
     });
     clockTimer ->start();
-    if(controller.automaticSleep()){
+    if(controller->automaticSleep()){
         filter.timer->start();
     }
     return app.exec();
