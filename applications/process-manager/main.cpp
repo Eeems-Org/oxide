@@ -38,6 +38,16 @@ int lock_device(event_device evdev){
     return result;
 }
 
+int unlock_device(event_device evdev){
+    int result = ioctl(evdev.fd, EVIOCGRAB, 0);
+    if(result){
+        qDebug() << "Failed to unlock " << evdev.device.c_str() << ": " << result;
+    }else{
+        qDebug() << "Unlocked " << evdev.device.c_str();
+    }
+    return result;
+}
+
 const char *qt_version = qVersion();
 
 int main(int argc, char *argv[]){
@@ -52,6 +62,7 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
+    lock_device(touchScreen);
     QGuiApplication app(argc, argv);
     EventFilter filter;
     app.installEventFilter(&filter);
@@ -76,6 +87,6 @@ int main(int argc, char *argv[]){
         qDebug() << "Can't find tasksView";
         return -1;
     }
-    lock_device(touchScreen);
+    unlock_device(touchScreen);
     return app.exec();
 }
