@@ -6,6 +6,9 @@
 #include <QObject>
 #include <QMap>
 #include <QSettings>
+#include <QProcess>
+#include <QStringList>
+#include <QtDBus>
 
 #include <fstream>
 #include <sstream>
@@ -14,6 +17,7 @@
 
 #include "controller.h"
 #include "eventfilter.h"
+#include "wifimanager.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
@@ -30,15 +34,7 @@ int main(int argc, char *argv[]){
 
 //    QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
 //    xochitlSettings.sync();
-
 //    qDebug() << xochitlSettings.value("Password").toString();
-
-//    xochitlSettings.beginGroup("wifinetworks");
-//    for(const QString& childKey : xochitlSettings.allKeys()){
-//        QVariantMap network = xochitlSettings.value(childKey).toMap();
-//        qDebug() << network["ssid"].toString() << network["protocol"].toString() << network["password"].toString();
-//    }
-//    xochitlSettings.endGroup();
 
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
@@ -51,18 +47,21 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
-    system("killall button-capture erode");
-    if(exists("/opt/bin/button-capture")){
-        qDebug() << "Starting button-capture";
-        auto cmd = "/opt/bin/button-capture " + std::to_string(getpid()) + " &";
-        system(cmd.c_str());
-    }else if(exists("/bin/button-capture")){
-        qDebug() << "Starting button-capture";
-        system("/bin/button-capture &");
-    }else if(exists("~/.local/button-capture")){
-        qDebug() << "Starting button-capture";
-        system("~/.local/button-capture &");
-    }else{
+    QProcess::execute("killall", QStringList() << "button-capture" << "erode");
+    auto buttonCaptureProc = new QProcess();
+    buttonCaptureProc->setArguments(QStringList() << std::to_string(getpid()).c_str());
+    qDebug() << "Looking for button-capture";
+    for(auto buttonCapture : QList<QString> { "/opt/bin/button-capture", "/bin/button-capture", "/home/root/.local/button-capture"}){
+        qDebug() << "  " << buttonCapture.toStdString().c_str();
+        if(exists(buttonCapture.toStdString())){
+            qDebug() << "   Found";
+            buttonCaptureProc->setProgram(buttonCapture);
+            buttonCaptureProc->start();
+            buttonCaptureProc->waitForStarted();
+            break;
+        }
+    }
+    if(!buttonCaptureProc->processId()){
         qDebug() << "button-capture not found or is running";
     }
     QGuiApplication app(argc, argv);
@@ -73,6 +72,7 @@ int main(int argc, char *argv[]){
     Controller* controller = new Controller();
     controller->killXochitl();
     controller->filter = &filter;
+    controller->wifiManager = WifiManager::singleton();
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
     controller->loadSettings();

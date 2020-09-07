@@ -1,4 +1,6 @@
-QT += gui quick
+QT += gui
+QT += quick
+QT += dbus
 CONFIG += c++11
 
 # The following define makes your compiler emit warnings if you use
@@ -61,4 +63,5 @@ HEADERS += \
     eventfilter.h \
     inputmanager.h \
     mxcfb.h \
-    sysobject.h
+    sysobject.h \
+    wifimanager.h

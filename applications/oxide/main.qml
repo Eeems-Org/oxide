@@ -48,7 +48,6 @@ ApplicationWindow {
                 property bool connected: false
                 source: {
                     var icon;
-                    console.log(state);
                     if(state === "unknown"){
                         icon = "unknown";
                     }else if(state === "down"){
@@ -69,6 +68,10 @@ ApplicationWindow {
                     return "qrc:/img/wifi/" + icon + ".png";
                 }
                 text: controller.showWifiDb ? level + "dBm" : ""
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: controller.wifiOn() ? controller.turnOffWifi() : controller.turnOnWifi()
+                }
             }
             StatusIcon {
                 id: batteryLevel
@@ -205,6 +208,10 @@ ApplicationWindow {
                     onCanceled: root.state = "released"
                     onClicked: {
                         model.modelData.execute();
+                        if(controller.wifiOn()){
+                            // Ensure wpa_supplicant is still running
+                            controller.turnOnWifi();
+                        }
                         stateController.state = "loading"
                         root.state = "released"
                     }
