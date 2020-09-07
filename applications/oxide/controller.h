@@ -24,11 +24,19 @@ public:
         uiTimer->start();
     }
     Q_INVOKABLE bool turnOnWifi(){
+        system("ifconfig wlan0 up");
         if(wifiManager == nullptr){
             if(!WifiManager::ensureService()){
                 return false;
             }
             wifiManager = WifiManager::singleton();
+            wifiState = "up";
+            wifiConnected = false;
+            QObject* ui = root->findChild<QObject*>("wifiState");
+            if(ui){
+                ui->setProperty("state", wifiState);
+                ui->setProperty("connected", wifiConnected);
+            }
         }else{
             wifiManager->loadNetworks();
         }
@@ -41,6 +49,13 @@ public:
             system("killall wpa_supplicant");
         }
         system("ifconfig wlan0 down");
+        wifiState = "down";
+        wifiConnected = false;
+        QObject* ui = root->findChild<QObject*>("wifiState");
+        if(ui){
+            ui->setProperty("state", wifiState);
+            ui->setProperty("connected", wifiConnected);
+        }
         return true;
     };
     Q_INVOKABLE bool wifiOn(){

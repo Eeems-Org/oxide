@@ -308,6 +308,9 @@ void Controller::updateWifiState(){
         return;
     }
     auto state = wifi.strProperty("operstate");
+    if(state == "down" && exec("ip a show wlan0 | grep UP") != ""){
+        state = "up";
+    }
     if(wifiState.toStdString() != state){
         wifiState = state.c_str();
         updateUI(ui, "state", wifiState);
