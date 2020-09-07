@@ -182,6 +182,9 @@ QList<QObject*> Controller::getApps(){
 
                 while (!in.atEnd()) {
                     QString line = in.readLine();
+                    if(line.startsWith("#")){
+                        continue;
+                    }
                     QStringList parts = line.split("=");
                     if(parts.length() != 2){
                         qWarning() << "wrong format on " << line;
@@ -190,13 +193,11 @@ QList<QObject*> Controller::getApps(){
                     QString lhs = parts.at(0);
                     QString rhs = parts.at(1);
                     QSet<QString> known = { "name", "desc", "call", "term" };
-                    if (known.contains(lhs)){
-                        app->setProperty(lhs.toUtf8(), rhs);
-                    }else if (lhs == "imgFile"){
-                        if(rhs != ":" && rhs != ""){
+                    if(rhs != ":" && rhs != ""){
+                        if (known.contains(lhs)){
+                            app->setProperty(lhs.toUtf8(), rhs);
+                        }else if (lhs == "imgFile"){
                             app->setProperty(lhs.toUtf8(), "file:" + configDirectoryPath + "/icons/" + rhs + ".png");
-                        }else{
-                            app->setProperty(lhs.toUtf8(), "qrc:/img/icon.png");
                         }
                     }
                 }

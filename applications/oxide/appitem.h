@@ -30,6 +30,6 @@ private:
     QString _desc;
     QString _call;
     QString _term;
-    QString _imgFile;
+    QString _imgFile = "qrc:/img/icon.png";
 };
 #endif // APP_H
