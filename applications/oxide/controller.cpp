@@ -209,6 +209,10 @@ QList<QObject*> Controller::getApps(){
             }
         }
     }
+    // Sort by name
+    std::sort(result.begin(), result.end(), [=](const QObject* a, const QObject* b) -> bool {
+        return a->property("name") < b->property("name");
+    });
     return result;
 }
 void Controller::powerOff(){
