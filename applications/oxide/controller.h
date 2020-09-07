@@ -29,6 +29,8 @@ public:
                 return false;
             }
             wifiManager = WifiManager::singleton();
+        }else{
+            wifiManager->loadNetworks();
         }
         return true;
     };

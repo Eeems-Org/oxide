@@ -168,6 +168,18 @@ public:
          : DBusInterface(SERVICE, path, SERVICE + ".Interface", connection),
            xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat) {
         // this->connection().connect("fi.w1.wpa_supplicant1", wlan0Path, "fi.w1.wpa_supplicant1.Interface", "ScanDone", this, SLOT(scanDone()));
+        loadNetworks();
+    };
+    ~WifiManager() {};
+    void waitForScan(){
+        while(Scanning()){
+            usleep(1000);
+        }
+    }
+    bool isConnected(){
+        return CurrentNetwork()->getPath().path() != "/";
+    }
+    void loadNetworks(){
         xochitlSettings.sync();
         xochitlSettings.beginGroup("wifinetworks");
         QList<QVariantMap> networks;
@@ -194,15 +206,6 @@ public:
             qDebug() << "Registered network " + network->SSID();
             network->setEnabled(true);
         }
-    };
-    ~WifiManager() {};
-    void waitForScan(){
-        while(Scanning()){
-            usleep(1000);
-        }
-    }
-    bool isConnected(){
-        return CurrentNetwork()->getPath().path() != "/";
     }
     void Scan(bool active = false){
         QMap<QString, QVariant> args;
