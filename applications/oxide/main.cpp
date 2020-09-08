@@ -18,6 +18,7 @@
 #include "controller.h"
 #include "eventfilter.h"
 #include "wifimanager.h"
+#include "dbusservice.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
@@ -31,7 +32,6 @@ bool exists(const std::string& path) {
 }
 
 int main(int argc, char *argv[]){
-
 //    QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
 //    xochitlSettings.sync();
 //    qDebug() << xochitlSettings.value("Password").toString();
@@ -73,6 +73,7 @@ int main(int argc, char *argv[]){
     controller->killXochitl();
     controller->filter = &filter;
     controller->wifiManager = WifiManager::singleton();
+    controller->dbusService = DBusService::singleton();
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
     controller->loadSettings();

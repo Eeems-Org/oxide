@@ -8,6 +8,7 @@
 #include "sysobject.h"
 #include "inputmanager.h"
 #include "wifimanager.h"
+#include "dbusservice.h"
 
 class Controller : public QObject
 {
@@ -15,6 +16,7 @@ class Controller : public QObject
 public:
     EventFilter* filter;
     WifiManager* wifiManager;
+    DBusService* dbusService;
     QObject* root = nullptr;
     explicit Controller(QObject* parent = 0) : QObject(parent), battery("/sys/class/power_supply/bq27441-0"), wifi("/sys/class/net/wlan0"), inputManager(){
         uiTimer = new QTimer(this);

@@ -116,15 +116,20 @@ private:
     QDBusObjectPath _path;
 };
 
+
 class WifiManager : public DBusInterface
 {
 public:
     static WifiManager* singleton(){
-        auto path = getWlan0Path().path();
-        if(path == "/"){
-            return nullptr;
+        static WifiManager* instance;
+        if(instance == nullptr){
+            auto path = getWlan0Path().path();
+            if(path == "/"){
+                return nullptr;
+            }
+            instance = new WifiManager(path, QDBusConnection::systemBus());
         }
-        return new WifiManager(path, QDBusConnection::systemBus());
+        return instance;
     }
     static bool ensureService(){
         QDBusConnection bus = QDBusConnection::systemBus();

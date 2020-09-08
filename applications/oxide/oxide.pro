@@ -30,8 +30,7 @@ QML_IMPORT_PATH =
 QML_DESIGNER_IMPORT_PATH =
 
 # Default rules for deployment.
-qnx: target.path = /tmp/bin
-else: unix:!android: target.path = /opt//bin
+target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
@@ -55,13 +54,19 @@ service.path = /opt/etc/systemd/system/
 INSTALLS += service
 
 DISTFILES += \
-    ../../assets/etc/oxide.conf
+    ../../assets/etc/oxide.conf \
+    generate_xml.sh
 ls
 HEADERS += \
+    batteryapi.h \
     controller.h \
     appitem.h \
+    dbusservice.h \
+    dbussettings.h \
     eventfilter.h \
     inputmanager.h \
     mxcfb.h \
     sysobject.h \
     wifimanager.h
+
+QMAKE_POST_LINK += $$_PRO_FILE_PWD_/generate_xml.sh

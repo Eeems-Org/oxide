@@ -34,5 +34,6 @@
         <file>img/battery/unkown.png</file>
         <file>widgets/StatusIcon.qml</file>
         <file>img/wifi/unknown.png</file>
+        <file>codes.eeems.oxide.conf</file>
     </qresource>
 </RCC>
