@@ -10,7 +10,7 @@
 class PowerAPI : public QObject {
     Q_OBJECT
     Q_CLASSINFO("Version", "1.0.0")
-    Q_CLASSINFO("D-Bus Interface", OXIDE_BATTERY_INTERFACE)
+    Q_CLASSINFO("D-Bus Interface", OXIDE_POWER_INTERFACE)
     Q_PROPERTY(int state READ state WRITE setState NOTIFY stateChanged)
     Q_PROPERTY(int batteryState READ batteryState NOTIFY batteryStateChanged)
     Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged)

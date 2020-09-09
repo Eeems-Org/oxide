@@ -239,13 +239,13 @@ void Controller::updateBatteryLevel() {
     if(!ui){
         qDebug() << "Can't find batteryLevel";
     }
-    auto batteryAPI = (PowerAPI*)dbusService->getAPI("battery");
+    auto powerAPI = (PowerAPI*)dbusService->getAPI("power");
     if(!battery.exists()){
         if(!batteryWarning){
             qWarning() << "Can't find battery information";
             batteryWarning = true;
-            emit batteryAPI->batteryWarning();
-            batteryAPI->setBatteryState(PowerAPI::BatteryUnknown);
+            emit powerAPI->batteryWarning();
+            powerAPI->setBatteryState(PowerAPI::BatteryUnknown);
             updateUI(ui, "warning", true);
         }
         return;
@@ -255,8 +255,8 @@ void Controller::updateBatteryLevel() {
         if(!batteryWarning){
             qWarning() << "Can't find battery information";
             batteryWarning = true;
-            emit batteryAPI->batteryWarning();
-            batteryAPI->setBatteryState(PowerAPI::BatteryNotPresent);
+            emit powerAPI->batteryWarning();
+            powerAPI->setBatteryState(PowerAPI::BatteryNotPresent);
             updateUI(ui, "warning", true);
         }
         return;
@@ -265,7 +265,7 @@ void Controller::updateBatteryLevel() {
     if(batteryLevel != battery_level){
         batteryLevel = battery_level;
         updateUI(ui, "level", batteryLevel);
-        batteryAPI->setBatteryLevel(batteryLevel);
+        powerAPI->setBatteryLevel(batteryLevel);
     }
     std::string status = battery.strProperty("status");
     auto charging = status == "Charging";
@@ -273,9 +273,9 @@ void Controller::updateBatteryLevel() {
         batteryCharging = charging;
         updateUI(ui, "charging", batteryCharging);
         if(charging){
-            batteryAPI->setBatteryState(PowerAPI::BatteryCharging);
+            powerAPI->setBatteryState(PowerAPI::BatteryCharging);
         }else{
-            batteryAPI->setBatteryState(PowerAPI::BatteryDischarging);
+            powerAPI->setBatteryState(PowerAPI::BatteryDischarging);
         }
     }
     std::string capacityLevel = battery.strProperty("capacity_level");
@@ -284,7 +284,7 @@ void Controller::updateBatteryLevel() {
         batteryAlert = alert;
         updateUI(ui, "alert", batteryAlert);
         if(alert){
-            emit batteryAPI->batteryWarning();
+            emit powerAPI->batteryWarning();
         }
     }
     auto warning = status == "Unknown" || status == "" || capacityLevel == "Unknown";
@@ -292,7 +292,7 @@ void Controller::updateBatteryLevel() {
         batteryWarning = warning;
         updateUI(ui, "warning", warning);
         if(warning){
-            emit batteryAPI->batteryWarning();
+            emit powerAPI->batteryWarning();
         }
     }
     if(showBatteryTemperature()){
