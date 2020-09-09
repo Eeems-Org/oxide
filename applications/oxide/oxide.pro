@@ -58,7 +58,6 @@ DISTFILES += \
     generate_xml.sh
 ls
 HEADERS += \
-    batteryapi.h \
     controller.h \
     appitem.h \
     dbusservice.h \
@@ -66,6 +65,7 @@ HEADERS += \
     eventfilter.h \
     inputmanager.h \
     mxcfb.h \
+    powerapi.h \
     sysobject.h \
     wifimanager.h
 

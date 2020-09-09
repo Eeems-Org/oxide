@@ -1,0 +1,25 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="codes.eeems.oxide1.Power">
+    <property name="state" type="i" access="readwrite"/>
+    <property name="batteryState" type="i" access="read"/>
+    <property name="batteryLevel" type="i" access="read"/>
+    <property name="chargerState" type="i" access="read"/>
+    <signal name="stateChanged">
+      <arg type="i" direction="out"/>
+    </signal>
+    <signal name="batteryStateChanged">
+      <arg type="i" direction="out"/>
+    </signal>
+    <signal name="batteryLevelChanged">
+      <arg type="i" direction="out"/>
+    </signal>
+    <signal name="chargerStateChanged">
+      <arg type="i" direction="out"/>
+    </signal>
+    <signal name="batteryWarning">
+    </signal>
+    <signal name="chargerWarning">
+    </signal>
+  </interface>
+</node>

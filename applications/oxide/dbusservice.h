@@ -12,7 +12,7 @@
 
 #include <fstream>
 
-#include "batteryapi.h"
+#include "powerapi.h"
 #include "dbussettings.h"
 
 using namespace std;
@@ -81,13 +81,20 @@ public:
         }
     }
     DBusService() : apis(){
-        apis.insert("battery", APIEntry{
-            .path = QString(OXIDE_SERVICE_PATH) + "/battery",
+        apis.insert("power", APIEntry{
+            .path = QString(OXIDE_SERVICE_PATH) + "/power",
             .dependants = QStringList(),
-            .instance = new BatteryAPI(this),
+            .instance = new PowerAPI(this),
         });
     }
     ~DBusService() {}
+
+    QObject* getAPI(QString name){
+        if(!apis.contains(name)){
+            return nullptr;
+        }
+        return apis[name].instance;
+    }
 
 public Q_SLOTS:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
@@ -117,7 +124,10 @@ public Q_SLOTS:
     QVariantMap APIs(){
         QVariantMap result;
         for(auto key : apis.keys()){
-            result[key] = QVariant::fromValue(apis[key].path);
+            auto api = apis[key];
+            if(api.dependants.length()){
+                result[key] = QVariant::fromValue(api.path);
+            }
         }
         return result;
     };

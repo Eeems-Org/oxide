@@ -19,8 +19,10 @@ SOURCES += \
         main.cpp
 
 DBUS_INTERFACES += ../oxide/interfaces/dbusservice.xml
-DBUS_INTERFACES += ../oxide/interfaces/batteryapi.xml
+DBUS_INTERFACES += ../oxide/interfaces/powerapi.xml
 
 # Default rules for deployment.
 target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
+
+HEADERS +=

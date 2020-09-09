@@ -239,10 +239,13 @@ void Controller::updateBatteryLevel() {
     if(!ui){
         qDebug() << "Can't find batteryLevel";
     }
+    auto batteryAPI = (PowerAPI*)dbusService->getAPI("battery");
     if(!battery.exists()){
         if(!batteryWarning){
             qWarning() << "Can't find battery information";
             batteryWarning = true;
+            emit batteryAPI->batteryWarning();
+            batteryAPI->setBatteryState(PowerAPI::BatteryUnknown);
             updateUI(ui, "warning", true);
         }
         return;
@@ -252,6 +255,8 @@ void Controller::updateBatteryLevel() {
         if(!batteryWarning){
             qWarning() << "Can't find battery information";
             batteryWarning = true;
+            emit batteryAPI->batteryWarning();
+            batteryAPI->setBatteryState(PowerAPI::BatteryNotPresent);
             updateUI(ui, "warning", true);
         }
         return;
@@ -260,23 +265,35 @@ void Controller::updateBatteryLevel() {
     if(batteryLevel != battery_level){
         batteryLevel = battery_level;
         updateUI(ui, "level", batteryLevel);
+        batteryAPI->setBatteryLevel(batteryLevel);
     }
     std::string status = battery.strProperty("status");
     auto charging = status == "Charging";
     if(batteryCharging != charging){
         batteryCharging = charging;
         updateUI(ui, "charging", batteryCharging);
+        if(charging){
+            batteryAPI->setBatteryState(PowerAPI::BatteryCharging);
+        }else{
+            batteryAPI->setBatteryState(PowerAPI::BatteryDischarging);
+        }
     }
     std::string capacityLevel = battery.strProperty("capacity_level");
     auto alert = capacityLevel == "Critical" || capacityLevel == "";
     if(batteryAlert != alert){
         batteryAlert = alert;
         updateUI(ui, "alert", batteryAlert);
+        if(alert){
+            emit batteryAPI->batteryWarning();
+        }
     }
     auto warning = status == "Unknown" || status == "" || capacityLevel == "Unknown";
     if(batteryWarning != warning){
         batteryWarning = warning;
         updateUI(ui, "warning", warning);
+        if(warning){
+            emit batteryAPI->batteryWarning();
+        }
     }
     if(showBatteryTemperature()){
         int temperature = battery.intProperty("temp") / 10;
