@@ -79,11 +79,12 @@ ApplicationWindow {
                 property bool alert: false
                 property bool warning: false
                 property bool charging: false
+                property bool present: false
                 property int level: 0
                 property int temperature: 0
                 source: {
                     var icon = "";
-                    if(alert){
+                    if(alert || !present){
                         icon = "alert";
                     }else if(warning){
                         icon = "unknown";

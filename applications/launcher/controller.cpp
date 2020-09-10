@@ -234,77 +234,7 @@ inline void updateUI(QObject* ui, const char* name, const QVariant& value){
         ui->setProperty(name, value);
     }
 }
-void Controller::updateBatteryLevel() {
-    QObject* ui = root->findChild<QObject*>("batteryLevel");
-    if(!ui){
-        qDebug() << "Can't find batteryLevel";
-    }
-    auto powerAPI = (PowerAPI*)dbusService->getAPI("power");
-    if(!battery.exists()){
-        if(!batteryWarning){
-            qWarning() << "Can't find battery information";
-            batteryWarning = true;
-            emit powerAPI->batteryWarning();
-            powerAPI->setBatteryState(PowerAPI::BatteryUnknown);
-            updateUI(ui, "warning", true);
-        }
-        return;
-    }
-    if(!battery.intProperty("present")){
-        qWarning() << "Battery is somehow not in the device?";
-        if(!batteryWarning){
-            qWarning() << "Can't find battery information";
-            batteryWarning = true;
-            emit powerAPI->batteryWarning();
-            powerAPI->setBatteryState(PowerAPI::BatteryNotPresent);
-            updateUI(ui, "warning", true);
-        }
-        return;
-    }
-    int battery_level = battery.intProperty("capacity");
-    if(batteryLevel != battery_level){
-        batteryLevel = battery_level;
-        updateUI(ui, "level", batteryLevel);
-        powerAPI->setBatteryLevel(batteryLevel);
-    }
-    std::string status = battery.strProperty("status");
-    auto charging = status == "Charging";
-    if(batteryCharging != charging){
-        batteryCharging = charging;
-        updateUI(ui, "charging", batteryCharging);
-        if(charging){
-            powerAPI->setBatteryState(PowerAPI::BatteryCharging);
-        }else{
-            powerAPI->setBatteryState(PowerAPI::BatteryDischarging);
-        }
-    }
-    std::string capacityLevel = battery.strProperty("capacity_level");
-    auto alert = capacityLevel == "Critical" || capacityLevel == "";
-    if(batteryAlert != alert){
-        batteryAlert = alert;
-        updateUI(ui, "alert", batteryAlert);
-        if(alert){
-            emit powerAPI->batteryWarning();
-        }
-    }
-    auto warning = status == "Unknown" || status == "" || capacityLevel == "Unknown";
-    if(batteryWarning != warning){
-        batteryWarning = warning;
-        updateUI(ui, "warning", warning);
-        if(warning){
-            emit powerAPI->batteryWarning();
-        }
-    }
-    if(showBatteryTemperature()){
-        int temperature = battery.intProperty("temp") / 10;
-        if(batteryTemperature != temperature){
-            batteryTemperature = temperature;
-            updateUI(ui, "temperature", temperature);
-        }
-    }
-    return;
-}
-std::string exec(const char* cmd) {
+std::string Controller::exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
@@ -357,7 +287,6 @@ void Controller::updateWifiState(){
     }
 }
 void Controller::updateUIElements(){
-    updateBatteryLevel();
     updateWifiState();
     updateHiddenUIElements();
 }
@@ -372,16 +301,6 @@ void Controller::updateHiddenUIElements(){
             if(wifiLevel != level){
                 wifiLevel = level;
                 ui->setProperty("level", level);
-            }
-        }
-    }
-    if(showBatteryTemperature()){
-        QObject* ui = root->findChild<QObject*>("batteryLevel");
-        if(ui){
-            int temperature = battery.intProperty("temp") / 10;
-            if(batteryTemperature != temperature){
-                batteryTemperature = temperature;
-                ui->setProperty("temperature", temperature);
             }
         }
     }

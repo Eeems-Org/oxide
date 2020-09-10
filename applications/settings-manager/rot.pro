@@ -18,8 +18,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp
 
-DBUS_INTERFACES += ../oxide/interfaces/dbusservice.xml
-DBUS_INTERFACES += ../oxide/interfaces/powerapi.xml
+DBUS_INTERFACES += ../../interfaces/dbusservice.xml
+DBUS_INTERFACES += ../../interfaces/powerapi.xml
 
 # Default rules for deployment.
 target.path = /opt/bin

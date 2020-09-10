@@ -36,6 +36,9 @@ target.path = /opt/bin
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 
+DBUS_INTERFACES += ../../interfaces/dbusservice.xml
+DBUS_INTERFACES += ../../interfaces/powerapi.xml
+
 linux-oe-g++ {
     LIBS += -lqsgepaper
 }
@@ -54,19 +57,14 @@ service.path = /opt/etc/systemd/system/
 INSTALLS += service
 
 DISTFILES += \
-    ../../assets/etc/oxide.conf \
-    generate_xml.sh
+    ../../assets/etc/oxide.conf
 ls
 HEADERS += \
     controller.h \
     appitem.h \
-    dbusservice.h \
     dbussettings.h \
     eventfilter.h \
     inputmanager.h \
     mxcfb.h \
-    powerapi.h \
     sysobject.h \
     wifimanager.h
-
-QMAKE_POST_LINK += $$_PRO_FILE_PWD_/generate_xml.sh

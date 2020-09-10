@@ -4,6 +4,7 @@
     <property name="state" type="i" access="readwrite"/>
     <property name="batteryState" type="i" access="read"/>
     <property name="batteryLevel" type="i" access="read"/>
+    <property name="batteryTemperature" type="i" access="read"/>
     <property name="chargerState" type="i" access="read"/>
     <signal name="stateChanged">
       <arg type="i" direction="out"/>
@@ -14,10 +15,15 @@
     <signal name="batteryLevelChanged">
       <arg type="i" direction="out"/>
     </signal>
+    <signal name="batteryTemperatureChanged">
+      <arg type="i" direction="out"/>
+    </signal>
     <signal name="chargerStateChanged">
       <arg type="i" direction="out"/>
     </signal>
     <signal name="batteryWarning">
+    </signal>
+    <signal name="batteryAlert">
     </signal>
     <signal name="chargerWarning">
     </signal>

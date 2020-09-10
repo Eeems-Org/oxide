@@ -14,24 +14,68 @@
 #include <sstream>
 #include <iomanip>
 #include <unistd.h>
+#include <cstdlib>
+#include <signal.h>
 
 #include "controller.h"
 #include "eventfilter.h"
 #include "wifimanager.h"
-#include "dbusservice.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 
-const char *qt_version = qVersion();
+using namespace std;
 
-bool exists(const std::string& path) {
-    QFile file(path.c_str());
-    return file.exists();
+const char *qt_version = qVersion();
+QProcess* tarnishProc = nullptr;
+
+vector<std::string> split_string_by_newline(const std::string& str){
+    auto result = vector<std::string>{};
+    auto ss = stringstream{str};
+
+    for (string line; getline(ss, line, '\n');)
+        result.push_back(line);
+
+    return result;
+}
+int is_uint(string input){
+    unsigned int i;
+    for (i=0; i < input.length(); i++){
+        if(!isdigit(input.at(i))){
+            return 0;
+        }
+    }
+    return 1;
+}
+void signalHandler(__attribute__((unused)) const int signum){
+    exit(EXIT_FAILURE);
+}
+void onExit(){
+    if(tarnishProc != nullptr && tarnishProc->processId()){
+        qDebug() << "Killing tarnish";
+        tarnishProc->kill();
+    }
+    auto ppid = to_string(getpid());
+    auto procs  = split_string_by_newline(Controller::exec((
+        "grep -Erl /proc/*/status --regexp='PPid:\\s+" + ppid + "' | awk '{print substr($1, 7, length($1) - 13)}'"
+    ).c_str()));
+    qDebug() << "Killing child tasks...";
+    for(auto pid : procs){
+      string cmd = "cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'";
+      if(is_uint(pid) && Controller::exec(cmd.c_str()) == ppid + "\n"){
+          qDebug() << "  " << pid.c_str();
+          // Found a child process
+          auto i_pid = stoi(pid);
+          // Pause the process
+          kill(i_pid, SIGTERM);
+      }
+    }
 }
 
 int main(int argc, char *argv[]){
+    signal(SIGTERM, signalHandler);
+    std::atexit(onExit);
 //    QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
 //    xochitlSettings.sync();
 //    qDebug() << xochitlSettings.value("Password").toString();
@@ -47,22 +91,23 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
-    QProcess::execute("killall", QStringList() << "button-capture" << "erode");
-    auto buttonCaptureProc = new QProcess();
-    buttonCaptureProc->setArguments(QStringList() << std::to_string(getpid()).c_str());
-    qDebug() << "Looking for button-capture";
-    for(auto buttonCapture : QList<QString> { "/opt/bin/button-capture", "/bin/button-capture", "/home/root/.local/button-capture"}){
-        qDebug() << "  " << buttonCapture.toStdString().c_str();
-        if(exists(buttonCapture.toStdString())){
+    QProcess::execute("killall", QStringList() << "tarnish" << "erode");
+    tarnishProc = new QProcess();
+    tarnishProc->setProcessChannelMode(QProcess::ForwardedChannels);
+    tarnishProc->setArguments(QStringList() << std::to_string(getpid()).c_str());
+    qDebug() << "Looking for tarnish";
+    for(auto tarnish : QList<QString> { "/opt/bin/tarnish", "/bin/tarnish", "/home/root/.local/tarnish"}){
+        qDebug() << "  " << tarnish.toStdString().c_str();
+        if(QFile(tarnish).exists()){
             qDebug() << "   Found";
-            buttonCaptureProc->setProgram(buttonCapture);
-            buttonCaptureProc->start();
-            buttonCaptureProc->waitForStarted();
+            tarnishProc->setProgram(tarnish);
+            tarnishProc->start();
+            tarnishProc->waitForStarted();
             break;
         }
     }
-    if(!buttonCaptureProc->processId()){
-        qDebug() << "button-capture not found or is running";
+    if(!tarnishProc->processId()){
+        qDebug() << "tarnish not found or is running";
     }
     QGuiApplication app(argc, argv);
     EventFilter filter;
@@ -73,7 +118,6 @@ int main(int argc, char *argv[]){
     controller->killXochitl();
     controller->filter = &filter;
     controller->wifiManager = WifiManager::singleton();
-    controller->dbusService = DBusService::singleton();
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
     controller->loadSettings();
@@ -100,7 +144,6 @@ int main(int argc, char *argv[]){
     }
     // Update UI
     clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
-    controller->updateBatteryLevel();
     controller->updateWifiState();
     // Setup suspend timer
     filter.timer = new QTimer(root);

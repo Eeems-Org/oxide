@@ -56,10 +56,11 @@ int main(int argc, char *argv[]){
     QCommandLineParser parser;
     parser.setApplicationDescription("Oxide settings tool");
     parser.addHelpOption();
+    parser.applicationDescription();
     parser.addVersionOption();
     parser.addPositionalArgument("api", "API to work with");
     parser.addPositionalArgument("action", "get, set, listen");
-    parser.addPositionalArgument("property", "Property to interact with");
+    parser.addPositionalArgument("propertyOrSignal", "Property or signal to interact with");
     parser.addPositionalArgument("value", "Value to set the property to");
 
     parser.process(app);
