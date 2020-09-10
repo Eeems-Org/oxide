@@ -32,3 +32,6 @@ QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
 DISTFILES += \
     generate_xml.sh
+
+RESOURCES += \
+    qml.qrc

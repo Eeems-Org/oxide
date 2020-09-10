@@ -49,7 +49,7 @@ int is_uint(string input){
     return 1;
 }
 void signalHandler(__attribute__((unused)) const int signum){
-    exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
 }
 void onExit(){
     if(tarnishProc != nullptr && tarnishProc->processId()){
@@ -109,6 +109,7 @@ int main(int argc, char *argv[]){
     if(!tarnishProc->processId()){
         qDebug() << "tarnish not found or is running";
     }
+    WifiManager::singleton();
     QGuiApplication app(argc, argv);
     EventFilter filter;
     app.installEventFilter(&filter);
@@ -117,7 +118,6 @@ int main(int argc, char *argv[]){
     Controller* controller = new Controller();
     controller->killXochitl();
     controller->filter = &filter;
-    controller->wifiManager = WifiManager::singleton();
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
     controller->loadSettings();

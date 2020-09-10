@@ -121,15 +121,50 @@ class WifiManager : public DBusInterface
 {
 public:
     static WifiManager* singleton(){
-        static WifiManager* instance;
-        if(instance == nullptr){
-            auto path = getWlan0Path().path();
-            if(path == "/"){
-                return nullptr;
+        if(instance() == nullptr){
+            xochitlSettings()->sync();
+            if(xochitlSettings()->value("wifion").toBool() && !turnOnWifi()){
+                turnOffWifi();
             }
-            instance = new WifiManager(path, QDBusConnection::systemBus());
         }
-        return instance;
+        return instance();
+    }
+    static bool turnOnWifi(){
+        qDebug() << "Turning wifi on...";
+        system("ifconfig wlan0 up");
+        if(!ensureService()){
+            qDebug() << "Failed to turn on wifi";
+            system("ifconfig wlan0 down");
+            return false;
+        }
+        qDebug() << "Waiting for wlan0 dbus interface...";
+        QString path = getWlan0Path().path();
+        if(path == "/"){
+            qDebug() << "Failed to get dbus interface";
+            turnOffWifi();
+            return false;
+        }
+        qDebug() << "Initializing...";
+        if(instance(path) == nullptr){
+            qDebug() << "Failed to create instance";
+            turnOffWifi();
+            return false;
+        }
+        xochitlSettings()->setValue("wifion", true);
+        xochitlSettings()->sync();
+        qDebug() << "Loading networks...";
+        instance()->loadNetworks();
+        return true;
+    }
+    static void turnOffWifi(){
+        qDebug() << "Turning wifi off";
+        xochitlSettings()->setValue("wifion", false);
+        xochitlSettings()->sync();
+        if(instance() != nullptr){
+            instance()->Disconnect();
+            instance("/");
+        }
+        system("ifconfig wlan0 down");
     }
     static bool ensureService(){
         QDBusConnection bus = QDBusConnection::systemBus();
@@ -140,13 +175,12 @@ public:
         // Connect to service
         QStringList serviceNames = bus.interface()->registeredServiceNames();
         if (!serviceNames.contains(SERVICE)){
-            auto wpa_supplicant = new QProcess();
-            wpa_supplicant->setProgram("wpa_supplicant");
-            wpa_supplicant->setArguments(QStringList() << "-u");
-            if(!wpa_supplicant->startDetached()){
-                qCritical() << "Failed to start wifi daemon";
+            qDebug() << "Starting wpa_supplicant...";
+            if(!system("systemctl --quiet is-active wpa_supplicant") && !system("systemctl --quiet start wpa_supplicant")){
+                qCritical() << "Failed to start wpa_supplicant";
                 return false;
             }
+            qDebug() << "Waiting for wpa_supplicant dbus service...";
             while(!serviceNames.contains(SERVICE)){
                 usleep(1000);
                 serviceNames = bus.interface()->registeredServiceNames();
@@ -170,8 +204,7 @@ public:
     }
 
     WifiManager(const QString& path, const QDBusConnection& connection)
-         : DBusInterface(SERVICE, path, SERVICE + ".Interface", connection),
-           xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat) {
+         : DBusInterface(SERVICE, path, SERVICE + ".Interface", connection) {
         // this->connection().connect("fi.w1.wpa_supplicant1", wlan0Path, "fi.w1.wpa_supplicant1.Interface", "ScanDone", this, SLOT(scanDone()));
         loadNetworks();
     };
@@ -185,14 +218,14 @@ public:
         return CurrentNetwork()->getPath().path() != "/";
     }
     void loadNetworks(){
-        xochitlSettings.sync();
-        xochitlSettings.beginGroup("wifinetworks");
+        xochitlSettings()->sync();
+        xochitlSettings()->beginGroup("wifinetworks");
         QList<QVariantMap> networks;
-        for(const QString& childKey : xochitlSettings.allKeys()){
-            QVariantMap network = xochitlSettings.value(childKey).toMap();
+        for(const QString& childKey : xochitlSettings()->allKeys()){
+            QVariantMap network = xochitlSettings()->value(childKey).toMap();
             networks.append(network);
         }
-        xochitlSettings.endGroup();
+        xochitlSettings()->endGroup();
         for(auto network : Networks()){
             QString ssid = network->Properties()["ssid"].toString();
             for(auto item : networks){
@@ -315,7 +348,25 @@ public:
 
 
 private:
-    QSettings xochitlSettings;
+    static QSettings* xochitlSettings(){
+        static QSettings* xochitlSettings;
+        if(xochitlSettings == nullptr){
+            xochitlSettings = new QSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
+        }
+        return xochitlSettings;
+    }
+    static WifiManager* instance(QString path = ""){
+        static WifiManager* instance;
+        if(path.isEmpty()){
+            return instance;
+        }
+        if(instance != nullptr){
+            delete instance;
+        }
+        if(path != "/"){
+            instance = new WifiManager(path, QDBusConnection::systemBus());
+        }
+        return instance;
+    };
 };
-
 #endif // WIFIMANAGER_H

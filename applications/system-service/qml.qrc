@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>codes.eeems.oxide.conf</file>
+    </qresource>
+</RCC>

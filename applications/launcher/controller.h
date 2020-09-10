@@ -26,7 +26,6 @@ class Controller : public QObject
 public:
     static std::string exec(const char* cmd);
     EventFilter* filter;
-    WifiManager* wifiManager;
     QObject* root = nullptr;
     explicit Controller(QObject* parent = 0) : QObject(parent), wifi("/sys/class/net/wlan0"), inputManager(){
         uiTimer = new QTimer(this);
@@ -62,33 +61,28 @@ public:
         connect(powerApi, &Power::stateChanged, this, &Controller::stateChanged);
     }
     Q_INVOKABLE bool turnOnWifi(){
-        system("ifconfig wlan0 up");
-        if(wifiManager == nullptr){
-            if(!WifiManager::ensureService()){
-                return false;
-            }
-            wifiManager = WifiManager::singleton();
-            wifiState = "up";
+        wifiState = "up";
+        wifiConnected = false;
+        QObject* ui = root->findChild<QObject*>("wifiState");
+        if(ui){
+            ui->setProperty("state", wifiState);
+            ui->setProperty("connected", wifiConnected);
+        }
+        if(!WifiManager::turnOnWifi()){
+            wifiState = "down";
             wifiConnected = false;
-            QObject* ui = root->findChild<QObject*>("wifiState");
             if(ui){
                 ui->setProperty("state", wifiState);
                 ui->setProperty("connected", wifiConnected);
             }
-        }else{
-            wifiManager->loadNetworks();
+            return false;
         }
         return true;
     };
     Q_INVOKABLE bool turnOffWifi(){
-        if(wifiManager != nullptr){
-            delete wifiManager;
-            wifiManager = nullptr;
-            system("killall wpa_supplicant");
-        }
-        system("ifconfig wlan0 down");
         wifiState = "down";
         wifiConnected = false;
+        WifiManager::turnOffWifi();
         QObject* ui = root->findChild<QObject*>("wifiState");
         if(ui){
             ui->setProperty("state", wifiState);
@@ -97,7 +91,7 @@ public:
         return true;
     };
     Q_INVOKABLE bool wifiOn(){
-        return wifiManager != nullptr;
+        return WifiManager::singleton() != nullptr;
     };
     Q_INVOKABLE void loadSettings();
     Q_INVOKABLE void saveSettings();
