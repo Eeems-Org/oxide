@@ -119,6 +119,28 @@ private:
     bool m_batteryAlert = false;
     bool m_chargerWarning = false;
 
+    bool badHealth(QString match){
+        static const  QSet<QString> ret {
+            "Overheat",
+            "Dead",
+            "Over voltage",
+            "Unspecified failure",
+            "Cold",
+            "Watchdog timer expire",
+            "Safety timer expire",
+            "Over current"
+        };
+        return ret.contains(match);
+    }
+    bool warnHealth(QString match){
+        static const QSet<QString> ret {
+            "Unknown",
+            "Warm",
+            "Cool",
+            "Hot"
+        };
+        return ret.contains(match);
+    }
     int batteryInt(QString property){
         int result = 0;
         for(auto battery : batteries){
@@ -151,16 +173,28 @@ private:
         bool warning = false;
         bool charging = false;
         for(auto battery : batteries){
-            auto capacityLevel = battery.strProperty("capacity_level");
             auto status = battery.strProperty("status");
             if(!charging && status == "Charging"){
                 charging = true;
             }
-            if(capacityLevel == "Critical" || capacityLevel == ""){
-                alert = true;
-            }
-            if(status == "Unknown" || status == "" || capacityLevel == "Unknown"){
+            if(status == "Unknown" || status == ""){
                 warning = true;
+            }
+            if(battery.hasProperty("health")){
+                auto health = battery.strProperty("health");
+                if(badHealth(QString(health.c_str()))){
+                    alert = true;
+                }else if(!warning && warnHealth(QString(health.c_str()))){
+                    warning = true;
+                }
+            }else if(!alert && battery.hasProperty("temp")){
+                auto temp = battery.intProperty("temp");
+                if(battery.hasProperty("temp_alert_max") && temp > battery.intProperty("temp_alert_max")){
+                    alert = true;
+                }
+                if(battery.hasProperty("temp_alert_min") && temp < battery.intProperty("temp_alert_min")){
+                    alert = true;
+                }
             }
             if(alert && warning && charging){
                 break;
@@ -260,8 +294,10 @@ private:
 
 private slots:
     void update(){
-        updateBattery();
-        updateCharger();
+        if(property("enabled").toBool()){
+            updateBattery();
+            updateCharger();
+        }
     }
 };
 

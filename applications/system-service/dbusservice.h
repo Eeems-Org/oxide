@@ -85,6 +85,7 @@ public Q_SLOTS:
         if(!api.dependants.length()){
             QDBusConnection::systemBus().registerObject(api.path, api.instance, QDBusConnection::ExportAllContents);
             apiAvailable(QDBusObjectPath(api.path));
+            api.instance->setProperty("enabled", true);
         }
         api.dependants.append(message.service());
         return QDBusObjectPath(api.path);
@@ -99,6 +100,7 @@ public Q_SLOTS:
         if(!api.dependants.length()){
             QDBusConnection::systemBus().unregisterObject(api.path);
             apiUnavailable(QDBusObjectPath(api.path));
+            api.instance->setProperty("enabled", false);
         }
     };
     QVariantMap APIs(){
@@ -127,6 +129,7 @@ private Q_SLOTS:
                 if(!api.dependants.length()){
                     QDBusConnection::systemBus().unregisterObject(api.path);
                     apiUnavailable(QDBusObjectPath(api.path));
+                    api.instance->setProperty("enabled", false);
                 }
             }
         }

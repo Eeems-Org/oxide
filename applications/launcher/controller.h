@@ -202,7 +202,6 @@ private slots:
                 break;
                 case BatteryUnknown:
                 default:
-                    ui->setProperty("warning", true);
                     ui->setProperty("charging", false);
             }
         }

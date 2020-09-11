@@ -1,0 +1,383 @@
+<?xml version="1.0"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+    <interface name="fi.w1.wpa_supplicant1">
+        <method name="CreateInterface">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+            <arg name="path" type="o" direction="out"/>
+        </method>
+        <method name="RemoveInterface">
+            <arg name="path" type="o" direction="in"/>
+        </method>
+        <method name="GetInterface">
+            <arg name="ifname" type="s" direction="in"/>
+            <arg name="path" type="o" direction="out"/>
+        </method>
+        <signal name="InterfaceAdded">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap"/>
+            <arg name="path" type="o"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <signal name="InterfaceRemoved">
+            <arg name="path" type="o"/>
+        </signal>
+        <signal name="PropertiesChanged">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <property name="DebugLevel" type="s" access="readwrite"/>
+        <property name="DebugTimestamp" type="b" access="readwrite"/>
+        <property name="DebugShowKeys" type="b" access="readwrite"/>
+        <property name="Interfaces" type="ao" access="read"/>
+        <property name="EapMethods" type="as" access="read"/>
+    </interface>
+    <interface name="fi.w1.wpa_supplicant1.Interface">
+        <method name="Scan">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+        </method>
+        <method name="SignalPoll">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="out"/>
+        </method>
+        <method name="Disconnect"/>
+        <method name="AddNetwork">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+            <arg name="path" type="o" direction="out"/>
+        </method>
+        <method name="Reassociate"/>
+        <method name="Reattach"/>
+        <method name="RemoveNetwork">
+            <arg name="path" type="o" direction="in"/>
+        </method>
+        <method name="RemoveAllNetworks"/>
+        <method name="SelectNetwork">
+            <arg name="path" type="o" direction="in"/>
+        </method>
+        <method name="NetworkReply">
+            <arg name="path" type="o" direction="in"/>
+            <arg name="field" type="s" direction="in"/>
+            <arg name="value" type="s" direction="in"/>
+        </method>
+        <method name="AddBlob">
+            <arg name="name" type="s" direction="in"/>
+            <arg name="data" type="ay" direction="in"/>
+        </method>
+        <method name="GetBlob">
+            <arg name="name" type="s" direction="in"/>
+            <arg name="data" type="ay" direction="out"/>
+        </method>
+        <method name="RemoveBlob">
+            <arg name="name" type="s" direction="in"/>
+        </method>
+        <method name="SetPKCS11EngineAndModulePath">
+            <arg name="pkcs11_engine_path" type="s" direction="in"/>
+            <arg name="pkcs11_module_path" type="s" direction="in"/>
+        </method>
+        <method name="FlushBSS">
+            <arg name="age" type="u" direction="in"/>
+        </method>
+        <method name="SubscribeProbeReq"/>
+        <method name="UnsubscribeProbeReq"/>
+        <method name="EAPLogoff"/>
+        <method name="EAPLogon"/>
+        <method name="AutoScan">
+            <arg name="arg" type="s" direction="in"/>
+        </method>
+        <method name="TDLSDiscover">
+            <arg name="peer_address" type="s" direction="in"/>
+        </method>
+        <method name="TDLSSetup">
+            <arg name="peer_address" type="s" direction="in"/>
+        </method>
+        <method name="TDLSStatus">
+            <arg name="peer_address" type="s" direction="in"/>
+            <arg name="status" type="s" direction="out"/>
+        </method>
+        <method name="TDLSTeardown">
+            <arg name="peer_address" type="s" direction="in"/>
+        </method>
+        <signal name="ScanDone">
+            <arg name="success" type="b"/>
+        </signal>
+        <signal name="BSSAdded">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap"/>
+            <arg name="path" type="o"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <signal name="BSSRemoved">
+            <arg name="path" type="o"/>
+        </signal>
+        <signal name="BlobAdded">
+            <arg name="name" type="s"/>
+        </signal>
+        <signal name="BlobRemoved">
+            <arg name="name" type="s"/>
+        </signal>
+        <signal name="NetworkAdded">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap"/>
+            <arg name="path" type="o"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <signal name="NetworkRemoved">
+            <arg name="path" type="o"/>
+        </signal>
+        <signal name="NetworkSelected">
+            <arg name="path" type="o"/>
+        </signal>
+        <signal name="PropertiesChanged">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <signal name="ProbeRequest">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}"/>
+        </signal>
+        <signal name="Certification">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="certification" type="a{sv}"/>
+        </signal>
+        <signal name="EAP">
+            <arg name="status" type="s"/>
+            <arg name="parameter" type="s"/>
+        </signal>
+        <signal name="StaAuthorized">
+            <arg name="name" type="s"/>
+        </signal>
+        <signal name="StaDeauthorized">
+            <arg name="name" type="s"/>
+        </signal>
+        <property name="Capabilities" type="a{sv}" access="read">
+            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+        </property>
+        <property name="State" type="s" access="read"/>
+        <property name="Scanning" type="b" access="read"/>
+        <property name="ApScan" type="u" access="readwrite"/>
+        <property name="BSSExpireAge" type="u" access="readwrite"/>
+        <property name="BSSExpireCount" type="u" access="readwrite"/>
+        <property name="Country" type="s" access="readwrite"/>
+        <property name="Ifname" type="s" access="read"/>
+        <property name="Driver" type="s" access="read"/>
+        <property name="BridgeIfname" type="s" access="read"/>
+        <property name="CurrentBSS" type="o" access="read"/>
+        <property name="CurrentNetwork" type="o" access="read"/>
+        <property name="CurrentAuthMode" type="s" access="read"/>
+        <property name="Blobs" type="a{say}" access="read">
+            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+        </property>
+        <property name="BSSs" type="ao" access="read"/>
+        <property name="Networks" type="ao" access="read"/>
+        <property name="FastReauth" type="b" access="readwrite"/>
+        <property name="ScanInterval" type="i" access="readwrite"/>
+        <property name="PKCS11EnginePath" type="s" access="read"/>
+        <property name="PKCS11ModulePath" type="s" access="read"/>
+        <property name="DisconnectReason" type="i" access="read"/>
+    </interface>
+    <interface name="fi.w1.wpa_supplicant1.BSS">
+        <property name="BSSID" type="ay" access="read"/>
+        <property name="SSID" type="ay" access="read"/>
+        <property name="WPA" type="a{sv}" access="read">
+            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+        </property>
+        <property name="RSN" type="a{sv}" access="read">
+            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+        </property>
+        <property name="IEs" type="ay" access="read"/>
+        <property name="Privacy" type="b" access="read"/>
+        <property name="Mode" type="s" access="read"/>
+        <property name="Frequency" type="q" access="read"/>
+        <property name="Rates" type="au" access="read">
+            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QByteArray"/>
+        </property>
+        <property name="Signal" type="n" access="read"/>
+        <signal name="PropertiesChanged">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+    </interface>
+    <!--<interface name="fi.w1.wpa_supplicant1.Interface.WPS">
+        <method name="Start">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+            <arg name="output" type="a{sv}" direction="out"/>
+        </method>
+        <signal name="Event">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap"/>
+            <arg name="name" type="s"/>
+            <arg name="args" type="a{sv}"/>
+        </signal>
+        <signal name="Credentials">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="credentials" type="a{sv}"/>
+        </signal>
+        <signal name="PropertiesChanged">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <property name="ProcessCredentials" type="b" access="readwrite"/>
+        <property name="ConfigMethods" type="s" access="readwrite"/>
+    </interface>-->
+    <!--<interface name="fi.w1.wpa_supplicant1.Interface.P2PDevice">
+        <method name="Find">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+        </method>
+        <method name="StopFind"/>
+        <method name="Listen">
+            <arg name="timeout" type="i" direction="in"/>
+        </method>
+        <method name="ExtendedListen">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+        </method>
+        <method name="PresenceRequest">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+        </method>
+        <method name="ProvisionDiscoveryRequest">
+            <arg name="peer" type="o" direction="in"/>
+            <arg name="config_method" type="s" direction="in"/>
+        </method>
+        <method name="Connect">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+            <arg name="generated_pin" type="s" direction="out"/>
+        </method>
+        <method name="GroupAdd">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0"  value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+        </method>
+        <method name="Invite">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+        </method>
+        <method name="Disconnect"/>
+        <method name="RejectPeer">
+            <arg name="peer" type="o" direction="in"/>
+        </method>
+        <method name="Flush"/>
+        <method name="AddService">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+        </method>
+        <method name="DeleteService">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+        </method>
+        <method name="FlushService"/>
+        <method name="ServiceDiscoveryRequest">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+            <arg name="ref" type="t" direction="out"/>
+        </method>
+        <method name="ServiceDiscoveryResponse">
+        <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+        </method>
+        <method name="ServiceDiscoveryCancelRequest">
+            <arg name="args" type="t" direction="in"/>
+        </method>
+        <method name="ServiceUpdate"/>
+        <method name="ServiceDiscoveryExternal">
+            <arg name="arg" type="i" direction="in"/>
+        </method>
+        <method name="AddPersistentGroup">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+            <arg name="args" type="a{sv}" direction="in"/>
+            <arg name="path" type="o" direction="out"/>
+        </method>
+        <method name="RemovePersistentGroup">
+            <arg name="path" type="o" direction="in"/>
+        </method>
+        <method name="RemoveAllPersistentGroups"/>
+        <signal name="P2PStateChanged">
+            <arg name="states" type="a{ss}"/>
+        </signal>
+        <signal name="DeviceFound">
+            <arg name="path" type="o"/>
+        </signal>
+        <signal name="DeviceLost">
+            <arg name="path" type="o"/>
+        </signal>
+        <signal name="ProvisionDiscoveryRequestDisplayPin">
+            <arg name="peer_object" type="o"/>
+            <arg name="pin" type="s"/>
+        </signal>
+        <signal name="ProvisionDiscoveryResponseDisplayPin">
+            <arg name="peer_object" type="o"/>
+            <arg name="pin" type="s"/>
+        </signal>
+        <signal name="ProvisionDiscoveryRequestEnterPin">
+            <arg name="peer_object" type="o"/>
+        </signal>
+        <signal name="ProvisionDiscoveryResponseEnterPin">
+            <arg name="peer_object" type="o"/>
+        </signal>
+        <signal name="ProvisionDiscoveryPBCRequest">
+            <arg name="peer_object" type="o"/>
+        </signal>
+        <signal name="ProvisionDiscoveryPBCResponse">
+            <arg name="peer_object" type="o"/>
+        </signal>
+        <signal name="ProvisionDiscoveryFailure">
+            <arg name="peer_object" type="o"/>
+            <arg name="status" type="i"/>
+        </signal>
+        <signal name="GroupStarted">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <signal name="GONegotiationSuccess">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <signal name="GONegotiationFailure">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <signal name="GONegotiationRequest">
+            <arg name="path" type="o"/>
+            <arg name="dev_passwd_id" type="i"/>
+        </signal>
+        <signal name="InvitationResult">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="invite_result" type="a{sv}"/>
+        </signal>
+        <signal name="GroupFinished">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <signal name="ServiceDiscoveryRequest">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="sd_request" type="a{sv}"/>
+        </signal>
+        <signal name="ServiceDiscoveryResponse">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="sd_response" type="a{sv}"/>
+        </signal>
+        <signal name="PersistentGroupAdded">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap"/>
+            <arg name="path" type="o"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+        <signal name="PersistentGroupRemoved">
+            <arg name="path" type="o"/>
+        </signal>
+        <signal name="WpsFailed">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap"/>
+            <arg name="name" type="s"/>
+            <arg name="args" type="a{sv}"/>
+        </signal>
+        <property name="P2PDeviceConfig" type="a{sv}" access="readwrite">
+            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+        </property>
+        <property name="Peers" type="ao" access="read"/>
+        <property name="Role" type="s" access="read"/>
+        <property name="Group" type="o" access="read"/>
+        <property name="PeerGO" type="o" access="read"/>
+        <property name="PersistentGroups" type="ao" access="read"/>
+    </interface>-->
+</node>

@@ -1,6 +1,9 @@
 #ifndef DBUSSETTINGS_H
 #define DBUSSETTINGS_H
 
+#define WPA_SUPPLICANT_SERVICE "fi.w1.wpa_supplicant1"
+#define WPA_SUPPLICANT_SERVICE_PATH "/fi/w1/wpa_supplicant1"
+
 #define OXIDE_SERVICE "codes.eeems.oxide1"
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 

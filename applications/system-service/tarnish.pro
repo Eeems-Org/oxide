@@ -7,7 +7,8 @@ CONFIG -= app_bundle
 SOURCES += main.cpp \
     buttonhandler.cpp \
     fb2png.cpp \
-    sysobject.cpp
+    sysobject.cpp \
+    wpa_supplicant.cpp
 
 TARGET=tarnish
 
@@ -17,6 +18,8 @@ INSTALLS += target
 configFile.files = ../../assets/etc/dbus-1/system.d/*
 configFile.path =  /etc/dbus-1/system.d/
 INSTALLS += configFile
+
+system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)
 
 
 HEADERS += \
@@ -28,7 +31,8 @@ HEADERS += \
     mxcfb.h \
     powerapi.h \
     sysobject.h \
-    wifiapi.h
+    wifiapi.h \
+    wpa_supplicant.h
 
 linux-oe-g++ {
     LIBS += -lpng16
@@ -37,6 +41,7 @@ linux-oe-g++ {
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
 DISTFILES += \
+    fi.w1.wpa_supplicant1.xml \
     generate_xml.sh
 
 RESOURCES +=

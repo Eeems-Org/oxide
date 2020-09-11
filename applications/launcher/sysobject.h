@@ -8,6 +8,7 @@ class SysObject
 {
 public:
     explicit SysObject(QString path) : m_path(path.toStdString()){};
+    std::string path() { return m_path; }
     bool exists();
     bool hasProperty(std::string name);
     bool hasDirectory(std::string name);
