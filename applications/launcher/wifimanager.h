@@ -123,7 +123,13 @@ public:
     static WifiManager* singleton(){
         if(instance() == nullptr){
             xochitlSettings()->sync();
-            if(xochitlSettings()->value("wifion").toBool() && !turnOnWifi()){
+            if(xochitlSettings()->value("wifion").toBool()){
+                qDebug() << "Wifi should be enabled";
+                if(!turnOnWifi()){
+                    turnOffWifi();
+                }
+            }else{
+                qDebug() << "Wifi should not be enabled";
                 turnOffWifi();
             }
         }
@@ -154,6 +160,7 @@ public:
         xochitlSettings()->sync();
         qDebug() << "Loading networks...";
         instance()->loadNetworks();
+        instance()->Reconnect();
         return true;
     }
     static void turnOffWifi(){
@@ -166,6 +173,7 @@ public:
         }
         system("ifconfig wlan0 down");
     }
+    static bool wifiOn(){ return !system("ip addr show wlan0 | grep UP > /dev/null"); }
     static bool ensureService(){
         QDBusConnection bus = QDBusConnection::systemBus();
         if(!bus.isConnected()){
@@ -175,8 +183,12 @@ public:
         // Connect to service
         QStringList serviceNames = bus.interface()->registeredServiceNames();
         if (!serviceNames.contains(SERVICE)){
+            if(!system("systemctl --quiet is-active wpa_supplicant")){
+                qCritical() << "wpa_supplicant is running, but not active?";
+                return false;
+            }
             qDebug() << "Starting wpa_supplicant...";
-            if(!system("systemctl --quiet is-active wpa_supplicant") && !system("systemctl --quiet start wpa_supplicant")){
+            if(system("systemctl --quiet start wpa_supplicant")){
                 qCritical() << "Failed to start wpa_supplicant";
                 return false;
             }
@@ -361,9 +373,12 @@ private:
             return instance;
         }
         if(instance != nullptr){
+            qDebug() << "Removing old WifiManager instance";
             delete instance;
+            instance = nullptr;
         }
         if(path != "/"){
+            qDebug() << ("Creating new WifiManager instance on " + path).toStdString().c_str();
             instance = new WifiManager(path, QDBusConnection::systemBus());
         }
         return instance;

@@ -23,7 +23,7 @@ void onExit(){
     auto procs  = ButtonHandler::split_string_by_newline(ButtonHandler::exec((
         "grep -Erl /proc/*/status --regexp='PPid:\\s+" + oxidepid + "' | awk '{print substr($1, 7, length($1) - 13)}'"
     ).toStdString().c_str()));
-    qDebug() << "Pausing child tasks...";
+    qDebug() << "Killing child tasks...";
     for(auto pid : procs){
       string cmd = "cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'";
       if(my_pid != pid && ButtonHandler::is_uint(pid) && ButtonHandler::exec(cmd.c_str()) == oxidepid.toStdString() + "\n"){

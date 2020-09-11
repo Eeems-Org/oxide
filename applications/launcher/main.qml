@@ -79,7 +79,7 @@ ApplicationWindow {
                 property bool alert: false
                 property bool warning: false
                 property bool charging: false
-                property bool present: false
+                property bool present: true
                 property int level: 0
                 property int temperature: 0
                 source: {

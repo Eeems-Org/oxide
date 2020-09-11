@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QException>
 #include <QCoreApplication>
+#include <QDir>
 
 #include "dbussettings.h"
 #include "sysobject.h"
@@ -21,8 +22,31 @@ class PowerAPI : public QObject {
     Q_PROPERTY(int chargerState READ chargerState NOTIFY chargerStateChanged)
 public:
     PowerAPI(QObject* parent)
-    : QObject(parent),
-      battery("/sys/class/power_supply/bq27441-0") {
+    : QObject(parent), batteries(), chargers(){
+        QDir dir("/sys/class/power_supply");
+        qDebug() << "Looking for batteries and chargers...";
+        for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
+            qDebug() << ("  Checking " + path + "...").toStdString().c_str();
+            SysObject item(dir.path() + "/" + path);
+            if(!item.hasProperty("type")){
+                qDebug() << "    Missing type property";
+                continue;
+            }
+            if(item.hasProperty("present") && !item.intProperty("present")){
+                qDebug() << "    Either missing present property, or battery is not present";
+                break;
+            }
+            if(item.strProperty("type") == "Battery"){
+                qDebug() << "    Found Battery!";
+                batteries.append(item);
+            }else if(item.strProperty("type") == "USB"){
+                qDebug() << "    Found Charger!";
+                chargers.append(item);
+            }else{
+                qDebug() << "    Unknown type";
+            }
+        }
+        update();
         timer = new QTimer(this);
         timer->setSingleShot(false);
         timer->setInterval(3 * 1000); // 3 seconds
@@ -84,7 +108,8 @@ Q_SIGNALS:
 
 private:
     QTimer* timer;
-    SysObject battery;
+    QList<SysObject> batteries;
+    QList<SysObject> chargers;
     int m_state = Normal;
     int m_batteryState = BatteryUnknown;
     int m_batteryLevel;
@@ -93,9 +118,56 @@ private:
     bool m_batteryWarning = false;
     bool m_batteryAlert = false;
 
+    int batteryInt(QString property){
+        int result = 0;
+        for(auto battery : batteries){
+            result += battery.intProperty(property.toStdString());
+        }
+        return result;
+    }
+    int batteryIntMax(QString property){
+        int result = 0;
+        for(auto battery : batteries){
+            int value = battery.intProperty(property.toStdString());
+            if(value > result){
+                result = value;
+            }
+        }
+        return result;
+    }
+    int calcBatteryLevel(){
+        return batteryInt("capacity") / batteries.length();
+    }
+    std::array<bool, 3> getBatteryStates(){
+        bool alert = false;
+        bool warning = false;
+        bool charging = false;
+        for(auto battery : batteries){
+            auto capacityLevel = battery.strProperty("capacity_level");
+            auto status = battery.strProperty("status");
+            if(!charging && status == "Charging"){
+                charging = true;
+            }
+            if(capacityLevel == "Critical" || capacityLevel == ""){
+                alert = true;
+            }
+            if(status == "Unknown" || status == "" || capacityLevel == "Unknown"){
+                warning = true;
+            }
+            if(alert && warning && charging){
+                break;
+            }
+        }
+        std::array<bool, 3> state;
+        state[0] = charging;
+        state[1] = warning;
+        state[2] = alert;
+        return state;
+    }
+
 private slots:
     void update(){
-        if(!battery.exists()){
+        if(!batteries.length()){
             if(!m_batteryWarning){
                 qWarning() << "Can't find battery information";
                 m_batteryWarning = true;
@@ -103,7 +175,7 @@ private slots:
             }
             return;
         }
-        if(!battery.intProperty("present")){
+        if(!batteryInt("present")){
             qWarning() << "Battery is somehow not in the device?";
             if(!m_batteryWarning){
                 qWarning() << "Can't find battery information";
@@ -112,33 +184,32 @@ private slots:
             }
             return;
         }
-        int battery_level = battery.intProperty("capacity");
+        int battery_level = calcBatteryLevel();
         if(batteryLevel() != battery_level){
             setBatteryLevel(battery_level);
         }
-        std::string status = battery.strProperty("status");
-        auto charging = status == "Charging";
+        auto states = getBatteryStates();
+        bool charging = states[0];
+        bool warning = states[1];
+        bool alert = states[2];
         if(charging && batteryState() != BatteryCharging){
             setBatteryState(BatteryCharging);
         }else if(!charging && batteryState() != BatteryDischarging){
             setBatteryState(BatteryDischarging);
         }
-        std::string capacityLevel = battery.strProperty("capacity_level");
-        auto alert = capacityLevel == "Critical" || capacityLevel == "";
         if(m_batteryAlert != alert){
             m_batteryAlert = alert;
             if(alert){
                 emit batteryAlert();
             }
         }
-        auto warning = status == "Unknown" || status == "" || capacityLevel == "Unknown";
         if(m_batteryWarning != warning){
             if(warning){
                 emit batteryWarning();
             }
             m_batteryWarning = warning;
         }
-        int temperature = battery.intProperty("temp") / 10;
+        int temperature = batteryIntMax("temp") / 10;
         if(batteryTemperature() != temperature){
             setBatteryTemperature(temperature);
         }

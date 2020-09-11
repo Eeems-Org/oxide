@@ -51,14 +51,24 @@ public:
             qFatal("Power API was not available");
         }
         powerApi = new Power(OXIDE_SERVICE, path, bus);
-        connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
+        // Connect to signals
         connect(powerApi, &Power::batteryLevelChanged, this, &Controller::batteryLevelChanged);
         connect(powerApi, &Power::batteryStateChanged, this, &Controller::batteryStateChanged);
         connect(powerApi, &Power::batteryTemperatureChanged, this, &Controller::batteryTemperatureChanged);
-        connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
         connect(powerApi, &Power::chargerStateChanged, this, &Controller::chargerStateChanged);
-        connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
         connect(powerApi, &Power::stateChanged, this, &Controller::stateChanged);
+        connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
+        connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
+        connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
+        QTimer::singleShot(1000, [=](){
+            // Get initial values when UI is ready
+            batteryLevelChanged(powerApi->batteryLevel());
+            batteryStateChanged(powerApi->batteryState());
+            batteryTemperatureChanged(powerApi->batteryTemperature());
+            chargerStateChanged(powerApi->chargerState());
+            stateChanged(powerApi->state());
+        });
+
     }
     Q_INVOKABLE bool turnOnWifi(){
         wifiState = "up";
@@ -90,9 +100,7 @@ public:
         }
         return true;
     };
-    Q_INVOKABLE bool wifiOn(){
-        return WifiManager::singleton() != nullptr;
-    };
+    Q_INVOKABLE bool wifiOn(){ return WifiManager::wifiOn(); };
     Q_INVOKABLE void loadSettings();
     Q_INVOKABLE void saveSettings();
     Q_INVOKABLE QList<QObject*> getApps();
