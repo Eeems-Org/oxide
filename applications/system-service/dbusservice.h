@@ -13,7 +13,7 @@
 #include <fstream>
 
 #include "powerapi.h"
-#include "dbussettings.h"
+#include "wifiapi.h"
 
 using namespace std;
 
@@ -85,6 +85,11 @@ public:
             .path = QString(OXIDE_SERVICE_PATH) + "/power",
             .dependants = QStringList(),
             .instance = new PowerAPI(this),
+        });
+        apis.insert("wifi", APIEntry{
+            .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
+            .dependants = QStringList(),
+            .instance = new WifiAPI(this),
         });
     }
     ~DBusService() {}

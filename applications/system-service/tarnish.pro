@@ -22,7 +22,8 @@ HEADERS += \
     inputmanager.h \
     mxcfb.h \
     powerapi.h \
-    sysobject.h
+    sysobject.h \
+    wifiapi.h
 
 linux-oe-g++ {
     LIBS += -lpng16

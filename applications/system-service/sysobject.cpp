@@ -18,6 +18,10 @@ bool SysObject::hasProperty(std::string name){
     QFile file(propertyPath(name).c_str());
     return file.exists();
 }
+bool SysObject::hasDirectory(std::string name){
+    QDir dir(propertyPath(name).c_str());
+    return dir.exists();
+}
 int SysObject::intProperty(std::string name){
     return std::stoi(strProperty(name));
 }

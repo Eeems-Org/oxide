@@ -31,7 +31,7 @@
         <file>img/battery/charging_80.png</file>
         <file>img/battery/charging_90.png</file>
         <file>img/battery/charging_100.png</file>
-        <file>img/battery/unkown.png</file>
+        <file>img/battery/unknown.png</file>
         <file>widgets/StatusIcon.qml</file>
         <file>img/wifi/unknown.png</file>
     </qresource>

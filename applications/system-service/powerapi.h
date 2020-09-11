@@ -117,6 +117,7 @@ private:
     int m_chargerState = ChargerUnknown;
     bool m_batteryWarning = false;
     bool m_batteryAlert = false;
+    bool m_chargerWarning = false;
 
     int batteryInt(QString property){
         int result = 0;
@@ -137,6 +138,13 @@ private:
     }
     int calcBatteryLevel(){
         return batteryInt("capacity") / batteries.length();
+    }
+    int chargerInt(QString property){
+        int result = 0;
+        for(auto charger : chargers){
+            result += charger.intProperty(property.toStdString());
+        }
+        return result;
     }
     std::array<bool, 3> getBatteryStates(){
         bool alert = false;
@@ -164,10 +172,11 @@ private:
         state[2] = alert;
         return state;
     }
-
-private slots:
-    void update(){
+    void updateBattery(){
         if(!batteries.length()){
+            if(m_batteryState != BatteryUnknown){
+                setBatteryState(BatteryUnknown);
+            }
             if(!m_batteryWarning){
                 qWarning() << "Can't find battery information";
                 m_batteryWarning = true;
@@ -176,9 +185,12 @@ private slots:
             return;
         }
         if(!batteryInt("present")){
-            qWarning() << "Battery is somehow not in the device?";
+            if(m_batteryState != BatteryNotPresent){
+                qWarning() << "Battery is somehow not in the device?";
+                setBatteryState(BatteryNotPresent);
+            }
             if(!m_batteryWarning){
-                qWarning() << "Can't find battery information";
+                qWarning() << "Battery is somehow not in the device?";
                 m_batteryWarning = true;
                 emit batteryWarning();
             }
@@ -213,6 +225,43 @@ private slots:
         if(batteryTemperature() != temperature){
             setBatteryTemperature(temperature);
         }
+    }
+    void updateCharger(){
+        if(!chargers.length()){
+            if(m_chargerState != ChargerUnknown){
+                setChargerState(ChargerUnknown);
+            }
+            if(!m_chargerWarning){
+                qWarning() << "Can't find battery information";
+                m_chargerWarning = true;
+                emit chargerWarning();
+            }
+            return;
+        }
+        if(!chargerInt("present")){
+            if(m_chargerState != ChargerNotPresent){
+                qWarning() << "Charger is somehow not in the device?";
+                setChargerState(ChargerNotPresent);
+            }
+            if(!m_chargerWarning){
+                qWarning() << "Charger is somehow not in the device?";
+                m_chargerWarning = true;
+                emit chargerWarning();
+            }
+            return;
+        }
+        bool connected = chargerInt("online");
+        if(connected && m_chargerState != ChargerConnected){
+            setChargerState(ChargerConnected);
+        }else if(!connected && m_chargerState != ChargerNotConnected){
+            setChargerState(ChargerNotConnected);
+        }
+    }
+
+private slots:
+    void update(){
+        updateBattery();
+        updateCharger();
     }
 };
 

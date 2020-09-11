@@ -145,9 +145,7 @@ public:
         return m_sleepAfter;
     };
     void setSleepAfter(int);
-    bool getBatteryCharging(){
-        return m_batteryCharging;
-    }
+    bool getPowerConnected(){ return m_powerConnected; }
 signals:
     void automaticSleepChanged(bool);
     void columnsChanged(int);
@@ -194,6 +192,7 @@ private slots:
             switch(state){
                 case BatteryCharging:
                     ui->setProperty("charging", true);
+                    m_powerConnected = true;
                 break;
                 case BatteryNotPresent:
                     ui->setProperty("present", false);
@@ -223,8 +222,39 @@ private slots:
         }
     }
     void chargerStateChanged(int state){
-        Q_UNUSED(state);
-        // TODO handle charger
+        switch(state){
+            case ChargerConnected:
+                qDebug() << "Charger state: Connected";
+            break;
+            case ChargerNotPresent:
+                qDebug() << "Charger state: Not Present";
+            break;
+            case ChargerNotConnected:
+                qDebug() << "Charger state: Not Connected";
+            break;
+            case ChargerUnknown:
+            default:
+                qDebug() << "Charger state: Unknown";
+        }
+        QObject* ui = root->findChild<QObject*>("batteryLevel");
+        if(ui){
+            if(state != BatteryNotPresent){
+                ui->setProperty("present", true);
+            }
+            switch(state){
+                case ChargerConnected:
+                    ui->setProperty("connected", true);
+                    m_powerConnected = true;
+                break;
+                case ChargerNotConnected:
+                case ChargerNotPresent:
+                    m_powerConnected = false;
+                    // Fall through on purpose
+                case ChargerUnknown:
+                default:
+                    ui->setProperty("connected", false);
+            }
+        }
     }
     void chargerWarning(){
         // TODO handle charger
@@ -243,7 +273,7 @@ private:
     bool m_showBatteryPercent = false;
     bool m_showBatteryTemperature = false;
     int m_sleepAfter = 5;
-    bool m_batteryCharging = false;
+    bool m_powerConnected = false;
 
     QString wifiState = "Unknown";
     int wifiLink = 0;

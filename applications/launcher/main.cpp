@@ -149,7 +149,7 @@ int main(int argc, char *argv[]){
     filter.timer = new QTimer(root);
     filter.timer->setInterval(5 * 60 * 1000); // 5 minutes
     QObject::connect(filter.timer, &QTimer::timeout, [stateController, controller](){
-        if(!controller->getBatteryCharging()){
+        if(!controller->getPowerConnected()){
             qDebug() << "Suspending due to inactivity...";
             stateController->setProperty("state", QString("suspended"));
         }

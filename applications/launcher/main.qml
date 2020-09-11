@@ -79,6 +79,7 @@ ApplicationWindow {
                 property bool alert: false
                 property bool warning: false
                 property bool charging: false
+                property bool connected: false
                 property bool present: true
                 property int level: 0
                 property int temperature: 0
@@ -89,7 +90,7 @@ ApplicationWindow {
                     }else if(warning){
                         icon = "unknown";
                     }else{
-                        if(charging){
+                        if(charging || connected){
                             icon = "charging_";
                         }
                         if(level < 25){

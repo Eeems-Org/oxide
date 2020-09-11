@@ -1,11 +1,42 @@
 #include <QCommandLineParser>
+#include <QJsonValue>
+#include <QJsonDocument>
 #include <QSet>
 
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
+#include "wifiapi_interface.h"
 
 #define OXIDE_SERVICE "codes.eeems.oxide1"
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
+
+using namespace codes::eeems::oxide1;
+
+QString toJson(QVariant value){
+    auto jsonVariant = QJsonValue::fromVariant(value);
+    if(jsonVariant.isBool()){
+        return jsonVariant.toBool() ? "true" : "false";
+    }
+    if(jsonVariant.isNull()){
+        return "null";
+    }
+    if(jsonVariant.isUndefined()){
+        return "undefined";
+    }
+    if(jsonVariant.isDouble()){
+        return QString::number(jsonVariant.toDouble());
+    }
+    if(jsonVariant.isString()){
+        return jsonVariant.toString();
+    }
+    QJsonDocument doc;
+    if(jsonVariant.isObject()){
+        doc = QJsonDocument(jsonVariant.toObject());
+    }else{
+        doc = QJsonDocument(jsonVariant.toArray());
+    }
+    return doc.toJson(QJsonDocument::Compact);
+}
 
 class SlotHandler : public QObject {
 public:
@@ -45,7 +76,7 @@ private:
             void* ptr = reinterpret_cast<void*>(arguments[i + 1]);
             args << QVariant(typeId, ptr);
         }
-        qDebug() << args;
+        qDebug() << toJson(args).toStdString().c_str();
     };
 };
 
@@ -78,12 +109,12 @@ int main(int argc, char *argv[]){
     }
 
     auto bus = QDBusConnection::systemBus();
-    codes::eeems::oxide1::General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
 
     auto name = args.at(0);
     auto property = args.at(2).toStdString();
-    if(name == "power"){
-        auto reply = api.requestAPI("power");
+    if((QSet<QString> {"power", "wifi"}).contains(name)){
+        auto reply = api.requestAPI(name);
         reply.waitForFinished();
         if(reply.isError()){
             qDebug() << reply.error();
@@ -94,17 +125,25 @@ int main(int argc, char *argv[]){
             qDebug() << "API not available";
             return EXIT_FAILURE;
         }
-        codes::eeems::oxide1::Power powerApi(OXIDE_SERVICE, path, bus);
+        QObject* api;
+        if(name == "power"){
+            api = new Power(OXIDE_SERVICE, path, bus);
+        }else if(name == "wifi"){
+            api = new Wifi(OXIDE_SERVICE, path, bus);
+        }else{
+            qDebug() << "API not initialized? Please log a bug.";
+            return EXIT_FAILURE;
+        }
         if(action == "get"){
-            qDebug() << powerApi.property(property.c_str());
+            qDebug() << toJson(api->property(property.c_str())).toStdString().c_str();
         }else if(action == "set"){
-            if(!powerApi.setProperty(property.c_str(), args.at(3).toStdString().c_str())){
+            if(!api->setProperty(property.c_str(), args.at(3).toStdString().c_str())){
                 qDebug() << "Failed to set value";
                 return EXIT_FAILURE;
             }
-            qDebug() << powerApi.property(property.c_str());
+            qDebug() << api->property(property.c_str());
         }else if(action == "listen"){
-            auto metaObject = powerApi.metaObject();
+            auto metaObject = api->metaObject();
             auto name = QString(property.c_str());
             for(int methodId = 0; methodId < metaObject->methodCount(); methodId++){
                 auto method = metaObject->method(methodId);
@@ -121,7 +160,7 @@ int main(int argc, char *argv[]){
                         continue;
                     }
                     auto slotHandler = new SlotHandler(parameters);
-                    if(slotHandler->connect(&powerApi, methodId)){
+                    if(slotHandler->connect(api, methodId)){
                         return app.exec();
 
                     }

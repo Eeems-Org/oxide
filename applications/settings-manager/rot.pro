@@ -20,6 +20,7 @@ SOURCES += \
 
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/powerapi.xml
+DBUS_INTERFACES += ../../interfaces/wifiapi.xml
 
 # Default rules for deployment.
 target.path = /opt/bin
