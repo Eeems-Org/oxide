@@ -46,31 +46,31 @@ clean:
 
 release: erode tarnish rot oxide
 	mkdir -p release
-	INSTALL_ROOT=../../release $(MAKE) -C .build/erode install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/tarnish install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/rot install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/oxide install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/process-manager install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/system-service install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/settings-manager install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/launcher install
 
 erode:
-	mkdir -p .build/erode
-	cp -r applications/process-manager/* .build/erode
-	cd .build/erode && qmake erode.pro
-	$(MAKE) -C .build/erode all
+	mkdir -p .build/process-manager
+	cp -r applications/process-manager/* .build/process-manager
+	cd .build/process-manager && qmake erode.pro
+	$(MAKE) -C .build/process-manager all
 
 tarnish: erode
-	mkdir -p .build/tarnish
-	cp -r applications/system-service/* .build/tarnish
-	cd .build/tarnish && qmake tarnish.pro
-	$(MAKE) -C .build/tarnish all
+	mkdir -p .build/system-service
+	cp -r applications/system-service/* .build/system-service
+	cd .build/system-service && qmake tarnish.pro
+	$(MAKE) -C .build/system-service all
 
 rot: tarnish
-	mkdir -p .build/rot
-	cp -r applications/settings-manager/* .build/rot
-	cd .build/rot && qmake rot.pro
-	$(MAKE) -C .build/rot all
+	mkdir -p .build/settings-manager
+	cp -r applications/settings-manager/* .build/settings-manager
+	cd .build/settings-manager && qmake rot.pro
+	$(MAKE) -C .build/settings-manager all
 
 oxide: tarnish
-	mkdir -p .build/oxide
-	cp -r applications/launcher/* .build/oxide
-	cd .build/oxide && qmake oxide.pro
-	$(MAKE) -C .build/oxide all
+	mkdir -p .build/launcher
+	cp -r applications/launcher/* .build/launcher
+	cd .build/launcher && qmake oxide.pro
+	$(MAKE) -C .build/launcher all

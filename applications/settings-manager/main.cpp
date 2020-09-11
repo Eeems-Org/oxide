@@ -3,12 +3,11 @@
 #include <QJsonDocument>
 #include <QSet>
 
+#include "dbussettings.h"
+
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
 #include "wifiapi_interface.h"
-
-#define OXIDE_SERVICE "codes.eeems.oxide1"
-#define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 
 using namespace codes::eeems::oxide1;
 

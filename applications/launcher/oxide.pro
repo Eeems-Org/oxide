@@ -34,6 +34,7 @@ target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+INCLUDEPATH += ../system-service
 DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
@@ -63,9 +64,9 @@ ls
 HEADERS += \
     controller.h \
     appitem.h \
-    dbussettings.h \
     eventfilter.h \
     inputmanager.h \
     mxcfb.h \
     sysobject.h \
-    wifimanager.h
+    wifimanager.h \
+    ../system-service/dbussettings.h

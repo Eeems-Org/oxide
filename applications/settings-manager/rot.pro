@@ -18,6 +18,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp
 
+INCLUDEPATH += ../system-service
+
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/powerapi.xml
 DBUS_INTERFACES += ../../interfaces/wifiapi.xml
@@ -26,4 +28,5 @@ DBUS_INTERFACES += ../../interfaces/wifiapi.xml
 target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
-HEADERS +=
+HEADERS += \
+    ../system-service/dbussettings.h

@@ -1,7 +1,6 @@
 #ifndef DBUSSERVICE_H
 #define DBUSSERVICE_H
 
-#include <QFile>
 #include <QDBusAbstractAdaptor>
 #include <QDBusObjectPath>
 #include <QDebug>
@@ -55,29 +54,6 @@ public:
 
         }
         return instance;
-    }
-    static void ensureConfig(){
-        QFile outfile(QString(OXIDE_DBUS_CONFIG_PATH));
-        if(!outfile.exists()){
-            qDebug() << "DBus configuration missing...";
-        }
-        QFile infile(QString(OXIDE_DBUS_CONFIG_LOCAL_PATH));
-        if(!infile.exists()){
-            qWarning("Embedded configuration file missing!");
-        }else if(!outfile.open(QIODevice::WriteOnly)){
-            qWarning("Unable create dbus configuration!");
-        }else if(!infile.open(QIODevice::ReadOnly)){
-            qWarning("Unable read embedded onfiguration file!");
-            outfile.close();
-        }else{
-            qDebug("Writing dbus configuration...");
-            outfile.write(infile.readAll());
-            infile.close();
-            outfile.close();
-            qDebug("Reloading dbus...");
-            system("systemctl reload dbus");
-            qDebug("Done updating DBus configuration");
-        }
     }
     DBusService() : apis(){
         apis.insert("power", APIEntry{
