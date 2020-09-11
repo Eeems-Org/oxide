@@ -14,7 +14,7 @@ TARGET=tarnish
 target.path = /opt/bin
 INSTALLS += target
 
-configFile.files = ../../assets/etc/dbus-1/system.d
+configFile.files = ../../assets/etc/dbus-1/system.d/*
 configFile.path =  /etc/dbus-1/system.d/
 INSTALLS += configFile
 
