@@ -46,10 +46,10 @@ clean:
 
 release: erode tarnish rot oxide
 	mkdir -p release
-	INSTALL_ROOT=./release $(MAKE) -C .build/erode install
-	INSTALL_ROOT=./release $(MAKE) -C .build/tarnish install
-	INSTALL_ROOT=./release $(MAKE) -C .build/rot install
-	INSTALL_ROOT=./release $(MAKE) -C .build/oxide install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/erode install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/tarnish install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/rot install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/oxide install
 
 erode:
 	mkdir -p .build/erode

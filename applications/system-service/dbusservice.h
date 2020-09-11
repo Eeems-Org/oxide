@@ -32,7 +32,6 @@ public:
         if(instance == nullptr){
             qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
             qDebug() << "Creating DBusService instance";
-            ensureConfig();
             instance = new DBusService();
             auto bus = QDBusConnection::systemBus();
             if(!bus.isConnected()){

@@ -14,6 +14,11 @@ TARGET=tarnish
 target.path = /opt/bin
 INSTALLS += target
 
+configFile.files = ../../assets/etc/dbus-1/system.d
+configFile.path =  /etc/dbus-1/system.d/
+INSTALLS += configFile
+
+
 HEADERS += \
     buttonhandler.h \
     dbusservice.h \
@@ -34,5 +39,4 @@ QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 DISTFILES += \
     generate_xml.sh
 
-RESOURCES += \
-    qml.qrc
+RESOURCES +=
