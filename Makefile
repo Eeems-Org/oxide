@@ -44,12 +44,14 @@ clean:
 	rm -rf .build
 	rm -rf release
 
-release: erode tarnish rot oxide
+release: clean build
 	mkdir -p release
 	INSTALL_ROOT=../../release $(MAKE) -C .build/process-manager install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/system-service install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/settings-manager install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/launcher install
+
+build: erode tarnish rot oxide
 
 erode:
 	mkdir -p .build/process-manager

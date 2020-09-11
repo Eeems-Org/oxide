@@ -1,5 +1,0 @@
-name=fingerterm
-desc=Touchscreen accessible terminal.
-call=/opt/usr/bin/fingerterm
-term=:
-imgFile=fingerterm
