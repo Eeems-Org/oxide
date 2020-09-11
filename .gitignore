@@ -2,3 +2,5 @@ target/
 .build/
 release/
 *.pro.user
+.qmake.stash
+applications/*/Makefile
