@@ -128,9 +128,9 @@ public:
     inline QVariantMap rSN() const
     { return qvariant_cast< QVariantMap >(property("RSN")); }
 
-    Q_PROPERTY(QByteArray Rates READ rates)
-    inline QByteArray rates() const
-    { return qvariant_cast< QByteArray >(property("Rates")); }
+    Q_PROPERTY(QList<uint> Rates READ rates)
+    inline QList<uint> rates() const
+    { return qvariant_cast< QList<uint> >(property("Rates")); }
 
     Q_PROPERTY(QByteArray SSID READ sSID)
     inline QByteArray sSID() const
@@ -186,9 +186,9 @@ public:
     inline QList<QDBusObjectPath> bSSs() const
     { return qvariant_cast< QList<QDBusObjectPath> >(property("BSSs")); }
 
-    Q_PROPERTY(QVariantMap Blobs READ blobs)
-    inline QVariantMap blobs() const
-    { return qvariant_cast< QVariantMap >(property("Blobs")); }
+    Q_PROPERTY(QStringList Blobs READ blobs)
+    inline QStringList blobs() const
+    { return qvariant_cast< QStringList >(property("Blobs")); }
 
     Q_PROPERTY(QString BridgeIfname READ bridgeIfname)
     inline QString bridgeIfname() const
@@ -331,6 +331,12 @@ public Q_SLOTS: // METHODS
     {
         QList<QVariant> argumentList;
         return asyncCallWithArgumentList(QStringLiteral("Reattach"), argumentList);
+    }
+
+    inline QDBusPendingReply<> Reconnect()
+    {
+        QList<QVariant> argumentList;
+        return asyncCallWithArgumentList(QStringLiteral("Reconnect"), argumentList);
     }
 
     inline QDBusPendingReply<> RemoveAllNetworks()

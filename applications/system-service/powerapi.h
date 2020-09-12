@@ -34,7 +34,7 @@ public:
             }
             if(item.hasProperty("present") && !item.intProperty("present")){
                 qDebug() << "    Either missing present property, or battery is not present";
-                break;
+                continue;
             }
             if(item.strProperty("type") == "Battery"){
                 qDebug() << "    Found Battery!";

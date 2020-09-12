@@ -8,6 +8,7 @@ SOURCES += main.cpp \
     buttonhandler.cpp \
     fb2png.cpp \
     sysobject.cpp \
+    wlan.cpp \
     wpa_supplicant.cpp
 
 TARGET=tarnish
@@ -32,6 +33,7 @@ HEADERS += \
     powerapi.h \
     sysobject.h \
     wifiapi.h \
+    wlan.h \
     wpa_supplicant.h
 
 linux-oe-g++ {

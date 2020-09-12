@@ -2,8 +2,55 @@
 <node>
   <interface name="codes.eeems.oxide1.Wifi">
     <property name="state" type="i" access="readwrite"/>
+    <property name="BSSs" type="ao" access="read"/>
     <signal name="stateChanged">
       <arg type="i" direction="out"/>
     </signal>
+    <signal name="networkAdded">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="networkRemoved">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="networkConnected">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="disconnected">
+    </signal>
+    <signal name="bssFound">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="bssRemoved">
+      <arg type="o" direction="out"/>
+    </signal>
+    <method name="turnOnWifi">
+      <arg type="b" direction="out"/>
+    </method>
+    <method name="turnOffWifi">
+    </method>
+    <method name="scan">
+      <arg name="active" type="b" direction="in"/>
+    </method>
+    <method name="scan">
+    </method>
+    <method name="reconnect">
+    </method>
+    <method name="reassosiate">
+    </method>
+    <method name="flushBSSCache">
+      <arg name="age" type="u" direction="in"/>
+    </method>
+    <method name="addBlob">
+      <arg name="name" type="s" direction="in"/>
+      <arg name="blob" type="ay" direction="in"/>
+    </method>
+    <method name="removeBlob">
+      <arg name="name" type="s" direction="in"/>
+    </method>
+    <method name="getBlob">
+      <arg type="ay" direction="out"/>
+      <arg name="name" type="s" direction="in"/>
+      <arg name="blob" type="ay" direction="in"/>
+    </method>
   </interface>
 </node>

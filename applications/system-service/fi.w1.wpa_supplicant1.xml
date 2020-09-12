@@ -49,6 +49,7 @@
         </method>
         <method name="Reassociate"/>
         <method name="Reattach"/>
+        <method name="Reconnect"/>
         <method name="RemoveNetwork">
             <arg name="path" type="o" direction="in"/>
         </method>
@@ -164,9 +165,7 @@
         <property name="CurrentBSS" type="o" access="read"/>
         <property name="CurrentNetwork" type="o" access="read"/>
         <property name="CurrentAuthMode" type="s" access="read"/>
-        <property name="Blobs" type="a{say}" access="read">
-            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
-        </property>
+        <property name="Blobs" type="as" access="read" />
         <property name="BSSs" type="ao" access="read"/>
         <property name="Networks" type="ao" access="read"/>
         <property name="FastReauth" type="b" access="readwrite"/>
@@ -189,7 +188,7 @@
         <property name="Mode" type="s" access="read"/>
         <property name="Frequency" type="q" access="read"/>
         <property name="Rates" type="au" access="read">
-            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QByteArray"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QList&lt;uint&gt;"/>
         </property>
         <property name="Signal" type="n" access="read"/>
         <signal name="PropertiesChanged">
