@@ -5,7 +5,6 @@
 #include <QDebug>
 #include <QDir>
 #include <QException>
-#include <QFileInfo>
 
 #include <unistd.h>
 
@@ -17,7 +16,8 @@ class WifiAPI : public QObject {
     Q_CLASSINFO("D-Bus Interface", OXIDE_WIFI_INTERFACE)
     Q_PROPERTY(int state READ state WRITE setState NOTIFY stateChanged)
     Q_PROPERTY(QSet<QString> blobs READ blobs)
-    Q_PROPERTY(QList<QDBusObjectPath> BSSs READ BSSs)
+    Q_PROPERTY(QList<QDBusObjectPath> bSSs READ bSSs)
+    Q_PROPERTY(int link READ link)
 public:
     WifiAPI(QObject* parent)
     : QObject(parent),
@@ -64,7 +64,7 @@ public:
         connect(supplicant, &Wpa_Supplicant::InterfaceRemoved, this, &WifiAPI::InterfaceRemoved);
         connect(supplicant, &Wpa_Supplicant::PropertiesChanged, this, &WifiAPI::PropertiesChanged);
         for(auto wlan : wlans){
-            auto iface = QFileInfo(wlan->path().c_str()).fileName();
+            auto iface = wlan->iface();
             auto reply = (QDBusReply<QDBusObjectPath>)supplicant->GetInterface(iface);
             if(!reply.isValid() || reply.value().path() == "/"){
                 QVariantMap args;
@@ -76,6 +76,13 @@ public:
 
             }
         }
+        update();
+        timer = new QTimer(this);
+        timer->setSingleShot(false);
+        timer->setInterval(3 * 1000); // 3 seconds
+        timer->moveToThread(qApp->thread());
+        connect(timer, &QTimer::timeout, this, QOverload<>::of(&WifiAPI::update));
+        timer->start();
     }
     enum State { Unknown, Off, Disconnected, Offline, Online};
     Q_ENUM(State)
@@ -90,15 +97,27 @@ public:
     }
 
     Q_INVOKABLE bool turnOnWifi(){
-        system("ifconfig wlan0 up");
+        for(auto wlan : wlans){
+            if(!wlan->isUp() && !wlan->up()){
+                qDebug() << "Failed to enable " + wlan->iface();
+            }
+        }
         settings.setValue("wifion", true);
         settings.sync();
         return true;
     }
     Q_INVOKABLE void turnOffWifi(){
-        system("ifconfig wlan0 down");
+        for(auto wlan : wlans){
+            if(wlan->isUp() && !wlan->down()){
+                qDebug() << "Failed to disable " + wlan->iface();
+            }
+        }
         settings.setValue("wifion", false);
         settings.sync();
+    }
+    Q_INVOKABLE QDBusObjectPath getBSS(QVariantMap properties){
+        Q_UNUSED(properties)
+        // TODO implement getBSS
     }
     Q_INVOKABLE void scan(bool active = false){
         QMap<QString, QVariant> args;
@@ -172,10 +191,20 @@ public:
         }
         return result;
     }
-    QList<QDBusObjectPath> BSSs(){
+    QList<QDBusObjectPath> bSSs(){
         QList<QDBusObjectPath> result;
         for(auto wlan : wlans){
             result.append(wlan->BSSs());
+        }
+        return result;
+    }
+    int link(){
+        int result = 0;
+        for(auto wlan : wlans){
+            int link = wlan->link();
+            if(result < link){
+                result = link;
+            }
         }
         return result;
     }
@@ -259,8 +288,7 @@ private slots:
     // wpa_supplicant signals
     void InterfaceAdded(const QDBusObjectPath &path, const QVariantMap &properties){
         for(auto wlan : wlans){
-            auto iface = QFileInfo(wlan->path().c_str()).fileName();
-            if(properties["Ifname"].toString() == iface){
+            if(properties["Ifname"].toString() == wlan->iface()){
                 wlan->setInterface(path.path());
                 break;
             }
@@ -277,6 +305,7 @@ private slots:
         Q_UNUSED(properties);
     }
 private:
+    QTimer* timer;
     QSettings settings;
     QList<Wlan*> wlans;
     Wpa_Supplicant* supplicant;
@@ -294,10 +323,30 @@ private:
 
     void update(){
         settings.sync();
+        State state = Offline;
         if(settings.value("wifion").toBool()){
             turnOnWifi();
+            state = Disconnected;
+            for(auto wlan : wlans){
+                if(!wlan->isUp()){
+                    continue;
+                }
+                if(wlan->operstate() == "up"){
+                    state = Offline;
+                }
+                if(wlan->isConnected()){
+                    state = Online;
+                }
+                if(state == Online){
+                    break;
+                }
+            }
         }else{
             turnOffWifi();
+            state = Off;
+        }
+        if(m_state != state){
+            setState(state);
         }
     }
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QTimer>
 #include <QJsonObject>
 
 #include "appitem.h"
@@ -10,6 +11,7 @@
 #include "wifimanager.h"
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
+#include "wifiapi_interface.h"
 
 #define OXIDE_SERVICE "codes.eeems.oxide1"
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
@@ -19,6 +21,7 @@ using namespace codes::eeems::oxide1;
 enum State { Normal, PowerSaving };
 enum BatteryState { BatteryUnknown, BatteryCharging, BatteryDischarging, BatteryNotPresent };
 enum ChargerState { ChargerUnknown, ChargerConnected, ChargerNotConnected, ChargerNotPresent };
+enum WifiState { WifiUnknown, WifiOff, WifiDisconnected, WifiOffline, WifiOnline};
 
 class Controller : public QObject
 {
@@ -56,19 +59,44 @@ public:
         connect(powerApi, &Power::batteryStateChanged, this, &Controller::batteryStateChanged);
         connect(powerApi, &Power::batteryTemperatureChanged, this, &Controller::batteryTemperatureChanged);
         connect(powerApi, &Power::chargerStateChanged, this, &Controller::chargerStateChanged);
-        connect(powerApi, &Power::stateChanged, this, &Controller::stateChanged);
+        connect(powerApi, &Power::stateChanged, this, &Controller::powerStateChanged);
         connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
         connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
         connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
+        reply = api.requestAPI("wifi");
+        reply.waitForFinished();
+        if(reply.isError()){
+            qDebug() << reply.error();
+            qFatal("Could not request power API");
+        }
+        path = ((QDBusObjectPath)reply).path();
+        if(path == "/"){
+            qDebug() << "API not available";
+            qFatal("Wifi API was not available");
+        }
+        wifiApi = new Wifi(OXIDE_SERVICE, path, bus);
+        connect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
+        connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
+        connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
+        connect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
+        connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
+        connect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
+        connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
+
         QTimer::singleShot(1000, [=](){
             // Get initial values when UI is ready
             batteryLevelChanged(powerApi->batteryLevel());
             batteryStateChanged(powerApi->batteryState());
             batteryTemperatureChanged(powerApi->batteryTemperature());
             chargerStateChanged(powerApi->chargerState());
-            stateChanged(powerApi->state());
-        });
+            powerStateChanged(powerApi->state());
 
+            wifiStateChanged(wifiApi->state());
+            // for(auto network : wifiApi->networks()){
+            //     networkAdded(network);
+            // }
+            // networkConnected(wifiApi->network());
+        });
     }
     Q_INVOKABLE bool turnOnWifi(){
         wifiState = "up";
@@ -108,7 +136,6 @@ public:
     Q_INVOKABLE void suspend();
     Q_INVOKABLE void killXochitl();
     void updateBatteryLevel();
-    void updateWifiState();
     Q_INVOKABLE void resetInactiveTimer();
     Q_PROPERTY(bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep NOTIFY automaticSleepChanged);
     bool automaticSleep() const {
@@ -154,8 +181,9 @@ signals:
     void showBatteryPercentChanged(bool);
     void showBatteryTemperatureChanged(bool);
     void sleepAfterChanged(int);
-private slots:
+public slots:
     void updateUIElements();
+private slots:
     void batteryAlert(){
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if(ui){
@@ -258,9 +286,70 @@ private slots:
     void chargerWarning(){
         // TODO handle charger
     }
-    void stateChanged(int state){
+    void powerStateChanged(int state){
         Q_UNUSED(state);
         // TODO handle requested battery state
+    }
+    void bssFound(const QDBusObjectPath& path){
+        Q_UNUSED(path);
+    }
+    void bssRemoved(const QDBusObjectPath& path){
+        Q_UNUSED(path);
+    }
+    void disconnected(){
+
+    }
+    void networkAdded(const QDBusObjectPath& path){
+        Q_UNUSED(path);
+    }
+    void networkConnected(const QDBusObjectPath& path){
+        Q_UNUSED(path);
+    }
+    void networkRemoved(const QDBusObjectPath& path){
+        Q_UNUSED(path);
+    }
+    void wifiStateChanged(int state){
+//        enum WifiState { WifiUnknown, WifiOff, WifiDisconnected, WifiOffline, WifiOnline};
+        switch(state){
+            case WifiOff:
+                qDebug() << "Wifi state: Off";
+            break;
+            case WifiDisconnected:
+                qDebug() << "Wifi state: On+Disconnected";
+            break;
+            case WifiOffline:
+                qDebug() << "Wifi state: On+Offline";
+            break;
+            case WifiOnline:
+                qDebug() << "Wifi state: On+Online";
+            break;
+            case WifiUnknown:
+            default:
+                qDebug() << "Wifi state: Unknown";
+        }
+        QObject* ui = root->findChild<QObject*>("wifiState");
+        if(ui){
+            switch(state){
+                case WifiOff:
+                    ui->setProperty("state", "down");
+                break;
+                case WifiDisconnected:
+                    ui->setProperty("state", "up");
+                    ui->setProperty("connected", false);
+                break;
+                case WifiOffline:
+                    ui->setProperty("state", "up");
+                    ui->setProperty("connected", false);
+                break;
+                case WifiOnline:
+                    ui->setProperty("state", "up");
+                    ui->setProperty("connected", true);
+                break;
+                case WifiUnknown:
+                default:
+                    ui->setProperty("state", "unkown");
+            }
+        }
     }
 private:
     void updateHiddenUIElements();
@@ -283,4 +372,5 @@ private:
     QTimer* uiTimer;
     InputManager inputManager;
     Power* powerApi;
+    Wifi* wifiApi;
 };

@@ -2,7 +2,8 @@
 <node>
   <interface name="codes.eeems.oxide1.Wifi">
     <property name="state" type="i" access="readwrite"/>
-    <property name="BSSs" type="ao" access="read"/>
+    <property name="bSSs" type="ao" access="read"/>
+    <property name="link" type="i" access="read"/>
     <signal name="stateChanged">
       <arg type="i" direction="out"/>
     </signal>
@@ -27,6 +28,11 @@
       <arg type="b" direction="out"/>
     </method>
     <method name="turnOffWifi">
+    </method>
+    <method name="getBSS">
+      <arg type="o" direction="out"/>
+      <arg name="properties" type="a{sv}" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
     </method>
     <method name="scan">
       <arg name="active" type="b" direction="in"/>

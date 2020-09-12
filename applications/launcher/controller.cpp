@@ -1,4 +1,3 @@
-#include "controller.h"
 #include <QIODevice>
 #include <QFile>
 #include <QTextStream>
@@ -6,17 +5,19 @@
 #include <QDir>
 #include <QSet>
 #include <QDebug>
+
 #include <unistd.h>
 #include <sstream>
 #include <memory>
 #include <fstream>
 #include "sysobject.h"
 
+#include "controller.h"
+
 QSet<QString> settings = { "columns", "fontSize", "sleepAfter" };
 QSet<QString> booleanSettings {"automaticSleep", "showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
 QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
 QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root /.config" };
-
 
 QFile* getConfigFile(){
     for(auto path : configFileDirectoryPaths){
@@ -246,48 +247,17 @@ std::string Controller::exec(const char* cmd) {
     }
     return result;
 }
-void Controller::updateWifiState(){
+void Controller::updateUIElements(){
     QObject* ui = root->findChild<QObject*>("wifiState");
     if(!ui){
         qDebug() << "Can't find wifiState";
     }
-    if(!wifi.exists()){
-        if(wifiState != "unknown"){
-            qDebug() << "Unable to get wifi information";
-            wifiState = "unknown";
-            updateUI(ui, "state", wifiState);
-        }
-        return;
-    }
-    auto state = wifi.strProperty("operstate");
-    if(state == "down" && exec("ip a show wlan0 | grep UP") != ""){
-        state = "up";
-    }
-    if(wifiState.toStdString() != state){
-        wifiState = state.c_str();
-        updateUI(ui, "state", wifiState);
-    }
-    if(state == "" || state == "down"){
-        return;
-    }
-    if(state != "up"){
-        qDebug() << "Unknown wifi state: " << state.c_str();
-        return;
-    }
-    auto ip = exec("ip r | grep default | awk '{print $3}'");
-    auto connected = ip != "" && !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/53").c_str());
-    if(wifiConnected != connected){
-        wifiConnected = connected;
-        updateUI(ui, "connected", connected);
-    }
-    auto link = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $3}'"));
+    int link = wifiApi->link();
     if(wifiLink != link){
         wifiLink = link;
         updateUI(ui, "link", link);
+        qDebug() << ("Wifi link: " + to_string(link)).c_str();
     }
-}
-void Controller::updateUIElements(){
-    updateWifiState();
     updateHiddenUIElements();
 }
 void Controller::updateHiddenUIElements(){

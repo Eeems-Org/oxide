@@ -144,7 +144,7 @@ int main(int argc, char *argv[]){
     }
     // Update UI
     clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
-    controller->updateWifiState();
+    controller->updateUIElements();
     // Setup suspend timer
     filter.timer = new QTimer(root);
     filter.timer->setInterval(5 * 60 * 1000); // 5 minutes
