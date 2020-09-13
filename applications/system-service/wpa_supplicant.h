@@ -104,6 +104,10 @@ public:
 
     ~FiW1Wpa_supplicant1BSSInterface();
 
+    Q_PROPERTY(uint Age READ age)
+    inline uint age() const
+    { return qvariant_cast< uint >(property("Age")); }
+
     Q_PROPERTY(QByteArray BSSID READ bSSID)
     inline QByteArray bSSID() const
     { return qvariant_cast< QByteArray >(property("BSSID")); }
@@ -143,6 +147,10 @@ public:
     Q_PROPERTY(QVariantMap WPA READ wPA)
     inline QVariantMap wPA() const
     { return qvariant_cast< QVariantMap >(property("WPA")); }
+
+    Q_PROPERTY(QVariantMap WPS READ wPS)
+    inline QVariantMap wPS() const
+    { return qvariant_cast< QVariantMap >(property("WPS")); }
 
 public Q_SLOTS: // METHODS
 Q_SIGNALS: // SIGNALS
@@ -441,6 +449,38 @@ Q_SIGNALS: // SIGNALS
     void ScanDone(bool success);
     void StaAuthorized(const QString &name);
     void StaDeauthorized(const QString &name);
+};
+
+/*
+ * Proxy class for interface fi.w1.wpa_supplicant1.Network
+ */
+class FiW1Wpa_supplicant1NetworkInterface: public QDBusAbstractInterface
+{
+    Q_OBJECT
+public:
+    static inline const char *staticInterfaceName()
+    { return "fi.w1.wpa_supplicant1.Network"; }
+
+public:
+    FiW1Wpa_supplicant1NetworkInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent = nullptr);
+
+    ~FiW1Wpa_supplicant1NetworkInterface();
+
+    Q_PROPERTY(bool Enabled READ enabled WRITE setEnabled)
+    inline bool enabled() const
+    { return qvariant_cast< bool >(property("Enabled")); }
+    inline void setEnabled(bool value)
+    { setProperty("Enabled", QVariant::fromValue(value)); }
+
+    Q_PROPERTY(QVariantMap Properties READ properties WRITE setProperties)
+    inline QVariantMap properties() const
+    { return qvariant_cast< QVariantMap >(property("Properties")); }
+    inline void setProperties(const QVariantMap &value)
+    { setProperty("Properties", QVariant::fromValue(value)); }
+
+public Q_SLOTS: // METHODS
+Q_SIGNALS: // SIGNALS
+    void PropertiesChanged(const QVariantMap &properties);
 };
 
 #endif

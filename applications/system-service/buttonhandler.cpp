@@ -185,23 +185,28 @@ void ButtonHandler::run(){
                     char* frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
                     memcpy(privateBuffer, frameBuffer, DISPLAYSIZE);
                     // TODO Show some sort of message on screen letting them know that the process manager is starting
-                    auto i_ppid = stoi(ppid.toStdString());
-                    string my_pid = to_string(getpid());
-                    auto procs  = split_string_by_newline(exec((
-                        "grep -Erl /proc/*/status --regexp='PPid:\\s+" + ppid + "' | awk '{print substr($1, 7, length($1) - 13)}'"
-                    ).toStdString().c_str()));
-                    qDebug() << "Pausing child tasks...";
-                    for(auto pid : procs){
-                      string cmd = "cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'";
-                      if(my_pid != pid && is_uint(pid) && exec(cmd.c_str()) == ppid.toStdString() + "\n"){
-                          qDebug() << "  " << pid.c_str();
-                          // Found a child process
-                          auto i_pid = stoi(pid);
-                          // Pause the process
-                          kill(i_pid, SIGSTOP);
-                      }
+                    vector<string> procs;
+                    int i_ppid;
+                    string my_pid;
+                    if(!ppid.isEmpty()){
+                        i_ppid = stoi(ppid.toStdString());
+                        my_pid = to_string(getpid());
+                        procs  = split_string_by_newline(exec((
+                            "grep -Erl /proc/*/status --regexp='PPid:\\s+" + ppid + "' | awk '{print substr($1, 7, length($1) - 13)}'"
+                        ).toStdString().c_str()));
+                        qDebug() << "Pausing child tasks...";
+                        for(auto pid : procs){
+                          string cmd = "cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'";
+                          if(my_pid != pid && is_uint(pid) && exec(cmd.c_str()) == ppid.toStdString() + "\n"){
+                              qDebug() << "  " << pid.c_str();
+                              // Found a child process
+                              auto i_pid = stoi(pid);
+                              // Pause the process
+                              kill(i_pid, SIGSTOP);
+                          }
+                        }
+                        kill(i_ppid, SIGSTOP);
                     }
-                    kill(i_ppid, SIGSTOP);
                     qDebug() << "Running task manager.";
                     if(QFile("/opt/bin/erode").exists()){
                         system(("/opt/bin/erode " + ppid).toStdString().c_str());
@@ -217,20 +222,22 @@ void ButtonHandler::run(){
                     redraw_screen(frameBufferHandle);
                     close(frameBufferHandle);
                     inputManager.clear_touch_buffer(touchScreen.fd);
-                    lock_device(touchScreen);
-                    qDebug() << "Resuming child tasks...";
-                    kill(i_ppid, SIGCONT);
-                    for(auto pid : procs){
-                      string cmd = "cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'";
-                      if(my_pid != pid && is_uint(pid) && exec(cmd.c_str()) == ppid.toStdString() + "\n"){
-                          qDebug() << "  " << pid.c_str();
-                          // Found a child process
-                          auto i_pid = stoi(pid);
-                          // Pause the process
-                          kill(i_pid, SIGCONT);
-                      }
+                    if(!ppid.isEmpty()){
+                        lock_device(touchScreen);
+                        qDebug() << "Resuming child tasks...";
+                        kill(i_ppid, SIGCONT);
+                        for(auto pid : procs){
+                          string cmd = "cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'";
+                          if(my_pid != pid && is_uint(pid) && exec(cmd.c_str()) == ppid.toStdString() + "\n"){
+                              qDebug() << "  " << pid.c_str();
+                              // Found a child process
+                              auto i_pid = stoi(pid);
+                              // Pause the process
+                              kill(i_pid, SIGCONT);
+                          }
+                        }
+                        unlock_device(touchScreen);
                     }
-                    unlock_device(touchScreen);
                 }else{
                     press_button(buttons, ie.code, &stream);
                 }

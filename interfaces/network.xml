@@ -1,0 +1,25 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="codes.eeems.oxide1.Wifi.Interface">
+    <property name="enabled" type="b" access="readwrite"/>
+    <property name="ssid" type="s" access="read"/>
+    <property name="password" type="s" access="readwrite"/>
+    <property name="protocol" type="s" access="readwrite"/>
+    <property name="properties" type="a{sv}" access="readwrite">
+      <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+    </property>
+    <signal name="stateChanged">
+      <arg type="b" direction="out"/>
+    </signal>
+    <signal name="propertiesChanged">
+      <arg type="a{sv}" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+    </signal>
+    <signal name="connected">
+    </signal>
+    <signal name="disconnected">
+    </signal>
+    <method name="connect">
+    </method>
+  </interface>
+</node>

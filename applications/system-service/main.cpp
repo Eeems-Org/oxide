@@ -14,27 +14,26 @@ using namespace std;
 QString oxidepid;
 
 void signalHandler(__attribute__((unused)) const int signum){
-    exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
 }
 
 void onExit(){
-    auto i_ppid = stoi(oxidepid.toStdString());
+    DBusService::shutdown();
     string my_pid = to_string(getpid());
     auto procs  = ButtonHandler::split_string_by_newline(ButtonHandler::exec((
-        "grep -Erl /proc/*/status --regexp='PPid:\\s+" + oxidepid + "' | awk '{print substr($1, 7, length($1) - 13)}'"
-    ).toStdString().c_str()));
+        "grep -Erl /proc/*/status --regexp='PPid:\\s+" + my_pid + "' | awk '{print substr($1, 7, length($1) - 13)}'"
+    ).c_str()));
     qDebug() << "Killing child tasks...";
     for(auto pid : procs){
-      string cmd = "cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'";
-      if(my_pid != pid && ButtonHandler::is_uint(pid) && ButtonHandler::exec(cmd.c_str()) == oxidepid.toStdString() + "\n"){
-          qDebug() << "  " << pid.c_str();
-          // Found a child process
-          auto i_pid = stoi(pid);
-          // Pause the process
-          kill(i_pid, SIGSTOP);
-      }
+        string cmd = "cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'";
+        if(my_pid != pid && ButtonHandler::is_uint(pid) && ButtonHandler::exec(cmd.c_str()) == my_pid + "\n"){
+            qDebug() << "  " << pid.c_str();
+            // Found a child process
+            auto i_pid = stoi(pid);
+            // Kill the process
+            kill(i_pid, SIGTERM);
+        }
     }
-    kill(i_ppid, SIGSTOP);
 }
 
 int main(int argc, char *argv[]){
@@ -51,16 +50,24 @@ int main(int argc, char *argv[]){
     parser.process(app);
 
     const QStringList args = parser.positionalArguments();
-    if(args.length() < 1){
-        parser.showHelp(EXIT_FAILURE);
+    if(args.length() > 0){
+        oxidepid = args.at(0);
+    }else if(!system("systemctl --quiet is-active oxide")){
+        oxidepid = ButtonHandler::exec("systemctl status oxide | grep 'Main PID:' | awk '{print $3}'").c_str();
+        oxidepid = oxidepid.trimmed();
+        if(!oxidepid.isEmpty()){
+            qDebug() << "Automatically detected oxide with PID: " << oxidepid;
+        }
+    }else{
+        qDebug() << "Oxide not detected. Assuming running standalone";
+        oxidepid = "";
     }
-    oxidepid = args.at(0);
 
     // DBus API service
     DBusService::singleton();
-    // Button handling
-    ButtonHandler::init(oxidepid);
     signal(SIGTERM, signalHandler);
     atexit(onExit);
+    // Button handling
+    ButtonHandler::init(oxidepid);
     return app.exec();
 }

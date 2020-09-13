@@ -13,7 +13,7 @@
 
 class PowerAPI : public QObject {
     Q_OBJECT
-    Q_CLASSINFO("Version", "1.0.0")
+    Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_POWER_INTERFACE)
     Q_PROPERTY(int state READ state WRITE setState NOTIFY stateChanged)
     Q_PROPERTY(int batteryState READ batteryState NOTIFY batteryStateChanged)
@@ -54,7 +54,11 @@ public:
         connect(timer, &QTimer::timeout, this, QOverload<>::of(&PowerAPI::update));
         timer->start();
     }
-    ~PowerAPI(){}
+    ~PowerAPI(){
+        qDebug() << "Killing timer";
+        timer->stop();
+        delete timer;
+    }
 
     enum State { Normal, PowerSaving };
     Q_ENUM(State)
@@ -112,8 +116,8 @@ private:
     QList<SysObject> chargers;
     int m_state = Normal;
     int m_batteryState = BatteryUnknown;
-    int m_batteryLevel;
-    int m_batteryTemperature;
+    int m_batteryLevel = 0;
+    int m_batteryTemperature = 0;
     int m_chargerState = ChargerUnknown;
     bool m_batteryWarning = false;
     bool m_batteryAlert = false;

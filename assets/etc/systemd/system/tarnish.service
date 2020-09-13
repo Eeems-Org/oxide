@@ -1,0 +1,13 @@
+[Unit]
+Description=oxide system service
+After=home.mount
+StartLimitInterval=30
+StartLimitBurst=5
+
+[Service]
+ExecStart=/opt/bin/tarnish
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -19,7 +19,7 @@
 
 #include "controller.h"
 #include "eventfilter.h"
-#include "wifimanager.h"
+#include "tarnishhandler.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
@@ -28,7 +28,7 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 using namespace std;
 
 const char *qt_version = qVersion();
-QProcess* tarnishProc = nullptr;
+TarnishHandler* tarnishHandler = nullptr;
 
 vector<std::string> split_string_by_newline(const std::string& str){
     auto result = vector<std::string>{};
@@ -52,10 +52,7 @@ void signalHandler(__attribute__((unused)) const int signum){
     exit(EXIT_SUCCESS);
 }
 void onExit(){
-    if(tarnishProc != nullptr && tarnishProc->processId()){
-        qDebug() << "Killing tarnish";
-        tarnishProc->kill();
-    }
+    delete tarnishHandler;
     auto ppid = to_string(getpid());
     auto procs  = split_string_by_newline(Controller::exec((
         "grep -Erl /proc/*/status --regexp='PPid:\\s+" + ppid + "' | awk '{print substr($1, 7, length($1) - 13)}'"
@@ -92,30 +89,13 @@ int main(int argc, char *argv[]){
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
     QProcess::execute("killall", QStringList() << "tarnish" << "erode");
-    tarnishProc = new QProcess();
-    tarnishProc->setProcessChannelMode(QProcess::ForwardedChannels);
-    tarnishProc->setArguments(QStringList() << std::to_string(getpid()).c_str());
-    qDebug() << "Looking for tarnish";
-    for(auto tarnish : QList<QString> { "/opt/bin/tarnish", "/bin/tarnish", "/home/root/.local/tarnish"}){
-        qDebug() << "  " << tarnish.toStdString().c_str();
-        if(QFile(tarnish).exists()){
-            qDebug() << "   Found";
-            tarnishProc->setProgram(tarnish);
-            tarnishProc->start();
-            tarnishProc->waitForStarted();
-            break;
-        }
-    }
-    if(!tarnishProc->processId()){
-        qDebug() << "tarnish not found or is running";
-    }
-    WifiManager::singleton();
-    QGuiApplication app(argc, argv);
     EventFilter filter;
+    QGuiApplication app(argc, argv);
     app.installEventFilter(&filter);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();
+    tarnishHandler = new TarnishHandler(controller);
     controller->killXochitl();
     controller->filter = &filter;
     qmlRegisterType<AppItem>();

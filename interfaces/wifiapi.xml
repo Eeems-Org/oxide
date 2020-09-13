@@ -29,6 +29,17 @@
     </method>
     <method name="turnOffWifi">
     </method>
+    <method name="addNetwork">
+      <arg type="o" direction="out"/>
+      <arg name="ssid" type="s" direction="in"/>
+      <arg name="properties" type="a{sv}" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="QVariantMap"/>
+    </method>
+    <method name="getNetwork">
+      <arg type="o" direction="out"/>
+      <arg name="properties" type="a{sv}" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+    </method>
     <method name="getBSS">
       <arg type="o" direction="out"/>
       <arg name="properties" type="a{sv}" direction="in"/>

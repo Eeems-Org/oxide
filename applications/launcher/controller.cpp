@@ -248,6 +248,9 @@ std::string Controller::exec(const char* cmd) {
     return result;
 }
 void Controller::updateUIElements(){
+    if(wifiApi == nullptr){
+        return;
+    }
     QObject* ui = root->findChild<QObject*>("wifiState");
     if(!ui){
         qDebug() << "Can't find wifiState";

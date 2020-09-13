@@ -183,6 +183,9 @@
         <property name="RSN" type="a{sv}" access="read">
             <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
         </property>
+        <property name="WPS" type="a{sv}" access="read">
+            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+        </property>
         <property name="IEs" type="ay" access="read"/>
         <property name="Privacy" type="b" access="read"/>
         <property name="Mode" type="s" access="read"/>
@@ -191,6 +194,17 @@
             <annotation name="org.qtproject.QtDBus.QtTypeName" value="QList&lt;uint&gt;"/>
         </property>
         <property name="Signal" type="n" access="read"/>
+        <property name="Age" type="u" access="read"/>
+        <signal name="PropertiesChanged">
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <arg name="properties" type="a{sv}"/>
+        </signal>
+    </interface>
+    <interface name="fi.w1.wpa_supplicant1.Network">
+        <property name="Enabled" type="b" access="readwrite"/>
+        <property name="Properties" type="a{sv}" access="readwrite">
+            <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+        </property>
         <signal name="PropertiesChanged">
             <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
             <arg name="properties" type="a{sv}"/>

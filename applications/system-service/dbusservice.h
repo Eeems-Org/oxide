@@ -55,6 +55,10 @@ public:
         }
         return instance;
     }
+    static void shutdown(){
+        qDebug() << "Killing dbus service ";
+        delete singleton();
+    }
     DBusService() : apis(){
         apis.insert("power", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/power",
@@ -67,7 +71,16 @@ public:
             .instance = new WifiAPI(this),
         });
     }
-    ~DBusService() {}
+    ~DBusService(){
+        qDebug() << "Removing all APIs";
+        for(auto api : apis){
+            QDBusConnection::systemBus().unregisterObject(api.path);
+            apiUnavailable(QDBusObjectPath(api.path));
+            api.instance->setProperty("enabled", false);
+            delete api.instance;
+        }
+        apis.clear();
+    }
 
     QObject* getAPI(QString name){
         if(!apis.contains(name)){

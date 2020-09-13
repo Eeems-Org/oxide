@@ -5,8 +5,10 @@ CONFIG += c++11 console
 CONFIG -= app_bundle
 
 SOURCES += main.cpp \
+    bss.cpp \
     buttonhandler.cpp \
     fb2png.cpp \
+    network.cpp \
     sysobject.cpp \
     wlan.cpp \
     wpa_supplicant.cpp
@@ -20,17 +22,24 @@ configFile.files = ../../assets/etc/dbus-1/system.d/*
 configFile.path =  /etc/dbus-1/system.d/
 INSTALLS += configFile
 
+service.files = ../../assets/etc/systemd/system/tarnish.service
+service.path = /etc/systemd/system/
+INSTALLS += service
+
 system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)
 
 
 HEADERS += \
+    bss.h \
     buttonhandler.h \
     dbusservice.h \
     dbussettings.h \
     fb2png.h \
     inputmanager.h \
     mxcfb.h \
+    network.h \
     powerapi.h \
+    supplicant.h \
     sysobject.h \
     wifiapi.h \
     wlan.h \

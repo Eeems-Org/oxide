@@ -182,21 +182,9 @@ public:
         }
         // Connect to service
         QStringList serviceNames = bus.interface()->registeredServiceNames();
-        if (!serviceNames.contains(SERVICE)){
-            if(!system("systemctl --quiet is-active wpa_supplicant")){
-                qCritical() << "wpa_supplicant is running, but not active?";
-                return false;
-            }
-            qDebug() << "Starting wpa_supplicant...";
-            if(system("systemctl --quiet start wpa_supplicant")){
-                qCritical() << "Failed to start wpa_supplicant";
-                return false;
-            }
-            qDebug() << "Waiting for wpa_supplicant dbus service...";
-            while(!serviceNames.contains(SERVICE)){
-                usleep(1000);
-                serviceNames = bus.interface()->registeredServiceNames();
-            }
+        while(!serviceNames.contains(SERVICE)){
+            usleep(1000);
+            serviceNames = bus.interface()->registeredServiceNames();
         }
         return true;
     }
