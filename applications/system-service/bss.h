@@ -4,6 +4,7 @@
 #include <QMutableListIterator>
 
 #include "supplicant.h"
+#include "network.h"
 #include "dbussettings.h"
 
 class BSS : public QObject{
@@ -12,6 +13,9 @@ class BSS : public QObject{
     Q_CLASSINFO("D-Bus Interface", OXIDE_BSS_INTERFACE)
     Q_PROPERTY(QString bssid READ bssid)
     Q_PROPERTY(QString ssid READ ssid)
+    Q_PROPERTY(bool privacy READ privacy)
+    Q_PROPERTY(ushort frequency READ frequency)
+    Q_PROPERTY(QDBusObjectPath network READ network)
 public:
     BSS(QString path, QString bssid, QString ssid, QObject* parent);
     BSS(QString path, IBSS* bss, QObject* parent) : BSS(path, bss->bSSID(), bss->sSID(), parent) {}
@@ -51,14 +55,14 @@ public:
         }
         auto bss = new IBSS(WPA_SUPPLICANT_SERVICE, path, QDBusConnection::systemBus(), interface);
         bsss.append(bss);
-        connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
+        QObject::connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
     }
     void addBSS(IBSS* bss){
         if(paths().contains(bss->path())){
             return;
         }
         bsss.append(bss);
-        connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
+        QObject::connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
     }
     void removeBSS(QString path){
         QMutableListIterator<IBSS*> i(bsss);
@@ -69,10 +73,30 @@ public:
             }
         }
     }
+    bool privacy(){
+        for(auto bss : bsss){
+            if(bss->privacy()){
+                return true;
+            }
+        }
+        return false;
+    }
+    ushort frequency(){
+        if(!bsss.size()){
+            return 0;
+        }
+        return bsss.first()->frequency();
+    }
+    QDBusObjectPath network();
+    Q_INVOKABLE QDBusObjectPath connect();
+
+signals:
+    void removed();
+    void propertiesChanged(QVariantMap);
 
 private slots:
     void PropertiesChanged(const QVariantMap& properties){
-        Q_UNUSED(properties);
+        emit propertiesChanged(properties);
     }
 
 private:

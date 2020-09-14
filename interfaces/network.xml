@@ -3,7 +3,8 @@
   <interface name="codes.eeems.oxide1.Network">
     <property name="enabled" type="b" access="readwrite"/>
     <property name="ssid" type="s" access="read"/>
-    <property name="password" type="s" access="readwrite"/>
+    <property name="bSSs" type="ao" access="read"/>
+    <property name="password" type="s" access="write"/>
     <property name="protocol" type="s" access="readwrite"/>
     <property name="properties" type="a{sv}" access="readwrite">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
@@ -19,7 +20,11 @@
     </signal>
     <signal name="disconnected">
     </signal>
+    <signal name="removed">
+    </signal>
     <method name="connect">
+    </method>
+    <method name="remove">
     </method>
   </interface>
 </node>

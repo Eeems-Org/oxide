@@ -8,6 +8,25 @@ BSS::BSS(QString path, QString bssid, QString ssid, QObject* parent)
   m_bssid(bssid),
   m_ssid(ssid) {
     for(auto bss : bsss){
-        connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
+        QObject::connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
     }
+}
+
+QDBusObjectPath BSS::connect(){
+    auto path = network();
+    if(path.path() != "/"){
+        return path;
+    }
+    auto api = (WifiAPI*)parent();
+    return api->addNetwork(ssid(), QVariantMap());
+}
+QDBusObjectPath BSS::network(){
+    auto api = (WifiAPI*)parent();
+    QVariantMap args;
+    args.insert("ssid", ssid());
+    auto networks = api->getNetwork(args);
+    if(!networks.size()){
+        return QDBusObjectPath("/");
+    }
+    return networks.first();
 }

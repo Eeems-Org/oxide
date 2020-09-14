@@ -23,6 +23,8 @@ class WifiAPI : public APIBase {
     Q_PROPERTY(QSet<QString> blobs READ blobs)
     Q_PROPERTY(QList<QDBusObjectPath> bSSs READ bSSs)
     Q_PROPERTY(int link READ link)
+    Q_PROPERTY(QDBusObjectPath network READ network)
+    Q_PROPERTY(QList<QDBusObjectPath> networks READ getNetworkPaths)
 public:
     WifiAPI(QObject* parent)
     : APIBase(parent),
@@ -30,7 +32,9 @@ public:
       settings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat),
       wlans(),
       networks(),
-      m_state(Unknown)
+      m_state(Unknown),
+      m_currentNetwork("/"),
+      m_link(0)
     {
         QDir dir("/sys/class/net");
         qDebug() << "Looking for wireless devices...";
@@ -115,9 +119,9 @@ public:
         connect(timer, &QTimer::timeout, this, QOverload<>::of(&WifiAPI::update));
         loadNetworks();
         if(settings.value("wifion").toBool()){
-            turnOnWifi();
+            enable();
         }else{
-            turnOffWifi();
+            disable();
         }
         update();
         setEnabled(m_enabled);
@@ -170,7 +174,7 @@ public:
         emit stateChanged(state);
     }
 
-    Q_INVOKABLE bool turnOnWifi(){
+    Q_INVOKABLE bool enable(){
         qDebug() << "Turning wifi on";
         if(m_state == Off){
             setState(Disconnected);
@@ -188,7 +192,7 @@ public:
         }
         return true;
     }
-    Q_INVOKABLE void turnOffWifi(){
+    Q_INVOKABLE void disable(){
         qDebug() << "Turning wifi off";
         setState(Off);
         for(auto wlan : wlans){
@@ -196,15 +200,30 @@ public:
                 qDebug() << "Failed to disable " + wlan->iface();
             }
         }
+        flushBSSCache(0);
         settings.setValue("wifion", false);
         settings.sync();
     }
     Q_INVOKABLE QDBusObjectPath addNetwork(QString ssid, QVariantMap properties){
-        Q_UNUSED(ssid)
         Q_UNUSED(properties)
-        // TODO implement addNetwork
+        for(auto network : networks){
+            if(network->ssid() == ssid){
+                return QDBusObjectPath(network->path());
+            }
+        }
+        auto network = new Network(getPath("network", ssid), ssid, properties, this);
+        network->registerNetwork();
+        network->setEnabled(true);
+        if(m_enabled){
+            network->registerPath();
+        }
+        networks.append(network);
+        auto path = QDBusObjectPath(network->path());
+        emit networkAdded(path);
+        return path;
     }
-    Q_INVOKABLE QDBusObjectPath getNetwork(QVariantMap properties){
+    Q_INVOKABLE QList<QDBusObjectPath> getNetwork(QVariantMap properties){
+        QList<QDBusObjectPath> result;
         for(auto network : networks){
             bool found = true;
             auto props = network->properties();
@@ -220,12 +239,13 @@ public:
                 }
             }
             if(found){
-                return QDBusObjectPath(network->path());
+                result.append(QDBusObjectPath(network->path()));
             }
         }
-        return QDBusObjectPath("/");
+        return result;
     }
-    Q_INVOKABLE QDBusObjectPath getBSS(QVariantMap properties){
+    Q_INVOKABLE QList<QDBusObjectPath> getBSS(QVariantMap properties){
+        QList<QDBusObjectPath> result;
         for(auto bss : bsss){
             bool found = true;
             for(auto key : properties.keys()){
@@ -236,10 +256,10 @@ public:
                 }
             }
             if(found){
-                return QDBusObjectPath(bss->path());
+                result.append(QDBusObjectPath(bss->path()));
             }
         }
-        return QDBusObjectPath("/");
+        return result;
     }
     Q_INVOKABLE void scan(bool active = false){
         QMap<QString, QVariant> args;
@@ -331,6 +351,27 @@ public:
         }
         return result;
     }
+    QDBusObjectPath network(){
+        for(auto interface : getInterfaces()){
+            auto state = interface->state();
+            if(state == "associated" || state == "completed"){
+                auto ipath = interface->currentNetwork().path();
+                for(auto network : networks){
+                    if(network->paths().contains(ipath)){
+                        return QDBusObjectPath(network->path());
+                    }
+                }
+            }
+        }
+        return QDBusObjectPath("/");
+    }
+    QList<QDBusObjectPath> getNetworkPaths(){
+        QList<QDBusObjectPath> result;
+        for(auto network : networks){
+            result.append(QDBusObjectPath(network->path()));
+        }
+        return result;
+    }
 
     // Interface signals
     void BSSAdded(Wlan* wlan, const QDBusObjectPath& path, const QVariantMap& properties){
@@ -368,6 +409,7 @@ public:
             }
             if(!bss->paths().length()){
                 bsss.removeAll(bss);
+                emit bss->removed();
                 emit bssRemoved(QDBusObjectPath(bss->path()));
                 delete bss;
                 break;
@@ -420,6 +462,7 @@ public:
             }
             if(!network->paths().length()){
                 networks.removeAll(network);
+                emit network->removed();
                 emit networkRemoved(QDBusObjectPath(network->path()));
                 qDebug() << "Network removed " << network->ssid();
                 delete network;
@@ -444,8 +487,9 @@ public:
         Q_UNUSED(properties);
     }
 
-Q_SIGNALS:
+signals:
     void stateChanged(int);
+    void linkChanged(int);
     void networkAdded(QDBusObjectPath);
     void networkRemoved(QDBusObjectPath);
     void networkConnected(QDBusObjectPath);
@@ -481,6 +525,8 @@ private:
     QList<Wlan*> wlans;
     QList<Network*> networks;
     int m_state;
+    QDBusObjectPath m_currentNetwork;
+    int m_link;
     QList<BSS*> bsss;
     Wpa_Supplicant* supplicant;
 
@@ -550,6 +596,7 @@ private:
                     network->registerPath();
                 }
                 networks.append(network);
+                emit networkAdded(QDBusObjectPath(network->path()));
                 qDebug() << "  Registered network" << ssid;
             }
         }
@@ -560,9 +607,9 @@ private:
         settings.sync();
         bool enabled = settings.value("wifion").toBool();
         if(enabled && m_state == Off){
-            turnOnWifi();
+            enable();
         }else if(!enabled && m_state != Off){
-            turnOffWifi();
+            disable();
         }
         State state = Off;
         if(enabled){
@@ -582,8 +629,23 @@ private:
                 }
             }
         }
+        auto path = network().path();
+        if((state == Online || state == Offline) && m_currentNetwork.path() != path){
+            qDebug() << "Connected to" << path;
+            m_currentNetwork.setPath(path);
+            emit networkConnected(m_currentNetwork);
+        }else if((state == Disconnected || state == Off) && m_currentNetwork.path() != "/"){
+            qDebug() << "Disconnected from" << m_currentNetwork.path();
+            m_currentNetwork.setPath("/");
+            emit disconnected();
+        }
         if(m_state != state){
             setState(state);
+        }
+        auto clink = link();
+        if(m_link != clink){
+            m_link = clink;
+            emit linkChanged(clink);
         }
     }
     QString getPath(QString type, QString id){
@@ -591,6 +653,9 @@ private:
             id= QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
         }else if(type == "bss"){
             id = id.toUtf8().toHex();
+        }
+        if(id.isEmpty()){
+            id = QUuid::createUuid().toString(QUuid::Id128);
         }
         return QString(OXIDE_SERVICE_PATH "/") + type + "/" + id;
     }

@@ -4,7 +4,12 @@
     <property name="state" type="i" access="read"/>
     <property name="bSSs" type="ao" access="read"/>
     <property name="link" type="i" access="read"/>
+    <property name="network" type="o" access="read"/>
+    <property name="networks" type="ao" access="read"/>
     <signal name="stateChanged">
+      <arg type="i" direction="out"/>
+    </signal>
+    <signal name="linkChanged">
       <arg type="i" direction="out"/>
     </signal>
     <signal name="networkAdded">
@@ -24,10 +29,10 @@
     <signal name="bssRemoved">
       <arg type="o" direction="out"/>
     </signal>
-    <method name="turnOnWifi">
+    <method name="enable">
       <arg type="b" direction="out"/>
     </method>
-    <method name="turnOffWifi">
+    <method name="disable">
     </method>
     <method name="addNetwork">
       <arg type="o" direction="out"/>
@@ -36,12 +41,12 @@
       <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="QVariantMap"/>
     </method>
     <method name="getNetwork">
-      <arg type="o" direction="out"/>
+      <arg type="ao" direction="out"/>
       <arg name="properties" type="a{sv}" direction="in"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
     </method>
     <method name="getBSS">
-      <arg type="o" direction="out"/>
+      <arg type="ao" direction="out"/>
       <arg name="properties" type="a{sv}" direction="in"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
     </method>

@@ -3,5 +3,17 @@
   <interface name="codes.eeems.oxide1.BSS">
     <property name="bssid" type="s" access="read"/>
     <property name="ssid" type="s" access="read"/>
+    <property name="privacy" type="b" access="read"/>
+    <property name="frequency" type="q" access="read"/>
+    <property name="network" type="o" access="read"/>
+    <signal name="removed">
+    </signal>
+    <signal name="propertiesChanged">
+      <arg type="a{sv}" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+    </signal>
+    <method name="connect">
+      <arg type="o" direction="out"/>
+    </method>
   </interface>
 </node>

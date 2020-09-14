@@ -63,3 +63,10 @@ void Network::registerNetwork(){
         }
     }
 }
+
+QList<QDBusObjectPath> Network::bSSs(){
+    auto api = (WifiAPI*)parent();
+    QVariantMap args;
+    args.insert("ssid", ssid());
+    return api->getBSS(args);
+}

@@ -36,8 +36,8 @@ public:
         connect(uiTimer, &QTimer::timeout, this, QOverload<>::of(&Controller::updateUIElements));
         uiTimer->start();
     }
-    Q_INVOKABLE bool turnOnWifi(){ return wifiApi->turnOnWifi(); };
-    Q_INVOKABLE void turnOffWifi(){ wifiApi->turnOffWifi(); };
+    Q_INVOKABLE bool turnOnWifi(){ return wifiApi->enable(); };
+    Q_INVOKABLE void turnOffWifi(){ wifiApi->disable(); };
     Q_INVOKABLE bool wifiOn(){
         auto state = wifiApi->state();
         return state != WifiUnknown && state != WifiOff;
@@ -150,6 +150,7 @@ public slots:
         connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
         connect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
         connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
+        connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
 
         QTimer::singleShot(1000, [=](){
             // Get initial values when UI is ready
@@ -160,6 +161,7 @@ public slots:
             powerStateChanged(powerApi->state());
 
             wifiStateChanged(wifiApi->state());
+            wifiLinkChanged(wifiApi->link());
             // for(auto network : wifiApi->networks()){
             //     networkAdded(network);
             // }
@@ -333,8 +335,13 @@ private slots:
             }
         }
     }
+    void wifiLinkChanged(int link){
+        QObject* ui = root->findChild<QObject*>("wifiState");
+        if(ui){
+            ui->setProperty("link", link);
+        }
+    }
 private:
-    void updateHiddenUIElements();
     void checkUITimer();
     bool m_automaticSleep = true;
     int m_columns = 6;
@@ -346,7 +353,6 @@ private:
     bool m_powerConnected = false;
 
     QString wifiState = "Unknown";
-    int wifiLink = 0;
     int wifiLevel = 0;
     bool wifiConnected = false;
 

@@ -251,19 +251,6 @@ void Controller::updateUIElements(){
     if(wifiApi == nullptr){
         return;
     }
-    QObject* ui = root->findChild<QObject*>("wifiState");
-    if(!ui){
-        qDebug() << "Can't find wifiState";
-    }
-    int link = wifiApi->link();
-    if(wifiLink != link){
-        wifiLink = link;
-        updateUI(ui, "link", link);
-        qDebug() << ("Wifi link: " + to_string(link)).c_str();
-    }
-    updateHiddenUIElements();
-}
-void Controller::updateHiddenUIElements(){
     if(showWifiDb()){
         QObject* ui = root->findChild<QObject*>("wifiState");
         if(ui){
@@ -318,7 +305,7 @@ void Controller::setShowWifiDb(bool state){
         emit showWifiDbChanged(state);
     }
     if(state){
-        updateHiddenUIElements();
+        updateUIElements();
     }
 }
 void Controller::setShowBatteryPercent(bool state){
@@ -333,9 +320,6 @@ void Controller::setShowBatteryTemperature(bool state){
     if(root != nullptr){
         qDebug() << "Show Battery Temperature: " << state;
         emit showBatteryTemperatureChanged(state);
-    }
-    if(state){
-        updateHiddenUIElements();
     }
 }
 void Controller::setSleepAfter(int sleepAfter){

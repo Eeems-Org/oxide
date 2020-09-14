@@ -18,7 +18,7 @@ using namespace std;
 
 struct APIEntry {
     QString path;
-    QStringList dependants;
+    QStringList* dependants;
     APIBase* instance;
 };
 
@@ -62,12 +62,12 @@ public:
     DBusService() : apis(){
         apis.insert("power", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/power",
-            .dependants = QStringList(),
+            .dependants = new QStringList(),
             .instance = new PowerAPI(this),
         });
         apis.insert("wifi", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
-            .dependants = QStringList(),
+            .dependants = new QStringList(),
             .instance = new WifiAPI(this),
         });
         auto bus = QDBusConnection::systemBus();
@@ -83,6 +83,7 @@ public:
             bus.unregisterObject(api.path);
             apiUnavailable(QDBusObjectPath(api.path));
             delete api.instance;
+            delete api.dependants;
         }
         apis.clear();
     }
@@ -104,12 +105,12 @@ public Q_SLOTS:
         if(bus.objectRegisteredAt(api.path) == nullptr){
             bus.registerObject(api.path, api.instance, QDBusConnection::ExportAllContents);
         }
-        if(!api.dependants.length()){
+        if(!api.dependants->size()){
             qDebug() << "Registering " << api.path;
             api.instance->setEnabled(true);
             apiAvailable(QDBusObjectPath(api.path));
         }
-        api.dependants.append(message.service());
+        api.dependants->append(message.service());
         return QDBusObjectPath(api.path);
     };
     Q_NOREPLY void releaseAPI(QString name, QDBusMessage message) {
@@ -118,8 +119,8 @@ public Q_SLOTS:
         }
         auto api = apis[name];
         auto client = message.service();
-        api.dependants.removeAll(client);
-        if(!api.dependants.length()){
+        api.dependants->removeAll(client);
+        if(!api.dependants->size()){
             qDebug() << "Unregistering " << api.path;
             api.instance->setEnabled(false);
             QDBusConnection::systemBus().unregisterObject(api.path, QDBusConnection::UnregisterNode);
@@ -130,7 +131,7 @@ public Q_SLOTS:
         QVariantMap result;
         for(auto key : apis.keys()){
             auto api = apis[key];
-            if(api.dependants.length()){
+            if(api.dependants->size()){
                 result[key] = QVariant::fromValue(api.path);
             }
         }
@@ -149,8 +150,8 @@ private Q_SLOTS:
             auto bus = QDBusConnection::systemBus();
             for(auto key : apis.keys()){
                 auto api = apis[key];
-                api.dependants.removeAll(name);
-                if(!api.dependants.length() && bus.objectRegisteredAt(api.path) != nullptr){
+                api.dependants->removeAll(name);
+                if(!api.dependants->size() && bus.objectRegisteredAt(api.path) != nullptr){
                     qDebug() << "Automatically unregistering " << api.path;
                     api.instance->setEnabled(false);
                     bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);

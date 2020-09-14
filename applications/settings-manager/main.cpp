@@ -2,6 +2,7 @@
 #include <QJsonValue>
 #include <QJsonDocument>
 #include <QSet>
+#include <QMutableListIterator>
 
 #include "dbussettings.h"
 
@@ -13,8 +14,92 @@
 
 using namespace codes::eeems::oxide1;
 
+static QTextStream qStdOut(stdout, QIODevice::WriteOnly);
+
+QVariant sanitizeForJson(QVariant value);
+
+QVariant decodeDBusArgument(const QDBusArgument& arg){
+    auto type = arg.currentType();
+    if(type == QDBusArgument::BasicType || type == QDBusArgument::VariantType){
+        return sanitizeForJson(arg.asVariant());
+    }
+    if(type == QDBusArgument::ArrayType){
+        QVariantList list;
+        arg.beginArray();
+        while(!arg.atEnd()){
+            list.append(decodeDBusArgument(arg));
+        }
+        arg.endArray();
+        return sanitizeForJson(list);
+    }
+    if(type == QDBusArgument::MapType){
+        QMap<QVariant, QVariant> map;
+        arg.beginMap();
+        while(!arg.atEnd()){
+            arg.beginMapEntry();
+            auto key = decodeDBusArgument(arg);
+            auto value = decodeDBusArgument(arg);
+            arg.endMapEntry();
+            map.insert(sanitizeForJson(key), sanitizeForJson(value));
+        }
+        arg.endMap();
+        return sanitizeForJson(QVariant::fromValue(map));
+    }
+    qDebug() << "Unable to sanitize QDBusArgument as it is an unknown type";
+    return QVariant();
+}
+
+QVariant sanitizeForJson(QVariant value){
+    auto userType = value.userType();
+    if(userType == QMetaType::type("QDBusObjectPath")){
+        return value.value<QDBusObjectPath>().path();
+    }
+    if(userType == QMetaType::type("QDBusSignature")){
+        return value.value<QDBusSignature>().signature();
+    }
+    if(userType == QMetaType::type("QDBusVariant")){
+        return value.value<QDBusVariant>().variant();
+    }
+    if(userType == QMetaType::type("QDBusArgument")){
+        return decodeDBusArgument(value.value<QDBusArgument>());
+    }
+    if(userType == QMetaType::type("QList<QDBusVariant>")){
+        QVariantList list;
+        for(auto value : value.value<QList<QDBusVariant>>()){
+            list.append(sanitizeForJson(value.variant()));
+        }
+        return list;
+    }
+    if(userType == QMetaType::type("QList<QDBusSignature>")){
+        QStringList list;
+        for(auto value : value.value<QList<QDBusSignature>>()){
+            list.append(value.signature());
+        }
+        return list;
+    }
+    if(userType == QMetaType::type("QList<QDBusObjectPath>")){
+        QStringList list;
+        for(auto value : value.value<QList<QDBusObjectPath>>()){
+            list.append(value.path());
+        }
+        return list;
+    }
+    if(userType == QMetaType::QVariantList){
+        QVariantList list = value.toList();
+        QMutableListIterator<QVariant> i(list);
+        while(i.hasNext()){
+            i.setValue(sanitizeForJson(i.next()));
+        }
+        return list;
+    }
+    return value;
+}
+
 QString toJson(QVariant value){
-    auto jsonVariant = QJsonValue::fromVariant(value);
+    if(value.isNull()){
+        return "null";
+    }
+    auto jsonVariant = QJsonValue::fromVariant(sanitizeForJson(value));
     if(jsonVariant.isBool()){
         return jsonVariant.toBool() ? "true" : "false";
     }
@@ -39,24 +124,13 @@ QString toJson(QVariant value){
     return doc.toJson(QJsonDocument::Compact);
 }
 QVariant fromJson(QByteArray json){
-    if(json == "true"){
-        return true;
-    }
-    if(json == "false"){
-        return false;
-    }
-    if(json == "null"){
-        return QJsonValue();
-    }
-    if(json == "undefined"){
-        return QJsonValue()["_"];
-    }
     QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(json, &error);
+    QJsonDocument doc = QJsonDocument::fromJson("[" + json + "]", &error);
     if(error.error != QJsonParseError::NoError){
         qDebug() << "Unable to read json value" << error.errorString();
+        qDebug() << "Value to parse" << json;
     }
-    return doc.toVariant();
+    return doc.array().first().toVariant();
 }
 
 class SlotHandler : public QObject {
@@ -97,7 +171,11 @@ private:
             void* ptr = reinterpret_cast<void*>(arguments[i + 1]);
             args << QVariant(typeId, ptr);
         }
-        qDebug() << toJson(args).toStdString().c_str();
+        if(args.size() == 1){
+            qStdOut << toJson(args.first()).toStdString().c_str() << endl;
+        }else{
+            qStdOut << toJson(args).toStdString().c_str() << endl;
+        }
     };
 };
 
@@ -215,14 +293,13 @@ int main(int argc, char *argv[]){
             qDebug() << "Failed to get value" << api->lastError();
             return EXIT_FAILURE;
         }
-        qDebug() << toJson(value).toStdString().c_str();
+        qStdOut << toJson(value).toStdString().c_str() << endl;
     }else if(action == "set"){
         auto property = args.at(2).toStdString();
         if(!api->setProperty(property.c_str(), args.at(3).toStdString().c_str())){
             qDebug() << "Failed to set value" << api->lastError();
             return EXIT_FAILURE;
         }
-        qDebug() << api->property(property.c_str());
     }else if(action == "listen"){
         auto metaObject = api->metaObject();
         auto name = QString(args.at(2).toStdString().c_str());
@@ -246,7 +323,7 @@ int main(int argc, char *argv[]){
                 }
             }
         }
-        qDebug() << "Unable to listen to signal" << api->lastError();
+        qDebug() << "Unable to listen to signal" << bus.interface()->lastError();
         return EXIT_FAILURE;
     }else if(action == "call"){
         auto method = args.at(2);
@@ -266,6 +343,11 @@ int main(int argc, char *argv[]){
                     return EXIT_FAILURE;
                 }
                 QVariant variant = fromJson(value.toUtf8());
+                if(type == "QDBusObjectPath"){
+                    variant = QVariant::fromValue(QDBusObjectPath(variant.toString()));
+                }else if(type == "QDBusSignature"){
+                    variant = QVariant::fromValue(QDBusSignature(variant.toString()));
+                }
                 if(!variant.canConvert(id)){
                     qDebug() << "Unable to convert to type" << type;
                     qDebug() << "Value" << variant;
@@ -282,17 +364,10 @@ int main(int argc, char *argv[]){
         }
         QDBusMessage reply = api->callWithArgumentList(QDBus::Block, method, arguments);
         auto result = reply.arguments();
-        if(result.size() > 1 || !result.first().isNull()){
-            QVariantList results;
-            for(auto result : result){
-                if(result.userType() == QMetaType::type("QDBusObjectPath")){
-                    result = result.value<QDBusObjectPath>().path();
-                }else if(result.userType() == QMetaType::type("QDBusSignature")){
-                    result = result.value<QDBusSignature>().signature();
-                }
-                results.append(result);
-            }
-            qDebug() << toJson(results).toStdString().c_str();
+        if(result.size() > 1){
+            qStdOut << toJson(result).toStdString().c_str() << endl;
+        }else if(!result.first().isNull()){
+            qStdOut << toJson(result.first()).toStdString().c_str() << endl;
         }
         if(!reply.errorName().isEmpty()){
             return EXIT_FAILURE;

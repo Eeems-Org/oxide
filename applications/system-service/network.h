@@ -13,7 +13,8 @@ class Network : public QObject {
     Q_CLASSINFO("D-Bus Interface", OXIDE_NETWORK_INTERFACE)
     Q_PROPERTY(bool enabled READ enabled  WRITE setEnabled  NOTIFY stateChanged)
     Q_PROPERTY(QString ssid READ ssid)
-    Q_PROPERTY(QString password READ password WRITE setPassword)
+    Q_PROPERTY(QList<QDBusObjectPath> bSSs READ bSSs)
+    Q_PROPERTY(QString password WRITE setPassword)
     Q_PROPERTY(QString protocol READ protocol WRITE setProtocol)
     Q_PROPERTY(QVariantMap properties READ properties WRITE setProperties NOTIFY propertiesChanged)
 public:
@@ -50,6 +51,8 @@ public:
     }
 
     QString ssid(){ return m_ssid; }
+
+    QList<QDBusObjectPath> bSSs();
 
     QString password() {
         if(passwordField() == ""){
@@ -126,18 +129,34 @@ public:
     Q_INVOKABLE void connect(){
         QList<QDBusPendingReply<void>> replies;
         for(auto network : networks){
-            replies.append(((Interface*)network->parent())->SelectNetwork(QDBusObjectPath(network->path())));
+            auto interface = (Interface*)network->parent();
+            replies.append(interface->SelectNetwork(QDBusObjectPath(network->path())));
+        }
+        for(auto reply : replies){
+            reply.waitForFinished();
+        }
+    }
+    Q_INVOKABLE void remove(){
+        QList<QDBusPendingReply<void>> replies;
+        QMap<QString,Interface*> todo;
+        for(auto network : networks){
+            todo.insert(network->path(), (Interface*)network->parent());
+        }
+        for(auto path : todo.keys()){
+            auto interface = todo[path];
+            replies.append(interface->RemoveNetwork(QDBusObjectPath(path)));
         }
         for(auto reply : replies){
             reply.waitForFinished();
         }
     }
 
-Q_SIGNALS:
+signals:
     void stateChanged(bool);
     void propertiesChanged(QVariantMap);
     void connected();
     void disconnected();
+    void removed();
 
 
 private slots:
