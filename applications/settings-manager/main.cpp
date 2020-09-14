@@ -100,28 +100,17 @@ QString toJson(QVariant value){
         return "null";
     }
     auto jsonVariant = QJsonValue::fromVariant(sanitizeForJson(value));
-    if(jsonVariant.isBool()){
-        return jsonVariant.toBool() ? "true" : "false";
-    }
     if(jsonVariant.isNull()){
         return "null";
     }
     if(jsonVariant.isUndefined()){
         return "undefined";
     }
-    if(jsonVariant.isDouble()){
-        return QString::number(jsonVariant.toDouble());
-    }
-    if(jsonVariant.isString()){
-        return jsonVariant.toString();
-    }
-    QJsonDocument doc;
-    if(jsonVariant.isObject()){
-        doc = QJsonDocument(jsonVariant.toObject());
-    }else{
-        doc = QJsonDocument(jsonVariant.toArray());
-    }
-    return doc.toJson(QJsonDocument::Compact);
+    QJsonArray jsonArray;
+    jsonArray.append(jsonVariant);
+    QJsonDocument doc(jsonArray);
+    auto json = doc.toJson(QJsonDocument::Compact);
+    return json.mid(1, json.length() - 2);
 }
 QVariant fromJson(QByteArray json){
     QJsonParseError error;
