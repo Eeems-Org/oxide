@@ -21,10 +21,24 @@ public:
     Network(QString path, QVariantMap properties, QObject* parent)
     : Network(path, properties["ssid"].toString().mid(1, properties["ssid"].toString().length() - 2), properties, parent){}
 
-    ~Network(){
-        QDBusConnection::systemBus().unregisterObject(path());
-    }
+    ~Network(){ unregisterPath(); }
     QString path() { return m_path; }
+    void registerPath(){
+        auto bus = QDBusConnection::systemBus();
+        bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
+        if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
+            qDebug() << "Registered" << path() << OXIDE_NETWORK_INTERFACE;
+        }else{
+            qDebug() << "Failed to register" << path();
+        }
+    }
+    void unregisterPath(){
+        auto bus = QDBusConnection::systemBus();
+        if(bus.objectRegisteredAt(path()) != nullptr){
+            qDebug() << "Unregistered" << path();
+            bus.unregisterObject(path());
+        }
+    }
 
     bool enabled(){ return m_enabled; }
     void setEnabled(bool enabled){

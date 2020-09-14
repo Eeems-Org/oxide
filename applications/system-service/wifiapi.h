@@ -6,32 +6,31 @@
 #include <QDir>
 #include <QException>
 #include <QUuid>
-#include <QReadWriteLock>
 
 #include <unistd.h>
 
+#include "apibase.h"
 #include "wlan.h"
 #include "network.h"
 #include "bss.h"
 
 const QUuid NS = QUuid::fromString(QLatin1String("{78c28d66-f558-11ea-adc1-0242ac120002}"));
 
-class WifiAPI : public QObject {
+class WifiAPI : public APIBase {
     Q_OBJECT
-    Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_WIFI_INTERFACE)
-    Q_PROPERTY(int state READ state WRITE setState NOTIFY stateChanged)
+    Q_PROPERTY(int state READ state NOTIFY stateChanged)
     Q_PROPERTY(QSet<QString> blobs READ blobs)
     Q_PROPERTY(QList<QDBusObjectPath> bSSs READ bSSs)
     Q_PROPERTY(int link READ link)
 public:
     WifiAPI(QObject* parent)
-    : QObject(parent),
-      settings("/home/root/.config/remarkable/xochitl.conf",
-      QSettings::IniFormat),
+    : APIBase(parent),
+      m_enabled(false),
+      settings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat),
       wlans(),
       networks(),
-      lock()
+      m_state(Unknown)
     {
         QDir dir("/sys/class/net");
         qDebug() << "Looking for wireless devices...";
@@ -87,8 +86,8 @@ public:
                     }
                     if(!found){
                         auto network = new Network(getPath("network", properties["ssid"].toString()), properties, this);
-                        networks.append(network);
                         network->addNetwork(inetwork);
+                        networks.append(network);
                     }
                 }
                 for(auto path : wlan->interface()->bSSs()){
@@ -103,11 +102,17 @@ public:
                         }
                     }
                     if(!found){
-                        bsss.append(new BSS(getPath("bss", bssid), ibss, this));
+                        auto bss = new BSS(getPath("bss", bssid), ibss, this);
+                        bsss.append(bss);
                     }
                 }
             }
         }
+        timer = new QTimer(this);
+        timer->setSingleShot(false);
+        timer->setInterval(3 * 1000); // 3 seconds
+        timer->moveToThread(qApp->thread());
+        connect(timer, &QTimer::timeout, this, QOverload<>::of(&WifiAPI::update));
         loadNetworks();
         if(settings.value("wifion").toBool()){
             turnOnWifi();
@@ -115,11 +120,7 @@ public:
             turnOffWifi();
         }
         update();
-        timer = new QTimer(this);
-        timer->setSingleShot(false);
-        timer->setInterval(3 * 1000); // 3 seconds
-        timer->moveToThread(qApp->thread());
-        connect(timer, &QTimer::timeout, this, QOverload<>::of(&WifiAPI::update));
+        setEnabled(m_enabled);
         timer->start();
     }
     ~WifiAPI(){
@@ -135,6 +136,26 @@ public:
         timer->stop();
         delete timer;
     }
+    void setEnabled(bool enabled){
+        qDebug() << "Wifi API" << enabled;
+        m_enabled = enabled;
+        if(enabled){
+            for(auto network : networks){
+                network->registerPath();
+            }
+            for(auto bss : bsss){
+                bss->registerPath();
+            }
+        }else{
+            for(auto network : networks){
+                network->unregisterPath();
+            }
+            for(auto bss : bsss){
+                bss->unregisterPath();
+            }
+        }
+    }
+    bool getEnabled(){ return m_enabled; }
     QList<Wlan*> getWlans(){ return wlans; }
     QList<Interface*> getInterfaces(){ return interfaces(); }
     enum State { Unknown, Off, Disconnected, Offline, Online};
@@ -184,12 +205,41 @@ public:
         // TODO implement addNetwork
     }
     Q_INVOKABLE QDBusObjectPath getNetwork(QVariantMap properties){
-        Q_UNUSED(properties)
-        // TODO implement getNetwork
+        for(auto network : networks){
+            bool found = true;
+            auto props = network->properties();
+            for(auto key : properties.keys()){
+                auto value = properties[key];
+                if(
+                    (key == "ssid" && value.toString() != network->ssid())
+                    || (key == "protococl" && value.toString() != network->protocol())
+                    || (key != "ssid" && key != "protocol" && value != props[key])
+                ){
+                    found = false;
+                    break;
+                }
+            }
+            if(found){
+                return QDBusObjectPath(network->path());
+            }
+        }
+        return QDBusObjectPath("/");
     }
     Q_INVOKABLE QDBusObjectPath getBSS(QVariantMap properties){
-        Q_UNUSED(properties)
-        // TODO implement getBSS
+        for(auto bss : bsss){
+            bool found = true;
+            for(auto key : properties.keys()){
+                auto value = properties[key];
+                if(properties[key] != bss->property(key.toStdString().c_str())){
+                    found = false;
+                    break;
+                }
+            }
+            if(found){
+                return QDBusObjectPath(bss->path());
+            }
+        }
+        return QDBusObjectPath("/");
     }
     Q_INVOKABLE void scan(bool active = false){
         QMap<QString, QVariant> args;
@@ -302,7 +352,11 @@ public:
             }
         }
         qDebug() << "BSS added " << bssid.toUtf8().toHex() << ssid;
-        bsss.append(new BSS(getPath("bss", bssid), bssid, ssid, this));
+        auto bss = new BSS(getPath("bss", bssid), bssid, ssid, this);
+        if(m_enabled){
+            bss->registerPath();
+        }
+        bsss.append(bss);
         emit bssFound(path);
     }
     void BSSRemoved(Wlan* wlan, const QDBusObjectPath& path){
@@ -349,6 +403,9 @@ public:
         qDebug() << "Network added " << ssid;
         auto network = new Network(getPath("network", ssid), properties, this);
         network->addNetwork(path.path(), wlan->interface());
+        if(m_enabled){
+            network->registerPath();
+        }
         networks.append(network);
         emit networkAdded(path);
     }
@@ -418,14 +475,14 @@ private slots:
         Q_UNUSED(properties);
     }
 private:
+    bool m_enabled;
     QTimer* timer;
     QSettings settings;
     QList<Wlan*> wlans;
     QList<Network*> networks;
+    int m_state;
     QList<BSS*> bsss;
     Wpa_Supplicant* supplicant;
-    QReadWriteLock lock;
-    int m_state = Unknown;
 
     QList<Interface*> interfaces(){
         QList<Interface*> result;
@@ -489,6 +546,10 @@ private:
                 }
                 network->registerNetwork();
                 network->setEnabled(true);
+                if(m_enabled){
+                    network->registerPath();
+                }
+                networks.append(network);
                 qDebug() << "  Registered network" << ssid;
             }
         }

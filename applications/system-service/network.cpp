@@ -41,7 +41,6 @@ Network::Network(QString path, QString ssid, QVariantMap properties, QObject* pa
     }else{
         m_protocol = "psk";
     }
-    QDBusConnection::systemBus().registerObject(path, this);
 }
 void Network::registerNetwork(){
     auto api = (WifiAPI*)parent();

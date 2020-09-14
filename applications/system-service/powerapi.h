@@ -8,10 +8,10 @@
 #include <QCoreApplication>
 #include <QDir>
 
-#include "dbussettings.h"
+#include "apibase.h"
 #include "sysobject.h"
 
-class PowerAPI : public QObject {
+class PowerAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_POWER_INTERFACE)
@@ -22,7 +22,7 @@ class PowerAPI : public QObject {
     Q_PROPERTY(int chargerState READ chargerState NOTIFY chargerStateChanged)
 public:
     PowerAPI(QObject* parent)
-    : QObject(parent), batteries(), chargers(){
+    : APIBase(parent), batteries(), chargers(){
         QDir dir("/sys/class/power_supply");
         qDebug() << "Looking for batteries and chargers...";
         for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
@@ -58,6 +58,14 @@ public:
         qDebug() << "Killing timer";
         timer->stop();
         delete timer;
+    }
+
+    void setEnabled(bool enabled){
+        if(enabled){
+            timer->start();
+        }else{
+            timer->stop();
+        }
     }
 
     enum State { Normal, PowerSaving };
@@ -298,10 +306,8 @@ private:
 
 private slots:
     void update(){
-        if(property("enabled").toBool()){
-            updateBattery();
-            updateCharger();
-        }
+        updateBattery();
+        updateCharger();
     }
 };
 

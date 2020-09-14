@@ -1,7 +1,7 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
   <interface name="codes.eeems.oxide1.Wifi">
-    <property name="state" type="i" access="readwrite"/>
+    <property name="state" type="i" access="read"/>
     <property name="bSSs" type="ao" access="read"/>
     <property name="link" type="i" access="read"/>
     <signal name="stateChanged">

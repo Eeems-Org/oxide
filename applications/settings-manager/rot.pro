@@ -23,6 +23,8 @@ INCLUDEPATH += ../system-service
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/powerapi.xml
 DBUS_INTERFACES += ../../interfaces/wifiapi.xml
+DBUS_INTERFACES += ../../interfaces/network.xml
+DBUS_INTERFACES += ../../interfaces/bss.xml
 
 # Default rules for deployment.
 target.path = /opt/bin
