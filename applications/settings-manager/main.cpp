@@ -160,10 +160,12 @@ private:
             void* ptr = reinterpret_cast<void*>(arguments[i + 1]);
             args << QVariant(typeId, ptr);
         }
-        if(args.size() == 1){
+        if(args.size() > 1){
+            qStdOut << toJson(args).toStdString().c_str() << endl;
+        }else if(args.size() == 1 && !args.first().isNull()){
             qStdOut << toJson(args.first()).toStdString().c_str() << endl;
         }else{
-            qStdOut << toJson(args).toStdString().c_str() << endl;
+            qStdOut << "undefined" << endl;
         }
     };
 };
