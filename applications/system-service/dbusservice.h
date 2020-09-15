@@ -13,6 +13,7 @@
 
 #include "powerapi.h"
 #include "wifiapi.h"
+#include "appsapi.h"
 
 using namespace std;
 
@@ -69,6 +70,11 @@ public:
             .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
             .dependants = new QStringList(),
             .instance = new WifiAPI(this),
+        });
+        apis.insert("apps", APIEntry{
+            .path = QString(OXIDE_SERVICE_PATH) + "/apps",
+            .dependants = new QStringList(),
+            .instance = new AppsAPI(this),
         });
         auto bus = QDBusConnection::systemBus();
         for(auto api : apis){

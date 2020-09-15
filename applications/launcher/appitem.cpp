@@ -6,7 +6,10 @@
 #include <sys/mman.h>
 
 #include "appitem.h"
+#include "dbusservice_interface.h"
+#include "appsapi_interface.h"
 #include "mxcfb.h"
+
 
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872
@@ -14,7 +17,6 @@
 
 const size_t screen_size = DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(uint16_t);
 static char* privateBuffer = new char[screen_size];
-
 
 void redraw_screen(int fd){
     mxcfb_update_data update_data;
@@ -35,7 +37,32 @@ void redraw_screen(int fd){
 
 
 bool AppItem::ok(){
-    return !_name.isEmpty() && !_call.isEmpty();
+    if(_name.isEmpty() || _call.isEmpty()){
+        return false;
+    }
+    if(app == nullptr){
+        auto bus = QDBusConnection::systemBus();
+        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+        QDBusObjectPath path = api.requestAPI("apps");
+        if(path.path() != "/"){
+            Apps apps(OXIDE_SERVICE, path.path(), bus);
+            QDBusObjectPath appPath;
+            auto applications = apps.applications();
+            if(!applications.contains(_name)){
+                QVariantMap properties;
+                properties.insert("name", _name);
+                properties.insert("description", _desc);
+                properties.insert("call", _call);
+                properties.insert("term", _term);
+                appPath = (QDBusObjectPath)apps.registerApplication(properties);
+            }else{
+                appPath = applications[_name].value<QDBusObjectPath>();
+            }
+            app = new Application(OXIDE_SERVICE, appPath.path(), bus, this);
+            connect(app, &Application::exited, this, &AppItem::exited);
+        }
+    }
+    return true;
 }
 
 void AppItem::execute(){
@@ -48,11 +75,20 @@ void AppItem::execute(){
     char* frameBuffer = (char*)mmap(0, screen_size, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
     memcpy(privateBuffer, frameBuffer, screen_size);
     qDebug() << "Running application...";
-    system(_call.toUtf8());
+    _running = true;
+    app->launch();
+    while(_running){
+        usleep(1000);
+    }
     qDebug() << "Flushing touch buffer...";
     inputManager->clear_touch_buffer();
     qDebug() << "Recalling screen...";
     memcpy(frameBuffer, privateBuffer, screen_size);
     redraw_screen(frameBufferHandle);
     close(frameBufferHandle);
+}
+
+void AppItem::exited(int exitCode){
+    Q_UNUSED(exitCode)
+    _running = false;
 }

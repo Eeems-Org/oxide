@@ -210,10 +210,6 @@ ApplicationWindow {
                     onCanceled: root.state = "released"
                     onClicked: {
                         model.modelData.execute();
-                        if(controller.wifiOn()){
-                            // Ensure wpa_supplicant is still running
-                            controller.turnOnWifi();
-                        }
                         stateController.state = "loading"
                         root.state = "released"
                     }

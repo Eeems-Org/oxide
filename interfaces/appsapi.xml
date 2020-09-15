@@ -1,0 +1,41 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="codes.eeems.oxide1.Apps">
+    <property name="state" type="i" access="read"/>
+    <property name="startupApplication" type="o" access="readwrite"/>
+    <property name="applications" type="a{sv}" access="read">
+      <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+    </property>
+    <property name="currentApplication" type="o" access="read"/>
+    <property name="runningApplications" type="a{sv}" access="read">
+      <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+    </property>
+    <signal name="applicationRegistered">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="applicationLaunched">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="applicationUnregistered">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="applicationPaused">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="applicationResumed">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="applicationSignaled">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="applicationExited">
+      <arg type="o" direction="out"/>
+      <arg type="i" direction="out"/>
+    </signal>
+    <method name="registerApplication">
+      <arg type="o" direction="out"/>
+      <arg name="properties" type="a{sv}" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+    </method>
+  </interface>
+</node>

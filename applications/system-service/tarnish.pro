@@ -5,6 +5,7 @@ CONFIG += c++11 console
 CONFIG -= app_bundle
 
 SOURCES += main.cpp \
+    application.cpp \
     bss.cpp \
     buttonhandler.cpp \
     fb2png.cpp \
@@ -31,6 +32,8 @@ system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplica
 
 HEADERS += \
     apibase.h \
+    application.h \
+    appsapi.h \
     bss.h \
     buttonhandler.h \
     dbusservice.h \

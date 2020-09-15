@@ -40,6 +40,8 @@ DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/powerapi.xml
 DBUS_INTERFACES += ../../interfaces/wifiapi.xml
+DBUS_INTERFACES += ../../interfaces/appsapi.xml
+DBUS_INTERFACES += ../../interfaces/application.xml
 
 linux-oe-g++ {
     LIBS += -lqsgepaper

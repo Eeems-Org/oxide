@@ -294,6 +294,10 @@ private slots:
         Q_UNUSED(path);
     }
     void wifiStateChanged(int state){
+        if(state == wifiState){
+            return;
+        }
+        wifiState = state;
         switch(state){
             case WifiOff:
                 qDebug() << "Wifi state: Off";
@@ -302,10 +306,10 @@ private slots:
                 qDebug() << "Wifi state: On+Disconnected";
             break;
             case WifiOffline:
-                qDebug() << "Wifi state: On+Offline";
+                qDebug() << "Wifi state: On+Connected+Offline";
             break;
             case WifiOnline:
-                qDebug() << "Wifi state: On+Online";
+                qDebug() << "Wifi state: On+Connected+Online";
             break;
             case WifiUnknown:
             default:
@@ -323,11 +327,12 @@ private slots:
                 break;
                 case WifiOffline:
                     ui->setProperty("state", "up");
-                    ui->setProperty("connected", false);
+                    ui->setProperty("connected", true);
                 break;
                 case WifiOnline:
                     ui->setProperty("state", "up");
                     ui->setProperty("connected", true);
+                    ui->setProperty("link", wifiLink);
                 break;
                 case WifiUnknown:
                 default:
@@ -336,8 +341,12 @@ private slots:
         }
     }
     void wifiLinkChanged(int link){
+        wifiLink = link;
         QObject* ui = root->findChild<QObject*>("wifiState");
         if(ui){
+            if(wifiState != WifiOnline){
+                link = 0;
+            }
             ui->setProperty("link", link);
         }
     }
@@ -352,7 +361,8 @@ private:
     int m_sleepAfter = 5;
     bool m_powerConnected = false;
 
-    QString wifiState = "Unknown";
+    int wifiState = WifiUnknown;
+    int wifiLink = 0;
     int wifiLevel = 0;
     bool wifiConnected = false;
 

@@ -38,8 +38,10 @@ void onExit(){
 
 int main(int argc, char *argv[]){
     QCoreApplication app(argc, argv);
-    app.setApplicationName("rot");
-    app.setApplicationVersion("1.0");
+    app.setOrganizationName("Eeems");
+    app.setOrganizationDomain(OXIDE_SERVICE);
+    app.setApplicationName("tarnish");
+    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
     QCommandLineParser parser;
     parser.setApplicationDescription("Oxide system service");
     parser.addHelpOption();

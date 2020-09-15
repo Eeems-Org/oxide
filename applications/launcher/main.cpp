@@ -88,9 +88,13 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
-    QProcess::execute("killall", QStringList() << "tarnish" << "erode");
+    QProcess::execute("killall", QStringList() << "erode");
     EventFilter filter;
     QGuiApplication app(argc, argv);
+    app.setOrganizationName("Eeems");
+    app.setOrganizationDomain(OXIDE_SERVICE);
+    app.setApplicationName("oxide");
+    app.setApplicationDisplayName("Launcher");
     app.installEventFilter(&filter);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();

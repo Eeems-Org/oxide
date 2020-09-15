@@ -3,11 +3,23 @@
 #include <QObject>
 
 #include "inputmanager.h"
+#include "application_interface.h"
+
+#ifndef OXIDE_SERVICE
+#define OXIDE_SERVICE "codes.eeems.oxide1"
+#define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
+#endif
+
+using namespace codes::eeems::oxide1;
 
 class AppItem : public QObject {
     Q_OBJECT
 public:
     InputManager* inputManager;
+
+    ~AppItem(){
+        delete app;
+    }
 
     Q_PROPERTY(QString name MEMBER _name NOTIFY nameChanged)
     Q_PROPERTY(QString desc MEMBER _desc NOTIFY descChanged)
@@ -25,11 +37,16 @@ signals:
     void termChanged();
     void imgFileChanged();
 
+private slots:
+    void exited(int);
+
 private:
+    Application* app;
     QString _name;
     QString _desc;
     QString _call;
     QString _term;
     QString _imgFile = "qrc:/img/icon.png";
+    bool _running;
 };
 #endif // APP_H

@@ -14,8 +14,6 @@
 #include "network.h"
 #include "bss.h"
 
-const QUuid NS = QUuid::fromString(QLatin1String("{78c28d66-f558-11ea-adc1-0242ac120002}"));
-
 class WifiAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_WIFI_INTERFACE)
@@ -649,6 +647,7 @@ private:
         }
     }
     QString getPath(QString type, QString id){
+        static const QUuid NS = QUuid::fromString(QLatin1String("{78c28d66-f558-11ea-adc1-0242ac120002}"));
         if(type == "network"){
             id= QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
         }else if(type == "bss"){

@@ -9,6 +9,7 @@
 
 #include "controller.h"
 #include "eventfilter.h"
+#include "dbussettings.h"
 
 
 #ifdef __arm__
@@ -30,6 +31,11 @@ int main(int argc, char *argv[]){
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
     QGuiApplication app(argc, argv);
+    app.setOrganizationName("Eeems");
+    app.setOrganizationDomain(OXIDE_SERVICE);
+    app.setApplicationName("tarnish");
+    app.setApplicationDisplayName("Process Monitor");
+    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
     EventFilter filter;
     app.installEventFilter(&filter);
     QQmlApplicationEngine engine;

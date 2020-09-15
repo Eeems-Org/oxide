@@ -25,6 +25,8 @@ DBUS_INTERFACES += ../../interfaces/powerapi.xml
 DBUS_INTERFACES += ../../interfaces/wifiapi.xml
 DBUS_INTERFACES += ../../interfaces/network.xml
 DBUS_INTERFACES += ../../interfaces/bss.xml
+DBUS_INTERFACES += ../../interfaces/appsapi.xml
+DBUS_INTERFACES += ../../interfaces/application.xml
 
 # Default rules for deployment.
 target.path = /opt/bin

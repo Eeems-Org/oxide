@@ -1,0 +1,37 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="codes.eeems.oxide1.Application">
+    <property name="name" type="s" access="read"/>
+    <property name="description" type="s" access="read"/>
+    <property name="call" type="s" access="read"/>
+    <property name="term" type="s" access="read"/>
+    <property name="autoStart" type="b" access="read"/>
+    <property name="type" type="i" access="read"/>
+    <property name="state" type="i" access="read"/>
+    <signal name="launched">
+    </signal>
+    <signal name="paused">
+    </signal>
+    <signal name="resumed">
+    </signal>
+    <signal name="signaled">
+      <arg type="i" direction="out"/>
+    </signal>
+    <signal name="unregistered">
+    </signal>
+    <signal name="exited">
+      <arg type="i" direction="out"/>
+    </signal>
+    <method name="launch">
+    </method>
+    <method name="pause">
+    </method>
+    <method name="resume">
+    </method>
+    <method name="signal">
+      <arg name="signal" type="i" direction="in"/>
+    </method>
+    <method name="unregister">
+    </method>
+  </interface>
+</node>

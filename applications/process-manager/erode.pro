@@ -32,9 +32,11 @@ target.path = /opt/bin
 HEADERS += \
     controller.h \
     eventfilter.h \
-    taskitem.h
+    taskitem.h \
+    ../system-service/dbussettings.h
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+INCLUDEPATH += ../system-service
 DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 
 

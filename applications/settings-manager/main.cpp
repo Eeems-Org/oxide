@@ -11,6 +11,8 @@
 #include "wifiapi_interface.h"
 #include "network_interface.h"
 #include "bss_interface.h"
+#include "appsapi_interface.h"
+#include "application_interface.h"
 
 using namespace codes::eeems::oxide1;
 
@@ -83,6 +85,14 @@ QVariant sanitizeForJson(QVariant value){
             list.append(value.path());
         }
         return list;
+    }
+    if(userType == QMetaType::QVariantMap){
+        QVariantMap map;
+        auto input = value.toMap();
+        for(auto key : input.keys()){
+            map.insert(key, sanitizeForJson(input[key]));
+        }
+        return map;
     }
     if(userType == QMetaType::QVariantList){
         QVariantList list = value.toList();
@@ -172,14 +182,16 @@ private:
 
 int main(int argc, char *argv[]){
     QCoreApplication app(argc, argv);
+    app.setOrganizationName("Eeems");
+    app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("rot");
-    app.setApplicationVersion("1.0");
+    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
     QCommandLineParser parser;
     parser.setApplicationDescription("Oxide settings tool");
     parser.addHelpOption();
     parser.applicationDescription();
     parser.addVersionOption();
-    parser.addPositionalArgument("api", "wifi\npower");
+    parser.addPositionalArgument("api", "wifi\npower\napps");
     parser.addPositionalArgument("action","get\nset\nlisten\ncall\nobject");
     QCommandLineOption objectOption(
         {"o", "object"},
@@ -195,7 +207,7 @@ int main(int argc, char *argv[]){
         parser.showHelp(EXIT_FAILURE);
     }
     auto apiName = args.at(0);
-    if(!(QSet<QString> {"power", "wifi"}).contains(apiName)){
+    if(!(QSet<QString> {"power", "wifi", "apps"}).contains(apiName)){
         qDebug() << "Unknown API" << apiName;
         return EXIT_FAILURE;
     }
@@ -268,6 +280,20 @@ int main(int argc, char *argv[]){
                 api = new Network(OXIDE_SERVICE, path, bus);
             }else if(type == "BSS"){
                 api = new BSS(OXIDE_SERVICE, path, bus);
+            }else{
+                qDebug() << "Unknown object type" << type;
+                return EXIT_FAILURE;
+            }
+        }
+    }else if(apiName == "apps"){
+        api = new Apps(OXIDE_SERVICE, path, bus);
+        if(parser.isSet("object")){
+            auto object = parser.value("object");
+            auto type = object.mid(0, object.indexOf(":"));
+            auto path = object.mid(object.indexOf(":") + 1);
+            path = OXIDE_SERVICE_PATH + QString("/" + path);
+            if(type == "Application"){
+                api = new Application(OXIDE_SERVICE, path, bus);
             }else{
                 qDebug() << "Unknown object type" << type;
                 return EXIT_FAILURE;
