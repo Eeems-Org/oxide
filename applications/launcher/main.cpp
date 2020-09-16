@@ -30,49 +30,17 @@ using namespace std;
 const char *qt_version = qVersion();
 TarnishHandler* tarnishHandler = nullptr;
 
-vector<std::string> split_string_by_newline(const std::string& str){
-    auto result = vector<std::string>{};
-    auto ss = stringstream{str};
-
-    for (string line; getline(ss, line, '\n');)
-        result.push_back(line);
-
-    return result;
-}
-int is_uint(string input){
-    unsigned int i;
-    for (i=0; i < input.length(); i++){
-        if(!isdigit(input.at(i))){
-            return 0;
-        }
-    }
-    return 1;
-}
-void signalHandler(__attribute__((unused)) const int signum){
-    exit(EXIT_SUCCESS);
-}
-void onExit(){
-    delete tarnishHandler;
-    auto ppid = to_string(getpid());
-    auto procs  = split_string_by_newline(Controller::exec((
-        "grep -Erl /proc/*/status --regexp='PPid:\\s+" + ppid + "' | awk '{print substr($1, 7, length($1) - 13)}'"
-    ).c_str()));
-    qDebug() << "Killing child tasks...";
-    for(auto pid : procs){
-      string cmd = "cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'";
-      if(is_uint(pid) && Controller::exec(cmd.c_str()) == ppid + "\n"){
-          qDebug() << "  " << pid.c_str();
-          // Found a child process
-          auto i_pid = stoi(pid);
-          // Pause the process
-          kill(i_pid, SIGTERM);
-      }
+void signalHandler(const int signum){
+    if(signum == SIGTERM){
+        exit(EXIT_SUCCESS);
     }
 }
 
 int main(int argc, char *argv[]){
     signal(SIGTERM, signalHandler);
-    std::atexit(onExit);
+    signal(SIGTSTP, signalHandler);
+    signal(SIGCONT, signalHandler);
+    tarnishHandler = new TarnishHandler();
 //    QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
 //    xochitlSettings.sync();
 //    qDebug() << xochitlSettings.value("Password").toString();
@@ -99,7 +67,7 @@ int main(int argc, char *argv[]){
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();
-    tarnishHandler = new TarnishHandler(controller);
+    tarnishHandler->attach(controller);
     controller->killXochitl();
     controller->filter = &filter;
     qmlRegisterType<AppItem>();
@@ -121,6 +89,7 @@ int main(int argc, char *argv[]){
         qDebug() << "Can't find stateController";
         return -1;
     }
+    controller->stateController = stateController;
     QObject* clock = root->findChild<QObject*>("clock");
     if(!clock){
         qDebug() << "Can't find clock";

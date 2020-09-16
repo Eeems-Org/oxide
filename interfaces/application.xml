@@ -25,6 +25,9 @@
     <method name="launch">
     </method>
     <method name="pause">
+      <arg name="startIfNone" type="b" direction="in"/>
+    </method>
+    <method name="pause">
     </method>
     <method name="resume">
     </method>

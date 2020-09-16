@@ -31,12 +31,21 @@ void onExit(){
             // Found a child process
             auto i_pid = stoi(pid);
             // Kill the process
+            int status;
+            waitpid(i_pid, &status, WNOHANG | WUNTRACED | WCONTINUED);
+            if(WIFSTOPPED(status)) {
+                kill(i_pid, SIGCONT);
+                waitpid(i_pid, &status, WCONTINUED);
+            }
             kill(i_pid, SIGTERM);
         }
     }
 }
 
 int main(int argc, char *argv[]){
+    signal(SIGKILL, signalHandler);
+    signal(SIGTERM, signalHandler);
+    atexit(onExit);
     QCoreApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
@@ -67,8 +76,6 @@ int main(int argc, char *argv[]){
 
     // DBus API service
     DBusService::singleton();
-    signal(SIGTERM, signalHandler);
-    atexit(onExit);
     // Button handling
     ButtonHandler::init(oxidepid);
     return app.exec();

@@ -26,6 +26,7 @@ public:
       settings(this),
       m_startupApplication("/") {
         qDBusRegisterMetaType<QMap<QString,QDBusObjectPath>>();
+        qDBusRegisterMetaType<QDBusObjectPath>();
         settings.sync();
         int size = settings.beginReadArray("applications");
         for(int i = 0; i < size; ++i){
@@ -47,13 +48,39 @@ public:
             // TODO load from draft config files
         }
         auto path = QDBusObjectPath(settings.value("startupApplication").toString());
-        if(getApplication(path) != nullptr){
-            m_startupApplication = path;
+        auto app = getApplication(path);
+        if(app == nullptr){
+            if(applications.contains("oxide")){
+                app = applications["oxide"];
+            }else{
+                app = new Application(getPath("oxide"), this);
+                app->load("oxide", "Application launcher", "/opt/bin/oxide", "", Foreground, false);
+                applications["oxide"] = app;
+                emit applicationRegistered(app->qPath());
+            }
+            path = app->qPath();
         }
+        m_startupApplication = path;
+        app->launch();
     }
     ~AppsAPI() {
         writeApplications();
         settings.sync();
+        for(auto app : applications){
+            switch(app->state()){
+                case Application::Paused:
+                    app->signal(SIGCONT);
+                case Application::InForeground:
+                case Application::InBackground:
+                    app->signal(SIGTERM);
+                break;
+            }
+        }
+        for(auto app : applications){
+            app->waitForFinished();
+            delete app;
+        }
+        applications.clear();
     }
     int state() { return 0; } // Ignore this, it's a kludge to get the xml to generate
 
@@ -119,12 +146,18 @@ public:
     }
 
     QDBusObjectPath currentApplication(){
+        for(auto app : applications){
+            if(app->state() == Application::InForeground){
+                return app->qPath();
+            }
+        }
         return QDBusObjectPath("/");
     }
     QVariantMap runningApplications(){
         QVariantMap result;
         for(auto app : applications){
-            if(app->isRunning()){
+            auto state = app->state();
+            if(state == Application::InForeground || state == Application::InBackground){
                 result.insert(app->name(), QVariant::fromValue(app->qPath()));
             }
         }
@@ -142,11 +175,24 @@ public:
     }
     void pauseAll(){
         for(auto app : applications){
-            app->pause();
+            app->pause(false);
         }
     }
     void resumeIfNone(){
-        // TODO implement resumeIfNone()
+        for(auto app : applications){
+            if(app->state() == Application::InForeground){
+                return;
+            }
+        }
+        getApplication(m_startupApplication)->launch();
+    }
+    Application* getApplication(QDBusObjectPath path){
+        for(auto app : applications){
+            if(app->path() == path.path()){
+                return app;
+            }
+        }
+        return nullptr;
     }
 signals:
     void applicationRegistered(QDBusObjectPath);
@@ -165,14 +211,6 @@ private:
     QString getPath(QString name){
         static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
         return QString(OXIDE_SERVICE_PATH) + "/apps/" + QUuid::createUuidV5(NS, name).toString(QUuid::Id128);
-    }
-    Application* getApplication(QDBusObjectPath path){
-        for(auto app : applications){
-            if(app->path() == path.path()){
-                return app;
-            }
-        }
-        return nullptr;
     }
     void writeApplications(){
         auto apps = applications.values();

@@ -1,5 +1,6 @@
 #include <signal.h>
 #include <QTimer>
+#include <QFile>
 
 #include "application.h"
 #include "appsapi.h"
@@ -8,42 +9,53 @@ void Application::launch(){
     if(m_process->processId()){
         resume();
     }else{
+        qDebug() << "Launching " << path();
         auto api = (AppsAPI*)parent();
         api->pauseAll();
         m_process->start();
         m_process->waitForStarted();
     }
 }
-void Application::pause(){
-    if(m_process->processId()){
+
+void Application::pause(bool startIfNone){
+    if(m_process->processId() && state() != Paused && state() != InBackground){
+        qDebug() << "Pausing " << path();
         switch(m_type){
             case AppsAPI::Background:
             case AppsAPI::Backgroundable:
                 kill(m_process->processId(), SIGUSR2);
                 // TODO give 1 second for process to ack back the signal, otherwise fall through
+                m_backgrounded = true;
                 break;
             case AppsAPI::Foreground:
             default:
                 kill(m_process->processId(), SIGSTOP);
         }
+        saveScreen();
         auto api = (AppsAPI*)parent();
-        api->resumeIfNone();
+        if(startIfNone){
+            api->resumeIfNone();
+        }
         emit paused();
         emit api->applicationPaused(qPath());
     }
 }
 void Application::resume(){
-    if(m_process->processId()){
+    if(m_process->processId() && state() != InForeground){
+        qDebug() << "Resuming " << path();
         auto api = (AppsAPI*)parent();
         api->pauseAll();
+        recallScreen();
         switch(m_type){
             case AppsAPI::Background:
             case AppsAPI::Backgroundable:
                 kill(m_process->processId(), SIGUSR1);
                 // TODO give 1 second for process to ack back the signal, otherwise fall through
+                m_backgrounded = false;
                 break;
             case AppsAPI::Foreground:
             default:
+                // TODO floot touch buffer
                 kill(m_process->processId(), SIGCONT);
         }
         emit resumed();
@@ -52,6 +64,7 @@ void Application::resume(){
 }
 void Application::signal(int signal){
     if(m_process->processId()){
+        qDebug() << "Signalling " << path() << signal;
         emit signaled(signal);
         kill(m_process->processId(), signal);
     }
@@ -60,6 +73,29 @@ void Application::unregister(){
     emit unregistered();
     auto api = (AppsAPI*)parent();
     api->unregisterApplication(this);
+}
+
+int Application::state(){
+    switch(m_process->state()){
+        case QProcess::Starting:
+        case QProcess::Running:{
+            QFile stat("/proc/" + QString::number(m_process->processId()) + "/stat");
+            if(stat.open(QIODevice::ReadOnly)){
+                auto status = stat.readLine().split(' ');
+                stat.close();
+                if(status.length() > 2 && status[2] == "T"){
+                    return Paused;
+                }
+            }
+            if(m_type == AppsAPI::Backgroundable && m_backgrounded){
+                return InBackground;
+            }
+            return InForeground;
+        }break;
+        case QProcess::NotRunning:
+        default:
+            return Inactive;
+    }
 }
 
 void Application::load(
@@ -87,6 +123,7 @@ void Application::finished(int exitCode){
     qDebug() << "Application" << name() << "exit code" << exitCode;
     emit exited(exitCode);
     auto api = (AppsAPI*)parent();
+    api->resumeIfNone();
     emit api->applicationExited(qPath(), exitCode);
 }
 void Application::errorOccurred(QProcess::ProcessError error){

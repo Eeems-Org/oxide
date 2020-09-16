@@ -6,8 +6,26 @@
 #include <QDBusConnection>
 #include <QDBusObjectPath>
 #include <QProcess>
+#include <zlib.h>
+
+#include <systemd/sd-journal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/mman.h>
+#include <linux/fb.h>
+#include <sys/ioctl.h>
+#include <cstdlib>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "dbussettings.h"
+#include "mxcfb.h"
+
+#define DISPLAYWIDTH 1404
+#define DISPLAYHEIGHT 1872
+#define TEMP_USE_REMARKABLE_DRAW 0x0018
+#define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(uint16_t)
 
 class Application : public QObject{
     Q_OBJECT
@@ -22,8 +40,8 @@ class Application : public QObject{
     Q_PROPERTY(int state READ state)
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
-    Application(QString path, QObject* parent) : QObject(parent), m_path(path) {
-        m_process = new QProcess();
+    Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false) {
+        m_process = new QProcess(this);
         connect(m_process, &QProcess::started, this, &Application::started);
         connect(m_process, QOverload<int>::of(&QProcess::finished), this, &Application::finished);
         connect(m_process, &QProcess::readyReadStandardError, this, &Application::readyReadStandardError);
@@ -35,6 +53,9 @@ public:
         unregisterPath();
         m_process->kill();
         delete m_process;
+        if(screenCapture != nullptr){
+            delete screenCapture;
+        }
     }
 
     QString path() { return m_path; }
@@ -59,7 +80,7 @@ public:
     Q_ENUM(ApplicationState)
 
     Q_INVOKABLE void launch();
-    Q_INVOKABLE void pause();
+    Q_INVOKABLE void pause(bool startIfNone = true);
     Q_INVOKABLE void resume();
     Q_INVOKABLE void signal(int signal);
     Q_INVOKABLE void unregister();
@@ -70,25 +91,64 @@ public:
     QString term() { return m_term; }
     bool autoStart() { return m_autoStart; }
     int type() { return (int)m_type; }
-    int state(){
-        switch(m_process->state()){
-            case QProcess::Starting:
-            case QProcess::Running:
-                // TODO keep track of real state
-                return InForeground;
-            break;
-            case QProcess::NotRunning:
-            default:
-                return Inactive;
-        }
-    }
+    int state();
 
     void load(
         QString name, QString description, QString call, QString term,
         int type, bool autostart
     );
-    bool isRunning(){
-        return m_process->processId() && m_process->state() != QProcess::NotRunning;
+    void saveScreen(){
+        if(screenCapture != nullptr){
+            return;
+        }
+        qDebug() << "Saving screen...";
+        int frameBufferHandle = open("/dev/fb0", O_RDWR);
+        char* frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
+        qDebug() << "Compressing data...";
+        auto compressedData = qCompress(QByteArray(frameBuffer, DISPLAYSIZE));
+        close(frameBufferHandle);
+        screenCapture = new QByteArray(compressedData);
+    }
+    void recallScreen(){
+        if(screenCapture == nullptr){
+            return;
+        }
+        qDebug() << "Uncompressing screen...";
+        auto uncompressedData = qUncompress(*screenCapture);
+        if(!uncompressedData.size()){
+            qDebug() << "Screen capture was corrupt";
+            qDebug() << screenCapture->size();
+            delete screenCapture;
+            return;
+        }
+        qDebug() << "Recalling screen...";
+        int frameBufferHandle = open("/dev/fb0", O_RDWR);
+        auto frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
+        memcpy(frameBuffer, uncompressedData, DISPLAYSIZE);
+
+        mxcfb_update_data update_data;
+        mxcfb_rect update_rect;
+        update_rect.top = 0;
+        update_rect.left = 0;
+        update_rect.width = DISPLAYWIDTH;
+        update_rect.height = DISPLAYHEIGHT;
+        update_data.update_marker = 0;
+        update_data.update_region = update_rect;
+        update_data.waveform_mode = WAVEFORM_MODE_AUTO;
+        update_data.update_mode = UPDATE_MODE_FULL;
+        update_data.dither_mode = EPDC_FLAG_USE_DITHERING_MAX;
+        update_data.temp = TEMP_USE_REMARKABLE_DRAW;
+        update_data.flags = 0;
+        ioctl(frameBufferHandle, MXCFB_SEND_UPDATE, &update_data);
+
+        close(frameBufferHandle);
+        delete screenCapture;
+        screenCapture = nullptr;
+    }
+    void waitForFinished(){
+        if(m_process->processId()){
+            m_process->waitForFinished();
+        }
     }
 signals:
     void launched();
@@ -101,8 +161,24 @@ signals:
 private slots:
     void started();
     void finished(int exitCode);
-    void readyReadStandardError(){}
-    void readyReadStandardOutput(){}
+    void readyReadStandardError(){
+        const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
+        QString error = m_process->readAllStandardError();
+        for(QString line : error.split(QRegExp("[\r\n]"), QString::SkipEmptyParts)){
+            if(!line.isEmpty()){
+                sd_journal_print(LOG_INFO, "%s %s", prefix, (const char*)line.toUtf8());
+            }
+        }
+    }
+    void readyReadStandardOutput(){
+        const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
+        QString output = m_process->readAllStandardOutput();
+        for(QString line : output.split(QRegExp("[\r\n]"), QString::SkipEmptyParts)){
+            if(!line.isEmpty()){
+                sd_journal_print(LOG_ERR, "%s %s", prefix, (const char*)line.toUtf8());
+            }
+        }
+    }
     void stateChanged(QProcess::ProcessState state){
         switch(state){
             case QProcess::Starting:
@@ -129,6 +205,10 @@ private:
     int m_type;
     bool m_autoStart;
     QProcess* m_process;
+    bool m_backgrounded;
+    QByteArray* screenCapture = nullptr;
+    size_t screenCaptureSize;
+
 };
 
 #endif // APPLICATION_H

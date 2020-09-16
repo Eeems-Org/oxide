@@ -8,6 +8,7 @@ StartLimitBurst=5
 ExecStart=/opt/bin/tarnish
 Restart=on-failure
 RestartSec=5
+Environment="HOME=/home/root"
 
 [Install]
 WantedBy=multi-user.target

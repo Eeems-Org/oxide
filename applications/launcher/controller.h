@@ -28,6 +28,7 @@ class Controller : public QObject
 public:
     static std::string exec(const char* cmd);
     EventFilter* filter;
+    QObject* stateController;
     QObject* root = nullptr;
     explicit Controller(QObject* parent = 0) : QObject(parent), wifi("/sys/class/net/wlan0"), inputManager(){
         uiTimer = new QTimer(this);

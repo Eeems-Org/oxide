@@ -51,6 +51,8 @@ HEADERS += \
 
 linux-oe-g++ {
     LIBS += -lpng16
+    LIBS += -lsystemd
+    LIBS += -lz
 }
 
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh

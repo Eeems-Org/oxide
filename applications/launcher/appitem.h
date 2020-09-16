@@ -17,6 +17,8 @@ class AppItem : public QObject {
 public:
     InputManager* inputManager;
 
+    AppItem(QObject* parent) : QObject(parent){}
+
     ~AppItem(){
         delete app;
     }
@@ -47,6 +49,7 @@ private:
     QString _call;
     QString _term;
     QString _imgFile = "qrc:/img/icon.png";
-    bool _running;
+    char* frameBuffer;
+    int frameBufferHandle;
 };
 #endif // APP_H

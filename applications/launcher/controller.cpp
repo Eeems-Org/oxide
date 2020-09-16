@@ -179,7 +179,7 @@ QList<QObject*> Controller::getApps(){
 
                 QTextStream in(&file);
 
-                AppItem* app = new AppItem();
+                AppItem* app = new AppItem(this);
 
                 while (!in.atEnd()) {
                     QString line = in.readLine();

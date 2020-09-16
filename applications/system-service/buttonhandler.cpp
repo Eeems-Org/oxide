@@ -1,4 +1,5 @@
 #include "buttonhandler.h"
+#include "dbusservice.h"
 
 void removeScreenshot(){
     QFile file(PNG_PATH);
@@ -153,17 +154,11 @@ void ButtonHandler::run(){
                               +ctime.tv_usec) -  map[ie.code].pressTime.tv_usec;
                 qDebug() << map[ie.code].name.c_str() << " UP (" << usecs << " microseconds)";
                 if(usecs > 1000000L && map[ie.code].name == "Left"){
-                    if(QFile("/tmp/.terminate").exists()){
-                        ifstream termfile;
-                        // Then execute the contents of /tmp/.terminate
-                        termfile.open("/tmp/.terminate", ios::in);
-                        if(termfile.is_open()){
-                            qDebug() << "Termfile exists and can be read.";
-                            termfile.close();
-                            system("/bin/bash /tmp/.terminate");
-                        }else{
-                            qDebug() << "Termfile couldn't be read.";
-                        }
+                    auto api = (AppsAPI*)DBusService::singleton()->getAPI("apps");
+                    auto startupApplication = api->startupApplication();
+                    auto currentApplication = api->getApplication(api->currentApplication());
+                    if(currentApplication->state() == Application::Inactive|| currentApplication->path() != startupApplication.path()){
+                        api->getApplication(startupApplication)->launch();
                     }
                 }else if(usecs > 1000000L && map[ie.code].name == "Right"){
                     takeScreenshot();

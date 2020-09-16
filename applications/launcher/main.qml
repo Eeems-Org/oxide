@@ -210,7 +210,6 @@ ApplicationWindow {
                     onCanceled: root.state = "released"
                     onClicked: {
                         model.modelData.execute();
-                        stateController.state = "loading"
                         root.state = "released"
                     }
                     onPressAndHold: {
