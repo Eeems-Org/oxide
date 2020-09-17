@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include "dbussettings.h"
+#include "inputmanager.h"
 #include "mxcfb.h"
 
 #define DISPLAYWIDTH 1404
@@ -208,7 +209,10 @@ private:
     bool m_backgrounded;
     QByteArray* screenCapture = nullptr;
     size_t screenCaptureSize;
-
+    InputManager* inputManager(){
+        static InputManager* instance = new InputManager();
+        return instance;
+    }
 };
 
 #endif // APPLICATION_H

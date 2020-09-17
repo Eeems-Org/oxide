@@ -5,6 +5,16 @@
 #include "application.h"
 #include "appsapi.h"
 
+struct event_device {
+    string device;
+    int fd;
+    event_device(string path, int flags){
+        device = path;
+        fd = open(path.c_str(), flags);
+    }
+};
+const event_device touchScreen("/dev/input/event1", O_WRONLY);
+
 void Application::launch(){
     if(m_process->processId()){
         resume();
@@ -55,7 +65,7 @@ void Application::resume(){
                 break;
             case AppsAPI::Foreground:
             default:
-                // TODO floot touch buffer
+                inputManager()->clear_touch_buffer(touchScreen.fd);
                 kill(m_process->processId(), SIGCONT);
         }
         emit resumed();
