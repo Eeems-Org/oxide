@@ -4,6 +4,7 @@
 #include <QtPlugin>
 
 #include <linux/input.h>
+#include <signal.h>
 #include <ostream>
 #include <fcntl.h>
 
@@ -15,6 +16,11 @@
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
+
+using namespace std;
+
+function<void(int)> shutdown_handler;
+void signal_handler(int signal) { shutdown_handler(signal); }
 
 const char *qt_version = qVersion();
 
@@ -59,5 +65,10 @@ int main(int argc, char *argv[]){
         qDebug() << "Can't find tasksView";
         return -1;
     }
+    shutdown_handler = [&controller](int signal){
+        Q_UNUSED(signal)
+        emit controller.reload();
+    };
+    signal(SIGCONT, signal_handler);
     return app.exec();
 }

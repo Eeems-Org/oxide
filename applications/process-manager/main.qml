@@ -9,6 +9,10 @@ ApplicationWindow {
     visible: true
     width: screenGeometry.width
     height: screenGeometry.height
+    Connections {
+        target: controller
+        onReload: tasksView.model = controller.getTasks()
+    }
     menuBar: ToolBar {
         background: Rectangle { color: "black" }
         RowLayout {

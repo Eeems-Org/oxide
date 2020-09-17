@@ -18,6 +18,7 @@ public:
 
 signals:
     void sortByChanged();
+    void reload();
 
 private:
     int is_uint(std::string input);

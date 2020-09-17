@@ -60,7 +60,7 @@ public:
         }
         if(!applications.contains("Process Manager")){
             auto app = new Application(getPath("Process Manager"), this);
-            app->load("Process Manager", "List/kill processes", "/usr/bin/erode", "", Foreground, false, true);
+            app->load("Process Manager", "List/kill processes", "/opt/bin/erode", "", Foreground, false, true);
             applications[app->name()] = app;
             emit applicationRegistered(app->qPath());
         }
