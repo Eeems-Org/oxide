@@ -110,7 +110,7 @@ int Application::state(){
 
 void Application::load(
     QString name, QString description, QString call, QString term,
-    int type, bool autostart
+    int type, bool autostart, bool systemApp
 ){
     m_name = name;
     m_description = description;
@@ -122,6 +122,7 @@ void Application::load(
     }else{
         m_autoStart = autostart;
     }
+    m_systemApp = systemApp;
     m_process->setProgram(call);
 }
 void Application::started(){

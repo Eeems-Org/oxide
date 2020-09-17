@@ -4,7 +4,7 @@ QT += dbus
 CONFIG += c++11 console
 CONFIG -= app_bundle
 
-SOURCES += main.cpp \
+SOURCES += \
     application.cpp \
     bss.cpp \
     buttonhandler.cpp \
@@ -12,7 +12,8 @@ SOURCES += main.cpp \
     network.cpp \
     sysobject.cpp \
     wlan.cpp \
-    wpa_supplicant.cpp
+    wpa_supplicant.cpp \
+    main.cpp
 
 TARGET=tarnish
 
@@ -29,6 +30,8 @@ INSTALLS += service
 
 system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)
 
+INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 
 HEADERS += \
     apibase.h \
@@ -50,6 +53,7 @@ HEADERS += \
     wpa_supplicant.h
 
 linux-oe-g++ {
+    LIBS += -lqsgepaper
     LIBS += -lpng16
     LIBS += -lsystemd
     LIBS += -lz
@@ -61,4 +65,5 @@ DISTFILES += \
     fi.w1.wpa_supplicant1.xml \
     generate_xml.sh
 
-RESOURCES +=
+RESOURCES += \
+    qml.qrc

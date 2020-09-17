@@ -91,12 +91,13 @@ public:
     QString call() { return m_call; }
     QString term() { return m_term; }
     bool autoStart() { return m_autoStart; }
+    bool systemApp() { return m_systemApp; }
     int type() { return (int)m_type; }
     int state();
 
     void load(
         QString name, QString description, QString call, QString term,
-        int type, bool autostart
+        int type, bool autostart, bool systemApp
     );
     void saveScreen(){
         if(screenCapture != nullptr){
@@ -205,6 +206,7 @@ private:
     QString m_term;
     int m_type;
     bool m_autoStart;
+    bool m_systemApp;
     QProcess* m_process;
     bool m_backgrounded;
     QByteArray* screenCapture = nullptr;

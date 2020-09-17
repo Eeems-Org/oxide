@@ -3,15 +3,8 @@
 #include <cstdlib>
 
 #include "dbusservice.h"
-#include "buttonhandler.h"
-
-#define DISPLAYWIDTH 1404
-#define DISPLAYHEIGHT 1872
-#define TEMP_USE_REMARKABLE_DRAW 0x0018
 
 using namespace std;
-
-QString oxidepid;
 
 void signalHandler(__attribute__((unused)) const int signum){
     exit(EXIT_SUCCESS);
@@ -56,27 +49,12 @@ int main(int argc, char *argv[]){
     parser.addHelpOption();
     parser.applicationDescription();
     parser.addVersionOption();
-    parser.addPositionalArgument("pid", "Oxide PID");
 
     parser.process(app);
 
     const QStringList args = parser.positionalArguments();
-    if(args.length() > 0){
-        oxidepid = args.at(0);
-    }else if(!system("systemctl --quiet is-active oxide")){
-        oxidepid = ButtonHandler::exec("systemctl status oxide | grep 'Main PID:' | awk '{print $3}'").c_str();
-        oxidepid = oxidepid.trimmed();
-        if(!oxidepid.isEmpty()){
-            qDebug() << "Automatically detected oxide with PID: " << oxidepid;
-        }
-    }else{
-        qDebug() << "Oxide not detected. Assuming running standalone";
-        oxidepid = "";
-    }
 
     // DBus API service
     DBusService::singleton();
-    // Button handling
-    ButtonHandler::init(oxidepid);
     return app.exec();
 }

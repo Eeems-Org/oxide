@@ -35,17 +35,21 @@ bool AppItem::ok(){
             }
             app = new Application(OXIDE_SERVICE, appPath.path(), bus, this);
             connect(app, &Application::exited, this, &AppItem::exited);
-            return app->isValid();
+            if(!app->isValid()){
+                delete app;
+                app = nullptr;
+                return false;
+            }
         }
     }
     return true;
 }
 
 void AppItem::execute(){
-    qDebug() << "Setting termfile /tmp/.terminate";
-    std::ofstream termfile;
-    termfile.open("/tmp/.terminate");
-    termfile << _term.toStdString() << std::endl;
+    if(app == nullptr || !app->isValid()){
+        qWarning() << "Application instance is not valid";
+        return;
+    }
     qDebug() << "Running application " << app->path();
     try {
         app->launch().waitForFinished();

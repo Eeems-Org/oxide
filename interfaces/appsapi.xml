@@ -32,10 +32,22 @@
       <arg type="o" direction="out"/>
       <arg type="i" direction="out"/>
     </signal>
+    <method name="leftHeld">
+    </method>
+    <method name="homeHeld">
+    </method>
+    <method name="rightHeld">
+    </method>
+    <method name="powerHeld">
+    </method>
     <method name="registerApplication">
       <arg type="o" direction="out"/>
       <arg name="properties" type="a{sv}" direction="in"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+    </method>
+    <method name="unregisterApplication">
+      <arg type="b" direction="out"/>
+      <arg name="path" type="o" direction="in"/>
     </method>
   </interface>
 </node>

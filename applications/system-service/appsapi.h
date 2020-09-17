@@ -6,9 +6,13 @@
 #include <QDBusObjectPath>
 #include <QSettings>
 #include <QUuid>
+#include <QFile>
 
 #include "apibase.h"
 #include "application.h"
+#include "fb2png.h"
+
+#define PNG_PATH "/tmp/fb.png"
 
 class AppsAPI : public APIBase {
     Q_OBJECT
@@ -39,7 +43,8 @@ public:
                 settings.value("call").toString(),
                 settings.value("term", "").toString(),
                 settings.value("type", Foreground).toInt(),
-                settings.value("autostart", false).toBool()
+                settings.value("autostart", false).toBool(),
+                settings.value("systemapp", false).toBool()
             );
             applications.insert(name, app);
         }
@@ -47,15 +52,26 @@ public:
         if(!applications.size()){
             // TODO load from draft config files
         }
+        if(!applications.contains("Xochitl")){
+            auto app = new Application(getPath("Xochitl"), this);
+            app->load("Xochitl", "reMarkable default application", "/usr/bin/xochitl", "", Foreground, false, true);
+            applications[app->name()] = app;
+            emit applicationRegistered(app->qPath());
+        }
+        if(!applications.contains("Process Manager")){
+            auto app = new Application(getPath("Process Manager"), this);
+            app->load("Process Manager", "List/kill processes", "/usr/bin/erode", "", Foreground, false, true);
+            applications[app->name()] = app;
+            emit applicationRegistered(app->qPath());
+        }
         auto path = QDBusObjectPath(settings.value("startupApplication").toString());
         auto app = getApplication(path);
         if(app == nullptr){
-            if(applications.contains("oxide")){
-                app = applications["oxide"];
-            }else{
-                app = new Application(getPath("oxide"), this);
-                app->load("oxide", "Application launcher", "/opt/bin/oxide", "", Foreground, false);
-                applications["oxide"] = app;
+            app = getApplication("Launcher");
+            if(app == nullptr){
+                app = new Application(getPath("Launcher"), this);
+                app->load("Launcher", "Application launcher", "/opt/bin/oxide", "", Foreground, false, true);
+                applications[app->name()] = app;
                 emit applicationRegistered(app->qPath());
             }
             path = app->qPath();
@@ -116,7 +132,8 @@ public:
             call,
             properties.value("term", "").toString(),
             type,
-            properties.value("autostart", false).toBool()
+            properties.value("autostart", false).toBool(),
+            false
         );
         applications.insert(name, app);
         if(m_enabled){
@@ -125,6 +142,17 @@ public:
         writeApplications();
         emit applicationRegistered(path);
         return path;
+    }
+    Q_INVOKABLE bool unregisterApplication(QDBusObjectPath path){
+        auto app = getApplication(path);
+        if(app == nullptr){
+            return true;
+        }
+        if(app->systemApp()){
+            return false;
+        }
+        unregisterApplication(app);
+        return true;
     }
 
     QDBusObjectPath startupApplication(){
@@ -194,6 +222,12 @@ public:
         }
         return nullptr;
     }
+    Application* getApplication(QString name){
+        if(applications.contains(name)){
+            return applications[name];
+        }
+        return nullptr;
+    }
 signals:
     void applicationRegistered(QDBusObjectPath);
     void applicationLaunched(QDBusObjectPath);
@@ -202,6 +236,40 @@ signals:
     void applicationResumed(QDBusObjectPath);
     void applicationSignaled(QDBusObjectPath);
     void applicationExited(QDBusObjectPath, int);
+
+public slots:
+    void leftHeld(){
+        auto currentApplication = getApplication(this->currentApplication());
+        if(currentApplication->state() != Application::Inactive && currentApplication->path() == m_startupApplication.path()){
+            qDebug() << "Already at startup application";
+            return;
+        }
+        getApplication(m_startupApplication)->launch();
+    }
+    void homeHeld(){
+        auto app = getApplication("Process Manager");
+        if(app == nullptr){
+            qDebug() << "Unable to find process manager";
+            return;
+        }
+        if(app->state() == Application::InForeground){
+            qDebug() << "Process manager already running";
+            return;
+        }
+        app->launch();
+    }
+    void rightHeld(){
+        takeScreenshot();
+        if(QFile("/tmp/.screenshot").exists()){
+            // Then execute the contents of /tmp/.terminate
+            qDebug() << "Screenshot file exists.";
+            system("/bin/bash /tmp/.screenshot");
+        }
+        qDebug() << "Screenshot done.";
+    }
+    void powerHeld(){
+
+    }
 
 private:
     bool m_enabled;
@@ -227,6 +295,20 @@ private:
             settings.setValue("autostart", app->autoStart());
         }
         settings.endArray();
+    }
+    static void removeScreenshot(){
+        QFile file(PNG_PATH);
+        if(file.exists()){
+            qDebug() << "Removing framebuffer image";
+            file.remove();
+        }
+    }
+    static void takeScreenshot(){
+        qDebug() << "Taking screenshot";
+        int res = fb2png_defaults();
+        if(res){
+            qDebug() << "Failed to take screenshot: " << res;
+        }
     }
 };
 #endif // APPSAPI_H

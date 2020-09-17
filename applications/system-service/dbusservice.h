@@ -14,6 +14,7 @@
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "appsapi.h"
+#include "buttonhandler.h"
 
 using namespace std;
 
@@ -52,7 +53,6 @@ public:
             connect(bus.interface(), SIGNAL(serviceOwnerChanged(QString,QString,QString)),
                     instance, SLOT(serviceOwnerChanged(QString,QString,QString)));
             qDebug() << "Registered";
-
         }
         return instance;
     }
@@ -80,6 +80,12 @@ public:
         for(auto api : apis){
             bus.unregisterObject(api.path);
         }
+        buttonHandler = ButtonHandler::init();
+        auto api = (AppsAPI*)apis["apps"].instance;
+        connect(buttonHandler, &ButtonHandler::leftHeld, api, &AppsAPI::leftHeld);
+        connect(buttonHandler, &ButtonHandler::homeHeld, api, &AppsAPI::homeHeld);
+        connect(buttonHandler, &ButtonHandler::rightHeld, api, &AppsAPI::rightHeld);
+        connect(buttonHandler, &ButtonHandler::powerHeld, api, &AppsAPI::powerHeld);
     }
     ~DBusService(){
         qDebug() << "Removing all APIs";
@@ -169,6 +175,7 @@ private Q_SLOTS:
 
 private:
     QMap<QString, APIEntry> apis;
+    ButtonHandler* buttonHandler;
 };
 
 #endif // DBUSSERVICE_H

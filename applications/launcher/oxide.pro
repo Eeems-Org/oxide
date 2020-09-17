@@ -56,10 +56,6 @@ configFile.files = ../../assets/etc/oxide.conf
 configFile.path  = /opt/etc/
 INSTALLS += configFile
 
-service.files = ../../assets/etc/systemd/system/oxide.service
-service.path = /etc/systemd/system/
-INSTALLS += service
-
 DISTFILES += \
     ../../assets/etc/oxide.conf
 ls

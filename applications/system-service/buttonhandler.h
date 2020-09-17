@@ -5,6 +5,8 @@
 #include <QFile>
 #include <QException>
 #include <QDebug>
+#include <QElapsedTimer>
+#include <QTimer>
 
 #include <string>
 #include <iostream>
@@ -27,7 +29,7 @@
 
 using namespace std;
 
-#define PNG_PATH "/tmp/fb.png"
+//#define PNG_PATH "/tmp/fb.png"
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
@@ -37,8 +39,9 @@ struct PressRecord {
     bool pressed = false;
     struct timeval pressTime;
     string name = "Unknown";
-    PressRecord (string name) : name(name) {}
-    PressRecord(){}
+    Qt::Key keyCode = Qt::Key_unknown;
+    PressRecord (string name, Qt::Key keyCode) : name(name), keyCode(keyCode) {}
+    PressRecord() : PressRecord("Unknown", Qt::Key_unknown){}
 };
 
 struct event_device {
@@ -52,23 +55,82 @@ struct event_device {
 
 // const event_device wacom("/dev/input/event0", O_WRONLY);
 const event_device buttons("/dev/input/event2", O_RDWR);
-const event_device touchScreen("/dev/input/event1", O_WRONLY);
+//const event_device touchScreen("/dev/input/event1", O_WRONLY);
 
 class ButtonHandler : public QThread {
     Q_OBJECT
 
 public:
-    static ButtonHandler* init(QString ppid);
+    static ButtonHandler* init();
     static string exec(const char* cmd);
     static vector<std::string> split_string_by_newline(const std::string& str);
     static int is_uint(string input);
 
-    ButtonHandler(QString ppid) : QThread(), ppid(ppid), inputManager() {}
+    ButtonHandler() : QThread(), inputManager(), filebuf(buttons.fd, ios::in), stream(&filebuf), pressed(), timer(this) {
+        timer.setInterval(100);
+        timer.setSingleShot(false);
+        connect(&timer, &QTimer::timeout, this, &ButtonHandler::timeout);
+        timer.start();
+    }
+
+public slots:
+    void pressKey(Qt::Key);
+
+private slots:
+    void keyDown(Qt::Key key){
+        qDebug() << "Down" << key;
+        if(validKeys.contains(key) && !pressed.contains(key)){
+            QElapsedTimer timer;
+            timer.start();
+            pressed.insert(key, timer);
+        }
+    }
+    void keyUp(Qt::Key key){
+        qDebug() << "Up" << key;
+        if(pressed.contains(key)){
+            pressed.remove(key);
+        }
+    }
+    void timeout(){
+        for(auto key : pressed.keys()){
+            // If 1s has passed since the key was pressed
+            if(pressed.value(key).hasExpired(700)){
+                switch(key){
+                    case Qt::Key_Left:
+                        emit leftHeld();
+                    break;
+                    case Qt::Key_Home:
+                        emit homeHeld();
+                    break;
+                    case Qt::Key_Right:
+                        emit rightHeld();
+                    break;
+                    case Qt::Key_PowerOff:
+                        emit powerHeld();
+                    break;
+                    default:
+                        continue;
+                }
+                qDebug() << "Key held" << key;
+                pressed.remove(key);
+            }
+        }
+    }
+
+signals:
+    void leftHeld();
+    void homeHeld();
+    void rightHeld();
+    void powerHeld();
 
 protected:
     void run();
-    QString ppid;
     InputManager inputManager;
+    __gnu_cxx::stdio_filebuf<char> filebuf;
+    istream stream;
+    QMap<Qt::Key, QElapsedTimer> pressed;
+    QTimer timer;
+    const QSet<Qt::Key> validKeys { Qt::Key_Left, Qt::Key_Home, Qt::Key_Right, Qt::Key_PowerOff };
 };
 
 #endif // BUTTONHANDLER_H
