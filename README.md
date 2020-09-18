@@ -7,4 +7,4 @@
 # Oxide
 A launcher application for the [reMarkable tablet](https://remarkable.com/).
 
-Head over to the [releases](https://github.com/Eeems/oxide/releases) page for more information on the latest release.
+Head over to the [releases](https://github.com/Eeems/oxide/releases) page for more information on the latest release. You can also see some (likely outdated) [screenshots here](https://github.com/Eeems/oxide/wiki/Screenshots).
