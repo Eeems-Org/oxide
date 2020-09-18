@@ -87,13 +87,19 @@ private slots:
     }
     void keyUp(Qt::Key key){
         qDebug() << "Up" << key;
-        if(pressed.contains(key)){
-            pressed.remove(key);
+        if(!pressed.contains(key)){
+            pressKey(key);
+            return;
+        }
+        auto value = pressed.value(key);
+        pressed.remove(key);
+        if(!value.hasExpired(700)){
+            pressKey(key);
         }
     }
     void timeout(){
         for(auto key : pressed.keys()){
-            // If 1s has passed since the key was pressed
+            // If the key has been held for a while
             if(pressed.value(key).hasExpired(700)){
                 switch(key){
                     case Qt::Key_Left:

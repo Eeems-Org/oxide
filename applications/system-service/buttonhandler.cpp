@@ -1,6 +1,8 @@
 #include "buttonhandler.h"
 #include "dbusservice.h"
 
+//#define DEBUG
+
 void removeScreenshot(){
     QFile file(PNG_PATH);
     if(file.exists()){
@@ -44,7 +46,9 @@ void exit_handler(){
     // close(wacom.fd);
 }
 void write_event(event_device evdev, input_event ie){
+#ifdef DEBUG
     qDebug() << "WRITE: " << ie.type << ", " << ie.code << ", " << ie.value << " to " << evdev.device.c_str();
+#endif
     write(evdev.fd, &ie,sizeof(ie));
 }
 void flush_stream(istream* stream){
@@ -134,60 +138,26 @@ void ButtonHandler::run(){
             yieldCurrentThread();
         }
     }
-            // On press
-//            if(map[ie.code].pressed){
-//                qDebug() << map[ie.code].name.c_str() << " DOWN";
-//                gettimeofday(&map[ie.code].pressTime,NULL);
-//            }else{
-//                struct timeval ctime;
-//                gettimeofday(&ctime,NULL);
-//                // Calculate length of hold
-//                long usecs = ((ctime.tv_sec   -  map[ie.code].pressTime.tv_sec  )*1000000L
-//                              +ctime.tv_usec) -  map[ie.code].pressTime.tv_usec;
-//                qDebug() << map[ie.code].name.c_str() << " UP (" << usecs << " microseconds)";
-//                if(usecs > 1000000L && map[ie.code].name == "Left"){
-//                    auto api = (AppsAPI*)DBusService::singleton()->getAPI("apps");
-//                    auto startupApplication = api->startupApplication();
-//                    auto currentApplication = api->getApplication(api->currentApplication());
-//                    if(currentApplication->state() == Application::Inactive|| currentApplication->path() != startupApplication.path()){
-//                        api->getApplication(startupApplication)->launch();
-//                    }
-//                }else if(usecs > 1000000L && map[ie.code].name == "Right"){
-//                    takeScreenshot();
-//                    if(QFile("/tmp/.screenshot").exists()){
-//                        ifstream screenshotfile;
-//                        // Then execute the contents of /tmp/.terminate
-//                        screenshotfile.open("/tmp/.screenshot", ios::in);
-//                        if(screenshotfile.is_open()){
-//                            qDebug() << "Screenshot file exists and can be read.";
-//                            screenshotfile.close();
-//                            system("/bin/bash /tmp/.screenshot");
-//                        }else{
-//                            qDebug() << "Screenshot file couldn't be read.";
-//                        }
-//                    }
-//                }else if(usecs > 1000000L && map[ie.code].name == "Middle"){
-//                    auto api = (AppsAPI*)DBusService::singleton()->getAPI("apps");
-//                    auto applications = api->getApplications();
-//                    auto app = api->getApplication("Process Manager");
-//                    if(app == nullptr){
-//                        qDebug() << "Can't find process manager";
-//                        continue;
-//                    }
-//                    if(api->currentApplication().path() == app->path()){
-//                        qDebug() << "Process manager is active";
-//                        continue;
-//                    }
-//                    app->launch();
-//                }else{
-//                    press_button(buttons, ie.code, &stream);
-//                }
-//            }
-//        }
-//    }
 }
 void ButtonHandler::pressKey(Qt::Key key){
-    press_button(buttons, key, &stream);
+    int code;
+    switch(key){
+        case Qt::Key_Left:
+            code = 105;
+        break;
+        case Qt::Key_Home:
+            code = 102;
+        break;
+        case Qt::Key_Right:
+            code = 106;
+        break;
+        case Qt::Key_PowerOff:
+            code = 116;
+        break;
+        default:
+            return;
+    }
+    press_button(buttons, code, &stream);
 }
 string ButtonHandler::exec(const char* cmd){
     array<char, 128> buffer;
