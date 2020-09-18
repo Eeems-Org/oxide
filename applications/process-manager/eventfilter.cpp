@@ -1,9 +1,9 @@
-#include "eventfilter.h"
-#include <QTimer>
 #include <QDebug>
 #include <QMouseEvent>
 #include <QTabletEvent>
 #include <QScreen>
+
+#include "eventfilter.h"
 
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872.0

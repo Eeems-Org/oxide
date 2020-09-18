@@ -3,7 +3,6 @@
 
 #include <QObject>
 #include <QEvent>
-#include <QTimer>
 #include <QGuiApplication>
 #include <QQuickItem>
 

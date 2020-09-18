@@ -35,6 +35,8 @@ void signalHandler(const int signum){
         exit(EXIT_SUCCESS);
     }
 }
+function<void(int)> shutdown_handler;
+void signalHandler2(int signal) { shutdown_handler(signal); }
 
 int main(int argc, char *argv[]){
     signal(SIGTERM, signalHandler);
@@ -121,5 +123,13 @@ int main(int argc, char *argv[]){
     if(controller->automaticSleep()){
         filter.timer->start();
     }
+    shutdown_handler = [&filter, &controller](int signum) {
+        Q_UNUSED(signum)
+        if(controller->automaticSleep()){
+            filter.timer->stop();
+            filter.timer->start();
+        }
+    };
+    signal(SIGCONT, signalHandler2);
     return app.exec();
 }
