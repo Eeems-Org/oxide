@@ -51,7 +51,7 @@ release: clean build
 	INSTALL_ROOT=../../release $(MAKE) -C .build/settings-manager install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/launcher install
 
-build: erode tarnish rot oxide
+build: tarnish erode rot oxide
 
 erode:
 	mkdir -p .build/process-manager
@@ -59,7 +59,7 @@ erode:
 	cd .build/process-manager && qmake erode.pro
 	$(MAKE) -C .build/process-manager all
 
-tarnish: erode
+tarnish:
 	mkdir -p .build/system-service
 	cp -r applications/system-service/* .build/system-service
 	cd .build/system-service && qmake tarnish.pro
@@ -71,7 +71,7 @@ rot: tarnish
 	cd .build/settings-manager && qmake rot.pro
 	$(MAKE) -C .build/settings-manager all
 
-oxide: tarnish
+oxide: tarnish erode
 	mkdir -p .build/launcher
 	cp -r applications/launcher/* .build/launcher
 	cd .build/launcher && qmake oxide.pro
