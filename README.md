@@ -4,6 +4,6 @@
 [![opkg](https://img.shields.io/badge/OPKG-oxide-blue)](https://github.com/matteodelabre/toltec)
 
 # Oxide
-A launcher application for the reMarkable tablet.
+A launcher application for the [reMarkable tablet](https://remarkable.com/).
 
 Head over to the [releases](https://github.com/Eeems/oxide/releases) page for more information on the latest release.
