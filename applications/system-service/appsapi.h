@@ -255,7 +255,7 @@ public slots:
         getApplication(m_startupApplication)->launch();
     }
     void homeHeld(){
-        auto app = getApplication("codex.eeems.erode");
+        auto app = getApplication("codes.eeems.erode");
         if(app == nullptr){
             qDebug() << "Unable to find process manager";
             return;
