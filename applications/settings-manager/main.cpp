@@ -19,7 +19,6 @@ using namespace codes::eeems::oxide1;
 static QTextStream qStdOut(stdout, QIODevice::WriteOnly);
 
 QVariant sanitizeForJson(QVariant value);
-
 QVariant decodeDBusArgument(const QDBusArgument& arg){
     auto type = arg.currentType();
     if(type == QDBusArgument::BasicType || type == QDBusArgument::VariantType){
@@ -50,7 +49,6 @@ QVariant decodeDBusArgument(const QDBusArgument& arg){
     qDebug() << "Unable to sanitize QDBusArgument as it is an unknown type";
     return QVariant();
 }
-
 QVariant sanitizeForJson(QVariant value){
     auto userType = value.userType();
     if(userType == QMetaType::type("QDBusObjectPath")){
@@ -104,7 +102,6 @@ QVariant sanitizeForJson(QVariant value){
     }
     return value;
 }
-
 QString toJson(QVariant value){
     if(value.isNull()){
         return "null";

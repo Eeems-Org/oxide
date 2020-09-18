@@ -8,6 +8,7 @@
     <property name="autoStart" type="b" access="read"/>
     <property name="type" type="i" access="read"/>
     <property name="state" type="i" access="read"/>
+    <property name="systemApp" type="b" access="read"/>
     <signal name="launched">
     </signal>
     <signal name="paused">

@@ -20,7 +20,9 @@ public:
     AppItem(QObject* parent) : QObject(parent){}
 
     ~AppItem(){
-        delete app;
+        if(app != nullptr){
+            delete app;
+        }
     }
 
     Q_PROPERTY(QString name MEMBER _name NOTIFY nameChanged)
@@ -43,7 +45,7 @@ private slots:
     void exited(int);
 
 private:
-    Application* app;
+    Application* app = nullptr;
     QString _name;
     QString _desc;
     QString _call;

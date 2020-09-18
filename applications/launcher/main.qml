@@ -32,8 +32,15 @@ ApplicationWindow {
                     id: optionsMenu
                     title: "";
                     font: iconFont.name
-                    width: 250
+                    width: 310
                     Action { text: qsTr(" Reload"); onTriggered: appsView.model = controller.getApps() }
+                    Action {
+                        text: qsTr(" Import Apps");
+                        onTriggered:{
+                            controller.importDraftApps();
+                            appsView.model = controller.getApps();
+                        }
+                    }
                     Action { text: qsTr(" Options"); onTriggered: stateController.state = "settings" }
                 }
             }
@@ -118,7 +125,7 @@ ApplicationWindow {
                     id: powerMenu
                     title: "";
                     font: iconFont.name
-                    width: 250
+                    width: 260
                     Action { text: qsTr(" Suspend"); onTriggered: stateController.state = "suspended" }
                     Action { text: qsTr(" Shutdown"); onTriggered: controller.powerOff() }
                 }

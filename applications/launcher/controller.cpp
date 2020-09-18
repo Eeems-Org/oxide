@@ -13,6 +13,8 @@
 #include "sysobject.h"
 
 #include "controller.h"
+#include "dbusservice_interface.h"
+#include "appsapi_interface.h"
 
 QSet<QString> settings = { "columns", "fontSize", "sleepAfter" };
 QSet<QString> booleanSettings {"automaticSleep", "showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
@@ -159,28 +161,62 @@ void Controller::saveSettings(){
 }
 QList<QObject*> Controller::getApps(){
     QList<QObject*> result;
-    // If the config directory doesn't exist,
-    // then print an error and stop.
+    auto bus = QDBusConnection::systemBus();
+    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+    QDBusObjectPath path = api.requestAPI("apps");
+    if(path.path() == "/"){
+        qDebug() << "Unable to access apps API";
+        return result;
+    }
+    Apps apps(OXIDE_SERVICE, path.path(), bus);
+    for(auto item : apps.applications()){
+        Application app(OXIDE_SERVICE, item.value<QDBusObjectPath>().path(), bus, this);
+        if(app.name() == "Launcher"){
+            continue;
+        }
+        auto appItem = new AppItem(this);
+        appItem->setProperty("name", app.name());
+        appItem->setProperty("desc", app.description());
+        appItem->setProperty("call", app.call());
+        appItem->setProperty("term", app.term());
+        if(appItem->ok()){
+            appItem->inputManager = &inputManager;
+            result.append(appItem);
+        }else{
+            qDebug() << "Invalid item" << appItem->property("name").toString();
+            delete appItem;
+        }
+    }
+    // Sort by name
+    std::sort(result.begin(), result.end(), [=](const QObject* a, const QObject* b) -> bool {
+        return a->property("name") < b->property("name");
+    });
+    return result;
+}
+void Controller::importDraftApps(){
+    auto bus = QDBusConnection::systemBus();
+    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+    QDBusObjectPath path = api.requestAPI("apps");
+    if(path.path() == "/"){
+        qDebug() << "Unable to access apps API";
+        return;
+    }
+    Apps apps(OXIDE_SERVICE, path.path(), bus);
     for(auto configDirectoryPath : configDirectoryPaths){
         QDir configDirectory(configDirectoryPath);
         configDirectory.setFilter( QDir::Files | QDir::NoSymLinks | QDir::NoDot | QDir::NoDotDot);
         auto images = configDirectory.entryInfoList(QDir::NoFilter,QDir::SortFlag::Name);
-        foreach(QFileInfo fi, images){
+        for(QFileInfo fi : images){
             if(fi.fileName() != "conf"){
                 auto f = fi.absoluteFilePath();
-
                 qDebug() << "parsing file " << f;
-
                 QFile file(fi.absoluteFilePath());
                 if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
                     qCritical() << "Couldn't find the file " << f;
                     continue;
                 }
-
                 QTextStream in(&file);
-
-                AppItem* app = new AppItem(this);
-
+                AppItem app(this);
                 while (!in.atEnd()) {
                     QString line = in.readLine();
                     if(line.startsWith("#")){
@@ -196,25 +232,35 @@ QList<QObject*> Controller::getApps(){
                     QSet<QString> known = { "name", "desc", "call", "term" };
                     if(rhs != ":" && rhs != ""){
                         if (known.contains(lhs)){
-                            app->setProperty(lhs.toUtf8(), rhs);
+                            app.setProperty(lhs.toUtf8(), rhs);
                         }else if (lhs == "imgFile"){
-                            app->setProperty(lhs.toUtf8(), "file:" + configDirectoryPath + "/icons/" + rhs + ".png");
+                            app.setProperty(lhs.toUtf8(), "file:" + configDirectoryPath + "/icons/" + rhs + ".png");
                         }
                     }
                 }
-                if(app ->ok()){
-                    app->inputManager = &inputManager;
-                    result.append(app );
-                }
                 file.close();
+                auto name = app.property("name").toString();
+                if(!app.ok()){
+                    qDebug() << "Invalid configuration" << name;
+                    continue;
+                }
+                QDBusObjectPath path = apps.getApplicationPath(name);
+                if(path.path() != "/"){
+                    qDebug() << "Already exists" << name;
+                    continue;
+                }
+                QVariantMap properties;
+                properties.insert("name", name);
+                properties.insert("description", app.property("desc"));
+                properties.insert("call", app.property("call"));
+                properties.insert("term", app.property("term"));
+                path = apps.registerApplication(properties);
+                if(path.path() == "/"){
+                    qDebug() << "Failed to import" << name;
+                }
             }
         }
     }
-    // Sort by name
-    std::sort(result.begin(), result.end(), [=](const QObject* a, const QObject* b) -> bool {
-        return a->property("name") < b->property("name");
-    });
-    return result;
 }
 void Controller::powerOff(){
     qDebug() << "Powering off...";

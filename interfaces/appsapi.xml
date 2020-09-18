@@ -49,5 +49,9 @@
       <arg type="b" direction="out"/>
       <arg name="path" type="o" direction="in"/>
     </method>
+    <method name="getApplicationPath">
+      <arg type="o" direction="out"/>
+      <arg name="name" type="s" direction="in"/>
+    </method>
   </interface>
 </node>

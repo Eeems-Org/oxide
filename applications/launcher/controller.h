@@ -46,6 +46,7 @@ public:
     Q_INVOKABLE void loadSettings();
     Q_INVOKABLE void saveSettings();
     Q_INVOKABLE QList<QObject*> getApps();
+    Q_INVOKABLE void importDraftApps();
     Q_INVOKABLE void powerOff();
     Q_INVOKABLE void suspend();
     Q_INVOKABLE void killXochitl();

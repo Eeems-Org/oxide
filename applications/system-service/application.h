@@ -39,6 +39,7 @@ class Application : public QObject{
     Q_PROPERTY(bool autoStart READ autoStart)
     Q_PROPERTY(int type READ type)
     Q_PROPERTY(int state READ state)
+    Q_PROPERTY(bool systemApp READ systemApp)
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false) {

@@ -222,6 +222,13 @@ public:
         }
         return nullptr;
     }
+    Q_INVOKABLE QDBusObjectPath getApplicationPath(QString name){
+        auto app = getApplication(name);
+        if(app == nullptr){
+            return QDBusObjectPath("/");
+        }
+        return app->qPath();
+    }
     Application* getApplication(QString name){
         if(applications.contains(name)){
             return applications[name];
