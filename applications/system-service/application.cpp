@@ -109,13 +109,14 @@ int Application::state(){
 }
 
 void Application::load(
-    QString name, QString description, QString call, QString term,
-    int type, bool autostart, bool systemApp
+    QString name, QString displayname, QString description,
+    QString call, int type, bool autostart, bool systemApp,
+    QString icon
 ){
     m_name = name;
+    m_displayname = displayname;
     m_description = description;
     m_call = call;
-    m_term = term;
     m_type = (int)type;
     if(type == AppsAPI::Foreground){
         m_autoStart = false;
@@ -123,6 +124,7 @@ void Application::load(
         m_autoStart = autostart;
     }
     m_systemApp = systemApp;
+    m_icon = icon;
     m_process->setProgram(call);
 }
 void Application::started(){

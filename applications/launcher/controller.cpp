@@ -171,14 +171,23 @@ QList<QObject*> Controller::getApps(){
     Apps apps(OXIDE_SERVICE, path.path(), bus);
     for(auto item : apps.applications()){
         Application app(OXIDE_SERVICE, item.value<QDBusObjectPath>().path(), bus, this);
-        if(app.name() == "Launcher"){
+        auto name = app.name();
+        if(name == "codes.eeems.oxide"){
             continue;
         }
         auto appItem = new AppItem(this);
-        appItem->setProperty("name", app.name());
+        auto displayName = app.displayName();
+        if(displayName.isEmpty()){
+            displayName = name;
+        }
+        appItem->setProperty("name", name);
+        appItem->setProperty("displayName", displayName);
         appItem->setProperty("desc", app.description());
         appItem->setProperty("call", app.call());
-        appItem->setProperty("term", app.term());
+        auto icon = app.icon();
+        if(!icon.isEmpty() && QFile(icon).exists()){
+                appItem->setProperty("imgFile", "file:" + icon);
+        }
         if(appItem->ok()){
             appItem->inputManager = &inputManager;
             result.append(appItem);
@@ -229,17 +238,18 @@ void Controller::importDraftApps(){
                     }
                     QString lhs = parts.at(0);
                     QString rhs = parts.at(1);
-                    QSet<QString> known = { "name", "desc", "call", "term" };
+                    QSet<QString> known = { "name", "desc", "call" };
                     if(rhs != ":" && rhs != ""){
                         if (known.contains(lhs)){
                             app.setProperty(lhs.toUtf8(), rhs);
                         }else if (lhs == "imgFile"){
-                            app.setProperty(lhs.toUtf8(), "file:" + configDirectoryPath + "/icons/" + rhs + ".png");
+                            app.setProperty(lhs.toUtf8(), configDirectoryPath + "/icons/" + rhs + ".png");
                         }
                     }
                 }
                 file.close();
                 auto name = app.property("name").toString();
+                app.setProperty("displayName", name);
                 if(!app.ok()){
                     qDebug() << "Invalid configuration" << name;
                     continue;
@@ -247,13 +257,26 @@ void Controller::importDraftApps(){
                 QDBusObjectPath path = apps.getApplicationPath(name);
                 if(path.path() != "/"){
                     qDebug() << "Already exists" << name;
+                    auto icon = app.property("imgFile").toString();
+                    if(icon.isEmpty()){
+                        continue;
+                    }
+                    Application app(OXIDE_SERVICE, path.path(), bus, this);
+                    if(app.icon().isEmpty()){
+                        app.setIcon(icon);
+                    }
                     continue;
+                }
+                auto icon = app.property("imgFile").toString();
+                if(icon.startsWith("qrc:")){
+                    icon = "";
                 }
                 QVariantMap properties;
                 properties.insert("name", name);
+                properties.insert("displayName", app.property("displayName"));
                 properties.insert("description", app.property("desc"));
                 properties.insert("call", app.property("call"));
-                properties.insert("term", app.property("term"));
+                properties.insert("icon", icon);
                 path = apps.registerApplication(properties);
                 if(path.path() == "/"){
                     qDebug() << "Failed to import" << name;

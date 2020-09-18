@@ -2,13 +2,14 @@
 <node>
   <interface name="codes.eeems.oxide1.Application">
     <property name="name" type="s" access="read"/>
+    <property name="displayName" type="s" access="readwrite"/>
     <property name="description" type="s" access="read"/>
     <property name="call" type="s" access="read"/>
-    <property name="term" type="s" access="read"/>
-    <property name="autoStart" type="b" access="read"/>
+    <property name="autoStart" type="b" access="readwrite"/>
     <property name="type" type="i" access="read"/>
     <property name="state" type="i" access="read"/>
     <property name="systemApp" type="b" access="read"/>
+    <property name="icon" type="s" access="readwrite"/>
     <signal name="launched">
     </signal>
     <signal name="paused">
@@ -22,6 +23,12 @@
     </signal>
     <signal name="exited">
       <arg type="i" direction="out"/>
+    </signal>
+    <signal name="displayNameChanged">
+      <arg type="s" direction="out"/>
+    </signal>
+    <signal name="iconChanged">
+      <arg type="s" direction="out"/>
     </signal>
     <method name="launch">
     </method>

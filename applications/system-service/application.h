@@ -33,13 +33,14 @@ class Application : public QObject{
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_APPLICATION_INTERFACE)
     Q_PROPERTY(QString name READ name)
+    Q_PROPERTY(QString displayName READ displayName WRITE setDisplayName NOTIFY displayNameChanged)
     Q_PROPERTY(QString description READ description)
     Q_PROPERTY(QString call READ call)
-    Q_PROPERTY(QString term READ term)
-    Q_PROPERTY(bool autoStart READ autoStart)
+    Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart)
     Q_PROPERTY(int type READ type)
     Q_PROPERTY(int state READ state)
     Q_PROPERTY(bool systemApp READ systemApp)
+    Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false) {
@@ -88,17 +89,28 @@ public:
     Q_INVOKABLE void unregister();
 
     QString name() { return m_name; }
+    QString displayName() { return m_displayname; }
+    void setDisplayName(QString displayName){
+        m_name = displayName;
+        emit displayNameChanged(displayName);
+    }
     QString description() { return m_description; }
     QString call() { return m_call; }
-    QString term() { return m_term; }
     bool autoStart() { return m_autoStart; }
+    bool setAutoStart(bool autoStart) { m_autoStart = autoStart;}
     bool systemApp() { return m_systemApp; }
     int type() { return (int)m_type; }
     int state();
+    QString icon() { return m_icon; }
+    void setIcon(QString icon){
+        m_icon = icon;
+        emit iconChanged(icon);
+    }
 
     void load(
-        QString name, QString description, QString call, QString term,
-        int type, bool autostart, bool systemApp
+        QString name, QString displayname, QString description,
+        QString call, int type, bool autostart, bool systemApp,
+        QString icon
     );
     void saveScreen(){
         if(screenCapture != nullptr){
@@ -160,6 +172,8 @@ signals:
     void signaled(int);
     void unregistered();
     void exited(int);
+    void displayNameChanged(QString);
+    void iconChanged(QString);
 
 private slots:
     void started();
@@ -202,12 +216,13 @@ private slots:
 private:
     QString m_path;
     QString m_name;
+    QString m_displayname;
     QString m_description;
     QString m_call;
-    QString m_term;
     int m_type;
     bool m_autoStart;
     bool m_systemApp;
+    QString m_icon;
     QProcess* m_process;
     bool m_backgrounded;
     QByteArray* screenCapture = nullptr;

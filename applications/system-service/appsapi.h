@@ -36,15 +36,16 @@ public:
         for(int i = 0; i < size; ++i){
             settings.setArrayIndex(i);
             auto name = settings.value("name").toString();
+            auto displayName = settings.value("displayname", name).toString();
             auto app = new Application(getPath(name), this);
             app->load(
-                name,
-                settings.value("description", "").toString(),
+                name, displayName,
+                settings.value("description", displayName).toString(),
                 settings.value("call").toString(),
-                settings.value("term", "").toString(),
                 settings.value("type", Foreground).toInt(),
                 settings.value("autostart", false).toBool(),
-                settings.value("systemapp", false).toBool()
+                settings.value("systemapp", false).toBool(),
+                settings.value("icon", "").toString()
             );
             applications.insert(name, app);
         }
@@ -52,25 +53,25 @@ public:
         if(!applications.size()){
             // TODO load from draft config files
         }
-        if(!applications.contains("Xochitl")){
+        if(!applications.contains("xochitl")){
             auto app = new Application(getPath("Xochitl"), this);
-            app->load("Xochitl", "reMarkable default application", "/usr/bin/xochitl", "", Foreground, false, true);
+            app->load("xochitl", "Xochitl", "reMarkable default application", "/usr/bin/xochitl", Foreground, false, true, "");
             applications[app->name()] = app;
             emit applicationRegistered(app->qPath());
         }
-        if(!applications.contains("Process Manager")){
+        if(!applications.contains("codes.eeems.erode")){
             auto app = new Application(getPath("Process Manager"), this);
-            app->load("Process Manager", "List/kill processes", "/opt/bin/erode", "", Foreground, false, true);
+            app->load("codes.eeems.erode", "Process Manager", "List/kill processes", "/opt/bin/erode", Foreground, false, true, "");
             applications[app->name()] = app;
             emit applicationRegistered(app->qPath());
         }
         auto path = QDBusObjectPath(settings.value("startupApplication").toString());
         auto app = getApplication(path);
         if(app == nullptr){
-            app = getApplication("Launcher");
+            app = getApplication("codes.eeems.oxide");
             if(app == nullptr){
                 app = new Application(getPath("Launcher"), this);
-                app->load("Launcher", "Application launcher", "/opt/bin/oxide", "", Foreground, false, true);
+                app->load("codes.eeems.oxide", "Launcher", "Application launcher", "/opt/bin/oxide", Foreground, false, true, "");
                 applications[app->name()] = app;
                 emit applicationRegistered(app->qPath());
             }
@@ -126,20 +127,20 @@ public:
         }
         auto path = QDBusObjectPath(getPath(name));
         auto app = new Application(path, this);
+        auto displayName = properties.value("displayname", name).toString();
         app->load(
             name,
-            properties.value("description", "").toString(),
+            displayName,
+            properties.value("description", displayName).toString(),
             call,
-            properties.value("term", "").toString(),
             type,
             properties.value("autostart", false).toBool(),
-            false
+            false,
+            properties.value("icon", "").toString()
         );
         applications.insert(name, app);
-        if(m_enabled){
-            app->registerPath();
-        }
         writeApplications();
+        app->registerPath();
         emit applicationRegistered(path);
         return path;
     }
@@ -254,7 +255,7 @@ public slots:
         getApplication(m_startupApplication)->launch();
     }
     void homeHeld(){
-        auto app = getApplication("Process Manager");
+        auto app = getApplication("codex.eeems.erode");
         if(app == nullptr){
             qDebug() << "Unable to find process manager";
             return;
@@ -295,11 +296,13 @@ private:
             settings.setArrayIndex(i);
             auto app = apps[i];
             settings.setValue("name", app->name());
+            settings.setValue("displayname", app->displayName());
             settings.setValue("description", app->description());
             settings.setValue("call", app->call());
-            settings.setValue("term", app->term());
             settings.setValue("type", app->type());
             settings.setValue("autostart", app->autoStart());
+            settings.setValue("systemaapp", app->systemApp());
+            settings.setValue("icon", app->icon());
         }
         settings.endArray();
     }

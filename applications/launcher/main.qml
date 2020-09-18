@@ -199,7 +199,7 @@ ApplicationWindow {
                 }
                 Text {
                     id: name
-                    text: model.modelData.name
+                    text: model.modelData.displayName
                     font.family: "Noto Serif"
                     font.italic: true
                     font.pixelSize: controller.fontSize
@@ -283,7 +283,7 @@ ApplicationWindow {
                     id: itemContent
                     anchors.left: itemImage.right
                     Label {
-                        text: (itemInfo.model ? itemInfo.model.name : "")
+                        text: (itemInfo.model ? itemInfo.model.displayName : "")
                         topPadding: 0
                         leftPadding: itemInfo.textPadding
                         rightPadding: itemInfo.textPadding

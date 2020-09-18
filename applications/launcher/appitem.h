@@ -26,9 +26,9 @@ public:
     }
 
     Q_PROPERTY(QString name MEMBER _name NOTIFY nameChanged)
+    Q_PROPERTY(QString displayName MEMBER _displayName NOTIFY displayNameChanged)
     Q_PROPERTY(QString desc MEMBER _desc NOTIFY descChanged)
     Q_PROPERTY(QString call MEMBER _call NOTIFY callChanged)
-    Q_PROPERTY(QString term MEMBER _term NOTIFY termChanged)
     Q_PROPERTY(QString imgFile MEMBER _imgFile NOTIFY imgFileChanged)
 
     bool ok();
@@ -36,9 +36,9 @@ public:
     Q_INVOKABLE void execute();
 signals:
     void nameChanged();
+    void displayNameChanged();
     void descChanged();
     void callChanged();
-    void termChanged();
     void imgFileChanged();
 
 private slots:
@@ -47,9 +47,9 @@ private slots:
 private:
     Application* app = nullptr;
     QString _name;
+    QString _displayName;
     QString _desc;
     QString _call;
-    QString _term;
     QString _imgFile = "qrc:/img/icon.png";
     char* frameBuffer;
     int frameBufferHandle;
