@@ -183,7 +183,7 @@ QList<QObject*> Controller::getApps(){
         appItem->setProperty("name", name);
         appItem->setProperty("displayName", displayName);
         appItem->setProperty("desc", app.description());
-        appItem->setProperty("call", app.call());
+        appItem->setProperty("call", app.bin());
         auto icon = app.icon();
         if(!icon.isEmpty() && QFile(icon).exists()){
                 appItem->setProperty("imgFile", "file:" + icon);
@@ -226,6 +226,7 @@ void Controller::importDraftApps(){
                 }
                 QTextStream in(&file);
                 AppItem app(this);
+                QString onStop = "";
                 while (!in.atEnd()) {
                     QString line = in.readLine();
                     if(line.startsWith("#")){
@@ -240,10 +241,12 @@ void Controller::importDraftApps(){
                     QString rhs = parts.at(1);
                     QSet<QString> known = { "name", "desc", "call" };
                     if(rhs != ":" && rhs != ""){
-                        if (known.contains(lhs)){
+                        if(known.contains(lhs)){
                             app.setProperty(lhs.toUtf8(), rhs);
-                        }else if (lhs == "imgFile"){
+                        }else if(lhs == "imgFile"){
                             app.setProperty(lhs.toUtf8(), configDirectoryPath + "/icons/" + rhs + ".png");
+                        }else if(lhs == "term"){
+                            onStop = rhs.trimmed();
                         }
                     }
                 }
@@ -275,8 +278,9 @@ void Controller::importDraftApps(){
                 properties.insert("name", name);
                 properties.insert("displayName", app.property("displayName"));
                 properties.insert("description", app.property("desc"));
-                properties.insert("call", app.property("call"));
+                properties.insert("bin", app.property("call"));
                 properties.insert("icon", icon);
+                properties.insert("onStop", onStop);
                 path = apps.registerApplication(properties);
                 if(path.path() == "/"){
                     qDebug() << "Failed to import" << name;

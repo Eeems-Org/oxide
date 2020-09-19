@@ -30,6 +30,9 @@ void Application::launch(){
 void Application::pause(bool startIfNone){
     if(m_process->processId() && state() != Paused && state() != InBackground){
         qDebug() << "Pausing " << path();
+        if(!m_onpause.isEmpty()){
+            QProcess::execute(m_onpause);
+        }
         switch(m_type){
             case AppsAPI::Background:
             case AppsAPI::Backgroundable:
@@ -56,6 +59,9 @@ void Application::resume(){
         auto api = (AppsAPI*)parent();
         api->pauseAll();
         recallScreen();
+        if(!m_onresume.isEmpty()){
+            QProcess::execute(m_onresume);
+        }
         switch(m_type){
             case AppsAPI::Background:
             case AppsAPI::Backgroundable:
@@ -72,10 +78,21 @@ void Application::resume(){
         emit api->applicationResumed(qPath());
     }
 }
+void Application::stop(){
+    auto state = this->state();
+    if(state == Inactive){
+        return;
+    }
+    if(!m_onstop.isEmpty()){
+        QProcess::execute(m_onstop);
+    }
+    if(state == Paused){
+        kill(m_process->processId(), SIGCONT);
+    }
+    m_process->kill();
+}
 void Application::signal(int signal){
     if(m_process->processId()){
-        qDebug() << "Signalling " << path() << signal;
-        emit signaled(signal);
         kill(m_process->processId(), signal);
     }
 }
@@ -110,13 +127,16 @@ int Application::state(){
 
 void Application::load(
     QString name, QString displayname, QString description,
-    QString call, int type, bool autostart, bool systemApp,
-    QString icon
+    QString bin, int type, bool autostart, bool systemApp,
+    QString icon, QString onPause, QString onResume, QString onStop
 ){
     m_name = name;
     m_displayname = displayname;
     m_description = description;
-    m_call = call;
+    m_bin = bin;
+    m_onpause = onPause;
+    m_onresume = onResume;
+    m_onstop = onStop;
     m_type = (int)type;
     if(type == AppsAPI::Foreground){
         m_autoStart = false;
@@ -125,7 +145,7 @@ void Application::load(
     }
     m_systemApp = systemApp;
     m_icon = icon;
-    m_process->setProgram(call);
+    m_process->setProgram(bin);
 }
 void Application::started(){
     emit launched();

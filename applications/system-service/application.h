@@ -35,7 +35,10 @@ class Application : public QObject{
     Q_PROPERTY(QString name READ name)
     Q_PROPERTY(QString displayName READ displayName WRITE setDisplayName NOTIFY displayNameChanged)
     Q_PROPERTY(QString description READ description)
-    Q_PROPERTY(QString call READ call)
+    Q_PROPERTY(QString bin READ bin)
+    Q_PROPERTY(QString onPause READ onPause)
+    Q_PROPERTY(QString onResume READ onResume)
+    Q_PROPERTY(QString onStop READ onStop)
     Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart)
     Q_PROPERTY(int type READ type)
     Q_PROPERTY(int state READ state)
@@ -85,7 +88,7 @@ public:
     Q_INVOKABLE void launch();
     Q_INVOKABLE void pause(bool startIfNone = true);
     Q_INVOKABLE void resume();
-    Q_INVOKABLE void signal(int signal);
+    Q_INVOKABLE void stop();
     Q_INVOKABLE void unregister();
 
     QString name() { return m_name; }
@@ -95,7 +98,10 @@ public:
         emit displayNameChanged(displayName);
     }
     QString description() { return m_description; }
-    QString call() { return m_call; }
+    QString bin() { return m_bin; }
+    QString onPause() { return m_onpause; }
+    QString onResume() { return m_onresume; }
+    QString onStop() { return m_onstop; }
     bool autoStart() { return m_autoStart; }
     bool setAutoStart(bool autoStart) { m_autoStart = autoStart;}
     bool systemApp() { return m_systemApp; }
@@ -108,9 +114,17 @@ public:
     }
 
     void load(
-        QString name, QString displayname, QString description,
-        QString call, int type, bool autostart, bool systemApp,
-        QString icon
+        QString name,
+        QString displayname,
+        QString description,
+        QString bin,
+        int type = 0,
+        bool autostart = false,
+        bool systemApp = false,
+        QString icon = "",
+        QString onPause = "",
+        QString onResume = "",
+        QString onStop = ""
     );
     void saveScreen(){
         if(screenCapture != nullptr){
@@ -165,11 +179,11 @@ public:
             m_process->waitForFinished();
         }
     }
+    void signal(int signal);
 signals:
     void launched();
     void paused();
     void resumed();
-    void signaled(int);
     void unregistered();
     void exited(int);
     void displayNameChanged(QString);
@@ -218,7 +232,10 @@ private:
     QString m_name;
     QString m_displayname;
     QString m_description;
-    QString m_call;
+    QString m_bin;
+    QString m_onpause;
+    QString m_onresume;
+    QString m_onstop;
     int m_type;
     bool m_autoStart;
     bool m_systemApp;

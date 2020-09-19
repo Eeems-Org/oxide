@@ -4,7 +4,10 @@
     <property name="name" type="s" access="read"/>
     <property name="displayName" type="s" access="readwrite"/>
     <property name="description" type="s" access="read"/>
-    <property name="call" type="s" access="read"/>
+    <property name="bin" type="s" access="read"/>
+    <property name="onPause" type="s" access="read"/>
+    <property name="onResume" type="s" access="read"/>
+    <property name="onStop" type="s" access="read"/>
     <property name="autoStart" type="b" access="readwrite"/>
     <property name="type" type="i" access="read"/>
     <property name="state" type="i" access="read"/>
@@ -15,9 +18,6 @@
     <signal name="paused">
     </signal>
     <signal name="resumed">
-    </signal>
-    <signal name="signaled">
-      <arg type="i" direction="out"/>
     </signal>
     <signal name="unregistered">
     </signal>
@@ -39,8 +39,7 @@
     </method>
     <method name="resume">
     </method>
-    <method name="signal">
-      <arg name="signal" type="i" direction="in"/>
+    <method name="stop">
     </method>
     <method name="unregister">
     </method>

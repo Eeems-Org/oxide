@@ -41,11 +41,14 @@ public:
             app->load(
                 name, displayName,
                 settings.value("description", displayName).toString(),
-                settings.value("call").toString(),
+                settings.value("bin").toString(),
                 settings.value("type", Foreground).toInt(),
                 settings.value("autostart", false).toBool(),
                 settings.value("systemapp", false).toBool(),
-                settings.value("icon", "").toString()
+                settings.value("icon", "").toString(),
+                settings.value("onpause", "").toString(),
+                settings.value("onresume", "").toString(),
+                settings.value("onstop", "").toString()
             );
             applications.insert(name, app);
         }
@@ -55,13 +58,25 @@ public:
         }
         if(!applications.contains("xochitl")){
             auto app = new Application(getPath("Xochitl"), this);
-            app->load("xochitl", "Xochitl", "reMarkable default application", "/usr/bin/xochitl", Foreground, false, true, "");
+            app->load(
+                "xochitl",
+                "Xochitl",
+                "reMarkable default application",
+                "/usr/bin/xochitl",
+                Foreground, false, true
+            );
             applications[app->name()] = app;
             emit applicationRegistered(app->qPath());
         }
         if(!applications.contains("codes.eeems.erode")){
             auto app = new Application(getPath("Process Manager"), this);
-            app->load("codes.eeems.erode", "Process Manager", "List/kill processes", "/opt/bin/erode", Foreground, false, true, "");
+            app->load(
+                "codes.eeems.erode",
+                "Process Manager",
+                "List/kill processes",
+                "/opt/bin/erode",
+                Foreground, false, true
+            );
             applications[app->name()] = app;
             emit applicationRegistered(app->qPath());
         }
@@ -71,7 +86,13 @@ public:
             app = getApplication("codes.eeems.oxide");
             if(app == nullptr){
                 app = new Application(getPath("Launcher"), this);
-                app->load("codes.eeems.oxide", "Launcher", "Application launcher", "/opt/bin/oxide", Foreground, false, true, "");
+                app->load(
+                    "codes.eeems.oxide",
+                    "Launcher",
+                    "Application launcher",
+                    "/opt/bin/oxide",
+                    Foreground, false, true
+                );
                 applications[app->name()] = app;
                 emit applicationRegistered(app->qPath());
             }
@@ -117,9 +138,9 @@ public:
 
     Q_INVOKABLE QDBusObjectPath registerApplication(QVariantMap properties){
         QString name = properties.value("name", "").toString();
-        QString call = properties.value("call", "").toString();
+        QString bin = properties.value("bin", "").toString();
         int type = properties.value("type", Foreground).toInt();
-        if(type < Foreground || type > Background || name.isEmpty() || call.isEmpty()){
+        if(type < Foreground || type > Background || name.isEmpty() || bin.isEmpty()){
             return QDBusObjectPath("/");
         }
         if(applications.contains(name)){
@@ -127,16 +148,19 @@ public:
         }
         auto path = QDBusObjectPath(getPath(name));
         auto app = new Application(path, this);
-        auto displayName = properties.value("displayname", name).toString();
+        auto displayName = properties.value("displayName", name).toString();
         app->load(
             name,
             displayName,
             properties.value("description", displayName).toString(),
-            call,
+            bin,
             type,
-            properties.value("autostart", false).toBool(),
+            properties.value("autoStart", false).toBool(),
             false,
-            properties.value("icon", "").toString()
+            properties.value("icon", "").toString(),
+            properties.value("onPause", "").toString(),
+            properties.value("onResume", "").toString(),
+            properties.value("onStop", "").toString()
         );
         applications.insert(name, app);
         writeApplications();
@@ -298,11 +322,14 @@ private:
             settings.setValue("name", app->name());
             settings.setValue("displayname", app->displayName());
             settings.setValue("description", app->description());
-            settings.setValue("call", app->call());
+            settings.setValue("bin", app->bin());
             settings.setValue("type", app->type());
             settings.setValue("autostart", app->autoStart());
             settings.setValue("systemaapp", app->systemApp());
             settings.setValue("icon", app->icon());
+            settings.setValue("onstop", app->onPause());
+            settings.setValue("onresume", app->onResume());
+            settings.setValue("onstop", app->onStop());
         }
         settings.endArray();
     }
