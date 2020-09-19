@@ -31,7 +31,7 @@ void Application::pause(bool startIfNone){
     if(m_process->processId() && state() != Paused && state() != InBackground){
         qDebug() << "Pausing " << path();
         if(!m_onpause.isEmpty()){
-            QProcess::execute(m_onpause);
+            system(m_onpause.toStdString().c_str());
         }
         switch(m_type){
             case AppsAPI::Background:
@@ -58,10 +58,10 @@ void Application::resume(){
         qDebug() << "Resuming " << path();
         auto api = (AppsAPI*)parent();
         api->pauseAll();
-        recallScreen();
         if(!m_onresume.isEmpty()){
-            QProcess::execute(m_onresume);
+            system(m_onresume.toStdString().c_str());
         }
+        recallScreen();
         switch(m_type){
             case AppsAPI::Background:
             case AppsAPI::Backgroundable:

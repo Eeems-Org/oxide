@@ -289,6 +289,15 @@ public:
             reply.waitForFinished();
         }
     }
+    Q_INVOKABLE void disconnect(){
+        QList<QDBusPendingReply<void>> replies;
+        for(auto interface : interfaces()){
+            replies.append(interface->Disconnect());
+        }
+        for(auto reply : replies){
+            reply.waitForFinished();
+        }
+    }
     Q_INVOKABLE void flushBSSCache(uint age){
         QList<QDBusPendingReply<void>> replies;
         for(auto interface : interfaces()){

@@ -5,7 +5,9 @@
     <property name="ssid" type="s" access="read"/>
     <property name="privacy" type="b" access="read"/>
     <property name="frequency" type="q" access="read"/>
+    <property name="signal" type="q" access="read"/>
     <property name="network" type="o" access="read"/>
+    <property name="key_mgmt" type="as" access="read"/>
     <signal name="removed">
     </signal>
     <signal name="propertiesChanged">

@@ -15,7 +15,9 @@ class BSS : public QObject{
     Q_PROPERTY(QString ssid READ ssid)
     Q_PROPERTY(bool privacy READ privacy)
     Q_PROPERTY(ushort frequency READ frequency)
+    Q_PROPERTY(ushort signal READ signal)
     Q_PROPERTY(QDBusObjectPath network READ network)
+    Q_PROPERTY(QStringList key_mgmt READ key_mgmt)
 public:
     BSS(QString path, QString bssid, QString ssid, QObject* parent);
     BSS(QString path, IBSS* bss, QObject* parent) : BSS(path, bss->bSSID(), bss->sSID(), parent) {}
@@ -87,7 +89,23 @@ public:
         }
         return bsss.first()->frequency();
     }
+    short signal(){
+        if(!bsss.size()){
+            return 0;
+        }
+        return bsss.first()->signal();
+    }
     QDBusObjectPath network();
+    QStringList key_mgmt(){
+        QStringList result;
+        if(!bsss.size()){
+            return result;
+        }
+        auto bss = bsss.first();
+        result.append(bss->wPA()["KeyMgmt"].value<QStringList>());
+        result.append(bss->rSN()["KeyMgmt"].value<QStringList>());
+        return result;
+    }
     Q_INVOKABLE QDBusObjectPath connect();
 
 signals:

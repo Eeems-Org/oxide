@@ -59,6 +59,8 @@
     </method>
     <method name="reassosiate">
     </method>
+    <method name="disconnect">
+    </method>
     <method name="flushBSSCache">
       <arg name="age" type="u" direction="in"/>
     </method>
