@@ -10,6 +10,9 @@
     <property name="runningApplications" type="a{sv}" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
     </property>
+    <property name="pausedApplications" type="a{sv}" access="read">
+      <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+    </property>
     <signal name="applicationRegistered">
       <arg type="o" direction="out"/>
     </signal>

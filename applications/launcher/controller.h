@@ -30,7 +30,7 @@ public:
     EventFilter* filter;
     QObject* stateController;
     QObject* root = nullptr;
-    explicit Controller(QObject* parent = 0) : QObject(parent), wifi("/sys/class/net/wlan0"), inputManager(){
+    explicit Controller(QObject* parent = 0) : QObject(parent), wifi("/sys/class/net/wlan0"), inputManager(), applications(){
         uiTimer = new QTimer(this);
         uiTimer->setSingleShot(false);
         uiTimer->setInterval(3 * 1000); // 3 seconds
@@ -89,6 +89,7 @@ public:
     void setSleepAfter(int);
     bool getPowerConnected(){ return m_powerConnected; }
 signals:
+    void reload();
     void automaticSleepChanged(bool);
     void columnsChanged(int);
     void fontSizeChanged(int);
@@ -96,6 +97,7 @@ signals:
     void showBatteryPercentChanged(bool);
     void showBatteryTemperatureChanged(bool);
     void sleepAfterChanged(int);
+
 public slots:
     void updateUIElements();
     void reconnectToAPI(){
@@ -373,4 +375,6 @@ private:
     InputManager inputManager;
     Power* powerApi = nullptr;
     Wifi* wifiApi = nullptr;
+    QList<QObject*> applications;
+    AppItem* getApplication(QString name);
 };

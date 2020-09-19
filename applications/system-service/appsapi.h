@@ -22,6 +22,7 @@ class AppsAPI : public APIBase {
     Q_PROPERTY(QVariantMap applications READ getApplications)
     Q_PROPERTY(QDBusObjectPath currentApplication READ currentApplication)
     Q_PROPERTY(QVariantMap runningApplications READ runningApplications)
+    Q_PROPERTY(QVariantMap pausedApplications READ pausedApplications)
 public:
     AppsAPI(QObject* parent)
     : APIBase(parent),
@@ -211,6 +212,16 @@ public:
         for(auto app : applications){
             auto state = app->state();
             if(state == Application::InForeground || state == Application::InBackground){
+                result.insert(app->name(), QVariant::fromValue(app->qPath()));
+            }
+        }
+        return result;
+    }
+    QVariantMap pausedApplications(){
+        QVariantMap result;
+        for(auto app : applications){
+            auto state = app->state();
+            if(state == Application::Paused){
                 result.insert(app->name(), QVariant::fromValue(app->qPath()));
             }
         }

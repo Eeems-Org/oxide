@@ -160,22 +160,29 @@ void Controller::saveSettings(){
     qDebug() << "Dont saving configuration.";
 }
 QList<QObject*> Controller::getApps(){
-    QList<QObject*> result;
     auto bus = QDBusConnection::systemBus();
     General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
     QDBusObjectPath path = api.requestAPI("apps");
     if(path.path() == "/"){
         qDebug() << "Unable to access apps API";
-        return result;
+        return applications;
     }
     Apps apps(OXIDE_SERVICE, path.path(), bus);
+    auto running = apps.runningApplications().unite(apps.pausedApplications());
     for(auto item : apps.applications()){
-        Application app(OXIDE_SERVICE, item.value<QDBusObjectPath>().path(), bus, this);
+        auto path = item.value<QDBusObjectPath>().path();
+        Application app(OXIDE_SERVICE, path, bus, this);
         auto name = app.name();
         if(name == "codes.eeems.oxide"){
             continue;
         }
-        auto appItem = new AppItem(this);
+        auto appItem = getApplication(name);
+        if(appItem == nullptr){
+            qDebug() << name;
+            appItem = new AppItem(this);
+            appItem->inputManager = &inputManager;
+            applications.append(appItem);
+        }
         auto displayName = app.displayName();
         if(displayName.isEmpty()){
             displayName = name;
@@ -184,24 +191,32 @@ QList<QObject*> Controller::getApps(){
         appItem->setProperty("displayName", displayName);
         appItem->setProperty("desc", app.description());
         appItem->setProperty("call", app.bin());
+        appItem->setProperty("running", running.contains(name));
         auto icon = app.icon();
         if(!icon.isEmpty() && QFile(icon).exists()){
                 appItem->setProperty("imgFile", "file:" + icon);
         }
-        if(appItem->ok()){
-            appItem->inputManager = &inputManager;
-            result.append(appItem);
-        }else{
+        if(!appItem->ok()){
             qDebug() << "Invalid item" << appItem->property("name").toString();
+            applications.removeAll(appItem);
             delete appItem;
         }
     }
     // Sort by name
-    std::sort(result.begin(), result.end(), [=](const QObject* a, const QObject* b) -> bool {
+    std::sort(applications.begin(), applications.end(), [=](const QObject* a, const QObject* b) -> bool {
         return a->property("name") < b->property("name");
     });
-    return result;
+    return applications;
 }
+AppItem* Controller::getApplication(QString name){
+    for(auto app : applications){
+        if(app->property("name").toString() == name){
+            return (AppItem*)app;
+        }
+    }
+    return nullptr;
+}
+
 void Controller::importDraftApps(){
     auto bus = QDBusConnection::systemBus();
     General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);

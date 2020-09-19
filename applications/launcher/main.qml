@@ -14,6 +14,10 @@ ApplicationWindow {
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted: stateController.state = "loaded"
+    Connections {
+        target: controller
+        onReload: appsView.model = controller.getApps()
+    }
     header: Rectangle {
         enabled: stateController.state === "loaded"
         color: "black"
@@ -199,9 +203,10 @@ ApplicationWindow {
                 }
                 Text {
                     id: name
-                    text: model.modelData.displayName
+                    text: (model.modelData.running ? "* " : "") + model.modelData.displayName
                     font.family: "Noto Serif"
                     font.italic: true
+                    font.bold: model.modelData.running
                     font.pixelSize: controller.fontSize
                     width: parent.width - window.itemPadding * 2
                     anchors.top: image.bottom
@@ -216,8 +221,8 @@ ApplicationWindow {
                     onReleased: root.state = "released"
                     onCanceled: root.state = "released"
                     onClicked: {
-                        model.modelData.execute();
                         root.state = "released"
+                        model.modelData.execute();
                     }
                     onPressAndHold: {
                         itemInfo.model = model.modelData;
@@ -260,7 +265,7 @@ ApplicationWindow {
                 }
             }
             width: window.width > (itemImage.width + itemContent.width + (itemInfo.textPadding * 2))
-                   ? (itemImage.width + itemContent.width + (itemInfo.textPadding * 2))
+                   ? (itemImage.width + itemContent.width + (itemInfo.textPadding * 2) + itemCloseButton.width)
                    : window.width - 10
             height: itemContent.height
             contentItem: Item {
@@ -295,6 +300,27 @@ ApplicationWindow {
                         leftPadding: itemInfo.textPadding
                         rightPadding: itemInfo.textPadding
                         bottomPadding: 0
+                    }
+                }
+                Label {
+                    id: itemCloseButton
+                    visible: itemInfo.model && itemInfo.model.running
+                    text: "Kill"
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    padding: 5
+                    background: Rectangle {
+                        border.color: "black"
+                        border.width: 1
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if(itemInfo.model){
+                                itemInfo.model.stop();
+                                appsView.model = controller.getApps();
+                            }
+                        }
                     }
                 }
             }

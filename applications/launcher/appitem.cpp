@@ -75,6 +75,13 @@ void AppItem::execute(){
     }
     qDebug() << "Waiting for application to exit...";
 }
+void AppItem::stop(){
+    if(app == nullptr || !app->isValid()){
+        qWarning() << "Application instance is not valid";
+        return;
+    }
+    app->stop();
+}
 
 void AppItem::exited(int exitCode){
     qDebug() << "Application exited" << exitCode;

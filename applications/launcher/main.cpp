@@ -30,18 +30,10 @@ using namespace std;
 const char *qt_version = qVersion();
 TarnishHandler* tarnishHandler = nullptr;
 
-void signalHandler(const int signum){
-    if(signum == SIGTERM){
-        exit(EXIT_SUCCESS);
-    }
-}
 function<void(int)> shutdown_handler;
 void signalHandler2(int signal) { shutdown_handler(signal); }
 
 int main(int argc, char *argv[]){
-    signal(SIGTERM, signalHandler);
-    signal(SIGTSTP, signalHandler);
-    signal(SIGCONT, signalHandler);
     tarnishHandler = new TarnishHandler();
 //    QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
 //    xochitlSettings.sync();
@@ -129,6 +121,9 @@ int main(int argc, char *argv[]){
             filter.timer->stop();
             filter.timer->start();
         }
+        QTimer::singleShot(300, [=](){
+            emit controller->reload();
+        });
     };
     signal(SIGCONT, signalHandler2);
     return app.exec();
