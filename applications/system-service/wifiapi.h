@@ -23,6 +23,7 @@ class WifiAPI : public APIBase {
     Q_PROPERTY(int link READ link)
     Q_PROPERTY(QDBusObjectPath network READ network)
     Q_PROPERTY(QList<QDBusObjectPath> networks READ getNetworkPaths)
+    Q_PROPERTY(bool scanning READ scanning)
 public:
     WifiAPI(QObject* parent)
     : APIBase(parent),
@@ -378,6 +379,14 @@ public:
             result.append(QDBusObjectPath(network->path()));
         }
         return result;
+    }
+    bool scanning(){
+        for(auto interface : interfaces()){
+            if(interface->scanning()){
+                return true;
+            }
+        }
+        return false;
     }
 
     // Interface signals

@@ -6,6 +6,7 @@
     <property name="link" type="i" access="read"/>
     <property name="network" type="o" access="read"/>
     <property name="networks" type="ao" access="read"/>
+    <property name="scanning" type="b" access="read"/>
     <signal name="stateChanged">
       <arg type="i" direction="out"/>
     </signal>
