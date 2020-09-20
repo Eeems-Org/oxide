@@ -2,6 +2,7 @@ QT += gui
 QT += quick
 QT += dbus
 CONFIG += c++11
+CONFIG += qml_debug
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked deprecated (the exact warnings
@@ -40,6 +41,8 @@ DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/powerapi.xml
 DBUS_INTERFACES += ../../interfaces/wifiapi.xml
+DBUS_INTERFACES += ../../interfaces/network.xml
+DBUS_INTERFACES += ../../interfaces/bss.xml
 DBUS_INTERFACES += ../../interfaces/appsapi.xml
 DBUS_INTERFACES += ../../interfaces/application.xml
 
@@ -68,4 +71,5 @@ HEADERS += \
     sysobject.h \
     tarnishhandler.h \
     wifimanager.h \
-    ../system-service/dbussettings.h
+    ../system-service/dbussettings.h \
+    wifinetworklist.h

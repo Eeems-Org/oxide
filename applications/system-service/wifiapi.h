@@ -23,7 +23,7 @@ class WifiAPI : public APIBase {
     Q_PROPERTY(int link READ link)
     Q_PROPERTY(QDBusObjectPath network READ network)
     Q_PROPERTY(QList<QDBusObjectPath> networks READ getNetworkPaths)
-    Q_PROPERTY(bool scanning READ scanning)
+    Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
 public:
     WifiAPI(QObject* parent)
     : APIBase(parent),
@@ -33,7 +33,8 @@ public:
       networks(),
       m_state(Unknown),
       m_currentNetwork("/"),
-      m_link(0)
+      m_link(0),
+      m_scanning(false)
     {
         QDir dir("/sys/class/net");
         qDebug() << "Looking for wireless devices...";
@@ -261,6 +262,10 @@ public:
         return result;
     }
     Q_INVOKABLE void scan(bool active = false){
+        if(!m_scanning){
+            m_scanning = true;
+            emit scanningChanged(true);
+        }
         QMap<QString, QVariant> args;
         args["Type"] = active ? "active" : "passive";
         QList<QDBusPendingReply<void>> replies;
@@ -383,8 +388,16 @@ public:
     bool scanning(){
         for(auto interface : interfaces()){
             if(interface->scanning()){
+                if(!m_scanning){
+                    m_scanning = true;
+                    emit scanningChanged(true);
+                }
                 return true;
             }
+        }
+        if(m_scanning){
+            m_scanning = false;
+            emit scanningChanged(false);
         }
         return false;
     }
@@ -512,6 +525,7 @@ signals:
     void disconnected();
     void bssFound(QDBusObjectPath);
     void bssRemoved(QDBusObjectPath);
+    void scanningChanged(bool);
 
 
 private slots:
@@ -544,6 +558,7 @@ private:
     QDBusObjectPath m_currentNetwork;
     int m_link;
     QList<BSS*> bsss;
+    bool m_scanning;
     Wpa_Supplicant* supplicant;
 
     QList<Interface*> interfaces(){
@@ -663,6 +678,7 @@ private:
             m_link = clink;
             emit linkChanged(clink);
         }
+        scanning();
     }
     QString getPath(QString type, QString id){
         static const QUuid NS = QUuid::fromString(QLatin1String("{78c28d66-f558-11ea-adc1-0242ac120002}"));

@@ -72,6 +72,7 @@ public:
             auto bss = i.next();
             if(bss->path() == path){
                 i.remove();
+                delete bss;
             }
         }
     }

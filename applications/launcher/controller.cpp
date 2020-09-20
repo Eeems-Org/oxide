@@ -157,7 +157,7 @@ void Controller::saveSettings(){
     configFile->resize(0);
     stream << QString::fromStdString(buffer.str());
     configFile->close();
-    qDebug() << "Dont saving configuration.";
+    qDebug() << "Done saving configuration.";
 }
 QList<QObject*> Controller::getApps(){
     auto bus = QDBusConnection::systemBus();

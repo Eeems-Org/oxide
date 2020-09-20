@@ -34,5 +34,8 @@
         <file>img/battery/unknown.png</file>
         <file>widgets/StatusIcon.qml</file>
         <file>img/wifi/unknown.png</file>
+        <file>widgets/WifiMenu.qml</file>
+        <file>widgets/SettingsPopup.qml</file>
+        <file>widgets/SwipeArea.qml</file>
     </qresource>
 </RCC>

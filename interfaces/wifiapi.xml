@@ -30,6 +30,9 @@
     <signal name="bssRemoved">
       <arg type="o" direction="out"/>
     </signal>
+    <signal name="scanningChanged">
+      <arg type="b" direction="out"/>
+    </signal>
     <method name="enable">
       <arg type="b" direction="out"/>
     </method>

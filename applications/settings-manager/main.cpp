@@ -131,7 +131,7 @@ QVariant fromJson(QByteArray json){
 
 class SlotHandler : public QObject {
 public:
-    SlotHandler(QStringList parameters) : QObject(0), parameters(parameters){
+    SlotHandler(QStringList parameters, bool once) : QObject(0), parameters(parameters), once(once){
         watcher = new QDBusServiceWatcher(OXIDE_SERVICE, QDBusConnection::systemBus(), QDBusServiceWatcher::WatchForUnregistration, this);
         QObject::connect(watcher, &QDBusServiceWatcher::serviceUnregistered, this, &SlotHandler::serviceUnregistered);
     }
@@ -156,6 +156,7 @@ public slots:
     }
 private:
     QStringList parameters;
+    bool once;
     QDBusServiceWatcher* watcher;
 
     void handleSlot(QObject* api, void** arguments){
@@ -173,6 +174,9 @@ private:
             qStdOut << toJson(args.first()).toStdString().c_str() << endl;
         }else{
             qStdOut << "undefined" << endl;
+        }
+        if(once){
+            qApp->quit();
         }
     };
 };
@@ -196,6 +200,11 @@ int main(int argc, char *argv[]){
         "object"
     );
     parser.addOption(objectOption);
+    QCommandLineOption onceOption(
+        "once",
+        "Exit on the first signal when listening."
+    );
+    parser.addOption(onceOption);
 
     parser.process(app);
 
@@ -331,7 +340,7 @@ int main(int argc, char *argv[]){
                 if(!QMetaObject::checkConnectArgs(theSignal, theSlot)){
                     continue;
                 }
-                auto slotHandler = new SlotHandler(parameters);
+                auto slotHandler = new SlotHandler(parameters, parser.isSet("once"));
                 if(slotHandler->connect(api, methodId)){
                     return app.exec();
                 }

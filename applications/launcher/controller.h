@@ -3,14 +3,18 @@
 #include <QObject>
 #include <QTimer>
 #include <QJsonObject>
+#include <QMutableListIterator>
 
 #include "appitem.h"
 #include "eventfilter.h"
 #include "sysobject.h"
 #include "inputmanager.h"
+#include "wifinetworklist.h"
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
 #include "wifiapi_interface.h"
+#include "network_interface.h"
+#include "bss_interface.h"
 
 #define OXIDE_SERVICE "codes.eeems.oxide1"
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
@@ -25,12 +29,21 @@ enum WifiState { WifiUnknown, WifiOff, WifiDisconnected, WifiOffline, WifiOnline
 class Controller : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep NOTIFY automaticSleepChanged);
+    Q_PROPERTY(int columns MEMBER m_columns WRITE setColumns NOTIFY columnsChanged);
+    Q_PROPERTY(int fontSize MEMBER m_fontSize WRITE setFontSize NOTIFY fontSizeChanged);
+    Q_PROPERTY(bool showWifiDb MEMBER m_showWifiDb WRITE setShowWifiDb NOTIFY showWifiDbChanged);
+    Q_PROPERTY(bool showBatteryPercent MEMBER m_showBatteryPercent WRITE setShowBatteryPercent NOTIFY showBatteryPercentChanged);
+    Q_PROPERTY(bool showBatteryTemperature MEMBER m_showBatteryTemperature WRITE setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged);
+    Q_PROPERTY(int sleepAfter MEMBER m_sleepAfter WRITE setSleepAfter NOTIFY sleepAfterChanged);
+    Q_PROPERTY(WifiNetworkList* networks MEMBER networks READ getNetworks NOTIFY networksChanged)
 public:
     static std::string exec(const char* cmd);
     EventFilter* filter;
     QObject* stateController;
     QObject* root = nullptr;
     explicit Controller(QObject* parent = 0) : QObject(parent), wifi("/sys/class/net/wlan0"), inputManager(), applications(){
+        networks = new WifiNetworkList();
         uiTimer = new QTimer(this);
         uiTimer->setSingleShot(false);
         uiTimer->setInterval(3 * 1000); // 3 seconds
@@ -52,42 +65,36 @@ public:
     Q_INVOKABLE void killXochitl();
     void updateBatteryLevel();
     Q_INVOKABLE void resetInactiveTimer();
-    Q_PROPERTY(bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep NOTIFY automaticSleepChanged);
     bool automaticSleep() const {
         return m_automaticSleep;
     };
     void setAutomaticSleep(bool);
-    Q_PROPERTY(int columns MEMBER m_columns WRITE setColumns NOTIFY columnsChanged);
     int columns() const {
         return m_columns;
     };
     void setColumns(int);
-    Q_PROPERTY(int fontSize MEMBER m_fontSize WRITE setFontSize NOTIFY fontSizeChanged);
     int fontSize() const {
         return m_fontSize;
     };
     void setFontSize(int);
-    Q_PROPERTY(bool showWifiDb MEMBER m_showWifiDb WRITE setShowWifiDb NOTIFY showWifiDbChanged);
     bool showWifiDb() const {
         return m_showWifiDb;
     };
     void setShowWifiDb(bool);
-    Q_PROPERTY(bool showBatteryPercent MEMBER m_showBatteryPercent WRITE setShowBatteryPercent NOTIFY showBatteryPercentChanged);
     bool showBatteryPercent() const {
         return m_showBatteryPercent;
     };
     void setShowBatteryPercent(bool);
-    Q_PROPERTY(bool showBatteryTemperature MEMBER m_showBatteryTemperature WRITE setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged);
     bool showBatteryTemperature() const {
         return m_showBatteryTemperature;
     };
     void setShowBatteryTemperature(bool);
-    Q_PROPERTY(int sleepAfter MEMBER m_sleepAfter WRITE setSleepAfter NOTIFY sleepAfterChanged);
     int sleepAfter() const {
         return m_sleepAfter;
     };
     void setSleepAfter(int);
     bool getPowerConnected(){ return m_powerConnected; }
+    WifiNetworkList* getNetworks(){ return networks; }
 signals:
     void reload();
     void automaticSleepChanged(bool);
@@ -97,6 +104,7 @@ signals:
     void showBatteryPercentChanged(bool);
     void showBatteryTemperatureChanged(bool);
     void sleepAfterChanged(int);
+    void networksChanged(WifiNetworkList*);
 
 public slots:
     void updateUIElements();
@@ -155,6 +163,8 @@ public slots:
         connect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
         connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
         connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
+        networks->clear();
+        networks->setAPI(wifiApi);
 
         QTimer::singleShot(1000, [=](){
             // Get initial values when UI is ready
@@ -166,10 +176,13 @@ public slots:
 
             wifiStateChanged(wifiApi->state());
             wifiLinkChanged(wifiApi->link());
-            // for(auto network : wifiApi->networks()){
-            //     networkAdded(network);
-            // }
-            // networkConnected(wifiApi->network());
+             for(auto network : wifiApi->networks()){
+                 networkAdded(network);
+             }
+             auto network = wifiApi->network();
+             if(network.path() != "/"){
+                 networkConnected(network);
+             }
         });
     }
 private slots:
@@ -281,21 +294,31 @@ private slots:
     }
     void bssFound(const QDBusObjectPath& path){
         Q_UNUSED(path);
+        networks->sortByLevel();
     }
     void bssRemoved(const QDBusObjectPath& path){
         Q_UNUSED(path);
+        networks->sortByLevel();
     }
     void disconnected(){
         wifiStateChanged(wifiApi->state());
+        networks->setConnected(QDBusObjectPath("/"));
     }
     void networkAdded(const QDBusObjectPath& path){
-        Q_UNUSED(path);
+        auto network = new Network(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this);
+        auto ssid = network->ssid();
+        if(ssid.isEmpty()){
+            delete network;
+            return;
+        }
+        qDebug() << "Network added" << ssid;
+        networks->append(network);
     }
     void networkConnected(const QDBusObjectPath& path){
-        Q_UNUSED(path);
+        networks->setConnected(path);
     }
     void networkRemoved(const QDBusObjectPath& path){
-        Q_UNUSED(path);
+        networks->remove(path);
     }
     void wifiStateChanged(int state){
         if(state == wifiState){
@@ -377,4 +400,5 @@ private:
     Wifi* wifiApi = nullptr;
     QList<QObject*> applications;
     AppItem* getApplication(QString name);
+    WifiNetworkList* networks;
 };

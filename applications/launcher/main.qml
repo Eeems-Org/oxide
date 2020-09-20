@@ -81,7 +81,7 @@ ApplicationWindow {
                 text: controller.showWifiDb ? level + "dBm" : ""
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: controller.wifiOn() ? controller.turnOffWifi() : controller.turnOnWifi()
+                    onClicked: stateController.state = "wifi"
                 }
             }
             StatusIcon {
@@ -261,7 +261,8 @@ ApplicationWindow {
                 return itemInfo.model || {
                     imgFile: "",
                     name: "(Unknown)",
-                    desc: ""
+                    desc: "",
+                    running: false
                 }
             }
             width: window.width > (itemImage.width + itemContent.width + (itemInfo.textPadding * 2))
@@ -304,7 +305,7 @@ ApplicationWindow {
                 }
                 Label {
                     id: itemCloseButton
-                    visible: itemInfo.model && itemInfo.model.running
+                    visible: !!(itemInfo.model && itemInfo.model.running)
                     text: "Kill"
                     anchors.right: parent.right
                     anchors.top: parent.top
@@ -325,157 +326,18 @@ ApplicationWindow {
                 }
             }
         },
-        Popup {
+        SettingsPopup {
             id: settings
-            visible: false
-            width: 1000
-            height: 1000
-            x: (parent.width / 2) - (width / 2)
-            y: (parent.height / 2) - (height / 2)
-            closePolicy: Popup.NoAutoClose
             onClosed: stateController.state = "loaded"
-            GridLayout {
-                columns: 3
-                rows: 10
-                anchors.fill: parent
-                RowLayout {
-                    Layout.columnSpan: parent.columns
-                    Label {
-                        text: "Automatic sleep"
-                        Layout.columnSpan: parent.columns - 1
-                        Layout.fillWidth: true
-                    }
-                    BetterCheckBox {
-                        tristate: false
-                        checkState: controller.automaticSleep ? Qt.Checked : Qt.Unchecked
-                        onClicked: controller.automaticSleep = this.checkState === Qt.Checked
-                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
-                        Layout.fillWidth: false
-                    }
-                }
-                RowLayout {
-                    Layout.columnSpan: parent.columns
-                    Layout.preferredWidth: parent.width
-                    enabled: controller.automaticSleep
-                    Label {
-                        text: "Sleep After (minutes)"
-                        Layout.fillWidth: true
-                    }
-                    BetterSpinBox {
-                        id: sleepAfterSpinBox
-                        objectName: "sleepAfterSpinBox"
-                        from: 1
-                        to: 10
-                        stepSize: 1
-                        value: controller.sleepAfter
-                        onValueChanged: controller.sleepAfter = this.value
-                        Layout.preferredWidth: 300
-                    }
-                }
-                RowLayout {
-                    Layout.columnSpan: parent.columns
-                    Label {
-                        text: "Show Battery Percent"
-                        Layout.columnSpan: parent.columns - 1
-                        Layout.fillWidth: true
-                    }
-                    BetterCheckBox {
-                        tristate: false
-                        checkState: controller.showBatteryPercent ? Qt.Checked : Qt.Unchecked
-                        onClicked: controller.showBatteryPercent = this.checkState === Qt.Checked
-                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
-                        Layout.fillWidth: false
-                    }
-                }
-                RowLayout {
-                    Layout.columnSpan: parent.columns
-                    Label {
-                        text: "Show Battery Temperature"
-                        Layout.columnSpan: parent.columns - 1
-                        Layout.fillWidth: true
-                    }
-                    BetterCheckBox {
-                        tristate: false
-                        checkState: controller.showBatteryTemperature ? Qt.Checked : Qt.Unchecked
-                        onClicked: controller.showBatteryTemperature = this.checkState === Qt.Checked
-                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
-                        Layout.fillWidth: false
-                    }
-                }
-                RowLayout {
-                    Layout.columnSpan: parent.columns
-                    Label {
-                        text: "Show Wifi DB"
-                        Layout.columnSpan: parent.columns - 1
-                        Layout.fillWidth: true
-                    }
-                    BetterCheckBox {
-                        tristate: false
-                        checkState: controller.showWifiDb ? Qt.Checked : Qt.Unchecked
-                        onClicked: controller.showWifiDb = this.checkState === Qt.Checked
-                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
-                        Layout.fillWidth: false
-                    }
-                }
-                RowLayout {
-                    Layout.columnSpan: parent.columns
-                    Layout.preferredWidth: parent.width
-                    Label {
-                        text: "Home Screen Columns"
-                        Layout.fillWidth: true
-                    }
-                    BetterSpinBox {
-                        id: columnsSpinBox
-                        objectName: "columnsSpinBox"
-                        from: 2
-                        to: 10
-                        stepSize: 2
-                        value: controller.columns
-                        onValueChanged: controller.columns = this.value
-                        Layout.preferredWidth: 300
-                    }
-                }
-                RowLayout {
-                    Layout.columnSpan: parent.columns
-                    Layout.preferredWidth: parent.width
-                    Label {
-                        text: "Font Size"
-                        Layout.fillWidth: true
-                    }
-                    BetterSpinBox {
-                        id: fontSizeSpinBox
-                        objectName: "fontSizeSpinBox"
-                        from: 20
-                        to: 35
-                        stepSize: 3
-                        value: controller.fontSize
-                        onValueChanged: controller.fontSize = this.value
-                        Layout.preferredWidth: 300
-                    }
-                }
-                Item {
-                    Layout.rowSpan: 6
-                    Layout.columnSpan: parent.columns
-                    Layout.fillHeight: true
-                    Layout.fillWidth: true
-                }
-                BetterButton {
-                    text: "Reset"
-                    Layout.columnSpan: parent.columns
-                    Layout.fillWidth: true
-                    onClicked: controller.loadSettings()
-                }
-                BetterButton {
-                    text: "Close"
-                    Layout.columnSpan: parent.columns
-                    Layout.fillWidth: true
-                    onClicked: {
-                        controller.saveSettings();
-                        settings.close();
-                    }
-                }
-            }
+            visible: false
+        },
+        WifiMenu {
+            id: wifi
+            onClosed: stateController.state = "loaded"
+            visible: false
+            model: controller.networks
         }
+
     ]
     Timer {
         id: sleepTimer
@@ -553,6 +415,7 @@ ApplicationWindow {
                 SequentialAnimation {
                     ScriptAction { script: stateController.previousState = "settings" }
                     PropertyAction { target: settings; property: "visible"; value: true }
+                    PropertyAction { target: wifi; property: "visible"; value: false }
                     PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
@@ -560,6 +423,22 @@ ApplicationWindow {
                 from: "settings"; to: "loaded"
                 SequentialAnimation {
                     PropertyAction { target: settings; property: "visible"; value: false }
+                    PropertyAction { target: appsView; property: "focus"; value: true }
+                }
+            },
+            Transition {
+                from: "*"; to: "wifi"
+                SequentialAnimation {
+                    ScriptAction { script: stateController.previousState = "wifi" }
+                    PropertyAction { target: wifi; property: "visible"; value: true }
+                    PropertyAction { target: settings; property: "visible"; value: false }
+                    PropertyAction { target: menu; property: "focus"; value: false }
+                }
+            },
+            Transition {
+                from: "wifi"; to: "loaded"
+                SequentialAnimation {
+                    PropertyAction { target: wifi; property: "visible"; value: false }
                     PropertyAction { target: appsView; property: "focus"; value: true }
                 }
             },
