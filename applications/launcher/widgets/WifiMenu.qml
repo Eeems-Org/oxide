@@ -13,39 +13,53 @@ Item {
         id: wifi
         visible: root.visible
         closePolicy: Popup.NoAutoClose
-        onClosed: parent.closed()
+        onClosed: {
+            controller.disconnectWifiSignals();
+            parent.closed()
+        }
+        onOpened: {
+            controller.connectWifiSignals();
+            if(controller.wifiOn){
+                networks.model.scan(false)
+            }
+        }
+        width: 1000
         clip: true
-        GridLayout {
-            columns: 2
-            rows: 10
+        ColumnLayout {
             anchors.fill: parent
-            BetterButton{
-                text: "Turn wifi " + (controller.wifiOn() ? "off" : "on")
-                Layout.columnSpan: parent.columns
+            RowLayout {
                 Layout.fillWidth: true
-                onClicked: {
-                    if(controller.wifiOn()){
-                        controller.turnOffWifi();
-                        text = "Turn wifi on";
-                    }else{
-                        controller.turnOnWifi();
-                        text = "Turn wifi off";
+                BetterButton{
+                    text: "Turn wifi " + (controller.wifiOn ? "off" : "on")
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: wifi.width / 2
+                    onClicked: {
+                        if(controller.wifiOn){
+                            controller.turnOffWifi();
+                            text = "Turn wifi on";
+                        }else{
+                            controller.turnOnWifi();
+                            text = "Turn wifi off";
+                        }
+                        networks.model.sort();
+                    }
+                }
+                BetterButton{
+                    text: (!!networks.model && networks.model.scanning) ? "Scanning..." : "Scan"
+                    enabled: controller.wifiOn && !!networks.model && !networks.model.scanning
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: wifi.width / 2
+                    onClicked: {
+                        networks.model.scan(true);
+                        networks.model.sort();
                     }
                 }
             }
-            BetterButton{
-                text: networks.model.scanning ? "Scanning..." : "Scan"
-                enabled: controller.wifiOn() && !networks.model.scanning
-                Layout.columnSpan: parent.columns
-                Layout.fillWidth: true
-                onClicked: networks.model.scan(true)
-            }
             ListView {
                 id: networks
-                Layout.columnSpan: parent.columns
                 Layout.fillWidth: true
-                Layout.preferredHeight: 500
-                Layout.preferredWidth: 500
+                Layout.preferredHeight: 1000
+                Layout.preferredWidth: 1000
                 clip: true
                 snapMode: ListView.SnapOneItem
                 interactive: false
@@ -54,27 +68,60 @@ Item {
                     id: item
                     width: parent.width - scrollbar.width
                     height: networkRow.implicitHeight
-                    enabled: !!model.display && model.display.available
+                    visible: !!model.display
                     RowLayout {
-                        enabled: item.enabled
                         id: networkRow
                         anchors.fill: parent
                         Label {
-                            text: (model.display.connected ? "* " : "") + model.display.ssid
+                            enabled: controller.wifiOn && !!model.display && model.display.available
+                            text: model.display ? (model.display.connected ? "* " : "") + model.display.ssid : ""
+                            font.bold: !!model.display && model.display.connected
                             Layout.alignment: Qt.AlignLeft
                             Layout.fillWidth: true
+                            Layout.preferredWidth: parent.width - 400
                         }
-                    }
-                    MouseArea {
-                        enabled: item.enabled
-                        anchors.fill: parent
-                        onClicked: {
-                            if(model.display.connected){
-                                console.log("Disconnecting from " + model.display.ssid)
-                                model.display.disconnect()
-                            }else{
-                                console.log("Attempting to connect to " + model.display.ssid)
-                                model.display.connect()
+                        RowLayout {
+                            id: buttons
+                            Layout.preferredWidth: 400
+                            BetterButton {
+                                enabled: controller.wifiOn
+                                text: "Forget"
+                                visible: !!model.display && model.display.known
+                                Layout.fillWidth: true
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: parent.enabled
+                                    onClicked: {
+                                        if(!model.display){
+                                            return
+                                        }
+                                        console.log("Forgetting from " + model.display.ssid)
+                                        model.display.remove()
+                                        networks.model.remove(model.display.ssid)
+                                    }
+                                }
+                            }
+                            BetterButton {
+                                enabled: controller.wifiOn
+                                text: model.display && model.display.connected ? "Disconnect" : "Connect"
+                                Layout.fillWidth: true
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: parent.enabled
+                                    onClicked: {
+                                        if(!model.display){
+                                            return
+                                        }
+                                        if(model.display.connected){
+                                            console.log("Disconnecting from " + model.display.ssid)
+                                            model.display.disconnect()
+                                        }else{
+                                            console.log("Attempting to connect to " + model.display.ssid)
+                                            model.display.connect()
+                                        }
+                                        networks.model.sort();
+                                    }
+                                }
                             }
                         }
                     }
@@ -127,7 +174,6 @@ Item {
             }
             BetterButton{
                 text: "Close"
-                Layout.columnSpan: parent.columns
                 Layout.fillWidth: true
                 onClicked: wifi.close()
             }

@@ -395,10 +395,6 @@ public:
                 return true;
             }
         }
-        if(m_scanning){
-            m_scanning = false;
-            emit scanningChanged(false);
-        }
         return false;
     }
 
@@ -427,7 +423,7 @@ public:
             bss->registerPath();
         }
         bsss.append(bss);
-        emit bssFound(path);
+        emit bssFound(QDBusObjectPath(bss->path()));
     }
     void BSSRemoved(Wlan* wlan, const QDBusObjectPath& path){
         Q_UNUSED(wlan);
@@ -501,18 +497,25 @@ public:
     }
     void NetworkSelected(Wlan* wlan, const QDBusObjectPath& path){
         Q_UNUSED(wlan);
-        Q_UNUSED(path);
+        for(auto network : networks){
+            if(network->paths().contains(path.path())){
+                qDebug() << "Network selected" << path.path();
+                break;
+            }
+        }
     }
     void InterfacePropertiesChanged(Wlan* wlan, const QVariantMap& properties){
         Q_UNUSED(wlan);
         Q_UNUSED(properties);
     }
     void ScanDone(Wlan* wlan, bool success){
-        Q_UNUSED(wlan);
-        Q_UNUSED(success);
+        Q_UNUSED(wlan)
+        Q_UNUSED(success)
+        m_scanning = false;
+        emit scanningChanged(false);
     }
     // BSS signals
-    void BSSPropertiesChanged(const QVariantMap &properties){
+    void BSSPropertiesChanged(const QVariantMap& properties){
         Q_UNUSED(properties);
     }
 
@@ -678,7 +681,6 @@ private:
             m_link = clink;
             emit linkChanged(clink);
         }
-        scanning();
     }
     QString getPath(QString type, QString id){
         static const QUuid NS = QUuid::fromString(QLatin1String("{78c28d66-f558-11ea-adc1-0242ac120002}"));

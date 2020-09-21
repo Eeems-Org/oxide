@@ -428,7 +428,7 @@ ApplicationWindow {
             },
             Transition {
                 from: "*"; to: "wifi"
-                SequentialAnimation {
+                ParallelAnimation {
                     ScriptAction { script: stateController.previousState = "wifi" }
                     PropertyAction { target: wifi; property: "visible"; value: true }
                     PropertyAction { target: settings; property: "visible"; value: false }
@@ -437,7 +437,7 @@ ApplicationWindow {
             },
             Transition {
                 from: "wifi"; to: "loaded"
-                SequentialAnimation {
+                ParallelAnimation {
                     PropertyAction { target: wifi; property: "visible"; value: false }
                     PropertyAction { target: appsView; property: "focus"; value: true }
                 }

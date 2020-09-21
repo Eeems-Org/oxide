@@ -58,7 +58,6 @@ private slots:
     void onNetworkAdded(const QDBusObjectPath& path, const QVariantMap& properties);
     void onNetworkRemoved(const QDBusObjectPath& path);
     void onNetworkSelected(const QDBusObjectPath& path);
-
     void onPropertiesChanged(const QVariantMap& properties);
     void onScanDone(bool success);
 
