@@ -118,12 +118,8 @@ public:
     Q_INVOKABLE void disconnectWifiSignals(){
         disconnect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
         disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-        disconnect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
         disconnect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
-        disconnect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
         disconnect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
-        disconnect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
-        disconnect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
     }
     Q_INVOKABLE void connectWifiSignals(){
         networks->clear();
@@ -153,12 +149,8 @@ public:
         networks->setConnected(wifiApi->network());
         connect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
         connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-        connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
         connect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
-        connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
         connect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
-        connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
-        connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
     }
 signals:
     void reload();
@@ -221,6 +213,10 @@ public slots:
             delete wifiApi;
         }
         wifiApi = new Wifi(OXIDE_SERVICE, path, bus);
+        connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
+        connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
+        connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
+        connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
         networks->setAPI(wifiApi);
         auto state = wifiApi->state();
         m_wifion = state != WifiState::WifiOff && state != WifiState::WifiUnknown;
