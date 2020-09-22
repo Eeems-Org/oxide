@@ -33,19 +33,27 @@ void Application::pause(bool startIfNone){
         if(!onPause().isEmpty()){
             system(onPause().toStdString().c_str());
         }
+        auto api = (AppsAPI*)parent();
         switch(type()){
             case AppsAPI::Background:
             case AppsAPI::Backgroundable:
+                api->connectSignals(this, 2);
                 kill(m_process->processId(), SIGUSR2);
-                // TODO give 1 second for process to ack back the signal, otherwise fall through
-                m_backgrounded = true;
+                timer.restart();
+                delayUpTo(1000);
+                api->disconnectSignals(this, 2);
+                if(!timer.isValid()){
+                    qDebug() << "Application took too long to background" << name();
+                    kill(m_process->processId(), SIGSTOP);
+                }else{
+                    m_backgrounded = true;
+                }
                 break;
             case AppsAPI::Foreground:
             default:
                 kill(m_process->processId(), SIGSTOP);
         }
         saveScreen();
-        auto api = (AppsAPI*)parent();
         if(startIfNone){
             api->resumeIfNone();
         }
@@ -65,8 +73,16 @@ void Application::resume(){
         switch(type()){
             case AppsAPI::Background:
             case AppsAPI::Backgroundable:
+                if(state() == Paused){
+                    inputManager()->clear_touch_buffer(touchScreen.fd);
+                    kill(m_process->processId(), SIGCONT);
+                }
+                api->connectSignals(this, 1);
                 kill(m_process->processId(), SIGUSR1);
-                // TODO give 1 second for process to ack back the signal, otherwise fall through
+                delayUpTo(1000);
+                api->disconnectSignals(this, 1);
+                // No need to fall through, we've just assumed it continued
+                qDebug() << "Warning: application took too long to forground" << name();
                 m_backgrounded = false;
                 break;
             case AppsAPI::Foreground:

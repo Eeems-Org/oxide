@@ -7,6 +7,9 @@
 #include <QDBusObjectPath>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QElapsedTimer>
+#include <QTime>
+#include <QCoreApplication>
 
 #include <zlib.h>
 #include <systemd/sd-journal.h>
@@ -197,6 +200,13 @@ signals:
     void exited(int);
     void displayNameChanged(QString);
     void iconChanged(QString);
+public slots:
+    void sigUsr1(){
+        timer.invalidate();
+    }
+    void sigUsr2(){
+        timer.invalidate();
+    }
 
 private slots:
     void started();
@@ -243,9 +253,16 @@ private:
     bool m_backgrounded;
     QByteArray* screenCapture = nullptr;
     size_t screenCaptureSize;
+    QElapsedTimer timer;
     InputManager* inputManager(){
         static InputManager* instance = new InputManager();
         return instance;
+    }
+    void delayUpTo(int milliseconds){
+        timer.restart();
+        while(timer.isValid() && !timer.hasExpired(milliseconds)){
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        }
     }
 };
 

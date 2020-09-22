@@ -46,6 +46,7 @@ HEADERS += \
     mxcfb.h \
     network.h \
     powerapi.h \
+    signalhandler.h \
     supplicant.h \
     sysobject.h \
     wifiapi.h \

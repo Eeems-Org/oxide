@@ -11,6 +11,7 @@
 #include "apibase.h"
 #include "application.h"
 #include "fb2png.h"
+#include "signalhandler.h"
 
 #define PNG_PATH "/tmp/fb.png"
 #define OXIDE_SETTINGS_VERSION 1
@@ -30,7 +31,9 @@ public:
       m_enabled(false),
       applications(),
       settings(this),
-      m_startupApplication("/") {
+      m_startupApplication("/"),
+      signalHandler() {
+        setup_unix_signal_handlers();
         qDBusRegisterMetaType<QMap<QString,QDBusObjectPath>>();
         qDBusRegisterMetaType<QDBusObjectPath>();
         settings.sync();
@@ -70,7 +73,7 @@ public:
                 {"description", "reMarkable default application"},
                 {"bin", "/usr/bin/xochitl"},
                 {"type", Foreground},
-                {"flags", "system"},
+                {"flags", QStringList() << "system"},
                 {"icon", "/opt/etc/draft/icons/xochitl.png"}
             });
             applications[app->name()] = app;
@@ -83,7 +86,7 @@ public:
                 {"displayName", "Process Manager"},
                 {"bin", "/opt/bin/erode"},
                 {"type", Foreground},
-                {"flags", "system"},
+                {"flags", QStringList() << "system"},
             });
             applications[app->name()] = app;
             emit applicationRegistered(app->qPath());
@@ -100,7 +103,7 @@ public:
                     {"description", "Application launcher"},
                     {"bin", "/opt/bin/oxide"},
                     {"type", Foreground},
-                    {"flags", "system"},
+                    {"flags", QStringList() << "system"},
                 });
                 applications[app->name()] = app;
                 emit applicationRegistered(app->qPath());
@@ -267,6 +270,26 @@ public:
         }
         return nullptr;
     }
+    void connectSignals(Application* app, int signal){
+        switch(signal){
+            case 1:
+                connect(&signalHandler, &SignalHandler::sigUsr1, app, &Application::sigUsr1);
+            break;
+            case 2:
+                connect(&signalHandler, &SignalHandler::sigUsr2, app, &Application::sigUsr2);
+            break;
+        }
+    }
+    void disconnectSignals(Application* app, int signal){
+        switch(signal){
+            case 1:
+                disconnect(&signalHandler, &SignalHandler::sigUsr1, app, &Application::sigUsr1);
+            break;
+            case 2:
+                disconnect(&signalHandler, &SignalHandler::sigUsr2, app, &Application::sigUsr2);
+            break;
+        }
+    }
 signals:
     void applicationRegistered(QDBusObjectPath);
     void applicationLaunched(QDBusObjectPath);
@@ -315,6 +338,7 @@ private:
     QMap<QString, Application*> applications;
     QSettings settings;
     QDBusObjectPath m_startupApplication;
+    SignalHandler signalHandler;
     QString getPath(QString name){
         static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
         return QString(OXIDE_SERVICE_PATH) + "/apps/" + QUuid::createUuidV5(NS, name).toString(QUuid::Id128);

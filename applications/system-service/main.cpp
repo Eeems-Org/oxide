@@ -3,10 +3,12 @@
 #include <cstdlib>
 
 #include "dbusservice.h"
+#include "signalhandler.h"
 
 using namespace std;
 
-void signalHandler(__attribute__((unused)) const int signum){
+void signalHandler(int unused){
+    Q_UNUSED(unused);
     exit(EXIT_SUCCESS);
 }
 
@@ -36,9 +38,9 @@ void onExit(){
 }
 
 int main(int argc, char *argv[]){
-    signal(SIGKILL, signalHandler);
-    signal(SIGTERM, signalHandler);
     atexit(onExit);
+    signal(SIGTERM, signalHandler);
+    signal(SIGKILL, signalHandler);
     QCoreApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);

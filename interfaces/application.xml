@@ -30,6 +30,10 @@
     <signal name="iconChanged">
       <arg type="s" direction="out"/>
     </signal>
+    <method name="sigUsr1">
+    </method>
+    <method name="sigUsr2">
+    </method>
     <method name="launch">
     </method>
     <method name="pause">
