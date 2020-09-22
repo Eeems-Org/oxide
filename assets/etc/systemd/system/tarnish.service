@@ -9,6 +9,7 @@ ExecStart=/opt/bin/tarnish
 Restart=on-failure
 RestartSec=5
 Environment="HOME=/home/root"
+Environment="PATH=/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
 [Install]
 WantedBy=multi-user.target
