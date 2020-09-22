@@ -27,6 +27,7 @@ struct APIEntry {
 class DBusService : public QObject {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_GENERAL_INTERFACE)
+    Q_PROPERTY(int tarnishPid READ tarnishPid)
 public:
     static DBusService* singleton(){
         static DBusService* instance;
@@ -106,6 +107,8 @@ public:
         }
         return apis[name].instance;
     }
+
+    int tarnishPid(){ return qApp->applicationPid(); }
 
 public Q_SLOTS:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
