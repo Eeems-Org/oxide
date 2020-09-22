@@ -259,7 +259,8 @@ private:
         return instance;
     }
     void delayUpTo(int milliseconds){
-        timer.restart();
+        timer.invalidate();
+        timer.start();
         while(timer.isValid() && !timer.hasExpired(milliseconds)){
             QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
         }

@@ -111,6 +111,14 @@ public:
             path = app->qPath();
         }
         m_startupApplication = path;
+        for(auto app : applications){
+            if(app->autoStart()){
+                app->launch();
+                if(app->type() == Backgroundable){
+                    app->pause();
+                }
+            }
+        }
         app->launch();
     }
     ~AppsAPI() {

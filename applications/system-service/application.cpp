@@ -42,7 +42,7 @@ void Application::pause(bool startIfNone){
                 timer.restart();
                 delayUpTo(1000);
                 api->disconnectSignals(this, 2);
-                if(!timer.isValid()){
+                if(timer.isValid()){
                     qDebug() << "Application took too long to background" << name();
                     kill(m_process->processId(), SIGSTOP);
                 }else{
@@ -81,8 +81,10 @@ void Application::resume(){
                 kill(m_process->processId(), SIGUSR1);
                 delayUpTo(1000);
                 api->disconnectSignals(this, 1);
-                // No need to fall through, we've just assumed it continued
-                qDebug() << "Warning: application took too long to forground" << name();
+                if(timer.isValid()){
+                    // No need to fall through, we've just assumed it continued
+                    qDebug() << "Warning: application took too long to forground" << name();
+                }
                 m_backgrounded = false;
                 break;
             case AppsAPI::Foreground:
