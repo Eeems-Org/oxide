@@ -6,8 +6,9 @@
 #include <QDBusConnection>
 #include <QDBusObjectPath>
 #include <QProcess>
-#include <zlib.h>
+#include <QProcessEnvironment>
 
+#include <zlib.h>
 #include <systemd/sd-journal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -27,6 +28,7 @@
 #define DISPLAYHEIGHT 1872
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
 #define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(uint16_t)
+#define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
 class Application : public QObject{
     Q_OBJECT
@@ -54,6 +56,16 @@ public:
         connect(m_process, &QProcess::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
         connect(m_process, &QProcess::stateChanged, this, &Application::stateChanged);
         connect(m_process, &QProcess::errorOccurred, this, &Application::errorOccurred);
+        auto env = QProcessEnvironment::systemEnvironment();
+        auto defaults = QString(DEFAULT_PATH).split(":");
+        auto envPath = env.value("PATH", DEFAULT_PATH);
+        for(auto item : defaults){
+            if(!envPath.contains(item)){
+                envPath.append(item);
+            }
+        }
+        env.insert("PATH", envPath);
+        m_process->setEnvironment(env.toStringList());
     }
     ~Application() {
         unregisterPath();
