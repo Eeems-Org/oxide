@@ -1,0 +1,14 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  go-to-sleep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: go-to-sleep
+        uses: FraserTooth/go-to-sleep@1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
