@@ -30,10 +30,10 @@ void Application::launch(){
 void Application::pause(bool startIfNone){
     if(m_process->processId() && state() != Paused && state() != InBackground){
         qDebug() << "Pausing " << path();
-        if(!m_onpause.isEmpty()){
-            system(m_onpause.toStdString().c_str());
+        if(!onPause().isEmpty()){
+            system(onPause().toStdString().c_str());
         }
-        switch(m_type){
+        switch(type()){
             case AppsAPI::Background:
             case AppsAPI::Backgroundable:
                 kill(m_process->processId(), SIGUSR2);
@@ -58,11 +58,11 @@ void Application::resume(){
         qDebug() << "Resuming " << path();
         auto api = (AppsAPI*)parent();
         api->pauseAll();
-        if(!m_onresume.isEmpty()){
-            system(m_onresume.toStdString().c_str());
+        if(!onResume().isEmpty()){
+            system(onResume().toStdString().c_str());
         }
         recallScreen();
-        switch(m_type){
+        switch(type()){
             case AppsAPI::Background:
             case AppsAPI::Backgroundable:
                 kill(m_process->processId(), SIGUSR1);
@@ -83,8 +83,8 @@ void Application::stop(){
     if(state == Inactive){
         return;
     }
-    if(!m_onstop.isEmpty()){
-        QProcess::execute(m_onstop);
+    if(!onStop().isEmpty()){
+        QProcess::execute(onStop());
     }
     if(state == Paused){
         kill(m_process->processId(), SIGCONT);
@@ -114,7 +114,7 @@ int Application::state(){
                     return Paused;
                 }
             }
-            if(m_type == AppsAPI::Backgroundable && m_backgrounded){
+            if(type() == AppsAPI::Backgroundable && m_backgrounded){
                 return InBackground;
             }
             return InForeground;
@@ -124,28 +124,12 @@ int Application::state(){
             return Inactive;
     }
 }
-
-void Application::load(
-    QString name, QString displayname, QString description,
-    QString bin, int type, bool autostart, bool systemApp,
-    QString icon, QString onPause, QString onResume, QString onStop
-){
-    m_name = name;
-    m_displayname = displayname;
-    m_description = description;
-    m_bin = bin;
-    m_onpause = onPause;
-    m_onresume = onResume;
-    m_onstop = onStop;
-    m_type = (int)type;
-    if(type == AppsAPI::Foreground){
-        m_autoStart = false;
-    }else{
-        m_autoStart = autostart;
+void Application::setConfig(const QVariantMap& config){
+    m_config = config;
+    if(type() == AppsAPI::Foreground){
+        setValue("config", false);
     }
-    m_systemApp = systemApp;
-    m_icon = icon;
-    m_process->setProgram(bin);
+    m_process->setProgram(bin());
 }
 void Application::started(){
     emit launched();

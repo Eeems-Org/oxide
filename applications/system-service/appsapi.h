@@ -13,6 +13,7 @@
 #include "fb2png.h"
 
 #define PNG_PATH "/tmp/fb.png"
+#define OXIDE_SETTINGS_VERSION 1
 
 class AppsAPI : public APIBase {
     Q_OBJECT
@@ -33,24 +34,28 @@ public:
         qDBusRegisterMetaType<QMap<QString,QDBusObjectPath>>();
         qDBusRegisterMetaType<QDBusObjectPath>();
         settings.sync();
+        auto version = settings.value("version", OXIDE_SETTINGS_VERSION).toInt();
+        if(version < OXIDE_SETTINGS_VERSION){
+            migrate(&settings, version);
+        }
         int size = settings.beginReadArray("applications");
         for(int i = 0; i < size; ++i){
             settings.setArrayIndex(i);
             auto name = settings.value("name").toString();
             auto displayName = settings.value("displayname", name).toString();
             auto app = new Application(getPath(name), this);
-            app->load(
-                name, displayName,
-                settings.value("description", displayName).toString(),
-                settings.value("bin").toString(),
-                settings.value("type", Foreground).toInt(),
-                settings.value("autostart", false).toBool(),
-                settings.value("systemapp", false).toBool(),
-                settings.value("icon", "").toString(),
-                settings.value("onpause", "").toString(),
-                settings.value("onresume", "").toString(),
-                settings.value("onstop", "").toString()
-            );
+            app->setConfig(QVariantMap {
+                {"name", name},
+                {"displayName", displayName},
+                {"description", settings.value("description", displayName).toString()},
+                {"bin", settings.value("bin").toString()},
+                {"type", settings.value("type", Foreground).toInt()},
+                {"flags", settings.value("flags", QStringList()).toStringList()},
+                {"icon", settings.value("icon", "").toString()},
+                {"onPause", settings.value("onPause", "").toString()},
+                {"onResume", settings.value("onResume", "").toString()},
+                {"onStop", settings.value("onStop", "").toString()},
+            });
             applications.insert(name, app);
         }
         settings.endArray();
@@ -59,25 +64,27 @@ public:
         }
         if(!applications.contains("xochitl")){
             auto app = new Application(getPath("Xochitl"), this);
-            app->load(
-                "xochitl",
-                "Xochitl",
-                "reMarkable default application",
-                "/usr/bin/xochitl",
-                Foreground, false, true
-            );
+            app->setConfig(QVariantMap {
+                {"name", "xochitl"},
+                {"displayName", "Xochitl"},
+                {"description", "reMarkable default application"},
+                {"bin", "/usr/bin/xochitl"},
+                {"type", Foreground},
+                {"flags", "system"},
+                {"icon", "/opt/etc/draft/icons/xochitl.png"}
+            });
             applications[app->name()] = app;
             emit applicationRegistered(app->qPath());
         }
         if(!applications.contains("codes.eeems.erode")){
             auto app = new Application(getPath("Process Manager"), this);
-            app->load(
-                "codes.eeems.erode",
-                "Process Manager",
-                "List/kill processes",
-                "/opt/bin/erode",
-                Foreground, false, true
-            );
+            app->setConfig(QVariantMap {
+                {"name", "codes.eeems.erode"},
+                {"displayName", "Process Manager"},
+                {"bin", "/opt/bin/erode"},
+                {"type", Foreground},
+                {"flags", "system"},
+            });
             applications[app->name()] = app;
             emit applicationRegistered(app->qPath());
         }
@@ -87,13 +94,14 @@ public:
             app = getApplication("codes.eeems.oxide");
             if(app == nullptr){
                 app = new Application(getPath("Launcher"), this);
-                app->load(
-                    "codes.eeems.oxide",
-                    "Launcher",
-                    "Application launcher",
-                    "/opt/bin/oxide",
-                    Foreground, false, true
-                );
+                app->setConfig(QVariantMap {
+                    {"name", "codes.eeems.oxide"},
+                    {"displayName", "Launcher"},
+                    {"description", "Application launcher"},
+                    {"bin", "/opt/bin/oxide"},
+                    {"type", Foreground},
+                    {"flags", "system"},
+                });
                 applications[app->name()] = app;
                 emit applicationRegistered(app->qPath());
             }
@@ -150,19 +158,7 @@ public:
         auto path = QDBusObjectPath(getPath(name));
         auto app = new Application(path, this);
         auto displayName = properties.value("displayName", name).toString();
-        app->load(
-            name,
-            displayName,
-            properties.value("description", displayName).toString(),
-            bin,
-            type,
-            properties.value("autoStart", false).toBool(),
-            false,
-            properties.value("icon", "").toString(),
-            properties.value("onPause", "").toString(),
-            properties.value("onResume", "").toString(),
-            properties.value("onStop", "").toString()
-        );
+        app->setConfig(properties);
         applications.insert(name, app);
         writeApplications();
         app->registerPath();
@@ -330,17 +326,10 @@ private:
         for(int i = 0; i < size; ++i){
             settings.setArrayIndex(i);
             auto app = apps[i];
-            settings.setValue("name", app->name());
-            settings.setValue("displayname", app->displayName());
-            settings.setValue("description", app->description());
-            settings.setValue("bin", app->bin());
-            settings.setValue("type", app->type());
-            settings.setValue("autostart", app->autoStart());
-            settings.setValue("systemaapp", app->systemApp());
-            settings.setValue("icon", app->icon());
-            settings.setValue("onstop", app->onPause());
-            settings.setValue("onresume", app->onResume());
-            settings.setValue("onstop", app->onStop());
+            auto config = app->getConfig();
+            for(auto key : config.keys()){
+                settings.setValue(key, config[key]);
+            }
         }
         settings.endArray();
     }
@@ -357,6 +346,11 @@ private:
         if(res){
             qDebug() << "Failed to take screenshot: " << res;
         }
+    }
+    static void migrate(QSettings* settings, int fromVersion){
+        Q_UNUSED(settings)
+        Q_UNUSED(fromVersion)
+        // In the future migrate changes to settings between versions
     }
 };
 #endif // APPSAPI_H

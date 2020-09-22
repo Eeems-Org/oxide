@@ -103,41 +103,36 @@ public:
     Q_INVOKABLE void stop();
     Q_INVOKABLE void unregister();
 
-    QString name() { return m_name; }
-    QString displayName() { return m_displayname; }
+    QString name() { return value("name").toString(); }
+    QString displayName() { return value("displayname", name()).toString(); }
     void setDisplayName(QString displayName){
-        m_name = displayName;
+        setValue("displayname", displayName);
         emit displayNameChanged(displayName);
     }
-    QString description() { return m_description; }
-    QString bin() { return m_bin; }
-    QString onPause() { return m_onpause; }
-    QString onResume() { return m_onresume; }
-    QString onStop() { return m_onstop; }
-    bool autoStart() { return m_autoStart; }
-    bool setAutoStart(bool autoStart) { m_autoStart = autoStart;}
-    bool systemApp() { return m_systemApp; }
-    int type() { return (int)m_type; }
+    QString description() { return value("description", displayName()).toString(); }
+    QString bin() { return value("bin").toString(); }
+    QString onPause() { return value("onPause", "").toString(); }
+    QString onResume() { return value("onResume", "").toString(); }
+    QString onStop() { return value("onStop", "").toString(); }
+    QStringList flags() { return value("flags", QStringList()).toStringList(); }
+    bool autoStart() { return flags().contains("autoStart"); }
+    bool setAutoStart(bool autoStart) {
+        if(!autoStart){
+            flags().removeAll("autoStart");
+        }else if(!this->autoStart()){
+            flags().append("autoStart");
+        }
+    }
+    bool systemApp() { return flags().contains("system"); }
+    int type() { return (int)value("type", 0).toInt(); }
     int state();
-    QString icon() { return m_icon; }
+    QString icon() { return value("icon", "").toString(); }
     void setIcon(QString icon){
-        m_icon = icon;
+        setValue("icon", icon);
         emit iconChanged(icon);
     }
-
-    void load(
-        QString name,
-        QString displayname,
-        QString description,
-        QString bin,
-        int type = 0,
-        bool autostart = false,
-        bool systemApp = false,
-        QString icon = "",
-        QString onPause = "",
-        QString onResume = "",
-        QString onStop = ""
-    );
+    const QVariantMap& getConfig(){ return m_config; }
+    void setConfig(const QVariantMap& config);
     void saveScreen(){
         if(screenCapture != nullptr){
             return;
@@ -192,6 +187,8 @@ public:
         }
     }
     void signal(int signal);
+    QVariant value(QString name, QVariant defaultValue = QVariant()){ return m_config.value(name, defaultValue); }
+    void setValue(QString name, QVariant value){ m_config[name] = value; }
 signals:
     void launched();
     void paused();
@@ -240,18 +237,8 @@ private slots:
     void errorOccurred(QProcess::ProcessError error);
 
 private:
+    QVariantMap m_config;
     QString m_path;
-    QString m_name;
-    QString m_displayname;
-    QString m_description;
-    QString m_bin;
-    QString m_onpause;
-    QString m_onresume;
-    QString m_onstop;
-    int m_type;
-    bool m_autoStart;
-    bool m_systemApp;
-    QString m_icon;
     QProcess* m_process;
     bool m_backgrounded;
     QByteArray* screenCapture = nullptr;
