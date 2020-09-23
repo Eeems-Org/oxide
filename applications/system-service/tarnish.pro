@@ -47,6 +47,8 @@ HEADERS += \
     network.h \
     powerapi.h \
     signalhandler.h \
+    stb_image.h \
+    stb_image_write.h \
     supplicant.h \
     sysobject.h \
     wifiapi.h \

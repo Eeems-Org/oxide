@@ -88,14 +88,19 @@ private slots:
     void keyUp(Qt::Key key){
         qDebug() << "Up" << key;
         if(!pressed.contains(key)){
-            pressKey(key);
+            // This should never happen
             return;
         }
         auto value = pressed.value(key);
         pressed.remove(key);
-        if(!value.hasExpired(700)){
+        if(value.hasExpired(700)){
+            // Held event already fired
+            return;
+        }
+        if(key != Qt::Key_PowerOff){
             pressKey(key);
         }
+        emit powerPress();
     }
     void timeout(){
         for(auto key : pressed.keys()){
@@ -128,6 +133,7 @@ signals:
     void homeHeld();
     void rightHeld();
     void powerHeld();
+    void powerPress();
 
 protected:
     void run();

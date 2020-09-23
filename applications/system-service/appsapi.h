@@ -7,14 +7,18 @@
 #include <QSettings>
 #include <QUuid>
 #include <QFile>
+#include <QTimer>
 
 #include "apibase.h"
 #include "application.h"
 #include "fb2png.h"
 #include "signalhandler.h"
+#include "stb_image.h"
+#include "stb_image_write.h"
 
 #define PNG_PATH "/tmp/fb.png"
 #define OXIDE_SETTINGS_VERSION 1
+#define remarkable_color uint16_t
 
 class AppsAPI : public APIBase {
     Q_OBJECT
@@ -84,6 +88,7 @@ public:
             app->setConfig(QVariantMap {
                 {"name", "codes.eeems.erode"},
                 {"displayName", "Process Manager"},
+                {"description", "List and kill running processes"},
                 {"bin", "/opt/bin/erode"},
                 {"type", Foreground},
                 {"flags", QStringList() << "system"},
@@ -339,6 +344,41 @@ public slots:
     }
     void powerHeld(){
 
+    }
+    void powerPress(){
+        qDebug() << "Power button pressed...";
+        auto app = getApplication(currentApplication());
+        app->pause();
+//        int neww, newh, channels;
+//        auto decoded = (stbi_uc*)stbi_load("/usr/share/remarkable/suspended.png", &neww, &newh, &channels, 4);
+//        int fd = open("/dev/fb0", O_RDWR);
+//        int byte_size = DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(remarkable_color);
+//        auto ptr = (remarkable_color*)mmap(NULL, byte_size, PROT_WRITE, MAP_SHARED, fd, 0);
+//        memcpy(ptr, decoded, DISPLAYSIZE);
+//        mxcfb_update_data update_data;
+//        mxcfb_rect update_rect;
+//        update_rect.top = 0;
+//        update_rect.left = 0;
+//        update_rect.width = DISPLAYWIDTH;
+//        update_rect.height = DISPLAYHEIGHT;
+//        update_data.update_marker = 0;
+//        update_data.update_region = update_rect;
+//        update_data.waveform_mode = WAVEFORM_MODE_AUTO;
+//        update_data.update_mode = UPDATE_MODE_FULL;
+//        update_data.dither_mode = EPDC_FLAG_USE_DITHERING_MAX;
+//        update_data.temp = TEMP_USE_REMARKABLE_DRAW;
+//        update_data.flags = 0;
+//        ioctl(fd, MXCFB_SEND_UPDATE, &update_data);
+//        free(decoded);
+//        close(fd);
+        QTimer::singleShot(1, [=]{
+            qDebug() << "Suspending...";
+            system("echo mem > /sys/power/state");
+            QTimer::singleShot(1, [=]{
+                qDebug() << "Resuming...";
+                app->resume();
+            });
+        });
     }
 
 private:

@@ -43,6 +43,8 @@
     </method>
     <method name="powerHeld">
     </method>
+    <method name="powerPress">
+    </method>
     <method name="registerApplication">
       <arg type="o" direction="out"/>
       <arg name="properties" type="a{sv}" direction="in"/>

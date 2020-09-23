@@ -87,6 +87,7 @@ public:
         connect(buttonHandler, &ButtonHandler::homeHeld, api, &AppsAPI::homeHeld);
         connect(buttonHandler, &ButtonHandler::rightHeld, api, &AppsAPI::rightHeld);
         connect(buttonHandler, &ButtonHandler::powerHeld, api, &AppsAPI::powerHeld);
+        connect(buttonHandler, &ButtonHandler::powerPress, api, &AppsAPI::powerPress);
     }
     ~DBusService(){
         qDebug() << "Removing all APIs";
