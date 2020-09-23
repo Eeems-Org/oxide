@@ -97,10 +97,11 @@ private slots:
             // Held event already fired
             return;
         }
-        if(key != Qt::Key_PowerOff){
-            pressKey(key);
+        if(key == Qt::Key_PowerOff){
+            emit powerPress();
+            return;
         }
-        emit powerPress();
+        pressKey(key);
     }
     void timeout(){
         for(auto key : pressed.keys()){
