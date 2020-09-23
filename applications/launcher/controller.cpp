@@ -310,7 +310,16 @@ void Controller::powerOff(){
 }
 void Controller::suspend(){
     qDebug() << "Suspending...";
-    system("systemctl suspend");
+    auto bus = QDBusConnection::systemBus();
+    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+    QDBusObjectPath path = api.requestAPI("apps");
+    if(path.path() == "/"){
+        qDebug() << "Unable to access apps API";
+        system("systemctl suspend");
+        return;
+    }
+    Apps apps(OXIDE_SERVICE, path.path(), bus);
+    apps.suspend();
 }
 void Controller::killXochitl(){
     if(system("systemctl is-active --quiet xochitl")){

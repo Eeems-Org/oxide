@@ -345,8 +345,7 @@ public slots:
     void powerHeld(){
 
     }
-    void powerPress(){
-        qDebug() << "Power button pressed...";
+    void suspend(){
         auto app = getApplication(currentApplication());
         app->pause(false);
 //        int neww, newh, channels;
