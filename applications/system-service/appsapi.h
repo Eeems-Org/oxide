@@ -348,7 +348,7 @@ public slots:
     void powerPress(){
         qDebug() << "Power button pressed...";
         auto app = getApplication(currentApplication());
-        app->pause();
+        app->pause(false);
 //        int neww, newh, channels;
 //        auto decoded = (stbi_uc*)stbi_load("/usr/share/remarkable/suspended.png", &neww, &newh, &channels, 4);
 //        int fd = open("/dev/fb0", O_RDWR);
@@ -371,13 +371,13 @@ public slots:
 //        ioctl(fd, MXCFB_SEND_UPDATE, &update_data);
 //        free(decoded);
 //        close(fd);
-        QTimer::singleShot(1, [=]{
-            qDebug() << "Suspending...";
-            system("echo mem > /sys/power/state");
-            QTimer::singleShot(1, [=]{
-                qDebug() << "Resuming...";
-                app->resume();
-            });
+        qDebug() << "Suspending...";
+        system("systemctl suspend");
+        // Don't resume too quick, let the kernel have time to suspend things.
+        // TODO - replace this with SIGCONT handler
+        QTimer::singleShot(700, [=]{
+            qDebug() << "Resuming...";
+            app->resume();
         });
     }
 
