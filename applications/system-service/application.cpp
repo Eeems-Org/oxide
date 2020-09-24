@@ -25,7 +25,7 @@ void Application::pause(bool startIfNone){
         if(!onPause().isEmpty()){
             system(onPause().toStdString().c_str());
         }
-        auto api = (AppsAPI*)parent();
+        auto api = reinterpret_cast<AppsAPI*>(parent());
         switch(type()){
             case AppsAPI::Background:
             case AppsAPI::Backgroundable:
@@ -56,7 +56,7 @@ void Application::pause(bool startIfNone){
 void Application::resume(){
     if(m_process->processId() && state() != InForeground){
         qDebug() << "Resuming " << path();
-        auto api = (AppsAPI*)parent();
+        auto api = reinterpret_cast<AppsAPI*>(parent());
         api->pauseAll();
         if(!onResume().isEmpty()){
             system(onResume().toStdString().c_str());
@@ -108,7 +108,7 @@ void Application::signal(int signal){
 }
 void Application::unregister(){
     emit unregistered();
-    auto api = (AppsAPI*)parent();
+    auto api = reinterpret_cast<AppsAPI*>(parent());
     api->unregisterApplication(this);
 }
 
@@ -143,18 +143,18 @@ void Application::setConfig(const QVariantMap& config){
 }
 void Application::started(){
     emit launched();
-    auto api = (AppsAPI*)parent();
+    auto api = reinterpret_cast<AppsAPI*>(parent());
     emit api->applicationLaunched(qPath());
 }
 void Application::finished(int exitCode){
     qDebug() << "Application" << name() << "exit code" << exitCode;
     emit exited(exitCode);
-    auto api = (AppsAPI*)parent();
+    auto api = reinterpret_cast<AppsAPI*>(parent());
     api->resumeIfNone();
     emit api->applicationExited(qPath(), exitCode);
 }
 void Application::errorOccurred(QProcess::ProcessError error){
-    auto api = (AppsAPI*)parent();
+    auto api = reinterpret_cast<AppsAPI*>(parent());
     switch(error){
         case QProcess::FailedToStart:
             qDebug() << "Application" << name() << "failed to start.";
