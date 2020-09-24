@@ -45,6 +45,10 @@
     </method>
     <method name="suspend">
     </method>
+    <method name="suspended">
+    </method>
+    <method name="resumed">
+    </method>
     <method name="registerApplication">
       <arg type="o" direction="out"/>
       <arg name="properties" type="a{sv}" direction="in"/>

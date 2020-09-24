@@ -360,6 +360,13 @@ public slots:
         if(m_sleeping){
             return;
         }
+        qDebug() << "Suspend triggered...";
+        system("systemctl suspend");
+    }
+    void suspended(){
+        if(m_sleeping){
+            return;
+        }
         m_sleeping = true;
         auto app = getApplication(currentApplication());
         app->pause(false);
@@ -401,16 +408,19 @@ public slots:
         close(fd);
         qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
-        system("systemctl suspend");
-        // Don't resume too quick, let the kernel have time to suspend things.
-        // TODO - replace this with SIGCONT handler
-        QTimer::singleShot(700, [=]{
-            qDebug() << "Resuming...";
-            QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-            app->resume();
-            m_sleeping = false;
-            buttonHandler->setEnabled(true);
-        });
+    }
+    void resumed(){
+        if(!m_sleeping){
+            return;
+        }
+        qDebug() << "Resuming...";
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        if(resumeApp == nullptr){
+            resumeApp = getApplication(m_startupApplication);
+        }
+        resumeApp->resume();
+        m_sleeping = false;
+        buttonHandler->setEnabled(true);
     }
 
 private:
@@ -421,6 +431,7 @@ private:
     SignalHandler signalHandler;
     bool m_sleeping;
     ButtonHandler* buttonHandler;
+    Application* resumeApp = nullptr;
     QString getPath(QString name){
         static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
         return QString(OXIDE_SERVICE_PATH) + "/apps/" + QUuid::createUuidV5(NS, name).toString(QUuid::Id128);

@@ -28,6 +28,10 @@ service.files = ../../assets/etc/systemd/system/tarnish.service
 service.path = /etc/systemd/system/
 INSTALLS += service
 
+suspend.files = ../../assets/lib/systemd/system-sleep/tarnish
+suspend.path = /lib/systemd/system-sleep/
+INSTALLS += suspend
+
 system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
@@ -65,6 +69,7 @@ linux-oe-g++ {
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
 DISTFILES += \
+    ../../assets/lib/systemd/system-sleep/tarnish \
     fi.w1.wpa_supplicant1.xml \
     generate_xml.sh
 

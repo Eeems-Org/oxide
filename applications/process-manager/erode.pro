@@ -43,3 +43,5 @@ DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 linux-oe-g++ {
     LIBS += -lqsgepaper
 }
+
+DISTFILES +=

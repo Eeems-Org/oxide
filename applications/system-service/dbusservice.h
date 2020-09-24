@@ -105,7 +105,7 @@ public:
 
     int tarnishPid(){ return qApp->applicationPid(); }
 
-public Q_SLOTS:
+public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
         if(!apis.contains(name)){
             return QDBusObjectPath("/");
@@ -149,11 +149,11 @@ public Q_SLOTS:
     };
 
 
-Q_SIGNALS:
+signals:
     void apiAvailable(QDBusObjectPath api);
     void apiUnavailable(QDBusObjectPath api);
 
-private Q_SLOTS:
+private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){
         Q_UNUSED(oldOwner);
         if(newOwner.isEmpty()){
