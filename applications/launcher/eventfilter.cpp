@@ -11,7 +11,7 @@
 #define WACOM_Y_SCALAR (float(DISPLAYHEIGHT) / float(DISPLAYWIDTH))
 //#define DEBUG_EVENTS
 
-EventFilter::EventFilter(QObject *parent) : QObject(parent){ }
+EventFilter::EventFilter(QObject *parent) : QObject(parent){}
 
 QPointF swap(QPointF pointF){
     return QPointF(pointF.y(), pointF.x());
@@ -114,7 +114,7 @@ bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
       || type == QEvent::TouchEnd
       || type == QEvent::TouchCancel
     ){
-        if(timer->isActive()){
+        if(timer != nullptr && timer->isActive()){
             timer->stop();
             timer->start();
         }

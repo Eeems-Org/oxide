@@ -12,7 +12,7 @@ void Application::launch(){
         resume();
     }else{
         qDebug() << "Launching " << path();
-        auto api = (AppsAPI*)parent();
+        auto api = reinterpret_cast<AppsAPI*>(parent());
         api->pauseAll();
         m_process->start();
         m_process->waitForStarted();

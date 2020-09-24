@@ -11,8 +11,8 @@ class EventFilter : public QObject
 {
     Q_OBJECT
 public:
-    QTimer* timer;
-    QQuickItem* root;
+    QTimer* timer = nullptr;
+    QQuickItem* root = nullptr;
     explicit EventFilter(QObject* parent = nullptr);
 signals:
     void suspend();

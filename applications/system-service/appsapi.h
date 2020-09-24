@@ -347,7 +347,7 @@ public slots:
     void rightHeld(){
         takeScreenshot();
         if(QFile("/tmp/.screenshot").exists()){
-            // Then execute the contents of /tmp/.terminate
+            // Then execute the contents of /tmp/.screenshot
             qDebug() << "Screenshot file exists.";
             system("/bin/bash /tmp/.screenshot");
         }

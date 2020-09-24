@@ -170,7 +170,11 @@ public slots:
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up";
         while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
-            usleep(1000);
+            struct timespec args{
+                .tv_sec = 1,
+                .tv_nsec = 0,
+            }, res;
+            nanosleep(&args, &res);
         }
         qDebug() << "Requesting APIs";
         General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
