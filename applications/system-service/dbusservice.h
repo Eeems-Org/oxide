@@ -62,6 +62,7 @@ public:
         delete singleton();
     }
     DBusService() : apis(){
+        buttonHandler = ButtonHandler::init();
         apis.insert("power", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/power",
             .dependants = new QStringList(),
@@ -75,19 +76,12 @@ public:
         apis.insert("apps", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/apps",
             .dependants = new QStringList(),
-            .instance = new AppsAPI(this),
+            .instance = new AppsAPI(this, buttonHandler),
         });
         auto bus = QDBusConnection::systemBus();
         for(auto api : apis){
             bus.unregisterObject(api.path);
         }
-        buttonHandler = ButtonHandler::init();
-        auto api = (AppsAPI*)apis["apps"].instance;
-        connect(buttonHandler, &ButtonHandler::leftHeld, api, &AppsAPI::leftHeld);
-        connect(buttonHandler, &ButtonHandler::homeHeld, api, &AppsAPI::homeHeld);
-        connect(buttonHandler, &ButtonHandler::rightHeld, api, &AppsAPI::rightHeld);
-        connect(buttonHandler, &ButtonHandler::powerHeld, api, &AppsAPI::powerHeld);
-        connect(buttonHandler, &ButtonHandler::powerPress, api, &AppsAPI::suspend);
     }
     ~DBusService(){
         qDebug() << "Removing all APIs";

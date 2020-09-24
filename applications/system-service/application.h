@@ -30,7 +30,8 @@
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
-#define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(uint16_t)
+#define remarkable_color uint16_t
+#define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(remarkable_color)
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
 class Application : public QObject{
