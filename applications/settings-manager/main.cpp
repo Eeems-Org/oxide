@@ -13,6 +13,8 @@
 #include "bss_interface.h"
 #include "appsapi_interface.h"
 #include "application_interface.h"
+#include "systemapi_interface.h"
+#include "screenapi_interface.h"
 
 using namespace codes::eeems::oxide1;
 
@@ -192,7 +194,7 @@ int main(int argc, char *argv[]){
     parser.addHelpOption();
     parser.applicationDescription();
     parser.addVersionOption();
-    parser.addPositionalArgument("api", "wifi\npower\napps");
+    parser.addPositionalArgument("api", "wifi\npower\napps\nsystem\nscreen");
     parser.addPositionalArgument("action","get\nset\nlisten\ncall\nobject");
     QCommandLineOption objectOption(
         {"o", "object"},
@@ -213,7 +215,7 @@ int main(int argc, char *argv[]){
         parser.showHelp(EXIT_FAILURE);
     }
     auto apiName = args.at(0);
-    if(!(QSet<QString> {"power", "wifi", "apps"}).contains(apiName)){
+    if(!(QSet<QString> {"power", "wifi", "apps", "system", "screen"}).contains(apiName)){
         qDebug() << "Unknown API" << apiName;
         return EXIT_FAILURE;
     }
@@ -304,6 +306,18 @@ int main(int argc, char *argv[]){
                 qDebug() << "Unknown object type" << type;
                 return EXIT_FAILURE;
             }
+        }
+    }else if(apiName == "system"){
+        api = new System(OXIDE_SERVICE, path, bus);
+        if(parser.isSet("object")){
+            qDebug() << "Paths are not valid for the system API";
+            return EXIT_FAILURE;
+        }
+    }else if(apiName == "screen"){
+        api = new Screen(OXIDE_SERVICE, path, bus);
+        if(parser.isSet("object")){
+            qDebug() << "Paths are not valid for the screen API";
+            return EXIT_FAILURE;
         }
     }else{
         qDebug() << "API not initialized? Please log a bug.";

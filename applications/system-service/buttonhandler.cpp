@@ -3,20 +3,6 @@
 
 //#define DEBUG
 
-void removeScreenshot(){
-    QFile file(PNG_PATH);
-    if(file.exists()){
-        qDebug() << "Removing framebuffer image";
-        file.remove();
-    }
-}
-void takeScreenshot(){
-    qDebug() << "Taking screenshot";
-    int res = fb2png_defaults();
-    if(res){
-        qDebug() << "Failed to take screenshot: " << res;
-    }
-}
 int lock_device(event_device evdev){
     qDebug() << "locking " << evdev.device.c_str();
     int result = ioctl(evdev.fd, EVIOCGRAB, 1);
@@ -86,7 +72,7 @@ void press_button(event_device evdev, int code, istream* stream){
 ButtonHandler* ButtonHandler::init(){
     static ButtonHandler* instance;
     if(instance != nullptr){
-        throw QException();
+        return instance;
     }
     // Get event devices
     if(buttons.fd == -1){

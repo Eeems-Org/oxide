@@ -9,6 +9,8 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#define signalHandler SignalHandler::singleton()
+
 static int sigUsr1Fd[2];
 static int sigUsr2Fd[2];
 
@@ -16,7 +18,15 @@ class SignalHandler : public QObject
 {
     Q_OBJECT
 public:
+    static SignalHandler* singleton(SignalHandler* self = nullptr){
+        static SignalHandler* instance;
+        if(self != nullptr){
+            instance = self;
+        }
+        return instance;
+    }
     SignalHandler(QObject *parent = 0) : QObject(parent){
+        singleton(this);
         if(::socketpair(AF_UNIX, SOCK_STREAM, 0, sigUsr1Fd)){
            qFatal("Couldn't create USR1 socketpair");
         }

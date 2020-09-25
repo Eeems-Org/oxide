@@ -1,0 +1,17 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="codes.eeems.oxide1.System">
+    <signal name="leftAction">
+    </signal>
+    <signal name="homeAction">
+    </signal>
+    <signal name="rightAction">
+    </signal>
+    <signal name="powerAction">
+    </signal>
+    <method name="suspend">
+    </method>
+    <method name="powerOff">
+    </method>
+  </interface>
+</node>

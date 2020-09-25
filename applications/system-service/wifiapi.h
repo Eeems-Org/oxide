@@ -14,6 +14,8 @@
 #include "network.h"
 #include "bss.h"
 
+#define wifiAPI WifiAPI::singleton()
+
 class WifiAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_WIFI_INTERFACE)
@@ -25,6 +27,13 @@ class WifiAPI : public APIBase {
     Q_PROPERTY(QList<QDBusObjectPath> networks READ getNetworkPaths)
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
 public:
+    static WifiAPI* singleton(WifiAPI* self = nullptr){
+        static WifiAPI* instance;
+        if(self != nullptr){
+            instance = self;
+        }
+        return instance;
+    }
     WifiAPI(QObject* parent)
     : APIBase(parent),
       m_enabled(false),
@@ -36,6 +45,7 @@ public:
       m_link(0),
       m_scanning(false)
     {
+        singleton(this);
         QDir dir("/sys/class/net");
         qDebug() << "Looking for wireless devices...";
         for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){

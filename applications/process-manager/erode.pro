@@ -33,10 +33,10 @@ HEADERS += \
     controller.h \
     eventfilter.h \
     taskitem.h \
-    ../system-service/dbussettings.h
+    ../../shared/dbussettings.h
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
-INCLUDEPATH += ../system-service
+INCLUDEPATH += ../../shared
 DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 
 

@@ -26,12 +26,8 @@
 #include "dbussettings.h"
 #include "inputmanager.h"
 #include "mxcfb.h"
+#include "screenapi.h"
 
-#define DISPLAYWIDTH 1404
-#define DISPLAYHEIGHT 1872
-#define TEMP_USE_REMARKABLE_DRAW 0x0018
-#define remarkable_color uint16_t
-#define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(remarkable_color)
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
 class Application : public QObject{
@@ -49,6 +45,7 @@ class Application : public QObject{
     Q_PROPERTY(int type READ type)
     Q_PROPERTY(int state READ state)
     Q_PROPERTY(bool systemApp READ systemApp)
+    Q_PROPERTY(bool hidden READ hidden)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
@@ -128,6 +125,7 @@ public:
         }
     }
     bool systemApp() { return flags().contains("system"); }
+    bool hidden() { return flags().contains("hidden"); }
     int type() { return (int)value("type", 0).toInt(); }
     int state();
     QString icon() { return value("icon", "").toString(); }
@@ -217,7 +215,7 @@ private slots:
         QString error = m_process->readAllStandardError();
         for(QString line : error.split(QRegExp("[\r\n]"), QString::SkipEmptyParts)){
             if(!line.isEmpty()){
-                sd_journal_print(LOG_INFO, "%s %s", prefix, (const char*)line.toUtf8());
+                sd_journal_print(LOG_ERR, "%s %s", prefix, (const char*)line.toUtf8());
             }
         }
     }
@@ -226,7 +224,7 @@ private slots:
         QString output = m_process->readAllStandardOutput();
         for(QString line : output.split(QRegExp("[\r\n]"), QString::SkipEmptyParts)){
             if(!line.isEmpty()){
-                sd_journal_print(LOG_ERR, "%s %s", prefix, (const char*)line.toUtf8());
+                sd_journal_print(LOG_INFO, "%s %s", prefix, (const char*)line.toUtf8());
             }
         }
     }

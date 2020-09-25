@@ -4,6 +4,7 @@
 
 #include "application.h"
 #include "appsapi.h"
+#include "buttonhandler.h"
 
 const event_device touchScreen("/dev/input/event1", O_WRONLY);
 
@@ -12,81 +13,82 @@ void Application::launch(){
         resume();
     }else{
         qDebug() << "Launching " << path();
-        auto api = reinterpret_cast<AppsAPI*>(parent());
-        api->pauseAll();
+        appsAPI->pauseAll();
         m_process->start();
         m_process->waitForStarted();
     }
 }
 
 void Application::pause(bool startIfNone){
-    if(m_process->processId() && state() != Paused && state() != InBackground){
-        qDebug() << "Pausing " << path();
-        if(!onPause().isEmpty()){
-            system(onPause().toStdString().c_str());
-        }
-        auto api = reinterpret_cast<AppsAPI*>(parent());
-        switch(type()){
-            case AppsAPI::Background:
-            case AppsAPI::Backgroundable:
-                api->connectSignals(this, 2);
-                kill(m_process->processId(), SIGUSR2);
-                timer.restart();
-                delayUpTo(1000);
-                api->disconnectSignals(this, 2);
-                if(timer.isValid()){
-                    qDebug() << "Application took too long to background" << name();
-                    kill(m_process->processId(), SIGSTOP);
-                }else{
-                    m_backgrounded = true;
-                }
-                break;
-            case AppsAPI::Foreground:
-            default:
-                kill(m_process->processId(), SIGSTOP);
-        }
-        saveScreen();
-        if(startIfNone){
-            api->resumeIfNone();
-        }
-        emit paused();
-        emit api->applicationPaused(qPath());
+    if(!m_process->processId() || (state() != Paused && state() != InBackground)){
+        return;
     }
+    qDebug() << "Pausing " << path();
+    if(!onPause().isEmpty()){
+        system(onPause().toStdString().c_str());
+    }
+    switch(type()){
+        case AppsAPI::Background:
+            // Already in the background. How did we get here?
+            return;
+        case AppsAPI::Backgroundable:
+            appsAPI->connectSignals(this, 2);
+            kill(m_process->processId(), SIGUSR2);
+            timer.restart();
+            delayUpTo(1000);
+            appsAPI->disconnectSignals(this, 2);
+            if(timer.isValid()){
+                qDebug() << "Application took too long to background" << name();
+                kill(m_process->processId(), SIGSTOP);
+            }else{
+                m_backgrounded = true;
+            }
+            break;
+        case AppsAPI::Foreground:
+        default:
+            kill(m_process->processId(), SIGSTOP);
+    }
+    saveScreen();
+    if(startIfNone){
+        appsAPI->resumeIfNone();
+    }
+    emit paused();
+    emit appsAPI->applicationPaused(qPath());
 }
 void Application::resume(){
-    if(m_process->processId() && state() != InForeground){
-        qDebug() << "Resuming " << path();
-        auto api = reinterpret_cast<AppsAPI*>(parent());
-        api->pauseAll();
-        if(!onResume().isEmpty()){
-            system(onResume().toStdString().c_str());
-        }
-        recallScreen();
-        switch(type()){
-            case AppsAPI::Background:
-            case AppsAPI::Backgroundable:
-                if(state() == Paused){
-                    inputManager()->clear_touch_buffer(touchScreen.fd);
-                    kill(m_process->processId(), SIGCONT);
-                }
-                api->connectSignals(this, 1);
-                kill(m_process->processId(), SIGUSR1);
-                delayUpTo(1000);
-                api->disconnectSignals(this, 1);
-                if(timer.isValid()){
-                    // No need to fall through, we've just assumed it continued
-                    qDebug() << "Warning: application took too long to forground" << name();
-                }
-                m_backgrounded = false;
-                break;
-            case AppsAPI::Foreground:
-            default:
+    if(!m_process->processId() || state() != InForeground || (state() == InBackground && type() == AppsAPI::Background)){
+        return;
+    }
+    qDebug() << "Resuming " << path();
+    appsAPI->pauseAll();
+    if(!onResume().isEmpty()){
+        system(onResume().toStdString().c_str());
+    }
+    recallScreen();
+    switch(type()){
+        case AppsAPI::Background:
+        case AppsAPI::Backgroundable:
+            if(state() == Paused){
                 inputManager()->clear_touch_buffer(touchScreen.fd);
                 kill(m_process->processId(), SIGCONT);
-        }
-        emit resumed();
-        emit api->applicationResumed(qPath());
+            }
+            appsAPI->connectSignals(this, 1);
+            kill(m_process->processId(), SIGUSR1);
+            delayUpTo(1000);
+            appsAPI->disconnectSignals(this, 1);
+            if(timer.isValid()){
+                // No need to fall through, we've just assumed it continued
+                qDebug() << "Warning: application took too long to forground" << name();
+            }
+            m_backgrounded = false;
+            break;
+        case AppsAPI::Foreground:
+        default:
+            inputManager()->clear_touch_buffer(touchScreen.fd);
+            kill(m_process->processId(), SIGCONT);
     }
+    emit resumed();
+    emit appsAPI->applicationResumed(qPath());
 }
 void Application::stop(){
     auto state = this->state();
@@ -108,8 +110,7 @@ void Application::signal(int signal){
 }
 void Application::unregister(){
     emit unregistered();
-    auto api = reinterpret_cast<AppsAPI*>(parent());
-    api->unregisterApplication(this);
+    appsAPI->unregisterApplication(this);
 }
 
 int Application::state(){
@@ -124,7 +125,7 @@ int Application::state(){
                     return Paused;
                 }
             }
-            if(type() == AppsAPI::Backgroundable && m_backgrounded){
+            if(type() == AppsAPI::Background || (type() == AppsAPI::Backgroundable && m_backgrounded)){
                 return InBackground;
             }
             return InForeground;
@@ -143,23 +144,20 @@ void Application::setConfig(const QVariantMap& config){
 }
 void Application::started(){
     emit launched();
-    auto api = reinterpret_cast<AppsAPI*>(parent());
-    emit api->applicationLaunched(qPath());
+    emit appsAPI->applicationLaunched(qPath());
 }
 void Application::finished(int exitCode){
     qDebug() << "Application" << name() << "exit code" << exitCode;
     emit exited(exitCode);
-    auto api = reinterpret_cast<AppsAPI*>(parent());
-    api->resumeIfNone();
-    emit api->applicationExited(qPath(), exitCode);
+    appsAPI->resumeIfNone();
+    emit appsAPI->applicationExited(qPath(), exitCode);
 }
 void Application::errorOccurred(QProcess::ProcessError error){
-    auto api = reinterpret_cast<AppsAPI*>(parent());
     switch(error){
         case QProcess::FailedToStart:
             qDebug() << "Application" << name() << "failed to start.";
             emit exited(-1);
-            emit api->applicationExited(qPath(), -1);
+            emit appsAPI->applicationExited(qPath(), -1);
         break;
         case QProcess::Crashed:
             qDebug() << "Application" << name() << "crashed.";

@@ -17,14 +17,12 @@ QDBusObjectPath BSS::connect(){
     if(path.path() != "/"){
         return path;
     }
-    auto api = reinterpret_cast<WifiAPI*>(parent());
-    return api->addNetwork(ssid(), QVariantMap());
+    return wifiAPI->addNetwork(ssid(), QVariantMap());
 }
 QDBusObjectPath BSS::network(){
-    auto api = reinterpret_cast<WifiAPI*>(parent());
     QVariantMap args;
     args.insert("ssid", ssid());
-    auto networks = api->getNetwork(args);
+    auto networks = wifiAPI->getNetwork(args);
     if(!networks.size()){
         return QDBusObjectPath("/");
     }

@@ -35,7 +35,7 @@ target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
-INCLUDEPATH += ../system-service
+INCLUDEPATH += ../../shared
 DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
@@ -45,6 +45,7 @@ DBUS_INTERFACES += ../../interfaces/network.xml
 DBUS_INTERFACES += ../../interfaces/bss.xml
 DBUS_INTERFACES += ../../interfaces/appsapi.xml
 DBUS_INTERFACES += ../../interfaces/application.xml
+DBUS_INTERFACES += ../../interfaces/systemapi.xml
 
 linux-oe-g++ {
     LIBS += -lqsgepaper
@@ -60,6 +61,7 @@ configFile.path  = /opt/etc/
 INSTALLS += configFile
 
 DISTFILES += \
+    ../../assets/etc/dbus-1/system.d/org.freedesktop.login1.conf \
     ../../assets/etc/oxide.conf
 ls
 HEADERS += \
@@ -70,5 +72,5 @@ HEADERS += \
     mxcfb.h \
     sysobject.h \
     tarnishhandler.h \
-    ../system-service/dbussettings.h \
+    ../../shared/dbussettings.h \
     wifinetworklist.h

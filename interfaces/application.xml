@@ -12,6 +12,7 @@
     <property name="type" type="i" access="read"/>
     <property name="state" type="i" access="read"/>
     <property name="systemApp" type="b" access="read"/>
+    <property name="hidden" type="b" access="read"/>
     <property name="icon" type="s" access="readwrite"/>
     <signal name="launched">
     </signal>

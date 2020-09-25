@@ -6,11 +6,13 @@ CONFIG -= app_bundle
 
 SOURCES += \
     application.cpp \
+    appsapi.cpp \
     bss.cpp \
     buttonhandler.cpp \
     fb2png.cpp \
     network.cpp \
     sysobject.cpp \
+    systemapi.cpp \
     wlan.cpp \
     wpa_supplicant.cpp \
     main.cpp
@@ -28,13 +30,12 @@ service.files = ../../assets/etc/systemd/system/tarnish.service
 service.path = /etc/systemd/system/
 INSTALLS += service
 
-suspend.files = ../../assets/lib/systemd/system-sleep/tarnish
-suspend.path = /lib/systemd/system-sleep/
-INSTALLS += suspend
-
 system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)
 
+DBUS_INTERFACES += org.freedesktop.login1.xml
+
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+INCLUDEPATH += ../../shared
 DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 
 HEADERS += \
@@ -50,11 +51,13 @@ HEADERS += \
     mxcfb.h \
     network.h \
     powerapi.h \
+    screenapi.h \
     signalhandler.h \
     stb_image.h \
     stb_image_write.h \
     supplicant.h \
     sysobject.h \
+    systemapi.h \
     wifiapi.h \
     wlan.h \
     wpa_supplicant.h
@@ -69,9 +72,8 @@ linux-oe-g++ {
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
 DISTFILES += \
-    ../../assets/lib/systemd/system-sleep/tarnish \
     fi.w1.wpa_supplicant1.xml \
-    generate_xml.sh
+    generate_xml.sh \
+    org.freedesktop.login1.xml
 
-RESOURCES += \
-    qml.qrc
+RESOURCES +=

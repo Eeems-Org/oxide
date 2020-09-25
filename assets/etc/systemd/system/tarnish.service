@@ -3,6 +3,7 @@ Description=oxide system service
 After=home.mount
 StartLimitInterval=30
 StartLimitBurst=5
+Conflicts=remux.service tarnish.service xochitl.service
 
 [Service]
 ExecStart=/opt/bin/tarnish

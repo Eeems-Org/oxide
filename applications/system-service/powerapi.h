@@ -11,6 +11,8 @@
 #include "apibase.h"
 #include "sysobject.h"
 
+#define powerAPI PowerAPI::singleton()
+
 class PowerAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
@@ -21,8 +23,16 @@ class PowerAPI : public APIBase {
     Q_PROPERTY(int batteryTemperature READ batteryTemperature NOTIFY batteryTemperatureChanged)
     Q_PROPERTY(int chargerState READ chargerState NOTIFY chargerStateChanged)
 public:
+    static PowerAPI* singleton(PowerAPI* self = nullptr){
+        static PowerAPI* instance;
+        if(self != nullptr){
+            instance = self;
+        }
+        return instance;
+    }
     PowerAPI(QObject* parent)
     : APIBase(parent), batteries(), chargers(){
+        singleton(this);
         QDir dir("/sys/class/power_supply");
         qDebug() << "Looking for batteries and chargers...";
         for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){

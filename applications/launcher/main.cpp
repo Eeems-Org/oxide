@@ -61,7 +61,6 @@ int main(int argc, char *argv[]){
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();
     tarnishHandler->attach(controller);
-    controller->killXochitl();
     controller->filter = &filter;
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();

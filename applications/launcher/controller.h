@@ -81,7 +81,6 @@ public:
     Q_INVOKABLE void importDraftApps();
     Q_INVOKABLE void powerOff();
     Q_INVOKABLE void suspend();
-    Q_INVOKABLE void killXochitl();
     void updateBatteryLevel();
     Q_INVOKABLE void resetInactiveTimer();
     bool automaticSleep() const {

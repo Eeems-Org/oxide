@@ -3,5 +3,6 @@
 
 int fb2png(int argc, char *argv[]);
 int fb2png_defaults();
+int fb2png_exec(char *program, char *fbdevice, char *pngname);
 
 #endif // FB2PNG_H

@@ -18,7 +18,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp
 
-INCLUDEPATH += ../system-service
+INCLUDEPATH += ../../shared
 
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/powerapi.xml
@@ -27,10 +27,12 @@ DBUS_INTERFACES += ../../interfaces/network.xml
 DBUS_INTERFACES += ../../interfaces/bss.xml
 DBUS_INTERFACES += ../../interfaces/appsapi.xml
 DBUS_INTERFACES += ../../interfaces/application.xml
+DBUS_INTERFACES += ../../interfaces/systemapi.xml
+DBUS_INTERFACES += ../../interfaces/screenapi.xml
 
 # Default rules for deployment.
 target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
-    ../system-service/dbussettings.h
+    ../../shared/dbussettings.h

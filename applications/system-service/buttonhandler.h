@@ -35,6 +35,8 @@ using namespace std;
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
 #define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(uint16_t)
 
+#define buttonHandler ButtonHandler::init()
+
 struct PressRecord {
     bool pressed = false;
     struct timeval pressTime;
@@ -121,6 +123,7 @@ private slots:
             if(!pressed.value(key).hasExpired(700)){
                 continue;
             }
+            qDebug() << "Key held" << key;
             switch(key){
                 case Qt::Key_Left:
                     emit leftHeld();
@@ -137,7 +140,6 @@ private slots:
                 default:
                     continue;
             }
-            qDebug() << "Key held" << key;
             pressed.remove(key);
         }
     }

@@ -11,18 +11,11 @@
 
 #include "apibase.h"
 #include "application.h"
-#include "fb2png.h"
 #include "signalhandler.h"
-#include "stb_image.h"
-#include "stb_image_write.h"
-#include "buttonhandler.h"
 
-#define PNG_PATH "/tmp/fb.png"
 #define OXIDE_SETTINGS_VERSION 1
 
-#define RDISPLAYWIDTH 1408
-#define RDISPLAYHEIGHT 1920
-#define RDISPLAYSIZE RDISPLAYWIDTH * RDISPLAYHEIGHT * sizeof(remarkable_color)
+#define appsAPI AppsAPI::singleton()
 
 class AppsAPI : public APIBase {
     Q_OBJECT
@@ -34,109 +27,14 @@ class AppsAPI : public APIBase {
     Q_PROPERTY(QVariantMap runningApplications READ runningApplications)
     Q_PROPERTY(QVariantMap pausedApplications READ pausedApplications)
 public:
-    AppsAPI(QObject* parent, ButtonHandler* buttonHandler)
-    : APIBase(parent),
-      m_enabled(false),
-      applications(),
-      settings(this),
-      m_startupApplication("/"),
-      signalHandler(),
-      m_sleeping(false) {
-        this->buttonHandler = buttonHandler;
-        connect(buttonHandler, &ButtonHandler::leftHeld, this, &AppsAPI::leftHeld);
-        connect(buttonHandler, &ButtonHandler::homeHeld, this, &AppsAPI::homeHeld);
-        connect(buttonHandler, &ButtonHandler::rightHeld, this, &AppsAPI::rightHeld);
-        connect(buttonHandler, &ButtonHandler::powerHeld, this, &AppsAPI::powerHeld);
-        connect(buttonHandler, &ButtonHandler::powerPress, this, &AppsAPI::suspend);
-        setup_unix_signal_handlers();
-        qDBusRegisterMetaType<QMap<QString,QDBusObjectPath>>();
-        qDBusRegisterMetaType<QDBusObjectPath>();
-        settings.sync();
-        auto version = settings.value("version", OXIDE_SETTINGS_VERSION).toInt();
-        if(version < OXIDE_SETTINGS_VERSION){
-            migrate(&settings, version);
+    static AppsAPI* singleton(AppsAPI* self = nullptr){
+        static AppsAPI* instance;
+        if(self != nullptr){
+            instance = self;
         }
-        int size = settings.beginReadArray("applications");
-        for(int i = 0; i < size; ++i){
-            settings.setArrayIndex(i);
-            auto name = settings.value("name").toString();
-            auto displayName = settings.value("displayname", name).toString();
-            auto app = new Application(getPath(name), this);
-            app->setConfig(QVariantMap {
-                {"name", name},
-                {"displayName", displayName},
-                {"description", settings.value("description", displayName).toString()},
-                {"bin", settings.value("bin").toString()},
-                {"type", settings.value("type", Foreground).toInt()},
-                {"flags", settings.value("flags", QStringList()).toStringList()},
-                {"icon", settings.value("icon", "").toString()},
-                {"onPause", settings.value("onPause", "").toString()},
-                {"onResume", settings.value("onResume", "").toString()},
-                {"onStop", settings.value("onStop", "").toString()},
-            });
-            applications.insert(name, app);
-        }
-        settings.endArray();
-        if(!applications.size()){
-            // TODO load from draft config files
-        }
-        if(!applications.contains("xochitl")){
-            auto app = new Application(getPath("Xochitl"), this);
-            app->setConfig(QVariantMap {
-                {"name", "xochitl"},
-                {"displayName", "Xochitl"},
-                {"description", "reMarkable default application"},
-                {"bin", "/usr/bin/xochitl"},
-                {"type", Foreground},
-                {"flags", QStringList() << "system"},
-                {"icon", "/opt/etc/draft/icons/xochitl.png"}
-            });
-            applications[app->name()] = app;
-            emit applicationRegistered(app->qPath());
-        }
-        if(!applications.contains("codes.eeems.erode")){
-            auto app = new Application(getPath("Process Manager"), this);
-            app->setConfig(QVariantMap {
-                {"name", "codes.eeems.erode"},
-                {"displayName", "Process Manager"},
-                {"description", "List and kill running processes"},
-                {"bin", "/opt/bin/erode"},
-                {"type", Foreground},
-                {"flags", QStringList() << "system"},
-            });
-            applications[app->name()] = app;
-            emit applicationRegistered(app->qPath());
-        }
-        auto path = QDBusObjectPath(settings.value("startupApplication").toString());
-        auto app = getApplication(path);
-        if(app == nullptr){
-            app = getApplication("codes.eeems.oxide");
-            if(app == nullptr){
-                app = new Application(getPath("Launcher"), this);
-                app->setConfig(QVariantMap {
-                    {"name", "codes.eeems.oxide"},
-                    {"displayName", "Launcher"},
-                    {"description", "Application launcher"},
-                    {"bin", "/opt/bin/oxide"},
-                    {"type", Foreground},
-                    {"flags", QStringList() << "system"},
-                });
-                applications[app->name()] = app;
-                emit applicationRegistered(app->qPath());
-            }
-            path = app->qPath();
-        }
-        m_startupApplication = path;
-        for(auto app : applications){
-            if(app->autoStart()){
-                app->launch();
-                if(app->type() == Backgroundable){
-                    app->pause();
-                }
-            }
-        }
-        app->launch();
+        return instance;
     }
+    AppsAPI(QObject* parent);
     ~AppsAPI() {
         writeApplications();
         settings.sync();
@@ -156,6 +54,7 @@ public:
         }
         applications.clear();
     }
+    void startup();
     int state() { return 0; } // Ignore this, it's a kludge to get the xml to generate
 
     enum ApplicationType { Foreground, Background, Backgroundable};
@@ -183,7 +82,7 @@ public:
             return applications[name]->qPath();
         }
         auto path = QDBusObjectPath(getPath(name));
-        auto app = new Application(path, this);
+        auto app = new Application(path, reinterpret_cast<QObject*>(this));
         auto displayName = properties.value("displayName", name).toString();
         app->setConfig(properties);
         applications.insert(name, app);
@@ -297,20 +196,20 @@ public:
     void connectSignals(Application* app, int signal){
         switch(signal){
             case 1:
-                connect(&signalHandler, &SignalHandler::sigUsr1, app, &Application::sigUsr1);
+                connect(signalHandler, &SignalHandler::sigUsr1, app, &Application::sigUsr1);
             break;
             case 2:
-                connect(&signalHandler, &SignalHandler::sigUsr2, app, &Application::sigUsr2);
+                connect(signalHandler, &SignalHandler::sigUsr2, app, &Application::sigUsr2);
             break;
         }
     }
     void disconnectSignals(Application* app, int signal){
         switch(signal){
             case 1:
-                disconnect(&signalHandler, &SignalHandler::sigUsr1, app, &Application::sigUsr1);
+                disconnect(signalHandler, &SignalHandler::sigUsr1, app, &Application::sigUsr1);
             break;
             case 2:
-                disconnect(&signalHandler, &SignalHandler::sigUsr2, app, &Application::sigUsr2);
+                disconnect(signalHandler, &SignalHandler::sigUsr2, app, &Application::sigUsr2);
             break;
         }
     }
@@ -344,93 +243,13 @@ public slots:
         }
         app->launch();
     }
-    void rightHeld(){
-        takeScreenshot();
-        if(QFile("/tmp/.screenshot").exists()){
-            // Then execute the contents of /tmp/.screenshot
-            qDebug() << "Screenshot file exists.";
-            system("/bin/bash /tmp/.screenshot");
-        }
-        qDebug() << "Screenshot done.";
-    }
-    void powerHeld(){
-
-    }
-    void suspend(){
-        if(m_sleeping){
-            return;
-        }
-        qDebug() << "Suspend triggered...";
-        system("systemctl suspend");
-    }
-    void suspended(){
-        if(m_sleeping){
-            return;
-        }
-        m_sleeping = true;
-        auto app = getApplication(currentApplication());
-        app->pause(false);
-        int width, height, channels;
-        auto decoded = (uint32_t*)stbi_load("/usr/share/remarkable/suspended.png", &width, &height, &channels, 4);
-        int fd = open("/dev/fb0", O_RDWR);
-        auto ptr = (remarkable_color*)mmap(NULL, RDISPLAYSIZE, PROT_WRITE, MAP_SHARED, fd, 0);
-        auto src = decoded;
-        for(int j = 0; j < height; j++){
-            if(j >= RDISPLAYHEIGHT){
-              break;
-            }
-            for(int i = 0; i < width; i++){
-              if(i >= RDISPLAYWIDTH){
-                break;
-              }
-              if(src[i] != 0){
-                ptr[i] = (remarkable_color)src[i];
-              }
-            }
-            ptr += RDISPLAYWIDTH;
-            src += width;
-        }
-        mxcfb_update_data update_data;
-        mxcfb_rect update_rect;
-        update_rect.top = 0;
-        update_rect.left = 0;
-        update_rect.width = DISPLAYWIDTH;
-        update_rect.height = DISPLAYHEIGHT;
-        update_data.update_marker = 0;
-        update_data.update_region = update_rect;
-        update_data.waveform_mode = WAVEFORM_MODE_AUTO;
-        update_data.update_mode = UPDATE_MODE_FULL;
-        update_data.dither_mode = EPDC_FLAG_USE_DITHERING_MAX;
-        update_data.temp = TEMP_USE_REMARKABLE_DRAW;
-        update_data.flags = 0;
-        ioctl(fd, MXCFB_SEND_UPDATE, &update_data);
-        free(decoded);
-        close(fd);
-        qDebug() << "Suspending...";
-        buttonHandler->setEnabled(false);
-    }
-    void resumed(){
-        if(!m_sleeping){
-            return;
-        }
-        qDebug() << "Resuming...";
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-        if(resumeApp == nullptr){
-            resumeApp = getApplication(m_startupApplication);
-        }
-        resumeApp->resume();
-        m_sleeping = false;
-        buttonHandler->setEnabled(true);
-    }
 
 private:
     bool m_enabled;
     QMap<QString, Application*> applications;
     QSettings settings;
     QDBusObjectPath m_startupApplication;
-    SignalHandler signalHandler;
     bool m_sleeping;
-    ButtonHandler* buttonHandler;
     Application* resumeApp = nullptr;
     QString getPath(QString name){
         static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
@@ -449,20 +268,6 @@ private:
             }
         }
         settings.endArray();
-    }
-    static void removeScreenshot(){
-        QFile file(PNG_PATH);
-        if(file.exists()){
-            qDebug() << "Removing framebuffer image";
-            file.remove();
-        }
-    }
-    static void takeScreenshot(){
-        qDebug() << "Taking screenshot";
-        int res = fb2png_defaults();
-        if(res){
-            qDebug() << "Failed to take screenshot: " << res;
-        }
     }
     static void migrate(QSettings* settings, int fromVersion){
         Q_UNUSED(settings)

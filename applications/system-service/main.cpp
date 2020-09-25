@@ -10,7 +10,7 @@
 
 using namespace std;
 
-void signalHandler(int unused){
+void unixSignalHandler(int unused){
     Q_UNUSED(unused);
     exit(EXIT_SUCCESS);
 }
@@ -42,8 +42,8 @@ void onExit(){
 
 int main(int argc, char *argv[]){
     atexit(onExit);
-    signal(SIGTERM, signalHandler);
-    signal(SIGKILL, signalHandler);
+    signal(SIGTERM, unixSignalHandler);
+    signal(SIGKILL, unixSignalHandler);
     QCoreApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
@@ -59,7 +59,6 @@ int main(int argc, char *argv[]){
 
     const QStringList args = parser.positionalArguments();
 
-    // DBus API service
-    DBusService::singleton();
+    dbusService;
     return app.exec();
 }

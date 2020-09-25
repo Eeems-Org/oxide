@@ -43,8 +43,7 @@ Network::Network(QString path, QString ssid, QVariantMap properties, QObject* pa
     }
 }
 void Network::registerNetwork(){
-    auto api = reinterpret_cast<WifiAPI*>(parent());
-    for(auto interface : api->getInterfaces()){
+    for(auto interface : wifiAPI->getInterfaces()){
         bool found = false;
         for(auto network : networks){
             if(interface->path() == (reinterpret_cast<Interface*>(network->parent()))->path()){
@@ -65,8 +64,7 @@ void Network::registerNetwork(){
 }
 
 QList<QDBusObjectPath> Network::bSSs(){
-    auto api = reinterpret_cast<WifiAPI*>(parent());
     QVariantMap args;
     args.insert("ssid", ssid());
-    return api->getBSS(args);
+    return wifiAPI->getBSS(args);
 }

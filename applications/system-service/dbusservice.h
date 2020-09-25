@@ -11,10 +11,15 @@
 
 #include <fstream>
 
+#include "dbussettings.h"
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "appsapi.h"
+#include "systemapi.h"
+#include "screenapi.h"
 #include "buttonhandler.h"
+
+#define dbusService DBusService::singleton()
 
 using namespace std;
 
@@ -54,6 +59,7 @@ public:
             connect(bus.interface(), SIGNAL(serviceOwnerChanged(QString,QString,QString)),
                     instance, SLOT(serviceOwnerChanged(QString,QString,QString)));
             qDebug() << "Registered";
+            instance->startup();
         }
         return instance;
     }
@@ -62,7 +68,6 @@ public:
         delete singleton();
     }
     DBusService() : apis(){
-        buttonHandler = ButtonHandler::init();
         apis.insert("power", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/power",
             .dependants = new QStringList(),
@@ -73,11 +78,30 @@ public:
             .dependants = new QStringList(),
             .instance = new WifiAPI(this),
         });
+        apis.insert("system", APIEntry{
+            .path = QString(OXIDE_SERVICE_PATH) + "/system",
+            .dependants = new QStringList(),
+            .instance = new SystemAPI(this),
+        });
+        apis.insert("screen", APIEntry{
+            .path = QString(OXIDE_SERVICE_PATH) + "/screen",
+            .dependants = new QStringList(),
+            .instance = new ScreenAPI(this),
+        });
         apis.insert("apps", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/apps",
             .dependants = new QStringList(),
-            .instance = new AppsAPI(this, buttonHandler),
+            .instance = new AppsAPI(this),
         });
+
+        connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
+        connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
+        connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
+        connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
+        connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
+        connect(systemAPI, &SystemAPI::leftAction, appsAPI, &AppsAPI::leftHeld);
+        connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::homeHeld);
+
         auto bus = QDBusConnection::systemBus();
         for(auto api : apis){
             bus.unregisterObject(api.path);
@@ -118,7 +142,7 @@ public slots:
         if(!api.dependants->size()){
             qDebug() << "Registering " << api.path;
             api.instance->setEnabled(true);
-            apiAvailable(QDBusObjectPath(api.path));
+            emit apiAvailable(QDBusObjectPath(api.path));
         }
         api.dependants->append(message.service());
         return QDBusObjectPath(api.path);
@@ -134,7 +158,7 @@ public slots:
             qDebug() << "Unregistering " << api.path;
             api.instance->setEnabled(false);
             QDBusConnection::systemBus().unregisterObject(api.path, QDBusConnection::UnregisterNode);
-            apiUnavailable(QDBusObjectPath(api.path));
+            emit apiUnavailable(QDBusObjectPath(api.path));
         }
     };
     QVariantMap APIs(){
@@ -147,6 +171,10 @@ public slots:
         }
         return result;
     };
+
+    void startup(){
+        appsAPI->startup();
+    }
 
 
 signals:
@@ -173,7 +201,6 @@ private slots:
 
 private:
     QMap<QString, APIEntry> apis;
-    ButtonHandler* buttonHandler;
 };
 
 #endif // DBUSSERVICE_H

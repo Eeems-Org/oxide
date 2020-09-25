@@ -15,6 +15,7 @@
 #include "controller.h"
 #include "dbusservice_interface.h"
 #include "appsapi_interface.h"
+#include "systemapi_interface.h"
 
 QSet<QString> settings = { "columns", "fontSize", "sleepAfter" };
 QSet<QString> booleanSettings {"automaticSleep", "showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
@@ -172,10 +173,10 @@ QList<QObject*> Controller::getApps(){
     for(auto item : apps.applications()){
         auto path = item.value<QDBusObjectPath>().path();
         Application app(OXIDE_SERVICE, path, bus, this);
-        auto name = app.name();
-        if(name == "codes.eeems.oxide"){
+        if(app.hidden()){
             continue;
         }
+        auto name = app.name();
         auto appItem = getApplication(name);
         if(appItem == nullptr){
             qDebug() << name;
@@ -312,20 +313,14 @@ void Controller::suspend(){
     qDebug() << "Suspending...";
     auto bus = QDBusConnection::systemBus();
     General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("apps");
+    QDBusObjectPath path = api.requestAPI("system");
     if(path.path() == "/"){
-        qDebug() << "Unable to access apps API";
+        qDebug() << "Unable to access system API";
         system("systemctl suspend");
         return;
     }
-    Apps apps(OXIDE_SERVICE, path.path(), bus);
-    apps.suspend();
-}
-void Controller::killXochitl(){
-    if(system("systemctl is-active --quiet xochitl")){
-        qDebug() << "Killing xochtil";
-        system("systemctl stop xochtil");
-    }
+    System system(OXIDE_SERVICE, path.path(), bus);
+    system.suspend();
 }
 inline void updateUI(QObject* ui, const char* name, const QVariant& value){
     if(ui){
