@@ -37,9 +37,6 @@ AppsAPI::AppsAPI(QObject* parent)
         applications.insert(name, app);
     }
     settings.endArray();
-    if(!applications.size()){
-        // TODO load from draft config files
-    }
     if(!applications.contains("xochitl")){
         auto app = new Application(getPath("xochitl"), reinterpret_cast<QObject*>(this));
         app->setConfig(QVariantMap {
