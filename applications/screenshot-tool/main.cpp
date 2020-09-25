@@ -42,34 +42,14 @@ int main(int argc, char *argv[]){
     }
     General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, &app);
     qDebug() << "Requesting system API...";
-    auto reply = api.requestAPI("system");
-    reply.waitForFinished();
-    qDebug() << reply.isValid() << reply.value().path();
-    if(!reply.isValid()){
-        qDebug() << "Unable to communicate with dbus service";
-        if(reply.isError()){
-            qDebug() << reply.error();
-        }
-        return EXIT_FAILURE;
-    }
-    QDBusObjectPath path = reply;
+    QDBusObjectPath path = api.requestAPI("system");
     if(path.path() == "/"){
         qDebug() << "Unable to get system API";
         return EXIT_FAILURE;
     }
     System system(OXIDE_SERVICE, path.path(), bus, &app);
     qDebug() << "Requesting screen API...";
-    reply = api.requestAPI("screen");
-    qDebug() << "Waiting for reply...";
-    reply.waitForFinished();
-    if(!reply.isValid()){
-        qDebug() << "Unable to communicate with dbus service";
-        if(reply.isError()){
-            qDebug() << reply.error();
-        }
-        return EXIT_FAILURE;
-    }
-    path = reply;
+    path = api.requestAPI("screen");
     if(path.path() == "/"){
         qDebug() << "Unable to get screen API";
         return EXIT_FAILURE;
