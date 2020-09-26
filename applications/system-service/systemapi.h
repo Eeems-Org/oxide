@@ -30,7 +30,7 @@ struct Inhibitor {
     bool block;
     Inhibitor(Manager* systemd, QString what, QString who, QString why, bool block = false)
      : who(who), what(what), why(why), block(block) {
-        QDBusUnixFileDescriptor reply = systemd->Inhibit("sleep", "tarnish", "handle screen", "delay");
+        QDBusUnixFileDescriptor reply = systemd->Inhibit(what, who, why, block ? "block" : "delay");
         fd = reply.takeFileDescriptor();
     }
     void release(){
@@ -118,6 +118,7 @@ public slots:
     void inhibitSleep(QDBusMessage message){
         suspendTimer.stop();
         sleepInhibitors.append(message.service());
+        inhibitors.append(Inhibitor(systemd, "sleep:handle-suspend-key:idle", message.service(), "Application requested block", true));
     }
     void uninhibitSleep(QDBusMessage message);
     void inhibitPowerOff(QDBusMessage message){ powerOffInhibitors.append(message.service()); }
@@ -146,11 +147,11 @@ private:
     void inhibitSleep(){
         inhibitors.append(Inhibitor(systemd, "sleep", qApp->applicationName(), "Handle sleep screen"));
     }
-    void releaseSleepInhibitors(){
+    void releaseSleepInhibitors(bool block = false){
         QMutableListIterator<Inhibitor> i(inhibitors);
         while(i.hasNext()){
             auto inhibitor = i.next();
-            if(inhibitor.what == "sleep"){
+            if(inhibitor.what == "sleep" && inhibitor.block == block){
                 inhibitor.release();
             }
             if(inhibitor.released()){

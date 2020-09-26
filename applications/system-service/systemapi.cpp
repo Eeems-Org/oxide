@@ -72,6 +72,7 @@ void SystemAPI::uninhibitSleep(QDBusMessage message) {
     if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         qDebug() << "Suspend timer re-enabled";
         suspendTimer.start(m_autoSleep * 60 * 1000);
+        releaseSleepInhibitors(true);
     }
 }
 void SystemAPI::timeout(){
