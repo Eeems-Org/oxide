@@ -212,7 +212,7 @@ QList<QObject*> Controller::getApps(){
 AppItem* Controller::getApplication(QString name){
     for(auto app : applications){
         if(app->property("name").toString() == name){
-            return (AppItem*)app;
+            return reinterpret_cast<AppItem*>(app);
         }
     }
     return nullptr;
