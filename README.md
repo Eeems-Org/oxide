@@ -1,4 +1,5 @@
 
+[![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/Eeems/oxide.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Eeems/oxide/context:javascript)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/e22602d27686420e9a71e67cf8d049fd)](https://app.codacy.com/manual/Eeems/oxide?utm_source=github.com&utm_medium=referral&utm_content=Eeems/oxide&utm_campaign=Badge_Grade_Settings)
 [![Maintainability](https://api.codeclimate.com/v1/badges/db8574df9b0b8a1100bc/maintainability)](https://codeclimate.com/github/Eeems/oxide/maintainability)
 [![rm1](https://img.shields.io/badge/rM1-supported-green)](https://remarkable.com/store/remarkable)
