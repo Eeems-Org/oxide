@@ -83,7 +83,7 @@ public:
     Q_ENUM(State)
     enum BatteryState { BatteryUnknown, BatteryCharging, BatteryDischarging, BatteryNotPresent };
     Q_ENUM(BatteryState)
-    enum ChargerState { ChargerUnknown, ChargerConnected, ChargerNotConnected, ChargerNotPresent };
+    enum ChargerState { ChargerUnknown, ChargerConnected, ChargerNotConnected };
     Q_ENUM(ChargerState)
 
     int state(){ return m_state; }
@@ -289,19 +289,7 @@ private:
                 setChargerState(ChargerUnknown);
             }
             if(!m_chargerWarning){
-                qWarning() << "Can't find battery information";
-                m_chargerWarning = true;
-                emit chargerWarning();
-            }
-            return;
-        }
-        if(!chargerInt("present")){
-            if(m_chargerState != ChargerNotPresent){
-                qWarning() << "Charger is somehow not in the device?";
-                setChargerState(ChargerNotPresent);
-            }
-            if(!m_chargerWarning){
-                qWarning() << "Charger is somehow not in the device?";
+                qWarning() << "Can't find charger information";
                 m_chargerWarning = true;
                 emit chargerWarning();
             }
@@ -309,10 +297,8 @@ private:
         }
         bool connected = chargerInt("online");
         if(connected && m_chargerState != ChargerConnected){
-            systemAPI->stopSuspendTimer();
             setChargerState(ChargerConnected);
         }else if(!connected && m_chargerState != ChargerNotConnected){
-            systemAPI->startSuspendTimer();
             setChargerState(ChargerNotConnected);
         }
     }

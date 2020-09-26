@@ -103,6 +103,7 @@ public:
         connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
         connect(touchHandler, &DigitizerHandler::activity, systemAPI, &SystemAPI::activity);
         connect(wacomHandler, &DigitizerHandler::activity, systemAPI, &SystemAPI::activity);
+        connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
         connect(systemAPI, &SystemAPI::leftAction, appsAPI, &AppsAPI::leftHeld);
         connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::homeHeld);
 

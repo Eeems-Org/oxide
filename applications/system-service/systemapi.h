@@ -70,7 +70,7 @@ public:
         systemd = new Manager("org.freedesktop.login1", "/org/freedesktop/login1", QDBusConnection::systemBus(), this);
         // Handle Systemd signals
         connect(systemd, &Manager::PrepareForSleep, this, &SystemAPI::PrepareForSleep);
-        connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::suspend);
+        connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::timeout);
         m_autoSleep = settings.value("autoSleep", 1).toInt();
         if(m_autoSleep){
             suspendTimer.start(m_autoSleep * 60 * 1000);
@@ -93,37 +93,15 @@ public:
         qDebug() << "System API" << enabled;
     }
     int autoSleep(){ return m_autoSleep; }
-    void setAutoSleep(int autoSleep){
-        if(autoSleep < 0 || autoSleep > 10){
-            return;
-        }
-        m_autoSleep = autoSleep;
-        if(m_autoSleep && suspendTimer.isActive()){
-            suspendTimer.setInterval(m_autoSleep * 60 * 1000);
-        }
-        settings.setValue("autoSleep", autoSleep);
-        settings.sync();
-    }
+    void setAutoSleep(int autoSleep);
     bool sleepInhibited(){ return sleepInhibitors.length(); }
     bool powerOffInhibited(){ return powerOffInhibitors.length(); }
-    void uninhibitAll(QString name){
-        powerOffInhibitors.removeAll(name);
-        sleepInhibitors.removeAll(name);
-        if(!sleepInhibited() && m_autoSleep){
-            qDebug() << "Suspend timer re-enabled";
-            suspendTimer.start(m_autoSleep * 60 * 1000);
-        }
-    }
+    void uninhibitAll(QString name);
     void stopSuspendTimer(){
         qDebug() << "Suspend timer disabled";
         suspendTimer.stop();
     }
-    void startSuspendTimer(){
-        if(m_autoSleep){
-            qDebug() << "Suspend timer re-enabled";
-            suspendTimer.start(m_autoSleep * 60 * 1000);
-        }
-    }
+    void startSuspendTimer();
 public slots:
     void suspend(){
         if(!sleepInhibited()){
@@ -136,26 +114,12 @@ public slots:
             systemd->PowerOff(false);
         }
     }
-    void activity(){
-        if(!suspendTimer.isActive()){
-            return;
-        }
-        suspendTimer.stop();
-        if(m_autoSleep){
-            suspendTimer.start(m_autoSleep * 60 * 1000);
-        }
-    }
+    void activity();
     void inhibitSleep(QDBusMessage message){
         suspendTimer.stop();
         sleepInhibitors.append(message.service());
     }
-    void uninhibitSleep(QDBusMessage message) {
-        sleepInhibitors.removeAll(message.service());
-        if(!sleepInhibited() && m_autoSleep){
-            qDebug() << "Suspend timer re-enabled";
-            suspendTimer.start(m_autoSleep * 60 * 1000);
-        }
-    }
+    void uninhibitSleep(QDBusMessage message);
     void inhibitPowerOff(QDBusMessage message){ powerOffInhibitors.append(message.service()); }
     void uninhibitPowerOff(QDBusMessage message) { powerOffInhibitors.removeAll(message.service()); }
 
@@ -167,6 +131,7 @@ signals:
 
 private slots:
     void PrepareForSleep(bool suspending);
+    void timeout();
 
 private:
     Manager* systemd;
