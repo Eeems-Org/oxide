@@ -70,7 +70,7 @@ public:
         // Handle Systemd signals
         connect(systemd, &Manager::PrepareForSleep, this, &SystemAPI::PrepareForSleep);
         connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::suspend);
-        suspendTimer.setInterval(settings.value("autoSleep", 1000 * 60).toInt());
+        suspendTimer.setInterval(settings.value("autoSleep", 1).toInt() * 1000 * 60);
         inhibitSleep();
     }
     ~SystemAPI(){
@@ -85,12 +85,16 @@ public:
     void setEnabled(bool enabled){
         qDebug() << "System API" << enabled;
     }
-    int autoSleep(){ return suspendTimer.interval(); }
+    int autoSleep(){ return suspendTimer.interval() / (60 * 1000); }
     void setAutoSleep(int autoSleep){
-        if(autoSleep < 1000 * 60){
+        if(autoSleep < 1 || autoSleep > 10){
             return;
         }
-        suspendTimer.setInterval(autoSleep);
+        auto active = suspendTimer.isActive();
+        suspendTimer.setInterval(autoSleep * 60 * 1000);
+        if(!active){
+            suspendTimer.stop();
+        }
         settings.setValue("autoSleep", autoSleep);
         settings.sync();
     }
@@ -103,11 +107,13 @@ public:
             suspendTimer.start();
         }
     }
+    void stopSuspendTimer(){ suspendTimer.stop(); }
+    void startSuspendTimer(){ suspendTimer.start(); }
 public slots:
     void suspend(){
-        qDebug() << "Automatic suspend due to inactivity...";
         if(!sleepInhibited()){
-            systemd->Suspend(false);
+            qDebug() << "Automatic suspend due to inactivity...";
+//            systemd->Suspend(false);
         }
     }
     void powerOff() {
@@ -131,8 +137,6 @@ public slots:
     }
     void inhibitPowerOff(QDBusMessage message){ powerOffInhibitors.append(message.service()); }
     void uninhibitPowerOff(QDBusMessage message) { powerOffInhibitors.removeAll(message.service()); }
-    void stopSuspendTimer(){ suspendTimer.stop(); }
-    void startSuspendTimer(){ suspendTimer.start(); }
 
 signals:
     void leftAction();

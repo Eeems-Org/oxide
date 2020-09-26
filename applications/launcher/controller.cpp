@@ -17,7 +17,7 @@
 #include "appsapi_interface.h"
 #include "systemapi_interface.h"
 
-QSet<QString> settings = { "columns", "fontSize", "sleepAfter" };
+QSet<QString> settings = { "columns", "fontSize" };
 QSet<QString> booleanSettings {"automaticSleep", "showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
 QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
 QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root /.config" };
@@ -75,6 +75,16 @@ void Controller::loadSettings(){
         configFile->close();
     }
     qDebug() << "Finished parsing config file.";
+    auto bus = QDBusConnection::systemBus();
+    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+    QDBusObjectPath path = api.requestAPI("system");
+    if(path.path() != "/"){
+        System system(OXIDE_SERVICE, path.path(), bus);
+        auto sleepAfter = system.autoSleep();
+        if(sleepAfter != m_sleepAfter){
+            setSleepAfter(sleepAfter);
+        }
+    }
     if(root){
         qDebug() << "Updating UI with settings from config file...";
         // Populate settings in UI
@@ -158,6 +168,17 @@ void Controller::saveSettings(){
     configFile->resize(0);
     stream << QString::fromStdString(buffer.str());
     configFile->close();
+    auto bus = QDBusConnection::systemBus();
+    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+    QDBusObjectPath path = api.requestAPI("system");
+    if(path.path() != "/"){
+        System system(OXIDE_SERVICE, path.path(), bus);
+        system.setAutoSleep(m_sleepAfter);
+        auto sleepAfter = system.autoSleep();
+        if(sleepAfter != m_sleepAfter){
+            setSleepAfter(sleepAfter);
+        }
+    }
     qDebug() << "Done saving configuration.";
 }
 QList<QObject*> Controller::getApps(){
@@ -424,17 +445,9 @@ void Controller::setShowBatteryTemperature(bool state){
     }
 }
 void Controller::setSleepAfter(int sleepAfter){
-    m_sleepAfter= sleepAfter;
+    m_sleepAfter = sleepAfter;
     if(root != nullptr){
         qDebug() << "Sleep After: " << sleepAfter << " minutes";
-        auto bus = QDBusConnection::systemBus();
-        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-        QDBusObjectPath path = api.requestAPI("system");
-        if(path.path() != "/"){
-            System system(OXIDE_SERVICE, path.path(), bus);
-            system.setAutoSleep(sleepAfter);
-            sleepAfter = system.autoSleep();
-            emit sleepAfterChanged(sleepAfter);
-        }
+        emit sleepAfterChanged(m_sleepAfter);
     }
 }

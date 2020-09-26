@@ -15,6 +15,7 @@
 #include "wifiapi_interface.h"
 #include "network_interface.h"
 #include "bss_interface.h"
+#include "systemapi_interface.h"
 
 #define OXIDE_SERVICE "codes.eeems.oxide1"
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
@@ -107,7 +108,14 @@ public:
     };
     void setShowBatteryTemperature(bool);
     int sleepAfter() const {
-        return m_sleepAfter;
+        auto bus = QDBusConnection::systemBus();
+        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+        QDBusObjectPath path = api.requestAPI("system");
+        if(path.path() != "/"){
+            System system(OXIDE_SERVICE, path.path(), bus);
+            return system.autoSleep();
+        }
+        return 1;
     };
     void setSleepAfter(int);
     bool getPowerConnected(){ return m_powerConnected; }
@@ -442,10 +450,10 @@ private:
     bool m_automaticSleep = true;
     int m_columns = 6;
     int m_fontSize = 23;
+    int m_sleepAfter = 1;
     bool m_showWifiDb = false;
     bool m_showBatteryPercent = false;
     bool m_showBatteryTemperature = false;
-    int m_sleepAfter = 5;
     bool m_powerConnected = false;
 
     int wifiState = WifiUnknown;

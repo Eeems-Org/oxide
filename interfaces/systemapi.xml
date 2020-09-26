@@ -26,9 +26,5 @@
     </method>
     <method name="uninhibitPowerOff">
     </method>
-    <method name="stopSuspendTimer">
-    </method>
-    <method name="startSuspendTimer">
-    </method>
   </interface>
 </node>
