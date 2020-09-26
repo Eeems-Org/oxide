@@ -25,7 +25,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
         resumeApp->resume();
         buttonHandler->setEnabled(true);
         if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-            qDebug() << "Suspend timer re-enabled";
+            qDebug() << "Suspend timer re-enabled due to resume";
             suspendTimer.start(m_autoSleep * 60 * 1000);
         }
     }
@@ -44,14 +44,14 @@ void SystemAPI::setAutoSleep(int autoSleep){
 void SystemAPI::uninhibitAll(QString name){
     powerOffInhibitors.removeAll(name);
     sleepInhibitors.removeAll(name);
-    if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-        qDebug() << "Suspend timer re-enabled";
+    if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
+        qDebug() << "Suspend timer re-enabled due to uninhibit" << name;
         suspendTimer.start(m_autoSleep * 60 * 1000);
     }
 }
 void SystemAPI::startSuspendTimer(){
-    if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-        qDebug() << "Suspend timer re-enabled";
+    if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
+        qDebug() << "Suspend timer re-enabled due to start Suspend timer";
         suspendTimer.start(m_autoSleep * 60 * 1000);
     }
 }
@@ -60,7 +60,7 @@ void SystemAPI::activity(){
     suspendTimer.stop();
     if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         if(!active){
-            qDebug() << "Suspend timer re-enabled";
+            qDebug() << "Suspend timer re-enabled due to activity";
         }
         suspendTimer.start(m_autoSleep * 60 * 1000);
     }else if(active){
@@ -70,8 +70,10 @@ void SystemAPI::activity(){
 void SystemAPI::uninhibitSleep(QDBusMessage message) {
     sleepInhibitors.removeAll(message.service());
     if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-        qDebug() << "Suspend timer re-enabled";
-        suspendTimer.start(m_autoSleep * 60 * 1000);
+        if(!suspendTimer.isActive()){
+            qDebug() << "Suspend timer re-enabled due to uninhibit sleep" << message.service();
+            suspendTimer.start(m_autoSleep * 60 * 1000);
+        }
         releaseSleepInhibitors(true);
     }
 }
