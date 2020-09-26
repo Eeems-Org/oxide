@@ -73,8 +73,7 @@ public:
         connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::suspend);
         m_autoSleep = settings.value("autoSleep", 1).toInt();
         if(m_autoSleep){
-            suspendTimer.setInterval(m_autoSleep * 1000 * 60);
-            suspendTimer.start();
+            suspendTimer.start(m_autoSleep * 60 * 1000);
         }else{
             suspendTimer.stop();
         }
@@ -99,7 +98,7 @@ public:
             return;
         }
         m_autoSleep = autoSleep;
-        if(m_autoSleep){
+        if(m_autoSleep && suspendTimer.isActive()){
             suspendTimer.setInterval(m_autoSleep * 60 * 1000);
         }
         settings.setValue("autoSleep", autoSleep);
@@ -111,14 +110,18 @@ public:
         powerOffInhibitors.removeAll(name);
         sleepInhibitors.removeAll(name);
         if(!sleepInhibited() && m_autoSleep){
-            suspendTimer.start();
+            qDebug() << "Suspend timer re-enabled";
+            suspendTimer.start(m_autoSleep * 60 * 1000);
         }
     }
-    void stopSuspendTimer(){ suspendTimer.stop(); }
+    void stopSuspendTimer(){
+        qDebug() << "Suspend timer disabled";
+        suspendTimer.stop();
+    }
     void startSuspendTimer(){
         if(m_autoSleep){
-            suspendTimer.setInterval(m_autoSleep * 60 * 1000);
-            suspendTimer.start();
+            qDebug() << "Suspend timer re-enabled";
+            suspendTimer.start(m_autoSleep * 60 * 1000);
         }
     }
 public slots:
@@ -134,9 +137,12 @@ public slots:
         }
     }
     void activity(){
+        if(!suspendTimer.isActive()){
+            return;
+        }
         suspendTimer.stop();
         if(m_autoSleep){
-            suspendTimer.start();
+            suspendTimer.start(m_autoSleep * 60 * 1000);
         }
     }
     void inhibitSleep(QDBusMessage message){
@@ -146,7 +152,8 @@ public slots:
     void uninhibitSleep(QDBusMessage message) {
         sleepInhibitors.removeAll(message.service());
         if(!sleepInhibited() && m_autoSleep){
-            suspendTimer.start();
+            qDebug() << "Suspend timer re-enabled";
+            suspendTimer.start(m_autoSleep * 60 * 1000);
         }
     }
     void inhibitPowerOff(QDBusMessage message){ powerOffInhibitors.append(message.service()); }

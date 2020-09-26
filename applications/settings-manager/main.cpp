@@ -409,6 +409,9 @@ int main(int argc, char *argv[]){
         if(!reply.errorName().isEmpty()){
             return EXIT_FAILURE;
         }
+        if(apiName == "system" && (method == "inhibitSleep" || method == "inhibitPowerOff")){
+            return app.exec();
+        }
     }
     return EXIT_SUCCESS;
 }
