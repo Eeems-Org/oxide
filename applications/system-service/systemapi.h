@@ -62,7 +62,8 @@ public:
        suspendTimer(this),
        settings(this),
        sleepInhibitors(),
-       powerOffInhibitors() {
+       powerOffInhibitors(),
+       m_autoSleep(0) {
         settings.sync();
         singleton(this);
         this->resumeApp = nullptr;
@@ -70,7 +71,14 @@ public:
         // Handle Systemd signals
         connect(systemd, &Manager::PrepareForSleep, this, &SystemAPI::PrepareForSleep);
         connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::suspend);
-        suspendTimer.setInterval(settings.value("autoSleep", 1).toInt() * 1000 * 60);
+        m_autoSleep = settings.value("autoSleep", 1).toInt();
+        if(m_autoSleep){
+            suspendTimer.setInterval(m_autoSleep * 1000 * 60);
+            suspendTimer.start();
+        }else{
+            suspendTimer.stop();
+        }
+        // Ask Systemd to tell us nicely when we are about to suspend or resume
         inhibitSleep();
     }
     ~SystemAPI(){
@@ -85,15 +93,14 @@ public:
     void setEnabled(bool enabled){
         qDebug() << "System API" << enabled;
     }
-    int autoSleep(){ return suspendTimer.interval() / (60 * 1000); }
+    int autoSleep(){ return m_autoSleep; }
     void setAutoSleep(int autoSleep){
-        if(autoSleep < 1 || autoSleep > 10){
+        if(autoSleep < 0 || autoSleep > 10){
             return;
         }
-        auto active = suspendTimer.isActive();
-        suspendTimer.setInterval(autoSleep * 60 * 1000);
-        if(!active){
-            suspendTimer.stop();
+        m_autoSleep = autoSleep;
+        if(m_autoSleep){
+            suspendTimer.setInterval(m_autoSleep * 60 * 1000);
         }
         settings.setValue("autoSleep", autoSleep);
         settings.sync();
@@ -103,17 +110,22 @@ public:
     void uninhibitAll(QString name){
         powerOffInhibitors.removeAll(name);
         sleepInhibitors.removeAll(name);
-        if(!sleepInhibited()){
+        if(!sleepInhibited() && m_autoSleep){
             suspendTimer.start();
         }
     }
     void stopSuspendTimer(){ suspendTimer.stop(); }
-    void startSuspendTimer(){ suspendTimer.start(); }
+    void startSuspendTimer(){
+        if(m_autoSleep){
+            suspendTimer.setInterval(m_autoSleep * 60 * 1000);
+            suspendTimer.start();
+        }
+    }
 public slots:
     void suspend(){
         if(!sleepInhibited()){
             qDebug() << "Automatic suspend due to inactivity...";
-//            systemd->Suspend(false);
+            systemd->Suspend(false);
         }
     }
     void powerOff() {
@@ -123,7 +135,9 @@ public slots:
     }
     void activity(){
         suspendTimer.stop();
-        suspendTimer.start();
+        if(m_autoSleep){
+            suspendTimer.start();
+        }
     }
     void inhibitSleep(QDBusMessage message){
         suspendTimer.stop();
@@ -131,7 +145,7 @@ public slots:
     }
     void uninhibitSleep(QDBusMessage message) {
         sleepInhibitors.removeAll(message.service());
-        if(!sleepInhibited()){
+        if(!sleepInhibited() && m_autoSleep){
             suspendTimer.start();
         }
     }
@@ -155,6 +169,7 @@ private:
     QSettings settings;
     QStringList sleepInhibitors;
     QStringList powerOffInhibitors;
+    int m_autoSleep;
 
     void inhibitSleep(){
         inhibitors.append(Inhibitor(systemd, "sleep", qApp->applicationName(), "Handle sleep screen"));

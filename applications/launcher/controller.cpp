@@ -18,7 +18,7 @@
 #include "systemapi_interface.h"
 
 QSet<QString> settings = { "columns", "fontSize" };
-QSet<QString> booleanSettings {"automaticSleep", "showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
+QSet<QString> booleanSettings {"showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
 QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
 QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root /.config" };
 
@@ -81,7 +81,11 @@ void Controller::loadSettings(){
     if(path.path() != "/"){
         System system(OXIDE_SERVICE, path.path(), bus);
         auto sleepAfter = system.autoSleep();
-        if(sleepAfter != m_sleepAfter){
+        bool autoSleep = sleepAfter;
+        if(m_automaticSleep != autoSleep){
+            setAutomaticSleep(autoSleep);
+        }
+        if(autoSleep && sleepAfter != m_sleepAfter){
             setSleepAfter(sleepAfter);
         }
     }
@@ -173,10 +177,14 @@ void Controller::saveSettings(){
     QDBusObjectPath path = api.requestAPI("system");
     if(path.path() != "/"){
         System system(OXIDE_SERVICE, path.path(), bus);
-        system.setAutoSleep(m_sleepAfter);
-        auto sleepAfter = system.autoSleep();
-        if(sleepAfter != m_sleepAfter){
-            setSleepAfter(sleepAfter);
+        if(!m_automaticSleep){
+            system.setAutoSleep(0);
+        }else{
+            system.setAutoSleep(m_sleepAfter);
+            auto sleepAfter = system.autoSleep();
+            if(sleepAfter != m_sleepAfter){
+                setSleepAfter(sleepAfter);
+            }
         }
     }
     qDebug() << "Done saving configuration.";
@@ -390,18 +398,10 @@ void Controller::updateUIElements(){
 void Controller::setAutomaticSleep(bool state){
     m_automaticSleep = state;
     if(root != nullptr){
-        auto bus = QDBusConnection::systemBus();
-        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-        QDBusObjectPath path = api.requestAPI("system");
-        if(path.path() != "/"){
-            System system(OXIDE_SERVICE, path.path(), bus);
-            if(state){
-                qDebug() << "Enabling automatic sleep";
-                system.uninhibitSleep();
-            }else{
-                qDebug() << "Disabling automatic sleep";
-                system.inhibitSleep();
-            }
+        if(state){
+            qDebug() << "Enabling automatic sleep";
+        }else{
+            qDebug() << "Disabling automatic sleep";
         }
         emit automaticSleepChanged(state);
     }
