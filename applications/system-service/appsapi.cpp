@@ -4,7 +4,7 @@ AppsAPI::AppsAPI(QObject* parent)
 : APIBase(parent),
   m_enabled(false),
   applications(),
-  settings(reinterpret_cast<QObject*>(this)),
+  settings(this),
   m_startupApplication("/"),
   m_sleeping(false) {
     singleton(this);

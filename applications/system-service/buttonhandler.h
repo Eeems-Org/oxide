@@ -23,9 +23,8 @@
 #include <sys/ioctl.h>
 #include <cstdlib>
 
-#include "fb2png.h"
-#include "mxcfb.h"
 #include "inputmanager.h"
+#include "event_device.h"
 
 using namespace std;
 
@@ -46,18 +45,7 @@ struct PressRecord {
     PressRecord() : PressRecord("Unknown", Qt::Key_unknown){}
 };
 
-struct event_device {
-    string device;
-    int fd;
-    event_device(string path, int flags){
-        device = path;
-        fd = open(path.c_str(), flags);
-    }
-};
-
-// const event_device wacom("/dev/input/event0", O_WRONLY);
 const event_device buttons("/dev/input/event2", O_RDWR);
-//const event_device touchScreen("/dev/input/event1", O_WRONLY);
 
 class ButtonHandler : public QThread {
     Q_OBJECT
@@ -68,7 +56,7 @@ public:
     static vector<std::string> split_string_by_newline(const std::string& str);
     static int is_uint(string input);
 
-    ButtonHandler() : QThread(), inputManager(), filebuf(buttons.fd, ios::in), stream(&filebuf), pressed(), timer(this), m_enabled(true) {
+    ButtonHandler() : QThread(), filebuf(buttons.fd, ios::in), stream(&filebuf), pressed(), timer(this), m_enabled(true) {
         timer.setInterval(100);
         timer.setSingleShot(false);
         connect(&timer, &QTimer::timeout, this, &ButtonHandler::timeout);
@@ -150,10 +138,10 @@ signals:
     void rightHeld();
     void powerHeld();
     void powerPress();
+    void activity();
 
 protected:
     void run();
-    InputManager inputManager;
     __gnu_cxx::stdio_filebuf<char> filebuf;
     istream stream;
     QMap<Qt::Key, QElapsedTimer> pressed;

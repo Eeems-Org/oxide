@@ -18,6 +18,7 @@
 #include "systemapi.h"
 #include "screenapi.h"
 #include "buttonhandler.h"
+#include "digitizerhandler.h"
 
 #define dbusService DBusService::singleton()
 
@@ -68,11 +69,6 @@ public:
         delete singleton();
     }
     DBusService() : apis(){
-        apis.insert("power", APIEntry{
-            .path = QString(OXIDE_SERVICE_PATH) + "/power",
-            .dependants = new QStringList(),
-            .instance = new PowerAPI(this),
-        });
         apis.insert("wifi", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
             .dependants = new QStringList(),
@@ -82,6 +78,11 @@ public:
             .path = QString(OXIDE_SERVICE_PATH) + "/system",
             .dependants = new QStringList(),
             .instance = new SystemAPI(this),
+        });
+        apis.insert("power", APIEntry{
+            .path = QString(OXIDE_SERVICE_PATH) + "/power",
+            .dependants = new QStringList(),
+            .instance = new PowerAPI(this),
         });
         apis.insert("screen", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/screen",
@@ -99,6 +100,9 @@ public:
         connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
         connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
         connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
+        connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
+        connect(touchHandler, &DigitizerHandler::activity, systemAPI, &SystemAPI::activity);
+        connect(wacomHandler, &DigitizerHandler::activity, systemAPI, &SystemAPI::activity);
         connect(systemAPI, &SystemAPI::leftAction, appsAPI, &AppsAPI::leftHeld);
         connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::homeHeld);
 
@@ -196,6 +200,7 @@ private slots:
                     apiUnavailable(QDBusObjectPath(api.path));
                 }
             }
+            systemAPI->uninhibitAll(name);
         }
     }
 

@@ -307,7 +307,16 @@ void Controller::importDraftApps(){
 }
 void Controller::powerOff(){
     qDebug() << "Powering off...";
-    system("systemctl poweroff");
+    auto bus = QDBusConnection::systemBus();
+    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+    QDBusObjectPath path = api.requestAPI("system");
+    if(path.path() == "/"){
+        qDebug() << "Unable to access system API";
+        system("systemctl poweroff");
+        return;
+    }
+    System system(OXIDE_SERVICE, path.path(), bus);
+    system.powerOff();
 }
 void Controller::suspend(){
     qDebug() << "Suspending...";
@@ -357,21 +366,21 @@ void Controller::updateUIElements(){
         }
     }
 }
-void Controller::resetInactiveTimer(){
-    if(filter->timer->isActive()){
-        filter->timer->stop();
-        filter->timer->start();
-    }
-}
 void Controller::setAutomaticSleep(bool state){
     m_automaticSleep = state;
     if(root != nullptr){
-        if(state){
-            qDebug() << "Enabling automatic sleep";
-            filter->timer->start();
-        }else{
-            qDebug() << "Disabling automatic sleep";
-            filter->timer->stop();
+        auto bus = QDBusConnection::systemBus();
+        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+        QDBusObjectPath path = api.requestAPI("system");
+        if(path.path() != "/"){
+            System system(OXIDE_SERVICE, path.path(), bus);
+            if(state){
+                qDebug() << "Enabling automatic sleep";
+                system.uninhibitSleep();
+            }else{
+                qDebug() << "Disabling automatic sleep";
+                system.inhibitSleep();
+            }
         }
         emit automaticSleepChanged(state);
     }
@@ -418,7 +427,14 @@ void Controller::setSleepAfter(int sleepAfter){
     m_sleepAfter= sleepAfter;
     if(root != nullptr){
         qDebug() << "Sleep After: " << sleepAfter << " minutes";
-        filter->timer->setInterval(sleepAfter * 60 * 1000);
-        emit sleepAfterChanged(sleepAfter);
+        auto bus = QDBusConnection::systemBus();
+        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+        QDBusObjectPath path = api.requestAPI("system");
+        if(path.path() != "/"){
+            System system(OXIDE_SERVICE, path.path(), bus);
+            system.setAutoSleep(sleepAfter);
+            sleepAfter = system.autoSleep();
+            emit sleepAfterChanged(sleepAfter);
+        }
     }
 }

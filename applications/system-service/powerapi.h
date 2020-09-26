@@ -10,6 +10,7 @@
 
 #include "apibase.h"
 #include "sysobject.h"
+#include "systemapi.h"
 
 #define powerAPI PowerAPI::singleton()
 
@@ -308,8 +309,10 @@ private:
         }
         bool connected = chargerInt("online");
         if(connected && m_chargerState != ChargerConnected){
+            systemAPI->stopSuspendTimer();
             setChargerState(ChargerConnected);
         }else if(!connected && m_chargerState != ChargerNotConnected){
+            systemAPI->startSuspendTimer();
             setChargerState(ChargerNotConnected);
         }
     }

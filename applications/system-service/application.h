@@ -24,9 +24,9 @@
 #include <unistd.h>
 
 #include "dbussettings.h"
-#include "inputmanager.h"
 #include "mxcfb.h"
 #include "screenapi.h"
+#include "inputmanager.h"
 
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
@@ -253,10 +253,6 @@ private:
     QByteArray* screenCapture = nullptr;
     size_t screenCaptureSize;
     QElapsedTimer timer;
-    InputManager* inputManager(){
-        static InputManager* instance = new InputManager();
-        return instance;
-    }
     void delayUpTo(int milliseconds){
         timer.invalidate();
         timer.start();

@@ -80,7 +80,7 @@ void Application::resume(){
         case AppsAPI::Background:
         case AppsAPI::Backgroundable:
             if(state() == Paused){
-                inputManager()->clear_touch_buffer(touchScreen.fd);
+                inputManager->clear_touch_buffer(touchScreen.fd);
                 kill(m_process->processId(), SIGCONT);
             }
             appsAPI->connectSignals(this, 1);
@@ -95,7 +95,7 @@ void Application::resume(){
             break;
         case AppsAPI::Foreground:
         default:
-            inputManager()->clear_touch_buffer(touchScreen.fd);
+            inputManager->clear_touch_buffer(touchScreen.fd);
             kill(m_process->processId(), SIGCONT);
     }
     emit resumed();

@@ -390,12 +390,6 @@ ApplicationWindow {
                 }
             },
             Transition {
-                from: "resumed"; to: "*"
-                SequentialAnimation {
-                    ScriptAction {script: controller.resetInactiveTimer() }
-                }
-            },
-            Transition {
                 from: "*"; to: "settings"
                 SequentialAnimation {
                     ScriptAction { script: stateController.previousState = "settings" }

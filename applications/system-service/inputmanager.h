@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <linux/input.h>
 
+#define inputManager InputManager::singleton()
+
 using namespace std;
 
 inline input_event createEvent(ushort type, ushort code, int value){
@@ -21,6 +23,13 @@ inline input_event createEvent(ushort type, ushort code, int value){
 
 class InputManager {
 public:
+    static InputManager* singleton(){
+        static InputManager* instance;
+        if(instance == nullptr){
+            instance = new InputManager();
+        }
+        return instance;
+    }
     input_event *touch_flood;
     InputManager() {
         this->touch_flood = build_touch_flood();

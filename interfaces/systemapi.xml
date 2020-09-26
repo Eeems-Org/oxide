@@ -1,6 +1,9 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
   <interface name="codes.eeems.oxide1.System">
+    <property name="autoSleep" type="i" access="readwrite"/>
+    <property name="sleepInhibited" type="b" access="read"/>
+    <property name="powerOffInhibited" type="b" access="read"/>
     <signal name="leftAction">
     </signal>
     <signal name="homeAction">
@@ -12,6 +15,20 @@
     <method name="suspend">
     </method>
     <method name="powerOff">
+    </method>
+    <method name="activity">
+    </method>
+    <method name="inhibitSleep">
+    </method>
+    <method name="uninhibitSleep">
+    </method>
+    <method name="inhibitPowerOff">
+    </method>
+    <method name="uninhibitPowerOff">
+    </method>
+    <method name="stopSuspendTimer">
+    </method>
+    <method name="startSuspendTimer">
     </method>
   </interface>
 </node>

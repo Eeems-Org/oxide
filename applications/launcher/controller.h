@@ -82,7 +82,6 @@ public:
     Q_INVOKABLE void powerOff();
     Q_INVOKABLE void suspend();
     void updateBatteryLevel();
-    Q_INVOKABLE void resetInactiveTimer();
     bool automaticSleep() const {
         return m_automaticSleep;
     };

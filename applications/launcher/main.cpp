@@ -90,15 +90,6 @@ int main(int argc, char *argv[]){
     // Update UI
     clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
     controller->updateUIElements();
-    // Setup suspend timer
-    filter.timer = new QTimer(root);
-    filter.timer->setInterval(5 * 60 * 1000); // 5 minutes
-    QObject::connect(filter.timer, &QTimer::timeout, [stateController, controller](){
-        if(!controller->getPowerConnected()){
-            qDebug() << "Suspending due to inactivity...";
-            stateController->setProperty("state", QString("suspended"));
-        }
-    });
     // Setup clock
     QTimer* clockTimer = new QTimer(root);
     auto currentTime = QTime::currentTime();
@@ -111,15 +102,8 @@ int main(int argc, char *argv[]){
         }
     });
     clockTimer ->start();
-    if(controller->automaticSleep()){
-        filter.timer->start();
-    }
-    shutdown_handler = [&filter, &controller](int signum) {
+    shutdown_handler = [&controller](int signum) {
         Q_UNUSED(signum)
-        if(controller->automaticSleep()){
-            filter.timer->stop();
-            filter.timer->start();
-        }
         QTimer::singleShot(300, [=](){
             emit controller->reload();
         });

@@ -1,59 +1,16 @@
 #include "buttonhandler.h"
 #include "dbusservice.h"
 
-//#define DEBUG
-
-int lock_device(const event_device& evdev){
-    qDebug() << "locking " << evdev.device.c_str();
-    int result = ioctl(evdev.fd, EVIOCGRAB, 1);
-    if(result == EBUSY){
-        qDebug() << "Device is busy";
-    }else if(result != 0){
-        qDebug() << "Unknown error: " << result;
-    }else{
-        qDebug() << evdev.device.c_str() << " locked";
-    }
-    return result;
-}
-int unlock_device(const event_device& evdev){
-    int result = ioctl(evdev.fd, EVIOCGRAB, 0);
-    if(result){
-        qDebug() << "Failed to unlock " << evdev.device.c_str() << ": " << result;
-    }else{
-        qDebug() << "Unlocked " << evdev.device.c_str();
-    }
-    return result;
-}
-void exit_handler(){
+void button_exit_handler(){
     // Release lock
     unlock_device(buttons);
     close(buttons.fd);
-//    close(touchScreen.fd);
-    // close(wacom.fd);
 }
-void write_event(const event_device& evdev, input_event ie){
-#ifdef DEBUG
-    qDebug() << "WRITE: " << ie.type << ", " << ie.code << ", " << ie.value << " to " << evdev.device.c_str();
-#endif
-    write(evdev.fd, &ie,sizeof(ie));
-}
+
 void flush_stream(istream* stream){
     input_event ie;
     streamsize sie = static_cast<streamsize>(sizeof(struct input_event));
     stream->read((char*)&ie, sie);
-}
-void ev_syn(const event_device& evdev){
-    struct input_event key_input_event;
-    key_input_event.type = EV_SYN;
-    key_input_event.code = SYN_REPORT;
-    write_event(evdev, key_input_event);
-}
-void ev_key(const event_device& evdev, int code, int value = 0){
-    struct input_event key_input_event;
-    key_input_event.type = EV_KEY;
-    key_input_event.code = code;
-    key_input_event.value = value;
-    write_event(evdev, key_input_event);
 }
 void press_button(const event_device& evdev, int code, istream* stream){
     qDebug() << "inject button " << code;
@@ -79,8 +36,8 @@ ButtonHandler* ButtonHandler::init(){
         qDebug() << "Failed to open event device: " << buttons.device.c_str();
         throw QException();
     }
-    if(atexit(exit_handler)){
-        exit_handler();
+    if(atexit(button_exit_handler)){
+        button_exit_handler();
         throw QException();
     }
     instance = new ButtonHandler();
@@ -111,6 +68,7 @@ void ButtonHandler::run(){
         // TODO - Properly pass through non-button presses
         // Read for non-zero event codes.
         if(ie.code != 0){
+            emit activity();
             // Toggle the button state.
             map[ie.code].pressed = !map[ie.code].pressed;
             if(!map[ie.code].pressed && map[ie.code].name == "Unknown"){

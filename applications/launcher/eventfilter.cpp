@@ -11,7 +11,7 @@
 #define WACOM_Y_SCALAR (float(DISPLAYHEIGHT) / float(DISPLAYWIDTH))
 //#define DEBUG_EVENTS
 
-EventFilter::EventFilter(QObject *parent) : QObject(parent), timer(nullptr), root(nullptr){}
+EventFilter::EventFilter(QObject *parent) : QObject(parent), root(nullptr){}
 
 QPointF swap(QPointF pointF){
     return QPointF(pointF.y(), pointF.x());
@@ -105,20 +105,7 @@ void postEvent(QEvent::Type type, QEvent* ev, QQuickItem* root){
 bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
     auto type = ev->type();
     bool filtered = QObject::eventFilter(obj, ev);
-    if(
-      type == QEvent::KeyPress
-      || type == QEvent::MouseMove
-      || type == QEvent::TabletMove
-      || type == QEvent::TouchBegin
-      || type == QEvent::TouchUpdate
-      || type == QEvent::TouchEnd
-      || type == QEvent::TouchCancel
-    ){
-        if(timer != nullptr && timer->isActive()){
-            timer->stop();
-            timer->start();
-        }
-    }else if(!filtered){
+    if(!filtered){
         if(type == QEvent::TabletPress){
 #ifdef DEBUG_EVENTS
             qDebug() << ev;
