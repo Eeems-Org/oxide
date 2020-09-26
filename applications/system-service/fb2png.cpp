@@ -246,11 +246,6 @@ int fb2png_exec(char *program, char *fbdevice, char *pngname)
     return 0;
 }
 
-
-int fb2png_defaults(){
-    return fb2png_exec((char*)"fb2png", (char*)"/dev/fb0", (char*)"/tmp/fb.png");
-}
-
 int fb2png(int argc, char *argv[]){
     char *program = argv[0];
     char *fbdevice = (char*)"/dev/fb0";
