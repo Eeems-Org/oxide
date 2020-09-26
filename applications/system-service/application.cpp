@@ -149,7 +149,7 @@ int Application::state(){
 void Application::setConfig(const QVariantMap& config){
     m_config = config;
     if(type() == AppsAPI::Foreground){
-        setValue("config", false);
+        setAutoStart(false);
     }
     m_process->setProgram(bin());
 }

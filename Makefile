@@ -49,6 +49,7 @@ release: clean build
 	INSTALL_ROOT=../../release $(MAKE) -C .build/process-manager install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/system-service install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/settings-manager install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/screenshot-tool install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/launcher install
 
 build: tarnish erode rot oxide
@@ -71,7 +72,13 @@ rot: tarnish
 	cd .build/settings-manager && qmake rot.pro
 	$(MAKE) -C .build/settings-manager all
 
-oxide: tarnish erode
+fret: tarnish
+	mkdir -p .build/screenshot-tool
+	cp -r applications/screenshot-tool/* .build/screenshot-tool
+	cd .build/screenshot-tool && qmake fret.pro
+	$(MAKE) -C .build/screenshot-tool all
+
+oxide: tarnish erode fret
 	mkdir -p .build/launcher
 	cp -r applications/launcher/* .build/launcher
 	cd .build/launcher && qmake oxide.pro
