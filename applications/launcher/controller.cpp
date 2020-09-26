@@ -17,7 +17,7 @@
 #include "appsapi_interface.h"
 #include "systemapi_interface.h"
 
-QSet<QString> settings = { "columns", "fontSize" };
+QSet<QString> settings = { "columns", "fontSize", "autoStartApplication" };
 QSet<QString> booleanSettings {"showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
 QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
 QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root /.config" };
@@ -64,11 +64,11 @@ void Controller::loadSettings(){
                     auto value = rhs.toLower();
                     auto boolValue = value == "true" || value == "t" || value == "y" || value == "yes" || value == "1";
                     setProperty(property.c_str(), boolValue);
-                    qDebug() << "  " << property.c_str() << ": " << boolValue;
+                    qDebug() << "  " << (property + ":").c_str() << boolValue;
                 }else if(settings.contains(lhs)){
                     auto property = lhs.toStdString();
                     setProperty(property.c_str(), rhs);
-                    qDebug() << "  " << property.c_str() << ": " << rhs.toStdString().c_str();
+                    qDebug() << "  " << (property + ":").c_str() << rhs.toStdString().c_str();
                 }
             }
         }
@@ -156,7 +156,7 @@ void Controller::saveSettings(){
                 items.remove(lhs);
             }
             auto value = rhs.toStdString();
-            qDebug() <<  " " << propertyName.c_str() << ": " << value.c_str();
+            qDebug() <<  " " << (propertyName + ":").c_str() << value.c_str();
             buffer << propertyName << "=" << value << std::endl;
         }
     }else if (!configFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
@@ -166,7 +166,7 @@ void Controller::saveSettings(){
     for(QString item : items){
         auto propertyName = item.toStdString();
         auto value = property(item.toStdString().c_str()).toString().toStdString();
-        qDebug() <<  " " << propertyName.c_str() << ": " << value.c_str();
+        qDebug() <<  " " << (propertyName + ":").c_str() << value.c_str();
         buffer << propertyName << "=" << value << std::endl;
     }
     configFile->resize(0);
@@ -237,6 +237,11 @@ QList<QObject*> Controller::getApps(){
         return a->property("name") < b->property("name");
     });
     return applications;
+}
+void Controller::setAutoStartApplication(QString autoStartApplication){
+    m_autoStartApplication = autoStartApplication;
+    emit autoStartApplicationChanged(autoStartApplication);
+    saveSettings();
 }
 AppItem* Controller::getApplication(QString name){
     for(auto app : applications){

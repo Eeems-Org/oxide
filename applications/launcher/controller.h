@@ -39,18 +39,36 @@ class Controller : public QObject
     Q_PROPERTY(int sleepAfter MEMBER m_sleepAfter WRITE setSleepAfter NOTIFY sleepAfterChanged);
     Q_PROPERTY(WifiNetworkList* networks MEMBER networks READ getNetworks NOTIFY networksChanged)
     Q_PROPERTY(bool wifiOn MEMBER m_wifion READ wifiOn NOTIFY wifiOnChanged)
+    Q_PROPERTY(QString autoStartApplication READ autoStartApplication WRITE setAutoStartApplication NOTIFY autoStartApplicationChanged)
 public:
     static std::string exec(const char* cmd);
     EventFilter* filter;
     QObject* stateController;
     QObject* root = nullptr;
-    explicit Controller(QObject* parent = 0) : QObject(parent), m_wifion(false), wifi("/sys/class/net/wlan0"), inputManager(), applications(){
+    explicit Controller(QObject* parent = 0)
+    : QObject(parent),
+      m_wifion(false),
+      wifi("/sys/class/net/wlan0"),
+      inputManager(),
+      applications() {
         networks = new WifiNetworkList();
         uiTimer = new QTimer(this);
         uiTimer->setSingleShot(false);
         uiTimer->setInterval(3 * 1000); // 3 seconds
         connect(uiTimer, &QTimer::timeout, this, QOverload<>::of(&Controller::updateUIElements));
         uiTimer->start();
+    }
+    Q_INVOKABLE void startup(){
+        if(m_autoStartApplication.isEmpty()){
+            qDebug() << "No auto start application";
+            return;
+        }
+        auto app = getApplication(m_autoStartApplication);
+        if(app == nullptr){
+            qDebug() << "Unable to find auto start application";
+            return;
+        }
+        app->execute();
     }
     Q_INVOKABLE bool turnOnWifi(){
         if(!wifiApi->enable()){
@@ -118,6 +136,8 @@ public:
         return 1;
     };
     void setSleepAfter(int);
+    QString autoStartApplication() { return m_autoStartApplication; }
+    void setAutoStartApplication(QString autoStartApplication);
     bool getPowerConnected(){ return m_powerConnected; }
     WifiNetworkList* getNetworks(){ return networks; }
 
@@ -169,6 +189,7 @@ signals:
     void sleepAfterChanged(int);
     void networksChanged(WifiNetworkList*);
     void wifiOnChanged(bool);
+    void autoStartApplicationChanged(QString);
 
 public slots:
     void updateUIElements();
@@ -454,8 +475,9 @@ private:
     bool m_showWifiDb = false;
     bool m_showBatteryPercent = false;
     bool m_showBatteryTemperature = false;
-    bool m_powerConnected = false;
+    QString m_autoStartApplication = "";
 
+    bool m_powerConnected = false;
     int wifiState = WifiUnknown;
     int wifiLink = 0;
     int wifiLevel = 0;

@@ -44,7 +44,8 @@ clean:
 	rm -rf .build
 	rm -rf release
 
-release: clean build
+release: clean
+	$(MAKE) build
 	mkdir -p release
 	INSTALL_ROOT=../../release $(MAKE) -C .build/process-manager install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/system-service install

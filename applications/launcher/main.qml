@@ -13,7 +13,11 @@ ApplicationWindow {
     title: qsTr("Oxide")
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
-    Component.onCompleted: stateController.state = "loaded"
+    Component.onCompleted:{
+        stateController.state = "loaded"
+        controller.startup();
+        appsView.model = controller.getApps();
+    }
     Connections {
         target: controller
         onReload: appsView.model = controller.getApps()
@@ -25,7 +29,6 @@ ApplicationWindow {
         Label {
             objectName: "clock"
             color: "white"
-            visible: !suspendMessage.visible
             anchors.centerIn: parent
         }
         RowLayout {
@@ -257,7 +260,7 @@ ApplicationWindow {
             width: window.width > (itemImage.width + itemContent.width + (itemInfo.textPadding * 2))
                    ? (itemImage.width + itemContent.width + (itemInfo.textPadding * 2) + itemCloseButton.width)
                    : window.width - 10
-            height: itemContent.height
+            height: itemContent.height + itemAutoStartButton.height
             contentItem: Item {
                 anchors.fill: parent
                 Item {
@@ -293,12 +296,37 @@ ApplicationWindow {
                     }
                 }
                 Label {
+                    id: itemAutoStartButton
+                    visible: !!itemInfo.model
+                    text: !!itemInfo.model && controller.autoStartApplication !== itemInfo.model.name
+                          ? "Start this application on boot"
+                          : "Don't start this application on boot"
+                    anchors.bottom: parent.bottom
+                    anchors.right: parent.right
+                    padding: 5
+                    background: Rectangle {
+                        border.color: "black"
+                        border.width: 1
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if(!itemInfo.model){
+                                return
+                            }
+                            var name = itemInfo.model.name
+                            controller.autoStartApplication = controller.autoStartApplication !== name ? name : "";
+
+                        }
+                    }
+                }
+                Label {
                     id: itemCloseButton
                     visible: !!(itemInfo.model && itemInfo.model.running)
                     text: "Kill"
-                    anchors.right: parent.right
-                    anchors.top: parent.top
                     padding: 5
+                    anchors.top: parent.top
+                    anchors.right: parent.right
                     background: Rectangle {
                         border.color: "black"
                         border.width: 1
@@ -355,13 +383,6 @@ ApplicationWindow {
             State { name: "resumed" }
         ]
         transitions: [
-            Transition {
-                from: "loaded"; to: "loading"
-                SequentialAnimation {
-                    PauseAnimation { duration: 500 }
-                    PropertyAction { target: stateController; property: "state"; value: "loaded" }
-                }
-            },
             Transition {
                 from: "loaded"; to: "suspended"
                 SequentialAnimation {
