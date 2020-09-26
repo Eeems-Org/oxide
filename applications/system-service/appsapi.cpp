@@ -20,7 +20,7 @@ AppsAPI::AppsAPI(QObject* parent)
     for(int i = 0; i < size; ++i){
         settings.setArrayIndex(i);
         auto name = settings.value("name").toString();
-        auto displayName = settings.value("displayname", name).toString();
+        auto displayName = settings.value("displayName", name).toString();
         auto app = new Application(getPath(name), reinterpret_cast<QObject*>(this));
         app->setConfig(QVariantMap {
             {"name", name},

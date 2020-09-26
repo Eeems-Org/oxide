@@ -135,17 +135,6 @@ ApplicationWindow {
                 }
             }
         }
-        Rectangle {
-            id: suspendMessage
-            color: "black"
-            anchors.fill: parent
-            visible: false
-            Label {
-                anchors.centerIn: parent
-                color: "white"
-                text: "Suspended..."
-            }
-        }
     }
     background: Rectangle { color: "white" }
     contentData: [
@@ -377,7 +366,6 @@ ApplicationWindow {
                 from: "loaded"; to: "suspended"
                 SequentialAnimation {
                     PropertyAction { target: stateController; property: "previousState"; value: "loaded" }
-                    PropertyAction { target: suspendMessage; property: "visible"; value: true }
                     ScriptAction { script: sleepTimer.start() }
                 }
             },
@@ -385,7 +373,6 @@ ApplicationWindow {
                 from: "settings"; to: "suspended"
                 SequentialAnimation {
                     PropertyAction { target: stateController; property: "previousState"; value: "settings" }
-                    PropertyAction { target: suspendMessage; property: "visible"; value: true }
                     ScriptAction { script: sleepTimer.start() }
                 }
             },
@@ -393,7 +380,6 @@ ApplicationWindow {
                 from: "itemInfo"; to: "suspended"
                 SequentialAnimation {
                     PropertyAction { target: stateController; property: "previousState"; value: "itemInfo" }
-                    PropertyAction { target: suspendMessage; property: "visible"; value: true }
                     ScriptAction { script: sleepTimer.start() }
                 }
             },
@@ -407,7 +393,6 @@ ApplicationWindow {
                 from: "resumed"; to: "*"
                 SequentialAnimation {
                     ScriptAction {script: controller.resetInactiveTimer() }
-                    PropertyAction { target: suspendMessage; property: "visible"; value: false }
                 }
             },
             Transition {

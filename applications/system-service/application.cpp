@@ -20,7 +20,14 @@ void Application::launch(){
 }
 
 void Application::pause(bool startIfNone){
-    if(!m_process->processId() || (state() != Paused && state() != InBackground)){
+    if(
+        !m_process->processId()
+        || state() == Paused
+        || type() == AppsAPI::Background
+    ){
+        if(startIfNone){
+            appsAPI->resumeIfNone();
+        }
         return;
     }
     qDebug() << "Pausing " << path();
@@ -56,7 +63,11 @@ void Application::pause(bool startIfNone){
     emit appsAPI->applicationPaused(qPath());
 }
 void Application::resume(){
-    if(!m_process->processId() || state() != InForeground || (state() == InBackground && type() == AppsAPI::Background)){
+    if(
+        !m_process->processId()
+        || state() == InForeground
+        || (type() == AppsAPI::Background && state() == InBackground)
+    ){
         return;
     }
     qDebug() << "Resuming " << path();

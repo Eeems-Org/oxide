@@ -105,9 +105,9 @@ public:
     Q_INVOKABLE void unregister();
 
     QString name() { return value("name").toString(); }
-    QString displayName() { return value("displayname", name()).toString(); }
+    QString displayName() { return value("displayName", name()).toString(); }
     void setDisplayName(QString displayName){
-        setValue("displayname", displayName);
+        setValue("displayName", displayName);
         emit displayNameChanged(displayName);
     }
     QString description() { return value("description", displayName()).toString(); }
