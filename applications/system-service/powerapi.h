@@ -47,10 +47,11 @@ public:
                 qDebug() << "    Either missing present property, or battery is not present";
                 continue;
             }
-            if(item.strProperty("type") == "Battery"){
+            auto type = item.strProperty("type");
+            if(type == "Battery"){
                 qDebug() << "    Found Battery!";
                 batteries.append(item);
-            }else if(item.strProperty("type") == "USB"){
+            }else if(type == "USB" || type == "USB_CDP"){
                 qDebug() << "    Found Charger!";
                 chargers.append(item);
             }else{
