@@ -42,6 +42,7 @@ public:
             switch(app->state()){
                 case Application::Paused:
                     app->signal(SIGCONT);
+                break;
                 case Application::InForeground:
                 case Application::InBackground:
                     app->signal(SIGTERM);

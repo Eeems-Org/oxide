@@ -8,15 +8,8 @@
 #include "apibase.h"
 #include "buttonhandler.h"
 #include "application.h"
-#include "stb_image.h"
 #include "screenapi.h"
-#include "stb_image_write.h"
 #include "login1_interface.h"
-
-
-#define RDISPLAYWIDTH 1408
-#define RDISPLAYHEIGHT 1920
-#define RDISPLAYSIZE RDISPLAYWIDTH * RDISPLAYHEIGHT * sizeof(remarkable_color)
 
 #define systemAPI SystemAPI::singleton()
 

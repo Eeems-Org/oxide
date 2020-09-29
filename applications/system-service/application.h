@@ -117,7 +117,7 @@ public:
     QString onStop() { return value("onStop", "").toString(); }
     QStringList flags() { return value("flags", QStringList()).toStringList(); }
     bool autoStart() { return flags().contains("autoStart"); }
-    bool setAutoStart(bool autoStart) {
+    void setAutoStart(bool autoStart) {
         if(!autoStart){
             flags().removeAll("autoStart");
         }else if(!this->autoStart()){

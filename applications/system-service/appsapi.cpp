@@ -8,7 +8,7 @@ AppsAPI::AppsAPI(QObject* parent)
   m_startupApplication("/"),
   m_sleeping(false) {
     singleton(this);
-    setup_unix_signal_handlers();
+    SignalHandler::setup_unix_signal_handlers();
     qDBusRegisterMetaType<QMap<QString,QDBusObjectPath>>();
     qDBusRegisterMetaType<QDBusObjectPath>();
     settings.sync();

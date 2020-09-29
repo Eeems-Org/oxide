@@ -28,12 +28,6 @@
 
 using namespace std;
 
-//#define PNG_PATH "/tmp/fb.png"
-#define DISPLAYWIDTH 1404
-#define DISPLAYHEIGHT 1872
-#define TEMP_USE_REMARKABLE_DRAW 0x0018
-#define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(uint16_t)
-
 #define buttonHandler ButtonHandler::init()
 
 struct PressRecord {

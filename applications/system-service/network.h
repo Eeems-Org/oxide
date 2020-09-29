@@ -14,7 +14,7 @@ class Network : public QObject {
     Q_PROPERTY(bool enabled READ enabled  WRITE setEnabled  NOTIFY stateChanged)
     Q_PROPERTY(QString ssid READ ssid CONSTANT)
     Q_PROPERTY(QList<QDBusObjectPath> bSSs READ bSSs)
-    Q_PROPERTY(QString password WRITE setPassword)
+    Q_PROPERTY(QString password READ getNull WRITE setPassword)
     Q_PROPERTY(QString protocol READ protocol WRITE setProtocol)
     Q_PROPERTY(QVariantMap properties READ properties WRITE setProperties NOTIFY propertiesChanged)
 public:
@@ -53,6 +53,8 @@ public:
     QString ssid(){ return m_ssid; }
 
     QList<QDBusObjectPath> bSSs();
+
+    QString getNull(){ return ""; }
 
     QString password() {
         if(passwordField() == ""){

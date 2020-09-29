@@ -14,8 +14,6 @@
 
 #include "apibase.h"
 #include "mxcfb.h"
-#include "stb_image.h"
-#include "stb_image_write.h"
 
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872

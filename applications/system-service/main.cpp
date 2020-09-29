@@ -5,9 +5,6 @@
 #include "dbusservice.h"
 #include "signalhandler.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 using namespace std;
 
 void unixSignalHandler(int unused){

@@ -53,8 +53,6 @@ HEADERS += \
     powerapi.h \
     screenapi.h \
     signalhandler.h \
-    stb_image.h \
-    stb_image_write.h \
     supplicant.h \
     sysobject.h \
     systemapi.h \

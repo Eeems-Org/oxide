@@ -25,6 +25,27 @@ public:
         }
         return instance;
     }
+    static int setup_unix_signal_handlers(){
+        struct sigaction usr1, usr2;
+
+        usr1.sa_handler = SignalHandler::usr1SignalHandler;
+        sigemptyset(&usr1.sa_mask);
+        usr1.sa_flags = 0;
+        usr1.sa_flags |= SA_RESTART;
+        if(sigaction(SIGUSR1, &usr1, 0)){
+            return 1;
+        }
+
+        usr2.sa_handler = SignalHandler::usr2SignalHandler;
+        sigemptyset(&usr2.sa_mask);
+        usr2.sa_flags = 0;
+        usr2.sa_flags |= SA_RESTART;
+        if(sigaction(SIGUSR2, &usr2, 0)){
+            return 2;
+        }
+
+        return 0;
+    }
     SignalHandler(QObject *parent = 0) : QObject(parent){
         singleton(this);
         if(::socketpair(AF_UNIX, SOCK_STREAM, 0, sigUsr1Fd)){
@@ -76,26 +97,4 @@ private:
     QSocketNotifier* snUsr1;
     QSocketNotifier* snUsr2;
 };
-
-static int setup_unix_signal_handlers(){
-    struct sigaction usr1, usr2;
-
-    usr1.sa_handler = SignalHandler::usr1SignalHandler;
-    sigemptyset(&usr1.sa_mask);
-    usr1.sa_flags = 0;
-    usr1.sa_flags |= SA_RESTART;
-    if(sigaction(SIGUSR1, &usr1, 0)){
-        return 1;
-    }
-
-    usr2.sa_handler = SignalHandler::usr2SignalHandler;
-    sigemptyset(&usr2.sa_mask);
-    usr2.sa_flags = 0;
-    usr2.sa_flags |= SA_RESTART;
-    if(sigaction(SIGUSR2, &usr2, 0)){
-        return 2;
-    }
-
-    return 0;
-}
 #endif // SIGNALHANDLER_H
