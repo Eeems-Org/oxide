@@ -9,7 +9,6 @@ SOURCES += \
     bss.cpp \
     buttonhandler.cpp \
     event_device.cpp \
-    fb2png.cpp \
     network.cpp \
     sysobject.cpp \
     systemapi.cpp \
@@ -48,7 +47,6 @@ HEADERS += \
     dbussettings.h \
     digitizerhandler.h \
     event_device.h \
-    fb2png.h \
     inputmanager.h \
     mxcfb.h \
     network.h \

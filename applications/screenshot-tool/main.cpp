@@ -58,9 +58,8 @@ int main(int argc, char *argv[]){
     qDebug()  << "Connecting signal listener...";
     QObject::connect(&system, &System::rightAction, [&screen]{
         qDebug() << "Taking screenshot";
-        int res = screen.screenshot();
-        if(res){
-            qDebug() << "Failed to take screenshot: " << res;
+        if(!screen.screenshot()){
+            qDebug() << "Failed to take screenshot";
         }
         if(QFile("/tmp/.screenshot").exists()){
             // Then execute the contents of /tmp/.screenshot

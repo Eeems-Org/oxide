@@ -16,7 +16,6 @@
 #include "mxcfb.h"
 #include "stb_image.h"
 #include "stb_image_write.h"
-#include "fb2png.h"
 
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872
@@ -66,20 +65,18 @@ public:
         return true;
     }
 
-    Q_INVOKABLE int screenshot(){
-        auto res = screenshot("/tmp/fb.png");
-        if(res){
-            qDebug() << "Failed to take screenshot" << res;
+    Q_INVOKABLE bool screenshot(){
+        bool res = screenshot("/tmp/fb.png");
+        if(!res){
+            qDebug() << "Failed to take screenshot";
         }
         return res;
     }
 
 private:
-    static int screenshot(QString path){
+    static bool screenshot(QString path){
         qDebug() << "Taking screenshot";
-        std::string progname = "fb2png";
-        std::string device = "/dev/fb0";
-        return fb2png_exec(&progname[0], &device[0], path.toUtf8().data());
+        return EPFrameBuffer::framebuffer()->save(path);
     }
 };
 

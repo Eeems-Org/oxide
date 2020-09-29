@@ -6,7 +6,7 @@
       <arg name="path" type="s" direction="in"/>
     </method>
     <method name="screenshot">
-      <arg type="i" direction="out"/>
+      <arg type="b" direction="out"/>
     </method>
   </interface>
 </node>
