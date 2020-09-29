@@ -363,8 +363,9 @@ private slots:
                 break;
                 case ChargerNotConnected:
                 case ChargerNotPresent:
+                ui->setProperty("connected", false);
                     m_powerConnected = false;
-                    // Fall through on purpose
+                break;
                 case ChargerUnknown:
                 default:
                     ui->setProperty("connected", false);
