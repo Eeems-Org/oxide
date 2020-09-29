@@ -17,6 +17,7 @@
 #include "appsapi.h"
 #include "systemapi.h"
 #include "screenapi.h"
+#include "notificationapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
 
@@ -93,6 +94,11 @@ public:
             .path = QString(OXIDE_SERVICE_PATH) + "/apps",
             .dependants = new QStringList(),
             .instance = new AppsAPI(this),
+        });
+        apis.insert("notification", APIEntry{
+            .path = QString(OXIDE_SERVICE_PATH) + "/notification",
+            .dependants = new QStringList(),
+            .instance = new NotificationAPI(this),
         });
 
         connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);

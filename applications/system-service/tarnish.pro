@@ -50,6 +50,8 @@ HEADERS += \
     inputmanager.h \
     mxcfb.h \
     network.h \
+    notification.h \
+    notificationapi.h \
     powerapi.h \
     screenapi.h \
     signalhandler.h \
