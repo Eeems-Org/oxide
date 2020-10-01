@@ -11,7 +11,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
         }else{
             resumeApp = nullptr;
         }
-        drawSleepImage();
+        screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
         qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
         releaseSleepInhibitors();

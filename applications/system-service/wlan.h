@@ -35,7 +35,7 @@ public:
     }
     bool isConnected(){
         auto ip = exec("ip r | grep " + iface() + " | grep default | awk '{print $3}'");
-        return ip != "" && !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/53").c_str());
+        return ip != "" && !system(("bash -c 'echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/53'").c_str());
     }
     int link(){
         return std::stoi(exec("cat /proc/net/wireless | grep " + iface() + " | awk '{print $3}'"));

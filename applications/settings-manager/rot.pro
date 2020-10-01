@@ -29,6 +29,8 @@ DBUS_INTERFACES += ../../interfaces/appsapi.xml
 DBUS_INTERFACES += ../../interfaces/application.xml
 DBUS_INTERFACES += ../../interfaces/systemapi.xml
 DBUS_INTERFACES += ../../interfaces/screenapi.xml
+DBUS_INTERFACES += ../../interfaces/notificationapi.xml
+DBUS_INTERFACES += ../../interfaces/notification.xml
 
 # Default rules for deployment.
 target.path = /opt/bin

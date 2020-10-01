@@ -152,9 +152,6 @@ private:
             }
         }
     }
-    void drawSleepImage(){
-        screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
-    }
 };
 
 #endif // SYSTEMAPI_H

@@ -12,7 +12,7 @@
 
 class NotificationAPI : public APIBase {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", OXIDE_NOTIFICATION_INTERFACE)
+    Q_CLASSINFO("D-Bus Interface", OXIDE_NOTIFICATIONS_INTERFACE)
     Q_PROPERTY(QList<QDBusObjectPath> allNotifications READ getAllNotifications)
     Q_PROPERTY(QList<QDBusObjectPath> unownedNotifications READ getUnownedNotifications)
 public:
@@ -29,6 +29,13 @@ public:
     ~NotificationAPI(){}
     void setEnabled(bool enabled){
         qDebug() << "Notification API" << enabled;
+        for(auto notification : m_notifications){
+            if(enabled){
+                notification->registerPath();
+            }else{
+                notification->unregisterPath();
+            }
+        }
     }
 
     Q_INVOKABLE QDBusObjectPath get(QString identifier){
@@ -61,9 +68,12 @@ public slots:
         if(m_notifications.contains(identifier)){
             return QDBusObjectPath("/");
         }
-        auto notification = new Notification(getPath(identifier), message.service(), application, text, icon, this);
+        auto notification = new Notification(getPath(identifier), identifier, message.service(), application, text, icon, this);
         m_notifications.insert(identifier, notification);
         auto path = notification->qPath();
+        connect(notification, &Notification::changed, this, [=]{
+           emit notificationChanged(path);
+        });
         emit notificationAdded(path);
         return path;
     }
@@ -82,6 +92,13 @@ public slots:
             }
         }
         return result;
+    }
+
+    void remove(Notification* notification){
+        if(m_notifications.contains(notification->identifier())){
+            m_notifications.remove(notification->identifier());
+            emit notificationRemoved(notification->qPath());
+        }
     }
 
 signals:

@@ -10,6 +10,7 @@ SOURCES += \
     buttonhandler.cpp \
     event_device.cpp \
     network.cpp \
+    notification.cpp \
     sysobject.cpp \
     systemapi.cpp \
     wlan.cpp \
