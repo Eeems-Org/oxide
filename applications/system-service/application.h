@@ -146,6 +146,7 @@ public:
         auto compressedData = qCompress(QByteArray(frameBuffer, DISPLAYSIZE));
         close(frameBufferHandle);
         screenCapture = new QByteArray(compressedData);
+        qDebug() << "Screen saved.";
     }
     void recallScreen(){
         if(screenCapture == nullptr){
@@ -182,6 +183,7 @@ public:
         close(frameBufferHandle);
         delete screenCapture;
         screenCapture = nullptr;
+        qDebug() << "Screen recalled.";
     }
     void waitForFinished(){
         if(m_process->processId()){

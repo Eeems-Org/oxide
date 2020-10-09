@@ -87,6 +87,9 @@ private:
     QString m_application;
     QString m_text;
     QString m_icon;
+
+    void dispatchToMainThread(std::function<void()> callback);
+    void paintNotification();
 };
 
 #endif // NOTIFICATION_H

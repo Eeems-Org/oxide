@@ -23,13 +23,14 @@ public:
         }
         return instance;
     }
-    NotificationAPI(QObject* parent) : APIBase(parent), m_notifications() {
+    NotificationAPI(QObject* parent) : APIBase(parent), m_enabled(false), m_notifications() {
         singleton(this);
     }
     ~NotificationAPI(){}
     void setEnabled(bool enabled){
+        m_enabled = enabled;
         qDebug() << "Notification API" << enabled;
-        for(auto notification : m_notifications){
+        for(auto notification : m_notifications.values()){
             if(enabled){
                 notification->registerPath();
             }else{
@@ -74,6 +75,9 @@ public slots:
         connect(notification, &Notification::changed, this, [=]{
            emit notificationChanged(path);
         });
+        if(m_enabled){
+            notification->registerPath();
+        }
         emit notificationAdded(path);
         return path;
     }
@@ -108,6 +112,7 @@ signals:
 
 
 private:
+    bool m_enabled;
     QMap<QString, Notification*> m_notifications;
 
     QString getPath(QString id){

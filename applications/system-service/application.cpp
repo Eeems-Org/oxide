@@ -61,6 +61,7 @@ void Application::pause(bool startIfNone){
     }
     emit paused();
     emit appsAPI->applicationPaused(qPath());
+    qDebug() << "Paused " << path();
 }
 void Application::resume(){
     if(
@@ -100,6 +101,7 @@ void Application::resume(){
     }
     emit resumed();
     emit appsAPI->applicationResumed(qPath());
+    qDebug() << "Resumed " << path();
 }
 void Application::stop(){
     auto state = this->state();

@@ -1,4 +1,5 @@
 #include <QCommandLineParser>
+#include <QGuiApplication>
 
 #include <cstdlib>
 
@@ -28,11 +29,24 @@ void onExit(){
             // Kill the process
             int status;
             waitpid(i_pid, &status, WNOHANG | WUNTRACED | WCONTINUED);
-            if(WIFSTOPPED(status)) {
+            if(WIFSTOPPED(status)){
                 kill(i_pid, SIGCONT);
-                waitpid(i_pid, &status, WCONTINUED);
+                siginfo_t info;
+                waitid(P_PID, i_pid, &info, WCONTINUED);
             }
             kill(i_pid, SIGTERM);
+        }
+    }
+    procs  = ButtonHandler::split_string_by_newline(ButtonHandler::exec((
+        "grep -Erl /proc/*/status --regexp='PPid:\\s+" + my_pid + "' | awk '{print substr($1, 7, length($1) - 13)}'"
+    ).c_str()));
+    qDebug() << "Force killing bad child tasks...";
+    for(auto pid : procs){
+        string cmd = "cat /proc/" + pid + "/status | grep PPid: | awk '{print$2}'";
+        if(my_pid != pid && ButtonHandler::is_uint(pid) && ButtonHandler::exec(cmd.c_str()) == my_pid + "\n"){
+            qDebug() << "  " << pid.c_str();
+            auto i_pid = stoi(pid);
+            kill(i_pid, SIGKILL);
         }
     }
 }
@@ -51,7 +65,8 @@ int main(int argc, char *argv[]){
     atexit(onExit);
     signal(SIGTERM, unixSignalHandler);
     signal(SIGKILL, unixSignalHandler);
-    QCoreApplication app(argc, argv);
+    signal(SIGSEGV, unixSignalHandler);
+    QGuiApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("tarnish");

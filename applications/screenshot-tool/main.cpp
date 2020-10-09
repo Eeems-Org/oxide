@@ -1,5 +1,6 @@
 #include <QCoreApplication>
 #include <QDebug>
+#include <QUuid>
 
 #include <cstdlib>
 #include <signal.h>
@@ -9,6 +10,8 @@
 #include "dbusservice_interface.h"
 #include "systemapi_interface.h"
 #include "screenapi_interface.h"
+#include "notificationapi_interface.h"
+#include "notification_interface.h"
 
 using namespace codes::eeems::oxide1;
 
@@ -55,16 +58,33 @@ int main(int argc, char *argv[]){
         return EXIT_FAILURE;
     }
     Screen screen(OXIDE_SERVICE, path.path(), bus, &app);
+    qDebug() << "Requesting notification API...";
+    path = api.requestAPI("notification");
+    if(path.path() == "/"){
+        qDebug() << "Unable to get notification API";
+        return EXIT_FAILURE;
+    }
+    Notifications notifications(OXIDE_SERVICE, path.path(), bus, &app);
     qDebug()  << "Connecting signal listener...";
-    QObject::connect(&system, &System::rightAction, [&screen]{
+    QObject::connect(&system, &System::rightAction, [&screen, &notifications, bus, &app]{
         qDebug() << "Taking screenshot";
-        if(!screen.screenshot()){
+        if(!(bool)screen.screenshot()){
             qDebug() << "Failed to take screenshot";
         }
         if(QFile("/tmp/.screenshot").exists()){
             // Then execute the contents of /tmp/.screenshot
             qDebug() << "Screenshot file exists.";
             ::system("/bin/bash /tmp/.screenshot");
+        }
+        auto guid = QUuid::createUuid().toString();
+        qDebug() << "Adding notification" << guid;
+        QDBusObjectPath path = notifications.add(guid, "codes.eeems.fret", "Screenshot taken", "");
+        if(path.path() != "/"){
+            Notification notification(OXIDE_SERVICE, path.path(), bus, &app);
+            qDebug() << "Displaying notification" << guid;
+            notification.display().waitForFinished();
+        }else{
+            qDebug() << "Failed to add notification";
         }
         qDebug() << "Screenshot done.";
     });
