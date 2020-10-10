@@ -80,6 +80,7 @@ void Application::resume(){
     }
     qDebug() << "Resuming " << path();
     appsAPI->pauseAll();
+    recallScreen();
     uninterruptApplication();
     emit resumed();
     emit appsAPI->applicationResumed(qPath());
