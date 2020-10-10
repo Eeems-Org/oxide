@@ -193,6 +193,8 @@ public:
     void signal(int signal);
     QVariant value(QString name, QVariant defaultValue = QVariant()){ return m_config.value(name, defaultValue); }
     void setValue(QString name, QVariant value){ m_config[name] = value; }
+    void interruptApplication();
+    void uninterruptApplication();
 signals:
     void launched();
     void paused();

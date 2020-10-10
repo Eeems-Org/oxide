@@ -89,7 +89,7 @@ private:
     QString m_icon;
 
     void dispatchToMainThread(std::function<void()> callback);
-    void paintNotification();
+    const QRect paintNotification();
 };
 
 #endif // NOTIFICATION_H

@@ -59,7 +59,9 @@ public:
         QRect rect(0, 0, size.width(), size.height());
         QPainter painter(EPFrameBuffer::framebuffer());
         painter.drawImage(rect, img);
+        painter.end();
         EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
+        EPFrameBuffer::waitForLastUpdate();
         return true;
     }
 

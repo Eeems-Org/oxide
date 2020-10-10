@@ -25,12 +25,26 @@ void Application::pause(bool startIfNone){
         || state() == Paused
         || type() == AppsAPI::Background
     ){
-        if(startIfNone){
-            appsAPI->resumeIfNone();
-        }
         return;
     }
     qDebug() << "Pausing " << path();
+    interruptApplication();
+    saveScreen();
+    if(startIfNone){
+        appsAPI->resumeIfNone();
+    }
+    emit paused();
+    emit appsAPI->applicationPaused(qPath());
+    qDebug() << "Paused " << path();
+}
+void Application::interruptApplication(){
+    if(
+        !m_process->processId()
+        || state() == Paused
+        || type() == AppsAPI::Background
+    ){
+        return;
+    }
     if(!onPause().isEmpty()){
         system(onPause().toStdString().c_str());
     }
@@ -55,13 +69,6 @@ void Application::pause(bool startIfNone){
         default:
             kill(m_process->processId(), SIGSTOP);
     }
-    saveScreen();
-    if(startIfNone){
-        appsAPI->resumeIfNone();
-    }
-    emit paused();
-    emit appsAPI->applicationPaused(qPath());
-    qDebug() << "Paused " << path();
 }
 void Application::resume(){
     if(
@@ -73,10 +80,22 @@ void Application::resume(){
     }
     qDebug() << "Resuming " << path();
     appsAPI->pauseAll();
+    uninterruptApplication();
+    emit resumed();
+    emit appsAPI->applicationResumed(qPath());
+    qDebug() << "Resumed " << path();
+}
+void Application::uninterruptApplication(){
+    if(
+        !m_process->processId()
+        || state() == InForeground
+        || (type() == AppsAPI::Background && state() == InBackground)
+    ){
+        return;
+    }
     if(!onResume().isEmpty()){
         system(onResume().toStdString().c_str());
     }
-    recallScreen();
     switch(type()){
         case AppsAPI::Background:
         case AppsAPI::Backgroundable:
@@ -99,9 +118,6 @@ void Application::resume(){
             inputManager->clear_touch_buffer(touchScreen.fd);
             kill(m_process->processId(), SIGCONT);
     }
-    emit resumed();
-    emit appsAPI->applicationResumed(qPath());
-    qDebug() << "Resumed " << path();
 }
 void Application::stop(){
     auto state = this->state();
