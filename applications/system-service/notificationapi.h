@@ -13,6 +13,7 @@
 class NotificationAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_NOTIFICATIONS_INTERFACE)
+    Q_PROPERTY(bool enabled READ enabled)
     Q_PROPERTY(QList<QDBusObjectPath> allNotifications READ getAllNotifications)
     Q_PROPERTY(QList<QDBusObjectPath> unownedNotifications READ getUnownedNotifications)
 public:
@@ -27,6 +28,7 @@ public:
         singleton(this);
     }
     ~NotificationAPI(){}
+    bool enabled(){ return m_enabled; }
     void setEnabled(bool enabled){
         m_enabled = enabled;
         qDebug() << "Notification API" << enabled;

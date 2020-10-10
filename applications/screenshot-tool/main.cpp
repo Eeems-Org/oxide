@@ -83,6 +83,7 @@ int main(int argc, char *argv[]){
             Notification notification(OXIDE_SERVICE, path.path(), bus, &app);
             qDebug() << "Displaying notification" << guid;
             notification.display().waitForFinished();
+            notification.remove().waitForFinished();
         }else{
             qDebug() << "Failed to add notification";
         }

@@ -54,7 +54,7 @@ void Notification::dispatchToMainThread(std::function<void()> callback){
 const QRect Notification::paintNotification(){
     qDebug() << "Painting notification" << identifier();
     auto frameBuffer = EPFrameBuffer::framebuffer();
-    qDebug() << "Waiting for painting to finish...";
+    qDebug() << "Waiting for other painting to finish...";
     while(frameBuffer->paintingActive()){
         this->thread()->yieldCurrentThread();
     }
@@ -75,7 +75,6 @@ const QRect Notification::paintNotification(){
     painter.setPen(Qt::white);
     painter.drawText(rect, Qt::AlignCenter, text());
     painter.end();
-    frameBuffer->save("/tmp/notification.png");
 
     qDebug() << "Updating screen " << rect << "...";
     EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
