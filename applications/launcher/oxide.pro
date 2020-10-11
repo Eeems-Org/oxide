@@ -71,6 +71,5 @@ HEADERS += \
     inputmanager.h \
     mxcfb.h \
     sysobject.h \
-    tarnishhandler.h \
     ../../shared/dbussettings.h \
     wifinetworklist.h

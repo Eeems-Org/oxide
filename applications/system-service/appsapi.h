@@ -36,18 +36,11 @@ public:
     }
     AppsAPI(QObject* parent);
     ~AppsAPI() {
+        m_stopping = true;
         writeApplications();
         settings.sync();
         for(auto app : applications){
-            switch(app->state()){
-                case Application::Paused:
-                    app->signal(SIGCONT);
-                break;
-                case Application::InForeground:
-                case Application::InBackground:
-                    app->signal(SIGTERM);
-                break;
-            }
+            app->stop();
         }
         for(auto app : applications){
             app->waitForFinished();
@@ -166,6 +159,9 @@ public:
         }
     }
     void resumeIfNone(){
+        if(m_stopping){
+            return;
+        }
         for(auto app : applications){
             if(app->state() == Application::InForeground){
                 return;
@@ -246,6 +242,7 @@ public slots:
     }
 
 private:
+    bool m_stopping;
     bool m_enabled;
     QMap<QString, Application*> applications;
     QSettings settings;

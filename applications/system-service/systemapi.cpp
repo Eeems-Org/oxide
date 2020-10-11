@@ -42,8 +42,18 @@ void SystemAPI::setAutoSleep(int autoSleep){
     settings.sync();
 }
 void SystemAPI::uninhibitAll(QString name){
-    powerOffInhibitors.removeAll(name);
-    sleepInhibitors.removeAll(name);
+    if(powerOffInhibited()){
+        powerOffInhibitors.removeAll(name);
+        if(!powerOffInhibited()){
+            emit powerOffInhibitedChanged(false);
+        }
+    }
+    if(sleepInhibited()){
+        sleepInhibitors.removeAll(name);
+        if(!sleepInhibited()){
+            emit sleepInhibitedChanged(false);
+        }
+    }
     if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
         qDebug() << "Suspend timer re-enabled due to uninhibit" << name;
         suspendTimer.start(m_autoSleep * 60 * 1000);
@@ -67,7 +77,10 @@ void SystemAPI::activity(){
         qDebug() << "Suspend timer disabled";
     }
 }
-void SystemAPI::uninhibitSleep(QDBusMessage message) {
+void SystemAPI::uninhibitSleep(QDBusMessage message){
+    if(!sleepInhibited()){
+        return;
+    }
     sleepInhibitors.removeAll(message.service());
     if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         if(!suspendTimer.isActive()){
@@ -76,9 +89,13 @@ void SystemAPI::uninhibitSleep(QDBusMessage message) {
         }
         releaseSleepInhibitors(true);
     }
+    if(!sleepInhibited()){
+        emit sleepInhibitedChanged(false);
+    }
 }
 void SystemAPI::timeout(){
     if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+        qDebug() << "Automatic suspend due to inactivity...";
         suspend();
     }
 }

@@ -19,7 +19,6 @@
 
 #include "controller.h"
 #include "eventfilter.h"
-#include "tarnishhandler.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
@@ -28,13 +27,11 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 using namespace std;
 
 const char *qt_version = qVersion();
-TarnishHandler* tarnishHandler = nullptr;
 
 function<void(int)> shutdown_handler;
 void signalHandler2(int signal) { shutdown_handler(signal); }
 
 int main(int argc, char *argv[]){
-    tarnishHandler = new TarnishHandler();
 //    QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
 //    xochitlSettings.sync();
 //    qDebug() << xochitlSettings.value("Password").toString();
@@ -60,10 +57,10 @@ int main(int argc, char *argv[]){
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();
-    tarnishHandler->attach(controller);
     controller->filter = &filter;
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
+    controller->reconnectToAPI();
     controller->loadSettings();
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("apps", QVariant::fromValue(controller->getApps()));

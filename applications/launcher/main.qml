@@ -133,8 +133,16 @@ ApplicationWindow {
                     title: "";
                     font: iconFont.name
                     width: 260
-                    Action { text: qsTr(" Suspend"); onTriggered: stateController.state = "suspended" }
-                    Action { text: qsTr(" Shutdown"); onTriggered: controller.powerOff() }
+                    Action {
+                        text: qsTr(" Suspend")
+                        enabled: !controller.sleepInhibited
+                        onTriggered: controller.suspend();
+                    }
+                    Action {
+                        text: qsTr(" Shutdown")
+                        enabled: !controller.powerOffInhibited
+                        onTriggered: controller.powerOff()
+                    }
                 }
             }
         }
@@ -356,19 +364,6 @@ ApplicationWindow {
         }
 
     ]
-    Timer {
-        id: sleepTimer
-        repeat: false
-        interval: 1100
-        onTriggered: {
-            if(stateController.state == "suspended"){
-                controller.suspend();
-                stateController.state = "resumed";
-            }else{
-                stateController.state = stateController.previousState
-            }
-        }
-    }
     StateGroup {
         id: stateController
         property string previousState;
@@ -378,38 +373,9 @@ ApplicationWindow {
             State { name: "loaded" },
             State { name: "settings" },
             State { name: "itemInfo" },
-            State { name: "loading" },
-            State { name: "suspended" },
-            State { name: "resumed" }
+            State { name: "loading" }
         ]
         transitions: [
-            Transition {
-                from: "loaded"; to: "suspended"
-                SequentialAnimation {
-                    PropertyAction { target: stateController; property: "previousState"; value: "loaded" }
-                    ScriptAction { script: sleepTimer.start() }
-                }
-            },
-            Transition {
-                from: "settings"; to: "suspended"
-                SequentialAnimation {
-                    PropertyAction { target: stateController; property: "previousState"; value: "settings" }
-                    ScriptAction { script: sleepTimer.start() }
-                }
-            },
-            Transition {
-                from: "itemInfo"; to: "suspended"
-                SequentialAnimation {
-                    PropertyAction { target: stateController; property: "previousState"; value: "itemInfo" }
-                    ScriptAction { script: sleepTimer.start() }
-                }
-            },
-            Transition {
-                from: "suspended"; to: "resumed"
-                SequentialAnimation {
-                    ScriptAction { script: sleepTimer.start() }
-                }
-            },
             Transition {
                 from: "*"; to: "settings"
                 SequentialAnimation {

@@ -52,7 +52,7 @@ public:
            qFatal("Couldn't create USR1 socketpair");
         }
         if(::socketpair(AF_UNIX, SOCK_STREAM, 0, sigUsr2Fd)){
-           qFatal("Couldn't create USR1 socketpair");
+           qFatal("Couldn't create USR2 socketpair");
         }
 
         snUsr1 = new QSocketNotifier(sigUsr1Fd[1], QSocketNotifier::Read, this);

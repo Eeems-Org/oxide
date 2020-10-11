@@ -12,6 +12,12 @@
     </signal>
     <signal name="powerAction">
     </signal>
+    <signal name="sleepInhibitedChanged">
+      <arg type="b" direction="out"/>
+    </signal>
+    <signal name="powerOffInhibitedChanged">
+      <arg type="b" direction="out"/>
+    </signal>
     <method name="suspend">
     </method>
     <method name="powerOff">

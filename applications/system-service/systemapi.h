@@ -40,8 +40,8 @@ class SystemAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_SYSTEM_INTERFACE)
     Q_PROPERTY(int autoSleep READ autoSleep WRITE setAutoSleep)
-    Q_PROPERTY(bool sleepInhibited READ sleepInhibited)
-    Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited)
+    Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
+    Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
 public:
     static SystemAPI* singleton(SystemAPI* self = nullptr){
         static SystemAPI* instance;
@@ -72,8 +72,11 @@ public:
         }
         // Ask Systemd to tell us nicely when we are about to suspend or resume
         inhibitSleep();
+        inhibitPowerOff();
     }
     ~SystemAPI(){
+        qDebug() << "Removing all inhibitors";
+        rguard(false);
         QMutableListIterator<Inhibitor> i(inhibitors);
         while(i.hasNext()){
             auto inhibitor = i.next();
@@ -98,30 +101,52 @@ public:
 public slots:
     void suspend(){
         if(!sleepInhibited()){
-            qDebug() << "Automatic suspend due to inactivity...";
+            qDebug() << "Suspending...";
             systemd->Suspend(false);
         }
     }
     void powerOff() {
         if(!powerOffInhibited()){
+            qDebug() << "Powering off...";
+            releasePowerOffInhibitors(true);
+            rguard(false);
             systemd->PowerOff(false);
         }
     }
     void activity();
     void inhibitSleep(QDBusMessage message){
+        if(!sleepInhibited()){
+            emit sleepInhibitedChanged(true);
+        }
         suspendTimer.stop();
         sleepInhibitors.append(message.service());
         inhibitors.append(Inhibitor(systemd, "sleep:handle-suspend-key:idle", message.service(), "Application requested block", true));
     }
     void uninhibitSleep(QDBusMessage message);
-    void inhibitPowerOff(QDBusMessage message){ powerOffInhibitors.append(message.service()); }
-    void uninhibitPowerOff(QDBusMessage message) { powerOffInhibitors.removeAll(message.service()); }
+    void inhibitPowerOff(QDBusMessage message){
+        if(!powerOffInhibited()){
+            emit powerOffInhibitedChanged(true);
+        }
+        powerOffInhibitors.append(message.service());
+        inhibitors.append(Inhibitor(systemd, "shutdown:handle-power-key", message.service(), "Application requested block", true));
+    }
+    void uninhibitPowerOff(QDBusMessage message){
+        if(!powerOffInhibited()){
+            return;
+        }
+        powerOffInhibitors.removeAll(message.service());
+        if(!powerOffInhibited()){
+            emit powerOffInhibitedChanged(false);
+        }
+    }
 
 signals:
     void leftAction();
     void homeAction();
     void rightAction();
     void powerAction();
+    void sleepInhibitedChanged(bool);
+    void powerOffInhibitedChanged(bool);
 
 private slots:
     void PrepareForSleep(bool suspending);
@@ -140,17 +165,36 @@ private:
     void inhibitSleep(){
         inhibitors.append(Inhibitor(systemd, "sleep", qApp->applicationName(), "Handle sleep screen"));
     }
+    void inhibitPowerOff(){
+        inhibitors.append(Inhibitor(systemd, "shutdown", qApp->applicationName(), "Block power off from any other method", true));
+        rguard(true);
+    }
     void releaseSleepInhibitors(bool block = false){
         QMutableListIterator<Inhibitor> i(inhibitors);
         while(i.hasNext()){
             auto inhibitor = i.next();
-            if(inhibitor.what == "sleep" && inhibitor.block == block){
+            if(inhibitor.what.contains("sleep") && inhibitor.block == block){
                 inhibitor.release();
             }
             if(inhibitor.released()){
                 i.remove();
             }
         }
+    }
+    void releasePowerOffInhibitors(bool block = false){
+        QMutableListIterator<Inhibitor> i(inhibitors);
+        while(i.hasNext()){
+            auto inhibitor = i.next();
+            if(inhibitor.what.contains("shutdown") && inhibitor.block == block){
+                inhibitor.release();
+            }
+            if(inhibitor.released()){
+                i.remove();
+            }
+        }
+    }
+    void rguard(bool install){
+        QProcess::execute("/opt/bin/rguard", QStringList() << (install ? "-1" : "-0"));
     }
 };
 

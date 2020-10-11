@@ -2,6 +2,7 @@
 
 AppsAPI::AppsAPI(QObject* parent)
 : APIBase(parent),
+  m_stopping(false),
   m_enabled(false),
   applications(),
   settings(this),

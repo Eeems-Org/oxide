@@ -124,7 +124,8 @@ public:
         for(auto api : apis){
             api.instance->setEnabled(false);
             bus.unregisterObject(api.path);
-            apiUnavailable(QDBusObjectPath(api.path));
+            // TODO figure out why QDBusObjectPath isn't available on exit
+            // emit apiUnavailable(QDBusObjectPath(api.path));
             delete api.instance;
             delete api.dependants;
         }

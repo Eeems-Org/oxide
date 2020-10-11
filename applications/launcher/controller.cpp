@@ -14,8 +14,6 @@
 
 #include "controller.h"
 #include "dbusservice_interface.h"
-#include "appsapi_interface.h"
-#include "systemapi_interface.h"
 
 QSet<QString> settings = { "columns", "fontSize", "autoStartApplication" };
 QSet<QString> booleanSettings {"showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
@@ -75,12 +73,8 @@ void Controller::loadSettings(){
         configFile->close();
     }
     qDebug() << "Finished parsing config file.";
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("system");
-    if(path.path() != "/"){
-        System system(OXIDE_SERVICE, path.path(), bus);
-        auto sleepAfter = system.autoSleep();
+    if(systemApi != nullptr){
+        auto sleepAfter = systemApi->autoSleep();
         bool autoSleep = sleepAfter;
         if(m_automaticSleep != autoSleep){
             setAutomaticSleep(autoSleep);
@@ -172,16 +166,12 @@ void Controller::saveSettings(){
     configFile->resize(0);
     stream << QString::fromStdString(buffer.str());
     configFile->close();
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("system");
-    if(path.path() != "/"){
-        System system(OXIDE_SERVICE, path.path(), bus);
+    if(systemApi != nullptr){
         if(!m_automaticSleep){
-            system.setAutoSleep(0);
+            systemApi->setAutoSleep(0);
         }else{
-            system.setAutoSleep(m_sleepAfter);
-            auto sleepAfter = system.autoSleep();
+            systemApi->setAutoSleep(m_sleepAfter);
+            auto sleepAfter = systemApi->autoSleep();
             if(sleepAfter != m_sleepAfter){
                 setSleepAfter(sleepAfter);
             }
@@ -190,16 +180,13 @@ void Controller::saveSettings(){
     qDebug() << "Done saving configuration.";
 }
 QList<QObject*> Controller::getApps(){
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("apps");
-    if(path.path() == "/"){
+    if(appsApi == nullptr){
         qDebug() << "Unable to access apps API";
         return applications;
     }
-    Apps apps(OXIDE_SERVICE, path.path(), bus);
-    auto running = apps.runningApplications().unite(apps.pausedApplications());
-    for(auto item : apps.applications()){
+    auto bus = QDBusConnection::systemBus();
+    auto running = appsApi->runningApplications().unite(appsApi->pausedApplications());
+    for(auto item : appsApi->applications()){
         auto path = item.value<QDBusObjectPath>().path();
         Application app(OXIDE_SERVICE, path, bus, this);
         if(app.hidden()){
@@ -253,14 +240,11 @@ AppItem* Controller::getApplication(QString name){
 }
 
 void Controller::importDraftApps(){
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("apps");
-    if(path.path() == "/"){
+    if(appsApi == nullptr){
         qDebug() << "Unable to access apps API";
         return;
     }
-    Apps apps(OXIDE_SERVICE, path.path(), bus);
+    auto bus = QDBusConnection::systemBus();
     for(auto configDirectoryPath : configDirectoryPaths){
         QDir configDirectory(configDirectoryPath);
         configDirectory.setFilter( QDir::Files | QDir::NoSymLinks | QDir::NoDot | QDir::NoDotDot);
@@ -307,7 +291,7 @@ void Controller::importDraftApps(){
                     qDebug() << "Invalid configuration" << name;
                     continue;
                 }
-                QDBusObjectPath path = apps.getApplicationPath(name);
+                QDBusObjectPath path = appsApi->getApplicationPath(name);
                 if(path.path() != "/"){
                     qDebug() << "Already exists" << name;
                     auto icon = app.property("imgFile").toString();
@@ -331,7 +315,7 @@ void Controller::importDraftApps(){
                 properties.insert("bin", app.property("call"));
                 properties.insert("icon", icon);
                 properties.insert("onStop", onStop);
-                path = apps.registerApplication(properties);
+                path = appsApi->registerApplication(properties);
                 if(path.path() == "/"){
                     qDebug() << "Failed to import" << name;
                 }
@@ -341,29 +325,21 @@ void Controller::importDraftApps(){
 }
 void Controller::powerOff(){
     qDebug() << "Powering off...";
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("system");
-    if(path.path() == "/"){
+    if(systemApi == nullptr){
         qDebug() << "Unable to access system API";
         system("systemctl poweroff");
         return;
     }
-    System system(OXIDE_SERVICE, path.path(), bus);
-    system.powerOff();
+    systemApi->powerOff();
 }
 void Controller::suspend(){
     qDebug() << "Suspending...";
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("system");
-    if(path.path() == "/"){
+    if(systemApi == nullptr){
         qDebug() << "Unable to access system API";
         system("systemctl suspend");
         return;
     }
-    System system(OXIDE_SERVICE, path.path(), bus);
-    system.suspend();
+    systemApi->suspend();
 }
 inline void updateUI(QObject* ui, const char* name, const QVariant& value){
     if(ui){
