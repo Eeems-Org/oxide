@@ -521,7 +521,7 @@ private:
     bool m_automaticSleep = true;
     int m_columns = 6;
     int m_fontSize = 23;
-    int m_sleepAfter = 1;
+    int m_sleepAfter;
     bool m_showWifiDb = false;
     bool m_showBatteryPercent = false;
     bool m_showBatteryTemperature = false;
