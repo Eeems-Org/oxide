@@ -197,7 +197,7 @@ int main(int argc, char *argv[]){
     parser.applicationDescription();
     parser.addVersionOption();
     parser.addPositionalArgument("api", "wifi\npower\napps\nsystem\nscreen\nnotification");
-    parser.addPositionalArgument("action","get\nset\nlisten\ncall\nobject");
+    parser.addPositionalArgument("action","get\nset\nlisten\ncall");
     QCommandLineOption objectOption(
         {"o", "object"},
         "Object to act on, e.g. Network:network/94d5caa2d4345ab7be5254dfb9678cd7",
@@ -220,6 +220,9 @@ int main(int argc, char *argv[]){
     if(!(QSet<QString> {"power", "wifi", "apps", "system", "screen", "notification"}).contains(apiName)){
         qDebug() << "Unknown API" << apiName;
         return EXIT_FAILURE;
+    }
+    if(args.length() < 2){
+        parser.showHelp(EXIT_FAILURE);
     }
     auto action = args.at(1);
     if(action == "get"){
