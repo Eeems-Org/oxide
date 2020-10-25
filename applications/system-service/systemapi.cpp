@@ -34,6 +34,7 @@ void SystemAPI::setAutoSleep(int autoSleep){
     if(autoSleep < 0 || autoSleep > 10){
         return;
     }
+    qDebug() << "Auto Sleep" << autoSleep;
     m_autoSleep = autoSleep;
     if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         suspendTimer.setInterval(m_autoSleep * 60 * 1000);

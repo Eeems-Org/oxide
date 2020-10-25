@@ -74,14 +74,19 @@ void Controller::loadSettings(){
     }
     qDebug() << "Finished parsing config file.";
     if(systemApi != nullptr){
+        qDebug() << "Getting settings from system service...";
         auto sleepAfter = systemApi->autoSleep();
         bool autoSleep = sleepAfter;
+        qDebug() << "Automatic sleep" << sleepAfter;
         if(m_automaticSleep != autoSleep){
             setAutomaticSleep(autoSleep);
         }
-        if(autoSleep && sleepAfter != m_sleepAfter){
+        if(!autoSleep){
+            setSleepAfter(0);
+        }else if(sleepAfter != m_sleepAfter){
             setSleepAfter(sleepAfter);
         }
+        qDebug() << "Finished getting settings from system service.";
     }
     if(root){
         qDebug() << "Updating UI with settings from config file...";

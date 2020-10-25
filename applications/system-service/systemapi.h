@@ -55,8 +55,7 @@ public:
        suspendTimer(this),
        settings(this),
        sleepInhibitors(),
-       powerOffInhibitors(),
-       m_autoSleep(0) {
+       powerOffInhibitors() {
         settings.sync();
         singleton(this);
         this->resumeApp = nullptr;
@@ -73,6 +72,7 @@ public:
         // Ask Systemd to tell us nicely when we are about to suspend or resume
         inhibitSleep();
         inhibitPowerOff();
+        qDebug() << "System API ready to use";
     }
     ~SystemAPI(){
         qDebug() << "Removing all inhibitors";
