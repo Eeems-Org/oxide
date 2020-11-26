@@ -178,9 +178,11 @@ bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
             }
         }
 #ifdef DEBUG_EVENTS
-        else if (type == QEvent::MouseMove
-                 || type == QEvent::MouseButtonPress
-                 || type == QEvent::MouseButtonRelease) {
+        else if (
+            type == QEvent::MouseMove
+            || type == QEvent::MouseButtonPress
+            || type == QEvent::MouseButtonRelease
+        ) {
             for(auto widget : widgetsAt(root, ((QMouseEvent*)ev)->globalPos())){
                 if(parentCount((QQuickItem*)widget)){
                     qDebug() << "postMouseWidget: " << widget;
