@@ -129,8 +129,8 @@ bool isTabletEvent(QEvent::Type type) {
 
 bool isTouchEvent(QEvent::Type type) {
     return type == QEvent::TouchBegin ||
-            type == QEvent::TouchUpdate ||
-            type == QEvent::TouchEnd;
+        type == QEvent::TouchUpdate ||
+        type == QEvent::TouchEnd;
 }
 
 QEvent::Type tabletEventTypeToMouseEventType(QEvent::Type type) {
