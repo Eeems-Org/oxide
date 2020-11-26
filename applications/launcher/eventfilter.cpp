@@ -148,16 +148,15 @@ QEvent::Type tabletEventTypeToMouseEventType(QEvent::Type type) {
 
 QEvent::Type touchEventTypeToMouseEventType(QEvent::Type type) {
     switch(type) {
-    case QEvent::TouchBegin:
-        return QEvent::MouseButtonPress;
-    case QEvent::TouchEnd:
-        return QEvent::MouseButtonRelease;
-    case QEvent::TouchUpdate:
-        return QEvent::MouseMove;
-    default:
-        return type;
+        case QEvent::TouchBegin:
+            return QEvent::MouseButtonPress;
+        case QEvent::TouchEnd:
+            return QEvent::MouseButtonRelease;
+        case QEvent::TouchUpdate:
+            return QEvent::MouseMove;
+        default:
+            return type;
     }
-    return type;
 }
 
 bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
