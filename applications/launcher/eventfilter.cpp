@@ -57,14 +57,14 @@ QMouseEvent* touchToMouseEvent(QEvent::Type type, QEvent* ev){
     auto touchEvent = (QTouchEvent*)ev;
     auto button = Qt::LeftButton;
     return new QMouseEvent(
-                type,
-                fixTouch(touchEvent->touchPoints()[0].pos()),
-            fixTouch(touchEvent->touchPoints()[0].screenPos()),
-            fixTouch(touchEvent->touchPoints()[0].screenPos()),
-            button,
-            button,
-            touchEvent->modifiers()
-            );
+        type,
+        fixTouch(touchEvent->touchPoints()[0].pos()),
+        fixTouch(touchEvent->touchPoints()[0].screenPos()),
+        fixTouch(touchEvent->touchPoints()[0].screenPos()),
+        button,
+        button,
+        touchEvent->modifiers()
+    );
 }
 bool isAt(QQuickItem* item, QPointF pos){
     auto itemPos = globalPos(item);
