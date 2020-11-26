@@ -40,12 +40,12 @@ const char* Settings::getButtonsDevicePath() const {
 
 const char* Settings::getWacomDevicePath() const {
     switch(getDeviceType()) {
-    case DeviceType::RM1:
-        return "/dev/input/event0";
-    case DeviceType::RM2:
-        return "/dev/input/event1";
-    default:
-        return "";
+        case DeviceType::RM1:
+            return "/dev/input/event0";
+        case DeviceType::RM2:
+            return "/dev/input/event1";
+        default:
+            return "";
     }
 }
 
