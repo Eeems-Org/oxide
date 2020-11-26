@@ -16,8 +16,8 @@ void Settings::readDeviceType() {
         return;
     }
     QTextStream in(&file);
-    std::string modelName = in.readLine().toStdString();
-    if (modelName.rfind("reMarkable 2", 0) == 0) {
+    QString modelName = in.readLine();
+    if (modelName.startsWith("reMarkable 2")) {
         qDebug() << "RM2 detected...";
         _deviceType = DeviceType::RM2;
      }
