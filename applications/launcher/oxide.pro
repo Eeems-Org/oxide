@@ -20,7 +20,9 @@ SOURCES += \
     main.cpp \
     controller.cpp \
     appitem.cpp \
-    sysobject.cpp
+    sysobject.cpp \
+    ../../shared/settings.cpp
+
 
 RESOURCES += qml.qrc
 
@@ -73,4 +75,5 @@ HEADERS += \
     sysobject.h \
     tarnishhandler.h \
     ../../shared/dbussettings.h \
+    ../../shared/settings.h \
     wifinetworklist.h

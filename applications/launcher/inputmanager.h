@@ -10,6 +10,8 @@
 #include <linux/input.h>
 #include <fcntl.h>
 
+#include "settings.h"
+
 using namespace std;
 
 inline input_event createEvent(ushort type, ushort code, int value){
@@ -23,7 +25,7 @@ inline input_event createEvent(ushort type, ushort code, int value){
 class InputManager {
 public:
     input_event *touch_flood;
-    InputManager() : touchScreenFd(open("/dev/input/even1", O_WRONLY)) {
+    InputManager() : touchScreenFd(open(Settings::instance().getTouchDevicePath(), O_WRONLY)) {
         this->touch_flood = build_touch_flood();
     }
 

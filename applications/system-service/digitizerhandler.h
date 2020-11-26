@@ -11,14 +11,15 @@
 #include <string>
 
 #include "event_device.h"
+#include "settings.h"
 
 using namespace std;
 
 #define touchHandler DigitizerHandler::singleton_touchScreen()
 #define wacomHandler DigitizerHandler::singleton_wacom()
 
-const event_device wacom_device("/dev/input/event0", O_RDONLY);
-const event_device touchScreen_device("/dev/input/event1", O_RDONLY);
+const event_device wacom_device(Settings::instance().getWacomDevicePath(), O_RDONLY);
+const event_device touchScreen_device(Settings::instance().getTouchDevicePath(), O_RDONLY);
 
 class DigitizerHandler : public QThread {
     Q_OBJECT
