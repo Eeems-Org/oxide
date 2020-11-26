@@ -29,12 +29,12 @@ DeviceType Settings::getDeviceType() const {
 
 const char* Settings::getButtonsDevicePath() const {
     switch(getDeviceType()) {
-    case DeviceType::RM1:
-        return "/dev/input/event2";
-    case DeviceType::RM2:
-        return "/dev/input/event0";
-    default:
-        return "";
+        case DeviceType::RM1:
+            return "/dev/input/event2";
+        case DeviceType::RM2:
+            return "/dev/input/event0";
+        default:
+            return "";
     }
 }
 
