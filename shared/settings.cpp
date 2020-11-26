@@ -51,11 +51,11 @@ const char* Settings::getWacomDevicePath() const {
 
 const char* Settings::getTouchDevicePath() const {
     switch(getDeviceType()) {
-    case DeviceType::RM1:
-        return "/dev/input/event1";
-    case DeviceType::RM2:
-        return "/dev/input/event2";
-    default:
-        return "";
+        case DeviceType::RM1:
+            return "/dev/input/event1";
+        case DeviceType::RM2:
+            return "/dev/input/event2";
+        default:
+            return "";
     }
 }
