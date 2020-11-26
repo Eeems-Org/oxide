@@ -135,14 +135,14 @@ bool isTouchEvent(QEvent::Type type) {
 
 QEvent::Type tabletEventTypeToMouseEventType(QEvent::Type type) {
     switch(type) {
-    case QEvent::TabletPress:
-        return QEvent::MouseButtonPress;
-    case QEvent::TabletRelease:
-        return QEvent::MouseButtonRelease;
-    case QEvent::TabletMove:
-        return QEvent::MouseMove;
-    default:
-        return type;
+        case QEvent::TabletPress:
+            return QEvent::MouseButtonPress;
+        case QEvent::TabletRelease:
+            return QEvent::MouseButtonRelease;
+        case QEvent::TabletMove:
+            return QEvent::MouseMove;
+        default:
+            return type;
     }
     return type;
 }
