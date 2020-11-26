@@ -174,8 +174,10 @@ bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
             else if (Settings::instance().getDeviceType() == DeviceType::RM2 && isTouchEvent(type)) {
                 mouseEvent = touchToMouseEvent(touchEventTypeToMouseEventType(type), ev);
             }
-            postEvent(mouseEvent, root);
-            delete mouseEvent;
+            if (mouseEvent) {
+                postEvent(mouseEvent, root);
+                delete mouseEvent;
+            }
         }
 #ifdef DEBUG_EVENTS
         else if (type == QEvent::MouseMove
