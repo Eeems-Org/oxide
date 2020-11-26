@@ -169,10 +169,10 @@ bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
         if (isTabletEvent(type) || isTouchEvent(type)) {
             QMouseEvent* mouseEvent = nullptr;
             if (isTabletEvent(type)) {
-                mouseEvent = tabletEventTypeToMouseEventType(type);
+                mouseEvent = tabletToMouseEvent(tabletEventTypeToMouseEventType(type), ev);
             }
             else if (Settings::instance().getDeviceType() == DeviceType::RM2 && isTouchEvent(type)) {
-                mouseEvent = touchEventTypeToMouseEventType(type);
+                mouseEvent = touchToMouseEvent(touchEventTypeToMouseEventType(type), ev);
                 filtered = true;
             }
             if (mouseEvent) {
