@@ -106,10 +106,10 @@ void postEvent(QMouseEvent* mouseEvent, QQuickItem* root){
             qDebug() << "postWidget: " << postWidget;
 #endif
             auto event = new QMouseEvent(
-                        mouseEvent->type(), mouseEvent->localPos(), mouseEvent->windowPos(),
-                        mouseEvent->screenPos(), mouseEvent->button(), mouseEvent->buttons(),
-                        mouseEvent->modifiers()
-                        );
+                mouseEvent->type(), mouseEvent->localPos(), mouseEvent->windowPos(),
+                mouseEvent->screenPos(), mouseEvent->button(), mouseEvent->buttons(),
+                mouseEvent->modifiers()
+            );
             auto widgetPos = globalPos((QQuickItem*)postWidget);
             auto localPos = event->localPos();
             localPos.setX(pos.x() - widgetPos.x());
