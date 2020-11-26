@@ -123,8 +123,8 @@ void postEvent(QMouseEvent* mouseEvent, QQuickItem* root){
 
 bool isTabletEvent(QEvent::Type type) {
     return type == QEvent::TabletPress ||
-            type == QEvent::TabletRelease ||
-            type == QEvent::TabletMove;
+        type == QEvent::TabletRelease ||
+        type == QEvent::TabletMove;
 }
 
 bool isTouchEvent(QEvent::Type type) {
