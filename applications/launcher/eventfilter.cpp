@@ -116,7 +116,9 @@ void postEvent(QMouseEvent* mouseEvent, QQuickItem* root){
             localPos.setX(pos.x() - widgetPos.x());
             localPos.setY((pos.y()) - widgetPos.y());
             event->setLocalPos(localPos);
+#ifdef DEBUG_EVENTS
             qDebug() << "postEvent: " << event;
+#endif
             QGuiApplication::postEvent(postWidget, event);
         }
     }
