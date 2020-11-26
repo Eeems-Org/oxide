@@ -144,7 +144,6 @@ QEvent::Type tabletEventTypeToMouseEventType(QEvent::Type type) {
         default:
             return type;
     }
-    return type;
 }
 
 QEvent::Type touchEventTypeToMouseEventType(QEvent::Type type) {
