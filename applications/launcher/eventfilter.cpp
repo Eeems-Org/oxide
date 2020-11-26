@@ -164,16 +164,17 @@ bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
     bool filtered = QObject::eventFilter(obj, ev);
     if(!filtered){
         if (isTabletEvent(type) || isTouchEvent(type)) {
-            QMouseEvent* mouseEvent = nullptr;
             if (isTabletEvent(type)) {
-                mouseEvent = tabletToMouseEvent(tabletEventTypeToMouseEventType(type), ev);
+                postEvent(
+                    tabletToMouseEvent(tabletEventTypeToMouseEventType(type), ev),
+                    root
+                );
             }
             else if (Settings::instance().getDeviceType() == DeviceType::RM2 && isTouchEvent(type)) {
-                mouseEvent = touchToMouseEvent(touchEventTypeToMouseEventType(type), ev);
-            }
-            if (mouseEvent) {
-                postEvent(mouseEvent, root);
-                delete mouseEvent;
+                postEvent(
+                    touchToMouseEvent(touchEventTypeToMouseEventType(type), ev),
+                    root
+                );
             }
         }
 #ifdef DEBUG_EVENTS
