@@ -176,10 +176,7 @@ bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
                 filtered = true;
             }
             if (mouseEvent) {
-                postEvent(
-                    touchToMouseEvent(mouseEvent, ev),
-                    root
-                );
+                postEvent(mouseEvent, root);
                 delete mouseEvent;
             }
 
