@@ -52,6 +52,7 @@ QMouseEvent* tabletToMouseEvent(QEvent::Type type, QEvent* ev){
         button,
         tabletEvent->modifiers()
     );
+}
 
 QMouseEvent* touchToMouseEvent(QEvent::Type type, QEvent* ev){
     auto touchEvent = (QTouchEvent*)ev;
