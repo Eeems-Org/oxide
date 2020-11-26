@@ -44,15 +44,14 @@ QMouseEvent* tabletToMouseEvent(QEvent::Type type, QEvent* ev){
     auto tabletEvent = (QTabletEvent*)ev;
     auto button = tabletEvent->pressure() > 0 || type == QMouseEvent::MouseButtonRelease ? Qt::LeftButton : Qt::NoButton;
     return new QMouseEvent(
-                type,
-                transpose(tabletEvent->posF()),
-                transpose(tabletEvent->globalPosF()),
-                transpose(tabletEvent->globalPosF()),
-                button,
-                button,
-                tabletEvent->modifiers()
-                );
-}
+        type,
+        transpose(tabletEvent->posF()),
+        transpose(tabletEvent->globalPosF()),
+        transpose(tabletEvent->globalPosF()),
+        button,
+        button,
+        tabletEvent->modifiers()
+    );
 
 QMouseEvent* touchToMouseEvent(QEvent::Type type, QEvent* ev){
     auto touchEvent = (QTouchEvent*)ev;
