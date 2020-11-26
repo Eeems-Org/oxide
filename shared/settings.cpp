@@ -21,9 +21,9 @@ char* readFile(const char* path) {
     return nullptr;
 }
 
-bool doesStartWithPrefixes(const char* const prefixes[], char* toCheck) {
+bool doesStartWithPrefixes(const char* const prefixes[], int arrLength, char* toCheck) {
     int length = strlen(toCheck);
-    for (int i = 0; i < sizeof(prefixes) / sizeof(prefixes[0]); ++i) {
+    for (int i = 0; i < arrLength; ++i) {
         int prefixLength = strlen(prefixes[i]);
         if (prefixLength < length && strncmp(prefixes[i], toCheck, prefixLength) == 0) {
             return true;
@@ -46,11 +46,13 @@ void Settings::readDeviceType() {
             "reMarkable 2"
         };
 
-        if (doesStartWithPrefixes(remarkable1, device_type)) {
+        if (doesStartWithPrefixes(remarkable1,
+              sizeof(remarkable1) / sizeof(remarkable1[0]), device_type)) {
             _deviceType = DeviceType::RM1;
             qDebug() << "RM1 detected...";
         }
-        else if (doesStartWithPrefixes(remarkable2, device_type)) {
+        else if (doesStartWithPrefixes(remarkable2,
+              sizeof(remarkable2) / sizeof(remarkable2[0]), device_type)) {
             _deviceType = DeviceType::RM2;
             qDebug() << "RM2 detected...";
 
