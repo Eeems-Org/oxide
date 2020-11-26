@@ -3,15 +3,13 @@
 enum DeviceType {
     RM1,
     RM2,
-    UNDETERMINED,
-    UNKNOWN
 };
 
 class Settings {
 private:
     DeviceType _deviceType;
 
-    Settings(): _deviceType(DeviceType::UNDETERMINED) {}
+    Settings();
     ~Settings() {};
     void readDeviceType();
 public:
@@ -20,9 +18,9 @@ public:
         static Settings INSTANCE;
         return INSTANCE;
     }
-    const char* getButtonsDevicePath();
-    const char* getWacomDevicePath();
-    const char* getTouchDevicePath();
-    DeviceType getDeviceType();
+    const char* getButtonsDevicePath() const;
+    const char* getWacomDevicePath() const;
+    const char* getTouchDevicePath() const;
+    DeviceType getDeviceType() const;
 
 };

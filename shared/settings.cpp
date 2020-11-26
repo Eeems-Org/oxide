@@ -2,73 +2,32 @@
 #include <string.h>
 #include <stdio.h>
 #include <QDebug>
+#include <QFile>
 #include "settings.h"
 
-char* readFile(const char* path) {
-    FILE *file = fopen(path, "r");
-    if (file) {
-        fseek(file, 0, SEEK_END);
-        long length=ftell(file);
-        fseek (file, 0, SEEK_SET);
-        char *buffer = (char*)malloc(length+1);
-        if (buffer) {
-            fread (buffer, 1, length, file);
-            buffer[length] = '\0';
-        }
-        fclose(file);
-        return buffer;
-    }
-    return nullptr;
-}
-
-bool doesStartWithPrefixes(const char* const prefixes[], int arrLength, char* toCheck) {
-    int length = strlen(toCheck);
-    for (int i = 0; i < arrLength; ++i) {
-        int prefixLength = strlen(prefixes[i]);
-        if (prefixLength < length && strncmp(prefixes[i], toCheck, prefixLength) == 0) {
-            return true;
-        }
-    }
-    return false;
+Settings::Settings(): _deviceType(DeviceType::RM1) {
+    readDeviceType();
 }
 
 void Settings::readDeviceType() {
-    char* device_type = readFile("/sys/devices/soc0/machine");
-    _deviceType = DeviceType::UNKNOWN;
-
-    if (device_type) {
-
-        const char* const remarkable1[] {
-            "reMarkable 1",
-            "reMarkable Prototype 1",
-        };
-        const char* const remarkable2[] {
-            "reMarkable 2"
-        };
-
-        if (doesStartWithPrefixes(remarkable1,
-              sizeof(remarkable1) / sizeof(remarkable1[0]), device_type)) {
-            _deviceType = DeviceType::RM1;
-            qDebug() << "RM1 detected...";
-        }
-        else if (doesStartWithPrefixes(remarkable2,
-              sizeof(remarkable2) / sizeof(remarkable2[0]), device_type)) {
-            _deviceType = DeviceType::RM2;
-            qDebug() << "RM2 detected...";
-
-        }
-        free(device_type);
+    QFile file("/sys/devices/soc0/machine");
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
+        qDebug() << "Couldn't open " << file.fileName();
+        return;
     }
+    QTextStream in(&file);
+    std::string modelName = in.readLine().toStdString();
+    if (modelName.rfind("reMarkable 2", 0) == 0) {
+        qDebug() << "RM2 detected...";
+        _deviceType = DeviceType::RM2;
+     }
 }
 
-DeviceType Settings::getDeviceType() {
-    if (_deviceType == DeviceType::UNDETERMINED) {
-        readDeviceType();
-    }
+DeviceType Settings::getDeviceType() const {
     return _deviceType;
 }
 
-const char* Settings::getButtonsDevicePath() {
+const char* Settings::getButtonsDevicePath() const {
     switch(getDeviceType()) {
     case DeviceType::RM1:
         return "/dev/input/event2";
@@ -79,7 +38,7 @@ const char* Settings::getButtonsDevicePath() {
     }
 }
 
-const char* Settings::getWacomDevicePath() {
+const char* Settings::getWacomDevicePath() const {
     switch(getDeviceType()) {
     case DeviceType::RM1:
         return "/dev/input/event0";
@@ -90,7 +49,7 @@ const char* Settings::getWacomDevicePath() {
     }
 }
 
-const char* Settings::getTouchDevicePath() {
+const char* Settings::getTouchDevicePath() const {
     switch(getDeviceType()) {
     case DeviceType::RM1:
         return "/dev/input/event1";
