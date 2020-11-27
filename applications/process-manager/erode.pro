@@ -15,7 +15,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += main.cpp \
     controller.cpp \
     eventfilter.cpp \
-    taskitem.cpp
+    taskitem.cpp \
+    ../../shared/settings.cpp
 
 RESOURCES += qml.qrc
 
@@ -33,7 +34,8 @@ HEADERS += \
     controller.h \
     eventfilter.h \
     taskitem.h \
-    ../../shared/dbussettings.h
+    ../../shared/dbussettings.h \
+    ../../shared/settings.h
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 INCLUDEPATH += ../../shared
