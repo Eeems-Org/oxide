@@ -21,6 +21,7 @@ public:
     const char* getButtonsDevicePath() const;
     const char* getWacomDevicePath() const;
     const char* getTouchDevicePath() const;
+    const char* getTouchEnvSetting() const;
     DeviceType getDeviceType() const;
 
 };
