@@ -11,7 +11,8 @@ A launcher application for the [reMarkable tablet](https://remarkable.com/).
 
 Head over to the [releases](https://github.com/Eeems/oxide/releases) page for more information on the latest release. You can also see some (likely outdated) [screenshots here](https://github.com/Eeems/oxide/wiki/Screenshots).
 
-Here is a video of it in action: https://youtu.be/rIRKgqy21L0
+Here is a video of it in action: 
+[![Oxide v2.0-beta](https://i.imgur.com/1Q9A4NF.png)](https://youtu.be/rIRKgqy21L0 "Oxide v2.0-beta")
 
 ## Building
 

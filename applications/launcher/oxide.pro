@@ -20,7 +20,9 @@ SOURCES += \
     main.cpp \
     controller.cpp \
     appitem.cpp \
-    sysobject.cpp
+    sysobject.cpp \
+    ../../shared/devicesettings.cpp
+
 
 RESOURCES += qml.qrc
 
@@ -72,4 +74,5 @@ HEADERS += \
     mxcfb.h \
     sysobject.h \
     ../../shared/dbussettings.h \
+    ../../shared/devicesettings.h \
     wifinetworklist.h

@@ -100,6 +100,7 @@ void postEvent(QEvent::Type type, QEvent* ev, QQuickItem* root){
             QGuiApplication::postEvent(postWidget, event);
         }
     }
+    delete mouseEvent;
 }
 
 bool EventFilter::eventFilter(QObject* obj, QEvent* ev){

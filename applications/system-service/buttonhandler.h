@@ -25,6 +25,7 @@
 
 #include "inputmanager.h"
 #include "event_device.h"
+#include "devicesettings.h"
 
 using namespace std;
 
@@ -39,7 +40,7 @@ struct PressRecord {
     PressRecord() : PressRecord("Unknown", Qt::Key_unknown){}
 };
 
-const event_device buttons("/dev/input/event2", O_RDWR);
+const event_device buttons(DeviceSettings::instance().getButtonsDevicePath(), O_RDWR);
 
 class ButtonHandler : public QThread {
     Q_OBJECT
