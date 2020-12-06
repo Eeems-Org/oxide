@@ -13,3 +13,7 @@ Head over to the [releases](https://github.com/Eeems/oxide/releases) page for mo
 
 Here is a video of it in action: 
 [![Oxide v2.0-beta](https://i.imgur.com/1Q9A4NF.png)](https://youtu.be/rIRKgqy21L0 "Oxide v2.0-beta")
+
+## Building
+
+Install the reMarkable toolchain and then run `make release`. It will produce a folder named `release` containing all the output.
