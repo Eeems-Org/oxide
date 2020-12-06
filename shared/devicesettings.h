@@ -5,17 +5,17 @@ enum DeviceType {
     RM2,
 };
 
-class Settings {
+class DeviceSettings{
 private:
     DeviceType _deviceType;
 
-    Settings();
-    ~Settings() {};
+    DeviceSettings();
+    ~DeviceSettings() {};
     void readDeviceType();
 public:
 
-    static Settings& instance() {
-        static Settings INSTANCE;
+    static DeviceSettings& instance() {
+        static DeviceSettings INSTANCE;
         return INSTANCE;
     }
     const char* getButtonsDevicePath() const;

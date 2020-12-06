@@ -17,7 +17,7 @@ SOURCES += \
     wlan.cpp \
     wpa_supplicant.cpp \
     main.cpp \
-    ../../shared/settings.cpp
+    ../../shared/devicesettings.cpp
 
 TARGET=tarnish
 
@@ -65,7 +65,7 @@ HEADERS += \
     wifiapi.h \
     wlan.h \
     wpa_supplicant.h \
-    settings.h
+    devicesettings.h
 
 linux-oe-g++ {
     LIBS += -lqsgepaper

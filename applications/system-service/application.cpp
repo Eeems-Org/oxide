@@ -5,9 +5,9 @@
 #include "application.h"
 #include "appsapi.h"
 #include "buttonhandler.h"
-#include "settings.h"
+#include "devicesettings.h"
 
-const event_device touchScreen(Settings::instance().getTouchDevicePath(), O_WRONLY);
+const event_device touchScreen(DeviceSettings::instance().getTouchDevicePath(), O_WRONLY);
 
 void Application::launch(){
     if(m_process->processId()){

@@ -3,13 +3,13 @@
 #include <stdio.h>
 #include <QDebug>
 #include <QFile>
-#include "settings.h"
+#include "devicesettings.h"
 
-Settings::Settings(): _deviceType(DeviceType::RM1) {
+DeviceSettings::DeviceSettings(): _deviceType(DeviceType::RM1) {
     readDeviceType();
 }
 
-void Settings::readDeviceType() {
+void DeviceSettings::readDeviceType() {
     QFile file("/sys/devices/soc0/machine");
     if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
         qDebug() << "Couldn't open " << file.fileName();
@@ -23,11 +23,11 @@ void Settings::readDeviceType() {
      }
 }
 
-DeviceType Settings::getDeviceType() const {
+DeviceType DeviceSettings::getDeviceType() const {
     return _deviceType;
 }
 
-const char* Settings::getButtonsDevicePath() const {
+const char* DeviceSettings::getButtonsDevicePath() const {
     switch(getDeviceType()) {
         case DeviceType::RM1:
             return "/dev/input/event2";
@@ -38,7 +38,7 @@ const char* Settings::getButtonsDevicePath() const {
     }
 }
 
-const char* Settings::getWacomDevicePath() const {
+const char* DeviceSettings::getWacomDevicePath() const {
     switch(getDeviceType()) {
         case DeviceType::RM1:
             return "/dev/input/event0";
@@ -49,7 +49,7 @@ const char* Settings::getWacomDevicePath() const {
     }
 }
 
-const char* Settings::getTouchDevicePath() const {
+const char* DeviceSettings::getTouchDevicePath() const {
     switch(getDeviceType()) {
         case DeviceType::RM1:
             return "/dev/input/event1";
@@ -60,7 +60,7 @@ const char* Settings::getTouchDevicePath() const {
     }
 }
 
-const char* Settings::getTouchEnvSetting() const {
+const char* DeviceSettings::getTouchEnvSetting() const {
     switch(getDeviceType()) {
         case DeviceType::RM1:
             return "rotate=180";

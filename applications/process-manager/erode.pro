@@ -16,7 +16,7 @@ SOURCES += main.cpp \
     controller.cpp \
     eventfilter.cpp \
     taskitem.cpp \
-    ../../shared/settings.cpp
+    ../../shared/devicesettings.cpp
 
 RESOURCES += qml.qrc
 
@@ -35,7 +35,7 @@ HEADERS += \
     eventfilter.h \
     taskitem.h \
     ../../shared/dbussettings.h \
-    ../../shared/settings.h
+    ../../shared/devicesettings.h
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 INCLUDEPATH += ../../shared
