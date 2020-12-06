@@ -1,6 +1,7 @@
 #pragma once
 
 enum DeviceType {
+    Unknown,
     RM1,
     RM2,
 };
