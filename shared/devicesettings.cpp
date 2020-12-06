@@ -11,8 +11,9 @@ DeviceSettings::DeviceSettings(): _deviceType(DeviceType::RM1) {
 
 void DeviceSettings::readDeviceType() {
     QFile file("/sys/devices/soc0/machine");
-    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
+    if(!file.exists() || !file.open(QIODevice::ReadOnly | QIODevice::Text)){
         qDebug() << "Couldn't open " << file.fileName();
+        _deviceType = DeviceType::Unknown;
         return;
     }
     QTextStream in(&file);
@@ -20,7 +21,10 @@ void DeviceSettings::readDeviceType() {
     if (modelName.startsWith("reMarkable 2")) {
         qDebug() << "RM2 detected...";
         _deviceType = DeviceType::RM2;
+        return;
      }
+     qDebug() << "RM1 detected...";
+     _deviceType = DeviceType::RM1;
 }
 
 DeviceType DeviceSettings::getDeviceType() const {
