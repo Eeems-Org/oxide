@@ -1,9 +1,9 @@
+#include "eventfilter.h"
+#include <QTimer>
 #include <QDebug>
 #include <QMouseEvent>
 #include <QTabletEvent>
 #include <QScreen>
-
-#include "eventfilter.h"
 
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872.0
@@ -11,7 +11,7 @@
 #define WACOM_Y_SCALAR (float(DISPLAYHEIGHT) / float(DISPLAYWIDTH))
 //#define DEBUG_EVENTS
 
-EventFilter::EventFilter(QObject *parent) : QObject(parent){ }
+EventFilter::EventFilter(QObject *parent) : QObject(parent), root(nullptr){}
 
 QPointF swap(QPointF pointF){
     return QPointF(pointF.y(), pointF.x());
@@ -100,6 +100,7 @@ void postEvent(QEvent::Type type, QEvent* ev, QQuickItem* root){
             QGuiApplication::postEvent(postWidget, event);
         }
     }
+    delete mouseEvent;
 }
 
 bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
