@@ -1,6 +1,7 @@
 #include "systemapi.h"
 #include "appsapi.h"
 #include "powerapi.h"
+#include "devicesettings.h"
 
 void SystemAPI::PrepareForSleep(bool suspending){
     if(suspending){
@@ -12,6 +13,10 @@ void SystemAPI::PrepareForSleep(bool suspending){
             resumeApp = nullptr;
         }
         drawSleepImage();
+        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
+            // RM2 needs some time to draw sleep image
+            sleep(1);
+        }
         qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
         releaseSleepInhibitors();

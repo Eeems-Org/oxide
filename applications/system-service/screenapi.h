@@ -15,6 +15,7 @@
 #include "stb_image.h"
 #include "stb_image_write.h"
 #include "fb2png.h"
+#include "devicesettings.h"
 
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872
@@ -52,22 +53,30 @@ public:
         }
         int width, height, channels;
         auto decoded = (uint32_t*)stbi_load(path.toStdString().c_str(), &width, &height, &channels, 4);
+        int target_width = RDISPLAYWIDTH, target_height = RDISPLAYHEIGHT;
+        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
+            target_width = DISPLAYWIDTH;
+            target_height = DISPLAYHEIGHT;
+        }
         int fd = open("/dev/fb0", O_RDWR);
-        auto ptr = (remarkable_color*)mmap(NULL, RDISPLAYSIZE, PROT_WRITE, MAP_SHARED, fd, 0);
+        auto ptr = (remarkable_color*)mmap(NULL,
+              target_height * target_height * sizeof(remarkable_color),
+              PROT_WRITE, MAP_SHARED, fd, 0);
         auto src = decoded;
+
         for(int j = 0; j < height; j++){
-            if(j >= RDISPLAYHEIGHT){
+            if(j >= target_height){
               break;
             }
             for(int i = 0; i < width; i++){
-              if(i >= RDISPLAYWIDTH){
+              if(i >= target_width){
                 break;
               }
               if(src[i] != 0){
                 ptr[i] = (remarkable_color)src[i];
               }
             }
-            ptr += RDISPLAYWIDTH;
+            ptr += target_width;
             src += width;
         }
         mxcfb_update_data update_data;
