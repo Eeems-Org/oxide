@@ -22,9 +22,6 @@
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
 #define remarkable_color uint16_t
 #define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(remarkable_color)
-#define RDISPLAYWIDTH 1408
-#define RDISPLAYHEIGHT 1920
-#define RDISPLAYSIZE RDISPLAYWIDTH * RDISPLAYHEIGHT * sizeof(remarkable_color)
 
 #define screenAPI ScreenAPI::singleton()
 
@@ -53,14 +50,11 @@ public:
         }
         int width, height, channels;
         auto decoded = (uint32_t*)stbi_load(path.toStdString().c_str(), &width, &height, &channels, 4);
-        int target_width = RDISPLAYWIDTH, target_height = RDISPLAYHEIGHT;
-        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
-            target_width = DISPLAYWIDTH;
-            target_height = DISPLAYHEIGHT;
-        }
+        int target_width = DeviceSettings::instance().getFrameBufferWidth();
+        int target_height = DeviceSettings::instance().getFrameBufferHeight();
         int fd = open("/dev/fb0", O_RDWR);
         auto ptr = (remarkable_color*)mmap(NULL,
-              target_height * target_height * sizeof(remarkable_color),
+              DeviceSettings::instance().getFrameBufferSize(),
               PROT_WRITE, MAP_SHARED, fd, 0);
         auto src = decoded;
 

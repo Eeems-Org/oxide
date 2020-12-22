@@ -74,3 +74,29 @@ const char* DeviceSettings::getTouchEnvSetting() const {
             return "";
     }
 }
+
+int DeviceSettings::getFrameBufferWidth() const {
+    switch(getDeviceType()) {
+        case DeviceType::RM1:
+            return 1408;
+        case DeviceType::RM2:
+            return 1404;
+        default:
+            return 0;
+   }
+}
+
+int DeviceSettings::getFrameBufferHeight() const {
+    switch(getDeviceType()) {
+        case DeviceType::RM1:
+            return 1920;
+        case DeviceType::RM2:
+            return 1872;
+        default:
+            return 0;
+   }
+}
+
+int DeviceSettings::getFrameBufferSize() const {
+    return getFrameBufferWidth() * getFrameBufferHeight() * sizeof(uint16_t);
+}

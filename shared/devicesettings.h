@@ -23,6 +23,9 @@ public:
     const char* getWacomDevicePath() const;
     const char* getTouchDevicePath() const;
     const char* getTouchEnvSetting() const;
+    int getFrameBufferWidth() const;
+    int getFrameBufferHeight() const;
+    int getFrameBufferSize() const;
     DeviceType getDeviceType() const;
 
 };
