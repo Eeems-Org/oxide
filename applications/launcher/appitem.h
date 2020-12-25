@@ -25,6 +25,7 @@ public:
         }
     }
 
+    Q_PROPERTY(QString path MEMBER _path)
     Q_PROPERTY(QString name MEMBER _name NOTIFY nameChanged)
     Q_PROPERTY(QString displayName MEMBER _displayName NOTIFY displayNameChanged)
     Q_PROPERTY(QString desc MEMBER _desc NOTIFY descChanged)
@@ -49,6 +50,7 @@ private slots:
 
 private:
     Application* app = nullptr;
+    QString _path;
     QString _name;
     QString _displayName;
     QString _desc;

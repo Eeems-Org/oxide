@@ -319,8 +319,31 @@ public slots:
             delete appsApi;
         }
         appsApi = new Apps(OXIDE_SERVICE, path, bus);
+        connect(appsApi, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
+        connect(appsApi, &Apps::applicationRegistered, this, &Controller::registerApplication);
     }
 private slots:
+    void unregisterApplication(QDBusObjectPath path){
+        if(appsApi == nullptr){
+            qDebug() << "Unable to access apps API";
+            return;
+        }
+        auto pathString = path.path();
+        for(auto app : applications){
+            if(app->property("path") == pathString){
+                applications.removeAll(app);
+                delete app;
+                emit reload();
+                qDebug() << "Removed" << pathString << "application";
+                return;
+            }
+        }
+        qDebug() << "Unable to find application " << pathString << "to remove";
+    }
+    void registerApplication(QDBusObjectPath path){
+        qDebug() << "New application detected" << path.path();
+        emit reload();
+    }
     void batteryAlert(){
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if(ui){

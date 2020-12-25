@@ -209,6 +209,7 @@ QList<QObject*> Controller::getApps(){
         if(displayName.isEmpty()){
             displayName = name;
         }
+        appItem->setProperty("path", path);
         appItem->setProperty("name", name);
         appItem->setProperty("displayName", displayName);
         appItem->setProperty("desc", app.description());
