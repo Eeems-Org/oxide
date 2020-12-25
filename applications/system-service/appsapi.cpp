@@ -22,13 +22,18 @@ AppsAPI::AppsAPI(QObject* parent)
         settings.setArrayIndex(i);
         auto name = settings.value("name").toString();
         auto displayName = settings.value("displayName", name).toString();
+        auto type = settings.value("type", Foreground).toInt();
+        auto bin = settings.value("bin").toString();
+        if(type < Foreground || type > Background || name.isEmpty() || bin.isEmpty()){
+            continue;
+        }
         auto app = new Application(getPath(name), reinterpret_cast<QObject*>(this));
         app->setConfig(QVariantMap {
             {"name", name},
             {"displayName", displayName},
             {"description", settings.value("description", displayName).toString()},
-            {"bin", settings.value("bin").toString()},
-            {"type", settings.value("type", Foreground).toInt()},
+            {"bin", bin},
+            {"type", type},
             {"flags", settings.value("flags", QStringList()).toStringList()},
             {"icon", settings.value("icon", "").toString()},
             {"onPause", settings.value("onPause", "").toString()},
@@ -98,6 +103,7 @@ AppsAPI::AppsAPI(QObject* parent)
         path = app->qPath();
     }
     m_startupApplication = path;
+    writeApplications();
 }
 
 void AppsAPI::startup(){
