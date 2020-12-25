@@ -195,6 +195,8 @@ public:
     void setValue(QString name, QVariant value){ m_config[name] = value; }
     void interruptApplication();
     void uninterruptApplication();
+    void waitForPause();
+    void waitForResume();
 signals:
     void launched();
     void paused();

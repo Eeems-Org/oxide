@@ -62,6 +62,7 @@ void Application::interruptApplication(){
             if(timer.isValid()){
                 qDebug() << "Application took too long to background" << name();
                 kill(m_process->processId(), SIGSTOP);
+                waitForPause();
             }else{
                 m_backgrounded = true;
             }
@@ -69,7 +70,16 @@ void Application::interruptApplication(){
         case AppsAPI::Foreground:
         default:
             kill(m_process->processId(), SIGSTOP);
+            waitForPause();
     }
+}
+void Application::waitForPause(){
+    siginfo_t info;
+    waitid(P_PID, m_process->processId(), &info, WSTOPPED);
+}
+void Application::waitForResume(){
+    siginfo_t info;
+    waitid(P_PID, m_process->processId(), &info, WCONTINUED);
 }
 void Application::resume(){
     if(
@@ -83,6 +93,7 @@ void Application::resume(){
     appsAPI->pauseAll();
     recallScreen();
     uninterruptApplication();
+    waitForResume();
     emit resumed();
     emit appsAPI->applicationResumed(qPath());
     qDebug() << "Resumed " << path();
