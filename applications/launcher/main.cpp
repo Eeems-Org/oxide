@@ -93,8 +93,12 @@ int main(int argc, char *argv[]){
     auto currentTime = QTime::currentTime();
     QTime nextTime = currentTime.addSecs(60 - currentTime.second());
     clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
-    QObject::connect(clockTimer , &QTimer::timeout, [clock, &clockTimer](){
-        clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
+    QObject::connect(clockTimer , &QTimer::timeout, [clock, &clockTimer, controller](){
+        QString text = "";
+        if(controller->showDate()){
+            text = QDate::currentDate().toString(Qt::TextDate) + " ";
+        }
+        clock->setProperty("text", text + QTime::currentTime().toString("h:mm a"));
         if(clockTimer->interval() != 60 * 1000){
             clockTimer->setInterval(60 * 1000); // 1 minute
         }

@@ -43,6 +43,7 @@ class Controller : public QObject
     Q_PROPERTY(QString autoStartApplication READ autoStartApplication WRITE setAutoStartApplication NOTIFY autoStartApplicationChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
+    Q_PROPERTY(bool showDate MEMBER m_showDate WRITE setShowDate NOTIFY showDateChanged);
 public:
     static std::string exec(const char* cmd);
     EventFilter* filter;
@@ -134,6 +135,23 @@ public:
         }        return systemApi->autoSleep();
     };
     void setSleepAfter(int);
+    void setShowDate(bool showDate){
+        m_showDate = showDate;
+        emit showDateChanged(showDate);
+        if(root == nullptr){
+            return;
+        }
+        QObject* clock = root->findChild<QObject*>("clock");
+        if(clock == nullptr){
+            return;
+        }
+        QString text = "";
+        if(showDate){
+            text = QDate::currentDate().toString(Qt::TextDate) + " ";
+        }
+        clock->setProperty("text", text + QTime::currentTime().toString("h:mm a"));
+    }
+    bool showDate(){ return m_showDate; }
     QString autoStartApplication() { return m_autoStartApplication; }
     void setAutoStartApplication(QString autoStartApplication);
     bool getPowerConnected(){ return m_powerConnected; }
@@ -202,6 +220,7 @@ signals:
     void autoStartApplicationChanged(QString);
     void powerOffInhibitedChanged(bool);
     void sleepInhibitedChanged(bool);
+    void showDateChanged(bool);
 
 public slots:
     void updateUIElements();
@@ -548,6 +567,7 @@ private:
     bool m_showWifiDb = false;
     bool m_showBatteryPercent = false;
     bool m_showBatteryTemperature = false;
+    bool m_showDate = false;
     QString m_autoStartApplication = "";
 
     bool m_powerConnected = false;

@@ -16,7 +16,7 @@
 #include "dbusservice_interface.h"
 
 QSet<QString> settings = { "columns", "fontSize", "autoStartApplication" };
-QSet<QString> booleanSettings {"showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
+QSet<QString> booleanSettings {"showWifiDb", "showBatteryPercent", "showBatteryTemperature", "showDate" };
 QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
 QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root /.config" };
 
