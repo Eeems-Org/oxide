@@ -27,7 +27,7 @@ void DeviceSettings::readDeviceType() {
      _deviceType = DeviceType::RM1;
 }
 
-DeviceType DeviceSettings::getDeviceType() const {
+DeviceSettings::DeviceType DeviceSettings::getDeviceType() const {
     return _deviceType;
 }
 

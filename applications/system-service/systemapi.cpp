@@ -1,8 +1,10 @@
 #include "systemapi.h"
 #include "appsapi.h"
 #include "powerapi.h"
+#include "devicesettings.h"
 
 void SystemAPI::PrepareForSleep(bool suspending){
+    auto device = deviceSettings.getDeviceType();
     if(suspending){
         auto path = appsAPI->currentApplication();
         if(path.path() != "/"){
@@ -15,6 +17,9 @@ void SystemAPI::PrepareForSleep(bool suspending){
         qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
         releaseSleepInhibitors();
+        if(device == DeviceSettings::DeviceType::RM2){
+            system("rmmod brcmfmac");
+        }
     }else{
         inhibitSleep();
         qDebug() << "Resuming...";
@@ -27,6 +32,9 @@ void SystemAPI::PrepareForSleep(bool suspending){
         if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
             qDebug() << "Suspend timer re-enabled due to resume";
             suspendTimer.start(m_autoSleep * 60 * 1000);
+        }
+        if(device == DeviceSettings::DeviceType::RM2){
+            system("modprobe brcmfmac");
         }
     }
 }

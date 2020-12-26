@@ -18,8 +18,8 @@ using namespace std;
 #define touchHandler DigitizerHandler::singleton_touchScreen()
 #define wacomHandler DigitizerHandler::singleton_wacom()
 
-const event_device wacom_device(DeviceSettings::instance().getWacomDevicePath(), O_RDONLY);
-const event_device touchScreen_device(DeviceSettings::instance().getTouchDevicePath(), O_RDONLY);
+const event_device wacom_device(deviceSettings.getWacomDevicePath(), O_RDONLY);
+const event_device touchScreen_device(deviceSettings.getTouchDevicePath(), O_RDONLY);
 
 class DigitizerHandler : public QThread {
     Q_OBJECT
