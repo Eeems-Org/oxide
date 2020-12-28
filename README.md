@@ -17,3 +17,11 @@ Here is a video of it in action:
 ## Building
 
 Install the reMarkable toolchain and then run `make release`. It will produce a folder named `release` containing all the output.
+
+### Nix
+Works on x86_64-linux or macOS with
+[linuxkit-nix](https://github.com/nix-community/linuxkit-nix).
+
+```ShellSession
+$ nix build
+```
