@@ -5,9 +5,9 @@
     <property name="displayName" type="s" access="readwrite"/>
     <property name="description" type="s" access="read"/>
     <property name="bin" type="s" access="read"/>
-    <property name="onPause" type="s" access="read"/>
-    <property name="onResume" type="s" access="read"/>
-    <property name="onStop" type="s" access="read"/>
+    <property name="onPause" type="s" access="readwrite"/>
+    <property name="onResume" type="s" access="readwrite"/>
+    <property name="onStop" type="s" access="readwrite"/>
     <property name="autoStart" type="b" access="readwrite"/>
     <property name="type" type="i" access="read"/>
     <property name="state" type="i" access="read"/>
@@ -30,6 +30,18 @@
     </signal>
     <signal name="displayNameChanged">
       <arg type="s" direction="out"/>
+    </signal>
+    <signal name="onPauseChanged">
+      <arg type="s" direction="out"/>
+    </signal>
+    <signal name="onResumeChanged">
+      <arg type="s" direction="out"/>
+    </signal>
+    <signal name="onStopChanged">
+      <arg type="s" direction="out"/>
+    </signal>
+    <signal name="autoStartChanged">
+      <arg type="b" direction="out"/>
     </signal>
     <signal name="iconChanged">
       <arg type="s" direction="out"/>

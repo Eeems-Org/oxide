@@ -38,10 +38,10 @@ class Application : public QObject{
     Q_PROPERTY(QString displayName READ displayName WRITE setDisplayName NOTIFY displayNameChanged)
     Q_PROPERTY(QString description READ description)
     Q_PROPERTY(QString bin READ bin)
-    Q_PROPERTY(QString onPause READ onPause)
-    Q_PROPERTY(QString onResume READ onResume)
-    Q_PROPERTY(QString onStop READ onStop)
-    Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart)
+    Q_PROPERTY(QString onPause READ onPause WRITE setOnPause NOTIFY onPauseChanged)
+    Q_PROPERTY(QString onResume READ onResume WRITE setOnResume NOTIFY onResumeChanged)
+    Q_PROPERTY(QString onStop READ onStop WRITE setOnStop NOTIFY onStopChanged)
+    Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart NOTIFY autoStartChanged)
     Q_PROPERTY(int type READ type)
     Q_PROPERTY(int state READ state)
     Q_PROPERTY(bool systemApp READ systemApp)
@@ -105,15 +105,29 @@ public:
     QString description() { return value("description", displayName()).toString(); }
     QString bin() { return value("bin").toString(); }
     QString onPause() { return value("onPause", "").toString(); }
+    void setOnPause(QString onPause){
+        setValue("onPause", onPause);
+        emit onPauseChanged(onPause);
+    }
     QString onResume() { return value("onResume", "").toString(); }
+    void setOnResume(QString onResume){
+        setValue("onResume", onResume);
+        emit onResumeChanged(onResume);
+    }
     QString onStop() { return value("onStop", "").toString(); }
+    void setOnStop(QString onStop){
+        setValue("onStop", onStop);
+        emit onStopChanged(onStop);
+    }
     QStringList flags() { return value("flags", QStringList()).toStringList(); }
     bool autoStart() { return flags().contains("autoStart"); }
     void setAutoStart(bool autoStart) {
         if(!autoStart){
             flags().removeAll("autoStart");
+            autoStartChanged(autoStart);
         }else if(!this->autoStart()){
             flags().append("autoStart");
+            autoStartChanged(autoStart);
         }
     }
     bool systemApp() { return flags().contains("system"); }
@@ -209,6 +223,10 @@ signals:
     void unregistered();
     void exited(int);
     void displayNameChanged(QString);
+    void onPauseChanged(QString);
+    void onResumeChanged(QString);
+    void onStopChanged(QString);
+    void autoStartChanged(bool);
     void iconChanged(QString);
     void environmentChanged(QVariantMap);
 public slots:
