@@ -48,6 +48,18 @@ ApplicationWindow {
                         Action { text: qsTr(" Options"); onTriggered: stateController.state = "settings" }
                     }
                 }
+                StatusIcon {
+                    source: "qrc:/img/notifications/white.png"
+                    text: controller.notificationText
+                    visible: controller.hasNotification
+                    clip: true
+                    Layout.maximumWidth: 300
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: parent.visible
+                        onClicked: stateController.state = "notifications"
+                    }
+                }
             }
             Label { Layout.fillWidth: true }
             RowLayout {
@@ -376,6 +388,12 @@ ApplicationWindow {
             id: calendar
             onClosed: stateController.state = "loaded"
             visible: false
+        },
+        NotificationsPopup {
+            id: notifications
+            onClosed: stateController.state = "loaded"
+            visible: false
+            model: controller.notifications
         }
 
     ]
@@ -399,6 +417,7 @@ ApplicationWindow {
                     PropertyAction { target: settings; property: "visible"; value: true }
                     PropertyAction { target: wifi; property: "visible"; value: false }
                     PropertyAction { target: calendar; property: "visible"; value: false }
+                    PropertyAction { target: notifications; property: "visible"; value: false }
                     PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
@@ -410,6 +429,7 @@ ApplicationWindow {
                     PropertyAction { target: wifi; property: "visible"; value: true }
                     PropertyAction { target: calendar; property: "visible"; value: false }
                     PropertyAction { target: settings; property: "visible"; value: false }
+                    PropertyAction { target: notifications; property: "visible"; value: false }
                     PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
@@ -419,6 +439,19 @@ ApplicationWindow {
                     ScriptAction { script: stateController.previousState = "calendar" }
                     ScriptAction { script: console.log("Opening calendar") }
                     PropertyAction { target: calendar; property: "visible"; value: true }
+                    PropertyAction { target: settings; property: "visible"; value: false }
+                    PropertyAction { target: wifi; property: "visible"; value: false }
+                    PropertyAction { target: notifications; property: "visible"; value: false }
+                    PropertyAction { target: menu; property: "focus"; value: false }
+                }
+            },
+            Transition {
+                from: "*"; to: "notifications"
+                SequentialAnimation {
+                    ScriptAction { script: stateController.previousState = "notifications" }
+                    ScriptAction { script: console.log("Opening notifications") }
+                    PropertyAction { target: notifications; property: "visible"; value: true }
+                    PropertyAction { target: calendar; property: "visible"; value: false }
                     PropertyAction { target: settings; property: "visible"; value: false }
                     PropertyAction { target: wifi; property: "visible"; value: false }
                     PropertyAction { target: menu; property: "focus"; value: false }
@@ -438,6 +471,7 @@ ApplicationWindow {
                     PropertyAction { target: calendar; property: "visible"; value: false }
                     PropertyAction { target: settings; property: "visible"; value: false }
                     PropertyAction { target: wifi; property: "visible"; value: false }
+                    PropertyAction { target: notifications; property: "visible"; value: false }
                     PropertyAction { target: menu; property: "focus"; value: false }
                     PropertyAction { target: appsView; property: "focus"; value: true }
                 }

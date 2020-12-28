@@ -48,6 +48,8 @@ DBUS_INTERFACES += ../../interfaces/bss.xml
 DBUS_INTERFACES += ../../interfaces/appsapi.xml
 DBUS_INTERFACES += ../../interfaces/application.xml
 DBUS_INTERFACES += ../../interfaces/systemapi.xml
+DBUS_INTERFACES += ../../interfaces/notificationapi.xml
+DBUS_INTERFACES += ../../interfaces/notification.xml
 
 linux-oe-g++ {
     LIBS += -lqsgepaper
@@ -72,6 +74,7 @@ HEADERS += \
     eventfilter.h \
     inputmanager.h \
     mxcfb.h \
+    notificationlist.h \
     sysobject.h \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h \
