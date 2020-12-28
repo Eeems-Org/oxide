@@ -14,6 +14,9 @@
     <property name="systemApp" type="b" access="read"/>
     <property name="hidden" type="b" access="read"/>
     <property name="icon" type="s" access="readwrite"/>
+    <property name="environment" type="a{sv}" access="read">
+      <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+    </property>
     <signal name="launched">
     </signal>
     <signal name="paused">
@@ -31,6 +34,10 @@
     <signal name="iconChanged">
       <arg type="s" direction="out"/>
     </signal>
+    <signal name="environmentChanged">
+      <arg type="a{sv}" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+    </signal>
     <method name="sigUsr1">
     </method>
     <method name="sigUsr2">
@@ -47,6 +54,10 @@
     <method name="stop">
     </method>
     <method name="unregister">
+    </method>
+    <method name="setEnvironment">
+      <arg name="environment" type="a{sv}" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
     </method>
   </interface>
 </node>

@@ -39,6 +39,7 @@ AppsAPI::AppsAPI(QObject* parent)
             {"onPause", settings.value("onPause", "").toString()},
             {"onResume", settings.value("onResume", "").toString()},
             {"onStop", settings.value("onStop", "").toString()},
+            {"environment", settings.value("environment", QVariantMap()).toMap()},
         });
         applications.insert(name, app);
     }

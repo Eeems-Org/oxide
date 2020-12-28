@@ -47,6 +47,7 @@ class Application : public QObject{
     Q_PROPERTY(bool systemApp READ systemApp)
     Q_PROPERTY(bool hidden READ hidden)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
+    Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false) {
@@ -57,16 +58,7 @@ public:
         connect(m_process, &QProcess::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
         connect(m_process, &QProcess::stateChanged, this, &Application::stateChanged);
         connect(m_process, &QProcess::errorOccurred, this, &Application::errorOccurred);
-        auto env = QProcessEnvironment::systemEnvironment();
-        auto defaults = QString(DEFAULT_PATH).split(":");
-        auto envPath = env.value("PATH", DEFAULT_PATH);
-        for(auto item : defaults){
-            if(!envPath.contains(item)){
-                envPath.append(item);
-            }
-        }
-        env.insert("PATH", envPath);
-        m_process->setEnvironment(env.toStringList());
+        updateEnvironment();
     }
     ~Application() {
         unregisterPath();
@@ -132,6 +124,19 @@ public:
     void setIcon(QString icon){
         setValue("icon", icon);
         emit iconChanged(icon);
+    }
+    QVariantMap environment() { return value("environment", QVariantMap()).toMap(); }
+    Q_INVOKABLE void setEnvironment(QVariantMap environment){
+        for(auto key : environment.keys()){
+            auto value = environment.value(key, QVariant());
+            if(!value.isValid()){
+                qDebug() << key << " has invalid value: " << value;
+                return;
+            }
+        }
+        setValue("environment", environment);
+        updateEnvironment();
+        emit environmentChanged(environment);
     }
     const QVariantMap& getConfig(){ return m_config; }
     void setConfig(const QVariantMap& config);
@@ -205,6 +210,7 @@ signals:
     void exited(int);
     void displayNameChanged(QString);
     void iconChanged(QString);
+    void environmentChanged(QVariantMap);
 public slots:
     void sigUsr1(){
         timer.invalidate();
@@ -265,6 +271,21 @@ private:
         while(timer.isValid() && !timer.hasExpired(milliseconds)){
             QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
         }
+    }
+    void updateEnvironment(){
+        auto env = QProcessEnvironment::systemEnvironment();
+        auto defaults = QString(DEFAULT_PATH).split(":");
+        auto envPath = env.value("PATH", DEFAULT_PATH);
+        for(auto item : defaults){
+            if(!envPath.contains(item)){
+                envPath.append(item);
+            }
+        }
+        env.insert("PATH", envPath);
+        for(auto key : environment().keys()){
+            env.insert(key, environment().value(key, "").toString());
+        }
+        m_process->setEnvironment(env.toStringList());
     }
 };
 
