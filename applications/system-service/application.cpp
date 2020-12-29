@@ -55,13 +55,13 @@ void Application::interruptApplication(){
             return;
         case AppsAPI::Backgroundable:
             appsAPI->connectSignals(this, 2);
-            kill(m_process->processId(), SIGUSR2);
+            kill(-m_process->processId(), SIGUSR2);
             timer.restart();
             delayUpTo(1000);
             appsAPI->disconnectSignals(this, 2);
             if(timer.isValid()){
                 qDebug() << "Application took too long to background" << name();
-                kill(m_process->processId(), SIGSTOP);
+                kill(-m_process->processId(), SIGSTOP);
                 waitForPause();
             }else{
                 m_backgrounded = true;
@@ -69,7 +69,7 @@ void Application::interruptApplication(){
             break;
         case AppsAPI::Foreground:
         default:
-            kill(m_process->processId(), SIGSTOP);
+            kill(-m_process->processId(), SIGSTOP);
             waitForPause();
     }
 }
@@ -114,10 +114,10 @@ void Application::uninterruptApplication(){
         case AppsAPI::Backgroundable:
             if(state() == Paused){
                 inputManager->clear_touch_buffer(touchScreen.fd);
-                kill(m_process->processId(), SIGCONT);
+                kill(-m_process->processId(), SIGCONT);
             }
             appsAPI->connectSignals(this, 1);
-            kill(m_process->processId(), SIGUSR1);
+            kill(-m_process->processId(), SIGUSR1);
             delayUpTo(1000);
             appsAPI->disconnectSignals(this, 1);
             if(timer.isValid()){
@@ -129,7 +129,7 @@ void Application::uninterruptApplication(){
         case AppsAPI::Foreground:
         default:
             inputManager->clear_touch_buffer(touchScreen.fd);
-            kill(m_process->processId(), SIGCONT);
+            kill(-m_process->processId(), SIGCONT);
     }
 }
 void Application::stop(){
@@ -141,13 +141,13 @@ void Application::stop(){
         QProcess::execute(onStop());
     }
     if(state == Paused){
-        kill(m_process->processId(), SIGCONT);
+        kill(-m_process->processId(), SIGCONT);
     }
     m_process->kill();
 }
 void Application::signal(int signal){
     if(m_process->processId()){
-        kill(m_process->processId(), signal);
+        kill(-m_process->processId(), signal);
     }
 }
 void Application::unregister(){

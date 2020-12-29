@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <grp.h>
+#include <sys/stat.h>
 
 #include "dbussettings.h"
 #include "mxcfb.h"
@@ -29,6 +31,33 @@
 #include "inputmanager.h"
 
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+
+class SandBoxProcess : public QProcess{
+    Q_OBJECT
+public:
+    SandBoxProcess(int gid = 0, int uid = 0, QString chroot = "", mode_t mask = 0, QObject* parent = nullptr)
+    : QProcess(parent), m_gid(gid), m_uid(uid), m_chroot(chroot), m_mask(mask) {}
+protected:
+    void setupChildProcess() override {
+        // Drop all privileges in the child process
+        setgroups(0, 0);
+        if(!m_chroot.isEmpty()){
+            // enter a chroot jail.
+            chroot(m_chroot.toStdString().c_str());
+            chdir("/");
+        }
+        // Change to correct user
+        setgid(m_gid);
+        setuid(m_uid);
+        umask(m_mask);
+        setpgid(getpid(), 0);
+    }
+private:
+    int m_gid;
+    int m_uid;
+    QString m_chroot;
+    mode_t m_mask;
+};
 
 class Application : public QObject{
     Q_OBJECT
@@ -51,13 +80,13 @@ class Application : public QObject{
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false) {
-        m_process = new QProcess(this);
-        connect(m_process, &QProcess::started, this, &Application::started);
-        connect(m_process, QOverload<int>::of(&QProcess::finished), this, &Application::finished);
-        connect(m_process, &QProcess::readyReadStandardError, this, &Application::readyReadStandardError);
-        connect(m_process, &QProcess::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
-        connect(m_process, &QProcess::stateChanged, this, &Application::stateChanged);
-        connect(m_process, &QProcess::errorOccurred, this, &Application::errorOccurred);
+        m_process = new SandBoxProcess(0, 0, "", 0, this);
+        connect(m_process, &SandBoxProcess::started, this, &Application::started);
+        connect(m_process, QOverload<int>::of(&SandBoxProcess::finished), this, &Application::finished);
+        connect(m_process, &SandBoxProcess::readyReadStandardError, this, &Application::readyReadStandardError);
+        connect(m_process, &SandBoxProcess::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
+        connect(m_process, &SandBoxProcess::stateChanged, this, &Application::stateChanged);
+        connect(m_process, &SandBoxProcess::errorOccurred, this, &Application::errorOccurred);
         updateEnvironment();
     }
     ~Application() {
@@ -278,7 +307,7 @@ private slots:
 private:
     QVariantMap m_config;
     QString m_path;
-    QProcess* m_process;
+    SandBoxProcess* m_process;
     bool m_backgrounded;
     QByteArray* screenCapture = nullptr;
     size_t screenCaptureSize;
