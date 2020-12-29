@@ -122,7 +122,7 @@ public:
         QMutableListIterator<INetwork*> i(networks);
         while(i.hasNext()){
             auto network = i.next();
-            if(network->path() == path){
+            if(!network->isValid() || network->path() == path){
                 i.remove();
                 delete network;
             }

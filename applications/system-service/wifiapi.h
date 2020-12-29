@@ -58,11 +58,11 @@ public:
             qDebug() << "    Wireless device found!";
             wlans.append(item);
             connect(item, &Wlan::BSSAdded, this, &WifiAPI::BSSAdded, Qt::QueuedConnection);
-            connect(item, &Wlan::BSSRemoved, this, &WifiAPI::BSSRemoved, Qt::QueuedConnection);
+            connect(item, &Wlan::BSSRemoved, this, &WifiAPI::BSSRemoved, Qt::BlockingQueuedConnection);
             connect(item, &Wlan::BlobAdded, this, &WifiAPI::BlobAdded, Qt::QueuedConnection);
-            connect(item, &Wlan::BlobRemoved, this, &WifiAPI::BlobRemoved, Qt::QueuedConnection);
+            connect(item, &Wlan::BlobRemoved, this, &WifiAPI::BlobRemoved, Qt::BlockingQueuedConnection);
             connect(item, &Wlan::NetworkAdded, this, &WifiAPI::NetworkAdded, Qt::QueuedConnection);
-            connect(item, &Wlan::NetworkRemoved, this, &WifiAPI::NetworkRemoved, Qt::QueuedConnection);
+            connect(item, &Wlan::NetworkRemoved, this, &WifiAPI::NetworkRemoved, Qt::BlockingQueuedConnection);
             connect(item, &Wlan::NetworkSelected, this, &WifiAPI::NetworkSelected, Qt::QueuedConnection);
             connect(item, &Wlan::PropertiesChanged, this, &WifiAPI::InterfacePropertiesChanged, Qt::QueuedConnection);
             connect(item, &Wlan::ScanDone, this, &WifiAPI::ScanDone, Qt::QueuedConnection);
@@ -438,16 +438,15 @@ public:
     void BSSRemoved(Wlan* wlan, const QDBusObjectPath& path){
         Q_UNUSED(wlan);
         auto sPath = path.path();
-        for(auto bss : bsss){
-            for(auto nPath : bss->paths()){
-                bss->removeBSS(sPath);
-            }
+        QMutableListIterator<BSS*> i(bsss);
+        while(i.hasNext()){
+            auto bss = i.next();
+            bss->removeBSS(sPath);
             if(!bss->paths().length()){
-                bsss.removeAll(bss);
+                i.remove();
                 emit bss->removed();
                 emit bssRemoved(QDBusObjectPath(bss->path()));
                 delete bss;
-                break;
             }
         }
     }
@@ -489,19 +488,16 @@ public:
     void NetworkRemoved(Wlan* wlan, const QDBusObjectPath& path){
         Q_UNUSED(wlan);
         auto sPath = path.path();
-        for(auto network : networks){
-            for(auto nPath : network->paths()){
-                if(nPath == sPath){
-                    network->removeNetwork(sPath);
-                }
-            }
+        QMutableListIterator<Network*> i(networks);
+        while(i.hasNext()){
+            auto network = i.next();
+            network->removeNetwork(sPath);
             if(!network->paths().length()){
-                networks.removeAll(network);
+                i.remove();
                 emit network->removed();
                 emit networkRemoved(QDBusObjectPath(network->path()));
                 qDebug() << "Network removed " << network->ssid();
                 delete network;
-                break;
             }
         }
     }
@@ -653,31 +649,14 @@ private:
 
     void update(){
         settings.sync();
+        auto state = getCurrentState();
         bool enabled = settings.value("wifion").toBool();
-        if(enabled && m_state == Off){
+        if(enabled && state == Off){
             enable();
-        }else if(!enabled && m_state != Off){
+            state = getCurrentState();
+        }else if(!enabled && state != Off){
             disable();
-        }
-        State state = Off;
-        if(enabled){
-            for(auto wlan : wlans){
-                if(!wlan->isUp()){
-                    continue;
-                }
-                if(state == Off){
-                    state = Disconnected;
-                }
-                if(wlan->operstate() == "up"){
-                    state = Offline;
-                }
-                if(wlan->isConnected()){
-                    state = Online;
-                }
-                if(state == Online){
-                    break;
-                }
-            }
+            state = getCurrentState();
         }
         auto path = network().path();
         if((state == Online || state == Offline) && m_currentNetwork.path() != path){
@@ -697,6 +676,27 @@ private:
             m_link = clink;
             emit linkChanged(clink);
         }
+    }
+    State getCurrentState(){
+        State state = Off;
+        for(auto wlan : wlans){
+            if(!wlan->isUp()){
+                continue;
+            }
+            if(state == Off){
+                state = Disconnected;
+            }
+            if(wlan->operstate() == "up"){
+                state = Offline;
+            }
+            if(wlan->isConnected()){
+                state = Online;
+            }
+            if(state == Online){
+                break;
+            }
+        }
+        return state;
     }
     QString getPath(QString type, QString id){
         static const QUuid NS = QUuid::fromString(QLatin1String("{78c28d66-f558-11ea-adc1-0242ac120002}"));

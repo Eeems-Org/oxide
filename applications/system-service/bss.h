@@ -70,7 +70,7 @@ public:
         QMutableListIterator<IBSS*> i(bsss);
         while(i.hasNext()){
             auto bss = i.next();
-            if(bss->path() == path){
+            if(!bss->isValid() || bss->path() == path){
                 i.remove();
                 delete bss;
             }

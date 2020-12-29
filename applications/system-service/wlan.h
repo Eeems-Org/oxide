@@ -42,7 +42,14 @@ public:
         return connected;
     }
     int link(){
-        return std::stoi(exec("cat /proc/net/wireless | grep " + iface() + " | awk '{print $3}'"));
+        auto out = exec("cat /proc/net/wireless | grep " + iface() + " | awk '{print $3}'");
+        try {
+            return std::stoi(out);
+        }
+        catch (const std::invalid_argument& e) {
+            qDebug() << "link failed: " << out.c_str();
+            return 0;
+        }
     }
 signals:
     void BSSAdded(Wlan*, QDBusObjectPath, QVariantMap);

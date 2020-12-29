@@ -8,7 +8,9 @@ BSS::BSS(QString path, QString bssid, QString ssid, QObject* parent)
   m_bssid(bssid),
   m_ssid(ssid) {
     for(auto bss : bsss){
-        QObject::connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
+        if(bss != nullptr){
+            QObject::connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
+        }
     }
 }
 
