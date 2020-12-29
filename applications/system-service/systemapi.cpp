@@ -17,9 +17,6 @@ void SystemAPI::PrepareForSleep(bool suspending){
         qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
         releaseSleepInhibitors();
-        if(device == DeviceSettings::DeviceType::RM2){
-            system("rmmod brcmfmac");
-        }
     }else{
         inhibitSleep();
         qDebug() << "Resuming...";
@@ -34,6 +31,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
             suspendTimer.start(m_autoSleep * 60 * 1000);
         }
         if(device == DeviceSettings::DeviceType::RM2){
+            system("rmmod brcmfmac");
             system("modprobe brcmfmac");
         }
     }

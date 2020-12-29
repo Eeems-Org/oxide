@@ -661,10 +661,12 @@ private:
         }
         State state = Off;
         if(enabled){
-            state = Disconnected;
             for(auto wlan : wlans){
                 if(!wlan->isUp()){
                     continue;
+                }
+                if(state == Off){
+                    state = Disconnected;
                 }
                 if(wlan->operstate() == "up"){
                     state = Offline;
