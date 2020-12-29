@@ -11,6 +11,18 @@
         "url": "https://github.com/nmattia/niv/archive/ba57d5a29b4e0f2085917010380ef3ddc3cf380f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "nix-inclusive": {
+        "branch": "master",
+        "description": "Simple inclusive file selection implementation for Nix",
+        "homepage": "",
+        "owner": "grahamc",
+        "repo": "nix-inclusive",
+        "rev": "6d7062921b2ea3911d2f95a8bd7afdf723d01b9a",
+        "sha256": "0mx5w1la3yz6m6434dsi25hfra6wm87h854qanm9hsjmxzmgg7w7",
+        "type": "tarball",
+        "url": "https://github.com/grahamc/nix-inclusive/archive/6d7062921b2ea3911d2f95a8bd7afdf723d01b9a.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "nixpkgs": {
         "branch": "nixpkgs-unstable",
         "description": "Nix Packages collection",
