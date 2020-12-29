@@ -1,6 +1,7 @@
 #include "systemapi.h"
 #include "appsapi.h"
 #include "powerapi.h"
+#include "wifiapi.h"
 #include "devicesettings.h"
 
 void SystemAPI::PrepareForSleep(bool suspending){
@@ -16,6 +17,13 @@ void SystemAPI::PrepareForSleep(bool suspending){
         screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
         qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
+        if(device == DeviceSettings::DeviceType::RM2){
+            if(wifiAPI->state() != WifiAPI::State::Off){
+                wifiWasOn = true;
+                wifiAPI->disable();
+            }
+            system("rmmod brcmfmac");
+        }
         releaseSleepInhibitors();
     }else{
         inhibitSleep();
@@ -31,8 +39,10 @@ void SystemAPI::PrepareForSleep(bool suspending){
             suspendTimer.start(m_autoSleep * 60 * 1000);
         }
         if(device == DeviceSettings::DeviceType::RM2){
-            system("rmmod brcmfmac");
             system("modprobe brcmfmac");
+            if(wifiWasOn){
+                wifiAPI->enable();
+            }
         }
     }
 }

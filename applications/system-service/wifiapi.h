@@ -87,20 +87,21 @@ public:
             }
             if(reply.isValid()){
                 wlan->setInterface(reply.value().path());
-                for(auto path : wlan->interface()->networks()){
-                    auto inetwork = new INetwork(WPA_SUPPLICANT_SERVICE, path.path(), bus, wlan->interface());
-                    auto properties = inetwork->properties();
+                auto interface = wlan->interface();
+                for(auto path : interface->networks()){
                     bool found = false;
                     for(auto network : networks){
                         if(network->path() == path.path()){
                             found = true;
-                            network->addNetwork(inetwork);
+                            network->addNetwork(path.path(), interface);
                             break;
                         }
                     }
                     if(!found){
+                        INetwork inetwork(WPA_SUPPLICANT_SERVICE, path.path(), bus, interface);
+                        auto properties = inetwork.properties();
                         auto network = new Network(getPath("network", properties["ssid"].toString()), properties, this);
-                        network->addNetwork(inetwork);
+                        network->addNetwork(path.path(), interface);
                         networks.append(network);
                     }
                 }
@@ -111,13 +112,15 @@ public:
                     for(auto bss : bsss){
                         if(bss->bssid() == bssid){
                             found = true;
-                            bss->addBSS(ibss);
+                            bss->addBSS(path.path(), wlan->interface());
                             break;
                         }
                     }
                     if(!found){
                         auto bss = new BSS(getPath("bss", bssid), ibss, this);
                         bsss.append(bss);
+                    }else{
+                        ibss->deleteLater();
                     }
                 }
             }

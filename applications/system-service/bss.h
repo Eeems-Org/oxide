@@ -2,6 +2,7 @@
 #define BSS_H
 
 #include <QMutableListIterator>
+#include <QMutex>
 
 #include "supplicant.h"
 #include "network.h"
@@ -45,28 +46,26 @@ public:
     QString ssid(){ return m_ssid; }
 
     QList<QString> paths(){
+        mutex.lock();
         QList<QString> result;
         for(auto bss : bsss){
             result.append(bss->path());
         }
+        mutex.unlock();
         return result;
     }
-    void addBSS(QString path, Interface* interface){
+    void addBSS(const QString& path, Interface* interface){
         if(paths().contains(path)){
             return;
         }
+        mutex.lock();
         auto bss = new IBSS(WPA_SUPPLICANT_SERVICE, path, QDBusConnection::systemBus(), interface);
         bsss.append(bss);
         QObject::connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
+        mutex.unlock();
     }
-    void addBSS(IBSS* bss){
-        if(paths().contains(bss->path())){
-            return;
-        }
-        bsss.append(bss);
-        QObject::connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
-    }
-    void removeBSS(QString path){
+    void removeBSS(const QString& path){
+        mutex.lock();
         QMutableListIterator<IBSS*> i(bsss);
         while(i.hasNext()){
             auto bss = i.next();
@@ -75,6 +74,7 @@ public:
                 bss->deleteLater();
             }
         }
+        mutex.unlock();
     }
     bool privacy(){
         for(auto bss : bsss){
@@ -123,6 +123,7 @@ private:
     QList<IBSS*> bsss;
     QString m_bssid;
     QString m_ssid;
+    QMutex mutex;
 };
 
 #endif // BSS_H

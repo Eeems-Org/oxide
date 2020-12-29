@@ -177,6 +177,7 @@ private:
     QStringList sleepInhibitors;
     QStringList powerOffInhibitors;
     int m_autoSleep;
+    bool wifiWasOn = false;
 
     void inhibitSleep(){
         inhibitors.append(Inhibitor(systemd, "sleep", qApp->applicationName(), "Handle sleep screen"));
