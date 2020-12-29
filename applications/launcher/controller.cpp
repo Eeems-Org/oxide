@@ -81,9 +81,7 @@ void Controller::loadSettings(){
         if(m_automaticSleep != autoSleep){
             setAutomaticSleep(autoSleep);
         }
-        if(!autoSleep){
-            setSleepAfter(0);
-        }else if(sleepAfter != m_sleepAfter){
+        if(sleepAfter != m_sleepAfter){
             setSleepAfter(sleepAfter);
         }
         qDebug() << "Finished getting settings from system service.";

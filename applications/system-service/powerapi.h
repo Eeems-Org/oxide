@@ -32,7 +32,7 @@ public:
         return instance;
     }
     PowerAPI(QObject* parent)
-    : APIBase(parent), batteries(), chargers(){
+    : APIBase(parent), batteries(), chargers(), m_chargerState(ChargerUnknown){
         singleton(this);
         QDir dir("/sys/class/power_supply");
         qDebug() << "Looking for batteries and chargers...";
@@ -138,7 +138,7 @@ private:
     int m_batteryState = BatteryUnknown;
     int m_batteryLevel = 0;
     int m_batteryTemperature = 0;
-    int m_chargerState = ChargerUnknown;
+    int m_chargerState;
     bool m_batteryWarning = false;
     bool m_batteryAlert = false;
     bool m_chargerWarning = false;

@@ -18,6 +18,9 @@
     <signal name="powerOffInhibitedChanged">
       <arg type="b" direction="out"/>
     </signal>
+    <signal name="autoSleepChanged">
+      <arg type="i" direction="out"/>
+    </signal>
     <method name="suspend">
     </method>
     <method name="powerOff">

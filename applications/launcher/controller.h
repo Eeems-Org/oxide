@@ -349,6 +349,10 @@ public slots:
             qDebug() << "Power Off Inhibited:" << value;
         });
         connect(systemApi, &System::sleepInhibitedChanged, this, &Controller::sleepInhibitedChanged);
+        connect(systemApi, &System::autoSleepChanged, [=](bool autoSleep){
+            setAutomaticSleep(autoSleep);
+            setSleepAfter(autoSleep);
+        });
         emit powerOffInhibitedChanged(powerOffInhibited());
         emit sleepInhibitedChanged(sleepInhibited());
         reply = api.requestAPI("apps");

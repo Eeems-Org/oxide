@@ -46,9 +46,12 @@ void SystemAPI::setAutoSleep(int autoSleep){
     m_autoSleep = autoSleep;
     if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         suspendTimer.setInterval(m_autoSleep * 60 * 1000);
+    }else if(!m_autoSleep){
+        suspendTimer.stop();
     }
     settings.setValue("autoSleep", autoSleep);
     settings.sync();
+    emit autoSleepChanged(autoSleep);
 }
 void SystemAPI::uninhibitAll(QString name){
     if(powerOffInhibited()){

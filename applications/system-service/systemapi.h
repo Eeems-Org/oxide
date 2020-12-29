@@ -39,7 +39,7 @@ struct Inhibitor {
 class SystemAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_SYSTEM_INTERFACE)
-    Q_PROPERTY(int autoSleep READ autoSleep WRITE setAutoSleep)
+    Q_PROPERTY(int autoSleep READ autoSleep WRITE setAutoSleep NOTIFY autoSleepChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
 public:
@@ -63,10 +63,25 @@ public:
         // Handle Systemd signals
         connect(systemd, &Manager::PrepareForSleep, this, &SystemAPI::PrepareForSleep);
         connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::timeout);
-        m_autoSleep = settings.value("autoSleep", 1).toInt();
+
+        auto autoSleep = settings.value("autoSleep", 1).toInt();
+        m_autoSleep = autoSleep;
+        if(autoSleep < 0) {
+            m_autoSleep = 0;
+
+        }else if(autoSleep > 10){
+            m_autoSleep = 10;
+        }
+        if(autoSleep != m_autoSleep){
+            m_autoSleep = autoSleep;
+            settings.setValue("autoSleep", autoSleep);
+            settings.sync();
+            emit autoSleepChanged(autoSleep);
+        }
+        qDebug() << "Auto Sleep" << autoSleep;
         if(m_autoSleep){
             suspendTimer.start(m_autoSleep * 60 * 1000);
-        }else{
+        }else if(!m_autoSleep){
             suspendTimer.stop();
         }
         // Ask Systemd to tell us nicely when we are about to suspend or resume
@@ -147,6 +162,7 @@ signals:
     void powerAction();
     void sleepInhibitedChanged(bool);
     void powerOffInhibitedChanged(bool);
+    void autoSleepChanged(int);
 
 private slots:
     void PrepareForSleep(bool suspending);
