@@ -126,7 +126,7 @@ public:
             bus.unregisterObject(api.path);
             // TODO figure out why QDBusObjectPath isn't available on exit
             // emit apiUnavailable(QDBusObjectPath(api.path));
-            delete api.instance;
+            api.instance->deleteLater();
             delete api.dependants;
         }
         apis.clear();

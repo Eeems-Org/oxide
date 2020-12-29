@@ -72,7 +72,7 @@ public:
             auto bss = i.next();
             if(!bss->isValid() || bss->path() == path){
                 i.remove();
-                delete bss;
+                bss->deleteLater();
             }
         }
     }

@@ -58,11 +58,11 @@ public:
             qDebug() << "    Wireless device found!";
             wlans.append(item);
             connect(item, &Wlan::BSSAdded, this, &WifiAPI::BSSAdded, Qt::QueuedConnection);
-            connect(item, &Wlan::BSSRemoved, this, &WifiAPI::BSSRemoved, Qt::BlockingQueuedConnection);
+            connect(item, &Wlan::BSSRemoved, this, &WifiAPI::BSSRemoved, Qt::QueuedConnection);
             connect(item, &Wlan::BlobAdded, this, &WifiAPI::BlobAdded, Qt::QueuedConnection);
-            connect(item, &Wlan::BlobRemoved, this, &WifiAPI::BlobRemoved, Qt::BlockingQueuedConnection);
+            connect(item, &Wlan::BlobRemoved, this, &WifiAPI::BlobRemoved, Qt::QueuedConnection);
             connect(item, &Wlan::NetworkAdded, this, &WifiAPI::NetworkAdded, Qt::QueuedConnection);
-            connect(item, &Wlan::NetworkRemoved, this, &WifiAPI::NetworkRemoved, Qt::BlockingQueuedConnection);
+            connect(item, &Wlan::NetworkRemoved, this, &WifiAPI::NetworkRemoved, Qt::QueuedConnection);
             connect(item, &Wlan::NetworkSelected, this, &WifiAPI::NetworkSelected, Qt::QueuedConnection);
             connect(item, &Wlan::PropertiesChanged, this, &WifiAPI::InterfacePropertiesChanged, Qt::QueuedConnection);
             connect(item, &Wlan::ScanDone, this, &WifiAPI::ScanDone, Qt::QueuedConnection);
@@ -140,15 +140,15 @@ public:
     ~WifiAPI(){
         qDebug() << "Unregistering all networks";
         while(!networks.isEmpty()){
-            delete networks.takeFirst();
+            networks.takeFirst()->deleteLater();
         }
         qDebug() << "Unregistering all BSSs";
         while(!bsss.isEmpty()){
-            delete bsss.takeFirst();
+            bsss.takeFirst()->deleteLater();
         }
         qDebug() << "Killing timer";
         timer->stop();
-        delete timer;
+        timer->deleteLater();
     }
     void setEnabled(bool enabled){
         qDebug() << "Wifi API" << enabled;
@@ -446,7 +446,7 @@ public:
                 i.remove();
                 emit bss->removed();
                 emit bssRemoved(QDBusObjectPath(bss->path()));
-                delete bss;
+                bss->deleteLater();
             }
         }
     }
@@ -497,7 +497,7 @@ public:
                 emit network->removed();
                 emit networkRemoved(QDBusObjectPath(network->path()));
                 qDebug() << "Network removed " << network->ssid();
-                delete network;
+                network->deleteLater();
             }
         }
     }

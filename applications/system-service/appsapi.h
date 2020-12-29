@@ -44,7 +44,7 @@ public:
         }
         for(auto app : applications){
             app->waitForFinished();
-            delete app;
+            app->deleteLater();
         }
         applications.clear();
     }
@@ -149,7 +149,7 @@ public:
         if(applications.contains(name)){
             applications.remove(name);
             emit applicationUnregistered(app->qPath());
-            delete app;
+            app->deleteLater();
             writeApplications();
         }
     }

@@ -92,7 +92,7 @@ public:
     ~Application() {
         unregisterPath();
         m_process->kill();
-        delete m_process;
+        m_process->deleteLater();
         if(screenCapture != nullptr){
             delete screenCapture;
         }

@@ -69,7 +69,7 @@ public:
     ~PowerAPI(){
         qDebug() << "Killing timer";
         timer->stop();
-        delete timer;
+        timer->deleteLater();
     }
 
     void setEnabled(bool enabled){

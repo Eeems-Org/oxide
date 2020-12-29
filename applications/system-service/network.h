@@ -124,7 +124,7 @@ public:
             auto network = i.next();
             if(!network->isValid() || network->path() == path){
                 i.remove();
-                delete network;
+                network->deleteLater();
             }
         }
     }
