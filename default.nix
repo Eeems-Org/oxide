@@ -3,4 +3,8 @@
 , pkgs ? import sources.nixpkgs { inherit system; }
 }:
 
-pkgs.callPackage ./oxide.nix { }
+let
+  inclusive = pkgs.callPackage "${sources.nix-inclusive}/inclusive.nix" { };
+in
+
+pkgs.callPackage ./oxide.nix { inherit inclusive; }
