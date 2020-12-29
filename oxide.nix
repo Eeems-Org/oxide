@@ -1,21 +1,31 @@
-{ stdenv, fetchFromGitHub, qt512, remarkable-toolchain }:
+{ stdenv, fetchFromGitHub, inclusive, qt512, remarkable-toolchain }:
 
 stdenv.mkDerivation {
   name = "oxide";
-  src = stdenv.lib.cleanSource ./.;
+  
   nativeBuildInputs = [ qt512.full remarkable-toolchain ];
-  
-  buildPhase = ''
+
+  src = inclusive ./. [
+    ./Makefile
+    ./applications
+    ./assets
+    ./interfaces
+    ./shared
+  ];
+
+  preBuild = ''
     source ${remarkable-toolchain}/environment-setup-cortexa9hf-neon-oe-linux-gnueabi
-    make release -j$NIX_BUILD_CORES
   '';
-  
+
+  enableParallelBuilding = true;
+  makeFlags = [ "release" ];
+
   installPhase = ''
     cp -r release/. $out
   '';
-  
+
   meta = with stdenv.lib; {
-    description = " A launcher application for the reMarkable tablet ";
+    description = "A launcher application for the reMarkable tablet";
     platform = [ "x86_64-linux" ];
     maintainers = [ maintainers.siraben ];
     license = licenses.mit;
