@@ -24,7 +24,7 @@ public:
     QString iface() { return m_iface; }
     bool up() { return !system(("ifconfig " + iface() + " up").toStdString().c_str()); }
     bool down() { return !system(("ifconfig " + iface() + " down").toStdString().c_str()); }
-    bool isUp(){ return !system(("ip addr show " + iface() + " | grep UP > /dev/null").toStdString().c_str()); }
+    bool isUp(){ return !system(("ip addr show " + iface() + " | /bin/grep UP > /dev/null").toStdString().c_str()); }
     Interface* interface() { return m_interface; }
     QSet<QString> blobs(){ return m_blobs; }
     QString operstate(){
@@ -33,12 +33,24 @@ public:
         }
         return "";
     }
+    bool pingIP(std::string ip, const char* port) {
+        return !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port).c_str());
+    }
     bool isConnected(){
-        auto ip = exec("ip r | grep " + iface() + " | grep default | awk '{print $3}'");
-        return ip != "" && !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/53").c_str());
+        auto ip = exec("ip r | /bin/grep " + iface() + " | /bin/grep default | awk '{print $3}'");
+        return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
     }
     int link(){
-        return std::stoi(exec("cat /proc/net/wireless | grep " + iface() + " | awk '{print $3}'"));
+        std::string out = exec("cat /proc/net/wireless | /bin/grep " + iface() + " | awk '{print $3}'");
+        int ret = 0;
+        try {
+            ret = std::stoi(out);
+        }
+        catch (const std::invalid_argument& e) {
+            qDebug() << "link failed: " << out.c_str();
+            return -1;
+        }
+        return ret;
     }
 signals:
     void BSSAdded(Wlan*, QDBusObjectPath, QVariantMap);
