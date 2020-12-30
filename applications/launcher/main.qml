@@ -460,6 +460,7 @@ ApplicationWindow {
             Transition {
                 from: "loaded"; to: "itemInfo"
                 SequentialAnimation {
+                    ScriptAction { script: console.log("Viewing item info") }
                     PropertyAction { target: itemInfo; property: "visible"; value: true }
                     PropertyAction { target: menu; property: "focus"; value: false }
                 }

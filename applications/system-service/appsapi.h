@@ -101,6 +101,11 @@ public:
         return true;
     }
 
+    Q_INVOKABLE void reload(){
+        readApplications();
+        writeApplications();
+    }
+
     QDBusObjectPath startupApplication(){
         return m_startupApplication;
     }
@@ -278,6 +283,53 @@ private:
         settings.endArray();
     }
     void readApplications(){
+        settings.sync();
+        if(!applications.empty()){
+            int size = settings.beginReadArray("applications");
+            QStringList names;
+            for(int i = 0; i < size; ++i){
+                settings.setArrayIndex(i);
+                names << settings.value("name").toString();
+            }
+            settings.endArray();
+            for(auto name : applications.keys()){
+                auto app = applications[name];
+                if(!names.contains(name) && !app->systemApp()){
+                    app->unregister();
+                }
+            }
+        }
+        int size = settings.beginReadArray("applications");
+        for(int i = 0; i < size; ++i){
+            settings.setArrayIndex(i);
+            auto name = settings.value("name").toString();
+            auto displayName = settings.value("displayName", name).toString();
+            auto type = settings.value("type", Foreground).toInt();
+            auto bin = settings.value("bin").toString();
+            if(type < Foreground || type > Background || name.isEmpty() || bin.isEmpty()){
+                continue;
+            }
+            QVariantMap properties {
+                {"name", name},
+                {"displayName", displayName},
+                {"description", settings.value("description", displayName).toString()},
+                {"bin", bin},
+                {"type", type},
+                {"flags", settings.value("flags", QStringList()).toStringList()},
+                {"icon", settings.value("icon", "").toString()},
+                {"onPause", settings.value("onPause", "").toString()},
+                {"onResume", settings.value("onResume", "").toString()},
+                {"onStop", settings.value("onStop", "").toString()},
+                {"environment", settings.value("environment", QVariantMap()).toMap()},
+            };
+            if(applications.contains(name)){
+                applications[name]->setConfig(properties);
+                writeApplications();
+            }else{
+                registerApplication(properties);
+            }
+        }
+        settings.endArray();
         QDir dir("/opt/usr/share/applications/");
         dir.setNameFilters(QStringList() << "*.oxide");
         QMap<QString, QJsonObject> apps;
