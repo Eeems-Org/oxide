@@ -15,6 +15,10 @@ void Application::launch(){
     }else{
         qDebug() << "Launching " << path();
         appsAPI->pauseAll();
+        if(m_process->program() != bin()){
+            m_process->setProgram(bin());
+        }
+        updateEnvironment();
         m_process->start();
         m_process->waitForStarted();
     }
@@ -178,11 +182,14 @@ int Application::state(){
     }
 }
 void Application::setConfig(const QVariantMap& config){
+    auto oldBin = bin();
     m_config = config;
     if(type() == AppsAPI::Foreground){
         setAutoStart(false);
     }
-    m_process->setProgram(bin());
+    if(oldBin == bin()){
+        return;
+    }
 }
 void Application::started(){
     emit launched();

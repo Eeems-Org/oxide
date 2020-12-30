@@ -87,7 +87,6 @@ public:
         connect(m_process, &SandBoxProcess::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
         connect(m_process, &SandBoxProcess::stateChanged, this, &Application::stateChanged);
         connect(m_process, &SandBoxProcess::errorOccurred, this, &Application::errorOccurred);
-        updateEnvironment();
     }
     ~Application() {
         unregisterPath();
