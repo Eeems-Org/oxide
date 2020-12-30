@@ -1,0 +1,7 @@
+{
+	"displayName": "Launcher",
+	"description": "Application launcher",
+	"bin": "/opt/bin/oxide",
+	"type": "foreground",
+	"flags": ["hidden"]
+}

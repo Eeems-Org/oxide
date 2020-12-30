@@ -32,7 +32,9 @@ void SystemAPI::PrepareForSleep(bool suspending){
         if(resumeApp == nullptr){
             resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
         }
-        resumeApp->resume();
+        if(resumeApp != nullptr){
+            resumeApp->resume();
+        }
         buttonHandler->setEnabled(true);
         if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
             qDebug() << "Suspend timer re-enabled due to resume";

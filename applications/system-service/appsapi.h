@@ -7,7 +7,11 @@
 #include <QSettings>
 #include <QUuid>
 #include <QFile>
+#include <QDir>
 #include <QTimer>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 #include "apibase.h"
 #include "application.h"
@@ -69,7 +73,7 @@ public:
         QString name = properties.value("name", "").toString();
         QString bin = properties.value("bin", "").toString();
         int type = properties.value("type", Foreground).toInt();
-        if(type < Foreground || type > Background || name.isEmpty() || bin.isEmpty()){
+        if(type < Foreground || type > Background || name.isEmpty() || bin.isEmpty() || !QFile::exists(bin)){
             return QDBusObjectPath("/");
         }
         if(applications.contains(name)){
@@ -167,7 +171,10 @@ public:
                 return;
             }
         }
-        getApplication(m_startupApplication)->launch();
+        auto app = getApplication(m_startupApplication);
+        if(app != nullptr){
+            app->launch();
+        }
     }
     Application* getApplication(QDBusObjectPath path){
         for(auto app : applications){
@@ -226,7 +233,10 @@ public slots:
             qDebug() << "Already at startup application";
             return;
         }
-        getApplication(m_startupApplication)->launch();
+        auto app = getApplication(m_startupApplication);
+        if(app != nullptr){
+            app->launch();
+        }
     }
     void homeHeld(){
         auto app = getApplication("codes.eeems.erode");
@@ -266,6 +276,99 @@ private:
             }
         }
         settings.endArray();
+    }
+    void readApplications(){
+        QDir dir("/opt/usr/share/applications/");
+        dir.setNameFilters(QStringList() << "*.oxide");
+        QMap<QString, QJsonObject> apps;
+        for(auto entry : dir.entryInfoList()){
+            QFile file(entry.filePath());
+            if(!file.open(QIODevice::ReadOnly)){
+                continue;
+            }
+            auto data = file.readAll();
+            auto app = QJsonDocument::fromJson(data).object();
+            auto name = entry.completeBaseName();
+            app["name"] = name;
+            apps.insert(name, app);
+        }
+        for(auto application : applications.values()){
+            auto name = application->name();
+            if(!apps.contains(name)){
+                continue;
+            }
+            if(!application->systemApp()){
+                application->unregister();
+                continue;
+            }
+            apps.remove(name);
+        }
+        for(auto app : apps){
+            auto name = app["name"].toString();
+            int type = Foreground;
+            QString typeString = app.contains("type") ? app["type"].toString().toLower() : "";
+            if(typeString == "background"){
+                type = Background;
+            }else if(typeString == "backgroundable"){
+                type = Backgroundable;
+            }else if(!typeString.isEmpty() && typeString != "foreground"){
+                qDebug() << "Invalid type string:" << typeString;
+            }
+            auto bin = app["bin"].toString();
+            if(!QFile::exists(bin)){
+                qDebug() << "Can't find application binary:" << bin;
+                continue;
+            }
+            auto flags = QStringList() << "system";
+            if(app.contains("flags")){
+                for(auto flag : app["flags"].toArray()){
+                    auto value = flag.toString();
+                    if(!value.isEmpty() && value != "system"){
+                        flags << value;
+                    }
+                }
+            }
+            QVariantMap properties {
+                {"name", name},
+                {"bin", bin},
+                {"type", type},
+                {"flags", flags}
+            };
+            if(app.contains("displayName")){
+                properties.insert("displayName", app["displayName"].toString());
+            }
+            if(app.contains("description")){
+                properties.insert("description", app["description"].toString());
+            }
+            if(app.contains("icon")){
+                properties.insert("icon", app["icon"].toString());
+            }
+            if(app.contains("events")){
+                auto events = app["evnets"].toObject();
+                for(auto event : events.keys()){
+                    if(event == "stop"){
+                        properties.insert("onStop", events[event].toString());
+                    }else if(event == "pause"){
+                        properties.insert("pause", events[event].toString());
+                    }else if(event == "resume"){
+                        properties.insert("resume", events[event].toString());
+                    }
+                }
+            }
+            if(app.contains("environment")){
+                QVariantMap envMap;
+                auto environment = app["environment"].toObject();
+                for(auto key : environment.keys()){
+                    envMap.insert(key, environment[key].toString());
+                }
+            }
+            if(applications.contains(name)){
+                applications[name]->setConfig(properties);
+                writeApplications();
+            }else{
+                registerApplication(properties);
+            }
+        }
     }
     static void migrate(QSettings* settings, int fromVersion){
         Q_UNUSED(settings)
