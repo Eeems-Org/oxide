@@ -24,17 +24,21 @@ void SystemAPI::PrepareForSleep(bool suspending){
         }
         qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
+        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
+            qDebug() << "Removing module";
+            qDebug() << "Exit code: " << system("rmmod brcmfmac");
+        }
         releaseSleepInhibitors();
     }else{
         inhibitSleep();
         qDebug() << "Resuming...";
+        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
+            qDebug() << "Inserting module";
+            qDebug() << "Exit code: " << system("modprobe brcmfmac");
+        }
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
         if(resumeApp == nullptr){
             resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
-        }
-        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
-            qDebug() << "Resetting module";
-            qDebug() << "Exit code: " << system("rmmod brcmfmac && modprobe brcmfmac");
         }
         resumeApp->resume();
         buttonHandler->setEnabled(true);
