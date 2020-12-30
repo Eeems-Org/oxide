@@ -17,6 +17,10 @@
     <property name="environment" type="a{sv}" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
     </property>
+    <property name="workingDirectory" type="s" access="readwrite"/>
+    <property name="chroot" type="b" access="read"/>
+    <property name="user" type="s" access="read"/>
+    <property name="group" type="s" access="read"/>
     <signal name="launched">
     </signal>
     <signal name="paused">
@@ -49,6 +53,9 @@
     <signal name="environmentChanged">
       <arg type="a{sv}" direction="out"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+    </signal>
+    <signal name="workingDirectoryChanged">
+      <arg type="s" direction="out"/>
     </signal>
     <method name="sigUsr1">
     </method>

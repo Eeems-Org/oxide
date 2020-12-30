@@ -19,6 +19,16 @@ void Application::launch(){
             m_process->setProgram(bin());
         }
         updateEnvironment();
+        if(chroot()){
+            umountAll();
+            mountAll();
+            m_process->setChroot(chrootPath());
+        }else{
+            m_process->setChroot("");
+        }
+        m_process->setWorkingDirectory(workingDirectory());
+        m_process->setUser(user());
+        m_process->setGroup(group());
         m_process->start();
         m_process->waitForStarted();
     }
@@ -200,6 +210,7 @@ void Application::finished(int exitCode){
     emit exited(exitCode);
     appsAPI->resumeIfNone();
     emit appsAPI->applicationExited(qPath(), exitCode);
+    umountAll();
 }
 void Application::errorOccurred(QProcess::ProcessError error){
     switch(error){

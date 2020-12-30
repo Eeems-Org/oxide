@@ -9,6 +9,7 @@
 #include <QProcessEnvironment>
 #include <QElapsedTimer>
 #include <QTime>
+#include <QDir>
 #include <QCoreApplication>
 
 #include <zlib.h>
@@ -23,7 +24,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <grp.h>
+#include <pwd.h>
 #include <sys/stat.h>
+#include <sys/mount.h>
 
 #include "dbussettings.h"
 #include "mxcfb.h"
@@ -35,8 +38,42 @@
 class SandBoxProcess : public QProcess{
     Q_OBJECT
 public:
-    SandBoxProcess(int gid = 0, int uid = 0, QString chroot = "", mode_t mask = 0, QObject* parent = nullptr)
-    : QProcess(parent), m_gid(gid), m_uid(uid), m_chroot(chroot), m_mask(mask) {}
+    SandBoxProcess(QObject* parent = nullptr)
+    : QProcess(parent), m_gid(0), m_uid(0), m_chroot(""), m_mask(0) {}
+
+    bool setUser(const QString& name){
+        try{
+            m_uid = getUID(name);
+            return true;
+        }
+        catch(const runtime_error&){
+            return false;
+        }
+    }
+    bool setGroup(const QString& name){
+        try{
+            m_gid = getGID(name);
+            return true;
+        }
+        catch(const runtime_error&){
+            return false;
+        }
+    }
+    bool setChroot(const QString& path){
+        if(path.isEmpty() || path == "/"){
+            m_chroot = "";
+            return true;
+        }
+        QDir dir(path);
+        if(dir.exists()){
+            m_chroot = path;
+            return true;
+        }
+        return false;
+    }
+    void setMask(mode_t mask){
+        m_mask = mask;
+    }
 protected:
     void setupChildProcess() override {
         // Drop all privileges in the child process
@@ -44,19 +81,33 @@ protected:
         if(!m_chroot.isEmpty()){
             // enter a chroot jail.
             chroot(m_chroot.toStdString().c_str());
-            chdir("/");
         }
         // Change to correct user
-        setgid(m_gid);
-        setuid(m_uid);
+        setresgid(m_gid, m_gid, m_gid);
+        setresuid(m_uid, m_uid, m_uid);
         umask(m_mask);
         setpgid(getpid(), 0);
     }
 private:
-    int m_gid;
-    int m_uid;
+    gid_t m_gid;
+    uid_t m_uid;
     QString m_chroot;
     mode_t m_mask;
+
+    uid_t getUID(const QString& name){
+        auto user = getpwnam(name.toStdString().c_str());
+        if(user == NULL){
+            throw runtime_error("Invalid user name: " + name.toStdString());
+        }
+        return user->pw_uid;
+    }
+    gid_t getGID(const QString& name){
+        auto group = getgrnam(name.toStdString().c_str());
+        if(group == NULL){
+            throw runtime_error("Invalid group name: " + name.toStdString());
+        }
+        return group->gr_gid;
+    }
 };
 
 class Application : public QObject{
@@ -77,10 +128,14 @@ class Application : public QObject{
     Q_PROPERTY(bool hidden READ hidden)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
     Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
+    Q_PROPERTY(QString workingDirectory READ workingDirectory WRITE setWorkingDirectory NOTIFY workingDirectoryChanged)
+    Q_PROPERTY(bool chroot READ chroot)
+    Q_PROPERTY(QString user READ user)
+    Q_PROPERTY(QString group READ group)
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false) {
-        m_process = new SandBoxProcess(0, 0, "", 0, this);
+        m_process = new SandBoxProcess(this);
         connect(m_process, &SandBoxProcess::started, this, &Application::started);
         connect(m_process, QOverload<int>::of(&SandBoxProcess::finished), this, &Application::finished);
         connect(m_process, &SandBoxProcess::readyReadStandardError, this, &Application::readyReadStandardError);
@@ -180,6 +235,18 @@ public:
         updateEnvironment();
         emit environmentChanged(environment);
     }
+    QString workingDirectory() { return value("workingDirectory", "/").toString(); }
+    void setWorkingDirectory(const QString& workingDirectory){
+        QDir dir(workingDirectory);
+        if(!dir.exists()){
+            return;
+        }
+        setValue("workingDirectory", workingDirectory);
+        emit workingDirectoryChanged(workingDirectory);
+    }
+    bool chroot(){ return flags().contains("chroot"); }
+    QString user(){ return value("user", getuid()).toString(); }
+    QString group(){ return value("group", getgid()).toString(); }
     const QVariantMap& getConfig(){ return m_config; }
     void setConfig(const QVariantMap& config);
     void saveScreen(){
@@ -257,6 +324,8 @@ signals:
     void autoStartChanged(bool);
     void iconChanged(QString);
     void environmentChanged(QVariantMap);
+    void workingDirectoryChanged(QString);
+
 public slots:
     void sigUsr1(){
         timer.invalidate();
@@ -332,6 +401,107 @@ private:
             env.insert(key, environment().value(key, "").toString());
         }
         m_process->setEnvironment(env.toStringList());
+    }
+    void mkdirs(const QString& path, mode_t mode = 0700){
+        QDir dir(path);
+        if(!dir.exists()){
+            QString subpath = "";
+            for(auto part : path.split("/")){
+                subpath += "/" + part;
+                QDir dir(subpath);
+                if(!dir.exists()){
+                    mkdir(subpath.toStdString().c_str(), mode);
+                }
+            }
+        }
+    }
+    void bind(const QString& source, const QString& target, bool readOnly = false){
+        umount(target);
+        mkdirs(target, 744);
+        auto ctarget = target.toStdString();
+        auto csource = source.toStdString();
+        mount(csource.c_str(), ctarget.c_str(), NULL, MS_BIND, NULL);
+        if(readOnly){
+            mount(csource.c_str(), ctarget.c_str(), NULL, MS_REMOUNT | MS_BIND | MS_RDONLY, NULL);
+            qDebug() << "mount ro" << source << target;
+            return;
+        }
+        qDebug() << "mount rw" << source << target;
+    }
+    void ramdisk(const QString& path){
+        mkdirs(path, 744);
+        mount("tmpfs", path.toStdString().c_str(), "tmpfs", 0, "size=249m,rw,nosuid,nodev,mode=755");
+        qDebug() << "ramdisk" << path;
+    }
+    void umount(const QString& path){
+        QDir dir(path);
+        if(!dir.exists()){
+            return;
+        }
+        auto cpath = path.toStdString();
+        int tries = 0;
+        while(::umount(cpath.c_str()) && errno == EBUSY){
+            struct timespec args{
+                .tv_sec = 1,
+                .tv_nsec = 0,
+            }, res;
+            nanosleep(&args, &res);
+            if(++tries < 5){
+                continue;
+            }
+            if(!umount2(cpath.c_str(), MNT_FORCE) || errno != EBUSY){
+                break;
+            }
+            if(++tries >= 10){
+                qDebug() << "umount failed" << path;
+                return;
+            }
+        }
+        rmdir(cpath.c_str());
+        qDebug() << "umount" << path;
+    }
+    const QString chrootPath() { return "/tmp/tarnish-chroot/" + name(); }
+    void mountAll(){
+        auto path = chrootPath();
+        // System tmpfs folders
+        bind("/dev", path + "/dev");
+        bind("/proc", path + "/proc");
+        bind("/sys", path + "/sys");
+        // Folders required to run things
+        bind("/bin", path + "/bin", true);
+        bind("/lib", path + "/lib", true);
+        bind("/usr/lib", path + "/usr/lib", true);
+        bind("/usr/bin", path + "/usr/bin", true);
+        bind("/usr/sbin", path + "/usr/sbin", true);
+        bind("/opt/bin", path + "/opt/bin", true);
+        bind("/opt/lib", path + "/opt/lib", true);
+        bind("/opt/usr/bin", path + "/opt/usr/bin", true);
+        bind("/opt/usr/lib", path + "/opt/usr/lib", true);
+        // tmpfs folders
+        ramdisk(path + "/run");
+        ramdisk(path + "/var/volatile");
+    }
+    void umountAll(){
+        auto path = chrootPath();
+        umount(path + "/opt/usr/bin");
+        umount(path + "/opt/usr/lib");
+        rmdir((path + "/opt/usr").toStdString().c_str());
+        umount(path + "/usr/lib");
+        umount(path + "/usr/bin");
+        umount(path + "/usr/sbin");
+        rmdir((path + "/usr").toStdString().c_str());
+        umount(path + "/opt/bin");
+        umount(path + "/opt/lib");
+        rmdir((path + "/opt").toStdString().c_str());
+        umount(path + "/bin");
+        umount(path + "/lib");
+        umount(path + "/var/volatile");
+        rmdir((path + "/var").toStdString().c_str());
+        umount(path + "/run");
+        umount(path + "/proc");
+        umount(path + "/sys");
+        umount(path + "/dev");
+        rmdir(path.toStdString().c_str());
     }
 };
 
