@@ -17,7 +17,7 @@ public:
     void setInterface(QString path);
     void removeInterface(){
         if(m_interface != nullptr){
-            delete m_interface;
+            m_interface->deleteLater();
             m_interface = nullptr;
         }
     }

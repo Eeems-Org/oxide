@@ -112,7 +112,7 @@ public:
                     for(auto bss : bsss){
                         if(bss->bssid() == bssid){
                             found = true;
-                            bss->addBSS(path.path(), wlan->interface());
+                            bss->addBSS(path.path());
                             break;
                         }
                     }
@@ -413,6 +413,7 @@ public:
 
     // Interface signals
     void BSSAdded(Wlan* wlan, const QDBusObjectPath& path, const QVariantMap& properties){
+        Q_UNUSED(wlan);
         auto sPath = path.path();
         auto bssid = properties["BSSID"].toString();
         if(bssid.isEmpty()){
@@ -426,7 +427,7 @@ public:
                 }
             }
             if(bss->ssid() == ssid && bss->bssid() == bssid){
-                bss->addBSS(sPath, wlan->interface());
+                bss->addBSS(sPath);
                 return;
             }
         }
@@ -553,6 +554,15 @@ private slots:
     void InterfaceRemoved(const QDBusObjectPath &path){
         for(auto wlan : wlans){
             if(wlan->interface() != nullptr && wlan->interface()->path() == path.path()){
+                auto interface = wlan->interface();
+                for(auto network : networks){
+                    network->removeInterface(interface);
+                    if(network->paths().empty()){
+                        emit network->removed();
+                        emit networkRemoved(QDBusObjectPath(network->path()));
+                        qDebug() << "Network removed " << network->ssid();
+                    }
+                }
                 wlan->removeInterface();
             }
         }

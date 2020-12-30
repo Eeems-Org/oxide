@@ -28,7 +28,7 @@ QSet<QString> sae{
 
 Network::Network(QString path, QString ssid, QVariantMap properties, QObject* parent)
 : QObject(parent), m_path(path), networks(), m_properties(properties), m_ssid(ssid),
-  m_enabled(false), mutex(){
+  m_enabled(false){
     auto proto = properties["key_mgmt"].toString();
     if(psk.contains(proto)){
         m_protocol = "psk";

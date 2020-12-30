@@ -96,27 +96,23 @@ public:
         emit propertiesChanged(properties);
     }
     QList<QString> paths(){
-        mutex.lock();
         QList<QString> result;
         for(auto network : networks){
             result.append(network->path());
         }
-        mutex.unlock();
+
         return result;
     }
     void addNetwork(const QString& path, Interface* interface){
         if(paths().contains(path)){
             return;
         }
-        mutex.lock();
         auto network = new INetwork(WPA_SUPPLICANT_SERVICE, path, QDBusConnection::systemBus(), interface);
         networks.append(network);
         network->setEnabled(m_enabled);
         QObject::connect(network, &INetwork::PropertiesChanged, this, &Network::PropertiesChanged, Qt::QueuedConnection);
-        mutex.unlock();
     }
     void removeNetwork(const QString& path){
-        mutex.lock();
         QMutableListIterator<INetwork*> i(networks);
         while(i.hasNext()){
             auto network = i.next();
@@ -125,11 +121,19 @@ public:
                 network->deleteLater();
             }
         }
-        mutex.unlock();
+    }
+    void removeInterface(Interface* interface){
+        QMutableListIterator<INetwork*> i(networks);
+        while(i.hasNext()){
+            auto network = i.next();
+            if(!network->isValid() || (Interface*)network->parent() == interface){
+                i.remove();
+                network->deleteLater();
+            }
+        }
     }
     void registerNetwork();
     Q_INVOKABLE void connect(){
-        mutex.lock();
         QList<QDBusPendingReply<void>> replies;
         for(auto network : networks){
             auto interface = (Interface*)network->parent();
@@ -138,10 +142,8 @@ public:
         for(auto reply : replies){
             reply.waitForFinished();
         }
-        mutex.unlock();
     }
     Q_INVOKABLE void remove(){
-        mutex.lock();
         QList<QDBusPendingReply<void>> replies;
         QMap<QString,Interface*> todo;
         for(auto network : networks){
@@ -154,7 +156,6 @@ public:
         for(auto reply : replies){
             reply.waitForFinished();
         }
-        mutex.unlock();
     }
 
 signals:
@@ -188,7 +189,6 @@ private:
     QString m_ssid;
     QString m_protocol;
     bool m_enabled = false;
-    QMutex mutex;
 
     QVariantMap realProps(){
         QVariantMap props(m_properties);
