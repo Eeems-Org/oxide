@@ -287,9 +287,18 @@ ApplicationWindow {
                     running: false
                 }
             }
-            width: window.width > (itemImage.width + itemContent.width + (itemInfo.textPadding * 2))
-                   ? (itemImage.width + itemContent.width + (itemInfo.textPadding * 2) + itemCloseButton.width)
-                   : window.width - 10
+            width: {
+                var calculatedWidth = itemImage.width + itemContent.width + (itemInfo.textPadding * 2);
+                if(window.width <= calculatedWidth){
+                    return window.width - 10;
+                }
+                var minWidth = itemAutoStartButton.width + itemImage.width;
+                if(calculatedWidth < minWidth){
+                    return minWidth;
+                }
+
+                return calculatedWidth;
+            }
             height: itemContent.height + itemAutoStartButton.height
             contentItem: Item {
                 anchors.fill: parent
