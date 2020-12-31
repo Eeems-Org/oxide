@@ -370,7 +370,7 @@ void Controller::updateUIElements(){
         QObject* ui = root->findChild<QObject*>("wifiState");
         if(ui){
             int level = 0;
-            if(wifiConnected){
+            if(ui->property("connected").toBool()){
                 level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
             }
             if(wifiLevel != level){

@@ -670,7 +670,6 @@ private:
     int wifiState = WifiUnknown;
     int wifiLink = 0;
     int wifiLevel = 0;
-    bool wifiConnected = false;
 
     bool m_wifion;
     SysObject wifi;
