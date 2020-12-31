@@ -8,6 +8,8 @@
     <signal name="apiUnavailable">
       <arg name="api" type="o" direction="out"/>
     </signal>
+    <signal name="aboutToQuit">
+    </signal>
     <method name="requestAPI">
       <arg type="o" direction="out"/>
       <arg name="name" type="s" direction="in"/>

@@ -264,6 +264,7 @@ public slots:
         }
         qDebug() << "Requesting APIs";
         General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+        connect(&api, &General::aboutToQuit, qApp, &QGuiApplication::quit);
         auto reply = api.requestAPI("power");
         reply.waitForFinished();
         if(reply.isError()){

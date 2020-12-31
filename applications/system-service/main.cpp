@@ -41,7 +41,7 @@ int main(int argc, char *argv[]){
 
     signal(SIGINT, sigHandler);
     signal(SIGSEGV, sigHandler);
-    signal(SIGKILL, sigHandler);
+    signal(SIGTERM, sigHandler);
 
     return app.exec();
 }

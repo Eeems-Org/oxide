@@ -210,6 +210,9 @@ void Application::setConfig(const QVariantMap& config){
     if(oldBin == bin()){
         return;
     }
+    if(!QFile::exists(bin())){
+        setValue("bin", oldBin);
+    }
 }
 void Application::started(){
     emit launched();

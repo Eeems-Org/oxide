@@ -46,7 +46,7 @@ public:
         for(auto app : applications){
             app->stop();
             app->waitForFinished();
-            app->deleteLater();
+            delete app;
         }
         applications.clear();
     }
@@ -274,8 +274,15 @@ private:
             settings.setArrayIndex(i);
             auto app = apps[i];
             auto config = app->getConfig();
+            // Add/Update config items
             for(auto key : config.keys()){
                 settings.setValue(key, config[key]);
+            }
+            // Remove old config
+            for(auto key : settings.childKeys()){
+                if(!config.contains(key)){
+                    settings.remove(key);
+                }
             }
         }
         settings.endArray();
@@ -283,6 +290,7 @@ private:
     void readApplications(){
         settings.sync();
         if(!applications.empty()){
+            // Unregister any applications that have been removed from the settings file
             int size = settings.beginReadArray("applications");
             QStringList names;
             for(int i = 0; i < size; ++i){
@@ -297,6 +305,7 @@ private:
                 }
             }
         }
+        // Register/Update applications from the settings file
         int size = settings.beginReadArray("applications");
         for(int i = 0; i < size; ++i){
             settings.setArrayIndex(i);
@@ -336,6 +345,7 @@ private:
             }
         }
         settings.endArray();
+        // Load system applications from disk
         QDir dir("/opt/usr/share/applications/");
         dir.setNameFilters(QStringList() << "*.oxide");
         QMap<QString, QJsonObject> apps;
@@ -350,6 +360,7 @@ private:
             app["name"] = name;
             apps.insert(name, app);
         }
+        // Unregister any system applications that no longer exist on disk.
         for(auto application : applications.values()){
             auto name = application->name();
             if(!apps.contains(name)){
@@ -359,8 +370,8 @@ private:
                 application->unregister();
                 continue;
             }
-            apps.remove(name);
         }
+        // Register/Update any system application.
         for(auto app : apps){
             auto name = app["name"].toString();
             int type = Foreground;

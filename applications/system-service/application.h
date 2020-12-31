@@ -148,11 +148,10 @@ public:
     }
     ~Application() {
         unregisterPath();
-        m_process->kill();
-        m_process->deleteLater();
         if(screenCapture != nullptr){
             delete screenCapture;
         }
+        umountAll();
     }
 
     QString path() { return m_path; }
@@ -484,6 +483,10 @@ private:
     }
     void umountAll(){
         auto path = chrootPath();
+        QDir dir(path);
+        if(!dir.exists()){
+            return;
+        }
         qDebug() << "Tearing down chroot" << path;
         QFile mounts("/proc/mounts");
         if(!mounts.open(QIODevice::ReadOnly)){
@@ -507,7 +510,7 @@ private:
             }
         }
         mounts.close();
-        QDir(path).removeRecursively();
+        dir.removeRecursively();
     }
     bool isMounted(const QString& path){
         QFile mounts("/proc/mounts");

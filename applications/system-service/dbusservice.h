@@ -43,6 +43,16 @@ public:
             qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
             qDebug() << "Creating DBusService instance";
             instance = new DBusService();
+            connect(qApp, &QGuiApplication::aboutToQuit, [=]{
+                if(instance == nullptr){
+                    return;
+                }
+                emit instance->aboutToQuit();
+                qDebug() << "Killing dbus service ";
+                delete instance;
+                qApp->processEvents();
+                instance = nullptr;
+            });
             auto bus = QDBusConnection::systemBus();
             if(!bus.isConnected()){
                 qFatal("Failed to connect to system bus.");
@@ -67,12 +77,6 @@ public:
         return instance;
     }
     DBusService() : apis(){
-        connect(qApp, &QGuiApplication::aboutToQuit, [=]{
-            qDebug() << "Killing dbus service ";
-            delete singleton();
-            qApp->processEvents();
-        });
-
         apis.insert("wifi", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
             .dependants = new QStringList(),
@@ -194,6 +198,7 @@ public slots:
 signals:
     void apiAvailable(QDBusObjectPath api);
     void apiUnavailable(QDBusObjectPath api);
+    void aboutToQuit();
 
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){
