@@ -10,6 +10,7 @@
 #include <QDBusConnection>
 
 #include <fstream>
+#include <QGuiApplication>
 
 #include "dbussettings.h"
 #include "powerapi.h"
@@ -65,11 +66,13 @@ public:
         }
         return instance;
     }
-    static void shutdown(){
-        qDebug() << "Killing dbus service ";
-        delete singleton();
-    }
     DBusService() : apis(){
+        connect(qApp, &QGuiApplication::aboutToQuit, [=]{
+            qDebug() << "Killing dbus service ";
+            delete singleton();
+            qApp->processEvents();
+        });
+
         apis.insert("wifi", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
             .dependants = new QStringList(),
@@ -124,9 +127,8 @@ public:
         for(auto api : apis){
             api.instance->setEnabled(false);
             bus.unregisterObject(api.path);
-            // TODO figure out why QDBusObjectPath isn't available on exit
-            // emit apiUnavailable(QDBusObjectPath(api.path));
-            api.instance->deleteLater();
+            emit apiUnavailable(QDBusObjectPath(api.path));
+            delete api.instance;
             delete api.dependants;
         }
         apis.clear();

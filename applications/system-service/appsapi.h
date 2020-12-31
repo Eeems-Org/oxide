@@ -45,8 +45,6 @@ public:
         settings.sync();
         for(auto app : applications){
             app->stop();
-        }
-        for(auto app : applications){
             app->waitForFinished();
             app->deleteLater();
         }

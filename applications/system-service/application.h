@@ -27,6 +27,7 @@
 #include <pwd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
+#include <sys/prctl.h>
 
 #include "dbussettings.h"
 #include "mxcfb.h"
@@ -86,7 +87,8 @@ protected:
         setresgid(m_gid, m_gid, m_gid);
         setresuid(m_uid, m_uid, m_uid);
         umask(m_mask);
-        setpgid(getpid(), 0);
+        setsid();
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
     }
 private:
     gid_t m_gid;

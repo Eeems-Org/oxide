@@ -1,6 +1,7 @@
-#include <signal.h>
 #include <QTimer>
 #include <QFile>
+
+#include <signal.h>
 
 #include "application.h"
 #include "appsapi.h"
@@ -157,7 +158,16 @@ void Application::stop(){
     if(state == Paused){
         kill(-m_process->processId(), SIGCONT);
     }
-    m_process->kill();
+    m_process->terminate();
+    // Try to wait for the application to stop normally before killing it
+    int tries = 0;
+    while(this->state() != Inactive){
+        m_process->waitForFinished(100);
+        if(++tries == 5){
+            m_process->kill();
+            return;
+        }
+    }
 }
 void Application::signal(int signal){
     if(m_process->processId()){
