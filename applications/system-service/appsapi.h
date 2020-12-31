@@ -321,7 +321,8 @@ private:
                 {"onResume", settings.value("onResume", "").toString()},
                 {"onStop", settings.value("onStop", "").toString()},
                 {"environment", settings.value("environment", QVariantMap()).toMap()},
-                {"workingDirectory", settings.value("workingDirectory", "").toString()}
+                {"workingDirectory", settings.value("workingDirectory", "").toString()},
+                {"directories", settings.value("directories", QStringList()).toStringList()},
             };
             if(settings.contains("user")){
                 properties.insert("user", settings.value("user", "").toString());
@@ -391,7 +392,7 @@ private:
                 {"name", name},
                 {"bin", bin},
                 {"type", type},
-                {"flags", flags}
+                {"flags", flags},
             };
             if(app.contains("displayName")){
                 properties.insert("displayName", app["displayName"].toString());
@@ -410,6 +411,13 @@ private:
             }
             if(app.contains("workingDirectory")){
                 properties.insert("workingDirectory", app["workingDirectory"].toString());
+            }
+            if(app.contains("directories")){
+                QStringList directories;
+                for(auto directory : app["directories"].toArray()){
+                    directories.append(directory.toString());
+                }
+                properties.insert("directories", directories);
             }
             if(app.contains("events")){
                 auto events = app["evnets"].toObject();

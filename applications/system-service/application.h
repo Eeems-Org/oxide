@@ -132,6 +132,7 @@ class Application : public QObject{
     Q_PROPERTY(bool chroot READ chroot)
     Q_PROPERTY(QString user READ user)
     Q_PROPERTY(QString group READ group)
+    Q_PROPERTY(QStringList directories READ directories WRITE setDirectories NOTIFY directoriesChanged)
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false) {
@@ -247,6 +248,11 @@ public:
     bool chroot(){ return flags().contains("chroot"); }
     QString user(){ return value("user", getuid()).toString(); }
     QString group(){ return value("group", getgid()).toString(); }
+    QStringList directories() { return value("directories", QStringList()).toStringList(); }
+    void setDirectories(QStringList directories){
+        setValue("directories", directories);
+        emit directoriesChanged(directories);
+    }
     const QVariantMap& getConfig(){ return m_config; }
     void setConfig(const QVariantMap& config);
     void saveScreen(){
@@ -325,6 +331,7 @@ signals:
     void iconChanged(QString);
     void environmentChanged(QVariantMap);
     void workingDirectoryChanged(QString);
+    void directoriesChanged(QStringList);
 
 public slots:
     void sigUsr1(){
@@ -430,32 +437,20 @@ private:
     }
     void ramdisk(const QString& path){
         mkdirs(path, 744);
+        umount(path);
         mount("tmpfs", path.toStdString().c_str(), "tmpfs", 0, "size=249m,rw,nosuid,nodev,mode=755");
         qDebug() << "ramdisk" << path;
     }
     void umount(const QString& path){
         QDir dir(path);
-        if(!dir.exists()){
+        if(!dir.exists() || !isMounted(path)){
             return;
         }
         auto cpath = path.toStdString();
-        int tries = 0;
-        while(::umount(cpath.c_str()) && errno == EBUSY){
-            struct timespec args{
-                .tv_sec = 1,
-                .tv_nsec = 0,
-            }, res;
-            nanosleep(&args, &res);
-            if(++tries < 5){
-                continue;
-            }
-            if(!umount2(cpath.c_str(), MNT_FORCE) || errno != EBUSY){
-                break;
-            }
-            if(++tries >= 10){
-                qDebug() << "umount failed" << path;
-                return;
-            }
+        ::umount(cpath.c_str());
+        if(isMounted(path)){
+            qDebug() << "umount failed" << path;
+            return;
         }
         rmdir(cpath.c_str());
         qDebug() << "umount" << path;
@@ -463,6 +458,7 @@ private:
     const QString chrootPath() { return "/tmp/tarnish-chroot/" + name(); }
     void mountAll(){
         auto path = chrootPath();
+        qDebug() << "Setting up chroot" << path;
         // System tmpfs folders
         bind("/dev", path + "/dev");
         bind("/proc", path + "/proc");
@@ -477,31 +473,56 @@ private:
         bind("/opt/lib", path + "/opt/lib", true);
         bind("/opt/usr/bin", path + "/opt/usr/bin", true);
         bind("/opt/usr/lib", path + "/opt/usr/lib", true);
+        for(auto directory : directories()){
+            bind(directory, path + directory);
+        }
         // tmpfs folders
         ramdisk(path + "/run");
         ramdisk(path + "/var/volatile");
     }
     void umountAll(){
         auto path = chrootPath();
-        umount(path + "/opt/usr/bin");
-        umount(path + "/opt/usr/lib");
-        rmdir((path + "/opt/usr").toStdString().c_str());
-        umount(path + "/usr/lib");
-        umount(path + "/usr/bin");
-        umount(path + "/usr/sbin");
-        rmdir((path + "/usr").toStdString().c_str());
-        umount(path + "/opt/bin");
-        umount(path + "/opt/lib");
-        rmdir((path + "/opt").toStdString().c_str());
-        umount(path + "/bin");
-        umount(path + "/lib");
-        umount(path + "/var/volatile");
-        rmdir((path + "/var").toStdString().c_str());
-        umount(path + "/run");
-        umount(path + "/proc");
-        umount(path + "/sys");
-        umount(path + "/dev");
-        rmdir(path.toStdString().c_str());
+        qDebug() << "Tearing down chroot" << path;
+        QFile mounts("/proc/mounts");
+        if(!mounts.open(QIODevice::ReadOnly)){
+            qDebug() << "Unable to open /proc/mounts";
+            return;
+        }
+        QString line;
+        while(!(line = mounts.readLine()).isEmpty()){
+            auto mount = line.section(' ', 1, 1);
+            if(mount.startsWith(path + "/")){
+                umount(mount);
+            }
+
+        }
+        mounts.seek(0);
+        while(!(line = mounts.readLine()).isEmpty()){
+            auto mount = line.section(' ', 1, 1);
+            if(mount.startsWith(path + "/")){
+                qDebug() << "Some items are still mounted in chroot" << path;
+                return;
+            }
+        }
+        mounts.close();
+        QDir(path).removeRecursively();
+    }
+    bool isMounted(const QString& path){
+        QFile mounts("/proc/mounts");
+        if(!mounts.open(QIODevice::ReadOnly)){
+            qDebug() << "Unable to open /proc/mounts";
+            return false;
+        }
+        QString line;
+        while(!(line = mounts.readLine()).isEmpty()){
+            auto mount = line.section(' ', 1, 1);
+            if(mount == path){
+                mounts.close();
+                return true;
+            }
+        }
+        mounts.close();
+        return false;
     }
 };
 

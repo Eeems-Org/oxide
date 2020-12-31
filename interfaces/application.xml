@@ -21,6 +21,7 @@
     <property name="chroot" type="b" access="read"/>
     <property name="user" type="s" access="read"/>
     <property name="group" type="s" access="read"/>
+    <property name="directories" type="as" access="readwrite"/>
     <signal name="launched">
     </signal>
     <signal name="paused">
@@ -56,6 +57,9 @@
     </signal>
     <signal name="workingDirectoryChanged">
       <arg type="s" direction="out"/>
+    </signal>
+    <signal name="directoriesChanged">
+      <arg type="as" direction="out"/>
     </signal>
     <method name="sigUsr1">
     </method>
