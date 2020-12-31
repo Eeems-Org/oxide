@@ -321,7 +321,14 @@ private:
                 {"onResume", settings.value("onResume", "").toString()},
                 {"onStop", settings.value("onStop", "").toString()},
                 {"environment", settings.value("environment", QVariantMap()).toMap()},
+                {"workingDirectory", settings.value("workingDirectory", "").toString()}
             };
+            if(settings.contains("user")){
+                properties.insert("user", settings.value("user", "").toString());
+            }
+            if(settings.contains("group")){
+                properties.insert("group", settings.value("group", "").toString());
+            }
             if(applications.contains(name)){
                 applications[name]->setConfig(properties);
                 writeApplications();
@@ -394,6 +401,15 @@ private:
             }
             if(app.contains("icon")){
                 properties.insert("icon", app["icon"].toString());
+            }
+            if(app.contains("user")){
+                properties.insert("user", app["user"].toString());
+            }
+            if(app.contains("group")){
+                properties.insert("group", app["group"].toString());
+            }
+            if(app.contains("workingDirectory")){
+                properties.insert("workingDirectory", app["workingDirectory"].toString());
             }
             if(app.contains("events")){
                 auto events = app["evnets"].toObject();
