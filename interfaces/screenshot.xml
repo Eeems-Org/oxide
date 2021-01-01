@@ -1,0 +1,13 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="codes.eeems.oxide1.Screenshot">
+    <property name="blob" type="ay" access="readwrite"/>
+    <property name="path" type="s" access="read"/>
+    <signal name="modified">
+    </signal>
+    <signal name="removed">
+    </signal>
+    <method name="remove">
+    </method>
+  </interface>
+</node>

@@ -60,6 +60,7 @@ HEADERS += \
     notificationapi.h \
     powerapi.h \
     screenapi.h \
+    screenshot.h \
     signalhandler.h \
     supplicant.h \
     sysobject.h \

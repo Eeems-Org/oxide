@@ -15,6 +15,7 @@
 #include "application_interface.h"
 #include "systemapi_interface.h"
 #include "screenapi_interface.h"
+#include "screenshot_interface.h"
 #include "notificationapi_interface.h"
 #include "notification_interface.h"
 
@@ -38,6 +39,7 @@ QVariant decodeDBusArgument(const QDBusArgument& arg){
         return sanitizeForJson(list);
     }
     if(type == QDBusArgument::MapType){
+        qDebug() << "Map Type";
         QMap<QVariant, QVariant> map;
         arg.beginMap();
         while(!arg.atEnd()){
@@ -85,6 +87,14 @@ QVariant sanitizeForJson(QVariant value){
         QStringList list;
         for(auto value : value.value<QList<QDBusObjectPath>>()){
             list.append(value.path());
+        }
+        return list;
+    }
+    if(userType == QMetaType::QByteArray){
+        auto byteArray = value.toByteArray();
+        QVariantList list;
+        for(auto byte : byteArray){
+            list.append(byte);
         }
         return list;
     }
@@ -321,8 +331,16 @@ int main(int argc, char *argv[]){
     }else if(apiName == "screen"){
         api = new Screen(OXIDE_SERVICE, path, bus);
         if(parser.isSet("object")){
-            qDebug() << "Paths are not valid for the screen API";
-            return EXIT_FAILURE;
+            auto object = parser.value("object");
+            auto type = object.mid(0, object.indexOf(":"));
+            auto path = object.mid(object.indexOf(":") + 1);
+            path = OXIDE_SERVICE_PATH + QString("/" + path);
+            if(type == "Screenshot"){
+                api = new Screenshot(OXIDE_SERVICE, path, bus);
+            }else{
+                qDebug() << "Unknown object type" << type;
+                return EXIT_FAILURE;
+            }
         }
     }else if(apiName == "notification"){
         api = new Notifications(OXIDE_SERVICE, path, bus);
