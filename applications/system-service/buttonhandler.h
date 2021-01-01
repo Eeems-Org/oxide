@@ -47,9 +47,6 @@ class ButtonHandler : public QThread {
 
 public:
     static ButtonHandler* init();
-    static string exec(const char* cmd);
-    static vector<std::string> split_string_by_newline(const std::string& str);
-    static int is_uint(string input);
 
     ButtonHandler() : QThread(), filebuf(buttons.fd, ios::in), stream(&filebuf), pressed(), timer(this), m_enabled(true) {
         timer.setInterval(100);
