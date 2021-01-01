@@ -38,6 +38,7 @@ public:
     }
     bool is(Notification* notification) { return notification == m_notification; }
     Notification* notification() { return m_notification; }
+    Q_INVOKABLE void click(){ notification()->click(); }
 signals:
     void textChanged(QString);
     void iconChanged(QString);

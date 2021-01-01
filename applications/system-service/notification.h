@@ -73,6 +73,7 @@ public:
 
     Q_INVOKABLE void display();
     Q_INVOKABLE void remove();
+    Q_INVOKABLE void click(){ emit clicked(); }
 
 signals:
     void changed(QVariantMap);

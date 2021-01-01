@@ -52,12 +52,20 @@ Item {
                             }
                             Layout.preferredHeight: 64
                             Layout.preferredWidth: 64
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: model.display && model.display.click()
+                            }
                         }
                         Label {
                             text: (model.display && model.display.text) || "Notification"
                             Layout.alignment: Qt.AlignLeft
                             Layout.fillWidth: true
                             Layout.preferredWidth: parent.width - 50 - 64
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: model.display && model.display.click()
+                            }
                         }
                         BetterButton {
                             text: "X"

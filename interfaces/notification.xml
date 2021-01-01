@@ -19,5 +19,7 @@
     </method>
     <method name="remove">
     </method>
+    <method name="click">
+    </method>
   </interface>
 </node>

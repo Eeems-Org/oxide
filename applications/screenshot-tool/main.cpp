@@ -82,9 +82,14 @@ int main(int argc, char *argv[]){
         qDebug() << "Adding notification" << guid;
         QDBusObjectPath path = notifications.add(guid, "codes.eeems.fret", "Screenshot taken", "");
         if(path.path() != "/"){
-            Notification notification(OXIDE_SERVICE, path.path(), bus, &app);
+            auto notification = new Notification(OXIDE_SERVICE, path.path(), bus, &app);
             qDebug() << "Displaying notification" << guid;
-            notification.display().waitForFinished();
+            notification->display().waitForFinished();
+            QObject::connect(notification, &Notification::clicked, [notification]{
+                qDebug() << "Notification clicked" << notification->identifier();
+                notification->remove();
+                notification->deleteLater();
+            });
         }else{
             qDebug() << "Failed to add notification";
         }
