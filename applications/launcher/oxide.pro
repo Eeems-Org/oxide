@@ -16,12 +16,12 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    eventfilter.cpp \
     main.cpp \
     controller.cpp \
     appitem.cpp \
     sysobject.cpp \
-    ../../shared/devicesettings.cpp
+    ../../shared/devicesettings.cpp \
+    ../../shared/eventfilter.cpp
 
 
 RESOURCES += qml.qrc
@@ -71,11 +71,11 @@ ls
 HEADERS += \
     controller.h \
     appitem.h \
-    eventfilter.h \
     inputmanager.h \
     mxcfb.h \
     notificationlist.h \
     sysobject.h \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h \
+    ../../shared/eventfilter.h \
     wifinetworklist.h

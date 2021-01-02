@@ -48,17 +48,17 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
-    EventFilter filter;
     QGuiApplication app(argc, argv);
+    auto filter = new EventFilter(&app);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("oxide");
     app.setApplicationDisplayName("Launcher");
-    app.installEventFilter(&filter);
+    app.installEventFilter(filter);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();
-    controller->filter = &filter;
+    controller->filter = filter;
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
     controller->reconnectToAPI();
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]){
     }
     QObject* root = engine.rootObjects().first();
     controller->root = root;
-    filter.root = (QQuickItem*)root;
+    filter->root = (QQuickItem*)root;
     QObject* stateController = root->findChild<QObject*>("stateController");
     if(!stateController){
         qDebug() << "Can't find stateController";

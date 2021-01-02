@@ -25,6 +25,7 @@ class Controller : public QObject {
 public:
     Controller(QObject* parent)
     : QObject(parent) {
+        clockTimer = new QTimer(root);
         SignalHandler::setup_unix_signal_handlers();
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
@@ -80,10 +81,14 @@ public:
         connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
         connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
     }
-    ~Controller(){}
+    ~Controller(){
+        if(clockTimer->isActive()){
+            clockTimer->stop();
+        }
+    }
 
     Q_INVOKABLE void startup(){
-        if(!getBatteryUI()){
+        if(!getBatteryUI() || !getWifiUI() || !getClockUI()){
             QTimer::singleShot(100, this, &Controller::startup);
             return;
         }
@@ -94,6 +99,16 @@ public:
         powerStateChanged(powerApi->state());
         wifiStateChanged(wifiApi->state());
         wifiLinkChanged(wifiApi->link());
+
+        clockUI->setProperty("text", QTime::currentTime().toString("h:mm a"));
+
+        auto currentTime = QTime::currentTime();
+        QTime nextTime = currentTime.addSecs(60 - currentTime.second());
+        clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
+        QObject::connect(clockTimer , &QTimer::timeout, this, &Controller::updateClock);
+        clockTimer ->start();
+
+
         //launchOxide();
     }
     Q_INVOKABLE void launchOxide(){
@@ -119,6 +134,15 @@ signals:
     void sleepInhibitedChanged(bool);
     void powerOffInhibitedChanged(bool);
 private slots:
+    void updateClock(){
+        if(!getClockUI()){
+            return;
+        }
+        clockUI->setProperty("text", QTime::currentTime().toString("h:mm a"));
+        if(clockTimer->interval() != 60 * 1000){
+            clockTimer->setInterval(60 * 1000); // 1 minute
+        }
+    }
     void disconnected(){
         wifiStateChanged(wifiApi->state());
     }
@@ -165,6 +189,10 @@ private slots:
         qDebug() << "Got foreground signal";
         // TODO only show if not passing off to oxide
         root->setProperty("visible", true);
+        if(!clockTimer->isActive()){
+            updateClock();
+            clockTimer->start();
+        }
         qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
         qDebug() << "Acking SIGUSR1 to " << tarnishPid();
         kill(tarnishPid(), SIGUSR1);
@@ -174,6 +202,9 @@ private slots:
     }
     void sentToBackground(){
         qDebug() << "Got background signal";
+        if(clockTimer->isActive()){
+            clockTimer->stop();
+        }
         if(root->property("visible").toBool()){
             root->setProperty("visible", false);
             qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
@@ -253,9 +284,11 @@ private:
     System* systemApi;
     Power* powerApi;
     Wifi* wifiApi;
+    QTimer* clockTimer = nullptr;
     QObject* root = nullptr;
     QObject* batteryUI = nullptr;
     QObject* wifiUI = nullptr;
+    QObject* clockUI = nullptr;
 
     int tarnishPid() { return api->tarnishPid(); }
     QObject* getBatteryUI() {
@@ -263,8 +296,12 @@ private:
         return batteryUI;
     }
     QObject* getWifiUI() {
-        wifiUI = root->findChild<QObject*>("wifi");
+        wifiUI = root->findChild<QObject*>("wifiState");
         return wifiUI;
+    }
+    QObject* getClockUI() {
+        clockUI = root->findChild<QObject*>("clock");
+        return clockUI;
     }
 };
 

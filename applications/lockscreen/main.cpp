@@ -8,6 +8,7 @@
 #include "dbussettings.h"
 #include "devicesettings.h"
 #include "controller.h"
+#include "eventfilter.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
@@ -33,6 +34,8 @@ int main(int argc, char *argv[]){
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
     QGuiApplication app(argc, argv);
+    auto filter = new EventFilter(&app);
+    app.installEventFilter(filter);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("decay");
@@ -47,6 +50,8 @@ int main(int argc, char *argv[]){
         qDebug() << "Nothing to display";
         return -1;
     }
-    controller.setRoot(engine.rootObjects().first());
+    auto root = engine.rootObjects().first();
+    filter->root = (QQuickItem*)root;
+    controller.setRoot(root);
     return app.exec();
 }

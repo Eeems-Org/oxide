@@ -118,10 +118,6 @@ ApplicationWindow {
             objectName: "clock"
             anchors.centerIn: parent
             color: "white"
-            MouseArea {
-                anchors.fill: parent
-                onClicked: stateController.state = "calendar"
-            }
         }
     }
     background: Rectangle { color: "black" }
