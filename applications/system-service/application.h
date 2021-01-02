@@ -392,6 +392,7 @@ private:
         timer.invalidate();
         timer.start();
         while(timer.isValid() && !timer.hasExpired(milliseconds)){
+            qDebug() << "Waiting";
             QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
         }
     }

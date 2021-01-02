@@ -21,7 +21,7 @@ AppsAPI::AppsAPI(QObject* parent)
     auto path = QDBusObjectPath(settings.value("startupApplication").toString());
     auto app = getApplication(path);
     if(app == nullptr){
-        app = getApplication("codes.eeems.oxide");
+        app = getApplication("codes.eeems.decay");
         if(app != nullptr){
             path = app->qPath();
         }

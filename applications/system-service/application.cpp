@@ -69,6 +69,7 @@ void Application::interruptApplication(){
             // Already in the background. How did we get here?
             return;
         case AppsAPI::Backgroundable:
+            qDebug() << "Waiting for SIGUSR2 ack";
             appsAPI->connectSignals(this, 2);
             kill(-m_process->processId(), SIGUSR2);
             timer.restart();
@@ -80,6 +81,7 @@ void Application::interruptApplication(){
                 waitForPause();
             }else{
                 m_backgrounded = true;
+                qDebug() << "SIGUSR2 ack recieved";
             }
             break;
         case AppsAPI::Foreground:
@@ -89,10 +91,16 @@ void Application::interruptApplication(){
     }
 }
 void Application::waitForPause(){
+    if(state() == Paused){
+        return;
+    }
     siginfo_t info;
     waitid(P_PID, m_process->processId(), &info, WSTOPPED);
 }
 void Application::waitForResume(){
+    if(state() != Paused){
+        return;
+    }
     siginfo_t info;
     waitid(P_PID, m_process->processId(), &info, WCONTINUED);
 }
@@ -102,11 +110,14 @@ void Application::resume(){
         || state() == InForeground
         || (type() == AppsAPI::Background && state() == InBackground)
     ){
+        qDebug() << "Can't Resume" << path() << "Already running!";
         return;
     }
     qDebug() << "Resuming " << path();
     appsAPI->pauseAll();
-    recallScreen();
+    if(type() != AppsAPI::Backgroundable || state() == Paused){
+        recallScreen();
+    }
     uninterruptApplication();
     waitForResume();
     emit resumed();
@@ -131,6 +142,7 @@ void Application::uninterruptApplication(){
                 inputManager->clear_touch_buffer(touchScreen.fd);
                 kill(-m_process->processId(), SIGCONT);
             }
+            qDebug() << "Waiting for SIGUSR1 ack";
             appsAPI->connectSignals(this, 1);
             kill(-m_process->processId(), SIGUSR1);
             delayUpTo(1000);
@@ -138,6 +150,8 @@ void Application::uninterruptApplication(){
             if(timer.isValid()){
                 // No need to fall through, we've just assumed it continued
                 qDebug() << "Warning: application took too long to forground" << name();
+            }else{
+                qDebug() << "SIGUSR1 ack recieved";
             }
             m_backgrounded = false;
             break;

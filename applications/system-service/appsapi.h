@@ -12,6 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QMutex>
 
 #include "apibase.h"
 #include "application.h"
@@ -71,7 +72,16 @@ public:
         QString name = properties.value("name", "").toString();
         QString bin = properties.value("bin", "").toString();
         int type = properties.value("type", Foreground).toInt();
-        if(type < Foreground || type > Background || name.isEmpty() || bin.isEmpty() || !QFile::exists(bin)){
+        if(type < Foreground || type > Backgroundable){
+            qDebug() << "Invalid configuration: Invalid type" << type;
+            return QDBusObjectPath("/");
+        }
+        if(name.isEmpty()){
+            qDebug() << "Invalid configuration: Name is empty";
+            return QDBusObjectPath("/");
+        }
+        if(bin.isEmpty() || !QFile::exists(bin)){
+            qDebug() << "Invalid configuration: Invalid bin" << bin;
             return QDBusObjectPath("/");
         }
         if(applications.contains(name)){
@@ -313,7 +323,7 @@ private:
             auto displayName = settings.value("displayName", name).toString();
             auto type = settings.value("type", Foreground).toInt();
             auto bin = settings.value("bin").toString();
-            if(type < Foreground || type > Background || name.isEmpty() || bin.isEmpty()){
+            if(type < Foreground || type > Backgroundable || name.isEmpty() || bin.isEmpty()){
                 continue;
             }
             QVariantMap properties {
@@ -451,6 +461,7 @@ private:
                 applications[name]->setConfig(properties);
                 writeApplications();
             }else{
+                qDebug() << "New system app" << name;
                 registerApplication(properties);
             }
         }

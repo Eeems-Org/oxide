@@ -412,10 +412,13 @@ ApplicationWindow {
         objectName: "stateController"
         state: "loading"
         states: [
+            State { name: "loading" },
             State { name: "loaded" },
             State { name: "settings" },
             State { name: "itemInfo" },
-            State { name: "loading" }
+            State { name: "wifi" },
+            State { name: "calendar" },
+            State { name: "notifications" }
         ]
         transitions: [
             Transition {
