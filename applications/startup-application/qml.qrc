@@ -19,5 +19,15 @@
         <file>img/battery/30.png</file>
         <file>img/battery/20.png</file>
         <file>font/icomoon.ttf</file>
+        <file>widgets/CustomMenu.qml</file>
+        <file>widgets/BetterMenu.qml</file>
+        <file>img/wifi/unknown.png</file>
+        <file>img/wifi/down.png</file>
+        <file>img/wifi/disconnected.png</file>
+        <file>img/wifi/4_bar.png</file>
+        <file>img/wifi/3_bar.png</file>
+        <file>img/wifi/2_bar.png</file>
+        <file>img/wifi/1_bar.png</file>
+        <file>img/wifi/0_bar.png</file>
     </qresource>
 </RCC>

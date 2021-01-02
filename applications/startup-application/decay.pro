@@ -30,6 +30,7 @@ target.path = /opt/bin
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/systemapi.xml
 DBUS_INTERFACES += ../../interfaces/powerapi.xml
+DBUS_INTERFACES += ../../interfaces/wifiapi.xml
 
 INCLUDEPATH += ../../shared
 HEADERS += \

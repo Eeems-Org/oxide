@@ -28,6 +28,35 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight
                 StatusIcon {
+                    id: wifiState
+                    objectName: "wifiState"
+                    property string state: "unknown"
+                    property int link: 0
+                    property int level: 0
+                    property bool connected: false
+                    source: {
+                        var icon;
+                        if(state === "unknown"){
+                            icon = "unknown";
+                        }else if(state === "down"){
+                            icon = "down";
+                        }else if(!connected){
+                            icon = "disconnected";
+                        }else if(link < 20){
+                            icon = "0_bar";
+                        }else if(link < 40){
+                            icon = "1_bar";
+                        }else if(link < 60){
+                            icon = "2_bar";
+                        }else if(link < 80){
+                            icon = "3_bar";
+                        }else{
+                            icon = "4_bar";
+                        }
+                        return "qrc:/img/wifi/" + icon + ".png";
+                    }
+                }
+                StatusIcon {
                     id: batteryLevel
                     objectName: "batteryLevel"
                     property bool alert: false
@@ -63,6 +92,24 @@ ApplicationWindow {
                             }
                         }
                         return "qrc:/img/battery/" + icon + ".png";
+                    }
+                }
+                CustomMenu {
+                    BetterMenu {
+                        id: powerMenu
+                        title: "";
+                        font: iconFont.name
+                        width: 260
+                        Action {
+                            text: qsTr(" Suspend")
+                            enabled: !controller.sleepInhibited
+                            onTriggered: controller.suspend();
+                        }
+                        Action {
+                            text: qsTr(" Shutdown")
+                            enabled: !controller.powerOffInhibited
+                            onTriggered: controller.powerOff()
+                        }
                     }
                 }
             }
