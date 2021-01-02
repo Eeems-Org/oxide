@@ -86,7 +86,7 @@ oxide: tarnish
 	$(MAKE) -C .build/launcher all
 
 decay: tarnish
-	mkdir -p .build/startup-application
-	cp -r applications/startup-application/* .build/startup-application
-	cd .build/startup-application && qmake decay.pro
-	$(MAKE) -C .build/startup-application all
+	mkdir -p .build/lockscreen
+	cp -r applications/lockscreen/* .build/lockscreen
+	cd .build/lockscreen && qmake decay.pro
+	$(MAKE) -C .build/lockscreen all
