@@ -125,7 +125,17 @@ ApplicationWindow {
         Rectangle {
             anchors.fill: parent
             color: "black"
+        },
+        GridLayout {
+            anchors.fill: parent
+            rowSpacing: 10
+            columnSpacing: 10
+            PinButton {
+                text: "0"
+                onClicked: controller.launchOxide();
+            }
         }
+
     ]
     StateGroup {
         id: stateController
