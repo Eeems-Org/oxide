@@ -244,10 +244,12 @@ signals:
     void applicationExited(QDBusObjectPath, int);
 
 public slots:
-    void leftHeld(){
-        auto currentApplication = getApplication(this->currentApplication());
-        if(currentApplication->state() != Application::Inactive && currentApplication->path() == m_startupApplication.path()){
-            qDebug() << "Already at startup application";
+    QT_DEPRECATED void leftHeld(){ openDefaultApplication(); }
+    void openDefaultApplication(){
+        auto path = this->currentApplication();
+        auto currentApplication = getApplication(path);
+        if(currentApplication->state() != Application::Inactive && (path == m_startupApplication || path == m_lockscreenApplication)){
+            qDebug() << "Already in default application";
             return;
         }
         auto app = getApplication(m_startupApplication);

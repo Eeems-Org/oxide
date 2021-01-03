@@ -59,5 +59,7 @@ private:
     bool _running = false;
     char* frameBuffer;
     int frameBufferHandle;
+
+    Application* getApp();
 };
 #endif // APP_H
