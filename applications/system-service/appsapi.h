@@ -27,6 +27,7 @@ class AppsAPI : public APIBase {
     Q_CLASSINFO("D-Bus Interface", OXIDE_APPS_INTERFACE)
     Q_PROPERTY(int state READ state) // This needs to be here for the XML to generate the other properties :(
     Q_PROPERTY(QDBusObjectPath startupApplication READ startupApplication WRITE setStartupApplication)
+    Q_PROPERTY(QDBusObjectPath lockscreenApplication READ lockscreenApplication WRITE setLockscreenApplication)
     Q_PROPERTY(QVariantMap applications READ getApplications)
     Q_PROPERTY(QDBusObjectPath currentApplication READ currentApplication)
     Q_PROPERTY(QVariantMap runningApplications READ runningApplications)
@@ -114,13 +115,18 @@ public:
         writeApplications();
     }
 
-    QDBusObjectPath startupApplication(){
-        return m_startupApplication;
-    }
+    QDBusObjectPath startupApplication(){ return m_startupApplication; }
     void setStartupApplication(QDBusObjectPath path){
         if(getApplication(path) != nullptr){
             m_startupApplication = path;
             settings.setValue("startupApplication", path.path());
+        }
+    }
+    QDBusObjectPath lockscreenApplication(){ return m_lockscreenApplication; }
+    void setLockscreenApplication(QDBusObjectPath path){
+        if(getApplication(path) != nullptr){
+            m_lockscreenApplication = path;
+            settings.setValue("lockscreenApplication", path.path());
         }
     }
 
@@ -270,6 +276,7 @@ private:
     QMap<QString, Application*> applications;
     QSettings settings;
     QDBusObjectPath m_startupApplication;
+    QDBusObjectPath m_lockscreenApplication;
     bool m_sleeping;
     Application* resumeApp = nullptr;
     QString getPath(QString name){
@@ -467,9 +474,11 @@ private:
         }
     }
     static void migrate(QSettings* settings, int fromVersion){
-        Q_UNUSED(settings)
-        Q_UNUSED(fromVersion)
+        if(fromVersion != 0){
+            throw "Unknown settings version";
+        }
         // In the future migrate changes to settings between versions
+        settings->setValue("version", OXIDE_SETTINGS_VERSION);
     }
 };
 #endif // APPSAPI_H

@@ -30,5 +30,6 @@
         <file>img/wifi/1_bar.png</file>
         <file>img/wifi/0_bar.png</file>
         <file>widgets/PinButton.qml</file>
+        <file>img/backspace.png</file>
     </qresource>
 </RCC>

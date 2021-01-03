@@ -163,6 +163,8 @@ signals:
     void sleepInhibitedChanged(bool);
     void powerOffInhibitedChanged(bool);
     void autoSleepChanged(int);
+    void deviceSuspending();
+    void deviceResuming();
 
 private slots:
     void PrepareForSleep(bool suspending);

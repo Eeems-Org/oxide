@@ -13,10 +13,7 @@ ApplicationWindow {
     title: qsTr("Oxide")
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
-    Component.onCompleted:{
-        stateController.state = "loaded"
-        controller.startup();
-    }
+    Component.onCompleted: controller.startup()
     header: Rectangle {
         color: "black"
         height: menu.height
@@ -123,23 +120,100 @@ ApplicationWindow {
     background: Rectangle { color: "black" }
     contentData: [
         Rectangle {
+            id: background
             anchors.fill: parent
             color: "black"
         },
         GridLayout {
-            anchors.fill: parent
-            rowSpacing: 10
-            columnSpacing: 10
+            id: pinEntry
+            anchors.centerIn: parent
+            rowSpacing: children[3].width / 2
+            columnSpacing: children[3].width / 2
+            columns: 3
+            rows: 6
+
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                spacing: parent.columnSpacing
+
+                Label {
+                    text: "PIN"
+                    color: "white"
+                }
+
+                RowLayout {
+                    spacing: parent.parent.columnSpacing
+                    property int itemSize: 50
+
+                    Rectangle {
+                        width: parent.itemSize
+                        height: width
+                        color: controller.pin.length > 0 ? "white" : "black"
+                        border.color: "white"
+                        border.width: 1
+                        radius: width / 2
+                    }
+                    Rectangle {
+                        width: parent.itemSize
+                        height: width
+                        color: controller.pin.length > 1 ? "white" : "black"
+                        border.color: "white"
+                        border.width: 1
+                        radius: width / 2
+                    }
+                    Rectangle {
+                        width: parent.itemSize
+                        height: width
+                        color: controller.pin.length > 2 ? "white" : "black"
+                        border.color: "white"
+                        border.width: 1
+                        radius: width / 2
+                    }
+                    Rectangle {
+                        width: parent.itemSize
+                        height: width
+                        color: controller.pin.length > 3 ? "white" : "black"
+                        border.color: "white"
+                        border.width: 1
+                        radius: width / 2
+                    }
+                }
+            }
+
+            Item { Layout.columnSpan: parent.columns; Layout.fillHeight: true }
+
+            PinButton { text: "7"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
+            PinButton { text: "8"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
+            PinButton { text: "9"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
+
+            PinButton { text: "4"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
+            PinButton { text: "5"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
+            PinButton { text: "6"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
+
+            PinButton { text: "1"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
+            PinButton { text: "2"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
+            PinButton { text: "3"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
+
+            Item { Layout.fillWidth: true }
+            PinButton { text: "0"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
             PinButton {
-                text: "0"
-                onClicked: controller.launchOxide();
+                contentItem: Item {
+                    Image {
+                        anchors.centerIn: parent
+                        width: parent.width / 2
+                        height: width
+                        source: "qrc:/img/backspace.png"
+                        fillMode: Image.PreserveAspectFit
+                    }
+                }
+                hideBorder: true
+                onClicked: controller.pin = controller.pin.slice(0, -1)
+                enabled: controller.pin.length
             }
         }
-
     ]
     StateGroup {
         id: stateController
-        property string previousState;
         objectName: "stateController"
         state: "loading"
         states: [
@@ -151,6 +225,17 @@ ApplicationWindow {
                 from: "*"; to: "loaded"
                 SequentialAnimation {
                     ScriptAction { script: console.log("Main display") }
+                    PropertyAction { target: background; property: 'visible'; value: true }
+                    PropertyAction { target: pinEntry; property: 'visible'; value: true }
+                }
+            },
+            Transition {
+                from: "*"; to: "loading"
+                SequentialAnimation {
+                    ScriptAction { script: console.log("Loading display") }
+                    PropertyAction { target: background; property: 'visible'; value: false }
+                    PropertyAction { target: pinEntry; property: 'visible'; value: false }
+                    ScriptAction { script: controller.startup() }
                 }
             }
         ]

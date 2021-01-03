@@ -7,6 +7,7 @@
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
+        emit deviceSuspending();
         auto path = appsAPI->currentApplication();
         if(path.path() != "/"){
             resumeApp = appsAPI->getApplication(path);
@@ -29,6 +30,10 @@ void SystemAPI::PrepareForSleep(bool suspending){
         inhibitSleep();
         qDebug() << "Resuming...";
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
+        if(lockscreenApp != nullptr){
+            resumeApp = lockscreenApp;
+        }
         if(resumeApp == nullptr){
             resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
         }
@@ -36,6 +41,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
             resumeApp->resume();
         }
         buttonHandler->setEnabled(true);
+        emit deviceResuming();
         if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
             qDebug() << "Suspend timer re-enabled due to resume";
             suspendTimer.start(m_autoSleep * 60 * 1000);

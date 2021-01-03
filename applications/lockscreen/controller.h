@@ -13,6 +13,8 @@
 
 using namespace codes::eeems::oxide1;
 
+#define DECAY_SETTINGS_VERSION 1
+
 enum State { Normal, PowerSaving };
 enum BatteryState { BatteryUnknown, BatteryCharging, BatteryDischarging, BatteryNotPresent };
 enum ChargerState { ChargerUnknown, ChargerConnected, ChargerNotConnected, ChargerNotPresent };
@@ -22,9 +24,10 @@ class Controller : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
+    Q_PROPERTY(QString pin MEMBER m_pin READ pin WRITE setPin NOTIFY pinChanged)
 public:
     Controller(QObject* parent)
-    : QObject(parent) {
+    : QObject(parent), m_pin(), settings(this) {
         clockTimer = new QTimer(root);
         SignalHandler::setup_unix_signal_handlers();
         auto bus = QDBusConnection::systemBus();
@@ -51,6 +54,8 @@ public:
 
         connect(systemApi, &System::sleepInhibitedChanged, this, &Controller::sleepInhibitedChanged);
         connect(systemApi, &System::powerOffInhibitedChanged, this, &Controller::powerOffInhibitedChanged);
+        connect(systemApi, &System::deviceSuspending, this, &Controller::deviceSuspending);
+        connect(systemApi, &System::deviceResuming, this, &Controller::deviceResuming);
 
         qDebug() << "Requesting power API...";
         path = api->requestAPI("power");
@@ -80,6 +85,12 @@ public:
         connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
         connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
         connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
+
+        settings.sync();
+        auto version = settings.value("version", 0).toInt();
+        if(version < DECAY_SETTINGS_VERSION){
+            migrate(&settings, version);
+        }
     }
     ~Controller(){
         if(clockTimer->isActive()){
@@ -88,7 +99,7 @@ public:
     }
 
     Q_INVOKABLE void startup(){
-        if(!getBatteryUI() || !getWifiUI() || !getClockUI()){
+        if(!getBatteryUI() || !getWifiUI() || !getClockUI() || !getStateControllerUI()){
             QTimer::singleShot(100, this, &Controller::startup);
             return;
         }
@@ -108,8 +119,15 @@ public:
         QObject::connect(clockTimer , &QTimer::timeout, this, &Controller::updateClock);
         clockTimer ->start();
 
+        QTimer::singleShot(100, [this]{
+            stateControllerUI->setProperty("state", "loaded");
+        });
 
-        //launchOxide();
+//        QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
+//        xochitlSettings.sync();
+//        qDebug() << xochitlSettings.value("Password").toString();
+
+        // TODO determine if there is a pin or if you can skip the lockscren
     }
     Q_INVOKABLE void launchOxide(){
         system("rot --object Application:apps/d3641f0572435f76bb5cc1468d4fe1db apps call launch");
@@ -127,13 +145,34 @@ public:
 
     bool sleepInhibited(){ return systemApi->sleepInhibited(); }
     bool powerOffInhibited(){ return systemApi->powerOffInhibited(); }
+    bool pinValid() { return pin().length() == 4; }
+
+    QString pin(){ return m_pin; }
+    void setPin(QString pin){
+        if(pin.length() > 4){
+            return;
+        }
+        m_pin = pin;
+        emit pinChanged(pin);
+        qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
+        if(pinValid()){
+            launchOxide();
+        }
+    }
 
     void setRoot(QObject* root){ this->root = root; }
 
 signals:
+    void pinChanged(QString);
     void sleepInhibitedChanged(bool);
     void powerOffInhibitedChanged(bool);
 private slots:
+    void deviceSuspending(){
+        setPin("");
+    }
+    void deviceResuming(){
+        system("rot --object Application:apps/549212b2493354f4a9ee5da097a2dacd apps call launch");
+    }
     void updateClock(){
         if(!getClockUI()){
             return;
@@ -187,18 +226,22 @@ private slots:
 
     void sentToForeground(){
         qDebug() << "Got foreground signal";
-        // TODO only show if not passing off to oxide
-        root->setProperty("visible", true);
-        if(!clockTimer->isActive()){
-            updateClock();
-            clockTimer->start();
-        }
-        qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
         qDebug() << "Acking SIGUSR1 to " << tarnishPid();
         kill(tarnishPid(), SIGUSR1);
-        QTimer::singleShot(1000, [=]{
-            launchOxide();
-        });
+        if(!pinValid()){
+            root->setProperty("visible", true);
+            getStateControllerUI()->setProperty("state", "loading");
+            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
+            if(!clockTimer->isActive()){
+                updateClock();
+                clockTimer->start();
+            }
+            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
+        }else{
+            QTimer::singleShot(100, [=]{
+                launchOxide();
+            });
+        }
     }
     void sentToBackground(){
         qDebug() << "Got background signal";
@@ -280,6 +323,8 @@ private slots:
     }
 
 private:
+    QString m_pin;
+    QSettings settings;
     General* api;
     System* systemApi;
     Power* powerApi;
@@ -289,6 +334,7 @@ private:
     QObject* batteryUI = nullptr;
     QObject* wifiUI = nullptr;
     QObject* clockUI = nullptr;
+    QObject* stateControllerUI = nullptr;
 
     int tarnishPid() { return api->tarnishPid(); }
     QObject* getBatteryUI() {
@@ -302,6 +348,18 @@ private:
     QObject* getClockUI() {
         clockUI = root->findChild<QObject*>("clock");
         return clockUI;
+    }
+    QObject* getStateControllerUI(){
+        stateControllerUI = root->findChild<QObject*>("stateController");
+        return stateControllerUI;
+    }
+
+    static void migrate(QSettings* settings, int fromVersion){
+        if(fromVersion != 0){
+            throw "Unknown settings version";
+        }
+        // In the future migrate changes to settings between versions
+        settings->setValue("version", DECAY_SETTINGS_VERSION);
     }
 };
 
