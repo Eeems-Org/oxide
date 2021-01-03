@@ -3,5 +3,5 @@
         "description": "Handles the password screen on resume",
         "bin": "/opt/bin/decay",
         "flags": ["hidden"],
-        "type": "backgroundable"
+        "type": "foreground"
 }

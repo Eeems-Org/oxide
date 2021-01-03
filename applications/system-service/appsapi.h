@@ -479,6 +479,7 @@ private:
         }
         // In the future migrate changes to settings between versions
         settings->setValue("version", OXIDE_SETTINGS_VERSION);
+        settings->sync();
     }
 };
 #endif // APPSAPI_H

@@ -7,7 +7,7 @@ import "widgets"
 ApplicationWindow {
     id: window
     objectName: "window"
-    visible: true
+    visible: stateController.state != "loading"
     width: screenGeometry.width
     height: screenGeometry.height
     title: qsTr("Oxide")
@@ -120,97 +120,76 @@ ApplicationWindow {
     background: Rectangle { color: "black" }
     contentData: [
         Rectangle {
-            id: background
             anchors.fill: parent
             color: "black"
         },
-        GridLayout {
+        PinPad {
             id: pinEntry
+            objectName: "pinEntry"
+            visible: stateController.state != "import"
             anchors.centerIn: parent
-            rowSpacing: children[3].width / 2
-            columnSpacing: children[3].width / 2
-            columns: 3
-            rows: 6
-
-            RowLayout {
-                Layout.columnSpan: parent.columns
-                spacing: parent.columnSpacing
-
-                Label {
-                    text: "PIN"
-                    color: "white"
-                }
-
-                RowLayout {
-                    spacing: parent.parent.columnSpacing
-                    property int itemSize: 50
-
-                    Rectangle {
-                        width: parent.itemSize
-                        height: width
-                        color: controller.pin.length > 0 ? "white" : "black"
-                        border.color: "white"
-                        border.width: 1
-                        radius: width / 2
-                    }
-                    Rectangle {
-                        width: parent.itemSize
-                        height: width
-                        color: controller.pin.length > 1 ? "white" : "black"
-                        border.color: "white"
-                        border.width: 1
-                        radius: width / 2
-                    }
-                    Rectangle {
-                        width: parent.itemSize
-                        height: width
-                        color: controller.pin.length > 2 ? "white" : "black"
-                        border.color: "white"
-                        border.width: 1
-                        radius: width / 2
-                    }
-                    Rectangle {
-                        width: parent.itemSize
-                        height: width
-                        color: controller.pin.length > 3 ? "white" : "black"
-                        border.color: "white"
-                        border.width: 1
-                        radius: width / 2
-                    }
+            label: {
+                switch(stateController.state){
+                    case "firstLaunch":
+                        return "Set PIN";
+                    case "confirmPin":
+                        return "Confirm PIN";
+                    default:
+                        return "PIN";
                 }
             }
-
-            Item { Layout.columnSpan: parent.columns; Layout.fillHeight: true }
-
-            PinButton { text: "7"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
-            PinButton { text: "8"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
-            PinButton { text: "9"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
-
-            PinButton { text: "4"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
-            PinButton { text: "5"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
-            PinButton { text: "6"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
-
-            PinButton { text: "1"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
-            PinButton { text: "2"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
-            PinButton { text: "3"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
-
-            Item { Layout.fillWidth: true }
-            PinButton { text: "0"; onClicked: controller.pin += text; enabled: controller.pin.length < 4 }
-            PinButton {
-                contentItem: Item {
-                    Image {
-                        anchors.centerIn: parent
-                        width: parent.width / 2
-                        height: width
-                        source: "qrc:/img/backspace.png"
-                        fillMode: Image.PreserveAspectFit
+            onSubmit: {
+                if(!controller.submitPin(pin)){
+                    message = "Incorrect PIN";
+                    value = "";
+                    return;
+                }
+                var state = stateController.state
+                if(state === "loaded" || state === "confirmPin"){
+                    message = "Correct!";
+                    return;
+                }
+                message = "";
+            }
+        },
+        Popup {
+            visible: stateController.state == "import"
+            x: (parent.width / 2) - (width / 2)
+            y: (parent.height / 2) - (height / 2)
+            width: 1000
+            clip: true
+            closePolicy: Popup.NoAutoClose
+            ColumnLayout {
+                anchors.fill: parent
+                RowLayout {
+                    Item { Layout.fillWidth: true }
+                    Label {
+                        text: "Import PIN from Xochitl?\nThis will remove your pin from Xochitl."
+                        Layout.fillHeight: true
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+                Item {
+                    Layout.rowSpan: 2
+                    Layout.fillHeight: true
+                }
+                RowLayout {
+                    BetterButton {
+                        text: "Cancel"
+                        width: height * 2
+                        Layout.fillWidth: true
+                        onClicked: stateController.state = "firstLaunch"
+                    }
+                    BetterButton {
+                        text: "Import"
+                        width: height * 2
+                        Layout.fillWidth: true
+                        onClicked: controller.importPin()
                     }
                 }
-                hideBorder: true
-                onClicked: controller.pin = controller.pin.slice(0, -1)
-                enabled: controller.pin.length
             }
         }
+
     ]
     StateGroup {
         id: stateController
@@ -218,24 +197,54 @@ ApplicationWindow {
         state: "loading"
         states: [
             State { name: "loaded" },
+            State { name: "firstLaunch" },
+            State { name: "confirmPin" },
+            State { name: "import" },
             State { name: "loading" }
         ]
         transitions: [
             Transition {
                 from: "*"; to: "loaded"
                 SequentialAnimation {
-                    ScriptAction { script: console.log("Main display") }
-                    PropertyAction { target: background; property: 'visible'; value: true }
-                    PropertyAction { target: pinEntry; property: 'visible'; value: true }
+                    ScriptAction { script: {
+                        console.log("PIN Entry");
+                        pinEntry.value = "";
+                    } }
+                }
+            },
+            Transition {
+                from: "*"; to: "firstLaunch"
+                SequentialAnimation {
+                    ScriptAction { script: {
+                        console.log("PIN Setup");
+                        pinEntry.value = "";
+                    } }
+                }
+            },
+            Transition {
+                from: "*"; to: "confirmPin"
+                SequentialAnimation {
+                    ScriptAction { script: {
+                        console.log("PIN Confirmation");
+                        pinEntry.value = "";
+                    } }
+                }
+            },
+            Transition {
+                from: "*"; to: "import"
+                SequentialAnimation {
+                    ScriptAction { script: {
+                        console.log("Import PIN");
+                    } }
                 }
             },
             Transition {
                 from: "*"; to: "loading"
                 SequentialAnimation {
-                    ScriptAction { script: console.log("Loading display") }
-                    PropertyAction { target: background; property: 'visible'; value: false }
-                    PropertyAction { target: pinEntry; property: 'visible'; value: false }
-                    ScriptAction { script: controller.startup() }
+                    ScriptAction { script: {
+                        console.log("Loading display");
+                        controller.startup();
+                    } }
                 }
             }
         ]

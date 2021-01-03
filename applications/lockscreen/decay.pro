@@ -32,14 +32,15 @@ DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/systemapi.xml
 DBUS_INTERFACES += ../../interfaces/powerapi.xml
 DBUS_INTERFACES += ../../interfaces/wifiapi.xml
+DBUS_INTERFACES += ../../interfaces/appsapi.xml
+DBUS_INTERFACES += ../../interfaces/application.xml
 
 INCLUDEPATH += ../../shared
 HEADERS += \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h \
     ../../shared/eventfilter.h \
-    controller.h \
-    signalhandler.h
+    controller.h
 
 RESOURCES += \
     qml.qrc

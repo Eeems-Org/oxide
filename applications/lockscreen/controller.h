@@ -2,14 +2,16 @@
 #define CONTROLLER_H
 
 #include <QObject>
+#include <QQuickItem>
 
-#include "signalhandler.h"
 #include "dbussettings.h"
 
 #include "dbusservice_interface.h"
 #include "systemapi_interface.h"
 #include "powerapi_interface.h"
 #include "wifiapi_interface.h"
+#include "appsapi_interface.h"
+#include "application_interface.h"
 
 using namespace codes::eeems::oxide1;
 
@@ -24,12 +26,10 @@ class Controller : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
-    Q_PROPERTY(QString pin MEMBER m_pin READ pin WRITE setPin NOTIFY pinChanged)
 public:
     Controller(QObject* parent)
-    : QObject(parent), m_pin(), settings(this) {
+    : QObject(parent), confirmPin(), settings(this) {
         clockTimer = new QTimer(root);
-        SignalHandler::setup_unix_signal_handlers();
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
         while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
@@ -40,9 +40,6 @@ public:
             nanosleep(&args, &res);
         }
         api = new General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, this);
-
-        connect(signalHandler, &SignalHandler::sigUsr1, this, &Controller::sentToForeground);
-        connect(signalHandler, &SignalHandler::sigUsr2, this, &Controller::sentToBackground);
 
         qDebug() << "Requesting system API...";
         QDBusObjectPath path = api->requestAPI("system");
@@ -55,7 +52,6 @@ public:
         connect(systemApi, &System::sleepInhibitedChanged, this, &Controller::sleepInhibitedChanged);
         connect(systemApi, &System::powerOffInhibitedChanged, this, &Controller::powerOffInhibitedChanged);
         connect(systemApi, &System::deviceSuspending, this, &Controller::deviceSuspending);
-        connect(systemApi, &System::deviceResuming, this, &Controller::deviceResuming);
 
         qDebug() << "Requesting power API...";
         path = api->requestAPI("power");
@@ -85,6 +81,14 @@ public:
         connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
         connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
         connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
+
+        qDebug() << "Requesting apps API...";
+        path = api->requestAPI("apps");
+        if(path.path() == "/"){
+            qDebug() << "Unable to get apps API";
+            throw "";
+        }
+        appsApi = new Apps(OXIDE_SERVICE, path.path(), bus, this);
 
         settings.sync();
         auto version = settings.value("version", 0).toInt();
@@ -119,18 +123,32 @@ public:
         QObject::connect(clockTimer , &QTimer::timeout, this, &Controller::updateClock);
         clockTimer ->start();
 
+        if(!settings.contains("pin")){
+            QTimer::singleShot(100, [this]{
+                stateControllerUI->setProperty("state", xochitlPin().isEmpty() ? "firstLaunch" : "import");
+            });
+            return;
+        }
+
+        if(!storedPin().length()){
+            launchStartupApp();
+            return;
+        }
+
         QTimer::singleShot(100, [this]{
             stateControllerUI->setProperty("state", "loaded");
         });
-
-//        QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
-//        xochitlSettings.sync();
-//        qDebug() << xochitlSettings.value("Password").toString();
-
-        // TODO determine if there is a pin or if you can skip the lockscren
     }
-    Q_INVOKABLE void launchOxide(){
-        system("rot --object Application:apps/d3641f0572435f76bb5cc1468d4fe1db apps call launch");
+    Q_INVOKABLE void launchStartupApp(){
+        QDBusObjectPath path = appsApi->startupApplication();
+        if(path.path() == "/"){
+            path = appsApi->getApplicationPath("codes.eeems.oxide");
+        }
+        if(path.path() == "/"){
+            return;
+        }
+        Application app(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus());
+        app.launch();
     }
     Q_INVOKABLE void suspend(){
         if(!sleepInhibited()){
@@ -142,36 +160,93 @@ public:
             systemApi->powerOff().waitForFinished();
         }
     }
+    Q_INVOKABLE bool submitPin(QString pin){
+        if(pin.length() != 4){
+            return false;
+        }
+        qDebug() << "Checking PIN";
+        auto state = this->state();
+        if(state == "loaded" && pin == storedPin()){
+            qDebug() << "PIN matches!";
+            QTimer::singleShot(200, [this]{
+                qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
+                launchStartupApp();
+            });
+            return true;
+
+        }else if(state == "loaded"){
+            // TODO - Handle showing error
+            qDebug() << "PIN doesn't match!";
+            return false;
+        }
+        if(state == "firstLaunch"){
+            confirmPin = pin;
+            setState("confirmPin");
+            return true;
+        }
+        if(state != "confirmPin"){
+            return false;
+        }
+        if(pin != confirmPin){
+            qDebug() << "PIN doesn't match!";
+            // TODO - Handle showing error
+            setState("firstLaunch");
+            return false;
+        }
+        qDebug() << "PIN matches!";
+        setStoredPin(pin);
+        QTimer::singleShot(200, [this]{
+            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
+            setState("loaded");
+            launchStartupApp();
+        });
+        return true;
+    }
+    Q_INVOKABLE void importPin(){
+        setStoredPin(xochitlPin());
+        if(!storedPin().isEmpty()){
+            removeXochitlPin();
+        }
+        setState("loaded");
+    }
 
     bool sleepInhibited(){ return systemApi->sleepInhibited(); }
     bool powerOffInhibited(){ return systemApi->powerOffInhibited(); }
-    bool pinValid() { return pin().length() == 4; }
-
-    QString pin(){ return m_pin; }
-    void setPin(QString pin){
-        if(pin.length() > 4){
-            return;
+    QString state() {
+        if(!getStateControllerUI()){
+            return "loading";
         }
-        m_pin = pin;
-        emit pinChanged(pin);
-        qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
-        if(pinValid()){
-            launchOxide();
+        return stateControllerUI->property("state").toString();
+    }
+    void setState(QString state){
+        if(!getStateControllerUI()){
+            throw "Unable to find state controller";
         }
+        stateControllerUI->setProperty("state", state);
+    }
+    QString storedPin() { return settings.value("pin", "").toString(); }
+    void setStoredPin(QString pin) {
+        settings.setValue("pin", pin);
     }
 
     void setRoot(QObject* root){ this->root = root; }
 
 signals:
-    void pinChanged(QString);
     void sleepInhibitedChanged(bool);
     void powerOffInhibitedChanged(bool);
+
 private slots:
     void deviceSuspending(){
-        setPin("");
-    }
-    void deviceResuming(){
-        system("rot --object Application:apps/549212b2493354f4a9ee5da097a2dacd apps call launch");
+        if(getPinEntryUI()){
+            pinEntryUI->setProperty("message", "");
+            pinEntryUI->setProperty("pin", "");
+        }
+        if(state() == "confirmPin"){
+            confirmPin = "";
+            setState("firstLaunch");
+        }else{
+            setState("loading");
+        }
     }
     void updateClock(){
         if(!getClockUI()){
@@ -222,38 +297,6 @@ private slots:
             link = 0;
         }
         wifiUI->setProperty("link", link);
-    }
-
-    void sentToForeground(){
-        qDebug() << "Got foreground signal";
-        qDebug() << "Acking SIGUSR1 to " << tarnishPid();
-        kill(tarnishPid(), SIGUSR1);
-        if(!pinValid()){
-            root->setProperty("visible", true);
-            getStateControllerUI()->setProperty("state", "loading");
-            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
-            if(!clockTimer->isActive()){
-                updateClock();
-                clockTimer->start();
-            }
-            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
-        }else{
-            QTimer::singleShot(100, [=]{
-                launchOxide();
-            });
-        }
-    }
-    void sentToBackground(){
-        qDebug() << "Got background signal";
-        if(clockTimer->isActive()){
-            clockTimer->stop();
-        }
-        if(root->property("visible").toBool()){
-            root->setProperty("visible", false);
-            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
-        }
-        qDebug() << "Acking SIGUSR2 to " << tarnishPid();
-        kill(tarnishPid(), SIGUSR2);
     }
 
     void batteryLevelChanged(int level){
@@ -323,18 +366,20 @@ private slots:
     }
 
 private:
-    QString m_pin;
+    QString confirmPin;
     QSettings settings;
     General* api;
     System* systemApi;
     Power* powerApi;
     Wifi* wifiApi;
+    Apps* appsApi;
     QTimer* clockTimer = nullptr;
     QObject* root = nullptr;
     QObject* batteryUI = nullptr;
     QObject* wifiUI = nullptr;
     QObject* clockUI = nullptr;
     QObject* stateControllerUI = nullptr;
+    QObject* pinEntryUI = nullptr;
 
     int tarnishPid() { return api->tarnishPid(); }
     QObject* getBatteryUI() {
@@ -353,6 +398,10 @@ private:
         stateControllerUI = root->findChild<QObject*>("stateController");
         return stateControllerUI;
     }
+    QObject* getPinEntryUI(){
+        pinEntryUI = root->findChild<QObject*>("pinEntry");
+        return pinEntryUI;
+    }
 
     static void migrate(QSettings* settings, int fromVersion){
         if(fromVersion != 0){
@@ -360,6 +409,19 @@ private:
         }
         // In the future migrate changes to settings between versions
         settings->setValue("version", DECAY_SETTINGS_VERSION);
+        settings->sync();
+    }
+
+    static QString xochitlPin(){
+        QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
+        xochitlSettings.sync();
+        return xochitlSettings.value("Passcode", "").toString();
+    }
+    static void removeXochitlPin(){
+        QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
+        xochitlSettings.sync();
+        xochitlSettings.remove("Passcode");
+        xochitlSettings.sync();
     }
 };
 
