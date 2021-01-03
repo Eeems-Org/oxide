@@ -248,6 +248,7 @@ void Controller::importDraftApps(){
         qDebug() << "Unable to access apps API";
         return;
     }
+    qDebug() << "Importing Draft Applications";
     auto bus = QDBusConnection::systemBus();
     for(auto configDirectoryPath : configDirectoryPaths){
         QDir configDirectory(configDirectoryPath);
@@ -263,7 +264,7 @@ void Controller::importDraftApps(){
                     continue;
                 }
                 QTextStream in(&file);
-                AppItem app(this);
+                AppItem appItem(this);
                 QString onStop = "";
                 while (!in.atEnd()) {
                     QString line = in.readLine();
@@ -280,25 +281,25 @@ void Controller::importDraftApps(){
                     QSet<QString> known = { "name", "desc", "call" };
                     if(rhs != ":" && rhs != ""){
                         if(known.contains(lhs)){
-                            app.setProperty(lhs.toUtf8(), rhs);
+                            appItem.setProperty(lhs.toUtf8(), rhs);
                         }else if(lhs == "imgFile"){
-                            app.setProperty(lhs.toUtf8(), configDirectoryPath + "/icons/" + rhs + ".png");
+                            appItem.setProperty(lhs.toUtf8(), configDirectoryPath + "/icons/" + rhs + ".png");
                         }else if(lhs == "term"){
                             onStop = rhs.trimmed();
                         }
                     }
                 }
                 file.close();
-                auto name = app.property("name").toString();
-                app.setProperty("displayName", name);
-                if(!app.ok()){
+                auto name = appItem.property("name").toString();
+                appItem.setProperty("displayName", name);
+                if(!appItem.ok()){
                     qDebug() << "Invalid configuration" << name;
                     continue;
                 }
                 QDBusObjectPath path = appsApi->getApplicationPath(name);
                 if(path.path() != "/"){
                     qDebug() << "Already exists" << name;
-                    auto icon = app.property("imgFile").toString();
+                    auto icon = appItem.property("imgFile").toString();
                     if(icon.isEmpty()){
                         continue;
                     }
@@ -308,15 +309,15 @@ void Controller::importDraftApps(){
                     }
                     continue;
                 }
-                auto icon = app.property("imgFile").toString();
+                auto icon = appItem.property("imgFile").toString();
                 if(icon.startsWith("qrc:")){
                     icon = "";
                 }
                 QVariantMap properties;
                 properties.insert("name", name);
-                properties.insert("displayName", app.property("displayName"));
-                properties.insert("description", app.property("desc"));
-                properties.insert("bin", app.property("call"));
+                properties.insert("displayName", appItem.property("displayName"));
+                properties.insert("description", appItem.property("desc"));
+                properties.insert("bin", appItem.property("call"));
                 properties.insert("icon", icon);
                 properties.insert("onStop", onStop);
                 path = appsApi->registerApplication(properties);
@@ -326,6 +327,7 @@ void Controller::importDraftApps(){
             }
         }
     }
+    qDebug() << "Finished Importing Draft Applications";
 }
 void Controller::powerOff(){
     qDebug() << "Powering off...";

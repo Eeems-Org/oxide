@@ -82,7 +82,7 @@ public:
             return QDBusObjectPath("/");
         }
         if(bin.isEmpty() || !QFile::exists(bin)){
-            qDebug() << "Invalid configuration: Invalid bin" << bin;
+            qDebug() << "Invalid configuration: " << name << " has invalid bin" << bin;
             return QDBusObjectPath("/");
         }
         if(applications.contains(name)){
@@ -93,7 +93,6 @@ public:
         auto displayName = properties.value("displayName", name).toString();
         app->setConfig(properties);
         applications.insert(name, app);
-        writeApplications();
         app->registerPath();
         emit applicationRegistered(path);
         return path;
@@ -111,8 +110,8 @@ public:
     }
 
     Q_INVOKABLE void reload(){
-        readApplications();
         writeApplications();
+        readApplications();
     }
 
     QDBusObjectPath startupApplication(){ return m_startupApplication; }
@@ -173,7 +172,6 @@ public:
             applications.remove(name);
             emit applicationUnregistered(app->qPath());
             app->deleteLater();
-            writeApplications();
         }
     }
     void pauseAll(){
@@ -356,8 +354,8 @@ private:
             }
             if(applications.contains(name)){
                 applications[name]->setConfig(properties);
-                writeApplications();
             }else{
+                qDebug() << name;
                 registerApplication(properties);
             }
         }
@@ -380,12 +378,9 @@ private:
         // Unregister any system applications that no longer exist on disk.
         for(auto application : applications.values()){
             auto name = application->name();
-            if(!apps.contains(name)){
-                continue;
-            }
-            if(!application->systemApp()){
+            if(!apps.contains(name) && application->systemApp()){
+                qDebug() << name << "Is no longer found on disk";
                 application->unregister();
-                continue;
             }
         }
         // Register/Update any system application.
@@ -466,7 +461,6 @@ private:
             }
             if(applications.contains(name)){
                 applications[name]->setConfig(properties);
-                writeApplications();
             }else{
                 qDebug() << "New system app" << name;
                 registerApplication(properties);

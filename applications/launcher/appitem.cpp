@@ -28,37 +28,6 @@ bool AppItem::ok(){
         qDebug() << "Executable doesn't exist";
         return false;
     }
-    if(app != nullptr){
-        return true;
-    }
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("apps");
-    if(path.path() == "/"){
-        qDebug() << "Unable to acces Apps API";
-        return false;
-    }
-    Apps apps(OXIDE_SERVICE, path.path(), bus);
-    QDBusObjectPath appPath;
-    auto applications = apps.applications();
-    if(!applications.contains(_name)){
-        QVariantMap properties;
-        properties.insert("name", _name);
-        properties.insert("description", _desc);
-        properties.insert("call", _call);
-        properties.insert("icon", _imgFile);
-        appPath = (QDBusObjectPath)apps.registerApplication(properties);
-    }else{
-        appPath = applications[_name].value<QDBusObjectPath>();
-    }
-    app = new Application(OXIDE_SERVICE, appPath.path(), bus, this);
-    connect(app, &Application::exited, this, &AppItem::exited);
-    if(!app->isValid()){
-        delete app;
-        app = nullptr;
-        qDebug() << "Application API instance is invalid" << app->lastError();
-        return false;
-    }
     return true;
 }
 

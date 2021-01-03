@@ -19,7 +19,6 @@ GridLayout {
     function buttonsEnabled(){ return value.length < 4; }
     function add(text){
         value += text;
-        console.log(value);
         if(value.length < 4){
             return;
         }
