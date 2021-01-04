@@ -4,5 +4,5 @@
         "bin": "/opt/bin/decay",
         "flags": ["hidden"],
         "type": "foreground",
-        "permissions": ["apps", "wifi", "power", "system"]
+        "permissions": ["apps", "power", "system", "wifi"]
 }

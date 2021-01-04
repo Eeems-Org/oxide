@@ -4,5 +4,5 @@
 	"bin": "/opt/bin/fret",
         "flags": ["hidden", "autoStart"],
         "type": "background",
-        "permissions": ["notifications", "screen"]
+        "permissions": ["notification", "screen", "system"]
 }

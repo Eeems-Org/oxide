@@ -4,5 +4,5 @@
 	"bin": "/opt/bin/oxide",
 	"type": "foreground",
         "flags": ["hidden"],
-        "permissions": ["apps", "wifi", "power", "system", "notifications"]
+        "permissions": ["apps", "wifi", "power", "system", "notification"]
 }
