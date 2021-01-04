@@ -1,4 +1,5 @@
 #include <QCommandLineParser>
+#include <QGuiApplication>
 
 #include <cstdlib>
 
@@ -44,7 +45,7 @@ int main(int argc, char *argv[]){
     atexit(onExit);
     signal(SIGTERM, unixSignalHandler);
     signal(SIGKILL, unixSignalHandler);
-    QCoreApplication app(argc, argv);
+    QGuiApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("tarnish");
@@ -54,7 +55,6 @@ int main(int argc, char *argv[]){
     parser.addHelpOption();
     parser.applicationDescription();
     parser.addVersionOption();
-
     parser.process(app);
 
     const QStringList args = parser.positionalArguments();
