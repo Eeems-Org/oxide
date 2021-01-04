@@ -14,9 +14,9 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp \
     controller.cpp \
-    eventfilter.cpp \
     taskitem.cpp \
-    ../../shared/devicesettings.cpp
+    ../../shared/devicesettings.cpp\
+    ../../shared/eventfilter.cpp
 
 RESOURCES += qml.qrc
 
@@ -32,10 +32,10 @@ target.path = /opt/bin
 
 HEADERS += \
     controller.h \
-    eventfilter.h \
     taskitem.h \
     ../../shared/dbussettings.h \
-    ../../shared/devicesettings.h
+    ../../shared/devicesettings.h\
+    ../../shared/eventfilter.h
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 INCLUDEPATH += ../../shared
