@@ -42,6 +42,8 @@
     </method>
     <method name="homeHeld">
     </method>
+    <method name="openTaskManager">
+    </method>
     <method name="registerApplication">
       <arg type="o" direction="out"/>
       <arg name="properties" type="a{sv}" direction="in"/>

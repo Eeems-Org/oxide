@@ -118,7 +118,7 @@ public:
         connect(wacomHandler, &DigitizerHandler::activity, systemAPI, &SystemAPI::activity);
         connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
         connect(systemAPI, &SystemAPI::leftAction, appsAPI, &AppsAPI::openDefaultApplication);
-        connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::homeHeld);
+        connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::openTaskManager);
 
         auto bus = QDBusConnection::systemBus();
         for(auto api : apis){

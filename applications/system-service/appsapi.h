@@ -257,7 +257,14 @@ public slots:
             app->launch();
         }
     }
-    void homeHeld(){
+    QT_DEPRECATED void homeHeld(){ openTaskManager(); }
+    void openTaskManager(){
+        auto path = this->currentApplication();
+        auto currentApplication = getApplication(path);
+        if(currentApplication->state() != Application::Inactive && path == m_lockscreenApplication){
+            qDebug() << "Can't open task manager, on the lockscreen";
+            return;
+        }
         auto app = getApplication("codes.eeems.erode");
         if(app == nullptr){
             qDebug() << "Unable to find process manager";
