@@ -41,7 +41,17 @@ void onExit(){
     }
 }
 
+const char *qt_version = qVersion();
+
 int main(int argc, char *argv[]){
+    if (strcmp(qt_version, QT_VERSION_STR) != 0){
+            qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
+        }
+    #ifdef __arm__
+        // Setup epaper
+        qputenv("QMLSCENE_DEVICE", "epaper");
+        qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
+    #endif
     atexit(onExit);
     signal(SIGTERM, unixSignalHandler);
     signal(SIGKILL, unixSignalHandler);
