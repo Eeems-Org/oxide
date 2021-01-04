@@ -175,7 +175,6 @@ public:
             return true;
 
         }else if(state == "loaded"){
-            // TODO - Handle showing error
             qDebug() << "PIN doesn't match!";
             return false;
         }
@@ -189,7 +188,6 @@ public:
         }
         if(pin != confirmPin){
             qDebug() << "PIN doesn't match!";
-            // TODO - Handle showing error
             setState("prompt");
             return false;
         }
