@@ -265,13 +265,9 @@ public slots:
             qDebug() << "Can't open task manager, on the lockscreen";
             return;
         }
-        auto app = getApplication("codes.eeems.erode");
+        auto app = getApplication(m_processManagerApplication);
         if(app == nullptr){
             qDebug() << "Unable to find process manager";
-            return;
-        }
-        if(app->state() == Application::InForeground){
-            qDebug() << "Process manager already running";
             return;
         }
         app->launch();
@@ -284,6 +280,7 @@ private:
     QSettings settings;
     QDBusObjectPath m_startupApplication;
     QDBusObjectPath m_lockscreenApplication;
+    QDBusObjectPath m_processManagerApplication;
     bool m_sleeping;
     Application* resumeApp = nullptr;
     QString getPath(QString name){

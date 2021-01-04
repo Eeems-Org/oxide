@@ -8,6 +8,7 @@ AppsAPI::AppsAPI(QObject* parent)
   settings(this),
   m_startupApplication("/"),
   m_lockscreenApplication("/"),
+  m_processManagerApplication("/"),
   m_sleeping(false) {
     singleton(this);
     SignalHandler::setup_unix_signal_handlers();
@@ -39,6 +40,16 @@ AppsAPI::AppsAPI(QObject* parent)
         }
     }
     m_startupApplication = path;
+
+    path = QDBusObjectPath(settings.value("processManagerApplication").toString());
+    app = getApplication(path);
+    if(app == nullptr){
+        app = getApplication("codes.eeems.erode");
+        if(app != nullptr){
+            path = app->qPath();
+        }
+    }
+    m_processManagerApplication= path;
 }
 
 void AppsAPI::startup(){
