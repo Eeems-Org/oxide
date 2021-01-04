@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
+#include <epframebuffer.h>
 
 #include "apibase.h"
 #include "mxcfb.h"
