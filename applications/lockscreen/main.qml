@@ -126,11 +126,11 @@ ApplicationWindow {
         PinPad {
             id: pinEntry
             objectName: "pinEntry"
-            visible: stateController.state != "import"
+            visible: !~["import", "firstLaunch"].indexOf(stateController.state)
             anchors.centerIn: parent
             label: {
                 switch(stateController.state){
-                    case "firstLaunch":
+                    case "prompt":
                         return "Set PIN";
                     case "confirmPin":
                         return "Confirm PIN";
@@ -188,8 +188,44 @@ ApplicationWindow {
                     }
                 }
             }
+        },
+        Popup {
+            visible: stateController.state == "firstLaunch"
+            x: (parent.width / 2) - (width / 2)
+            y: (parent.height / 2) - (height / 2)
+            width: 1000
+            clip: true
+            closePolicy: Popup.NoAutoClose
+            ColumnLayout {
+                anchors.fill: parent
+                RowLayout {
+                    Item { Layout.fillWidth: true }
+                    Label {
+                        text: "Create a PIN?"
+                        Layout.fillHeight: true
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+                Item {
+                    Layout.rowSpan: 2
+                    Layout.fillHeight: true
+                }
+                RowLayout {
+                    BetterButton {
+                        text: "No PIN"
+                        width: height * 2
+                        Layout.fillWidth: true
+                        onClicked: controller.clearPin()
+                    }
+                    BetterButton {
+                        text: "Create"
+                        width: height * 2
+                        Layout.fillWidth: true
+                        onClicked: stateController.state = "prompt"
+                    }
+                }
+            }
         }
-
     ]
     StateGroup {
         id: stateController
@@ -198,6 +234,7 @@ ApplicationWindow {
         states: [
             State { name: "loaded" },
             State { name: "firstLaunch" },
+            State { name: "prompt" },
             State { name: "confirmPin" },
             State { name: "import" },
             State { name: "loading" }
@@ -216,8 +253,7 @@ ApplicationWindow {
                 from: "*"; to: "firstLaunch"
                 SequentialAnimation {
                     ScriptAction { script: {
-                        console.log("PIN Setup");
-                        pinEntry.value = "";
+                        console.log("Prompt for PIN creation");
                     } }
                 }
             },
@@ -235,6 +271,15 @@ ApplicationWindow {
                 SequentialAnimation {
                     ScriptAction { script: {
                         console.log("Import PIN");
+                    } }
+                }
+            },
+            Transition {
+                from: "*"; to: "prompt"
+                SequentialAnimation {
+                    ScriptAction { script: {
+                        console.log("PIN Setup");
+                        pinEntry.value = "";
                     } }
                 }
             },

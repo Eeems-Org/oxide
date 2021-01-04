@@ -179,7 +179,7 @@ public:
             qDebug() << "PIN doesn't match!";
             return false;
         }
-        if(state == "firstLaunch"){
+        if(state == "prompt"){
             confirmPin = pin;
             setState("confirmPin");
             return true;
@@ -190,7 +190,7 @@ public:
         if(pin != confirmPin){
             qDebug() << "PIN doesn't match!";
             // TODO - Handle showing error
-            setState("firstLaunch");
+            setState("prompt");
             return false;
         }
         qDebug() << "PIN matches!";
@@ -208,6 +208,10 @@ public:
             removeXochitlPin();
         }
         setState("loaded");
+    }
+    Q_INVOKABLE void clearPin(){
+        setStoredPin("");
+        setState("loading");
     }
 
     bool sleepInhibited(){ return systemApi->sleepInhibited(); }
