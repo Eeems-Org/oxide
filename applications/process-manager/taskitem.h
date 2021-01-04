@@ -8,7 +8,7 @@
 class TaskItem : public QObject {
     Q_OBJECT
 public:
-    explicit TaskItem(const std::string& pid);
+    explicit TaskItem(int pid);
     Q_PROPERTY(QString name MEMBER _name NOTIFY nameChanged);
     Q_PROPERTY(int pid MEMBER _pid READ pid NOTIFY pidChanged);
     Q_PROPERTY(int ppid MEMBER _ppid NOTIFY ppidChanged);

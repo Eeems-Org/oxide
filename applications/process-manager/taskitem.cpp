@@ -25,7 +25,7 @@ string exec(const char* cmd) {
     return result;
 }
 
-TaskItem::TaskItem(const std::string& pid) : QObject(nullptr), _pid(stoi(pid)){
+TaskItem::TaskItem(int pid) : QObject(nullptr), _pid(pid){
     std::string path = "/proc/" + to_string(_pid) + "/status";
     _name = QString::fromStdString(exec(("cat " + path + " | grep Name: | awk '{print$2}'").c_str())).trimmed();
     _ppid = stoi(exec(("cat " + path + " | grep PPid: | awk '{print$2}'").c_str()));

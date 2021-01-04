@@ -292,10 +292,6 @@ void Controller::importDraftApps(){
                 file.close();
                 auto name = appItem.property("name").toString();
                 appItem.setProperty("displayName", name);
-                if(!appItem.ok()){
-                    qDebug() << "Invalid configuration" << name;
-                    continue;
-                }
                 QDBusObjectPath path = appsApi->getApplicationPath(name);
                 if(path.path() != "/"){
                     qDebug() << "Already exists" << name;
