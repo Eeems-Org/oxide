@@ -15,7 +15,11 @@ void SystemAPI::PrepareForSleep(bool suspending){
         }else{
             resumeApp = nullptr;
         }
-        screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
+        if(QFile::exists("/usr/share/remarkable/sleeping.png")){
+            screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png");
+        }else{
+            screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
+        }
         qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
         if(device == DeviceSettings::DeviceType::RM2){
