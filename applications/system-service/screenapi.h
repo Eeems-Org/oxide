@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QDebug>
 #include <QFile>
+#include <QPainter>
 
 #include <fcntl.h>
 #include <unistd.h>
