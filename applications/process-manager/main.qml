@@ -53,6 +53,7 @@ ApplicationWindow {
                     font.pointSize: 8
                     Layout.alignment: Qt.AlignLeft
                     rightPadding: 10
+                    leftPadding: 10
                     Layout.fillWidth: true
                     MouseArea { anchors.fill: parent; onClicked: controller.sortBy("name") }
                 }
@@ -61,7 +62,7 @@ ApplicationWindow {
                     color: "black"
                     font.pointSize: 8
                     Layout.alignment: Qt.AlignLeft
-                    leftPadding: 10
+                    leftPadding: 20
                     Layout.preferredWidth: 200
                     MouseArea { anchors.fill: parent; onClicked: controller.sortBy("pid") }
                 }
@@ -70,7 +71,7 @@ ApplicationWindow {
                     color: "black"
                     font.pointSize: 8
                     Layout.alignment: Qt.AlignLeft
-                    leftPadding: 10
+                    leftPadding: 20
                     Layout.preferredWidth: 200
                     MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
                 }
@@ -138,6 +139,7 @@ ApplicationWindow {
                             text: model.modelData.name
                             Layout.alignment: Qt.AlignLeft
                             Layout.fillWidth: true
+                            leftPadding: 10
                             rightPadding: 10
                         }
                         Label {
