@@ -4,11 +4,13 @@
 #include <QObject>
 #include <QDebug>
 #include <QFile>
+#include <QPainter>
 
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
+#include <epframebuffer.h>
 
 #include "apibase.h"
 #include "mxcfb.h"
@@ -48,44 +50,21 @@ public:
 
     Q_INVOKABLE bool drawFullscreenImage(QString path){
         if(!QFile(path).exists()){
+            qDebug() << "Can't find image" << path;
             return false;
         }
-        int width, height, channels;
-        auto decoded = (uint32_t*)stbi_load(path.toStdString().c_str(), &width, &height, &channels, 4);
-        int fd = open("/dev/fb0", O_RDWR);
-        auto ptr = (remarkable_color*)mmap(NULL, RDISPLAYSIZE, PROT_WRITE, MAP_SHARED, fd, 0);
-        auto src = decoded;
-        for(int j = 0; j < height; j++){
-            if(j >= RDISPLAYHEIGHT){
-              break;
-            }
-            for(int i = 0; i < width; i++){
-              if(i >= RDISPLAYWIDTH){
-                break;
-              }
-              if(src[i] != 0){
-                ptr[i] = (remarkable_color)src[i];
-              }
-            }
-            ptr += RDISPLAYWIDTH;
-            src += width;
+        QImage img(path);
+        if(img.isNull()){
+            qDebug() << "Image data invalid" << path;
+            return false;
         }
-        mxcfb_update_data update_data;
-        mxcfb_rect update_rect;
-        update_rect.top = 0;
-        update_rect.left = 0;
-        update_rect.width = DISPLAYWIDTH;
-        update_rect.height = DISPLAYHEIGHT;
-        update_data.update_marker = 0;
-        update_data.update_region = update_rect;
-        update_data.waveform_mode = WAVEFORM_MODE_AUTO;
-        update_data.update_mode = UPDATE_MODE_FULL;
-        update_data.dither_mode = EPDC_FLAG_USE_DITHERING_MAX;
-        update_data.temp = TEMP_USE_REMARKABLE_DRAW;
-        update_data.flags = 0;
-        ioctl(fd, MXCFB_SEND_UPDATE, &update_data);
-        free(decoded);
-        close(fd);
+        auto size = EPFrameBuffer::framebuffer()->size();
+        QRect rect(0, 0, size.width(), size.height());
+        QPainter painter(EPFrameBuffer::framebuffer());
+        painter.drawImage(rect, img);
+        painter.end();
+        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
+        EPFrameBuffer::waitForLastUpdate();
         return true;
     }
 
