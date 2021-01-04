@@ -42,6 +42,9 @@ public:
     }
 
     Q_INVOKABLE QDBusObjectPath get(QString identifier){
+        if(!hasPermission("notifications")){
+            return QDBusObjectPath("/");
+        }
         if(!m_notifications.contains(identifier)){
             return QDBusObjectPath("/");
         }
@@ -50,6 +53,9 @@ public:
 
     QList<QDBusObjectPath> getAllNotifications(){
         QList<QDBusObjectPath> result;
+        if(!hasPermission("notifications")){
+            return result;
+        }
         for(auto notification : m_notifications.values()){
             result.append(notification->qPath());
         }
@@ -57,6 +63,9 @@ public:
     }
     QList<QDBusObjectPath> getUnownedNotifications(){
         QList<QDBusObjectPath> result;
+        if(!hasPermission("notifications")){
+            return result;
+        }
         QStringList names = QDBusConnection::systemBus().interface()->registeredServiceNames();
         for(auto notification : m_notifications.values()){
             if(!names.contains(notification->owner())){
@@ -68,6 +77,9 @@ public:
 
 public slots:
     QDBusObjectPath add(QString identifier, QString application, QString text, QString icon, QDBusMessage message){
+        if(!hasPermission("notifications")){
+            return QDBusObjectPath("/");
+        }
         if(m_notifications.contains(identifier)){
             return QDBusObjectPath("/");
         }
@@ -84,6 +96,9 @@ public slots:
         return path;
     }
     bool take(QString identifier, QDBusMessage message){
+        if(!hasPermission("notifications")){
+            return false;
+        }
         if(!m_notifications.contains(identifier)){
             return false;
         }
@@ -92,6 +107,9 @@ public slots:
     }
     QList<QDBusObjectPath> notifications(QDBusMessage message){
         QList<QDBusObjectPath> result;
+        if(!hasPermission("notifications")){
+            return result;
+        }
         for(auto notification : m_notifications.values()){
             if(notification->owner() == message.service()){
                 result.append(notification->qPath());
@@ -101,10 +119,14 @@ public slots:
     }
 
     void remove(Notification* notification){
-        if(m_notifications.contains(notification->identifier())){
-            m_notifications.remove(notification->identifier());
-            emit notificationRemoved(notification->qPath());
+        if(!hasPermission("notifications")){
+            return;
         }
+        if(!m_notifications.contains(notification->identifier())){
+            return;
+        }
+        m_notifications.remove(notification->identifier());
+        emit notificationRemoved(notification->qPath());
     }
 
 signals:

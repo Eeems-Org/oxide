@@ -4,6 +4,7 @@ CONFIG += c++11 console
 CONFIG -= app_bundle
 
 SOURCES += \
+    apibase.cpp \
     application.cpp \
     appsapi.cpp \
     bss.cpp \
@@ -11,6 +12,7 @@ SOURCES += \
     event_device.cpp \
     network.cpp \
     notification.cpp \
+    screenshot.cpp \
     sysobject.cpp \
     systemapi.cpp \
     wlan.cpp \

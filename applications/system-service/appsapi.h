@@ -70,6 +70,9 @@ public:
     }
 
     Q_INVOKABLE QDBusObjectPath registerApplication(QVariantMap properties){
+        if(!hasPermission("apps")){
+            return QDBusObjectPath("/");
+        }
         QString name = properties.value("name", "").toString();
         QString bin = properties.value("bin", "").toString();
         int type = properties.value("type", Foreground).toInt();
@@ -98,6 +101,9 @@ public:
         return path;
     }
     Q_INVOKABLE bool unregisterApplication(QDBusObjectPath path){
+        if(!hasPermission("apps")){
+            return false;
+        }
         auto app = getApplication(path);
         if(app == nullptr){
             return true;
@@ -110,19 +116,38 @@ public:
     }
 
     Q_INVOKABLE void reload(){
+        if(!hasPermission("apps")){
+            return;
+        }
         writeApplications();
         readApplications();
     }
 
-    QDBusObjectPath startupApplication(){ return m_startupApplication; }
+    QDBusObjectPath startupApplication(){
+        if(!hasPermission("apps")){
+            return QDBusObjectPath("/");
+        }
+        return m_startupApplication;
+    }
     void setStartupApplication(QDBusObjectPath path){
+        if(!hasPermission("apps")){
+            return;
+        }
         if(getApplication(path) != nullptr){
             m_startupApplication = path;
             settings.setValue("startupApplication", path.path());
         }
     }
-    QDBusObjectPath lockscreenApplication(){ return m_lockscreenApplication; }
+    QDBusObjectPath lockscreenApplication(){
+        if(!hasPermission("apps")){
+            return QDBusObjectPath("/");
+        }
+        return m_lockscreenApplication;
+    }
     void setLockscreenApplication(QDBusObjectPath path){
+        if(!hasPermission("apps")){
+            return;
+        }
         if(getApplication(path) != nullptr){
             m_lockscreenApplication = path;
             settings.setValue("lockscreenApplication", path.path());
@@ -131,6 +156,9 @@ public:
 
     QVariantMap getApplications(){
         QVariantMap result;
+        if(!hasPermission("apps")){
+            return result;
+        }
         for(auto app : applications){
             result.insert(app->name(), QVariant::fromValue(app->qPath()));
         }
@@ -138,6 +166,9 @@ public:
     }
 
     QDBusObjectPath currentApplication(){
+        if(!hasPermission("apps")){
+            return QDBusObjectPath("/");
+        }
         for(auto app : applications){
             if(app->state() == Application::InForeground){
                 return app->qPath();
@@ -147,6 +178,9 @@ public:
     }
     QVariantMap runningApplications(){
         QVariantMap result;
+        if(!hasPermission("apps")){
+            return result;
+        }
         for(auto app : applications){
             auto state = app->state();
             if(state == Application::InForeground || state == Application::InBackground){
@@ -157,6 +191,9 @@ public:
     }
     QVariantMap pausedApplications(){
         QVariantMap result;
+        if(!hasPermission("apps")){
+            return result;
+        }
         for(auto app : applications){
             auto state = app->state();
             if(state == Application::Paused){
@@ -202,6 +239,9 @@ public:
         return nullptr;
     }
     Q_INVOKABLE QDBusObjectPath getApplicationPath(QString name){
+        if(!hasPermission("apps")){
+            return QDBusObjectPath("/");
+        }
         auto app = getApplication(name);
         if(app == nullptr){
             return QDBusObjectPath("/");
@@ -246,6 +286,9 @@ signals:
 public slots:
     QT_DEPRECATED void leftHeld(){ openDefaultApplication(); }
     void openDefaultApplication(){
+        if(!hasPermission("apps")){
+            return;
+        }
         auto path = this->currentApplication();
         auto currentApplication = getApplication(path);
         if(currentApplication->state() != Application::Inactive && (path == m_startupApplication || path == m_lockscreenApplication)){
@@ -259,6 +302,9 @@ public slots:
     }
     QT_DEPRECATED void homeHeld(){ openTaskManager(); }
     void openTaskManager(){
+        if(!hasPermission("apps")){
+            return;
+        }
         auto path = this->currentApplication();
         auto currentApplication = getApplication(path);
         if(currentApplication->state() != Application::Inactive && path == m_lockscreenApplication){
@@ -351,6 +397,7 @@ private:
                 {"environment", settings.value("environment", QVariantMap()).toMap()},
                 {"workingDirectory", settings.value("workingDirectory", "").toString()},
                 {"directories", settings.value("directories", QStringList()).toStringList()},
+                {"permissions", settings.value("permissions", QStringList()).toStringList()},
             };
             if(settings.contains("user")){
                 properties.insert("user", settings.value("user", "").toString());
@@ -445,6 +492,13 @@ private:
                     directories.append(directory.toString());
                 }
                 properties.insert("directories", directories);
+            }
+            if(app.contains("permissions")){
+                QStringList permissions;
+                for(auto permission : app["permissions"].toArray()){
+                    permissions.append(permission.toString());
+                }
+                properties.insert("permissions", permissions);
             }
             if(app.contains("events")){
                 auto events = app["evnets"].toObject();

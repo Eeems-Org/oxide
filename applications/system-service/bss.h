@@ -42,11 +42,23 @@ public:
         }
     }
 
-    QString bssid(){ return m_bssid; }
-    QString ssid(){ return m_ssid; }
+    QString bssid(){
+        if(!hasPermission("wifi")){
+            return "";
+        }
+        return m_bssid; }
+    QString ssid(){
+        if(!hasPermission("wifi")){
+            return "";
+        }
+        return m_ssid;
+    }
 
     QList<QString> paths(){
         QList<QString> result;
+        if(!hasPermission("wifi")){
+            return result;
+        }
         for(auto bss : bsss){
             result.append(bss->path());
         }
@@ -71,6 +83,9 @@ public:
         }
     }
     bool privacy(){
+        if(!hasPermission("wifi")){
+            return false;
+        }
         for(auto bss : bsss){
             if(bss->privacy()){
                 return true;
@@ -79,12 +94,18 @@ public:
         return false;
     }
     ushort frequency(){
+        if(!hasPermission("wifi")){
+            return 0;
+        }
         if(!bsss.size()){
             return 0;
         }
         return bsss.first()->frequency();
     }
     short signal(){
+        if(!hasPermission("wifi")){
+            return 0;
+        }
         if(!bsss.size()){
             return 0;
         }
@@ -93,6 +114,9 @@ public:
     QDBusObjectPath network();
     QStringList key_mgmt(){
         QStringList result;
+        if(!hasPermission("wifi")){
+            return result;
+        }
         if(!bsss.size()){
             return result;
         }
@@ -117,6 +141,8 @@ private:
     QList<IBSS*> bsss;
     QString m_bssid;
     QString m_ssid;
+
+    bool hasPermission(QString permission);
 };
 
 #endif // BSS_H

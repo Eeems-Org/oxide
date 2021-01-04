@@ -117,6 +117,8 @@ class Application : public QObject{
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_APPLICATION_INTERFACE)
     Q_PROPERTY(QString name READ name)
+    Q_PROPERTY(int processId READ processId)
+    Q_PROPERTY(QStringList permissions READ permissions WRITE setPermissions NOTIFY permissionsChanged)
     Q_PROPERTY(QString displayName READ displayName WRITE setDisplayName NOTIFY displayNameChanged)
     Q_PROPERTY(QString description READ description)
     Q_PROPERTY(QString bin READ bin)
@@ -182,8 +184,20 @@ public:
     Q_INVOKABLE void unregister();
 
     QString name() { return value("name").toString(); }
+    int processId() { return m_process->processId(); }
+    QStringList permissions() { return value("permissions", QStringList()).toStringList(); }
+    void setPermissions(QStringList permissions){
+        if(!hasPermission("permissions")){
+            return;
+        }
+        setValue("permissions", permissions);
+        emit permissionsChanged(permissions);
+    }
     QString displayName() { return value("displayName", name()).toString(); }
     void setDisplayName(QString displayName){
+        if(!hasPermission("permissions")){
+            return;
+        }
         setValue("displayName", displayName);
         emit displayNameChanged(displayName);
     }
@@ -191,22 +205,34 @@ public:
     QString bin() { return value("bin").toString(); }
     QString onPause() { return value("onPause", "").toString(); }
     void setOnPause(QString onPause){
+        if(!hasPermission("permissions")){
+            return;
+        }
         setValue("onPause", onPause);
         emit onPauseChanged(onPause);
     }
     QString onResume() { return value("onResume", "").toString(); }
     void setOnResume(QString onResume){
+        if(!hasPermission("permissions")){
+            return;
+        }
         setValue("onResume", onResume);
         emit onResumeChanged(onResume);
     }
     QString onStop() { return value("onStop", "").toString(); }
     void setOnStop(QString onStop){
+        if(!hasPermission("permissions")){
+            return;
+        }
         setValue("onStop", onStop);
         emit onStopChanged(onStop);
     }
     QStringList flags() { return value("flags", QStringList()).toStringList(); }
     bool autoStart() { return flags().contains("autoStart"); }
     void setAutoStart(bool autoStart) {
+        if(!hasPermission("permissions")){
+            return;
+        }
         if(!autoStart){
             flags().removeAll("autoStart");
             autoStartChanged(autoStart);
@@ -221,11 +247,17 @@ public:
     int state();
     QString icon() { return value("icon", "").toString(); }
     void setIcon(QString icon){
+        if(!hasPermission("permissions")){
+            return;
+        }
         setValue("icon", icon);
         emit iconChanged(icon);
     }
     QVariantMap environment() { return value("environment", QVariantMap()).toMap(); }
     Q_INVOKABLE void setEnvironment(QVariantMap environment){
+        if(!hasPermission("permissions")){
+            return;
+        }
         for(auto key : environment.keys()){
             auto value = environment.value(key, QVariant());
             if(!value.isValid()){
@@ -239,6 +271,9 @@ public:
     }
     QString workingDirectory() { return value("workingDirectory", "/").toString(); }
     void setWorkingDirectory(const QString& workingDirectory){
+        if(!hasPermission("permissions")){
+            return;
+        }
         QDir dir(workingDirectory);
         if(!dir.exists()){
             return;
@@ -251,6 +286,9 @@ public:
     QString group(){ return value("group", getgid()).toString(); }
     QStringList directories() { return value("directories", QStringList()).toStringList(); }
     void setDirectories(QStringList directories){
+        if(!hasPermission("permissions")){
+            return;
+        }
         setValue("directories", directories);
         emit directoriesChanged(directories);
     }
@@ -324,6 +362,7 @@ signals:
     void resumed();
     void unregistered();
     void exited(int);
+    void permissionsChanged(QStringList);
     void displayNameChanged(QString);
     void onPauseChanged(QString);
     void onResumeChanged(QString);
@@ -336,9 +375,15 @@ signals:
 
 public slots:
     void sigUsr1(){
+        if(!hasPermission("permissions")){
+            return;
+        }
         timer.invalidate();
     }
     void sigUsr2(){
+        if(!hasPermission("permissions")){
+            return;
+        }
         timer.invalidate();
     }
 
@@ -388,6 +433,8 @@ private:
     QByteArray* screenCapture = nullptr;
     size_t screenCaptureSize;
     QElapsedTimer timer;
+
+    bool hasPermission(QString permission);
     void delayUpTo(int milliseconds){
         timer.invalidate();
         timer.start();

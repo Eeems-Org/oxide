@@ -13,6 +13,9 @@ BSS::BSS(QString path, QString bssid, QString ssid, QObject* parent)
 }
 
 QDBusObjectPath BSS::connect(){
+    if(!hasPermission("wifi")){
+        return QDBusObjectPath("/");
+    }
     auto path = network();
     if(path.path() != "/"){
         return path;
@@ -20,6 +23,9 @@ QDBusObjectPath BSS::connect(){
     return wifiAPI->addNetwork(ssid(), QVariantMap());
 }
 QDBusObjectPath BSS::network(){
+    if(!hasPermission("wifi")){
+        return QDBusObjectPath("/");
+    }
     QVariantMap args;
     args.insert("ssid", ssid());
     auto networks = wifiAPI->getNetwork(args);
@@ -28,3 +34,5 @@ QDBusObjectPath BSS::network(){
     }
     return networks.first();
 }
+
+bool BSS::hasPermission(QString permission){ return wifiAPI->hasPermission(permission); }

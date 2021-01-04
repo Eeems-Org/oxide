@@ -6,6 +6,9 @@
 
 
 void Notification::display(){
+    if(!hasPermission("notifications")){
+        return;
+    }
     qDebug() << "Displaying notification" << identifier();
     auto path = appsAPI->currentApplication();
     Application* resumeApp = nullptr;
@@ -31,6 +34,9 @@ void Notification::display(){
 }
 
 void Notification::remove(){
+    if(!hasPermission("notifications")){
+        return;
+    }
     notificationAPI->remove(this);
     emit removed();
 }
@@ -82,3 +88,5 @@ const QRect Notification::paintNotification(){
     qDebug() << "Painted notification" << identifier();
     return rect;
 }
+
+bool Notification::hasPermission(QString permission){ return notificationAPI->hasPermission(permission); }

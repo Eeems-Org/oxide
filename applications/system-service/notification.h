@@ -45,35 +45,82 @@ public:
         }
     }
 
-    QString identifier(){ return m_identifier; }
-    QString application(){ return m_application; }
+    QString identifier(){
+        if(!hasPermission("notifications")){
+            return "";
+        }
+        return m_identifier;
+    }
+    QString application(){
+        if(!hasPermission("notifications")){
+            return "";
+        }
+        return m_application;
+    }
     void setApplication(QString application){
+        if(!hasPermission("notifications")){
+            return;
+        }
         m_application = application;
         QVariantMap result;
         result.insert("application", m_application);
         emit changed(result);
     }
-    QString text(){ return m_text; }
+    QString text(){
+        if(!hasPermission("notifications")){
+            return "";
+        }
+        return m_text;
+    }
     void setText(QString text){
+        if(!hasPermission("notifications")){
+            return;
+        }
         m_text = text;
         QVariantMap result;
         result.insert("text", m_text);
         emit changed(result);
     }
-    QString icon(){ return m_icon; }
+    QString icon(){
+        if(!hasPermission("notifications")){
+            return "";
+        }
+        return m_icon;
+    }
     void setIcon(QString icon){
+        if(!hasPermission("notifications")){
+            return;
+        }
         m_icon = icon;
         QVariantMap result;
         result.insert("icon", m_icon);
         emit changed(result);
     }
 
-    QString owner(){  return m_owner; }
-    void setOwner(QString owner){ m_owner = owner;}
+    QString owner(){
+        if(!hasPermission("notifications")){
+            return "";
+        }
+        return m_owner;
+    }
+    void setOwner(QString owner){
+        if(!hasPermission("notifications")){
+            return;
+        }
+        m_owner = owner;
+        QVariantMap result;
+        result.insert("owner", m_owner);
+        emit changed(result);
+    }
 
     Q_INVOKABLE void display();
     Q_INVOKABLE void remove();
-    Q_INVOKABLE void click(){ emit clicked(); }
+    Q_INVOKABLE void click(){
+        if(!hasPermission("notifications")){
+            return;
+        }
+        emit clicked();
+    }
 
 signals:
     void changed(QVariantMap);
@@ -91,6 +138,7 @@ private:
 
     void dispatchToMainThread(std::function<void()> callback);
     const QRect paintNotification();
+    bool hasPermission(QString permission);
 };
 
 #endif // NOTIFICATION_H

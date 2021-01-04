@@ -64,7 +64,12 @@ void Network::registerNetwork(){
 }
 
 QList<QDBusObjectPath> Network::bSSs(){
+    if(!hasPermission("wifi")){
+        return QList<QDBusObjectPath>();
+    }
     QVariantMap args;
     args.insert("ssid", ssid());
     return wifiAPI->getBSS(args);
 }
+
+bool Network::hasPermission(QString permission){ return wifiAPI->hasPermission(permission); }

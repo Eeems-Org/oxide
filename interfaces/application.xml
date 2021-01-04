@@ -2,6 +2,8 @@
 <node>
   <interface name="codes.eeems.oxide1.Application">
     <property name="name" type="s" access="read"/>
+    <property name="processId" type="i" access="read"/>
+    <property name="permissions" type="as" access="readwrite"/>
     <property name="displayName" type="s" access="readwrite"/>
     <property name="description" type="s" access="read"/>
     <property name="bin" type="s" access="read"/>
@@ -32,6 +34,9 @@
     </signal>
     <signal name="exited">
       <arg type="i" direction="out"/>
+    </signal>
+    <signal name="permissionsChanged">
+      <arg type="as" direction="out"/>
     </signal>
     <signal name="displayNameChanged">
       <arg type="s" direction="out"/>

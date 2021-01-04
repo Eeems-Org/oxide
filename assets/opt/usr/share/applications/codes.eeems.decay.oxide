@@ -3,5 +3,6 @@
         "description": "Handles the password screen on resume",
         "bin": "/opt/bin/decay",
         "flags": ["hidden"],
-        "type": "foreground"
+        "type": "foreground",
+        "permissions": ["apps", "wifi", "power", "system"]
 }

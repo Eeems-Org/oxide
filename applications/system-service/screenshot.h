@@ -49,6 +49,9 @@ public:
         }
     }
     QByteArray blob(){
+        if(!hasPermission("screen")){
+            return QByteArray();
+        }
         mutex.lock();
         if(!m_file->isOpen() && !m_file->open(QIODevice::ReadWrite)){
             qDebug() << "Unable to open screenshot file" << m_file->fileName();
@@ -61,6 +64,9 @@ public:
         return data;
     }
     void setBlob(QByteArray blob){
+        if(!hasPermission("screen")){
+            return;
+        }
         mutex.lock();
         if(!m_file->isOpen() && !m_file->open(QIODevice::ReadWrite)){
             qDebug() << "Unable to open screenshot file" << m_file->fileName();
@@ -74,7 +80,12 @@ public:
         mutex.unlock();
         emit modified();
     }
-    QString getPath(){ return m_file->fileName(); }
+    QString getPath(){
+        if(!hasPermission("screen")){
+            return "";
+        }
+        return m_file->fileName();
+    }
 
 signals:
     void modified();
@@ -82,6 +93,9 @@ signals:
 
 public slots:
     void remove(){
+        if(!hasPermission("screen")){
+            return;
+        }
         mutex.lock();
         m_file->remove();
         m_file->close();
@@ -93,6 +107,8 @@ private:
     QString m_path;
     QFile* m_file;
     QMutex mutex;
+
+    bool hasPermission(QString permission);
 };
 
 #endif // SCREENSHOT_H

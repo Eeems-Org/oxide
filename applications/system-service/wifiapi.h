@@ -178,8 +178,16 @@ public:
     enum State { Unknown, Off, Disconnected, Offline, Online};
     Q_ENUM(State)
 
-    int state(){ return m_state; }
+    int state(){
+        if(!hasPermission("wifi")){
+            return Unknown;
+        }
+        return m_state;
+    }
     void setState(int state){
+        if(!hasPermission("wifi")){
+            return;
+        }
         if(state < Unknown || state > Online){
             throw QException{};
         }
@@ -188,6 +196,9 @@ public:
     }
 
     Q_INVOKABLE bool enable(){
+        if(!hasPermission("wifi")){
+            return false;
+        }
         qDebug() << "Turning wifi on";
         if(m_state == Off){
             setState(Disconnected);
@@ -206,6 +217,9 @@ public:
         return true;
     }
     Q_INVOKABLE void disable(){
+        if(!hasPermission("wifi")){
+            return;
+        }
         qDebug() << "Turning wifi off";
         setState(Off);
         for(auto wlan : wlans){
@@ -218,6 +232,9 @@ public:
         settings.sync();
     }
     Q_INVOKABLE QDBusObjectPath addNetwork(QString ssid, QVariantMap properties){
+        if(!hasPermission("wifi")){
+            return QDBusObjectPath("/");
+        }
         Q_UNUSED(properties)
         for(auto network : networks){
             if(network->ssid() == ssid){
@@ -237,6 +254,9 @@ public:
     }
     Q_INVOKABLE QList<QDBusObjectPath> getNetwork(QVariantMap properties){
         QList<QDBusObjectPath> result;
+        if(!hasPermission("wifi")){
+            return result;
+        }
         for(auto network : networks){
             bool found = true;
             auto props = network->properties();
@@ -259,6 +279,9 @@ public:
     }
     Q_INVOKABLE QList<QDBusObjectPath> getBSS(QVariantMap properties){
         QList<QDBusObjectPath> result;
+        if(!hasPermission("wifi")){
+            return result;
+        }
         for(auto bss : bsss){
             bool found = true;
             for(auto key : properties.keys()){
@@ -275,6 +298,9 @@ public:
         return result;
     }
     Q_INVOKABLE void scan(bool active = false){
+        if(!hasPermission("wifi")){
+            return;
+        }
         if(!m_scanning){
             m_scanning = true;
             emit scanningChanged(true);
@@ -290,6 +316,9 @@ public:
         }
     }
     Q_INVOKABLE void reconnect(){
+        if(!hasPermission("wifi")){
+            return;
+        }
         qDebug() << "Reconnecting to wifi";
         QList<QDBusPendingReply<void>> replies;
         for(auto interface : interfaces()){
@@ -300,6 +329,9 @@ public:
         }
     }
     Q_INVOKABLE void reassosiate(){
+        if(!hasPermission("wifi")){
+            return;
+        }
         QList<QDBusPendingReply<void>> replies;
         for(auto interface : interfaces()){
             replies.append(interface->Reassociate());
@@ -309,6 +341,9 @@ public:
         }
     }
     Q_INVOKABLE void disconnect(){
+        if(!hasPermission("wifi")){
+            return;
+        }
         QList<QDBusPendingReply<void>> replies;
         for(auto interface : interfaces()){
             replies.append(interface->Disconnect());
@@ -318,6 +353,9 @@ public:
         }
     }
     Q_INVOKABLE void flushBSSCache(uint age){
+        if(!hasPermission("wifi")){
+            return;
+        }
         QList<QDBusPendingReply<void>> replies;
         for(auto interface : interfaces()){
             replies.append(interface->FlushBSS(age));
@@ -327,6 +365,9 @@ public:
         }
     }
     Q_INVOKABLE void addBlob(QString name, QByteArray blob){
+        if(!hasPermission("wifi")){
+            return;
+        }
         QList<QDBusPendingReply<void>> replies;
         for(auto interface : interfaces()){
             replies.append(interface->AddBlob(name, blob));
@@ -336,6 +377,9 @@ public:
         }
     }
     Q_INVOKABLE void removeBlob(QString name){
+        if(!hasPermission("wifi")){
+            return;
+        }
         QList<QDBusPendingReply<void>> replies;
         for(auto interface : interfaces()){
             replies.append(interface->RemoveBlob(name));
@@ -345,6 +389,9 @@ public:
         }
     }
     Q_INVOKABLE QByteArray getBlob(QString name, QByteArray blob){
+        if(!hasPermission("wifi")){
+            return QByteArray();
+        }
         for(auto interface : interfaces()){
             auto reply = (QDBusReply<QByteArray>)interface->AddBlob(name, blob);
             if(reply.isValid()){
@@ -355,6 +402,9 @@ public:
     }
     QSet<QString> blobs(){
         QSet<QString> result;
+        if(!hasPermission("wifi")){
+            return result;
+        }
         for(auto wlan : wlans){
             result.unite(wlan->blobs());
         }
@@ -362,12 +412,18 @@ public:
     }
     QList<QDBusObjectPath> bSSs(){
         QList<QDBusObjectPath> result;
+        if(!hasPermission("wifi")){
+            return result;
+        }
         for(auto bss : bsss){
             result.append(QDBusObjectPath(bss->path()));
         }
         return result;
     }
     int link(){
+        if(!hasPermission("wifi")){
+            return 0;
+        }
         int result = 0;
         for(auto wlan : wlans){
             int link = wlan->link();
@@ -378,6 +434,9 @@ public:
         return result;
     }
     QDBusObjectPath network(){
+        if(!hasPermission("wifi")){
+            return QDBusObjectPath("/");
+        }
         for(auto interface : getInterfaces()){
             auto state = interface->state();
             if(state == "associated" || state == "completed"){
@@ -399,6 +458,9 @@ public:
         return result;
     }
     bool scanning(){
+        if(!hasPermission("wifi")){
+            return false;
+        }
         for(auto interface : interfaces()){
             if(interface->scanning()){
                 if(!m_scanning){

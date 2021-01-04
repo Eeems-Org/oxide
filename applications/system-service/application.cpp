@@ -11,6 +11,9 @@
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
 
 void Application::launch(){
+    if(!hasPermission("apps")){
+        return;
+    }
     if(m_process->processId()){
         resume();
     }else{
@@ -36,6 +39,9 @@ void Application::launch(){
 }
 
 void Application::pause(bool startIfNone){
+    if(!hasPermission("apps")){
+        return;
+    }
     if(
         !m_process->processId()
         || state() == Paused
@@ -105,6 +111,9 @@ void Application::waitForResume(){
     waitid(P_PID, m_process->processId(), &info, WCONTINUED);
 }
 void Application::resume(){
+    if(!hasPermission("apps")){
+        return;
+    }
     if(
         !m_process->processId()
         || state() == InForeground
@@ -162,6 +171,9 @@ void Application::uninterruptApplication(){
     }
 }
 void Application::stop(){
+    if(!hasPermission("apps")){
+        return;
+    }
     auto state = this->state();
     if(state == Inactive){
         return;
@@ -189,6 +201,9 @@ void Application::signal(int signal){
     }
 }
 void Application::unregister(){
+    if(!hasPermission("apps")){
+        return;
+    }
     emit unregistered();
     appsAPI->unregisterApplication(this);
 }
@@ -263,3 +278,4 @@ void Application::errorOccurred(QProcess::ProcessError error){
             qDebug() << "Application" << name() << "unknown error.";
     }
 }
+bool Application::hasPermission(QString permission){ return appsAPI->hasPermission(permission); }

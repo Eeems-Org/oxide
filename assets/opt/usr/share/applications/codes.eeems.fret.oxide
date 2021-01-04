@@ -3,5 +3,6 @@
 	"description": "Handles taking screenshots",
 	"bin": "/opt/bin/fret",
         "flags": ["hidden", "autoStart"],
-        "type": "background"
+        "type": "background",
+        "permissions": ["notifications", "screen"]
 }

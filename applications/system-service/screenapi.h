@@ -64,9 +64,17 @@ public:
             }
         }
     }
-    bool enabled() { return m_enabled; }
+    bool enabled() {
+        if(!hasPermission("screen")){
+            return false;
+        }
+        return m_enabled;
+    }
     QList<QDBusObjectPath> screenshots(){
         QList<QDBusObjectPath> list;
+        if(!hasPermission("screen")){
+            return list;
+        }
         for(auto screenshot : m_screenshots){
             list.append(screenshot->qPath());
         }
@@ -74,6 +82,9 @@ public:
     }
 
     Q_INVOKABLE bool drawFullscreenImage(QString path){
+        if(!hasPermission("screen")){
+            return false;
+        }
         if(!QFile(path).exists()){
             qDebug() << "Can't find image" << path;
             return false;
@@ -94,6 +105,9 @@ public:
     }
 
     Q_INVOKABLE QDBusObjectPath screenshot(){
+        if(!hasPermission("screen")){
+            return QDBusObjectPath("/");
+        }
         qDebug() << "Taking screenshot";
         auto filePath = getNextPath();
         if(!EPFrameBuffer::framebuffer()->save(filePath)){
@@ -105,6 +119,9 @@ public:
 
 public slots:
     QDBusObjectPath addScreenshot(QByteArray blob){
+        if(!hasPermission("screen")){
+            return QDBusObjectPath("/");
+        }
         qDebug() << "Adding external screenshot";
         mutex.lock();
         auto filePath = getNextPath();

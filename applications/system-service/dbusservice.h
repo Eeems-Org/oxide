@@ -32,7 +32,7 @@ struct APIEntry {
     APIBase* instance;
 };
 
-class DBusService : public QObject {
+class DBusService : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_GENERAL_INTERFACE)
     Q_PROPERTY(int tarnishPid READ tarnishPid)
@@ -42,7 +42,7 @@ public:
         if(instance == nullptr){
             qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
             qDebug() << "Creating DBusService instance";
-            instance = new DBusService();
+            instance = new DBusService(qApp);
             connect(qApp, &QGuiApplication::aboutToQuit, [=]{
                 if(instance == nullptr){
                     return;
@@ -76,7 +76,7 @@ public:
         }
         return instance;
     }
-    DBusService() : apis(){
+    DBusService(QObject* parent) : APIBase(parent), apis(){
         apis.insert("wifi", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
             .dependants = new QStringList(),
@@ -137,6 +137,7 @@ public:
         }
         apis.clear();
     }
+    void setEnabled(bool enabled){ Q_UNUSED(enabled); };
 
     QObject* getAPI(QString name){
         if(!apis.contains(name)){
@@ -149,6 +150,9 @@ public:
 
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
+        if(!hasPermission(name)){
+            return QDBusObjectPath("/");
+        }
         if(!apis.contains(name)){
             return QDBusObjectPath("/");
         }
