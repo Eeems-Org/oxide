@@ -42,7 +42,7 @@ public:
     }
 
     Q_INVOKABLE QDBusObjectPath get(QString identifier){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return QDBusObjectPath("/");
         }
         if(!m_notifications.contains(identifier)){
@@ -53,7 +53,7 @@ public:
 
     QList<QDBusObjectPath> getAllNotifications(){
         QList<QDBusObjectPath> result;
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return result;
         }
         for(auto notification : m_notifications.values()){
@@ -63,7 +63,7 @@ public:
     }
     QList<QDBusObjectPath> getUnownedNotifications(){
         QList<QDBusObjectPath> result;
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return result;
         }
         QStringList names = QDBusConnection::systemBus().interface()->registeredServiceNames();
@@ -77,7 +77,7 @@ public:
 
 public slots:
     QDBusObjectPath add(QString identifier, QString application, QString text, QString icon, QDBusMessage message){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return QDBusObjectPath("/");
         }
         if(m_notifications.contains(identifier)){
@@ -96,7 +96,7 @@ public slots:
         return path;
     }
     bool take(QString identifier, QDBusMessage message){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return false;
         }
         if(!m_notifications.contains(identifier)){
@@ -107,7 +107,7 @@ public slots:
     }
     QList<QDBusObjectPath> notifications(QDBusMessage message){
         QList<QDBusObjectPath> result;
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return result;
         }
         for(auto notification : m_notifications.values()){
@@ -119,7 +119,7 @@ public slots:
     }
 
     void remove(Notification* notification){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return;
         }
         if(!m_notifications.contains(notification->identifier())){

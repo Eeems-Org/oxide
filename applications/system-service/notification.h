@@ -46,19 +46,19 @@ public:
     }
 
     QString identifier(){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return "";
         }
         return m_identifier;
     }
     QString application(){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return "";
         }
         return m_application;
     }
     void setApplication(QString application){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return;
         }
         m_application = application;
@@ -67,13 +67,13 @@ public:
         emit changed(result);
     }
     QString text(){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return "";
         }
         return m_text;
     }
     void setText(QString text){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return;
         }
         m_text = text;
@@ -82,13 +82,13 @@ public:
         emit changed(result);
     }
     QString icon(){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return "";
         }
         return m_icon;
     }
     void setIcon(QString icon){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return;
         }
         m_icon = icon;
@@ -98,7 +98,7 @@ public:
     }
 
     QString owner(){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return "";
         }
         return m_owner;
@@ -116,7 +116,7 @@ public:
     Q_INVOKABLE void display();
     Q_INVOKABLE void remove();
     Q_INVOKABLE void click(){
-        if(!hasPermission("notifications")){
+        if(!hasPermission("notification")){
             return;
         }
         emit clicked();

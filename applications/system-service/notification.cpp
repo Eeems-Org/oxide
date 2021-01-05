@@ -6,7 +6,7 @@
 
 
 void Notification::display(){
-    if(!hasPermission("notifications")){
+    if(!hasPermission("notification")){
         return;
     }
     qDebug() << "Displaying notification" << identifier();
@@ -34,7 +34,7 @@ void Notification::display(){
 }
 
 void Notification::remove(){
-    if(!hasPermission("notifications")){
+    if(!hasPermission("notification")){
         return;
     }
     notificationAPI->remove(this);

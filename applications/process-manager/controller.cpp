@@ -42,6 +42,9 @@ QList<QObject*> Controller::getTasks(){
     mutex.lock();
     QDir directory("/proc");
     if (!directory.exists() || directory.isEmpty()){
+        for(auto taskItem : tasks){
+            taskItem->deleteLater();
+        }
         tasks.clear();
         qCritical() << "Unable to access /proc";
         return tasks;
@@ -76,6 +79,7 @@ QList<QObject*> Controller::getTasks(){
         auto taskItem = reinterpret_cast<TaskItem*>(i.next());
         const auto pid = taskItem->pid();
         if(!pids.contains(pid)){
+            taskItem->deleteLater();
             i.remove();
         }else{
             pids.removeAll(pid);
