@@ -24,7 +24,7 @@ public:
     QString iface() { return m_iface; }
     bool up() { return !system(("ifconfig " + iface() + " up").toStdString().c_str()); }
     bool down() { return !system(("ifconfig " + iface() + " down").toStdString().c_str()); }
-    bool isUp(){ return !system(("ip addr show " + iface() + " | /bin/grep UP > /dev/null").toStdString().c_str()); }
+    bool isUp(){ return !system(("ip addr show " + iface() + " | grep UP > /dev/null").toStdString().c_str()); }
     Interface* interface() { return m_interface; }
     QSet<QString> blobs(){ return m_blobs; }
     QString operstate(){
