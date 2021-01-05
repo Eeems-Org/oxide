@@ -1,4 +1,3 @@
-QT -= gui
 QT += dbus
 
 CONFIG += c++11 console

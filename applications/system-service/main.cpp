@@ -1,4 +1,5 @@
 #include <QCommandLineParser>
+#include <QGuiApplication>
 
 #include <cstdlib>
 
@@ -40,11 +41,21 @@ void onExit(){
     }
 }
 
+const char *qt_version = qVersion();
+
 int main(int argc, char *argv[]){
+    if (strcmp(qt_version, QT_VERSION_STR) != 0){
+            qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
+        }
+    #ifdef __arm__
+        // Setup epaper
+        qputenv("QMLSCENE_DEVICE", "epaper");
+        qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
+    #endif
     atexit(onExit);
     signal(SIGTERM, unixSignalHandler);
     signal(SIGKILL, unixSignalHandler);
-    QCoreApplication app(argc, argv);
+    QGuiApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("tarnish");
@@ -54,7 +65,6 @@ int main(int argc, char *argv[]){
     parser.addHelpOption();
     parser.applicationDescription();
     parser.addVersionOption();
-
     parser.process(app);
 
     const QStringList args = parser.positionalArguments();
