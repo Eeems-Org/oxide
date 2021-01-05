@@ -15,8 +15,6 @@ void sigHandler(int signal){
     qApp->quit();
 }
 
-const char *qt_version = qVersion();
-
 int main(int argc, char *argv[]){
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
