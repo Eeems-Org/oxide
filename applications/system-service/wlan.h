@@ -37,7 +37,7 @@ public:
         return !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port).c_str());
     }
     bool isConnected(){
-        auto ip = exec("ip r | /bin/grep " + iface() + " | /bin/grep default | awk '{print $3}'");
+        auto ip = exec("ip r | grep " + iface() + " | grep default | awk '{print $3}'");
         return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
     }
     int link(){
