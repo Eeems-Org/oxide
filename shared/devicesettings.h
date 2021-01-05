@@ -25,7 +25,6 @@ public:
     const char* getTouchEnvSetting() const;
     int getFrameBufferWidth() const;
     int getFrameBufferHeight() const;
-    int getFrameBufferSize() const;
     DeviceType getDeviceType() const;
 
 };

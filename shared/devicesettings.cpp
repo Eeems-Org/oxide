@@ -96,7 +96,3 @@ int DeviceSettings::getFrameBufferHeight() const {
             return 0;
    }
 }
-
-int DeviceSettings::getFrameBufferSize() const {
-    return getFrameBufferWidth() * getFrameBufferHeight() * sizeof(uint16_t);
-}
