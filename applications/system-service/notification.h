@@ -138,7 +138,7 @@ private:
 
     void dispatchToMainThread(std::function<void()> callback);
     const QRect paintNotification();
-    bool hasPermission(QString permission);
+    bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 };
 
 #endif // NOTIFICATION_H

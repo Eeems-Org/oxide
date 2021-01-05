@@ -72,4 +72,4 @@ QList<QDBusObjectPath> Network::bSSs(){
     return wifiAPI->getBSS(args);
 }
 
-bool Network::hasPermission(QString permission){ return wifiAPI->hasPermission(permission); }
+bool Network::hasPermission(QString permission, const char* sender){ return wifiAPI->hasPermission(permission, sender); }

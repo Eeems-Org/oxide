@@ -188,7 +188,14 @@ QList<QObject*> Controller::getApps(){
         return applications;
     }
     auto bus = QDBusConnection::systemBus();
-    auto running = appsApi->runningApplications().unite(appsApi->pausedApplications());
+    auto running = appsApi->runningApplications();
+    auto paused = appsApi->pausedApplications();
+    for(auto key : paused.keys()){
+        if(running.contains(key)){
+            continue;
+        }
+        running.insert(key, paused[key]);
+    }
     for(auto item : appsApi->applications()){
         auto path = item.value<QDBusObjectPath>().path();
         Application app(OXIDE_SERVICE, path, bus, this);

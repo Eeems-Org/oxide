@@ -44,7 +44,7 @@ void Application::pause(bool startIfNone){
     }
     if(
         !m_process->processId()
-        || state() == Paused
+        || stateNoSecurityCheck() == Paused
         || type() == AppsAPI::Background
     ){
         return;
@@ -62,7 +62,7 @@ void Application::pause(bool startIfNone){
 void Application::interruptApplication(){
     if(
         !m_process->processId()
-        || state() == Paused
+        || stateNoSecurityCheck() == Paused
         || type() == AppsAPI::Background
     ){
         return;
@@ -97,14 +97,14 @@ void Application::interruptApplication(){
     }
 }
 void Application::waitForPause(){
-    if(state() == Paused){
+    if(stateNoSecurityCheck() == Paused){
         return;
     }
     siginfo_t info;
     waitid(P_PID, m_process->processId(), &info, WSTOPPED);
 }
 void Application::waitForResume(){
-    if(state() != Paused){
+    if(stateNoSecurityCheck() != Paused){
         return;
     }
     siginfo_t info;
@@ -116,15 +116,15 @@ void Application::resume(){
     }
     if(
         !m_process->processId()
-        || state() == InForeground
-        || (type() == AppsAPI::Background && state() == InBackground)
+        || stateNoSecurityCheck() == InForeground
+        || (type() == AppsAPI::Background && stateNoSecurityCheck() == InBackground)
     ){
         qDebug() << "Can't Resume" << path() << "Already running!";
         return;
     }
     qDebug() << "Resuming " << path();
     appsAPI->pauseAll();
-    if(type() != AppsAPI::Backgroundable || state() == Paused){
+    if(type() != AppsAPI::Backgroundable || stateNoSecurityCheck() == Paused){
         recallScreen();
     }
     uninterruptApplication();
@@ -136,8 +136,8 @@ void Application::resume(){
 void Application::uninterruptApplication(){
     if(
         !m_process->processId()
-        || state() == InForeground
-        || (type() == AppsAPI::Background && state() == InBackground)
+        || stateNoSecurityCheck() == InForeground
+        || (type() == AppsAPI::Background && stateNoSecurityCheck() == InBackground)
     ){
         return;
     }
@@ -147,7 +147,7 @@ void Application::uninterruptApplication(){
     switch(type()){
         case AppsAPI::Background:
         case AppsAPI::Backgroundable:
-            if(state() == Paused){
+            if(stateNoSecurityCheck() == Paused){
                 inputManager->clear_touch_buffer(touchScreen.fd);
                 kill(-m_process->processId(), SIGCONT);
             }
@@ -174,7 +174,7 @@ void Application::stop(){
     if(!hasPermission("apps")){
         return;
     }
-    auto state = this->state();
+    auto state = this->stateNoSecurityCheck();
     if(state == Inactive){
         return;
     }
@@ -187,7 +187,7 @@ void Application::stop(){
     m_process->terminate();
     // Try to wait for the application to stop normally before killing it
     int tries = 0;
-    while(this->state() != Inactive){
+    while(this->stateNoSecurityCheck() != Inactive){
         m_process->waitForFinished(100);
         if(++tries == 5){
             m_process->kill();
@@ -208,7 +208,7 @@ void Application::unregister(){
     appsAPI->unregisterApplication(this);
 }
 
-int Application::state(){
+int Application::stateNoSecurityCheck(){
     switch(m_process->state()){
         case QProcess::Starting:
         case QProcess::Running:{
@@ -278,4 +278,4 @@ void Application::errorOccurred(QProcess::ProcessError error){
             qDebug() << "Application" << name() << "unknown error.";
     }
 }
-bool Application::hasPermission(QString permission){ return appsAPI->hasPermission(permission); }
+bool Application::hasPermission(QString permission, const char* sender){ return appsAPI->hasPermission(permission, sender); }

@@ -231,6 +231,7 @@ public:
         connect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
         connect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
     }
+    Apps* getAppsApi() { return appsApi; }
 signals:
     void reload();
     void automaticSleepChanged(bool);

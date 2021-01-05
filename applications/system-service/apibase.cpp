@@ -1,12 +1,12 @@
 #include "apibase.h"
 #include "appsapi.h"
 
-int APIBase::hasPermission(QString permission){
+int APIBase::hasPermission(QString permission, const char* sender){
     if(getpgid(getpid()) == getSenderPgid()){
         return true;
     }
-    qDebug() << "Checking permission" << permission;
-    for(auto name : appsAPI->runningApplications().keys()){
+    qDebug() << "Checking permission" << permission << "from" << sender;
+    for(auto name : appsAPI->runningApplicationsNoSecurityCheck().keys()){
         auto app = appsAPI->getApplication(name);
         if(app == nullptr){
             continue;

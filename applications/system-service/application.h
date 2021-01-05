@@ -244,7 +244,13 @@ public:
     bool systemApp() { return flags().contains("system"); }
     bool hidden() { return flags().contains("hidden"); }
     int type() { return (int)value("type", 0).toInt(); }
-    int state();
+    int state(){
+        if(!hasPermission("apps")){
+            return Inactive;
+        }
+        return stateNoSecurityCheck();
+    }
+    int stateNoSecurityCheck();
     QString icon() { return value("icon", "").toString(); }
     void setIcon(QString icon){
         if(!hasPermission("permissions")){
@@ -434,7 +440,7 @@ private:
     size_t screenCaptureSize;
     QElapsedTimer timer;
 
-    bool hasPermission(QString permission);
+    bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds){
         timer.invalidate();
         timer.start();

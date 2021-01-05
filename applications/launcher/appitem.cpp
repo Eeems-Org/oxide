@@ -42,16 +42,15 @@ Application* AppItem::getApp(){
     if(app != nullptr){
         return app;
     }
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("apps");
-    if(path.path() == "/"){
+    auto controller = (Controller*)parent();
+    auto apps = controller->getAppsApi();
+    if(apps == nullptr){
         qDebug() << "Unable to acces Apps API";
         return nullptr;
     }
-    Apps apps(OXIDE_SERVICE, path.path(), bus);
+    auto bus = QDBusConnection::systemBus();
     QDBusObjectPath appPath;
-    auto applications = apps.applications();
+    auto applications = apps->applications();
     if(!applications.contains(_name)){
         qDebug() << "Couldn't find Application instance";
         return nullptr;

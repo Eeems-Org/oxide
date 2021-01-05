@@ -35,4 +35,4 @@ QDBusObjectPath BSS::network(){
     return networks.first();
 }
 
-bool BSS::hasPermission(QString permission){ return wifiAPI->hasPermission(permission); }
+bool BSS::hasPermission(QString permission, const char* sender){ return wifiAPI->hasPermission(permission,sender); }

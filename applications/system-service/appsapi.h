@@ -170,19 +170,22 @@ public:
             return QDBusObjectPath("/");
         }
         for(auto app : applications){
-            if(app->state() == Application::InForeground){
+            if(app->stateNoSecurityCheck() == Application::InForeground){
                 return app->qPath();
             }
         }
         return QDBusObjectPath("/");
     }
     QVariantMap runningApplications(){
-        QVariantMap result;
         if(!hasPermission("apps")){
-            return result;
+            return QVariantMap();
         }
+        return runningApplicationsNoSecurityCheck();
+    }
+    QVariantMap runningApplicationsNoSecurityCheck(){
+        QVariantMap result;
         for(auto app : applications){
-            auto state = app->state();
+            auto state = app->stateNoSecurityCheck();
             if(state == Application::InForeground || state == Application::InBackground){
                 result.insert(app->name(), QVariant::fromValue(app->qPath()));
             }
@@ -195,7 +198,7 @@ public:
             return result;
         }
         for(auto app : applications){
-            auto state = app->state();
+            auto state = app->stateNoSecurityCheck();
             if(state == Application::Paused){
                 result.insert(app->name(), QVariant::fromValue(app->qPath()));
             }
@@ -221,7 +224,7 @@ public:
             return;
         }
         for(auto app : applications){
-            if(app->state() == Application::InForeground){
+            if(app->stateNoSecurityCheck() == Application::InForeground){
                 return;
             }
         }
@@ -291,7 +294,7 @@ public slots:
         }
         auto path = this->currentApplication();
         auto currentApplication = getApplication(path);
-        if(currentApplication->state() != Application::Inactive && (path == m_startupApplication || path == m_lockscreenApplication)){
+        if(currentApplication->stateNoSecurityCheck() != Application::Inactive && (path == m_startupApplication || path == m_lockscreenApplication)){
             qDebug() << "Already in default application";
             return;
         }
@@ -307,7 +310,7 @@ public slots:
         }
         auto path = this->currentApplication();
         auto currentApplication = getApplication(path);
-        if(currentApplication->state() != Application::Inactive && path == m_lockscreenApplication){
+        if(currentApplication->stateNoSecurityCheck() != Application::Inactive && path == m_lockscreenApplication){
             qDebug() << "Can't open task manager, on the lockscreen";
             return;
         }

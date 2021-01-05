@@ -108,7 +108,7 @@ private:
     QFile* m_file;
     QMutex mutex;
 
-    bool hasPermission(QString permission);
+    bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 };
 
 #endif // SCREENSHOT_H

@@ -89,4 +89,4 @@ const QRect Notification::paintNotification(){
     return rect;
 }
 
-bool Notification::hasPermission(QString permission){ return notificationAPI->hasPermission(permission); }
+bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }

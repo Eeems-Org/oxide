@@ -226,7 +226,7 @@ private:
     QString m_protocol;
     bool m_enabled = false;
 
-    bool hasPermission(QString permission);
+    bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 
     QVariantMap realProps(){
         QVariantMap props(m_properties);

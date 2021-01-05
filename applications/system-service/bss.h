@@ -142,7 +142,7 @@ private:
     QString m_bssid;
     QString m_ssid;
 
-    bool hasPermission(QString permission);
+    bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 };
 
 #endif // BSS_H
