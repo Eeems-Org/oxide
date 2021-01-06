@@ -25,13 +25,37 @@ string exec(const char* cmd) {
     return result;
 }
 
-TaskItem::TaskItem(const std::string& pid) : QObject(nullptr), _pid(stoi(pid)){
-    std::string path = "/proc/" + to_string(_pid) + "/status";
-    _name = QString::fromStdString(exec(("cat " + path + " | grep Name: | awk '{print$2}'").c_str())).trimmed();
-    _ppid = stoi(exec(("cat " + path + " | grep PPid: | awk '{print$2}'").c_str()));
+TaskItem::TaskItem(int pid) : QObject(nullptr), _pid(pid){
+    QString file_content=readFile(QString::fromStdString("/proc/" + to_string(_pid) + "/status"));
+    _name = parseRegex(file_content,QRegularExpression("^Name:\\t+(\\w+)"));
+    _ppid = parseRegex(file_content,QRegularExpression("^PPid:\\t+(\\d+)",QRegularExpression::MultilineOption)).toInt();
     _killable = _ppid;
 }
 
 bool TaskItem::signal(int signal){
     return kill(_pid, signal);
+}
+
+QString TaskItem::parseRegex(QString &file_content, const QRegularExpression &reg){
+    QRegularExpressionMatchIterator i = reg.globalMatch(file_content);
+    if (!i.isValid()){
+         return "";
+    }
+    QString result="";
+    while (i.hasNext()){
+          QRegularExpressionMatch match = i.next();
+          result=match.captured(1);
+    }
+    return result;
+}
+
+QString TaskItem::readFile(const QString &path){
+    QFile file(path);
+    if(!file.open(QIODevice::ReadOnly)){
+        qDebug()<<"Error reading file: " + path;
+        return "";
+    }
+    auto data = file.readAll();
+    file.close();
+    return data;
 }
