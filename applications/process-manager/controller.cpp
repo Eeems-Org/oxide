@@ -36,6 +36,7 @@ void Controller::sortBy(QString key){
     sort();
     context->setContextProperty("tasks", QVariant::fromValue(tasks));
     mutex.unlock();
+    emit reload();
 }
 
 QList<QObject*> Controller::getTasks(){
