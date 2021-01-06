@@ -73,19 +73,17 @@ void Controller::loadSettings(){
         configFile->close();
     }
     qDebug() << "Finished parsing config file.";
-    if(systemApi != nullptr){
-        qDebug() << "Getting settings from system service...";
-        auto sleepAfter = systemApi->autoSleep();
-        bool autoSleep = sleepAfter;
-        qDebug() << "Automatic sleep" << sleepAfter;
-        if(m_automaticSleep != autoSleep){
-            setAutomaticSleep(autoSleep);
-        }
-        if(sleepAfter != m_sleepAfter){
-            setSleepAfter(sleepAfter);
-        }
-        qDebug() << "Finished getting settings from system service.";
+    qDebug() << "Getting settings from system service...";
+    auto sleepAfter = systemApi->autoSleep();
+    bool autoSleep = sleepAfter;
+    qDebug() << "Automatic sleep" << sleepAfter;
+    if(m_automaticSleep != autoSleep){
+        setAutomaticSleep(autoSleep);
     }
+    if(sleepAfter != m_sleepAfter){
+        setSleepAfter(sleepAfter);
+    }
+    qDebug() << "Finished getting settings from system service.";
     if(root){
         qDebug() << "Updating UI with settings from config file...";
         // Populate settings in UI
@@ -105,7 +103,7 @@ void Controller::loadSettings(){
         if(!sleepAfterSpinBox){
             qDebug() << "Can't find sleepAfterSpinBox";
         }else{
-            sleepAfterSpinBox->setProperty("value", sleepAfter());
+            sleepAfterSpinBox->setProperty("value", this->sleepAfter());
         }
         qDebug() << "Finished updating UI.";
     }
@@ -169,24 +167,18 @@ void Controller::saveSettings(){
     configFile->resize(0);
     stream << QString::fromStdString(buffer.str());
     configFile->close();
-    if(systemApi != nullptr){
-        if(!m_automaticSleep){
-            systemApi->setAutoSleep(0);
-        }else{
-            systemApi->setAutoSleep(m_sleepAfter);
-            auto sleepAfter = systemApi->autoSleep();
-            if(sleepAfter != m_sleepAfter){
-                setSleepAfter(sleepAfter);
-            }
+    if(!m_automaticSleep){
+        systemApi->setAutoSleep(0);
+    }else{
+        systemApi->setAutoSleep(m_sleepAfter);
+        auto sleepAfter = systemApi->autoSleep();
+        if(sleepAfter != m_sleepAfter){
+            setSleepAfter(sleepAfter);
         }
     }
     qDebug() << "Done saving configuration.";
 }
 QList<QObject*> Controller::getApps(){
-    if(appsApi == nullptr){
-        qDebug() << "Unable to access apps API";
-        return applications;
-    }
     auto bus = QDBusConnection::systemBus();
     auto running = appsApi->runningApplications();
     auto paused = appsApi->pausedApplications();
@@ -251,10 +243,6 @@ AppItem* Controller::getApplication(QString name){
 }
 
 void Controller::importDraftApps(){
-    if(appsApi == nullptr){
-        qDebug() << "Unable to access apps API";
-        return;
-    }
     qDebug() << "Importing Draft Applications";
     auto bus = QDBusConnection::systemBus();
     for(auto configDirectoryPath : configDirectoryPaths){
@@ -334,38 +322,19 @@ void Controller::importDraftApps(){
 }
 void Controller::powerOff(){
     qDebug() << "Powering off...";
-    if(systemApi == nullptr){
-        qDebug() << "Unable to access system API";
-        system("systemctl poweroff");
-        return;
-    }
     systemApi->powerOff();
 }
 void Controller::reboot(){
     qDebug() << "Rebooting...";
-    if(systemApi == nullptr){
-        qDebug() << "Unable to access system API";
-        system("systemctl reboot");
-        return;
-    }
     systemApi->reboot();
 }
 void Controller::suspend(){
     qDebug() << "Suspending...";
-    if(systemApi == nullptr){
-        qDebug() << "Unable to access system API";
-        system("systemctl suspend");
-        return;
-    }
     systemApi->suspend();
 }
 
 void Controller::lock(){
     qDebug() << "Locking...";
-    if(appsApi == nullptr){
-        qDebug() << "Unable to access system API";
-        return;
-    }
     appsApi->openLockScreen();
 }
 inline void updateUI(QObject* ui, const char* name, const QVariant& value){
@@ -386,9 +355,6 @@ std::string Controller::exec(const char* cmd) {
     return result;
 }
 void Controller::updateUIElements(){
-    if(wifiApi == nullptr){
-        return;
-    }
     if(showWifiDb()){
         QObject* ui = root->findChild<QObject*>("wifiState");
         if(ui){

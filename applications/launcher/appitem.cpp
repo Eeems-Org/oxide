@@ -44,10 +44,6 @@ Application* AppItem::getApp(){
     }
     auto controller = (Controller*)parent();
     auto apps = controller->getAppsApi();
-    if(apps == nullptr){
-        qDebug() << "Unable to acces Apps API";
-        return nullptr;
-    }
     auto bus = QDBusConnection::systemBus();
     QDBusObjectPath appPath;
     auto applications = apps->applications();
