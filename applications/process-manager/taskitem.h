@@ -4,6 +4,9 @@
 #include <QObject>
 #include <QFileInfo>
 #include <string>
+#include <QFile>
+#include <QDebug>
+#include <QRegularExpression>
 
 class TaskItem : public QObject {
     Q_OBJECT
@@ -33,6 +36,8 @@ private:
     int _pid;
     int _ppid;
     bool _killable;
+    QString readFile(const QString &path);
+    QString parseRegex(QString &file_content, const QRegularExpression &reg);
 };
 
 #endif // TASKITEM_H
