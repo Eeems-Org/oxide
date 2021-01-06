@@ -321,6 +321,23 @@ public slots:
         }
         app->launch();
     }
+    void openLockScreen(){
+        if(!hasPermission("apps")){
+            return;
+        }
+        auto path = this->currentApplication();
+        auto currentApplication = getApplication(path);
+        if(currentApplication->stateNoSecurityCheck() != Application::Inactive && path == m_lockscreenApplication){
+            qDebug() << "Already on the lockscreen";
+            return;
+        }
+        auto app = getApplication(m_lockscreenApplication);
+        if(app == nullptr){
+            qDebug() << "Unable to find lockscreen";
+            return;
+        }
+        app->launch();
+    }
 
 private:
     bool m_stopping;

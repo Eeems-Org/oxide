@@ -128,6 +128,14 @@ public slots:
             systemd->PowerOff(false);
         }
     }
+    void reboot() {
+        if(!powerOffInhibited()){
+            qDebug() << "Rebooting...";
+            releasePowerOffInhibitors(true);
+            rguard(false);
+            systemd->Reboot(false);
+        }
+    }
     void activity();
     void inhibitSleep(QDBusMessage message){
         if(!sleepInhibited()){

@@ -160,6 +160,11 @@ public:
             systemApi->powerOff().waitForFinished();
         }
     }
+    Q_INVOKABLE void reboot(){
+        if(!powerOffInhibited()){
+            systemApi->reboot().waitForFinished();
+        }
+    }
     Q_INVOKABLE bool submitPin(QString pin){
         if(pin.length() != 4){
             return false;
@@ -170,6 +175,7 @@ public:
             qDebug() << "PIN matches!";
             QTimer::singleShot(200, [this]{
                 qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
+                deviceSuspending();
                 launchStartupApp();
             });
             return true;

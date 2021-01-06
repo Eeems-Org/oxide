@@ -110,7 +110,9 @@ public:
     Q_INVOKABLE QList<QObject*> getApps();
     Q_INVOKABLE void importDraftApps();
     Q_INVOKABLE void powerOff();
+    Q_INVOKABLE void reboot();
     Q_INVOKABLE void suspend();
+    Q_INVOKABLE void lock();
     void updateBatteryLevel();
     bool automaticSleep() const {
         return m_automaticSleep;

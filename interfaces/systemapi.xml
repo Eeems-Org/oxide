@@ -29,6 +29,8 @@
     </method>
     <method name="powerOff">
     </method>
+    <method name="reboot">
+    </method>
     <method name="activity">
     </method>
     <method name="inhibitSleep">

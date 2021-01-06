@@ -341,6 +341,15 @@ void Controller::powerOff(){
     }
     systemApi->powerOff();
 }
+void Controller::reboot(){
+    qDebug() << "Rebooting...";
+    if(systemApi == nullptr){
+        qDebug() << "Unable to access system API";
+        system("systemctl reboot");
+        return;
+    }
+    systemApi->reboot();
+}
 void Controller::suspend(){
     qDebug() << "Suspending...";
     if(systemApi == nullptr){
@@ -349,6 +358,15 @@ void Controller::suspend(){
         return;
     }
     systemApi->suspend();
+}
+
+void Controller::lock(){
+    qDebug() << "Locking...";
+    if(appsApi == nullptr){
+        qDebug() << "Unable to access system API";
+        return;
+    }
+    appsApi->openLockScreen();
 }
 inline void updateUI(QObject* ui, const char* name, const QVariant& value){
     if(ui){

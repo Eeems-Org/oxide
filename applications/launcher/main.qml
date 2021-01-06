@@ -39,7 +39,7 @@ ApplicationWindow {
                         width: 310
                         Action { text: qsTr(" Reload"); onTriggered: appsView.model = controller.getApps() }
                         Action {
-                            text: qsTr(" Import Apps");
+                            text: qsTr(" Import Apps");
                             onTriggered:{
                                 controller.importDraftApps();
                                 appsView.model = controller.getApps();
@@ -151,9 +151,18 @@ ApplicationWindow {
                             onTriggered: controller.suspend();
                         }
                         Action {
+                            text: qsTr(" Restart")
+                            enabled: !controller.powerOffInhibited
+                            onTriggered: controller.restart()
+                        }
+                        Action {
                             text: qsTr(" Shutdown")
                             enabled: !controller.powerOffInhibited
                             onTriggered: controller.powerOff()
+                        }
+                        Action {
+                            text: qsTr(" Lock")
+                            onTriggered: controller.lock()
                         }
                     }
                 }
