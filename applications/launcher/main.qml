@@ -151,9 +151,9 @@ ApplicationWindow {
                             onTriggered: controller.suspend();
                         }
                         Action {
-                            text: qsTr(" Restart")
+                            text: qsTr(" Reboot")
                             enabled: !controller.powerOffInhibited
-                            onTriggered: controller.restart()
+                            onTriggered: controller.reboot()
                         }
                         Action {
                             text: qsTr(" Shutdown")

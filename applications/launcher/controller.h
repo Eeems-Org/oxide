@@ -152,9 +152,9 @@ public:
             qDebug() << "Power Off Inhibited:" << value;
         });
         connect(systemApi, &System::sleepInhibitedChanged, this, &Controller::sleepInhibitedChanged);
-        connect(systemApi, &System::autoSleepChanged, [=](bool autoSleep){
-            setAutomaticSleep(autoSleep);
-            setSleepAfter(autoSleep);
+        connect(systemApi, &System::autoSleepChanged, [this](int sleepAfter){
+            setAutomaticSleep(sleepAfter);
+            setSleepAfter(sleepAfter);
         });
         emit powerOffInhibitedChanged(powerOffInhibited());
         emit sleepInhibitedChanged(sleepInhibited());
@@ -188,6 +188,8 @@ public:
         connect(notificationApi, &Notifications::notificationRemoved, this, &Controller::notificationRemoved);
         connect(notificationApi, &Notifications::notificationChanged, this, &Controller::notificationChanged);
         connect(notifications, &NotificationList::updated, this, &Controller::notificationsUpdated);
+
+        loadSettings();
 
         uiTimer = new QTimer(this);
         uiTimer->setSingleShot(false);

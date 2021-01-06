@@ -103,9 +103,9 @@ ApplicationWindow {
                             onTriggered: controller.suspend();
                         }
                         Action {
-                            text: qsTr(" Restart")
+                            text: qsTr(" Reboot")
                             enabled: !controller.powerOffInhibited
-                            onTriggered: controller.restart()
+                            onTriggered: controller.reboot()
                         }
                         Action {
                             text: qsTr(" Shutdown")
@@ -131,7 +131,7 @@ ApplicationWindow {
         PinPad {
             id: pinEntry
             objectName: "pinEntry"
-            visible: !~["import", "firstLaunch"].indexOf(stateController.state)
+            visible: false
             anchors.centerIn: parent
             label: {
                 switch(stateController.state){
@@ -252,11 +252,13 @@ ApplicationWindow {
                         console.log("PIN Entry");
                         pinEntry.value = "";
                     } }
+                    PropertyAction { target: pinEntry; property: "visible"; value: true }
                 }
             },
             Transition {
                 from: "*"; to: "firstLaunch"
                 SequentialAnimation {
+                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                     ScriptAction { script: {
                         console.log("Prompt for PIN creation");
                     } }
@@ -269,6 +271,7 @@ ApplicationWindow {
                         console.log("PIN Confirmation");
                         pinEntry.value = "";
                     } }
+                    PropertyAction { target: pinEntry; property: "visible"; value: true }
                 }
             },
             Transition {
@@ -277,6 +280,7 @@ ApplicationWindow {
                     ScriptAction { script: {
                         console.log("Import PIN");
                     } }
+                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                 }
             },
             Transition {
@@ -286,11 +290,13 @@ ApplicationWindow {
                         console.log("PIN Setup");
                         pinEntry.value = "";
                     } }
+                    PropertyAction { target: pinEntry; property: "visible"; value: true }
                 }
             },
             Transition {
                 from: "*"; to: "loading"
                 SequentialAnimation {
+                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                     ScriptAction { script: {
                         console.log("Loading display");
                         controller.startup();

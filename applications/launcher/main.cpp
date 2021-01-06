@@ -61,7 +61,6 @@ int main(int argc, char *argv[]){
     controller->filter = filter;
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
-    controller->loadSettings();
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("apps", QVariant::fromValue(controller->getApps()));
     context->setContextProperty("controller", controller);
