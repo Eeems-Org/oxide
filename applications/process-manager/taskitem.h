@@ -4,11 +4,14 @@
 #include <QObject>
 #include <QFileInfo>
 #include <string>
+#include <QFile>
+#include <QDebug>
+#include <QRegularExpression>
 
 class TaskItem : public QObject {
     Q_OBJECT
 public:
-    explicit TaskItem(const std::string& pid);
+    explicit TaskItem(int pid);
     Q_PROPERTY(QString name MEMBER _name NOTIFY nameChanged);
     Q_PROPERTY(int pid MEMBER _pid READ pid NOTIFY pidChanged);
     Q_PROPERTY(int ppid MEMBER _ppid NOTIFY ppidChanged);
@@ -33,6 +36,8 @@ private:
     int _pid;
     int _ppid;
     bool _killable;
+    QString readFile(const QString &path);
+    QString parseRegex(QString &file_content, const QRegularExpression &reg);
 };
 
 #endif // TASKITEM_H
