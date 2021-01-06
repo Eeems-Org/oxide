@@ -73,40 +73,31 @@ void Controller::loadSettings(){
         configFile->close();
     }
     qDebug() << "Finished parsing config file.";
-    qDebug() << "Getting settings from system service...";
     auto sleepAfter = systemApi->autoSleep();
-    bool autoSleep = sleepAfter;
     qDebug() << "Automatic sleep" << sleepAfter;
-    if(m_automaticSleep != autoSleep){
-        setAutomaticSleep(autoSleep);
+    setAutomaticSleep(sleepAfter);
+    setSleepAfter(sleepAfter);
+    qDebug() << "Updating UI with settings from config file...";
+    // Populate settings in UI
+    QObject* columnsSpinBox = root->findChild<QObject*>("columnsSpinBox");
+    if(!columnsSpinBox){
+        qDebug() << "Can't find columnsSpinBox";
+    }else{
+        columnsSpinBox->setProperty("value", columns());
     }
-    if(sleepAfter != m_sleepAfter){
-        setSleepAfter(sleepAfter);
+    QObject* fontSizeSpinBox = root->findChild<QObject*>("fontSizeSpinBox");
+    if(!fontSizeSpinBox){
+        qDebug() << "Can't find fontSizeSpinBox";
+    }else{
+        fontSizeSpinBox->setProperty("value", fontSize());
     }
-    qDebug() << "Finished getting settings from system service.";
-    if(root){
-        qDebug() << "Updating UI with settings from config file...";
-        // Populate settings in UI
-        QObject* columnsSpinBox = root->findChild<QObject*>("columnsSpinBox");
-        if(!columnsSpinBox){
-            qDebug() << "Can't find columnsSpinBox";
-        }else{
-            columnsSpinBox->setProperty("value", columns());
-        }
-        QObject* fontSizeSpinBox = root->findChild<QObject*>("fontSizeSpinBox");
-        if(!fontSizeSpinBox){
-            qDebug() << "Can't find fontSizeSpinBox";
-        }else{
-            fontSizeSpinBox->setProperty("value", fontSize());
-        }
-        QObject* sleepAfterSpinBox = root->findChild<QObject*>("sleepAfterSpinBox");
-        if(!sleepAfterSpinBox){
-            qDebug() << "Can't find sleepAfterSpinBox";
-        }else{
-            sleepAfterSpinBox->setProperty("value", this->sleepAfter());
-        }
-        qDebug() << "Finished updating UI.";
+    QObject* sleepAfterSpinBox = root->findChild<QObject*>("sleepAfterSpinBox");
+    if(!sleepAfterSpinBox){
+        qDebug() << "Can't find sleepAfterSpinBox";
+    }else{
+        sleepAfterSpinBox->setProperty("value", this->sleepAfter());
     }
+    qDebug() << "Finished updating UI.";
 }
 void Controller::saveSettings(){
     qDebug() << "Saving configuration...";
@@ -174,6 +165,7 @@ void Controller::saveSettings(){
         auto sleepAfter = systemApi->autoSleep();
         if(sleepAfter != m_sleepAfter){
             setSleepAfter(sleepAfter);
+            setAutomaticSleep(sleepAfter);
         }
     }
     qDebug() << "Done saving configuration.";
@@ -371,14 +363,12 @@ void Controller::updateUIElements(){
 }
 void Controller::setAutomaticSleep(bool state){
     m_automaticSleep = state;
-    if(root != nullptr){
-        if(state){
-            qDebug() << "Enabling automatic sleep";
-        }else{
-            qDebug() << "Disabling automatic sleep";
-        }
-        emit automaticSleepChanged(state);
+    if(state){
+        qDebug() << "Enabling automatic sleep";
+    }else{
+        qDebug() << "Disabling automatic sleep";
     }
+    emit automaticSleepChanged(state);
 }
 void Controller::setColumns(int columns){
     m_columns = columns;
@@ -420,8 +410,6 @@ void Controller::setShowBatteryTemperature(bool state){
 }
 void Controller::setSleepAfter(int sleepAfter){
     m_sleepAfter = sleepAfter;
-    if(root != nullptr){
-        qDebug() << "Sleep After: " << sleepAfter << " minutes";
-        emit sleepAfterChanged(m_sleepAfter);
-    }
+    qDebug() << "Sleep After: " << sleepAfter << " minutes";
+    emit sleepAfterChanged(m_sleepAfter);
 }

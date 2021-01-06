@@ -156,6 +156,9 @@ public:
             setAutomaticSleep(sleepAfter);
             setSleepAfter(sleepAfter);
         });
+        auto autoSleep = systemApi->autoSleep();
+        setAutomaticSleep(autoSleep);
+        setSleepAfter(autoSleep);
         emit powerOffInhibitedChanged(powerOffInhibited());
         emit sleepInhibitedChanged(sleepInhibited());
         reply = api.requestAPI("apps");
@@ -189,8 +192,6 @@ public:
         connect(notificationApi, &Notifications::notificationChanged, this, &Controller::notificationChanged);
         connect(notifications, &NotificationList::updated, this, &Controller::notificationsUpdated);
 
-        loadSettings();
-
         uiTimer = new QTimer(this);
         uiTimer->setSingleShot(false);
         uiTimer->setInterval(3 * 1000); // 3 seconds
@@ -198,6 +199,7 @@ public:
         uiTimer->start();
     }
     Q_INVOKABLE void startup(){
+        loadSettings();
         if(m_autoStartApplication.isEmpty()){
             qDebug() << "No auto start application";
             return;

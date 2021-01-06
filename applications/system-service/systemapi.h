@@ -105,7 +105,7 @@ public:
     void setEnabled(bool enabled){
         qDebug() << "System API" << enabled;
     }
-    int autoSleep(){ return m_autoSleep; }
+    int autoSleep(){return m_autoSleep; }
     void setAutoSleep(int autoSleep);
     bool sleepInhibited(){ return sleepInhibitors.length(); }
     bool powerOffInhibited(){ return powerOffInhibitors.length(); }
