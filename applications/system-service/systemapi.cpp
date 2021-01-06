@@ -7,6 +7,7 @@
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
+        wifiAPI->stopUpdating();
         emit deviceSuspending();
         auto path = appsAPI->currentApplication();
         if(path.path() != "/"){
@@ -20,7 +21,6 @@ void SystemAPI::PrepareForSleep(bool suspending){
         }else{
             screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
         }
-        qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
         if(device == DeviceSettings::DeviceType::RM2){
             if(wifiAPI->state() != WifiAPI::State::Off){
@@ -30,6 +30,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
             system("rmmod brcmfmac");
         }
         releaseSleepInhibitors();
+        qDebug() << "Suspending...";
     }else{
         inhibitSleep();
         qDebug() << "Resuming...";
@@ -56,6 +57,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 wifiAPI->enable();
             }
         }
+        wifiAPI->resumeUpdating();
     }
 }
 void SystemAPI::setAutoSleep(int autoSleep){

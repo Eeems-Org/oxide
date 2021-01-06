@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QMutableListIterator>
 #include <QTimer>
+#include <QMutex>
 
 #include "apibase.h"
 #include "buttonhandler.h"
@@ -55,7 +56,8 @@ public:
        suspendTimer(this),
        settings(this),
        sleepInhibitors(),
-       powerOffInhibitors() {
+       powerOffInhibitors(),
+       mutex() {
         settings.sync();
         singleton(this);
         this->resumeApp = nullptr;
@@ -113,6 +115,8 @@ public:
         suspendTimer.stop();
     }
     void startSuspendTimer();
+    void lock(){ mutex.lock(); }
+    void unlock() { mutex.unlock(); }
 public slots:
     void suspend(){
         if(!sleepInhibited()){
@@ -186,6 +190,7 @@ private:
     QSettings settings;
     QStringList sleepInhibitors;
     QStringList powerOffInhibitors;
+    QMutex mutex;
     int m_autoSleep;
     bool wifiWasOn = false;
 

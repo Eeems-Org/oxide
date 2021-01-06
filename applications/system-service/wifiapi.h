@@ -590,6 +590,8 @@ public:
     void BSSPropertiesChanged(const QVariantMap& properties){
         Q_UNUSED(properties);
     }
+    void stopUpdating(){ timer->stop(); }
+    void resumeUpdating(){ timer->start(); }
 
 signals:
     void stateChanged(int);
@@ -751,6 +753,7 @@ private:
             m_link = clink;
             emit linkChanged(clink);
         }
+
     }
     State getCurrentState(){
         State state = Off;
