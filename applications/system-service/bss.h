@@ -109,7 +109,14 @@ public:
         if(!bsss.size()){
             return 0;
         }
-        return bsss.first()->signal();
+        int signal = 0;
+        for(auto bss : bsss){
+            auto s = bss->signal();
+            if(s > signal){
+                signal = s;
+            }
+        }
+        return signal;
     }
     QDBusObjectPath network();
     QStringList key_mgmt(){
