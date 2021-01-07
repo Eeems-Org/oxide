@@ -1,6 +1,7 @@
 #include "systemapi.h"
 #include "appsapi.h"
 #include "powerapi.h"
+#include "devicesettings.h"
 
 void SystemAPI::PrepareForSleep(bool suspending){
     if(suspending){
@@ -14,10 +15,18 @@ void SystemAPI::PrepareForSleep(bool suspending){
         drawSleepImage();
         qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
+        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
+            qDebug() << "Removing module";
+            qDebug() << "Exit code: " << system("rmmod brcmfmac");
+        }
         releaseSleepInhibitors();
     }else{
         inhibitSleep();
         qDebug() << "Resuming...";
+        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
+            qDebug() << "Inserting module";
+            qDebug() << "Exit code: " << system("modprobe brcmfmac");
+        }
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
         if(resumeApp == nullptr){
             resumeApp = appsAPI->getApplication(appsAPI->startupApplication());

@@ -33,12 +33,22 @@ public:
         }
         return "";
     }
+    bool pingIP(std::string ip, const char* port) {
+        return !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port).c_str());
+    }
     bool isConnected(){
         auto ip = exec("ip r | grep " + iface() + " | grep default | awk '{print $3}'");
-        return ip != "" && !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/53").c_str());
+        return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
     }
     int link(){
-        return std::stoi(exec("cat /proc/net/wireless | grep " + iface() + " | awk '{print $3}'"));
+        std::string out = exec("cat /proc/net/wireless | grep " + iface() + " | awk '{print $3}'");
+        try {
+            return std::stoi(out);
+        }
+        catch (const std::invalid_argument& e) {
+            qDebug() << "link failed: " << out.c_str();
+            return 0;
+        }
     }
 signals:
     void BSSAdded(Wlan*, QDBusObjectPath, QVariantMap);

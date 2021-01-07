@@ -17,15 +17,13 @@
 #include "stb_image.h"
 #include "stb_image_write.h"
 #include "fb2png.h"
+#include "devicesettings.h"
 
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
 #define remarkable_color uint16_t
 #define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(remarkable_color)
-#define RDISPLAYWIDTH 1408
-#define RDISPLAYHEIGHT 1920
-#define RDISPLAYSIZE RDISPLAYWIDTH * RDISPLAYHEIGHT * sizeof(remarkable_color)
 
 #define screenAPI ScreenAPI::singleton()
 

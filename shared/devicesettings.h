@@ -24,5 +24,4 @@ public:
     const char* getTouchDevicePath() const;
     const char* getTouchEnvSetting() const;
     DeviceType getDeviceType() const;
-
 };
