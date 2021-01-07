@@ -23,9 +23,6 @@
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
 #define remarkable_color uint16_t
 #define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(remarkable_color)
-#define RDISPLAYWIDTH 1408
-#define RDISPLAYHEIGHT 1920
-#define RDISPLAYSIZE RDISPLAYWIDTH * RDISPLAYHEIGHT * sizeof(remarkable_color)
 
 #define screenAPI ScreenAPI::singleton()
 
