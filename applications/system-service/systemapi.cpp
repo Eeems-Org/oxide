@@ -13,15 +13,6 @@ void SystemAPI::PrepareForSleep(bool suspending){
             resumeApp = nullptr;
         }
         drawSleepImage();
-        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
-            // RM2 needs some time to draw sleep image
-            // 0.5s is sometimes not enough, so I set it to 0.6s
-            struct timespec args{
-                .tv_sec = 0,
-                .tv_nsec = 600000000,
-            };
-            nanosleep(&args, NULL);
-        }
         qDebug() << "Suspending...";
         buttonHandler->setEnabled(false);
         if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
