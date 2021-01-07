@@ -29,6 +29,7 @@ class AppsAPI : public APIBase {
     Q_PROPERTY(QDBusObjectPath startupApplication READ startupApplication WRITE setStartupApplication)
     Q_PROPERTY(QDBusObjectPath lockscreenApplication READ lockscreenApplication WRITE setLockscreenApplication)
     Q_PROPERTY(QVariantMap applications READ getApplications)
+    Q_PROPERTY(QStringList previousApplications READ getPreviousApplications)
     Q_PROPERTY(QDBusObjectPath currentApplication READ currentApplication)
     Q_PROPERTY(QVariantMap runningApplications READ runningApplications)
     Q_PROPERTY(QVariantMap pausedApplications READ pausedApplications)
@@ -228,6 +229,9 @@ public:
                 return;
             }
         }
+        if(previousApplicationNoSecurityCheck()){
+            return;
+        }
         auto app = getApplication(m_startupApplication);
         if(app != nullptr){
             app->launch();
@@ -241,6 +245,7 @@ public:
         }
         return nullptr;
     }
+    QStringList getPreviousApplications(){ return previousApplications; }
     Q_INVOKABLE QDBusObjectPath getApplicationPath(QString name){
         if(!hasPermission("apps")){
             return QDBusObjectPath("/");
@@ -277,6 +282,51 @@ public:
             break;
         }
     }
+    Q_INVOKABLE bool previousApplication(){
+        if(!hasPermission("apps")){
+            return false;
+        }
+        return previousApplicationNoSecurityCheck();
+    }
+    bool previousApplicationNoSecurityCheck(){
+        if(previousApplications.isEmpty()){
+            qDebug() << "No previous applications";
+            return false;
+        }
+        bool found = false;
+        while(!previousApplications.isEmpty()){
+            auto name = previousApplications.takeLast();
+            auto application = getApplication(name);
+            if(application == nullptr){
+                continue;
+            }
+            auto currentApplication = getApplication(this->currentApplication());
+            if(currentApplication != nullptr){
+                currentApplication->pause(false);
+            }
+            application->launch();
+            qDebug() << "Resuming previous application" << application->name();
+            found = true;
+            break;
+        }
+        return found;
+    }
+    void recordPreviousApplication(){
+        auto currentApplication = getApplication(this->currentApplication());
+        if(currentApplication == nullptr){
+            qWarning() << "Unable to find current application";
+            return;
+        }
+        if(currentApplication->qPath() == lockscreenApplication()){
+            return;
+        }
+        if(!previousApplications.isEmpty() && previousApplications.last() == currentApplication->name()){
+            return;
+        }
+        qDebug() << "Recording previous app" << currentApplication->name();
+        previousApplications.append(currentApplication->name());
+    }
+
 signals:
     void applicationRegistered(QDBusObjectPath);
     void applicationLaunched(QDBusObjectPath);
@@ -343,6 +393,7 @@ private:
     bool m_stopping;
     bool m_enabled;
     QMap<QString, Application*> applications;
+    QStringList previousApplications;
     QSettings settings;
     QDBusObjectPath m_startupApplication;
     QDBusObjectPath m_lockscreenApplication;
@@ -353,6 +404,7 @@ private:
         static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
         return QString(OXIDE_SERVICE_PATH) + "/apps/" + QUuid::createUuidV5(NS, name).toString(QUuid::Id128);
     }
+
     void writeApplications(){
         auto apps = applications.values();
         int size = apps.size();

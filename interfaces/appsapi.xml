@@ -7,6 +7,7 @@
     <property name="applications" type="a{sv}" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
     </property>
+    <property name="previousApplications" type="as" access="read"/>
     <property name="currentApplication" type="o" access="read"/>
     <property name="runningApplications" type="a{sv}" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
@@ -60,6 +61,9 @@
     <method name="getApplicationPath">
       <arg type="o" direction="out"/>
       <arg name="name" type="s" direction="in"/>
+    </method>
+    <method name="previousApplication">
+      <arg type="b" direction="out"/>
     </method>
   </interface>
 </node>

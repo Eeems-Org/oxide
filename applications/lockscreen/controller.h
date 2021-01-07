@@ -131,7 +131,7 @@ public:
         }
 
         if(!storedPin().length()){
-            launchStartupApp();
+            previousApplication();
             return;
         }
 
@@ -139,7 +139,7 @@ public:
             stateControllerUI->setProperty("state", "loaded");
         });
     }
-    Q_INVOKABLE void launchStartupApp(){
+    void launchStartupApp(){
         QDBusObjectPath path = appsApi->startupApplication();
         if(path.path() == "/"){
             path = appsApi->getApplicationPath("codes.eeems.oxide");
@@ -149,6 +149,11 @@ public:
         }
         Application app(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus());
         app.launch();
+    }
+    void previousApplication(){
+        if(!appsApi->previousApplication()){
+            launchStartupApp();
+        }
     }
     Q_INVOKABLE void suspend(){
         if(!sleepInhibited()){
@@ -182,7 +187,7 @@ public:
                 qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 500);
                 QTimer::singleShot(200, [this]{
                     deviceSuspending();
-                    launchStartupApp();
+                    previousApplication();
                 });
             });
             return true;
@@ -209,7 +214,7 @@ public:
         QTimer::singleShot(200, [this]{
             qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
             setState("loaded");
-            launchStartupApp();
+            previousApplication();
         });
         return true;
     }

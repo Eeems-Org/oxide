@@ -17,6 +17,7 @@ void Application::launch(){
     if(m_process->processId()){
         resume();
     }else{
+        appsAPI->recordPreviousApplication();
         qDebug() << "Launching " << path();
         appsAPI->pauseAll();
         if(m_process->program() != bin()){
@@ -122,6 +123,7 @@ void Application::resume(){
         qDebug() << "Can't Resume" << path() << "Already running!";
         return;
     }
+    appsAPI->recordPreviousApplication();
     qDebug() << "Resuming " << path();
     appsAPI->pauseAll();
     if(type() != AppsAPI::Backgroundable || stateNoSecurityCheck() == Paused){

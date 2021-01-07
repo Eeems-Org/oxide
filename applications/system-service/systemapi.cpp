@@ -9,6 +9,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
     if(suspending){
         wifiAPI->stopUpdating();
         emit deviceSuspending();
+        appsAPI->recordPreviousApplication();
         auto path = appsAPI->currentApplication();
         if(path.path() != "/"){
             resumeApp = appsAPI->getApplication(path);

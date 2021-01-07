@@ -5,6 +5,7 @@ AppsAPI::AppsAPI(QObject* parent)
   m_stopping(false),
   m_enabled(false),
   applications(),
+  previousApplications(),
   settings(this),
   m_startupApplication("/"),
   m_lockscreenApplication("/"),
