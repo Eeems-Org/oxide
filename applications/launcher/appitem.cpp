@@ -42,7 +42,7 @@ Application* AppItem::getApp(){
     if(app != nullptr){
         return app;
     }
-    auto controller = (Controller*)parent();
+    auto controller = reinterpret_cast<Controller*>(parent());
     auto apps = controller->getAppsApi();
     auto bus = QDBusConnection::systemBus();
     QDBusObjectPath appPath;
