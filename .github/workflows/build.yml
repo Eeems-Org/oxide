@@ -32,9 +32,9 @@ jobs:
           path: toltec
       - name: Package
         run: |
-          GIT_REVISION="r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)"
+          rm -rf "$GITHUB_WORKSPACE"/toltec/package/oxide/*
+          echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > "$GITHUB_WORKSPACE"/toltec/package/oxide/version.txt
           cd "$GITHUB_WORKSPACE"/toltec/package/oxide
-          rm -rf *
           tar -czvf ./oxide.tar.gz "$GITHUB_WORKSPACE"/result/*
           cp "$GITHUB_WORKSPACE"/package .
           sudo apt-get install bsdtar tree
