@@ -52,8 +52,9 @@ release: clean
 	INSTALL_ROOT=../../release $(MAKE) -C .build/settings-manager install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/screenshot-tool install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/launcher install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/lockscreen install
 
-build: tarnish erode rot oxide
+build: tarnish erode rot oxide decay fret
 
 erode:
 	mkdir -p .build/process-manager
@@ -79,8 +80,14 @@ fret: tarnish
 	cd .build/screenshot-tool && qmake fret.pro
 	$(MAKE) -C .build/screenshot-tool all
 
-oxide: tarnish erode fret
+oxide: tarnish
 	mkdir -p .build/launcher
 	cp -r applications/launcher/* .build/launcher
 	cd .build/launcher && qmake oxide.pro
 	$(MAKE) -C .build/launcher all
+
+decay: tarnish
+	mkdir -p .build/lockscreen
+	cp -r applications/lockscreen/* .build/lockscreen
+	cd .build/lockscreen && qmake decay.pro
+	$(MAKE) -C .build/lockscreen all

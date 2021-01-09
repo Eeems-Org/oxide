@@ -14,11 +14,9 @@
 
 #include "controller.h"
 #include "dbusservice_interface.h"
-#include "appsapi_interface.h"
-#include "systemapi_interface.h"
 
 QSet<QString> settings = { "columns", "fontSize", "autoStartApplication" };
-QSet<QString> booleanSettings {"showWifiDb", "showBatteryPercent", "showBatteryTemperature" };
+QSet<QString> booleanSettings {"showWifiDb", "showBatteryPercent", "showBatteryTemperature", "showDate" };
 QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
 QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root /.config" };
 
@@ -75,43 +73,31 @@ void Controller::loadSettings(){
         configFile->close();
     }
     qDebug() << "Finished parsing config file.";
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("system");
-    if(path.path() != "/"){
-        System system(OXIDE_SERVICE, path.path(), bus);
-        auto sleepAfter = system.autoSleep();
-        bool autoSleep = sleepAfter;
-        if(m_automaticSleep != autoSleep){
-            setAutomaticSleep(autoSleep);
-        }
-        if(autoSleep && sleepAfter != m_sleepAfter){
-            setSleepAfter(sleepAfter);
-        }
+    auto sleepAfter = systemApi->autoSleep();
+    qDebug() << "Automatic sleep" << sleepAfter;
+    setAutomaticSleep(sleepAfter);
+    setSleepAfter(sleepAfter);
+    qDebug() << "Updating UI with settings from config file...";
+    // Populate settings in UI
+    QObject* columnsSpinBox = root->findChild<QObject*>("columnsSpinBox");
+    if(!columnsSpinBox){
+        qDebug() << "Can't find columnsSpinBox";
+    }else{
+        columnsSpinBox->setProperty("value", columns());
     }
-    if(root){
-        qDebug() << "Updating UI with settings from config file...";
-        // Populate settings in UI
-        QObject* columnsSpinBox = root->findChild<QObject*>("columnsSpinBox");
-        if(!columnsSpinBox){
-            qDebug() << "Can't find columnsSpinBox";
-        }else{
-            columnsSpinBox->setProperty("value", columns());
-        }
-        QObject* fontSizeSpinBox = root->findChild<QObject*>("fontSizeSpinBox");
-        if(!fontSizeSpinBox){
-            qDebug() << "Can't find fontSizeSpinBox";
-        }else{
-            fontSizeSpinBox->setProperty("value", fontSize());
-        }
-        QObject* sleepAfterSpinBox = root->findChild<QObject*>("sleepAfterSpinBox");
-        if(!sleepAfterSpinBox){
-            qDebug() << "Can't find sleepAfterSpinBox";
-        }else{
-            sleepAfterSpinBox->setProperty("value", sleepAfter());
-        }
-        qDebug() << "Finished updating UI.";
+    QObject* fontSizeSpinBox = root->findChild<QObject*>("fontSizeSpinBox");
+    if(!fontSizeSpinBox){
+        qDebug() << "Can't find fontSizeSpinBox";
+    }else{
+        fontSizeSpinBox->setProperty("value", fontSize());
     }
+    QObject* sleepAfterSpinBox = root->findChild<QObject*>("sleepAfterSpinBox");
+    if(!sleepAfterSpinBox){
+        qDebug() << "Can't find sleepAfterSpinBox";
+    }else{
+        sleepAfterSpinBox->setProperty("value", this->sleepAfter());
+    }
+    qDebug() << "Finished updating UI.";
 }
 void Controller::saveSettings(){
     qDebug() << "Saving configuration...";
@@ -172,34 +158,29 @@ void Controller::saveSettings(){
     configFile->resize(0);
     stream << QString::fromStdString(buffer.str());
     configFile->close();
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("system");
-    if(path.path() != "/"){
-        System system(OXIDE_SERVICE, path.path(), bus);
-        if(!m_automaticSleep){
-            system.setAutoSleep(0);
-        }else{
-            system.setAutoSleep(m_sleepAfter);
-            auto sleepAfter = system.autoSleep();
-            if(sleepAfter != m_sleepAfter){
-                setSleepAfter(sleepAfter);
-            }
+    if(!m_automaticSleep){
+        systemApi->setAutoSleep(0);
+    }else{
+        systemApi->setAutoSleep(m_sleepAfter);
+        auto sleepAfter = systemApi->autoSleep();
+        if(sleepAfter != m_sleepAfter){
+            setSleepAfter(sleepAfter);
+            setAutomaticSleep(sleepAfter);
         }
     }
     qDebug() << "Done saving configuration.";
 }
 QList<QObject*> Controller::getApps(){
     auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("apps");
-    if(path.path() == "/"){
-        qDebug() << "Unable to access apps API";
-        return applications;
+    auto running = appsApi->runningApplications();
+    auto paused = appsApi->pausedApplications();
+    for(auto key : paused.keys()){
+        if(running.contains(key)){
+            continue;
+        }
+        running.insert(key, paused[key]);
     }
-    Apps apps(OXIDE_SERVICE, path.path(), bus);
-    auto running = apps.runningApplications().unite(apps.pausedApplications());
-    for(auto item : apps.applications()){
+    for(auto item : appsApi->applications()){
         auto path = item.value<QDBusObjectPath>().path();
         Application app(OXIDE_SERVICE, path, bus, this);
         if(app.hidden()){
@@ -217,6 +198,7 @@ QList<QObject*> Controller::getApps(){
         if(displayName.isEmpty()){
             displayName = name;
         }
+        appItem->setProperty("path", path);
         appItem->setProperty("name", name);
         appItem->setProperty("displayName", displayName);
         appItem->setProperty("desc", app.description());
@@ -253,14 +235,8 @@ AppItem* Controller::getApplication(QString name){
 }
 
 void Controller::importDraftApps(){
+    qDebug() << "Importing Draft Applications";
     auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("apps");
-    if(path.path() == "/"){
-        qDebug() << "Unable to access apps API";
-        return;
-    }
-    Apps apps(OXIDE_SERVICE, path.path(), bus);
     for(auto configDirectoryPath : configDirectoryPaths){
         QDir configDirectory(configDirectoryPath);
         configDirectory.setFilter( QDir::Files | QDir::NoSymLinks | QDir::NoDot | QDir::NoDotDot);
@@ -275,7 +251,7 @@ void Controller::importDraftApps(){
                     continue;
                 }
                 QTextStream in(&file);
-                AppItem app(this);
+                AppItem appItem(this);
                 QString onStop = "";
                 while (!in.atEnd()) {
                     QString line = in.readLine();
@@ -292,25 +268,21 @@ void Controller::importDraftApps(){
                     QSet<QString> known = { "name", "desc", "call" };
                     if(rhs != ":" && rhs != ""){
                         if(known.contains(lhs)){
-                            app.setProperty(lhs.toUtf8(), rhs);
+                            appItem.setProperty(lhs.toUtf8(), rhs);
                         }else if(lhs == "imgFile"){
-                            app.setProperty(lhs.toUtf8(), configDirectoryPath + "/icons/" + rhs + ".png");
+                            appItem.setProperty(lhs.toUtf8(), configDirectoryPath + "/icons/" + rhs + ".png");
                         }else if(lhs == "term"){
                             onStop = rhs.trimmed();
                         }
                     }
                 }
                 file.close();
-                auto name = app.property("name").toString();
-                app.setProperty("displayName", name);
-                if(!app.ok()){
-                    qDebug() << "Invalid configuration" << name;
-                    continue;
-                }
-                QDBusObjectPath path = apps.getApplicationPath(name);
+                auto name = appItem.property("name").toString();
+                appItem.setProperty("displayName", name);
+                QDBusObjectPath path = appsApi->getApplicationPath(name);
                 if(path.path() != "/"){
                     qDebug() << "Already exists" << name;
-                    auto icon = app.property("imgFile").toString();
+                    auto icon = appItem.property("imgFile").toString();
                     if(icon.isEmpty()){
                         continue;
                     }
@@ -320,50 +292,42 @@ void Controller::importDraftApps(){
                     }
                     continue;
                 }
-                auto icon = app.property("imgFile").toString();
+                auto icon = appItem.property("imgFile").toString();
                 if(icon.startsWith("qrc:")){
                     icon = "";
                 }
                 QVariantMap properties;
                 properties.insert("name", name);
-                properties.insert("displayName", app.property("displayName"));
-                properties.insert("description", app.property("desc"));
-                properties.insert("bin", app.property("call"));
+                properties.insert("displayName", appItem.property("displayName"));
+                properties.insert("description", appItem.property("desc"));
+                properties.insert("bin", appItem.property("call"));
                 properties.insert("icon", icon);
                 properties.insert("onStop", onStop);
-                path = apps.registerApplication(properties);
+                path = appsApi->registerApplication(properties);
                 if(path.path() == "/"){
                     qDebug() << "Failed to import" << name;
                 }
             }
         }
     }
+    qDebug() << "Finished Importing Draft Applications";
 }
 void Controller::powerOff(){
     qDebug() << "Powering off...";
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("system");
-    if(path.path() == "/"){
-        qDebug() << "Unable to access system API";
-        system("systemctl poweroff");
-        return;
-    }
-    System system(OXIDE_SERVICE, path.path(), bus);
-    system.powerOff();
+    systemApi->powerOff();
+}
+void Controller::reboot(){
+    qDebug() << "Rebooting...";
+    systemApi->reboot();
 }
 void Controller::suspend(){
     qDebug() << "Suspending...";
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("system");
-    if(path.path() == "/"){
-        qDebug() << "Unable to access system API";
-        system("systemctl suspend");
-        return;
-    }
-    System system(OXIDE_SERVICE, path.path(), bus);
-    system.suspend();
+    systemApi->suspend();
+}
+
+void Controller::lock(){
+    qDebug() << "Locking...";
+    appsApi->openLockScreen();
 }
 inline void updateUI(QObject* ui, const char* name, const QVariant& value){
     if(ui){
@@ -383,14 +347,11 @@ std::string Controller::exec(const char* cmd) {
     return result;
 }
 void Controller::updateUIElements(){
-    if(wifiApi == nullptr){
-        return;
-    }
     if(showWifiDb()){
         QObject* ui = root->findChild<QObject*>("wifiState");
         if(ui){
             int level = 0;
-            if(wifiConnected){
+            if(ui->property("connected").toBool()){
                 level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
             }
             if(wifiLevel != level){
@@ -402,14 +363,12 @@ void Controller::updateUIElements(){
 }
 void Controller::setAutomaticSleep(bool state){
     m_automaticSleep = state;
-    if(root != nullptr){
-        if(state){
-            qDebug() << "Enabling automatic sleep";
-        }else{
-            qDebug() << "Disabling automatic sleep";
-        }
-        emit automaticSleepChanged(state);
+    if(state){
+        qDebug() << "Enabling automatic sleep";
+    }else{
+        qDebug() << "Disabling automatic sleep";
     }
+    emit automaticSleepChanged(state);
 }
 void Controller::setColumns(int columns){
     m_columns = columns;
@@ -451,8 +410,6 @@ void Controller::setShowBatteryTemperature(bool state){
 }
 void Controller::setSleepAfter(int sleepAfter){
     m_sleepAfter = sleepAfter;
-    if(root != nullptr){
-        qDebug() << "Sleep After: " << sleepAfter << " minutes";
-        emit sleepAfterChanged(m_sleepAfter);
-    }
+    qDebug() << "Sleep After: " << sleepAfter << " minutes";
+    emit sleepAfterChanged(m_sleepAfter);
 }

@@ -4,13 +4,15 @@ CONFIG += c++11 console
 CONFIG -= app_bundle
 
 SOURCES += \
+    apibase.cpp \
     application.cpp \
     appsapi.cpp \
     bss.cpp \
     buttonhandler.cpp \
     event_device.cpp \
-    fb2png.cpp \
     network.cpp \
+    notification.cpp \
+    screenshot.cpp \
     sysobject.cpp \
     systemapi.cpp \
     wlan.cpp \
@@ -31,6 +33,10 @@ service.files = ../../assets/etc/systemd/system/tarnish.service
 service.path = /etc/systemd/system/
 INSTALLS += service
 
+applications.files = ../../assets/opt/usr/share/applications/*
+applications.path = /opt/usr/share/applications/
+INSTALLS += applications
+
 system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)
 
 DBUS_INTERFACES += org.freedesktop.login1.xml
@@ -49,15 +55,15 @@ HEADERS += \
     dbussettings.h \
     digitizerhandler.h \
     event_device.h \
-    fb2png.h \
     inputmanager.h \
     mxcfb.h \
     network.h \
+    notification.h \
+    notificationapi.h \
     powerapi.h \
     screenapi.h \
+    screenshot.h \
     signalhandler.h \
-    stb_image.h \
-    stb_image_write.h \
     supplicant.h \
     sysobject.h \
     systemapi.h \

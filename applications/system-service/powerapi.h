@@ -32,7 +32,7 @@ public:
         return instance;
     }
     PowerAPI(QObject* parent)
-    : APIBase(parent), batteries(), chargers(){
+    : APIBase(parent), batteries(), chargers(), m_chargerState(ChargerUnknown){
         singleton(this);
         QDir dir("/sys/class/power_supply");
         qDebug() << "Looking for batteries and chargers...";
@@ -87,8 +87,16 @@ public:
     enum ChargerState { ChargerUnknown, ChargerConnected, ChargerNotConnected };
     Q_ENUM(ChargerState)
 
-    int state(){ return m_state; }
+    int state(){
+        if(!hasPermission("power")){
+            return 0;
+        }
+        return m_state;
+    }
     void setState(int state){
+        if(!hasPermission("power")){
+            return;
+        }
         if(state < State::Normal || state > State::PowerSaving){
             throw QException{};
         }
@@ -96,31 +104,54 @@ public:
         emit stateChanged(state);
     }
 
-    int batteryState() { return m_batteryState; }
+    int batteryState() {
+        if(!hasPermission("power")){
+            return BatteryUnknown;
+        }
+        return m_batteryState;
+    }
     void setBatteryState(int batteryState){
+        if(!hasPermission("power")){
+            return;
+        }
         m_batteryState = batteryState;
         emit batteryStateChanged(batteryState);
     }
 
-    int batteryLevel() { return m_batteryLevel; }
+    int batteryLevel() {
+        if(!hasPermission("power")){
+            return 0;
+        }
+        return m_batteryLevel;
+    }
     void setBatteryLevel(int batteryLevel){
         m_batteryLevel = batteryLevel;
         emit batteryLevelChanged(batteryLevel);
     }
 
-    int batteryTemperature() { return m_batteryTemperature; }
+    int batteryTemperature() {
+        if(!hasPermission("power")){
+            return 0;
+        }
+        return m_batteryTemperature;
+    }
     void setBatteryTemperature(int batteryTemperature){
         m_batteryTemperature = batteryTemperature;
         emit batteryTemperatureChanged(batteryTemperature);
     }
 
-    int chargerState() { return m_chargerState; }
+    int chargerState() {
+        if(!hasPermission("power")){
+            return ChargerUnknown;
+        }
+        return m_chargerState;
+    }
     void setChargerState(int chargerState){
         m_chargerState = chargerState;
         emit chargerStateChanged(chargerState);
     }
 
-Q_SIGNALS:
+signals:
     void stateChanged(int);
     void batteryStateChanged(int);
     void batteryLevelChanged(int);
@@ -138,7 +169,7 @@ private:
     int m_batteryState = BatteryUnknown;
     int m_batteryLevel = 0;
     int m_batteryTemperature = 0;
-    int m_chargerState = ChargerUnknown;
+    int m_chargerState;
     bool m_batteryWarning = false;
     bool m_batteryAlert = false;
     bool m_chargerWarning = false;

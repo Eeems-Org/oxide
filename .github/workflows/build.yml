@@ -3,25 +3,52 @@ name: Build oxide
 on: [push, pull_request]
 
 jobs:
-  build-test:
+  build:
+    name: Build and package
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2.3.1
-    - uses: cachix/install-nix-action@v12
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - uses: cachix/cachix-action@v8
-      with:
-        name: nix-remarkable
-        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
-    - name: Build
-      run: nix-build --argstr system 'x86_64-linux'
-      timeout-minutes: 15
-    - name: 
-      run: mkdir -p oxide && cp -a result/. oxide
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: oxide
-        path: oxide
+      - uses: actions/checkout@v2.3.1
+      - uses: cachix/install-nix-action@v12
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - uses: cachix/cachix-action@v8
+        with:
+          name: nix-remarkable
+          signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+      - name: Build
+        run: nix-build --argstr system 'x86_64-linux'
+        timeout-minutes: 15
+      - run: mkdir -p oxide && cp -a result/. oxide
+      - name: Save the build
+        uses: actions/upload-artifact@v2
+        with:
+          name: oxide
+          path: oxide
+      - name: Checkout toltec Git repository
+        uses: actions/checkout@v2
+        with:
+          repository: toltec-dev/toltec.git
+          ref: testing
+          path: toltec
+      - name: Package
+        run: |
+          rm -rf "$GITHUB_WORKSPACE"/toltec/package/oxide/*
+          echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > "$GITHUB_WORKSPACE"/toltec/package/oxide/version.txt
+          cd "$GITHUB_WORKSPACE"/toltec/package/oxide
+          tar -czvf ./oxide.tar.gz "$GITHUB_WORKSPACE"/result/*
+          cp "$GITHUB_WORKSPACE"/package .
+          sudo apt-get install bsdtar tree
+          cd "$GITHUB_WORKSPACE"/toltec
+          make oxide
+          mkdir "$GITHUB_WORKSPACE"/output
+          find . -name '*.ipk' | while read -r file; do
+            cp "$file" "$GITHUB_WORKSPACE/output/$(basename $file)"
+          done
+        timeout-minutes: 15
+      - name: Save the packages
+        uses: actions/upload-artifact@v2
+        with:
+          name: packages
+          path: output
+        
 

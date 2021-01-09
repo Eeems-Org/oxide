@@ -1,0 +1,8 @@
+{
+	"displayName": "Screenshot daemon",
+	"description": "Handles taking screenshots",
+	"bin": "/opt/bin/fret",
+        "flags": ["hidden", "autoStart"],
+        "type": "background",
+        "permissions": ["notification", "screen", "system"]
+}

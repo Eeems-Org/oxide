@@ -26,15 +26,26 @@ int Controller::is_uint(std::string input){
 }
 
 void Controller::sortBy(QString key){
+    if(_sortBy == key || !mutex.tryLock(1)){
+        return;
+    }
+    qDebug() << "Sorting by " << key;
+    _lastSortBy = _sortBy;
     _sortBy = key;
     QQmlContext* context = _engine->rootContext();
     sort();
     context->setContextProperty("tasks", QVariant::fromValue(tasks));
+    mutex.unlock();
+    emit reload();
 }
 
 QList<QObject*> Controller::getTasks(){
+    mutex.lock();
     QDir directory("/proc");
     if (!directory.exists() || directory.isEmpty()){
+        for(auto taskItem : tasks){
+            taskItem->deleteLater();
+        }
         tasks.clear();
         qCritical() << "Unable to access /proc";
         return tasks;
@@ -69,11 +80,13 @@ QList<QObject*> Controller::getTasks(){
         auto taskItem = reinterpret_cast<TaskItem*>(i.next());
         const auto pid = taskItem->pid();
         if(!pids.contains(pid)){
+            taskItem->deleteLater();
             i.remove();
         }else{
             pids.removeAll(pid);
         }
     }
+    std::sort(pids.begin(), pids.end());
     // Create TaskItem instances for all new tasks
     for(auto pid : pids){
         auto taskItem = new TaskItem(pid);
@@ -82,11 +95,19 @@ QList<QObject*> Controller::getTasks(){
         tasks.append(taskItem);
     }
     sort();
+    mutex.unlock();
     return tasks;
 }
 void Controller::sort(){
     std::string sortBy = _sortBy.toStdString();
-    std::sort(tasks.begin(), tasks.end(), [sortBy](const QObject* a, const QObject* b) -> bool {
-        return a->property(sortBy.c_str()) < b->property(sortBy.c_str());
+    std::string lastSortBy = _lastSortBy.toStdString();
+
+    std::sort(tasks.begin(), tasks.end(), [sortBy, lastSortBy](const QObject* a, const QObject* b) -> bool {
+        auto aprop = a->property(sortBy.c_str());
+        auto bprop = b->property(sortBy.c_str());
+        if(sortBy != lastSortBy && aprop == bprop){
+            return a->property(lastSortBy.c_str()) < b->property(lastSortBy.c_str());
+        }
+        return aprop < bprop;
     });
 }

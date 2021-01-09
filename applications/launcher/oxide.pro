@@ -16,12 +16,12 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    eventfilter.cpp \
     main.cpp \
     controller.cpp \
     appitem.cpp \
     sysobject.cpp \
-    ../../shared/devicesettings.cpp
+    ../../shared/devicesettings.cpp \
+    ../../shared/eventfilter.cpp
 
 
 RESOURCES += qml.qrc
@@ -48,6 +48,8 @@ DBUS_INTERFACES += ../../interfaces/bss.xml
 DBUS_INTERFACES += ../../interfaces/appsapi.xml
 DBUS_INTERFACES += ../../interfaces/application.xml
 DBUS_INTERFACES += ../../interfaces/systemapi.xml
+DBUS_INTERFACES += ../../interfaces/notificationapi.xml
+DBUS_INTERFACES += ../../interfaces/notification.xml
 
 linux-oe-g++ {
     LIBS += -lqsgepaper
@@ -69,11 +71,11 @@ ls
 HEADERS += \
     controller.h \
     appitem.h \
-    eventfilter.h \
     inputmanager.h \
     mxcfb.h \
+    notificationlist.h \
     sysobject.h \
-    tarnishhandler.h \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h \
+    ../../shared/eventfilter.h \
     wifinetworklist.h

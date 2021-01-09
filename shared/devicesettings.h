@@ -1,20 +1,12 @@
-#pragma once
+#ifndef DEVICESETTINGS_H
+#define DEVICESETTINGS_H
 
-enum DeviceType {
-    Unknown,
-    RM1,
-    RM2,
-};
+#define deviceSettings DeviceSettings::instance()
+
 
 class DeviceSettings{
-private:
-    DeviceType _deviceType;
-
-    DeviceSettings();
-    ~DeviceSettings() {};
-    void readDeviceType();
 public:
-
+    enum DeviceType { Unknown, RM1, RM2 };
     static DeviceSettings& instance() {
         static DeviceSettings INSTANCE;
         return INSTANCE;
@@ -24,4 +16,13 @@ public:
     const char* getTouchDevicePath() const;
     const char* getTouchEnvSetting() const;
     DeviceType getDeviceType() const;
+
+private:
+    DeviceType _deviceType;
+
+    DeviceSettings();
+    ~DeviceSettings() {};
+    void readDeviceType();
 };
+
+#endif // DEVICESETTINGS_H

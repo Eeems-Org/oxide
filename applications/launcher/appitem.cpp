@@ -11,59 +11,10 @@
 #include "mxcfb.h"
 #include "controller.h"
 
-bool AppItem::ok(){
-    if(_name.isEmpty()){
-        qDebug() << "Missing name";
-        return false;
-    }
-    if(_call.isEmpty()){
-        qDebug() << "Missing executable";
-        return false;
-    }
-    if(_displayName.isEmpty()){
-        qDebug() << "Missing display name";
-        return false;
-    }
-    if(!QFile(_call).exists()){
-        qDebug() << "Executable doesn't exist";
-        return false;
-    }
-    if(app != nullptr){
-        return true;
-    }
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("apps");
-    if(path.path() == "/"){
-        qDebug() << "Unable to acces Apps API";
-        return false;
-    }
-    Apps apps(OXIDE_SERVICE, path.path(), bus);
-    QDBusObjectPath appPath;
-    auto applications = apps.applications();
-    if(!applications.contains(_name)){
-        QVariantMap properties;
-        properties.insert("name", _name);
-        properties.insert("description", _desc);
-        properties.insert("call", _call);
-        properties.insert("icon", _imgFile);
-        appPath = (QDBusObjectPath)apps.registerApplication(properties);
-    }else{
-        appPath = applications[_name].value<QDBusObjectPath>();
-    }
-    app = new Application(OXIDE_SERVICE, appPath.path(), bus, this);
-    connect(app, &Application::exited, this, &AppItem::exited);
-    if(!app->isValid()){
-        delete app;
-        app = nullptr;
-        qDebug() << "Application API instance is invalid" << app->lastError();
-        return false;
-    }
-    return true;
-}
+bool AppItem::ok(){ return getApp() != nullptr; }
 
 void AppItem::execute(){
-    if(app == nullptr || !app->isValid()){
+    if(!getApp() || !app->isValid()){
         qWarning() << "Application instance is not valid";
         return;
     }
@@ -76,7 +27,7 @@ void AppItem::execute(){
     qDebug() << "Waiting for application to exit...";
 }
 void AppItem::stop(){
-    if(app == nullptr || !app->isValid()){
+    if(!getApp() || !app->isValid()){
         qWarning() << "Application instance is not valid";
         return;
     }
@@ -85,4 +36,29 @@ void AppItem::stop(){
 
 void AppItem::exited(int exitCode){
     qDebug() << "Application exited" << exitCode;
+}
+
+Application* AppItem::getApp(){
+    if(app != nullptr){
+        return app;
+    }
+    auto controller = reinterpret_cast<Controller*>(parent());
+    auto apps = controller->getAppsApi();
+    auto bus = QDBusConnection::systemBus();
+    QDBusObjectPath appPath;
+    auto applications = apps->applications();
+    if(!applications.contains(_name)){
+        qDebug() << "Couldn't find Application instance";
+        return nullptr;
+    }
+    appPath = applications[_name].value<QDBusObjectPath>();
+    auto instance = new Application(OXIDE_SERVICE, appPath.path(), bus, this);
+    if(!instance->isValid()){
+        delete instance;
+        qDebug() << "Application API instance is invalid" << app->lastError();
+        return nullptr;
+    }
+    connect(instance, &Application::exited, this, &AppItem::exited);
+    app = instance;
+    return app;
 }

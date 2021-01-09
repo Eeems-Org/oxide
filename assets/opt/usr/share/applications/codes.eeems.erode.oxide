@@ -1,0 +1,5 @@
+{
+	"displayName": "Process Manager",
+	"description": "List and kill running processes",
+        "bin": "/opt/bin/erode"
+}

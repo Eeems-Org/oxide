@@ -10,12 +10,16 @@
 #include "sysobject.h"
 #include "inputmanager.h"
 #include "wifinetworklist.h"
+#include "notificationlist.h"
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
 #include "wifiapi_interface.h"
 #include "network_interface.h"
 #include "bss_interface.h"
+#include "appsapi_interface.h"
 #include "systemapi_interface.h"
+#include "notification_interface.h"
+#include "notificationapi_interface.h"
 
 #define OXIDE_SERVICE "codes.eeems.oxide1"
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
@@ -38,8 +42,14 @@ class Controller : public QObject
     Q_PROPERTY(bool showBatteryTemperature MEMBER m_showBatteryTemperature WRITE setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged);
     Q_PROPERTY(int sleepAfter MEMBER m_sleepAfter WRITE setSleepAfter NOTIFY sleepAfterChanged);
     Q_PROPERTY(WifiNetworkList* networks MEMBER networks READ getNetworks NOTIFY networksChanged)
+    Q_PROPERTY(NotificationList* notifications MEMBER notifications READ getNotifications NOTIFY notificationsChanged)
     Q_PROPERTY(bool wifiOn MEMBER m_wifion READ wifiOn NOTIFY wifiOnChanged)
     Q_PROPERTY(QString autoStartApplication READ autoStartApplication WRITE setAutoStartApplication NOTIFY autoStartApplicationChanged)
+    Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
+    Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
+    Q_PROPERTY(bool showDate MEMBER m_showDate WRITE setShowDate NOTIFY showDateChanged);
+    Q_PROPERTY(bool hasNotification MEMBER m_hasNotification NOTIFY hasNotificationChanged);
+    Q_PROPERTY(QString notificationText MEMBER m_notificationText NOTIFY notificationTextChanged);
 public:
     static std::string exec(const char* cmd);
     EventFilter* filter;
@@ -52,6 +62,136 @@ public:
       inputManager(),
       applications() {
         networks = new WifiNetworkList();
+        notifications = new NotificationList();
+
+        auto bus = QDBusConnection::systemBus();
+        qDebug() << "Waiting for tarnish to start up";
+        while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
+            struct timespec args{
+                .tv_sec = 1,
+                .tv_nsec = 0,
+            }, res;
+            nanosleep(&args, &res);
+        }
+        qDebug() << "Requesting APIs";
+        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+        connect(&api, &General::aboutToQuit, qApp, &QGuiApplication::quit);
+        auto reply = api.requestAPI("power");
+        reply.waitForFinished();
+        if(reply.isError()){
+            qDebug() << reply.error();
+            qFatal("Could not request power API");
+        }
+        auto path = ((QDBusObjectPath)reply).path();
+        if(path == "/"){
+            qDebug() << "API not available";
+            qFatal("Power API was not available");
+        }
+        powerApi = new Power(OXIDE_SERVICE, path, bus);
+        // Connect to signals
+        connect(powerApi, &Power::batteryLevelChanged, this, &Controller::batteryLevelChanged);
+        connect(powerApi, &Power::batteryStateChanged, this, &Controller::batteryStateChanged);
+        connect(powerApi, &Power::batteryTemperatureChanged, this, &Controller::batteryTemperatureChanged);
+        connect(powerApi, &Power::chargerStateChanged, this, &Controller::chargerStateChanged);
+        connect(powerApi, &Power::stateChanged, this, &Controller::powerStateChanged);
+        connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
+        connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
+        connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
+        reply = api.requestAPI("wifi");
+        reply.waitForFinished();
+        if(reply.isError()){
+            qDebug() << reply.error();
+            qFatal("Could not request wifi API");
+        }
+        path = ((QDBusObjectPath)reply).path();
+        if(path == "/"){
+            qDebug() << "API not available";
+            qFatal("Wifi API was not available");
+        }
+        wifiApi = new Wifi(OXIDE_SERVICE, path, bus);
+        connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
+        connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
+        connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
+        connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
+        networks->setAPI(wifiApi);
+        auto state = wifiApi->state();
+        m_wifion = state != WifiState::WifiOff && state != WifiState::WifiUnknown;
+        QTimer::singleShot(1000, [=](){
+            // Get initial values when UI is ready
+            batteryLevelChanged(powerApi->batteryLevel());
+            batteryStateChanged(powerApi->batteryState());
+            batteryTemperatureChanged(powerApi->batteryTemperature());
+            chargerStateChanged(powerApi->chargerState());
+            powerStateChanged(powerApi->state());
+
+            wifiStateChanged(wifiApi->state());
+            wifiLinkChanged(wifiApi->link());
+            emit wifiOnChanged(m_wifion);
+            if(stateController->property("state") == "wifi"){
+                connectWifiSignals();
+            }
+            auto network = wifiApi->network();
+            if(network.path() != "/"){
+                networkConnected(network);
+            }
+        });
+        reply = api.requestAPI("system");
+        reply.waitForFinished();
+        if(reply.isError()){
+            qDebug() << reply.error();
+            qFatal("Could not request system API");
+        }
+        path = ((QDBusObjectPath)reply).path();
+        if(path == "/"){
+            qDebug() << "API not available";
+            qFatal("System API was not available");
+        }
+        systemApi = new System(OXIDE_SERVICE, path, bus);
+        connect(systemApi, &System::powerOffInhibitedChanged, this, &Controller::powerOffInhibitedChanged);
+        connect(systemApi, &System::powerOffInhibitedChanged, [=](bool value){
+            qDebug() << "Power Off Inhibited:" << value;
+        });
+        connect(systemApi, &System::sleepInhibitedChanged, this, &Controller::sleepInhibitedChanged);
+        connect(systemApi, &System::autoSleepChanged, [this](int sleepAfter){
+            setAutomaticSleep(sleepAfter);
+            setSleepAfter(sleepAfter);
+        });
+        auto autoSleep = systemApi->autoSleep();
+        setAutomaticSleep(autoSleep);
+        setSleepAfter(autoSleep);
+        emit powerOffInhibitedChanged(powerOffInhibited());
+        emit sleepInhibitedChanged(sleepInhibited());
+        reply = api.requestAPI("apps");
+        reply.waitForFinished();
+        if(reply.isError()){
+            qDebug() << reply.error();
+            qFatal("Could not request apps API");
+        }
+        path = ((QDBusObjectPath)reply).path();
+        if(path == "/"){
+            qDebug() << "API not available";
+            qFatal("Apps API was not available");
+        }
+        appsApi = new Apps(OXIDE_SERVICE, path, bus);
+        connect(appsApi, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
+        connect(appsApi, &Apps::applicationRegistered, this, &Controller::registerApplication);
+        reply = api.requestAPI("notification");
+        reply.waitForFinished();
+        if(reply.isError()){
+            qDebug() << reply.error();
+            qFatal("Could not request notification API");
+        }
+        path = ((QDBusObjectPath)reply).path();
+        if(path == "/"){
+            qDebug() << "API not available";
+            qFatal("Notification API was not available");
+        }
+        notificationApi = new Notifications(OXIDE_SERVICE, path, bus);
+        connect(notificationApi, &Notifications::notificationAdded, this, &Controller::notificationAdded);
+        connect(notificationApi, &Notifications::notificationRemoved, this, &Controller::notificationRemoved);
+        connect(notificationApi, &Notifications::notificationChanged, this, &Controller::notificationChanged);
+        connect(notifications, &NotificationList::updated, this, &Controller::notificationsUpdated);
+
         uiTimer = new QTimer(this);
         uiTimer->setSingleShot(false);
         uiTimer->setInterval(3 * 1000); // 3 seconds
@@ -59,6 +199,7 @@ public:
         uiTimer->start();
     }
     Q_INVOKABLE void startup(){
+        loadSettings();
         if(m_autoStartApplication.isEmpty()){
             qDebug() << "No auto start application";
             return;
@@ -76,18 +217,14 @@ public:
         }
         m_wifion = true;
         emit wifiOnChanged(true);
-        if(wifiApi != nullptr){
-            connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-        }
+        connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
         return true;
     };
     Q_INVOKABLE void turnOffWifi(){
         wifiApi->disable();
         m_wifion = false;
         emit wifiOnChanged(false);
-        if(wifiApi != nullptr){
-            disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-        }
+        disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
         networks->removeUnknown();
         wifiApi->flushBSSCache(0);
     };
@@ -99,7 +236,9 @@ public:
     Q_INVOKABLE QList<QObject*> getApps();
     Q_INVOKABLE void importDraftApps();
     Q_INVOKABLE void powerOff();
+    Q_INVOKABLE void reboot();
     Q_INVOKABLE void suspend();
+    Q_INVOKABLE void lock();
     void updateBatteryLevel();
     bool automaticSleep() const {
         return m_automaticSleep;
@@ -125,21 +264,49 @@ public:
         return m_showBatteryTemperature;
     };
     void setShowBatteryTemperature(bool);
-    int sleepAfter() const {
-        auto bus = QDBusConnection::systemBus();
-        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-        QDBusObjectPath path = api.requestAPI("system");
-        if(path.path() != "/"){
-            System system(OXIDE_SERVICE, path.path(), bus);
-            return system.autoSleep();
-        }
-        return 1;
-    };
+    int sleepAfter() const { return systemApi->autoSleep(); };
     void setSleepAfter(int);
+    void setShowDate(bool showDate){
+        m_showDate = showDate;
+        emit showDateChanged(showDate);
+        if(root == nullptr){
+            return;
+        }
+        QObject* clock = root->findChild<QObject*>("clock");
+        if(clock == nullptr){
+            return;
+        }
+        QString text = "";
+        if(showDate){
+            text = QDate::currentDate().toString(Qt::TextDate) + " ";
+        }
+        clock->setProperty("text", text + QTime::currentTime().toString("h:mm a"));
+    }
+    bool showDate(){ return m_showDate; }
+    void setNotification(QString notificationText){
+        if(m_notificationText == notificationText){
+            return;
+        }
+        m_notificationText = notificationText;
+        emit notificationTextChanged(notificationText);
+        if(!m_hasNotification){
+            m_hasNotification = true;
+            emit hasNotificationChanged(true);
+        }
+    }
+    void clearNotification(){
+        m_notificationText = "";
+        emit notificationTextChanged(m_notificationText);
+        m_hasNotification = false;
+        emit hasNotificationChanged(m_hasNotification);
+    }
     QString autoStartApplication() { return m_autoStartApplication; }
     void setAutoStartApplication(QString autoStartApplication);
     bool getPowerConnected(){ return m_powerConnected; }
     WifiNetworkList* getNetworks(){ return networks; }
+    NotificationList* getNotifications() { return notifications; }
+    bool powerOffInhibited(){ return systemApi->powerOffInhibited(); }
+    bool sleepInhibited(){ return systemApi->sleepInhibited(); }
 
     Q_INVOKABLE void disconnectWifiSignals(){
         disconnect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
@@ -178,6 +345,7 @@ public:
         connect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
         connect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
     }
+    Apps* getAppsApi() { return appsApi; }
 signals:
     void reload();
     void automaticSleepChanged(bool);
@@ -190,88 +358,77 @@ signals:
     void networksChanged(WifiNetworkList*);
     void wifiOnChanged(bool);
     void autoStartApplicationChanged(QString);
+    void powerOffInhibitedChanged(bool);
+    void sleepInhibitedChanged(bool);
+    void showDateChanged(bool);
+    void hasNotificationChanged(bool);
+    void notificationTextChanged(QString);
+    void notificationsChanged(NotificationList*);
 
 public slots:
     void updateUIElements();
-    void reconnectToAPI(){
-        auto bus = QDBusConnection::systemBus();
-        qDebug() << "Waiting for tarnish to start up";
-        while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
-            struct timespec args{
-                .tv_sec = 1,
-                .tv_nsec = 0,
-            }, res;
-            nanosleep(&args, &res);
-        }
-        qDebug() << "Requesting APIs";
-        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-        auto reply = api.requestAPI("power");
-        reply.waitForFinished();
-        if(reply.isError()){
-            qDebug() << reply.error();
-            qFatal("Could not request power API");
-        }
-        auto path = ((QDBusObjectPath)reply).path();
-        if(path == "/"){
-            qDebug() << "API not available";
-            qFatal("Power API was not available");
-        }
-        if(powerApi != nullptr){
-            delete powerApi;
-        }
-        powerApi = new Power(OXIDE_SERVICE, path, bus);
-        // Connect to signals
-        connect(powerApi, &Power::batteryLevelChanged, this, &Controller::batteryLevelChanged);
-        connect(powerApi, &Power::batteryStateChanged, this, &Controller::batteryStateChanged);
-        connect(powerApi, &Power::batteryTemperatureChanged, this, &Controller::batteryTemperatureChanged);
-        connect(powerApi, &Power::chargerStateChanged, this, &Controller::chargerStateChanged);
-        connect(powerApi, &Power::stateChanged, this, &Controller::powerStateChanged);
-        connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
-        connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
-        connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
-        reply = api.requestAPI("wifi");
-        reply.waitForFinished();
-        if(reply.isError()){
-            qDebug() << reply.error();
-            qFatal("Could not request power API");
-        }
-        path = ((QDBusObjectPath)reply).path();
-        if(path == "/"){
-            qDebug() << "API not available";
-            qFatal("Wifi API was not available");
-        }
-        if(wifiApi != nullptr){
-            delete wifiApi;
-        }
-        wifiApi = new Wifi(OXIDE_SERVICE, path, bus);
-        connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
-        connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
-        connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
-        connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
-        networks->setAPI(wifiApi);
-        auto state = wifiApi->state();
-        m_wifion = state != WifiState::WifiOff && state != WifiState::WifiUnknown;
-        QTimer::singleShot(1000, [=](){
-            // Get initial values when UI is ready
-            batteryLevelChanged(powerApi->batteryLevel());
-            batteryStateChanged(powerApi->batteryState());
-            batteryTemperatureChanged(powerApi->batteryTemperature());
-            chargerStateChanged(powerApi->chargerState());
-            powerStateChanged(powerApi->state());
 
-            wifiStateChanged(wifiApi->state());
-            wifiLinkChanged(wifiApi->link());
-            emit wifiOnChanged(m_wifion);
-            if(stateController->property("state") == "wifi"){
-                connectWifiSignals();
-            }
-            auto network = wifiApi->network();
-            if(network.path() != "/"){
-                networkConnected(network);
-            }
-        });
-    }
 private slots:
+    void notificationsUpdated(){
+        if(notifications->length() > 1){
+            setNotification(QStringLiteral("%1 notifications").arg(notifications->length()));
+            return;
+        }else if(!notifications->empty()){
+            setNotification("1 notification");
+        }else{
+            clearNotification();
+        }
+        emit notificationsChanged(notifications);
+    }
+    void notificationAdded(const QDBusObjectPath& path){
+        auto notification = new Notification(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this);
+        notifications->append(notification);
+        emit notificationsChanged(notifications);
+        if(notifications->length() > 1){
+            setNotification(QStringLiteral("%1 notifications").arg(notifications->length()));
+            return;
+        }
+        setNotification("1 notification");
+    }
+    void notificationRemoved(const QDBusObjectPath& path){
+        auto notification = notifications->get(path);
+        if(notification == nullptr){
+            return;
+        }
+        notifications->removeAll(notification);
+        delete notification;
+        emit notificationsChanged(notifications);
+        if(notifications->empty()){
+            clearNotification();
+            return;
+        }
+        if(notifications->length() > 1){
+            setNotification(QStringLiteral("%1 notifications").arg(notifications->length()));
+            return;
+        }
+        setNotification("1 notification");
+    }
+    void notificationChanged(const QDBusObjectPath& path){
+        Q_UNUSED(path);
+        emit notificationsChanged(notifications);
+    }
+    void unregisterApplication(QDBusObjectPath path){
+        auto pathString = path.path();
+        for(auto app : applications){
+            if(app->property("path") == pathString){
+                applications.removeAll(app);
+                delete app;
+                emit reload();
+                qDebug() << "Removed" << pathString << "application";
+                return;
+            }
+        }
+        qDebug() << "Unable to find application " << pathString << "to remove";
+    }
+    void registerApplication(QDBusObjectPath path){
+        qDebug() << "New application detected" << path.path();
+        emit reload();
+    }
     void batteryAlert(){
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if(ui){
@@ -363,8 +520,9 @@ private slots:
                 break;
                 case ChargerNotConnected:
                 case ChargerNotPresent:
+                    ui->setProperty("connected", false);
                     m_powerConnected = false;
-                    // Fall through on purpose
+                break;
                 case ChargerUnknown:
                 default:
                     ui->setProperty("connected", false);
@@ -471,17 +629,19 @@ private:
     bool m_automaticSleep = true;
     int m_columns = 6;
     int m_fontSize = 23;
-    int m_sleepAfter = 1;
+    int m_sleepAfter;
     bool m_showWifiDb = false;
     bool m_showBatteryPercent = false;
     bool m_showBatteryTemperature = false;
+    bool m_showDate = false;
     QString m_autoStartApplication = "";
+    bool m_hasNotification = false;
+    QString m_notificationText = "";
 
     bool m_powerConnected = false;
     int wifiState = WifiUnknown;
     int wifiLink = 0;
     int wifiLevel = 0;
-    bool wifiConnected = false;
 
     bool m_wifion;
     SysObject wifi;
@@ -489,7 +649,11 @@ private:
     InputManager inputManager;
     Power* powerApi = nullptr;
     Wifi* wifiApi = nullptr;
+    System* systemApi = nullptr;
+    Apps* appsApi = nullptr;
+    Notifications* notificationApi = nullptr;
     QList<QObject*> applications;
     AppItem* getApplication(QString name);
     WifiNetworkList* networks;
+    NotificationList* notifications;
 };

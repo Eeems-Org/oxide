@@ -5,24 +5,35 @@ import "../widgets"
 
 Item {
     id: root
-    property alias model: networks.model
-    signal closed
     x: (parent.width / 2) - (wifi.width / 2)
     y: (parent.height / 2) - (wifi.height / 2)
+    property alias model: networks.model
+    signal closed
+
+    Timer {
+        id: timer
+        interval: 3
+        repeat: true
+        onTriggered: networks.model.sort()
+    }
     Popup {
+        onVisibleChanged: {
+            if(visible){
+                controller.connectWifiSignals();
+                if(controller.wifiOn){
+                    networks.model.scan(false)
+                }
+                timer.start();
+                wifi.open();
+            }else{
+                timer.stop();
+                controller.disconnectWifiSignals();
+                parent.closed();
+            }
+        }
         id: wifi
         visible: root.visible
         closePolicy: Popup.NoAutoClose
-        onClosed: {
-            controller.disconnectWifiSignals();
-            parent.closed()
-        }
-        onOpened: {
-            controller.connectWifiSignals();
-            if(controller.wifiOn){
-                networks.model.scan(false)
-            }
-        }
         width: 1000
         clip: true
         ColumnLayout {
@@ -175,7 +186,7 @@ Item {
             BetterButton{
                 text: "Close"
                 Layout.fillWidth: true
-                onClicked: wifi.close()
+                onClicked: wifi.close();
             }
         }
     }

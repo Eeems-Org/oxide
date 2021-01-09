@@ -10,6 +10,7 @@
 #include <QDBusConnection>
 
 #include <fstream>
+#include <QGuiApplication>
 
 #include "dbussettings.h"
 #include "powerapi.h"
@@ -17,6 +18,7 @@
 #include "appsapi.h"
 #include "systemapi.h"
 #include "screenapi.h"
+#include "notificationapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
 
@@ -30,7 +32,7 @@ struct APIEntry {
     APIBase* instance;
 };
 
-class DBusService : public QObject {
+class DBusService : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_GENERAL_INTERFACE)
     Q_PROPERTY(int tarnishPid READ tarnishPid)
@@ -40,7 +42,17 @@ public:
         if(instance == nullptr){
             qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
             qDebug() << "Creating DBusService instance";
-            instance = new DBusService();
+            instance = new DBusService(qApp);
+            connect(qApp, &QGuiApplication::aboutToQuit, [=]{
+                if(instance == nullptr){
+                    return;
+                }
+                emit instance->aboutToQuit();
+                qDebug() << "Killing dbus service ";
+                delete instance;
+                qApp->processEvents();
+                instance = nullptr;
+            });
             auto bus = QDBusConnection::systemBus();
             if(!bus.isConnected()){
                 qFatal("Failed to connect to system bus.");
@@ -64,11 +76,7 @@ public:
         }
         return instance;
     }
-    static void shutdown(){
-        qDebug() << "Killing dbus service ";
-        delete singleton();
-    }
-    DBusService() : apis(){
+    DBusService(QObject* parent) : APIBase(parent), apis(){
         apis.insert("wifi", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
             .dependants = new QStringList(),
@@ -94,6 +102,11 @@ public:
             .dependants = new QStringList(),
             .instance = new AppsAPI(this),
         });
+        apis.insert("notification", APIEntry{
+            .path = QString(OXIDE_SERVICE_PATH) + "/notification",
+            .dependants = new QStringList(),
+            .instance = new NotificationAPI(this),
+        });
 
         connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
         connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
@@ -104,8 +117,12 @@ public:
         connect(touchHandler, &DigitizerHandler::activity, systemAPI, &SystemAPI::activity);
         connect(wacomHandler, &DigitizerHandler::activity, systemAPI, &SystemAPI::activity);
         connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
-        connect(systemAPI, &SystemAPI::leftAction, appsAPI, &AppsAPI::leftHeld);
-        connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::homeHeld);
+        connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
+            if(!appsAPI->previousApplicationNoSecurityCheck()){
+                appsAPI->openDefaultApplication();
+            }
+        });
+        connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::openTaskManager);
 
         auto bus = QDBusConnection::systemBus();
         for(auto api : apis){
@@ -118,12 +135,13 @@ public:
         for(auto api : apis){
             api.instance->setEnabled(false);
             bus.unregisterObject(api.path);
-            apiUnavailable(QDBusObjectPath(api.path));
+            emit apiUnavailable(QDBusObjectPath(api.path));
             delete api.instance;
             delete api.dependants;
         }
         apis.clear();
     }
+    void setEnabled(bool enabled){ Q_UNUSED(enabled); };
 
     QObject* getAPI(QString name){
         if(!apis.contains(name)){
@@ -136,6 +154,9 @@ public:
 
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
+        if(!hasPermission(name)){
+            return QDBusObjectPath("/");
+        }
         if(!apis.contains(name)){
             return QDBusObjectPath("/");
         }
@@ -185,6 +206,7 @@ public slots:
 signals:
     void apiAvailable(QDBusObjectPath api);
     void apiUnavailable(QDBusObjectPath api);
+    void aboutToQuit();
 
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){

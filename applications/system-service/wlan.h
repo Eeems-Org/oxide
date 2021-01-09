@@ -17,7 +17,7 @@ public:
     void setInterface(QString path);
     void removeInterface(){
         if(m_interface != nullptr){
-            delete m_interface;
+            m_interface->deleteLater();
             m_interface = nullptr;
         }
     }
@@ -34,14 +34,14 @@ public:
         return "";
     }
     bool pingIP(std::string ip, const char* port) {
-        return !system(("echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port).c_str());
+        return !system(("{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port + "; } > /dev/null 2>&1").c_str());
     }
     bool isConnected(){
         auto ip = exec("ip r | grep " + iface() + " | grep default | awk '{print $3}'");
         return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
     }
     int link(){
-        std::string out = exec("cat /proc/net/wireless | grep " + iface() + " | awk '{print $3}'");
+        auto out = exec("cat /proc/net/wireless | grep " + iface() + " | awk '{print $3}'");
         try {
             return std::stoi(out);
         }

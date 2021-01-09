@@ -18,7 +18,6 @@ class WifiNetwork : public QObject {
     Q_PROPERTY(QString ssid MEMBER m_ssid NOTIFY fakeStringSignal)
     Q_PROPERTY(QString protocol MEMBER m_protocol NOTIFY fakeStringSignal)
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
-    Q_PROPERTY(ushort signal READ signal NOTIFY signalChanged)
     Q_PROPERTY(bool available READ available NOTIFY availableChanged)
     Q_PROPERTY(bool known READ known NOTIFY knownChanged)
 public:
@@ -87,31 +86,6 @@ public:
         }
         emit availableChanged(available());
     }
-    ushort signal(){
-        int result = 0;
-        if(network != nullptr){
-            auto bus = QDBusConnection::systemBus();
-            for(auto path : network->bSSs()){
-                BSS bss(OXIDE_SERVICE, path.path(), bus);
-                auto signal = bss.signal();
-                if(signal > result){
-                    result = signal;
-                }
-            }
-        }else if(bsss.length()){
-            for(auto bss : bsss){
-                auto signal = bss->signal();
-                if(result < signal){
-                    result = signal;
-                }
-            }
-        }
-        if(result != m_signal){
-            m_signal = result;
-            emit signalChanged(result);
-        }
-        return result;
-    }
     bool available(){
         return m_connected || bsss.length() || (network != nullptr && network->bSSs().length() > 0);
     }
@@ -147,7 +121,6 @@ public:
 signals:
     void connectedChanged(bool);
     void fakeStringSignal(QString);
-    void signalChanged(ushort);
     void availableChanged(bool);
     void knownChanged(bool);
 
@@ -157,7 +130,6 @@ private:
     QString m_ssid;
     QString m_protocol;
     bool m_connected;
-    ushort m_signal;
     QList<BSS*> bsss;
 };
 
@@ -309,10 +281,23 @@ public:
             if(a->connected()){
                 return true;
             }
+            if(b->connected()){
+                return false;
+            }
             if(a->available() && !b->available()){
                 return true;
             }
-            return a->signal() > b->signal();
+            if(!a->available() && b->available()){
+                return false;
+            }
+            if(a->known() && !b->known()){
+                return true;
+            }
+
+            if(!a->known() && b->known()){
+                return false;
+            }
+            return a->ssid() < b->ssid();
         });
         emit layoutChanged();
     }

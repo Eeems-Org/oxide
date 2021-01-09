@@ -3,9 +3,11 @@
   <interface name="codes.eeems.oxide1.Apps">
     <property name="state" type="i" access="read"/>
     <property name="startupApplication" type="o" access="readwrite"/>
+    <property name="lockscreenApplication" type="o" access="readwrite"/>
     <property name="applications" type="a{sv}" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
     </property>
+    <property name="previousApplications" type="as" access="read"/>
     <property name="currentApplication" type="o" access="read"/>
     <property name="runningApplications" type="a{sv}" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
@@ -37,7 +39,13 @@
     </signal>
     <method name="leftHeld">
     </method>
+    <method name="openDefaultApplication">
+    </method>
     <method name="homeHeld">
+    </method>
+    <method name="openTaskManager">
+    </method>
+    <method name="openLockScreen">
     </method>
     <method name="registerApplication">
       <arg type="o" direction="out"/>
@@ -48,9 +56,14 @@
       <arg type="b" direction="out"/>
       <arg name="path" type="o" direction="in"/>
     </method>
+    <method name="reload">
+    </method>
     <method name="getApplicationPath">
       <arg type="o" direction="out"/>
       <arg name="name" type="s" direction="in"/>
+    </method>
+    <method name="previousApplication">
+      <arg type="b" direction="out"/>
     </method>
   </interface>
 </node>

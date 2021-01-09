@@ -33,7 +33,7 @@ int main(int argc, char *argv[]){
     // Setup epaper
     qputenv("QMLSCENE_DEVICE", "epaper");
     qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
-    qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", DeviceSettings::instance().getTouchEnvSetting());
+    qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif

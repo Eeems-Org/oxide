@@ -19,7 +19,6 @@
 
 #include "controller.h"
 #include "eventfilter.h"
-#include "tarnishhandler.h"
 #include "devicesettings.h"
 
 #ifdef __arm__
@@ -29,13 +28,11 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 using namespace std;
 
 const char *qt_version = qVersion();
-TarnishHandler* tarnishHandler = nullptr;
 
 function<void(int)> shutdown_handler;
 void signalHandler2(int signal) { shutdown_handler(signal); }
 
 int main(int argc, char *argv[]){
-    tarnishHandler = new TarnishHandler();
 //    QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
 //    xochitlSettings.sync();
 //    qDebug() << xochitlSettings.value("Password").toString();
@@ -47,25 +44,23 @@ int main(int argc, char *argv[]){
     // Setup epaper
     qputenv("QMLSCENE_DEVICE", "epaper");
     qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
-    qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", DeviceSettings::instance().getTouchEnvSetting());
+    qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
-    EventFilter filter;
     QGuiApplication app(argc, argv);
+    auto filter = new EventFilter(&app);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("oxide");
     app.setApplicationDisplayName("Launcher");
-    app.installEventFilter(&filter);
+    app.installEventFilter(filter);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();
-    tarnishHandler->attach(controller);
-    controller->filter = &filter;
+    controller->filter = filter;
     qmlRegisterType<AppItem>();
     qmlRegisterType<Controller>();
-    controller->loadSettings();
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("apps", QVariant::fromValue(controller->getApps()));
     context->setContextProperty("controller", controller);
@@ -76,7 +71,7 @@ int main(int argc, char *argv[]){
     }
     QObject* root = engine.rootObjects().first();
     controller->root = root;
-    filter.root = (QQuickItem*)root;
+    filter->root = (QQuickItem*)root;
     QObject* stateController = root->findChild<QObject*>("stateController");
     if(!stateController){
         qDebug() << "Can't find stateController";
@@ -96,8 +91,12 @@ int main(int argc, char *argv[]){
     auto currentTime = QTime::currentTime();
     QTime nextTime = currentTime.addSecs(60 - currentTime.second());
     clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
-    QObject::connect(clockTimer , &QTimer::timeout, [clock, &clockTimer](){
-        clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
+    QObject::connect(clockTimer , &QTimer::timeout, [clock, &clockTimer, controller](){
+        QString text = "";
+        if(controller->showDate()){
+            text = QDate::currentDate().toString(Qt::TextDate) + " ";
+        }
+        clock->setProperty("text", text + QTime::currentTime().toString("h:mm a"));
         if(clockTimer->interval() != 60 * 1000){
             clockTimer->setInterval(60 * 1000); // 1 minute
         }

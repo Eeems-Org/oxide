@@ -25,7 +25,7 @@ inline input_event createEvent(ushort type, ushort code, int value){
 class InputManager {
 public:
     input_event *touch_flood;
-    InputManager() : touchScreenFd(open(DeviceSettings::instance().getTouchDevicePath(), O_WRONLY)) {
+    InputManager() : touchScreenFd(open(deviceSettings.getTouchDevicePath(), O_WRONLY)) {
         this->touch_flood = build_touch_flood();
     }
 

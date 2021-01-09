@@ -3,6 +3,7 @@
 
 #include <QDBusConnection>
 #include <QMutableListIterator>
+#include <QMutex>
 
 #include "supplicant.h"
 #include "dbussettings.h"
@@ -14,7 +15,7 @@ class Network : public QObject {
     Q_PROPERTY(bool enabled READ enabled  WRITE setEnabled  NOTIFY stateChanged)
     Q_PROPERTY(QString ssid READ ssid CONSTANT)
     Q_PROPERTY(QList<QDBusObjectPath> bSSs READ bSSs)
-    Q_PROPERTY(QString password WRITE setPassword)
+    Q_PROPERTY(QString password READ getNull WRITE setPassword)
     Q_PROPERTY(QString protocol READ protocol WRITE setProtocol)
     Q_PROPERTY(QVariantMap properties READ properties WRITE setProperties NOTIFY propertiesChanged)
 public:
@@ -50,25 +51,46 @@ public:
         emit stateChanged(enabled);
     }
 
-    QString ssid(){ return m_ssid; }
+    QString ssid(){
+        if(!hasPermission("wifi")){
+            return "";
+        }
+        return m_ssid;
+    }
 
     QList<QDBusObjectPath> bSSs();
 
+    QString getNull(){ return ""; }
+
     QString password() {
+        if(!hasPermission("wifi")){
+            return "";
+        }
         if(passwordField() == ""){
             return "";
         }
         return m_properties[passwordField()].toString();
     }
     void setPassword(QString password) {
+        if(!hasPermission("wifi")){
+            return;
+        }
         if(passwordField() != ""){
             m_properties[passwordField()] = password;
             emit propertiesChanged(m_properties);
         }
     }
 
-    QString protocol() { return m_protocol; }
+    QString protocol() {
+        if(!hasPermission("wifi")){
+            return "";
+        }
+        return m_protocol;
+    }
     void setProtocol(QString protocol) {
+        if(!hasPermission("wifi")){
+            return;
+        }
         auto oldPassword = password();
         m_properties.remove(passwordField());
         m_protocol = protocol;
@@ -83,8 +105,16 @@ public:
         setProperties(m_properties);
     }
 
-    QVariantMap properties() { return m_properties; }
+    QVariantMap properties() {
+        if(!hasPermission("wifi")){
+            return QVariantMap();
+        }
+        return m_properties;
+    }
     void setProperties(QVariantMap properties){
+        if(!hasPermission("wifi")){
+            return;
+        }
         m_properties = properties;
         auto props = realProps();
         for(auto network : networks){
@@ -94,12 +124,16 @@ public:
     }
     QList<QString> paths(){
         QList<QString> result;
+        if(!hasPermission("wifi")){
+            return result;
+        }
         for(auto network : networks){
             result.append(network->path());
         }
+
         return result;
     }
-    void addNetwork(QString path, Interface* interface){
+    void addNetwork(const QString& path, Interface* interface){
         if(paths().contains(path)){
             return;
         }
@@ -108,26 +142,31 @@ public:
         network->setEnabled(m_enabled);
         QObject::connect(network, &INetwork::PropertiesChanged, this, &Network::PropertiesChanged, Qt::QueuedConnection);
     }
-    void addNetwork(INetwork* network){
-        if(paths().contains(network->path())){
-            return;
-        }
-        networks.append(network);
-        network->setEnabled(m_enabled);
-        QObject::connect(network, &INetwork::PropertiesChanged, this, &Network::PropertiesChanged, Qt::QueuedConnection);
-    }
-    void removeNetwork(QString path){
+    void removeNetwork(const QString& path){
         QMutableListIterator<INetwork*> i(networks);
         while(i.hasNext()){
             auto network = i.next();
-            if(network->path() == path){
+            if(!network->isValid() || network->path() == path){
                 i.remove();
-                delete network;
+                network->deleteLater();
+            }
+        }
+    }
+    void removeInterface(Interface* interface){
+        QMutableListIterator<INetwork*> i(networks);
+        while(i.hasNext()){
+            auto network = i.next();
+            if(!network->isValid() || (Interface*)network->parent() == interface){
+                i.remove();
+                network->deleteLater();
             }
         }
     }
     void registerNetwork();
     Q_INVOKABLE void connect(){
+        if(!hasPermission("wifi")){
+            return;
+        }
         QList<QDBusPendingReply<void>> replies;
         for(auto network : networks){
             auto interface = (Interface*)network->parent();
@@ -138,6 +177,9 @@ public:
         }
     }
     Q_INVOKABLE void remove(){
+        if(!hasPermission("wifi")){
+            return;
+        }
         QList<QDBusPendingReply<void>> replies;
         QMap<QString,Interface*> todo;
         for(auto network : networks){
@@ -183,6 +225,8 @@ private:
     QString m_ssid;
     QString m_protocol;
     bool m_enabled = false;
+
+    bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 
     QVariantMap realProps(){
         QVariantMap props(m_properties);

@@ -101,6 +101,21 @@ Item {
                 Layout.columnSpan: parent.columns
                 Layout.preferredWidth: parent.width
                 Label {
+                    text: "Show Date"
+                    Layout.fillWidth: true
+                }
+                BetterCheckBox {
+                    tristate: false
+                    checkState: controller.showDate ? Qt.Checked : Qt.Unchecked
+                    onClicked: controller.showDate = this.checkState === Qt.Checked
+                    Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                    Layout.fillWidth: false
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                Label {
                     text: "Home Screen Columns"
                     Layout.fillWidth: true
                 }

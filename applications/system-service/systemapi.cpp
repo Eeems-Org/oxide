@@ -1,10 +1,15 @@
 #include "systemapi.h"
 #include "appsapi.h"
 #include "powerapi.h"
+#include "wifiapi.h"
 #include "devicesettings.h"
 
 void SystemAPI::PrepareForSleep(bool suspending){
+    auto device = deviceSettings.getDeviceType();
     if(suspending){
+        wifiAPI->stopUpdating();
+        emit deviceSuspending();
+        appsAPI->recordPreviousApplication();
         auto path = appsAPI->currentApplication();
         if(path.path() != "/"){
             resumeApp = appsAPI->getApplication(path);
@@ -12,47 +17,78 @@ void SystemAPI::PrepareForSleep(bool suspending){
         }else{
             resumeApp = nullptr;
         }
-        drawSleepImage();
-        qDebug() << "Suspending...";
+        if(QFile::exists("/usr/share/remarkable/sleeping.png")){
+            screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png");
+        }else{
+            screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
+        }
         buttonHandler->setEnabled(false);
-        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
-            qDebug() << "Removing module";
-            qDebug() << "Exit code: " << system("rmmod brcmfmac");
+        if(device == DeviceSettings::DeviceType::RM2){
+            if(wifiAPI->state() != WifiAPI::State::Off){
+                wifiWasOn = true;
+                wifiAPI->disable();
+            }
+            system("rmmod brcmfmac");
         }
         releaseSleepInhibitors();
+        qDebug() << "Suspending...";
     }else{
         inhibitSleep();
         qDebug() << "Resuming...";
-        if (DeviceSettings::instance().getDeviceType() == DeviceType::RM2) {
-            qDebug() << "Inserting module";
-            qDebug() << "Exit code: " << system("modprobe brcmfmac");
-        }
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
+        if(lockscreenApp != nullptr){
+            resumeApp = lockscreenApp;
+        }
         if(resumeApp == nullptr){
             resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
         }
-        resumeApp->resume();
+        if(resumeApp != nullptr){
+            resumeApp->resume();
+        }
         buttonHandler->setEnabled(true);
+        emit deviceResuming();
         if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
             qDebug() << "Suspend timer re-enabled due to resume";
             suspendTimer.start(m_autoSleep * 60 * 1000);
         }
+        if(device == DeviceSettings::DeviceType::RM2){
+            system("modprobe brcmfmac");
+            if(wifiWasOn){
+                wifiAPI->enable();
+            }
+        }
+        wifiAPI->resumeUpdating();
     }
 }
 void SystemAPI::setAutoSleep(int autoSleep){
     if(autoSleep < 0 || autoSleep > 10){
         return;
     }
+    qDebug() << "Auto Sleep" << autoSleep;
     m_autoSleep = autoSleep;
     if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         suspendTimer.setInterval(m_autoSleep * 60 * 1000);
+    }else if(!m_autoSleep){
+        suspendTimer.stop();
     }
     settings.setValue("autoSleep", autoSleep);
     settings.sync();
+    emit autoSleepChanged(autoSleep);
 }
 void SystemAPI::uninhibitAll(QString name){
-    powerOffInhibitors.removeAll(name);
-    sleepInhibitors.removeAll(name);
+    if(powerOffInhibited()){
+        powerOffInhibitors.removeAll(name);
+        if(!powerOffInhibited()){
+            emit powerOffInhibitedChanged(false);
+        }
+    }
+    if(sleepInhibited()){
+        sleepInhibitors.removeAll(name);
+        if(!sleepInhibited()){
+            emit sleepInhibitedChanged(false);
+        }
+    }
     if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
         qDebug() << "Suspend timer re-enabled due to uninhibit" << name;
         suspendTimer.start(m_autoSleep * 60 * 1000);
@@ -76,7 +112,10 @@ void SystemAPI::activity(){
         qDebug() << "Suspend timer disabled";
     }
 }
-void SystemAPI::uninhibitSleep(QDBusMessage message) {
+void SystemAPI::uninhibitSleep(QDBusMessage message){
+    if(!sleepInhibited()){
+        return;
+    }
     sleepInhibitors.removeAll(message.service());
     if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         if(!suspendTimer.isActive()){
@@ -85,9 +124,13 @@ void SystemAPI::uninhibitSleep(QDBusMessage message) {
         }
         releaseSleepInhibitors(true);
     }
+    if(!sleepInhibited()){
+        emit sleepInhibitedChanged(false);
+    }
 }
 void SystemAPI::timeout(){
     if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+        qDebug() << "Automatic suspend due to inactivity...";
         suspend();
     }
 }

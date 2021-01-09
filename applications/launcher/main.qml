@@ -26,116 +26,155 @@ ApplicationWindow {
         enabled: stateController.state === "loaded"
         color: "black"
         height: menu.height
-        Label {
-            objectName: "clock"
-            color: "white"
-            anchors.centerIn: parent
-        }
         RowLayout {
             id: menu
             width: parent.width
-            CustomMenu {
-                BetterMenu {
-                    id: optionsMenu
-                    title: "";
-                    font: iconFont.name
-                    width: 310
-                    Action { text: qsTr(" Reload"); onTriggered: appsView.model = controller.getApps() }
-                    Action {
-                        text: qsTr(" Import Apps");
-                        onTriggered:{
-                            controller.importDraftApps();
-                            appsView.model = controller.getApps();
+            RowLayout {
+                Layout.fillWidth: true
+                CustomMenu {
+                    BetterMenu {
+                        id: optionsMenu
+                        title: "";
+                        font: iconFont.name
+                        width: 310
+                        Action { text: qsTr(" Reload"); onTriggered: appsView.model = controller.getApps() }
+                        Action {
+                            text: qsTr(" Import Apps");
+                            onTriggered:{
+                                controller.importDraftApps();
+                                appsView.model = controller.getApps();
+                            }
                         }
+                        Action { text: qsTr(" Options"); onTriggered: stateController.state = "settings" }
                     }
-                    Action { text: qsTr(" Options"); onTriggered: stateController.state = "settings" }
+                }
+                StatusIcon {
+                    source: "qrc:/img/notifications/white.png"
+                    text: controller.notificationText
+                    visible: controller.hasNotification
+                    clip: true
+                    Layout.maximumWidth: 300
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: parent.visible
+                        onClicked: stateController.state = "notifications"
+                    }
                 }
             }
             Label { Layout.fillWidth: true }
-            Label { Layout.fillWidth: true }
-            StatusIcon {
-                id: wifiState
-                objectName: "wifiState"
-                property string state: "unknown"
-                property int link: 0
-                property int level: 0
-                property bool connected: false
-                source: {
-                    var icon;
-                    if(state === "unknown"){
-                        icon = "unknown";
-                    }else if(state === "down"){
-                        icon = "down";
-                    }else if(!connected){
-                        icon = "disconnected";
-                    }else if(link < 20){
-                        icon = "0_bar";
-                    }else if(link < 40){
-                        icon = "1_bar";
-                    }else if(link < 60){
-                        icon = "2_bar";
-                    }else if(link < 80){
-                        icon = "3_bar";
-                    }else{
-                        icon = "4_bar";
-                    }
-                    return "qrc:/img/wifi/" + icon + ".png";
-                }
-                text: controller.showWifiDb ? level + "dBm" : ""
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: stateController.state = "wifi"
-                }
-            }
-            StatusIcon {
-                id: batteryLevel
-                objectName: "batteryLevel"
-                property bool alert: false
-                property bool warning: false
-                property bool charging: false
-                property bool connected: false
-                property bool present: true
-                property int level: 0
-                property int temperature: 0
-                source: {
-                    var icon = "";
-                    if(alert || !present){
-                        icon = "alert";
-                    }else if(warning){
-                        icon = "unknown";
-                    }else{
-                        if(charging || connected){
-                            icon = "charging_";
-                        }
-                        if(level < 25){
-                            icon += "20";
-                        }else if(level < 35){
-                            icon += "30";
-                        }else if(level < 55){
-                            icon += "50";
-                        }else if(level < 65){
-                            icon += "60";
-                        }else if(level < 85){
-                            icon += "80";
-                        }else if(level < 95){
-                            icon += "90";
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignRight
+                StatusIcon {
+                    id: wifiState
+                    objectName: "wifiState"
+                    property string state: "unknown"
+                    property int link: 0
+                    property int level: 0
+                    property bool connected: false
+                    source: {
+                        var icon;
+                        if(state === "unknown"){
+                            icon = "unknown";
+                        }else if(state === "down"){
+                            icon = "down";
+                        }else if(!connected){
+                            icon = "disconnected";
+                        }else if(link < 20){
+                            icon = "0_bar";
+                        }else if(link < 40){
+                            icon = "1_bar";
+                        }else if(link < 60){
+                            icon = "2_bar";
+                        }else if(link < 80){
+                            icon = "3_bar";
                         }else{
-                            icon += 100;
+                            icon = "4_bar";
+                        }
+                        return "qrc:/img/wifi/" + icon + ".png";
+                    }
+                    text: controller.showWifiDb ? level + "dBm" : ""
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: stateController.state = "wifi"
+                    }
+                }
+                StatusIcon {
+                    id: batteryLevel
+                    objectName: "batteryLevel"
+                    property bool alert: false
+                    property bool warning: false
+                    property bool charging: false
+                    property bool connected: false
+                    property bool present: true
+                    property int level: 0
+                    property int temperature: 0
+                    source: {
+                        var icon = "";
+                        if(alert || !present){
+                            icon = "alert";
+                        }else if(warning){
+                            icon = "unknown";
+                        }else{
+                            if(charging || connected){
+                                icon = "charging_";
+                            }
+                            if(level < 25){
+                                icon += "20";
+                            }else if(level < 35){
+                                icon += "30";
+                            }else if(level < 55){
+                                icon += "50";
+                            }else if(level < 65){
+                                icon += "60";
+                            }else if(level < 85){
+                                icon += "80";
+                            }else if(level < 95){
+                                icon += "90";
+                            }else{
+                                icon += 100;
+                            }
+                        }
+                        return "qrc:/img/battery/" + icon + ".png";
+                    }
+                    text: (controller.showBatteryPercent ? level + "% " : "") + (controller.showBatteryTemperature ? temperature + "C" : "")
+                }
+                CustomMenu {
+                    BetterMenu {
+                        id: powerMenu
+                        title: "";
+                        font: iconFont.name
+                        width: 260
+                        Action {
+                            text: qsTr(" Suspend")
+                            enabled: !controller.sleepInhibited
+                            onTriggered: controller.suspend();
+                        }
+                        Action {
+                            text: qsTr(" Reboot")
+                            enabled: !controller.powerOffInhibited
+                            onTriggered: controller.reboot()
+                        }
+                        Action {
+                            text: qsTr(" Shutdown")
+                            enabled: !controller.powerOffInhibited
+                            onTriggered: controller.powerOff()
+                        }
+                        Action {
+                            text: qsTr(" Lock")
+                            onTriggered: controller.lock()
                         }
                     }
-                    return "qrc:/img/battery/" + icon + ".png";
                 }
-                text: (controller.showBatteryPercent ? level + "% " : "") + (controller.showBatteryTemperature ? temperature + "C" : "")
             }
-            CustomMenu {
-                BetterMenu {
-                    id: powerMenu
-                    title: "";
-                    font: iconFont.name
-                    width: 260
-                    Action { text: qsTr(" Suspend"); onTriggered: stateController.state = "suspended" }
-                    Action { text: qsTr(" Shutdown"); onTriggered: controller.powerOff() }
-                }
+        }
+        Label {
+            objectName: "clock"
+            anchors.centerIn: parent
+            color: "white"
+            MouseArea {
+                anchors.fill: parent
+                onClicked: stateController.state = "calendar"
             }
         }
     }
@@ -257,9 +296,18 @@ ApplicationWindow {
                     running: false
                 }
             }
-            width: window.width > (itemImage.width + itemContent.width + (itemInfo.textPadding * 2))
-                   ? (itemImage.width + itemContent.width + (itemInfo.textPadding * 2) + itemCloseButton.width)
-                   : window.width - 10
+            width: {
+                var calculatedWidth = itemImage.width + itemContent.width + (itemInfo.textPadding * 2);
+                if(window.width <= calculatedWidth){
+                    return window.width - 10;
+                }
+                var minWidth = itemAutoStartButton.width + itemImage.width;
+                if(calculatedWidth < minWidth){
+                    return minWidth;
+                }
+
+                return calculatedWidth;
+            }
             height: itemContent.height + itemAutoStartButton.height
             contentItem: Item {
                 anchors.fill: parent
@@ -353,106 +401,100 @@ ApplicationWindow {
             onClosed: stateController.state = "loaded"
             visible: false
             model: controller.networks
+        },
+        CalendarMenu {
+            id: calendar
+            onClosed: stateController.state = "loaded"
+            visible: false
+        },
+        NotificationsPopup {
+            id: notifications
+            onClosed: stateController.state = "loaded"
+            visible: false
+            model: controller.notifications
         }
 
     ]
-    Timer {
-        id: sleepTimer
-        repeat: false
-        interval: 1100
-        onTriggered: {
-            if(stateController.state == "suspended"){
-                controller.suspend();
-                stateController.state = "resumed";
-            }else{
-                stateController.state = stateController.previousState
-            }
-        }
-    }
     StateGroup {
         id: stateController
         property string previousState;
         objectName: "stateController"
         state: "loading"
         states: [
+            State { name: "loading" },
             State { name: "loaded" },
             State { name: "settings" },
             State { name: "itemInfo" },
-            State { name: "loading" },
-            State { name: "suspended" },
-            State { name: "resumed" }
+            State { name: "wifi" },
+            State { name: "calendar" },
+            State { name: "notifications" }
         ]
         transitions: [
-            Transition {
-                from: "loaded"; to: "suspended"
-                SequentialAnimation {
-                    PropertyAction { target: stateController; property: "previousState"; value: "loaded" }
-                    ScriptAction { script: sleepTimer.start() }
-                }
-            },
-            Transition {
-                from: "settings"; to: "suspended"
-                SequentialAnimation {
-                    PropertyAction { target: stateController; property: "previousState"; value: "settings" }
-                    ScriptAction { script: sleepTimer.start() }
-                }
-            },
-            Transition {
-                from: "itemInfo"; to: "suspended"
-                SequentialAnimation {
-                    PropertyAction { target: stateController; property: "previousState"; value: "itemInfo" }
-                    ScriptAction { script: sleepTimer.start() }
-                }
-            },
-            Transition {
-                from: "suspended"; to: "resumed"
-                SequentialAnimation {
-                    ScriptAction { script: sleepTimer.start() }
-                }
-            },
             Transition {
                 from: "*"; to: "settings"
                 SequentialAnimation {
                     ScriptAction { script: stateController.previousState = "settings" }
+                    ScriptAction { script: console.log("Opening settings") }
                     PropertyAction { target: settings; property: "visible"; value: true }
                     PropertyAction { target: wifi; property: "visible"; value: false }
+                    PropertyAction { target: calendar; property: "visible"; value: false }
+                    PropertyAction { target: notifications; property: "visible"; value: false }
                     PropertyAction { target: menu; property: "focus"; value: false }
-                }
-            },
-            Transition {
-                from: "settings"; to: "loaded"
-                SequentialAnimation {
-                    PropertyAction { target: settings; property: "visible"; value: false }
-                    PropertyAction { target: appsView; property: "focus"; value: true }
                 }
             },
             Transition {
                 from: "*"; to: "wifi"
                 ParallelAnimation {
                     ScriptAction { script: stateController.previousState = "wifi" }
+                    ScriptAction { script: console.log("Opening wifi menu") }
                     PropertyAction { target: wifi; property: "visible"; value: true }
+                    PropertyAction { target: calendar; property: "visible"; value: false }
                     PropertyAction { target: settings; property: "visible"; value: false }
+                    PropertyAction { target: notifications; property: "visible"; value: false }
                     PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
             Transition {
-                from: "wifi"; to: "loaded"
-                ParallelAnimation {
+                from: "*"; to: "calendar"
+                SequentialAnimation {
+                    ScriptAction { script: stateController.previousState = "calendar" }
+                    ScriptAction { script: console.log("Opening calendar") }
+                    PropertyAction { target: calendar; property: "visible"; value: true }
+                    PropertyAction { target: settings; property: "visible"; value: false }
                     PropertyAction { target: wifi; property: "visible"; value: false }
-                    PropertyAction { target: appsView; property: "focus"; value: true }
+                    PropertyAction { target: notifications; property: "visible"; value: false }
+                    PropertyAction { target: menu; property: "focus"; value: false }
+                }
+            },
+            Transition {
+                from: "*"; to: "notifications"
+                SequentialAnimation {
+                    ScriptAction { script: stateController.previousState = "notifications" }
+                    ScriptAction { script: console.log("Opening notifications") }
+                    PropertyAction { target: notifications; property: "visible"; value: true }
+                    PropertyAction { target: calendar; property: "visible"; value: false }
+                    PropertyAction { target: settings; property: "visible"; value: false }
+                    PropertyAction { target: wifi; property: "visible"; value: false }
+                    PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
             Transition {
                 from: "loaded"; to: "itemInfo"
                 SequentialAnimation {
+                    ScriptAction { script: console.log("Viewing item info") }
                     PropertyAction { target: itemInfo; property: "visible"; value: true }
                     PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
             Transition {
-                from: "itemInfo"; to: "loaded"
+                from: "*"; to: "loaded"
                 SequentialAnimation {
-                    PropertyAction { target: itemInfo; property: "visible"; value: false }
+                    ScriptAction { script: console.log("Main display") }
+                    PropertyAction { target: calendar; property: "visible"; value: false }
+                    PropertyAction { target: settings; property: "visible"; value: false }
+                    PropertyAction { target: wifi; property: "visible"; value: false }
+                    PropertyAction { target: notifications; property: "visible"; value: false }
+                    PropertyAction { target: menu; property: "focus"; value: false }
                     PropertyAction { target: appsView; property: "focus"; value: true }
                 }
             }

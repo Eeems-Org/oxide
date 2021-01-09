@@ -1,37 +1,73 @@
-#include <signal.h>
 #include <QTimer>
 #include <QFile>
+
+#include <signal.h>
 
 #include "application.h"
 #include "appsapi.h"
 #include "buttonhandler.h"
 #include "devicesettings.h"
 
-const event_device touchScreen(DeviceSettings::instance().getTouchDevicePath(), O_WRONLY);
+const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
 
 void Application::launch(){
+    if(!hasPermission("apps")){
+        return;
+    }
     if(m_process->processId()){
         resume();
     }else{
+        appsAPI->recordPreviousApplication();
         qDebug() << "Launching " << path();
         appsAPI->pauseAll();
+        if(m_process->program() != bin()){
+            m_process->setProgram(bin());
+        }
+        updateEnvironment();
+        if(chroot()){
+            umountAll();
+            mountAll();
+            m_process->setChroot(chrootPath());
+        }else{
+            m_process->setChroot("");
+        }
+        m_process->setWorkingDirectory(workingDirectory());
+        m_process->setUser(user());
+        m_process->setGroup(group());
         m_process->start();
         m_process->waitForStarted();
     }
 }
 
 void Application::pause(bool startIfNone){
+    if(!hasPermission("apps")){
+        return;
+    }
     if(
         !m_process->processId()
-        || state() == Paused
+        || stateNoSecurityCheck() == Paused
         || type() == AppsAPI::Background
     ){
-        if(startIfNone){
-            appsAPI->resumeIfNone();
-        }
         return;
     }
     qDebug() << "Pausing " << path();
+    interruptApplication();
+    saveScreen();
+    if(startIfNone){
+        appsAPI->resumeIfNone();
+    }
+    emit paused();
+    emit appsAPI->applicationPaused(qPath());
+    qDebug() << "Paused " << path();
+}
+void Application::interruptApplication(){
+    if(
+        !m_process->processId()
+        || stateNoSecurityCheck() == Paused
+        || type() == AppsAPI::Background
+    ){
+        return;
+    }
     if(!onPause().isEmpty()){
         system(onPause().toStdString().c_str());
     }
@@ -40,70 +76,107 @@ void Application::pause(bool startIfNone){
             // Already in the background. How did we get here?
             return;
         case AppsAPI::Backgroundable:
+            qDebug() << "Waiting for SIGUSR2 ack";
             appsAPI->connectSignals(this, 2);
-            kill(m_process->processId(), SIGUSR2);
+            kill(-m_process->processId(), SIGUSR2);
             timer.restart();
             delayUpTo(1000);
             appsAPI->disconnectSignals(this, 2);
             if(timer.isValid()){
                 qDebug() << "Application took too long to background" << name();
-                kill(m_process->processId(), SIGSTOP);
+                kill(-m_process->processId(), SIGSTOP);
+                waitForPause();
             }else{
                 m_backgrounded = true;
+                qDebug() << "SIGUSR2 ack recieved";
             }
             break;
         case AppsAPI::Foreground:
         default:
-            kill(m_process->processId(), SIGSTOP);
+            kill(-m_process->processId(), SIGSTOP);
+            waitForPause();
     }
-    saveScreen();
-    if(startIfNone){
-        appsAPI->resumeIfNone();
+}
+void Application::waitForPause(){
+    if(stateNoSecurityCheck() == Paused){
+        return;
     }
-    emit paused();
-    emit appsAPI->applicationPaused(qPath());
+    siginfo_t info;
+    waitid(P_PID, m_process->processId(), &info, WSTOPPED);
+}
+void Application::waitForResume(){
+    if(stateNoSecurityCheck() != Paused){
+        return;
+    }
+    siginfo_t info;
+    waitid(P_PID, m_process->processId(), &info, WCONTINUED);
 }
 void Application::resume(){
+    if(!hasPermission("apps")){
+        return;
+    }
     if(
         !m_process->processId()
-        || state() == InForeground
-        || (type() == AppsAPI::Background && state() == InBackground)
+        || stateNoSecurityCheck() == InForeground
+        || (type() == AppsAPI::Background && stateNoSecurityCheck() == InBackground)
+    ){
+        qDebug() << "Can't Resume" << path() << "Already running!";
+        return;
+    }
+    appsAPI->recordPreviousApplication();
+    qDebug() << "Resuming " << path();
+    appsAPI->pauseAll();
+    if(type() != AppsAPI::Backgroundable || stateNoSecurityCheck() == Paused){
+        recallScreen();
+    }
+    uninterruptApplication();
+    waitForResume();
+    emit resumed();
+    emit appsAPI->applicationResumed(qPath());
+    qDebug() << "Resumed " << path();
+}
+void Application::uninterruptApplication(){
+    if(
+        !m_process->processId()
+        || stateNoSecurityCheck() == InForeground
+        || (type() == AppsAPI::Background && stateNoSecurityCheck() == InBackground)
     ){
         return;
     }
-    qDebug() << "Resuming " << path();
-    appsAPI->pauseAll();
     if(!onResume().isEmpty()){
         system(onResume().toStdString().c_str());
     }
-    recallScreen();
     switch(type()){
         case AppsAPI::Background:
         case AppsAPI::Backgroundable:
-            if(state() == Paused){
+            if(stateNoSecurityCheck() == Paused){
                 inputManager->clear_touch_buffer(touchScreen.fd);
-                kill(m_process->processId(), SIGCONT);
+                kill(-m_process->processId(), SIGCONT);
             }
+            qDebug() << "Waiting for SIGUSR1 ack";
             appsAPI->connectSignals(this, 1);
-            kill(m_process->processId(), SIGUSR1);
+            kill(-m_process->processId(), SIGUSR1);
             delayUpTo(1000);
             appsAPI->disconnectSignals(this, 1);
             if(timer.isValid()){
                 // No need to fall through, we've just assumed it continued
                 qDebug() << "Warning: application took too long to forground" << name();
+            }else{
+                qDebug() << "SIGUSR1 ack recieved";
             }
             m_backgrounded = false;
             break;
         case AppsAPI::Foreground:
         default:
             inputManager->clear_touch_buffer(touchScreen.fd);
-            kill(m_process->processId(), SIGCONT);
+            kill(-m_process->processId(), SIGCONT);
     }
-    emit resumed();
-    emit appsAPI->applicationResumed(qPath());
 }
 void Application::stop(){
-    auto state = this->state();
+    if(!hasPermission("apps")){
+        return;
+    }
+    auto state = this->stateNoSecurityCheck();
     if(state == Inactive){
         return;
     }
@@ -111,21 +184,33 @@ void Application::stop(){
         QProcess::execute(onStop());
     }
     if(state == Paused){
-        kill(m_process->processId(), SIGCONT);
+        kill(-m_process->processId(), SIGCONT);
     }
-    m_process->kill();
+    m_process->terminate();
+    // Try to wait for the application to stop normally before killing it
+    int tries = 0;
+    while(this->stateNoSecurityCheck() != Inactive){
+        m_process->waitForFinished(100);
+        if(++tries == 5){
+            m_process->kill();
+            return;
+        }
+    }
 }
 void Application::signal(int signal){
     if(m_process->processId()){
-        kill(m_process->processId(), signal);
+        kill(-m_process->processId(), signal);
     }
 }
 void Application::unregister(){
+    if(!hasPermission("apps")){
+        return;
+    }
     emit unregistered();
     appsAPI->unregisterApplication(this);
 }
 
-int Application::state(){
+int Application::stateNoSecurityCheck(){
     switch(m_process->state()){
         case QProcess::Starting:
         case QProcess::Running:{
@@ -148,11 +233,17 @@ int Application::state(){
     }
 }
 void Application::setConfig(const QVariantMap& config){
+    auto oldBin = bin();
     m_config = config;
     if(type() == AppsAPI::Foreground){
         setAutoStart(false);
     }
-    m_process->setProgram(bin());
+    if(oldBin == bin()){
+        return;
+    }
+    if(!QFile::exists(bin())){
+        setValue("bin", oldBin);
+    }
 }
 void Application::started(){
     emit launched();
@@ -163,6 +254,7 @@ void Application::finished(int exitCode){
     emit exited(exitCode);
     appsAPI->resumeIfNone();
     emit appsAPI->applicationExited(qPath(), exitCode);
+    umountAll();
 }
 void Application::errorOccurred(QProcess::ProcessError error){
     switch(error){
@@ -188,3 +280,4 @@ void Application::errorOccurred(QProcess::ProcessError error){
             qDebug() << "Application" << name() << "unknown error.";
     }
 }
+bool Application::hasPermission(QString permission, const char* sender){ return appsAPI->hasPermission(permission, sender); }

@@ -2,18 +2,28 @@
 <node>
   <interface name="codes.eeems.oxide1.Application">
     <property name="name" type="s" access="read"/>
+    <property name="processId" type="i" access="read"/>
+    <property name="permissions" type="as" access="readwrite"/>
     <property name="displayName" type="s" access="readwrite"/>
     <property name="description" type="s" access="read"/>
     <property name="bin" type="s" access="read"/>
-    <property name="onPause" type="s" access="read"/>
-    <property name="onResume" type="s" access="read"/>
-    <property name="onStop" type="s" access="read"/>
+    <property name="onPause" type="s" access="readwrite"/>
+    <property name="onResume" type="s" access="readwrite"/>
+    <property name="onStop" type="s" access="readwrite"/>
     <property name="autoStart" type="b" access="readwrite"/>
     <property name="type" type="i" access="read"/>
     <property name="state" type="i" access="read"/>
     <property name="systemApp" type="b" access="read"/>
     <property name="hidden" type="b" access="read"/>
     <property name="icon" type="s" access="readwrite"/>
+    <property name="environment" type="a{sv}" access="read">
+      <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+    </property>
+    <property name="workingDirectory" type="s" access="readwrite"/>
+    <property name="chroot" type="b" access="read"/>
+    <property name="user" type="s" access="read"/>
+    <property name="group" type="s" access="read"/>
+    <property name="directories" type="as" access="readwrite"/>
     <signal name="launched">
     </signal>
     <signal name="paused">
@@ -25,11 +35,36 @@
     <signal name="exited">
       <arg type="i" direction="out"/>
     </signal>
+    <signal name="permissionsChanged">
+      <arg type="as" direction="out"/>
+    </signal>
     <signal name="displayNameChanged">
       <arg type="s" direction="out"/>
     </signal>
+    <signal name="onPauseChanged">
+      <arg type="s" direction="out"/>
+    </signal>
+    <signal name="onResumeChanged">
+      <arg type="s" direction="out"/>
+    </signal>
+    <signal name="onStopChanged">
+      <arg type="s" direction="out"/>
+    </signal>
+    <signal name="autoStartChanged">
+      <arg type="b" direction="out"/>
+    </signal>
     <signal name="iconChanged">
       <arg type="s" direction="out"/>
+    </signal>
+    <signal name="environmentChanged">
+      <arg type="a{sv}" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+    </signal>
+    <signal name="workingDirectoryChanged">
+      <arg type="s" direction="out"/>
+    </signal>
+    <signal name="directoriesChanged">
+      <arg type="as" direction="out"/>
     </signal>
     <method name="sigUsr1">
     </method>
@@ -47,6 +82,10 @@
     <method name="stop">
     </method>
     <method name="unregister">
+    </method>
+    <method name="setEnvironment">
+      <arg name="environment" type="a{sv}" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
     </method>
   </interface>
 </node>

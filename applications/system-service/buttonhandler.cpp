@@ -103,33 +103,3 @@ void ButtonHandler::pressKey(Qt::Key key){
     }
     press_button(buttons, code, &stream);
 }
-string ButtonHandler::exec(const char* cmd){
-    array<char, 128> buffer;
-    string result;
-    unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
-    if (!pipe) {
-        throw runtime_error("popen() failed!");
-    }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
-    }
-    return result;
-}
-vector<std::string> ButtonHandler::split_string_by_newline(const std::string& str){
-    auto result = vector<std::string>{};
-    auto ss = stringstream{str};
-
-    for (string line; getline(ss, line, '\n');)
-        result.push_back(line);
-
-    return result;
-}
-int ButtonHandler::is_uint(string input){
-    unsigned int i;
-    for (i=0; i < input.length(); i++){
-        if(!isdigit(input.at(i))){
-            return 0;
-        }
-    }
-    return 1;
-}

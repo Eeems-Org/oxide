@@ -12,9 +12,24 @@
     </signal>
     <signal name="powerAction">
     </signal>
+    <signal name="sleepInhibitedChanged">
+      <arg type="b" direction="out"/>
+    </signal>
+    <signal name="powerOffInhibitedChanged">
+      <arg type="b" direction="out"/>
+    </signal>
+    <signal name="autoSleepChanged">
+      <arg type="i" direction="out"/>
+    </signal>
+    <signal name="deviceSuspending">
+    </signal>
+    <signal name="deviceResuming">
+    </signal>
     <method name="suspend">
     </method>
     <method name="powerOff">
+    </method>
+    <method name="reboot">
     </method>
     <method name="activity">
     </method>

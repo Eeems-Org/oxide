@@ -29,12 +29,6 @@
 
 using namespace std;
 
-//#define PNG_PATH "/tmp/fb.png"
-#define DISPLAYWIDTH 1404
-#define DISPLAYHEIGHT 1872
-#define TEMP_USE_REMARKABLE_DRAW 0x0018
-#define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(uint16_t)
-
 #define buttonHandler ButtonHandler::init()
 
 struct PressRecord {
@@ -46,16 +40,13 @@ struct PressRecord {
     PressRecord() : PressRecord("Unknown", Qt::Key_unknown){}
 };
 
-const event_device buttons(DeviceSettings::instance().getButtonsDevicePath(), O_RDWR);
+const event_device buttons(deviceSettings.getButtonsDevicePath(), O_RDWR);
 
 class ButtonHandler : public QThread {
     Q_OBJECT
 
 public:
     static ButtonHandler* init();
-    static string exec(const char* cmd);
-    static vector<std::string> split_string_by_newline(const std::string& str);
-    static int is_uint(string input);
 
     ButtonHandler() : QThread(), filebuf(buttons.fd, ios::in), stream(&filebuf), pressed(), timer(this), m_enabled(true) {
         timer.setInterval(100);

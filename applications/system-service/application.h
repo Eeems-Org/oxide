@@ -9,6 +9,7 @@
 #include <QProcessEnvironment>
 #include <QElapsedTimer>
 #include <QTime>
+#include <QDir>
 #include <QCoreApplication>
 
 #include <zlib.h>
@@ -22,6 +23,11 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <grp.h>
+#include <pwd.h>
+#include <sys/stat.h>
+#include <sys/mount.h>
+#include <sys/prctl.h>
 
 #include "dbussettings.h"
 #include "mxcfb.h"
@@ -30,51 +36,124 @@
 
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
+class SandBoxProcess : public QProcess{
+    Q_OBJECT
+public:
+    SandBoxProcess(QObject* parent = nullptr)
+    : QProcess(parent), m_gid(0), m_uid(0), m_chroot(""), m_mask(0) {}
+
+    bool setUser(const QString& name){
+        try{
+            m_uid = getUID(name);
+            return true;
+        }
+        catch(const runtime_error&){
+            return false;
+        }
+    }
+    bool setGroup(const QString& name){
+        try{
+            m_gid = getGID(name);
+            return true;
+        }
+        catch(const runtime_error&){
+            return false;
+        }
+    }
+    bool setChroot(const QString& path){
+        if(path.isEmpty() || path == "/"){
+            m_chroot = "";
+            return true;
+        }
+        QDir dir(path);
+        if(dir.exists()){
+            m_chroot = path;
+            return true;
+        }
+        return false;
+    }
+    void setMask(mode_t mask){
+        m_mask = mask;
+    }
+protected:
+    void setupChildProcess() override {
+        // Drop all privileges in the child process
+        setgroups(0, 0);
+        if(!m_chroot.isEmpty()){
+            // enter a chroot jail.
+            chroot(m_chroot.toStdString().c_str());
+        }
+        // Change to correct user
+        setresgid(m_gid, m_gid, m_gid);
+        setresuid(m_uid, m_uid, m_uid);
+        umask(m_mask);
+        setsid();
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
+    }
+private:
+    gid_t m_gid;
+    uid_t m_uid;
+    QString m_chroot;
+    mode_t m_mask;
+
+    uid_t getUID(const QString& name){
+        auto user = getpwnam(name.toStdString().c_str());
+        if(user == NULL){
+            throw runtime_error("Invalid user name: " + name.toStdString());
+        }
+        return user->pw_uid;
+    }
+    gid_t getGID(const QString& name){
+        auto group = getgrnam(name.toStdString().c_str());
+        if(group == NULL){
+            throw runtime_error("Invalid group name: " + name.toStdString());
+        }
+        return group->gr_gid;
+    }
+};
+
 class Application : public QObject{
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_APPLICATION_INTERFACE)
     Q_PROPERTY(QString name READ name)
+    Q_PROPERTY(int processId READ processId)
+    Q_PROPERTY(QStringList permissions READ permissions WRITE setPermissions NOTIFY permissionsChanged)
     Q_PROPERTY(QString displayName READ displayName WRITE setDisplayName NOTIFY displayNameChanged)
     Q_PROPERTY(QString description READ description)
     Q_PROPERTY(QString bin READ bin)
-    Q_PROPERTY(QString onPause READ onPause)
-    Q_PROPERTY(QString onResume READ onResume)
-    Q_PROPERTY(QString onStop READ onStop)
-    Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart)
+    Q_PROPERTY(QString onPause READ onPause WRITE setOnPause NOTIFY onPauseChanged)
+    Q_PROPERTY(QString onResume READ onResume WRITE setOnResume NOTIFY onResumeChanged)
+    Q_PROPERTY(QString onStop READ onStop WRITE setOnStop NOTIFY onStopChanged)
+    Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart NOTIFY autoStartChanged)
     Q_PROPERTY(int type READ type)
     Q_PROPERTY(int state READ state)
     Q_PROPERTY(bool systemApp READ systemApp)
     Q_PROPERTY(bool hidden READ hidden)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
+    Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
+    Q_PROPERTY(QString workingDirectory READ workingDirectory WRITE setWorkingDirectory NOTIFY workingDirectoryChanged)
+    Q_PROPERTY(bool chroot READ chroot)
+    Q_PROPERTY(QString user READ user)
+    Q_PROPERTY(QString group READ group)
+    Q_PROPERTY(QStringList directories READ directories WRITE setDirectories NOTIFY directoriesChanged)
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false) {
-        m_process = new QProcess(this);
-        connect(m_process, &QProcess::started, this, &Application::started);
-        connect(m_process, QOverload<int>::of(&QProcess::finished), this, &Application::finished);
-        connect(m_process, &QProcess::readyReadStandardError, this, &Application::readyReadStandardError);
-        connect(m_process, &QProcess::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
-        connect(m_process, &QProcess::stateChanged, this, &Application::stateChanged);
-        connect(m_process, &QProcess::errorOccurred, this, &Application::errorOccurred);
-        auto env = QProcessEnvironment::systemEnvironment();
-        auto defaults = QString(DEFAULT_PATH).split(":");
-        auto envPath = env.value("PATH", DEFAULT_PATH);
-        for(auto item : defaults){
-            if(!envPath.contains(item)){
-                envPath.append(item);
-            }
-        }
-        env.insert("PATH", envPath);
-        m_process->setEnvironment(env.toStringList());
+        m_process = new SandBoxProcess(this);
+        connect(m_process, &SandBoxProcess::started, this, &Application::started);
+        connect(m_process, QOverload<int>::of(&SandBoxProcess::finished), this, &Application::finished);
+        connect(m_process, &SandBoxProcess::readyReadStandardError, this, &Application::readyReadStandardError);
+        connect(m_process, &SandBoxProcess::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
+        connect(m_process, &SandBoxProcess::stateChanged, this, &Application::stateChanged);
+        connect(m_process, &SandBoxProcess::errorOccurred, this, &Application::errorOccurred);
     }
     ~Application() {
         unregisterPath();
-        m_process->kill();
-        delete m_process;
         if(screenCapture != nullptr){
             delete screenCapture;
         }
+        umountAll();
     }
 
     QString path() { return m_path; }
@@ -105,33 +184,119 @@ public:
     Q_INVOKABLE void unregister();
 
     QString name() { return value("name").toString(); }
+    int processId() { return m_process->processId(); }
+    QStringList permissions() { return value("permissions", QStringList()).toStringList(); }
+    void setPermissions(QStringList permissions){
+        if(!hasPermission("permissions")){
+            return;
+        }
+        setValue("permissions", permissions);
+        emit permissionsChanged(permissions);
+    }
     QString displayName() { return value("displayName", name()).toString(); }
     void setDisplayName(QString displayName){
+        if(!hasPermission("permissions")){
+            return;
+        }
         setValue("displayName", displayName);
         emit displayNameChanged(displayName);
     }
     QString description() { return value("description", displayName()).toString(); }
     QString bin() { return value("bin").toString(); }
     QString onPause() { return value("onPause", "").toString(); }
+    void setOnPause(QString onPause){
+        if(!hasPermission("permissions")){
+            return;
+        }
+        setValue("onPause", onPause);
+        emit onPauseChanged(onPause);
+    }
     QString onResume() { return value("onResume", "").toString(); }
+    void setOnResume(QString onResume){
+        if(!hasPermission("permissions")){
+            return;
+        }
+        setValue("onResume", onResume);
+        emit onResumeChanged(onResume);
+    }
     QString onStop() { return value("onStop", "").toString(); }
+    void setOnStop(QString onStop){
+        if(!hasPermission("permissions")){
+            return;
+        }
+        setValue("onStop", onStop);
+        emit onStopChanged(onStop);
+    }
     QStringList flags() { return value("flags", QStringList()).toStringList(); }
     bool autoStart() { return flags().contains("autoStart"); }
-    bool setAutoStart(bool autoStart) {
+    void setAutoStart(bool autoStart) {
+        if(!hasPermission("permissions")){
+            return;
+        }
         if(!autoStart){
             flags().removeAll("autoStart");
+            autoStartChanged(autoStart);
         }else if(!this->autoStart()){
             flags().append("autoStart");
+            autoStartChanged(autoStart);
         }
     }
     bool systemApp() { return flags().contains("system"); }
     bool hidden() { return flags().contains("hidden"); }
     int type() { return (int)value("type", 0).toInt(); }
-    int state();
+    int state(){
+        if(!hasPermission("apps")){
+            return Inactive;
+        }
+        return stateNoSecurityCheck();
+    }
+    int stateNoSecurityCheck();
     QString icon() { return value("icon", "").toString(); }
     void setIcon(QString icon){
+        if(!hasPermission("permissions")){
+            return;
+        }
         setValue("icon", icon);
         emit iconChanged(icon);
+    }
+    QVariantMap environment() { return value("environment", QVariantMap()).toMap(); }
+    Q_INVOKABLE void setEnvironment(QVariantMap environment){
+        if(!hasPermission("permissions")){
+            return;
+        }
+        for(auto key : environment.keys()){
+            auto value = environment.value(key, QVariant());
+            if(!value.isValid()){
+                qDebug() << key << " has invalid value: " << value;
+                return;
+            }
+        }
+        setValue("environment", environment);
+        updateEnvironment();
+        emit environmentChanged(environment);
+    }
+    QString workingDirectory() { return value("workingDirectory", "/").toString(); }
+    void setWorkingDirectory(const QString& workingDirectory){
+        if(!hasPermission("permissions")){
+            return;
+        }
+        QDir dir(workingDirectory);
+        if(!dir.exists()){
+            return;
+        }
+        setValue("workingDirectory", workingDirectory);
+        emit workingDirectoryChanged(workingDirectory);
+    }
+    bool chroot(){ return flags().contains("chroot"); }
+    QString user(){ return value("user", getuid()).toString(); }
+    QString group(){ return value("group", getgid()).toString(); }
+    QStringList directories() { return value("directories", QStringList()).toStringList(); }
+    void setDirectories(QStringList directories){
+        if(!hasPermission("permissions")){
+            return;
+        }
+        setValue("directories", directories);
+        emit directoriesChanged(directories);
     }
     const QVariantMap& getConfig(){ return m_config; }
     void setConfig(const QVariantMap& config);
@@ -146,6 +311,7 @@ public:
         auto compressedData = qCompress(QByteArray(frameBuffer, DISPLAYSIZE));
         close(frameBufferHandle);
         screenCapture = new QByteArray(compressedData);
+        qDebug() << "Screen saved.";
     }
     void recallScreen(){
         if(screenCapture == nullptr){
@@ -182,6 +348,7 @@ public:
         close(frameBufferHandle);
         delete screenCapture;
         screenCapture = nullptr;
+        qDebug() << "Screen recalled.";
     }
     void waitForFinished(){
         if(m_process->processId()){
@@ -191,19 +358,38 @@ public:
     void signal(int signal);
     QVariant value(QString name, QVariant defaultValue = QVariant()){ return m_config.value(name, defaultValue); }
     void setValue(QString name, QVariant value){ m_config[name] = value; }
+    void interruptApplication();
+    void uninterruptApplication();
+    void waitForPause();
+    void waitForResume();
 signals:
     void launched();
     void paused();
     void resumed();
     void unregistered();
     void exited(int);
+    void permissionsChanged(QStringList);
     void displayNameChanged(QString);
+    void onPauseChanged(QString);
+    void onResumeChanged(QString);
+    void onStopChanged(QString);
+    void autoStartChanged(bool);
     void iconChanged(QString);
+    void environmentChanged(QVariantMap);
+    void workingDirectoryChanged(QString);
+    void directoriesChanged(QStringList);
+
 public slots:
     void sigUsr1(){
+        if(!hasPermission("permissions")){
+            return;
+        }
         timer.invalidate();
     }
     void sigUsr2(){
+        if(!hasPermission("permissions")){
+            return;
+        }
         timer.invalidate();
     }
 
@@ -248,17 +434,153 @@ private slots:
 private:
     QVariantMap m_config;
     QString m_path;
-    QProcess* m_process;
+    SandBoxProcess* m_process;
     bool m_backgrounded;
     QByteArray* screenCapture = nullptr;
     size_t screenCaptureSize;
     QElapsedTimer timer;
+
+    bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds){
         timer.invalidate();
         timer.start();
         while(timer.isValid() && !timer.hasExpired(milliseconds)){
             QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
         }
+    }
+    void updateEnvironment(){
+        auto env = QProcessEnvironment::systemEnvironment();
+        auto defaults = QString(DEFAULT_PATH).split(":");
+        auto envPath = env.value("PATH", DEFAULT_PATH);
+        for(auto item : defaults){
+            if(!envPath.contains(item)){
+                envPath.append(item);
+            }
+        }
+        env.insert("PATH", envPath);
+        for(auto key : environment().keys()){
+            env.insert(key, environment().value(key, "").toString());
+        }
+        m_process->setEnvironment(env.toStringList());
+    }
+    void mkdirs(const QString& path, mode_t mode = 0700){
+        QDir dir(path);
+        if(!dir.exists()){
+            QString subpath = "";
+            for(auto part : path.split("/")){
+                subpath += "/" + part;
+                QDir dir(subpath);
+                if(!dir.exists()){
+                    mkdir(subpath.toStdString().c_str(), mode);
+                }
+            }
+        }
+    }
+    void bind(const QString& source, const QString& target, bool readOnly = false){
+        umount(target);
+        mkdirs(target, 744);
+        auto ctarget = target.toStdString();
+        auto csource = source.toStdString();
+        mount(csource.c_str(), ctarget.c_str(), NULL, MS_BIND, NULL);
+        if(readOnly){
+            mount(csource.c_str(), ctarget.c_str(), NULL, MS_REMOUNT | MS_BIND | MS_RDONLY, NULL);
+            qDebug() << "mount ro" << source << target;
+            return;
+        }
+        qDebug() << "mount rw" << source << target;
+    }
+    void ramdisk(const QString& path){
+        mkdirs(path, 744);
+        umount(path);
+        mount("tmpfs", path.toStdString().c_str(), "tmpfs", 0, "size=249m,rw,nosuid,nodev,mode=755");
+        qDebug() << "ramdisk" << path;
+    }
+    void umount(const QString& path){
+        QDir dir(path);
+        if(!dir.exists() || !isMounted(path)){
+            return;
+        }
+        auto cpath = path.toStdString();
+        ::umount(cpath.c_str());
+        if(isMounted(path)){
+            qDebug() << "umount failed" << path;
+            return;
+        }
+        rmdir(cpath.c_str());
+        qDebug() << "umount" << path;
+    }
+    const QString chrootPath() { return "/tmp/tarnish-chroot/" + name(); }
+    void mountAll(){
+        auto path = chrootPath();
+        qDebug() << "Setting up chroot" << path;
+        // System tmpfs folders
+        bind("/dev", path + "/dev");
+        bind("/proc", path + "/proc");
+        bind("/sys", path + "/sys");
+        // Folders required to run things
+        bind("/bin", path + "/bin", true);
+        bind("/lib", path + "/lib", true);
+        bind("/usr/lib", path + "/usr/lib", true);
+        bind("/usr/bin", path + "/usr/bin", true);
+        bind("/usr/sbin", path + "/usr/sbin", true);
+        bind("/opt/bin", path + "/opt/bin", true);
+        bind("/opt/lib", path + "/opt/lib", true);
+        bind("/opt/usr/bin", path + "/opt/usr/bin", true);
+        bind("/opt/usr/lib", path + "/opt/usr/lib", true);
+        for(auto directory : directories()){
+            bind(directory, path + directory);
+        }
+        // tmpfs folders
+        ramdisk(path + "/run");
+        ramdisk(path + "/var/volatile");
+    }
+    void umountAll(){
+        auto path = chrootPath();
+        QDir dir(path);
+        if(!dir.exists()){
+            return;
+        }
+        qDebug() << "Tearing down chroot" << path;
+        QFile mounts("/proc/mounts");
+        if(!mounts.open(QIODevice::ReadOnly)){
+            qDebug() << "Unable to open /proc/mounts";
+            return;
+        }
+        QString line;
+        while(!(line = mounts.readLine()).isEmpty()){
+            auto mount = line.section(' ', 1, 1);
+            if(mount.startsWith(path + "/")){
+                umount(mount);
+            }
+
+        }
+        mounts.seek(0);
+        while(!(line = mounts.readLine()).isEmpty()){
+            auto mount = line.section(' ', 1, 1);
+            if(mount.startsWith(path + "/")){
+                qDebug() << "Some items are still mounted in chroot" << path;
+                return;
+            }
+        }
+        mounts.close();
+        dir.removeRecursively();
+    }
+    bool isMounted(const QString& path){
+        QFile mounts("/proc/mounts");
+        if(!mounts.open(QIODevice::ReadOnly)){
+            qDebug() << "Unable to open /proc/mounts";
+            return false;
+        }
+        QString line;
+        while(!(line = mounts.readLine()).isEmpty()){
+            auto mount = line.section(' ', 1, 1);
+            if(mount == path){
+                mounts.close();
+                return true;
+            }
+        }
+        mounts.close();
+        return false;
     }
 };
 

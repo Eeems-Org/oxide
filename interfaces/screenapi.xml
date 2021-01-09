@@ -1,12 +1,27 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
   <interface name="codes.eeems.oxide1.Screen">
+    <property name="enabled" type="b" access="read"/>
+    <property name="screenshots" type="ao" access="read"/>
+    <signal name="screenshotAdded">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="screenshotRemoved">
+      <arg type="o" direction="out"/>
+    </signal>
+    <signal name="screenshotModified">
+      <arg type="o" direction="out"/>
+    </signal>
+    <method name="addScreenshot">
+      <arg type="o" direction="out"/>
+      <arg name="blob" type="ay" direction="in"/>
+    </method>
     <method name="drawFullscreenImage">
       <arg type="b" direction="out"/>
       <arg name="path" type="s" direction="in"/>
     </method>
     <method name="screenshot">
-      <arg type="i" direction="out"/>
+      <arg type="o" direction="out"/>
     </method>
   </interface>
 </node>

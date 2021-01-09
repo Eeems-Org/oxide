@@ -15,6 +15,9 @@
 #include "application_interface.h"
 #include "systemapi_interface.h"
 #include "screenapi_interface.h"
+#include "screenshot_interface.h"
+#include "notificationapi_interface.h"
+#include "notification_interface.h"
 
 using namespace codes::eeems::oxide1;
 
@@ -36,6 +39,7 @@ QVariant decodeDBusArgument(const QDBusArgument& arg){
         return sanitizeForJson(list);
     }
     if(type == QDBusArgument::MapType){
+        qDebug() << "Map Type";
         QMap<QVariant, QVariant> map;
         arg.beginMap();
         while(!arg.atEnd()){
@@ -83,6 +87,14 @@ QVariant sanitizeForJson(QVariant value){
         QStringList list;
         for(auto value : value.value<QList<QDBusObjectPath>>()){
             list.append(value.path());
+        }
+        return list;
+    }
+    if(userType == QMetaType::QByteArray){
+        auto byteArray = value.toByteArray();
+        QVariantList list;
+        for(auto byte : byteArray){
+            list.append(byte);
         }
         return list;
     }
@@ -194,8 +206,8 @@ int main(int argc, char *argv[]){
     parser.addHelpOption();
     parser.applicationDescription();
     parser.addVersionOption();
-    parser.addPositionalArgument("api", "wifi\npower\napps\nsystem\nscreen");
-    parser.addPositionalArgument("action","get\nset\nlisten\ncall\nobject");
+    parser.addPositionalArgument("api", "wifi\npower\napps\nsystem\nscreen\nnotification");
+    parser.addPositionalArgument("action","get\nset\nlisten\ncall");
     QCommandLineOption objectOption(
         {"o", "object"},
         "Object to act on, e.g. Network:network/94d5caa2d4345ab7be5254dfb9678cd7",
@@ -215,9 +227,12 @@ int main(int argc, char *argv[]){
         parser.showHelp(EXIT_FAILURE);
     }
     auto apiName = args.at(0);
-    if(!(QSet<QString> {"power", "wifi", "apps", "system", "screen"}).contains(apiName)){
+    if(!(QSet<QString> {"power", "wifi", "apps", "system", "screen", "notification"}).contains(apiName)){
         qDebug() << "Unknown API" << apiName;
         return EXIT_FAILURE;
+    }
+    if(args.length() < 2){
+        parser.showHelp(EXIT_FAILURE);
     }
     auto action = args.at(1);
     if(action == "get"){
@@ -316,8 +331,30 @@ int main(int argc, char *argv[]){
     }else if(apiName == "screen"){
         api = new Screen(OXIDE_SERVICE, path, bus);
         if(parser.isSet("object")){
-            qDebug() << "Paths are not valid for the screen API";
-            return EXIT_FAILURE;
+            auto object = parser.value("object");
+            auto type = object.mid(0, object.indexOf(":"));
+            auto path = object.mid(object.indexOf(":") + 1);
+            path = OXIDE_SERVICE_PATH + QString("/" + path);
+            if(type == "Screenshot"){
+                api = new Screenshot(OXIDE_SERVICE, path, bus);
+            }else{
+                qDebug() << "Unknown object type" << type;
+                return EXIT_FAILURE;
+            }
+        }
+    }else if(apiName == "notification"){
+        api = new Notifications(OXIDE_SERVICE, path, bus);
+        if(parser.isSet("object")){
+            auto object = parser.value("object");
+            auto type = object.mid(0, object.indexOf(":"));
+            auto path = object.mid(object.indexOf(":") + 1);
+            path = OXIDE_SERVICE_PATH + QString("/" + path);
+            if(type == "Notification"){
+                api = new Notification(OXIDE_SERVICE, path, bus);
+            }else{
+                qDebug() << "Unknown object type" << type;
+                return EXIT_FAILURE;
+            }
         }
     }else{
         qDebug() << "API not initialized? Please log a bug.";
