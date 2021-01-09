@@ -121,9 +121,10 @@ public:
         QTime nextTime = currentTime.addSecs(60 - currentTime.second());
         clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
         QObject::connect(clockTimer , &QTimer::timeout, this, &Controller::updateClock);
-        clockTimer ->start();
+        clockTimer->start();
 
         if(!settings.contains("pin")){
+            qDebug() << "First launch";
             QTimer::singleShot(100, [this]{
                 stateControllerUI->setProperty("state", xochitlPin().isEmpty() ? "firstLaunch" : "import");
             });
@@ -131,6 +132,8 @@ public:
         }
 
         if(!storedPin().length()){
+            qDebug() << "No pin set";
+            setState("loading");
             previousApplication();
             return;
         }
