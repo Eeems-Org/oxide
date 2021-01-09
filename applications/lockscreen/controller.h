@@ -213,7 +213,7 @@ public:
         setStoredPin(pin);
         QTimer::singleShot(200, [this]{
             qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
-            setState("loaded");
+            setState("loading");
             previousApplication();
         });
         return true;
@@ -227,7 +227,7 @@ public:
     }
     Q_INVOKABLE void clearPin(){
         setStoredPin("");
-        setState("loading");
+        startup();
     }
 
     bool sleepInhibited(){ return systemApi->sleepInhibited(); }
@@ -247,6 +247,7 @@ public:
     QString storedPin() { return settings.value("pin", "").toString(); }
     void setStoredPin(QString pin) {
         settings.setValue("pin", pin);
+        settings.sync();
     }
 
     void setRoot(QObject* root){ this->root = root; }
