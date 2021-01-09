@@ -3,8 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 pkgnames=(erode fret oxide rot tarnish decay)
-pwd
-pkgver="2.1~beta-$(pwd)"
+pkgver="2.1~beta-$(cat package/oxide/version.txt)"
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 license=MIT
