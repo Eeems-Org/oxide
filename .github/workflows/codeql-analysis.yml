@@ -62,7 +62,8 @@ jobs:
        chmod +x install-toolchain.sh
        ./install-toolchain.sh -y -d ./toolchain
        rm install-toolchain.sh
-       source toolchain/environment-setup-*-linux-gnueabi
+       unset LD_LIBRARY_PATH
+       source toolchain/environment-setup-cortexa9hf-neon-oe-linux-gnueabi
        make release
 
     - name: Perform CodeQL Analysis
