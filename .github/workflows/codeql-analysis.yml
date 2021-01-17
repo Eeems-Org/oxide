@@ -57,6 +57,7 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v2
     - run: |
+       sudo apt-get install libsystemd-dev
        make release
 
     - name: Perform CodeQL Analysis
