@@ -2,7 +2,6 @@
 #define APP_H
 #include <QObject>
 
-#include "inputmanager.h"
 #include "application_interface.h"
 
 #ifndef OXIDE_SERVICE

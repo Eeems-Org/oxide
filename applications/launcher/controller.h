@@ -8,7 +8,6 @@
 #include "appitem.h"
 #include "eventfilter.h"
 #include "sysobject.h"
-#include "inputmanager.h"
 #include "wifinetworklist.h"
 #include "notificationlist.h"
 #include "dbusservice_interface.h"
