@@ -131,15 +131,16 @@ public:
             return;
         }
 
-        if(!storedPin().length()){
+        if(shouldQuit()){
             qDebug() << "No pin set";
-            setState("loading");
             previousApplication();
+            qApp->quit();
             return;
         }
 
+        qDebug() << "Prompting for PIN";
         QTimer::singleShot(100, [this]{
-            stateControllerUI->setProperty("state", "loaded");
+            setState("loaded");
         });
     }
     void launchStartupApp(){
@@ -148,11 +149,13 @@ public:
             path = appsApi->getApplicationPath("codes.eeems.oxide");
         }
         if(path.path() == "/"){
+            qWarning() << "Unable to find startup application to launch.";
             return;
         }
         Application app(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus());
         app.launch();
     }
+    bool shouldQuit(){ return settings.contains("pin") && !storedPin().length(); }
     void previousApplication(){
         if(!appsApi->previousApplication()){
             launchStartupApp();
@@ -201,7 +204,9 @@ public:
         }
         if(state == "prompt"){
             confirmPin = pin;
-            setState("confirmPin");
+            QTimer::singleShot(200, [this]{
+                setState("confirmPin");
+            });
             return true;
         }
         if(state != "confirmPin"){
