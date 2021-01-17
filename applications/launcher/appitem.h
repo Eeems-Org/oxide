@@ -15,8 +15,6 @@ using namespace codes::eeems::oxide1;
 class AppItem : public QObject {
     Q_OBJECT
 public:
-    InputManager* inputManager;
-
     AppItem(QObject* parent) : QObject(parent){}
 
     ~AppItem(){

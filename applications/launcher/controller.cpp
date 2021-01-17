@@ -191,7 +191,6 @@ QList<QObject*> Controller::getApps(){
         if(appItem == nullptr){
             qDebug() << name;
             appItem = new AppItem(this);
-            appItem->inputManager = &inputManager;
             applications.append(appItem);
         }
         auto displayName = app.displayName();
