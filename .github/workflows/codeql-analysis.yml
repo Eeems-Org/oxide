@@ -58,6 +58,11 @@ jobs:
       uses: jurplel/install-qt-action@v2
     - run: |
        sudo apt-get install libsystemd-dev
+       curl https://remarkable.engineering/deploy/sdk/sumo_qt5.12_toolchain.sh -o install-toolchain.sh
+       chmod +x install-toolchain.sh
+       ./install-toolchain.sh -y -d ./toolchain
+       rm install-toolchain.sh
+       source toolchain/environment-setup-*-linux-gnueabi
        make release
 
     - name: Perform CodeQL Analysis
