@@ -54,6 +54,8 @@ jobs:
     #    and modify them (or add more) to build your code if your project
     #    uses a compiled language
 
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v2
     - run: |
        make release
 
