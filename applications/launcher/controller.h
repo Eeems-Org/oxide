@@ -59,7 +59,6 @@ public:
     : QObject(parent),
       m_wifion(false),
       wifi("/sys/class/net/wlan0"),
-      inputManager(),
       applications() {
         networks = new WifiNetworkList();
         notifications = new NotificationList();
@@ -646,7 +645,6 @@ private:
     bool m_wifion;
     SysObject wifi;
     QTimer* uiTimer;
-    InputManager inputManager;
     Power* powerApi = nullptr;
     Wifi* wifiApi = nullptr;
     System* systemApi = nullptr;
