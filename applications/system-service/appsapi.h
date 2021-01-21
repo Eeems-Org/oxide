@@ -578,9 +578,9 @@ private:
                     if(event == "stop"){
                         properties.insert("onStop", events[event].toString());
                     }else if(event == "pause"){
-                        properties.insert("pause", events[event].toString());
+                        properties.insert("onPause", events[event].toString());
                     }else if(event == "resume"){
-                        properties.insert("resume", events[event].toString());
+                        properties.insert("onResume", events[event].toString());
                     }
                 }
             }
