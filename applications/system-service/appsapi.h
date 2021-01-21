@@ -590,6 +590,7 @@ private:
                 for(auto key : environment.keys()){
                     envMap.insert(key, environment[key].toString());
                 }
+                properties.insert("environment", envMap);
             }
             if(applications.contains(name)){
                 applications[name]->setConfig(properties);
