@@ -573,14 +573,14 @@ private:
                 properties.insert("permissions", permissions);
             }
             if(app.contains("events")){
-                auto events = app["evnets"].toObject();
+                auto events = app["events"].toObject();
                 for(auto event : events.keys()){
                     if(event == "stop"){
                         properties.insert("onStop", events[event].toString());
                     }else if(event == "pause"){
-                        properties.insert("pause", events[event].toString());
+                        properties.insert("onPause", events[event].toString());
                     }else if(event == "resume"){
-                        properties.insert("resume", events[event].toString());
+                        properties.insert("onResume", events[event].toString());
                     }
                 }
             }
