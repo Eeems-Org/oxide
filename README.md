@@ -25,3 +25,13 @@ Works on x86_64-linux or macOS with
 ```ShellSession
 $ nix build
 ```
+
+## Setting a PIN
+
+Under some circumstances on the reMarkable 2, Oxide will have problems restoring screen functionality if no PIN is set. You will be prompted to set a PIN when the application is installed. If you need to set a PIN after installation, follow these steps:
+
+```ShellSession
+systemctl stop tarnish
+rm /home/root/.config/Eeems/decay.conf
+systemctl start tarnish
+```
