@@ -45,7 +45,7 @@ public:
         while (i < n) {
             ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 1);
             ev[i++] = createEvent(EV_SYN, 0, 0);
-            ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 0);
+            ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 2);
             ev[i++] = createEvent(EV_SYN, 0, 0);
         }
 

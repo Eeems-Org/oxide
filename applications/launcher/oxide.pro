@@ -71,7 +71,6 @@ ls
 HEADERS += \
     controller.h \
     appitem.h \
-    inputmanager.h \
     mxcfb.h \
     notificationlist.h \
     sysobject.h \

@@ -8,7 +8,6 @@
 #include "appitem.h"
 #include "eventfilter.h"
 #include "sysobject.h"
-#include "inputmanager.h"
 #include "wifinetworklist.h"
 #include "notificationlist.h"
 #include "dbusservice_interface.h"
@@ -59,7 +58,6 @@ public:
     : QObject(parent),
       m_wifion(false),
       wifi("/sys/class/net/wlan0"),
-      inputManager(),
       applications() {
         networks = new WifiNetworkList();
         notifications = new NotificationList();
@@ -646,7 +644,6 @@ private:
     bool m_wifion;
     SysObject wifi;
     QTimer* uiTimer;
-    InputManager inputManager;
     Power* powerApi = nullptr;
     Wifi* wifiApi = nullptr;
     System* systemApi = nullptr;

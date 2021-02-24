@@ -2,7 +2,6 @@
 #define APP_H
 #include <QObject>
 
-#include "inputmanager.h"
 #include "application_interface.h"
 
 #ifndef OXIDE_SERVICE
@@ -15,8 +14,6 @@ using namespace codes::eeems::oxide1;
 class AppItem : public QObject {
     Q_OBJECT
 public:
-    InputManager* inputManager;
-
     AppItem(QObject* parent) : QObject(parent){}
 
     ~AppItem(){

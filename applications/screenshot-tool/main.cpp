@@ -104,7 +104,7 @@ int main(int argc, char *argv[]){
         if(QFile("/tmp/.screenshot").exists()){
             // Then execute the contents of /tmp/.screenshot
             qDebug() << "Screenshot file exists.";
-            QProcess::execute("/bin/bash", QStringList() << "/tmp.screenshot" << screenshot.path());
+            QProcess::execute("/bin/bash", QStringList() << "/tmp/.screenshot" << screenshot.path());
         }
         addNotification(&notifications, "Screenshot taken");
         qDebug() << "Screenshot done.";

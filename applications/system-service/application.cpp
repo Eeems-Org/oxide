@@ -186,13 +186,13 @@ void Application::stop(){
     if(state == Paused){
         kill(-m_process->processId(), SIGCONT);
     }
-    m_process->terminate();
+    kill(-m_process->processId(), SIGTERM);
     // Try to wait for the application to stop normally before killing it
     int tries = 0;
     while(this->stateNoSecurityCheck() != Inactive){
         m_process->waitForFinished(100);
         if(++tries == 5){
-            m_process->kill();
+            kill(-m_process->processId(), SIGKILL);
             return;
         }
     }
