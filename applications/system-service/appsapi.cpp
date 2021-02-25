@@ -10,6 +10,7 @@ AppsAPI::AppsAPI(QObject* parent)
   m_startupApplication("/"),
   m_lockscreenApplication("/"),
   m_processManagerApplication("/"),
+  m_taskSwitcherApplication("/"),
   m_sleeping(false) {
     singleton(this);
     SignalHandler::setup_unix_signal_handlers();
@@ -51,6 +52,16 @@ AppsAPI::AppsAPI(QObject* parent)
         }
     }
     m_processManagerApplication= path;
+
+    path = QDBusObjectPath(settings.value("processManagerApplication").toString());
+    app = getApplication(path);
+    if(app == nullptr){
+        app = getApplication("codes.eeems.corrupt");
+        if(app != nullptr){
+            path = app->qPath();
+        }
+    }
+    m_taskSwitcherApplication= path;
 }
 
 void AppsAPI::startup(){

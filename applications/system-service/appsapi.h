@@ -28,6 +28,8 @@ class AppsAPI : public APIBase {
     Q_PROPERTY(int state READ state) // This needs to be here for the XML to generate the other properties :(
     Q_PROPERTY(QDBusObjectPath startupApplication READ startupApplication WRITE setStartupApplication)
     Q_PROPERTY(QDBusObjectPath lockscreenApplication READ lockscreenApplication WRITE setLockscreenApplication)
+    Q_PROPERTY(QDBusObjectPath processManagerApplication READ processManagerApplication WRITE setProcessManagerApplication)
+    Q_PROPERTY(QDBusObjectPath taskSwitcherApplication READ taskSwitcherApplication WRITE setTaskSwitcherApplication)
     Q_PROPERTY(QVariantMap applications READ getApplications)
     Q_PROPERTY(QStringList previousApplications READ getPreviousApplications)
     Q_PROPERTY(QDBusObjectPath currentApplication READ currentApplication)
@@ -152,6 +154,36 @@ public:
         if(getApplication(path) != nullptr){
             m_lockscreenApplication = path;
             settings.setValue("lockscreenApplication", path.path());
+        }
+    }
+    QDBusObjectPath processManagerApplication(){
+        if(!hasPermission("apps")){
+            return QDBusObjectPath("/");
+        }
+        return m_processManagerApplication;
+    }
+    void setProcessManagerApplication(QDBusObjectPath path){
+        if(!hasPermission("apps")){
+            return;
+        }
+        if(getApplication(path) != nullptr){
+            m_processManagerApplication = path;
+            settings.setValue("processManagerApplication", path.path());
+        }
+    }
+    QDBusObjectPath taskSwitcherApplication(){
+        if(!hasPermission("apps")){
+            return QDBusObjectPath("/");
+        }
+        return m_taskSwitcherApplication;
+    }
+    void setTaskSwitcherApplication(QDBusObjectPath path){
+        if(!hasPermission("apps")){
+            return;
+        }
+        if(getApplication(path) != nullptr){
+            m_taskSwitcherApplication = path;
+            settings.setValue("taskSwitcherApplication", path.path());
         }
     }
 
@@ -320,6 +352,9 @@ public:
         if(currentApplication->qPath() == lockscreenApplication()){
             return;
         }
+        if(currentApplication->qPath() == taskSwitcherApplication()){
+            return;
+        }
         if(!previousApplications.isEmpty() && previousApplications.last() == currentApplication->name()){
             return;
         }
@@ -388,6 +423,29 @@ public slots:
         }
         app->launch();
     }
+    void openTaskSwitcher(){
+        if(!hasPermission("apps")){
+            return;
+        }
+        auto path = this->currentApplication();
+        auto currentApplication = getApplication(path);
+        if(currentApplication->stateNoSecurityCheck() != Application::Inactive){
+            if(path == m_lockscreenApplication){
+                qDebug() << "Can't open task switcher, on the lockscreen";
+                return;
+            }
+            if(path == m_taskSwitcherApplication){
+                qDebug() << "Already on the task switcher";
+                return;
+            }
+        }
+        auto app = getApplication(m_taskSwitcherApplication);
+        if(app == nullptr){
+            openDefaultApplication();
+            return;
+        }
+        app->launch();
+    }
 
 private:
     bool m_stopping;
@@ -398,6 +456,7 @@ private:
     QDBusObjectPath m_startupApplication;
     QDBusObjectPath m_lockscreenApplication;
     QDBusObjectPath m_processManagerApplication;
+    QDBusObjectPath m_taskSwitcherApplication;
     bool m_sleeping;
     Application* resumeApp = nullptr;
     QString getPath(QString name){

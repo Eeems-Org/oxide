@@ -52,7 +52,9 @@ void Application::pause(bool startIfNone){
     }
     qDebug() << "Pausing " << path();
     interruptApplication();
-    saveScreen();
+    if(!flags().contains("nosavescreen")){
+        saveScreen();
+    }
     if(startIfNone){
         appsAPI->resumeIfNone();
     }
@@ -126,7 +128,7 @@ void Application::resume(){
     appsAPI->recordPreviousApplication();
     qDebug() << "Resuming " << path();
     appsAPI->pauseAll();
-    if(type() != AppsAPI::Backgroundable || stateNoSecurityCheck() == Paused){
+    if(!flags().contains("nosavescreen") && (type() != AppsAPI::Backgroundable || stateNoSecurityCheck() == Paused)){
         recallScreen();
     }
     uninterruptApplication();

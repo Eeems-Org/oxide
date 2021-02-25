@@ -3,6 +3,8 @@
 
 #include <cstdlib>
 
+#include "rmkit.h"
+
 #include "dbusservice.h"
 #include "signalhandler.h"
 
@@ -42,6 +44,22 @@ int main(int argc, char *argv[]){
     signal(SIGINT, sigHandler);
     signal(SIGSEGV, sigHandler);
     signal(SIGTERM, sigHandler);
+
+    auto gesture = new input::SwipeGesture();
+    gesture->fingers = 1;
+    gesture->set_coordinates(0, 0.9, 1, 1);
+    input::Gesture::Point point;
+    point.x = 0;
+    point.y = -1;
+    gesture->direction = point;
+    gesture->events.activate += PLS_LAMBDA(auto d){
+        Q_UNUSED(d);
+        qDebug() << "Swipe up";
+    };
+    QTimer::singleShot(0, []{
+        ui::MainLoop::handle_events();
+        ui::MainLoop::handle_gestures();
+    });
 
     return app.exec();
 }

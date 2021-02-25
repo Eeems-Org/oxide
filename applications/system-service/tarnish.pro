@@ -1,7 +1,11 @@
 QT += dbus
 
-CONFIG += c++11 console
+CONFIG += c++17
+CONFIG += console
 CONFIG -= app_bundle
+CONFIG += precompile_header_c
+
+QMAKE_CFLAGS += -std=c99
 
 SOURCES += \
     apibase.cpp \
@@ -70,7 +74,8 @@ HEADERS += \
     wifiapi.h \
     wlan.h \
     wpa_supplicant.h \
-    devicesettings.h
+    devicesettings.h \
+    ../../shared/rmkit.h \
 
 linux-oe-g++ {
     LIBS += -lqsgepaper
@@ -82,6 +87,7 @@ linux-oe-g++ {
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
 DISTFILES += \
+    ../../assets/opt/usr/share/applications/codes.eeems.corrupt.oxide \
     fi.w1.wpa_supplicant1.xml \
     generate_xml.sh \
     org.freedesktop.login1.xml
