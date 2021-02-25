@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: '3.8'
       - name: Setup Toltec dependencies
-        uses: ./.github/actions/setup
+        uses: ./toltec/.github/actions/setup
       - name: Package
         run: |
           rm -rf "$GITHUB_WORKSPACE"/toltec/package/oxide/*
