@@ -2,6 +2,7 @@
 #define SYSTEMAPI_H
 
 #include <QObject>
+#include <QMetaType>
 #include <QMutableListIterator>
 #include <QTimer>
 #include <QMutex>
@@ -12,6 +13,8 @@
 #include "screenapi.h"
 #include "digitizerhandler.h"
 #include "login1_interface.h"
+
+#define DEBUG_TOUCH
 
 #define systemAPI SystemAPI::singleton()
 
@@ -38,6 +41,29 @@ struct Inhibitor {
     bool released() { return fd == -1; }
 };
 
+struct Touch {
+    int slot;
+    int id = -1;
+    int x;
+    int y;
+    bool active;
+    bool existing = false;
+    bool modified = true;
+    int pressure;
+    int major;
+    int minor;
+    int orientation;
+    string debugString() const{
+        return "<Touch " + to_string(id) + " (" + to_string(x) + ", " + to_string(y) + ") " + (active ? "down" : "up") + ">";
+    }
+};
+#ifdef DEBUG_TOUCH
+QDebug operator<<(QDebug debug, const Touch& touch);
+QDebug operator<<(QDebug debug, Touch* touch);
+#endif
+Q_DECLARE_METATYPE(Touch)
+Q_DECLARE_METATYPE(input_event)
+
 class SystemAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_SYSTEM_INTERFACE)
@@ -58,7 +84,8 @@ public:
        settings(this),
        sleepInhibitors(),
        powerOffInhibitors(),
-       mutex() {
+       mutex(),
+       touches(){
         settings.sync();
         singleton(this);
         this->resumeApp = nullptr;
@@ -90,6 +117,7 @@ public:
         // Ask Systemd to tell us nicely when we are about to suspend or resume
         inhibitSleep();
         inhibitPowerOff();
+        qRegisterMetaType<input_event>();
         connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
         connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
         qDebug() << "System API ready to use";
@@ -185,24 +213,125 @@ private slots:
     void PrepareForSleep(bool suspending);
     void timeout();
     void touchEvent(const input_event& event){
-        activity();
         switch(event.type){
-            case 0:
-                touchDown(event);
+            case EV_SYN:
+                switch(event.code){
+                    case SYN_REPORT:
+                        // Always mark the current slot as modified
+                        auto touch = getEvent(currentSlot);
+                        touch->modified = true;
+                        // Remove any invalid events
+                        for(auto touch : touches.values()){
+                            if(touch->id == -1){
+                                touches.remove(touch->slot);
+                                delete touch;
+                            }
+                        }
+                        QList<Touch*> released;
+                        QList<Touch*> pressed;
+                        QList<Touch*> moved;
+                        for(auto touch : touches.values()){
+                            if(!touch->active){
+                                released.append(touch);
+                            }
+                            if(!touch->existing && touch->active){
+                                pressed.append(touch);
+                            }
+                            if(touch->existing && touch->modified){
+                                moved.append(touch);
+                            }
+                        }
+                        if(pressed.length()){
+                            touchDown(pressed);
+                        }
+                        if(moved.length()){
+                            touchMove(moved);
+                        }
+                        if(released.length()){
+                            touchUp(released);
+                        }
+                        // Cleanup released touches
+                        for(auto touch : released){
+                            if(!touch->active){
+                                touches.remove(touch->slot);
+                                delete touch;
+                            }
+                        }
+                        // Setup touches for next event set
+                        for(auto touch : touches.values()){
+                            touch->modified = false;
+                            touch->existing = true;
+                        }
+                    break;
+                }
             break;
-            case 1:
-                touchUp(event);
+            case EV_ABS:
+                if(currentSlot == -1 && event.code != ABS_MT_SLOT){
+                    return;
+                }
+                switch(event.code){
+                    case ABS_MT_SLOT:{
+                        currentSlot = event.value;
+                        auto touch = getEvent(currentSlot);
+                        touch->modified = true;
+                    }break;
+                    case ABS_MT_TRACKING_ID:{
+                        auto touch = getEvent(currentSlot);
+                        if(event.value == -1){
+                            touch->active = false;
+                            currentSlot = 0;
+                        }else{
+                            touch->active = true;
+                            touch->id = event.value;
+                        }
+                    }break;
+                    case ABS_MT_POSITION_X:{
+                        auto touch = getEvent(currentSlot);
+                        touch->x = event.value;
+                    }break;
+                    case ABS_MT_POSITION_Y:{
+                        auto touch = getEvent(currentSlot);
+                        touch->y = event.value;
+                    }break;
+                    case ABS_MT_PRESSURE:{
+                        auto touch = getEvent(currentSlot);
+                        touch->pressure = event.value;
+                    }break;
+                    case ABS_MT_TOUCH_MAJOR:{
+                        auto touch = getEvent(currentSlot);
+                        touch->major = event.value;
+                    }break;
+                    case ABS_MT_TOUCH_MINOR:{
+                        auto touch = getEvent(currentSlot);
+                        touch->minor = event.value;
+                    }break;
+                    case ABS_MT_ORIENTATION:{
+                        auto touch = getEvent(currentSlot);
+                        touch->orientation = event.value;
+                    }break;
+                }
             break;
-            case 2:
-                touchMove(event);
-            break;
-            default:
-                qWarning() << "Unknown touch event type: " << event.type;
         }
+
     }
-    void touchDown(const input_event& event){}
-    void touchUp(const input_event& event){}
-    void touchMove(const input_event& event){}
+    void touchDown(QList<Touch*> touches){
+#ifdef DEBUG_TOUCH
+        qDebug() << "DOWN" << touches;
+#endif
+        activity();
+    }
+    void touchUp(QList<Touch*> touches){
+#ifdef DEBUG_TOUCH
+        qDebug() << "UP" << touches;
+#endif
+        activity();
+    }
+    void touchMove(QList<Touch*> touches){
+#ifdef DEBUG_TOUCH
+        qDebug() << "MOVE" << touches;
+#endif
+        activity();
+    }
 
 private:
     Manager* systemd;
@@ -213,6 +342,8 @@ private:
     QStringList sleepInhibitors;
     QStringList powerOffInhibitors;
     QMutex mutex;
+    QMap<int, Touch*> touches;
+    int currentSlot = 0;
     int m_autoSleep;
     bool wifiWasOn = false;
 
@@ -249,6 +380,17 @@ private:
     }
     void rguard(bool install){
         QProcess::execute("/opt/bin/rguard", QStringList() << (install ? "-1" : "-0"));
+    }
+    Touch* getEvent(int slot){
+        if(slot == -1){
+            return nullptr;
+        }
+        if(!touches.contains(slot)){
+            touches.insert(slot, new Touch{
+                .slot = slot
+            });
+        }
+        return touches.value(slot);
     }
 };
 

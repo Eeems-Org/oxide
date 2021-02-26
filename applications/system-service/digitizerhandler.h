@@ -90,10 +90,9 @@ protected:
         streamsize sie = static_cast<streamsize>(sizeof(struct input_event));
         while(stream.read((char*)&ie, sie)){
             // Read for non-zero event codes.
-            if(ie.code != 0){
-                emit inputEvent(ie);
-                emit activity();
-            }else{
+            emit inputEvent(ie);
+            emit activity();
+            if(ie.code != SYN_REPORT){
                 yieldCurrentThread();
             }
         }

@@ -4,6 +4,19 @@
 #include "wifiapi.h"
 #include "devicesettings.h"
 
+#ifdef DEBUG_TOUCH
+QDebug operator<<(QDebug debug, const Touch& touch){
+    QDebugStateSaver saver(debug);
+    debug.nospace() << touch.debugString().c_str();
+    return debug.maybeSpace();
+}
+QDebug operator<<(QDebug debug, Touch* touch){
+    QDebugStateSaver saver(debug);
+    debug.nospace() << touch->debugString().c_str();
+    return debug.maybeSpace();
+}
+#endif
+
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
