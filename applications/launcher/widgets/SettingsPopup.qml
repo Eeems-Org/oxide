@@ -45,10 +45,21 @@ Item {
                     id: sleepAfterSpinBox
                     objectName: "sleepAfterSpinBox"
                     from: 1
-                    to: 10
+                    to: 360
                     stepSize: 1
                     value: controller.sleepAfter
-                    onValueChanged: controller.sleepAfter = this.value
+                    onValueChanged: {
+                        controller.sleepAfter = this.value;
+                        if(this.value < 10){
+                            this.stepSize = 1;
+                        }
+                        else if(this.value >=10 && this.value < 60){
+                            this.stepSize = 5;
+                        }
+                        else{
+                            this.stepSize = 15;
+                        }
+                    }
                     Layout.preferredWidth: 300
                 }
             }
