@@ -10,6 +10,7 @@
 #include "buttonhandler.h"
 #include "application.h"
 #include "screenapi.h"
+#include "digitizerhandler.h"
 #include "login1_interface.h"
 
 #define systemAPI SystemAPI::singleton()
@@ -89,6 +90,8 @@ public:
         // Ask Systemd to tell us nicely when we are about to suspend or resume
         inhibitSleep();
         inhibitPowerOff();
+        connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
+        connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
         qDebug() << "System API ready to use";
     }
     ~SystemAPI(){
@@ -181,6 +184,25 @@ signals:
 private slots:
     void PrepareForSleep(bool suspending);
     void timeout();
+    void touchEvent(const input_event& event){
+        activity();
+        switch(event.type){
+            case 0:
+                touchDown(event);
+            break;
+            case 1:
+                touchUp(event);
+            break;
+            case 2:
+                touchMove(event);
+            break;
+            default:
+                qWarning() << "Unknown touch event type: " << event.type;
+        }
+    }
+    void touchDown(const input_event& event){}
+    void touchUp(const input_event& event){}
+    void touchMove(const input_event& event){}
 
 private:
     Manager* systemd;

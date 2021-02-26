@@ -76,6 +76,7 @@ public:
 
 signals:
     void activity();
+    void inputEvent(const input_event& event);
 
 protected:
     void run(){
@@ -90,6 +91,7 @@ protected:
         while(stream.read((char*)&ie, sie)){
             // Read for non-zero event codes.
             if(ie.code != 0){
+                emit inputEvent(ie);
                 emit activity();
             }else{
                 yieldCurrentThread();

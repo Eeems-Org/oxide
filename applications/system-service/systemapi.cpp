@@ -112,6 +112,7 @@ void SystemAPI::activity(){
         qDebug() << "Suspend timer disabled";
     }
 }
+
 void SystemAPI::uninhibitSleep(QDBusMessage message){
     if(!sleepInhibited()){
         return;

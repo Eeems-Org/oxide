@@ -75,7 +75,6 @@ HEADERS += \
     wlan.h \
     wpa_supplicant.h \
     devicesettings.h \
-    ../../shared/rmkit.h \
 
 linux-oe-g++ {
     LIBS += -lqsgepaper
