@@ -48,17 +48,30 @@ Item {
                     to: 360
                     stepSize: 1
                     value: controller.sleepAfter
-                    onValueChanged: {
-                        controller.sleepAfter = this.value;
+                    onDownPressedChanged: {
+                        if(this.value <= 10){
+                            this.stepSize = 1;
+                            return;
+                        }
+                        if(this.value <= 60){
+                            this.stepSize = 5;
+                            return;
+                        }
+                        this.stepSize = 15;
+                    }
+                    onUpPressedChanged: {
                         if(this.value < 10){
                             this.stepSize = 1;
+                            return;
                         }
-                        else if(this.value >=10 && this.value < 60){
+                        if(this.value < 60){
                             this.stepSize = 5;
+                            return;
                         }
-                        else{
-                            this.stepSize = 15;
-                        }
+                        this.stepSize = 15;
+                    }
+                    onValueChanged: {
+                        controller.sleepAfter = this.value;
                     }
                     Layout.preferredWidth: 300
                 }
