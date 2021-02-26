@@ -42,19 +42,19 @@ struct Inhibitor {
 };
 
 struct Touch {
-    int slot;
+    int slot = 0;
     int id = -1;
-    int x;
-    int y;
-    bool active;
+    int x = 0;
+    int y = 0;
+    bool active = false;
     bool existing = false;
     bool modified = true;
-    int pressure;
-    int major;
-    int minor;
-    int orientation;
+    int pressure = 0;
+    int major = 0;
+    int minor = 0;
+    int orientation = 0;
     string debugString() const{
-        return "<Touch " + to_string(id) + " (" + to_string(x) + ", " + to_string(y) + ") " + (active ? "down" : "up") + ">";
+        return "<Touch " + to_string(id) + " (" + to_string(x) + ", " + to_string(y) + ") " + (active ? "pressed" : "released") + ">";
     }
 };
 #ifdef DEBUG_TOUCH
@@ -119,6 +119,7 @@ public:
         inhibitPowerOff();
         qRegisterMetaType<input_event>();
         connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
+        connect(touchHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
         connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
         qDebug() << "System API ready to use";
     }
@@ -203,6 +204,8 @@ signals:
     void homeAction();
     void rightAction();
     void powerAction();
+    void bottomAction();
+    void topAction();
     void sleepInhibitedChanged(bool);
     void powerOffInhibitedChanged(bool);
     void autoSleepChanged(int);
@@ -233,11 +236,9 @@ private slots:
                         for(auto touch : touches.values()){
                             if(!touch->active){
                                 released.append(touch);
-                            }
-                            if(!touch->existing && touch->active){
+                            }else if(!touch->existing){
                                 pressed.append(touch);
-                            }
-                            if(touch->existing && touch->modified){
+                            }else if(touch->modified){
                                 moved.append(touch);
                             }
                         }
@@ -318,19 +319,95 @@ private slots:
 #ifdef DEBUG_TOUCH
         qDebug() << "DOWN" << touches;
 #endif
-        activity();
+        if(getCurrentFingers() != 1){
+            touchHandler->ungrab();
+            swipeDir = -1;
+            return;
+        }
+        auto touch = touches.first();
+        if(touch->y <= 20){
+            swipeDir = 2;
+        }else if(touch->y > 1003){
+            swipeDir = 3;
+        }else if(touch->x <= 20){
+            swipeDir = 1;
+        }else if(touch->x > 747){
+            swipeDir = 0;
+        }else{
+            touchHandler->ungrab();
+            swipeDir = -1;
+            return;
+        }
+        touchHandler->grab();
+#ifdef DEBUG_TOUCH
+            qDebug() << "Swipe started" << swipeDir;
+#endif
+        startLocation = location = QPoint(touch->x, touch->y);
     }
     void touchUp(QList<Touch*> touches){
 #ifdef DEBUG_TOUCH
         qDebug() << "UP" << touches;
 #endif
-        activity();
+        if(swipeDir == -1){
+#ifdef DEBUG_TOUCH
+            qDebug() << "Not swiping";
+#endif
+            return;
+        }
+        touchHandler->ungrab();
+        auto touch = touches.first();
+        if(swipeDir == 0){
+            if(touch->x > location.x() || touch->x > startLocation.x() + 20){
+#ifdef DEBUG_TOUCH
+                qDebug() << "Swipe Cancelled";
+#endif
+                swipeDir = -1;
+                return;
+            }
+            emit leftAction();
+        }else if(swipeDir == 1){
+            if(touch->x < location.x() || touch->x < startLocation.x() + 20){
+#ifdef DEBUG_TOUCH
+                qDebug() << "Swipe Cancelled";
+#endif
+                swipeDir = -1;
+                return;
+            }
+            emit rightAction();
+        }else  if(swipeDir == 2){
+            if(touch->y < location.y() || touch->y < startLocation.y() + 20){
+#ifdef DEBUG_TOUCH
+                qDebug() << "Swipe Cancelled";
+#endif
+                swipeDir = -1;
+                return;
+            }
+            emit bottomAction();
+        }else{
+            if(touch->y > location.y() || touch->y > startLocation.y() + 20){
+#ifdef DEBUG_TOUCH
+                qDebug() << "Swipe Cancelled";
+#endif
+                swipeDir = -1;
+                return;
+            }
+            emit topAction();
+        }
+#ifdef DEBUG_TOUCH
+            qDebug() << "Swipe action" << swipeDir;
+#endif
     }
     void touchMove(QList<Touch*> touches){
 #ifdef DEBUG_TOUCH
         qDebug() << "MOVE" << touches;
 #endif
-        activity();
+        if(swipeDir == -1){
+            return;
+        }
+        auto touch = touches.first();
+        if(touch->y > location.y()){
+            location = QPoint(touch->x, touch->y);
+        }
     }
 
 private:
@@ -346,6 +423,14 @@ private:
     int currentSlot = 0;
     int m_autoSleep;
     bool wifiWasOn = false;
+    // -1 - not swiping
+    // 0 - right
+    // 1 - left
+    // 2 - up
+    // 3 - down
+    int swipeDir = -1;
+    QPoint location;
+    QPoint startLocation;
 
     void inhibitSleep(){
         inhibitors.append(Inhibitor(systemd, "sleep", qApp->applicationName(), "Handle sleep screen"));
@@ -391,6 +476,11 @@ private:
             });
         }
         return touches.value(slot);
+    }
+    int getCurrentFingers(){
+        return std::count_if(touches.begin(), touches.end(), [](Touch* touch){
+            return touch->active;
+        });
     }
 };
 

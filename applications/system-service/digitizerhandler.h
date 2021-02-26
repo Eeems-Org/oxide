@@ -73,6 +73,12 @@ public:
     void setEnabled(bool enabled){
         m_enabled = enabled;
     }
+    void grab(){
+        lock_device(device);
+    }
+    void ungrab(){
+        unlock_device(device);
+    }
 
 signals:
     void activity();

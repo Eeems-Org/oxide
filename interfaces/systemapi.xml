@@ -12,6 +12,10 @@
     </signal>
     <signal name="powerAction">
     </signal>
+    <signal name="bottomAction">
+    </signal>
+    <signal name="topAction">
+    </signal>
     <signal name="sleepInhibitedChanged">
       <arg type="b" direction="out"/>
     </signal>
