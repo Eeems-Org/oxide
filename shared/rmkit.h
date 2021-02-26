@@ -1,3 +1,8 @@
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STB_TRUETYPE_IMPLEMENTATION
+
 
 /* FILE: /rmkit/src/.rmkit.h_cpp/assets.h */
 

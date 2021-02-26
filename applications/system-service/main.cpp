@@ -56,10 +56,11 @@ int main(int argc, char *argv[]){
         Q_UNUSED(d);
         qDebug() << "Swipe up";
     };
-    QTimer::singleShot(0, []{
+    QTimer timer(&app);
+    QObject::connect(&timer, &QTimer::timeout, []{
         ui::MainLoop::handle_events();
         ui::MainLoop::handle_gestures();
     });
-
+    timer.start(0);
     return app.exec();
 }
