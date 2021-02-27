@@ -321,6 +321,9 @@ public:
         return previousApplicationNoSecurityCheck();
     }
     bool previousApplicationNoSecurityCheck(){
+        if(locked()){
+            return false;
+        }
         if(previousApplications.isEmpty()){
             qDebug() << "No previous applications";
             return false;
@@ -374,7 +377,7 @@ signals:
 public slots:
     QT_DEPRECATED void leftHeld(){ openDefaultApplication(); }
     void openDefaultApplication(){
-        if(!hasPermission("apps")){
+        if(locked() || !hasPermission("apps")){
             return;
         }
         auto path = this->currentApplication();
@@ -390,7 +393,7 @@ public slots:
     }
     QT_DEPRECATED void homeHeld(){ openTaskManager(); }
     void openTaskManager(){
-        if(!hasPermission("apps")){
+        if(locked() || !hasPermission("apps")){
             return;
         }
         auto path = this->currentApplication();
@@ -407,7 +410,7 @@ public slots:
         app->launch();
     }
     void openLockScreen(){
-        if(!hasPermission("apps")){
+        if(locked() || !hasPermission("apps")){
             return;
         }
         auto path = this->currentApplication();
@@ -424,7 +427,7 @@ public slots:
         app->launch();
     }
     void openTaskSwitcher(){
-        if(!hasPermission("apps")){
+        if(locked() || !hasPermission("apps")){
             return;
         }
         auto path = this->currentApplication();
@@ -667,5 +670,6 @@ private:
         settings->setValue("version", OXIDE_SETTINGS_VERSION);
         settings->sync();
     }
+    bool locked();
 };
 #endif // APPSAPI_H

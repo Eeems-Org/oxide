@@ -79,6 +79,18 @@ public:
     void ungrab(){
         unlock_device(device);
     }
+    void write(ushort type, ushort code, int value){
+        struct input_event event;
+        event.type = type;
+        event.code = code;
+        event.value = value;
+        write_event(device, event);
+        flush_stream(&stream);
+    }
+    void syn(){
+        ev_syn(device);
+        flush_stream(&stream);
+    }
 
 signals:
     void activity();
@@ -118,6 +130,11 @@ protected:
             // unlock_device(wacom_device);
             close(wacom_device.fd);
         }
+    }
+    void flush_stream(istream* stream){
+        input_event ie;
+        streamsize sie = static_cast<streamsize>(sizeof(struct input_event));
+        stream->read((char*)&ie, sie);
     }
 };
 

@@ -1,4 +1,5 @@
 #include "appsapi.h"
+#include "notificationapi.h"
 
 AppsAPI::AppsAPI(QObject* parent)
 : APIBase(parent),
@@ -81,3 +82,5 @@ void AppsAPI::startup(){
         app->launch();
     }
 }
+
+bool AppsAPI::locked(){ return notificationAPI->locked(); }

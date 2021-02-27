@@ -116,7 +116,7 @@ public:
         connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
         connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
         connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
-            if(!appsAPI->previousApplicationNoSecurityCheck()){
+            if(!notificationAPI->locked() && !appsAPI->previousApplicationNoSecurityCheck()){
                 appsAPI->openDefaultApplication();
             }
         });
