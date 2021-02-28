@@ -351,6 +351,7 @@ public:
             found = true;
             break;
         }
+        qDebug() << "Previous Applications" << previousApplications;
         return found;
     }
     void recordPreviousApplication(){
@@ -365,11 +366,10 @@ public:
         if(currentApplication->qPath() == taskSwitcherApplication()){
             return;
         }
-        if(!previousApplications.isEmpty() && previousApplications.last() == currentApplication->name()){
-            return;
-        }
-        qDebug() << "Recording previous app" << currentApplication->name();
-        previousApplications.append(currentApplication->name());
+        auto name = currentApplication->name();
+        previousApplications.removeAll(name);
+        previousApplications.append(name);
+        qDebug() << "Previous Applications" << previousApplications;
     }
 
 signals:
