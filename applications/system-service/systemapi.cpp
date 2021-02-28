@@ -75,7 +75,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
     }
 }
 void SystemAPI::setAutoSleep(int autoSleep){
-    if(autoSleep < 0 || autoSleep > 10){
+    if(autoSleep < 0 || autoSleep > 360){
         return;
     }
     qDebug() << "Auto Sleep" << autoSleep;

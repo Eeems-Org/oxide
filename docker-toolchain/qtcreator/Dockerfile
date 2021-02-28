@@ -1,4 +1,4 @@
-FROM nvidia/cuda:latest
+FROM 11.2.1-base-ubuntu20.04
 LABEL maintainer='Nathaniel van Diepen'
 
 WORKDIR /root
@@ -8,6 +8,7 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get dist-upgrade -y
 RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
   curl \
   qtcreator \
+  libarchive-tools \
   build-essential \
   gcc-arm-linux-gnueabihf \
   python
@@ -20,7 +21,8 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
 #   -d /opt/poky/2.1.3/
 
 # reMarkable 1.8 toolchain
-RUN curl https://remarkable.engineering/deploy/sdk/sumo_qt5.12_toolchain.sh \
+# RUN curl https://remarkable.engineering/deploy/sdk/sumo_qt5.12_toolchain.sh \
+RUN curl https://cloudflare-ipfs.com/ipfs/QmZmt4UtvyLLA8mLde6WspqvhMAKjzfvJW91R3bEja6y3A \
   -o install-toolchain.sh
 RUN chmod +x install-toolchain.sh
 RUN ./install-toolchain.sh -y \
