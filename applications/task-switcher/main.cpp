@@ -52,6 +52,7 @@ int main(int argc, char *argv[]){
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
+    context->setContextProperty("apps", QVariant::fromValue(controller.getApps()));
     context->setContextProperty("controller", &controller);
     engine.rootContext()->setContextProperty("screenProvider", screenProvider);
     engine.addImageProvider("screen", screenProvider);

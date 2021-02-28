@@ -68,9 +68,9 @@ AppsAPI::AppsAPI(QObject* parent)
 void AppsAPI::startup(){
     for(auto app : applications){
         if(app->autoStart()){
-            app->launch();
+            app->launchNoSecurityCheck();
             if(app->type() == Backgroundable){
-                app->pause();
+                app->pauseNoSecurityCheck();
             }
         }
     }
@@ -79,7 +79,7 @@ void AppsAPI::startup(){
         app = getApplication(m_startupApplication);
     }
     if(app != nullptr){
-        app->launch();
+        app->launchNoSecurityCheck();
     }
 }
 

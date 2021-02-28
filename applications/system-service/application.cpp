@@ -15,8 +15,11 @@ void Application::launch(){
     if(!hasPermission("apps")){
         return;
     }
+    launchNoSecurityCheck();
+}
+void Application::launchNoSecurityCheck(){
     if(m_process->processId()){
-        resume();
+        resumeNoSecurityCheck();
     }else{
         appsAPI->recordPreviousApplication();
         qDebug() << "Launching " << path();
@@ -39,11 +42,13 @@ void Application::launch(){
         m_process->waitForStarted();
     }
 }
-
 void Application::pause(bool startIfNone){
     if(!hasPermission("apps")){
         return;
     }
+    pauseNoSecurityCheck(startIfNone);
+}
+void Application::pauseNoSecurityCheck(bool startIfNone){
     if(
         !m_process->processId()
         || stateNoSecurityCheck() == Paused
@@ -118,6 +123,9 @@ void Application::resume(){
     if(!hasPermission("apps")){
         return;
     }
+    resumeNoSecurityCheck();
+}
+void Application::resumeNoSecurityCheck(){
     if(
         !m_process->processId()
         || stateNoSecurityCheck() == InForeground
@@ -179,6 +187,9 @@ void Application::stop(){
     if(!hasPermission("apps")){
         return;
     }
+    stopNoSecurityCheck();
+}
+void Application::stopNoSecurityCheck(){
     auto state = this->stateNoSecurityCheck();
     if(state == Inactive){
         return;
@@ -187,6 +198,7 @@ void Application::stop(){
         QProcess::execute(onStop());
     }
     if(state == Paused){
+        touchHandler->clear_buffer();
         kill(-m_process->processId(), SIGCONT);
     }
     kill(-m_process->processId(), SIGTERM);
@@ -209,6 +221,9 @@ void Application::unregister(){
     if(!hasPermission("apps")){
         return;
     }
+    unregisterNoSecurityCheck();
+}
+void Application::unregisterNoSecurityCheck(){
     emit unregistered();
     appsAPI->unregisterApplication(this);
 }
@@ -284,3 +299,4 @@ void Application::errorOccurred(QProcess::ProcessError error){
     }
 }
 bool Application::hasPermission(QString permission, const char* sender){ return appsAPI->hasPermission(permission, sender); }
+

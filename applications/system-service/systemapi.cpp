@@ -23,10 +23,10 @@ void SystemAPI::PrepareForSleep(bool suspending){
         wifiAPI->stopUpdating();
         emit deviceSuspending();
         appsAPI->recordPreviousApplication();
-        auto path = appsAPI->currentApplication();
+        auto path = appsAPI->currentApplicationNoSecurityCheck();
         if(path.path() != "/"){
             resumeApp = appsAPI->getApplication(path);
-            resumeApp->pause(false);
+            resumeApp->pauseNoSecurityCheck(false);
         }else{
             resumeApp = nullptr;
         }
@@ -57,7 +57,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
             resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
         }
         if(resumeApp != nullptr){
-            resumeApp->resume();
+            resumeApp->resumeNoSecurityCheck();
         }
         buttonHandler->setEnabled(true);
         emit deviceResuming();

@@ -2,19 +2,28 @@ import QtQuick 2.10
 import QtQuick.Window 2.3
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
+import "./widgets"
 
 ApplicationWindow {
     id: window
     objectName: "window"
-    visible: stateController.state != "loading"
+    visible: stateController.state === "loaded"
     width: screenGeometry.width
     height: screenGeometry.height
     title: qsTr("Corrupt")
+    property int itemPadding: 10
     Connections{
         target: screenProvider
         onImageChanged: background.reload()
     }
-    Component.onCompleted: controller.startup()
+    Connections {
+        target: controller
+        onReload: appsView.model = controller.getApps()
+    }
+    Component.onCompleted: {
+        controller.startup();
+        appsView.model = controller.getApps();
+    }
     background: Rectangle {
         Image {
             id: background
@@ -22,6 +31,7 @@ ApplicationWindow {
             anchors.fill: parent
             cache: false
             source: "image://screen/image"
+            visible: stateController.state === "loaded"
             property bool counter: false
             function reload(){
                 console.log("Reloading background");
@@ -33,6 +43,7 @@ ApplicationWindow {
     contentData: [
         MouseArea {
             anchors.fill: parent
+            enabled: stateController.state === "loaded"
             onClicked: controller.previousApplication()
         }
     ]
@@ -41,10 +52,41 @@ ApplicationWindow {
         color: "white"
         border.color: "black"
         border.width: 1
-        height: 100
+        height: 200
+        width: parent.width
+        visible: stateController.state === "loaded"
         RowLayout {
-            width: parent.width
-            Label { text: "Test" }
+            anchors.fill: parent
+            AppItem {
+                text: "Home"
+                height: parent.height
+                onClicked: controller.launchStartupApp()
+            }
+            ListView {
+                id: appsView
+                orientation: Qt.Horizontal
+                snapMode: ListView.SnapOneItem
+                maximumFlickVelocity: 0
+                boundsBehavior: Flickable.StopAtBounds
+                enabled: stateController.state === "loaded"
+                model: apps
+                objectName: "appsView"
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                delegate: AppItem {
+                    visible: model.modelData.running
+                    enabled: visible && appsView.enabled
+                    height: visible ? appsView.height : 0
+                    source: model.modelData.imgFile
+                    text: model.modelData.displayName
+                    onClicked: model.modelData.execute()
+                }
+            }
+            AppItem {
+                text: "Task Manager"
+                height: parent.height
+                onClicked: controller.launchTaskManager()
+            }
         }
     }
     StateGroup {

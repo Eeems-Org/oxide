@@ -20,6 +20,7 @@ linux-oe-g++ {
 }
 
 SOURCES += \
+        appitem.cpp \
         main.cpp \
         ../../shared/devicesettings.cpp \
         ../../shared/eventfilter.cpp
@@ -38,6 +39,7 @@ HEADERS += \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h \
     ../../shared/eventfilter.h \
+    appitem.h \
     controller.h \
     screenprovider.h \
     signalhandler.h

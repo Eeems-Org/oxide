@@ -11,7 +11,7 @@ void Notification::display(){
     }
     notificationAPI->lock();
     qDebug() << "Displaying notification" << identifier();
-    auto path = appsAPI->currentApplication();
+    auto path = appsAPI->currentApplicationNoSecurityCheck();
     Application* resumeApp = nullptr;
     if(path.path() != "/"){
         resumeApp = appsAPI->getApplication(path);

@@ -28,7 +28,7 @@ public:
             return instance;
         }
         // Get event devices
-        event_device touchScreen_device(deviceSettings.getTouchDevicePath(), O_RDONLY);
+        event_device touchScreen_device(deviceSettings.getTouchDevicePath(), O_RDWR);
         if(touchScreen_device.fd == -1){
             qDebug() << "Failed to open event device: " << touchScreen_device.device.c_str();
             throw QException();
@@ -43,7 +43,7 @@ public:
             return instance;
         }
         // Get event devices
-        event_device wacom_device(deviceSettings.getWacomDevicePath(), O_RDONLY);
+        event_device wacom_device(deviceSettings.getWacomDevicePath(), O_RDWR);
         if(wacom_device.fd == -1){
             qDebug() << "Failed to open event device: " << wacom_device.device.c_str();
             throw QException();
@@ -87,12 +87,16 @@ public:
         }
     }
     bool grabbed() { return device.locked; }
-    void write(ushort type, ushort code, int value = 0){
-        write_event(device, createEvent(type, code, value));
-        qDebug() << "Emitted event " << type << code << value;
+    void write(ushort type, ushort code, int value){
+        auto event = createEvent(type, code, value);
+        ::write(device.fd, &event, sizeof(input_event));
+        qDebug() << "Emitted event " << event.time.tv_sec << event.time.tv_usec << type << code << value;
+    }
+    void write(input_event* events, size_t size){
+        ::write(device.fd, events, size);
     }
     void syn(){
-        write(EV_SYN, SYN_REPORT);
+        write(EV_SYN, SYN_REPORT, 0);
     }
     void clear_buffer(){
         if(device.fd == -1){
@@ -101,7 +105,7 @@ public:
 #ifdef DEBUG
         qDebug() << "Clearing event buffer on" << device.device.c_str();
 #endif
-        ::write(device.fd, flood, 512 * 8 * 4 * sizeof(input_event));
+        write(flood, 512 * 8 * 4 * sizeof(input_event));
     }
 
 signals:
@@ -135,11 +139,11 @@ protected:
         }
     }
     bool handle_events(){
-        input_event ie;
-        if(!read(&ie)){
+        input_event event;
+        if(!read(&event)){
             return false;
         }
-        emit inputEvent(ie);
+        emit inputEvent(event);
         emit activity();
         return true;
     }
@@ -149,10 +153,6 @@ protected:
     event_device device;
     bool read(input_event* ie){
         return (bool)stream.read((char*)ie, static_cast<streamsize>(sizeof(struct input_event)));
-    }
-    void flush_stream(){
-        input_event ie;
-        read(&ie);
     }
     inline input_event createEvent(ushort type, ushort code, int value){
         struct input_event event;

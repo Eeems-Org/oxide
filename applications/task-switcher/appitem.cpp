@@ -8,7 +8,6 @@
 #include "appitem.h"
 #include "dbusservice_interface.h"
 #include "appsapi_interface.h"
-#include "mxcfb.h"
 #include "controller.h"
 
 bool AppItem::ok(){ return getApp() != nullptr; }
@@ -18,13 +17,14 @@ void AppItem::execute(){
         qWarning() << "Application instance is not valid";
         return;
     }
-    qDebug() << "Running application " << app->path();
-    try {
-        app->launch().waitForFinished();
-    }catch(const std::exception& e){
-        qDebug() << "Failed to launch" << property("name").toString() << e.what();
+    qDebug() << "Running application " << property("name").toString();
+    auto reply = app->launch();
+    while(!reply.isFinished()){
+        qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
     }
-    qDebug() << "Waiting for application to exit...";
+    if(reply.isError()){
+        qDebug() << "Failed to launch" << property("name").toString() << reply.error().message();
+    }
 }
 void AppItem::stop(){
     if(!getApp() || !app->isValid()){
@@ -57,7 +57,6 @@ Application* AppItem::getApp(){
     connect(instance, &Application::displayNameChanged, this, &AppItem::onDisplayNameChanged);
     connect(instance, &Application::iconChanged, this, &AppItem::onIconChanged);
     connect(instance, &Application::launched, this, &AppItem::launched);
-
     app = instance;
     return app;
 }

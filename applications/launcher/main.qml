@@ -275,7 +275,6 @@ ApplicationWindow {
                             PropertyAction { target: image; property: "height"; value: image.height - 10 }
                         }
                     }
-
                 ]
             }
         },

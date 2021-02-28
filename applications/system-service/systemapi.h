@@ -403,7 +403,7 @@ private:
             swipeDirection = None;
             return;
         }
-        touchHandler->grab();
+        //touchHandler->grab();
 #ifdef DEBUG
             qDebug() << "Swipe started" << swipeDirection;
 #endif
@@ -477,6 +477,9 @@ private:
         }
         swipeDirection = None;
         touchHandler->ungrab();
+        touch->x = -1;
+        touch->y = -1;
+        writeTouchUp(touch);
 #ifdef DEBUG
             qDebug() << "Swipe direction" << swipeDirection;
 #endif
@@ -517,6 +520,7 @@ private:
         qDebug() << "Swipe Cancelled";
 #endif
         swipeDirection = None;
+        touchHandler->ungrab();
         writeTouchUp(touch);
     }
     void writeTouchUp(Touch* touch){
@@ -525,9 +529,16 @@ private:
             touchHandler->ungrab();
         }
         writeTouchMove(touch);
-        touchHandler->write(EV_ABS, ABS_MT_SLOT, touch->slot);
-        touchHandler->write(EV_ABS, ABS_MT_TRACKING_ID, -1);
-        touchHandler->syn();
+#ifdef DEBUG
+        qDebug() << "Write touch up" << touch;
+#endif
+        int size = sizeof(input_event) * 3;
+        input_event* events = (input_event*)malloc(size);
+        events[0] = createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
+        events[1] = createEvent(EV_ABS, ABS_MT_TRACKING_ID, -1);
+        events[2] = createEvent(EV_SYN, 0, 0);
+        touchHandler->write(events, size);
+        free(events);
         if(grabbed){
             touchHandler->grab();
         }
@@ -537,16 +548,36 @@ private:
         if(grabbed){
             touchHandler->ungrab();
         }
-        touchHandler->write(EV_ABS, ABS_MT_SLOT, touch->slot);
-        touchHandler->write(EV_ABS, ABS_MT_POSITION_X, touch->x);
-        touchHandler->write(EV_ABS, ABS_MT_POSITION_Y, touch->y);
-        touchHandler->write(EV_ABS, ABS_MT_PRESSURE, touch->pressure);
-        touchHandler->write(EV_ABS, ABS_MT_TOUCH_MAJOR, touch->major);
-        touchHandler->write(EV_ABS, ABS_MT_TOUCH_MINOR, touch->minor);
-        touchHandler->write(EV_ABS, ABS_MT_ORIENTATION, touch->orientation);
-        touchHandler->syn();
+#ifdef DEBUG
+        qDebug() << "Write touch move" << touch;
+#endif
+        int size = sizeof(input_event) * 8;
+        input_event* events = (input_event*)malloc(size);
+        events[2] = createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
+        events[2] = createEvent(EV_ABS, ABS_MT_POSITION_X, touch->x);
+        events[2] = createEvent(EV_ABS, ABS_MT_POSITION_Y, touch->y);
+        events[2] = createEvent(EV_ABS, ABS_MT_PRESSURE, touch->pressure);
+        events[2] = createEvent(EV_ABS, ABS_MT_TOUCH_MAJOR, touch->major);
+        events[2] = createEvent(EV_ABS, ABS_MT_TOUCH_MINOR, touch->minor);
+        events[2] = createEvent(EV_ABS, ABS_MT_ORIENTATION, touch->orientation);
+        events[2] = createEvent(EV_SYN, 0, 0);
+        touchHandler->write(events, size);
+        free(events);
         if(grabbed){
             touchHandler->grab();
+        }
+    }
+    void fn(){
+        auto n = 512 * 8;
+        auto num_inst = 4;
+        input_event* ev = (input_event *)malloc(sizeof(struct input_event) * n * num_inst);
+        memset(ev, 0, sizeof(input_event) * n * num_inst);
+        auto i = 0;
+        while (i < n) {
+            ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 1);
+            ev[i++] = createEvent(EV_SYN, 0, 0);
+            ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 2);
+            ev[i++] = createEvent(EV_SYN, 0, 0);
         }
     }
 };

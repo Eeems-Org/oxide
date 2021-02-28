@@ -183,6 +183,11 @@ public:
     Q_INVOKABLE void stop();
     Q_INVOKABLE void unregister();
 
+    void launchNoSecurityCheck();
+    void resumeNoSecurityCheck();
+    void stopNoSecurityCheck();
+    void pauseNoSecurityCheck(bool startIfNone = true);
+    void unregisterNoSecurityCheck();
     QString name() { return value("name").toString(); }
     int processId() { return m_process->processId(); }
     QStringList permissions() { return value("permissions", QStringList()).toStringList(); }
@@ -381,15 +386,9 @@ signals:
 
 public slots:
     void sigUsr1(){
-        if(!hasPermission("permissions")){
-            return;
-        }
         timer.invalidate();
     }
     void sigUsr2(){
-        if(!hasPermission("permissions")){
-            return;
-        }
         timer.invalidate();
     }
 

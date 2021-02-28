@@ -16,6 +16,7 @@
 
 #include "screenprovider.h"
 #include "signalhandler.h"
+#include "appitem.h"
 
 using namespace codes::eeems::oxide1;
 
@@ -30,7 +31,7 @@ class Controller : public QObject {
     Q_OBJECT
 public:
     Controller(QObject* parent, ScreenProvider* screenProvider)
-    : QObject(parent), confirmPin(), settings(this) {
+    : QObject(parent), confirmPin(), settings(this), applications() {
         this->screenProvider = screenProvider;
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
@@ -62,6 +63,8 @@ public:
             throw "";
         }
         appsApi = new Apps(OXIDE_SERVICE, path.path(), bus, this);
+        connect(appsApi, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
+        connect(appsApi, &Apps::applicationRegistered, this, &Controller::registerApplication);
 
         settings.sync();
         auto version = settings.value("version", 0).toInt();
@@ -79,21 +82,82 @@ public:
         });
     }
     Q_INVOKABLE void previousApplication(){
-        if(!appsApi->previousApplication()){
+        auto reply = appsApi->previousApplication();
+        while(!reply.isFinished()){
+            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
+        }
+        if(reply.isError() || !reply.value()){
             launchStartupApp();
         }
     }
-    void launchStartupApp(){
-        QDBusObjectPath path = appsApi->startupApplication();
-        if(path.path() == "/"){
-            path = appsApi->getApplicationPath("codes.eeems.oxide");
+    Q_INVOKABLE void launchStartupApp(){
+        auto reply = appsApi->openDefaultApplication();
+        while(!reply.isFinished()){
+            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
         }
-        if(path.path() == "/"){
-            qWarning() << "Unable to find startup application to launch.";
-            return;
+    }
+    Q_INVOKABLE void launchTaskManager(){
+        auto reply = appsApi->openTaskManager();
+        while(!reply.isFinished()){
+            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
         }
-        Application app(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus());
-        app.launch();
+    }
+    Q_INVOKABLE QList<QObject*> getApps(){
+        auto bus = QDBusConnection::systemBus();
+        auto running = appsApi->runningApplications();
+        auto paused = appsApi->pausedApplications();
+        for(auto key : paused.keys()){
+            if(running.contains(key)){
+                continue;
+            }
+            running.insert(key, paused[key]);
+        }
+        for(auto item : appsApi->applications()){
+            auto path = item.value<QDBusObjectPath>().path();
+            Application app(OXIDE_SERVICE, path, bus, this);
+            if(app.hidden()){
+                continue;
+            }
+            auto name = app.name();
+            auto appItem = getApplication(name);
+            if(appItem == nullptr){
+                qDebug() << name;
+                appItem = new AppItem(this);
+                applications.append(appItem);
+            }
+            auto displayName = app.displayName();
+            if(displayName.isEmpty()){
+                displayName = name;
+            }
+            appItem->setProperty("path", path);
+            appItem->setProperty("name", name);
+            appItem->setProperty("displayName", displayName);
+            appItem->setProperty("desc", app.description());
+            appItem->setProperty("call", app.bin());
+            appItem->setProperty("running", running.contains(name));
+            auto icon = app.icon();
+            if(!icon.isEmpty() && QFile(icon).exists()){
+                    appItem->setProperty("imgFile", "file:" + icon);
+            }
+            if(!appItem->ok()){
+                qDebug() << "Invalid item" << appItem->property("name").toString();
+                applications.removeAll(appItem);
+                delete appItem;
+            }
+        }
+        // Sort by name
+        std::sort(applications.begin(), applications.end(), [=](const QObject* a, const QObject* b) -> bool {
+            return a->property("name") < b->property("name");
+        });
+        return applications;
+    }
+    AppItem* getApplication(QString name){
+        for(auto app : applications){
+            if(app->property("name").toString() == name){
+                return reinterpret_cast<AppItem*>(app);
+            }
+        }
+        return nullptr;
     }
     QString state() {
         if(!getStateControllerUI()){
@@ -113,6 +177,10 @@ public:
     }
 
     void setRoot(QObject* root){ this->root = root; }
+    Apps* getAppsApi() { return appsApi; }
+
+signals:
+    void reload();
 
 private slots:
     void sigUsr1(){
@@ -124,9 +192,26 @@ private slots:
     void sigUsr2(){
         qDebug() << "Sent to the background...";
         setState("hidden");
-        QTimer::singleShot(10, [this]{
+        QTimer::singleShot(0, [this]{
             ::kill(tarnishPid(), SIGUSR2);
         });
+    }
+    void unregisterApplication(QDBusObjectPath path){
+        auto pathString = path.path();
+        for(auto app : applications){
+            if(app->property("path") == pathString){
+                applications.removeAll(app);
+                delete app;
+                emit reload();
+                qDebug() << "Removed" << pathString << "application";
+                return;
+            }
+        }
+        qDebug() << "Unable to find application " << pathString << "to remove";
+    }
+    void registerApplication(QDBusObjectPath path){
+        qDebug() << "New application detected" << path.path();
+        emit reload();
     }
 
 private:
@@ -139,6 +224,7 @@ private:
     QObject* stateControllerUI = nullptr;
     QObject* backgroundUI = nullptr;
     ScreenProvider* screenProvider;
+    QList<QObject*> applications;
 
     int tarnishPid() { return api->tarnishPid(); }
     QObject* getStateControllerUI(){
