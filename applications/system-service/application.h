@@ -28,11 +28,11 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
+#include <stdexcept>
 
 #include "dbussettings.h"
 #include "mxcfb.h"
 #include "screenapi.h"
-#include "inputmanager.h"
 
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
@@ -47,7 +47,7 @@ public:
             m_uid = getUID(name);
             return true;
         }
-        catch(const runtime_error&){
+        catch(const std::runtime_error&){
             return false;
         }
     }
@@ -56,7 +56,7 @@ public:
             m_gid = getGID(name);
             return true;
         }
-        catch(const runtime_error&){
+        catch(const std::runtime_error&){
             return false;
         }
     }
@@ -99,14 +99,14 @@ private:
     uid_t getUID(const QString& name){
         auto user = getpwnam(name.toStdString().c_str());
         if(user == NULL){
-            throw runtime_error("Invalid user name: " + name.toStdString());
+            throw std::runtime_error("Invalid user name: " + name.toStdString());
         }
         return user->pw_uid;
     }
     gid_t getGID(const QString& name){
         auto group = getgrnam(name.toStdString().c_str());
         if(group == NULL){
-            throw runtime_error("Invalid group name: " + name.toStdString());
+            throw std::runtime_error("Invalid group name: " + name.toStdString());
         }
         return group->gr_gid;
     }

@@ -107,6 +107,13 @@ public:
 #endif
         write(flood, 512 * 8 * 4 * sizeof(input_event));
     }
+    static inline input_event createEvent(ushort type, ushort code, int value){
+        struct input_event event;
+        event.type = type;
+        event.code = code;
+        event.value = value;
+        return event;
+    }
 
 signals:
     void activity();
@@ -153,13 +160,6 @@ protected:
     event_device device;
     bool read(input_event* ie){
         return (bool)stream.read((char*)ie, static_cast<streamsize>(sizeof(struct input_event)));
-    }
-    inline input_event createEvent(ushort type, ushort code, int value){
-        struct input_event event;
-        event.type = type;
-        event.code = code;
-        event.value = value;
-        return event;
     }
 };
 

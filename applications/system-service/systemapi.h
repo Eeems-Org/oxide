@@ -540,9 +540,9 @@ private:
 #endif
         int size = sizeof(input_event) * 3;
         input_event* events = (input_event*)malloc(size);
-        events[0] = createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
-        events[1] = createEvent(EV_ABS, ABS_MT_TRACKING_ID, -1);
-        events[2] = createEvent(EV_SYN, 0, 0);
+        events[0] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
+        events[1] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TRACKING_ID, -1);
+        events[2] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
         touchHandler->write(events, size);
         free(events);
         if(grabbed){
@@ -559,14 +559,14 @@ private:
 #endif
         int size = sizeof(input_event) * 8;
         input_event* events = (input_event*)malloc(size);
-        events[2] = createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
-        events[2] = createEvent(EV_ABS, ABS_MT_POSITION_X, touch->x);
-        events[2] = createEvent(EV_ABS, ABS_MT_POSITION_Y, touch->y);
-        events[2] = createEvent(EV_ABS, ABS_MT_PRESSURE, touch->pressure);
-        events[2] = createEvent(EV_ABS, ABS_MT_TOUCH_MAJOR, touch->major);
-        events[2] = createEvent(EV_ABS, ABS_MT_TOUCH_MINOR, touch->minor);
-        events[2] = createEvent(EV_ABS, ABS_MT_ORIENTATION, touch->orientation);
-        events[2] = createEvent(EV_SYN, 0, 0);
+        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
+        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_POSITION_X, touch->x);
+        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_POSITION_Y, touch->y);
+        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_PRESSURE, touch->pressure);
+        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TOUCH_MAJOR, touch->major);
+        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TOUCH_MINOR, touch->minor);
+        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_ORIENTATION, touch->orientation);
+        events[2] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
         touchHandler->write(events, size);
         free(events);
         if(grabbed){
@@ -580,10 +580,10 @@ private:
         memset(ev, 0, sizeof(input_event) * n * num_inst);
         auto i = 0;
         while (i < n) {
-            ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 1);
-            ev[i++] = createEvent(EV_SYN, 0, 0);
-            ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 2);
-            ev[i++] = createEvent(EV_SYN, 0, 0);
+            ev[i++] = DigitizerHandler::createEvent(EV_ABS, ABS_DISTANCE, 1);
+            ev[i++] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
+            ev[i++] = DigitizerHandler::createEvent(EV_ABS, ABS_DISTANCE, 2);
+            ev[i++] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
         }
     }
 };

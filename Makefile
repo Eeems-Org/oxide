@@ -96,5 +96,5 @@ decay: tarnish
 corrupt: tarnish
 	mkdir -p .build/task-switcher
 	cp -r applications/task-switcher/* .build/task-switcher
-	cd .build/task-switcher && qmake decay.pro
+	cd .build/task-switcher && qmake corrupt.pro
 	$(MAKE) -C .build/task-switcher all

@@ -23,7 +23,6 @@
 #include <sys/ioctl.h>
 #include <cstdlib>
 
-#include "inputmanager.h"
 #include "event_device.h"
 #include "devicesettings.h"
 

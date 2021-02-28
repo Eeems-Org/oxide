@@ -2,8 +2,8 @@
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 
-pkgnames=(erode fret oxide rot tarnish decay)
-pkgver="2.1.2~beta-$(cat package/oxide/version.txt)"
+pkgnames=(erode fret oxide rot tarnish decay corrupt)
+pkgver="2.2-$(cat package/oxide/version.txt)"
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 license=MIT
@@ -38,7 +38,7 @@ oxide() {
     pkgdesc="Launcher application"
     url=https://github.com/Eeems/oxide/tree/master/applications/launcher
     section=launchers
-    depends=("erode  (= $pkgver)" "fret (= $pkgver)" "tarnish (= $pkgver)" "rot (= $pkgver)" "decay (= $pkgver)")
+    depends=("erode  (= $pkgver)" "fret (= $pkgver)" "tarnish (= $pkgver)" "rot (= $pkgver)" "decay (= $pkgver)" "corrupt (= $pkgver)")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/oxide
@@ -103,5 +103,17 @@ decay() {
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/decay
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/opt/usr/share/applications/codes.eeems.decay.oxide
+    }
+}
+
+corrupt() {
+    pkgdesc="Task Switcher for Oxide"
+    url=https://github.com/Eeems/oxide/tree/master/applications/task-switcher
+    section=utils
+    depends=("tarnish (= $pkgver)")
+
+    package() {
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/corrupt
+        install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/opt/usr/share/applications/codes.eeems.corrupt.oxide
     }
 }
