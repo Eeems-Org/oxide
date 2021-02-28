@@ -152,26 +152,32 @@ public:
     void unlock() { mutex.unlock(); }
 public slots:
     void suspend(){
-        if(!sleepInhibited()){
-            qDebug() << "Suspending...";
-            systemd->Suspend(false);
+        if(sleepInhibited()){
+            qDebug() << "Unable to suspend. Action is currently inhibited.";
+            return;
         }
+        qDebug() << "Suspending...";
+        systemd->Suspend(false);
     }
     void powerOff() {
-        if(!powerOffInhibited()){
-            qDebug() << "Powering off...";
-            releasePowerOffInhibitors(true);
-            rguard(false);
-            systemd->PowerOff(false);
+        if(powerOffInhibited()){
+            qDebug() << "Unable to power off. Action is currently inhibited.";
+            return;
         }
+        qDebug() << "Powering off...";
+        releasePowerOffInhibitors(true);
+        rguard(false);
+        systemd->PowerOff(false);
     }
     void reboot() {
-        if(!powerOffInhibited()){
-            qDebug() << "Rebooting...";
-            releasePowerOffInhibitors(true);
-            rguard(false);
-            systemd->Reboot(false);
+        if(powerOffInhibited()){
+            qDebug() << "Unable to reboot. Action is currently inhibited.";
+            return;
         }
+        qDebug() << "Rebooting...";
+        releasePowerOffInhibitors(true);
+        rguard(false);
+        systemd->Reboot(false);
     }
     void activity();
     void inhibitSleep(QDBusMessage message){
