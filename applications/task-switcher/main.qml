@@ -82,11 +82,6 @@ ApplicationWindow {
                     onClicked: model.modelData.execute()
                 }
             }
-            AppItem {
-                text: "Task Manager"
-                height: parent.height
-                onClicked: controller.launchTaskManager()
-            }
         }
     }
     StateGroup {
