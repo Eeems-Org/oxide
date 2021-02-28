@@ -41,5 +41,6 @@
         <file>widgets/NotificationsPopup.qml</file>
         <file>img/notifications/black.png</file>
         <file>img/notifications/white.png</file>
+        <file>widgets/AppItem.qml</file>
     </qresource>
 </RCC>
