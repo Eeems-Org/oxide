@@ -11,19 +11,25 @@ Item {
     property string source: "qrc:/img/icon.png"
     property string text: ""
 
+    Item {
+        id: spacer
+        height: root.height * 0.05
+    }
     Image {
+        id: icon
         fillMode: Image.PreserveAspectFit
-        height: root.height * 0.75
+        anchors.top: spacer.bottom
+        height: root.height * 0.70
         width: root.width
         source: root.source
     }
     Text {
         text: root.text
         width: root.width
-        height: root.height * 0.25
+        height: root.height * 0.20
         font.pointSize: 100
         minimumPointSize: 1
-        anchors.bottom: root.bottom
+        anchors.top: icon.bottom
         fontSizeMode: Text.Fit
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: Text.AlignHCenter

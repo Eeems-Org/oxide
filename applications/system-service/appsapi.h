@@ -377,8 +377,7 @@ signals:
     void applicationLaunched(QDBusObjectPath);
     void applicationUnregistered(QDBusObjectPath);
     void applicationPaused(QDBusObjectPath);
-    void applicationResumed(QDBusObjectPath);
-    void applicationSignaled(QDBusObjectPath);
+    void applicationResumed(QDBusObjectPath);    void applicationSignaled(QDBusObjectPath);
     void applicationExited(QDBusObjectPath, int);
 
 public slots:

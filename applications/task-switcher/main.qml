@@ -62,6 +62,7 @@ ApplicationWindow {
                 height: parent.height
                 onClicked: controller.launchStartupApp()
             }
+            AppItemSeperator {}
             ListView {
                 id: appsView
                 orientation: Qt.Horizontal

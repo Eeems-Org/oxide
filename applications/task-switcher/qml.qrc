@@ -3,5 +3,6 @@
         <file>main.qml</file>
         <file>img/icon.png</file>
         <file>widgets/AppItem.qml</file>
+        <file>widgets/AppItemSeperator.qml</file>
     </qresource>
 </RCC>
