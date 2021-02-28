@@ -14,7 +14,7 @@
 #include "digitizerhandler.h"
 #include "login1_interface.h"
 
-#define DEBUG_TOUCH
+
 #define GESTURE_LENGTH 30
 
 #define systemAPI SystemAPI::singleton()
@@ -58,7 +58,7 @@ struct Touch {
         return "<Touch " + to_string(id) + " (" + to_string(x) + ", " + to_string(y) + ") " + (active ? "pressed" : "released") + ">";
     }
 };
-#ifdef DEBUG_TOUCH
+#ifdef DEBUG
 QDebug operator<<(QDebug debug, const Touch& touch);
 QDebug operator<<(QDebug debug, Touch* touch);
 #endif
@@ -310,118 +310,6 @@ private slots:
                 }
             break;
         }
-
-    }
-    void touchDown(QList<Touch*> touches){
-#ifdef DEBUG_TOUCH
-        qDebug() << "DOWN" << touches;
-#endif
-        if(getCurrentFingers() == 1){
-            touchHandler->grab();
-        }
-        auto touch = touches.first();
-        if(swipeDirection != None){
-            return;
-        }else if(touch->y <= 20){
-            swipeDirection = Up;
-        }else if(touch->y > 1003){
-            swipeDirection = Down;
-        }else if(touch->x <= 20){
-            swipeDirection = Left;
-        }else if(touch->x > 747){
-            swipeDirection = Right;
-        }else{
-            touchHandler->ungrab();
-            swipeDirection = None;
-            return;
-        }
-#ifdef DEBUG_TOUCH
-            qDebug() << "Swipe started" << swipeDirection;
-#endif
-        startLocation = location = QPoint(touch->x, touch->y);
-    }
-    void touchUp(QList<Touch*> touches){
-#ifdef DEBUG_TOUCH
-        qDebug() << "UP" << touches;
-#endif
-        if(swipeDirection == None){
-#ifdef DEBUG_TOUCH
-            qDebug() << "Not swiping";
-#endif
-            return;
-        }
-        if(getCurrentFingers()){
-#ifdef DEBUG_TOUCH
-            qDebug() << "Still swiping";
-#endif
-            for(auto touch : touches){
-                writeTouchUp(touch);
-            }
-            return;
-        }
-        auto touch = touches.first();
-        if(swipeDirection == Right){
-            if(touch->x > location.x() || startLocation.x() - touch->x < GESTURE_LENGTH){
-                cancelSwipe(touch);
-                return;
-            }
-            emit leftAction();
-        }else if(swipeDirection == Left){
-            if(touch->x < location.x() || touch->x - startLocation.x() < GESTURE_LENGTH){
-                cancelSwipe(touch);
-                return;
-            }
-            emit rightAction();
-        }else  if(swipeDirection == Up){
-            if(touch->y < location.y() || touch->y - startLocation.y() < GESTURE_LENGTH){
-                cancelSwipe(touch);
-                return;
-            }
-            emit bottomAction();
-        }else if(swipeDirection == Down){
-            if(touch->y > location.y() || startLocation.y() - touch->y < GESTURE_LENGTH){
-                cancelSwipe(touch);
-                return;
-            }
-            emit topAction();
-        }
-        swipeDirection = None;
-        touchHandler->ungrab();
-#ifdef DEBUG_TOUCH
-            qDebug() << "Swipe direction" << swipeDirection;
-#endif
-    }
-    void touchMove(QList<Touch*> touches){
-#ifdef DEBUG_TOUCH
-        qDebug() << "MOVE" << touches;
-#endif
-        if(swipeDirection == None){
-            return;
-        }
-        auto touch = touches.first();
-        if(touch->y > location.y()){
-            location = QPoint(touch->x, touch->y);
-        }
-    }
-    void cancelSwipe(Touch* touch){
-#ifdef DEBUG_TOUCH
-        qDebug() << "Swipe Cancelled";
-#endif
-        swipeDirection = None;
-        writeTouchUp(touch);
-    }
-    void writeTouchUp(Touch* touch){
-        touchHandler->ungrab();
-        touchHandler->write(EV_ABS, ABS_MT_SLOT, touch->slot);
-        touchHandler->write(EV_ABS, ABS_MT_POSITION_X, touch->x);
-        touchHandler->write(EV_ABS, ABS_MT_POSITION_Y, touch->y);
-        touchHandler->syn();
-        touchHandler->write(EV_ABS, ABS_MT_SLOT, touch->slot);
-        touchHandler->write(EV_ABS, ABS_MT_TRACKING_ID, -1);
-        touchHandler->syn();
-        if(getCurrentFingers()){
-            touchHandler->grab();
-        }
     }
 
 private:
@@ -491,6 +379,175 @@ private:
         return std::count_if(touches.begin(), touches.end(), [](Touch* touch){
             return touch->active;
         });
+    }
+
+    void touchDown(QList<Touch*> touches){
+#ifdef DEBUG
+        qDebug() << "DOWN" << touches;
+#endif
+        if(getCurrentFingers() != 1){
+            return;
+        }
+        auto touch = touches.first();
+        if(swipeDirection != None){
+            return;
+        }else if(touch->y <= 20){
+            swipeDirection = Up;
+        }else if(touch->y > 1003){
+            swipeDirection = Down;
+        }else if(touch->x <= 20){
+            swipeDirection = Left;
+        }else if(touch->x > 747){
+            swipeDirection = Right;
+        }else{
+            swipeDirection = None;
+            return;
+        }
+        touchHandler->grab();
+#ifdef DEBUG
+            qDebug() << "Swipe started" << swipeDirection;
+#endif
+        startLocation = location = QPoint(touch->x, touch->y);
+    }
+    void touchUp(QList<Touch*> touches){
+#ifdef DEBUG
+        qDebug() << "UP" << touches;
+#endif
+        if(swipeDirection == None){
+#ifdef DEBUG
+            qDebug() << "Not swiping";
+#endif
+            if(touchHandler->grabbed()){
+                for(auto touch : touches){
+                    writeTouchUp(touch);
+                }
+                touchHandler->ungrab();
+            }
+            return;
+        }
+        if(getCurrentFingers()){
+#ifdef DEBUG
+            qDebug() << "Still swiping";
+#endif
+            if(touchHandler->grabbed()){
+                for(auto touch : touches){
+                    writeTouchUp(touch);
+                }
+            }
+            return;
+        }
+        if(touches.length() > 1){
+#ifdef DEBUG
+            qDebug() << "Too many fingers";
+#endif
+            if(touchHandler->grabbed()){
+                for(auto touch : touches){
+                    writeTouchUp(touch);
+                }
+                touchHandler->ungrab();
+            }
+            swipeDirection = None;
+            return;
+        }
+        auto touch = touches.first();
+        if(swipeDirection == Right){
+            if(touch->x > location.x() || startLocation.x() - touch->x < GESTURE_LENGTH){
+                cancelSwipe(touch);
+                return;
+            }
+            emit leftAction();
+        }else if(swipeDirection == Left){
+            if(touch->x < location.x() || touch->x - startLocation.x() < GESTURE_LENGTH){
+                cancelSwipe(touch);
+                return;
+            }
+            emit rightAction();
+        }else  if(swipeDirection == Up){
+            if(touch->y < location.y() || touch->y - startLocation.y() < GESTURE_LENGTH){
+                cancelSwipe(touch);
+                return;
+            }
+            emit bottomAction();
+        }else if(swipeDirection == Down){
+            if(touch->y > location.y() || startLocation.y() - touch->y < GESTURE_LENGTH){
+                cancelSwipe(touch);
+                return;
+            }
+            emit topAction();
+        }
+        swipeDirection = None;
+        touchHandler->ungrab();
+#ifdef DEBUG
+            qDebug() << "Swipe direction" << swipeDirection;
+#endif
+    }
+    void touchMove(QList<Touch*> touches){
+#ifdef DEBUG
+        qDebug() << "MOVE" << touches;
+#endif
+        if(swipeDirection == None){
+            if(touchHandler->grabbed()){
+                for(auto touch : touches){
+                    writeTouchMove(touch);
+                }
+                touchHandler->ungrab();
+            }
+            return;
+        }
+        if(touches.length() > 1){
+#ifdef DEBUG
+            qDebug() << "Too many fingers";
+#endif
+            if(touchHandler->grabbed()){
+                for(auto touch : touches){
+                    writeTouchMove(touch);
+                }
+                touchHandler->ungrab();
+            }
+            swipeDirection = None;
+            return;
+        }
+        auto touch = touches.first();
+        if(touch->y > location.y()){
+            location = QPoint(touch->x, touch->y);
+        }
+    }
+    void cancelSwipe(Touch* touch){
+#ifdef DEBUG
+        qDebug() << "Swipe Cancelled";
+#endif
+        swipeDirection = None;
+        writeTouchUp(touch);
+    }
+    void writeTouchUp(Touch* touch){
+        bool grabbed = touchHandler->grabbed();
+        if(grabbed){
+            touchHandler->ungrab();
+        }
+        writeTouchMove(touch);
+        touchHandler->write(EV_ABS, ABS_MT_SLOT, touch->slot);
+        touchHandler->write(EV_ABS, ABS_MT_TRACKING_ID, -1);
+        touchHandler->syn();
+        if(grabbed){
+            touchHandler->grab();
+        }
+    }
+    void writeTouchMove(Touch* touch){
+        bool grabbed = touchHandler->grabbed();
+        if(grabbed){
+            touchHandler->ungrab();
+        }
+        touchHandler->write(EV_ABS, ABS_MT_SLOT, touch->slot);
+        touchHandler->write(EV_ABS, ABS_MT_POSITION_X, touch->x);
+        touchHandler->write(EV_ABS, ABS_MT_POSITION_Y, touch->y);
+        touchHandler->write(EV_ABS, ABS_MT_PRESSURE, touch->pressure);
+        touchHandler->write(EV_ABS, ABS_MT_TOUCH_MAJOR, touch->major);
+        touchHandler->write(EV_ABS, ABS_MT_TOUCH_MINOR, touch->minor);
+        touchHandler->write(EV_ABS, ABS_MT_ORIENTATION, touch->orientation);
+        touchHandler->syn();
+        if(grabbed){
+            touchHandler->grab();
+        }
     }
 };
 

@@ -6,6 +6,7 @@
 #include "application.h"
 #include "appsapi.h"
 #include "buttonhandler.h"
+#include "digitizerhandler.h"
 #include "devicesettings.h"
 
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
@@ -152,7 +153,7 @@ void Application::uninterruptApplication(){
         case AppsAPI::Background:
         case AppsAPI::Backgroundable:
             if(stateNoSecurityCheck() == Paused){
-                inputManager->clear_touch_buffer(touchScreen.fd);
+                touchHandler->clear_buffer();
                 kill(-m_process->processId(), SIGCONT);
             }
             qDebug() << "Waiting for SIGUSR1 ack";
@@ -170,7 +171,7 @@ void Application::uninterruptApplication(){
             break;
         case AppsAPI::Foreground:
         default:
-            inputManager->clear_touch_buffer(touchScreen.fd);
+            touchHandler->clear_buffer();
             kill(-m_process->processId(), SIGCONT);
     }
 }

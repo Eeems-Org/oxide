@@ -30,6 +30,12 @@ ApplicationWindow {
             }
         }
     }
+    contentData: [
+        MouseArea {
+            anchors.fill: parent
+            onClicked: controller.previousApplication()
+        }
+    ]
     footer: Rectangle {
         id: footer
         color: "white"

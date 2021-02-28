@@ -12,7 +12,7 @@ void flush_stream(istream* stream){
     streamsize sie = static_cast<streamsize>(sizeof(struct input_event));
     stream->read((char*)&ie, sie);
 }
-void press_button(const event_device& evdev, int code, istream* stream){
+void press_button(event_device& evdev, int code, istream* stream){
     qDebug() << "inject button " << code;
     unlock_device(evdev);
     ev_key(evdev, code, 1);

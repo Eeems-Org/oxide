@@ -4,7 +4,7 @@
 #include "wifiapi.h"
 #include "devicesettings.h"
 
-#ifdef DEBUG_TOUCH
+#ifdef DEBUG
 QDebug operator<<(QDebug debug, const Touch& touch){
     QDebugStateSaver saver(debug);
     debug.nospace() << touch.debugString().c_str();

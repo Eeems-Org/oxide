@@ -59,7 +59,6 @@ HEADERS += \
     dbussettings.h \
     digitizerhandler.h \
     event_device.h \
-    inputmanager.h \
     mxcfb.h \
     network.h \
     notification.h \
@@ -74,7 +73,7 @@ HEADERS += \
     wifiapi.h \
     wlan.h \
     wpa_supplicant.h \
-    devicesettings.h \
+    ../../shared/devicesettings.h
 
 linux-oe-g++ {
     LIBS += -lqsgepaper

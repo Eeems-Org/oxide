@@ -40,7 +40,8 @@ struct PressRecord {
     PressRecord() : PressRecord("Unknown", Qt::Key_unknown){}
 };
 
-const event_device buttons(deviceSettings.getButtonsDevicePath(), O_RDWR);
+static event_device buttons(deviceSettings.getButtonsDevicePath(), O_RDWR);
+
 
 class ButtonHandler : public QThread {
     Q_OBJECT

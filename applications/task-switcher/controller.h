@@ -78,6 +78,23 @@ public:
             setState("loaded");
         });
     }
+    Q_INVOKABLE void previousApplication(){
+        if(!appsApi->previousApplication()){
+            launchStartupApp();
+        }
+    }
+    void launchStartupApp(){
+        QDBusObjectPath path = appsApi->startupApplication();
+        if(path.path() == "/"){
+            path = appsApi->getApplicationPath("codes.eeems.oxide");
+        }
+        if(path.path() == "/"){
+            qWarning() << "Unable to find startup application to launch.";
+            return;
+        }
+        Application app(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus());
+        app.launch();
+    }
     QString state() {
         if(!getStateControllerUI()){
             return "loading";

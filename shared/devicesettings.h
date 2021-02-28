@@ -3,6 +3,7 @@
 
 #define deviceSettings DeviceSettings::instance()
 
+#define DEBUG
 
 class DeviceSettings{
 public:
