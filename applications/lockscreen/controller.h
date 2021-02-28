@@ -166,7 +166,7 @@ public:
             systemApi->suspend().waitForFinished();
         }
     }
-    Q_INVOKABLE void poweroff(){
+    Q_INVOKABLE void powerOff(){
         if(!powerOffInhibited()){
             systemApi->powerOff().waitForFinished();
         }
