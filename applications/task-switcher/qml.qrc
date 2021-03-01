@@ -4,5 +4,6 @@
         <file>img/icon.png</file>
         <file>widgets/AppItem.qml</file>
         <file>widgets/AppItemSeperator.qml</file>
+        <file>img/home.svg</file>
     </qresource>
 </RCC>

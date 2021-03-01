@@ -59,6 +59,7 @@ ApplicationWindow {
             anchors.fill: parent
             AppItem {
                 text: "Home"
+                source: "qrc:/img/home.svg"
                 height: parent.height
                 onClicked: controller.launchStartupApp()
             }
