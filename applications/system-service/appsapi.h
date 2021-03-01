@@ -260,7 +260,7 @@ public:
         }
     }
     void resumeIfNone(){
-        if(m_stopping){
+        if(m_stopping || m_starting){
             return;
         }
         for(auto app : applications){
@@ -503,6 +503,7 @@ public slots:
 
 private:
     bool m_stopping;
+    bool m_starting;
     bool m_enabled;
     QMap<QString, Application*> applications;
     QStringList previousApplications;
@@ -566,6 +567,9 @@ private:
             auto type = settings.value("type", Foreground).toInt();
             auto bin = settings.value("bin").toString();
             if(type < Foreground || type > Backgroundable || name.isEmpty() || bin.isEmpty()){
+#ifdef DEBUG
+                qDebug() << "Invalid configuration " << name;
+#endif
                 continue;
             }
             QVariantMap properties {
@@ -591,9 +595,16 @@ private:
                 properties.insert("group", settings.value("group", "").toString());
             }
             if(applications.contains(name)){
+#ifdef DEBUG
+                qDebug() << "Updating " << name;
+                qDebug() << properties;
+#endif
                 applications[name]->setConfig(properties);
             }else{
                 qDebug() << name;
+#ifdef DEBUG
+                qDebug() << properties;
+#endif
                 registerApplicationNoSecurityCheck(properties);
             }
         }
@@ -609,6 +620,10 @@ private:
             }
             auto data = file.readAll();
             auto app = QJsonDocument::fromJson(data).object();
+            if(app.isEmpty()){
+                qDebug() << "Invalid file " << entry.filePath();
+                continue;
+            }
             auto name = entry.completeBaseName();
             app["name"] = name;
             apps.insert(name, app);
@@ -634,8 +649,11 @@ private:
                 qDebug() << "Invalid type string:" << typeString;
             }
             auto bin = app["bin"].toString();
-            if(!QFile::exists(bin)){
-                qDebug() << "Can't find application binary:" << bin;
+            if(bin.isEmpty() || !QFile::exists(bin)){
+                qDebug() << name << "Can't find application binary:" << bin;
+#ifdef DEBUG
+                qDebug() << app;
+#endif
                 continue;
             }
             auto flags = QStringList() << "system";
@@ -706,9 +724,16 @@ private:
                 properties.insert("environment", envMap);
             }
             if(applications.contains(name)){
+#ifdef DEBUG
+                qDebug() << "Updating " << name;
+                qDebug() << properties;
+#endif
                 applications[name]->setConfig(properties);
             }else{
                 qDebug() << "New system app" << name;
+#ifdef DEBUG
+                qDebug() << properties;
+#endif
                 registerApplicationNoSecurityCheck(properties);
             }
         }

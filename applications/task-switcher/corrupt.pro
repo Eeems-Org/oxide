@@ -39,10 +39,10 @@ HEADERS += \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h \
     ../../shared/eventfilter.h \
+    ../../shared/signalhandler.h \
     appitem.h \
     controller.h \
-    screenprovider.h \
-    signalhandler.h
+    screenprovider.h
 
 RESOURCES += \
     qml.qrc

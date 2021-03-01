@@ -66,14 +66,14 @@ HEADERS += \
     powerapi.h \
     screenapi.h \
     screenshot.h \
-    signalhandler.h \
     supplicant.h \
     sysobject.h \
     systemapi.h \
     wifiapi.h \
     wlan.h \
     wpa_supplicant.h \
-    ../../shared/devicesettings.h
+    ../../shared/devicesettings.h \
+    ../../shared/signalhandler.h
 
 linux-oe-g++ {
     LIBS += -lqsgepaper

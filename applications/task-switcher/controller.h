@@ -31,7 +31,7 @@ class Controller : public QObject {
     Q_OBJECT
 public:
     Controller(QObject* parent, ScreenProvider* screenProvider)
-    : QObject(parent), confirmPin(), settings(this), applications() {
+    : QObject(parent), settings(this), applications() {
         this->screenProvider = screenProvider;
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
@@ -232,7 +232,6 @@ private slots:
     }
 
 private:
-    QString confirmPin;
     QSettings settings;
     General* api;
     Screen* screenApi;

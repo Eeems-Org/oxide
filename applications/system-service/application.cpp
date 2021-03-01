@@ -90,7 +90,9 @@ void Application::interruptApplication(){
             timer.restart();
             delayUpTo(1000);
             appsAPI->disconnectSignals(this, 2);
-            if(timer.isValid()){
+            if(stateNoSecurityCheck() == Inactive){
+                qDebug() << "Application crashed while pausing";
+            }else if(timer.isValid()){
                 qDebug() << "Application took too long to background" << name();
                 kill(-m_process->processId(), SIGSTOP);
                 waitForPause();

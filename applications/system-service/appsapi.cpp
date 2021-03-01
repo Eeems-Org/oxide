@@ -4,6 +4,7 @@
 AppsAPI::AppsAPI(QObject* parent)
 : APIBase(parent),
   m_stopping(false),
+  m_starting(true),
   m_enabled(false),
   applications(),
   previousApplications(),
@@ -68,19 +69,26 @@ AppsAPI::AppsAPI(QObject* parent)
 void AppsAPI::startup(){
     for(auto app : applications){
         if(app->autoStart()){
+            qDebug() << "Auto starting" << app->name();
             app->launchNoSecurityCheck();
             if(app->type() == Backgroundable){
+                qDebug() << "  Puasing auto started app" << app->name();
                 app->pauseNoSecurityCheck();
             }
         }
     }
     auto app = getApplication(m_lockscreenApplication);
     if(app == nullptr){
+        qDebug() << "Could not find lockscreen application";
         app = getApplication(m_startupApplication);
     }
-    if(app != nullptr){
-        app->launchNoSecurityCheck();
+    if(app == nullptr){
+        qDebug() << "could not find startup application";
+        return;
     }
+    qDebug() << "Starting initial application" << app->name();
+    app->launchNoSecurityCheck();
+    m_starting = false;
 }
 
 bool AppsAPI::locked(){ return notificationAPI->locked(); }
