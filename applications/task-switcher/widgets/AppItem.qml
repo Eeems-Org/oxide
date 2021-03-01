@@ -9,6 +9,7 @@ Item {
     width: height
     enabled: visible
     signal clicked;
+    signal longPress;
     property string source: "qrc:/img/icon.png"
     property string text: ""
 
@@ -39,5 +40,6 @@ Item {
         anchors.fill: root
         enabled: root.enabled
         onClicked: root.clicked()
+        onPressAndHold: root.longPress();
     }
 }

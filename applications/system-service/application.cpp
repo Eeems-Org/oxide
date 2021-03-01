@@ -199,6 +199,11 @@ void Application::stopNoSecurityCheck(){
     }
     if(state == Paused){
         touchHandler->clear_buffer();
+        if(screenCapture != nullptr){
+            delete screenCapture;
+            screenCapture = nullptr;
+        }
+        saveScreen();
         kill(-m_process->processId(), SIGCONT);
     }
     kill(-m_process->processId(), SIGTERM);
@@ -208,9 +213,10 @@ void Application::stopNoSecurityCheck(){
         m_process->waitForFinished(100);
         if(++tries == 5){
             kill(-m_process->processId(), SIGKILL);
-            return;
+            break;
         }
     }
+    recallScreen();
 }
 void Application::signal(int signal){
     if(m_process->processId()){
