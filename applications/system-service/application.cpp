@@ -197,13 +197,21 @@ void Application::stopNoSecurityCheck(){
     if(!onStop().isEmpty()){
         QProcess::execute(onStop());
     }
+    Application* pausedApplication = nullptr;
     if(state == Paused){
         touchHandler->clear_buffer();
-        if(screenCapture != nullptr){
-            delete screenCapture;
-            screenCapture = nullptr;
+        auto currentApplication = appsAPI->currentApplicationNoSecurityCheck();
+        if(currentApplication.path() != path()){
+            pausedApplication = appsAPI->getApplication(currentApplication);
+            if(pausedApplication != nullptr){
+                if(pausedApplication->stateNoSecurityCheck() == Paused){
+                    pausedApplication = nullptr;
+                }else{
+                    appsAPI->forceRecordPreviousApplication();
+                    pausedApplication->interruptApplication();
+                }
+            }
         }
-        saveScreen();
         kill(-m_process->processId(), SIGCONT);
     }
     kill(-m_process->processId(), SIGTERM);
@@ -216,7 +224,6 @@ void Application::stopNoSecurityCheck(){
             break;
         }
     }
-    recallScreen();
 }
 void Application::signal(int signal){
     if(m_process->processId()){

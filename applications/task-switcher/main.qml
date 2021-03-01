@@ -112,7 +112,12 @@ ApplicationWindow {
                         source: model.modelData.imgFile
                         text: model.modelData.displayName
                         onClicked: model.modelData.execute()
-                        onLongPress: model.modelData.stop()
+                        onLongPress: {
+                            model.modelData.stop();
+                            if(index == 0){
+                                background.source = "";
+                            }
+                        }
                     }
                     function pageSize(){
                         var item = itemAt(0, 0),

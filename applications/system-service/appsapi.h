@@ -354,6 +354,17 @@ public:
         qDebug() << "Previous Applications" << previousApplications;
         return found;
     }
+    void forceRecordPreviousApplication(){
+        auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
+        if(currentApplication == nullptr){
+            qWarning() << "Unable to find current application";
+            return;
+        }
+        auto name = currentApplication->name();
+        previousApplications.removeAll(name);
+        previousApplications.append(name);
+        qDebug() << "Previous Applications" << previousApplications;
+    }
     void recordPreviousApplication(){
         auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
         if(currentApplication == nullptr){

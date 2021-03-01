@@ -7,6 +7,7 @@ Item {
     id: root
     clip: true
     width: height
+    enabled: visible
     state: "released"
     signal clicked;
     signal longPress;
@@ -46,8 +47,8 @@ Item {
         anchors.fill: root
         enabled: root.enabled
         onClicked: {
-            root.state = "released"
-            root.clicked()
+            root.state = "released";
+            root.clicked();
         }
         onPressAndHold: root.longPress()
         onPressed: root.state = "pressed"
