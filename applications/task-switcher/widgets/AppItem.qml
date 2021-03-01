@@ -7,6 +7,7 @@ Item {
     id: root
     clip: true
     width: height
+    enabled: visible
     signal clicked;
     property string source: "qrc:/img/icon.png"
     property string text: ""
@@ -19,14 +20,14 @@ Item {
         id: icon
         fillMode: Image.PreserveAspectFit
         anchors.top: spacer.bottom
-        height: root.height * 0.70
+        height: root.height * (root.text ? 0.70 : 0.90)
         width: root.width
         source: root.source
     }
     Text {
         text: root.text
         width: root.width
-        height: root.height * 0.20
+        height: root.text ? root.height * 0.20 : 0
         font.pointSize: 100
         minimumPointSize: 1
         anchors.top: icon.bottom

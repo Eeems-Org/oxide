@@ -65,6 +65,8 @@ public:
         appsApi = new Apps(OXIDE_SERVICE, path.path(), bus, this);
         connect(appsApi, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
         connect(appsApi, &Apps::applicationRegistered, this, &Controller::registerApplication);
+        connect(appsApi, &Apps::applicationLaunched, this, &Controller::reload);
+        connect(appsApi, &Apps::applicationExited, this, &Controller::reload);
 
         settings.sync();
         auto version = settings.value("version", 0).toInt();
@@ -77,6 +79,7 @@ public:
 
     Q_INVOKABLE void startup(){
         qDebug() << "Running controller startup";
+        emit reload();
         QTimer::singleShot(10, [this]{
             setState("loaded");
         });
@@ -112,9 +115,12 @@ public:
             }
             running.insert(key, paused[key]);
         }
-        for(auto item : appsApi->applications()){
+        auto runningApplications = appsApi->runningApplications().values();
+        runningApplications.append(appsApi->pausedApplications().values());
+        for(auto item : runningApplications){
             auto path = item.value<QDBusObjectPath>().path();
             Application app(OXIDE_SERVICE, path, bus, this);
+            qDebug() << app.name() << app.hidden();
             if(app.hidden()){
                 continue;
             }
@@ -145,9 +151,20 @@ public:
                 delete appItem;
             }
         }
+        auto previousApplications = appsApi->previousApplications();
         // Sort by name
         std::sort(applications.begin(), applications.end(), [=](const QObject* a, const QObject* b) -> bool {
-            return a->property("name") < b->property("name");
+            auto aName = a->property("name").toString();
+            auto bName = b->property("name").toString();
+            int aIndex = previousApplications.indexOf(aName);
+            int bIndex = previousApplications.indexOf(bName);
+            if(aIndex > bIndex){
+                return true;
+            }
+            if(aIndex < bIndex){
+                return false;
+            }
+            return aName > bIndex;
         });
         return applications;
     }

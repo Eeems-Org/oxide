@@ -18,11 +18,15 @@ ApplicationWindow {
     }
     Connections {
         target: controller
-        onReload: appsView.model = controller.getApps()
+        onReload: {
+            appsView.model = controller.getApps();
+            if(appsView.currentIndex > appsView.count){
+                appsView.currentIndex = appsView.count
+            }
+        }
     }
     Component.onCompleted: {
         controller.startup();
-        appsView.model = controller.getApps();
     }
     background: Rectangle {
         Image {
@@ -52,9 +56,11 @@ ApplicationWindow {
         color: "white"
         border.color: "black"
         border.width: 1
-        height: 200
-        width: parent.width
+        height: 150
+        anchors.left: parent.left
+        anchors.right: parent.right
         visible: stateController.state === "loaded"
+        clip: true
         RowLayout {
             anchors.fill: parent
             AppItem {
@@ -64,24 +70,77 @@ ApplicationWindow {
                 onClicked: controller.launchStartupApp()
             }
             AppItemSeperator {}
-            ListView {
-                id: appsView
-                orientation: Qt.Horizontal
-                snapMode: ListView.SnapOneItem
-                maximumFlickVelocity: 0
-                boundsBehavior: Flickable.StopAtBounds
-                enabled: stateController.state === "loaded"
-                model: apps
-                objectName: "appsView"
+            AppItem {
+                text: ""
+                source: "qrc:/img/left.svg"
+                enabled: appsView.currentIndex > 0
+                opacity: enabled ? 1 : 0.5
+                height: parent.height
+                width: height / 2
+                onClicked: {
+                    console.log("Scroll left");
+                    appsView.currentIndex = appsView.currentIndex - appsView.pageSize();
+                    if(appsView.currentIndex < 0){
+                        appsView.currentIndex = 0;
+                    }else if(appsView.currentIndex > appsView.count){
+                        appsView.currentIndex = appsView.count;
+                    }
+                    appsView.positionViewAtIndex(appsView.currentIndex, ListView.Beginning);
+                    console.log("Index " + appsView.currentIndex + "/" + appsView.count);
+                }
+            }
+            Item {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                delegate: AppItem {
-                    visible: model.modelData.running
-                    enabled: visible && appsView.enabled
-                    height: visible ? appsView.height : 0
-                    source: model.modelData.imgFile
-                    text: model.modelData.displayName
-                    onClicked: model.modelData.execute()
+                clip: true
+                ListView {
+                    id: appsView
+                    clip: true
+                    orientation: Qt.Horizontal
+                    snapMode: ListView.SnapOneItem
+                    maximumFlickVelocity: 0
+                    interactive: false
+                    boundsBehavior: Flickable.StopAtBounds
+                    enabled: stateController.state === "loaded"
+                    model: apps
+                    objectName: "appsView"
+                    anchors.fill: parent
+                    delegate: AppItem {
+                        visible: model.modelData.running
+                        enabled: visible && appsView.enabled
+                        height: visible ? appsView.height : 0
+                        source: model.modelData.imgFile
+                        text: model.modelData.displayName
+                        onClicked: model.modelData.execute()
+                    }
+                    function pageSize(){
+                        var item = itemAt(0, 0),
+                            itemWidth = item ? item.width : appsView.height;
+                        return (width / itemWidth).toFixed(0);
+                    }
+                    function rightBound(){
+                        return currentIndex == count || currentIndex + pageSize() >= count;
+                    }
+                }
+            }
+            AppItem {
+                text: ""
+                source: "qrc:/img/right.svg"
+                enabled: !appsView.rightBound()
+                opacity: enabled ? 1 : 0.5
+                height: parent.height
+                width: height / 2
+                onClicked: {
+                    console.log("Scroll right");
+                    appsView.currentIndex = appsView.currentIndex + appsView.pageSize();
+                    if(appsView.currentIndex > appsView.count){
+                        appsView.currentIndex = appsView.count;
+                    }else if(appsView.currentIndex < 0){
+                        appsView.currentIndex = 0;
+                    }
+
+                    appsView.positionViewAtIndex(appsView.currentIndex, ListView.Beginning);
+                    console.log("Index " + appsView.currentIndex + "/" + appsView.count);
                 }
             }
         }
