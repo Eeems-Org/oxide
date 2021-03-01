@@ -11,7 +11,6 @@ ApplicationWindow {
     width: screenGeometry.width
     height: screenGeometry.height
     title: qsTr("Oxide")
-    property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted:{
         stateController.state = "loaded"
@@ -218,7 +217,6 @@ ApplicationWindow {
                 source: model.modelData.imgFile
                 text: (model.modelData.running ? "* " : "") + model.modelData.displayName
                 bold: model.modelData.running
-                itemPadding: window.itemPadding
                 width: appsView.cellWidth
                 height: appsView.cellHeight
                 onLongPress: {

@@ -13,22 +13,23 @@ Item {
     property string source: "qrc:/img/icon.png"
     property string text: ""
     property bool bold: false
-    property int itemPadding: 10
     Item {
         id: spacer
         height: root.height * 0.05
+        width: root.width * 0.05
     }
     Image {
         id: icon
         fillMode: Image.PreserveAspectFit
         anchors.top: spacer.bottom
+        anchors.left: spacer.right
         height: root.height * 0.70
-        width: root.width
+        width: root.width * 0.90
         source: root.source
     }
     Text {
         text: root.text
-        width: root.width
+        width: root.width * 0.90
         height: root.height * 0.20
         font.pointSize: 100
         font.bold: root.bold
@@ -36,6 +37,7 @@ Item {
         font.italic: true
         minimumPointSize: 1
         anchors.top: icon.bottom
+        anchors.left: icon.left
         fontSizeMode: Text.Fit
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: Text.AlignHCenter
@@ -60,15 +62,15 @@ Item {
         Transition {
             from: "pressed"; to: "released"
             ParallelAnimation {
-                PropertyAction { target: image; property: "width"; value: root.width - root.itemPadding * 2 }
-                PropertyAction { target: image; property: "height"; value: root.width - root.itemPadding * 2 }
+                PropertyAction { target: icon; property: "width"; value: root.width * 0.90 }
+                PropertyAction { target: icon; property: "height"; value: root.height * 0.70 }
             }
         },
         Transition {
             from: "released"; to: "pressed"
             ParallelAnimation {
-                PropertyAction { target: image; property: "width"; value: image.width - 10}
-                PropertyAction { target: image; property: "height"; value: image.height - 10 }
+                PropertyAction { target: icon; property: "width"; value: icon.width - 10}
+                PropertyAction { target: icon; property: "height"; value: icon.height - 10 }
             }
         }
     ]
