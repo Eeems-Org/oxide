@@ -1,5 +1,0 @@
-name=xochitl
-desc=The standard environment for reMarkable.
-call=/usr/bin/xochitl
-term=killall xochitl
-imgFile=xochitl

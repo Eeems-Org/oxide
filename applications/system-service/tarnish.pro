@@ -85,6 +85,7 @@ linux-oe-g++ {
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
 DISTFILES += \
+    ../../assets/opt/usr/share/applications/codes.eeems.anxiety.oxide \
     ../../assets/opt/usr/share/applications/codes.eeems.corrupt.oxide \
     fi.w1.wpa_supplicant1.xml \
     generate_xml.sh \

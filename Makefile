@@ -55,7 +55,7 @@ release: clean
 	INSTALL_ROOT=../../release $(MAKE) -C .build/lockscreen install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/task-switcher install
 
-build: tarnish erode rot oxide decay corrupt fret
+build: tarnish erode rot oxide decay corrupt fret anxiety
 
 erode:
 	mkdir -p .build/process-manager
@@ -98,3 +98,9 @@ corrupt: tarnish
 	cp -r applications/task-switcher/* .build/task-switcher
 	cd .build/task-switcher && qmake corrupt.pro
 	$(MAKE) -C .build/task-switcher all
+	
+anxiety: tarnish
+	mkdir -p .build/screenshot-viewer
+	cp -r applications/screenshot-viewer/* .build/screenshot-viewer
+	cd .build/screenshot-viewer && qmake anxiety.pro
+	$(MAKE) -C .build/screenshot-viewer all
