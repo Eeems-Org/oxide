@@ -5,6 +5,8 @@ SpinBox {
     id: control
     property bool upPressed: up.pressed
     property bool downPressed: down.pressed
+    property bool lastDirectionUp
+    property bool ignoreNextValueChange: false
     up.indicator: Rectangle {
         x: control.mirrored ? 0 : parent.width - width
         height: parent.height
