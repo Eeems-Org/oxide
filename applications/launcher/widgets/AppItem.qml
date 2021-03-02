@@ -27,6 +27,8 @@ Item {
         height: root.height * 0.70
         width: root.width * 0.90
         source: root.source
+        sourceSize.width: width
+        sourceSize.height: height
     }
     Text {
         text: root.text
