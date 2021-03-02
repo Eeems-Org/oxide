@@ -2,5 +2,10 @@
     <qresource prefix="/">
         <file>main.qml</file>
         <file>widgets/AppItem.qml</file>
+        <file>widgets/CustomMenu.qml</file>
+        <file>widgets/BetterMenu.qml</file>
+        <file>font/icomoon.ttf</file>
+        <file>widgets/StatusIcon.qml</file>
+        <file>widgets/BetterButton.qml</file>
     </qresource>
 </RCC>

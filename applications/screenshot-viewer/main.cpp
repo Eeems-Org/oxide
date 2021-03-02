@@ -44,6 +44,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("anxiety");
+    app.setApplicationDisplayName("Screenshots");
     app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
     Controller controller(&app);
     QQmlApplicationEngine engine;

@@ -52,6 +52,10 @@ public:
         if(!hasPermission("screen")){
             return QByteArray();
         }
+        if(!m_file->exists() && !m_file->isOpen()){
+            emit removed();
+            return QByteArray();
+        }
         mutex.lock();
         if(!m_file->isOpen() && !m_file->open(QIODevice::ReadWrite)){
             qDebug() << "Unable to open screenshot file" << m_file->fileName();
@@ -82,6 +86,10 @@ public:
     }
     QString getPath(){
         if(!hasPermission("screen")){
+            return "";
+        }
+        if(!m_file->exists()){
+            emit removed();
             return "";
         }
         return m_file->fileName();

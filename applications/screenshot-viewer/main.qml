@@ -10,18 +10,72 @@ ApplicationWindow {
     visible: stateController.state === "loaded"
     width: screenGeometry.width
     height: screenGeometry.height
-    title: qsTr("Anxiety")
+    title: Qt.application.displayName
+    FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted: {
         controller.startup();
     }
+    header: Rectangle {
+        color: "black"
+        enabled: stateController.state === "loaded"
+        height: menu.height
+        RowLayout {
+            id: menu
+            anchors.left: parent.left
+            anchors.right: parent.right
+            Label {
+                text: "⬅️"
+                color: "white"
+                topPadding: 5
+                bottomPadding: 5
+                leftPadding: 10
+                rightPadding: 10
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: Qt.quit()
+                }
+            }
+            Item { Layout.fillWidth: true }
+            Label {
+                color: "white"
+                text: window.title
+            }
+            Item { Layout.fillWidth: true }
+            CustomMenu {
+                BetterMenu {
+                    title: ""
+                    font: iconFont.name
+                    width: 310
+                    Action {
+                        text: "Small"
+                        onTriggered: controller.columns = 4
+                    }
+                    Action {
+                        text: "Medium"
+                        onTriggered: controller.columns = 3
+                    }
+                    Action {
+                        text: "Large"
+                        onTriggered: controller.columns = 2
+                    }
+                }
+            }
+        }
+    }
     contentData: [
+        Rectangle {
+            anchors.fill: parent
+            color: "white"
+        },
         GridView {
             id: screenshots
+            enabled: stateController.state == "loaded"
             anchors.fill: parent
             model: controller.screenshots
             cellWidth: parent.width / controller.columns
             cellHeight: cellWidth
             delegate: AppItem {
+                enabled: screenshots.enabled
                 text: model.display.name
                 source: 'file:' + model.display.path
                 width: screenshots.cellWidth
