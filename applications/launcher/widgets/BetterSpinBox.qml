@@ -7,6 +7,12 @@ SpinBox {
     property bool downPressed: down.pressed
     property bool lastDirectionUp
     property bool ignoreNextValueChange: false
+    onDownPressedChanged: {
+        this.lastDirectionUp = false;
+    }
+    onUpPressedChanged: {
+        this.lastDirectionUp = true;
+    }
     up.indicator: Rectangle {
         x: control.mirrored ? 0 : parent.width - width
         height: parent.height

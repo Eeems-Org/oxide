@@ -48,12 +48,6 @@ Item {
                     to: 360
                     stepSize: 1
                     value: controller.sleepAfter
-                    onDownPressedChanged: {
-                        this.lastDirectionUp = false;
-                    }
-                    onUpPressedChanged: {
-                        this.lastDirectionUp = true;
-                    }
                     onValueChanged: {
                         if(this.ignoreNextValueChange){
                             this.ignoreNextValueChange = false;
