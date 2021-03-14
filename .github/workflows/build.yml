@@ -37,6 +37,9 @@ jobs:
       - name: Link requirements.txt
         run: |
           ln -s "$GITHUB_WORKSPACE"/toltec/requirements.txt requirements.txt
+      - name: Fixup dependencies
+        run: |
+          sed -i 's/bsdtar/libarchive-tools/' "$GITHUB_WORKSPACE"/toltec/.github/actions/setup
       - name: Setup Toltec dependencies
         uses: ./toltec/.github/actions/setup
       - name: Package
