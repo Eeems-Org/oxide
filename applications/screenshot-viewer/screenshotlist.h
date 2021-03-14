@@ -30,7 +30,15 @@ public:
     QString name() { return QFileInfo(path()).baseName(); }
     bool is(Screenshot* screenshot) { return screenshot == m_screenshot; }
     Screenshot* screenshot() { return m_screenshot; }
-    Q_INVOKABLE void remove() { m_screenshot->remove().waitForFinished(); }
+    bool remove() {
+        auto reply = m_screenshot->remove();
+        reply.waitForFinished();
+        if(reply.isError() || !reply.isValid()){
+            qDebug() << reply.error();
+            return false;
+        }
+        return true;
+    }
     QString qPath() { return m_screenshot->QDBusAbstractInterface::path(); }
 signals:
     void pathChanged(QString);
@@ -130,10 +138,9 @@ public:
         int count = 0;
         while(i.hasNext()){
             auto item = i.next();
-            if(item->is(screenshot)){
+            if(item->is(screenshot) && item->remove()){
                 beginRemoveRows(QModelIndex(), screenshots.indexOf(item), screenshots.indexOf(item));
                 i.remove();
-                item->remove();
                 delete item;
                 endRemoveRows();
                 count++;
