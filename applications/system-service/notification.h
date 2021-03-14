@@ -2,8 +2,10 @@
 #define NOTIFICATION_H
 
 #include <QObject>
+#include <QImage>
 #include <QtDBus>
 
+#include "application.h"
 #include "dbussettings.h"
 
 class Notification : public QObject{
@@ -121,6 +123,7 @@ public:
         }
         emit clicked();
     }
+    void paintNotification(Application* resumeApp);
 
 signals:
     void changed(QVariantMap);
@@ -135,9 +138,10 @@ private:
     QString m_application;
     QString m_text;
     QString m_icon;
+    QImage screenBackup;
+    QRect updateRect;
 
     void dispatchToMainThread(std::function<void()> callback);
-    const QRect paintNotification();
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 };
 

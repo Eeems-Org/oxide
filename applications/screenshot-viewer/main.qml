@@ -101,6 +101,43 @@ ApplicationWindow {
                     radius: width / 2
                 }
             }
+            function pageWidth(){
+                return controller.columns;
+            }
+            function pageHeight(){
+                return Math.ceil(count / pageWidth());
+            }
+        },
+        SwipeArea {
+            anchors.fill: parent
+            propagateComposedEvents: true
+            property int currentIndex: 0
+            property int pageSize: 0
+            onSwipe: {
+                if(direction == "down"){
+                    console.log("Scroll up");
+                    currentIndex = currentIndex - screenshots.pageHeight();
+                    if(currentIndex < 0){
+                        currentIndex = 0;
+                        screenshots.positionViewAtBeginning();
+                    }else{
+                        screenshots.positionViewAtIndex(currentIndex, ListView.Beginning);
+                    }
+                }else if(direction == "up"){
+                    console.log("Scroll down");
+                    currentIndex = currentIndex + screenshots.pageHeight();
+                    if(currentIndex > screenshots.count){
+                        currentIndex = screenshots.count;
+                        screenshots.positionViewAtEnd();
+                    }else{
+                        screenshots.positionViewAtIndex(currentIndex, ListView.Beginning);
+                    }
+                }else{
+                    return;
+                }
+                console.log(currentIndex + "/" + screenshots.count);
+                console.log(screenshots.pageHeight());
+            }
         }
     ]
     StateGroup {

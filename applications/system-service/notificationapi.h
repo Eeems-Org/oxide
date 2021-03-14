@@ -25,7 +25,7 @@ public:
         }
         return instance;
     }
-    NotificationAPI(QObject* parent) : APIBase(parent), m_enabled(false), m_notifications(), m_lock() {
+    NotificationAPI(QObject* parent) : APIBase(parent), notificationDisplayQueue(), m_enabled(false), m_notifications(), m_lock() {
         singleton(this);
     }
     ~NotificationAPI(){}
@@ -75,6 +75,7 @@ public:
         }
         return result;
     }
+    QList<Notification*> notificationDisplayQueue;
 
 public slots:
     QDBusObjectPath add(QString identifier, QString application, QString text, QString icon, QDBusMessage message){
@@ -136,7 +137,7 @@ public slots:
         m_lock.unlock();
         return false;
     }
-    void lock() { m_lock.lock(); }
+    void lock() { m_lock.tryLock(1); }
     void unlock() { m_lock.unlock(); }
 
 signals:

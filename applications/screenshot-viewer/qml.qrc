@@ -7,5 +7,6 @@
         <file>font/icomoon.ttf</file>
         <file>widgets/StatusIcon.qml</file>
         <file>widgets/BetterButton.qml</file>
+        <file>widgets/SwipeArea.qml</file>
     </qresource>
 </RCC>
