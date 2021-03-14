@@ -7,7 +7,7 @@ import "./widgets"
 ApplicationWindow {
     id: window
     objectName: "window"
-    visible: stateController.state === "loaded"
+    visible: stateController.state !== "loading"
     width: screenGeometry.width
     height: screenGeometry.height
     title: Qt.application.displayName
@@ -17,7 +17,6 @@ ApplicationWindow {
     }
     header: Rectangle {
         color: "black"
-        enabled: stateController.state === "loaded"
         height: menu.height
         RowLayout {
             id: menu
@@ -32,7 +31,14 @@ ApplicationWindow {
                 rightPadding: 10
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: Qt.quit()
+                    onClicked: {
+                        if(stateController.state !== "viewing"){
+                            Qt.quit();
+                            return;
+                        }
+                        viewer.model = undefined;
+                        stateController.state = "loaded";
+                    }
                 }
             }
             Item { Layout.fillWidth: true }
@@ -41,7 +47,25 @@ ApplicationWindow {
                 text: window.title
             }
             Item { Layout.fillWidth: true }
+            Label {
+                text: "🗑"
+                color: "white"
+                visible: stateController.state === "viewing"
+                topPadding: 5
+                bottomPadding: 5
+                leftPadding: 10
+                rightPadding: 10
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        viewer.model.remove();
+                        viewer.model = undefined;
+                        stateController.state = "loading";
+                    }
+                }
+            }
             CustomMenu {
+                visible: stateController.state === "loaded"
                 BetterMenu {
                     title: ""
                     font: iconFont.name
@@ -70,6 +94,7 @@ ApplicationWindow {
         GridView {
             id: screenshots
             enabled: stateController.state == "loaded"
+            visible: enabled
             anchors.fill: parent
             model: controller.screenshots
             cellWidth: parent.width / controller.columns
@@ -80,6 +105,10 @@ ApplicationWindow {
                 source: 'file:' + model.display.path
                 width: screenshots.cellWidth
                 height: screenshots.cellHeight
+                onClicked: {
+                    viewer.model = model;
+                    stateController.state = "viewing";
+                }
             }
             snapMode: ListView.SnapOneItem
             maximumFlickVelocity: 0
@@ -114,10 +143,13 @@ ApplicationWindow {
             }
         },
         SwipeArea {
+            enabled: stateController.state === "viewing"
+            visible: enabled
             anchors.fill: parent
             propagateComposedEvents: true
             property int currentIndex: 0
             property int pageSize: 0
+
             onSwipe: {
                 if(direction == "down"){
                     console.log("Scroll up");
@@ -141,6 +173,16 @@ ApplicationWindow {
                     return;
                 }
             }
+        },
+        Image {
+            id: viewer
+            anchors.fill: parent
+            visible: stateController.state == "viewing"
+            property var model
+            fillMode: Image.PreserveAspectFit
+            source: model ? 'file:' + model.display.path : ''
+            sourceSize.width: width
+            sourceSize.height: height
         }
     ]
     StateGroup {
@@ -149,7 +191,8 @@ ApplicationWindow {
         state: "loading"
         states: [
             State { name: "loaded" },
-            State { name: "loading" }
+            State { name: "loading" },
+            State { name: "viewing" }
         ]
         transitions: [
             Transition {
@@ -166,6 +209,14 @@ ApplicationWindow {
                     ScriptAction { script: {
                         console.log("Loading display");
                         controller.startup();
+                    } }
+                }
+            },
+            Transition {
+                from: "*"; to: "viewing"
+                SequentialAnimation {
+                    ScriptAction { script: {
+                        console.log("Viewing Image");
                     } }
                 }
             }
