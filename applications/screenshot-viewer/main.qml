@@ -10,7 +10,12 @@ ApplicationWindow {
     visible: stateController.state !== "loading"
     width: screenGeometry.width
     height: screenGeometry.height
-    title: Qt.application.displayName
+    title: {
+        if(stateController.state !== "viewing" || !viewer.model){
+            return Qt.application.displayName;
+        }
+        return viewer.model.display.path;
+    }
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted: {
         controller.startup();
@@ -48,7 +53,7 @@ ApplicationWindow {
             }
             Item { Layout.fillWidth: true }
             Label {
-                text: "🗑"
+                text: "Delete"
                 color: "white"
                 visible: stateController.state === "viewing"
                 topPadding: 5
@@ -58,7 +63,7 @@ ApplicationWindow {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        viewer.model.remove();
+                        controller.screenshots.remove(viewer.model.display.path);
                         viewer.model = undefined;
                         stateController.state = "loading";
                     }
@@ -91,98 +96,115 @@ ApplicationWindow {
             anchors.fill: parent
             color: "white"
         },
-        GridView {
-            id: screenshots
+        ColumnLayout {
+            anchors.fill: parent
             enabled: stateController.state == "loaded"
             visible: enabled
-            anchors.fill: parent
-            model: controller.screenshots
-            cellWidth: parent.width / controller.columns
-            cellHeight: cellWidth
-            delegate: AppItem {
-                enabled: screenshots.enabled
-                text: model.display.name
-                source: 'file:' + model.display.path
-                width: screenshots.cellWidth
-                height: screenshots.cellHeight
+            BetterButton {
+                text: "▲"
+                visible: !screenshots.atYBeginning
+                Layout.fillWidth: true
                 onClicked: {
-                    viewer.model = model;
-                    stateController.state = "viewing";
-                }
-            }
-            snapMode: ListView.SnapOneItem
-            maximumFlickVelocity: 0
-            boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: ScrollBar {
-                id: scrollbar
-                snapMode: ScrollBar.SnapAlways
-                policy: ScrollBar.AlwaysOn
-                contentItem: Rectangle {
-                    color: "white"
-                    implicitWidth: 6
-                    implicitHeight: 100
-                    radius: width / 2
-                }
-                background: Rectangle {
-                    color: "black"
-                    implicitWidth: 6
-                    implicitHeight: 100
-                    radius: width / 2
-                }
-            }
-            function pageWidth(){
-                return controller.columns;
-            }
-            function pageHeight(){
-                var item = itemAt(0, 0),
-                    itemHeight = item ? item.height : height;
-                return height / itemHeight;
-            }
-            function pageSize(){
-                return Math.floor(pageHeight() * pageWidth());
-            }
-        },
-        SwipeArea {
-            enabled: stateController.state === "viewing"
-            visible: enabled
-            anchors.fill: parent
-            propagateComposedEvents: true
-            property int currentIndex: 0
-            property int pageSize: 0
-
-            onSwipe: {
-                if(direction == "down"){
                     console.log("Scroll up");
-                    currentIndex = currentIndex - screenshots.pageSize();
-                    if(currentIndex < 0){
-                        currentIndex = 0;
+                    screenshots.currentIndex = screenshots.currentIndex - screenshots.pageSize();
+                    if(screenshots.currentIndex < 0){
+                        screenshots.currentIndex = 0;
                         screenshots.positionViewAtBeginning();
                     }else{
-                        screenshots.positionViewAtIndex(currentIndex, ListView.Beginning);
+                        screenshots.positionViewAtIndex(screenshots.currentIndex, ListView.Beginning);
                     }
-                }else if(direction == "up"){
+                }
+            }
+            GridView {
+                id: screenshots
+                model: controller.screenshots
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                clip: true
+                cellWidth: parent.width / controller.columns
+                cellHeight: cellWidth
+                delegate: AppItem {
+                    enabled: screenshots.enabled
+                    text: model.display.name
+                    source: 'file:' + model.display.path
+                    width: screenshots.cellWidth
+                    height: screenshots.cellHeight
+                    onClicked: {
+                        if(!screenshots.flicking){
+                            console.log("Opening " + model.display.path);
+                            viewer.model = model;
+                            stateController.state = "viewing";
+                        }
+                    }
+                    onLongPress: !screenshots.flicking && controller.screenshots.remove(model.display.path)
+                }
+                interactive: false
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar {
+                    id: scrollbar
+                    snapMode: ScrollBar.SnapAlways
+                    policy: ScrollBar.AlwaysOn
+                    contentItem: Rectangle {
+                        color: "white"
+                        implicitWidth: 6
+                        implicitHeight: 100
+                        radius: width / 2
+                    }
+                    background: Rectangle {
+                        color: "black"
+                        implicitWidth: 6
+                        implicitHeight: 100
+                        radius: width / 2
+                    }
+                }
+                function pageWidth(){
+                    return controller.columns;
+                }
+                function pageHeight(){
+                    var item = itemAt(0, 0),
+                        itemHeight = item ? item.height : height;
+                    return height / itemHeight;
+                }
+                function pageSize(){
+                    return Math.floor(pageHeight() * pageWidth());
+                }
+            }
+            BetterButton{
+                text: "▼"
+                Layout.fillWidth: true
+                visible: !screenshots.atYEnd
+                onClicked: {
                     console.log("Scroll down");
-                    currentIndex = currentIndex + screenshots.pageSize();
-                    if(currentIndex > screenshots.count){
-                        currentIndex = screenshots.count;
+                    screenshots.currentIndex = screenshots.currentIndex + screenshots.pageSize();
+                    if(screenshots.currentIndex > screenshots.count){
+                        screenshots.currentIndex = screenshots.count;
                         screenshots.positionViewAtEnd();
                     }else{
-                        screenshots.positionViewAtIndex(currentIndex, ListView.Beginning);
+                        screenshots.positionViewAtIndex(screenshots.currentIndex, ListView.Beginning);
                     }
-                }else{
-                    return;
                 }
             }
         },
-        Image {
+        Item {
             id: viewer
             anchors.fill: parent
             visible: stateController.state == "viewing"
             property var model
-            fillMode: Image.PreserveAspectFit
-            source: model ? 'file:' + model.display.path : ''
-            sourceSize.width: width
-            sourceSize.height: height
+            Label {
+                visible: viewerImage.status == Image.Loading
+                anchors.centerIn: parent
+                text: "Loading..."
+            }
+            Image {
+                id: viewerImage
+                asynchronous: true
+                visible: status != Image.Loading
+                anchors.fill: parent
+                fillMode: Image.PreserveAspectFit
+                source: parent.model ? 'file:' + parent.model.display.path : ''
+                sourceSize.width: width
+                sourceSize.height: height
+            }
         }
     ]
     StateGroup {

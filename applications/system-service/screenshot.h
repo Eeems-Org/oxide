@@ -105,9 +105,16 @@ public slots:
             return;
         }
         mutex.lock();
-        m_file->remove();
-        m_file->close();
+        if(m_file->exists() && !m_file->remove()){
+            qDebug() << "Failed to remove screenshot" << path();
+            mutex.unlock();
+            return;
+        }
+        if(m_file->isOpen()){
+            m_file->close();
+        }
         mutex.unlock();
+        qDebug() << "Removed screenshot" << path();
         emit removed();
     }
 

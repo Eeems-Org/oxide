@@ -43,6 +43,7 @@ Item {
             height: icon.height - 2
             sourceSize.width: width
             sourceSize.height: height
+            asynchronous: true
         }
     }
     Text {
@@ -63,6 +64,7 @@ Item {
     MouseArea {
         anchors.fill: root
         enabled: root.enabled
+        propagateComposedEvents: true
         onClicked: {
             root.state = "released";
             root.clicked();
