@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: toltec-dev/toltec.git
-          ref: stable
+          ref: Eeems-patch-3
           path: toltec
       - name: Setup Python
         uses: actions/setup-python@v2
@@ -37,9 +37,6 @@ jobs:
       - name: Link requirements.txt
         run: |
           ln -s "$GITHUB_WORKSPACE"/toltec/requirements.txt requirements.txt
-      - name: Fixup dependencies
-        run: |
-          sed -i 's/bsdtar/libarchive-tools/' "$GITHUB_WORKSPACE"/toltec/.github/actions/setup
       - name: Setup Toltec dependencies
         uses: ./toltec/.github/actions/setup
       - name: Package
