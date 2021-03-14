@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: toltec-dev/toltec.git
-          ref: stable
+          ref: testing
           path: toltec
       - name: Setup Python
         uses: actions/setup-python@v2
@@ -46,7 +46,6 @@ jobs:
           cd "$GITHUB_WORKSPACE"/toltec/package/oxide
           tar -czvf ./oxide.tar.gz "$GITHUB_WORKSPACE"/result/*
           cp "$GITHUB_WORKSPACE"/package .
-          sudo apt-get install bsdtar tree
           cd "$GITHUB_WORKSPACE"/toltec
           make oxide
           mkdir "$GITHUB_WORKSPACE"/output
