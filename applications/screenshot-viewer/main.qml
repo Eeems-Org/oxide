@@ -47,15 +47,15 @@ ApplicationWindow {
                     font: iconFont.name
                     width: 310
                     Action {
-                        text: "Small"
+                        text: controller.columns == 4 ? "* Small" : "Small"
                         onTriggered: controller.columns = 4
                     }
                     Action {
-                        text: "Medium"
+                        text: controller.columns == 3 ? "* Medium" : "Medium"
                         onTriggered: controller.columns = 3
                     }
                     Action {
-                        text: "Large"
+                        text: controller.columns == 2 ? "* Large" : "Large"
                         onTriggered: controller.columns = 2
                     }
                 }
@@ -105,7 +105,12 @@ ApplicationWindow {
                 return controller.columns;
             }
             function pageHeight(){
-                return Math.ceil(count / pageWidth());
+                var item = itemAt(0, 0),
+                    itemHeight = item ? item.height : height;
+                return height / itemHeight;
+            }
+            function pageSize(){
+                return Math.floor(pageHeight() * pageWidth());
             }
         },
         SwipeArea {
@@ -116,7 +121,7 @@ ApplicationWindow {
             onSwipe: {
                 if(direction == "down"){
                     console.log("Scroll up");
-                    currentIndex = currentIndex - screenshots.pageHeight();
+                    currentIndex = currentIndex - screenshots.pageSize();
                     if(currentIndex < 0){
                         currentIndex = 0;
                         screenshots.positionViewAtBeginning();
@@ -125,7 +130,7 @@ ApplicationWindow {
                     }
                 }else if(direction == "up"){
                     console.log("Scroll down");
-                    currentIndex = currentIndex + screenshots.pageHeight();
+                    currentIndex = currentIndex + screenshots.pageSize();
                     if(currentIndex > screenshots.count){
                         currentIndex = screenshots.count;
                         screenshots.positionViewAtEnd();
@@ -135,8 +140,6 @@ ApplicationWindow {
                 }else{
                     return;
                 }
-                console.log(currentIndex + "/" + screenshots.count);
-                console.log(screenshots.pageHeight());
             }
         }
     ]
