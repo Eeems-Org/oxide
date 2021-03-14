@@ -51,6 +51,7 @@ release: clean
 	INSTALL_ROOT=../../release $(MAKE) -C .build/system-service install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/settings-manager install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/screenshot-tool install
+	INSTALL_ROOT=../../release $(MAKE) -C .build/screenshot-viewer install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/launcher install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/lockscreen install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/task-switcher install
