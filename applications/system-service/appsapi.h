@@ -587,6 +587,7 @@ private:
                 {"workingDirectory", settings.value("workingDirectory", "").toString()},
                 {"directories", settings.value("directories", QStringList()).toStringList()},
                 {"permissions", settings.value("permissions", QStringList()).toStringList()},
+                {"splash", settings.value("splash", "").toString()},
             };
             if(settings.contains("user")){
                 properties.insert("user", settings.value("user", "").toString());
@@ -722,6 +723,9 @@ private:
                     envMap.insert(key, environment[key].toString());
                 }
                 properties.insert("environment", envMap);
+            }
+            if(app.contains("splash")){
+                properties.insert("splash", app["splash"].toString());
             }
             if(applications.contains(name)){
 #ifdef DEBUG

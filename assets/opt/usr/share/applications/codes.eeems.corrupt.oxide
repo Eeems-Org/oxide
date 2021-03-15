@@ -2,7 +2,7 @@
         "displayName": "Task Switcher",
         "description": "Handles switching applications",
         "bin": "/opt/bin/corrupt",
-        "flags": ["hidden", "nosavescreen"],
+        "flags": ["hidden", "nosavescreen", "nosplash"],
         "type": "backgroundable",
         "permissions": ["apps", "screen"]
 }
