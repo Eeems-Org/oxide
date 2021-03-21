@@ -13,91 +13,98 @@ ApplicationWindow {
         target: controller
         onReload: tasksView.model = controller.getTasks()
     }
-    menuBar: ToolBar {
-        background: Rectangle { color: "black" }
+    menuBar: ColumnLayout {
+        width: parent.width
+        ToolBar {
+            Layout.fillWidth: true
+            background: Rectangle { color: "black" }
+            RowLayout {
+                width: parent.width
+                BetterButton {
+                    text: "⬅️"
+                    onClicked: quitTimer.start()
+                    Timer {
+                        id: quitTimer
+                        interval: 1000
+                        onTriggered: Qt.quit()
+                    }
+                }
+                Item { Layout.fillWidth: true }
+                BetterButton {
+                    text: "Reload"
+                    onClicked: {
+                        console.log("Reloading...");
+                        tasksView.model = controller.getTasks();
+                    }
+                }
+            }
+        }
         RowLayout {
-            width: parent.width
-            BetterButton {
-                text: "⬅️"
-                onClicked: quitTimer.start()
-                Timer {
-                    id: quitTimer
-                    interval: 1000
-                    onTriggered: Qt.quit()
-                }
+            id: tasksViewHeaderContent
+            Layout.fillWidth: true
+            Label {
+                text: "Process"
+                color: "black"
+                font.pointSize: 8
+                Layout.alignment: Qt.AlignLeft
+                rightPadding: 10
+                leftPadding: 10
+                Layout.fillWidth: true
+                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("name") }
             }
-            Item { Layout.fillWidth: true }
-            BetterButton {
-                text: "Reload"
-                onClicked: {
-                    console.log("Reloading...");
-                    tasksView.model = controller.getTasks();
-                }
+            Label {
+                text: "PID"
+                color: "black"
+                font.pointSize: 8
+                Layout.alignment: Qt.AlignLeft
+                leftPadding: 20
+                Layout.preferredWidth: 200
+                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("pid") }
             }
+            Label {
+                text: "Parent PID"
+                color: "black"
+                font.pointSize: 8
+                Layout.alignment: Qt.AlignLeft
+                leftPadding: 20
+                Layout.preferredWidth: 200
+                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
+            }
+            BetterButton {
+                opacity: 0 // Only using this to space out the rows properly
+                text: "Kill"
+            }
+            Item { width: scrollbar.width }
         }
     }
     background: Rectangle { color: "white" }
     contentData: [
-        MouseArea { anchors.fill: parent },
-        Item {
-            id: tasksViewHeader
-            anchors.top: parent.top
-            width: parent.width
-            height: window.menuBar.height
-            RowLayout {
-                id: tasksViewHeaderContent
-                anchors.fill: parent
-                Label {
-                    text: "Process"
-                    color: "black"
-                    font.pointSize: 8
-                    Layout.alignment: Qt.AlignLeft
-                    rightPadding: 10
-                    leftPadding: 10
-                    Layout.fillWidth: true
-                    MouseArea { anchors.fill: parent; onClicked: controller.sortBy("name") }
+        ColumnLayout {
+            anchors.fill: parent
+            BetterButton {
+                text: "▲"
+                visible: !tasksView.atYBeginning
+                Layout.fillWidth: true
+                color: "black"
+                backgroundColor: "white"
+                borderColor: "white"
+                onClicked: {
+                    console.log("Scroll up");
+                    tasksView.currentIndex = tasksView.currentIndex - tasksView.pageSize();
+                    if(tasksView.currentIndex < 0){
+                        tasksView.currentIndex = 0;
+                        tasksView.positionViewAtBeginning();
+                    }else{
+                        tasksView.positionViewAtIndex(tasksView.currentIndex, ListView.Beginning);
+                    }
                 }
-                Label {
-                    text: "PID"
-                    color: "black"
-                    font.pointSize: 8
-                    Layout.alignment: Qt.AlignLeft
-                    leftPadding: 20
-                    Layout.preferredWidth: 200
-                    MouseArea { anchors.fill: parent; onClicked: controller.sortBy("pid") }
-                }
-                Label {
-                    text: "Parent PID"
-                    color: "black"
-                    font.pointSize: 8
-                    Layout.alignment: Qt.AlignLeft
-                    leftPadding: 20
-                    Layout.preferredWidth: 200
-                    MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
-                }
-                BetterButton {
-                    opacity: 0 // Only using this to space out the rows properly
-                    text: "Kill"
-                }
-                Item { width: scrollbar.width }
             }
-            Rectangle {
-                color: "grey"
-                width: parent.width
-                y: parent.y + parent.height - 2
-                height: 2
-            }
-        },
-        Rectangle {
-            anchors.top: tasksViewHeader.bottom
-            height: parent.height - tasksViewHeader.height - 4
-            width: parent.width
-            color: "white"
             ListView {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
                 id: tasksView
                 enabled: stateController.state === "loaded"
                 objectName: "tasksView"
-                anchors.fill: parent
                 clip: true
                 snapMode: ListView.SnapOneItem
                 interactive: false
@@ -223,33 +230,36 @@ ApplicationWindow {
                         }
                     }
                 }
-                SwipeArea {
-                    anchors.fill: parent
-                    propagateComposedEvents: true
-                    property int currentIndex: tasksView.currentIndex
-                    property int pageSize: 0
-                    onSwipe: {
-                        if(!pageSize && !tasksView.itemAt(0, 0)){
-                            return;
-                        }else if(!pageSize){
-                            pageSize = (tasksView.height / tasksView.itemAt(0, 0).height).toFixed(0);
-                        }
-                        if(direction == "down"){
-                            console.log("Scroll up");
-                            currentIndex = currentIndex - pageSize;
-                            if(currentIndex < 0){
-                                currentIndex = 0;
-                            }
-                        }else if(direction == "up"){
-                            console.log("Scroll down");
-                            currentIndex = currentIndex + pageSize;
-                            if(currentIndex > tasksView.count){
-                                currentIndex = tasksView.count;
-                            }
-                        }else{
-                            return;
-                        }
-                        tasksView.positionViewAtIndex(currentIndex, ListView.Beginning);
+                function pageHeight(){
+                    if(!contentItem.children.length){
+                        return 1;
+                    }
+                    var item = contentItem.children[0];
+                    if(!item){
+                        return 1;
+                    }
+                    console.log(item,height);
+                    return height / item.height;
+                }
+                function pageSize(){
+                    return Math.floor(pageHeight());
+                }
+            }
+            BetterButton{
+                text: "▼"
+                Layout.fillWidth: true
+                visible: !tasksView.atYEnd
+                color: "black"
+                backgroundColor: "white"
+                borderColor: "white"
+                onClicked: {
+                    console.log("Scroll down");
+                    tasksView.currentIndex = tasksView.currentIndex + tasksView.pageSize();
+                    if(tasksView.currentIndex > tasksView.count){
+                        tasksView.currentIndex = tasksView.count;
+                        tasksView.positionViewAtEnd();
+                    }else{
+                        tasksView.positionViewAtIndex(tasksView.currentIndex, ListView.Beginning);
                     }
                 }
             }
