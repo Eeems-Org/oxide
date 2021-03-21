@@ -16,6 +16,10 @@ void sigHandler(int signal){
 }
 
 int main(int argc, char *argv[]){
+    if(deviceSettings.getDeviceType() == DeviceSettings::RM2 && !qgetenv("LD_PRELOAD").contains("librm2fb_client.so")){
+        qWarning() << "rm2fb not detected. Running xochitl instead!";
+        return QProcess::execute("/usr/bin/xochitl");
+    }
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
     }
