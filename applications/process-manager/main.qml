@@ -70,10 +70,6 @@ ApplicationWindow {
                 Layout.preferredWidth: 200
                 MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
             }
-            BetterButton {
-                opacity: 0 // Only using this to space out the rows properly
-                text: "Kill"
-            }
             Item { width: scrollbar.width }
         }
     }
@@ -148,6 +144,8 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             leftPadding: 10
                             rightPadding: 10
+                            topPadding: 5
+                            bottomPadding: 5
                         }
                         Label {
                             id: pid
@@ -155,6 +153,8 @@ ApplicationWindow {
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
                             Layout.preferredWidth: 200
+                            topPadding: 5
+                            bottomPadding: 5
                         }
                         Label {
                             id: ppid
@@ -162,68 +162,61 @@ ApplicationWindow {
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
                             Layout.preferredWidth: 200
+                            topPadding: 5
+                            bottomPadding: 5
                         }
-                        BetterButton {
-                            text: "Kill"
-                            enabled: model.modelData.killable
-                            leftPadding: 10
-                            rightPadding: 10
-                            backgroundColor: "white"
-                            color: "black"
-                            opacity: enabled ? 1 : 0
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: killPrompt.open()
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: killPrompt.open()
+                    }
+                    Popup {
+                        id: killPrompt
+                        visible: false
+                        parent: Overlay.overlay
+                        x: Math.round((parent.width - width) / 2)
+                        y: Math.round((parent.height - height) / 2)
+                        focus: true
+                        closePolicy: Popup.CloseOnPressOutsideParent
+                        onClosed: console.log("Closed")
+                        onOpened: console.log("Opened")
+                        contentItem: ColumnLayout {
+                            Label {
+                                text: "Would you like to kill " + model.modelData.name + " (" + model.modelData.pid + ")"
                             }
-                            Popup {
-                                id: killPrompt
-                                visible: false
-                                parent: Overlay.overlay
-                                x: Math.round((parent.width - width) / 2)
-                                y: Math.round((parent.height - height) / 2)
-                                focus: true
-                                closePolicy: Popup.CloseOnPressOutsideParent
-                                onClosed: console.log("Closed")
-                                onOpened: console.log("Opened")
-                                contentItem: ColumnLayout {
-                                    Label {
-                                        text: "Are you sure you want to kill " + model.modelData.name + " (" + model.modelData.pid + ")"
+                            RowLayout {
+                                BetterButton {
+                                    backgroundColor: "white"
+                                    color: "black"
+                                    text: "Force Quit"
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            model.modelData.signal(15);
+                                            tasksView.model = controller.getTasks();
+                                            killPrompt.close()
+                                        }
                                     }
-                                    RowLayout {
-                                        BetterButton {
-                                            backgroundColor: "white"
-                                            color: "black"
-                                            text: "Force Quit"
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                onClicked: {
-                                                    model.modelData.signal(15);
-                                                    tasksView.model = controller.getTasks();
-                                                    killPrompt.close()
-                                                }
-                                            }
+                                }
+                                Item { Layout.fillWidth: true }
+                                BetterButton {
+                                    text: "Yes"
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            model.modelData.signal(9);
+                                            tasksView.model = controller.getTasks();
+                                            killPrompt.close()
                                         }
-                                        Item { Layout.fillWidth: true }
-                                        BetterButton {
-                                            text: "Yes"
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                onClicked: {
-                                                    model.modelData.signal(9);
-                                                    tasksView.model = controller.getTasks();
-                                                    killPrompt.close()
-                                                }
-                                            }
-                                        }
-                                        BetterButton {
-                                            text: "No"
-                                            backgroundColor: "white"
-                                            color: "black"
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                onClicked: killPrompt.close()
-                                            }
-                                        }
+                                    }
+                                }
+                                BetterButton {
+                                    text: "No"
+                                    backgroundColor: "white"
+                                    color: "black"
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: killPrompt.close()
                                     }
                                 }
                             }
