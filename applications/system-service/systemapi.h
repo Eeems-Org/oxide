@@ -402,11 +402,18 @@ private:
         }else if(touch->y > 1003){
             swipeDirection = Down;
         }else if(touch->x <= 20){
-            swipeDirection = Left;
+            if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
+                swipeDirection = Right;
+            }else{
+                swipeDirection = Left;
+            }
         }else if(touch->x > 747){
-            swipeDirection = Right;
+            if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
+                swipeDirection = Left;
+            }else{
+                swipeDirection = Right;
+            }
         }else{
-            swipeDirection = None;
             return;
         }
         //touchHandler->grab();
