@@ -495,7 +495,11 @@ private:
                 cancelSwipe(touch);
                 return;
             }
-            emit rightAction();
+            if(swipeDirection == Left){
+                emit rightAction();
+            }else{
+                emit leftAction();
+            }
         }
         swipeDirection = None;
         touchHandler->ungrab();
