@@ -157,7 +157,7 @@ public slots:
             return;
         }
         qDebug() << "Suspending...";
-        systemd->Suspend(false);
+        systemd->Suspend(false).waitForFinished();
     }
     void powerOff() {
         if(powerOffInhibited()){
@@ -167,7 +167,7 @@ public slots:
         qDebug() << "Powering off...";
         releasePowerOffInhibitors(true);
         rguard(false);
-        systemd->PowerOff(false);
+        systemd->PowerOff(false).waitForFinished();
     }
     void reboot() {
         if(powerOffInhibited()){
@@ -177,7 +177,7 @@ public slots:
         qDebug() << "Rebooting...";
         releasePowerOffInhibitors(true);
         rguard(false);
-        systemd->Reboot(false);
+        systemd->Reboot(false).waitForFinished();
     }
     void activity();
     void inhibitSleep(QDBusMessage message){

@@ -547,9 +547,13 @@ private:
         }
         bind(source, target);
         if(!fifos.contains(name)){
-            auto fd = ::open(source.toStdString().c_str(), O_RDWR);
+            auto fd = ::open(source.toStdString().c_str(), O_RDWR | O_NONBLOCK);
+            if(fd == -1){
+                qWarning() << "Unable to open fifi" << ::strerror(errno);
+                return;
+            }
             auto notifier = new QSocketNotifier(fd, QSocketNotifier::Read, this);
-            connect(notifier, &QSocketNotifier::activated, [this, &name, notifier](){
+            connect(notifier, &QSocketNotifier::activated, [this, name, notifier](){
                 emit fifoActivated(name, notifier);
             });
             fifos[name] = notifier;
@@ -652,9 +656,7 @@ private:
         auto path = chrootPath();
         while(!(line = mounts.readLine()).isEmpty()){
             auto mount = line.section(' ', 1, 1);
-            qDebug() << "Checking" << mount;
             if(mount.startsWith(path + "/")){
-                qDebug() << "  Match!";
                 activeMounts.append(mount);
             }
 
@@ -662,7 +664,6 @@ private:
         mounts.close();
         activeMounts.sort(Qt::CaseSensitive);
         std::reverse(std::begin(activeMounts), std::end(activeMounts));
-        qDebug() << activeMounts;
         return activeMounts;
     }
 };

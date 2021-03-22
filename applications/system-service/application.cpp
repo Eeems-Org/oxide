@@ -319,14 +319,23 @@ void Application::errorOccurred(QProcess::ProcessError error){
     }
 }
 void Application::fifoActivated(const QString name, QSocketNotifier* notifier){
+    qDebug() << "Fifo" << name << "activated";
     auto fd = notifier->socket();
-    QFile file;
-    file.open(fd, QIODevice::ReadOnly);
-    QTextStream in(&file);
-    QString line;
-    while(in.readLineInto(&line)){
+    QString data;
+    char buf[4096];
+    while(::read(fd, &buf, sizeof(buf)) > 0){
+        data.append(buf);
+        if(data.endsWith("\u0004")){
+            break;
+        }
+    }
+    for(auto line : QString(buf).split(QRegularExpression("\n"))){
+        line = line.trimmed().remove("\u0004");
+        if(line.isEmpty()){
+            continue;
+        }
         if(name == "powerState"){
-            if(line == "mem"){
+            if((QStringList() << "mem" << "freeze" << "standby").contains(line)){
                 systemAPI->suspend();
             }else{
                 qWarning() << "Unknown power state call: " << line;
