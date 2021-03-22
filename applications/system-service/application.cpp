@@ -5,6 +5,7 @@
 
 #include "application.h"
 #include "appsapi.h"
+#include "systemapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
 #include "devicesettings.h"
@@ -199,6 +200,7 @@ void Application::stopNoSecurityCheck(){
     if(state == Inactive){
         return;
     }
+    qDebug() << "Stopping " << path();
     if(!onStop().isEmpty()){
         QProcess::execute(onStop());
     }
@@ -314,6 +316,22 @@ void Application::errorOccurred(QProcess::ProcessError error){
         case QProcess::UnknownError:
         default:
             qDebug() << "Application" << name() << "unknown error.";
+    }
+}
+void Application::fifoActivated(const QString name, QSocketNotifier* notifier){
+    auto fd = notifier->socket();
+    QFile file;
+    file.open(fd, QIODevice::ReadOnly);
+    QTextStream in(&file);
+    QString line;
+    while(in.readLineInto(&line)){
+        if(name == "powerState"){
+            if(line == "mem"){
+                systemAPI->suspend();
+            }else{
+                qWarning() << "Unknown power state call: " << line;
+            }
+        }
     }
 }
 bool Application::hasPermission(QString permission, const char* sender){ return appsAPI->hasPermission(permission, sender); }
