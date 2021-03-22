@@ -397,17 +397,22 @@ private:
         auto touch = touches.first();
         if(swipeDirection != None){
             return;
-        }else if(touch->y <= 20){
+        }
+        int offset = 20;
+        if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
+            offset = 40;
+        }
+        if(touch->y <= offset){
             swipeDirection = Up;
-        }else if(touch->y > 1003){
+        }else if(touch->y > (deviceSettings.getTouchHeight() - offset)){
             swipeDirection = Down;
-        }else if(touch->x <= 20){
+        }else if(touch->x <= offset){
             if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
                 swipeDirection = Right;
             }else{
                 swipeDirection = Left;
             }
-        }else if(touch->x > 747){
+        }else if(touch->x > (deviceSettings.getTouchWidth() - offset)){
             if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
                 swipeDirection = Left;
             }else{
