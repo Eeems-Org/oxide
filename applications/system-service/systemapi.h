@@ -468,30 +468,34 @@ private:
             return;
         }
         auto touch = touches.first();
-        if(swipeDirection == Right){
-            if(touch->x > location.x() || startLocation.x() - touch->x < GESTURE_LENGTH){
-                cancelSwipe(touch);
-                return;
-            }
-            emit leftAction();
-        }else if(swipeDirection == Left){
-            if(touch->x < location.x() || touch->x - startLocation.x() < GESTURE_LENGTH){
-                cancelSwipe(touch);
-                return;
-            }
-            emit rightAction();
-        }else  if(swipeDirection == Up){
+        if(swipeDirection == Up){
             if(touch->y < location.y() || touch->y - startLocation.y() < GESTURE_LENGTH){
+                // Must end swiping up and having gone far enough
                 cancelSwipe(touch);
                 return;
             }
             emit bottomAction();
         }else if(swipeDirection == Down){
             if(touch->y > location.y() || startLocation.y() - touch->y < GESTURE_LENGTH){
+                // Must end swiping down and having gone far enough
                 cancelSwipe(touch);
                 return;
             }
             emit topAction();
+        }else if(swipeDirection == Right || swipeDirection == Left){
+            auto isRM2 = deviceSettings.getDeviceType() == DeviceSettings::RM2;
+            auto invalidLeft = touch->x < location.x() || touch->x - startLocation.x() < GESTURE_LENGTH;
+            auto invalidRight = touch->x > location.x() || startLocation.x() - touch->x < GESTURE_LENGTH;
+            if(swipeDirection == Right && (isRM2 ? invalidLeft : invalidRight)){
+                // Must end swiping right and having gone far enough
+                cancelSwipe(touch);
+                return;
+            }else if(swipeDirection == Left && (isRM2 ? invalidRight : invalidLeft)){
+                // Must end swiping left and having gone far enough
+                cancelSwipe(touch);
+                return;
+            }
+            emit rightAction();
         }
         swipeDirection = None;
         touchHandler->ungrab();
