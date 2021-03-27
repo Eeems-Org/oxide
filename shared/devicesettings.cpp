@@ -74,3 +74,24 @@ const char* DeviceSettings::getTouchEnvSetting() const {
             return "";
     }
 }
+
+const int DeviceSettings::getTouchWidth() const {
+    switch(getDeviceType()) {
+        case DeviceType::RM1:
+            return 767;
+        case DeviceType::RM2:
+            return 1403;
+        default:
+            return 0;
+    }
+}
+const int DeviceSettings::getTouchHeight() const {
+    switch(getDeviceType()) {
+        case DeviceType::RM1:
+            return 1023;
+        case DeviceType::RM2:
+            return 1871;
+        default:
+            return 0;
+    }
+}
