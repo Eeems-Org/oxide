@@ -4,6 +4,7 @@
     "bin": "/usr/bin/xochitl",
     "icon": "/opt/etc/draft/icons/xochitl.png",
     "flags": ["nosplash", "chroot"],
+    "permissions": ["power"],
     "directories": [
         "/etc",
         "/home/root",

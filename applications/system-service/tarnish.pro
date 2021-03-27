@@ -14,6 +14,7 @@ SOURCES += \
     bss.cpp \
     buttonhandler.cpp \
     event_device.cpp \
+    fifohandler.cpp \
     network.cpp \
     notification.cpp \
     screenshot.cpp \
@@ -59,6 +60,7 @@ HEADERS += \
     dbussettings.h \
     digitizerhandler.h \
     event_device.h \
+    fifohandler.h \
     mxcfb.h \
     network.h \
     notification.h \

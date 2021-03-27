@@ -20,6 +20,7 @@ QDebug operator<<(QDebug debug, Touch* touch){
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
+        qDebug() << "Preparing for suspend...";
         wifiAPI->stopUpdating();
         emit deviceSuspending();
         appsAPI->recordPreviousApplication();

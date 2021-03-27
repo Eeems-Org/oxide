@@ -156,28 +156,31 @@ public slots:
             qDebug() << "Unable to suspend. Action is currently inhibited.";
             return;
         }
-        qDebug() << "Suspending...";
+        qDebug() << "Requesting Suspend...";
         systemd->Suspend(false).waitForFinished();
+        qDebug() << "Suspend requested.";
     }
     void powerOff() {
         if(powerOffInhibited()){
             qDebug() << "Unable to power off. Action is currently inhibited.";
             return;
         }
-        qDebug() << "Powering off...";
+        qDebug() << "Requesting Power off...";
         releasePowerOffInhibitors(true);
         rguard(false);
         systemd->PowerOff(false).waitForFinished();
+        qDebug() << "Power off requested";
     }
     void reboot() {
         if(powerOffInhibited()){
             qDebug() << "Unable to reboot. Action is currently inhibited.";
             return;
         }
-        qDebug() << "Rebooting...";
+        qDebug() << "Requesting Reboot...";
         releasePowerOffInhibitors(true);
         rguard(false);
         systemd->Reboot(false).waitForFinished();
+        qDebug() << "Reboot requested";
     }
     void activity();
     void inhibitSleep(QDBusMessage message){

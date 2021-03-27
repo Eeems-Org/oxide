@@ -11,7 +11,6 @@
 #include <QTime>
 #include <QDir>
 #include <QCoreApplication>
-#include <QSocketNotifier>
 
 #include <zlib.h>
 #include <systemd/sd-journal.h>
@@ -33,10 +32,10 @@
 #include <sys/types.h>
 #include <algorithm>
 
-
 #include "dbussettings.h"
 #include "mxcfb.h"
 #include "screenapi.h"
+#include "fifohandler.h"
 
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
@@ -443,7 +442,6 @@ private slots:
         }
     }
     void errorOccurred(QProcess::ProcessError error);
-    void fifoActivated(const QString name, QSocketNotifier* notifier);
 
 private:
     QVariantMap m_config;
@@ -453,7 +451,7 @@ private:
     QByteArray* screenCapture = nullptr;
     size_t screenCaptureSize;
     QElapsedTimer timer;
-    QMap<QString, QSocketNotifier*> fifos;
+    QMap<QString, FifoHandler*> fifos;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void showSplashScreen();
@@ -501,19 +499,34 @@ private:
         }
         auto ctarget = target.toStdString();
         auto csource = source.toStdString();
-        mount(csource.c_str(), ctarget.c_str(), NULL, MS_BIND, NULL);
-        if(readOnly){
-            mount(csource.c_str(), ctarget.c_str(), NULL, MS_REMOUNT | MS_BIND | MS_RDONLY, NULL);
-            qDebug() << "mount ro" << source << target;
+        qDebug() << "mount" << source << target;
+        if(mount(csource.c_str(), ctarget.c_str(), NULL, MS_BIND, NULL)){
+            qWarning() << "Failed to create bindmount: " << ::strerror(errno);
             return;
         }
-        qDebug() << "mount rw" << source << target;
+        if(!readOnly){
+            return;
+        }
+        if(mount(csource.c_str(), ctarget.c_str(), NULL, MS_REMOUNT | MS_BIND | MS_RDONLY, NULL)){
+            qWarning() << "Failed to remount bindmount read only: " << ::strerror(errno);
+        }
+        qDebug() << "mount ro" << source << target;
+    }
+    void sysfs(const QString& path){
+        mkdirs(path, 744);
+        umount(path);
+        qDebug() << "sysfs" << path;
+        if(mount("none", path.toStdString().c_str(), "sysfs", 0, "")){
+            qWarning() << "Failed to mount sysfs: " << ::strerror(errno);
+        }
     }
     void ramdisk(const QString& path){
         mkdirs(path, 744);
         umount(path);
-        mount("tmpfs", path.toStdString().c_str(), "tmpfs", 0, "size=249m,rw,nosuid,nodev,mode=755");
         qDebug() << "ramdisk" << path;
+        if(mount("tmpfs", path.toStdString().c_str(), "tmpfs", 0, "size=249m,mode=755")){
+            qWarning() << "Failed to create ramdisk: " << ::strerror(errno);
+        }
     }
     void umount(const QString& path){
         if(!isMounted(path)){
@@ -547,16 +560,18 @@ private:
         }
         bind(source, target);
         if(!fifos.contains(name)){
-            auto fd = ::open(source.toStdString().c_str(), O_RDWR | O_NONBLOCK);
-            if(fd == -1){
-                qWarning() << "Unable to open fifi" << ::strerror(errno);
-                return;
-            }
-            auto notifier = new QSocketNotifier(fd, QSocketNotifier::Read, this);
-            connect(notifier, &QSocketNotifier::activated, [this, name, notifier](){
-                emit fifoActivated(name, notifier);
+            qDebug() << "Creating fifo thread for" << source;
+            auto handler = new FifoHandler(name, source.toStdString().c_str(), this);
+            qDebug() << "Connecting fifo thread events for" << source;
+            connect(handler, &FifoHandler::finished, [this, name]{
+                if(fifos.contains(name)){
+                    fifos.take(name);
+                }
             });
-            fifos[name] = notifier;
+            fifos[name] = handler;
+            qDebug() << "Starting fifo thread for" << source;
+            handler->start();
+            qDebug() << "Fifo thread for " << source << "started";
         }
     }
     void symlink(const QString& source, const QString& target){
@@ -577,7 +592,7 @@ private:
         // System tmpfs folders
         bind("/dev", path + "/dev");
         bind("/proc", path + "/proc");
-        bind("/sys", path + "/sys");
+        sysfs(path + "/sys");
         // Folders required to run things
         bind("/bin", path + "/bin", true);
         bind("/sbin", path + "/sbin", true);
@@ -608,42 +623,36 @@ private:
         symlink(path + "/var/tmp", "volatile/tmp");
     }
     void umountAll(){
+        auto path = chrootPath();
+        qDebug() << "Tearing down chroot" << path;
         for(auto name : fifos.keys()){
             auto fifo = fifos.take(name);
-            ::close(fifo->socket());
-            delete fifo;
+            fifo->quit();
+            fifo->deleteLater();
         }
-        auto path = chrootPath();
         QDir dir(path);
         if(!dir.exists()){
             return;
         }
-        qDebug() << "Tearing down chroot" << path;
-        for(auto mount : getActiveMounts()){
+        for(auto file : dir.entryList(QDir::Files)){
+            QFile::remove(file);
+        }
+        for(auto mount : getActiveApplicationMounts()){
             umount(mount);
         }
-        if(!getActiveMounts().isEmpty()){
+        if(!getActiveApplicationMounts().isEmpty()){
             qDebug() << "Some items are still mounted in chroot" << path;
             return;
         }
         dir.removeRecursively();
     }
-    bool isMounted(const QString& path){
-        QFile mounts("/proc/mounts");
-        if(!mounts.open(QIODevice::ReadOnly)){
-            qDebug() << "Unable to open /proc/mounts";
-            return false;
-        }
-        QString line;
-        while(!(line = mounts.readLine()).isEmpty()){
-            auto mount = line.section(' ', 1, 1);
-            if(mount == path){
-                mounts.close();
-                return true;
-            }
-        }
-        mounts.close();
-        return false;
+    bool isMounted(const QString& path){ return getActiveMounts().contains(path); }
+    QStringList getActiveApplicationMounts(){
+        auto path = chrootPath() + "/";
+        QStringList activeMounts = getActiveMounts().filter(QRegularExpression("^" + QRegularExpression::escape(path) + ".*"));
+        activeMounts.sort(Qt::CaseSensitive);
+        std::reverse(std::begin(activeMounts), std::end(activeMounts));
+        return activeMounts;
     }
     QStringList getActiveMounts(){
         QFile mounts("/proc/mounts");
@@ -653,10 +662,9 @@ private:
         }
         QString line;
         QStringList activeMounts;
-        auto path = chrootPath();
         while(!(line = mounts.readLine()).isEmpty()){
             auto mount = line.section(' ', 1, 1);
-            if(mount.startsWith(path + "/")){
+            if(mount.startsWith("/")){
                 activeMounts.append(mount);
             }
 
