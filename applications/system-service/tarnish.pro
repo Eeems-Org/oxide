@@ -66,14 +66,14 @@ HEADERS += \
     powerapi.h \
     screenapi.h \
     screenshot.h \
-    signalhandler.h \
     supplicant.h \
     sysobject.h \
     systemapi.h \
     wifiapi.h \
     wlan.h \
     wpa_supplicant.h \
-    ../../shared/devicesettings.h
+    ../../shared/devicesettings.h \
+    ../../shared/signalhandler.h
 
 linux-oe-g++ {
     LIBS += -lqsgepaper
@@ -85,6 +85,7 @@ linux-oe-g++ {
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
 DISTFILES += \
+    ../../assets/opt/usr/share/applications/codes.eeems.anxiety.oxide \
     ../../assets/opt/usr/share/applications/codes.eeems.corrupt.oxide \
     fi.w1.wpa_supplicant1.xml \
     generate_xml.sh \

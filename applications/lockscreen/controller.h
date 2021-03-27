@@ -185,6 +185,7 @@ public:
         if(state == "loaded" && pin == storedPin()){
             qDebug() << "PIN matches!";
             QTimer::singleShot(200, [this]{
+                onLogin();
                 if(getPinEntryUI()){
                     pinEntryUI->setProperty("message", "");
                     pinEntryUI->setProperty("pin", "");
@@ -200,6 +201,7 @@ public:
 
         }else if(state == "loaded"){
             qDebug() << "PIN doesn't match!";
+            onFailedLogin();
             return false;
         }
         if(state == "prompt"){
@@ -392,6 +394,36 @@ private slots:
     }
     void chargerWarning(){
         // TODO handle charger
+    }
+    void onLogin(){
+        if(!settings.contains("onLogin")){
+            return;
+        }
+        auto path = settings.value("onLogin").toString();
+        if(!QFile::exists(path)){
+            qWarning() << "onLogin script does not exist" << path;
+            return;
+        }
+        if(!QFileInfo(path).isExecutable()){
+            qWarning() << "onLogin script is not executable" << path;
+            return;
+        }
+        QProcess::execute(path);
+    }
+    void onFailedLogin(){
+        if(!settings.contains("onFailedLogin")){
+            return;
+        }
+        auto path = settings.value("onFailedLogin").toString();
+        if(!QFile::exists(path)){
+            qWarning() << "onFailedLogin script does not exist" << path;
+            return;
+        }
+        if(!QFileInfo(path).isExecutable()){
+            qWarning() << "onFailedLogin script is not executable" << path;
+            return;
+        }
+        QProcess::execute(path);
     }
 
 private:

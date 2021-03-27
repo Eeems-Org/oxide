@@ -1,0 +1,9 @@
+{
+        "displayName": "Screenshots",
+        "description": "View and manage screenshots",
+        "bin": "/opt/bin/anxiety",
+        "icon": "/opt/etc/draft/icons/image.svg",
+        "flags": [],
+        "type": "foreground",
+        "permissions": ["screen"]
+}

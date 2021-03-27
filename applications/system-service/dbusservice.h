@@ -72,7 +72,6 @@ public:
             connect(bus.interface(), SIGNAL(serviceOwnerChanged(QString,QString,QString)),
                     instance, SLOT(serviceOwnerChanged(QString,QString,QString)));
             qDebug() << "Registered";
-            instance->startup();
         }
         return instance;
     }

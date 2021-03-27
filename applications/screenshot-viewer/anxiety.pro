@@ -20,7 +20,6 @@ linux-oe-g++ {
 }
 
 SOURCES += \
-        appitem.cpp \
         main.cpp \
         ../../shared/devicesettings.cpp \
         ../../shared/eventfilter.cpp
@@ -29,20 +28,21 @@ SOURCES += \
 target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
+icons.files = ../../assets/etc/draft/icons/image.svg
+icons.path = /opt/etc/draft/icons
+INSTALLS += icons
+
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/screenapi.xml
-DBUS_INTERFACES += ../../interfaces/appsapi.xml
-DBUS_INTERFACES += ../../interfaces/application.xml
+DBUS_INTERFACES += ../../interfaces/screenshot.xml
 
 INCLUDEPATH += ../../shared
 HEADERS += \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h \
     ../../shared/eventfilter.h \
-    ../../shared/signalhandler.h \
-    appitem.h \
     controller.h \
-    screenprovider.h
+    screenshotlist.h
 
 RESOURCES += \
     qml.qrc

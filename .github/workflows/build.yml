@@ -46,6 +46,7 @@ jobs:
           cd "$GITHUB_WORKSPACE"/toltec/package/oxide
           tar -czvf ./oxide.tar.gz "$GITHUB_WORKSPACE"/result/*
           cp "$GITHUB_WORKSPACE"/package .
+          sed -i "s/~VERSION~/$(cat version.txt)/" ./package
           cat ./package
           cd "$GITHUB_WORKSPACE"/toltec
           make oxide

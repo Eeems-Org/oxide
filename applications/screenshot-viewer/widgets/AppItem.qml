@@ -13,30 +13,47 @@ Item {
     signal longPress;
     property string source: "qrc:/img/icon.png"
     property string text: ""
-    property bool animating: false
-    property bool clickOnDone: false
-
+    property bool bold: false
     Item {
         id: spacer
         height: root.height * 0.05
-        width: 0
+        width: root.width * 0.05
     }
-    Image {
+    Rectangle {
         id: icon
-        fillMode: Image.PreserveAspectFit
         anchors.top: spacer.bottom
         anchors.left: spacer.right
-        height: root.height * (root.text ? 0.70 : 0.90)
-        width: root.width
-        source: root.source
-        sourceSize.width: width
-        sourceSize.height: height
+        height: root.height * 0.70
+        width: root.width * 0.90
+        clip: false
+        border.width: 1
+        border.color: "black"
+        color: "white"
+        Item {
+            id: iconSpacer
+            width: 1
+            height: 1
+        }
+        Image {
+            fillMode: Image.PreserveAspectFit
+            anchors.left: iconSpacer.right
+            anchors.top: iconSpacer.bottom
+            source: root.source
+            width: icon.width - 2
+            height: icon.height - 2
+            sourceSize.width: width
+            sourceSize.height: height
+            asynchronous: true
+        }
     }
     Text {
         text: root.text
-        width: root.width
-        height: root.text ? root.height * 0.20 : 0
+        width: root.width * 0.90
+        height: root.height * 0.20
         font.pointSize: 100
+        font.bold: root.bold
+        font.family: "Noto Serif"
+        font.italic: true
         minimumPointSize: 1
         anchors.top: icon.bottom
         anchors.left: icon.left
@@ -47,7 +64,11 @@ Item {
     MouseArea {
         anchors.fill: root
         enabled: root.enabled
-        onClicked: root.clicked()
+        propagateComposedEvents: true
+        onClicked: {
+            root.state = "released";
+            root.clicked();
+        }
         onPressAndHold: root.longPress()
         onPressed: root.state = "pressed"
         onReleased: root.state = "released"

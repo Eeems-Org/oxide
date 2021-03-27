@@ -37,11 +37,19 @@ int main(int argc, char *argv[]){
     parser.process(app);
 
     const QStringList args = parser.positionalArguments();
-    dbusService;
 
     signal(SIGINT, sigHandler);
     signal(SIGSEGV, sigHandler);
     signal(SIGTERM, sigHandler);
 
+    dbusService;
+    QTimer::singleShot(0, []{
+        dbusService->startup();
+    });
+    system("mkdir -p /run/oxide");
+    system(("echo " + to_string(app.applicationPid()) + " > /run/oxide/oxide.pid").c_str());
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
+        remove("/run/oxide/oxide.pid");
+    });
     return app.exec();
 }
