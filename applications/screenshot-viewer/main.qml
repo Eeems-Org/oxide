@@ -140,10 +140,8 @@ ApplicationWindow {
                 }
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: ScrollBar {
+                ScrollBar.vertical: ScrollIndicator {
                     id: scrollbar
-                    snapMode: ScrollBar.SnapAlways
-                    policy: ScrollBar.AlwaysOn
                     contentItem: Rectangle {
                         color: "white"
                         implicitWidth: 6
