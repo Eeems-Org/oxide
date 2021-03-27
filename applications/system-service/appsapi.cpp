@@ -1,4 +1,5 @@
 #include "appsapi.h"
+#include "notificationapi.h"
 
 AppsAPI::AppsAPI(QObject* parent)
 : APIBase(parent),
@@ -10,6 +11,7 @@ AppsAPI::AppsAPI(QObject* parent)
   m_startupApplication("/"),
   m_lockscreenApplication("/"),
   m_processManagerApplication("/"),
+  m_taskSwitcherApplication("/"),
   m_sleeping(false) {
     singleton(this);
     SignalHandler::setup_unix_signal_handlers();
@@ -51,14 +53,24 @@ AppsAPI::AppsAPI(QObject* parent)
         }
     }
     m_processManagerApplication= path;
+
+    path = QDBusObjectPath(settings.value("processManagerApplication").toString());
+    app = getApplication(path);
+    if(app == nullptr){
+        app = getApplication("codes.eeems.corrupt");
+        if(app != nullptr){
+            path = app->qPath();
+        }
+    }
+    m_taskSwitcherApplication= path;
 }
 
 void AppsAPI::startup(){
     for(auto app : applications){
         if(app->autoStart()){
-            app->launch();
+            app->launchNoSecurityCheck();
             if(app->type() == Backgroundable){
-                app->pause();
+                app->pauseNoSecurityCheck();
             }
         }
     }
@@ -67,6 +79,8 @@ void AppsAPI::startup(){
         app = getApplication(m_startupApplication);
     }
     if(app != nullptr){
-        app->launch();
+        app->launchNoSecurityCheck();
     }
 }
+
+bool AppsAPI::locked(){ return notificationAPI->locked(); }

@@ -34,7 +34,6 @@ public:
 
     Q_INVOKABLE void execute();
     Q_INVOKABLE void stop();
-
 signals:
     void nameChanged(QString);
     void displayNameChanged(QString);

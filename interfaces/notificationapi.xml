@@ -27,6 +27,13 @@
     <method name="notifications">
       <arg type="ao" direction="out"/>
     </method>
+    <method name="locked">
+      <arg type="b" direction="out"/>
+    </method>
+    <method name="lock">
+    </method>
+    <method name="unlock">
+    </method>
     <method name="get">
       <arg type="o" direction="out"/>
       <arg name="identifier" type="s" direction="in"/>

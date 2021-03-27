@@ -9,8 +9,9 @@ void Notification::display(){
     if(!hasPermission("notification")){
         return;
     }
+    notificationAPI->lock();
     qDebug() << "Displaying notification" << identifier();
-    auto path = appsAPI->currentApplication();
+    auto path = appsAPI->currentApplicationNoSecurityCheck();
     Application* resumeApp = nullptr;
     if(path.path() != "/"){
         resumeApp = appsAPI->getApplication(path);
@@ -28,9 +29,10 @@ void Notification::display(){
             if(resumeApp != nullptr){
                 resumeApp->uninterruptApplication();
             }
+            qDebug() << "Finished displaying notification" << identifier();
+            notificationAPI->unlock();
         });
     });
-    qDebug() << "Finished displaying notification" << identifier();
 }
 
 void Notification::remove(){
