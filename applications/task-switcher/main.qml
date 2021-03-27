@@ -11,6 +11,7 @@ ApplicationWindow {
     width: screenGeometry.width
     height: screenGeometry.height
     title: qsTr("Corrupt")
+    property int itemPadding: 10
     Connections{
         target: screenProvider
         onImageChanged: background.reload()
