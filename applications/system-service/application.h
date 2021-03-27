@@ -36,6 +36,7 @@
 #include "mxcfb.h"
 #include "screenapi.h"
 #include "fifohandler.h"
+#include "buttonhandler.h"
 
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
@@ -442,7 +443,7 @@ private slots:
         }
     }
     void errorOccurred(QProcess::ProcessError error);
-
+    void powerStateDataRecieved(FifoHandler* handler, const QString& data);
 private:
     QVariantMap m_config;
     QString m_path;
@@ -544,9 +545,10 @@ private:
         }
         qDebug() << "umount" << path;
     }
-    void mkfifo_RO(const QString& name, const QString& target){
+    FifoHandler* mkfifo(const QString& name, const QString& target){
         if(isMounted(target)){
-            return;
+            qWarning() << target << "Already mounted";
+            return fifos.contains(name) ? fifos[name] : nullptr;
         }
         auto source = resourcePath() + "/" + name;
         if(!QFile::exists(source)){
@@ -556,7 +558,7 @@ private:
         }
         if(!QFile::exists(source)){
             qWarning() << "No fifo for " << name;
-            return;
+            return fifos.contains(name) ? fifos[name] : nullptr;
         }
         bind(source, target);
         if(!fifos.contains(name)){
@@ -573,6 +575,7 @@ private:
             handler->start();
             qDebug() << "Fifo thread for " << source << "started";
         }
+        return fifos[name];
     }
     void symlink(const QString& source, const QString& target){
         if(QFile::exists(source)){
@@ -617,14 +620,15 @@ private:
             bind(directory, path + directory);
         }
         // Fake sys devices
-        mkfifo_RO("powerState", path + "/sys/power/state");
+        auto fifo = mkfifo("powerState", path + "/sys/power/state");
+        connect(fifo, &FifoHandler::dataRecieved, this, &Application::powerStateDataRecieved);
+        // Missing symlinks
         symlink(path + "/var/run", "../run");
         symlink(path + "/var/lock", "../run/lock");
         symlink(path + "/var/tmp", "volatile/tmp");
     }
     void umountAll(){
         auto path = chrootPath();
-        qDebug() << "Tearing down chroot" << path;
         for(auto name : fifos.keys()){
             auto fifo = fifos.take(name);
             fifo->quit();
@@ -634,6 +638,7 @@ private:
         if(!dir.exists()){
             return;
         }
+        qDebug() << "Tearing down chroot" << path;
         for(auto file : dir.entryList(QDir::Files)){
             QFile::remove(file);
         }

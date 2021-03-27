@@ -131,6 +131,7 @@ signals:
     void powerHeld();
     void powerPress();
     void activity();
+    void rawEvent(const input_event&);
 
 protected:
     void run();

@@ -368,3 +368,15 @@ void Application::showSplashScreen(){
     EPFrameBuffer::waitForLastUpdate();
     qDebug() << "Finished paining splash screen for" << name();
 }
+void Application::powerStateDataRecieved(FifoHandler* handler, const QString& data){
+    Q_UNUSED(handler);
+    if(!permissions().contains("power")){
+        qWarning() << "Denied powerState request";
+        return;
+    }
+    if((QStringList() << "mem" << "freeze" << "standby").contains(data)){
+        systemAPI->suspend();
+    }else{
+        qWarning() << "Unknown power state call: " << data;
+    }
+}

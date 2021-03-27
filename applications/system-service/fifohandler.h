@@ -15,18 +15,21 @@ public:
       host(host),
       _thread(this),
       timer(this),
-      name(name),
+      _name(name),
       path(path),
-      fifo() {
+      in(),
+      out() {
         connect(host, &QObject::destroyed, this, &QObject::deleteLater);
         connect(&_thread, &QThread::started, [this]{
             auto path = this->path.toStdString();
             emit started();
-            std::ifstream stream(path.c_str(), std::ifstream::out);
-            fifo.open(path.c_str(), std::ifstream::in);
-            stream.close();
-            if(!fifo.good()){
-                qWarning() << "Unable to open fifi" << ::strerror(errno);
+            out.open(path.c_str(), std::ifstream::out);
+            if(!out.good()){
+                qWarning() << "Unable to open fifi (out)" << ::strerror(errno);
+            }
+            in.open(path.c_str(), std::ifstream::in);
+            if(!in.good()){
+                qWarning() << "Unable to open fifi (in)" << ::strerror(errno);
             }
             timer.start(10);
         });
@@ -37,27 +40,38 @@ public:
         connect(&timer, &QTimer::timeout, this, &FifoHandler::run);
         moveToThread(&_thread);
     }
-    ~FifoHandler(){ quit(); }
+    ~FifoHandler(){
+        if(in.is_open()){
+            in.close();
+        }
+        if(out.is_open()){
+            out.close();
+        }
+        quit();
+    }
     void start() { _thread.start(); }
     void quit(){ _thread.quit(); }
+    void write(const void* data, size_t size){ out.write((char*)data, size); }
+    const QString& name() { return _name; }
 signals:
     void started();
     void finished();
+    void dataRecieved(FifoHandler* handler, const QString& data);
 protected:
     void run() {
-        if(!fifo.is_open()){
+        if(!in.is_open()){
             quit();
             return;
         }
         std::string data;
-        while(getline_async(fifo, data)){
+        while(getline_async(in, data)){
             QString line(data.c_str());
             line = line.trimmed();
-            handleLine(line);
+            emit dataRecieved(this, line);
             thread()->yieldCurrentThread();
         }
-        if(fifo.eof()){
-            fifo.clear();
+        if(in.eof()){
+            in.clear();
         }
         thread()->yieldCurrentThread();
     }
@@ -65,11 +79,10 @@ private:
     QObject* host;
     QThread _thread;
     QTimer timer;
-    QString name;
+    QString _name;
     QString path;
-    std::ifstream fifo;
-    void handleLine(const QString& line);
-    bool hasPermission(const QString& name){ return host->property("permissions").toStringList().contains(name); }
+    std::ifstream in;
+    std::ofstream out;
     bool getline_async(std::istream& is, std::string& str, char delim = '\n') {
 
         static std::string lineSoFar;

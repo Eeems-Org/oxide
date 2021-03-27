@@ -14,7 +14,6 @@ SOURCES += \
     bss.cpp \
     buttonhandler.cpp \
     event_device.cpp \
-    fifohandler.cpp \
     network.cpp \
     notification.cpp \
     screenshot.cpp \
