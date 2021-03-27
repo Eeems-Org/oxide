@@ -2,5 +2,6 @@
 	"displayName": "Xochitl",
 	"description": "reMarkable default application",
 	"bin": "/usr/bin/xochitl",
-	"icon": "/opt/etc/draft/icons/xochitl.png"
+        "icon": "/opt/etc/draft/icons/xochitl.png",
+        "flags": ["nosplash"]
 }

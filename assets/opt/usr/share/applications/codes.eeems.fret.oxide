@@ -4,5 +4,6 @@
 	"bin": "/opt/bin/fret",
         "flags": ["autoStart", "hidden"],
         "type": "background",
+        "splash": "/opt/etc/draft/icons/oxide-splash.png",
         "permissions": ["notification", "screen", "system"]
 }

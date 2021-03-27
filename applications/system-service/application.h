@@ -131,6 +131,7 @@ class Application : public QObject{
     Q_PROPERTY(bool systemApp READ systemApp)
     Q_PROPERTY(bool hidden READ hidden)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
+    Q_PROPERTY(QString splash READ splash WRITE setSplash NOTIFY splashChanged)
     Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
     Q_PROPERTY(QString workingDirectory READ workingDirectory WRITE setWorkingDirectory NOTIFY workingDirectoryChanged)
     Q_PROPERTY(bool chroot READ chroot)
@@ -264,6 +265,14 @@ public:
         setValue("icon", icon);
         emit iconChanged(icon);
     }
+    QString splash() { return value("splash", "").toString(); }
+    void setSplash(QString splash){
+        if(!hasPermission("permissions")){
+            return;
+        }
+        setValue("splash", splash);
+        emit splashChanged(splash);
+    }
     QVariantMap environment() { return value("environment", QVariantMap()).toMap(); }
     Q_INVOKABLE void setEnvironment(QVariantMap environment){
         if(!hasPermission("permissions")){
@@ -380,6 +389,7 @@ signals:
     void onStopChanged(QString);
     void autoStartChanged(bool);
     void iconChanged(QString);
+    void splashChanged(QString);
     void environmentChanged(QVariantMap);
     void workingDirectoryChanged(QString);
     void directoriesChanged(QStringList);
@@ -440,6 +450,7 @@ private:
     QElapsedTimer timer;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
+    void showSplashScreen();
     void delayUpTo(int milliseconds){
         timer.invalidate();
         timer.start();

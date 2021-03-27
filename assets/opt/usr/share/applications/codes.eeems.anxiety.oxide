@@ -3,6 +3,7 @@
         "description": "View and manage screenshots",
         "bin": "/opt/bin/anxiety",
         "icon": "/opt/etc/draft/icons/image.svg",
+        "splash": "/opt/etc/draft/icons/anxiety-splash.png",
         "flags": [],
         "type": "foreground",
         "permissions": ["screen"]

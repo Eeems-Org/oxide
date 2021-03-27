@@ -28,7 +28,10 @@ SOURCES += \
 target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
-icons.files = ../../assets/etc/draft/icons/image.svg
+icons.files += \
+    ../../assets/etc/draft/icons/image.svg \
+    ../../assets/etc/draft/icons/anxiety-splash.png
+
 icons.path = /opt/etc/draft/icons
 INSTALLS += icons
 

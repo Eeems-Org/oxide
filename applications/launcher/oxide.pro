@@ -55,10 +55,9 @@ linux-oe-g++ {
     LIBS += -lqsgepaper
 }
 
-# Installs draft files to /opt/etc/draft and the oxide sysctl service
-configFiles.files = ../../assets/etc/draft
-configFiles.path  = /opt/etc/
-INSTALLS += configFiles
+icons.files = ../../assets/etc/draft/icons/oxide-splash.png
+icons.path  = /opt/etc/draft/icons
+INSTALLS += icons
 
 configFile.files = ../../assets/etc/oxide.conf
 configFile.path  = /opt/etc/

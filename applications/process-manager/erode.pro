@@ -30,7 +30,9 @@ QML_DESIGNER_IMPORT_PATH =
 target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
-icons.files = ../../assets/etc/draft/icons/erode.svg
+icons.files += \
+    ../../assets/etc/draft/icons/erode.svg \
+    ../../assets/etc/draft/icons/erode-splash.png
 icons.path = /opt/etc/draft/icons
 INSTALLS += icons
 
