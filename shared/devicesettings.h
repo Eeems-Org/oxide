@@ -17,6 +17,8 @@ public:
     const char* getTouchDevicePath() const;
     const char* getTouchEnvSetting() const;
     DeviceType getDeviceType() const;
+    const int getTouchWidth() const;
+    const int getTouchHeight() const;
 
 private:
     DeviceType _deviceType;

@@ -397,17 +397,22 @@ private:
         auto touch = touches.first();
         if(swipeDirection != None){
             return;
-        }else if(touch->y <= 20){
+        }
+        int offset = 20;
+        if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
+            offset = 40;
+        }
+        if(touch->y <= offset){
             swipeDirection = Up;
-        }else if(touch->y > 1003){
+        }else if(touch->y > (deviceSettings.getTouchHeight() - offset)){
             swipeDirection = Down;
-        }else if(touch->x <= 20){
+        }else if(touch->x <= offset){
             if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
                 swipeDirection = Right;
             }else{
                 swipeDirection = Left;
             }
-        }else if(touch->x > 747){
+        }else if(touch->x > (deviceSettings.getTouchWidth() - offset)){
             if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
                 swipeDirection = Left;
             }else{
@@ -463,30 +468,38 @@ private:
             return;
         }
         auto touch = touches.first();
-        if(swipeDirection == Right){
-            if(touch->x > location.x() || startLocation.x() - touch->x < GESTURE_LENGTH){
-                cancelSwipe(touch);
-                return;
-            }
-            emit leftAction();
-        }else if(swipeDirection == Left){
-            if(touch->x < location.x() || touch->x - startLocation.x() < GESTURE_LENGTH){
-                cancelSwipe(touch);
-                return;
-            }
-            emit rightAction();
-        }else  if(swipeDirection == Up){
+        if(swipeDirection == Up){
             if(touch->y < location.y() || touch->y - startLocation.y() < GESTURE_LENGTH){
+                // Must end swiping up and having gone far enough
                 cancelSwipe(touch);
                 return;
             }
             emit bottomAction();
         }else if(swipeDirection == Down){
             if(touch->y > location.y() || startLocation.y() - touch->y < GESTURE_LENGTH){
+                // Must end swiping down and having gone far enough
                 cancelSwipe(touch);
                 return;
             }
             emit topAction();
+        }else if(swipeDirection == Right || swipeDirection == Left){
+            auto isRM2 = deviceSettings.getDeviceType() == DeviceSettings::RM2;
+            auto invalidLeft = touch->x < location.x() || touch->x - startLocation.x() < GESTURE_LENGTH;
+            auto invalidRight = touch->x > location.x() || startLocation.x() - touch->x < GESTURE_LENGTH;
+            if(swipeDirection == Right && (isRM2 ? invalidLeft : invalidRight)){
+                // Must end swiping right and having gone far enough
+                cancelSwipe(touch);
+                return;
+            }else if(swipeDirection == Left && (isRM2 ? invalidRight : invalidLeft)){
+                // Must end swiping left and having gone far enough
+                cancelSwipe(touch);
+                return;
+            }
+            if(swipeDirection == Left){
+                emit rightAction();
+            }else{
+                emit leftAction();
+            }
         }
         swipeDirection = None;
         touchHandler->ungrab();
