@@ -45,5 +45,7 @@
     </method>
     <method name="uninhibitPowerOff">
     </method>
+    <method name="toggleSwipes">
+    </method>
   </interface>
 </node>
