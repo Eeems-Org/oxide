@@ -72,6 +72,8 @@ class SystemAPI : public APIBase {
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
 public:
+    enum SwipeDirection { None, Right, Left, Up, Down };
+    Q_ENUM(SwipeDirection)
     static SystemAPI* singleton(SystemAPI* self = nullptr){
         static SystemAPI* instance;
         if(self != nullptr){
@@ -86,7 +88,11 @@ public:
        sleepInhibitors(),
        powerOffInhibitors(),
        mutex(),
-       touches(){
+       touches(),
+       swipeStates() {
+        for(short i = Right; i <= Down; i++){
+            swipeStates[(SwipeDirection)i] = true;
+        }
         settings.sync();
         singleton(this);
         this->resumeApp = nullptr;
@@ -150,6 +156,9 @@ public:
     void startSuspendTimer();
     void lock(){ mutex.lock(); }
     void unlock() { mutex.unlock(); }
+    void setSwipeEnabled(SwipeDirection direction, bool enabled){ swipeStates[direction] = enabled; }
+    bool getSwipeEnabled(SwipeDirection direction){ return swipeStates[direction]; }
+    void toggleSwipeEnabled(SwipeDirection direction){ setSwipeEnabled(direction, !getSwipeEnabled(direction)); }
 public slots:
     void suspend(){
         if(sleepInhibited()){
@@ -208,7 +217,7 @@ public slots:
             emit powerOffInhibitedChanged(false);
         }
     }
-
+    void toggleSwipes();
 signals:
     void leftAction();
     void homeAction();
@@ -334,10 +343,10 @@ private:
     int currentSlot = 0;
     int m_autoSleep;
     bool wifiWasOn = false;
-    enum SwipeDirection { None, Right, Left, Up, Down };
     int swipeDirection = None;
     QPoint location;
     QPoint startLocation;
+    QMap<SwipeDirection, bool> swipeStates;
 
     void inhibitSleep(){
         inhibitors.append(Inhibitor(systemd, "sleep", qApp->applicationName(), "Handle sleep screen"));
@@ -472,14 +481,14 @@ private:
         }
         auto touch = touches.first();
         if(swipeDirection == Up){
-            if(touch->y < location.y() || touch->y - startLocation.y() < GESTURE_LENGTH){
+            if(!swipeStates[Up] || touch->y < location.y() || touch->y - startLocation.y() < GESTURE_LENGTH){
                 // Must end swiping up and having gone far enough
                 cancelSwipe(touch);
                 return;
             }
             emit bottomAction();
         }else if(swipeDirection == Down){
-            if(touch->y > location.y() || startLocation.y() - touch->y < GESTURE_LENGTH){
+            if(!swipeStates[Down] || touch->y > location.y() || startLocation.y() - touch->y < GESTURE_LENGTH){
                 // Must end swiping down and having gone far enough
                 cancelSwipe(touch);
                 return;
@@ -487,8 +496,8 @@ private:
             emit topAction();
         }else if(swipeDirection == Right || swipeDirection == Left){
             auto isRM2 = deviceSettings.getDeviceType() == DeviceSettings::RM2;
-            auto invalidLeft = touch->x < location.x() || touch->x - startLocation.x() < GESTURE_LENGTH;
-            auto invalidRight = touch->x > location.x() || startLocation.x() - touch->x < GESTURE_LENGTH;
+            auto invalidLeft = !swipeStates[Left] || touch->x < location.x() || touch->x - startLocation.x() < GESTURE_LENGTH;
+            auto invalidRight = !swipeStates[Right] || touch->x > location.x() || startLocation.x() - touch->x < GESTURE_LENGTH;
             if(swipeDirection == Right && (isRM2 ? invalidLeft : invalidRight)){
                 // Must end swiping right and having gone far enough
                 cancelSwipe(touch);
@@ -500,6 +509,7 @@ private:
             }
             if(swipeDirection == Left){
                 emit rightAction();
+
             }else{
                 emit leftAction();
             }

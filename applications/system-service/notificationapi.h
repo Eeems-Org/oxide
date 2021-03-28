@@ -46,10 +46,11 @@ public:
         if(!hasPermission("notification")){
             return QDBusObjectPath("/");
         }
-        if(!m_notifications.contains(identifier)){
+        auto notification = getByIdentifier(identifier);
+        if(notification == nullptr){
             return QDBusObjectPath("/");
         }
-        return m_notifications.value(identifier)->qPath();
+        return notification->qPath();
     }
 
     QList<QDBusObjectPath> getAllNotifications(){
@@ -77,15 +78,11 @@ public:
     }
     QList<Notification*> notificationDisplayQueue;
 
-public slots:
-    QDBusObjectPath add(QString identifier, QString application, QString text, QString icon, QDBusMessage message){
-        if(!hasPermission("notification")){
-            return QDBusObjectPath("/");
-        }
+    Notification* add(const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon){
         if(m_notifications.contains(identifier)){
-            return QDBusObjectPath("/");
+            return nullptr;
         }
-        auto notification = new Notification(getPath(identifier), identifier, message.service(), application, text, icon, this);
+        auto notification = new Notification(getPath(identifier), identifier, owner, application, text, icon, this);
         m_notifications.insert(identifier, notification);
         auto path = notification->qPath();
         connect(notification, &Notification::changed, this, [=]{
@@ -95,7 +92,25 @@ public slots:
             notification->registerPath();
         }
         emit notificationAdded(path);
-        return path;
+        return notification;
+    }
+    Notification* getByIdentifier(const QString& identifier){
+        if(!m_notifications.contains(identifier)){
+            return nullptr;
+        }
+        return m_notifications.value(identifier);
+    }
+
+public slots:
+    QDBusObjectPath add(const QString& identifier, const QString& application, const QString& text, const QString& icon, QDBusMessage message){
+        if(!hasPermission("notification")){
+            return QDBusObjectPath("/");
+        }
+        auto notification = add(identifier, message.service(), application, text, icon);
+        if(notification == nullptr){
+            return QDBusObjectPath("/");
+        }
+        return notification->qPath();
     }
     bool take(QString identifier, QDBusMessage message){
         if(!hasPermission("notification")){
