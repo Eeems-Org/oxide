@@ -156,8 +156,26 @@ public:
     void startSuspendTimer();
     void lock(){ mutex.lock(); }
     void unlock() { mutex.unlock(); }
+    Q_INVOKABLE void setSwipeEnabled(int direction, bool enabled){
+        if(direction < SwipeDirection::None || direction > SwipeDirection::Down){
+            return;
+        }
+        setSwipeEnabled((SwipeDirection)direction, enabled);
+    }
     void setSwipeEnabled(SwipeDirection direction, bool enabled){ swipeStates[direction] = enabled; }
+    Q_INVOKABLE bool getSwipeEnabled(int direction){
+        if(direction < SwipeDirection::None || direction > SwipeDirection::Down){
+            return false;
+        }
+        return getSwipeEnabled(direction);
+    }
     bool getSwipeEnabled(SwipeDirection direction){ return swipeStates[direction]; }
+    Q_INVOKABLE void toggleSwipeEnabled(int direction){
+        if(direction < SwipeDirection::None || direction > SwipeDirection::Down){
+            return;
+        }
+        toggleSwipeEnabled((SwipeDirection)direction);
+    }
     void toggleSwipeEnabled(SwipeDirection direction){ setSwipeEnabled(direction, !getSwipeEnabled(direction)); }
 public slots:
     void suspend(){
@@ -620,5 +638,4 @@ private:
         }
     }
 };
-
 #endif // SYSTEMAPI_H
