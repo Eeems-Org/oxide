@@ -125,9 +125,10 @@ public:
         inhibitSleep();
         inhibitPowerOff();
         qRegisterMetaType<input_event>();
-        connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
         connect(touchHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
+        connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
         connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
+        connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
         qDebug() << "System API ready to use";
     }
     ~SystemAPI(){
@@ -257,14 +258,21 @@ private slots:
                                 moved.append(touch);
                             }
                         }
-                        if(pressed.length()){
-                            touchDown(pressed);
-                        }
-                        if(moved.length()){
-                            touchMove(moved);
-                        }
-                        if(released.length()){
-                            touchUp(released);
+                        if(!penActive){
+                            if(pressed.length()){
+                                touchDown(pressed);
+                            }
+                            if(moved.length()){
+                                touchMove(moved);
+                            }
+                            if(released.length()){
+                                touchUp(released);
+                            }
+                        }else if(swipeDirection != None){
+#ifdef DEBUG
+        qDebug() << "Swiping cancelled due to pen activity";
+#endif
+                            swipeDirection = None;
                         }
                         // Cleanup released touches
                         for(auto touch : released){
@@ -329,6 +337,15 @@ private slots:
             break;
         }
     }
+    void penEvent(const input_event& event){
+        if(event.type != EV_KEY || event.code != BTN_TOOL_PEN){
+            return;
+        }
+        penActive = event.value;
+#ifdef DEBUG
+        qDebug() << "Pen state: " << (penActive ? "Active" : "Inactive");
+#endif
+    }
 
 private:
     Manager* systemd;
@@ -343,6 +360,7 @@ private:
     int currentSlot = 0;
     int m_autoSleep;
     bool wifiWasOn = false;
+    bool penActive = false;
     int swipeDirection = None;
     QPoint location;
     QPoint startLocation;
@@ -400,6 +418,9 @@ private:
     }
 
     void touchDown(QList<Touch*> touches){
+        if(penActive){
+            return;
+        }
 #ifdef DEBUG
         qDebug() << "DOWN" << touches;
 #endif
