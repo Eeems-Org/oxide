@@ -157,8 +157,59 @@ public:
     void startSuspendTimer();
     void lock(){ mutex.lock(); }
     void unlock() { mutex.unlock(); }
-    void setSwipeEnabled(SwipeDirection direction, bool enabled){ swipeStates[direction] = enabled; }
+    Q_INVOKABLE void setSwipeEnabled(int direction, bool enabled){
+        if(!hasPermission("system")){
+            return;
+        }
+        if(direction <= SwipeDirection::None || direction > SwipeDirection::Down){
+            qDebug() << "Invalid swipe direction: " << direction;
+            return;
+        }
+        setSwipeEnabled((SwipeDirection)direction, enabled);
+    }
+    void setSwipeEnabled(SwipeDirection direction, bool enabled){
+        if(direction == None){
+            return;
+        }
+        switch(direction){
+            case Left:
+                qDebug() << "Swipe Left: " << enabled;
+                break;
+            case Right:
+                qDebug() << "Swipe Right: " << enabled;
+                break;
+            case Up:
+                qDebug() << "Swipe Up: " << enabled;
+                break;
+            case Down:
+                qDebug() << "Swipe Down: " << enabled;
+                break;
+            default:
+                return;
+        }
+        swipeStates[direction] = enabled;
+    }
+    Q_INVOKABLE bool getSwipeEnabled(int direction){
+        if(!hasPermission("system")){
+            return false;
+        }
+        if(direction <= SwipeDirection::None || direction > SwipeDirection::Down){
+            qDebug() << "Invalid swipe direction: " << direction;
+            return false;
+        }
+        return getSwipeEnabled(direction);
+    }
     bool getSwipeEnabled(SwipeDirection direction){ return swipeStates[direction]; }
+    Q_INVOKABLE void toggleSwipeEnabled(int direction){
+        if(!hasPermission("system")){
+            return;
+        }
+        if(direction <= SwipeDirection::None || direction > SwipeDirection::Down){
+            qDebug() << "Invalid swipe direction: " << direction;
+            return;
+        }
+        toggleSwipeEnabled((SwipeDirection)direction);
+    }
     void toggleSwipeEnabled(SwipeDirection direction){ setSwipeEnabled(direction, !getSwipeEnabled(direction)); }
 public slots:
     void suspend(){
@@ -641,5 +692,4 @@ private:
         }
     }
 };
-
 #endif // SYSTEMAPI_H
