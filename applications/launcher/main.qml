@@ -33,7 +33,7 @@ ApplicationWindow {
                 CustomMenu {
                     BetterMenu {
                         id: optionsMenu
-                        title: "";
+                        title: qsTr("");
                         font: iconFont.name
                         width: 310
                         Action { text: qsTr(" Reload"); onTriggered: appsView.model = controller.getApps() }
@@ -141,7 +141,7 @@ ApplicationWindow {
                 CustomMenu {
                     BetterMenu {
                         id: powerMenu
-                        title: "";
+                        title: qsTr("");
                         font: iconFont.name
                         width: 260
                         Action {
