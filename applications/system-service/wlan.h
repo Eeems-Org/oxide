@@ -24,7 +24,7 @@ public:
     QString iface() { return m_iface; }
     bool up() { return !system(("ifconfig " + iface() + " up").toStdString().c_str()); }
     bool down() { return !system(("ifconfig " + iface() + " down").toStdString().c_str()); }
-    bool isUp(){ return !system(("ip addr show " + iface() + " | grep UP > /dev/null").toStdString().c_str()); }
+    bool isUp(){ return !system(("ip addr show " + iface() + " | /bin/grep UP > /dev/null").toStdString().c_str()); }
     Interface* interface() { return m_interface; }
     QSet<QString> blobs(){ return m_blobs; }
     QString operstate(){
@@ -37,11 +37,11 @@ public:
         return !system(("{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port + "; } > /dev/null 2>&1").c_str());
     }
     bool isConnected(){
-        auto ip = exec("ip r | grep " + iface() + " | grep default | awk '{print $3}'");
+        auto ip = exec("ip r | /bin/grep " + iface() + " | /bin/grep default | awk '{print $3}'");
         return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
     }
     int link(){
-        auto out = exec("grep " + iface() + " /proc/net/wireless | awk '{print $3}'");
+        auto out = exec("/bin/grep " + iface() + " /proc/net/wireless | awk '{print $3}'");
         try {
             return std::stoi(out);
         }
