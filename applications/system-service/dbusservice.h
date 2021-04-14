@@ -107,18 +107,18 @@ public:
             .instance = new NotificationAPI(this),
         });
 
-        connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
+        //connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
         connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
-        connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
+        //connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
         connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
         connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
         connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
         connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
-        connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
-            if(!notificationAPI->locked() && !appsAPI->previousApplicationNoSecurityCheck()){
-                appsAPI->openDefaultApplication();
-            }
-        });
+        //connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
+        //    if(!notificationAPI->locked() && !appsAPI->previousApplicationNoSecurityCheck()){
+        //        appsAPI->openDefaultApplication();
+        //    }
+        //});
         connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::openTaskManager);
         connect(systemAPI, &SystemAPI::bottomAction, appsAPI, &AppsAPI::openTaskSwitcher);
 
