@@ -51,7 +51,7 @@ DBUS_INTERFACES += ../../interfaces/systemapi.xml
 DBUS_INTERFACES += ../../interfaces/notificationapi.xml
 DBUS_INTERFACES += ../../interfaces/notification.xml
 
-linux-oe-g++ {
+linux-arm-remarkable-g++ {
     LIBS += -lqsgepaper
 }
 

@@ -75,7 +75,7 @@ HEADERS += \
     ../../shared/devicesettings.h \
     ../../shared/signalhandler.h
 
-linux-oe-g++ {
+linux-arm-remarkable-g++ {
     LIBS += -lqsgepaper
     LIBS += -lpng16
     LIBS += -lsystemd

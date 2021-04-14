@@ -48,7 +48,7 @@ INCLUDEPATH += ../../shared
 DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 
 
-linux-oe-g++ {
+linux-arm-remarkable-g++ {
     LIBS += -lqsgepaper
 }
 
