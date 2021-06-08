@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
     app.installEventFilter(filter);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
-    app.setApplicationName("decay");
+    app.setApplicationName("corrupt");
     app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
     auto screenProvider = new ScreenProvider(&app);
     Controller controller(&app, screenProvider);
