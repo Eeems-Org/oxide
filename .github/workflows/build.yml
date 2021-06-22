@@ -29,9 +29,13 @@ jobs:
           cd package/oxide
           echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > version.txt
           sed -i "s/~VERSION~/$(cat version.txt)/" ./package
-          echo "./package:\n"
+          tar -czvf oxide.tar.gz .
+          echo "./package:"
+          echo
           cat ./package
-          echo "./Makefile:\n"
+          echo
+          echo "./Makefile:"
+          echo
           cat ./Makefile
       - name: Build packages
         run: |
