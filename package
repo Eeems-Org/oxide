@@ -7,8 +7,8 @@ pkgver="2.2~~VERSION~"
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 license=MIT
-source=()
-sha256sums=()
+source=(oxide.tar.gz)
+sha256sums=(SKIP)
 image=qt:v2.1
 
 build() {
