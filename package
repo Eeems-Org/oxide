@@ -10,13 +10,11 @@ license=MIT
 source=(oxide.tar.gz)
 sha256sums=(SKIP)
 image=qt:v2.1
-makedepends=(build:tree)
 
 build() {
     find . -name "*.pro" -type f -print0 \
         | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
     make release
-    tree
 }
 
 erode() {
