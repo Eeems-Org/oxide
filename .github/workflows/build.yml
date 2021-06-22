@@ -24,14 +24,17 @@ jobs:
           python-version: '3.8'
       - name: Setup Toltec dependencies
         uses: ./.github/actions/setup
-      - name: Build packages
+      - name: Prepare build files
         run: |
           cd package/oxide
           echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > version.txt
           sed -i "s/~VERSION~/$(cat version.txt)/" ./package
+          echo "./package:\n"
           cat ./package
-          tree .
-          cd ../..
+          echo "./Makefile:\n"
+          cat ./Makefile
+      - name: Build packages
+        run: |
           make oxide
           mkdir output
           find . -name '*.ipk' | while read -r file; do
