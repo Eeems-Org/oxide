@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: toltec-dev/toltec.git
-          ref: Eeems-patch-3
+          ref: development
           path: toltec
       - name: Setup Python
         uses: actions/setup-python@v2
