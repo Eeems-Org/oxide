@@ -34,7 +34,7 @@ jobs:
           tar --exclude='./.git' -czvf ../oxide.tar.gz .
       - name: Build packages
         run: |
-          make oxide
+          make FLAGS=--verbose oxide
           mkdir output
           find . -name '*.ipk' | while read -r file; do
             cp "$file" output/$(basename $file)"
