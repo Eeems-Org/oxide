@@ -37,7 +37,7 @@ jobs:
           make FLAGS=--verbose oxide
           mkdir output
           find . -name '*.ipk' | while read -r file; do
-            cp "$file" output/$(basename $file)"
+            cp "$file" output/"$(basename $file)"
           done
         timeout-minutes: 15
       - name: Save packages
