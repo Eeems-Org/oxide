@@ -15,9 +15,10 @@ jobs:
       - name: Cleanup
         run: |
           rm -rf package/oxide/*
+          mkdir package/oxide/src
       - uses: actions/checkout@v2.3.1
         with:
-          path: package/oxide
+          path: package/oxide/src
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
@@ -26,17 +27,11 @@ jobs:
         uses: ./.github/actions/setup
       - name: Prepare build files
         run: |
-          cd package/oxide
-          echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > version.txt
+          cd package/oxide/src
+          echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > ../version.txt
           sed -i "s/~VERSION~/$(cat version.txt)/" ./package
-          tar --exclude='./.git' -czvf oxide.tar.gz .
-          echo "./package:"
-          echo
-          cat ./package
-          echo
-          echo "./Makefile:"
-          echo
-          cat ./Makefile
+          mv ./package ..
+          tar --exclude='./.git' -czvf ../oxide.tar.gz .
       - name: Build packages
         run: |
           make oxide
