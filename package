@@ -14,7 +14,7 @@ erode() {
     pkgdesc="Task manager"
     url=https://github.com/Eeems/oxide/tree/master/applications/process-manager
     section=utils
-    depends=("tarnish (= $pkgver)")
+    installdepends=("tarnish (= $pkgver)")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/erode
@@ -26,7 +26,7 @@ fret() {
     pkgdesc="Take screenshots"
     url=https://github.com/Eeems/oxide/tree/master/applications/screenshot-tool
     section=utils
-    depends=("tarnish (= $pkgver)")
+    installdepends=("tarnish (= $pkgver)")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/fret
@@ -38,7 +38,7 @@ oxide() {
     pkgdesc="Launcher application"
     url=https://github.com/Eeems/oxide/tree/master/applications/launcher
     section=launchers
-    depends=("erode  (= $pkgver)" "fret (= $pkgver)" "tarnish (= $pkgver)" "rot (= $pkgver)" "decay (= $pkgver)" "corrupt (= $pkgver)")
+    installdepends=("erode  (= $pkgver)" "fret (= $pkgver)" "tarnish (= $pkgver)" "rot (= $pkgver)" "decay (= $pkgver)" "corrupt (= $pkgver)")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/oxide
@@ -60,7 +60,7 @@ rot() {
     pkgdesc="Manage Oxide settings through the command line"
     url=https://github.com/Eeems/oxide/tree/master/applications/settings-manager
     section=utils
-    depends=("tarnish (= $pkgver)")
+    installdepends=("tarnish (= $pkgver)")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/rot
@@ -98,7 +98,7 @@ decay() {
     pkgdesc="Lockscreen application"
     url=https://github.com/Eeems/oxide/tree/master/applications/lockscreen
     section=utils
-    depends=("tarnish (= $pkgver)")
+    installdepends=("tarnish (= $pkgver)")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/decay
@@ -110,7 +110,7 @@ corrupt() {
     pkgdesc="Task Switcher for Oxide"
     url=https://github.com/Eeems/oxide/tree/master/applications/task-switcher
     section=utils
-    depends=("tarnish (= $pkgver)")
+    installdepends=("tarnish (= $pkgver)")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/corrupt
@@ -122,7 +122,7 @@ anxiety() {
     pkgdesc="Screenshot viewer for Oxide"
     url=https://github.com/Eeems/oxide/tree/master/applications/screenshot-viewer
     section=utils
-    depends=("tarnish (= $pkgver)")
+    installdepends=("tarnish (= $pkgver)")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/anxiety
