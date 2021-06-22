@@ -24,12 +24,13 @@ jobs:
           python-version: '3.8'
       - name: Setup Toltec dependencies
         uses: ./.github/actions/setup
-      - name: Package
+      - name: Build packages
         run: |
           cd package/oxide
           echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > version.txt
           sed -i "s/~VERSION~/$(cat version.txt)/" ./package
           cat ./package
+          tree .
           cd ../..
           make oxide
           mkdir output
@@ -37,7 +38,7 @@ jobs:
             cp "$file" output/$(basename $file)"
           done
         timeout-minutes: 15
-      - name: Save the packages
+      - name: Save packages
         uses: actions/upload-artifact@v2
         with:
           name: packages
