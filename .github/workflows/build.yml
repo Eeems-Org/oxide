@@ -29,7 +29,7 @@ jobs:
         run: |
           cd package/oxide/src
           echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > ../version.txt
-          sed -i "s/~VERSION~/$(cat version.txt)/" ./package
+          sed -i "s/~VERSION~/$(cat ../version.txt)/" ./package
           mv ./package ..
           tar --exclude='./.git' -czvf ../oxide.tar.gz .
       - name: Build packages
