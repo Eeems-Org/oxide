@@ -38,6 +38,7 @@ jobs:
           languages: javascript, cpp
       - name: Build packages
         run: |
+          cat package/oxide/package
           make FLAGS=--verbose oxide
           mkdir output
           find . -name '*.ipk' | while read -r file; do
