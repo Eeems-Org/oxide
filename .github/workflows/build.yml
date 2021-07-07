@@ -38,10 +38,7 @@ jobs:
           languages: javascript, cpp
       - name: Build packages
         run: |
-          _CODEQL_DIST=$CODEQL_DIST
-          unset CODEQL_DIST
           make FLAGS=--verbose oxide
-          CODEQL_DIST=$_CODEQL_DIST
           mkdir output
           find . -name '*.ipk' | while read -r file; do
             cp "$file" output/"$(basename $file)"
