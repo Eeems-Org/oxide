@@ -28,11 +28,11 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
+#include <stdexcept>
 
 #include "dbussettings.h"
 #include "mxcfb.h"
 #include "screenapi.h"
-#include "inputmanager.h"
 
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
@@ -47,7 +47,7 @@ public:
             m_uid = getUID(name);
             return true;
         }
-        catch(const runtime_error&){
+        catch(const std::runtime_error&){
             return false;
         }
     }
@@ -56,7 +56,7 @@ public:
             m_gid = getGID(name);
             return true;
         }
-        catch(const runtime_error&){
+        catch(const std::runtime_error&){
             return false;
         }
     }
@@ -99,14 +99,14 @@ private:
     uid_t getUID(const QString& name){
         auto user = getpwnam(name.toStdString().c_str());
         if(user == NULL){
-            throw runtime_error("Invalid user name: " + name.toStdString());
+            throw std::runtime_error("Invalid user name: " + name.toStdString());
         }
         return user->pw_uid;
     }
     gid_t getGID(const QString& name){
         auto group = getgrnam(name.toStdString().c_str());
         if(group == NULL){
-            throw runtime_error("Invalid group name: " + name.toStdString());
+            throw std::runtime_error("Invalid group name: " + name.toStdString());
         }
         return group->gr_gid;
     }
@@ -131,6 +131,7 @@ class Application : public QObject{
     Q_PROPERTY(bool systemApp READ systemApp)
     Q_PROPERTY(bool hidden READ hidden)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
+    Q_PROPERTY(QString splash READ splash WRITE setSplash NOTIFY splashChanged)
     Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
     Q_PROPERTY(QString workingDirectory READ workingDirectory WRITE setWorkingDirectory NOTIFY workingDirectoryChanged)
     Q_PROPERTY(bool chroot READ chroot)
@@ -183,6 +184,11 @@ public:
     Q_INVOKABLE void stop();
     Q_INVOKABLE void unregister();
 
+    void launchNoSecurityCheck();
+    void resumeNoSecurityCheck();
+    void stopNoSecurityCheck();
+    void pauseNoSecurityCheck(bool startIfNone = true);
+    void unregisterNoSecurityCheck();
     QString name() { return value("name").toString(); }
     int processId() { return m_process->processId(); }
     QStringList permissions() { return value("permissions", QStringList()).toStringList(); }
@@ -258,6 +264,14 @@ public:
         }
         setValue("icon", icon);
         emit iconChanged(icon);
+    }
+    QString splash() { return value("splash", "").toString(); }
+    void setSplash(QString splash){
+        if(!hasPermission("permissions")){
+            return;
+        }
+        setValue("splash", splash);
+        emit splashChanged(splash);
     }
     QVariantMap environment() { return value("environment", QVariantMap()).toMap(); }
     Q_INVOKABLE void setEnvironment(QVariantMap environment){
@@ -375,21 +389,16 @@ signals:
     void onStopChanged(QString);
     void autoStartChanged(bool);
     void iconChanged(QString);
+    void splashChanged(QString);
     void environmentChanged(QVariantMap);
     void workingDirectoryChanged(QString);
     void directoriesChanged(QStringList);
 
 public slots:
     void sigUsr1(){
-        if(!hasPermission("permissions")){
-            return;
-        }
         timer.invalidate();
     }
     void sigUsr2(){
-        if(!hasPermission("permissions")){
-            return;
-        }
         timer.invalidate();
     }
 
@@ -441,6 +450,7 @@ private:
     QElapsedTimer timer;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
+    void showSplashScreen();
     void delayUpTo(int milliseconds){
         timer.invalidate();
         timer.start();

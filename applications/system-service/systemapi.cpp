@@ -4,16 +4,29 @@
 #include "wifiapi.h"
 #include "devicesettings.h"
 
+#ifdef DEBUG
+QDebug operator<<(QDebug debug, const Touch& touch){
+    QDebugStateSaver saver(debug);
+    debug.nospace() << touch.debugString().c_str();
+    return debug.maybeSpace();
+}
+QDebug operator<<(QDebug debug, Touch* touch){
+    QDebugStateSaver saver(debug);
+    debug.nospace() << touch->debugString().c_str();
+    return debug.maybeSpace();
+}
+#endif
+
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
         wifiAPI->stopUpdating();
         emit deviceSuspending();
         appsAPI->recordPreviousApplication();
-        auto path = appsAPI->currentApplication();
+        auto path = appsAPI->currentApplicationNoSecurityCheck();
         if(path.path() != "/"){
             resumeApp = appsAPI->getApplication(path);
-            resumeApp->pause(false);
+            resumeApp->pauseNoSecurityCheck(false);
         }else{
             resumeApp = nullptr;
         }
@@ -44,7 +57,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
             resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
         }
         if(resumeApp != nullptr){
-            resumeApp->resume();
+            resumeApp->resumeNoSecurityCheck();
         }
         buttonHandler->setEnabled(true);
         emit deviceResuming();
@@ -62,7 +75,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
     }
 }
 void SystemAPI::setAutoSleep(int autoSleep){
-    if(autoSleep < 0 || autoSleep > 10){
+    if(autoSleep < 0 || autoSleep > 360){
         return;
     }
     qDebug() << "Auto Sleep" << autoSleep;
@@ -112,6 +125,7 @@ void SystemAPI::activity(){
         qDebug() << "Suspend timer disabled";
     }
 }
+
 void SystemAPI::uninhibitSleep(QDBusMessage message){
     if(!sleepInhibited()){
         return;

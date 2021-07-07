@@ -1,5 +1,7 @@
 {
 	"displayName": "Process Manager",
 	"description": "List and kill running processes",
+        "icon": "/opt/etc/draft/icons/erode.svg",
+        "splash": "/opt/etc/draft/icons/erode-splash.png",
         "bin": "/opt/bin/erode"
 }

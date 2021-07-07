@@ -3,6 +3,7 @@
 
 #include <QDebug>
 #include <QtDBus>
+#include <QMutex>
 
 #include "dbussettings.h"
 #include "apibase.h"
@@ -24,7 +25,7 @@ public:
         }
         return instance;
     }
-    NotificationAPI(QObject* parent) : APIBase(parent), m_enabled(false), m_notifications() {
+    NotificationAPI(QObject* parent) : APIBase(parent), notificationDisplayQueue(), m_enabled(false), m_notifications(), m_lock() {
         singleton(this);
     }
     ~NotificationAPI(){}
@@ -74,6 +75,7 @@ public:
         }
         return result;
     }
+    QList<Notification*> notificationDisplayQueue;
 
 public slots:
     QDBusObjectPath add(QString identifier, QString application, QString text, QString icon, QDBusMessage message){
@@ -128,6 +130,15 @@ public slots:
         m_notifications.remove(notification->identifier());
         emit notificationRemoved(notification->qPath());
     }
+    bool locked(){
+        if(!m_lock.tryLock(1)){
+            return true;
+        }
+        m_lock.unlock();
+        return false;
+    }
+    void lock() { m_lock.tryLock(1); }
+    void unlock() { m_lock.unlock(); }
 
 signals:
     void notificationAdded(QDBusObjectPath);
@@ -138,6 +149,7 @@ signals:
 private:
     bool m_enabled;
     QMap<QString, Notification*> m_notifications;
+    QMutex m_lock;
 
     QString getPath(QString id){
         static const QUuid NS = QUuid::fromString(QLatin1String("{66acfa80-020f-11eb-adc1-0242ac120002}"));

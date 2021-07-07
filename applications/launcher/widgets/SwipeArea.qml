@@ -42,7 +42,7 @@ MouseArea {
                 canceled(mouse);
                 break;
             case Drag.XAxis:
-                swipe(mouse.x - origin.x < 0 ? "left" : "right");
+                swipe(mouse.x - origin.x < 0 ? "right" : "left");
                 break;
             case Drag.YAxis:
                 swipe(mouse.y - origin.y < 0 ? "up" : "down");

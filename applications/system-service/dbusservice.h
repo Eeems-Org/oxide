@@ -72,7 +72,6 @@ public:
             connect(bus.interface(), SIGNAL(serviceOwnerChanged(QString,QString,QString)),
                     instance, SLOT(serviceOwnerChanged(QString,QString,QString)));
             qDebug() << "Registered";
-            instance->startup();
         }
         return instance;
     }
@@ -114,15 +113,14 @@ public:
         connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
         connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
         connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
-        connect(touchHandler, &DigitizerHandler::activity, systemAPI, &SystemAPI::activity);
-        connect(wacomHandler, &DigitizerHandler::activity, systemAPI, &SystemAPI::activity);
         connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
         connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
-            if(!appsAPI->previousApplicationNoSecurityCheck()){
+            if(!notificationAPI->locked() && !appsAPI->previousApplicationNoSecurityCheck()){
                 appsAPI->openDefaultApplication();
             }
         });
         connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::openTaskManager);
+        connect(systemAPI, &SystemAPI::bottomAction, appsAPI, &AppsAPI::openTaskSwitcher);
 
         auto bus = QDBusConnection::systemBus();
         for(auto api : apis){

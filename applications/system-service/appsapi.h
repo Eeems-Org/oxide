@@ -28,6 +28,8 @@ class AppsAPI : public APIBase {
     Q_PROPERTY(int state READ state) // This needs to be here for the XML to generate the other properties :(
     Q_PROPERTY(QDBusObjectPath startupApplication READ startupApplication WRITE setStartupApplication)
     Q_PROPERTY(QDBusObjectPath lockscreenApplication READ lockscreenApplication WRITE setLockscreenApplication)
+    Q_PROPERTY(QDBusObjectPath processManagerApplication READ processManagerApplication WRITE setProcessManagerApplication)
+    Q_PROPERTY(QDBusObjectPath taskSwitcherApplication READ taskSwitcherApplication WRITE setTaskSwitcherApplication)
     Q_PROPERTY(QVariantMap applications READ getApplications)
     Q_PROPERTY(QStringList previousApplications READ getPreviousApplications)
     Q_PROPERTY(QDBusObjectPath currentApplication READ currentApplication)
@@ -47,7 +49,7 @@ public:
         writeApplications();
         settings.sync();
         for(auto app : applications){
-            app->stop();
+            app->stopNoSecurityCheck();
             app->waitForFinished();
             delete app;
         }
@@ -74,6 +76,9 @@ public:
         if(!hasPermission("apps")){
             return QDBusObjectPath("/");
         }
+        return registerApplicationNoSecurityCheck(properties);
+    }
+    QDBusObjectPath registerApplicationNoSecurityCheck(QVariantMap properties){
         QString name = properties.value("name", "").toString();
         QString bin = properties.value("bin", "").toString();
         int type = properties.value("type", Foreground).toInt();
@@ -154,6 +159,36 @@ public:
             settings.setValue("lockscreenApplication", path.path());
         }
     }
+    QDBusObjectPath processManagerApplication(){
+        if(!hasPermission("apps")){
+            return QDBusObjectPath("/");
+        }
+        return m_processManagerApplication;
+    }
+    void setProcessManagerApplication(QDBusObjectPath path){
+        if(!hasPermission("apps")){
+            return;
+        }
+        if(getApplication(path) != nullptr){
+            m_processManagerApplication = path;
+            settings.setValue("processManagerApplication", path.path());
+        }
+    }
+    QDBusObjectPath taskSwitcherApplication(){
+        if(!hasPermission("apps")){
+            return QDBusObjectPath("/");
+        }
+        return m_taskSwitcherApplication;
+    }
+    void setTaskSwitcherApplication(QDBusObjectPath path){
+        if(!hasPermission("apps")){
+            return;
+        }
+        if(getApplication(path) != nullptr){
+            m_taskSwitcherApplication = path;
+            settings.setValue("taskSwitcherApplication", path.path());
+        }
+    }
 
     QVariantMap getApplications(){
         QVariantMap result;
@@ -170,6 +205,9 @@ public:
         if(!hasPermission("apps")){
             return QDBusObjectPath("/");
         }
+        return currentApplicationNoSecurityCheck();
+    }
+    QDBusObjectPath currentApplicationNoSecurityCheck(){
         for(auto app : applications){
             if(app->stateNoSecurityCheck() == Application::InForeground){
                 return app->qPath();
@@ -177,6 +215,7 @@ public:
         }
         return QDBusObjectPath("/");
     }
+
     QVariantMap runningApplications(){
         if(!hasPermission("apps")){
             return QVariantMap();
@@ -217,11 +256,11 @@ public:
     }
     void pauseAll(){
         for(auto app : applications){
-            app->pause(false);
+            app->pauseNoSecurityCheck(false);
         }
     }
     void resumeIfNone(){
-        if(m_stopping){
+        if(m_stopping || m_starting){
             return;
         }
         for(auto app : applications){
@@ -234,7 +273,7 @@ public:
         }
         auto app = getApplication(m_startupApplication);
         if(app != nullptr){
-            app->launch();
+            app->launchNoSecurityCheck();
         }
     }
     Application* getApplication(QDBusObjectPath path){
@@ -289,6 +328,9 @@ public:
         return previousApplicationNoSecurityCheck();
     }
     bool previousApplicationNoSecurityCheck(){
+        if(locked()){
+            return false;
+        }
         if(previousApplications.isEmpty()){
             qDebug() << "No previous applications";
             return false;
@@ -300,19 +342,31 @@ public:
             if(application == nullptr){
                 continue;
             }
-            auto currentApplication = getApplication(this->currentApplication());
+            auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
             if(currentApplication != nullptr){
-                currentApplication->pause(false);
+                currentApplication->pauseNoSecurityCheck(false);
             }
-            application->launch();
+            application->launchNoSecurityCheck();
             qDebug() << "Resuming previous application" << application->name();
             found = true;
             break;
         }
+        qDebug() << "Previous Applications" << previousApplications;
         return found;
     }
+    void forceRecordPreviousApplication(){
+        auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
+        if(currentApplication == nullptr){
+            qWarning() << "Unable to find current application";
+            return;
+        }
+        auto name = currentApplication->name();
+        previousApplications.removeAll(name);
+        previousApplications.append(name);
+        qDebug() << "Previous Applications" << previousApplications;
+    }
     void recordPreviousApplication(){
-        auto currentApplication = getApplication(this->currentApplication());
+        auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
         if(currentApplication == nullptr){
             qWarning() << "Unable to find current application";
             return;
@@ -320,11 +374,13 @@ public:
         if(currentApplication->qPath() == lockscreenApplication()){
             return;
         }
-        if(!previousApplications.isEmpty() && previousApplications.last() == currentApplication->name()){
+        if(currentApplication->qPath() == taskSwitcherApplication()){
             return;
         }
-        qDebug() << "Recording previous app" << currentApplication->name();
-        previousApplications.append(currentApplication->name());
+        auto name = currentApplication->name();
+        previousApplications.removeAll(name);
+        previousApplications.append(name);
+        qDebug() << "Previous Applications" << previousApplications;
     }
 
 signals:
@@ -332,65 +388,122 @@ signals:
     void applicationLaunched(QDBusObjectPath);
     void applicationUnregistered(QDBusObjectPath);
     void applicationPaused(QDBusObjectPath);
-    void applicationResumed(QDBusObjectPath);
-    void applicationSignaled(QDBusObjectPath);
+    void applicationResumed(QDBusObjectPath);    void applicationSignaled(QDBusObjectPath);
     void applicationExited(QDBusObjectPath, int);
 
 public slots:
     QT_DEPRECATED void leftHeld(){ openDefaultApplication(); }
     void openDefaultApplication(){
-        if(!hasPermission("apps")){
+        if(locked() || !hasPermission("apps")){
             return;
         }
-        auto path = this->currentApplication();
-        auto currentApplication = getApplication(path);
-        if(currentApplication->stateNoSecurityCheck() != Application::Inactive && (path == m_startupApplication || path == m_lockscreenApplication)){
-            qDebug() << "Already in default application";
-            return;
+        auto path = this->currentApplicationNoSecurityCheck();
+        if(path.path() != "/"){
+            auto currentApplication = getApplication(path);
+            if(
+                currentApplication != nullptr
+                && currentApplication->stateNoSecurityCheck() != Application::Inactive
+                && (path == m_startupApplication || path == m_lockscreenApplication)
+            ){
+                qDebug() << "Already in default application";
+                return;
+            }
         }
         auto app = getApplication(m_startupApplication);
-        if(app != nullptr){
-            app->launch();
+        if(app == nullptr){
+            qDebug() << "Unable to find default application";
+            return;
         }
+        qDebug() << "Opening default application";
+        app->launchNoSecurityCheck();
     }
     QT_DEPRECATED void homeHeld(){ openTaskManager(); }
     void openTaskManager(){
-        if(!hasPermission("apps")){
+        if(locked() || !hasPermission("apps")){
             return;
         }
-        auto path = this->currentApplication();
-        auto currentApplication = getApplication(path);
-        if(currentApplication->stateNoSecurityCheck() != Application::Inactive && path == m_lockscreenApplication){
-            qDebug() << "Can't open task manager, on the lockscreen";
-            return;
+        auto path = this->currentApplicationNoSecurityCheck();
+        if(path.path() != "/"){
+            auto currentApplication = getApplication(path);
+            if(
+                currentApplication != nullptr
+                && currentApplication->stateNoSecurityCheck() != Application::Inactive
+                && path == m_lockscreenApplication
+            ){
+                qDebug() << "Can't open task manager, on the lockscreen";
+                return;
+            }
         }
         auto app = getApplication(m_processManagerApplication);
         if(app == nullptr){
-            qDebug() << "Unable to find process manager";
+            qDebug() << "Unable to find task manager";
             return;
         }
-        app->launch();
+        qDebug() << "Opening task manager";
+        app->launchNoSecurityCheck();
     }
     void openLockScreen(){
-        if(!hasPermission("apps")){
+        if(locked() || !hasPermission("apps")){
             return;
         }
-        auto path = this->currentApplication();
-        auto currentApplication = getApplication(path);
-        if(currentApplication->stateNoSecurityCheck() != Application::Inactive && path == m_lockscreenApplication){
-            qDebug() << "Already on the lockscreen";
-            return;
+        auto path = this->currentApplicationNoSecurityCheck();
+        if(path.path() != "/"){
+            auto currentApplication = getApplication(path);
+            if(
+                currentApplication != nullptr
+                && currentApplication->stateNoSecurityCheck() != Application::Inactive
+                && path == m_lockscreenApplication
+            ){
+                qDebug() << "Already on the lockscreen";
+                return;
+            }
         }
         auto app = getApplication(m_lockscreenApplication);
         if(app == nullptr){
             qDebug() << "Unable to find lockscreen";
             return;
         }
-        app->launch();
+        qDebug() << "Opening lock screen";
+        app->launchNoSecurityCheck();
+    }
+    void openTaskSwitcher(){
+        if(locked() || !hasPermission("apps")){
+            return;
+        }
+        auto path = this->currentApplicationNoSecurityCheck();
+        if(path.path() != "/"){
+            auto currentApplication = getApplication(path);
+            if(
+                currentApplication != nullptr
+                && currentApplication->stateNoSecurityCheck() != Application::Inactive
+            ){
+                if(path == m_lockscreenApplication){
+                    qDebug() << "Can't open task switcher, on the lockscreen";
+                    return;
+                }
+                if(path == m_taskSwitcherApplication){
+                    qDebug() << "Already on the task switcher";
+                    return;
+                }
+            }
+        }
+        auto app = getApplication(m_taskSwitcherApplication);
+        if(app != nullptr){
+            app->launchNoSecurityCheck();
+            return;
+        }
+        app = getApplication(m_startupApplication);
+        if(app == nullptr){
+            qDebug() << "Unable to find default application";
+            return;
+        }
+        qDebug() << "Opening task switcher";
+        app->launchNoSecurityCheck();
     }
 
 private:
     bool m_stopping;
+    bool m_starting;
     bool m_enabled;
     QMap<QString, Application*> applications;
     QStringList previousApplications;
@@ -398,6 +511,7 @@ private:
     QDBusObjectPath m_startupApplication;
     QDBusObjectPath m_lockscreenApplication;
     QDBusObjectPath m_processManagerApplication;
+    QDBusObjectPath m_taskSwitcherApplication;
     bool m_sleeping;
     Application* resumeApp = nullptr;
     QString getPath(QString name){
@@ -440,7 +554,7 @@ private:
             for(auto name : applications.keys()){
                 auto app = applications[name];
                 if(!names.contains(name) && !app->systemApp()){
-                    app->unregister();
+                    app->unregisterNoSecurityCheck();
                 }
             }
         }
@@ -453,6 +567,9 @@ private:
             auto type = settings.value("type", Foreground).toInt();
             auto bin = settings.value("bin").toString();
             if(type < Foreground || type > Backgroundable || name.isEmpty() || bin.isEmpty()){
+#ifdef DEBUG
+                qDebug() << "Invalid configuration " << name;
+#endif
                 continue;
             }
             QVariantMap properties {
@@ -470,6 +587,7 @@ private:
                 {"workingDirectory", settings.value("workingDirectory", "").toString()},
                 {"directories", settings.value("directories", QStringList()).toStringList()},
                 {"permissions", settings.value("permissions", QStringList()).toStringList()},
+                {"splash", settings.value("splash", "").toString()},
             };
             if(settings.contains("user")){
                 properties.insert("user", settings.value("user", "").toString());
@@ -478,10 +596,17 @@ private:
                 properties.insert("group", settings.value("group", "").toString());
             }
             if(applications.contains(name)){
+#ifdef DEBUG
+                qDebug() << "Updating " << name;
+                qDebug() << properties;
+#endif
                 applications[name]->setConfig(properties);
             }else{
                 qDebug() << name;
-                registerApplication(properties);
+#ifdef DEBUG
+                qDebug() << properties;
+#endif
+                registerApplicationNoSecurityCheck(properties);
             }
         }
         settings.endArray();
@@ -496,6 +621,10 @@ private:
             }
             auto data = file.readAll();
             auto app = QJsonDocument::fromJson(data).object();
+            if(app.isEmpty()){
+                qDebug() << "Invalid file " << entry.filePath();
+                continue;
+            }
             auto name = entry.completeBaseName();
             app["name"] = name;
             apps.insert(name, app);
@@ -505,7 +634,7 @@ private:
             auto name = application->name();
             if(!apps.contains(name) && application->systemApp()){
                 qDebug() << name << "Is no longer found on disk";
-                application->unregister();
+                application->unregisterNoSecurityCheck();
             }
         }
         // Register/Update any system application.
@@ -521,8 +650,11 @@ private:
                 qDebug() << "Invalid type string:" << typeString;
             }
             auto bin = app["bin"].toString();
-            if(!QFile::exists(bin)){
-                qDebug() << "Can't find application binary:" << bin;
+            if(bin.isEmpty() || !QFile::exists(bin)){
+                qDebug() << name << "Can't find application binary:" << bin;
+#ifdef DEBUG
+                qDebug() << app;
+#endif
                 continue;
             }
             auto flags = QStringList() << "system";
@@ -592,11 +724,21 @@ private:
                 }
                 properties.insert("environment", envMap);
             }
+            if(app.contains("splash")){
+                properties.insert("splash", app["splash"].toString());
+            }
             if(applications.contains(name)){
+#ifdef DEBUG
+                qDebug() << "Updating " << name;
+                qDebug() << properties;
+#endif
                 applications[name]->setConfig(properties);
             }else{
                 qDebug() << "New system app" << name;
-                registerApplication(properties);
+#ifdef DEBUG
+                qDebug() << properties;
+#endif
+                registerApplicationNoSecurityCheck(properties);
             }
         }
     }
@@ -608,5 +750,6 @@ private:
         settings->setValue("version", OXIDE_SETTINGS_VERSION);
         settings->sync();
     }
+    bool locked();
 };
 #endif // APPSAPI_H

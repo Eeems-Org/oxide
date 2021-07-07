@@ -1,8 +1,10 @@
 #include "appsapi.h"
+#include "notificationapi.h"
 
 AppsAPI::AppsAPI(QObject* parent)
 : APIBase(parent),
   m_stopping(false),
+  m_starting(true),
   m_enabled(false),
   applications(),
   previousApplications(),
@@ -10,6 +12,7 @@ AppsAPI::AppsAPI(QObject* parent)
   m_startupApplication("/"),
   m_lockscreenApplication("/"),
   m_processManagerApplication("/"),
+  m_taskSwitcherApplication("/"),
   m_sleeping(false) {
     singleton(this);
     SignalHandler::setup_unix_signal_handlers();
@@ -51,22 +54,41 @@ AppsAPI::AppsAPI(QObject* parent)
         }
     }
     m_processManagerApplication= path;
+
+    path = QDBusObjectPath(settings.value("processManagerApplication").toString());
+    app = getApplication(path);
+    if(app == nullptr){
+        app = getApplication("codes.eeems.corrupt");
+        if(app != nullptr){
+            path = app->qPath();
+        }
+    }
+    m_taskSwitcherApplication= path;
 }
 
 void AppsAPI::startup(){
     for(auto app : applications){
         if(app->autoStart()){
-            app->launch();
+            qDebug() << "Auto starting" << app->name();
+            app->launchNoSecurityCheck();
             if(app->type() == Backgroundable){
-                app->pause();
+                qDebug() << "  Puasing auto started app" << app->name();
+                app->pauseNoSecurityCheck();
             }
         }
     }
     auto app = getApplication(m_lockscreenApplication);
     if(app == nullptr){
+        qDebug() << "Could not find lockscreen application";
         app = getApplication(m_startupApplication);
     }
-    if(app != nullptr){
-        app->launch();
+    if(app == nullptr){
+        qDebug() << "could not find startup application";
+        return;
     }
+    qDebug() << "Starting initial application" << app->name();
+    app->launchNoSecurityCheck();
+    m_starting = false;
 }
+
+bool AppsAPI::locked(){ return notificationAPI->locked(); }

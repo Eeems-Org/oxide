@@ -11,7 +11,6 @@ ApplicationWindow {
     width: screenGeometry.width
     height: screenGeometry.height
     title: qsTr("Oxide")
-    property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted:{
         stateController.state = "loaded"
@@ -194,7 +193,7 @@ ApplicationWindow {
             maximumFlickVelocity: 0
             boundsBehavior: Flickable.StopAtBounds
             cellWidth: parent.width / controller.columns
-            cellHeight: cellWidth + controller.fontSize
+            cellHeight: cellWidth
             model: apps
             ScrollBar.vertical: ScrollBar {
                 id: scrollbar
@@ -213,70 +212,18 @@ ApplicationWindow {
                     radius: width / 2
                 }
             }
-            delegate: Item {
-                id: root
+            delegate: AppItem {
                 enabled: appsView.enabled
+                source: model.modelData.imgFile
+                text: (model.modelData.running ? "* " : "") + model.modelData.displayName
+                bold: model.modelData.running
                 width: appsView.cellWidth
                 height: appsView.cellHeight
-                state: "released"
-                states: [
-                    State { name: "released" },
-                    State { name: "pressed" }
-                ]
-                Image {
-                    id: image
-                    fillMode: Image.PreserveAspectFit
-                    y: window.itemPadding
-                    width: parent.width - window.itemPadding * 2
-                    height: parent.width - window.itemPadding * 2 - controller.fontSize
-                    source: model.modelData.imgFile
-                    anchors.horizontalCenter: parent.horizontalCenter
+                onLongPress: {
+                    itemInfo.model = model.modelData;
+                    stateController.state = "itemInfo"
                 }
-                Text {
-                    id: name
-                    text: (model.modelData.running ? "* " : "") + model.modelData.displayName
-                    font.family: "Noto Serif"
-                    font.italic: true
-                    font.bold: model.modelData.running
-                    font.pixelSize: controller.fontSize
-                    width: parent.width - window.itemPadding * 2
-                    anchors.top: image.bottom
-                    anchors.horizontalCenter: image.horizontalCenter
-                    horizontalAlignment: Text.AlignHCenter
-                    clip: true
-                }
-                MouseArea {
-                    anchors.fill: root
-                    enabled: root.enabled
-                    onPressed: root.state = "pressed"
-                    onReleased: root.state = "released"
-                    onCanceled: root.state = "released"
-                    onClicked: {
-                        root.state = "released"
-                        model.modelData.execute();
-                    }
-                    onPressAndHold: {
-                        itemInfo.model = model.modelData;
-                        stateController.state = "itemInfo"
-                    }
-                }
-                transitions: [
-                    Transition {
-                        from: "pressed"; to: "released"
-                        ParallelAnimation {
-                            PropertyAction { target: image; property: "width"; value: root.width - window.itemPadding * 2 }
-                            PropertyAction { target: image; property: "height"; value: root.width - window.itemPadding * 2 - controller.fontSize }
-                        }
-                    },
-                    Transition {
-                        from: "released"; to: "pressed"
-                        ParallelAnimation {
-                            PropertyAction { target: image; property: "width"; value: image.width - 10}
-                            PropertyAction { target: image; property: "height"; value: image.height - 10 }
-                        }
-                    }
-
-                ]
+                onClicked: model.modelData.execute();
             }
         },
         Popup {

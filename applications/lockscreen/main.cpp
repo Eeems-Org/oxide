@@ -15,7 +15,6 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 
 #include "dbusservice_interface.h"
-#include "systemapi_interface.h"
 
 using namespace codes::eeems::oxide1;
 

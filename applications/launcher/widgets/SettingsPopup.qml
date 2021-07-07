@@ -45,10 +45,34 @@ Item {
                     id: sleepAfterSpinBox
                     objectName: "sleepAfterSpinBox"
                     from: 1
-                    to: 10
+                    to: 360
                     stepSize: 1
                     value: controller.sleepAfter
-                    onValueChanged: controller.sleepAfter = this.value
+                    onDownPressedChanged: {
+                        if(this.value <= 10){
+                            this.stepSize = 1;
+                            return;
+                        }
+                        if(this.value <= 60){
+                            this.stepSize = 5;
+                            return;
+                        }
+                        this.stepSize = 15;
+                    }
+                    onUpPressedChanged: {
+                        if(this.value < 10){
+                            this.stepSize = 1;
+                            return;
+                        }
+                        if(this.value < 60){
+                            this.stepSize = 5;
+                            return;
+                        }
+                        this.stepSize = 15;
+                    }
+                    onValueChanged: {
+                        controller.sleepAfter = this.value;
+                    }
                     Layout.preferredWidth: 300
                 }
             }
@@ -127,24 +151,6 @@ Item {
                     stepSize: 2
                     value: controller.columns
                     onValueChanged: controller.columns = this.value
-                    Layout.preferredWidth: 300
-                }
-            }
-            RowLayout {
-                Layout.columnSpan: parent.columns
-                Layout.preferredWidth: parent.width
-                Label {
-                    text: "Font Size"
-                    Layout.fillWidth: true
-                }
-                BetterSpinBox {
-                    id: fontSizeSpinBox
-                    objectName: "fontSizeSpinBox"
-                    from: 20
-                    to: 35
-                    stepSize: 3
-                    value: controller.fontSize
-                    onValueChanged: controller.fontSize = this.value
                     Layout.preferredWidth: 300
                 }
             }

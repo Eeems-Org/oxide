@@ -9,28 +9,22 @@ void Notification::display(){
     if(!hasPermission("notification")){
         return;
     }
-    qDebug() << "Displaying notification" << identifier();
-    auto path = appsAPI->currentApplication();
-    Application* resumeApp = nullptr;
-    if(path.path() != "/"){
-        resumeApp = appsAPI->getApplication(path);
-        resumeApp->interruptApplication();
+    if(notificationAPI->locked()){
+        qDebug() << "Queueing notification display";
+        notificationAPI->notificationDisplayQueue.append(this);
+        return;
     }
-    auto frameBuffer = EPFrameBuffer::framebuffer();
+    notificationAPI->lock();
     dispatchToMainThread([=]{
-        auto backup = frameBuffer->copy();
-        const QRect rect = paintNotification();
-        emit displayed();
-        QTimer::singleShot(2000, [=]{
-            QPainter painter(frameBuffer);
-            painter.drawImage(rect, backup, rect);
-            EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-            if(resumeApp != nullptr){
-                resumeApp->uninterruptApplication();
-            }
-        });
+        qDebug() << "Displaying notification" << identifier();
+        auto path = appsAPI->currentApplicationNoSecurityCheck();
+        Application* resumeApp = nullptr;
+        if(path.path() != "/"){
+            resumeApp = appsAPI->getApplication(path);
+            resumeApp->interruptApplication();
+        }
+        paintNotification(resumeApp);
     });
-    qDebug() << "Finished displaying notification" << identifier();
 }
 
 void Notification::remove(){
@@ -57,13 +51,14 @@ void Notification::dispatchToMainThread(std::function<void()> callback){
     });
     QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
 }
-const QRect Notification::paintNotification(){
-    qDebug() << "Painting notification" << identifier();
+void Notification::paintNotification(Application* resumeApp){
     auto frameBuffer = EPFrameBuffer::framebuffer();
     qDebug() << "Waiting for other painting to finish...";
     while(frameBuffer->paintingActive()){
-        this->thread()->yieldCurrentThread();
+        EPFrameBuffer::waitForLastUpdate();
     }
+    qDebug() << "Painting notification" << identifier();
+    screenBackup = frameBuffer->copy();
     qDebug() << "Painting to framebuffer...";
     QPainter painter(frameBuffer);
     auto size = frameBuffer->size();
@@ -74,19 +69,36 @@ const QRect Notification::paintNotification(){
     auto height = fm.height() + (padding * 2);
     auto left = size.width() - width;
     auto top = size.height() - height;
-    QRect rect(left, top, width, height);
-    painter.fillRect(rect, Qt::black);
+    updateRect = QRect(left, top, width, height);
+    painter.fillRect(updateRect, Qt::black);
     painter.setPen(Qt::black);
-    painter.drawRoundedRect(rect, radius, radius);
+    painter.drawRoundedRect(updateRect, radius, radius);
     painter.setPen(Qt::white);
-    painter.drawText(rect, Qt::AlignCenter, text());
+    painter.drawText(updateRect, Qt::AlignCenter, text());
     painter.end();
-
-    qDebug() << "Updating screen " << rect << "...";
-    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+    qDebug() << "Updating screen " << updateRect << "...";
+    EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
     EPFrameBuffer::waitForLastUpdate();
     qDebug() << "Painted notification" << identifier();
-    return rect;
+    emit displayed();
+    QTimer::singleShot(2000, [this, resumeApp]{
+        QPainter painter(EPFrameBuffer::framebuffer());
+        painter.drawImage(updateRect, screenBackup, updateRect);
+        painter.end();
+        EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+        qDebug() << "Finished displaying notification" << identifier();
+        EPFrameBuffer::waitForLastUpdate();
+        if(!notificationAPI->notificationDisplayQueue.isEmpty()){
+            dispatchToMainThread([resumeApp] {
+                notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification(resumeApp);
+            });
+            return;
+        }
+        if(resumeApp != nullptr){
+            resumeApp->uninterruptApplication();
+        }
+        notificationAPI->unlock();
+    });
 }
 
 bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }
