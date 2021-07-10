@@ -23,26 +23,10 @@ public:
       out() {
         connect(host, &QObject::destroyed, this, &QObject::deleteLater);
         connect(&_thread, &QThread::started, [this]{
-            auto path = this->path.toStdString();
             emit started();
-            if(deviceSettings.getDeviceType() == DeviceSettings::DeviceType::RM1){
-                out.open(path.c_str(), std::ifstream::out);
-                if(!out.good()){
-                    qWarning() << "Unable to open fifi (out)" << ::strerror(errno);
-                }
-                in.open(path.c_str(), std::ifstream::in);
-                if(!in.good()){
-                    qWarning() << "Unable to open fifi (in)" << ::strerror(errno);
-                }
-            }else{
-                in.open(path.c_str(), std::ifstream::in);
-                if(!in.good()){
-                    qWarning() << "Unable to open fifi (in)" << ::strerror(errno);
-                }
-                out.open(path.c_str(), std::ifstream::out);
-                if(!out.good()){
-                    qWarning() << "Unable to open fifi (out)" << ::strerror(errno);
-                }
+            in.open(this->path.toStdString().c_str(), std::ifstream::in);
+            if(!in.good()){
+                qWarning() << "Unable to open fifi (in)" << ::strerror(errno);
             }
             timer.start(10);
         });
@@ -51,6 +35,12 @@ public:
             emit finished();
         });
         connect(&timer, &QTimer::timeout, this, &FifoHandler::run);
+        QThread::create([this]{
+            out.open(this->path.toStdString().c_str(), std::ifstream::out);
+            if(!out.good()){
+                qWarning() << "Unable to open fifi (out)" << ::strerror(errno);
+            }
+        })->start();
         moveToThread(&_thread);
     }
     ~FifoHandler(){
@@ -63,8 +53,12 @@ public:
         quit();
     }
     void start() { _thread.start(); }
-    void quit(){ _thread.quit(); }
-    void write(const void* data, size_t size){ out.write((char*)data, size); }
+    void quit(){ _thread.quit();}
+    void write(const void* data, size_t size){
+        if(out.is_open()){
+            out.write((char*)data, size);
+        }
+    }
     const QString& name() { return _name; }
 signals:
     void started();
