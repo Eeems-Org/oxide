@@ -7,6 +7,8 @@
 
 #include <fstream>
 
+#include "devicesettings.h"
+
 class FifoHandler : public QObject {
     Q_OBJECT
 public:
@@ -23,13 +25,24 @@ public:
         connect(&_thread, &QThread::started, [this]{
             auto path = this->path.toStdString();
             emit started();
-            out.open(path.c_str(), std::ifstream::out);
-            if(!out.good()){
-                qWarning() << "Unable to open fifi (out)" << ::strerror(errno);
-            }
-            in.open(path.c_str(), std::ifstream::in);
-            if(!in.good()){
-                qWarning() << "Unable to open fifi (in)" << ::strerror(errno);
+            if(deviceSettings.getDeviceType() == DeviceSettings::DeviceType::RM1){
+                out.open(path.c_str(), std::ifstream::out);
+                if(!out.good()){
+                    qWarning() << "Unable to open fifi (out)" << ::strerror(errno);
+                }
+                in.open(path.c_str(), std::ifstream::in);
+                if(!in.good()){
+                    qWarning() << "Unable to open fifi (in)" << ::strerror(errno);
+                }
+            }else{
+                in.open(path.c_str(), std::ifstream::in);
+                if(!in.good()){
+                    qWarning() << "Unable to open fifi (in)" << ::strerror(errno);
+                }
+                out.open(path.c_str(), std::ifstream::out);
+                if(!out.good()){
+                    qWarning() << "Unable to open fifi (out)" << ::strerror(errno);
+                }
             }
             timer.start(10);
         });
