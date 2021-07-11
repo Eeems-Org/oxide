@@ -59,6 +59,7 @@ HEADERS += \
     dbussettings.h \
     digitizerhandler.h \
     event_device.h \
+    fifohandler.h \
     mxcfb.h \
     network.h \
     notification.h \

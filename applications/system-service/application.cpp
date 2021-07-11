@@ -5,6 +5,7 @@
 
 #include "application.h"
 #include "appsapi.h"
+#include "systemapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
 #include "devicesettings.h"
@@ -31,8 +32,8 @@ void Application::launchNoSecurityCheck(){
             m_process->setProgram(bin());
         }
         updateEnvironment();
+        umountAll();
         if(chroot()){
-            umountAll();
             mountAll();
             m_process->setChroot(chrootPath());
         }else{
@@ -199,6 +200,7 @@ void Application::stopNoSecurityCheck(){
     if(state == Inactive){
         return;
     }
+    qDebug() << "Stopping " << path();
     if(!onStop().isEmpty()){
         QProcess::execute(onStop());
     }
@@ -365,4 +367,16 @@ void Application::showSplashScreen(){
     qDebug() << "Waitng for screen to finish...";
     EPFrameBuffer::waitForLastUpdate();
     qDebug() << "Finished paining splash screen for" << name();
+}
+void Application::powerStateDataRecieved(FifoHandler* handler, const QString& data){
+    Q_UNUSED(handler);
+    if(!permissions().contains("power")){
+        qWarning() << "Denied powerState request";
+        return;
+    }
+    if((QStringList() << "mem" << "freeze" << "standby").contains(data)){
+        systemAPI->suspend();
+    }else{
+        qWarning() << "Unknown power state call: " << data;
+    }
 }
