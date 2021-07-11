@@ -94,7 +94,7 @@ ApplicationWindow {
                 CustomMenu {
                     BetterMenu {
                         id: powerMenu
-                        title: "";
+                        title: qsTr("");
                         font: iconFont.name
                         width: 260
                         Action {
