@@ -75,7 +75,7 @@ const char* DeviceSettings::getTouchEnvSetting() const {
     }
 }
 
-const int DeviceSettings::getTouchWidth() const {
+int DeviceSettings::getTouchWidth() const {
     switch(getDeviceType()) {
         case DeviceType::RM1:
             return 767;
@@ -85,7 +85,7 @@ const int DeviceSettings::getTouchWidth() const {
             return 0;
     }
 }
-const int DeviceSettings::getTouchHeight() const {
+int DeviceSettings::getTouchHeight() const {
     switch(getDeviceType()) {
         case DeviceType::RM1:
             return 1023;

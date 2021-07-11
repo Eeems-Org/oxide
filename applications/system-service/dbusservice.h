@@ -121,6 +121,7 @@ public:
         });
         connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::openTaskManager);
         connect(systemAPI, &SystemAPI::bottomAction, appsAPI, &AppsAPI::openTaskSwitcher);
+        connect(systemAPI, &SystemAPI::topAction, systemAPI, &SystemAPI::toggleSwipes);
 
         auto bus = QDBusConnection::systemBus();
         for(auto api : apis){

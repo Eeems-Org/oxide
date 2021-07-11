@@ -2,6 +2,7 @@
 #include "appsapi.h"
 #include "powerapi.h"
 #include "wifiapi.h"
+#include "notificationapi.h"
 #include "devicesettings.h"
 
 #ifdef DEBUG
@@ -20,6 +21,7 @@ QDebug operator<<(QDebug debug, Touch* touch){
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
+        qDebug() << "Preparing for suspend...";
         wifiAPI->stopUpdating();
         emit deviceSuspending();
         appsAPI->recordPreviousApplication();
@@ -147,4 +149,26 @@ void SystemAPI::timeout(){
         qDebug() << "Automatic suspend due to inactivity...";
         suspend();
     }
+}
+void SystemAPI::toggleSwipes(){
+    bool state = !swipeStates[Up];
+    setSwipeEnabled(Left, state);
+    setSwipeEnabled(Right, state);
+    setSwipeEnabled(Up, state);
+    QString message = state ? "Swipes Enabled" : "Swipes Disabled";
+    qDebug() << message;
+    const QString& id = "system-swipe-toggle";
+    auto notification = notificationAPI->add(id, OXIDE_SERVICE, "tarnish", message, "");
+    if(notification == nullptr){
+        notification = notificationAPI->getByIdentifier(id);
+        if(notification == nullptr){
+            return;
+        }
+    }else{
+        connect(notification, &Notification::clicked, [notification]{
+            notification->remove();
+        });
+    }
+    notification->setText(message);
+    notification->display();
 }
