@@ -14,7 +14,8 @@
         "/run/dbus",
         "/run/systemd/resolve",
         "/var/lib/dbus",
-        "/var/cache/fontconfig"
+        "/var/cache/fontconfig",
+        "/dev/shm/swtfb.01"
     ],
     "environment": {
         "QMLSCENE_DEVICE": "epaper",
