@@ -17,7 +17,7 @@ class Notification : public QObject{
     Q_PROPERTY(QString text READ text WRITE setText)
     Q_PROPERTY(QString icon READ icon WRITE setIcon)
 public:
-    Notification(QString path, QString identifier, QString owner, QString application, QString text, QString icon, QObject* parent)
+    Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
      : QObject(parent),
        m_path(path),
        m_identifier(identifier),
