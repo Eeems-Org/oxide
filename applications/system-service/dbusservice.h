@@ -115,7 +115,15 @@ public:
         connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
         connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
         connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
-            if(!notificationAPI->locked() && !appsAPI->previousApplicationNoSecurityCheck()){
+            if(notificationAPI->locked()){
+                return;
+            }
+            auto currentApplication = appsAPI->getApplication(appsAPI->currentApplicationNoSecurityCheck());
+            if(currentApplication != nullptr && currentApplication->path() == appsAPI->lockscreenApplication().path()){
+                qDebug() << "Left Action cancelled. On lockscreen";
+                return;
+            }
+            if(!appsAPI->previousApplicationNoSecurityCheck()){
                 appsAPI->openDefaultApplication();
             }
         });
