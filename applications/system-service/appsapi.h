@@ -50,6 +50,8 @@ public:
         settings.sync();
         for(auto app : applications){
             app->stopNoSecurityCheck();
+        }
+        for(auto app : applications){
             app->waitForFinished();
             delete app;
         }

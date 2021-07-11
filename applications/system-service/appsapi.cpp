@@ -72,7 +72,7 @@ void AppsAPI::startup(){
             qDebug() << "Auto starting" << app->name();
             app->launchNoSecurityCheck();
             if(app->type() == Backgroundable){
-                qDebug() << "  Puasing auto started app" << app->name();
+                qDebug() << "  Pausing auto started app" << app->name();
                 app->pauseNoSecurityCheck();
             }
         }
