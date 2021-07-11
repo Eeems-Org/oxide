@@ -72,7 +72,7 @@ ApplicationWindow {
             CustomMenu {
                 visible: stateController.state === "loaded"
                 BetterMenu {
-                    title: ""
+                    title: qsTr("");
                     font: iconFont.name
                     width: 310
                     Action {
@@ -140,7 +140,7 @@ ApplicationWindow {
                 }
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: ScrollIndicator {
+                ScrollIndicator.vertical: ScrollIndicator {
                     id: scrollbar
                     contentItem: Rectangle {
                         color: "white"
