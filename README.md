@@ -1,9 +1,7 @@
-# Warning, this will not work on 2.6 yet. If you have updated you'll have to wait until toltec has released a solution that supports the new OS.
-
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/e22602d27686420e9a71e67cf8d049fd)](https://app.codacy.com/manual/Eeems/oxide?utm_source=github.com&utm_medium=referral&utm_content=Eeems/oxide&utm_campaign=Badge_Grade_Settings)
 [![Maintainability](https://api.codeclimate.com/v1/badges/db8574df9b0b8a1100bc/maintainability)](https://codeclimate.com/github/Eeems/oxide/maintainability)
 [![rm1](https://img.shields.io/badge/rM1-supported-green)](https://remarkable.com/store/remarkable)
-[![rm2](https://img.shields.io/badge/rM2-partial%20support-orange)](https://remarkable.com/store/remarkable-2)
+[![rm2](https://img.shields.io/badge/rM2-supported-green)](https://remarkable.com/store/remarkable-2)
 [![opkg](https://img.shields.io/badge/OPKG-oxide-blue)](https://github.com/matteodelabre/toltec)
 [![Discord](https://img.shields.io/discord/385916768696139794.svg?label=reMarkable&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/ATqQGfu)
 
