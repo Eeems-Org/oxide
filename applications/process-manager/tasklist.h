@@ -19,6 +19,7 @@ public:
         Q_UNUSED(role)
         return QVariant();
     }
+    QString sortBy(){ return _sortBy; }
     int rowCount(const QModelIndex& parent = QModelIndex()) const override{
         if(parent.isValid()){
             return 0;
@@ -107,6 +108,7 @@ public:
             _sortOrder = Qt::AscendingOrder;
             _lastSortBy = _sortBy;
             _sortBy = sortBy;
+            emit sortByChanged(_sortBy);
         }else if(_sortOrder == Qt::AscendingOrder){
             _sortOrder = Qt::DescendingOrder;
         }else{
@@ -206,6 +208,7 @@ public:
     }
 signals:
     void updated();
+    void sortByChanged(QString);
 
 private:
     QList<TaskItem*> taskItems;

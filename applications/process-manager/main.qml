@@ -48,51 +48,56 @@ ApplicationWindow {
                 text: "Process"
                 color: "black"
                 font.pointSize: 8
+                font.bold: controller.sortBy === "name"
                 Layout.alignment: Qt.AlignLeft
                 rightPadding: 10
                 leftPadding: 10
                 Layout.fillWidth: true
-                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("name") }
+                MouseArea { anchors.fill: parent; onClicked: controller.sortBy = "name" }
             }
             Label {
                 id: pid
                 text: "PID"
                 color: "black"
                 font.pointSize: 8
+                font.bold: controller.sortBy === "pid"
                 Layout.alignment: Qt.AlignLeft
                 leftPadding: 20
                 Layout.preferredWidth: 180
-                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("pid") }
+                MouseArea { anchors.fill: parent; onClicked: controller.sortBy = "pid" }
             }
             Label {
                 id: ppid
                 text: "Parent PID"
                 color: "black"
                 font.pointSize: 8
+                font.bold: controller.sortBy === "ppid"
                 Layout.alignment: Qt.AlignLeft
                 leftPadding: 20
                 Layout.preferredWidth: 180
-                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
+                MouseArea { anchors.fill: parent; onClicked: controller.sortBy = "ppid" }
             }
             Label {
                 id: cpu
                 text: "CPU"
                 color: "black"
                 font.pointSize: 8
+                font.bold: controller.sortBy === "cpu"
                 Layout.alignment: Qt.AlignLeft
                 leftPadding: 20
                 Layout.preferredWidth: 100
-                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("cpu") }
+                MouseArea { anchors.fill: parent; onClicked: controller.sortBy = "cpu" }
             }
             Label {
                 id: mem
                 text: "Mem"
                 color: "black"
                 font.pointSize: 8
+                font.bold: controller.sortBy === "mem"
                 Layout.alignment: Qt.AlignLeft
                 leftPadding: 20
                 Layout.preferredWidth: 200
-                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("mem") }
+                MouseArea { anchors.fill: parent; onClicked: controller.sortBy = "mem" }
             }
             Item { width: scrollbar.width }
         }
