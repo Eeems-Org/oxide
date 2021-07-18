@@ -15,7 +15,7 @@ ApplicationWindow {
         }
     }
     Timer {
-        interval: 1000 * 3
+        interval: 1000 * 5
         repeat: true
         triggeredOnStart: true
         running: true
