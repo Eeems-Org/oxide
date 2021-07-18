@@ -132,7 +132,7 @@ anxiety() {
     pkgdesc="Screenshot viewer for Oxide"
     url=https://github.com/Eeems/oxide/tree/master/applications/screenshot-viewer
     section=utils
-    installdepends=("tarnish=$pkgver")
+    installdepends=("tarnish=$pkgver" "imagemagick-png")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/anxiety
