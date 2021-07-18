@@ -147,7 +147,10 @@ public:
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false), fifos() {
         m_process = new SandBoxProcess(this);
         connect(m_process, &SandBoxProcess::started, this, &Application::started);
-        connect(m_process, QOverload<int>::of(&SandBoxProcess::finished), this, &Application::finished);
+        connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&SandBoxProcess::finished), [=](int exitCode, QProcess::ExitStatus status){
+            Q_UNUSED(status);
+            finished(exitCode);
+        });
         connect(m_process, &SandBoxProcess::readyReadStandardError, this, &Application::readyReadStandardError);
         connect(m_process, &SandBoxProcess::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
         connect(m_process, &SandBoxProcess::stateChanged, this, &Application::stateChanged);
@@ -412,7 +415,7 @@ private slots:
     void readyReadStandardError(){
         const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
         QString error = m_process->readAllStandardError();
-        for(QString line : error.split(QRegExp("[\r\n]"), QString::SkipEmptyParts)){
+        for(QString line : error.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)){
             if(!line.isEmpty()){
                 sd_journal_print(LOG_ERR, "%s %s", prefix, (const char*)line.toUtf8());
             }
@@ -421,7 +424,7 @@ private slots:
     void readyReadStandardOutput(){
         const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
         QString output = m_process->readAllStandardOutput();
-        for(QString line : output.split(QRegExp("[\r\n]"), QString::SkipEmptyParts)){
+        for(QString line : output.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)){
             if(!line.isEmpty()){
                 sd_journal_print(LOG_INFO, "%s %s", prefix, (const char*)line.toUtf8());
             }
