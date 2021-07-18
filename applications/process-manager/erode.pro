@@ -13,8 +13,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += main.cpp \
-    controller.cpp \
-    taskitem.cpp \
     ../../shared/devicesettings.cpp\
     ../../shared/eventfilter.cpp
 
@@ -41,7 +39,8 @@ HEADERS += \
     taskitem.h \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h\
-    ../../shared/eventfilter.h
+    ../../shared/eventfilter.h \
+    tasklist.h
 
 INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 INCLUDEPATH += ../../shared

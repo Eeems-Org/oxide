@@ -9,10 +9,19 @@ ApplicationWindow {
     visible: true
     width: screenGeometry.width
     height: screenGeometry.height
-    Connections {
-        target: controller
-        onReload: tasksView.model = controller.getTasks()
+    onAfterSynchronizing: {
+        if (stateController.state == "loading") {
+            stateController.state = "loaded";
+        }
     }
+    Timer {
+        interval: 1000 * 5
+        repeat: true
+        triggeredOnStart: true
+        running: true
+        onTriggered: controller.reload();
+    }
+
     menuBar: ColumnLayout {
         width: parent.width
         ToolBar {
@@ -30,13 +39,6 @@ ApplicationWindow {
                     }
                 }
                 Item { Layout.fillWidth: true }
-                BetterButton {
-                    text: "Reload"
-                    onClicked: {
-                        console.log("Reloading...");
-                        tasksView.model = controller.getTasks();
-                    }
-                }
             }
         }
         RowLayout {
@@ -69,6 +71,15 @@ ApplicationWindow {
                 leftPadding: 20
                 Layout.preferredWidth: 200
                 MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
+            }
+            Label {
+                text: "CPU"
+                color: "black"
+                font.pointSize: 8
+                Layout.alignment: Qt.AlignLeft
+                leftPadding: 20
+                Layout.preferredWidth: 200
+                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("cpu") }
             }
             Item { width: scrollbar.width }
         }
@@ -105,7 +116,7 @@ ApplicationWindow {
                 snapMode: ListView.SnapOneItem
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
-                model: tasks
+                model: controller.tasks
                 onMovementEnded: console.log("Moved")
                 ScrollIndicator.vertical: ScrollIndicator {
                     id: scrollbar
@@ -139,7 +150,7 @@ ApplicationWindow {
                         anchors.fill: parent
                         Label {
                             id: name
-                            text: model.modelData.name
+                            text: model.display.name
                             Layout.alignment: Qt.AlignLeft
                             Layout.fillWidth: true
                             leftPadding: 10
@@ -149,7 +160,7 @@ ApplicationWindow {
                         }
                         Label {
                             id: pid
-                            text: model.modelData.pid
+                            text: model.display.pid
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
                             Layout.preferredWidth: 200
@@ -158,7 +169,16 @@ ApplicationWindow {
                         }
                         Label {
                             id: ppid
-                            text: model.modelData.ppid
+                            text: model.display.ppid
+                            Layout.alignment: Qt.AlignLeft
+                            leftPadding: 10
+                            Layout.preferredWidth: 200
+                            topPadding: 5
+                            bottomPadding: 5
+                        }
+                        Label {
+                            id: cpu
+                            text: model.display.cpu + "%"
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
                             Layout.preferredWidth: 200
@@ -168,7 +188,7 @@ ApplicationWindow {
                     }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: killPrompt.open()
+                        onClicked: model.display.killable && killPrompt.open()
                     }
                     Popup {
                         id: killPrompt
@@ -182,7 +202,7 @@ ApplicationWindow {
                         onOpened: console.log("Opened")
                         contentItem: ColumnLayout {
                             Label {
-                                text: "Would you like to kill " + model.modelData.name + " (" + model.modelData.pid + ")"
+                                text: "Would you like to kill " + model.display.name + " (" + model.display.pid + ")"
                             }
                             RowLayout {
                                 BetterButton {
@@ -192,8 +212,7 @@ ApplicationWindow {
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: {
-                                            model.modelData.signal(15);
-                                            tasksView.model = controller.getTasks();
+                                            model.display.signal(15);
                                             killPrompt.close()
                                         }
                                     }
@@ -204,8 +223,7 @@ ApplicationWindow {
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: {
-                                            model.modelData.signal(9);
-                                            tasksView.model = controller.getTasks();
+                                            model.display.signal(9);
                                             killPrompt.close()
                                         }
                                     }
@@ -298,5 +316,4 @@ ApplicationWindow {
             }
         ]
     }
-    Component.onCompleted: stateController.state = "loaded"
 }
