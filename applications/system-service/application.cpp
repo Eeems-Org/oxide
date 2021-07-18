@@ -202,7 +202,7 @@ void Application::stopNoSecurityCheck(){
     }
     qDebug() << "Stopping " << path();
     if(!onStop().isEmpty()){
-        QProcess::execute(onStop());
+        QProcess::execute(onStop(), QStringList());
     }
     Application* pausedApplication = nullptr;
     if(state == Paused){

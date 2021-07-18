@@ -65,7 +65,7 @@ void Notification::paintNotification(Application* resumeApp){
     auto fm = painter.fontMetrics();
     auto padding = 10;
     auto radius = 10;
-    auto width = fm.width(text()) + (padding * 2);
+    auto width = fm.horizontalAdvance(text()) + (padding * 2);
     auto height = fm.height() + (padding * 2);
     auto left = size.width() - width;
     auto top = size.height() - height;

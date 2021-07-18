@@ -408,7 +408,7 @@ private slots:
             qWarning() << "onLogin script is not executable" << path;
             return;
         }
-        QProcess::execute(path);
+        QProcess::execute(path, QStringList());
     }
     void onFailedLogin(){
         if(!settings.contains("onFailedLogin")){
@@ -423,7 +423,7 @@ private slots:
             qWarning() << "onFailedLogin script is not executable" << path;
             return;
         }
-        QProcess::execute(path);
+        QProcess::execute(path, QStringList());
     }
 
 private:
