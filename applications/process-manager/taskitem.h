@@ -20,6 +20,7 @@ class TaskItem : public QObject {
     Q_PROPERTY(int ppid MEMBER _ppid READ ppid WRITE setPpid NOTIFY ppidChanged);
     Q_PROPERTY(bool killable MEMBER _killable READ killable WRITE setKillable NOTIFY killableChanged);
     Q_PROPERTY(uint cpu MEMBER _cpu READ cpu WRITE setCpu NOTIFY cpuChanged);
+    Q_PROPERTY(QString mem MEMBER _mem READ mem WRITE setMem NOTIFY memChanged);
 public:
     TaskItem(int pid, QObject* parent)
     : QObject(parent),
@@ -28,6 +29,7 @@ public:
       _ppid(0),
       _killable(true),
       _cpu(0),
+      _mem("0b"),
       _totalCpuUsage(0),
       _procUsage(0) {
         reload();
@@ -39,7 +41,12 @@ public:
         if(!exists()){
             return;
         }
-        auto file_contents = readFile(folder() + "/comm");
+        auto file_contents = readFile("/proc/stat");
+        if(file_contents == ""){
+            return;
+        }
+        QStringList statCols = file_contents.split(" ", Qt::SkipEmptyParts);
+        file_contents = readFile(folder() + "/comm");
         if(file_contents == ""){
             return;
         }
@@ -49,15 +56,26 @@ public:
             return;
         }
         auto procCols = file_contents.split("\n", Qt::SkipEmptyParts).first().split(" ", Qt::SkipEmptyParts);
-        file_contents = readFile("/proc/stat");
+        file_contents = readFile(folder() + "/smaps");
         if(file_contents == ""){
             return;
         }
-        QStringList statCols = file_contents.split(" ", Qt::SkipEmptyParts);
         setPpid(procCols[3].toInt());
         if(_killable){
             setKillable(_pid != getpid() && _pid != getppid());
         }
+        double mem = 0;
+        for(auto line : file_contents.split("\n", Qt::SkipEmptyParts).filter(QRegularExpression("^Pss:"))){
+            auto cols = line.split(" ", Qt::SkipEmptyParts);
+            mem += cols[1].toUInt();
+        }
+        QStringListIterator i(QStringList() << "MiB" << "GiB" << "TiB");
+        QString unit("KiB");
+        while(mem >= 1024 && i.hasNext()){
+            unit = i.next();
+            mem /= 1024;
+        }
+        setMem(QString().setNum(mem, 'f', 1) + " " + unit);
         // user + nice + system + idle + iowait + irq + softirq
         ulong total_cpu_usage = statCols[0].toUInt() + statCols[1].toUInt() + statCols[2].toUInt()
             + statCols[3].toUInt() + statCols[4].toUInt() + statCols[5].toUInt() + statCols[6].toUInt()
@@ -82,6 +100,7 @@ public:
     int ppid() { return _ppid; }
     bool killable() { return _killable; }
     uint cpu() { return _cpu; }
+    QString mem() { return _mem; }
 
     void setName(QString name){
         _name = name;
@@ -109,6 +128,10 @@ public:
         }
         emit cpuChanged(_cpu);
     }
+    void setMem(QString mem){
+        _mem = mem;
+        emit memChanged(_mem);
+    }
 
 signals:
     void nameChanged(QString);
@@ -116,6 +139,7 @@ signals:
     void killableChanged(bool);
     void ppidChanged(int);
     void cpuChanged(uint);
+    void memChanged(QString);
 
 private:
     QString _name;
@@ -124,6 +148,7 @@ private:
     int _ppid;
     bool _killable;
     uint _cpu;
+    QString _mem;
     ulong _totalCpuUsage;
     ulong _procUsage;
     QString readFile(const QString &path){

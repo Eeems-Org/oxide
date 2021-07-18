@@ -90,6 +90,14 @@ public:
             if(sortBy == "pid" || sortBy == "ppid" || sortBy == "cpu"){
                 return aval.toInt() < bval.toInt();
             }
+            if(sortBy == "mem"){
+                auto aparts = aval.toString().split(" ", Qt::KeepEmptyParts);
+                auto bparts = bval.toString().split(" ", Qt::KeepEmptyParts);
+                if(aparts[1] == bparts[1]){
+                    return aparts[0].toFloat() < bparts[0].toFloat();
+                }
+                return aparts[1] < bparts[1];
+            }
             return false;
         });
         emit layoutChanged();

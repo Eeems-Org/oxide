@@ -84,6 +84,16 @@ ApplicationWindow {
                 Layout.preferredWidth: 100
                 MouseArea { anchors.fill: parent; onClicked: controller.sortBy("cpu") }
             }
+            Label {
+                id: mem
+                text: "Mem"
+                color: "black"
+                font.pointSize: 8
+                Layout.alignment: Qt.AlignLeft
+                leftPadding: 20
+                Layout.preferredWidth: 200
+                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("mem") }
+            }
             Item { width: scrollbar.width }
         }
     }
@@ -181,6 +191,14 @@ ApplicationWindow {
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
                             Layout.preferredWidth: cpu.width
+                            topPadding: 5
+                            bottomPadding: 5
+                        }
+                        Label {
+                            text: model.display.mem
+                            Layout.alignment: Qt.AlignLeft
+                            leftPadding: 10
+                            Layout.preferredWidth: mem.width
                             topPadding: 5
                             bottomPadding: 5
                         }
