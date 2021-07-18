@@ -15,7 +15,7 @@ ApplicationWindow {
         }
     }
     Timer {
-        interval: 1000 * 5
+        interval: 1000 * 3
         repeat: true
         triggeredOnStart: true
         running: true
@@ -55,24 +55,27 @@ ApplicationWindow {
                 MouseArea { anchors.fill: parent; onClicked: controller.sortBy("name") }
             }
             Label {
+                id: pid
                 text: "PID"
                 color: "black"
                 font.pointSize: 8
                 Layout.alignment: Qt.AlignLeft
                 leftPadding: 20
-                Layout.preferredWidth: 200
+                Layout.preferredWidth: 180
                 MouseArea { anchors.fill: parent; onClicked: controller.sortBy("pid") }
             }
             Label {
+                id: ppid
                 text: "Parent PID"
                 color: "black"
                 font.pointSize: 8
                 Layout.alignment: Qt.AlignLeft
                 leftPadding: 20
-                Layout.preferredWidth: 200
+                Layout.preferredWidth: 180
                 MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
             }
             Label {
+                id: cpu
                 text: "CPU"
                 color: "black"
                 font.pointSize: 8
@@ -138,7 +141,7 @@ ApplicationWindow {
                     id: root
                     enabled: tasksView.enabled
                     width: tasksView.width - scrollbar.width
-                    height: tasksRow.implicitHeight
+                    height: 100
                     color: "white"
                     state: "released"
                     states: [
@@ -149,7 +152,6 @@ ApplicationWindow {
                         id: tasksRow
                         anchors.fill: parent
                         Label {
-                            id: name
                             text: model.display.name
                             Layout.alignment: Qt.AlignLeft
                             Layout.fillWidth: true
@@ -159,29 +161,26 @@ ApplicationWindow {
                             bottomPadding: 5
                         }
                         Label {
-                            id: pid
                             text: model.display.pid
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
-                            Layout.preferredWidth: 200
+                            Layout.preferredWidth: pid.width
                             topPadding: 5
                             bottomPadding: 5
                         }
                         Label {
-                            id: ppid
                             text: model.display.ppid
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
-                            Layout.preferredWidth: 200
+                            Layout.preferredWidth: ppid.width
                             topPadding: 5
                             bottomPadding: 5
                         }
                         Label {
-                            id: cpu
                             text: model.display.cpu + "%"
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
-                            Layout.preferredWidth: 100
+                            Layout.preferredWidth: cpu.width
                             topPadding: 5
                             bottomPadding: 5
                         }

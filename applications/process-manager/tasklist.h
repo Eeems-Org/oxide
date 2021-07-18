@@ -194,6 +194,7 @@ public:
             }
             append(stoi(pid));
         }
+        sort(0, _sortOrder);
     }
 signals:
     void updated();

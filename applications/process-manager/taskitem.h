@@ -28,7 +28,6 @@ public:
       _ppid(0),
       _killable(true),
       _cpu(0),
-      _processors(sysconf(_SC_NPROCESSORS_ONLN)),
       _totalCpuUsage(0),
       _procUsage(0) {
         reload();
@@ -40,21 +39,40 @@ public:
         if(!exists()){
             return;
         }
-        setName(readFile(folder() + "/comm"));
-        auto procCols = readFile(folder() + "/stat").split(" ", Qt::SkipEmptyParts);
+        auto file_contents = readFile(folder() + "/comm");
+        if(file_contents == ""){
+            return;
+        }
+        setName(file_contents);
+        file_contents = readFile(folder() + "/stat");
+        if(file_contents == ""){
+            return;
+        }
+        auto procCols = file_contents.split("\n", Qt::SkipEmptyParts).first().split(" ", Qt::SkipEmptyParts);
+        file_contents = readFile("/proc/stat");
+        if(file_contents == ""){
+            return;
+        }
+        QStringList statCols = file_contents.split(" ", Qt::SkipEmptyParts);
         setPpid(procCols[3].toInt());
         if(_killable){
             setKillable(_pid != getpid() && _pid != getppid());
         }
-        QStringList statCols = readFile("/proc/stat").split(" ", Qt::SkipEmptyParts);
-        auto total_cpu_usage = statCols[0].toInt() + statCols[1].toUInt() + statCols[2].toUInt() + statCols[3].toUInt();
-        auto proc_usage = procCols[13].toUInt() + procCols[14].toUInt();
+        // user + nice + system + idle + iowait + irq + softirq
+        ulong total_cpu_usage = statCols[0].toUInt() + statCols[1].toUInt() + statCols[2].toUInt()
+            + statCols[3].toUInt() + statCols[4].toUInt() + statCols[5].toUInt() + statCols[6].toUInt()
+            + statCols[7].toUInt();
+        // utime + stime + cutime + cstime + delayacct_blkio_ticks
+        ulong proc_usage = procCols[13].toUInt() + procCols[14].toUInt() + procCols[15].toUInt()
+            + procCols[16].toUInt() + procCols[41].toUInt();
         if(_totalCpuUsage == 0){
             _totalCpuUsage = total_cpu_usage;
             _procUsage = proc_usage;
             return;
         }
-        setCpu(_processors * (proc_usage - _procUsage) * 100 / (total_cpu_usage - _totalCpuUsage));
+        auto actual_proc_usage = proc_usage - _procUsage;
+        auto actual_cpu_usage = total_cpu_usage - _totalCpuUsage;
+        setCpu(100 * actual_proc_usage / actual_cpu_usage);
         _totalCpuUsage = total_cpu_usage;
         _procUsage = proc_usage;
     }
@@ -106,9 +124,8 @@ private:
     int _ppid;
     bool _killable;
     uint _cpu;
-    short _processors;
-    uint _totalCpuUsage;
-    uint _procUsage;
+    ulong _totalCpuUsage;
+    ulong _procUsage;
     QString readFile(const QString &path){
         QFile file(path);
         if(!file.open(QIODevice::ReadOnly)){
