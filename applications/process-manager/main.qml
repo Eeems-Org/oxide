@@ -78,7 +78,7 @@ ApplicationWindow {
                 font.pointSize: 8
                 Layout.alignment: Qt.AlignLeft
                 leftPadding: 20
-                Layout.preferredWidth: 200
+                Layout.preferredWidth: 100
                 MouseArea { anchors.fill: parent; onClicked: controller.sortBy("cpu") }
             }
             Item { width: scrollbar.width }
@@ -136,8 +136,8 @@ ApplicationWindow {
                 }
                 delegate: Rectangle {
                     id: root
-                    enabled: parent.enabled
-                    width: parent.width - scrollbar.width
+                    enabled: tasksView.enabled
+                    width: tasksView.width - scrollbar.width
                     height: tasksRow.implicitHeight
                     color: "white"
                     state: "released"
@@ -181,7 +181,7 @@ ApplicationWindow {
                             text: model.display.cpu + "%"
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
-                            Layout.preferredWidth: 200
+                            Layout.preferredWidth: 100
                             topPadding: 5
                             bottomPadding: 5
                         }

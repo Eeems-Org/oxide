@@ -11,6 +11,7 @@
 
 #include <unistd.h>
 #include <signal.h>
+#include <math.h>
 
 class TaskItem : public QObject {
     Q_OBJECT
@@ -18,9 +19,20 @@ class TaskItem : public QObject {
     Q_PROPERTY(int pid MEMBER _pid READ pid WRITE setPid NOTIFY pidChanged);
     Q_PROPERTY(int ppid MEMBER _ppid READ ppid WRITE setPpid NOTIFY ppidChanged);
     Q_PROPERTY(bool killable MEMBER _killable READ killable WRITE setKillable NOTIFY killableChanged);
-    Q_PROPERTY(int cpu MEMBER _cpu READ cpu WRITE setCpu NOTIFY cpuChanged);
+    Q_PROPERTY(uint cpu MEMBER _cpu READ cpu WRITE setCpu NOTIFY cpuChanged);
 public:
-    TaskItem(int pid, QObject* parent) : QObject(parent), _pid(pid) { reload(); }
+    TaskItem(int pid, QObject* parent)
+    : QObject(parent),
+      _name(""),
+      _pid(pid),
+      _ppid(0),
+      _killable(true),
+      _cpu(0),
+      _processors(sysconf(_SC_NPROCESSORS_ONLN)),
+      _totalCpuUsage(0),
+      _procUsage(0) {
+        reload();
+    }
     int protectPid;
     Q_INVOKABLE bool signal(int signal) { return kill(_pid, signal); }
     bool exists(){ return _pid > 0 && QFile::exists(folder()); }
@@ -28,22 +40,30 @@ public:
         if(!exists()){
             return;
         }
-        QString file_content = readFile(folder() + "/status");
-        _name = parseRegex(file_content,QRegularExpression("^Name:\\t+(\\w+)"));
-        file_content = readFile(folder() + "/stat");
-        auto columns = file_content.split(" ", Qt::KeepEmptyParts);
-        _ppid = columns[3].toInt();
-        auto hertz = sysconf(_SC_CLK_TCK);
-        int seconds = readFile("/proc/uptime").toInt() - (columns[21].toInt() / hertz);
-        _cpu = 100 * (((columns[13].toInt() + columns[14].toInt()) / hertz) / seconds);
-        _killable = _pid != getpid() && _pid != getppid();
+        setName(readFile(folder() + "/comm"));
+        auto procCols = readFile(folder() + "/stat").split(" ", Qt::SkipEmptyParts);
+        setPpid(procCols[3].toInt());
+        if(_killable){
+            setKillable(_pid != getpid() && _pid != getppid());
+        }
+        QStringList statCols = readFile("/proc/stat").split(" ", Qt::SkipEmptyParts);
+        auto total_cpu_usage = statCols[0].toInt() + statCols[1].toUInt() + statCols[2].toUInt() + statCols[3].toUInt();
+        auto proc_usage = procCols[13].toUInt() + procCols[14].toUInt();
+        if(_totalCpuUsage == 0){
+            _totalCpuUsage = total_cpu_usage;
+            _procUsage = proc_usage;
+            return;
+        }
+        setCpu(_processors * (proc_usage - _procUsage) * 100 / (total_cpu_usage - _totalCpuUsage));
+        _totalCpuUsage = total_cpu_usage;
+        _procUsage = proc_usage;
     }
 
     QString name() { return _name; }
     int pid() { return _pid; }
     int ppid() { return _ppid; }
     bool killable() { return _killable; }
-    int cpu() { return _cpu; }
+    uint cpu() { return _cpu; }
 
     void setName(QString name){
         _name = name;
@@ -62,7 +82,13 @@ public:
         emit killableChanged(_killable);
     }
     void setCpu(int cpu){
-        _cpu = cpu;
+        if(cpu < 0){
+            _cpu = 0;
+        }else if(cpu > 100){
+            _cpu = 100;
+        }else{
+            _cpu = cpu;
+        }
         emit cpuChanged(_cpu);
     }
 
@@ -71,7 +97,7 @@ signals:
     void pidChanged(int);
     void killableChanged(bool);
     void ppidChanged(int);
-    void cpuChanged(int);
+    void cpuChanged(uint);
 
 private:
     QString _name;
@@ -79,7 +105,10 @@ private:
     int _pid;
     int _ppid;
     bool _killable;
-    int _cpu;
+    uint _cpu;
+    short _processors;
+    uint _totalCpuUsage;
+    uint _procUsage;
     QString readFile(const QString &path){
         QFile file(path);
         if(!file.open(QIODevice::ReadOnly)){
@@ -102,7 +131,7 @@ private:
         }
         return result;
     }
-    QString folder() { return QString::fromStdString("/proc" + std::to_string(_pid)); }
+    QString folder() { return QString::fromStdString("/proc/" + std::to_string(_pid)); }
 };
 
 #endif // TASKITEM_H
