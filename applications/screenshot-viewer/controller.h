@@ -5,8 +5,7 @@
 #include <QImage>
 #include <QQuickItem>
 
-#include <epframebuffer.h>
-
+#include "epframebuffer.h"
 #include "dbussettings.h"
 
 #include "dbusservice_interface.h"

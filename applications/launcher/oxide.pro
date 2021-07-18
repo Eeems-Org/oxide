@@ -36,9 +36,7 @@ QML_DESIGNER_IMPORT_PATH =
 target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
-INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 INCLUDEPATH += ../../shared
-DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
 
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/powerapi.xml
@@ -77,3 +75,8 @@ HEADERS += \
     ../../shared/devicesettings.h \
     ../../shared/eventfilter.h \
     wifinetworklist.h
+
+
+LIBS += -L$$PWD/../../docker-toolchain/qtcreator/files/libraries/ -lqsgepaper
+INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
