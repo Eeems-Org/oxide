@@ -12,10 +12,12 @@ ApplicationWindow {
     height: screenGeometry.height
     title: qsTr("Oxide")
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
-    Component.onCompleted:{
-        stateController.state = "loaded"
-        controller.startup();
-        appsView.model = controller.getApps();
+    onAfterSynchronizing: {
+        if (stateController.state == "loading") {
+            stateController.state = "loaded"
+            controller.startup();
+            appsView.model = controller.getApps();
+        }
     }
     Connections {
         target: controller
@@ -36,7 +38,10 @@ ApplicationWindow {
                         title: qsTr("");
                         font: iconFont.name
                         width: 310
-                        Action { text: qsTr(" Reload"); onTriggered: appsView.model = controller.getApps() }
+                        Action { text: qsTr(" Reload"); onTriggered: {
+                            controller.startup();
+                            appsView.model = controller.getApps();
+                        }}
                         Action {
                             text: qsTr(" Import Apps");
                             onTriggered:{
