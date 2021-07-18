@@ -39,6 +39,11 @@ ApplicationWindow {
                     }
                 }
                 Item { Layout.fillWidth: true }
+                Label {
+                    text: "Process Manager"
+                    color: "white"
+                    anchors.centerIn: parent
+                }
             }
         }
         RowLayout {
