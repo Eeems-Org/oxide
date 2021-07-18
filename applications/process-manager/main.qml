@@ -17,7 +17,7 @@ ApplicationWindow {
     Timer {
         interval: 1000 * 5
         repeat: true
-        triggeredOnStart: true
+        triggeredOnStart: false
         running: true
         onTriggered: controller.reload();
     }
