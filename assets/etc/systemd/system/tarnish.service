@@ -1,9 +1,11 @@
 [Unit]
 Description=oxide system service
 After=home.mount
-StartLimitInterval=30
-StartLimitBurst=5
+StartLimitInterval=600
+StartLimitBurst=4
+OnFailure=remarkable-fail.service
 Conflicts=remux.service draft.service xochitl.service
+Before=remarkable-reboot.service remarkable-shutdown.service
 
 [Service]
 ExecStart=/opt/bin/tarnish
