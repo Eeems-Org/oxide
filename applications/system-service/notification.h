@@ -13,6 +13,7 @@ class Notification : public QObject{
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_NOTIFICATION_INTERFACE)
     Q_PROPERTY(QString identifier READ identifier)
+    Q_PROPERTY(int created READ created)
     Q_PROPERTY(QString application READ application WRITE setApplication)
     Q_PROPERTY(QString text READ text WRITE setText)
     Q_PROPERTY(QString icon READ icon WRITE setIcon)
@@ -24,7 +25,9 @@ public:
        m_owner(owner),
        m_application(application),
        m_text(text),
-       m_icon(icon) {}
+       m_icon(icon) {
+        m_created = QDateTime::currentSecsSinceEpoch();
+    }
     ~Notification(){
         unregisterPath();
     }
@@ -53,6 +56,7 @@ public:
         }
         return m_identifier;
     }
+    int created(){ return m_created; }
     QString application(){
         if(!hasPermission("notification")){
             return "";
@@ -134,6 +138,7 @@ signals:
 private:
     QString m_path;
     QString m_identifier;
+    int m_created;
     QString m_owner;
     QString m_application;
     QString m_text;
