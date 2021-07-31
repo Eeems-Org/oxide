@@ -15,7 +15,7 @@
 #include "controller.h"
 #include "dbusservice_interface.h"
 
-QSet<QString> settings = { "columns", "fontSize", "autoStartApplication" };
+QSet<QString> settings = { "columns", "autoStartApplication" };
 QSet<QString> booleanSettings {"showWifiDb", "showBatteryPercent", "showBatteryTemperature", "showDate" };
 QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
 QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root /.config" };
@@ -84,12 +84,6 @@ void Controller::loadSettings(){
         qDebug() << "Can't find columnsSpinBox";
     }else{
         columnsSpinBox->setProperty("value", columns());
-    }
-    QObject* fontSizeSpinBox = root->findChild<QObject*>("fontSizeSpinBox");
-    if(!fontSizeSpinBox){
-        qDebug() << "Can't find fontSizeSpinBox";
-    }else{
-        fontSizeSpinBox->setProperty("value", fontSize());
     }
     QObject* sleepAfterSpinBox = root->findChild<QObject*>("sleepAfterSpinBox");
     if(!sleepAfterSpinBox){
@@ -215,7 +209,7 @@ QList<QObject*> Controller::getApps(){
     }
     // Sort by name
     std::sort(applications.begin(), applications.end(), [=](const QObject* a, const QObject* b) -> bool {
-        return a->property("name") < b->property("name");
+        return a->property("name").toString() < b->property("name").toString();
     });
     return applications;
 }
@@ -374,13 +368,6 @@ void Controller::setColumns(int columns){
     if(root != nullptr){
         qDebug() << "Columns: " << columns;
         emit columnsChanged(columns);
-    }
-}
-void Controller::setFontSize(int fontSize){
-    m_fontSize= fontSize;
-    if(root != nullptr){
-        qDebug() << "Font Size: " << fontSize;
-        emit fontSizeChanged(fontSize);
     }
 }
 void Controller::setShowWifiDb(bool state){

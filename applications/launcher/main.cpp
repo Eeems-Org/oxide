@@ -59,8 +59,8 @@ int main(int argc, char *argv[]){
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();
     controller->filter = filter;
-    qmlRegisterType<AppItem>();
-    qmlRegisterType<Controller>();
+    qmlRegisterAnonymousType<AppItem>("codes.eeems.oxide", 2);
+    qmlRegisterAnonymousType<Controller>("codes.eeems.oxide", 2);
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("apps", QVariant::fromValue(controller->getApps()));
     context->setContextProperty("controller", controller);

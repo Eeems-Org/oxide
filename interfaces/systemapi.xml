@@ -12,6 +12,10 @@
     </signal>
     <signal name="powerAction">
     </signal>
+    <signal name="bottomAction">
+    </signal>
+    <signal name="topAction">
+    </signal>
     <signal name="sleepInhibitedChanged">
       <arg type="b" direction="out"/>
     </signal>
@@ -40,6 +44,19 @@
     <method name="inhibitPowerOff">
     </method>
     <method name="uninhibitPowerOff">
+    </method>
+    <method name="toggleSwipes">
+    </method>
+    <method name="setSwipeEnabled">
+      <arg name="direction" type="i" direction="in"/>
+      <arg name="enabled" type="b" direction="in"/>
+    </method>
+    <method name="getSwipeEnabled">
+      <arg type="b" direction="out"/>
+      <arg name="direction" type="i" direction="in"/>
+    </method>
+    <method name="toggleSwipeEnabled">
+      <arg name="direction" type="i" direction="in"/>
     </method>
   </interface>
 </node>

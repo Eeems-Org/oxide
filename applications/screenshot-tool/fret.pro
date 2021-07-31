@@ -26,3 +26,7 @@ DBUS_INTERFACES += ../../interfaces/notification.xml
 INCLUDEPATH += ../../shared
 HEADERS += \
     ../../shared/dbussettings.h
+
+LIBS += -L$$PWD/../../docker-toolchain/qtcreator/files/libraries/ -lqsgepaper
+INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries

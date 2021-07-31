@@ -41,7 +41,7 @@ public:
         return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
     }
     int link(){
-        auto out = exec("cat /proc/net/wireless | grep " + iface() + " | awk '{print $3}'");
+        auto out = exec("grep " + iface() + " /proc/net/wireless | awk '{print $3}'");
         try {
             return std::stoi(out);
         }

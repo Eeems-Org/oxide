@@ -17,6 +17,7 @@
 #include "apibase.h"
 #include "mxcfb.h"
 #include "screenshot.h"
+#include "devicesettings.h"
 
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872
@@ -107,6 +108,9 @@ public:
         }
         qDebug() << "Taking screenshot";
         auto filePath = getNextPath();
+#ifdef DEBUG
+        qDebug() << "Using path" << filePath;
+#endif
         if(!EPFrameBuffer::framebuffer()->save(filePath)){
             qDebug() << "Failed to take screenshot";
             return QDBusObjectPath("/");

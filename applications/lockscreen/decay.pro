@@ -44,3 +44,7 @@ HEADERS += \
 
 RESOURCES += \
     qml.qrc
+
+LIBS += -L$$PWD/../../docker-toolchain/qtcreator/files/libraries/ -lqsgepaper
+INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries

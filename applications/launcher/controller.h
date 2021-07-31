@@ -35,7 +35,6 @@ class Controller : public QObject
     Q_OBJECT
     Q_PROPERTY(bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep NOTIFY automaticSleepChanged);
     Q_PROPERTY(int columns MEMBER m_columns WRITE setColumns NOTIFY columnsChanged);
-    Q_PROPERTY(int fontSize MEMBER m_fontSize WRITE setFontSize NOTIFY fontSizeChanged);
     Q_PROPERTY(bool showWifiDb MEMBER m_showWifiDb WRITE setShowWifiDb NOTIFY showWifiDbChanged);
     Q_PROPERTY(bool showBatteryPercent MEMBER m_showBatteryPercent WRITE setShowBatteryPercent NOTIFY showBatteryPercentChanged);
     Q_PROPERTY(bool showBatteryTemperature MEMBER m_showBatteryTemperature WRITE setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged);
@@ -246,10 +245,6 @@ public:
         return m_columns;
     };
     void setColumns(int);
-    int fontSize() const {
-        return m_fontSize;
-    };
-    void setFontSize(int);
     bool showWifiDb() const {
         return m_showWifiDb;
     };

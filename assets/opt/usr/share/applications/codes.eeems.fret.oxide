@@ -1,8 +1,9 @@
 {
-	"displayName": "Screenshot daemon",
-	"description": "Handles taking screenshots",
+        "displayName": "Screenshot daemon",
+        "description": "Takes screenshots and displays notifications",
 	"bin": "/opt/bin/fret",
-        "flags": ["hidden", "autoStart"],
+        "flags": ["autoStart", "hidden"],
         "type": "background",
+        "splash": "/opt/etc/draft/icons/oxide-splash.png",
         "permissions": ["notification", "screen", "system"]
 }

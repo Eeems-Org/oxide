@@ -2,8 +2,10 @@
 #define NOTIFICATION_H
 
 #include <QObject>
+#include <QImage>
 #include <QtDBus>
 
+#include "application.h"
 #include "dbussettings.h"
 
 class Notification : public QObject{
@@ -15,7 +17,7 @@ class Notification : public QObject{
     Q_PROPERTY(QString text READ text WRITE setText)
     Q_PROPERTY(QString icon READ icon WRITE setIcon)
 public:
-    Notification(QString path, QString identifier, QString owner, QString application, QString text, QString icon, QObject* parent)
+    Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
      : QObject(parent),
        m_path(path),
        m_identifier(identifier),
@@ -121,6 +123,7 @@ public:
         }
         emit clicked();
     }
+    void paintNotification(Application* resumeApp);
 
 signals:
     void changed(QVariantMap);
@@ -135,9 +138,10 @@ private:
     QString m_application;
     QString m_text;
     QString m_icon;
+    QImage screenBackup;
+    QRect updateRect;
 
     void dispatchToMainThread(std::function<void()> callback);
-    const QRect paintNotification();
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 };
 

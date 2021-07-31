@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>img/icon.png</file>
+        <file>widgets/AppItem.qml</file>
+        <file>widgets/AppItemSeperator.qml</file>
+        <file>img/home.svg</file>
+        <file>img/right.svg</file>
+        <file>img/left.svg</file>
+    </qresource>
+</RCC>

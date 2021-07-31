@@ -2,18 +2,33 @@
 #include "appsapi.h"
 #include "powerapi.h"
 #include "wifiapi.h"
+#include "notificationapi.h"
 #include "devicesettings.h"
+
+#ifdef DEBUG
+QDebug operator<<(QDebug debug, const Touch& touch){
+    QDebugStateSaver saver(debug);
+    debug.nospace() << touch.debugString().c_str();
+    return debug.maybeSpace();
+}
+QDebug operator<<(QDebug debug, Touch* touch){
+    QDebugStateSaver saver(debug);
+    debug.nospace() << touch->debugString().c_str();
+    return debug.maybeSpace();
+}
+#endif
 
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
+        qDebug() << "Preparing for suspend...";
         wifiAPI->stopUpdating();
         emit deviceSuspending();
         appsAPI->recordPreviousApplication();
-        auto path = appsAPI->currentApplication();
+        auto path = appsAPI->currentApplicationNoSecurityCheck();
         if(path.path() != "/"){
             resumeApp = appsAPI->getApplication(path);
-            resumeApp->pause(false);
+            resumeApp->pauseNoSecurityCheck(false);
         }else{
             resumeApp = nullptr;
         }
@@ -44,7 +59,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
             resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
         }
         if(resumeApp != nullptr){
-            resumeApp->resume();
+            resumeApp->resumeNoSecurityCheck();
         }
         buttonHandler->setEnabled(true);
         emit deviceResuming();
@@ -112,6 +127,7 @@ void SystemAPI::activity(){
         qDebug() << "Suspend timer disabled";
     }
 }
+
 void SystemAPI::uninhibitSleep(QDBusMessage message){
     if(!sleepInhibited()){
         return;
@@ -133,4 +149,26 @@ void SystemAPI::timeout(){
         qDebug() << "Automatic suspend due to inactivity...";
         suspend();
     }
+}
+void SystemAPI::toggleSwipes(){
+    bool state = !swipeStates[Up];
+    setSwipeEnabled(Left, state);
+    setSwipeEnabled(Right, state);
+    setSwipeEnabled(Up, state);
+    QString message = state ? "Swipes Enabled" : "Swipes Disabled";
+    qDebug() << message;
+    const QString& id = "system-swipe-toggle";
+    auto notification = notificationAPI->add(id, OXIDE_SERVICE, "tarnish", message, "");
+    if(notification == nullptr){
+        notification = notificationAPI->getByIdentifier(id);
+        if(notification == nullptr){
+            return;
+        }
+    }else{
+        connect(notification, &Notification::clicked, [notification]{
+            notification->remove();
+        });
+    }
+    notification->setText(message);
+    notification->display();
 }

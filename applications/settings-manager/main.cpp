@@ -183,11 +183,11 @@ private:
             args << QVariant(typeId, ptr);
         }
         if(args.size() > 1){
-            qStdOut << toJson(args).toStdString().c_str() << endl;
+            qStdOut << toJson(args).toStdString().c_str() << Qt::endl;
         }else if(args.size() == 1 && !args.first().isNull()){
-            qStdOut << toJson(args.first()).toStdString().c_str() << endl;
+            qStdOut << toJson(args.first()).toStdString().c_str() << Qt::endl;
         }else{
-            qStdOut << "undefined" << endl;
+            qStdOut << "undefined" << Qt::endl;
         }
         if(once){
             qApp->quit();
@@ -367,7 +367,7 @@ int main(int argc, char *argv[]){
             qDebug() << "Failed to get value" << api->lastError();
             return EXIT_FAILURE;
         }
-        qStdOut << toJson(value).toStdString().c_str() << endl;
+        qStdOut << toJson(value).toStdString().c_str() << Qt::endl;
     }else if(action == "set"){
         auto property = args.at(2).toStdString();
         if(!api->setProperty(property.c_str(), args.at(3).toStdString().c_str())){
@@ -385,7 +385,7 @@ int main(int argc, char *argv[]){
                 for(int i = 0, j = method.parameterCount(); i < j; ++i){
                     parameters << QMetaType::typeName(method.parameterType(i));
                 }
-                slotName.append(parameters.join(",")).append(")");
+                slotName.append(parameters.join(",").toUtf8()).append(")");
                 QByteArray theSignal = QMetaObject::normalizedSignature(method.methodSignature().constData());
                 QByteArray theSlot = QMetaObject::normalizedSignature(slotName);
                 if(!QMetaObject::checkConnectArgs(theSignal, theSlot)){
@@ -439,9 +439,9 @@ int main(int argc, char *argv[]){
         QDBusMessage reply = api->callWithArgumentList(QDBus::Block, method, arguments);
         auto result = reply.arguments();
         if(result.size() > 1){
-            qStdOut << toJson(result).toStdString().c_str() << endl;
+            qStdOut << toJson(result).toStdString().c_str() << Qt::endl;
         }else if(!result.first().isNull()){
-            qStdOut << toJson(result.first()).toStdString().c_str() << endl;
+            qStdOut << toJson(result.first()).toStdString().c_str() << Qt::endl;
         }
         if(!reply.errorName().isEmpty()){
             return EXIT_FAILURE;

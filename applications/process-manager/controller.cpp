@@ -106,8 +106,12 @@ void Controller::sort(){
         auto aprop = a->property(sortBy.c_str());
         auto bprop = b->property(sortBy.c_str());
         if(sortBy != lastSortBy && aprop == bprop){
-            return a->property(lastSortBy.c_str()) < b->property(lastSortBy.c_str());
+            aprop = a->property(lastSortBy.c_str());
+            bprop = b->property(lastSortBy.c_str());
         }
-        return aprop < bprop;
+        if(sortBy == "name"){
+            return aprop.toString() < bprop.toString();
+        }
+        return aprop.toInt() < bprop.toInt();
     });
 }

@@ -4,6 +4,8 @@
     <property name="state" type="i" access="read"/>
     <property name="startupApplication" type="o" access="readwrite"/>
     <property name="lockscreenApplication" type="o" access="readwrite"/>
+    <property name="processManagerApplication" type="o" access="readwrite"/>
+    <property name="taskSwitcherApplication" type="o" access="readwrite"/>
     <property name="applications" type="a{sv}" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
     </property>
@@ -46,6 +48,8 @@
     <method name="openTaskManager">
     </method>
     <method name="openLockScreen">
+    </method>
+    <method name="openTaskSwitcher">
     </method>
     <method name="registerApplication">
       <arg type="o" direction="out"/>

@@ -33,11 +33,6 @@ void AppItem::stop(){
     }
     app->stop();
 }
-
-void AppItem::exited(int exitCode){
-    qDebug() << "Application exited" << exitCode;
-}
-
 Application* AppItem::getApp(){
     if(app != nullptr){
         return app;
@@ -59,6 +54,10 @@ Application* AppItem::getApp(){
         return nullptr;
     }
     connect(instance, &Application::exited, this, &AppItem::exited);
+    connect(instance, &Application::displayNameChanged, this, &AppItem::onDisplayNameChanged);
+    connect(instance, &Application::iconChanged, this, &AppItem::onIconChanged);
+    connect(instance, &Application::launched, this, &AppItem::launched);
+
     app = instance;
     return app;
 }

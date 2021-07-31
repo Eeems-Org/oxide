@@ -3,6 +3,7 @@
 
 #include <QDebug>
 #include <QtDBus>
+#include <QMutex>
 
 #include "dbussettings.h"
 #include "apibase.h"
@@ -24,7 +25,7 @@ public:
         }
         return instance;
     }
-    NotificationAPI(QObject* parent) : APIBase(parent), m_enabled(false), m_notifications() {
+    NotificationAPI(QObject* parent) : APIBase(parent), notificationDisplayQueue(), m_enabled(false), m_notifications(), m_lock() {
         singleton(this);
     }
     ~NotificationAPI(){}
@@ -45,10 +46,11 @@ public:
         if(!hasPermission("notification")){
             return QDBusObjectPath("/");
         }
-        if(!m_notifications.contains(identifier)){
+        auto notification = getByIdentifier(identifier);
+        if(notification == nullptr){
             return QDBusObjectPath("/");
         }
-        return m_notifications.value(identifier)->qPath();
+        return notification->qPath();
     }
 
     QList<QDBusObjectPath> getAllNotifications(){
@@ -74,16 +76,13 @@ public:
         }
         return result;
     }
+    QList<Notification*> notificationDisplayQueue;
 
-public slots:
-    QDBusObjectPath add(QString identifier, QString application, QString text, QString icon, QDBusMessage message){
-        if(!hasPermission("notification")){
-            return QDBusObjectPath("/");
-        }
+    Notification* add(const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon){
         if(m_notifications.contains(identifier)){
-            return QDBusObjectPath("/");
+            return nullptr;
         }
-        auto notification = new Notification(getPath(identifier), identifier, message.service(), application, text, icon, this);
+        auto notification = new Notification(getPath(identifier), identifier, owner, application, text, icon, this);
         m_notifications.insert(identifier, notification);
         auto path = notification->qPath();
         connect(notification, &Notification::changed, this, [=]{
@@ -93,7 +92,25 @@ public slots:
             notification->registerPath();
         }
         emit notificationAdded(path);
-        return path;
+        return notification;
+    }
+    Notification* getByIdentifier(const QString& identifier){
+        if(!m_notifications.contains(identifier)){
+            return nullptr;
+        }
+        return m_notifications.value(identifier);
+    }
+
+public slots:
+    QDBusObjectPath add(const QString& identifier, const QString& application, const QString& text, const QString& icon, QDBusMessage message){
+        if(!hasPermission("notification")){
+            return QDBusObjectPath("/");
+        }
+        auto notification = add(identifier, message.service(), application, text, icon);
+        if(notification == nullptr){
+            return QDBusObjectPath("/");
+        }
+        return notification->qPath();
     }
     bool take(QString identifier, QDBusMessage message){
         if(!hasPermission("notification")){
@@ -128,6 +145,15 @@ public slots:
         m_notifications.remove(notification->identifier());
         emit notificationRemoved(notification->qPath());
     }
+    bool locked(){
+        if(!m_lock.tryLock(1)){
+            return true;
+        }
+        m_lock.unlock();
+        return false;
+    }
+    void lock() { m_lock.tryLock(1); }
+    void unlock() { m_lock.unlock(); }
 
 signals:
     void notificationAdded(QDBusObjectPath);
@@ -138,6 +164,7 @@ signals:
 private:
     bool m_enabled;
     QMap<QString, Notification*> m_notifications;
+    QMutex m_lock;
 
     QString getPath(QString id){
         static const QUuid NS = QUuid::fromString(QLatin1String("{66acfa80-020f-11eb-adc1-0242ac120002}"));

@@ -16,6 +16,10 @@ void sigHandler(int signal){
 }
 
 int main(int argc, char *argv[]){
+    if(deviceSettings.getDeviceType() == DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
+        qWarning() << "rm2fb not detected. Running xochitl instead!";
+        return QProcess::execute("/usr/bin/xochitl", QStringList());
+    }
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
     }
@@ -37,11 +41,19 @@ int main(int argc, char *argv[]){
     parser.process(app);
 
     const QStringList args = parser.positionalArguments();
-    dbusService;
 
     signal(SIGINT, sigHandler);
     signal(SIGSEGV, sigHandler);
     signal(SIGTERM, sigHandler);
 
+    dbusService;
+    QTimer::singleShot(0, []{
+        dbusService->startup();
+    });
+    system("mkdir -p /run/oxide");
+    system(("echo " + to_string(app.applicationPid()) + " > /run/oxide/oxide.pid").c_str());
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
+        remove("/run/oxide/oxide.pid");
+    });
     return app.exec();
 }

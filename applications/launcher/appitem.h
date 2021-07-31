@@ -34,6 +34,7 @@ public:
 
     Q_INVOKABLE void execute();
     Q_INVOKABLE void stop();
+
 signals:
     void nameChanged(QString);
     void displayNameChanged(QString);
@@ -43,7 +44,23 @@ signals:
     void runningChanged(bool);
 
 private slots:
-    void exited(int);
+    void exited(int exitCode){
+        qDebug() << "Application exited" << exitCode;
+        _running = false;
+        emit runningChanged(false);
+    }
+    void launched(){
+        _running = true;
+        emit runningChanged(true);
+    }
+    void onDisplayNameChanged(QString displayName){
+        _displayName = displayName;
+        emit displayNameChanged(displayName);
+    }
+    void onIconChanged(QString path){
+        _imgFile = path;
+        emit onIconChanged(path);
+    }
 
 private:
     Application* app = nullptr;

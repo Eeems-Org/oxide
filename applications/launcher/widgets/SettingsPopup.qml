@@ -148,24 +148,6 @@ Item {
                     Layout.preferredWidth: 300
                 }
             }
-            RowLayout {
-                Layout.columnSpan: parent.columns
-                Layout.preferredWidth: parent.width
-                Label {
-                    text: "Font Size"
-                    Layout.fillWidth: true
-                }
-                BetterSpinBox {
-                    id: fontSizeSpinBox
-                    objectName: "fontSizeSpinBox"
-                    from: 20
-                    to: 35
-                    stepSize: 3
-                    value: controller.fontSize
-                    onValueChanged: controller.fontSize = this.value
-                    Layout.preferredWidth: 300
-                }
-            }
             Item {
                 Layout.rowSpan: 6
                 Layout.columnSpan: parent.columns
