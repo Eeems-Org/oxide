@@ -12,6 +12,7 @@ class NotificationItem : public QObject {
     Q_PROPERTY(QString identifier MEMBER m_identifier READ identifier)
     Q_PROPERTY(QString text READ text NOTIFY textChanged)
     Q_PROPERTY(QString icon READ icon NOTIFY iconChanged)
+    Q_PROPERTY(QDateTime created READ created)
 public:
     NotificationItem(Notification* notification, QObject* parent) : QObject(parent) {
         m_identifier = notification->identifier();
@@ -35,6 +36,12 @@ public:
             return "";
         }
         return m_notification->icon();
+    }
+    QDateTime created(){
+        if(m_notification == nullptr){
+            return QDateTime();
+        }
+        return QDateTime::fromSecsSinceEpoch(m_notification->created());
     }
     bool is(Notification* notification) { return notification == m_notification; }
     Notification* notification() { return m_notification; }

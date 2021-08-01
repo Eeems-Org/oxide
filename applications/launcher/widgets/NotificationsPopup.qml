@@ -26,7 +26,7 @@ Item {
                 id: notifications
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1000
-                Layout.preferredWidth: 1000
+                Layout.preferredWidth: 3000
                 clip: true
                 snapMode: ListView.SnapOneItem
                 interactive: false
@@ -66,6 +66,16 @@ Item {
                                 anchors.fill: parent
                                 onClicked: model.display && model.display.click()
                             }
+                        }
+                        Label {
+                            text: {
+                                if(!model.display){
+                                    return "";
+                                }
+                                return model.display.created.toLocaleDateString();
+                            }
+                            Layout.alignment: Qt.AlignRight
+                            Layout.preferredWidth: 300
                         }
                         BetterButton {
                             text: "X"
