@@ -10,7 +10,7 @@ Item {
     property alias model: notifications.model
     x: (parent.width / 2) - (popup.width / 2)
     y: (parent.height / 2) - (popup.height / 2)
-    width: 800
+    width: 1000
     Popup {
         id: popup
         visible: root.visible
@@ -26,7 +26,7 @@ Item {
                 id: notifications
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1000
-                Layout.preferredWidth: 3000
+                Layout.preferredWidth: 1000
                 clip: true
                 snapMode: ListView.SnapOneItem
                 interactive: false
@@ -74,10 +74,9 @@ Item {
                                 }
                                 return model.display.created.toLocaleDateString();
                             }
-                            Layout.alignment: Qt.AlignRight
-                            Layout.preferredWidth: 300
                         }
                         BetterButton {
+                            id: closeButton
                             text: "X"
                             Layout.fillWidth: true
                             Layout.preferredWidth: 50
