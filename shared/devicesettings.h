@@ -1,6 +1,8 @@
 #ifndef DEVICESETTINGS_H
 #define DEVICESETTINGS_H
 
+#include <string>
+
 #define deviceSettings DeviceSettings::instance()
 
 #define DEBUG
@@ -26,6 +28,10 @@ private:
     DeviceSettings();
     ~DeviceSettings() {};
     void readDeviceType();
+    bool checkBitSet(int fd, int type, int i);
+    std::string buttonsPath = "";
+    std::string wacomPath = "";
+    std::string touchPath = "";
 };
 
 #endif // DEVICESETTINGS_H
