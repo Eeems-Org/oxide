@@ -29,9 +29,9 @@ private:
     ~DeviceSettings() {};
     void readDeviceType();
     bool checkBitSet(int fd, int type, int i);
-    const char* buttonsPath = nullptr;
-    const char* wacomPath = nullptr;
-    const char* touchPath = nullptr;
+    std::string buttonsPath = "";
+    std::string wacomPath = "";
+    std::string touchPath = "";
 };
 
 #endif // DEVICESETTINGS_H

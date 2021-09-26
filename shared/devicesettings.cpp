@@ -36,33 +36,30 @@ DeviceSettings::DeviceSettings(): _deviceType(DeviceType::RM1) {
         if (test_bit(EV_KEY, bit)) {
             if (checkBitSet(fd, EV_KEY, BTN_STYLUS) && test_bit(EV_ABS, bit)) {
                 qDebug() << "    Wacom input device detected";
-                wacomPath = fullPath.toStdString().c_str();
+                wacomPath = fullPath.toStdString();
                 continue;
             }
             if (checkBitSet(fd, EV_KEY, KEY_POWER)) {
                 qDebug() << "    Buttons input device detected";
-                buttonsPath = fullPath.toStdString().c_str();
+                buttonsPath = fullPath.toStdString();
                 continue;
             }
         }
         if(test_bit(EV_REL, bit) && checkBitSet(fd, EV_ABS, ABS_MT_SLOT)) {
             qDebug() << "    Touch input device detected";
-            touchPath = fullPath.toStdString().c_str();
+            touchPath = fullPath.toStdString();
             continue;
         }
         qDebug() << "    Invalid";
     }
-    if (wacomPath == nullptr) {
+    if (wacomPath.empty()) {
         qWarning() << "Wacom input device not found";
-        wacomPath = "";
     }
-    if (touchPath == nullptr) {
+    if (touchPath.empty()) {
         qWarning() << "Touch input device not found";
-        touchPath = "";
     }
-    if (buttonsPath == nullptr){
+    if (buttonsPath.empty()){
         qWarning() << "Buttons input device not found";
-        buttonsPath = "";
     }
 }
 bool DeviceSettings::checkBitSet(int fd, int type, int i) {
@@ -91,11 +88,11 @@ void DeviceSettings::readDeviceType() {
 
 DeviceSettings::DeviceType DeviceSettings::getDeviceType() const { return _deviceType; }
 
-const char* DeviceSettings::getButtonsDevicePath() const { return buttonsPath; }
+const char* DeviceSettings::getButtonsDevicePath() const { return buttonsPath.c_str(); }
 
-const char* DeviceSettings::getWacomDevicePath() const { return wacomPath; }
+const char* DeviceSettings::getWacomDevicePath() const { return wacomPath.c_str(); }
 
-const char* DeviceSettings::getTouchDevicePath() const { return touchPath; }
+const char* DeviceSettings::getTouchDevicePath() const { return touchPath.c_str(); }
 
 const char* DeviceSettings::getTouchEnvSetting() const {
     switch(getDeviceType()) {
