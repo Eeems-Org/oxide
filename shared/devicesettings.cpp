@@ -2,11 +2,70 @@
 #include <string.h>
 #include <stdio.h>
 #include <QDebug>
+#include <QDir>
 #include <QFile>
+
+#include <linux/input.h>
+
 #include "devicesettings.h"
+
+#define BITS_PER_LONG (sizeof(long) * 8)
+#define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
+#define OFF(x)  ((x)%BITS_PER_LONG)
+#define LONG(x) ((x)/BITS_PER_LONG)
+#define test_bit(bit, array) ((array[LONG(bit)] >> OFF(bit)) & 1)
 
 DeviceSettings::DeviceSettings(): _deviceType(DeviceType::RM1) {
     readDeviceType();
+
+    QDir dir("/dev/input");
+    qDebug() << "Looking for input devices...";
+    for(auto path : dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::System)){
+        qDebug() << ("  Checking " + path + "...").toStdString().c_str();
+        QString fullPath(dir.path() + "/" + path);
+        QFile device(fullPath);
+        device.open(QIODevice::ReadOnly);
+        int fd = device.handle();
+        int version;
+        if (ioctl(fd, EVIOCGVERSION, &version)){
+            qDebug() << "    Invalid";
+            continue;
+        }
+        unsigned long bit[EV_MAX];
+        ioctl(fd, EVIOCGBIT(0, EV_MAX), bit);
+        if (test_bit(EV_KEY, bit)) {
+            if (checkBitSet(fd, EV_KEY, BTN_STYLUS) && test_bit(EV_ABS, bit)) {
+                qDebug() << "    Wacom input device detected";
+                wacomPath = fullPath.toStdString();
+                continue;
+            }
+            if (checkBitSet(fd, EV_KEY, KEY_POWER)) {
+                qDebug() << "    Buttons input device detected";
+                buttonsPath = fullPath.toStdString();
+                continue;
+            }
+        }
+        if(test_bit(EV_REL, bit) && checkBitSet(fd, EV_ABS, ABS_MT_SLOT)) {
+            qDebug() << "    Touch input device detected";
+            touchPath = fullPath.toStdString();
+            continue;
+        }
+        qDebug() << "    Invalid";
+    }
+    if (wacomPath.empty()) {
+        qWarning() << "Wacom input device not found";
+    }
+    if (touchPath.empty()) {
+        qWarning() << "Touch input device not found";
+    }
+    if (buttonsPath.empty()){
+        qWarning() << "Buttons input device not found";
+    }
+}
+bool DeviceSettings::checkBitSet(int fd, int type, int i) {
+    unsigned long bit[NBITS(KEY_MAX)];
+    ioctl(fd, EVIOCGBIT(type, KEY_MAX), bit);
+    return test_bit(i, bit);
 }
 
 void DeviceSettings::readDeviceType() {
@@ -27,42 +86,13 @@ void DeviceSettings::readDeviceType() {
      _deviceType = DeviceType::RM1;
 }
 
-DeviceSettings::DeviceType DeviceSettings::getDeviceType() const {
-    return _deviceType;
-}
+DeviceSettings::DeviceType DeviceSettings::getDeviceType() const { return _deviceType; }
 
-const char* DeviceSettings::getButtonsDevicePath() const {
-    switch(getDeviceType()) {
-        case DeviceType::RM1:
-            return "/dev/input/event2";
-        case DeviceType::RM2:
-            return "/dev/input/event0";
-        default:
-            return "";
-    }
-}
+const char* DeviceSettings::getButtonsDevicePath() const { return buttonsPath.c_str(); }
 
-const char* DeviceSettings::getWacomDevicePath() const {
-    switch(getDeviceType()) {
-        case DeviceType::RM1:
-            return "/dev/input/event0";
-        case DeviceType::RM2:
-            return "/dev/input/event1";
-        default:
-            return "";
-    }
-}
+const char* DeviceSettings::getWacomDevicePath() const { return wacomPath.c_str(); }
 
-const char* DeviceSettings::getTouchDevicePath() const {
-    switch(getDeviceType()) {
-        case DeviceType::RM1:
-            return "/dev/input/event1";
-        case DeviceType::RM2:
-            return "/dev/input/event2";
-        default:
-            return "";
-    }
-}
+const char* DeviceSettings::getTouchDevicePath() const { return touchPath.c_str(); }
 
 const char* DeviceSettings::getTouchEnvSetting() const {
     switch(getDeviceType()) {
