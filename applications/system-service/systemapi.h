@@ -15,7 +15,7 @@
 #include "login1_interface.h"
 
 
-#define GESTURE_LENGTH 30
+#define GESTURE_LENGTH 936
 
 #define systemAPI SystemAPI::singleton()
 
