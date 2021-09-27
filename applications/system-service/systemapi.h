@@ -14,9 +14,6 @@
 #include "digitizerhandler.h"
 #include "login1_interface.h"
 
-
-#define GESTURE_LENGTH 30
-
 #define systemAPI SystemAPI::singleton()
 
 typedef org::freedesktop::login1::Manager Manager;
@@ -89,9 +86,11 @@ public:
        powerOffInhibitors(),
        mutex(),
        touches(),
-       swipeStates() {
+       swipeStates(),
+       swipeLengths() {
         for(short i = Right; i <= Down; i++){
             swipeStates[(SwipeDirection)i] = true;
+            swipeLengths[(SwipeDirection)i] = 30;
         }
         settings.sync();
         singleton(this);
@@ -121,6 +120,16 @@ public:
         }else if(!m_autoSleep){
             suspendTimer.stop();
         }
+
+        auto swipeLengthLeft = settings.value("swipeLengthLeft", 30).toInt();
+        auto swipeLengthRight = settings.value("swipeLengthRight", 30).toInt();
+        auto swipeLengthUp = settings.value("swipeLengthUp", 30).toInt();
+        auto swipeLengthDown = settings.value("swipeLengthDown", 30).toInt();
+        swipeLengths[Left] = swipeLengthLeft;
+        swipeLengths[Right] = swipeLengthRight;
+        swipeLengths[Up] = swipeLengthUp;
+        swipeLengths[Down] = swipeLengthDown;
+
         // Ask Systemd to tell us nicely when we are about to suspend or resume
         inhibitSleep();
         inhibitPowerOff();
@@ -211,6 +220,66 @@ public:
         toggleSwipeEnabled((SwipeDirection)direction);
     }
     void toggleSwipeEnabled(SwipeDirection direction){ setSwipeEnabled(direction, !getSwipeEnabled(direction)); }
+    Q_INVOKABLE void setSwipeLength(int direction, int length){
+        int maxLength;
+        if(!hasPermission("system")){
+            return;
+        }
+        if(direction <= SwipeDirection::None || direction > SwipeDirection::Down){
+            qDebug() << "Invalid swipe direction: " << direction;
+            return;
+        }
+        if (direction == SwipeDirection::Up || direction == SwipeDirection::Down){
+            maxLength = deviceSettings.getTouchHeight();
+        }
+        else{
+            maxLength = deviceSettings.getTouchWidth();
+        }
+        if (length < 0 || length > maxLength){
+            qDebug() << "Invalid swipe length: " << direction;
+            return;
+        }
+        setSwipeLength((SwipeDirection)direction, length);
+    }
+    void setSwipeLength(SwipeDirection direction, int length){
+        if (direction == None){
+            return;
+        }
+        switch(direction){
+            case Left:
+                qDebug() << "Swipe Left Length: " << length;
+                settings.setValue("swipeLengthLeft", length);
+                break;
+            case Right:
+                qDebug() << "Swipe Right Length: " << length;
+                settings.setValue("swipeLengthRight", length);
+                break;
+            case Up:
+                qDebug() << "Swipe Up Length: " << length;
+                settings.setValue("swipeLengthUp", length);
+                break;
+            case Down:
+                qDebug() << "Swipe Down Length: " << length;
+                settings.setValue("swipeLengthDown", length);
+                break;
+            default:
+                return;
+        }
+        settings.sync();
+        swipeLengths[direction] = length;
+        emit swipeLengthChanged(direction, length);
+    }
+    Q_INVOKABLE int getSwipeLength(int direction){
+        if(!hasPermission("system")){
+            return -1;
+        }
+        if(direction <= SwipeDirection::None || direction > SwipeDirection::Down){
+            qDebug() << "Invalid swipe direction: " << direction;
+            return -1;
+        }
+        return getSwipeLength((SwipeDirection)direction);
+    }
+    int getSwipeLength(SwipeDirection direction){ return swipeLengths[direction]; }
 public slots:
     void suspend(){
         if(sleepInhibited()){
@@ -280,6 +349,7 @@ signals:
     void sleepInhibitedChanged(bool);
     void powerOffInhibitedChanged(bool);
     void autoSleepChanged(int);
+    void swipeLengthChanged(int, int);
     void deviceSuspending();
     void deviceResuming();
 
@@ -416,6 +486,7 @@ private:
     QPoint location;
     QPoint startLocation;
     QMap<SwipeDirection, bool> swipeStates;
+    QMap<SwipeDirection, int> swipeLengths;
 
     void inhibitSleep(){
         inhibitors.append(Inhibitor(systemd, "sleep", qApp->applicationName(), "Handle sleep screen"));
@@ -553,14 +624,14 @@ private:
         }
         auto touch = touches.first();
         if(swipeDirection == Up){
-            if(!swipeStates[Up] || touch->y < location.y() || touch->y - startLocation.y() < GESTURE_LENGTH){
+            if(!swipeStates[Up] || touch->y < location.y() || touch->y - startLocation.y() < swipeLengths[Up]){
                 // Must end swiping up and having gone far enough
                 cancelSwipe(touch);
                 return;
             }
             emit bottomAction();
         }else if(swipeDirection == Down){
-            if(!swipeStates[Down] || touch->y > location.y() || startLocation.y() - touch->y < GESTURE_LENGTH){
+            if(!swipeStates[Down] || touch->y > location.y() || startLocation.y() - touch->y < swipeLengths[Down]){
                 // Must end swiping down and having gone far enough
                 cancelSwipe(touch);
                 return;
@@ -568,8 +639,8 @@ private:
             emit topAction();
         }else if(swipeDirection == Right || swipeDirection == Left){
             auto isRM2 = deviceSettings.getDeviceType() == DeviceSettings::RM2;
-            auto invalidLeft = !swipeStates[Left] || touch->x < location.x() || touch->x - startLocation.x() < GESTURE_LENGTH;
-            auto invalidRight = !swipeStates[Right] || touch->x > location.x() || startLocation.x() - touch->x < GESTURE_LENGTH;
+            auto invalidLeft = !swipeStates[Left] || touch->x < location.x() || touch->x - startLocation.x() < swipeLengths[Left];
+            auto invalidRight = !swipeStates[Right] || touch->x > location.x() || startLocation.x() - touch->x < swipeLengths[Right];
             if(swipeDirection == Right && (isRM2 ? invalidLeft : invalidRight)){
                 // Must end swiping right and having gone far enough
                 cancelSwipe(touch);

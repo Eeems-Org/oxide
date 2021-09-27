@@ -58,5 +58,13 @@
     <method name="toggleSwipeEnabled">
       <arg name="direction" type="i" direction="in"/>
     </method>
+    <method name="setSwipeLength">
+      <arg name="direction" type="i" direction="in"/>
+      <arg name="length" type="i" direction="in"/>
+    </method>
+    <method name="getSwipeLength">
+      <arg type="i" direction="out"/>
+      <arg name="direction" type="i" direction="in"/>
+    </method>
   </interface>
 </node>

@@ -35,6 +35,10 @@ class Controller : public QObject
     Q_OBJECT
     Q_PROPERTY(bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep NOTIFY automaticSleepChanged);
     Q_PROPERTY(int columns MEMBER m_columns WRITE setColumns NOTIFY columnsChanged);
+    Q_PROPERTY(int swipeLengthRight MEMBER m_swipeLengthRight WRITE setSwipeLengthRight NOTIFY swipeLengthRightChanged);
+    Q_PROPERTY(int swipeLengthLeft MEMBER m_swipeLengthLeft WRITE setSwipeLengthLeft NOTIFY swipeLengthLeftChanged);
+    Q_PROPERTY(int swipeLengthUp MEMBER m_swipeLengthUp WRITE setSwipeLengthUp NOTIFY swipeLengthUpChanged);
+    Q_PROPERTY(int swipeLengthDown MEMBER m_swipeLengthDown WRITE setSwipeLengthDown NOTIFY swipeLengthDownChanged);
     Q_PROPERTY(bool showWifiDb MEMBER m_showWifiDb WRITE setShowWifiDb NOTIFY showWifiDbChanged);
     Q_PROPERTY(bool showBatteryPercent MEMBER m_showBatteryPercent WRITE setShowBatteryPercent NOTIFY showBatteryPercentChanged);
     Q_PROPERTY(bool showBatteryTemperature MEMBER m_showBatteryTemperature WRITE setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged);
@@ -153,9 +157,15 @@ public:
             setAutomaticSleep(sleepAfter);
             setSleepAfter(sleepAfter);
         });
+        connect(systemApi, &System::swipeLengthChanged, [this](int direction, int length){
+            setSwipeLength(direction, length);
+        });
         auto autoSleep = systemApi->autoSleep();
         setAutomaticSleep(autoSleep);
         setSleepAfter(autoSleep);
+        for(short i = 1; i >= 4; ++i){
+            setSwipeLength(i, systemApi->getSwipeLength(i));
+        }
         emit powerOffInhibitedChanged(powerOffInhibited());
         emit sleepInhibitedChanged(sleepInhibited());
         reply = api.requestAPI("apps");
@@ -245,6 +255,24 @@ public:
         return m_columns;
     };
     void setColumns(int);
+    int swipeLengthRight() const {
+        return m_swipeLengthRight;
+    };
+    void setSwipeLengthRight(int length) { setSwipeLength(1, length); };
+    int swipeLengthLeft() const {
+        return m_swipeLengthLeft;
+    };
+    void setSwipeLengthLeft(int length) { setSwipeLength(2, length); };
+    int swipeLengthUp() const {
+        return m_swipeLengthUp;
+    };
+    void setSwipeLengthUp(int length) { setSwipeLength(3, length); };
+    int swipeLengthDown() const {
+        return m_swipeLengthDown;
+    };
+    void setSwipeLengthDown(int length) { setSwipeLength(4, length); };
+    int getSwipeLength(int direction);
+    void setSwipeLength(int direction, int length);
     bool showWifiDb() const {
         return m_showWifiDb;
     };
@@ -343,6 +371,10 @@ signals:
     void reload();
     void automaticSleepChanged(bool);
     void columnsChanged(int);
+    void swipeLengthRightChanged(int);
+    void swipeLengthLeftChanged(int);
+    void swipeLengthUpChanged(int);
+    void swipeLengthDownChanged(int);
     void fontSizeChanged(int);
     void showWifiDbChanged(bool);
     void showBatteryPercentChanged(bool);
@@ -621,6 +653,10 @@ private:
     void checkUITimer();
     bool m_automaticSleep = true;
     int m_columns = 6;
+    int m_swipeLengthRight = 30;
+    int m_swipeLengthLeft = 30;
+    int m_swipeLengthUp = 30;
+    int m_swipeLengthDown = 30;
     int m_fontSize = 23;
     int m_sleepAfter;
     bool m_showWifiDb = false;

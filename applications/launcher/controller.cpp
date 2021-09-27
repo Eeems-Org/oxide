@@ -77,6 +77,9 @@ void Controller::loadSettings(){
     qDebug() << "Automatic sleep" << sleepAfter;
     setAutomaticSleep(sleepAfter);
     setSleepAfter(sleepAfter);
+    for (short i = 1; i <= 4; i++){
+        setSwipeLength(i, systemApi->getSwipeLength(i));
+    }
     qDebug() << "Updating UI with settings from config file...";
     // Populate settings in UI
     QObject* columnsSpinBox = root->findChild<QObject*>("columnsSpinBox");
@@ -90,6 +93,30 @@ void Controller::loadSettings(){
         qDebug() << "Can't find sleepAfterSpinBox";
     }else{
         sleepAfterSpinBox->setProperty("value", this->sleepAfter());
+    }
+    QObject* swipeLengthRightSpinBox = root->findChild<QObject*>("swipeLengthRightSpinBox");
+    if(!swipeLengthRightSpinBox){
+        qDebug() << "Can't find swipeLengthRightSpinBox";
+    }else{
+        swipeLengthRightSpinBox->setProperty("value", this->swipeLengthRight());
+    }
+    QObject* swipeLengthLeftSpinBox = root->findChild<QObject*>("swipeLengthLeftSpinBox");
+    if(!swipeLengthLeftSpinBox){
+        qDebug() << "Can't find swipeLengthLeftSpinBox";
+    }else{
+        swipeLengthLeftSpinBox->setProperty("value", this->swipeLengthLeft());
+    }
+    QObject* swipeLengthUpSpinBox = root->findChild<QObject*>("swipeLengthUpSpinBox");
+    if(!swipeLengthUpSpinBox){
+        qDebug() << "Can't find swipeLengthUpSpinBox";
+    }else{
+        swipeLengthUpSpinBox->setProperty("value", this->swipeLengthUp());
+    }
+    QObject* swipeLengthDownSpinBox = root->findChild<QObject*>("swipeLengthDownSpinBox");
+    if(!swipeLengthDownSpinBox){
+        qDebug() << "Can't find swipeLengthDownSpinBox";
+    }else{
+        swipeLengthDownSpinBox->setProperty("value", this->swipeLengthDown());
     }
     qDebug() << "Finished updating UI.";
 }
@@ -161,6 +188,9 @@ void Controller::saveSettings(){
             setSleepAfter(sleepAfter);
             setAutomaticSleep(sleepAfter);
         }
+    }
+    for (short i = 1; i <= 4; i++) {
+        systemApi->setSwipeLength(i, getSwipeLength(i));
     }
     qDebug() << "Done saving configuration.";
 }
@@ -368,6 +398,44 @@ void Controller::setColumns(int columns){
     if(root != nullptr){
         qDebug() << "Columns: " << columns;
         emit columnsChanged(columns);
+    }
+}
+void Controller::setSwipeLength(int direction, int length){
+    switch (direction){
+        case 1:
+            m_swipeLengthRight = length;
+            emit swipeLengthRightChanged(length);
+            break;
+        case 2:
+            m_swipeLengthLeft = length;
+            emit swipeLengthLeftChanged(length);
+            break;
+        case 3:
+            m_swipeLengthUp = length;
+            emit swipeLengthUpChanged(length);
+            break;
+        case 4:
+            m_swipeLengthDown = length;
+            emit swipeLengthDownChanged(length);
+            break;
+        default:
+            qDebug() << "Invalid swipe direction: " << direction;
+            break;
+    }
+}
+int Controller::getSwipeLength(int direction){
+    switch (direction){
+        case 1:
+            return swipeLengthRight();
+        case 2:
+            return swipeLengthLeft();
+        case 3:
+            return swipeLengthUp();
+        case 4:
+            return swipeLengthDown();
+        default:
+            qDebug() << "Invalid swipe direction: " << direction;
+            return -1;
     }
 }
 void Controller::setShowWifiDb(bool state){
