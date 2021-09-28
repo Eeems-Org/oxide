@@ -65,8 +65,10 @@ void Notification::paintNotification(Application* resumeApp){
     auto fm = painter.fontMetrics();
     auto padding = 10;
     auto radius = 10;
-    auto width = fm.horizontalAdvance(text()) + (padding * 2);
-    auto height = fm.height() + (padding * 2);
+    QImage icon(m_icon);
+    auto iconSize = icon.isNull() ? 0 : 50;
+    auto width = fm.horizontalAdvance(text()) + iconSize + (padding * 3);
+    auto height = max(fm.height(), iconSize) + (padding * 2);
     auto left = size.width() - width;
     auto top = size.height() - height;
     updateRect = QRect(left, top, width, height);
@@ -74,10 +76,19 @@ void Notification::paintNotification(Application* resumeApp){
     painter.setPen(Qt::black);
     painter.drawRoundedRect(updateRect, radius, radius);
     painter.setPen(Qt::white);
-    painter.drawText(updateRect, Qt::AlignCenter, text());
+    QRect textRect(left + padding, top + padding, width - iconSize - (padding * 2), height - padding);
+    painter.drawText(textRect, Qt::AlignCenter, text());
     painter.end();
     qDebug() << "Updating screen " << updateRect << "...";
     EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+    if(!icon.isNull()){
+        QPainter painter2(frameBuffer);
+        QRect iconRect(size.width() - iconSize - padding, top + padding, iconSize, iconSize);
+        painter2.fillRect(iconRect, Qt::white);
+        painter2.drawImage(iconRect, icon);
+        painter2.end();
+        EPFrameBuffer::sendUpdate(iconRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+    }
     EPFrameBuffer::waitForLastUpdate();
     qDebug() << "Painted notification" << identifier();
     emit displayed();
