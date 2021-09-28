@@ -164,7 +164,7 @@ public:
         auto autoSleep = systemApi->autoSleep();
         setAutomaticSleep(autoSleep);
         setSleepAfter(autoSleep);
-        for(short i = 1; i >= 4; ++i){
+        for(short i = 1; i <= 4; ++i){
             setSwipeLength(i, systemApi->getSwipeLength(i));
         }
         emit powerOffInhibitedChanged(powerOffInhibited());
