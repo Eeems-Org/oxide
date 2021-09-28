@@ -25,6 +25,10 @@
     <signal name="autoSleepChanged">
       <arg type="i" direction="out"/>
     </signal>
+    <signal name="swipeLengthChanged">
+      <arg type="i" direction="out"/>
+      <arg type="i" direction="out"/>
+    </signal>
     <signal name="deviceSuspending">
     </signal>
     <signal name="deviceResuming">

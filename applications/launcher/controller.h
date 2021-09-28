@@ -10,6 +10,7 @@
 #include "sysobject.h"
 #include "wifinetworklist.h"
 #include "notificationlist.h"
+#include "devicesettings.h"
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
 #include "wifiapi_interface.h"
@@ -53,6 +54,8 @@ class Controller : public QObject
     Q_PROPERTY(bool showDate MEMBER m_showDate WRITE setShowDate NOTIFY showDateChanged);
     Q_PROPERTY(bool hasNotification MEMBER m_hasNotification NOTIFY hasNotificationChanged);
     Q_PROPERTY(QString notificationText MEMBER m_notificationText NOTIFY notificationTextChanged);
+    Q_PROPERTY(int maxTouchWidth READ maxTouchWidth);
+    Q_PROPERTY(int maxTouchHeight READ maxTouchHeight);
 public:
     static std::string exec(const char* cmd);
     EventFilter* filter;
@@ -329,6 +332,8 @@ public:
     NotificationList* getNotifications() { return notifications; }
     bool powerOffInhibited(){ return systemApi->powerOffInhibited(); }
     bool sleepInhibited(){ return systemApi->sleepInhibited(); }
+    int maxTouchWidth(){ return deviceSettings.getTouchWidth() * 0.9; }
+    int maxTouchHeight(){ return deviceSettings.getTouchHeight() * 0.9; }
 
     Q_INVOKABLE void disconnectWifiSignals(){
         disconnect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);

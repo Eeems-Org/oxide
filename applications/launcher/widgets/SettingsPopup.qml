@@ -168,7 +168,7 @@ Item {
                     id: swipeLengthRightSpinBox
                     objectName: "swipeLengthRightSpinBox"
                     from: 10
-                    to: 2000
+                    to: controller.maxTouchWidth
                     stepSize: 10
                     value: controller.swipeLengthRight
                     onValueChanged: controller.swipeLengthRight = this.value
@@ -186,7 +186,7 @@ Item {
                     id: swipeLengthLeftSpinBox
                     objectName: "swipeLengthLeftSpinBox"
                     from: 10
-                    to: 2000
+                    to: controller.maxTouchWidth
                     stepSize: 10
                     value: controller.swipeLengthLeft
                     onValueChanged: controller.swipeLengthLeft = this.value
@@ -204,7 +204,7 @@ Item {
                     id: swipeLengthUpSpinBox
                     objectName: "swipeLengthUpSpinBox"
                     from: 10
-                    to: 2000
+                    to: controller.maxTouchHeight
                     stepSize: 10
                     value: controller.swipeLengthUp
                     onValueChanged: controller.swipeLengthUp = this.value
@@ -222,7 +222,7 @@ Item {
                     id: swipeLengthDownSpinBox
                     objectName: "swipeLengthDownSpinBox"
                     from: 10
-                    to: 2000
+                    to: controller.maxTouchHeight
                     stepSize: 10
                     value: controller.swipeLengthDown
                     onValueChanged: controller.swipeLengthDown = this.value
