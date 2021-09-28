@@ -402,19 +402,19 @@ void Controller::setColumns(int columns){
 }
 void Controller::setSwipeLength(int direction, int length){
     switch (direction){
-        case 1:
+        case SwipeDirection::Right:
             m_swipeLengthRight = length;
             emit swipeLengthRightChanged(length);
             break;
-        case 2:
+        case SwipeDirection::Left:
             m_swipeLengthLeft = length;
             emit swipeLengthLeftChanged(length);
             break;
-        case 3:
+        case SwipeDirection::Up:
             m_swipeLengthUp = length;
             emit swipeLengthUpChanged(length);
             break;
-        case 4:
+        case SwipeDirection::Down:
             m_swipeLengthDown = length;
             emit swipeLengthDownChanged(length);
             break;
@@ -425,13 +425,13 @@ void Controller::setSwipeLength(int direction, int length){
 }
 int Controller::getSwipeLength(int direction){
     switch (direction){
-        case 1:
+        case SwipeDirection::Right:
             return swipeLengthRight();
-        case 2:
+        case SwipeDirection::Left:
             return swipeLengthLeft();
-        case 3:
+        case SwipeDirection::Up:
             return swipeLengthUp();
-        case 4:
+        case SwipeDirection::Down:
             return swipeLengthDown();
         default:
             qDebug() << "Invalid swipe direction: " << direction;

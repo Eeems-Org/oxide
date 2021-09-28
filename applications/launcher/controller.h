@@ -29,6 +29,7 @@ enum State { Normal, PowerSaving };
 enum BatteryState { BatteryUnknown, BatteryCharging, BatteryDischarging, BatteryNotPresent };
 enum ChargerState { ChargerUnknown, ChargerConnected, ChargerNotConnected, ChargerNotPresent };
 enum WifiState { WifiUnknown, WifiOff, WifiDisconnected, WifiOffline, WifiOnline};
+enum SwipeDirection { None, Right, Left, Up, Down };
 
 class Controller : public QObject
 {
