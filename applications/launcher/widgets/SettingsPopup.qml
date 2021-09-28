@@ -28,7 +28,10 @@ Item {
                 BetterCheckBox {
                     tristate: false
                     checkState: controller.automaticSleep ? Qt.Checked : Qt.Unchecked
-                    onClicked: controller.automaticSleep = this.checkState === Qt.Checked
+                    onClicked: {
+                        controller.automaticSleep = this.checkState === Qt.Checked
+                        controller.sleepAfter = sleepAfterSpinBox.value
+                    }
                     Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
                     Layout.fillWidth: false
                 }
