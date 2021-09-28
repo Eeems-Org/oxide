@@ -77,7 +77,7 @@ void Controller::loadSettings(){
     qDebug() << "Automatic sleep" << sleepAfter;
     setAutomaticSleep(sleepAfter);
     setSleepAfter(sleepAfter);
-    for (short i = 1; i <= 4; i++){
+    for(short i = 1; i <= 4; i++){
         setSwipeLength(i, systemApi->getSwipeLength(i));
     }
     qDebug() << "Updating UI with settings from config file...";
@@ -189,7 +189,7 @@ void Controller::saveSettings(){
             setAutomaticSleep(sleepAfter);
         }
     }
-    for (short i = 1; i <= 4; i++) {
+    for(short i = 1; i <= 4; i++) {
         systemApi->setSwipeLength(i, getSwipeLength(i));
     }
     qDebug() << "Done saving configuration.";

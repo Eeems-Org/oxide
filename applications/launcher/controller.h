@@ -251,43 +251,25 @@ public:
     Q_INVOKABLE void suspend();
     Q_INVOKABLE void lock();
     void updateBatteryLevel();
-    bool automaticSleep() const {
-        return m_automaticSleep;
-    };
+    bool automaticSleep() const { return m_automaticSleep; };
     void setAutomaticSleep(bool);
-    int columns() const {
-        return m_columns;
-    };
+    int columns() const { return m_columns; };
     void setColumns(int);
-    int swipeLengthRight() const {
-        return m_swipeLengthRight;
-    };
+    int swipeLengthRight() const { return m_swipeLengthRight; };
     void setSwipeLengthRight(int length) { setSwipeLength(1, length); };
-    int swipeLengthLeft() const {
-        return m_swipeLengthLeft;
-    };
+    int swipeLengthLeft() const { return m_swipeLengthLeft; };
     void setSwipeLengthLeft(int length) { setSwipeLength(2, length); };
-    int swipeLengthUp() const {
-        return m_swipeLengthUp;
-    };
+    int swipeLengthUp() const { return m_swipeLengthUp; };
     void setSwipeLengthUp(int length) { setSwipeLength(3, length); };
-    int swipeLengthDown() const {
-        return m_swipeLengthDown;
-    };
+    int swipeLengthDown() const { return m_swipeLengthDown; };
     void setSwipeLengthDown(int length) { setSwipeLength(4, length); };
     int getSwipeLength(int direction);
     void setSwipeLength(int direction, int length);
-    bool showWifiDb() const {
-        return m_showWifiDb;
-    };
+    bool showWifiDb() const { return m_showWifiDb; };
     void setShowWifiDb(bool);
-    bool showBatteryPercent() const {
-        return m_showBatteryPercent;
-    };
+    bool showBatteryPercent() const { return m_showBatteryPercent; };
     void setShowBatteryPercent(bool);
-    bool showBatteryTemperature() const {
-        return m_showBatteryTemperature;
-    };
+    bool showBatteryTemperature() const { return m_showBatteryTemperature; };
     void setShowBatteryTemperature(bool);
     int sleepAfter() const { return systemApi->autoSleep(); };
     void setSleepAfter(int);

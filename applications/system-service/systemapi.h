@@ -233,20 +233,19 @@ public:
             qDebug() << "Invalid swipe direction: " << direction;
             return;
         }
-        if (direction == SwipeDirection::Up || direction == SwipeDirection::Down){
+        if(direction == SwipeDirection::Up || direction == SwipeDirection::Down){
             maxLength = deviceSettings.getTouchHeight();
-        }
-        else{
+        }else{
             maxLength = deviceSettings.getTouchWidth();
         }
-        if (length < 0 || length > maxLength){
+        if(length < 0 || length > maxLength){
             qDebug() << "Invalid swipe length: " << direction;
             return;
         }
         setSwipeLength((SwipeDirection)direction, length);
     }
     void setSwipeLength(SwipeDirection direction, int length){
-        if (direction == None){
+        if(direction == None){
             return;
         }
         switch(direction){
