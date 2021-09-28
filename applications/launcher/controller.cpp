@@ -216,7 +216,6 @@ QList<QObject*> Controller::getApps(){
 void Controller::setAutoStartApplication(QString autoStartApplication){
     m_autoStartApplication = autoStartApplication;
     emit autoStartApplicationChanged(autoStartApplication);
-    saveSettings();
 }
 AppItem* Controller::getApplication(QString name){
     for(auto app : applications){
