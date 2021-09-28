@@ -10,7 +10,7 @@ Item {
     Popup {
         id: settings
         width: 1000
-        height: 1000
+        height: 1100
         closePolicy: Popup.NoAutoClose
         onClosed: parent.closed()
         visible: parent.visible
@@ -154,6 +154,78 @@ Item {
                     stepSize: 2
                     value: controller.columns
                     onValueChanged: controller.columns = this.value
+                    Layout.preferredWidth: 300
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                Label {
+                    text: "Right Swipe Length (pixels)"
+                    Layout.fillWidth: true
+                }
+                BetterSpinBox {
+                    id: swipeLengthRightSpinBox
+                    objectName: "swipeLengthRightSpinBox"
+                    from: 10
+                    to: controller.maxTouchWidth
+                    stepSize: 10
+                    value: controller.swipeLengthRight
+                    onValueChanged: controller.swipeLengthRight = this.value
+                    Layout.preferredWidth: 300
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                Label {
+                    text: "Left Swipe Length (pixels)"
+                    Layout.fillWidth: true
+                }
+                BetterSpinBox {
+                    id: swipeLengthLeftSpinBox
+                    objectName: "swipeLengthLeftSpinBox"
+                    from: 10
+                    to: controller.maxTouchWidth
+                    stepSize: 10
+                    value: controller.swipeLengthLeft
+                    onValueChanged: controller.swipeLengthLeft = this.value
+                    Layout.preferredWidth: 300
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                Label {
+                    text: "Up Swipe Length (pixels)"
+                    Layout.fillWidth: true
+                }
+                BetterSpinBox {
+                    id: swipeLengthUpSpinBox
+                    objectName: "swipeLengthUpSpinBox"
+                    from: 10
+                    to: controller.maxTouchHeight
+                    stepSize: 10
+                    value: controller.swipeLengthUp
+                    onValueChanged: controller.swipeLengthUp = this.value
+                    Layout.preferredWidth: 300
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                Label {
+                    text: "Down Swipe Length (pixels)"
+                    Layout.fillWidth: true
+                }
+                BetterSpinBox {
+                    id: swipeLengthDownSpinBox
+                    objectName: "swipeLengthDownSpinBox"
+                    from: 10
+                    to: controller.maxTouchHeight
+                    stepSize: 10
+                    value: controller.swipeLengthDown
+                    onValueChanged: controller.swipeLengthDown = this.value
                     Layout.preferredWidth: 300
                 }
             }
