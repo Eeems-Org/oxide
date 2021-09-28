@@ -4,6 +4,23 @@
 #include "notificationapi.h"
 #include "appsapi.h"
 
+Notification::Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
+ : QObject(parent),
+   m_path(path),
+   m_identifier(identifier),
+   m_owner(owner),
+   m_application(application),
+   m_text(text),
+   m_icon(icon) {
+    m_created = QDateTime::currentSecsSinceEpoch();
+    if(!icon.isEmpty()){
+        return;
+    }
+    auto app = appsAPI->getApplication(m_application);
+    if(app != nullptr && !app->icon().isEmpty()){
+        m_icon = app->icon();
+    }
+}
 
 void Notification::display(){
     if(!hasPermission("notification")){
@@ -110,6 +127,22 @@ void Notification::paintNotification(Application* resumeApp){
         }
         notificationAPI->unlock();
     });
+}
+
+void Notification::setIcon(QString icon){
+    if(!hasPermission("notification")){
+        return;
+    }
+    if(icon.isEmpty()){
+        auto application = appsAPI->getApplication(m_application);
+        if(application != nullptr && !application->icon().isEmpty()){
+            icon = application->icon();
+        }
+    }
+    m_icon = icon;
+    QVariantMap result;
+    result.insert("icon", m_icon);
+    emit changed(result);
 }
 
 bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }

@@ -18,16 +18,7 @@ class Notification : public QObject{
     Q_PROPERTY(QString text READ text WRITE setText)
     Q_PROPERTY(QString icon READ icon WRITE setIcon)
 public:
-    Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
-     : QObject(parent),
-       m_path(path),
-       m_identifier(identifier),
-       m_owner(owner),
-       m_application(application),
-       m_text(text),
-       m_icon(icon) {
-        m_created = QDateTime::currentSecsSinceEpoch();
-    }
+    Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent);
     ~Notification(){
         unregisterPath();
     }
@@ -93,15 +84,7 @@ public:
         }
         return m_icon;
     }
-    void setIcon(QString icon){
-        if(!hasPermission("notification")){
-            return;
-        }
-        m_icon = icon;
-        QVariantMap result;
-        result.insert("icon", m_icon);
-        emit changed(result);
-    }
+    void setIcon(QString icon);
 
     QString owner(){
         if(!hasPermission("notification")){
