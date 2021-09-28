@@ -90,7 +90,6 @@ public:
        swipeLengths() {
         for(short i = Right; i <= Down; i++){
             swipeStates[(SwipeDirection)i] = true;
-            swipeLengths[(SwipeDirection)i] = 30;
         }
         settings.sync();
         singleton(this);
@@ -120,16 +119,13 @@ public:
         }else if(!m_autoSleep){
             suspendTimer.stop();
         }
-
-        auto swipeLengthLeft = settings.value("swipeLengthLeft", 30).toInt();
-        auto swipeLengthRight = settings.value("swipeLengthRight", 30).toInt();
-        auto swipeLengthUp = settings.value("swipeLengthUp", 30).toInt();
-        auto swipeLengthDown = settings.value("swipeLengthDown", 30).toInt();
-        swipeLengths[Left] = swipeLengthLeft;
-        swipeLengths[Right] = swipeLengthRight;
-        swipeLengths[Up] = swipeLengthUp;
-        swipeLengths[Down] = swipeLengthDown;
-
+        settings.beginReadArray("swipes");
+        for(short i = Right; i <= Down; i++){
+            settings.setArrayIndex(i);
+            swipeStates[(SwipeDirection)i] = settings.value("enabled", true).toBool();
+            swipeLengths[(SwipeDirection)i] = settings.value("length", 30).toInt();
+        }
+        settings.endArray();
         // Ask Systemd to tell us nicely when we are about to suspend or resume
         inhibitSleep();
         inhibitPowerOff();
@@ -197,6 +193,14 @@ public:
                 return;
         }
         swipeStates[direction] = enabled;
+        settings.beginWriteArray("swipes");
+        for(short i = Right; i <= Down; i++){
+            settings.setArrayIndex(i);
+            settings.setValue("enabled", swipeStates[(SwipeDirection)i]);
+            settings.setValue("length", swipeLengths[(SwipeDirection)i]);
+        }
+        settings.endArray();
+        settings.sync();
     }
     Q_INVOKABLE bool getSwipeEnabled(int direction){
         if(!hasPermission("system")){
@@ -248,25 +252,28 @@ public:
         switch(direction){
             case Left:
                 qDebug() << "Swipe Left Length: " << length;
-                settings.setValue("swipeLengthLeft", length);
                 break;
             case Right:
                 qDebug() << "Swipe Right Length: " << length;
-                settings.setValue("swipeLengthRight", length);
                 break;
             case Up:
                 qDebug() << "Swipe Up Length: " << length;
-                settings.setValue("swipeLengthUp", length);
                 break;
             case Down:
                 qDebug() << "Swipe Down Length: " << length;
-                settings.setValue("swipeLengthDown", length);
                 break;
             default:
                 return;
         }
-        settings.sync();
         swipeLengths[direction] = length;
+        settings.beginWriteArray("swipes");
+        for(short i = Right; i <= Down; i++){
+            settings.setArrayIndex(i);
+            settings.setValue("enabled", swipeStates[(SwipeDirection)i]);
+            settings.setValue("length", swipeLengths[(SwipeDirection)i]);
+        }
+        settings.endArray();
+        settings.sync();
         emit swipeLengthChanged(direction, length);
     }
     Q_INVOKABLE int getSwipeLength(int direction){
