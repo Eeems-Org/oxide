@@ -316,7 +316,7 @@ ApplicationWindow {
                             }
                             var name = itemInfo.model.name
                             controller.autoStartApplication = controller.autoStartApplication !== name ? name : "";
-
+                            controller.saveSettings();
                         }
                     }
                 }
