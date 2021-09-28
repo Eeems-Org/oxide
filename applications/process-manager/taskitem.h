@@ -46,16 +46,24 @@ public:
             return;
         }
         QStringList statCols = file_contents.split(" ", Qt::SkipEmptyParts);
-        file_contents = readFile(folder() + "/comm");
+        file_contents = readFile(folder() + "/cmdline");
         if(file_contents == ""){
             return;
         }
-        setName(file_contents);
+        auto name = file_contents
+            .split("\n", Qt::SkipEmptyParts)
+            .first()
+            .split("/", Qt::SkipEmptyParts)
+            .last();
+        setName(name);
         file_contents = readFile(folder() + "/stat");
         if(file_contents == ""){
             return;
         }
-        auto procCols = file_contents.split("\n", Qt::SkipEmptyParts).first().split(" ", Qt::SkipEmptyParts);
+        auto procCols = file_contents
+            .split("\n", Qt::SkipEmptyParts)
+            .first()
+            .split(" ", Qt::SkipEmptyParts);
         file_contents = readFile(folder() + "/smaps");
         if(file_contents == ""){
             return;
