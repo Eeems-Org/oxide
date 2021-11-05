@@ -10,6 +10,7 @@
         "/home/root",
         "/tmp/runtime-root",
         "/usr/share",
+        "/usr/share/remarkable/templates",
         "/run/udev",
         "/run/dbus",
         "/run/systemd/resolve",
