@@ -45,7 +45,7 @@ DeviceSettings::DeviceSettings(): _deviceType(DeviceType::RM1) {
                 continue;
             }
         }
-        if(test_bit(EV_REL, bit) && checkBitSet(fd, EV_ABS, ABS_MT_SLOT)) {
+        if (checkBitSet(fd, EV_ABS, ABS_MT_SLOT)) {
             qDebug() << "    Touch input device detected";
             touchPath = fullPath.toStdString();
             continue;
