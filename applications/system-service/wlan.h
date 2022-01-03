@@ -34,7 +34,16 @@ public:
         return "";
     }
     bool pingIP(std::string ip, const char* port) {
-        return !system(("{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port + "; } > /dev/null 2>&1").c_str());
+        auto process = new QProcess();
+        process->setProgram("bash");
+        std::string cmd("{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port + "; } > /dev/null 2>&1");
+        process->setArguments(QStringList() << "-c" << cmd.c_str());
+        process->start();
+        if(!process->waitForFinished(100)){
+            process->kill();
+            return false;
+        }
+        return !process->exitCode();
     }
     bool isConnected(){
         auto ip = exec("ip r | grep " + iface() + " | grep default | awk '{print $3}'");

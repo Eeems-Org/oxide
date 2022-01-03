@@ -101,6 +101,7 @@ public:
                         INetwork inetwork(WPA_SUPPLICANT_SERVICE, path.path(), bus, interface);
                         auto properties = inetwork.properties();
                         auto network = new Network(getPath("network", properties["ssid"].toString()), properties, this);
+                        network->setEnabled(true);
                         network->addNetwork(path.path(), interface);
                         networks.append(network);
                     }
@@ -131,6 +132,7 @@ public:
         timer->moveToThread(qApp->thread());
         connect(timer, &QTimer::timeout, this, QOverload<>::of(&WifiAPI::update));
         loadNetworks();
+        m_state = getCurrentState();
         if(settings.value("wifion").toBool()){
             enable();
         }else{
@@ -211,7 +213,10 @@ public:
         }
         settings.setValue("wifion", true);
         validateSupplicant();
-        if(m_state != Online){
+        auto state = getCurrentState();
+        m_state = state;
+        if(state != Online){
+            qDebug() << "State:" << state;
             reconnect();
         }
         return true;
@@ -699,8 +704,12 @@ private:
                 if(network->ssid() == ssid && network->protocol() == protocol){
                     qDebug() << "  Found network" << network->ssid();
                     found = true;
-                    network->setPassword(registration["password"].toString());
-                    network->setEnabled(true);
+                    if(network->password() != registration["password"].toString()){
+                        network->setPassword(registration["password"].toString());
+                    }
+                    if(!network->enabled()){
+                        network->setEnabled(true);
+                    }
                     break;
                 }
             }
@@ -769,8 +778,6 @@ private:
             }
             if(wlan->isConnected()){
                 state = Online;
-            }
-            if(state == Online){
                 break;
             }
         }
