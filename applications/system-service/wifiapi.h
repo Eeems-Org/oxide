@@ -441,9 +441,9 @@ public:
     }
     int rssi(){
         if(!hasPermission("wifi")){
-            return 0;
+            return -100;
         }
-        int result = 0;
+        int result = -100;
         for(auto wlan : wlans){
             int rssi = wlan->rssi();
             if(result < rssi){

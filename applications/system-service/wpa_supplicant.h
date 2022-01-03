@@ -388,7 +388,7 @@ public Q_SLOTS: // METHODS
         return asyncCallWithArgumentList(QStringLiteral("SetPKCS11EngineAndModulePath"), argumentList);
     }
 
-    inline QDBusPendingReply<QVariantMap> SignalPoll()
+    inline QDBusPendingReply<QVariant> SignalPoll()
     {
         QList<QVariant> argumentList;
         return asyncCallWithArgumentList(QStringLiteral("SignalPoll"), argumentList);

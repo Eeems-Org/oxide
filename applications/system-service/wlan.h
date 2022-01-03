@@ -62,13 +62,30 @@ public:
             return 0;
         }
     }
-    int rssi(){
-        auto reply = m_interface->SignalPoll();
-        if(!reply.isValid()){
+    signed int rssi(){
+        QDBusMessage message = m_interface->call("SignalPoll");
+        QMap<QString, QVariant> props;
+        const QVariant& arg = message.arguments().at(0).value<QDBusVariant>().variant();
+        const QDBusArgument& dArg = arg.value<QDBusArgument>();
+        dArg.beginMap();
+        while(!dArg.atEnd()){
+            QString key;
+            QVariant value;
+            dArg.beginMapEntry();
+            dArg >> key;
+            dArg >> value;
+            dArg.endMapEntry();
+            if(key == "rssi"){
+                props[key] = value;
+                break;
+            }
+        }
+        dArg.endMap();
+        auto result = props["rssi"].toInt();
+        if(result >= 0){
             return -100;
         }
-        auto props = reply.value();
-        return props["rssi"].toInt();
+        return result;
     }
 signals:
     void BSSAdded(Wlan*, QDBusObjectPath, QVariantMap);
