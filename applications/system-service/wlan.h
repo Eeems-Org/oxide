@@ -51,6 +51,9 @@ public:
     }
     int link(){
         auto out = exec("grep " + iface() + " /proc/net/wireless | awk '{print $3}'");
+        if(QString(out.c_str()).isEmpty()){
+            return 0;
+        }
         try {
             return std::stoi(out);
         }
@@ -58,6 +61,14 @@ public:
             qDebug() << "link failed: " << out.c_str();
             return 0;
         }
+    }
+    int rssi(){
+        auto reply = m_interface->SignalPoll();
+        if(!reply.isValid()){
+            return -100;
+        }
+        auto props = reply.value();
+        return props["rssi"].toInt();
     }
 signals:
     void BSSAdded(Wlan*, QDBusObjectPath, QVariantMap);

@@ -73,8 +73,7 @@ ApplicationWindow {
                     id: wifiState
                     objectName: "wifiState"
                     property string state: "unknown"
-                    property int link: 0
-                    property int level: 0
+                    property int rssi: 0
                     property bool connected: false
                     source: {
                         var icon;
@@ -84,20 +83,20 @@ ApplicationWindow {
                             icon = "down";
                         }else if(!connected){
                             icon = "disconnected";
-                        }else if(link < 20){
-                            icon = "0_bar";
-                        }else if(link < 40){
-                            icon = "1_bar";
-                        }else if(link < 60){
-                            icon = "2_bar";
-                        }else if(link < 80){
-                            icon = "3_bar";
-                        }else{
+                        }else if(rssi > -50) {
                             icon = "4_bar";
+                        }else if(rssi > -60){
+                            icon = "3_bar";
+                        }else if(rssi > -70){
+                            icon = "2_bar";
+                        }else if(rssi > -80){
+                            icon = "1_bar";
+                        }else{
+                            icon = "0_bar";
                         }
                         return "qrc:/img/wifi/" + icon + ".png";
                     }
-                    text: controller.showWifiDb ? level + "dBm" : ""
+                    text: controller.showWifiDb ? rssi + "dBm" : ""
                     MouseArea {
                         anchors.fill: parent
                         onClicked: stateController.state = "wifi"

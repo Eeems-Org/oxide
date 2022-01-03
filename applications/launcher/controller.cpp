@@ -368,21 +368,7 @@ std::string Controller::exec(const char* cmd) {
     }
     return result;
 }
-void Controller::updateUIElements(){
-    if(showWifiDb()){
-        QObject* ui = root->findChild<QObject*>("wifiState");
-        if(ui){
-            int level = 0;
-            if(ui->property("connected").toBool()){
-                level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
-            }
-            if(wifiLevel != level){
-                wifiLevel = level;
-                ui->setProperty("level", level);
-            }
-        }
-    }
-}
+void Controller::updateUIElements(){}
 void Controller::setAutomaticSleep(bool state){
     m_automaticSleep = state;
     if(state){

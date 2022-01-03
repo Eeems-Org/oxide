@@ -80,7 +80,7 @@ public:
         connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
         connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
         connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
-        connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
+        connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
 
         qDebug() << "Requesting apps API...";
         path = api->requestAPI("apps");
@@ -113,7 +113,7 @@ public:
         chargerStateChanged(powerApi->chargerState());
         powerStateChanged(powerApi->state());
         wifiStateChanged(wifiApi->state());
-        wifiLinkChanged(wifiApi->link());
+        wifiRssiChanged(wifiApi->rssi());
 
         clockUI->setProperty("text", QTime::currentTime().toString("h:mm a"));
 
@@ -313,21 +313,21 @@ private slots:
             case WifiOnline:
                 wifiUI->setProperty("state", "up");
                 wifiUI->setProperty("connected", true);
-                wifiUI->setProperty("link", wifiApi->link());
+                wifiUI->setProperty("rssi", wifiApi->rssi());
             break;
             case WifiUnknown:
             default:
                 wifiUI->setProperty("state", "unkown");
         }
     }
-    void wifiLinkChanged(int link){
+    void wifiRssiChanged(int rssi){
         if(!getWifiUI()){
             return;
         }
         if(wifiApi->state() != WifiOnline){
-            link = 0;
+            rssi = -100;
         }
-        wifiUI->setProperty("link", link);
+        wifiUI->setProperty("rssi", rssi);
     }
 
     void batteryLevelChanged(int level){
