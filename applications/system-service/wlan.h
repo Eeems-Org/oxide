@@ -64,6 +64,10 @@ public:
     }
     signed int rssi(){
         QDBusMessage message = m_interface->call("SignalPoll");
+        if (message.type() == QDBusMessage::ErrorMessage) {
+            qWarning() << "SignalPoll error: " << message.errorMessage();
+            return -100;
+        }
         QMap<QString, QVariant> props;
         const QVariant& arg = message.arguments().at(0).value<QDBusVariant>().variant();
         const QDBusArgument& dArg = arg.value<QDBusArgument>();
