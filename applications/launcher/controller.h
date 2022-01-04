@@ -117,7 +117,7 @@ public:
         connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
         connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
         connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
-        connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
+        connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
         networks->setAPI(wifiApi);
         auto state = wifiApi->state();
         m_wifion = state != WifiState::WifiOff && state != WifiState::WifiUnknown;
@@ -130,7 +130,7 @@ public:
             powerStateChanged(powerApi->state());
 
             wifiStateChanged(wifiApi->state());
-            wifiLinkChanged(wifiApi->link());
+            wifiRssiChanged(wifiApi->rssi());
             emit wifiOnChanged(m_wifion);
             if(stateController->property("state") == "wifi"){
                 connectWifiSignals();
@@ -619,7 +619,7 @@ private slots:
                 case WifiOnline:
                     ui->setProperty("state", "up");
                     ui->setProperty("connected", true);
-                    ui->setProperty("link", wifiLink);
+                    ui->setProperty("rssi", wifiApi->rssi());
                 break;
                 case WifiUnknown:
                 default:
@@ -627,14 +627,13 @@ private slots:
             }
         }
     }
-    void wifiLinkChanged(int link){
-        wifiLink = link;
+    void wifiRssiChanged(int rssi){
         QObject* ui = root->findChild<QObject*>("wifiState");
         if(ui){
             if(wifiState != WifiOnline){
-                link = 0;
+                rssi = -100;
             }
-            ui->setProperty("link", link);
+            ui->setProperty("rssi", rssi);
         }
     }
 private:
@@ -657,8 +656,6 @@ private:
 
     bool m_powerConnected = false;
     int wifiState = WifiUnknown;
-    int wifiLink = 0;
-    int wifiLevel = 0;
 
     bool m_wifion;
     SysObject wifi;

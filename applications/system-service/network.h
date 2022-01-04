@@ -46,7 +46,9 @@ public:
     void setEnabled(bool enabled){
         m_enabled = enabled;
         for(auto network : networks){
-            network->setEnabled(true);
+            if(network->enabled() != enabled){
+                network->setEnabled(enabled);
+            }
         }
         emit stateChanged(enabled);
     }
@@ -69,7 +71,17 @@ public:
         if(passwordField() == ""){
             return "";
         }
-        return m_properties[passwordField()].toString();
+        auto password = m_properties[passwordField()].toString();
+        if(password != ""){
+            return password;
+        }
+        for(auto network : networks){
+            password = network->properties()[passwordField()].toString();
+            if(password != ""){
+                return password;
+            }
+        }
+        return "";
     }
     void setPassword(QString password) {
         if(!hasPermission("wifi")){
@@ -139,7 +151,9 @@ public:
         }
         auto network = new INetwork(WPA_SUPPLICANT_SERVICE, path, QDBusConnection::systemBus(), interface);
         networks.append(network);
-        network->setEnabled(m_enabled);
+        if(network->enabled() != m_enabled){
+            network->setEnabled(m_enabled);
+        }
         QObject::connect(network, &INetwork::PropertiesChanged, this, &Network::PropertiesChanged, Qt::QueuedConnection);
     }
     void removeNetwork(const QString& path){
