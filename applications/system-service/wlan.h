@@ -68,23 +68,7 @@ public:
             qWarning() << "SignalPoll error: " << message.errorMessage();
             return -100;
         }
-        QMap<QString, QVariant> props;
-        const QVariant& arg = message.arguments().at(0).value<QDBusVariant>().variant();
-        const QDBusArgument& dArg = arg.value<QDBusArgument>();
-        dArg.beginMap();
-        while(!dArg.atEnd()){
-            QString key;
-            QVariant value;
-            dArg.beginMapEntry();
-            dArg >> key;
-            dArg >> value;
-            dArg.endMapEntry();
-            if(key == "rssi"){
-                props[key] = value;
-                break;
-            }
-        }
-        dArg.endMap();
+        auto props = qdbus_cast<QVariantMap>(message.arguments().at(0).value<QDBusVariant>().variant().value<QDBusArgument>());
         auto result = props["rssi"].toInt();
         if(result >= 0){
             return -100;
