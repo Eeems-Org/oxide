@@ -50,9 +50,9 @@ runs:
             mkdir mnt
             sshfs -o IdentityFile=private/id_rsa \
                 -o UserKnownHostsFile=private/known_hosts \
-                '${{ inputs.local-path }}' mnt
+                '${{ inputs.remote-path }}' mnt
             rsync --archive --verbose --compress --delete \
-                mnt '${{ inputs.remote-path }}'
+                '${{ inputs.local-path }}' mnt
             umount mnt
             rmdir mnt
             rm -r private
