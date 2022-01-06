@@ -241,6 +241,7 @@ ApplicationWindow {
             State { name: "prompt" },
             State { name: "confirmPin" },
             State { name: "import" },
+            State { name: "noPin" },
             State { name: "loading" }
         ]
         transitions: [
@@ -290,6 +291,12 @@ ApplicationWindow {
                         pinEntry.value = "";
                     } }
                     PropertyAction { target: pinEntry; property: "visible"; value: true }
+                }
+            },
+            Transition {
+                from: "*"; to: "noPin"
+                SequentialAnimation {
+                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                 }
             },
             Transition {
