@@ -131,17 +131,23 @@ public:
             return;
         }
 
-        if(shouldQuit()){
-            qDebug() << "No pin set";
-            previousApplication();
-            qApp->quit();
+        if(hasPin()){
+            qDebug() << "Prompting for PIN";
+            QTimer::singleShot(100, [this]{
+                setState("loaded");
+            });
             return;
         }
-
-        qDebug() << "Prompting for PIN";
+        qDebug() << "No pin set";
         QTimer::singleShot(100, [this]{
-            setState("loaded");
+            setState("noPin");
+            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
+            previousApplication();
+            QTimer::singleShot(100, [this]{
+                setState("loading");
+            });
         });
+
     }
     void launchStartupApp(){
         QDBusObjectPath path = appsApi->startupApplication();
@@ -155,7 +161,7 @@ public:
         Application app(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus());
         app.launch();
     }
-    bool shouldQuit(){ return settings.contains("pin") && !storedPin().length(); }
+    bool hasPin(){ return settings.contains("pin") && storedPin().length(); }
     void previousApplication(){
         if(!appsApi->previousApplication()){
             launchStartupApp();
