@@ -24,7 +24,7 @@ runs:
             echo '${{ inputs.ssh-key }}' > private/id_rsa
             echo '${{ inputs.ssh-known-hosts }}' > private/known_hosts
             chmod 600 private/*
-            rsync --archive --verbose --compress --delete \
+            rsync --rsh=ssh --archive --verbose --compress --delete \
                 -e "ssh -i private/id_rsa -o UserKnownHostsFile=private/known_hosts" \
                 '${{ inputs.local-path }}' \
                 '${{ inputs.remote-path }}'
