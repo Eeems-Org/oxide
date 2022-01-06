@@ -19,6 +19,12 @@ jobs:
                 python-version: '3.8'
             - name: Build website
               run: cd web && make prod
+            - name: Cache Python environment
+              uses: actions/cache@v2
+              id: cache-python
+              with:
+                path: web/dist/.venv
+                key: web/dist/.venv-${{ hashFiles('web/dist/requirements.txt') }}
             - name: Sync website with the remote repository
               uses: ./.github/actions/sync-repository
               with:

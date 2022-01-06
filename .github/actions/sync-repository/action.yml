@@ -16,10 +16,24 @@ inputs:
 runs:
     using: composite
     steps:
-        - name: install sshfs
-            shell: bash
-            run: |
-                apt install -y sshfs
+        - name: Cache Apt packages
+          uses: actions/cache@v2
+          id: cache-apt
+          with:
+            path: ~/.aptcache
+            key: ${{ env.aptVersion }}
+        - name: Install or restore Apt packages
+          shell: bash
+          env:
+            CACHE_HIT: ${{ steps.cache-apt.outputs.cache-hit }}
+          run: |
+            if [[ "$CACHE_HIT" != 'true' ]]; then
+                sudo apt-get install -yq sshfs
+                mkdir -p ~/.aptcache
+                sudo dpkg -L sshfs | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/.aptcache/
+            else
+                sudo cp --verbose --force --recursive ~/.aptcache/* /
+            fi
         - name: rsync packages and index
           shell: bash
           run: |
