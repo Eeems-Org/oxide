@@ -23,12 +23,10 @@ Options for interacting with the API
 
 There are a number of options for interacting with the API.
 
-.. code:: 
-
-   1. Using the `rot` command line tool.
-   2. Generating classes using the automatic interface xml files.
-   3. Making calls using dbus-send.
-   4. Making D-Bus calls manually in your language of choice.
+  1. Using the `rot` command line tool.
+  2. Generating classes using the automatic interface xml files.
+  3. Making calls using dbus-send.
+  4. Making D-Bus calls manually in your language of choice.
 
 For the purposes of this documentation we will document using ``rot`` as
 well as using Qt generated classes.
