@@ -46,10 +46,15 @@ runs:
             chmod 700 private
             echo '${{ inputs.ssh-key }}' > private/id_rsa
             echo '${{ inputs.ssh-known-hosts }}' > private/known_hosts
+            echo 'HostKeyAlgorithms +ssh-rsa' > private/config
+            echo 'PubkeyAcceptedKeyTypes +ssh-rsa' >> private/config
             chmod 600 private/*
             mkdir mnt
-            sshfs -o IdentityFile=private/id_rsa \
+            sshfs \
+                -o IdentityFile=private/id_rsa \
                 -o UserKnownHostsFile=private/known_hosts \
+                -F ./private/config \
+                -odebug,sshfs_debug,loglevel=debug \
                 '${{ inputs.remote-path }}' mnt
             rsync --archive --verbose --compress --delete \
                 '${{ inputs.local-path }}' mnt

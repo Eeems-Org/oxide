@@ -1,7 +1,22 @@
 name: Build oxide
 
-on: [push, pull_request]
-
+on:
+  push:
+    paths:
+      - 'applications/**'
+      - 'shared/**'
+      - 'assets/**'
+      - 'interfaces/**'
+      - 'Makefile'
+      - 'package'
+  pull_request:
+    paths:
+      - 'applications/**'
+      - 'shared/**'
+      - 'assets/**'
+      - 'interfaces/**'
+      - 'Makefile'
+      - 'package'
 jobs:
   build:
     name: Build and package
