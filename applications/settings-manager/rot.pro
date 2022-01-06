@@ -38,4 +38,9 @@ target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
-    ../../shared/dbussettings.h
+    ../../shared/dbussettings.h \
+    ../../shared/devicesettings.h
+
+LIBS += -L$$PWD/../../shared/sentry/install/lib -lsentry
+INCLUDEPATH += $$PWD/../../shared/sentry/install/include
+DEPENDPATH += $$PWD/../../shared/sentry/install/lib

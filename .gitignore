@@ -5,3 +5,5 @@ release/
 .qmake.stash
 applications/*/Makefile
 result
+shared/sentry/build
+shared/sentry/install

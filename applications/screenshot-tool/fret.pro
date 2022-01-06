@@ -25,8 +25,13 @@ DBUS_INTERFACES += ../../interfaces/notification.xml
 
 INCLUDEPATH += ../../shared
 HEADERS += \
-    ../../shared/dbussettings.h
+    ../../shared/dbussettings.h \
+    ../../shared/devicesettings.h
 
 LIBS += -L$$PWD/../../shared/ -lqsgepaper
 INCLUDEPATH += $$PWD/../../shared
 DEPENDPATH += $$PWD/../../shared
+
+LIBS += -L$$PWD/../../shared/sentry/install/lib -lsentry
+INCLUDEPATH += $$PWD/../../shared/sentry/install/include
+DEPENDPATH += $$PWD/../../shared/sentry/install/lib

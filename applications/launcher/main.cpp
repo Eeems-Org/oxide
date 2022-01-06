@@ -33,10 +33,7 @@ function<void(int)> shutdown_handler;
 void signalHandler2(int signal) { shutdown_handler(signal); }
 
 int main(int argc, char *argv[]){
-//    QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
-//    xochitlSettings.sync();
-//    qDebug() << xochitlSettings.value("Password").toString();
-
+    initSentry;
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
     }

@@ -80,3 +80,7 @@ HEADERS += \
 LIBS += -L$$PWD/../../shared/ -lqsgepaper
 INCLUDEPATH += $$PWD/../../shared
 DEPENDPATH += $$PWD/../../shared
+
+LIBS += -L$$PWD/../../shared/sentry/install/lib -lsentry
+INCLUDEPATH += $$PWD/../../shared/sentry/install/include
+DEPENDPATH += $$PWD/../../shared/sentry/install/lib

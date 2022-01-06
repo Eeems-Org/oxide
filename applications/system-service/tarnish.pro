@@ -94,3 +94,7 @@ DISTFILES += \
     org.freedesktop.login1.xml
 
 RESOURCES +=
+
+LIBS += -L$$PWD/../../shared/sentry/install/lib -lsentry
+INCLUDEPATH += $$PWD/../../shared/sentry/install/include
+DEPENDPATH += $$PWD/../../shared/sentry/install/lib

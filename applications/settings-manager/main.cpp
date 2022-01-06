@@ -5,6 +5,7 @@
 #include <QMutableListIterator>
 
 #include "dbussettings.h"
+#include "devicesettings.h"
 
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
@@ -196,6 +197,7 @@ private:
 };
 
 int main(int argc, char *argv[]){
+    initSentry;
     QCoreApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);

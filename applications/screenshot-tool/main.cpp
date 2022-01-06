@@ -6,6 +6,7 @@
 #include <signal.h>
 
 #include "dbussettings.h"
+#include "devicesettings.h"
 
 #include "dbusservice_interface.h"
 #include "systemapi_interface.h"
@@ -43,6 +44,7 @@ void addNotification(Notifications* notifications, QString text, QString icon = 
 }
 
 int main(int argc, char *argv[]){
+    initSentry;
     atexit(onExit);
     signal(SIGTERM, unixSignalHandler);
     signal(SIGSEGV, unixSignalHandler);
