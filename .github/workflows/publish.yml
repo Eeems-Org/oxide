@@ -23,8 +23,8 @@ jobs:
               uses: actions/cache@v2
               id: cache-python
               with:
-                path: web/dist/.venv
-                key: web/dist/.venv-${{ hashFiles('web/dist/requirements.txt') }}
+                path: web/.venv
+                key: web/.venv-${{ hashFiles('web/requirements.txt') }}
             - name: Sync website with the remote repository
               uses: ./.github/actions/sync-repository
               with:

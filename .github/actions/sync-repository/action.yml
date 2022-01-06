@@ -16,6 +16,11 @@ inputs:
 runs:
     using: composite
     steps:
+        - name: Check for Apt updates
+          shell: bash
+          run: |
+            sudo apt-get update -yq
+            echo "aptVersion=sshfs-$(apt-cache policy sshfs | grep -oP '(?<=Candidate:\s)(.+)')" >> $GITHUB_ENV
         - name: Cache Apt packages
           uses: actions/cache@v2
           id: cache-apt
