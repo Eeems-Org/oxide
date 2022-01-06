@@ -6,6 +6,7 @@ on:
         paths:
             - 'web/**'
     repository_dispatch:
+    workflow_dispatch:
 jobs:
     publish:
         name: Build and publish the website
