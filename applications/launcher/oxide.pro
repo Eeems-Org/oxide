@@ -77,6 +77,6 @@ HEADERS += \
     wifinetworklist.h
 
 
-LIBS += -L$$PWD/../../docker-toolchain/qtcreator/files/libraries/ -lqsgepaper
-INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
-DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+LIBS += -L$$PWD/../../shared/ -lqsgepaper
+INCLUDEPATH += $$PWD/../../shared
+DEPENDPATH += $$PWD/../../shared

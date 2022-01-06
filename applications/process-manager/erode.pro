@@ -42,9 +42,9 @@ HEADERS += \
     ../../shared/eventfilter.h \
     tasklist.h
 
-INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+INCLUDEPATH += $$PWD/../../shared
 INCLUDEPATH += ../../shared
-DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+DEPENDPATH += $$PWD/../../shared
 
 
 linux-oe-g++ {
@@ -53,6 +53,6 @@ linux-oe-g++ {
 
 DISTFILES +=
 
-LIBS += -L$$PWD/../../docker-toolchain/qtcreator/files/libraries/ -lqsgepaper
-INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
-DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+LIBS += -L$$PWD/../../shared/ -lqsgepaper
+INCLUDEPATH += $$PWD/../../shared
+DEPENDPATH += $$PWD/../../shared

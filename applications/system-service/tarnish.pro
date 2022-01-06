@@ -46,9 +46,9 @@ system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplica
 DBUS_INTERFACES += org.freedesktop.login1.xml
 
 INCLUDEPATH += ../../shared
-LIBS += -L$$PWD/../../docker-toolchain/qtcreator/files/libraries/ -lqsgepaper
-INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
-DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+LIBS += -L$$PWD/../../shared/ -lqsgepaper
+INCLUDEPATH += $$PWD/../../shared
+DEPENDPATH += $$PWD/../../shared
 
 HEADERS += \
     apibase.h \
