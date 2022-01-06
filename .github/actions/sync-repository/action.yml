@@ -24,8 +24,12 @@ runs:
             echo '${{ inputs.ssh-key }}' > private/id_rsa
             echo '${{ inputs.ssh-known-hosts }}' > private/known_hosts
             chmod 600 private/*
-            rsync --rsh=ssh --archive --verbose --compress --delete \
-                -e "ssh -i private/id_rsa -o UserKnownHostsFile=private/known_hosts" \
-                '${{ inputs.local-path }}' \
-                '${{ inputs.remote-path }}'
+            mkdir mnt
+            sshfs -o IdentityFile=private/id_rsa \
+                -o UserKnownHostsFile=private/known_hosts \
+                '${{ inputs.local-path }}' mnt
+            rsync --archive --verbose --compress --delete \
+                mnt '${{ inputs.remote-path }}'
+            umount mnt
+            rmdir mnt
             rm -r private
