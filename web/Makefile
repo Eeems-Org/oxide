@@ -20,7 +20,6 @@ prod: $(VENV)/bin/activate
 	    $(DIST)/objects.inv \
 	    $(DIST)/search.html \
 	    $(DIST)/searchindex.js \
-	    $(DIST)/sitemap.html \
 	    $(DIST)/_sources \
 	    $(DIST)/_static/basic.css \
 	    $(DIST)/_static/doctools.js \
