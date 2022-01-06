@@ -54,7 +54,7 @@ runs:
                 -o IdentityFile=private/id_rsa \
                 -o UserKnownHostsFile=private/known_hosts \
                 -F "$(readlink -f private/config)" \
-                -odebug,sshfs_debug,loglevel=debug2 \
+                -odebug,sshfs_debug,loglevel=debug3 \
                 '${{ inputs.remote-path }}' mnt
             rsync --archive --verbose --compress --delete \
                 '${{ inputs.local-path }}' mnt
