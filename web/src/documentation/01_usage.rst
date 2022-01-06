@@ -68,7 +68,7 @@ CLI Tool (rot)
 ==============
 
 # Using the CLI Tool (rot)
- - Usage from the command line only, run ``rot --help`` to see possible options. For more information on possible API values see the `dbus specification files <https://github.com/Eeems/oxide/tree/master/interfaces>`_, the `high level API design <https://gist.github.com/Eeems/728d4ec836b156d880ce521ab50e5d40>`_, or `Developing Applications for Oxide`_
+ - Usage from the command line only, run ``rot --help`` to see possible options. For more information on possible API values see the `dbus specification files <https://github.com/Eeems/oxide/tree/master/interfaces>`_, the `high level API design <https://gist.github.com/Eeems/728d4ec836b156d880ce521ab50e5d40>`_, or :ref:`api`.
 
 Usage
 -----
