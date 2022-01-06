@@ -16,6 +16,10 @@ inputs:
 runs:
     using: composite
     steps:
+        - name: install sshfs
+            shell: bash
+            run: |
+                apt install -y sshfs
         - name: rsync packages and index
           shell: bash
           run: |
