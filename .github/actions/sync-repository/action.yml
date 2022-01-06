@@ -53,7 +53,7 @@ runs:
             sshfs \
                 -o IdentityFile=private/id_rsa \
                 -o UserKnownHostsFile=private/known_hosts \
-                -F ./private/config \
+                -F "$(readlink -f private/config)" \
                 -odebug,sshfs_debug,loglevel=debug \
                 '${{ inputs.remote-path }}' mnt
             rsync --archive --verbose --compress --delete \
