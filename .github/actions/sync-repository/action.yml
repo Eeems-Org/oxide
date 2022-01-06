@@ -54,7 +54,13 @@ runs:
             mkdir mnt
             sshfs -F "$(readlink -f private/config)" \
                 '${{ inputs.remote-path }}' mnt
-            rsync --archive --verbose --compress --delete \
+            rsync \
+                --archive \
+                --verbose \
+                --compress \
+                --delete \
+                --no-owner \
+                --no-group \
                 '${{ inputs.local-path }}' mnt
             umount mnt
             rmdir mnt
