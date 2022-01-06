@@ -48,12 +48,11 @@ runs:
             echo '${{ inputs.ssh-known-hosts }}' > private/known_hosts
             echo 'HostKeyAlgorithms +ssh-rsa' > private/config
             echo 'PubkeyAcceptedKeyTypes +ssh-rsa' >> private/config
+            echo 'UserKnownHostsFile=$(readlink -f private/known_hosts)' >> private/config
+            echo 'IdentityFile=$(readlink -f private/id_rsa)' >> private/config
             chmod 600 private/*
             mkdir mnt
-            sshfs \
-                -o IdentityFile=private/id_rsa \
-                -o UserKnownHostsFile=private/known_hosts \
-                -F "$(readlink -f private/config)" \
+            sshfs -F "$(readlink -f private/config)" \
                 -odebug,sshfs_debug,loglevel=debug3 \
                 '${{ inputs.remote-path }}' mnt
             rsync --archive --verbose --compress --delete \
