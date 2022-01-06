@@ -48,8 +48,8 @@ runs:
             echo '${{ inputs.ssh-known-hosts }}' > private/known_hosts
             echo 'HostKeyAlgorithms +ssh-rsa' > private/config
             echo 'PubkeyAcceptedKeyTypes +ssh-rsa' >> private/config
-            echo 'UserKnownHostsFile=$(readlink -f private/known_hosts)' >> private/config
-            echo 'IdentityFile=$(readlink -f private/id_rsa)' >> private/config
+            echo "UserKnownHostsFile=$(readlink -f private/known_hosts)" >> private/config
+            echo "IdentityFile=$(readlink -f private/id_rsa)" >> private/config
             chmod 600 private/*
             mkdir mnt
             sshfs -F "$(readlink -f private/config)" \
