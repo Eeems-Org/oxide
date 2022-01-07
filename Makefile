@@ -66,7 +66,9 @@ anxiety: sentry tarnish
 	cd .build/screenshot-viewer && qmake anxiety.pro
 	$(MAKE) -C .build/screenshot-viewer all
 
-sentry:
-	cd shared/sentry && cmake -B build -DBUILD_SHARED_LIBS=OFF -DSENTRY_INTEGRATION_QT=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
-	cd shared/sentry && cmake --build build --parallel
-	cd shared/sentry && cmake --install build --prefix install --config RelWithDebInfo
+sentry: shared/sentry/install/lib/libsentry.a
+
+shared/sentry/install/lib/libsentry.a:
+	cd shared/sentry && cmake -B ../../.build/.sentry -DBUILD_SHARED_LIBS=OFF -DSENTRY_INTEGRATION_QT=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSENTRY_PIC=OFF
+	cd shared/sentry && cmake --build ../../.build/.sentry --parallel
+	cd shared/sentry && cmake --install ../../.build/.sentry --prefix ../../.build/sentry --config RelWithDebInfo
