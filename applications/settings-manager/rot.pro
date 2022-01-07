@@ -41,6 +41,6 @@ HEADERS += \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h
 
-LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl
+LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl
 INCLUDEPATH += $$PWD/../../.build/sentry/include
 DEPENDPATH += $$PWD/../../.build/sentry/lib
