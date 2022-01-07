@@ -69,6 +69,6 @@ anxiety: sentry tarnish
 sentry: shared/sentry/install/lib/libsentry.a
 
 shared/sentry/install/lib/libsentry.a:
-	cd shared/sentry && cmake -B ../../.build/.sentry -DBUILD_SHARED_LIBS=OFF -DSENTRY_INTEGRATION_QT=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSENTRY_PIC=OFF -DSENTRY_BACKEND=inproc
+	cd shared/sentry && cmake -B ../../.build/.sentry -DBUILD_SHARED_LIBS=OFF -DSENTRY_INTEGRATION_QT=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSENTRY_PIC=OFF -DSENTRY_BACKEND=breakpad
 	cd shared/sentry && cmake --build ../../.build/.sentry --parallel
 	cd shared/sentry && cmake --install ../../.build/.sentry --prefix ../../.build/sentry --config RelWithDebInfo

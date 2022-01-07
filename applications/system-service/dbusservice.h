@@ -55,6 +55,9 @@ public:
             });
             auto bus = QDBusConnection::systemBus();
             if(!bus.isConnected()){
+#ifdef SENTRY
+                sentry_breadcrumb("dbusservice", "Failed to connect to system bus.", "error");
+#endif
                 qFatal("Failed to connect to system bus.");
             }
             QDBusConnectionInterface* interface = bus.interface();
@@ -63,10 +66,16 @@ public:
             bus.registerService(OXIDE_SERVICE);
             if(!reply.isValid()){
                 QDBusError ex = reply.error();
+#ifdef SENTRY
+                sentry_breadcrumb("dbusservice", "Unable to register service", "error");
+#endif
                 qFatal("Unable to register service: %s", ex.message().toStdString().c_str());
             }
             qDebug() << "Registering object...";
             if(!bus.registerObject(OXIDE_SERVICE_PATH, instance, QDBusConnection::ExportAllContents)){
+#ifdef SENTRY
+                sentry_breadcrumb("dbusservice", "Unable to register interface", "error");
+#endif
                 qFatal("Unable to register interface: %s", bus.lastError().message().toStdString().c_str());
             }
             connect(bus.interface(), SIGNAL(serviceOwnerChanged(QString,QString,QString)),
@@ -76,6 +85,9 @@ public:
         return instance;
     }
     DBusService(QObject* parent) : APIBase(parent), apis(){
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "Initializing APIs", "info");
+#endif
         apis.insert("wifi", APIEntry{
             .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
             .dependants = new QStringList(),
@@ -106,14 +118,22 @@ public:
             .dependants = new QStringList(),
             .instance = new NotificationAPI(this),
         });
-
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "Connecting button handler events", "info");
+#endif
         connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
         connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
         connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
         connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
         connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
         connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "Connecting power events", "info");
+#endif
         connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "Connecting system events", "info");
+#endif
         connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
             if(notificationAPI->locked()){
                 return;
@@ -130,13 +150,21 @@ public:
         connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::openTaskManager);
         connect(systemAPI, &SystemAPI::bottomAction, appsAPI, &AppsAPI::openTaskSwitcher);
         connect(systemAPI, &SystemAPI::topAction, systemAPI, &SystemAPI::toggleSwipes);
-
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "Cleaning up", "info");
+#endif
         auto bus = QDBusConnection::systemBus();
         for(auto api : apis){
             bus.unregisterObject(api.path);
         }
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "APIs initialized", "info");
+#endif
     }
     ~DBusService(){
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "Disconnecting APIs", "info");
+#endif
         qDebug() << "Removing all APIs";
         auto bus = QDBusConnection::systemBus();
         for(auto api : apis){
@@ -147,6 +175,9 @@ public:
             delete api.dependants;
         }
         apis.clear();
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
+#endif
     }
     void setEnabled(bool enabled){ Q_UNUSED(enabled); };
 
@@ -161,6 +192,9 @@ public:
 
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", ("requestAPI() " + name).toStdString().c_str(), "query");
+#endif
         if(!hasPermission(name)){
             return QDBusObjectPath("/");
         }
@@ -181,6 +215,9 @@ public slots:
         return QDBusObjectPath(api.path);
     };
     Q_NOREPLY void releaseAPI(QString name, QDBusMessage message) {
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", ("releaseAPI() " + name).toStdString().c_str(), "query");
+#endif
         if(!apis.contains(name)){
             return;
         }
@@ -195,6 +232,9 @@ public slots:
         }
     };
     QVariantMap APIs(){
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "APIs()", "query");
+#endif
         QVariantMap result;
         for(auto key : apis.keys()){
             auto api = apis[key];
@@ -206,6 +246,9 @@ public slots:
     };
 
     void startup(){
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "startup", "navigation");
+#endif
         appsAPI->startup();
     }
 

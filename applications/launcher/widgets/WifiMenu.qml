@@ -45,6 +45,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredWidth: wifi.width / 2
                     onClicked: {
+                        controller.breadcrumb("wifi.toggle", "click", "ui");
                         if(controller.wifiOn){
                             controller.turnOffWifi();
                             text = "Turn wifi on";
@@ -61,6 +62,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredWidth: wifi.width / 2
                     onClicked: {
+                        controller.breadcrumb("wifi.scan", "click", "ui");
                         networks.model.scan(true);
                         networks.model.sort();
                     }
@@ -103,6 +105,7 @@ Item {
                                     anchors.fill: parent
                                     enabled: parent.enabled
                                     onClicked: {
+                                        controller.breadcrumb("wifi.network.forget", "click", "ui");
                                         if(!model.display){
                                             return
                                         }
@@ -120,6 +123,7 @@ Item {
                                     anchors.fill: parent
                                     enabled: parent.enabled
                                     onClicked: {
+                                        controller.breadcrumb("wifi.network.toggle", "click", "ui");
                                         if(!model.display){
                                             return
                                         }
@@ -165,12 +169,14 @@ Item {
                             pageSize = (networks.height / networks.itemAt(0, 0).height).toFixed(0);
                         }
                         if(direction == "down"){
+                            controller.breadcrumb("wifi", "scroll.up", "ui");
                             console.log("Scroll up");
                             currentIndex = currentIndex - pageSize;
                             if(currentIndex < 0){
                                 currentIndex = 0;
                             }
                         }else if(direction == "up"){
+                            controller.breadcrumb("wifi", "scroll.down", "ui");
                             console.log("Scroll down");
                             currentIndex = currentIndex + pageSize;
                             if(currentIndex > networks.count){
@@ -186,7 +192,10 @@ Item {
             BetterButton{
                 text: "Close"
                 Layout.fillWidth: true
-                onClicked: wifi.close();
+                onClicked: {
+                    controller.breadcrumb("wifi.close", "click", "ui");
+                    wifi.close();
+                }
             }
         }
     }

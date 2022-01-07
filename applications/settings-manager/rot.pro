@@ -43,6 +43,6 @@ HEADERS += \
     ../../shared/devicesettings.h \
     ../../shared/sentry_settings.h
 
-LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl
+LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
 INCLUDEPATH += $$PWD/../../.build/sentry/include
 DEPENDPATH += $$PWD/../../.build/sentry/lib
