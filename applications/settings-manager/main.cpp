@@ -231,10 +231,16 @@ int main(int argc, char *argv[]){
 
     QStringList args = parser.positionalArguments();
     if(args.isEmpty()){
+#ifdef SENTRY
+        sentry_breadcrumb("error", "No arguments");
+#endif
         parser.showHelp(EXIT_FAILURE);
     }
     auto apiName = args.at(0);
     if(!(QSet<QString> {"power", "wifi", "apps", "system", "screen", "notification"}).contains(apiName)){
+#ifdef SENTRY
+        sentry_breadcrumb("error", "Unknown API");
+#endif
         qDebug() << "Unknown API" << apiName;
         return EXIT_FAILURE;
     }
@@ -243,6 +249,9 @@ int main(int argc, char *argv[]){
     }
     auto action = args.at(1);
     if(action == "get"){
+#ifdef SENTRY
+        sentry_breadcrumb("action", "get");
+#endif
         parser.addPositionalArgument("property", "Property to get.");
         parser.parse(app.arguments());
         args = parser.positionalArguments();
@@ -250,6 +259,9 @@ int main(int argc, char *argv[]){
             parser.showHelp(EXIT_FAILURE);
         }
     }else if(action == "set"){
+#ifdef SENTRY
+        sentry_breadcrumb("action", "set");
+#endif
         parser.addPositionalArgument("property", "Property to change.");
         parser.addPositionalArgument("value", "Value to set the property to.");
         parser.parse(app.arguments());
@@ -258,6 +270,9 @@ int main(int argc, char *argv[]){
             parser.showHelp(EXIT_FAILURE);
         }
     }else if(action == "listen"){
+#ifdef SENTRY
+        sentry_breadcrumb("action", "listen");
+#endif
         parser.addPositionalArgument("signal", "Signal to listen to.");
         parser.parse(app.arguments());
         args = parser.positionalArguments();
@@ -265,6 +280,9 @@ int main(int argc, char *argv[]){
             parser.showHelp(EXIT_FAILURE);
         }
     }else if(action == "call"){
+#ifdef SENTRY
+        sentry_breadcrumb("action", "call");
+#endif
         parser.addPositionalArgument("method", "Method to call");
         parser.addPositionalArgument("arguments", "Arguments to pass to the method using the following format: <QVariant>:<Value>. e.g. QString:Test", "[arguments...]");
         parser.parse(app.arguments());
@@ -273,10 +291,16 @@ int main(int argc, char *argv[]){
             parser.showHelp(EXIT_FAILURE);
         }
     }else{
+#ifdef SENTRY
+        sentry_breadcrumb("action", "unknown");
+#endif
         parser.showHelp(EXIT_FAILURE);
     }
     auto bus = QDBusConnection::systemBus();
     if(!bus.isConnected()){
+#ifdef SENTRY
+        sentry_breadcrumb("error", "Unable to connect to dbus");
+#endif
         qDebug() << "Not able to connect to dbus";
         return EXIT_FAILURE;
     }
@@ -284,25 +308,43 @@ int main(int argc, char *argv[]){
     auto reply = generalApi.requestAPI(apiName);
     reply.waitForFinished();
     if(reply.isError()){
+#ifdef SENTRY
+        sentry_breadcrumb("error", "Unable to request API");
+#endif
         qDebug() << reply.error();
         return EXIT_FAILURE;
     }
     auto path = ((QDBusObjectPath)reply).path();
     if(path == "/"){
+#ifdef SENTRY
+        sentry_breadcrumb("error", "API not available");
+#endif
         qDebug() << "API not available";
         return EXIT_FAILURE;
     }
     QDBusAbstractInterface* api;
     if(apiName == "power"){
+#ifdef SENTRY
+        sentry_breadcrumb("api", "power");
+#endif
         api = new Power(OXIDE_SERVICE, path, bus);
         if(parser.isSet("object")){
+#ifdef SENTRY
+            sentry_breadcrumb("error", "invalid arguments");
+#endif
             qDebug() << "Paths are not valid for the power API";
             return EXIT_FAILURE;
         }
     }else if(apiName == "wifi"){
+#ifdef SENTRY
+        sentry_breadcrumb("api", "wifi");
+#endif
         api = new Wifi(OXIDE_SERVICE, path, bus);
         if(parser.isSet("object")){
             auto object = parser.value("object");
+#ifdef SENTRY
+            sentry_breadcrumb("object", object.toStdString().c_str());
+#endif
             auto type = object.mid(0, object.indexOf(":"));
             auto path = object.mid(object.indexOf(":") + 1);
             path = OXIDE_SERVICE_PATH + QString("/" + path);
@@ -316,9 +358,15 @@ int main(int argc, char *argv[]){
             }
         }
     }else if(apiName == "apps"){
+#ifdef SENTRY
+        sentry_breadcrumb("api", "apps");
+#endif
         api = new Apps(OXIDE_SERVICE, path, bus);
         if(parser.isSet("object")){
             auto object = parser.value("object");
+#ifdef SENTRY
+            sentry_breadcrumb("object", object.toStdString().c_str());
+#endif
             auto type = object.mid(0, object.indexOf(":"));
             auto path = object.mid(object.indexOf(":") + 1);
             path = OXIDE_SERVICE_PATH + QString("/" + path);
@@ -330,15 +378,27 @@ int main(int argc, char *argv[]){
             }
         }
     }else if(apiName == "system"){
+#ifdef SENTRY
+        sentry_breadcrumb("api", "system");
+#endif
         api = new System(OXIDE_SERVICE, path, bus);
         if(parser.isSet("object")){
+#ifdef SENTRY
+            sentry_breadcrumb("error", "invalid arguments");
+#endif
             qDebug() << "Paths are not valid for the system API";
             return EXIT_FAILURE;
         }
     }else if(apiName == "screen"){
+#ifdef SENTRY
+        sentry_breadcrumb("api", "screen");
+#endif
         api = new Screen(OXIDE_SERVICE, path, bus);
         if(parser.isSet("object")){
             auto object = parser.value("object");
+#ifdef SENTRY
+            sentry_breadcrumb("object", object.toStdString().c_str());
+#endif
             auto type = object.mid(0, object.indexOf(":"));
             auto path = object.mid(object.indexOf(":") + 1);
             path = OXIDE_SERVICE_PATH + QString("/" + path);
@@ -350,20 +410,32 @@ int main(int argc, char *argv[]){
             }
         }
     }else if(apiName == "notification"){
+#ifdef SENTRY
+        sentry_breadcrumb("api", "notification");
+#endif
         api = new Notifications(OXIDE_SERVICE, path, bus);
         if(parser.isSet("object")){
             auto object = parser.value("object");
+#ifdef SENTRY
+            sentry_breadcrumb("object", object.toStdString().c_str());
+#endif
             auto type = object.mid(0, object.indexOf(":"));
             auto path = object.mid(object.indexOf(":") + 1);
             path = OXIDE_SERVICE_PATH + QString("/" + path);
             if(type == "Notification"){
                 api = new Notification(OXIDE_SERVICE, path, bus);
             }else{
+#ifdef SENTRY
+                sentry_breadcrumb("error", "Unknown object type");
+#endif
                 qDebug() << "Unknown object type" << type;
                 return EXIT_FAILURE;
             }
         }
     }else{
+#ifdef SENTRY
+            sentry_breadcrumb("error", "Unknown API");
+#endif
         qDebug() << "API not initialized? Please log a bug.";
         return EXIT_FAILURE;
     }
