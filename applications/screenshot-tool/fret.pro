@@ -32,6 +32,6 @@ LIBS += -L$$PWD/../../shared/ -lqsgepaper
 INCLUDEPATH += $$PWD/../../shared
 DEPENDPATH += $$PWD/../../shared
 
-LIBS += -L$$PWD/../../.build/sentry/lib -lsentry
+LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl
 INCLUDEPATH += $$PWD/../../.build/sentry/include
 DEPENDPATH += $$PWD/../../.build/sentry/lib
