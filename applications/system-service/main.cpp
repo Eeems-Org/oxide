@@ -16,7 +16,7 @@ void sigHandler(int signal){
 }
 
 int main(int argc, char *argv[]){
-    initSentry;
+    initSentry("tarnish", argv);
     if(deviceSettings.getDeviceType() == DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
         qWarning() << "rm2fb not detected. Running xochitl instead!";
         return QProcess::execute("/usr/bin/xochitl", QStringList());

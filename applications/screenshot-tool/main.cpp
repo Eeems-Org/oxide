@@ -44,7 +44,7 @@ void addNotification(Notifications* notifications, QString text, QString icon = 
 }
 
 int main(int argc, char *argv[]){
-    initSentry;
+    initSentry("fret", argv);
     atexit(onExit);
     signal(SIGTERM, unixSignalHandler);
     signal(SIGSEGV, unixSignalHandler);

@@ -22,6 +22,11 @@
 
 using namespace codes::eeems::oxide1;
 
+#ifdef SENTRY
+#undef initSentry
+#define initSentry
+#endif
+
 static QTextStream qStdOut(stdout, QIODevice::WriteOnly);
 
 QVariant sanitizeForJson(QVariant value);
@@ -197,7 +202,7 @@ private:
 };
 
 int main(int argc, char *argv[]){
-    initSentry;
+    initSentry("rot", argv);
     QCoreApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);

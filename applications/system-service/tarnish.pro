@@ -8,6 +8,7 @@ CONFIG += precompile_header_c
 QMAKE_CFLAGS += -std=c99
 
 SOURCES += \
+    ../../shared/sentry_settings.cpp \
     apibase.cpp \
     application.cpp \
     appsapi.cpp \
@@ -51,6 +52,7 @@ INCLUDEPATH += $$PWD/../../shared
 DEPENDPATH += $$PWD/../../shared
 
 HEADERS += \
+    ../../shared/sentry_settings.h \
     apibase.h \
     application.h \
     appsapi.h \

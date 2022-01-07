@@ -6,24 +6,7 @@
 #define deviceSettings DeviceSettings::instance()
 
 #define DEBUG
-#define SENTRY
-
-#ifdef SENTRY
-#include <sentry.h>
-#define initSentry \
-    sentry_options_t *options = sentry_options_new(); \
-    sentry_options_set_dsn(options, "https://8d409799a9d640599cc66496fb87edf6@sentry.eeems.codes/2"); \
-    sentry_init(options); \
-    auto sentryClose = qScopeGuard([] { sentry_close(); }); \
-    sentry_capture_event(sentry_value_new_message_event( \
-      /*   level */ SENTRY_LEVEL_INFO, \
-      /*  logger */ "custom", \
-      /* message */ "It works!" \
-    )); \
-    qDebug() << "Telemetry enabled"
-#else
-#define initSentry qWarning() << "Telemetry disabled";
-#endif
+#include "sentry_settings.h"
 
 class DeviceSettings{
 public:

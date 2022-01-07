@@ -20,6 +20,7 @@ linux-oe-g++ {
 }
 
 SOURCES += \
+        ../../shared/sentry_settings.cpp \
         appitem.cpp \
         main.cpp \
         ../../shared/devicesettings.cpp \
@@ -39,6 +40,7 @@ HEADERS += \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h \
     ../../shared/eventfilter.h \
+    ../../shared/sentry_settings.h \
     ../../shared/signalhandler.h \
     appitem.h \
     controller.h \

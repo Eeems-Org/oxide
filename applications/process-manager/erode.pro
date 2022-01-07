@@ -14,7 +14,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp \
     ../../shared/devicesettings.cpp\
-    ../../shared/eventfilter.cpp
+    ../../shared/eventfilter.cpp \
+    ../../shared/sentry_settings.cpp
 
 RESOURCES += qml.qrc
 
@@ -35,6 +36,7 @@ icons.path = /opt/etc/draft/icons
 INSTALLS += icons
 
 HEADERS += \
+    ../../shared/sentry_settings.h \
     controller.h \
     taskitem.h \
     ../../shared/dbussettings.h \

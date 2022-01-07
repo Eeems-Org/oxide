@@ -20,6 +20,7 @@ linux-oe-g++ {
 }
 
 SOURCES += \
+        ../../shared/sentry_settings.cpp \
         main.cpp \
         ../../shared/devicesettings.cpp \
         ../../shared/eventfilter.cpp
@@ -45,6 +46,7 @@ HEADERS += \
     ../../shared/devicesettings.h \
     ../../shared/eventfilter.h \
     ../../shared/epframebuffer.h \
+    ../../shared/sentry_settings.h \
     controller.h \
     screenshotlist.h
 

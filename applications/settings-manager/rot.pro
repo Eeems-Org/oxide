@@ -16,6 +16,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+        ../../shared/sentry_settings.cpp \
         main.cpp
 
 INCLUDEPATH += ../../shared
@@ -39,7 +40,8 @@ target.path = /opt/bin
 
 HEADERS += \
     ../../shared/dbussettings.h \
-    ../../shared/devicesettings.h
+    ../../shared/devicesettings.h \
+    ../../shared/sentry_settings.h
 
 LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl
 INCLUDEPATH += $$PWD/../../.build/sentry/include
