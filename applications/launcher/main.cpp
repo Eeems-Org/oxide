@@ -20,7 +20,6 @@
 
 #include "controller.h"
 #include "eventfilter.h"
-#include "devicesettings.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)

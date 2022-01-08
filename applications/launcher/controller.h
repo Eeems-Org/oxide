@@ -11,7 +11,6 @@
 #include "sysobject.h"
 #include "wifinetworklist.h"
 #include "notificationlist.h"
-#include "devicesettings.h"
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
 #include "wifiapi_interface.h"

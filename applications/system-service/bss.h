@@ -4,9 +4,10 @@
 #include <QMutableListIterator>
 #include <QMutex>
 
+#include <liboxide.h>
+
 #include "supplicant.h"
 #include "network.h"
-#include "dbussettings.h"
 
 class BSS : public QObject{
     Q_OBJECT

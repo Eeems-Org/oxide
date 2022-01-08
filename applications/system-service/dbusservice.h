@@ -12,8 +12,6 @@
 #include <QGuiApplication>
 #include <liboxide.h>
 
-#include "dbussettings.h"
-
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "appsapi.h"

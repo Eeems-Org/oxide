@@ -5,7 +5,8 @@
 #include <QtDBus>
 #include <QMutex>
 
-#include "dbussettings.h"
+#include <liboxide.h>
+
 #include "apibase.h"
 #include "notification.h"
 

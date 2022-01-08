@@ -130,7 +130,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include "dbussettings.h"
+   #include <liboxide.h>
    #include "dbusservice_interface.h"
    #include "appsapi_interface.h"
 
@@ -376,7 +376,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include "dbussettings.h"
+   #include <liboxide.h>
    #include "dbusservice_interface.h"
    #include "appsapi_interface.h"
    #include "application_interface.h"

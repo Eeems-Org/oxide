@@ -24,9 +24,6 @@ DBUS_INTERFACES += ../../interfaces/notification.xml
 
 
 INCLUDEPATH += ../../shared
-HEADERS += \
-    ../../shared/dbussettings.h \
-    ../../shared/devicesettings.h
 
 LIBS += -L$$PWD/../../shared/ -lqsgepaper
 INCLUDEPATH += $$PWD/../../shared

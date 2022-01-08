@@ -6,8 +6,7 @@
 #include <QTimer>
 
 #include <fstream>
-
-#include "devicesettings.h"
+#include <liboxide.h>
 
 class FifoHandler : public QObject {
     Q_OBJECT

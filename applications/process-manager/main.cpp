@@ -7,11 +7,10 @@
 #include <signal.h>
 #include <ostream>
 #include <fcntl.h>
+#include <liboxide.h>
 
 #include "controller.h"
 #include "eventfilter.h"
-#include "dbussettings.h"
-#include "devicesettings.h"
 
 
 #ifdef __arm__

@@ -6,9 +6,6 @@
 #include <signal.h>
 #include <liboxide.h>
 
-#include "dbussettings.h"
-#include "devicesettings.h"
-
 #include "dbusservice_interface.h"
 #include "systemapi_interface.h"
 #include "screenapi_interface.h"

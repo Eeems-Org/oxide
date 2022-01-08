@@ -5,8 +5,9 @@
 #include <QImage>
 #include <QtDBus>
 
+#include <liboxide.h>
+
 #include "application.h"
-#include "dbussettings.h"
 
 class Notification : public QObject{
     Q_OBJECT

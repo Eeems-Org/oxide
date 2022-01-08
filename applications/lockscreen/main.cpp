@@ -5,8 +5,6 @@
 
 #include <cstdlib>
 
-#include "dbussettings.h"
-#include "devicesettings.h"
 #include "controller.h"
 #include "eventfilter.h"
 

@@ -21,8 +21,7 @@ SOURCES += \
     systemapi.cpp \
     wlan.cpp \
     wpa_supplicant.cpp \
-    main.cpp \
-    ../../shared/devicesettings.cpp
+    main.cpp
 
 TARGET=tarnish
 
@@ -57,7 +56,6 @@ HEADERS += \
     bss.h \
     buttonhandler.h \
     dbusservice.h \
-    dbussettings.h \
     digitizerhandler.h \
     event_device.h \
     fifohandler.h \
@@ -74,7 +72,6 @@ HEADERS += \
     wifiapi.h \
     wlan.h \
     wpa_supplicant.h \
-    ../../shared/devicesettings.h \
     ../../shared/signalhandler.h
 
 linux-oe-g++ {

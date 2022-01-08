@@ -1,9 +1,10 @@
+#include <liboxide.h>
+
 #include "systemapi.h"
 #include "appsapi.h"
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "notificationapi.h"
-#include "devicesettings.h"
 
 QDebug operator<<(QDebug debug, const Touch& touch){
     QDebugStateSaver saver(debug);

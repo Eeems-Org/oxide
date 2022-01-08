@@ -7,7 +7,6 @@
 #include <liboxide.h>
 
 #include "epframebuffer.h"
-#include "dbussettings.h"
 
 #include "dbusservice_interface.h"
 #include "screenapi_interface.h"

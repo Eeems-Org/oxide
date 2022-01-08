@@ -37,10 +37,6 @@ DBUS_INTERFACES += ../../interfaces/notification.xml
 target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
-HEADERS += \
-    ../../shared/dbussettings.h \
-    ../../shared/devicesettings.h
-
 LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
 INCLUDEPATH += $$PWD/../../.build/sentry/include
 DEPENDPATH += $$PWD/../../.build/sentry/lib

@@ -13,11 +13,11 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <epframebuffer.h>
+#include <liboxide.h>
 
 #include "apibase.h"
 #include "mxcfb.h"
 #include "screenshot.h"
-#include "devicesettings.h"
 
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872

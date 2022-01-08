@@ -6,9 +6,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-
-
-#include "dbussettings.h"
+#include <liboxide.h>
 
 class Screenshot : public QObject{
     Q_OBJECT

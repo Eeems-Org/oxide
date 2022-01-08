@@ -20,7 +20,6 @@ SOURCES += \
     controller.cpp \
     appitem.cpp \
     sysobject.cpp \
-    ../../shared/devicesettings.cpp \
     ../../shared/eventfilter.cpp
 
 
@@ -71,8 +70,6 @@ HEADERS += \
     mxcfb.h \
     notificationlist.h \
     sysobject.h \
-    ../../shared/dbussettings.h \
-    ../../shared/devicesettings.h \
     ../../shared/eventfilter.h \
     wifinetworklist.h
 

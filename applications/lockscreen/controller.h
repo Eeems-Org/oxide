@@ -5,8 +5,6 @@
 #include <QQuickItem>
 #include <liboxide.h>
 
-#include "dbussettings.h"
-
 #include "dbusservice_interface.h"
 #include "systemapi_interface.h"
 #include "powerapi_interface.h"

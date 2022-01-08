@@ -6,6 +6,7 @@
 #include <QMutableListIterator>
 #include <QTimer>
 #include <QMutex>
+#include <liboxide.h>
 
 #include "apibase.h"
 #include "buttonhandler.h"

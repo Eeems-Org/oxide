@@ -8,8 +8,6 @@
 #include <epframebuffer.h>
 #include <liboxide.h>
 
-#include "dbussettings.h"
-
 #include "dbusservice_interface.h"
 #include "screenapi_interface.h"
 #include "appsapi_interface.h"

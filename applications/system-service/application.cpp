@@ -2,13 +2,13 @@
 #include <QFile>
 
 #include <signal.h>
+#include <liboxide.h>
 
 #include "application.h"
 #include "appsapi.h"
 #include "systemapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
-#include "devicesettings.h"
 
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
 

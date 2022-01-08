@@ -21,7 +21,6 @@ linux-oe-g++ {
 
 SOURCES += \
         main.cpp \
-        ../../shared/devicesettings.cpp \
         ../../shared/eventfilter.cpp
 
 # Default rules for deployment.
@@ -37,8 +36,6 @@ DBUS_INTERFACES += ../../interfaces/application.xml
 
 INCLUDEPATH += ../../shared
 HEADERS += \
-    ../../shared/dbussettings.h \
-    ../../shared/devicesettings.h \
     ../../shared/eventfilter.h \
     controller.h
 

@@ -3,7 +3,8 @@
 
 #include <QFileInfo>
 
-#include "dbussettings.h"
+#include <liboxide.h>
+
 #include "sysobject.h"
 #include "supplicant.h"
 

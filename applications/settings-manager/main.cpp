@@ -4,9 +4,7 @@
 #include <QSet>
 #include <QMutableListIterator>
 
-#include "dbussettings.h"
-#include "devicesettings.h"
-#include "liboxide.h"
+#include <liboxide.h>
 
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
