@@ -106,3 +106,7 @@ library.path = /opt/lib
 INSTALLS += library
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
+
+LIBS += -L$$PWD/../../.build/liboxide -lsentry -ldl -lcurl -lbreakpad_client
+INCLUDEPATH += $$PWD/../../.build/liboxide
+DEPENDPATH += $$PWD/../../.build/liboxide

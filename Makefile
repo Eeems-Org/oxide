@@ -14,6 +14,7 @@ clean:
 
 release: clean build $(RELOBJ)
 	mkdir -p release
+	INSTALL_ROOT=../../release $(MAKE) -C .build/liboxide install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/process-manager install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/system-service install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/settings-manager install
@@ -23,7 +24,13 @@ release: clean build $(RELOBJ)
 	INSTALL_ROOT=../../release $(MAKE) -C .build/lockscreen install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/task-switcher install
 
-build: tarnish erode rot oxide decay corrupt fret anxiety
+build: liboxide tarnish erode rot oxide decay corrupt fret anxiety
+
+liboxide:
+	mkdir -p .build/liboxide
+	cp -r shared/liboxide/* .build/liboxide
+	cd .build/liboxide && qmake $(DEFINES) liboxide.pro
+	$(MAKE) -C .build/liboxide all
 
 erode: $(OBJ)
 	mkdir -p .build/process-manager
