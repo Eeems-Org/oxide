@@ -2,11 +2,9 @@
 #define DEVICESETTINGS_H
 
 #include <string>
+#include "sentry_settings.h"
 
 #define deviceSettings DeviceSettings::instance()
-
-#define DEBUG
-#include "sentry_settings.h"
 
 class DeviceSettings{
 public:

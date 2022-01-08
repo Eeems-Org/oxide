@@ -5,6 +5,7 @@
 #include <QMutex>
 
 #include "tasklist.h"
+#include "sentry_settings.h"
 
 class Controller : public QObject
 {

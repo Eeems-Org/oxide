@@ -5,6 +5,7 @@
 #include <QQuickItem>
 
 #include "dbussettings.h"
+#include "sentry_settings.h"
 
 #include "dbusservice_interface.h"
 #include "systemapi_interface.h"

@@ -55,10 +55,8 @@ struct Touch {
         return "<Touch " + to_string(id) + " (" + to_string(x) + ", " + to_string(y) + ") " + (active ? "pressed" : "released") + ">";
     }
 };
-#ifdef DEBUG
 QDebug operator<<(QDebug debug, const Touch& touch);
 QDebug operator<<(QDebug debug, Touch* touch);
-#endif
 Q_DECLARE_METATYPE(Touch)
 Q_DECLARE_METATYPE(input_event)
 

@@ -5,7 +5,6 @@
 #include "notificationapi.h"
 #include "devicesettings.h"
 
-#ifdef DEBUG
 QDebug operator<<(QDebug debug, const Touch& touch){
     QDebugStateSaver saver(debug);
     debug.nospace() << touch.debugString().c_str();
@@ -16,7 +15,6 @@ QDebug operator<<(QDebug debug, Touch* touch){
     debug.nospace() << touch->debugString().c_str();
     return debug.maybeSpace();
 }
-#endif
 
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
