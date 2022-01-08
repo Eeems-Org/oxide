@@ -4,7 +4,7 @@ clean:
 	rm -rf .build
 	rm -rf release
 
-release: clean release/lib/libsentry.so
+release: clean release/opt/lib/libsentry.so
 	$(MAKE) build
 	mkdir -p release
 	INSTALL_ROOT=../../release $(MAKE) -C .build/process-manager install
