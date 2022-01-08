@@ -65,7 +65,7 @@ INSTALLS += configFile
 DISTFILES += \
     ../../assets/etc/dbus-1/system.d/org.freedesktop.login1.conf \
     ../../assets/etc/oxide.conf
-ls
+
 HEADERS += \
     ../../shared/sentry_settings.h \
     controller.h \
@@ -83,6 +83,12 @@ LIBS += -L$$PWD/../../shared/ -lqsgepaper
 INCLUDEPATH += $$PWD/../../shared
 DEPENDPATH += $$PWD/../../shared
 
-LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
+LIBS += -L$$PWD/../../.build/sentry -lsentry -ldl -lcurl -lbreakpad_client
 INCLUDEPATH += $$PWD/../../.build/sentry/include
 DEPENDPATH += $$PWD/../../.build/sentry/lib
+
+library.files = ../../.build/sentry/libsentry.so
+library.path = /opt/lib
+INSTALLS += library
+
+QMAKE_RPATHDIR += /lib /usr/lib /opt/lib

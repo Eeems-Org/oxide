@@ -46,3 +46,9 @@ HEADERS += \
 LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
 INCLUDEPATH += $$PWD/../../.build/sentry/include
 DEPENDPATH += $$PWD/../../.build/sentry/lib
+
+library.files = ../../.build/sentry/libsentry.so
+library.path = /opt/lib
+INSTALLS += library
+
+QMAKE_RPATHDIR += /lib /usr/lib /opt/lib

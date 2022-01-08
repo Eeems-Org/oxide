@@ -4,7 +4,7 @@ clean:
 	rm -rf .build
 	rm -rf release
 
-release: clean
+release: clean release/lib/libsentry.so
 	$(MAKE) build
 	mkdir -p release
 	INSTALL_ROOT=../../release $(MAKE) -C .build/process-manager install
@@ -15,7 +15,6 @@ release: clean
 	INSTALL_ROOT=../../release $(MAKE) -C .build/launcher install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/lockscreen install
 	INSTALL_ROOT=../../release $(MAKE) -C .build/task-switcher install
-	cd shared/sentry && cmake --install ../../.build/.sentry --prefix ../../release --config RelWithDebInfo
 
 build: tarnish erode rot oxide decay corrupt fret anxiety
 
@@ -67,9 +66,13 @@ anxiety: sentry tarnish
 	cd .build/screenshot-viewer && qmake anxiety.pro
 	$(MAKE) -C .build/screenshot-viewer all
 
-sentry: .build/sentry/lib/libsentry.so
+sentry: .build/sentry/libsentry.so
 
-.build/sentry/lib/libsentry.so:
-	cd shared/sentry && cmake -B ../../.build/.sentry -DBUILD_SHARED_LIBS=ON -DSENTRY_INTEGRATION_QT=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSENTRY_PIC=OFF -DSENTRY_BACKEND=breakpad -DSENTRY_BREAKPAD_SYSTEM=OFF
-	cd shared/sentry && cmake --build ../../.build/.sentry --parallel
-	cd shared/sentry && cmake --install ../../.build/.sentry --prefix ../../.build/sentry --config RelWithDebInfo
+.build/sentry/libsentry.so:
+	cd shared/sentry && cmake -B ../../.build/sentry -DBUILD_SHARED_LIBS=ON -DSENTRY_INTEGRATION_QT=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSENTRY_PIC=OFF -DSENTRY_BACKEND=breakpad -DSENTRY_BREAKPAD_SYSTEM=OFF
+	cd shared/sentry && cmake --build ../../.build/sentry --parallel
+	cd shared/sentry && cmake --install ../../.build/sentry --prefix ../../.build/sentry --config RelWithDebInfo
+
+release/lib/libsentry.so: .build/sentry/libsentry.so
+	mkdir -p release/lib
+	cp .build/sentry/libsentry.so release/lib/
