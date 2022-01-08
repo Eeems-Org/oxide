@@ -16,7 +16,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    ../../shared/sentry_settings.cpp \
     main.cpp \
     controller.cpp \
     appitem.cpp \
@@ -67,7 +66,6 @@ DISTFILES += \
     ../../assets/etc/oxide.conf
 
 HEADERS += \
-    ../../shared/sentry_settings.h \
     controller.h \
     appitem.h \
     mxcfb.h \
@@ -90,5 +88,9 @@ DEPENDPATH += $$PWD/../../.build/sentry/lib
 library.files = ../../.build/sentry/libsentry.so
 library.path = /opt/lib
 INSTALLS += library
+
+LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+INCLUDEPATH += $$PWD/../../shared/liboxide
+DEPENDPATH += $$PWD/../../shared/liboxide
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib

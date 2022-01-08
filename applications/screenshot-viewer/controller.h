@@ -4,10 +4,10 @@
 #include <QObject>
 #include <QImage>
 #include <QQuickItem>
+#include <liboxide.h>
 
 #include "epframebuffer.h"
 #include "dbussettings.h"
-#include "sentry_settings.h"
 
 #include "dbusservice_interface.h"
 #include "screenapi_interface.h"

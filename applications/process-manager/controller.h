@@ -3,9 +3,9 @@
 #include <QObject>
 #include <QQmlApplicationEngine>
 #include <QMutex>
+#include <liboxide.h>
 
 #include "tasklist.h"
-#include "sentry_settings.h"
 
 class Controller : public QObject
 {

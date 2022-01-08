@@ -9,7 +9,6 @@ CONFIG -= app_bundle
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-        ../../shared/sentry_settings.cpp \
         main.cpp
 
 # Default rules for deployment.
@@ -27,8 +26,7 @@ DBUS_INTERFACES += ../../interfaces/notification.xml
 INCLUDEPATH += ../../shared
 HEADERS += \
     ../../shared/dbussettings.h \
-    ../../shared/devicesettings.h \
-    ../../shared/sentry_settings.h
+    ../../shared/devicesettings.h
 
 LIBS += -L$$PWD/../../shared/ -lqsgepaper
 INCLUDEPATH += $$PWD/../../shared
@@ -41,5 +39,9 @@ DEPENDPATH += $$PWD/../../.build/sentry/lib
 library.files = ../../.build/sentry/libsentry.so
 library.path = /opt/lib
 INSTALLS += library
+
+LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+INCLUDEPATH += $$PWD/../../shared/liboxide
+DEPENDPATH += $$PWD/../../shared/liboxide
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib

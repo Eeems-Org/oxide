@@ -4,6 +4,7 @@
 
 #include <cstdlib>
 #include <signal.h>
+#include <liboxide.h>
 
 #include "dbussettings.h"
 #include "devicesettings.h"

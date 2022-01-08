@@ -8,7 +8,6 @@ CONFIG += precompile_header_c
 QMAKE_CFLAGS += -std=c99
 
 SOURCES += \
-    ../../shared/sentry_settings.cpp \
     apibase.cpp \
     application.cpp \
     appsapi.cpp \
@@ -52,7 +51,6 @@ INCLUDEPATH += $$PWD/../../shared
 DEPENDPATH += $$PWD/../../shared
 
 HEADERS += \
-    ../../shared/sentry_settings.h \
     apibase.h \
     application.h \
     appsapi.h \
@@ -105,8 +103,8 @@ library.files = ../../.build/sentry/libsentry.so
 library.path = /opt/lib
 INSTALLS += library
 
-QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
+LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+INCLUDEPATH += $$PWD/../../shared/liboxide
+DEPENDPATH += $$PWD/../../shared/liboxide
 
-LIBS += -L$$PWD/../../.build/liboxide -lsentry -ldl -lcurl -lbreakpad_client
-INCLUDEPATH += $$PWD/../../.build/liboxide
-DEPENDPATH += $$PWD/../../.build/liboxide
+QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib

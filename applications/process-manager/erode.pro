@@ -14,8 +14,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp \
     ../../shared/devicesettings.cpp\
-    ../../shared/eventfilter.cpp \
-    ../../shared/sentry_settings.cpp
+    ../../shared/eventfilter.cpp
 
 RESOURCES += qml.qrc
 
@@ -36,7 +35,6 @@ icons.path = /opt/etc/draft/icons
 INSTALLS += icons
 
 HEADERS += \
-    ../../shared/sentry_settings.h \
     controller.h \
     taskitem.h \
     ../../shared/dbussettings.h \
@@ -66,5 +64,9 @@ DEPENDPATH += $$PWD/../../.build/sentry/lib
 library.files = ../../.build/sentry/libsentry.so
 library.path = /opt/lib
 INSTALLS += library
+
+LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+INCLUDEPATH += $$PWD/../../shared/liboxide
+DEPENDPATH += $$PWD/../../shared/liboxide
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib

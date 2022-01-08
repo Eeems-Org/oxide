@@ -2,7 +2,6 @@
 #define DEVICESETTINGS_H
 
 #include <string>
-#include "sentry_settings.h"
 
 #define deviceSettings DeviceSettings::instance()
 

@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <cstdlib>
 #include <signal.h>
+#include <liboxide.h>
 
 #include "controller.h"
 #include "eventfilter.h"

@@ -16,7 +16,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-        ../../shared/sentry_settings.cpp \
         main.cpp
 
 INCLUDEPATH += ../../shared
@@ -40,8 +39,7 @@ target.path = /opt/bin
 
 HEADERS += \
     ../../shared/dbussettings.h \
-    ../../shared/devicesettings.h \
-    ../../shared/sentry_settings.h
+    ../../shared/devicesettings.h
 
 LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
 INCLUDEPATH += $$PWD/../../.build/sentry/include
@@ -50,5 +48,13 @@ DEPENDPATH += $$PWD/../../.build/sentry/lib
 library.files = ../../.build/sentry/libsentry.so
 library.path = /opt/lib
 INSTALLS += library
+
+LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+INCLUDEPATH += $$PWD/../../shared/liboxide
+DEPENDPATH += $$PWD/../../shared/liboxide
+
+LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+INCLUDEPATH += $$PWD/../../shared/liboxide
+DEPENDPATH += $$PWD/../../shared/liboxide
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib

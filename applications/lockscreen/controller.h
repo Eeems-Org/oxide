@@ -3,9 +3,9 @@
 
 #include <QObject>
 #include <QQuickItem>
+#include <liboxide.h>
 
 #include "dbussettings.h"
-#include "sentry_settings.h"
 
 #include "dbusservice_interface.h"
 #include "systemapi_interface.h"

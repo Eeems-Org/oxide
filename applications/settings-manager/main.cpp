@@ -6,6 +6,7 @@
 
 #include "dbussettings.h"
 #include "devicesettings.h"
+#include "liboxide.h"
 
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
@@ -21,11 +22,6 @@
 #include "notification_interface.h"
 
 using namespace codes::eeems::oxide1;
-
-#ifdef SENTRY
-#undef initSentry
-#define initSentry
-#endif
 
 static QTextStream qStdOut(stdout, QIODevice::WriteOnly);
 

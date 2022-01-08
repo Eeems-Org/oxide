@@ -20,7 +20,6 @@ linux-oe-g++ {
 }
 
 SOURCES += \
-        ../../shared/sentry_settings.cpp \
         main.cpp \
         ../../shared/devicesettings.cpp \
         ../../shared/eventfilter.cpp
@@ -41,7 +40,6 @@ HEADERS += \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h \
     ../../shared/eventfilter.h \
-    ../../shared/sentry_settings.h \
     controller.h
 
 RESOURCES += \
@@ -58,5 +56,9 @@ DEPENDPATH += $$PWD/../../.build/sentry/lib
 library.files = ../../.build/sentry/libsentry.so
 library.path = /opt/lib
 INSTALLS += library
+
+LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+INCLUDEPATH += $$PWD/../../shared/liboxide
+DEPENDPATH += $$PWD/../../shared/liboxide
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib

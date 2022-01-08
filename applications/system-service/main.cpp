@@ -2,6 +2,7 @@
 #include <QGuiApplication>
 
 #include <cstdlib>
+#include <liboxide.h>
 
 #include "dbusservice.h"
 #include "signalhandler.h"

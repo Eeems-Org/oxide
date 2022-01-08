@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <QJsonObject>
 #include <QMutableListIterator>
+#include <liboxide.h>
 
 #include "appitem.h"
 #include "eventfilter.h"
