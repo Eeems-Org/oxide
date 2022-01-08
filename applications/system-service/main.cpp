@@ -18,7 +18,7 @@ void sigHandler(int signal){
 
 int main(int argc, char *argv[]){
     initSentry("tarnish", argv);
-    if(deviceSettings.getDeviceType() == DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
+    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
 #ifdef SENTRY
         sentry_breadcrumb("error", "rm2fb not detected.");
 #endif

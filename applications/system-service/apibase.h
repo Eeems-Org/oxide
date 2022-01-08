@@ -8,7 +8,8 @@
 #include <QDBusMessage>
 
 #include <unistd.h>
-#include <liboxide.h>
+
+#include "../../shared/liboxide/liboxide.h"
 
 class APIBase : public QObject, protected QDBusContext {
     Q_OBJECT

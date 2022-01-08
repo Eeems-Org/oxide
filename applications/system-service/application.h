@@ -31,8 +31,8 @@
 #include <stdexcept>
 #include <sys/types.h>
 #include <algorithm>
-#include <liboxide.h>
 
+#include "../../shared/liboxide/liboxide.h"
 #include "mxcfb.h"
 #include "screenapi.h"
 #include "fifohandler.h"

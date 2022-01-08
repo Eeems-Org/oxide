@@ -50,6 +50,7 @@ INCLUDEPATH += $$PWD/../../shared
 DEPENDPATH += $$PWD/../../shared
 
 HEADERS += \
+    ../../shared/liboxide/liboxide.h \
     apibase.h \
     application.h \
     appsapi.h \

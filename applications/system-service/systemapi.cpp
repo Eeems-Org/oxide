@@ -37,7 +37,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
             screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
         }
         buttonHandler->setEnabled(false);
-        if(device == DeviceSettings::DeviceType::RM2){
+        if(device == Oxide::DeviceSettings::DeviceType::RM2){
             if(wifiAPI->state() != WifiAPI::State::Off){
                 wifiWasOn = true;
                 wifiAPI->disable();
@@ -66,7 +66,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
             qDebug() << "Suspend timer re-enabled due to resume";
             suspendTimer.start(m_autoSleep * 60 * 1000);
         }
-        if(device == DeviceSettings::DeviceType::RM2){
+        if(device == Oxide::DeviceSettings::DeviceType::RM2){
             system("modprobe brcmfmac");
             if(wifiWasOn){
                 wifiAPI->enable();

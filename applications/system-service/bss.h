@@ -4,8 +4,7 @@
 #include <QMutableListIterator>
 #include <QMutex>
 
-#include <liboxide.h>
-
+#include "../../shared/liboxide/liboxide.h"
 #include "supplicant.h"
 #include "network.h"
 

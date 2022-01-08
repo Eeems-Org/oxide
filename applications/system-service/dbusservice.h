@@ -10,8 +10,8 @@
 #include <QDBusConnection>
 #include <fstream>
 #include <QGuiApplication>
-#include <liboxide.h>
 
+#include "../../shared/liboxide/liboxide.h"
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "appsapi.h"

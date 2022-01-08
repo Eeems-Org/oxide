@@ -559,7 +559,7 @@ private:
             return;
         }
         int offset = 20;
-        if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
+        if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
             offset = 40;
         }
         if(touch->y <= offset){
@@ -567,13 +567,13 @@ private:
         }else if(touch->y > (deviceSettings.getTouchHeight() - offset)){
             swipeDirection = Down;
         }else if(touch->x <= offset){
-            if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
+            if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
                 swipeDirection = Right;
             }else{
                 swipeDirection = Left;
             }
         }else if(touch->x > (deviceSettings.getTouchWidth() - offset)){
-            if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
+            if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
                 swipeDirection = Left;
             }else{
                 swipeDirection = Right;
@@ -643,7 +643,7 @@ private:
             }
             emit topAction();
         }else if(swipeDirection == Right || swipeDirection == Left){
-            auto isRM2 = deviceSettings.getDeviceType() == DeviceSettings::RM2;
+            auto isRM2 = deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2;
             auto invalidLeft = !swipeStates[Left] || touch->x < location.x() || touch->x - startLocation.x() < swipeLengths[Left];
             auto invalidRight = !swipeStates[Right] || touch->x > location.x() || startLocation.x() - touch->x < swipeLengths[Right];
             if(swipeDirection == Right && (isRM2 ? invalidLeft : invalidRight)){

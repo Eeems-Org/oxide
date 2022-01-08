@@ -20,7 +20,7 @@ class WifiAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_WIFI_INTERFACE)
     Q_PROPERTY(int state READ state NOTIFY stateChanged)
-    Q_PROPERTY(QSet<QString> blobs READ blobs)
+    Q_PROPERTY(QStringList blobs READ blobs)
     Q_PROPERTY(QList<QDBusObjectPath> bSSs READ bSSs)
     Q_PROPERTY(int link READ link NOTIFY linkChanged)
     Q_PROPERTY(int rssi READ rssi NOTIFY rssiChanged)
@@ -406,15 +406,15 @@ public:
         }
         return QByteArray();
     }
-    QSet<QString> blobs(){
+    QStringList blobs(){
         QSet<QString> result;
         if(!hasPermission("wifi")){
-            return result;
+            return result.values();
         }
         for(auto wlan : wlans){
             result.unite(wlan->blobs());
         }
-        return result;
+        return result.values();
     }
     QList<QDBusObjectPath> bSSs(){
         QList<QDBusObjectPath> result;
