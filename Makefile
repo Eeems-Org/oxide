@@ -73,6 +73,6 @@ sentry: .build/sentry/libsentry.so
 	cd shared/sentry && cmake --build ../../.build/sentry --parallel
 	cd shared/sentry && cmake --install ../../.build/sentry --prefix ../../.build/sentry --config RelWithDebInfo
 
-release/lib/libsentry.so: .build/sentry/libsentry.so
-	mkdir -p release/lib
-	cp .build/sentry/libsentry.so release/lib/
+release/opt/lib/libsentry.so: .build/sentry/libsentry.so
+	mkdir -p release/opt/lib
+	cp .build/sentry/libsentry.so release/opt/lib/

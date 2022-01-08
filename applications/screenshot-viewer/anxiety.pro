@@ -65,4 +65,4 @@ library.files = ../../.build/sentry/libsentry.so
 library.path = /opt/lib
 INSTALLS += library
 
-QMAKE_RPATHDIR += /lib /usr/lib /opt/lib
+QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib

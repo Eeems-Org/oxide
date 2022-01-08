@@ -21,7 +21,7 @@ build() {
 erode() {
     pkgdesc="Task manager"
     section=utils
-    installdepends=("tarnish=$pkgver")
+    installdepends=("tarnish=$pkgver" "libsentry=0.4.13")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/erode
@@ -34,7 +34,7 @@ erode() {
 fret() {
     pkgdesc="Take screenshots"
     section=utils
-    installdepends=("tarnish=$pkgver")
+    installdepends=("tarnish=$pkgver"  "libsentry=0.4.13")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/fret
@@ -45,7 +45,7 @@ fret() {
 oxide() {
     pkgdesc="Launcher application"
     section=launchers
-    installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" display)
+    installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" display  "libsentry=0.4.13")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/oxide
@@ -67,7 +67,7 @@ oxide() {
 rot() {
     pkgdesc="Manage Oxide settings through the command line"
     section=utils
-    installdepends=("tarnish=$pkgver")
+    installdepends=("tarnish=$pkgver"  "libsentry=0.4.13")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/rot
@@ -77,6 +77,7 @@ rot() {
 tarnish() {
     pkgdesc="Service managing power states, connectivity and buttons"
     section=utils
+    installdepends=("libsentry=0.4.13")
 
     package() {
         install -D -m 644 -t "$pkgdir"/etc/dbus-1/system.d "$srcdir"/release/etc/dbus-1/system.d/codes.eeems.oxide.conf
@@ -103,7 +104,7 @@ tarnish() {
 decay() {
     pkgdesc="Lockscreen application"
     section=utils
-    installdepends=("tarnish=$pkgver")
+    installdepends=("tarnish=$pkgver" "libsentry=0.4.13")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/decay
@@ -114,7 +115,7 @@ decay() {
 corrupt() {
     pkgdesc="Task Switcher for Oxide"
     section=utils
-    installdepends=("tarnish=$pkgver")
+    installdepends=("tarnish=$pkgver" "libsentry=0.4.13")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/corrupt
@@ -125,7 +126,7 @@ corrupt() {
 anxiety() {
     pkgdesc="Screenshot viewer for Oxide"
     section=utils
-    installdepends=("tarnish=$pkgver")
+    installdepends=("tarnish=$pkgver" "libsentry=0.4.13")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/anxiety
@@ -133,4 +134,15 @@ anxiety() {
         install -D -m 644 -t "$pkgdir"/opt/etc/draft/icons "$srcdir"/release/opt/etc/draft/icons/image.svg
         install -D -m 644 -t "$pkgdir"/opt/etc/draft/icons "$srcdir"/release/opt/etc/draft/icons/anxiety-splash.png
     }
+}
+
+libsentry() {
+	pkgdesc="Sentry SDK for C, C++ and native applications."
+	url=https://github.com/getsentry/sentry-native
+	pkgver="0.4.13"
+	timestamp="2021-12-20T14:25:11Z"
+
+	package() {
+		install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libsentry.so
+	}
 }
