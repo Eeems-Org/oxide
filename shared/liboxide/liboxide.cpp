@@ -54,32 +54,6 @@ void sentry_setup_context(){
     sentry_set_context("device", device);
 #endif
 }
-void initSentry(const char* name, char* argv[]){
-#ifdef SENTRY
-    sentry_setup_options(name, argv); \
-    sentry_setup_user(); \
-    sentry_setup_context(); \
-    sentry_set_transaction(name); \
-    auto sentryClose = qScopeGuard([] { sentry_close(); });
-#else
-    Q_UNUSED(name);
-    Q_UNUSED(argv);
-    qWarning() << "Telemetry disabled";
-#endif
-}
-void sentry_breadcrumb(const char* category, const char* message, const char* type, const char* level){
-#ifdef SENTRY
-    sentry_value_t crumb = sentry_value_new_breadcrumb(type, message);
-    sentry_value_set_by_key(crumb, "category", sentry_value_new_string(category));
-    sentry_value_set_by_key(crumb, "level", sentry_value_new_string(level));
-    sentry_add_breadcrumb(crumb);
-#else
-    Q_UNUSED(category);
-    Q_UNUSED(message);
-    Q_UNUSED(type);
-    Q_UNUSED(level);
-#endif
-}
 
 #define BITS_PER_LONG (sizeof(long) * 8)
 #define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
@@ -88,6 +62,34 @@ void sentry_breadcrumb(const char* category, const char* message, const char* ty
 #define test_bit(bit, array) ((array[LONG(bit)] >> OFF(bit)) & 1)
 
 namespace Oxide {
+    namespace Sentry{
+        void sentry_init(const char* name, char* argv[]){
+        #ifdef SENTRY
+            sentry_setup_options(name, argv); \
+            sentry_setup_user(); \
+            sentry_setup_context(); \
+            sentry_set_transaction(name); \
+            auto sentryClose = qScopeGuard([] { sentry_close(); });
+        #else
+            Q_UNUSED(name);
+            Q_UNUSED(argv);
+            qWarning() << "Telemetry disabled";
+        #endif
+        }
+        void sentry_breadcrumb(const char* category, const char* message, const char* type, const char* level){
+        #ifdef SENTRY
+            sentry_value_t crumb = sentry_value_new_breadcrumb(type, message);
+            sentry_value_set_by_key(crumb, "category", sentry_value_new_string(category));
+            sentry_value_set_by_key(crumb, "level", sentry_value_new_string(level));
+            sentry_add_breadcrumb(crumb);
+        #else
+            Q_UNUSED(category);
+            Q_UNUSED(message);
+            Q_UNUSED(type);
+            Q_UNUSED(level);
+        #endif
+        }
+    }
     DeviceSettings& DeviceSettings::instance() {
         static DeviceSettings INSTANCE;
         return INSTANCE;

@@ -15,11 +15,12 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #include "dbusservice_interface.h"
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide::Sentry;
 
 const char* qt_version = qVersion();
 
 int main(int argc, char *argv[]){
-    initSentry("decay", argv);
+    sentry_init("decay", argv);
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
     }

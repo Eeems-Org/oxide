@@ -29,13 +29,14 @@
 #define OXIDE_NOTIFICATION_INTERFACE OXIDE_SERVICE ".Notification"
 #define OXIDE_SCREENSHOT_INTERFACE OXIDE_SERVICE ".Screenshot"
 
-LIBOXIDE_EXPORT void initSentry(const char* name, char* argv[]);
-LIBOXIDE_EXPORT void sentry_breadcrumb(const char* category, const char* message, const char* type = "default", const char* level = "info");
-
 #define deviceSettings Oxide::DeviceSettings::instance()
 #define xochitlSettings Oxide::XochitlSettings::instance()
 
 namespace Oxide {
+    namespace Sentry{
+        LIBOXIDE_EXPORT void sentry_init(const char* name, char* argv[]);
+        LIBOXIDE_EXPORT void sentry_breadcrumb(const char* category, const char* message, const char* type = "default", const char* level = "info");
+    }
     class LIBOXIDE_EXPORT DeviceSettings{
     public:
         enum DeviceType { Unknown, RM1, RM2 };

@@ -18,6 +18,7 @@
 #include "appitem.h"
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide::Sentry;
 
 #define CORRUPT_SETTINGS_VERSION 1
 

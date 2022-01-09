@@ -17,6 +17,7 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #include "dbusservice_interface.h"
 
 using namespace std;
+using namespace Oxide::Sentry;
 
 const char* qt_version = qVersion();
 
@@ -26,7 +27,7 @@ void sigHandler(int signal){
 }
 
 int main(int argc, char *argv[]){
-    initSentry("anxiety", argv);
+    sentry_init("anxiety", argv);
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
     }

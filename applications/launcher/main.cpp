@@ -26,6 +26,7 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 
 using namespace std;
+using namespace Oxide::Sentry;
 
 const char *qt_version = qVersion();
 
@@ -33,7 +34,7 @@ function<void(int)> shutdown_handler;
 void signalHandler2(int signal) { shutdown_handler(signal); }
 
 int main(int argc, char *argv[]){
-    initSentry("oxide", argv);
+    sentry_init("oxide", argv);
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
     }

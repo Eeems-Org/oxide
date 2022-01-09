@@ -24,6 +24,7 @@
 #define dbusService DBusService::singleton()
 
 using namespace std;
+using namespace Oxide::Sentry;
 
 struct APIEntry {
     QString path;

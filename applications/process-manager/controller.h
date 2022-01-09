@@ -7,6 +7,8 @@
 
 #include "tasklist.h"
 
+using namespace Oxide::Sentry;
+
 class Controller : public QObject
 {
     Q_OBJECT

@@ -14,6 +14,7 @@
 #include "notification_interface.h"
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide::Sentry;
 
 void unixSignalHandler(int signal){
     qDebug() << "Recieved signal" << signal;
@@ -42,7 +43,7 @@ void addNotification(Notifications* notifications, QString text, QString icon = 
 }
 
 int main(int argc, char *argv[]){
-    initSentry("fret", argv);
+    sentry_init("fret", argv);
     atexit(onExit);
     signal(SIGTERM, unixSignalHandler);
     signal(SIGSEGV, unixSignalHandler);

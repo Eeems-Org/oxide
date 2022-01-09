@@ -25,6 +25,7 @@
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide::Sentry;
 
 enum State { Normal, PowerSaving };
 enum BatteryState { BatteryUnknown, BatteryCharging, BatteryDischarging, BatteryNotPresent };

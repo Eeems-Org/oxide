@@ -13,6 +13,7 @@
 #include "application_interface.h"
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide::Sentry;
 
 #define DECAY_SETTINGS_VERSION 1
 

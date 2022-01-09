@@ -20,6 +20,7 @@
 #include "notification_interface.h"
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide::Sentry;
 
 static QTextStream qStdOut(stdout, QIODevice::WriteOnly);
 
@@ -196,7 +197,7 @@ private:
 };
 
 int main(int argc, char *argv[]){
-    initSentry("rot", argv);
+    sentry_init("rot", argv);
     QCoreApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);

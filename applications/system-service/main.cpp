@@ -8,6 +8,7 @@
 #include "signalhandler.h"
 
 using namespace std;
+using namespace Oxide::Sentry;
 
 const char *qt_version = qVersion();
 
@@ -17,7 +18,7 @@ void sigHandler(int signal){
 }
 
 int main(int argc, char *argv[]){
-    initSentry("tarnish", argv);
+    sentry_init("tarnish", argv);
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
 #ifdef SENTRY
         sentry_breadcrumb("error", "rm2fb not detected.");
