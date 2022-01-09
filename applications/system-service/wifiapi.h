@@ -38,7 +38,6 @@ public:
     WifiAPI(QObject* parent)
     : APIBase(parent),
       m_enabled(false),
-      settings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat),
       wlans(),
       networks(),
       m_state(Unknown),
@@ -134,7 +133,7 @@ public:
         connect(timer, &QTimer::timeout, this, QOverload<>::of(&WifiAPI::update));
         loadNetworks();
         m_state = getCurrentState();
-        if(settings.value("wifion").toBool()){
+        if(xochitlSettings.wifion()){
             enable();
         }else{
             disable();
@@ -212,7 +211,7 @@ public:
                 continue;
             }
         }
-        settings.setValue("wifion", true);
+        xochitlSettings.setWifion(true);
         validateSupplicant();
         auto state = getCurrentState();
         m_state = state;
@@ -234,8 +233,7 @@ public:
             }
         }
         flushBSSCache(0);
-        settings.setValue("wifion", false);
-        settings.sync();
+        xochitlSettings.setWifion(false);
     }
     Q_INVOKABLE QDBusObjectPath addNetwork(QString ssid, QVariantMap properties){
         if(!hasPermission("wifi")){
@@ -657,7 +655,6 @@ private slots:
 private:
     bool m_enabled;
     QTimer* timer;
-    QSettings settings;
     QList<Wlan*> wlans;
     QList<Network*> networks;
     int m_state;
@@ -703,14 +700,7 @@ private:
 
     void loadNetworks(){
         qDebug() << "Loading networks from settings...";
-        settings.sync();
-        settings.beginGroup("wifinetworks");
-        QList<QVariantMap> registeredNetworks;
-        for(const QString& childKey : settings.allKeys()){
-            QVariantMap network = settings.value(childKey).toMap();
-            registeredNetworks.append(network);
-        }
-        settings.endGroup();
+        QList<QVariantMap> registeredNetworks = xochitlSettings.wifinetworks().values();
         qDebug() << "Registering networks...";
         for(auto registration : registeredNetworks){
             bool found = false;
@@ -750,9 +740,8 @@ private:
     }
 
     void update(){
-        settings.sync();
         auto state = getCurrentState();
-        bool enabled = settings.value("wifion").toBool();
+        bool enabled = xochitlSettings.wifion();
         if(enabled && state == Off){
             enable();
             state = getCurrentState();

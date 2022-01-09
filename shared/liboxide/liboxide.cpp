@@ -88,6 +88,10 @@ void sentry_breadcrumb(const char* category, const char* message, const char* ty
 #define test_bit(bit, array) ((array[LONG(bit)] >> OFF(bit)) & 1)
 
 namespace Oxide {
+    DeviceSettings& DeviceSettings::instance() {
+        static DeviceSettings INSTANCE;
+        return INSTANCE;
+    }
     DeviceSettings::DeviceSettings(): _deviceType(DeviceType::RM1) {
         readDeviceType();
 
@@ -198,4 +202,83 @@ namespace Oxide {
                 return 0;
         }
     }
+    XochitlSettings& XochitlSettings::instance() {
+        static XochitlSettings INSTANCE;
+        return INSTANCE;
+    }
+    QString XochitlSettings::passcode(){ return value("Passcode", "").toString(); }
+    void XochitlSettings::setPasscode(const QString& passcode){
+        m_passcode = passcode;
+        setValue("Passcode", passcode);
+        sync();
+    }
+    QMap<QString, QVariantMap> XochitlSettings::wifinetworks(){
+        beginGroup("wifinetworks");
+        QMap<QString, QVariantMap> wifinetworks;
+        for(const QString& key : allKeys()){
+            QVariantMap network = value(key).toMap();
+            wifinetworks.value(key, network);
+        }
+        endGroup();
+        return wifinetworks;
+    }
+    void XochitlSettings::setWifinetworks(const QMap<QString, QVariantMap>& wifinetworks){
+        beginGroup("wifinetworks");
+        for(const QString& key : wifinetworks.keys()){
+            setValue(key, wifinetworks.value(key));
+        }
+        endGroup();
+        sync();
+    }
+    QVariantMap XochitlSettings::getWifiNetwork(const QString& name){
+        beginGroup("wifinetworks");
+        QVariantMap network = value(name).toMap();
+        endGroup();
+        return network;
+    }
+    QVariantMap XochitlSettings::setWifiNetwork(const QString& name, QVariantMap properties){
+        beginGroup("wifinetworks");
+        setValue(name, properties);
+        endGroup();
+        sync();
+    }
+    bool XochitlSettings::wifion(){ return value("wifion").toBool(); }
+    void XochitlSettings::setWifion(bool wifion){
+        setValue("wifion", wifion);
+        sync();
+    }
+    XochitlSettings::XochitlSettings()
+        : QSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat),
+          fileWatcher(QStringList() << "/home/root/.config/remarkable/xochitl.conf", this)
+    {
+        // Load values
+        sync();
+        // Load value cache
+        m_passcode = passcode();
+        m_wifinetworks = wifinetworks();
+        m_wifion = wifion();
+        // Connect event listener to emit events when values change
+        connect(&fileWatcher, &QFileSystemWatcher::fileChanged, this, [this](const QString& path) {
+            Q_UNUSED(path);
+            // Load new values
+            sync();
+            // Check if any values have updated
+            auto passcode = this->passcode();
+            if(passcode != m_passcode){
+                m_passcode = passcode;
+                emit passcodeChanged(passcode);
+            }
+            auto wifinetworks = this->wifinetworks();
+            if(wifinetworks != m_wifinetworks){
+                m_wifinetworks = wifinetworks;
+                emit wifinetworksChanged(wifinetworks);
+            }
+            auto wifion = this->wifion();
+            if(wifion != m_wifion){
+                m_wifion = wifion;
+                emit wifionChanged(wifion);
+            }
+        });
+    }
+    XochitlSettings::~XochitlSettings(){}
 }

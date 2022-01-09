@@ -487,14 +487,8 @@ private:
         settings->sync();
     }
 
-    static QString xochitlPin(){
-        QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
-        xochitlSettings.sync();
-        return xochitlSettings.value("Passcode", "").toString();
-    }
+    static QString xochitlPin(){ return xochitlSettings.passcode(); }
     static void removeXochitlPin(){
-        QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
-        xochitlSettings.sync();
         xochitlSettings.remove("Passcode");
         xochitlSettings.sync();
     }
