@@ -25,13 +25,13 @@ int main(int argc, char *argv[]){
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
     }
-    QGuiApplication app(argc, argv);
-    sentry_init("tarnish", argv);
 #ifdef __arm__
     // Setup epaper
     qputenv("QMLSCENE_DEVICE", "epaper");
     qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
 #endif
+    QGuiApplication app(argc, argv);
+    sentry_init("tarnish", argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("tarnish");

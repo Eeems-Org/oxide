@@ -37,8 +37,6 @@ int main(int argc, char *argv[]){
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
     }
-    QGuiApplication app(argc, argv);
-    sentry_init("oxide", argv);
 #ifdef __arm__
     // Setup epaper
     qputenv("QMLSCENE_DEVICE", "epaper");
@@ -47,6 +45,8 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
+    QGuiApplication app(argc, argv);
+    sentry_init("oxide", argv);
     auto filter = new EventFilter(&app);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
