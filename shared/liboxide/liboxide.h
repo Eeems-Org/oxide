@@ -31,6 +31,7 @@
 
 #define deviceSettings Oxide::DeviceSettings::instance()
 #define xochitlSettings Oxide::XochitlSettings::instance()
+#define sharedSettings Oxide::SharedSettings::instance()
 
 namespace Oxide {
     namespace Sentry{
@@ -87,6 +88,22 @@ namespace Oxide {
         QString m_passcode;
         QMap<QString, QVariantMap> m_wifinetworks;
         bool m_wifion;
+    };
+
+    class LIBOXIDE_EXPORT SharedSettings : public QSettings {
+        Q_OBJECT
+        Q_PROPERTY(bool telemetry MEMBER m_telemetry READ telemetry WRITE setTelemetry NOTIFY telemetryChanged)
+    public:
+        static SharedSettings& instance();
+        bool telemetry();
+        void setTelemetry(bool);
+    signals:
+        void telemetryChanged(bool);
+    private:
+        SharedSettings();
+        ~SharedSettings();
+        QFileSystemWatcher fileWatcher;
+        bool m_telemetry;
     };
 }
 

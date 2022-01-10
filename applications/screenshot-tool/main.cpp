@@ -43,13 +43,13 @@ void addNotification(Notifications* notifications, QString text, QString icon = 
 }
 
 int main(int argc, char *argv[]){
+    QCoreApplication app(argc, argv);
     sentry_init("fret", argv);
     atexit(onExit);
     signal(SIGTERM, unixSignalHandler);
     signal(SIGSEGV, unixSignalHandler);
     signal(SIGABRT, unixSignalHandler);
     signal(SIGSYS, unixSignalHandler);
-    QCoreApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("fret");
