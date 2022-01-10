@@ -17,12 +17,12 @@
 #include <linux/input.h>
 #include <systemd/sd-id128.h>
 
-#ifdef SENTRY
-
 // String: 5aa5ca39ee0b4f48927529ca17519524
 // UUID: 5aa5ca39-ee0b-4f48-9275-29ca17519524
 #define OXIDE_UID SD_ID128_MAKE(5a,a5,ca,39,ee,0b,4f,48,92,75,29,ca,17,51,95,24)
 
+#ifdef SENTRY
+#include <sentry.h>
 std::string readFile(std::string path){
     std::ifstream t(path);
     std::stringstream buffer;

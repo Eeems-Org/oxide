@@ -3,7 +3,6 @@
 
 #include "liboxide_global.h"
 
-#include <sentry.h>
 #include <QDebug>
 #include <QScopeGuard>
 #include <QSettings>

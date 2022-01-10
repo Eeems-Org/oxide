@@ -21,13 +21,17 @@ LIBS += -L$$PWD/../../shared/ -lqsgepaper
 INCLUDEPATH += $$PWD/../../shared
 DEPENDPATH += $$PWD/../../shared
 
-LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
-INCLUDEPATH += $$PWD/../../.build/sentry/include
-DEPENDPATH += $$PWD/../../.build/sentry/lib
+exists($$PWD/../../.build/sentry) {
+    LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
+    INCLUDEPATH += $$PWD/../../.build/sentry/include
+    DEPENDPATH += $$PWD/../../.build/sentry/lib
 
-library.files = ../../.build/sentry/libsentry.so
-library.path = /opt/lib
-INSTALLS += library
+    library.files = ../../.build/sentry/libsentry.so
+    library.path = /opt/lib
+    INSTALLS += library
+}
 
 target.path = /opt/usr/lib
 !isEmpty(target.path): INSTALLS += target
+
+VERSION = 2.3
