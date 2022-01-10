@@ -17,10 +17,14 @@ jobs:
     - name: Build package
       run: nix-build --argstr system 'x86_64-linux'
       timeout-minutes: 15
-    - name: Copy result
-      run: mkdir -p oxide && cp -a result/. oxide
-    - name: Upload artifacts
+    - name: Build packages
+      run: |
+        mkdir output
+        find -L result -name '*.ipk' | while read -r file; do
+          cp "$file" output/"$(basename $file)"
+        done
+    - name: Save packages
       uses: actions/upload-artifact@v2
       with:
-        name: oxide
-        path: oxide
+        name: packages
+        path: output
