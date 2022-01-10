@@ -13,8 +13,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <linux/input.h>
+#include <systemd/sd-id128.h>
 
 #ifdef SENTRY
+
+#define OXIDE_UID SD_ID128_MAKE(eb,48,5f,c0,91,f1,4b,aa,95,13,09,00,cb,33,81,41)
+
 std::string readFile(std::string path){
     std::ifstream t(path);
     std::stringstream buffer;
@@ -71,6 +75,25 @@ namespace Oxide {
     }
     namespace Sentry{
         static bool initialized = false;
+        const char* machineId(){
+            sd_id128_t id;
+            int ret = sd_id128_get_machine_app_specific(OXIDE_UID, &id);
+            if(!ret){
+                char buf[SD_ID128_STRING_MAX];
+                return sd_id128_to_string(id, buf);
+            }else if(ret == ENOENT){
+                qWarning() << "/etc/machine-id is missing";
+            }else if(ret == ENOMEDIUM){
+                qWarning() << "/etc/machine-id is empty or all zeros";
+            }else if(ret == EIO){
+                qWarning() << "/etc/machine-id has the incorrect format";
+            }else if(ret == EPERM){
+                qWarning() << "/etc/machine-id access denied";
+            }else{
+                qWarning() << "Unexpected error code reading machine-id:" << ret;
+            }
+            return "";
+        }
         void sentry_init(const char* name, char* argv[]){
         #ifdef SENTRY
             if(!sharedSettings.telemetry()){
@@ -90,13 +113,13 @@ namespace Oxide {
             sentry_init(options);
             // Setup user
             sentry_value_t user = sentry_value_new_object();
-            sentry_value_set_by_key(user, "id", sentry_value_new_string(readFile("/etc/machine-id").c_str()));
+            sentry_value_set_by_key(user, "id", sentry_value_new_string(machineId()));
             sentry_set_user(user);
             // Setup context
             std::string version = readFile("/etc/version");
             sentry_set_tag("os.version", version.c_str());
             sentry_value_t device = sentry_value_new_object();
-            sentry_value_set_by_key(device, "machine-id", sentry_value_new_string(readFile("/etc/machine-id").c_str()));
+            sentry_value_set_by_key(device, "machine-id", sentry_value_new_string(machineId()));
             sentry_value_set_by_key(device, "version", sentry_value_new_string(readFile("/etc/version").c_str()));
             sentry_set_context("device", device);
             // Setup transaction
