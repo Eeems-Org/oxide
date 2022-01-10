@@ -16,7 +16,6 @@
 #include <stdio.h>
 #include <linux/input.h>
 #include <systemd/sd-id128.h>
-#include <crypt.h>
 
 #ifdef SENTRY
 
