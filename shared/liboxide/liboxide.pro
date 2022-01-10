@@ -16,6 +16,8 @@ HEADERS += \
     liboxide_global.h \
     liboxide.h
 
+LIBS += -lsystemd
+
 INCLUDEPATH += ../../shared
 LIBS += -L$$PWD/../../shared/ -lqsgepaper
 INCLUDEPATH += $$PWD/../../shared

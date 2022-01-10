@@ -22,7 +22,6 @@ DBUS_INTERFACES += ../../interfaces/screenshot.xml
 DBUS_INTERFACES += ../../interfaces/notificationapi.xml
 DBUS_INTERFACES += ../../interfaces/notification.xml
 
-
 INCLUDEPATH += ../../shared
 
 LIBS += -L$$PWD/../../shared/ -lqsgepaper

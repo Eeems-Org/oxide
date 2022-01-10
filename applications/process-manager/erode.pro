@@ -48,6 +48,8 @@ linux-oe-g++ {
     LIBS += -lqsgepaper
 }
 
+LIBS += -lsystemd
+
 DISTFILES +=
 
 LIBS += -L$$PWD/../../shared/ -lqsgepaper
