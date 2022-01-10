@@ -6,6 +6,8 @@
 #include <QCoreApplication>
 #include <QTimer>
 #include <QFile>
+#include <QCryptographicHash>
+#include <QUuid>
 
 #include <sstream>
 #include <fstream>
@@ -14,10 +16,13 @@
 #include <stdio.h>
 #include <linux/input.h>
 #include <systemd/sd-id128.h>
+#include <crypt.h>
 
 #ifdef SENTRY
 
-#define OXIDE_UID SD_ID128_MAKE(eb,48,5f,c0,91,f1,4b,aa,95,13,09,00,cb,33,81,41)
+// String: 5aa5ca39ee0b4f48927529ca17519524
+// UUID: 5aa5ca39-ee0b-4f48-9275-29ca17519524
+#define OXIDE_UID SD_ID128_MAKE(5a,a5,ca,39,ee,0b,4f,48,92,75,29,ca,17,51,95,24)
 
 std::string readFile(std::string path){
     std::ifstream t(path);
@@ -56,6 +61,37 @@ void sentry_setup_context(){
 #define LONG(x) ((x)/BITS_PER_LONG)
 #define test_bit(bit, array) ((array[LONG(bit)] >> OFF(bit)) & 1)
 
+void logMachineIdError(int error, QString name, QString path){
+    if(error == -ENOENT){
+        qWarning() << "/etc/machine-id is missing";
+    }else  if(error == -ENOMEDIUM){
+        qWarning() << path + " is empty or all zeros";
+    }else if(error == -EIO){
+        qWarning() << path + " has the incorrect format";
+    }else if(error == -EPERM){
+        qWarning() << path + " access denied";
+    } if(error == -EINVAL){
+        qWarning() << "Error while reading " + name + ": Buffer invalid";
+    }else if(error == -ENXIO){
+        qWarning() << "Error while reading " + name + ": No invocation ID is set";
+    }else if(error == -EOPNOTSUPP){
+        qWarning() << "Error while reading " + name + ": Operation not supported";
+    }else{
+        qWarning() << "Unexpected error code reading " + name + ":" << strerror(error);
+    }
+}
+std::string getAppSpecific(sd_id128_t base){
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    char buf[SD_ID128_STRING_MAX];
+    hash.addData(sd_id128_to_string(base, buf));
+    hash.addData(sd_id128_to_string(OXIDE_UID, buf));
+    auto r = hash.result();
+    r[6] = (r.at(6) & 0x0F) | 0x40;
+    r[8] = (r.at(8) & 0x3F) | 0x80;
+    QUuid uid(r.at(0), r.at(1), r.at(2), r.at(3), r.at(4), r.at(5), r.at(6), r.at(7), r.at(8), r.at(9), r.at(10));
+    return uid.toString((QUuid::Id128)).toStdString();
+}
+
 namespace Oxide {
     void dispatchToMainThread(std::function<void()> callback){
         if(QThread::currentThread() == qApp->thread()){
@@ -75,23 +111,46 @@ namespace Oxide {
     }
     namespace Sentry{
         static bool initialized = false;
-        const char* machineId(){
-            sd_id128_t id;
-            int ret = sd_id128_get_machine_app_specific(OXIDE_UID, &id);
-            if(!ret){
-                char buf[SD_ID128_STRING_MAX];
-                return sd_id128_to_string(id, buf);
-            }else if(ret == ENOENT){
-                qWarning() << "/etc/machine-id is missing";
-            }else if(ret == ENOMEDIUM){
-                qWarning() << "/etc/machine-id is empty or all zeros";
-            }else if(ret == EIO){
-                qWarning() << "/etc/machine-id has the incorrect format";
-            }else if(ret == EPERM){
-                qWarning() << "/etc/machine-id access denied";
-            }else{
-                qWarning() << "Unexpected error code reading machine-id:" << ret;
+        const char* bootId(){
+            static std::string bootId("");
+            if(!bootId.empty()){
+                return bootId.c_str();
             }
+            sd_id128_t id;
+            int ret = sd_id128_get_boot(&id);
+            // TODO - eventually replace with the following when supported by the
+            //        reMarkable kernel
+            // int ret = sd_id128_get_boot_app_specific(OXIDE_UID, &id);
+            if(ret == EXIT_SUCCESS){
+                bootId = getAppSpecific(id);
+                // TODO - eventually replace with the following when supported by the
+                //        reMarkable kernel
+                //char buf[SD_ID128_STRING_MAX];
+                //bootId = sd_id128_to_string(id, buf);
+                return bootId.c_str();
+            }
+            logMachineIdError(ret, "boot_id", "/proc/sys/kernel/random/boot_id");
+            return "";
+        }
+        const char* machineId(){
+            static std::string machineId("");
+            if(!machineId.empty()){
+                return machineId.c_str();
+            }
+            sd_id128_t id;
+            int ret = sd_id128_get_machine(&id);
+            // TODO - eventually replace with the following when supported by the
+            //        reMarkable kernel
+            // int ret = sd_id128_get_machine_app_specific(OXIDE_UID, &id);
+            if(ret == EXIT_SUCCESS){
+                machineId = getAppSpecific(id);
+                // TODO - eventually replace with the following when supported by the
+                //        reMarkable kernel
+                //char buf[SD_ID128_STRING_MAX];
+                //machineId = sd_id128_to_string(id, buf);
+                return machineId.c_str();
+            }
+            logMachineIdError(ret, "machine-id", "/etc/machine-id");
             return "";
         }
         void sentry_init(const char* name, char* argv[]){
@@ -106,7 +165,12 @@ namespace Oxide {
             sentry_options_set_symbolize_stacktraces(options, true);
             sentry_options_set_environment(options, argv[0]);
 #ifdef DEBUG
-            sentry_options_set_debug(options, true);
+            bool debug = getenv("DEBUG") != NULL;
+            if(debug){
+                QString env = qgetenv("DEBUG");
+                debug = !(QStringList() << "0" << "n" << "no" << "false").contains(env.toLower());
+            }
+            sentry_options_set_debug(options, debug);
 #endif
             sentry_options_set_database_path(options, "/home/root/.cache/Eeems/sentry");
             sentry_options_set_release(options, (std::string(name) + "@2.3").c_str());
