@@ -8,6 +8,7 @@
 #include <QScopeGuard>
 #include <QSettings>
 #include <QFileSystemWatcher>
+#include <QThread>
 
 #define WPA_SUPPLICANT_SERVICE "fi.w1.wpa_supplicant1"
 #define WPA_SUPPLICANT_SERVICE_PATH "/fi/w1/wpa_supplicant1"
@@ -34,6 +35,7 @@
 #define sharedSettings Oxide::SharedSettings::instance()
 
 namespace Oxide {
+    LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
     namespace Sentry{
         LIBOXIDE_EXPORT void sentry_init(const char* name, char* argv[]);
         LIBOXIDE_EXPORT void sentry_breadcrumb(const char* category, const char* message, const char* type = "default", const char* level = "info");

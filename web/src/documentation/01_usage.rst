@@ -87,7 +87,8 @@ Usage
     --once                 Exit on the first signal when listening.
 
   Arguments:
-    api                    wifi
+    api                    settings
+                           wifi
                            power
                            apps
                            system
@@ -110,7 +111,8 @@ ___
                            Network:network/94d5caa2d4345ab7be5254dfb9678cd7
 
   Arguments:
-    api                    wifi
+    api                    settings
+                           wifi
                            power
                            apps
                            system
@@ -134,7 +136,8 @@ ___
                            Network:network/94d5caa2d4345ab7be5254dfb9678cd7
 
   Arguments:
-    api                    wifi
+    api                    settings
+                           wifi
                            power
                            apps
                            system
@@ -160,7 +163,8 @@ ______
     --once                 Exit on the first signal when listening.
 
   Arguments:
-    api                    wifi
+    api                    settings
+                           wifi
                            power
                            apps
                            system
@@ -184,7 +188,8 @@ ____
                            Network:network/94d5caa2d4345ab7be5254dfb9678cd7
 
   Arguments:
-    api                    wifi
+    api                    settings
+                           wifi
                            power
                            apps
                            system
@@ -267,3 +272,6 @@ These examples assume you have `jq` installed.
 
   # Log changes to wifi state
   rot wifi listen state
+
+  # Disable telemetry
+  rot settings set telemetry false

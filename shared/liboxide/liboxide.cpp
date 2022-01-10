@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QCoreApplication>
 #include <QTimer>
+#include <QFile>
 
 #include <sstream>
 #include <fstream>
@@ -52,7 +53,24 @@ void sentry_setup_context(){
 #define test_bit(bit, array) ((array[LONG(bit)] >> OFF(bit)) & 1)
 
 namespace Oxide {
+    void dispatchToMainThread(std::function<void()> callback){
+        if(QThread::currentThread() == qApp->thread()){
+            callback();
+            return;
+        }
+        // any thread
+        QTimer* timer = new QTimer();
+        timer->moveToThread(qApp->thread());
+        timer->setSingleShot(true);
+        QObject::connect(timer, &QTimer::timeout, [=](){
+            // main thread
+            callback();
+            timer->deleteLater();
+        });
+        QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
+    }
     namespace Sentry{
+        static bool initialized = false;
         void sentry_init(const char* name, char* argv[]){
         #ifdef SENTRY
             if(!sharedSettings.telemetry()){
@@ -83,9 +101,23 @@ namespace Oxide {
             sentry_set_context("device", device);
             // Setup transaction
             sentry_set_transaction(name);
+            if(initialized){
+                return;
+            }
+            initialized = true;
             // Add close guard
             QObject::connect(qApp, &QCoreApplication::aboutToQuit, []() {
-                sentry_close();
+                if(sharedSettings.telemetry()){
+                    sentry_close();
+                }
+            });
+            // Handle telemetry being toggled
+            QObject::connect(&sharedSettings, &SharedSettings::telemetryChanged, [name, argv](bool telemetry){
+                if(telemetry){
+                    sentry_init(name, argv);
+                }else{
+                    sentry_close();
+                }
             });
         #else
             Q_UNUSED(name);
@@ -270,7 +302,7 @@ namespace Oxide {
     }
     XochitlSettings::XochitlSettings()
         : QSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat),
-          fileWatcher(QStringList() << "/home/root/.config/remarkable/xochitl.conf", this)
+          fileWatcher(QStringList() << "/home/root/.config/remarkable/xochitl.conf")
     {
         // Load values
         sync();
@@ -280,7 +312,7 @@ namespace Oxide {
         m_wifion = wifion();
         // Connect event listener to emit events when values change
         connect(&fileWatcher, &QFileSystemWatcher::fileChanged, this, [this](const QString& path) {
-            Q_UNUSED(path);
+            fileWatcher.addPath(path);
             // Load new values
             sync();
             // Check if any values have updated
@@ -308,15 +340,22 @@ namespace Oxide {
     }
     SharedSettings::SharedSettings()
         : QSettings("/home/root/.config/Eeems/shared.conf", QSettings::IniFormat),
-          fileWatcher(QStringList() << "/home/root/.config/Eeems/shared.conf", this)
+          fileWatcher()
     {
         // Load values
-        sync();
+        if(!QFile::exists(fileName())){
+            setValue("telemetry", true);
+        }else{
+            sync();
+        }
+        if(!fileWatcher.addPath(fileName())){
+            qWarning() << "Unable to watch shared settings";
+        }
         // Load value cache
         m_telemetry = telemetry();
         // Connect event listener to emit events when values change
         connect(&fileWatcher, &QFileSystemWatcher::fileChanged, this, [this](const QString& path) {
-            Q_UNUSED(path);
+            fileWatcher.addPath(path);
             // Load new values
             sync();
             // Check if any values have updated
@@ -328,10 +367,9 @@ namespace Oxide {
         });
     }
     SharedSettings::~SharedSettings(){}
-    bool SharedSettings::telemetry(){
-
-    }
-    void SharedSettings::setTelemetry(bool){
-
+    bool SharedSettings::telemetry(){ return value("telemetry").toBool(); }
+    void SharedSettings::setTelemetry(bool telemetry){
+        setValue("telemetry", telemetry);
+        sync();
     }
 }

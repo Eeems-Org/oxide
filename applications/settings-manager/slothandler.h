@@ -32,8 +32,9 @@ public:
     ~SlotHandler() {};
     int qt_metacall(QMetaObject::Call call, int id, void **arguments){
         id = QObject::qt_metacall(call, id, arguments);
-        if (id < 0 || call != QMetaObject::InvokeMetaMethod)
+        if (id < 0 || call != QMetaObject::InvokeMetaMethod){
             return id;
+        }
         Q_ASSERT(id < 1);
         if(!m_disconnected){
             handleSlot(sender(), arguments);

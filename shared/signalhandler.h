@@ -60,9 +60,9 @@ public:
         }
 
         snUsr1 = new QSocketNotifier(sigUsr1Fd[1], QSocketNotifier::Read, this);
-        connect(snUsr1, &QSocketNotifier::activated, this, &SignalHandler::handleSigUsr1);
+        connect(snUsr1, &QSocketNotifier::activated, this, &SignalHandler::handleSigUsr1, Qt::BlockingQueuedConnection);
         snUsr2 = new QSocketNotifier(sigUsr2Fd[1], QSocketNotifier::Read, this);
-        connect(snUsr2, &QSocketNotifier::activated, this, &SignalHandler::handleSigUsr2);
+        connect(snUsr2, &QSocketNotifier::activated, this, &SignalHandler::handleSigUsr2, Qt::BlockingQueuedConnection);
     }
     ~SignalHandler(){}
 

@@ -44,7 +44,7 @@ int main(int argc, char *argv[]){
     parser.addHelpOption();
     parser.applicationDescription();
     parser.addVersionOption();
-    parser.addPositionalArgument("api", "liboxide\nwifi\npower\napps\nsystem\nscreen\nnotification");
+    parser.addPositionalArgument("api", "settings\nwifi\npower\napps\nsystem\nscreen\nnotification");
     parser.addPositionalArgument("action","get\nset\nlisten\ncall");
     QCommandLineOption objectOption(
         {"o", "object"},
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]){
         parser.showHelp(EXIT_FAILURE);
     }
     auto apiName = args.at(0);
-    if(!(QSet<QString> {"liboxide", "power", "wifi", "apps", "system", "screen", "notification"}).contains(apiName)){
+    if(!(QSet<QString> {"settings", "power", "wifi", "apps", "system", "screen", "notification"}).contains(apiName)){
         qDebug() << "Unknown API" << apiName;
 #ifdef SENTRY
         sentry_breadcrumb("error", "Unknown API");
@@ -144,26 +144,45 @@ int main(int argc, char *argv[]){
 #endif
         return qExit(EXIT_FAILURE);
     }
-    General generalApi(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    auto reply = generalApi.requestAPI(apiName);
-    reply.waitForFinished();
-    if(reply.isError()){
-        qDebug() << reply.error();
+    QString path = "";
+    if(apiName != "settings"){
+        General generalApi(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+        auto reply = generalApi.requestAPI(apiName);
+        reply.waitForFinished();
+        if(reply.isError()){
+            qDebug() << reply.error();
 #ifdef SENTRY
-        sentry_breadcrumb("error", "Unable to request API");
+            sentry_breadcrumb("error", "Unable to request API");
 #endif
-        return qExit(EXIT_FAILURE);
-    }
-    auto path = ((QDBusObjectPath)reply).path();
-    if(path == "/"){
-        qDebug() << "API not available";
+            return qExit(EXIT_FAILURE);
+        }
+        path = ((QDBusObjectPath)reply).path();
+        if(path == "/"){
+            qDebug() << "API not available";
 #ifdef SENTRY
-        sentry_breadcrumb("error", "API not available");
+            sentry_breadcrumb("error", "API not available");
 #endif
-        return qExit(EXIT_FAILURE);
+            return qExit(EXIT_FAILURE);
+        }
     }
-    QDBusAbstractInterface* api;
-    if(apiName == "power"){
+    QObject* api;
+    if(apiName == "settings"){
+        if(action == "call"){
+            qDebug() << "Call is not valid for the settings API";
+#ifdef SENTRY
+            sentry_breadcrumb("error", "invalid arguments");
+#endif
+            return qExit(EXIT_FAILURE);
+        }
+        if(parser.isSet("object")){
+            qDebug() << "Paths are not valid for the settings API";
+#ifdef SENTRY
+            sentry_breadcrumb("error", "invalid arguments");
+#endif
+            return qExit(EXIT_FAILURE);
+        }
+        api = &sharedSettings;
+    }else if(apiName == "power"){
 #ifdef SENTRY
         sentry_breadcrumb("api", "power");
 #endif
@@ -288,21 +307,27 @@ int main(int argc, char *argv[]){
 #endif
         return qExit(EXIT_FAILURE);
     }
+    QDBusAbstractInterface* iapi = qobject_cast<QDBusAbstractInterface*>(api);
     if(action == "get"){
         auto value = api->property(args.at(2).toStdString().c_str());
-        auto error = api->lastError();
-        if(error.type() != QDBusError::NoError){
-            qDebug() << "Failed to get value" << api->lastError();
+        if(iapi != nullptr){
+            auto error = iapi->lastError();
+            if(error.type() != QDBusError::NoError){
+                qDebug() << "Failed to get value" << iapi->lastError();
 #ifdef SENTRY
-            sentry_breadcrumb("error", "Failed to get value");
+                sentry_breadcrumb("error", "Failed to get value");
 #endif
-            return qExit(EXIT_FAILURE);
+                return qExit(EXIT_FAILURE);
+            }
         }
         QTextStream(stdout, QIODevice::WriteOnly) << toJson(value).toStdString().c_str() << Qt::endl;
     }else if(action == "set"){
         auto property = args.at(2).toStdString();
         if(!api->setProperty(property.c_str(), args.at(3).toStdString().c_str())){
-            qDebug() << "Failed to set value" << api->lastError();
+            qDebug() << "Failed to set value";
+            if(iapi != nullptr){
+                qDebug() << iapi->lastError();
+            }
 #ifdef SENTRY
             sentry_breadcrumb("error", "Failed to get value");
 #endif
@@ -333,7 +358,10 @@ int main(int argc, char *argv[]){
                 }
             }
         }
-        qDebug() << "Unable to listen to signal" << bus.interface()->lastError();
+        qDebug() << "Unable to listen to signal";
+        if(iapi != nullptr){
+            qDebug() << bus.interface()->lastError();
+        }
         return qExit(EXIT_FAILURE);
     }else if(action == "call"){
         auto method = args.at(2);
@@ -384,7 +412,14 @@ int main(int argc, char *argv[]){
                 arguments.append(variant);
             }
         }
-        QDBusMessage reply = api->callWithArgumentList(QDBus::Block, method, arguments);
+        if(iapi == nullptr){
+#ifdef SENTRY
+            sentry_breadcrumb("error", "Cannot handle calls for non-dbus APIs");
+#endif
+            qDebug() << "Cannot handle calls for non-dbus APIs";
+            return qExit(EXIT_SUCCESS);
+        }
+        QDBusMessage reply = iapi->callWithArgumentList(QDBus::Block, method, arguments);
         auto result = reply.arguments();
         QTextStream qStdOut(stdout, QIODevice::WriteOnly);
         if(result.size() > 1){
