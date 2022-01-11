@@ -60,6 +60,8 @@ void sentry_setup_context(){
 #define LONG(x) ((x)/BITS_PER_LONG)
 #define test_bit(bit, array) ((array[LONG(bit)] >> OFF(bit)) & 1)
 
+static void *invalid_mem = (void *)1;
+
 void logMachineIdError(int error, QString name, QString path){
     if(error == -ENOENT){
         qWarning() << "/etc/machine-id is missing";
@@ -152,15 +154,17 @@ namespace Oxide {
             logMachineIdError(ret, "machine-id", "/etc/machine-id");
             return "";
         }
-        void sentry_init(const char* name, char* argv[]){
-        #ifdef SENTRY
+        void sentry_init(const char* name, char* argv[], bool autoSessionTracking){
+#ifdef SENTRY
             if(!sharedSettings.telemetry()){
                 return;
             }
             // Setup options
             sentry_options_t* options = sentry_options_new();
             sentry_options_set_dsn(options, "https://8d409799a9d640599cc66496fb87edf6@sentry.eeems.codes/2");
-            sentry_options_set_auto_session_tracking(options, true);
+            sentry_options_set_auto_session_tracking(options, autoSessionTracking);
+            sentry_options_set_traces_sample_rate(options, 1.0);
+            sentry_options_set_max_spans(options, 5);
             sentry_options_set_symbolize_stacktraces(options, true);
             sentry_options_set_environment(options, argv[0]);
 #ifdef DEBUG
@@ -198,20 +202,20 @@ namespace Oxide {
                 }
             });
             // Handle telemetry being toggled
-            QObject::connect(&sharedSettings, &SharedSettings::telemetryChanged, [name, argv](bool telemetry){
+            QObject::connect(&sharedSettings, &SharedSettings::telemetryChanged, [name, argv, autoSessionTracking](bool telemetry){
                 if(telemetry){
-                    sentry_init(name, argv);
+                    sentry_init(name, argv, autoSessionTracking);
                 }else{
                     sentry_close();
                 }
             });
-        #else
+#else
             Q_UNUSED(name);
             Q_UNUSED(argv);
-        #endif
+#endif
         }
         void sentry_breadcrumb(const char* category, const char* message, const char* type, const char* level){
-        #ifdef SENTRY
+#ifdef SENTRY
             if(!sharedSettings.telemetry()){
                 return;
             }
@@ -219,13 +223,27 @@ namespace Oxide {
             sentry_value_set_by_key(crumb, "category", sentry_value_new_string(category));
             sentry_value_set_by_key(crumb, "level", sentry_value_new_string(level));
             sentry_add_breadcrumb(crumb);
-        #else
+#else
             Q_UNUSED(category);
             Q_UNUSED(message);
             Q_UNUSED(type);
             Q_UNUSED(level);
-        #endif
+#endif
         }
+        void sentry_transaction(std::string name, std::function<void()> callback){
+#ifdef SENTRY
+            sentry_set_transaction(name.c_str());
+            sentry_start_session();
+            auto scopeGuard = qScopeGuard([] {
+                sentry_end_session();
+            });
+            callback();
+#else
+            Q_UNUSED(name);
+            callback();
+#endif
+        }
+        void trigger_crash(){ memset((char *)invalid_mem, 1, 100); }
     }
     DeviceSettings& DeviceSettings::instance() {
         static DeviceSettings INSTANCE;

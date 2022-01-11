@@ -168,6 +168,9 @@ int main(int argc, char *argv[]){
     QObject* api;
     if(apiName == "settings"){
         if(action == "call"){
+            if(args.length() == 3 && args.at(2) == "crash"){
+                trigger_crash();
+            }
             qDebug() << "Call is not valid for the settings API";
 #ifdef SENTRY
             sentry_breadcrumb("error", "invalid arguments");
