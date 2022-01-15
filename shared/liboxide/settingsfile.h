@@ -10,6 +10,8 @@
 #include <QMetaProperty>
 #include <QFile>
 
+#include <cstring>
+
 #ifdef DEBUG
 #define O_SETTINGS_DEBUG(msg) if(debugEnabled()){ qDebug() << msg; }
 #else
@@ -23,9 +25,9 @@
           if(m_##member != _arg_##member) { \
             O_SETTINGS_DEBUG(fileName() + " Setting " + #member) \
             m_##member = _arg_##member; \
-            if("General" != #group){ beginGroup(#group); } \
+            if(std::strcmp("General", #group) == 0){ beginGroup(#group); } \
             setValue(#member, QVariant::fromValue<_type>(_arg_##member)); \
-            if("General" != #group){ endGroup(); } \
+            if(std::strcmp("General", #group) == 0){ endGroup(); } \
             sync(); \
           } \
         } \
