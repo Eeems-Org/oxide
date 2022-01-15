@@ -443,6 +443,9 @@ public:
         }
         int result = -100;
         for(auto wlan : wlans){
+            if(!wlan->isUp()){
+                continue;
+            }
             int rssi = wlan->rssi();
             if(result < rssi){
                 result = rssi;

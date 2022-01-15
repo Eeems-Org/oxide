@@ -76,12 +76,13 @@ namespace Oxide {
         O_SETTINGS(XochitlSettings, "/home/root/.config/remarkable/xochitl.conf")
         O_SETTINGS_PROPERTY(QString, General, passcode)
         O_SETTINGS_PROPERTY(bool, General, wifion)
-        Q_PROPERTY(WifiNetworks wifinetworks MEMBER m_wifinetworks READ wifinetworks WRITE setWifinetworks NOTIFY wifinetworksChanged)
+        Q_PROPERTY(WifiNetworks wifinetworks MEMBER m_wifinetworks READ wifinetworks WRITE setWifinetworks RESET resetWifinetworks NOTIFY wifinetworksChanged)
     public:
         WifiNetworks wifinetworks();
         void setWifinetworks(const WifiNetworks& wifinetworks);
         QVariantMap getWifiNetwork(const QString& name);
-        QVariantMap setWifiNetwork(const QString& name, QVariantMap properties);
+        void setWifiNetwork(const QString& name, QVariantMap properties);
+        void resetWifinetworks();
     signals:
         void wifinetworksChanged(WifiNetworks);
     private:

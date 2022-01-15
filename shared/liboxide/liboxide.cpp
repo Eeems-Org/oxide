@@ -383,12 +383,13 @@ namespace Oxide {
         endGroup();
         return network;
     }
-    QVariantMap XochitlSettings::setWifiNetwork(const QString& name, QVariantMap properties){
+    void XochitlSettings::setWifiNetwork(const QString& name, QVariantMap properties){
         beginGroup("wifinetworks");
         setValue(name, properties);
         endGroup();
         sync();
     }
+    void XochitlSettings::resetWifinetworks(){}
     XochitlSettings::~XochitlSettings(){}
     SharedSettings::~SharedSettings(){}
 }

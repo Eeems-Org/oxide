@@ -3,12 +3,23 @@
 
 #include <QSettings>
 #include <QObject>
+#include <QDebug>
 #include <QFileSystemWatcher>
+#include <QMetaProperty>
+#include <QFile>
+
+#ifdef DEBUG
+#define O_SETTINGS_DEBUG(msg) qDebug() << msg;
+#else
+#define O_SETTINGS_DEBUG(msg)
+#endif
 
 #define O_SETTINGS_PROPERTY_0(_type, member, group) \
+    Q_PROPERTY(QString __META_GROUP_##member READ __META_GROUP_##member CONSTANT FINAL) \
     public: \
       void set_##member(_type _arg_##member) { \
           if(m_##member != _arg_##member) { \
+            O_SETTINGS_DEBUG(fileName() + " Setting " + #member) \
             m_##member = _arg_##member; \
             beginGroup(#group); \
             setValue(#member, QVariant::fromValue<_type>(_arg_##member)); \
@@ -17,20 +28,28 @@
           } \
         } \
         _type member() const { return m_##member; } \
+        void reload_##member() { reloadProperty(#member); } \
     Q_SIGNALS: \
         void member##Changed(const _type&); \
+    protected: \
+        QString __META_GROUP_##member() const { return #group; } \
     private: \
         _type m_##member;
 
 #define O_SETTINGS_PROPERTY_1(_type, group, member) \
-    Q_PROPERTY(_type member MEMBER m_##member READ member WRITE set_##member NOTIFY member##Changed) \
+    Q_PROPERTY(_type member MEMBER m_##member READ member WRITE set_##member NOTIFY member##Changed FINAL) \
     O_SETTINGS_PROPERTY_0(_type, member, group)
 
 #define O_SETTINGS_PROPERTY_2(_type, group, member, _default) \
     Q_PROPERTY(_type member MEMBER m_##member READ member WRITE set_##member NOTIFY member##Changed RESET reset_##member) \
     O_SETTINGS_PROPERTY_0(_type, member, group) \
     public: \
-        void reset_##member() { m_##member = _default; }
+        void reset_##member() { \
+            O_SETTINGS_DEBUG(fileName() + " Resetting " + #member) \
+            O_SETTINGS_DEBUG(_default) \
+            m_##member = _default; \
+            O_SETTINGS_DEBUG("  Done") \
+        }
 
 #define O_SETTINGS_PROPERTY_X_get_func(arg1, arg2, arg3, arg4, arg5, ...) arg5
 #define O_SETTINGS_PROPERTY_X(...) \
@@ -46,6 +65,7 @@
     public: \
         static _type& instance(){ \
             static _type INSTANCE(path); \
+            INSTANCE.init(); \
             return INSTANCE; \
         } \
     private: \
@@ -60,8 +80,14 @@ namespace Oxide {
     protected:
         SettingsFile(QString path);
         ~SettingsFile();
+        void reloadProperty(const QString& name);
+        void resetProperty(const QString& name);
+        void init();
+        void reloadProperties();
+        void resetProperties();
     private:
         QFileSystemWatcher fileWatcher;
+        bool initalized = false;
     };
 }
 #endif // SETTINGSFILE_H
