@@ -1,6 +1,8 @@
 #ifndef SETTINGSFILE_H
 #define SETTINGSFILE_H
 
+#include "liboxide_global.h"
+
 #include <QSettings>
 #include <QObject>
 #include <QDebug>
@@ -9,7 +11,7 @@
 #include <QFile>
 
 #ifdef DEBUG
-#define O_SETTINGS_DEBUG(msg) qDebug() << msg;
+#define O_SETTINGS_DEBUG(msg) if(debugEnabled()){ qDebug() << msg; }
 #else
 #define O_SETTINGS_DEBUG(msg)
 #endif
@@ -21,9 +23,9 @@
           if(m_##member != _arg_##member) { \
             O_SETTINGS_DEBUG(fileName() + " Setting " + #member) \
             m_##member = _arg_##member; \
-            beginGroup(#group); \
+            if("General" != #group){ beginGroup(#group); } \
             setValue(#member, QVariant::fromValue<_type>(_arg_##member)); \
-            endGroup(); \
+            if("General" != #group){ endGroup(); } \
             sync(); \
           } \
         } \
@@ -45,9 +47,9 @@
     O_SETTINGS_PROPERTY_0(_type, member, group) \
     public: \
         void reset_##member() { \
-            O_SETTINGS_DEBUG(fileName() + " Resetting " + #member) \
+            O_SETTINGS_DEBUG(fileName() + " Resetting " + #group + "." + #member) \
             O_SETTINGS_DEBUG(_default) \
-            m_##member = _default; \
+            setProperty(#member, _default); \
             O_SETTINGS_DEBUG("  Done") \
         }
 
@@ -73,7 +75,8 @@
 
 
 namespace Oxide {
-    class SettingsFile : public QSettings {
+    LIBOXIDE_EXPORT bool debugEnabled();
+    class LIBOXIDE_EXPORT SettingsFile : public QSettings {
         Q_OBJECT
     private slots:
         void fileChanged();

@@ -170,12 +170,7 @@ namespace Oxide {
             sentry_options_set_symbolize_stacktraces(options, true);
             sentry_options_set_environment(options, argv[0]);
 #ifdef DEBUG
-            bool debug = getenv("DEBUG") != NULL;
-            if(debug){
-                QString env = qgetenv("DEBUG");
-                debug = !(QStringList() << "0" << "n" << "no" << "false").contains(env.toLower());
-            }
-            sentry_options_set_debug(options, debug);
+            sentry_options_set_debug(options, debugEnabled());
 #endif
             sentry_options_set_database_path(options, "/home/root/.cache/Eeems/sentry");
             sentry_options_set_release(options, (std::string(name) + "@2.3").c_str());

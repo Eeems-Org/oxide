@@ -4,6 +4,13 @@
 #include "settingsfile.h"
 
 namespace Oxide {
+    bool debugEnabled(){
+        if(getenv("DEBUG") == NULL){
+            return false;
+        }
+        QString env = qgetenv("DEBUG");
+        return !(QStringList() << "0" << "n" << "no" << "false").contains(env.toLower());
+    }
     SettingsFile::SettingsFile(QString path)
         : QSettings(path, QSettings::IniFormat),
           fileWatcher(QStringList() << path)
@@ -43,9 +50,7 @@ namespace Oxide {
         }
         auto groupName = property(propertyName.toStdString().c_str()).toString();
         O_SETTINGS_DEBUG(fileName() + " Reloading " + groupName + "." + name)
-        if(groupName != "General"){
-            beginGroup(groupName);
-        }
+        if(groupName != "General"){ beginGroup(groupName); }
         if(contains(name)){
             O_SETTINGS_DEBUG("  Value exists")
             auto value = this->value(name);
@@ -58,9 +63,7 @@ namespace Oxide {
         }else{
             O_SETTINGS_DEBUG("  No Value")
         }
-        if(groupName != "General"){
-            endGroup();
-        }
+        if(groupName != "General"){ endGroup(); }
         O_SETTINGS_DEBUG("  Done")
     }
     void SettingsFile::resetProperty(const QString& name){
@@ -84,13 +87,12 @@ namespace Oxide {
         initalized = true;
         if(!QFile::exists(fileName())){
             resetProperties();
-        }else{
-            sync();
         }
+        sync();
+        reloadProperties();
         if(!fileWatcher.files().contains(fileName()) && !fileWatcher.addPath(fileName())){
             qWarning() << "Unable to watch " << fileName();
         }
-        reloadProperties();
         connect(&fileWatcher, &QFileSystemWatcher::fileChanged, this, &SettingsFile::fileChanged);
     }
     void SettingsFile::reloadProperties(){
