@@ -34,6 +34,7 @@ How can I disable the telemetry?
 .. code:: bash
 
   rot settings set telemetry false
+  rot settings set crashReport false
 
 Or you can compile the applications manually without the ``sentry`` feature enabled.
 

@@ -162,9 +162,11 @@ namespace Oxide {
             // Setup options
             sentry_options_t* options = sentry_options_new();
             sentry_options_set_dsn(options, "https://8d409799a9d640599cc66496fb87edf6@sentry.eeems.codes/2");
-            sentry_options_set_auto_session_tracking(options, autoSessionTracking);
-            sentry_options_set_traces_sample_rate(options, 1.0);
-            sentry_options_set_max_spans(options, 5);
+            sentry_options_set_auto_session_tracking(options, autoSessionTracking && sharedSettings.telemetry());
+            if(sharedSettings.telemetry()){
+                sentry_options_set_traces_sample_rate(options, 1.0);
+                sentry_options_set_max_spans(options, 5);
+            }
             sentry_options_set_symbolize_stacktraces(options, true);
             sentry_options_set_environment(options, argv[0]);
 #ifdef DEBUG
@@ -190,24 +192,27 @@ namespace Oxide {
             sentry_value_set_by_key(device, "version", sentry_value_new_string(readFile("/etc/version").c_str()));
             sentry_set_context("device", device);
             // Setup transaction
-            sentry_set_transaction(name);
+            if(sharedSettings.telemetry()){
+                sentry_set_transaction(name);
+            }
             if(initialized){
                 return;
             }
             initialized = true;
             // Add close guard
             QObject::connect(qApp, &QCoreApplication::aboutToQuit, []() {
-                if(sharedSettings.telemetry()){
-                    sentry_close();
-                }
+                sentry_close();
             });
-            // Handle telemetry being toggled
+            // Handle settings changing
             QObject::connect(&sharedSettings, &SharedSettings::telemetryChanged, [name, argv, autoSessionTracking](bool telemetry){
-                if(telemetry){
-                    sentry_init(name, argv, autoSessionTracking);
-                }else{
-                    sentry_close();
-                }
+                Q_UNUSED(telemetry)
+                sentry_close();
+                sentry_init(name, argv, autoSessionTracking);
+            });
+            QObject::connect(&sharedSettings, &SharedSettings::crashReportChanged, [name, argv, autoSessionTracking](bool crashReport){
+                Q_UNUSED(crashReport)
+                sentry_close();
+                sentry_init(name, argv, autoSessionTracking);
             });
 #else
             Q_UNUSED(name);
@@ -232,11 +237,13 @@ namespace Oxide {
         }
         void sentry_transaction(std::string name, std::function<void()> callback){
 #ifdef SENTRY
-            sentry_set_transaction(name.c_str());
-            sentry_start_session();
-            auto scopeGuard = qScopeGuard([] {
-                sentry_end_session();
-            });
+            if(sharedSettings.telemetry()){
+                sentry_set_transaction(name.c_str());
+                sentry_start_session();
+                auto scopeGuard = qScopeGuard([] {
+                    sentry_end_session();
+                });
+            }
             callback();
 #else
             Q_UNUSED(name);

@@ -94,7 +94,7 @@ namespace Oxide {
         Q_OBJECT
         O_SETTINGS(SharedSettings, "/home/root/.config/Eeems/shared.conf")
         O_SETTINGS_PROPERTY(int, General, version);
-        O_SETTINGS_PROPERTY(bool, General, telemetry, true)
+        O_SETTINGS_PROPERTY(bool, General, telemetry, false)
         O_SETTINGS_PROPERTY(bool, General, crashReport, true)
     private:
         ~SharedSettings();
