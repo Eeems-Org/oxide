@@ -3,6 +3,8 @@
 
 #include "liboxide_global.h"
 
+#include "settingsfile.h"
+
 #include <QDebug>
 #include <QScopeGuard>
 #include <QSettings>
@@ -32,6 +34,8 @@
 #define deviceSettings Oxide::DeviceSettings::instance()
 #define xochitlSettings Oxide::XochitlSettings::instance()
 #define sharedSettings Oxide::SharedSettings::instance()
+
+typedef QMap<QString, QVariantMap> WifiNetworks;
 
 namespace Oxide {
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
@@ -67,48 +71,32 @@ namespace Oxide {
         std::string touchPath = "";
     };
 
-    class LIBOXIDE_EXPORT XochitlSettings : public QSettings {
+    class LIBOXIDE_EXPORT XochitlSettings : public SettingsFile {
         Q_OBJECT
-        Q_PROPERTY(QString passcode MEMBER m_passcode READ passcode WRITE setPasscode NOTIFY passcodeChanged)
-        Q_PROPERTY(QMap<QString, QVariantMap> wifinetworks MEMBER m_wifinetworks READ wifinetworks WRITE setWifinetworks NOTIFY wifinetworksChanged)
-        Q_PROPERTY(bool wifion MEMBER m_wifion READ wifion WRITE setWifion NOTIFY wifionChanged)
+        O_SETTINGS(XochitlSettings, "/home/root/.config/remarkable/xochitl.conf")
+        O_SETTINGS_PROPERTY(QString, General, passcode)
+        O_SETTINGS_PROPERTY(bool, General, wifion)
+        Q_PROPERTY(WifiNetworks wifinetworks MEMBER m_wifinetworks READ wifinetworks WRITE setWifinetworks NOTIFY wifinetworksChanged)
     public:
-        static XochitlSettings& instance();
-        QString passcode();
-        void setPasscode(const QString&);
-        QMap<QString, QVariantMap> wifinetworks();
-        void setWifinetworks(const QMap<QString, QVariantMap>&);
+        WifiNetworks wifinetworks();
+        void setWifinetworks(const WifiNetworks& wifinetworks);
         QVariantMap getWifiNetwork(const QString& name);
         QVariantMap setWifiNetwork(const QString& name, QVariantMap properties);
-        bool wifion();
-        void setWifion(bool);
     signals:
-        void passcodeChanged(const QString&);
-        void wifinetworksChanged(const QMap<QString, QVariantMap>&);
-        void wifionChanged(bool);
+        void wifinetworksChanged(WifiNetworks);
     private:
-        XochitlSettings();
         ~XochitlSettings();
-        QFileSystemWatcher fileWatcher;
-        QString m_passcode;
-        QMap<QString, QVariantMap> m_wifinetworks;
-        bool m_wifion;
+        WifiNetworks m_wifinetworks;
     };
 
-    class LIBOXIDE_EXPORT SharedSettings : public QSettings {
+    class LIBOXIDE_EXPORT SharedSettings : public SettingsFile {
         Q_OBJECT
-        Q_PROPERTY(bool telemetry MEMBER m_telemetry READ telemetry WRITE setTelemetry NOTIFY telemetryChanged)
-    public:
-        static SharedSettings& instance();
-        bool telemetry();
-        void setTelemetry(bool);
-    signals:
-        void telemetryChanged(bool);
+        O_SETTINGS(SharedSettings, "/home/root/.config/Eeems/shared.conf")
+        O_SETTINGS_PROPERTY(int, General, version);
+        O_SETTINGS_PROPERTY(bool, General, telemetry, true)
+        O_SETTINGS_PROPERTY(bool, General, crashReport, true)
     private:
-        SharedSettings();
         ~SharedSettings();
-        QFileSystemWatcher fileWatcher;
-        bool m_telemetry;
     };
 }
 

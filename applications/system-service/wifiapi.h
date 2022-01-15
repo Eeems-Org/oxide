@@ -211,7 +211,7 @@ public:
                 continue;
             }
         }
-        xochitlSettings.setWifion(true);
+        xochitlSettings.set_wifion(true);
         validateSupplicant();
         auto state = getCurrentState();
         m_state = state;
@@ -233,7 +233,7 @@ public:
             }
         }
         flushBSSCache(0);
-        xochitlSettings.setWifion(false);
+        xochitlSettings.set_wifion(false);
     }
     Q_INVOKABLE QDBusObjectPath addNetwork(QString ssid, QVariantMap properties){
         if(!hasPermission("wifi")){
@@ -700,7 +700,7 @@ private:
 
     void loadNetworks(){
         qDebug() << "Loading networks from settings...";
-        QList<QVariantMap> registeredNetworks = xochitlSettings.wifinetworks().values();
+        QList<QMap<QString, QVariant>> registeredNetworks = xochitlSettings.wifinetworks().values();
         qDebug() << "Registering networks...";
         for(auto registration : registeredNetworks){
             bool found = false;

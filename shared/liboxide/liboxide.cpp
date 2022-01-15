@@ -359,27 +359,17 @@ namespace Oxide {
                 return 0;
         }
     }
-    XochitlSettings& XochitlSettings::instance() {
-        static XochitlSettings INSTANCE;
-        return INSTANCE;
-    }
-    QString XochitlSettings::passcode(){ return value("Passcode", "").toString(); }
-    void XochitlSettings::setPasscode(const QString& passcode){
-        m_passcode = passcode;
-        setValue("Passcode", passcode);
-        sync();
-    }
-    QMap<QString, QVariantMap> XochitlSettings::wifinetworks(){
+    WifiNetworks XochitlSettings::wifinetworks(){
         beginGroup("wifinetworks");
         QMap<QString, QVariantMap> wifinetworks;
         for(const QString& key : allKeys()){
             QVariantMap network = value(key).toMap();
-            wifinetworks.value(key, network);
+            wifinetworks[key] = network;
         }
         endGroup();
         return wifinetworks;
     }
-    void XochitlSettings::setWifinetworks(const QMap<QString, QVariantMap>& wifinetworks){
+    void XochitlSettings::setWifinetworks(const WifiNetworks& wifinetworks){
         beginGroup("wifinetworks");
         for(const QString& key : wifinetworks.keys()){
             setValue(key, wifinetworks.value(key));
@@ -399,81 +389,6 @@ namespace Oxide {
         endGroup();
         sync();
     }
-    bool XochitlSettings::wifion(){ return value("wifion").toBool(); }
-    void XochitlSettings::setWifion(bool wifion){
-        setValue("wifion", wifion);
-        sync();
-    }
-    XochitlSettings::XochitlSettings()
-        : QSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat),
-          fileWatcher(QStringList() << "/home/root/.config/remarkable/xochitl.conf")
-    {
-        // Load values
-        sync();
-        // Load value cache
-        m_passcode = passcode();
-        m_wifinetworks = wifinetworks();
-        m_wifion = wifion();
-        // Connect event listener to emit events when values change
-        connect(&fileWatcher, &QFileSystemWatcher::fileChanged, this, [this](const QString& path) {
-            fileWatcher.addPath(path);
-            // Load new values
-            sync();
-            // Check if any values have updated
-            auto passcode = this->passcode();
-            if(passcode != m_passcode){
-                m_passcode = passcode;
-                emit passcodeChanged(passcode);
-            }
-            auto wifinetworks = this->wifinetworks();
-            if(wifinetworks != m_wifinetworks){
-                m_wifinetworks = wifinetworks;
-                emit wifinetworksChanged(wifinetworks);
-            }
-            auto wifion = this->wifion();
-            if(wifion != m_wifion){
-                m_wifion = wifion;
-                emit wifionChanged(wifion);
-            }
-        });
-    }
     XochitlSettings::~XochitlSettings(){}
-    SharedSettings& SharedSettings::instance() {
-        static SharedSettings INSTANCE;
-        return INSTANCE;
-    }
-    SharedSettings::SharedSettings()
-        : QSettings("/home/root/.config/Eeems/shared.conf", QSettings::IniFormat),
-          fileWatcher()
-    {
-        // Load values
-        if(!QFile::exists(fileName())){
-            setValue("telemetry", true);
-        }else{
-            sync();
-        }
-        if(!fileWatcher.addPath(fileName())){
-            qWarning() << "Unable to watch shared settings";
-        }
-        // Load value cache
-        m_telemetry = telemetry();
-        // Connect event listener to emit events when values change
-        connect(&fileWatcher, &QFileSystemWatcher::fileChanged, this, [this](const QString& path) {
-            fileWatcher.addPath(path);
-            // Load new values
-            sync();
-            // Check if any values have updated
-            auto telemetry = this->telemetry();
-            if(telemetry != m_telemetry){
-                m_telemetry= telemetry;
-                emit telemetryChanged(telemetry);
-            }
-        });
-    }
     SharedSettings::~SharedSettings(){}
-    bool SharedSettings::telemetry(){ return value("telemetry").toBool(); }
-    void SharedSettings::setTelemetry(bool telemetry){
-        setValue("telemetry", telemetry);
-        sync();
-    }
 }
