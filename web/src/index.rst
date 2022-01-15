@@ -31,6 +31,6 @@ Install Oxide
 
 1. ``opkg install oxide``
 2. ``systemctl disable --now xochitl``
-3. ``systemctl enable --now rm2fb``
+3. If you are installing on a reMarkable 2: ``systemctl enable --now rm2fb``
 4. ``systemctl enable --now tarnish``
 
