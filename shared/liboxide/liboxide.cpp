@@ -190,9 +190,7 @@ namespace Oxide {
             sentry_value_set_by_key(device, "version", sentry_value_new_string(readFile("/etc/version").c_str()));
             sentry_set_context("device", device);
             // Setup transaction
-            if(sharedSettings.telemetry()){
-                sentry_set_transaction(name);
-            }
+            sentry_set_transaction(name);
             if(initialized){
                 return;
             }
