@@ -154,9 +154,12 @@ namespace Oxide {
             logMachineIdError(ret, "machine-id", "/etc/machine-id");
             return "";
         }
+        bool enabled(){
+            return sharedSettings.crashReport() || sharedSettings.telemetry();
+        }
         void sentry_init(const char* name, char* argv[], bool autoSessionTracking){
 #ifdef SENTRY
-            if(!sharedSettings.telemetry()){
+            if(!enabled()){
                 return;
             }
             // Setup options
