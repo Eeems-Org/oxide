@@ -148,7 +148,7 @@ public:
             if(!appItem->ok()){
                 qDebug() << "Invalid item" << appItem->property("name").toString();
                 applications.removeAll(appItem);
-                delete appItem;
+                appItem->deleteLater();
             }
         }
         auto previousApplications = appsApi->previousApplications();
@@ -247,7 +247,6 @@ private:
     Apps* appsApi;
     QObject* root = nullptr;
     QObject* stateControllerUI = nullptr;
-    QObject* backgroundUI = nullptr;
     ScreenProvider* screenProvider;
     QList<QObject*> applications;
 
@@ -255,10 +254,6 @@ private:
     QObject* getStateControllerUI(){
         stateControllerUI = root->findChild<QObject*>("stateController");
         return stateControllerUI;
-    }
-    QObject* getBackgroundUI(){
-        backgroundUI = root->findChild<QObject*>("background");
-        return backgroundUI;
     }
 
     static void migrate(QSettings* settings, int fromVersion){

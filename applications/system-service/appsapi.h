@@ -87,7 +87,7 @@ public:
         qDebug() << "Ensuring all applications have stopped...";
         for(auto app : applications){
             app->waitForFinished();
-            delete app;
+            app->deleteLater();
         }
         applications.clear();
         qDebug() << "Displaying final quit message...";
