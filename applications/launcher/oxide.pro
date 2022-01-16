@@ -11,8 +11,7 @@ SOURCES += \
     main.cpp \
     controller.cpp \
     appitem.cpp \
-    sysobject.cpp \
-    ../../shared/eventfilter.cpp
+    sysobject.cpp
 
 
 RESOURCES += qml.qrc
@@ -52,7 +51,6 @@ HEADERS += \
     mxcfb.h \
     notificationlist.h \
     sysobject.h \
-    ../../shared/eventfilter.h \
     wifinetworklist.h
 
 

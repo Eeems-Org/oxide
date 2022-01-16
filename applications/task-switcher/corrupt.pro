@@ -10,8 +10,7 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs depr
 
 SOURCES += \
         appitem.cpp \
-        main.cpp \
-        ../../shared/eventfilter.cpp
+        main.cpp
 
 # Default rules for deployment.
 target.path = /opt/bin
@@ -24,7 +23,6 @@ DBUS_INTERFACES += ../../interfaces/application.xml
 
 INCLUDEPATH += ../../shared
 HEADERS += \
-    ../../shared/eventfilter.h \
     appitem.h \
     controller.h \
     screenprovider.h

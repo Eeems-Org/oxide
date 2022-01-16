@@ -1,4 +1,5 @@
 QT -= gui
+QT += quick
 
 TEMPLATE = lib
 DEFINES += LIBOXIDE_LIBRARY
@@ -8,11 +9,13 @@ CONFIG += c++11
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    eventfilter.cpp \
     liboxide.cpp \
     settingsfile.cpp \
     signalhandler.cpp
 
 HEADERS += \
+    eventfilter.h \
     liboxide_global.h \
     liboxide.h \
     settingsfile.h \

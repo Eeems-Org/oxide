@@ -6,9 +6,9 @@
 #include <cstdlib>
 #include <signal.h>
 #include <liboxide.h>
+#include <liboxide/eventfilter.h>
 
 #include "controller.h"
-#include "eventfilter.h"
 
 #include "screenprovider.h"
 
@@ -19,6 +19,7 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #include "dbusservice_interface.h"
 
 using namespace std;
+using namespace Oxide;
 using namespace Oxide::Sentry;
 
 const char* qt_version = qVersion();

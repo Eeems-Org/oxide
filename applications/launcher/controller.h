@@ -3,11 +3,12 @@
 #include <QObject>
 #include <QTimer>
 #include <QJsonObject>
+#include <QGuiApplication>
 #include <QMutableListIterator>
 #include <liboxide.h>
+#include <liboxide/eventfilter.h>
 
 #include "appitem.h"
-#include "eventfilter.h"
 #include "sysobject.h"
 #include "wifinetworklist.h"
 #include "notificationlist.h"
@@ -25,6 +26,7 @@
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide;
 using namespace Oxide::Sentry;
 
 enum State { Normal, PowerSaving };
