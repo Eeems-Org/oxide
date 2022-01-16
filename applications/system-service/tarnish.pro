@@ -70,8 +70,7 @@ HEADERS += \
     systemapi.h \
     wifiapi.h \
     wlan.h \
-    wpa_supplicant.h \
-    ../../shared/signalhandler.h
+    wpa_supplicant.h
 
 LIBS += -lpng16
 LIBS += -lsystemd

@@ -6,6 +6,7 @@
 #include <QQuickItem>
 
 #include <epframebuffer.h>
+#include <signal.h>
 #include <liboxide.h>
 
 #include "dbusservice_interface.h"
@@ -14,11 +15,11 @@
 #include "application_interface.h"
 
 #include "screenprovider.h"
-#include "signalhandler.h"
 #include "appitem.h"
 
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
+using namespace Oxide;
 
 #define CORRUPT_SETTINGS_VERSION 1
 

@@ -16,11 +16,12 @@
 
 #include "apibase.h"
 #include "application.h"
-#include "signalhandler.h"
 
 #define OXIDE_SETTINGS_VERSION 1
 
 #define appsAPI AppsAPI::singleton()
+
+using namespace Oxide;
 
 class AppsAPI : public APIBase {
     Q_OBJECT

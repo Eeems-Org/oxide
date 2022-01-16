@@ -1,8 +1,5 @@
-#ifndef SIGNALHANDLER_H
-#define SIGNALHANDLER_H
+#include "signalhandler.h"
 
-#include <QObject>
-#include <QSocketNotifier>
 #include <QCoreApplication>
 
 #include <signal.h>
@@ -10,23 +7,11 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define signalHandler SignalHandler::singleton()
-
 static int sigUsr1Fd[2];
 static int sigUsr2Fd[2];
 
-class SignalHandler : public QObject
-{
-    Q_OBJECT
-public:
-    static SignalHandler* singleton(SignalHandler* self = nullptr){
-        static SignalHandler* instance;
-        if(self != nullptr){
-            instance = self;
-        }
-        return instance;
-    }
-    static int setup_unix_signal_handlers(){
+namespace Oxide {
+    int SignalHandler::setup_unix_signal_handlers(){
         if(!signalHandler){
             new SignalHandler(qApp);
         }
@@ -50,7 +35,14 @@ public:
 
         return 0;
     }
-    SignalHandler(QObject *parent = 0) : QObject(parent){
+    SignalHandler* SignalHandler::singleton(SignalHandler* self){
+        static SignalHandler* instance;
+        if(self != nullptr){
+            instance = self;
+        }
+        return instance;
+    }
+    SignalHandler::SignalHandler(QObject *parent) : QObject(parent){
         singleton(this);
         if(::socketpair(AF_UNIX, SOCK_STREAM, 0, sigUsr1Fd)){
            qFatal("Couldn't create USR1 socketpair");
@@ -64,41 +56,29 @@ public:
         snUsr2 = new QSocketNotifier(sigUsr2Fd[1], QSocketNotifier::Read, this);
         connect(snUsr2, &QSocketNotifier::activated, this, &SignalHandler::handleSigUsr2, Qt::QueuedConnection);
     }
-    ~SignalHandler(){}
-
-    static void usr1SignalHandler(int unused){
+    SignalHandler::~SignalHandler(){}
+    void SignalHandler::usr1SignalHandler(int unused){
         Q_UNUSED(unused)
         char a = 1;
         ::write(sigUsr1Fd[0], &a, sizeof(a));
     }
-    static void usr2SignalHandler(int unused){
+    void SignalHandler::usr2SignalHandler(int unused){
         Q_UNUSED(unused)
         char a = 1;
         ::write(sigUsr2Fd[0], &a, sizeof(a));
     }
-
-public slots:
-    void handleSigUsr1(){
+    void SignalHandler::handleSigUsr1(){
         snUsr1->setEnabled(false);
         char tmp;
         ::read(sigUsr1Fd[1], &tmp, sizeof(tmp));
         emit sigUsr1();
         snUsr1->setEnabled(true);
     }
-    void handleSigUsr2(){
+    void SignalHandler::handleSigUsr2(){
         snUsr2->setEnabled(false);
         char tmp;
         ::read(sigUsr2Fd[1], &tmp, sizeof(tmp));
         emit sigUsr2();
         snUsr2->setEnabled(true);
     }
-
-signals:
-    void sigUsr1();
-    void sigUsr2();
-
-private:
-    QSocketNotifier* snUsr1;
-    QSocketNotifier* snUsr2;
-};
-#endif // SIGNALHANDLER_H
+}

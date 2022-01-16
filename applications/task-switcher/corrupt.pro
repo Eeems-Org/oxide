@@ -25,7 +25,6 @@ DBUS_INTERFACES += ../../interfaces/application.xml
 INCLUDEPATH += ../../shared
 HEADERS += \
     ../../shared/eventfilter.h \
-    ../../shared/signalhandler.h \
     appitem.h \
     controller.h \
     screenprovider.h

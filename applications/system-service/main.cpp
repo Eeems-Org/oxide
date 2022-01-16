@@ -5,7 +5,6 @@
 #include <liboxide.h>
 
 #include "dbusservice.h"
-#include "signalhandler.h"
 
 using namespace std;
 using namespace Oxide::Sentry;

@@ -4,6 +4,7 @@
 #include "liboxide_global.h"
 
 #include "settingsfile.h"
+#include "signalhandler.h"
 
 #include <QDebug>
 #include <QScopeGuard>

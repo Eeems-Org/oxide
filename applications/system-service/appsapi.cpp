@@ -1,5 +1,9 @@
+#include <liboxide.h>
+
 #include "appsapi.h"
 #include "notificationapi.h"
+
+using namespace Oxide;
 
 AppsAPI::AppsAPI(QObject* parent)
 : APIBase(parent),
