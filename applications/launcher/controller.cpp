@@ -213,7 +213,7 @@ QList<QObject*> Controller::getApps(){
         auto name = app.name();
         auto appItem = getApplication(name);
         if(appItem == nullptr){
-            qDebug() << name;
+            qDebug() << "New application:" << name;
             appItem = new AppItem(this);
             applications.append(appItem);
         }
@@ -229,12 +229,12 @@ QList<QObject*> Controller::getApps(){
         appItem->setProperty("running", running.contains(name));
         auto icon = app.icon();
         if(!icon.isEmpty() && QFile(icon).exists()){
-                appItem->setProperty("imgFile", "file:" + icon);
+            appItem->setProperty("imgFile", "file:" + icon);
         }
         if(!appItem->ok()){
             qDebug() << "Invalid item" << appItem->property("name").toString();
             applications.removeAll(appItem);
-            delete appItem;
+            appItem->deleteLater();
         }
     }
     // Sort by name
@@ -277,7 +277,7 @@ void Controller::importDraftApps(){
                 QString onStop = "";
                 while (!in.atEnd()) {
                     QString line = in.readLine();
-                    if(line.startsWith("#")){
+                    if(line.startsWith("#") || line.trimmed().isEmpty()){
                         continue;
                     }
                     QStringList parts = line.split("=");
@@ -314,6 +314,7 @@ void Controller::importDraftApps(){
                     }
                     continue;
                 }
+                qDebug() << "Not found, creating...";
                 auto icon = appItem.property("imgFile").toString();
                 if(icon.startsWith("qrc:")){
                     icon = "";

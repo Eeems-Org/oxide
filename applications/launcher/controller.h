@@ -66,7 +66,8 @@ public:
     : QObject(parent),
       m_wifion(false),
       wifi("/sys/class/net/wlan0"),
-      applications() {
+      applications()
+    {
         networks = new WifiNetworkList();
         notifications = new NotificationList();
 
