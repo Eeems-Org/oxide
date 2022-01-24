@@ -26,6 +26,9 @@ class Controller : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
+    Q_PROPERTY(bool firstLaunch READ firstLaunch WRITE setFirstLaunch NOTIFY firstLaunchChanged)
+    Q_PROPERTY(bool telemetry READ telemetry WRITE setTelemetry NOTIFY telemetryChanged)
+    Q_PROPERTY(bool crashReport READ crashReport WRITE setCrashReport NOTIFY crashReportChanged)
 public:
     Controller(QObject* parent)
     : QObject(parent), confirmPin(), settings(this) {
@@ -95,12 +98,22 @@ public:
         if(version < DECAY_SETTINGS_VERSION){
             migrate(&settings, version);
         }
+
+        connect(&sharedSettings, &Oxide::SharedSettings::firstLaunchChanged, this, &Controller::firstLaunchChanged);
+        connect(&sharedSettings, &Oxide::SharedSettings::telemetryChanged, this, &Controller::telemetryChanged);
+        connect(&sharedSettings, &Oxide::SharedSettings::crashReportChanged, this, &Controller::crashReportChanged);
     }
     ~Controller(){
         if(clockTimer->isActive()){
             clockTimer->stop();
         }
     }
+    bool firstLaunch(){ return sharedSettings.firstLaunch(); }
+    void setFirstLaunch(bool firstLaunch){ sharedSettings.set_firstLaunch(firstLaunch); }
+    bool telemetry(){ return sharedSettings.telemetry(); }
+    void setTelemetry(bool telemetry){ sharedSettings.set_telemetry(telemetry); }
+    bool crashReport(){ return sharedSettings.crashReport(); }
+    void setCrashReport(bool crashReport){ sharedSettings.set_crashReport(crashReport); }
 
     Q_INVOKABLE void startup(){
         if(!getBatteryUI() || !getWifiUI() || !getClockUI() || !getStateControllerUI()){
@@ -123,10 +136,18 @@ public:
         QObject::connect(clockTimer , &QTimer::timeout, this, &Controller::updateClock);
         clockTimer->start();
 
-        if(!settings.contains("pin")){
+        if(firstLaunch()){
             qDebug() << "First launch";
             QTimer::singleShot(100, [this]{
-                stateControllerUI->setProperty("state", xochitlPin().isEmpty() ? "firstLaunch" : "import");
+                stateControllerUI->setProperty("state", "telemetry");
+            });
+            return;
+        }
+
+        if(!settings.contains("pin")){
+            qDebug() << "No Pin";
+            QTimer::singleShot(100, [this]{
+                stateControllerUI->setProperty("state", xochitlPin().isEmpty() ? "pinPrompt" : "import");
             });
             return;
         }
@@ -280,6 +301,9 @@ public:
 signals:
     void sleepInhibitedChanged(bool);
     void powerOffInhibitedChanged(bool);
+    void firstLaunchChanged(bool);
+    void telemetryChanged(bool);
+    void crashReportChanged(bool);
 
 private slots:
     void deviceSuspending(){
@@ -289,7 +313,7 @@ private slots:
         }
         if(state() == "confirmPin"){
             confirmPin = "";
-            setState("firstLaunch");
+            setState("pinPrompt");
         }else{
             setState("loading");
         }

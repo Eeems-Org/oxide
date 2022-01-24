@@ -194,7 +194,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         onClicked: {
                             controller.breadcrumb("cancel", "clicked", "ui");
-                            stateController.state = "firstLaunch";
+                            stateController.state = "pinPrompt";
                         }
                     }
                     BetterButton {
@@ -210,7 +210,7 @@ ApplicationWindow {
             }
         },
         Popup {
-            visible: stateController.state == "firstLaunch"
+            visible: stateController.state == "pinPrompt"
             x: (parent.width / 2) - (width / 2)
             y: (parent.height / 2) - (height / 2)
             width: 1000
@@ -251,6 +251,72 @@ ApplicationWindow {
                     }
                 }
             }
+        },
+        Popup {
+            visible: stateController.state == "telemetry"
+            x: (parent.width / 2) - (width / 2)
+            y: (parent.height / 2) - (height / 2)
+            width: 1000
+            clip: true
+            closePolicy: Popup.NoAutoClose
+            ColumnLayout {
+                anchors.fill: parent
+                RowLayout {
+                    Item { Layout.fillWidth: true }
+                    Label {
+                        text: "Opt-in to telemetry?"
+                        Layout.fillHeight: true
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+                Label {
+                    text: "Oxide has basic telemetry and crash reporting.\nWould you like to enable it?\nSee https://oxide.eeems.codes/faq.html for more\ninformation."
+
+                    Layout.fillWidth: true
+                }
+                Item {
+                    Layout.rowSpan: 2
+                    Layout.fillHeight: true
+                }
+                RowLayout {
+                    BetterButton {
+                        text: "Yes"
+                        width: height * 2
+                        Layout.fillWidth: true
+                        onClicked: {
+                            controller.breadcrumb("full-telemetry", "clicked", "ui");
+                            controller.telemetry = true;
+                            controller.crashReport = true;
+                            controller.firstLaunch = false;
+                            stateController.state = "loading";
+                        }
+                    }
+                    BetterButton {
+                        text: "Crash Reports Only"
+                        width: height * 2
+                        Layout.fillWidth: true
+                        onClicked: {
+                            controller.breadcrumb("crash-report-only", "clicked", "ui");
+                            controller.telemetry = false;
+                            controller.crashReport = true;
+                            controller.firstLaunch = false;
+                            stateController.state = "loading";
+                        }
+                    }
+                    BetterButton {
+                        text: "No"
+                        width: height * 2
+                        Layout.fillWidth: true
+                        onClicked: {
+                            controller.breadcrumb("no-telemetry", "clicked", "ui");
+                            controller.telemetry = false;
+                            controller.crashReport = false;
+                            controller.firstLaunch = false;
+                            stateController.state = "loading";
+                        }
+                    }
+                }
+            }
         }
     ]
     StateGroup {
@@ -259,7 +325,8 @@ ApplicationWindow {
         state: "loading"
         states: [
             State { name: "loaded" },
-            State { name: "firstLaunch" },
+            State { name: "pinPrompt" },
+            State { name: "telemetry" },
             State { name: "prompt" },
             State { name: "confirmPin" },
             State { name: "import" },
@@ -279,12 +346,22 @@ ApplicationWindow {
                 }
             },
             Transition {
-                from: "*"; to: "firstLaunch"
+                from: "*"; to: "pinPrompt"
                 SequentialAnimation {
                     PropertyAction { target: pinEntry; property: "visible"; value: false }
                     ScriptAction { script: {
-                            controller.breadcrumb("navigation", "firstLaunch", "navigation");
+                            controller.breadcrumb("navigation", "pinPrompt", "navigation");
                         console.log("Prompt for PIN creation");
+                    } }
+                }
+            },
+            Transition {
+                from: "*"; to: "telemetry"
+                SequentialAnimation {
+                    PropertyAction { target: pinEntry; property: "visible"; value: false }
+                    ScriptAction { script: {
+                            controller.breadcrumb("navigation", "telemetry", "navigation");
+                        console.log("Telemetry opt-in screen");
                     } }
                 }
             },
