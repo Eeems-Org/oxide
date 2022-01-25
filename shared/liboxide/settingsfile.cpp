@@ -34,7 +34,7 @@ namespace Oxide {
                 auto value2 = this->value(property.name());
                 if(value != value2){
                     property.write(this, value2);
-                    property.notifySignal().invoke(this, Qt::BlockingQueuedConnection, QGenericArgument(value2.typeName(), value2.data()));
+                    property.notifySignal().invoke(this, Qt::QueuedConnection, QGenericArgument(value2.typeName(), value2.data()));
                 }
             }
         }

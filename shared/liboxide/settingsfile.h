@@ -24,7 +24,7 @@
         void set_##member(_type _arg_##member) { \
             O_SETTINGS_DEBUG(fileName() + " Setting " + #_group + "." + #member) \
             m_##member = _arg_##member; \
-            if(std::strcmp("General", #_group) == 0){ \
+            if(std::strcmp("General", #_group) != 0){ \
                 beginGroup(#_group); \
             }else{ \
                 beginGroup(""); \
