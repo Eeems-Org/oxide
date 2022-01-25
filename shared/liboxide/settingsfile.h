@@ -18,25 +18,27 @@
 #define O_SETTINGS_DEBUG(msg)
 #endif
 
-#define O_SETTINGS_PROPERTY_0(_type, member, group) \
+#define O_SETTINGS_PROPERTY_0(_type, member, _group) \
     Q_PROPERTY(QString __META_GROUP_##member READ __META_GROUP_##member CONSTANT FINAL) \
     public: \
-      void set_##member(_type _arg_##member) { \
-          if(m_##member != _arg_##member) { \
-            O_SETTINGS_DEBUG(fileName() + " Setting " + #member) \
+        void set_##member(_type _arg_##member) { \
+            O_SETTINGS_DEBUG(fileName() + " Setting " + #_group + "." + #member) \
             m_##member = _arg_##member; \
-            if(std::strcmp("General", #group) == 0){ beginGroup(#group); } \
+            if(std::strcmp("General", #_group) == 0){ \
+                beginGroup(#_group); \
+            }else{ \
+                beginGroup(""); \
+            } \
             setValue(#member, QVariant::fromValue<_type>(_arg_##member)); \
-            if(std::strcmp("General", #group) == 0){ endGroup(); } \
+            endGroup(); \
             sync(); \
-          } \
         } \
         _type member() const { return m_##member; } \
         void reload_##member() { reloadProperty(#member); } \
     Q_SIGNALS: \
         void member##Changed(const _type&); \
     protected: \
-        QString __META_GROUP_##member() const { return #group; } \
+        QString __META_GROUP_##member() const { return #_group; } \
     private: \
         _type m_##member;
 

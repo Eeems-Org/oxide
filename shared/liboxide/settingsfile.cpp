@@ -49,8 +49,12 @@ namespace Oxide {
             return;
         }
         auto groupName = property(propertyName.toStdString().c_str()).toString();
-        O_SETTINGS_DEBUG(fileName() + " Reloading " + groupName + "." + name)
-        if(groupName != "General"){ beginGroup(groupName); }
+        O_SETTINGS_DEBUG((fileName() + " Reloading " + groupName + "." + name).toStdString().c_str())
+        if(groupName != "General"){
+            beginGroup(groupName);
+        }else{
+            beginGroup("");
+        }
         if(contains(name)){
             O_SETTINGS_DEBUG("  Value exists")
             auto value = this->value(name);
@@ -63,7 +67,7 @@ namespace Oxide {
         }else{
             O_SETTINGS_DEBUG("  No Value")
         }
-        if(groupName != "General"){ endGroup(); }
+        endGroup();
         O_SETTINGS_DEBUG("  Done")
     }
     void SettingsFile::resetProperty(const QString& name){
