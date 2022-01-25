@@ -395,4 +395,10 @@ namespace Oxide {
     void XochitlSettings::resetWifinetworks(){}
     XochitlSettings::~XochitlSettings(){}
     SharedSettings::~SharedSettings(){}
+    O_SETTINGS_PROPERTY_BODY(XochitlSettings, QString, General, passcode)
+    O_SETTINGS_PROPERTY_BODY(XochitlSettings, bool, General, wifion)
+    O_SETTINGS_PROPERTY_BODY(SharedSettings, int, General, version)
+    O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, firstLaunch, true)
+    O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, telemetry, false)
+    O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, crashReport, true)
 }
