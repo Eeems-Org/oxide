@@ -2,126 +2,126 @@
 Apps API
 ========
 
-+----------------------+----------------------+----------------------+
-| Name                 | Specification        | Description          |
-+======================+======================+======================+
-| startupApplication   | ``OBJECT_PATH``      | The default          |
-|                      | property             | application to       |
-|                      | (read/write)         | display after the    |
-|                      |                      | user has logged in.  |
-|                      |                      | Also known as the    |
-|                      |                      | launcher.            |
-+----------------------+----------------------+----------------------+
-| l                    | ``OBJECT_PATH``      | The lock screen      |
-| ockscreenApplication | property             | application in use.  |
-|                      | (read/write)         |                      |
-+----------------------+----------------------+----------------------+
-| applications         | ``ARRAY{S            | The list of all the  |
-|                      | TRING OBJECT_PATH}`` | applications         |
-|                      | property (read)      | registered with      |
-|                      |                      | tarnish.             |
-+----------------------+----------------------+----------------------+
-| previousApplications | ``ARRAY{STRING}``    | List of previous     |
-|                      | property (read)      | applications that    |
-|                      |                      | have been opened.    |
-|                      |                      | This list drives the |
-|                      |                      | ``p                  |
-|                      |                      | reviousApplication`` |
-|                      |                      | method.              |
-+----------------------+----------------------+----------------------+
-| currentApplication   | ``OBJECT_PATH``      | The currently        |
-|                      | property (read)      | running foreground   |
-|                      |                      | application.         |
-+----------------------+----------------------+----------------------+
-| runningApplications  | ``ARRAY{S            | The list of          |
-|                      | TRING OBJECT_PATH}`` | currently running    |
-|                      | property (read)      | applications.        |
-|                      |                      | The includes all the |
-|                      |                      | running background,  |
-|                      |                      | and paused           |
-|                      |                      | foreground           |
-|                      |                      | applications.        |
-+----------------------+----------------------+----------------------+
-| pausedApplications   | ``ARRAY{S            | The list of paused   |
-|                      | TRING OBJECT_PATH}`` | foreground           |
-|                      | property (read)      | applications.        |
-+----------------------+----------------------+----------------------+
-| a                    | signal               | Signal sent when a   |
-| pplicationRegistered | - (out)              | new application is   |
-|                      | ``OBJECT_PATH``      | registered with      |
-|                      |                      | tarnish.             |
-+----------------------+----------------------+----------------------+
-| applicationLaunched  | signal               | Signal sent when an  |
-|                      | - (out)              | application has been |
-|                      | ``OBJECT_PATH``      | launched.            |
-+----------------------+----------------------+----------------------+
-| app                  | signal               | Signal sent when an  |
-| licationUnregistered | - (out)              | application has been |
-|                      | ``OBJECT_PATH``      | removed from         |
-|                      |                      | tarnish.             |
-+----------------------+----------------------+----------------------+
-| applicationPaused    | signal               | Signal sent when an  |
-|                      | - (out)              | application has been |
-|                      | ``OBJECT_PATH``      | paused.              |
-+----------------------+----------------------+----------------------+
-| applicationResumed   | signal               | Signal sent when an  |
-|                      | - (out)              | application has been |
-|                      | ``OBJECT_PATH``      | resumed.             |
-+----------------------+----------------------+----------------------+
-| applicationExited    | signal               | Signal sent when an  |
-|                      | - (out)              | application has      |
-|                      | ``OBJECT_PATH``      | exited.              |
-|                      | - (out) ``INT32``    | The second output    |
-|                      |                      | parameter contains   |
-|                      |                      | the exit code.       |
-+----------------------+----------------------+----------------------+
-| op                   | method               | Launch or resume the |
-| enDefaultApplication |                      | application defined  |
-|                      |                      | by                   |
-|                      |                      | ``                   |
-|                      |                      | startupApplication`` |
-+----------------------+----------------------+----------------------+
-| openTaskManager      | method               | Launch or resume the |
-|                      |                      | process manager.     |
-+----------------------+----------------------+----------------------+
-| openLockScreen       | method               | Launch or resume the |
-|                      |                      | application defined  |
-|                      |                      | by                   |
-|                      |                      | ``loc                |
-|                      |                      | kscreenApplication`` |
-+----------------------+----------------------+----------------------+
-| registerApplication  | method               | Register a new       |
-|                      | - (in) properties    | application with     |
-|                      | ``ARR                | tarnish.             |
-|                      | AY{STRING VARIANT}`` |                      |
-|                      | - (out)              |                      |
-|                      | ``OBJECT_PATH``      |                      |
-+----------------------+----------------------+----------------------+
-| u                    | method               | Remove an            |
-| nregisterApplication | - (in) path          | application from     |
-|                      | ``OBJECT_PATH``      | tarnish.             |
-+----------------------+----------------------+----------------------+
-| reload               | method               | Reload applications  |
-|                      |                      | registered with      |
-|                      |                      | tarnish from disk.   |
-+----------------------+----------------------+----------------------+
-| getApplicationPath   | method               | Returns the D-Bus    |
-|                      | - (in) name          | path for an          |
-|                      | ``STRING``           | application based on |
-|                      | - (out)              | it's name.           |
-|                      | ``OBJECT_PATH``      | Will return ``/`` if |
-|                      |                      | the application does |
-|                      |                      | not exist.           |
-+----------------------+----------------------+----------------------+
-| previousApplication  | method               | Launch or resume the |
-|                      | - (out) ``BOOLEAN``  | previous application |
-|                      |                      | from                 |
-|                      |                      | ``pre                |
-|                      |                      | viousApplications``. |
-|                      |                      | Will also remove the |
-|                      |                      | application from the |
-|                      |                      | list.                |
-+----------------------+----------------------+----------------------+
++-------------------------+----------------------+----------------------+
+| Name                    | Specification        | Description          |
++=========================+======================+======================+
+| startupApplication      | ``OBJECT_PATH``      | The default          |
+|                         | property             | application to       |
+|                         | (read/write)         | display after the    |
+|                         |                      | user has logged in.  |
+|                         |                      | Also known as the    |
+|                         |                      | launcher.            |
++-------------------------+----------------------+----------------------+
+| lockscreenApplication   | ``OBJECT_PATH``      | The lock screen      |
+|                         | property             | application in use.  |
+|                         | (read/write)         |                      |
++-------------------------+----------------------+----------------------+
+| applications            | ``ARRAY{STRING       | The list of all the  |
+|                         |  OBJECT_PATH}``      | applications         |
+|                         | property (read)      | registered with      |
+|                         |                      | tarnish.             |
++-------------------------+----------------------+----------------------+
+| previousApplications    | ``ARRAY{STRING}``    | List of previous     |
+|                         | property (read)      | applications that    |
+|                         |                      | have been opened.    |
+|                         |                      | This list drives the |
+|                         |                      | ``p                  |
+|                         |                      | reviousApplication`` |
+|                         |                      | method.              |
++-------------------------+----------------------+----------------------+
+| currentApplication      | ``OBJECT_PATH``      | The currently        |
+|                         | property (read)      | running foreground   |
+|                         |                      | application.         |
++-------------------------+----------------------+----------------------+
+| runningApplications     | ``ARRAY{STRING       | The list of          |
+|                         | OBJECT_PATH}``       | currently running    |
+|                         | property (read)      | applications.        |
+|                         |                      | The includes all the |
+|                         |                      | running background,  |
+|                         |                      | and paused           |
+|                         |                      | foreground           |
+|                         |                      | applications.        |
++-------------------------+----------------------+----------------------+
+| pausedApplications      | ``ARRAY{STRING       | The list of paused   |
+|                         | OBJECT_PATH}``       | foreground           |
+|                         | property (read)      | applications.        |
++-------------------------+----------------------+----------------------+
+| applicationRegistered   | signal               | Signal sent when a   |
+|                         | - (out)              | new application is   |
+|                         | ``OBJECT_PATH``      | registered with      |
+|                         |                      | tarnish.             |
++-------------------------+----------------------+----------------------+
+| applicationLaunched     | signal               | Signal sent when an  |
+|                         | - (out)              | application has been |
+|                         | ``OBJECT_PATH``      | launched.            |
++-------------------------+----------------------+----------------------+
+| applicationUnregistered | signal               | Signal sent when an  |
+|                         | - (out)              | application has been |
+|                         | ``OBJECT_PATH``      | removed from         |
+|                         |                      | tarnish.             |
++-------------------------+----------------------+----------------------+
+| applicationPaused       | signal               | Signal sent when an  |
+|                         | - (out)              | application has been |
+|                         | ``OBJECT_PATH``      | paused.              |
++-------------------------+----------------------+----------------------+
+| applicationResumed      | signal               | Signal sent when an  |
+|                         | - (out)              | application has been |
+|                         | ``OBJECT_PATH``      | resumed.             |
++-------------------------+----------------------+----------------------+
+| applicationExited       | signal               | Signal sent when an  |
+|                         | - (out)              | application has      |
+|                         | ``OBJECT_PATH``      | exited.              |
+|                         | - (out) ``INT32``    | The second output    |
+|                         |                      | parameter contains   |
+|                         |                      | the exit code.       |
++-------------------------+----------------------+----------------------+
+| openDefaultApplication  | method               | Launch or resume the |
+|                         |                      | application defined  |
+|                         |                      | by                   |
+|                         |                      | ``                   |
+|                         |                      | startupApplication`` |
++-------------------------+----------------------+----------------------+
+| openTaskManager         | method               | Launch or resume the |
+|                         |                      | process manager.     |
++-------------------------+----------------------+----------------------+
+| openLockScreen          | method               | Launch or resume the |
+|                         |                      | application defined  |
+|                         |                      | by                   |
+|                         |                      | ``loc                |
+|                         |                      | kscreenApplication`` |
++-------------------------+----------------------+----------------------+
+| registerApplication     | method               | Register a new       |
+|                         | - (in) properties    | application with     |
+|                         | ``ARRAY{STRING       | tarnish.             |
+|                         |  VARIANT}``          |                      |
+|                         | - (out)              |                      |
+|                         | ``OBJECT_PATH``      |                      |
++-------------------------+----------------------+----------------------+
+| unregisterApplication   | method               | Remove an            |
+|                         | - (in) path          | application from     |
+|                         | ``OBJECT_PATH``      | tarnish.             |
++-------------------------+----------------------+----------------------+
+| reload                  | method               | Reload applications  |
+|                         |                      | registered with      |
+|                         |                      | tarnish from disk.   |
++-------------------------+----------------------+----------------------+
+| getApplicationPath      | method               | Returns the D-Bus    |
+|                         | - (in) name          | path for an          |
+|                         | ``STRING``           | application based on |
+|                         | - (out)              | it's name.           |
+|                         | ``OBJECT_PATH``      | Will return ``/`` if |
+|                         |                      | the application does |
+|                         |                      | not exist.           |
++-------------------------+----------------------+----------------------+
+| previousApplication     | method               | Launch or resume the |
+|                         | - (out) ``BOOLEAN``  | previous application |
+|                         |                      | from                 |
+|                         |                      | ``pre                |
+|                         |                      | viousApplications``. |
+|                         |                      | Will also remove the |
+|                         |                      | application from the |
+|                         |                      | list.                |
++-------------------------+----------------------+----------------------+
 
 .. _example-usage-2:
 
