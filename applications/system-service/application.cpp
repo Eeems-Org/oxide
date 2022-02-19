@@ -22,6 +22,7 @@ void Application::launchNoSecurityCheck(){
     if(m_process->processId()){
         resumeNoSecurityCheck();
     }else{
+        transaction = Oxide::Sentry::start_transaction("application", "run");
         appsAPI->recordPreviousApplication();
         qDebug() << "Launching " << path();
         appsAPI->pauseAll();
@@ -230,6 +231,10 @@ void Application::stopNoSecurityCheck(){
             kill(-m_process->processId(), SIGKILL);
             break;
         }
+    }
+    if(transaction != nullptr){
+        Oxide::Sentry::stop_transaction(transaction);
+        transaction = nullptr;
     }
 }
 void Application::signal(int signal){

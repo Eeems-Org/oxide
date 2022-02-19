@@ -20,59 +20,65 @@ QDebug operator<<(QDebug debug, Touch* touch){
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
-        qDebug() << "Preparing for suspend...";
-        wifiAPI->stopUpdating();
-        emit deviceSuspending();
-        appsAPI->recordPreviousApplication();
-        auto path = appsAPI->currentApplicationNoSecurityCheck();
-        if(path.path() != "/"){
-            resumeApp = appsAPI->getApplication(path);
-            resumeApp->pauseNoSecurityCheck(false);
-        }else{
-            resumeApp = nullptr;
-        }
-        if(QFile::exists("/usr/share/remarkable/sleeping.png")){
-            screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png");
-        }else{
-            screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
-        }
-        buttonHandler->setEnabled(false);
-        if(device == Oxide::DeviceSettings::DeviceType::RM2){
-            if(wifiAPI->state() != WifiAPI::State::Off){
-                wifiWasOn = true;
-                wifiAPI->disable();
+        Oxide::Sentry::sentry_transaction("system", "suspend", [this, device](void* t){
+            Q_UNUSED(t);
+            qDebug() << "Preparing for suspend...";
+            wifiAPI->stopUpdating();
+            emit deviceSuspending();
+            appsAPI->recordPreviousApplication();
+            auto path = appsAPI->currentApplicationNoSecurityCheck();
+            if(path.path() != "/"){
+                resumeApp = appsAPI->getApplication(path);
+                resumeApp->pauseNoSecurityCheck(false);
+            }else{
+                resumeApp = nullptr;
             }
-            system("rmmod brcmfmac");
-        }
-        releaseSleepInhibitors();
-        qDebug() << "Suspending...";
+            if(QFile::exists("/usr/share/remarkable/sleeping.png")){
+                screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png");
+            }else{
+                screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
+            }
+            buttonHandler->setEnabled(false);
+            if(device == Oxide::DeviceSettings::DeviceType::RM2){
+                if(wifiAPI->state() != WifiAPI::State::Off){
+                    wifiWasOn = true;
+                    wifiAPI->disable();
+                }
+                system("rmmod brcmfmac");
+            }
+            releaseSleepInhibitors();
+            qDebug() << "Suspending...";
+        });
     }else{
-        inhibitSleep();
-        qDebug() << "Resuming...";
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-        auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
-        if(lockscreenApp != nullptr){
-            resumeApp = lockscreenApp;
-        }
-        if(resumeApp == nullptr){
-            resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
-        }
-        if(resumeApp != nullptr){
-            resumeApp->resumeNoSecurityCheck();
-        }
-        buttonHandler->setEnabled(true);
-        emit deviceResuming();
-        if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-            qDebug() << "Suspend timer re-enabled due to resume";
-            suspendTimer.start(m_autoSleep * 60 * 1000);
-        }
-        if(device == Oxide::DeviceSettings::DeviceType::RM2){
-            system("modprobe brcmfmac");
-            if(wifiWasOn){
-                wifiAPI->enable();
+        Oxide::Sentry::sentry_transaction("system", "resume", [this, device](void* t){
+            Q_UNUSED(t);
+            inhibitSleep();
+            qDebug() << "Resuming...";
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+            auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
+            if(lockscreenApp != nullptr){
+                resumeApp = lockscreenApp;
             }
-        }
-        wifiAPI->resumeUpdating();
+            if(resumeApp == nullptr){
+                resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
+            }
+            if(resumeApp != nullptr){
+                resumeApp->resumeNoSecurityCheck();
+            }
+            buttonHandler->setEnabled(true);
+            emit deviceResuming();
+            if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+                qDebug() << "Suspend timer re-enabled due to resume";
+                suspendTimer.start(m_autoSleep * 60 * 1000);
+            }
+            if(device == Oxide::DeviceSettings::DeviceType::RM2){
+                system("modprobe brcmfmac");
+                if(wifiWasOn){
+                    wifiAPI->enable();
+                }
+            }
+            wifiAPI->resumeUpdating();
+        });
     }
 }
 void SystemAPI::setAutoSleep(int autoSleep){

@@ -151,3 +151,11 @@ if(SENTRY_INTEGRATION_QT)
 		integrations/sentry_integration_qt.h
 	)
 endif()
+
+if(SENTRY_BUILD_EXAMPLES)
+	target_compile_definitions(sentry PRIVATE SENTRY_PERFORMANCE_MONITORING)
+	sentry_target_sources_cwd(sentry
+	sentry_tracing.c
+	sentry_tracing.h
+	)
+endif()

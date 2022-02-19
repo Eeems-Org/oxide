@@ -170,6 +170,12 @@ int main(int argc, char *argv[]){
         if(action == "call"){
             if(args.length() == 3 && args.at(2) == "crash"){
                 trigger_crash();
+            }else if(args.length() == 3 && args.at(2) == "transaction"){
+                sentry_transaction("settings", "transaction", [](void* t){
+                    Q_UNUSED(t);
+                    qDebug() << "Triggered transaction";
+                });
+                return qExit(EXIT_SUCCESS);
             }
             qDebug() << "Call is not valid for the settings API";
 #ifdef SENTRY

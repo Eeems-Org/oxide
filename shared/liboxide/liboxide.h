@@ -45,7 +45,12 @@ namespace Oxide {
         LIBOXIDE_EXPORT const char* machineId();
         LIBOXIDE_EXPORT void sentry_init(const char* name, char* argv[], bool autoSessionTracking = true);
         LIBOXIDE_EXPORT void sentry_breadcrumb(const char* category, const char* message, const char* type = "default", const char* level = "info");
-        LIBOXIDE_EXPORT void sentry_transaction(std::string name, std::function<void()> callback);
+        LIBOXIDE_EXPORT void* start_transaction(std::string name, std::string action);
+        LIBOXIDE_EXPORT void stop_transaction(void* transaction);
+        LIBOXIDE_EXPORT void sentry_transaction(std::string name, std::string action, std::function<void(void* transaction)> callback);
+        LIBOXIDE_EXPORT void* start_span(void* transaction, std::string operation, std::string description);
+        LIBOXIDE_EXPORT void stop_span(void* span);
+        LIBOXIDE_EXPORT void sentry_span(void* transaction, std::string operation, std::string description, std::function<void()> callback);
         LIBOXIDE_EXPORT void trigger_crash();
     }
     class LIBOXIDE_EXPORT DeviceSettings{

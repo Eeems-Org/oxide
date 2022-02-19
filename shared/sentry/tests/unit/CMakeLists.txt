@@ -29,10 +29,12 @@ add_executable(sentry_test_unit
 	test_mpack.c
 	test_path.c
 	test_ratelimiter.c
+	test_sampling.c
 	test_session.c
 	test_slice.c
 	test_symbolizer.c
 	test_sync.c
+	test_tracing.c
 	test_uninit.c
 	test_unwinder.c
 	test_utils.c
@@ -81,6 +83,7 @@ endif()
 target_compile_definitions(sentry PRIVATE SIZEOF_LONG=${CMAKE_SIZEOF_LONG})
 
 target_compile_definitions(sentry_test_unit PRIVATE SENTRY_UNITTEST)
+target_compile_definitions(sentry_test_unit PRIVATE SENTRY_PERFORMANCE_MONITORING)
 
 add_test(NAME sentry_test_unit COMMAND sentry_test_unit)
 

@@ -31,6 +31,7 @@
 #include <stdexcept>
 #include <sys/types.h>
 #include <algorithm>
+#include <liboxide.h>
 
 #include "../../shared/liboxide/liboxide.h"
 #include "mxcfb.h"
@@ -325,27 +326,35 @@ public:
         if(screenCapture != nullptr){
             return;
         }
+        void* span = Oxide::Sentry::start_span(transaction, "saveScreen", "save");
         qDebug() << "Saving screen...";
         int frameBufferHandle = open("/dev/fb0", O_RDWR);
         char* frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
+        Oxide::Sentry::stop_span(span);
+        span = Oxide::Sentry::start_span(transaction, "saveScreen", "compress");
         qDebug() << "Compressing data...";
         auto compressedData = qCompress(QByteArray(frameBuffer, DISPLAYSIZE));
         close(frameBufferHandle);
         screenCapture = new QByteArray(compressedData);
         qDebug() << "Screen saved.";
+        Oxide::Sentry::stop_span(span);
     }
     void recallScreen(){
         if(screenCapture == nullptr){
             return;
         }
+        void* span = Oxide::Sentry::start_span(transaction, "recallScreen", "uncompress");
         qDebug() << "Uncompressing screen...";
         auto uncompressedData = qUncompress(*screenCapture);
         if(!uncompressedData.size()){
             qDebug() << "Screen capture was corrupt";
             qDebug() << screenCapture->size();
             delete screenCapture;
+            Oxide::Sentry::stop_span(span);
             return;
         }
+        Oxide::Sentry::stop_span(span);
+        span = Oxide::Sentry::start_span(transaction, "recallScreen", "recall");
         qDebug() << "Recalling screen...";
         int frameBufferHandle = open("/dev/fb0", O_RDWR);
         auto frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
@@ -370,6 +379,7 @@ public:
         delete screenCapture;
         screenCapture = nullptr;
         qDebug() << "Screen recalled.";
+        Oxide::Sentry::stop_span(span);
     }
     void waitForFinished(){
         if(m_process->processId()){
@@ -457,6 +467,7 @@ private:
     size_t screenCaptureSize;
     QElapsedTimer timer;
     QMap<QString, FifoHandler*> fifos;
+    void* transaction;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds){
@@ -593,66 +604,72 @@ private:
     const QString resourcePath() { return "/tmp/tarnish-chroot/" + name(); }
     const QString chrootPath() { return resourcePath() + "/chroot"; }
     void mountAll(){
-        auto path = chrootPath();
-        qDebug() << "Setting up chroot" << path;
-        // System tmpfs folders
-        bind("/dev", path + "/dev");
-        bind("/proc", path + "/proc");
-        sysfs(path + "/sys");
-        // Folders required to run things
-        bind("/bin", path + "/bin", true);
-        bind("/sbin", path + "/sbin", true);
-        bind("/lib", path + "/lib", true);
-        bind("/usr/lib", path + "/usr/lib", true);
-        bind("/usr/bin", path + "/usr/bin", true);
-        bind("/usr/sbin", path + "/usr/sbin", true);
-        bind("/opt/bin", path + "/opt/bin", true);
-        bind("/opt/lib", path + "/opt/lib", true);
-        bind("/opt/usr/bin", path + "/opt/usr/bin", true);
-        bind("/opt/usr/lib", path + "/opt/usr/lib", true);
-        // tmpfs folders
-        mkdirs(path + "/tmp", 744);
-        if(!QFile::exists(path + "/run")){
-            ramdisk(path + "/run");
-        }
-        if(!QFile::exists(path + "/var/volatile")){
-            ramdisk(path + "/var/volatile");
-        }
-        // Configured folders
-        for(auto directory : directories()){
-            bind(directory, path + directory);
-        }
-        // Fake sys devices
-        auto fifo = mkfifo("powerState", path + "/sys/power/state");
-        connect(fifo, &FifoHandler::dataRecieved, this, &Application::powerStateDataRecieved);
-        // Missing symlinks
-        symlink(path + "/var/run", "../run");
-        symlink(path + "/var/lock", "../run/lock");
-        symlink(path + "/var/tmp", "volatile/tmp");
+        Oxide::Sentry::sentry_transaction("application", "mount", [this](void* t){
+            Q_UNUSED(t);
+            auto path = chrootPath();
+            qDebug() << "Setting up chroot" << path;
+            // System tmpfs folders
+            bind("/dev", path + "/dev");
+            bind("/proc", path + "/proc");
+            sysfs(path + "/sys");
+            // Folders required to run things
+            bind("/bin", path + "/bin", true);
+            bind("/sbin", path + "/sbin", true);
+            bind("/lib", path + "/lib", true);
+            bind("/usr/lib", path + "/usr/lib", true);
+            bind("/usr/bin", path + "/usr/bin", true);
+            bind("/usr/sbin", path + "/usr/sbin", true);
+            bind("/opt/bin", path + "/opt/bin", true);
+            bind("/opt/lib", path + "/opt/lib", true);
+            bind("/opt/usr/bin", path + "/opt/usr/bin", true);
+            bind("/opt/usr/lib", path + "/opt/usr/lib", true);
+            // tmpfs folders
+            mkdirs(path + "/tmp", 744);
+            if(!QFile::exists(path + "/run")){
+                ramdisk(path + "/run");
+            }
+            if(!QFile::exists(path + "/var/volatile")){
+                ramdisk(path + "/var/volatile");
+            }
+            // Configured folders
+            for(auto directory : directories()){
+                bind(directory, path + directory);
+            }
+            // Fake sys devices
+            auto fifo = mkfifo("powerState", path + "/sys/power/state");
+            connect(fifo, &FifoHandler::dataRecieved, this, &Application::powerStateDataRecieved);
+            // Missing symlinks
+            symlink(path + "/var/run", "../run");
+            symlink(path + "/var/lock", "../run/lock");
+            symlink(path + "/var/tmp", "volatile/tmp");
+        });
     }
     void umountAll(){
-        auto path = chrootPath();
-        for(auto name : fifos.keys()){
-            auto fifo = fifos.take(name);
-            fifo->quit();
-            fifo->deleteLater();
-        }
-        QDir dir(path);
-        if(!dir.exists()){
-            return;
-        }
-        qDebug() << "Tearing down chroot" << path;
-        for(auto file : dir.entryList(QDir::Files)){
-            QFile::remove(file);
-        }
-        for(auto mount : getActiveApplicationMounts()){
-            umount(mount);
-        }
-        if(!getActiveApplicationMounts().isEmpty()){
-            qDebug() << "Some items are still mounted in chroot" << path;
-            return;
-        }
-        dir.removeRecursively();
+        Oxide::Sentry::sentry_transaction("application", "umount", [this](void* t){
+            Q_UNUSED(t);
+            auto path = chrootPath();
+            for(auto name : fifos.keys()){
+                auto fifo = fifos.take(name);
+                fifo->quit();
+                fifo->deleteLater();
+            }
+            QDir dir(path);
+            if(!dir.exists()){
+                return;
+            }
+            qDebug() << "Tearing down chroot" << path;
+            for(auto file : dir.entryList(QDir::Files)){
+                QFile::remove(file);
+            }
+            for(auto mount : getActiveApplicationMounts()){
+                umount(mount);
+            }
+            if(!getActiveApplicationMounts().isEmpty()){
+                qDebug() << "Some items are still mounted in chroot" << path;
+                return;
+            }
+            dir.removeRecursively();
+        });
     }
     bool isMounted(const QString& path){ return getActiveMounts().contains(path); }
     QStringList getActiveApplicationMounts(){

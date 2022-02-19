@@ -806,6 +806,41 @@ sentry_value_is_null(sentry_value_t value)
     return value._bits == CONST_NULL;
 }
 
+int
+sentry__value_merge_objects(sentry_value_t dst, sentry_value_t src)
+{
+    if (sentry_value_is_null(src)) {
+        return 0;
+    }
+    if (sentry_value_get_type(dst) != SENTRY_VALUE_TYPE_OBJECT
+        || sentry_value_get_type(src) != SENTRY_VALUE_TYPE_OBJECT
+        || sentry_value_is_frozen(dst)) {
+        return 1;
+    }
+    thing_t *thing = value_as_thing(src);
+    if (!thing) {
+        return 1;
+    }
+    obj_t *obj = thing->payload._ptr;
+    for (size_t i = 0; i < obj->len; i++) {
+        char *key = obj->pairs[i].k;
+        sentry_value_t src_val = obj->pairs[i].v;
+        sentry_value_t dst_val = sentry_value_get_by_key(dst, key);
+        if (sentry_value_get_type(dst_val) == SENTRY_VALUE_TYPE_OBJECT
+            && sentry_value_get_type(src_val) == SENTRY_VALUE_TYPE_OBJECT) {
+            if (sentry__value_merge_objects(dst_val, src_val) != 0) {
+                return 1;
+            }
+        } else {
+            if (sentry_value_set_by_key(dst, key, src_val) != 0) {
+                return 1;
+            }
+            sentry_value_incref(src_val);
+        }
+    }
+    return 0;
+}
+
 void
 sentry__jsonwriter_write_value(sentry_jsonwriter_t *jw, sentry_value_t value)
 {
@@ -974,6 +1009,7 @@ sentry__value_new_hexstring(const uint8_t *bytes, size_t len)
     return sentry__value_new_string_owned(buf);
 }
 
+#ifdef SENTRY_PERFORMANCE_MONITORING
 sentry_value_t
 sentry__value_new_span_uuid(const sentry_uuid_t *uuid)
 {
@@ -997,6 +1033,7 @@ sentry__value_new_internal_uuid(const sentry_uuid_t *uuid)
     buf[32] = '\0';
     return sentry__value_new_string_owned(buf);
 }
+#endif
 
 sentry_value_t
 sentry__value_new_uuid(const sentry_uuid_t *uuid)

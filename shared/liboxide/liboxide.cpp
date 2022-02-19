@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QCryptographicHash>
 #include <QUuid>
+#include <QLibraryInfo>
 
 #include <sstream>
 #include <fstream>
@@ -16,6 +17,7 @@
 #include <stdio.h>
 #include <linux/input.h>
 #include <systemd/sd-id128.h>
+#include <sentry/src/sentry_tracing.h>
 
 // String: 5aa5ca39ee0b4f48927529ca17519524
 // UUID: 5aa5ca39-ee0b-4f48-9275-29ca17519524
@@ -23,6 +25,7 @@
 
 #ifdef SENTRY
 #include <sentry.h>
+#define SAMPLE_RATE 1.0
 std::string readFile(std::string path){
     std::ifstream t(path);
     std::stringstream buffer;
@@ -167,11 +170,14 @@ namespace Oxide {
             sentry_options_set_dsn(options, "https://8d409799a9d640599cc66496fb87edf6@sentry.eeems.codes/2");
             sentry_options_set_auto_session_tracking(options, autoSessionTracking && sharedSettings.telemetry());
             if(sharedSettings.telemetry()){
-                sentry_options_set_traces_sample_rate(options, 1.0);
-                sentry_options_set_max_spans(options, 5);
+                sentry_options_set_sample_rate(options, SAMPLE_RATE);
             }
             sentry_options_set_symbolize_stacktraces(options, true);
-            sentry_options_set_environment(options, argv[0]);
+            if(QLibraryInfo::isDebugBuild()){
+                sentry_options_set_environment(options, "debug");
+            }else{
+                sentry_options_set_environment(options, "release");
+            }
 #ifdef DEBUG
             sentry_options_set_debug(options, debugEnabled());
 #endif
@@ -231,18 +237,82 @@ namespace Oxide {
             Q_UNUSED(level);
 #endif
         }
-        void sentry_transaction(std::string name, std::function<void()> callback){
+        void* start_transaction(std::string name, std::string action){
 #ifdef SENTRY
-            if(sharedSettings.telemetry()){
-                sentry_set_transaction(name.c_str());
-                sentry_start_session();
-                auto scopeGuard = qScopeGuard([] {
-                    sentry_end_session();
-                });
-            }
-            callback();
+            sentry_transaction_context_t* context = sentry_transaction_context_new(name.c_str(), action.c_str());
+            sentry_transaction_t* transaction = sentry_transaction_start(context, sentry_value_new_double(SAMPLE_RATE));
+            // Hack to force transactions to be reported even though SAMPLE_RATE is 100%
+            sentry_value_set_by_key(transaction->inner, "sampled", sentry_value_new_bool(true));
+            return transaction;
 #else
             Q_UNUSED(name);
+            Q_UNUSED(action);
+            return nullptr;
+#endif
+        }
+        void stop_transaction(void* transaction){
+#ifdef SENTRY
+            if(transaction != nullptr){
+                sentry_transaction_finish((sentry_transaction_t*)transaction);
+            }
+#else
+            Q_UNUSED(transaction);
+#endif
+        }
+        void sentry_transaction(std::string name, std::string action, std::function<void(void* transaction)> callback){
+#ifdef SENTRY
+            if(!sharedSettings.telemetry()){
+                callback(nullptr);
+                return;
+            }
+            sentry_transaction_t* transaction = (sentry_transaction_t*)start_transaction(name, action);
+            auto scopeGuard = qScopeGuard([transaction] {
+                sentry_transaction_finish(transaction);
+            });
+            callback(transaction);
+#else
+            Q_UNUSED(name);
+            Q_UNUSED(action);
+            callback(nullptr);
+#endif
+        }
+        void* start_span(void* transaction, std::string operation, std::string description){
+#ifdef SENTRY
+            if(transaction == nullptr){
+                return nullptr;
+            }
+            return sentry_transaction_start_child((sentry_transaction_t*)transaction, (char*)operation.c_str(), (char*)description.c_str());
+#else
+            Q_UNUSED(transaction);
+            Q_UNUSED(operation);
+            Q_UNUSED(description);
+            return nullptr;
+#endif
+        }
+        void stop_span(void* span){
+#ifdef SENTRY
+            if(span != nullptr){
+                sentry_span_finish((sentry_span_t*)span);
+            }
+#else
+            Q_UNUSED(span);
+#endif
+        }
+        void sentry_span(void* transaction, std::string operation, std::string description, std::function<void()> callback){
+#ifdef SENTRY
+            if(!sharedSettings.telemetry() || transaction == nullptr){
+                callback();
+                return;
+            }
+            sentry_span_t* span = (sentry_span_t*)start_span(transaction, operation, description);
+            auto scopeGuard = qScopeGuard([span] {
+                stop_span(span);
+            });
+            callback();
+#else
+            Q_UNUSED(transaction);
+            Q_UNUSED(operation);
+            Q_UNUSED(description);
             callback();
 #endif
         }
