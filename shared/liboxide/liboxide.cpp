@@ -225,11 +225,13 @@ namespace Oxide {
             QObject::connect(&sharedSettings, &SharedSettings::telemetryChanged, [name, argv, autoSessionTracking](bool telemetry){
                 Q_UNUSED(telemetry)
                 sentry_close();
+                sentry_remove_user();
                 sentry_init(name, argv, autoSessionTracking);
             });
             QObject::connect(&sharedSettings, &SharedSettings::crashReportChanged, [name, argv, autoSessionTracking](bool crashReport){
                 Q_UNUSED(crashReport)
                 sentry_close();
+                sentry_remove_user();
                 sentry_init(name, argv, autoSessionTracking);
             });
 #else
@@ -305,6 +307,19 @@ namespace Oxide {
             return nullptr;
 #endif
         }
+        Span* start_span(Span* parent, std::string operation, std::string description){
+#ifdef SENTRY
+            if(parent == nullptr){
+                return nullptr;
+            }
+            return new Span(sentry_span_start_child(parent->inner, (char*)operation.c_str(), (char*)description.c_str()));
+#else
+            Q_UNUSED(transaction);
+            Q_UNUSED(operation);
+            Q_UNUSED(description);
+            return nullptr;
+#endif
+        }
         void stop_span(Span* span){
 #ifdef SENTRY
             if(span != nullptr && span->inner != nullptr){
@@ -316,15 +331,10 @@ namespace Oxide {
         }
         void sentry_span(Transaction* transaction, std::string operation, std::string description, std::function<void()> callback){
 #ifdef SENTRY
-            if(!sharedSettings.telemetry() || transaction == nullptr || transaction->inner == nullptr){
+            sentry_span(transaction, operation, description, [callback](Span* s){
+                Q_UNUSED(s);
                 callback();
-                return;
-            }
-            Span* span = start_span(transaction, operation, description);
-            auto scopeGuard = qScopeGuard([span] {
-                stop_span(span);
             });
-            callback();
 #else
             Q_UNUSED(transaction);
             Q_UNUSED(operation);
@@ -332,8 +342,57 @@ namespace Oxide {
             callback();
 #endif
         }
-        void trigger_crash(){ memset((char *)invalid_mem, 1, 100); }
+        void sentry_span(Transaction* transaction, std::string operation, std::string description, std::function<void(Span* span)> callback){
+#ifdef SENTRY
+            if(!sharedSettings.telemetry() || transaction == nullptr || transaction->inner == nullptr){
+                callback(nullptr);
+                return;
+            }
+            Span* span = start_span(transaction, operation, description);
+            auto scopeGuard = qScopeGuard([span] {
+                stop_span(span);
+            });
+            callback(span);
+#else
+            Q_UNUSED(transaction);
+            Q_UNUSED(operation);
+            Q_UNUSED(description);
+            callback(nullptr);
+#endif
+        }
+        void sentry_span(Span* parent, std::string operation, std::string description, std::function<void()> callback){
+#ifdef SENTRY
+            sentry_span(parent, operation, description, [callback](Span* s){
+                Q_UNUSED(s);
+                callback();
+            });
+#else
+            Q_UNUSED(transaction);
+            Q_UNUSED(operation);
+            Q_UNUSED(description);
+            callback();
+#endif
+        }
 
+        void sentry_span(Span* parent, std::string operation, std::string description, std::function<void(Span* span)> callback){
+#ifdef SENTRY
+                if(!sharedSettings.telemetry() || parent == nullptr || parent->inner == nullptr){
+                    callback(nullptr);
+                    return;
+                }
+                Span* span = start_span(parent, operation, description);
+                auto scopeGuard = qScopeGuard([span] {
+                    stop_span(span);
+                });
+                callback(span);
+#else
+                Q_UNUSED(parent);
+                Q_UNUSED(operation);
+                Q_UNUSED(description);
+                callback(nullptr);
+#endif
+        }
+        void trigger_crash(){ memset((char *)invalid_mem, 1, 100); }
     }
     DeviceSettings& DeviceSettings::instance() {
         static DeviceSettings INSTANCE;

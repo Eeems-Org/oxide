@@ -87,53 +87,84 @@ public:
        touches(),
        swipeStates(),
        swipeLengths() {
-        for(short i = Right; i <= Down; i++){
-            swipeStates[(SwipeDirection)i] = true;
-        }
-        settings.sync();
-        singleton(this);
-        this->resumeApp = nullptr;
-        systemd = new Manager("org.freedesktop.login1", "/org/freedesktop/login1", QDBusConnection::systemBus(), this);
-        // Handle Systemd signals
-        connect(systemd, &Manager::PrepareForSleep, this, &SystemAPI::PrepareForSleep);
-        connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::timeout);
+        Oxide::Sentry::sentry_transaction("system", "init", [this](Oxide::Sentry::Transaction* t){
+            Oxide::Sentry::sentry_span(t, "settings", "Sync settings", [this](Oxide::Sentry::Span* s){
+                Oxide::Sentry::sentry_span(s, "swipes", "Default swipe values", [this]{
+                    for(short i = Right; i <= Down; i++){
+                        swipeStates[(SwipeDirection)i] = true;
+                    }
+                });
+                Oxide::Sentry::sentry_span(s, "sync", "Sync settings", [this]{
+                    settings.sync();
+                });
+                Oxide::Sentry::sentry_span(s, "singleton", "Instantiate singleton", [this]{
+                    singleton(this);
+                });
+                resumeApp = nullptr;
+            });
+            Oxide::Sentry::sentry_span(t, "systemd", "Connect to SystemD DBus", [this](Oxide::Sentry::Span* s){
+                Oxide::Sentry::sentry_span(s, "manager", "Create manager object", [this]{
+                    systemd = new Manager("org.freedesktop.login1", "/org/freedesktop/login1", QDBusConnection::systemBus(), this);
+                });
+                Oxide::Sentry::sentry_span(s, "connect", "Connect to signals", [this]{
+                    // Handle Systemd signals
+                    connect(systemd, &Manager::PrepareForSleep, this, &SystemAPI::PrepareForSleep);
+                    connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::timeout);
+                });
+            });
+            Oxide::Sentry::sentry_span(t, "autoSleep", "Setup automatic sleep", [this](Oxide::Sentry::Span* s){
+                auto autoSleep = settings.value("autoSleep", 1).toInt();
+                m_autoSleep = autoSleep;
+                if(autoSleep < 0) {
+                    m_autoSleep = 0;
 
-        auto autoSleep = settings.value("autoSleep", 1).toInt();
-        m_autoSleep = autoSleep;
-        if(autoSleep < 0) {
-            m_autoSleep = 0;
-
-        }else if(autoSleep > 10){
-            m_autoSleep = 10;
-        }
-        if(autoSleep != m_autoSleep){
-            m_autoSleep = autoSleep;
-            settings.setValue("autoSleep", autoSleep);
-            settings.sync();
-            emit autoSleepChanged(autoSleep);
-        }
-        qDebug() << "Auto Sleep" << autoSleep;
-        if(m_autoSleep){
-            suspendTimer.start(m_autoSleep * 60 * 1000);
-        }else if(!m_autoSleep){
-            suspendTimer.stop();
-        }
-        settings.beginReadArray("swipes");
-        for(short i = Right; i <= Down; i++){
-            settings.setArrayIndex(i);
-            swipeStates[(SwipeDirection)i] = settings.value("enabled", true).toBool();
-            swipeLengths[(SwipeDirection)i] = settings.value("length", 30).toInt();
-        }
-        settings.endArray();
-        // Ask Systemd to tell us nicely when we are about to suspend or resume
-        inhibitSleep();
-        inhibitPowerOff();
-        qRegisterMetaType<input_event>();
-        connect(touchHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
-        connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
-        connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
-        connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
-        qDebug() << "System API ready to use";
+                }else if(autoSleep > 10){
+                    m_autoSleep = 10;
+                }
+                if(autoSleep != m_autoSleep){
+                    Oxide::Sentry::sentry_span(s, "update", "Update value", [this, autoSleep]{
+                        m_autoSleep = autoSleep;
+                        settings.setValue("autoSleep", autoSleep);
+                        settings.sync();
+                        emit autoSleepChanged(autoSleep);
+                    });
+                }
+                qDebug() << "Auto Sleep" << autoSleep;
+                Oxide::Sentry::sentry_span(s, "timer", "Setup timer", [this]{
+                    if(m_autoSleep){
+                        suspendTimer.start(m_autoSleep * 60 * 1000);
+                    }else if(!m_autoSleep){
+                        suspendTimer.stop();
+                    }
+                });
+            });
+            Oxide::Sentry::sentry_span(t, "swipes", "Load swipe settings", [this]{
+                settings.beginReadArray("swipes");
+                for(short i = Right; i <= Down; i++){
+                    settings.setArrayIndex(i);
+                    swipeStates[(SwipeDirection)i] = settings.value("enabled", true).toBool();
+                    swipeLengths[(SwipeDirection)i] = settings.value("length", 30).toInt();
+                }
+                settings.endArray();
+            });
+            // Ask Systemd to tell us nicely when we are about to suspend or resume
+            Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep and power off", [this](Oxide::Sentry::Span* s){
+                Oxide::Sentry::sentry_span(s, "inhibitSleep", "Inhibit sleep", [this]{
+                    inhibitSleep();
+                });
+                Oxide::Sentry::sentry_span(s, "inhibitPowerOff", "Inhibit power off", [this]{
+                    inhibitPowerOff();
+                });
+            });
+            qRegisterMetaType<input_event>();
+            Oxide::Sentry::sentry_span(t, "input", "Connect input events", [this]{
+                connect(touchHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
+                connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
+                connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
+                connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
+            });
+            qDebug() << "System API ready to use";
+        });
     }
     ~SystemAPI(){
         qDebug() << "Removing all inhibitors";

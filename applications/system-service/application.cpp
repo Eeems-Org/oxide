@@ -64,15 +64,18 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
         return;
     }
     qDebug() << "Pausing " << path();
-    interruptApplication();
-    if(!flags().contains("nosavescreen")){
-        saveScreen();
-    }
-    if(startIfNone){
-        appsAPI->resumeIfNone();
-    }
-    emit paused();
-    emit appsAPI->applicationPaused(qPath());
+    Oxide::Sentry::sentry_transaction("application", "pause", [this, startIfNone](Oxide::Sentry::Transaction* t){
+        Q_UNUSED(t);
+        interruptApplication();
+        if(!flags().contains("nosavescreen")){
+            saveScreen();
+        }
+        if(startIfNone){
+            appsAPI->resumeIfNone();
+        }
+        emit paused();
+        emit appsAPI->applicationPaused(qPath());
+    });
     qDebug() << "Paused " << path();
 }
 void Application::interruptApplication(){
@@ -83,36 +86,42 @@ void Application::interruptApplication(){
     ){
         return;
     }
-    if(!onPause().isEmpty()){
-        system(onPause().toStdString().c_str());
-    }
-    switch(type()){
-        case AppsAPI::Background:
-            // Already in the background. How did we get here?
-            return;
-        case AppsAPI::Backgroundable:
-            qDebug() << "Waiting for SIGUSR2 ack";
-            appsAPI->connectSignals(this, 2);
-            kill(-m_process->processId(), SIGUSR2);
-            timer.restart();
-            delayUpTo(1000);
-            appsAPI->disconnectSignals(this, 2);
-            if(stateNoSecurityCheck() == Inactive){
-                qDebug() << "Application crashed while pausing";
-            }else if(timer.isValid()){
-                qDebug() << "Application took too long to background" << name();
-                kill(-m_process->processId(), SIGSTOP);
-                waitForPause();
-            }else{
-                m_backgrounded = true;
-                qDebug() << "SIGUSR2 ack recieved";
+    Oxide::Sentry::sentry_transaction("application", "interrupt", [this](Oxide::Sentry::Transaction* t){
+        if(!onPause().isEmpty()){
+            Oxide::Sentry::sentry_span(t, "onPause", "Run onPause action", [this](){
+                system(onPause().toStdString().c_str());
+            });
+        }
+        Oxide::Sentry::sentry_span(t, "background", "Background application", [this](){
+            switch(type()){
+                case AppsAPI::Background:
+                    // Already in the background. How did we get here?
+                    return;
+                case AppsAPI::Backgroundable:
+                    qDebug() << "Waiting for SIGUSR2 ack";
+                    appsAPI->connectSignals(this, 2);
+                    kill(-m_process->processId(), SIGUSR2);
+                    timer.restart();
+                    delayUpTo(1000);
+                    appsAPI->disconnectSignals(this, 2);
+                    if(stateNoSecurityCheck() == Inactive){
+                        qDebug() << "Application crashed while pausing";
+                    }else if(timer.isValid()){
+                        qDebug() << "Application took too long to background" << name();
+                        kill(-m_process->processId(), SIGSTOP);
+                        waitForPause();
+                    }else{
+                        m_backgrounded = true;
+                        qDebug() << "SIGUSR2 ack recieved";
+                    }
+                    break;
+                case AppsAPI::Foreground:
+                default:
+                    kill(-m_process->processId(), SIGSTOP);
+                    waitForPause();
             }
-            break;
-        case AppsAPI::Foreground:
-        default:
-            kill(-m_process->processId(), SIGSTOP);
-            waitForPause();
-    }
+        });
+    });
 }
 void Application::waitForPause(){
     if(stateNoSecurityCheck() == Paused){
@@ -143,16 +152,19 @@ void Application::resumeNoSecurityCheck(){
         qDebug() << "Can't Resume" << path() << "Already running!";
         return;
     }
-    appsAPI->recordPreviousApplication();
-    qDebug() << "Resuming " << path();
-    appsAPI->pauseAll();
-    if(!flags().contains("nosavescreen") && (type() != AppsAPI::Backgroundable || stateNoSecurityCheck() == Paused)){
-        recallScreen();
-    }
-    uninterruptApplication();
-    waitForResume();
-    emit resumed();
-    emit appsAPI->applicationResumed(qPath());
+    Oxide::Sentry::sentry_transaction("application", "resume", [this](Oxide::Sentry::Transaction* t){
+        Q_UNUSED(t);
+        appsAPI->recordPreviousApplication();
+        qDebug() << "Resuming " << path();
+        appsAPI->pauseAll();
+        if(!flags().contains("nosavescreen") && (type() != AppsAPI::Backgroundable || stateNoSecurityCheck() == Paused)){
+            recallScreen();
+        }
+        uninterruptApplication();
+        waitForResume();
+        emit resumed();
+        emit appsAPI->applicationResumed(qPath());
+    });
     qDebug() << "Resumed " << path();
 }
 void Application::uninterruptApplication(){
@@ -163,34 +175,40 @@ void Application::uninterruptApplication(){
     ){
         return;
     }
-    if(!onResume().isEmpty()){
-        system(onResume().toStdString().c_str());
-    }
-    switch(type()){
-        case AppsAPI::Background:
-        case AppsAPI::Backgroundable:
-            if(stateNoSecurityCheck() == Paused){
-                touchHandler->clear_buffer();
-                kill(-m_process->processId(), SIGCONT);
+    Oxide::Sentry::sentry_transaction("application", "uninterrupt", [this](Oxide::Sentry::Transaction* t){
+        if(!onResume().isEmpty()){
+            Oxide::Sentry::sentry_span(t, "onResume", "Run onResume action", [this](){
+                system(onResume().toStdString().c_str());
+            });
+        }
+        Oxide::Sentry::sentry_span(t, "foreground", "Foreground application", [this](){
+            switch(type()){
+                case AppsAPI::Background:
+                case AppsAPI::Backgroundable:
+                    if(stateNoSecurityCheck() == Paused){
+                        touchHandler->clear_buffer();
+                        kill(-m_process->processId(), SIGCONT);
+                    }
+                    qDebug() << "Waiting for SIGUSR1 ack";
+                    appsAPI->connectSignals(this, 1);
+                    kill(-m_process->processId(), SIGUSR1);
+                    delayUpTo(1000);
+                    appsAPI->disconnectSignals(this, 1);
+                    if(timer.isValid()){
+                        // No need to fall through, we've just assumed it continued
+                        qDebug() << "Warning: application took too long to forground" << name();
+                    }else{
+                        qDebug() << "SIGUSR1 ack recieved";
+                    }
+                    m_backgrounded = false;
+                    break;
+                case AppsAPI::Foreground:
+                default:
+                    touchHandler->clear_buffer();
+                    kill(-m_process->processId(), SIGCONT);
             }
-            qDebug() << "Waiting for SIGUSR1 ack";
-            appsAPI->connectSignals(this, 1);
-            kill(-m_process->processId(), SIGUSR1);
-            delayUpTo(1000);
-            appsAPI->disconnectSignals(this, 1);
-            if(timer.isValid()){
-                // No need to fall through, we've just assumed it continued
-                qDebug() << "Warning: application took too long to forground" << name();
-            }else{
-                qDebug() << "SIGUSR1 ack recieved";
-            }
-            m_backgrounded = false;
-            break;
-        case AppsAPI::Foreground:
-        default:
-            touchHandler->clear_buffer();
-            kill(-m_process->processId(), SIGCONT);
-    }
+        });
+    });
 }
 void Application::stop(){
     if(!hasPermission("apps")){
@@ -199,43 +217,48 @@ void Application::stop(){
     stopNoSecurityCheck();
 }
 void Application::stopNoSecurityCheck(){
-    Oxide::Sentry::sentry_transaction("application", "stop", [this](Oxide::Sentry::Transaction* t){
-        Q_UNUSED(t);
-        auto state = this->stateNoSecurityCheck();
-        if(state == Inactive){
-            return;
-        }
+    auto state = this->stateNoSecurityCheck();
+    if(state == Inactive){
+        return;
+    }
+    Oxide::Sentry::sentry_transaction("application", "stop", [this, state](Oxide::Sentry::Transaction* t){
         qDebug() << "Stopping " << path();
         if(!onStop().isEmpty()){
-            QProcess::execute(onStop(), QStringList());
+            Oxide::Sentry::sentry_span(t, "onStop", "Run onStop action", [this](){
+                QProcess::execute(onStop(), QStringList());
+            });
         }
         Application* pausedApplication = nullptr;
         if(state == Paused){
-            touchHandler->clear_buffer();
-            auto currentApplication = appsAPI->currentApplicationNoSecurityCheck();
-            if(currentApplication.path() != path()){
-                pausedApplication = appsAPI->getApplication(currentApplication);
-                if(pausedApplication != nullptr){
-                    if(pausedApplication->stateNoSecurityCheck() == Paused){
-                        pausedApplication = nullptr;
-                    }else{
-                        appsAPI->forceRecordPreviousApplication();
-                        pausedApplication->interruptApplication();
+            Oxide::Sentry::sentry_span(t, "resume", "Resume paused application", [this, &pausedApplication](){
+                touchHandler->clear_buffer();
+                auto currentApplication = appsAPI->currentApplicationNoSecurityCheck();
+                if(currentApplication.path() != path()){
+                    pausedApplication = appsAPI->getApplication(currentApplication);
+                    if(pausedApplication != nullptr){
+                        if(pausedApplication->stateNoSecurityCheck() == Paused){
+                            pausedApplication = nullptr;
+                        }else{
+                            appsAPI->forceRecordPreviousApplication();
+                            pausedApplication->interruptApplication();
+                        }
                     }
                 }
-            }
-            kill(-m_process->processId(), SIGCONT);
+                kill(-m_process->processId(), SIGCONT);
+            });
         }
-        kill(-m_process->processId(), SIGTERM);
-        // Try to wait for the application to stop normally before killing it
-        int tries = 0;
-        while(this->stateNoSecurityCheck() != Inactive){
-            m_process->waitForFinished(100);
-            if(++tries == 5){
-                kill(-m_process->processId(), SIGKILL);
-                break;
+        Oxide::Sentry::sentry_span(t, "stop", "Stop application", [this](){
+            kill(-m_process->processId(), SIGTERM);
+            // Try to wait for the application to stop normally before killing it
+            int tries = 0;
+            while(this->stateNoSecurityCheck() != Inactive){
+                m_process->waitForFinished(100);
+                if(++tries == 5){
+                    kill(-m_process->processId(), SIGKILL);
+                    break;
+                }
             }
-        }
+        });
     });
 }
 void Application::signal(int signal){
@@ -328,50 +351,58 @@ bool Application::hasPermission(QString permission, const char* sender){ return 
 void Application::showSplashScreen(){
     auto frameBuffer = EPFrameBuffer::framebuffer();
     qDebug() << "Waiting for other painting to finish...";
-    while(frameBuffer->paintingActive()){
-        EPFrameBuffer::waitForLastUpdate();
-    }
-    qDebug() << "Displaying splashscreen for" << name();
-    QPainter painter(frameBuffer);
-    auto fm = painter.fontMetrics();
-    auto size = frameBuffer->size();
-    painter.fillRect(frameBuffer->rect(), Qt::white);
-    QString splashPath = splash();
-    if(splashPath.isEmpty() || !QFile::exists(splashPath)){
-        splashPath = icon();
-    }
-    if(!splashPath.isEmpty() && QFile::exists(splashPath)){
-        qDebug() << "Using image" << splashPath;
-        int splashWidth = size.width() / 2;
-        QSize splashSize(splashWidth, splashWidth);
-        QImage splash = QImage(splashPath).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        QRect splashRect(
-            QPoint(
-                (size.width() / 2) - (splashWidth / 2),
-                (size.height() / 2) - (splashWidth / 2)
-            ),
-            splashSize
-        );
-        painter.drawImage(splashRect, splash, splash.rect());
-        EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
-    }
-    painter.setPen(Qt::black);
-    auto text = "Loading " + displayName() + "...";
-    int padding = 10;
-    int textHeight = fm.height() + padding;
-    QRect textRect(
-        QPoint(0 + padding, size.height() - textHeight),
-        QSize(size.width() - padding * 2, textHeight)
-    );
-    painter.drawText(
-        textRect,
-        Qt::AlignVCenter | Qt::AlignRight,
-        text
-    );
-    EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Grayscale, EPFrameBuffer::PartialUpdate, true);
-    painter.end();
-    qDebug() << "Waitng for screen to finish...";
-    EPFrameBuffer::waitForLastUpdate();
+    Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this, frameBuffer](Oxide::Sentry::Transaction* t){
+        Oxide::Sentry::sentry_span(t, "wait", "Wait for screen to be ready", [frameBuffer](){
+            while(frameBuffer->paintingActive()){
+                EPFrameBuffer::waitForLastUpdate();
+            }
+        });
+        qDebug() << "Displaying splashscreen for" << name();
+        Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this, frameBuffer](){
+            QPainter painter(frameBuffer);
+            auto fm = painter.fontMetrics();
+            auto size = frameBuffer->size();
+            painter.fillRect(frameBuffer->rect(), Qt::white);
+            QString splashPath = splash();
+            if(splashPath.isEmpty() || !QFile::exists(splashPath)){
+                splashPath = icon();
+            }
+            if(!splashPath.isEmpty() && QFile::exists(splashPath)){
+                qDebug() << "Using image" << splashPath;
+                int splashWidth = size.width() / 2;
+                QSize splashSize(splashWidth, splashWidth);
+                QImage splash = QImage(splashPath).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                QRect splashRect(
+                    QPoint(
+                        (size.width() / 2) - (splashWidth / 2),
+                        (size.height() / 2) - (splashWidth / 2)
+                    ),
+                    splashSize
+                );
+                painter.drawImage(splashRect, splash, splash.rect());
+                EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
+            }
+            painter.setPen(Qt::black);
+            auto text = "Loading " + displayName() + "...";
+            int padding = 10;
+            int textHeight = fm.height() + padding;
+            QRect textRect(
+                QPoint(0 + padding, size.height() - textHeight),
+                QSize(size.width() - padding * 2, textHeight)
+            );
+            painter.drawText(
+                textRect,
+                Qt::AlignVCenter | Qt::AlignRight,
+                text
+            );
+            EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Grayscale, EPFrameBuffer::PartialUpdate, true);
+            painter.end();
+        });
+        qDebug() << "Waitng for screen to finish...";
+        Oxide::Sentry::sentry_span(t, "wait", "Wait for screen finish updating", [](){
+            EPFrameBuffer::waitForLastUpdate();
+        });
+    });
     qDebug() << "Finished paining splash screen for" << name();
 }
 void Application::powerStateDataRecieved(FifoHandler* handler, const QString& data){

@@ -141,13 +141,17 @@ public:
         if(applications.contains(name)){
             return applications[name]->qPath();
         }
-        auto path = QDBusObjectPath(getPath(name));
-        auto app = new Application(path, reinterpret_cast<QObject*>(this));
-        auto displayName = properties.value("displayName", name).toString();
-        app->setConfig(properties);
-        applications.insert(name, app);
-        app->registerPath();
-        emit applicationRegistered(path);
+        QDBusObjectPath path;
+        Oxide::Sentry::sentry_transaction("apps", "registerApplication", [this, &path, name, properties](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            path = QDBusObjectPath(getPath(name));
+            auto app = new Application(path, reinterpret_cast<QObject*>(this));
+            auto displayName = properties.value("displayName", name).toString();
+            app->setConfig(properties);
+            applications.insert(name, app);
+            app->registerPath();
+            emit applicationRegistered(path);
+        });
         return path;
     }
     Q_INVOKABLE bool unregisterApplication(QDBusObjectPath path){
@@ -169,8 +173,11 @@ public:
         if(!hasPermission("apps")){
             return;
         }
-        writeApplications();
-        readApplications();
+        Oxide::Sentry::sentry_transaction("apps", "reload", [this](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            writeApplications();
+            readApplications();
+        });
     }
 
     QDBusObjectPath startupApplication(){
@@ -291,12 +298,15 @@ public:
     }
 
     void unregisterApplication(Application* app){
-        auto name = app->name();
-        if(applications.contains(name)){
-            applications.remove(name);
-            emit applicationUnregistered(app->qPath());
-            app->deleteLater();
-        }
+        Oxide::Sentry::sentry_transaction("apps", "unregisterApplication", [this, app](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            auto name = app->name();
+            if(applications.contains(name)){
+                applications.remove(name);
+                emit applicationUnregistered(app->qPath());
+                app->deleteLater();
+            }
+        });
     }
     void pauseAll(){
         for(auto app : applications){

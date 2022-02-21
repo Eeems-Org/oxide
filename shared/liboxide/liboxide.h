@@ -73,8 +73,12 @@ namespace Oxide {
         LIBOXIDE_EXPORT void stop_transaction(Transaction* transaction);
         LIBOXIDE_EXPORT void sentry_transaction(std::string name, std::string action, std::function<void(Transaction* transaction)> callback);
         LIBOXIDE_EXPORT Span* start_span(Transaction* transaction, std::string operation, std::string description);
+        LIBOXIDE_EXPORT Span* start_span(Span* parent, std::string operation, std::string description);
         LIBOXIDE_EXPORT void stop_span(Span* span);
         LIBOXIDE_EXPORT void sentry_span(Transaction* transaction, std::string operation, std::string description, std::function<void()> callback);
+        LIBOXIDE_EXPORT void sentry_span(Transaction* transaction, std::string operation, std::string description, std::function<void(Span* span)> callback);
+        LIBOXIDE_EXPORT void sentry_span(Span* parent, std::string operation, std::string description, std::function<void()> callback);
+        LIBOXIDE_EXPORT void sentry_span(Span* parent, std::string operation, std::string description, std::function<void(Span* span)> callback);
         LIBOXIDE_EXPORT void trigger_crash();
     }
     class LIBOXIDE_EXPORT DeviceSettings{

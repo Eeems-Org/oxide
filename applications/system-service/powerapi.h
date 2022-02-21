@@ -33,38 +33,50 @@ public:
     }
     PowerAPI(QObject* parent)
     : APIBase(parent), batteries(), chargers(), m_chargerState(ChargerUnknown){
-        singleton(this);
-        QDir dir("/sys/class/power_supply");
-        qDebug() << "Looking for batteries and chargers...";
-        for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
-            qDebug() << ("  Checking " + path + "...").toStdString().c_str();
-            SysObject item(dir.path() + "/" + path);
-            if(!item.hasProperty("type")){
-                qDebug() << "    Missing type property";
-                continue;
-            }
-            if(item.hasProperty("present") && !item.intProperty("present")){
-                qDebug() << "    Either missing present property, or battery is not present";
-                continue;
-            }
-            auto type = item.strProperty("type");
-            if(type == "Battery"){
-                qDebug() << "    Found Battery!";
-                batteries.append(item);
-            }else if(type == "USB" || type == "USB_CDP"){
-                qDebug() << "    Found Charger!";
-                chargers.append(item);
-            }else{
-                qDebug() << "    Unknown type";
-            }
-        }
-        update();
-        timer = new QTimer(this);
-        timer->setSingleShot(false);
-        timer->setInterval(3 * 1000); // 3 seconds
-        timer->moveToThread(qApp->thread());
-        connect(timer, &QTimer::timeout, this, QOverload<>::of(&PowerAPI::update));
-        timer->start();
+        Oxide::Sentry::sentry_transaction("power", "init", [this](Oxide::Sentry::Transaction* t){
+            Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
+                singleton(this);
+            });
+            Oxide::Sentry::sentry_span(t, "sysfs", "Determine power devices from sysfs", [this](Oxide::Sentry::Span* s){
+                QDir dir("/sys/class/power_supply");
+                qDebug() << "Looking for batteries and chargers...";
+                for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
+                    qDebug() << ("  Checking " + path + "...").toStdString().c_str();
+                    SysObject item(dir.path() + "/" + path);
+                    if(!item.hasProperty("type")){
+                        qDebug() << "    Missing type property";
+                        continue;
+                    }
+                    if(item.hasProperty("present") && !item.intProperty("present")){
+                        qDebug() << "    Either missing present property, or battery is not present";
+                        continue;
+                    }
+                    Oxide::Sentry::sentry_span(s, path.toStdString(), "Checking device", [this, &item]{
+                        auto type = item.strProperty("type");
+                        if(type == "Battery"){
+                            qDebug() << "    Found Battery!";
+                            batteries.append(item);
+                        }else if(type == "USB" || type == "USB_CDP"){
+                            qDebug() << "    Found Charger!";
+                            chargers.append(item);
+                        }else{
+                            qDebug() << "    Unknown type";
+                        }
+                    });
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "update", "Update current state", [this]{
+                update();
+            });
+            Oxide::Sentry::sentry_span(t, "timer", "Setup timer", [this]{
+                timer = new QTimer(this);
+                timer->setSingleShot(false);
+                timer->setInterval(3 * 1000); // 3 seconds
+                timer->moveToThread(qApp->thread());
+                connect(timer, &QTimer::timeout, this, QOverload<>::of(&PowerAPI::update));
+                timer->start();
+            });
+        });
     }
     ~PowerAPI(){
         qDebug() << "Killing timer";
