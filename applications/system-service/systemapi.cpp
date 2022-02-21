@@ -20,7 +20,7 @@ QDebug operator<<(QDebug debug, Touch* touch){
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
-        Oxide::Sentry::sentry_transaction("system", "suspend", [this, device](void* t){
+        Oxide::Sentry::sentry_transaction("system", "suspend", [this, device](Oxide::Sentry::Transaction* t){
             qDebug() << "Preparing for suspend...";
             Oxide::Sentry::sentry_span(t, "prepare", "Prepare for suspend", [this]{
                 wifiAPI->stopUpdating();
@@ -55,7 +55,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
             qDebug() << "Suspending...";
         });
     }else{
-        Oxide::Sentry::sentry_transaction("system", "resume", [this, device](void* t){
+        Oxide::Sentry::sentry_transaction("system", "resume", [this, device](Oxide::Sentry::Transaction* t){
             Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep", [this]{
                 inhibitSleep();
             });

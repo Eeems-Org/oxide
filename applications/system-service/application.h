@@ -326,7 +326,7 @@ public:
         if(screenCapture != nullptr){
             return;
         }
-        void* span = Oxide::Sentry::start_span(transaction, "saveScreen", "save");
+        Oxide::Sentry::Span* span = Oxide::Sentry::start_span(transaction, "saveScreen", "save");
         qDebug() << "Saving screen...";
         int frameBufferHandle = open("/dev/fb0", O_RDWR);
         char* frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
@@ -343,7 +343,7 @@ public:
         if(screenCapture == nullptr){
             return;
         }
-        void* span = Oxide::Sentry::start_span(transaction, "recallScreen", "uncompress");
+        Oxide::Sentry::Span* span = Oxide::Sentry::start_span(transaction, "recallScreen", "uncompress");
         qDebug() << "Uncompressing screen...";
         auto uncompressedData = qUncompress(*screenCapture);
         if(!uncompressedData.size()){
@@ -467,7 +467,7 @@ private:
     size_t screenCaptureSize;
     QElapsedTimer timer;
     QMap<QString, FifoHandler*> fifos;
-    void* transaction;
+    Oxide::Sentry::Transaction* transaction;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds){
@@ -604,71 +604,87 @@ private:
     const QString resourcePath() { return "/tmp/tarnish-chroot/" + name(); }
     const QString chrootPath() { return resourcePath() + "/chroot"; }
     void mountAll(){
-        Oxide::Sentry::sentry_transaction("application", "mount", [this](void* t){
-            Q_UNUSED(t);
+        Oxide::Sentry::sentry_transaction("application", "mount", [this](Oxide::Sentry::Transaction* t){
             auto path = chrootPath();
             qDebug() << "Setting up chroot" << path;
-            // System tmpfs folders
-            bind("/dev", path + "/dev");
-            bind("/proc", path + "/proc");
-            sysfs(path + "/sys");
-            // Folders required to run things
-            bind("/bin", path + "/bin", true);
-            bind("/sbin", path + "/sbin", true);
-            bind("/lib", path + "/lib", true);
-            bind("/usr/lib", path + "/usr/lib", true);
-            bind("/usr/bin", path + "/usr/bin", true);
-            bind("/usr/sbin", path + "/usr/sbin", true);
-            bind("/opt/bin", path + "/opt/bin", true);
-            bind("/opt/lib", path + "/opt/lib", true);
-            bind("/opt/usr/bin", path + "/opt/usr/bin", true);
-            bind("/opt/usr/lib", path + "/opt/usr/lib", true);
-            // tmpfs folders
-            mkdirs(path + "/tmp", 744);
-            if(!QFile::exists(path + "/run")){
-                ramdisk(path + "/run");
-            }
-            if(!QFile::exists(path + "/var/volatile")){
-                ramdisk(path + "/var/volatile");
-            }
-            // Configured folders
-            for(auto directory : directories()){
-                bind(directory, path + directory);
-            }
-            // Fake sys devices
-            auto fifo = mkfifo("powerState", path + "/sys/power/state");
-            connect(fifo, &FifoHandler::dataRecieved, this, &Application::powerStateDataRecieved);
-            // Missing symlinks
-            symlink(path + "/var/run", "../run");
-            symlink(path + "/var/lock", "../run/lock");
-            symlink(path + "/var/tmp", "volatile/tmp");
+            Oxide::Sentry::sentry_span(t, "bind", "Bind directories", [this, path]{
+                // System tmpfs folders
+                bind("/dev", path + "/dev");
+                bind("/proc", path + "/proc");
+                sysfs(path + "/sys");
+                // Folders required to run things
+                bind("/bin", path + "/bin", true);
+                bind("/sbin", path + "/sbin", true);
+                bind("/lib", path + "/lib", true);
+                bind("/usr/lib", path + "/usr/lib", true);
+                bind("/usr/bin", path + "/usr/bin", true);
+                bind("/usr/sbin", path + "/usr/sbin", true);
+                bind("/opt/bin", path + "/opt/bin", true);
+                bind("/opt/lib", path + "/opt/lib", true);
+                bind("/opt/usr/bin", path + "/opt/usr/bin", true);
+                bind("/opt/usr/lib", path + "/opt/usr/lib", true);
+            });
+            Oxide::Sentry::sentry_span(t, "ramdisk", "Create ramdisks", [this, path]{
+                // tmpfs folders
+                mkdirs(path + "/tmp", 744);
+                if(!QFile::exists(path + "/run")){
+                    ramdisk(path + "/run");
+                }
+                if(!QFile::exists(path + "/var/volatile")){
+                    ramdisk(path + "/var/volatile");
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "configured", "Bind configured directories", [this, path]{
+                // Configured folders
+                for(auto directory : directories()){
+                    bind(directory, path + directory);
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "fifo", "Create fifos", [this, path]{
+                // Fake sys devices
+                auto fifo = mkfifo("powerState", path + "/sys/power/state");
+                connect(fifo, &FifoHandler::dataRecieved, this, &Application::powerStateDataRecieved);
+            });
+            Oxide::Sentry::sentry_span(t, "symlink", "Create symlinks", [this, path]{
+                // Missing symlinks
+                symlink(path + "/var/run", "../run");
+                symlink(path + "/var/lock", "../run/lock");
+                symlink(path + "/var/tmp", "volatile/tmp");
+            });
         });
     }
     void umountAll(){
-        Oxide::Sentry::sentry_transaction("application", "umount", [this](void* t){
-            Q_UNUSED(t);
+        Oxide::Sentry::sentry_transaction("application", "umount", [this](Oxide::Sentry::Transaction* t){
             auto path = chrootPath();
-            for(auto name : fifos.keys()){
-                auto fifo = fifos.take(name);
-                fifo->quit();
-                fifo->deleteLater();
-            }
+            Oxide::Sentry::sentry_span(t, "fifos", "Remove fifos", [this]{
+                for(auto name : fifos.keys()){
+                    auto fifo = fifos.take(name);
+                    fifo->quit();
+                    fifo->deleteLater();
+                }
+            });
             QDir dir(path);
             if(!dir.exists()){
                 return;
             }
             qDebug() << "Tearing down chroot" << path;
-            for(auto file : dir.entryList(QDir::Files)){
-                QFile::remove(file);
-            }
-            for(auto mount : getActiveApplicationMounts()){
-                umount(mount);
-            }
+            Oxide::Sentry::sentry_span(t, "dirs", "Remove directories", [dir]{
+                for(auto file : dir.entryList(QDir::Files)){
+                    QFile::remove(file);
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "umount", "Unmount all mounts", [this]{
+                for(auto mount : getActiveApplicationMounts()){
+                    umount(mount);
+                }
+            });
             if(!getActiveApplicationMounts().isEmpty()){
                 qDebug() << "Some items are still mounted in chroot" << path;
                 return;
             }
-            dir.removeRecursively();
+            Oxide::Sentry::sentry_span(t, "rm", "Remove final folder", [&dir]{
+                dir.removeRecursively();
+            });
         });
     }
     bool isMounted(const QString& path){ return getActiveMounts().contains(path); }

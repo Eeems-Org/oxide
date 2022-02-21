@@ -171,9 +171,10 @@ int main(int argc, char *argv[]){
             if(args.length() == 3 && args.at(2) == "crash"){
                 trigger_crash();
             }else if(args.length() == 3 && args.at(2) == "transaction"){
-                sentry_transaction("settings", "transaction", [](void* t){
-                    Q_UNUSED(t);
-                    qDebug() << "Triggered transaction";
+                sentry_transaction("settings", "transaction", [](Transaction* t){
+                    sentry_span(t, "span", "Transaction span", []{
+                        qDebug() << "Triggered transaction";
+                    });
                 });
                 return qExit(EXIT_SUCCESS);
             }

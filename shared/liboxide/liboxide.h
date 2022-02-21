@@ -36,21 +36,45 @@
 #define xochitlSettings Oxide::XochitlSettings::instance()
 #define sharedSettings Oxide::SharedSettings::instance()
 
+#ifdef SENTRY
+#include <sentry.h>
+#include <sentry/src/sentry_tracing.h>
+#endif
+
 typedef QMap<QString, QVariantMap> WifiNetworks;
 
 namespace Oxide {
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
     namespace Sentry{
+        struct Transaction {
+#ifdef SENTRY
+            sentry_transaction_t* inner;
+            Transaction(sentry_transaction_t* t);
+#else
+            void* inner;
+            Transaction(void* t);
+#endif
+        };
+        struct Span {
+#ifdef SENTRY
+            sentry_span_t* inner;
+            Span(sentry_span_t* s);
+#else
+            void* inner;
+            Span(void* s);
+#endif
+        };
+
         LIBOXIDE_EXPORT const char* bootId();
         LIBOXIDE_EXPORT const char* machineId();
         LIBOXIDE_EXPORT void sentry_init(const char* name, char* argv[], bool autoSessionTracking = true);
         LIBOXIDE_EXPORT void sentry_breadcrumb(const char* category, const char* message, const char* type = "default", const char* level = "info");
-        LIBOXIDE_EXPORT void* start_transaction(std::string name, std::string action);
-        LIBOXIDE_EXPORT void stop_transaction(void* transaction);
-        LIBOXIDE_EXPORT void sentry_transaction(std::string name, std::string action, std::function<void(void* transaction)> callback);
-        LIBOXIDE_EXPORT void* start_span(void* transaction, std::string operation, std::string description);
-        LIBOXIDE_EXPORT void stop_span(void* span);
-        LIBOXIDE_EXPORT void sentry_span(void* transaction, std::string operation, std::string description, std::function<void()> callback);
+        LIBOXIDE_EXPORT Transaction* start_transaction(std::string name, std::string action);
+        LIBOXIDE_EXPORT void stop_transaction(Transaction* transaction);
+        LIBOXIDE_EXPORT void sentry_transaction(std::string name, std::string action, std::function<void(Transaction* transaction)> callback);
+        LIBOXIDE_EXPORT Span* start_span(Transaction* transaction, std::string operation, std::string description);
+        LIBOXIDE_EXPORT void stop_span(Span* span);
+        LIBOXIDE_EXPORT void sentry_span(Transaction* transaction, std::string operation, std::string description, std::function<void()> callback);
         LIBOXIDE_EXPORT void trigger_crash();
     }
     class LIBOXIDE_EXPORT DeviceSettings{
