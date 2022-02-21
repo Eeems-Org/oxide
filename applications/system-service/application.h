@@ -328,18 +328,19 @@ public:
         }
         Oxide::Sentry::sentry_transaction("application", "saveScreen", [this](Oxide::Sentry::Transaction* t){
             qDebug() << "Saving screen...";
-            char* frameBuffer;
-            int frameBufferHandle = open("/dev/fb0", O_RDWR);
-            Oxide::Sentry::sentry_span(t, "save", "Save the framebuffer", [&frameBuffer, frameBufferHandle]{
-                frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
+            QByteArray bytes;
+            Oxide::Sentry::sentry_span(t, "save", "Save the framebuffer", [&bytes]{
+                QBuffer buffer(&bytes);
+                buffer.open(QIODevice::WriteOnly);
+                if(!EPFrameBuffer::framebuffer()->save(&buffer, "JPG", 100)){
+                    qWarning() << "Failed to save buffer";
+                }
             });
             qDebug() << "Compressing data...";
-            Oxide::Sentry::sentry_span(t, "compress", "Compress the framebuffer", [this, frameBuffer]{
-                auto compressedData = qCompress(QByteArray(frameBuffer, DISPLAYSIZE));
-                screenCapture = new QByteArray(compressedData);
+            Oxide::Sentry::sentry_span(t, "compress", "Compress the framebuffer", [this, bytes]{
+                screenCapture = new QByteArray(qCompress(bytes));
             });
-            close(frameBufferHandle);
-            qDebug() << "Screen saved.";
+            qDebug() << "Screen saved " << screenCapture->size() << "bytes";
         });
     }
     void recallScreen(){
@@ -348,42 +349,26 @@ public:
         }
         Oxide::Sentry::sentry_transaction("application", "recallScreen", [this](Oxide::Sentry::Transaction* t){
             qDebug() << "Uncompressing screen...";
-            QByteArray uncompressedData;
-            Oxide::Sentry::sentry_span(t, "decompress", "Decompress the framebuffer", [this, &uncompressedData]{
-                uncompressedData = qUncompress(*screenCapture);
+            QImage img;
+            Oxide::Sentry::sentry_span(t, "decompress", "Decompress the framebuffer", [this, &img]{
+                img = QImage::fromData(qUncompress(*screenCapture), "JPG");
             });
-            if(!uncompressedData.size()){
+            if(img.isNull()){
                 qDebug() << "Screen capture was corrupt";
                 qDebug() << screenCapture->size();
                 delete screenCapture;
                 return;
             }
             qDebug() << "Recalling screen...";
-            Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, &uncompressedData]{
-                int frameBufferHandle = open("/dev/fb0", O_RDWR);
-                auto frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
-                memcpy(frameBuffer, uncompressedData, DISPLAYSIZE);
+            Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, img]{
+                auto size = EPFrameBuffer::framebuffer()->size();
+                QRect rect(0, 0, size.width(), size.height());
+                QPainter painter(EPFrameBuffer::framebuffer());
+                painter.drawImage(rect, img);
+                painter.end();
+                EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
+                EPFrameBuffer::waitForLastUpdate();
 
-                mxcfb_update_data update_data;
-                mxcfb_rect update_rect;
-                update_rect.top = 0;
-                update_rect.left = 0;
-                update_rect.width = DISPLAYWIDTH;
-                update_rect.height = DISPLAYHEIGHT;
-                unsigned int marker = 0;
-                update_data.update_marker = marker;
-                update_data.update_region = update_rect;
-                update_data.waveform_mode = WAVEFORM_MODE_AUTO;
-                update_data.update_mode = UPDATE_MODE_FULL;
-                update_data.dither_mode = EPDC_FLAG_USE_DITHERING_MAX;
-                update_data.temp = TEMP_USE_REMARKABLE_DRAW;
-                update_data.flags = 0;
-                ioctl(frameBufferHandle, MXCFB_SEND_UPDATE, &update_data);
-                mxcfb_update_data update_data2;
-                update_data2.update_marker = marker;
-                ioctl(frameBufferHandle, MXCFB_WAIT_FOR_UPDATE_COMPLETE, &update_data2);
-
-                close(frameBufferHandle);
                 delete screenCapture;
                 screenCapture = nullptr;
             });
@@ -473,7 +458,6 @@ private:
     SandBoxProcess* m_process;
     bool m_backgrounded;
     QByteArray* screenCapture = nullptr;
-    size_t screenCaptureSize;
     QElapsedTimer timer;
     QMap<QString, FifoHandler*> fifos;
     Oxide::Sentry::Transaction* transaction;
