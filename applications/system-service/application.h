@@ -326,60 +326,69 @@ public:
         if(screenCapture != nullptr){
             return;
         }
-        Oxide::Sentry::Span* span = Oxide::Sentry::start_span(transaction, "saveScreen", "save");
-        qDebug() << "Saving screen...";
-        int frameBufferHandle = open("/dev/fb0", O_RDWR);
-        char* frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
-        Oxide::Sentry::stop_span(span);
-        span = Oxide::Sentry::start_span(transaction, "saveScreen", "compress");
-        qDebug() << "Compressing data...";
-        auto compressedData = qCompress(QByteArray(frameBuffer, DISPLAYSIZE));
-        close(frameBufferHandle);
-        screenCapture = new QByteArray(compressedData);
-        qDebug() << "Screen saved.";
-        Oxide::Sentry::stop_span(span);
+        Oxide::Sentry::sentry_transaction("application", "saveScreen", [this](Oxide::Sentry::Transaction* t){
+            qDebug() << "Saving screen...";
+            char* frameBuffer;
+            int frameBufferHandle = open("/dev/fb0", O_RDWR);
+            Oxide::Sentry::sentry_span(t, "save", "Save the framebuffer", [&frameBuffer, frameBufferHandle]{
+                frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
+            });
+            qDebug() << "Compressing data...";
+            Oxide::Sentry::sentry_span(t, "compress", "Compress the framebuffer", [this, frameBuffer]{
+                auto compressedData = qCompress(QByteArray(frameBuffer, DISPLAYSIZE));
+                screenCapture = new QByteArray(compressedData);
+            });
+            close(frameBufferHandle);
+            qDebug() << "Screen saved.";
+        });
     }
     void recallScreen(){
         if(screenCapture == nullptr){
             return;
         }
-        Oxide::Sentry::Span* span = Oxide::Sentry::start_span(transaction, "recallScreen", "uncompress");
-        qDebug() << "Uncompressing screen...";
-        auto uncompressedData = qUncompress(*screenCapture);
-        if(!uncompressedData.size()){
-            qDebug() << "Screen capture was corrupt";
-            qDebug() << screenCapture->size();
-            delete screenCapture;
-            Oxide::Sentry::stop_span(span);
-            return;
-        }
-        Oxide::Sentry::stop_span(span);
-        span = Oxide::Sentry::start_span(transaction, "recallScreen", "recall");
-        qDebug() << "Recalling screen...";
-        int frameBufferHandle = open("/dev/fb0", O_RDWR);
-        auto frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
-        memcpy(frameBuffer, uncompressedData, DISPLAYSIZE);
+        Oxide::Sentry::sentry_transaction("application", "recallScreen", [this](Oxide::Sentry::Transaction* t){
+            qDebug() << "Uncompressing screen...";
+            QByteArray uncompressedData;
+            Oxide::Sentry::sentry_span(t, "decompress", "Decompress the framebuffer", [this, &uncompressedData]{
+                uncompressedData = qUncompress(*screenCapture);
+            });
+            if(!uncompressedData.size()){
+                qDebug() << "Screen capture was corrupt";
+                qDebug() << screenCapture->size();
+                delete screenCapture;
+                return;
+            }
+            qDebug() << "Recalling screen...";
+            Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, &uncompressedData]{
+                int frameBufferHandle = open("/dev/fb0", O_RDWR);
+                auto frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
+                memcpy(frameBuffer, uncompressedData, DISPLAYSIZE);
 
-        mxcfb_update_data update_data;
-        mxcfb_rect update_rect;
-        update_rect.top = 0;
-        update_rect.left = 0;
-        update_rect.width = DISPLAYWIDTH;
-        update_rect.height = DISPLAYHEIGHT;
-        update_data.update_marker = 0;
-        update_data.update_region = update_rect;
-        update_data.waveform_mode = WAVEFORM_MODE_AUTO;
-        update_data.update_mode = UPDATE_MODE_FULL;
-        update_data.dither_mode = EPDC_FLAG_USE_DITHERING_MAX;
-        update_data.temp = TEMP_USE_REMARKABLE_DRAW;
-        update_data.flags = 0;
-        ioctl(frameBufferHandle, MXCFB_SEND_UPDATE, &update_data);
+                mxcfb_update_data update_data;
+                mxcfb_rect update_rect;
+                update_rect.top = 0;
+                update_rect.left = 0;
+                update_rect.width = DISPLAYWIDTH;
+                update_rect.height = DISPLAYHEIGHT;
+                unsigned int marker = 0;
+                update_data.update_marker = marker;
+                update_data.update_region = update_rect;
+                update_data.waveform_mode = WAVEFORM_MODE_AUTO;
+                update_data.update_mode = UPDATE_MODE_FULL;
+                update_data.dither_mode = EPDC_FLAG_USE_DITHERING_MAX;
+                update_data.temp = TEMP_USE_REMARKABLE_DRAW;
+                update_data.flags = 0;
+                ioctl(frameBufferHandle, MXCFB_SEND_UPDATE, &update_data);
+                mxcfb_update_data update_data2;
+                update_data2.update_marker = marker;
+                ioctl(frameBufferHandle, MXCFB_WAIT_FOR_UPDATE_COMPLETE, &update_data2);
 
-        close(frameBufferHandle);
-        delete screenCapture;
-        screenCapture = nullptr;
-        qDebug() << "Screen recalled.";
-        Oxide::Sentry::stop_span(span);
+                close(frameBufferHandle);
+                delete screenCapture;
+                screenCapture = nullptr;
+            });
+            qDebug() << "Screen recalled.";
+        });
     }
     void waitForFinished(){
         if(m_process->processId()){

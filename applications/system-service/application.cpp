@@ -22,29 +22,31 @@ void Application::launchNoSecurityCheck(){
     if(m_process->processId()){
         resumeNoSecurityCheck();
     }else{
-        transaction = Oxide::Sentry::start_transaction("application", "run");
-        appsAPI->recordPreviousApplication();
-        qDebug() << "Launching " << path();
-        appsAPI->pauseAll();
-        if(!flags().contains("nosplash")){
-            showSplashScreen();
-        }
-        if(m_process->program() != bin()){
-            m_process->setProgram(bin());
-        }
-        updateEnvironment();
-        umountAll();
-        if(chroot()){
-            mountAll();
-            m_process->setChroot(chrootPath());
-        }else{
-            m_process->setChroot("");
-        }
-        m_process->setWorkingDirectory(workingDirectory());
-        m_process->setUser(user());
-        m_process->setGroup(group());
-        m_process->start();
-        m_process->waitForStarted();
+        Oxide::Sentry::sentry_transaction("application", "launch", [this](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            appsAPI->recordPreviousApplication();
+            qDebug() << "Launching " << path();
+            appsAPI->pauseAll();
+            if(!flags().contains("nosplash")){
+                showSplashScreen();
+            }
+            if(m_process->program() != bin()){
+                m_process->setProgram(bin());
+            }
+            updateEnvironment();
+            umountAll();
+            if(chroot()){
+                mountAll();
+                m_process->setChroot(chrootPath());
+            }else{
+                m_process->setChroot("");
+            }
+            m_process->setWorkingDirectory(workingDirectory());
+            m_process->setUser(user());
+            m_process->setGroup(group());
+            m_process->start();
+            m_process->waitForStarted();
+        });
     }
 }
 void Application::pause(bool startIfNone){
@@ -197,45 +199,44 @@ void Application::stop(){
     stopNoSecurityCheck();
 }
 void Application::stopNoSecurityCheck(){
-    auto state = this->stateNoSecurityCheck();
-    if(state == Inactive){
-        return;
-    }
-    qDebug() << "Stopping " << path();
-    if(!onStop().isEmpty()){
-        QProcess::execute(onStop(), QStringList());
-    }
-    Application* pausedApplication = nullptr;
-    if(state == Paused){
-        touchHandler->clear_buffer();
-        auto currentApplication = appsAPI->currentApplicationNoSecurityCheck();
-        if(currentApplication.path() != path()){
-            pausedApplication = appsAPI->getApplication(currentApplication);
-            if(pausedApplication != nullptr){
-                if(pausedApplication->stateNoSecurityCheck() == Paused){
-                    pausedApplication = nullptr;
-                }else{
-                    appsAPI->forceRecordPreviousApplication();
-                    pausedApplication->interruptApplication();
+    Oxide::Sentry::sentry_transaction("application", "stop", [this](Oxide::Sentry::Transaction* t){
+        Q_UNUSED(t);
+        auto state = this->stateNoSecurityCheck();
+        if(state == Inactive){
+            return;
+        }
+        qDebug() << "Stopping " << path();
+        if(!onStop().isEmpty()){
+            QProcess::execute(onStop(), QStringList());
+        }
+        Application* pausedApplication = nullptr;
+        if(state == Paused){
+            touchHandler->clear_buffer();
+            auto currentApplication = appsAPI->currentApplicationNoSecurityCheck();
+            if(currentApplication.path() != path()){
+                pausedApplication = appsAPI->getApplication(currentApplication);
+                if(pausedApplication != nullptr){
+                    if(pausedApplication->stateNoSecurityCheck() == Paused){
+                        pausedApplication = nullptr;
+                    }else{
+                        appsAPI->forceRecordPreviousApplication();
+                        pausedApplication->interruptApplication();
+                    }
                 }
             }
+            kill(-m_process->processId(), SIGCONT);
         }
-        kill(-m_process->processId(), SIGCONT);
-    }
-    kill(-m_process->processId(), SIGTERM);
-    // Try to wait for the application to stop normally before killing it
-    int tries = 0;
-    while(this->stateNoSecurityCheck() != Inactive){
-        m_process->waitForFinished(100);
-        if(++tries == 5){
-            kill(-m_process->processId(), SIGKILL);
-            break;
+        kill(-m_process->processId(), SIGTERM);
+        // Try to wait for the application to stop normally before killing it
+        int tries = 0;
+        while(this->stateNoSecurityCheck() != Inactive){
+            m_process->waitForFinished(100);
+            if(++tries == 5){
+                kill(-m_process->processId(), SIGKILL);
+                break;
+            }
         }
-    }
-    if(transaction != nullptr){
-        Oxide::Sentry::stop_transaction(transaction);
-        transaction = nullptr;
-    }
+    });
 }
 void Application::signal(int signal){
     if(m_process->processId()){
