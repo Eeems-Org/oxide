@@ -258,9 +258,9 @@ namespace Oxide {
         Transaction* start_transaction(std::string name, std::string action){
 #ifdef SENTRY
             sentry_transaction_context_t* context = sentry_transaction_context_new(name.c_str(), action.c_str());
-            sentry_transaction_t* transaction = sentry_transaction_start(context, sentry_value_new_null());
             // Hack to force transactions to be reported even though SAMPLE_RATE is 100%
-            sentry_value_set_by_key(transaction->inner, "sampled", sentry_value_new_bool(true));
+            sentry_transaction_context_set_sampled(context, 1);
+            sentry_transaction_t* transaction = sentry_transaction_start(context, sentry_value_new_null());
             return new Transaction(transaction);
 #else
             Q_UNUSED(name);
@@ -546,5 +546,6 @@ namespace Oxide {
     O_SETTINGS_PROPERTY_BODY(SharedSettings, int, General, version)
     O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, firstLaunch, true)
     O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, telemetry, false)
+    O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, applicationUsage, false)
     O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, crashReport, true)
 }

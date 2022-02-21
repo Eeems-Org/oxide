@@ -278,14 +278,28 @@ ApplicationWindow {
                     Layout.rowSpan: 2
                     Layout.fillHeight: true
                 }
-                RowLayout {
+                ColumnLayout {
                     BetterButton {
-                        text: "Yes"
+                        text: "Full Telemetry"
                         width: height * 2
                         Layout.fillWidth: true
                         onClicked: {
                             controller.breadcrumb("full-telemetry", "clicked", "ui");
                             controller.telemetry = true;
+                            controller.applicationUsage = true;
+                            controller.crashReport = true;
+                            controller.firstLaunch = false;
+                            stateController.state = "loading";
+                        }
+                    }
+                    BetterButton {
+                        text: "Basic Telemetry"
+                        width: height * 2
+                        Layout.fillWidth: true
+                        onClicked: {
+                            controller.breadcrumb("basic-telemetry", "clicked", "ui");
+                            controller.telemetry = true;
+                            controller.applicationUsage = false;
                             controller.crashReport = true;
                             controller.firstLaunch = false;
                             stateController.state = "loading";
@@ -298,18 +312,20 @@ ApplicationWindow {
                         onClicked: {
                             controller.breadcrumb("crash-report-only", "clicked", "ui");
                             controller.telemetry = false;
+                            controller.applicationUsage = false;
                             controller.crashReport = true;
                             controller.firstLaunch = false;
                             stateController.state = "loading";
                         }
                     }
                     BetterButton {
-                        text: "No"
+                        text: "No Telemetry"
                         width: height * 2
                         Layout.fillWidth: true
                         onClicked: {
                             controller.breadcrumb("no-telemetry", "clicked", "ui");
                             controller.telemetry = false;
+                            controller.applicationUsage = false;
                             controller.crashReport = false;
                             controller.firstLaunch = false;
                             stateController.state = "loading";

@@ -130,6 +130,7 @@ namespace Oxide {
         O_SETTINGS_PROPERTY(int, General, version)
         O_SETTINGS_PROPERTY(bool, General, firstLaunch, true)
         O_SETTINGS_PROPERTY(bool, General, telemetry, false)
+        O_SETTINGS_PROPERTY(bool, General, applicationUsage, false)
         O_SETTINGS_PROPERTY(bool, General, crashReport, true)
     private:
         ~SharedSettings();

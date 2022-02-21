@@ -28,6 +28,7 @@ class Controller : public QObject {
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
     Q_PROPERTY(bool firstLaunch READ firstLaunch WRITE setFirstLaunch NOTIFY firstLaunchChanged)
     Q_PROPERTY(bool telemetry READ telemetry WRITE setTelemetry NOTIFY telemetryChanged)
+    Q_PROPERTY(bool applicationUsage READ applicationUsage WRITE setApplicationUsage NOTIFY applicationUsageChanged)
     Q_PROPERTY(bool crashReport READ crashReport WRITE setCrashReport NOTIFY crashReportChanged)
 public:
     Controller(QObject* parent)
@@ -101,6 +102,7 @@ public:
 
         connect(&sharedSettings, &Oxide::SharedSettings::firstLaunchChanged, this, &Controller::firstLaunchChanged);
         connect(&sharedSettings, &Oxide::SharedSettings::telemetryChanged, this, &Controller::telemetryChanged);
+        connect(&sharedSettings, &Oxide::SharedSettings::applicationUsageChanged, this, &Controller::applicationUsageChanged);
         connect(&sharedSettings, &Oxide::SharedSettings::crashReportChanged, this, &Controller::crashReportChanged);
     }
     ~Controller(){
@@ -112,6 +114,8 @@ public:
     void setFirstLaunch(bool firstLaunch){ sharedSettings.set_firstLaunch(firstLaunch); }
     bool telemetry(){ return sharedSettings.telemetry(); }
     void setTelemetry(bool telemetry){ sharedSettings.set_telemetry(telemetry); }
+    bool applicationUsage(){ return sharedSettings.applicationUsage(); }
+    void setApplicationUsage(bool applicationUsage){ sharedSettings.set_applicationUsage(applicationUsage); }
     bool crashReport(){ return sharedSettings.crashReport(); }
     void setCrashReport(bool crashReport){ sharedSettings.set_crashReport(crashReport); }
 
@@ -303,6 +307,7 @@ signals:
     void powerOffInhibitedChanged(bool);
     void firstLaunchChanged(bool);
     void telemetryChanged(bool);
+    void applicationUsageChanged(bool);
     void crashReportChanged(bool);
 
 private slots:

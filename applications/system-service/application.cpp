@@ -22,8 +22,21 @@ void Application::launchNoSecurityCheck(){
     if(m_process->processId()){
         resumeNoSecurityCheck();
     }else{
+        if(sharedSettings.applicationUsage()){
+            transaction = Oxide::Sentry::start_transaction("application", "run");
+#ifdef SENTRY
+            if(transaction != nullptr){
+                sentry_transaction_set_tag(transaction->inner, "application", name().toStdString().c_str());
+            }
+#endif
+            startSpan("starting", "Application is starting");
+        }
         Oxide::Sentry::sentry_transaction("application", "launch", [this](Oxide::Sentry::Transaction* t){
-            Q_UNUSED(t);
+#ifdef SENTRY
+            if(t != nullptr){
+                sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+            }
+#endif
             appsAPI->recordPreviousApplication();
             qDebug() << "Launching " << path();
             appsAPI->pauseAll();
@@ -46,6 +59,11 @@ void Application::launchNoSecurityCheck(){
             m_process->setGroup(group());
             m_process->start();
             m_process->waitForStarted();
+            if(type() == AppsAPI::Background){
+                startSpan("background", "Application is in the background");
+            }else{
+                startSpan("foreground", "Application is in the foreground");
+            }
         });
     }
 }
@@ -65,7 +83,11 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
     }
     qDebug() << "Pausing " << path();
     Oxide::Sentry::sentry_transaction("application", "pause", [this, startIfNone](Oxide::Sentry::Transaction* t){
-        Q_UNUSED(t);
+#ifdef SENTRY
+        if(t != nullptr){
+            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+        }
+#endif
         interruptApplication();
         if(!flags().contains("nosavescreen")){
             saveScreen();
@@ -87,6 +109,11 @@ void Application::interruptApplication(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "interrupt", [this](Oxide::Sentry::Transaction* t){
+#ifdef SENTRY
+        if(t != nullptr){
+            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+        }
+#endif
         if(!onPause().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onPause", "Run onPause action", [this](){
                 system(onPause().toStdString().c_str());
@@ -96,6 +123,7 @@ void Application::interruptApplication(){
             switch(type()){
                 case AppsAPI::Background:
                     // Already in the background. How did we get here?
+                    startSpan("background", "Application is in the background");
                     return;
                 case AppsAPI::Backgroundable:
                     qDebug() << "Waiting for SIGUSR2 ack";
@@ -110,15 +138,18 @@ void Application::interruptApplication(){
                         qDebug() << "Application took too long to background" << name();
                         kill(-m_process->processId(), SIGSTOP);
                         waitForPause();
+                        startSpan("stopped", "Application is stopped");
                     }else{
                         m_backgrounded = true;
                         qDebug() << "SIGUSR2 ack recieved";
+                        startSpan("background", "Application is in the background");
                     }
                     break;
                 case AppsAPI::Foreground:
                 default:
                     kill(-m_process->processId(), SIGSTOP);
                     waitForPause();
+                    startSpan("stopped", "Application is stopped");
             }
         });
     });
@@ -153,7 +184,11 @@ void Application::resumeNoSecurityCheck(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "resume", [this](Oxide::Sentry::Transaction* t){
-        Q_UNUSED(t);
+#ifdef SENTRY
+        if(t != nullptr){
+            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+        }
+#endif
         appsAPI->recordPreviousApplication();
         qDebug() << "Resuming " << path();
         appsAPI->pauseAll();
@@ -176,6 +211,11 @@ void Application::uninterruptApplication(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "uninterrupt", [this](Oxide::Sentry::Transaction* t){
+#ifdef SENTRY
+        if(t != nullptr){
+            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+        }
+#endif
         if(!onResume().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onResume", "Run onResume action", [this](){
                 system(onResume().toStdString().c_str());
@@ -201,11 +241,13 @@ void Application::uninterruptApplication(){
                         qDebug() << "SIGUSR1 ack recieved";
                     }
                     m_backgrounded = false;
+                    startSpan("background", "Application is in the background");
                     break;
                 case AppsAPI::Foreground:
                 default:
                     touchHandler->clear_buffer();
                     kill(-m_process->processId(), SIGCONT);
+                    startSpan("foreground", "Application is in the foreground");
             }
         });
     });
@@ -222,6 +264,11 @@ void Application::stopNoSecurityCheck(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "stop", [this, state](Oxide::Sentry::Transaction* t){
+#ifdef SENTRY
+        if(t != nullptr){
+            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+        }
+#endif
         qDebug() << "Stopping " << path();
         if(!onStop().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onStop", "Run onStop action", [this](){
@@ -352,6 +399,11 @@ void Application::showSplashScreen(){
     auto frameBuffer = EPFrameBuffer::framebuffer();
     qDebug() << "Waiting for other painting to finish...";
     Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this, frameBuffer](Oxide::Sentry::Transaction* t){
+#ifdef SENTRY
+        if(t != nullptr){
+            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+        }
+#endif
         Oxide::Sentry::sentry_span(t, "wait", "Wait for screen to be ready", [frameBuffer](){
             while(frameBuffer->paintingActive()){
                 EPFrameBuffer::waitForLastUpdate();
@@ -416,4 +468,18 @@ void Application::powerStateDataRecieved(FifoHandler* handler, const QString& da
     }else{
         qWarning() << "Unknown power state call: " << data;
     }
+}
+void Application::startSpan(std::string operation, std::string description){
+    if(!sharedSettings.applicationUsage()){
+        return;
+    }
+    if(span != nullptr){
+        Oxide::Sentry::stop_span(span);
+        delete span;
+    }
+    if(transaction == nullptr){
+        span = nullptr;
+        return;
+    }
+    span = Oxide::Sentry::start_span(transaction, operation, description);
 }

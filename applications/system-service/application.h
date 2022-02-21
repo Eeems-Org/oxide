@@ -445,6 +445,18 @@ private slots:
             break;
             case QProcess::NotRunning:
                 qDebug() << "Application" << name() << "is not running.";
+                if(sharedSettings.applicationUsage()){
+                    if(span != nullptr){
+                        Oxide::Sentry::stop_span(span);
+                        delete span;
+                        span = nullptr;
+                    }
+                    if(transaction != nullptr){
+                        Oxide::Sentry::stop_transaction(transaction);
+                        delete transaction;
+                        transaction = nullptr;
+                    }
+                }
             break;
             default:
                 qDebug() << "Application" << name() << "unknown state" << state;
@@ -460,7 +472,8 @@ private:
     QByteArray* screenCapture = nullptr;
     QElapsedTimer timer;
     QMap<QString, FifoHandler*> fifos;
-    Oxide::Sentry::Transaction* transaction;
+    Oxide::Sentry::Transaction* transaction = nullptr;
+    Oxide::Sentry::Span* span = nullptr;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds){
@@ -598,6 +611,11 @@ private:
     const QString chrootPath() { return resourcePath() + "/chroot"; }
     void mountAll(){
         Oxide::Sentry::sentry_transaction("application", "mount", [this](Oxide::Sentry::Transaction* t){
+#ifdef SENTRY
+            if(t != nullptr){
+                sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+            }
+#endif
             auto path = chrootPath();
             qDebug() << "Setting up chroot" << path;
             Oxide::Sentry::sentry_span(t, "bind", "Bind directories", [this, path]{
@@ -648,6 +666,11 @@ private:
     }
     void umountAll(){
         Oxide::Sentry::sentry_transaction("application", "umount", [this](Oxide::Sentry::Transaction* t){
+#ifdef SENTRY
+            if(t != nullptr){
+                sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+            }
+#endif
             auto path = chrootPath();
             Oxide::Sentry::sentry_span(t, "fifos", "Remove fifos", [this]{
                 for(auto name : fifos.keys()){
@@ -708,6 +731,7 @@ private:
         std::reverse(std::begin(activeMounts), std::end(activeMounts));
         return activeMounts;
     }
+    void startSpan(std::string operation, std::string description);
 };
 
 #endif // APPLICATION_H
