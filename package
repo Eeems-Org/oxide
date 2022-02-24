@@ -10,7 +10,7 @@ url=https://oxide.eeems.codes
 license=MIT
 source=(oxide.tar.gz)
 sha256sums=(SKIP)
-image=qt:v2.1
+image=qt:latest
 
 build() {
     find . -name "*.pro" -type f -print0 \
