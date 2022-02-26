@@ -106,7 +106,7 @@ int main(int argc, char *argv[]){
             qDebug() << "Screenshot file exists.";
             QProcess::execute("/bin/bash", QStringList() << "/tmp/.screenshot" << screenshot.path());
         }
-        addNotification(&notifications, "Screenshot taken");
+        addNotification(&notifications, "Screenshot taken", screenshot.path());
         qDebug() << "Screenshot done.";
     });
     qDebug() << "Waiting for signals...";

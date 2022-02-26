@@ -4,6 +4,7 @@
     <property name="state" type="i" access="read"/>
     <property name="bSSs" type="ao" access="read"/>
     <property name="link" type="i" access="read"/>
+    <property name="rssi" type="i" access="read"/>
     <property name="network" type="o" access="read"/>
     <property name="networks" type="ao" access="read"/>
     <property name="scanning" type="b" access="read"/>
@@ -11,6 +12,9 @@
       <arg type="i" direction="out"/>
     </signal>
     <signal name="linkChanged">
+      <arg type="i" direction="out"/>
+    </signal>
+    <signal name="rssiChanged">
       <arg type="i" direction="out"/>
     </signal>
     <signal name="networkAdded">

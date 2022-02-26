@@ -12,6 +12,7 @@ class NotificationItem : public QObject {
     Q_PROPERTY(QString identifier MEMBER m_identifier READ identifier)
     Q_PROPERTY(QString text READ text NOTIFY textChanged)
     Q_PROPERTY(QString icon READ icon NOTIFY iconChanged)
+    Q_PROPERTY(int created READ created NOTIFY createdChanged)
 public:
     NotificationItem(Notification* notification, QObject* parent) : QObject(parent) {
         m_identifier = notification->identifier();
@@ -36,12 +37,19 @@ public:
         }
         return m_notification->icon();
     }
+    int created(){
+        if(m_notification == nullptr){
+            return -1;
+        }
+        return m_notification->created();
+    }
     bool is(Notification* notification) { return notification == m_notification; }
     Notification* notification() { return m_notification; }
     Q_INVOKABLE void click(){ notification()->click(); }
 signals:
     void textChanged(QString);
     void iconChanged(QString);
+    void createdChanged(int);
 
 public slots:
     void changed(const QVariantMap& properties){

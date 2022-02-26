@@ -22,7 +22,8 @@ class WifiAPI : public APIBase {
     Q_PROPERTY(int state READ state NOTIFY stateChanged)
     Q_PROPERTY(QSet<QString> blobs READ blobs)
     Q_PROPERTY(QList<QDBusObjectPath> bSSs READ bSSs)
-    Q_PROPERTY(int link READ link)
+    Q_PROPERTY(int link READ link NOTIFY linkChanged)
+    Q_PROPERTY(int rssi READ rssi NOTIFY rssiChanged)
     Q_PROPERTY(QDBusObjectPath network READ network)
     Q_PROPERTY(QList<QDBusObjectPath> networks READ getNetworkPaths)
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
@@ -101,6 +102,7 @@ public:
                         INetwork inetwork(WPA_SUPPLICANT_SERVICE, path.path(), bus, interface);
                         auto properties = inetwork.properties();
                         auto network = new Network(getPath("network", properties["ssid"].toString()), properties, this);
+                        network->setEnabled(true);
                         network->addNetwork(path.path(), interface);
                         networks.append(network);
                     }
@@ -131,6 +133,7 @@ public:
         timer->moveToThread(qApp->thread());
         connect(timer, &QTimer::timeout, this, QOverload<>::of(&WifiAPI::update));
         loadNetworks();
+        m_state = getCurrentState();
         if(settings.value("wifion").toBool()){
             enable();
         }else{
@@ -211,7 +214,10 @@ public:
         }
         settings.setValue("wifion", true);
         validateSupplicant();
-        if(m_state != Online){
+        auto state = getCurrentState();
+        m_state = state;
+        if(state != Online){
+            qDebug() << "State:" << state;
             reconnect();
         }
         return true;
@@ -433,6 +439,19 @@ public:
         }
         return result;
     }
+    int rssi(){
+        if(!hasPermission("wifi")){
+            return -100;
+        }
+        int result = -100;
+        for(auto wlan : wlans){
+            int rssi = wlan->rssi();
+            if(result < rssi){
+                result = rssi;
+            }
+        }
+        return result;
+    }
     QDBusObjectPath network(){
         if(!hasPermission("wifi")){
             return QDBusObjectPath("/");
@@ -596,6 +615,7 @@ public:
 signals:
     void stateChanged(int);
     void linkChanged(int);
+    void rssiChanged(int);
     void networkAdded(QDBusObjectPath);
     void networkRemoved(QDBusObjectPath);
     void networkConnected(QDBusObjectPath);
@@ -643,6 +663,7 @@ private:
     int m_state;
     QDBusObjectPath m_currentNetwork;
     int m_link;
+    int m_rssi;
     QList<BSS*> bsss;
     bool m_scanning;
     Wpa_Supplicant* supplicant;
@@ -699,8 +720,12 @@ private:
                 if(network->ssid() == ssid && network->protocol() == protocol){
                     qDebug() << "  Found network" << network->ssid();
                     found = true;
-                    network->setPassword(registration["password"].toString());
-                    network->setEnabled(true);
+                    if(network->password() != registration["password"].toString()){
+                        network->setPassword(registration["password"].toString());
+                    }
+                    if(!network->enabled()){
+                        network->setEnabled(true);
+                    }
                     break;
                 }
             }
@@ -753,6 +778,11 @@ private:
             m_link = clink;
             emit linkChanged(clink);
         }
+        auto crssi = rssi();
+        if(m_rssi != crssi){
+            m_rssi = crssi;
+            emit rssiChanged(crssi);
+        }
 
     }
     State getCurrentState(){
@@ -769,8 +799,6 @@ private:
             }
             if(wlan->isConnected()){
                 state = Online;
-            }
-            if(state == Online){
                 break;
             }
         }

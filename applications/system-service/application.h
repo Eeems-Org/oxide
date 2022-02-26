@@ -410,6 +410,7 @@ public slots:
     }
 
 private slots:
+    void showSplashScreen();
     void started();
     void finished(int exitCode);
     void readyReadStandardError(){
@@ -458,7 +459,6 @@ private:
     QMap<QString, FifoHandler*> fifos;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
-    void showSplashScreen();
     void delayUpTo(int milliseconds){
         timer.invalidate();
         timer.start();

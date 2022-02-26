@@ -4,30 +4,32 @@
 #include <QQmlApplicationEngine>
 #include <QMutex>
 
+#include "tasklist.h"
+
 class Controller : public QObject
 {
     Q_OBJECT
-
+    Q_PROPERTY(TaskList* tasks MEMBER m_tasks READ tasks NOTIFY tasksChanged)
+    Q_PROPERTY(QString sortBy READ sortBy WRITE sortBy NOTIFY sortByChanged)
 public:
     int protectPid;
-    explicit Controller(QQmlApplicationEngine* engine) : QObject(nullptr), mutex(QMutex::NonRecursive), _engine(engine), tasks(){
-        _sortBy = "name";
-        _lastSortBy = "pid";
+    explicit Controller(QQmlApplicationEngine* engine) : QObject(nullptr), mutex(QMutex::NonRecursive), _engine(engine){
+        m_tasks = new TaskList();
+        connect(m_tasks, &TaskList::sortByChanged, this, &Controller::sortByChanged);
+        emit tasksChanged(m_tasks);
     }
-    Q_INVOKABLE QList<QObject*> getTasks();
-    Q_INVOKABLE void sortBy(QString key);
+    QString sortBy(){ return m_tasks->sortBy(); }
+    void sortBy(QString key){ m_tasks->sort(key); }
+    Q_INVOKABLE void reload(){ m_tasks->reload(); }
+    TaskList* tasks(){ return m_tasks; }
 
 
 signals:
-    void sortByChanged();
-    void reload();
+    void sortByChanged(QString);
+    void tasksChanged(TaskList*);
 
 private:
-    int is_uint(std::string input);
-    QString _sortBy;
-    QString _lastSortBy;
     QMutex mutex;
     QQmlApplicationEngine* _engine;
-    QList<QObject*> tasks;
-    void sort();
+    TaskList* m_tasks;
 };

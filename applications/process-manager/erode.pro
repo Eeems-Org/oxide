@@ -13,8 +13,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += main.cpp \
-    controller.cpp \
-    taskitem.cpp \
     ../../shared/devicesettings.cpp\
     ../../shared/eventfilter.cpp
 
@@ -41,11 +39,12 @@ HEADERS += \
     taskitem.h \
     ../../shared/dbussettings.h \
     ../../shared/devicesettings.h\
-    ../../shared/eventfilter.h
+    ../../shared/eventfilter.h \
+    tasklist.h
 
-INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+INCLUDEPATH += $$PWD/../../shared
 INCLUDEPATH += ../../shared
-DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+DEPENDPATH += $$PWD/../../shared
 
 
 linux-oe-g++ {
@@ -54,6 +53,6 @@ linux-oe-g++ {
 
 DISTFILES +=
 
-LIBS += -L$$PWD/../../docker-toolchain/qtcreator/files/libraries/ -lqsgepaper
-INCLUDEPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
-DEPENDPATH += $$PWD/../../docker-toolchain/qtcreator/files/libraries
+LIBS += -L$$PWD/../../shared/ -lqsgepaper
+INCLUDEPATH += $$PWD/../../shared
+DEPENDPATH += $$PWD/../../shared
