@@ -3,6 +3,7 @@ import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
 import Qt.labs.calendar 1.0
 import "../widgets"
+import "../js/moment.js" as Moment
 
 Item {
     id: root
@@ -10,7 +11,7 @@ Item {
     property alias model: notifications.model
     x: (parent.width / 2) - (popup.width / 2)
     y: (parent.height / 2) - (popup.height / 2)
-    width: 800
+    width: 1000
     Popup {
         id: popup
         visible: root.visible
@@ -67,7 +68,36 @@ Item {
                                 onClicked: model.display && model.display.click()
                             }
                         }
+                        Label {
+                            text: ""
+                            Timer {
+                                interval: 100
+                                running: true
+                                repeat: true
+                                property var moment: null
+                                onTriggered: {
+                                    if(!model.display || model.display.created === -1){
+                                        return;
+                                    }
+                                    if(model.display.created === 0){
+                                        this.stop();
+                                        return;
+                                    }
+                                    if(this.interval === 100){
+                                        this.interval = 1000;
+                                    }
+                                    if(this.moment === null){
+                                        this.moment = Moment.moment.unix(model.display.created);
+                                    }
+                                    if(this.interval === 1000 && Moment.moment().isAfter(Moment.moment(this.moment).add(1, 'minutes'))){
+                                        this.interval = 30000;
+                                    }
+                                    parent.text = this.moment.fromNow();
+                                }
+                            }
+                        }
                         BetterButton {
+                            id: closeButton
                             text: "X"
                             Layout.fillWidth: true
                             Layout.preferredWidth: 50

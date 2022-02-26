@@ -76,15 +76,15 @@ ApplicationWindow {
                     font: iconFont.name
                     width: 310
                     Action {
-                        text: controller.columns == 4 ? "* Small" : "Small"
+                        text: controller.columns === 4 ? "* Small" : "Small"
                         onTriggered: controller.columns = 4
                     }
                     Action {
-                        text: controller.columns == 3 ? "* Medium" : "Medium"
+                        text: controller.columns === 3 ? "* Medium" : "Medium"
                         onTriggered: controller.columns = 3
                     }
                     Action {
-                        text: controller.columns == 2 ? "* Large" : "Large"
+                        text: controller.columns === 2 ? "* Large" : "Large"
                         onTriggered: controller.columns = 2
                     }
                 }

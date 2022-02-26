@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: MIT
 
 pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety)
-pkgver="2.2.2~~VERSION~"
+pkgver="2.3~~VERSION~"
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
+url=https://oxide.eeems.codes
 license=MIT
 source=(oxide.tar.gz)
 sha256sums=(SKIP)
@@ -19,7 +20,6 @@ build() {
 
 erode() {
     pkgdesc="Task manager"
-    url=https://github.com/Eeems/oxide/tree/master/applications/process-manager
     section=utils
     installdepends=("tarnish=$pkgver")
 
@@ -33,7 +33,6 @@ erode() {
 
 fret() {
     pkgdesc="Take screenshots"
-    url=https://github.com/Eeems/oxide/tree/master/applications/screenshot-tool
     section=utils
     installdepends=("tarnish=$pkgver")
 
@@ -45,7 +44,6 @@ fret() {
 
 oxide() {
     pkgdesc="Launcher application"
-    url=https://github.com/Eeems/oxide/tree/master/applications/launcher
     section=launchers
     installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" display)
 
@@ -68,7 +66,6 @@ oxide() {
 
 rot() {
     pkgdesc="Manage Oxide settings through the command line"
-    url=https://github.com/Eeems/oxide/tree/master/applications/settings-manager
     section=utils
     installdepends=("tarnish=$pkgver")
 
@@ -79,7 +76,6 @@ rot() {
 
 tarnish() {
     pkgdesc="Service managing power states, connectivity and buttons"
-    url=https://github.com/Eeems/oxide/tree/master/applications/system-service
     section=utils
 
     package() {
@@ -106,7 +102,6 @@ tarnish() {
 
 decay() {
     pkgdesc="Lockscreen application"
-    url=https://github.com/Eeems/oxide/tree/master/applications/lockscreen
     section=utils
     installdepends=("tarnish=$pkgver")
 
@@ -118,7 +113,6 @@ decay() {
 
 corrupt() {
     pkgdesc="Task Switcher for Oxide"
-    url=https://github.com/Eeems/oxide/tree/master/applications/task-switcher
     section=utils
     installdepends=("tarnish=$pkgver")
 
@@ -130,7 +124,6 @@ corrupt() {
 
 anxiety() {
     pkgdesc="Screenshot viewer for Oxide"
-    url=https://github.com/Eeems/oxide/tree/master/applications/screenshot-viewer
     section=utils
     installdepends=("tarnish=$pkgver" "imagemagick-png")
 

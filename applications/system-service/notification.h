@@ -13,18 +13,12 @@ class Notification : public QObject{
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_NOTIFICATION_INTERFACE)
     Q_PROPERTY(QString identifier READ identifier)
+    Q_PROPERTY(int created READ created)
     Q_PROPERTY(QString application READ application WRITE setApplication)
     Q_PROPERTY(QString text READ text WRITE setText)
     Q_PROPERTY(QString icon READ icon WRITE setIcon)
 public:
-    Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
-     : QObject(parent),
-       m_path(path),
-       m_identifier(identifier),
-       m_owner(owner),
-       m_application(application),
-       m_text(text),
-       m_icon(icon) {}
+    Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent);
     ~Notification(){
         unregisterPath();
     }
@@ -53,6 +47,7 @@ public:
         }
         return m_identifier;
     }
+    int created(){ return m_created; }
     QString application(){
         if(!hasPermission("notification")){
             return "";
@@ -89,15 +84,7 @@ public:
         }
         return m_icon;
     }
-    void setIcon(QString icon){
-        if(!hasPermission("notification")){
-            return;
-        }
-        m_icon = icon;
-        QVariantMap result;
-        result.insert("icon", m_icon);
-        emit changed(result);
-    }
+    void setIcon(QString icon);
 
     QString owner(){
         if(!hasPermission("notification")){
@@ -134,6 +121,7 @@ signals:
 private:
     QString m_path;
     QString m_identifier;
+    int m_created;
     QString m_owner;
     QString m_application;
     QString m_text;

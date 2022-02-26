@@ -4,6 +4,23 @@
 #include "notificationapi.h"
 #include "appsapi.h"
 
+Notification::Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
+ : QObject(parent),
+   m_path(path),
+   m_identifier(identifier),
+   m_owner(owner),
+   m_application(application),
+   m_text(text),
+   m_icon(icon) {
+    m_created = QDateTime::currentSecsSinceEpoch();
+    if(!icon.isEmpty()){
+        return;
+    }
+    auto app = appsAPI->getApplication(m_application);
+    if(app != nullptr && !app->icon().isEmpty()){
+        m_icon = app->icon();
+    }
+}
 
 void Notification::display(){
     if(!hasPermission("notification")){
@@ -65,8 +82,10 @@ void Notification::paintNotification(Application* resumeApp){
     auto fm = painter.fontMetrics();
     auto padding = 10;
     auto radius = 10;
-    auto width = fm.horizontalAdvance(text()) + (padding * 2);
-    auto height = fm.height() + (padding * 2);
+    QImage icon(m_icon);
+    auto iconSize = icon.isNull() ? 0 : 50;
+    auto width = fm.horizontalAdvance(text()) + iconSize + (padding * 3);
+    auto height = max(fm.height(), iconSize) + (padding * 2);
     auto left = size.width() - width;
     auto top = size.height() - height;
     updateRect = QRect(left, top, width, height);
@@ -74,10 +93,19 @@ void Notification::paintNotification(Application* resumeApp){
     painter.setPen(Qt::black);
     painter.drawRoundedRect(updateRect, radius, radius);
     painter.setPen(Qt::white);
-    painter.drawText(updateRect, Qt::AlignCenter, text());
+    QRect textRect(left + padding, top + padding, width - iconSize - (padding * 2), height - padding);
+    painter.drawText(textRect, Qt::AlignCenter, text());
     painter.end();
     qDebug() << "Updating screen " << updateRect << "...";
     EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+    if(!icon.isNull()){
+        QPainter painter2(frameBuffer);
+        QRect iconRect(size.width() - iconSize - padding, top + padding, iconSize, iconSize);
+        painter2.fillRect(iconRect, Qt::white);
+        painter2.drawImage(iconRect, icon);
+        painter2.end();
+        EPFrameBuffer::sendUpdate(iconRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+    }
     EPFrameBuffer::waitForLastUpdate();
     qDebug() << "Painted notification" << identifier();
     emit displayed();
@@ -99,6 +127,22 @@ void Notification::paintNotification(Application* resumeApp){
         }
         notificationAPI->unlock();
     });
+}
+
+void Notification::setIcon(QString icon){
+    if(!hasPermission("notification")){
+        return;
+    }
+    if(icon.isEmpty()){
+        auto application = appsAPI->getApplication(m_application);
+        if(application != nullptr && !application->icon().isEmpty()){
+            icon = application->icon();
+        }
+    }
+    m_icon = icon;
+    QVariantMap result;
+    result.insert("icon", m_icon);
+    emit changed(result);
 }
 
 bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }
