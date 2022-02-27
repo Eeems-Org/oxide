@@ -126,7 +126,7 @@ ApplicationWindow {
                         onLongPress: {
                             controller.breadcrumb("appsView.app", "longPress", "ui");
                             model.modelData.stop();
-                            if(index == 0){
+                            if(index === 0){
                                 background.source = "";
                             }
                         }

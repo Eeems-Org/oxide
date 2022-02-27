@@ -436,10 +436,11 @@ public:
             return;
         }
         auto name = currentApplication->name();
-        previousApplications.removeAll(name);
+        removeFromPreviousApplications(name);
         previousApplications.append(name);
         qDebug() << "Previous Applications" << previousApplications;
     }
+    void removeFromPreviousApplications(QString name){ previousApplications.removeAll(name); }
 
 signals:
     void applicationRegistered(QDBusObjectPath);

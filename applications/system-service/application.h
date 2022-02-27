@@ -143,6 +143,7 @@ class Application : public QObject{
     Q_PROPERTY(QString user READ user)
     Q_PROPERTY(QString group READ group)
     Q_PROPERTY(QStringList directories READ directories WRITE setDirectories NOTIFY directoriesChanged)
+    Q_PROPERTY(QByteArray screenCapture READ screenCapture)
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false), fifos() {
@@ -159,8 +160,8 @@ public:
     }
     ~Application() {
         unregisterPath();
-        if(screenCapture != nullptr){
-            delete screenCapture;
+        if(m_screenCapture != nullptr){
+            delete m_screenCapture;
         }
         umountAll();
     }
@@ -320,10 +321,18 @@ public:
         setValue("directories", directories);
         emit directoriesChanged(directories);
     }
+    QByteArray screenCapture(){
+        if(!hasPermission("permissions")){
+            return QByteArray();
+        }
+        return screenCaptureNoSecurityCheck();
+    }
+    QByteArray screenCaptureNoSecurityCheck(){ return qUncompress(*m_screenCapture); }
+
     const QVariantMap& getConfig(){ return m_config; }
     void setConfig(const QVariantMap& config);
     void saveScreen(){
-        if(screenCapture != nullptr){
+        if(m_screenCapture != nullptr){
             return;
         }
         Oxide::Sentry::sentry_transaction("application", "saveScreen", [this](Oxide::Sentry::Transaction* t){
@@ -338,25 +347,25 @@ public:
             });
             qDebug() << "Compressing data...";
             Oxide::Sentry::sentry_span(t, "compress", "Compress the framebuffer", [this, bytes]{
-                screenCapture = new QByteArray(qCompress(bytes));
+                m_screenCapture = new QByteArray(qCompress(bytes));
             });
-            qDebug() << "Screen saved " << screenCapture->size() << "bytes";
+            qDebug() << "Screen saved " << m_screenCapture->size() << "bytes";
         });
     }
     void recallScreen(){
-        if(screenCapture == nullptr){
+        if(m_screenCapture == nullptr){
             return;
         }
         Oxide::Sentry::sentry_transaction("application", "recallScreen", [this](Oxide::Sentry::Transaction* t){
             qDebug() << "Uncompressing screen...";
             QImage img;
             Oxide::Sentry::sentry_span(t, "decompress", "Decompress the framebuffer", [this, &img]{
-                img = QImage::fromData(qUncompress(*screenCapture), "JPG");
+                img = QImage::fromData(screenCaptureNoSecurityCheck(), "JPG");
             });
             if(img.isNull()){
                 qDebug() << "Screen capture was corrupt";
-                qDebug() << screenCapture->size();
-                delete screenCapture;
+                qDebug() << m_screenCapture->size();
+                delete m_screenCapture;
                 return;
             }
             qDebug() << "Recalling screen...";
@@ -369,8 +378,8 @@ public:
                 EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
                 EPFrameBuffer::waitForLastUpdate();
 
-                delete screenCapture;
-                screenCapture = nullptr;
+                delete m_screenCapture;
+                m_screenCapture = nullptr;
             });
             qDebug() << "Screen recalled.";
         });
@@ -469,7 +478,7 @@ private:
     QString m_path;
     SandBoxProcess* m_process;
     bool m_backgrounded;
-    QByteArray* screenCapture = nullptr;
+    QByteArray* m_screenCapture = nullptr;
     QElapsedTimer timer;
     QMap<QString, FifoHandler*> fifos;
     Oxide::Sentry::Transaction* transaction = nullptr;

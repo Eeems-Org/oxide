@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QImage>
 #include <QQuickItem>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include <epframebuffer.h>
 #include <signal.h>
@@ -33,6 +35,7 @@ class Controller : public QObject {
 public:
     Controller(QObject* parent, ScreenProvider* screenProvider)
     : QObject(parent), settings(this), applications() {
+        blankImage = new QImage(qApp->primaryScreen()->geometry().size(), QImage::Format_Mono);
         this->screenProvider = screenProvider;
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
@@ -74,7 +77,7 @@ public:
         if(version < CORRUPT_SETTINGS_VERSION){
             migrate(&settings, version);
         }
-        saveScreen();
+        updateImage();
     }
     ~Controller(){}
 
@@ -198,9 +201,35 @@ public:
         }
         stateControllerUI->setProperty("state", state);
     }
-    void saveScreen(){
-        qDebug() << "Saving screen for background...";
-        screenProvider->updateImage(EPFrameBuffer::framebuffer());
+    void updateImage(){
+        qDebug() << "Updating background...";
+        auto previousApplications = appsApi->previousApplications();
+        QImage* img = nullptr;
+        while(!previousApplications.isEmpty()){
+            auto name = previousApplications.takeLast();
+            auto path = ((QDBusObjectPath)appsApi->getApplicationPath(name)).path();
+            if(path == "/"){
+                qWarning() << "Unable to get save screen for" << name;
+                continue;
+            }
+            auto bus = QDBusConnection::systemBus();
+            Application app(OXIDE_SERVICE, path, bus, this);
+            auto data = app.screenCapture();
+            auto image = QImage::fromData(data, "JPG");
+            if(image.isNull()){
+                qWarning() << "Image for " << name << " is corrupt, trying next application";
+                continue;
+            }
+            img = new QImage(image);
+            qDebug() << "Using save screen from " << name;
+            break;
+        }
+        if(img != nullptr){
+            screenProvider->updateImage(img);
+            return;
+        }
+        qWarning() << "No previous application. Using blank screen";
+        screenProvider->updateImage(blankImage);
     }
 
     void setRoot(QObject* root){ this->root = root; }
@@ -213,8 +242,8 @@ private slots:
     void sigUsr1(){
         ::kill(tarnishPid(), SIGUSR1);
         qDebug() << "Sent to the foreground...";
-        saveScreen();
         setState("loading");
+        updateImage();
     }
     void sigUsr2(){
         qDebug() << "Sent to the background...";
@@ -250,6 +279,7 @@ private:
     QObject* stateControllerUI = nullptr;
     ScreenProvider* screenProvider;
     QList<QObject*> applications;
+    QImage* blankImage;
 
     int tarnishPid() { return api->tarnishPid(); }
     QObject* getStateControllerUI(){

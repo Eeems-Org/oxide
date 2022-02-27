@@ -306,6 +306,7 @@ void Application::stopNoSecurityCheck(){
                 }
             }
         });
+        appsAPI->removeFromPreviousApplications(name());
     });
 }
 void Application::signal(int signal){
