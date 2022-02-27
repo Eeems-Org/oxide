@@ -138,6 +138,10 @@ public:
             qDebug() << "Invalid configuration: " << name << " has invalid bin" << bin;
             return QDBusObjectPath("/");
         }
+        if(!QFileInfo(bin).isExecutable()){
+            qDebug() << "Invalid configuration: " << name << " has bin that is not executable" << bin;
+            return QDBusObjectPath("/");
+        }
         if(applications.contains(name)){
             return applications[name]->qPath();
         }
