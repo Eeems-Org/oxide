@@ -203,33 +203,40 @@ public:
     }
     void updateImage(){
         qDebug() << "Updating background...";
-        auto previousApplications = appsApi->previousApplications();
-        QImage* img = nullptr;
-        while(!previousApplications.isEmpty()){
-            auto name = previousApplications.takeLast();
-            auto path = ((QDBusObjectPath)appsApi->getApplicationPath(name)).path();
-            if(path == "/"){
-                qWarning() << "Unable to get save screen for" << name;
-                continue;
-            }
-            auto bus = QDBusConnection::systemBus();
-            Application app(OXIDE_SERVICE, path, bus, this);
-            auto data = app.screenCapture();
-            auto image = QImage::fromData(data, "JPG");
-            if(image.isNull()){
-                qWarning() << "Image for " << name << " is corrupt, trying next application";
-                continue;
-            }
-            img = new QImage(image);
-            qDebug() << "Using save screen from " << name;
-            break;
-        }
-        if(img != nullptr){
-            screenProvider->updateImage(img);
-            return;
-        }
-        qWarning() << "No previous application. Using blank screen";
-        screenProvider->updateImage(blankImage);
+        Oxide::Sentry::sentry_transaction("controller", "updateImage", [this](Oxide::Sentry::Transaction* t){
+            QImage* img = nullptr;
+            Oxide::Sentry::sentry_span(t, "previousApplications", "Get image from previous application", [this, &img](Oxide::Sentry::Span* s){
+                auto previousApplications = appsApi->previousApplications();
+                while(img == nullptr && !previousApplications.isEmpty()){
+                    auto name = previousApplications.takeLast();
+                    Oxide::Sentry::sentry_span(s, name.toStdString(), "Load image from application", [this, &img, previousApplications, name]{
+                        auto path = ((QDBusObjectPath)appsApi->getApplicationPath(name)).path();
+                        if(path == "/"){
+                            qWarning() << "Unable to get save screen for" << name;
+                            return;
+                        }
+                        auto bus = QDBusConnection::systemBus();
+                        Application app(OXIDE_SERVICE, path, bus, this);
+                        auto data = app.screenCapture();
+                        auto image = QImage::fromData(data, "JPG");
+                        if(image.isNull()){
+                            qWarning() << "Image for " << name << " is corrupt, trying next application";
+                            return;
+                        }
+                        img = new QImage(image);
+                        qDebug() << "Using save screen from " << name;
+                    });
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "update", "Update image", [this, img]{
+                if(img != nullptr){
+                    screenProvider->updateImage(img);
+                    return;
+                }
+                qWarning() << "No previous application. Using blank screen";
+                screenProvider->updateImage(blankImage);
+            });
+        });
     }
 
     void setRoot(QObject* root){ this->root = root; }
