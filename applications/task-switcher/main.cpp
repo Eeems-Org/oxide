@@ -42,7 +42,7 @@ int main(int argc, char *argv[]){
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
     QGuiApplication app(argc, argv);
-    sentry_init("corrup", argv);
+    sentry_init("corrupt", argv);
     auto filter = new EventFilter(&app);
     app.installEventFilter(filter);
     app.setOrganizationName("Eeems");
