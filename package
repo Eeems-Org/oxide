@@ -153,6 +153,6 @@ libsentry() {
     timestamp="2021-12-20T14:25:11Z"
 
     package() {
-        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libsentry.so
+        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libsentry.so*
     }
 }
