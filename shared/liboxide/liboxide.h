@@ -42,6 +42,7 @@
 #endif
 
 typedef QMap<QString, QVariantMap> WifiNetworks;
+Q_DECLARE_METATYPE(WifiNetworks);
 
 namespace Oxide {
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
