@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.4.17
+
+**Fixes**:
+
+- sentry-native now successfully builds when examples aren't included. ([#702](https://github.com/getsentry/sentry-native/pull/702))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@AenBleidd](https://github.com/AenBleidd)
+
+## 0.4.16
+
+**Features**:
+
+- Removed the `SENTRY_PERFORMANCE_MONITORING` compile flag requirement to access performance monitoring in the Sentry SDK. Performance monitoring is now available to everybody who has opted into the experimental API.
+- New API to check whether the application has crashed in the previous run: `sentry_get_crashed_last_run()` and `sentry_clear_crashed_last_run()` ([#685](https://github.com/getsentry/sentry-native/pull/685)).
+- Allow overriding the SDK name at build time - set the `SENTRY_SDK_NAME` CMake cache variable.
+- More aggressively prune the Crashpad database. ([#698](https://github.com/getsentry/sentry-native/pull/698))
+
+**Internal**:
+
+- Project IDs are now treated as opaque strings instead of integer values. ([#690](https://github.com/getsentry/sentry-native/pull/690))
+- Updated Breakpad and Crashpad backends to 2022-04-12. ([#696](https://github.com/getsentry/sentry-native/pull/696))
+
+**Fixes**:
+
+- Updated CI as well as list of supported platforms to reflect Windows Server 2016, and therefore MSVC 2017 losing active support.
+- Correctly free Windows Mutexes in Crashpad backend.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@zhaowq32](https://github.com/zhaowq32)
+
 ## 0.4.15
 
 **Fixes**:

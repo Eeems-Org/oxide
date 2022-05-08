@@ -109,9 +109,11 @@ sentry: .build/sentry/libsentry.so
 		-DBUILD_SHARED_LIBS=ON \
 		-DSENTRY_INTEGRATION_QT=ON \
 		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
-		-DSENTRY_PIC=OFF -DSENTRY_BACKEND=breakpad \
+		-DSENTRY_PIC=OFF \
+		-DSENTRY_BACKEND=breakpad \
 		-DSENTRY_BREAKPAD_SYSTEM=OFF \
-		-DSENTRY_PERFORMANCE_MONITORING=YES
+		-DSENTRY_EXPORT_SYMBOLS=ON \
+		-DSENTRY_PTHREAD=ON
 	cd shared/sentry && cmake --build ../../.build/sentry --parallel
 	cd shared/sentry && cmake --install ../../.build/sentry --prefix ../../.build/sentry --config RelWithDebInfo
 

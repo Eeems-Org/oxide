@@ -23,8 +23,14 @@ extern "C" {
 #endif
 
 /* SDK Version */
-#define SENTRY_SDK_NAME "sentry.native"
-#define SENTRY_SDK_VERSION "0.4.15"
+#ifndef SENTRY_SDK_NAME
+#    ifdef __ANDROID__
+#        define SENTRY_SDK_NAME "sentry.native.android"
+#    else
+#        define SENTRY_SDK_NAME "sentry.native"
+#    endif
+#endif
+#define SENTRY_SDK_VERSION "0.4.17"
 #define SENTRY_SDK_USER_AGENT SENTRY_SDK_NAME "/" SENTRY_SDK_VERSION
 
 /* common platform detection */
@@ -561,7 +567,6 @@ SENTRY_API void sentry_envelope_free(sentry_envelope_t *envelope);
 SENTRY_API sentry_value_t sentry_envelope_get_event(
     const sentry_envelope_t *envelope);
 
-#ifdef SENTRY_PERFORMANCE_MONITORING
 /**
  * Given an Envelope, returns the embedded Transaction if there is one.
  *
@@ -569,7 +574,6 @@ SENTRY_API sentry_value_t sentry_envelope_get_event(
  */
 SENTRY_EXPERIMENTAL_API sentry_value_t sentry_envelope_get_transaction(
     const sentry_envelope_t *envelope);
-#endif
 
 /**
  * Serializes the envelope.
@@ -1137,9 +1141,9 @@ SENTRY_API sentry_user_consent_t sentry_user_consent_get(void);
 /**
  * Sends a sentry event.
  *
- * If SENTRY_PERFORMANCE_MONITORING is enabled, returns a nil UUID if the event
- * being passed in is a transaction, and the transaction will not be sent nor
- * consumed. `sentry_transaction_finish` should be used to send transactions.
+ * If returns a nil UUID if the event being passed in is a transaction, and the
+ * transaction will not be sent nor consumed. `sentry_transaction_finish` should
+ * be used to send transactions.
  */
 SENTRY_API sentry_uuid_t sentry_capture_event(sentry_value_t event);
 
@@ -1229,7 +1233,6 @@ SENTRY_API void sentry_start_session(void);
  */
 SENTRY_API void sentry_end_session(void);
 
-#ifdef SENTRY_PERFORMANCE_MONITORING
 /**
  * Sets the maximum number of spans that can be attached to a
  * transaction.
@@ -1708,7 +1711,33 @@ SENTRY_EXPERIMENTAL_API void sentry_transaction_iter_headers(
     sentry_transaction_t *tx, sentry_iter_headers_function_t callback,
     void *userdata);
 
-#endif
+/**
+ * Returns whether the application has crashed on the last run.
+ *
+ * Notes:
+ *   * The underlying value is set by sentry_init() - it must be called first.
+ *   * Call sentry_clear_crashed_last_run() to reset for the next app run.
+ *
+ * Possible return values:
+ *   1 = the last run was a crash
+ *   0 = no crash recognized
+ *  -1 = sentry_init() hasn't been called yet
+ */
+SENTRY_EXPERIMENTAL_API int sentry_get_crashed_last_run();
+
+/**
+ * Clear the status of the "crashed-last-run". You should explicitly call
+ * this after sentry_init() if you're using sentry_get_crashed_last_run().
+ * Otherwise, the same information is reported on any subsequent runs.
+ *
+ * Notes:
+ *   * This doesn't change the value of sentry_get_crashed_last_run() yet.
+ *     However, if sentry_init() is called again, the value will change.
+ *   * This may only be called after sentry_init() and before sentry_close().
+ *
+ * Returns 0 on success, 1 on error.
+ */
+SENTRY_EXPERIMENTAL_API int sentry_clear_crashed_last_run();
 
 #ifdef __cplusplus
 }

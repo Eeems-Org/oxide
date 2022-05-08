@@ -24,7 +24,7 @@
 
 #ifdef SENTRY
 #define SAMPLE_RATE 1.0
-std::string readFile(std::string path){
+std::string readFile(const std::string path){
     std::ifstream t(path);
     std::stringstream buffer;
     buffer << t.rdbuf();
@@ -112,21 +112,21 @@ namespace Oxide {
         QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
     }
     namespace Sentry{
-        static bool initialized = false;
 #ifdef SENTRY
-        Transaction::Transaction(sentry_transaction_t* t)
-        {
+        static bool initialized = false;
+        Transaction::Transaction(sentry_transaction_t* t){
             inner = t;
         }
-        Span::Span(sentry_span_t* s)
-        {
+        Span::Span(sentry_span_t* s){
             inner = s;
         }
 #else
         Transaction::Transaction(void* t){
+            Q_UNUSED(t);
             inner = nullptr;
         }
         Span::Span(void* s){
+            Q_UNUSED(s);
             inner = nullptr;
         }
 #endif
@@ -238,6 +238,7 @@ namespace Oxide {
 #else
             Q_UNUSED(name);
             Q_UNUSED(argv);
+            Q_UNUSED(autoSessionTracking);
 #endif
         }
         void sentry_breadcrumb(const char* category, const char* message, const char* type, const char* level){
@@ -315,7 +316,7 @@ namespace Oxide {
             }
             return new Span(sentry_span_start_child(parent->inner, (char*)operation.c_str(), (char*)description.c_str()));
 #else
-            Q_UNUSED(transaction);
+            Q_UNUSED(parent);
             Q_UNUSED(operation);
             Q_UNUSED(description);
             return nullptr;
@@ -368,7 +369,7 @@ namespace Oxide {
                 callback();
             });
 #else
-            Q_UNUSED(transaction);
+            Q_UNUSED(parent);
             Q_UNUSED(operation);
             Q_UNUSED(description);
             callback();

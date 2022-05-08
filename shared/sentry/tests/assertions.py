@@ -40,6 +40,7 @@ def assert_meta(
     release="test-example-release",
     integration=None,
     transaction="test-transaction",
+    sdk_override=None,
 ):
     event = envelope.get_event()
 
@@ -54,12 +55,14 @@ def assert_meta(
     }
     expected_sdk = {
         "name": "sentry.native",
-        "version": "0.4.15",
+        "version": "0.4.17",
         "packages": [
-            {"name": "github:getsentry/sentry-native", "version": "0.4.15"},
+            {"name": "github:getsentry/sentry-native", "version": "0.4.17"},
         ],
     }
-    if not is_android:
+    if is_android:
+        expected_sdk["name"] = "sentry.native.android"
+    else:
         if sys.platform == "win32":
             assert_matches(
                 event["contexts"]["os"],
@@ -91,6 +94,9 @@ def assert_meta(
                 },
             )
             assert event["contexts"]["os"]["build"] is not None
+
+    if sdk_override != None:
+        expected_sdk["name"] = sdk_override
 
     assert_matches(event, expected)
     assert_matches(event["sdk"], expected_sdk)

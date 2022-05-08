@@ -36,6 +36,8 @@ void Application::launchNoSecurityCheck(){
             if(t != nullptr){
                 sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
             }
+#else
+            Q_UNUSED(t);
 #endif
             appsAPI->recordPreviousApplication();
             qDebug() << "Launching " << path();
@@ -87,6 +89,8 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
         }
+#else
+        Q_UNUSED(t);
 #endif
         interruptApplication();
         if(!flags().contains("nosavescreen")){
@@ -113,6 +117,8 @@ void Application::interruptApplication(){
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
         }
+#else
+        Q_UNUSED(t);
 #endif
         if(!onPause().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onPause", "Run onPause action", [this](){
@@ -188,6 +194,8 @@ void Application::resumeNoSecurityCheck(){
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
         }
+#else
+        Q_UNUSED(t);
 #endif
         appsAPI->recordPreviousApplication();
         qDebug() << "Resuming " << path();
@@ -215,6 +223,8 @@ void Application::uninterruptApplication(){
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
         }
+#else
+        Q_UNUSED(t);
 #endif
         if(!onResume().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onResume", "Run onResume action", [this](){
@@ -268,6 +278,8 @@ void Application::stopNoSecurityCheck(){
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
         }
+#else
+        Q_UNUSED(t);
 #endif
         qDebug() << "Stopping " << path();
         if(!onStop().isEmpty()){
@@ -404,6 +416,8 @@ void Application::showSplashScreen(){
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
         }
+#else
+        Q_UNUSED(t);
 #endif
         Oxide::Sentry::sentry_span(t, "wait", "Wait for screen to be ready", [frameBuffer](){
             while(frameBuffer->paintingActive()){
