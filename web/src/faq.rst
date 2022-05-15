@@ -16,7 +16,7 @@ What kind of information is collected by telemetry?
 ===================================================
 
 - The device `machine-id <https://man7.org/linux/man-pages/man5/machine-id.5.html>`_, but anonymised through
-  `sd_id128_get_boot_app_specific <https://man7.org/linux/man-pages/man3/sd_id128_get_machine_app_specific.3.html>`_.
+    `sd_id128_get_boot_app_specific <https://man7.org/linux/man-pages/man3/sd_id128_get_machine_app_specific.3.html>`_.
     This is used to uniquely identify the devices connecting so that I can properly determine what
     percentage of devices are on specific versions. It can also allow me to determine what crash
     reports are sent by a user if they are willing to share the anonymised value from their devices.
