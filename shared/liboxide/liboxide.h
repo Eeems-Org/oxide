@@ -91,6 +91,7 @@ namespace Oxide {
         const char* getTouchDevicePath() const;
         const char* getTouchEnvSetting() const;
         DeviceType getDeviceType() const;
+        const char* getDeviceName() const;
         int getTouchWidth() const;
         int getTouchHeight() const;
 
