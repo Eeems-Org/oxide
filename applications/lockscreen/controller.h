@@ -147,7 +147,7 @@ public:
             });
             return;
         }
-
+        // There is no PIN configuration
         if(!settings.contains("pin")){
             qDebug() << "No Pin";
             QTimer::singleShot(100, [this]{
@@ -155,7 +155,7 @@ public:
             });
             return;
         }
-
+        // There is a PIN set
         if(hasPin()){
             qDebug() << "Prompting for PIN";
             QTimer::singleShot(100, [this]{
@@ -163,6 +163,7 @@ public:
             });
             return;
         }
+        // PIN is set explicitly to a blank value
         qDebug() << "No pin set";
         QTimer::singleShot(100, [this]{
             setState("noPin");
@@ -260,6 +261,7 @@ public:
         return true;
     }
     Q_INVOKABLE void importPin(){
+        qDebug() << "Importing PIN from Xochitl";
         setStoredPin(xochitlPin());
         if(!storedPin().isEmpty()){
             removeXochitlPin();
@@ -267,6 +269,7 @@ public:
         setState("loaded");
     }
     Q_INVOKABLE void clearPin(){
+        qDebug() << "Clearing PIN";
         setStoredPin("");
         startup();
     }

@@ -175,31 +175,43 @@ namespace Oxide {
         bool enabled(){
             return sharedSettings.crashReport() || sharedSettings.telemetry();
         }
+        sentry_options_t* options = sentry_options_new();
         void sentry_init(const char* name, char* argv[], bool autoSessionTracking){
 #ifdef SENTRY
-            if(!enabled()){
+            if(sharedSettings.crashReport()){
+                sentry_options_set_sample_rate(options, SAMPLE_RATE);
+            }else{
+                sentry_options_set_sample_rate(options, 0.0);
+            }
+            if(sharedSettings.telemetry()){
+                sentry_options_set_traces_sample_rate(options, SAMPLE_RATE);
+                sentry_options_set_max_spans(options, 1000);
+            }else{
+                sentry_options_set_traces_sample_rate(options, 0.0);
+            }
+            if(!sharedSettings.telemetry() && !sharedSettings.crashReport()){
+                sentry_user_consent_revoke();
+            }else{
+                sentry_user_consent_give();
+            }
+            sentry_options_set_auto_session_tracking(options, autoSessionTracking && sharedSettings.telemetry());
+            if(initialized){
                 return;
             }
+            initialized = true;
             // Setup options
-            sentry_options_t* options = sentry_options_new();
             sentry_options_set_dsn(options, "https://8d409799a9d640599cc66496fb87edf6@sentry.eeems.codes/2");
-            sentry_options_set_auto_session_tracking(options, autoSessionTracking && sharedSettings.telemetry());
-            if(sharedSettings.telemetry()){
-                sentry_options_set_sample_rate(options, SAMPLE_RATE);
-                sentry_options_set_max_spans(options, 1000);
-            }
             sentry_options_set_symbolize_stacktraces(options, true);
             if(QLibraryInfo::isDebugBuild()){
                 sentry_options_set_environment(options, "debug");
             }else{
                 sentry_options_set_environment(options, "release");
             }
-#ifdef DEBUG
             sentry_options_set_debug(options, debugEnabled());
-#endif
             sentry_options_set_database_path(options, "/home/root/.cache/Eeems/sentry");
-            sentry_options_set_release(options, (std::string(name) + "@2.3").c_str());
+            sentry_options_set_release(options, (std::string(name) + "@2.4").c_str());
             sentry_init(options);
+
             // Setup user
             sentry_value_t user = sentry_value_new_object();
             sentry_value_set_by_key(user, "id", sentry_value_new_string(machineId()));
@@ -214,10 +226,6 @@ namespace Oxide {
             sentry_set_context("device", device);
             // Setup transaction
             sentry_set_transaction(name);
-            if(initialized){
-                return;
-            }
-            initialized = true;
             // Add close guard
             QObject::connect(qApp, &QCoreApplication::aboutToQuit, []() {
                 sentry_close();
@@ -225,14 +233,16 @@ namespace Oxide {
             // Handle settings changing
             QObject::connect(&sharedSettings, &SharedSettings::telemetryChanged, [name, argv, autoSessionTracking](bool telemetry){
                 Q_UNUSED(telemetry)
-                sentry_close();
-                sentry_remove_user();
+                if(debugEnabled()){
+                    qDebug() << "Telemetry changed to" << telemetry;
+                }
                 sentry_init(name, argv, autoSessionTracking);
             });
             QObject::connect(&sharedSettings, &SharedSettings::crashReportChanged, [name, argv, autoSessionTracking](bool crashReport){
                 Q_UNUSED(crashReport)
-                sentry_close();
-                sentry_remove_user();
+                if(debugEnabled()){
+                    qDebug() << "CrashReport changed to" << crashReport;
+                }
                 sentry_init(name, argv, autoSessionTracking);
             });
 #else

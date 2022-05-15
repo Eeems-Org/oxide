@@ -24,6 +24,9 @@ namespace Oxide {
         if(!fileWatcher.files().contains(fileName()) && !fileWatcher.addPath(fileName())){
             qWarning() << "Unable to watch " << fileName();
         }
+        if(debugEnabled()){
+            qDebug() << "Settings file" << fileName() << "changed!";
+        }
         // Load new values
         sync();
         auto metaObj = metaObject();
@@ -33,10 +36,16 @@ namespace Oxide {
                 auto value = property.read(this);
                 auto value2 = this->value(property.name());
                 if(value != value2){
+                    if(debugEnabled()){
+                        qDebug() << "Property" << property.name() << "changed";
+                    }
                     property.write(this, value2);
                     property.notifySignal().invoke(this, Qt::QueuedConnection, QGenericArgument(value2.typeName(), value2.data()));
                 }
             }
+        }
+        if(debugEnabled()){
+            qDebug() << "Settings file" << fileName() << "changes loaded";
         }
     }
     void SettingsFile::reloadProperty(const QString& name){
