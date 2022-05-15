@@ -39,17 +39,25 @@ ApplicationWindow {
                         font: iconFont.name
                         width: 310
                         Action { text: qsTr(" Reload"); onTriggered: {
+                            controller.breadcrumb("menu.reload", "click", "ui");
                             controller.startup();
                             appsView.model = controller.getApps();
                         }}
                         Action {
                             text: qsTr(" Import Apps");
                             onTriggered:{
+                                controller.breadcrumb("menu.import", "click", "ui");
                                 controller.importDraftApps();
                                 appsView.model = controller.getApps();
                             }
                         }
-                        Action { text: qsTr(" Options"); onTriggered: stateController.state = "settings" }
+                        Action {
+                            text: qsTr(" Options")
+                            onTriggered: {
+                                controller.breadcrumb("menu.options", "click", "ui");
+                                stateController.state = "settings";
+                            }
+                        }
                     }
                 }
                 StatusIcon {
@@ -61,7 +69,10 @@ ApplicationWindow {
                     MouseArea {
                         anchors.fill: parent
                         enabled: parent.visible
-                        onClicked: stateController.state = "notifications"
+                        onClicked: {
+                            controller.breadcrumb("notifications", "click", "ui");
+                            stateController.state = "notifications";
+                        }
                     }
                 }
             }
@@ -99,7 +110,10 @@ ApplicationWindow {
                     text: controller.showWifiDb ? rssi + "dBm" : ""
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: stateController.state = "wifi"
+                        onClicked: {
+                            controller.breadcrumb("wifi", "click", "ui");
+                            stateController.state = "wifi";
+                        }
                     }
                 }
                 StatusIcon {
@@ -151,21 +165,33 @@ ApplicationWindow {
                         Action {
                             text: qsTr(" Suspend")
                             enabled: !controller.sleepInhibited
-                            onTriggered: controller.suspend();
+                            onTriggered: {
+                                controller.breadcrumb("menu.suspend", "click", "ui");
+                                controller.suspend();
+                            }
                         }
                         Action {
                             text: qsTr(" Reboot")
                             enabled: !controller.powerOffInhibited
-                            onTriggered: controller.reboot()
+                            onTriggered: {
+                                controller.breadcrumb("menu.reboot", "click", "ui");
+                                controller.reboot();
+                            }
                         }
                         Action {
                             text: qsTr(" Shutdown")
                             enabled: !controller.powerOffInhibited
-                            onTriggered: controller.powerOff()
+                            onTriggered: {
+                                controller.breadcrumb("menu.shutdown", "click", "ui");
+                                controller.powerOff();
+                            }
                         }
                         Action {
                             text: qsTr(" Lock")
-                            onTriggered: controller.lock()
+                            onTriggered: {
+                                controller.breadcrumb("menu.lock", "click", "ui");
+                                controller.lock();
+                            }
                         }
                     }
                 }
@@ -177,7 +203,10 @@ ApplicationWindow {
             color: "white"
             MouseArea {
                 anchors.fill: parent
-                onClicked: stateController.state = "calendar"
+                onClicked: {
+                    controller.breadcrumb("clock", "click", "ui");
+                    stateController.state = "calendar";
+                }
             }
         }
     }
@@ -224,10 +253,14 @@ ApplicationWindow {
                 width: appsView.cellWidth
                 height: appsView.cellHeight
                 onLongPress: {
+                    controller.breadcrumb("appItem", "longPress", "ui");
                     itemInfo.model = model.modelData;
                     stateController.state = "itemInfo"
                 }
-                onClicked: model.modelData.execute();
+                onClicked: {
+                    controller.breadcrumb("appItem", "click", "ui");
+                    model.modelData.execute();
+                }
             }
         },
         Popup {
@@ -310,6 +343,7 @@ ApplicationWindow {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
+                            controller.breadcrumb("appItem.autoStart", "click", "ui");
                             if(!itemInfo.model){
                                 return
                             }
@@ -333,6 +367,7 @@ ApplicationWindow {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
+                            controller.breadcrumb("appItem.kill", "click", "ui");
                             if(itemInfo.model){
                                 itemInfo.model.stop();
                                 appsView.model = controller.getApps();
@@ -384,7 +419,10 @@ ApplicationWindow {
             Transition {
                 from: "*"; to: "settings"
                 SequentialAnimation {
-                    ScriptAction { script: stateController.previousState = "settings" }
+                    ScriptAction { script: {
+                        controller.breadcrumb("navigation", "settings", "navigation");
+                        stateController.previousState = "settings";
+                    } }
                     ScriptAction { script: console.log("Opening settings") }
                     PropertyAction { target: settings; property: "visible"; value: true }
                     PropertyAction { target: wifi; property: "visible"; value: false }
@@ -396,7 +434,10 @@ ApplicationWindow {
             Transition {
                 from: "*"; to: "wifi"
                 ParallelAnimation {
-                    ScriptAction { script: stateController.previousState = "wifi" }
+                    ScriptAction { script: {
+                        controller.breadcrumb("navigation", "wifi", "navigation");
+                        stateController.previousState = "wifi";
+                    } }
                     ScriptAction { script: console.log("Opening wifi menu") }
                     PropertyAction { target: wifi; property: "visible"; value: true }
                     PropertyAction { target: calendar; property: "visible"; value: false }
@@ -408,7 +449,10 @@ ApplicationWindow {
             Transition {
                 from: "*"; to: "calendar"
                 SequentialAnimation {
-                    ScriptAction { script: stateController.previousState = "calendar" }
+                    ScriptAction { script: {
+                        controller.breadcrumb("navigation", "calendar", "navigation");
+                        stateController.previousState = "calendar";
+                    } }
                     ScriptAction { script: console.log("Opening calendar") }
                     PropertyAction { target: calendar; property: "visible"; value: true }
                     PropertyAction { target: settings; property: "visible"; value: false }
@@ -420,7 +464,10 @@ ApplicationWindow {
             Transition {
                 from: "*"; to: "notifications"
                 SequentialAnimation {
-                    ScriptAction { script: stateController.previousState = "notifications" }
+                    ScriptAction { script: {
+                        controller.breadcrumb("navigation", "notifications", "navigation");
+                        stateController.previousState = "notifications";
+                    } }
                     ScriptAction { script: console.log("Opening notifications") }
                     PropertyAction { target: notifications; property: "visible"; value: true }
                     PropertyAction { target: calendar; property: "visible"; value: false }
@@ -432,7 +479,10 @@ ApplicationWindow {
             Transition {
                 from: "loaded"; to: "itemInfo"
                 SequentialAnimation {
-                    ScriptAction { script: console.log("Viewing item info") }
+                    ScriptAction { script: {
+                        controller.breadcrumb("navigation", "itemInfo", "navigation");
+                        console.log("Viewing item info");
+                    } }
                     PropertyAction { target: itemInfo; property: "visible"; value: true }
                     PropertyAction { target: menu; property: "focus"; value: false }
                 }
@@ -440,7 +490,10 @@ ApplicationWindow {
             Transition {
                 from: "*"; to: "loaded"
                 SequentialAnimation {
-                    ScriptAction { script: console.log("Main display") }
+                    ScriptAction { script: {
+                            controller.breadcrumb("navigation", "main", "navigation");
+                            console.log("Main display");
+                    } }
                     PropertyAction { target: calendar; property: "visible"; value: false }
                     PropertyAction { target: settings; property: "visible"; value: false }
                     PropertyAction { target: wifi; property: "visible"; value: false }

@@ -2,6 +2,7 @@
 <node>
   <interface name="codes.eeems.oxide1.Wifi">
     <property name="state" type="i" access="read"/>
+    <property name="blobs" type="as" access="read"/>
     <property name="bSSs" type="ao" access="read"/>
     <property name="link" type="i" access="read"/>
     <property name="rssi" type="i" access="read"/>

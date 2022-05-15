@@ -64,7 +64,10 @@ Item {
             BetterButton{
                 text: "Close"
                 Layout.fillWidth: true
-                onClicked: calendar.close()
+                onClicked: {
+                    controller.breadcrumb("calendar.close", "click", "ui");
+                    calendar.close();
+                }
             }
         }
     }

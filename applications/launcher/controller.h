@@ -3,14 +3,15 @@
 #include <QObject>
 #include <QTimer>
 #include <QJsonObject>
+#include <QGuiApplication>
 #include <QMutableListIterator>
+#include <liboxide.h>
+#include <liboxide/eventfilter.h>
 
 #include "appitem.h"
-#include "eventfilter.h"
 #include "sysobject.h"
 #include "wifinetworklist.h"
 #include "notificationlist.h"
-#include "devicesettings.h"
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
 #include "wifiapi_interface.h"
@@ -25,6 +26,8 @@
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide;
+using namespace Oxide::Sentry;
 
 enum State { Normal, PowerSaving };
 enum BatteryState { BatteryUnknown, BatteryCharging, BatteryDischarging, BatteryNotPresent };
@@ -65,7 +68,8 @@ public:
     : QObject(parent),
       m_wifion(false),
       wifi("/sys/class/net/wlan0"),
-      applications() {
+      applications()
+    {
         networks = new WifiNetworkList();
         notifications = new NotificationList();
 
@@ -250,6 +254,15 @@ public:
     Q_INVOKABLE void reboot();
     Q_INVOKABLE void suspend();
     Q_INVOKABLE void lock();
+    Q_INVOKABLE void breadcrumb(QString category, QString message, QString type = "default"){
+#ifdef SENTRY
+        sentry_breadcrumb(category.toStdString().c_str(), message.toStdString().c_str(), type.toStdString().c_str());
+#else
+        Q_UNUSED(category);
+        Q_UNUSED(message);
+        Q_UNUSED(type);
+#endif
+    }
     void updateBatteryLevel();
     bool automaticSleep() const { return m_automaticSleep; };
     void setAutomaticSleep(bool);
@@ -396,12 +409,7 @@ private slots:
     void notificationAdded(const QDBusObjectPath& path){
         auto notification = new Notification(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this);
         notifications->append(notification);
-        emit notificationsChanged(notifications);
-        if(notifications->length() > 1){
-            setNotification(QStringLiteral("%1 notifications").arg(notifications->length()));
-            return;
-        }
-        setNotification("1 notification");
+        // Notification UI updates will be handled by notificationsUpdated
     }
     void notificationRemoved(const QDBusObjectPath& path){
         auto notification = notifications->get(path);
@@ -409,17 +417,8 @@ private slots:
             return;
         }
         notifications->removeAll(notification);
-        delete notification;
-        emit notificationsChanged(notifications);
-        if(notifications->empty()){
-            clearNotification();
-            return;
-        }
-        if(notifications->length() > 1){
-            setNotification(QStringLiteral("%1 notifications").arg(notifications->length()));
-            return;
-        }
-        setNotification("1 notification");
+        notification->deleteLater();
+        // Notification UI updates will be handled by notificationsUpdated
     }
     void notificationChanged(const QDBusObjectPath& path){
         Q_UNUSED(path);

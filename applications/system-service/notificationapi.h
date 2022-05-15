@@ -5,7 +5,8 @@
 #include <QtDBus>
 #include <QMutex>
 
-#include "dbussettings.h"
+#include <liboxide.h>
+
 #include "apibase.h"
 #include "notification.h"
 
@@ -26,7 +27,11 @@ public:
         return instance;
     }
     NotificationAPI(QObject* parent) : APIBase(parent), notificationDisplayQueue(), m_enabled(false), m_notifications(), m_lock() {
-        singleton(this);
+        Oxide::Sentry::sentry_transaction("apps", "init", [this](Oxide::Sentry::Transaction* t){
+            Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
+                singleton(this);
+            });
+        });
     }
     ~NotificationAPI(){}
     bool enabled(){ return m_enabled; }

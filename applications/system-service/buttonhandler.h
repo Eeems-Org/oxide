@@ -22,9 +22,9 @@
 #include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <cstdlib>
+#include <liboxide.h>
 
 #include "event_device.h"
-#include "devicesettings.h"
 
 using namespace std;
 

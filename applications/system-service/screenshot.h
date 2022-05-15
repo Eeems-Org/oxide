@@ -7,8 +7,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-
-#include "dbussettings.h"
+#include "../../shared/liboxide/liboxide.h"
 
 class Screenshot : public QObject{
     Q_OBJECT

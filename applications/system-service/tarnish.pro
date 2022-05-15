@@ -5,6 +5,9 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG += precompile_header_c
 
+DEFINES += QT_DEPRECATED_WARNINGS
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
 QMAKE_CFLAGS += -std=c99
 
 SOURCES += \
@@ -21,8 +24,7 @@ SOURCES += \
     systemapi.cpp \
     wlan.cpp \
     wpa_supplicant.cpp \
-    main.cpp \
-    ../../shared/devicesettings.cpp
+    main.cpp
 
 TARGET=tarnish
 
@@ -45,19 +47,14 @@ system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplica
 
 DBUS_INTERFACES += org.freedesktop.login1.xml
 
-INCLUDEPATH += ../../shared
-LIBS += -L$$PWD/../../shared/ -lqsgepaper
-INCLUDEPATH += $$PWD/../../shared
-DEPENDPATH += $$PWD/../../shared
-
 HEADERS += \
+    ../../shared/liboxide/liboxide.h \
     apibase.h \
     application.h \
     appsapi.h \
     bss.h \
     buttonhandler.h \
     dbusservice.h \
-    dbussettings.h \
     digitizerhandler.h \
     event_device.h \
     fifohandler.h \
@@ -73,17 +70,15 @@ HEADERS += \
     systemapi.h \
     wifiapi.h \
     wlan.h \
-    wpa_supplicant.h \
-    ../../shared/devicesettings.h \
-    ../../shared/signalhandler.h
+    wpa_supplicant.h
 
-linux-oe-g++ {
-    LIBS += -lqsgepaper
-    LIBS += -lpng16
-    LIBS += -lsystemd
-    LIBS += -lz
-}
+LIBS += -lpng16
+LIBS += -lsystemd
+LIBS += -lz
 
+LIBS += -L$$PWD/../../shared/ -lqsgepaper
+INCLUDEPATH += $$PWD/../../shared
+DEPENDPATH += $$PWD/../../shared
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
 DISTFILES += \
@@ -93,4 +88,20 @@ DISTFILES += \
     generate_xml.sh \
     org.freedesktop.login1.xml
 
-RESOURCES +=
+exists($$PWD/../../.build/sentry) {
+    LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
+    INCLUDEPATH += $$PWD/../../.build/sentry/include
+    DEPENDPATH += $$PWD/../../.build/sentry/lib
+
+    library.files = ../../.build/sentry/libsentry.so
+    library.path = /opt/lib
+    INSTALLS += library
+}
+
+LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+INCLUDEPATH += $$PWD/../../shared/liboxide
+DEPENDPATH += $$PWD/../../shared/liboxide
+
+QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
+
+VERSION = 2.3

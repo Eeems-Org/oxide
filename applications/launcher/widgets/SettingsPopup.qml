@@ -239,13 +239,17 @@ Item {
                 text: "Reset"
                 Layout.columnSpan: parent.columns
                 Layout.fillWidth: true
-                onClicked: controller.loadSettings()
+                onClicked: {
+                    controller.breadcrumb("settings.reset", "click", "ui");
+                    controller.loadSettings();
+                }
             }
             BetterButton {
                 text: "Close"
                 Layout.columnSpan: parent.columns
                 Layout.fillWidth: true
                 onClicked: {
+                    controller.breadcrumb("settings.close", "click", "ui");
                     controller.saveSettings();
                     settings.close();
                 }
