@@ -50,19 +50,19 @@ namespace Oxide {
         struct Transaction {
 #ifdef SENTRY
             sentry_transaction_t* inner;
-            Transaction(sentry_transaction_t* t);
+            explicit Transaction(sentry_transaction_t* t);
 #else
             void* inner;
-            Transaction(void* t);
+            explicit Transaction(void* t);
 #endif
         };
         struct Span {
 #ifdef SENTRY
             sentry_span_t* inner;
-            Span(sentry_span_t* s);
+            explicit Span(sentry_span_t* s);
 #else
             void* inner;
-            Span(void* s);
+            explicit Span(void* s);
 #endif
         };
 
@@ -108,6 +108,8 @@ namespace Oxide {
 
     class LIBOXIDE_EXPORT XochitlSettings : public SettingsFile {
         Q_OBJECT
+        // cppcheck-suppress uninitMemberVarPrivate
+        // cppcheck-suppress unusedFunction
         O_SETTINGS(XochitlSettings, "/home/root/.config/remarkable/xochitl.conf")
         O_SETTINGS_PROPERTY(QString, General, passcode)
         O_SETTINGS_PROPERTY(bool, General, wifion)
@@ -127,6 +129,7 @@ namespace Oxide {
 
     class LIBOXIDE_EXPORT SharedSettings : public SettingsFile {
         Q_OBJECT
+        // cppcheck-suppress uninitMemberVarPrivate
         O_SETTINGS(SharedSettings, "/home/root/.config/Eeems/shared.conf")
         O_SETTINGS_PROPERTY(int, General, version)
         O_SETTINGS_PROPERTY(bool, General, firstLaunch, true)

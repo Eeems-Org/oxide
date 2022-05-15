@@ -96,7 +96,7 @@
             return INSTANCE; \
         } \
     private: \
-    _type(QString _path) : SettingsFile(_path) {}
+    explicit _type(const QString& _path) : SettingsFile(_path) {}
 
 
 namespace Oxide {
