@@ -37,6 +37,7 @@ runs:
                 sudo cp --verbose --force --recursive ~/.aptcache/* /
             fi
         - name: Build website
+          shell: bash
           run: cd web && make prod
         - name: Generate liboxide docs
           shell: bash
