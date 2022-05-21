@@ -104,6 +104,7 @@ namespace Oxide {
             explicit Span(void* s);
 #endif
         };
+
         LIBOXIDE_EXPORT const char* bootId();
         LIBOXIDE_EXPORT const char* machineId();
         LIBOXIDE_EXPORT void sentry_init(const char* name, char* argv[], bool autoSessionTracking = true);
