@@ -60,19 +60,19 @@ jobs:
         with:
           name: packages
           path: output
-  docs:
-    name: Build docs
+  web:
+    name: Build web
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the Git repository
         uses: actions/checkout@v2
         with:
           submodules: true
-      - name: Build docs
-        uses: ./.github/actions/docs
-      - name: Save docs
+      - name: Build web
+        uses: ./.github/actions/web
+      - name: Save web
         uses: actions/upload-artifact@v2
         with:
-          name: docs
+          name: web
           path: web/dist
 

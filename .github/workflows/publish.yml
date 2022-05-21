@@ -16,8 +16,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: true
-      - name: Build docs
-        uses: ./.github/actions/docs
+      - name: Build web
+        uses: ./.github/actions/web
       - name: Sync website with the remote repository
         uses: ./.github/actions/sync-repository
         with:
