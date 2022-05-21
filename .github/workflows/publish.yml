@@ -14,8 +14,8 @@ jobs:
     steps:
       - name: Checkout the Git repository
         uses: actions/checkout@v2
-      - name: Checkout submodules
-        uses: textbook/git-checkout-submodule-action@master
+        with:
+          submodules: true
       - name: Build docs
         uses: ./.github/actions/docs
       - name: Sync website with the remote repository
