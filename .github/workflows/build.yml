@@ -74,5 +74,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: docs
-          path: output
+          path: web/dist
 
