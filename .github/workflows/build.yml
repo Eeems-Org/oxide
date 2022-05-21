@@ -61,13 +61,18 @@ jobs:
           name: packages
           path: output
   docs:
-      name: Build docs
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout the Git repository
-          uses: actions/checkout@v2
-          with:
-            submodules: true
-        - name: Build docs
-          uses: ./.github/actions/docs
+    name: Build docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the Git repository
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Build docs
+        uses: ./.github/actions/docs
+      - name: Save docs
+        uses: actions/upload-artifact@v2
+        with:
+          name: docs
+          path: output
 
