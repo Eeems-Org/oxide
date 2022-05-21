@@ -32,7 +32,7 @@ jobs:
             uses: mattnotmitt/doxygen-action@v1.9.2
             with:
               working-directory: 'shared/liboxide/'
-              doxyfile-path: 'Doxygen'
+              doxyfile-path: 'Doxyfile'
           - name: Sync website with the remote repository
             uses: ./.github/actions/sync-repository
             with:
