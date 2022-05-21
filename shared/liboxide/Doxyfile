@@ -10,6 +10,9 @@ HTML_EXTRA_STYLESHEET = doxygen-awesome-css/doxygen-awesome.css \
 HTML_EXTRA_FILES = doxygen-awesome-css/doxygen-awesome-darkmode-toggle.js \
                    doxygen-awesome-css/doxygen-awesome-fragment-copy-button.js \
                    doxygen-awesome-css/doxygen-awesome-paragraph-link.js
-
 HTML_HEADER = header.html
-
+PREDEFINED = DOXYGEN_SHOULD_SKIP_THIS
+EXTRACT_PRIVATE = NO
+HIDE_UNDOC_MEMBERS = YES
+HIDE_UNDOC_CLASSES = YES
+PROJECT_NAME = liboxide
