@@ -60,4 +60,14 @@ jobs:
         with:
           name: packages
           path: output
+  docs:
+      name: Build docs
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout the Git repository
+          uses: actions/checkout@v2
+        - name: Checkout submodules
+          uses: textbook/git-checkout-submodule-action@master
+        - name: Build docs
+          uses: ./.github/actions/docs
 
