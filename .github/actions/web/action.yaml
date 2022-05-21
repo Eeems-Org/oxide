@@ -17,7 +17,7 @@ runs:
           shell: bash
           run: |
             sudo apt-get update -yq
-            echo "aptVersion=doxygen-$(apt-cache policy doxygen | grep -oP '(?<=Candidate:\s)(.+)')" >> $GITHUB_ENV
+            echo "aptVersion=doxygen-$(apt-cache policy doxygen | grep -oP '(?<=Candidate:\s)(.+)'),graphviz-$(apt-cache policy graphviz | grep -oP '(?<=Candidate:\s)(.+)')" >> $GITHUB_ENV
         - name: Cache Apt packages
           uses: actions/cache@v2
           id: cache-apt
@@ -30,9 +30,9 @@ runs:
             CACHE_HIT: ${{ steps.cache-apt.outputs.cache-hit }}
           run: |
             if [[ "$CACHE_HIT" != 'true' ]]; then
-                sudo apt-get install -yq doxygen
+                sudo apt-get install -yq doxygen graphviz
                 mkdir -p ~/.aptcache
-                sudo dpkg -L doxygen | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/.aptcache/
+                sudo dpkg -L doxygen graphviz | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/.aptcache/
             else
                 sudo cp --verbose --force --recursive ~/.aptcache/* /
             fi
