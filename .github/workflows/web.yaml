@@ -1,4 +1,4 @@
-name: Build oxide
+name: Build website
 
 on:
   push:
