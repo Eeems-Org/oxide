@@ -4,10 +4,6 @@
 #ifndef LIBOXIDE_H
 #define LIBOXIDE_H
 
-#ifdef DOXYGEN_SHOULD_SKIP_THIS
-#define SENTRY
-#endif
-
 #include "liboxide_global.h"
 
 #include "settingsfile.h"
@@ -71,12 +67,14 @@ Q_DECLARE_METATYPE(WifiNetworks);
  * @{
  */
 /*!
- * \abstract
+ * \brief The main Oxide namespace
  */
 namespace Oxide {
     /*!
      * \brief Run code on the main Qt thread
-     * \param The code to run on the main thread
+     * \param callback The code to run on the main thread
+     *
+     * \snippet examples/oxide.cpp dispatchToMainThread
      */
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
     namespace Sentry{
@@ -137,6 +135,7 @@ namespace Oxide {
         /*!
          * \brief Get the static instance of this class. You should use the deviceSettings macro instead.
          * \return The static instance
+         * \sa deviceSettings
          */
         static DeviceSettings& instance();
         /*!
@@ -196,19 +195,75 @@ namespace Oxide {
      */
     class LIBOXIDE_EXPORT XochitlSettings : public SettingsFile {
         Q_OBJECT
+        /*!
+         * \fn instance
+         * \brief Get the static instance of this class. You should use the xochitlSettings macro instead.
+         * \return The static instance
+         * \sa xochitlSettings
+         */
         // cppcheck-suppress uninitMemberVarPrivate
         // cppcheck-suppress unusedFunction
         O_SETTINGS(XochitlSettings, "/home/root/.config/remarkable/xochitl.conf")
+        /*!
+         * \property passcode
+         * \brief The passcode used to unlock the device
+         * \sa set_passcode, passcodeChanged
+         */
+        /*!
+         * \fn set_passcode
+         * \param _arg_passcode The passcode used to unlock the device
+         * \brief Set the passcode used to unlock the device
+         */
+        /*!
+         * \fn passcodeChanged
+         * \brief The passcode used to unlock the device has changed
+         */
         O_SETTINGS_PROPERTY(QString, General, passcode)
+        /*!
+         * \property wifion
+         * \brief If wifi is on or off
+         * \sa set_wifion, wifionChanged
+         */
+        /*!
+         * \fn set_wifion
+         * \param _arg_wifion If wifi should be on or off
+         * \brief Turn wifi on or off
+         */
+        /*!
+         * \fn wifionChanged
+         * \brief Wifi has been turned on or off
+         */
         O_SETTINGS_PROPERTY(bool, General, wifion)
+        /*!
+         * \property XochitlSettings::wifinetworks
+         * \brief List of wifi networks
+         * \sa setWifinetworks, wifinetworksChanged
+         */
         Q_PROPERTY(WifiNetworks wifinetworks MEMBER m_wifinetworks READ wifinetworks WRITE setWifinetworks RESET resetWifinetworks NOTIFY wifinetworksChanged)
     public:
         WifiNetworks wifinetworks();
+        /*!
+         * \brief Set the list of wifi networks
+         * \param wifinetworks List of wifi networks to replace with
+         */
         void setWifinetworks(const WifiNetworks& wifinetworks);
+        /*!
+         * \brief Get a specific wifi network
+         * \param name SSID of the wifi network
+         * \return The wifi network properties
+         */
         QVariantMap getWifiNetwork(const QString& name);
+        /*!
+         * \brief Set the properties for a specific wifi network
+         * \param name SSID of the wifi network
+         * \param properties The wifi network properties
+         */
         void setWifiNetwork(const QString& name, QVariantMap properties);
         void resetWifinetworks();
     signals:
+        /*!
+         * \brief The contents of the wifi network list has changed
+         */
         void wifinetworksChanged(WifiNetworks);
     private:
         ~XochitlSettings();
@@ -219,12 +274,60 @@ namespace Oxide {
      */
     class LIBOXIDE_EXPORT SharedSettings : public SettingsFile {
         Q_OBJECT
+        /*!
+         * \fn instance
+         * \brief Get the static instance of this class. You should use the sharedSettings macro instead.
+         * \return The static instance
+         * \sa sharedSettings
+         */
         // cppcheck-suppress uninitMemberVarPrivate
         O_SETTINGS(SharedSettings, "/home/root/.config/Eeems/shared.conf")
         O_SETTINGS_PROPERTY(int, General, version)
         O_SETTINGS_PROPERTY(bool, General, firstLaunch, true)
+        /*!
+         * \property telemetry
+         * \brief If telemetry reporting is enabled or not
+         * \sa set_telemetry, telemetryChanged
+         */
+        /*!
+         * \fn set_telemetry
+         * \param _arg_telemetry
+         * \brief Enable or disable telemetry reporting
+         */
+        /*!
+         * \fn telemetryChanged
+         * \brief If telemetry reporting has been enabled or disabled
+         */
         O_SETTINGS_PROPERTY(bool, General, telemetry, false)
+        /*!
+         * \property applicationUsage
+         * \brief If application usage reporting is enabled or not
+         * \sa set_applicationUsage, applicationUsageChanged
+         */
+        /*!
+         * \fn set_applicationUsage
+         * \param _arg_applicationUsage
+         * \brief Enable or disable application usage reporting
+         */
+        /*!
+         * \fn applicationUsageChanged
+         * \brief If application usage reporting has been enabled or disabled
+         */
         O_SETTINGS_PROPERTY(bool, General, applicationUsage, false)
+        /*!
+         * \property crashReport
+         * \brief If crash reporting is enabled or not
+         * \sa set_crashReport, crashReportChanged
+         */
+        /*!
+         * \fn set_crashReport
+         * \param _arg_crashReport
+         * \brief Enable or disable crash  reporting
+         */
+        /*!
+         * \fn crashReportChanged
+         * \brief If crash reporting has been enabled or disabled
+         */
         O_SETTINGS_PROPERTY(bool, General, crashReport, true)
     private:
         ~SharedSettings();

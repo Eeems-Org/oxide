@@ -5,12 +5,16 @@ all: dist
 html:
 	doxygen Doxyfile
 
-prod: html
+$(DIST): html
 	cp -r html $(DIST)
 
-dev:
-	while inotifywait -e close_write *.h *.cpp; do doxygen Doxyfile; done
+prod: $(DIST)
+
+dev: clean prod
+	while inotifywait -e close_write *.h *.cpp examples/*.cpp; do $(MAKE) clean prod; done
 
 clean:
-	rm -r $(DIST)
-	rm -r html
+	rm -rf $(DIST)
+	rm -rf html
+
+.PHONY: all prod dev clean

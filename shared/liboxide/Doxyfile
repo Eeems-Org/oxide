@@ -1,4 +1,6 @@
+PROJECT_NAME = liboxide
 GENERATE_QHP = YES
+GENERATE_LATEX = NO
 QCH_FILE = liboxide.qch
 QHP_NAMESPACE = liboxide
 QHP_VIRTUAL_FOLDER = doc
@@ -12,7 +14,7 @@ HTML_EXTRA_FILES = doxygen-awesome-css/doxygen-awesome-darkmode-toggle.js \
                    doxygen-awesome-css/doxygen-awesome-paragraph-link.js
 HTML_HEADER = header.html
 PREDEFINED = DOXYGEN_SHOULD_SKIP_THIS
-EXTRACT_PRIVATE = NO
 HIDE_UNDOC_MEMBERS = YES
 HIDE_UNDOC_CLASSES = YES
-PROJECT_NAME = liboxide
+MACRO_EXPANSION = YES
+EXAMPLE_PATH = examples

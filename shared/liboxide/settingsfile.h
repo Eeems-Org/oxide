@@ -1,3 +1,6 @@
+/*!
+ * \file settingsfile.h
+ */
 #ifndef SETTINGSFILE_H
 #define SETTINGSFILE_H
 
@@ -100,7 +103,20 @@
 
 
 namespace Oxide {
+    /*!
+     * \brief Return the state of debugging
+     * \return Debugging state
+     * \snippet examples/oxide.cpp debugEnabled
+     */
     LIBOXIDE_EXPORT bool debugEnabled();
+    /*!
+     * \brief A better version of [QSettings](https://doc.qt.io/qt-5/qsettings.html)
+     *
+     * This base class adds dynamic updates of changes to a settings file from disk.
+     * It also implements a static instance method that will return the singleton for this class.
+     *
+     * \sa sharedSettings, xochitlSettings
+     */
     class LIBOXIDE_EXPORT SettingsFile : public QSettings {
         Q_OBJECT
     private slots:
