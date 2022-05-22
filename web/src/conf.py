@@ -12,6 +12,4 @@ master_doc = "sitemap"
 html_sidebars = {"**": ["nav.html", "sidefooter.html"]}
 html_permalinks_icon = "#"
 
-extensions = [
-    "sphinxcontrib.fulltoc",
-]
+extensions = ["sphinxcontrib.fulltoc", "breathe"]

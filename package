@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry)
-pkgver="2.3~~VERSION~"
+pkgver="2.4~~VERSION~"
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
@@ -149,7 +149,7 @@ libsentry() {
     pkgdesc="Sentry SDK for C, C++ and native applications."
     section=devel
     url=https://github.com/getsentry/sentry-native
-    pkgver="0.4.13"
+    pkgver="0.4.17"
     timestamp="2021-12-20T14:25:11Z"
 
     package() {
