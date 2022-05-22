@@ -5,10 +5,12 @@ on:
     paths:
       - 'web/**'
       - 'shared/liboxide/**'
+      - '.github/actions/web/**'
   pull_request:
     paths:
       - 'web/**'
       - 'shared/liboxide/**'
+      - '.github/actions/web/**'
 jobs:
   web:
     name: Build web

@@ -6,6 +6,8 @@ on:
     paths:
       - 'web/**'
       - 'shared/liboxide/**'
+      - '.github/actions/web/**'
+      - '.github/actions/sync-repository/**'
   workflow_dispatch:
 jobs:
   publish:
