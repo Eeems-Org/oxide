@@ -65,11 +65,12 @@ How do I change my pin after I've set it?
 There is no way to currently trigger a pin change, but you can wipe your current pin, and trigger
 the pin setting dialog by doing the following:
 
-.. code::bash
+.. code:: bash
 
   systemctl stop tarnish
   rm /home/root/.config/Eeems/decay.conf
   systemctl start tarnish
+
 
 Not all of my applications are listed?
 ======================================
