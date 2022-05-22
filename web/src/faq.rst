@@ -22,7 +22,7 @@ What kind of information is collected by telemetry?
     reports are sent by a user if they are willing to share the anonymised value from their devices.
 - OS version via the contents of ``/etc/version`` on the device.
     This helps ensure that the OS version is properly taken into account when investigating a crash.
-- Name of application and version. i.e. ``rot@2.3``
+- Name of application and version. i.e. ``rot@2.4``
     This ensures that the correct application is investigated for a crash.
 - `Minidump <https://docs.sentry.io/platforms/native/guides/minidumps/>`_ of the crash.
     This hopefully provides enough information that a crash can be replicated and the specific

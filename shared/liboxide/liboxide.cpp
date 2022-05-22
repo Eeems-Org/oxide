@@ -175,7 +175,9 @@ namespace Oxide {
         bool enabled(){
             return sharedSettings.crashReport() || sharedSettings.telemetry();
         }
+#ifdef SENTRY
         sentry_options_t* options = sentry_options_new();
+#endif
         void sentry_init(const char* name, char* argv[], bool autoSessionTracking){
 #ifdef SENTRY
             if(sharedSettings.crashReport()){
