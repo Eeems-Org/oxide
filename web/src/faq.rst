@@ -5,8 +5,9 @@ Frequently Asked Questions
 What kind of telemetry do you have?
 ===================================
 
-As of 2.4, Oxide has basic telemetry enabled out of box. This feature can be disabled at runtime,
-or completely removed when compiling the application manually. The telemetry is used for the following:
+As of 2.4, Oxide has opt-in basic telemetry. The first time you run Oxide you'll be asked what level
+of telemetry you'd like to enable. This feature can be disabled at runtime, or completely removed
+when compiling the application manually. The telemetry is used for the following:
 
 - Automated crash reporting.
 - Determining how quickly new versions are used by users.
