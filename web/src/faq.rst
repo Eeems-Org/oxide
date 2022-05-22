@@ -35,6 +35,7 @@ How can I disable the telemetry?
 
   rot settings set telemetry false
   rot settings set crashReport false
+  rot settings set applicationUsage false
 
 Or you can compile the applications manually without the ``sentry`` feature enabled.
 
