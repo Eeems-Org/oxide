@@ -60,19 +60,3 @@ jobs:
         with:
           name: packages
           path: output
-  web:
-    name: Build web
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout the Git repository
-        uses: actions/checkout@v2
-        with:
-          submodules: true
-      - name: Build web
-        uses: ./.github/actions/web
-      - name: Save web
-        uses: actions/upload-artifact@v2
-        with:
-          name: web
-          path: web/dist
-
