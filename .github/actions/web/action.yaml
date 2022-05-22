@@ -20,14 +20,14 @@ runs:
             echo "aptVersion=doxygen-$(apt-cache policy doxygen | grep -oP '(?<=Candidate:\s)(.+)')-graphviz-$(apt-cache policy graphviz | grep -oP '(?<=Candidate:\s)(.+)')" >> $GITHUB_ENV
         - name: Cache Apt packages
           uses: actions/cache@v2
-          id: cache-apt
+          id: doxygen-cache-apt
           with:
             path: ~/.aptcache
             key: ${{ env.aptVersion }}
         - name: Install or restore Apt packages
           shell: bash
           env:
-            CACHE_HIT: ${{ steps.cache-apt.outputs.cache-hit }}
+            CACHE_HIT: ${{ steps.doxygen-cache-apt.outputs.cache-hit }}
           run: |
             if [[ "$CACHE_HIT" != 'true' ]]; then
                 sudo apt-get install -yq doxygen graphviz
