@@ -202,7 +202,7 @@ namespace Oxide {
             }
             initialized = true;
             // Setup options
-            sentry_options_set_dsn(options, "https://8d409799a9d640599cc66496fb87edf6@sentry.eeems.codes/2");
+            sentry_options_set_dsn(options, "https://a0136a12d63048c5a353c4a1c2d38914@sentry.eeems.codes/2");
             sentry_options_set_symbolize_stacktraces(options, true);
             if(QLibraryInfo::isDebugBuild()){
                 sentry_options_set_environment(options, "debug");
