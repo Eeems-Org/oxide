@@ -19,10 +19,11 @@ Features
 Install Oxide
 ==============
 
-⚠️ **WARNING** ⚠️ Make sure you have stored your SSH password securely when installing Toltec and before installing Oxide or any package. You can find the SSH password in your settings: `Settings > Help > Copyrights and licenses > General information (scroll down)`.
-
 .. raw:: html
 
+  <div class="warning">
+    ⚠️ <b>Warning:</b> Since this changes what application is launched on boot, you'll want to make sure you have your SSH password written down, and it's recommended to <a href="https://remarkablewiki.com/tech/ssh">setup an SSH key</a>.
+  </div>
   <p>
     Oxide is available in
     <a href="https://toltec-dev.org/#install-toltec">
