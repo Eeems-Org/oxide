@@ -43,11 +43,11 @@ Background Service (tarnish)
 Process Manager (erode)
 =======================
 
- - There is a reload button on the top right of the screen that will refresh the list.
- - You can click on the column headers to sort the list by that column.
- - If you click on a kill button for a process you will be prompted on if you really want to kill the process. In that prompt you will have the option to kill the process (``SIGTERM``), or to force quit (``SIGKILL``) the process.
- - You can exit the application by pressing the left arrow on the top left of the toolbar.
- - If the process list is long enough, you can scroll it by swiping up or down on the list. After you have swiped the list will scroll.
+* There is a reload button on the top right of the screen that will refresh the list.
+* You can click on the column headers to sort the list by that column.
+* If you click on a kill button for a process you will be prompted on if you really want to kill the process. In that prompt you will have the option to kill the process (``SIGTERM``), or to force quit (``SIGKILL``) the process.
+* You can exit the application by pressing the left arrow on the top left of the toolbar.
+* If the process list is long enough, you can scroll it by swiping up or down on the list. After you have swiped the list will scroll.
 
 Screenshot Tool (fret)
 ======================
@@ -67,8 +67,10 @@ Screenshot Viewer (anxiety)
 CLI Tool (rot)
 ==============
 
-# Using the CLI Tool (rot)
- - Usage from the command line only, run ``rot --help`` to see possible options. For more information on possible API values see the `dbus specification files <https://github.com/Eeems/oxide/tree/master/interfaces>`_, the `high level API design <https://gist.github.com/Eeems/728d4ec836b156d880ce521ab50e5d40>`_, or :ref:`api`.
+Using the CLI Tool (rot)
+------------------------
+
+Usage from the command line only, run ``rot --help`` to see possible options. For more information on possible API values see the `dbus specification files <https://github.com/Eeems/oxide/tree/master/interfaces>`_, the `high level API design <https://gist.github.com/Eeems/728d4ec836b156d880ce521ab50e5d40>`_, or :ref:`api`.
 
 Usage
 -----
