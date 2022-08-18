@@ -42,4 +42,4 @@ Uninstall Oxide
 
 1. ``systemctl disable --now tarnish``
 2. ``systemctl enable --now xochitl``
-2. ``opkg remove erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry``
+3. ``opkg remove erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry``
