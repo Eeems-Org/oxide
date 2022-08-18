@@ -37,3 +37,9 @@ Install Oxide
 3. If you are installing on a reMarkable 2: ``systemctl enable --now rm2fb``
 4. ``systemctl enable --now tarnish``
 
+Uninstall Oxide
+===============
+
+1. ``systemctl disable --now tarnish``
+2. ``systemctl enable --now xochitl``
+2. ``opkg remove erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry``
