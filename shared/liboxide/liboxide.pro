@@ -11,14 +11,18 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs depr
 SOURCES += \
     eventfilter.cpp \
     liboxide.cpp \
+    power.cpp \
     settingsfile.cpp \
+    sysobject.cpp \
     signalhandler.cpp
 
 HEADERS += \
     eventfilter.h \
     liboxide_global.h \
     liboxide.h \
+    power.h \
     settingsfile.h \
+    sysobject.h \
     signalhandler.h
 
 LIBS += -lsystemd

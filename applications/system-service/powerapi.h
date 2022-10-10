@@ -1,6 +1,8 @@
 #ifndef BATTERYAPI_H
 #define BATTERYAPI_H
 
+#include <liboxide/sysobject.h>
+
 #include <QObject>
 #include <QDebug>
 #include <QTimer>
@@ -9,7 +11,6 @@
 #include <QDir>
 
 #include "apibase.h"
-#include "sysobject.h"
 #include "systemapi.h"
 
 #define powerAPI PowerAPI::singleton()
@@ -32,38 +33,13 @@ public:
         return instance;
     }
     PowerAPI(QObject* parent)
-    : APIBase(parent), batteries(), chargers(), m_chargerState(ChargerUnknown){
+    : APIBase(parent), m_chargerState(ChargerUnknown){
         Oxide::Sentry::sentry_transaction("power", "init", [this](Oxide::Sentry::Transaction* t){
             Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
                 singleton(this);
             });
             Oxide::Sentry::sentry_span(t, "sysfs", "Determine power devices from sysfs", [this](Oxide::Sentry::Span* s){
-                QDir dir("/sys/class/power_supply");
-                qDebug() << "Looking for batteries and chargers...";
-                for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
-                    qDebug() << ("  Checking " + path + "...").toStdString().c_str();
-                    SysObject item(dir.path() + "/" + path);
-                    if(!item.hasProperty("type")){
-                        qDebug() << "    Missing type property";
-                        continue;
-                    }
-                    if(item.hasProperty("present") && !item.intProperty("present")){
-                        qDebug() << "    Either missing present property, or battery is not present";
-                        continue;
-                    }
-                    Oxide::Sentry::sentry_span(s, path.toStdString(), "Checking device", [this, &item]{
-                        auto type = item.strProperty("type");
-                        if(type == "Battery"){
-                            qDebug() << "    Found Battery!";
-                            batteries.append(item);
-                        }else if(type == "USB" || type == "USB_CDP"){
-                            qDebug() << "    Found Charger!";
-                            chargers.append(item);
-                        }else{
-                            qDebug() << "    Unknown type";
-                        }
-                    });
-                }
+                Oxide::Power::batteries();
             });
             Oxide::Sentry::sentry_span(t, "update", "Update current state", [this]{
                 update();
@@ -175,8 +151,6 @@ signals:
 
 private:
     QTimer* timer;
-    QList<SysObject> batteries;
-    QList<SysObject> chargers;
     int m_state = Normal;
     int m_batteryState = BatteryUnknown;
     int m_batteryLevel = 0;
@@ -210,14 +184,14 @@ private:
     }
     int batteryInt(QString property){
         int result = 0;
-        for(auto battery : batteries){
+        for(auto battery : Oxide::Power::batteries()){
             result += battery.intProperty(property.toStdString());
         }
         return result;
     }
     int batteryIntMax(QString property){
         int result = 0;
-        for(auto battery : batteries){
+        for(auto battery : Oxide::Power::batteries()){
             int value = battery.intProperty(property.toStdString());
             if(value > result){
                 result = value;
@@ -226,11 +200,11 @@ private:
         return result;
     }
     int calcBatteryLevel(){
-        return batteryInt("capacity") / batteries.length();
+        return batteryInt("capacity") / Oxide::Power::batteries().length();
     }
     int chargerInt(QString property){
         int result = 0;
-        for(auto charger : chargers){
+        for(auto charger : Oxide::Power::chargers()){
             result += charger.intProperty(property.toStdString());
         }
         return result;
@@ -239,7 +213,7 @@ private:
         bool alert = false;
         bool warning = false;
         bool charging = false;
-        for(auto battery : batteries){
+        for(auto battery : Oxide::Power::batteries()){
             auto status = battery.strProperty("status");
             if(!charging && status == "Charging"){
                 charging = true;
@@ -274,7 +248,7 @@ private:
         return state;
     }
     void updateBattery(){
-        if(!batteries.length()){
+        if(!Oxide::Power::batteries().length()){
             if(m_batteryState != BatteryUnknown){
                 setBatteryState(BatteryUnknown);
             }
@@ -328,7 +302,7 @@ private:
         }
     }
     void updateCharger(){
-        if(!chargers.length()){
+        if(!Oxide::Power::chargers().length()){
             if(m_chargerState != ChargerUnknown){
                 setChargerState(ChargerUnknown);
             }
