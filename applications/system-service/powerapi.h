@@ -161,93 +161,6 @@ private:
     bool m_batteryAlert = false;
     bool m_chargerWarning = false;
 
-    bool badHealth(QString match){
-        static const  QSet<QString> ret {
-            "Overheat",
-            "Dead",
-            "Over voltage",
-            "Unspecified failure",
-            "Cold",
-            "Watchdog timer expire",
-            "Safety timer expire",
-            "Over current"
-        };
-        return ret.contains(match);
-    }
-    bool warnHealth(QString match){
-        static const QSet<QString> ret {
-            "Unknown",
-            "Warm",
-            "Cool",
-            "Hot"
-        };
-        return ret.contains(match);
-    }
-    int batteryInt(const QString& property){
-        int result = 0;
-        for(SysObject battery : *Oxide::Power::batteries()){
-            result += battery.intProperty(property.toStdString());
-        }
-        return result;
-    }
-    int batteryIntMax(const QString& property){
-        int result = 0;
-        for(SysObject battery : *Oxide::Power::batteries()){
-            int value = battery.intProperty(property.toStdString());
-            if(value > result){
-                result = value;
-            }
-        }
-        return result;
-    }
-    int calcBatteryLevel(){
-        return batteryInt("capacity") / Oxide::Power::batteries()->length();
-    }
-    int chargerInt(const QString& property){
-        int result = 0;
-        for(SysObject charger : *Oxide::Power::chargers()){
-            result += charger.intProperty(property.toStdString());
-        }
-        return result;
-    }
-    std::array<bool, 3> getBatteryStates(){
-        bool alert = false;
-        bool warning = false;
-        bool charging = false;
-        for(SysObject battery : *Oxide::Power::batteries()){
-            auto status = battery.strProperty("status");
-            if(!charging && status == "Charging"){
-                charging = true;
-            }
-            if(status == "Unknown" || status == ""){
-                warning = true;
-            }
-            if(battery.hasProperty("health")){
-                auto health = battery.strProperty("health");
-                if(badHealth(QString(health.c_str()))){
-                    alert = true;
-                }else if(!warning && warnHealth(QString(health.c_str()))){
-                    warning = true;
-                }
-            }else if(!alert && battery.hasProperty("temp")){
-                auto temp = battery.intProperty("temp");
-                if(battery.hasProperty("temp_alert_max") && temp > battery.intProperty("temp_alert_max")){
-                    alert = true;
-                }
-                if(battery.hasProperty("temp_alert_min") && temp < battery.intProperty("temp_alert_min")){
-                    alert = true;
-                }
-            }
-            if(alert && warning && charging){
-                break;
-            }
-        }
-        std::array<bool, 3> _state;
-        _state[0] = charging;
-        _state[1] = warning;
-        _state[2] = alert;
-        return _state;
-    }
     void updateBattery(){
         if(!Oxide::Power::batteries()->length()){
             if(m_batteryState != BatteryUnknown){
@@ -260,7 +173,7 @@ private:
             }
             return;
         }
-        if(!batteryInt("present")){
+        if(!Oxide::Power::batteryPresent()){
             if(m_batteryState != BatteryNotPresent){
                 qWarning() << "Battery is somehow not in the device?";
                 setBatteryState(BatteryNotPresent);
@@ -272,33 +185,32 @@ private:
             }
             return;
         }
-        int battery_level = calcBatteryLevel();
-        if(batteryLevel() != battery_level){
+        int battery_level = Oxide::Power::batteryLevel();
+        if(m_batteryLevel != battery_level){
             setBatteryLevel(battery_level);
         }
-        auto states = getBatteryStates();
-        bool charging = states[0];
-        bool warning = states[1];
-        bool alert = states[2];
-        if(charging && batteryState() != BatteryCharging){
+        bool charging = Oxide::Power::batteryCharging();
+        if(charging && m_batteryState != BatteryCharging){
             setBatteryState(BatteryCharging);
-        }else if(!charging && batteryState() != BatteryDischarging){
+        }else if(!charging && m_batteryState != BatteryDischarging){
             setBatteryState(BatteryDischarging);
         }
+        bool alert = Oxide::Power::batteryHasAlert();
         if(m_batteryAlert != alert){
             m_batteryAlert = alert;
             if(alert){
                 emit batteryAlert();
             }
         }
+        bool warning = Oxide::Power::batteryHasWarning();
         if(m_batteryWarning != warning){
             if(warning){
                 emit batteryWarning();
             }
             m_batteryWarning = warning;
         }
-        int temperature = batteryIntMax("temp") / 10;
-        if(batteryTemperature() != temperature){
+        int temperature = Oxide::Power::batteryTemperature();
+        if(m_batteryTemperature != temperature){
             setBatteryTemperature(temperature);
         }
     }
@@ -314,7 +226,7 @@ private:
             }
             return;
         }
-        bool connected = chargerInt("online");
+        bool connected = Oxide::Power::chargerConnected();
         if(connected && m_chargerState != ChargerConnected){
             setChargerState(ChargerConnected);
         }else if(!connected && m_chargerState != ChargerNotConnected){
