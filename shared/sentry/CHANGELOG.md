@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.5.0
+
+**Features**
+
+- Provide `on_crash()` callback to allow clients to act on detected crashes.
+  Users often inquired about distinguishing between crashes and "normal" events in the `before_send()` hook.
+  `on_crash()` can be considered a replacement for `before_send()` for crash events, where the goal is to use 
+  `before_send()` only for normal events, while `on_crash()` is only invoked for crashes. This change is backward
+  compatible for current users of `before_send()` and allows gradual migration to `on_crash()`
+  ([see the docs for details](https://docs.sentry.io/platforms/native/configuration/filtering/)). 
+  ([#724](https://github.com/getsentry/sentry-native/pull/724), 
+   [#734](https://github.com/getsentry/sentry-native/pull/734))
+
+**Fixes**
+
+- Make Windows ModuleFinder more resilient to missing Debug Info 
+  ([#732](https://github.com/getsentry/sentry-native/pull/732))
+- Aligned pre-send event processing in `sentry_capture_event()` with the
+  [cross-SDK session filter order](https://develop.sentry.dev/sdk/sessions/#filter-order) 
+  ([#729](https://github.com/getsentry/sentry-native/pull/729))
+- Align the default value initialization for the `environment` payload attribute with the
+  [developer documentation](https://develop.sentry.dev/sdk/event-payloads/#optional-attribute)
+  ([#739](https://github.com/getsentry/sentry-native/pull/739))
+- Iterate all debug directory entries when parsing PE modules for a valid CodeView record
+  ([#740](https://github.com/getsentry/sentry-native/pull/740))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@espkk](https://github.com/espkk)
+
+## 0.4.18
+
+**Features**:
+
+- The crashpad backend now captures thread names. ([#725](https://github.com/getsentry/sentry-native/pull/725))
+- The inproc backend now captures the context registers. ([#714](https://github.com/getsentry/sentry-native/pull/714))
+- A new set of APIs to get the sentry SDK version at runtime. ([#726](https://github.com/getsentry/sentry-native/pull/726))
+- Add more convenient APIs to attach stack traces to exception or thread values. ([#723](https://github.com/getsentry/sentry-native/pull/723))
+- Allow disabling the crash reporting backend at runtime. ([#717](https://github.com/getsentry/sentry-native/pull/717))
+
+**Fixes**:
+
+- Improved heuristics flagging sessions as "crashed". ([#719](https://github.com/getsentry/sentry-native/pull/719))
+
+**Internal**:
+
+- Updated Breakpad and Crashpad backends to 2022-06-14. ([#725](https://github.com/getsentry/sentry-native/pull/725))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@olback](https://github.com/olback)
+
 ## 0.4.17
 
 **Fixes**:
