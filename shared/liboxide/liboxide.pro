@@ -41,4 +41,4 @@ exists($$PWD/../../.build/sentry) {
 target.path = /opt/usr/lib
 !isEmpty(target.path): INSTALLS += target
 
-VERSION = 2.4
+VERSION = 2.5

@@ -389,6 +389,14 @@ sentry_capture_event(sentry_value_t event)
     }
 }
 
+bool
+sentry__roll_dice(double probability)
+{
+    uint64_t rnd;
+    return probability >= 1.0 || sentry__getrandom(&rnd, sizeof(rnd))
+        || ((double)rnd / (double)UINT64_MAX) <= probability;
+}
+
 sentry_uuid_t
 sentry__capture_event(sentry_value_t event)
 {
@@ -403,7 +411,7 @@ sentry__capture_event(sentry_value_t event)
         if (sentry__event_is_transaction(event)) {
             envelope = sentry__prepare_transaction(options, event, &event_id);
         } else {
-            envelope = sentry__prepare_event(options, event, &event_id);
+            envelope = sentry__prepare_event(options, event, &event_id, true);
         }
         if (envelope) {
             if (options->session) {
@@ -416,22 +424,21 @@ sentry__capture_event(sentry_value_t event)
                 mut_options->session->init = false;
                 sentry__options_unlock();
             }
-            sentry__capture_envelope(options->transport, envelope);
-            was_sent = true;
+
+            bool should_skip = !sentry__roll_dice(options->sample_rate);
+            if (should_skip) {
+                SENTRY_DEBUG("throwing away event due to sample rate");
+                sentry_envelope_free(envelope);
+            } else {
+                sentry__capture_envelope(options->transport, envelope);
+                was_sent = true;
+            }
         }
     }
     if (!was_captured) {
         sentry_value_decref(event);
     }
     return was_sent ? event_id : sentry_uuid_nil();
-}
-
-bool
-sentry__roll_dice(double probability)
-{
-    uint64_t rnd;
-    return probability >= 1.0 || sentry__getrandom(&rnd, sizeof(rnd))
-        || ((double)rnd / (double)UINT64_MAX) <= probability;
 }
 
 bool
@@ -453,18 +460,12 @@ sentry__should_send_transaction(sentry_value_t tx_cxt)
 
 sentry_envelope_t *
 sentry__prepare_event(const sentry_options_t *options, sentry_value_t event,
-    sentry_uuid_t *event_id)
+    sentry_uuid_t *event_id, bool invoke_before_send)
 {
     sentry_envelope_t *envelope = NULL;
 
     if (event_is_considered_error(event)) {
         sentry__record_errors_on_current_session(1);
-    }
-
-    bool should_skip = !sentry__roll_dice(options->sample_rate);
-    if (should_skip) {
-        SENTRY_DEBUG("throwing away event due to sample rate");
-        goto fail;
     }
 
     SENTRY_WITH_SCOPE (scope) {
@@ -476,7 +477,7 @@ sentry__prepare_event(const sentry_options_t *options, sentry_value_t event,
         sentry__scope_apply_to_event(scope, options, event, mode);
     }
 
-    if (options->before_send_func) {
+    if (options->before_send_func && invoke_before_send) {
         SENTRY_TRACE("invoking `before_send` hook");
         event
             = options->before_send_func(event, NULL, options->before_send_data);

@@ -49,4 +49,4 @@ HEADERS += \
     json.h \
     slothandler.h
 
-VERSION = 2.3
+VERSION = 2.5
