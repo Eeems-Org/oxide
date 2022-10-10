@@ -104,4 +104,4 @@ DEPENDPATH += $$PWD/../../shared/liboxide
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
 
-VERSION = 2.3
+VERSION = 2.5
