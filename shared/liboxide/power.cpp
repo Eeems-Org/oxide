@@ -47,11 +47,13 @@ void _setup(){
     }
 }
 
-QList<SysObject>* batteries(){
-    _setup();
-    return _batteries;
-}
-QList<SysObject>* chargers(){
-    _setup();
-    return _chargers;
+namespace Oxide::Power {
+    const QList<SysObject>* batteries(){
+        _setup();
+        return _batteries;
+    }
+    const QList<SysObject>* chargers(){
+        _setup();
+        return _chargers;
+    }
 }

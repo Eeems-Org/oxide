@@ -5,8 +5,8 @@
 #include "sysobject.h"
 
 namespace Oxide::Power {
-    LIBOXIDE_EXPORT QList<SysObject>* batteries();
-    LIBOXIDE_EXPORT QList<SysObject>* chargers();
+    LIBOXIDE_EXPORT const QList<SysObject>* batteries();
+    LIBOXIDE_EXPORT const QList<SysObject>* chargers();
 }
 
 #endif // POWER_H

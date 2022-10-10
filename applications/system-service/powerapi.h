@@ -1,7 +1,7 @@
 #ifndef BATTERYAPI_H
 #define BATTERYAPI_H
 
-#include <liboxide/sysobject.h>
+#include <liboxide/power.h>
 
 #include <QObject>
 #include <QDebug>
@@ -40,6 +40,7 @@ public:
             });
             Oxide::Sentry::sentry_span(t, "sysfs", "Determine power devices from sysfs", [this](Oxide::Sentry::Span* s){
                 Oxide::Power::batteries();
+                Oxide::Power::chargers();
             });
             Oxide::Sentry::sentry_span(t, "update", "Update current state", [this]{
                 update();
@@ -60,7 +61,7 @@ public:
         delete timer;
     }
 
-    void setEnabled(bool enabled){
+    void setEnabled(bool enabled) override {
         if(enabled){
             timer->start();
         }else{
@@ -182,16 +183,16 @@ private:
         };
         return ret.contains(match);
     }
-    int batteryInt(QString property){
+    int batteryInt(const QString& property){
         int result = 0;
-        for(auto battery : Oxide::Power::batteries()){
+        for(SysObject battery : *Oxide::Power::batteries()){
             result += battery.intProperty(property.toStdString());
         }
         return result;
     }
-    int batteryIntMax(QString property){
+    int batteryIntMax(const QString& property){
         int result = 0;
-        for(auto battery : Oxide::Power::batteries()){
+        for(SysObject battery : *Oxide::Power::batteries()){
             int value = battery.intProperty(property.toStdString());
             if(value > result){
                 result = value;
@@ -200,11 +201,11 @@ private:
         return result;
     }
     int calcBatteryLevel(){
-        return batteryInt("capacity") / Oxide::Power::batteries().length();
+        return batteryInt("capacity") / Oxide::Power::batteries()->length();
     }
-    int chargerInt(QString property){
+    int chargerInt(const QString& property){
         int result = 0;
-        for(auto charger : Oxide::Power::chargers()){
+        for(SysObject charger : *Oxide::Power::chargers()){
             result += charger.intProperty(property.toStdString());
         }
         return result;
@@ -213,7 +214,7 @@ private:
         bool alert = false;
         bool warning = false;
         bool charging = false;
-        for(auto battery : Oxide::Power::batteries()){
+        for(SysObject battery : *Oxide::Power::batteries()){
             auto status = battery.strProperty("status");
             if(!charging && status == "Charging"){
                 charging = true;
@@ -241,14 +242,14 @@ private:
                 break;
             }
         }
-        std::array<bool, 3> state;
-        state[0] = charging;
-        state[1] = warning;
-        state[2] = alert;
-        return state;
+        std::array<bool, 3> _state;
+        _state[0] = charging;
+        _state[1] = warning;
+        _state[2] = alert;
+        return _state;
     }
     void updateBattery(){
-        if(!Oxide::Power::batteries().length()){
+        if(!Oxide::Power::batteries()->length()){
             if(m_batteryState != BatteryUnknown){
                 setBatteryState(BatteryUnknown);
             }
@@ -302,7 +303,7 @@ private:
         }
     }
     void updateCharger(){
-        if(!Oxide::Power::chargers().length()){
+        if(!Oxide::Power::chargers()->length()){
             if(m_chargerState != ChargerUnknown){
                 setChargerState(ChargerUnknown);
             }
