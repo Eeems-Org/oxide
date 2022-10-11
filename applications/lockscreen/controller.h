@@ -478,7 +478,7 @@ private:
     QSettings settings;
     General* api;
     System* systemApi;
-    Power* powerApi;
+    codes::eeems::oxide1::Power* powerApi;
     Wifi* wifiApi;
     Apps* appsApi;
     QTimer* clockTimer = nullptr;

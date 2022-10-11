@@ -20,7 +20,6 @@ SOURCES += \
     network.cpp \
     notification.cpp \
     screenshot.cpp \
-    sysobject.cpp \
     systemapi.cpp \
     wlan.cpp \
     wpa_supplicant.cpp \
@@ -66,7 +65,6 @@ HEADERS += \
     screenapi.h \
     screenshot.h \
     supplicant.h \
-    sysobject.h \
     systemapi.h \
     wifiapi.h \
     wlan.h \

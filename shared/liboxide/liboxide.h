@@ -7,6 +7,7 @@
 #include "liboxide_global.h"
 
 #include "settingsfile.h"
+#include "power.h"
 #include "signalhandler.h"
 
 #include <QDebug>

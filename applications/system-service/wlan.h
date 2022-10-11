@@ -4,9 +4,12 @@
 #include <QFileInfo>
 
 #include <liboxide.h>
+#include <liboxide/sysobject.h>
 
 #include "sysobject.h"
 #include "supplicant.h"
+
+using Oxide::SysObject;
 
 class Wlan : public QObject, public SysObject {
     Q_OBJECT

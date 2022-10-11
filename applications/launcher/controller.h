@@ -7,9 +7,9 @@
 #include <QMutableListIterator>
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
+#include <liboxide/sysobject.h>
 
 #include "appitem.h"
-#include "sysobject.h"
 #include "wifinetworklist.h"
 #include "notificationlist.h"
 #include "dbusservice_interface.h"
@@ -26,7 +26,9 @@
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 
 using namespace codes::eeems::oxide1;
-using namespace Oxide;
+using codes::eeems::oxide1::Power;
+using Oxide::SysObject;
+using Oxide::EventFilter;
 using namespace Oxide::Sentry;
 
 enum State { Normal, PowerSaving };
