@@ -1,3 +1,6 @@
+/*!
+ * \file power.h
+ */
 #ifndef POWER_H
 #define POWER_H
 
@@ -8,6 +11,11 @@
 
 #include "sysobject.h"
 
+using Oxide::SysObject;
+
+/*!
+ * \brief The Power API
+ */
 namespace Oxide::Power {
     /*!
      * \brief Get a list of battery objects
