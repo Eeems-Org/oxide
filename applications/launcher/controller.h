@@ -659,7 +659,7 @@ private:
     bool m_wifion;
     SysObject wifi;
     QTimer* uiTimer;
-    Power* powerApi = nullptr;
+    codes::eeems::oxide1::Power* powerApi = nullptr;
     Wifi* wifiApi = nullptr;
     System* systemApi = nullptr;
     Apps* appsApi = nullptr;
