@@ -107,29 +107,30 @@ namespace Oxide::Power {
         return false;
     }
     bool batteryPresent(){ return _batteryInt("present"); }
-    std::string batteryWarning(){
+    QList<QString> batteryWarning(){
+        QList<QString> warnings;
         for(SysObject battery : *Oxide::Power::batteries()){
             auto status = battery.strProperty("status");
             if(status == "Unknown" || status == ""){
-                return "Unknown status";
+                warnings.append(QString("Unknown status"));
             }
             if(!battery.hasProperty("health")){
                 continue;
             }
-            auto health = battery.strProperty("health");
-            if(_batteryWarnState.contains(QString(health.c_str()))){
-                return health;
+            auto health = QString(battery.strProperty("health").c_str());
+            if(_batteryWarnState.contains(health)){
+                warnings.append(health);
             }
         }
-        return "";
+        return warnings;
     }
-    std::string batteryAlert(){
+    QList<QString> batteryAlert(){
+        QList<QString> alerts;
         for(SysObject battery : *Oxide::Power::batteries()){
-            auto status = battery.strProperty("status");
             if(battery.hasProperty("health")){
-                auto health = battery.strProperty("health");
-                if(_batteryAlertState.contains(QString(health.c_str()))){
-                    return health;
+                auto health = QString(battery.strProperty("health").c_str());
+                if(_batteryAlertState.contains(health)){
+                    alerts.append(health);
                 }
             }
             if(!battery.hasProperty("temp")){
@@ -137,13 +138,13 @@ namespace Oxide::Power {
             }
             auto temp = battery.intProperty("temp");
             if(battery.hasProperty("temp_alert_max") && temp > battery.intProperty("temp_alert_max")){
-                return "Overheat";
+                alerts.append(QString("Overheat"));
             }
             if(battery.hasProperty("temp_alert_min") && temp < battery.intProperty("temp_alert_min")){
-                return "Cold";
+                alerts.append(QString("Cold"));
             }
         }
-        return "";
+        return alerts;
     }
     bool batteryHasWarning(){ return batteryWarning().length(); }
     bool batteryHasAlert(){ return batteryAlert().length(); }
