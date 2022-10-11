@@ -5,13 +5,12 @@
 #define POWER_H
 
 #include "liboxide_global.h"
+#include <liboxide/sysobject.h>
 
 #include <QList>
 #include <QString>
 
 #include "sysobject.h"
-
-using Oxide::SysObject;
 
 /*!
  * \brief The Power API
@@ -21,12 +20,12 @@ namespace Oxide::Power {
      * \brief Get a list of battery objects
      * \return The list of battery objects
      */
-    LIBOXIDE_EXPORT const QList<SysObject>* batteries();
+    LIBOXIDE_EXPORT const QList<Oxide::SysObject>* batteries();
     /*!
      * \brief Get a list of charger objects
      * \return The list of charger objects
      */
-    LIBOXIDE_EXPORT const QList<SysObject>* chargers();
+    LIBOXIDE_EXPORT const QList<Oxide::SysObject>* chargers();
     /*!
      * \brief Get the current battery level. This is averaged across the number of batteries connected to the device.
      * \return The current battery level

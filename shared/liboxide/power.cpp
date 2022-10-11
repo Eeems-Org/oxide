@@ -4,6 +4,8 @@
 #include <QDir>
 #include <QDebug>
 
+using Oxide::SysObject;
+
 QList<SysObject>* _batteries = nullptr;
 QList<SysObject>* _chargers = nullptr;
 
