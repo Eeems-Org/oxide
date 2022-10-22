@@ -1,4 +1,4 @@
-# Copyright 2014 Google Inc. All rights reserved.
+# Copyright 2014 Google LLC
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -10,7 +10,7 @@
 # copyright notice, this list of conditions and the following disclaimer
 # in the documentation and/or other materials provided with the
 # distribution.
-#     * Neither the name of Google Inc. nor the names of its
+#     * Neither the name of Google LLC nor the names of its
 # contributors may be used to endorse or promote products derived from
 # this software without specific prior written permission.
 #
@@ -163,6 +163,7 @@
         'memory_range.h',
         'module.cc',
         'module.h',
+        'safe_math.h',
         'scoped_ptr.h',
         'simple_string_dictionary.cc',
         'simple_string_dictionary.h',
@@ -233,6 +234,7 @@
         'memory_allocator_unittest.cc',
         'memory_range_unittest.cc',
         'module_unittest.cc',
+        'safe_math_unittest.cc',
         'simple_string_dictionary_unittest.cc',
         'stabs_reader_unittest.cc',
         'stabs_to_module_unittest.cc',

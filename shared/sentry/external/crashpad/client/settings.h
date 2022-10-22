@@ -1,4 +1,4 @@
-// Copyright 2015 The Crashpad Authors. All rights reserved.
+// Copyright 2015 The Crashpad Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,6 +36,14 @@ struct ScopedLockedFileHandleTraits {
   static FileHandle InvalidValue() { return kInvalidFileHandle; }
   static void Free(FileHandle handle);
 };
+
+// TODO(mark): The timeout should be configurable by the client.
+#if BUILDFLAG(IS_IOS)
+// iOS background assertions only last 30 seconds, keep the timeout shorter.
+constexpr double kUploadReportTimeoutSeconds = 20;
+#else
+constexpr double kUploadReportTimeoutSeconds = 60;
+#endif
 
 }  // namespace internal
 
