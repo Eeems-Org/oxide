@@ -1,7 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
-# Copyright (c) 2011, Google Inc.
-# All rights reserved.
+# Copyright 2011 Google LLC
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -13,7 +12,7 @@
 # copyright notice, this list of conditions and the following disclaimer
 # in the documentation and/or other materials provided with the
 # distribution.
-#     * Neither the name of Google Inc. nor the names of its
+#     * Neither the name of Google LLC nor the names of its
 # contributors may be used to endorse or promote products derived from
 # this software without specific prior written permission.
 #
@@ -130,6 +129,7 @@ EXTRA_PROGRAMS =
 CLEANFILES =
 
 check_LIBRARIES += src/testing/libtesting.a
+check_PROGRAMS += src/common/safe_math_unittest
 
 if !SYSTEM_TEST_LIBS
 src_testing_libtesting_a_SOURCES = \
@@ -237,6 +237,8 @@ src_libbreakpad_a_SOURCES = \
 	src/processor/contained_range_map.h \
 	src/processor/convert_old_arm64_context.cc \
 	src/processor/convert_old_arm64_context.h \
+	src/processor/disassembler_objdump.h \
+	src/processor/disassembler_objdump.cc \
 	src/processor/disassembler_x86.h \
 	src/processor/disassembler_x86.cc \
 	src/processor/dump_context.cc \
@@ -296,6 +298,10 @@ src_libbreakpad_a_SOURCES = \
 	src/processor/stackwalker_ppc.h \
 	src/processor/stackwalker_ppc64.cc \
 	src/processor/stackwalker_ppc64.h \
+	src/processor/stackwalker_riscv.cc \
+	src/processor/stackwalker_riscv.h \
+	src/processor/stackwalker_riscv64.cc \
+	src/processor/stackwalker_riscv64.h \
 	src/processor/stackwalker_sparc.cc \
 	src/processor/stackwalker_sparc.h \
 	src/processor/stackwalker_x86.cc \
@@ -386,6 +392,7 @@ check_PROGRAMS += \
 	src/processor/basic_source_line_resolver_unittest \
 	src/processor/cfi_frame_info_unittest \
 	src/processor/contained_range_map_unittest \
+	src/processor/disassembler_objdump_unittest \
 	src/processor/disassembler_x86_unittest \
 	src/processor/exploitability_unittest \
 	src/processor/fast_source_line_resolver_unittest \
@@ -409,6 +416,8 @@ check_PROGRAMS += \
 	src/processor/stackwalker_address_list_unittest \
 	src/processor/stackwalker_mips_unittest \
 	src/processor/stackwalker_mips64_unittest \
+	src/processor/stackwalker_riscv_unittest \
+	src/processor/stackwalker_riscv64_unittest \
 	src/processor/stackwalker_x86_unittest \
 	src/processor/synth_minidump_unittest
 endif
@@ -690,6 +699,15 @@ src_tools_mac_dump_syms_dump_syms_mac_CXXFLAGS= \
 src_tools_mac_dump_syms_dump_syms_mac_LDADD= \
 	$(RUSTC_DEMANGLE_LIBS)
 
+src_common_safe_math_unittest_SOURCES = \
+	src/common/safe_math.h \
+	src/common/safe_math_unittest.cc
+src_common_safe_math_unittest_CPPFLAGS = \
+	$(AM_CPPFLAGS) $(TEST_CFLAGS)
+src_common_safe_math_unittest_LDADD = \
+	$(TEST_LIBS) \
+	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
+
 src_common_dumper_unittest_SOURCES = \
 	src/common/byte_cursor_unittest.cc \
 	src/common/convert_UTF.cc \
@@ -858,6 +876,7 @@ src_processor_exploitability_unittest_LDADD = \
 	src/processor/convert_old_arm64_context.o \
 	src/processor/minidump_processor.o \
 	src/processor/process_state.o \
+	src/processor/disassembler_objdump.o \
 	src/processor/disassembler_x86.o \
 	src/processor/exploitability.o \
 	src/processor/exploitability_linux.o \
@@ -884,11 +903,26 @@ src_processor_exploitability_unittest_LDADD = \
 	src/processor/stackwalker_mips.o \
 	src/processor/stackwalker_ppc.o \
 	src/processor/stackwalker_ppc64.o \
+	src/processor/stackwalker_riscv.o \
+	src/processor/stackwalker_riscv64.o \
 	src/processor/stackwalker_sparc.o \
 	src/processor/stackwalker_x86.o \
 	src/processor/symbolic_constants_win.o \
 	src/processor/tokenize.o \
 	src/third_party/libdisasm/libdisasm.a \
+	$(TEST_LIBS) \
+	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
+
+src_processor_disassembler_objdump_unittest_SOURCES = \
+	src/processor/disassembler_objdump_unittest.cc
+src_processor_disassembler_objdump_unittest_CPPFLAGS = \
+	$(AM_CPPFLAGS) $(TEST_CFLAGS)
+src_processor_disassembler_objdump_unittest_LDADD = \
+	src/processor/disassembler_objdump.o \
+	src/processor/dump_context.o \
+	src/processor/dump_object.o \
+	src/processor/logging.o \
+	src/processor/pathname_stripper.o \
 	$(TEST_LIBS) \
 	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
 
@@ -957,6 +991,8 @@ src_processor_microdump_processor_unittest_LDADD = \
 	src/processor/stackwalker_mips.o \
 	src/processor/stackwalker_ppc.o \
 	src/processor/stackwalker_ppc64.o \
+	src/processor/stackwalker_riscv.o \
+	src/processor/stackwalker_riscv64.o \
 	src/processor/stackwalker_sparc.o \
 	src/processor/stackwalker_x86.o \
 	src/processor/tokenize.o \
@@ -973,6 +1009,7 @@ src_processor_minidump_processor_unittest_LDADD = \
 	src/processor/call_stack.o \
 	src/processor/cfi_frame_info.o \
 	src/processor/convert_old_arm64_context.o \
+	src/processor/disassembler_objdump.o \
 	src/processor/disassembler_x86.o \
 	src/processor/dump_context.o \
 	src/processor/dump_object.o \
@@ -996,6 +1033,8 @@ src_processor_minidump_processor_unittest_LDADD = \
 	src/processor/stackwalker_mips.o \
 	src/processor/stackwalker_ppc.o \
 	src/processor/stackwalker_ppc64.o \
+	src/processor/stackwalker_riscv.o \
+	src/processor/stackwalker_riscv64.o \
 	src/processor/stackwalker_sparc.o \
 	src/processor/stackwalker_x86.o \
 	src/processor/symbolic_constants_win.o \
@@ -1120,6 +1159,7 @@ src_processor_stackwalker_selftest_LDADD = \
 	src/processor/basic_code_modules.o \
 	src/processor/basic_source_line_resolver.o \
 	src/processor/call_stack.o \
+	src/processor/disassembler_objdump.o \
 	src/processor/disassembler_x86.o \
 	src/processor/exploitability.o \
 	src/processor/exploitability_linux.o \
@@ -1139,6 +1179,8 @@ src_processor_stackwalker_selftest_LDADD = \
 	src/processor/stackwalker_mips.o \
 	src/processor/stackwalker_ppc.o \
 	src/processor/stackwalker_ppc64.o \
+	src/processor/stackwalker_riscv.o \
+	src/processor/stackwalker_riscv64.o \
 	src/processor/stackwalker_sparc.o \
 	src/processor/stackwalker_x86.o \
 	src/processor/tokenize.o \
@@ -1202,6 +1244,26 @@ src_processor_stackwalker_mips64_unittest_LDADD = \
 	$(TEST_LIBS) \
 	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
 src_processor_stackwalker_mips64_unittest_CPPFLAGS = \
+	$(AM_CPPFLAGS) $(TEST_CFLAGS)
+
+src_processor_stackwalker_riscv_unittest_SOURCES = \
+	src/common/test_assembler.cc \
+	src/processor/stackwalker_riscv_unittest.cc
+src_processor_stackwalker_riscv_unittest_LDADD = \
+	src/libbreakpad.a \
+	$(TEST_LIBS) \
+	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
+src_processor_stackwalker_riscv_unittest_CPPFLAGS = \
+	$(AM_CPPFLAGS) $(TEST_CFLAGS)
+
+src_processor_stackwalker_riscv64_unittest_SOURCES = \
+	src/common/test_assembler.cc \
+	src/processor/stackwalker_riscv64_unittest.cc
+src_processor_stackwalker_riscv64_unittest_LDADD = \
+	src/libbreakpad.a \
+	$(TEST_LIBS) \
+	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
+src_processor_stackwalker_riscv64_unittest_CPPFLAGS = \
 	$(AM_CPPFLAGS) $(TEST_CFLAGS)
 
 src_processor_stackwalker_x86_unittest_SOURCES = \
@@ -1307,6 +1369,8 @@ src_processor_microdump_stackwalk_LDADD = \
 	src/processor/stackwalker_mips.o \
 	src/processor/stackwalker_ppc.o \
 	src/processor/stackwalker_ppc64.o \
+	src/processor/stackwalker_riscv.o \
+	src/processor/stackwalker_riscv64.o \
 	src/processor/stackwalker_sparc.o \
 	src/processor/stackwalker_x86.o \
 	src/processor/tokenize.o \
@@ -1321,6 +1385,7 @@ src_processor_minidump_stackwalk_LDADD = \
 	src/processor/call_stack.o \
 	src/processor/cfi_frame_info.o \
 	src/processor/convert_old_arm64_context.o \
+	src/processor/disassembler_objdump.o \
 	src/processor/disassembler_x86.o \
 	src/processor/dump_context.o \
 	src/processor/dump_object.o \
@@ -1346,6 +1411,8 @@ src_processor_minidump_stackwalk_LDADD = \
 	src/processor/stackwalker_mips.o \
 	src/processor/stackwalker_ppc.o \
 	src/processor/stackwalker_ppc64.o \
+	src/processor/stackwalker_riscv.o \
+	src/processor/stackwalker_riscv64.o \
 	src/processor/stackwalker_sparc.o \
 	src/processor/stackwalker_x86.o \
 	src/processor/symbolic_constants_win.o \

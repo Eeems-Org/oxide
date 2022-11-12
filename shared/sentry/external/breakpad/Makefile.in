@@ -14,8 +14,7 @@
 
 @SET_MAKE@
 
-# Copyright (c) 2011, Google Inc.
-# All rights reserved.
+# Copyright 2011 Google LLC
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -27,7 +26,7 @@
 # copyright notice, this list of conditions and the following disclaimer
 # in the documentation and/or other materials provided with the
 # distribution.
-#     * Neither the name of Google Inc. nor the names of its
+#     * Neither the name of Google LLC nor the names of its
 # contributors may be used to endorse or promote products derived from
 # this software without specific prior written permission.
 #
@@ -134,7 +133,8 @@ host_triplet = @host@
 @LINUX_HOST_TRUE@am__append_3 = -fPIC
 libexec_PROGRAMS = $(am__EXEEXT_10)
 bin_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3) $(am__EXEEXT_4)
-check_PROGRAMS = $(am__EXEEXT_5) $(am__EXEEXT_6) $(am__EXEEXT_7) \
+check_PROGRAMS = src/common/safe_math_unittest$(EXEEXT) \
+	$(am__EXEEXT_5) $(am__EXEEXT_6) $(am__EXEEXT_7) \
 	$(am__EXEEXT_8) $(am__EXEEXT_9)
 EXTRA_PROGRAMS = $(am__EXEEXT_1)
 @DISABLE_PROCESSOR_FALSE@am__append_4 = src/libbreakpad.a
@@ -176,6 +176,7 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1)
 @DISABLE_PROCESSOR_FALSE@	src/processor/basic_source_line_resolver_unittest \
 @DISABLE_PROCESSOR_FALSE@	src/processor/cfi_frame_info_unittest \
 @DISABLE_PROCESSOR_FALSE@	src/processor/contained_range_map_unittest \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump_unittest \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86_unittest \
 @DISABLE_PROCESSOR_FALSE@	src/processor/exploitability_unittest \
 @DISABLE_PROCESSOR_FALSE@	src/processor/fast_source_line_resolver_unittest \
@@ -199,6 +200,8 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1)
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_address_list_unittest \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips_unittest \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips64_unittest \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv_unittest \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64_unittest \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86_unittest \
 @DISABLE_PROCESSOR_FALSE@	src/processor/synth_minidump_unittest
 
@@ -276,6 +279,7 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" \
 @DISABLE_PROCESSOR_FALSE@	src/processor/basic_source_line_resolver_unittest$(EXEEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/cfi_frame_info_unittest$(EXEEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/contained_range_map_unittest$(EXEEXT) \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump_unittest$(EXEEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86_unittest$(EXEEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/exploitability_unittest$(EXEEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/fast_source_line_resolver_unittest$(EXEEXT) \
@@ -299,6 +303,8 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_address_list_unittest$(EXEEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips_unittest$(EXEEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips64_unittest$(EXEEXT) \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv_unittest$(EXEEXT) \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64_unittest$(EXEEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86_unittest$(EXEEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/synth_minidump_unittest$(EXEEXT)
 @LINUX_HOST_TRUE@am__EXEEXT_6 = src/client/linux/linux_client_unittest$(EXEEXT) \
@@ -445,6 +451,8 @@ am__src_libbreakpad_a_SOURCES_DIST =  \
 	src/processor/contained_range_map.h \
 	src/processor/convert_old_arm64_context.cc \
 	src/processor/convert_old_arm64_context.h \
+	src/processor/disassembler_objdump.h \
+	src/processor/disassembler_objdump.cc \
 	src/processor/disassembler_x86.h \
 	src/processor/disassembler_x86.cc \
 	src/processor/dump_context.cc src/processor/dump_object.cc \
@@ -496,6 +504,10 @@ am__src_libbreakpad_a_SOURCES_DIST =  \
 	src/processor/stackwalker_ppc.h \
 	src/processor/stackwalker_ppc64.cc \
 	src/processor/stackwalker_ppc64.h \
+	src/processor/stackwalker_riscv.cc \
+	src/processor/stackwalker_riscv.h \
+	src/processor/stackwalker_riscv64.cc \
+	src/processor/stackwalker_riscv64.h \
 	src/processor/stackwalker_sparc.cc \
 	src/processor/stackwalker_sparc.h \
 	src/processor/stackwalker_x86.cc \
@@ -517,6 +529,7 @@ am__src_libbreakpad_a_SOURCES_DIST =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/call_stack.$(OBJEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/cfi_frame_info.$(OBJEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/convert_old_arm64_context.$(OBJEXT) \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.$(OBJEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.$(OBJEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_context.$(OBJEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_object.$(OBJEXT) \
@@ -547,6 +560,8 @@ am__src_libbreakpad_a_SOURCES_DIST =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.$(OBJEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.$(OBJEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.$(OBJEXT) \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.$(OBJEXT) \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.$(OBJEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.$(OBJEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.$(OBJEXT) \
 @DISABLE_PROCESSOR_FALSE@	src/processor/symbolic_constants_win.$(OBJEXT) \
@@ -888,6 +903,15 @@ src_common_mac_macho_reader_unittest_OBJECTS =  \
 @DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	$(am__DEPENDENCIES_2) \
 @DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	$(am__DEPENDENCIES_1) \
 @DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	$(am__DEPENDENCIES_1)
+am__src_common_safe_math_unittest_SOURCES_DIST =  \
+	src/common/safe_math.h src/common/safe_math_unittest.cc
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@am_src_common_safe_math_unittest_OBJECTS = src/common/safe_math_unittest-safe_math_unittest.$(OBJEXT)
+src_common_safe_math_unittest_OBJECTS =  \
+	$(am_src_common_safe_math_unittest_OBJECTS)
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@src_common_safe_math_unittest_DEPENDENCIES =  \
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	$(am__DEPENDENCIES_2) \
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	$(am__DEPENDENCIES_1) \
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	$(am__DEPENDENCIES_1)
 am__src_common_test_assembler_unittest_SOURCES_DIST =  \
 	src/common/test_assembler.cc src/common/test_assembler.h \
 	src/common/test_assembler_unittest.cc
@@ -940,6 +964,20 @@ src_processor_contained_range_map_unittest_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@src_processor_contained_range_map_unittest_DEPENDENCIES =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/logging.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/pathname_stripper.o
+am__src_processor_disassembler_objdump_unittest_SOURCES_DIST =  \
+	src/processor/disassembler_objdump_unittest.cc
+@DISABLE_PROCESSOR_FALSE@am_src_processor_disassembler_objdump_unittest_OBJECTS = src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.$(OBJEXT)
+src_processor_disassembler_objdump_unittest_OBJECTS =  \
+	$(am_src_processor_disassembler_objdump_unittest_OBJECTS)
+@DISABLE_PROCESSOR_FALSE@src_processor_disassembler_objdump_unittest_DEPENDENCIES =  \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/dump_context.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/dump_object.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/logging.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/pathname_stripper.o \
+@DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_2) \
+@DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_1) \
+@DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_1)
 am__src_processor_disassembler_x86_unittest_SOURCES_DIST =  \
 	src/processor/disassembler_x86_unittest.cc
 @DISABLE_PROCESSOR_FALSE@am_src_processor_disassembler_x86_unittest_OBJECTS = src/processor/disassembler_x86_unittest-disassembler_x86_unittest.$(OBJEXT)
@@ -959,6 +997,7 @@ src_processor_exploitability_unittest_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@src_processor_exploitability_unittest_DEPENDENCIES = src/processor/convert_old_arm64_context.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/minidump_processor.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/process_state.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/exploitability.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/exploitability_linux.o \
@@ -985,6 +1024,8 @@ src_processor_exploitability_unittest_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/symbolic_constants_win.o \
@@ -1049,6 +1090,8 @@ src_processor_microdump_processor_unittest_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/tokenize.o \
@@ -1088,6 +1131,8 @@ src_processor_microdump_stackwalk_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/tokenize.o \
@@ -1118,6 +1163,7 @@ src_processor_minidump_processor_unittest_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/call_stack.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/cfi_frame_info.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/convert_old_arm64_context.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_context.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_object.o \
@@ -1141,6 +1187,8 @@ src_processor_minidump_processor_unittest_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/symbolic_constants_win.o \
@@ -1161,6 +1209,7 @@ src_processor_minidump_stackwalk_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/call_stack.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/cfi_frame_info.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/convert_old_arm64_context.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_context.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_object.o \
@@ -1186,6 +1235,8 @@ src_processor_minidump_stackwalk_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/symbolic_constants_win.o \
@@ -1349,6 +1400,30 @@ src_processor_stackwalker_mips_unittest_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_2) \
 @DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_1) \
 @DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_1)
+am__src_processor_stackwalker_riscv64_unittest_SOURCES_DIST =  \
+	src/common/test_assembler.cc \
+	src/processor/stackwalker_riscv64_unittest.cc
+@DISABLE_PROCESSOR_FALSE@am_src_processor_stackwalker_riscv64_unittest_OBJECTS = src/common/processor_stackwalker_riscv64_unittest-test_assembler.$(OBJEXT) \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.$(OBJEXT)
+src_processor_stackwalker_riscv64_unittest_OBJECTS =  \
+	$(am_src_processor_stackwalker_riscv64_unittest_OBJECTS)
+@DISABLE_PROCESSOR_FALSE@src_processor_stackwalker_riscv64_unittest_DEPENDENCIES =  \
+@DISABLE_PROCESSOR_FALSE@	src/libbreakpad.a \
+@DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_2) \
+@DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_1) \
+@DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_1)
+am__src_processor_stackwalker_riscv_unittest_SOURCES_DIST =  \
+	src/common/test_assembler.cc \
+	src/processor/stackwalker_riscv_unittest.cc
+@DISABLE_PROCESSOR_FALSE@am_src_processor_stackwalker_riscv_unittest_OBJECTS = src/common/processor_stackwalker_riscv_unittest-test_assembler.$(OBJEXT) \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.$(OBJEXT)
+src_processor_stackwalker_riscv_unittest_OBJECTS =  \
+	$(am_src_processor_stackwalker_riscv_unittest_OBJECTS)
+@DISABLE_PROCESSOR_FALSE@src_processor_stackwalker_riscv_unittest_DEPENDENCIES =  \
+@DISABLE_PROCESSOR_FALSE@	src/libbreakpad.a \
+@DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_2) \
+@DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_1) \
+@DISABLE_PROCESSOR_FALSE@	$(am__DEPENDENCIES_1)
 am__src_processor_stackwalker_selftest_SOURCES_DIST =  \
 	src/processor/stackwalker_selftest.cc
 @DISABLE_PROCESSOR_FALSE@am_src_processor_stackwalker_selftest_OBJECTS = src/processor/stackwalker_selftest.$(OBJEXT)
@@ -1358,6 +1433,7 @@ src_processor_stackwalker_selftest_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/basic_code_modules.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/basic_source_line_resolver.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/call_stack.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/exploitability.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/exploitability_linux.o \
@@ -1377,6 +1453,8 @@ src_processor_stackwalker_selftest_OBJECTS =  \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/tokenize.o \
@@ -1699,8 +1777,11 @@ am__depfiles_remade = src/client/$(DEPDIR)/minidump_file_writer.Po \
 	src/common/$(DEPDIR)/processor_stackwalker_arm_unittest-test_assembler.Po \
 	src/common/$(DEPDIR)/processor_stackwalker_mips64_unittest-test_assembler.Po \
 	src/common/$(DEPDIR)/processor_stackwalker_mips_unittest-test_assembler.Po \
+	src/common/$(DEPDIR)/processor_stackwalker_riscv64_unittest-test_assembler.Po \
+	src/common/$(DEPDIR)/processor_stackwalker_riscv_unittest-test_assembler.Po \
 	src/common/$(DEPDIR)/processor_stackwalker_x86_unittest-test_assembler.Po \
 	src/common/$(DEPDIR)/processor_synth_minidump_unittest-test_assembler.Po \
+	src/common/$(DEPDIR)/safe_math_unittest-safe_math_unittest.Po \
 	src/common/$(DEPDIR)/string_conversion.Po \
 	src/common/$(DEPDIR)/test_assembler_unittest-test_assembler.Po \
 	src/common/$(DEPDIR)/test_assembler_unittest-test_assembler_unittest.Po \
@@ -1827,6 +1908,8 @@ am__depfiles_remade = src/client/$(DEPDIR)/minidump_file_writer.Po \
 	src/processor/$(DEPDIR)/client_linux_linux_client_unittest_shlib-proc_maps_linux.Po \
 	src/processor/$(DEPDIR)/contained_range_map_unittest.Po \
 	src/processor/$(DEPDIR)/convert_old_arm64_context.Po \
+	src/processor/$(DEPDIR)/disassembler_objdump.Po \
+	src/processor/$(DEPDIR)/disassembler_objdump_unittest-disassembler_objdump_unittest.Po \
 	src/processor/$(DEPDIR)/disassembler_x86.Po \
 	src/processor/$(DEPDIR)/disassembler_x86_unittest-disassembler_x86_unittest.Po \
 	src/processor/$(DEPDIR)/dump_context.Po \
@@ -1881,6 +1964,10 @@ am__depfiles_remade = src/client/$(DEPDIR)/minidump_file_writer.Po \
 	src/processor/$(DEPDIR)/stackwalker_mips_unittest-stackwalker_mips_unittest.Po \
 	src/processor/$(DEPDIR)/stackwalker_ppc.Po \
 	src/processor/$(DEPDIR)/stackwalker_ppc64.Po \
+	src/processor/$(DEPDIR)/stackwalker_riscv.Po \
+	src/processor/$(DEPDIR)/stackwalker_riscv64.Po \
+	src/processor/$(DEPDIR)/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.Po \
+	src/processor/$(DEPDIR)/stackwalker_riscv_unittest-stackwalker_riscv_unittest.Po \
 	src/processor/$(DEPDIR)/stackwalker_selftest.Po \
 	src/processor/$(DEPDIR)/stackwalker_sparc.Po \
 	src/processor/$(DEPDIR)/stackwalker_x86.Po \
@@ -1970,11 +2057,13 @@ SOURCES = $(src_client_linux_libbreakpad_client_a_SOURCES) \
 	$(src_common_dwarf_dwarf2reader_splitfunctions_unittest_SOURCES) \
 	$(src_common_linux_google_crashdump_uploader_test_SOURCES) \
 	$(src_common_mac_macho_reader_unittest_SOURCES) \
+	$(src_common_safe_math_unittest_SOURCES) \
 	$(src_common_test_assembler_unittest_SOURCES) \
 	$(src_processor_address_map_unittest_SOURCES) \
 	$(src_processor_basic_source_line_resolver_unittest_SOURCES) \
 	$(src_processor_cfi_frame_info_unittest_SOURCES) \
 	$(src_processor_contained_range_map_unittest_SOURCES) \
+	$(src_processor_disassembler_objdump_unittest_SOURCES) \
 	$(src_processor_disassembler_x86_unittest_SOURCES) \
 	$(src_processor_exploitability_unittest_SOURCES) \
 	$(src_processor_fast_source_line_resolver_unittest_SOURCES) \
@@ -1997,6 +2086,8 @@ SOURCES = $(src_client_linux_libbreakpad_client_a_SOURCES) \
 	$(src_processor_stackwalker_arm_unittest_SOURCES) \
 	$(src_processor_stackwalker_mips64_unittest_SOURCES) \
 	$(src_processor_stackwalker_mips_unittest_SOURCES) \
+	$(src_processor_stackwalker_riscv64_unittest_SOURCES) \
+	$(src_processor_stackwalker_riscv_unittest_SOURCES) \
 	$(src_processor_stackwalker_selftest_SOURCES) \
 	$(src_processor_stackwalker_x86_unittest_SOURCES) \
 	$(src_processor_static_address_map_unittest_SOURCES) \
@@ -2026,11 +2117,13 @@ DIST_SOURCES =  \
 	$(am__src_common_dwarf_dwarf2reader_splitfunctions_unittest_SOURCES_DIST) \
 	$(am__src_common_linux_google_crashdump_uploader_test_SOURCES_DIST) \
 	$(am__src_common_mac_macho_reader_unittest_SOURCES_DIST) \
+	$(am__src_common_safe_math_unittest_SOURCES_DIST) \
 	$(am__src_common_test_assembler_unittest_SOURCES_DIST) \
 	$(am__src_processor_address_map_unittest_SOURCES_DIST) \
 	$(am__src_processor_basic_source_line_resolver_unittest_SOURCES_DIST) \
 	$(am__src_processor_cfi_frame_info_unittest_SOURCES_DIST) \
 	$(am__src_processor_contained_range_map_unittest_SOURCES_DIST) \
+	$(am__src_processor_disassembler_objdump_unittest_SOURCES_DIST) \
 	$(am__src_processor_disassembler_x86_unittest_SOURCES_DIST) \
 	$(am__src_processor_exploitability_unittest_SOURCES_DIST) \
 	$(am__src_processor_fast_source_line_resolver_unittest_SOURCES_DIST) \
@@ -2053,6 +2146,8 @@ DIST_SOURCES =  \
 	$(am__src_processor_stackwalker_arm_unittest_SOURCES_DIST) \
 	$(am__src_processor_stackwalker_mips64_unittest_SOURCES_DIST) \
 	$(am__src_processor_stackwalker_mips_unittest_SOURCES_DIST) \
+	$(am__src_processor_stackwalker_riscv64_unittest_SOURCES_DIST) \
+	$(am__src_processor_stackwalker_riscv_unittest_SOURCES_DIST) \
 	$(am__src_processor_stackwalker_selftest_SOURCES_DIST) \
 	$(am__src_processor_stackwalker_x86_unittest_SOURCES_DIST) \
 	$(am__src_processor_static_address_map_unittest_SOURCES_DIST) \
@@ -2351,7 +2446,7 @@ GMOCK_LIBS = @GMOCK_LIBS@
 GREP = @GREP@
 GTEST_CFLAGS = @GTEST_CFLAGS@
 GTEST_LIBS = @GTEST_LIBS@
-HAVE_CXX11 = @HAVE_CXX11@
+HAVE_CXX17 = @HAVE_CXX17@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -2581,6 +2676,8 @@ CLEANFILES = $(am__append_12)
 @DISABLE_PROCESSOR_FALSE@	src/processor/contained_range_map.h \
 @DISABLE_PROCESSOR_FALSE@	src/processor/convert_old_arm64_context.cc \
 @DISABLE_PROCESSOR_FALSE@	src/processor/convert_old_arm64_context.h \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.h \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.cc \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.h \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.cc \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_context.cc \
@@ -2640,6 +2737,10 @@ CLEANFILES = $(am__append_12)
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.h \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.cc \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.h \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.cc \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.h \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.cc \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.h \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.cc \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.h \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.cc \
@@ -2909,6 +3010,17 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@src_tools_mac_dump_syms_dump_syms_mac_LDADD = \
 @DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	$(RUSTC_DEMANGLE_LIBS)
 
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@src_common_safe_math_unittest_SOURCES = \
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	src/common/safe_math.h \
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	src/common/safe_math_unittest.cc
+
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@src_common_safe_math_unittest_CPPFLAGS = \
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	$(AM_CPPFLAGS) $(TEST_CFLAGS)
+
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@src_common_safe_math_unittest_LDADD = \
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	$(TEST_LIBS) \
+@DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
+
 @DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@src_common_dumper_unittest_SOURCES = \
 @DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	src/common/byte_cursor_unittest.cc \
 @DISABLE_TOOLS_FALSE@@LINUX_HOST_TRUE@	src/common/convert_UTF.cc \
@@ -3089,6 +3201,7 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	src/processor/convert_old_arm64_context.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/minidump_processor.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/process_state.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/exploitability.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/exploitability_linux.o \
@@ -3115,11 +3228,28 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/symbolic_constants_win.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/tokenize.o \
 @DISABLE_PROCESSOR_FALSE@	src/third_party/libdisasm/libdisasm.a \
+@DISABLE_PROCESSOR_FALSE@	$(TEST_LIBS) \
+@DISABLE_PROCESSOR_FALSE@	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
+
+@DISABLE_PROCESSOR_FALSE@src_processor_disassembler_objdump_unittest_SOURCES = \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump_unittest.cc
+
+@DISABLE_PROCESSOR_FALSE@src_processor_disassembler_objdump_unittest_CPPFLAGS = \
+@DISABLE_PROCESSOR_FALSE@	$(AM_CPPFLAGS) $(TEST_CFLAGS)
+
+@DISABLE_PROCESSOR_FALSE@src_processor_disassembler_objdump_unittest_LDADD = \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/dump_context.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/dump_object.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/logging.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/pathname_stripper.o \
 @DISABLE_PROCESSOR_FALSE@	$(TEST_LIBS) \
 @DISABLE_PROCESSOR_FALSE@	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
 
@@ -3196,6 +3326,8 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/tokenize.o \
@@ -3214,6 +3346,7 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	src/processor/call_stack.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/cfi_frame_info.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/convert_old_arm64_context.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_context.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_object.o \
@@ -3237,6 +3370,8 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/symbolic_constants_win.o \
@@ -3381,6 +3516,7 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	src/processor/basic_code_modules.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/basic_source_line_resolver.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/call_stack.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/exploitability.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/exploitability_linux.o \
@@ -3400,6 +3536,8 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/tokenize.o \
@@ -3475,6 +3613,30 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
 
 @DISABLE_PROCESSOR_FALSE@src_processor_stackwalker_mips64_unittest_CPPFLAGS = \
+@DISABLE_PROCESSOR_FALSE@	$(AM_CPPFLAGS) $(TEST_CFLAGS)
+
+@DISABLE_PROCESSOR_FALSE@src_processor_stackwalker_riscv_unittest_SOURCES = \
+@DISABLE_PROCESSOR_FALSE@	src/common/test_assembler.cc \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv_unittest.cc
+
+@DISABLE_PROCESSOR_FALSE@src_processor_stackwalker_riscv_unittest_LDADD = \
+@DISABLE_PROCESSOR_FALSE@	src/libbreakpad.a \
+@DISABLE_PROCESSOR_FALSE@	$(TEST_LIBS) \
+@DISABLE_PROCESSOR_FALSE@	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
+
+@DISABLE_PROCESSOR_FALSE@src_processor_stackwalker_riscv_unittest_CPPFLAGS = \
+@DISABLE_PROCESSOR_FALSE@	$(AM_CPPFLAGS) $(TEST_CFLAGS)
+
+@DISABLE_PROCESSOR_FALSE@src_processor_stackwalker_riscv64_unittest_SOURCES = \
+@DISABLE_PROCESSOR_FALSE@	src/common/test_assembler.cc \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64_unittest.cc
+
+@DISABLE_PROCESSOR_FALSE@src_processor_stackwalker_riscv64_unittest_LDADD = \
+@DISABLE_PROCESSOR_FALSE@	src/libbreakpad.a \
+@DISABLE_PROCESSOR_FALSE@	$(TEST_LIBS) \
+@DISABLE_PROCESSOR_FALSE@	$(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
+
+@DISABLE_PROCESSOR_FALSE@src_processor_stackwalker_riscv64_unittest_CPPFLAGS = \
 @DISABLE_PROCESSOR_FALSE@	$(AM_CPPFLAGS) $(TEST_CFLAGS)
 
 @DISABLE_PROCESSOR_FALSE@src_processor_stackwalker_x86_unittest_SOURCES = \
@@ -3589,6 +3751,8 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/tokenize.o \
@@ -3604,6 +3768,7 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	src/processor/call_stack.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/cfi_frame_info.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/convert_old_arm64_context.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_objdump.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/disassembler_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_context.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/dump_object.o \
@@ -3629,6 +3794,8 @@ TESTS = $(check_PROGRAMS) $(check_SCRIPTS)
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_mips.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_ppc64.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv.o \
+@DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_riscv64.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_sparc.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/stackwalker_x86.o \
 @DISABLE_PROCESSOR_FALSE@	src/processor/symbolic_constants_win.o \
@@ -4237,6 +4404,9 @@ src/processor/cfi_frame_info.$(OBJEXT): src/processor/$(am__dirstamp) \
 src/processor/convert_old_arm64_context.$(OBJEXT):  \
 	src/processor/$(am__dirstamp) \
 	src/processor/$(DEPDIR)/$(am__dirstamp)
+src/processor/disassembler_objdump.$(OBJEXT):  \
+	src/processor/$(am__dirstamp) \
+	src/processor/$(DEPDIR)/$(am__dirstamp)
 src/processor/disassembler_x86.$(OBJEXT):  \
 	src/processor/$(am__dirstamp) \
 	src/processor/$(DEPDIR)/$(am__dirstamp)
@@ -4317,6 +4487,12 @@ src/processor/stackwalker_ppc.$(OBJEXT):  \
 	src/processor/$(am__dirstamp) \
 	src/processor/$(DEPDIR)/$(am__dirstamp)
 src/processor/stackwalker_ppc64.$(OBJEXT):  \
+	src/processor/$(am__dirstamp) \
+	src/processor/$(DEPDIR)/$(am__dirstamp)
+src/processor/stackwalker_riscv.$(OBJEXT):  \
+	src/processor/$(am__dirstamp) \
+	src/processor/$(DEPDIR)/$(am__dirstamp)
+src/processor/stackwalker_riscv64.$(OBJEXT):  \
 	src/processor/$(am__dirstamp) \
 	src/processor/$(DEPDIR)/$(am__dirstamp)
 src/processor/stackwalker_sparc.$(OBJEXT):  \
@@ -4800,6 +4976,13 @@ src/common/tests/mac_macho_reader_unittest-file_utils.$(OBJEXT):  \
 src/common/mac/macho_reader_unittest$(EXEEXT): $(src_common_mac_macho_reader_unittest_OBJECTS) $(src_common_mac_macho_reader_unittest_DEPENDENCIES) $(EXTRA_src_common_mac_macho_reader_unittest_DEPENDENCIES) src/common/mac/$(am__dirstamp)
 	@rm -f src/common/mac/macho_reader_unittest$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(src_common_mac_macho_reader_unittest_OBJECTS) $(src_common_mac_macho_reader_unittest_LDADD) $(LIBS)
+src/common/safe_math_unittest-safe_math_unittest.$(OBJEXT):  \
+	src/common/$(am__dirstamp) \
+	src/common/$(DEPDIR)/$(am__dirstamp)
+
+src/common/safe_math_unittest$(EXEEXT): $(src_common_safe_math_unittest_OBJECTS) $(src_common_safe_math_unittest_DEPENDENCIES) $(EXTRA_src_common_safe_math_unittest_DEPENDENCIES) src/common/$(am__dirstamp)
+	@rm -f src/common/safe_math_unittest$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(src_common_safe_math_unittest_OBJECTS) $(src_common_safe_math_unittest_LDADD) $(LIBS)
 src/common/test_assembler_unittest-test_assembler.$(OBJEXT):  \
 	src/common/$(am__dirstamp) \
 	src/common/$(DEPDIR)/$(am__dirstamp)
@@ -4838,6 +5021,13 @@ src/processor/contained_range_map_unittest.$(OBJEXT):  \
 src/processor/contained_range_map_unittest$(EXEEXT): $(src_processor_contained_range_map_unittest_OBJECTS) $(src_processor_contained_range_map_unittest_DEPENDENCIES) $(EXTRA_src_processor_contained_range_map_unittest_DEPENDENCIES) src/processor/$(am__dirstamp)
 	@rm -f src/processor/contained_range_map_unittest$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(src_processor_contained_range_map_unittest_OBJECTS) $(src_processor_contained_range_map_unittest_LDADD) $(LIBS)
+src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.$(OBJEXT):  \
+	src/processor/$(am__dirstamp) \
+	src/processor/$(DEPDIR)/$(am__dirstamp)
+
+src/processor/disassembler_objdump_unittest$(EXEEXT): $(src_processor_disassembler_objdump_unittest_OBJECTS) $(src_processor_disassembler_objdump_unittest_DEPENDENCIES) $(EXTRA_src_processor_disassembler_objdump_unittest_DEPENDENCIES) src/processor/$(am__dirstamp)
+	@rm -f src/processor/disassembler_objdump_unittest$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(src_processor_disassembler_objdump_unittest_OBJECTS) $(src_processor_disassembler_objdump_unittest_LDADD) $(LIBS)
 src/processor/disassembler_x86_unittest-disassembler_x86_unittest.$(OBJEXT):  \
 	src/processor/$(am__dirstamp) \
 	src/processor/$(DEPDIR)/$(am__dirstamp)
@@ -5018,6 +5208,26 @@ src/processor/stackwalker_mips_unittest-stackwalker_mips_unittest.$(OBJEXT):  \
 src/processor/stackwalker_mips_unittest$(EXEEXT): $(src_processor_stackwalker_mips_unittest_OBJECTS) $(src_processor_stackwalker_mips_unittest_DEPENDENCIES) $(EXTRA_src_processor_stackwalker_mips_unittest_DEPENDENCIES) src/processor/$(am__dirstamp)
 	@rm -f src/processor/stackwalker_mips_unittest$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(src_processor_stackwalker_mips_unittest_OBJECTS) $(src_processor_stackwalker_mips_unittest_LDADD) $(LIBS)
+src/common/processor_stackwalker_riscv64_unittest-test_assembler.$(OBJEXT):  \
+	src/common/$(am__dirstamp) \
+	src/common/$(DEPDIR)/$(am__dirstamp)
+src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.$(OBJEXT):  \
+	src/processor/$(am__dirstamp) \
+	src/processor/$(DEPDIR)/$(am__dirstamp)
+
+src/processor/stackwalker_riscv64_unittest$(EXEEXT): $(src_processor_stackwalker_riscv64_unittest_OBJECTS) $(src_processor_stackwalker_riscv64_unittest_DEPENDENCIES) $(EXTRA_src_processor_stackwalker_riscv64_unittest_DEPENDENCIES) src/processor/$(am__dirstamp)
+	@rm -f src/processor/stackwalker_riscv64_unittest$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(src_processor_stackwalker_riscv64_unittest_OBJECTS) $(src_processor_stackwalker_riscv64_unittest_LDADD) $(LIBS)
+src/common/processor_stackwalker_riscv_unittest-test_assembler.$(OBJEXT):  \
+	src/common/$(am__dirstamp) \
+	src/common/$(DEPDIR)/$(am__dirstamp)
+src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.$(OBJEXT):  \
+	src/processor/$(am__dirstamp) \
+	src/processor/$(DEPDIR)/$(am__dirstamp)
+
+src/processor/stackwalker_riscv_unittest$(EXEEXT): $(src_processor_stackwalker_riscv_unittest_OBJECTS) $(src_processor_stackwalker_riscv_unittest_DEPENDENCIES) $(EXTRA_src_processor_stackwalker_riscv_unittest_DEPENDENCIES) src/processor/$(am__dirstamp)
+	@rm -f src/processor/stackwalker_riscv_unittest$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(src_processor_stackwalker_riscv_unittest_OBJECTS) $(src_processor_stackwalker_riscv_unittest_LDADD) $(LIBS)
 src/processor/stackwalker_selftest.$(OBJEXT):  \
 	src/processor/$(am__dirstamp) \
 	src/processor/$(DEPDIR)/$(am__dirstamp)
@@ -5421,8 +5631,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/processor_stackwalker_arm_unittest-test_assembler.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/processor_stackwalker_mips64_unittest-test_assembler.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/processor_stackwalker_mips_unittest-test_assembler.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/processor_stackwalker_riscv64_unittest-test_assembler.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/processor_stackwalker_riscv_unittest-test_assembler.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/processor_stackwalker_x86_unittest-test_assembler.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/processor_synth_minidump_unittest-test_assembler.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/safe_math_unittest-safe_math_unittest.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/string_conversion.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/test_assembler_unittest-test_assembler.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/test_assembler_unittest-test_assembler_unittest.Po@am__quote@ # am--include-marker
@@ -5549,6 +5762,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/client_linux_linux_client_unittest_shlib-proc_maps_linux.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/contained_range_map_unittest.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/convert_old_arm64_context.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/disassembler_objdump.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/disassembler_objdump_unittest-disassembler_objdump_unittest.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/disassembler_x86.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/disassembler_x86_unittest-disassembler_x86_unittest.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/dump_context.Po@am__quote@ # am--include-marker
@@ -5603,6 +5818,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/stackwalker_mips_unittest-stackwalker_mips_unittest.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/stackwalker_ppc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/stackwalker_ppc64.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/stackwalker_riscv.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/stackwalker_riscv64.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/stackwalker_riscv_unittest-stackwalker_riscv_unittest.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/stackwalker_selftest.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/stackwalker_sparc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@src/processor/$(DEPDIR)/stackwalker_x86.Po@am__quote@ # am--include-marker
@@ -7253,6 +7472,20 @@ src/common/tests/mac_macho_reader_unittest-file_utils.obj: src/common/tests/file
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_common_mac_macho_reader_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/common/tests/mac_macho_reader_unittest-file_utils.obj `if test -f 'src/common/tests/file_utils.cc'; then $(CYGPATH_W) 'src/common/tests/file_utils.cc'; else $(CYGPATH_W) '$(srcdir)/src/common/tests/file_utils.cc'; fi`
 
+src/common/safe_math_unittest-safe_math_unittest.o: src/common/safe_math_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_common_safe_math_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/common/safe_math_unittest-safe_math_unittest.o -MD -MP -MF src/common/$(DEPDIR)/safe_math_unittest-safe_math_unittest.Tpo -c -o src/common/safe_math_unittest-safe_math_unittest.o `test -f 'src/common/safe_math_unittest.cc' || echo '$(srcdir)/'`src/common/safe_math_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/common/$(DEPDIR)/safe_math_unittest-safe_math_unittest.Tpo src/common/$(DEPDIR)/safe_math_unittest-safe_math_unittest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/common/safe_math_unittest.cc' object='src/common/safe_math_unittest-safe_math_unittest.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_common_safe_math_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/common/safe_math_unittest-safe_math_unittest.o `test -f 'src/common/safe_math_unittest.cc' || echo '$(srcdir)/'`src/common/safe_math_unittest.cc
+
+src/common/safe_math_unittest-safe_math_unittest.obj: src/common/safe_math_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_common_safe_math_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/common/safe_math_unittest-safe_math_unittest.obj -MD -MP -MF src/common/$(DEPDIR)/safe_math_unittest-safe_math_unittest.Tpo -c -o src/common/safe_math_unittest-safe_math_unittest.obj `if test -f 'src/common/safe_math_unittest.cc'; then $(CYGPATH_W) 'src/common/safe_math_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/common/safe_math_unittest.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/common/$(DEPDIR)/safe_math_unittest-safe_math_unittest.Tpo src/common/$(DEPDIR)/safe_math_unittest-safe_math_unittest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/common/safe_math_unittest.cc' object='src/common/safe_math_unittest-safe_math_unittest.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_common_safe_math_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/common/safe_math_unittest-safe_math_unittest.obj `if test -f 'src/common/safe_math_unittest.cc'; then $(CYGPATH_W) 'src/common/safe_math_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/common/safe_math_unittest.cc'; fi`
+
 src/common/test_assembler_unittest-test_assembler.o: src/common/test_assembler.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_common_test_assembler_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/common/test_assembler_unittest-test_assembler.o -MD -MP -MF src/common/$(DEPDIR)/test_assembler_unittest-test_assembler.Tpo -c -o src/common/test_assembler_unittest-test_assembler.o `test -f 'src/common/test_assembler.cc' || echo '$(srcdir)/'`src/common/test_assembler.cc
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/common/$(DEPDIR)/test_assembler_unittest-test_assembler.Tpo src/common/$(DEPDIR)/test_assembler_unittest-test_assembler.Po
@@ -7308,6 +7541,20 @@ src/processor/cfi_frame_info_unittest-cfi_frame_info_unittest.obj: src/processor
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/processor/cfi_frame_info_unittest.cc' object='src/processor/cfi_frame_info_unittest-cfi_frame_info_unittest.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_cfi_frame_info_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/processor/cfi_frame_info_unittest-cfi_frame_info_unittest.obj `if test -f 'src/processor/cfi_frame_info_unittest.cc'; then $(CYGPATH_W) 'src/processor/cfi_frame_info_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/processor/cfi_frame_info_unittest.cc'; fi`
+
+src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.o: src/processor/disassembler_objdump_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_disassembler_objdump_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.o -MD -MP -MF src/processor/$(DEPDIR)/disassembler_objdump_unittest-disassembler_objdump_unittest.Tpo -c -o src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.o `test -f 'src/processor/disassembler_objdump_unittest.cc' || echo '$(srcdir)/'`src/processor/disassembler_objdump_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/processor/$(DEPDIR)/disassembler_objdump_unittest-disassembler_objdump_unittest.Tpo src/processor/$(DEPDIR)/disassembler_objdump_unittest-disassembler_objdump_unittest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/processor/disassembler_objdump_unittest.cc' object='src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_disassembler_objdump_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.o `test -f 'src/processor/disassembler_objdump_unittest.cc' || echo '$(srcdir)/'`src/processor/disassembler_objdump_unittest.cc
+
+src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.obj: src/processor/disassembler_objdump_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_disassembler_objdump_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.obj -MD -MP -MF src/processor/$(DEPDIR)/disassembler_objdump_unittest-disassembler_objdump_unittest.Tpo -c -o src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.obj `if test -f 'src/processor/disassembler_objdump_unittest.cc'; then $(CYGPATH_W) 'src/processor/disassembler_objdump_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/processor/disassembler_objdump_unittest.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/processor/$(DEPDIR)/disassembler_objdump_unittest-disassembler_objdump_unittest.Tpo src/processor/$(DEPDIR)/disassembler_objdump_unittest-disassembler_objdump_unittest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/processor/disassembler_objdump_unittest.cc' object='src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_disassembler_objdump_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/processor/disassembler_objdump_unittest-disassembler_objdump_unittest.obj `if test -f 'src/processor/disassembler_objdump_unittest.cc'; then $(CYGPATH_W) 'src/processor/disassembler_objdump_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/processor/disassembler_objdump_unittest.cc'; fi`
 
 src/processor/disassembler_x86_unittest-disassembler_x86_unittest.o: src/processor/disassembler_x86_unittest.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_disassembler_x86_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/processor/disassembler_x86_unittest-disassembler_x86_unittest.o -MD -MP -MF src/processor/$(DEPDIR)/disassembler_x86_unittest-disassembler_x86_unittest.Tpo -c -o src/processor/disassembler_x86_unittest-disassembler_x86_unittest.o `test -f 'src/processor/disassembler_x86_unittest.cc' || echo '$(srcdir)/'`src/processor/disassembler_x86_unittest.cc
@@ -7658,6 +7905,62 @@ src/processor/stackwalker_mips_unittest-stackwalker_mips_unittest.obj: src/proce
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/processor/stackwalker_mips_unittest.cc' object='src/processor/stackwalker_mips_unittest-stackwalker_mips_unittest.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_mips_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/processor/stackwalker_mips_unittest-stackwalker_mips_unittest.obj `if test -f 'src/processor/stackwalker_mips_unittest.cc'; then $(CYGPATH_W) 'src/processor/stackwalker_mips_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/processor/stackwalker_mips_unittest.cc'; fi`
+
+src/common/processor_stackwalker_riscv64_unittest-test_assembler.o: src/common/test_assembler.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv64_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/common/processor_stackwalker_riscv64_unittest-test_assembler.o -MD -MP -MF src/common/$(DEPDIR)/processor_stackwalker_riscv64_unittest-test_assembler.Tpo -c -o src/common/processor_stackwalker_riscv64_unittest-test_assembler.o `test -f 'src/common/test_assembler.cc' || echo '$(srcdir)/'`src/common/test_assembler.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/common/$(DEPDIR)/processor_stackwalker_riscv64_unittest-test_assembler.Tpo src/common/$(DEPDIR)/processor_stackwalker_riscv64_unittest-test_assembler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/common/test_assembler.cc' object='src/common/processor_stackwalker_riscv64_unittest-test_assembler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv64_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/common/processor_stackwalker_riscv64_unittest-test_assembler.o `test -f 'src/common/test_assembler.cc' || echo '$(srcdir)/'`src/common/test_assembler.cc
+
+src/common/processor_stackwalker_riscv64_unittest-test_assembler.obj: src/common/test_assembler.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv64_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/common/processor_stackwalker_riscv64_unittest-test_assembler.obj -MD -MP -MF src/common/$(DEPDIR)/processor_stackwalker_riscv64_unittest-test_assembler.Tpo -c -o src/common/processor_stackwalker_riscv64_unittest-test_assembler.obj `if test -f 'src/common/test_assembler.cc'; then $(CYGPATH_W) 'src/common/test_assembler.cc'; else $(CYGPATH_W) '$(srcdir)/src/common/test_assembler.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/common/$(DEPDIR)/processor_stackwalker_riscv64_unittest-test_assembler.Tpo src/common/$(DEPDIR)/processor_stackwalker_riscv64_unittest-test_assembler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/common/test_assembler.cc' object='src/common/processor_stackwalker_riscv64_unittest-test_assembler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv64_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/common/processor_stackwalker_riscv64_unittest-test_assembler.obj `if test -f 'src/common/test_assembler.cc'; then $(CYGPATH_W) 'src/common/test_assembler.cc'; else $(CYGPATH_W) '$(srcdir)/src/common/test_assembler.cc'; fi`
+
+src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.o: src/processor/stackwalker_riscv64_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv64_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.o -MD -MP -MF src/processor/$(DEPDIR)/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.Tpo -c -o src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.o `test -f 'src/processor/stackwalker_riscv64_unittest.cc' || echo '$(srcdir)/'`src/processor/stackwalker_riscv64_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/processor/$(DEPDIR)/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.Tpo src/processor/$(DEPDIR)/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/processor/stackwalker_riscv64_unittest.cc' object='src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv64_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.o `test -f 'src/processor/stackwalker_riscv64_unittest.cc' || echo '$(srcdir)/'`src/processor/stackwalker_riscv64_unittest.cc
+
+src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.obj: src/processor/stackwalker_riscv64_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv64_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.obj -MD -MP -MF src/processor/$(DEPDIR)/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.Tpo -c -o src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.obj `if test -f 'src/processor/stackwalker_riscv64_unittest.cc'; then $(CYGPATH_W) 'src/processor/stackwalker_riscv64_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/processor/stackwalker_riscv64_unittest.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/processor/$(DEPDIR)/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.Tpo src/processor/$(DEPDIR)/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/processor/stackwalker_riscv64_unittest.cc' object='src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv64_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/processor/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.obj `if test -f 'src/processor/stackwalker_riscv64_unittest.cc'; then $(CYGPATH_W) 'src/processor/stackwalker_riscv64_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/processor/stackwalker_riscv64_unittest.cc'; fi`
+
+src/common/processor_stackwalker_riscv_unittest-test_assembler.o: src/common/test_assembler.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/common/processor_stackwalker_riscv_unittest-test_assembler.o -MD -MP -MF src/common/$(DEPDIR)/processor_stackwalker_riscv_unittest-test_assembler.Tpo -c -o src/common/processor_stackwalker_riscv_unittest-test_assembler.o `test -f 'src/common/test_assembler.cc' || echo '$(srcdir)/'`src/common/test_assembler.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/common/$(DEPDIR)/processor_stackwalker_riscv_unittest-test_assembler.Tpo src/common/$(DEPDIR)/processor_stackwalker_riscv_unittest-test_assembler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/common/test_assembler.cc' object='src/common/processor_stackwalker_riscv_unittest-test_assembler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/common/processor_stackwalker_riscv_unittest-test_assembler.o `test -f 'src/common/test_assembler.cc' || echo '$(srcdir)/'`src/common/test_assembler.cc
+
+src/common/processor_stackwalker_riscv_unittest-test_assembler.obj: src/common/test_assembler.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/common/processor_stackwalker_riscv_unittest-test_assembler.obj -MD -MP -MF src/common/$(DEPDIR)/processor_stackwalker_riscv_unittest-test_assembler.Tpo -c -o src/common/processor_stackwalker_riscv_unittest-test_assembler.obj `if test -f 'src/common/test_assembler.cc'; then $(CYGPATH_W) 'src/common/test_assembler.cc'; else $(CYGPATH_W) '$(srcdir)/src/common/test_assembler.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/common/$(DEPDIR)/processor_stackwalker_riscv_unittest-test_assembler.Tpo src/common/$(DEPDIR)/processor_stackwalker_riscv_unittest-test_assembler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/common/test_assembler.cc' object='src/common/processor_stackwalker_riscv_unittest-test_assembler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/common/processor_stackwalker_riscv_unittest-test_assembler.obj `if test -f 'src/common/test_assembler.cc'; then $(CYGPATH_W) 'src/common/test_assembler.cc'; else $(CYGPATH_W) '$(srcdir)/src/common/test_assembler.cc'; fi`
+
+src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.o: src/processor/stackwalker_riscv_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.o -MD -MP -MF src/processor/$(DEPDIR)/stackwalker_riscv_unittest-stackwalker_riscv_unittest.Tpo -c -o src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.o `test -f 'src/processor/stackwalker_riscv_unittest.cc' || echo '$(srcdir)/'`src/processor/stackwalker_riscv_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/processor/$(DEPDIR)/stackwalker_riscv_unittest-stackwalker_riscv_unittest.Tpo src/processor/$(DEPDIR)/stackwalker_riscv_unittest-stackwalker_riscv_unittest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/processor/stackwalker_riscv_unittest.cc' object='src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.o `test -f 'src/processor/stackwalker_riscv_unittest.cc' || echo '$(srcdir)/'`src/processor/stackwalker_riscv_unittest.cc
+
+src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.obj: src/processor/stackwalker_riscv_unittest.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.obj -MD -MP -MF src/processor/$(DEPDIR)/stackwalker_riscv_unittest-stackwalker_riscv_unittest.Tpo -c -o src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.obj `if test -f 'src/processor/stackwalker_riscv_unittest.cc'; then $(CYGPATH_W) 'src/processor/stackwalker_riscv_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/processor/stackwalker_riscv_unittest.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/processor/$(DEPDIR)/stackwalker_riscv_unittest-stackwalker_riscv_unittest.Tpo src/processor/$(DEPDIR)/stackwalker_riscv_unittest-stackwalker_riscv_unittest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/processor/stackwalker_riscv_unittest.cc' object='src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_riscv_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o src/processor/stackwalker_riscv_unittest-stackwalker_riscv_unittest.obj `if test -f 'src/processor/stackwalker_riscv_unittest.cc'; then $(CYGPATH_W) 'src/processor/stackwalker_riscv_unittest.cc'; else $(CYGPATH_W) '$(srcdir)/src/processor/stackwalker_riscv_unittest.cc'; fi`
 
 src/common/processor_stackwalker_x86_unittest-test_assembler.o: src/common/test_assembler.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_processor_stackwalker_x86_unittest_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT src/common/processor_stackwalker_x86_unittest-test_assembler.o -MD -MP -MF src/common/$(DEPDIR)/processor_stackwalker_x86_unittest-test_assembler.Tpo -c -o src/common/processor_stackwalker_x86_unittest-test_assembler.o `test -f 'src/common/test_assembler.cc' || echo '$(srcdir)/'`src/common/test_assembler.cc
@@ -8846,6 +9149,13 @@ recheck: all $(check_PROGRAMS) $(check_LIBRARIES) $(check_SCRIPTS)
 	        am__force_recheck=am--force-recheck \
 	        TEST_LOGS="$$log_list"; \
 	exit $$?
+src/common/safe_math_unittest.log: src/common/safe_math_unittest$(EXEEXT)
+	@p='src/common/safe_math_unittest$(EXEEXT)'; \
+	b='src/common/safe_math_unittest'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 src/common/test_assembler_unittest.log: src/common/test_assembler_unittest$(EXEEXT)
 	@p='src/common/test_assembler_unittest$(EXEEXT)'; \
 	b='src/common/test_assembler_unittest'; \
@@ -8891,6 +9201,13 @@ src/processor/cfi_frame_info_unittest.log: src/processor/cfi_frame_info_unittest
 src/processor/contained_range_map_unittest.log: src/processor/contained_range_map_unittest$(EXEEXT)
 	@p='src/processor/contained_range_map_unittest$(EXEEXT)'; \
 	b='src/processor/contained_range_map_unittest'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+src/processor/disassembler_objdump_unittest.log: src/processor/disassembler_objdump_unittest$(EXEEXT)
+	@p='src/processor/disassembler_objdump_unittest$(EXEEXT)'; \
+	b='src/processor/disassembler_objdump_unittest'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -9052,6 +9369,20 @@ src/processor/stackwalker_mips_unittest.log: src/processor/stackwalker_mips_unit
 src/processor/stackwalker_mips64_unittest.log: src/processor/stackwalker_mips64_unittest$(EXEEXT)
 	@p='src/processor/stackwalker_mips64_unittest$(EXEEXT)'; \
 	b='src/processor/stackwalker_mips64_unittest'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+src/processor/stackwalker_riscv_unittest.log: src/processor/stackwalker_riscv_unittest$(EXEEXT)
+	@p='src/processor/stackwalker_riscv_unittest$(EXEEXT)'; \
+	b='src/processor/stackwalker_riscv_unittest'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+src/processor/stackwalker_riscv64_unittest.log: src/processor/stackwalker_riscv64_unittest$(EXEEXT)
+	@p='src/processor/stackwalker_riscv64_unittest$(EXEEXT)'; \
+	b='src/processor/stackwalker_riscv64_unittest'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -9506,8 +9837,11 @@ distclean: distclean-am
 	-rm -f src/common/$(DEPDIR)/processor_stackwalker_arm_unittest-test_assembler.Po
 	-rm -f src/common/$(DEPDIR)/processor_stackwalker_mips64_unittest-test_assembler.Po
 	-rm -f src/common/$(DEPDIR)/processor_stackwalker_mips_unittest-test_assembler.Po
+	-rm -f src/common/$(DEPDIR)/processor_stackwalker_riscv64_unittest-test_assembler.Po
+	-rm -f src/common/$(DEPDIR)/processor_stackwalker_riscv_unittest-test_assembler.Po
 	-rm -f src/common/$(DEPDIR)/processor_stackwalker_x86_unittest-test_assembler.Po
 	-rm -f src/common/$(DEPDIR)/processor_synth_minidump_unittest-test_assembler.Po
+	-rm -f src/common/$(DEPDIR)/safe_math_unittest-safe_math_unittest.Po
 	-rm -f src/common/$(DEPDIR)/string_conversion.Po
 	-rm -f src/common/$(DEPDIR)/test_assembler_unittest-test_assembler.Po
 	-rm -f src/common/$(DEPDIR)/test_assembler_unittest-test_assembler_unittest.Po
@@ -9634,6 +9968,8 @@ distclean: distclean-am
 	-rm -f src/processor/$(DEPDIR)/client_linux_linux_client_unittest_shlib-proc_maps_linux.Po
 	-rm -f src/processor/$(DEPDIR)/contained_range_map_unittest.Po
 	-rm -f src/processor/$(DEPDIR)/convert_old_arm64_context.Po
+	-rm -f src/processor/$(DEPDIR)/disassembler_objdump.Po
+	-rm -f src/processor/$(DEPDIR)/disassembler_objdump_unittest-disassembler_objdump_unittest.Po
 	-rm -f src/processor/$(DEPDIR)/disassembler_x86.Po
 	-rm -f src/processor/$(DEPDIR)/disassembler_x86_unittest-disassembler_x86_unittest.Po
 	-rm -f src/processor/$(DEPDIR)/dump_context.Po
@@ -9688,6 +10024,10 @@ distclean: distclean-am
 	-rm -f src/processor/$(DEPDIR)/stackwalker_mips_unittest-stackwalker_mips_unittest.Po
 	-rm -f src/processor/$(DEPDIR)/stackwalker_ppc.Po
 	-rm -f src/processor/$(DEPDIR)/stackwalker_ppc64.Po
+	-rm -f src/processor/$(DEPDIR)/stackwalker_riscv.Po
+	-rm -f src/processor/$(DEPDIR)/stackwalker_riscv64.Po
+	-rm -f src/processor/$(DEPDIR)/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.Po
+	-rm -f src/processor/$(DEPDIR)/stackwalker_riscv_unittest-stackwalker_riscv_unittest.Po
 	-rm -f src/processor/$(DEPDIR)/stackwalker_selftest.Po
 	-rm -f src/processor/$(DEPDIR)/stackwalker_sparc.Po
 	-rm -f src/processor/$(DEPDIR)/stackwalker_x86.Po
@@ -9851,8 +10191,11 @@ maintainer-clean: maintainer-clean-am
 	-rm -f src/common/$(DEPDIR)/processor_stackwalker_arm_unittest-test_assembler.Po
 	-rm -f src/common/$(DEPDIR)/processor_stackwalker_mips64_unittest-test_assembler.Po
 	-rm -f src/common/$(DEPDIR)/processor_stackwalker_mips_unittest-test_assembler.Po
+	-rm -f src/common/$(DEPDIR)/processor_stackwalker_riscv64_unittest-test_assembler.Po
+	-rm -f src/common/$(DEPDIR)/processor_stackwalker_riscv_unittest-test_assembler.Po
 	-rm -f src/common/$(DEPDIR)/processor_stackwalker_x86_unittest-test_assembler.Po
 	-rm -f src/common/$(DEPDIR)/processor_synth_minidump_unittest-test_assembler.Po
+	-rm -f src/common/$(DEPDIR)/safe_math_unittest-safe_math_unittest.Po
 	-rm -f src/common/$(DEPDIR)/string_conversion.Po
 	-rm -f src/common/$(DEPDIR)/test_assembler_unittest-test_assembler.Po
 	-rm -f src/common/$(DEPDIR)/test_assembler_unittest-test_assembler_unittest.Po
@@ -9979,6 +10322,8 @@ maintainer-clean: maintainer-clean-am
 	-rm -f src/processor/$(DEPDIR)/client_linux_linux_client_unittest_shlib-proc_maps_linux.Po
 	-rm -f src/processor/$(DEPDIR)/contained_range_map_unittest.Po
 	-rm -f src/processor/$(DEPDIR)/convert_old_arm64_context.Po
+	-rm -f src/processor/$(DEPDIR)/disassembler_objdump.Po
+	-rm -f src/processor/$(DEPDIR)/disassembler_objdump_unittest-disassembler_objdump_unittest.Po
 	-rm -f src/processor/$(DEPDIR)/disassembler_x86.Po
 	-rm -f src/processor/$(DEPDIR)/disassembler_x86_unittest-disassembler_x86_unittest.Po
 	-rm -f src/processor/$(DEPDIR)/dump_context.Po
@@ -10033,6 +10378,10 @@ maintainer-clean: maintainer-clean-am
 	-rm -f src/processor/$(DEPDIR)/stackwalker_mips_unittest-stackwalker_mips_unittest.Po
 	-rm -f src/processor/$(DEPDIR)/stackwalker_ppc.Po
 	-rm -f src/processor/$(DEPDIR)/stackwalker_ppc64.Po
+	-rm -f src/processor/$(DEPDIR)/stackwalker_riscv.Po
+	-rm -f src/processor/$(DEPDIR)/stackwalker_riscv64.Po
+	-rm -f src/processor/$(DEPDIR)/stackwalker_riscv64_unittest-stackwalker_riscv64_unittest.Po
+	-rm -f src/processor/$(DEPDIR)/stackwalker_riscv_unittest-stackwalker_riscv_unittest.Po
 	-rm -f src/processor/$(DEPDIR)/stackwalker_selftest.Po
 	-rm -f src/processor/$(DEPDIR)/stackwalker_sparc.Po
 	-rm -f src/processor/$(DEPDIR)/stackwalker_x86.Po
