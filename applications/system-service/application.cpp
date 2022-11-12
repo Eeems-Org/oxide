@@ -53,10 +53,11 @@ void Application::launchNoSecurityCheck(){
             if(chroot()){
                 mountAll();
                 m_process->setChroot(chrootPath());
+                m_process->setWorkingDirectory(chrootPath() + "/" + workingDirectory());
             }else{
                 m_process->setChroot("");
+                m_process->setWorkingDirectory(workingDirectory());
             }
-            m_process->setWorkingDirectory(workingDirectory());
             m_process->setUser(user());
             m_process->setGroup(group());
             m_process->start();
@@ -284,7 +285,8 @@ void Application::stopNoSecurityCheck(){
         qDebug() << "Stopping " << path();
         if(!onStop().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onStop", "Run onStop action", [this](){
-                QProcess::execute(onStop(), QStringList());
+                qDebug() << "onStop: " << onStop();
+                qDebug() << "exit code: " << QProcess::execute(onStop(), QStringList());
             });
         }
         Application* pausedApplication = nullptr;
