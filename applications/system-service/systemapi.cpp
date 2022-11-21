@@ -52,6 +52,11 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 }
                 releaseSleepInhibitors();
             });
+            Oxide::Sentry::sentry_span(t, "clear-input", "Clear input buffers", [this]{
+                touchHandler->clear_buffer();
+                wacomHandler->clear_buffer();
+                buttonHandler->clear_buffer();
+            });
             qDebug() << "Suspending...";
         });
     }else{
