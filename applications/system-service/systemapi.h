@@ -426,9 +426,9 @@ private slots:
                                 touchUp(released);
                             }
                         }else if(swipeDirection != None){
-#ifdef DEBUG
-        qDebug() << "Swiping cancelled due to pen activity";
-#endif
+                            if(Oxide::debugEnabled()){
+                                qDebug() << "Swiping cancelled due to pen activity";
+                            }
                             swipeDirection = None;
                         }
                         // Cleanup released touches
@@ -499,9 +499,9 @@ private slots:
             return;
         }
         penActive = event.value;
-#ifdef DEBUG
-        qDebug() << "Pen state: " << (penActive ? "Active" : "Inactive");
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "Pen state: " << (penActive ? "Active" : "Inactive");
+        }
     }
 
 private:
@@ -579,9 +579,9 @@ private:
         if(penActive){
             return;
         }
-#ifdef DEBUG
-        qDebug() << "DOWN" << touches;
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "DOWN" << touches;
+        }
         if(getCurrentFingers() != 1){
             return;
         }
@@ -612,20 +612,19 @@ private:
         }else{
             return;
         }
-        //touchHandler->grab();
-#ifdef DEBUG
+        if(Oxide::debugEnabled()){
             qDebug() << "Swipe started" << swipeDirection;
-#endif
+        }
         startLocation = location = QPoint(touch->x, touch->y);
     }
     void touchUp(QList<Touch*> touches){
-#ifdef DEBUG
-        qDebug() << "UP" << touches;
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "UP" << touches;
+        }
         if(swipeDirection == None){
-#ifdef DEBUG
-            qDebug() << "Not swiping";
-#endif
+            if(Oxide::debugEnabled()){
+                qDebug() << "Not swiping";
+            }
             if(touchHandler->grabbed()){
                 for(auto touch : touches){
                     writeTouchUp(touch);
@@ -635,9 +634,9 @@ private:
             return;
         }
         if(getCurrentFingers()){
-#ifdef DEBUG
-            qDebug() << "Still swiping";
-#endif
+            if(Oxide::debugEnabled()){
+                qDebug() << "Still swiping";
+            }
             if(touchHandler->grabbed()){
                 for(auto touch : touches){
                     writeTouchUp(touch);
@@ -646,9 +645,9 @@ private:
             return;
         }
         if(touches.length() > 1){
-#ifdef DEBUG
-            qDebug() << "Too many fingers";
-#endif
+            if(Oxide::debugEnabled()){
+                qDebug() << "Too many fingers";
+            }
             if(touchHandler->grabbed()){
                 for(auto touch : touches){
                     writeTouchUp(touch);
@@ -698,14 +697,14 @@ private:
         touch->x = -1;
         touch->y = -1;
         writeTouchUp(touch);
-#ifdef DEBUG
+        if(Oxide::debugEnabled()){
             qDebug() << "Swipe direction" << swipeDirection;
-#endif
+        }
     }
     void touchMove(QList<Touch*> touches){
-#ifdef DEBUG
-        qDebug() << "MOVE" << touches;
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "MOVE" << touches;
+        }
         if(swipeDirection == None){
             if(touchHandler->grabbed()){
                 for(auto touch : touches){
@@ -716,9 +715,9 @@ private:
             return;
         }
         if(touches.length() > 1){
-#ifdef DEBUG
-            qDebug() << "Too many fingers";
-#endif
+            if(Oxide::debugEnabled()){
+                qDebug() << "Too many fingers";
+            }
             if(touchHandler->grabbed()){
                 for(auto touch : touches){
                     writeTouchMove(touch);
@@ -734,9 +733,9 @@ private:
         }
     }
     void cancelSwipe(Touch* touch){
-#ifdef DEBUG
-        qDebug() << "Swipe Cancelled";
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "Swipe Cancelled";
+        }
         swipeDirection = None;
         touchHandler->ungrab();
         writeTouchUp(touch);
@@ -747,9 +746,9 @@ private:
             touchHandler->ungrab();
         }
         writeTouchMove(touch);
-#ifdef DEBUG
-        qDebug() << "Write touch up" << touch;
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "Write touch up" << touch;
+        }
         int size = sizeof(input_event) * 3;
         input_event* events = (input_event*)malloc(size);
         events[0] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
@@ -766,9 +765,9 @@ private:
         if(grabbed){
             touchHandler->ungrab();
         }
-#ifdef DEBUG
-        qDebug() << "Write touch move" << touch;
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "Write touch move" << touch;
+        }
         int size = sizeof(input_event) * 8;
         input_event* events = (input_event*)malloc(size);
         events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
