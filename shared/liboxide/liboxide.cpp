@@ -24,7 +24,7 @@
 
 #ifdef SENTRY
 #define SAMPLE_RATE 1.0
-std::string readFile(const std::string path){
+std::string readFile(const std::string& path){
     std::ifstream t(path);
     std::stringstream buffer;
     buffer << t.rdbuf();
@@ -270,7 +270,7 @@ namespace Oxide {
             Q_UNUSED(level);
 #endif
         }
-        Transaction* start_transaction(std::string name, std::string action){
+        Transaction* start_transaction(const std::string& name, const std::string& action){
 #ifdef SENTRY
             sentry_transaction_context_t* context = sentry_transaction_context_new(name.c_str(), action.c_str());
             // Hack to force transactions to be reported even though SAMPLE_RATE is 100%
@@ -292,7 +292,7 @@ namespace Oxide {
             Q_UNUSED(transaction);
 #endif
         }
-        void sentry_transaction(std::string name, std::string action, std::function<void(Transaction* transaction)> callback){
+        void sentry_transaction(const std::string& name, const std::string& action, std::function<void(Transaction* transaction)> callback){
 #ifdef SENTRY
             if(!sharedSettings.telemetry()){
                 callback(nullptr);
@@ -309,7 +309,7 @@ namespace Oxide {
             callback(nullptr);
 #endif
         }
-        Span* start_span(Transaction* transaction, std::string operation, std::string description){
+        Span* start_span(Transaction* transaction, const std::string& operation, const std::string& description){
 #ifdef SENTRY
             if(transaction == nullptr){
                 return nullptr;
@@ -322,7 +322,7 @@ namespace Oxide {
             return nullptr;
 #endif
         }
-        Span* start_span(Span* parent, std::string operation, std::string description){
+        Span* start_span(Span* parent, const std::string& operation, const std::string& description){
 #ifdef SENTRY
             if(parent == nullptr){
                 return nullptr;
@@ -344,7 +344,7 @@ namespace Oxide {
             Q_UNUSED(span);
 #endif
         }
-        void sentry_span(Transaction* transaction, std::string operation, std::string description, std::function<void()> callback){
+        void sentry_span(Transaction* transaction, const std::string& operation, const std::string& description, std::function<void()> callback){
 #ifdef SENTRY
             sentry_span(transaction, operation, description, [callback](Span* s){
                 Q_UNUSED(s);
@@ -357,7 +357,7 @@ namespace Oxide {
             callback();
 #endif
         }
-        void sentry_span(Transaction* transaction, std::string operation, std::string description, std::function<void(Span* span)> callback){
+        void sentry_span(Transaction* transaction, const std::string& operation, const std::string& description, std::function<void(Span* span)> callback){
 #ifdef SENTRY
             if(!sharedSettings.telemetry() || transaction == nullptr || transaction->inner == nullptr){
                 callback(nullptr);
@@ -375,7 +375,7 @@ namespace Oxide {
             callback(nullptr);
 #endif
         }
-        void sentry_span(Span* parent, std::string operation, std::string description, std::function<void()> callback){
+        void sentry_span(Span* parent, const std::string& operation, const std::string& description, std::function<void()> callback){
 #ifdef SENTRY
             sentry_span(parent, operation, description, [callback](Span* s){
                 Q_UNUSED(s);
@@ -389,7 +389,7 @@ namespace Oxide {
 #endif
         }
 
-        void sentry_span(Span* parent, std::string operation, std::string description, std::function<void(Span* span)> callback){
+        void sentry_span(Span* parent, const std::string& operation, const std::string& description, std::function<void(Span* span)> callback){
 #ifdef SENTRY
                 if(!sharedSettings.telemetry() || parent == nullptr || parent->inner == nullptr){
                     callback(nullptr);
