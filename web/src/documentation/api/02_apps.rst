@@ -413,3 +413,14 @@ Example Usage
      | xargs -I {} rot --object Application:{} apps get displayName \
      | jq -cr
 
+
+Removing an application icon
+
+.. code:: shell
+
+   #!/bin/bash
+   AppToRemove="the_application_you_want_to_remove"
+   echo -n "Removing application: $AppToRemove"
+   rot apps call getApplicationPath "QString:\"$AppToRemove\"" \
+     | jq -cr | sed 's|/codes/eeems/oxide1/||' \
+     | xargs -I {} rot --object Application:{} apps call unregister
