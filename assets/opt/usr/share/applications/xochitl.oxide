@@ -9,6 +9,8 @@
         "/dev/shm",
         "/etc",
         "/home/root",
+        "/home/root/.local/share",
+        "/home/root/.local/share/remarkable",
         "/opt/etc",
         "/run/dbus",
         "/run/lock",
