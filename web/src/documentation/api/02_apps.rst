@@ -401,6 +401,17 @@ Example Usage
        path = appsApi.currentApplication();
        Application app(OXIDE_SERVICE, path.path(), bus);
        qDebug() << "Current application:" << app.displayName();
+       QString name("test");
+       qDebug() << "Removing application: " << name;
+       path = appsApi.getApplicationPath(name);
+       if(path.path() == "/"){
+            qDebug() << "Failed to find application: " << name;
+            return EXIT_FAILURE;
+       }
+       if(!appsApi.unregisterApplication(path)){
+            qDebug() << "Failed to unregister application: " << name;
+            return EXIT_FAILURE;
+       }
        return EXIT_SUCCESS;
    }
 
@@ -412,4 +423,9 @@ Example Usage
      | jq -cr | sed 's|/codes/eeems/oxide1/||' \
      | xargs -I {} rot --object Application:{} apps get displayName \
      | jq -cr
-
+   
+   name="test"
+   echo "Removing Application: $name"
+   rot apps call getApplicationPath "QString:\"$name\"" \
+     | jq -cr | sed 's|/codes/eeems/oxide1/||' \
+     | xargs -I {} rot --object Application:{} apps call unregister
