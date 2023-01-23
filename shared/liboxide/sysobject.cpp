@@ -6,6 +6,8 @@
 #include <sstream>
 #include <fstream>
 
+#include <liboxide.h>
+
 namespace Oxide{
     std::string SysObject::propertyPath(const std::string& name){
         return m_path + "/" + name;
@@ -30,8 +32,10 @@ namespace Oxide{
         auto path = propertyPath(name);
         QFile file(path.c_str());
         if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
-            qDebug() << "Couldn't find the file " << path.c_str();
-            return "";
+            if(Oxide::debugEnabled()){
+                qDebug() << "Couldn't find the file " << path.c_str();
+            }
+            return "0";
         }
         QTextStream in(&file);
         std::string text = in.readLine().toStdString();
