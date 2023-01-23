@@ -31,7 +31,7 @@ namespace Oxide{
         QFile file(path.c_str());
         if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
             qDebug() << "Couldn't find the file " << path.c_str();
-            return 0;
+            return "";
         }
         QTextStream in(&file);
         std::string text = in.readLine().toStdString();

@@ -6,6 +6,7 @@
 
 using Oxide::SysObject;
 
+
 QList<SysObject>* _batteries = nullptr;
 QList<SysObject>* _chargers = nullptr;
 
@@ -25,7 +26,7 @@ void _setup(){
     }
     QDir dir("/sys/class/power_supply");
     qDebug() << "Looking for batteries and chargers...";
-    for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
+    for(auto& path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
         qDebug() << ("  Checking " + path + "...").toStdString().c_str();
         SysObject item(dir.path() + "/" + path);
         if(!item.hasProperty("type")){
@@ -47,17 +48,22 @@ void _setup(){
             qDebug() << "    Unknown type";
         }
     }
+    if(_chargers->empty()){
+        for(SysObject& battery : *_batteries){
+            _chargers->append(battery);
+        }
+    }
 }
 int _batteryInt(const QString& property){
     int result = 0;
-    for(SysObject battery : *_batteries){
+    for(SysObject battery : *Oxide::Power::batteries()){
         result += battery.intProperty(property.toStdString());
     }
     return result;
 }
 int _batteryIntMax(const QString& property){
     int result = 0;
-    for(SysObject battery : *_batteries){
+    for(SysObject battery : *Oxide::Power::batteries()){
         int value = battery.intProperty(property.toStdString());
         if(value > result){
             result = value;
@@ -72,7 +78,7 @@ int _chargerInt(const QString& property){
     }
     return result;
 }
-static const  QSet<QString> _batteryAlertState {
+static const QSet<QString> _batteryAlertState {
     "Overheat",
     "Dead",
     "Over voltage",
@@ -102,7 +108,7 @@ namespace Oxide::Power {
     int batteryTemperature(){ return _batteryIntMax("temp") / 10; }
     bool batteryCharging(){
         for(SysObject battery : *Oxide::Power::batteries()){
-            if(battery.strProperty("status") == "charging"){
+            if(battery.strProperty("status") == "Charging"){
                 return true;
             }
         }
@@ -150,5 +156,5 @@ namespace Oxide::Power {
     }
     bool batteryHasWarning(){ return batteryWarning().length(); }
     bool batteryHasAlert(){ return batteryAlert().length(); }
-    bool chargerConnected(){ return _chargerInt("online"); }
+    bool chargerConnected(){ return _chargerInt("online") || batteryCharging(); }
 }
