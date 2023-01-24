@@ -29,8 +29,8 @@ jobs:
           ref: testing
       - name: Cleanup
         run: |
-          rm -rf package/*
-          mkdir -p package/oxide/src
+          rm -rf package/oxide/*
+          mkdir package/oxide/src
       - uses: actions/checkout@v2.3.1
         with:
           path: package/oxide/src
@@ -48,7 +48,7 @@ jobs:
           mv ./package ..
           tar --exclude='./.git' -czvf ../oxide.tar.gz .
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v1
+        uses: github/codeql-action/init@v2
         with:
           languages: javascript, cpp
       - name: Build packages
