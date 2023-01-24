@@ -38,7 +38,7 @@
             <arg name="args" type="a{sv}" direction="in"/>
         </method>
         <method name="SignalPoll">
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariant"/>
             <arg name="args" type="a{sv}" direction="out"/>
         </method>
         <method name="Disconnect"/>

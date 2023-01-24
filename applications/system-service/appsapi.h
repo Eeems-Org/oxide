@@ -16,11 +16,12 @@
 
 #include "apibase.h"
 #include "application.h"
-#include "signalhandler.h"
 
 #define OXIDE_SETTINGS_VERSION 1
 
 #define appsAPI AppsAPI::singleton()
+
+using namespace Oxide;
 
 class AppsAPI : public APIBase {
     Q_OBJECT
@@ -48,12 +49,55 @@ public:
         m_stopping = true;
         writeApplications();
         settings.sync();
+        auto frameBuffer = EPFrameBuffer::framebuffer();
+        qDebug() << "Waiting for other painting to finish...";
+        while(frameBuffer->paintingActive()){
+            EPFrameBuffer::waitForLastUpdate();
+        }
+        QPainter painter(frameBuffer);
+        auto rect = frameBuffer->rect();
+        auto fm = painter.fontMetrics();
+        auto size = frameBuffer->size();
+        qDebug() << "Clearing screen...";
+        painter.setPen(Qt::white);
+        painter.fillRect(rect, Qt::black);
+        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+        EPFrameBuffer::waitForLastUpdate();
+        qDebug() << "Stopping applications...";
         for(auto app : applications){
+            if(app->stateNoSecurityCheck() != Application::Inactive){
+                auto text = "Stopping " + app->displayName() + "...";
+                qDebug() << text.toStdString().c_str();
+                int padding = 10;
+                int textHeight = fm.height() + padding;
+                QRect textRect(
+                    QPoint(0 + padding, size.height() - textHeight),
+                    QSize(size.width() - padding * 2, textHeight)
+                );
+                painter.fillRect(textRect, Qt::black);
+                painter.drawText(
+                    textRect,
+                    Qt::AlignVCenter | Qt::AlignRight,
+                    text
+                );
+                EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+                EPFrameBuffer::waitForLastUpdate();
+            }
             app->stopNoSecurityCheck();
+        }
+        qDebug() << "Ensuring all applications have stopped...";
+        for(auto app : applications){
             app->waitForFinished();
-            delete app;
+            app->deleteLater();
         }
         applications.clear();
+        qDebug() << "Displaying final quit message...";
+        painter.fillRect(rect, Qt::black);
+        painter.drawText(rect, Qt::AlignCenter,"Goodbye!");
+        EPFrameBuffer::waitForLastUpdate();
+        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+        painter.end();
+        EPFrameBuffer::waitForLastUpdate();
     }
     void startup();
     int state() { return 0; } // Ignore this, it's a kludge to get the xml to generate
@@ -94,16 +138,24 @@ public:
             qDebug() << "Invalid configuration: " << name << " has invalid bin" << bin;
             return QDBusObjectPath("/");
         }
+        if(!QFileInfo(bin).isExecutable()){
+            qDebug() << "Invalid configuration: " << name << " has bin that is not executable" << bin;
+            return QDBusObjectPath("/");
+        }
         if(applications.contains(name)){
             return applications[name]->qPath();
         }
-        auto path = QDBusObjectPath(getPath(name));
-        auto app = new Application(path, reinterpret_cast<QObject*>(this));
-        auto displayName = properties.value("displayName", name).toString();
-        app->setConfig(properties);
-        applications.insert(name, app);
-        app->registerPath();
-        emit applicationRegistered(path);
+        QDBusObjectPath path;
+        Oxide::Sentry::sentry_transaction("apps", "registerApplication", [this, &path, name, properties](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            path = QDBusObjectPath(getPath(name));
+            auto app = new Application(path, reinterpret_cast<QObject*>(this));
+            auto displayName = properties.value("displayName", name).toString();
+            app->setConfig(properties);
+            applications.insert(name, app);
+            app->registerPath();
+            emit applicationRegistered(path);
+        });
         return path;
     }
     Q_INVOKABLE bool unregisterApplication(QDBusObjectPath path){
@@ -125,8 +177,11 @@ public:
         if(!hasPermission("apps")){
             return;
         }
-        writeApplications();
-        readApplications();
+        Oxide::Sentry::sentry_transaction("apps", "reload", [this](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            writeApplications();
+            readApplications();
+        });
     }
 
     QDBusObjectPath startupApplication(){
@@ -247,12 +302,15 @@ public:
     }
 
     void unregisterApplication(Application* app){
-        auto name = app->name();
-        if(applications.contains(name)){
-            applications.remove(name);
-            emit applicationUnregistered(app->qPath());
-            app->deleteLater();
-        }
+        Oxide::Sentry::sentry_transaction("apps", "unregisterApplication", [this, app](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            auto name = app->name();
+            if(applications.contains(name)){
+                applications.remove(name);
+                emit applicationUnregistered(app->qPath());
+                app->deleteLater();
+            }
+        });
     }
     void pauseAll(){
         for(auto app : applications){
@@ -378,10 +436,11 @@ public:
             return;
         }
         auto name = currentApplication->name();
-        previousApplications.removeAll(name);
+        removeFromPreviousApplications(name);
         previousApplications.append(name);
         qDebug() << "Previous Applications" << previousApplications;
     }
+    void removeFromPreviousApplications(QString name){ previousApplications.removeAll(name); }
 
 signals:
     void applicationRegistered(QDBusObjectPath);

@@ -1,0 +1,35 @@
+name: Build website
+
+on:
+  push:
+    branches:
+      - '*'         # matches every branch that doesn't contain a '/'
+      - '*/*'       # matches every branch containing a single '/'
+      - '**'        # matches every branch
+      - '!master'   # excludes master
+    paths:
+      - 'web/**'
+      - 'shared/liboxide/**'
+      - '.github/actions/web/**'
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'shared/liboxide/**'
+      - '.github/actions/web/**'
+jobs:
+  web:
+    name: Build web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the Git repository
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Build web
+        uses: ./.github/actions/web
+      - name: Save web
+        uses: actions/upload-artifact@v2
+        with:
+          name: web
+          path: web/dist
+

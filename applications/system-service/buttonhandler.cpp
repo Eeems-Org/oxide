@@ -1,5 +1,6 @@
 #include "buttonhandler.h"
 #include "dbusservice.h"
+#include "liboxide.h"
 
 void button_exit_handler(){
     // Release lock
@@ -67,6 +68,7 @@ void ButtonHandler::run(){
     while(stream.read((char*)&ie, sie)){
         // TODO - Properly pass through non-button presses
         // Read for non-zero event codes.
+        emit rawEvent(ie);
         if(ie.code != 0){
             emit activity();
             // Toggle the button state.

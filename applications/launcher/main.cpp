@@ -16,16 +16,18 @@
 #include <unistd.h>
 #include <cstdlib>
 #include <signal.h>
+#include <liboxide.h>
+#include <liboxide/eventfilter.h>
 
 #include "controller.h"
-#include "eventfilter.h"
-#include "devicesettings.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 
 using namespace std;
+using namespace Oxide;
+using namespace Oxide::Sentry;
 
 const char *qt_version = qVersion();
 
@@ -33,10 +35,6 @@ function<void(int)> shutdown_handler;
 void signalHandler2(int signal) { shutdown_handler(signal); }
 
 int main(int argc, char *argv[]){
-//    QSettings xochitlSettings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat);
-//    xochitlSettings.sync();
-//    qDebug() << xochitlSettings.value("Password").toString();
-
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
         qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
     }
@@ -49,6 +47,7 @@ int main(int argc, char *argv[]){
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
     QGuiApplication app(argc, argv);
+    sentry_init("oxide", argv);
     auto filter = new EventFilter(&app);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
@@ -59,8 +58,8 @@ int main(int argc, char *argv[]){
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();
     controller->filter = filter;
-    qmlRegisterType<AppItem>();
-    qmlRegisterType<Controller>();
+    qmlRegisterAnonymousType<AppItem>("codes.eeems.oxide", 2);
+    qmlRegisterAnonymousType<Controller>("codes.eeems.oxide", 2);
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("apps", QVariant::fromValue(controller->getApps()));
     context->setContextProperty("controller", controller);

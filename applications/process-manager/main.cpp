@@ -7,11 +7,10 @@
 #include <signal.h>
 #include <ostream>
 #include <fcntl.h>
+#include <liboxide.h>
+#include <liboxide/eventfilter.h>
 
 #include "controller.h"
-#include "eventfilter.h"
-#include "dbussettings.h"
-#include "devicesettings.h"
 
 
 #ifdef __arm__
@@ -19,9 +18,8 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 
 using namespace std;
-
-function<void(int)> shutdown_handler;
-void signal_handler(int signal) { shutdown_handler(signal); }
+using namespace Oxide;
+using namespace Oxide::Sentry;
 
 const char *qt_version = qVersion();
 
@@ -38,6 +36,7 @@ int main(int argc, char *argv[]){
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
     QGuiApplication app(argc, argv);
+    sentry_init("erode", argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("tarnish");
@@ -48,11 +47,7 @@ int main(int argc, char *argv[]){
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller controller(&engine);
-    if(argc > 1){
-        controller.protectPid = std::stoi(argv[1]);
-    }
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
-    context->setContextProperty("tasks", QVariant::fromValue(controller.getTasks()));
     context->setContextProperty("controller", &controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty()){
@@ -66,10 +61,5 @@ int main(int argc, char *argv[]){
         qDebug() << "Can't find tasksView";
         return -1;
     }
-    shutdown_handler = [&controller](int signal){
-        Q_UNUSED(signal)
-        emit controller.reload();
-    };
-    signal(SIGCONT, signal_handler);
     return app.exec();
 }

@@ -9,7 +9,7 @@
 
 #include <unistd.h>
 
-#include "dbussettings.h"
+#include "../../shared/liboxide/liboxide.h"
 
 class APIBase : public QObject, protected QDBusContext {
     Q_OBJECT

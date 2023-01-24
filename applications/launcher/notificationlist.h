@@ -12,6 +12,7 @@ class NotificationItem : public QObject {
     Q_PROPERTY(QString identifier MEMBER m_identifier READ identifier)
     Q_PROPERTY(QString text READ text NOTIFY textChanged)
     Q_PROPERTY(QString icon READ icon NOTIFY iconChanged)
+    Q_PROPERTY(int created READ created NOTIFY createdChanged)
 public:
     NotificationItem(Notification* notification, QObject* parent) : QObject(parent) {
         m_identifier = notification->identifier();
@@ -20,7 +21,7 @@ public:
     }
     ~NotificationItem() {
         if(m_notification != nullptr){
-            delete m_notification;
+            m_notification->deleteLater();
         }
     }
     QString identifier() { return m_identifier; }
@@ -36,12 +37,19 @@ public:
         }
         return m_notification->icon();
     }
+    int created(){
+        if(m_notification == nullptr){
+            return -1;
+        }
+        return m_notification->created();
+    }
     bool is(Notification* notification) { return notification == m_notification; }
     Notification* notification() { return m_notification; }
     Q_INVOKABLE void click(){ notification()->click(); }
 signals:
     void textChanged(QString);
     void iconChanged(QString);
+    void createdChanged(int);
 
 public slots:
     void changed(const QVariantMap& properties){
@@ -113,7 +121,7 @@ public:
         for(auto notification : notifications){
             notification->notification()->remove().waitForFinished();
             if(notification != nullptr){
-                delete notification;
+                notification->deleteLater();
             }
         }
         notifications.clear();
@@ -128,7 +136,7 @@ public:
                 beginRemoveRows(QModelIndex(), notifications.indexOf(notification), notifications.indexOf(notification));
                 i.remove();
                 notification->notification()->remove().waitForFinished();
-                delete notification;
+                notification->deleteLater();
                 endRemoveRows();
             }
         }
@@ -143,7 +151,7 @@ public:
                 beginRemoveRows(QModelIndex(), notifications.indexOf(item), notifications.indexOf(item));
                 i.remove();
                 item->notification()->remove().waitForFinished();
-                delete item;
+                item->deleteLater();
                 endRemoveRows();
                 count++;
             }

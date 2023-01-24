@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        {%- if title == "Home" %}
+        <title>{{ docstitle|e }}</title>
+        {%- else %}
+        {%- set titlesuffix = " &#8212; "|safe + docstitle|e %}
+        <title>{{ title|striptags|e }}{{ titlesuffix }}</title>
+        {%- endif %}
+
+        <link rel="stylesheet" href="/_static/oxide.css">
+        <link rel="icon" href="/_static/images/favicon.png" type="image/png">
+        <link rel="icon" href="/_static/images/favicon.svg" sizes="any" type="image/svg+xml">
+        <script src="https://peek.eeems.website/peek.js"></script>
+        <script
+            src="https://browser.sentry-cdn.com/6.16.1/bundle.tracing.min.js"
+            integrity="sha384-hySah00SvKME+98UjlzyfP852AXjPPTh2vgJu26gFcwTlZ02/zm82SINaKTKwIX2"
+            crossorigin="anonymous"
+        ></script>
+        <script src="/_static/oxide.js"></script>
+    </head>
+    <body>
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <a href="/">
+                    <span class="sidebar-sitename">{{ project }}</span>
+                </a>
+            </header>
+
+            {%- for sidebartemplate in sidebars %}
+            {%- include sidebartemplate %}
+            {%- endfor %}
+        </aside>
+        <main>
+            {% block body %} {% endblock %}
+		    <nav>
+		    	{% if prev %}
+				<a href="{{ prev.link|e }}" class="button button-prev" title="{{ prev.title }}">Previous</a>
+				{% endif %}
+			    {% if next %}
+				<a href="{{ next.link|e }}" class="button button-next" title="{{ next.title }}">Next</a>
+				{% endif %}
+			</nav>
+        </main>
+    </body>
+</html>

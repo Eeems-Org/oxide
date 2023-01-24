@@ -31,7 +31,7 @@ void AppItem::stop(){
         qWarning() << "Application instance is not valid";
         return;
     }
-    app->stop();
+    QDBusPendingReply<void> reply = app->stop();
 }
 Application* AppItem::getApp(){
     if(app != nullptr){

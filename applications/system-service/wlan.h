@@ -3,9 +3,13 @@
 
 #include <QFileInfo>
 
-#include "dbussettings.h"
+#include <liboxide.h>
+#include <liboxide/sysobject.h>
+
 #include "sysobject.h"
 #include "supplicant.h"
+
+using Oxide::SysObject;
 
 class Wlan : public QObject, public SysObject {
     Q_OBJECT
@@ -34,7 +38,16 @@ public:
         return "";
     }
     bool pingIP(std::string ip, const char* port) {
-        return !system(("{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port + "; } > /dev/null 2>&1").c_str());
+        auto process = new QProcess();
+        process->setProgram("bash");
+        std::string cmd("{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port + "; } > /dev/null 2>&1");
+        process->setArguments(QStringList() << "-c" << cmd.c_str());
+        process->start();
+        if(!process->waitForFinished(100)){
+            process->kill();
+            return false;
+        }
+        return !process->exitCode();
     }
     bool isConnected(){
         auto ip = exec("ip r | grep " + iface() + " | grep default | awk '{print $3}'");
@@ -42,6 +55,9 @@ public:
     }
     int link(){
         auto out = exec("grep " + iface() + " /proc/net/wireless | awk '{print $3}'");
+        if(QString(out.c_str()).isEmpty()){
+            return 0;
+        }
         try {
             return std::stoi(out);
         }
@@ -49,6 +65,19 @@ public:
             qDebug() << "link failed: " << out.c_str();
             return 0;
         }
+    }
+    signed int rssi(){
+        QDBusMessage message = m_interface->call("SignalPoll");
+        if (message.type() == QDBusMessage::ErrorMessage) {
+            qWarning() << "SignalPoll error: " << message.errorMessage();
+            return -100;
+        }
+        auto props = qdbus_cast<QVariantMap>(message.arguments().at(0).value<QDBusVariant>().variant().value<QDBusArgument>());
+        auto result = props["rssi"].toInt();
+        if(result >= 0){
+            return -100;
+        }
+        return result;
     }
 signals:
     void BSSAdded(Wlan*, QDBusObjectPath, QVariantMap);

@@ -17,8 +17,8 @@
 
 QSet<QString> settings = { "columns", "autoStartApplication" };
 QSet<QString> booleanSettings {"showWifiDb", "showBatteryPercent", "showBatteryTemperature", "showDate" };
-QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root /.config/draft" };
-QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root /.config" };
+QList<QString> configDirectoryPaths = { "/opt/etc/draft", "/etc/draft", "/home/root/.config/draft" };
+QList<QString> configFileDirectoryPaths = { "/opt/etc", "/etc", "/home/root/.config" };
 
 QFile* getConfigFile(){
     for(auto path : configFileDirectoryPaths){
@@ -77,6 +77,9 @@ void Controller::loadSettings(){
     qDebug() << "Automatic sleep" << sleepAfter;
     setAutomaticSleep(sleepAfter);
     setSleepAfter(sleepAfter);
+    for(short i = 1; i <= 4; i++){
+        setSwipeLength(i, systemApi->getSwipeLength(i));
+    }
     qDebug() << "Updating UI with settings from config file...";
     // Populate settings in UI
     QObject* columnsSpinBox = root->findChild<QObject*>("columnsSpinBox");
@@ -90,6 +93,30 @@ void Controller::loadSettings(){
         qDebug() << "Can't find sleepAfterSpinBox";
     }else{
         sleepAfterSpinBox->setProperty("value", this->sleepAfter());
+    }
+    QObject* swipeLengthRightSpinBox = root->findChild<QObject*>("swipeLengthRightSpinBox");
+    if(!swipeLengthRightSpinBox){
+        qDebug() << "Can't find swipeLengthRightSpinBox";
+    }else{
+        swipeLengthRightSpinBox->setProperty("value", this->swipeLengthRight());
+    }
+    QObject* swipeLengthLeftSpinBox = root->findChild<QObject*>("swipeLengthLeftSpinBox");
+    if(!swipeLengthLeftSpinBox){
+        qDebug() << "Can't find swipeLengthLeftSpinBox";
+    }else{
+        swipeLengthLeftSpinBox->setProperty("value", this->swipeLengthLeft());
+    }
+    QObject* swipeLengthUpSpinBox = root->findChild<QObject*>("swipeLengthUpSpinBox");
+    if(!swipeLengthUpSpinBox){
+        qDebug() << "Can't find swipeLengthUpSpinBox";
+    }else{
+        swipeLengthUpSpinBox->setProperty("value", this->swipeLengthUp());
+    }
+    QObject* swipeLengthDownSpinBox = root->findChild<QObject*>("swipeLengthDownSpinBox");
+    if(!swipeLengthDownSpinBox){
+        qDebug() << "Can't find swipeLengthDownSpinBox";
+    }else{
+        swipeLengthDownSpinBox->setProperty("value", this->swipeLengthDown());
     }
     qDebug() << "Finished updating UI.";
 }
@@ -162,6 +189,9 @@ void Controller::saveSettings(){
             setAutomaticSleep(sleepAfter);
         }
     }
+    for(short i = 1; i <= 4; i++) {
+        systemApi->setSwipeLength(i, getSwipeLength(i));
+    }
     qDebug() << "Done saving configuration.";
 }
 QList<QObject*> Controller::getApps(){
@@ -183,7 +213,7 @@ QList<QObject*> Controller::getApps(){
         auto name = app.name();
         auto appItem = getApplication(name);
         if(appItem == nullptr){
-            qDebug() << name;
+            qDebug() << "New application:" << name;
             appItem = new AppItem(this);
             applications.append(appItem);
         }
@@ -199,24 +229,23 @@ QList<QObject*> Controller::getApps(){
         appItem->setProperty("running", running.contains(name));
         auto icon = app.icon();
         if(!icon.isEmpty() && QFile(icon).exists()){
-                appItem->setProperty("imgFile", "file:" + icon);
+            appItem->setProperty("imgFile", "file:" + icon);
         }
         if(!appItem->ok()){
             qDebug() << "Invalid item" << appItem->property("name").toString();
             applications.removeAll(appItem);
-            delete appItem;
+            appItem->deleteLater();
         }
     }
     // Sort by name
     std::sort(applications.begin(), applications.end(), [=](const QObject* a, const QObject* b) -> bool {
-        return a->property("name") < b->property("name");
+        return a->property("displayName").toString() < b->property("displayName").toString();
     });
     return applications;
 }
 void Controller::setAutoStartApplication(QString autoStartApplication){
     m_autoStartApplication = autoStartApplication;
     emit autoStartApplicationChanged(autoStartApplication);
-    saveSettings();
 }
 AppItem* Controller::getApplication(QString name){
     for(auto app : applications){
@@ -244,11 +273,10 @@ void Controller::importDraftApps(){
                     continue;
                 }
                 QTextStream in(&file);
-                AppItem appItem(this);
-                QString onStop = "";
+                QVariantMap properties;
                 while (!in.atEnd()) {
                     QString line = in.readLine();
-                    if(line.startsWith("#")){
+                    if(line.startsWith("#") || line.trimmed().isEmpty()){
                         continue;
                     }
                     QStringList parts = line.split("=");
@@ -258,24 +286,30 @@ void Controller::importDraftApps(){
                     }
                     QString lhs = parts.at(0);
                     QString rhs = parts.at(1);
-                    QSet<QString> known = { "name", "desc", "call" };
                     if(rhs != ":" && rhs != ""){
-                        if(known.contains(lhs)){
-                            appItem.setProperty(lhs.toUtf8(), rhs);
+                        if(lhs == "name"){
+                            properties.insert("name", rhs);
+                        }else if(lhs == "desc"){
+                            properties.insert("description", rhs);
                         }else if(lhs == "imgFile"){
-                            appItem.setProperty(lhs.toUtf8(), configDirectoryPath + "/icons/" + rhs + ".png");
+                            auto icon = configDirectoryPath + "/icons/" + rhs + ".png";
+                            if(icon.startsWith("qrc:")){
+                                icon = "";
+                            }
+                            properties.insert("icon", icon);
+                        }else if(lhs == "call"){
+                            properties.insert("bin", rhs);
                         }else if(lhs == "term"){
-                            onStop = rhs.trimmed();
+                            properties.insert("onStop", rhs.trimmed());
                         }
                     }
                 }
                 file.close();
-                auto name = appItem.property("name").toString();
-                appItem.setProperty("displayName", name);
+                auto name = properties["name"].toString();
                 QDBusObjectPath path = appsApi->getApplicationPath(name);
                 if(path.path() != "/"){
                     qDebug() << "Already exists" << name;
-                    auto icon = appItem.property("imgFile").toString();
+                    auto icon = properties["icon"].toString();
                     if(icon.isEmpty()){
                         continue;
                     }
@@ -285,17 +319,8 @@ void Controller::importDraftApps(){
                     }
                     continue;
                 }
-                auto icon = appItem.property("imgFile").toString();
-                if(icon.startsWith("qrc:")){
-                    icon = "";
-                }
-                QVariantMap properties;
-                properties.insert("name", name);
-                properties.insert("displayName", appItem.property("displayName"));
-                properties.insert("description", appItem.property("desc"));
-                properties.insert("bin", appItem.property("call"));
-                properties.insert("icon", icon);
-                properties.insert("onStop", onStop);
+                qDebug() << "Not found, creating...";
+                properties.insert("displayName", name);
                 path = appsApi->registerApplication(properties);
                 if(path.path() == "/"){
                     qDebug() << "Failed to import" << name;
@@ -339,21 +364,7 @@ std::string Controller::exec(const char* cmd) {
     }
     return result;
 }
-void Controller::updateUIElements(){
-    if(showWifiDb()){
-        QObject* ui = root->findChild<QObject*>("wifiState");
-        if(ui){
-            int level = 0;
-            if(ui->property("connected").toBool()){
-                level = std::stoi(exec("cat /proc/net/wireless | grep wlan0 | awk '{print $4}'"));
-            }
-            if(wifiLevel != level){
-                wifiLevel = level;
-                ui->setProperty("level", level);
-            }
-        }
-    }
-}
+void Controller::updateUIElements(){}
 void Controller::setAutomaticSleep(bool state){
     m_automaticSleep = state;
     if(state){
@@ -368,6 +379,44 @@ void Controller::setColumns(int columns){
     if(root != nullptr){
         qDebug() << "Columns: " << columns;
         emit columnsChanged(columns);
+    }
+}
+void Controller::setSwipeLength(int direction, int length){
+    switch (direction){
+        case SwipeDirection::Right:
+            m_swipeLengthRight = length;
+            emit swipeLengthRightChanged(length);
+            break;
+        case SwipeDirection::Left:
+            m_swipeLengthLeft = length;
+            emit swipeLengthLeftChanged(length);
+            break;
+        case SwipeDirection::Up:
+            m_swipeLengthUp = length;
+            emit swipeLengthUpChanged(length);
+            break;
+        case SwipeDirection::Down:
+            m_swipeLengthDown = length;
+            emit swipeLengthDownChanged(length);
+            break;
+        default:
+            qDebug() << "Invalid swipe direction: " << direction;
+            break;
+    }
+}
+int Controller::getSwipeLength(int direction){
+    switch (direction){
+        case SwipeDirection::Right:
+            return swipeLengthRight();
+        case SwipeDirection::Left:
+            return swipeLengthLeft();
+        case SwipeDirection::Up:
+            return swipeLengthUp();
+        case SwipeDirection::Down:
+            return swipeLengthDown();
+        default:
+            qDebug() << "Invalid swipe direction: " << direction;
+            return -1;
     }
 }
 void Controller::setShowWifiDb(bool state){

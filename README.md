@@ -1,10 +1,9 @@
-# Warning, this will not work on 2.6 yet. If you have updated you'll have to wait until toltec has released a solution that supports the new OS.
-
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/e22602d27686420e9a71e67cf8d049fd)](https://app.codacy.com/manual/Eeems/oxide?utm_source=github.com&utm_medium=referral&utm_content=Eeems/oxide&utm_campaign=Badge_Grade_Settings)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/4a69f96e44504f7286d92abec506881a)](https://www.codacy.com/gh/Eeems-Org/oxide/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Eeems-Org/oxide&amp;utm_campaign=Badge_Grade)
+[![CodeFactor](https://www.codefactor.io/repository/github/eeems-org/oxide/badge)](https://www.codefactor.io/repository/github/eeems-org/oxide)
 [![Maintainability](https://api.codeclimate.com/v1/badges/db8574df9b0b8a1100bc/maintainability)](https://codeclimate.com/github/Eeems/oxide/maintainability)
 [![rm1](https://img.shields.io/badge/rM1-supported-green)](https://remarkable.com/store/remarkable)
-[![rm2](https://img.shields.io/badge/rM2-partial%20support-orange)](https://remarkable.com/store/remarkable-2)
-[![opkg](https://img.shields.io/badge/OPKG-oxide-blue)](https://github.com/matteodelabre/toltec)
+[![rm2](https://img.shields.io/badge/rM2-supported-green)](https://remarkable.com/store/remarkable-2)
+[![opkg](https://img.shields.io/badge/OPKG-oxide-blue)](https://toltec-dev.org/)
 [![Discord](https://img.shields.io/discord/385916768696139794.svg?label=reMarkable&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/ATqQGfu)
 
 # Oxide
@@ -12,7 +11,7 @@ A launcher application for the [reMarkable tablet](https://remarkable.com/).
 
 Head over to the [releases](https://github.com/Eeems/oxide/releases) page for more information on the latest release. You can also see some (likely outdated) [screenshots here](https://github.com/Eeems/oxide/wiki/Screenshots).
 
-Here is a video of it in action: 
+Here is an outdated video of it in action: 
 [![Oxide v2.0-beta](https://i.imgur.com/1Q9A4NF.png)](https://youtu.be/rIRKgqy21L0 "Oxide v2.0-beta")
 
 ## Building

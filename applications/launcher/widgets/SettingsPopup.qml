@@ -10,7 +10,7 @@ Item {
     Popup {
         id: settings
         width: 1000
-        height: 1000
+        height: 1100
         closePolicy: Popup.NoAutoClose
         onClosed: parent.closed()
         visible: parent.visible
@@ -28,7 +28,10 @@ Item {
                 BetterCheckBox {
                     tristate: false
                     checkState: controller.automaticSleep ? Qt.Checked : Qt.Unchecked
-                    onClicked: controller.automaticSleep = this.checkState === Qt.Checked
+                    onClicked: {
+                        controller.automaticSleep = this.checkState === Qt.Checked
+                        controller.sleepAfter = sleepAfterSpinBox.value
+                    }
                     Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
                     Layout.fillWidth: false
                 }
@@ -154,6 +157,78 @@ Item {
                     Layout.preferredWidth: 300
                 }
             }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                Label {
+                    text: "Right Swipe Length (pixels)"
+                    Layout.fillWidth: true
+                }
+                BetterSpinBox {
+                    id: swipeLengthRightSpinBox
+                    objectName: "swipeLengthRightSpinBox"
+                    from: 10
+                    to: controller.maxTouchWidth
+                    stepSize: 10
+                    value: controller.swipeLengthRight
+                    onValueChanged: controller.swipeLengthRight = this.value
+                    Layout.preferredWidth: 300
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                Label {
+                    text: "Left Swipe Length (pixels)"
+                    Layout.fillWidth: true
+                }
+                BetterSpinBox {
+                    id: swipeLengthLeftSpinBox
+                    objectName: "swipeLengthLeftSpinBox"
+                    from: 10
+                    to: controller.maxTouchWidth
+                    stepSize: 10
+                    value: controller.swipeLengthLeft
+                    onValueChanged: controller.swipeLengthLeft = this.value
+                    Layout.preferredWidth: 300
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                Label {
+                    text: "Up Swipe Length (pixels)"
+                    Layout.fillWidth: true
+                }
+                BetterSpinBox {
+                    id: swipeLengthUpSpinBox
+                    objectName: "swipeLengthUpSpinBox"
+                    from: 10
+                    to: controller.maxTouchHeight
+                    stepSize: 10
+                    value: controller.swipeLengthUp
+                    onValueChanged: controller.swipeLengthUp = this.value
+                    Layout.preferredWidth: 300
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                Label {
+                    text: "Down Swipe Length (pixels)"
+                    Layout.fillWidth: true
+                }
+                BetterSpinBox {
+                    id: swipeLengthDownSpinBox
+                    objectName: "swipeLengthDownSpinBox"
+                    from: 10
+                    to: controller.maxTouchHeight
+                    stepSize: 10
+                    value: controller.swipeLengthDown
+                    onValueChanged: controller.swipeLengthDown = this.value
+                    Layout.preferredWidth: 300
+                }
+            }
             Item {
                 Layout.rowSpan: 6
                 Layout.columnSpan: parent.columns
@@ -164,13 +239,17 @@ Item {
                 text: "Reset"
                 Layout.columnSpan: parent.columns
                 Layout.fillWidth: true
-                onClicked: controller.loadSettings()
+                onClicked: {
+                    controller.breadcrumb("settings.reset", "click", "ui");
+                    controller.loadSettings();
+                }
             }
             BetterButton {
                 text: "Close"
                 Layout.columnSpan: parent.columns
                 Layout.fillWidth: true
                 onClicked: {
+                    controller.breadcrumb("settings.close", "click", "ui");
                     controller.saveSettings();
                     settings.close();
                 }
