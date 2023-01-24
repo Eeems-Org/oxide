@@ -3,6 +3,8 @@ name: Build oxide
 on:
   push:
     paths:
+      - '.github/workflows/build.yml'
+      - '.github/actions/setup/**'
       - 'applications/**'
       - 'shared/**'
       - 'assets/**'
@@ -11,6 +13,8 @@ on:
       - 'package'
   pull_request:
     paths:
+      - '.github/workflows/build.yml'
+      - '.github/actions/setup/**'
       - 'applications/**'
       - 'shared/**'
       - 'assets/**'
