@@ -55,7 +55,10 @@ Item {
                             Layout.preferredWidth: 64
                             MouseArea {
                                 anchors.fill: parent
-                                onClicked: model.display && model.display.click()
+                                onClicked: {
+                                    controller.breadcrumb("notifications.notification.icon", "click", "ui");
+                                    model.display && model.display.click();
+                                }
                             }
                         }
                         Label {
@@ -65,7 +68,10 @@ Item {
                             Layout.preferredWidth: parent.width - 50 - 64
                             MouseArea {
                                 anchors.fill: parent
-                                onClicked: model.display && model.display.click()
+                                onClicked: {
+                                    controller.breadcrumb("notifications.notification.text", "click", "ui");
+                                    model.display && model.display.click();
+                                }
                             }
                         }
                         Label {
@@ -105,6 +111,7 @@ Item {
                                 anchors.fill: parent
                                 enabled: parent.enabled
                                 onClicked: {
+                                    controller.breadcrumb("notifications.notification.remove", "click", "ui");
                                     if(!model.display){
                                         return
                                     }
@@ -145,12 +152,14 @@ Item {
                             pageSize = (notifications.height / notifications.itemAt(0, 0).height).toFixed(0);
                         }
                         if(direction == "down"){
+                            controller.breadcrumb("notifications", "scroll.up", "ui");
                             console.log("Scroll up");
                             currentIndex = currentIndex - pageSize;
                             if(currentIndex < 0){
                                 currentIndex = 0;
                             }
                         }else if(direction == "up"){
+                            controller.breadcrumb("notifications", "scroll.down", "ui");
                             console.log("Scroll down");
                             currentIndex = currentIndex + pageSize;
                             if(currentIndex > notifications.count){
@@ -168,6 +177,7 @@ Item {
                     text: "Clear"
                     Layout.fillWidth: true
                     onClicked: {
+                        controller.breadcrumb("notifications.clear", "click", "ui");
                         notifications.model.clear();
                         popup.close();
                     }
@@ -175,7 +185,10 @@ Item {
                 BetterButton{
                     text: "Close"
                     Layout.fillWidth: true
-                    onClicked: popup.close()
+                    onClicked: {
+                        controller.breadcrumb("notifications.close", "click", "ui");
+                        popup.close();
+                    }
                 }
             }
         }

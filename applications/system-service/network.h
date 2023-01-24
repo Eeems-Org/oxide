@@ -5,8 +5,8 @@
 #include <QMutableListIterator>
 #include <QMutex>
 
+#include "../../shared/liboxide/liboxide.h"
 #include "supplicant.h"
-#include "dbussettings.h"
 
 class Network : public QObject {
     Q_OBJECT

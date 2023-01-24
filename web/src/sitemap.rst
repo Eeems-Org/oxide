@@ -6,4 +6,5 @@ Site Map
 
     index
     documentation
+    faq
 

@@ -5,8 +5,12 @@ StartLimitInterval=30
 StartLimitBurst=5
 OnFailure=remarkable-fail.service
 Before=remarkable-reboot.service remarkable-shutdown.service
+Conflicts=xochitl.service
+Conflicts=sync.service
 
 [Service]
+Type=dbus
+BusName=codes.eeems.oxide1
 ExecStart=/opt/bin/tarnish
 Restart=on-failure
 RestartSec=5

@@ -149,7 +149,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include "dbussettings.h"
+   #include <liboxide.h>
    #include "dbusservice_interface.h"
    #include "wifiapi_interface.h"
 
