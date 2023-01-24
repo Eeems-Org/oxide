@@ -3,6 +3,8 @@ name: Build oxide
 on:
   push:
     paths:
+      - '.github/workflows/build.yml'
+      - '.github/actions/setup/**'
       - 'applications/**'
       - 'shared/**'
       - 'assets/**'
@@ -11,6 +13,8 @@ on:
       - 'package'
   pull_request:
     paths:
+      - '.github/workflows/build.yml'
+      - '.github/actions/setup/**'
       - 'applications/**'
       - 'shared/**'
       - 'assets/**'
@@ -47,6 +51,10 @@ jobs:
           sed -i "s/~VERSION~/$(cat ../version.txt)/" ./package
           mv ./package ..
           tar --exclude='./.git' -czvf ../oxide.tar.gz .
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript, cpp
       - name: Build packages
         run: |
           make FLAGS=--verbose oxide
@@ -60,3 +68,5 @@ jobs:
         with:
           name: packages
           path: output
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
