@@ -1,4 +1,5 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/4a69f96e44504f7286d92abec506881a)](https://www.codacy.com/gh/Eeems-Org/oxide/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Eeems-Org/oxide&amp;utm_campaign=Badge_Grade)
+[![CodeFactor](https://www.codefactor.io/repository/github/eeems-org/oxide/badge)](https://www.codefactor.io/repository/github/eeems-org/oxide)
 [![Maintainability](https://api.codeclimate.com/v1/badges/db8574df9b0b8a1100bc/maintainability)](https://codeclimate.com/github/Eeems/oxide/maintainability)
 [![rm1](https://img.shields.io/badge/rM1-supported-green)](https://remarkable.com/store/remarkable)
 [![rm2](https://img.shields.io/badge/rM2-supported-green)](https://remarkable.com/store/remarkable-2)
