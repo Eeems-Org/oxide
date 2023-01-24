@@ -39,7 +39,7 @@ public:
             Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
                 singleton(this);
             });
-            Oxide::Sentry::sentry_span(t, "sysfs", "Determine power devices from sysfs", [this](Oxide::Sentry::Span* s){
+            Oxide::Sentry::sentry_span(t, "sysfs", "Determine power devices from sysfs", [this](){
                 Oxide::Power::batteries();
                 Oxide::Power::chargers();
             });
