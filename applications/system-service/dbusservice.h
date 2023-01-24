@@ -8,11 +8,10 @@
 #include <QDBusMessage>
 #include <QDBusConnectionInterface>
 #include <QDBusConnection>
-
 #include <fstream>
 #include <QGuiApplication>
 
-#include "dbussettings.h"
+#include "../../shared/liboxide/liboxide.h"
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "appsapi.h"
@@ -25,6 +24,7 @@
 #define dbusService DBusService::singleton()
 
 using namespace std;
+using namespace Oxide::Sentry;
 
 struct APIEntry {
     QString path;
@@ -55,6 +55,9 @@ public:
             });
             auto bus = QDBusConnection::systemBus();
             if(!bus.isConnected()){
+#ifdef SENTRY
+                sentry_breadcrumb("dbusservice", "Failed to connect to system bus.", "error");
+#endif
                 qFatal("Failed to connect to system bus.");
             }
             QDBusConnectionInterface* interface = bus.interface();
@@ -63,10 +66,16 @@ public:
             bus.registerService(OXIDE_SERVICE);
             if(!reply.isValid()){
                 QDBusError ex = reply.error();
+#ifdef SENTRY
+                sentry_breadcrumb("dbusservice", "Unable to register service", "error");
+#endif
                 qFatal("Unable to register service: %s", ex.message().toStdString().c_str());
             }
             qDebug() << "Registering object...";
             if(!bus.registerObject(OXIDE_SERVICE_PATH, instance, QDBusConnection::ExportAllContents)){
+#ifdef SENTRY
+                sentry_breadcrumb("dbusservice", "Unable to register interface", "error");
+#endif
                 qFatal("Unable to register interface: %s", bus.lastError().message().toStdString().c_str());
             }
             connect(bus.interface(), SIGNAL(serviceOwnerChanged(QString,QString,QString)),
@@ -76,67 +85,106 @@ public:
         return instance;
     }
     DBusService(QObject* parent) : APIBase(parent), apis(){
-        apis.insert("wifi", APIEntry{
-            .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
-            .dependants = new QStringList(),
-            .instance = new WifiAPI(this),
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "Initializing APIs", "info");
+#endif
+        Oxide::Sentry::sentry_transaction("dbus", "init", [this](Oxide::Sentry::Transaction* t){
+            Oxide::Sentry::sentry_span(t, "apis", "Initialize APIs", [this](Oxide::Sentry::Span* s){
+                Oxide::Sentry::sentry_span(s, "wifi", "Initialize wifi API", [this]{
+                    apis.insert("wifi", APIEntry{
+                        .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
+                        .dependants = new QStringList(),
+                        .instance = new WifiAPI(this),
+                    });
+                });
+                Oxide::Sentry::sentry_span(s, "system", "Initialize system API", [this]{
+                    apis.insert("system", APIEntry{
+                        .path = QString(OXIDE_SERVICE_PATH) + "/system",
+                        .dependants = new QStringList(),
+                        .instance = new SystemAPI(this),
+                    });
+                });
+                Oxide::Sentry::sentry_span(s, "power", "Initialize power API", [this]{
+                    apis.insert("power", APIEntry{
+                        .path = QString(OXIDE_SERVICE_PATH) + "/power",
+                        .dependants = new QStringList(),
+                        .instance = new PowerAPI(this),
+                    });
+                });
+                Oxide::Sentry::sentry_span(s, "screen", "Initialize screen API", [this]{
+                    apis.insert("screen", APIEntry{
+                        .path = QString(OXIDE_SERVICE_PATH) + "/screen",
+                        .dependants = new QStringList(),
+                        .instance = new ScreenAPI(this),
+                    });
+                });
+                Oxide::Sentry::sentry_span(s, "apps", "Initialize apps API", [this]{
+                    apis.insert("apps", APIEntry{
+                        .path = QString(OXIDE_SERVICE_PATH) + "/apps",
+                        .dependants = new QStringList(),
+                        .instance = new AppsAPI(this),
+                    });
+                });
+                Oxide::Sentry::sentry_span(s, "notification", "Initialize notification API", [this]{
+                    apis.insert("notification", APIEntry{
+                        .path = QString(OXIDE_SERVICE_PATH) + "/notification",
+                        .dependants = new QStringList(),
+                        .instance = new NotificationAPI(this),
+                    });
+                });
+            });
+#ifdef SENTRY
+            sentry_breadcrumb("dbusservice", "Connecting button handler events", "info");
+#endif
+            Oxide::Sentry::sentry_span(t, "connect", "Connect events", []{
+                connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
+                connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
+                connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
+                connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
+                connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
+                connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
+#ifdef SENTRY
+                sentry_breadcrumb("dbusservice", "Connecting power events", "info");
+#endif
+                connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
+#ifdef SENTRY
+                sentry_breadcrumb("dbusservice", "Connecting system events", "info");
+#endif
+                connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
+                    if(notificationAPI->locked()){
+                        return;
+                    }
+                    auto currentApplication = appsAPI->getApplication(appsAPI->currentApplicationNoSecurityCheck());
+                    if(currentApplication != nullptr && currentApplication->path() == appsAPI->lockscreenApplication().path()){
+                        qDebug() << "Left Action cancelled. On lockscreen";
+                        return;
+                    }
+                    if(!appsAPI->previousApplicationNoSecurityCheck()){
+                        appsAPI->openDefaultApplication();
+                    }
+                });
+                connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::openTaskManager);
+                connect(systemAPI, &SystemAPI::bottomAction, appsAPI, &AppsAPI::openTaskSwitcher);
+                connect(systemAPI, &SystemAPI::topAction, systemAPI, &SystemAPI::toggleSwipes);
+            });
+#ifdef SENTRY
+            sentry_breadcrumb("dbusservice", "Cleaning up", "info");
+#endif
+            Oxide::Sentry::sentry_span(t, "cleanup", "Cleanup", [this]{
+            auto bus = QDBusConnection::systemBus();
+                for(auto api : apis){
+                    bus.unregisterObject(api.path);
+                }
+            });
+#ifdef SENTRY
+            sentry_breadcrumb("dbusservice", "APIs initialized", "info");
+#endif
         });
-        apis.insert("system", APIEntry{
-            .path = QString(OXIDE_SERVICE_PATH) + "/system",
-            .dependants = new QStringList(),
-            .instance = new SystemAPI(this),
-        });
-        apis.insert("power", APIEntry{
-            .path = QString(OXIDE_SERVICE_PATH) + "/power",
-            .dependants = new QStringList(),
-            .instance = new PowerAPI(this),
-        });
-        apis.insert("screen", APIEntry{
-            .path = QString(OXIDE_SERVICE_PATH) + "/screen",
-            .dependants = new QStringList(),
-            .instance = new ScreenAPI(this),
-        });
-        apis.insert("apps", APIEntry{
-            .path = QString(OXIDE_SERVICE_PATH) + "/apps",
-            .dependants = new QStringList(),
-            .instance = new AppsAPI(this),
-        });
-        apis.insert("notification", APIEntry{
-            .path = QString(OXIDE_SERVICE_PATH) + "/notification",
-            .dependants = new QStringList(),
-            .instance = new NotificationAPI(this),
-        });
-
-        connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
-        connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
-        connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
-        connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
-        connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
-        connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
-        connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
-        connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
-            if(notificationAPI->locked()){
-                return;
-            }
-            auto currentApplication = appsAPI->getApplication(appsAPI->currentApplicationNoSecurityCheck());
-            if(currentApplication != nullptr && currentApplication->path() == appsAPI->lockscreenApplication().path()){
-                qDebug() << "Left Action cancelled. On lockscreen";
-                return;
-            }
-            if(!appsAPI->previousApplicationNoSecurityCheck()){
-                appsAPI->openDefaultApplication();
-            }
-        });
-        connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::openTaskManager);
-        connect(systemAPI, &SystemAPI::bottomAction, appsAPI, &AppsAPI::openTaskSwitcher);
-        connect(systemAPI, &SystemAPI::topAction, systemAPI, &SystemAPI::toggleSwipes);
-
-        auto bus = QDBusConnection::systemBus();
-        for(auto api : apis){
-            bus.unregisterObject(api.path);
-        }
     }
     ~DBusService(){
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "Disconnecting APIs", "info");
+#endif
         qDebug() << "Removing all APIs";
         auto bus = QDBusConnection::systemBus();
         for(auto api : apis){
@@ -147,6 +195,9 @@ public:
             delete api.dependants;
         }
         apis.clear();
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
+#endif
     }
     void setEnabled(bool enabled){ Q_UNUSED(enabled); };
 
@@ -161,6 +212,9 @@ public:
 
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", ("requestAPI() " + name).toStdString().c_str(), "query");
+#endif
         if(!hasPermission(name)){
             return QDBusObjectPath("/");
         }
@@ -181,6 +235,9 @@ public slots:
         return QDBusObjectPath(api.path);
     };
     Q_NOREPLY void releaseAPI(QString name, QDBusMessage message) {
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", ("releaseAPI() " + name).toStdString().c_str(), "query");
+#endif
         if(!apis.contains(name)){
             return;
         }
@@ -195,6 +252,9 @@ public slots:
         }
     };
     QVariantMap APIs(){
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "APIs()", "query");
+#endif
         QVariantMap result;
         for(auto key : apis.keys()){
             auto api = apis[key];
@@ -206,6 +266,9 @@ public slots:
     };
 
     void startup(){
+#ifdef SENTRY
+        sentry_breadcrumb("dbusservice", "startup", "navigation");
+#endif
         appsAPI->startup();
     }
 

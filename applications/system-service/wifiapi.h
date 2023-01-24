@@ -20,7 +20,7 @@ class WifiAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_WIFI_INTERFACE)
     Q_PROPERTY(int state READ state NOTIFY stateChanged)
-    Q_PROPERTY(QSet<QString> blobs READ blobs)
+    Q_PROPERTY(QStringList blobs READ blobs)
     Q_PROPERTY(QList<QDBusObjectPath> bSSs READ bSSs)
     Q_PROPERTY(int link READ link NOTIFY linkChanged)
     Q_PROPERTY(int rssi READ rssi NOTIFY rssiChanged)
@@ -38,7 +38,6 @@ public:
     WifiAPI(QObject* parent)
     : APIBase(parent),
       m_enabled(false),
-      settings("/home/root/.config/remarkable/xochitl.conf", QSettings::IniFormat),
       wlans(),
       networks(),
       m_state(Unknown),
@@ -46,102 +45,133 @@ public:
       m_link(0),
       m_scanning(false)
     {
-        singleton(this);
-        QDir dir("/sys/class/net");
-        qDebug() << "Looking for wireless devices...";
-        for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
-            qDebug() << ("  Checking " + path + "...").toStdString().c_str();
-            Wlan* item = new Wlan(dir.path() + "/" + path, this);
-            if(!item->hasDirectory("wireless")){
-                qDebug() << "    Not a wireless device";
-                continue;
-            }
-            qDebug() << "    Wireless device found!";
-            wlans.append(item);
-            connect(item, &Wlan::BSSAdded, this, &WifiAPI::BSSAdded, Qt::QueuedConnection);
-            connect(item, &Wlan::BSSRemoved, this, &WifiAPI::BSSRemoved, Qt::QueuedConnection);
-            connect(item, &Wlan::BlobAdded, this, &WifiAPI::BlobAdded, Qt::QueuedConnection);
-            connect(item, &Wlan::BlobRemoved, this, &WifiAPI::BlobRemoved, Qt::QueuedConnection);
-            connect(item, &Wlan::NetworkAdded, this, &WifiAPI::NetworkAdded, Qt::QueuedConnection);
-            connect(item, &Wlan::NetworkRemoved, this, &WifiAPI::NetworkRemoved, Qt::QueuedConnection);
-            connect(item, &Wlan::NetworkSelected, this, &WifiAPI::NetworkSelected, Qt::QueuedConnection);
-            connect(item, &Wlan::PropertiesChanged, this, &WifiAPI::InterfacePropertiesChanged, Qt::QueuedConnection);
-            connect(item, &Wlan::ScanDone, this, &WifiAPI::ScanDone, Qt::QueuedConnection);
-        }
-        QDBusConnection bus = QDBusConnection::systemBus();
-        if(!bus.isConnected()){
-            qWarning("Failed to connect to system bus.");
-            throw QException();
-        }
-        validateSupplicant();
-        supplicant = new Wpa_Supplicant(WPA_SUPPLICANT_SERVICE, WPA_SUPPLICANT_SERVICE_PATH, bus);
-        connect(supplicant, &Wpa_Supplicant::InterfaceAdded, this, &WifiAPI::InterfaceAdded);
-        connect(supplicant, &Wpa_Supplicant::InterfaceRemoved, this, &WifiAPI::InterfaceRemoved);
-        connect(supplicant, &Wpa_Supplicant::PropertiesChanged, this, &WifiAPI::PropertiesChanged);
-        for(auto wlan : wlans){
-            auto iface = wlan->iface();
-            auto reply = (QDBusReply<QDBusObjectPath>)supplicant->GetInterface(iface);
-            if(!reply.isValid() || reply.value().path() == "/"){
-                QVariantMap args;
-                args.insert("Ifname", iface);
-                reply = supplicant->CreateInterface(args);
-            }
-            if(reply.isValid()){
-                wlan->setInterface(reply.value().path());
-                auto interface = wlan->interface();
-                for(auto path : interface->networks()){
-                    bool found = false;
-                    for(auto network : networks){
-                        if(network->path() == path.path()){
-                            found = true;
-                            network->addNetwork(path.path(), interface);
-                            break;
-                        }
+        Oxide::Sentry::sentry_transaction("wifi", "init", [this](Oxide::Sentry::Transaction* t){
+            Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
+                singleton(this);
+            });
+            Oxide::Sentry::sentry_span(t, "sysfs", "Finding wireless devices", [this](Oxide::Sentry::Span* s){
+                QDir dir("/sys/class/net");
+                qDebug() << "Looking for wireless devices...";
+                for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
+                    qDebug() << ("  Checking " + path + "...").toStdString().c_str();
+                    Wlan* item = new Wlan(dir.path() + "/" + path, this);
+                    if(!item->hasDirectory("wireless")){
+                        qDebug() << "    Not a wireless device";
+                        continue;
                     }
-                    if(!found){
-                        INetwork inetwork(WPA_SUPPLICANT_SERVICE, path.path(), bus, interface);
-                        auto properties = inetwork.properties();
-                        auto network = new Network(getPath("network", properties["ssid"].toString()), properties, this);
-                        network->setEnabled(true);
-                        network->addNetwork(path.path(), interface);
-                        networks.append(network);
-                    }
+                    qDebug() << "    Wireless device found!";
+                    Oxide::Sentry::sentry_span(s, path.toStdString(), "Connect to wireless device", [this, item]{
+                        wlans.append(item);
+                        connect(item, &Wlan::BSSAdded, this, &WifiAPI::BSSAdded, Qt::QueuedConnection);
+                        connect(item, &Wlan::BSSRemoved, this, &WifiAPI::BSSRemoved, Qt::QueuedConnection);
+                        connect(item, &Wlan::BlobAdded, this, &WifiAPI::BlobAdded, Qt::QueuedConnection);
+                        connect(item, &Wlan::BlobRemoved, this, &WifiAPI::BlobRemoved, Qt::QueuedConnection);
+                        connect(item, &Wlan::NetworkAdded, this, &WifiAPI::NetworkAdded, Qt::QueuedConnection);
+                        connect(item, &Wlan::NetworkRemoved, this, &WifiAPI::NetworkRemoved, Qt::QueuedConnection);
+                        connect(item, &Wlan::NetworkSelected, this, &WifiAPI::NetworkSelected, Qt::QueuedConnection);
+                        connect(item, &Wlan::PropertiesChanged, this, &WifiAPI::InterfacePropertiesChanged, Qt::QueuedConnection);
+                        connect(item, &Wlan::ScanDone, this, &WifiAPI::ScanDone, Qt::QueuedConnection);
+                    });
                 }
-                for(auto path : wlan->interface()->bSSs()){
-                    auto ibss = new IBSS(WPA_SUPPLICANT_SERVICE, path.path(), bus, wlan->interface());
-                    bool found = false;
-                    auto bssid = ibss->bSSID();
-                    for(auto bss : bsss){
-                        if(bss->bssid() == bssid){
-                            found = true;
-                            bss->addBSS(path.path());
-                            break;
-                        }
+            });
+            Oxide::Sentry::sentry_span(t, "wpa_supplicant", "Connect to the wpa_supplicant", [this](Oxide::Sentry::Span* s){
+                Oxide::Sentry::Span* span = Oxide::Sentry::start_span(s, "connect", "Connect to DBus interface");
+                QDBusConnection bus = QDBusConnection::systemBus();
+                if(!bus.isConnected()){
+                    qWarning("Failed to connect to system bus.");
+                    throw QException();
+                }
+                validateSupplicant();
+                supplicant = new Wpa_Supplicant(WPA_SUPPLICANT_SERVICE, WPA_SUPPLICANT_SERVICE_PATH, bus);
+                connect(supplicant, &Wpa_Supplicant::InterfaceAdded, this, &WifiAPI::InterfaceAdded);
+                connect(supplicant, &Wpa_Supplicant::InterfaceRemoved, this, &WifiAPI::InterfaceRemoved);
+                connect(supplicant, &Wpa_Supplicant::PropertiesChanged, this, &WifiAPI::PropertiesChanged);
+                Oxide::Sentry::stop_span(span);
+                delete span;
+                Oxide::Sentry::sentry_span(s, "wlans", "Setting up wlan instances", [this, bus](Oxide::Sentry::Span* s){
+                    for(auto wlan : wlans){
+                        Oxide::Sentry::sentry_span(s, wlan->iface().toStdString(), "Load current networks and BSSs", [this, bus, wlan]{
+                            auto iface = wlan->iface();
+                            auto reply = (QDBusReply<QDBusObjectPath>)supplicant->GetInterface(iface);
+                            if(!reply.isValid() || reply.value().path() == "/"){
+                                QVariantMap args;
+                                args.insert("Ifname", iface);
+                                reply = supplicant->CreateInterface(args);
+                            }
+                            if(reply.isValid()){
+                                wlan->setInterface(reply.value().path());
+                                auto interface = wlan->interface();
+                                for(auto path : interface->networks()){
+                                    bool found = false;
+                                    for(auto network : networks){
+                                        if(network->path() == path.path()){
+                                            found = true;
+                                            network->addNetwork(path.path(), interface);
+                                            break;
+                                        }
+                                    }
+                                    if(!found){
+                                        INetwork inetwork(WPA_SUPPLICANT_SERVICE, path.path(), bus, interface);
+                                        auto properties = inetwork.properties();
+                                        auto network = new Network(getPath("network", properties["ssid"].toString()), properties, this);
+                                        network->setEnabled(true);
+                                        network->addNetwork(path.path(), interface);
+                                        networks.append(network);
+                                    }
+                                }
+                                for(auto path : wlan->interface()->bSSs()){
+                                    auto ibss = new IBSS(WPA_SUPPLICANT_SERVICE, path.path(), bus, wlan->interface());
+                                    bool found = false;
+                                    auto bssid = ibss->bSSID();
+                                    for(auto bss : bsss){
+                                        if(bss->bssid() == bssid){
+                                            found = true;
+                                            bss->addBSS(path.path());
+                                            break;
+                                        }
+                                    }
+                                    if(!found){
+                                        auto bss = new BSS(getPath("bss", bssid), ibss, this);
+                                        bsss.append(bss);
+                                    }else{
+                                        ibss->deleteLater();
+                                    }
+                                }
+                            }
+                        });
                     }
-                    if(!found){
-                        auto bss = new BSS(getPath("bss", bssid), ibss, this);
-                        bsss.append(bss);
+                });
+            });
+            Oxide::Sentry::sentry_span(t, "load", "Load state", [this](Oxide::Sentry::Span* s){
+                Oxide::Sentry::sentry_span(s, "timer", "Setup timer", [this]{
+                    timer = new QTimer(this);
+                    timer->setSingleShot(false);
+                    timer->setInterval(3 * 1000); // 3 seconds
+                    timer->moveToThread(qApp->thread());
+                    connect(timer, &QTimer::timeout, this, QOverload<>::of(&WifiAPI::update));
+                });
+                Oxide::Sentry::sentry_span(s, "networks", "Load networks from disk", [this]{
+                    loadNetworks();
+                });
+                Oxide::Sentry::sentry_span(s, "state", "Syncronize state with settings", [this]{
+                    m_state = getCurrentState();
+                    if(xochitlSettings.wifion()){
+                        enable();
                     }else{
-                        ibss->deleteLater();
+                        disable();
                     }
-                }
-            }
-        }
-        timer = new QTimer(this);
-        timer->setSingleShot(false);
-        timer->setInterval(3 * 1000); // 3 seconds
-        timer->moveToThread(qApp->thread());
-        connect(timer, &QTimer::timeout, this, QOverload<>::of(&WifiAPI::update));
-        loadNetworks();
-        m_state = getCurrentState();
-        if(settings.value("wifion").toBool()){
-            enable();
-        }else{
-            disable();
-        }
-        update();
-        setEnabled(m_enabled);
-        timer->start();
+                });
+                Oxide::Sentry::sentry_span(s, "update", "Update current state", [this]{
+                    update();
+                });
+                Oxide::Sentry::sentry_span(s, "setEnabled", "Enable/disable API objects", [this]{
+                    setEnabled(m_enabled);
+                });
+                Oxide::Sentry::sentry_span(s, "timer", "Start timer", [this]{
+                    timer->start();
+                });
+            });
+        });
     }
     ~WifiAPI(){
         qDebug() << "Unregistering all networks";
@@ -212,7 +242,7 @@ public:
                 continue;
             }
         }
-        settings.setValue("wifion", true);
+        xochitlSettings.set_wifion(true);
         validateSupplicant();
         auto state = getCurrentState();
         m_state = state;
@@ -234,8 +264,7 @@ public:
             }
         }
         flushBSSCache(0);
-        settings.setValue("wifion", false);
-        settings.sync();
+        xochitlSettings.set_wifion(false);
     }
     Q_INVOKABLE QDBusObjectPath addNetwork(QString ssid, QVariantMap properties){
         if(!hasPermission("wifi")){
@@ -406,15 +435,15 @@ public:
         }
         return QByteArray();
     }
-    QSet<QString> blobs(){
+    QStringList blobs(){
         QSet<QString> result;
         if(!hasPermission("wifi")){
-            return result;
+            return result.values();
         }
         for(auto wlan : wlans){
             result.unite(wlan->blobs());
         }
-        return result;
+        return result.values();
     }
     QList<QDBusObjectPath> bSSs(){
         QList<QDBusObjectPath> result;
@@ -445,6 +474,9 @@ public:
         }
         int result = -100;
         for(auto wlan : wlans){
+            if(!wlan->isUp()){
+                continue;
+            }
             int rssi = wlan->rssi();
             if(result < rssi){
                 result = rssi;
@@ -657,7 +689,6 @@ private slots:
 private:
     bool m_enabled;
     QTimer* timer;
-    QSettings settings;
     QList<Wlan*> wlans;
     QList<Network*> networks;
     int m_state;
@@ -703,14 +734,7 @@ private:
 
     void loadNetworks(){
         qDebug() << "Loading networks from settings...";
-        settings.sync();
-        settings.beginGroup("wifinetworks");
-        QList<QVariantMap> registeredNetworks;
-        for(const QString& childKey : settings.allKeys()){
-            QVariantMap network = settings.value(childKey).toMap();
-            registeredNetworks.append(network);
-        }
-        settings.endGroup();
+        QList<QMap<QString, QVariant>> registeredNetworks = xochitlSettings.wifinetworks().values();
         qDebug() << "Registering networks...";
         for(auto registration : registeredNetworks){
             bool found = false;
@@ -750,9 +774,8 @@ private:
     }
 
     void update(){
-        settings.sync();
         auto state = getCurrentState();
-        bool enabled = settings.value("wifion").toBool();
+        bool enabled = xochitlSettings.wifion();
         if(enabled && state == Off){
             enable();
             state = getCurrentState();

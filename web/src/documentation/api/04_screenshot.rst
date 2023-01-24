@@ -44,7 +44,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include "dbussettings.h"
+   #include <liboxide.h>
    #include "dbusservice_interface.h"
    #include "screenapi_interface.h"
 
@@ -113,7 +113,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include "dbussettings.h"
+   #include <liboxide.h>
    #include "dbusservice_interface.h"
    #include "screenapi_interface.h"
    #include "screenshot_interface.h"
@@ -263,7 +263,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include "dbussettings.h"
+   #include <liboxide.h>
    #include "dbusservice_interface.h"
    #include "systemapi_interface.h"
 

@@ -4,9 +4,9 @@
 #include <QObject>
 #include <QImage>
 #include <QQuickItem>
+#include <liboxide.h>
 
 #include "epframebuffer.h"
-#include "dbussettings.h"
 
 #include "dbusservice_interface.h"
 #include "screenapi_interface.h"
@@ -15,6 +15,7 @@
 #include "screenshotlist.h"
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide::Sentry;
 
 #define CORRUPT_SETTINGS_VERSION 1
 
@@ -70,6 +71,15 @@ public:
         QTimer::singleShot(10, [this]{
             setState("loaded");
         });
+    }
+    Q_INVOKABLE void breadcrumb(QString category, QString message, QString type = "default"){
+#ifdef SENTRY
+        sentry_breadcrumb(category.toStdString().c_str(), message.toStdString().c_str(), type.toStdString().c_str());
+#else
+        Q_UNUSED(category);
+        Q_UNUSED(message);
+        Q_UNUSED(type);
+#endif
     }
     QString state() {
         if(!getStateControllerUI()){

@@ -37,6 +37,7 @@ ApplicationWindow {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
+                        controller.breadcrumb("back", "click", "ui");
                         if(stateController.state !== "viewing"){
                             Qt.quit();
                             return;
@@ -63,6 +64,7 @@ ApplicationWindow {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
+                        controller.breadcrumb("menu.delete", "click", "ui");
                         controller.screenshots.remove(viewer.model.display.path);
                         viewer.model = undefined;
                         stateController.state = "loading";
@@ -77,15 +79,24 @@ ApplicationWindow {
                     width: 310
                     Action {
                         text: controller.columns === 4 ? "* Small" : "Small"
-                        onTriggered: controller.columns = 4
+                        onTriggered: {
+                            controller.breadcrumb("menu.small", "click", "ui");
+                            controller.columns = 4;
+                        }
                     }
                     Action {
                         text: controller.columns === 3 ? "* Medium" : "Medium"
-                        onTriggered: controller.columns = 3
+                        onTriggered: {
+                            controller.breadcrumb("menu.medium", "click", "ui");
+                            controller.columns = 3;
+                        }
                     }
                     Action {
                         text: controller.columns === 2 ? "* Large" : "Large"
-                        onTriggered: controller.columns = 2
+                        onTriggered: {
+                            controller.breadcrumb("menu.large", "click", "ui");
+                            controller.columns = 2;
+                        }
                     }
                 }
             }
@@ -105,6 +116,7 @@ ApplicationWindow {
                 visible: !screenshots.atYBeginning
                 Layout.fillWidth: true
                 onClicked: {
+                    controller.breadcrumb("screenshots", "scroll.up", "ui");
                     console.log("Scroll up");
                     screenshots.currentIndex = screenshots.currentIndex - screenshots.pageSize();
                     if(screenshots.currentIndex < 0){
@@ -130,13 +142,17 @@ ApplicationWindow {
                     width: screenshots.cellWidth
                     height: screenshots.cellHeight
                     onClicked: {
+                        controller.breadcrumb("screenshots.screenshot", "click", "ui");
                         if(!screenshots.flicking){
                             console.log("Opening " + model.display.path);
                             viewer.model = model;
                             stateController.state = "viewing";
                         }
                     }
-                    onLongPress: !screenshots.flicking && controller.screenshots.remove(model.display.path)
+                    onLongPress: {
+                        controller.breadcrumb("screenshots.screenshot", "longPress", "ui");
+                        !screenshots.flicking && controller.screenshots.remove(model.display.path);
+                    }
                 }
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
@@ -172,6 +188,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 visible: !screenshots.atYEnd
                 onClicked: {
+                    controller.breadcrumb("screenshots", "scroll.down", "ui");
                     console.log("Scroll down");
                     screenshots.currentIndex = screenshots.currentIndex + screenshots.pageSize();
                     if(screenshots.currentIndex > screenshots.count){
@@ -219,6 +236,7 @@ ApplicationWindow {
                 from: "*"; to: "loaded"
                 SequentialAnimation {
                     ScriptAction { script: {
+                        controller.breadcrumb("navigation", "main", "navigation");
                         console.log("Display loaded");
                     } }
                 }
@@ -227,6 +245,7 @@ ApplicationWindow {
                 from: "*"; to: "loading"
                 SequentialAnimation {
                     ScriptAction { script: {
+                        controller.breadcrumb("navigation", "loading", "navigation");
                         console.log("Loading display");
                         controller.startup();
                     } }
@@ -236,6 +255,7 @@ ApplicationWindow {
                 from: "*"; to: "viewing"
                 SequentialAnimation {
                     ScriptAction { script: {
+                        controller.breadcrumb("navigation", "viewing", "navigation");
                         console.log("Viewing Image");
                     } }
                 }

@@ -1,5 +1,6 @@
 #include "buttonhandler.h"
 #include "dbusservice.h"
+#include "liboxide.h"
 
 void button_exit_handler(){
     // Release lock

@@ -63,7 +63,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include "dbussettings.h"
+   #include <liboxide.h>
    #include "dbusservice_interface.h"
    #include "notificationapi_interface.h"
    #include "notification_interface.h"
@@ -159,7 +159,7 @@ Example Usage
 .. code:: cpp
 
    #include <QUuid>
-   #include "dbussettings.h"
+   #include <liboxide.h>
    #include "dbusservice_interface.h"
    #include "notificationapi_interface.h"
    #include "notification_interface.h"
@@ -285,7 +285,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include "dbussettings.h"
+   #include <liboxide.h>
    #include "dbusservice_interface.h"
    #include "powerapi_interface.h"
 

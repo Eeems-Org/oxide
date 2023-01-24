@@ -31,3 +31,10 @@ There are a number of options for interacting with the API.
 For the purposes of this documentation we will document using ``rot`` as
 well as using Qt generated classes.
 
+Liboxide Shared Library
+=======================
+
+Oxide also produces a shared library that can be used for application development. This library does
+not yet fully encompass the full API provide through D-Bus, but will slowly work towards feature parity.
+
+`You can find the documentation here <../../liboxide/index.html>`__

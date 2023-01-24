@@ -2,11 +2,12 @@
 #include <QGuiApplication>
 
 #include <cstdlib>
+#include <liboxide.h>
 
 #include "dbusservice.h"
-#include "signalhandler.h"
 
 using namespace std;
+using namespace Oxide::Sentry;
 
 const char *qt_version = qVersion();
 
@@ -16,7 +17,7 @@ void sigHandler(int signal){
 }
 
 int main(int argc, char *argv[]){
-    if(deviceSettings.getDeviceType() == DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
+    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
         qWarning() << "rm2fb not detected. Running xochitl instead!";
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
@@ -29,6 +30,7 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
 #endif
     QGuiApplication app(argc, argv);
+    sentry_init("tarnish", argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("tarnish");

@@ -171,7 +171,7 @@ public:
             }
             beginRemoveRows(QModelIndex(), taskItems.indexOf(taskItem), taskItems.indexOf(taskItem));
             i.remove();
-            delete taskItem;
+            taskItem->deleteLater();
             endRemoveRows();
         }
         QDir directory("/proc");

@@ -213,7 +213,7 @@ QList<QObject*> Controller::getApps(){
         auto name = app.name();
         auto appItem = getApplication(name);
         if(appItem == nullptr){
-            qDebug() << name;
+            qDebug() << "New application:" << name;
             appItem = new AppItem(this);
             applications.append(appItem);
         }
@@ -229,12 +229,12 @@ QList<QObject*> Controller::getApps(){
         appItem->setProperty("running", running.contains(name));
         auto icon = app.icon();
         if(!icon.isEmpty() && QFile(icon).exists()){
-                appItem->setProperty("imgFile", "file:" + icon);
+            appItem->setProperty("imgFile", "file:" + icon);
         }
         if(!appItem->ok()){
             qDebug() << "Invalid item" << appItem->property("name").toString();
             applications.removeAll(appItem);
-            delete appItem;
+            appItem->deleteLater();
         }
     }
     // Sort by name
@@ -273,11 +273,10 @@ void Controller::importDraftApps(){
                     continue;
                 }
                 QTextStream in(&file);
-                AppItem appItem(this);
-                QString onStop = "";
+                QVariantMap properties;
                 while (!in.atEnd()) {
                     QString line = in.readLine();
-                    if(line.startsWith("#")){
+                    if(line.startsWith("#") || line.trimmed().isEmpty()){
                         continue;
                     }
                     QStringList parts = line.split("=");
@@ -287,24 +286,30 @@ void Controller::importDraftApps(){
                     }
                     QString lhs = parts.at(0);
                     QString rhs = parts.at(1);
-                    QSet<QString> known = { "name", "desc", "call" };
                     if(rhs != ":" && rhs != ""){
-                        if(known.contains(lhs)){
-                            appItem.setProperty(lhs.toUtf8(), rhs);
+                        if(lhs == "name"){
+                            properties.insert("name", rhs);
+                        }else if(lhs == "desc"){
+                            properties.insert("description", rhs);
                         }else if(lhs == "imgFile"){
-                            appItem.setProperty(lhs.toUtf8(), configDirectoryPath + "/icons/" + rhs + ".png");
+                            auto icon = configDirectoryPath + "/icons/" + rhs + ".png";
+                            if(icon.startsWith("qrc:")){
+                                icon = "";
+                            }
+                            properties.insert("icon", icon);
+                        }else if(lhs == "call"){
+                            properties.insert("bin", rhs);
                         }else if(lhs == "term"){
-                            onStop = rhs.trimmed();
+                            properties.insert("onStop", rhs.trimmed());
                         }
                     }
                 }
                 file.close();
-                auto name = appItem.property("name").toString();
-                appItem.setProperty("displayName", name);
+                auto name = properties["name"].toString();
                 QDBusObjectPath path = appsApi->getApplicationPath(name);
                 if(path.path() != "/"){
                     qDebug() << "Already exists" << name;
-                    auto icon = appItem.property("imgFile").toString();
+                    auto icon = properties["icon"].toString();
                     if(icon.isEmpty()){
                         continue;
                     }
@@ -314,17 +319,8 @@ void Controller::importDraftApps(){
                     }
                     continue;
                 }
-                auto icon = appItem.property("imgFile").toString();
-                if(icon.startsWith("qrc:")){
-                    icon = "";
-                }
-                QVariantMap properties;
-                properties.insert("name", name);
-                properties.insert("displayName", appItem.property("displayName"));
-                properties.insert("description", appItem.property("desc"));
-                properties.insert("bin", appItem.property("call"));
-                properties.insert("icon", icon);
-                properties.insert("onStop", onStop);
+                qDebug() << "Not found, creating...";
+                properties.insert("displayName", name);
                 path = appsApi->registerApplication(properties);
                 if(path.path() == "/"){
                     qDebug() << "Failed to import" << name;
