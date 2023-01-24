@@ -36,6 +36,7 @@ class AppsAPI : public APIBase {
     Q_PROPERTY(QDBusObjectPath currentApplication READ currentApplication)
     Q_PROPERTY(QVariantMap runningApplications READ runningApplications)
     Q_PROPERTY(QVariantMap pausedApplications READ pausedApplications)
+
 public:
     static AppsAPI* singleton(AppsAPI* self = nullptr){
         static AppsAPI* instance;

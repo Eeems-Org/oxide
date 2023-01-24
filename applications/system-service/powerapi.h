@@ -24,6 +24,7 @@ class PowerAPI : public APIBase {
     Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged)
     Q_PROPERTY(int batteryTemperature READ batteryTemperature NOTIFY batteryTemperatureChanged)
     Q_PROPERTY(int chargerState READ chargerState NOTIFY chargerStateChanged)
+
 public:
     static PowerAPI* singleton(PowerAPI* self = nullptr){
         static PowerAPI* instance;
@@ -38,7 +39,7 @@ public:
             Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
                 singleton(this);
             });
-            Oxide::Sentry::sentry_span(t, "sysfs", "Determine power devices from sysfs", [this](Oxide::Sentry::Span* s){
+            Oxide::Sentry::sentry_span(t, "sysfs", "Determine power devices from sysfs", [this](){
                 Oxide::Power::batteries();
                 Oxide::Power::chargers();
             });

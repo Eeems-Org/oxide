@@ -10,6 +10,7 @@
 
 class FifoHandler : public QObject {
     Q_OBJECT
+
 public:
     FifoHandler(QString name, QString path, QObject* host)
     : QObject(),
@@ -59,10 +60,12 @@ public:
         }
     }
     const QString& name() { return _name; }
+
 signals:
     void started();
     void finished();
     void dataRecieved(FifoHandler* handler, const QString& data);
+
 protected:
     void run() {
         if(!in.is_open()){
@@ -81,6 +84,7 @@ protected:
         }
         thread()->yieldCurrentThread();
     }
+
 private:
     QObject* host;
     QThread _thread;
@@ -90,7 +94,6 @@ private:
     std::ifstream in;
     std::ofstream out;
     bool getline_async(std::istream& is, std::string& str, char delim = '\n') {
-
         static std::string lineSoFar;
         char inChar;
         int charsRead = 0;

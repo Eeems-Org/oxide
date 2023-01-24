@@ -241,6 +241,7 @@ namespace Oxide {
          * \sa setWifinetworks, wifinetworksChanged
          */
         Q_PROPERTY(WifiNetworks wifinetworks MEMBER m_wifinetworks READ wifinetworks WRITE setWifinetworks RESET resetWifinetworks NOTIFY wifinetworksChanged)
+
     public:
         WifiNetworks wifinetworks();
         /*!
@@ -261,11 +262,13 @@ namespace Oxide {
          */
         void setWifiNetwork(const QString& name, QVariantMap properties);
         void resetWifinetworks();
+
     signals:
         /*!
          * \brief The contents of the wifi network list has changed
          */
         void wifinetworksChanged(WifiNetworks);
+
     private:
         ~XochitlSettings();
         WifiNetworks m_wifinetworks;
@@ -330,6 +333,7 @@ namespace Oxide {
          * \brief If crash reporting has been enabled or disabled
          */
         O_SETTINGS_PROPERTY(bool, General, crashReport, true)
+
     private:
         ~SharedSettings();
     };

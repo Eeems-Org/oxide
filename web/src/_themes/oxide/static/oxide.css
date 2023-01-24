@@ -91,12 +91,12 @@ pre {
 }
 
 div.warning {
-  padding: var(--text-height);
-  overflow: auto;
   border-radius: var(--border-radius);
   border-color: var(--bg-color-inv);
   border-style: dashed;
   font-size: 0.888rem;
+  overflow: auto;
+  padding: var(--text-height);
 }
 
 a {

@@ -13,6 +13,7 @@ class NotificationItem : public QObject {
     Q_PROPERTY(QString text READ text NOTIFY textChanged)
     Q_PROPERTY(QString icon READ icon NOTIFY iconChanged)
     Q_PROPERTY(int created READ created NOTIFY createdChanged)
+
 public:
     NotificationItem(Notification* notification, QObject* parent) : QObject(parent) {
         m_identifier = notification->identifier();
@@ -71,6 +72,7 @@ private:
 class NotificationList : public QAbstractListModel
 {
     Q_OBJECT
+
 public:
     NotificationList() : QAbstractListModel(nullptr) {}
 

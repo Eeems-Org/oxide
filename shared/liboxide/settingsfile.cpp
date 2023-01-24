@@ -13,13 +13,8 @@ namespace Oxide {
     }
     SettingsFile::SettingsFile(QString path)
         : QSettings(path, QSettings::IniFormat),
-          fileWatcher(QStringList() << path)
-    {
-
-    }
-    SettingsFile::~SettingsFile(){
-
-    }
+          fileWatcher(QStringList() << path) { }
+    SettingsFile::~SettingsFile(){ }
     void SettingsFile::fileChanged(){
         if(!fileWatcher.files().contains(fileName()) && !fileWatcher.addPath(fileName())){
             qWarning() << "Unable to watch " << fileName();

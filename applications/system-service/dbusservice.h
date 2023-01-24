@@ -36,6 +36,7 @@ class DBusService : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_GENERAL_INTERFACE)
     Q_PROPERTY(int tarnishPid READ tarnishPid)
+
 public:
     static DBusService* singleton(){
         static DBusService* instance;

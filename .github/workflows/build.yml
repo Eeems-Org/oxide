@@ -2,6 +2,8 @@ name: Build oxide
 
 on:
   push:
+    branches:
+      - master
     paths:
       - 'applications/**'
       - 'shared/**'

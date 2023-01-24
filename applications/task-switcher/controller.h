@@ -32,6 +32,7 @@ enum WifiState { WifiUnknown, WifiOff, WifiDisconnected, WifiOffline, WifiOnline
 
 class Controller : public QObject {
     Q_OBJECT
+
 public:
     Controller(QObject* parent, ScreenProvider* screenProvider)
     : QObject(parent), settings(this), applications() {

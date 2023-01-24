@@ -20,6 +20,7 @@ class WifiNetwork : public QObject {
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
     Q_PROPERTY(bool available READ available NOTIFY availableChanged)
     Q_PROPERTY(bool known READ known NOTIFY knownChanged)
+
 public:
     WifiNetwork(Network* network, Wifi* api, QObject* parent)
     : QObject(parent),
@@ -137,6 +138,7 @@ class WifiNetworkList : public QAbstractListModel
 {
     Q_OBJECT
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged);
+
 public:
     explicit WifiNetworkList() : QAbstractListModel(nullptr), networks() {}
 

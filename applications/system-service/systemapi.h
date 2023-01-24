@@ -67,6 +67,7 @@ class SystemAPI : public APIBase {
     Q_PROPERTY(int autoSleep READ autoSleep WRITE setAutoSleep NOTIFY autoSleepChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
+
 public:
     enum SwipeDirection { None, Right, Left, Up, Down };
     Q_ENUM(SwipeDirection)
@@ -117,7 +118,6 @@ public:
                 m_autoSleep = autoSleep;
                 if(autoSleep < 0) {
                     m_autoSleep = 0;
-
                 }else if(autoSleep > 10){
                     m_autoSleep = 10;
                 }
@@ -687,7 +687,6 @@ private:
             }
             if(swipeDirection == Left){
                 emit rightAction();
-
             }else{
                 emit leftAction();
             }

@@ -30,6 +30,7 @@ class Controller : public QObject {
     Q_PROPERTY(bool telemetry READ telemetry WRITE setTelemetry NOTIFY telemetryChanged)
     Q_PROPERTY(bool applicationUsage READ applicationUsage WRITE setApplicationUsage NOTIFY applicationUsageChanged)
     Q_PROPERTY(bool crashReport READ crashReport WRITE setCrashReport NOTIFY crashReportChanged)
+
 public:
     Controller(QObject* parent)
     : QObject(parent), confirmPin(), settings(this) {
@@ -173,7 +174,6 @@ public:
                 setState("loading");
             });
         });
-
     }
     void launchStartupApp(){
         QDBusObjectPath path = appsApi->startupApplication();
@@ -230,7 +230,6 @@ public:
                 });
             });
             return true;
-
         }else if(state == "loaded"){
             qDebug() << "PIN doesn't match!";
             onFailedLogin();

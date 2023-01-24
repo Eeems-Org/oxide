@@ -32,6 +32,7 @@ class ScreenAPI : public APIBase {
     Q_CLASSINFO("D-Bus Interface", OXIDE_SCREEN_INTERFACE)
     Q_PROPERTY(bool enabled READ enabled)
     Q_PROPERTY(QList<QDBusObjectPath> screenshots READ screenshots)
+
 public:
     static ScreenAPI* singleton(ScreenAPI* self = nullptr){
         static ScreenAPI* instance;
