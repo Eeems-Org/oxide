@@ -24,6 +24,7 @@ class PowerAPI : public APIBase {
     Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged)
     Q_PROPERTY(int batteryTemperature READ batteryTemperature NOTIFY batteryTemperatureChanged)
     Q_PROPERTY(int chargerState READ chargerState NOTIFY chargerStateChanged)
+
 public:
     static PowerAPI* singleton(PowerAPI* self = nullptr){
         static PowerAPI* instance;

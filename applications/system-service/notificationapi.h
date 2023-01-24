@@ -18,6 +18,7 @@ class NotificationAPI : public APIBase {
     Q_PROPERTY(bool enabled READ enabled)
     Q_PROPERTY(QList<QDBusObjectPath> allNotifications READ getAllNotifications)
     Q_PROPERTY(QList<QDBusObjectPath> unownedNotifications READ getUnownedNotifications)
+
 public:
     static NotificationAPI* singleton(NotificationAPI* self = nullptr){
         static NotificationAPI* instance;

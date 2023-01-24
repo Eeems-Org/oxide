@@ -28,6 +28,7 @@ class Controller : public QObject {
     Q_OBJECT
     Q_PROPERTY(ScreenshotList* screenshots MEMBER screenshots READ getScreenshots NOTIFY screenshotsChanged)
     Q_PROPERTY(int columns READ columns WRITE setColumns NOTIFY columnsChanged)
+
 public:
     Controller(QObject* parent)
     : QObject(parent), settings(this), applications() {

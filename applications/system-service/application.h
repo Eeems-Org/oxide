@@ -43,6 +43,7 @@
 
 class SandBoxProcess : public QProcess{
     Q_OBJECT
+
 public:
     SandBoxProcess(QObject* parent = nullptr)
     : QProcess(parent), m_gid(0), m_uid(0), m_chroot(""), m_mask(0) {}
@@ -80,6 +81,7 @@ public:
     void setMask(mode_t mask){
         m_mask = mask;
     }
+
 protected:
     void setupChildProcess() override {
         // Drop all privileges in the child process
@@ -95,6 +97,7 @@ protected:
         setsid();
         prctl(PR_SET_PDEATHSIG, SIGTERM);
     }
+
 private:
     gid_t m_gid;
     uid_t m_uid;
@@ -102,18 +105,30 @@ private:
     mode_t m_mask;
 
     uid_t getUID(const QString& name){
-        auto user = getpwnam(name.toStdString().c_str());
-        if(user == NULL){
+        char buffer[1024];
+        struct passwd user;
+        struct passwd* result;
+        auto status = getpwnam_r(name.toStdString().c_str(), &user, buffer, sizeof(buffer), &result);
+        if(status != 0){
+            throw std::runtime_error("Failed to get user" + status);
+        }
+        if(result == NULL){
             throw std::runtime_error("Invalid user name: " + name.toStdString());
         }
-        return user->pw_uid;
+        return result->pw_uid;
     }
     gid_t getGID(const QString& name){
-        auto group = getgrnam(name.toStdString().c_str());
-        if(group == NULL){
+        char buffer[1024];
+        struct group grp;
+        struct group* result;
+        auto status = getgrnam_r(name.toStdString().c_str(), &grp, buffer, sizeof(buffer), &result);
+        if(status != 0){
+            throw std::runtime_error("Failed to get group" + status);
+        }
+        if(result == NULL){
             throw std::runtime_error("Invalid group name: " + name.toStdString());
         }
-        return group->gr_gid;
+        return result->gr_gid;
     }
 };
 
@@ -144,6 +159,7 @@ class Application : public QObject{
     Q_PROPERTY(QString group READ group)
     Q_PROPERTY(QStringList directories READ directories WRITE setDirectories NOTIFY directoriesChanged)
     Q_PROPERTY(QByteArray screenCapture READ screenCapture)
+
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false), fifos() {
@@ -396,6 +412,7 @@ public:
     void uninterruptApplication();
     void waitForPause();
     void waitForResume();
+
 signals:
     void launched();
     void paused();
@@ -473,6 +490,7 @@ private slots:
     }
     void errorOccurred(QProcess::ProcessError error);
     void powerStateDataRecieved(FifoHandler* handler, const QString& data);
+
 private:
     QVariantMap m_config;
     QString m_path;
@@ -733,7 +751,6 @@ private:
             if(mount.startsWith("/")){
                 activeMounts.append(mount);
             }
-
         }
         mounts.close();
         activeMounts.sort(Qt::CaseSensitive);

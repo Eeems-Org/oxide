@@ -27,6 +27,7 @@ class WifiAPI : public APIBase {
     Q_PROPERTY(QDBusObjectPath network READ network)
     Q_PROPERTY(QList<QDBusObjectPath> networks READ getNetworkPaths)
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
+
 public:
     static WifiAPI* singleton(WifiAPI* self = nullptr){
         static WifiAPI* instance;
@@ -656,7 +657,6 @@ signals:
     void bssRemoved(QDBusObjectPath);
     void scanningChanged(bool);
 
-
 private slots:
     // wpa_supplicant signals
     void InterfaceAdded(const QDBusObjectPath &path, const QVariantMap &properties){
@@ -686,6 +686,7 @@ private slots:
     void PropertiesChanged(const QVariantMap &properties){
         Q_UNUSED(properties);
     }
+
 private:
     bool m_enabled;
     QTimer* timer;
@@ -806,7 +807,6 @@ private:
             m_rssi = crssi;
             emit rssiChanged(crssi);
         }
-
     }
     State getCurrentState(){
         State state = Off;

@@ -13,6 +13,7 @@ using Oxide::SysObject;
 
 class Wlan : public QObject, public SysObject {
     Q_OBJECT
+
 public:
     Wlan(QString path, QObject* parent) : QObject(parent), SysObject(path), m_blobs(), m_iface(){
         m_iface = QFileInfo(path).fileName();
