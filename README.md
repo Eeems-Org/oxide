@@ -7,11 +7,12 @@
 [![Discord](https://img.shields.io/discord/385916768696139794.svg?label=reMarkable&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/ATqQGfu)
 
 # Oxide
+
 A launcher application for the [reMarkable tablet](https://remarkable.com/).
 
 Head over to the [releases](https://github.com/Eeems/oxide/releases) page for more information on the latest release. You can also see some (likely outdated) [screenshots here](https://github.com/Eeems/oxide/wiki/Screenshots).
 
-Here is an outdated video of it in action: 
+Here is an outdated video of it in action:
 [![Oxide v2.0-beta](https://i.imgur.com/1Q9A4NF.png)](https://youtu.be/rIRKgqy21L0 "Oxide v2.0-beta")
 
 ## Building
@@ -19,6 +20,7 @@ Here is an outdated video of it in action:
 Install the reMarkable toolchain and then run `make release`. It will produce a folder named `release` containing all the output.
 
 ### Nix
+
 Works on x86_64-linux or macOS with
 [linuxkit-nix](https://github.com/nix-community/linuxkit-nix).
 

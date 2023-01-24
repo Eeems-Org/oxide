@@ -31,30 +31,6 @@ std::string readFile(const std::string& path){
     return buffer.str();
 }
 #endif
-void sentry_setup_user(){
-#ifdef SENTRY
-    if(!sharedSettings.telemetry()){
-        return;
-    }
-    sentry_value_t user = sentry_value_new_object();
-    sentry_value_set_by_key(user, "id", sentry_value_new_string(readFile("/etc/machine-id").c_str()));
-    sentry_set_user(user);
-#endif
-}
-void sentry_setup_context(){
-#ifdef SENTRY
-    if(!sharedSettings.telemetry()){
-        return;
-    }
-    std::string version = readFile("/etc/version");
-    sentry_set_tag("os.version", version.c_str());
-    sentry_value_t device = sentry_value_new_object();
-    sentry_value_set_by_key(device, "machine-id", sentry_value_new_string(readFile("/etc/machine-id").c_str()));
-    sentry_value_set_by_key(device, "version", sentry_value_new_string(readFile("/etc/version").c_str()));
-    sentry_set_context("device", device);
-#endif
-}
-
 #define BITS_PER_LONG (sizeof(long) * 8)
 #define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
 #define OFF(x)  ((x)%BITS_PER_LONG)
