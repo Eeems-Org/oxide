@@ -27,8 +27,9 @@ release: clean build $(RELOBJ)
 	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/launcher install
 	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/lockscreen install
 	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/task-switcher install
+	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/notify-send install
 
-build: liboxide tarnish erode rot oxide decay corrupt fret anxiety
+build: liboxide tarnish erode rot oxide decay corrupt fret anxiety notify-send
 
 liboxide: $(OBJ) .build/liboxide/libliboxide.so
 
@@ -101,6 +102,14 @@ anxiety: tarnish liboxide .build/screenshot-viewer/anxiety
 	cp -r applications/screenshot-viewer/* .build/screenshot-viewer
 	cd .build/screenshot-viewer && qmake $(DEFINES) anxiety.pro
 	$(MAKE) -j`nproc` -C .build/screenshot-viewer all
+
+notify-send: tarnish liboxide .build/notify-send/notify-send
+
+.build/notify-send/notify-send:
+	mkdir -p .build/notify-send
+	cp -r applications/notify-send/* .build/notify-send
+	cd .build/notify-send && qmake $(DEFINES) notify-send.pro
+	$(MAKE) -j`nproc` -C .build/notify-send all
 
 sentry: .build/sentry/libsentry.so
 
