@@ -1,5 +1,6 @@
 QT -= gui
 QT += quick
+QT += dbus
 
 TEMPLATE = lib
 DEFINES += LIBOXIDE_LIBRARY
@@ -10,9 +11,11 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs depr
 
 SOURCES += \
     eventfilter.cpp \
+    json.cpp \
     liboxide.cpp \
     power.cpp \
     settingsfile.cpp \
+    slothandler.cpp \
     sysobject.cpp \
     signalhandler.cpp
 
@@ -21,7 +24,9 @@ HEADERS += \
     liboxide_global.h \
     liboxide.h \
     power.h \
+    json.h \
     settingsfile.h \
+    slothandler.h \
     sysobject.h \
     signalhandler.h
 
@@ -32,14 +37,18 @@ LIBS += -L$$PWD/../../shared/ -lqsgepaper
 INCLUDEPATH += $$PWD/../../shared
 DEPENDPATH += $$PWD/../../shared
 
-exists($$PWD/../../.build/sentry) {
-    LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
-    INCLUDEPATH += $$PWD/../../.build/sentry/include
-    DEPENDPATH += $$PWD/../../.build/sentry/lib
+contains(DEFINES, SENTRY){
+    exists($$PWD/../../.build/sentry) {
+        LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
+        INCLUDEPATH += $$PWD/../../.build/sentry/include
+        DEPENDPATH += $$PWD/../../.build/sentry/lib
 
-    library.files = ../../.build/sentry/libsentry.so
-    library.path = /opt/lib
-    INSTALLS += library
+        library.files = ../../.build/sentry/libsentry.so
+        library.path = /opt/lib
+        INSTALLS += library
+    }else{
+        error(You need to build sentry first)
+    }
 }
 
 target.path = /opt/usr/lib

@@ -2,7 +2,7 @@
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 
-pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry)
+pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry notify-send)
 pkgver="2.5~~VERSION~"
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
@@ -134,6 +134,16 @@ anxiety() {
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.anxiety.oxide
         install -D -m 644 -t "$pkgdir"/opt/etc/draft/icons "$srcdir"/release/opt/etc/draft/icons/image.svg
         install -D -m 644 -t "$pkgdir"/opt/etc/draft/icons "$srcdir"/release/opt/etc/draft/icons/anxiety-splash.png
+    }
+}
+
+notify-send() {
+    pkgdesc="A program to send desktop notifications for Oxide"
+    section=utils
+    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+
+    package() {
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/notify-send
     }
 }
 
