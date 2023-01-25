@@ -3,12 +3,17 @@
 
 #include <QFileInfo>
 
-#include "dbussettings.h"
+#include <liboxide.h>
+#include <liboxide/sysobject.h>
+
 #include "sysobject.h"
 #include "supplicant.h"
 
+using Oxide::SysObject;
+
 class Wlan : public QObject, public SysObject {
     Q_OBJECT
+
 public:
     Wlan(QString path, QObject* parent) : QObject(parent), SysObject(path), m_blobs(), m_iface(){
         m_iface = QFileInfo(path).fileName();
@@ -65,7 +70,7 @@ public:
     signed int rssi(){
         QDBusMessage message = m_interface->call("SignalPoll");
         if (message.type() == QDBusMessage::ErrorMessage) {
-            qWarning() << "SignalPoll error: " << message.errorMessage();
+            O_WARNING("SignalPoll error: " << message.errorMessage());
             return -100;
         }
         auto props = qdbus_cast<QVariantMap>(message.arguments().at(0).value<QDBusVariant>().variant().value<QDBusArgument>());

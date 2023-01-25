@@ -5,8 +5,8 @@
 #include <QImage>
 #include <QtDBus>
 
+#include "../../shared/liboxide/liboxide.h"
 #include "application.h"
-#include "dbussettings.h"
 
 class Notification : public QObject{
     Q_OBJECT
@@ -17,6 +17,7 @@ class Notification : public QObject{
     Q_PROPERTY(QString application READ application WRITE setApplication)
     Q_PROPERTY(QString text READ text WRITE setText)
     Q_PROPERTY(QString icon READ icon WRITE setIcon)
+
 public:
     Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent);
     ~Notification(){

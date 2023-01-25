@@ -4,9 +4,9 @@
 #include <QMutableListIterator>
 #include <QMutex>
 
+#include "../../shared/liboxide/liboxide.h"
 #include "supplicant.h"
 #include "network.h"
-#include "dbussettings.h"
 
 class BSS : public QObject{
     Q_OBJECT
@@ -19,6 +19,7 @@ class BSS : public QObject{
     Q_PROPERTY(ushort signal READ signal)
     Q_PROPERTY(QDBusObjectPath network READ network)
     Q_PROPERTY(QStringList key_mgmt READ key_mgmt)
+
 public:
     BSS(QString path, QString bssid, QString ssid, QObject* parent);
     BSS(QString path, IBSS* bss, QObject* parent) : BSS(path, bss->bSSID(), bss->sSID(), parent) {}

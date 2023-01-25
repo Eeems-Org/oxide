@@ -5,8 +5,8 @@
 #include <QMutableListIterator>
 #include <QMutex>
 
+#include "../../shared/liboxide/liboxide.h"
 #include "supplicant.h"
-#include "dbussettings.h"
 
 class Network : public QObject {
     Q_OBJECT
@@ -18,6 +18,7 @@ class Network : public QObject {
     Q_PROPERTY(QString password READ getNull WRITE setPassword)
     Q_PROPERTY(QString protocol READ protocol WRITE setProtocol)
     Q_PROPERTY(QVariantMap properties READ properties WRITE setProperties NOTIFY propertiesChanged)
+
 public:
     Network(QString path, QString ssid, QVariantMap properties, QObject* parent);
     Network(QString path, QVariantMap properties, QObject* parent)

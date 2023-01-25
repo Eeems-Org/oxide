@@ -90,6 +90,15 @@ pre {
   color: var(--font-color-inv);
 }
 
+div.warning {
+  border-radius: var(--border-radius);
+  border-color: var(--bg-color-inv);
+  border-style: dashed;
+  font-size: 0.888rem;
+  overflow: auto;
+  padding: var(--text-height);
+}
+
 a {
   color: inherit;
   text-decoration-thickness: 0.05rem;

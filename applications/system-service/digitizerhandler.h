@@ -10,9 +10,9 @@
 #include <linux/input.h>
 #include <iostream>
 #include <string>
+#include <liboxide.h>
 
 #include "event_device.h"
-#include "devicesettings.h"
 
 using namespace std;
 
@@ -21,6 +21,7 @@ using namespace std;
 
 class DigitizerHandler : public QThread {
     Q_OBJECT
+
 public:
     static DigitizerHandler* singleton_touchScreen(){
         static DigitizerHandler* instance;

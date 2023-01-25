@@ -7,9 +7,9 @@
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
 
+#include "../../shared/liboxide/liboxide.h"
 #include <unistd.h>
 
-#include "dbussettings.h"
 
 class APIBase : public QObject, protected QDBusContext {
     Q_OBJECT

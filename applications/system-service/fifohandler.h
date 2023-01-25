@@ -6,11 +6,11 @@
 #include <QTimer>
 
 #include <fstream>
-
-#include "devicesettings.h"
+#include <liboxide.h>
 
 class FifoHandler : public QObject {
     Q_OBJECT
+
 public:
     FifoHandler(QString name, QString path, QObject* host)
     : QObject(),
@@ -26,7 +26,7 @@ public:
             emit started();
             in.open(this->path.toStdString().c_str(), std::ifstream::in);
             if(!in.good()){
-                qWarning() << "Unable to open fifi (in)" << ::strerror(errno);
+                O_WARNING("Unable to open fifi (in)" << ::strerror(errno));
             }
             timer.start(10);
         });
@@ -38,7 +38,7 @@ public:
         QThread::create([this]{
             out.open(this->path.toStdString().c_str(), std::ifstream::out);
             if(!out.good()){
-                qWarning() << "Unable to open fifi (out)" << ::strerror(errno);
+                O_WARNING("Unable to open fifi (out)" << ::strerror(errno));
             }
         })->start();
         moveToThread(&_thread);
@@ -60,10 +60,12 @@ public:
         }
     }
     const QString& name() { return _name; }
+
 signals:
     void started();
     void finished();
     void dataRecieved(FifoHandler* handler, const QString& data);
+
 protected:
     void run() {
         if(!in.is_open()){
@@ -82,6 +84,7 @@ protected:
         }
         thread()->yieldCurrentThread();
     }
+
 private:
     QObject* host;
     QThread _thread;
@@ -91,7 +94,6 @@ private:
     std::ifstream in;
     std::ofstream out;
     bool getline_async(std::istream& is, std::string& str, char delim = '\n') {
-
         static std::string lineSoFar;
         char inChar;
         int charsRead = 0;

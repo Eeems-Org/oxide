@@ -1,5 +1,8 @@
+import datetime
+year = datetime.datetime.today().year
+
 project = "Oxide"
-copyright = "2021, Eeems"
+copyright = f"2021-{year}, Eeems"
 author = "Nathaniel 'Eeems' van Diepen"
 
 html_theme_path = ["_themes"]
@@ -12,6 +15,4 @@ master_doc = "sitemap"
 html_sidebars = {"**": ["nav.html", "sidefooter.html"]}
 html_permalinks_icon = "#"
 
-extensions = [
-    "sphinxcontrib.fulltoc",
-]
+extensions = ["sphinxcontrib.fulltoc", "breathe"]

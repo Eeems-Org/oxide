@@ -25,6 +25,7 @@
     <property name="user" type="s" access="read"/>
     <property name="group" type="s" access="read"/>
     <property name="directories" type="as" access="readwrite"/>
+    <property name="screenCapture" type="ay" access="read"/>
     <signal name="launched">
     </signal>
     <signal name="paused">

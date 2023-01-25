@@ -21,6 +21,9 @@ Install Oxide
 
 .. raw:: html
 
+  <div class="warning">
+    ⚠️ <b>Warning:</b> Since this changes what application is launched on boot, you'll want to make sure you have your SSH password written down, and it's recommended to <a href="https://remarkablewiki.com/tech/ssh">setup an SSH key</a>.
+  </div>
   <p>
     Oxide is available in
     <a href="https://toltec-dev.org/#install-toltec">
@@ -34,3 +37,9 @@ Install Oxide
 3. If you are installing on a reMarkable 2: ``systemctl enable --now rm2fb``
 4. ``systemctl enable --now tarnish``
 
+Uninstall Oxide
+===============
+
+1. ``systemctl disable --now tarnish``
+2. ``systemctl enable --now xochitl``
+3. ``opkg remove erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry``

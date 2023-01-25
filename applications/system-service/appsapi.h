@@ -16,11 +16,12 @@
 
 #include "apibase.h"
 #include "application.h"
-#include "signalhandler.h"
 
 #define OXIDE_SETTINGS_VERSION 1
 
 #define appsAPI AppsAPI::singleton()
+
+using namespace Oxide;
 
 class AppsAPI : public APIBase {
     Q_OBJECT
@@ -35,6 +36,7 @@ class AppsAPI : public APIBase {
     Q_PROPERTY(QDBusObjectPath currentApplication READ currentApplication)
     Q_PROPERTY(QVariantMap runningApplications READ runningApplications)
     Q_PROPERTY(QVariantMap pausedApplications READ pausedApplications)
+
 public:
     static AppsAPI* singleton(AppsAPI* self = nullptr){
         static AppsAPI* instance;
@@ -87,7 +89,7 @@ public:
         qDebug() << "Ensuring all applications have stopped...";
         for(auto app : applications){
             app->waitForFinished();
-            delete app;
+            app->deleteLater();
         }
         applications.clear();
         qDebug() << "Displaying final quit message...";
@@ -137,16 +139,24 @@ public:
             qDebug() << "Invalid configuration: " << name << " has invalid bin" << bin;
             return QDBusObjectPath("/");
         }
+        if(!QFileInfo(bin).isExecutable()){
+            qDebug() << "Invalid configuration: " << name << " has bin that is not executable" << bin;
+            return QDBusObjectPath("/");
+        }
         if(applications.contains(name)){
             return applications[name]->qPath();
         }
-        auto path = QDBusObjectPath(getPath(name));
-        auto app = new Application(path, reinterpret_cast<QObject*>(this));
-        auto displayName = properties.value("displayName", name).toString();
-        app->setConfig(properties);
-        applications.insert(name, app);
-        app->registerPath();
-        emit applicationRegistered(path);
+        QDBusObjectPath path;
+        Oxide::Sentry::sentry_transaction("apps", "registerApplication", [this, &path, name, properties](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            path = QDBusObjectPath(getPath(name));
+            auto app = new Application(path, reinterpret_cast<QObject*>(this));
+            auto displayName = properties.value("displayName", name).toString();
+            app->setConfig(properties);
+            applications.insert(name, app);
+            app->registerPath();
+            emit applicationRegistered(path);
+        });
         return path;
     }
     Q_INVOKABLE bool unregisterApplication(QDBusObjectPath path){
@@ -168,8 +178,11 @@ public:
         if(!hasPermission("apps")){
             return;
         }
-        writeApplications();
-        readApplications();
+        Oxide::Sentry::sentry_transaction("apps", "reload", [this](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            writeApplications();
+            readApplications();
+        });
     }
 
     QDBusObjectPath startupApplication(){
@@ -290,12 +303,15 @@ public:
     }
 
     void unregisterApplication(Application* app){
-        auto name = app->name();
-        if(applications.contains(name)){
-            applications.remove(name);
-            emit applicationUnregistered(app->qPath());
-            app->deleteLater();
-        }
+        Oxide::Sentry::sentry_transaction("apps", "unregisterApplication", [this, app](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            auto name = app->name();
+            if(applications.contains(name)){
+                applications.remove(name);
+                emit applicationUnregistered(app->qPath());
+                app->deleteLater();
+            }
+        });
     }
     void pauseAll(){
         for(auto app : applications){
@@ -400,7 +416,7 @@ public:
     void forceRecordPreviousApplication(){
         auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
         if(currentApplication == nullptr){
-            qWarning() << "Unable to find current application";
+            O_WARNING("Unable to find current application");
             return;
         }
         auto name = currentApplication->name();
@@ -411,7 +427,7 @@ public:
     void recordPreviousApplication(){
         auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
         if(currentApplication == nullptr){
-            qWarning() << "Unable to find current application";
+            O_WARNING("Unable to find current application");
             return;
         }
         if(currentApplication->qPath() == lockscreenApplication()){
@@ -421,10 +437,11 @@ public:
             return;
         }
         auto name = currentApplication->name();
-        previousApplications.removeAll(name);
+        removeFromPreviousApplications(name);
         previousApplications.append(name);
         qDebug() << "Previous Applications" << previousApplications;
     }
+    void removeFromPreviousApplications(QString name){ previousApplications.removeAll(name); }
 
 signals:
     void applicationRegistered(QDBusObjectPath);

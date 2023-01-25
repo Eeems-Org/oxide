@@ -64,12 +64,12 @@ usage of the API away.
 
 .. _example-usage-1:
 
-Example Usage:
-~~~~~~~~~~~~~~
+Example Usage
+~~~~~~~~~~~~~
 
 .. code:: cpp
 
-   #include "dbussettings.h"
+   #include <liboxide.h>
    #include "dbusservice_interface.h"
    #include "systemapi_interface.h"
 

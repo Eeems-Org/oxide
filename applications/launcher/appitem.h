@@ -13,6 +13,7 @@ using namespace codes::eeems::oxide1;
 
 class AppItem : public QObject {
     Q_OBJECT
+
 public:
     AppItem(QObject* parent) : QObject(parent){}
 

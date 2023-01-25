@@ -6,6 +6,7 @@
 #include <QMutableListIterator>
 #include <QTimer>
 #include <QMutex>
+#include <liboxide.h>
 
 #include "apibase.h"
 #include "buttonhandler.h"
@@ -55,10 +56,8 @@ struct Touch {
         return "<Touch " + to_string(id) + " (" + to_string(x) + ", " + to_string(y) + ") " + (active ? "pressed" : "released") + ">";
     }
 };
-#ifdef DEBUG
 QDebug operator<<(QDebug debug, const Touch& touch);
 QDebug operator<<(QDebug debug, Touch* touch);
-#endif
 Q_DECLARE_METATYPE(Touch)
 Q_DECLARE_METATYPE(input_event)
 
@@ -68,6 +67,7 @@ class SystemAPI : public APIBase {
     Q_PROPERTY(int autoSleep READ autoSleep WRITE setAutoSleep NOTIFY autoSleepChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
+
 public:
     enum SwipeDirection { None, Right, Left, Up, Down };
     Q_ENUM(SwipeDirection)
@@ -88,53 +88,83 @@ public:
        touches(),
        swipeStates(),
        swipeLengths() {
-        for(short i = Right; i <= Down; i++){
-            swipeStates[(SwipeDirection)i] = true;
-        }
-        settings.sync();
-        singleton(this);
-        this->resumeApp = nullptr;
-        systemd = new Manager("org.freedesktop.login1", "/org/freedesktop/login1", QDBusConnection::systemBus(), this);
-        // Handle Systemd signals
-        connect(systemd, &Manager::PrepareForSleep, this, &SystemAPI::PrepareForSleep);
-        connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::timeout);
-
-        auto autoSleep = settings.value("autoSleep", 1).toInt();
-        m_autoSleep = autoSleep;
-        if(autoSleep < 0) {
-            m_autoSleep = 0;
-
-        }else if(autoSleep > 10){
-            m_autoSleep = 10;
-        }
-        if(autoSleep != m_autoSleep){
-            m_autoSleep = autoSleep;
-            settings.setValue("autoSleep", autoSleep);
-            settings.sync();
-            emit autoSleepChanged(autoSleep);
-        }
-        qDebug() << "Auto Sleep" << autoSleep;
-        if(m_autoSleep){
-            suspendTimer.start(m_autoSleep * 60 * 1000);
-        }else if(!m_autoSleep){
-            suspendTimer.stop();
-        }
-        settings.beginReadArray("swipes");
-        for(short i = Right; i <= Down; i++){
-            settings.setArrayIndex(i);
-            swipeStates[(SwipeDirection)i] = settings.value("enabled", true).toBool();
-            swipeLengths[(SwipeDirection)i] = settings.value("length", 30).toInt();
-        }
-        settings.endArray();
-        // Ask Systemd to tell us nicely when we are about to suspend or resume
-        inhibitSleep();
-        inhibitPowerOff();
-        qRegisterMetaType<input_event>();
-        connect(touchHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
-        connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
-        connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
-        connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
-        qDebug() << "System API ready to use";
+        Oxide::Sentry::sentry_transaction("system", "init", [this](Oxide::Sentry::Transaction* t){
+            Oxide::Sentry::sentry_span(t, "settings", "Sync settings", [this](Oxide::Sentry::Span* s){
+                Oxide::Sentry::sentry_span(s, "swipes", "Default swipe values", [this]{
+                    for(short i = Right; i <= Down; i++){
+                        swipeStates[(SwipeDirection)i] = true;
+                    }
+                });
+                Oxide::Sentry::sentry_span(s, "sync", "Sync settings", [this]{
+                    settings.sync();
+                });
+                Oxide::Sentry::sentry_span(s, "singleton", "Instantiate singleton", [this]{
+                    singleton(this);
+                });
+                resumeApp = nullptr;
+            });
+            Oxide::Sentry::sentry_span(t, "systemd", "Connect to SystemD DBus", [this](Oxide::Sentry::Span* s){
+                Oxide::Sentry::sentry_span(s, "manager", "Create manager object", [this]{
+                    systemd = new Manager("org.freedesktop.login1", "/org/freedesktop/login1", QDBusConnection::systemBus(), this);
+                });
+                Oxide::Sentry::sentry_span(s, "connect", "Connect to signals", [this]{
+                    // Handle Systemd signals
+                    connect(systemd, &Manager::PrepareForSleep, this, &SystemAPI::PrepareForSleep);
+                    connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::timeout);
+                });
+            });
+            Oxide::Sentry::sentry_span(t, "autoSleep", "Setup automatic sleep", [this](Oxide::Sentry::Span* s){
+                auto autoSleep = settings.value("autoSleep", 1).toInt();
+                m_autoSleep = autoSleep;
+                if(autoSleep < 0) {
+                    m_autoSleep = 0;
+                }else if(autoSleep > 10){
+                    m_autoSleep = 10;
+                }
+                if(autoSleep != m_autoSleep){
+                    Oxide::Sentry::sentry_span(s, "update", "Update value", [this, autoSleep]{
+                        m_autoSleep = autoSleep;
+                        settings.setValue("autoSleep", autoSleep);
+                        settings.sync();
+                        emit autoSleepChanged(autoSleep);
+                    });
+                }
+                qDebug() << "Auto Sleep" << autoSleep;
+                Oxide::Sentry::sentry_span(s, "timer", "Setup timer", [this]{
+                    if(m_autoSleep){
+                        suspendTimer.start(m_autoSleep * 60 * 1000);
+                    }else if(!m_autoSleep){
+                        suspendTimer.stop();
+                    }
+                });
+            });
+            Oxide::Sentry::sentry_span(t, "swipes", "Load swipe settings", [this]{
+                settings.beginReadArray("swipes");
+                for(short i = Right; i <= Down; i++){
+                    settings.setArrayIndex(i);
+                    swipeStates[(SwipeDirection)i] = settings.value("enabled", true).toBool();
+                    swipeLengths[(SwipeDirection)i] = settings.value("length", 30).toInt();
+                }
+                settings.endArray();
+            });
+            // Ask Systemd to tell us nicely when we are about to suspend or resume
+            Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep and power off", [this](Oxide::Sentry::Span* s){
+                Oxide::Sentry::sentry_span(s, "inhibitSleep", "Inhibit sleep", [this]{
+                    inhibitSleep();
+                });
+                Oxide::Sentry::sentry_span(s, "inhibitPowerOff", "Inhibit power off", [this]{
+                    inhibitPowerOff();
+                });
+            });
+            qRegisterMetaType<input_event>();
+            Oxide::Sentry::sentry_span(t, "input", "Connect input events", [this]{
+                connect(touchHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
+                connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
+                connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
+                connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
+            });
+            qDebug() << "System API ready to use";
+        });
     }
     ~SystemAPI(){
         qDebug() << "Removing all inhibitors";
@@ -396,9 +426,9 @@ private slots:
                                 touchUp(released);
                             }
                         }else if(swipeDirection != None){
-#ifdef DEBUG
-        qDebug() << "Swiping cancelled due to pen activity";
-#endif
+                            if(Oxide::debugEnabled()){
+                                qDebug() << "Swiping cancelled due to pen activity";
+                            }
                             swipeDirection = None;
                         }
                         // Cleanup released touches
@@ -469,9 +499,9 @@ private slots:
             return;
         }
         penActive = event.value;
-#ifdef DEBUG
-        qDebug() << "Pen state: " << (penActive ? "Active" : "Inactive");
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "Pen state: " << (penActive ? "Active" : "Inactive");
+        }
     }
 
 private:
@@ -549,9 +579,9 @@ private:
         if(penActive){
             return;
         }
-#ifdef DEBUG
-        qDebug() << "DOWN" << touches;
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "DOWN" << touches;
+        }
         if(getCurrentFingers() != 1){
             return;
         }
@@ -560,7 +590,7 @@ private:
             return;
         }
         int offset = 20;
-        if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
+        if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
             offset = 40;
         }
         if(touch->y <= offset){
@@ -568,13 +598,13 @@ private:
         }else if(touch->y > (deviceSettings.getTouchHeight() - offset)){
             swipeDirection = Down;
         }else if(touch->x <= offset){
-            if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
+            if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
                 swipeDirection = Right;
             }else{
                 swipeDirection = Left;
             }
         }else if(touch->x > (deviceSettings.getTouchWidth() - offset)){
-            if(deviceSettings.getDeviceType() == DeviceSettings::RM2){
+            if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
                 swipeDirection = Left;
             }else{
                 swipeDirection = Right;
@@ -582,20 +612,19 @@ private:
         }else{
             return;
         }
-        //touchHandler->grab();
-#ifdef DEBUG
+        if(Oxide::debugEnabled()){
             qDebug() << "Swipe started" << swipeDirection;
-#endif
+        }
         startLocation = location = QPoint(touch->x, touch->y);
     }
     void touchUp(QList<Touch*> touches){
-#ifdef DEBUG
-        qDebug() << "UP" << touches;
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "UP" << touches;
+        }
         if(swipeDirection == None){
-#ifdef DEBUG
-            qDebug() << "Not swiping";
-#endif
+            if(Oxide::debugEnabled()){
+                qDebug() << "Not swiping";
+            }
             if(touchHandler->grabbed()){
                 for(auto touch : touches){
                     writeTouchUp(touch);
@@ -605,9 +634,9 @@ private:
             return;
         }
         if(getCurrentFingers()){
-#ifdef DEBUG
-            qDebug() << "Still swiping";
-#endif
+            if(Oxide::debugEnabled()){
+                qDebug() << "Still swiping";
+            }
             if(touchHandler->grabbed()){
                 for(auto touch : touches){
                     writeTouchUp(touch);
@@ -616,9 +645,9 @@ private:
             return;
         }
         if(touches.length() > 1){
-#ifdef DEBUG
-            qDebug() << "Too many fingers";
-#endif
+            if(Oxide::debugEnabled()){
+                qDebug() << "Too many fingers";
+            }
             if(touchHandler->grabbed()){
                 for(auto touch : touches){
                     writeTouchUp(touch);
@@ -644,7 +673,7 @@ private:
             }
             emit topAction();
         }else if(swipeDirection == Right || swipeDirection == Left){
-            auto isRM2 = deviceSettings.getDeviceType() == DeviceSettings::RM2;
+            auto isRM2 = deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2;
             auto invalidLeft = !swipeStates[Left] || touch->x < location.x() || touch->x - startLocation.x() < swipeLengths[Left];
             auto invalidRight = !swipeStates[Right] || touch->x > location.x() || startLocation.x() - touch->x < swipeLengths[Right];
             if(swipeDirection == Right && (isRM2 ? invalidLeft : invalidRight)){
@@ -658,7 +687,6 @@ private:
             }
             if(swipeDirection == Left){
                 emit rightAction();
-
             }else{
                 emit leftAction();
             }
@@ -668,14 +696,14 @@ private:
         touch->x = -1;
         touch->y = -1;
         writeTouchUp(touch);
-#ifdef DEBUG
+        if(Oxide::debugEnabled()){
             qDebug() << "Swipe direction" << swipeDirection;
-#endif
+        }
     }
     void touchMove(QList<Touch*> touches){
-#ifdef DEBUG
-        qDebug() << "MOVE" << touches;
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "MOVE" << touches;
+        }
         if(swipeDirection == None){
             if(touchHandler->grabbed()){
                 for(auto touch : touches){
@@ -686,9 +714,9 @@ private:
             return;
         }
         if(touches.length() > 1){
-#ifdef DEBUG
-            qDebug() << "Too many fingers";
-#endif
+            if(Oxide::debugEnabled()){
+                qDebug() << "Too many fingers";
+            }
             if(touchHandler->grabbed()){
                 for(auto touch : touches){
                     writeTouchMove(touch);
@@ -704,9 +732,9 @@ private:
         }
     }
     void cancelSwipe(Touch* touch){
-#ifdef DEBUG
-        qDebug() << "Swipe Cancelled";
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "Swipe Cancelled";
+        }
         swipeDirection = None;
         touchHandler->ungrab();
         writeTouchUp(touch);
@@ -717,9 +745,9 @@ private:
             touchHandler->ungrab();
         }
         writeTouchMove(touch);
-#ifdef DEBUG
-        qDebug() << "Write touch up" << touch;
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "Write touch up" << touch;
+        }
         int size = sizeof(input_event) * 3;
         input_event* events = (input_event*)malloc(size);
         events[0] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
@@ -736,9 +764,9 @@ private:
         if(grabbed){
             touchHandler->ungrab();
         }
-#ifdef DEBUG
-        qDebug() << "Write touch move" << touch;
-#endif
+        if(Oxide::debugEnabled()){
+            qDebug() << "Write touch move" << touch;
+        }
         int size = sizeof(input_event) * 8;
         input_event* events = (input_event*)malloc(size);
         events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);

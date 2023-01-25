@@ -13,6 +13,7 @@ class NotificationItem : public QObject {
     Q_PROPERTY(QString text READ text NOTIFY textChanged)
     Q_PROPERTY(QString icon READ icon NOTIFY iconChanged)
     Q_PROPERTY(int created READ created NOTIFY createdChanged)
+
 public:
     NotificationItem(Notification* notification, QObject* parent) : QObject(parent) {
         m_identifier = notification->identifier();
@@ -21,7 +22,7 @@ public:
     }
     ~NotificationItem() {
         if(m_notification != nullptr){
-            delete m_notification;
+            m_notification->deleteLater();
         }
     }
     QString identifier() { return m_identifier; }
@@ -71,6 +72,7 @@ private:
 class NotificationList : public QAbstractListModel
 {
     Q_OBJECT
+
 public:
     NotificationList() : QAbstractListModel(nullptr) {}
 
@@ -121,7 +123,7 @@ public:
         for(auto notification : notifications){
             notification->notification()->remove().waitForFinished();
             if(notification != nullptr){
-                delete notification;
+                notification->deleteLater();
             }
         }
         notifications.clear();
@@ -136,7 +138,7 @@ public:
                 beginRemoveRows(QModelIndex(), notifications.indexOf(notification), notifications.indexOf(notification));
                 i.remove();
                 notification->notification()->remove().waitForFinished();
-                delete notification;
+                notification->deleteLater();
                 endRemoveRows();
             }
         }
@@ -151,7 +153,7 @@ public:
                 beginRemoveRows(QModelIndex(), notifications.indexOf(item), notifications.indexOf(item));
                 i.remove();
                 item->notification()->remove().waitForFinished();
-                delete item;
+                item->deleteLater();
                 endRemoveRows();
                 count++;
             }

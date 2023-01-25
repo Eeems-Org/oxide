@@ -7,11 +7,10 @@
 #include <signal.h>
 #include <ostream>
 #include <fcntl.h>
+#include <liboxide.h>
+#include <liboxide/eventfilter.h>
 
 #include "controller.h"
-#include "eventfilter.h"
-#include "dbussettings.h"
-#include "devicesettings.h"
 
 
 #ifdef __arm__
@@ -19,6 +18,8 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 
 using namespace std;
+using namespace Oxide;
+using namespace Oxide::Sentry;
 
 const char *qt_version = qVersion();
 
@@ -35,11 +36,12 @@ int main(int argc, char *argv[]){
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
     QGuiApplication app(argc, argv);
+    sentry_init("erode", argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("tarnish");
     app.setApplicationDisplayName("Process Monitor");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     EventFilter filter;
     app.installEventFilter(&filter);
     QQmlApplicationEngine engine;

@@ -2,7 +2,7 @@ DIST=dist
 SRC=src
 VENV=.venv
 
-all: dist
+all: prod
 
 $(VENV)/bin/activate:
 	@echo "Setting up development virtual env in .venv"
