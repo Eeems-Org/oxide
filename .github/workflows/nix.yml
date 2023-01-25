@@ -31,17 +31,11 @@ jobs:
       with:
         name: nix-remarkable
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - name: Build package
+    - name: Build
       run: nix-build --argstr system 'x86_64-linux'
       timeout-minutes: 15
-    - name: Build packages
-      run: |
-        mkdir output
-        find -L result -name '*.ipk' | while read -r file; do
-          cp "$file" output/"$(basename $file)"
-        done
-    - name: Save packages
+    - name: Save Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: packages
-        path: output
+        name: drop
+        path: result
