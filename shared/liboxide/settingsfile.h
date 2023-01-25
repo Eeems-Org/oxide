@@ -8,18 +8,13 @@
 
 #include <QSettings>
 #include <QObject>
-#include <QDebug>
 #include <QFileSystemWatcher>
 #include <QMetaProperty>
 #include <QFile>
 
 #include <cstring>
 
-#ifdef DEBUG
-#define O_SETTINGS_DEBUG(msg) if(debugEnabled()){ qDebug() << msg; }
-#else
-#define O_SETTINGS_DEBUG(msg)
-#endif
+#define O_SETTINGS_DEBUG(msg) O_DEBUG(msg)
 
 #define O_SETTINGS_PROPERTY_0(_type, member, _group) \
     Q_PROPERTY(QString __META_GROUP_##member READ __META_GROUP_##member CONSTANT FINAL) \
@@ -103,12 +98,6 @@
 
 
 namespace Oxide {
-    /*!
-     * \brief Return the state of debugging
-     * \return Debugging state
-     * \snippet examples/oxide.cpp debugEnabled
-     */
-    LIBOXIDE_EXPORT bool debugEnabled();
     /*!
      * \brief A better version of [QSettings](https://doc.qt.io/qt-5/qsettings.html)
      *

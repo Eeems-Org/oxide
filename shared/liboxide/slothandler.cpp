@@ -1,13 +1,12 @@
 #include "slothandler.h"
-#include "json.h"
-#include "liboxide.h"
+#include "meta.h"
+#include "debug.h"
 
 #include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusError>
 #include <QMetaMethod>
 
-using namespace Oxide::JSON;
 
 namespace Oxide{
     bool DBusConnect(QDBusAbstractInterface* interface, const QString& slotName, std::function<void(QVariantList)> onMessage, const bool& once=false){
@@ -48,7 +47,7 @@ namespace Oxide{
       QObject::connect(watcher, &QDBusServiceWatcher::serviceUnregistered, this, [=](const QString& name){
           Q_UNUSED(name);
           if(!m_disconnected){
-              qDebug() << QDBusError(QDBusError::ServiceUnknown, "The name " + serviceName + " is no longer registered");
+              O_DEBUG(QDBusError(QDBusError::ServiceUnknown, "The name " + serviceName + " is no longer registered"));
               m_disconnected = true;
               callback();
           }

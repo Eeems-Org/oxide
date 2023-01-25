@@ -1,6 +1,5 @@
 #include "liboxide.h"
 
-#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QCoreApplication>
@@ -41,21 +40,21 @@ static void *invalid_mem = (void *)1;
 
 void logMachineIdError(int error, QString name, QString path){
     if(error == -ENOENT){
-        qWarning() << "/etc/machine-id is missing";
+        O_WARNING("/etc/machine-id is missing");
     }else  if(error == -ENOMEDIUM){
-        qWarning() << path + " is empty or all zeros";
+        O_WARNING(path + " is empty or all zeros");
     }else if(error == -EIO){
-        qWarning() << path + " has the incorrect format";
+        O_WARNING(path + " has the incorrect format");
     }else if(error == -EPERM){
-        qWarning() << path + " access denied";
+        O_WARNING(path + " access denied");
     } if(error == -EINVAL){
-        qWarning() << "Error while reading " + name + ": Buffer invalid";
+        O_WARNING("Error while reading " + name + ": Buffer invalid");
     }else if(error == -ENXIO){
-        qWarning() << "Error while reading " + name + ": No invocation ID is set";
+        O_WARNING("Error while reading " + name + ": No invocation ID is set");
     }else if(error == -EOPNOTSUPP){
-        qWarning() << "Error while reading " + name + ": Operation not supported";
+        O_WARNING("Error while reading " + name + ": Operation not supported");
     }else{
-        qWarning() << "Unexpected error code reading " + name + ":" << strerror(error);
+        O_WARNING("Unexpected error code reading " + name + ":" << strerror(error));
     }
 }
 std::string getAppSpecific(sd_id128_t base){
@@ -212,16 +211,12 @@ namespace Oxide {
             // Handle settings changing
             QObject::connect(&sharedSettings, &SharedSettings::telemetryChanged, [name, argv, autoSessionTracking](bool telemetry){
                 Q_UNUSED(telemetry)
-                if(debugEnabled()){
-                    qDebug() << "Telemetry changed to" << telemetry;
-                }
+                O_DEBUG("Telemetry changed to" << telemetry);
                 sentry_init(name, argv, autoSessionTracking);
             });
             QObject::connect(&sharedSettings, &SharedSettings::crashReportChanged, [name, argv, autoSessionTracking](bool crashReport){
                 Q_UNUSED(crashReport)
-                if(debugEnabled()){
-                    qDebug() << "CrashReport changed to" << crashReport;
-                }
+                O_DEBUG("CrashReport changed to" << crashReport);
                 sentry_init(name, argv, autoSessionTracking);
             });
 #else
@@ -392,50 +387,51 @@ namespace Oxide {
     DeviceSettings::DeviceSettings(): _deviceType(DeviceType::RM1) {
         readDeviceType();
 
+        O_DEBUG("Looking for input devices...");
         QDir dir("/dev/input");
-        qDebug() << "Looking for input devices...";
         for(auto path : dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::System)){
-            qDebug() << ("  Checking " + path + "...").toStdString().c_str();
+            O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
             QString fullPath(dir.path() + "/" + path);
             QFile device(fullPath);
             device.open(QIODevice::ReadOnly);
             int fd = device.handle();
             int version;
             if (ioctl(fd, EVIOCGVERSION, &version)){
-                qDebug() << "    Invalid";
+                O_DEBUG("    Invalid");
                 continue;
             }
             unsigned long bit[EV_MAX];
             ioctl(fd, EVIOCGBIT(0, EV_MAX), bit);
             if (test_bit(EV_KEY, bit)) {
                 if (checkBitSet(fd, EV_KEY, BTN_STYLUS) && test_bit(EV_ABS, bit)) {
-                    qDebug() << "    Wacom input device detected";
+                    O_DEBUG("    Wacom input device detected");
                     wacomPath = fullPath.toStdString();
                     continue;
                 }
                 if (checkBitSet(fd, EV_KEY, KEY_POWER)) {
-                    qDebug() << "    Buttons input device detected";
+                    O_DEBUG("    Buttons input device detected");
                     buttonsPath = fullPath.toStdString();
                     continue;
                 }
             }
             if (checkBitSet(fd, EV_ABS, ABS_MT_SLOT)) {
-                qDebug() << "    Touch input device detected";
+                O_DEBUG("    Touch input device detected");
                 touchPath = fullPath.toStdString();
                 continue;
             }
-            qDebug() << "    Invalid";
+            O_DEBUG("    Invalid");
         }
         if (wacomPath.empty()) {
-            qWarning() << "Wacom input device not found";
+            O_WARNING("Wacom input device not found");
         }
         if (touchPath.empty()) {
-            qWarning() << "Touch input device not found";
+            O_WARNING("Touch input device not found");
         }
         if (buttonsPath.empty()){
-            qWarning() << "Buttons input device not found";
+            O_WARNING("Buttons input device not found");
         }
     }
+    DeviceSettings::~DeviceSettings(){}
     bool DeviceSettings::checkBitSet(int fd, int type, int i) {
         unsigned long bit[NBITS(KEY_MAX)];
         ioctl(fd, EVIOCGBIT(type, KEY_MAX), bit);
@@ -445,18 +441,18 @@ namespace Oxide {
     void DeviceSettings::readDeviceType() {
         QFile file("/sys/devices/soc0/machine");
         if(!file.exists() || !file.open(QIODevice::ReadOnly | QIODevice::Text)){
-            qDebug() << "Couldn't open " << file.fileName();
+            O_DEBUG("Couldn't open " << file.fileName());
             _deviceType = DeviceType::Unknown;
             return;
         }
         QTextStream in(&file);
         QString modelName = in.readLine();
         if (modelName.startsWith("reMarkable 2")) {
-            qDebug() << "RM2 detected...";
+            O_DEBUG("RM2 detected...");
             _deviceType = DeviceType::RM2;
             return;
          }
-         qDebug() << "RM1 detected...";
+         O_DEBUG("RM1 detected...");
          _deviceType = DeviceType::RM1;
     }
 

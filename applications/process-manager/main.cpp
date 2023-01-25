@@ -41,7 +41,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("tarnish");
     app.setApplicationDisplayName("Process Monitor");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     EventFilter filter;
     app.installEventFilter(&filter);
     QQmlApplicationEngine engine;

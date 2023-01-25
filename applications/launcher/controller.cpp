@@ -10,7 +10,7 @@
 #include <sstream>
 #include <memory>
 #include <fstream>
-#include "sysobject.h"
+#include <liboxide.h>
 
 #include "controller.h"
 #include "dbusservice_interface.h"
@@ -52,7 +52,7 @@ void Controller::loadSettings(){
             if(!line.startsWith("#") && !line.isEmpty()){
                 QStringList parts = line.split("=");
                 if(parts.length() != 2){
-                    qWarning() << "  Wrong format on " << line;
+                    O_WARNING("  Wrong format on " << line);
                     continue;
                 }
                 QString lhs = parts.at(0).trimmed();
@@ -281,7 +281,7 @@ void Controller::importDraftApps(){
                     }
                     QStringList parts = line.split("=");
                     if(parts.length() != 2){
-                        qWarning() << "wrong format on " << line;
+                        O_WARNING("wrong format on " << line);
                         continue;
                     }
                     QString lhs = parts.at(0);

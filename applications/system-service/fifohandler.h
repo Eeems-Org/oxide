@@ -26,7 +26,7 @@ public:
             emit started();
             in.open(this->path.toStdString().c_str(), std::ifstream::in);
             if(!in.good()){
-                qWarning() << "Unable to open fifi (in)" << ::strerror(errno);
+                O_WARNING("Unable to open fifi (in)" << ::strerror(errno));
             }
             timer.start(10);
         });
@@ -38,7 +38,7 @@ public:
         QThread::create([this]{
             out.open(this->path.toStdString().c_str(), std::ifstream::out);
             if(!out.good()){
-                qWarning() << "Unable to open fifi (out)" << ::strerror(errno);
+                O_WARNING("Unable to open fifi (out)" << ::strerror(errno));
             }
         })->start();
         moveToThread(&_thread);

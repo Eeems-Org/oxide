@@ -37,7 +37,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("rot");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
     parser.setApplicationDescription("Oxide settings tool");
     parser.addHelpOption();

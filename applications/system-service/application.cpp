@@ -477,13 +477,13 @@ void Application::showSplashScreen(){
 void Application::powerStateDataRecieved(FifoHandler* handler, const QString& data){
     Q_UNUSED(handler);
     if(!permissions().contains("power")){
-        qWarning() << "Denied powerState request";
+        O_WARNING("Denied powerState request");
         return;
     }
     if((QStringList() << "mem" << "freeze" << "standby").contains(data)){
         systemAPI->suspend();
     }else{
-        qWarning() << "Unknown power state call: " << data;
+        O_WARNING("Unknown power state call: " << data);
     }
 }
 void Application::startSpan(std::string operation, std::string description){

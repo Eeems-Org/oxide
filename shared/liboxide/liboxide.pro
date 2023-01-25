@@ -6,10 +6,12 @@ TEMPLATE = lib
 DEFINES += LIBOXIDE_LIBRARY
 
 CONFIG += c++11
+CONFIG += warn_on
 
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    debug.cpp \
     eventfilter.cpp \
     json.cpp \
     liboxide.cpp \
@@ -20,9 +22,11 @@ SOURCES += \
     signalhandler.cpp
 
 HEADERS += \
+    debug.h \
     eventfilter.h \
     liboxide_global.h \
     liboxide.h \
+    meta.h \
     power.h \
     json.h \
     settingsfile.h \
@@ -55,3 +59,4 @@ target.path = /opt/usr/lib
 !isEmpty(target.path): INSTALLS += target
 
 VERSION = 2.5
+DEFINES += APP_VERSION=\\\"$$VERSION\\\"
