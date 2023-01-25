@@ -34,8 +34,11 @@ jobs:
     - name: Build
       run: nix-build --argstr system 'x86_64-linux'
       timeout-minutes: 15
+    - run: |
+        mkdir output
+        cp -a result/. output/
     - name: Save Artifact
       uses: actions/upload-artifact@v3
       with:
         name: output
-        path: release
+        path: output
