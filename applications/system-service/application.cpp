@@ -60,6 +60,38 @@ void Application::launchNoSecurityCheck(){
             }
             m_process->setUser(user());
             m_process->setGroup(group());
+            if(p_stdout == nullptr){
+                int fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_INFO, 1);
+                if (fd < 0) {
+                    errno = -fd;
+                    qDebug() << "Failed to create stdout fd:" << -fd;
+                }else{
+                    FILE* log = fdopen(fd, "w");
+                    if(!log){
+                        qDebug() << "Failed to create stdout FILE:" << errno;
+                        close(fd);
+                    }else{
+                        p_stdout = new QTextStream(log);
+                        qDebug() << "Opened stdout for " << name();
+                    }
+                }
+            }
+            if(p_stderr == nullptr){
+                int fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_ERR, 1);
+                if (fd < 0) {
+                    errno = -fd;
+                    qDebug() << "Failed to create sterr fd:" << -fd;
+                }else{
+                    FILE* log = fdopen(fd, "w");
+                    if(!log){
+                        qDebug() << "Failed to create stderr FILE:" << errno;
+                        close(fd);
+                    }else{
+                        p_stderr = new QTextStream(log);
+                        qDebug() << "Opened stderr for " << name();
+                    }
+                }
+            }
             m_process->start();
             m_process->waitForStarted();
             if(type() == AppsAPI::Background){
@@ -321,6 +353,14 @@ void Application::stopNoSecurityCheck(){
             }
         });
         appsAPI->removeFromPreviousApplications(name());
+        if(p_stdout != nullptr){
+            delete p_stdout;
+            p_stdout = nullptr;
+        }
+        if(p_stderr != nullptr){
+            delete p_stderr;
+            p_stderr = nullptr;
+        }
     });
 }
 void Application::signal(int signal){

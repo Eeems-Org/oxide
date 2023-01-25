@@ -174,11 +174,18 @@ public:
         connect(m_process, &SandBoxProcess::errorOccurred, this, &Application::errorOccurred);
     }
     ~Application() {
+        stopNoSecurityCheck();
         unregisterPath();
         if(m_screenCapture != nullptr){
             delete m_screenCapture;
         }
         umountAll();
+        if(p_stdout != nullptr){
+            delete p_stdout;
+        }
+        if(p_stderr != nullptr){
+            delete p_stderr;
+        }
     }
 
     QString path() { return m_path; }
@@ -443,20 +450,30 @@ private slots:
     void started();
     void finished(int exitCode);
     void readyReadStandardError(){
-        const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
         QString error = m_process->readAllStandardError();
-        for(QString line : error.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)){
-            if(!line.isEmpty()){
-                sd_journal_print(LOG_ERR, "%s %s", prefix, (const char*)line.toUtf8());
+        if(p_stderr != nullptr){
+            *p_stderr << error.toStdString().c_str();
+            p_stderr->flush();
+        }else{
+            const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
+            for(QString line : error.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)){
+                if(!line.isEmpty()){
+                    sd_journal_print(LOG_ERR, "%s %s", prefix, (const char*)line.toUtf8());
+                }
             }
         }
     }
     void readyReadStandardOutput(){
-        const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
         QString output = m_process->readAllStandardOutput();
-        for(QString line : output.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)){
-            if(!line.isEmpty()){
-                sd_journal_print(LOG_INFO, "%s %s", prefix, (const char*)line.toUtf8());
+        if(p_stdout != nullptr){
+            *p_stdout << output.toStdString().c_str();
+            p_stdout->flush();
+        }else{
+            const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
+            for(QString line : output.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)){
+                if(!line.isEmpty()){
+                    sd_journal_print(LOG_INFO, "%s %s", prefix, (const char*)line.toUtf8());
+                }
             }
         }
     }
@@ -500,6 +517,8 @@ private:
     QMap<QString, FifoHandler*> fifos;
     Oxide::Sentry::Transaction* transaction = nullptr;
     Oxide::Sentry::Span* span = nullptr;
+    QTextStream* p_stdout = nullptr;
+    QTextStream* p_stderr = nullptr;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds){

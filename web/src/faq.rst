@@ -92,6 +92,13 @@ for Oxide's programs, and any application you run through Oxide, you can run the
 
   journalctl -eau tarnish
 
+As of Oxide 2.5, you can now get logs for specific applications with the following, where
+``codes.eeems.oxide`` is the name of the application as it's been registered.
+
+.. code:: bash
+
+  journalctl -eat codes.eeems.oxide
+
 Where are the configuration files?
 ==================================
 
