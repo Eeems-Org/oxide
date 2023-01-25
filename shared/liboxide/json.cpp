@@ -26,7 +26,7 @@ static bool qIsNumericType(uint tp){
 int compareAsString(const QVariant* v1, const QVariant* v2){
     int r = v1->toString().compare(v2->toString(), Qt::CaseInsensitive);
     if (r == 0) {
-        return (v1->type() < v1->type()) ? -1 : 1;
+        return (v1->type() < v2->type()) ? -1 : 1;
     }
     return r;
 }
