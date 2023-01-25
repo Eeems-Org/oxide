@@ -1,6 +1,7 @@
 #include "eventfilter.h"
+#include "debug.h"
+
 #include <QTimer>
-#include <QDebug>
 #include <QMouseEvent>
 #include <QTabletEvent>
 #include <QScreen>
@@ -11,6 +12,11 @@
 #define WACOM_X_SCALAR (float(DISPLAYWIDTH) / float(DISPLAYHEIGHT))
 #define WACOM_Y_SCALAR (float(DISPLAYHEIGHT) / float(DISPLAYWIDTH))
 //#define DEBUG_EVENTS
+#ifdef DEBUG_EVENTS
+#define O_DEBUG_EVENT(msg) O_DEBUG(msg)
+#else
+#define O_DEBUG_EVENT(msg)
+#endif
 
 namespace Oxide{
     EventFilter::EventFilter(QObject *parent) : QObject(parent), root(nullptr){}
@@ -86,9 +92,7 @@ namespace Oxide{
         auto pos = mouseEvent->globalPos();
         for(auto postWidget : widgetsAt(root, pos)){
             if(parentCount((QQuickItem*)postWidget)){
-#ifdef DEBUG_EVENTS
-                qDebug() << "postWidget: " << postWidget;
-#endif
+                O_DEBUG_EVENT("postWidget: " << postWidget);
                 auto event = new QMouseEvent(
                     mouseEvent->type(), mouseEvent->localPos(), mouseEvent->windowPos(),
                     mouseEvent->screenPos(), mouseEvent->button(), mouseEvent->buttons(),
@@ -110,19 +114,13 @@ namespace Oxide{
         bool filtered = QObject::eventFilter(obj, ev);
         if(!filtered){
             if(type == QEvent::TabletPress){
-#ifdef DEBUG_EVENTS
-                qDebug() << ev;
-#endif
+                O_DEBUG_EVENT(ev);
                 postEvent(QMouseEvent::MouseButtonPress, ev, root);
             }else if(type == QEvent::TabletRelease){
-#ifdef DEBUG_EVENTS
-                qDebug() << ev;
-#endif
+                O_DEBUG_EVENT(ev);
                 postEvent(QMouseEvent::MouseButtonRelease, ev, root);
             }else if(type == QEvent::TabletMove){
-#ifdef DEBUG_EVENTS
-                qDebug() << ev;
-#endif
+                O_DEBUG_EVENT(ev);
                 postEvent(QMouseEvent::MouseMove, ev, root);
             }
 #ifdef DEBUG_EVENTS
@@ -133,11 +131,11 @@ namespace Oxide{
             ){
                 for(auto widget : widgetsAt(root, ((QMouseEvent*)ev)->globalPos())){
                     if(parentCount((QQuickItem*)widget)){
-                        qDebug() << "postWidget: " << widget;
+                        O_DEBUG("postWidget: " << widget);
                     }
                 }
-                qDebug() << obj;
-                qDebug() << ev;
+                O_DEBUG(obj);
+                O_DEBUG(ev);
             }
 #endif
         }

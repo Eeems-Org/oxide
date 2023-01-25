@@ -2,11 +2,10 @@
 #include <QFile>
 #include <QDir>
 #include <QTextStream>
-#include <QDebug>
 #include <sstream>
 #include <fstream>
 
-#include <liboxide.h>
+#include <debug.h>
 
 namespace Oxide{
     std::string SysObject::propertyPath(const std::string& name){
@@ -32,9 +31,7 @@ namespace Oxide{
         auto path = propertyPath(name);
         QFile file(path.c_str());
         if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
-            if(Oxide::debugEnabled()){
-                qDebug() << "Couldn't find the file " << path.c_str();
-            }
+            O_DEBUG("Couldn't find the file " << path.c_str());
             return "0";
         }
         QTextStream in(&file);

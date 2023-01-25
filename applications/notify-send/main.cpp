@@ -27,10 +27,9 @@ int main(int argc, char *argv[]){
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("notify-send");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
     parser.setApplicationDescription("a program to send desktop notifications");
-    parser.addHelpOption();
     parser.applicationDescription();
     parser.addVersionOption();
     parser.addPositionalArgument("summary", "Summary of the notification", "{SUMMARY}");
@@ -74,8 +73,39 @@ int main(int argc, char *argv[]){
         "Show a transient notification. This notification will be removed immediatly after being shown on the screen"
     );
     parser.addOption(transientOption);
-    // TODO add action, urgency, category, and hint
+    QCommandLineOption urgencyOption(
+        {"u", "urgency"},
+        "NOT IMPLEMENTED",
+        "LEVEL"
+    );
+    parser.addOption(urgencyOption);
+    QCommandLineOption appOption(
+        {"A", "action"},
+        "NOT IMPLEMENTED",
+        "[NAME=]TEXT"
+    );
+    parser.addOption(appOption);
+    QCommandLineOption categoryOption(
+        {"c", "category"},
+        "NOT IMPLEMENTED",
+        "TYPE[,TYPE]"
+    );
+    parser.addOption(categoryOption);
+    QCommandLineOption hintOption(
+        {"h", "hint"},
+        "NOT IMPLEMENTED",
+        "TYPE:NAME:VALUE"
+    );
+    parser.addOption(hintOption);
+    QCommandLineOption helpOption(
+        {"?", "help"},
+        "Show help and exit"
+    );
+    parser.addOption(helpOption);
     parser.process(app);
+    if(parser.isSet(helpOption)){
+        parser.showHelp();
+    }
     QStringList args = parser.positionalArguments();
     if(args.isEmpty()){
 #ifdef SENTRY

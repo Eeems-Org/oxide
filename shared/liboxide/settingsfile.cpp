@@ -1,27 +1,18 @@
 #include <QFile>
-#include <QDebug>
 
 #include "settingsfile.h"
+#include "debug.h"
 
 namespace Oxide {
-    bool debugEnabled(){
-        if(getenv("DEBUG") == NULL){
-            return false;
-        }
-        QString env = qgetenv("DEBUG");
-        return !(QStringList() << "0" << "n" << "no" << "false").contains(env.toLower());
-    }
     SettingsFile::SettingsFile(QString path)
         : QSettings(path, QSettings::IniFormat),
           fileWatcher(QStringList() << path) { }
     SettingsFile::~SettingsFile(){ }
     void SettingsFile::fileChanged(){
         if(!fileWatcher.files().contains(fileName()) && !fileWatcher.addPath(fileName())){
-            qWarning() << "Unable to watch " << fileName();
+            O_WARNING("Unable to watch " << fileName());
         }
-        if(debugEnabled()){
-            qDebug() << "Settings file" << fileName() << "changed!";
-        }
+        O_DEBUG("Settings file" << fileName() << "changed!");
         // Load new values
         sync();
         auto metaObj = metaObject();
@@ -31,17 +22,13 @@ namespace Oxide {
                 auto value = property.read(this);
                 auto value2 = this->value(property.name());
                 if(value != value2){
-                    if(debugEnabled()){
-                        qDebug() << "Property" << property.name() << "changed";
-                    }
+                    O_DEBUG("Property" << property.name() << "changed")
                     property.write(this, value2);
                     property.notifySignal().invoke(this, Qt::QueuedConnection, QGenericArgument(value2.typeName(), value2.data()));
                 }
             }
         }
-        if(debugEnabled()){
-            qDebug() << "Settings file" << fileName() << "changes loaded";
-        }
+        O_DEBUG("Settings file" << fileName() << "changes loaded");
     }
     void SettingsFile::reloadProperty(const QString& name){
         auto metaObj = metaObject();
@@ -99,7 +86,7 @@ namespace Oxide {
         sync();
         reloadProperties();
         if(!fileWatcher.files().contains(fileName()) && !fileWatcher.addPath(fileName())){
-            qWarning() << "Unable to watch " << fileName();
+            O_WARNING("Unable to watch " << fileName());
         }
         connect(&fileWatcher, &QFileSystemWatcher::fileChanged, this, &SettingsFile::fileChanged);
     }

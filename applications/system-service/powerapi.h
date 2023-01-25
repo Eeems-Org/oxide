@@ -1,7 +1,7 @@
 #ifndef BATTERYAPI_H
 #define BATTERYAPI_H
 
-#include <liboxide/power.h>
+#include <liboxide.h>
 
 #include <QObject>
 #include <QDebug>
@@ -168,7 +168,7 @@ private:
                 setBatteryState(BatteryUnknown);
             }
             if(!m_batteryWarning){
-                qWarning() << "Can't find battery information";
+                O_WARNING("Can't find battery information");
                 m_batteryWarning = true;
                 emit batteryWarning();
             }
@@ -176,11 +176,11 @@ private:
         }
         if(!Oxide::Power::batteryPresent()){
             if(m_batteryState != BatteryNotPresent){
-                qWarning() << "Battery is somehow not in the device?";
+                O_WARNING("Battery is somehow not in the device?");
                 setBatteryState(BatteryNotPresent);
             }
             if(!m_batteryWarning){
-                qWarning() << "Battery is somehow not in the device?";
+                O_WARNING("Battery is somehow not in the device?");
                 m_batteryWarning = true;
                 emit batteryWarning();
             }
@@ -221,7 +221,7 @@ private:
                 setChargerState(ChargerUnknown);
             }
             if(!m_chargerWarning){
-                qWarning() << "Can't find charger information";
+                O_WARNING("Can't find charger information");
                 m_chargerWarning = true;
                 emit chargerWarning();
             }

@@ -416,7 +416,7 @@ public:
     void forceRecordPreviousApplication(){
         auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
         if(currentApplication == nullptr){
-            qWarning() << "Unable to find current application";
+            O_WARNING("Unable to find current application");
             return;
         }
         auto name = currentApplication->name();
@@ -427,7 +427,7 @@ public:
     void recordPreviousApplication(){
         auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
         if(currentApplication == nullptr){
-            qWarning() << "Unable to find current application";
+            O_WARNING("Unable to find current application");
             return;
         }
         if(currentApplication->qPath() == lockscreenApplication()){

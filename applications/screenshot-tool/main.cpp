@@ -53,7 +53,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("fret");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     auto bus = QDBusConnection::systemBus();
     qDebug() << "Waiting for tarnish to start up...";
     while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){

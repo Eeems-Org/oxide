@@ -47,7 +47,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("anxiety");
     app.setApplicationDisplayName("Screenshots");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     Controller controller(&app);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();

@@ -39,7 +39,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("decay");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     Controller controller(&app);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();

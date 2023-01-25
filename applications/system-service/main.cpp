@@ -18,11 +18,11 @@ void sigHandler(int signal){
 
 int main(int argc, char *argv[]){
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
-        qWarning() << "rm2fb not detected. Running xochitl instead!";
+        O_WARNING("rm2fb not detected. Running xochitl instead!");
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
     if (strcmp(qt_version, QT_VERSION_STR) != 0){
-        qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
+        O_WARNING("Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR);
     }
 #ifdef __arm__
     // Setup epaper

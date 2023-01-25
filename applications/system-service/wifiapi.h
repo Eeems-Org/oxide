@@ -8,6 +8,7 @@
 #include <QUuid>
 
 #include <unistd.h>
+#include <liboxide.h>
 
 #include "apibase.h"
 #include "wlan.h"
@@ -79,7 +80,7 @@ public:
                 Oxide::Sentry::Span* span = Oxide::Sentry::start_span(s, "connect", "Connect to DBus interface");
                 QDBusConnection bus = QDBusConnection::systemBus();
                 if(!bus.isConnected()){
-                    qWarning("Failed to connect to system bus.");
+                    O_WARNING("Failed to connect to system bus.");
                     throw QException();
                 }
                 validateSupplicant();

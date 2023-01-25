@@ -33,7 +33,6 @@
 #include <algorithm>
 #include <liboxide.h>
 
-#include "../../shared/liboxide/liboxide.h"
 #include "mxcfb.h"
 #include "screenapi.h"
 #include "fifohandler.h"
@@ -358,7 +357,7 @@ public:
                 QBuffer buffer(&bytes);
                 buffer.open(QIODevice::WriteOnly);
                 if(!EPFrameBuffer::framebuffer()->save(&buffer, "JPG", 100)){
-                    qWarning() << "Failed to save buffer";
+                    O_WARNING("Failed to save buffer");
                 }
             });
             qDebug() << "Compressing data...";
@@ -549,14 +548,14 @@ private:
         auto csource = source.toStdString();
         qDebug() << "mount" << source << target;
         if(mount(csource.c_str(), ctarget.c_str(), NULL, MS_BIND, NULL)){
-            qWarning() << "Failed to create bindmount: " << ::strerror(errno);
+            O_WARNING("Failed to create bindmount: " << ::strerror(errno));
             return;
         }
         if(!readOnly){
             return;
         }
         if(mount(csource.c_str(), ctarget.c_str(), NULL, MS_REMOUNT | MS_BIND | MS_RDONLY, NULL)){
-            qWarning() << "Failed to remount bindmount read only: " << ::strerror(errno);
+            O_WARNING("Failed to remount bindmount read only: " << ::strerror(errno));
         }
         qDebug() << "mount ro" << source << target;
     }
@@ -565,7 +564,7 @@ private:
         umount(path);
         qDebug() << "sysfs" << path;
         if(mount("none", path.toStdString().c_str(), "sysfs", 0, "")){
-            qWarning() << "Failed to mount sysfs: " << ::strerror(errno);
+            O_WARNING("Failed to mount sysfs: " << ::strerror(errno));
         }
     }
     void ramdisk(const QString& path){
@@ -573,7 +572,7 @@ private:
         umount(path);
         qDebug() << "ramdisk" << path;
         if(mount("tmpfs", path.toStdString().c_str(), "tmpfs", 0, "size=249m,mode=755")){
-            qWarning() << "Failed to create ramdisk: " << ::strerror(errno);
+            O_WARNING("Failed to create ramdisk: " << ::strerror(errno));
         }
     }
     void umount(const QString& path){
@@ -594,17 +593,17 @@ private:
     }
     FifoHandler* mkfifo(const QString& name, const QString& target){
         if(isMounted(target)){
-            qWarning() << target << "Already mounted";
+            O_WARNING(target << "Already mounted");
             return fifos.contains(name) ? fifos[name] : nullptr;
         }
         auto source = resourcePath() + "/" + name;
         if(!QFile::exists(source)){
             if(::mkfifo(source.toStdString().c_str(), 0644)){
-                qWarning() << "Failed to create " << name << " fifo: " << ::strerror(errno);
+                O_WARNING("Failed to create " << name << " fifo: " << ::strerror(errno));
             }
         }
         if(!QFile::exists(source)){
-            qWarning() << "No fifo for " << name;
+            O_WARNING("No fifo for " << name);
             return fifos.contains(name) ? fifos[name] : nullptr;
         }
         bind(source, target);
@@ -630,7 +629,7 @@ private:
         }
         qDebug() << "symlink" << source << target;
         if(::symlink(target.toStdString().c_str(), source.toStdString().c_str())){
-            qWarning() << "Failed to create symlink: " << ::strerror(errno);
+            O_WARNING("Failed to create symlink: " << ::strerror(errno));
             return;
         }
     }

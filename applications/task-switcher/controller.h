@@ -213,7 +213,7 @@ public:
                     Oxide::Sentry::sentry_span(s, name.toStdString(), "Load image from application", [this, &img, previousApplications, name]{
                         auto path = ((QDBusObjectPath)appsApi->getApplicationPath(name)).path();
                         if(path == "/"){
-                            qWarning() << "Unable to get save screen for" << name;
+                            O_WARNING("Unable to get save screen for" << name);
                             return;
                         }
                         auto bus = QDBusConnection::systemBus();
@@ -221,7 +221,7 @@ public:
                         auto data = app.screenCapture();
                         auto image = QImage::fromData(data, "JPG");
                         if(image.isNull()){
-                            qWarning() << "Image for " << name << " is corrupt, trying next application";
+                            O_WARNING("Image for " << name << " is corrupt, trying next application");
                             return;
                         }
                         img = new QImage(image);

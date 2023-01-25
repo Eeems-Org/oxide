@@ -181,7 +181,7 @@ public:
             path = appsApi->getApplicationPath("codes.eeems.oxide");
         }
         if(path.path() == "/"){
-            qWarning() << "Unable to find startup application to launch.";
+            O_WARNING("Unable to find startup application to launch.");
             return;
         }
         Application app(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus());
@@ -447,11 +447,11 @@ private slots:
         }
         auto path = settings.value("onLogin").toString();
         if(!QFile::exists(path)){
-            qWarning() << "onLogin script does not exist" << path;
+            O_WARNING("onLogin script does not exist" << path);
             return;
         }
         if(!QFileInfo(path).isExecutable()){
-            qWarning() << "onLogin script is not executable" << path;
+            O_WARNING("onLogin script is not executable" << path);
             return;
         }
         QProcess::execute(path, QStringList());
@@ -462,11 +462,11 @@ private slots:
         }
         auto path = settings.value("onFailedLogin").toString();
         if(!QFile::exists(path)){
-            qWarning() << "onFailedLogin script does not exist" << path;
+            O_WARNING("onFailedLogin script does not exist" << path);
             return;
         }
         if(!QFileInfo(path).isExecutable()){
-            qWarning() << "onFailedLogin script is not executable" << path;
+            O_WARNING("onFailedLogin script is not executable" << path);
             return;
         }
         QProcess::execute(path, QStringList());

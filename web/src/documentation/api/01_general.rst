@@ -64,8 +64,8 @@ usage of the API away.
 
 .. _example-usage-1:
 
-Example Usage:
-~~~~~~~~~~~~~~
+Example Usage
+~~~~~~~~~~~~~
 
 .. code:: cpp
 

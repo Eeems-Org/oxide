@@ -1,6 +1,6 @@
 #include "json.h"
+#include "debug.h"
 
-#include <QDebug>
 #include <QJsonValue>
 #include <QJsonDocument>
 
@@ -101,7 +101,6 @@ namespace Oxide::JSON {
             return sanitizeForJson(list);
         }
         if(type == QDBusArgument::MapType){
-            qDebug() << "Map Type";
             QMap<QVariant, QVariant> map;
             arg.beginMap();
             while(!arg.atEnd()){
@@ -114,7 +113,7 @@ namespace Oxide::JSON {
             arg.endMap();
             return sanitizeForJson(QVariant::fromValue(map));
         }
-        qDebug() << "Unable to sanitize QDBusArgument as it is an unknown type";
+        O_WARNING("Unable to sanitize QDBusArgument as it is an unknown type");
         return QVariant();
     }
     QVariant sanitizeForJson(QVariant value){
@@ -199,8 +198,8 @@ namespace Oxide::JSON {
         QJsonParseError error;
         QJsonDocument doc = QJsonDocument::fromJson("[" + json + "]", &error);
         if(error.error != QJsonParseError::NoError){
-            qDebug() << "Unable to read json value" << error.errorString();
-            qDebug() << "Value to parse" << json;
+            O_WARNING("Unable to read json value" << error.errorString());
+            O_WARNING("Value to parse" << json);
         }
         return doc.array().first().toVariant();
     }
