@@ -104,12 +104,9 @@ int main(int argc, char *argv[]){
     auto text = args.join("\n");
     if(parser.isSet(replaceOption)){
         guid = parser.value(replaceOption);
-        if(notifications.take(guid)){
-            path = notifications.get(guid);
-            if(path.path() == "/"){
-                path = notifications.add(guid, appName, text, iconPath);
-            }
-        }else{
+        path = notifications.get(guid);
+        if(path.path() == "/" || !notifications.take(guid)){
+            guid = QUuid::createUuid().toString();
             path = notifications.add(guid, appName, text, iconPath);
         }
         if(path.path() == "/"){
