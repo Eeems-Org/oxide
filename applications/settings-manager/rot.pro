@@ -45,8 +45,6 @@ DEPENDPATH += $$PWD/../../shared/liboxide
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
 
-HEADERS += \
-    json.h \
-    slothandler.h
+HEADERS +=
 
 VERSION = 2.5

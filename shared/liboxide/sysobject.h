@@ -13,8 +13,7 @@ namespace Oxide {
     /*!
      * \brief A class to make interacting with sysfs easier
      */
-    class LIBOXIDE_EXPORT SysObject
-    {
+    class LIBOXIDE_EXPORT SysObject {
     public:
         explicit SysObject(QString path) : m_path(path.toStdString()){}
         /*!

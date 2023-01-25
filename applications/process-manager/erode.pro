@@ -1,4 +1,5 @@
 QT += quick
+QT += dbus
 CONFIG += c++11
 
 DEFINES += QT_DEPRECATED_WARNINGS

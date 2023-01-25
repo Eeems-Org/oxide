@@ -8,7 +8,9 @@
 
 #include "settingsfile.h"
 #include "power.h"
+#include "json.h"
 #include "signalhandler.h"
+#include "slothandler.h"
 
 #include <QDebug>
 #include <QScopeGuard>

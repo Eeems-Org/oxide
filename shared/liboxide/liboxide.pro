@@ -1,5 +1,6 @@
 QT -= gui
 QT += quick
+QT += dbus
 
 TEMPLATE = lib
 DEFINES += LIBOXIDE_LIBRARY
@@ -10,9 +11,11 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs depr
 
 SOURCES += \
     eventfilter.cpp \
+    json.cpp \
     liboxide.cpp \
     power.cpp \
     settingsfile.cpp \
+    slothandler.cpp \
     sysobject.cpp \
     signalhandler.cpp
 
@@ -21,7 +24,9 @@ HEADERS += \
     liboxide_global.h \
     liboxide.h \
     power.h \
+    json.h \
     settingsfile.h \
+    slothandler.h \
     sysobject.h \
     signalhandler.h
 
