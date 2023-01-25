@@ -20,14 +20,18 @@ DBUS_INTERFACES += ../../interfaces/notification.xml
 target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
-exists($$PWD/../../.build/sentry) {
-    LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
-    INCLUDEPATH += $$PWD/../../.build/sentry/include
-    DEPENDPATH += $$PWD/../../.build/sentry/lib
+contains(DEFINES, SENTRY){
+    exists($$PWD/../../.build/sentry) {
+        LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
+        INCLUDEPATH += $$PWD/../../.build/sentry/include
+        DEPENDPATH += $$PWD/../../.build/sentry/lib
 
-    library.files = ../../.build/sentry/libsentry.so
-    library.path = /opt/lib
-    INSTALLS += library
+        library.files = ../../.build/sentry/libsentry.so
+        library.path = /opt/lib
+        INSTALLS += library
+    }else{
+        error(You need to build sentry first)
+    }
 }
 
 LIBS += -L$$PWD/../../.build/liboxide -lliboxide
