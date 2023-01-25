@@ -13,6 +13,7 @@ using namespace codes::eeems::oxide1;
 
 class AppItem : public QObject {
     Q_OBJECT
+
 public:
     AppItem(QObject* parent) : QObject(parent){}
 
@@ -34,6 +35,7 @@ public:
 
     Q_INVOKABLE void execute();
     Q_INVOKABLE void stop();
+
 signals:
     void nameChanged(QString);
     void displayNameChanged(QString);
