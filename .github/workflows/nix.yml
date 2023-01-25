@@ -37,5 +37,5 @@ jobs:
     - name: Save Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: drop
-        path: result
+        name: output
+        path: release
