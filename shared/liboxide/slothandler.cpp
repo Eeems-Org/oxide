@@ -10,7 +10,7 @@
 using namespace Oxide::JSON;
 
 namespace Oxide{
-    bool DBusConnect(QDBusAbstractInterface* interface, const QString& slotName, std::function<void(QVariantList)> onMessage, const bool& once){
+    bool DBusConnect(QDBusAbstractInterface* interface, const QString& slotName, std::function<void(QVariantList)> onMessage, const bool& once=false){
         return DBusConnect(interface, slotName, onMessage, []{}, once);
     }
     bool DBusConnect(QDBusAbstractInterface* interface, const QString& slotName, std::function<void(QVariantList)> onMessage, std::function<void()> callback, const bool& once){
