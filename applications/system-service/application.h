@@ -462,7 +462,6 @@ private slots:
                 }
             }
         }
-
     }
     void readyReadStandardOutput(){
         QString output = m_process->readAllStandardOutput();
