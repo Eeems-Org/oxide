@@ -15,6 +15,7 @@
 #  endif
 #else
 #  define SENTRY
+#  define DEBUG
 #  define LIBOXIDE_EXPORT
 #endif
 

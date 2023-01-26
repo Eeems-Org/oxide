@@ -10,6 +10,9 @@
 #include <QJsonArray>
 #include <QDBusArgument>
 
+/*!
+ * The JSON namespace
+ */
 namespace Oxide::JSON {
     /*!
      * \brief Decode a DBus Argument into a QVariant
