@@ -106,6 +106,41 @@ public:
         }
         return m_notifications.value(identifier);
     }
+    QRect paintNotification(const QString& text, const QString& iconPath){
+        qDebug() << "Painting to framebuffer...";
+        auto frameBuffer = EPFrameBuffer::framebuffer();
+        QPainter painter(frameBuffer);
+        auto size = frameBuffer->size();
+        auto fm = painter.fontMetrics();
+        auto padding = 10;
+        auto radius = 10;
+        QImage icon(iconPath);
+        auto iconSize = icon.isNull() ? 0 : 50;
+        auto width = fm.horizontalAdvance(text) + iconSize + (padding * 3);
+        auto height = max(fm.height(), iconSize) + (padding * 2);
+        auto left = size.width() - width;
+        auto top = size.height() - height;
+        QRect updateRect(left, top, width, height);
+        painter.fillRect(updateRect, Qt::black);
+        painter.setPen(Qt::black);
+        painter.drawRoundedRect(updateRect, radius, radius);
+        painter.setPen(Qt::white);
+        QRect textRect(left + padding, top + padding, width - iconSize - (padding * 2), height - padding);
+        painter.drawText(textRect, Qt::AlignCenter, text);
+        painter.end();
+        qDebug() << "Updating screen " << updateRect << "...";
+        EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+        if(!icon.isNull()){
+            QPainter painter2(frameBuffer);
+            QRect iconRect(size.width() - iconSize - padding, top + padding, iconSize, iconSize);
+            painter2.fillRect(iconRect, Qt::white);
+            painter2.drawImage(iconRect, icon);
+            painter2.end();
+            EPFrameBuffer::sendUpdate(iconRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+        }
+        EPFrameBuffer::waitForLastUpdate();
+        return updateRect;
+    }
 
 public slots:
     QDBusObjectPath add(const QString& identifier, const QString& application, const QString& text, const QString& icon, QDBusMessage message){

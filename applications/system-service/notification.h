@@ -130,7 +130,6 @@ private:
     QImage screenBackup;
     QRect updateRect;
 
-    void dispatchToMainThread(std::function<void()> callback);
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 };
 
