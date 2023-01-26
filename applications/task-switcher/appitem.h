@@ -60,7 +60,7 @@ private slots:
     }
     void onIconChanged(QString path){
         _imgFile = path;
-        emit onIconChanged(path);
+        emit imgFileChanged(path);
     }
 
 private:
