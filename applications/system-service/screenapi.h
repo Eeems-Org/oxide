@@ -103,8 +103,7 @@ public:
         }
         Oxide::Sentry::sentry_transaction("screen", "drawFullscrenImage", [img, path](Oxide::Sentry::Transaction* t){
             Q_UNUSED(t);
-            auto size = EPFrameBuffer::framebuffer()->size();
-            QRect rect(0, 0, size.width(), size.height());
+            QRect rect = EPFrameBuffer::framebuffer()->rect();
             QPainter painter(EPFrameBuffer::framebuffer());
             painter.drawImage(rect, img);
             painter.end();
@@ -114,20 +113,14 @@ public:
         return true;
     }
 
-    Q_INVOKABLE QDBusObjectPath screenshot(){
-        if(!hasPermission("screen")){
-            return QDBusObjectPath("/");
+    Q_INVOKABLE QDBusObjectPath screenshot();
+    QImage copy(){
+        auto frameBuffer = EPFrameBuffer::framebuffer();
+        qDebug() << "Waiting for other painting to finish...";
+        while(frameBuffer->paintingActive()){
+            EPFrameBuffer::waitForLastUpdate();
         }
-        qDebug() << "Taking screenshot";
-        auto filePath = getNextPath();
-#ifdef DEBUG
-        qDebug() << "Using path" << filePath;
-#endif
-        if(!EPFrameBuffer::framebuffer()->save(filePath)){
-            qDebug() << "Failed to take screenshot";
-            return QDBusObjectPath("/");
-        }
-        return addScreenshot(filePath)->qPath();
+        return frameBuffer->copy();
     }
 
 public slots:

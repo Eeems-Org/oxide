@@ -32,7 +32,7 @@ void Notification::display(){
         return;
     }
     notificationAPI->lock();
-    dispatchToMainThread([=]{
+    Oxide::dispatchToMainThread([=]{
         qDebug() << "Displaying notification" << identifier();
         auto path = appsAPI->currentApplicationNoSecurityCheck();
         Application* resumeApp = nullptr;
@@ -52,61 +52,10 @@ void Notification::remove(){
     emit removed();
 }
 
-void Notification::dispatchToMainThread(std::function<void()> callback){
-    if(this->thread() == qApp->thread()){
-        callback();
-        return;
-    }
-    // any thread
-    QTimer* timer = new QTimer();
-    timer->moveToThread(qApp->thread());
-    timer->setSingleShot(true);
-    QObject::connect(timer, &QTimer::timeout, [=](){
-        // main thread
-        callback();
-        timer->deleteLater();
-    });
-    QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
-}
 void Notification::paintNotification(Application* resumeApp){
-    auto frameBuffer = EPFrameBuffer::framebuffer();
-    qDebug() << "Waiting for other painting to finish...";
-    while(frameBuffer->paintingActive()){
-        EPFrameBuffer::waitForLastUpdate();
-    }
     qDebug() << "Painting notification" << identifier();
-    screenBackup = frameBuffer->copy();
-    qDebug() << "Painting to framebuffer...";
-    QPainter painter(frameBuffer);
-    auto size = frameBuffer->size();
-    auto fm = painter.fontMetrics();
-    auto padding = 10;
-    auto radius = 10;
-    QImage icon(m_icon);
-    auto iconSize = icon.isNull() ? 0 : 50;
-    auto width = fm.horizontalAdvance(text()) + iconSize + (padding * 3);
-    auto height = max(fm.height(), iconSize) + (padding * 2);
-    auto left = size.width() - width;
-    auto top = size.height() - height;
-    updateRect = QRect(left, top, width, height);
-    painter.fillRect(updateRect, Qt::black);
-    painter.setPen(Qt::black);
-    painter.drawRoundedRect(updateRect, radius, radius);
-    painter.setPen(Qt::white);
-    QRect textRect(left + padding, top + padding, width - iconSize - (padding * 2), height - padding);
-    painter.drawText(textRect, Qt::AlignCenter, text());
-    painter.end();
-    qDebug() << "Updating screen " << updateRect << "...";
-    EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
-    if(!icon.isNull()){
-        QPainter painter2(frameBuffer);
-        QRect iconRect(size.width() - iconSize - padding, top + padding, iconSize, iconSize);
-        painter2.fillRect(iconRect, Qt::white);
-        painter2.drawImage(iconRect, icon);
-        painter2.end();
-        EPFrameBuffer::sendUpdate(iconRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
-    }
-    EPFrameBuffer::waitForLastUpdate();
+    screenBackup = screenAPI->copy();
+    updateRect = notificationAPI->paintNotification(text(), m_icon);
     qDebug() << "Painted notification" << identifier();
     emit displayed();
     QTimer::singleShot(2000, [this, resumeApp]{
@@ -117,7 +66,7 @@ void Notification::paintNotification(Application* resumeApp){
         qDebug() << "Finished displaying notification" << identifier();
         EPFrameBuffer::waitForLastUpdate();
         if(!notificationAPI->notificationDisplayQueue.isEmpty()){
-            dispatchToMainThread([resumeApp] {
+            Oxide::dispatchToMainThread([resumeApp] {
                 notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification(resumeApp);
             });
             return;

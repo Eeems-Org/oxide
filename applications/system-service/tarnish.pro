@@ -19,6 +19,7 @@ SOURCES += \
     event_device.cpp \
     network.cpp \
     notification.cpp \
+    screenapi.cpp \
     screenshot.cpp \
     systemapi.cpp \
     wlan.cpp \
