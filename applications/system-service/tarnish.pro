@@ -3,7 +3,7 @@ QT += dbus
 CONFIG += c++17
 CONFIG += console
 CONFIG -= app_bundle
-CONFIG += precompile_header_c
+CONFIG += precompile_header
 
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -48,7 +48,6 @@ system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplica
 DBUS_INTERFACES += org.freedesktop.login1.xml
 
 HEADERS += \
-    ../../shared/liboxide/liboxide.h \
     apibase.h \
     application.h \
     appsapi.h \
@@ -67,18 +66,17 @@ HEADERS += \
     screenshot.h \
     supplicant.h \
     systemapi.h \
+    tarnish_stable.h \
     wifiapi.h \
     wlan.h \
     wpa_supplicant.h
 
+PRECOMPILED_HEADER = \
+    tarnish_stable.h
+
 LIBS += -lpng16
 LIBS += -lsystemd
 LIBS += -lz
-
-LIBS += -L$$PWD/../../shared/ -lqsgepaper
-INCLUDEPATH += $$PWD/../../shared
-DEPENDPATH += $$PWD/../../shared
-QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
 DISTFILES += \
     ../../assets/opt/usr/share/applications/codes.eeems.anxiety.oxide \
@@ -87,8 +85,11 @@ DISTFILES += \
     generate_xml.sh \
     org.freedesktop.login1.xml
 
+LIBS += -L$$PWD/../../shared/epaper -lqsgepaper
+INCLUDEPATH += $$PWD/../../shared/epaper
+
 contains(DEFINES, SENTRY){
-    exists($$PWD/../../.build/sentry) {
+    exists($$PWD/../../.build/sentry/include/sentry.h) {
         LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
         INCLUDEPATH += $$PWD/../../.build/sentry/include
         DEPENDPATH += $$PWD/../../.build/sentry/lib
@@ -101,11 +102,15 @@ contains(DEFINES, SENTRY){
     }
 }
 
-LIBS += -L$$PWD/../../.build/liboxide -lliboxide
-INCLUDEPATH += $$PWD/../../shared/liboxide
-DEPENDPATH += $$PWD/../../shared/liboxide
+exists($$PWD/../../.build/liboxide/include/liboxide.h) {
+    LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+    INCLUDEPATH += $$PWD/../../.build/liboxide/include
+}else{
+    error(You need to build liboxide first)
+}
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
+QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
 VERSION = 2.5
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"

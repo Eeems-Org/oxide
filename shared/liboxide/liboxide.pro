@@ -7,6 +7,7 @@ DEFINES += LIBOXIDE_LIBRARY
 
 CONFIG += c++11
 CONFIG += warn_on
+CONFIG += precompile_header
 
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
@@ -36,26 +37,46 @@ HEADERS += \
     sysobject.h \
     signalhandler.h
 
+PRECOMPILED_HEADER = \
+    liboxide_stable.h
+
 LIBS += -lsystemd
 
-INCLUDEPATH += ../../shared
-LIBS += -L$$PWD/../../shared/ -lqsgepaper
-INCLUDEPATH += $$PWD/../../shared
-DEPENDPATH += $$PWD/../../shared
+LIBS += -L$$PWD/../../shared/epaper -lqsgepaper
+INCLUDEPATH += $$PWD/../../shared/epaper
 
 contains(DEFINES, SENTRY){
-    exists($$PWD/../../.build/sentry) {
-        LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
+    exists($$PWD/../../.build/sentry/include/sentry.h) {
+        LIBS_PRIVATE += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
         INCLUDEPATH += $$PWD/../../.build/sentry/include
         DEPENDPATH += $$PWD/../../.build/sentry/lib
 
-        library.files = ../../.build/sentry/libsentry.so
-        library.path = /opt/lib
-        INSTALLS += library
+        libsentry.files = ../../.build/sentry/libsentry.so
+        libsentry.path = /opt/lib
+        INSTALLS += libsentry
     }else{
         error(You need to build sentry first)
     }
 }
+
+include.target = include/liboxide
+include.commands = \
+    mkdir -p include/liboxide && \
+    echo $$HEADERS | xargs -rn1 | xargs -rI {} cp $$PWD/{} include/liboxide/
+
+liboxide_h.target = include/liboxide.h
+liboxide_h.depends += include
+liboxide_h.commands = \
+    echo \\$$LITERAL_HASH"ifndef LIBOXIDE" > include/liboxide.h && \
+    echo \\$$LITERAL_HASH"define LIBOXIDE" >> include/liboxide.h && \
+    echo \"$$LITERAL_HASH"include \\\"liboxide/liboxide.h\\\"\"" >> include/liboxide.h && \
+    echo \\$$LITERAL_HASH"endif // LIBOXIDE" >> include/liboxide.h
+
+
+QMAKE_EXTRA_TARGETS += include liboxide_h
+POST_TARGETDEPS += include/liboxide.h
+
+QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
 
 target.path = /opt/usr/lib
 !isEmpty(target.path): INSTALLS += target

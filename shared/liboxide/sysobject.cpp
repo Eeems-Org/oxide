@@ -1,11 +1,11 @@
 #include "sysobject.h"
+#include "debug.h"
+
 #include <QFile>
 #include <QDir>
 #include <QTextStream>
 #include <sstream>
 #include <fstream>
-
-#include <debug.h>
 
 namespace Oxide{
     std::string SysObject::propertyPath(const std::string& name){

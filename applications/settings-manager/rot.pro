@@ -30,7 +30,7 @@ target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
 
 contains(DEFINES, SENTRY){
-    exists($$PWD/../../.build/sentry) {
+    exists($$PWD/../../.build/sentry/include/sentry.h) {
         LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
         INCLUDEPATH += $$PWD/../../.build/sentry/include
         DEPENDPATH += $$PWD/../../.build/sentry/lib
@@ -43,9 +43,12 @@ contains(DEFINES, SENTRY){
     }
 }
 
-LIBS += -L$$PWD/../../.build/liboxide -lliboxide
-INCLUDEPATH += $$PWD/../../shared/liboxide
-DEPENDPATH += $$PWD/../../shared/liboxide
+exists($$PWD/../../.build/liboxide/include/liboxide.h) {
+    LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+    INCLUDEPATH += $$PWD/../../.build/liboxide/include
+}else{
+    error(You need to build liboxide first)
+}
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
 

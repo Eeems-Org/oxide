@@ -7,7 +7,7 @@
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
 
-#include "../../shared/liboxide/liboxide.h"
+#include <liboxide.h>
 #include <unistd.h>
 
 

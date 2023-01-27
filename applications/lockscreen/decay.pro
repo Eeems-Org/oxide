@@ -4,6 +4,7 @@ QT += dbus
 
 CONFIG += c++11
 CONFIG += qml_debug
+CONFIG += qtquickcompiler
 
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -29,12 +30,11 @@ HEADERS += \
 RESOURCES += \
     qml.qrc
 
-LIBS += -L$$PWD/../../shared/ -lqsgepaper
-INCLUDEPATH += $$PWD/../../shared
-DEPENDPATH += $$PWD/../../shared
+LIBS += -L$$PWD/../../shared/epaper -lqsgepaper
+INCLUDEPATH += $$PWD/../../shared/epaper
 
 contains(DEFINES, SENTRY){
-    exists($$PWD/../../.build/sentry) {
+    exists($$PWD/../../.build/sentry/include/sentry.h) {
         LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
         INCLUDEPATH += $$PWD/../../.build/sentry/include
         DEPENDPATH += $$PWD/../../.build/sentry/lib
@@ -47,9 +47,12 @@ contains(DEFINES, SENTRY){
     }
 }
 
-LIBS += -L$$PWD/../../.build/liboxide -lliboxide
-INCLUDEPATH += $$PWD/../../shared/liboxide
-DEPENDPATH += $$PWD/../../shared/liboxide
+exists($$PWD/../../.build/liboxide/include/liboxide.h) {
+    LIBS += -L$$PWD/../../.build/liboxide -lliboxide
+    INCLUDEPATH += $$PWD/../../.build/liboxide/include
+}else{
+    error(You need to build liboxide first)
+}
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
 
