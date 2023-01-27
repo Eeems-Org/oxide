@@ -15,6 +15,7 @@ SOURCES += \
     eventfilter.cpp \
     json.cpp \
     liboxide.cpp \
+    oxide_sentry.cpp \
     power.cpp \
     settingsfile.cpp \
     slothandler.cpp \
@@ -27,6 +28,7 @@ HEADERS += \
     liboxide_global.h \
     liboxide.h \
     meta.h \
+    oxide_sentry.h \
     power.h \
     json.h \
     settingsfile.h \
