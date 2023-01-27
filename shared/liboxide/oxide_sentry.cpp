@@ -1,4 +1,4 @@
-#include "_sentry.h"
+#include "oxide_sentry.h"
 #include "liboxide.h"
 
 #include <QtGlobal>

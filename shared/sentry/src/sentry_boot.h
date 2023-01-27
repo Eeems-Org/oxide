@@ -37,7 +37,7 @@
 #    define __has_builtin(x) 0
 #endif
 
-#include <_sentry.h>
+#include <sentry.h>
 #include <stdbool.h>
 
 #endif

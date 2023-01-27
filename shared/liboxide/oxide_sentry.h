@@ -1,8 +1,8 @@
 /*!
  * \file sentry.h
  */
-#ifndef _SENTRY_H
-#define _SENTRY_H
+#ifndef OXIDE_SENTRY_H
+#define OXIDE_SENTRY_H
 
 #include "liboxide_global.h"
 
@@ -161,4 +161,4 @@ namespace Oxide::Sentry{
     LIBOXIDE_EXPORT void trigger_crash();
 }
 
-#endif // _SENTRY_H
+#endif // OXIDE_SENTRY_H

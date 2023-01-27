@@ -13,7 +13,7 @@
 #include "signalhandler.h"
 #include "slothandler.h"
 #include "debug.h"
-#include "_sentry.h"
+#include "oxide_sentry.h"
 
 #include <QDebug>
 #include <QScopeGuard>
