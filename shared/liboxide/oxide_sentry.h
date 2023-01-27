@@ -6,7 +6,7 @@
 
 #include "liboxide_global.h"
 
-#include <string.h>
+#include <string>
 #include <stdlib.h>
 #include <stdio.h>
 #include <functional>

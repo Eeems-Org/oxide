@@ -9,7 +9,6 @@
 
 #include <sstream>
 #include <fstream>
-#include <string.h>
 #include <systemd/sd-id128.h>
 
 // String: 5aa5ca39ee0b4f48927529ca17519524
