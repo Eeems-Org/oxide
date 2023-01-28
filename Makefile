@@ -23,16 +23,16 @@ release: clean build $(RELOBJ)
 
 build: $(OBJ)
 
-package: REV="r$(shell git rev-list --count HEAD).$(shell git rev-parse --short HEAD)"
+package: REV="~r$(shell git rev-list --count HEAD).$(shell git rev-parse --short HEAD)"
 package:
 	rm -rf .build/package/ dist/
 	if [ -d .git ];then \
 		echo $(REV) > version.txt; \
 	else \
-		echo manual > version.txt; \
+		echo "~manual" > version.txt; \
 	fi;
 	mkdir -p .build/package
-	sed "s/~VERSION~/$(shell cat version.txt)/" ./package > .build/package/package
+	sed "s/~VERSION~/`cat version.txt`/" ./package > .build/package/package
 	tar \
 		--exclude='./.git' \
 		--exclude='./.build' \
