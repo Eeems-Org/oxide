@@ -24,7 +24,7 @@ build() {
 erode() {
     pkgdesc="Task manager"
     section=utils
-    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/erode
@@ -32,23 +32,35 @@ erode() {
         install -D -m 644 -t "$pkgdir"/opt/etc/draft/icons "$srcdir"/release/opt/etc/draft/icons/erode-splash.png
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.erode.oxide
     }
+
+    configure() {
+        if is-active "tarnish.service"; then
+            update-desktop-database
+        fi
+    }
 }
 
 fret() {
     pkgdesc="Take screenshots"
     section=utils
-    installdepends=("tarnish=$pkgver" "liboxide=$pkgver"  "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver"  "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/fret
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.fret.oxide
+    }
+
+    configure() {
+        if is-active "tarnish.service"; then
+            update-desktop-database
+        fi
     }
 }
 
 oxide() {
     pkgdesc="Launcher application"
     section=launchers
-    installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" "liboxide=$pkgver" "update-desktop-database=$pkgver" display  "libsentry=$_sentry")
+    installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver" display "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/oxide
@@ -58,11 +70,8 @@ oxide() {
     }
 
     configure() {
-        if ! is-enabled "tarnish.service"; then
-            echo ""
-            echo "Run the following command(s) to use $pkgname as your launcher"
-            how-to-enable "tarnish.service"
-            echo ""
+        if is-active "tarnish.service"; then
+            update-desktop-database
         fi
     }
 }
@@ -90,6 +99,12 @@ tarnish() {
 
     configure() {
         systemctl daemon-reload
+        if ! is-enabled "tarnish.service"; then
+            echo ""
+            echo "Run the following command(s) to use $pkgname as your launcher"
+            how-to-enable "tarnish.service"
+            echo ""
+        fi
     }
 
     preremove() {
@@ -107,35 +122,53 @@ tarnish() {
 decay() {
     pkgdesc="Lockscreen application"
     section=utils
-    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/decay
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.decay.oxide
+    }
+
+    configure() {
+        if is-active "tarnish.service"; then
+            update-desktop-database
+        fi
     }
 }
 
 corrupt() {
     pkgdesc="Task Switcher for Oxide"
     section=utils
-    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/corrupt
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.corrupt.oxide
+    }
+
+    configure() {
+        if is-active "tarnish.service"; then
+            update-desktop-database
+        fi
     }
 }
 
 anxiety() {
     pkgdesc="Screenshot viewer for Oxide"
     section=utils
-    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/anxiety
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.anxiety.oxide
         install -D -m 644 -t "$pkgdir"/opt/etc/draft/icons "$srcdir"/release/opt/etc/draft/icons/image.svg
         install -D -m 644 -t "$pkgdir"/opt/etc/draft/icons "$srcdir"/release/opt/etc/draft/icons/anxiety-splash.png
+    }
+
+    configure() {
+        if is-active "tarnish.service"; then
+            update-desktop-database
+        fi
     }
 }
 
