@@ -8,3 +8,5 @@ result
 *.orig
 oxide.tar.gz
 build/
+dist/
+version.txt

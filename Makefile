@@ -23,14 +23,22 @@ release: clean build $(RELOBJ)
 
 build: $(OBJ)
 
+package: REV="r$(shell git rev-list --count HEAD).$(shell git rev-parse --short HEAD)"
 package:
-	rm -rf build
+	rm -rf .build/package/ dist/
+	if [ -d .git ];then \
+		echo $(REV) > version.txt; \
+	else \
+		echo manual > version.txt; \
+	fi;
+	mkdir -p .build/package
+	sed "s/~VERSION~/$(shell cat version.txt)/" ./package > .build/package/package
 	tar \
 		--exclude='./.git' \
 		--exclude='./.build' \
 		--exclude='./dist' \
 		--exclude='./release' \
-		-czvf ./oxide.tar.gz \
+		-czvf .build/package/oxide.tar.gz \
 		applications \
 		assets \
 		interfaces \
@@ -38,7 +46,12 @@ package:
 		shared \
 		oxide.pro \
 		Makefile
-	toltecmk
+	toltecmk \
+		-w .build/package/build \
+		-d .build/package/dist \
+		.build/package
+	mkdir dist/
+	cp -a .build/package/dist/rmall/*.ipk dist/
 
 sentry: .build/sentry/libsentry.so
 
