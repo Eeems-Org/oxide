@@ -2,7 +2,7 @@
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 
-pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry notify-send)
+pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry notify-send update-desktop-database)
 pkgver="2.6~VERSION~"
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
@@ -48,7 +48,7 @@ fret() {
 oxide() {
     pkgdesc="Launcher application"
     section=launchers
-    installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" "liboxide=$pkgver" display  "libsentry=$_sentry")
+    installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" "liboxide=$pkgver" "update-desktop-database=$pkgver" display  "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/oxide
@@ -146,6 +146,15 @@ notify-send() {
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/notify-send
+    }
+}
+update-desktop-database(){
+    pkgdesc="A program to update the application cache for Oxide"
+    section=utils
+    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+
+    package() {
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/update-desktop-database
     }
 }
 
