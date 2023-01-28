@@ -9,6 +9,8 @@ on:
       - 'shared/**'
       - 'assets/**'
       - 'interfaces/**'
+      - 'qmake/**'
+      - 'oxide.pro'
       - 'Makefile'
       - '*.nix'
   pull_request:
@@ -17,6 +19,8 @@ on:
       - 'shared/**'
       - 'assets/**'
       - 'interfaces/**'
+      - 'qmake/**'
+      - 'oxide.pro'
       - 'Makefile'
       - '*.nix'
 jobs:

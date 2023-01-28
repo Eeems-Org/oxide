@@ -9,6 +9,8 @@ on:
       - 'shared/**'
       - 'assets/**'
       - 'interfaces/**'
+      - 'qmake/**'
+      - 'oxide.pro'
       - 'Makefile'
       - 'package'
   pull_request:
@@ -17,6 +19,8 @@ on:
       - 'shared/**'
       - 'assets/**'
       - 'interfaces/**'
+      - 'qmake/**'
+      - 'oxide.pro'
       - 'Makefile'
       - 'package'
 jobs:
@@ -37,7 +41,7 @@ jobs:
         with:
           path: package/oxide/src
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: '3.8'
       - name: Setup Toltec dependencies
