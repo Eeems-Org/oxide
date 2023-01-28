@@ -14,9 +14,10 @@ SOURCES += \
         appitem.cpp \
         main.cpp
 
-# Default rules for deployment.
+TARGET = corrupt
+include(../../qmake/common.pri)
 target.path = /opt/bin
-!isEmpty(target.path): INSTALLS += target
+INSTALLS += target
 
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/screenapi.xml
@@ -38,6 +39,3 @@ PRECOMPILED_HEADER = \
 include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
-
-TARGET = corrupt
-include(../../qmake/common.pri)

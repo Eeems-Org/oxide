@@ -16,12 +16,10 @@ DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/notificationapi.xml
 DBUS_INTERFACES += ../../interfaces/notification.xml
 
-# Default rules for deployment.
+TARGET = notify-send
+include(../../qmake/common.pri)
 target.path = /opt/bin
-!isEmpty(target.path): INSTALLS += target
+INSTALLS += target
 
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
-
-TARGET = notify-send
-include(../../qmake/common.pri)

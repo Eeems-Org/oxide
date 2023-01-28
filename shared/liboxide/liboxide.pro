@@ -59,9 +59,9 @@ liboxide_h.commands = \
 QMAKE_EXTRA_TARGETS += include liboxide_h
 POST_TARGETDEPS += include/liboxide.h
 
+include(../../qmake/common.pri)
 target.path = /opt/usr/lib
-!isEmpty(target.path): INSTALLS += target
+INSTALLS += target
 
 include(../../qmake/epaper.pri)
 include(../../qmake/sentry.pri)
-include(../../qmake/common.pri)

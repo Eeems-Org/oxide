@@ -25,12 +25,10 @@ DBUS_INTERFACES += ../../interfaces/screenshot.xml
 DBUS_INTERFACES += ../../interfaces/notificationapi.xml
 DBUS_INTERFACES += ../../interfaces/notification.xml
 
-# Default rules for deployment.
+TARGET = rot
+include(../../qmake/common.pri)
 target.path = /opt/bin
-!isEmpty(target.path): INSTALLS += target
+INSTALLS += target
 
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
-
-TARGET = rot
-include(../../qmake/common.pri)

@@ -1,4 +1,4 @@
-.PHONY: all clean release build sentry
+.PHONY: all clean release build sentry package
 
 all: release
 
@@ -22,6 +22,23 @@ clean:
 release: clean build $(RELOBJ)
 
 build: $(OBJ)
+
+package:
+	rm -rf build
+	tar \
+		--exclude='./.git' \
+		--exclude='./.build' \
+		--exclude='./dist' \
+		--exclude='./release' \
+		-czvf ./oxide.tar.gz \
+		applications \
+		assets \
+		interfaces \
+		qmake \
+		shared \
+		oxide.pro \
+		Makefile
+	toltecmk
 
 sentry: .build/sentry/libsentry.so
 
@@ -53,4 +70,4 @@ _install: _make
 
 release/opt/lib/libsentry.so: sentry
 	mkdir -p release/opt/lib
-	cp .build/sentry/lib/libsentry.so release/opt/lib/
+	cp -a .build/sentry/lib/libsentry.so release/opt/lib/

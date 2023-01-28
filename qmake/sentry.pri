@@ -13,8 +13,4 @@ contains(DEFINES, SENTRY){
     LIBS_PRIVATE += -L$$LIBSENTRY_LIB -lsentry -ldl -lcurl -lbreakpad_client
     INCLUDEPATH += $$LIBSENTRY_INC
     DEPENDPATH += $$LIBSENTRY_LIB
-
-    libsentry.files = $$LIBSENTRY_SO
-    libsentry.path = /opt/lib
-    INSTALLS += libsentry
 }

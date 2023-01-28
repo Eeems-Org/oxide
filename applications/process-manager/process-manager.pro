@@ -12,9 +12,10 @@ SOURCES += main.cpp
 
 RESOURCES += qml.qrc
 
-# Default rules for deployment.
+TARGET = erode
+include(../../qmake/common.pri)
 target.path = /opt/bin
-!isEmpty(target.path): INSTALLS += target
+INSTALLS += target
 
 icons.files += \
     ../../assets/etc/draft/icons/erode.svg \
@@ -36,6 +37,3 @@ LIBS += -lsystemd
 include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
-
-TARGET = erode
-include(../../qmake/common.pri)

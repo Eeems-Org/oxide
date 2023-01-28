@@ -10,9 +10,10 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs depr
 SOURCES += \
         main.cpp
 
-# Default rules for deployment.
+TARGET = fret
+include(../../qmake/common.pri)
 target.path = /opt/bin
-!isEmpty(target.path): INSTALLS += target
+INSTALLS += target
 
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/systemapi.xml
@@ -24,6 +25,3 @@ DBUS_INTERFACES += ../../interfaces/notification.xml
 include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
-
-TARGET = fret
-include(../../qmake/common.pri)

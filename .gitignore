@@ -6,3 +6,5 @@ release/
 applications/*/Makefile
 result
 *.orig
+oxide.tar.gz
+build/

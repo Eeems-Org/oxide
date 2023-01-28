@@ -26,8 +26,8 @@ SOURCES += \
     wpa_supplicant.cpp \
     main.cpp
 
-TARGET=tarnish
-
+TARGET = tarnish
+include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
@@ -90,6 +90,3 @@ include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
 
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
-
-TARGET = tarnish
-include(../../qmake/common.pri)

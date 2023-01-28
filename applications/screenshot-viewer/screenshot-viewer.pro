@@ -13,9 +13,10 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs depr
 SOURCES += \
         main.cpp
 
-# Default rules for deployment.
+TARGET = anxiety
+include(../../qmake/common.pri)
 target.path = /opt/bin
-!isEmpty(target.path): INSTALLS += target
+INSTALLS += target
 
 icons.files += \
     ../../assets/etc/draft/icons/image.svg \
@@ -41,6 +42,3 @@ PRECOMPILED_HEADER = \
 include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
-
-TARGET = anxiety
-include(../../qmake/common.pri)
