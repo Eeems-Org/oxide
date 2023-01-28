@@ -34,7 +34,7 @@ int main(int argc, char *argv[]){
     app.setApplicationName("update-desktop-database");
     app.setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
-    parser.setApplicationDescription("a program to send desktop notifications");
+    parser.setApplicationDescription("A program to send desktop notifications");
     parser.applicationDescription();
     parser.addHelpOption();
     parser.addPositionalArgument("directory", "NOT IMPLEMENTED", "[DIRECTORY...]");
