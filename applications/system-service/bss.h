@@ -4,9 +4,13 @@
 #include <QMutableListIterator>
 #include <QMutex>
 
-#include "../../shared/liboxide/liboxide.h"
+#include <liboxide.h>
+
 #include "supplicant.h"
 #include "network.h"
+
+// Must be included so that generate_xml.sh will work
+#include "../../shared/liboxide/meta.h"
 
 class BSS : public QObject{
     Q_OBJECT

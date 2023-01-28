@@ -12,6 +12,7 @@
 #include "json.h"
 #include "signalhandler.h"
 #include "slothandler.h"
+#include "sysobject.h"
 #include "debug.h"
 #include "oxide_sentry.h"
 

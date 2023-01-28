@@ -4,10 +4,11 @@
 #include <QFileInfo>
 
 #include <liboxide.h>
-#include <liboxide/sysobject.h>
 
-#include "sysobject.h"
 #include "supplicant.h"
+
+// Must be included so that generate_xml.sh will work
+#include "../../shared/liboxide/sysobject.h"
 
 using Oxide::SysObject;
 

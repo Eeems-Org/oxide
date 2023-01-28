@@ -13,7 +13,6 @@
 
 #ifdef SENTRY
 #include <sentry.h>
-#include <sentry/src/sentry_tracing.h>
 #endif
 
 /*!

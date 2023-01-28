@@ -11,6 +11,8 @@ stdenv.mkDerivation {
     ./assets
     ./interfaces
     ./shared
+    ./oxide.pro
+    ./qmake
   ];
 
   preBuild = ''

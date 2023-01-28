@@ -10,37 +10,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp
 
-INCLUDEPATH += ../../shared
+HEADERS +=
 
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/notificationapi.xml
 DBUS_INTERFACES += ../../interfaces/notification.xml
 
-# Default rules for deployment.
+TARGET = notify-send
+include(../../qmake/common.pri)
 target.path = /opt/bin
-!isEmpty(target.path): INSTALLS += target
+INSTALLS += target
 
-contains(DEFINES, SENTRY){
-    exists($$PWD/../../.build/sentry) {
-        LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
-        INCLUDEPATH += $$PWD/../../.build/sentry/include
-        DEPENDPATH += $$PWD/../../.build/sentry/lib
-
-        library.files = ../../.build/sentry/libsentry.so
-        library.path = /opt/lib
-        INSTALLS += library
-    }else{
-        error(You need to build sentry first)
-    }
-}
-
-LIBS += -L$$PWD/../../.build/liboxide -lliboxide
-INCLUDEPATH += $$PWD/../../shared/liboxide
-DEPENDPATH += $$PWD/../../shared/liboxide
-
-QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
-
-HEADERS +=
-
-VERSION = 2.5
-DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+include(../../qmake/liboxide.pri)
+include(../../qmake/sentry.pri)

@@ -9,6 +9,8 @@ on:
       - 'shared/**'
       - 'assets/**'
       - 'interfaces/**'
+      - 'qmake/**'
+      - 'oxide.pro'
       - 'Makefile'
       - 'package'
   pull_request:
@@ -17,6 +19,8 @@ on:
       - 'shared/**'
       - 'assets/**'
       - 'interfaces/**'
+      - 'qmake/**'
+      - 'oxide.pro'
       - 'Makefile'
       - 'package'
 jobs:
@@ -24,41 +28,18 @@ jobs:
     name: Build and package
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout toltec Git repository
-        uses: actions/checkout@v3
-        with:
-          repository: toltec-dev/toltec.git
-          ref: testing
-      - name: Cleanup
-        run: |
-          rm -rf package/oxide/*
-          mkdir package/oxide/src
       - uses: actions/checkout@v3
-        with:
-          path: package/oxide/src
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.8'
-      - name: Setup Toltec dependencies
-        uses: ./.github/actions/setup
-      - name: Prepare build files
-        run: |
-          cd package/oxide/src
-          echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > ../version.txt
-          sed -i "s/~VERSION~/$(cat ../version.txt)/" ./package
-          mv ./package ..
-          tar --exclude='./.git' -czvf ../oxide.tar.gz .
+          python-version: 3.9
+      - name: Install toltecmk
+        run: pip install toltecmk
       - name: Build packages
-        run: |
-          make FLAGS=--verbose oxide
-          mkdir output
-          find . -name '*.ipk' | while read -r file; do
-            cp "$file" output/"$(basename $file)"
-          done
+        run: make package
         timeout-minutes: 15
       - name: Save packages
         uses: actions/upload-artifact@v3
         with:
           name: packages
-          path: output
+          path: dist

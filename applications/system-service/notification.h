@@ -5,8 +5,12 @@
 #include <QImage>
 #include <QtDBus>
 
-#include "../../shared/liboxide/liboxide.h"
+#include <liboxide.h>
+
 #include "application.h"
+
+// Must be included so that generate_xml.sh will work
+#include "../../shared/liboxide/meta.h"
 
 class Notification : public QObject{
     Q_OBJECT

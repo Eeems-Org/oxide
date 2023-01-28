@@ -10,8 +10,8 @@
 #include <QDBusConnection>
 #include <fstream>
 #include <QGuiApplication>
+#include <liboxide.h>
 
-#include "../../shared/liboxide/liboxide.h"
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "appsapi.h"
@@ -20,6 +20,9 @@
 #include "notificationapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
+
+// Must be included so that generate_xml.sh will work
+#include "../../shared/liboxide/meta.h"
 
 #define dbusService DBusService::singleton()
 

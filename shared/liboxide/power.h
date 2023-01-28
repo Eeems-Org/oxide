@@ -5,7 +5,6 @@
 #define POWER_H
 
 #include "liboxide_global.h"
-#include <liboxide/sysobject.h>
 
 #include <QList>
 #include <QString>
