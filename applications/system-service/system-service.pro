@@ -85,32 +85,11 @@ DISTFILES += \
     generate_xml.sh \
     org.freedesktop.login1.xml
 
-LIBS += -L$$PWD/../../shared/epaper -lqsgepaper
-INCLUDEPATH += $$PWD/../../shared/epaper
+include(../../qmake/epaper.pri)
+include(../../qmake/liboxide.pri)
+include(../../qmake/sentry.pri)
 
-contains(DEFINES, SENTRY){
-    exists($$PWD/../../.build/sentry/include/sentry.h) {
-        LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
-        INCLUDEPATH += $$PWD/../../.build/sentry/include
-        DEPENDPATH += $$PWD/../../.build/sentry/lib
-
-        library.files = ../../.build/sentry/libsentry.so
-        library.path = /opt/lib
-        INSTALLS += library
-    }else{
-        error(You need to build sentry first)
-    }
-}
-
-exists($$PWD/../../.build/liboxide/include/liboxide.h) {
-    LIBS += -L$$PWD/../../.build/liboxide -lliboxide
-    INCLUDEPATH += $$PWD/../../.build/liboxide/include
-}else{
-    error(You need to build liboxide first)
-}
-
-QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
-VERSION = 2.5
-DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+TARGET = tarnish
+include(../../qmake/common.pri)

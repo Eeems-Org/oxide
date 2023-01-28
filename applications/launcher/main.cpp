@@ -17,7 +17,6 @@
 #include <cstdlib>
 #include <signal.h>
 #include <liboxide.h>
-#include <liboxide/eventfilter.h>
 
 #include "controller.h"
 

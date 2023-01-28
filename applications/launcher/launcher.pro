@@ -1,9 +1,11 @@
 QT += gui
 QT += quick
 QT += dbus
+
 CONFIG += c++11
 CONFIG += qml_debug
 CONFIG += qtquickcompiler
+CONFIG += precompile_header
 
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -19,8 +21,6 @@ RESOURCES += qml.qrc
 # Default rules for deployment.
 target.path = /opt/bin
 !isEmpty(target.path): INSTALLS += target
-
-INCLUDEPATH += ../../shared
 
 DBUS_INTERFACES += ../../interfaces/dbusservice.xml
 DBUS_INTERFACES += ../../interfaces/powerapi.xml
@@ -50,33 +50,15 @@ HEADERS += \
     appitem.h \
     mxcfb.h \
     notificationlist.h \
+    oxide_stable.h \
     wifinetworklist.h
 
-LIBS += -L$$PWD/../../shared/epaper -lqsgepaper
-INCLUDEPATH += $$PWD/../../shared/epaper
+PRECOMPILED_HEADER = \
+    oxide_stable.h
 
-contains(DEFINES, SENTRY){
-    exists($$PWD/../../.build/sentry/include/sentry.h) {
-        LIBS += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
-        INCLUDEPATH += $$PWD/../../.build/sentry/include
-        DEPENDPATH += $$PWD/../../.build/sentry/lib
+include(../../qmake/epaper.pri)
+include(../../qmake/liboxide.pri)
+include(../../qmake/sentry.pri)
 
-        library.files = ../../.build/sentry/libsentry.so
-        library.path = /opt/lib
-        INSTALLS += library
-    }else{
-        error(You need to build sentry first)
-    }
-}
-
-exists($$PWD/../../.build/liboxide/include/liboxide.h) {
-    LIBS += -L$$PWD/../../.build/liboxide -lliboxide
-    INCLUDEPATH += $$PWD/../../.build/liboxide/include
-}else{
-    error(You need to build liboxide first)
-}
-
-QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
-
-VERSION = 2.5
-DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+TARGET = oxide
+include(../../qmake/common.pri)

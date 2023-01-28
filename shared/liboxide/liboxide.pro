@@ -42,23 +42,6 @@ PRECOMPILED_HEADER = \
 
 LIBS += -lsystemd
 
-LIBS += -L$$PWD/../../shared/epaper -lqsgepaper
-INCLUDEPATH += $$PWD/../../shared/epaper
-
-contains(DEFINES, SENTRY){
-    exists($$PWD/../../.build/sentry/include/sentry.h) {
-        LIBS_PRIVATE += -L$$PWD/../../.build/sentry/lib -lsentry -ldl -lcurl -lbreakpad_client
-        INCLUDEPATH += $$PWD/../../.build/sentry/include
-        DEPENDPATH += $$PWD/../../.build/sentry/lib
-
-        libsentry.files = ../../.build/sentry/libsentry.so
-        libsentry.path = /opt/lib
-        INSTALLS += libsentry
-    }else{
-        error(You need to build sentry first)
-    }
-}
-
 include.target = include/liboxide
 include.commands = \
     mkdir -p include/liboxide && \
@@ -76,10 +59,9 @@ liboxide_h.commands = \
 QMAKE_EXTRA_TARGETS += include liboxide_h
 POST_TARGETDEPS += include/liboxide.h
 
-QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
-
 target.path = /opt/usr/lib
 !isEmpty(target.path): INSTALLS += target
 
-VERSION = 2.5
-DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+include(../../qmake/epaper.pri)
+include(../../qmake/sentry.pri)
+include(../../qmake/common.pri)

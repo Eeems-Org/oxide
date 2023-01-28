@@ -19,6 +19,8 @@ Here is an outdated video of it in action:
 
 Install the reMarkable toolchain and then run `make release`. It will produce a folder named `release` containing all the output.
 
+If you would like to enable sentry integration you can run `make FEATURES=sentry release` instead.
+
 ### Nix
 Works on x86_64-linux or macOS via [nix-docker](https://github.com/LnL7/nix-docker).
 
