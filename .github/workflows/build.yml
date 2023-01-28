@@ -33,17 +33,13 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.9
-      - run: |
-          pip install toltecmk
+      - name: Install toltecmk
+        run: pip install toltecmk
       - name: Build packages
-        run: |
-          make package
-          find . -name '*.ipk' | while read -r file; do
-            cp "$file" output/"$(basename $file)"
-          done
+        run: make package
         timeout-minutes: 15
       - name: Save packages
         uses: actions/upload-artifact@v3
         with:
           name: packages
-          path: output
+          path: dist
