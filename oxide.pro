@@ -5,3 +5,7 @@ SUBDIRS = \
     applications
 
 applications.depends = shared
+
+INSTALLS += \
+    shared \
+    applications

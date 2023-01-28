@@ -20,3 +20,14 @@ screenshot-viewer.depends = system-service
 settings-manager.depends = system-service
 system-service.depends =
 task-switcher.depends = system-service
+
+INSTALLS += \
+    launcher \
+    lockscreen \
+    notify-send \
+    process-manager \
+    screenshot-tool \
+    screenshot-viewer \
+    settings-manager \
+    system-service \
+    task-switcher
