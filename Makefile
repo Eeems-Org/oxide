@@ -46,8 +46,8 @@ _make: .build/oxide/Makefile
 	$(MAKE) -j`nproc` -C .build/oxide all
 
 _install: _make
-	mkdir -p release
-	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/oxide install
+	mkdir -p $(CURDIR)/release
+	INSTALL_ROOT=$(CURDIR)/release $(MAKE) -j`nproc` -C .build/oxide install
 
 .build/oxide:
 	mkdir -p .build/oxide
