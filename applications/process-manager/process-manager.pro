@@ -17,10 +17,10 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
+icons.path = /opt/etc/draft/icons
 icons.files += \
     ../../assets/etc/draft/icons/erode.svg \
     ../../assets/etc/draft/icons/erode-splash.png
-icons.path = /opt/etc/draft/icons
 
 INSTALLS += icons
 

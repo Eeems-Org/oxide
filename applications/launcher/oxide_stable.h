@@ -34,17 +34,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "application_interface.h"
-#include "appsapi_interface.h"
-#include "bss_interface.h"
-#include "dbusservice_interface.h"
-#include "network_interface.h"
-#include "notification_interface.h"
-#include "notificationapi_interface.h"
-#include "powerapi_interface.h"
-#include "systemapi_interface.h"
-#include "wifiapi_interface.h"
-
 #include "controller.h"
 #include "mxcfb.h"
 #endif

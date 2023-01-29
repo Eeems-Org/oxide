@@ -19,11 +19,6 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-DBUS_INTERFACES += ../../interfaces/dbusservice.xml
-DBUS_INTERFACES += ../../interfaces/screenapi.xml
-DBUS_INTERFACES += ../../interfaces/appsapi.xml
-DBUS_INTERFACES += ../../interfaces/application.xml
-
 INCLUDEPATH += ../../shared
 HEADERS += \
     appitem.h \

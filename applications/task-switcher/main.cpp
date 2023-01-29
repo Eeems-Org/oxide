@@ -16,8 +16,6 @@
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 
-#include "dbusservice_interface.h"
-
 using namespace std;
 using namespace Oxide;
 using namespace Oxide::Sentry;

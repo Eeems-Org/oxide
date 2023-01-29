@@ -5,14 +5,13 @@
 
 #include <cstdlib>
 #include <liboxide/eventfilter.h>
+#include <liboxide/dbus.h>
 
 #include "controller.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
-
-#include "dbusservice_interface.h"
 
 using namespace codes::eeems::oxide1;
 using namespace Oxide;

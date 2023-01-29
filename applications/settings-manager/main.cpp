@@ -7,19 +7,6 @@
 
 #include <liboxide.h>
 
-#include "dbusservice_interface.h"
-#include "powerapi_interface.h"
-#include "wifiapi_interface.h"
-#include "network_interface.h"
-#include "bss_interface.h"
-#include "appsapi_interface.h"
-#include "application_interface.h"
-#include "systemapi_interface.h"
-#include "screenapi_interface.h"
-#include "screenshot_interface.h"
-#include "notificationapi_interface.h"
-#include "notification_interface.h"
-
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
 using namespace Oxide::JSON;

@@ -25,10 +25,6 @@ icons.files += \
 icons.path = /opt/etc/draft/icons
 INSTALLS += icons
 
-DBUS_INTERFACES += ../../interfaces/dbusservice.xml
-DBUS_INTERFACES += ../../interfaces/screenapi.xml
-DBUS_INTERFACES += ../../interfaces/screenshot.xml
-
 HEADERS += \
     controller.h \
     screenshotlist.h

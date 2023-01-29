@@ -3,8 +3,6 @@
 
 #include <QAbstractListModel>
 
-#include "notification_interface.h"
-
 using namespace codes::eeems::oxide1;
 
 class NotificationItem : public QObject {

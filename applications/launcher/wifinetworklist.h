@@ -2,14 +2,7 @@
 #define WIFINETWORK_H
 
 #include <QAbstractListModel>
-
-#include "wifiapi_interface.h"
-#include "network_interface.h"
-#include "bss_interface.h"
-
-#ifndef OXIDE_SERVICE
-#define OXIDE_SERVICE "codes.eeems.oxide1"
-#endif
+#include <liboxide/dbus.h>
 
 using namespace codes::eeems::oxide1;
 

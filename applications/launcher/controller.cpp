@@ -13,7 +13,6 @@
 #include <liboxide.h>
 
 #include "controller.h"
-#include "dbusservice_interface.h"
 
 QSet<QString> settings = { "columns", "autoStartApplication" };
 QSet<QString> booleanSettings {"showWifiDb", "showBatteryPercent", "showBatteryTemperature", "showDate" };

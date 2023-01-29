@@ -12,7 +12,7 @@ SOURCES += \
 
 HEADERS +=
 
-TARGET = notify-send
+TARGET = update-desktop-database
 include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target

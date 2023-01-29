@@ -15,24 +15,12 @@ SOURCES += \
     controller.cpp \
     appitem.cpp
 
-
 RESOURCES += qml.qrc
 
 TARGET = oxide
 include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
-
-DBUS_INTERFACES += ../../interfaces/dbusservice.xml
-DBUS_INTERFACES += ../../interfaces/powerapi.xml
-DBUS_INTERFACES += ../../interfaces/wifiapi.xml
-DBUS_INTERFACES += ../../interfaces/network.xml
-DBUS_INTERFACES += ../../interfaces/bss.xml
-DBUS_INTERFACES += ../../interfaces/appsapi.xml
-DBUS_INTERFACES += ../../interfaces/application.xml
-DBUS_INTERFACES += ../../interfaces/systemapi.xml
-DBUS_INTERFACES += ../../interfaces/notificationapi.xml
-DBUS_INTERFACES += ../../interfaces/notification.xml
 
 icons.files = ../../assets/etc/draft/icons/oxide-splash.png
 icons.path  = /opt/etc/draft/icons

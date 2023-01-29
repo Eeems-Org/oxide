@@ -1,6 +1,7 @@
 TEMPLATE = subdirs
 
 SUBDIRS = \
+    desktop-file-validate \
     launcher \
     lockscreen \
     notify-send \

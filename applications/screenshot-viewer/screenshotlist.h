@@ -2,8 +2,7 @@
 #define SCREENSHOTLIST_H
 
 #include <QAbstractListModel>
-
-#include "screenshot_interface.h"
+#include <liboxide/dbus.h>
 
 using namespace codes::eeems::oxide1;
 

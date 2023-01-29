@@ -7,6 +7,8 @@
 #include "liboxide_global.h"
 
 #include "meta.h"
+#include "dbus.h"
+#include "applications.h"
 #include "settingsfile.h"
 #include "power.h"
 #include "json.h"

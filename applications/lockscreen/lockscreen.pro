@@ -17,13 +17,6 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-DBUS_INTERFACES += ../../interfaces/dbusservice.xml
-DBUS_INTERFACES += ../../interfaces/systemapi.xml
-DBUS_INTERFACES += ../../interfaces/powerapi.xml
-DBUS_INTERFACES += ../../interfaces/wifiapi.xml
-DBUS_INTERFACES += ../../interfaces/appsapi.xml
-DBUS_INTERFACES += ../../interfaces/application.xml
-
 HEADERS += \
     controller.h
 
