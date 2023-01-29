@@ -4,6 +4,9 @@
  * \file
  */
 #pragma once
+// This is required to allow generate_xml.sh to work
+#ifndef LIBOXIDE_SYSOBJECT_H
+#define LIBOXIDE_SYSOBJECT_H
 
 #include "liboxide_global.h"
 
@@ -62,4 +65,5 @@ namespace Oxide {
         std::string m_path;
     };
 }
+#endif // LIBOXIDE_SYSOBJECT_H
 /*! @} */
