@@ -1,5 +1,7 @@
 /*!
- * \file settingsfile.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
 #pragma once
 
@@ -129,3 +131,4 @@ namespace Oxide {
         bool initalized = false;
     };
 }
+/*! @} */

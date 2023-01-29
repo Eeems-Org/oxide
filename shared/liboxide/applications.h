@@ -1,5 +1,8 @@
 /*!
- * \file applications.h
+ * \addtogroup Applications
+ * \brief The Applications module
+ * @{
+ * \file
  */
 #pragma once
 
@@ -10,9 +13,8 @@
 #include <QList>
 
 #include <string>
-
 /*!
- * The applications namespace
+ * \brief The applications namespace
  */
 namespace Oxide::Applications{
     /*!
@@ -60,3 +62,4 @@ namespace Oxide::Applications{
      */
     LIBOXIDE_EXPORT QList<ValidationError> validateRegistration(QFile* file);
 }
+/*! @} */

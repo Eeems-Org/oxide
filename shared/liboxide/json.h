@@ -1,5 +1,8 @@
 /*!
- * \file json.h
+ * \addtogroup JSON
+ * \brief The JSON module
+ * @{
+ * \file
  */
 #pragma once
 
@@ -8,9 +11,8 @@
 #include <QVariant>
 #include <QJsonArray>
 #include <QDBusArgument>
-
 /*!
- * The JSON namespace
+ * \brief The JSON namespace
  */
 namespace Oxide::JSON {
     /*!
@@ -44,3 +46,4 @@ namespace Oxide::JSON {
      */
     LIBOXIDE_EXPORT QVariant fromJson(QFile* file);
 }
+/*! @} */

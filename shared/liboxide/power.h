@@ -1,5 +1,8 @@
 /*!
- * \file power.h
+ * \addtogroup Power
+ * \brief The Power module
+ * @{
+ * \file
  */
 #pragma once
 
@@ -70,3 +73,4 @@ namespace Oxide::Power {
      */
     LIBOXIDE_EXPORT bool chargerConnected();
 }
+/*! @} */

@@ -1,12 +1,13 @@
 /*!
- * \file debug.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
 #pragma once
 
 #include "liboxide_global.h"
 
 #include <QDebug>
-
 /*!
  * \def O_DEBUG(msg)
  * \brief Log a debug message if compiled with DEBUG mode, and debugging is enabled
@@ -32,3 +33,4 @@ namespace Oxide {
      */
     LIBOXIDE_EXPORT bool debugEnabled();
 }
+/*! @} */

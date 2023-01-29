@@ -1,11 +1,11 @@
 /*!
- * \file examples/oxide.cpp
+ * \file
  */
 //! [debugEnabled]
 if(Oxide::debugEnabled()){
      qDebug() << "Debugging is enabled";
 }
-//!  [debugEnabled]
+//! [debugEnabled]
 //! [dispatchToMainThread]
 Oxide::dispatchToMainThread([=]{
      qDebug() << "This is running on the main thread";
@@ -18,3 +18,19 @@ connect(signalHandler, &SignalHandler::sigUsr1, [=]{
      qDebug() << "SIGUSR1 recieved";
 });
 //! [SignalHandler]
+//! [getGID]
+try{
+     auto gid = Oxide::getGID("admin");
+     qDebug() << "admin GID is " << gid;
+}catch(const std::exception& e){
+     qDebug() << "Failed to get group: " << e.what();
+}
+//! [getGID]
+//! [getUID]
+try{
+     auto gid = Oxide::getUID("root");
+     qDebug() << "root UID is " << gid;
+}catch(const std::exception& e){
+     qDebug() << "Failed to get user: " << e.what();
+}
+//! [getUID]

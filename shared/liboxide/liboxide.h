@@ -1,5 +1,8 @@
 /*!
- * \file liboxide.h
+ * \addtogroup Oxide
+ * \brief The main Oxide module
+ * @{
+ * \file
  */
 #pragma once
 
@@ -24,7 +27,6 @@
 #include <QThread>
 
 #include <sys/types.h>
-
 /*!
  * \def deviceSettings()
  * \brief Get the Oxide::DeviceSettings instance
@@ -48,11 +50,6 @@
 typedef QMap<QString, QVariantMap> WifiNetworks;
 Q_DECLARE_METATYPE(WifiNetworks);
 /*!
- * \addtogroup Oxide
- * \brief The main Oxide namespace
- * @{
- */
-/*!
  * \brief The main Oxide namespace
  */
 namespace Oxide {
@@ -66,15 +63,17 @@ namespace Oxide {
     /*!
      * \brief Get the UID for a username
      * \param Username to search for
-     * \return The UID for the username
      * \throws std::runtime_error Failed to get the UID for the username
+     * \return The UID for the username
+     * \snippet examples/oxide.cpp getUID
      */
     LIBOXIDE_EXPORT uid_t getUID(const QString& name);
     /*!
      * \brief Get the GID for a groupname
      * \param Groupname to search for
-     * \return The GID for the groupname
      * \throws std::runtime_error Failed to get the GID for the groupname
+     * \return The GID for the groupname
+     * \snippet examples/oxide.cpp getGID
      */
     LIBOXIDE_EXPORT gid_t getGID(const QString& name);
     /*!

@@ -1,5 +1,7 @@
 /*!
- * \file sysobject.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
 #pragma once
 
@@ -60,3 +62,4 @@ namespace Oxide {
         std::string m_path;
     };
 }
+/*! @} */

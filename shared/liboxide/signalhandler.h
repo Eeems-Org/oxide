@@ -1,5 +1,7 @@
 /*!
- * \file signalhandler.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
 #pragma once
 
@@ -7,7 +9,6 @@
 
 #include <QObject>
 #include <QSocketNotifier>
-
 /*!
  * \brief signalHandler()
  */
@@ -67,3 +68,4 @@ namespace Oxide {
         QSocketNotifier* snUsr2;
     };
 }
+/*! @} */

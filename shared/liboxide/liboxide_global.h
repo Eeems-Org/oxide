@@ -1,7 +1,8 @@
 /*!
- * \file liboxide_global.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
-
 #pragma once
 
 #include <QtCore/qglobal.h>
@@ -17,3 +18,4 @@
 #  define DEBUG
 #  define LIBOXIDE_EXPORT
 #endif
+/*! @} */

@@ -1,5 +1,7 @@
 /*!
- * \file slothandler.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
 #pragma once
 
@@ -58,3 +60,4 @@ namespace Oxide{
         void handleSlot(QObject* api, void** arguments);
     };
 }
+/*! @} */

@@ -1,9 +1,10 @@
 /*!
- * \file meta.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
 
 #pragma once
-
 /*!
  * \def WPA_SUPPLICANT_SERVICE
  * \brief wpa_supplicant DBus service name
@@ -90,3 +91,4 @@
  * \brief DBus service for a screenshot object
  */
 #define OXIDE_SCREENSHOT_INTERFACE OXIDE_SERVICE ".Screenshot"
+/*! @} */

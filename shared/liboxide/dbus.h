@@ -1,5 +1,8 @@
 /*!
- * \file dbus.h
+ * \addtogroup DBus
+ * \brief The DBus module
+ * @{
+ * \file
  */
 #pragma once
 // This must be here to make precompiled headers happy
@@ -20,3 +23,4 @@
 #include "notification_interface.h"
 
 #endif // LIBOXIDE_DBUS_H
+/*! @} */

@@ -1,5 +1,8 @@
 /*!
- * \file sentry.h
+ * \addtogroup Sentry
+ * \brief The Sentry module
+ * @{
+ * \file
  */
 #pragma once
 
@@ -13,7 +16,6 @@
 #ifdef SENTRY
 #include <sentry.h>
 #endif
-
 /*!
  *\brief The Sentry namespace
  */
@@ -158,3 +160,4 @@ namespace Oxide::Sentry{
      */
     LIBOXIDE_EXPORT void trigger_crash();
 }
+/*! @} */
