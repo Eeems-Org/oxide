@@ -23,8 +23,6 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <grp.h>
-#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
@@ -52,7 +50,7 @@ public:
 
     bool setUser(const QString& name){
         try{
-            m_uid = getUID(name);
+            m_uid = Oxide::getUID(name);
             return true;
         }
         catch(const std::runtime_error&){
@@ -61,7 +59,7 @@ public:
     }
     bool setGroup(const QString& name){
         try{
-            m_gid = getGID(name);
+            m_gid = Oxide::getGID(name);
             return true;
         }
         catch(const std::runtime_error&){
@@ -105,33 +103,6 @@ private:
     uid_t m_uid;
     QString m_chroot;
     mode_t m_mask;
-
-    uid_t getUID(const QString& name){
-        char buffer[1024];
-        struct passwd user;
-        struct passwd* result;
-        auto status = getpwnam_r(name.toStdString().c_str(), &user, buffer, sizeof(buffer), &result);
-        if(status != 0){
-            throw std::runtime_error("Failed to get user" + status);
-        }
-        if(result == NULL){
-            throw std::runtime_error("Invalid user name: " + name.toStdString());
-        }
-        return result->pw_uid;
-    }
-    gid_t getGID(const QString& name){
-        char buffer[1024];
-        struct group grp;
-        struct group* result;
-        auto status = getgrnam_r(name.toStdString().c_str(), &grp, buffer, sizeof(buffer), &result);
-        if(status != 0){
-            throw std::runtime_error("Failed to get group" + status);
-        }
-        if(result == NULL){
-            throw std::runtime_error("Invalid group name: " + name.toStdString());
-        }
-        return result->gr_gid;
-    }
 };
 
 class Application : public QObject{

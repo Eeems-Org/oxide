@@ -1,8 +1,8 @@
 /*!
  * \file meta.h
  */
-#ifndef META_H
-#define META_H
+
+#pragma once
 
 /*!
  * \def WPA_SUPPLICANT_SERVICE
@@ -90,5 +90,3 @@
  * \brief DBus service for a screenshot object
  */
 #define OXIDE_SCREENSHOT_INTERFACE OXIDE_SERVICE ".Screenshot"
-
-#endif // META_H

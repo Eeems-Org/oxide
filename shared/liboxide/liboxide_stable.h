@@ -2,7 +2,9 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <grp.h>
 #include <linux/input.h>
+#include <pwd.h>
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDBusAbstractInterface>
@@ -44,6 +46,7 @@
 #include <stdlib.h>
 #include <string>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/un.h>
 #include <systemd/sd-id128.h>
 #include <unistd.h>

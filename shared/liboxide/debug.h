@@ -1,8 +1,7 @@
 /*!
  * \file debug.h
  */
-#ifndef DEBUG_H
-#define DEBUG_H
+#pragma once
 
 #include "liboxide_global.h"
 
@@ -33,5 +32,3 @@ namespace Oxide {
      */
     LIBOXIDE_EXPORT bool debugEnabled();
 }
-
-#endif // DEBUG_H

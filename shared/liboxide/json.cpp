@@ -203,4 +203,5 @@ namespace Oxide::JSON {
         }
         return doc.array().first().toVariant();
     }
+    QVariant fromJson(QFile* file){ return fromJson(file->readAll()); }
 }

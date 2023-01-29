@@ -1,8 +1,5 @@
 #include <QCommandLineParser>
-#include <QJsonValue>
-#include <QJsonDocument>
 #include <QSet>
-#include <QMutableListIterator>
 #include <QTextStream>
 
 #include <liboxide.h>

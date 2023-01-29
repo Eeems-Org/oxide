@@ -1,5 +1,10 @@
-#ifndef DBUS_H
-#define DBUS_H
+/*!
+ * \file dbus.h
+ */
+#pragma once
+// This must be here to make precompiled headers happy
+#ifndef LIBOXIDE_DBUS_H
+#define LIBOXIDE_DBUS_H
 
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
@@ -14,4 +19,4 @@
 #include "notificationapi_interface.h"
 #include "notification_interface.h"
 
-#endif // DBUS_H
+#endif // LIBOXIDE_DBUS_H

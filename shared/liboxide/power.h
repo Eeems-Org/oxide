@@ -1,8 +1,7 @@
 /*!
  * \file power.h
  */
-#ifndef POWER_H
-#define POWER_H
+#pragma once
 
 #include "liboxide_global.h"
 
@@ -71,5 +70,3 @@ namespace Oxide::Power {
      */
     LIBOXIDE_EXPORT bool chargerConnected();
 }
-
-#endif // POWER_H

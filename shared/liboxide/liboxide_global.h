@@ -1,9 +1,8 @@
 /*!
  * \file liboxide_global.h
  */
-#ifndef LIBOXIDE_GLOBAL_H
-#define LIBOXIDE_GLOBAL_H
 
+#pragma once
 
 #include <QtCore/qglobal.h>
 
@@ -18,5 +17,3 @@
 #  define DEBUG
 #  define LIBOXIDE_EXPORT
 #endif
-
-#endif // LIBOXIDE_GLOBAL_H

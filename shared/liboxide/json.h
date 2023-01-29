@@ -1,8 +1,7 @@
 /*!
  * \file json.h
  */
-#ifndef JSON_H
-#define JSON_H
+#pragma once
 
 #include "liboxide_global.h"
 
@@ -38,5 +37,10 @@ namespace Oxide::JSON {
      * \return The converted QVaraint
      */
     LIBOXIDE_EXPORT QVariant fromJson(QByteArray json);
+    /*!
+     * \brief Convert a JSON file into a QVariant
+     * \param JSON fle to convert
+     * \return The converted QVaraint
+     */
+    LIBOXIDE_EXPORT QVariant fromJson(QFile* file);
 }
-#endif // JSON_H

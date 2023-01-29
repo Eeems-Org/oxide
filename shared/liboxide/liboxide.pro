@@ -68,10 +68,8 @@ liboxide_liboxide_h.commands = \
 liboxide_h.target = include/liboxide.h
 liboxide_h.depends += liboxide_liboxide_h
 liboxide_h.commands = \
-    echo \\$$LITERAL_HASH"ifndef LIBOXIDE" > include/liboxide.h && \
-    echo \\$$LITERAL_HASH"define LIBOXIDE" >> include/liboxide.h && \
-    echo \"$$LITERAL_HASH"include \\\"liboxide/liboxide.h\\\"\"" >> include/liboxide.h && \
-    echo \\$$LITERAL_HASH"endif // LIBOXIDE" >> include/liboxide.h
+    echo \\$$LITERAL_HASH"pragma once" > include/liboxide.h && \
+    echo \"$$LITERAL_HASH"include \\\"liboxide/liboxide.h\\\"\"" >> include/liboxide.h
 
 
 QMAKE_EXTRA_TARGETS += liboxide_liboxide_h liboxide_h

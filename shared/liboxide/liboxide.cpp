@@ -5,6 +5,8 @@
 #include <QCoreApplication>
 #include <QTimer>
 
+#include <pwd.h>
+#include <grp.h>
 #include <linux/input.h>
 
 
@@ -30,6 +32,32 @@ namespace Oxide {
             timer->deleteLater();
         });
         QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
+    }
+    uid_t getUID(const QString& name){
+        char buffer[1024];
+        struct passwd user;
+        struct passwd* result;
+        auto status = getpwnam_r(name.toStdString().c_str(), &user, buffer, sizeof(buffer), &result);
+        if(status != 0){
+            throw std::runtime_error("Failed to get user" + status);
+        }
+        if(result == NULL){
+            throw std::runtime_error("Invalid user name: " + name.toStdString());
+        }
+        return result->pw_uid;
+    }
+    gid_t getGID(const QString& name){
+        char buffer[1024];
+        struct group grp;
+        struct group* result;
+        auto status = getgrnam_r(name.toStdString().c_str(), &grp, buffer, sizeof(buffer), &result);
+        if(status != 0){
+            throw std::runtime_error("Failed to get group" + status);
+        }
+        if(result == NULL){
+            throw std::runtime_error("Invalid group name: " + name.toStdString());
+        }
+        return result->gr_gid;
     }
     DeviceSettings& DeviceSettings::instance() {
         static DeviceSettings INSTANCE;

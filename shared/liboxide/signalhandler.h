@@ -1,8 +1,7 @@
 /*!
  * \file signalhandler.h
  */
-#ifndef SIGNALHANDLER_H
-#define SIGNALHANDLER_H
+#pragma once
 
 #include "liboxide_global.h"
 
@@ -68,4 +67,3 @@ namespace Oxide {
         QSocketNotifier* snUsr2;
     };
 }
-#endif // SIGNALHANDLER_H

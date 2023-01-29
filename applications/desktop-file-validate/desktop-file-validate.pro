@@ -12,7 +12,7 @@ SOURCES += \
 
 HEADERS +=
 
-TARGET = update-desktop-database
+TARGET = desktop-file-validate
 include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target

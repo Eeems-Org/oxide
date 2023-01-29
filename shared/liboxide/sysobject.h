@@ -1,8 +1,7 @@
 /*!
  * \file sysobject.h
  */
-#ifndef SYSOBJECT_H
-#define SYSOBJECT_H
+#pragma once
 
 #include "liboxide_global.h"
 
@@ -61,4 +60,3 @@ namespace Oxide {
         std::string m_path;
     };
 }
-#endif // SYSOBJECT_H

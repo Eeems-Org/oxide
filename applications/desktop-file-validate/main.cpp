@@ -1,20 +1,21 @@
 #include <QCommandLineParser>
-#include <QJsonValue>
-#include <QJsonDocument>
-#include <QSet>
-#include <QMutableListIterator>
 
+#include <string>
 #include <liboxide.h>
+#include <liboxide/applications.h>
 
-using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
-using namespace Oxide::JSON;
+using namespace Oxide::Applications;
 
 int qExit(int ret){
     QTimer::singleShot(0, [ret](){
         qApp->exit(ret);
     });
     return qApp->exec();
+}
+QTextStream& qStdOut(){
+    static QTextStream ts( stdout );
+    return ts;
 }
 
 int main(int argc, char *argv[]){
@@ -41,18 +42,16 @@ int main(int argc, char *argv[]){
     parser.addOption(noWarnDeprecatedOption);
     QCommandLineOption warnKDEOption("warn-kde", "NOT IMPLEMENTED");
     parser.addOption(warnKDEOption);
+    parser.addPositionalArgument("file", "Application registration(s) to validate", "FILE...");
     parser.process(app);
-    if(!parser.positionalArguments().empty()){
+    auto args = parser.positionalArguments();
+    if(args.empty()){
         parser.showHelp(EXIT_FAILURE);
     }
-    auto bus = QDBusConnection::systemBus();
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-    QDBusObjectPath path = api.requestAPI("apps");
-    if(path.path() == "/"){
-        qDebug() << "Unable to get apps API";
-        return qExit(EXIT_FAILURE);
+    for(QString path : args){
+        for(auto error : validateRegistration(path)){
+            qStdOut() << path << ": " << error << Qt::endl;
+        }
     }
-    Apps apps(OXIDE_SERVICE, path.path(), bus);
-
     return qExit(EXIT_SUCCESS);
 }

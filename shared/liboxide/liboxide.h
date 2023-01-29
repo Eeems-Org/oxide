@@ -1,8 +1,7 @@
 /*!
  * \file liboxide.h
  */
-#ifndef LIBOXIDE_H
-#define LIBOXIDE_H
+#pragma once
 
 #include "liboxide_global.h"
 
@@ -23,6 +22,8 @@
 #include <QSettings>
 #include <QFileSystemWatcher>
 #include <QThread>
+
+#include <sys/types.h>
 
 /*!
  * \def deviceSettings()
@@ -62,6 +63,8 @@ namespace Oxide {
      * \snippet examples/oxide.cpp dispatchToMainThread
      */
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
+    LIBOXIDE_EXPORT uid_t getUID(const QString& name);
+    LIBOXIDE_EXPORT gid_t getGID(const QString& name);
     /*!
      * \brief Device specific values
      */
@@ -281,4 +284,3 @@ namespace Oxide {
     };
 }
 /*! @} */
-#endif // LIBOXIDE_H

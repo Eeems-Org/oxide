@@ -1,8 +1,7 @@
 /*!
  * \file eventfilter.h
  */
-#ifndef EVENTFILTER_H
-#define EVENTFILTER_H
+#pragma once
 
 #include <QObject>
 #include <QEvent>
@@ -31,5 +30,3 @@ namespace Oxide{
         bool eventFilter(QObject* obj, QEvent* ev);
     };
 }
-
-#endif // EVENTFILTER_H
