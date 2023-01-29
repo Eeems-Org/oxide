@@ -63,7 +63,19 @@ namespace Oxide {
      * \snippet examples/oxide.cpp dispatchToMainThread
      */
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
+    /*!
+     * \brief Get the UID for a username
+     * \param Username to search for
+     * \return The UID for the username
+     * \throws std::runtime_error Failed to get the UID for the username
+     */
     LIBOXIDE_EXPORT uid_t getUID(const QString& name);
+    /*!
+     * \brief Get the GID for a groupname
+     * \param Groupname to search for
+     * \return The GID for the groupname
+     * \throws std::runtime_error Failed to get the GID for the groupname
+     */
     LIBOXIDE_EXPORT gid_t getGID(const QString& name);
     /*!
      * \brief Device specific values

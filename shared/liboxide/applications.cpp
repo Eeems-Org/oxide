@@ -218,8 +218,8 @@ namespace Oxide::Applications{
                 errors.append(ValidationError{
                     .level = ErrorLevel::Error,
                     .msg = QString(
-                        "Value \"%1\" for key \"user\" is not a valid user"
-                    ).arg(user)
+                        "Value \"%1\" for key \"user\" is not a valid user: \"%2\""
+                    ).arg(user, e.what())
                 });
             }
         }
@@ -231,8 +231,8 @@ namespace Oxide::Applications{
                 errors.append(ValidationError{
                     .level = ErrorLevel::Error,
                     .msg = QString(
-                        "Value \"%1\" for key \"group\" is not a valid group"
-                    ).arg(group)
+                        "Value \"%1\" for key \"group\" is not a valid group: \"%2\""
+                    ).arg(group, e.what())
                 });
             }
         }
