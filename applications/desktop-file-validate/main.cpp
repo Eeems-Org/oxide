@@ -48,8 +48,16 @@ int main(int argc, char *argv[]){
     if(args.empty()){
         parser.showHelp(EXIT_FAILURE);
     }
+    bool skipHint = parser.isSet(noHintsOption);
+    bool skipDeprecations = parser.isSet(noWarnDeprecatedOption);
     for(QString path : args){
         for(auto error : validateRegistration(path)){
+            if(skipHint && error.level == ErrorLevel::Hint){
+                continue;
+            }
+            if(skipDeprecations && error.level == ErrorLevel::Deprecation){
+                continue;
+            }
             qStdOut() << path << ": " << error << Qt::endl;
         }
     }

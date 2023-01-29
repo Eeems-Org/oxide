@@ -23,6 +23,7 @@ namespace Oxide::Applications{
      */
     typedef enum{
         Hint, /*!< A hint */
+        Deprecation, /*!< A deprecation warning */
         Warning, /*!< A warning */
         Error, /*!< An error */
         Critical /*!< A critical error*/

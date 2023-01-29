@@ -12,6 +12,9 @@ namespace Oxide::Applications{
             case ErrorLevel::Hint:
                 s << "hint";
                 break;
+            case ErrorLevel::Deprecation:
+                s << "deprecation";
+                break;
             case ErrorLevel::Warning:
                 s << "warning";
                 break;
