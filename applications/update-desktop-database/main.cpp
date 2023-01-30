@@ -27,7 +27,7 @@ int main(int argc, char *argv[]){
     app.setApplicationName("update-desktop-database");
     app.setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
-    parser.setApplicationDescription("A program to send desktop notifications");
+    parser.setApplicationDescription("Reload the application registration cache for Oxide");
     parser.applicationDescription();
     parser.addHelpOption();
     parser.addPositionalArgument("directory", "NOT IMPLEMENTED", "[DIRECTORY...]");

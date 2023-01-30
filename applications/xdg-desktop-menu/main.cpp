@@ -163,7 +163,7 @@ int main(int argc, char *argv[]){
     app.setApplicationName("xdg-desktop-menu");
     app.setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
-    parser.setApplicationDescription("A program to send desktop notifications");
+    parser.setApplicationDescription("A program to (un)install application registrations");
     parser.applicationDescription();
     parser.addHelpOption();
     parser.addOption(versionOption);

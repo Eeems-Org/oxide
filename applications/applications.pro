@@ -13,7 +13,8 @@ SUBDIRS = \
     task-switcher \
     update-desktop-database \
     xdg-desktop-icon \
-    xdg-desktop-menu
+    xdg-desktop-menu \
+    xdg-open
 
 launcher.depends = system-service update-desktop-database
 lockscreen.depends = system-service
@@ -27,5 +28,6 @@ task-switcher.depends = system-service
 update-desktop-database.depends = system-service
 xdg-desktop-icon.depends = system-service
 xdg-desktop-menu.depends = system-service
+xdg-open.depends = system-service
 
 INSTALLS += $$SUBDIRS

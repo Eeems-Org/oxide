@@ -26,7 +26,7 @@ int main(int argc, char *argv[]){
     app.setApplicationName("desktop-file-validate");
     app.setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
-    parser.setApplicationDescription("A program to send desktop notifications");
+    parser.setApplicationDescription("Validates application registration files");
     parser.applicationDescription();
     parser.addHelpOption();
     parser.addVersionOption();
