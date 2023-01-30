@@ -46,10 +46,7 @@ int main(int argc, char *argv[]){
         parser.showHelp(EXIT_FAILURE);
     }
     auto path = args.first();
-    auto url = QUrl::fromUserInput(path);
-    if(url.isRelative() || url.isEmpty() || QFile::exists(path)){
-        url = QUrl::fromUserInput("file://" + QDir::currentPath() + "/" + path);
-    }
+    auto url = QUrl::fromUserInput(path, QDir::currentPath(), QUrl::AssumeLocalFile);
     if(url.scheme().isEmpty()){
         url.setScheme("file");
     }
@@ -67,7 +64,11 @@ int main(int argc, char *argv[]){
         auto name = info.fileName().left(info.fileName().length() - 6);
         return launchOxideApp(name);
     }else if(url.scheme() == "oxide"){
-        auto name = url.host();
+        if(url.hasFragment() || url.hasQuery() || !url.userInfo().isEmpty() || !url.authority().isEmpty()){
+            qDebug() << "Url must bein the format oxide://{appname} :" << path.toStdString().c_str();
+            return EXIT_FAILURE;
+        }
+        auto name = url.path();
         return launchOxideApp(name);
     }
     qDebug() << "Operation not supported:" << path.toStdString().c_str();
