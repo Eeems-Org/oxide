@@ -11,7 +11,8 @@ SUBDIRS = \
     settings-manager \
     system-service \
     task-switcher \
-    update-desktop-database
+    update-desktop-database \
+    xdg-desktop-menu
 
 launcher.depends = system-service update-desktop-database
 lockscreen.depends = system-service

@@ -5,6 +5,7 @@
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
 using namespace Oxide::JSON;
+using namespace Oxide::Applications;
 
 #define LOG_VERBOSE(msg) if(!parser.isSet(quietOption) && parser.isSet(verboseOption)){qDebug() << msg;}
 #define LOG(msg) if(!parser.isSet(quietOption)){qDebug() << msg;}
@@ -56,8 +57,25 @@ int main(int argc, char *argv[]){
         return qExit(EXIT_FAILURE);
     }
     Apps apps(OXIDE_SERVICE, path.path(), bus);
-    LOG("Reloading applications");
-    apps.reload().waitForFinished();
+    LOG("Loading applications from disk");
+    QDir dir(OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY);
+    dir.setNameFilters(QStringList() << "*.oxide");
+    for(auto entry : dir.entryInfoList()){
+        auto path = entry.filePath();
+        auto reg = getRegistration(path);
+        auto name = entry.completeBaseName();
+        auto errors = validateRegistration(name, reg);
+        bool cache = true;
+        for(auto error : errors){
+            if(error.level == ErrorLevel::Error || error.level == ErrorLevel::Critical){
+                LOG_VERBOSE("  " << path.toStdString().c_str() << ": " << error);
+                cache = false;
+            }
+        }
+        if(cache && !addToTarnishCache(name, reg)){
+            LOG("  " << path << ": Failed to cache")
+        }
+    }
     LOG_VERBOSE("Finished reloading applications");
     LOG("Importing Draft Applications");
     for(auto configDirectoryPath : configDirectoryPaths){
@@ -134,5 +152,6 @@ int main(int argc, char *argv[]){
         }
     }
     LOG_VERBOSE("Finished Importing Draft Applications");
+    apps.reload().waitForFinished();
     return qExit(EXIT_SUCCESS);
 }

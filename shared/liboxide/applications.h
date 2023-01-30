@@ -15,6 +15,12 @@
 #include <string>
 
 /*!
+ * \def OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY
+ * \brief Application directory location
+ */
+#define OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY "/opt/usr/share/applications"
+
+/*!
  * \brief The applications namespace
  */
 namespace Oxide::Applications{
@@ -70,6 +76,34 @@ namespace Oxide::Applications{
      */
     LIBOXIDE_EXPORT QTextStream& operator<<(QTextStream& s, const ValidationError& t);
     /*!
+     * \brief Convert an ErrorLevel to a human readable string when piping to a text stream
+     * \param Text stream to write to
+     * \param Error level
+     * \return Resulting text stream
+     * \sa ErrorLevel
+     */
+    LIBOXIDE_EXPORT QDebug& operator<<(QDebug& s, const ErrorLevel& l);
+    /*!
+     * \brief Convert an ValidationError to a human readable string when piping to a text stream
+     * \param Text stream to write to
+     * \param Validation error to convert
+     * \return Resulting text stream
+     * \sa ValidationError
+     */
+    LIBOXIDE_EXPORT QDebug& operator<<(QDebug& s, const ValidationError& t);
+    /*!
+     * \brief Compare two ValidationError instances
+     * \param First instance to comprae
+     * \param Second instance to compare
+     * \return If they are the same
+     * \sa ValidationError
+     */
+    LIBOXIDE_EXPORT bool operator==(const ValidationError& v1, const ValidationError& v2);
+    LIBOXIDE_EXPORT QJsonObject getRegistration(const char* path);
+    LIBOXIDE_EXPORT QJsonObject getRegistration(const std::string& path);
+    LIBOXIDE_EXPORT QJsonObject getRegistration(const QString& path);
+    LIBOXIDE_EXPORT QJsonObject getRegistration(QFile* file);
+    /*!
      * \brief Validate a application registration file and return any errors found
      * \param Path to the file to validate
      * \return List of validation errors
@@ -123,5 +157,12 @@ namespace Oxide::Applications{
      * \return If the application was successfully added
      */
     LIBOXIDE_EXPORT bool addToTarnishCache(QFile* file);
+    /*!
+     * \brief Add an application to the tarnish application cache
+     * \param The name of the application
+     * \param The application registration file
+     * \return If the application was successfully added
+     */
+    LIBOXIDE_EXPORT bool addToTarnishCache(const QString& name, const QJsonObject& app);
 }
 /*! @} */

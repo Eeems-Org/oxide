@@ -669,16 +669,11 @@ private:
         }
         settings.endArray();
         // Load system applications from disk
-        QDir dir("/opt/usr/share/applications/");
+        QDir dir(OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY);
         dir.setNameFilters(QStringList() << "*.oxide");
         QMap<QString, QJsonObject> apps;
         for(auto entry : dir.entryInfoList()){
-            QFile file(entry.filePath());
-            if(!file.open(QIODevice::ReadOnly)){
-                continue;
-            }
-            auto data = file.readAll();
-            auto app = QJsonDocument::fromJson(data).object();
+            auto app = getRegistration(entry.filePath());
             if(app.isEmpty()){
                 qDebug() << "Invalid file " << entry.filePath();
                 continue;

@@ -22,6 +22,207 @@ const QList<QString> Flags {
 };
 
 namespace Oxide::Applications{
+    QList<ValidationError> _validateRegistration(const QString& name, const QJsonObject& app, bool exitEarly){
+    QList<ValidationError> errors;
+#define addError(_level, _msg) errors.append(ValidationError { .level = _level, .msg = _msg });
+    auto contains = [app, &errors](const QString& name) -> bool{
+        if(app.contains(name)){
+            return true;
+        }
+        addError(ErrorLevel::Critical, QString(
+            "Key \"%1\" is missing"
+        ).arg(name));
+        return false;
+    };
+    auto isString = [app, &errors, contains](const QString& name, bool required) -> bool{
+        if(required && !contains(name)){
+            return false;
+        }else if(!required && !app.contains(name)){
+            return false;
+        }
+        if(app[name].isString()){
+            return true;
+        }
+        addError(required ? ErrorLevel::Error : ErrorLevel::Warning, QString(
+            "Key \"%1\" must contain a string"
+        ).arg(name));
+        return false;
+    };
+    auto isArray = [app, &errors, contains](const QString& name, const ErrorLevel& level, bool required) -> bool{
+        if(required && !contains(name)){
+            return false;
+        }else if(!required && !app.contains(name)){
+            return false;
+        }
+        if(app[name].isArray()){
+            return true;
+        }
+        addError(level, QString(
+            "Key \"%1\" must contain an array"
+        ).arg(name));
+        return false;
+    };
+    auto isFile = [app, &errors, isString, contains](const QString& name, const ErrorLevel& level, bool required) -> bool{
+        if(!isString(name, required)){
+            return false;
+        }
+        if(!app.contains(name)){
+            return false;
+        }
+        auto value = app[name];
+        auto str = value.toString();
+        if(str.isEmpty()){
+            return false;
+        }
+        if(QFile::exists(str)){
+            return true;
+        }
+        addError(level, QString(
+            "Value \"%1\" for key \"%2\" is a path that does not exist"
+        ).arg(str, name));
+        return false;
+    };
+    auto isImage = [app, &errors, isFile, isString, contains](const QString& name, const ErrorLevel& level, bool required) -> bool{
+        if(!isFile(name, level, required)){
+            return false;
+        }
+        auto value = app[name].toString();
+        QImage image;
+        if(image.load(value) && !image.isNull()){
+            return true;
+        }
+        addError(level, QString(
+            "Value \"%1\" for key \"%2\" is a path to a file that is not a valid image"
+        ).arg(value, name));
+        return false;
+    };
+#define isError(level) (level == ErrorLevel::Error || level == ErrorLevel::Critical)
+#define addError(_level, _msg) errors.append(ValidationError { .level = _level, .msg = _msg }); if(exitEarly && isError(_level)){ return errors; }
+#define shouldExit if(exitEarly && std::any_of(errors.constBegin(), errors.constEnd(), [](const ValidationError& error){ return isError(error.level); })){ return errors; }
+    QString type = app.contains("type") ? app["type"].toString().toLower() : "";
+    if(type == "background"){
+        // TODO validate any extra settings required by background apps
+    }else if(type == "backgroundable"){
+        // TODO validate any extra settings required by backgroundable apps
+    }else if(type == "foreground" || type.isEmpty()){
+        // TODO validate any extra settings required by foreground apps
+    }else{
+        addError(ErrorLevel::Warning, QString(
+            "Value \"%1\" for key \"type\" is not valid and will default to foreground"
+        ).arg(type));
+    }
+    if(isFile("bin", ErrorLevel::Error, true)){
+        auto bin = app["bin"].toString();
+        QFileInfo info(bin);
+        if(!info.isFile()){
+            addError(ErrorLevel::Error, QString(
+                "Value \"%1\" for key \"bin\" is not a path to a file"
+            ).arg(bin));
+        }else if(!info.isExecutable()){
+            addError(ErrorLevel::Error, QString(
+                "Value \"%1\" for key \"bin\" is a path to a file that is not executable"
+            ).arg(bin));
+        }
+    } else shouldExit
+    QStringList flags;
+    if(isArray("flags", ErrorLevel::Critical, false)){
+        auto flagsArray = app["flags"].toArray();
+        auto flagsJson = Oxide::JSON::toJson(flagsArray);
+        for(auto flag : flagsArray){
+            if(!flag.isString()){
+                addError(ErrorLevel::Error, QString(
+                    "Value \"%1\" for key \"flags\" contains an entry that is not a string \"%2\""
+                ).arg(flagsJson, Oxide::JSON::toJson(flag.toVariant())));
+                continue;
+            }
+            auto value = flag.toString().trimmed();
+            if(value.isEmpty()){
+                addError(ErrorLevel::Error, QString(
+                    "Value \"%1\" for key \"flags\" contains an entry that is empty"
+                ).arg(flagsJson));
+                continue;
+            }
+            if(SystemFlags.contains(value)){
+                addError(ErrorLevel::Warning, QString(
+                    "Value \"%1\" for key \"flags\" contains an entry that should only be used by the system \"%2\""
+                ).arg(flagsJson, value));
+            }else if(!Flags.contains(value)){
+                addError(ErrorLevel::Warning, QString(
+                    "Value \"%1\" for key \"flags\" contains an entry that is not known \"%2\""
+                ).arg(flagsJson, value));
+            }
+            flags << value;
+        }
+        if(type == "background" && flags.contains("nosavescreen")){
+            addError(ErrorLevel::Hint, "Key \"flags\" contains \"nosavescreen\" while \"type\" has value \"background\"");
+        }
+    } else shouldExit
+    if(isArray("directories", ErrorLevel::Critical, false)){
+        auto directories = app["directories"].toArray();
+        for(int i = 0; i < directories.count(); i++){
+            QJsonValue entry = directories[i];
+            if(!entry.isString()){
+                addError(ErrorLevel::Error, QString(
+                    "Value \"%1\" for key \"directories[%2]\" contains an entry that is not a string \"%3\""
+                ).arg(Oxide::JSON::toJson(directories), QString::number(i), Oxide::JSON::toJson(entry)));
+                continue;
+            }
+            auto directory = entry.toString();
+            if(!QFile::exists(directory)){
+                addError(ErrorLevel::Error, QString(
+                    "Value \"%1\" for key \"directories[%2]\" contains a path that does not exist \"%3\""
+                ).arg(Oxide::JSON::toJson(directories), QString::number(i), directory));
+            }
+        }
+    } else shouldExit else if(flags.contains("chroot")){
+        addError(ErrorLevel::Hint, "Key \"flags\" contains \"chroot\" while \"directories\" is missing");
+    }
+    if(isArray("permissions", ErrorLevel::Critical, false)){
+        auto permissions = app["permissions"].toArray();
+        for(int i = 0; i < permissions.count(); i++){
+            QJsonValue entry = permissions[i];
+            if(!entry.isString()){
+                addError(ErrorLevel::Error, QString(
+                    "Value \"%1\" for key \"permissions[%2]\" contains a value that is not a string \"%3\""
+                ).arg(Oxide::JSON::toJson(permissions), QString::number(i), Oxide::JSON::toJson(entry)));
+            }
+        }
+    } else shouldExit
+    isFile("workingDirectory", ErrorLevel::Error, false); shouldExit
+    isString("displayName", false); shouldExit
+    isString("description", false); shouldExit
+    if(isString("user", false)){
+        auto user = app["user"].toString();
+        try{
+            Oxide::getUID(user);
+        }catch(const std::exception& e){
+            addError(ErrorLevel::Error, QString(
+                "Value \"%1\" for key \"user\" is not a valid user: \"%2\""
+            ).arg(user, e.what()));
+        }
+    } else shouldExit
+    if(isString("group", false)){
+        auto group = app["group"].toString();
+        try{
+            Oxide::getGID(group);
+        }catch(const std::exception& e){
+            addError(ErrorLevel::Error, QString(
+                "Value \"%1\" for key \"group\" is not a valid group: \"%2\""
+            ).arg(group, e.what()));
+        }
+    } else shouldExit
+    isImage("icon", ErrorLevel::Warning, false);
+    if(isImage("splash", ErrorLevel::Warning, false) && flags.contains("nosplash")){
+        addError(ErrorLevel::Hint, "Key \"splash\" provided while \"flags\" contains \"nosplash\" value");
+    } else shouldExit
+    if(registrationToMap(app, name).isEmpty()){
+        addError(ErrorLevel::Critical, "Unable to convert registration to QVariantMap");
+    }
+    return errors;
+#undef isError
+#undef addError
+#undef shouldExit
+}
     QTextStream& operator<<(QTextStream& s, const ErrorLevel& l){
         switch (l) {
             case ErrorLevel::Hint:
@@ -48,6 +249,33 @@ namespace Oxide::Applications{
         s << e.level << ": " << e.msg;
         return s;
     }
+    QDebug& operator<<(QDebug& s, const ErrorLevel& l){
+        switch (l) {
+            case ErrorLevel::Hint:
+                s << "hint";
+                break;
+            case ErrorLevel::Deprecation:
+                s << "deprecation";
+                break;
+            case ErrorLevel::Warning:
+                s << "warning";
+                break;
+            case ErrorLevel::Error:
+                s << "error";
+                break;
+            case ErrorLevel::Critical:
+                s << "critical";
+                break;
+            default:
+                s << "unknown";
+        }
+        return s;
+    }
+    QDebug& operator<<(QDebug& s, const ValidationError& e){
+        s << e.level << ": " << e.msg;
+        return s;
+    }
+    bool operator==(const ValidationError& v1, const ValidationError& v2){ return v1.level == v2.level && v1.msg == v2.msg; }
     QVariantMap registrationToMap(const QJsonObject& app, const QString& name){
         auto _name = name;
         if(name.isEmpty()){
@@ -139,6 +367,24 @@ namespace Oxide::Applications{
         }
         return properties;
     }
+    QJsonObject getRegistration(const char* path){ return getRegistration(QString(path)); }
+    QJsonObject getRegistration(const std::string& path){ return getRegistration(QString(path.c_str())); }
+    QJsonObject getRegistration(const QString& path){
+        QFile file(path);
+        auto res = getRegistration(&file);
+        if(file.isOpen()){
+            file.close();
+        }
+        return res;
+    }
+    QJsonObject getRegistration(QFile* file){
+        if(!file->isOpen() && !file->open(QFile::ReadOnly)){
+            return QJsonObject();
+        }
+        auto data = file->readAll();
+        auto app = QJsonDocument::fromJson(data).object();
+        return app;
+    }
     QList<ValidationError> validateRegistration(const char* path){ return validateRegistration(QString(path)); }
     QList<ValidationError> validateRegistration(const std::string& path){ return validateRegistration(QString(path.c_str())); }
     QList<ValidationError> validateRegistration(const QString& path){
@@ -166,260 +412,11 @@ namespace Oxide::Applications{
         QList<ValidationError> errors;
         errors.append(ValidationError{
             .level = ErrorLevel::Critical,
-            .msg = "File is not valid JSON"
+            .msg = "File is not valid JSON or is empty"
         });
         return errors;
     }
-    QList<ValidationError> validateRegistration(const QString& name, const QJsonObject& app){
-        QList<ValidationError> errors;
-        auto contains = [app, &errors](const QString& name) -> bool{
-            if(app.contains(name)){
-                return true;
-            }
-            errors.append(ValidationError{
-                .level = ErrorLevel::Critical,
-                .msg = QString(
-                    "Key \"%1\" is missing"
-                ).arg(name)
-            });
-            return false;
-        };
-        auto isString = [app, &errors, contains](const QString& name, bool required) -> bool{
-            if(required && !contains(name)){
-                return false;
-            }else if(!required && !app.contains(name)){
-                return false;
-            }
-            if(app[name].isString()){
-                return true;
-            }
-            errors.append(ValidationError{
-                .level = required ? ErrorLevel::Error : ErrorLevel::Warning,
-                .msg = QString(
-                    "Key \"%1\" must contain a string"
-                ).arg(name)
-            });
-            return false;
-        };
-        auto isArray = [app, &errors, contains](const QString& name, const ErrorLevel& level, bool required) -> bool{
-            if(required && !contains(name)){
-                return false;
-            }else if(!required && !app.contains(name)){
-                return false;
-            }
-            if(app[name].isArray()){
-                return true;
-            }
-            errors.append(ValidationError{
-                .level = level,
-                .msg = QString(
-                    "Key \"%1\" must contain an array"
-                ).arg(name)
-            });
-            return false;
-        };
-        auto isFile = [app, &errors, isString, contains](const QString& name, const ErrorLevel& level, bool required) -> bool{
-            if(!isString(name, required)){
-                return false;
-            }
-            if(!app.contains(name)){
-                return false;
-            }
-            auto value = app[name];
-            auto str = value.toString();
-            if(str.isEmpty()){
-                return false;
-            }
-            if(QFile::exists(str)){
-                return true;
-            }
-            errors.append(ValidationError{
-                .level = level,
-                .msg = QString(
-                    "Value \"%1\" for key \"%2\" is a path that does not exist"
-                ).arg(str, name)
-            });
-            return false;
-        };
-        auto isImage = [app, &errors, isFile, isString, contains](const QString& name, const ErrorLevel& level, bool required) -> bool{
-            if(!isFile(name, level, required)){
-                return false;
-            }
-            auto value = app[name].toString();
-            QImage image;
-            if(image.load(value) && !image.isNull()){
-                return true;
-            }
-            errors.append(ValidationError{
-                .level = level,
-                .msg = QString(
-                    "Value \"%1\" for key \"%2\" is a path to a file that is not a valid image"
-                ).arg(value, name)
-            });
-            return false;
-        };
-        //auto name = QFileInfo(file->fileName()).completeBaseName();
-        QString type = app.contains("type") ? app["type"].toString().toLower() : "";
-        if(type == "background"){
-            // TODO validate any extra settings required by background apps
-        }else if(type == "backgroundable"){
-            // TODO validate any extra settings required by backgroundable apps
-        }else if(type == "foreground" || type.isEmpty()){
-            // TODO validate any extra settings required by foreground apps
-        }else{
-            errors.append(ValidationError{
-                .level = ErrorLevel::Warning,
-                .msg = QString(
-                    "Value \"%1\" for key \"type\" is not valid and will default to foreground"
-                ).arg(type)
-            });
-        }
-        if(isFile("bin", ErrorLevel::Error, true)){
-            auto bin = app["bin"].toString();
-            if(!QFileInfo(bin).isExecutable()){
-                errors.append(ValidationError{
-                    .level = ErrorLevel::Error,
-                    .msg = QString(
-                        "Value \"%1\" for key \"bin\" is a path to a file that is not executable"
-                    ).arg(bin)
-                });
-            }
-        }
-        QStringList flags;
-        if(isArray("flags", ErrorLevel::Critical, false)){
-            auto flagsArray = app["flags"].toArray();
-            auto flagsJson = Oxide::JSON::toJson(flagsArray);
-            for(auto flag : flagsArray){
-                if(!flag.isString()){
-                    errors.append(ValidationError{
-                        .level = ErrorLevel::Error,
-                        .msg = QString(
-                            "Value \"%1\" for key \"flags\" contains an entry that is not a string \"%2\""
-                        ).arg(flagsJson, Oxide::JSON::toJson(flag.toVariant()))
-                    });
-                    continue;
-                }
-                auto value = flag.toString().trimmed();
-                if(value.isEmpty()){
-                    errors.append(ValidationError{
-                        .level = ErrorLevel::Error,
-                        .msg = QString(
-                            "Value \"%1\" for key \"flags\" contains an entry that is empty"
-                        ).arg(flagsJson)
-                    });
-                    continue;
-                }
-                if(SystemFlags.contains(value)){
-                    errors.append(ValidationError{
-                        .level = ErrorLevel::Warning,
-                        .msg = QString(
-                            "Value \"%1\" for key \"flags\" contains an entry that should only be used by the system \"%2\""
-                        ).arg(flagsJson, value)
-                    });
-                }else if(!Flags.contains(value)){
-                    errors.append(ValidationError{
-                        .level = ErrorLevel::Warning,
-                        .msg = QString(
-                            "Value \"%1\" for key \"flags\" contains an entry that is not known \"%2\""
-                        ).arg(flagsJson, value)
-                    });
-                }
-                flags << value;
-            }
-            if(type == "background" && flags.contains("nosavescreen")){
-                errors.append(ValidationError{
-                    .level = ErrorLevel::Hint,
-                    .msg = "Key \"flags\" contains \"nosavescreen\" while \"type\" has value \"background\""
-                });
-            }
-        }
-        if(isArray("directories", ErrorLevel::Critical, false)){
-            auto directories = app["directories"].toArray();
-            for(int i = 0; i < directories.count(); i++){
-                QJsonValue entry = directories[i];
-                if(!entry.isString()){
-                    errors.append(ValidationError{
-                        .level = ErrorLevel::Error,
-                        .msg = QString(
-                            "Value \"%1\" for key \"directories[%2]\" contains an entry that is not a string \"%3\""
-                        ).arg(Oxide::JSON::toJson(directories), QString::number(i), Oxide::JSON::toJson(entry))
-                    });
-                    continue;
-                }
-                auto directory = entry.toString();
-                if(!QFile::exists(directory)){
-                    errors.append(ValidationError{
-                        .level = ErrorLevel::Error,
-                        .msg = QString(
-                            "Value \"%1\" for key \"directories[%2]\" contains a path that does not exist \"%3\""
-                        ).arg(Oxide::JSON::toJson(directories), QString::number(i), directory)
-                    });
-                }
-            }
-        }else if(flags.contains("chroot")){
-            errors.append(ValidationError{
-                .level = ErrorLevel::Hint,
-                .msg = "Key \"flags\" contains \"chroot\" while \"directories\" is missing"
-            });
-        }
-        if(isArray("permissions", ErrorLevel::Critical, false)){
-            auto permissions = app["permissions"].toArray();
-            for(int i = 0; i < permissions.count(); i++){
-                QJsonValue entry = permissions[i];
-                if(!entry.isString()){
-                    errors.append(ValidationError{
-                        .level = ErrorLevel::Error,
-                        .msg = QString(
-                            "Value \"%1\" for key \"permissions[%2]\" contains a value that is not a string \"%3\""
-                        ).arg(Oxide::JSON::toJson(permissions), QString::number(i), Oxide::JSON::toJson(entry))
-                    });
-                }
-            }
-        }
-        isFile("workingDirectory", ErrorLevel::Error, false);
-        isString("displayName", false);
-        isString("description", false);
-        if(isString("user", false)){
-            auto user = app["user"].toString();
-            try{
-                Oxide::getUID(user);
-            }catch(const std::exception& e){
-                errors.append(ValidationError{
-                    .level = ErrorLevel::Error,
-                    .msg = QString(
-                        "Value \"%1\" for key \"user\" is not a valid user: \"%2\""
-                    ).arg(user, e.what())
-                });
-            }
-        }
-        if(isString("group", false)){
-            auto group = app["group"].toString();
-            try{
-                Oxide::getGID(group);
-            }catch(const std::exception& e){
-                errors.append(ValidationError{
-                    .level = ErrorLevel::Error,
-                    .msg = QString(
-                        "Value \"%1\" for key \"group\" is not a valid group: \"%2\""
-                    ).arg(group, e.what())
-                });
-            }
-        }
-        isImage("icon", ErrorLevel::Warning, false);
-        if(isImage("splash", ErrorLevel::Warning, false) && flags.contains("nosplash")){
-            errors.append(ValidationError{
-                .level = ErrorLevel::Hint,
-                .msg = "Key \"splash\" provided while \"flags\" contains \"nosplash\" value"
-            });
-        }
-        if(registrationToMap(app, name).isEmpty()){
-            errors.append(ValidationError{
-                .level = ErrorLevel::Critical,
-                .msg = "Unable to convert registration to QVariantMap"
-            });
-        }
-        return errors;
-    }
+    QList<ValidationError> validateRegistration(const QString& name, const QJsonObject& app){ return _validateRegistration(name, app, false); }
     bool addToTarnishCache(const char* path){ return addToTarnishCache(QString(path)); }
     bool addToTarnishCache(const std::string& path){ return addToTarnishCache(QString(path.c_str())); }
     bool addToTarnishCache(const QString& path){
@@ -431,20 +428,15 @@ namespace Oxide::Applications{
         return res;
     }
     bool addToTarnishCache(QFile* file){
-        if(!file->isOpen() && !file->open(QFile::ReadOnly)){
-            return false;
-        }
-        auto data = file->readAll();
-        auto app = QJsonDocument::fromJson(data).object();
+        auto app = getRegistration(file);
+        auto name = QFileInfo(file->fileName()).completeBaseName();
+        return addToTarnishCache(name, app);
+    }
+    bool addToTarnishCache(const QString& name, const QJsonObject& app){
         if(app.isEmpty()){
             return false;
         }
-        auto name = QFileInfo(file->fileName()).completeBaseName();
-        auto errors = validateRegistration(name, app);
-        for(auto error : errors){
-            if(error.level != ErrorLevel::Critical && error.level != ErrorLevel::Error){
-                continue;
-            }
+        if(!_validateRegistration(name, app, true).isEmpty()){
             return false;
         }
         auto bus = QDBusConnection::systemBus();
