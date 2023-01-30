@@ -242,7 +242,30 @@ namespace Oxide {
          */
         // cppcheck-suppress uninitMemberVarPrivate
         O_SETTINGS(SharedSettings, "/home/root/.config/Eeems/shared.conf")
+        /*!
+         * \property version
+         * \brief Current version of the settings file
+         * \sa set_version, versionChanged
+         */
+        /*!
+         * \fn versionChanged
+         * \brief If the version number has changed
+         */
         O_SETTINGS_PROPERTY(int, General, version)
+        /*!
+         * \property firstLaunch
+         * \brief If this is the first time that things have been run
+         * \sa set_firstLaunch, firstLaunchChanged
+         */
+        /*!
+         * \fn set_firstLaunch
+         * \param _arg_firstLaunch
+         * \brief Change the state of firstLaunch
+         */
+        /*!
+         * \fn firstLaunchChanged
+         * \brief If firstLaunch has changed
+         */
         O_SETTINGS_PROPERTY(bool, General, firstLaunch, true)
         /*!
          * \property telemetry

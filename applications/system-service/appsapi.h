@@ -22,6 +22,7 @@
 #define appsAPI AppsAPI::singleton()
 
 using namespace Oxide;
+using namespace Oxide::Applications;
 
 class AppsAPI : public APIBase {
     Q_OBJECT
@@ -103,9 +104,6 @@ public:
     void startup();
     int state() { return 0; } // Ignore this, it's a kludge to get the xml to generate
 
-    enum ApplicationType { Foreground, Background, Backgroundable};
-    Q_ENUM(ApplicationType)
-
     void setEnabled(bool enabled){
         qDebug() << "Apps API" << enabled;
         for(auto app : applications){
@@ -126,8 +124,8 @@ public:
     QDBusObjectPath registerApplicationNoSecurityCheck(QVariantMap properties){
         QString name = properties.value("name", "").toString();
         QString bin = properties.value("bin", "").toString();
-        int type = properties.value("type", Foreground).toInt();
-        if(type < Foreground || type > Backgroundable){
+        int type = properties.value("type", ApplicationType::Foreground).toInt();
+        if(type < ApplicationType::Foreground || type > ApplicationType::Backgroundable){
             qDebug() << "Invalid configuration: Invalid type" << type;
             return QDBusObjectPath("/");
         }
@@ -700,15 +698,6 @@ private:
         // Register/Update any system application.
         for(auto app : apps){
             auto name = app["name"].toString();
-            int type = Foreground;
-            QString typeString = app.contains("type") ? app["type"].toString().toLower() : "";
-            if(typeString == "background"){
-                type = Background;
-            }else if(typeString == "backgroundable"){
-                type = Backgroundable;
-            }else if(!typeString.isEmpty() && typeString != "foreground"){
-                qDebug() << "Invalid type string:" << typeString;
-            }
             auto bin = app["bin"].toString();
             if(bin.isEmpty() || !QFile::exists(bin)){
                 qDebug() << name << "Can't find application binary:" << bin;
@@ -717,76 +706,13 @@ private:
 #endif
                 continue;
             }
-            auto flags = QStringList() << "system";
-            if(app.contains("flags")){
-                for(auto flag : app["flags"].toArray()){
-                    auto value = flag.toString();
-                    if(!value.isEmpty() && value != "system"){
-                        flags << value;
-                    }
-                }
+            if(!app.contains("flags") || !app["flags"].isArray()){
+                app["flags"] = QJsonArray();
             }
-            QVariantMap properties {
-                {"name", name},
-                {"bin", bin},
-                {"type", type},
-                {"flags", flags},
-            };
-            if(app.contains("displayName")){
-                properties.insert("displayName", app["displayName"].toString());
-            }
-            if(app.contains("description")){
-                properties.insert("description", app["description"].toString());
-            }
-            if(app.contains("icon")){
-                properties.insert("icon", app["icon"].toString());
-            }
-            if(app.contains("user")){
-                properties.insert("user", app["user"].toString());
-            }
-            if(app.contains("group")){
-                properties.insert("group", app["group"].toString());
-            }
-            if(app.contains("workingDirectory")){
-                properties.insert("workingDirectory", app["workingDirectory"].toString());
-            }
-            if(app.contains("directories")){
-                QStringList directories;
-                for(auto directory : app["directories"].toArray()){
-                    directories.append(directory.toString());
-                }
-                properties.insert("directories", directories);
-            }
-            if(app.contains("permissions")){
-                QStringList permissions;
-                for(auto permission : app["permissions"].toArray()){
-                    permissions.append(permission.toString());
-                }
-                properties.insert("permissions", permissions);
-            }
-            if(app.contains("events")){
-                auto events = app["events"].toObject();
-                for(auto event : events.keys()){
-                    if(event == "stop"){
-                        properties.insert("onStop", events[event].toString());
-                    }else if(event == "pause"){
-                        properties.insert("onPause", events[event].toString());
-                    }else if(event == "resume"){
-                        properties.insert("onResume", events[event].toString());
-                    }
-                }
-            }
-            if(app.contains("environment")){
-                QVariantMap envMap;
-                auto environment = app["environment"].toObject();
-                for(auto key : environment.keys()){
-                    envMap.insert(key, environment[key].toString());
-                }
-                properties.insert("environment", envMap);
-            }
-            if(app.contains("splash")){
-                properties.insert("splash", app["splash"].toString());
-            }
+            auto flags = app["flags"].toArray();
+            flags.prepend("system");
+            app["flags"] = flags;
+            auto properties = registrationToMap(app);
             if(applications.contains(name)){
 #ifdef DEBUG
                 qDebug() << "Updating " << name;

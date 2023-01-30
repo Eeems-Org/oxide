@@ -10,6 +10,8 @@
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
 
+using namespace Oxide::Applications;
+
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
 
 void Application::launch(){
@@ -94,7 +96,7 @@ void Application::launchNoSecurityCheck(){
             }
             m_process->start();
             m_process->waitForStarted();
-            if(type() == AppsAPI::Background){
+            if(type() == Background){
                 startSpan("background", "Application is in the background");
             }else{
                 startSpan("foreground", "Application is in the foreground");
@@ -112,7 +114,7 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
     if(
         !m_process->processId()
         || stateNoSecurityCheck() == Paused
-        || type() == AppsAPI::Background
+        || type() == Background
     ){
         return;
     }
@@ -141,7 +143,7 @@ void Application::interruptApplication(){
     if(
         !m_process->processId()
         || stateNoSecurityCheck() == Paused
-        || type() == AppsAPI::Background
+        || type() == Background
     ){
         return;
     }
@@ -160,11 +162,11 @@ void Application::interruptApplication(){
         }
         Oxide::Sentry::sentry_span(t, "background", "Background application", [this](){
             switch(type()){
-                case AppsAPI::Background:
+                case Background:
                     // Already in the background. How did we get here?
                     startSpan("background", "Application is in the background");
                     return;
-                case AppsAPI::Backgroundable:
+                case Backgroundable:
                     qDebug() << "Waiting for SIGUSR2 ack";
                     appsAPI->connectSignals(this, 2);
                     kill(-m_process->processId(), SIGUSR2);
@@ -184,7 +186,7 @@ void Application::interruptApplication(){
                         startSpan("background", "Application is in the background");
                     }
                     break;
-                case AppsAPI::Foreground:
+                case Foreground:
                 default:
                     kill(-m_process->processId(), SIGSTOP);
                     waitForPause();
@@ -217,7 +219,7 @@ void Application::resumeNoSecurityCheck(){
     if(
         !m_process->processId()
         || stateNoSecurityCheck() == InForeground
-        || (type() == AppsAPI::Background && stateNoSecurityCheck() == InBackground)
+        || (type() == Background && stateNoSecurityCheck() == InBackground)
     ){
         qDebug() << "Can't Resume" << path() << "Already running!";
         return;
@@ -233,7 +235,7 @@ void Application::resumeNoSecurityCheck(){
         appsAPI->recordPreviousApplication();
         qDebug() << "Resuming " << path();
         appsAPI->pauseAll();
-        if(!flags().contains("nosavescreen") && (type() != AppsAPI::Backgroundable || stateNoSecurityCheck() == Paused)){
+        if(!flags().contains("nosavescreen") && (type() != Backgroundable || stateNoSecurityCheck() == Paused)){
             recallScreen();
         }
         uninterruptApplication();
@@ -247,7 +249,7 @@ void Application::uninterruptApplication(){
     if(
         !m_process->processId()
         || stateNoSecurityCheck() == InForeground
-        || (type() == AppsAPI::Background && stateNoSecurityCheck() == InBackground)
+        || (type() == Background && stateNoSecurityCheck() == InBackground)
     ){
         return;
     }
@@ -266,8 +268,8 @@ void Application::uninterruptApplication(){
         }
         Oxide::Sentry::sentry_span(t, "foreground", "Foreground application", [this](){
             switch(type()){
-                case AppsAPI::Background:
-                case AppsAPI::Backgroundable:
+                case Background:
+                case Backgroundable:
                     if(stateNoSecurityCheck() == Paused){
                         touchHandler->clear_buffer();
                         kill(-m_process->processId(), SIGCONT);
@@ -286,7 +288,7 @@ void Application::uninterruptApplication(){
                     m_backgrounded = false;
                     startSpan("background", "Application is in the background");
                     break;
-                case AppsAPI::Foreground:
+                case Foreground:
                 default:
                     touchHandler->clear_buffer();
                     kill(-m_process->processId(), SIGCONT);
@@ -391,7 +393,7 @@ int Application::stateNoSecurityCheck(){
                     return Paused;
                 }
             }
-            if(type() == AppsAPI::Background || (type() == AppsAPI::Backgroundable && m_backgrounded)){
+            if(type() == Background || (type() == Backgroundable && m_backgrounded)){
                 return InBackground;
             }
             return InForeground;
@@ -404,7 +406,7 @@ int Application::stateNoSecurityCheck(){
 void Application::setConfig(const QVariantMap& config){
     auto oldBin = bin();
     m_config = config;
-    if(type() == AppsAPI::Foreground){
+    if(type() == Foreground){
         setAutoStart(false);
     }
     if(oldBin == bin()){

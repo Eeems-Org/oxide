@@ -71,8 +71,11 @@ liboxide_h.commands = \
     echo \\$$LITERAL_HASH"pragma once" > include/liboxide.h && \
     echo \"$$LITERAL_HASH"include \\\"liboxide/liboxide.h\\\"\"" >> include/liboxide.h
 
+clean_headers.target = include/.clean-target
+clean_headers.commands = rm -rf include
 
-QMAKE_EXTRA_TARGETS += liboxide_liboxide_h liboxide_h
+QMAKE_EXTRA_TARGETS += liboxide_liboxide_h liboxide_h clean_headers
+PRE_TARGETDEPS += $$clean_headers.target
 POST_TARGETDEPS += $$liboxide_liboxide_h.target $$liboxide_h.target
 QMAKE_CLEAN += $$liboxide_h.target include/liboxide/*.h
 

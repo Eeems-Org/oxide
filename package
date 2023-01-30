@@ -2,7 +2,7 @@
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 
-pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry notify-send update-desktop-database desktop-file-validate)
+pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry oxide-utils)
 pkgver="2.6~VERSION~"
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
@@ -24,7 +24,7 @@ build() {
 erode() {
     pkgdesc="Task manager"
     section=utils
-    installdepends=("tarnish=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/erode
@@ -43,7 +43,7 @@ erode() {
 fret() {
     pkgdesc="Take screenshots"
     section=utils
-    installdepends=("tarnish=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver"  "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver"  "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/fret
@@ -60,7 +60,7 @@ fret() {
 oxide() {
     pkgdesc="Launcher application"
     section=launchers
-    installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver" display "libsentry=$_sentry")
+    installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" display "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/oxide
@@ -122,7 +122,7 @@ tarnish() {
 decay() {
     pkgdesc="Lockscreen application"
     section=utils
-    installdepends=("tarnish=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/decay
@@ -139,7 +139,7 @@ decay() {
 corrupt() {
     pkgdesc="Task Switcher for Oxide"
     section=utils
-    installdepends=("tarnish=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/corrupt
@@ -156,7 +156,7 @@ corrupt() {
 anxiety() {
     pkgdesc="Screenshot viewer for Oxide"
     section=utils
-    installdepends=("tarnish=$pkgver" "update-desktop-database=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/anxiety
@@ -172,32 +172,16 @@ anxiety() {
     }
 }
 
-notify-send() {
-    pkgdesc="A program to send desktop notifications for Oxide"
+oxide-utils() {
+    pkgdesc="Command line tools for Oxide"
     section=utils
     installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    replaces=(notify-send update-desktop-database desktop-file-validate)
+    conflicts=(notify-send update-desktop-database desktop-file-validate)
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/notify-send
-    }
-}
-
-update-desktop-database(){
-    pkgdesc="A program to update the application cache for Oxide"
-    section=utils
-    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
-
-    package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/update-desktop-database
-    }
-}
-
-desktop-file-validate(){
-    pkgdesc="A program to validate application registration files for Oxide"
-    section=utils
-    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
-
-    package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/desktop-file-validate
     }
 }

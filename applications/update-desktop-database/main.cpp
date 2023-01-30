@@ -30,6 +30,7 @@ int main(int argc, char *argv[]){
     parser.applicationDescription();
     parser.addHelpOption();
     parser.addPositionalArgument("directory", "NOT IMPLEMENTED", "[DIRECTORY...]");
+    // TODO handle using $XDG_DATA_DIRS/applications if directory is not set
     QCommandLineOption versionOption("version", "Display the version and exit");
     parser.addOption(versionOption);
     QCommandLineOption quietOption(
