@@ -56,6 +56,11 @@ int install(QCommandLineParser& parser){
     bool failure = false;
     bool updated = false;
     for(QString path : args){
+        if(!QFile::exists(path)){
+            qDebug() << "error:" << path.toStdString().c_str() << "does not exist";
+            failure = true;
+            continue;
+        }
         QFileInfo info(path);
         if(info.absoluteDir().path() == APPS_DIR){
             qDebug() << "error: " << path.toStdString().c_str() << "is already installed";
@@ -110,6 +115,11 @@ int uninstall(QCommandLineParser& parser){
     bool failure = false;
     bool updated = false;
     for(QString path : args){
+        if(!QFile::exists(path)){
+            qDebug() << "error:" << path.toStdString().c_str() << "does not exist";
+            failure = true;
+            continue;
+        }
         auto toPath = APPS_DIR "/" + QFileInfo(path).fileName();
         if(!QFile::exists(toPath)){
             qDebug() << "success:" << toPath.toStdString().c_str() << "doesn't exist";
@@ -147,10 +157,10 @@ int forceupdate(QCommandLineParser& parser){
 
 int main(int argc, char *argv[]){
     QCoreApplication app(argc, argv);
-    sentry_init("desktop-file-validate", argv);
+    sentry_init("xdg-desktop-menu", argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
-    app.setApplicationName("desktop-file-validate");
+    app.setApplicationName("xdg-desktop-menu");
     app.setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
     parser.setApplicationDescription("A program to send desktop notifications");
