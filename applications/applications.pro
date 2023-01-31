@@ -2,6 +2,7 @@ TEMPLATE = subdirs
 
 SUBDIRS = \
     desktop-file-validate \
+    gio \
     launcher \
     lockscreen \
     notify-send \
@@ -29,5 +30,6 @@ update-desktop-database.depends = system-service
 xdg-desktop-icon.depends = system-service
 xdg-desktop-menu.depends = system-service
 xdg-open.depends = system-service
+gio.depends = system-service
 
 INSTALLS += $$SUBDIRS
