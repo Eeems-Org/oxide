@@ -15,6 +15,7 @@ HEADERS += \
     cat.h \
     common.h \
     help.h \
+    open.h \
     version.h
 
 TARGET = gio

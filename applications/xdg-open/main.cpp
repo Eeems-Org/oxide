@@ -51,7 +51,7 @@ int main(int argc, char *argv[]){
         url.setScheme("file");
     }
     if(url.isLocalFile()){
-        QFileInfo info(path);
+        QFileInfo info(url.path());
         if(info.suffix() != "oxide"){
             qDebug() << "The extension is not supported:" << path.toStdString().c_str();
             return EXIT_FAILURE;

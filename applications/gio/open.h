@@ -2,13 +2,13 @@
 
 #include "common.h"
 
-#include <QDir>
+#include <QProcess>
 #include <QUrl>
 
-class CatCommand : ICommand{
-    O_COMMAND(CatCommand, "cat", "Concatenates the given files and prints them to the standard output.")
+class OpenCommand : ICommand{
+    O_COMMAND(OpenCommand, "open", "Open file(s) with xdg-open")
     int arguments() override{
-        parser->addPositionalArgument("location", "Locations to concatenate", "LOCATION...");
+        parser->addPositionalArgument("location", "Locations to open", "LOCATION...");
         return EXIT_SUCCESS;
     }
     int command(const QStringList& args) override{
@@ -21,15 +21,7 @@ class CatCommand : ICommand{
                 GIO_ERROR(url, path, "No such file or directory");
                 continue;
             }
-            QFile file(path);
-            if(!file.open(QFile::ReadOnly)){
-                GIO_ERROR(url, path, "Permission denied");
-                continue;
-            }
-            while(!file.atEnd()){
-                qStdOut() << file.read(1024);
-            }
-            file.close();
+            QProcess::execute("xdg-open", QStringList() << url.toString());
         }
         return EXIT_SUCCESS;
     }
