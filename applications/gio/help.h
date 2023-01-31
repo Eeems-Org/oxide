@@ -8,7 +8,9 @@
 class HelpCommand : ICommand{
     O_COMMAND(HelpCommand, "help", "Print help", true)
     int arguments() override{
-        parser->addPositionalArgument("command", "Command to get help for", "[COMMAND]");
+        parser->clearPositionalArguments();
+        parser->addPositionalArgument("", "", "help");
+        parser->addPositionalArgument("Commands:", commandsHelp(), "[COMMAND]");
         return EXIT_SUCCESS;
     }
     int command(const QStringList& args) override{

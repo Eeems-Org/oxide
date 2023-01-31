@@ -16,11 +16,54 @@ QCommandLineOption ICommand::versionOption(){
     return value;
 }
 
+#define FULL_SIZE 66
+
 QString ICommand::commandsHelp(){
     QString value;
-    for(const auto& name : commands->keys()){
+    const QList<QString>& keys = commands->keys();
+    int leftSize = (*std::max_element(keys.constBegin(), keys.constEnd(), [](const QString& v1, const QString& v2){
+        return v1.length() < v2.length();
+    })).length() + 2;
+    int rightSize = FULL_SIZE - leftSize - 1;
+    for(const auto& name : keys){
         const auto& item = commands->value(name);
-        value += QString("%1\t%2\n").arg(name, item.help);
+        value += "\n" + name.leftJustified(leftSize, ' ');
+        if(item.help > rightSize){
+            QStringList words = item.help.split(' ');
+            QString padding = QString().leftJustified(leftSize + 1, ' ');
+            bool first = true;
+            while(!words.isEmpty()){
+                QString strPart;
+                while(!words.isEmpty()){
+                    auto word = words.first();
+                    // If the first word is larger than a single line
+                    if(!strPart.length() && word.length() > rightSize){
+                        // Fill the line with what you can
+                        strPart = word.left(rightSize);
+                        words.replace(0, word.mid(rightSize));
+                        // Exit since we have what we need to display
+                        break;
+                    }
+                    // Exit if the next word would be too long
+                    if(strPart.length() + 1 + word.length() > rightSize){
+                        break;
+                    }
+                    // Add the word to the results
+                    strPart += word + " ";
+                    words.removeFirst();
+                }
+                // Don't padd the first line, it doesn't need it
+                if(first){
+                    first = false;
+                }else{
+                    value += "\n";
+                    value += padding;
+                }
+                value += strPart;
+            }
+        }else{
+            value += item.help;
+        }
     }
     return value;
 }

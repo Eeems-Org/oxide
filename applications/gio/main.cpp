@@ -32,7 +32,7 @@ int main(int argc, char *argv[]){
     parser.applicationDescription();
     parser.addHelpOption();
     parser.addOption(ICommand::versionOption());
-    parser.addPositionalArgument("command", ICommand::commandsHelp());
+    parser.addPositionalArgument("Commands:", ICommand::commandsHelp(), "COMMAND");
     parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsPositionalArguments);
     parser.parse(app.arguments());
     parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsOptions);
