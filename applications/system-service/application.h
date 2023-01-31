@@ -123,6 +123,7 @@ class Application : public QObject{
     Q_PROPERTY(int state READ state)
     Q_PROPERTY(bool systemApp READ systemApp)
     Q_PROPERTY(bool hidden READ hidden)
+    Q_PROPERTY(bool transient READ transient)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
     Q_PROPERTY(QString splash READ splash WRITE setSplash NOTIFY splashChanged)
     Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
@@ -253,6 +254,7 @@ public:
         }
     }
     bool systemApp() { return flags().contains("system"); }
+    bool transient() { return flags().contains("transient"); }
     bool hidden() { return flags().contains("hidden"); }
     int type() { return (int)value("type", 0).toInt(); }
     int state(){

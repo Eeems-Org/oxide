@@ -15,6 +15,7 @@ HEADERS += \
     cat.h \
     common.h \
     help.h \
+    launch.h \
     open.h \
     version.h
 

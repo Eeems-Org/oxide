@@ -11,6 +11,7 @@ using namespace codes::eeems::oxide1;
 
 const QList<QString> SystemFlags {
     "system",
+    "transient",
 };
 const QList<QString> Flags {
     "autoStart",

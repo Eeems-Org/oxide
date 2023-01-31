@@ -10,6 +10,7 @@
 #include <help.h>
 #include <version.h>
 #include <open.h>
+#include <launch.h>
 
 using namespace Oxide::Sentry;
 using namespace Oxide::Applications;
@@ -26,6 +27,7 @@ int main(int argc, char *argv[]){
     Q_UNUSED(new VersionCommand());
     Q_UNUSED(new CatCommand());
     Q_UNUSED(new OpenCommand());
+    Q_UNUSED(new LaunchCommand());
 
     QCommandLineParser parser;
     parser.setApplicationDescription("GIO command line tool");

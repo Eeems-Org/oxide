@@ -120,7 +120,6 @@ public:
         for(auto item : runningApplications){
             auto path = item.value<QDBusObjectPath>().path();
             Application app(OXIDE_SERVICE, path, bus, this);
-            qDebug() << app.name() << app.hidden();
             if(app.hidden()){
                 continue;
             }

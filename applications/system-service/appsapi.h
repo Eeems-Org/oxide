@@ -611,7 +611,7 @@ private:
             settings.endArray();
             for(auto name : applications.keys()){
                 auto app = applications[name];
-                if(!names.contains(name) && !app->systemApp()){
+                if(!names.contains(name) && !app->systemApp() && !app->transient()){
                     app->unregisterNoSecurityCheck();
                 }
             }

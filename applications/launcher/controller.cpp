@@ -206,7 +206,7 @@ QList<QObject*> Controller::getApps(){
     for(auto item : appsApi->applications()){
         auto path = item.value<QDBusObjectPath>().path();
         Application app(OXIDE_SERVICE, path, bus, this);
-        if(app.hidden()){
+        if(app.hidden() || app.transient()){
             continue;
         }
         auto name = app.name();

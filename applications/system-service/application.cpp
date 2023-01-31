@@ -426,6 +426,9 @@ void Application::finished(int exitCode){
     appsAPI->resumeIfNone();
     emit appsAPI->applicationExited(qPath(), exitCode);
     umountAll();
+    if(transient()){
+        unregister();
+    }
 }
 void Application::errorOccurred(QProcess::ProcessError error){
     switch(error){
@@ -433,6 +436,9 @@ void Application::errorOccurred(QProcess::ProcessError error){
             qDebug() << "Application" << name() << "failed to start.";
             emit exited(-1);
             emit appsAPI->applicationExited(qPath(), -1);
+            if(transient()){
+                unregister();
+            }
         break;
         case QProcess::Crashed:
             qDebug() << "Application" << name() << "crashed.";
