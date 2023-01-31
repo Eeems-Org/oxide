@@ -5,9 +5,8 @@ QTextStream& qStdOut(){
     return ts;
 }
 
-static auto _commands = new QMap<QString, Command>;
-
-QMap<QString, Command>* ICommand::commands(){ return _commands; }
+QMap<QString, Command>* ICommand::commands = new QMap<QString, Command>;
+QCommandLineParser* ICommand::parser = nullptr;
 
 QCommandLineOption ICommand::versionOption(){
     static QCommandLineOption value(
@@ -19,37 +18,38 @@ QCommandLineOption ICommand::versionOption(){
 
 QString ICommand::commandsHelp(){
     QString value;
-    for(const auto& name : _commands->keys()){
-        const auto& item = _commands->value(name);
+    for(const auto& name : commands->keys()){
+        const auto& item = commands->value(name);
         value += QString("%1\t%2\n").arg(name, item.help);
     }
     return value;
 }
-int ICommand::exec(QCommandLineParser& parser){
-    QStringList args = parser.positionalArguments();
+int ICommand::exec(QCommandLineParser& _parser){
+    parser = &_parser;
+    QStringList args = _parser.positionalArguments();
     if (args.isEmpty()) {
-        parser.showHelp(EXIT_FAILURE);
+        _parser.showHelp(EXIT_FAILURE);
     }
-    if(parser.isSet(ICommand::versionOption())){
-        parser.showVersion();
+    if(_parser.isSet(ICommand::versionOption())){
+        _parser.showVersion();
     }
-    auto name = args.first().toStdString().c_str();
-    if(!_commands->contains(name)){
-        parser.showHelp(EXIT_FAILURE);
+    auto name = args.first();
+    if(!commands->contains(name)){
+        _parser.showHelp(EXIT_FAILURE);
     }
-    auto command = _commands->value(name).command;
-    auto res = command->arguments(parser);
+    auto command = commands->value(name).command;
+    auto res = command->arguments();
     if(res){
         return res;
     }
-    parser.process(*qApp);
-    if(parser.isSet(versionOption())){
-        parser.showHelp(EXIT_FAILURE);
+    _parser.process(*qApp);
+    if(_parser.isSet(versionOption())){
+        _parser.showHelp(EXIT_FAILURE);
     }
-    args = parser.positionalArguments();
+    args = _parser.positionalArguments();
     args.removeFirst();
     if(!command->allowEmpty && args.isEmpty()){
-        parser.showHelp(EXIT_FAILURE);
+        _parser.showHelp(EXIT_FAILURE);
     }
     return command->command(args);
 }

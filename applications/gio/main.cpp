@@ -7,6 +7,8 @@
 
 #include <common.h>
 #include <cat.h>
+#include <help.h>
+#include <version.h>
 
 using namespace Oxide::Sentry;
 using namespace Oxide::Applications;
@@ -19,7 +21,9 @@ int main(int argc, char *argv[]){
     app.setApplicationName("gio");
     app.setApplicationVersion(APP_VERSION);
 
-    Q_UNUSED(new Cat());
+    Q_UNUSED(new HelpCommand());
+    Q_UNUSED(new VersionCommand());
+    Q_UNUSED(new CatCommand());
 
     QCommandLineParser parser;
     parser.setApplicationDescription("GIO command line tool");
