@@ -20,6 +20,7 @@ HEADERS += \
     mkdir.h \
     open.h \
     remove.h \
+    rename.h \
     version.h
 
 TARGET = gio

@@ -14,6 +14,7 @@
 #include <open.h>
 #include <launch.h>
 #include <remove.h>
+#include <rename.h>
 
 using namespace Oxide::Sentry;
 using namespace Oxide::Applications;
@@ -39,7 +40,7 @@ int main(int argc, char *argv[]){
     O_COMMAND_STUB(mount);
     O_COMMAND_STUB(move);
     STATIC_INSTANCE(OpenCommand);
-    O_COMMAND_STUB(rename);
+    STATIC_INSTANCE(RenameCommand);
     STATIC_INSTANCE(RemoveCommand);
     O_COMMAND_STUB(save);
     O_COMMAND_STUB(set);
