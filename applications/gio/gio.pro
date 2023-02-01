@@ -19,6 +19,7 @@ HEADERS += \
     launch.h \
     mkdir.h \
     open.h \
+    remove.h \
     version.h
 
 TARGET = gio

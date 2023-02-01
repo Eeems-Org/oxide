@@ -7,21 +7,17 @@
 #include <QCommandLineOption>
 
 // [OPTION...] SOURCE... DESTINATION
-class MkdirCommand : ICommand{
+class RemoveCommand : ICommand{
     O_COMMAND(
-        MkdirCommand, "mkdir",
-        "Creates directories."
+        RemoveCommand, "remove",
+        "Deletes each given file."
     )
     int arguments() override{
-        parser->addOption(parentOption);
-        parser->addPositionalArgument("LOCATION", "The directories to create", "LOCATION...");
+        parser->addOption(forceOption);
+        parser->addPositionalArgument("LOCATION", "The locations to remove", "LOCATION...");
         return EXIT_SUCCESS;
     }
     int command(const QStringList& args) override{
-        auto mkdirArgs = QStringList();
-        if(parser->isSet(parentOption)){
-            mkdirArgs.append("-p");
-        }
         auto* p = new QProcess();
         p->setInputChannelMode(QProcess::ForwardedInputChannel);
         p->setProcessChannelMode(QProcess::ForwardedChannels);
@@ -34,25 +30,31 @@ class MkdirCommand : ICommand{
                 continue;
             }
             QFileInfo info(path);
-            if(info.exists()){
-                GIO_ERROR(url, path, "Error creating directory", "File exists");
-                failed = true;
+            if(!info.exists()){
+                if(!parser->isSet(forceOption)){
+                    GIO_ERROR(url, path, "Error removing file", "No such file or directory");
+                    failed = true;
+                }
                 continue;
             }
-
-            p->start("mkdir", QStringList() << mkdirArgs << path);
+            QStringList rmArgs;
+            if(info.isDir()){
+                rmArgs.append("rmdir");
+            }else{
+                rmArgs.append("rm");
+                rmArgs.append("-f");
+            }
+            p->start("busybox", QStringList() << rmArgs << path);
             qApp->processEvents();
             p->waitForFinished();
-            if(p->exitCode()){
-                failed = true;
-            }
+            failed = failed || p->exitCode();
         }
         p->deleteLater();
         return failed ? EXIT_FAILURE : EXIT_SUCCESS;
     }
 private:
-    QCommandLineOption parentOption = QCommandLineOption(
-        {"p", "parent"},
-        "Create parent directories when necessary."
+    QCommandLineOption forceOption = QCommandLineOption(
+        {"f", "force"},
+        "Ignore non-existent and non-deletable files."
     );
 };
