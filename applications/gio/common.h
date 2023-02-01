@@ -9,11 +9,12 @@
 
 QTextStream& qStdOut();
 
-#define GIO_ERROR(url, path, error) \
+#define GIO_ERROR(url, path, message, error) \
     qDebug() \
         << "gio:" \
         << url.toString().toStdString().c_str() \
-        << ": Error opening file " \
+        << ": " \
+        << message \
         << QFileInfo(path).absoluteFilePath().toStdString().c_str() \
         << ": " \
         << error;
@@ -39,6 +40,17 @@ public: \
     )
 
 #define O_COMMAND(...) O_COMMAND_X(__VA_ARGS__)(__VA_ARGS__)
+#define STATIC_INSTANCE(_class) Q_UNUSED(new _class());
+#define O_COMMAND_STUB(_name) \
+    class _name ## Command : ICommand{ \
+        O_COMMAND(_name ## Command, #_name, "NOT IMPLEMENTED") \
+        int arguments() override{ return EXIT_FAILURE; } \
+        int command(const QStringList& args) override{ \
+            Q_UNUSED(args) \
+            return EXIT_FAILURE; \
+        } \
+    }; \
+    STATIC_INSTANCE(_name ## Command);
 
 class ICommand;
 
@@ -62,4 +74,5 @@ public:
 
 protected:
     bool allowEmpty = false;
+    QUrl urlFromPath(const QString& path);
 };

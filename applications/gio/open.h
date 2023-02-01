@@ -18,7 +18,7 @@ class OpenCommand : ICommand{
                 url.setScheme("file");
             }
             if(!url.isLocalFile()){
-                GIO_ERROR(url, path, "No such file or directory");
+                GIO_ERROR(url, path, "Error while parsing path", "Path is not a local file");
                 continue;
             }
             QProcess::execute("xdg-open", QStringList() << url.toString());

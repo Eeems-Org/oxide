@@ -8,8 +8,6 @@
 class HelpCommand : ICommand{
     O_COMMAND(HelpCommand, "help", "Print help", true)
     int arguments() override{
-        parser->clearPositionalArguments();
-        parser->addPositionalArgument("", "", "help");
         parser->addPositionalArgument("Commands:", commandsHelp(), "[COMMAND]");
         return EXIT_SUCCESS;
     }

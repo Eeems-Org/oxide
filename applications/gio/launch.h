@@ -22,28 +22,26 @@ class LaunchCommand : ICommand{
     }
     int command(const QStringList& args) override{
         const auto& path = args.first();
-        auto url = QUrl::fromUserInput(path, QDir::currentPath(), QUrl::AssumeLocalFile);
-        if(url.scheme().isEmpty()){
-            url.setScheme("file");
-        }
+        auto url = urlFromPath(path);
         if(!url.isLocalFile()){
-            GIO_ERROR(url, path, "No such file or directory");
+            GIO_ERROR(url, path, "Error while parsing path", "Path is not a local file");
             return EXIT_FAILURE;
         }
-        if(QFileInfo(url.path()).suffix() != "oxide"){
-            GIO_ERROR(url, path, "Invalid extension");
+        auto suffix = QFileInfo(url.path()).suffix();
+        if(suffix != "oxide"){
+            GIO_ERROR(url, path, "Unhandled file extension", suffix);
             return EXIT_FAILURE;
         }
         auto reg = getRegistration(path);
         if(reg.isEmpty()){
-            GIO_ERROR(url, path, "Invalid application registration: Invalid JSON");
+            GIO_ERROR(url, path, "Invalid application registration", "Invalid JSON");
             return EXIT_FAILURE;
         }
         if(!reg.contains("flags")){
             reg["flags"] = QJsonArray();
         }
         if(!reg["flags"].isArray()){
-            GIO_ERROR(url, path, "Invalid application registration: Key \"flags\" must be an array");
+            GIO_ERROR(url, path, "Invalid application registration", "Key \"flags\" must be an array");
             return EXIT_FAILURE;
         }
         auto flags = reg["flags"].toArray();
@@ -62,28 +60,27 @@ class LaunchCommand : ICommand{
         })){
             for(const auto& error : errors){
                 if(error.level == ErrorLevel::Error || error.level == ErrorLevel::Critical){
-                    GIO_ERROR(url, path, error)
+                    GIO_ERROR(url, path, "Invalid application registration", error)
                 }
             }
-            GIO_ERROR(url, path, "Invalid application registration");
             return EXIT_FAILURE;
         }
         auto bus = QDBusConnection::systemBus();
         General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
         QDBusObjectPath qpath = api.requestAPI("apps");
         if(qpath.path() == "/"){
-            GIO_ERROR(url, path, "Unable to get apps API");
+            GIO_ERROR(url, path, "Error registering transient application", "Unable to get apps API");
             return EXIT_FAILURE;
         }
         Apps apps(OXIDE_SERVICE, qpath.path(), bus);
         auto properties = registrationToMap(reg, name);
         if(properties.isEmpty()){
-            GIO_ERROR(url, path, "Unable to convert application registration to QVariantMap");
+            GIO_ERROR(url, path, "Error registering transient application", "Unable to convert application registration to QVariantMap");
             return EXIT_FAILURE;
         }
         qpath = apps.registerApplication(properties);
         if(qpath.path() == "/"){
-            GIO_ERROR(url, path, "Failed to register transient application: " << name.toStdString().c_str());
+            GIO_ERROR(url, path, "Error registering transient application", "Failed to register" << name.toStdString().c_str());
             return EXIT_FAILURE;
         }
         Application app(OXIDE_SERVICE, qpath.path(), bus);

@@ -7,6 +7,7 @@
 
 #include <common.h>
 #include <cat.h>
+#include <copy.h>
 #include <help.h>
 #include <version.h>
 #include <open.h>
@@ -23,11 +24,25 @@ int main(int argc, char *argv[]){
     app.setApplicationName("gio");
     app.setApplicationVersion(APP_VERSION);
 
-    Q_UNUSED(new HelpCommand());
-    Q_UNUSED(new VersionCommand());
-    Q_UNUSED(new CatCommand());
-    Q_UNUSED(new OpenCommand());
-    Q_UNUSED(new LaunchCommand());
+    STATIC_INSTANCE(HelpCommand);
+    STATIC_INSTANCE(VersionCommand);
+    STATIC_INSTANCE(CatCommand);
+    STATIC_INSTANCE(CopyCommand);
+    O_COMMAND_STUB(info);
+    STATIC_INSTANCE(LaunchCommand);
+    O_COMMAND_STUB(list);
+    O_COMMAND_STUB(mime);
+    O_COMMAND_STUB(mkdir);
+    O_COMMAND_STUB(monitor);
+    O_COMMAND_STUB(mount);
+    O_COMMAND_STUB(move);
+    STATIC_INSTANCE(OpenCommand);
+    O_COMMAND_STUB(rename);
+    O_COMMAND_STUB(remove);
+    O_COMMAND_STUB(save);
+    O_COMMAND_STUB(set);
+    O_COMMAND_STUB(trash);
+    O_COMMAND_STUB(tree);
 
     QCommandLineParser parser;
     parser.setApplicationDescription("GIO command line tool");

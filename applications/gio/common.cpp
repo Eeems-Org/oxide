@@ -1,5 +1,8 @@
 #include "common.h"
 
+#include <QUrl>
+#include <QDir>
+
 QTextStream& qStdOut(){
     static QTextStream ts( stdout );
     return ts;
@@ -81,6 +84,8 @@ int ICommand::exec(QCommandLineParser& _parser){
         _parser.showHelp(EXIT_FAILURE);
     }
     auto command = commands->value(name).command;
+    parser->clearPositionalArguments();
+    parser->addPositionalArgument("", "", name);
     auto res = command->arguments();
     if(res){
         return res;
@@ -98,3 +103,10 @@ int ICommand::exec(QCommandLineParser& _parser){
 }
 
 ICommand::ICommand(bool allowEmpty) : allowEmpty(allowEmpty){}
+QUrl ICommand::urlFromPath(const QString& path){
+    auto url = QUrl::fromUserInput(path, QDir::currentPath(), QUrl::AssumeLocalFile);
+    if(url.scheme().isEmpty()){
+        url.setScheme("file");
+    }
+    return url;
+}

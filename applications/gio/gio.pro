@@ -14,6 +14,7 @@ SOURCES += \
 HEADERS += \
     cat.h \
     common.h \
+    copy.h \
     help.h \
     launch.h \
     open.h \
