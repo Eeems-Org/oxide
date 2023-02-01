@@ -44,9 +44,13 @@ public: \
 #define O_COMMAND_STUB(_name) \
     class _name ## Command : ICommand{ \
         O_COMMAND(_name ## Command, #_name, "NOT IMPLEMENTED") \
-        int arguments() override{ return EXIT_FAILURE; } \
+        int arguments() override{ \
+            qDebug() << "This has not been implemented."; \
+            return EXIT_FAILURE; \
+        } \
         int command(const QStringList& args) override{ \
             Q_UNUSED(args) \
+            qDebug() << "This has not been implemented."; \
             return EXIT_FAILURE; \
         } \
     }; \
