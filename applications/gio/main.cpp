@@ -8,6 +8,7 @@
 #include <common.h>
 #include <cat.h>
 #include <copy.h>
+#include <mkdir.h>
 #include <help.h>
 #include <version.h>
 #include <open.h>
@@ -32,7 +33,7 @@ int main(int argc, char *argv[]){
     STATIC_INSTANCE(LaunchCommand);
     O_COMMAND_STUB(list);
     O_COMMAND_STUB(mime);
-    O_COMMAND_STUB(mkdir);
+    STATIC_INSTANCE(MkdirCommand);
     O_COMMAND_STUB(monitor);
     O_COMMAND_STUB(mount);
     O_COMMAND_STUB(move);

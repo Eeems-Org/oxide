@@ -17,6 +17,7 @@ HEADERS += \
     copy.h \
     help.h \
     launch.h \
+    mkdir.h \
     open.h \
     version.h
 
