@@ -97,6 +97,7 @@ class CopyCommand : ICommand{
         p->deleteLater();
         return res;
     }
+
 private:
     QCommandLineOption noTargetDirectoryOption = QCommandLineOption(
         {"T", "no-target-directory"},

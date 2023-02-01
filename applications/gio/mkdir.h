@@ -50,6 +50,7 @@ class MkdirCommand : ICommand{
         p->deleteLater();
         return failed ? EXIT_FAILURE : EXIT_SUCCESS;
     }
+
 private:
     QCommandLineOption parentOption = QCommandLineOption(
         {"p", "parent"},

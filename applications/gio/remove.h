@@ -52,6 +52,7 @@ class RemoveCommand : ICommand{
         p->deleteLater();
         return failed ? EXIT_FAILURE : EXIT_SUCCESS;
     }
+
 private:
     QCommandLineOption forceOption = QCommandLineOption(
         {"f", "force"},
