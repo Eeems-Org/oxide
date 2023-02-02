@@ -54,6 +54,36 @@ Q_DECLARE_METATYPE(WifiNetworks);
  */
 namespace Oxide {
     /*!
+     * \brief Execute a program and return it's output
+     * \param Program to run
+     * \param Arguments to pass to the program
+     * \return Output if it ran. Otherwise NULL.
+     */
+    LIBOXIDE_EXPORT QString execute(const QString& program, const QStringList& args);
+    /*!
+     * \brief Try to get a lock
+     * \param Path to the lock file
+     * \return File descriptor of the lock file if a positive number or -1 if it errored
+     */
+    LIBOXIDE_EXPORT int tryGetLock(char const *lockName);
+    /*!
+     * \brief Release a lock file
+     * \param File descriptor of the lock file
+     * \param Path to the lock file
+     */
+    LIBOXIDE_EXPORT void releaseLock(int fd, char const* lockName);
+    /*!
+     * \brief Checks to see if a process exists
+     * \return If the process exists
+     */
+    LIBOXIDE_EXPORT bool processExists(pid_t pid);
+    /*!
+     * \brief Get list of pids that have a file open
+     * \param File to check
+     * \return list of pids that have the file open
+     */
+    LIBOXIDE_EXPORT QList<int> lsof(const QString& path);
+    /*!
      * \brief Run code on the main Qt thread
      * \param callback The code to run on the main thread
      *

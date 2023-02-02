@@ -63,15 +63,15 @@ void Application::launchNoSecurityCheck(){
             m_process->setUser(user());
             m_process->setGroup(group());
             if(p_stdout == nullptr){
-                int fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_INFO, 1);
-                if (fd < 0) {
-                    errno = -fd;
-                    qDebug() << "Failed to create stdout fd:" << -fd;
+                p_stdout_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_INFO, 1);
+                if (p_stdout_fd < 0) {
+                    errno = -p_stdout_fd;
+                    qDebug() << "Failed to create stdout fd:" << -p_stdout_fd;
                 }else{
-                    FILE* log = fdopen(fd, "w");
+                    FILE* log = fdopen(p_stdout_fd, "w");
                     if(!log){
                         qDebug() << "Failed to create stdout FILE:" << errno;
-                        close(fd);
+                        close(p_stdout_fd);
                     }else{
                         p_stdout = new QTextStream(log);
                         qDebug() << "Opened stdout for " << name();
@@ -79,15 +79,15 @@ void Application::launchNoSecurityCheck(){
                 }
             }
             if(p_stderr == nullptr){
-                int fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_ERR, 1);
-                if (fd < 0) {
-                    errno = -fd;
-                    qDebug() << "Failed to create sterr fd:" << -fd;
+                p_stderr_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_ERR, 1);
+                if (p_stderr_fd < 0) {
+                    errno = -p_stderr_fd;
+                    qDebug() << "Failed to create sterr fd:" << -p_stderr_fd;
                 }else{
-                    FILE* log = fdopen(fd, "w");
+                    FILE* log = fdopen(p_stderr_fd, "w");
                     if(!log){
                         qDebug() << "Failed to create stderr FILE:" << errno;
-                        close(fd);
+                        close(p_stderr_fd);
                     }else{
                         p_stderr = new QTextStream(log);
                         qDebug() << "Opened stderr for " << name();

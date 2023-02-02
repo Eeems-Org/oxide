@@ -156,10 +156,20 @@ public:
         }
         umountAll();
         if(p_stdout != nullptr){
+            p_stdout->flush();
             delete p_stdout;
         }
+        if(p_stdout_fd > 0){
+            close(p_stdout_fd);
+            p_stdout_fd = -1;
+        }
         if(p_stderr != nullptr){
+            p_stderr->flush();
             delete p_stderr;
+        }
+        if(p_stderr_fd > 0){
+            close(p_stderr_fd);
+            p_stderr_fd = -1;
         }
     }
 
@@ -493,7 +503,9 @@ private:
     QMap<QString, FifoHandler*> fifos;
     Oxide::Sentry::Transaction* transaction = nullptr;
     Oxide::Sentry::Span* span = nullptr;
+    int p_stdout_fd = -1;
     QTextStream* p_stdout = nullptr;
+    int p_stderr_fd = -1;
     QTextStream* p_stderr = nullptr;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
@@ -575,8 +587,8 @@ private:
             return;
         }
         auto cpath = path.toStdString();
-        ::umount(cpath.c_str());
-        if(isMounted(path)){
+        auto ret = ::umount2(cpath.c_str(), MNT_DETACH);
+        if((ret && ret != EINVAL && ret != ENOENT) || isMounted(path)){
             qDebug() << "umount failed" << path;
             return;
         }
