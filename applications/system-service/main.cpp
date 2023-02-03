@@ -102,9 +102,9 @@ int main(int argc, char* argv[]){
             return EXIT_FAILURE;
         }
         qDebug() << "Attempting to stop all other instances of tarnish" << lockPath;
-        for(auto pid : Oxide::lsof(lockPath)){
-            if(Oxide::processExists(pid)){
-                stopProcess(pid);
+        for(auto lockingPid : Oxide::lsof(lockPath)){
+            if(Oxide::processExists(lockingPid)){
+                stopProcess(lockingPid);
             }
         }
         lock = Oxide::tryGetLock(lockPath);
