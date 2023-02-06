@@ -15,6 +15,7 @@ SUBDIRS = \
     update-desktop-database \
     xdg-desktop-icon \
     xdg-desktop-menu \
+    xdg-icon-resource \
     xdg-open \
     xdg-settings
 
@@ -33,5 +34,6 @@ xdg-desktop-menu.depends = system-service
 xdg-open.depends = system-service
 gio.depends = system-service
 xdg-settings.depends = system-service
+xdg-icon-resource.depends = system-service
 
 INSTALLS += $$SUBDIRS

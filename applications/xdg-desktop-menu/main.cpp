@@ -110,6 +110,7 @@ int uninstall(QCommandLineParser& parser){
         "mode"
     );
     parser.addOption(modeOption);
+    parser.addPositionalArgument("files", "Application registration(s) to install.", "directory-file(s) desktop-file(s)");
 
     auto args = positionArguments(parser);
     bool failure = false;
@@ -171,7 +172,7 @@ int main(int argc, char *argv[]){
         "install      Install one or more application registration.\n"
         "uninstall    Uninstall one or more application registration.\n"
         "forceupdate  Force an update of the application registration \n"
-        "             cache.\n"
+        "              cache.\n"
     );
 
     parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsPositionalArguments);
