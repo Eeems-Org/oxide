@@ -19,6 +19,7 @@
  * \brief Application directory location
  */
 #define OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY "/opt/usr/share/applications"
+#define OXIDE_ICONS_DIRECTORY "/opt/usr/share/icons"
 
 /*!
  * \brief The applications namespace
@@ -164,5 +165,28 @@ namespace Oxide::Applications{
      * \return If the application was successfully added
      */
     LIBOXIDE_EXPORT bool addToTarnishCache(const QString& name, const QJsonObject& app);
+    /*!
+     * \brief Get the path to the directory that an icon would be stored in.
+     * \param Size of the icon.
+     * \param Icon theme. Default is hicolor.
+     * \param Icon context. Default is apps.
+     * \return Path to the directory that would contain the icon.
+     */
+    LIBOXIDE_EXPORT QString iconDirPath(int size, const QString& theme = "hicolor", const QString& context = "apps");
+    /*!
+     * \brief Get the path to an icon.
+     * \param Name of the icon.
+     * \param Size of the icon.
+     * \param Icon theme. Default is hicolor.
+     * \param Icon context. Default is apps.
+     * \return Path to the icon.
+     */
+    LIBOXIDE_EXPORT QString iconPath(const QString& name, int size, const QString& theme = "hicolor", const QString& context = "apps");
+    /*!
+     * \brief Get the path to an icon from an icon name spec.
+     * \param Icon name spec using the following format: [theme:][context:]{name}-{size}. e.g. oxide:splash:xochitl-702
+     * \return Path to the icon. An empty string if it failed to parse the spec.
+     */
+    LIBOXIDE_EXPORT QString iconPath(const QString& spec);
 }
 /*! @} */

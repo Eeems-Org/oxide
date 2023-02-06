@@ -22,8 +22,8 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-icons.files = ../../assets/etc/draft/icons/oxide-splash.png
-icons.path  = /opt/etc/draft/icons
+icons.files = ../../assets/opt/usr/share/icons/oxide/702x702/splash/oxide.png
+icons.path  = /opt/usr/share/icons/oxide/702x702/splash/
 INSTALLS += icons
 
 configFile.files = ../../assets/etc/oxide.conf

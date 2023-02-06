@@ -8,7 +8,7 @@
 using namespace Oxide::Sentry;
 using namespace Oxide::Applications;
 
-#define ICON_DIR "/opt/usr/share/icons"
+#define ICON_DIR OXIDE_ICONS_DIRECTORY
 
 QCommandLineOption versionOption(
     {"v", "version"},
@@ -59,16 +59,17 @@ QStringList positionArguments(QCommandLineParser& parser, bool allowEmpty = fals
     }
     return args;
 }
-QString iconDir(QCommandLineParser& parser){
-    return QString(ICON_DIR "/%1/%2x%2/%3").arg(
-        parser.value(themeOption),
-        parser.value(sizeOption),
-        parser.value(contextOption)
-    );
-}
-QString iconFile(QCommandLineParser& parser, const QString& name){
-    return QString("%1/%2.png").arg(iconDir(parser), name);
-}
+QString iconDir(QCommandLineParser& parser){ return Oxide::Applications::iconDirPath(
+    parser.value(sizeOption).toUInt(),
+    parser.value(themeOption),
+    parser.value(contextOption)
+); }
+QString iconFile(QCommandLineParser& parser, const QString& name){ return Oxide::Applications::iconPath(
+    name,
+    parser.value(sizeOption).toUInt(),
+    parser.value(themeOption),
+    parser.value(contextOption)
+); }
 
 int install(QCommandLineParser& parser){
     parser.addPositionalArgument("", "", "install [options]");

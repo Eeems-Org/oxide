@@ -2,8 +2,8 @@
         "displayName": "Screenshots",
         "description": "View and manage screenshots",
         "bin": "/opt/bin/anxiety",
-        "icon": "/opt/etc/draft/icons/image.svg",
-        "splash": "/opt/etc/draft/icons/anxiety-splash.png",
+        "icon": "oxide:image-64",
+        "splash": "oxide:splash:anxiety-702",
         "flags": [],
         "type": "foreground",
         "permissions": ["screen"]

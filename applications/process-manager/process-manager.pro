@@ -17,12 +17,14 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-icons.path = /opt/etc/draft/icons
-icons.files += \
-    ../../assets/etc/draft/icons/erode.svg \
-    ../../assets/etc/draft/icons/erode-splash.png
+icons.path = /opt/usr/share/icons/oxide/48x48/apps/
+icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/erode.png
+INSTALLS += icon
 
-INSTALLS += icons
+splash.path = /opt/usr/share/icons/oxide/702x702/splash/
+splash.files += ../../assets/opt/usr/share/icons/oxide/702x702/splash/erode.png
+INSTALLS += splash
+
 
 HEADERS += \
     controller.h \

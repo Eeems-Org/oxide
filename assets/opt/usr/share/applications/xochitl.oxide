@@ -2,7 +2,7 @@
     "displayName": "Xochitl",
     "description": "Read documents and take notes",
     "bin": "/opt/bin/xochitl",
-    "icon": "/opt/etc/draft/icons/xochitl.png",
+    "icon": "oxide:xochitl-48",
     "flags": ["nosplash", "chroot"],
     "permissions": ["power"],
     "directories": [

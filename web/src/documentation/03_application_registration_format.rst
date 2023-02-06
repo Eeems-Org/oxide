@@ -133,7 +133,14 @@ Properties
 | icon             | string       | No       | Path to an image      |
 |                  |              |          | file to use as the    |
 |                  |              |          | icon for this         |
-|                  |              |          | application.          |
+|                  |              |          | application. Or an    |
+|                  |              |          | icon spec.            |
++------------------+--------------+----------+-----------------------+
+| splash           | string       | No       | Path to an image      |
+|                  |              |          | file to use as the    |
+|                  |              |          | splash screen for     |
+|                  |              |          | this application. Or  |
+|                  |              |          | an icon spec.         |
 +------------------+--------------+----------+-----------------------+
 | user             | string       | No       | User to run this      |
 |                  |              |          | application as.       |
@@ -226,3 +233,17 @@ Properties
 |                  |              |          | stopped               |
 +------------------+--------------+----------+-----------------------+
 
+Icon Spec
+=========
+
+Icon specifications can be in the following format: ``[theme:][context:]{name}-{size}``
+
+Some examples:
+
+- ``oxide:splash:xochitl-702``
+- ``oxide:apps:xochitl-48``
+- ``oxide:xochitl-48``
+- ``xochitl-48``
+
+You can find available icons in ``/opt/usr/share/icons``. The default theme is
+hicolor, and the default context is apps.

@@ -274,15 +274,35 @@ public:
         return stateNoSecurityCheck();
     }
     int stateNoSecurityCheck();
-    QString icon() { return value("icon", "").toString(); }
+    QString icon(){
+        auto _icon = value("icon", "").toString();
+        if(_icon.isEmpty() || !_icon.contains("-") || QFile::exists(_icon)){
+            return _icon;
+        }
+        auto path = Oxide::Applications::iconPath(_icon);
+        if(path.isEmpty()){
+            return _icon;
+        }
+        return path;
+    }
     void setIcon(QString icon){
         if(!hasPermission("permissions")){
             return;
         }
         setValue("icon", icon);
-        emit iconChanged(icon);
+        emit iconChanged(this->icon());
     }
-    QString splash() { return value("splash", "").toString(); }
+    QString splash(){
+        auto _splash = value("splash", "").toString();
+        if(_splash.isEmpty() || !_splash.contains("-") || QFile::exists(_splash)){
+            return _splash;
+        }
+        auto path = Oxide::Applications::iconPath(_splash);
+        if(path.isEmpty()){
+            return _splash;
+        }
+        return path;
+    }
     void setSplash(QString splash){
         if(!hasPermission("permissions")){
             return;

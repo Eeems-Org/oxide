@@ -18,12 +18,13 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-icons.files += \
-    ../../assets/etc/draft/icons/image.svg \
-    ../../assets/etc/draft/icons/anxiety-splash.png
-
-icons.path = /opt/etc/draft/icons
+icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/image.png
+icons.path = /opt/usr/share/icons/oxide/48x48/apps
 INSTALLS += icons
+
+splash.files += ../../assets/opt/usr/share/icons/oxide/702x702/splash/anxiety.png
+splash.path = /opt/usr/share/icons/oxide/702x702/splash
+INSTALLS += splash
 
 HEADERS += \
     controller.h \

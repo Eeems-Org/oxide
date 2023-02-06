@@ -43,6 +43,10 @@ applications.files = ../../assets/opt/usr/share/applications/*
 applications.path = /opt/usr/share/applications/
 INSTALLS += applications
 
+icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/xochitl.png
+icons.path = /opt/usr/share/icons/oxide/48x48/apps
+INSTALLS += icons
+
 system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)
 
 DBUS_INTERFACES += org.freedesktop.login1.xml

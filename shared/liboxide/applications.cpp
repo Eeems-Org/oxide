@@ -454,4 +454,43 @@ namespace Oxide::Applications{
         path = apps.registerApplication(properties);
         return path.path() != "/";
     }
+    QString iconDirPath(int size, const QString& theme, const QString& context){
+        return QString(OXIDE_ICONS_DIRECTORY "/%1/%2x%2/%3").arg(
+            theme,
+            QString::number(size),
+            context
+        );
+    }
+    QString iconPath(const QString& name, int size, const QString& theme, const QString& context){
+        return QString(OXIDE_ICONS_DIRECTORY "/%1/%2x%2/%3/%4.png").arg(
+            theme,
+            QString::number(size),
+            context,
+            name
+        );
+    }
+    QString iconPath(const QString& spec){
+        if(spec.isEmpty() || !spec.contains("-")){
+            return "";
+        }
+        auto parts = spec.split('-');
+        auto size = parts.last().toUInt();
+        if(size == 0){
+            return "";
+        }
+        parts.removeLast();
+        auto name = parts.join('-');
+        if(!name.contains(":")){
+            return iconPath(name, size);
+        }
+        parts = name.split(':');
+        auto len = parts.length();
+        if(len == 1 || len > 3){
+            return "";
+        }
+        if(len == 2){
+            return iconPath(parts.last(), size, parts.first());
+        }
+        return iconPath(parts.last(), size, parts.first(), parts.at(1));
+    }
 }
