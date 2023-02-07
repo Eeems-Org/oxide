@@ -2,7 +2,7 @@
         "displayName": "Screenshots",
         "description": "View and manage screenshots",
         "bin": "/opt/bin/anxiety",
-        "icon": "oxide:image-64",
+        "icon": "oxide:image-48",
         "splash": "oxide:splash:anxiety-702",
         "flags": [],
         "type": "foreground",

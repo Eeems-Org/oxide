@@ -83,8 +83,6 @@ LIBS += -lsystemd
 LIBS += -lz
 
 DISTFILES += \
-    ../../assets/opt/usr/share/applications/codes.eeems.anxiety.oxide \
-    ../../assets/opt/usr/share/applications/codes.eeems.corrupt.oxide \
     fi.w1.wpa_supplicant1.xml \
     generate_xml.sh \
     org.freedesktop.login1.xml

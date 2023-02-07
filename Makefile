@@ -62,13 +62,19 @@ _install: _make
 	mkdir -p $(CURDIR)/release
 	INSTALL_ROOT=$(CURDIR)/release $(MAKE) -C .build/oxide install
 
-.build/oxide:
+.build:
+	mkdir -p .build
+
+.build/.nobackup: .build
+	touch .build/.nobackup
+
+.build/oxide: .build/.nobackup
 	mkdir -p .build/oxide
 
 .build/oxide/Makefile: .build/oxide
 	cd .build/oxide && qmake -r $(DEFINES) ../../oxide.pro
 
-.build/sentry/libsentry.so:
+.build/sentry/libsentry.so: .build/.nobackup
 	cd shared/sentry && cmake -B ../../.build/sentry/src \
 		-DBUILD_SHARED_LIBS=ON \
 		-DSENTRY_INTEGRATION_QT=ON \
