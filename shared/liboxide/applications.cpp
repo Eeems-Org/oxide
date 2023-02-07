@@ -63,7 +63,7 @@ namespace Oxide::Applications{
         ).arg(name));
         return false;
     };
-    auto isFile = [app, &errors, isString, contains](const QString& name, const ErrorLevel& level, bool required) -> bool{
+    auto isFile = [app, &errors, isString](const QString& name, const ErrorLevel& level, bool required) -> bool{
         if(!isString(name, required)){
             return false;
         }
@@ -83,17 +83,44 @@ namespace Oxide::Applications{
         ).arg(str, name));
         return false;
     };
-    auto isImage = [app, &errors, isFile, isString, contains](const QString& name, const ErrorLevel& level, bool required) -> bool{
-        if(!isFile(name, level, required)){
+    auto isIcon = [app, &errors, isString](const QString& name, const ErrorLevel& level, bool required) -> bool{
+        if(!isString(name, required)){
+            return false;
+        }
+        if(!app.contains(name)){
             return false;
         }
         auto value = app[name].toString();
+        auto path = value;
+        if(QFile::exists(path)){
+            QImage image;
+            if(image.load(path) && !image.isNull()){
+                return true;
+            }
+            addError(level, QString(
+                "Value \"%1\" for key \"%2\" is a path to a file that is not a valid image"
+            ).arg(value, name));
+            return false;
+        }
+        path = iconPath(value);
+        if(path.isEmpty()){
+            addError(level, QString(
+                "Value \"%1\" for key \"%2\" is not a valid icon spec"
+            ).arg(value, name));
+            return false;
+        }
+        if(!QFile::exists(path)){
+            addError(level, QString(
+                "Value \"%1\" for key \"%2\" is a path that does not exist"
+            ).arg(value, name));
+            return false;
+        }
         QImage image;
-        if(image.load(value) && !image.isNull()){
+        if(image.load(path) && !image.isNull()){
             return true;
         }
         addError(level, QString(
-            "Value \"%1\" for key \"%2\" is a path to a file that is not a valid image"
+            "Value \"%1\" for key \"%2\" is an icon spec for an icon that does not exist"
         ).arg(value, name));
         return false;
     };
@@ -212,8 +239,8 @@ namespace Oxide::Applications{
             ).arg(group, e.what()));
         }
     } else shouldExit
-    isImage("icon", ErrorLevel::Warning, false);
-    if(isImage("splash", ErrorLevel::Warning, false) && flags.contains("nosplash")){
+    isIcon("icon", ErrorLevel::Warning, false);
+    if(isIcon("splash", ErrorLevel::Warning, false) && flags.contains("nosplash")){
         addError(ErrorLevel::Hint, "Key \"splash\" provided while \"flags\" contains \"nosplash\" value");
     } else shouldExit
     if(registrationToMap(app, name).isEmpty()){

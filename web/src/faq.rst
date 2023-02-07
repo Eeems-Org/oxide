@@ -34,9 +34,9 @@ How can I disable the telemetry?
 
 .. code:: bash
 
-  rot settings set telemetry false
-  rot settings set crashReport false
-  rot settings set applicationUsage false
+  xdg-settings set telemetry false
+  xdg-settings set crashReport false
+  xdg-settings set applicationUsage false
 
 Or you can compile the applications manually without the ``sentry`` feature enabled.
 
@@ -80,6 +80,12 @@ Oxide doesn't import draft applications automatically, you can import them by us
 top left of the launcher. If your application is still not listed, you may need to review the device
 logs to determine why it's failing to load. If an application is configured in draft to pass arguments
 in the ``call=`` line, it will fail to import as this is not supported by Oxide.
+
+You can check for errors with your application registration files with the following command:
+
+.. code:: bash
+
+  desktop-file-validate /opt/usr/share/applications/*.oxide
 
 How do I review my device logs?
 ===============================
