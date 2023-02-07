@@ -100,9 +100,29 @@ namespace Oxide::Applications{
      * \sa ValidationError
      */
     LIBOXIDE_EXPORT bool operator==(const ValidationError& v1, const ValidationError& v2);
+    /*!
+     * \brief Get an application registration.
+     * \param Path to application registration
+     * \return Application registration
+     */
     LIBOXIDE_EXPORT QJsonObject getRegistration(const char* path);
+    /*!
+     * \brief Get an application registration.
+     * \param Path to application registration
+     * \return Application registration
+     */
     LIBOXIDE_EXPORT QJsonObject getRegistration(const std::string& path);
+    /*!
+     * \brief Get an application registration.
+     * \param Path to application registration
+     * \return Application registration
+     */
     LIBOXIDE_EXPORT QJsonObject getRegistration(const QString& path);
+    /*!
+     * \brief Get an application registration.
+     * \param Application registration file
+     * \return Application registration
+     */
     LIBOXIDE_EXPORT QJsonObject getRegistration(QFile* file);
     /*!
      * \brief Validate a application registration file and return any errors found

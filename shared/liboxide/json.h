@@ -30,9 +30,10 @@ namespace Oxide::JSON {
     /*!
      * \brief Convert a QVariant to a JSON string
      * \param QVariant to convert
+     * \param Format to use
      * \return JSON string
      */
-    LIBOXIDE_EXPORT QString toJson(QVariant value);
+    LIBOXIDE_EXPORT QString toJson(QVariant value, QJsonDocument::JsonFormat format = QJsonDocument::Compact);
     /*!
      * \brief Convert a JSON string into a QVariant
      * \param JSON string to convert

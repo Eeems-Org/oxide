@@ -80,7 +80,7 @@ POST_TARGETDEPS += $$liboxide_liboxide_h.target $$liboxide_h.target
 QMAKE_CLEAN += $$liboxide_h.target include/liboxide/*.h
 
 include(../../qmake/common.pri)
-target.path = /opt/usr/lib
+target.path = /opt/lib
 INSTALLS += target
 
 include(../../qmake/epaper.pri)
