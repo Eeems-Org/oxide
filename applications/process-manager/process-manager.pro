@@ -19,7 +19,7 @@ INSTALLS += target
 
 icons.path = /opt/usr/share/icons/oxide/48x48/apps/
 icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/erode.png
-INSTALLS += icon
+INSTALLS += icons
 
 splash.path = /opt/usr/share/icons/oxide/702x702/splash/
 splash.files += ../../assets/opt/usr/share/icons/oxide/702x702/splash/erode.png
