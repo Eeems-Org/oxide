@@ -56,11 +56,11 @@ package:
 sentry: .build/sentry/libsentry.so
 
 _make: .build/oxide/Makefile
-	$(MAKE) -j`nproc` -C .build/oxide all
+	$(MAKE) -C .build/oxide all
 
 _install: _make
 	mkdir -p $(CURDIR)/release
-	INSTALL_ROOT=$(CURDIR)/release $(MAKE) -j`nproc` -C .build/oxide install
+	INSTALL_ROOT=$(CURDIR)/release $(MAKE) -C .build/oxide install
 
 .build/oxide:
 	mkdir -p .build/oxide
