@@ -22,6 +22,10 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
+applications.files = ../../assets/opt/usr/share/applications/codes.eeems.oxide.oxide
+applications.path = /opt/usr/share/applications/
+INSTALLS += applications
+
 icons.files = ../../assets/opt/usr/share/icons/oxide/702x702/splash/oxide.png
 icons.path  = /opt/usr/share/icons/oxide/702x702/splash/
 INSTALLS += icons
