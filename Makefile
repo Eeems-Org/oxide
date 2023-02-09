@@ -6,39 +6,44 @@ all: release
 
 # FEATURES += sentry
 
+DIST=$(CURDIR)/release
+BUILD=$(CURDIR)/.build
+
+
 ifneq ($(filter sentry,$(FEATURES)),)
 OBJ += sentry
-RELOBJ += release/opt/lib/libsentry.so
+RELOBJ += $(DIST)/opt/lib/libsentry.so
 DEFINES += 'DEFINES+="SENTRY"'
 endif
 
-OBJ += _make
-RELOBJ += _install
+OBJ += $(BUILD)/oxide/Makefile
 
 clean:
-	rm -rf .build
-	rm -rf release
+	rm -rf $(DIST) $(BUILD)
 
 release: clean build $(RELOBJ)
+	mkdir -p $(DIST)
+	INSTALL_ROOT=$(DIST) $(MAKE) -C $(BUILD)/oxide install
 
-build: $(OBJ)
+build: $(BUILD) $(OBJ)
+	$(MAKE) -C $(BUILD)/oxide all
 
 package: REV="~r$(shell git rev-list --count HEAD).$(shell git rev-parse --short HEAD)"
 package:
-	rm -rf .build/package/ dist/
 	if [ -d .git ];then \
 		echo $(REV) > version.txt; \
 	else \
 		echo "~manual" > version.txt; \
 	fi;
-	mkdir -p .build/package
-	sed "s/~VERSION~/`cat version.txt`/" ./package > .build/package/package
+	mkdir -p $(BUILD)/package
+	rm -rf $(BUILD)/package/build
+	sed "s/~VERSION~/`cat version.txt`/" ./package > $(BUILD)/package/package
 	tar \
-		--exclude='./.git' \
-		--exclude='./.build' \
-		--exclude='./dist' \
-		--exclude='./release' \
-		-czvf .build/package/oxide.tar.gz \
+		--exclude='$(CURDIR)/.git' \
+		--exclude='$(BUILD)' \
+		--exclude='$(CURDIR)/dist' \
+		--exclude='$(DIST)' \
+		-czvf $(BUILD)/package/oxide.tar.gz \
 		applications \
 		assets \
 		interfaces \
@@ -47,35 +52,29 @@ package:
 		oxide.pro \
 		Makefile
 	toltecmk \
-		-w .build/package/build \
-		-d .build/package/dist \
-		.build/package
-	mkdir dist/
-	cp -a .build/package/dist/rmall/*.ipk dist/
+		--verbose \
+		-w $(BUILD)/package/build \
+		-d $(BUILD)/package/dist \
+		$(BUILD)/package
+	mkdir -p $(DIST)
+	cp -a $(BUILD)/package/dist/rmall/*.ipk $(DIST)
 
-sentry: .build/sentry/libsentry.so
+sentry: $(BUILD)/sentry/libsentry.so
 
-_make: .build/oxide/Makefile
-	$(MAKE) -C .build/oxide all
+$(BUILD):
+	mkdir -p $(BUILD)
 
-_install: _make
-	mkdir -p $(CURDIR)/release
-	INSTALL_ROOT=$(CURDIR)/release $(MAKE) -C .build/oxide install
+$(BUILD)/.nobackup: $(BUILD)
+	touch $(BUILD)/.nobackup
 
-.build:
-	mkdir -p .build
+$(BUILD)/oxide: $(BUILD)/.nobackup
+	mkdir -p $(BUILD)/oxide
 
-.build/.nobackup: .build
-	touch .build/.nobackup
+$(BUILD)/oxide/Makefile: $(BUILD)/oxide
+	cd $(BUILD)/oxide && qmake -r $(DEFINES) $(CURDIR)/oxide.pro
 
-.build/oxide: .build/.nobackup
-	mkdir -p .build/oxide
-
-.build/oxide/Makefile: .build/oxide
-	cd .build/oxide && qmake -r $(DEFINES) ../../oxide.pro
-
-.build/sentry/libsentry.so: .build/.nobackup
-	cd shared/sentry && cmake -B ../../.build/sentry/src \
+$(BUILD)/sentry/libsentry.so: $(BUILD)/.nobackup
+	cd shared/sentry && cmake -B $(BUILD)/sentry/src \
 		-DBUILD_SHARED_LIBS=ON \
 		-DSENTRY_INTEGRATION_QT=ON \
 		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -84,9 +83,9 @@ _install: _make
 		-DSENTRY_BREAKPAD_SYSTEM=OFF \
 		-DSENTRY_EXPORT_SYMBOLS=ON \
 		-DSENTRY_PTHREAD=ON
-	cd shared/sentry && cmake --build ../../.build/sentry/src --parallel
-	cd shared/sentry && cmake --install ../../.build/sentry/src --prefix ../../.build/sentry --config RelWithDebInfo
+	cd shared/sentry && cmake --build $(BUILD)/sentry/src --parallel
+	cd shared/sentry && cmake --install $(BUILD)/sentry/src --prefix $(BUILD)/sentry --config RelWithDebInfo
 
-release/opt/lib/libsentry.so: sentry
-	mkdir -p release/opt/lib
-	cp -a .build/sentry/lib/libsentry.so release/opt/lib/
+$(DIST)/opt/lib/libsentry.so: sentry
+	mkdir -p $(DIST)/opt/lib
+	cp -a $(BUILD)/sentry/lib/libsentry.so $(DIST)/opt/lib/

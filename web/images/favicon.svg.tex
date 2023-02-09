@@ -1,0 +1,20 @@
+% Copyright (c) 2021 The Toltec Contributors
+% SPDX-License-Identifier: MIT
+%
+% Example document for the Toltec shapes library
+\documentclass[crop, tikz, border=.1cm]{standalone}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\input{remarkable}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+\begin{document}
+\begin{tikzpicture}
+    \pic (rM-pen) at (6.75, -3) {rM1};
+    \node[font=\fontsize{3}{3.5}\selectfont] at ($(rM-pen-screen-center)+(0,0.05)$) {reMarkable};
+    \node[font=\fontsize{2}{3.5}\selectfont] at ($(rM-pen-screen-center)+(0,-0.05)$) {is sleeping};
+    \pic[rotate=10] at ($(rM-pen-screen-center)+(-.4,-.4)$) {rM pen};
+\end{tikzpicture}
+\end{document}
