@@ -294,7 +294,7 @@ main > section:first-of-type > h1:first-of-type {
 
 .logo {
   display: block;
-  width: calc(var(--scaling) * 256px);
+  max-width: calc(var(--scaling) * 256px);
   margin: calc(var(--scaling) * -32px) auto;
 }
 
