@@ -26,9 +26,9 @@ runs:
         key: images-${{ hashFiles('images/*.tex') }}
     - name: Install texlive Apt packages
       if: ${{ !steps.cache-images.outputs.cache-hit }}
+      shell: bash
       run: |
-        sudo apt-get update -yq
-        sudo apt-get install -yq librsvg2-bin texlive-full pdf2svg
+        sudo apt-get update -yq && sudo apt-get install -yq --no-install-recommends librsvg2-bin texlive-full pdf2svg
     - name: Build website
       shell: bash
       run: cd web && make prod
