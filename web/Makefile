@@ -41,8 +41,9 @@ $(SRC)/_static/images/%.png: $(IMAGES)/%.png.tex
 	    -interaction nonstopmode \
 	    -output-directory=$(BUILD)/images \
 	    $*.png.tex
-	cd $(BUILD)/images && pdf2svg $*.png.pdf $*.svg
-	cd $(BUILD)/images && rsvg-convert $*.svg -o $(SRC)/_static/images/$*.png
+	cd $(BUILD)/images && \
+	    pdf2svg $*.png.pdf $*.svg && \
+	    rsvg-convert $*.svg -o $(SRC)/_static/images/$*.png
 
 $(SRC)/_static/images/favicon.png: $(SRC)/_static/images/favicon.svg
 	rsvg-convert -h 180 $(SRC)/_static/images/favicon.svg -o $(SRC)/_static/images/favicon.png

@@ -16,14 +16,16 @@ runs:
     - name: Install base Apt packages
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: graphviz libgraphviz-dev
+        packages: doxygen graphviz libgraphviz-dev
         version: 1.0
     - name: Cache Images
       uses: actions/cache@v3
       id: cache-images
       with:
-        path: src/_static/images
         key: images-${{ hashFiles('images/*.tex') }}
+        path: |
+          src/_static/images/*.png
+          src/_static/images/*.svg
     - name: Install texlive Apt packages
       if: ${{ !steps.cache-images.outputs.cache-hit }}
       shell: bash
