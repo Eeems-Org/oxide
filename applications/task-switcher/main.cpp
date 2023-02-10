@@ -16,8 +16,6 @@
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 
-#include "dbusservice_interface.h"
-
 using namespace std;
 using namespace Oxide;
 using namespace Oxide::Sentry;
@@ -48,7 +46,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("corrupt");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     auto screenProvider = new ScreenProvider(&app);
     Controller controller(&app, screenProvider);
     QQmlApplicationEngine engine;

@@ -2,6 +2,11 @@
 Usage
 =====
 
+.. raw:: html
+
+   <img src="../_static/images/gestures.svg" alt="gestures" style="width:100%;">
+   <br/>
+
 Lockscreen (decay)
 ==================
 

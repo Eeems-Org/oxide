@@ -1,0 +1,23 @@
+% Copyright (c) 2021 The Toltec Contributors
+% SPDX-License-Identifier: MIT
+%
+% Example document for the Toltec shapes library
+\documentclass[crop, tikz, border=.1cm]{standalone}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\input{remarkable}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+
+\begin{document}
+  \begin{tikzpicture}
+    \pic (rM-pen) at (6.75, -3) {rM1};
+    \node[font=\fontsize{1}{3.5}\selectfont] at ($(rM-pen-screen-top-right)+(-0.21,-1.9)$) {Starting launcher...};
+    \node[inner sep=0pt] (icon) at ($(rM-pen-screen-center)+(0,0)$){
+      \includegraphics[scale=0.3]{../../assets/opt/usr/share/icons/oxide/702x702/splash/oxide.png}
+    };
+    \pic[rotate=-25] at ($(rM-pen-screen-center)+(-.45,-.5)$) {rM pen};
+  \end{tikzpicture}
+\end{document}

@@ -34,9 +34,9 @@ How can I disable the telemetry?
 
 .. code:: bash
 
-  rot settings set telemetry false
-  rot settings set crashReport false
-  rot settings set applicationUsage false
+  xdg-settings set telemetry false
+  xdg-settings set crashReport false
+  xdg-settings set applicationUsage false
 
 Or you can compile the applications manually without the ``sentry`` feature enabled.
 
@@ -63,14 +63,17 @@ Oxide (and most other applications) on the reMarkable 2 requires
 How do I change my pin after I've set it?
 =========================================
 
-There is no way to currently trigger a pin change, but you can wipe your current pin, and trigger
-the pin setting dialog by doing the following:
+As of 2.6 you can change your pin to any 4 numbers with the following command:
 
 .. code:: bash
 
-  systemctl stop tarnish
-  rm /home/root/.config/Eeems/decay.conf
-  systemctl start tarnish
+  xdg-settings set pin <new-pin>
+
+As of 2.6 you can clear your pin to skip the lock screen with the following command:
+
+.. code:: bash
+
+  xdg-settings set pin ''
 
 
 Not all of my applications are listed?
@@ -80,6 +83,12 @@ Oxide doesn't import draft applications automatically, you can import them by us
 top left of the launcher. If your application is still not listed, you may need to review the device
 logs to determine why it's failing to load. If an application is configured in draft to pass arguments
 in the ``call=`` line, it will fail to import as this is not supported by Oxide.
+
+You can check for errors with your application registration files with the following command:
+
+.. code:: bash
+
+  desktop-file-validate /opt/usr/share/applications/*.oxide
 
 How do I review my device logs?
 ===============================
@@ -91,6 +100,13 @@ for Oxide's programs, and any application you run through Oxide, you can run the
 .. code:: bash
 
   journalctl -eau tarnish
+
+As of Oxide 2.5, you can now get logs for specific applications with the following, where
+``codes.eeems.oxide`` is the name of the application as it's been registered.
+
+.. code:: bash
+
+  journalctl -eat codes.eeems.oxide
 
 Where are the configuration files?
 ==================================

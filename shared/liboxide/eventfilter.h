@@ -1,13 +1,13 @@
 /*!
- * \file eventfilter.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
-#ifndef EVENTFILTER_H
-#define EVENTFILTER_H
+#pragma once
 
 #include <QObject>
 #include <QEvent>
 #include <QQuickItem>
-
 namespace Oxide{
     /*!
      * \brief An event filter that maps pen events to Qt touch events
@@ -31,5 +31,4 @@ namespace Oxide{
         bool eventFilter(QObject* obj, QEvent* ev);
     };
 }
-
-#endif // EVENTFILTER_H
+/*! @} */

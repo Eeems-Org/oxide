@@ -5,14 +5,13 @@
 
 #include <cstdlib>
 #include <liboxide/eventfilter.h>
+#include <liboxide/dbus.h>
 
 #include "controller.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
-
-#include "dbusservice_interface.h"
 
 using namespace codes::eeems::oxide1;
 using namespace Oxide;
@@ -39,7 +38,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("decay");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     Controller controller(&app);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();

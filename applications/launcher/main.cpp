@@ -5,7 +5,6 @@
 #include <QQuickItem>
 #include <QObject>
 #include <QMap>
-#include <QSettings>
 #include <QProcess>
 #include <QStringList>
 #include <QtDBus>
@@ -17,7 +16,6 @@
 #include <cstdlib>
 #include <signal.h>
 #include <liboxide.h>
-#include <liboxide/eventfilter.h>
 
 #include "controller.h"
 

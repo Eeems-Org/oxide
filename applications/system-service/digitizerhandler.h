@@ -21,6 +21,7 @@ using namespace std;
 
 class DigitizerHandler : public QThread {
     Q_OBJECT
+
 public:
     static DigitizerHandler* singleton_touchScreen(){
         static DigitizerHandler* instance;

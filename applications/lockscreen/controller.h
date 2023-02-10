@@ -5,17 +5,8 @@
 #include <QQuickItem>
 #include <liboxide.h>
 
-#include "dbusservice_interface.h"
-#include "systemapi_interface.h"
-#include "powerapi_interface.h"
-#include "wifiapi_interface.h"
-#include "appsapi_interface.h"
-#include "application_interface.h"
-
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
-
-#define DECAY_SETTINGS_VERSION 1
 
 enum State { Normal, PowerSaving };
 enum BatteryState { BatteryUnknown, BatteryCharging, BatteryDischarging, BatteryNotPresent };
@@ -30,9 +21,10 @@ class Controller : public QObject {
     Q_PROPERTY(bool telemetry READ telemetry WRITE setTelemetry NOTIFY telemetryChanged)
     Q_PROPERTY(bool applicationUsage READ applicationUsage WRITE setApplicationUsage NOTIFY applicationUsageChanged)
     Q_PROPERTY(bool crashReport READ crashReport WRITE setCrashReport NOTIFY crashReportChanged)
+
 public:
     Controller(QObject* parent)
-    : QObject(parent), confirmPin(), settings(this) {
+    : QObject(parent), confirmPin() {
         clockTimer = new QTimer(root);
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
@@ -94,10 +86,26 @@ public:
         }
         appsApi = new Apps(OXIDE_SERVICE, path.path(), bus, this);
 
-        settings.sync();
-        auto version = settings.value("version", 0).toInt();
-        if(version < DECAY_SETTINGS_VERSION){
-            migrate(&settings, version);
+        QSettings settings;
+        if(QFile::exists(settings.fileName())){
+            qDebug() << "Importing old settings";
+            settings.sync();
+            if(settings.contains("pin")){
+                qDebug() << "Importing old pin";
+                sharedSettings.set_pin(settings.value("pin").toString());
+            }
+            if(settings.contains("onLogin")){
+                qDebug() << "Importing old onLogin";
+                sharedSettings.set_onLogin(settings.value("onLogin").toString());
+            }
+            if(settings.contains("onFailedLogin")){
+                qDebug() << "Importing old onFailedLogin";
+                sharedSettings.set_onFailedLogin(settings.value("onFailedLogin").toString());
+            }
+            settings.clear();
+            settings.sync();
+            QFile::remove(settings.fileName());
+            sharedSettings.sync();
         }
 
         connect(&sharedSettings, &Oxide::SharedSettings::firstLaunchChanged, this, &Controller::firstLaunchChanged);
@@ -148,7 +156,7 @@ public:
             return;
         }
         // There is no PIN configuration
-        if(!settings.contains("pin")){
+        if(!sharedSettings.has_pin()){
             qDebug() << "No Pin";
             QTimer::singleShot(100, [this]{
                 stateControllerUI->setProperty("state", xochitlPin().isEmpty() ? "pinPrompt" : "import");
@@ -173,7 +181,6 @@ public:
                 setState("loading");
             });
         });
-
     }
     void launchStartupApp(){
         QDBusObjectPath path = appsApi->startupApplication();
@@ -181,13 +188,13 @@ public:
             path = appsApi->getApplicationPath("codes.eeems.oxide");
         }
         if(path.path() == "/"){
-            qWarning() << "Unable to find startup application to launch.";
+            O_WARNING("Unable to find startup application to launch.");
             return;
         }
         Application app(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus());
         app.launch();
     }
-    bool hasPin(){ return settings.contains("pin") && storedPin().length(); }
+    bool hasPin(){ return sharedSettings.has_pin() && storedPin().length(); }
     void previousApplication(){
         if(!appsApi->previousApplication()){
             launchStartupApp();
@@ -230,9 +237,9 @@ public:
                 });
             });
             return true;
-
         }else if(state == "loaded"){
             qDebug() << "PIN doesn't match!";
+            O_DEBUG(pin << "!=" << storedPin());
             onFailedLogin();
             return false;
         }
@@ -297,10 +304,16 @@ public:
         }
         stateControllerUI->setProperty("state", state);
     }
-    QString storedPin() { return settings.value("pin", "").toString(); }
+    QString storedPin() {
+        if(!sharedSettings.has_pin()){
+            O_DEBUG("Does not have pin and storedPin was called");
+            return "";
+        }
+        return sharedSettings.pin();
+    }
     void setStoredPin(QString pin) {
-        settings.setValue("pin", pin);
-        settings.sync();
+        sharedSettings.set_pin(pin);
+        sharedSettings.sync();
     }
 
     void setRoot(QObject* root){ this->root = root; }
@@ -443,31 +456,31 @@ private slots:
         // TODO handle charger
     }
     void onLogin(){
-        if(!settings.contains("onLogin")){
+        if(!sharedSettings.has_onLogin()){
             return;
         }
-        auto path = settings.value("onLogin").toString();
+        auto path = sharedSettings.onLogin();
         if(!QFile::exists(path)){
-            qWarning() << "onLogin script does not exist" << path;
+            O_WARNING("onLogin script does not exist" << path);
             return;
         }
         if(!QFileInfo(path).isExecutable()){
-            qWarning() << "onLogin script is not executable" << path;
+            O_WARNING("onLogin script is not executable" << path);
             return;
         }
         QProcess::execute(path, QStringList());
     }
     void onFailedLogin(){
-        if(!settings.contains("onFailedLogin")){
+        if(!sharedSettings.has_onFailedLogin()){
             return;
         }
-        auto path = settings.value("onFailedLogin").toString();
+        auto path = sharedSettings.onFailedLogin();
         if(!QFile::exists(path)){
-            qWarning() << "onFailedLogin script does not exist" << path;
+            O_WARNING("onFailedLogin script does not exist" << path);
             return;
         }
         if(!QFileInfo(path).isExecutable()){
-            qWarning() << "onFailedLogin script is not executable" << path;
+            O_WARNING("onFailedLogin script is not executable" << path);
             return;
         }
         QProcess::execute(path, QStringList());
@@ -475,7 +488,6 @@ private slots:
 
 private:
     QString confirmPin;
-    QSettings settings;
     General* api;
     System* systemApi;
     codes::eeems::oxide1::Power* powerApi;
@@ -509,15 +521,6 @@ private:
     QObject* getPinEntryUI(){
         pinEntryUI = root->findChild<QObject*>("pinEntry");
         return pinEntryUI;
-    }
-
-    static void migrate(QSettings* settings, int fromVersion){
-        if(fromVersion != 0){
-            throw "Unknown settings version";
-        }
-        // In the future migrate changes to settings between versions
-        settings->setValue("version", DECAY_SETTINGS_VERSION);
-        settings->sync();
     }
 
     static QString xochitlPin(){ return xochitlSettings.passcode(); }

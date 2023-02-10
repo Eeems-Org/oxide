@@ -1,7 +1,7 @@
 #ifndef BATTERYAPI_H
 #define BATTERYAPI_H
 
-#include <liboxide/power.h>
+#include <liboxide.h>
 
 #include <QObject>
 #include <QDebug>
@@ -24,6 +24,7 @@ class PowerAPI : public APIBase {
     Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged)
     Q_PROPERTY(int batteryTemperature READ batteryTemperature NOTIFY batteryTemperatureChanged)
     Q_PROPERTY(int chargerState READ chargerState NOTIFY chargerStateChanged)
+
 public:
     static PowerAPI* singleton(PowerAPI* self = nullptr){
         static PowerAPI* instance;
@@ -38,7 +39,7 @@ public:
             Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
                 singleton(this);
             });
-            Oxide::Sentry::sentry_span(t, "sysfs", "Determine power devices from sysfs", [this](Oxide::Sentry::Span* s){
+            Oxide::Sentry::sentry_span(t, "sysfs", "Determine power devices from sysfs", [this](){
                 Oxide::Power::batteries();
                 Oxide::Power::chargers();
             });
@@ -167,7 +168,7 @@ private:
                 setBatteryState(BatteryUnknown);
             }
             if(!m_batteryWarning){
-                qWarning() << "Can't find battery information";
+                O_WARNING("Can't find battery information");
                 m_batteryWarning = true;
                 emit batteryWarning();
             }
@@ -175,11 +176,11 @@ private:
         }
         if(!Oxide::Power::batteryPresent()){
             if(m_batteryState != BatteryNotPresent){
-                qWarning() << "Battery is somehow not in the device?";
+                O_WARNING("Battery is somehow not in the device?");
                 setBatteryState(BatteryNotPresent);
             }
             if(!m_batteryWarning){
-                qWarning() << "Battery is somehow not in the device?";
+                O_WARNING("Battery is somehow not in the device?");
                 m_batteryWarning = true;
                 emit batteryWarning();
             }
@@ -220,7 +221,7 @@ private:
                 setChargerState(ChargerUnknown);
             }
             if(!m_chargerWarning){
-                qWarning() << "Can't find charger information";
+                O_WARNING("Can't find charger information");
                 m_chargerWarning = true;
                 emit chargerWarning();
             }
