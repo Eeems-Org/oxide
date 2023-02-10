@@ -15,6 +15,7 @@
     <property name="state" type="i" access="read"/>
     <property name="systemApp" type="b" access="read"/>
     <property name="hidden" type="b" access="read"/>
+    <property name="transient" type="b" access="read"/>
     <property name="icon" type="s" access="readwrite"/>
     <property name="splash" type="s" access="readwrite"/>
     <property name="environment" type="a{sv}" access="read">
@@ -25,6 +26,7 @@
     <property name="user" type="s" access="read"/>
     <property name="group" type="s" access="read"/>
     <property name="directories" type="as" access="readwrite"/>
+    <property name="screenCapture" type="ay" access="read"/>
     <signal name="launched">
     </signal>
     <signal name="paused">

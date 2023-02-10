@@ -4,21 +4,19 @@
 #include <QObject>
 #include <QImage>
 #include <QQuickItem>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include <epframebuffer.h>
-
-#include "dbussettings.h"
-
-#include "dbusservice_interface.h"
-#include "screenapi_interface.h"
-#include "appsapi_interface.h"
-#include "application_interface.h"
+#include <signal.h>
+#include <liboxide.h>
 
 #include "screenprovider.h"
-#include "signalhandler.h"
 #include "appitem.h"
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide::Sentry;
+using namespace Oxide;
 
 #define CORRUPT_SETTINGS_VERSION 1
 
@@ -29,9 +27,11 @@ enum WifiState { WifiUnknown, WifiOff, WifiDisconnected, WifiOffline, WifiOnline
 
 class Controller : public QObject {
     Q_OBJECT
+
 public:
     Controller(QObject* parent, ScreenProvider* screenProvider)
-    : QObject(parent), settings(this), applications() {
+    : QObject(parent),applications() {
+        blankImage = new QImage(qApp->primaryScreen()->geometry().size(), QImage::Format_Mono);
         this->screenProvider = screenProvider;
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
@@ -68,12 +68,7 @@ public:
         connect(appsApi, &Apps::applicationLaunched, this, &Controller::reload);
         connect(appsApi, &Apps::applicationExited, this, &Controller::reload);
 
-        settings.sync();
-        auto version = settings.value("version", 0).toInt();
-        if(version < CORRUPT_SETTINGS_VERSION){
-            migrate(&settings, version);
-        }
-        saveScreen();
+        updateImage();
     }
     ~Controller(){}
 
@@ -120,7 +115,6 @@ public:
         for(auto item : runningApplications){
             auto path = item.value<QDBusObjectPath>().path();
             Application app(OXIDE_SERVICE, path, bus, this);
-            qDebug() << app.name() << app.hidden();
             if(app.hidden()){
                 continue;
             }
@@ -148,7 +142,7 @@ public:
             if(!appItem->ok()){
                 qDebug() << "Invalid item" << appItem->property("name").toString();
                 applications.removeAll(appItem);
-                delete appItem;
+                appItem->deleteLater();
             }
         }
         auto previousApplications = appsApi->previousApplications();
@@ -167,6 +161,15 @@ public:
             return aName > bIndex;
         });
         return applications;
+    }
+    Q_INVOKABLE void breadcrumb(QString category, QString message, QString type = "default"){
+#ifdef SENTRY
+        sentry_breadcrumb(category.toStdString().c_str(), message.toStdString().c_str(), type.toStdString().c_str());
+#else
+        Q_UNUSED(category);
+        Q_UNUSED(message);
+        Q_UNUSED(type);
+#endif
     }
     AppItem* getApplication(QString name){
         for(auto app : applications){
@@ -188,9 +191,42 @@ public:
         }
         stateControllerUI->setProperty("state", state);
     }
-    void saveScreen(){
-        qDebug() << "Saving screen for background...";
-        screenProvider->updateImage(EPFrameBuffer::framebuffer());
+    void updateImage(){
+        qDebug() << "Updating background...";
+        Oxide::Sentry::sentry_transaction("controller", "updateImage", [this](Oxide::Sentry::Transaction* t){
+            QImage* img = nullptr;
+            Oxide::Sentry::sentry_span(t, "previousApplications", "Get image from previous application", [this, &img](Oxide::Sentry::Span* s){
+                auto previousApplications = appsApi->previousApplications();
+                while(img == nullptr && !previousApplications.isEmpty()){
+                    auto name = previousApplications.takeLast();
+                    Oxide::Sentry::sentry_span(s, name.toStdString(), "Load image from application", [this, &img, previousApplications, name]{
+                        auto path = ((QDBusObjectPath)appsApi->getApplicationPath(name)).path();
+                        if(path == "/"){
+                            O_WARNING("Unable to get save screen for" << name);
+                            return;
+                        }
+                        auto bus = QDBusConnection::systemBus();
+                        Application app(OXIDE_SERVICE, path, bus, this);
+                        auto data = app.screenCapture();
+                        auto image = QImage::fromData(data, "JPG");
+                        if(image.isNull()){
+                            O_WARNING("Image for " << name << " is corrupt, trying next application");
+                            return;
+                        }
+                        img = new QImage(image);
+                        qDebug() << "Using save screen from " << name;
+                    });
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "update", "Update image", [this, img]{
+                if(img != nullptr){
+                    screenProvider->updateImage(img);
+                    return;
+                }
+                qWarning() << "No previous application. Using blank screen";
+                screenProvider->updateImage(blankImage);
+            });
+        });
     }
 
     void setRoot(QObject* root){ this->root = root; }
@@ -203,8 +239,8 @@ private slots:
     void sigUsr1(){
         ::kill(tarnishPid(), SIGUSR1);
         qDebug() << "Sent to the foreground...";
-        saveScreen();
         setState("loading");
+        updateImage();
     }
     void sigUsr2(){
         qDebug() << "Sent to the background...";
@@ -232,33 +268,19 @@ private slots:
     }
 
 private:
-    QSettings settings;
     General* api;
     Screen* screenApi;
     Apps* appsApi;
     QObject* root = nullptr;
     QObject* stateControllerUI = nullptr;
-    QObject* backgroundUI = nullptr;
     ScreenProvider* screenProvider;
     QList<QObject*> applications;
+    QImage* blankImage;
 
     int tarnishPid() { return api->tarnishPid(); }
     QObject* getStateControllerUI(){
         stateControllerUI = root->findChild<QObject*>("stateController");
         return stateControllerUI;
-    }
-    QObject* getBackgroundUI(){
-        backgroundUI = root->findChild<QObject*>("background");
-        return backgroundUI;
-    }
-
-    static void migrate(QSettings* settings, int fromVersion){
-        if(fromVersion != 0){
-            throw "Unknown settings version";
-        }
-        // In the future migrate changes to settings between versions
-        settings->setValue("version", CORRUPT_SETTINGS_VERSION);
-        settings->sync();
     }
 };
 

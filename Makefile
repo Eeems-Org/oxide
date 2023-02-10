@@ -1,114 +1,91 @@
+.PHONY: all clean release build sentry package
+
 all: release
 
-DEVICE_IP ?= "10.11.99.1"
-# DEVICE_IP ?= "192.168.0.34"
+.NOTPARALLEL:
 
-SSH_DIR ?= $(HOME)/.ssh
-# SSH_DIR ?= $(shell cygpath -w ~/.ssh)
-# SSH_DIR ?= G:\cygwin64\home\Eeems\.ssh
+# FEATURES += sentry
 
-QTCREATOR_RUN_ARGS ?= --gpus all
-# QTCREATOR_RUN_ARGS ?=
+DIST=$(CURDIR)/release
+BUILD=$(CURDIR)/.build
 
-ifeq ($(OS),Windows_NT)
-	BUILD_DIR ?= $(shell cygpath -w `pwd`)
-	DISPLAY ?= host.docker.internal:0.0
-	DISPLAY_ARGS ?=
-else
-	BUILD_DIR ?= $(shell pwd)
-	DISPLAY ?= unix$(DISPLAY)
-	DISPLAY_ARGS ?= -v /tmp/.X11-unix:/tmp/.X11-unix --device /dev/snd
+
+ifneq ($(filter sentry,$(FEATURES)),)
+OBJ += sentry
+RELOBJ += $(DIST)/opt/lib/libsentry.so
+DEFINES += 'DEFINES+="SENTRY"'
 endif
 
-
-.PHONY: docker-qtcreator
-docker-qtcreator:
-	cd docker-toolchain/qtcreator && docker build \
-		--tag rm-qtcreator .
-
-qtcreator: docker-qtcreator
-	xhost +SI:localuser:root > /dev/null
-	docker start -a qtcreator || \
-	docker run \
-		$(QTCREATOR_RUN_ARGS) \
-		--name qtcreator \
-		-v '$(BUILD_DIR):/root/project:rw' \
-		-v '$(SSH_DIR):/root/.ssh' \
-		-v '$(BUILD_DIR)/docker-toolchain/qtcreator/files/config:/root/.config' \
-		-w /root/project \
-		-e DISPLAY=$(DISPLAY) \
-		$(DISPLAY_ARGS) \
-		rm-qtcreator:latest
+OBJ += $(BUILD)/oxide/Makefile
 
 clean:
-	rm -rf .build
-	rm -rf release
+	rm -rf $(DIST) $(BUILD)
 
-release: clean
-	$(MAKE) build
-	mkdir -p release
-	INSTALL_ROOT=../../release $(MAKE) -C .build/process-manager install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/system-service install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/settings-manager install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/screenshot-tool install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/screenshot-viewer install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/launcher install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/lockscreen install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/task-switcher install
-	INSTALL_ROOT=../../release $(MAKE) -C .build/web-browser install
+release: clean build $(RELOBJ)
+	mkdir -p $(DIST)
+	INSTALL_ROOT=$(DIST) $(MAKE) -C $(BUILD)/oxide install
 
-build: tarnish erode rot oxide decay corrupt fret anxiety mold
+build: $(BUILD) $(OBJ)
+	$(MAKE) -C $(BUILD)/oxide all
 
-erode:
-	mkdir -p .build/process-manager
-	cp -r applications/process-manager/* .build/process-manager
-	cd .build/process-manager && qmake erode.pro
-	$(MAKE) -C .build/process-manager all
+package: REV="~r$(shell git rev-list --count HEAD).$(shell git rev-parse --short HEAD)"
+package:
+	if [ -d .git ];then \
+		echo $(REV) > version.txt; \
+	else \
+		echo "~manual" > version.txt; \
+	fi;
+	mkdir -p $(BUILD)/package
+	rm -rf $(BUILD)/package/build
+	sed "s/~VERSION~/`cat version.txt`/" ./package > $(BUILD)/package/package
+	tar \
+		--exclude='$(CURDIR)/.git' \
+		--exclude='$(BUILD)' \
+		--exclude='$(CURDIR)/dist' \
+		--exclude='$(DIST)' \
+		-czvf $(BUILD)/package/oxide.tar.gz \
+		applications \
+		assets \
+		interfaces \
+		qmake \
+		shared \
+		oxide.pro \
+		Makefile
+	toltecmk \
+		--verbose \
+		-w $(BUILD)/package/build \
+		-d $(BUILD)/package/dist \
+		$(BUILD)/package
+	mkdir -p $(DIST)
+	cp -a $(BUILD)/package/dist/rmall/*.ipk $(DIST)
 
-tarnish:
-	mkdir -p .build/system-service
-	cp -r applications/system-service/* .build/system-service
-	cd .build/system-service && qmake tarnish.pro
-	$(MAKE) -C .build/system-service all
+sentry: $(BUILD)/sentry/libsentry.so
 
-rot: tarnish
-	mkdir -p .build/settings-manager
-	cp -r applications/settings-manager/* .build/settings-manager
-	cd .build/settings-manager && qmake rot.pro
-	$(MAKE) -C .build/settings-manager all
+$(BUILD):
+	mkdir -p $(BUILD)
 
-fret: tarnish
-	mkdir -p .build/screenshot-tool
-	cp -r applications/screenshot-tool/* .build/screenshot-tool
-	cd .build/screenshot-tool && qmake fret.pro
-	$(MAKE) -C .build/screenshot-tool all
+$(BUILD)/.nobackup: $(BUILD)
+	touch $(BUILD)/.nobackup
 
-oxide: tarnish
-	mkdir -p .build/launcher
-	cp -r applications/launcher/* .build/launcher
-	cd .build/launcher && qmake oxide.pro
-	$(MAKE) -C .build/launcher all
+$(BUILD)/oxide: $(BUILD)/.nobackup
+	mkdir -p $(BUILD)/oxide
 
-decay: tarnish
-	mkdir -p .build/lockscreen
-	cp -r applications/lockscreen/* .build/lockscreen
-	cd .build/lockscreen && qmake decay.pro
-	$(MAKE) -C .build/lockscreen all
+$(BUILD)/oxide/Makefile: $(BUILD)/oxide
+	cd $(BUILD)/oxide && qmake -r $(DEFINES) $(CURDIR)/oxide.pro
 
-corrupt: tarnish
-	mkdir -p .build/task-switcher
-	cp -r applications/task-switcher/* .build/task-switcher
-	cd .build/task-switcher && qmake corrupt.pro
-	$(MAKE) -C .build/task-switcher all
-	
-anxiety: tarnish
-	mkdir -p .build/screenshot-viewer
-	cp -r applications/screenshot-viewer/* .build/screenshot-viewer
-	cd .build/screenshot-viewer && qmake anxiety.pro
-	$(MAKE) -C .build/screenshot-viewer all
+$(BUILD)/sentry/libsentry.so: $(BUILD)/.nobackup
+	cd shared/sentry && cmake -B $(BUILD)/sentry/src \
+		-DBUILD_SHARED_LIBS=ON \
+		-DSENTRY_INTEGRATION_QT=ON \
+		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
+		-DSENTRY_PIC=OFF \
+		-DSENTRY_BACKEND=breakpad \
+		-DSENTRY_BREAKPAD_SYSTEM=OFF \
+		-DSENTRY_EXPORT_SYMBOLS=ON \
+		-DSENTRY_PTHREAD=ON
+	cd shared/sentry && cmake --build $(BUILD)/sentry/src --parallel
+	cd shared/sentry && cmake --install $(BUILD)/sentry/src --prefix $(BUILD)/sentry --config RelWithDebInfo
 
-mold: tarnish
-	mkdir -p .build/web-browser
-	cp -r applications/web-browser/* .build/web-browser
-	cd .build/web-browser && qmake mold.pro
-	$(MAKE) -C .build/web-browser all
+$(DIST)/opt/lib/libsentry.so: sentry
+	mkdir -p $(DIST)/opt/lib
+	cp -a $(BUILD)/sentry/lib/libsentry.so $(DIST)/opt/lib/

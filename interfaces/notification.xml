@@ -2,6 +2,7 @@
 <node>
   <interface name="codes.eeems.oxide1.Notification">
     <property name="identifier" type="s" access="read"/>
+    <property name="created" type="i" access="read"/>
     <property name="application" type="s" access="readwrite"/>
     <property name="text" type="s" access="readwrite"/>
     <property name="icon" type="s" access="readwrite"/>

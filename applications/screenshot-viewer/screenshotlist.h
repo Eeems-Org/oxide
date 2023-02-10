@@ -2,8 +2,7 @@
 #define SCREENSHOTLIST_H
 
 #include <QAbstractListModel>
-
-#include "screenshot_interface.h"
+#include <liboxide/dbus.h>
 
 using namespace codes::eeems::oxide1;
 
@@ -11,6 +10,7 @@ class ScreenshotItem : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString path READ path NOTIFY pathChanged)
     Q_PROPERTY(QString name READ name NOTIFY nameChanged)
+
 public:
     ScreenshotItem(Screenshot* screenshot, QObject* parent) : QObject(parent) {
         m_screenshot = screenshot;
@@ -40,6 +40,7 @@ public:
         return true;
     }
     QString qPath() { return m_screenshot->QDBusAbstractInterface::path(); }
+
 signals:
     void pathChanged(QString);
     void nameChanged(QString);
@@ -58,6 +59,7 @@ private:
 class ScreenshotList : public QAbstractListModel
 {
     Q_OBJECT
+
 public:
     ScreenshotList() : QAbstractListModel(nullptr) {}
 
@@ -151,8 +153,10 @@ public:
     }
     int length() { return screenshots.length(); }
     bool empty() { return screenshots.empty(); }
+
 signals:
     void updated();
+
 private:
     QList<ScreenshotItem*> screenshots;
 };

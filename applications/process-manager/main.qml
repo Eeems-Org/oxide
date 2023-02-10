@@ -9,10 +9,19 @@ ApplicationWindow {
     visible: true
     width: screenGeometry.width
     height: screenGeometry.height
-    Connections {
-        target: controller
-        onReload: tasksView.model = controller.getTasks()
+    onAfterSynchronizing: {
+        if (stateController.state == "loading") {
+            stateController.state = "loaded";
+        }
     }
+    Timer {
+        interval: 1000 * 5
+        repeat: true
+        triggeredOnStart: false
+        running: true
+        onTriggered: controller.reload()
+    }
+
     menuBar: ColumnLayout {
         width: parent.width
         ToolBar {
@@ -26,16 +35,17 @@ ApplicationWindow {
                     Timer {
                         id: quitTimer
                         interval: 1000
-                        onTriggered: Qt.quit()
+                        onTriggered: {
+                            controller.breadcrumb("back", "click", "ui");
+                            Qt.quit();
+                        }
                     }
                 }
                 Item { Layout.fillWidth: true }
-                BetterButton {
-                    text: "Reload"
-                    onClicked: {
-                        console.log("Reloading...");
-                        tasksView.model = controller.getTasks();
-                    }
+                Label {
+                    text: "Process Manager"
+                    color: "white"
+                    anchors.centerIn: parent
                 }
             }
         }
@@ -46,29 +56,71 @@ ApplicationWindow {
                 text: "Process"
                 color: "black"
                 font.pointSize: 8
+                font.bold: controller.sortBy === "name"
                 Layout.alignment: Qt.AlignLeft
                 rightPadding: 10
                 leftPadding: 10
                 Layout.fillWidth: true
-                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("name") }
+                MouseArea { anchors.fill: parent; onClicked: {
+                    controller.breadcrumb("tasksView.name", "sortBy", "ui");
+                    controller.sortBy = "name";
+                } }
             }
             Label {
+                id: pid
                 text: "PID"
                 color: "black"
                 font.pointSize: 8
+                font.bold: controller.sortBy === "pid"
                 Layout.alignment: Qt.AlignLeft
                 leftPadding: 20
-                Layout.preferredWidth: 200
-                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("pid") }
+                Layout.preferredWidth: 180
+                MouseArea { anchors.fill: parent; onClicked: {
+                    controller.breadcrumb("tasksView.pid", "sortBy", "ui");
+                    controller.sortBy = "pid";
+                } }
             }
             Label {
+                id: ppid
                 text: "Parent PID"
                 color: "black"
                 font.pointSize: 8
+                font.bold: controller.sortBy === "ppid"
+                Layout.alignment: Qt.AlignLeft
+                leftPadding: 20
+                Layout.preferredWidth: 180
+                MouseArea { anchors.fill: parent; onClicked: {
+                    controller.breadcrumb("tasksView.ppid", "sortBy", "ui");
+                    controller.sortBy = "ppid";
+                } }
+            }
+            Label {
+                id: cpu
+                text: "CPU"
+                color: "black"
+                font.pointSize: 8
+                font.bold: controller.sortBy === "cpu"
+                Layout.alignment: Qt.AlignLeft
+                leftPadding: 20
+                Layout.preferredWidth: 100
+                MouseArea { anchors.fill: parent; onClicked: {
+                    controller.breadcrumb("tasksView.cpu", "sortBy", "ui");
+                    controller.sortBy = "cpu";
+                }}
+            }
+            Label {
+                id: mem
+                text: "Mem"
+                color: "black"
+                font.pointSize: 8
+                font.bold: controller.sortBy === "mem"
                 Layout.alignment: Qt.AlignLeft
                 leftPadding: 20
                 Layout.preferredWidth: 200
-                MouseArea { anchors.fill: parent; onClicked: controller.sortBy("ppid") }
+                MouseArea { anchors.fill: parent; onClicked: {
+                    controller.breadcrumb("tasksView.mem", "sortBy", "ui");
+                    controller.sortBy = "mem";
+                }}
             }
             Item { width: scrollbar.width }
         }
@@ -85,6 +137,7 @@ ApplicationWindow {
                 backgroundColor: "white"
                 borderColor: "white"
                 onClicked: {
+                    controller.breadcrumb("tasksView", "scroll.up", "ui");
                     console.log("Scroll up");
                     tasksView.currentIndex = tasksView.currentIndex - tasksView.pageSize();
                     if(tasksView.currentIndex < 0){
@@ -105,7 +158,7 @@ ApplicationWindow {
                 snapMode: ListView.SnapOneItem
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
-                model: tasks
+                model: controller.tasks
                 onMovementEnded: console.log("Moved")
                 ScrollIndicator.vertical: ScrollIndicator {
                     id: scrollbar
@@ -125,9 +178,9 @@ ApplicationWindow {
                 }
                 delegate: Rectangle {
                     id: root
-                    enabled: parent.enabled
-                    width: parent.width - scrollbar.width
-                    height: tasksRow.implicitHeight
+                    enabled: tasksView.enabled
+                    width: tasksView.width - scrollbar.width
+                    height: 100
                     color: "white"
                     state: "released"
                     states: [
@@ -138,8 +191,7 @@ ApplicationWindow {
                         id: tasksRow
                         anchors.fill: parent
                         Label {
-                            id: name
-                            text: model.modelData.name
+                            text: model.display.name
                             Layout.alignment: Qt.AlignLeft
                             Layout.fillWidth: true
                             leftPadding: 10
@@ -148,27 +200,44 @@ ApplicationWindow {
                             bottomPadding: 5
                         }
                         Label {
-                            id: pid
-                            text: model.modelData.pid
+                            text: model.display.pid
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
-                            Layout.preferredWidth: 200
+                            Layout.preferredWidth: pid.width
                             topPadding: 5
                             bottomPadding: 5
                         }
                         Label {
-                            id: ppid
-                            text: model.modelData.ppid
+                            text: model.display.ppid
                             Layout.alignment: Qt.AlignLeft
                             leftPadding: 10
-                            Layout.preferredWidth: 200
+                            Layout.preferredWidth: ppid.width
+                            topPadding: 5
+                            bottomPadding: 5
+                        }
+                        Label {
+                            text: model.display.cpu + "%"
+                            Layout.alignment: Qt.AlignLeft
+                            leftPadding: 10
+                            Layout.preferredWidth: cpu.width
+                            topPadding: 5
+                            bottomPadding: 5
+                        }
+                        Label {
+                            text: model.display.mem
+                            Layout.alignment: Qt.AlignLeft
+                            leftPadding: 10
+                            Layout.preferredWidth: mem.width
                             topPadding: 5
                             bottomPadding: 5
                         }
                     }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: killPrompt.open()
+                        onClicked: {
+                            controller.breadcrumb("tasksView.tasksRow", "clicked", "ui");
+                            model.display.killable && killPrompt.open();
+                        }
                     }
                     Popup {
                         id: killPrompt
@@ -178,11 +247,17 @@ ApplicationWindow {
                         y: Math.round((parent.height - height) / 2)
                         focus: true
                         closePolicy: Popup.CloseOnPressOutsideParent
-                        onClosed: console.log("Closed")
-                        onOpened: console.log("Opened")
+                        onClosed: {
+                            controller.breadcrumb("navigation", "main", "navigation");
+                            console.log("Closed");
+                        }
+                        onOpened: {
+                            controller.breadcrumb("navigation", "killPrompt", "navigation");
+                            console.log("Opened");
+                        }
                         contentItem: ColumnLayout {
                             Label {
-                                text: "Would you like to kill " + model.modelData.name + " (" + model.modelData.pid + ")"
+                                text: "Would you like to kill " + model.display.name + " (" + model.display.pid + ")"
                             }
                             RowLayout {
                                 BetterButton {
@@ -192,8 +267,8 @@ ApplicationWindow {
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: {
-                                            model.modelData.signal(15);
-                                            tasksView.model = controller.getTasks();
+                                            controller.breadcrumb("killPrompt.forceQuit", "clicked", "ui");
+                                            model.display.signal(15);
                                             killPrompt.close()
                                         }
                                     }
@@ -204,8 +279,8 @@ ApplicationWindow {
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: {
-                                            model.modelData.signal(9);
-                                            tasksView.model = controller.getTasks();
+                                            controller.breadcrumb("killPrompt.yes", "clicked", "ui");
+                                            model.display.signal(9);
                                             killPrompt.close()
                                         }
                                     }
@@ -216,7 +291,10 @@ ApplicationWindow {
                                     color: "black"
                                     MouseArea {
                                         anchors.fill: parent
-                                        onClicked: killPrompt.close()
+                                        onClicked: {
+                                            controller.breadcrumb("killPrompt.no", "clicked", "ui");
+                                            killPrompt.close();
+                                        }
                                     }
                                 }
                             }
@@ -246,6 +324,7 @@ ApplicationWindow {
                 backgroundColor: "white"
                 borderColor: "white"
                 onClicked: {
+                    controller.breadcrumb("tasksView", "scroll.down", "ui");
                     console.log("Scroll down");
                     tasksView.currentIndex = tasksView.currentIndex + tasksView.pageSize();
                     if(tasksView.currentIndex > tasksView.count){
@@ -278,7 +357,10 @@ ApplicationWindow {
                         PropertyAction { target: window.contentItem; property: "visible"; value: false }
                         PropertyAction { target: stateController; property: "state"; value: "loaded" }
                     }
-                    ScriptAction { script: console.log("loading...") }
+                    ScriptAction { script: {
+                        controller.breadcrumb("navigation", "loading", "navigation");
+                        console.log("loading...");
+                    } }
                 }
             },
             Transition {
@@ -293,10 +375,12 @@ ApplicationWindow {
                         PropertyAction { target: window; property: "visible"; value: true }
                         PropertyAction { target: window.contentItem; property: "visible"; value: true }
                     }
-                    ScriptAction { script: console.log("loaded.") }
+                    ScriptAction { script: {
+                        controller.breadcrumb("navigation", "main", "navigation");
+                        console.log("loaded.");
+                    } }
                 }
             }
         ]
     }
-    Component.onCompleted: stateController.state = "loaded"
 }

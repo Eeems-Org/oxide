@@ -4,6 +4,6 @@
         "bin": "/opt/bin/decay",
         "flags": ["hidden"],
         "type": "foreground",
-        "splash": "/opt/etc/draft/icons/oxide-splash.png",
+        "splash": "oxide:splash:oxide-702",
         "permissions": ["apps", "power", "system", "wifi"]
 }

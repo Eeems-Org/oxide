@@ -1,4 +1,7 @@
 #include "buttonhandler.h"
+
+#include <liboxide.h>
+
 #include "dbusservice.h"
 
 void button_exit_handler(){

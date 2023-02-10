@@ -1,11 +1,11 @@
+#include <liboxide.h>
+
 #include "systemapi.h"
 #include "appsapi.h"
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "notificationapi.h"
-#include "devicesettings.h"
 
-#ifdef DEBUG
 QDebug operator<<(QDebug debug, const Touch& touch){
     QDebugStateSaver saver(debug);
     debug.nospace() << touch.debugString().c_str();
@@ -16,80 +16,101 @@ QDebug operator<<(QDebug debug, Touch* touch){
     debug.nospace() << touch->debugString().c_str();
     return debug.maybeSpace();
 }
-#endif
 
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
-        qDebug() << "Preparing for suspend...";
-        wifiAPI->stopUpdating();
-        emit deviceSuspending();
-        appsAPI->recordPreviousApplication();
-        auto path = appsAPI->currentApplicationNoSecurityCheck();
-        if(path.path() != "/"){
-            resumeApp = appsAPI->getApplication(path);
-            resumeApp->pauseNoSecurityCheck(false);
-        }else{
-            resumeApp = nullptr;
-        }
-        if(QFile::exists("/usr/share/remarkable/sleeping.png")){
-            screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png");
-        }else{
-            screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
-        }
-        buttonHandler->setEnabled(false);
-        if(device == DeviceSettings::DeviceType::RM2){
-            if(wifiAPI->state() != WifiAPI::State::Off){
-                wifiWasOn = true;
-                wifiAPI->disable();
-            }
-            system("rmmod brcmfmac");
-        }
-        releaseSleepInhibitors();
-        qDebug() << "Suspending...";
+        Oxide::Sentry::sentry_transaction("system", "suspend", [this, device](Oxide::Sentry::Transaction* t){
+            qDebug() << "Preparing for suspend...";
+            Oxide::Sentry::sentry_span(t, "prepare", "Prepare for suspend", [this]{
+                wifiAPI->stopUpdating();
+                emit deviceSuspending();
+                appsAPI->recordPreviousApplication();
+                auto path = appsAPI->currentApplicationNoSecurityCheck();
+                if(path.path() != "/"){
+                    resumeApp = appsAPI->getApplication(path);
+                    resumeApp->pauseNoSecurityCheck(false);
+                }else{
+                    resumeApp = nullptr;
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", []{
+                if(QFile::exists("/usr/share/remarkable/sleeping.png")){
+                    screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png");
+                }else{
+                    screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this, device]{
+                buttonHandler->setEnabled(false);
+                if(device == Oxide::DeviceSettings::DeviceType::RM2){
+                    if(wifiAPI->state() != WifiAPI::State::Off){
+                        wifiWasOn = true;
+                        wifiAPI->disable();
+                    }
+                    system("rmmod brcmfmac");
+                }
+                releaseSleepInhibitors();
+            });
+            Oxide::Sentry::sentry_span(t, "clear-input", "Clear input buffers", [this]{
+                touchHandler->clear_buffer();
+                wacomHandler->clear_buffer();
+                buttonHandler->clear_buffer();
+            });
+            qDebug() << "Suspending...";
+        });
     }else{
-        inhibitSleep();
-        qDebug() << "Resuming...";
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-        auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
-        if(lockscreenApp != nullptr){
-            resumeApp = lockscreenApp;
-        }
-        if(resumeApp == nullptr){
-            resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
-        }
-        if(resumeApp != nullptr){
-            resumeApp->resumeNoSecurityCheck();
-        }
-        buttonHandler->setEnabled(true);
-        emit deviceResuming();
-        if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-            qDebug() << "Suspend timer re-enabled due to resume";
-            suspendTimer.start(m_autoSleep * 60 * 1000);
-        }
-        if(device == DeviceSettings::DeviceType::RM2){
-            system("modprobe brcmfmac");
-            if(wifiWasOn){
-                wifiAPI->enable();
-            }
-        }
-        wifiAPI->resumeUpdating();
+        Oxide::Sentry::sentry_transaction("system", "resume", [this, device](Oxide::Sentry::Transaction* t){
+            Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep", [this]{
+                inhibitSleep();
+            });
+            qDebug() << "Resuming...";
+            Oxide::Sentry::sentry_span(t, "process", "Process events", []{
+                QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+            });
+            Oxide::Sentry::sentry_span(t, "resume", "Resume running application or go to lockscreen", [this]{
+                auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
+                if(lockscreenApp != nullptr){
+                    resumeApp = lockscreenApp;
+                }
+                if(resumeApp == nullptr){
+                    resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
+                }
+                if(resumeApp != nullptr){
+                    resumeApp->resumeNoSecurityCheck();
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "enable", "Enable various services", [this, device]{
+                buttonHandler->setEnabled(true);
+                emit deviceResuming();
+                if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+                    qDebug() << "Suspend timer re-enabled due to resume";
+                    suspendTimer.start(autoSleep() * 60 * 1000);
+                }
+                if(device == Oxide::DeviceSettings::DeviceType::RM2){
+                    system("modprobe brcmfmac");
+                    if(wifiWasOn){
+                        wifiAPI->enable();
+                    }
+                }
+                wifiAPI->resumeUpdating();
+            });
+        });
     }
 }
-void SystemAPI::setAutoSleep(int autoSleep){
-    if(autoSleep < 0 || autoSleep > 360){
+void SystemAPI::setAutoSleep(int _autoSleep){
+    if(_autoSleep < 0 || _autoSleep > 360){
         return;
     }
-    qDebug() << "Auto Sleep" << autoSleep;
-    m_autoSleep = autoSleep;
-    if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-        suspendTimer.setInterval(m_autoSleep * 60 * 1000);
-    }else if(!m_autoSleep){
+    qDebug() << "Auto Sleep" << _autoSleep;
+    sharedSettings.set_autoSleep(_autoSleep);
+    if(_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+        suspendTimer.setInterval(_autoSleep * 60 * 1000);
+    }else if(!_autoSleep){
         suspendTimer.stop();
     }
-    settings.setValue("autoSleep", autoSleep);
-    settings.sync();
-    emit autoSleepChanged(autoSleep);
+    sharedSettings.sync();
+    emit autoSleepChanged(_autoSleep);
 }
 void SystemAPI::uninhibitAll(QString name){
     if(powerOffInhibited()){
@@ -104,25 +125,25 @@ void SystemAPI::uninhibitAll(QString name){
             emit sleepInhibitedChanged(false);
         }
     }
-    if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
+    if(!sleepInhibited() && autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
         qDebug() << "Suspend timer re-enabled due to uninhibit" << name;
-        suspendTimer.start(m_autoSleep * 60 * 1000);
+        suspendTimer.start(autoSleep() * 60 * 1000);
     }
 }
 void SystemAPI::startSuspendTimer(){
-    if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
+    if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
         qDebug() << "Suspend timer re-enabled due to start Suspend timer";
-        suspendTimer.start(m_autoSleep * 60 * 1000);
+        suspendTimer.start(autoSleep() * 60 * 1000);
     }
 }
 void SystemAPI::activity(){
     auto active = suspendTimer.isActive();
     suspendTimer.stop();
-    if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+    if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         if(!active){
             qDebug() << "Suspend timer re-enabled due to activity";
         }
-        suspendTimer.start(m_autoSleep * 60 * 1000);
+        suspendTimer.start(autoSleep() * 60 * 1000);
     }else if(active){
         qDebug() << "Suspend timer disabled";
     }
@@ -133,10 +154,10 @@ void SystemAPI::uninhibitSleep(QDBusMessage message){
         return;
     }
     sleepInhibitors.removeAll(message.service());
-    if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+    if(!sleepInhibited() && autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         if(!suspendTimer.isActive()){
             qDebug() << "Suspend timer re-enabled due to uninhibit sleep" << message.service();
-            suspendTimer.start(m_autoSleep * 60 * 1000);
+            suspendTimer.start(autoSleep() * 60 * 1000);
         }
         releaseSleepInhibitors(true);
     }
@@ -145,7 +166,7 @@ void SystemAPI::uninhibitSleep(QDBusMessage message){
     }
 }
 void SystemAPI::timeout(){
-    if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+    if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         qDebug() << "Automatic suspend due to inactivity...";
         suspend();
     }

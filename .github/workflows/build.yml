@@ -1,64 +1,45 @@
 name: Build oxide
 
-on: [push, pull_request]
-
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'applications/**'
+      - 'shared/**'
+      - 'assets/**'
+      - 'interfaces/**'
+      - 'qmake/**'
+      - 'oxide.pro'
+      - 'Makefile'
+      - 'package'
+  pull_request:
+    paths:
+      - 'applications/**'
+      - 'shared/**'
+      - 'assets/**'
+      - 'interfaces/**'
+      - 'qmake/**'
+      - 'oxide.pro'
+      - 'Makefile'
+      - 'package'
 jobs:
   build:
     name: Build and package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.3.1
-      - uses: cachix/install-nix-action@v12
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-      - uses: cachix/cachix-action@v8
-        with:
-          name: nix-remarkable
-          signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
-      - name: Build
-        run: nix-build --argstr system 'x86_64-linux'
-        timeout-minutes: 15
-      - run: mkdir -p oxide && cp -a result/. oxide
-      - name: Save the build
-        uses: actions/upload-artifact@v2
-        with:
-          name: oxide
-          path: oxide
-      - name: Checkout toltec Git repository
-        uses: actions/checkout@v2
-        with:
-          repository: toltec-dev/toltec.git
-          ref: Eeems-patch-3
-          path: toltec
+      - uses: actions/checkout@v3
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.8'
-      - name: Link requirements.txt
-        run: |
-          ln -s "$GITHUB_WORKSPACE"/toltec/requirements.txt requirements.txt
-      - name: Setup Toltec dependencies
-        uses: ./toltec/.github/actions/setup
-      - name: Package
-        run: |
-          rm -rf "$GITHUB_WORKSPACE"/toltec/package/oxide/*
-          echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > "$GITHUB_WORKSPACE"/toltec/package/oxide/version.txt
-          cd "$GITHUB_WORKSPACE"/toltec/package/oxide
-          tar -czvf ./oxide.tar.gz "$GITHUB_WORKSPACE"/result/*
-          cp "$GITHUB_WORKSPACE"/package .
-          sed -i "s/~VERSION~/$(cat version.txt)/" ./package
-          cat ./package
-          cd "$GITHUB_WORKSPACE"/toltec
-          make oxide
-          mkdir "$GITHUB_WORKSPACE"/output
-          find . -name '*.ipk' | while read -r file; do
-            cp "$file" "$GITHUB_WORKSPACE/output/$(basename $file)"
-          done
+          python-version: 3.9
+      - name: Install toltecmk
+        run: pip install toltecmk
+      - name: Build packages
+        run: make package
         timeout-minutes: 15
-      - name: Save the packages
-        uses: actions/upload-artifact@v2
+      - name: Save packages
+        uses: actions/upload-artifact@v3
         with:
           name: packages
-          path: output
-        
-
+          path: release

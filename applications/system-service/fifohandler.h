@@ -6,9 +6,11 @@
 #include <QTimer>
 
 #include <fstream>
+#include <liboxide.h>
 
 class FifoHandler : public QObject {
     Q_OBJECT
+
 public:
     FifoHandler(QString name, QString path, QObject* host)
     : QObject(),
@@ -21,15 +23,10 @@ public:
       out() {
         connect(host, &QObject::destroyed, this, &QObject::deleteLater);
         connect(&_thread, &QThread::started, [this]{
-            auto path = this->path.toStdString();
             emit started();
-            out.open(path.c_str(), std::ifstream::out);
-            if(!out.good()){
-                qWarning() << "Unable to open fifi (out)" << ::strerror(errno);
-            }
-            in.open(path.c_str(), std::ifstream::in);
+            in.open(this->path.toStdString().c_str(), std::ifstream::in);
             if(!in.good()){
-                qWarning() << "Unable to open fifi (in)" << ::strerror(errno);
+                O_WARNING("Unable to open fifi (in)" << ::strerror(errno));
             }
             timer.start(10);
         });
@@ -38,6 +35,12 @@ public:
             emit finished();
         });
         connect(&timer, &QTimer::timeout, this, &FifoHandler::run);
+        QThread::create([this]{
+            out.open(this->path.toStdString().c_str(), std::ifstream::out);
+            if(!out.good()){
+                O_WARNING("Unable to open fifi (out)" << ::strerror(errno));
+            }
+        })->start();
         moveToThread(&_thread);
     }
     ~FifoHandler(){
@@ -50,13 +53,19 @@ public:
         quit();
     }
     void start() { _thread.start(); }
-    void quit(){ _thread.quit(); }
-    void write(const void* data, size_t size){ out.write((char*)data, size); }
+    void quit(){ _thread.quit();}
+    void write(const void* data, size_t size){
+        if(out.is_open()){
+            out.write((char*)data, size);
+        }
+    }
     const QString& name() { return _name; }
+
 signals:
     void started();
     void finished();
     void dataRecieved(FifoHandler* handler, const QString& data);
+
 protected:
     void run() {
         if(!in.is_open()){
@@ -75,6 +84,7 @@ protected:
         }
         thread()->yieldCurrentThread();
     }
+
 private:
     QObject* host;
     QThread _thread;
@@ -84,7 +94,6 @@ private:
     std::ifstream in;
     std::ofstream out;
     bool getline_async(std::istream& is, std::string& str, char delim = '\n') {
-
         static std::string lineSoFar;
         char inChar;
         int charsRead = 0;

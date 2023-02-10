@@ -25,6 +25,10 @@
     <signal name="autoSleepChanged">
       <arg type="i" direction="out"/>
     </signal>
+    <signal name="swipeLengthChanged">
+      <arg type="i" direction="out"/>
+      <arg type="i" direction="out"/>
+    </signal>
     <signal name="deviceSuspending">
     </signal>
     <signal name="deviceResuming">
@@ -46,6 +50,25 @@
     <method name="uninhibitPowerOff">
     </method>
     <method name="toggleSwipes">
+    </method>
+    <method name="setSwipeEnabled">
+      <arg name="direction" type="i" direction="in"/>
+      <arg name="enabled" type="b" direction="in"/>
+    </method>
+    <method name="getSwipeEnabled">
+      <arg type="b" direction="out"/>
+      <arg name="direction" type="i" direction="in"/>
+    </method>
+    <method name="toggleSwipeEnabled">
+      <arg name="direction" type="i" direction="in"/>
+    </method>
+    <method name="setSwipeLength">
+      <arg name="direction" type="i" direction="in"/>
+      <arg name="length" type="i" direction="in"/>
+    </method>
+    <method name="getSwipeLength">
+      <arg type="i" direction="out"/>
+      <arg name="direction" type="i" direction="in"/>
     </method>
   </interface>
 </node>

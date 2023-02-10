@@ -1,0 +1,33 @@
+name: Build doxygen docs
+description: Build doxygen docs
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.8'
+    - name: Cache Python environment
+      uses: actions/cache@v3
+      id: cache-python
+      with:
+        path: web/.venv
+        key: web/.venv-${{ hashFiles('web/requirements.txt') }}
+    - name: Install base Apt packages
+      id: cache-apt
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        execute_install_scripts: true
+        packages: doxygen graphviz libgraphviz-dev librsvg2-bin pdf2svg
+        version: 1.0
+    - name: Apt-Cache-Action
+      uses: Eeems-Org/apt-cache-action@v1
+      with:
+        packages: texlive-base texlive-latex-extra
+    - name: Build website
+      shell: bash
+      run: cd web && make prod
+    - name: Generate liboxide docs
+      shell: bash
+      run: |
+        cd shared/liboxide && make prod

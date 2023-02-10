@@ -16,11 +16,13 @@
 
 #include "apibase.h"
 #include "application.h"
-#include "signalhandler.h"
 
 #define OXIDE_SETTINGS_VERSION 1
 
 #define appsAPI AppsAPI::singleton()
+
+using namespace Oxide;
+using namespace Oxide::Applications;
 
 class AppsAPI : public APIBase {
     Q_OBJECT
@@ -35,6 +37,7 @@ class AppsAPI : public APIBase {
     Q_PROPERTY(QDBusObjectPath currentApplication READ currentApplication)
     Q_PROPERTY(QVariantMap runningApplications READ runningApplications)
     Q_PROPERTY(QVariantMap pausedApplications READ pausedApplications)
+
 public:
     static AppsAPI* singleton(AppsAPI* self = nullptr){
         static AppsAPI* instance;
@@ -48,20 +51,58 @@ public:
         m_stopping = true;
         writeApplications();
         settings.sync();
+        auto frameBuffer = EPFrameBuffer::framebuffer();
+        qDebug() << "Waiting for other painting to finish...";
+        while(frameBuffer->paintingActive()){
+            EPFrameBuffer::waitForLastUpdate();
+        }
+        QPainter painter(frameBuffer);
+        auto rect = frameBuffer->rect();
+        auto fm = painter.fontMetrics();
+        auto size = frameBuffer->size();
+        qDebug() << "Clearing screen...";
+        painter.setPen(Qt::white);
+        painter.fillRect(rect, Qt::black);
+        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+        EPFrameBuffer::waitForLastUpdate();
+        qDebug() << "Stopping applications...";
         for(auto app : applications){
+            if(app->stateNoSecurityCheck() != Application::Inactive){
+                auto text = "Stopping " + app->displayName() + "...";
+                qDebug() << text.toStdString().c_str();
+                int padding = 10;
+                int textHeight = fm.height() + padding;
+                QRect textRect(
+                    QPoint(0 + padding, size.height() - textHeight),
+                    QSize(size.width() - padding * 2, textHeight)
+                );
+                painter.fillRect(textRect, Qt::black);
+                painter.drawText(
+                    textRect,
+                    Qt::AlignVCenter | Qt::AlignRight,
+                    text
+                );
+                EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+                EPFrameBuffer::waitForLastUpdate();
+            }
             app->stopNoSecurityCheck();
         }
+        qDebug() << "Ensuring all applications have stopped...";
         for(auto app : applications){
             app->waitForFinished();
-            delete app;
+            app->deleteLater();
         }
         applications.clear();
+        qDebug() << "Displaying final quit message...";
+        painter.fillRect(rect, Qt::black);
+        painter.drawText(rect, Qt::AlignCenter,"Goodbye!");
+        EPFrameBuffer::waitForLastUpdate();
+        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+        painter.end();
+        EPFrameBuffer::waitForLastUpdate();
     }
     void startup();
     int state() { return 0; } // Ignore this, it's a kludge to get the xml to generate
-
-    enum ApplicationType { Foreground, Background, Backgroundable};
-    Q_ENUM(ApplicationType)
 
     void setEnabled(bool enabled){
         qDebug() << "Apps API" << enabled;
@@ -83,8 +124,8 @@ public:
     QDBusObjectPath registerApplicationNoSecurityCheck(QVariantMap properties){
         QString name = properties.value("name", "").toString();
         QString bin = properties.value("bin", "").toString();
-        int type = properties.value("type", Foreground).toInt();
-        if(type < Foreground || type > Backgroundable){
+        int type = properties.value("type", ApplicationType::Foreground).toInt();
+        if(type < ApplicationType::Foreground || type > ApplicationType::Backgroundable){
             qDebug() << "Invalid configuration: Invalid type" << type;
             return QDBusObjectPath("/");
         }
@@ -96,16 +137,24 @@ public:
             qDebug() << "Invalid configuration: " << name << " has invalid bin" << bin;
             return QDBusObjectPath("/");
         }
+        if(!QFileInfo(bin).isExecutable()){
+            qDebug() << "Invalid configuration: " << name << " has bin that is not executable" << bin;
+            return QDBusObjectPath("/");
+        }
         if(applications.contains(name)){
             return applications[name]->qPath();
         }
-        auto path = QDBusObjectPath(getPath(name));
-        auto app = new Application(path, reinterpret_cast<QObject*>(this));
-        auto displayName = properties.value("displayName", name).toString();
-        app->setConfig(properties);
-        applications.insert(name, app);
-        app->registerPath();
-        emit applicationRegistered(path);
+        QDBusObjectPath path;
+        Oxide::Sentry::sentry_transaction("apps", "registerApplication", [this, &path, name, properties](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            path = QDBusObjectPath(getPath(name));
+            auto app = new Application(path, reinterpret_cast<QObject*>(this));
+            auto displayName = properties.value("displayName", name).toString();
+            app->setConfig(properties);
+            applications.insert(name, app);
+            app->registerPath();
+            emit applicationRegistered(path);
+        });
         return path;
     }
     Q_INVOKABLE bool unregisterApplication(QDBusObjectPath path){
@@ -127,8 +176,11 @@ public:
         if(!hasPermission("apps")){
             return;
         }
-        writeApplications();
-        readApplications();
+        Oxide::Sentry::sentry_transaction("apps", "reload", [this](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            writeApplications();
+            readApplications();
+        });
     }
 
     QDBusObjectPath startupApplication(){
@@ -249,12 +301,15 @@ public:
     }
 
     void unregisterApplication(Application* app){
-        auto name = app->name();
-        if(applications.contains(name)){
-            applications.remove(name);
-            emit applicationUnregistered(app->qPath());
-            app->deleteLater();
-        }
+        Oxide::Sentry::sentry_transaction("apps", "unregisterApplication", [this, app](Oxide::Sentry::Transaction* t){
+            Q_UNUSED(t);
+            auto name = app->name();
+            if(applications.contains(name)){
+                applications.remove(name);
+                emit applicationUnregistered(app->qPath());
+                app->deleteLater();
+            }
+        });
     }
     void pauseAll(){
         for(auto app : applications){
@@ -359,7 +414,7 @@ public:
     void forceRecordPreviousApplication(){
         auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
         if(currentApplication == nullptr){
-            qWarning() << "Unable to find current application";
+            O_WARNING("Unable to find current application");
             return;
         }
         auto name = currentApplication->name();
@@ -370,7 +425,7 @@ public:
     void recordPreviousApplication(){
         auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
         if(currentApplication == nullptr){
-            qWarning() << "Unable to find current application";
+            O_WARNING("Unable to find current application");
             return;
         }
         if(currentApplication->qPath() == lockscreenApplication()){
@@ -380,10 +435,11 @@ public:
             return;
         }
         auto name = currentApplication->name();
-        previousApplications.removeAll(name);
+        removeFromPreviousApplications(name);
         previousApplications.append(name);
         qDebug() << "Previous Applications" << previousApplications;
     }
+    void removeFromPreviousApplications(QString name){ previousApplications.removeAll(name); }
 
 signals:
     void applicationRegistered(QDBusObjectPath);
@@ -555,7 +611,7 @@ private:
             settings.endArray();
             for(auto name : applications.keys()){
                 auto app = applications[name];
-                if(!names.contains(name) && !app->systemApp()){
+                if(!names.contains(name) && !app->systemApp() && !app->transient()){
                     app->unregisterNoSecurityCheck();
                 }
             }
@@ -613,16 +669,11 @@ private:
         }
         settings.endArray();
         // Load system applications from disk
-        QDir dir("/opt/usr/share/applications/");
+        QDir dir(OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY);
         dir.setNameFilters(QStringList() << "*.oxide");
         QMap<QString, QJsonObject> apps;
         for(auto entry : dir.entryInfoList()){
-            QFile file(entry.filePath());
-            if(!file.open(QIODevice::ReadOnly)){
-                continue;
-            }
-            auto data = file.readAll();
-            auto app = QJsonDocument::fromJson(data).object();
+            auto app = getRegistration(entry.filePath());
             if(app.isEmpty()){
                 qDebug() << "Invalid file " << entry.filePath();
                 continue;
@@ -642,15 +693,6 @@ private:
         // Register/Update any system application.
         for(auto app : apps){
             auto name = app["name"].toString();
-            int type = Foreground;
-            QString typeString = app.contains("type") ? app["type"].toString().toLower() : "";
-            if(typeString == "background"){
-                type = Background;
-            }else if(typeString == "backgroundable"){
-                type = Backgroundable;
-            }else if(!typeString.isEmpty() && typeString != "foreground"){
-                qDebug() << "Invalid type string:" << typeString;
-            }
             auto bin = app["bin"].toString();
             if(bin.isEmpty() || !QFile::exists(bin)){
                 qDebug() << name << "Can't find application binary:" << bin;
@@ -659,76 +701,13 @@ private:
 #endif
                 continue;
             }
-            auto flags = QStringList() << "system";
-            if(app.contains("flags")){
-                for(auto flag : app["flags"].toArray()){
-                    auto value = flag.toString();
-                    if(!value.isEmpty() && value != "system"){
-                        flags << value;
-                    }
-                }
+            if(!app.contains("flags") || !app["flags"].isArray()){
+                app["flags"] = QJsonArray();
             }
-            QVariantMap properties {
-                {"name", name},
-                {"bin", bin},
-                {"type", type},
-                {"flags", flags},
-            };
-            if(app.contains("displayName")){
-                properties.insert("displayName", app["displayName"].toString());
-            }
-            if(app.contains("description")){
-                properties.insert("description", app["description"].toString());
-            }
-            if(app.contains("icon")){
-                properties.insert("icon", app["icon"].toString());
-            }
-            if(app.contains("user")){
-                properties.insert("user", app["user"].toString());
-            }
-            if(app.contains("group")){
-                properties.insert("group", app["group"].toString());
-            }
-            if(app.contains("workingDirectory")){
-                properties.insert("workingDirectory", app["workingDirectory"].toString());
-            }
-            if(app.contains("directories")){
-                QStringList directories;
-                for(auto directory : app["directories"].toArray()){
-                    directories.append(directory.toString());
-                }
-                properties.insert("directories", directories);
-            }
-            if(app.contains("permissions")){
-                QStringList permissions;
-                for(auto permission : app["permissions"].toArray()){
-                    permissions.append(permission.toString());
-                }
-                properties.insert("permissions", permissions);
-            }
-            if(app.contains("events")){
-                auto events = app["events"].toObject();
-                for(auto event : events.keys()){
-                    if(event == "stop"){
-                        properties.insert("onStop", events[event].toString());
-                    }else if(event == "pause"){
-                        properties.insert("onPause", events[event].toString());
-                    }else if(event == "resume"){
-                        properties.insert("onResume", events[event].toString());
-                    }
-                }
-            }
-            if(app.contains("environment")){
-                QVariantMap envMap;
-                auto environment = app["environment"].toObject();
-                for(auto key : environment.keys()){
-                    envMap.insert(key, environment[key].toString());
-                }
-                properties.insert("environment", envMap);
-            }
-            if(app.contains("splash")){
-                properties.insert("splash", app["splash"].toString());
-            }
+            auto flags = app["flags"].toArray();
+            flags.prepend("system");
+            app["flags"] = flags;
+            auto properties = registrationToMap(app);
             if(applications.contains(name)){
 #ifdef DEBUG
                 qDebug() << "Updating " << name;

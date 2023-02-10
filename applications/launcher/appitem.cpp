@@ -5,9 +5,9 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
+#include <liboxide.h>
+
 #include "appitem.h"
-#include "dbusservice_interface.h"
-#include "appsapi_interface.h"
 #include "mxcfb.h"
 #include "controller.h"
 
@@ -15,7 +15,7 @@ bool AppItem::ok(){ return getApp() != nullptr; }
 
 void AppItem::execute(){
     if(!getApp() || !app->isValid()){
-        qWarning() << "Application instance is not valid";
+        O_WARNING("Application instance is not valid");
         return;
     }
     qDebug() << "Running application " << app->path();
@@ -28,7 +28,7 @@ void AppItem::execute(){
 }
 void AppItem::stop(){
     if(!getApp() || !app->isValid()){
-        qWarning() << "Application instance is not valid";
+        O_WARNING("Application instance is not valid");
         return;
     }
     app->stop();

@@ -4,17 +4,10 @@
 
 #include <cstdlib>
 #include <signal.h>
-
-#include "dbussettings.h"
-
-#include "dbusservice_interface.h"
-#include "systemapi_interface.h"
-#include "screenapi_interface.h"
-#include "screenshot_interface.h"
-#include "notificationapi_interface.h"
-#include "notification_interface.h"
+#include <liboxide.h>
 
 using namespace codes::eeems::oxide1;
+using namespace Oxide::Sentry;
 
 void unixSignalHandler(int signal){
     qDebug() << "Recieved signal" << signal;
@@ -43,16 +36,17 @@ void addNotification(Notifications* notifications, QString text, QString icon = 
 }
 
 int main(int argc, char *argv[]){
+    QCoreApplication app(argc, argv);
+    sentry_init("fret", argv);
     atexit(onExit);
     signal(SIGTERM, unixSignalHandler);
     signal(SIGSEGV, unixSignalHandler);
     signal(SIGABRT, unixSignalHandler);
     signal(SIGSYS, unixSignalHandler);
-    QCoreApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("fret");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     auto bus = QDBusConnection::systemBus();
     qDebug() << "Waiting for tarnish to start up...";
     while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
@@ -106,7 +100,7 @@ int main(int argc, char *argv[]){
             qDebug() << "Screenshot file exists.";
             QProcess::execute("/bin/bash", QStringList() << "/tmp/.screenshot" << screenshot.path());
         }
-        addNotification(&notifications, "Screenshot taken");
+        addNotification(&notifications, "Screenshot taken", screenshot.path());
         qDebug() << "Screenshot done.";
     });
     qDebug() << "Waiting for signals...";

@@ -22,9 +22,9 @@
 #include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <cstdlib>
+#include <liboxide.h>
 
 #include "event_device.h"
-#include "devicesettings.h"
 
 using namespace std;
 
@@ -49,6 +49,7 @@ public:
     static ButtonHandler* init();
 
     ButtonHandler() : QThread(), filebuf(buttons.fd, ios::in), stream(&filebuf), pressed(), timer(this), m_enabled(true) {
+        flood = build_flood();
         timer.setInterval(100);
         timer.setSingleShot(false);
         connect(&timer, &QTimer::timeout, this, &ButtonHandler::timeout);
@@ -56,6 +57,15 @@ public:
     }
     void setEnabled(bool enabled){
         m_enabled = enabled;
+    }
+    void clear_buffer(){
+        if(buttons.fd == -1){
+            return;
+        }
+#ifdef DEBUG
+        qDebug() << "Clearing event buffer on" << buttons.device.c_str();
+#endif
+        ::write(buttons.fd, flood, 512 * 8 * 4 * sizeof(input_event));
     }
 
 public slots:
@@ -141,6 +151,28 @@ protected:
     QTimer timer;
     const QSet<Qt::Key> validKeys { Qt::Key_Left, Qt::Key_Home, Qt::Key_Right, Qt::Key_PowerOff };
     bool m_enabled;
+    input_event* flood;
+    input_event* build_flood(){
+        auto n = 512 * 8;
+        auto num_inst = 4;
+        input_event* ev = (input_event *)malloc(sizeof(struct input_event) * n * num_inst);
+        memset(ev, 0, sizeof(input_event) * n * num_inst);
+        auto i = 0;
+        while (i < n) {
+            ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 1);
+            ev[i++] = createEvent(EV_SYN, 0, 0);
+            ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 2);
+            ev[i++] = createEvent(EV_SYN, 0, 0);
+        }
+        return ev;
+    }
+    static inline input_event createEvent(ushort type, ushort code, int value){
+        struct input_event event;
+        event.type = type;
+        event.code = code;
+        event.value = value;
+        return event;
+    }
 };
 
 #endif // BUTTONHANDLER_H

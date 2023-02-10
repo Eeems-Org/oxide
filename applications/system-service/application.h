@@ -23,32 +23,34 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <grp.h>
-#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <stdexcept>
 #include <sys/types.h>
 #include <algorithm>
+#include <liboxide.h>
 
-#include "dbussettings.h"
 #include "mxcfb.h"
 #include "screenapi.h"
 #include "fifohandler.h"
 #include "buttonhandler.h"
 
+// Must be included so that generate_xml.sh will work
+#include "../../shared/liboxide/meta.h"
+
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
 class SandBoxProcess : public QProcess{
     Q_OBJECT
+
 public:
     SandBoxProcess(QObject* parent = nullptr)
     : QProcess(parent), m_gid(0), m_uid(0), m_chroot(""), m_mask(0) {}
 
     bool setUser(const QString& name){
         try{
-            m_uid = getUID(name);
+            m_uid = Oxide::getUID(name);
             return true;
         }
         catch(const std::runtime_error&){
@@ -57,7 +59,7 @@ public:
     }
     bool setGroup(const QString& name){
         try{
-            m_gid = getGID(name);
+            m_gid = Oxide::getGID(name);
             return true;
         }
         catch(const std::runtime_error&){
@@ -79,6 +81,7 @@ public:
     void setMask(mode_t mask){
         m_mask = mask;
     }
+
 protected:
     void setupChildProcess() override {
         // Drop all privileges in the child process
@@ -94,26 +97,12 @@ protected:
         setsid();
         prctl(PR_SET_PDEATHSIG, SIGTERM);
     }
+
 private:
     gid_t m_gid;
     uid_t m_uid;
     QString m_chroot;
     mode_t m_mask;
-
-    uid_t getUID(const QString& name){
-        auto user = getpwnam(name.toStdString().c_str());
-        if(user == NULL){
-            throw std::runtime_error("Invalid user name: " + name.toStdString());
-        }
-        return user->pw_uid;
-    }
-    gid_t getGID(const QString& name){
-        auto group = getgrnam(name.toStdString().c_str());
-        if(group == NULL){
-            throw std::runtime_error("Invalid group name: " + name.toStdString());
-        }
-        return group->gr_gid;
-    }
 };
 
 class Application : public QObject{
@@ -134,6 +123,7 @@ class Application : public QObject{
     Q_PROPERTY(int state READ state)
     Q_PROPERTY(bool systemApp READ systemApp)
     Q_PROPERTY(bool hidden READ hidden)
+    Q_PROPERTY(bool transient READ transient)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
     Q_PROPERTY(QString splash READ splash WRITE setSplash NOTIFY splashChanged)
     Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
@@ -142,23 +132,45 @@ class Application : public QObject{
     Q_PROPERTY(QString user READ user)
     Q_PROPERTY(QString group READ group)
     Q_PROPERTY(QStringList directories READ directories WRITE setDirectories NOTIFY directoriesChanged)
+    Q_PROPERTY(QByteArray screenCapture READ screenCapture)
+
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false), fifos() {
         m_process = new SandBoxProcess(this);
         connect(m_process, &SandBoxProcess::started, this, &Application::started);
-        connect(m_process, QOverload<int>::of(&SandBoxProcess::finished), this, &Application::finished);
+        connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&SandBoxProcess::finished), [=](int exitCode, QProcess::ExitStatus status){
+            Q_UNUSED(status);
+            finished(exitCode);
+        });
         connect(m_process, &SandBoxProcess::readyReadStandardError, this, &Application::readyReadStandardError);
         connect(m_process, &SandBoxProcess::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
         connect(m_process, &SandBoxProcess::stateChanged, this, &Application::stateChanged);
         connect(m_process, &SandBoxProcess::errorOccurred, this, &Application::errorOccurred);
     }
     ~Application() {
+        stopNoSecurityCheck();
         unregisterPath();
-        if(screenCapture != nullptr){
-            delete screenCapture;
+        if(m_screenCapture != nullptr){
+            delete m_screenCapture;
         }
         umountAll();
+        if(p_stdout != nullptr){
+            p_stdout->flush();
+            delete p_stdout;
+        }
+        if(p_stdout_fd > 0){
+            close(p_stdout_fd);
+            p_stdout_fd = -1;
+        }
+        if(p_stderr != nullptr){
+            p_stderr->flush();
+            delete p_stderr;
+        }
+        if(p_stderr_fd > 0){
+            close(p_stderr_fd);
+            p_stderr_fd = -1;
+        }
     }
 
     QString path() { return m_path; }
@@ -252,6 +264,7 @@ public:
         }
     }
     bool systemApp() { return flags().contains("system"); }
+    bool transient() { return flags().contains("transient"); }
     bool hidden() { return flags().contains("hidden"); }
     int type() { return (int)value("type", 0).toInt(); }
     int state(){
@@ -261,15 +274,35 @@ public:
         return stateNoSecurityCheck();
     }
     int stateNoSecurityCheck();
-    QString icon() { return value("icon", "").toString(); }
+    QString icon(){
+        auto _icon = value("icon", "").toString();
+        if(_icon.isEmpty() || !_icon.contains("-") || QFile::exists(_icon)){
+            return _icon;
+        }
+        auto path = Oxide::Applications::iconPath(_icon);
+        if(path.isEmpty()){
+            return _icon;
+        }
+        return path;
+    }
     void setIcon(QString icon){
         if(!hasPermission("permissions")){
             return;
         }
         setValue("icon", icon);
-        emit iconChanged(icon);
+        emit iconChanged(this->icon());
     }
-    QString splash() { return value("splash", "").toString(); }
+    QString splash(){
+        auto _splash = value("splash", "").toString();
+        if(_splash.isEmpty() || !_splash.contains("-") || QFile::exists(_splash)){
+            return _splash;
+        }
+        auto path = Oxide::Applications::iconPath(_splash);
+        if(path.isEmpty()){
+            return _splash;
+        }
+        return path;
+    }
     void setSplash(QString splash){
         if(!hasPermission("permissions")){
             return;
@@ -316,57 +349,68 @@ public:
         setValue("directories", directories);
         emit directoriesChanged(directories);
     }
+    QByteArray screenCapture(){
+        if(!hasPermission("permissions")){
+            return QByteArray();
+        }
+        return screenCaptureNoSecurityCheck();
+    }
+    QByteArray screenCaptureNoSecurityCheck(){ return qUncompress(*m_screenCapture); }
+
     const QVariantMap& getConfig(){ return m_config; }
     void setConfig(const QVariantMap& config);
     void saveScreen(){
-        if(screenCapture != nullptr){
+        if(m_screenCapture != nullptr){
             return;
         }
-        qDebug() << "Saving screen...";
-        int frameBufferHandle = open("/dev/fb0", O_RDWR);
-        char* frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
-        qDebug() << "Compressing data...";
-        auto compressedData = qCompress(QByteArray(frameBuffer, DISPLAYSIZE));
-        close(frameBufferHandle);
-        screenCapture = new QByteArray(compressedData);
-        qDebug() << "Screen saved.";
+        Oxide::Sentry::sentry_transaction("application", "saveScreen", [this](Oxide::Sentry::Transaction* t){
+            qDebug() << "Saving screen...";
+            QByteArray bytes;
+            Oxide::Sentry::sentry_span(t, "save", "Save the framebuffer", [&bytes]{
+                QBuffer buffer(&bytes);
+                buffer.open(QIODevice::WriteOnly);
+                if(!EPFrameBuffer::framebuffer()->save(&buffer, "JPG", 100)){
+                    O_WARNING("Failed to save buffer");
+                }
+            });
+            qDebug() << "Compressing data...";
+            Oxide::Sentry::sentry_span(t, "compress", "Compress the framebuffer", [this, bytes]{
+                m_screenCapture = new QByteArray(qCompress(bytes));
+            });
+            qDebug() << "Screen saved " << m_screenCapture->size() << "bytes";
+        });
     }
     void recallScreen(){
-        if(screenCapture == nullptr){
+        if(m_screenCapture == nullptr){
             return;
         }
-        qDebug() << "Uncompressing screen...";
-        auto uncompressedData = qUncompress(*screenCapture);
-        if(!uncompressedData.size()){
-            qDebug() << "Screen capture was corrupt";
-            qDebug() << screenCapture->size();
-            delete screenCapture;
-            return;
-        }
-        qDebug() << "Recalling screen...";
-        int frameBufferHandle = open("/dev/fb0", O_RDWR);
-        auto frameBuffer = (char*)mmap(0, DISPLAYSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, frameBufferHandle, 0);
-        memcpy(frameBuffer, uncompressedData, DISPLAYSIZE);
+        Oxide::Sentry::sentry_transaction("application", "recallScreen", [this](Oxide::Sentry::Transaction* t){
+            qDebug() << "Uncompressing screen...";
+            QImage img;
+            Oxide::Sentry::sentry_span(t, "decompress", "Decompress the framebuffer", [this, &img]{
+                img = QImage::fromData(screenCaptureNoSecurityCheck(), "JPG");
+            });
+            if(img.isNull()){
+                qDebug() << "Screen capture was corrupt";
+                qDebug() << m_screenCapture->size();
+                delete m_screenCapture;
+                return;
+            }
+            qDebug() << "Recalling screen...";
+            Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, img]{
+                auto size = EPFrameBuffer::framebuffer()->size();
+                QRect rect(0, 0, size.width(), size.height());
+                QPainter painter(EPFrameBuffer::framebuffer());
+                painter.drawImage(rect, img);
+                painter.end();
+                EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
+                EPFrameBuffer::waitForLastUpdate();
 
-        mxcfb_update_data update_data;
-        mxcfb_rect update_rect;
-        update_rect.top = 0;
-        update_rect.left = 0;
-        update_rect.width = DISPLAYWIDTH;
-        update_rect.height = DISPLAYHEIGHT;
-        update_data.update_marker = 0;
-        update_data.update_region = update_rect;
-        update_data.waveform_mode = WAVEFORM_MODE_AUTO;
-        update_data.update_mode = UPDATE_MODE_FULL;
-        update_data.dither_mode = EPDC_FLAG_USE_DITHERING_MAX;
-        update_data.temp = TEMP_USE_REMARKABLE_DRAW;
-        update_data.flags = 0;
-        ioctl(frameBufferHandle, MXCFB_SEND_UPDATE, &update_data);
-
-        close(frameBufferHandle);
-        delete screenCapture;
-        screenCapture = nullptr;
-        qDebug() << "Screen recalled.";
+                delete m_screenCapture;
+                m_screenCapture = nullptr;
+            });
+            qDebug() << "Screen recalled.";
+        });
     }
     void waitForFinished(){
         if(m_process->processId()){
@@ -380,6 +424,7 @@ public:
     void uninterruptApplication();
     void waitForPause();
     void waitForResume();
+
 signals:
     void launched();
     void paused();
@@ -407,23 +452,34 @@ public slots:
     }
 
 private slots:
+    void showSplashScreen();
     void started();
     void finished(int exitCode);
     void readyReadStandardError(){
-        const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
         QString error = m_process->readAllStandardError();
-        for(QString line : error.split(QRegExp("[\r\n]"), QString::SkipEmptyParts)){
-            if(!line.isEmpty()){
-                sd_journal_print(LOG_ERR, "%s %s", prefix, (const char*)line.toUtf8());
+        if(p_stderr != nullptr){
+            *p_stderr << error.toStdString().c_str();
+            p_stderr->flush();
+        }else{
+            const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
+            for(QString line : error.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)){
+                if(!line.isEmpty()){
+                    sd_journal_print(LOG_ERR, "%s %s", prefix, (const char*)line.toUtf8());
+                }
             }
         }
     }
     void readyReadStandardOutput(){
-        const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
         QString output = m_process->readAllStandardOutput();
-        for(QString line : output.split(QRegExp("[\r\n]"), QString::SkipEmptyParts)){
-            if(!line.isEmpty()){
-                sd_journal_print(LOG_INFO, "%s %s", prefix, (const char*)line.toUtf8());
+        if(p_stdout != nullptr){
+            *p_stdout << output.toStdString().c_str();
+            p_stdout->flush();
+        }else{
+            const char* prefix = ("[" + name() + " " + QString::number(m_process->processId()) + "]").toUtf8();
+            for(QString line : output.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)){
+                if(!line.isEmpty()){
+                    sd_journal_print(LOG_INFO, "%s %s", prefix, (const char*)line.toUtf8());
+                }
             }
         }
     }
@@ -437,6 +493,18 @@ private slots:
             break;
             case QProcess::NotRunning:
                 qDebug() << "Application" << name() << "is not running.";
+                if(sharedSettings.applicationUsage()){
+                    if(span != nullptr){
+                        Oxide::Sentry::stop_span(span);
+                        delete span;
+                        span = nullptr;
+                    }
+                    if(transaction != nullptr){
+                        Oxide::Sentry::stop_transaction(transaction);
+                        delete transaction;
+                        transaction = nullptr;
+                    }
+                }
             break;
             default:
                 qDebug() << "Application" << name() << "unknown state" << state;
@@ -444,18 +512,23 @@ private slots:
     }
     void errorOccurred(QProcess::ProcessError error);
     void powerStateDataRecieved(FifoHandler* handler, const QString& data);
+
 private:
     QVariantMap m_config;
     QString m_path;
     SandBoxProcess* m_process;
     bool m_backgrounded;
-    QByteArray* screenCapture = nullptr;
-    size_t screenCaptureSize;
+    QByteArray* m_screenCapture = nullptr;
     QElapsedTimer timer;
     QMap<QString, FifoHandler*> fifos;
+    Oxide::Sentry::Transaction* transaction = nullptr;
+    Oxide::Sentry::Span* span = nullptr;
+    int p_stdout_fd = -1;
+    QTextStream* p_stdout = nullptr;
+    int p_stderr_fd = -1;
+    QTextStream* p_stderr = nullptr;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
-    void showSplashScreen();
     void delayUpTo(int milliseconds){
         timer.invalidate();
         timer.start();
@@ -502,14 +575,14 @@ private:
         auto csource = source.toStdString();
         qDebug() << "mount" << source << target;
         if(mount(csource.c_str(), ctarget.c_str(), NULL, MS_BIND, NULL)){
-            qWarning() << "Failed to create bindmount: " << ::strerror(errno);
+            O_WARNING("Failed to create bindmount: " << ::strerror(errno));
             return;
         }
         if(!readOnly){
             return;
         }
         if(mount(csource.c_str(), ctarget.c_str(), NULL, MS_REMOUNT | MS_BIND | MS_RDONLY, NULL)){
-            qWarning() << "Failed to remount bindmount read only: " << ::strerror(errno);
+            O_WARNING("Failed to remount bindmount read only: " << ::strerror(errno));
         }
         qDebug() << "mount ro" << source << target;
     }
@@ -518,7 +591,7 @@ private:
         umount(path);
         qDebug() << "sysfs" << path;
         if(mount("none", path.toStdString().c_str(), "sysfs", 0, "")){
-            qWarning() << "Failed to mount sysfs: " << ::strerror(errno);
+            O_WARNING("Failed to mount sysfs: " << ::strerror(errno));
         }
     }
     void ramdisk(const QString& path){
@@ -526,7 +599,7 @@ private:
         umount(path);
         qDebug() << "ramdisk" << path;
         if(mount("tmpfs", path.toStdString().c_str(), "tmpfs", 0, "size=249m,mode=755")){
-            qWarning() << "Failed to create ramdisk: " << ::strerror(errno);
+            O_WARNING("Failed to create ramdisk: " << ::strerror(errno));
         }
     }
     void umount(const QString& path){
@@ -534,8 +607,8 @@ private:
             return;
         }
         auto cpath = path.toStdString();
-        ::umount(cpath.c_str());
-        if(isMounted(path)){
+        auto ret = ::umount2(cpath.c_str(), MNT_DETACH);
+        if((ret && ret != EINVAL && ret != ENOENT) || isMounted(path)){
             qDebug() << "umount failed" << path;
             return;
         }
@@ -547,17 +620,17 @@ private:
     }
     FifoHandler* mkfifo(const QString& name, const QString& target){
         if(isMounted(target)){
-            qWarning() << target << "Already mounted";
+            O_WARNING(target << "Already mounted");
             return fifos.contains(name) ? fifos[name] : nullptr;
         }
         auto source = resourcePath() + "/" + name;
         if(!QFile::exists(source)){
             if(::mkfifo(source.toStdString().c_str(), 0644)){
-                qWarning() << "Failed to create " << name << " fifo: " << ::strerror(errno);
+                O_WARNING("Failed to create " << name << " fifo: " << ::strerror(errno));
             }
         }
         if(!QFile::exists(source)){
-            qWarning() << "No fifo for " << name;
+            O_WARNING("No fifo for " << name);
             return fifos.contains(name) ? fifos[name] : nullptr;
         }
         bind(source, target);
@@ -583,73 +656,105 @@ private:
         }
         qDebug() << "symlink" << source << target;
         if(::symlink(target.toStdString().c_str(), source.toStdString().c_str())){
-            qWarning() << "Failed to create symlink: " << ::strerror(errno);
+            O_WARNING("Failed to create symlink: " << ::strerror(errno));
             return;
         }
     }
     const QString resourcePath() { return "/tmp/tarnish-chroot/" + name(); }
     const QString chrootPath() { return resourcePath() + "/chroot"; }
     void mountAll(){
-        auto path = chrootPath();
-        qDebug() << "Setting up chroot" << path;
-        // System tmpfs folders
-        bind("/dev", path + "/dev");
-        bind("/proc", path + "/proc");
-        sysfs(path + "/sys");
-        // Folders required to run things
-        bind("/bin", path + "/bin", true);
-        bind("/sbin", path + "/sbin", true);
-        bind("/lib", path + "/lib", true);
-        bind("/usr/lib", path + "/usr/lib", true);
-        bind("/usr/bin", path + "/usr/bin", true);
-        bind("/usr/sbin", path + "/usr/sbin", true);
-        bind("/opt/bin", path + "/opt/bin", true);
-        bind("/opt/lib", path + "/opt/lib", true);
-        bind("/opt/usr/bin", path + "/opt/usr/bin", true);
-        bind("/opt/usr/lib", path + "/opt/usr/lib", true);
-        // tmpfs folders
-        mkdirs(path + "/tmp", 744);
-        if(!QFile::exists(path + "/run")){
-            ramdisk(path + "/run");
-        }
-        if(!QFile::exists(path + "/var/volatile")){
-            ramdisk(path + "/var/volatile");
-        }
-        // Configured folders
-        for(auto directory : directories()){
-            bind(directory, path + directory);
-        }
-        // Fake sys devices
-        auto fifo = mkfifo("powerState", path + "/sys/power/state");
-        connect(fifo, &FifoHandler::dataRecieved, this, &Application::powerStateDataRecieved);
-        // Missing symlinks
-        symlink(path + "/var/run", "../run");
-        symlink(path + "/var/lock", "../run/lock");
-        symlink(path + "/var/tmp", "volatile/tmp");
+        Oxide::Sentry::sentry_transaction("application", "mount", [this](Oxide::Sentry::Transaction* t){
+#ifdef SENTRY
+            if(t != nullptr){
+                sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+            }
+#endif
+            auto path = chrootPath();
+            qDebug() << "Setting up chroot" << path;
+            Oxide::Sentry::sentry_span(t, "bind", "Bind directories", [this, path]{
+                // System tmpfs folders
+                bind("/dev", path + "/dev");
+                bind("/proc", path + "/proc");
+                sysfs(path + "/sys");
+                // Folders required to run things
+                bind("/bin", path + "/bin", true);
+                bind("/sbin", path + "/sbin", true);
+                bind("/lib", path + "/lib", true);
+                bind("/usr/lib", path + "/usr/lib", true);
+                bind("/usr/bin", path + "/usr/bin", true);
+                bind("/usr/sbin", path + "/usr/sbin", true);
+                bind("/opt/bin", path + "/opt/bin", true);
+                bind("/opt/lib", path + "/opt/lib", true);
+                bind("/opt/usr/bin", path + "/opt/usr/bin", true);
+                bind("/opt/usr/lib", path + "/opt/usr/lib", true);
+            });
+            Oxide::Sentry::sentry_span(t, "ramdisk", "Create ramdisks", [this, path]{
+                // tmpfs folders
+                mkdirs(path + "/tmp", 744);
+                if(!QFile::exists(path + "/run")){
+                    ramdisk(path + "/run");
+                }
+                if(!QFile::exists(path + "/var/volatile")){
+                    ramdisk(path + "/var/volatile");
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "configured", "Bind configured directories", [this, path]{
+                // Configured folders
+                for(auto directory : directories()){
+                    bind(directory, path + directory);
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "fifo", "Create fifos", [this, path]{
+                // Fake sys devices
+                auto fifo = mkfifo("powerState", path + "/sys/power/state");
+                connect(fifo, &FifoHandler::dataRecieved, this, &Application::powerStateDataRecieved);
+            });
+            Oxide::Sentry::sentry_span(t, "symlink", "Create symlinks", [this, path]{
+                // Missing symlinks
+                symlink(path + "/var/run", "../run");
+                symlink(path + "/var/lock", "../run/lock");
+                symlink(path + "/var/tmp", "volatile/tmp");
+            });
+        });
     }
     void umountAll(){
-        auto path = chrootPath();
-        for(auto name : fifos.keys()){
-            auto fifo = fifos.take(name);
-            fifo->quit();
-            fifo->deleteLater();
-        }
-        QDir dir(path);
-        if(!dir.exists()){
-            return;
-        }
-        qDebug() << "Tearing down chroot" << path;
-        for(auto file : dir.entryList(QDir::Files)){
-            QFile::remove(file);
-        }
-        for(auto mount : getActiveApplicationMounts()){
-            umount(mount);
-        }
-        if(!getActiveApplicationMounts().isEmpty()){
-            qDebug() << "Some items are still mounted in chroot" << path;
-            return;
-        }
-        dir.removeRecursively();
+        Oxide::Sentry::sentry_transaction("application", "umount", [this](Oxide::Sentry::Transaction* t){
+#ifdef SENTRY
+            if(t != nullptr){
+                sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
+            }
+#endif
+            auto path = chrootPath();
+            Oxide::Sentry::sentry_span(t, "fifos", "Remove fifos", [this]{
+                for(auto name : fifos.keys()){
+                    auto fifo = fifos.take(name);
+                    fifo->quit();
+                    fifo->deleteLater();
+                }
+            });
+            QDir dir(path);
+            if(!dir.exists()){
+                return;
+            }
+            qDebug() << "Tearing down chroot" << path;
+            Oxide::Sentry::sentry_span(t, "dirs", "Remove directories", [dir]{
+                for(auto file : dir.entryList(QDir::Files)){
+                    QFile::remove(file);
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "umount", "Unmount all mounts", [this]{
+                for(auto mount : getActiveApplicationMounts()){
+                    umount(mount);
+                }
+            });
+            if(!getActiveApplicationMounts().isEmpty()){
+                qDebug() << "Some items are still mounted in chroot" << path;
+                return;
+            }
+            Oxide::Sentry::sentry_span(t, "rm", "Remove final folder", [&dir]{
+                dir.removeRecursively();
+            });
+        });
     }
     bool isMounted(const QString& path){ return getActiveMounts().contains(path); }
     QStringList getActiveApplicationMounts(){
@@ -672,13 +777,13 @@ private:
             if(mount.startsWith("/")){
                 activeMounts.append(mount);
             }
-
         }
         mounts.close();
         activeMounts.sort(Qt::CaseSensitive);
         std::reverse(std::begin(activeMounts), std::end(activeMounts));
         return activeMounts;
     }
+    void startSpan(std::string operation, std::string description);
 };
 
 #endif // APPLICATION_H

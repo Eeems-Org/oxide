@@ -1,0 +1,67 @@
+name: Sync with remote repository
+description: Synchronize packages with a remote repository
+inputs:
+  local-path:
+    description: Path to the directory containing the packages to push
+    required: true
+  ssh-key:
+    description: Private SSH key to access the remote repository
+    required: true
+  ssh-known-hosts:
+    description: Public SSH key of the remote repository
+    required: true
+  remote-path:
+    description: Path to the remote directory to place the packages in
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Check for Apt updates
+      shell: bash
+      run: |
+        sudo apt-get update -yq
+        echo "syncAptVersion=sshfs-$(apt-cache policy sshfs | grep -oP '(?<=Candidate:\s)(.+)')" >> $GITHUB_ENV
+    - name: Cache Apt packages
+      uses: actions/cache@v3
+      id: cache-apt
+      with:
+        path: ~/.aptcache
+        key: ${{ env.syncAptVersion }}
+    - name: Install or restore Apt packages
+      shell: bash
+      env:
+        CACHE_HIT: ${{ steps.cache-apt.outputs.cache-hit }}
+      run: |
+        if [[ "$CACHE_HIT" != 'true' ]]; then
+          sudo apt-get install -yq sshfs
+          mkdir -p ~/.aptcache
+          sudo dpkg -L sshfs | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/.aptcache/
+        else
+          sudo cp --verbose --force --recursive ~/.aptcache/* /
+        fi
+    - name: rsync packages and index
+      shell: bash
+      run: |
+        mkdir -p private
+        chmod 700 private
+        echo '${{ inputs.ssh-key }}' > private/id_rsa
+        echo '${{ inputs.ssh-known-hosts }}' > private/known_hosts
+        echo 'HostKeyAlgorithms +ssh-rsa' > private/config
+        echo 'PubkeyAcceptedKeyTypes +ssh-rsa' >> private/config
+        echo "UserKnownHostsFile=$(readlink -f private/known_hosts)" >> private/config
+        echo "IdentityFile=$(readlink -f private/id_rsa)" >> private/config
+        chmod 600 private/*
+        mkdir mnt
+        sshfs -F "$(readlink -f private/config)" \
+            '${{ inputs.remote-path }}' mnt
+        rsync \
+            --archive \
+            --verbose \
+            --compress \
+            --delete \
+            --no-owner \
+            --no-group \
+            '${{ inputs.local-path }}' mnt
+        umount mnt
+        rmdir mnt
+        rm -r private

@@ -38,6 +38,7 @@ ApplicationWindow {
             visible: stateController.state === "loaded"
             property bool counter: false
             function reload(){
+                controller.breadcrumb("background", "reload");
                 console.log("Reloading background");
                 counter = !counter
                 source = "image://screen/image?id=" + counter
@@ -48,7 +49,10 @@ ApplicationWindow {
         MouseArea {
             anchors.fill: parent
             enabled: stateController.state === "loaded"
-            onClicked: controller.previousApplication()
+            onClicked: {
+                controller.breadcrumb("background", "click", "ui");
+                controller.previousApplication();
+            }
         }
     ]
     footer: Rectangle {
@@ -67,7 +71,10 @@ ApplicationWindow {
                 text: "Home"
                 source: "qrc:/img/home.svg"
                 height: parent.height
-                onClicked: controller.launchStartupApp()
+                onClicked: {
+                    controller.breadcrumb("appsView.home", "click", "ui");
+                    controller.launchStartupApp();
+                }
             }
             AppItemSeperator {}
             AppItem {
@@ -78,6 +85,7 @@ ApplicationWindow {
                 height: parent.height
                 width: height / 2
                 onClicked: {
+                    controller.breadcrumb("appsView", "scroll.left", "ui");
                     console.log("Scroll left");
                     appsView.currentIndex = appsView.currentIndex - appsView.pageSize();
                     if(appsView.currentIndex < 0){
@@ -111,10 +119,14 @@ ApplicationWindow {
                         height: visible ? appsView.height : 0
                         source: model.modelData.imgFile
                         text: model.modelData.displayName
-                        onClicked: model.modelData.execute()
+                        onClicked: {
+                            controller.breadcrumb("appsView.app", "click", "ui");
+                            model.modelData.execute();
+                        }
                         onLongPress: {
+                            controller.breadcrumb("appsView.app", "longPress", "ui");
                             model.modelData.stop();
-                            if(index == 0){
+                            if(index === 0){
                                 background.source = "";
                             }
                         }
@@ -137,6 +149,7 @@ ApplicationWindow {
                 height: parent.height
                 width: height / 2
                 onClicked: {
+                    controller.breadcrumb("appsView", "scroll.right", "ui");
                     console.log("Scroll right");
                     appsView.currentIndex = appsView.currentIndex + appsView.pageSize();
                     if(appsView.currentIndex > appsView.count){
@@ -165,6 +178,7 @@ ApplicationWindow {
                 from: "*"; to: "loaded"
                 SequentialAnimation {
                     ScriptAction { script: {
+                        controller.breadcrumb("navigation", "main", "navigation");
                         console.log("Display loaded");
                     } }
                 }
@@ -173,6 +187,7 @@ ApplicationWindow {
                 from: "*"; to: "loading"
                 SequentialAnimation {
                     ScriptAction { script: {
+                        controller.breadcrumb("navigation", "loading", "navigation");
                         console.log("Loading display");
                         controller.startup();
                     } }

@@ -2,7 +2,8 @@
         "displayName": "Web Browser",
         "description": "Browse the web",
         "bin": "/opt/bin/mold",
-        "icon": "/opt/etc/draft/icons/web.svg",
+        "icon": "oxide:web-48",
+        "splash": "oxide:splash:web-702",
         "flags": [],
         "type": "foreground",
         "permissions": []

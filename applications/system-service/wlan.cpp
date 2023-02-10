@@ -9,7 +9,8 @@ void Wlan::setInterface(QString path){
     removeInterface();
     auto bus = QDBusConnection::systemBus();
     m_interface = new Interface(WPA_SUPPLICANT_SERVICE, path, bus, this);
-    m_blobs = m_interface->blobs().toSet();
+    auto blobs =m_interface->blobs();
+    m_blobs = QSet<QString>(blobs.begin(), blobs.end());
     connect(m_interface, &Interface::BSSAdded, this, &Wlan::onBSSAdded, Qt::QueuedConnection);
     connect(m_interface, &Interface::BSSRemoved, this, &Wlan::onBSSRemoved, Qt::QueuedConnection);
     connect(m_interface, &Interface::BlobAdded, this, &Wlan::onBlobAdded, Qt::QueuedConnection);

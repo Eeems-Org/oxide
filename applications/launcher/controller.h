@@ -3,38 +3,40 @@
 #include <QObject>
 #include <QTimer>
 #include <QJsonObject>
+#include <QGuiApplication>
 #include <QMutableListIterator>
+#include <liboxide.h>
+#include <liboxide/eventfilter.h>
+#include <liboxide/sysobject.h>
 
 #include "appitem.h"
-#include "eventfilter.h"
-#include "sysobject.h"
 #include "wifinetworklist.h"
 #include "notificationlist.h"
-#include "dbusservice_interface.h"
-#include "powerapi_interface.h"
-#include "wifiapi_interface.h"
-#include "network_interface.h"
-#include "bss_interface.h"
-#include "appsapi_interface.h"
-#include "systemapi_interface.h"
-#include "notification_interface.h"
-#include "notificationapi_interface.h"
 
 #define OXIDE_SERVICE "codes.eeems.oxide1"
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 
 using namespace codes::eeems::oxide1;
+using codes::eeems::oxide1::Power;
+using Oxide::SysObject;
+using Oxide::EventFilter;
+using namespace Oxide::Sentry;
 
 enum State { Normal, PowerSaving };
 enum BatteryState { BatteryUnknown, BatteryCharging, BatteryDischarging, BatteryNotPresent };
 enum ChargerState { ChargerUnknown, ChargerConnected, ChargerNotConnected, ChargerNotPresent };
 enum WifiState { WifiUnknown, WifiOff, WifiDisconnected, WifiOffline, WifiOnline};
+enum SwipeDirection { None, Right, Left, Up, Down };
 
 class Controller : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep NOTIFY automaticSleepChanged);
     Q_PROPERTY(int columns MEMBER m_columns WRITE setColumns NOTIFY columnsChanged);
+    Q_PROPERTY(int swipeLengthRight MEMBER m_swipeLengthRight WRITE setSwipeLengthRight NOTIFY swipeLengthRightChanged);
+    Q_PROPERTY(int swipeLengthLeft MEMBER m_swipeLengthLeft WRITE setSwipeLengthLeft NOTIFY swipeLengthLeftChanged);
+    Q_PROPERTY(int swipeLengthUp MEMBER m_swipeLengthUp WRITE setSwipeLengthUp NOTIFY swipeLengthUpChanged);
+    Q_PROPERTY(int swipeLengthDown MEMBER m_swipeLengthDown WRITE setSwipeLengthDown NOTIFY swipeLengthDownChanged);
     Q_PROPERTY(bool showWifiDb MEMBER m_showWifiDb WRITE setShowWifiDb NOTIFY showWifiDbChanged);
     Q_PROPERTY(bool showBatteryPercent MEMBER m_showBatteryPercent WRITE setShowBatteryPercent NOTIFY showBatteryPercentChanged);
     Q_PROPERTY(bool showBatteryTemperature MEMBER m_showBatteryTemperature WRITE setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged);
@@ -48,6 +50,8 @@ class Controller : public QObject
     Q_PROPERTY(bool showDate MEMBER m_showDate WRITE setShowDate NOTIFY showDateChanged);
     Q_PROPERTY(bool hasNotification MEMBER m_hasNotification NOTIFY hasNotificationChanged);
     Q_PROPERTY(QString notificationText MEMBER m_notificationText NOTIFY notificationTextChanged);
+    Q_PROPERTY(int maxTouchWidth READ maxTouchWidth);
+    Q_PROPERTY(int maxTouchHeight READ maxTouchHeight);
 public:
     static std::string exec(const char* cmd);
     EventFilter* filter;
@@ -57,7 +61,8 @@ public:
     : QObject(parent),
       m_wifion(false),
       wifi("/sys/class/net/wlan0"),
-      applications() {
+      applications()
+    {
         networks = new WifiNetworkList();
         notifications = new NotificationList();
 
@@ -109,7 +114,7 @@ public:
         connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
         connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
         connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
-        connect(wifiApi, &Wifi::linkChanged, this, &Controller::wifiLinkChanged);
+        connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
         networks->setAPI(wifiApi);
         auto state = wifiApi->state();
         m_wifion = state != WifiState::WifiOff && state != WifiState::WifiUnknown;
@@ -122,7 +127,7 @@ public:
             powerStateChanged(powerApi->state());
 
             wifiStateChanged(wifiApi->state());
-            wifiLinkChanged(wifiApi->link());
+            wifiRssiChanged(wifiApi->rssi());
             emit wifiOnChanged(m_wifion);
             if(stateController->property("state") == "wifi"){
                 connectWifiSignals();
@@ -153,9 +158,15 @@ public:
             setAutomaticSleep(sleepAfter);
             setSleepAfter(sleepAfter);
         });
+        connect(systemApi, &System::swipeLengthChanged, [this](int direction, int length){
+            setSwipeLength(direction, length);
+        });
         auto autoSleep = systemApi->autoSleep();
         setAutomaticSleep(autoSleep);
         setSleepAfter(autoSleep);
+        for(short i = 1; i <= 4; ++i){
+            setSwipeLength(i, systemApi->getSwipeLength(i));
+        }
         emit powerOffInhibitedChanged(powerOffInhibited());
         emit sleepInhibitedChanged(sleepInhibited());
         reply = api.requestAPI("apps");
@@ -236,26 +247,35 @@ public:
     Q_INVOKABLE void reboot();
     Q_INVOKABLE void suspend();
     Q_INVOKABLE void lock();
+    Q_INVOKABLE void breadcrumb(QString category, QString message, QString type = "default"){
+#ifdef SENTRY
+        sentry_breadcrumb(category.toStdString().c_str(), message.toStdString().c_str(), type.toStdString().c_str());
+#else
+        Q_UNUSED(category);
+        Q_UNUSED(message);
+        Q_UNUSED(type);
+#endif
+    }
     void updateBatteryLevel();
-    bool automaticSleep() const {
-        return m_automaticSleep;
-    };
+    bool automaticSleep() const { return m_automaticSleep; };
     void setAutomaticSleep(bool);
-    int columns() const {
-        return m_columns;
-    };
+    int columns() const { return m_columns; };
     void setColumns(int);
-    bool showWifiDb() const {
-        return m_showWifiDb;
-    };
+    int swipeLengthRight() const { return m_swipeLengthRight; };
+    void setSwipeLengthRight(int length) { setSwipeLength(1, length); };
+    int swipeLengthLeft() const { return m_swipeLengthLeft; };
+    void setSwipeLengthLeft(int length) { setSwipeLength(2, length); };
+    int swipeLengthUp() const { return m_swipeLengthUp; };
+    void setSwipeLengthUp(int length) { setSwipeLength(3, length); };
+    int swipeLengthDown() const { return m_swipeLengthDown; };
+    void setSwipeLengthDown(int length) { setSwipeLength(4, length); };
+    int getSwipeLength(int direction);
+    void setSwipeLength(int direction, int length);
+    bool showWifiDb() const { return m_showWifiDb; };
     void setShowWifiDb(bool);
-    bool showBatteryPercent() const {
-        return m_showBatteryPercent;
-    };
+    bool showBatteryPercent() const { return m_showBatteryPercent; };
     void setShowBatteryPercent(bool);
-    bool showBatteryTemperature() const {
-        return m_showBatteryTemperature;
-    };
+    bool showBatteryTemperature() const { return m_showBatteryTemperature; };
     void setShowBatteryTemperature(bool);
     int sleepAfter() const { return systemApi->autoSleep(); };
     void setSleepAfter(int);
@@ -300,6 +320,8 @@ public:
     NotificationList* getNotifications() { return notifications; }
     bool powerOffInhibited(){ return systemApi->powerOffInhibited(); }
     bool sleepInhibited(){ return systemApi->sleepInhibited(); }
+    int maxTouchWidth(){ return deviceSettings.getTouchWidth() * 0.9; }
+    int maxTouchHeight(){ return deviceSettings.getTouchHeight() * 0.9; }
 
     Q_INVOKABLE void disconnectWifiSignals(){
         disconnect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
@@ -343,6 +365,10 @@ signals:
     void reload();
     void automaticSleepChanged(bool);
     void columnsChanged(int);
+    void swipeLengthRightChanged(int);
+    void swipeLengthLeftChanged(int);
+    void swipeLengthUpChanged(int);
+    void swipeLengthDownChanged(int);
     void fontSizeChanged(int);
     void showWifiDbChanged(bool);
     void showBatteryPercentChanged(bool);
@@ -376,12 +402,7 @@ private slots:
     void notificationAdded(const QDBusObjectPath& path){
         auto notification = new Notification(OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this);
         notifications->append(notification);
-        emit notificationsChanged(notifications);
-        if(notifications->length() > 1){
-            setNotification(QStringLiteral("%1 notifications").arg(notifications->length()));
-            return;
-        }
-        setNotification("1 notification");
+        // Notification UI updates will be handled by notificationsUpdated
     }
     void notificationRemoved(const QDBusObjectPath& path){
         auto notification = notifications->get(path);
@@ -389,17 +410,8 @@ private slots:
             return;
         }
         notifications->removeAll(notification);
-        delete notification;
-        emit notificationsChanged(notifications);
-        if(notifications->empty()){
-            clearNotification();
-            return;
-        }
-        if(notifications->length() > 1){
-            setNotification(QStringLiteral("%1 notifications").arg(notifications->length()));
-            return;
-        }
-        setNotification("1 notification");
+        notification->deleteLater();
+        // Notification UI updates will be handled by notificationsUpdated
     }
     void notificationChanged(const QDBusObjectPath& path){
         Q_UNUSED(path);
@@ -599,7 +611,7 @@ private slots:
                 case WifiOnline:
                     ui->setProperty("state", "up");
                     ui->setProperty("connected", true);
-                    ui->setProperty("link", wifiLink);
+                    ui->setProperty("rssi", wifiApi->rssi());
                 break;
                 case WifiUnknown:
                 default:
@@ -607,20 +619,23 @@ private slots:
             }
         }
     }
-    void wifiLinkChanged(int link){
-        wifiLink = link;
+    void wifiRssiChanged(int rssi){
         QObject* ui = root->findChild<QObject*>("wifiState");
         if(ui){
             if(wifiState != WifiOnline){
-                link = 0;
+                rssi = -100;
             }
-            ui->setProperty("link", link);
+            ui->setProperty("rssi", rssi);
         }
     }
 private:
     void checkUITimer();
     bool m_automaticSleep = true;
     int m_columns = 6;
+    int m_swipeLengthRight = 30;
+    int m_swipeLengthLeft = 30;
+    int m_swipeLengthUp = 30;
+    int m_swipeLengthDown = 30;
     int m_fontSize = 23;
     int m_sleepAfter;
     bool m_showWifiDb = false;
@@ -633,8 +648,6 @@ private:
 
     bool m_powerConnected = false;
     int wifiState = WifiUnknown;
-    int wifiLink = 0;
-    int wifiLevel = 0;
 
     bool m_wifion;
     SysObject wifi;

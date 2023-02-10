@@ -5,19 +5,17 @@
 
 #include <cstdlib>
 #include <signal.h>
+#include <liboxide.h>
 
-#include "dbussettings.h"
-#include "devicesettings.h"
 #include "controller.h"
-#include "eventfilter.h"
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 
-#include "dbusservice_interface.h"
-
 using namespace std;
+using namespace Oxide;
+using namespace Oxide::Sentry;
 
 const char* qt_version = qVersion();
 
@@ -39,13 +37,14 @@ int main(int argc, char *argv[]){
 //    qputenv("QT_DEBUG_BACKINGSTORE", "1");
 #endif
     QGuiApplication app(argc, argv);
+    sentry_init("anxiety", argv);
     auto filter = new EventFilter(&app);
     app.installEventFilter(filter);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("anxiety");
     app.setApplicationDisplayName("Screenshots");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     Controller controller(&app);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();

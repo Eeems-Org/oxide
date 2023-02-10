@@ -8,8 +8,8 @@
 #include <QTimer>
 
 #include <epframebuffer.h>
+#include <liboxide.h>
 
-#include "dbussettings.h"
 #include <QKeyEvent>
 #include <QMouseEvent>
 
