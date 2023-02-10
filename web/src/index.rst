@@ -4,7 +4,7 @@ Home
 
 .. raw:: html
 
-   <img src="_static/images/logo.png" alt="" class="logo">
+   <img src="_static/images/logo.png" alt="logo" class="logo">
    <br/>
 
 Oxide is a `desktop environment <https://en.wikipedia.org/wiki/Desktop_environment>`_ for the `reMarkable tablet <https://remarkable.com/>`_.

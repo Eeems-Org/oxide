@@ -79,7 +79,7 @@ prod: $(DIST)
 
 dev: $(VENV)/bin/activate
 	. $(VENV)/bin/activate; \
-	sphinx-autobuild -a $(SRC) $(DIST)
+	sphinx-autobuild -a $(SRC) $(DIST) --port=0 --open-browser
 
 dev-images:
 	while inotifywait -e close_write,create $(IMAGES) $(IMAGES)/*.tex;do \
