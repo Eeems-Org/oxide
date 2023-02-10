@@ -10,6 +10,8 @@
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
 
+using namespace Oxide::Applications;
+
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
 
 void Application::launch(){
@@ -60,9 +62,41 @@ void Application::launchNoSecurityCheck(){
             }
             m_process->setUser(user());
             m_process->setGroup(group());
+            if(p_stdout == nullptr){
+                p_stdout_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_INFO, 1);
+                if (p_stdout_fd < 0) {
+                    errno = -p_stdout_fd;
+                    qDebug() << "Failed to create stdout fd:" << -p_stdout_fd;
+                }else{
+                    FILE* log = fdopen(p_stdout_fd, "w");
+                    if(!log){
+                        qDebug() << "Failed to create stdout FILE:" << errno;
+                        close(p_stdout_fd);
+                    }else{
+                        p_stdout = new QTextStream(log);
+                        qDebug() << "Opened stdout for " << name();
+                    }
+                }
+            }
+            if(p_stderr == nullptr){
+                p_stderr_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_ERR, 1);
+                if (p_stderr_fd < 0) {
+                    errno = -p_stderr_fd;
+                    qDebug() << "Failed to create sterr fd:" << -p_stderr_fd;
+                }else{
+                    FILE* log = fdopen(p_stderr_fd, "w");
+                    if(!log){
+                        qDebug() << "Failed to create stderr FILE:" << errno;
+                        close(p_stderr_fd);
+                    }else{
+                        p_stderr = new QTextStream(log);
+                        qDebug() << "Opened stderr for " << name();
+                    }
+                }
+            }
             m_process->start();
             m_process->waitForStarted();
-            if(type() == AppsAPI::Background){
+            if(type() == Background){
                 startSpan("background", "Application is in the background");
             }else{
                 startSpan("foreground", "Application is in the foreground");
@@ -80,7 +114,7 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
     if(
         !m_process->processId()
         || stateNoSecurityCheck() == Paused
-        || type() == AppsAPI::Background
+        || type() == Background
     ){
         return;
     }
@@ -109,7 +143,7 @@ void Application::interruptApplication(){
     if(
         !m_process->processId()
         || stateNoSecurityCheck() == Paused
-        || type() == AppsAPI::Background
+        || type() == Background
     ){
         return;
     }
@@ -128,11 +162,11 @@ void Application::interruptApplication(){
         }
         Oxide::Sentry::sentry_span(t, "background", "Background application", [this](){
             switch(type()){
-                case AppsAPI::Background:
+                case Background:
                     // Already in the background. How did we get here?
                     startSpan("background", "Application is in the background");
                     return;
-                case AppsAPI::Backgroundable:
+                case Backgroundable:
                     qDebug() << "Waiting for SIGUSR2 ack";
                     appsAPI->connectSignals(this, 2);
                     kill(-m_process->processId(), SIGUSR2);
@@ -152,7 +186,7 @@ void Application::interruptApplication(){
                         startSpan("background", "Application is in the background");
                     }
                     break;
-                case AppsAPI::Foreground:
+                case Foreground:
                 default:
                     kill(-m_process->processId(), SIGSTOP);
                     waitForPause();
@@ -185,7 +219,7 @@ void Application::resumeNoSecurityCheck(){
     if(
         !m_process->processId()
         || stateNoSecurityCheck() == InForeground
-        || (type() == AppsAPI::Background && stateNoSecurityCheck() == InBackground)
+        || (type() == Background && stateNoSecurityCheck() == InBackground)
     ){
         qDebug() << "Can't Resume" << path() << "Already running!";
         return;
@@ -201,7 +235,7 @@ void Application::resumeNoSecurityCheck(){
         appsAPI->recordPreviousApplication();
         qDebug() << "Resuming " << path();
         appsAPI->pauseAll();
-        if(!flags().contains("nosavescreen") && (type() != AppsAPI::Backgroundable || stateNoSecurityCheck() == Paused)){
+        if(!flags().contains("nosavescreen") && (type() != Backgroundable || stateNoSecurityCheck() == Paused)){
             recallScreen();
         }
         uninterruptApplication();
@@ -215,7 +249,7 @@ void Application::uninterruptApplication(){
     if(
         !m_process->processId()
         || stateNoSecurityCheck() == InForeground
-        || (type() == AppsAPI::Background && stateNoSecurityCheck() == InBackground)
+        || (type() == Background && stateNoSecurityCheck() == InBackground)
     ){
         return;
     }
@@ -234,8 +268,8 @@ void Application::uninterruptApplication(){
         }
         Oxide::Sentry::sentry_span(t, "foreground", "Foreground application", [this](){
             switch(type()){
-                case AppsAPI::Background:
-                case AppsAPI::Backgroundable:
+                case Background:
+                case Backgroundable:
                     if(stateNoSecurityCheck() == Paused){
                         touchHandler->clear_buffer();
                         kill(-m_process->processId(), SIGCONT);
@@ -254,7 +288,7 @@ void Application::uninterruptApplication(){
                     m_backgrounded = false;
                     startSpan("background", "Application is in the background");
                     break;
-                case AppsAPI::Foreground:
+                case Foreground:
                 default:
                     touchHandler->clear_buffer();
                     kill(-m_process->processId(), SIGCONT);
@@ -321,6 +355,14 @@ void Application::stopNoSecurityCheck(){
             }
         });
         appsAPI->removeFromPreviousApplications(name());
+        if(p_stdout != nullptr){
+            delete p_stdout;
+            p_stdout = nullptr;
+        }
+        if(p_stderr != nullptr){
+            delete p_stderr;
+            p_stderr = nullptr;
+        }
     });
 }
 void Application::signal(int signal){
@@ -351,7 +393,7 @@ int Application::stateNoSecurityCheck(){
                     return Paused;
                 }
             }
-            if(type() == AppsAPI::Background || (type() == AppsAPI::Backgroundable && m_backgrounded)){
+            if(type() == Background || (type() == Backgroundable && m_backgrounded)){
                 return InBackground;
             }
             return InForeground;
@@ -364,7 +406,7 @@ int Application::stateNoSecurityCheck(){
 void Application::setConfig(const QVariantMap& config){
     auto oldBin = bin();
     m_config = config;
-    if(type() == AppsAPI::Foreground){
+    if(type() == Foreground){
         setAutoStart(false);
     }
     if(oldBin == bin()){
@@ -384,6 +426,9 @@ void Application::finished(int exitCode){
     appsAPI->resumeIfNone();
     emit appsAPI->applicationExited(qPath(), exitCode);
     umountAll();
+    if(transient()){
+        unregister();
+    }
 }
 void Application::errorOccurred(QProcess::ProcessError error){
     switch(error){
@@ -391,6 +436,9 @@ void Application::errorOccurred(QProcess::ProcessError error){
             qDebug() << "Application" << name() << "failed to start.";
             emit exited(-1);
             emit appsAPI->applicationExited(qPath(), -1);
+            if(transient()){
+                unregister();
+            }
         break;
         case QProcess::Crashed:
             qDebug() << "Application" << name() << "crashed.";
@@ -477,13 +525,13 @@ void Application::showSplashScreen(){
 void Application::powerStateDataRecieved(FifoHandler* handler, const QString& data){
     Q_UNUSED(handler);
     if(!permissions().contains("power")){
-        qWarning() << "Denied powerState request";
+        O_WARNING("Denied powerState request");
         return;
     }
     if((QStringList() << "mem" << "freeze" << "standby").contains(data)){
         systemAPI->suspend();
     }else{
-        qWarning() << "Unknown power state call: " << data;
+        O_WARNING("Unknown power state call: " << data);
     }
 }
 void Application::startSpan(std::string operation, std::string description){

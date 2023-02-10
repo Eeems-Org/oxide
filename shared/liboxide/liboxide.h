@@ -1,14 +1,24 @@
 /*!
- * \file liboxide.h
+ * \addtogroup Oxide
+ * \brief The main Oxide module
+ * @{
+ * \file
  */
-#ifndef LIBOXIDE_H
-#define LIBOXIDE_H
+#pragma once
 
 #include "liboxide_global.h"
 
+#include "meta.h"
+#include "dbus.h"
+#include "applications.h"
 #include "settingsfile.h"
 #include "power.h"
+#include "json.h"
 #include "signalhandler.h"
+#include "slothandler.h"
+#include "sysobject.h"
+#include "debug.h"
+#include "oxide_sentry.h"
 
 #include <QDebug>
 #include <QScopeGuard>
@@ -16,26 +26,7 @@
 #include <QFileSystemWatcher>
 #include <QThread>
 
-#define WPA_SUPPLICANT_SERVICE "fi.w1.wpa_supplicant1"
-#define WPA_SUPPLICANT_SERVICE_PATH "/fi/w1/wpa_supplicant1"
-
-#define OXIDE_SERVICE "codes.eeems.oxide1"
-#define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
-#define OXIDE_INTERFACE_VERSION "1.0.0"
-
-#define OXIDE_GENERAL_INTERFACE OXIDE_SERVICE ".General"
-#define OXIDE_POWER_INTERFACE OXIDE_SERVICE ".Power"
-#define OXIDE_WIFI_INTERFACE OXIDE_SERVICE ".Wifi"
-#define OXIDE_NETWORK_INTERFACE OXIDE_SERVICE ".Network"
-#define OXIDE_BSS_INTERFACE OXIDE_SERVICE ".BSS"
-#define OXIDE_APPS_INTERFACE OXIDE_SERVICE ".Apps"
-#define OXIDE_APPLICATION_INTERFACE OXIDE_SERVICE ".Application"
-#define OXIDE_SYSTEM_INTERFACE OXIDE_SERVICE ".System"
-#define OXIDE_SCREEN_INTERFACE OXIDE_SERVICE ".Screen"
-#define OXIDE_NOTIFICATIONS_INTERFACE OXIDE_SERVICE ".Notifications"
-#define OXIDE_NOTIFICATION_INTERFACE OXIDE_SERVICE ".Notification"
-#define OXIDE_SCREENSHOT_INTERFACE OXIDE_SERVICE ".Screenshot"
-
+#include <sys/types.h>
 /*!
  * \def deviceSettings()
  * \brief Get the Oxide::DeviceSettings instance
@@ -52,10 +43,6 @@
  */
 #define sharedSettings Oxide::SharedSettings::instance()
 
-#ifdef SENTRY
-#include <sentry.h>
-#include <sentry/src/sentry_tracing.h>
-#endif
 
 /*!
  * \brief Wifi Network definition
@@ -63,14 +50,39 @@
 typedef QMap<QString, QVariantMap> WifiNetworks;
 Q_DECLARE_METATYPE(WifiNetworks);
 /*!
- * \addtogroup Oxide
- * \brief The main Oxide namespace
- * @{
- */
-/*!
  * \brief The main Oxide namespace
  */
 namespace Oxide {
+    /*!
+     * \brief Execute a program and return it's output
+     * \param Program to run
+     * \param Arguments to pass to the program
+     * \return Output if it ran. Otherwise NULL.
+     */
+    LIBOXIDE_EXPORT QString execute(const QString& program, const QStringList& args);
+    /*!
+     * \brief Try to get a lock
+     * \param Path to the lock file
+     * \return File descriptor of the lock file if a positive number or -1 if it errored
+     */
+    LIBOXIDE_EXPORT int tryGetLock(char const *lockName);
+    /*!
+     * \brief Release a lock file
+     * \param File descriptor of the lock file
+     * \param Path to the lock file
+     */
+    LIBOXIDE_EXPORT void releaseLock(int fd, char const* lockName);
+    /*!
+     * \brief Checks to see if a process exists
+     * \return If the process exists
+     */
+    LIBOXIDE_EXPORT bool processExists(pid_t pid);
+    /*!
+     * \brief Get list of pids that have a file open
+     * \param File to check
+     * \return list of pids that have the file open
+     */
+    LIBOXIDE_EXPORT QList<int> lsof(const QString& path);
     /*!
      * \brief Run code on the main Qt thread
      * \param callback The code to run on the main thread
@@ -78,48 +90,22 @@ namespace Oxide {
      * \snippet examples/oxide.cpp dispatchToMainThread
      */
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
-    namespace Sentry{
-        struct Transaction {
-#ifdef SENTRY
-            /*!
-             * \brief The sentry_transaction_t instance
-             */
-            sentry_transaction_t* inner;
-            explicit Transaction(sentry_transaction_t* t);
-#else
-            void* inner;
-            explicit Transaction(void* t);
-#endif
-        };
-        struct Span {
-#ifdef SENTRY
-            /*!
-             * \brief The sentry_span_t instance
-             */
-            sentry_span_t* inner;
-            explicit Span(sentry_span_t* s);
-#else
-            void* inner;
-            explicit Span(void* s);
-#endif
-        };
-
-        LIBOXIDE_EXPORT const char* bootId();
-        LIBOXIDE_EXPORT const char* machineId();
-        LIBOXIDE_EXPORT void sentry_init(const char* name, char* argv[], bool autoSessionTracking = true);
-        LIBOXIDE_EXPORT void sentry_breadcrumb(const char* category, const char* message, const char* type = "default", const char* level = "info");
-        LIBOXIDE_EXPORT Transaction* start_transaction(const std::string& name, const std::string& action);
-        LIBOXIDE_EXPORT void stop_transaction(Transaction* transaction);
-        LIBOXIDE_EXPORT void sentry_transaction(const std::string& name, const std::string& action, std::function<void(Transaction* transaction)> callback);
-        LIBOXIDE_EXPORT Span* start_span(Transaction* transaction, const std::string& operation, const std::string& description);
-        LIBOXIDE_EXPORT Span* start_span(Span* parent, const std::string& operation, const std::string& description);
-        LIBOXIDE_EXPORT void stop_span(Span* span);
-        LIBOXIDE_EXPORT void sentry_span(Transaction* transaction, const std::string& operation, const std::string& description, std::function<void()> callback);
-        LIBOXIDE_EXPORT void sentry_span(Transaction* transaction, const std::string& operation, const std::string& description, std::function<void(Span* span)> callback);
-        LIBOXIDE_EXPORT void sentry_span(Span* parent, const std::string& operation, const std::string& description, std::function<void()> callback);
-        LIBOXIDE_EXPORT void sentry_span(Span* parent, const std::string& operation, const std::string& description, std::function<void(Span* span)> callback);
-        LIBOXIDE_EXPORT void trigger_crash();
-    }
+    /*!
+     * \brief Get the UID for a username
+     * \param Username to search for
+     * \throws std::runtime_error Failed to get the UID for the username
+     * \return The UID for the username
+     * \snippet examples/oxide.cpp getUID
+     */
+    LIBOXIDE_EXPORT uid_t getUID(const QString& name);
+    /*!
+     * \brief Get the GID for a groupname
+     * \param Groupname to search for
+     * \throws std::runtime_error Failed to get the GID for the groupname
+     * \return The GID for the groupname
+     * \snippet examples/oxide.cpp getGID
+     */
+    LIBOXIDE_EXPORT gid_t getGID(const QString& name);
     /*!
      * \brief Device specific values
      */
@@ -184,7 +170,7 @@ namespace Oxide {
         DeviceType _deviceType;
 
         DeviceSettings();
-        ~DeviceSettings() {};
+        ~DeviceSettings();
         void readDeviceType();
         bool checkBitSet(int fd, int type, int i);
         std::string buttonsPath = "";
@@ -241,6 +227,7 @@ namespace Oxide {
          * \sa setWifinetworks, wifinetworksChanged
          */
         Q_PROPERTY(WifiNetworks wifinetworks MEMBER m_wifinetworks READ wifinetworks WRITE setWifinetworks RESET resetWifinetworks NOTIFY wifinetworksChanged)
+
     public:
         WifiNetworks wifinetworks();
         /*!
@@ -261,11 +248,13 @@ namespace Oxide {
          */
         void setWifiNetwork(const QString& name, QVariantMap properties);
         void resetWifinetworks();
+
     signals:
         /*!
          * \brief The contents of the wifi network list has changed
          */
         void wifinetworksChanged(WifiNetworks);
+
     private:
         ~XochitlSettings();
         WifiNetworks m_wifinetworks;
@@ -283,7 +272,30 @@ namespace Oxide {
          */
         // cppcheck-suppress uninitMemberVarPrivate
         O_SETTINGS(SharedSettings, "/home/root/.config/Eeems/shared.conf")
+        /*!
+         * \property version
+         * \brief Current version of the settings file
+         * \sa set_version, versionChanged
+         */
+        /*!
+         * \fn versionChanged
+         * \brief If the version number has changed
+         */
         O_SETTINGS_PROPERTY(int, General, version)
+        /*!
+         * \property firstLaunch
+         * \brief If this is the first time that things have been run
+         * \sa set_firstLaunch, firstLaunchChanged
+         */
+        /*!
+         * \fn set_firstLaunch
+         * \param _arg_firstLaunch
+         * \brief Change the state of firstLaunch
+         */
+        /*!
+         * \fn firstLaunchChanged
+         * \brief If firstLaunch has changed
+         */
         O_SETTINGS_PROPERTY(bool, General, firstLaunch, true)
         /*!
          * \property telemetry
@@ -323,16 +335,91 @@ namespace Oxide {
         /*!
          * \fn set_crashReport
          * \param _arg_crashReport
-         * \brief Enable or disable crash  reporting
+         * \brief Enable or disable crash reporting
          */
         /*!
          * \fn crashReportChanged
          * \brief If crash reporting has been enabled or disabled
          */
         O_SETTINGS_PROPERTY(bool, General, crashReport, true)
+        /*!
+         * \property autoSleep
+         * \brief How long without activity before the device should suspend
+         * \sa set_autoSleep, autoSleepChanged
+         */
+        /*!
+         * \fn set_autoSleep
+         * \param _arg_autoSleep
+         * \brief Change autoSleep
+         */
+        /*!
+         * \fn autoSleepChanged
+         * \brief If autoSleep has been changed
+         */
+        O_SETTINGS_PROPERTY(int, General, autoSleep, 1)
+        /*!
+         * \property pin
+         * \brief The lockscreen pin
+         * \sa set_pin, pinChanged
+         */
+        /*!
+         * \fn set_pin
+         * \param _arg_pin
+         * \brief Change lockscreen pin
+         */
+        /*!
+         * \fn has_pin
+         * \brief Change lockscreen pin
+         * \return If the lockscreen pin is set
+         */
+        /*!
+         * \fn pinChanged
+         * \brief If the lockscreen pin has been changed
+         */
+        O_SETTINGS_PROPERTY(QString, Lockscreen, pin)
+        /*!
+         * \property onLogin
+         * \brief The lockscreen onLogin
+         * \sa set_onLogin, onLoginChanged
+         */
+        /*!
+         * \fn set_onLogin
+         * \param _arg_onLogin
+         * \brief Change lockscreen onLogin
+         */
+        /*!
+         * \fn has_onLogin
+         * \brief If lockscreen onLogin has been set
+         * \return If the lockscreen onLogin is set
+         */
+        /*!
+         * \fn onLoginChanged
+         * \brief If the lockscreen onLogin has been changed
+         */
+        O_SETTINGS_PROPERTY(QString, Lockscreen, onLogin)
+        /*!
+         * \property onFailedLogin
+         * \brief The lockscreen onFailedLogin
+         * \sa set_onFailedLogin, onFailedLoginChanged
+         */
+        /*!
+         * \fn set_onFailedLogin
+         * \param _arg_onFailedLogin
+         * \brief Change lockscreen onFailedLogin
+         */
+        /*!
+         * \fn has_onFailedLogin
+         * \brief If lockscreen onFailedLogin has been set
+         * \return If the lockscreen onFailedLogin is set
+         */
+        /*!
+         * \fn onFailedLoginChanged
+         * \brief If the lockscreen onFailedLogin has been changed
+         */
+        O_SETTINGS_PROPERTY(QString, Lockscreen, onFailedLogin)
+
     private:
         ~SharedSettings();
     };
 }
 /*! @} */
-#endif // LIBOXIDE_H

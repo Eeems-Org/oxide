@@ -1,6 +1,15 @@
-DIST=dist
-SRC=src
-VENV=.venv
+DIST=$(CURDIR)/dist
+SRC=$(CURDIR)/src
+IMAGES=$(CURDIR)/images
+VENV=$(CURDIR)/.venv
+BUILD=$(CURDIR)/.build
+
+texSvgFiles := $(wildcard $(IMAGES)/*.svg.tex)
+svgFiles := $(texSvgFiles:$(IMAGES)/%.svg.tex=$(SRC)/_static/images/%.svg)
+texPngFiles := $(wildcard $(IMAGES)/*.png.tex)
+pngFiles := $(texPngFiles:$(IMAGES)/%.png.tex=$(SRC)/_static/images/%.png)
+
+.PHONY: all prod images dev dev-images clean
 
 all: prod
 
@@ -10,7 +19,38 @@ $(VENV)/bin/activate:
 	. .venv/bin/activate; \
 	python -m pip install -r requirements.txt
 
-prod: $(VENV)/bin/activate
+$(SRC)/_static/images/%.svg: $(IMAGES)/%.svg.tex
+	mkdir -p $(SRC)/_static/images
+	mkdir -p $(BUILD)/images
+	cd $(IMAGES) && pdflatex \
+	    -shell-escape \
+	    -halt-on-error \
+	    -file-line-error \
+	    -interaction nonstopmode \
+	    -output-directory=$(BUILD)/images \
+	    $*.svg.tex
+	pdf2svg $(BUILD)/images/$*.svg.pdf $(SRC)/_static/images/$*.svg
+
+$(SRC)/_static/images/%.png: $(IMAGES)/%.png.tex
+	mkdir -p $(SRC)/_static/images
+	mkdir -p $(BUILD)/images
+	cd $(IMAGES) && pdflatex \
+	    -shell-escape \
+	    -halt-on-error \
+	    -file-line-error \
+	    -interaction nonstopmode \
+	    -output-directory=$(BUILD)/images \
+	    $*.png.tex
+	cd $(BUILD)/images && \
+	    pdf2svg $*.png.pdf $*.svg && \
+	    rsvg-convert $*.svg -o $(SRC)/_static/images/$*.png
+
+$(SRC)/_static/images/favicon.png: $(SRC)/_static/images/favicon.svg
+	rsvg-convert -h 180 $(SRC)/_static/images/favicon.svg -o $(SRC)/_static/images/favicon.png
+
+images: $(svgFiles) $(pngFiles) $(SRC)/_static/images/favicon.png
+
+$(DIST): $(VENV)/bin/activate images
 	. $(VENV)/bin/activate; \
 	sphinx-build -a -n -E -b html $(SRC) $(DIST)
 	# Clean unused files inherited from default theme
@@ -35,12 +75,18 @@ prod: $(VENV)/bin/activate
 	    $(DIST)/_static/underscore-1.13.1.js \
 	    $(DIST)/_static/underscore.js \
 
+prod: $(DIST)
+
 dev: $(VENV)/bin/activate
 	. $(VENV)/bin/activate; \
-	sphinx-autobuild -a $(SRC) $(DIST)
+	sphinx-autobuild -a $(SRC) $(DIST) --port=0 --open-browser
+
+dev-images:
+	while inotifywait -e close_write,create $(IMAGES) $(IMAGES)/*.tex;do \
+	    rm -f $(svgFiles) $(pngFiles); \
+	    $(MAKE) images; \
+	done
 
 clean:
-	rm -r $(DIST)
-	rm -r $(VENV)
-
-.PHONY: all prod dev clean
+	rm -rf $(DIST) $(VENV) $(BUILD)
+	rm -f $(SRC)/_static/images/*.png $(SRC)/_static/images/*.svg

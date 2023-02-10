@@ -5,8 +5,12 @@
 #include <QImage>
 #include <QtDBus>
 
-#include "../../shared/liboxide/liboxide.h"
+#include <liboxide.h>
+
 #include "application.h"
+
+// Must be included so that generate_xml.sh will work
+#include "../../shared/liboxide/meta.h"
 
 class Notification : public QObject{
     Q_OBJECT
@@ -17,6 +21,7 @@ class Notification : public QObject{
     Q_PROPERTY(QString application READ application WRITE setApplication)
     Q_PROPERTY(QString text READ text WRITE setText)
     Q_PROPERTY(QString icon READ icon WRITE setIcon)
+
 public:
     Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent);
     ~Notification(){
@@ -129,7 +134,6 @@ private:
     QImage screenBackup;
     QRect updateRect;
 
-    void dispatchToMainThread(std::function<void()> callback);
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 };
 

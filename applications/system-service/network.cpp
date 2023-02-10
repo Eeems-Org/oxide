@@ -3,8 +3,6 @@
 #include "network.h"
 #include "wifiapi.h"
 
-//#define DEBUG
-
 QSet<QString> none{
     "NONE",
     "WPA-NONE"

@@ -1,0 +1,99 @@
+% Copyright (c) 2021 The Toltec Contributors
+% SPDX-License-Identifier: MIT
+%
+% Example document for the Toltec shapes library
+\documentclass[crop, tikz, border=.1cm]{standalone}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\input{remarkable}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+
+\begin{document}
+  \begin{tikzpicture}
+    \pic (rM-scroll-left) at (0, 0) {rM1};
+    \pic (swipe-left) at ($(rM-scroll-left-screen-center)+(.2, 0)$) {scroll left};
+    \node[font=\fontsize{2}{3.5}\selectfont]
+         at ($(rM-scroll-left-screen-center)+(.2, -.22)$)
+         {Swipe left from edge};
+    \node[rectangle,draw,fill=white,font=\fontsize{3}{3.5}\selectfont]
+         at ($(rM-scroll-left-screen-center)+(0, -1.6)$)
+         {Take a screenshot};
+
+    \pic (rM-scroll-right) at (2.25, 0) {rM1};
+    \pic at ($(rM-scroll-right-screen-center)+(-.2, 0)$) {scroll right};
+    \node[font=\fontsize{2}{3.5}\selectfont]
+         at ($(rM-scroll-right-screen-center)+(-.2, -.22)$)
+         {Swipe right from edge};
+    \node[rectangle,draw,fill=white,font=\fontsize{3}{3.5}\selectfont]
+         at ($(rM-scroll-right-screen-center)+(0, -1.6)$)
+         {Open previous application};
+
+    \pic (rM-scroll-up) at (4.5, 0) {rM1};
+    \pic at ($(rM-scroll-up-screen-center)+(0, -.35)$) {scroll up};
+    \node[font=\fontsize{2}{3.5}\selectfont]
+         at ($(rM-scroll-up-screen-center)+(0, .25)$)
+         {Swipe up from edge};
+    \node[rectangle,draw,fill=white,font=\fontsize{3}{3.5}\selectfont]
+         at ($(rM-scroll-up-screen-center)+(0, -1.6)$)
+         {Open task switcher};
+
+    \pic (rM-scroll-down) at (6.75, 0) {rM1};
+    \pic at ($(rM-scroll-down-screen-center)+(0, .35)$) {scroll down};
+    \node[font=\fontsize{2}{3.5}\selectfont]
+         at ($(rM-scroll-down-screen-center)+(0, -.25)$)
+         {Swipe down from edge};
+    \node[rectangle,draw,fill=white,font=\fontsize{3}{3.5}\selectfont]
+         at ($(rM-scroll-down-screen-center)+(0, -1.6)$)
+         {Toggle touch gestures};
+
+    \pic (rM-power) at (0, -3) {rM1};
+    \draw[rM annotation, ultra thick, {Latex[length=2.2mm]}-]
+        ($(rM-power-key-power.south)+(0, -.05)$)
+        to ++(0, -.6);
+    \node[font=\fontsize{2}{3.5}\selectfont]
+         at ($(rM-power-key-power.south)+(0, -.7)$)
+         {Press button};
+    \node[rectangle,draw,fill=white,font=\fontsize{3}{3.5}\selectfont]
+         at ($(rM-power-screen-center)+(0, -1.6)$)
+         {Suspend device};
+
+    \pic[rM1 left fill=rM border]
+        (rM-left) at (2.25, -3) {rM1};
+    \draw[rM annotation, ultra thick, {Latex[length=2.2mm]}-]
+        ($(rM-left-key-left.north)+(0, .05)$)
+        to [out=85, in=-130] ++(.2, .6);
+    \node[font=\fontsize{2}{3.5}\selectfont]
+         at ($(rM-left-key-left.north)+(.5, .7)$)
+         {Hold button};
+    \node[rectangle,draw,fill=white,font=\fontsize{3}{3.5}\selectfont]
+         at ($(rM-left-screen-center)+(0, -1.6)$)
+         {Open launcher};
+
+    \pic[rM1 home fill=rM border]
+        (rM-home) at (4.5, -3) {rM1};
+    \draw[rM annotation, ultra thick, {Latex[length=2.2mm]}-]
+        ($(rM-home-key-home.north)+(0, .05)$)
+        to ++(0, .6);
+    \node[font=\fontsize{2}{3.5}\selectfont]
+         at ($(rM-home-key-home.north)+(0, .7)$)
+         {Hold button};
+    \node[rectangle,draw,fill=white,font=\fontsize{3}{3.5}\selectfont]
+         at ($(rM-home-screen-center)+(0, -1.6)$)
+         {Open process manager};
+
+    \pic[rM1 right fill=rM border]
+        (rM-right) at (6.75, -3) {rM1};
+    \draw[rM annotation, ultra thick, {Latex[length=2.2mm]}-]
+        ($(rM-right-key-right.north)+(0, .05)$)
+        to [out=95, in=-50] ++(-.2, .6);
+    \node[font=\fontsize{2}{3.5}\selectfont]
+         at ($(rM-right-key-right.north)+(-.5, .7)$)
+         {Hold button};
+    \node[rectangle,draw,fill=white,font=\fontsize{3}{3.5}\selectfont]
+         at ($(rM-right-screen-center)+(0, -1.6)$)
+         {Take a screenshot};
+  \end{tikzpicture}
+\end{document}

@@ -6,8 +6,10 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <liboxide.h>
 
-#include "../../shared/liboxide/liboxide.h"
+// Must be included so that generate_xml.sh will work
+#include "../../shared/liboxide/meta.h"
 
 class Screenshot : public QObject{
     Q_OBJECT
@@ -15,6 +17,7 @@ class Screenshot : public QObject{
     Q_CLASSINFO("D-Bus Interface", OXIDE_SCREENSHOT_INTERFACE)
     Q_PROPERTY(QByteArray blob READ blob WRITE setBlob)
     Q_PROPERTY(QString path READ getPath)
+
 public:
     Screenshot(QString path, QString filePath, QObject* parent) : QObject(parent), m_path(path), mutex() {
         m_file = new QFile(filePath);

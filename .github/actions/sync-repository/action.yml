@@ -22,7 +22,7 @@ runs:
         sudo apt-get update -yq
         echo "syncAptVersion=sshfs-$(apt-cache policy sshfs | grep -oP '(?<=Candidate:\s)(.+)')" >> $GITHUB_ENV
     - name: Cache Apt packages
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: cache-apt
       with:
         path: ~/.aptcache

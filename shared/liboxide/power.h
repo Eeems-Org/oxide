@@ -1,11 +1,12 @@
 /*!
- * \file power.h
+ * \addtogroup Power
+ * \brief The Power module
+ * @{
+ * \file
  */
-#ifndef POWER_H
-#define POWER_H
+#pragma once
 
 #include "liboxide_global.h"
-#include <liboxide/sysobject.h>
 
 #include <QList>
 #include <QString>
@@ -72,5 +73,4 @@ namespace Oxide::Power {
      */
     LIBOXIDE_EXPORT bool chargerConnected();
 }
-
-#endif // POWER_H
+/*! @} */

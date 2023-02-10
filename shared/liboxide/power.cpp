@@ -1,8 +1,8 @@
 #include "power.h"
+#include "debug.h"
 
 #include <QObject>
 #include <QDir>
-#include <QDebug>
 
 using Oxide::SysObject;
 
@@ -25,27 +25,27 @@ void _setup(){
         _chargers = new QList<SysObject>();
     }
     QDir dir("/sys/class/power_supply");
-    qDebug() << "Looking for batteries and chargers...";
+    O_DEBUG("Looking for batteries and chargers...");
     for(auto& path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
-        qDebug() << ("  Checking " + path + "...").toStdString().c_str();
+        O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
         SysObject item(dir.path() + "/" + path);
         if(!item.hasProperty("type")){
-            qDebug() << "    Missing type property";
+            O_DEBUG("    Missing type property");
             continue;
         }
         if(item.hasProperty("present") && !item.intProperty("present")){
-            qDebug() << "    Either missing present property, or battery is not present";
+            O_DEBUG("    Either missing present property, or battery is not present");
             continue;
         }
         auto type = item.strProperty("type");
         if(type == "Battery"){
-            qDebug() << "    Found Battery!";
+            O_DEBUG("    Found Battery!");
             _batteries->append(item);
         }else if(type == "USB" || type == "USB_CDP"){
-            qDebug() << "    Found Charger!";
+            O_DEBUG("    Found Charger!");
             _chargers->append(item);
         }else{
-            qDebug() << "    Unknown type";
+            O_DEBUG("    Unknown type");
         }
     }
     if(_chargers->empty()){
@@ -156,5 +156,5 @@ namespace Oxide::Power {
     }
     bool batteryHasWarning(){ return batteryWarning().length(); }
     bool batteryHasAlert(){ return batteryAlert().length(); }
-    bool chargerConnected(){ return _chargerInt("online") || batteryCharging(); }
+    bool chargerConnected(){ return batteryCharging() || _chargerInt("online"); }
 }

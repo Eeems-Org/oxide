@@ -1,18 +1,13 @@
 #ifndef APP_H
 #define APP_H
 #include <QObject>
-
-#include "application_interface.h"
-
-#ifndef OXIDE_SERVICE
-#define OXIDE_SERVICE "codes.eeems.oxide1"
-#define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
-#endif
+#include <liboxide/dbus.h>
 
 using namespace codes::eeems::oxide1;
 
 class AppItem : public QObject {
     Q_OBJECT
+
 public:
     AppItem(QObject* parent) : QObject(parent){}
 
@@ -34,6 +29,7 @@ public:
 
     Q_INVOKABLE void execute();
     Q_INVOKABLE void stop();
+
 signals:
     void nameChanged(QString);
     void displayNameChanged(QString);
@@ -58,7 +54,7 @@ private slots:
     }
     void onIconChanged(QString path){
         _imgFile = path;
-        emit onIconChanged(path);
+        emit imgFileChanged(path);
     }
 
 private:

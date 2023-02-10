@@ -1,29 +1,12 @@
 #include <QCommandLineParser>
-#include <QJsonValue>
-#include <QJsonDocument>
 #include <QSet>
-#include <QMutableListIterator>
+#include <QTextStream>
 
 #include <liboxide.h>
 
-#include "dbusservice_interface.h"
-#include "powerapi_interface.h"
-#include "wifiapi_interface.h"
-#include "network_interface.h"
-#include "bss_interface.h"
-#include "appsapi_interface.h"
-#include "application_interface.h"
-#include "systemapi_interface.h"
-#include "screenapi_interface.h"
-#include "screenshot_interface.h"
-#include "notificationapi_interface.h"
-#include "notification_interface.h"
-
-#include "json.h"
-#include "slothandler.h"
-
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
+using namespace Oxide::JSON;
 
 int qExit(int ret){
     QTimer::singleShot(0, [ret](){
@@ -38,7 +21,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("rot");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
     parser.setApplicationDescription("Oxide settings tool");
     parser.addHelpOption();
@@ -318,6 +301,7 @@ int main(int argc, char *argv[]){
         return qExit(EXIT_FAILURE);
     }
     QDBusAbstractInterface* iapi = qobject_cast<QDBusAbstractInterface*>(api);
+    QTextStream qStdOut(stdout, QIODevice::WriteOnly);
     if(action == "get"){
         auto value = api->property(args.at(2).toStdString().c_str());
         if(iapi != nullptr){
@@ -330,7 +314,7 @@ int main(int argc, char *argv[]){
                 return qExit(EXIT_FAILURE);
             }
         }
-        QTextStream(stdout, QIODevice::WriteOnly) << toJson(value).toStdString().c_str() << Qt::endl;
+        qStdOut << toJson(value).toStdString().c_str() << Qt::endl;
     }else if(action == "set"){
         auto property = args.at(2).toStdString();
         if(!api->setProperty(property.c_str(), args.at(3).toStdString().c_str())){
@@ -344,29 +328,23 @@ int main(int argc, char *argv[]){
             return qExit(EXIT_FAILURE);
         }
     }else if(action == "listen"){
-        auto metaObject = api->metaObject();
-        auto name = QString(args.at(2).toStdString().c_str());
-        for(int methodId = 0; methodId < metaObject->methodCount(); methodId++){
-            auto method = metaObject->method(methodId);
-            if(method.methodType() == QMetaMethod::Signal && method.name() == name){
-                QByteArray slotName = method.name().prepend("on").append("(");
-                QStringList parameters;
-                for(int i = 0, j = method.parameterCount(); i < j; ++i){
-                    parameters << QMetaType::typeName(method.parameterType(i));
+        if(Oxide::DBusConnect(
+            (QDBusAbstractInterface*)api,
+            QString(args.at(2).toStdString().c_str()),
+            [](QVariantList args){
+                QTextStream qStdOut(stdout, QIODevice::WriteOnly);
+                if(args.size() > 1){
+                    qStdOut << toJson(args).toStdString().c_str() << Qt::endl;
+                }else if(args.size() == 1 && !args.first().isNull()){
+                    qStdOut << toJson(args.first()).toStdString().c_str() << Qt::endl;
+                }else{
+                    qStdOut << "undefined" << Qt::endl;
                 }
-                slotName.append(parameters.join(",").toUtf8()).append(")");
-                QByteArray theSignal = QMetaObject::normalizedSignature(method.methodSignature().constData());
-                QByteArray theSlot = QMetaObject::normalizedSignature(slotName);
-                if(!QMetaObject::checkConnectArgs(theSignal, theSlot)){
-                    continue;
-                }
-                auto slotHandler = new SlotHandler(OXIDE_SERVICE, parameters, parser.isSet("once"), [=](){
-                    qApp->exit(EXIT_SUCCESS);
-                });
-                if(slotHandler->connect(api, methodId)){
-                    return app.exec();
-                }
-            }
+            },
+            [](){ qApp->exit(EXIT_SUCCESS); },
+            parser.isSet("once")
+        )){
+            return app.exec();
         }
         qDebug() << "Unable to listen to signal";
         if(iapi != nullptr){
@@ -431,7 +409,6 @@ int main(int argc, char *argv[]){
         }
         QDBusMessage reply = iapi->callWithArgumentList(QDBus::Block, method, arguments);
         auto result = reply.arguments();
-        QTextStream qStdOut(stdout, QIODevice::WriteOnly);
         if(result.size() > 1){
             qStdOut << toJson(result).toStdString().c_str() << Qt::endl;
         }else if(!result.first().isNull()){
