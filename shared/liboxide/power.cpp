@@ -156,5 +156,5 @@ namespace Oxide::Power {
     }
     bool batteryHasWarning(){ return batteryWarning().length(); }
     bool batteryHasAlert(){ return batteryAlert().length(); }
-    bool chargerConnected(){ return _chargerInt("online") || batteryCharging(); }
+    bool chargerConnected(){ return batteryCharging() || _chargerInt("online"); }
 }

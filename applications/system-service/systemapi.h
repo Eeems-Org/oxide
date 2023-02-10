@@ -114,38 +114,67 @@ public:
                 });
             });
             Oxide::Sentry::sentry_span(t, "autoSleep", "Setup automatic sleep", [this](Oxide::Sentry::Span* s){
-                auto autoSleep = settings.value("autoSleep", 1).toInt();
-                m_autoSleep = autoSleep;
-                if(autoSleep < 0) {
-                    m_autoSleep = 0;
-                }else if(autoSleep > 10){
-                    m_autoSleep = 10;
+                QSettings settings;
+                if(QFile::exists(settings.fileName())){
+                    qDebug() << "Importing old settings";
+                    settings.sync();
+                    if(settings.contains("autoSleep")){
+                        qDebug() << "Importing old autoSleep";
+                        sharedSettings.set_autoSleep(settings.value("autoSleep").toInt());
+                    }
+                    int size = settings.beginReadArray("swipes");
+                    if(size){
+                        sharedSettings.beginWriteArray("swipes");
+                        for(short i = Right; i <= Down && i < size; i++){
+                            settings.setArrayIndex(i);
+                            sharedSettings.setArrayIndex(i);
+                            qDebug() << QString("Importing old swipe[%1]").arg(i);
+                            sharedSettings.setValue("enabled", settings.value("enabled", true));
+                            sharedSettings.setValue("length", settings.value("length", 30));
+                        }
+                        sharedSettings.endArray();
+                    }
+                    settings.endArray();
+                    settings.remove("swipes");
+                    settings.sync();
+                    sharedSettings.sync();
                 }
-                if(autoSleep != m_autoSleep){
-                    Oxide::Sentry::sentry_span(s, "update", "Update value", [this, autoSleep]{
-                        m_autoSleep = autoSleep;
-                        settings.setValue("autoSleep", autoSleep);
-                        settings.sync();
-                        emit autoSleepChanged(autoSleep);
-                    });
+                if(autoSleep() < 0) {
+                    sharedSettings.set_autoSleep(0);
+                }else if(autoSleep() > 10){
+                    sharedSettings.set_autoSleep(10);
                 }
-                qDebug() << "Auto Sleep" << autoSleep;
+                qDebug() << "Auto Sleep" << autoSleep();
                 Oxide::Sentry::sentry_span(s, "timer", "Setup timer", [this]{
-                    if(m_autoSleep){
-                        suspendTimer.start(m_autoSleep * 60 * 1000);
-                    }else if(!m_autoSleep){
+                    if(autoSleep()){
+                        suspendTimer.start(autoSleep() * 60 * 1000);
+                    }else if(!autoSleep()){
                         suspendTimer.stop();
                     }
                 });
+                connect(&sharedSettings, &Oxide::SharedSettings::autoSleepChanged, [=](int _autoSleep){
+                    emit autoSleepChanged(_autoSleep);
+                });
+                connect(&sharedSettings, &Oxide::SharedSettings::changed, [=](){
+                    sharedSettings.beginReadArray("swipes");
+                    for(short i = Right; i <= Down; i++){
+                        sharedSettings.setArrayIndex(i);
+                        swipeStates[(SwipeDirection)i] = sharedSettings.value("enabled", true).toBool();
+                        int length = sharedSettings.value("length", 30).toInt();
+                        swipeLengths[(SwipeDirection)i] = length;
+                        emit swipeLengthChanged(i, length);
+                    }
+                    sharedSettings.endArray();
+                });
             });
-            Oxide::Sentry::sentry_span(t, "swipes", "Load swipe settings", [this]{
-                settings.beginReadArray("swipes");
+            Oxide::Sentry::sentry_span(t, "swipes", "Load swipe settings", [=](){
+                sharedSettings.beginReadArray("swipes");
                 for(short i = Right; i <= Down; i++){
-                    settings.setArrayIndex(i);
-                    swipeStates[(SwipeDirection)i] = settings.value("enabled", true).toBool();
-                    swipeLengths[(SwipeDirection)i] = settings.value("length", 30).toInt();
+                    sharedSettings.setArrayIndex(i);
+                    swipeStates[(SwipeDirection)i] = sharedSettings.value("enabled", true).toBool();
+                    swipeLengths[(SwipeDirection)i] = sharedSettings.value("length", 30).toInt();
                 }
-                settings.endArray();
+                sharedSettings.endArray();
             });
             // Ask Systemd to tell us nicely when we are about to suspend or resume
             Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep and power off", [this](Oxide::Sentry::Span* s){
@@ -180,8 +209,8 @@ public:
     void setEnabled(bool enabled){
         qDebug() << "System API" << enabled;
     }
-    int autoSleep(){return m_autoSleep; }
-    void setAutoSleep(int autoSleep);
+    int autoSleep(){return sharedSettings.autoSleep(); }
+    void setAutoSleep(int _autoSleep);
     bool sleepInhibited(){ return sleepInhibitors.length(); }
     bool powerOffInhibited(){ return powerOffInhibitors.length(); }
     void uninhibitAll(QString name);
@@ -223,14 +252,14 @@ public:
                 return;
         }
         swipeStates[direction] = enabled;
-        settings.beginWriteArray("swipes");
+        sharedSettings.beginWriteArray("swipes");
         for(short i = Right; i <= Down; i++){
-            settings.setArrayIndex(i);
-            settings.setValue("enabled", swipeStates[(SwipeDirection)i]);
-            settings.setValue("length", swipeLengths[(SwipeDirection)i]);
+            sharedSettings.setArrayIndex(i);
+            sharedSettings.setValue("enabled", swipeStates[(SwipeDirection)i]);
+            sharedSettings.setValue("length", swipeLengths[(SwipeDirection)i]);
         }
-        settings.endArray();
-        settings.sync();
+        sharedSettings.endArray();
+        sharedSettings.sync();
     }
     Q_INVOKABLE bool getSwipeEnabled(int direction){
         if(!hasPermission("system")){
@@ -295,14 +324,14 @@ public:
                 return;
         }
         swipeLengths[direction] = length;
-        settings.beginWriteArray("swipes");
+        sharedSettings.beginWriteArray("swipes");
         for(short i = Right; i <= Down; i++){
-            settings.setArrayIndex(i);
-            settings.setValue("enabled", swipeStates[(SwipeDirection)i]);
-            settings.setValue("length", swipeLengths[(SwipeDirection)i]);
+            sharedSettings.setArrayIndex(i);
+            sharedSettings.setValue("enabled", swipeStates[(SwipeDirection)i]);
+            sharedSettings.setValue("length", swipeLengths[(SwipeDirection)i]);
         }
-        settings.endArray();
-        settings.sync();
+        sharedSettings.endArray();
+        sharedSettings.sync();
         emit swipeLengthChanged(direction, length);
     }
     Q_INVOKABLE int getSwipeLength(int direction){
@@ -515,7 +544,6 @@ private:
     QMutex mutex;
     QMap<int, Touch*> touches;
     int currentSlot = 0;
-    int m_autoSleep;
     bool wifiWasOn = false;
     bool penActive = false;
     int swipeDirection = None;

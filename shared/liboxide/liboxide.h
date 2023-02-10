@@ -335,13 +335,88 @@ namespace Oxide {
         /*!
          * \fn set_crashReport
          * \param _arg_crashReport
-         * \brief Enable or disable crash  reporting
+         * \brief Enable or disable crash reporting
          */
         /*!
          * \fn crashReportChanged
          * \brief If crash reporting has been enabled or disabled
          */
         O_SETTINGS_PROPERTY(bool, General, crashReport, true)
+        /*!
+         * \property autoSleep
+         * \brief How long without activity before the device should suspend
+         * \sa set_autoSleep, autoSleepChanged
+         */
+        /*!
+         * \fn set_autoSleep
+         * \param _arg_autoSleep
+         * \brief Change autoSleep
+         */
+        /*!
+         * \fn autoSleepChanged
+         * \brief If autoSleep has been changed
+         */
+        O_SETTINGS_PROPERTY(int, General, autoSleep, 1)
+        /*!
+         * \property pin
+         * \brief The lockscreen pin
+         * \sa set_pin, pinChanged
+         */
+        /*!
+         * \fn set_pin
+         * \param _arg_pin
+         * \brief Change lockscreen pin
+         */
+        /*!
+         * \fn has_pin
+         * \brief Change lockscreen pin
+         * \return If the lockscreen pin is set
+         */
+        /*!
+         * \fn pinChanged
+         * \brief If the lockscreen pin has been changed
+         */
+        O_SETTINGS_PROPERTY(QString, Lockscreen, pin)
+        /*!
+         * \property onLogin
+         * \brief The lockscreen onLogin
+         * \sa set_onLogin, onLoginChanged
+         */
+        /*!
+         * \fn set_onLogin
+         * \param _arg_onLogin
+         * \brief Change lockscreen onLogin
+         */
+        /*!
+         * \fn has_onLogin
+         * \brief If lockscreen onLogin has been set
+         * \return If the lockscreen onLogin is set
+         */
+        /*!
+         * \fn onLoginChanged
+         * \brief If the lockscreen onLogin has been changed
+         */
+        O_SETTINGS_PROPERTY(QString, Lockscreen, onLogin)
+        /*!
+         * \property onFailedLogin
+         * \brief The lockscreen onFailedLogin
+         * \sa set_onFailedLogin, onFailedLoginChanged
+         */
+        /*!
+         * \fn set_onFailedLogin
+         * \param _arg_onFailedLogin
+         * \brief Change lockscreen onFailedLogin
+         */
+        /*!
+         * \fn has_onFailedLogin
+         * \brief If lockscreen onFailedLogin has been set
+         * \return If the lockscreen onFailedLogin is set
+         */
+        /*!
+         * \fn onFailedLoginChanged
+         * \brief If the lockscreen onFailedLogin has been changed
+         */
+        O_SETTINGS_PROPERTY(QString, Lockscreen, onFailedLogin)
 
     private:
         ~SharedSettings();
