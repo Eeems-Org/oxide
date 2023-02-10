@@ -141,6 +141,7 @@ namespace Oxide {
         void init();
         void reloadProperties();
         void resetProperties();
+        QString groupName(const QString& name);
         QSemaphore reloadSemaphore;
     private:
         QFileSystemWatcher fileWatcher;
