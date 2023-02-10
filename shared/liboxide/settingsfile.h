@@ -131,8 +131,12 @@ namespace Oxide {
      */
     class LIBOXIDE_EXPORT SettingsFile : public QSettings {
         Q_OBJECT
+    signals:
+        void changed();
+
     private slots:
         void fileChanged();
+
     protected:
         SettingsFile(QString path);
         ~SettingsFile();
@@ -143,6 +147,7 @@ namespace Oxide {
         void resetProperties();
         QString groupName(const QString& name);
         QSemaphore reloadSemaphore;
+
     private:
         QFileSystemWatcher fileWatcher;
         bool initalized = false;

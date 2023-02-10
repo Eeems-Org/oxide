@@ -5,7 +5,6 @@
 #include <QQuickItem>
 #include <QObject>
 #include <QMap>
-#include <QSettings>
 #include <QProcess>
 #include <QStringList>
 #include <QtDBus>

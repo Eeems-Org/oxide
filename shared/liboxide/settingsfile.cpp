@@ -54,6 +54,7 @@ namespace Oxide {
             reloadSemaphore.release();
         }
         O_DEBUG("Settings file" << fileName() << "changes loaded");
+        emit changed();
     }
     void SettingsFile::reloadProperty(const QString& name){
         auto groupName = this->groupName(name);

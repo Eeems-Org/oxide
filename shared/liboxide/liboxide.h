@@ -343,6 +343,21 @@ namespace Oxide {
          */
         O_SETTINGS_PROPERTY(bool, General, crashReport, true)
         /*!
+         * \property autoSleep
+         * \brief How long without activity before the device should suspend
+         * \sa set_autoSleep, autoSleepChanged
+         */
+        /*!
+         * \fn set_autoSleep
+         * \param _arg_autoSleep
+         * \brief Change autoSleep
+         */
+        /*!
+         * \fn autoSleepChanged
+         * \brief If autoSleep has been changed
+         */
+        O_SETTINGS_PROPERTY(int, General, autoSleep, 1)
+        /*!
          * \property pin
          * \brief The lockscreen pin
          * \sa set_pin, pinChanged
@@ -374,7 +389,7 @@ namespace Oxide {
          */
         /*!
          * \fn has_onLogin
-         * \brief Change lockscreen onLogin
+         * \brief If lockscreen onLogin has been set
          * \return If the lockscreen onLogin is set
          */
         /*!
@@ -394,7 +409,7 @@ namespace Oxide {
          */
         /*!
          * \fn has_onFailedLogin
-         * \brief Change lockscreen onFailedLogin
+         * \brief If lockscreen onFailedLogin has been set
          * \return If the lockscreen onFailedLogin is set
          */
         /*!
