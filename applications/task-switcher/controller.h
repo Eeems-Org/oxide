@@ -30,7 +30,7 @@ class Controller : public QObject {
 
 public:
     Controller(QObject* parent, ScreenProvider* screenProvider)
-    : QObject(parent), settings(this), applications() {
+    : QObject(parent),applications() {
         blankImage = new QImage(qApp->primaryScreen()->geometry().size(), QImage::Format_Mono);
         this->screenProvider = screenProvider;
         auto bus = QDBusConnection::systemBus();
@@ -68,11 +68,6 @@ public:
         connect(appsApi, &Apps::applicationLaunched, this, &Controller::reload);
         connect(appsApi, &Apps::applicationExited, this, &Controller::reload);
 
-        settings.sync();
-        auto version = settings.value("version", 0).toInt();
-        if(version < CORRUPT_SETTINGS_VERSION){
-            migrate(&settings, version);
-        }
         updateImage();
     }
     ~Controller(){}
@@ -273,7 +268,6 @@ private slots:
     }
 
 private:
-    QSettings settings;
     General* api;
     Screen* screenApi;
     Apps* appsApi;
@@ -287,15 +281,6 @@ private:
     QObject* getStateControllerUI(){
         stateControllerUI = root->findChild<QObject*>("stateController");
         return stateControllerUI;
-    }
-
-    static void migrate(QSettings* settings, int fromVersion){
-        if(fromVersion != 0){
-            throw "Unknown settings version";
-        }
-        // In the future migrate changes to settings between versions
-        settings->setValue("version", CORRUPT_SETTINGS_VERSION);
-        settings->sync();
     }
 };
 

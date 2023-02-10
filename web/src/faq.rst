@@ -63,14 +63,17 @@ Oxide (and most other applications) on the reMarkable 2 requires
 How do I change my pin after I've set it?
 =========================================
 
-There is no way to currently trigger a pin change, but you can wipe your current pin, and trigger
-the pin setting dialog by doing the following:
+As of 2.6 you can change your pin to any 4 numbers with the following command:
 
 .. code:: bash
 
-  systemctl stop tarnish
-  rm /home/root/.config/Eeems/decay.conf
-  systemctl start tarnish
+  xdg-settings set pin <new-pin>
+
+As of 2.6 you can clear your pin to skip the lock screen with the following command:
+
+.. code:: bash
+
+  xdg-settings set pin ''
 
 
 Not all of my applications are listed?

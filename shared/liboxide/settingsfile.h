@@ -12,6 +12,7 @@
 #include <QFileSystemWatcher>
 #include <QMetaProperty>
 #include <QFile>
+#include <QSemaphore>
 
 #include <cstring>
 
@@ -22,6 +23,7 @@
     public: \
         void set_##member(_type _arg_##member); \
         _type member() const; \
+        bool has_##member(); \
         void reload_##member(); \
     Q_SIGNALS: \
         void member##Changed(const _type&); \
@@ -40,18 +42,31 @@
         void reset_##member();
 #define O_SETTINGS_PROPERTY_BODY_0(_class, _type, member, _group) \
     void _class::set_##member(_type _arg_##member) { \
+        if(m_##member == _arg_##member){ \
+            O_SETTINGS_DEBUG(fileName() + " No Change " + #_group + "." + #member) \
+            return; \
+        } \
         O_SETTINGS_DEBUG(fileName() + " Setting " + #_group + "." + #member) \
         m_##member = _arg_##member; \
-        if(std::strcmp("General", #_group) != 0){ \
-            beginGroup(#_group); \
+        if(reloadSemaphore.tryAcquire()){ \
+            beginGroup(std::strcmp("General", #_group) != 0 ? #_group : ""); \
+            setValue(#member, QVariant::fromValue<_type>(_arg_##member)); \
+            endGroup(); \
+            O_SETTINGS_DEBUG(fileName() + " Saving " + #_group + "." + #member) \
+            sync(); \
+            reloadSemaphore.release(); \
         }else{ \
-            beginGroup(""); \
+            O_SETTINGS_DEBUG(fileName() + " Not Saving " + #_group + "." + #member) \
         } \
-        setValue(#member, QVariant::fromValue<_type>(_arg_##member)); \
-        endGroup(); \
-        sync(); \
+        emit member##Changed(m_##member);\
     } \
     _type _class::member() const { return m_##member; } \
+    bool _class::has_##member() { \
+        beginGroup(std::strcmp("General", #_group) != 0 ? #_group : ""); \
+        bool res = contains(#member); \
+        endGroup(); \
+        return res; \
+    } \
     void _class::reload_##member() { reloadProperty(#member); } \
     QString _class::__META_GROUP_##member() const { return #_group; }
 #define O_SETTINGS_PROPERTY_BODY_1(_class, _type, group, member) \
@@ -116,8 +131,12 @@ namespace Oxide {
      */
     class LIBOXIDE_EXPORT SettingsFile : public QSettings {
         Q_OBJECT
+    signals:
+        void changed();
+
     private slots:
         void fileChanged();
+
     protected:
         SettingsFile(QString path);
         ~SettingsFile();
@@ -126,6 +145,9 @@ namespace Oxide {
         void init();
         void reloadProperties();
         void resetProperties();
+        QString groupName(const QString& name);
+        QSemaphore reloadSemaphore;
+
     private:
         QFileSystemWatcher fileWatcher;
         bool initalized = false;

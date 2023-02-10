@@ -83,9 +83,9 @@ void SystemAPI::PrepareForSleep(bool suspending){
             Oxide::Sentry::sentry_span(t, "enable", "Enable various services", [this, device]{
                 buttonHandler->setEnabled(true);
                 emit deviceResuming();
-                if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+                if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
                     qDebug() << "Suspend timer re-enabled due to resume";
-                    suspendTimer.start(m_autoSleep * 60 * 1000);
+                    suspendTimer.start(autoSleep() * 60 * 1000);
                 }
                 if(device == Oxide::DeviceSettings::DeviceType::RM2){
                     system("modprobe brcmfmac");
@@ -98,20 +98,19 @@ void SystemAPI::PrepareForSleep(bool suspending){
         });
     }
 }
-void SystemAPI::setAutoSleep(int autoSleep){
-    if(autoSleep < 0 || autoSleep > 360){
+void SystemAPI::setAutoSleep(int _autoSleep){
+    if(_autoSleep < 0 || _autoSleep > 360){
         return;
     }
-    qDebug() << "Auto Sleep" << autoSleep;
-    m_autoSleep = autoSleep;
-    if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-        suspendTimer.setInterval(m_autoSleep * 60 * 1000);
-    }else if(!m_autoSleep){
+    qDebug() << "Auto Sleep" << _autoSleep;
+    sharedSettings.set_autoSleep(_autoSleep);
+    if(_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+        suspendTimer.setInterval(_autoSleep * 60 * 1000);
+    }else if(!_autoSleep){
         suspendTimer.stop();
     }
-    settings.setValue("autoSleep", autoSleep);
-    settings.sync();
-    emit autoSleepChanged(autoSleep);
+    sharedSettings.sync();
+    emit autoSleepChanged(_autoSleep);
 }
 void SystemAPI::uninhibitAll(QString name){
     if(powerOffInhibited()){
@@ -126,25 +125,25 @@ void SystemAPI::uninhibitAll(QString name){
             emit sleepInhibitedChanged(false);
         }
     }
-    if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
+    if(!sleepInhibited() && autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
         qDebug() << "Suspend timer re-enabled due to uninhibit" << name;
-        suspendTimer.start(m_autoSleep * 60 * 1000);
+        suspendTimer.start(autoSleep() * 60 * 1000);
     }
 }
 void SystemAPI::startSuspendTimer(){
-    if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
+    if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
         qDebug() << "Suspend timer re-enabled due to start Suspend timer";
-        suspendTimer.start(m_autoSleep * 60 * 1000);
+        suspendTimer.start(autoSleep() * 60 * 1000);
     }
 }
 void SystemAPI::activity(){
     auto active = suspendTimer.isActive();
     suspendTimer.stop();
-    if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+    if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         if(!active){
             qDebug() << "Suspend timer re-enabled due to activity";
         }
-        suspendTimer.start(m_autoSleep * 60 * 1000);
+        suspendTimer.start(autoSleep() * 60 * 1000);
     }else if(active){
         qDebug() << "Suspend timer disabled";
     }
@@ -155,10 +154,10 @@ void SystemAPI::uninhibitSleep(QDBusMessage message){
         return;
     }
     sleepInhibitors.removeAll(message.service());
-    if(!sleepInhibited() && m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+    if(!sleepInhibited() && autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         if(!suspendTimer.isActive()){
             qDebug() << "Suspend timer re-enabled due to uninhibit sleep" << message.service();
-            suspendTimer.start(m_autoSleep * 60 * 1000);
+            suspendTimer.start(autoSleep() * 60 * 1000);
         }
         releaseSleepInhibitors(true);
     }
@@ -167,7 +166,7 @@ void SystemAPI::uninhibitSleep(QDBusMessage message){
     }
 }
 void SystemAPI::timeout(){
-    if(m_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
+    if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         qDebug() << "Automatic suspend due to inactivity...";
         suspend();
     }
