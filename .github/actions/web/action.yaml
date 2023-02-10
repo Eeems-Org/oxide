@@ -13,26 +13,6 @@ runs:
       with:
         path: web/.venv
         key: web/.venv-${{ hashFiles('web/requirements.txt') }}
-    - name: Setup Apt for caching
-      shell: bash
-      run: |
-        sudo apt-get update -yq
-        sudo apt-get clean -yq
-        aptHash(){ echo "$1-$(apt-cache policy "$1" | grep -oP '(?<=Candidate:\s)(.+)')"; }
-        echo "aptVersion=$(aptHash texlive-base)-$(aptHash texlive-latex-extra)" >> $GITHUB_ENV
-    - name: Cache deb files
-      uses: actions/cache@v3
-      with:
-        path: .aptcache
-        key: deb-${{ env.aptVersion }}
-        restore-keys: |
-          deb-
-    - name: Restore deb files from cache
-      shell: bash
-      run: |
-        if compgen -G ".aptcache/*.deb" > /dev/null; then
-          sudo cp .aptcache/*.deb /var/cache/apt/archives/
-        fi
     - name: Install base Apt packages
       id: cache-apt
       uses: awalsh128/cache-apt-pkgs-action@latest
@@ -40,12 +20,10 @@ runs:
         execute_install_scripts: true
         packages: doxygen graphviz libgraphviz-dev librsvg2-bin pdf2svg
         version: 1.0
-    - name: Install texlive Apt dependencies
-      shell: bash
-      run: |
-        sudo apt-get install -yq texlive-base texlive-latex-extra
-        mkdir -p .aptcache
-        sudo cp /var/cache/apt/archives/*.deb .aptcache/
+    - name: Apt-Cache-Action
+      uses: Eeems-Org/apt-cache-action@v1
+      with:
+        packages: texlive-base texlive-latex-extra
     - name: Build website
       shell: bash
       run: cd web && make prod
