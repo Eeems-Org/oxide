@@ -11,11 +11,6 @@
 #include <signal.h>
 #include <liboxide.h>
 
-#include "dbusservice_interface.h"
-#include "screenapi_interface.h"
-#include "appsapi_interface.h"
-#include "application_interface.h"
-
 #include "screenprovider.h"
 #include "appitem.h"
 
@@ -125,7 +120,6 @@ public:
         for(auto item : runningApplications){
             auto path = item.value<QDBusObjectPath>().path();
             Application app(OXIDE_SERVICE, path, bus, this);
-            qDebug() << app.name() << app.hidden();
             if(app.hidden()){
                 continue;
             }

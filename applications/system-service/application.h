@@ -23,8 +23,6 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <grp.h>
-#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
@@ -52,7 +50,7 @@ public:
 
     bool setUser(const QString& name){
         try{
-            m_uid = getUID(name);
+            m_uid = Oxide::getUID(name);
             return true;
         }
         catch(const std::runtime_error&){
@@ -61,7 +59,7 @@ public:
     }
     bool setGroup(const QString& name){
         try{
-            m_gid = getGID(name);
+            m_gid = Oxide::getGID(name);
             return true;
         }
         catch(const std::runtime_error&){
@@ -105,33 +103,6 @@ private:
     uid_t m_uid;
     QString m_chroot;
     mode_t m_mask;
-
-    uid_t getUID(const QString& name){
-        char buffer[1024];
-        struct passwd user;
-        struct passwd* result;
-        auto status = getpwnam_r(name.toStdString().c_str(), &user, buffer, sizeof(buffer), &result);
-        if(status != 0){
-            throw std::runtime_error("Failed to get user" + status);
-        }
-        if(result == NULL){
-            throw std::runtime_error("Invalid user name: " + name.toStdString());
-        }
-        return result->pw_uid;
-    }
-    gid_t getGID(const QString& name){
-        char buffer[1024];
-        struct group grp;
-        struct group* result;
-        auto status = getgrnam_r(name.toStdString().c_str(), &grp, buffer, sizeof(buffer), &result);
-        if(status != 0){
-            throw std::runtime_error("Failed to get group" + status);
-        }
-        if(result == NULL){
-            throw std::runtime_error("Invalid group name: " + name.toStdString());
-        }
-        return result->gr_gid;
-    }
 };
 
 class Application : public QObject{
@@ -152,6 +123,7 @@ class Application : public QObject{
     Q_PROPERTY(int state READ state)
     Q_PROPERTY(bool systemApp READ systemApp)
     Q_PROPERTY(bool hidden READ hidden)
+    Q_PROPERTY(bool transient READ transient)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
     Q_PROPERTY(QString splash READ splash WRITE setSplash NOTIFY splashChanged)
     Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
@@ -184,10 +156,20 @@ public:
         }
         umountAll();
         if(p_stdout != nullptr){
+            p_stdout->flush();
             delete p_stdout;
         }
+        if(p_stdout_fd > 0){
+            close(p_stdout_fd);
+            p_stdout_fd = -1;
+        }
         if(p_stderr != nullptr){
+            p_stderr->flush();
             delete p_stderr;
+        }
+        if(p_stderr_fd > 0){
+            close(p_stderr_fd);
+            p_stderr_fd = -1;
         }
     }
 
@@ -282,6 +264,7 @@ public:
         }
     }
     bool systemApp() { return flags().contains("system"); }
+    bool transient() { return flags().contains("transient"); }
     bool hidden() { return flags().contains("hidden"); }
     int type() { return (int)value("type", 0).toInt(); }
     int state(){
@@ -291,15 +274,35 @@ public:
         return stateNoSecurityCheck();
     }
     int stateNoSecurityCheck();
-    QString icon() { return value("icon", "").toString(); }
+    QString icon(){
+        auto _icon = value("icon", "").toString();
+        if(_icon.isEmpty() || !_icon.contains("-") || QFile::exists(_icon)){
+            return _icon;
+        }
+        auto path = Oxide::Applications::iconPath(_icon);
+        if(path.isEmpty()){
+            return _icon;
+        }
+        return path;
+    }
     void setIcon(QString icon){
         if(!hasPermission("permissions")){
             return;
         }
         setValue("icon", icon);
-        emit iconChanged(icon);
+        emit iconChanged(this->icon());
     }
-    QString splash() { return value("splash", "").toString(); }
+    QString splash(){
+        auto _splash = value("splash", "").toString();
+        if(_splash.isEmpty() || !_splash.contains("-") || QFile::exists(_splash)){
+            return _splash;
+        }
+        auto path = Oxide::Applications::iconPath(_splash);
+        if(path.isEmpty()){
+            return _splash;
+        }
+        return path;
+    }
     void setSplash(QString splash){
         if(!hasPermission("permissions")){
             return;
@@ -520,7 +523,9 @@ private:
     QMap<QString, FifoHandler*> fifos;
     Oxide::Sentry::Transaction* transaction = nullptr;
     Oxide::Sentry::Span* span = nullptr;
+    int p_stdout_fd = -1;
     QTextStream* p_stdout = nullptr;
+    int p_stderr_fd = -1;
     QTextStream* p_stderr = nullptr;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
@@ -602,8 +607,8 @@ private:
             return;
         }
         auto cpath = path.toStdString();
-        ::umount(cpath.c_str());
-        if(isMounted(path)){
+        auto ret = ::umount2(cpath.c_str(), MNT_DETACH);
+        if((ret && ret != EINVAL && ret != ENOENT) || isMounted(path)){
             qDebug() << "umount failed" << path;
             return;
         }

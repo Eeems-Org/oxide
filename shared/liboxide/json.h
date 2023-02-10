@@ -1,17 +1,18 @@
 /*!
- * \file json.h
+ * \addtogroup JSON
+ * \brief The JSON module
+ * @{
+ * \file
  */
-#ifndef JSON_H
-#define JSON_H
+#pragma once
 
 #include "liboxide_global.h"
 
 #include <QVariant>
 #include <QJsonArray>
 #include <QDBusArgument>
-
 /*!
- * The JSON namespace
+ * \brief The JSON namespace
  */
 namespace Oxide::JSON {
     /*!
@@ -29,14 +30,21 @@ namespace Oxide::JSON {
     /*!
      * \brief Convert a QVariant to a JSON string
      * \param QVariant to convert
+     * \param Format to use
      * \return JSON string
      */
-    LIBOXIDE_EXPORT QString toJson(QVariant value);
+    LIBOXIDE_EXPORT QString toJson(QVariant value, QJsonDocument::JsonFormat format = QJsonDocument::Compact);
     /*!
      * \brief Convert a JSON string into a QVariant
      * \param JSON string to convert
      * \return The converted QVaraint
      */
     LIBOXIDE_EXPORT QVariant fromJson(QByteArray json);
+    /*!
+     * \brief Convert a JSON file into a QVariant
+     * \param JSON fle to convert
+     * \return The converted QVaraint
+     */
+    LIBOXIDE_EXPORT QVariant fromJson(QFile* file);
 }
-#endif // JSON_H
+/*! @} */

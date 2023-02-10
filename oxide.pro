@@ -6,6 +6,4 @@ SUBDIRS = \
 
 applications.depends = shared
 
-INSTALLS += \
-    shared \
-    applications
+INSTALLS += $$SUBDIRS

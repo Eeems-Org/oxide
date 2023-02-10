@@ -11,7 +11,7 @@ Conflicts=sync.service
 [Service]
 Type=dbus
 BusName=codes.eeems.oxide1
-ExecStart=/opt/bin/tarnish
+ExecStart=/opt/bin/tarnish --break-lock
 Restart=on-failure
 RestartSec=5
 Environment="HOME=/home/root"

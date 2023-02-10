@@ -1,12 +1,16 @@
 /*!
- * \file liboxide.h
+ * \addtogroup Oxide
+ * \brief The main Oxide module
+ * @{
+ * \file
  */
-#ifndef LIBOXIDE_H
-#define LIBOXIDE_H
+#pragma once
 
 #include "liboxide_global.h"
 
 #include "meta.h"
+#include "dbus.h"
+#include "applications.h"
 #include "settingsfile.h"
 #include "power.h"
 #include "json.h"
@@ -22,6 +26,7 @@
 #include <QFileSystemWatcher>
 #include <QThread>
 
+#include <sys/types.h>
 /*!
  * \def deviceSettings()
  * \brief Get the Oxide::DeviceSettings instance
@@ -45,14 +50,39 @@
 typedef QMap<QString, QVariantMap> WifiNetworks;
 Q_DECLARE_METATYPE(WifiNetworks);
 /*!
- * \addtogroup Oxide
- * \brief The main Oxide namespace
- * @{
- */
-/*!
  * \brief The main Oxide namespace
  */
 namespace Oxide {
+    /*!
+     * \brief Execute a program and return it's output
+     * \param Program to run
+     * \param Arguments to pass to the program
+     * \return Output if it ran. Otherwise NULL.
+     */
+    LIBOXIDE_EXPORT QString execute(const QString& program, const QStringList& args);
+    /*!
+     * \brief Try to get a lock
+     * \param Path to the lock file
+     * \return File descriptor of the lock file if a positive number or -1 if it errored
+     */
+    LIBOXIDE_EXPORT int tryGetLock(char const *lockName);
+    /*!
+     * \brief Release a lock file
+     * \param File descriptor of the lock file
+     * \param Path to the lock file
+     */
+    LIBOXIDE_EXPORT void releaseLock(int fd, char const* lockName);
+    /*!
+     * \brief Checks to see if a process exists
+     * \return If the process exists
+     */
+    LIBOXIDE_EXPORT bool processExists(pid_t pid);
+    /*!
+     * \brief Get list of pids that have a file open
+     * \param File to check
+     * \return list of pids that have the file open
+     */
+    LIBOXIDE_EXPORT QList<int> lsof(const QString& path);
     /*!
      * \brief Run code on the main Qt thread
      * \param callback The code to run on the main thread
@@ -60,6 +90,22 @@ namespace Oxide {
      * \snippet examples/oxide.cpp dispatchToMainThread
      */
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
+    /*!
+     * \brief Get the UID for a username
+     * \param Username to search for
+     * \throws std::runtime_error Failed to get the UID for the username
+     * \return The UID for the username
+     * \snippet examples/oxide.cpp getUID
+     */
+    LIBOXIDE_EXPORT uid_t getUID(const QString& name);
+    /*!
+     * \brief Get the GID for a groupname
+     * \param Groupname to search for
+     * \throws std::runtime_error Failed to get the GID for the groupname
+     * \return The GID for the groupname
+     * \snippet examples/oxide.cpp getGID
+     */
+    LIBOXIDE_EXPORT gid_t getGID(const QString& name);
     /*!
      * \brief Device specific values
      */
@@ -226,7 +272,30 @@ namespace Oxide {
          */
         // cppcheck-suppress uninitMemberVarPrivate
         O_SETTINGS(SharedSettings, "/home/root/.config/Eeems/shared.conf")
+        /*!
+         * \property version
+         * \brief Current version of the settings file
+         * \sa set_version, versionChanged
+         */
+        /*!
+         * \fn versionChanged
+         * \brief If the version number has changed
+         */
         O_SETTINGS_PROPERTY(int, General, version)
+        /*!
+         * \property firstLaunch
+         * \brief If this is the first time that things have been run
+         * \sa set_firstLaunch, firstLaunchChanged
+         */
+        /*!
+         * \fn set_firstLaunch
+         * \param _arg_firstLaunch
+         * \brief Change the state of firstLaunch
+         */
+        /*!
+         * \fn firstLaunchChanged
+         * \brief If firstLaunch has changed
+         */
         O_SETTINGS_PROPERTY(bool, General, firstLaunch, true)
         /*!
          * \property telemetry
@@ -279,4 +348,3 @@ namespace Oxide {
     };
 }
 /*! @} */
-#endif // LIBOXIDE_H

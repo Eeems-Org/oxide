@@ -8,8 +8,6 @@
 #include <liboxide.h>
 
 #include "appitem.h"
-#include "dbusservice_interface.h"
-#include "appsapi_interface.h"
 #include "controller.h"
 
 bool AppItem::ok(){ return getApp() != nullptr; }

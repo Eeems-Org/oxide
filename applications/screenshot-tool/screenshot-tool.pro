@@ -15,12 +15,9 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-DBUS_INTERFACES += ../../interfaces/dbusservice.xml
-DBUS_INTERFACES += ../../interfaces/systemapi.xml
-DBUS_INTERFACES += ../../interfaces/screenapi.xml
-DBUS_INTERFACES += ../../interfaces/screenshot.xml
-DBUS_INTERFACES += ../../interfaces/notificationapi.xml
-DBUS_INTERFACES += ../../interfaces/notification.xml
+applications.files = ../../assets/opt/usr/share/applications/codes.eeems.fret.oxide
+applications.path = /opt/usr/share/applications/
+INSTALLS += applications
 
 include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)

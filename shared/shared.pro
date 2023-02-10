@@ -3,4 +3,4 @@ TEMPLATE = subdirs
 SUBDIRS = \
     liboxide
 
-INSTALLS += liboxide
+INSTALLS += $$SUBDIRS

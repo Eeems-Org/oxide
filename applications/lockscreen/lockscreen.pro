@@ -17,12 +17,9 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-DBUS_INTERFACES += ../../interfaces/dbusservice.xml
-DBUS_INTERFACES += ../../interfaces/systemapi.xml
-DBUS_INTERFACES += ../../interfaces/powerapi.xml
-DBUS_INTERFACES += ../../interfaces/wifiapi.xml
-DBUS_INTERFACES += ../../interfaces/appsapi.xml
-DBUS_INTERFACES += ../../interfaces/application.xml
+applications.files = ../../assets/opt/usr/share/applications/codes.eeems.decay.oxide
+applications.path = /opt/usr/share/applications/
+INSTALLS += applications
 
 HEADERS += \
     controller.h

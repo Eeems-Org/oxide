@@ -177,7 +177,7 @@ namespace Oxide::JSON {
         }
         return value;
     }
-    QString toJson(QVariant value){
+    QString toJson(QVariant value, QJsonDocument::JsonFormat format){
         if(value.isNull()){
             return "null";
         }
@@ -188,6 +188,18 @@ namespace Oxide::JSON {
         if(jsonVariant.isUndefined()){
             return "undefined";
         }
+        if(jsonVariant.isArray()){
+            QJsonDocument doc(jsonVariant.toArray());
+            return doc.toJson(format);
+        }
+        if(jsonVariant.isObject()){
+            QJsonDocument doc(jsonVariant.toObject());
+            return doc.toJson(format);
+        }
+        if(jsonVariant.isBool()){
+            return jsonVariant.toBool() ? "true" : "false";
+        }
+        // Number, string or other unknown type
         QJsonArray jsonArray;
         jsonArray.append(jsonVariant);
         QJsonDocument doc(jsonArray);
@@ -203,4 +215,5 @@ namespace Oxide::JSON {
         }
         return doc.array().first().toVariant();
     }
+    QVariant fromJson(QFile* file){ return fromJson(file->readAll()); }
 }

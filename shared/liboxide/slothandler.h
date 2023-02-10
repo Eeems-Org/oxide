@@ -1,8 +1,9 @@
 /*!
- * \file slothandler.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
-#ifndef SLOTHANDLER_H
-#define SLOTHANDLER_H
+#pragma once
 
 #include "liboxide_global.h"
 
@@ -59,5 +60,4 @@ namespace Oxide{
         void handleSlot(QObject* api, void** arguments);
     };
 }
-
-#endif // SLOTHANDLER_H
+/*! @} */

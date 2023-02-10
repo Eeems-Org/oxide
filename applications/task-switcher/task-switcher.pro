@@ -19,10 +19,9 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-DBUS_INTERFACES += ../../interfaces/dbusservice.xml
-DBUS_INTERFACES += ../../interfaces/screenapi.xml
-DBUS_INTERFACES += ../../interfaces/appsapi.xml
-DBUS_INTERFACES += ../../interfaces/application.xml
+applications.files = ../../assets/opt/usr/share/applications/codes.eeems.corrupt.oxide
+applications.path = /opt/usr/share/applications/
+INSTALLS += applications
 
 INCLUDEPATH += ../../shared
 HEADERS += \

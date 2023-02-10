@@ -1,8 +1,9 @@
 /*!
- * \file settingsfile.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
-#ifndef SETTINGSFILE_H
-#define SETTINGSFILE_H
+#pragma once
 
 #include "liboxide_global.h"
 
@@ -130,4 +131,4 @@ namespace Oxide {
         bool initalized = false;
     };
 }
-#endif // SETTINGSFILE_H
+/*! @} */

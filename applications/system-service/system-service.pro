@@ -31,7 +31,7 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-configFile.files = ../../assets/etc/dbus-1/system.d/*
+configFile.files = ../../assets/etc/dbus-1/system.d/codes.eeems.oxide.conf
 configFile.path =  /etc/dbus-1/system.d/
 INSTALLS += configFile
 
@@ -39,9 +39,13 @@ service.files = ../../assets/etc/systemd/system/tarnish.service
 service.path = /etc/systemd/system/
 INSTALLS += service
 
-applications.files = ../../assets/opt/usr/share/applications/*
+applications.files = ../../assets/opt/usr/share/applications/xochitl.oxide
 applications.path = /opt/usr/share/applications/
 INSTALLS += applications
+
+icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/xochitl.png
+icons.path = /opt/usr/share/icons/oxide/48x48/apps
+INSTALLS += icons
 
 system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)
 
@@ -79,8 +83,6 @@ LIBS += -lsystemd
 LIBS += -lz
 
 DISTFILES += \
-    ../../assets/opt/usr/share/applications/codes.eeems.anxiety.oxide \
-    ../../assets/opt/usr/share/applications/codes.eeems.corrupt.oxide \
     fi.w1.wpa_supplicant1.xml \
     generate_xml.sh \
     org.freedesktop.login1.xml

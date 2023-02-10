@@ -8,10 +8,6 @@
 
 #include "epframebuffer.h"
 
-#include "dbusservice_interface.h"
-#include "screenapi_interface.h"
-#include "screenshot_interface.h"
-
 #include "screenshotlist.h"
 
 using namespace codes::eeems::oxide1;

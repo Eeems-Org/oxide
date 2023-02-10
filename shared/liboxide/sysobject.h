@@ -1,8 +1,12 @@
 /*!
- * \file sysobject.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
-#ifndef SYSOBJECT_H
-#define SYSOBJECT_H
+#pragma once
+// This is required to allow generate_xml.sh to work
+#ifndef LIBOXIDE_SYSOBJECT_H
+#define LIBOXIDE_SYSOBJECT_H
 
 #include "liboxide_global.h"
 
@@ -61,4 +65,5 @@ namespace Oxide {
         std::string m_path;
     };
 }
-#endif // SYSOBJECT_H
+#endif // LIBOXIDE_SYSOBJECT_H
+/*! @} */
