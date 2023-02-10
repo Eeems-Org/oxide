@@ -44,7 +44,8 @@
     void _class::set_##member(_type _arg_##member) { \
         O_SETTINGS_DEBUG(fileName() + " Setting " + #_group + "." + #member) \
         m_##member = _arg_##member; \
-        if(!reloadSemaphore.available()){ \
+        if(reloadSemaphore.tryAcquire()){ \
+            O_SETTINGS_DEBUG(fileName() + " Saving " + #_group + "." + #member) \
             if(std::strcmp("General", #_group) != 0){ \
                 beginGroup(#_group); \
             }else{ \
@@ -53,6 +54,9 @@
             setValue(#member, QVariant::fromValue<_type>(_arg_##member)); \
             endGroup(); \
             sync(); \
+            reloadSemaphore.release(); \
+        }else{ \
+            O_SETTINGS_DEBUG(fileName() + " Not Saving " + #_group + "." + #member) \
         } \
     } \
     _type _class::member() const { return m_##member; } \
