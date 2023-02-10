@@ -1,6 +1,6 @@
 QT += gui
 QT += quick
-QT += dbus
+QT += webkitwidgets
 
 CONFIG += c++11
 CONFIG += qml_debug
@@ -38,10 +38,6 @@ INSTALLS += icons
 splash.files += ../../assets/opt/usr/share/icons/oxide/702x702/splash/web.png
 splash.path = /opt/usr/share/icons/oxide/702x702/splash
 INSTALLS += splash
-
-DBUS_INTERFACES += ../../interfaces/dbusservice.xml
-DBUS_INTERFACES += ../../interfaces/screenapi.xml
-DBUS_INTERFACES += ../../interfaces/screenshot.xml
 
 INCLUDEPATH += ../../shared
 HEADERS += \

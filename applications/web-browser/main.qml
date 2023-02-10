@@ -12,10 +12,11 @@ ApplicationWindow {
     width: screenGeometry.width
     height: screenGeometry.height
     title: page.url
+    property string home: "https://eink.link"
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted: {
         controller.startup();
-        page.open("https://eink.link");
+        page.load(window.home);
     }
     header: Rectangle {
         color: "black"
@@ -26,34 +27,59 @@ ApplicationWindow {
             anchors.right: parent.right
             Label {
                 text: "⬅️"
-                color: "white"
+                color: enabled ? "white" : "black"
                 topPadding: 5
                 bottomPadding: 5
                 leftPadding: 10
                 rightPadding: 10
+                enabled: !page.loading && page.history.length
                 MouseArea {
+                    enabled: parent.enabled
                     anchors.fill: parent
                     onClicked: page.back()
                 }
             }
-            Item { Layout.fillWidth: true }
+            Label {
+                text: "⮕"
+                color: enabled ? "white" : "black"
+                topPadding: 5
+                bottomPadding: 5
+                leftPadding: 10
+                rightPadding: 10
+                enabled: !page.loading && page._history.length
+                MouseArea {
+                    enabled: parent.enabled
+                    anchors.fill: parent
+                    onClicked: page.next()
+                }
+            }
             TextInput {
                 id: input
-                color: "white"
+                color: enabled ? "white" : "grey"
                 text: "about:blank"
-                onFocusChanged: keyboard.visible = focus;
+                clip: true
+                Layout.fillWidth: true
+                onFocusChanged: keyboard.visible = focus
+                readOnly: page.loading
                 onAccepted: {
                     page.open(text);
                     focus = false;
                 }
             }
-            Item { Layout.fillWidth: true }
             CustomMenu {
                 visible: stateController.state === "loaded"
                 BetterMenu {
-                    title: ""
+                    title: qsTr("");
                     font: iconFont.name
                     width: 310
+                    MenuItem {
+                        text: "Go Home"
+                        onClicked: page.open(window.home);
+                    }
+                    MenuItem {
+                        text: "Exit"
+                        onClicked: Qt.quit();
+                    }
                 }
             }
         }
@@ -73,21 +99,34 @@ ApplicationWindow {
                 Keys.enabled: true
                 textFormat: Text.RichText
                 wrapMode: Text.Wrap
+                property bool loading: false
                 property string url: "about:blank"
                 property var history: []
+                property var _history: []
                 function open(url){
                     history.push(this.url);
+                    _history = [];
                     load(url);
                 }
-                function back(url){
+                function back(){
                     if(!history.length){
-                        input.text = url = "about:blank"
-                        text = "";
                         return;
                     }
-                    load(history.pop());
+                    var url = history.pop()
+                    _history.push(url);
+                    load(url);
+                }
+                function next(){
+                    if(!_history.length){
+                        return;
+                    }
+                    var url = _history.pop();
+                    history.push(url);
+                    load(url);
                 }
                 function load(url){
+                    loading = true;
+                    input.text = "Loading...";
                     var req = new XMLHttpRequest();
                     req.onreadystatechange = function(){
                         if(req.readyState === XMLHttpRequest.DONE){
@@ -95,6 +134,7 @@ ApplicationWindow {
                             page.y = 100;
                             page.text = "<link type='stylesheet' href='page.css'/>" + JS.replace_all_rel_by_abs(url, req.responseText);
                             console.log("Loaded: " + url);
+                            loading = false;
                         }
                     };
                     req.onerror = function(e){

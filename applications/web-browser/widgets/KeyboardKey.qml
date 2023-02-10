@@ -22,7 +22,7 @@ Item {
     property bool repeatOnHold: true
     property int holdInterval: 100
     property int key: 0
-    property string value: null
+    property string value: ""
     property int size: 1
     property int basesize: 90
     property int fontsize: 8
