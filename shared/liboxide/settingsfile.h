@@ -12,6 +12,7 @@
 #include <QFileSystemWatcher>
 #include <QMetaProperty>
 #include <QFile>
+#include <QSemaphore>
 
 #include <cstring>
 
@@ -22,6 +23,7 @@
     public: \
         void set_##member(_type _arg_##member); \
         _type member() const; \
+        bool has_##member(); \
         void reload_##member(); \
     Q_SIGNALS: \
         void member##Changed(const _type&); \
@@ -42,16 +44,28 @@
     void _class::set_##member(_type _arg_##member) { \
         O_SETTINGS_DEBUG(fileName() + " Setting " + #_group + "." + #member) \
         m_##member = _arg_##member; \
+        if(!reloadSemaphore.available()){ \
+            if(std::strcmp("General", #_group) != 0){ \
+                beginGroup(#_group); \
+            }else{ \
+                beginGroup(""); \
+            } \
+            setValue(#member, QVariant::fromValue<_type>(_arg_##member)); \
+            endGroup(); \
+            sync(); \
+        } \
+    } \
+    _type _class::member() const { return m_##member; } \
+    bool _class::has_##member() { \
         if(std::strcmp("General", #_group) != 0){ \
             beginGroup(#_group); \
         }else{ \
             beginGroup(""); \
         } \
-        setValue(#member, QVariant::fromValue<_type>(_arg_##member)); \
+        bool res = contains(#member); \
         endGroup(); \
-        sync(); \
+        return res; \
     } \
-    _type _class::member() const { return m_##member; } \
     void _class::reload_##member() { reloadProperty(#member); } \
     QString _class::__META_GROUP_##member() const { return #_group; }
 #define O_SETTINGS_PROPERTY_BODY_1(_class, _type, group, member) \
@@ -126,6 +140,7 @@ namespace Oxide {
         void init();
         void reloadProperties();
         void resetProperties();
+        QSemaphore reloadSemaphore;
     private:
         QFileSystemWatcher fileWatcher;
         bool initalized = false;

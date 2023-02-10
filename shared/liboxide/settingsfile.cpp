@@ -6,6 +6,7 @@
 namespace Oxide {
     SettingsFile::SettingsFile(QString path)
         : QSettings(path, QSettings::IniFormat),
+          reloadSemaphore(1),
           fileWatcher(QStringList() << path) { }
     SettingsFile::~SettingsFile(){ }
     void SettingsFile::fileChanged(){
@@ -18,13 +19,16 @@ namespace Oxide {
         auto metaObj = metaObject();
         for (int i = metaObj->propertyOffset(); i < metaObj->propertyCount(); ++i) {
             auto property = metaObj->property(i);
-            if(property.hasNotifySignal()){
+            if(property.isWritable() && property.hasNotifySignal()){
                 auto value = property.read(this);
                 auto value2 = this->value(property.name());
                 if(value != value2){
                     O_DEBUG("Property" << property.name() << "changed")
-                    property.write(this, value2);
-                    property.notifySignal().invoke(this, Qt::QueuedConnection, QGenericArgument(value2.typeName(), value2.data()));
+                    reloadSemaphore.acquire();
+                    if(property.write(this, value2)){
+                        property.notifySignal().invoke(this, Qt::AutoConnection, QGenericArgument(value2.typeName(), value2.data()));
+                    }
+                    reloadSemaphore.release();
                 }
             }
         }
@@ -51,7 +55,9 @@ namespace Oxide {
             auto value = this->value(name);
             if(value.isValid()){
                 O_SETTINGS_DEBUG("  Updated")
+                reloadSemaphore.acquire();
                 setProperty(name.toStdString().c_str(), value);
+                reloadSemaphore.release();
             }else{
                 O_SETTINGS_DEBUG("  Invalid value")
             }
