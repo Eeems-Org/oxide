@@ -113,16 +113,60 @@
     },
     pics/scroll x/.default={.15},
     %
+    % Symbol representing a horizontal swipe to the left
+    % Arguments: none
+    pics/scroll left/.style={
+        code={
+            \draw[rM annotation, semithick] (.4, 0) circle (#1);
+            \draw[rM annotation, ultra thick, -{Latex[length=2.2mm]}]
+                (#1+.1, 0) -- ++(-.8, 0);
+        }
+    },
+    pics/scroll left/.default={.15},
+    %
+    % Symbol representing a horizontal swipe to the right
+    % Arguments: none
+    pics/scroll right/.style={
+        code={
+            \draw[rM annotation, semithick] (-.4, 0) circle (#1);
+            \draw[rM annotation, ultra thick, -{Latex[length=2.2mm]}]
+                (-#1-.1, 0) -- ++(.8, 0);
+        }
+    },
+    pics/scroll right/.default={.15},
+    %
     % Symbol representing a vertical swipe in any direction
     % Arguments: none
     pics/scroll y/.style={
         code={
             \draw[rM annotation, semithick] (0, 0) circle (#1);
             \draw[rM annotation, ultra thick, -{Latex[length=2.2mm]}]
-                (0, -#1) -- ++(0, -.4);
+                (#1, -#1) -- ++(0, -.4);
             \draw[rM annotation, ultra thick, -{Latex[length=2.2mm]}]
-                (0, #1) -- ++(0, .4);
+                (#1, #1) -- ++(0, .4);
         }
     },
     pics/scroll y/.default={.15},
+    %
+    % Symbol representing a vertical swipe up
+    % Arguments: none
+    pics/scroll up/.style={
+        code={
+            \draw[rM annotation, semithick] (0, -.4) circle (#1);
+            \draw[rM annotation, ultra thick, -{Latex[length=2.2mm]}]
+                (0, -#1-.1) -- ++(0, .8);
+        }
+    },
+    pics/scroll up/.default={.15},
+    %
+    % Symbol representing a vertical swipe down
+    % Arguments: none
+    pics/scroll down/.style={
+        code={
+            \draw[rM annotation, semithick] (0, .4) circle (#1);
+            \draw[rM annotation, ultra thick, -{Latex[length=2.2mm]}]
+                (0, #1+.1) -- ++(0, -.8);
+        }
+    },
+    pics/scroll down/.default={.15},
 }

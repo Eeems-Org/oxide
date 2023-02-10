@@ -82,7 +82,7 @@ dev: $(VENV)/bin/activate
 	sphinx-autobuild -a $(SRC) $(DIST)
 
 dev-images:
-	while inotifywait -e close_write $(IMAGES)/*.tex;do \
+	while inotifywait -e close_write,create $(IMAGES) $(IMAGES)/*.tex;do \
 	    rm -f $(svgFiles) $(pngFiles); \
 	    $(MAKE) images; \
 	done
