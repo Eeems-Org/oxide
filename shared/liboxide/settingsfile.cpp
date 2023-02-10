@@ -45,11 +45,7 @@ namespace Oxide {
         }
         auto groupName = property(propertyName.toStdString().c_str()).toString();
         O_SETTINGS_DEBUG((fileName() + " Reloading " + groupName + "." + name).toStdString().c_str())
-        if(groupName != "General"){
-            beginGroup(groupName);
-        }else{
-            beginGroup("");
-        }
+        beginGroup(groupName != "General" ? groupName : "");
         if(contains(name)){
             O_SETTINGS_DEBUG("  Value exists")
             auto value = this->value(name);

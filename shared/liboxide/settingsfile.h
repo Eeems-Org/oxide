@@ -42,30 +42,27 @@
         void reset_##member();
 #define O_SETTINGS_PROPERTY_BODY_0(_class, _type, member, _group) \
     void _class::set_##member(_type _arg_##member) { \
+        if(m_##member == _arg_##member){ \
+            O_SETTINGS_DEBUG(fileName() + " No Change " + #_group + "." + #member) \
+            return; \
+        } \
         O_SETTINGS_DEBUG(fileName() + " Setting " + #_group + "." + #member) \
         m_##member = _arg_##member; \
         if(reloadSemaphore.tryAcquire()){ \
-            O_SETTINGS_DEBUG(fileName() + " Saving " + #_group + "." + #member) \
-            if(std::strcmp("General", #_group) != 0){ \
-                beginGroup(#_group); \
-            }else{ \
-                beginGroup(""); \
-            } \
+            beginGroup(std::strcmp("General", #_group) != 0 ? #_group : ""); \
             setValue(#member, QVariant::fromValue<_type>(_arg_##member)); \
             endGroup(); \
+            O_SETTINGS_DEBUG(fileName() + " Saving " + #_group + "." + #member) \
             sync(); \
             reloadSemaphore.release(); \
         }else{ \
             O_SETTINGS_DEBUG(fileName() + " Not Saving " + #_group + "." + #member) \
         } \
+        emit member##Changed(m_##member);\
     } \
     _type _class::member() const { return m_##member; } \
     bool _class::has_##member() { \
-        if(std::strcmp("General", #_group) != 0){ \
-            beginGroup(#_group); \
-        }else{ \
-            beginGroup(""); \
-        } \
+        beginGroup(std::strcmp("General", #_group) != 0 ? #_group : ""); \
         bool res = contains(#member); \
         endGroup(); \
         return res; \

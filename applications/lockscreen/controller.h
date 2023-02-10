@@ -239,6 +239,7 @@ public:
             return true;
         }else if(state == "loaded"){
             qDebug() << "PIN doesn't match!";
+            O_DEBUG(pin << "!=" << storedPin());
             onFailedLogin();
             return false;
         }
@@ -305,6 +306,7 @@ public:
     }
     QString storedPin() {
         if(!sharedSettings.has_pin()){
+            O_DEBUG("Does not have pin and storedPin was called");
             return "";
         }
         return sharedSettings.pin();
