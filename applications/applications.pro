@@ -2,6 +2,7 @@ TEMPLATE = subdirs
 
 SUBDIRS = \
     desktop-file-edit \
+    desktop-file-install \
     desktop-file-validate \
     gio \
     launcher \
@@ -36,6 +37,7 @@ xdg-open.depends = system-service
 gio.depends = system-service
 xdg-settings.depends = system-service
 xdg-icon-resource.depends = system-service
-desktop-file-edit.depends =
+desktop-file-edit.depends = desktop-file-edit
+desktop-file-install.depends =
 
 INSTALLS += $$SUBDIRS
