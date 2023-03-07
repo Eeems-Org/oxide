@@ -1,6 +1,6 @@
 DIST=../../web/dist/liboxide
 
-all: dist
+all: prod
 
 html:
 	doxygen Doxyfile

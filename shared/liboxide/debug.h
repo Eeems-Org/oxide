@@ -11,7 +11,7 @@
 /*!
  * \def O_DEBUG(msg)
  * \brief Log a debug message if compiled with DEBUG mode, and debugging is enabled
- * \param Debug message to log
+ * \param msg Debug message to log
  */
 #ifdef DEBUG
 #define O_DEBUG(msg) if(Oxide::debugEnabled()){ qDebug() << msg; }
@@ -21,7 +21,7 @@
 /*!
  * \def O_WARNING(msg)
  * \brief Log a warning message if debugging is enabled
- * \param Warning message to log
+ * \param msg Warning message to log
  */
 #define O_WARNING(msg) if(Oxide::debugEnabled()){ qWarning() << msg; }
 
