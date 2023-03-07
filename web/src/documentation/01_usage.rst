@@ -7,10 +7,14 @@ Usage
    <img src="../_static/images/gestures.svg" alt="gestures" style="width:100%;">
    <br/>
 
+.. _decay:
+
 Lockscreen (decay)
 ==================
 
 If xochitl has a pin set, you will be prompted to import it. If you don't have a pin set, or decide not to import one from xochtil, you will be prompted to create a pin. You may choose to use the device with no pin.
+
+.. _oxide:
 
 Launcher (oxide)
 ================
@@ -25,6 +29,8 @@ The options dialog will allow you to configure various settings in the applicati
 
 Press on an application to launch, or return to an application. Long press on it to see more information about the application. If the application is running you will also be presented with a button to kill the application. There will be a button to toggle if this application should be launched on startup. This will automatically disable launch on startup from another application.
 
+.. _corrupt:
+
 Application Switcher (corrupt)
 ==============================
 
@@ -36,6 +42,8 @@ Application Switcher (corrupt)
 * You can swipe from the left edge of the screen, or long press the left button to return to the currently running application.
 * You can select the left or right arrow if they are enabled to scroll through running applications.
 
+.. _tarnish:
+
 Background Service (tarnish)
 ============================
 
@@ -44,6 +52,8 @@ Background Service (tarnish)
 * Press the power button to suspend the device.
 * Press and hold the right button, or swipe from the right edge of the screen to take a screenshot.
 * Swipe from the top of the screen to enable/disable swipe gestures.
+
+.. _erode:
 
 Process Manager (erode)
 =======================
@@ -54,10 +64,14 @@ Process Manager (erode)
 * You can exit the application by pressing the left arrow on the top left of the toolbar.
 * If the process list is long enough, you can scroll it by swiping up or down on the list. After you have swiped the list will scroll.
 
+.. _fret:
+
 Screenshot Tool (fret)
 ======================
 
 The screenshot tool will automatically start up and wait for right button long presses, at which time it will request a screenshot be taken and stored to ``/home/root/screenshots``. It will then execute ``/tmp/.screenshot`` if it exists. Due to how the reMarkable preserves colour information in the framebuffer used to generate the screenshot, there may be colour in the screenshots that are not visible on the reMarkable itself.
+
+.. _anxiety:
 
 Screenshot Viewer (anxiety)
 ===========================
@@ -68,6 +82,8 @@ Screenshot Viewer (anxiety)
 * Select a screenshot to view it.
 * When a screenshot is open, the arrow on the top left of the screen will return to the screenshots list.
 * When a screenshot is open, the delete button on the top right of the screen will delete the screenshot, and return to the screenshots list.
+
+.. _rot:
 
 CLI Tool (rot)
 ==============
