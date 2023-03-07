@@ -3,7 +3,8 @@ Oxide-Utils
 ===========
 
 As of version 2.6, Oxide ships with several new command line utilities meant to mimic common
-existing linux command line tools meant for dealing with desktop environments.
+existing linux command line tools meant for dealing with desktop environments. ``notify-send``
+was added in version 2.5.
 
 desktop-file-validate
 =====================
@@ -39,3 +40,8 @@ gio
 ===
 
 https://man.archlinux.org/man/gio.1
+
+notify-send
+===========
+
+https://man.archlinux.org/man/notify-send.1.en
