@@ -55,21 +55,21 @@ Q_DECLARE_METATYPE(WifiNetworks);
 namespace Oxide {
     /*!
      * \brief Execute a program and return it's output
-     * \param Program to run
-     * \param Arguments to pass to the program
+     * \param program Program to run
+     * \param args Arguments to pass to the program
      * \return Output if it ran. Otherwise NULL.
      */
     LIBOXIDE_EXPORT QString execute(const QString& program, const QStringList& args);
     /*!
      * \brief Try to get a lock
-     * \param Path to the lock file
+     * \param lockName Path to the lock file
      * \return File descriptor of the lock file if a positive number or -1 if it errored
      */
     LIBOXIDE_EXPORT int tryGetLock(char const *lockName);
     /*!
      * \brief Release a lock file
-     * \param File descriptor of the lock file
-     * \param Path to the lock file
+     * \param fd File descriptor of the lock file
+     * \param lockName Path to the lock file
      */
     LIBOXIDE_EXPORT void releaseLock(int fd, char const* lockName);
     /*!
@@ -79,7 +79,7 @@ namespace Oxide {
     LIBOXIDE_EXPORT bool processExists(pid_t pid);
     /*!
      * \brief Get list of pids that have a file open
-     * \param File to check
+     * \param path File to check
      * \return list of pids that have the file open
      */
     LIBOXIDE_EXPORT QList<int> lsof(const QString& path);
@@ -92,7 +92,7 @@ namespace Oxide {
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
     /*!
      * \brief Get the UID for a username
-     * \param Username to search for
+     * \param name Username to search for
      * \throws std::runtime_error Failed to get the UID for the username
      * \return The UID for the username
      * \snippet examples/oxide.cpp getUID
@@ -100,7 +100,7 @@ namespace Oxide {
     LIBOXIDE_EXPORT uid_t getUID(const QString& name);
     /*!
      * \brief Get the GID for a groupname
-     * \param Groupname to search for
+     * \param name Groupname to search for
      * \throws std::runtime_error Failed to get the GID for the groupname
      * \return The GID for the groupname
      * \snippet examples/oxide.cpp getGID

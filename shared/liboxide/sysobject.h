@@ -32,31 +32,31 @@ namespace Oxide {
         bool exists();
         /*!
          * \brief Does the sysfs interface have a named property
-         * \param The property name
+         * \param name The property name
          * \return If the sysfs interface has a named property
          */
         bool hasProperty(const std::string& name);
         /*!
          * \brief Does the sysfs interface have a named directory
-         * \param The directory name
+         * \param name The directory name
          * \return If the sysfs interface has a named directory
          */
         bool hasDirectory(const std::string& name);
         /*!
          * \brief Get a named property value as a string
-         * \param The property name
+         * \param name The property name
          * \return The string value of the named property
          */
         std::string strProperty(const std::string& name);
         /*!
          * \brief Get a named property value as an int
-         * \param The property name
+         * \param name The property name
          * \return The int value of the named property
          */
         int intProperty(const std::string& name);
         /*!
          * \brief Get the path to a named property
-         * \param The property name
+         * \param name The property name
          * \return The path to the named property
          */
         std::string propertyPath(const std::string& name);

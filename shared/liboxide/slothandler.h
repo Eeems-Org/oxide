@@ -14,28 +14,28 @@
 namespace Oxide{
     /*!
      * \brief Connect to a slot on a DBus interface
-     * \param Interface to connect to
-     * \param Slot to connect to
-     * \param Method to run when an event is recieved on the slot
+     * \param interface Interface to connect to
+     * \param slotName Slot to connect to
+     * \param onMessage Method to run when an event is recieved on the slot
      * \return If the connect succeeded
      */
     LIBOXIDE_EXPORT bool DBusConnect(QDBusAbstractInterface* interface, const QString& slotName, std::function<void(QVariantList)> onMessage);
     /*!
      * \brief Connect to a slot on a DBus interface
-     * \param Interface to connect to
-     * \param Slot to connect to
-     * \param Method to run when an event is recieved on the slot
-     * \param If this should disconnect after the first event
+     * \param interface Interface to connect to
+     * \param slotName Slot to connect to
+     * \param onMessage Method to run when an event is recieved on the slot
+     * \param once If this should disconnect after the first event
      * \return If the connect succeeded
      */
     LIBOXIDE_EXPORT bool DBusConnect(QDBusAbstractInterface* interface, const QString& slotName, std::function<void(QVariantList)> onMessage, const bool& once);
     /*!
      * \brief Connect to a slot on a DBus interface
-     * \param Interface to connect to
-     * \param Slot to connect to
-     * \param Method to run when an event is recieved on the slot
-     * \param Method to run when disconnecting
-     * \param If this should disconnect after the first event
+     * \param interface Interface to connect to
+     * \param slotName Slot to connect to
+     * \param onMessage Method to run when an event is recieved on the slot
+     * \param callback Method to run when disconnecting
+     * \param once If this should disconnect after the first event
      * \return If the connect succeeded
      */
     LIBOXIDE_EXPORT bool DBusConnect(QDBusAbstractInterface* interface, const QString& slotName, std::function<void(QVariantList)> onMessage, std::function<void()> callback, const bool& once=false);
