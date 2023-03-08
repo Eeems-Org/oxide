@@ -46,6 +46,7 @@ namespace Oxide {
          * \brief Get a named property value as a string
          * \param name The property name
          * \return The string value of the named property
+         * \retval "0" Unable to open file. This is to ensure that intProperty will not crash
          */
         std::string strProperty(const std::string& name);
         /*!

@@ -19,6 +19,7 @@ namespace Oxide::JSON {
      * \brief Decode a DBus Argument into a QVariant
      * \param arg DBus Argument to decode
      * \return QVariant
+     * \retval QVariant() Unable to decode QDBusArgument
      */
     LIBOXIDE_EXPORT QVariant decodeDBusArgument(const QDBusArgument& arg);
     /*!

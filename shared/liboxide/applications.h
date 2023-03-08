@@ -206,7 +206,8 @@ namespace Oxide::Applications{
     /*!
      * \brief Get the path to an icon from an icon name spec.
      * \param spec Icon name spec using the following format: [theme:][context:]{name}-{size}. e.g. oxide:splash:xochitl-702
-     * \return Path to the icon. An empty string if it failed to parse the spec.
+     * \return Path to the icon.
+     * \retval "" Failed to parse the spec
      */
     LIBOXIDE_EXPORT QString iconPath(const QString& spec);
 }

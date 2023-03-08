@@ -57,13 +57,15 @@ namespace Oxide {
      * \brief Execute a program and return it's output
      * \param program Program to run
      * \param args Arguments to pass to the program
-     * \return Output if it ran. Otherwise NULL.
+     * \return Output if it ran.
+     * \retval NULL Program was not able to execute
      */
     LIBOXIDE_EXPORT QString execute(const QString& program, const QStringList& args);
     /*!
      * \brief Try to get a lock
      * \param lockName Path to the lock file
-     * \return File descriptor of the lock file if a positive number or -1 if it errored
+     * \return File descriptor of the lock file
+     * \retval -1 Unable to get lock
      */
     LIBOXIDE_EXPORT int tryGetLock(char const *lockName);
     /*!
