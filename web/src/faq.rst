@@ -108,6 +108,12 @@ As of Oxide 2.5, you can now get logs for specific applications with the followi
 
   journalctl -eat codes.eeems.oxide
 
+To get logs for just the :ref:`tarnish`, you can use the following command:
+
+.. code:: bash
+
+  journalctl -eat tarnish
+
 Where are the configuration files?
 ==================================
 
