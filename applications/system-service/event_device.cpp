@@ -35,6 +35,12 @@ void ev_syn(event_device& evdev){
     key_input_event.code = SYN_REPORT;
     write_event(evdev, key_input_event);
 }
+void ev_dropped(event_device& evdev){
+    struct input_event key_input_event;
+    key_input_event.type = EV_SYN;
+    key_input_event.code = SYN_DROPPED;
+    write_event(evdev, key_input_event);
+}
 void ev_key(event_device& evdev, int code, int value){
     struct input_event key_input_event;
     key_input_event.type = EV_KEY;

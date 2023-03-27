@@ -24,6 +24,7 @@ int lock_device(event_device& evdev);
 int unlock_device(event_device& evdev);
 void write_event(event_device& evdev, input_event ie);
 void ev_syn(event_device& evdev);
+void ev_dropped(event_device& evdev);
 void ev_key(event_device& evdev, int code, int value = 0);
 
 #endif // EVENT_DEVICE_H
