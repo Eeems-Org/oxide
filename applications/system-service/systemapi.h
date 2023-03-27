@@ -487,11 +487,8 @@ private slots:
                     }break;
                     case ABS_MT_TRACKING_ID:{
                         auto touch = getEvent(currentSlot);
-                        if(event.value == -1){
-                            touch->active = false;
-                            currentSlot = 0;
-                        }else{
-                            touch->active = true;
+                        touch->active = event.value != -1;
+                        if(touch->active){
                             touch->id = event.value;
                         }
                     }break;
