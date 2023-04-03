@@ -27,6 +27,16 @@
 #include <QThread>
 
 #include <sys/types.h>
+#ifndef VERSION
+#ifdef APP_VERSION
+#define VERSION APP_VERSION
+#else
+#define VERSION "2.6"
+#endif
+#endif
+#ifndef APP_VERSION
+#define APP_VERSION VERSION
+#endif
 /*!
  * \def deviceSettings()
  * \brief Get the Oxide::DeviceSettings instance

@@ -158,8 +158,8 @@ namespace Oxide::Sentry{
         }
         sentry_options_set_debug(options, debugEnabled());
         sentry_options_set_database_path(options, "/home/root/.cache/Eeems/sentry");
-        sentry_options_set_release(options, (std::string(name) + "@2.4").c_str());
-        sentry_init(options);
+        sentry_options_set_release(options, (std::string(name) + "@" + APP_VERSION).c_str());
+        ::sentry_init(options);
 
         // Setup user
         sentry_value_t user = sentry_value_new_object();
@@ -171,7 +171,7 @@ namespace Oxide::Sentry{
         sentry_set_tag("name", name);
         sentry_value_t device = sentry_value_new_object();
         sentry_value_set_by_key(device, "machine-id", sentry_value_new_string(machineId()));
-        sentry_value_set_by_key(device, "version", sentry_value_new_string(readFile("/etc/version").c_str()));
+        sentry_value_set_by_key(device, "version", sentry_value_new_string(version.c_str()));
         sentry_value_set_by_key(device, "model", sentry_value_new_string(deviceSettings.getDeviceName()));
         sentry_set_context("device", device);
         // Setup transaction
