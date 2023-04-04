@@ -40,11 +40,13 @@ struct Inhibitor {
     bool released() { return fd == -1; }
 };
 
+#define NULL_TOUCH_COORD -1
+
 struct Touch {
     int slot = 0;
     int id = -1;
-    int x = 0;
-    int y = 0;
+    int x = NULL_TOUCH_COORD;
+    int y = NULL_TOUCH_COORD;
     bool active = false;
     bool existing = false;
     bool modified = true;
@@ -611,7 +613,7 @@ private:
             return;
         }
         auto touch = touches.first();
-        if(swipeDirection != None){
+        if(swipeDirection != None || touch->x == NULL_TOUCH_COORD || touch->y == NULL_TOUCH_COORD){
             return;
         }
         int offset = 20;
@@ -683,6 +685,13 @@ private:
             return;
         }
         auto touch = touches.first();
+        if(touch->x == NULL_TOUCH_COORD || touch->y == NULL_TOUCH_COORD){
+            if(Oxide::debugEnabled()){
+                qDebug() << "Invalid touch event";
+            }
+            swipeDirection = None;
+            return;
+        }
         if(swipeDirection == Up){
             if(!swipeStates[Up] || touch->y < location.y() || touch->y - startLocation.y() < swipeLengths[Up]){
                 // Must end swiping up and having gone far enough
@@ -792,11 +801,22 @@ private:
         if(Oxide::debugEnabled()){
             qDebug() << "Write touch move" << touch;
         }
-        int size = sizeof(input_event) * 8;
+        int count = 8;
+        if(touch->x == NULL_TOUCH_COORD){
+            count--;
+        }
+        if(touch->y == NULL_TOUCH_COORD){
+            count--;
+        }
+        int size = sizeof(input_event) * count;
         input_event* events = (input_event*)malloc(size);
         events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
-        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_POSITION_X, touch->x);
-        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_POSITION_Y, touch->y);
+        if(touch->x != NULL_TOUCH_COORD){
+            events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_POSITION_X, touch->x);
+        }
+        if(touch->y != NULL_TOUCH_COORD){
+            events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_POSITION_Y, touch->y);
+        }
         events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_PRESSURE, touch->pressure);
         events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TOUCH_MAJOR, touch->major);
         events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TOUCH_MINOR, touch->minor);
