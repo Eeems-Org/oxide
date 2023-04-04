@@ -472,7 +472,7 @@ private slots:
                         // Setup touches for next event set
                         for(auto touch : touches.values()){
                             touch->modified = false;
-                            touch->existing = true;
+                            touch->existing = touch->existing || (touch->x != NULL_TOUCH_COORD && touch->y != NULL_TOUCH_COORD);
                         }
                     break;
                 }
