@@ -12,10 +12,10 @@
 #include <string>
 #include <vector>
 #include <liboxide.h>
-
-#include "event_device.h"
+#include <liboxide/event_device.h>
 
 using namespace std;
+using namespace Oxide;
 
 #define touchHandler DigitizerHandler::singleton_touchScreen()
 #define wacomHandler DigitizerHandler::singleton_wacom()
@@ -80,12 +80,12 @@ public:
     }
     void grab(){
         if(!grabbed()){
-            lock_device(device);
+            device.lock();
         }
     }
     void ungrab(){
         if(grabbed()){
-            unlock_device(device);
+            device.unlock();
         }
     }
     bool grabbed() { return device.locked; }

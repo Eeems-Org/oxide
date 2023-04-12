@@ -125,6 +125,7 @@ namespace Oxide::Applications{
         return false;
     };
 #define isError(level) (level == ErrorLevel::Error || level == ErrorLevel::Critical)
+#undef addError
 #define addError(_level, _msg) errors.append(ValidationError { .level = _level, .msg = _msg }); if(exitEarly && isError(_level)){ return errors; }
 #define shouldExit if(exitEarly && std::any_of(errors.constBegin(), errors.constEnd(), [](const ValidationError& error){ return isError(error.level); })){ return errors; }
     QString type = app.contains("type") ? app["type"].toString().toLower() : "";
