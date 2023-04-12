@@ -1,4 +1,5 @@
 #include "event_device.h"
+#include "debug.h"
 
 namespace Oxide {
     input_event event_device::create_event(ushort type, ushort code, int value){
@@ -32,15 +33,15 @@ namespace Oxide {
     }
 
     int event_device::lock(){
-        qDebug() << "locking " << device.c_str();
+        O_DEBUG("locking " << device.c_str());
         int result = ioctl(fd, EVIOCGRAB, 1);
         if(result == EBUSY){
-            qDebug() << "Device is busy";
+            O_WARNING("Device is busy");
         }else if(result != 0){
-            qDebug() << "Unknown error: " << result;
+            O_WARNING("Unknown error: " << result);
         }else{
             locked = true;
-            qDebug() << device.c_str() << " locked";
+            O_DEBUG(device.c_str() << " locked");
         }
         return result;
     }
@@ -48,19 +49,23 @@ namespace Oxide {
     int event_device::unlock(){
         int result = ioctl(fd, EVIOCGRAB, 0);
         if(result){
-            qDebug() << "Failed to unlock " << device.c_str() << ": " << result;
+            O_WARNING("Failed to unlock " << device.c_str() << ": " << result);
         }else{
             locked = false;
-            qDebug() << "Unlocked " << device.c_str();
+            O_DEBUG("Unlocked " << device.c_str());
         }
         return result;
     }
 
     void event_device::write(input_event ie){
-    #ifdef DEBUG
-        qDebug() << "WRITE: " << ie.type << ", " << ie.code << ", " << ie.value << " to " << device.c_str();
-    #endif
-        ::write(fd, &ie,sizeof(ie));
+        if(fd <= 0){
+            O_WARNING("Failed to write event to " << device.c_str() << ". Device not open.")
+            return;
+        }
+        O_DEBUG("WRITE: " << ie.type << ", " << ie.code << ", " << ie.value << " to " << device.c_str());
+        if(::write(fd, &ie,sizeof(ie)) < 0){
+            O_WARNING("Failed to write to " << device.c_str() << ". " << strerror(errno))
+        }
     }
 
     void event_device::write(ushort type, ushort code, int value){
