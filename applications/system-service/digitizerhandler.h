@@ -10,6 +10,7 @@
 #include <linux/input.h>
 #include <iostream>
 #include <string>
+#include <vector>
 #include <liboxide.h>
 
 #include "event_device.h"
@@ -91,7 +92,9 @@ public:
     void write(ushort type, ushort code, int value){
         auto event = createEvent(type, code, value);
         ::write(device.fd, &event, sizeof(input_event));
+#ifdef DEBUG
         qDebug() << "Emitted event " << event.time.tv_sec << event.time.tv_usec << type << code << value;
+#endif
     }
     void write(input_event* events, size_t size){
         ::write(device.fd, events, size);
@@ -125,7 +128,7 @@ protected:
     input_event* build_flood(){
         auto n = 512 * 8;
         auto num_inst = 4;
-        input_event* ev = (input_event *)malloc(sizeof(struct input_event) * n * num_inst);
+        input_event* ev = (input_event*)malloc(sizeof(struct input_event) * n * num_inst);
         memset(ev, 0, sizeof(input_event) * n * num_inst);
         auto i = 0;
         while (i < n) {
@@ -147,13 +150,48 @@ protected:
         }
     }
     bool handle_events(){
-        input_event event;
-        if(!read(&event)){
-            return false;
+        vector<input_event> event_buffer;
+        bool success = true;
+        while(true){
+            input_event event;
+            if(!read(&event)){
+                success = false;
+                goto exitLoop;
+            }
+            event_buffer.push_back(event);
+            switch(event.type){
+                case EV_SYN:
+                    switch(event.code){
+                        case SYN_DROPPED:
+                            event_buffer.clear();
+                            skip_event();
+                        case SYN_REPORT:
+                        case SYN_MT_REPORT:
+                            goto exitLoop;
+                        break;
+                    }
+                break;
+            }
         }
-        emit inputEvent(event);
-        emit activity();
-        return true;
+        exitLoop:
+        if(event_buffer.size()){
+            for(input_event event : event_buffer){
+                emit inputEvent(event);
+            }
+            emit activity();
+        }
+        return success;
+    }
+    void skip_event(){
+        input_event event;
+        while(read(&event)){
+            if(event.type != EV_SYN){
+                continue;
+            }
+            if(event.code == SYN_REPORT || event.code == SYN_MT_REPORT){
+                break;
+            }
+        }
     }
     __gnu_cxx::stdio_filebuf<char> filebuf;
     istream stream;

@@ -11,12 +11,15 @@ void button_exit_handler(){
 }
 
 void flush_stream(istream* stream){
+    // Skip the next event
     input_event ie;
     streamsize sie = static_cast<streamsize>(sizeof(struct input_event));
     stream->read((char*)&ie, sie);
 }
 void press_button(event_device& evdev, int code, istream* stream){
+#ifdef DEBUG
     qDebug() << "inject button " << code;
+#endif
     unlock_device(evdev);
     ev_key(evdev, code, 1);
     flush_stream(stream);
