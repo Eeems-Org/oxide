@@ -128,9 +128,9 @@ bool process_EV_REL(const QStringList& args){
     rel(REL_DIAL);
     rel(REL_WHEEL);
     rel(REL_MISC);
-    rel(REL_RESERVED);
-    rel(REL_WHEEL_HI_RES);
-    rel(REL_HWHEEL_HI_RES);
+    //rel(REL_RESERVED);
+    //rel(REL_WHEEL_HI_RES);
+    //rel(REL_HWHEEL_HI_RES);
     rel(REL_MAX);
     rel(REL_CNT);
     qDebug() << "Unknown EV_REL event code:" << code.c_str();
@@ -418,11 +418,11 @@ bool process_EV_KEY(const QStringList& args){
     key(KEY_TITLE);
     key(KEY_SUBTITLE);
     key(KEY_ANGLE);
-    key(KEY_FULL_SCREEN);
+    //key(KEY_FULL_SCREEN);
     key(KEY_ZOOM);
     key(KEY_MODE);
     key(KEY_KEYBOARD);
-    key(KEY_ASPECT_RATIO);
+    //key(KEY_ASPECT_RATIO);
     key(KEY_SCREEN);
     key(KEY_PC);
     key(KEY_TV);
@@ -563,7 +563,7 @@ bool process_EV_KEY(const QStringList& args){
     key(KEY_ATTENDANT_TOGGLE);
     key(KEY_LIGHTS_TOGGLE);
     key(KEY_ALS_TOGGLE);
-    key(KEY_ROTATE_LOCK_TOGGLE);
+    //key(KEY_ROTATE_LOCK_TOGGLE);
     key(KEY_BUTTONCONFIG);
     key(KEY_TASKMANAGER);
     key(KEY_JOURNAL);
@@ -572,7 +572,7 @@ bool process_EV_KEY(const QStringList& args){
     key(KEY_SCREENSAVER);
     key(KEY_VOICECOMMAND);
     key(KEY_ASSISTANT);
-    key(KEY_KBD_LAYOUT_NEXT);
+    //key(KEY_KBD_LAYOUT_NEXT);
     //key(KEY_EMOJI_PICKER);
     //key(KEY_DICTATE);
     //key(KEY_CAMERA_ACCESS_ENABLE);
@@ -731,7 +731,7 @@ bool process_EV_KEY(const QStringList& args){
     key(BTN_TOOL_MOUSE);
     key(BTN_TOOL_LENS);
     key(BTN_TOOL_QUINTTAP);
-    key(BTN_STYLUS3);
+    //key(BTN_STYLUS3);
     key(BTN_TOUCH);
     key(BTN_STYLUS);
     key(BTN_STYLUS2);
