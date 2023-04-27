@@ -69,12 +69,27 @@ As of 2.6 you can change your pin to any 4 numbers with the following command:
 
   xdg-settings set pin <new-pin>
 
+For example:
+
+.. code:: bash
+
+  xdg-settings set pin '0123'
+
 As of 2.6 you can clear your pin to skip the lock screen with the following command:
 
 .. code:: bash
 
   xdg-settings set pin ''
 
+On 2.5 or earlier you can use the following commands to manually clear your pin:
+
+.. code:: bash
+
+  systemctl stop tarnish
+  rm /home/root/.config/Eeems/decay.conf
+  systemctl start tarnish
+
+You will then be prompted to enter a new pin
 
 Not all of my applications are listed?
 ======================================
