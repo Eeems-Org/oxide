@@ -10,7 +10,7 @@ namespace Oxide {
         return event;
     }
 
-    event_device::event_device(string path, int flags) : device(path), flags(flags){
+    event_device::event_device(const string& path, int flags) : device(path), flags(flags){
         this->open();
     }
     event_device::~event_device(){

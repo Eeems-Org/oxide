@@ -27,7 +27,7 @@ namespace Oxide {
          * \param path
          * \param flags
          */
-        event_device(string path, int flags);
+        event_device(const string& path, int flags);
         ~event_device();
         /*!
          * \brief close
