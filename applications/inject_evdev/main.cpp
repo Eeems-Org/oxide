@@ -84,7 +84,7 @@ bool process_EV_ABS(const QStringList& args){
     abs(ABS_VOLUME);
     //abs(ABS_PROFILE);
     abs(ABS_MISC);
-    abs(ABS_RESERVED);
+    //abs(ABS_RESERVED);
     abs(ABS_MT_SLOT);
     abs(ABS_MT_TOUCH_MAJOR);
     abs(ABS_MT_TOUCH_MINOR);
@@ -571,7 +571,7 @@ bool process_EV_KEY(const QStringList& args){
     key(KEY_APPSELECT);
     key(KEY_SCREENSAVER);
     key(KEY_VOICECOMMAND);
-    key(KEY_ASSISTANT);
+    //key(KEY_ASSISTANT);
     //key(KEY_KBD_LAYOUT_NEXT);
     //key(KEY_EMOJI_PICKER);
     //key(KEY_DICTATE);
@@ -604,7 +604,7 @@ bool process_EV_KEY(const QStringList& args){
     key(KEY_FASTREVERSE);
     key(KEY_SLOWREVERSE);
     key(KEY_DATA);
-    key(KEY_ONSCREEN_KEYBOARD);
+    //key(KEY_ONSCREEN_KEYBOARD);
     //key(KEY_PRIVACY_SCREEN_TOGGLE);
     //key(KEY_SELECTIVE_SCREENSHOT);
     //key(KEY_NEXT_ELEMENT);
