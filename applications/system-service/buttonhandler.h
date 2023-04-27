@@ -23,10 +23,10 @@
 #include <sys/ioctl.h>
 #include <cstdlib>
 #include <liboxide.h>
-
-#include "event_device.h"
+#include <liboxide/event_device.h>
 
 using namespace std;
+using namespace Oxide;
 
 #define buttonHandler ButtonHandler::init()
 

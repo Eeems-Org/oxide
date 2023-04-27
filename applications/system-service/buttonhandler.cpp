@@ -1,13 +1,13 @@
 #include "buttonhandler.h"
 
-#include <liboxide.h>
-
 #include "dbusservice.h"
+
+using namespace Oxide;
 
 void button_exit_handler(){
     // Release lock
-    unlock_device(buttons);
-    close(buttons.fd);
+    buttons.unlock();
+    buttons.close();
 }
 
 void flush_stream(istream* stream){
@@ -20,16 +20,16 @@ void press_button(event_device& evdev, int code, istream* stream){
 #ifdef DEBUG
     qDebug() << "inject button " << code;
 #endif
-    unlock_device(evdev);
-    ev_key(evdev, code, 1);
+    evdev.unlock();
+    evdev.write(EV_KEY, code, 1);
     flush_stream(stream);
-    ev_syn(evdev);
+    evdev.ev_syn();
     flush_stream(stream);
-    ev_key(evdev, code, 0);
+    evdev.write(EV_KEY, code, 0);
     flush_stream(stream);
-    ev_syn(evdev);
+    evdev.ev_syn();
     flush_stream(stream);
-    lock_device(evdev);
+    evdev.lock();
 }
 
 ButtonHandler* ButtonHandler::init(){
@@ -56,7 +56,7 @@ void ButtonHandler::run(){
     memset(name, 0, sizeof(name));
     ioctl(buttons.fd, EVIOCGNAME(sizeof(name)), name);
     qDebug() << "Reading From : " << buttons.device.c_str() << " (" << name << ")";
-    lock_device(buttons);
+    buttons.lock();
     qDebug() << "Registering exit handler...";
     // Mapping the correct button IDs.
     unordered_map<int, PressRecord> map;

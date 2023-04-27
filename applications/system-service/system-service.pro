@@ -16,7 +16,6 @@ SOURCES += \
     appsapi.cpp \
     bss.cpp \
     buttonhandler.cpp \
-    event_device.cpp \
     network.cpp \
     notification.cpp \
     screenapi.cpp \
@@ -59,7 +58,6 @@ HEADERS += \
     buttonhandler.h \
     dbusservice.h \
     digitizerhandler.h \
-    event_device.h \
     fifohandler.h \
     mxcfb.h \
     network.h \

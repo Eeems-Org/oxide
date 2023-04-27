@@ -14,6 +14,7 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs depr
 SOURCES += \
     applications.cpp \
     debug.cpp \
+    event_device.cpp \
     eventfilter.cpp \
     json.cpp \
     liboxide.cpp \
@@ -28,6 +29,7 @@ HEADERS += \
     applications.h \
     dbus.h \
     debug.h \
+    event_device.h \
     eventfilter.h \
     liboxide_global.h \
     liboxide.h \
