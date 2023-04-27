@@ -2,7 +2,7 @@
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 
-pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry oxide-utils)
+pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety mold liboxide libsentry oxide-utils)
 pkgver="2.6~VERSION~"
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
@@ -206,6 +206,18 @@ anxiety() {
         if is-active "tarnish.service"; then
             update-desktop-database
         fi
+    }
+}
+
+mold() {
+    pkgdesc="Web Browser for Oxide"
+    section=utils
+    depends=("tarnish (= $pkgver)")
+
+    package() {
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/opt/bin/mold
+        install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/opt/usr/share/applications/codes.eeems.mold.oxide
+        install -D -m 644 -t "$pkgdir"/opt/usr/share/icons/oxide/48x48/apps "$srcdir"/opt/usr/share/icons/oxide/48x48/apps/web.png
     }
 }
 
