@@ -16,20 +16,20 @@ using namespace Oxide::Sentry;
 
 event_device* device = nullptr;
 
-#define check(eventType, eventCode) \
-    if(code == #eventCode){ \
+#define check(eventType, name, eventCode) \
+    if(code == name){ \
         device->write(eventType, eventCode, value); \
         return true; \
     }
-#define syn(eventCode) check(EV_SYN, eventCode)
-#define abs(eventCode) check(EV_ABS, eventCode)
-#define rel(eventCode) check(EV_REL, eventCode)
-#define key(eventCode) check(EV_KEY, eventCode)
-#define msc(eventCode) check(EV_MSC, eventCode)
-#define sw(eventCode) check(EV_SW, eventCode)
-#define led(eventCode) check(EV_LED, eventCode)
-#define snd(eventCode) check(EV_SND, eventCode)
-#define rep(eventCode) check(EV_REP, eventCode)
+#define syn(eventCode) check(EV_SYN, #eventCode, eventCode)
+#define abs(eventCode) check(EV_ABS, #eventCode, eventCode)
+#define rel(eventCode) check(EV_REL, #eventCode, eventCode)
+#define key(eventCode) check(EV_KEY, #eventCode, eventCode)
+#define msc(eventCode) check(EV_MSC, #eventCode, eventCode)
+#define sw(eventCode)  check(EV_SW,  #eventCode, eventCode)
+#define led(eventCode) check(EV_LED, #eventCode, eventCode)
+#define snd(eventCode) check(EV_SND, #eventCode, eventCode)
+#define rep(eventCode) check(EV_REP, #eventCode, eventCode)
 
 // I pulled most of the codes from https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h
 // I've left EV_FF, EV_PWR, and EV_FF_STATUS out since they don't seem to really apply to the reMarkable
