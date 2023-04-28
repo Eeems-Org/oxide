@@ -1,6 +1,10 @@
 TEMPLATE = subdirs
 
 SUBDIRS = \
-    liboxide
+    liboxide \
+    epaper
+
+liboxide.depends = epaper
+epaper.file = epaper/epaper-qpa.pro
 
 INSTALLS += $$SUBDIRS
