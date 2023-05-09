@@ -5,6 +5,7 @@ on:
     branches:
       - master
     paths:
+      - '.github/workflows/build.yml'
       - 'applications/**'
       - 'shared/**'
       - 'assets/**'
@@ -15,6 +16,7 @@ on:
       - 'package'
   pull_request:
     paths:
+      - '.github/workflows/build.yml'
       - 'applications/**'
       - 'shared/**'
       - 'assets/**'
@@ -32,7 +34,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.9
+          python-version: '3.10'
       - name: Install toltecmk
         run: pip install toltecmk
       - name: Build packages
