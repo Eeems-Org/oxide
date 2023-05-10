@@ -25,7 +25,13 @@ namespace Oxide{
         return dir.exists();
     }
     int SysObject::intProperty(const std::string& name){
-        return std::stoi(strProperty(name));
+        try {
+            return std::stoi(strProperty(name));
+        }
+        catch (const std::invalid_argument& e) {
+            O_DEBUG("Property value is not an integer: " << name.c_str());
+            return 0;
+        }
     }
     std::string SysObject::strProperty(const std::string& name){
         auto path = propertyPath(name);
