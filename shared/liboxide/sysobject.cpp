@@ -29,7 +29,7 @@ namespace Oxide{
             return std::stoi(strProperty(name));
         }
         catch (const std::invalid_argument& e) {
-            qDebug() << "Can't find property: " << name.c_str();
+            O_DEBUG("Property value is not an integer: " << name.c_str());
             return 0;
         }
     }
