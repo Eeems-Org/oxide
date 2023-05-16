@@ -34,3 +34,9 @@ try{
      qDebug() << "Failed to get user: " << e.what();
 }
 //! [getUID]
+//! [EventFilter]
+QGuiApplication app(argc, argv);
+auto filter = new EventFilter(&app);
+app.installEventFilter(filter);
+return app.exec();
+//! [EventFilter]
