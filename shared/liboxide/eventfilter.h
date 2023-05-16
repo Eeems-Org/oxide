@@ -13,6 +13,7 @@
 namespace Oxide{
     /*!
      * \brief An event filter that maps pen events to Qt touch events
+     * \snippet examples/oxide.cpp EventFilter
      */
     class LIBOXIDE_EXPORT EventFilter : public QObject
     {
