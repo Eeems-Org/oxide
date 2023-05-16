@@ -35,8 +35,35 @@ try{
 }
 //! [getUID]
 //! [EventFilter]
-QGuiApplication app(argc, argv);
-auto filter = new EventFilter(&app);
-app.installEventFilter(filter);
-return app.exec();
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QtQuick>
+#include <QtPlugin>
+
+#import <liboxide>
+
+#ifdef __arm__
+Q_IMPORT_PLUGIN(QsgEpaperPlugin)
+#endif
+
+using namespace Oxide;
+int main(int argc, char *argv[]){
+     QGuiApplication app(argc, argv);
+
+     auto filter = new EventFilter(&app);
+     app.installEventFilter(filter);
+
+     QQmlApplicationEngine engine;
+     QQmlContext* context = engine.rootContext();
+     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
+     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+     if (engine.rootObjects().isEmpty()){
+        qDebug() << "Nothing to display";
+        return -1;
+     }
+
+     auto root = engine.rootObjects().first();
+     filter->root = (QQuickItem*)root;
+     return app.exec();
+}
 //! [EventFilter]
