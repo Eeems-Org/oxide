@@ -16,6 +16,8 @@
 namespace Oxide {
     /*!
      * \brief A class to make interacting with sysfs easier
+     *
+     * \snippet examples/oxide.cpp SysObject
      */
     class LIBOXIDE_EXPORT SysObject {
     public:
