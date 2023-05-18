@@ -67,3 +67,12 @@ int main(int argc, char *argv[]){
      return app.exec();
 }
 //! [EventFilter]
+//! [SysObject]
+SysObject lo("/sys/class/net/lo");
+if(lo.exists()){
+     qDebug() << "Loop back mac address: " << lo.strProperty("address").c_str();
+     qDebug() << "Does " << lo.propertyPath("power").c_str() << " exist?" << lo.hasDirectory("power");
+}else{
+     qCritical("Loopback is missing?");
+}
+//! [SysObject]
