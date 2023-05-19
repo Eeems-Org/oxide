@@ -193,7 +193,7 @@ corrupt() {
 anxiety() {
     pkgdesc="Screenshot viewer for Oxide"
     section=utils
-    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry" "imagemagick-png")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/anxiety
