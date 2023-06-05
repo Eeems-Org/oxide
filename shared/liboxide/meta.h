@@ -30,7 +30,7 @@
  * \def OXIDE_INTERFACE_VERSION
  * \brief Version of Tarnish and liboxide
  */
-#define OXIDE_INTERFACE_VERSION "2.5.0"
+#define OXIDE_INTERFACE_VERSION "2.6.0"
 /*!
  * \def OXIDE_GENERAL_INTERFACE
  * \brief DBus service for the general API
