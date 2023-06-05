@@ -2,16 +2,18 @@
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 
-pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry oxide-utils inject_evdev)
-pkgver="2.6~VERSION~"
+pkgnames=(erode fret oxide rot tarnish decay corrupt anxiety oxide-utils inject_evdev liboxide libsentry)
+_oxidever=2.6
+pkgver="$_oxidever~VERSION~"
+_sentryver=0.5.0
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
 license=MIT
+flags=(patch_rm2fb)
+image=qt:latest
 source=(oxide.tar.gz)
 sha256sums=(SKIP)
-image=qt:latest
-_sentry=0.5.0
 ########################################
 # These functions come from install-lib:
 # https://raw.githubusercontent.com/toltec-dev/toltec/master/scripts/install-lib
@@ -60,8 +62,8 @@ build() {
 
 erode() {
     pkgdesc="Task manager"
-    section=utils
-    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    section="admin"
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/erode
@@ -79,8 +81,8 @@ erode() {
 
 fret() {
     pkgdesc="Take screenshots"
-    section=utils
-    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver"  "libsentry=$_sentry")
+    section="utils"
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver"  "libsentry=$_sentryver")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/fret
@@ -96,8 +98,8 @@ fret() {
 
 oxide() {
     pkgdesc="Launcher application"
-    section=launchers
-    installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" display "libsentry=$_sentry")
+    section="launchers"
+    installdepends=("erode=$pkgver" "fret=$pkgver" "tarnish=$pkgver" "rot=$pkgver" "decay=$pkgver" "corrupt=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" display "libsentry=$_sentryver")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/oxide
@@ -115,8 +117,8 @@ oxide() {
 
 rot() {
     pkgdesc="Manage Oxide settings through the command line"
-    section=utils
-    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    section="admin"
+    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/rot
@@ -125,8 +127,8 @@ rot() {
 
 tarnish() {
     pkgdesc="Service managing power states, connectivity and buttons"
-    section=utils
-    installdepends=("liboxide=$pkgver" "libsentry=$_sentry")
+    section="devel"
+    installdepends=("liboxide=$pkgver" "libsentry=$_sentryver")
 
     package() {
         install -D -m 644 -t "$pkgdir"/etc/dbus-1/system.d "$srcdir"/release/etc/dbus-1/system.d/codes.eeems.oxide.conf
@@ -145,9 +147,13 @@ tarnish() {
     }
 
     preremove() {
-        if systemctl list-units --full -all | grep -Fq 'tarnish.service'; then
-            echo "Disabling $pkgname"
-            systemctl disable --now tarnish
+        if is-active tarnish; then
+            echo "Stopping tarnish"
+            systemctl stop tarnish
+        fi
+        if is-enabled tarnish; then
+            echo "Disabling tarnish"
+            systemctl disable tarnish
         fi
     }
 
@@ -158,8 +164,8 @@ tarnish() {
 
 decay() {
     pkgdesc="Lockscreen application"
-    section=utils
-    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    section="utils"
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/decay
@@ -175,8 +181,8 @@ decay() {
 
 corrupt() {
     pkgdesc="Task Switcher for Oxide"
-    section=utils
-    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    section="utils"
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/corrupt
@@ -192,8 +198,8 @@ corrupt() {
 
 anxiety() {
     pkgdesc="Screenshot viewer for Oxide"
-    section=utils
-    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    section="utils"
+    installdepends=("tarnish=$pkgver" "oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/anxiety
@@ -211,8 +217,8 @@ anxiety() {
 
 oxide-utils() {
     pkgdesc="Command line tools for Oxide"
-    section=utils
-    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentry")
+    section="admin"
+    installdepends=("tarnish=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver")
     replaces=(notify-send update-desktop-database desktop-file-validate)
     conflicts=(notify-send update-desktop-database desktop-file-validate)
 
@@ -229,8 +235,8 @@ oxide-utils() {
 
 inject_evdev() {
     pkgdesc="Inject input events"
-    section=utils
-    installdepends=("liboxide=$pkgver" "libsentry=$_sentry")
+    section="utils"
+    installdepends=("liboxide=$pkgver" "libsentry=$_sentryver")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/inject_evdev
@@ -239,7 +245,7 @@ inject_evdev() {
 
 liboxide() {
     pkgdesc="Shared library for oxide applications"
-    section=devel
+    section="devel"
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libliboxide.so*
@@ -248,9 +254,9 @@ liboxide() {
 
 libsentry() {
     pkgdesc="Sentry SDK for C, C++ and native applications."
-    section=devel
+    section="devel"
     url=https://github.com/getsentry/sentry-native
-    pkgver="$_sentry"
+    pkgver="$_sentryver"
     timestamp="2021-12-20T14:25:11Z"
 
     package() {
