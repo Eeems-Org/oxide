@@ -15,6 +15,8 @@ Head over to the [releases](https://github.com/Eeems/oxide/releases) page for mo
 Here is a video of it in action:
 [![Oxide v2.6](https://i.imgur.com/IA7wAsE.png[/img])]([https://youtu.be/rIRKgqy21L0](https://youtu.be/FdgWUUUST9o) "Oxide v2.6")
 
+You can find other (likely outdated) [videos here](https://github.com/Eeems/oxide/wiki/Videos).
+
 ## Building
 
 ### Binaries
