@@ -31,27 +31,29 @@ enum SwipeDirection { None, Right, Left, Up, Down };
 class Controller : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep NOTIFY automaticSleepChanged);
-    Q_PROPERTY(int columns MEMBER m_columns WRITE setColumns NOTIFY columnsChanged);
-    Q_PROPERTY(int swipeLengthRight MEMBER m_swipeLengthRight WRITE setSwipeLengthRight NOTIFY swipeLengthRightChanged);
-    Q_PROPERTY(int swipeLengthLeft MEMBER m_swipeLengthLeft WRITE setSwipeLengthLeft NOTIFY swipeLengthLeftChanged);
-    Q_PROPERTY(int swipeLengthUp MEMBER m_swipeLengthUp WRITE setSwipeLengthUp NOTIFY swipeLengthUpChanged);
-    Q_PROPERTY(int swipeLengthDown MEMBER m_swipeLengthDown WRITE setSwipeLengthDown NOTIFY swipeLengthDownChanged);
-    Q_PROPERTY(bool showWifiDb MEMBER m_showWifiDb WRITE setShowWifiDb NOTIFY showWifiDbChanged);
-    Q_PROPERTY(bool showBatteryPercent MEMBER m_showBatteryPercent WRITE setShowBatteryPercent NOTIFY showBatteryPercentChanged);
-    Q_PROPERTY(bool showBatteryTemperature MEMBER m_showBatteryTemperature WRITE setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged);
-    Q_PROPERTY(int sleepAfter MEMBER m_sleepAfter WRITE setSleepAfter NOTIFY sleepAfterChanged);
+    Q_PROPERTY(bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep NOTIFY automaticSleepChanged)
+    Q_PROPERTY(int columns MEMBER m_columns WRITE setColumns NOTIFY columnsChanged)
+    Q_PROPERTY(int swipeLengthRight MEMBER m_swipeLengthRight WRITE setSwipeLengthRight NOTIFY swipeLengthRightChanged)
+    Q_PROPERTY(int swipeLengthLeft MEMBER m_swipeLengthLeft WRITE setSwipeLengthLeft NOTIFY swipeLengthLeftChanged)
+    Q_PROPERTY(int swipeLengthUp MEMBER m_swipeLengthUp WRITE setSwipeLengthUp NOTIFY swipeLengthUpChanged)
+    Q_PROPERTY(int swipeLengthDown MEMBER m_swipeLengthDown WRITE setSwipeLengthDown NOTIFY swipeLengthDownChanged)
+    Q_PROPERTY(bool showWifiDb MEMBER m_showWifiDb WRITE setShowWifiDb NOTIFY showWifiDbChanged)
+    Q_PROPERTY(bool showBatteryPercent MEMBER m_showBatteryPercent WRITE setShowBatteryPercent NOTIFY showBatteryPercentChanged)
+    Q_PROPERTY(bool showBatteryTemperature MEMBER m_showBatteryTemperature WRITE setShowBatteryTemperature NOTIFY showBatteryTemperatureChanged)
+    Q_PROPERTY(int sleepAfter MEMBER m_sleepAfter WRITE setSleepAfter NOTIFY sleepAfterChanged)
     Q_PROPERTY(WifiNetworkList* networks MEMBER networks READ getNetworks NOTIFY networksChanged)
     Q_PROPERTY(NotificationList* notifications MEMBER notifications READ getNotifications NOTIFY notificationsChanged)
+    Q_PROPERTY(QStringList locales READ locales)
+    Q_PROPERTY(QString locale READ locale WRITE setLocale NOTIFY localeChanged)
     Q_PROPERTY(bool wifiOn MEMBER m_wifion READ wifiOn NOTIFY wifiOnChanged)
     Q_PROPERTY(QString autoStartApplication READ autoStartApplication WRITE setAutoStartApplication NOTIFY autoStartApplicationChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
-    Q_PROPERTY(bool showDate MEMBER m_showDate WRITE setShowDate NOTIFY showDateChanged);
-    Q_PROPERTY(bool hasNotification MEMBER m_hasNotification NOTIFY hasNotificationChanged);
-    Q_PROPERTY(QString notificationText MEMBER m_notificationText NOTIFY notificationTextChanged);
-    Q_PROPERTY(int maxTouchWidth READ maxTouchWidth);
-    Q_PROPERTY(int maxTouchHeight READ maxTouchHeight);
+    Q_PROPERTY(bool showDate MEMBER m_showDate WRITE setShowDate NOTIFY showDateChanged)
+    Q_PROPERTY(bool hasNotification MEMBER m_hasNotification NOTIFY hasNotificationChanged)
+    Q_PROPERTY(QString notificationText MEMBER m_notificationText NOTIFY notificationTextChanged)
+    Q_PROPERTY(int maxTouchWidth READ maxTouchWidth)
+    Q_PROPERTY(int maxTouchHeight READ maxTouchHeight)
 public:
     static std::string exec(const char* cmd);
     EventFilter* filter;
@@ -318,6 +320,12 @@ public:
     bool getPowerConnected(){ return m_powerConnected; }
     WifiNetworkList* getNetworks(){ return networks; }
     NotificationList* getNotifications() { return notifications; }
+    QStringList locales() { return deviceSettings.getLocales(); }
+    QString locale() { return deviceSettings.getLocale(); }
+    void setLocale(const QString& locale) {
+        deviceSettings.setLocale(locale);
+        emit localeChanged(locale);
+    }
     bool powerOffInhibited(){ return systemApi->powerOffInhibited(); }
     bool sleepInhibited(){ return systemApi->sleepInhibited(); }
     int maxTouchWidth(){ return deviceSettings.getTouchWidth() * 0.9; }
@@ -375,6 +383,7 @@ signals:
     void showBatteryTemperatureChanged(bool);
     void sleepAfterChanged(int);
     void networksChanged(WifiNetworkList*);
+    void localeChanged(QString);
     void wifiOnChanged(bool);
     void autoStartApplicationChanged(QString);
     void powerOffInhibitedChanged(bool);
