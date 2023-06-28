@@ -45,6 +45,8 @@ class Controller : public QObject
     Q_PROPERTY(NotificationList* notifications MEMBER notifications READ getNotifications NOTIFY notificationsChanged)
     Q_PROPERTY(QStringList locales READ locales)
     Q_PROPERTY(QString locale READ locale WRITE setLocale NOTIFY localeChanged)
+    Q_PROPERTY(QStringList timezones READ timezones)
+    Q_PROPERTY(QString timezone READ timezone WRITE setTimezone NOTIFY timezoneChanged)
     Q_PROPERTY(bool wifiOn MEMBER m_wifion READ wifiOn NOTIFY wifiOnChanged)
     Q_PROPERTY(QString autoStartApplication READ autoStartApplication WRITE setAutoStartApplication NOTIFY autoStartApplicationChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
@@ -326,6 +328,12 @@ public:
         deviceSettings.setLocale(locale);
         emit localeChanged(locale);
     }
+    QStringList timezones() { return deviceSettings.getTimezones(); }
+    QString timezone() { return deviceSettings.getTimezone(); }
+    void setTimezone(const QString& timezone) {
+        deviceSettings.setTimezone(timezone);
+        emit timezoneChanged(timezone);
+    }
     bool powerOffInhibited(){ return systemApi->powerOffInhibited(); }
     bool sleepInhibited(){ return systemApi->sleepInhibited(); }
     int maxTouchWidth(){ return deviceSettings.getTouchWidth() * 0.9; }
@@ -384,6 +392,7 @@ signals:
     void sleepAfterChanged(int);
     void networksChanged(WifiNetworkList*);
     void localeChanged(QString);
+    void timezoneChanged(QString);
     void wifiOnChanged(bool);
     void autoStartApplicationChanged(QString);
     void powerOffInhibitedChanged(bool);

@@ -192,6 +192,21 @@ namespace Oxide {
          * \param locale Locale to set
          */
         void setLocale(const QString& locale);
+        /*!
+         * \brief Get the list of possible timezones on the device
+         * \return The list of possible timezones on the device
+         */
+        const QStringList getTimezones();
+        /*!
+         * \brief Get the current set timezone
+         * \return The current timezone
+         */
+        QString getTimezone();
+        /*!
+         * \brief Set the current timezone
+         * \param locale Timezone to set
+         */
+        void setTimezone(const QString& timezone);
 
     private:
         DeviceType _deviceType;

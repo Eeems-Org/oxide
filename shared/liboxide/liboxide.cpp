@@ -287,6 +287,26 @@ namespace Oxide {
         qputenv("LANG", locale.toUtf8());
         QProcess::execute("localectl", QStringList() << "set-locale" << locale);
     }
+    const QStringList DeviceSettings::getTimezones() {
+        return execute("timedatectl", QStringList() << "list-timezones" << "--no-pager").split("\n");
+    }
+    QString DeviceSettings::getTimezone() {
+        auto lines = execute("timedatectl", QStringList() << "show").split("\n");
+        for(auto line : lines){
+            QStringList fields = line.split("=");
+            if(fields.first().trimmed() != "Timezone"){
+                continue;
+            }
+            return fields.at(1).trimmed();
+        }
+        return "UTC";
+    }
+    void DeviceSettings::setTimezone(const QString& timezone) {
+        if(debugEnabled()){
+            qDebug() << "Setting timezone:" << timezone;
+        }
+        QProcess::execute("timedatectl", QStringList() << "set-timezone" << timezone);
+    }
     WifiNetworks XochitlSettings::wifinetworks(){
         beginGroup("wifinetworks");
         QMap<QString, QVariantMap> wifinetworks;
