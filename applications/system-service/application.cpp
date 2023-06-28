@@ -520,7 +520,7 @@ void Application::showSplashScreen(){
             EPFrameBuffer::waitForLastUpdate();
         });
     });
-    qDebug() << "Finished paining splash screen for" << name();
+    qDebug() << "Finished painting splash screen for" << name();
 }
 void Application::powerStateDataRecieved(FifoHandler* handler, const QString& data){
     Q_UNUSED(handler);

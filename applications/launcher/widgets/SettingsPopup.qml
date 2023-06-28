@@ -21,6 +21,40 @@ Item {
             RowLayout {
                 Layout.columnSpan: parent.columns
                 Label {
+                    text: "Locale"
+                    Layout.columnSpan: parent.columns - 1
+                    Layout.fillWidth: true
+                }
+                ComboBox {
+                    Layout.columnSpan: 1
+                    Layout.fillWidth: true
+                    flat: true
+
+                    model: controller.locales
+                    onActivated: controller.locale = textAt(currentIndex)
+                    Component.onCompleted: currentIndex = indexOfValue(controller.locale)
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Label {
+                    text: "Timezone"
+                    Layout.columnSpan: parent.columns - 1
+                    Layout.fillWidth: true
+                }
+                ComboBox {
+                    Layout.columnSpan: 1
+                    Layout.fillWidth: true
+                    flat: true
+
+                    model: controller.timezones
+                    onActivated: controller.timezone = textAt(currentIndex)
+                    Component.onCompleted: currentIndex = indexOfValue(controller.timezone)
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Label {
                     text: "Automatic sleep"
                     Layout.columnSpan: parent.columns - 1
                     Layout.fillWidth: true

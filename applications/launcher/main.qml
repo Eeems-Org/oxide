@@ -21,7 +21,9 @@ ApplicationWindow {
     }
     Connections {
         target: controller
-        onReload: appsView.model = controller.getApps()
+        function onReload() {
+            appsView.model = controller.getApps();
+        }
     }
     header: Rectangle {
         enabled: stateController.state === "loaded"

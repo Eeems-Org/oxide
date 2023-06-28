@@ -263,6 +263,50 @@ namespace Oxide {
                 return 0;
         }
     }
+    const QStringList DeviceSettings::getLocales() {
+        return execute("localectl", QStringList() << "list-locales" << "--no-pager").split("\n");
+    }
+    QString DeviceSettings::getLocale() {
+        QFile file("/etc/locale.conf");
+        if(file.open(QFile::ReadOnly)){
+            while(!file.atEnd()){
+                QString line = file.readLine();
+                QStringList fields = line.split("=");
+                if(fields.first().trimmed() != "LANG"){
+                    continue;
+                }
+                return fields.at(1).trimmed();
+            }
+        }
+        return qEnvironmentVariable("LANG", "C");
+    }
+    void DeviceSettings::setLocale(const QString& locale) {
+        if(debugEnabled()){
+            qDebug() << "Setting locale:" << locale;
+        }
+        qputenv("LANG", locale.toUtf8());
+        QProcess::execute("localectl", QStringList() << "set-locale" << locale);
+    }
+    const QStringList DeviceSettings::getTimezones() {
+        return execute("timedatectl", QStringList() << "list-timezones" << "--no-pager").split("\n");
+    }
+    QString DeviceSettings::getTimezone() {
+        auto lines = execute("timedatectl", QStringList() << "show").split("\n");
+        for(auto line : lines){
+            QStringList fields = line.split("=");
+            if(fields.first().trimmed() != "Timezone"){
+                continue;
+            }
+            return fields.at(1).trimmed();
+        }
+        return "UTC";
+    }
+    void DeviceSettings::setTimezone(const QString& timezone) {
+        if(debugEnabled()){
+            qDebug() << "Setting timezone:" << timezone;
+        }
+        QProcess::execute("timedatectl", QStringList() << "set-timezone" << timezone);
+    }
     WifiNetworks XochitlSettings::wifinetworks(){
         beginGroup("wifinetworks");
         QMap<QString, QVariantMap> wifinetworks;

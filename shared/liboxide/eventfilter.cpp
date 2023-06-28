@@ -64,15 +64,25 @@ namespace Oxide{
         QList<QObject*> result;
         auto children = root->findChildren<QQuickItem*>();
         for(auto child : children){
-            if(isAt(child, pos)){
-                if(child->isVisible() && child->isEnabled() && child->acceptedMouseButtons() & Qt::LeftButton){
-                    if(!result.contains(child)){
-                        result.append((QObject*)child);
-                        for(auto item : widgetsAt(child, pos)){
-                            if(!result.contains(item)){
-                                result.append(item);
-                            }
-                        }
+            if(result.contains(child)){
+                continue;
+            }
+            if(!child->isVisible() || !child->isEnabled()){
+                continue;
+            }
+            if(child->acceptedMouseButtons() & Qt::LeftButton && isAt(child, pos)){
+                result.append((QObject*)child);
+                for(auto item : widgetsAt(child, pos)){
+                    if(!result.contains(item)){
+                        result.append(item);
+                    }
+                }
+                continue;
+            }
+            if(!child->clip()){
+                for(auto item : widgetsAt(child, pos)){
+                    if(!result.contains(item)){
+                        result.append(item);
                     }
                 }
             }

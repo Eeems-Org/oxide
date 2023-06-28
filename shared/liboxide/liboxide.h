@@ -177,6 +177,36 @@ namespace Oxide {
          * \return Max height for touch input
          */
         int getTouchHeight() const;
+        /*!
+         * \brief Get the list of possible locales on the device
+         * \return The list of possible locales on the device
+         */
+        const QStringList getLocales();
+        /*!
+         * \brief Get the current set locale
+         * \return The current locale
+         */
+        QString getLocale();
+        /*!
+         * \brief Set the current locale
+         * \param locale Locale to set
+         */
+        void setLocale(const QString& locale);
+        /*!
+         * \brief Get the list of possible timezones on the device
+         * \return The list of possible timezones on the device
+         */
+        const QStringList getTimezones();
+        /*!
+         * \brief Get the current set timezone
+         * \return The current timezone
+         */
+        QString getTimezone();
+        /*!
+         * \brief Set the current timezone
+         * \param locale Timezone to set
+         */
+        void setTimezone(const QString& timezone);
 
     private:
         DeviceType _deviceType;

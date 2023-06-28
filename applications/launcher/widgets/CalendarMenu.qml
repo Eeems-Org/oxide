@@ -45,7 +45,7 @@ Item {
                     id: grid
                     month: currentDate.getMonth()
                     year: currentDate.getFullYear()
-                    locale: Qt.locale("en_US")
+                    locale: Qt.locale(controller.locale)
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     delegate: Label {
