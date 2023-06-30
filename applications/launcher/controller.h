@@ -6,7 +6,6 @@
 #include <QGuiApplication>
 #include <QMutableListIterator>
 #include <liboxide.h>
-#include <liboxide/eventfilter.h>
 #include <liboxide/sysobject.h>
 
 #include "appitem.h"
@@ -19,7 +18,6 @@
 using namespace codes::eeems::oxide1;
 using codes::eeems::oxide1::Power;
 using Oxide::SysObject;
-using Oxide::EventFilter;
 using namespace Oxide::Sentry;
 
 enum State { Normal, PowerSaving };
@@ -58,7 +56,6 @@ class Controller : public QObject
     Q_PROPERTY(int maxTouchHeight READ maxTouchHeight)
 public:
     static std::string exec(const char* cmd);
-    EventFilter* filter;
     QObject* stateController;
     QObject* root = nullptr;
     explicit Controller(QObject* parent = 0)

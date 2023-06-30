@@ -42,8 +42,6 @@ int main(int argc, char *argv[]){
     app.setApplicationName("tarnish");
     app.setApplicationDisplayName("Process Monitor");
     app.setApplicationVersion(APP_VERSION);
-    EventFilter filter;
-    app.installEventFilter(&filter);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller controller(&engine);
@@ -55,7 +53,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
     QObject* root = engine.rootObjects().first();
-    filter.root = (QQuickItem*)root;
+    root->installEventFilter(new EventFilter(&app));
     QQuickItem* tasksView = root->findChild<QQuickItem*>("tasksView");
     if(!tasksView){
         qDebug() << "Can't find tasksView";

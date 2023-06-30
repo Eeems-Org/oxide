@@ -41,8 +41,6 @@ int main(int argc, char *argv[]){
 #endif
     QGuiApplication app(argc, argv);
     sentry_init("corrupt", argv);
-    auto filter = new EventFilter(&app);
-    app.installEventFilter(filter);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("corrupt");
@@ -62,7 +60,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
     auto root = engine.rootObjects().first();
-    filter->root = (QQuickItem*)root;
+    root->installEventFilter(new EventFilter(&app));
     controller.setRoot(root);
 
     signal(SIGINT, sigHandler);

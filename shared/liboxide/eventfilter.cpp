@@ -8,6 +8,7 @@
 #include <QGuiApplication>
 
 #include <qpa/qwindowsysteminterface.h>
+#include <qpa/qwindowsysteminterface_p.h>
 
 #define DISPLAYWIDTH 1404
 #define DISPLAYHEIGHT 1872.0
@@ -20,7 +21,7 @@
 #endif
 
 namespace Oxide{
-    EventFilter::EventFilter(QObject *parent) : QObject(parent), root(nullptr){}
+    EventFilter::EventFilter(QObject *parent) : QObject(parent) {}
 
     QPointF swap(QPointF pointF){
         return QPointF(pointF.y(), pointF.x());
@@ -60,7 +61,7 @@ namespace Oxide{
                     transpose(tabletEvent->globalPosF()),
                     Qt::LeftButton,
                     Qt::LeftButton,
-                    QEvent::MouseMove
+                    QEvent::MouseButtonRelease
                 );
                 tabletEvent->accept();
             }
@@ -73,7 +74,7 @@ namespace Oxide{
                     transpose(tabletEvent->globalPosF()),
                     Qt::NoButton,
                     Qt::NoButton,
-                    QEvent::MouseButtonRelease
+                    QEvent::MouseMove
                 );
                 tabletEvent->accept();
             }

@@ -10,7 +10,7 @@ Item {
     Popup {
         id: settings
         width: 1000
-        height: 1100
+        height: 1200
         closePolicy: Popup.NoAutoClose
         onClosed: parent.closed()
         visible: parent.visible
