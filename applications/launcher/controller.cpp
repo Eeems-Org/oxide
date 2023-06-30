@@ -76,6 +76,13 @@ void Controller::loadSettings(){
     qDebug() << "Automatic sleep" << sleepAfter;
     setAutomaticSleep(sleepAfter);
     setSleepAfter(sleepAfter);
+    auto lockOnSuspend = systemApi->lockOnSuspend();
+    qDebug() << "Lock on suspend" << lockOnSuspend;
+    setLockOnSuspend(lockOnSuspend);
+    auto autoLock = systemApi->autoLock();
+    qDebug() << "Automatic lock" << autoLock;
+    setAutomaticLock(autoLock);
+    setLockAfter(autoLock);
     for(short i = 1; i <= 4; i++){
         setSwipeLength(i, systemApi->getSwipeLength(i));
     }
@@ -186,6 +193,17 @@ void Controller::saveSettings(){
         if(sleepAfter != m_sleepAfter){
             setSleepAfter(sleepAfter);
             setAutomaticSleep(sleepAfter);
+        }
+    }
+    systemApi->setLockOnSuspend(m_lockOnSuspend);
+    if(!m_automaticLock){
+        systemApi->setAutoLock(0);
+    }else{
+        systemApi->setAutoLock(m_lockAfter);
+        auto lockAfter = systemApi->autoLock();
+        if(lockAfter != m_lockAfter){
+            setLockAfter(lockAfter);
+            setAutomaticLock(lockAfter);
         }
     }
     for(short i = 1; i <= 4; i++) {
@@ -300,6 +318,24 @@ void Controller::setAutomaticSleep(bool state){
     }
     emit automaticSleepChanged(state);
 }
+void Controller::setLockOnSuspend(bool state){
+    m_lockOnSuspend = state;
+    if(state){
+        qDebug() << "Enabling lock on suspend";
+    }else{
+        qDebug() << "Disabling lock on suspend";
+    }
+    emit lockOnSuspendChanged(state);
+}
+void Controller::setAutomaticLock(bool state){
+    m_automaticLock = state;
+    if(state){
+        qDebug() << "Enabling automatic lock";
+    }else{
+        qDebug() << "Disabling automatic lock";
+    }
+    emit automaticLockChanged(state);
+}
 void Controller::setColumns(int columns){
     m_columns = columns;
     if(root != nullptr){
@@ -373,4 +409,9 @@ void Controller::setSleepAfter(int sleepAfter){
     m_sleepAfter = sleepAfter;
     qDebug() << "Sleep After: " << sleepAfter << " minutes";
     emit sleepAfterChanged(m_sleepAfter);
+}
+void Controller::setLockAfter(int lockAfter){
+    m_lockAfter = lockAfter;
+    qDebug() << "Lock After: " << lockAfter << " minutes";
+    emit lockAfterChanged(m_lockAfter);
 }

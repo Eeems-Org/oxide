@@ -67,6 +67,8 @@ class SystemAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_SYSTEM_INTERFACE)
     Q_PROPERTY(int autoSleep READ autoSleep WRITE setAutoSleep NOTIFY autoSleepChanged)
+    Q_PROPERTY(int autoLock READ autoLock WRITE setAutoLock NOTIFY autoLockChanged)
+    Q_PROPERTY(bool lockOnSuspend READ lockOnSuspend WRITE setLockOnSuspend NOTIFY lockOnSuspendChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
 
@@ -83,6 +85,7 @@ public:
     SystemAPI(QObject* parent)
      : APIBase(parent),
        suspendTimer(this),
+       lockTimer(this),
        settings(this),
        sleepInhibitors(),
        powerOffInhibitors(),
@@ -112,7 +115,8 @@ public:
                 Oxide::Sentry::sentry_span(s, "connect", "Connect to signals", [this]{
                     // Handle Systemd signals
                     connect(systemd, &Manager::PrepareForSleep, this, &SystemAPI::PrepareForSleep);
-                    connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::timeout);
+                    connect(&suspendTimer, &QTimer::timeout, this, &SystemAPI::suspendTimeout);
+                    connect(&lockTimer, &QTimer::timeout, this, &SystemAPI::lockTimeout);
                 });
             });
             Oxide::Sentry::sentry_span(t, "autoSleep", "Setup automatic sleep", [this](Oxide::Sentry::Span* s){
@@ -147,11 +151,16 @@ public:
                     sharedSettings.set_autoSleep(10);
                 }
                 qDebug() << "Auto Sleep" << autoSleep();
-                Oxide::Sentry::sentry_span(s, "timer", "Setup timer", [this]{
+                Oxide::Sentry::sentry_span(s, "timer", "Setup timers", [this]{
                     if(autoSleep()){
                         suspendTimer.start(autoSleep() * 60 * 1000);
-                    }else if(!autoSleep()){
+                    }else{
                         suspendTimer.stop();
+                    }
+                    if(autoLock()){
+                        lockTimer.start(autoLock() * 60 * 1000);
+                    }else{
+                        lockTimer.stop();
                     }
                 });
                 connect(&sharedSettings, &Oxide::SharedSettings::autoSleepChanged, [=](int _autoSleep){
@@ -213,6 +222,10 @@ public:
     }
     int autoSleep(){return sharedSettings.autoSleep(); }
     void setAutoSleep(int _autoSleep);
+    int autoLock(){return sharedSettings.autoLock(); }
+    void setAutoLock(int _autoLock);
+    bool lockOnSuspend(){return sharedSettings.lockOnSuspend(); }
+    void setLockOnSuspend(bool _lockOnSuspend);
     bool sleepInhibited(){ return sleepInhibitors.length(); }
     bool powerOffInhibited(){ return powerOffInhibitors.length(); }
     void uninhibitAll(QString name);
@@ -220,7 +233,12 @@ public:
         qDebug() << "Suspend timer disabled";
         suspendTimer.stop();
     }
+    void stopLockTimer(){
+        qDebug() << "Lock timer disabled";
+        lockTimer.stop();
+    }
     void startSuspendTimer();
+    void startLockTimer();
     void lock(){ mutex.lock(); }
     void unlock() { mutex.unlock(); }
     Q_INVOKABLE void setSwipeEnabled(int direction, bool enabled){
@@ -416,13 +434,16 @@ signals:
     void sleepInhibitedChanged(bool);
     void powerOffInhibitedChanged(bool);
     void autoSleepChanged(int);
+    void autoLockChanged(int);
+    void lockOnSuspendChanged(bool);
     void swipeLengthChanged(int, int);
     void deviceSuspending();
     void deviceResuming();
 
 private slots:
     void PrepareForSleep(bool suspending);
-    void timeout();
+    void suspendTimeout();
+    void lockTimeout();
     void touchEvent(const input_event& event){
         switch(event.type){
             case EV_SYN:
@@ -536,7 +557,9 @@ private:
     Manager* systemd;
     QList<Inhibitor> inhibitors;
     Application* resumeApp;
+    int lockTimestamp = 0;
     QTimer suspendTimer;
+    QTimer lockTimer;
     QSettings settings;
     QStringList sleepInhibitors;
     QStringList powerOffInhibitors;

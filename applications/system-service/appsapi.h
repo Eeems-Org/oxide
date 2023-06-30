@@ -401,6 +401,9 @@ public:
             }
             auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
             if(currentApplication != nullptr){
+                if(currentApplication == application){
+                    continue;
+                }
                 currentApplication->pauseNoSecurityCheck(false);
             }
             application->launchNoSecurityCheck();
