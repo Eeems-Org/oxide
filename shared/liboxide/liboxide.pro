@@ -1,6 +1,7 @@
 QT -= gui
 QT += quick
 QT += dbus
+QT += gui-private
 
 TEMPLATE = lib
 DEFINES += LIBOXIDE_LIBRARY

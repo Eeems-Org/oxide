@@ -16,7 +16,7 @@ Item {
         visible: parent.visible
         GridLayout {
             columns: 3
-            rows: 10
+            rows: 12
             anchors.fill: parent
             RowLayout {
                 Layout.columnSpan: parent.columns
