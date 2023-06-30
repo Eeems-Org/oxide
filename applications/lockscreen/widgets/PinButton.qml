@@ -5,6 +5,7 @@ Button {
     id: control
     flat: true
     property bool hideBorder: false
+    property bool showPress: true
     implicitWidth: 150
     implicitHeight: implicitWidth
     font.pixelSize: width / 2
@@ -12,14 +13,14 @@ Button {
     contentItem: Text {
         text: control.text
         font: control.font
-        color: control.down || control.hideBorder ? "black" : "white"
+        color: control.showPress && control.down || control.hideBorder ? "black" : "white"
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
     }
     background: Rectangle {
         anchors.fill: control
-        color: control.down && !control.hideBorder ? "white" : "black"
+        color: control.showPress && control.down && !control.hideBorder ? "white" : "black"
         border.color: control.hideBorder ? "transparent" : "white"
         border.width: 3
         radius: control.width / 2
