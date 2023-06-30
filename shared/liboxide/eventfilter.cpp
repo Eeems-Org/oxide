@@ -59,7 +59,7 @@ namespace Oxide{
                     nullptr,
                     transpose(tabletEvent->posF()),
                     transpose(tabletEvent->globalPosF()),
-                    Qt::LeftButton,
+                    Qt::NoButton,
                     Qt::LeftButton,
                     QEvent::MouseButtonRelease
                 );
@@ -72,8 +72,8 @@ namespace Oxide{
                     nullptr,
                     transpose(tabletEvent->posF()),
                     transpose(tabletEvent->globalPosF()),
-                    Qt::NoButton,
-                    Qt::NoButton,
+                    Qt::LeftButton,
+                    Qt::LeftButton,
                     QEvent::MouseMove
                 );
                 tabletEvent->accept();
