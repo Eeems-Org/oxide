@@ -52,6 +52,7 @@ namespace Oxide {
     void UDev::wait(){
         qDebug() << "UDev::Waiting...";
         while(isRunning()){
+            qApp->processEvents();
             thread()->yieldCurrentThread();
         }
         qDebug() << "UDev::Waited";
@@ -176,6 +177,7 @@ namespace Oxide {
                 O_WARNING("UDev::Monitor error checking event:" << strerror(errno));
             }
             auto timestamp = QDateTime::currentMSecsSinceEpoch();
+            qApp->processEvents();
             QThread::yieldCurrentThread();
             if(QDateTime::currentMSecsSinceEpoch() - timestamp < 30){
                 QThread::msleep(30);

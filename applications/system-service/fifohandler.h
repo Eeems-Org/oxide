@@ -77,6 +77,7 @@ protected:
             QString line(data.c_str());
             line = line.trimmed();
             emit dataRecieved(this, line);
+            qApp->processEvents();
             thread()->yieldCurrentThread();
         }
         if(in.eof()){
