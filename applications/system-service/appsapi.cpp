@@ -163,7 +163,12 @@ void AppsAPI::resumeIfNone(){
     }
     app->launchNoSecurityCheck();
     QTimer::singleShot(300, [this]{
-        if(appsAPI->currentApplicationNoSecurityCheck().path() == "/"){
+        auto path = appsAPI->currentApplicationNoSecurityCheck();
+        if(path.path() == "/"){
+            notificationAPI->errorNotification(_noForegroundAppMessage);
+        }
+        auto app = appsAPI->getApplication(path);
+        if(app == nullptr || app->state() == Application::Inactive){
             notificationAPI->errorNotification(_noForegroundAppMessage);
         }
     });
