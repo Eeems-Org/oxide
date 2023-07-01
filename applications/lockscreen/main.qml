@@ -140,6 +140,7 @@ ApplicationWindow {
             id: pinEntry
             objectName: "pinEntry"
             visible: false
+            showPress: false
             anchors.centerIn: parent
             label: {
                 switch(stateController.state){
