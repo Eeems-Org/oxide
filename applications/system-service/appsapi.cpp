@@ -98,19 +98,7 @@ void AppsAPI::startup(){
     Oxide::Sentry::sentry_transaction("apps", "startup", [this](Oxide::Sentry::Transaction* t){
         if(applications.isEmpty()){
             qDebug() << "No applications found";
-            sentry_span(t, "error", "Display error text", [this]{
-                auto frameBuffer = EPFrameBuffer::framebuffer();
-                qDebug() << "Waiting for other painting to finish...";
-                while(frameBuffer->paintingActive()){
-                    EPFrameBuffer::waitForLastUpdate();
-                }
-                qDebug() << "Displaying error text";
-                QPainter painter(frameBuffer);
-                painter.fillRect(frameBuffer->rect(), Qt::white);
-                painter.end();
-                EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-                notificationAPI->paintNotification("No applications have been found. This is the result of invalid configuration. Open an issue on\nhttps://github.com/Eeems-Org/oxide\nto get support resolving this.", "");
-            });
+            notificationAPI->errorNotification(_noApplicationsMessage);
             return;
         }
         Oxide::Sentry::sentry_span(t, "autoStart", "Launching auto start applications", [this](Oxide::Sentry::Span* s){
@@ -147,6 +135,37 @@ void AppsAPI::startup(){
             app->launchNoSecurityCheck();
             m_starting = false;
         });
+    });
+}
+void AppsAPI::resumeIfNone(){
+    if(m_stopping || m_starting){
+        return;
+    }
+    for(auto app : applications){
+        if(app->stateNoSecurityCheck() == Application::InForeground){
+            return;
+        }
+    }
+    if(previousApplicationNoSecurityCheck()){
+        return;
+    }
+    auto app = getApplication(m_startupApplication);
+    if(app == nullptr){
+        app = getApplication("xochitl");
+    }
+    if(app == nullptr){
+        if(applications.isEmpty()){
+            qDebug() << "No applications found";
+            notificationAPI->errorNotification(_noApplicationsMessage);
+            return;
+        }
+        app = applications.first();
+    }
+    app->launchNoSecurityCheck();
+    QTimer::singleShot(300, [this]{
+        if(appsAPI->currentApplicationNoSecurityCheck().path() == "/"){
+            notificationAPI->errorNotification(_noForegroundAppMessage);
+        }
     });
 }
 

@@ -141,6 +141,19 @@ public:
         EPFrameBuffer::waitForLastUpdate();
         return updateRect;
     }
+    void errorNotification(const QString& text){
+        auto frameBuffer = EPFrameBuffer::framebuffer();
+        qDebug() << "Waiting for other painting to finish...";
+        while(frameBuffer->paintingActive()){
+            EPFrameBuffer::waitForLastUpdate();
+        }
+        qDebug() << "Displaying error text";
+        QPainter painter(frameBuffer);
+        painter.fillRect(frameBuffer->rect(), Qt::white);
+        painter.end();
+        EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+        notificationAPI->paintNotification(text, "");
+    }
 
 public slots:
     QDBusObjectPath add(const QString& identifier, const QString& application, const QString& text, const QString& icon, QDBusMessage message){
