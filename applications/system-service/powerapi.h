@@ -2,6 +2,7 @@
 #define BATTERYAPI_H
 
 #include <liboxide.h>
+#include <liboxide/udev.h>
 
 #include <QObject>
 #include <QDebug>
@@ -46,25 +47,45 @@ public:
             Oxide::Sentry::sentry_span(t, "update", "Update current state", [this]{
                 update();
             });
-            Oxide::Sentry::sentry_span(t, "timer", "Setup timer", [this]{
-                timer = new QTimer(this);
-                timer->setSingleShot(false);
-                timer->setInterval(3 * 1000); // 3 seconds
-                timer->moveToThread(qApp->thread());
-                connect(timer, &QTimer::timeout, this, QOverload<>::of(&PowerAPI::update));
-                timer->start();
+            Oxide::Sentry::sentry_span(t, "monitor", "Setup monitor", [this]{
+                if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+                    udev = new UDev(this);
+                    udev->addMonitor("power_supply", NULL);
+                    connect(udev, &UDev::event, this, QOverload<>::of(&PowerAPI::update));
+                    udev->start();
+                }else{
+                    timer = new QTimer(this);
+                    timer->setSingleShot(false);
+                    timer->setInterval(3 * 1000); // 3 seconds
+                    timer->moveToThread(qApp->thread());
+                    connect(timer, &QTimer::timeout, this, QOverload<>::of(&PowerAPI::update));
+                    timer->start();
+                }
             });
         });
     }
     ~PowerAPI(){
-        qDebug() << "Killing timer";
-        timer->stop();
-        delete timer;
+        if(timer != nullptr){
+            qDebug() << "Killing timer";
+            timer->stop();
+            delete timer;
+        }
+        if(udev != nullptr){
+            qDebug() << "Killing UDev monitor";
+            udev->stop();
+            delete udev;
+        }
     }
 
     void setEnabled(bool enabled) override {
         if(enabled){
-            timer->start();
+            if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+                udev->start();
+            }else{
+                timer->start();
+            }
+        }else if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+            udev->stop();
         }else{
             timer->stop();
         }
@@ -152,7 +173,8 @@ signals:
     void chargerWarning();
 
 private:
-    QTimer* timer;
+    QTimer* timer = nullptr;
+    UDev* udev = nullptr;
     int m_state = Normal;
     int m_batteryState = BatteryUnknown;
     int m_batteryLevel = 0;

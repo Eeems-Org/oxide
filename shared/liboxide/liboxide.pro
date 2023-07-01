@@ -23,7 +23,8 @@ SOURCES += \
     settingsfile.cpp \
     slothandler.cpp \
     sysobject.cpp \
-    signalhandler.cpp
+    signalhandler.cpp \
+    udev.cpp
 
 HEADERS += \
     applications.h \
@@ -40,7 +41,8 @@ HEADERS += \
     settingsfile.h \
     slothandler.h \
     sysobject.h \
-    signalhandler.h
+    signalhandler.h \
+    udev.h
 
 PRECOMPILED_HEADER = \
     liboxide_stable.h
@@ -59,7 +61,7 @@ DBUS_INTERFACES += \
     ../../interfaces/notificationapi.xml \
     ../../interfaces/notification.xml
 
-LIBS += -lsystemd
+LIBS += -lsystemd -ludev
 
 liboxide_liboxide_h.target = include/liboxide/liboxide.h
 liboxide_liboxide_h.commands = \

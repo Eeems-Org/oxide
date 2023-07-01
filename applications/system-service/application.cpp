@@ -515,7 +515,7 @@ void Application::showSplashScreen(){
             EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Grayscale, EPFrameBuffer::PartialUpdate, true);
             painter.end();
         });
-        qDebug() << "Waitng for screen to finish...";
+        qDebug() << "Waiting for screen to finish...";
         Oxide::Sentry::sentry_span(t, "wait", "Wait for screen finish updating", [](){
             EPFrameBuffer::waitForLastUpdate();
         });
