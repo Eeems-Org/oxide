@@ -96,6 +96,23 @@ AppsAPI::AppsAPI(QObject* parent)
 
 void AppsAPI::startup(){
     Oxide::Sentry::sentry_transaction("apps", "startup", [this](Oxide::Sentry::Transaction* t){
+        if(applications.isEmpty()){
+            qDebug() << "No applications found";
+            sentry_span(t, "error", "Display error text", [this]{
+                auto frameBuffer = EPFrameBuffer::framebuffer();
+                qDebug() << "Waiting for other painting to finish...";
+                while(frameBuffer->paintingActive()){
+                    EPFrameBuffer::waitForLastUpdate();
+                }
+                qDebug() << "Displaying error text";
+                QPainter painter(frameBuffer);
+                painter.fillRect(frameBuffer->rect(), Qt::white);
+                painter.end();
+                EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+                notificationAPI->paintNotification("No applications have been found. This is the result of invalid configuration. Open an issue on\nhttps://github.com/Eeems-Org/oxide\nto get support resolving this.", "");
+            });
+            return;
+        }
         Oxide::Sentry::sentry_span(t, "autoStart", "Launching auto start applications", [this](Oxide::Sentry::Span* s){
             for(auto app : applications){
                 if(app->autoStart()){
@@ -117,8 +134,14 @@ void AppsAPI::startup(){
                 app = getApplication(m_startupApplication);
             }
             if(app == nullptr){
-                qDebug() << "could not find startup application";
-                return;
+                qDebug() << "Could not find startup application";
+                qDebug() << "Using xochitl due to invalid configuration";
+                app = getApplication("xochitl");
+            }
+            if(app == nullptr){
+                qDebug() << "Could not find xochitl";
+                qWarning() << "Using the first application in the list due to invalid configuration";
+                app = applications.first();
             }
             qDebug() << "Starting initial application" << app->name();
             app->launchNoSecurityCheck();

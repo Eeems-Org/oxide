@@ -342,7 +342,7 @@ public:
         return nullptr;
     }
     QStringList getPreviousApplications(){ return previousApplications; }
-    Q_INVOKABLE QDBusObjectPath getApplicationPath(QString name){
+    Q_INVOKABLE QDBusObjectPath getApplicationPath(const QString& name){
         if(!hasPermission("apps")){
             return QDBusObjectPath("/");
         }
@@ -352,7 +352,7 @@ public:
         }
         return app->qPath();
     }
-    Application* getApplication(QString name){
+    Application* getApplication(const QString& name){
         if(applications.contains(name)){
             return applications[name];
         }
