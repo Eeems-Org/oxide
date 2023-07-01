@@ -96,6 +96,11 @@ AppsAPI::AppsAPI(QObject* parent)
 
 void AppsAPI::startup(){
     Oxide::Sentry::sentry_transaction("apps", "startup", [this](Oxide::Sentry::Transaction* t){
+        if(applications.isEmpty()){
+            qDebug() << "No applications found";
+            notificationAPI->errorNotification(_noApplicationsMessage);
+            return;
+        }
         Oxide::Sentry::sentry_span(t, "autoStart", "Launching auto start applications", [this](Oxide::Sentry::Span* s){
             for(auto app : applications){
                 if(app->autoStart()){
@@ -117,14 +122,65 @@ void AppsAPI::startup(){
                 app = getApplication(m_startupApplication);
             }
             if(app == nullptr){
-                qDebug() << "could not find startup application";
-                return;
+                qDebug() << "Could not find startup application";
+                qDebug() << "Using xochitl due to invalid configuration";
+                app = getApplication("xochitl");
+            }
+            if(app == nullptr){
+                qDebug() << "Could not find xochitl";
+                qWarning() << "Using the first application in the list due to invalid configuration";
+                app = applications.first();
             }
             qDebug() << "Starting initial application" << app->name();
             app->launchNoSecurityCheck();
-            m_starting = false;
+            ensureForegroundApp();
         });
     });
 }
 
+void AppsAPI::resumeIfNone(){
+    if(m_stopping || m_starting){
+        return;
+    }
+    for(auto app : applications){
+        if(app->stateNoSecurityCheck() == Application::InForeground){
+            return;
+        }
+    }
+    if(previousApplicationNoSecurityCheck()){
+        return;
+    }
+    auto app = getApplication(m_startupApplication);
+    if(app == nullptr){
+        app = getApplication("xochitl");
+    }
+    if(app == nullptr){
+        if(applications.isEmpty()){
+            qDebug() << "No applications found";
+            notificationAPI->errorNotification(_noApplicationsMessage);
+            return;
+        }
+        app = applications.first();
+    }
+    app->launchNoSecurityCheck();
+    m_starting = true;
+    ensureForegroundApp();
+}
+
 bool AppsAPI::locked(){ return notificationAPI->locked(); }
+
+void AppsAPI::ensureForegroundApp() {
+    QTimer::singleShot(300, [this]{
+        m_starting = false;
+        auto path = appsAPI->currentApplicationNoSecurityCheck();
+        if(path.path() == "/"){
+            notificationAPI->errorNotification(_noForegroundAppMessage);
+            return;
+        }
+        auto app = appsAPI->getApplication(path);
+        if(app == nullptr || app->state() == Application::Inactive){
+            notificationAPI->errorNotification(_noForegroundAppMessage);
+            return;
+        }
+    });
+}
