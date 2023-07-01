@@ -20,8 +20,11 @@ QDebug operator<<(QDebug debug, Touch* touch){
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
-        lockTimestamp = QDateTime::currentMSecsSinceEpoch() + lockTimer.remainingTime();
         Oxide::Sentry::sentry_transaction("system", "suspend", [this, device](Oxide::Sentry::Transaction* t){
+            if(autoLock()){
+                lockTimestamp = QDateTime::currentMSecsSinceEpoch() + lockTimer.remainingTime();
+                qDebug() << "Auto Lock timestamp:" << lockTimestamp;
+            }
             qDebug() << "Preparing for suspend...";
             Oxide::Sentry::sentry_span(t, "prepare", "Prepare for suspend", [this]{
                 wifiAPI->stopUpdating();
@@ -72,7 +75,12 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
             });
             Oxide::Sentry::sentry_span(t, "resume", "Resume running application or go to lockscreen", [this]{
-                bool lockTimeout = autoLock() && QDateTime::currentMSecsSinceEpoch() >= lockTimestamp;
+                auto now = QDateTime::currentMSecsSinceEpoch();
+                bool lockTimeout = autoLock();
+                if(lockTimeout){
+                    qDebug() << "Current timestamp:" << now;
+                    lockTimeout = now >= lockTimestamp;
+                }
                 if(lockOnSuspend() || lockTimeout){
                     if(lockTimeout){
                         qDebug() << "Lock timer expired while suspended";

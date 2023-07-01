@@ -557,7 +557,7 @@ private:
     Manager* systemd;
     QList<Inhibitor> inhibitors;
     Application* resumeApp;
-    int lockTimestamp = 0;
+    qint64 lockTimestamp = 0;
     QTimer suspendTimer;
     QTimer lockTimer;
     QSettings settings;
