@@ -31,7 +31,7 @@
 #ifdef APP_VERSION
 #define VERSION APP_VERSION
 #else
-#define VERSION "2.6"
+#define VERSION "2.7"
 #endif
 #endif
 #ifndef APP_VERSION
@@ -385,6 +385,21 @@ namespace Oxide {
          */
         O_SETTINGS_PROPERTY(bool, General, crashReport, true)
         /*!
+         * \property lockOnSuspend
+         * \brief If the device should lock on suspend or not
+         * \sa set_lockOnSuspend, lockOnSuspendChanged
+         */
+        /*!
+         * \fn set_lockOnSuspend
+         * \param _arg_lockOnSuspend
+         * \brief Enable or disable locking on suspend
+         */
+        /*!
+         * \fn lockOnSuspendChanged
+         * \brief If lock on suspend has been enabled or disabled
+         */
+        O_SETTINGS_PROPERTY(bool, General, lockOnSuspend, true)
+        /*!
          * \property autoSleep
          * \brief How long without activity before the device should suspend
          * \sa set_autoSleep, autoSleepChanged
@@ -398,7 +413,22 @@ namespace Oxide {
          * \fn autoSleepChanged
          * \brief If autoSleep has been changed
          */
-        O_SETTINGS_PROPERTY(int, General, autoSleep, 1)
+        O_SETTINGS_PROPERTY(int, General, autoSleep, 5)
+        /*!
+         * \property autoLock
+         * \brief How long without activity before the device should suspend
+         * \sa set_autoLock, autoLockChanged
+         */
+        /*!
+         * \fn set_autoLock
+         * \param _arg_autoLock
+         * \brief Change autoLock
+         */
+        /*!
+         * \fn autoLockChanged
+         * \brief If autoLock has been changed
+         */
+        O_SETTINGS_PROPERTY(int, General, autoLock, 5)
         /*!
          * \property pin
          * \brief The lockscreen pin

@@ -10,23 +10,23 @@ Item {
     Popup {
         id: settings
         width: 1000
-        height: 1100
+        height: 1400
         closePolicy: Popup.NoAutoClose
         onClosed: parent.closed()
         visible: parent.visible
         GridLayout {
             columns: 3
-            rows: 10
+            rows: 20
             anchors.fill: parent
             RowLayout {
                 Layout.columnSpan: parent.columns
                 Label {
                     text: "Locale"
-                    Layout.columnSpan: parent.columns - 1
+                    Layout.columnSpan: 1
                     Layout.fillWidth: true
                 }
                 ComboBox {
-                    Layout.columnSpan: 1
+                    Layout.columnSpan: parent.columns - 1
                     Layout.fillWidth: true
                     flat: true
 
@@ -39,17 +39,34 @@ Item {
                 Layout.columnSpan: parent.columns
                 Label {
                     text: "Timezone"
-                    Layout.columnSpan: parent.columns - 1
+                    Layout.columnSpan: 1
                     Layout.fillWidth: true
                 }
                 ComboBox {
-                    Layout.columnSpan: 1
+                    Layout.columnSpan: parent.columns - 1
                     Layout.fillWidth: true
                     flat: true
 
                     model: controller.timezones
                     onActivated: controller.timezone = textAt(currentIndex)
                     Component.onCompleted: currentIndex = indexOfValue(controller.timezone)
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Label {
+                    text: "Lock after sleep"
+                    Layout.columnSpan: parent.columns - 1
+                    Layout.fillWidth: true
+                }
+                BetterCheckBox {
+                    tristate: false
+                    checkState: controller.lockOnSuspend ? Qt.Checked : Qt.Unchecked
+                    onClicked: {
+                        controller.lockOnSuspend = this.checkState === Qt.Checked
+                    }
+                    Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                    Layout.fillWidth: false
                 }
             }
             RowLayout {
@@ -109,6 +126,67 @@ Item {
                     }
                     onValueChanged: {
                         controller.sleepAfter = this.value;
+                    }
+                    Layout.preferredWidth: 300
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Label {
+                    text: "Automatic lock"
+                    Layout.columnSpan: parent.columns - 1
+                    Layout.fillWidth: true
+                }
+                BetterCheckBox {
+                    tristate: false
+                    checkState: controller.automaticLock ? Qt.Checked : Qt.Unchecked
+                    onClicked: {
+                        controller.automaticLock = this.checkState === Qt.Checked
+                        controller.lockAfter = lockAfterSpinBox.value
+                    }
+                    Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                    Layout.fillWidth: false
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                enabled: controller.automaticLock
+                Label {
+                    text: "Lock After (minutes)"
+                    Layout.fillWidth: true
+                }
+                BetterSpinBox {
+                    id: lockAfterSpinBox
+                    objectName: "lockAfterSpinBox"
+                    from: 1
+                    to: 360
+                    stepSize: 1
+                    value: controller.lockAfter
+                    onDownPressedChanged: {
+                        if(this.value <= 10){
+                            this.stepSize = 1;
+                            return;
+                        }
+                        if(this.value <= 60){
+                            this.stepSize = 5;
+                            return;
+                        }
+                        this.stepSize = 15;
+                    }
+                    onUpPressedChanged: {
+                        if(this.value < 10){
+                            this.stepSize = 1;
+                            return;
+                        }
+                        if(this.value < 60){
+                            this.stepSize = 5;
+                            return;
+                        }
+                        this.stepSize = 15;
+                    }
+                    onValueChanged: {
+                        controller.lockAfter = this.value;
                     }
                     Layout.preferredWidth: 300
                 }

@@ -21,6 +21,10 @@ void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
         Oxide::Sentry::sentry_transaction("system", "suspend", [this, device](Oxide::Sentry::Transaction* t){
+            if(autoLock()){
+                lockTimestamp = QDateTime::currentMSecsSinceEpoch() + lockTimer.remainingTime();
+                qDebug() << "Auto Lock timestamp:" << lockTimestamp;
+            }
             qDebug() << "Preparing for suspend...";
             Oxide::Sentry::sentry_span(t, "prepare", "Prepare for suspend", [this]{
                 wifiAPI->stopUpdating();
@@ -30,7 +34,9 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 if(path.path() != "/"){
                     resumeApp = appsAPI->getApplication(path);
                     resumeApp->pauseNoSecurityCheck(false);
+                    qDebug() << "Resume app set to " << resumeApp->name();
                 }else{
+                    qDebug() << "Unable to set resume app";
                     resumeApp = nullptr;
                 }
             });
@@ -69,15 +75,32 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
             });
             Oxide::Sentry::sentry_span(t, "resume", "Resume running application or go to lockscreen", [this]{
-                auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
-                if(lockscreenApp != nullptr){
-                    resumeApp = lockscreenApp;
+                auto now = QDateTime::currentMSecsSinceEpoch();
+                bool lockTimeout = autoLock();
+                if(lockTimeout){
+                    qDebug() << "Current timestamp:" << now;
+                    lockTimeout = now >= lockTimestamp;
+                }
+                if(lockOnSuspend() || lockTimeout){
+                    if(lockTimeout){
+                        qDebug() << "Lock timer expired while suspended";
+                    }else{
+                        qDebug() << "Always locking after suspend";
+                    }
+                    auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
+                    if(lockscreenApp != nullptr){
+                        qDebug() << "Resume app set to lockscreen application";
+                        resumeApp = lockscreenApp;
+                    }
                 }
                 if(resumeApp == nullptr){
+                    qDebug() << "Resume app set to startup application";
                     resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
                 }
                 if(resumeApp != nullptr){
                     resumeApp->resumeNoSecurityCheck();
+                }else{
+                    qDebug() << "Unable to find an app to resume";
                 }
             });
             Oxide::Sentry::sentry_span(t, "enable", "Enable various services", [this, device]{
@@ -86,6 +109,10 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
                     qDebug() << "Suspend timer re-enabled due to resume";
                     suspendTimer.start(autoSleep() * 60 * 1000);
+                }
+                if(autoLock()){
+                    qDebug() << "Lock timer re-enabled due to resume";
+                    lockTimer.start(autoLock() * 60 * 1000);
                 }
                 if(device == Oxide::DeviceSettings::DeviceType::RM2){
                     system("modprobe brcmfmac");
@@ -112,6 +139,22 @@ void SystemAPI::setAutoSleep(int _autoSleep){
     sharedSettings.sync();
     emit autoSleepChanged(_autoSleep);
 }
+void SystemAPI::setAutoLock(int _autoLock){
+    if(_autoLock < 0 || _autoLock > 360){
+        return;
+    }
+    qDebug() << "Auto Lock" << _autoLock;
+    sharedSettings.set_autoLock(_autoLock);
+    lockTimer.setInterval(_autoLock * 60 * 1000);
+    sharedSettings.sync();
+    emit autoLockChanged(_autoLock);
+}
+void SystemAPI::setLockOnSuspend(bool _lockOnSuspend){
+    sharedSettings.set_lockOnSuspend(_lockOnSuspend);
+    qDebug() << "Lock on Suspend" << _lockOnSuspend;
+    sharedSettings.sync();
+    emit lockOnSuspendChanged(_lockOnSuspend);
+}
 void SystemAPI::uninhibitAll(QString name){
     if(powerOffInhibited()){
         powerOffInhibitors.removeAll(name);
@@ -136,6 +179,12 @@ void SystemAPI::startSuspendTimer(){
         suspendTimer.start(autoSleep() * 60 * 1000);
     }
 }
+void SystemAPI::startLockTimer(){
+    if(autoLock() && !lockTimer.isActive()){
+        qDebug() << "Lock timer re-enabled due to start lock timer";
+        lockTimer.start(autoSleep() * 60 * 1000);
+    }
+}
 void SystemAPI::activity(){
     auto active = suspendTimer.isActive();
     suspendTimer.stop();
@@ -146,6 +195,15 @@ void SystemAPI::activity(){
         suspendTimer.start(autoSleep() * 60 * 1000);
     }else if(active){
         qDebug() << "Suspend timer disabled";
+    }
+    active = lockTimer.isActive();
+    if(autoLock()){
+        if(!active){
+            qDebug() << "Lock timer re-enabled due to activity";
+        }
+        lockTimer.start(autoLock() * 60 * 1000);
+    }else if(active){
+        qDebug() << "Lock timer disabled";
     }
 }
 
@@ -165,10 +223,19 @@ void SystemAPI::uninhibitSleep(QDBusMessage message){
         emit sleepInhibitedChanged(false);
     }
 }
-void SystemAPI::timeout(){
+void SystemAPI::suspendTimeout(){
     if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         qDebug() << "Automatic suspend due to inactivity...";
         suspend();
+    }
+}
+void SystemAPI::lockTimeout(){
+    if(autoLock()){
+        auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
+        if(lockscreenApp != nullptr){
+            qDebug() << "Automatic lock due to inactivity...";
+            lockscreenApp->resumeNoSecurityCheck();
+        }
     }
 }
 void SystemAPI::toggleSwipes(){
