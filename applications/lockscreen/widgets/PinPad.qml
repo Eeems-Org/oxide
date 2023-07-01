@@ -8,6 +8,7 @@ GridLayout {
     property string value: ""
     property string label: "PIN"
     property string message: ""
+    property bool showPress: true
     signal submit(string pin)
 
     anchors.centerIn: parent
@@ -16,13 +17,25 @@ GridLayout {
     columns: 3
     rows: 6
 
-    function buttonsEnabled(){ return value.length < 4; }
+    function buttonsEnabled(){ return !submitTimer.running && value.length < 4; }
     function add(text){
+        if(!buttonsEnabled()){
+            return;
+        }
         value += text;
         if(value.length < 4){
             return;
         }
-        submit(value);
+        submitTimer.start();
+    }
+
+    Timer {
+        id: submitTimer
+        repeat: false
+        interval: 100
+        onTriggered: {
+            submit(value)
+        }
     }
 
     ColumnLayout {
@@ -39,6 +52,7 @@ GridLayout {
         }
 
         RowLayout {
+            id: display
             spacing: root.columnSpacing
             property int itemSize: 50
             Layout.fillWidth: true
@@ -90,20 +104,20 @@ GridLayout {
         Item { Layout.fillWidth: true }
     }
 
-    PinButton { text: "1"; onClicked: root.add(text); enabled: root.buttonsEnabled() }
-    PinButton { text: "2"; onClicked: root.add(text); enabled: root.buttonsEnabled() }
-    PinButton { text: "3"; onClicked: root.add(text); enabled: root.buttonsEnabled() }
+    PinButton { text: "1"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+    PinButton { text: "2"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+    PinButton { text: "3"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
 
-    PinButton { text: "4"; onClicked: root.add(text); enabled: root.buttonsEnabled() }
-    PinButton { text: "5"; onClicked: root.add(text); enabled: root.buttonsEnabled() }
-    PinButton { text: "6"; onClicked: root.add(text); enabled: root.buttonsEnabled() }
+    PinButton { text: "4"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+    PinButton { text: "5"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+    PinButton { text: "6"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
 
-    PinButton { text: "7"; onClicked: root.add(text); enabled: root.buttonsEnabled() }
-    PinButton { text: "8"; onClicked: root.add(text); enabled: root.buttonsEnabled() }
-    PinButton { text: "9"; onClicked: root.add(text); enabled: root.buttonsEnabled() }
+    PinButton { text: "7"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+    PinButton { text: "8"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+    PinButton { text: "9"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
 
     Item { Layout.fillWidth: true }
-    PinButton { text: "0"; onClicked: root.add(text); enabled: root.buttonsEnabled() }
+    PinButton { text: "0"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
     PinButton {
         contentItem: Item {
             Image {
@@ -117,5 +131,6 @@ GridLayout {
         hideBorder: true
         onClicked: root.value = root.value.slice(0, -1)
         enabled: root.value.length
+        showPress: root.showPress
     }
 }
