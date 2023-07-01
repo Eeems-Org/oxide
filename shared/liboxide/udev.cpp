@@ -15,6 +15,7 @@ namespace Oxide {
         connect(parent, &QObject::destroyed, this, &QObject::deleteLater);
         connect(&_thread, &QThread::started, this, &UDev::run);
         connect(&_thread, &QThread::finished, [this]{
+            qDebug() << "UDev::Stopped";
             running = false;
         });
         moveToThread(&_thread);
@@ -35,7 +36,6 @@ namespace Oxide {
         qDebug() << "UDev::Starting...";
         running = true;
         _thread.start();
-        qDebug() << "UDev::Started";
     }
 
     void UDev::stop(){
@@ -44,18 +44,14 @@ namespace Oxide {
             running = false;
             wait();
         }
-        qDebug() << "UDev::Stopped";
     }
 
     bool UDev::isRunning(){ return running || _thread.isRunning(); }
 
     void UDev::wait(){
-        qDebug() << "UDev::Waiting...";
-        while(isRunning()){
-            qApp->processEvents();
-            thread()->yieldCurrentThread();
+        if(isRunning()){
+            _thread.wait();
         }
-        qDebug() << "UDev::Waited";
     }
 
     void UDev::addMonitor(QString subsystem, QString deviceType){
@@ -185,6 +181,7 @@ namespace Oxide {
         }
         O_DEBUG("UDev::Monitor stopping");
         udev_monitor_unref(mon);
+        _thread.quit();
     }
     QDebug operator<<(QDebug debug, const UDev::Device& device){
         QDebugStateSaver saver(debug);
