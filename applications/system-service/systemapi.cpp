@@ -72,8 +72,13 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
             });
             Oxide::Sentry::sentry_span(t, "resume", "Resume running application or go to lockscreen", [this]{
-                if(lockOnSuspend() || (autoLock() && QDateTime::currentMSecsSinceEpoch() >= lockTimestamp)){
-                    qDebug() << "Lock timer expired while suspended";
+                bool lockTimeout = autoLock() && QDateTime::currentMSecsSinceEpoch() >= lockTimestamp;
+                if(lockOnSuspend() || lockTimeout){
+                    if(lockTimeout){
+                        qDebug() << "Lock timer expired while suspended";
+                    }else{
+                        qDebug() << "Always locking after suspend";
+                    }
                     auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
                     if(lockscreenApp != nullptr){
                         qDebug() << "Resume app set to lockscreen application";
