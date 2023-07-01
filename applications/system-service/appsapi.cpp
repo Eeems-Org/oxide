@@ -133,10 +133,11 @@ void AppsAPI::startup(){
             }
             qDebug() << "Starting initial application" << app->name();
             app->launchNoSecurityCheck();
-            m_starting = false;
+            ensureForegroundApp();
         });
     });
 }
+
 void AppsAPI::resumeIfNone(){
     if(m_stopping || m_starting){
         return;
@@ -162,16 +163,24 @@ void AppsAPI::resumeIfNone(){
         app = applications.first();
     }
     app->launchNoSecurityCheck();
+    m_starting = true;
+    ensureForegroundApp();
+}
+
+bool AppsAPI::locked(){ return notificationAPI->locked(); }
+
+void AppsAPI::ensureForegroundApp() {
     QTimer::singleShot(300, [this]{
+        m_starting = false;
         auto path = appsAPI->currentApplicationNoSecurityCheck();
         if(path.path() == "/"){
             notificationAPI->errorNotification(_noForegroundAppMessage);
+            return;
         }
         auto app = appsAPI->getApplication(path);
         if(app == nullptr || app->state() == Application::Inactive){
             notificationAPI->errorNotification(_noForegroundAppMessage);
+            return;
         }
     });
 }
-
-bool AppsAPI::locked(){ return notificationAPI->locked(); }

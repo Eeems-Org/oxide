@@ -721,5 +721,6 @@ private:
         settings->sync();
     }
     bool locked();
+    void ensureForegroundApp();
 };
 #endif // APPSAPI_H
