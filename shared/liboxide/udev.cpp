@@ -21,12 +21,10 @@ namespace Oxide {
     UDev::UDev() : QObject(), _thread(this){
         qRegisterMetaType<Device>("UDev::Device");
         udevLib = udev_new();
-        connect(&_thread, &QThread::started, this, &UDev::run);
         connect(&_thread, &QThread::finished, [this]{
             qDebug() << "UDev::Stopped";
             running = false;
         });
-        moveToThread(&_thread);
     }
 
     UDev::~UDev(){
@@ -68,6 +66,14 @@ namespace Oxide {
         qDebug() << "UDev::Starting...";
         running = true;
         _thread.start();
+        QTimer* timer = new QTimer();
+        timer->moveToThread(&_thread);
+        timer->setSingleShot(true);
+        QObject::connect(timer, &QTimer::timeout, [timer, this](){
+            monitor();
+            timer->deleteLater();
+        });
+        QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
     }
 
     void UDev::stop(){
@@ -87,6 +93,7 @@ namespace Oxide {
     }
 
     void UDev::addMonitor(QString subsystem, QString deviceType){
+        qDebug() << "UDev::Adding" << subsystem << deviceType;
         QStringList* list;
         if(monitors.contains(subsystem)){
             list = monitors[subsystem];
@@ -102,6 +109,7 @@ namespace Oxide {
         }
     }
     void UDev::removeMonitor(QString subsystem, QString deviceType){
+        qDebug() << "UDev::Removing" << subsystem << deviceType;
         if(monitors.contains(subsystem)){
             monitors[subsystem]->removeAll(deviceType);
             // TODO - update filter on the fly
@@ -169,8 +177,8 @@ namespace Oxide {
         return Unknown;
     }
 
-    void UDev::run(){
-        O_DEBUG("UDev::Monitor starting");
+    void UDev::monitor(){
+        O_DEBUG("UDev::Started");
         udev_monitor* mon = udev_monitor_new_from_netlink(udevLib, "udev");
         if(!mon){
             O_WARNING("UDev::Monitor Unable to listen to UDev: Failed to create netlink monitor");

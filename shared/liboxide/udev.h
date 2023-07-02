@@ -80,7 +80,7 @@ namespace Oxide {
         QThread _thread;
 
     protected:
-        void run();
+        void monitor();
     };
     QDebug operator<<(QDebug debug, const UDev::Device& device);
 }
