@@ -1,5 +1,6 @@
 #include "udev.h"
 #include "debug.h"
+#include "liboxide.h"
 
 #include <fcntl.h>
 #include <cerrno>
@@ -21,10 +22,14 @@ namespace Oxide {
     UDev::UDev() : QObject(), _thread(this){
         qRegisterMetaType<Device>("UDev::Device");
         udevLib = udev_new();
-        connect(&_thread, &QThread::finished, [this]{
-            qDebug() << "UDev::Stopped";
-            running = false;
+        connect(&_thread, &QThread::started, [this]{
+            O_DEBUG("UDev::Thread started");
         });
+        connect(&_thread, &QThread::finished, [this]{
+            O_DEBUG("UDev::Thread finished");
+        });
+        _thread.start(QThread::LowPriority);
+        moveToThread(&_thread);
     }
 
     UDev::~UDev(){
@@ -59,41 +64,43 @@ namespace Oxide {
     }
 
     void UDev::start(){
+        statelock.lock();
+        O_DEBUG("UDev::Starting...");
+        exitRequested = false;
         if(running){
+            statelock.unlock();
+            O_DEBUG("UDev::Already running");
             return;
         }
-        wait();
-        qDebug() << "UDev::Starting...";
-        running = true;
-        _thread.start();
-        QTimer* timer = new QTimer();
-        timer->moveToThread(&_thread);
-        timer->setSingleShot(true);
-        QObject::connect(timer, &QTimer::timeout, [timer, this](){
+        QTimer::singleShot(0, [this](){
             monitor();
-            timer->deleteLater();
+            statelock.unlock();
+            O_DEBUG("UDev::Started");
         });
-        QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
     }
 
     void UDev::stop(){
-        qDebug() << "UDev::Stopping...";
+        statelock.lock();
+        O_DEBUG("UDev::Stopping...");
         if(running){
-            running = false;
-            wait();
+            exitRequested = true;
         }
+        statelock.unlock();
     }
 
-    bool UDev::isRunning(){ return running || _thread.isRunning(); }
+    bool UDev::isRunning(){ return running; }
 
     void UDev::wait(){
         if(isRunning()){
-            _thread.wait();
+            O_DEBUG("UDev::Waiting to stop...");
+            while(running){
+                qApp->processEvents();
+            }
         }
     }
 
     void UDev::addMonitor(QString subsystem, QString deviceType){
-        qDebug() << "UDev::Adding" << subsystem << deviceType;
+        O_DEBUG("UDev::Adding" << subsystem << deviceType);
         QStringList* list;
         if(monitors.contains(subsystem)){
             list = monitors[subsystem];
@@ -103,18 +110,14 @@ namespace Oxide {
         }
         if(!list->contains(deviceType)){
             list->append(deviceType);
-            // TODO - update filter on the fly
-            stop();
-            start();
+            update = true;
         }
     }
     void UDev::removeMonitor(QString subsystem, QString deviceType){
-        qDebug() << "UDev::Removing" << subsystem << deviceType;
+        O_DEBUG("UDev::Removing" << subsystem << deviceType);
         if(monitors.contains(subsystem)){
             monitors[subsystem]->removeAll(deviceType);
-            // TODO - update filter on the fly
-            stop();
-            start();
+            update = true;
         }
     }
 
@@ -178,16 +181,18 @@ namespace Oxide {
     }
 
     void UDev::monitor(){
-        O_DEBUG("UDev::Started");
+        running = true;
+        O_DEBUG("UDev::Monitor starting...");
         udev_monitor* mon = udev_monitor_new_from_netlink(udevLib, "udev");
         if(!mon){
             O_WARNING("UDev::Monitor Unable to listen to UDev: Failed to create netlink monitor");
             O_DEBUG(strerror(errno))
             return;
         }
+        O_DEBUG("UDev::Monitor applying filters...");
         for(QString subsystem : monitors.keys()){
             for(QString deviceType : *monitors[subsystem]){
-                O_DEBUG("UDev::Monitor " << subsystem << deviceType);
+                O_DEBUG("UDev::Monitor filter" << subsystem << deviceType);
                 int err = udev_monitor_filter_add_match_subsystem_devtype(
                     mon,
                     subsystem.toUtf8().constData(),
@@ -198,13 +203,36 @@ namespace Oxide {
                 }
             }
         }
+        O_DEBUG("UDev::Monitor enabling...");
         int err = udev_monitor_enable_receiving(mon);
         if(err < 0){
             O_WARNING("UDev::Monitor Unable to listen to UDev:" << strerror(err));
             udev_monitor_unref(mon);
             return;
         }
-        while(running){
+        O_DEBUG("UDev::Monitor setting up timer...");
+        auto timer = new QTimer();
+        timer->setTimerType(Qt::PreciseTimer);
+        timer->setSingleShot(true);
+        connect(timer, &QTimer::timeout, [this, mon, timer]{
+            if(exitRequested){
+                O_DEBUG("UDev::Monitor stopping...");
+                udev_monitor_unref(mon);
+                timer->deleteLater();
+                running = false;
+                O_DEBUG("UDev::Stopped");
+                return;
+            }
+            if(update || !mon){
+                O_DEBUG("UDev::Monitor reloading...");
+                update = false;
+                udev_monitor_unref(mon);
+                timer->deleteLater();
+                QTimer::singleShot(0, [this]{
+                    monitor();
+                });
+                return;
+            }
             udev_device* dev = udev_monitor_receive_device(mon);
             if(dev != nullptr){
                 Device device;
@@ -218,17 +246,12 @@ namespace Oxide {
             }else if(errno && errno != EAGAIN){
                 O_WARNING("UDev::Monitor error checking event:" << strerror(errno));
             }
-            auto timestamp = QDateTime::currentMSecsSinceEpoch();
-            qApp->processEvents();
-            QThread::yieldCurrentThread();
-            if(QDateTime::currentMSecsSinceEpoch() - timestamp < 30){
-                QThread::msleep(30);
-            }
-        }
-        O_DEBUG("UDev::Monitor stopping");
-        udev_monitor_unref(mon);
-        _thread.quit();
+            timer->start(30);
+        });
+        timer->start(30);
+        O_DEBUG("UDev::Monitor event loop started");
     }
+
     QDebug operator<<(QDebug debug, const UDev::Device& device){
         QDebugStateSaver saver(debug);
         Q_UNUSED(saver)

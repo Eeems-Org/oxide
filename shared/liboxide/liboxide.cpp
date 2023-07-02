@@ -96,17 +96,18 @@ namespace Oxide {
         }
         return pids;
     }
-    void dispatchToMainThread(std::function<void()> callback){
-        if(QThread::currentThread() == qApp->thread()){
+    void dispatchToMainThread(std::function<void()> callback){ dispatchToThread(qApp->thread(), callback); }
+    void dispatchToThread(QThread* thread, std::function<void()> callback){
+        if(QThread::currentThread() == thread){
+            // Already on the thread
             callback();
             return;
         }
-        // any thread
+        // Send to the thread
         QTimer* timer = new QTimer();
-        timer->moveToThread(qApp->thread());
+        timer->moveToThread(thread);
         timer->setSingleShot(true);
         QObject::connect(timer, &QTimer::timeout, [=](){
-            // main thread
             callback();
             timer->deleteLater();
         });

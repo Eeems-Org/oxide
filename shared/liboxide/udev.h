@@ -10,6 +10,7 @@
 #include <libudev.h>
 
 #include <QObject>
+#include <QMutex>
 
 using namespace std;
 
@@ -76,8 +77,11 @@ namespace Oxide {
     private:
         struct udev* udevLib = nullptr;
         bool running = false;
+        bool exitRequested = false;
+        bool update = false;
         QMap<QString, QStringList*> monitors;
         QThread _thread;
+        QMutex statelock;
 
     protected:
         void monitor();

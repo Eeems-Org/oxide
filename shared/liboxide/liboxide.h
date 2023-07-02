@@ -103,6 +103,11 @@ namespace Oxide {
      */
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
     /*!
+     * \brief Run code on a thread
+     * \param callback The code to run on the thread
+     */
+    LIBOXIDE_EXPORT void dispatchToThread(QThread* thread, std::function<void()> callback);
+    /*!
      * \brief Get the UID for a username
      * \param name Username to search for
      * \throws std::runtime_error Failed to get the UID for the username

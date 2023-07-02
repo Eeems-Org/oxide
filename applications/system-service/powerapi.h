@@ -49,6 +49,7 @@ public:
             });
             Oxide::Sentry::sentry_span(t, "monitor", "Setup monitor", [this]{
                 if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+                    UDev::singleton()->addMonitor("platform", NULL);
                     UDev::singleton()->subsystem("power_supply", [this]{
                         update();
                     });
