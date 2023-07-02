@@ -146,7 +146,8 @@ protected:
         qDebug() << "Reading From : " << device.device.c_str() << " (" << name << ")";
         qDebug() << "Listening for events...";
         while(handle_events()){
-            yieldCurrentThread();
+            qApp->processEvents(QEventLoop::AllEvents, 100);
+            QThread::yieldCurrentThread();
         }
     }
     bool handle_events(){

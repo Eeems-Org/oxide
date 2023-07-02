@@ -77,12 +77,13 @@ protected:
             QString line(data.c_str());
             line = line.trimmed();
             emit dataRecieved(this, line);
-            thread()->yieldCurrentThread();
+            qApp->processEvents(QEventLoop::AllEvents, 100);
+            QThread::yieldCurrentThread();
         }
         if(in.eof()){
             in.clear();
         }
-        thread()->yieldCurrentThread();
+        QThread::yieldCurrentThread();
     }
 
 private:
