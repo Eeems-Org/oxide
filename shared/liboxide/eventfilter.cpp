@@ -37,58 +37,61 @@ namespace Oxide{
 
     bool EventFilter::eventFilter(QObject* obj, QEvent* ev){
         auto type = ev->type();
-        bool filtered = QObject::eventFilter(obj, ev);
-        if(!filtered){
-            if(type == QEvent::TabletPress){
-                O_DEBUG_EVENT(ev);
-                auto tabletEvent = (QTabletEvent*)ev;
-                QWindowSystemInterface::handleMouseEvent(
-                    nullptr,
-                    transpose(tabletEvent->posF()),
-                    transpose(tabletEvent->globalPosF()),
-                    Qt::LeftButton,
-                    Qt::LeftButton,
-                    QEvent::MouseButtonPress
-                );
-                tabletEvent->accept();
-            }
-            if(type == QEvent::TabletRelease){
-                O_DEBUG_EVENT(ev);
-                auto tabletEvent = (QTabletEvent*)ev;
-                QWindowSystemInterface::handleMouseEvent(
-                    nullptr,
-                    transpose(tabletEvent->posF()),
-                    transpose(tabletEvent->globalPosF()),
-                    Qt::NoButton,
-                    Qt::LeftButton,
-                    QEvent::MouseButtonRelease
-                );
-                tabletEvent->accept();
-            }
-            if(type == QEvent::TabletMove){
-                O_DEBUG_EVENT(ev);
-                auto tabletEvent = (QTabletEvent*)ev;
-                QWindowSystemInterface::handleMouseEvent(
-                    nullptr,
-                    transpose(tabletEvent->posF()),
-                    transpose(tabletEvent->globalPosF()),
-                    Qt::LeftButton,
-                    Qt::LeftButton,
-                    QEvent::MouseMove
-                );
-                tabletEvent->accept();
-            }
-#ifdef DEBUG_EVENTS
-            if(
-                type == QEvent::MouseMove
-                || type == QEvent::MouseButtonPress
-                || type == QEvent::MouseButtonRelease
-            ){
-                O_DEBUG(obj);
-                O_DEBUG(ev);
-            }
-#endif
+        if(QObject::eventFilter(obj, ev)){
+            return true;
         }
-        return filtered;
+        if(type == QEvent::TabletPress){
+            O_DEBUG_EVENT(ev);
+            auto tabletEvent = (QTabletEvent*)ev;
+            QWindowSystemInterface::handleMouseEvent(
+                nullptr,
+                transpose(tabletEvent->posF()),
+                transpose(tabletEvent->globalPosF()),
+                Qt::LeftButton,
+                Qt::LeftButton,
+                QEvent::MouseButtonPress
+            );
+            tabletEvent->accept();
+            return true;
+        }
+        if(type == QEvent::TabletRelease){
+            O_DEBUG_EVENT(ev);
+            auto tabletEvent = (QTabletEvent*)ev;
+            QWindowSystemInterface::handleMouseEvent(
+                nullptr,
+                transpose(tabletEvent->posF()),
+                transpose(tabletEvent->globalPosF()),
+                Qt::NoButton,
+                Qt::LeftButton,
+                QEvent::MouseButtonRelease
+            );
+            tabletEvent->accept();
+            return true;
+        }
+        if(type == QEvent::TabletMove){
+            O_DEBUG_EVENT(ev);
+            auto tabletEvent = (QTabletEvent*)ev;
+            QWindowSystemInterface::handleMouseEvent(
+                nullptr,
+                transpose(tabletEvent->posF()),
+                transpose(tabletEvent->globalPosF()),
+                Qt::LeftButton,
+                Qt::LeftButton,
+                QEvent::MouseMove
+            );
+            tabletEvent->accept();
+            return true;
+        }
+#ifdef DEBUG_EVENTS
+        if(
+            type == QEvent::MouseMove
+            || type == QEvent::MouseButtonPress
+            || type == QEvent::MouseButtonRelease
+        ){
+            O_DEBUG(obj);
+            O_DEBUG(ev);
+        }
+#endif
+        return false;
     }
 }
