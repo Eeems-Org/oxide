@@ -238,6 +238,10 @@ public:
         if(m_state == Off){
             setState(Disconnected);
         }
+        if(system("rfkill unblock wifi")){
+            qDebug() << "Failed to enable wifi devices";
+            return false;
+        }
         for(auto wlan : wlans){
             if(!wlan->isUp() && !wlan->up()){
                 qDebug() << "Failed to enable " + wlan->iface();
@@ -264,6 +268,9 @@ public:
             if(wlan->isUp() && !wlan->down()){
                 qDebug() << "Failed to disable " + wlan->iface();
             }
+        }
+        if(system("rfkill block wifi")){
+            qDebug() << "Failed to disable wifi devices";
         }
         flushBSSCache(0);
         xochitlSettings.set_wifion(false);

@@ -13,7 +13,11 @@
  * \brief Log a debug message if compiled with DEBUG mode, and debugging is enabled
  * \param msg Debug message to log
  */
+#ifndef DEBUG
+#ifndef QT_NO_DEBUG
 #define DEBUG
+#endif
+#endif
 #ifdef DEBUG
 #define O_DEBUG(msg) if(Oxide::debugEnabled()){ qDebug() << msg; }
 #else

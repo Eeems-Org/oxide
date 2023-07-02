@@ -86,7 +86,7 @@ void ButtonHandler::run(){
                 emit keyUp(map[ie.code].keyCode);
             }
         }else{
-            qApp->processEvents();
+            qApp->processEvents(QEventLoop::AllEvents, 100);
             yieldCurrentThread();
         }
     }
