@@ -316,23 +316,7 @@ public:
             app->pauseNoSecurityCheck(false);
         }
     }
-    void resumeIfNone(){
-        if(m_stopping || m_starting){
-            return;
-        }
-        for(auto app : applications){
-            if(app->stateNoSecurityCheck() == Application::InForeground){
-                return;
-            }
-        }
-        if(previousApplicationNoSecurityCheck()){
-            return;
-        }
-        auto app = getApplication(m_startupApplication);
-        if(app != nullptr){
-            app->launchNoSecurityCheck();
-        }
-    }
+    void resumeIfNone();
     Application* getApplication(QDBusObjectPath path){
         for(auto app : applications){
             if(app->path() == path.path()){
@@ -342,7 +326,7 @@ public:
         return nullptr;
     }
     QStringList getPreviousApplications(){ return previousApplications; }
-    Q_INVOKABLE QDBusObjectPath getApplicationPath(QString name){
+    Q_INVOKABLE QDBusObjectPath getApplicationPath(const QString& name){
         if(!hasPermission("apps")){
             return QDBusObjectPath("/");
         }
@@ -352,7 +336,7 @@ public:
         }
         return app->qPath();
     }
-    Application* getApplication(QString name){
+    Application* getApplication(const QString& name){
         if(applications.contains(name)){
             return applications[name];
         }
@@ -401,6 +385,9 @@ public:
             }
             auto currentApplication = getApplication(this->currentApplicationNoSecurityCheck());
             if(currentApplication != nullptr){
+                if(currentApplication == application){
+                    continue;
+                }
                 currentApplication->pauseNoSecurityCheck(false);
             }
             application->launchNoSecurityCheck();
@@ -576,6 +563,8 @@ private:
         static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
         return QString(OXIDE_SERVICE_PATH) + "/apps/" + QUuid::createUuidV5(NS, name).toString(QUuid::Id128);
     }
+    QString _noApplicationsMessage = "No applications have been found. This is the result of invalid configuration. Open an issue on\nhttps://github.com/Eeems-Org/oxide\nto get support resolving this.";
+    QString _noForegroundAppMessage = "No foreground application currently running. Open an issue on\nhttps://github.com/Eeems-Org/oxide\nto get support resolving this.";
 
     void writeApplications(){
         auto apps = applications.values();
@@ -732,5 +721,6 @@ private:
         settings->sync();
     }
     bool locked();
+    void ensureForegroundApp();
 };
 #endif // APPSAPI_H
