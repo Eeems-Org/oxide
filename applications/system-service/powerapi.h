@@ -49,10 +49,9 @@ public:
             });
             Oxide::Sentry::sentry_span(t, "monitor", "Setup monitor", [this]{
                 if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-                    udev = new UDev(this);
-                    udev->addMonitor("power_supply", NULL);
-                    connect(udev, &UDev::event, this, QOverload<>::of(&PowerAPI::update));
-                    udev->start();
+                    UDev::singleton()->subsystem("power_supply", [this]{
+                        update();
+                    });
                 }else{
                     timer = new QTimer(this);
                     timer->setSingleShot(false);
@@ -69,23 +68,21 @@ public:
             qDebug() << "Killing timer";
             timer->stop();
             delete timer;
-        }
-        if(udev != nullptr){
+        }else{
             qDebug() << "Killing UDev monitor";
-            udev->stop();
-            delete udev;
+            UDev::singleton()->stop();
         }
     }
 
     void setEnabled(bool enabled) override {
         if(enabled){
             if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-                udev->start();
+                UDev::singleton()->start();
             }else{
                 timer->start();
             }
         }else if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-            udev->stop();
+            UDev::singleton()->stop();
         }else{
             timer->stop();
         }
@@ -174,7 +171,6 @@ signals:
 
 private:
     QTimer* timer = nullptr;
-    UDev* udev = nullptr;
     int m_state = Normal;
     int m_batteryState = BatteryUnknown;
     int m_batteryLevel = 0;

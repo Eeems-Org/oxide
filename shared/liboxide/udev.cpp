@@ -9,10 +9,18 @@
 
 namespace Oxide {
 
-    UDev::UDev(QObject *parent) : QObject(), _thread(this){
+    UDev* UDev::singleton(){
+        static UDev* instance;
+        if(instance == nullptr){
+            instance = new UDev();
+            instance->start();
+        }
+        return instance;
+    }
+
+    UDev::UDev() : QObject(), _thread(this){
         qRegisterMetaType<Device>("UDev::Device");
         udevLib = udev_new();
-        connect(parent, &QObject::destroyed, this, &QObject::deleteLater);
         connect(&_thread, &QThread::started, this, &UDev::run);
         connect(&_thread, &QThread::finished, [this]{
             qDebug() << "UDev::Stopped";
@@ -26,6 +34,30 @@ namespace Oxide {
             udev_unref(udevLib);
             udevLib = nullptr;
         }
+    }
+
+    void UDev::subsystem(const QString& subsystem, std::function<void(const Device&)> callback){
+        deviceType(subsystem, NULL, callback);
+    }
+
+    void UDev::subsystem(const QString& subsystem, std::function<void()> callback){
+        deviceType(subsystem, NULL, callback);
+    }
+
+    void UDev::deviceType(const QString& subsystem, const QString& deviceType, std::function<void(const Device&)> callback){
+        connect(singleton(), &UDev::event, [callback, subsystem, deviceType](const Device& device){
+            if(device.subsystem == subsystem && (deviceType == NULL || device.deviceType == deviceType)){
+                callback(device);
+            }
+        });
+        singleton()->addMonitor(subsystem, deviceType);
+    }
+
+    void UDev::deviceType(const QString& subsystem, const QString& deviceType, std::function<void()> callback){
+        UDev::deviceType(subsystem, deviceType, [callback](const Device& device){
+            Q_UNUSED(device);
+            callback();
+        });
     }
 
     void UDev::start(){
@@ -64,11 +96,17 @@ namespace Oxide {
         }
         if(!list->contains(deviceType)){
             list->append(deviceType);
+            // TODO - update filter on the fly
+            stop();
+            start();
         }
     }
     void UDev::removeMonitor(QString subsystem, QString deviceType){
         if(monitors.contains(subsystem)){
             monitors[subsystem]->removeAll(deviceType);
+            // TODO - update filter on the fly
+            stop();
+            start();
         }
     }
 

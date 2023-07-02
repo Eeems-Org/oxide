@@ -18,8 +18,8 @@ namespace Oxide {
         Q_OBJECT
 
     public:
-        static void ensureMaxThreads();
-        explicit UDev(QObject *parent = nullptr);
+        static UDev* singleton();
+        explicit UDev();
         ~UDev();
 
         enum ActionType {
@@ -56,6 +56,10 @@ namespace Oxide {
                 return QString("<Device %1/%2 %3>").arg(subsystem, deviceType, actionString()).toStdString();
             }
         };
+        static void subsystem(const QString& subsystem, std::function<void(const Device&)> callback);
+        static void subsystem(const QString& subsystem, std::function<void()> callback);
+        static void deviceType(const QString& subsystem, const QString& deviceType, std::function<void(const Device&)> callback);
+        static void deviceType(const QString& subsystem, const QString& deviceType, std::function<void()> callback);
         void start();
         void stop();
         bool isRunning();
@@ -67,7 +71,7 @@ namespace Oxide {
         ActionType getActionType(const QString& actionType);
 
     signals:
-        void event(Device device);
+        void event(const Device& device);
 
     private:
         struct udev* udevLib = nullptr;
