@@ -54,17 +54,21 @@ void Notification::remove(){
 
 void Notification::paintNotification(Application* resumeApp){
     qDebug() << "Painting notification" << identifier();
-    screenBackup = screenAPI->copy();
+    dispatchToMainThread([this]{
+        screenBackup = screenAPI->copy();
+    });
     updateRect = notificationAPI->paintNotification(text(), m_icon);
     qDebug() << "Painted notification" << identifier();
     emit displayed();
     QTimer::singleShot(2000, [this, resumeApp]{
-        QPainter painter(EPFrameBuffer::framebuffer());
-        painter.drawImage(updateRect, screenBackup, updateRect);
-        painter.end();
-        EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-        qDebug() << "Finished displaying notification" << identifier();
-        EPFrameBuffer::waitForLastUpdate();
+        dispatchToMainThread([this]{
+            QPainter painter(EPFrameBuffer::framebuffer());
+            painter.drawImage(updateRect, screenBackup, updateRect);
+            painter.end();
+            EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+            qDebug() << "Finished displaying notification" << identifier();
+            EPFrameBuffer::waitForLastUpdate();
+        });
         if(!notificationAPI->notificationDisplayQueue.isEmpty()){
             Oxide::dispatchToMainThread([resumeApp] {
                 notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification(resumeApp);
