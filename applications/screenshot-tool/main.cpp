@@ -48,43 +48,39 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("fret");
     app.setApplicationVersion(APP_VERSION);
-    Oxide::Tarnish::connect();
-    auto bus = Oxide::Tarnish::getApi()->connection();
-    qDebug() << "Requesting system API...";
-    QDBusObjectPath path = Oxide::Tarnish::requestAPI("system");
-    if(path.path() == "/"){
+    Oxide::Tarnish::registerChild();
+    auto system = Oxide::Tarnish::systemAPI();
+    if(system == nullptr){
         qDebug() << "Unable to get system API";
         return EXIT_FAILURE;
     }
-    System system(OXIDE_SERVICE, path.path(), bus, &app);
     qDebug() << "Requesting screen API...";
-    path = Oxide::Tarnish::requestAPI("screen");
-    if(path.path() == "/"){
+    auto screen = Oxide::Tarnish::screenAPI();
+    if(screen == nullptr){
         qDebug() << "Unable to get screen API";
         return EXIT_FAILURE;
     }
-    Screen screen(OXIDE_SERVICE, path.path(), bus, &app);
     qDebug() << "Requesting notification API...";
-    path = Oxide::Tarnish::requestAPI("notification");
-    if(path.path() == "/"){
+    auto notifications = Oxide::Tarnish::notificationAPI();
+    if(notifications == nullptr){
         qDebug() << "Unable to get notification API";
         return EXIT_FAILURE;
     }
-    Notifications notifications(OXIDE_SERVICE, path.path(), bus, &app);
     qDebug() << "Connecting signal listener...";
-    QObject::connect(&system, &System::rightAction, [&screen, &notifications, bus, &app]{
+    auto bus = notifications->connection();
+    QObject::connect(system, &System::rightAction, [screen, notifications, bus, &app]{
         qDebug() << "Taking screenshot";
-        auto reply = screen.screenshot();
+        auto reply = screen->screenshot();
         reply.waitForFinished();
         if(reply.isError()){
             qDebug() << "Failed to take screenshot";
-            addNotification(&notifications, "Screenshot failed: " + reply.error().message());
+            addNotification(notifications, "Screenshot failed: " + reply.error().message());
             return;
         }
         auto qPath = reply.value().path();
         if(qPath == "/"){
             qDebug() << "Failed to take screenshot";
-            addNotification(&notifications, "Screenshot failed: Unknown reason");
+            addNotification(notifications, "Screenshot failed: Unknown reason");
             return;
         }
         Screenshot screenshot(OXIDE_SERVICE, qPath, bus, &app);
@@ -93,7 +89,7 @@ int main(int argc, char *argv[]){
             qDebug() << "Screenshot file exists.";
             QProcess::execute("/bin/bash", QStringList() << "/tmp/.screenshot" << screenshot.path());
         }
-        addNotification(&notifications, "Screenshot taken", screenshot.path());
+        addNotification(notifications, "Screenshot taken", screenshot.path());
         qDebug() << "Screenshot done.";
     });
     qDebug() << "Waiting for signals...";

@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <signal.h>
 #include <liboxide.h>
+#include <liboxide/tarnish.h>
 
 #include "controller.h"
 
@@ -29,6 +30,7 @@ int main(int argc, char *argv[]){
     app.setApplicationName("anxiety");
     app.setApplicationDisplayName("Screenshots");
     app.setApplicationVersion(APP_VERSION);
+    Tarnish::registerChild();
     Controller controller(&app);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();

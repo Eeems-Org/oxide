@@ -34,27 +34,23 @@ public:
     : QObject(parent),applications() {
         blankImage = new QImage(qApp->primaryScreen()->geometry().size(), QImage::Format_Mono);
         this->screenProvider = screenProvider;
-        Oxide::Tarnish::connect();
-        auto bus = Oxide::Tarnish::getApi()->connection();
         SignalHandler::setup_unix_signal_handlers();
         connect(signalHandler, &SignalHandler::sigUsr1, this, &Controller::sigUsr1);
         connect(signalHandler, &SignalHandler::sigUsr2, this, &Controller::sigUsr2);
 
         qDebug() << "Requesting screen API...";
-        QDBusObjectPath path = Oxide::Tarnish::requestAPI("screen");
-        if(path.path() == "/"){
+        screenApi = Oxide::Tarnish::screenAPI();
+        if(screenApi == nullptr){
             qDebug() << "Unable to get screen API";
             throw "";
         }
-        screenApi = new Screen(OXIDE_SERVICE, path.path(), bus, this);
 
         qDebug() << "Requesting apps API...";
-        path = Oxide::Tarnish::requestAPI("apps");
-        if(path.path() == "/"){
+        appsApi = Oxide::Tarnish::appsAPI();
+        if(appsApi == nullptr){
             qDebug() << "Unable to get apps API";
             throw "";
         }
-        appsApi = new Apps(OXIDE_SERVICE, path.path(), bus, this);
         connect(appsApi, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
         connect(appsApi, &Apps::applicationRegistered, this, &Controller::registerApplication);
         connect(appsApi, &Apps::applicationLaunched, this, &Controller::reload);

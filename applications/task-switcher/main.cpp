@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
+#include <liboxide/tarnish.h>
 
 #include "controller.h"
 
@@ -31,6 +32,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("corrupt");
     app.setApplicationVersion(APP_VERSION);
+    Tarnish::registerChild();
     auto screenProvider = new ScreenProvider(&app);
     Controller controller(&app, screenProvider);
     QQmlApplicationEngine engine;

@@ -4,6 +4,7 @@
 
 #include <liboxide.h>
 #include <liboxide/applications.h>
+#include <liboxide/tarnish.h>
 
 #include <QProcess>
 #include <QUrl>
@@ -65,25 +66,22 @@ class LaunchCommand : ICommand{
             }
             return EXIT_FAILURE;
         }
-        auto bus = QDBusConnection::systemBus();
-        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-        QDBusObjectPath qpath = api.requestAPI("apps");
-        if(qpath.path() == "/"){
+        auto apps = Oxide::Tarnish::appsAPI();
+        if(apps == nullptr){
             GIO_ERROR(url, path, "Error registering transient application", "Unable to get apps API");
             return EXIT_FAILURE;
         }
-        Apps apps(OXIDE_SERVICE, qpath.path(), bus);
         auto properties = registrationToMap(reg, name);
         if(properties.isEmpty()){
             GIO_ERROR(url, path, "Error registering transient application", "Unable to convert application registration to QVariantMap");
             return EXIT_FAILURE;
         }
-        qpath = apps.registerApplication(properties);
+        QDBusObjectPath qpath = apps->registerApplication(properties);
         if(qpath.path() == "/"){
             GIO_ERROR(url, path, "Error registering transient application", "Failed to register" << name.toStdString().c_str());
             return EXIT_FAILURE;
         }
-        Application app(OXIDE_SERVICE, qpath.path(), bus);
+        Application app(OXIDE_SERVICE, qpath.path(), Oxide::Tarnish::getAPI()->connection());
         app.launch().waitForFinished();
         return EXIT_SUCCESS;
     }

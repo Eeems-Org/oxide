@@ -27,28 +27,21 @@ public:
     Controller(QObject* parent)
     : QObject(parent), confirmPin() {
         clockTimer = new QTimer(root);
-        Oxide::Tarnish::connect();
-        auto bus = Oxide::Tarnish::getApi()->connection();
-        qDebug() << "Requesting system API...";
-        QDBusObjectPath path = Oxide::Tarnish::requestAPI("system");
-        if(path.path() == "/"){
+        systemApi = Oxide::Tarnish::systemAPI();
+        if(systemApi == nullptr){
             qDebug() << "Unable to get system API";
             throw "";
         }
-        systemApi = new System(OXIDE_SERVICE, path.path(), bus, this);
-
         connect(systemApi, &System::sleepInhibitedChanged, this, &Controller::sleepInhibitedChanged);
         connect(systemApi, &System::powerOffInhibitedChanged, this, &Controller::powerOffInhibitedChanged);
         connect(systemApi, &System::deviceSuspending, this, &Controller::deviceSuspending);
 
         qDebug() << "Requesting power API...";
-        path = Oxide::Tarnish::requestAPI("power");
-        if(path.path() == "/"){
+        powerApi = Oxide::Tarnish::powerAPI();
+        if(powerApi == nullptr){
             qDebug() << "Unable to get power API";
             throw "";
         }
-        powerApi = new Power(OXIDE_SERVICE, path.path(), bus, this);
-
         connect(powerApi, &Power::batteryLevelChanged, this, &Controller::batteryLevelChanged);
         connect(powerApi, &Power::batteryStateChanged, this, &Controller::batteryStateChanged);
         connect(powerApi, &Power::chargerStateChanged, this, &Controller::chargerStateChanged);
@@ -58,25 +51,22 @@ public:
         connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
 
         qDebug() << "Requesting wifi API...";
-        path = Oxide::Tarnish::requestAPI("wifi");
-        if(path.path() == "/"){
+        wifiApi = Oxide::Tarnish::wifiAPI();
+        if(wifiApi == nullptr){
             qDebug() << "Unable to get wifi API";
             throw "";
         }
-        wifiApi = new Wifi(OXIDE_SERVICE, path.path(), bus, this);
-
         connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
         connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
         connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
         connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
 
         qDebug() << "Requesting apps API...";
-        path = Oxide::Tarnish::requestAPI("apps");
-        if(path.path() == "/"){
+        appsApi = Oxide::Tarnish::appsAPI();
+        if(appsApi == nullptr){
             qDebug() << "Unable to get apps API";
             throw "";
         }
-        appsApi = new Apps(OXIDE_SERVICE, path.path(), bus, this);
 
         QSettings settings;
         if(QFile::exists(settings.fileName())){

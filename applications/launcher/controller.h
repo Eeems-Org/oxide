@@ -8,6 +8,7 @@
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
 #include <liboxide/sysobject.h>
+#include <liboxide/tarnish.h>
 
 #include "appitem.h"
 #include "wifinetworklist.h"
@@ -72,31 +73,12 @@ public:
     {
         networks = new WifiNetworkList();
         notifications = new NotificationList();
-
-        auto bus = QDBusConnection::systemBus();
-        qDebug() << "Waiting for tarnish to start up";
-        while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
-            struct timespec args{
-                .tv_sec = 1,
-                .tv_nsec = 0,
-            }, res;
-            nanosleep(&args, &res);
-        }
         qDebug() << "Requesting APIs";
-        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-        connect(&api, &General::aboutToQuit, qApp, &QGuiApplication::quit);
-        auto reply = api.requestAPI("power");
-        reply.waitForFinished();
-        if(reply.isError()){
-            qDebug() << reply.error();
-            qFatal("Could not request power API");
-        }
-        auto path = ((QDBusObjectPath)reply).path();
-        if(path == "/"){
-            qDebug() << "API not available";
+        connect(Oxide::Tarnish::getAPI(), &General::aboutToQuit, qApp, &QGuiApplication::quit);
+        powerApi = Oxide::Tarnish::powerAPI();
+        if(powerApi == nullptr){
             qFatal("Power API was not available");
         }
-        powerApi = new Power(OXIDE_SERVICE, path, bus);
         // Connect to signals
         connect(powerApi, &Power::batteryLevelChanged, this, &Controller::batteryLevelChanged);
         connect(powerApi, &Power::batteryStateChanged, this, &Controller::batteryStateChanged);
@@ -106,18 +88,9 @@ public:
         connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
         connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
         connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
-        reply = api.requestAPI("wifi");
-        reply.waitForFinished();
-        if(reply.isError()){
-            qDebug() << reply.error();
-            qFatal("Could not request wifi API");
-        }
-        path = ((QDBusObjectPath)reply).path();
-        if(path == "/"){
-            qDebug() << "API not available";
+        if(wifiApi == nullptr){
             qFatal("Wifi API was not available");
         }
-        wifiApi = new Wifi(OXIDE_SERVICE, path, bus);
         connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
         connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
         connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
@@ -144,18 +117,10 @@ public:
                 networkConnected(network);
             }
         });
-        reply = api.requestAPI("system");
-        reply.waitForFinished();
-        if(reply.isError()){
-            qDebug() << reply.error();
+        systemApi = Oxide::Tarnish::systemAPI();
+        if(systemApi == nullptr){
             qFatal("Could not request system API");
         }
-        path = ((QDBusObjectPath)reply).path();
-        if(path == "/"){
-            qDebug() << "API not available";
-            qFatal("System API was not available");
-        }
-        systemApi = new System(OXIDE_SERVICE, path, bus);
         connect(systemApi, &System::powerOffInhibitedChanged, this, &Controller::powerOffInhibitedChanged);
         connect(systemApi, &System::powerOffInhibitedChanged, [=](bool value){
             qDebug() << "Power Off Inhibited:" << value;
@@ -176,32 +141,16 @@ public:
         }
         emit powerOffInhibitedChanged(powerOffInhibited());
         emit sleepInhibitedChanged(sleepInhibited());
-        reply = api.requestAPI("apps");
-        reply.waitForFinished();
-        if(reply.isError()){
-            qDebug() << reply.error();
-            qFatal("Could not request apps API");
-        }
-        path = ((QDBusObjectPath)reply).path();
-        if(path == "/"){
-            qDebug() << "API not available";
+        appsApi = Oxide::Tarnish::appsAPI();
+        if(appsApi == nullptr){
             qFatal("Apps API was not available");
         }
-        appsApi = new Apps(OXIDE_SERVICE, path, bus);
         connect(appsApi, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
         connect(appsApi, &Apps::applicationRegistered, this, &Controller::registerApplication);
-        reply = api.requestAPI("notification");
-        reply.waitForFinished();
-        if(reply.isError()){
-            qDebug() << reply.error();
-            qFatal("Could not request notification API");
-        }
-        path = ((QDBusObjectPath)reply).path();
-        if(path == "/"){
-            qDebug() << "API not available";
+        notificationApi = Oxide::Tarnish::notificationAPI();
+        if(notificationApi == nullptr){
             qFatal("Notification API was not available");
         }
-        notificationApi = new Notifications(OXIDE_SERVICE, path, bus);
         connect(notificationApi, &Notifications::notificationAdded, this, &Controller::notificationAdded);
         connect(notificationApi, &Notifications::notificationRemoved, this, &Controller::notificationRemoved);
         connect(notificationApi, &Notifications::notificationChanged, this, &Controller::notificationChanged);

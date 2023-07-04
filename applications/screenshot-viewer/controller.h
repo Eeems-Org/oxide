@@ -5,6 +5,7 @@
 #include <QImage>
 #include <QQuickItem>
 #include <liboxide.h>
+#include <liboxide/tarnish.h>
 
 #include "epframebuffer.h"
 
@@ -29,30 +30,16 @@ public:
     Controller(QObject* parent)
     : QObject(parent), settings(this), applications() {
         screenshots = new ScreenshotList();
-        auto bus = QDBusConnection::systemBus();
-        qDebug() << "Waiting for tarnish to start up...";
-        while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
-            struct timespec args{
-                .tv_sec = 1,
-                .tv_nsec = 0,
-            }, res;
-            nanosleep(&args, &res);
+        screenApi = Oxide::Tarnish::screenAPI();
+        if(screenApi == nullptr){
+            qFatal("Screen API is not available");
         }
-        api = new General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, this);
-
-        qDebug() << "Requesting screen API...";
-        QDBusObjectPath path = api->requestAPI("screen");
-        if(path.path() == "/"){
-            qDebug() << "Unable to get screen API";
-            throw "";
-        }
-        screenApi = new Screen(OXIDE_SERVICE, path.path(), bus, this);
         connect(screenApi, &Screen::screenshotAdded, this, &Controller::screenshotAdded);
         connect(screenApi, &Screen::screenshotModified, this, &Controller::screenshotModified);
         connect(screenApi, &Screen::screenshotRemoved, this, &Controller::screenshotRemoved);
 
         for(auto path : screenApi->screenshots()){
-            screenshots->append(new Screenshot(OXIDE_SERVICE, path.path(), bus, this));
+            screenshots->append(new Screenshot(OXIDE_SERVICE, path.path(), screenApi->connection(), this));
         }
 
         settings.sync();
@@ -120,7 +107,6 @@ private slots:
 private:
     QSettings settings;
     ScreenshotList* screenshots;
-    General* api;
     Screen* screenApi;
     QObject* root = nullptr;
     QObject* stateControllerUI = nullptr;

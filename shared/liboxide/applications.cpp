@@ -1,6 +1,7 @@
 #include "applications.h"
 #include "json.h"
 #include "liboxide.h"
+#include "tarnish.h"
 
 #include <QJsonObject>
 #include <QFileInfo>
@@ -468,18 +469,15 @@ namespace Oxide::Applications{
         if(!_validateRegistration(name, app, true).isEmpty()){
             return false;
         }
-        auto bus = QDBusConnection::systemBus();
-        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-        QDBusObjectPath path = api.requestAPI("apps");
-        if(path.path() == "/"){
+        auto apps = Tarnish::appsAPI();
+        if(apps == nullptr){
             return false;
         }
-        Apps apps(OXIDE_SERVICE, path.path(), bus);
         auto properties = registrationToMap(app, name);
         if(properties.isEmpty()){
             return false;
         }
-        path = apps.registerApplication(properties);
+        QDBusObjectPath path = apps->registerApplication(properties);
         return path.path() != "/";
     }
     QString iconDirPath(int size, const QString& theme, const QString& context){

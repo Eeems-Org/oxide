@@ -16,7 +16,6 @@ using namespace Oxide::Sentry;
 
 int main(int argc, char *argv[]){
     deviceSettings.setupQtEnvironment();
-    Tarnish::connect();
     QGuiApplication app(argc, argv);
     sentry_init("decay", argv);
     auto filter = new EventFilter(&app);
@@ -25,6 +24,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("decay");
     app.setApplicationVersion(APP_VERSION);
+    Tarnish::registerChild();
     Controller controller(&app);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();

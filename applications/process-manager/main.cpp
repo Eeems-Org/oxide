@@ -8,6 +8,7 @@
 #include <ostream>
 #include <fcntl.h>
 #include <liboxide.h>
+#include <liboxide/tarnish.h>
 #include <liboxide/eventfilter.h>
 
 #include "controller.h"
@@ -25,6 +26,7 @@ int main(int argc, char *argv[]){
     app.setApplicationName("tarnish");
     app.setApplicationDisplayName("Process Monitor");
     app.setApplicationVersion(APP_VERSION);
+    Tarnish::registerChild();
     EventFilter filter;
     app.installEventFilter(&filter);
     QQmlApplicationEngine engine;
