@@ -46,7 +46,7 @@ namespace Oxide::Tarnish {
      * \brief getFrameBuffer
      * \return
      */
-    int getFrameBuffer();
+    int getFrameBufferFd();
     /*!
      * \brief createFrameBuffer
      * \param width
@@ -54,6 +54,21 @@ namespace Oxide::Tarnish {
      * \return
      */
     int createFrameBuffer(int width, int height);
+    /*!
+     * \brief frameBufferSize
+     * \return
+     */
+    QList<int> frameBufferSize();
+    /*!
+     * \brief frameBuffer
+     * \return
+     */
+    uchar* frameBuffer();
+    /*!
+     * \brief frameBuffer
+     * \return
+     */
+    QImage* frameBufferImage();
     /*!
      * \brief getEventPipe
      * \return

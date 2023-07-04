@@ -2,7 +2,9 @@
 #include "meta.h"
 #include "debug.h"
 
+#include <sys/mman.h>
 #include <QDBusConnection>
+#include <QImage>
 
 codes::eeems::oxide1::General* api_general = nullptr;
 codes::eeems::oxide1::Power* api_power = nullptr;
@@ -11,8 +13,11 @@ codes::eeems::oxide1::Screen* api_screen = nullptr;
 codes::eeems::oxide1::Apps* api_apps = nullptr;
 codes::eeems::oxide1::System* api_system = nullptr;
 codes::eeems::oxide1::Notifications* api_notification = nullptr;
-int frameBuffer = -1;
-int events = -1;
+int frameBufferFd = -1;
+int eventsFd = -1;
+uchar* fbData = nullptr;
+QImage* fbImage = nullptr;
+QList<int> fbSize;
 
 bool verifyConnection(){
     if(api_general == nullptr){
@@ -82,13 +87,22 @@ namespace Oxide::Tarnish {
         freeAPI(system);
         freeAPI(notification);
         freeAPI(general);
-        if(frameBuffer != -1){
-            close(frameBuffer);
-            frameBuffer = -1;
+        if(fbData != nullptr){
+            munmap(fbData, fbSize.at(0) * fbSize.at(1));
+            fbData = nullptr;
         }
-        if(events != -1){
-            close(events);
-            events = -1;
+        fbSize.clear();
+        if(fbImage != nullptr){
+            delete fbImage;
+            fbImage = nullptr;
+        }
+        if(frameBufferFd != -1){
+            close(frameBufferFd);
+            frameBufferFd = -1;
+        }
+        if(eventsFd != -1){
+            close(eventsFd);
+            eventsFd = -1;
         }
         QDBusConnection::disconnectFromBus(QDBusConnection::systemBus().name());
 #undef freeAPI
@@ -104,9 +118,9 @@ namespace Oxide::Tarnish {
         connect();
         return api_general->tarnishPid();
     }
-    int getFrameBuffer(){
-        if(frameBuffer != -1){
-            return frameBuffer;
+    int getFrameBufferFd(){
+        if(frameBufferFd != -1){
+            return frameBufferFd;
         }
         connect();
         QDBusPendingReply<QDBusUnixFileDescriptor> reply = api_general->getFrameBuffer();
@@ -120,11 +134,11 @@ namespace Oxide::Tarnish {
             O_WARNING("Unable to get framebuffer: No framebuffer provided");
             return -1;
         }
-        frameBuffer = dup(fd);
-        return frameBuffer;
+        frameBufferFd = dup(fd);
+        return frameBufferFd;
     }
     int createFrameBuffer(int width, int height){
-        if(frameBuffer != -1){
+        if(frameBufferFd != -1){
             O_WARNING("Framebuffer already exists");
             return -1;
         }
@@ -144,13 +158,60 @@ namespace Oxide::Tarnish {
             O_WARNING("Unable to get framebuffer: No framebuffer provided");
             return -1;
         }
-        frameBuffer =  dup(fd);
+        frameBufferFd =  dup(fd);
         api_general->enableFrameBuffer();
-        return frameBuffer;
+        return frameBufferFd;
+    }
+    QList<int> frameBufferSize(){
+        if(!fbSize.isEmpty()){
+            return fbSize;
+        }
+        connect();
+        QDBusPendingReply<QList<int>> reply = api_general->getFrameBufferSize();
+        if(reply.isError() || !reply.isValid()){
+            return fbSize;
+        }
+        auto size = reply.value();
+        fbSize.swap(size);
+        return fbSize;
+    }
+    uchar* frameBuffer(){
+        if(fbData != nullptr){
+            return fbData;
+        }
+        auto fd = getFrameBufferFd();
+        if(fd == -1){
+            return nullptr;
+        }
+        auto size = frameBufferSize();
+        if(size.isEmpty()){
+            return nullptr;
+        }
+        auto data = mmap(NULL, size[0] * size[1], PROT_READ | PROT_WRITE, MAP_SHARED | MAP_SYNC | MAP_HUGETLB, fd, 0);
+        if(data == MAP_FAILED){
+            return nullptr;
+        }
+        fbData = (uchar*)data;
+        return fbData;
+    }
+    QImage* frameBufferImage(){
+        if(fbImage){
+            return fbImage;
+        }
+        auto data = frameBuffer();
+        if(data == nullptr){
+            return nullptr;
+        }
+        auto size = frameBufferSize();
+        if(size.isEmpty()){
+            return nullptr;
+        }
+        fbImage = new QImage((uchar*)data, size[0], size[1], size[0], QImage::Format_Mono);
+        return fbImage;
     }
     int getEventPipe(){
-        if(events != -1){
-            return events;
+        if(eventsFd != -1){
+            return eventsFd;
         }
         connect();
         QDBusPendingReply<QDBusUnixFileDescriptor> reply = api_general->getEventPipe();
@@ -164,9 +225,9 @@ namespace Oxide::Tarnish {
             O_WARNING("Unable to get framebuffer: No framebuffer provided");
             return -1;
         }
-        events = dup(fd);
+        eventsFd = dup(fd);
         api_general->enableEventPipe();
-        return events;
+        return eventsFd;
     }
     codes::eeems::oxide1::Power* powerAPI(){
         if(api_power != nullptr){

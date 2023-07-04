@@ -50,11 +50,13 @@ struct ChildEntry {
     void* fbData = nullptr;
     QImage* fbImage = nullptr;
     std::string uniqueName() const{
-        return QString("%1-%2-%3").arg(service.c_str()).arg(name.c_str()).arg(pid).toStdString();
+        return QString("%1-%2-%3")
+            .arg(service.c_str())
+            .arg(name.c_str())
+            .arg(pid)
+            .toStdString();
     }
-    ssize_t size() const {
-        return fbWidth * fbHeight;
-    }
+    ssize_t size() const { return fbWidth * fbHeight; }
     QImage* frameBuffer() {
         if(fbImage){
             return fbImage;
@@ -68,7 +70,7 @@ struct ChildEntry {
         if(fbData == MAP_FAILED){
             return nullptr;
         }
-        fbImage = new QImage((uchar*)fbData, fbWidth, fbHeight, QImage::Format_Mono);
+        fbImage = new QImage((uchar*)fbData, fbWidth, fbHeight, fbWidth, QImage::Format_Mono);
         return fbImage;
     }
 };
@@ -298,6 +300,19 @@ public:
         return QDBusUnixFileDescriptor();
     }
 
+    Q_INVOKABLE QList<int> getFrameBufferSize(QDBusMessage message){
+        auto service = message.service().toStdString();
+        QMutableListIterator<ChildEntry> i(children);
+        while(i.hasNext()){
+            auto child = i.next();
+            if(child.service != service){
+                continue;
+            }
+            return QList<int>{child.fbWidth, child.fbHeight};
+        }
+        return QList<int>{ -1, -1 };
+    }
+
     Q_INVOKABLE QDBusUnixFileDescriptor createFrameBuffer(int width, int height, QDBusMessage message){
         auto service = message.service().toStdString();
         QMutableListIterator<ChildEntry> i(children);
@@ -480,16 +495,21 @@ private:
                 continue;
             }
             i.remove();
+            if(child.fbImage != nullptr){
+                delete child.fbImage;
+            }
+            if(child.fbData != nullptr && child.fbData != MAP_FAILED && munmap(child.fbData, child.size()) == -1){
+                O_WARNING("Failed to unmap framebuffer:" << strerror(errno));
+            }
             if(child.fb != -1 && close(child.fb)){
-                O_WARNING("Failed to close framebuffer" << strerror(errno));
+                O_WARNING("Failed to close framebuffer:" << strerror(errno));
             }
             if(child.eventRead != -1 && close(child.eventRead)){
-                O_WARNING("Failed to close event read pipe" << strerror(errno));
+                O_WARNING("Failed to close event read pipe:" << strerror(errno));
             }
             if(child.eventWrite != -1 && close(child.eventWrite)){
-                O_WARNING("Failed to close event write pipe" << strerror(errno));
+                O_WARNING("Failed to close event write pipe:" << strerror(errno));
             }
-
         }
     }
 };

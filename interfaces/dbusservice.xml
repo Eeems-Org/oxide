@@ -36,6 +36,10 @@
     <method name="getFrameBuffer">
       <arg type="h" direction="out"/>
     </method>
+    <method name="getFrameBufferSize">
+      <arg type="ai" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QList&lt;int&gt;"/>
+    </method>
     <method name="createFrameBuffer">
       <arg type="h" direction="out"/>
       <arg name="width" type="i" direction="in"/>
