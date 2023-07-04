@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <liboxide/eventfilter.h>
 #include <liboxide/dbus.h>
+#include <liboxide/tarnish.h>
 
 #include "controller.h"
 
@@ -15,6 +16,7 @@ using namespace Oxide::Sentry;
 
 int main(int argc, char *argv[]){
     deviceSettings.setupQtEnvironment();
+    Tarnish::connect();
     QGuiApplication app(argc, argv);
     sentry_init("decay", argv);
     auto filter = new EventFilter(&app);

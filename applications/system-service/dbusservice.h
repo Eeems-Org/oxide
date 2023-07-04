@@ -214,6 +214,25 @@ public:
 
     int tarnishPid(){ return qApp->applicationPid(); }
 
+    Q_INVOKABLE void registerChild(qint64 childPid, QString name, QDBusUnixFileDescriptor stdout, QDBusUnixFileDescriptor stderr){
+        Q_UNUSED(childPid)
+        if(!QDBusUnixFileDescriptor::isSupported()){
+            qCritical("QDBusUnixFileDescriptor is not supported");
+            ::kill(childPid, SIGTERM);
+        }
+        if(!stdout.isValid()){
+            O_WARNING("stdout passed in by" << childPid << "is invalid");
+            ::kill(childPid, SIGTERM);
+        }
+        if(!stderr.isValid()){
+            O_WARNING("stderr passed in by" << childPid << "is invalid");
+            ::kill(childPid, SIGTERM);
+        }
+        //stdout.fileDescriptor();
+        //stderr.fileDescriptor();
+        qDebug() << "registerChild" << childPid << name;
+    }
+
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
 #ifdef SENTRY

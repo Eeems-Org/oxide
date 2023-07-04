@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <signal.h>
 #include <liboxide.h>
+#include <liboxide/tarnish.h>
 
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
@@ -47,38 +48,30 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("fret");
     app.setApplicationVersion(APP_VERSION);
-    auto bus = QDBusConnection::systemBus();
-    qDebug() << "Waiting for tarnish to start up...";
-    while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
-        struct timespec args{
-            .tv_sec = 1,
-            .tv_nsec = 0,
-        }, res;
-        nanosleep(&args, &res);
-    }
-    General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, &app);
+    Oxide::Tarnish::connect();
+    auto bus = Oxide::Tarnish::getApi()->connection();
     qDebug() << "Requesting system API...";
-    QDBusObjectPath path = api.requestAPI("system");
+    QDBusObjectPath path = Oxide::Tarnish::requestAPI("system");
     if(path.path() == "/"){
         qDebug() << "Unable to get system API";
         return EXIT_FAILURE;
     }
     System system(OXIDE_SERVICE, path.path(), bus, &app);
     qDebug() << "Requesting screen API...";
-    path = api.requestAPI("screen");
+    path = Oxide::Tarnish::requestAPI("screen");
     if(path.path() == "/"){
         qDebug() << "Unable to get screen API";
         return EXIT_FAILURE;
     }
     Screen screen(OXIDE_SERVICE, path.path(), bus, &app);
     qDebug() << "Requesting notification API...";
-    path = api.requestAPI("notification");
+    path = Oxide::Tarnish::requestAPI("notification");
     if(path.path() == "/"){
         qDebug() << "Unable to get notification API";
         return EXIT_FAILURE;
     }
     Notifications notifications(OXIDE_SERVICE, path.path(), bus, &app);
-    qDebug()  << "Connecting signal listener...";
+    qDebug() << "Connecting signal listener...";
     QObject::connect(&system, &System::rightAction, [&screen, &notifications, bus, &app]{
         qDebug() << "Taking screenshot";
         auto reply = screen.screenshot();

@@ -10,6 +10,7 @@
 #include <epframebuffer.h>
 #include <signal.h>
 #include <liboxide.h>
+#include <liboxide/tarnish.h>
 
 #include "screenprovider.h"
 #include "appitem.h"
@@ -33,23 +34,14 @@ public:
     : QObject(parent),applications() {
         blankImage = new QImage(qApp->primaryScreen()->geometry().size(), QImage::Format_Mono);
         this->screenProvider = screenProvider;
-        auto bus = QDBusConnection::systemBus();
-        qDebug() << "Waiting for tarnish to start up...";
-        while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
-            struct timespec args{
-                .tv_sec = 1,
-                .tv_nsec = 0,
-            }, res;
-            nanosleep(&args, &res);
-        }
-        api = new General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, this);
-
+        Oxide::Tarnish::connect();
+        auto bus = Oxide::Tarnish::getApi()->connection();
         SignalHandler::setup_unix_signal_handlers();
         connect(signalHandler, &SignalHandler::sigUsr1, this, &Controller::sigUsr1);
         connect(signalHandler, &SignalHandler::sigUsr2, this, &Controller::sigUsr2);
 
         qDebug() << "Requesting screen API...";
-        QDBusObjectPath path = api->requestAPI("screen");
+        QDBusObjectPath path = Oxide::Tarnish::requestAPI("screen");
         if(path.path() == "/"){
             qDebug() << "Unable to get screen API";
             throw "";
@@ -57,7 +49,7 @@ public:
         screenApi = new Screen(OXIDE_SERVICE, path.path(), bus, this);
 
         qDebug() << "Requesting apps API...";
-        path = api->requestAPI("apps");
+        path = Oxide::Tarnish::requestAPI("apps");
         if(path.path() == "/"){
             qDebug() << "Unable to get apps API";
             throw "";
@@ -268,7 +260,6 @@ private slots:
     }
 
 private:
-    General* api;
     Screen* screenApi;
     Apps* appsApi;
     QObject* root = nullptr;
@@ -277,7 +268,7 @@ private:
     QList<QObject*> applications;
     QImage* blankImage;
 
-    int tarnishPid() { return api->tarnishPid(); }
+    int tarnishPid() { return Oxide::Tarnish::tarnishPid(); }
     QObject* getStateControllerUI(){
         stateControllerUI = root->findChild<QObject*>("stateController");
         return stateControllerUI;

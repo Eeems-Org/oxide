@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QQuickItem>
 #include <liboxide.h>
+#include <liboxide/tarnish.h>
 
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
@@ -26,19 +27,10 @@ public:
     Controller(QObject* parent)
     : QObject(parent), confirmPin() {
         clockTimer = new QTimer(root);
-        auto bus = QDBusConnection::systemBus();
-        qDebug() << "Waiting for tarnish to start up...";
-        while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
-            struct timespec args{
-                .tv_sec = 1,
-                .tv_nsec = 0,
-            }, res;
-            nanosleep(&args, &res);
-        }
-        api = new General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, this);
-
+        Oxide::Tarnish::connect();
+        auto bus = Oxide::Tarnish::getApi()->connection();
         qDebug() << "Requesting system API...";
-        QDBusObjectPath path = api->requestAPI("system");
+        QDBusObjectPath path = Oxide::Tarnish::requestAPI("system");
         if(path.path() == "/"){
             qDebug() << "Unable to get system API";
             throw "";
@@ -50,7 +42,7 @@ public:
         connect(systemApi, &System::deviceSuspending, this, &Controller::deviceSuspending);
 
         qDebug() << "Requesting power API...";
-        path = api->requestAPI("power");
+        path = Oxide::Tarnish::requestAPI("power");
         if(path.path() == "/"){
             qDebug() << "Unable to get power API";
             throw "";
@@ -66,7 +58,7 @@ public:
         connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
 
         qDebug() << "Requesting wifi API...";
-        path = api->requestAPI("wifi");
+        path = Oxide::Tarnish::requestAPI("wifi");
         if(path.path() == "/"){
             qDebug() << "Unable to get wifi API";
             throw "";
@@ -79,7 +71,7 @@ public:
         connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
 
         qDebug() << "Requesting apps API...";
-        path = api->requestAPI("apps");
+        path = Oxide::Tarnish::requestAPI("apps");
         if(path.path() == "/"){
             qDebug() << "Unable to get apps API";
             throw "";
@@ -488,7 +480,6 @@ private slots:
 
 private:
     QString confirmPin;
-    General* api;
     System* systemApi;
     codes::eeems::oxide1::Power* powerApi;
     Wifi* wifiApi;
@@ -501,7 +492,7 @@ private:
     QObject* stateControllerUI = nullptr;
     QObject* pinEntryUI = nullptr;
 
-    int tarnishPid() { return api->tarnishPid(); }
+    int tarnishPid() { return Oxide::Tarnish::tarnishPid(); }
     QObject* getBatteryUI() {
         batteryUI = root->findChild<QObject*>("batteryLevel");
         return batteryUI;
