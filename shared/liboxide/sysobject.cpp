@@ -25,6 +25,9 @@ namespace Oxide{
         return dir.exists();
     }
     int SysObject::intProperty(const std::string& name){
+        if(!hasProperty(name)){
+            return 0;
+        }
         try {
             return std::stoi(strProperty(name));
         }
@@ -37,7 +40,7 @@ namespace Oxide{
         auto path = propertyPath(name);
         QFile file(path.c_str());
         if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
-            O_DEBUG("Couldn't find the file " << path.c_str());
+            O_DEBUG("Couldn't find the file:" << path.c_str());
             return "0";
         }
         QTextStream in(&file);
@@ -47,6 +50,30 @@ namespace Oxide{
             return !std::isspace(ch);
         }).base(), text.end());
         return text;
+    }
+    QMap<QString, QString> SysObject::uevent(){
+        auto path = propertyPath("uevent");
+        QFile file(path.c_str());
+        QMap<QString, QString> props;
+        if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
+            O_DEBUG("Couldn't find the file:" << path.c_str());
+            return props;
+        }
+        QTextStream in(&file);
+        do{
+            auto line = in.readLine();
+            // doesn't always properly provide EOF
+            if(line.trimmed().isEmpty()){
+                break;
+            }
+            auto parts = line.split("=");
+            if(parts.length() != 2){
+                O_WARNING("Invalid uevent line" << line);
+                continue;
+            }
+            props.insert(parts.first().trimmed(), parts.last().trimmed());
+        }while(!in.atEnd());
+        return props;
     }
 }
 

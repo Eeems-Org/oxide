@@ -1,5 +1,6 @@
 #include "power.h"
 #include "debug.h"
+#include "liboxide.h"
 
 #include <QObject>
 #include <QDir>
@@ -9,6 +10,7 @@ using Oxide::SysObject;
 
 QList<SysObject>* _batteries = nullptr;
 QList<SysObject>* _chargers = nullptr;
+QList<SysObject>* _usbs = nullptr;
 
 void _setup(){
     if(_batteries != nullptr && _chargers != nullptr){
@@ -23,6 +25,11 @@ void _setup(){
         _chargers->clear();
     }else{
         _chargers = new QList<SysObject>();
+    }
+    if(_usbs != nullptr){
+        _usbs->clear();
+    }else{
+        _usbs = new QList<SysObject>();
     }
     QDir dir("/sys/class/power_supply");
     O_DEBUG("Looking for batteries and chargers...");
@@ -53,6 +60,39 @@ void _setup(){
             _chargers->append(battery);
         }
     }
+    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+        O_DEBUG("Looking for usbs...");
+        dir.setPath("/sys/bus/platform/devices");
+        for(QString& path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
+            if(!path.endsWith(".usbphy")){
+                continue;
+            }
+            O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
+            SysObject item(dir.path() + "/" + path);
+            if(!item.hasProperty("uevent")){
+                O_DEBUG("    Missing uevent property");
+                continue;
+            }
+            O_DEBUG("    Found USB!");
+            _usbs->append(item);
+        }
+    }else if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
+        O_DEBUG("Looking for usbs...");
+        dir.setPath("/sys/bus/platform/devices");
+        for(QString& path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
+            if(!path.startsWith("usbphy")){
+                continue;
+            }
+            O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
+            SysObject item(dir.path() + "/" + path);
+            if(!item.hasProperty("uevent")){
+                O_DEBUG("    Missing uevent property");
+                continue;
+            }
+            O_DEBUG("    Found USB!");
+            _usbs->append(item);
+        }
+    }
 }
 int _batteryInt(const QString& property){
     int result = 0;
@@ -77,6 +117,14 @@ int _chargerInt(const QString& property){
         result += charger.intProperty(property.toStdString());
     }
     return result;
+}
+bool _usbPropIs(const QString& property, const QString& value){
+    for(SysObject usb : *Oxide::Power::usbs()){
+        if(usb.uevent().value(property, "") == value){
+            return true;
+        }
+    }
+    return false;
 }
 static const QSet<QString> _batteryAlertState {
     "Overheat",
@@ -103,6 +151,10 @@ namespace Oxide::Power {
     const QList<SysObject>* chargers(){
         _setup();
         return _chargers;
+    }
+    const QList<SysObject>* usbs(){
+        _setup();
+        return _usbs;
     }
     int batteryLevel(){ return _batteryInt("capacity") / _batteries->length(); }
     int batteryTemperature(){ return _batteryIntMax("temp") / 10; }
@@ -156,5 +208,13 @@ namespace Oxide::Power {
     }
     bool batteryHasWarning(){ return batteryWarning().length(); }
     bool batteryHasAlert(){ return batteryAlert().length(); }
-    bool chargerConnected(){ return batteryCharging() || _chargerInt("online"); }
+    bool chargerConnected(){
+        if(batteryCharging() || _chargerInt("online")){
+            return true;
+        }
+        if(deviceSettings.getDeviceType() == DeviceSettings::DeviceType::RM1){
+            return _usbPropIs("USB_CHARGER_STATE", "USB_CHARGER_PRESENT");
+        }
+        return false;
+    }
 }

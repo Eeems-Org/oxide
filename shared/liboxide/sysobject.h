@@ -63,6 +63,11 @@ namespace Oxide {
          * \return The path to the named property
          */
         std::string propertyPath(const std::string& name);
+        /*!
+         * \brief Get the contents of uevent for this sysobject
+         * \return uevent properties
+         */
+        QMap<QString, QString> uevent();
 
     private:
         std::string m_path;
