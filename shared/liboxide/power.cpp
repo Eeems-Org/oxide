@@ -60,11 +60,15 @@ void _setup(){
             _chargers->append(battery);
         }
     }
-    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+    auto deviceType = deviceSettings.getDeviceType();
+    if(deviceType != Oxide::DeviceSettings::Unknown){
         O_DEBUG("Looking for usbs...");
         dir.setPath("/sys/bus/platform/devices");
         for(QString& path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
-            if(!path.endsWith(".usbphy")){
+            if(
+                (deviceType == Oxide::DeviceSettings::RM1 && !path.endsWith(".usbphy")) ||
+                (deviceType == Oxide::DeviceSettings::RM2 && !path.startsWith("usbphy"))
+            ){
                 continue;
             }
             O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
@@ -76,22 +80,8 @@ void _setup(){
             O_DEBUG("    Found USB!");
             _usbs->append(item);
         }
-    }else if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
-        O_DEBUG("Looking for usbs...");
-        dir.setPath("/sys/bus/platform/devices");
-        for(QString& path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
-            if(!path.startsWith("usbphy")){
-                continue;
-            }
-            O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
-            SysObject item(dir.path() + "/" + path);
-            if(!item.hasProperty("uevent")){
-                O_DEBUG("    Missing uevent property");
-                continue;
-            }
-            O_DEBUG("    Found USB!");
-            _usbs->append(item);
-        }
+    }else{
+        O_WARNING("Unable to detect usbs due to unknown device type");
     }
 }
 int _batteryInt(const QString& property){
@@ -212,9 +202,9 @@ namespace Oxide::Power {
         if(batteryCharging() || _chargerInt("online")){
             return true;
         }
-        if(deviceSettings.getDeviceType() == DeviceSettings::DeviceType::RM1){
-            return _usbPropIs("USB_CHARGER_STATE", "USB_CHARGER_PRESENT");
+        if(deviceSettings.getDeviceType() == DeviceSettings::DeviceType::Unknown){
+            return false;
         }
-        return false;
+        return _usbPropIs("USB_CHARGER_STATE", "USB_CHARGER_PRESENT");
     }
 }
