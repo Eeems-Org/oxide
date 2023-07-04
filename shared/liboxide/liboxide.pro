@@ -26,6 +26,7 @@ SOURCES += \
     signalhandler.cpp
 
 HEADERS += \
+    ../epaper/epframebuffer.h \
     applications.h \
     dbus.h \
     debug.h \
@@ -65,7 +66,8 @@ liboxide_liboxide_h.target = include/liboxide/liboxide.h
 liboxide_liboxide_h.commands = \
     mkdir -p include/liboxide && \
     echo $$HEADERS | xargs -rn1 | xargs -rI {} cp $$PWD/{} include/liboxide/ && \
-    echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename \"{}\" .xml | xargs -rI {} cp $$OUT_PWD/\"{}\"_interface.h include/liboxide/
+    echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename \"{}\" .xml | xargs -rI {} cp $$OUT_PWD/\"{}\"_interface.h include/liboxide/ && \
+    mv $$OUT_PWD/include/liboxide/epframebuffer.h $$OUT_PWD/include/
 
 liboxide_h.target = include/liboxide.h
 liboxide_h.depends += liboxide_liboxide_h
@@ -85,5 +87,6 @@ include(../../qmake/common.pri)
 target.path = /opt/lib
 INSTALLS += target
 
-include(../../qmake/epaper.pri)
+LIBS += -L$$PWD/../epaper -lqsgepaper
+INCLUDEPATH += $$PWD/../epaper
 include(../../qmake/sentry.pri)
