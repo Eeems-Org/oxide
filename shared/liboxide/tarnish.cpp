@@ -4,31 +4,36 @@
 
 #include <QDBusConnection>
 
-codes::eeems::oxide1::General* general_api = nullptr;
-codes::eeems::oxide1::Power* power_api = nullptr;
-codes::eeems::oxide1::Wifi* wifi_api = nullptr;
-codes::eeems::oxide1::Screen* screen_api = nullptr;
-codes::eeems::oxide1::Apps* apps_api = nullptr;
-codes::eeems::oxide1::System* system_api = nullptr;
-codes::eeems::oxide1::Notifications* notification_api = nullptr;
+codes::eeems::oxide1::General* api_general = nullptr;
+codes::eeems::oxide1::Power* api_power = nullptr;
+codes::eeems::oxide1::Wifi* api_wifi = nullptr;
+codes::eeems::oxide1::Screen* api_screen = nullptr;
+codes::eeems::oxide1::Apps* api_apps = nullptr;
+codes::eeems::oxide1::System* api_system = nullptr;
+codes::eeems::oxide1::Notifications* api_notification = nullptr;
+int frameBuffer = -1;
+int events = -1;
 
 bool verifyConnection(){
-    if(general_api == nullptr){
+    if(api_general == nullptr){
         return false;
     }
-    if(!general_api->isValid()){
-        delete general_api;
-        general_api = nullptr;
+    if(!api_general->isValid()){
+        api_general->deleteLater();
+        api_general = nullptr;
         return false;
     }
     return true;
 }
 
 namespace Oxide::Tarnish {
-    codes::eeems::oxide1::General* getAPI(){ return general_api; }
+    codes::eeems::oxide1::General* getAPI(){ return api_general; }
     QString requestAPI(std::string name){
         connect();
-        auto reply = general_api->requestAPI(QString::fromStdString(name));
+        if(api_general == nullptr){
+            qFatal(QString("Unable to request %1 api: Could not connect to general API").arg(name.c_str()).toStdString().c_str());
+        }
+        auto reply = api_general->requestAPI(QString::fromStdString(name));
         if(reply.isError()){
             O_WARNING("Unable to request " << name.c_str() << " api:" << reply.error());
             return "/";
@@ -38,6 +43,12 @@ namespace Oxide::Tarnish {
             O_WARNING("API " << name.c_str() << " request denied, or unavailable");
         }
         return path.path();
+    }
+    void releaseAPI(std::string name){
+        if(!verifyConnection()){
+            return;
+        }
+        api_general->releaseAPI(QString::fromStdString(name));
     }
     void connect(){
         if(verifyConnection()){
@@ -52,89 +63,180 @@ namespace Oxide::Tarnish {
             }, res;
             nanosleep(&args, &res);
         }
-        general_api = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, qApp);
+        api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, qApp);
 
+    }
+    void disconnect(){
+#define freeAPI(name) \
+        if(api_##name != nullptr){ \
+            if(strcmp(#name, "general") == 0){ \
+                releaseAPI(#name);\
+            } \
+            api_##name->deleteLater(); \
+            api_##name = nullptr; \
+        }
+        freeAPI(power);
+        freeAPI(wifi);
+        freeAPI(screen);
+        freeAPI(apps);
+        freeAPI(system);
+        freeAPI(notification);
+        freeAPI(general);
+        if(frameBuffer != -1){
+            close(frameBuffer);
+            frameBuffer = -1;
+        }
+        if(events != -1){
+            close(events);
+            events = -1;
+        }
+        QDBusConnection::disconnectFromBus(QDBusConnection::systemBus().name());
+#undef freeAPI
     }
     void registerChild(){
         registerChild(qApp->applicationName().toStdString());
     }
     void registerChild(std::string name){
         connect();
-        general_api->registerChild(getpid(), QString::fromStdString(name), QDBusUnixFileDescriptor(fileno(stdin)), QDBusUnixFileDescriptor(fileno(stdout)));
+        api_general->registerChild(getpid(), QString::fromStdString(name), QDBusUnixFileDescriptor(fileno(stdin)), QDBusUnixFileDescriptor(fileno(stdout)));
     }
     int tarnishPid(){
         connect();
-        return general_api->tarnishPid();
+        return api_general->tarnishPid();
+    }
+    int getFrameBuffer(){
+        if(frameBuffer != -1){
+            return frameBuffer;
+        }
+        connect();
+        QDBusPendingReply<QDBusUnixFileDescriptor> reply = api_general->getFrameBuffer();
+        reply.waitForFinished();
+        if(reply.isError()){
+            O_WARNING("Unable to get framebuffer:" << reply.error());
+            return -1;
+        }
+        auto fd = reply.value().fileDescriptor();
+        if(fd == -1){
+            O_WARNING("Unable to get framebuffer: No framebuffer provided");
+            return -1;
+        }
+        frameBuffer = dup(fd);
+        return frameBuffer;
+    }
+    int createFrameBuffer(int width, int height){
+        if(frameBuffer != -1){
+            O_WARNING("Framebuffer already exists");
+            return -1;
+        }
+        connect();
+        if(api_general->hasFrameBuffer()){
+            O_WARNING("Framebuffer already exists");
+            return -1;
+        }
+        QDBusPendingReply<QDBusUnixFileDescriptor> reply = api_general->createFrameBuffer(width, height);
+        reply.waitForFinished();
+        if(reply.isError()){
+            O_WARNING("Unable to get framebuffer:" << reply.error());
+            return -1;
+        }
+        auto fd = reply.value().fileDescriptor();
+        if(fd == -1){
+            O_WARNING("Unable to get framebuffer: No framebuffer provided");
+            return -1;
+        }
+        frameBuffer =  dup(fd);
+        api_general->enableFrameBuffer();
+        return frameBuffer;
+    }
+    int getEventPipe(){
+        if(events != -1){
+            return events;
+        }
+        connect();
+        QDBusPendingReply<QDBusUnixFileDescriptor> reply = api_general->getEventPipe();
+        reply.waitForFinished();
+        if(reply.isError()){
+            O_WARNING("Unable to get framebuffer:" << reply.error());
+            return -1;
+        }
+        auto fd = reply.value().fileDescriptor();
+        if(fd == -1){
+            O_WARNING("Unable to get framebuffer: No framebuffer provided");
+            return -1;
+        }
+        events = dup(fd);
+        api_general->enableEventPipe();
+        return events;
     }
     codes::eeems::oxide1::Power* powerAPI(){
-        if(power_api != nullptr){
-            return power_api;
+        if(api_power != nullptr){
+            return api_power;
         }
         auto path = requestAPI("power");
         if(path == "/"){
             return nullptr;
         }
-        power_api = new codes::eeems::oxide1::Power(OXIDE_SERVICE, path, general_api->connection(), (QObject*)qApp);
-        return power_api;
+        api_power = new codes::eeems::oxide1::Power(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        return api_power;
     }
 
     codes::eeems::oxide1::Wifi* wifiAPI(){
-        if(wifi_api != nullptr){
-            return wifi_api;
+        if(api_wifi != nullptr){
+            return api_wifi;
         }
         auto path = requestAPI("wifi");
         if(path == "/"){
             return nullptr;
         }
-        wifi_api = new codes::eeems::oxide1::Wifi(OXIDE_SERVICE, path, general_api->connection(), (QObject*)qApp);
-        return wifi_api;
+        api_wifi = new codes::eeems::oxide1::Wifi(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        return api_wifi;
     }
 
     codes::eeems::oxide1::Screen* screenAPI(){
-        if(screen_api != nullptr){
-            return screen_api;
+        if(api_screen != nullptr){
+            return api_screen;
         }
         auto path = requestAPI("screen");
         if(path == "/"){
             return nullptr;
         }
-        screen_api = new codes::eeems::oxide1::Screen(OXIDE_SERVICE, path, general_api->connection(), (QObject*)qApp);
-        return screen_api;
+        api_screen = new codes::eeems::oxide1::Screen(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        return api_screen;
     }
 
     codes::eeems::oxide1::Apps* appsAPI(){
-        if(apps_api != nullptr){
-            return apps_api;
+        if(api_apps != nullptr){
+            return api_apps;
         }
         auto path = requestAPI("apps");
         if(path == "/"){
             return nullptr;
         }
-        apps_api = new codes::eeems::oxide1::Apps(OXIDE_SERVICE, path, general_api->connection(), (QObject*)qApp);
-        return apps_api;
+        api_apps = new codes::eeems::oxide1::Apps(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        return api_apps;
     }
 
     codes::eeems::oxide1::System* systemAPI(){
-        if(system_api != nullptr){
-            return system_api;
+        if(api_system != nullptr){
+            return api_system;
         }
         auto path = requestAPI("system");
         if(path == "/"){
             return nullptr;
         }
-        system_api = new codes::eeems::oxide1::System(OXIDE_SERVICE, path, general_api->connection(), (QObject*)qApp);
-        return system_api;
+        api_system = new codes::eeems::oxide1::System(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        return api_system;
     }
 
     codes::eeems::oxide1::Notifications* notificationAPI(){
-        if(notification_api != nullptr){
-            return notification_api;
+        if(api_notification != nullptr){
+            return api_notification;
         }
         auto path = requestAPI("notification");
         if(path == "/"){
             return nullptr;
         }
-        notification_api = new codes::eeems::oxide1::Notifications(OXIDE_SERVICE, path, general_api->connection(), (QObject*)qApp);
-        return notification_api;
+        api_notification = new codes::eeems::oxide1::Notifications(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        return api_notification;
     }
 }

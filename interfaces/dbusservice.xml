@@ -30,5 +30,25 @@
       <arg name="stdout" type="h" direction="in"/>
       <arg name="stderr" type="h" direction="in"/>
     </method>
+    <method name="hasFrameBuffer">
+      <arg type="b" direction="out"/>
+    </method>
+    <method name="getFrameBuffer">
+      <arg type="h" direction="out"/>
+    </method>
+    <method name="createFrameBuffer">
+      <arg type="h" direction="out"/>
+      <arg name="width" type="i" direction="in"/>
+      <arg name="height" type="i" direction="in"/>
+    </method>
+    <method name="enableFrameBuffer">
+    </method>
+    <method name="getEventPipe">
+      <arg type="h" direction="out"/>
+    </method>
+    <method name="enableEventPipe">
+    </method>
+    <method name="unregisterChild">
+    </method>
   </interface>
 </node>

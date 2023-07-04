@@ -25,6 +25,10 @@ namespace Oxide::Tarnish {
      */
     void connect();
     /*!
+     * \brief Disconnect from the current tarnish instance
+     */
+    void disconnect();
+    /*!
      * \brief Register this child application to be managed by Tarnish
      */
     void registerChild();
@@ -38,6 +42,23 @@ namespace Oxide::Tarnish {
      * \return The tarnish PID
      */
     int tarnishPid();
+    /*!
+     * \brief getFrameBuffer
+     * \return
+     */
+    int getFrameBuffer();
+    /*!
+     * \brief createFrameBuffer
+     * \param width
+     * \param height
+     * \return
+     */
+    int createFrameBuffer(int width, int height);
+    /*!
+     * \brief getEventPipe
+     * \return
+     */
+    int getEventPipe();
     /*!
      * \brief powerAPI
      * \return

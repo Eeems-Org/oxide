@@ -8,8 +8,9 @@
 #include <QDBusMessage>
 #include <QDBusConnectionInterface>
 #include <QDBusConnection>
-#include <fstream>
 #include <QGuiApplication>
+#include <QLocalServer>
+#include <fstream>
 #include <liboxide.h>
 
 #include "powerapi.h"
@@ -33,6 +34,43 @@ struct APIEntry {
     QString path;
     QStringList* dependants;
     APIBase* instance;
+};
+
+struct ChildEntry {
+    std::string service;
+    qint64 pid;
+    std::string name;
+    int stdout;
+    int stderr;
+    int fb;
+    int fbWidth;
+    int fbHeight;
+    int eventRead;
+    int eventWrite;
+    void* fbData = nullptr;
+    QImage* fbImage = nullptr;
+    std::string uniqueName() const{
+        return QString("%1-%2-%3").arg(service.c_str()).arg(name.c_str()).arg(pid).toStdString();
+    }
+    ssize_t size() const {
+        return fbWidth * fbHeight;
+    }
+    QImage* frameBuffer() {
+        if(fbImage){
+            return fbImage;
+        }
+        if(fb == -1){
+            return nullptr;
+        }
+        if(fbData == nullptr || fbData == MAP_FAILED){
+            fbData = mmap(NULL, size(), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_SYNC | MAP_HUGETLB, fb, 0);
+        }
+        if(fbData == MAP_FAILED){
+            return nullptr;
+        }
+        fbImage = new QImage((uchar*)fbData, fbWidth, fbHeight, QImage::Format_Mono);
+        return fbImage;
+    }
 };
 
 class DBusService : public APIBase {
@@ -88,7 +126,7 @@ public:
         }
         return instance;
     }
-    DBusService(QObject* parent) : APIBase(parent), apis(){
+    DBusService(QObject* parent) : APIBase(parent), apis(), children(){
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", "Initializing APIs", "info");
 #endif
@@ -203,7 +241,7 @@ public:
         sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
 #endif
     }
-    void setEnabled(bool enabled){ Q_UNUSED(enabled); };
+    void setEnabled(bool enabled){ Q_UNUSED(enabled); }
 
     QObject* getAPI(QString name){
         if(!apis.contains(name)){
@@ -214,7 +252,7 @@ public:
 
     int tarnishPid(){ return qApp->applicationPid(); }
 
-    Q_INVOKABLE void registerChild(qint64 childPid, QString name, QDBusUnixFileDescriptor stdout, QDBusUnixFileDescriptor stderr){
+    Q_INVOKABLE void registerChild(qint64 childPid, QString name, QDBusUnixFileDescriptor stdout, QDBusUnixFileDescriptor stderr, QDBusMessage message){
         Q_UNUSED(childPid)
         if(!QDBusUnixFileDescriptor::isSupported()){
             qCritical("QDBusUnixFileDescriptor is not supported");
@@ -228,10 +266,119 @@ public:
             O_WARNING("stderr passed in by" << childPid << "is invalid");
             ::kill(childPid, SIGTERM);
         }
-        //stdout.fileDescriptor();
-        //stderr.fileDescriptor();
         qDebug() << "registerChild" << childPid << name;
+        children.append(ChildEntry{
+            .service = message.service().toStdString(),
+            .pid = childPid,
+            .name = name.toStdString(),
+            .stdout = dup(stdout.fileDescriptor()),
+            .stderr = dup(stderr.fileDescriptor()),
+            .fb = -1,
+            .fbWidth = -1,
+            .fbHeight = -1,
+            .eventRead = -1,
+            .eventWrite = -1
+        });
     }
+    Q_INVOKABLE bool hasFrameBuffer(QDBusMessage message){ return getFrameBuffer(message).isValid(); }
+
+    Q_INVOKABLE QDBusUnixFileDescriptor getFrameBuffer(QDBusMessage message){
+        auto service = message.service().toStdString();
+        QMutableListIterator<ChildEntry> i(children);
+        while(i.hasNext()){
+            auto child = i.next();
+            if(child.service != service){
+                continue;
+            }
+            if(child.fb == -1){
+                break;
+            }
+            return QDBusUnixFileDescriptor(child.fb);
+        }
+        return QDBusUnixFileDescriptor();
+    }
+
+    Q_INVOKABLE QDBusUnixFileDescriptor createFrameBuffer(int width, int height, QDBusMessage message){
+        auto service = message.service().toStdString();
+        QMutableListIterator<ChildEntry> i(children);
+        while(i.hasNext()){
+            auto child = i.next();
+            if(child.service != service){
+                continue;
+            }
+            if(child.fb != -1){
+                O_WARNING("Framebuffer already exists");
+                break;
+            }
+            int fd = memfd_create(child.uniqueName().c_str(), MFD_ALLOW_SEALING | MFD_HUGETLB);
+            if(fd == -1){
+                O_WARNING("Unable to open memfd for framebuffer:" << strerror(errno));
+                break;
+            }
+            if(ftruncate(fd, width * height)){
+                close(fd);
+                O_WARNING("Unable to truncate memfd for framebuffer:" << strerror(errno));
+                break;
+            }
+            int flags = fcntl(fd, F_GET_SEALS);
+            if(fcntl(fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW)){
+                close(fd);
+                O_WARNING("Unable to seal memfd for framebuffer:" << strerror(errno));
+                break;
+            }
+            child.fb = fd;
+            child.fbWidth = width;
+            child.fbHeight = height;
+            return QDBusUnixFileDescriptor(child.fb);
+        }
+        return QDBusUnixFileDescriptor();
+    }
+
+    Q_INVOKABLE void enableFrameBuffer(){
+        // TODO start rendering framebuffer
+    }
+
+    Q_INVOKABLE QDBusUnixFileDescriptor getEventPipe(QDBusMessage message){
+        auto service = message.service().toStdString();
+        QMutableListIterator<ChildEntry> i(children);
+        while(i.hasNext()){
+            auto child = i.next();
+            if(child.service != service){
+                continue;
+            }
+            if(child.eventRead != -1){
+                return QDBusUnixFileDescriptor(child.eventRead);
+            }
+            int fds[2];
+            if(pipe2(fds, O_DIRECT) == -1){
+                O_WARNING("Unable to open events pipe:" << strerror(errno));
+                break;
+            }
+            child.eventRead = fds[0];
+            child.eventWrite = fds[1];
+            return QDBusUnixFileDescriptor(child.eventRead);
+        }
+        return QDBusUnixFileDescriptor();
+    }
+
+    Q_INVOKABLE void enableEventPipe(QDBusMessage message){
+        auto service = message.service().toStdString();
+        QMutableListIterator<ChildEntry> i(children);
+        while(i.hasNext()){
+            auto child = i.next();
+            if(child.service != service || child.eventRead == -1){
+                continue;
+            }
+            if(close(child.eventRead)){
+                O_WARNING("Failed to close events write pipe" << strerror(errno));
+            }else{
+                child.eventRead = -1;
+            }
+            // TODO - start emitting events
+        }
+    }
+
+    Q_INVOKABLE void unregisterChild(QDBusMessage message){ unregisterChild(message.service().toStdString()); }
 
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
@@ -256,7 +403,7 @@ public slots:
         }
         api.dependants->append(message.service());
         return QDBusObjectPath(api.path);
-    };
+    }
     Q_NOREPLY void releaseAPI(QString name, QDBusMessage message) {
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", ("releaseAPI() " + name).toStdString().c_str(), "query");
@@ -273,7 +420,7 @@ public slots:
             QDBusConnection::systemBus().unregisterObject(api.path, QDBusConnection::UnregisterNode);
             emit apiUnavailable(QDBusObjectPath(api.path));
         }
-    };
+    }
     QVariantMap APIs(){
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", "APIs()", "query");
@@ -286,7 +433,7 @@ public slots:
             }
         }
         return result;
-    };
+    }
 
     void startup(){
 #ifdef SENTRY
@@ -304,24 +451,47 @@ signals:
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){
         Q_UNUSED(oldOwner);
-        if(newOwner.isEmpty()){
-            auto bus = QDBusConnection::systemBus();
-            for(auto key : apis.keys()){
-                auto api = apis[key];
-                api.dependants->removeAll(name);
-                if(!api.dependants->size() && bus.objectRegisteredAt(api.path) != nullptr){
-                    qDebug() << "Automatically unregistering " << api.path;
-                    api.instance->setEnabled(false);
-                    bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);
-                    apiUnavailable(QDBusObjectPath(api.path));
-                }
-            }
-            systemAPI->uninhibitAll(name);
+        if(!newOwner.isEmpty()){
+            return;
         }
+        auto bus = QDBusConnection::systemBus();
+        for(auto key : apis.keys()){
+            auto api = apis[key];
+            api.dependants->removeAll(name);
+            if(!api.dependants->size() && bus.objectRegisteredAt(api.path) != nullptr){
+                qDebug() << "Automatically unregistering " << api.path;
+                api.instance->setEnabled(false);
+                bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);
+                apiUnavailable(QDBusObjectPath(api.path));
+            }
+        }
+        unregisterChild(name.toStdString());
+        systemAPI->uninhibitAll(name);
     }
 
 private:
     QMap<QString, APIEntry> apis;
+    QList<ChildEntry> children;
+    void unregisterChild(std::string service){
+        QMutableListIterator<ChildEntry> i(children);
+        while(i.hasNext()){
+            auto child = i.next();
+            if(child.service != service){
+                continue;
+            }
+            i.remove();
+            if(child.fb != -1 && close(child.fb)){
+                O_WARNING("Failed to close framebuffer" << strerror(errno));
+            }
+            if(child.eventRead != -1 && close(child.eventRead)){
+                O_WARNING("Failed to close event read pipe" << strerror(errno));
+            }
+            if(child.eventWrite != -1 && close(child.eventWrite)){
+                O_WARNING("Failed to close event write pipe" << strerror(errno));
+            }
+
+        }
+    }
 };
 
 #endif // DBUSSERVICE_H
