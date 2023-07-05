@@ -9,20 +9,20 @@ QT_BEGIN_NAMESPACE
 class OxideBackingStore : public QPlatformBackingStore
 {
 public:
-    OxideBackingStore(QWindow *window);
+    OxideBackingStore(QWindow* window);
     ~OxideBackingStore();
 
     QPaintDevice* paintDevice() override;
     void flush(QWindow *window, const QRegion &region, const QPoint &offset) override;
     void resize(const QSize &size, const QRegion &staticContents) override;
-    void beginPaint(const QRegion& region) override;
-    void endPaint() override;
     bool scroll(const QRegion &area, int dx, int dy) override;
+    QImage toImage() const override;
+    const QImage& getImageRef() const;
+    QPlatformGraphicsBuffer* graphicsBuffer() const override;
 
 private:
-    QImage* frameBuffer;
+    QImage image;
     const bool mDebug;
-    QImage* getFrameBuffer();
 };
 
 QT_END_NAMESPACE

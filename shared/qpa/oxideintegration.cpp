@@ -1,5 +1,6 @@
 #include "oxideintegration.h"
 #include "oxidebackingstore.h"
+#include "oxidescreen.h"
 
 #include <QtGui/private/qguiapplication_p.h>
 #include <QtGui/private/qpixmap_raster_p.h>
@@ -19,7 +20,7 @@ QT_BEGIN_NAMESPACE
 
 class QCoreTextFontEngine;
 
-static const char debugBackingStoreEnvironmentVariable[] = "QT_DEBUG_BACKINGSTORE";
+static const char debugQPAEnvironmentVariable[] = "QT_DEBUG_OXIDE_QPA";
 
 static inline unsigned parseOptions(const QStringList &paramList){
     unsigned options = 0;
@@ -36,20 +37,16 @@ static inline unsigned parseOptions(const QStringList &paramList){
     return options;
 }
 
-OxideIntegration::OxideIntegration(const QStringList &parameters): m_fontDatabase(nullptr), m_options(parseOptions(parameters)){
+OxideIntegration::OxideIntegration(const QStringList &parameters): m_fontDatabase(nullptr), m_options(parseOptions(parameters)), m_debug(false){
     if(
-        qEnvironmentVariableIsSet(debugBackingStoreEnvironmentVariable)
-        && qEnvironmentVariableIntValue(debugBackingStoreEnvironmentVariable) > 0
+        qEnvironmentVariableIsSet(debugQPAEnvironmentVariable)
+        && qEnvironmentVariableIntValue(debugQPAEnvironmentVariable) > 0
     ) {
-        m_options |= DebugBackingStore | EnableFonts;
+        m_options |= DebugQPA | EnableFonts;
+        m_debug = true;
     }
 
     m_primaryScreen = new OxideScreen();
-
-    m_primaryScreen->mGeometry = QRect(0, 0, 1404, 1872);
-    m_primaryScreen->mDepth = 32;
-    m_primaryScreen->mFormat = QImage::Format_RGB16;
-
     QWindowSystemInterface::handleScreenAdded(m_primaryScreen);
 }
 
@@ -59,6 +56,9 @@ OxideIntegration::~OxideIntegration(){
 }
 
 bool OxideIntegration::hasCapability(QPlatformIntegration::Capability cap) const{
+    if(m_debug){
+        qDebug() << "OxideIntegration::hasCapability";
+    }
     switch (cap) {
         case ThreadedPixmaps: return true;
         case MultipleWindows: return true;
@@ -67,6 +67,9 @@ bool OxideIntegration::hasCapability(QPlatformIntegration::Capability cap) const
 }
 
 void OxideIntegration::initialize(){
+    if(m_debug){
+        qDebug() << "OxideIntegration::initialize";
+    }
     new QEvdevTouchManager(QLatin1String("EvdevTouch"), QString() /* spec */, nullptr);
     new QEvdevTabletManager(QLatin1String("EvdevTablet"), deviceSettings.getTouchEnvSetting(), nullptr);
     new QEvdevMouseManager(QLatin1String("EvdevMouse"), QString() /* spec */, nullptr);
@@ -84,6 +87,9 @@ public:
 };
 
 QPlatformFontDatabase* OxideIntegration::fontDatabase() const{
+    if(m_debug){
+        qDebug() << "OxideIntegration::fontDatabase";
+    }
     if(!m_fontDatabase && (m_options & EnableFonts)){
         if(!m_fontDatabase){
 #if QT_CONFIG(fontconfig)
@@ -99,20 +105,49 @@ QPlatformFontDatabase* OxideIntegration::fontDatabase() const{
     return m_fontDatabase;
 }
 
-QPlatformInputContext* OxideIntegration::inputContext() const{ return m_inputContext; }
+QPlatformInputContext* OxideIntegration::inputContext() const{
+    if(m_debug){
+        qDebug() << "OxideIntegration::inputContext";
+    }
+    return m_inputContext;
+}
 
 QPlatformWindow* OxideIntegration::createPlatformWindow(QWindow *window) const{
-    QPlatformWindow *w = new QPlatformWindow(window);
+    if(m_debug){
+        qDebug() << "OxideIntegration::createPlatformWindow";
+    }
+    OxideWindow* w = new OxideWindow(window);
     w->requestActivateWindow();
     return w;
 }
 
-QPlatformBackingStore* OxideIntegration::createPlatformBackingStore(QWindow *window) const{ return new OxideBackingStore(window); }
+QPlatformBackingStore* OxideIntegration::createPlatformBackingStore(QWindow *window) const{
+    if(m_debug){
+        qDebug() << "OxideIntegration::createPlatformBackingStore";
+    }
+    return new OxideBackingStore(window);
+}
 
-QAbstractEventDispatcher* OxideIntegration::createEventDispatcher() const{ return createUnixEventDispatcher(); }
+QAbstractEventDispatcher* OxideIntegration::createEventDispatcher() const{
+    if(m_debug){
+        qDebug() << "OxideIntegration::createEventDispatcher";
+    }
+    return createUnixEventDispatcher();
+}
 
-QPlatformNativeInterface* OxideIntegration::nativeInterface() const{ return const_cast<OxideIntegration*>(this); }
+QPlatformNativeInterface* OxideIntegration::nativeInterface() const{
+    if(m_debug){
+        qDebug() << "OxideIntegration::nativeInterface";
+    }
+    return const_cast<OxideIntegration*>(this);
+}
 
-OxideIntegration* OxideIntegration::instance(){ return static_cast<OxideIntegration*>(QGuiApplicationPrivate::platformIntegration()); }
+OxideIntegration* OxideIntegration::instance(){
+    auto instance = static_cast<OxideIntegration*>(QGuiApplicationPrivate::platformIntegration());
+    if(instance->m_debug){
+        qDebug() << "OxideIntegration::instance";
+    }
+    return instance;
+}
 
 QT_END_NAMESPACE

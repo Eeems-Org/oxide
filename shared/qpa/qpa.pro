@@ -15,9 +15,13 @@ qtHaveModule(eventdispatcher_support-private) {
 
 SOURCES = main.cpp \
           oxidebackingstore.cpp \
-          oxideintegration.cpp
+          oxideintegration.cpp \
+          oxidescreen.cpp \
+          oxidewindow.cpp
 HEADERS = oxidebackingstore.h \
-          oxideintegration.h
+          oxideintegration.h \
+          oxidescreen.h \
+          oxidewindow.h
 
 OTHER_FILES += oxide.json
 

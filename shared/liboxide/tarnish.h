@@ -91,6 +91,12 @@ namespace Oxide::Tarnish {
      */
     void screenUpdate(EPFrameBuffer::WaveformMode mode = EPFrameBuffer::HighQualityGrayscale);
     /*!
+     * \brief screenUpdate
+     * \param rect
+     * \param mode
+     */
+    void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode mode = EPFrameBuffer::HighQualityGrayscale);
+    /*!
      * \brief powerAPI
      * \return
      */

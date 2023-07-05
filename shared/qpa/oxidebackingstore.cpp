@@ -1,5 +1,6 @@
 #include "oxidebackingstore.h"
 #include "oxideintegration.h"
+#include "oxidescreen.h"
 
 #include <qscreen.h>
 #include <QtCore/qdebug.h>
@@ -9,12 +10,15 @@
 
 QT_BEGIN_NAMESPACE
 
-OxideBackingStore::OxideBackingStore(QWindow *window)
+OxideBackingStore::OxideBackingStore(QWindow* window)
 : QPlatformBackingStore(window),
-  mDebug(OxideIntegration::instance()->options() & OxideIntegration::DebugBackingStore)
+  mDebug(OxideIntegration::instance()->options() & OxideIntegration::DebugQPA)
 {
     if(mDebug){
         qDebug() << "OxideBackingStore::OxideBackingStore:" << (quintptr)this;
+    }
+    if(window != nullptr && window->handle()){
+        (static_cast<OxideWindow*>(window->handle()))->setBackingStore(this);
     }
 }
 
@@ -24,20 +28,19 @@ QPaintDevice* OxideBackingStore::paintDevice(){
     if(mDebug){
         qDebug("OxideBackingStore::paintDevice");
     }
-    return getFrameBuffer();
+    return &image;
 }
 
 void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoint& offset){
-    Q_UNUSED(window);
     Q_UNUSED(region);
     Q_UNUSED(offset);
     if(mDebug){
         static int c = 0;
-        QString filename = QString("output%1.png").arg(c++, 4, 10, QChar(u'0'));
+        QString filename = QString("/tmp/output%1.png").arg(c++, 4, 10, QChar(u'0'));
         qDebug() << "OxideBackingStore::flush() saving contents to" << filename.toLocal8Bit().constData();
-        getFrameBuffer()->save(filename);
+        image.save(filename);
     }
-    Oxide::Tarnish::screenUpdate();
+    ((OxideScreen*)window->screen()->handle())->scheduleUpdate();
 }
 
 void OxideBackingStore::resize(const QSize& size, const QRegion& region){
@@ -46,24 +49,9 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
     if(mDebug){
         qDebug("OxideBackingStore::resize");
     }
-    // TODO - handle resize
-}
-void OxideBackingStore::beginPaint(const QRegion& region){
-    if(mDebug){
-        qDebug("OxideBackingStore::beginPaint");
+    if(image.size() != size){
+        image = QImage(size, QImage::Format_RGB16);
     }
-    getFrameBuffer();
-    Oxide::Tarnish::lockFrameBuffer();
-    QPlatformBackingStore::beginPaint(region);
-}
-
-void OxideBackingStore::endPaint(){
-    if(mDebug){
-        qDebug("OxideBackingStore::endPaint");
-    }
-    getFrameBuffer();
-    Oxide::Tarnish::unlockFrameBuffer();
-    QPlatformBackingStore::endPaint();
 }
 
 bool OxideBackingStore::scroll(const QRegion& area, int dx, int dy){
@@ -75,18 +63,24 @@ bool OxideBackingStore::scroll(const QRegion& area, int dx, int dy){
     }
     return false;
 }
-QImage* OxideBackingStore::getFrameBuffer(){
-    if(frameBuffer != nullptr){
-        return frameBuffer;
+QImage OxideBackingStore::toImage() const{
+    if(mDebug){
+        qDebug("OxideBackingStore::toImage");
     }
-    auto image = Oxide::Tarnish::frameBufferImage();
-    if(image != nullptr){
-        return image;
+    return image;
+}
+const QImage& OxideBackingStore::getImageRef() const{
+    if(mDebug){
+        qDebug("OxideBackingStore::getImageRef");
     }
-    auto size = EPFrameBuffer::framebuffer()->size();
-    Oxide::Tarnish::createFrameBuffer(size.width(), size.height());
-    frameBuffer = Oxide::Tarnish::frameBufferImage();
-    return frameBuffer;
+    return image;
+}
+
+QPlatformGraphicsBuffer* OxideBackingStore::graphicsBuffer() const{
+    if(mDebug){
+        qDebug("OxideBackingStore::graphicsBuffer");
+    }
+    return nullptr;
 }
 
 QT_END_NAMESPACE

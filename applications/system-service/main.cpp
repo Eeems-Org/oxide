@@ -8,6 +8,8 @@
 
 #include "dbusservice.h"
 
+Q_IMPORT_PLUGIN(QsgEpaperPlugin)
+
 using namespace std;
 using namespace Oxide::Sentry;
 

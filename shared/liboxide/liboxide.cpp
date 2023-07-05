@@ -309,6 +309,7 @@ namespace Oxide {
         if(type != DeviceSettings::Oxide){
 #ifdef __arm__
             qputenv("QMLSCENE_DEVICE", "epaper");
+            qputenv("QT_QUICK_BACKEND","epaper");
             qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
             if(type != DeviceSettings::NoPen){
                 qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
@@ -318,7 +319,9 @@ namespace Oxide {
         }else{
             QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
             qputenv("QT_QUICK_BACKEND","software");
+            qputenv("QMLSCENE_DEVICE","software");
             qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
+            qputenv("QT_DEBUG_OXIDE_QPA", "1");
         }
     }
     WifiNetworks XochitlSettings::wifinetworks(){

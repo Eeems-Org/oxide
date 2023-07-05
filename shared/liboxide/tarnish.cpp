@@ -278,6 +278,23 @@ namespace Oxide::Tarnish {
         }
         api_general->screenUpdate(mode);
     }
+    void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode mode){
+        if(fbData == nullptr){
+            return;
+        }
+        auto info = frameBufferInfo();
+        if(info.isEmpty()){
+            return;
+        }
+        if(!unlockFrameBuffer()){
+            O_WARNING("Failed to unlock framebuffer:" << strerror(errno))
+        }
+        if(msync(fbData, info[2], MS_SYNC | MS_INVALIDATE) == -1){
+            O_WARNING("Failed to sync:" << strerror(errno))
+            return;
+        }
+        api_general->screenUpdate(rect.x(), rect.y(), rect.width(), rect.height(), mode);
+    }
     codes::eeems::oxide1::Power* powerAPI(){
         if(api_power != nullptr){
             return api_power;
