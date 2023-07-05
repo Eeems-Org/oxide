@@ -44,7 +44,7 @@ int main(int argc, char* argv[]){
         O_WARNING("rm2fb not detected. Running xochitl instead!");
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
-    deviceSettings.setupQtEnvironment(false);
+    deviceSettings.setupQtEnvironment(DeviceSettings::QtEnvironmentType::NoTouch);
     QGuiApplication app(argc, argv);
     sentry_init("tarnish", argv);
     app.setOrganizationName("Eeems");

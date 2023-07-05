@@ -15,7 +15,7 @@ using namespace Oxide;
 using namespace Oxide::Sentry;
 
 int main(int argc, char *argv[]){
-    deviceSettings.setupQtEnvironment();
+    deviceSettings.setupQtEnvironment(DeviceSettings::QtEnvironmentType::Oxide);
     QGuiApplication app(argc, argv);
     sentry_init("decay", argv);
     auto filter = new EventFilter(&app);

@@ -231,10 +231,19 @@ namespace Oxide {
          */
         void setTimezone(const QString& timezone);
         /*!
+         * \brief The QtEnvironmentType enum
+         */
+        enum QtEnvironmentType{
+            Default, /*!< Default, standalone Qt environment >*/
+            NoTouch, /*!< Standalone Qt environment with no touch support >*/
+            Oxide /*!< Oxide environment >*/
+        };
+
+        /*!
          * \brief Setup the Qt environment
          * \snippet examples/oxide.cpp setupQtEnvironment
          */
-        void setupQtEnvironment(bool touch = true);
+        void setupQtEnvironment(QtEnvironmentType type = Default);
 
     private:
         DeviceType _deviceType;

@@ -1,6 +1,7 @@
 TEMPLATE = subdirs
 
 SUBDIRS = \
-    liboxide
+    liboxide \
+    qpa
 
 INSTALLS += $$SUBDIRS

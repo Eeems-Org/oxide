@@ -296,16 +296,27 @@ namespace Oxide {
         }
         QProcess::execute("timedatectl", QStringList() << "set-timezone" << timezone);
     }
-    void DeviceSettings::setupQtEnvironment(bool touch){
+    void DeviceSettings::setupQtEnvironment(QtEnvironmentType type){
         auto qt_version = qVersion();
+        qDebug() << "Runtime: " << qt_version;
+        qDebug() << "Build: " << QT_VERSION_STR;
         if (strcmp(qt_version, QT_VERSION_STR) != 0){
-            qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
+            qDebug() << "Version mismatch!";
         }
+        if(type != DeviceSettings::Oxide){
 #ifdef __arm__
-        qputenv("QMLSCENE_DEVICE", "epaper");
-        qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
+            qputenv("QMLSCENE_DEVICE", "epaper");
+            qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
 #endif
-        if(touch){
+        }else{
+#ifdef DEBUG
+            qputenv("QT_DEBUG_PLUGINS", "1");
+#endif
+            QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
+            qputenv("QMLSCENE_DEVICE", "oxide");
+            qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
+        }
+        if(type != DeviceSettings::NoTouch){
             qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
             qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
         }
