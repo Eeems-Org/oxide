@@ -17,7 +17,7 @@ int frameBufferFd = -1;
 int eventsFd = -1;
 uchar* fbData = nullptr;
 QImage* fbImage = nullptr;
-QList<int> fbSize;
+QList<qint64> fbInfo;
 
 bool verifyConnection(){
     if(api_general == nullptr){
@@ -88,10 +88,10 @@ namespace Oxide::Tarnish {
         freeAPI(notification);
         freeAPI(general);
         if(fbData != nullptr){
-            munmap(fbData, fbSize.at(0) * fbSize.at(1));
+            munmap(fbData, fbInfo.at(0) * fbInfo.at(1));
             fbData = nullptr;
         }
-        fbSize.clear();
+        fbInfo.clear();
         if(fbImage != nullptr){
             delete fbImage;
             fbImage = nullptr;
@@ -162,18 +162,23 @@ namespace Oxide::Tarnish {
         api_general->enableFrameBuffer();
         return frameBufferFd;
     }
-    QList<int> frameBufferSize(){
-        if(!fbSize.isEmpty()){
-            return fbSize;
+    QList<qlonglong> frameBufferInfo(){
+        if(getFrameBufferFd() == -1 || !fbInfo.isEmpty()){
+            return fbInfo;
         }
         connect();
-        QDBusPendingReply<QList<int>> reply = api_general->getFrameBufferSize();
-        if(reply.isError() || !reply.isValid()){
-            return fbSize;
+        QDBusPendingReply<QList<qlonglong>> reply = api_general->getFrameBufferInfo();
+        if(reply.isError()){
+            O_WARNING("Unable to get framebuffer info:" << reply.error());
+            return fbInfo;
         }
-        auto size = reply.value();
-        fbSize.swap(size);
-        return fbSize;
+        auto info = reply.value();
+        if(info.contains(-1)){
+            O_WARNING("Unable to get framebuffer info: Invalid size returned");
+            return fbInfo;
+        }
+        fbInfo.swap(info);
+        return fbInfo;
     }
     uchar* frameBuffer(){
         if(fbData != nullptr){
@@ -181,32 +186,59 @@ namespace Oxide::Tarnish {
         }
         auto fd = getFrameBufferFd();
         if(fd == -1){
+            O_WARNING("Unable to get framebuffer fd");
             return nullptr;
         }
-        auto size = frameBufferSize();
-        if(size.isEmpty()){
+        auto info = frameBufferInfo();
+        if(info.isEmpty()){
+            O_WARNING("Unable to get framebuffer info");
             return nullptr;
         }
-        auto data = mmap(NULL, size[0] * size[1], PROT_READ | PROT_WRITE, MAP_SHARED | MAP_SYNC | MAP_HUGETLB, fd, 0);
+        auto data = mmap(NULL, info[2], PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fd, 0);
         if(data == MAP_FAILED){
+            O_WARNING("Unable to get framebuffer data:" << strerror(errno));
             return nullptr;
         }
         fbData = (uchar*)data;
         return fbData;
     }
+    bool lockFrameBuffer(){
+        auto data = frameBuffer();
+        if(data == nullptr){
+            return false;
+        }
+        auto info = frameBufferInfo();
+        if(info.isEmpty()){
+            O_WARNING("Unable to get framebuffer info");
+            return false;
+        }
+        return mlock2(data, info[2], MLOCK_ONFAULT) != -1;
+    }
+    bool unlockFrameBuffer(){
+        auto data = frameBuffer();
+        if(data == nullptr){
+            return false;
+        }
+        auto info = frameBufferInfo();
+        if(info.isEmpty()){
+            O_WARNING("Unable to get framebuffer info");
+            return false;
+        }
+        return munlock(data, info[2]) != -1;
+    }
     QImage* frameBufferImage(){
-        if(fbImage){
+        if(fbImage != nullptr){
             return fbImage;
         }
         auto data = frameBuffer();
         if(data == nullptr){
             return nullptr;
         }
-        auto size = frameBufferSize();
-        if(size.isEmpty()){
+        auto info = frameBufferInfo();
+        if(info.isEmpty()){
             return nullptr;
         }
-        fbImage = new QImage((uchar*)data, size[0], size[1], size[0], QImage::Format_Mono);
+        fbImage = new QImage((uchar*)data, info[0], info[1], info[3], (QImage::Format)info[4]);
         return fbImage;
     }
     int getEventPipe(){
@@ -228,6 +260,23 @@ namespace Oxide::Tarnish {
         eventsFd = dup(fd);
         api_general->enableEventPipe();
         return eventsFd;
+    }
+    void screenUpdate(){
+        if(fbData == nullptr){
+            return;
+        }
+        auto info = frameBufferInfo();
+        if(info.isEmpty()){
+            return;
+        }
+        if(!unlockFrameBuffer()){
+            O_WARNING("Failed to unlock framebuffer:" << strerror(errno))
+        }
+        if(msync(fbData, info[2], MS_SYNC | MS_INVALIDATE) == -1){
+            O_WARNING("Failed to sync:" << strerror(errno))
+            return;
+        }
+        api_general->screenUpdate();
     }
     codes::eeems::oxide1::Power* powerAPI(){
         if(api_power != nullptr){

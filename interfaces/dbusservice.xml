@@ -22,6 +22,14 @@
       <arg type="a{sv}" direction="out"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
     </method>
+    <method name="screenUpdate">
+    </method>
+    <method name="screenUpdate">
+      <arg name="x" type="i" direction="in"/>
+      <arg name="y" type="i" direction="in"/>
+      <arg name="width" type="i" direction="in"/>
+      <arg name="height" type="i" direction="in"/>
+    </method>
     <method name="startup">
     </method>
     <method name="registerChild">
@@ -36,9 +44,9 @@
     <method name="getFrameBuffer">
       <arg type="h" direction="out"/>
     </method>
-    <method name="getFrameBufferSize">
-      <arg type="ai" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QList&lt;int&gt;"/>
+    <method name="getFrameBufferInfo">
+      <arg type="ax" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QList&lt;qlonglong&gt;"/>
     </method>
     <method name="createFrameBuffer">
       <arg type="h" direction="out"/>

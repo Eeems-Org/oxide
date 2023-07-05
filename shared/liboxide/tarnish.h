@@ -55,15 +55,25 @@ namespace Oxide::Tarnish {
      */
     int createFrameBuffer(int width, int height);
     /*!
-     * \brief frameBufferSize
+     * \brief frameBufferInfo
      * \return
      */
-    QList<int> frameBufferSize();
+    QList<qlonglong> frameBufferInfo();
     /*!
      * \brief frameBuffer
      * \return
      */
     uchar* frameBuffer();
+    /*!
+     * \brief lockFrameBuffer
+     * \return
+     */
+    bool lockFrameBuffer();
+    /*!
+     * \brief unlockFrameBuffer
+     * \return
+     */
+    bool unlockFrameBuffer();
     /*!
      * \brief frameBuffer
      * \return
@@ -74,6 +84,10 @@ namespace Oxide::Tarnish {
      * \return
      */
     int getEventPipe();
+    /*!
+     * \brief screenUpdate
+     */
+    void screenUpdate();
     /*!
      * \brief powerAPI
      * \return
