@@ -9,6 +9,7 @@
 
 #include <private/qevdevmousemanager_p.h>
 #include <private/qevdevtouchmanager_p.h>
+#include <private/qevdevtabletmanager_p.h>
 #include <private/qgenericunixeventdispatcher_p.h>
 #include <private/qgenericunixfontdatabase_p.h>
 
@@ -42,9 +43,9 @@ OxideIntegration::OxideIntegration(const QStringList &parameters): m_fontDatabas
 
     m_primaryScreen = new OxideScreen();
 
-    m_primaryScreen->mGeometry = QRect(0, 0, 240, 320);
+    m_primaryScreen->mGeometry = QRect(0, 0, 1404, 1872);
     m_primaryScreen->mDepth = 32;
-    m_primaryScreen->mFormat = QImage::Format_ARGB32_Premultiplied;
+    m_primaryScreen->mFormat = QImage::Format_RGB16;
 
     QWindowSystemInterface::handleScreenAdded(m_primaryScreen);
 }
@@ -62,6 +63,14 @@ bool OxideIntegration::hasCapability(QPlatformIntegration::Capability cap) const
     }
 }
 
+void OxideIntegration::initialize(){
+    new QEvdevTouchManager(QLatin1String("EvdevTouch"), QString() /* spec */, nullptr);
+    new QEvdevTabletManager(QLatin1String("EvdevTablet"), QString() /* spec */, nullptr);
+    new QEvdevMouseManager(QLatin1String("EvdevMouse"), QString() /* spec */, nullptr);
+    m_inputContext = QPlatformInputContextFactory::create();
+}
+
+
 // Dummy font database that does not scan the fonts directory to be
 // used for command line tools like qmlplugindump that do not create windows
 // unless DebugBackingStore is activated.
@@ -70,7 +79,7 @@ public:
     virtual void populateFontDatabase() override {}
 };
 
-QPlatformFontDatabase *OxideIntegration::fontDatabase() const{
+QPlatformFontDatabase* OxideIntegration::fontDatabase() const{
     if(!m_fontDatabase && (m_options & EnableFonts)){
         if(!m_fontDatabase){
 #if QT_CONFIG(fontconfig)
@@ -86,24 +95,20 @@ QPlatformFontDatabase *OxideIntegration::fontDatabase() const{
     return m_fontDatabase;
 }
 
-QPlatformWindow *OxideIntegration::createPlatformWindow(QWindow *window) const{
-    Q_UNUSED(window);
+QPlatformInputContext* OxideIntegration::inputContext() const{ return m_inputContext; }
+
+QPlatformWindow* OxideIntegration::createPlatformWindow(QWindow *window) const{
     QPlatformWindow *w = new QPlatformWindow(window);
     w->requestActivateWindow();
     return w;
 }
 
-QPlatformBackingStore *OxideIntegration::createPlatformBackingStore(QWindow *window) const{ return new OxideBackingStore(window); }
+QPlatformBackingStore* OxideIntegration::createPlatformBackingStore(QWindow *window) const{ return new OxideBackingStore(window); }
 
-QAbstractEventDispatcher *OxideIntegration::createEventDispatcher() const{ return createUnixEventDispatcher(); }
+QAbstractEventDispatcher* OxideIntegration::createEventDispatcher() const{ return createUnixEventDispatcher(); }
 
-QPlatformNativeInterface *OxideIntegration::nativeInterface() const{
-    if(!m_nativeInterface){
-        m_nativeInterface.reset(new QPlatformNativeInterface);
-    }
-    return m_nativeInterface.get();
-}
+QPlatformNativeInterface* OxideIntegration::nativeInterface() const{ return const_cast<OxideIntegration*>(this); }
 
-OxideIntegration *OxideIntegration::instance(){ return static_cast<OxideIntegration *>(QGuiApplicationPrivate::platformIntegration()); }
+OxideIntegration* OxideIntegration::instance(){ return static_cast<OxideIntegration*>(QGuiApplicationPrivate::platformIntegration()); }
 
 QT_END_NAMESPACE

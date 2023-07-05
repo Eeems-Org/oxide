@@ -83,7 +83,7 @@ QImage* OxideBackingStore::getFrameBuffer(){
     if(image != nullptr){
         return image;
     }
-    auto size = QGuiApplication::primaryScreen()->size();
+    auto size = EPFrameBuffer::framebuffer()->size();
     Oxide::Tarnish::createFrameBuffer(size.width(), size.height());
     frameBuffer = Oxide::Tarnish::frameBufferImage();
     return frameBuffer;
