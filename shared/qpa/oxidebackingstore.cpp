@@ -28,12 +28,6 @@ QPaintDevice* OxideBackingStore::paintDevice(){ return &image; }
 
 void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoint& offset){
     Q_UNUSED(offset);
-    if(mDebug){
-        static int c = 0;
-        QString filename = QString("/tmp/output%1.png").arg(c++, 4, 10, QChar(u'0'));
-        qDebug() << "OxideBackingStore::flush() saving contents to" << filename.toLocal8Bit().constData();
-        image.save(filename);
-    }
     (static_cast<OxideWindow*>(window->handle()))->repaint(region);
 }
 
