@@ -17,8 +17,8 @@ QSizeF OxideScreen::physicalSize() const{
     return QSizeF(geometry().size()) / dpi * qreal(25.4);
 }
 void OxideScreen::scheduleUpdate(){
-    qDebug() << "OxideScreen::scheduleUpdate";
     if(!mUpdatePending){
+        qDebug() << "OxideScreen::scheduleUpdate";
         mUpdatePending = true;
         QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest));
     }
@@ -50,14 +50,8 @@ void OxideScreen::removeWindow(OxideWindow* window){
 }
 bool OxideScreen::event(QEvent* event){
     if(event->type() == QEvent::UpdateRequest){
-        qDebug() << "OxideScreen::event::update";
-        if(frameBuffer == nullptr){
+        if(Oxide::Tarnish::frameBufferImage() == nullptr){
             Oxide::Tarnish::createFrameBuffer(mGeometry.width(), mGeometry.height());
-            frameBuffer = Oxide::Tarnish::frameBufferImage();
-        }
-        if(frameBuffer == nullptr){
-            qDebug() << "OxideScreen::event::update No framebuffer";
-            return true;
         }
         redraw();
         mUpdatePending = false;
@@ -66,35 +60,47 @@ bool OxideScreen::event(QEvent* event){
     return QObject::event(event);
 }
 void OxideScreen::redraw(){
-    const QPoint screenOffset = mGeometry.topLeft();
     if(mRepaintRegion.isEmpty()){
+        qDebug() << "OxideScreen::redraw No updates";
         return;
     }
-    const QRect screenRect = mGeometry.translated(-screenOffset);
-    if(!mPainter){
-        mPainter = new QPainter(frameBuffer);
+    if(Oxide::Tarnish::frameBufferImage() == nullptr){
+        qDebug() << "OxideScreen::redraw No framebuffer";
+        return;
     }
+    const QPoint screenOffset = mGeometry.topLeft();
+    const QRect screenRect = mGeometry.translated(-screenOffset);
+    qDebug() << "OxideScreen::redraw::QPainter";
+    QPainter painter(Oxide::Tarnish::frameBufferImage());
+    Qt::GlobalColor colour = Oxide::Tarnish::frameBufferImage()->hasAlphaChannel() ? Qt::transparent : Qt::black;
+    qDebug() << "OxideScreen::redraw::mRepaintRegion";
     for(QRect rect : mRepaintRegion){
         rect = rect.intersected(screenRect);
         if(rect.isEmpty()){
             continue;
         }
-        mPainter->setCompositionMode(QPainter::CompositionMode_Source);
-        mPainter->fillRect(rect, frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::black);
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
+        painter.fillRect(rect, colour);
         // TODO - have some sort of stack to determine which window is on top
+        qDebug() << "OxideScreen::redraw::windows" << rect;
         for(auto window : windows()){
             if(!window->isVisible()){
                 continue;
             }
             const QRect windowRect = window->geometry().translated(-screenOffset);
             const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
+            qDebug() << "OxideScreen::redraw::backingStore";
             OxideBackingStore* backingStore = static_cast<OxideWindow*>(window->handle())->backingStore();
             if(backingStore){
                 // TODO - lock backing store
-                mPainter->drawImage(rect, backingStore->toImage(), windowIntersect);
+                qDebug() << "OxideScreen::redraw::QPainter::drawImage" << windowIntersect;
+                painter.drawImage(rect, backingStore->toImage(), windowIntersect);
             }
         }
     }
+    qDebug() << "OxideScreen::redraw::QPainter::end";
+    painter.end();
+    qDebug() << "OxideScreen::redraw::sendUpdate" << mRepaintRegion.boundingRect();
     // TODO - only do full redraw if !frameBuffer->hasAlphaChannel
     //        instead do partial redraws for every image drawn
     //        The performance of this will need to be verified

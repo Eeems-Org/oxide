@@ -23,13 +23,11 @@ protected:
     bool event(QEvent *event) override;
 
 private:
-    QPainter* mPainter;
     QRect mGeometry;
     int mDepth;
     QImage::Format mFormat;
     QSize mPhysicalSize;
     bool mUpdatePending;
-    QImage* frameBuffer;
     QRegion mRepaintRegion;
     void redraw();
 };

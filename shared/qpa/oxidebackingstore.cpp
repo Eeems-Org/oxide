@@ -24,15 +24,9 @@ OxideBackingStore::OxideBackingStore(QWindow* window)
 
 OxideBackingStore::~OxideBackingStore(){}
 
-QPaintDevice* OxideBackingStore::paintDevice(){
-    if(mDebug){
-        qDebug("OxideBackingStore::paintDevice");
-    }
-    return &image;
-}
+QPaintDevice* OxideBackingStore::paintDevice(){ return &image; }
 
 void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoint& offset){
-    Q_UNUSED(region);
     Q_UNUSED(offset);
     if(mDebug){
         static int c = 0;
@@ -40,15 +34,11 @@ void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoi
         qDebug() << "OxideBackingStore::flush() saving contents to" << filename.toLocal8Bit().constData();
         image.save(filename);
     }
-    ((OxideScreen*)window->screen()->handle())->scheduleUpdate();
+    (static_cast<OxideWindow*>(window->handle()))->repaint(region);
 }
 
 void OxideBackingStore::resize(const QSize& size, const QRegion& region){
-    Q_UNUSED(size)
     Q_UNUSED(region)
-    if(mDebug){
-        qDebug("OxideBackingStore::resize");
-    }
     if(image.size() != size){
         image = QImage(size, QImage::Format_RGB16);
     }
@@ -63,24 +53,9 @@ bool OxideBackingStore::scroll(const QRegion& area, int dx, int dy){
     }
     return false;
 }
-QImage OxideBackingStore::toImage() const{
-    if(mDebug){
-        qDebug("OxideBackingStore::toImage");
-    }
-    return image;
-}
-const QImage& OxideBackingStore::getImageRef() const{
-    if(mDebug){
-        qDebug("OxideBackingStore::getImageRef");
-    }
-    return image;
-}
 
-QPlatformGraphicsBuffer* OxideBackingStore::graphicsBuffer() const{
-    if(mDebug){
-        qDebug("OxideBackingStore::graphicsBuffer");
-    }
-    return nullptr;
-}
+QImage OxideBackingStore::toImage() const{ return image; }
+const QImage& OxideBackingStore::getImageRef() const{ return image; }
+QPlatformGraphicsBuffer* OxideBackingStore::graphicsBuffer() const{ return nullptr; }
 
 QT_END_NAMESPACE
