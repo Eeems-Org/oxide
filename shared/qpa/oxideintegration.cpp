@@ -56,9 +56,9 @@ OxideIntegration::~OxideIntegration(){
 
 bool OxideIntegration::hasCapability(QPlatformIntegration::Capability cap) const{
     switch (cap) {
-    case ThreadedPixmaps: return true;
-    case MultipleWindows: return true;
-    default: return QPlatformIntegration::hasCapability(cap);
+        case ThreadedPixmaps: return true;
+        case MultipleWindows: return true;
+        default: return QPlatformIntegration::hasCapability(cap);
     }
 }
 

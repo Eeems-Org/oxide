@@ -1,2 +1,2 @@
-LIBS += -L$$OUT_PWD/../../shared/liboxide -lliboxide
+LIBS_PRIVATE += -L$$OUT_PWD/../../shared/liboxide -loxide
 INCLUDEPATH += $$OUT_PWD/../../shared/liboxide/include

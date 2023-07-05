@@ -20,3 +20,5 @@ QPlatformIntegration* OxideIntegrationPlugin::create(const QString& system, cons
 }
 
 QT_END_NAMESPACE
+
+#include "main.moc"

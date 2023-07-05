@@ -298,22 +298,22 @@ namespace Oxide {
     }
     void DeviceSettings::setupQtEnvironment(QtEnvironmentType type){
         auto qt_version = qVersion();
-        qDebug() << "Runtime: " << qt_version;
-        qDebug() << "Build: " << QT_VERSION_STR;
+        qDebug() << "Qt Runtime: " << qt_version;
+        qDebug() << "Qt Build: " << QT_VERSION_STR;
         if (strcmp(qt_version, QT_VERSION_STR) != 0){
             qDebug() << "Version mismatch!";
         }
+#ifdef DEBUG
+            qputenv("QT_DEBUG_PLUGINS", "1");
+#endif
         if(type != DeviceSettings::Oxide){
 #ifdef __arm__
             qputenv("QMLSCENE_DEVICE", "epaper");
             qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
 #endif
         }else{
-#ifdef DEBUG
-            qputenv("QT_DEBUG_PLUGINS", "1");
-#endif
             QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
-            qputenv("QMLSCENE_DEVICE", "oxide");
+            qputenv("QT_QUICK_BACKEND","software");
             qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
         }
         if(type != DeviceSettings::NoTouch){
