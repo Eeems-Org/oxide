@@ -4,6 +4,7 @@ TEMPLATE = lib
 CONFIG += plugin
 CONFIG += qpa/genericunixfontdatabase c++17
 QT += core-private gui-private input_support-private
+QT += dbus
 
 qtHaveModule(fontdatabase_support-private) {
     QT += fontdatabase_support-private 

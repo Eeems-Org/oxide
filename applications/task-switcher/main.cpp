@@ -23,7 +23,7 @@ void sigHandler(int signal){
 }
 
 int main(int argc, char *argv[]){
-    deviceSettings.setupQtEnvironment();
+    deviceSettings.setupQtEnvironment(DeviceSettings::Oxide);
     QGuiApplication app(argc, argv);
     sentry_init("corrupt", argv);
     auto filter = new EventFilter(&app);

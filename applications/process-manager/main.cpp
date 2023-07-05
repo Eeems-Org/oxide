@@ -18,7 +18,7 @@ using namespace Oxide;
 using namespace Oxide::Sentry;
 
 int main(int argc, char *argv[]){
-    deviceSettings.setupQtEnvironment();
+    deviceSettings.setupQtEnvironment(DeviceSettings::Oxide);
     QGuiApplication app(argc, argv);
     sentry_init("erode", argv);
     app.setOrganizationName("Eeems");

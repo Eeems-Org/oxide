@@ -44,14 +44,13 @@ namespace Oxide{
     }
     QMouseEvent* toMouseEvent(QEvent::Type type, QEvent* ev){
         auto tabletEvent = (QTabletEvent*)ev;
-        auto button = tabletEvent->pressure() > 0 || type == QMouseEvent::MouseButtonRelease ? Qt::LeftButton : Qt::NoButton;
         return new QMouseEvent(
             type,
             transpose(tabletEvent->posF()),
             transpose(tabletEvent->globalPosF()),
             transpose(tabletEvent->globalPosF()),
-            button,
-            button,
+            tabletEvent->button(),
+            tabletEvent->buttons(),
             tabletEvent->modifiers()
         );
     }
@@ -124,13 +123,13 @@ namespace Oxide{
         bool filtered = QObject::eventFilter(obj, ev);
         if(!filtered){
             if(type == QEvent::TabletPress){
-                O_DEBUG_EVENT(ev);
+                O_DEBUG_EVENT(ev << ev->isAccepted());
                 postEvent(QMouseEvent::MouseButtonPress, ev, root);
             }else if(type == QEvent::TabletRelease){
-                O_DEBUG_EVENT(ev);
+                O_DEBUG_EVENT(ev << ev->isAccepted());
                 postEvent(QMouseEvent::MouseButtonRelease, ev, root);
             }else if(type == QEvent::TabletMove){
-                O_DEBUG_EVENT(ev);
+                O_DEBUG_EVENT(ev << ev->isAccepted());
                 postEvent(QMouseEvent::MouseMove, ev, root);
             }
 #ifdef DEBUG_EVENTS
@@ -145,7 +144,7 @@ namespace Oxide{
                     }
                 }
                 O_DEBUG(obj);
-                O_DEBUG(ev);
+                O_DEBUG(ev << ev->isAccepted());
             }
 #endif
         }

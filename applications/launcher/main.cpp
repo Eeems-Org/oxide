@@ -27,7 +27,7 @@ function<void(int)> shutdown_handler;
 void signalHandler2(int signal) { shutdown_handler(signal); }
 
 int main(int argc, char* argv[]){
-    deviceSettings.setupQtEnvironment();
+    deviceSettings.setupQtEnvironment(DeviceSettings::Oxide);
     QGuiApplication app(argc, argv);
     sentry_init("oxide", argv);
     auto filter = new EventFilter(&app);

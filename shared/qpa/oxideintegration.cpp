@@ -10,8 +10,10 @@
 #include <private/qevdevmousemanager_p.h>
 #include <private/qevdevtouchmanager_p.h>
 #include <private/qevdevtabletmanager_p.h>
+#include <private/qevdevkeyboardmanager_p.h>
 #include <private/qgenericunixeventdispatcher_p.h>
 #include <private/qgenericunixfontdatabase_p.h>
+#include <liboxide.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -30,6 +32,7 @@ static inline unsigned parseOptions(const QStringList &paramList){
             options |= OxideIntegration::FontconfigDatabase;
         }
     }
+    QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     return options;
 }
 
@@ -65,8 +68,9 @@ bool OxideIntegration::hasCapability(QPlatformIntegration::Capability cap) const
 
 void OxideIntegration::initialize(){
     new QEvdevTouchManager(QLatin1String("EvdevTouch"), QString() /* spec */, nullptr);
-    new QEvdevTabletManager(QLatin1String("EvdevTablet"), QString() /* spec */, nullptr);
+    new QEvdevTabletManager(QLatin1String("EvdevTablet"), deviceSettings.getTouchEnvSetting(), nullptr);
     new QEvdevMouseManager(QLatin1String("EvdevMouse"), QString() /* spec */, nullptr);
+    new QEvdevKeyboardManager(QLatin1String("EvdevMouse"), QString() /* spec */, nullptr);
     m_inputContext = QPlatformInputContextFactory::create();
 }
 

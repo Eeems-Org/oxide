@@ -235,7 +235,7 @@ namespace Oxide {
          */
         enum QtEnvironmentType{
             Default, /*!< Default, standalone Qt environment >*/
-            NoTouch, /*!< Standalone Qt environment with no touch support >*/
+            NoPen, /*!< Standalone Qt environment with no pen support >*/
             Oxide /*!< Oxide environment >*/
         };
 
