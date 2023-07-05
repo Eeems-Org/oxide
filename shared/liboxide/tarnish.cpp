@@ -261,7 +261,7 @@ namespace Oxide::Tarnish {
         api_general->enableEventPipe();
         return eventsFd;
     }
-    void screenUpdate(){
+    void screenUpdate(EPFrameBuffer::WaveformMode mode){
         if(fbData == nullptr){
             return;
         }
@@ -276,7 +276,7 @@ namespace Oxide::Tarnish {
             O_WARNING("Failed to sync:" << strerror(errno))
             return;
         }
-        api_general->screenUpdate();
+        api_general->screenUpdate(mode);
     }
     codes::eeems::oxide1::Power* powerAPI(){
         if(api_power != nullptr){

@@ -8,6 +8,8 @@
 #include "liboxide_global.h"
 #include "dbus.h"
 
+#include <epframebuffer.h>
+
 namespace Oxide::Tarnish {
     /*!
      * \brief Get the current General API instance
@@ -87,7 +89,7 @@ namespace Oxide::Tarnish {
     /*!
      * \brief screenUpdate
      */
-    void screenUpdate();
+    void screenUpdate(EPFrameBuffer::WaveformMode mode = EPFrameBuffer::HighQualityGrayscale);
     /*!
      * \brief powerAPI
      * \return

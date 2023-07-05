@@ -43,6 +43,8 @@ struct ChildEntry {
     int stdout;
     int stderr;
     int fb;
+    int x;
+    int y;
     int fbWidth;
     int fbHeight;
     size_t fbSize;
@@ -52,6 +54,13 @@ struct ChildEntry {
     int eventWrite;
     void* fbData = nullptr;
     QImage* fbImage = nullptr;
+    QPoint topLeft(){ return QPoint(x, y); }
+    QSize size(){ return QSize(fbWidth, fbHeight); }
+    QPoint bottomRight(){
+        auto coord = topLeft();
+        return QPoint(coord.x() + fbWidth, coord.y() + fbHeight);
+    }
+    QRect rect(){ return QRect(topLeft(), bottomRight()); }
     std::string uniqueName() const{
         return QString("%1-%2-%3")
             .arg(service.c_str())
@@ -383,7 +392,6 @@ public:
             }
             QImage blankImage(width, height, QImage::Format_RGB16);
             blankImage.fill(Qt::white);
-            blankImage.save("/tmp/blank.bmp", "BMP", 100);
             if(ftruncate(fd, blankImage.sizeInBytes())){
                 O_WARNING("Unable to truncate memfd for framebuffer:" << strerror(errno));
                 bus.send(message.createErrorReply(QDBusError::InternalError, "Unable to truncate memfd"));
@@ -552,26 +560,26 @@ public slots:
         }
         return result;
     }
-    void screenUpdate(QDBusMessage message){
+    void screenUpdate(int mode, QDBusMessage message){
         auto service = message.service().toStdString();
         qDebug() << "screenUpdate()" << service.c_str();
         QMutableListIterator<ChildEntry> i(children);
         while(i.hasNext()){
             auto child = i.next();
             if(child.service == service){
-                screenUpdateForChild(&child, 0, 0, child.fbWidth, child.fbHeight);
+                screenUpdateForChild(&child, 0, 0, child.fbWidth, child.fbHeight, (EPFrameBuffer::WaveformMode)mode, EPFrameBuffer::FullUpdate);
                 break;
             }
         }
     }
-    void screenUpdate(int x, int y, int width, int height, QDBusMessage message){
+    void screenUpdate(int x, int y, int width, int height, int mode, QDBusMessage message){
         auto service = message.service().toStdString();
         qDebug() << "screenUpdate()" << service.c_str();
         QMutableListIterator<ChildEntry> i(children);
         while(i.hasNext()){
             auto child = i.next();
             if(child.service == service){
-                screenUpdateForChild(&child, x, y, width, height);
+                screenUpdateForChild(&child, x, y, width, height, (EPFrameBuffer::WaveformMode)mode, EPFrameBuffer::PartialUpdate);
                 break;
             }
         }
@@ -640,21 +648,25 @@ private:
             }
         }
     }
-    void screenUpdateForChild(ChildEntry* child, int x, int y, int width, int height){
-        Q_UNUSED(x);
-        Q_UNUSED(y);
-        Q_UNUSED(width);
-        Q_UNUSED(height);
-        auto fb = child->frameBuffer();
-        if(fb == nullptr){
+    void screenUpdateForChild(ChildEntry* child, int x, int y, int width, int height, EPFrameBuffer::WaveformMode waveform, EPFrameBuffer::UpdateMode mode){
+        auto image = child->frameBuffer();
+        if(image == nullptr){
             O_WARNING("Screen update called, but could not get framebuffer image")
             return;
         }
-        auto path = QString("/tmp/%1.bmp").arg(child->uniqueName().c_str());
-        if(!fb->save(path, "BMP", 100)){
-            qDebug() << "Failed to save" << path;
-        }
-        // TODO - Update screen
+        auto target = child->rect();
+        target.setSize(QSize(width, height));
+        target.translate(x, y);
+        QRect source(x, y, width, height);
+        // TODO - Only update screen if application is active
+        dispatchToMainThread([image, &child, waveform, mode, target, source]{
+            auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
+            QPainter painter(frameBuffer);
+            painter.drawImage(target, *image, source);
+            painter.end();
+            EPFrameBuffer::sendUpdate(target, waveform, mode, true);
+            EPFrameBuffer::waitForLastUpdate();
+        });
     }
 };
 

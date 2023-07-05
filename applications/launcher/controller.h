@@ -87,6 +87,7 @@ public:
         connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
         connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
         connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
+        wifiApi = Oxide::Tarnish::wifiAPI();
         if(wifiApi == nullptr){
             qFatal("Wifi API was not available");
         }

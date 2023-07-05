@@ -46,11 +46,7 @@ int main(int argc, char *argv[]){
     painter.drawText(50, 50, "Hello world!");
     qDebug() << "QPainter::end()";
     painter.end();
-    qDebug() << "QImage::save()";
-    if(!image->save("/tmp/ui_test.bmp", "BMP", 100)){
-        qDebug() << "Failed to save image";
-    }
     qDebug() << "screenUpdate()";
-    Tarnish::screenUpdate();
+    Tarnish::screenUpdate(EPFrameBuffer::Mono);
     return EXIT_SUCCESS;
 }

@@ -23,12 +23,14 @@
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
     </method>
     <method name="screenUpdate">
+      <arg name="mode" type="i" direction="in"/>
     </method>
     <method name="screenUpdate">
       <arg name="x" type="i" direction="in"/>
       <arg name="y" type="i" direction="in"/>
       <arg name="width" type="i" direction="in"/>
       <arg name="height" type="i" direction="in"/>
+      <arg name="mode" type="i" direction="in"/>
     </method>
     <method name="startup">
     </method>
