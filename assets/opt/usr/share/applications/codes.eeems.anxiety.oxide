@@ -1,10 +1,10 @@
 {
-        "displayName": "Screenshots",
-        "description": "View and manage screenshots",
-        "bin": "/opt/bin/anxiety",
-        "icon": "oxide:image-48",
-        "splash": "oxide:splash:anxiety-702",
-        "flags": [],
-        "type": "foreground",
-        "permissions": ["screen", "gui"]
+    "displayName": "Screenshots",
+    "description": "View and manage screenshots",
+    "bin": "/opt/bin/anxiety",
+    "icon": "oxide:image-48",
+    "splash": "oxide:splash:anxiety-702",
+    "flags": ["nosavescreen"],
+    "type": "foreground",
+    "permissions": ["screen", "gui"]
 }

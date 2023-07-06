@@ -1,4 +1,5 @@
 #include "guiapi.h"
+#include "appsapi.h"
 
 #define W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << msg << getSenderPgid())
 #define W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << msg << getSenderPgid())
@@ -73,6 +74,17 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
         const QPoint screenOffset = geometry.topLeft();
         setDirty(intersection.translated(-screenOffset));
     });
+    for(auto item : appsAPI->runningApplicationsNoSecurityCheck().values()){
+        Application* app = appsAPI->getApplication(item.value<QDBusObjectPath>());
+        if(app->processId() == pgid){
+            connect(app, &Application::paused, [=]{
+                window->setVisible(false);
+            });
+            connect(app, &Application::resumed, [=]{
+                window->setVisible(true);
+            });
+        }
+    }
     window->setEnabled(m_enabled);
     return window->path();
 }
@@ -129,8 +141,23 @@ void GuiAPI::redraw(){
         }
         painter.end();
         auto boundingRect = repaintedRegion.boundingRect();
+        auto waveform = EPFrameBuffer::Mono;
+        for(int x = boundingRect.left(); x < boundingRect.right(); x++){
+            for(int y = boundingRect.top(); y < boundingRect.bottom(); y++){
+                auto color = frameBuffer->pixelColor(x, y);
+                if(color == Qt::white || color == Qt::black || color == Qt::transparent){
+                    continue;
+                }
+                if(color == Qt::gray){
+                    waveform = EPFrameBuffer::Grayscale;
+                    continue;
+                }
+                waveform = EPFrameBuffer::HighQualityGrayscale;
+                break;
+            }
+        }
         auto mode =  boundingRect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
-        EPFrameBuffer::sendUpdate(boundingRect, EPFrameBuffer::HighQualityGrayscale, mode, true);
+        EPFrameBuffer::sendUpdate(boundingRect, waveform, mode, true);
         EPFrameBuffer::waitForLastUpdate();
         m_repaintRegion = QRegion();
     });

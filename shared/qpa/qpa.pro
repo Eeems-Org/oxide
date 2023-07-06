@@ -32,3 +32,4 @@ DISTFILES += \
     oxide.json
 
 include(../../qmake/liboxide.pri)
+include(../../qmake/sentry.pri)

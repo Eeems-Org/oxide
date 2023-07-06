@@ -160,7 +160,7 @@ public:
             qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
             previousApplication();
             QTimer::singleShot(100, [this]{
-                setState("loading");
+                setState("waiting");
             });
         });
     }
@@ -244,7 +244,7 @@ public:
         setStoredPin(pin);
         QTimer::singleShot(200, [this]{
             qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
-            setState("loading");
+            setState("waiting");
             previousApplication();
         });
         return true;

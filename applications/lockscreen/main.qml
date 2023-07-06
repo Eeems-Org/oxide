@@ -426,7 +426,17 @@ ApplicationWindow {
                 SequentialAnimation {
                     PropertyAction { target: pinEntry; property: "visible"; value: false }
                     ScriptAction { script: {
-                            controller.breadcrumb("navigation", "loading", "navigation");
+                        controller.breadcrumb("navigation", "loading", "navigation");
+                        console.log("Loading display");
+                        controller.startup();
+                    } }
+                }
+            },
+            Transition {
+                from: "*"; to: "waiting"
+                SequentialAnimation {
+                    ScriptAction { script: {
+                        controller.breadcrumb("navigation", "waiting", "navigation");
                         console.log("Loading display");
                         controller.startup();
                     } }
