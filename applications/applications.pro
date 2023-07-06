@@ -20,8 +20,7 @@ SUBDIRS = \
     xdg-desktop-menu \
     xdg-icon-resource \
     xdg-open \
-    xdg-settings \
-    ui_test
+    xdg-settings
 
 launcher.depends = system-service update-desktop-database
 lockscreen.depends = system-service
@@ -42,6 +41,5 @@ xdg-icon-resource.depends = system-service
 desktop-file-edit.depends = desktop-file-edit
 desktop-file-install.depends =
 inject_evdev.depends =
-ui_test.depends = system-service
 
 INSTALLS += $$SUBDIRS

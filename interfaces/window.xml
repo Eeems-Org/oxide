@@ -1,0 +1,71 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="codes.eeems.oxide1.Window">
+    <property name="identifier" type="s" access="read"/>
+    <property name="frameBuffer" type="h" access="read"/>
+    <property name="geometry" type="(iiii)" access="readwrite">
+      <annotation name="org.qtproject.QtDBus.QtTypeName" value="QRect"/>
+    </property>
+    <property name="sizeInBytes" type="t" access="read"/>
+    <property name="bytesPerLine" type="t" access="read"/>
+    <property name="format" type="i" access="read"/>
+    <signal name="geometryChanged">
+      <arg name="oldGeometry" type="(iiii)" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QRect"/>
+      <arg name="newGeometry" type="(iiii)" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QRect"/>
+    </signal>
+    <signal name="frameBufferChanged">
+      <arg type="h" direction="out"/>
+    </signal>
+    <signal name="closed">
+    </signal>
+    <signal name="raised">
+    </signal>
+    <signal name="lowered">
+    </signal>
+    <signal name="stateChanged">
+      <arg type="i" direction="out"/>
+    </signal>
+    <signal name="sizeInBytesChanged">
+      <arg type="t" direction="out"/>
+    </signal>
+    <signal name="bytesPerLineChanged">
+      <arg type="t" direction="out"/>
+    </signal>
+    <signal name="formatChanged">
+      <arg type="i" direction="out"/>
+    </signal>
+    <signal name="dirty">
+      <arg name="region" type="(iiii)" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QRect"/>
+    </signal>
+    <method name="resize">
+      <arg type="h" direction="out"/>
+      <arg name="width" type="i" direction="in"/>
+      <arg name="height" type="i" direction="in"/>
+    </method>
+    <method name="move">
+      <arg name="x" type="i" direction="in"/>
+      <arg name="y" type="i" direction="in"/>
+    </method>
+    <method name="repaint">
+      <arg name="region" type="(iiii)" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QRect"/>
+    </method>
+    <method name="repaint">
+    </method>
+    <method name="raise">
+    </method>
+    <method name="lower">
+    </method>
+    <method name="close">
+    </method>
+    <method name="isVisible">
+      <arg type="b" direction="out"/>
+    </method>
+    <method name="setVisible">
+      <arg name="visible" type="b" direction="in"/>
+    </method>
+  </interface>
+</node>

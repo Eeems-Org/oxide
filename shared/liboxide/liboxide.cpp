@@ -324,6 +324,15 @@ namespace Oxide {
             qputenv("QT_DEBUG_OXIDE_QPA", "1");
         }
     }
+    QRect DeviceSettings::screenGeometry(){
+        switch(getDeviceType()){
+            case DeviceType::RM1:
+            case DeviceType::RM2:
+                return QRect(0, 0, 1404, 1872);
+            default:
+                return QRect();
+        }
+    }
     WifiNetworks XochitlSettings::wifinetworks(){
         beginGroup("wifinetworks");
         QMap<QString, QVariantMap> wifinetworks;

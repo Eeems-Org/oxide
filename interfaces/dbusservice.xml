@@ -22,16 +22,6 @@
       <arg type="a{sv}" direction="out"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
     </method>
-    <method name="screenUpdate">
-      <arg name="mode" type="i" direction="in"/>
-    </method>
-    <method name="screenUpdate">
-      <arg name="x" type="i" direction="in"/>
-      <arg name="y" type="i" direction="in"/>
-      <arg name="width" type="i" direction="in"/>
-      <arg name="height" type="i" direction="in"/>
-      <arg name="mode" type="i" direction="in"/>
-    </method>
     <method name="startup">
     </method>
     <method name="registerChild">
@@ -39,23 +29,6 @@
       <arg name="name" type="s" direction="in"/>
       <arg name="stdout" type="h" direction="in"/>
       <arg name="stderr" type="h" direction="in"/>
-    </method>
-    <method name="hasFrameBuffer">
-      <arg type="b" direction="out"/>
-    </method>
-    <method name="getFrameBuffer">
-      <arg type="h" direction="out"/>
-    </method>
-    <method name="getFrameBufferInfo">
-      <arg type="ax" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QList&lt;qlonglong&gt;"/>
-    </method>
-    <method name="createFrameBuffer">
-      <arg type="h" direction="out"/>
-      <arg name="width" type="i" direction="in"/>
-      <arg name="height" type="i" direction="in"/>
-    </method>
-    <method name="enableFrameBuffer">
     </method>
     <method name="getEventPipe">
       <arg type="h" direction="out"/>

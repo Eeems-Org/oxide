@@ -13,11 +13,16 @@ codes::eeems::oxide1::Screen* api_screen = nullptr;
 codes::eeems::oxide1::Apps* api_apps = nullptr;
 codes::eeems::oxide1::System* api_system = nullptr;
 codes::eeems::oxide1::Notifications* api_notification = nullptr;
+codes::eeems::oxide1::Gui* api_gui = nullptr;
+codes::eeems::oxide1::Window* window = nullptr;
 int frameBufferFd = -1;
 int eventsFd = -1;
+QRect fbGeometry;
+qulonglong fbSize = 0;
+qulonglong fbLineSize = 0;
+QImage::Format fbFormat = QImage::Format_Invalid;
 uchar* fbData = nullptr;
 QImage* fbImage = nullptr;
-QList<qint64> fbInfo;
 
 bool verifyConnection(){
     if(api_general == nullptr){
@@ -88,10 +93,9 @@ namespace Oxide::Tarnish {
         freeAPI(notification);
         freeAPI(general);
         if(fbData != nullptr){
-            munmap(fbData, fbInfo.at(0) * fbInfo.at(1));
+            munmap(fbData, window->sizeInBytes());
             fbData = nullptr;
         }
-        fbInfo.clear();
         if(fbImage != nullptr){
             delete fbImage;
             fbImage = nullptr;
@@ -104,6 +108,12 @@ namespace Oxide::Tarnish {
             close(eventsFd);
             eventsFd = -1;
         }
+        if(window != nullptr){
+            window->close();
+            window->deleteLater();
+            window = nullptr;
+        }
+        freeAPI(gui);
         QDBusConnection::disconnectFromBus(QDBusConnection::systemBus().name());
 #undef freeAPI
     }
@@ -123,62 +133,78 @@ namespace Oxide::Tarnish {
             return frameBufferFd;
         }
         connect();
-        QDBusPendingReply<QDBusUnixFileDescriptor> reply = api_general->getFrameBuffer();
-        reply.waitForFinished();
-        if(reply.isError()){
-            O_WARNING("Unable to get framebuffer:" << reply.error());
+        if(api_gui == nullptr){
+            guiAPI();
+        }
+        if(api_gui == nullptr){
+            O_WARNING("Unable to get framebuffer: Unable to get GUI API");
             return -1;
         }
-        auto fd = reply.value().fileDescriptor();
+        if(window == nullptr){
+            QDBusPendingReply<QDBusObjectPath> reply = api_gui->createWindow();
+            reply.waitForFinished();
+            if(reply.isError()){
+                O_WARNING("Unable to get framebuffer:" << reply.error());
+                return -1;
+            }
+            auto path = reply.value().path();
+            if(path == "/"){
+                O_WARNING("Unable to get framebuffer: Unable to create window");
+                return -1;
+            }
+            window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection(), qApp);
+            QObject::connect(window, &codes::eeems::oxide1::Window::frameBufferChanged, [=](const QDBusUnixFileDescriptor& fd){
+                qDebug() << "frameBufferChanged";
+                if(fbImage != nullptr){
+                    delete fbImage;
+                    fbImage = nullptr;
+                }
+                if(fbData != nullptr){
+                    munmap(fbData, fbSize);
+                    fbSize = 0;
+                    fbGeometry.adjust(0, 0, 0, 0);
+                    fbLineSize = 0;
+                    fbFormat = QImage::Format_Invalid;
+                    fbData = nullptr;
+                }
+                if(frameBufferFd != -1){
+                    ::close(frameBufferFd);
+                    frameBufferFd = -1;
+                }
+                auto fb = fd.fileDescriptor();
+                if(fb == -1){
+                    return;
+                }
+                frameBufferFd = dup(fb);
+                fbSize = window->sizeInBytes();
+                fbGeometry = window->geometry();
+                fbLineSize = window->bytesPerLine();
+                fbFormat = (QImage::Format)window->format();
+            });
+        }
+        auto qfd = window->frameBuffer();
+        if(!qfd.isValid()){
+            O_WARNING("Unable to get framebuffer: File descriptor is -1");
+            return -1;
+        }
+        auto fd = qfd.fileDescriptor();
         if(fd == -1){
-            O_WARNING("Unable to get framebuffer: No framebuffer provided");
+            O_WARNING("Unable to get framebuffer: File descriptor is -1");
             return -1;
         }
-        frameBufferFd = dup(fd);
-        return frameBufferFd;
-    }
-    int createFrameBuffer(int width, int height){
-        if(frameBufferFd != -1){
-            O_WARNING("Framebuffer already exists");
-            return -1;
-        }
-        connect();
-        if(api_general->hasFrameBuffer()){
-            O_WARNING("Framebuffer already exists");
-            return -1;
-        }
-        QDBusPendingReply<QDBusUnixFileDescriptor> reply = api_general->createFrameBuffer(width, height);
-        reply.waitForFinished();
-        if(reply.isError()){
-            O_WARNING("Unable to get framebuffer:" << reply.error());
-            return -1;
-        }
-        auto fd = reply.value().fileDescriptor();
+        fd = dup(fd);
         if(fd == -1){
-            O_WARNING("Unable to get framebuffer: No framebuffer provided");
+            O_WARNING("Unable to dup framebuffer fd:" << strerror(errno));
             return -1;
         }
-        frameBufferFd =  dup(fd);
-        api_general->enableFrameBuffer();
+        frameBufferFd = fd;
+        fbSize = window->sizeInBytes();
+        fbGeometry = window->geometry();
+        fbLineSize = window->bytesPerLine();
+        fbFormat = (QImage::Format)window->format();
+        window->setVisible(true);
+        window->raise();
         return frameBufferFd;
-    }
-    QList<qlonglong> frameBufferInfo(){
-        if(getFrameBufferFd() == -1 || !fbInfo.isEmpty()){
-            return fbInfo;
-        }
-        connect();
-        QDBusPendingReply<QList<qlonglong>> reply = api_general->getFrameBufferInfo();
-        if(reply.isError()){
-            O_WARNING("Unable to get framebuffer info:" << reply.error());
-            return fbInfo;
-        }
-        auto info = reply.value();
-        if(info.contains(-1)){
-            O_WARNING("Unable to get framebuffer info: Invalid size returned");
-            return fbInfo;
-        }
-        fbInfo.swap(info);
-        return fbInfo;
     }
     uchar* frameBuffer(){
         if(fbData != nullptr){
@@ -189,42 +215,13 @@ namespace Oxide::Tarnish {
             O_WARNING("Unable to get framebuffer fd");
             return nullptr;
         }
-        auto info = frameBufferInfo();
-        if(info.isEmpty()){
-            O_WARNING("Unable to get framebuffer info");
-            return nullptr;
-        }
-        auto data = mmap(NULL, info[2], PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fd, 0);
+        auto data = mmap(NULL, fbSize, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fd, 0);
         if(data == MAP_FAILED){
             O_WARNING("Unable to get framebuffer data:" << strerror(errno));
             return nullptr;
         }
         fbData = (uchar*)data;
         return fbData;
-    }
-    bool lockFrameBuffer(){
-        auto data = frameBuffer();
-        if(data == nullptr){
-            return false;
-        }
-        auto info = frameBufferInfo();
-        if(info.isEmpty()){
-            O_WARNING("Unable to get framebuffer info");
-            return false;
-        }
-        return mlock2(data, info[2], MLOCK_ONFAULT) != -1;
-    }
-    bool unlockFrameBuffer(){
-        auto data = frameBuffer();
-        if(data == nullptr){
-            return false;
-        }
-        auto info = frameBufferInfo();
-        if(info.isEmpty()){
-            O_WARNING("Unable to get framebuffer info");
-            return false;
-        }
-        return munlock(data, info[2]) != -1;
     }
     QImage* frameBufferImage(){
         if(fbImage != nullptr){
@@ -234,11 +231,7 @@ namespace Oxide::Tarnish {
         if(data == nullptr){
             return nullptr;
         }
-        auto info = frameBufferInfo();
-        if(info.isEmpty()){
-            return nullptr;
-        }
-        fbImage = new QImage((uchar*)data, info[0], info[1], info[3], (QImage::Format)info[4]);
+        fbImage = new QImage((uchar*)data, fbGeometry.width(), fbGeometry.height(), fbLineSize, fbFormat);
         return fbImage;
     }
     int getEventPipe(){
@@ -261,39 +254,25 @@ namespace Oxide::Tarnish {
         api_general->enableEventPipe();
         return eventsFd;
     }
-    void screenUpdate(EPFrameBuffer::WaveformMode mode){
+    void screenUpdate(){
         if(fbData == nullptr){
             return;
         }
-        auto info = frameBufferInfo();
-        if(info.isEmpty()){
-            return;
-        }
-        if(!unlockFrameBuffer()){
-            O_WARNING("Failed to unlock framebuffer:" << strerror(errno))
-        }
-        if(msync(fbData, info[2], MS_SYNC | MS_INVALIDATE) == -1){
+        if(msync(fbData, fbSize, MS_SYNC | MS_INVALIDATE) == -1){
             O_WARNING("Failed to sync:" << strerror(errno))
             return;
         }
-        api_general->screenUpdate(mode);
+        window->repaint();
     }
-    void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode mode){
+    void screenUpdate(QRect rect){
         if(fbData == nullptr){
             return;
         }
-        auto info = frameBufferInfo();
-        if(info.isEmpty()){
-            return;
-        }
-        if(!unlockFrameBuffer()){
-            O_WARNING("Failed to unlock framebuffer:" << strerror(errno))
-        }
-        if(msync(fbData, info[2], MS_SYNC | MS_INVALIDATE) == -1){
+        if(msync(fbData, fbSize, MS_SYNC | MS_INVALIDATE) == -1){
             O_WARNING("Failed to sync:" << strerror(errno))
             return;
         }
-        api_general->screenUpdate(rect.x(), rect.y(), rect.width(), rect.height(), mode);
+        window->repaint(rect);
     }
     codes::eeems::oxide1::Power* powerAPI(){
         if(api_power != nullptr){
@@ -366,4 +345,18 @@ namespace Oxide::Tarnish {
         api_notification = new codes::eeems::oxide1::Notifications(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
         return api_notification;
     }
+
+    codes::eeems::oxide1::Gui* guiAPI(){
+        if(api_gui != nullptr){
+            return api_gui;
+        }
+        auto path = requestAPI("gui");
+        if(path == "/"){
+            return nullptr;
+        }
+        api_gui = new codes::eeems::oxide1::Gui(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        return api_gui;
+    }
+
+    codes::eeems::oxide1::Window* topWindow(){ return window; }
 }

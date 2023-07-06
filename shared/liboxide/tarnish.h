@@ -11,6 +11,12 @@
 #include <epframebuffer.h>
 
 namespace Oxide::Tarnish {
+    typedef enum{
+        Raised,
+        Lowered,
+        RaisedHidden,
+        LoweredHidden
+    } WindowState;
     /*!
      * \brief Get the current General API instance
      * \return The current General API instance
@@ -50,32 +56,10 @@ namespace Oxide::Tarnish {
      */
     int getFrameBufferFd();
     /*!
-     * \brief createFrameBuffer
-     * \param width
-     * \param height
-     * \return
-     */
-    int createFrameBuffer(int width, int height);
-    /*!
-     * \brief frameBufferInfo
-     * \return
-     */
-    QList<qlonglong> frameBufferInfo();
-    /*!
      * \brief frameBuffer
      * \return
      */
     uchar* frameBuffer();
-    /*!
-     * \brief lockFrameBuffer
-     * \return
-     */
-    bool lockFrameBuffer();
-    /*!
-     * \brief unlockFrameBuffer
-     * \return
-     */
-    bool unlockFrameBuffer();
     /*!
      * \brief frameBuffer
      * \return
@@ -89,13 +73,13 @@ namespace Oxide::Tarnish {
     /*!
      * \brief screenUpdate
      */
-    void screenUpdate(EPFrameBuffer::WaveformMode mode = EPFrameBuffer::HighQualityGrayscale);
+    void screenUpdate();
     /*!
      * \brief screenUpdate
      * \param rect
      * \param mode
      */
-    void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode mode = EPFrameBuffer::HighQualityGrayscale);
+    void screenUpdate(QRect rect);
     /*!
      * \brief powerAPI
      * \return
@@ -126,4 +110,14 @@ namespace Oxide::Tarnish {
      * \return
      */
     codes::eeems::oxide1::Notifications* notificationAPI();
+    /*!
+     * \brief guiAPI
+     * \return
+     */
+    codes::eeems::oxide1::Gui* guiAPI();
+    /*!
+     * \brief topWindow
+     * \return
+     */
+    codes::eeems::oxide1::Window* topWindow();
 }

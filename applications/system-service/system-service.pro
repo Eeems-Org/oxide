@@ -17,11 +17,13 @@ SOURCES += \
     appsapi.cpp \
     bss.cpp \
     buttonhandler.cpp \
+    guiapi.cpp \
     network.cpp \
     notification.cpp \
     screenapi.cpp \
     screenshot.cpp \
     systemapi.cpp \
+    window.cpp \
     wlan.cpp \
     wpa_supplicant.cpp \
     main.cpp
@@ -60,6 +62,7 @@ HEADERS += \
     dbusservice.h \
     digitizerhandler.h \
     fifohandler.h \
+    guiapi.h \
     mxcfb.h \
     network.h \
     notification.h \
@@ -71,6 +74,7 @@ HEADERS += \
     systemapi.h \
     tarnish_stable.h \
     wifiapi.h \
+    window.h \
     wlan.h \
     wpa_supplicant.h
 

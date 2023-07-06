@@ -60,7 +60,9 @@ DBUS_INTERFACES += \
     ../../interfaces/screenapi.xml \
     ../../interfaces/screenshot.xml \
     ../../interfaces/notificationapi.xml \
-    ../../interfaces/notification.xml
+    ../../interfaces/notification.xml \
+    ../../interfaces/guiapi.xml \
+    ../../interfaces/window.xml
 
 LIBS += -lsystemd
 

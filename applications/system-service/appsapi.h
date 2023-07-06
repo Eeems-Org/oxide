@@ -108,6 +108,7 @@ public:
 
     void setEnabled(bool enabled){
         qDebug() << "Apps API" << enabled;
+        m_enabled = enabled;
         for(auto app : applications){
             if(enabled){
                 app->registerPath();
@@ -154,7 +155,9 @@ public:
             auto displayName = properties.value("displayName", name).toString();
             app->setConfig(properties);
             applications.insert(name, app);
-            app->registerPath();
+            if(m_enabled){
+                app->registerPath();
+            }
             emit applicationRegistered(path);
         });
         return path;

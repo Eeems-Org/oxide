@@ -4,5 +4,5 @@
         "bin": "/opt/bin/corrupt",
         "flags": ["hidden", "nosavescreen", "nosplash"],
         "type": "backgroundable",
-        "permissions": ["apps", "screen"]
+        "permissions": ["apps", "screen", "gui"]
 }

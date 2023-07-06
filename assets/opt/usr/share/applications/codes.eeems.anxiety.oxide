@@ -6,5 +6,5 @@
         "splash": "oxide:splash:anxiety-702",
         "flags": [],
         "type": "foreground",
-        "permissions": ["screen"]
+        "permissions": ["screen", "gui"]
 }

@@ -19,11 +19,9 @@
 #include "systemapi.h"
 #include "screenapi.h"
 #include "notificationapi.h"
+#include "guiapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
-
-// Must be included so that generate_xml.sh will work
-#include "../../shared/liboxide/meta.h"
 
 #define dbusService DBusService::singleton()
 
@@ -42,57 +40,14 @@ struct ChildEntry {
     std::string name;
     int stdout;
     int stderr;
-    int fb;
-    int x;
-    int y;
-    int fbWidth;
-    int fbHeight;
-    size_t fbSize;
-    int fbBytesPerLine;
-    int fbFormat;
     int eventRead;
     int eventWrite;
-    void* fbData = nullptr;
-    QImage* fbImage = nullptr;
-    QPoint topLeft(){ return QPoint(x, y); }
-    QSize size(){ return QSize(fbWidth, fbHeight); }
-    QPoint bottomRight(){
-        auto coord = topLeft();
-        return QPoint(coord.x() + fbWidth, coord.y() + fbHeight);
-    }
-    QRect rect(){ return QRect(topLeft(), bottomRight()); }
     std::string uniqueName() const{
         return QString("%1-%2-%3")
             .arg(service.c_str())
             .arg(name.c_str())
             .arg(pid)
             .toStdString();
-    }
-    void* frameBufferData(){
-        if(fb == -1 || fbWidth == -1 || fbHeight == -1){
-            return nullptr;
-        }
-        if(fbData != nullptr){
-            return fbData;
-        }
-        auto data = mmap(NULL, fbSize, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fb, 0);
-        if(data == MAP_FAILED){
-            O_WARNING("Failed to map framebuffer:" << strerror(errno))
-            return nullptr;
-        }
-        fbData = data;
-        return data;
-    }
-
-    QImage* frameBuffer(){
-        if(fbImage){
-            return fbImage;
-        }
-        if(frameBufferData() == nullptr){
-            return nullptr;
-        }
-        fbImage = new QImage((uchar*)fbData, fbWidth, fbHeight, fbBytesPerLine, (QImage::Format)fbFormat);
-        return fbImage;
     }
 };
 
@@ -197,6 +152,14 @@ public:
                         .instance = new NotificationAPI(this),
                     });
                 });
+
+                Oxide::Sentry::sentry_span(s, "gui", "Initialize GUI API", [this]{
+                    apis.insert("gui", APIEntry{
+                        .path = QString(OXIDE_SERVICE_PATH) + "/gui",
+                        .dependants = new QStringList(),
+                        .instance = new GuiAPI(this),
+                    });
+                });
             });
 #ifdef SENTRY
             sentry_breadcrumb("dbusservice", "Connecting button handler events", "info");
@@ -299,164 +262,9 @@ public:
             .name = name.toStdString(),
             .stdout = dup(stdout.fileDescriptor()),
             .stderr = dup(stderr.fileDescriptor()),
-            .fb = -1,
-            .fbWidth = -1,
-            .fbHeight = -1,
-            .fbSize = 0,
-            .fbBytesPerLine = 0,
             .eventRead = -1,
             .eventWrite = -1
         });
-    }
-    Q_INVOKABLE bool hasFrameBuffer(QDBusMessage message){
-        auto service = message.service().toStdString();
-        qDebug() << "hasFrameBuffer()" << service.c_str();
-        QMutableListIterator<ChildEntry> i(children);
-        while(i.hasNext()){
-            auto child = i.next();
-            if(child.service == service){
-                return child.fb != -1;
-            }
-        }
-        return false;
-    }
-
-    Q_INVOKABLE QDBusUnixFileDescriptor getFrameBuffer(QDBusMessage message){
-        auto service = message.service().toStdString();
-        qDebug() << "getFrameBuffer()" << service.c_str();
-        auto bus = QDBusConnection::systemBus();
-        QMutableListIterator<ChildEntry> i(children);
-        while(i.hasNext()){
-            auto child = i.next();
-            if(child.service != service){
-                continue;
-            }
-            if(child.fb == -1){
-                qDebug() << "Failed to get framebuffer, no framebuffer created";
-                bus.send(message.createErrorReply(QDBusError::AccessDenied, "No framebuffer created"));
-            }
-            return QDBusUnixFileDescriptor(child.fb);
-        }
-        qDebug() << "Failed to get framebuffer, child not found";
-        bus.send(message.createErrorReply(QDBusError::AccessDenied, "Child not found"));
-        return QDBusUnixFileDescriptor();
-    }
-
-    Q_INVOKABLE QList<qlonglong> getFrameBufferInfo(QDBusMessage message){
-        auto service = message.service().toStdString();
-        qDebug() << "getFrameBufferSize()" << service.c_str();
-        auto bus = QDBusConnection::systemBus();
-        if(!hasFrameBuffer(message)){
-            qDebug() << "Failed to get framebuffer size, No framebuffer created";
-            bus.send(message.createErrorReply(QDBusError::AccessDenied, "No framebuffer created"));
-            return QList<qlonglong>();
-        }
-        QMutableListIterator<ChildEntry> i(children);
-        while(i.hasNext()){
-            auto child = i.next();
-            if(child.service == service){
-                return QList<qlonglong>{
-                    child.fbWidth,
-                    child.fbHeight,
-                    child.fbSize,
-                    child.fbBytesPerLine,
-                    child.fbFormat
-                };
-            }
-        }
-        qDebug() << "Failed to get framebuffer size, child not found";
-        bus.send(message.createErrorReply(QDBusError::AccessDenied, "Child not found"));
-        return QList<qlonglong>();
-    }
-
-    Q_INVOKABLE QDBusUnixFileDescriptor createFrameBuffer(int width, int height, QDBusMessage message){
-        auto service = message.service().toStdString();
-        qDebug() << "createFrameBuffer()" << service.c_str();
-        auto bus = QDBusConnection::systemBus();
-        QMutableListIterator<ChildEntry> i(children);
-        while(i.hasNext()){
-            auto& child = i.next();
-            if(child.service != service){
-                continue;
-            }
-            if(child.fb != -1){
-                O_WARNING("Framebuffer already exists");
-                bus.send(message.createErrorReply(QDBusError::LimitsExceeded, "Framebuffer already exists"));
-                return QDBusUnixFileDescriptor();
-            }
-            int fd = memfd_create(child.uniqueName().c_str(), MFD_ALLOW_SEALING);
-            if(fd == -1){
-                O_WARNING("Unable to create memfd for framebuffer:" << strerror(errno));
-                bus.send(message.createErrorReply(QDBusError::InternalError, "Unable to create memfd"));
-                return QDBusUnixFileDescriptor();
-            }
-            QImage blankImage(width, height, QImage::Format_RGB16);
-            blankImage.fill(Qt::white);
-            if(ftruncate(fd, blankImage.sizeInBytes())){
-                O_WARNING("Unable to truncate memfd for framebuffer:" << strerror(errno));
-                bus.send(message.createErrorReply(QDBusError::InternalError, "Unable to truncate memfd"));
-                close(fd);
-                return QDBusUnixFileDescriptor();
-            }
-            int flags = fcntl(fd, F_GET_SEALS);
-            if(fcntl(fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW)){
-                O_WARNING("Unable to seal memfd for framebuffer:" << strerror(errno));
-                close(fd);
-                bus.send(message.createErrorReply(QDBusError::InternalError, "Unable to seal memfd"));
-                return QDBusUnixFileDescriptor();
-            }
-            child.fb = fd;
-            child.fbWidth = width;
-            child.fbHeight = height;
-            child.fbSize = blankImage.sizeInBytes();
-            child.fbBytesPerLine = blankImage.bytesPerLine();
-            child.fbFormat = blankImage.format();
-            auto fbData = child.frameBufferData();
-            if(fbData == nullptr){
-                bus.send(message.createErrorReply(QDBusError::InternalError, "Unable to create buffer"));
-                child.fb = -1;
-                child.fbWidth = -1;
-                child.fbHeight = -1;
-                child.fbSize = 0;
-                child.fbBytesPerLine = 0;
-                child.fbFormat = QImage::Format_Invalid;
-                close(fd);
-                return QDBusUnixFileDescriptor();
-            }
-            memcpy(fbData, blankImage.constBits(), blankImage.sizeInBytes());
-            return QDBusUnixFileDescriptor(child.fb);
-        }
-        qDebug() << "Failed to create framebuffer, child not found";
-        bus.send(message.createErrorReply(QDBusError::AccessDenied, "Child not found"));
-        return QDBusUnixFileDescriptor();
-    }
-
-    Q_INVOKABLE void enableFrameBuffer(QDBusMessage message){
-        auto service = message.service().toStdString();
-        qDebug() << "enableFrameBuffer()" << service.c_str();
-        auto bus = QDBusConnection::systemBus();
-        QMutableListIterator<ChildEntry> i(children);
-        while(i.hasNext()){
-            auto& child = i.next();
-            if(child.service != service){
-                continue;
-            }
-            auto image = child.frameBuffer();
-            if(image == nullptr || image->isNull()){
-                O_WARNING("Unable to enable framebuffer: Failed to get QImage for framebuffer");
-                bus.send(message.createErrorReply(QDBusError::InternalError, "Failed to get QImage for framebuffer"));
-                return;
-            }
-            // Initialize the framebuffer to be white
-            if(msync(child.fbData, child.fbSize, MS_SYNC | MS_INVALIDATE) == -1){
-                qDebug() << "Failed to sync framebuffer:" << strerror(errno);
-            }
-            // TODO start rendering framebuffer
-            return;
-        }
-        O_WARNING("Unable to enable framebuffer: No framebuffer created");
-        bus.send(message.createErrorReply(QDBusError::AccessDenied, "No framebuffer created"));
-        return;
     }
 
     Q_INVOKABLE QDBusUnixFileDescriptor getEventPipe(QDBusMessage message){
@@ -560,36 +368,13 @@ public slots:
         }
         return result;
     }
-    void screenUpdate(int mode, QDBusMessage message){
-        auto service = message.service().toStdString();
-        qDebug() << "screenUpdate()" << service.c_str();
-        QMutableListIterator<ChildEntry> i(children);
-        while(i.hasNext()){
-            auto child = i.next();
-            if(child.service == service){
-                screenUpdateForChild(&child, 0, 0, child.fbWidth, child.fbHeight, (EPFrameBuffer::WaveformMode)mode, EPFrameBuffer::FullUpdate);
-                break;
-            }
-        }
-    }
-    void screenUpdate(int x, int y, int width, int height, int mode, QDBusMessage message){
-        auto service = message.service().toStdString();
-        qDebug() << "screenUpdate()" << service.c_str();
-        QMutableListIterator<ChildEntry> i(children);
-        while(i.hasNext()){
-            auto child = i.next();
-            if(child.service == service){
-                screenUpdateForChild(&child, x, y, width, height, (EPFrameBuffer::WaveformMode)mode, EPFrameBuffer::PartialUpdate);
-                break;
-            }
-        }
-    }
 
     void startup(){
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", "startup", "navigation");
 #endif
         appsAPI->startup();
+        guiAPI->startup();
     }
 
 
@@ -631,15 +416,6 @@ private:
             }
             O_DEBUG("unregisterChild" << child.pid << child.name.c_str());
             i.remove();
-            if(child.fbImage != nullptr){
-                delete child.fbImage;
-            }
-            if(child.fbData != nullptr && child.fbData != MAP_FAILED && munmap(child.fbData, child.fbSize) == -1){
-                O_WARNING("Failed to unmap framebuffer:" << strerror(errno));
-            }
-            if(child.fb != -1 && close(child.fb)){
-                O_WARNING("Failed to close framebuffer:" << strerror(errno));
-            }
             if(child.eventRead != -1 && close(child.eventRead)){
                 O_WARNING("Failed to close event read pipe:" << strerror(errno));
             }
@@ -647,26 +423,6 @@ private:
                 O_WARNING("Failed to close event write pipe:" << strerror(errno));
             }
         }
-    }
-    void screenUpdateForChild(ChildEntry* child, int x, int y, int width, int height, EPFrameBuffer::WaveformMode waveform, EPFrameBuffer::UpdateMode mode){
-        auto image = child->frameBuffer();
-        if(image == nullptr){
-            O_WARNING("Screen update called, but could not get framebuffer image")
-            return;
-        }
-        auto target = child->rect();
-        target.setSize(QSize(width, height));
-        target.translate(x, y);
-        QRect source(x, y, width, height);
-        // TODO - Only update screen if application is active
-        dispatchToMainThread([image, &child, waveform, mode, target, source]{
-            auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
-            QPainter painter(frameBuffer);
-            painter.drawImage(target, *image, source);
-            painter.end();
-            EPFrameBuffer::sendUpdate(target, waveform, mode, true);
-            EPFrameBuffer::waitForLastUpdate();
-        });
     }
 };
 

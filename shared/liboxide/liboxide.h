@@ -238,12 +238,16 @@ namespace Oxide {
             NoPen, /*!< Standalone Qt environment with no pen support >*/
             Oxide /*!< Oxide environment >*/
         };
-
         /*!
          * \brief Setup the Qt environment
          * \snippet examples/oxide.cpp setupQtEnvironment
          */
         void setupQtEnvironment(QtEnvironmentType type = Default);
+        /*!
+         * \brief screenGeometry
+         * \return
+         */
+        QRect screenGeometry();
 
     private:
         DeviceType _deviceType;

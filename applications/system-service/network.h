@@ -7,10 +7,8 @@
 
 #include <liboxide.h>
 
+#include "apibase.h"
 #include "supplicant.h"
-
-// Must be included so that generate_xml.sh will work
-#include "../../shared/liboxide/meta.h"
 
 class Network : public QObject {
     Q_OBJECT

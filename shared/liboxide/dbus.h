@@ -23,6 +23,8 @@
 #include "screenshot_interface.h"
 #include "notificationapi_interface.h"
 #include "notification_interface.h"
+#include "guiapi_interface.h"
+#include "window_interface.h"
 
 #endif // LIBOXIDE_DBUS_H
 /*! @} */

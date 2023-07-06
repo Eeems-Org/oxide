@@ -10,6 +10,8 @@
 #include <liboxide.h>
 #include <unistd.h>
 
+// Must be included so that generate_xml.sh will work
+#include "../../shared/liboxide/meta.h"
 
 class APIBase : public QObject, protected QDBusContext {
     Q_OBJECT
@@ -18,6 +20,7 @@ public:
     APIBase(QObject* parent) : QObject(parent) {}
     virtual void setEnabled(bool enabled) = 0;
     int hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
+    int getSenderPgid(){ return getpgid(getSenderPid()); }
 
 protected:
     int getSenderPid(){
@@ -26,7 +29,6 @@ protected:
         }
         return connection().interface()->servicePid(message().service());
     }
-    int getSenderPgid(){ return getpgid(getSenderPid()); }
 };
 
 #endif // APIBASE_H

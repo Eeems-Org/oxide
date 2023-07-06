@@ -51,7 +51,7 @@ int main(int argc, char *argv[]){
         parser.showHelp(EXIT_FAILURE);
     }
     auto apiName = args.at(0);
-    if(!(QSet<QString> {"settings", "power", "wifi", "apps", "system", "screen", "notification"}).contains(apiName)){
+    if(!(QSet<QString> {"settings", "power", "wifi", "apps", "system", "screen", "notification", "gui"}).contains(apiName)){
         qDebug() << "Unknown API" << apiName;
 #ifdef SENTRY
         sentry_breadcrumb("error", "Unknown API");
@@ -292,6 +292,18 @@ int main(int argc, char *argv[]){
 #endif
                 return qExit(EXIT_FAILURE);
             }
+        }
+    }else if(apiName == "gui"){
+#ifdef SENTRY
+        sentry_breadcrumb("api", "gui");
+#endif
+        api = new Gui(OXIDE_SERVICE, path, bus);
+        if(parser.isSet("object")){
+            qDebug() << "Paths are not valid for the system API";
+#ifdef SENTRY
+            sentry_breadcrumb("error", "invalid arguments");
+#endif
+            return qExit(EXIT_FAILURE);
         }
     }else{
         qDebug() << "API not initialized? Please log a bug.";

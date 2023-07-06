@@ -36,9 +36,6 @@
 #include "fifohandler.h"
 #include "buttonhandler.h"
 
-// Must be included so that generate_xml.sh will work
-#include "../../shared/liboxide/meta.h"
-
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
 class SandBoxProcess : public QProcess{

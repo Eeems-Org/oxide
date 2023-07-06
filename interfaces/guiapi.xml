@@ -1,0 +1,23 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="codes.eeems.oxide1.Gui">
+    <property name="geometry" type="(iiii)" access="read">
+      <annotation name="org.qtproject.QtDBus.QtTypeName" value="QRect"/>
+    </property>
+    <method name="createWindow">
+      <arg type="o" direction="out"/>
+      <arg name="x" type="i" direction="in"/>
+      <arg name="y" type="i" direction="in"/>
+      <arg name="width" type="i" direction="in"/>
+      <arg name="height" type="i" direction="in"/>
+    </method>
+    <method name="createWindow">
+      <arg type="o" direction="out"/>
+      <arg name="geometry" type="(iiii)" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QRect"/>
+    </method>
+    <method name="createWindow">
+      <arg type="o" direction="out"/>
+    </method>
+  </interface>
+</node>

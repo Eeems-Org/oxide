@@ -9,9 +9,6 @@
 #include "supplicant.h"
 #include "network.h"
 
-// Must be included so that generate_xml.sh will work
-#include "../../shared/liboxide/meta.h"
-
 class BSS : public QObject{
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)

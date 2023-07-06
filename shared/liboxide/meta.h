@@ -67,6 +67,11 @@
  */
 #define OXIDE_WIFI_INTERFACE OXIDE_SERVICE ".Wifi"
 /*!
+ * \def OXIDE_GUI_INTERFACE
+ * \brief DBus service for the GUI API
+ */
+#define OXIDE_GUI_INTERFACE OXIDE_SERVICE ".Gui"
+/*!
  * \def OXIDE_APPLICATION_INTERFACE
  * \brief DBus service for an application object
  */
@@ -91,4 +96,9 @@
  * \brief DBus service for a screenshot object
  */
 #define OXIDE_SCREENSHOT_INTERFACE OXIDE_SERVICE ".Screenshot"
+/*!
+ * \def OXIDE_WINDOW_INTERFACE
+ * \brief DBus service for a window object
+ */
+#define OXIDE_WINDOW_INTERFACE OXIDE_SERVICE ".Window"
 /*! @} */

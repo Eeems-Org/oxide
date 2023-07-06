@@ -8,8 +8,7 @@
 #include <sys/types.h>
 #include <liboxide.h>
 
-// Must be included so that generate_xml.sh will work
-#include "../../shared/liboxide/meta.h"
+#include "apibase.h"
 
 class Screenshot : public QObject{
     Q_OBJECT

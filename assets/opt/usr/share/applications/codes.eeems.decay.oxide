@@ -5,5 +5,5 @@
         "flags": ["hidden"],
         "type": "foreground",
         "splash": "oxide:splash:oxide-702",
-        "permissions": ["apps", "power", "system", "wifi"]
+        "permissions": ["apps", "power", "system", "wifi", "gui"]
 }
