@@ -66,8 +66,9 @@ private:
     QRect m_geometry;
     int m_fd;
     uchar* m_data = nullptr;
-    QImage* m_image = nullptr;
+    QImage m_image;
     WindowState m_state;
+    QMutex mutex;
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);

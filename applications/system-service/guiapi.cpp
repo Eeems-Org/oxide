@@ -50,7 +50,6 @@ void GuiAPI::setEnabled(bool enabled){
     for(auto window : windows){
         if(window != nullptr){
             window->setEnabled(enabled);
-            window->deleteLater();
         }
     }
 }
@@ -142,7 +141,7 @@ void GuiAPI::redraw(){
         painter.fillRect(rect, colour);
         // TODO - have some sort of stack to determine which window is on top
         for(auto window : windows){
-            if(!window->isVisible()){
+            if(window == nullptr || !window->isVisible()){
                 continue;
             }
             auto image = window->toImage();

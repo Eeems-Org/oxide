@@ -29,6 +29,7 @@ protected:
         }
         return connection().interface()->servicePid(message().service());
     }
+    static void shutdown();
 };
 
 #endif // APIBASE_H

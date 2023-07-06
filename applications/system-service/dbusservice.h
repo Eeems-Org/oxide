@@ -219,10 +219,10 @@ public:
             api.instance->setEnabled(false);
             bus.unregisterObject(api.path);
             emit apiUnavailable(QDBusObjectPath(api.path));
-            delete api.instance;
-            delete api.dependants;
+            api.instance->deleteLater();
         }
         apis.clear();
+        APIBase::shutdown();
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
 #endif
