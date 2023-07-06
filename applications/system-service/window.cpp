@@ -76,6 +76,8 @@ QRect Window::geometry(){
     return m_geometry;
 }
 
+QRect Window::_geometry(){ return m_geometry; }
+
 void Window::setGeometry(const QRect& geometry){
     if(!hasPermissions()){
         W_DENIED();
@@ -91,10 +93,7 @@ bool Window::isVisible(){
         return false;
     }
     W_ALLOWED()
-    if(m_image == nullptr || m_state != WindowState::Raised){
-        return false;
-    }
-    return guiAPI->geometry().intersects(m_geometry);
+    return _isVisible();
 }
 
 void Window::setVisible(bool visible){
@@ -102,7 +101,8 @@ void Window::setVisible(bool visible){
         W_DENIED();
         return;
     }
-    W_ALLOWED()
+    W_ALLOWED();
+    auto wasVisible = _isVisible();
     auto state = m_state;
     switch(m_state){
         case WindowState::Raised:
@@ -114,8 +114,12 @@ void Window::setVisible(bool visible){
             m_state = visible ? WindowState::Lowered : WindowState::LoweredHidden;
         break;
     }
-    if(state != m_state){
-        emit stateChanged(m_state);
+    if(state == m_state){
+        return;
+    }
+    emit stateChanged(m_state);
+    if(wasVisible != _isVisible()){
+        emit dirty(m_geometry);
     }
 }
 
@@ -164,7 +168,7 @@ void Window::move(int x, int y){
         return;
     }
     W_ALLOWED()
-    auto wasVisible = isVisible();
+    auto wasVisible = _isVisible();
     auto oldGeometry = m_geometry;
     m_geometry.setX(x);
     m_geometry.setY(y);
@@ -172,7 +176,7 @@ void Window::move(int x, int y){
     if(wasVisible){
         emit dirty(oldGeometry);
     }
-    if(isVisible()){
+    if(_isVisible()){
         emit dirty(m_geometry);
     }
 }
@@ -183,12 +187,12 @@ void Window::repaint(QRect region){
         return;
     }
     W_ALLOWED()
-    if(isVisible()){
+    if(_isVisible()){
         emit dirty(region);
     }
 }
 
-void Window::repaint(){ repaint(geometry()); }
+void Window::repaint(){ repaint(m_geometry); }
 
 void Window::raise(){
     if(!hasPermissions()){
@@ -208,8 +212,8 @@ void Window::raise(){
         default:
         break;
     }
-    if(isVisible()){
-        emit dirty(geometry());
+    if(_isVisible()){
+        emit dirty(m_geometry);
     }
     emit stateChanged(m_state);
     emit raised();
@@ -221,7 +225,7 @@ void Window::lower(){
         return;
     }
     W_ALLOWED()
-    bool wasVisible = isVisible();
+    bool wasVisible = _isVisible();
     switch(m_state){
         case WindowState::Raised:
             m_state = WindowState::Lowered;
@@ -235,7 +239,7 @@ void Window::lower(){
         break;
     }
     if(wasVisible){
-        emit dirty(geometry());
+        emit dirty(m_geometry);
     }
     emit stateChanged(m_state);
     emit lowered();
@@ -247,11 +251,11 @@ void Window::close(){
         return;
     }
     W_ALLOWED()
-    bool wasVisible = isVisible();
+    bool wasVisible = _isVisible();
     m_state = WindowState::LoweredHidden;
     emit closed();
     if(wasVisible){
-        emit dirty(geometry());
+        emit dirty(m_geometry);
     }
 }
 
@@ -317,4 +321,11 @@ void Window::createFrameBuffer(const QRect& geometry){
     emit geometryChanged(oldGeometry, m_geometry);
     emit frameBufferChanged(QDBusUnixFileDescriptor(m_fd));
     W_DEBUG("Framebuffer created:" << geometry);
+}
+
+bool Window::_isVisible(){
+    if(m_image == nullptr || m_state != WindowState::Raised){
+        return false;
+    }
+    return guiAPI->_geometry().intersects(m_geometry);
 }

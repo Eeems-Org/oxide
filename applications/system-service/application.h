@@ -352,7 +352,12 @@ public:
         }
         return screenCaptureNoSecurityCheck();
     }
-    QByteArray screenCaptureNoSecurityCheck(){ return qUncompress(*m_screenCapture); }
+    QByteArray screenCaptureNoSecurityCheck(){
+        if(m_screenCapture == nullptr){
+            return QByteArray();
+        }
+        return qUncompress(*m_screenCapture);
+    }
 
     const QVariantMap& getConfig(){ return m_config; }
     void setConfig(const QVariantMap& config);

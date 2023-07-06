@@ -7,13 +7,16 @@ import "widgets"
 ApplicationWindow {
     id: window
     objectName: "window"
-    visible: stateController.state != "loading"
     width: screenGeometry.width
     height: screenGeometry.height
     title: qsTr("Oxide")
+    visible: true
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
-    Component.onCompleted: controller.startup()
+    Component.onCompleted: {
+        window.raise();
+        controller.startup();
+    }
     header: Rectangle {
         color: "black"
         height: menu.height
@@ -159,16 +162,16 @@ ApplicationWindow {
                     value = "";
                     return;
                 }
-                var state = stateController.state
-                if(state === "loaded" || state === "confirmPin"){
+                if(stateController.state === "waiting"){
                     message = "Correct!";
+                    controller.previousApplication();
                     return;
                 }
                 message = "";
             }
         },
         Popup {
-            visible: stateController.state == "import"
+            id: importPrompt
             x: (parent.width / 2) - (width / 2)
             y: (parent.height / 2) - (height / 2)
             width: 1000
@@ -211,7 +214,7 @@ ApplicationWindow {
             }
         },
         Popup {
-            visible: stateController.state == "pinPrompt"
+            id: pinPrompt
             x: (parent.width / 2) - (width / 2)
             y: (parent.height / 2) - (height / 2)
             width: 1000
@@ -239,6 +242,7 @@ ApplicationWindow {
                         onClicked: {
                             controller.breadcrumb("nopin", "clicked", "ui");
                             controller.clearPin();
+                            controller.startup();
                         }
                     }
                     BetterButton {
@@ -254,7 +258,7 @@ ApplicationWindow {
             }
         },
         Popup {
-            visible: stateController.state == "telemetry"
+            id: telemetry
             x: (parent.width / 2) - (width / 2)
             y: (parent.height / 2) - (height / 2)
             width: 1000
@@ -290,7 +294,7 @@ ApplicationWindow {
                             controller.applicationUsage = true;
                             controller.crashReport = true;
                             controller.firstLaunch = false;
-                            stateController.state = "loading";
+                            stateController.state = "waiting";
                         }
                     }
                     BetterButton {
@@ -303,7 +307,7 @@ ApplicationWindow {
                             controller.applicationUsage = false;
                             controller.crashReport = true;
                             controller.firstLaunch = false;
-                            stateController.state = "loading";
+                            stateController.state = "waiting";
                         }
                     }
                     BetterButton {
@@ -316,7 +320,7 @@ ApplicationWindow {
                             controller.applicationUsage = false;
                             controller.crashReport = true;
                             controller.firstLaunch = false;
-                            stateController.state = "loading";
+                            stateController.state = "waiting";
                         }
                     }
                     BetterButton {
@@ -329,7 +333,7 @@ ApplicationWindow {
                             controller.applicationUsage = false;
                             controller.crashReport = false;
                             controller.firstLaunch = false;
-                            stateController.state = "loading";
+                            stateController.state = "waiting";
                         }
                     }
                 }
@@ -348,7 +352,8 @@ ApplicationWindow {
             State { name: "confirmPin" },
             State { name: "import" },
             State { name: "noPin" },
-            State { name: "loading" }
+            State { name: "loading" },
+            State { name: "waiting" }
         ]
         transitions: [
             Transition {
@@ -359,15 +364,25 @@ ApplicationWindow {
                         console.log("PIN Entry");
                         pinEntry.value = "";
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: true }
+                    ParallelAnimation {
+                        PropertyAction { target: pinEntry; property: "visible"; value: true }
+                        PropertyAction { target: telemetry; property: "visible"; value: false }
+                        PropertyAction { target: pinPrompt; property: "visible"; value: false }
+                        PropertyAction { target: importPrompt; property: "visible"; value: false }
+                    }
                 }
             },
             Transition {
                 from: "*"; to: "pinPrompt"
                 SequentialAnimation {
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
+                    ParallelAnimation {
+                        PropertyAction { target: pinEntry; property: "visible"; value: false }
+                        PropertyAction { target: telemetry; property: "visible"; value: false }
+                        PropertyAction { target: pinPrompt; property: "visible"; value: true }
+                        PropertyAction { target: importPrompt; property: "visible"; value: false }
+                    }
                     ScriptAction { script: {
-                            controller.breadcrumb("navigation", "pinPrompt", "navigation");
+                        controller.breadcrumb("navigation", "pinPrompt", "navigation");
                         console.log("Prompt for PIN creation");
                     } }
                 }
@@ -375,9 +390,14 @@ ApplicationWindow {
             Transition {
                 from: "*"; to: "telemetry"
                 SequentialAnimation {
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
+                    ParallelAnimation {
+                        PropertyAction { target: pinEntry; property: "visible"; value: false }
+                        PropertyAction { target: telemetry; property: "visible"; value: true }
+                        PropertyAction { target: pinPrompt; property: "visible"; value: false }
+                        PropertyAction { target: importPrompt; property: "visible"; value: false }
+                    }
                     ScriptAction { script: {
-                            controller.breadcrumb("navigation", "telemetry", "navigation");
+                        controller.breadcrumb("navigation", "telemetry", "navigation");
                         console.log("Telemetry opt-in screen");
                     } }
                 }
@@ -390,7 +410,12 @@ ApplicationWindow {
                         console.log("PIN Confirmation");
                         pinEntry.value = "";
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: true }
+                    ParallelAnimation {
+                        PropertyAction { target: pinEntry; property: "visible"; value: true }
+                        PropertyAction { target: telemetry; property: "visible"; value: false }
+                        PropertyAction { target: pinPrompt; property: "visible"; value: false }
+                        PropertyAction { target: importPrompt; property: "visible"; value: false }
+                    }
                 }
             },
             Transition {
@@ -400,7 +425,12 @@ ApplicationWindow {
                         controller.breadcrumb("navigation", "import", "navigation");
                         console.log("Import PIN");
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
+                    ParallelAnimation {
+                        PropertyAction { target: pinEntry; property: "visible"; value: false }
+                        PropertyAction { target: telemetry; property: "visible"; value: false }
+                        PropertyAction { target: pinPrompt; property: "visible"; value: false }
+                        PropertyAction { target: importPrompt; property: "visible"; value: true }
+                    }
                 }
             },
             Transition {
@@ -411,35 +441,33 @@ ApplicationWindow {
                         console.log("PIN Setup");
                         pinEntry.value = "";
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: true }
+                    ParallelAnimation {
+                        PropertyAction { target: pinEntry; property: "visible"; value: true }
+                        PropertyAction { target: telemetry; property: "visible"; value: false }
+                        PropertyAction { target: pinPrompt; property: "visible"; value: false }
+                        PropertyAction { target: importPrompt; property: "visible"; value: false }
+                    }
                 }
             },
             Transition {
                 from: "*"; to: "noPin"
                 SequentialAnimation {
                     ScriptAction { script: controller.breadcrumb("navigation", "noPin", "navigation"); }
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
-                }
-            },
-            Transition {
-                from: "*"; to: "loading"
-                SequentialAnimation {
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
-                    ScriptAction { script: {
-                        controller.breadcrumb("navigation", "loading", "navigation");
-                        console.log("Loading display");
-                        controller.startup();
-                    } }
+                    ParallelAnimation {
+                        PropertyAction { target: pinEntry; property: "visible"; value: false }
+                        PropertyAction { target: telemetry; property: "visible"; value: false }
+                        PropertyAction { target: pinPrompt; property: "visible"; value: false }
+                        PropertyAction { target: importPrompt; property: "visible"; value: false }
+                    }
                 }
             },
             Transition {
                 from: "*"; to: "waiting"
-                SequentialAnimation {
-                    ScriptAction { script: {
-                        controller.breadcrumb("navigation", "waiting", "navigation");
-                        console.log("Loading display");
-                        controller.startup();
-                    } }
+                ParallelAnimation {
+                    PropertyAction { target: pinEntry; property: "visible"; value: true }
+                    PropertyAction { target: telemetry; property: "visible"; value: false }
+                    PropertyAction { target: pinPrompt; property: "visible"; value: false }
+                    PropertyAction { target: importPrompt; property: "visible"; value: false }
                 }
             }
         ]

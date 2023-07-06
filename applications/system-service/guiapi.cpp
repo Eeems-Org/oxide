@@ -42,12 +42,16 @@ QRect GuiAPI::geometry(){
     W_ALLOWED();
     return m_screenGeometry;
 }
+QRect GuiAPI::_geometry(){ return m_screenGeometry; }
 
 void GuiAPI::setEnabled(bool enabled){
     qDebug() << "GUI API" << enabled;
     m_enabled = enabled;
     for(auto window : windows){
-        window->setEnabled(enabled);
+        if(window != nullptr){
+            window->setEnabled(enabled);
+            window->deleteLater();
+        }
     }
 }
 
@@ -63,26 +67,30 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
     auto path = QString(OXIDE_SERVICE_PATH) + "/window/" + QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
     auto pgid = getSenderPgid();
     auto window = new Window(id, path, pgid, geometry, this);
+    window->moveToThread(this->thread());
     windows.insert(path, window);
-    connect(window, &Window::closed, [=]{
+    connect(window, &Window::closed, this, [this, window, path]{
         windows.remove(path);
         window->deleteLater();
+    }, Qt::QueuedConnection);
+    connect(window, &Window::destroyed, this, [this, path]{
+        windows.remove(path);
     });
-    connect(window, &Window::dirty, [=](const QRect& region){
-        auto geometry = window->geometry();
+    connect(window, &Window::dirty, this, [=](const QRect& region){
+        auto geometry = window->_geometry();
         const QRect intersection = region.intersected(geometry);
         const QPoint screenOffset = geometry.topLeft();
         setDirty(intersection.translated(-screenOffset));
-    });
+    }, Qt::QueuedConnection);
     for(auto item : appsAPI->runningApplicationsNoSecurityCheck().values()){
         Application* app = appsAPI->getApplication(item.value<QDBusObjectPath>());
         if(app->processId() == pgid){
-            connect(app, &Application::paused, [=]{
+            connect(app, &Application::paused, window, [=]{
                 window->setVisible(false);
-            });
-            connect(app, &Application::resumed, [=]{
+            }, Qt::QueuedConnection);
+            connect(app, &Application::resumed, window, [=]{
                 window->setVisible(true);
-            });
+            }, Qt::QueuedConnection);
         }
     }
     window->setEnabled(m_enabled);
@@ -106,61 +114,69 @@ void GuiAPI::setDirty(const QRect& region){
 }
 
 void GuiAPI::redraw(){
-    Oxide::dispatchToMainThread([this]{
-        if(m_repaintRegion.isEmpty()){
-            return;
+    // This should already be on the main thread, but just in case
+    if(!m_dirty){
+        return;
+    }
+    if(qApp->thread() != QThread::currentThread()){
+        O_WARNING(__PRETTY_FUNCTION__ << "Not called from main thread");
+        return;
+    }
+    if(m_repaintRegion.isEmpty()){
+        m_dirty = false;
+        return;
+    }
+    const QPoint screenOffset = m_screenGeometry.topLeft();
+    const QRect screenRect = m_screenGeometry.translated(-screenOffset);
+    auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
+    // TODO - wait until screen isn't busy
+    QRegion repaintedRegion;
+    QPainter painter(frameBuffer);
+    Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::black;
+    for(QRect rect : m_repaintRegion){
+        rect = rect.intersected(screenRect);
+        if(rect.isEmpty()){
+            continue;
         }
-        const QPoint screenOffset = m_screenGeometry.topLeft();
-        const QRect screenRect = m_screenGeometry.translated(-screenOffset);
-        auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
-        // TODO - wait until screen isn't busy
-        QRegion repaintedRegion;
-        QPainter painter(frameBuffer);
-        Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::black;
-        for(QRect rect : m_repaintRegion){
-            rect = rect.intersected(screenRect);
-            if(rect.isEmpty()){
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
+        painter.fillRect(rect, colour);
+        // TODO - have some sort of stack to determine which window is on top
+        for(auto window : windows){
+            if(!window->isVisible()){
                 continue;
             }
-            painter.setCompositionMode(QPainter::CompositionMode_Source);
-            painter.fillRect(rect, colour);
-            // TODO - have some sort of stack to determine which window is on top
-            for(auto window : windows){
-                if(!window->isVisible()){
-                    continue;
-                }
-                auto image = window->toImage();
-                if(image == nullptr){
-                    continue;
-                }
-                const QRect windowRect = window->geometry().translated(-screenOffset);
-                const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
-                painter.drawImage(rect, *image, windowIntersect);
-                repaintedRegion += windowIntersect;
+            auto image = window->toImage();
+            if(image == nullptr){
+                continue;
             }
+            const QRect windowRect = window->geometry().translated(-screenOffset);
+            const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
+            painter.drawImage(rect, *image, windowIntersect);
+            repaintedRegion += windowIntersect;
         }
-        painter.end();
-        auto boundingRect = repaintedRegion.boundingRect();
-        auto waveform = EPFrameBuffer::Mono;
-        for(int x = boundingRect.left(); x < boundingRect.right(); x++){
-            for(int y = boundingRect.top(); y < boundingRect.bottom(); y++){
-                auto color = frameBuffer->pixelColor(x, y);
-                if(color == Qt::white || color == Qt::black || color == Qt::transparent){
-                    continue;
-                }
-                if(color == Qt::gray){
-                    waveform = EPFrameBuffer::Grayscale;
-                    continue;
-                }
-                waveform = EPFrameBuffer::HighQualityGrayscale;
-                break;
+    }
+    painter.end();
+    auto boundingRect = repaintedRegion.boundingRect();
+    auto waveform = EPFrameBuffer::Mono;
+    for(int x = boundingRect.left(); x < boundingRect.right(); x++){
+        for(int y = boundingRect.top(); y < boundingRect.bottom(); y++){
+            auto color = frameBuffer->pixelColor(x, y);
+            if(color == Qt::white || color == Qt::black || color == Qt::transparent){
+                continue;
             }
+            if(color == Qt::gray){
+                waveform = EPFrameBuffer::Grayscale;
+                continue;
+            }
+            waveform = EPFrameBuffer::HighQualityGrayscale;
+            break;
         }
-        auto mode =  boundingRect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
-        EPFrameBuffer::sendUpdate(boundingRect, waveform, mode, true);
-        EPFrameBuffer::waitForLastUpdate();
-        m_repaintRegion = QRegion();
-    });
+    }
+    auto mode =  boundingRect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
+    EPFrameBuffer::sendUpdate(boundingRect, waveform, mode, true);
+    EPFrameBuffer::waitForLastUpdate();
+    m_repaintRegion = QRegion();
+    m_dirty = false;
 }
 
 bool GuiAPI::isThisPgId(pid_t valid_pgid){
@@ -172,12 +188,18 @@ bool GuiAPI::isThisPgId(pid_t valid_pgid){
 }
 
 bool GuiAPI::event(QEvent* event){
-    if(event->type() == QEvent::UpdateRequest){
-        redraw();
-        m_dirty = false;
-        return true;
+    if(event->type() != QEvent::UpdateRequest){
+        return QObject::event(event);
     }
-    return QObject::event(event);
+    QTimer* timer = new QTimer(this);
+    timer->moveToThread(qApp->thread());
+    timer->setSingleShot(true);
+    QObject::connect(timer, &QTimer::timeout, this, [timer, this](){
+        redraw();
+        timer->deleteLater();
+    }, Qt::QueuedConnection);
+    timer->start(0);
+    return true;
 }
 
 void GuiAPI::scheduleUpdate(){

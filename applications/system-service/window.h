@@ -28,6 +28,7 @@ public:
     const QString& identifier();
     QDBusUnixFileDescriptor frameBuffer();
     QRect geometry();
+    QRect _geometry();
     void setGeometry(const QRect& geometry);
     Q_INVOKABLE bool isVisible();
     Q_INVOKABLE void setVisible(bool visible);
@@ -70,4 +71,5 @@ private:
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);
+    bool _isVisible();
 };

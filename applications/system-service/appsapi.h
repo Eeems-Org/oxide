@@ -152,7 +152,7 @@ public:
             Q_UNUSED(t);
             path = QDBusObjectPath(getPath(name));
             auto app = new Application(path, reinterpret_cast<QObject*>(this));
-            auto displayName = properties.value("displayName", name).toString();
+            app->moveToThread(this->thread());
             app->setConfig(properties);
             applications.insert(name, app);
             if(m_enabled){

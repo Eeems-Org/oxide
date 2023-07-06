@@ -19,6 +19,7 @@ public:
     ~GuiAPI();
     void startup();
     QRect geometry();
+    QRect _geometry();
     void setEnabled(bool enabled);
 
     Q_INVOKABLE QDBusObjectPath createWindow(int x, int y, int width, int height);

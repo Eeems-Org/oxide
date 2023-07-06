@@ -68,6 +68,12 @@ public:
             throw "";
         }
 
+        auto path = appsApi->currentApplication().path();
+        auto app = new Application(appsApi->service(), path, appsApi->connection(), this);
+        connect(app, &Application::resumed, [=]{
+            startup();
+        });
+
         QSettings settings;
         if(QFile::exists(settings.fileName())){
             qDebug() << "Importing old settings";
@@ -126,43 +132,33 @@ public:
 
         auto currentTime = QTime::currentTime();
         QTime nextTime = currentTime.addSecs(60 - currentTime.second());
-        clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
+        auto nearestMinute = currentTime.msecsTo(nextTime);
+        clockTimer->setInterval(nearestMinute);
         QObject::connect(clockTimer , &QTimer::timeout, this, &Controller::updateClock);
         clockTimer->start();
 
         if(firstLaunch()){
             qDebug() << "First launch";
-            QTimer::singleShot(100, [this]{
-                stateControllerUI->setProperty("state", "telemetry");
-            });
+            stateControllerUI->setProperty("state", "telemetry");
             return;
         }
         // There is no PIN configuration
         if(!sharedSettings.has_pin()){
             qDebug() << "No Pin";
-            QTimer::singleShot(100, [this]{
-                stateControllerUI->setProperty("state", xochitlPin().isEmpty() ? "pinPrompt" : "import");
-            });
+            stateControllerUI->setProperty("state", xochitlPin().isEmpty() ? "pinPrompt" : "import");
             return;
         }
         // There is a PIN set
         if(hasPin()){
             qDebug() << "Prompting for PIN";
-            QTimer::singleShot(100, [this]{
-                setState("loaded");
-            });
+            setState("loaded");
             return;
         }
         // PIN is set explicitly to a blank value
         qDebug() << "No pin set";
-        QTimer::singleShot(100, [this]{
-            setState("noPin");
-            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
-            previousApplication();
-            QTimer::singleShot(100, [this]{
-                setState("waiting");
-            });
-        });
+        setState("noPin");
+        qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
+        previousApplication();
     }
     void launchStartupApp(){
         QDBusObjectPath path = appsApi->startupApplication();
@@ -177,7 +173,8 @@ public:
         app.launch();
     }
     bool hasPin(){ return sharedSettings.has_pin() && storedPin().length(); }
-    void previousApplication(){
+    Q_INVOKABLE void previousApplication(){
+        qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
         if(!appsApi->previousApplication()){
             launchStartupApp();
         }
@@ -205,19 +202,12 @@ public:
         auto state = this->state();
         if(state == "loaded" && pin == storedPin()){
             qDebug() << "PIN matches!";
-            QTimer::singleShot(200, [this]{
-                onLogin();
-                if(getPinEntryUI()){
-                    pinEntryUI->setProperty("message", "");
-                    pinEntryUI->setProperty("pin", "");
-                }
-                setState("loading");
-                qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 500);
-                QTimer::singleShot(200, [this]{
-                    deviceSuspending();
-                    previousApplication();
-                });
-            });
+            onLogin();
+            if(getPinEntryUI()){
+                pinEntryUI->setProperty("message", "");
+                pinEntryUI->setProperty("pin", "");
+            }
+            setState("waiting");
             return true;
         }else if(state == "loaded"){
             qDebug() << "PIN doesn't match!";
@@ -227,9 +217,7 @@ public:
         }
         if(state == "prompt"){
             confirmPin = pin;
-            QTimer::singleShot(200, [this]{
-                setState("confirmPin");
-            });
+            setState("confirmPin");
             return true;
         }
         if(state != "confirmPin"){
@@ -242,11 +230,7 @@ public:
         }
         qDebug() << "PIN matches!";
         setStoredPin(pin);
-        QTimer::singleShot(200, [this]{
-            qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
-            setState("waiting");
-            previousApplication();
-        });
+        setState("waiting");
         return true;
     }
     Q_INVOKABLE void importPin(){
@@ -260,7 +244,6 @@ public:
     Q_INVOKABLE void clearPin(){
         qDebug() << "Clearing PIN";
         setStoredPin("");
-        startup();
     }
     Q_INVOKABLE void breadcrumb(QString category, QString message, QString type = "default"){
 #ifdef SENTRY
@@ -318,7 +301,7 @@ private slots:
             confirmPin = "";
             setState("pinPrompt");
         }else{
-            setState("loading");
+            setState("waiting");
         }
     }
     void updateClock(){

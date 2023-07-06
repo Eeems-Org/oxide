@@ -1,6 +1,15 @@
 #include "apibase.h"
 #include "appsapi.h"
 
+static QThread dbusThread;
+
+APIBase::APIBase(QObject *parent) : QObject(parent){
+    if(!dbusThread.isRunning()){
+        dbusThread.start();
+    }
+    moveToThread(&dbusThread);
+}
+
 int APIBase::hasPermission(QString permission, const char* sender){
     if(getpgid(getpid()) == getSenderPgid()){
         return true;
