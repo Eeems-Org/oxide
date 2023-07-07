@@ -7,6 +7,17 @@ DBusService* DBusService::singleton(){
         qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
         qDebug() << "Creating DBusService instance";
         instance = new DBusService(qApp);
+        connect(qApp, &QGuiApplication::aboutToQuit, instance, []{
+            qDebug() << "aboutToQuit";
+            emit instance->aboutToQuit();
+            instance->setEnabled(false);
+            instance->connection().unregisterService(OXIDE_SERVICE);
+            appsAPI->shutdown();
+            delete instance;
+            instance = nullptr;
+            qApp->sendPostedEvents();
+            qApp->processEvents();
+        }, Qt::QueuedConnection);
         if(!bus.isConnected()){
 #ifdef SENTRY
             sentry_breadcrumb("dbusservice", "Failed to connect to system bus.", "error");
@@ -105,8 +116,6 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(){
         sentry_breadcrumb("dbusservice", "Connecting events", "info");
 #endif
         Oxide::Sentry::sentry_span(t, "connect", "Connect events", [this]{
-            connect(qApp, &QGuiApplication::aboutToQuit, this, &DBusService::aboutToQuit, Qt::QueuedConnection);
-            connect(this, &DBusService::aboutToQuit, this, &DBusService::deleteLater, Qt::QueuedConnection);
             connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
             connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
             connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
@@ -150,17 +159,35 @@ DBusService::~DBusService(){
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "Disconnecting APIs", "info");
 #endif
-    auto bus = connection();
-    qDebug() << "Removing all APIs";
+    qDebug() << "Deleting APIs";
     while(!apis.isEmpty()){
-        auto api = apis.take(apis.firstKey());
-        api.instance->setEnabled(false);
-        bus.unregisterObject(api.path);
-        emit apiUnavailable(QDBusObjectPath(api.path));
+        auto name = apis.firstKey();
+        qDebug() << "Deleting API" << name;
+        auto api = apis.take(name);
+        delete api.dependants;
+        delete api.instance;
     }
-    bus.interface()->unregisterService(OXIDE_SERVICE);
-    connection().unregisterService(OXIDE_SERVICE);
+    qDebug() << "All APIs removed";
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
 #endif
+}
+
+void DBusService::setEnabled(bool enabled){
+    for(auto api : apis){
+        if(api.instance->isEnabled() == enabled){
+            continue;
+        }
+        api.instance->setEnabled(enabled);
+        if(enabled){
+            continue;
+        }
+        connection().unregisterObject(api.path);
+        emit apiUnavailable(QDBusObjectPath(api.path));
+    }
+}
+
+bool DBusService::isEnabled(){
+    auto reply = connection().interface()->registeredServiceNames();
+    return reply.isValid() && reply.value().contains(OXIDE_SERVICE);
 }

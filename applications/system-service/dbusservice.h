@@ -60,7 +60,8 @@ public:
     static DBusService* singleton();
     DBusService(QObject* parent);
     ~DBusService();
-    void setEnabled(bool enabled){ Q_UNUSED(enabled); }
+    void setEnabled(bool enabled);
+    bool isEnabled();
 
     QObject* getAPI(QString name){
         if(!apis.contains(name)){
@@ -184,7 +185,7 @@ public slots:
         if(!api.dependants->size()){
             qDebug() << "Unregistering " << api.path;
             api.instance->setEnabled(false);
-            QDBusConnection::systemBus().unregisterObject(api.path, QDBusConnection::UnregisterNode);
+            connection().unregisterObject(api.path, QDBusConnection::UnregisterTree);
             emit apiUnavailable(QDBusObjectPath(api.path));
         }
     }

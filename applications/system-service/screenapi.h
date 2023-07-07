@@ -30,7 +30,7 @@
 class ScreenAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_SCREEN_INTERFACE)
-    Q_PROPERTY(bool enabled READ enabled)
+    Q_PROPERTY(bool enabled READ isEnabled)
     Q_PROPERTY(QList<QDBusObjectPath> screenshots READ screenshots)
 
 public:
@@ -71,7 +71,7 @@ public:
             }
         }
     }
-    bool enabled() {
+    bool isEnabled() {
         if(!hasPermission("screen")){
             return false;
         }

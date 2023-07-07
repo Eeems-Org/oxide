@@ -221,7 +221,9 @@ public:
     }
     void setEnabled(bool enabled){
         qDebug() << "System API" << enabled;
+        m_enabled = enabled;
     }
+    bool isEnabled(){ return m_enabled; }
     int autoSleep(){return sharedSettings.autoSleep(); }
     void setAutoSleep(int _autoSleep);
     int autoLock(){return sharedSettings.autoLock(); }
@@ -575,6 +577,7 @@ private:
     QPoint startLocation;
     QMap<SwipeDirection, bool> swipeStates;
     QMap<SwipeDirection, int> swipeLengths;
+    bool m_enabled;
 
     void inhibitSleep(){
         inhibitors.append(Inhibitor(systemd, "sleep", qApp->applicationName(), "Handle sleep screen"));

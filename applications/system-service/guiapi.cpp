@@ -28,8 +28,12 @@ GuiAPI::GuiAPI(QObject* parent)
     });
 }
 GuiAPI::~GuiAPI(){
-
+    while(!windows.isEmpty()){
+        auto window = windows.take(windows.firstKey());
+        delete window;
+    }
 }
+
 void GuiAPI::startup(){
     W_DEBUG("Startup");
 }
@@ -42,6 +46,7 @@ QRect GuiAPI::geometry(){
     W_ALLOWED();
     return m_screenGeometry;
 }
+
 QRect GuiAPI::_geometry(){ return m_screenGeometry; }
 
 void GuiAPI::setEnabled(bool enabled){
@@ -53,6 +58,8 @@ void GuiAPI::setEnabled(bool enabled){
         }
     }
 }
+
+bool GuiAPI::isEnabled(){ return m_enabled; }
 
 QDBusObjectPath GuiAPI::createWindow(int x, int y, int width, int height){ return createWindow(QRect(x, y, width, height)); }
 

@@ -207,7 +207,7 @@ public:
             }
         }
     }
-    bool getEnabled(){ return m_enabled; }
+    bool isEnabled(){ return m_enabled; }
     QList<Wlan*> getWlans(){ return wlans; }
     QList<Interface*> getInterfaces(){ return interfaces(); }
     enum State { Unknown, Off, Disconnected, Offline, Online};

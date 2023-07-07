@@ -21,6 +21,7 @@ public:
     QRect geometry();
     QRect _geometry();
     void setEnabled(bool enabled);
+    bool isEnabled();
 
     Q_INVOKABLE QDBusObjectPath createWindow(int x, int y, int width, int height);
     Q_INVOKABLE QDBusObjectPath createWindow(QRect geometry);

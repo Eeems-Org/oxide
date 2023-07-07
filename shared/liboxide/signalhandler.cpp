@@ -53,6 +53,7 @@ namespace Oxide {
         if(!notifiers.contains(signal)){
             return;
         }
+        ::signal(signal, SIG_IGN);
         O_DEBUG("Signal recieved:" << strsignal(signal));
         auto item = notifiers.value(signal);
         char a = 1;

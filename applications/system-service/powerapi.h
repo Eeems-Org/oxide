@@ -63,12 +63,14 @@ public:
     }
 
     void setEnabled(bool enabled) override {
+        m_enabled = enabled;
         if(enabled){
             timer->start();
         }else{
             timer->stop();
         }
     }
+    bool isEnabled(){ return m_enabled; }
 
     enum State { Normal, PowerSaving };
     Q_ENUM(State)
@@ -161,6 +163,7 @@ private:
     bool m_batteryWarning = false;
     bool m_batteryAlert = false;
     bool m_chargerWarning = false;
+    bool m_enabled;
 
     void updateBattery(){
         if(!Oxide::Power::batteries()->length()){
