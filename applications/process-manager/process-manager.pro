@@ -1,5 +1,4 @@
 QT += quick
-QT += dbus
 
 CONFIG += c++11
 CONFIG += qtquickcompiler

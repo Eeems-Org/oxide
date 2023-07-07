@@ -15,7 +15,7 @@ codes::eeems::oxide1::System* api_system = nullptr;
 codes::eeems::oxide1::Notifications* api_notification = nullptr;
 codes::eeems::oxide1::Gui* api_gui = nullptr;
 codes::eeems::oxide1::Window* window = nullptr;
-QFile eventsFile;
+QLocalSocket eventsFile;
 QRect fbGeometry;
 qulonglong fbLineSize = 0;
 QImage::Format fbFormat = QImage::Format_Invalid;
@@ -235,7 +235,7 @@ namespace Oxide::Tarnish {
     }
     int getEventPipeFd(){
         if(eventsFile.isOpen()){
-            return eventsFile.handle();
+            return eventsFile.socketDescriptor();
         }
         connect();
         if(window == nullptr && getFrameBufferFd() == -1){
@@ -253,14 +253,14 @@ namespace Oxide::Tarnish {
             return -1;
         }
         fd = dup(fd);
-        if(!eventsFile.open(fd, QFile::ReadOnly, QFile::AutoCloseHandle)){
+        if(!eventsFile.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly)){
             ::close(fd);
             O_WARNING("Unable to get event pipe:" << eventsFile.errorString());
             return -1;
         }
-        return eventsFile.handle();
+        return eventsFile.socketDescriptor();
     }
-    QFile* getEventPipe(){
+    QLocalSocket* getEventPipe(){
         auto fd = getEventPipeFd();
         if(fd == -1){
             O_WARNING("Unable to get event pipe=: Failed to get pipe fd");
@@ -276,7 +276,7 @@ namespace Oxide::Tarnish {
         QObject::disconnect(eventsConnection);
         eventsConnection = QObject::connect(file, &QFile::readyRead, qApp, []{
             input_event event;
-            ::read(eventsFile.handle(), &event, sizeof(input_event));
+            ::read(eventsFile.socketDescriptor(), &event, sizeof(input_event));
             qDebug() << "input_event recieved";
             // TODO - convert to QEvent and post it to qApp
         }, Qt::QueuedConnection);

@@ -2,9 +2,11 @@ TARGET = oxide
 TEMPLATE = lib
 
 CONFIG += plugin
-CONFIG += qpa/genericunixfontdatabase c++17
-QT += core-private gui-private input_support-private
-QT += dbus
+CONFIG += qpa/genericunixfontdatabase
+CONFIG += c++17
+QT += core-private
+QT += gui-private
+QT += input_support-private
 
 qtHaveModule(fontdatabase_support-private) {
     QT += fontdatabase_support-private 

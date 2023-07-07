@@ -1,6 +1,5 @@
 QT += gui
 QT += quick
-QT += dbus
 
 CONFIG += c++11
 CONFIG += qml_debug

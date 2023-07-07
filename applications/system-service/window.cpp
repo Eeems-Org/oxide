@@ -28,12 +28,11 @@ Window::Window(const QString& id, const QString& path, const pid_t& pid, const Q
     if(::socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == -1){
         W_WARNING("Unable to open events pipe:" << strerror(errno));
     }
-    if(!m_eventRead.open(fds[1], QFile::ReadOnly, QFile::AutoCloseHandle)){
-        W_WARNING("Unable to open events read fd:" << m_eventRead.errorString());
+    if(!m_eventRead.setSocketDescriptor(fds[1], QLocalSocket::ConnectedState, QLocalSocket::ReadOnly)){
+        W_WARNING("Unable to open events read socket:" << m_eventRead.errorString());
     }
-    if(m_eventWrite.open(fds[0], QFile::WriteOnly, QFile::AutoCloseHandle)){
-        connect(new QSocketNotifier(m_eventWrite.handle(), QSocketNotifier::Read, this), &QSocketNotifier::activated, this, &Window::eventWriteActivated);
-        connect(&m_eventWrite, &QFile::bytesWritten, this, [this](qint64 size){ W_DEBUG(size << "bytes were written to event pipe"); }, Qt::QueuedConnection);
+    if(m_eventWrite.setSocketDescriptor(fds[0], QLocalSocket::ConnectedState, QLocalSocket::WriteOnly)){
+        connect(&m_eventWrite, &QLocalSocket::bytesWritten, this, [this](qint64 size){ W_DEBUG(size << "bytes were written to event pipe"); }, Qt::QueuedConnection);
         auto timer = new QTimer(this);
         timer->setInterval(1000);
         timer->setSingleShot(false);
@@ -97,7 +96,7 @@ QDBusUnixFileDescriptor Window::eventPipe(){
         return QDBusUnixFileDescriptor();
     }
     W_ALLOWED();
-    return QDBusUnixFileDescriptor(m_eventRead.handle());
+    return QDBusUnixFileDescriptor(m_eventRead.socketDescriptor());
 }
 
 QRect Window::geometry(){

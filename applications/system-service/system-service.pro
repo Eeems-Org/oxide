@@ -1,4 +1,3 @@
-QT += dbus
 QT += quick
 
 CONFIG += c++17

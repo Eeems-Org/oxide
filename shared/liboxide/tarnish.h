@@ -8,6 +8,8 @@
 #include "liboxide_global.h"
 #include "dbus.h"
 
+#include <QLocalSocket>
+
 #include <epframebuffer.h>
 
 namespace Oxide::Tarnish {
@@ -74,7 +76,7 @@ namespace Oxide::Tarnish {
      * \brief getEventPipe
      * \return
      */
-    QFile* getEventPipe();
+    QLocalSocket* getEventPipe();
     /*!
      * \brief connectQtEvents
      * \return

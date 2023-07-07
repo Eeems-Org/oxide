@@ -2,6 +2,7 @@ QT -= gui
 QT += quick
 QT += dbus
 QT += core
+QT += network
 
 TEMPLATE = lib
 DEFINES += LIBOXIDE_LIBRARY

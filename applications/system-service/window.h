@@ -2,6 +2,8 @@
 
 #include "apibase.h"
 
+#include <QLocalSocket>
+
 class Window : public QObject
 {
     Q_OBJECT
@@ -73,8 +75,8 @@ private:
     QRect m_geometry;
     uchar* m_data = nullptr;
     QFile m_file;
-    QFile m_eventRead;
-    QFile m_eventWrite;
+    QLocalSocket m_eventRead;
+    QLocalSocket m_eventWrite;
     qulonglong m_bytesPerLine;
     WindowState m_state;
     QMutex mutex;
