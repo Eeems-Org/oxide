@@ -60,7 +60,7 @@ public:
     static DBusService* singleton();
     DBusService(QObject* parent);
     ~DBusService();
-    void setEnabled(bool enabled);
+    void setEnabled(bool enabled){ Q_UNUSED(enabled); }
     bool isEnabled();
 
     QObject* getAPI(QString name){
@@ -160,7 +160,7 @@ public slots:
             return QDBusObjectPath("/");
         }
         auto api = apis[name];
-        auto bus = connection();
+        auto bus = QDBusConnection::systemBus();
         if(bus.objectRegisteredAt(api.path) == nullptr){
             bus.registerObject(api.path, api.instance, QDBusConnection::ExportAllContents);
         }
@@ -185,7 +185,7 @@ public slots:
         if(!api.dependants->size()){
             qDebug() << "Unregistering " << api.path;
             api.instance->setEnabled(false);
-            connection().unregisterObject(api.path, QDBusConnection::UnregisterTree);
+            QDBusConnection::systemBus().unregisterObject(api.path, QDBusConnection::UnregisterNode);
             emit apiUnavailable(QDBusObjectPath(api.path));
         }
     }
@@ -224,7 +224,7 @@ private slots:
                 qDebug() << "Automatically unregistering " << api.path;
                 api.instance->setEnabled(false);
                 bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);
-                apiUnavailable(QDBusObjectPath(api.path));
+                emit apiUnavailable(QDBusObjectPath(api.path));
             }
         }
         unregisterChild(name.toStdString());

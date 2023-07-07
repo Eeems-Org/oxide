@@ -136,23 +136,23 @@ void AppsAPI::startup(){
 }
 
 void AppsAPI::shutdown(){
+    m_stopping = true;
     auto frameBuffer = EPFrameBuffer::framebuffer();
-    qDebug() << "Waiting for other painting to finish...";
-    while(frameBuffer->paintingActive()){
-        EPFrameBuffer::waitForLastUpdate();
-    }
-    QPainter painter(frameBuffer);
     auto rect = frameBuffer->rect();
+    QPainter painter(frameBuffer);
     auto fm = painter.fontMetrics();
     auto size = frameBuffer->size();
     qDebug() << "Clearing screen...";
     painter.setPen(Qt::white);
     painter.fillRect(rect, Qt::black);
+    painter.end();
     EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-    EPFrameBuffer::waitForLastUpdate();
     qDebug() << "Stopping applications...";
     for(auto app : applications){
         if(app->stateNoSecurityCheck() != Application::Inactive){
+            painter.begin(frameBuffer);
+            painter.setPen(Qt::white);
+            painter.fillRect(rect, Qt::black);
             auto text = "Stopping " + app->displayName() + "...";
             qDebug() << text.toStdString().c_str();
             int padding = 10;
@@ -169,6 +169,7 @@ void AppsAPI::shutdown(){
             );
             EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
             EPFrameBuffer::waitForLastUpdate();
+            painter.end();
         }
         app->stopNoSecurityCheck();
     }
@@ -178,11 +179,13 @@ void AppsAPI::shutdown(){
     }
     applications.clear();
     qDebug() << "Displaying final quit message...";
+    painter.begin(frameBuffer);
+    painter.setPen(Qt::white);
+    painter.fillRect(rect, Qt::black);
     painter.fillRect(rect, Qt::black);
     painter.drawText(rect, Qt::AlignCenter,"Goodbye!");
-    EPFrameBuffer::waitForLastUpdate();
-    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
     painter.end();
+    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
     EPFrameBuffer::waitForLastUpdate();
 }
 

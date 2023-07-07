@@ -330,7 +330,7 @@ public:
         return previousApplicationNoSecurityCheck();
     }
     bool previousApplicationNoSecurityCheck(){
-        if(locked()){
+        if(locked() || m_stopping){
             return false;
         }
         if(previousApplications.isEmpty()){
@@ -388,6 +388,7 @@ public:
         qDebug() << "Previous Applications" << previousApplications;
     }
     void removeFromPreviousApplications(QString name){ previousApplications.removeAll(name); }
+    void stopping(){ return m_stopping; }
 
 signals:
     void applicationRegistered(QDBusObjectPath);
@@ -400,7 +401,7 @@ signals:
 public slots:
     QT_DEPRECATED void leftHeld(){ openDefaultApplication(); }
     void openDefaultApplication(){
-        if(locked() || !hasPermission("apps")){
+        if(locked() || !hasPermission("apps") || m_stopping){
             return;
         }
         auto path = this->currentApplicationNoSecurityCheck();
@@ -425,7 +426,7 @@ public slots:
     }
     QT_DEPRECATED void homeHeld(){ openTaskManager(); }
     void openTaskManager(){
-        if(locked() || !hasPermission("apps")){
+        if(locked() || !hasPermission("apps") || m_stopping){
             return;
         }
         auto path = this->currentApplicationNoSecurityCheck();
@@ -449,7 +450,7 @@ public slots:
         app->launchNoSecurityCheck();
     }
     void openLockScreen(){
-        if(locked() || !hasPermission("apps")){
+        if(locked() || !hasPermission("apps") || m_stopping){
             return;
         }
         auto path = this->currentApplicationNoSecurityCheck();
@@ -473,7 +474,7 @@ public slots:
         app->launchNoSecurityCheck();
     }
     void openTaskSwitcher(){
-        if(locked() || !hasPermission("apps")){
+        if(locked() || !hasPermission("apps") || m_stopping){
             return;
         }
         auto path = this->currentApplicationNoSecurityCheck();

@@ -21,6 +21,9 @@ void Application::launch(){
     launchNoSecurityCheck();
 }
 void Application::launchNoSecurityCheck(){
+    if(appsAPI->stopping()){
+        return;
+    }
     if(m_process->processId()){
         resumeNoSecurityCheck();
     }else{

@@ -161,22 +161,8 @@ DBusService::~DBusService(){
 #endif
 }
 
-void DBusService::setEnabled(bool enabled){
-    for(auto api : apis){
-        if(api.instance->isEnabled() == enabled){
-            continue;
-        }
-        api.instance->setEnabled(enabled);
-        if(enabled){
-            continue;
-        }
-        connection().unregisterObject(api.path);
-        emit apiUnavailable(QDBusObjectPath(api.path));
-    }
-}
-
 bool DBusService::isEnabled(){
-    auto reply = connection().interface()->registeredServiceNames();
+    auto reply = QDBusConnection::systemBus().interface()->registeredServiceNames();
     return reply.isValid() && reply.value().contains(OXIDE_SERVICE);
 }
 
@@ -184,11 +170,16 @@ void DBusService::shutdown(){
     if(calledFromDBus()){
         return;
     }
-    qDebug() << "aboutToQuit";
     emit aboutToQuit();
-    setEnabled(false);
-    connection().unregisterService(OXIDE_SERVICE);
     appsAPI->shutdown();
+    auto bus = QDBusConnection::systemBus();
+    for(auto key : apis.keys()){
+        auto api = apis[key];
+        api.instance->setEnabled(false);
+        bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);
+        emit apiUnavailable(QDBusObjectPath(api.path));
+    }
+    bus.unregisterService(OXIDE_SERVICE);
     delete instance;
     instance = nullptr;
     qApp->quit();
