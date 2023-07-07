@@ -22,6 +22,8 @@
       <arg type="a{sv}" direction="out"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
     </method>
+    <method name="shutdown">
+    </method>
     <method name="registerChild">
       <arg name="childPid" type="x" direction="in"/>
       <arg name="name" type="s" direction="in"/>

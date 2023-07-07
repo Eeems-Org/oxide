@@ -202,6 +202,7 @@ public slots:
         }
         return result;
     }
+    void shutdown();
 
 signals:
     void apiAvailable(QDBusObjectPath api);
@@ -250,6 +251,7 @@ private:
             }
         }
     }
+    static DBusService* instance;
 };
 
 #endif // DBUSSERVICE_H

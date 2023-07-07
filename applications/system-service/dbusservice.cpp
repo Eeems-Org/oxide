@@ -1,23 +1,11 @@
 #include "dbusservice.h"
 
 DBusService* DBusService::singleton(){
-    static DBusService* instance;
     auto bus = QDBusConnection::systemBus();
     if(instance == nullptr){
         qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
         qDebug() << "Creating DBusService instance";
-        instance = new DBusService(qApp);
-        connect(qApp, &QGuiApplication::aboutToQuit, instance, []{
-            qDebug() << "aboutToQuit";
-            emit instance->aboutToQuit();
-            instance->setEnabled(false);
-            instance->connection().unregisterService(OXIDE_SERVICE);
-            appsAPI->shutdown();
-            delete instance;
-            instance = nullptr;
-            qApp->sendPostedEvents();
-            qApp->processEvents();
-        }, Qt::QueuedConnection);
+        instance = new DBusService(nullptr);
         if(!bus.isConnected()){
 #ifdef SENTRY
             sentry_breadcrumb("dbusservice", "Failed to connect to system bus.", "error");
@@ -191,3 +179,19 @@ bool DBusService::isEnabled(){
     auto reply = connection().interface()->registeredServiceNames();
     return reply.isValid() && reply.value().contains(OXIDE_SERVICE);
 }
+
+void DBusService::shutdown(){
+    if(calledFromDBus()){
+        return;
+    }
+    qDebug() << "aboutToQuit";
+    emit aboutToQuit();
+    setEnabled(false);
+    connection().unregisterService(OXIDE_SERVICE);
+    appsAPI->shutdown();
+    delete instance;
+    instance = nullptr;
+    qApp->quit();
+}
+
+DBusService* DBusService::instance = nullptr;

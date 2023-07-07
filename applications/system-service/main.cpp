@@ -120,8 +120,7 @@ int main(int argc, char* argv[]){
         qDebug() << "Deleting" << pidPath;
         remove(pidPath);
     }, Qt::QueuedConnection);
-    QObject::connect(signalHandler, &SignalHandler::sigInt, &app, &QGuiApplication::quit, Qt::QueuedConnection);
-    QObject::connect(signalHandler, &SignalHandler::sigTerm, &app, &QGuiApplication::quit, Qt::QueuedConnection);
-    dbusService; // Needed to create the instance and register it
+    QObject::connect(signalHandler, &SignalHandler::sigInt, dbusService, &DBusService::shutdown, Qt::QueuedConnection);
+    QObject::connect(signalHandler, &SignalHandler::sigTerm, dbusService, &DBusService::shutdown, Qt::QueuedConnection);
     return app.exec();
 }
