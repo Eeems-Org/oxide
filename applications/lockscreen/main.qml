@@ -160,7 +160,8 @@ ApplicationWindow {
                     return;
                 }
                 if(stateController.state === "waiting"){
-                    message = "Correct!";
+                    message = "";
+                    value = "";
                     controller.previousApplication();
                     return;
                 }

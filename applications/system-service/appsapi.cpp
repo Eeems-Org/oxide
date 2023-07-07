@@ -23,9 +23,6 @@ AppsAPI::AppsAPI(QObject* parent)
             Oxide::Sentry::sentry_span(s, "singleton", "Setup singleton", [this]{
                 singleton(this);
             });
-            Oxide::Sentry::sentry_span(s, "signals", "Setup unix signal handlers", []{
-                SignalHandler::setup_unix_signal_handlers();
-            });
             qDBusRegisterMetaType<QMap<QString,QDBusObjectPath>>();
             qDBusRegisterMetaType<QDBusObjectPath>();
             Oxide::Sentry::sentry_span(s, "sync", "Sync settings", [this]{

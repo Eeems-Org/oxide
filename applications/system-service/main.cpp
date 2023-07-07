@@ -17,10 +17,6 @@ const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/oxide.pid";
 const char* lockPath = "/run/oxide/oxide.lock";
 
-void sigHandler(int signal){
-    ::signal(signal, SIG_DFL);
-    qApp->quit();
-}
 bool stopProcess(pid_t pid){
     if(pid <= 1){
         return false;
@@ -107,20 +103,11 @@ int main(int argc, char* argv[]){
             return EXIT_FAILURE;
         }
     }
-
-    QObject::connect(&app, &QGuiApplication::aboutToQuit, [lock]{
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, &app, [lock]{
         qDebug() << "Releasing lock " << lockPath;
         Oxide::releaseLock(lock, lockPath);
-    });
+    }, Qt::QueuedConnection);
 
-    signal(SIGINT, sigHandler);
-    signal(SIGSEGV, sigHandler);
-    signal(SIGTERM, sigHandler);
-
-    dbusService;
-    QTimer::singleShot(0, []{
-        dbusService->startup();
-    });
     QFile pidFile(pidPath);
     if(!pidFile.open(QFile::ReadWrite)){
         qWarning() << "Unable to create " << pidPath;
@@ -129,8 +116,12 @@ int main(int argc, char* argv[]){
     pidFile.seek(0);
     pidFile.write(actualPid.toUtf8());
     pidFile.close();
-    QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, &app, []{
+        qDebug() << "Deleting" << pidPath;
         remove(pidPath);
-    });
+    }, Qt::QueuedConnection);
+    QObject::connect(signalHandler, &SignalHandler::sigInt, &app, &QGuiApplication::quit, Qt::QueuedConnection);
+    QObject::connect(signalHandler, &SignalHandler::sigTerm, &app, &QGuiApplication::quit, Qt::QueuedConnection);
+    dbusService; // Needed to create the instance and register it
     return app.exec();
 }

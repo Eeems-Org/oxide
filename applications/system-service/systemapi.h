@@ -110,7 +110,9 @@ public:
             });
             Oxide::Sentry::sentry_span(t, "systemd", "Connect to SystemD DBus", [this](Oxide::Sentry::Span* s){
                 Oxide::Sentry::sentry_span(s, "manager", "Create manager object", [this]{
-                    systemd = new Manager("org.freedesktop.login1", "/org/freedesktop/login1", QDBusConnection::systemBus(), this);
+                    systemd = new Manager("org.freedesktop.login1", "/org/freedesktop/login1", QDBusConnection::systemBus());
+                    systemd->moveToThread(thread());
+                    systemd->setParent(this);
                 });
                 Oxide::Sentry::sentry_span(s, "connect", "Connect to signals", [this]{
                     // Handle Systemd signals

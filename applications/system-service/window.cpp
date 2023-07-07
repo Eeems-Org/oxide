@@ -25,11 +25,6 @@ Window::Window(const QString& id, const QString& path, const pid_t& pid, const Q
 }
 Window::~Window(){
     LOCK_MUTEX
-    if(m_file.handle() == -1){
-        if(!m_file.unmap(m_data)){
-            W_WARNING("Failed to unmap framebuffer:" << m_file.errorString());
-        }
-    }
     m_file.close();
 }
 
@@ -278,11 +273,6 @@ void Window::createFrameBuffer(const QRect& geometry){
     if(m_file.isOpen() && geometry == m_geometry){
         W_WARNING("No need to resize:" << geometry);
         return;
-    }
-    if(m_file.isOpen()){
-        if(!m_file.unmap(m_data)){
-            W_WARNING("Failed to unmap:" << m_file.errorString());
-        }
     }
     m_file.close();
     if(geometry.isEmpty() || geometry.isNull() || !geometry.isValid()){

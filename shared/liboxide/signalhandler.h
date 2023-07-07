@@ -9,6 +9,7 @@
 
 #include <QObject>
 #include <QSocketNotifier>
+#include <sys/types.h>
 /*!
  * \brief signalHandler()
  */
@@ -25,8 +26,10 @@ namespace Oxide {
     public:
         /*!
          * \brief Setup the unix signal handlers to listen to SIGUSR1 and SIGUSR2
-         * \retval 1 Failed to setup SIGUSR1
-         * \retval 2 Failed to setup SIGUSR2
+         * \retval SIGTERM Failed to setup SIGTERM
+         * \retval SIGINT Failed to setup SIGINT
+         * \retval SIGUSR1 Failed to setup SIGUSR1
+         * \retval SIGUSR2 Failed to setup SIGUSR2
          * \retval 0 Successfully setup both signal handlers
          *
          * This method will automatically create and register the singleton with a parent of qApp.
@@ -37,7 +40,7 @@ namespace Oxide {
          * \return The static instance
          * \sa signalHandler
          */
-        static SignalHandler* singleton(SignalHandler* self = nullptr);
+        static SignalHandler* singleton();
         /*!
          * \brief Create an instance of SignalHandler.
          * \param parent Optional QObject parent
@@ -46,14 +49,17 @@ namespace Oxide {
          */
         SignalHandler(QObject *parent = 0);
         ~SignalHandler();
-        static void usr1SignalHandler(int unused);
-        static void usr2SignalHandler(int unused);
-
-    public slots:
-        void handleSigUsr1();
-        void handleSigUsr2();
+        static void handleSignal(int signal);
 
     signals:
+        /*!
+         * \brief The process has recieved a SIGINT
+         */
+        void sigTerm();
+        /*!
+         * \brief The process has recieved a SIGINT
+         */
+        void sigInt();
         /*!
          * \brief The process has recieved a SIGUSR1
          */
@@ -64,8 +70,12 @@ namespace Oxide {
         void sigUsr2();
 
     private:
-        QSocketNotifier* snUsr1;
-        QSocketNotifier* snUsr2;
+        void addNotifier(int signal, const char* name);
+        struct NotifierItem {
+            QSocketNotifier* notifier;
+            int fd;
+        };
+        static QMap<int, NotifierItem> notifiers;
     };
 }
 /*! @} */

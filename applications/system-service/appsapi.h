@@ -51,6 +51,7 @@ public:
         m_stopping = true;
         writeApplications();
         settings.sync();
+        // This should already be on the main thread, but just in case
         dispatchToMainThread([this]{
             auto frameBuffer = EPFrameBuffer::framebuffer();
             qDebug() << "Waiting for other painting to finish...";

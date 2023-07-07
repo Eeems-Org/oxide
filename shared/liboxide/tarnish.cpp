@@ -106,9 +106,7 @@ namespace Oxide::Tarnish {
         freeAPI(system);
         freeAPI(notification);
         freeAPI(general);
-        if(fbData != nullptr && !fbFile.unmap(fbData)){
-            O_WARNING("Failed to unmap framebuffer:" << fbFile.errorString());
-        }
+        fbData = nullptr;
         fbFile.close();
         eventsFile.close();
         if(window != nullptr){
@@ -158,16 +156,11 @@ namespace Oxide::Tarnish {
             window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection(), qApp);
             QObject::connect(window, &codes::eeems::oxide1::Window::frameBufferChanged, [=](const QDBusUnixFileDescriptor& fd){
                 qDebug() << "frameBufferChanged";
-                if(fbData != nullptr){
-                    if(!fbFile.unmap(fbData)){
-                        O_WARNING("Failed to unmap framebuffer:" << fbFile.errorString());
-                    }
-                    fbGeometry.adjust(0, 0, 0, 0);
-                    fbLineSize = 0;
-                    fbFormat = QImage::Format_Invalid;
-                    fbData = nullptr;
-                }
                 fbFile.close();
+                fbGeometry.adjust(0, 0, 0, 0);
+                fbLineSize = 0;
+                fbFormat = QImage::Format_Invalid;
+                fbData = nullptr;
                 if(!fd.isValid()){
                     O_WARNING("Unable to get framebuffer: Invalid DBus response");
                     return;

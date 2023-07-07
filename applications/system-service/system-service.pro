@@ -17,6 +17,7 @@ SOURCES += \
     appsapi.cpp \
     bss.cpp \
     buttonhandler.cpp \
+    dbusservice.cpp \
     guiapi.cpp \
     network.cpp \
     notification.cpp \

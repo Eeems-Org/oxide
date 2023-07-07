@@ -1,15 +1,6 @@
 #include "apibase.h"
 #include "appsapi.h"
 
-static QThread dbusThread;
-
-APIBase::APIBase(QObject *parent) : QObject(parent){
-    if(!dbusThread.isRunning()){
-        dbusThread.start();
-    }
-    moveToThread(&dbusThread);
-}
-
 
 int APIBase::hasPermission(QString permission, const char* sender){
     if(getpgid(getpid()) == getSenderPgid()){
@@ -29,11 +20,4 @@ int APIBase::hasPermission(QString permission, const char* sender){
     }
     qDebug() << "app not found, permission granted";
     return true;
-}
-
-void APIBase::shutdown(){
-    dbusThread.quit();
-    dbusThread.requestInterruption();
-    dbusThread.wait();
-    dbusThread.deleteLater();
 }

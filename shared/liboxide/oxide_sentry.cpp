@@ -156,7 +156,11 @@ namespace Oxide::Sentry{
         }else{
             sentry_options_set_environment(options, "release");
         }
-        sentry_options_set_debug(options, debugEnabled());
+        auto env = qgetenv("DEBUG_SENTRY");
+        sentry_options_set_debug(
+            options,
+            !env.isEmpty() && !(QStringList() << "0" << "n" << "no" << "false").contains(env.toLower())
+        );
         sentry_options_set_database_path(options, "/home/root/.cache/Eeems/sentry");
         sentry_options_set_release(options, (std::string(name) + "@" + APP_VERSION).c_str());
         ::sentry_init(options);
