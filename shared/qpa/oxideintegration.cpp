@@ -15,6 +15,7 @@
 #include <private/qgenericunixeventdispatcher_p.h>
 #include <private/qgenericunixfontdatabase_p.h>
 #include <liboxide.h>
+#include <liboxide/tarnish.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -75,6 +76,14 @@ void OxideIntegration::initialize(){
     new QEvdevMouseManager(QLatin1String("EvdevMouse"), QString() /* spec */, nullptr);
     new QEvdevKeyboardManager(QLatin1String("EvdevMouse"), QString() /* spec */, nullptr);
     m_inputContext = QPlatformInputContextFactory::create();
+    auto connected = Oxide::Tarnish::connectQtEvents();
+    if(m_debug){
+        if(!connected){
+            qWarning() << "OxideIntegration::initialize Failed to connect Qt events";
+        }else if(m_debug){
+            qDebug() << "OxideIntegration::initialize Qt events connected";
+        }
+    }
 }
 
 

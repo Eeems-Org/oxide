@@ -30,11 +30,6 @@
       <arg name="stdout" type="h" direction="in"/>
       <arg name="stderr" type="h" direction="in"/>
     </method>
-    <method name="getEventPipe">
-      <arg type="h" direction="out"/>
-    </method>
-    <method name="enableEventPipe">
-    </method>
     <method name="unregisterChild">
     </method>
   </interface>

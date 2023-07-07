@@ -172,6 +172,7 @@ void DBusService::shutdown(){
     }
     emit aboutToQuit();
     appsAPI->shutdown();
+    guiAPI->shutdown();
     auto bus = QDBusConnection::systemBus();
     for(auto key : apis.keys()){
         auto api = apis[key];

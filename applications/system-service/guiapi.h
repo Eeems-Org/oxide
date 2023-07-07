@@ -18,6 +18,7 @@ public:
     GuiAPI(QObject* parent);
     ~GuiAPI();
     void startup();
+    void shutdown();
     QRect geometry();
     QRect _geometry();
     void setEnabled(bool enabled);

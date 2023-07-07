@@ -40,8 +40,6 @@ struct ChildEntry {
     std::string name;
     int stdout;
     int stderr;
-    int eventRead;
-    int eventWrite;
     std::string uniqueName() const{
         return QString("%1-%2-%3")
             .arg(service.c_str())
@@ -95,55 +93,8 @@ public:
             .pid = childPid,
             .name = name.toStdString(),
             .stdout = dup(stdout.fileDescriptor()),
-            .stderr = dup(stderr.fileDescriptor()),
-            .eventRead = -1,
-            .eventWrite = -1
+            .stderr = dup(stderr.fileDescriptor())
         });
-    }
-
-    Q_INVOKABLE QDBusUnixFileDescriptor getEventPipe(QDBusMessage message){
-        auto service = message.service().toStdString();
-        qDebug() << "getEventPipe()" << service.c_str();
-        auto bus = QDBusConnection::systemBus();
-        QMutableListIterator<ChildEntry> i(children);
-        while(i.hasNext()){
-            auto& child = i.next();
-            if(child.service != service){
-                continue;
-            }
-            if(child.eventRead != -1){
-                return QDBusUnixFileDescriptor(child.eventRead);
-            }
-            int fds[2];
-            if(pipe2(fds, O_DIRECT) == -1){
-                O_WARNING("Unable to open events pipe:" << strerror(errno));
-                bus.send(message.createErrorReply(QDBusError::InternalError, "Unable to open pipe"));
-                return QDBusUnixFileDescriptor();
-            }
-            child.eventRead = fds[0];
-            child.eventWrite = fds[1];
-            return QDBusUnixFileDescriptor(child.eventRead);
-        }
-        bus.send(message.createErrorReply(QDBusError::AccessDenied, "Child not found"));
-        return QDBusUnixFileDescriptor();
-    }
-
-    Q_INVOKABLE void enableEventPipe(QDBusMessage message){
-        auto service = message.service().toStdString();
-        qDebug() << "enableEventPipe()" << service.c_str();
-        QMutableListIterator<ChildEntry> i(children);
-        while(i.hasNext()){
-            auto& child = i.next();
-            if(child.service != service || child.eventRead == -1){
-                continue;
-            }
-            if(close(child.eventRead)){
-                O_WARNING("Failed to close events write pipe" << strerror(errno));
-            }else{
-                child.eventRead = -1;
-            }
-            // TODO - start emitting events
-        }
     }
 
     Q_INVOKABLE void unregisterChild(QDBusMessage message){ unregisterChild(message.service().toStdString()); }
@@ -243,12 +194,6 @@ private:
             }
             O_DEBUG("unregisterChild" << child.pid << child.name.c_str());
             i.remove();
-            if(child.eventRead != -1 && close(child.eventRead)){
-                O_WARNING("Failed to close event read pipe:" << strerror(errno));
-            }
-            if(child.eventWrite != -1 && close(child.eventWrite)){
-                O_WARNING("Failed to close event write pipe:" << strerror(errno));
-            }
         }
     }
     static DBusService* instance;

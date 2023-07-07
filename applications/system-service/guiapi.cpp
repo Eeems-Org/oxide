@@ -38,6 +38,14 @@ void GuiAPI::startup(){
     W_DEBUG("Startup");
 }
 
+void GuiAPI::shutdown(){
+    W_DEBUG("Shutdown");
+    while(!windows.isEmpty()){
+        auto window = windows.take(windows.firstKey());
+        window->close();
+    }
+}
+
 QRect GuiAPI::geometry(){
     if(!hasPermission("gui")){
         W_DENIED();
@@ -77,6 +85,7 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
     windows.insert(path, window);
     connect(window, &Window::closed, this, [this, window, path]{
         windows.remove(path);
+        window->setEnabled(false);
         window->deleteLater();
     }, Qt::QueuedConnection);
     connect(window, &Window::destroyed, this, [this, path]{

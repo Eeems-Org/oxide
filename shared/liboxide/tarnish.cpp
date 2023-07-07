@@ -21,6 +21,8 @@ qulonglong fbLineSize = 0;
 QImage::Format fbFormat = QImage::Format_Invalid;
 uchar* fbData = nullptr;
 QFile fbFile;
+QSocketNotifier* eventsNotifier = nullptr;
+QMetaObject::Connection eventsConnection;
 
 bool verifyConnection(){
     if(api_general == nullptr){
@@ -108,12 +110,15 @@ namespace Oxide::Tarnish {
         freeAPI(general);
         fbData = nullptr;
         fbFile.close();
+        eventsNotifier->deleteLater();
+        eventsNotifier = nullptr;
         eventsFile.close();
         if(window != nullptr){
             window->close();
             window->deleteLater();
             window = nullptr;
         }
+        QObject::disconnect(eventsConnection);
         freeAPI(gui);
         QDBusConnection::disconnectFromBus(QDBusConnection::systemBus().name());
 #undef freeAPI
@@ -217,43 +222,65 @@ namespace Oxide::Tarnish {
         return fbData;
     }
     QImage frameBufferImage(){
-        if(!fbFile.isOpen()){
-            frameBuffer();
-        }
-        if(!fbFile.isOpen()){
+        auto data = frameBuffer();
+        if(data == nullptr){
+            O_WARNING("Unable to get framebuffer image: Could not get buffer");
             return QImage();
         }
-        return QImage((uchar*)fbData, fbGeometry.width(), fbGeometry.height(), fbLineSize, fbFormat);
+        QImage image((uchar*)data, fbGeometry.width(), fbGeometry.height(), fbLineSize, fbFormat);
+        if(image.isNull()){
+            O_WARNING("Unable to get framebuffer image: Image is null");
+        }
+        return image;
     }
-    int getEventPipe(){
+    int getEventPipeFd(){
         if(eventsFile.isOpen()){
             return eventsFile.handle();
         }
         connect();
-        QDBusPendingReply<QDBusUnixFileDescriptor> reply = api_general->getEventPipe();
-        reply.waitForFinished();
-        if(reply.isError()){
-            O_WARNING("Unable to get framebuffer:" << reply.error());
+        if(window == nullptr && getFrameBufferFd() == -1){
+            O_WARNING("Unable to get event pipe, no window");
             return -1;
         }
-        auto qfd = reply.value();
+        auto qfd = window->eventPipe();
         if(!qfd.isValid()){
-            O_WARNING("Unable to get framebuffer: Invalid DBus response");
+            O_WARNING("Unable to get event pipe: Invalid DBus response");
             return -1;
         }
         auto fd = qfd.fileDescriptor();
         if(fd == -1){
-            O_WARNING("Unable to get framebuffer: No framebuffer provided");
+            O_WARNING("Unable to get event pipe: No pipe provided");
             return -1;
         }
         fd = dup(fd);
         if(!eventsFile.open(fd, QFile::ReadOnly, QFile::AutoCloseHandle)){
             ::close(fd);
-            O_WARNING("Unable to get framebuffer:" << eventsFile.errorString());
+            O_WARNING("Unable to get event pipe:" << eventsFile.errorString());
             return -1;
         }
-        api_general->enableEventPipe();
         return eventsFile.handle();
+    }
+    QFile* getEventPipe(){
+        auto fd = getEventPipeFd();
+        if(fd == -1){
+            O_WARNING("Unable to get event pipe=: Failed to get pipe fd");
+            return nullptr;
+        }
+        return &eventsFile;
+    }
+    bool connectQtEvents(){
+        auto file = getEventPipe();
+        if(file == nullptr){
+            return false;
+        }
+        QObject::disconnect(eventsConnection);
+        eventsConnection = QObject::connect(file, &QFile::readyRead, qApp, []{
+            input_event event;
+            ::read(eventsFile.handle(), &event, sizeof(input_event));
+            qDebug() << "input_event recieved";
+            // TODO - convert to QEvent and post it to qApp
+        }, Qt::QueuedConnection);
+        return eventsConnection;
     }
     void screenUpdate(){
         if(fbData == nullptr){

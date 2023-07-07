@@ -8,6 +8,7 @@ class Window : public QObject
     Q_CLASSINFO("D-Bus Interface", OXIDE_WINDOW_INTERFACE)
     Q_PROPERTY(QString identifier READ identifier)
     Q_PROPERTY(QDBusUnixFileDescriptor frameBuffer READ frameBuffer NOTIFY frameBufferChanged)
+    Q_PROPERTY(QDBusUnixFileDescriptor eventPipe READ eventPipe)
     Q_PROPERTY(QRect geometry READ geometry WRITE setGeometry NOTIFY geometryChanged)
     Q_PROPERTY(qulonglong sizeInBytes READ sizeInBytes NOTIFY sizeInBytesChanged)
     Q_PROPERTY(qulonglong bytesPerLine READ bytesPerLine NOTIFY bytesPerLineChanged)
@@ -27,6 +28,7 @@ public:
     QDBusObjectPath path();
     const QString& identifier();
     QDBusUnixFileDescriptor frameBuffer();
+    QDBusUnixFileDescriptor eventPipe();
     QRect geometry();
     QRect _geometry();
     void setGeometry(const QRect& geometry);
@@ -36,6 +38,7 @@ public:
     qulonglong sizeInBytes();
     qulonglong bytesPerLine();
     int format();
+    void writeEvent(const input_event& event);
 
 public slots:
     QDBusUnixFileDescriptor resize(int width, int height);
@@ -58,6 +61,10 @@ signals:
     void formatChanged(const int&);
     void dirty(const QRect& region);
 
+private slots:
+    void eventReadActivated();
+    void eventWriteActivated();
+
 private:
     QString m_identifier;
     bool m_enabled;
@@ -66,6 +73,8 @@ private:
     QRect m_geometry;
     uchar* m_data = nullptr;
     QFile m_file;
+    QFile m_eventRead;
+    QFile m_eventWrite;
     qulonglong m_bytesPerLine;
     WindowState m_state;
     QMutex mutex;

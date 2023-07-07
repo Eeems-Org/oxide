@@ -69,7 +69,17 @@ namespace Oxide::Tarnish {
      * \brief getEventPipe
      * \return
      */
-    int getEventPipe();
+    int getEventPipeFd();
+    /*!
+     * \brief getEventPipe
+     * \return
+     */
+    QFile* getEventPipe();
+    /*!
+     * \brief connectQtEvents
+     * \return
+     */
+    bool connectQtEvents();
     /*!
      * \brief screenUpdate
      */

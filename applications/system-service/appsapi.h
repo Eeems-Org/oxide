@@ -388,7 +388,7 @@ public:
         qDebug() << "Previous Applications" << previousApplications;
     }
     void removeFromPreviousApplications(QString name){ previousApplications.removeAll(name); }
-    void stopping(){ return m_stopping; }
+    bool stopping(){ return m_stopping; }
 
 signals:
     void applicationRegistered(QDBusObjectPath);
