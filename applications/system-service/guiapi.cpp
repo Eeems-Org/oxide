@@ -76,10 +76,11 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
         windows.remove(path);
     });
     connect(window, &Window::dirty, this, [=](const QRect& region){
-        auto geometry = window->_geometry();
-        const QRect intersection = region.intersected(geometry);
-        const QPoint screenOffset = geometry.topLeft();
-        setDirty(intersection.translated(-screenOffset));
+        m_repaintList.append(Repaint{
+            .window = window,
+            .region = region
+        });
+        scheduleUpdate();
     }, Qt::QueuedConnection);
     for(auto item : appsAPI->runningApplicationsNoSecurityCheck().values()){
         Application* app = appsAPI->getApplication(item.value<QDBusObjectPath>());
@@ -105,57 +106,82 @@ QDBusObjectPath GuiAPI::createWindow(){
     );
 }
 
-void GuiAPI::setDirty(const QRect& region){
-    const QRect intersection = region.intersected(m_screenGeometry);
-    const QPoint screenOffset = m_screenGeometry.topLeft();
-    m_repaintRegion += intersection.translated(-screenOffset);
-    scheduleUpdate();
-}
-
 void GuiAPI::redraw(){
     // This should already be on the main thread, but just in case
-    if(!m_dirty){
-        return;
-    }
     if(qApp->thread() != QThread::currentThread()){
         O_WARNING(__PRETTY_FUNCTION__ << "Not called from main thread");
         return;
     }
-    if(m_repaintRegion.isEmpty()){
+    if(!m_dirty){
+        O_WARNING(__PRETTY_FUNCTION__ << "Not dirty");
+        return;
+    }
+    if(m_repaintList.isEmpty()){
+        O_WARNING(__PRETTY_FUNCTION__ << "Nothing to repaint");
         m_dirty = false;
         return;
     }
+    O_WARNING(__PRETTY_FUNCTION__ << "Repainting");
     const QPoint screenOffset = m_screenGeometry.topLeft();
     const QRect screenRect = m_screenGeometry.translated(-screenOffset);
-    auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
-    // TODO - wait until screen isn't busy
-    QRegion repaintedRegion;
-    QPainter painter(frameBuffer);
-    Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::black;
-    for(QRect rect : m_repaintRegion){
-        rect = rect.intersected(screenRect);
+    QMap<QString, QRegion> repaintList;
+    while(!m_repaintList.isEmpty()){
+        auto item = m_repaintList.takeFirst();
+        auto window = item.window;
+        auto region = item.region;
+        auto geometry = window->_geometry();
+        const QRect intersection = region.intersected(geometry);
+        const QPoint screenOffset = geometry.topLeft();
+        auto rect = intersection.translated(-screenOffset).intersected(screenRect);
         if(rect.isEmpty()){
             continue;
         }
-        painter.setCompositionMode(QPainter::CompositionMode_Source);
-        painter.fillRect(rect, colour);
-        // TODO - have some sort of stack to determine which window is on top
-        for(auto window : windows){
-            if(window == nullptr || !window->isVisible()){
+        if(!repaintList.contains(window->identifier())){
+            repaintList.insert(window->identifier(), QRegion());
+        }
+        QRegion repaintRegion = repaintList.value(window->identifier());
+        repaintRegion += rect;
+        repaintList.insert(window->identifier(), repaintRegion);
+    }
+    QRegion repaintedRegion;
+    auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
+    Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::black;
+    QPainter painter(frameBuffer);
+    for(auto window : windows){
+        if(!repaintList.contains(window->identifier())){
+            continue;
+        }
+        for(QRect rect : repaintList.value(window->identifier())){
+            if(rect.isEmpty()){
                 continue;
             }
-            auto image = window->toImage();
-            if(image == nullptr){
-                continue;
+            painter.setCompositionMode(QPainter::CompositionMode_Source);
+            painter.fillRect(rect, colour);
+            // TODO - have some sort of stack to determine which window is on top
+            for(auto window : windows){
+                if(window == nullptr){
+                    continue;
+                }
+                if(!window->isVisible()){
+                    O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Not visible");
+                    continue;
+                }
+                auto image = window->toImage();
+                if(image.isNull()){
+                    O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Null framebuffer");
+                    continue;
+                }
+                const QRect windowRect = window->geometry().translated(-screenOffset);
+                const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
+                O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << rect << windowIntersect);
+                painter.drawImage(rect, image, windowIntersect);
+                repaintedRegion += windowIntersect;
             }
-            const QRect windowRect = window->geometry().translated(-screenOffset);
-            const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
-            painter.drawImage(rect, *image, windowIntersect);
-            repaintedRegion += windowIntersect;
         }
     }
     painter.end();
     auto boundingRect = repaintedRegion.boundingRect();
+    // TODO - profile if it makes sense to do this instead of just picking one to always use
     auto waveform = EPFrameBuffer::Mono;
     for(int x = boundingRect.left(); x < boundingRect.right(); x++){
         for(int y = boundingRect.top(); y < boundingRect.bottom(); y++){
@@ -172,9 +198,7 @@ void GuiAPI::redraw(){
         }
     }
     auto mode =  boundingRect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
-    EPFrameBuffer::sendUpdate(boundingRect, waveform, mode, true);
-    EPFrameBuffer::waitForLastUpdate();
-    m_repaintRegion = QRegion();
+    EPFrameBuffer::sendUpdate(boundingRect, waveform, mode);
     m_dirty = false;
 }
 

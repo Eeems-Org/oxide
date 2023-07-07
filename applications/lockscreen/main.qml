@@ -13,10 +13,7 @@ ApplicationWindow {
     visible: true
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
-    Component.onCompleted: {
-        window.raise();
-        controller.startup();
-    }
+    Component.onCompleted: controller.startup()
     header: Rectangle {
         color: "black"
         height: menu.height

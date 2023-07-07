@@ -25,7 +25,6 @@ public:
     Q_INVOKABLE QDBusObjectPath createWindow(int x, int y, int width, int height);
     Q_INVOKABLE QDBusObjectPath createWindow(QRect geometry);
     Q_INVOKABLE QDBusObjectPath createWindow();
-    void setDirty(const QRect& region);
     void redraw();
     bool isThisPgId(pid_t valid_pgid);
 
@@ -36,7 +35,11 @@ private:
     bool m_enabled;
     bool m_dirty;
     QMap<QString, Window*> windows;
-    QRegion m_repaintRegion;
+    struct Repaint {
+        Window* window;
+        QRect region;
+    };
+    QList<Repaint> m_repaintList;
     QRect m_screenGeometry;
     void scheduleUpdate();
 };

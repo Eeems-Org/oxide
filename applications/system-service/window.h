@@ -11,7 +11,7 @@ class Window : public QObject
     Q_PROPERTY(QRect geometry READ geometry WRITE setGeometry NOTIFY geometryChanged)
     Q_PROPERTY(qulonglong sizeInBytes READ sizeInBytes NOTIFY sizeInBytesChanged)
     Q_PROPERTY(qulonglong bytesPerLine READ bytesPerLine NOTIFY bytesPerLineChanged)
-    Q_PROPERTY(int format READ format NOTIFY formatChanged)
+    Q_PROPERTY(int format READ format)
 
 public:
     typedef enum{
@@ -32,7 +32,7 @@ public:
     void setGeometry(const QRect& geometry);
     Q_INVOKABLE bool isVisible();
     Q_INVOKABLE void setVisible(bool visible);
-    QImage* toImage();
+    QImage toImage();
     qulonglong sizeInBytes();
     qulonglong bytesPerLine();
     int format();
@@ -64,11 +64,12 @@ private:
     QString m_path;
     pid_t m_pid;
     QRect m_geometry;
-    int m_fd;
     uchar* m_data = nullptr;
-    QImage m_image;
+    QFile m_file;
+    qulonglong m_bytesPerLine;
     WindowState m_state;
     QMutex mutex;
+    QImage::Format m_format;
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);

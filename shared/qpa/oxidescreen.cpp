@@ -61,14 +61,14 @@ void OxideScreen::redraw(){
         return;
     }
     auto frameBuffer = Oxide::Tarnish::frameBufferImage();
-    if(frameBuffer == nullptr){
+    if(frameBuffer.isNull()){
         O_WARNING(__PRETTY_FUNCTION__ << "No framebuffer");
         return;
     }
     const QPoint screenOffset = mGeometry.topLeft();
     const QRect screenRect = mGeometry.translated(-screenOffset);
-    QPainter painter(frameBuffer);
-    Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::black;
+    QPainter painter(&frameBuffer);
+    Qt::GlobalColor colour = frameBuffer.hasAlphaChannel() ? Qt::transparent : Qt::black;
     for(QRect rect : mRepaintRegion){
         rect = rect.intersected(screenRect);
         if(rect.isEmpty()){

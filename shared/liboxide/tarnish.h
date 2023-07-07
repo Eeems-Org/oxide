@@ -64,7 +64,7 @@ namespace Oxide::Tarnish {
      * \brief frameBuffer
      * \return
      */
-    QImage* frameBufferImage();
+    QImage frameBufferImage();
     /*!
      * \brief getEventPipe
      * \return

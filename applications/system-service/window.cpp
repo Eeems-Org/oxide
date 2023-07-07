@@ -5,6 +5,9 @@
 #define W_DEBUG(msg) O_DEBUG(identifier() << __PRETTY_FUNCTION__ << msg << guiAPI->getSenderPgid())
 #define W_DENIED() W_DEBUG("DENY")
 #define W_ALLOWED() W_DEBUG("ALLOW")
+#define LOCK_MUTEX \
+    QMutexLocker locker(&mutex); \
+    Q_UNUSED(locker);
 
 Window::Window(const QString& id, const QString& path, const pid_t& pid, const QRect& geometry, QObject* parent)
 : QObject{parent},
@@ -13,19 +16,21 @@ Window::Window(const QString& id, const QString& path, const pid_t& pid, const Q
   m_path{path},
   m_pid{pid},
   m_geometry{geometry},
-  m_fd{-1},
-  m_state{WindowState::LoweredHidden}
+  m_state{WindowState::LoweredHidden},
+  m_format{QImage::Format_RGB16}
 {
+    LOCK_MUTEX
     O_DEBUG(id << __PRETTY_FUNCTION__ << "Created" << pid);
     createFrameBuffer(geometry);
 }
 Window::~Window(){
-    QMutexLocker locker(&mutex);
-    Q_UNUSED(locker);
-    if(m_fd != -1){
-        munmap(m_data, m_image.sizeInBytes());
-        ::close(m_fd);
+    LOCK_MUTEX
+    if(m_file.handle() == -1){
+        if(!m_file.unmap(m_data)){
+            W_WARNING("Failed to unmap framebuffer:" << m_file.errorString());
+        }
     }
+    m_file.close();
 }
 
 void Window::setEnabled(bool enabled){
@@ -60,7 +65,7 @@ QDBusUnixFileDescriptor Window::frameBuffer(){
         return QDBusUnixFileDescriptor();
     }
     W_ALLOWED();
-    return QDBusUnixFileDescriptor(m_fd);
+    return QDBusUnixFileDescriptor(m_file.handle());
 }
 
 QRect Window::geometry(){
@@ -80,6 +85,7 @@ void Window::setGeometry(const QRect& geometry){
         return;
     }
     W_ALLOWED();
+    LOCK_MUTEX
     createFrameBuffer(geometry);
 }
 
@@ -119,13 +125,12 @@ void Window::setVisible(bool visible){
     }
 }
 
-QImage* Window::toImage(){
-    QMutexLocker locker(&mutex);
-    Q_UNUSED(locker);
-    if(m_fd == -1){
-        return nullptr;
+QImage Window::toImage(){
+    LOCK_MUTEX
+    if(m_file.handle() == -1){
+        return QImage();
     }
-    return &m_image;
+    return QImage(m_data, m_geometry.width(), m_geometry.height(), m_bytesPerLine, m_format);
 }
 
 qulonglong Window::sizeInBytes(){
@@ -134,9 +139,8 @@ qulonglong Window::sizeInBytes(){
         return 0;
     }
     W_ALLOWED();
-    QMutexLocker locker(&mutex);
-    Q_UNUSED(locker);
-    return m_fd == -1? 0 : m_image.sizeInBytes();
+    LOCK_MUTEX
+    return m_file.isOpen() ? m_file.size() : 0;
 }
 
 qulonglong Window::bytesPerLine(){
@@ -145,9 +149,8 @@ qulonglong Window::bytesPerLine(){
         return 0;
     }
     W_ALLOWED();
-    QMutexLocker locker(&mutex);
-    Q_UNUSED(locker);
-    return m_fd == -1 ? 0 : m_image.bytesPerLine();
+    LOCK_MUTEX
+    return m_file.isOpen() ? m_bytesPerLine : 0;
 }
 
 int Window::format(){
@@ -156,9 +159,8 @@ int Window::format(){
         return QImage::Format_Invalid;
     }
     W_ALLOWED();
-    QMutexLocker locker(&mutex);
-    Q_UNUSED(locker);
-    return m_fd == -1 ? QImage::Format_Invalid : m_image.format();
+    LOCK_MUTEX
+    return m_file.isOpen() ? m_format : QImage::Format_Invalid;
 }
 
 QDBusUnixFileDescriptor Window::resize(int width, int height){
@@ -167,10 +169,9 @@ QDBusUnixFileDescriptor Window::resize(int width, int height){
         return QDBusUnixFileDescriptor();
     }
     W_ALLOWED();
+    LOCK_MUTEX
     createFrameBuffer(QRect(m_geometry.x(), m_geometry.y(), width, height));
-    QMutexLocker locker(&mutex);
-    Q_UNUSED(locker);
-    return QDBusUnixFileDescriptor(m_fd);
+    return QDBusUnixFileDescriptor(m_file.handle());
 }
 
 void Window::move(int x, int y){
@@ -273,18 +274,17 @@ void Window::close(){
 bool Window::hasPermissions(){ return guiAPI->isThisPgId(m_pid); }
 
 void Window::createFrameBuffer(const QRect& geometry){
-    QMutexLocker locker(&mutex);
-    Q_UNUSED(locker);
-    if(m_fd != -1 && geometry == m_geometry){
+    // No mutex, as it should be handled by the calling function
+    if(m_file.isOpen() && geometry == m_geometry){
         W_WARNING("No need to resize:" << geometry);
         return;
     }
-    if(m_fd != -1){
-        munmap(m_data, m_image.sizeInBytes());
-        m_data = nullptr;
-        ::close(m_fd);
-        m_fd = -1;
+    if(m_file.isOpen()){
+        if(!m_file.unmap(m_data)){
+            W_WARNING("Failed to unmap:" << m_file.errorString());
+        }
     }
+    m_file.close();
     if(geometry.isEmpty() || geometry.isNull() || !geometry.isValid()){
         W_WARNING("Invalid geometry for framebuffer:" << geometry);
         return;
@@ -294,45 +294,50 @@ void Window::createFrameBuffer(const QRect& geometry){
         W_WARNING("Unable to create memfd for framebuffer:" << strerror(errno));
         return;
     }
-    QImage blankImage(geometry.width(), geometry.height(), QImage::Format_RGB16);
+    QImage blankImage(geometry.width(), geometry.height(), m_format);
     blankImage.fill(Qt::white);
     size_t size = blankImage.sizeInBytes();
     if(ftruncate(fd, size)){
         W_WARNING("Unable to truncate memfd for framebuffer:" << strerror(errno));
-        ::close(fd);
+        if(::close(fd) == -1){
+            W_WARNING("Failed to close fd:" << strerror(errno));
+        }
         return;
     }
     int flags = fcntl(fd, F_GET_SEALS);
     if(fcntl(fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW)){
         W_WARNING("Unable to seal memfd for framebuffer:" << strerror(errno));
-        ::close(fd);
+        if(::close(fd) == -1){
+            W_WARNING("Failed to close fd:" << strerror(errno));
+        }
         return;
     }
-    auto data = (uchar*)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fd, 0);
-    if(data == MAP_FAILED){
+    m_file.close();
+    if(!m_file.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
+        W_WARNING("Failed to open QFile:" << m_file.errorString());
+        if(::close(fd) == -1){
+            W_WARNING("Failed to close fd:" << strerror(errno));
+        }
+        return;
+    }
+    m_data = m_file.map(0, size);
+    if(m_data == nullptr){
         W_WARNING("Failed to map framebuffer:" << strerror(errno));
-        ::close(fd);
+        m_file.close();
         return;
     }
-    m_data = data;
-    m_fd = fd;
     memcpy(m_data, blankImage.constBits(), size);
-    m_image = QImage(m_data, geometry.width(), geometry.height(), blankImage.bytesPerLine(), QImage::Format_RGB16);
+    m_bytesPerLine = blankImage.bytesPerLine();
     auto oldGeometry = m_geometry;
     m_geometry = geometry;
-    emit sizeInBytesChanged(m_image.sizeInBytes());
-    emit bytesPerLineChanged(m_image.bytesPerLine());
-    emit formatChanged(m_image.format());
+    emit sizeInBytesChanged(size);
+    emit bytesPerLineChanged(m_bytesPerLine);
     emit geometryChanged(oldGeometry, m_geometry);
-    emit frameBufferChanged(QDBusUnixFileDescriptor(m_fd));
+    emit frameBufferChanged(QDBusUnixFileDescriptor(fd));
     W_DEBUG("Framebuffer created:" << geometry);
 }
 
 bool Window::_isVisible(){
-    QMutexLocker locker(&mutex);
-    Q_UNUSED(locker);
-    if(m_fd == -1 || m_state != WindowState::Raised){
-        return false;
-    }
-    return guiAPI->_geometry().intersects(m_geometry);
+    LOCK_MUTEX
+    return m_file.isOpen() && m_state == WindowState::Raised;
 }

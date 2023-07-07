@@ -15,14 +15,12 @@ codes::eeems::oxide1::System* api_system = nullptr;
 codes::eeems::oxide1::Notifications* api_notification = nullptr;
 codes::eeems::oxide1::Gui* api_gui = nullptr;
 codes::eeems::oxide1::Window* window = nullptr;
-int frameBufferFd = -1;
-int eventsFd = -1;
+QFile eventsFile;
 QRect fbGeometry;
-qulonglong fbSize = 0;
 qulonglong fbLineSize = 0;
 QImage::Format fbFormat = QImage::Format_Invalid;
 uchar* fbData = nullptr;
-QImage* fbImage = nullptr;
+QFile fbFile;
 
 bool verifyConnection(){
     if(api_general == nullptr){
@@ -33,6 +31,22 @@ bool verifyConnection(){
         api_general = nullptr;
         return false;
     }
+    return true;
+}
+
+bool setupFbFd(int fd){
+    fbFile.close();
+    if(!fbFile.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
+        O_WARNING("Unable to open framebuffer QFile:" << fbFile.errorString());
+        if(::close(fd) == -1){
+            O_WARNING("Unable close fd:" << strerror(errno));
+        }
+        return false;
+    }
+    fbGeometry = window->geometry();
+    fbLineSize = window->bytesPerLine();
+    fbFormat = (QImage::Format)window->format();
+    O_DEBUG("FrameBuffer" << fbGeometry << fbLineSize << fbFormat << fbFile.size());
     return true;
 }
 
@@ -92,22 +106,11 @@ namespace Oxide::Tarnish {
         freeAPI(system);
         freeAPI(notification);
         freeAPI(general);
-        if(fbData != nullptr){
-            munmap(fbData, window->sizeInBytes());
-            fbData = nullptr;
+        if(fbData != nullptr && !fbFile.unmap(fbData)){
+            O_WARNING("Failed to unmap framebuffer:" << fbFile.errorString());
         }
-        if(fbImage != nullptr){
-            delete fbImage;
-            fbImage = nullptr;
-        }
-        if(frameBufferFd != -1){
-            close(frameBufferFd);
-            frameBufferFd = -1;
-        }
-        if(eventsFd != -1){
-            close(eventsFd);
-            eventsFd = -1;
-        }
+        fbFile.close();
+        eventsFile.close();
         if(window != nullptr){
             window->close();
             window->deleteLater();
@@ -129,8 +132,8 @@ namespace Oxide::Tarnish {
         return api_general->tarnishPid();
     }
     int getFrameBufferFd(){
-        if(frameBufferFd != -1){
-            return frameBufferFd;
+        if(fbFile.isOpen()){
+            return fbFile.handle();
         }
         connect();
         if(api_gui == nullptr){
@@ -155,39 +158,41 @@ namespace Oxide::Tarnish {
             window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection(), qApp);
             QObject::connect(window, &codes::eeems::oxide1::Window::frameBufferChanged, [=](const QDBusUnixFileDescriptor& fd){
                 qDebug() << "frameBufferChanged";
-                if(fbImage != nullptr){
-                    delete fbImage;
-                    fbImage = nullptr;
-                }
                 if(fbData != nullptr){
-                    munmap(fbData, fbSize);
-                    fbSize = 0;
+                    if(!fbFile.unmap(fbData)){
+                        O_WARNING("Failed to unmap framebuffer:" << fbFile.errorString());
+                    }
                     fbGeometry.adjust(0, 0, 0, 0);
                     fbLineSize = 0;
                     fbFormat = QImage::Format_Invalid;
                     fbData = nullptr;
                 }
-                if(frameBufferFd != -1){
-                    ::close(frameBufferFd);
-                    frameBufferFd = -1;
+                fbFile.close();
+                if(!fd.isValid()){
+                    O_WARNING("Unable to get framebuffer: Invalid DBus response");
+                    return;
                 }
                 auto fb = fd.fileDescriptor();
                 if(fb == -1){
+                    O_WARNING("Unable to get framebuffer: File descriptor is -1");
                     return;
                 }
-                frameBufferFd = dup(fb);
-                fbSize = window->sizeInBytes();
-                fbGeometry = window->geometry();
-                fbLineSize = window->bytesPerLine();
-                fbFormat = (QImage::Format)window->format();
+                auto frameBufferFd = dup(fb);
+                if(frameBufferFd == -1){
+                    O_WARNING("Failed to unmap framebuffer:" << fbFile.errorString());
+                    return;
+                }
+                setupFbFd(frameBufferFd);
             });
+            window->setVisible(true);
+            window->raise();
         }
         auto qfd = window->frameBuffer();
         if(!qfd.isValid()){
-            O_WARNING("Unable to get framebuffer: File descriptor is -1");
+            O_WARNING("Unable to get framebuffer: Invalid DBus response");
             return -1;
         }
-        auto fd = qfd.fileDescriptor();
+        int fd = qfd.fileDescriptor();
         if(fd == -1){
             O_WARNING("Unable to get framebuffer: File descriptor is -1");
             return -1;
@@ -197,14 +202,10 @@ namespace Oxide::Tarnish {
             O_WARNING("Unable to dup framebuffer fd:" << strerror(errno));
             return -1;
         }
-        frameBufferFd = fd;
-        fbSize = window->sizeInBytes();
-        fbGeometry = window->geometry();
-        fbLineSize = window->bytesPerLine();
-        fbFormat = (QImage::Format)window->format();
-        window->setVisible(true);
-        window->raise();
-        return frameBufferFd;
+        if(!setupFbFd(fd)){
+            return -1;
+        }
+        return fbFile.handle();
     }
     uchar* frameBuffer(){
         if(fbData != nullptr){
@@ -215,28 +216,25 @@ namespace Oxide::Tarnish {
             O_WARNING("Unable to get framebuffer fd");
             return nullptr;
         }
-        auto data = mmap(NULL, fbSize, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, fd, 0);
-        if(data == MAP_FAILED){
-            O_WARNING("Unable to get framebuffer data:" << strerror(errno));
+        fbData = fbFile.map(0, fbFile.size());
+        if(fbData == nullptr){
+            O_WARNING("Unable to get framebuffer data:" << fbFile.errorString());
             return nullptr;
         }
-        fbData = (uchar*)data;
         return fbData;
     }
-    QImage* frameBufferImage(){
-        if(fbImage != nullptr){
-            return fbImage;
+    QImage frameBufferImage(){
+        if(!fbFile.isOpen()){
+            frameBuffer();
         }
-        auto data = frameBuffer();
-        if(data == nullptr){
-            return nullptr;
+        if(!fbFile.isOpen()){
+            return QImage();
         }
-        fbImage = new QImage((uchar*)data, fbGeometry.width(), fbGeometry.height(), fbLineSize, fbFormat);
-        return fbImage;
+        return QImage((uchar*)fbData, fbGeometry.width(), fbGeometry.height(), fbLineSize, fbFormat);
     }
     int getEventPipe(){
-        if(eventsFd != -1){
-            return eventsFd;
+        if(eventsFile.isOpen()){
+            return eventsFile.handle();
         }
         connect();
         QDBusPendingReply<QDBusUnixFileDescriptor> reply = api_general->getEventPipe();
@@ -245,20 +243,30 @@ namespace Oxide::Tarnish {
             O_WARNING("Unable to get framebuffer:" << reply.error());
             return -1;
         }
-        auto fd = reply.value().fileDescriptor();
+        auto qfd = reply.value();
+        if(!qfd.isValid()){
+            O_WARNING("Unable to get framebuffer: Invalid DBus response");
+            return -1;
+        }
+        auto fd = qfd.fileDescriptor();
         if(fd == -1){
             O_WARNING("Unable to get framebuffer: No framebuffer provided");
             return -1;
         }
-        eventsFd = dup(fd);
+        fd = dup(fd);
+        if(!eventsFile.open(fd, QFile::ReadOnly, QFile::AutoCloseHandle)){
+            ::close(fd);
+            O_WARNING("Unable to get framebuffer:" << eventsFile.errorString());
+            return -1;
+        }
         api_general->enableEventPipe();
-        return eventsFd;
+        return eventsFile.handle();
     }
     void screenUpdate(){
         if(fbData == nullptr){
             return;
         }
-        if(msync(fbData, fbSize, MS_SYNC | MS_INVALIDATE) == -1){
+        if(msync(fbData, fbFile.size(), MS_SYNC | MS_INVALIDATE) == -1){
             O_WARNING("Failed to sync:" << strerror(errno))
             return;
         }
@@ -268,7 +276,7 @@ namespace Oxide::Tarnish {
         if(fbData == nullptr){
             return;
         }
-        if(msync(fbData, fbSize, MS_SYNC | MS_INVALIDATE) == -1){
+        if(msync(fbData, fbFile.size(), MS_SYNC | MS_INVALIDATE) == -1){
             O_WARNING("Failed to sync:" << strerror(errno))
             return;
         }
