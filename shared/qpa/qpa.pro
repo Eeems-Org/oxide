@@ -17,12 +17,14 @@ qtHaveModule(eventdispatcher_support-private) {
 
 SOURCES = main.cpp \
           oxidebackingstore.cpp \
+          oxideeventfilter.cpp \
           oxideintegration.cpp \
           oxidescreen.cpp \
           oxidetabletdata.cpp \
           oxidetouchscreendata.cpp \
           oxidewindow.cpp
 HEADERS = oxidebackingstore.h \
+          oxideeventfilter.h \
           oxideintegration.h \
           oxidescreen.h \
           oxidetabletdata.h \

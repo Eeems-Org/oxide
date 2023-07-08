@@ -3,6 +3,7 @@
 #include "oxidescreen.h"
 #include "oxidetabletdata.h"
 #include "oxidetouchscreendata.h"
+#include "oxideeventfilter.h"
 
 #include <QtGui/private/qguiapplication_p.h>
 #include <QtGui/private/qpixmap_raster_p.h>
@@ -24,6 +25,7 @@ QT_BEGIN_NAMESPACE
 class QCoreTextFontEngine;
 
 static const char debugQPAEnvironmentVariable[] = "QT_DEBUG_OXIDE_QPA";
+
 
 static inline unsigned parseOptions(const QStringList& paramList){
     unsigned options = 0;
@@ -74,6 +76,7 @@ void OxideIntegration::initialize(){
         qDebug() << "OxideIntegration::initialize";
     }
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
+    qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
     auto touchData = new OxideTouchScreenData(m_spec);
     touchData->m_singleTouch = !deviceSettings.supportsMultiTouch();
