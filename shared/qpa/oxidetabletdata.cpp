@@ -81,7 +81,7 @@ void OxideTabletData::report(){
     int pressureRange = maxValues.p - minValues.p;
     qreal pressure = pressureRange ? (state.p - minValues.p) / qreal(pressureRange) : qreal(1);
     if(state.down || state.lastReportDown){
-        QWindowSystemInterface::handleTabletEvent(
+        if(!QWindowSystemInterface::handleTabletEvent(
             nullptr,
             QPointF(),
             globalPos,
@@ -96,7 +96,25 @@ void OxideTabletData::report(){
             0,
             fd,
             qGuiApp->keyboardModifiers()
-        );
+        )){
+            QEvent::Type type = QEvent::MouseMove;
+            if(state.lastReportDown && !state.down){
+                type = QEvent::MouseButtonRelease;
+            }else if(!state.lastReportDown && state.down){
+                type = QEvent::MouseButtonPress;
+            }
+            QWindowSystemInterface::handleMouseEvent(
+                nullptr,
+                QPointF(),
+                globalPos,
+                state.down ? Qt::LeftButton : Qt::NoButton,
+                state.down ? Qt::LeftButton : Qt::NoButton,
+                type,
+                Qt::NoModifier,
+                Qt::MouseEventSynthesizedByQt
+            );
+
+        }
     }
     if(state.lastReportTool && !state.tool){
         QWindowSystemInterface::handleTabletLeaveProximityEvent(int(QTabletEvent::Stylus), state.tool, fd);

@@ -140,6 +140,8 @@ namespace Oxide{
                 && type != QEvent::ChildAdded
                 && type != QEvent::ChildPolished
                 && type != QEvent::ChildRemoved
+                && type != QEvent::Timer
+                && type != QEvent::UpdateRequest
             ){
                 O_DEBUG(ev << ev->isAccepted() << obj);
             }
