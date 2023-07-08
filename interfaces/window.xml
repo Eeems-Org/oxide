@@ -3,7 +3,9 @@
   <interface name="codes.eeems.oxide1.Window">
     <property name="identifier" type="s" access="read"/>
     <property name="frameBuffer" type="h" access="read"/>
-    <property name="eventPipe" type="h" access="read"/>
+    <property name="touchEventPipe" type="h" access="read"/>
+    <property name="tabletEventPipe" type="h" access="read"/>
+    <property name="keyEventPipe" type="h" access="read"/>
     <property name="geometry" type="(iiii)" access="readwrite">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QRect"/>
     </property>

@@ -32,6 +32,9 @@ public:
 
 protected:
     bool event(QEvent* event) override;
+    void touchEvent(const input_event& event);
+    void tabletEvent(const input_event& event);
+    void keyEvent(const input_event& event);
 
 private:
     bool m_enabled;

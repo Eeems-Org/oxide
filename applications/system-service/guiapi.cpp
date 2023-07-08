@@ -1,5 +1,6 @@
 #include "guiapi.h"
 #include "appsapi.h"
+#include "digitizerhandler.h"
 
 #define W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << msg << getSenderPgid())
 #define W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << msg << getSenderPgid())
@@ -20,11 +21,13 @@ GuiAPI::GuiAPI(QObject* parent)
   m_enabled(false),
   m_dirty(false)
 {
-    m_screenGeometry = deviceSettings.screenGeometry();
     Oxide::Sentry::sentry_transaction("gui", "init", [this](Oxide::Sentry::Transaction* t){
-        Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
-            singleton(this);
-        });
+        Q_UNUSED(t);
+        m_screenGeometry = deviceSettings.screenGeometry();
+        singleton(this);
+        connect(touchHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent, Qt::QueuedConnection);
+        connect(buttonHandler, &ButtonHandler::rawEvent, this, &GuiAPI::keyEvent, Qt::QueuedConnection);
+        connect(wacomHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::tabletEvent, Qt::QueuedConnection);
     });
 }
 GuiAPI::~GuiAPI(){
@@ -239,6 +242,30 @@ bool GuiAPI::event(QEvent* event){
     }, Qt::QueuedConnection);
     timer->start(0);
     return true;
+}
+
+void GuiAPI::touchEvent(const input_event& event){
+    for(auto window : windows){
+        if(window != nullptr && window->isVisible()){
+            window->writeTouchEvent(event);
+        }
+    }
+}
+
+void GuiAPI::tabletEvent(const input_event& event){
+    for(auto window : windows){
+        if(window != nullptr && window->isVisible()){
+            window->writeTabletEvent(event);
+        }
+    }
+}
+
+void GuiAPI::keyEvent(const input_event& event){
+    for(auto window : windows){
+        if(window != nullptr && window->isVisible()){
+            window->writeKeyEvent(event);
+        }
+    }
 }
 
 void GuiAPI::scheduleUpdate(){

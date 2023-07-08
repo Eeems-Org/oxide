@@ -68,15 +68,35 @@ namespace Oxide::Tarnish {
      */
     QImage frameBufferImage();
     /*!
-     * \brief getEventPipe
+     * \brief getTouchEventPipeFd
      * \return
      */
-    int getEventPipeFd();
+    int getTouchEventPipeFd();
     /*!
-     * \brief getEventPipe
+     * \brief getTouchEventPipe
      * \return
      */
-    QLocalSocket* getEventPipe();
+    QLocalSocket* getTouchEventPipe();
+    /*!
+     * \brief getTabletEventPipeFd
+     * \return
+     */
+    int getTabletEventPipeFd();
+    /*!
+     * \brief getTabletEventPipe
+     * \return
+     */
+    QLocalSocket* getTabletEventPipe();
+    /*!
+     * \brief getKeyEventPipeFd
+     * \return
+     */
+    int getKeyEventPipeFd();
+    /*!
+     * \brief getKeyEventPipe
+     * \return
+     */
+    QLocalSocket* getKeyEventPipe();
     /*!
      * \brief connectQtEvents
      * \return

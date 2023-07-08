@@ -15,14 +15,17 @@ codes::eeems::oxide1::System* api_system = nullptr;
 codes::eeems::oxide1::Notifications* api_notification = nullptr;
 codes::eeems::oxide1::Gui* api_gui = nullptr;
 codes::eeems::oxide1::Window* window = nullptr;
-QLocalSocket eventsFile;
 QRect fbGeometry;
 qulonglong fbLineSize = 0;
 QImage::Format fbFormat = QImage::Format_Invalid;
 uchar* fbData = nullptr;
 QFile fbFile;
-QSocketNotifier* eventsNotifier = nullptr;
-QMetaObject::Connection eventsConnection;
+QLocalSocket touchEventFile;
+QSocketNotifier* touchEventNotifier = nullptr;
+QLocalSocket tabletEventFile;
+QSocketNotifier* tabletEventNotifier = nullptr;
+QLocalSocket keyEventFile;
+QSocketNotifier* keyEventNotifier = nullptr;
 
 bool verifyConnection(){
     if(api_general == nullptr){
@@ -90,7 +93,7 @@ namespace Oxide::Tarnish {
             nanosleep(&args, &res);
         }
         api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, qApp);
-
+        QObject::connect(qApp, &QGuiApplication::aboutToQuit, api_general, []{ disconnect(); }, Qt::QueuedConnection);
     }
     void disconnect(){
 #define freeAPI(name) \
@@ -98,7 +101,7 @@ namespace Oxide::Tarnish {
             if(strcmp(#name, "general") == 0){ \
                 releaseAPI(#name);\
             } \
-            api_##name->deleteLater(); \
+            delete api_##name; \
             api_##name = nullptr; \
         }
         freeAPI(power);
@@ -110,15 +113,26 @@ namespace Oxide::Tarnish {
         freeAPI(general);
         fbData = nullptr;
         fbFile.close();
-        eventsNotifier->deleteLater();
-        eventsNotifier = nullptr;
-        eventsFile.close();
+        if(touchEventNotifier != nullptr){
+            delete touchEventNotifier;
+            touchEventNotifier = nullptr;
+        }
+        touchEventFile.close();
+        if(tabletEventNotifier != nullptr){
+            delete tabletEventNotifier;
+            tabletEventNotifier = nullptr;
+        }
+        tabletEventFile.close();
+        if(keyEventNotifier != nullptr){
+            delete keyEventNotifier;
+            keyEventNotifier = nullptr;
+        }
+        keyEventFile.close();
         if(window != nullptr){
             window->close();
-            window->deleteLater();
+            delete window;
             window = nullptr;
         }
-        QObject::disconnect(eventsConnection);
         freeAPI(gui);
         QDBusConnection::disconnectFromBus(QDBusConnection::systemBus().name());
 #undef freeAPI
@@ -233,54 +247,152 @@ namespace Oxide::Tarnish {
         }
         return image;
     }
-    int getEventPipeFd(){
-        if(eventsFile.isOpen()){
-            return eventsFile.socketDescriptor();
+    int getTouchEventPipeFd(){
+        if(touchEventFile.isOpen()){
+            return touchEventFile.socketDescriptor();
         }
         connect();
         if(window == nullptr && getFrameBufferFd() == -1){
-            O_WARNING("Unable to get event pipe, no window");
+            O_WARNING("Unable to get touch event pipe, no window");
             return -1;
         }
-        auto qfd = window->eventPipe();
+        auto qfd = window->touchEventPipe();
         if(!qfd.isValid()){
-            O_WARNING("Unable to get event pipe: Invalid DBus response");
+            O_WARNING("Unable to get touch event pipe: Invalid DBus response");
             return -1;
         }
         auto fd = qfd.fileDescriptor();
         if(fd == -1){
-            O_WARNING("Unable to get event pipe: No pipe provided");
+            O_WARNING("Unable to get touch event pipe: No pipe provided");
             return -1;
         }
         fd = dup(fd);
-        if(!eventsFile.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly)){
+        if(!touchEventFile.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly)){
             ::close(fd);
-            O_WARNING("Unable to get event pipe:" << eventsFile.errorString());
+            O_WARNING("Unable to get touch event pipe:" << touchEventFile.errorString());
             return -1;
         }
-        return eventsFile.socketDescriptor();
+        return touchEventFile.socketDescriptor();
     }
-    QLocalSocket* getEventPipe(){
-        auto fd = getEventPipeFd();
+    QLocalSocket* getTouchEventPipe(){
+        auto fd = getTouchEventPipeFd();
         if(fd == -1){
-            O_WARNING("Unable to get event pipe=: Failed to get pipe fd");
+            O_WARNING("Unable to get touch event pipe: Failed to get pipe fd");
             return nullptr;
         }
-        return &eventsFile;
+        return &touchEventFile;
+    }
+    int getTabletEventPipeFd(){
+        if(tabletEventFile.isOpen()){
+            return tabletEventFile.socketDescriptor();
+        }
+        connect();
+        if(window == nullptr && getFrameBufferFd() == -1){
+            O_WARNING("Unable to get tablet event pipe, no window");
+            return -1;
+        }
+        auto qfd = window->tabletEventPipe();
+        if(!qfd.isValid()){
+            O_WARNING("Unable to get tablet event pipe: Invalid DBus response");
+            return -1;
+        }
+        auto fd = qfd.fileDescriptor();
+        if(fd == -1){
+            O_WARNING("Unable to get tablet event pipe: No pipe provided");
+            return -1;
+        }
+        fd = dup(fd);
+        if(!tabletEventFile.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly)){
+            ::close(fd);
+            O_WARNING("Unable to get tablet event pipe:" << tabletEventFile.errorString());
+            return -1;
+        }
+        return tabletEventFile.socketDescriptor();
+    }
+    QLocalSocket* getTabletEventPipe(){
+        auto fd = getTabletEventPipeFd();
+        if(fd == -1){
+            O_WARNING("Unable to get event pipe: Failed to get pipe fd");
+            return nullptr;
+        }
+        return &tabletEventFile;
+    }
+    int getKeyEventPipeFd(){
+        if(keyEventFile.isOpen()){
+            return keyEventFile.socketDescriptor();
+        }
+        connect();
+        if(window == nullptr && getFrameBufferFd() == -1){
+            O_WARNING("Unable to get key event pipe, no window");
+            return -1;
+        }
+        auto qfd = window->keyEventPipe();
+        if(!qfd.isValid()){
+            O_WARNING("Unable to get key event pipe: Invalid DBus response");
+            return -1;
+        }
+        auto fd = qfd.fileDescriptor();
+        if(fd == -1){
+            O_WARNING("Unable to get key event pipe: No pipe provided");
+            return -1;
+        }
+        fd = dup(fd);
+        if(!keyEventFile.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly)){
+            ::close(fd);
+            O_WARNING("Unable to get key event pipe:" << keyEventFile.errorString());
+            return -1;
+        }
+        return keyEventFile.socketDescriptor();
+    }
+    QLocalSocket* getKeyEventPipe(){
+        auto fd = getKeyEventPipeFd();
+        if(fd == -1){
+            O_WARNING("Unable to get key event pipe: Failed to get pipe fd");
+            return nullptr;
+        }
+        return &keyEventFile;
     }
     bool connectQtEvents(){
-        auto file = getEventPipe();
-        if(file == nullptr){
-            return false;
+        auto file = getTouchEventPipe();
+        if(file != nullptr && touchEventNotifier == nullptr){
+            touchEventNotifier = new QSocketNotifier(file->socketDescriptor(), QSocketNotifier::Read, file);
+            if(!QObject::connect(touchEventNotifier, &QSocketNotifier::activated, qApp, []{
+                input_event event;
+                ::read(touchEventFile.socketDescriptor(), &event, sizeof(input_event));
+                qDebug() << "touch input_event" << event.type << event.code << event.value;
+                // TODO - convert to QEvent and post it to qApp
+            }, Qt::QueuedConnection)){
+                touchEventNotifier->deleteLater();
+                touchEventNotifier = nullptr;
+            }
         }
-        QObject::disconnect(eventsConnection);
-        eventsConnection = QObject::connect(file, &QFile::readyRead, qApp, []{
-            input_event event;
-            ::read(eventsFile.socketDescriptor(), &event, sizeof(input_event));
-            qDebug() << "input_event recieved";
-            // TODO - convert to QEvent and post it to qApp
-        }, Qt::QueuedConnection);
-        return eventsConnection;
+        file = getTabletEventPipe();
+        if(file != nullptr && tabletEventNotifier == nullptr){
+            tabletEventNotifier = new QSocketNotifier(file->socketDescriptor(), QSocketNotifier::Read, file);
+            if(!QObject::connect(tabletEventNotifier, &QSocketNotifier::activated, qApp, []{
+                input_event event;
+                ::read(tabletEventFile.socketDescriptor(), &event, sizeof(input_event));
+                qDebug() << "tablet input_event" << event.type << event.code << event.value;
+                // TODO - convert to QEvent and post it to qApp
+            }, Qt::QueuedConnection)){
+                tabletEventNotifier->deleteLater();
+                tabletEventNotifier = nullptr;
+            }
+        }
+        file = getKeyEventPipe();
+        if(file != nullptr && keyEventNotifier == nullptr){
+            keyEventNotifier = new QSocketNotifier(file->socketDescriptor(), QSocketNotifier::Read, file);
+            if(!QObject::connect(keyEventNotifier, &QSocketNotifier::activated, qApp, []{
+                input_event event;
+                ::read(keyEventFile.socketDescriptor(), &event, sizeof(input_event));
+                qDebug() << "key input_event" << event.type << event.code << event.value;
+                // TODO - convert to QEvent and post it to qApp
+            }, Qt::QueuedConnection)){
+                keyEventNotifier->deleteLater();
+                keyEventNotifier = nullptr;
+            }
+        }
+        return touchEventNotifier != nullptr && tabletEventNotifier != nullptr && keyEventNotifier != nullptr;;
     }
     void screenUpdate(){
         if(fbData == nullptr){

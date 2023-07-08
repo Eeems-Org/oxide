@@ -3,6 +3,28 @@
 #include "apibase.h"
 
 #include <QLocalSocket>
+#include <QTouchEvent>
+#include <QTabletEvent>
+#include <QKeyEvent>
+
+class EventPipe : QObject{
+    Q_OBJECT
+
+public:
+    EventPipe(QObject* parent);
+    ~EventPipe();
+    bool isValid();
+    bool isOpen();
+    void close();
+    QLocalSocket* readSocket();
+    QLocalSocket* writeSocket();
+    qint64 write(const char* data, qint64 size);
+    bool flush();
+
+private:
+    QLocalSocket m_readSocket;
+    QLocalSocket m_writeSocket;
+};
 
 class Window : public QObject
 {
@@ -10,7 +32,9 @@ class Window : public QObject
     Q_CLASSINFO("D-Bus Interface", OXIDE_WINDOW_INTERFACE)
     Q_PROPERTY(QString identifier READ identifier)
     Q_PROPERTY(QDBusUnixFileDescriptor frameBuffer READ frameBuffer NOTIFY frameBufferChanged)
-    Q_PROPERTY(QDBusUnixFileDescriptor eventPipe READ eventPipe)
+    Q_PROPERTY(QDBusUnixFileDescriptor touchEventPipe READ touchEventPipe)
+    Q_PROPERTY(QDBusUnixFileDescriptor tabletEventPipe READ tabletEventPipe)
+    Q_PROPERTY(QDBusUnixFileDescriptor keyEventPipe READ keyEventPipe)
     Q_PROPERTY(QRect geometry READ geometry WRITE setGeometry NOTIFY geometryChanged)
     Q_PROPERTY(qulonglong sizeInBytes READ sizeInBytes NOTIFY sizeInBytesChanged)
     Q_PROPERTY(qulonglong bytesPerLine READ bytesPerLine NOTIFY bytesPerLineChanged)
@@ -30,7 +54,9 @@ public:
     QDBusObjectPath path();
     const QString& identifier();
     QDBusUnixFileDescriptor frameBuffer();
-    QDBusUnixFileDescriptor eventPipe();
+    QDBusUnixFileDescriptor touchEventPipe();
+    QDBusUnixFileDescriptor tabletEventPipe();
+    QDBusUnixFileDescriptor keyEventPipe();
     QRect geometry();
     QRect _geometry();
     void setGeometry(const QRect& geometry);
@@ -40,7 +66,9 @@ public:
     qulonglong sizeInBytes();
     qulonglong bytesPerLine();
     int format();
-    void writeEvent(const input_event& event);
+    bool writeTouchEvent(const input_event& event);
+    bool writeTabletEvent(const input_event& event);
+    bool writeKeyEvent(const input_event& event);
 
 public slots:
     QDBusUnixFileDescriptor resize(int width, int height);
@@ -63,10 +91,6 @@ signals:
     void formatChanged(const int&);
     void dirty(const QRect& region);
 
-private slots:
-    void eventReadActivated();
-    void eventWriteActivated();
-
 private:
     QString m_identifier;
     bool m_enabled;
@@ -75,14 +99,16 @@ private:
     QRect m_geometry;
     uchar* m_data = nullptr;
     QFile m_file;
-    QLocalSocket m_eventRead;
-    QLocalSocket m_eventWrite;
     qulonglong m_bytesPerLine;
     WindowState m_state;
     QMutex mutex;
     QImage::Format m_format;
+    EventPipe m_touchEventPipe;
+    EventPipe m_tabletEventPipe;
+    EventPipe m_keyEventPipe;
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);
     bool _isVisible();
+    bool writeEvent(EventPipe* pipe, const input_event& event);
 };

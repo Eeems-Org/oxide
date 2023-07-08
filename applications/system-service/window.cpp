@@ -12,6 +12,40 @@
     QMutexLocker locker(&mutex); \
     Q_UNUSED(locker);
 
+EventPipe::EventPipe(QObject* parent) : QObject(parent){
+    int fds[2];
+    if(::socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == -1){
+        O_WARNING(__PRETTY_FUNCTION__ << "Unable to open event pipe:" << strerror(errno));
+    }
+    if(!m_readSocket.setSocketDescriptor(fds[1], QLocalSocket::ConnectedState, QLocalSocket::ReadOnly)){
+        O_WARNING(__PRETTY_FUNCTION__ << "Unable to open event pipe read socket:" << m_readSocket.errorString());
+    }
+    if(!m_writeSocket.setSocketDescriptor(fds[0], QLocalSocket::ConnectedState, QLocalSocket::WriteOnly)){
+        O_WARNING(__PRETTY_FUNCTION__ << "Unable to open event pipe write socket:" << m_writeSocket.errorString());
+    }
+}
+
+EventPipe::~EventPipe(){
+    close();
+}
+
+bool EventPipe::isValid(){ return m_readSocket.isValid() && m_writeSocket.isValid(); }
+
+bool EventPipe::isOpen(){ return m_readSocket.isOpen() && m_writeSocket.isOpen(); }
+
+void EventPipe::close(){
+    m_readSocket.close();
+    m_writeSocket.close();
+}
+
+QLocalSocket* EventPipe::readSocket(){ return &m_readSocket; }
+
+QLocalSocket* EventPipe::writeSocket(){ return &m_writeSocket; }
+
+qint64 EventPipe::write(const char* data, qint64 size){ return m_writeSocket.write(data, size); }
+
+bool EventPipe::flush(){ return m_writeSocket.flush(); }
+
 Window::Window(const QString& id, const QString& path, const pid_t& pid, const QRect& geometry, QObject* parent)
 : QObject{parent},
   m_identifier{id},
@@ -20,33 +54,13 @@ Window::Window(const QString& id, const QString& path, const pid_t& pid, const Q
   m_pid{pid},
   m_geometry{geometry},
   m_state{WindowState::LoweredHidden},
-  m_format{QImage::Format_RGB16}
+  m_format{QImage::Format_RGB16},
+  m_touchEventPipe{this},
+  m_tabletEventPipe{this},
+  m_keyEventPipe{this}
 {
     LOCK_MUTEX;
     createFrameBuffer(geometry);
-    int fds[2];
-    if(::socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == -1){
-        W_WARNING("Unable to open events pipe:" << strerror(errno));
-    }
-    if(!m_eventRead.setSocketDescriptor(fds[1], QLocalSocket::ConnectedState, QLocalSocket::ReadOnly)){
-        W_WARNING("Unable to open events read socket:" << m_eventRead.errorString());
-    }
-    if(m_eventWrite.setSocketDescriptor(fds[0], QLocalSocket::ConnectedState, QLocalSocket::WriteOnly)){
-        connect(&m_eventWrite, &QLocalSocket::bytesWritten, this, [this](qint64 size){ W_DEBUG(size << "bytes were written to event pipe"); }, Qt::QueuedConnection);
-        auto timer = new QTimer(this);
-        timer->setInterval(1000);
-        timer->setSingleShot(false);
-        connect(timer, &QTimer::timeout, [this]{
-            input_event event;
-            event.type = EV_SYN;
-            event.code = 0;
-            event.value = 0;
-            writeEvent(event);
-        });
-        timer->start();
-    }else{
-        W_WARNING("Unable to open events write fd:" << m_eventRead.errorString());
-    }
     O_DEBUG(id << __PRETTY_FUNCTION__ << "Window created" << id << pid);
 }
 Window::~Window(){
@@ -90,13 +104,31 @@ QDBusUnixFileDescriptor Window::frameBuffer(){
     return QDBusUnixFileDescriptor(m_file.handle());
 }
 
-QDBusUnixFileDescriptor Window::eventPipe(){
+QDBusUnixFileDescriptor Window::touchEventPipe(){
     if(!hasPermissions()){
         W_DENIED();
         return QDBusUnixFileDescriptor();
     }
     W_ALLOWED();
-    return QDBusUnixFileDescriptor(m_eventRead.socketDescriptor());
+    return QDBusUnixFileDescriptor(m_touchEventPipe.readSocket()->socketDescriptor());
+}
+
+QDBusUnixFileDescriptor Window::tabletEventPipe(){
+    if(!hasPermissions()){
+        W_DENIED();
+        return QDBusUnixFileDescriptor();
+    }
+    W_ALLOWED();
+    return QDBusUnixFileDescriptor(m_tabletEventPipe.readSocket()->socketDescriptor());
+}
+
+QDBusUnixFileDescriptor Window::keyEventPipe(){
+    if(!hasPermissions()){
+        W_DENIED();
+        return QDBusUnixFileDescriptor();
+    }
+    W_ALLOWED();
+    return QDBusUnixFileDescriptor(m_keyEventPipe.readSocket()->socketDescriptor());
 }
 
 QRect Window::geometry(){
@@ -194,28 +226,11 @@ int Window::format(){
     return m_file.isOpen() ? m_format : QImage::Format_Invalid;
 }
 
-void Window::writeEvent(const input_event& event){
-    if(!m_enabled){
-        W_WARNING("Failed to write to event pipe: Window disabled");
-        return;
-    }
-    if(!m_eventWrite.isOpen()){
-        W_WARNING("Failed to write to event pipe: Pipe not open");
-        return;
-    }
-    auto size = sizeof(input_event);
-    auto res = m_eventWrite.write((const char*)&event, size);
-    if(res == -1){
-        W_WARNING("Failed to write to event pipe:" << m_eventWrite.errorString());
-        return;
-    }
-    if(res != size){
-        W_WARNING("Only wrote" << res << "of" << size << "bytes to pipe");
-    }
-    if(!m_eventWrite.flush()){
-        W_WARNING("Failed to flush event pipe: " << m_eventWrite.errorString());
-    }
-}
+bool Window::writeTouchEvent(const input_event& event){ return writeEvent(&m_touchEventPipe, event); }
+
+bool Window::writeTabletEvent(const input_event& event){ return writeEvent(&m_tabletEventPipe, event); }
+
+bool Window::writeKeyEvent(const input_event& event){ return writeEvent(&m_keyEventPipe, event); }
 
 QDBusUnixFileDescriptor Window::resize(int width, int height){
     if(!hasPermissions()){
@@ -325,36 +340,6 @@ void Window::close(){
     }
 }
 
-void Window::eventReadActivated(){
-    qDebug() << "Got read event on socket";
-    if(!m_eventRead.isOpen()){
-        qDebug() << "Socket not open";
-        return;
-    }
-    while(m_eventRead.bytesAvailable()){
-        auto size = m_eventRead.bytesAvailable();
-        QByteArray buffer(size, Qt::Uninitialized);
-        if(m_eventRead.read(buffer.data(), size) == -1){
-            W_WARNING("Failed to read socket" << m_eventRead.errorString());
-        }
-    }
-}
-
-void Window::eventWriteActivated(){
-    qDebug() << "Got read event on socket";
-    if(!m_eventWrite.isOpen()){
-        qDebug() << "Socket not open";
-        return;
-    }
-    while(m_eventWrite.bytesAvailable()){
-        auto size = m_eventWrite.bytesAvailable();
-        QByteArray buffer(size, Qt::Uninitialized);
-        if(m_eventWrite.read(buffer.data(), size) == -1){
-            W_WARNING("Failed to read socket" << m_eventWrite.errorString());
-        }
-    }
-}
-
 bool Window::hasPermissions(){ return guiAPI->isThisPgId(m_pid); }
 
 void Window::createFrameBuffer(const QRect& geometry){
@@ -419,4 +404,28 @@ void Window::createFrameBuffer(const QRect& geometry){
 bool Window::_isVisible(){
     LOCK_MUTEX;
     return m_file.isOpen() && m_state == WindowState::Raised;
+}
+
+bool Window::writeEvent(EventPipe* pipe, const input_event& event){
+    if(!m_enabled){
+        W_WARNING("Failed to write to event pipe: Window disabled");
+        return false;
+    }
+    if(!pipe->isOpen()){
+        W_WARNING("Failed to write to event pipe: Pipe not open");
+        return false;
+    }
+    auto size = sizeof(input_event);
+    auto res = pipe->write((const char*)&event, size);
+    if(res == -1){
+        W_WARNING("Failed to write to event pipe:" << pipe->writeSocket()->errorString());
+        return false;
+    }
+    if(res != size){
+        W_WARNING("Only wrote" << res << "of" << size << "bytes to pipe");
+    }
+    if(!pipe->flush()){
+        W_WARNING("Failed to flush event pipe: " << pipe->writeSocket()->errorString());
+    }
+    return true;
 }
