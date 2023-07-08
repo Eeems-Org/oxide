@@ -133,18 +133,8 @@ namespace Oxide{
                 postEvent(QMouseEvent::MouseMove, ev, root);
             }
 #ifdef DEBUG_EVENTS
-            else if(
-                type == QEvent::MouseMove
-                || type == QEvent::MouseButtonPress
-                || type == QEvent::MouseButtonRelease
-            ){
-                for(auto widget : widgetsAt(root, ((QMouseEvent*)ev)->globalPos())){
-                    if(parentCount((QQuickItem*)widget)){
-                        O_DEBUG("postWidget: " << widget);
-                    }
-                }
-                O_DEBUG(obj);
-                O_DEBUG(ev << ev->isAccepted());
+            else if(type != QEvent::MetaCall && type != QEvent::SockAct && type != QEvent::SockClose){
+                O_DEBUG(ev << ev->isAccepted() << obj);
             }
 #endif
         }

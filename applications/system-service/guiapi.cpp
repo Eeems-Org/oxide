@@ -9,6 +9,36 @@
 
 static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
 
+InputThread::InputThread() : QThread() {
+    connect(touchHandler, &DigitizerHandler::inputEvent, this, &InputThread::touchEvent, Qt::QueuedConnection);
+    connect(buttonHandler, &ButtonHandler::rawEvent, this, &InputThread::keyEvent, Qt::QueuedConnection);
+    connect(wacomHandler, &DigitizerHandler::inputEvent, this, &InputThread::tabletEvent, Qt::QueuedConnection);
+    setPriority(QThread::TimeCriticalPriority);
+    start();
+}
+
+void InputThread::touchEvent(const input_event& event){
+    for(auto window : guiAPI->windows()){
+        if(window != nullptr && window->_isVisible()){
+            window->writeTouchEvent(event);
+        }
+    }
+}
+void InputThread::tabletEvent(const input_event& event){
+    for(auto window : guiAPI->windows()){
+        if(window != nullptr && window->_isVisible()){
+            window->writeTabletEvent(event);
+        }
+    }
+}
+void InputThread::keyEvent(const input_event& event){
+    for(auto window : guiAPI->windows()){
+        if(window != nullptr && window->_isVisible()){
+            window->writeKeyEvent(event);
+        }
+    }
+}
+
 GuiAPI* GuiAPI::singleton(GuiAPI* self){
     static GuiAPI* instance;
     if(self != nullptr){
@@ -19,20 +49,18 @@ GuiAPI* GuiAPI::singleton(GuiAPI* self){
 GuiAPI::GuiAPI(QObject* parent)
 : APIBase(parent),
   m_enabled(false),
-  m_dirty(false)
+  m_dirty(false),
+  m_thread()
 {
     Oxide::Sentry::sentry_transaction("gui", "init", [this](Oxide::Sentry::Transaction* t){
         Q_UNUSED(t);
         m_screenGeometry = deviceSettings.screenGeometry();
         singleton(this);
-        connect(touchHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent, Qt::QueuedConnection);
-        connect(buttonHandler, &ButtonHandler::rawEvent, this, &GuiAPI::keyEvent, Qt::QueuedConnection);
-        connect(wacomHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::tabletEvent, Qt::QueuedConnection);
     });
 }
 GuiAPI::~GuiAPI(){
-    while(!windows.isEmpty()){
-        auto window = windows.take(windows.firstKey());
+    while(!m_windows.isEmpty()){
+        auto window = m_windows.take(m_windows.firstKey());
         delete window;
     }
 }
@@ -43,8 +71,8 @@ void GuiAPI::startup(){
 
 void GuiAPI::shutdown(){
     W_DEBUG("Shutdown");
-    while(!windows.isEmpty()){
-        auto window = windows.take(windows.firstKey());
+    while(!m_windows.isEmpty()){
+        auto window = m_windows.take(m_windows.firstKey());
         window->close();
     }
 }
@@ -63,7 +91,7 @@ QRect GuiAPI::_geometry(){ return m_screenGeometry; }
 void GuiAPI::setEnabled(bool enabled){
     qDebug() << "GUI API" << enabled;
     m_enabled = enabled;
-    for(auto window : windows){
+    for(auto window : m_windows){
         if(window != nullptr){
             window->setEnabled(enabled);
         }
@@ -85,14 +113,19 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
     auto pgid = getSenderPgid();
     auto window = new Window(id, path, pgid, geometry, this);
     window->moveToThread(this->thread());
-    windows.insert(path, window);
+    m_windows.insert(path, window);
+    sortWindows();
     connect(window, &Window::closed, this, [this, window, path]{
-        windows.remove(path);
+        if(m_windows.remove(path)){
+            sortWindows();
+        }
         window->setEnabled(false);
         window->deleteLater();
     }, Qt::QueuedConnection);
     connect(window, &Window::destroyed, this, [this, path]{
-        windows.remove(path);
+        if(m_windows.remove(path)){
+            sortWindows();
+        }
     });
     connect(window, &Window::dirty, this, [=](const QRect& region){
         m_repaintList.append(Repaint{
@@ -166,7 +199,7 @@ void GuiAPI::redraw(){
     auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
     Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::black;
     QPainter painter(frameBuffer);
-    for(auto window : windows){
+    for(auto window : m_windows){
         if(!repaintList.contains(window->identifier())){
             continue;
         }
@@ -177,7 +210,7 @@ void GuiAPI::redraw(){
             painter.setCompositionMode(QPainter::CompositionMode_Source);
             painter.fillRect(rect, colour);
             // TODO - have some sort of stack to determine which window is on top
-            for(auto window : windows){
+            for(auto window : m_windows){
                 if(window == nullptr){
                     continue;
                 }
@@ -229,6 +262,8 @@ bool GuiAPI::isThisPgId(pid_t valid_pgid){
     return pgid == valid_pgid || pgid == getpid();
 }
 
+QMap<QString, Window*> GuiAPI::windows(){ return m_windows; }
+
 bool GuiAPI::event(QEvent* event){
     if(event->type() != QEvent::UpdateRequest){
         return QObject::event(event);
@@ -244,33 +279,20 @@ bool GuiAPI::event(QEvent* event){
     return true;
 }
 
-void GuiAPI::touchEvent(const input_event& event){
-    for(auto window : windows){
-        if(window != nullptr && window->_isVisible()){
-            window->writeTouchEvent(event);
-        }
-    }
-}
-
-void GuiAPI::tabletEvent(const input_event& event){
-    for(auto window : windows){
-        if(window != nullptr && window->_isVisible()){
-            window->writeTabletEvent(event);
-        }
-    }
-}
-
-void GuiAPI::keyEvent(const input_event& event){
-    for(auto window : windows){
-        if(window != nullptr && window->_isVisible()){
-            window->writeKeyEvent(event);
-        }
-    }
-}
-
 void GuiAPI::scheduleUpdate(){
     if(!m_dirty){
         m_dirty = true;
         QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest));
+    }
+}
+
+void GuiAPI::sortWindows(){
+    int z = 0;
+    for(auto path : m_windows.keys()){
+        auto window = m_windows.value(path);
+        if(window == nullptr){
+            m_windows.remove(path);
+        }
+        window->setZ(z++);
     }
 }

@@ -77,4 +77,11 @@ namespace Oxide {
     void event_device::ev_dropped(){
         this->write(create_event(EV_SYN, SYN_DROPPED, 0));
     }
+    input_absinfo event_device::abs_info(int code){
+        O_DEBUG("ABS INFO" << device.c_str() << code);
+        input_absinfo absInfo;
+        memset(&absInfo, 0, sizeof(input_absinfo));
+        ioctl(fd, EVIOCGABS(code), &absInfo);
+        return absInfo;
+    }
 }

@@ -53,6 +53,7 @@ Window::Window(const QString& id, const QString& path, const pid_t& pid, const Q
   m_path{path},
   m_pid{pid},
   m_geometry{geometry},
+  m_z{-1},
   m_state{WindowState::LoweredHidden},
   m_format{QImage::Format_RGB16},
   m_touchEventPipe{this},
@@ -93,6 +94,16 @@ void Window::setEnabled(bool enabled){
 QDBusObjectPath Window::path(){ return QDBusObjectPath(m_path); }
 
 const QString& Window::identifier(){ return m_identifier; }
+
+int Window::z(){ return m_z; }
+
+void Window::setZ(int z){
+    if(m_z == z){
+        return;
+    }
+    m_z = z;
+    emit zChanged(z);
+}
 
 QDBusUnixFileDescriptor Window::frameBuffer(){
     if(!hasPermissions()){

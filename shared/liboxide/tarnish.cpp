@@ -352,44 +352,63 @@ namespace Oxide::Tarnish {
         }
         return &keyEventFile;
     }
-    bool connectQtEvents(){
+    bool connectQtEvents(
+        std::function<void(const input_event&)> touchCallback,
+        std::function<void(const input_event&)> tabletCallback,
+        std::function<void(const input_event&)> keyCallback
+    ){
         auto file = getTouchEventPipe();
-        if(file != nullptr && touchEventNotifier == nullptr){
+        if(touchCallback != nullptr && file != nullptr && touchEventNotifier == nullptr){
             touchEventNotifier = new QSocketNotifier(file->socketDescriptor(), QSocketNotifier::Read, file);
-            if(!QObject::connect(touchEventNotifier, &QSocketNotifier::activated, qApp, []{
+            auto thread = new QThread(qApp);
+            thread->setPriority(QThread::TimeCriticalPriority);
+            thread->start();
+            touchEventNotifier->moveToThread(thread);
+            if(!QObject::connect(touchEventNotifier, &QSocketNotifier::activated, qApp, [touchCallback]{
                 input_event event;
-                ::read(touchEventFile.socketDescriptor(), &event, sizeof(input_event));
-                qDebug() << "touch input_event" << event.type << event.code << event.value;
-                // TODO - convert to QEvent and post it to qApp
+                if(::read(touchEventFile.socketDescriptor(), &event, sizeof(input_event)) != -1){
+                    touchCallback(event);
+                }
             }, Qt::QueuedConnection)){
                 touchEventNotifier->deleteLater();
                 touchEventNotifier = nullptr;
+                thread->quit();
             }
         }
         file = getTabletEventPipe();
-        if(file != nullptr && tabletEventNotifier == nullptr){
+        if(tabletCallback != nullptr && file != nullptr && tabletEventNotifier == nullptr){
             tabletEventNotifier = new QSocketNotifier(file->socketDescriptor(), QSocketNotifier::Read, file);
-            if(!QObject::connect(tabletEventNotifier, &QSocketNotifier::activated, qApp, []{
+            auto thread = new QThread(qApp);
+            thread->setPriority(QThread::TimeCriticalPriority);
+            thread->start();
+            tabletEventNotifier->moveToThread(thread);
+            if(!QObject::connect(tabletEventNotifier, &QSocketNotifier::activated, qApp, [tabletCallback]{
                 input_event event;
-                ::read(tabletEventFile.socketDescriptor(), &event, sizeof(input_event));
-                qDebug() << "tablet input_event" << event.type << event.code << event.value;
-                // TODO - convert to QEvent and post it to qApp
+                if(::read(tabletEventFile.socketDescriptor(), &event, sizeof(input_event)) != -1){
+                    tabletCallback(event);
+                }
             }, Qt::QueuedConnection)){
                 tabletEventNotifier->deleteLater();
                 tabletEventNotifier = nullptr;
+                thread->quit();
             }
         }
         file = getKeyEventPipe();
-        if(file != nullptr && keyEventNotifier == nullptr){
+        if(keyCallback != nullptr && file != nullptr && keyEventNotifier == nullptr){
             keyEventNotifier = new QSocketNotifier(file->socketDescriptor(), QSocketNotifier::Read, file);
-            if(!QObject::connect(keyEventNotifier, &QSocketNotifier::activated, qApp, []{
+            auto thread = new QThread(qApp);
+            thread->setPriority(QThread::TimeCriticalPriority);
+            thread->start();
+            tabletEventNotifier->moveToThread(thread);
+            if(!QObject::connect(keyEventNotifier, &QSocketNotifier::activated, qApp, [keyCallback]{
                 input_event event;
-                ::read(keyEventFile.socketDescriptor(), &event, sizeof(input_event));
-                qDebug() << "key input_event" << event.type << event.code << event.value;
-                // TODO - convert to QEvent and post it to qApp
+                if(::read(keyEventFile.socketDescriptor(), &event, sizeof(input_event)) != -1){
+                    keyCallback(event);
+                }
             }, Qt::QueuedConnection)){
                 keyEventNotifier->deleteLater();
                 keyEventNotifier = nullptr;
+                thread->quit();
             }
         }
         return touchEventNotifier != nullptr && tabletEventNotifier != nullptr && keyEventNotifier != nullptr;;

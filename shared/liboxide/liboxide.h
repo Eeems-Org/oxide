@@ -201,6 +201,36 @@ namespace Oxide {
          */
         int getTouchHeight() const;
         /*!
+         * \brief getTouchPressure
+         * \return
+         */
+        int getTouchPressure() const;
+        /*!
+         * \brief supportsMultiTouch
+         * \return
+         */
+        bool supportsMultiTouch() const;
+        /*!
+         * \brief isTouchTypeB
+         * \return
+         */
+        bool isTouchTypeB() const;
+        /*!
+         * \brief getWacomWidth
+         * \return
+         */
+        int getWacomWidth() const;
+        /*!
+         * \brief getWacomHeight
+         * \return
+         */
+        int getWacomHeight() const;
+        /*!
+         * \brief getWacomPressure
+         * \return
+         */
+        int getWacomPressure() const;
+        /*!
          * \brief Get the list of possible locales on the device
          * \return The list of possible locales on the device
          */

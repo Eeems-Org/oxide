@@ -10,6 +10,7 @@
 
 #include <QLocalSocket>
 
+#include <linux/input.h>
 #include <epframebuffer.h>
 
 namespace Oxide::Tarnish {
@@ -101,7 +102,11 @@ namespace Oxide::Tarnish {
      * \brief connectQtEvents
      * \return
      */
-    bool connectQtEvents();
+    bool connectQtEvents(
+        std::function<void(const input_event&)> touchCallback,
+        std::function<void(const input_event&)> tabletCallback,
+        std::function<void(const input_event&)> keyCallback
+    );
     /*!
      * \brief screenUpdate
      */

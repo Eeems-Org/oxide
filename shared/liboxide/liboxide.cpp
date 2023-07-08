@@ -1,4 +1,5 @@
 #include "liboxide.h"
+#include "event_device.h"
 
 #include <QDir>
 #include <QFile>
@@ -233,24 +234,77 @@ namespace Oxide {
     }
 
     int DeviceSettings::getTouchWidth() const {
-        switch(getDeviceType()) {
-            case DeviceType::RM1:
-                return 767;
-            case DeviceType::RM2:
-                return 1403;
-            default:
-                return 0;
+        auto path = getTouchDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return 0;
         }
+        return event_device(path, O_RDONLY)
+            .abs_info(ABS_MT_POSITION_X)
+            .maximum;
     }
     int DeviceSettings::getTouchHeight() const {
+        auto path = getTouchDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return 0;
+        }
+        return event_device(path, O_RDONLY)
+            .abs_info(ABS_MT_POSITION_Y)
+            .maximum;
+    }
+    int DeviceSettings::getTouchPressure() const{
+        auto path = getTouchDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return 0;
+        }
+        return event_device(path, O_RDONLY)
+            .abs_info(ABS_MT_PRESSURE)
+            .maximum;
+    }
+    bool DeviceSettings::supportsMultiTouch() const{
+        auto path = getTouchDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return false;
+        }
+        return 1 < event_device(path, O_RDONLY)
+            .abs_info(ABS_MT_SLOT)
+            .maximum;
+    }
+    bool DeviceSettings::isTouchTypeB() const{
         switch(getDeviceType()) {
             case DeviceType::RM1:
-                return 1023;
             case DeviceType::RM2:
-                return 1871;
+                return true;
             default:
-                return 0;
+                return false;
         }
+    }
+
+    int DeviceSettings::getWacomWidth() const {
+        auto path = getWacomDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return 0;
+        }
+        return event_device(path, O_RDONLY)
+            .abs_info(ABS_X)
+            .maximum;
+    }
+    int DeviceSettings::getWacomHeight() const {
+        auto path = getWacomDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return 0;
+        }
+        return event_device(path, O_RDONLY)
+            .abs_info(ABS_Y)
+            .maximum;
+    }
+    int DeviceSettings::getWacomPressure() const{
+        auto path = getWacomDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return 0;
+        }
+        return event_device(path, O_RDONLY)
+            .abs_info(ABS_PRESSURE)
+            .maximum;
     }
     const QStringList DeviceSettings::getLocales() {
         return execute("localectl", QStringList() << "list-locales" << "--no-pager").split("\n");

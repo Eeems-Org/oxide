@@ -31,6 +31,7 @@ class Window : public QObject
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_WINDOW_INTERFACE)
     Q_PROPERTY(QString identifier READ identifier)
+    Q_PROPERTY(int z READ z NOTIFY zChanged)
     Q_PROPERTY(QDBusUnixFileDescriptor frameBuffer READ frameBuffer NOTIFY frameBufferChanged)
     Q_PROPERTY(QDBusUnixFileDescriptor touchEventPipe READ touchEventPipe)
     Q_PROPERTY(QDBusUnixFileDescriptor tabletEventPipe READ tabletEventPipe)
@@ -53,6 +54,8 @@ public:
     void setEnabled(bool enabled);
     QDBusObjectPath path();
     const QString& identifier();
+    int z();
+    void setZ(int z);
     QDBusUnixFileDescriptor frameBuffer();
     QDBusUnixFileDescriptor touchEventPipe();
     QDBusUnixFileDescriptor tabletEventPipe();
@@ -91,6 +94,7 @@ signals:
     void bytesPerLineChanged(const qulonglong&);
     void formatChanged(const int&);
     void dirty(const QRect& region);
+    void zChanged(const int&);
 
 private:
     QString m_identifier;
@@ -98,6 +102,7 @@ private:
     QString m_path;
     pid_t m_pid;
     QRect m_geometry;
+    int m_z;
     uchar* m_data = nullptr;
     QFile m_file;
     qulonglong m_bytesPerLine;

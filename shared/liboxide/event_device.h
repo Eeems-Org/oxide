@@ -69,6 +69,11 @@ namespace Oxide {
          */
         void ev_dropped();
         /*!
+         * \brief abs_info
+         * \return
+         */
+        input_absinfo abs_info(int code);
+        /*!
          * \brief error
          */
         int error;

@@ -41,6 +41,7 @@ private:
     OxideScreen* m_primaryScreen;
     unsigned m_options;
     bool m_debug;
+    QStringList m_spec;
 };
 
 QT_END_NAMESPACE

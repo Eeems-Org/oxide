@@ -19,10 +19,14 @@ SOURCES = main.cpp \
           oxidebackingstore.cpp \
           oxideintegration.cpp \
           oxidescreen.cpp \
+          oxidetabletdata.cpp \
+          oxidetouchscreendata.cpp \
           oxidewindow.cpp
 HEADERS = oxidebackingstore.h \
           oxideintegration.h \
           oxidescreen.h \
+          oxidetabletdata.h \
+          oxidetouchscreendata.h \
           oxidewindow.h
 
 OTHER_FILES += oxide.json
