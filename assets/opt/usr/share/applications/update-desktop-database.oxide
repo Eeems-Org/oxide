@@ -1,0 +1,9 @@
+{
+    "displayName": "Draft Applications",
+    "description": "Imports applications from draft",
+    "bin": "/opt/bin/update-desktop-database",
+    "flags": ["autoStart", "hidden"],
+    "type": "background",
+    "splash": "oxide:splash:oxide-702",
+    "permissions": ["apps"]
+}

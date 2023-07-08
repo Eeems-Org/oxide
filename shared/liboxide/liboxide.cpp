@@ -233,32 +233,48 @@ namespace Oxide {
         }
     }
 
+    static int _touchWidth = -1;
     int DeviceSettings::getTouchWidth() const {
+        if(_touchWidth != -1){
+            return _touchWidth;
+        }
         auto path = getTouchDevicePath();
         if(QString::fromLatin1(path).isEmpty()){
-            return 0;
+            return -1;
         }
-        return event_device(path, O_RDONLY)
+        _touchWidth = event_device(path, O_RDONLY)
             .abs_info(ABS_MT_POSITION_X)
             .maximum;
+        return _touchWidth;
     }
+
+    static int _touchHeight = -1;
     int DeviceSettings::getTouchHeight() const {
+        if(_touchHeight != -1){
+            return _touchHeight;
+        }
         auto path = getTouchDevicePath();
         if(QString::fromLatin1(path).isEmpty()){
-            return 0;
+            return -1;
         }
-        return event_device(path, O_RDONLY)
+        _touchHeight = event_device(path, O_RDONLY)
             .abs_info(ABS_MT_POSITION_Y)
             .maximum;
+        return _touchHeight;
     }
+    static int _touchPressure = -1;
     int DeviceSettings::getTouchPressure() const{
+        if(_touchPressure != -1){
+            return _touchPressure;
+        }
         auto path = getTouchDevicePath();
         if(QString::fromLatin1(path).isEmpty()){
-            return 0;
+            return -1;
         }
-        return event_device(path, O_RDONLY)
+        _touchPressure = event_device(path, O_RDONLY)
             .abs_info(ABS_MT_PRESSURE)
             .maximum;
+        return _touchPressure;
     }
     bool DeviceSettings::supportsMultiTouch() const{
         auto path = getTouchDevicePath();
@@ -279,32 +295,47 @@ namespace Oxide {
         }
     }
 
+    static int _wacomWidth = -1;
     int DeviceSettings::getWacomWidth() const {
+        if(_wacomWidth != -1){
+            return _wacomWidth;
+        }
         auto path = getWacomDevicePath();
         if(QString::fromLatin1(path).isEmpty()){
-            return 0;
+            return -1;
         }
-        return event_device(path, O_RDONLY)
+        _wacomWidth = event_device(path, O_RDONLY)
             .abs_info(ABS_X)
             .maximum;
+        return _wacomWidth;
     }
+    static int _wacomHeight = -1;
     int DeviceSettings::getWacomHeight() const {
+        if(_wacomHeight != -1){
+            return _wacomHeight;
+        }
         auto path = getWacomDevicePath();
         if(QString::fromLatin1(path).isEmpty()){
-            return 0;
+            return -1;
         }
-        return event_device(path, O_RDONLY)
+        _wacomHeight = event_device(path, O_RDONLY)
             .abs_info(ABS_Y)
             .maximum;
+        return _wacomHeight;
     }
+    static int _wacomPressure = -1;
     int DeviceSettings::getWacomPressure() const{
+        if(_wacomPressure != -1){
+            return _wacomPressure;
+        }
         auto path = getWacomDevicePath();
         if(QString::fromLatin1(path).isEmpty()){
-            return 0;
+            return -1;
         }
-        return event_device(path, O_RDONLY)
+        _wacomPressure = event_device(path, O_RDONLY)
             .abs_info(ABS_PRESSURE)
             .maximum;
+        return _wacomPressure;
     }
     const QStringList DeviceSettings::getLocales() {
         return execute("localectl", QStringList() << "list-locales" << "--no-pager").split("\n");

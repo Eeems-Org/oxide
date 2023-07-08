@@ -7,17 +7,19 @@
 #include <QTabletEvent>
 #include <QKeyEvent>
 
-class EventPipe : QObject{
+class EventPipe : public QObject{
     Q_OBJECT
 
 public:
-    EventPipe(QObject* parent);
+    EventPipe();
     ~EventPipe();
     bool isValid();
-    bool isOpen();
-    void close();
     QLocalSocket* readSocket();
     QLocalSocket* writeSocket();
+
+public slots:
+    bool isOpen();
+    void close();
     qint64 write(const char* data, qint64 size);
     bool flush();
 
@@ -25,6 +27,8 @@ private:
     QLocalSocket m_readSocket;
     QLocalSocket m_writeSocket;
 };
+
+class GuiInputThread;
 
 class Window : public QObject
 {
@@ -48,7 +52,7 @@ public:
         RaisedHidden,
         LoweredHidden
     } WindowState;
-    Window(const QString& identifier, const QString& path, const pid_t& pid, const QRect& geometry, QObject* parent);
+    Window(const QString& identifier, const QString& path, const pid_t& pgid, const QRect& geometry);
     ~Window();
 
     void setEnabled(bool enabled);
@@ -73,6 +77,7 @@ public:
     bool writeTouchEvent(const input_event& event);
     bool writeTabletEvent(const input_event& event);
     bool writeKeyEvent(const input_event& event);
+    pid_t pgid();
 
 public slots:
     QDBusUnixFileDescriptor resize(int width, int height);
@@ -100,11 +105,11 @@ private:
     QString m_identifier;
     bool m_enabled;
     QString m_path;
-    pid_t m_pid;
+    pid_t m_pgid;
     QRect m_geometry;
     int m_z;
-    uchar* m_data = nullptr;
     QFile m_file;
+    uchar* m_data = nullptr;
     qulonglong m_bytesPerLine;
     WindowState m_state;
     QMutex mutex;

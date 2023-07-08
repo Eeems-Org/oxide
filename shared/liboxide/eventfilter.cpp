@@ -11,9 +11,8 @@
 #define DISPLAYHEIGHT 1872.0
 #define WACOM_X_SCALAR (float(DISPLAYWIDTH) / float(DISPLAYHEIGHT))
 #define WACOM_Y_SCALAR (float(DISPLAYHEIGHT) / float(DISPLAYWIDTH))
-//#define DEBUG_EVENTS
 #ifdef DEBUG_EVENTS
-#define O_DEBUG_EVENT(msg) O_DEBUG(msg)
+#define O_DEBUG_EVENT(msg) O_DEBUG(__PRETTY_FUNCTION__ << msg)
 #else
 #define O_DEBUG_EVENT(msg)
 #endif

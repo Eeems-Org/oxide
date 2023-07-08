@@ -8,18 +8,6 @@
 
 using namespace Oxide;
 
-class InputThread : public QThread {
-    Q_OBJECT
-
-public:
-    InputThread();
-
-public slots:
-    void touchEvent(const input_event& event);
-    void tabletEvent(const input_event& event);
-    void keyEvent(const input_event& event);
-};
-
 class GuiAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_GUI_INTERFACE)
@@ -38,9 +26,16 @@ public:
     Q_INVOKABLE QDBusObjectPath createWindow(int x, int y, int width, int height);
     Q_INVOKABLE QDBusObjectPath createWindow(QRect geometry);
     Q_INVOKABLE QDBusObjectPath createWindow();
+    Q_INVOKABLE QList<QDBusObjectPath> windows();
     void redraw();
     bool isThisPgId(pid_t valid_pgid);
-    QMap<QString, Window*> windows();
+    QMap<QString, Window*> allWindows();
+    void closeWindows(pid_t pgid);
+
+public slots:
+    void touchEvent(const input_event& event);
+    void tabletEvent(const input_event& event);
+    void keyEvent(const input_event& event);
 
 protected:
     bool event(QEvent* event) override;
@@ -57,5 +52,4 @@ private:
     QRect m_screenGeometry;
     void scheduleUpdate();
     void sortWindows();
-    InputThread m_thread;
 };

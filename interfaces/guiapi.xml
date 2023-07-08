@@ -19,5 +19,8 @@
     <method name="createWindow">
       <arg type="o" direction="out"/>
     </method>
+    <method name="windows">
+      <arg type="ao" direction="out"/>
+    </method>
   </interface>
 </node>

@@ -9,36 +9,6 @@
 
 static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
 
-InputThread::InputThread() : QThread() {
-    connect(touchHandler, &DigitizerHandler::inputEvent, this, &InputThread::touchEvent, Qt::QueuedConnection);
-    connect(buttonHandler, &ButtonHandler::rawEvent, this, &InputThread::keyEvent, Qt::QueuedConnection);
-    connect(wacomHandler, &DigitizerHandler::inputEvent, this, &InputThread::tabletEvent, Qt::QueuedConnection);
-    setPriority(QThread::TimeCriticalPriority);
-    start();
-}
-
-void InputThread::touchEvent(const input_event& event){
-    for(auto window : guiAPI->windows()){
-        if(window != nullptr && window->_isVisible()){
-            window->writeTouchEvent(event);
-        }
-    }
-}
-void InputThread::tabletEvent(const input_event& event){
-    for(auto window : guiAPI->windows()){
-        if(window != nullptr && window->_isVisible()){
-            window->writeTabletEvent(event);
-        }
-    }
-}
-void InputThread::keyEvent(const input_event& event){
-    for(auto window : guiAPI->windows()){
-        if(window != nullptr && window->_isVisible()){
-            window->writeKeyEvent(event);
-        }
-    }
-}
-
 GuiAPI* GuiAPI::singleton(GuiAPI* self){
     static GuiAPI* instance;
     if(self != nullptr){
@@ -49,13 +19,15 @@ GuiAPI* GuiAPI::singleton(GuiAPI* self){
 GuiAPI::GuiAPI(QObject* parent)
 : APIBase(parent),
   m_enabled(false),
-  m_dirty(false),
-  m_thread()
+  m_dirty(false)
 {
     Oxide::Sentry::sentry_transaction("gui", "init", [this](Oxide::Sentry::Transaction* t){
         Q_UNUSED(t);
         m_screenGeometry = deviceSettings.screenGeometry();
         singleton(this);
+        connect(touchHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
+        connect(wacomHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
+        connect(buttonHandler, &ButtonHandler::rawEvent, this, &GuiAPI::touchEvent);
     });
 }
 GuiAPI::~GuiAPI(){
@@ -75,9 +47,6 @@ void GuiAPI::shutdown(){
         auto window = m_windows.take(m_windows.firstKey());
         window->close();
     }
-    m_thread.quit();
-    m_thread.requestInterruption();
-    m_thread.wait();
 }
 
 QRect GuiAPI::geometry(){
@@ -114,8 +83,7 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
     auto id = QUuid::createUuid().toString(QUuid::Id128);
     auto path = QString(OXIDE_SERVICE_PATH) + "/window/" + QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
     auto pgid = getSenderPgid();
-    auto window = new Window(id, path, pgid, geometry, this);
-    window->moveToThread(this->thread());
+    auto window = new Window(id, path, pgid, geometry);
     m_windows.insert(path, window);
     sortWindows();
     connect(window, &Window::closed, this, [this, window, path]{
@@ -124,7 +92,7 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
         }
         window->setEnabled(false);
         window->deleteLater();
-    }, Qt::QueuedConnection);
+    });
     connect(window, &Window::destroyed, this, [this, path]{
         if(m_windows.remove(path)){
             sortWindows();
@@ -136,16 +104,16 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
             .region = region
         });
         scheduleUpdate();
-    }, Qt::QueuedConnection);
+    });
     for(auto item : appsAPI->runningApplicationsNoSecurityCheck().values()){
         Application* app = appsAPI->getApplication(item.value<QDBusObjectPath>());
         if(app->processId() == pgid){
             connect(app, &Application::paused, window, [=]{
                 window->setVisible(false);
-            }, Qt::QueuedConnection);
+            });
             connect(app, &Application::resumed, window, [=]{
                 window->setVisible(true);
-            }, Qt::QueuedConnection);
+            });
         }
     }
     window->setEnabled(m_enabled);
@@ -159,6 +127,17 @@ QDBusObjectPath GuiAPI::createWindow(){
         m_screenGeometry.width(),
         m_screenGeometry.height()
     );
+}
+
+QList<QDBusObjectPath> GuiAPI::windows(){
+    auto pgid = getSenderPgid();
+    QList<QDBusObjectPath> windows;
+    for(auto window : m_windows){
+        if(window->pgid() == pgid){
+            windows.append(window->path());
+        }
+    }
+    return windows;
 }
 
 void GuiAPI::redraw(){
@@ -265,7 +244,46 @@ bool GuiAPI::isThisPgId(pid_t valid_pgid){
     return pgid == valid_pgid || pgid == getpid();
 }
 
-QMap<QString, Window*> GuiAPI::windows(){ return m_windows; }
+QMap<QString, Window*> GuiAPI::allWindows(){ return m_windows; }
+
+void GuiAPI::closeWindows(pid_t pgid){
+    for(auto window : m_windows.values()){
+        if(window->pgid() == pgid){
+            window->close();
+        }
+    }
+}
+
+void GuiAPI::touchEvent(const input_event& event){
+#ifdef DEBUG_EVENTS
+    qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
+#endif
+    for(auto window : m_windows){
+        if(window != nullptr && window->_isVisible()){
+            window->writeTouchEvent(event);
+        }
+    }
+}
+void GuiAPI::tabletEvent(const input_event& event){
+#ifdef DEBUG_EVENTS
+    qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
+#endif
+    for(auto window : m_windows){
+        if(window != nullptr && window->_isVisible()){
+            window->writeTabletEvent(event);
+        }
+    }
+}
+void GuiAPI::keyEvent(const input_event& event){
+#ifdef DEBUG_EVENTS
+    qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
+#endif
+    for(auto window : m_windows){
+        if(window != nullptr && window->_isVisible()){
+            window->writeKeyEvent(event);
+        }
+    }
+}
 
 bool GuiAPI::event(QEvent* event){
     if(event->type() != QEvent::UpdateRequest){

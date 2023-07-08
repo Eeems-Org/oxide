@@ -78,85 +78,33 @@ void OxideIntegration::initialize(){
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
+    // Setup touch event handling
     auto touchData = new OxideTouchScreenData(m_spec);
-    touchData->m_singleTouch = !deviceSettings.supportsMultiTouch();
-    touchData->m_typeB = deviceSettings.isTouchTypeB();
-    touchData->hw_range_x_max = deviceSettings.getTouchWidth();
-    touchData->hw_range_y_max = deviceSettings.getTouchHeight();
-    touchData->hw_pressure_max = deviceSettings.getTouchPressure();
-    touchData->hw_name = "oxide";
-    int rotation = 0;
-    bool invertx = false;
-    bool inverty = false;
-    for(auto item : QString::fromLatin1(deviceSettings.getTouchEnvSetting()).split(":")){
-        auto spec = item.split("=");
-        auto key = spec.first();
-        if(key == "invertx"){
-            invertx = true;
-            continue;
-        }
-        if(key == "inverty"){
-            inverty = true;
-            continue;
-        }
-        if(key != "rotate" || spec.count() != 2){
-            continue;
-        }
-        QString value = spec.last();
-        bool ok;
-        uint angle = value.toUInt(&ok);
-        if(!ok){
-            return;
-        }
-        switch(angle){
-            case 90:
-            case 180:
-            case 270:
-                rotation = angle;
-            default:
-            break;
-        }
+    auto touchPipe = Oxide::Tarnish::getTouchEventPipe();
+    if(touchPipe == nullptr){
+        qFatal("Could not get touch event pipe");
     }
-    if(rotation){
-        touchData->m_rotate = QTransform::fromTranslate(0.5, 0.5).rotate(rotation).translate(-0.5, -0.5);
-    }
-    if(invertx){
-        touchData->m_rotate *= QTransform::fromTranslate(0.5, 0.5).scale(-1.0, 1.0).translate(-0.5, -0.5);
-    }
-    if(inverty){
-        touchData->m_rotate *= QTransform::fromTranslate(0.5, 0.5).scale(1.0, -1.0).translate(-0.5, -0.5);
-    }
-    auto device = new QTouchDevice();
-    device->setName("oxide");
-    device->setType(QTouchDevice::TouchScreen);
-    device->setCapabilities(QTouchDevice::Position | QTouchDevice::Area | QTouchDevice::Pressure);
-    if(touchData->hw_pressure_max){
-        device->setCapabilities(device->capabilities() | QTouchDevice::Pressure);
-    }
-    QWindowSystemInterface::registerTouchDevice(device);
-    touchData->m_device = device;
+    connect(touchPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [touchData](input_event event){
+#ifdef DEBUG_EVENTS
+        qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
+#endif
+        touchData->processInputEvent(&event);
+    });
+    // Setup tablet event handling
     auto tabletData = new OxideTabletData(Oxide::Tarnish::getTabletEventPipeFd());
-    tabletData->maxValues.p = deviceSettings.getWacomPressure();
-    tabletData->maxValues.x = deviceSettings.getWacomWidth();
-    tabletData->maxValues.y = deviceSettings.getWacomHeight();
+    auto tabletPipe = Oxide::Tarnish::getTouchEventPipe();
+    if(tabletPipe == nullptr){
+        qFatal("Could not get tablet event pipe");
+    }
+    connect(tabletPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [tabletData](input_event event){
+#ifdef DEBUG_EVENTS
+        qDebug() << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
+#endif
+        tabletData->processInputEvent(&event);
+    });
+    // Setup key event handling
     auto keyPipe = QFdContainer(Oxide::Tarnish::getKeyEventPipeFd());
     new QEvdevKeyboardHandler("oxide", keyPipe, false, false, "");
-    auto connected = Oxide::Tarnish::connectQtEvents(
-        [touchData](input_event event){
-            touchData->processInputEvent(&event);
-        },
-        [tabletData](input_event event){
-            tabletData->processInputEvent(&event);
-        },
-        nullptr
-    );
-    if(m_debug){
-        if(!connected){
-            qWarning() << "OxideIntegration::initialize Failed to connect Qt events";
-        }else if(m_debug){
-            qDebug() << "OxideIntegration::initialize Qt events connected";
-        }
-    }
 }
 
 

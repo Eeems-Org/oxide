@@ -7,7 +7,8 @@
 #include <QLoggingCategory>
 #include <QDebug>
 #include <QGuiApplication>
-#include<private/qhighdpiscaling_p.h>
+#include <private/qhighdpiscaling_p.h>
+#include <liboxide.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -34,6 +35,61 @@ OxideTouchScreenData::OxideTouchScreenData(const QStringList& args)
             m_forceToActiveWindow = true;
         }
     }
+    m_singleTouch = !deviceSettings.supportsMultiTouch();
+    m_typeB = deviceSettings.isTouchTypeB();
+    hw_range_x_max = deviceSettings.getTouchWidth();
+    hw_range_y_max = deviceSettings.getTouchHeight();
+    hw_pressure_max = deviceSettings.getTouchPressure();
+    hw_name = "oxide";
+    int rotation = 0;
+    bool invertx = false;
+    bool inverty = false;
+    for(auto item : QString::fromLatin1(deviceSettings.getTouchEnvSetting()).split(":")){
+        auto spec = item.split("=");
+        auto key = spec.first();
+        if(key == "invertx"){
+            invertx = true;
+            continue;
+        }
+        if(key == "inverty"){
+            inverty = true;
+            continue;
+        }
+        if(key != "rotate" || spec.count() != 2){
+            continue;
+        }
+        QString value = spec.last();
+        bool ok;
+        uint angle = value.toUInt(&ok);
+        if(!ok){
+            return;
+        }
+        switch(angle){
+            case 90:
+            case 180:
+            case 270:
+                rotation = angle;
+            default:
+            break;
+        }
+    }
+    if(rotation){
+        m_rotate = QTransform::fromTranslate(0.5, 0.5).rotate(rotation).translate(-0.5, -0.5);
+    }
+    if(invertx){
+        m_rotate *= QTransform::fromTranslate(0.5, 0.5).scale(-1.0, 1.0).translate(-0.5, -0.5);
+    }
+    if(inverty){
+        m_rotate *= QTransform::fromTranslate(0.5, 0.5).scale(1.0, -1.0).translate(-0.5, -0.5);
+    }
+    m_device = new QTouchDevice();
+    m_device->setName("oxide");
+    m_device->setType(QTouchDevice::TouchScreen);
+    m_device->setCapabilities(QTouchDevice::Position | QTouchDevice::Area | QTouchDevice::Pressure);
+    if(hw_pressure_max){
+        m_device->setCapabilities(m_device->capabilities() | QTouchDevice::Pressure);
+    }
+    QWindowSystemInterface::registerTouchDevice(m_device);
 }
 
 void OxideTouchScreenData::addTouchPoint(const Contact& contact, Qt::TouchPointStates* combinedStates){

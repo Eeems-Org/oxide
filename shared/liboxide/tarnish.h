@@ -14,6 +14,40 @@
 #include <epframebuffer.h>
 
 namespace Oxide::Tarnish {
+    /*!
+     * \brief The InputEventSocket class
+     */
+    class LIBOXIDE_EXPORT InputEventSocket : public QLocalSocket {
+        Q_OBJECT
+
+    public:
+        /*!
+         * \brief InputEventSocket
+         */
+        InputEventSocket();
+        /*!
+         * \brief ~InputEventSocket
+         */
+        ~InputEventSocket();
+        /*!
+         * \brief setCallback
+         * \param callback
+         */
+        void setCallback(std::function<void(const input_event&)> callback);
+
+    signals:
+        /*!
+         * \brief inputEvent
+         */
+        void inputEvent(const input_event&);
+
+    private:
+        QDataStream stream;
+        std::function<void(const input_event&)> m_callback = nullptr;
+
+    private slots:
+        void readEvent();
+    };
     typedef enum{
         Raised,
         Lowered,
@@ -24,85 +58,85 @@ namespace Oxide::Tarnish {
      * \brief Get the current General API instance
      * \return The current General API instance
      */
-    codes::eeems::oxide1::General* getAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::General* getAPI();
     /*!
      * \brief Request access to an API
      * \param Name of the API
      * \return DBus path to the API, or "/" if access is denied
      */
-    QString requestAPI(std::string name);
+    LIBOXIDE_EXPORT QString requestAPI(std::string name);
     /*!
      * \brief Connect to the current tarnish instance
      */
-    void connect();
+    LIBOXIDE_EXPORT void connect();
     /*!
      * \brief Disconnect from the current tarnish instance
      */
-    void disconnect();
+    LIBOXIDE_EXPORT void disconnect();
     /*!
      * \brief Register this child application to be managed by Tarnish
      */
-    void registerChild();
+    LIBOXIDE_EXPORT void registerChild();
     /*!
      * \brief Register this child application to be managed by Tarnish
      * \param The name of the application
      */
-    void registerChild(std::string name);
+    LIBOXIDE_EXPORT void registerChild(std::string name);
     /*!
      * \brief Get the tarnish PID
      * \return The tarnish PID
      */
-    int tarnishPid();
+    LIBOXIDE_EXPORT int tarnishPid();
     /*!
      * \brief getFrameBuffer
      * \return
      */
-    int getFrameBufferFd();
+    LIBOXIDE_EXPORT int getFrameBufferFd();
     /*!
      * \brief frameBuffer
      * \return
      */
-    uchar* frameBuffer();
+    LIBOXIDE_EXPORT uchar* frameBuffer();
     /*!
      * \brief frameBuffer
      * \return
      */
-    QImage frameBufferImage();
+    LIBOXIDE_EXPORT QImage frameBufferImage();
     /*!
      * \brief getTouchEventPipeFd
      * \return
      */
-    int getTouchEventPipeFd();
+    LIBOXIDE_EXPORT int getTouchEventPipeFd();
     /*!
      * \brief getTouchEventPipe
      * \return
      */
-    QLocalSocket* getTouchEventPipe();
+    LIBOXIDE_EXPORT InputEventSocket* getTouchEventPipe();
     /*!
      * \brief getTabletEventPipeFd
      * \return
      */
-    int getTabletEventPipeFd();
+    LIBOXIDE_EXPORT int getTabletEventPipeFd();
     /*!
      * \brief getTabletEventPipe
      * \return
      */
-    QLocalSocket* getTabletEventPipe();
+    LIBOXIDE_EXPORT InputEventSocket* getTabletEventPipe();
     /*!
      * \brief getKeyEventPipeFd
      * \return
      */
-    int getKeyEventPipeFd();
+    LIBOXIDE_EXPORT int getKeyEventPipeFd();
     /*!
      * \brief getKeyEventPipe
      * \return
      */
-    QLocalSocket* getKeyEventPipe();
+    LIBOXIDE_EXPORT InputEventSocket* getKeyEventPipe();
     /*!
      * \brief connectQtEvents
      * \return
      */
-    bool connectQtEvents(
+    LIBOXIDE_EXPORT bool connectQtEvents(
         std::function<void(const input_event&)> touchCallback,
         std::function<void(const input_event&)> tabletCallback,
         std::function<void(const input_event&)> keyCallback
@@ -110,51 +144,51 @@ namespace Oxide::Tarnish {
     /*!
      * \brief screenUpdate
      */
-    void screenUpdate();
+    LIBOXIDE_EXPORT void screenUpdate();
     /*!
      * \brief screenUpdate
      * \param rect
      * \param mode
      */
-    void screenUpdate(QRect rect);
+    LIBOXIDE_EXPORT void screenUpdate(QRect rect);
     /*!
      * \brief powerAPI
      * \return
      */
-    codes::eeems::oxide1::Power* powerAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Power* powerAPI();
     /*!
      * \brief wifiAPI
      * \return
      */
-    codes::eeems::oxide1::Wifi* wifiAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Wifi* wifiAPI();
     /*!
      * \brief screenAPI
      * \return
      */
-    codes::eeems::oxide1::Screen* screenAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Screen* screenAPI();
     /*!
      * \brief appsAPI
      * \return
      */
-    codes::eeems::oxide1::Apps* appsAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Apps* appsAPI();
     /*!
      * \brief systemAPI
      * \return
      */
-    codes::eeems::oxide1::System* systemAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::System* systemAPI();
     /*!
      * \brief notificationAPI
      * \return
      */
-    codes::eeems::oxide1::Notifications* notificationAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Notifications* notificationAPI();
     /*!
      * \brief guiAPI
      * \return
      */
-    codes::eeems::oxide1::Gui* guiAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Gui* guiAPI();
     /*!
      * \brief topWindow
      * \return
      */
-    codes::eeems::oxide1::Window* topWindow();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Window* topWindow();
 }

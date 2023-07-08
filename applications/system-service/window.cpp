@@ -12,15 +12,19 @@
     QMutexLocker locker(&mutex); \
     Q_UNUSED(locker);
 
-EventPipe::EventPipe(QObject* parent) : QObject(parent){
+EventPipe::EventPipe()
+: QObject{nullptr},
+  m_readSocket{this},
+  m_writeSocket{this}
+{
     int fds[2];
     if(::socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == -1){
         O_WARNING(__PRETTY_FUNCTION__ << "Unable to open event pipe:" << strerror(errno));
     }
-    if(!m_readSocket.setSocketDescriptor(fds[1], QLocalSocket::ConnectedState, QLocalSocket::ReadOnly)){
+    if(!m_readSocket.setSocketDescriptor(fds[1], QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
         O_WARNING(__PRETTY_FUNCTION__ << "Unable to open event pipe read socket:" << m_readSocket.errorString());
     }
-    if(!m_writeSocket.setSocketDescriptor(fds[0], QLocalSocket::ConnectedState, QLocalSocket::WriteOnly)){
+    if(!m_writeSocket.setSocketDescriptor(fds[0], QLocalSocket::ConnectedState, QLocalSocket::WriteOnly | QLocalSocket::Unbuffered)){
         O_WARNING(__PRETTY_FUNCTION__ << "Unable to open event pipe write socket:" << m_writeSocket.errorString());
     }
 }
@@ -46,23 +50,21 @@ qint64 EventPipe::write(const char* data, qint64 size){ return m_writeSocket.wri
 
 bool EventPipe::flush(){ return m_writeSocket.flush(); }
 
-Window::Window(const QString& id, const QString& path, const pid_t& pid, const QRect& geometry, QObject* parent)
-: QObject{parent},
+Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QRect& geometry)
+: QObject{guiAPI},
   m_identifier{id},
   m_enabled{false},
   m_path{path},
-  m_pid{pid},
+  m_pgid{pgid},
   m_geometry{geometry},
   m_z{-1},
+  m_file{this},
   m_state{WindowState::LoweredHidden},
-  m_format{QImage::Format_RGB16},
-  m_touchEventPipe{this},
-  m_tabletEventPipe{this},
-  m_keyEventPipe{this}
+  m_format{QImage::Format_RGB16}
 {
     LOCK_MUTEX;
     createFrameBuffer(geometry);
-    O_DEBUG(id << __PRETTY_FUNCTION__ << "Window created" << id << pid);
+    O_DEBUG(id << __PRETTY_FUNCTION__ << "Window created" << id << pgid);
 }
 Window::~Window(){
     LOCK_MUTEX;
@@ -248,6 +250,8 @@ bool Window::writeTabletEvent(const input_event& event){ return writeEvent(&m_ta
 
 bool Window::writeKeyEvent(const input_event& event){ return writeEvent(&m_keyEventPipe, event); }
 
+pid_t Window::pgid(){ return m_pgid; }
+
 QDBusUnixFileDescriptor Window::resize(int width, int height){
     if(!hasPermissions()){
         W_DENIED();
@@ -356,7 +360,7 @@ void Window::close(){
     }
 }
 
-bool Window::hasPermissions(){ return guiAPI->isThisPgId(m_pid); }
+bool Window::hasPermissions(){ return guiAPI->isThisPgId(m_pgid); }
 
 void Window::createFrameBuffer(const QRect& geometry){
     // No mutex, as it should be handled by the calling function
@@ -438,5 +442,8 @@ bool Window::writeEvent(EventPipe* pipe, const input_event& event){
     if(!pipe->flush()){
         W_WARNING("Failed to flush event pipe: " << pipe->writeSocket()->errorString());
     }
+#ifdef DEBUG_EVENTS
+    W_DEBUG(event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value);
+#endif
     return true;
 }

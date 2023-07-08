@@ -7,6 +7,7 @@
 #include "application.h"
 #include "appsapi.h"
 #include "systemapi.h"
+#include "guiapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
 
@@ -424,6 +425,7 @@ void Application::setConfig(const QVariantMap& config){
     }
 }
 void Application::started(){
+    m_pid = processId();
     emit launched();
     emit appsAPI->applicationLaunched(qPath());
 }
@@ -436,6 +438,10 @@ void Application::finished(int exitCode){
     if(transient()){
         unregister();
     }
+    if(m_pid != -1){
+        guiAPI->closeWindows(m_pid);
+    }
+    m_pid = -1;
 }
 void Application::errorOccurred(QProcess::ProcessError error){
     switch(error){

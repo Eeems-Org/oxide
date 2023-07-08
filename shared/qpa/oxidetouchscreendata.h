@@ -15,13 +15,12 @@
 
 #include <linux/input.h>
 
-class OxideTouchScreenData
-{
+class OxideTouchScreenData{
 public:
     OxideTouchScreenData(const QStringList& args);
 
-    void processInputEvent(input_event* data);
     void assignIds();
+    void processInputEvent(input_event* data);
 
     int m_lastEventType;
     QList<QWindowSystemInterface::TouchPoint> m_touchPoints;

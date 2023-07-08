@@ -10,8 +10,7 @@
 
 #include <linux/input.h>
 
-class OxideTabletData
-{
+class OxideTabletData{
 public:
     OxideTabletData(int fd);
 

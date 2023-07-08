@@ -8,15 +8,19 @@
 #include <QDebug>
 #include <QGuiApplication>
 #include <qpa/qwindowsysteminterface.h>
-#include<private/qhighdpiscaling_p.h>
+#include <private/qhighdpiscaling_p.h>
+#include <liboxide.h>
 
 OxideTabletData::OxideTabletData(int fd) : fd(fd), lastEventType(0){
     memset(&minValues, 0, sizeof(minValues));
     memset(&maxValues, 0, sizeof(maxValues));
     memset(static_cast<void *>(&state), 0, sizeof(state));
+    maxValues.p = deviceSettings.getWacomPressure();
+    maxValues.x = deviceSettings.getWacomWidth();
+    maxValues.y = deviceSettings.getWacomHeight();
 }
 
-void OxideTabletData::processInputEvent(input_event *ev){
+void OxideTabletData::processInputEvent(input_event* ev){
     if(ev->type == EV_ABS){
         switch (ev->code){
         case ABS_X:
