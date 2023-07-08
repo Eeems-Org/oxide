@@ -81,7 +81,6 @@ void OxideTabletData::report(){
     int pressureRange = maxValues.p - minValues.p;
     qreal pressure = pressureRange ? (state.p - minValues.p) / qreal(pressureRange) : qreal(1);
     if(state.down || state.lastReportDown){
-        qDebug() << globalPos << QGuiApplication::topLevelAt(globalPos.toPoint());
         QWindowSystemInterface::handleTabletEvent(
             nullptr,
             QPointF(),
