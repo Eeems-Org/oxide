@@ -75,6 +75,9 @@ void GuiAPI::shutdown(){
         auto window = m_windows.take(m_windows.firstKey());
         window->close();
     }
+    m_thread.quit();
+    m_thread.requestInterruption();
+    m_thread.wait();
 }
 
 QRect GuiAPI::geometry(){
