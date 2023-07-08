@@ -61,6 +61,7 @@ public:
     QRect _geometry();
     void setGeometry(const QRect& geometry);
     Q_INVOKABLE bool isVisible();
+    bool _isVisible();
     Q_INVOKABLE void setVisible(bool visible);
     QImage toImage();
     qulonglong sizeInBytes();
@@ -109,6 +110,5 @@ private:
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);
-    bool _isVisible();
     bool writeEvent(EventPipe* pipe, const input_event& event);
 };

@@ -181,7 +181,7 @@ void GuiAPI::redraw(){
                 if(window == nullptr){
                     continue;
                 }
-                if(!window->isVisible()){
+                if(!window->_isVisible()){
                     O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Not visible");
                     continue;
                 }
@@ -246,7 +246,7 @@ bool GuiAPI::event(QEvent* event){
 
 void GuiAPI::touchEvent(const input_event& event){
     for(auto window : windows){
-        if(window != nullptr && window->isVisible()){
+        if(window != nullptr && window->_isVisible()){
             window->writeTouchEvent(event);
         }
     }
@@ -254,7 +254,7 @@ void GuiAPI::touchEvent(const input_event& event){
 
 void GuiAPI::tabletEvent(const input_event& event){
     for(auto window : windows){
-        if(window != nullptr && window->isVisible()){
+        if(window != nullptr && window->_isVisible()){
             window->writeTabletEvent(event);
         }
     }
@@ -262,7 +262,7 @@ void GuiAPI::tabletEvent(const input_event& event){
 
 void GuiAPI::keyEvent(const input_event& event){
     for(auto window : windows){
-        if(window != nullptr && window->isVisible()){
+        if(window != nullptr && window->_isVisible()){
             window->writeKeyEvent(event);
         }
     }

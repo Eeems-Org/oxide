@@ -161,6 +161,11 @@ bool Window::isVisible(){
     return _isVisible();
 }
 
+bool Window::_isVisible(){
+    LOCK_MUTEX;
+    return m_file.isOpen() && m_state == WindowState::Raised;
+}
+
 void Window::setVisible(bool visible){
     if(!hasPermissions()){
         W_DENIED();
@@ -399,11 +404,6 @@ void Window::createFrameBuffer(const QRect& geometry){
     emit geometryChanged(oldGeometry, m_geometry);
     emit frameBufferChanged(QDBusUnixFileDescriptor(fd));
     W_DEBUG("Framebuffer created:" << geometry);
-}
-
-bool Window::_isVisible(){
-    LOCK_MUTEX;
-    return m_file.isOpen() && m_state == WindowState::Raised;
 }
 
 bool Window::writeEvent(EventPipe* pipe, const input_event& event){
