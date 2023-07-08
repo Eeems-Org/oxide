@@ -133,7 +133,14 @@ namespace Oxide{
                 postEvent(QMouseEvent::MouseMove, ev, root);
             }
 #ifdef DEBUG_EVENTS
-            else if(type != QEvent::MetaCall && type != QEvent::SockAct && type != QEvent::SockClose){
+            else if(
+                type != QEvent::MetaCall
+                && type != QEvent::SockAct
+                && type != QEvent::SockClose
+                && type != QEvent::ChildAdded
+                && type != QEvent::ChildPolished
+                && type != QEvent::ChildRemoved
+            ){
                 O_DEBUG(ev << ev->isAccepted() << obj);
             }
 #endif

@@ -3,7 +3,7 @@
     "description": "Application launcher",
     "bin": "/opt/bin/oxide",
     "type": "foreground",
-    "flags": ["hidden", "nosavescreen"],
+    "flags": ["hidden", "nosavescreen", "nomanageinput"],
     "splash": "oxide:splash:oxide-702",
     "permissions": ["apps", "wifi", "power", "system", "notification", "gui"]
 }

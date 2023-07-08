@@ -20,6 +20,7 @@ const QList<QString> Flags {
     "hidden",
     "nosplash",
     "nosavescreen",
+    "nomanageinput",
     "system",
 };
 

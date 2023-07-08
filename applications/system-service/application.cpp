@@ -274,7 +274,9 @@ void Application::uninterruptApplication(){
                 case Background:
                 case Backgroundable:
                     if(stateNoSecurityCheck() == Paused){
-                        touchHandler->clear_buffer();
+                        if(!flags().contains("nomanageinput")){
+                            touchHandler->clear_buffer();
+                        }
                         kill(-m_process->processId(), SIGCONT);
                     }
                     qDebug() << "Waiting for SIGUSR1 ack";
@@ -293,7 +295,9 @@ void Application::uninterruptApplication(){
                     break;
                 case Foreground:
                 default:
-                    touchHandler->clear_buffer();
+                    if(!flags().contains("nomanageinput")){
+                        touchHandler->clear_buffer();
+                    }
                     kill(-m_process->processId(), SIGCONT);
                     startSpan("foreground", "Application is in the foreground");
             }

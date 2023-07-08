@@ -5,5 +5,5 @@
     "splash": "oxide:splash:erode-702",
     "bin": "/opt/bin/erode",
     "permissioms": ["gui"],
-    "flags": ["nosavescreen"]
+    "flags": ["nosavescreen", "nomanageinput"]
 }
