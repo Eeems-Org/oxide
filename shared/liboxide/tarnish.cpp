@@ -33,8 +33,6 @@ void startInputThread(){
         return;
     }
     O_DEBUG("Starting input thread");
-    QObject::connect(qApp, &QGuiApplication::aboutToQuit, &inputThread, &QThread::quit);
-    QObject::connect(qApp, &QGuiApplication::aboutToQuit, &inputThread, &QThread::deleteLater);
     inputThread.setObjectName("input");
     inputThread.start();
     inputThread.setPriority(QThread::TimeCriticalPriority);
@@ -138,7 +136,7 @@ namespace Oxide::Tarnish {
             nanosleep(&args, &res);
         }
         api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, qApp);
-        QObject::connect(qApp, &QGuiApplication::aboutToQuit, api_general, []{ disconnect(); }, Qt::QueuedConnection);
+        QObject::connect(qApp, &QGuiApplication::aboutToQuit, []{ disconnect(); });
     }
 
     void disconnect(){
@@ -217,7 +215,7 @@ namespace Oxide::Tarnish {
             }
             window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection(), qApp);
             QObject::connect(window, &codes::eeems::oxide1::Window::frameBufferChanged, [=](const QDBusUnixFileDescriptor& fd){
-                qDebug() << "frameBufferChanged";
+                O_DEBUG("frameBufferChanged");
                 fbFile.close();
                 fbGeometry.adjust(0, 0, 0, 0);
                 fbLineSize = 0;
@@ -239,8 +237,12 @@ namespace Oxide::Tarnish {
                 }
                 setupFbFd(frameBufferFd);
             });
+            QObject::connect(window, &codes::eeems::oxide1::Window::zChanged, [=](int z){
+                O_DEBUG("Z sort changed:" << z);
+            });
             window->setVisible(true);
             window->raise();
+            O_DEBUG("Z sort:" << window->z());
         }
         auto qfd = window->frameBuffer();
         if(!qfd.isValid()){

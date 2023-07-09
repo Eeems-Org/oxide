@@ -38,5 +38,7 @@ int main(int argc, char *argv[]){
     auto root = engine.rootObjects().first();
     filter->root = (QQuickItem*)root;
     controller.setRoot(root);
+    QObject::connect(signalHandler, &SignalHandler::sigInt, &app, &QGuiApplication::quit);
+    QObject::connect(signalHandler, &SignalHandler::sigTerm, &app, &QGuiApplication::quit);
     return app.exec();
 }

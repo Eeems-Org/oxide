@@ -120,7 +120,7 @@ int main(int argc, char* argv[]){
         qDebug() << "Deleting" << pidPath;
         remove(pidPath);
     }, Qt::QueuedConnection);
-    QObject::connect(signalHandler, &SignalHandler::sigInt, dbusService, &DBusService::shutdown, Qt::QueuedConnection);
-    QObject::connect(signalHandler, &SignalHandler::sigTerm, dbusService, &DBusService::shutdown, Qt::QueuedConnection);
+    QObject::connect(signalHandler, &SignalHandler::sigInt, dbusService, &DBusService::shutdown);
+    QObject::connect(signalHandler, &SignalHandler::sigTerm, dbusService, &DBusService::shutdown);
     return app.exec();
 }
