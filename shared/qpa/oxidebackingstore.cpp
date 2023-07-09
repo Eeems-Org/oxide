@@ -7,6 +7,7 @@
 #include <qpa/qplatformscreen.h>
 #include <private/qguiapplication_p.h>
 #include <liboxide/tarnish.h>
+#include <liboxide/meta.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -34,7 +35,7 @@ void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoi
 void OxideBackingStore::resize(const QSize& size, const QRegion& region){
     Q_UNUSED(region)
     if(image.size() != size){
-        image = QImage(size, QImage::Format_ARGB32_Premultiplied);
+        image = QImage(size, DEFAULT_IMAGE_FORMAT);
     }
 }
 

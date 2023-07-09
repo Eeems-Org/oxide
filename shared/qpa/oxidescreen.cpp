@@ -8,7 +8,7 @@
 OxideScreen::OxideScreen()
 : mGeometry(deviceSettings.screenGeometry()),
   mDepth(32),
-  mFormat(QImage::Format_ARGB32_Premultiplied),
+  mFormat(DEFAULT_IMAGE_FORMAT),
   mUpdatePending(false){
 
 }

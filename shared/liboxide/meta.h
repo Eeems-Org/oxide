@@ -101,4 +101,10 @@
  * \brief DBus service for a window object
  */
 #define OXIDE_WINDOW_INTERFACE OXIDE_SERVICE ".Window"
+/*!
+ * \def DEFAULT_IMAGE_FORMAT
+ * \brief The default image format used by liboxide and the system service
+ */
+// https://doc.qt.io/qt-5/qimage.html#Format-enum
+#define DEFAULT_IMAGE_FORMAT QImage::Format_RGBA8888_Premultiplied
 /*! @} */
