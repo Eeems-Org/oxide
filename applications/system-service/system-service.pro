@@ -17,6 +17,7 @@ SOURCES += \
     bss.cpp \
     buttonhandler.cpp \
     dbusservice.cpp \
+    eventpipe.cpp \
     guiapi.cpp \
     network.cpp \
     notification.cpp \
@@ -61,6 +62,7 @@ HEADERS += \
     buttonhandler.h \
     dbusservice.h \
     digitizerhandler.h \
+    eventpipe.h \
     fifohandler.h \
     guiapi.h \
     mxcfb.h \

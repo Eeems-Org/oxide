@@ -2,31 +2,10 @@
 
 #include "apibase.h"
 
-#include <QLocalSocket>
 #include <QTouchEvent>
 #include <QTabletEvent>
 #include <QKeyEvent>
-
-class EventPipe : public QObject{
-    Q_OBJECT
-
-public:
-    EventPipe();
-    ~EventPipe();
-    bool isValid();
-    QLocalSocket* readSocket();
-    QLocalSocket* writeSocket();
-
-public slots:
-    bool isOpen();
-    void close();
-    qint64 write(const char* data, qint64 size);
-    bool flush();
-
-private:
-    QLocalSocket m_readSocket;
-    QLocalSocket m_writeSocket;
-};
+#include <eventpipe.h>
 
 class GuiInputThread;
 

@@ -1,15 +1,5 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
-  <interface name="local.EventPipe">
-    <method name="isOpen">
-      <arg type="b" direction="out"/>
-    </method>
-    <method name="close">
-    </method>
-    <method name="flush">
-      <arg type="b" direction="out"/>
-    </method>
-  </interface>
   <interface name="codes.eeems.oxide1.Window">
     <property name="identifier" type="s" access="read"/>
     <property name="z" type="i" access="read"/>

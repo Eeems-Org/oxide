@@ -1,7 +1,6 @@
 #include "window.h"
 #include "guiapi.h"
 
-#include <sys/socket.h>
 #include <sys/file.h>
 
 
@@ -13,43 +12,7 @@
     QMutexLocker locker(&m_mutex); \
     Q_UNUSED(locker);
 
-EventPipe::EventPipe()
-: QObject{nullptr},
-  m_readSocket{this},
-  m_writeSocket{this}
-{
-    int fds[2];
-    if(::socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == -1){
-        O_WARNING(__PRETTY_FUNCTION__ << "Unable to open event pipe:" << strerror(errno));
-    }
-    if(!m_readSocket.setSocketDescriptor(fds[1], QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
-        O_WARNING(__PRETTY_FUNCTION__ << "Unable to open event pipe read socket:" << m_readSocket.errorString());
-    }
-    if(!m_writeSocket.setSocketDescriptor(fds[0], QLocalSocket::ConnectedState, QLocalSocket::WriteOnly | QLocalSocket::Unbuffered)){
-        O_WARNING(__PRETTY_FUNCTION__ << "Unable to open event pipe write socket:" << m_writeSocket.errorString());
-    }
-}
 
-EventPipe::~EventPipe(){
-    close();
-}
-
-bool EventPipe::isValid(){ return m_readSocket.isValid() && m_writeSocket.isValid(); }
-
-bool EventPipe::isOpen(){ return m_readSocket.isOpen() && m_writeSocket.isOpen(); }
-
-void EventPipe::close(){
-    m_readSocket.close();
-    m_writeSocket.close();
-}
-
-QLocalSocket* EventPipe::readSocket(){ return &m_readSocket; }
-
-QLocalSocket* EventPipe::writeSocket(){ return &m_writeSocket; }
-
-qint64 EventPipe::write(const char* data, qint64 size){ return m_writeSocket.write(data, size); }
-
-bool EventPipe::flush(){ return m_writeSocket.flush(); }
 
 Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QRect& geometry)
 : QObject{guiAPI},
@@ -93,6 +56,9 @@ void Window::setEnabled(bool enabled){
     }else{
         W_WARNING("Failed to register" << m_path << OXIDE_WINDOW_INTERFACE);
     }
+    m_touchEventPipe.setEnabled(enabled);
+    m_tabletEventPipe.setEnabled(enabled);
+    m_keyEventPipe.setEnabled(enabled);
 }
 
 QDBusObjectPath Window::path(){ return QDBusObjectPath(m_path); }
@@ -125,6 +91,7 @@ QDBusUnixFileDescriptor Window::touchEventPipe(){
         return QDBusUnixFileDescriptor();
     }
     W_ALLOWED();
+    m_touchEventPipe.setEnabled(true);
     return QDBusUnixFileDescriptor(m_touchEventPipe.readSocket()->socketDescriptor());
 }
 
@@ -134,6 +101,7 @@ QDBusUnixFileDescriptor Window::tabletEventPipe(){
         return QDBusUnixFileDescriptor();
     }
     W_ALLOWED();
+    m_tabletEventPipe.setEnabled(true);
     return QDBusUnixFileDescriptor(m_tabletEventPipe.readSocket()->socketDescriptor());
 }
 
@@ -143,6 +111,7 @@ QDBusUnixFileDescriptor Window::keyEventPipe(){
         return QDBusUnixFileDescriptor();
     }
     W_ALLOWED();
+    m_keyEventPipe.setEnabled(true);
     return QDBusUnixFileDescriptor(m_keyEventPipe.readSocket()->socketDescriptor());
 }
 
@@ -461,6 +430,9 @@ void Window::createFrameBuffer(const QRect& geometry){
 }
 
 bool Window::writeEvent(EventPipe* pipe, const input_event& event){
+    if(!pipe->enabled()){
+        return false;
+    }
     if(!m_enabled){
         W_WARNING("Failed to write to event pipe: Window disabled");
         return false;
