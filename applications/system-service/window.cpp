@@ -254,6 +254,15 @@ pid_t Window::pgid(){ return m_pgid; }
 
 QMutexLocker Window::locker(){ return QMutexLocker(&mutex); }
 
+void Window::_close(){
+    bool wasVisible = _isVisible();
+    m_state = WindowState::LoweredHidden;
+    emit closed();
+    if(wasVisible){
+        emit dirty(m_geometry);
+    }
+}
+
 QDBusUnixFileDescriptor Window::resize(int width, int height){
     if(!hasPermissions()){
         W_DENIED();
@@ -354,12 +363,7 @@ void Window::close(){
         return;
     }
     W_ALLOWED();
-    bool wasVisible = _isVisible();
-    m_state = WindowState::LoweredHidden;
-    emit closed();
-    if(wasVisible){
-        emit dirty(m_geometry);
-    }
+    _close();
 }
 
 bool Window::hasPermissions(){ return guiAPI->isThisPgId(m_pgid); }

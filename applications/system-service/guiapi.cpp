@@ -45,7 +45,7 @@ void GuiAPI::shutdown(){
     W_DEBUG("Shutdown");
     while(!m_windows.isEmpty()){
         auto window = m_windows.take(m_windows.firstKey());
-        window->close();
+        window->_close();
     }
 }
 
@@ -206,7 +206,7 @@ void GuiAPI::redraw(){
                     O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Null framebuffer");
                     continue;
                 }
-                const QRect windowRect = window->geometry().translated(-screenOffset);
+                const QRect windowRect = window->_geometry().translated(-screenOffset);
                 const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
                 O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << rect << windowIntersect);
                 painter.drawImage(rect, image, windowIntersect);
@@ -250,7 +250,7 @@ QMap<QString, Window*> GuiAPI::allWindows(){ return m_windows; }
 void GuiAPI::closeWindows(pid_t pgid){
     for(auto window : m_windows.values()){
         if(window->pgid() == pgid){
-            window->close();
+            window->_close();
         }
     }
 }

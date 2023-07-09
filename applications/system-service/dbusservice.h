@@ -193,8 +193,8 @@ private:
                 continue;
             }
             O_DEBUG("unregisterChild" << child.pid << child.name.c_str());
-            i.remove();
             guiAPI->closeWindows(child.pid);
+            i.remove();
         }
     }
     static DBusService* instance;
