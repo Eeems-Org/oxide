@@ -200,6 +200,7 @@ void GuiAPI::redraw(){
                     O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Not visible");
                     continue;
                 }
+                window->locker();
                 auto image = window->toImage();
                 if(image.isNull()){
                     O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Null framebuffer");

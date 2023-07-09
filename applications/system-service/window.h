@@ -78,6 +78,7 @@ public:
     bool writeTabletEvent(const input_event& event);
     bool writeKeyEvent(const input_event& event);
     pid_t pgid();
+    QMutexLocker locker();
 
 public slots:
     QDBusUnixFileDescriptor resize(int width, int height);

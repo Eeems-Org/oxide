@@ -3,7 +3,7 @@
     "description": "Read documents and take notes",
     "bin": "/opt/bin/xochitl",
     "icon": "oxide:xochitl-48",
-    "flags": ["nosplash", "chroot"],
+    "flags": ["nosplash", "chroot", "nomanageinput"],
     "permissions": ["power"],
     "directories": [
         "/dev/shm",
@@ -12,11 +12,14 @@
         "/home/root/.local/share",
         "/home/root/.local/share/remarkable",
         "/opt/etc",
+        "/opt/lib",
+        "/opt/usr/lib/plugins",
         "/run/dbus",
         "/run/lock",
         "/run/systemd",
         "/run/systemd/resolve",
         "/run/udev",
+        "/sbin/fw_setenv",
         "/tmp/runtime-root",
         "/usr/share",
         "/usr/share/remarkable/templates",
@@ -27,10 +30,12 @@
     ],
     "environment": {
         "HOME": "/home/root",
-        "QMLSCENE_DEVICE": "epaper",
-        "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS": "rotate=180",
-        "QT_QPA_PLATFORM": "epaper",
+        "QT_QPA_PLATFORM": "oxide",
+        "QMLSCENE_DEVICE": "software",
+        "QT_QUICK_BACKEND": "software",
+        "QT_PLUGIN_PATH": "/opt/usr/lib/plugins",
         "SYSTEMD_IGNORE_CHROOT": "true",
-        "XDG_RUNTIME_DIR": "/tmp/runtime-root"
+        "XDG_RUNTIME_DIR": "/tmp/runtime-root",
+        "QT_DEBUG_PLUGINS": "1"
     }
 }

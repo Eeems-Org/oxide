@@ -252,6 +252,8 @@ bool Window::writeKeyEvent(const input_event& event){ return writeEvent(&m_keyEv
 
 pid_t Window::pgid(){ return m_pgid; }
 
+QMutexLocker Window::locker(){ return QMutexLocker(&mutex); }
+
 QDBusUnixFileDescriptor Window::resize(int width, int height){
     if(!hasPermissions()){
         W_DENIED();

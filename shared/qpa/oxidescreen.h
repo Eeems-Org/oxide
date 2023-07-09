@@ -1,6 +1,8 @@
 #pragma once
 
+#include <QMutex>
 #include <qpa/qplatformscreen.h>
+
 #include "oxidebackingstore.h"
 #include "oxidewindow.h"
 
@@ -29,5 +31,6 @@ private:
     QSize mPhysicalSize;
     bool mUpdatePending;
     QRegion mRepaintRegion;
+    QMutex mutex;
     void redraw();
 };

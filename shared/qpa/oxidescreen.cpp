@@ -57,6 +57,8 @@ bool OxideScreen::event(QEvent* event){
     return QObject::event(event);
 }
 void OxideScreen::redraw(){
+    QMutexLocker locker(&mutex);
+    Q_UNUSED(locker);
     if(mRepaintRegion.isEmpty()){
         return;
     }
