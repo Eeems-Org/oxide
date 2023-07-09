@@ -78,8 +78,13 @@ public:
     bool writeTabletEvent(const input_event& event);
     bool writeKeyEvent(const input_event& event);
     pid_t pgid();
-    QMutexLocker locker();
     void _close();
+    WindowState state();
+    void lock();
+    void unlock();
+
+    bool operator>(Window* other) const;
+    bool operator<(Window* other) const;
 
 public slots:
     QDBusUnixFileDescriptor resize(int width, int height);
@@ -114,7 +119,7 @@ private:
     uchar* m_data = nullptr;
     qulonglong m_bytesPerLine;
     WindowState m_state;
-    QMutex mutex;
+    QMutex m_mutex;
     QImage::Format m_format;
     EventPipe m_touchEventPipe;
     EventPipe m_tabletEventPipe;
@@ -123,4 +128,5 @@ private:
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);
     bool writeEvent(EventPipe* pipe, const input_event& event);
+    std::unique_lock<std::mutex>* _mutex();
 };

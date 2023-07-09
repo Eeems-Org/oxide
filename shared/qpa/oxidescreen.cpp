@@ -67,6 +67,8 @@ void OxideScreen::redraw(){
         O_WARNING(__PRETTY_FUNCTION__ << "No framebuffer");
         return;
     }
+    auto mutex = Oxide::Tarnish::frameBufferMutex();
+    mutex->lock();
     const QPoint screenOffset = mGeometry.topLeft();
     const QRect screenRect = mGeometry.translated(-screenOffset);
     QPainter painter(&frameBuffer);
@@ -93,6 +95,7 @@ void OxideScreen::redraw(){
         }
     }
     painter.end();
+    mutex->unlock();
     // TODO - only do full redraw if !frameBuffer->hasAlphaChannel
     //        instead do partial redraws for every image drawn
     //        The performance of this will need to be verified

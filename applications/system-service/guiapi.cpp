@@ -90,13 +90,21 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
         if(m_windows.remove(path)){
             sortWindows();
         }
+        QMutableListIterator i(m_repaintList);
+        while(i.hasNext()){
+            Repaint& item = i.next();
+            if(item.window == window){
+                i.remove();
+            }
+        }
+        auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
+        m_repaintList.append(Repaint{
+            .window = nullptr,
+            .region = region
+        });
         window->setEnabled(false);
         window->deleteLater();
-    });
-    connect(window, &Window::destroyed, this, [this, path]{
-        if(m_windows.remove(path)){
-            sortWindows();
-        }
+        scheduleUpdate();
     });
     connect(window, &Window::dirty, this, [=](const QRect& region){
         m_repaintList.append(Repaint{
@@ -156,84 +164,91 @@ void GuiAPI::redraw(){
         return;
     }
     O_WARNING(__PRETTY_FUNCTION__ << "Repainting");
+    // Get the regions that need to be repainted
     const QPoint screenOffset = m_screenGeometry.topLeft();
     const QRect screenRect = m_screenGeometry.translated(-screenOffset);
-    QMap<QString, QRegion> repaintList;
+    QRegion repaintRegion;
     while(!m_repaintList.isEmpty()){
         auto item = m_repaintList.takeFirst();
         auto window = item.window;
         auto region = item.region;
-        auto geometry = window->_geometry();
-        const QRect intersection = region.intersected(geometry);
-        const QPoint screenOffset = geometry.topLeft();
-        auto rect = intersection.translated(-screenOffset).intersected(screenRect);
+        if(region.isEmpty()){
+            continue;
+        }
+        QRect rect;
+        if(window == nullptr){
+            rect = region;
+        }else{
+            // Get visible region on the screen to repaint
+            auto geometry = window->_geometry();
+            const QRect intersection = region.intersected(geometry);
+            const QPoint screenOffset = geometry.topLeft();
+            rect = intersection.translated(-screenOffset).intersected(screenRect);
+        }
         if(rect.isEmpty()){
             continue;
         }
-        if(!repaintList.contains(window->identifier())){
-            repaintList.insert(window->identifier(), QRegion());
-        }
-        QRegion repaintRegion = repaintList.value(window->identifier());
         repaintRegion += rect;
-        repaintList.insert(window->identifier(), repaintRegion);
     }
-    QRegion repaintedRegion;
-    auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
-    Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::black;
-    QPainter painter(frameBuffer);
-    for(auto window : m_windows){
-        if(!repaintList.contains(window->identifier())){
+    // Get windows in order of Z sort order, and filter out invalid windows
+    auto sortedWindows = m_windows.values();
+    std::sort(sortedWindows.begin(), sortedWindows.end());
+    QMutableListIterator i(sortedWindows);
+    while(i.hasNext()){
+        auto window = i.next();
+        if(window == nullptr){
+            i.remove();
             continue;
         }
-        for(QRect rect : repaintList.value(window->identifier())){
-            if(rect.isEmpty()){
-                continue;
-            }
-            painter.setCompositionMode(QPainter::CompositionMode_Source);
-            painter.fillRect(rect, colour);
-            // TODO - have some sort of stack to determine which window is on top
-            for(auto window : m_windows){
-                if(window == nullptr){
-                    continue;
-                }
-                if(!window->_isVisible()){
-                    O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Not visible");
-                    continue;
-                }
-                window->locker();
-                auto image = window->toImage();
-                if(image.isNull()){
-                    O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Null framebuffer");
-                    continue;
-                }
-                const QRect windowRect = window->_geometry().translated(-screenOffset);
-                const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
-                O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << rect << windowIntersect);
-                painter.drawImage(rect, image, windowIntersect);
-                repaintedRegion += windowIntersect;
-            }
+        if(!window->_isVisible()){
+            i.remove();
+            continue;
+        }
+        auto image = window->toImage();
+        if(image.isNull()){
+            O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Null framebuffer");
+            i.remove();
+            continue;
+        }
+    }
+    // Paint the regions
+    QRegion repaintedRegion;
+    auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
+    Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
+    QPainter painter(frameBuffer);
+    for(QRect rect : repaintRegion){
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
+        painter.fillRect(rect, colour);
+        for(auto window : sortedWindows){
+            const QRect windowRect = window->_geometry().translated(-screenOffset);
+            const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
+            O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << rect << windowIntersect);
+            painter.drawImage(rect, window->toImage(), windowIntersect);
+            repaintedRegion += windowIntersect;
         }
     }
     painter.end();
-    auto boundingRect = repaintedRegion.boundingRect();
-    // TODO - profile if it makes sense to do this instead of just picking one to always use
-    auto waveform = EPFrameBuffer::Mono;
-    for(int x = boundingRect.left(); x < boundingRect.right(); x++){
-        for(int y = boundingRect.top(); y < boundingRect.bottom(); y++){
-            auto color = frameBuffer->pixelColor(x, y);
-            if(color == Qt::white || color == Qt::black || color == Qt::transparent){
-                continue;
+    // Send updates for all the repainted regions
+    for(auto rect : repaintedRegion){
+        // TODO - profile if it makes sense to do this instead of just picking one to always use
+        auto waveform = EPFrameBuffer::Mono;
+        for(int x = rect.left(); x < rect.right(); x++){
+            for(int y = rect.top(); y < rect.bottom(); y++){
+                auto color = frameBuffer->pixelColor(x, y);
+                if(color == Qt::white || color == Qt::black || color == Qt::transparent){
+                    continue;
+                }
+                if(color == Qt::gray){
+                    waveform = EPFrameBuffer::Grayscale;
+                    continue;
+                }
+                waveform = EPFrameBuffer::HighQualityGrayscale;
+                break;
             }
-            if(color == Qt::gray){
-                waveform = EPFrameBuffer::Grayscale;
-                continue;
-            }
-            waveform = EPFrameBuffer::HighQualityGrayscale;
-            break;
         }
+        auto mode =  rect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
+        EPFrameBuffer::sendUpdate(rect, waveform, mode);
     }
-    auto mode =  boundingRect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
-    EPFrameBuffer::sendUpdate(boundingRect, waveform, mode);
     m_dirty = false;
 }
 
@@ -265,6 +280,7 @@ void GuiAPI::touchEvent(const input_event& event){
         }
     }
 }
+
 void GuiAPI::tabletEvent(const input_event& event){
 #ifdef DEBUG_EVENTS
     qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
@@ -275,6 +291,7 @@ void GuiAPI::tabletEvent(const input_event& event){
         }
     }
 }
+
 void GuiAPI::keyEvent(const input_event& event){
 #ifdef DEBUG_EVENTS
     qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;

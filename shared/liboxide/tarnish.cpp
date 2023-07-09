@@ -62,7 +62,7 @@ bool setupFbFd(int fd){
     fbGeometry = window->geometry();
     fbLineSize = window->bytesPerLine();
     fbFormat = (QImage::Format)window->format();
-    O_DEBUG("FrameBuffer" << fbGeometry << fbLineSize << fbFormat << fbFile.size());
+    O_DEBUG("FrameBuffer" << fbGeometry << fbLineSize << fbFormat << fbFile.size() - sizeof(std::mutex));
     return true;
 }
 
@@ -136,7 +136,6 @@ namespace Oxide::Tarnish {
             nanosleep(&args, &res);
         }
         api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, qApp);
-        QObject::connect(qApp, &QGuiApplication::aboutToQuit, []{ disconnect(); });
     }
 
     void disconnect(){
@@ -280,6 +279,15 @@ namespace Oxide::Tarnish {
             return nullptr;
         }
         return fbData;
+    }
+
+    std::unique_lock<std::mutex>* frameBufferMutex(){
+        auto ptr = frameBuffer();
+        if(ptr == nullptr){
+            O_WARNING("Unable to get framebuffer mutex: No framebuffer shared data");
+            return nullptr;
+        }
+        return (std::unique_lock<std::mutex>*)(ptr + fbFile.size() - sizeof(std::unique_lock<std::mutex>));
     }
 
     QImage frameBufferImage(){

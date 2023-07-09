@@ -2,6 +2,7 @@
 #include "guiapi.h"
 
 #include <sys/socket.h>
+#include <mutex>
 
 
 #define W_WARNING(msg) O_WARNING(identifier() << __PRETTY_FUNCTION__ << msg << guiAPI->getSenderPgid())
@@ -9,7 +10,7 @@
 #define W_DENIED() W_DEBUG("DENY")
 #define W_ALLOWED() W_DEBUG("ALLOW")
 #define LOCK_MUTEX \
-    QMutexLocker locker(&mutex); \
+    QMutexLocker locker(&m_mutex); \
     Q_UNUSED(locker);
 
 EventPipe::EventPipe()
@@ -69,6 +70,7 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
 Window::~Window(){
     LOCK_MUTEX;
     m_file.close();
+    W_DEBUG("Window closed");
 }
 
 void Window::setEnabled(bool enabled){
@@ -252,16 +254,37 @@ bool Window::writeKeyEvent(const input_event& event){ return writeEvent(&m_keyEv
 
 pid_t Window::pgid(){ return m_pgid; }
 
-QMutexLocker Window::locker(){ return QMutexLocker(&mutex); }
-
 void Window::_close(){
-    bool wasVisible = _isVisible();
     m_state = WindowState::LoweredHidden;
     emit closed();
-    if(wasVisible){
-        emit dirty(m_geometry);
+}
+
+Window::WindowState Window::state(){ return m_state; }
+
+void Window::lock(){
+    LOCK_MUTEX;
+    if(!m_file.isOpen()){
+    }
+    auto mutex = _mutex();
+    if(!mutex->owns_lock()){
+        mutex->lock();
     }
 }
+
+void Window::unlock(){
+    LOCK_MUTEX;
+    if(!m_file.isOpen()){
+        return;
+    }
+    auto mutex = _mutex();
+    if(mutex->owns_lock()){
+        mutex->unlock();
+    }
+}
+
+bool Window::operator>(Window* other) const{ return m_z > other->z(); }
+
+bool Window::operator<(Window* other) const{ return m_z < other->z(); }
 
 QDBusUnixFileDescriptor Window::resize(int width, int height){
     if(!hasPermissions()){
@@ -374,6 +397,9 @@ void Window::createFrameBuffer(const QRect& geometry){
         W_WARNING("No need to resize:" << geometry);
         return;
     }
+    if(m_file.isOpen()){
+        unlock();
+    }
     m_file.close();
     if(geometry.isEmpty() || geometry.isNull() || !geometry.isValid()){
         W_WARNING("Invalid geometry for framebuffer:" << geometry);
@@ -387,7 +413,7 @@ void Window::createFrameBuffer(const QRect& geometry){
     QImage blankImage(geometry.width(), geometry.height(), m_format);
     blankImage.fill(Qt::white);
     size_t size = blankImage.sizeInBytes();
-    if(ftruncate(fd, size)){
+    if(ftruncate(fd, size + sizeof(std::unique_lock<std::mutex>))){
         W_WARNING("Unable to truncate memfd for framebuffer:" << strerror(errno));
         if(::close(fd) == -1){
             W_WARNING("Failed to close fd:" << strerror(errno));
@@ -453,3 +479,5 @@ bool Window::writeEvent(EventPipe* pipe, const input_event& event){
 #endif
     return true;
 }
+
+std::unique_lock<std::mutex>* Window::_mutex(){ return (std::unique_lock<std::mutex>*)(m_data + m_file.size() - sizeof(std::unique_lock<std::mutex>)); }
