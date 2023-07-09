@@ -210,6 +210,7 @@ void GuiAPI::redraw(){
             i.remove();
             continue;
         }
+        window->lock();
     }
     // Paint the regions
     QRegion repaintedRegion;
@@ -248,6 +249,9 @@ void GuiAPI::redraw(){
         }
         auto mode =  rect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
         EPFrameBuffer::sendUpdate(rect, waveform, mode);
+    }
+    for(auto window : sortedWindows){
+        window->unlock();
     }
     m_dirty = false;
 }

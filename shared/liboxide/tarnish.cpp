@@ -3,6 +3,7 @@
 #include "debug.h"
 
 #include <sys/mman.h>
+#include <sys/file.h>
 #include <QDBusConnection>
 #include <QImage>
 #include <QThread>
@@ -281,13 +282,40 @@ namespace Oxide::Tarnish {
         return fbData;
     }
 
-    std::unique_lock<std::mutex>* frameBufferMutex(){
-        auto ptr = frameBuffer();
-        if(ptr == nullptr){
-            O_WARNING("Unable to get framebuffer mutex: No framebuffer shared data");
-            return nullptr;
+    void lockFrameBuffer(){
+        // TODO - explore if mprotect/msync work. This might not be doing anything.
+        if(!fbFile.isOpen()){
+            return;
         }
-        return (std::unique_lock<std::mutex>*)(ptr + fbFile.size() - sizeof(std::unique_lock<std::mutex>));
+        while(flock(fbFile.handle(), LOCK_EX | LOCK_NB) == -1){
+            if(errno != EWOULDBLOCK && errno != EINTR){
+                O_DEBUG("Failed to lock framebuffer:" << strerror(errno));
+                continue;
+            }
+            if(!QCoreApplication::startingUp()){
+                qApp->processEvents(QEventLoop::AllEvents, 100);
+            }else{
+                usleep(100);
+            }
+        }
+    }
+
+    void unlockFrameBuffer(){
+        // TODO - explore if mprotect/msync work. This might not be doing anything.
+        if(!fbFile.isOpen()){
+            return;
+        }
+        while(flock(fbFile.handle(), LOCK_UN | LOCK_NB) == -1){
+            if(errno != EWOULDBLOCK && errno != EINTR){
+                O_DEBUG("Failed to unlock framebuffer:" << strerror(errno));
+                continue;
+            }
+            if(!QCoreApplication::startingUp()){
+                qApp->processEvents(QEventLoop::AllEvents, 100);
+            }else{
+                usleep(100);
+            }
+        }
     }
 
     QImage frameBufferImage(){

@@ -67,12 +67,12 @@ void OxideScreen::redraw(){
         O_WARNING(__PRETTY_FUNCTION__ << "No framebuffer");
         return;
     }
-    auto mutex = Oxide::Tarnish::frameBufferMutex();
-    mutex->lock();
+    Oxide::Tarnish::lockFrameBuffer();
     const QPoint screenOffset = mGeometry.topLeft();
     const QRect screenRect = mGeometry.translated(-screenOffset);
     QPainter painter(&frameBuffer);
     Qt::GlobalColor colour = frameBuffer.hasAlphaChannel() ? Qt::transparent : Qt::black;
+    QRegion repaintedRegion;
     for(QRect rect : mRepaintRegion){
         rect = rect.intersected(screenRect);
         if(rect.isEmpty()){
@@ -89,16 +89,15 @@ void OxideScreen::redraw(){
             const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
             OxideBackingStore* backingStore = static_cast<OxideWindow*>(window->handle())->backingStore();
             if(backingStore){
-                // TODO - lock backing store
                 painter.drawImage(rect, backingStore->toImage(), windowIntersect);
+                repaintedRegion += windowIntersect;
             }
         }
     }
     painter.end();
-    mutex->unlock();
-    // TODO - only do full redraw if !frameBuffer->hasAlphaChannel
-    //        instead do partial redraws for every image drawn
-    //        The performance of this will need to be verified
-    Oxide::Tarnish::screenUpdate(mRepaintRegion.boundingRect());
+    Oxide::Tarnish::unlockFrameBuffer();
+    for(auto rect : repaintedRegion){
+        Oxide::Tarnish::screenUpdate(rect);
+    }
     mRepaintRegion = QRegion();
 }

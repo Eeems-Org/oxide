@@ -98,10 +98,15 @@ namespace Oxide::Tarnish {
      */
     LIBOXIDE_EXPORT uchar* frameBuffer();
     /*!
-     * \brief frameBufferMutex
+     * \brief lockFrameBuffer
      * \return
      */
-    LIBOXIDE_EXPORT std::unique_lock<std::mutex>* frameBufferMutex();
+    LIBOXIDE_EXPORT void lockFrameBuffer();
+    /*!
+     * \brief unlockFrameBuffer
+     * \return
+     */
+    LIBOXIDE_EXPORT void unlockFrameBuffer();
     /*!
      * \brief frameBuffer
      * \return

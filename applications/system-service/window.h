@@ -128,5 +128,4 @@ private:
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);
     bool writeEvent(EventPipe* pipe, const input_event& event);
-    std::unique_lock<std::mutex>* _mutex();
 };
