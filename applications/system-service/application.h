@@ -369,9 +369,11 @@ public:
             Oxide::Sentry::sentry_span(t, "save", "Save the framebuffer", [&bytes]{
                 QBuffer buffer(&bytes);
                 buffer.open(QIODevice::WriteOnly);
-                if(!EPFrameBuffer::framebuffer()->save(&buffer, "JPG", 100)){
-                    O_WARNING("Failed to save buffer");
-                }
+                dispatchToMainThread([&buffer]{
+                    if(!EPFrameBuffer::framebuffer()->save(&buffer, "JPG", 100)){
+                        O_WARNING("Failed to save buffer");
+                    }
+                });
             });
             qDebug() << "Compressing data...";
             Oxide::Sentry::sentry_span(t, "compress", "Compress the framebuffer", [this, bytes]{
@@ -398,14 +400,15 @@ public:
             }
             qDebug() << "Recalling screen...";
             Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, img]{
-                auto size = EPFrameBuffer::framebuffer()->size();
-                QRect rect(0, 0, size.width(), size.height());
-                QPainter painter(EPFrameBuffer::framebuffer());
-                painter.drawImage(rect, img);
-                painter.end();
-                EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
-                EPFrameBuffer::waitForLastUpdate();
-
+                dispatchToMainThread([img]{
+                    auto size = EPFrameBuffer::framebuffer()->size();
+                    QRect rect(0, 0, size.width(), size.height());
+                    QPainter painter(EPFrameBuffer::framebuffer());
+                    painter.drawImage(rect, img);
+                    painter.end();
+                    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
+                    EPFrameBuffer::waitForLastUpdate();
+                });
                 delete m_screenCapture;
                 m_screenCapture = nullptr;
             });

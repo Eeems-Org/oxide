@@ -103,6 +103,32 @@ namespace Oxide {
      */
     LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
     /*!
+     * \brief Run code on the main Qt thread
+     * \param callback The code to run on the main thread
+     * \return Return value of callback
+     *
+     * \snippet examples/oxide.cpp dispatchToMainThread
+     */
+    template<typename T> LIBOXIDE_EXPORT T dispatchToMainThread(std::function<T()> callback){
+        if(QThread::currentThread() == qApp->thread()){
+            return callback();
+        }
+        // any thread
+        QTimer* timer = new QTimer();
+        timer->moveToThread(qApp->thread());
+        timer->setSingleShot(true);
+        struct _ {
+            T value;
+        } result;
+        QObject::connect(timer, &QTimer::timeout, [timer, &result, callback](){
+            // main thread
+            result.value = callback();
+            timer->deleteLater();
+        });
+        QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
+        return result.value;
+    }
+    /*!
      * \brief Get the UID for a username
      * \param name Username to search for
      * \throws std::runtime_error Failed to get the UID for the username
