@@ -21,6 +21,7 @@ public:
       path(path),
       in(),
       out() {
+        _thread.setObjectName(QString("fifo %1").arg(name));
         connect(host, &QObject::destroyed, this, &QObject::deleteLater);
         connect(&_thread, &QThread::started, [this]{
             emit started();
@@ -35,12 +36,15 @@ public:
             emit finished();
         });
         connect(&timer, &QTimer::timeout, this, &FifoHandler::run);
-        QThread::create([this]{
+        // TODO - sort out if this can be removed
+        auto thread = QThread::create([this]{
             out.open(this->path.toStdString().c_str(), std::ifstream::out);
             if(!out.good()){
                 O_WARNING("Unable to open fifi (out)" << ::strerror(errno));
             }
-        })->start();
+        });
+        thread->setObjectName(QString("fifo -init %1").arg(name));
+        thread->start();
         moveToThread(&_thread);
     }
     ~FifoHandler(){

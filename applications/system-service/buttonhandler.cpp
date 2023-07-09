@@ -61,6 +61,7 @@ ButtonHandler* ButtonHandler::init(){
         throw QException();
     }
     instance = new ButtonHandler();
+    instance->setObjectName("buttons");
     instance->start();
     return instance;
 }

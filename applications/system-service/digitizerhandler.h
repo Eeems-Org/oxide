@@ -36,6 +36,7 @@ public:
             throw QException();
         }
         instance = new DigitizerHandler(touchScreen_device);
+        instance->setObjectName("touchscreen");
         instance->start();
         return instance;
     }
@@ -51,6 +52,7 @@ public:
             throw QException();
         }
         instance = new DigitizerHandler(wacom_device);
+        instance->setObjectName("wacom");
         instance->start();
         return instance;
     }

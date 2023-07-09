@@ -611,7 +611,7 @@ private:
     bool m_automaticSleep = true;
     bool m_lockOnSuspend = true;
     bool m_automaticLock = true;
-    int m_columns = 6;
+    int m_columns = 4;
     int m_swipeLengthRight = 30;
     int m_swipeLengthLeft = 30;
     int m_swipeLengthUp = 30;

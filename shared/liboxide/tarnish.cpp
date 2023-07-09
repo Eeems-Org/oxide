@@ -35,6 +35,7 @@ void startInputThread(){
     O_DEBUG("Starting input thread");
     QObject::connect(qApp, &QGuiApplication::aboutToQuit, &inputThread, &QThread::quit);
     QObject::connect(qApp, &QGuiApplication::aboutToQuit, &inputThread, &QThread::deleteLater);
+    inputThread.setObjectName("input");
     inputThread.start();
     inputThread.setPriority(QThread::TimeCriticalPriority);
 }
