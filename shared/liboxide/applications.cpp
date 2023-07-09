@@ -22,6 +22,7 @@ const QList<QString> Flags {
     "nosavescreen",
     "nomanageinput",
     "system",
+    "nolog"
 };
 
 namespace Oxide::Applications{

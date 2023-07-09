@@ -66,35 +66,40 @@ void Application::launchNoSecurityCheck(){
             }
             m_process->setUser(user());
             m_process->setGroup(group());
-            if(p_stdout == nullptr){
-                p_stdout_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_INFO, 1);
-                if (p_stdout_fd < 0) {
-                    errno = -p_stdout_fd;
-                    qDebug() << "Failed to create stdout fd:" << -p_stdout_fd;
-                }else{
-                    FILE* log = fdopen(p_stdout_fd, "w");
-                    if(!log){
-                        qDebug() << "Failed to create stdout FILE:" << errno;
-                        close(p_stdout_fd);
+            if(flags().contains("nolog")){
+                m_process->closeReadChannel(QProcess::StandardError);
+                m_process->closeReadChannel(QProcess::StandardOutput);
+            }else{
+                if(p_stdout == nullptr){
+                    p_stdout_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_INFO, 1);
+                    if (p_stdout_fd < 0) {
+                        errno = -p_stdout_fd;
+                        qDebug() << "Failed to create stdout fd:" << -p_stdout_fd;
                     }else{
-                        p_stdout = new QTextStream(log);
-                        qDebug() << "Opened stdout for " << name();
+                        FILE* log = fdopen(p_stdout_fd, "w");
+                        if(!log){
+                            qDebug() << "Failed to create stdout FILE:" << errno;
+                            close(p_stdout_fd);
+                        }else{
+                            p_stdout = new QTextStream(log);
+                            qDebug() << "Opened stdout for " << name();
+                        }
                     }
                 }
-            }
-            if(p_stderr == nullptr){
-                p_stderr_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_ERR, 1);
-                if (p_stderr_fd < 0) {
-                    errno = -p_stderr_fd;
-                    qDebug() << "Failed to create sterr fd:" << -p_stderr_fd;
-                }else{
-                    FILE* log = fdopen(p_stderr_fd, "w");
-                    if(!log){
-                        qDebug() << "Failed to create stderr FILE:" << errno;
-                        close(p_stderr_fd);
+                if(p_stderr == nullptr){
+                    p_stderr_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_ERR, 1);
+                    if (p_stderr_fd < 0) {
+                        errno = -p_stderr_fd;
+                        qDebug() << "Failed to create sterr fd:" << -p_stderr_fd;
                     }else{
-                        p_stderr = new QTextStream(log);
-                        qDebug() << "Opened stderr for " << name();
+                        FILE* log = fdopen(p_stderr_fd, "w");
+                        if(!log){
+                            qDebug() << "Failed to create stderr FILE:" << errno;
+                            close(p_stderr_fd);
+                        }else{
+                            p_stderr = new QTextStream(log);
+                            qDebug() << "Opened stderr for " << name();
+                        }
                     }
                 }
             }

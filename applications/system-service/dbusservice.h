@@ -278,11 +278,11 @@ private:
             }
             O_DEBUG("unregisterChild" << child.pid << child.name.c_str());
             guiAPI->closeWindows(child.pid);
+            i.remove();
             child.stdout->close();
             child.sd_stdout->close();
             child.stderr->close();
             child.sd_stdout->close();
-            i.remove();
             delete child.stdout;
             delete child.sd_stdout;
             delete child.stderr;
