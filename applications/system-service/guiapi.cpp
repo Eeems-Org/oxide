@@ -213,6 +213,7 @@ void GuiAPI::redraw(){
         window->lock();
     }
     // Paint the regions
+    // TODO - explore using QPainter::clipRegion to see if it can speed things up
     QRegion repaintedRegion;
     auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
     Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
@@ -224,6 +225,8 @@ void GuiAPI::redraw(){
             const QRect windowRect = window->_geometry().translated(-screenOffset);
             const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
             O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << rect << windowIntersect);
+            // TODO - See if there is a way to detect if there is just transparency in the region
+            //        and don't mark this as repainted.
             painter.drawImage(rect, window->toImage(), windowIntersect);
             repaintedRegion += windowIntersect;
         }

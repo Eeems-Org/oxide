@@ -61,7 +61,7 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
   m_z{-1},
   m_file{this},
   m_state{WindowState::LoweredHidden},
-  m_format{QImage::Format_RGB16}
+  m_format{QImage::Format_ARGB32_Premultiplied}
 {
     LOCK_MUTEX;
     createFrameBuffer(geometry);

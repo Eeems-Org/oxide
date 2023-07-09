@@ -34,7 +34,7 @@ void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoi
 void OxideBackingStore::resize(const QSize& size, const QRegion& region){
     Q_UNUSED(region)
     if(image.size() != size){
-        image = QImage(size, QImage::Format_RGB16);
+        image = QImage(size, QImage::Format_ARGB32_Premultiplied);
     }
 }
 
