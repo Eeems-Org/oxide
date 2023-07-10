@@ -188,7 +188,7 @@ void OxideTouchScreenData::processInputEvent(input_event* data){
         }
         // update timestamps
         m_lastTimeStamp = m_timeStamp;
-        m_timeStamp = data->input_event_sec + data->input_event_usec / 1000000.0;
+        m_timeStamp = data->time.tv_sec + data->time.tv_usec / 1000000.0;
 
         m_lastTouchPoints = m_touchPoints;
         m_touchPoints.clear();

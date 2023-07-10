@@ -37,11 +37,11 @@
  * \param event input_event to log
  */
 #ifdef DEBUG_EVENTS
-#ifdef input_event_usec
-#define input_event_usec time.tv_usec
-#endif
 #ifdef input_event_sec
 #define input_event_sec time.tv_sec
+#endif
+#ifdef input_event_usec
+#define input_event_usec time.tv_usec
 #endif
 #define O_EVENT(event) O_DEBUG(__PRETTY_FUNCTION__ << event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
 #else
