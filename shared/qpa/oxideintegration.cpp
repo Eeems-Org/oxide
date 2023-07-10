@@ -85,9 +85,7 @@ void OxideIntegration::initialize(){
         qFatal("Could not get touch event pipe");
     }
     connect(touchPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [touchData](input_event event){
-#ifdef DEBUG_EVENTS
-        qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
-#endif
+        O_EVENT(event);
         touchData->processInputEvent(&event);
     });
     // Setup tablet event handling
@@ -97,9 +95,7 @@ void OxideIntegration::initialize(){
         qFatal("Could not get tablet event pipe");
     }
     connect(tabletPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [tabletData](input_event event){
-#ifdef DEBUG_EVENTS
-        qDebug() << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
-#endif
+        O_EVENT(event);
         tabletData->processInputEvent(&event);
     });
     // Setup key event handling

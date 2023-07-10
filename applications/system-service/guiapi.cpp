@@ -304,9 +304,7 @@ void GuiAPI::closeWindows(pid_t pgid){
 }
 
 void GuiAPI::touchEvent(const input_event& event){
-#ifdef DEBUG_EVENTS
-    qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
-#endif
+    O_EVENT(event);
     for(auto window : m_windows){
         if(window != nullptr && window->_isVisible()){
             window->writeTouchEvent(event);
@@ -315,9 +313,7 @@ void GuiAPI::touchEvent(const input_event& event){
 }
 
 void GuiAPI::tabletEvent(const input_event& event){
-#ifdef DEBUG_EVENTS
-    qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
-#endif
+    O_EVENT(event);
     for(auto window : m_windows){
         if(window != nullptr && window->_isVisible()){
             window->writeTabletEvent(event);
@@ -326,9 +322,7 @@ void GuiAPI::tabletEvent(const input_event& event){
 }
 
 void GuiAPI::keyEvent(const input_event& event){
-#ifdef DEBUG_EVENTS
-    qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
-#endif
+    O_EVENT(event);
     for(auto window : m_windows){
         if(window != nullptr && window->_isVisible()){
             window->writeKeyEvent(event);

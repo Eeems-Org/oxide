@@ -6,6 +6,7 @@
 #pragma once
 
 #include "liboxide_global.h"
+#include "linux/input.h"
 
 #include <QDebug>
 /*!
@@ -29,6 +30,23 @@
  * \param msg Warning message to log
  */
 #define O_WARNING(msg) if(Oxide::debugEnabled()){ qWarning() << msg; }
+
+/*!
+ * \def O_EVENT(msg)
+ * \brief Debug log an input_event if debugging is enabled
+ * \param event input_event to log
+ */
+#ifdef DEBUG_EVENTS
+#ifdef input_event_usec
+#define O_EVENT(event) O_DEBUG(__PRETTY_FUNCTION__ << event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
+#elif input_event_sec
+#define O_EVENT(event) O_DEBUG(__PRETTY_FUNCTION__ << event.input_event_sec << event.type << event.code << event.value);
+#else
+#define O_EVENT(event) O_DEBUG(__PRETTY_FUNCTION__ << event.type << event.code << event.value);
+#endif
+#else
+#define O_EVENT(event)
+#endif
 
 namespace Oxide {
     /*!

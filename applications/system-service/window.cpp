@@ -454,7 +454,13 @@ bool Window::writeEvent(EventPipe* pipe, const input_event& event){
         W_WARNING("Failed to flush event pipe: " << pipe->writeSocket()->errorString());
     }
 #ifdef DEBUG_EVENTS
-    W_DEBUG(event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value);
+#ifdef input_event_usec
+    W_DEBUG(event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
+#elif input_event_sec
+    W_DEBUG(event.input_event_sec << event.type << event.code << event.value);
+#else
+    W_DEBUG(event.type << event.code << event.value);
+#endif
 #endif
     return true;
 }

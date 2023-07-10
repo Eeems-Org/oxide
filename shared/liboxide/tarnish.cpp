@@ -88,9 +88,7 @@ namespace Oxide::Tarnish {
 #endif
                 return;
             }
-#ifdef DEBUG_EVENTS
-            qDebug() << __PRETTY_FUNCTION__ << event.time.tv_sec << event.time.tv_usec << event.type << event.code << event.value;
-#endif
+            O_EVENT(event);
             emit inputEvent(event);
             if(m_callback != nullptr){
                 m_callback(event);

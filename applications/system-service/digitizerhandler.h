@@ -95,7 +95,7 @@ public:
         auto event = createEvent(type, code, value);
         ::write(device.fd, &event, sizeof(input_event));
 #ifdef DEBUG
-        qDebug() << "Emitted event " << event.time.tv_sec << event.time.tv_usec << type << code << value;
+        qDebug() << "Emitted event " << event.input_event_sec << event.input_event_usec << type << code << value;
 #endif
     }
     void write(input_event* events, size_t size){
