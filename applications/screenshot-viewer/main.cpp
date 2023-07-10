@@ -30,7 +30,7 @@ int main(int argc, char *argv[]){
     app.setApplicationName("anxiety");
     app.setApplicationDisplayName("Screenshots");
     app.setApplicationVersion(APP_VERSION);
-    Tarnish::registerChild();
+    Tarnish::getSocketFd();
     Controller controller(&app);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();

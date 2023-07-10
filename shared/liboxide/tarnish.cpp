@@ -26,9 +26,13 @@ QImage::Format fbFormat = QImage::Format_Invalid;
 uchar* fbData = nullptr;
 QFile fbFile;
 QThread inputThread;
+QLocalSocket childSocket;
 InputEventSocket touchEventFile;
 InputEventSocket tabletEventFile;
 InputEventSocket keyEventFile;
+
+// TODO - Get liboxide to automate journalctl logging
+//        https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
 
 void startInputThread(){
     if(inputThread.isRunning()){
@@ -66,6 +70,37 @@ bool setupFbFd(int fd){
     fbFormat = (QImage::Format)window->format();
     O_DEBUG("FrameBuffer" << fbGeometry << fbLineSize << fbFormat << fbFile.size() - sizeof(std::mutex));
     return true;
+}
+
+void _disconnect(){
+    fbData = nullptr;
+    fbFile.close();
+    childSocket.close();
+    touchEventFile.close();
+    tabletEventFile.close();
+    keyEventFile.close();
+#define freeAPI(name) \
+    if(api_##name != nullptr){ \
+        delete api_##name; \
+        api_##name = nullptr; \
+    }
+    freeAPI(power);
+    freeAPI(wifi);
+    freeAPI(screen);
+    freeAPI(apps);
+    freeAPI(system);
+    freeAPI(notification);
+    freeAPI(general);
+    freeAPI(gui);
+    if(inputThread.isRunning()){
+        inputThread.quit();
+        inputThread.requestInterruption();
+        inputThread.wait();
+    }
+    if(window != nullptr){
+        delete window;
+        window = nullptr;
+    }
 }
 
 namespace Oxide::Tarnish {
@@ -136,9 +171,24 @@ namespace Oxide::Tarnish {
             nanosleep(&args, &res);
         }
         api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, qApp);
+        auto conn = new QMetaObject::Connection;
+        *conn = QObject::connect(api_general, &codes::eeems::oxide1::General::aboutToQuit, [conn]{
+            qDebug() << "Tarnish has indicated that it is about to quit!";
+            if(!childSocket.isOpen()){
+                _disconnect();
+            }
+            QObject::disconnect(*conn);
+            delete conn;
+        });
+        QObject::connect(qApp, &QGuiApplication::aboutToQuit, []{ disconnect(); });
     }
 
     void disconnect(){
+        if(window != nullptr){
+            window->close();
+            window->deleteLater();
+            window = nullptr;
+        }
 #define freeAPI(name) \
         if(api_##name != nullptr){ \
             if(strcmp(#name, "general") == 0){ \
@@ -154,40 +204,54 @@ namespace Oxide::Tarnish {
         freeAPI(system);
         freeAPI(notification);
         freeAPI(general);
-        fbData = nullptr;
-        fbFile.close();
-        touchEventFile.close();
-        tabletEventFile.close();
-        keyEventFile.close();
-        if(window != nullptr){
-            window->close();
-            delete window;
-            window = nullptr;
-        }
         freeAPI(gui);
-        QDBusConnection::disconnectFromBus(QDBusConnection::systemBus().name());
-        if(inputThread.isRunning()){
-            inputThread.quit();
-            inputThread.requestInterruption();
-            inputThread.wait();
-        }
 #undef freeAPI
+        QDBusConnection::disconnectFromBus(QDBusConnection::systemBus().name());
+        _disconnect();
     }
 
-    void registerChild(){
-        QString name;
-        if(QCoreApplication::startingUp()){
-            name = qApp->applicationName();
-        }else{
-            name = QString(16, ' ');
-            prctl(PR_GET_NAME, name.data());
+    int getSocketFd(){
+        if(childSocket.isOpen()){
+            return childSocket.socketDescriptor();
         }
-        registerChild(name.toStdString());
+        auto socket = getSocket();
+        return socket != nullptr ? socket->socketDescriptor() : -1;
     }
 
-    void registerChild(std::string name){
+    QLocalSocket* getSocket(){
+        if(childSocket.isOpen()){
+            return &childSocket;
+        }
         connect();
-        api_general->registerChild(getpid(), QString::fromStdString(name));
+        auto reply = api_general->registerChild();
+        if(reply.isError()){
+            O_WARNING("Unable to register child: " << reply.error().message());
+            return nullptr;
+        }
+        auto qfd = reply.value();
+        if(!qfd.isValid()){
+            O_WARNING("Unable to register child: Invalid fd provided");
+            return nullptr;
+        }
+        auto fd = qfd.fileDescriptor();
+        if(fd == -1){
+            O_WARNING("Unable to get child socket: No pipe provided");
+            return nullptr;
+        }
+        fd = dup(fd);
+        if(!childSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered)){
+            ::close(fd);
+            O_WARNING("Unable to get child socket:" << childSocket.errorString());
+            return nullptr;
+        }
+        auto conn = new QMetaObject::Connection;
+        *conn = QObject::connect(&childSocket, &QLocalSocket::readChannelFinished, [conn]{
+            qDebug() << "Lost connection to tarnish socket!";
+            _disconnect();
+            QObject::disconnect(*conn);
+            delete conn;
+        });
+        return &childSocket;
     }
 
     int tarnishPid(){
@@ -245,6 +309,11 @@ namespace Oxide::Tarnish {
             });
             QObject::connect(window, &codes::eeems::oxide1::Window::zChanged, [=](int z){
                 O_DEBUG("Z sort changed:" << z);
+            });
+            QObject::connect(window, &codes::eeems::oxide1::Window::closed, [=](){
+                O_DEBUG("Window closed");
+                window->deleteLater();
+                window = nullptr;
             });
             window->setVisible(true);
             window->raise();
@@ -373,6 +442,13 @@ namespace Oxide::Tarnish {
         }
         startInputThread();
         touchEventFile.moveToThread(&inputThread);
+        auto conn = new QMetaObject::Connection;
+        *conn = QObject::connect(&touchEventFile, &InputEventSocket::readChannelFinished, [conn]{
+            qDebug() << "Lost connection to touch event pipe!";
+            touchEventFile.close();
+            QObject::disconnect(*conn);
+            delete conn;
+        });
         return &touchEventFile;
     }
 
@@ -412,6 +488,13 @@ namespace Oxide::Tarnish {
         }
         startInputThread();
         tabletEventFile.moveToThread(&inputThread);
+        auto conn = new QMetaObject::Connection;
+        *conn = QObject::connect(&touchEventFile, &InputEventSocket::readChannelFinished, [conn]{
+            qDebug() << "Lost connection to tablet event pipe!";
+            touchEventFile.close();
+            QObject::disconnect(*conn);
+            delete conn;
+        });
         return &tabletEventFile;
     }
 
@@ -451,40 +534,14 @@ namespace Oxide::Tarnish {
         }
         startInputThread();
         keyEventFile.moveToThread(&inputThread);
+        auto conn = new QMetaObject::Connection;
+        *conn = QObject::connect(&touchEventFile, &InputEventSocket::readChannelFinished, [conn]{
+            qDebug() << "Lost connection to key event pipe!";
+            touchEventFile.close();
+            QObject::disconnect(*conn);
+            delete conn;
+        });
         return &keyEventFile;
-    }
-
-    bool connectQtEvents(
-        std::function<void(const input_event&)> touchCallback,
-        std::function<void(const input_event&)> tabletCallback,
-        std::function<void(const input_event&)> keyCallback
-    ){
-        bool success = true;
-        if(touchCallback != nullptr || touchEventFile.isOpen()){
-            auto touchSocket = (InputEventSocket*)getTouchEventPipe();
-            if(touchSocket != nullptr){
-                touchSocket->setCallback(touchCallback);
-            }else{
-                success = false;
-            }
-        }
-        if(tabletCallback != nullptr || tabletEventFile.isOpen()){
-            auto tabletSocket = (InputEventSocket*)getTabletEventPipe();
-            if(tabletSocket != nullptr){
-                tabletSocket->setCallback(tabletCallback);
-            }else{
-                success = false;
-            }
-        }
-        if(keyCallback != nullptr || keyEventFile.isOpen()){
-            auto keySocket = (InputEventSocket*)getKeyEventPipe();
-            if(keySocket != nullptr){
-                keySocket->setCallback(keyCallback);
-            }else{
-                success = false;
-            }
-        }
-        return success;
     }
 
     void screenUpdate(){

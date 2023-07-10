@@ -36,7 +36,7 @@ int main(int argc, char* argv[]){
     app.setApplicationName("oxide");
     app.setApplicationDisplayName("Launcher");
     app.installEventFilter(filter);
-    Tarnish::registerChild();
+    Tarnish::getSocketFd();
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();

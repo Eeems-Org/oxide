@@ -5,7 +5,7 @@
 #include <QTouchEvent>
 #include <QTabletEvent>
 #include <QKeyEvent>
-#include <eventpipe.h>
+#include <socketpair.h>
 
 class GuiInputThread;
 
@@ -43,6 +43,7 @@ public:
     QDBusUnixFileDescriptor touchEventPipe();
     QDBusUnixFileDescriptor tabletEventPipe();
     QDBusUnixFileDescriptor keyEventPipe();
+    QDBusUnixFileDescriptor eventPipe();
     QRect geometry();
     QRect _geometry();
     void setGeometry(const QRect& geometry);
@@ -100,11 +101,13 @@ private:
     WindowState m_state;
     QMutex m_mutex;
     QImage::Format m_format;
-    EventPipe m_touchEventPipe;
-    EventPipe m_tabletEventPipe;
-    EventPipe m_keyEventPipe;
+    SocketPair m_touchEventPipe;
+    SocketPair m_tabletEventPipe;
+    SocketPair m_keyEventPipe;
+    SocketPair m_eventPipe;
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);
-    bool writeEvent(EventPipe* pipe, const input_event& event);
+    bool writeEvent(SocketPair* pipe, const input_event& event);
+    void invalidateEventPipes();
 };

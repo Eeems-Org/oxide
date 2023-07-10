@@ -22,6 +22,7 @@
 #include "guiapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
+#include "childentry.h"
 
 #define dbusService DBusService::singleton()
 
@@ -32,22 +33,6 @@ struct APIEntry {
     QString path;
     QStringList* dependants;
     APIBase* instance;
-};
-
-class ChildEntry : public QObject {
-    Q_OBJECT
-
-public:
-    ChildEntry(QObject* parent, QString service, qint64 pid, QString name)
-    : QObject(parent),
-      service{service},
-      pid{pid},
-      name{name}
-    { }
-    ~ChildEntry(){ }
-    QString service;
-    qint64 pid;
-    QString name;
 };
 
 class DBusService : public APIBase {
@@ -71,17 +56,29 @@ public:
 
     int tarnishPid(){ return qApp->applicationPid(); }
 
-    Q_INVOKABLE void registerChild(qint64 childPid, QString name, QDBusMessage message){
-        qDebug() << "registerChild" << childPid << name;
-        children.append(new ChildEntry(this, message.service(), childPid, name));
-        // TODO - watch process lifecycle
-        //        https://man7.org/linux/man-pages/man2/pidfd_open.2.html
-        //        https://man7.org/linux/man-pages/man2/pidfd_send_signal.2.html
-        // TODO - Get liboxide to automate journalctl logging
-        //        https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
+    Q_INVOKABLE QDBusUnixFileDescriptor registerChild(){
+        auto childPid = getSenderPid();
+        auto childPgid = getSenderPgid();
+        qDebug() << "registerChild::" << childPid << childPgid;
+        for(auto child : children){
+            if(child->pid() == childPid){
+                qDebug() << "registerChild::Found existing";
+                return QDBusUnixFileDescriptor(child->socket()->socketDescriptor());
+            }
+        }
+        auto child = new ChildEntry(this, childPid, childPgid);
+        if(!child->isValid()){
+            qDebug() << "registerChild::Not valid";
+            child->deleteLater();
+            return QDBusUnixFileDescriptor();
+        }
+        connect(child, &ChildEntry::finished, this, [this, child]{ unregisterChild(child->pid()); });
+        children.append(child);
+        qDebug() << "registerChild::success";
+        return QDBusUnixFileDescriptor(child->socket()->socketDescriptor());
     }
 
-    Q_INVOKABLE void unregisterChild(QDBusMessage message){ unregisterChild(message.service()); }
+    Q_INVOKABLE void unregisterChild(){ unregisterChild(getSenderPid()); }
 
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
@@ -162,22 +159,21 @@ private slots:
                 emit apiUnavailable(QDBusObjectPath(api.path));
             }
         }
-        unregisterChild(name);
         systemAPI->uninhibitAll(name);
     }
 
 private:
     QMap<QString, APIEntry> apis;
     QList<ChildEntry*> children;
-    void unregisterChild(const QString& service){
+    void unregisterChild(pid_t pid){
         QMutableListIterator<ChildEntry*> i(children);
         while(i.hasNext()){
             auto child = i.next();
-            if(child->service != service){
+            if(child->pid() != pid){
                 continue;
             }
-            O_DEBUG("unregisterChild" << child->pid << child->name);
-            guiAPI->closeWindows(child->pid);
+            O_DEBUG("unregisterChild" << child->pid() << child->pgid());
+            guiAPI->closeWindows(child->pid());
             i.remove();
             child->deleteLater();
         }

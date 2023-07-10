@@ -253,7 +253,7 @@ void GuiAPI::redraw(){
     painter.end();
     // Send updates for all the repainted regions
     for(auto rect : repaintedRegion){
-        // TODO - detect if there was no change to the repainted region and skip
+        // TODO - detect if there was no change to the repainted region and skip, maybe compare against previous window states?
         // TODO - profile if it makes sense to do this instead of just picking one to always use
         auto waveform = EPFrameBuffer::Mono;
         for(int x = rect.left(); x < rect.right(); x++){

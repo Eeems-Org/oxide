@@ -32,7 +32,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("corrupt");
     app.setApplicationVersion(APP_VERSION);
-    Tarnish::registerChild();
+    Tarnish::getSocketFd();
     auto screenProvider = new ScreenProvider(&app);
     Controller controller(&app, screenProvider);
     QQmlApplicationEngine engine;

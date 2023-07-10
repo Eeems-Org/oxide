@@ -24,20 +24,25 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
   m_z{z},
   m_file{this},
   m_state{WindowState::LoweredHidden},
-  m_format{DEFAULT_IMAGE_FORMAT}
+  m_format{DEFAULT_IMAGE_FORMAT},
+  m_eventPipe{true}
 {
     LOCK_MUTEX;
     createFrameBuffer(geometry);
-    O_DEBUG(id << __PRETTY_FUNCTION__ << "Window created" << id << pgid);
+    O_DEBUG(m_identifier << __PRETTY_FUNCTION__ << "Window created" << pgid);
 }
 Window::~Window(){
-    LOCK_MUTEX;
-    m_file.close();
-    W_DEBUG("Window closed");
+    O_DEBUG(m_identifier << __PRETTY_FUNCTION__ << "Window closed" << m_pgid);
 }
 
 void Window::setEnabled(bool enabled){
-    m_enabled = enabled;
+    if(m_enabled != enabled){
+        invalidateEventPipes();
+        m_touchEventPipe.setEnabled(enabled);
+        m_tabletEventPipe.setEnabled(enabled);
+        m_keyEventPipe.setEnabled(enabled);
+        m_enabled = enabled;
+    }
     auto bus = QDBusConnection::systemBus();
     bool registered = bus.objectRegisteredAt(m_path) != nullptr;
     if(enabled && registered){
@@ -46,7 +51,7 @@ void Window::setEnabled(bool enabled){
     if(!enabled && !registered){
         return;
     }
-    if (!enabled){
+    if(!enabled){
         bus.unregisterObject(m_path, QDBusConnection::UnregisterTree);
         W_DEBUG("Unregistered");
         return;
@@ -56,9 +61,6 @@ void Window::setEnabled(bool enabled){
     }else{
         W_WARNING("Failed to register" << m_path << OXIDE_WINDOW_INTERFACE);
     }
-    m_touchEventPipe.setEnabled(enabled);
-    m_tabletEventPipe.setEnabled(enabled);
-    m_keyEventPipe.setEnabled(enabled);
 }
 
 QDBusObjectPath Window::path(){ return QDBusObjectPath(m_path); }
@@ -113,6 +115,17 @@ QDBusUnixFileDescriptor Window::keyEventPipe(){
     W_ALLOWED();
     m_keyEventPipe.setEnabled(true);
     return QDBusUnixFileDescriptor(m_keyEventPipe.readSocket()->socketDescriptor());
+}
+
+QDBusUnixFileDescriptor Window::eventPipe(){
+    // TODO - add to liboxide and flush out spec for local aware events
+    if(!hasPermissions()){
+        W_DENIED();
+        return QDBusUnixFileDescriptor();
+    }
+    W_ALLOWED();
+    m_eventPipe.setEnabled(true);
+    return QDBusUnixFileDescriptor(m_eventPipe.readSocket()->socketDescriptor());
 }
 
 QRect Window::geometry(){
@@ -171,6 +184,9 @@ void Window::setVisible(bool visible){
     if(state == m_state){
         return;
     }
+    if(wasVisible != _isVisible()){
+        invalidateEventPipes();
+    }
     emit stateChanged(m_state);
     if(wasVisible != _isVisible()){
         emit dirty(m_geometry);
@@ -225,6 +241,7 @@ pid_t Window::pgid(){ return m_pgid; }
 
 void Window::_close(){
     m_state = WindowState::LoweredHidden;
+    invalidateEventPipes();
     emit closed();
 }
 
@@ -301,6 +318,7 @@ void Window::repaint(QRect region){
     }
     W_ALLOWED();
     if(_isVisible()){
+        invalidateEventPipes();
         emit dirty(region);
     }
 }
@@ -322,10 +340,12 @@ void Window::raise(){
         break;
         case WindowState::Raised:
         case WindowState::RaisedHidden:
+            return;
         default:
         break;
     }
     if(_isVisible()){
+        invalidateEventPipes();
         emit dirty(m_geometry);
     }
     emit stateChanged(m_state);
@@ -348,10 +368,12 @@ void Window::lower(){
         break;
         case WindowState::Lowered:
         case WindowState::LoweredHidden:
+            return;
         default:
         break;
     }
     if(wasVisible){
+        invalidateEventPipes();
         emit dirty(m_geometry);
     }
     emit stateChanged(m_state);
@@ -429,7 +451,7 @@ void Window::createFrameBuffer(const QRect& geometry){
     W_DEBUG("Framebuffer created:" << geometry);
 }
 
-bool Window::writeEvent(EventPipe* pipe, const input_event& event){
+bool Window::writeEvent(SocketPair* pipe, const input_event& event){
     if(!pipe->enabled()){
         return false;
     }
@@ -450,11 +472,33 @@ bool Window::writeEvent(EventPipe* pipe, const input_event& event){
     if(res != size){
         W_WARNING("Only wrote" << res << "of" << size << "bytes to pipe");
     }
-    if(!pipe->flush()){
-        W_WARNING("Failed to flush event pipe: " << pipe->writeSocket()->errorString());
-    }
 #ifdef DEBUG_EVENTS
     W_DEBUG(event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
 #endif
     return true;
+}
+
+void Window::invalidateEventPipes(){
+    timeval time;
+    if(gettimeofday(&time, NULL) == -1){
+        W_WARNING("Failed to get time of day:" << strerror(errno));
+    }
+    writeTouchEvent(input_event{
+        .time = time,
+        .type = EV_SYN,
+        .code = SYN_DROPPED,
+        .value = 0,
+    });
+    writeTabletEvent(input_event{
+        .time = time,
+        .type = EV_SYN,
+        .code = SYN_DROPPED,
+        .value = 0,
+    });
+    writeKeyEvent(input_event{
+        .time = time,
+        .type = EV_SYN,
+        .code = SYN_DROPPED,
+        .value = 0,
+    });
 }

@@ -24,7 +24,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("decay");
     app.setApplicationVersion(APP_VERSION);
-    Tarnish::registerChild();
+    Tarnish::getSocketFd();
     Controller controller(&app);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();

@@ -16,13 +16,14 @@ SOURCES += \
     appsapi.cpp \
     bss.cpp \
     buttonhandler.cpp \
+    childentry.cpp \
     dbusservice.cpp \
-    eventpipe.cpp \
     guiapi.cpp \
     network.cpp \
     notification.cpp \
     screenapi.cpp \
     screenshot.cpp \
+    socketpair.cpp \
     systemapi.cpp \
     window.cpp \
     wlan.cpp \
@@ -60,9 +61,9 @@ HEADERS += \
     appsapi.h \
     bss.h \
     buttonhandler.h \
+    childentry.h \
     dbusservice.h \
     digitizerhandler.h \
-    eventpipe.h \
     fifohandler.h \
     guiapi.h \
     mxcfb.h \
@@ -72,6 +73,7 @@ HEADERS += \
     powerapi.h \
     screenapi.h \
     screenshot.h \
+    socketpair.h \
     supplicant.h \
     systemapi.h \
     tarnish_stable.h \

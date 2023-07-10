@@ -79,6 +79,7 @@ void OxideScreen::redraw(){
         if(rect.isEmpty()){
             continue;
         }
+        // TODO - detect if there was no change to the repainted region and skip, maybe compare against previous window states?
         painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.fillRect(rect, colour);
         // TODO - have some sort of stack to determine which window is on top

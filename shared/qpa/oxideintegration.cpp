@@ -76,6 +76,17 @@ void OxideIntegration::initialize(){
         qDebug() << "OxideIntegration::initialize";
     }
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
+    auto socket = Oxide::Tarnish::getSocket();
+    if(socket == nullptr){
+        qFatal("Could not get tarnish private socket");
+    }
+    QObject::connect(Oxide::Tarnish::getSocket(), &QLocalSocket::readChannelFinished, []{ qApp->exit(EXIT_FAILURE); });
+    connect(socket, &QLocalSocket::readyRead, [socket]{
+        // TODO - read commands
+        while(!socket->atEnd()){
+            O_DEBUG(socket->readAll());
+        }
+    });
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
     // Setup touch event handling
@@ -84,6 +95,7 @@ void OxideIntegration::initialize(){
     if(touchPipe == nullptr){
         qFatal("Could not get touch event pipe");
     }
+    QObject::connect(touchPipe, &QLocalSocket::readChannelFinished, []{ qApp->exit(EXIT_FAILURE); });
     connect(touchPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [touchData](input_event event){
         O_EVENT(event);
         touchData->processInputEvent(&event);
@@ -91,6 +103,7 @@ void OxideIntegration::initialize(){
     // Setup tablet event handling
     auto tabletData = new OxideTabletData(Oxide::Tarnish::getTabletEventPipeFd());
     auto tabletPipe = Oxide::Tarnish::getTouchEventPipe();
+    QObject::connect(tabletPipe, &QLocalSocket::readChannelFinished, []{ qApp->exit(EXIT_FAILURE); });
     if(tabletPipe == nullptr){
         qFatal("Could not get tablet event pipe");
     }
@@ -99,8 +112,9 @@ void OxideIntegration::initialize(){
         tabletData->processInputEvent(&event);
     });
     // Setup key event handling
-    auto keyPipe = QFdContainer(Oxide::Tarnish::getKeyEventPipeFd());
-    new QEvdevKeyboardHandler("oxide", keyPipe, false, false, "");
+    auto keyPipeFd = QFdContainer(Oxide::Tarnish::getKeyEventPipeFd());
+    auto keyHandler = new QEvdevKeyboardHandler("oxide", keyPipeFd, false, false, "");
+    QObject::connect(Oxide::Tarnish::topWindow(), &codes::eeems::oxide1::Window::closed, [=]{ delete keyHandler; });
 }
 
 

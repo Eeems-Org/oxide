@@ -26,7 +26,7 @@ int main(int argc, char *argv[]){
     app.setApplicationName("tarnish");
     app.setApplicationDisplayName("Process Monitor");
     app.setApplicationVersion(APP_VERSION);
-    Tarnish::registerChild();
+    Tarnish::getSocketFd();
     EventFilter filter;
     app.installEventFilter(&filter);
     QQmlApplicationEngine engine;

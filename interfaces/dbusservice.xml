@@ -25,8 +25,7 @@
     <method name="shutdown">
     </method>
     <method name="registerChild">
-      <arg name="childPid" type="x" direction="in"/>
-      <arg name="name" type="s" direction="in"/>
+      <arg type="h" direction="out"/>
     </method>
     <method name="unregisterChild">
     </method>

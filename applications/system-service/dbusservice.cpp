@@ -173,6 +173,12 @@ void DBusService::shutdown(){
     emit aboutToQuit();
     appsAPI->shutdown();
     guiAPI->shutdown();
+    QMutableListIterator i(children);
+    while(i.hasNext()){
+        auto child = i.next();
+        i.remove();
+        delete child;
+    }
     auto bus = QDBusConnection::systemBus();
     for(auto key : apis.keys()){
         auto api = apis[key];

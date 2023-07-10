@@ -48,7 +48,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("fret");
     app.setApplicationVersion(APP_VERSION);
-    Oxide::Tarnish::registerChild();
+    Oxide::Tarnish::getSocketFd();
     auto system = Oxide::Tarnish::systemAPI();
     if(system == nullptr){
         qDebug() << "Unable to get system API";

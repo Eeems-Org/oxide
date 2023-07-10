@@ -76,12 +76,11 @@ namespace Oxide::Tarnish {
     /*!
      * \brief Register this child application to be managed by Tarnish
      */
-    LIBOXIDE_EXPORT void registerChild();
+    LIBOXIDE_EXPORT int getSocketFd();
     /*!
      * \brief Register this child application to be managed by Tarnish
-     * \param The name of the application
      */
-    LIBOXIDE_EXPORT void registerChild(std::string name);
+    LIBOXIDE_EXPORT QLocalSocket* getSocket();
     /*!
      * \brief Get the tarnish PID
      * \return The tarnish PID
@@ -142,15 +141,6 @@ namespace Oxide::Tarnish {
      * \return
      */
     LIBOXIDE_EXPORT InputEventSocket* getKeyEventPipe();
-    /*!
-     * \brief connectQtEvents
-     * \return
-     */
-    LIBOXIDE_EXPORT bool connectQtEvents(
-        std::function<void(const input_event&)> touchCallback,
-        std::function<void(const input_event&)> tabletCallback,
-        std::function<void(const input_event&)> keyCallback
-    );
     /*!
      * \brief screenUpdate
      */
