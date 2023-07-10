@@ -456,10 +456,8 @@ bool Window::writeEvent(EventPipe* pipe, const input_event& event){
 #ifdef DEBUG_EVENTS
 #ifdef input_event_usec
     W_DEBUG(event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
-#elif input_event_sec
-    W_DEBUG(event.input_event_sec << event.type << event.code << event.value);
 #else
-    W_DEBUG(event.type << event.code << event.value);
+    W_DEBUG(event.time.sec << event.time.usec << event.type << event.code << event.value);
 #endif
 #endif
     return true;

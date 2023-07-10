@@ -39,10 +39,8 @@
 #ifdef DEBUG_EVENTS
 #ifdef input_event_usec
 #define O_EVENT(event) O_DEBUG(__PRETTY_FUNCTION__ << event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
-#elif input_event_sec
-#define O_EVENT(event) O_DEBUG(__PRETTY_FUNCTION__ << event.input_event_sec << event.type << event.code << event.value);
 #else
-#define O_EVENT(event) O_DEBUG(__PRETTY_FUNCTION__ << event.type << event.code << event.value);
+#define O_EVENT(event) O_DEBUG(__PRETTY_FUNCTION__ << event.time.sec << event.time.usec << event.type << event.code << event.value);
 #endif
 #else
 #define O_EVENT(event)
