@@ -28,6 +28,11 @@ namespace Oxide::Power {
      */
     LIBOXIDE_EXPORT const QList<Oxide::SysObject>* chargers();
     /*!
+     * \brief Get a list of usb objects
+     * \return The list of usb objects
+     */
+    LIBOXIDE_EXPORT const QList<Oxide::SysObject>* usbs();
+    /*!
      * \brief Get the current battery level. This is averaged across the number of batteries connected to the device.
      * \return The current battery level
      */
