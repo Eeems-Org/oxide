@@ -135,8 +135,11 @@ int main(int argc, char* argv[]){
         watchdog.setInterval((time / 2) * 1000); // convert to milliseconds
         QObject::connect(&watchdog, &QTimer::timeout, qApp, []{ sd_notify(0, "WATCHDOG=1"); });
         watchdog.start();
+        qInfo() << "Watchdog timer running";
     }else if(res < 0){
         qWarning() << "Failed to detect if watchdog timer is expected:" << strerror(-res);
+    }else{
+        qInfo() << "No watchdog timer required";
     }
     return app.exec();
 }
