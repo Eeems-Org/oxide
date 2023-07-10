@@ -53,7 +53,6 @@
  */
 #define sharedSettings Oxide::SharedSettings::instance()
 
-
 /*!
  * \brief Wifi Network definition
  */
@@ -117,16 +116,14 @@ namespace Oxide {
         QTimer* timer = new QTimer();
         timer->moveToThread(qApp->thread());
         timer->setSingleShot(true);
-        struct _ {
-            T value;
-        } result;
+        T result;
         QObject::connect(timer, &QTimer::timeout, [timer, &result, callback](){
             // main thread
-            result.value = callback();
+            result = callback();
             timer->deleteLater();
         });
         QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
-        return result.value;
+        return result;
     }
     /*!
      * \brief Get the UID for a username
@@ -233,6 +230,11 @@ namespace Oxide {
          * \param locale Timezone to set
          */
         void setTimezone(const QString& timezone);
+        /*!
+         * \brief Setup the Qt environment
+         * \snippet examples/oxide.cpp setupQtEnvironment
+         */
+        void setupQtEnvironment(bool touch = true);
 
     private:
         DeviceType _deviceType;

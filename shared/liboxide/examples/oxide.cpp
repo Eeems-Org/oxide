@@ -76,3 +76,13 @@ if(lo.exists()){
      qCritical("Loopback is missing?");
 }
 //! [SysObject]
+//! [setupQtEnvironment]
+#include <liboxide.h>
+#ifdef __arm__
+Q_IMPORT_PLUGIN(QsgEpaperPlugin)
+#endif
+
+int main(int argc, char* argv[]){
+     deviceSettings.setupQtEnvironment();
+}
+//! [setupQtEnvironment]

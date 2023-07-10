@@ -19,6 +19,5 @@ applications.files = ../../assets/opt/usr/share/applications/codes.eeems.fret.ox
 applications.path = /opt/usr/share/applications/
 INSTALLS += applications
 
-include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)

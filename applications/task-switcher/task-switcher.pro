@@ -35,6 +35,5 @@ RESOURCES += \
 PRECOMPILED_HEADER = \
     corrupt_stable.h
 
-include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)

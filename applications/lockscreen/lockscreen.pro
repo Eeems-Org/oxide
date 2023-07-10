@@ -27,6 +27,5 @@ HEADERS += \
 RESOURCES += \
     qml.qrc
 
-include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
