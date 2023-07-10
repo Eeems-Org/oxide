@@ -80,7 +80,7 @@ void OxideIntegration::initialize(){
     if(socket == nullptr){
         qFatal("Could not get tarnish private socket");
     }
-    QObject::connect(Oxide::Tarnish::getSocket(), &QLocalSocket::readChannelFinished, []{ qApp->exit(EXIT_FAILURE); });
+    QObject::connect(Oxide::Tarnish::getSocket(), &QLocalSocket::readChannelFinished, []{ qApp->quit(); });
     connect(socket, &QLocalSocket::readyRead, [socket]{
         // TODO - read commands
         while(!socket->atEnd()){
@@ -95,7 +95,11 @@ void OxideIntegration::initialize(){
     if(touchPipe == nullptr){
         qFatal("Could not get touch event pipe");
     }
-    QObject::connect(touchPipe, &QLocalSocket::readChannelFinished, []{ qApp->exit(EXIT_FAILURE); });
+    QObject::connect(touchPipe, &QLocalSocket::readChannelFinished, []{
+        if(!qApp->closingDown()){
+            qApp->exit(EXIT_FAILURE);
+        }
+    });
     connect(touchPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [touchData](input_event event){
         O_EVENT(event);
         touchData->processInputEvent(&event);
@@ -103,7 +107,11 @@ void OxideIntegration::initialize(){
     // Setup tablet event handling
     auto tabletData = new OxideTabletData(Oxide::Tarnish::getTabletEventPipeFd());
     auto tabletPipe = Oxide::Tarnish::getTouchEventPipe();
-    QObject::connect(tabletPipe, &QLocalSocket::readChannelFinished, []{ qApp->exit(EXIT_FAILURE); });
+    QObject::connect(tabletPipe, &QLocalSocket::readChannelFinished, []{
+        if(!qApp->closingDown()){
+            qApp->exit(EXIT_FAILURE);
+        }
+    });
     if(tabletPipe == nullptr){
         qFatal("Could not get tablet event pipe");
     }

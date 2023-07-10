@@ -42,7 +42,7 @@ namespace Oxide{
         return QPointF(x, y);
     }
     QMouseEvent* toMouseEvent(QEvent::Type type, QEvent* ev){
-        auto tabletEvent = (QTabletEvent*)ev;
+        auto tabletEvent = static_cast<QTabletEvent*>(ev);
         return new QMouseEvent(
             type,
             transpose(tabletEvent->posF()),

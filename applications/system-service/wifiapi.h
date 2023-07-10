@@ -731,11 +731,11 @@ private:
             }
             qDebug() << "Waiting for wpa_supplicant dbus service...";
             while(!serviceNames.contains(WPA_SUPPLICANT_SERVICE)){
-                struct timespec args{
+                timespec args{
                     .tv_sec = 1,
-                    .tv_nsec = 0,
-                }, res;
-                nanosleep(&args, &res);
+                    .tv_nsec = 0
+                };
+                nanosleep(&args, NULL);
                 serviceNames = bus.interface()->registeredServiceNames();
             }
         }

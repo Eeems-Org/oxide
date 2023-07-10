@@ -166,9 +166,9 @@ namespace Oxide::Tarnish {
         while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
             timespec args{
                 .tv_sec = 1,
-                .tv_nsec = 0,
-            }, res;
-            nanosleep(&args, &res);
+                .tv_nsec = 0
+            };
+            nanosleep(&args, NULL);
         }
         api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, qApp);
         auto conn = new QMetaObject::Connection;
@@ -370,7 +370,11 @@ namespace Oxide::Tarnish {
             if(!QCoreApplication::startingUp()){
                 qApp->processEvents(QEventLoop::AllEvents, 100);
             }else{
-                usleep(100);
+                timespec args{
+                    .tv_sec = 0,
+                    .tv_nsec = 100 * 1000
+                };
+                nanosleep(&args, NULL);
             }
         }
     }
