@@ -14,6 +14,7 @@ BusName=codes.eeems.oxide1
 ExecStart=/opt/bin/tarnish --break-lock
 Restart=on-failure
 RestartSec=5
+WatchdogSec=1min
 Environment="HOME=/home/root"
 Environment="PATH=/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 

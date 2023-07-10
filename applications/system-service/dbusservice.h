@@ -38,29 +38,16 @@ class ChildEntry : public QObject {
     Q_OBJECT
 
 public:
-    ChildEntry(QObject* parent) : QObject(parent){
-
-    }
-    ~ChildEntry(){
-        stdout.close();
-        sd_stdout.close();
-        stderr.close();
-        sd_stdout.close();
-    }
-    std::string uniqueName() const{
-        return QString("%1-%2-%3")
-            .arg(service.c_str())
-            .arg(name.c_str())
-            .arg(pid)
-            .toStdString();
-    }
-    std::string service;
+    ChildEntry(QObject* parent, QString service, qint64 pid, QString name)
+    : QObject(parent),
+      service{service},
+      pid{pid},
+      name{name}
+    { }
+    ~ChildEntry(){ }
+    QString service;
     qint64 pid;
-    std::string name;
-    QFile stdout;
-    QFile stderr;
-    QFile sd_stdout;
-    QFile sd_stderr;
+    QString name;
 };
 
 class DBusService : public APIBase {
@@ -84,96 +71,17 @@ public:
 
     int tarnishPid(){ return qApp->applicationPid(); }
 
-    Q_INVOKABLE void registerChild(qint64 childPid, QString name, QDBusUnixFileDescriptor stdout, QDBusUnixFileDescriptor stderr, QDBusMessage message){
-        auto bus = QDBusConnection::systemBus();
-        if(!QDBusUnixFileDescriptor::isSupported()){
-            qDebug() << "QDBusUnixFileDescriptor is not supported";
-            bus.send(message.createErrorReply(QDBusError::InternalError, "QDBusUnixFileDescriptor is not supported"));
-            return;
-        }
-        if(!stdout.isValid()){
-            qDebug() << "stdout passed in by" << childPid << "is invalid";
-            bus.send(message.createErrorReply(QDBusError::AccessDenied, "stdout invalid"));
-            return;
-        }
-        if(!stderr.isValid()){
-            qDebug() << "stderr passed in by" << childPid << "is invalid";
-            bus.send(message.createErrorReply(QDBusError::AccessDenied, "stderr invalid"));
-            return;
-        }
-        auto stdoutFd = dup(stdout.fileDescriptor());
-        auto child = new ChildEntry(this);
-        if(!child->stdout.open(stdoutFd, QFile::ReadOnly | QFile::Text | QFile::Unbuffered, QFile::AutoCloseHandle)){
-            qDebug() << "stdout passed in by" << childPid << "could not be opened:" << child->stdout.errorString();
-            close(stdoutFd);
-            bus.send(message.createErrorReply(QDBusError::AccessDenied, "stdout invalid"));
-            return;
-        }
-        auto stderrFd = dup(stderr.fileDescriptor());
-        if(!child->stderr.open(stderrFd, QFile::ReadOnly | QFile::Text | QFile::Unbuffered, QFile::AutoCloseHandle)){
-            qDebug() << "stderr passed in by" << childPid << "could not be opened:" << child->stderr.errorString();
-            bus.send(message.createErrorReply(QDBusError::AccessDenied, "stderr invalid"));
-            child->stdout.close();
-            close(stderrFd);
-            return;
-        }
-        auto sd_stdout = sd_journal_stream_fd(name.toStdString().c_str(), LOG_INFO, 1);
-        if(sd_stdout == -1){
-            qDebug() << "stdout journal pipe for" << childPid << "could not be opened:" << strerror(errno);
-            bus.send(message.createErrorReply(QDBusError::InternalError, "stdout journal open failed"));
-            child->stdout.close();
-            child->stderr.close();
-            return;
-        }
-        auto sd_stderr = sd_journal_stream_fd(name.toStdString().c_str(), LOG_ERR, 1);
-        if(sd_stderr == -1){
-            qDebug() << "stderr journal pipe for" << childPid << "could not be opened:" << strerror(errno);
-            bus.send(message.createErrorReply(QDBusError::InternalError, "stderr journal open failed"));
-            close(sd_stdout);
-            child->stdout.close();
-            child->stderr.close();
-            return;
-        }
-        if(!child->sd_stdout.open(sd_stderr, QFile::WriteOnly | QFile::Text | QFile::Unbuffered, QFile::AutoCloseHandle)){
-            qDebug() << "stdout journal pipe for" << childPid << "could not be opened:" << child->sd_stdout.errorString();
-            bus.send(message.createErrorReply(QDBusError::InternalError, "stdout journal pipe open failed"));
-            close(sd_stdout);
-            close(sd_stderr);
-            child->stdout.close();
-            child->stderr.close();
-            return;
-        }
-        if(!child->sd_stderr.open(sd_stderr, QFile::WriteOnly | QFile::Text | QFile::Unbuffered, QFile::AutoCloseHandle)){
-            qDebug() << "stderr journal pipe for" << childPid << "could not be opened:" << child->sd_stderr.errorString();
-            bus.send(message.createErrorReply(QDBusError::InternalError, "stderr journal pipe open failed"));
-            close(sd_stderr);
-            child->sd_stdout.close();
-            child->stdout.close();
-            child->stderr.close();
-            return;
-        }
-        auto stdoutNotifier = new QSocketNotifier(stdoutFd, QSocketNotifier::Read, &child->stdout);
-        QObject::connect(stdoutNotifier, &QSocketNotifier::activated, [child]{
-            while(!child->stdout.atEnd()){
-                child->sd_stdout.write(child->stdout.readLine());
-            }
-            child->sd_stdout.flush();
-        });
-        auto stderrNotifier = new QSocketNotifier(stderrFd, QSocketNotifier::Read, &child->stderr);
-        QObject::connect(stderrNotifier, &QSocketNotifier::activated, [child]{
-            while(!child->stderr.atEnd()){
-                child->sd_stderr.write(child->stderr.readLine());
-            }
-            child->sd_stderr.flush();
-        });
+    Q_INVOKABLE void registerChild(qint64 childPid, QString name, QDBusMessage message){
         qDebug() << "registerChild" << childPid << name;
-        child->service = message.service().toStdString();
-        child->pid = childPid;
-        child->name = name.toStdString();
-        children.append(child);
+        children.append(new ChildEntry(this, message.service(), childPid, name));
+        // TODO - watch process lifecycle
+        //        https://man7.org/linux/man-pages/man2/pidfd_open.2.html
+        //        https://man7.org/linux/man-pages/man2/pidfd_send_signal.2.html
+        // TODO - Get liboxide to automate journalctl logging
+        //        https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
     }
 
-    Q_INVOKABLE void unregisterChild(QDBusMessage message){ unregisterChild(message.service().toStdString()); }
+    Q_INVOKABLE void unregisterChild(QDBusMessage message){ unregisterChild(message.service()); }
 
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
@@ -254,21 +162,21 @@ private slots:
                 emit apiUnavailable(QDBusObjectPath(api.path));
             }
         }
-        unregisterChild(name.toStdString());
+        unregisterChild(name);
         systemAPI->uninhibitAll(name);
     }
 
 private:
     QMap<QString, APIEntry> apis;
     QList<ChildEntry*> children;
-    void unregisterChild(std::string service){
+    void unregisterChild(const QString& service){
         QMutableListIterator<ChildEntry*> i(children);
         while(i.hasNext()){
             auto child = i.next();
             if(child->service != service){
                 continue;
             }
-            O_DEBUG("unregisterChild" << child->pid << child->name.c_str());
+            O_DEBUG("unregisterChild" << child->pid << child->name);
             guiAPI->closeWindows(child->pid);
             i.remove();
             child->deleteLater();

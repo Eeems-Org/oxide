@@ -31,7 +31,7 @@ public:
         RaisedHidden,
         LoweredHidden
     } WindowState;
-    Window(const QString& identifier, const QString& path, const pid_t& pgid, const QRect& geometry);
+    Window(const QString& identifier, const QString& path, const pid_t& pgid, const QRect& geometry, int z);
     ~Window();
 
     void setEnabled(bool enabled);

@@ -14,14 +14,14 @@
 
 
 
-Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QRect& geometry)
+Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QRect& geometry, int z)
 : QObject{guiAPI},
   m_identifier{id},
   m_enabled{false},
   m_path{path},
   m_pgid{pgid},
   m_geometry{geometry},
-  m_z{-1},
+  m_z{z},
   m_file{this},
   m_state{WindowState::LoweredHidden},
   m_format{DEFAULT_IMAGE_FORMAT}

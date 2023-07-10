@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <liboxide.h>
+#include <systemd/sd-daemon.h>
 
 #include "dbusservice.h"
 
@@ -123,5 +124,19 @@ int main(int argc, char* argv[]){
     }, Qt::QueuedConnection);
     QObject::connect(signalHandler, &SignalHandler::sigInt, dbusService, &DBusService::shutdown);
     QObject::connect(signalHandler, &SignalHandler::sigTerm, dbusService, &DBusService::shutdown);
+    uint64_t time;
+    int res = sd_watchdog_enabled(0, &time);
+    if(res > 0){
+        sd_notify(0, "READY=1");
+        QTimer watchdog(qApp);
+        watchdog.setSingleShot(false);
+        watchdog.setTimerType(Qt::PreciseTimer);
+        // Send at the recommended rate of half the interval allowed
+        watchdog.setInterval((time / 2) * 1000); // convert to milliseconds
+        QObject::connect(&watchdog, &QTimer::timeout, qApp, []{ sd_notify(0, "WATCHDOG=1"); });
+        watchdog.start();
+    }else if(res < 0){
+        qWarning() << "Failed to detect if watchdog timer is expected:" << strerror(-res);
+    }
     return app.exec();
 }

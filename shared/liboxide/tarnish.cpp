@@ -3,6 +3,7 @@
 #include "debug.h"
 
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <sys/file.h>
 #include <QDBusConnection>
 #include <QImage>
@@ -176,12 +177,19 @@ namespace Oxide::Tarnish {
     }
 
     void registerChild(){
-        registerChild(qApp->applicationName().toStdString());
+        QString name;
+        if(QCoreApplication::startingUp()){
+            name = qApp->applicationName();
+        }else{
+            name = QString(16, ' ');
+            prctl(PR_GET_NAME, name.data());
+        }
+        registerChild(name.toStdString());
     }
 
     void registerChild(std::string name){
         connect();
-        api_general->registerChild(getpid(), QString::fromStdString(name), QDBusUnixFileDescriptor(fileno(stdin)), QDBusUnixFileDescriptor(fileno(stdout)));
+        api_general->registerChild(getpid(), QString::fromStdString(name));
     }
 
     int tarnishPid(){

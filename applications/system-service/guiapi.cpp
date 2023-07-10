@@ -83,7 +83,7 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
     auto id = QUuid::createUuid().toString(QUuid::Id128);
     auto path = QString(OXIDE_SERVICE_PATH) + "/window/" + QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
     auto pgid = getSenderPgid();
-    auto window = new Window(id, path, pgid, geometry);
+    auto window = new Window(id, path, pgid, geometry, m_windows.count());
     m_windows.insert(path, window);
     sortWindows();
     connect(window, &Window::closed, this, [this, window, path]{
@@ -112,6 +112,26 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
             .region = region
         });
         scheduleUpdate();
+    });
+    connect(window, &Window::raised, this, [=]{
+        auto windows = sortedWindows();
+        int z = 0;
+        for(auto w : windows){
+            if(w == window){
+                w->setZ(z++);
+            }
+        }
+        window->setZ(z);
+    });
+    connect(window, &Window::lowered, this, [=]{
+        auto windows = sortedWindows();
+        window->setZ(0);
+        int z = 1;
+        for(auto w : windows){
+            if(w != window){
+                w->setZ(z++);
+            }
+        }
     });
     for(auto item : appsAPI->runningApplicationsNoSecurityCheck().values()){
         Application* app = appsAPI->getApplication(item.value<QDBusObjectPath>());
@@ -191,9 +211,8 @@ void GuiAPI::redraw(){
         repaintRegion += rect;
     }
     // Get windows in order of Z sort order, and filter out invalid windows
-    auto sortedWindows = m_windows.values();
-    std::sort(sortedWindows.begin(), sortedWindows.end());
-    QMutableListIterator i(sortedWindows);
+    auto visibleWindows = sortedWindows();
+    QMutableListIterator i(visibleWindows);
     while(i.hasNext()){
         auto window = i.next();
         if(window == nullptr){
@@ -221,7 +240,7 @@ void GuiAPI::redraw(){
     for(QRect rect : repaintRegion){
         painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.fillRect(rect, colour);
-        for(auto window : sortedWindows){
+        for(auto window : visibleWindows){
             const QRect windowRect = window->_geometry().translated(-screenOffset);
             const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
             O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << rect << windowIntersect);
@@ -234,6 +253,7 @@ void GuiAPI::redraw(){
     painter.end();
     // Send updates for all the repainted regions
     for(auto rect : repaintedRegion){
+        // TODO - detect if there was no change to the repainted region and skip
         // TODO - profile if it makes sense to do this instead of just picking one to always use
         auto waveform = EPFrameBuffer::Mono;
         for(int x = rect.left(); x < rect.right(); x++){
@@ -253,7 +273,7 @@ void GuiAPI::redraw(){
         auto mode =  rect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
         EPFrameBuffer::sendUpdate(rect, waveform, mode);
     }
-    for(auto window : sortedWindows){
+    for(auto window : visibleWindows){
         window->unlock();
     }
     m_dirty = false;
@@ -268,6 +288,12 @@ bool GuiAPI::isThisPgId(pid_t valid_pgid){
 }
 
 QMap<QString, Window*> GuiAPI::allWindows(){ return m_windows; }
+
+QList<Window*> GuiAPI::sortedWindows(){
+    auto sortedWindows = m_windows.values();
+    std::sort(sortedWindows.begin(), sortedWindows.end());
+    return sortedWindows;
+}
 
 void GuiAPI::closeWindows(pid_t pgid){
     for(auto window : m_windows.values()){
@@ -333,12 +359,9 @@ void GuiAPI::scheduleUpdate(){
 }
 
 void GuiAPI::sortWindows(){
+    auto windows = sortedWindows();
     int z = 0;
-    for(auto path : m_windows.keys()){
-        auto window = m_windows.value(path);
-        if(window == nullptr){
-            m_windows.remove(path);
-        }
+    for(auto window : windows){
         window->setZ(z++);
     }
 }

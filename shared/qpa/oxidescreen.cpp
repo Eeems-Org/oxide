@@ -73,6 +73,8 @@ void OxideScreen::redraw(){
     QPainter painter(&frameBuffer);
     Qt::GlobalColor colour = frameBuffer.hasAlphaChannel() ? Qt::transparent : Qt::black;
     QRegion repaintedRegion;
+    // Paint the regions
+    // TODO - explore using QPainter::clipRegion to see if it can speed things up
     for(QRect rect : mRepaintRegion){
         rect = rect.intersected(screenRect);
         if(rect.isEmpty()){
@@ -89,6 +91,8 @@ void OxideScreen::redraw(){
             const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
             OxideBackingStore* backingStore = static_cast<OxideWindow*>(window->handle())->backingStore();
             if(backingStore){
+                // TODO - See if there is a way to detect if there is just transparency in the region
+                //        and don't mark this as repainted.
                 painter.drawImage(rect, backingStore->toImage(), windowIntersect);
                 repaintedRegion += windowIntersect;
             }
@@ -97,6 +101,7 @@ void OxideScreen::redraw(){
     painter.end();
     Oxide::Tarnish::unlockFrameBuffer();
     for(auto rect : repaintedRegion){
+        // TODO - detect if there was no change to the repainted region and skip
         Oxide::Tarnish::screenUpdate(rect);
     }
     mRepaintRegion = QRegion();

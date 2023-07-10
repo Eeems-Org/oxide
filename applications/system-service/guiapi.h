@@ -30,6 +30,7 @@ public:
     void redraw();
     bool isThisPgId(pid_t valid_pgid);
     QMap<QString, Window*> allWindows();
+    QList<Window*> sortedWindows();
     void closeWindows(pid_t pgid);
 
 public slots:
