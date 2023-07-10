@@ -133,7 +133,10 @@ int main(int argc, char* argv[]){
         watchdog.setTimerType(Qt::PreciseTimer);
         // Send at the recommended rate of half the interval allowed
         watchdog.setInterval((time / 2) * 1000); // convert to milliseconds
-        QObject::connect(&watchdog, &QTimer::timeout, qApp, []{ sd_notify(0, "WATCHDOG=1"); });
+        QObject::connect(&watchdog, &QTimer::timeout, qApp, []{
+            O_DEBUG("Watchdog keepalive");
+            sd_notify(0, "WATCHDOG=1");
+        });
         watchdog.start();
         qInfo() << "Watchdog timer running";
     }else if(res < 0){
