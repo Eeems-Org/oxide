@@ -109,7 +109,7 @@ void OxideIntegration::initialize(){
 // unless DebugBackingStore is activated.
 class DummyFontDatabase : public QPlatformFontDatabase{
 public:
-    virtual void populateFontDatabase() override {}
+    void populateFontDatabase() override {}
 };
 
 QPlatformFontDatabase* OxideIntegration::fontDatabase() const{

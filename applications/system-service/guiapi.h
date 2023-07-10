@@ -12,6 +12,7 @@ class GuiAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_GUI_INTERFACE)
     Q_PROPERTY(QRect geometry READ geometry)
+
 public:
     static GuiAPI* singleton(GuiAPI* self = nullptr);
     GuiAPI(QObject* parent);

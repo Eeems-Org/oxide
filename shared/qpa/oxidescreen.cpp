@@ -10,7 +10,6 @@ OxideScreen::OxideScreen()
   mDepth(32),
   mFormat(DEFAULT_IMAGE_FORMAT),
   mUpdatePending(false){
-
 }
 
 QSizeF OxideScreen::physicalSize() const{

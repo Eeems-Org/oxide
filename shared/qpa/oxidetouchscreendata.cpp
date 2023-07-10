@@ -181,7 +181,6 @@ void OxideTouchScreenData::processInputEvent(input_event* data){
         }
         m_contacts.insert(key, m_currentData);
         m_currentData = Contact();
-
     }else if(data->type == EV_SYN && data->code == SYN_REPORT){
         // Ensure valid IDs even when the driver does not report ABS_MT_TRACKING_ID.
         if(!m_contacts.isEmpty() && m_contacts.constBegin().value().trackingId == -1){

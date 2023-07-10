@@ -9,10 +9,8 @@ class OxideScreen;
 
 class OxideWindow : public QPlatformWindow {
 public:
-    OxideWindow(QWindow* window) : QPlatformWindow(window), mBackingStore(nullptr){
-
-    }
-    ~OxideWindow() {}
+    OxideWindow(QWindow* window) : QPlatformWindow(window), mBackingStore(nullptr){ }
+    ~OxideWindow(){ }
 
     void setBackingStore(OxideBackingStore* store) { mBackingStore = store; }
     OxideBackingStore* backingStore() const { return mBackingStore; }
