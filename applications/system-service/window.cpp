@@ -278,7 +278,14 @@ void Window::unlock(){
     }
 }
 
-void Window::waitForLastUpdate(){ guiAPI->waitForLastUpdate(); }
+void Window::waitForLastUpdate(){
+    if(!hasPermissions()){
+        W_DENIED();
+        return;
+    }
+    W_ALLOWED();
+    guiAPI->waitForLastUpdate();
+}
 
 bool Window::operator>(Window* other) const{ return m_z > other->z(); }
 

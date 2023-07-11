@@ -7,8 +7,6 @@ CONFIG += hide_symbols
 
 QT -= gui
 
-QMAKE_CXXFLAGS += -std=c++17
-
 SOURCES += main.cpp
 
 LIBS += -lrt -ldl -Wl,--exclude-libs,ALL

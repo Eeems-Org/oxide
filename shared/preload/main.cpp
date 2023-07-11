@@ -1,4 +1,4 @@
-#include<iostream>
+#include <iostream>
 #include <unistd.h>
 #include <dirent.h>
 #include <chrono>
@@ -7,6 +7,7 @@
 #include <dlfcn.h>
 #include <linux/fb.h>
 #include <linux/ioctl.h>
+#include <asm/ioctl.h>
 #include <liboxide/meta.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
@@ -44,6 +45,8 @@ void __sigacton__handler(int signo, siginfo_t* info, void* context){
 
 int fb_ioctl(unsigned long request, char* ptr){
     switch(request){
+        // Look at linux/fb.h and mxcfb.h for more possible request types
+        // https://www.kernel.org/doc/html/latest/fb/api.html
         case MXCFB_SEND_UPDATE:{
             if(DEBUG_LOGGING){
                 qDebug() << "ioctl /dev/fb0 MXCFB_SEND_UPDATE";
@@ -104,13 +107,34 @@ int fb_ioctl(unsigned long request, char* ptr){
             memcpy(screeninfo->id, fb_id, sizeof(fb_id));
             return 0;
         }
+        case FBIOPUT_VSCREENINFO:
+            if(DEBUG_LOGGING){
+                qDebug() << "ioctl /dev/fb0 FBIOPUT_VSCREENINFO";
+            }
+            // TODO - Explore allowing some screen info updating
+            return -1;
         case MXCFB_SET_AUTO_UPDATE_MODE:
             if(DEBUG_LOGGING){
                 qDebug() << "ioctl /dev/fb0 MXCFB_SET_AUTO_UPDATE_MODE";
             }
             return 0;
+        case MXCFB_SET_UPDATE_SCHEME:
+            if(DEBUG_LOGGING){
+                qDebug() << "ioctl /dev/fb0 MXCFB_SET_UPDATE_SCHEME";
+            }
+            return 0;
+        case MXCFB_ENABLE_EPDC_ACCESS:
+            if(DEBUG_LOGGING){
+                qDebug() << "ioctl /dev/fb0 MXCFB_ENABLE_EPDC_ACCESS";
+            }
+            return 0;
+        case MXCFB_DISABLE_EPDC_ACCESS:
+            if(DEBUG_LOGGING){
+                qDebug() << "ioctl /dev/fb0 MXCFB_DISABLE_EPDC_ACCESS";
+            }
+            return 0;
         default:
-            qDebug() << "UNHANDLED FB IOCTL " << request;
+            qDebug() << "UNHANDLED FB IOCTL " << _IOC_DIR(request) << (char)_IOC_TYPE(request) << QString::number(_IOC_NR(request), 16) << _IOC_SIZE(request) << request;
             return -1;
     }
 }
@@ -119,7 +143,7 @@ int touch_ioctl(unsigned long request, char* ptr){
     Q_UNUSED(ptr)
     switch(request){
         default:
-            qDebug() << "UNHANDLED TOUCH IOCTL " << request;
+            qDebug() << "UNHANDLED TOUCH IOCTL " <<  _IOC_DIR(request) << (char)_IOC_TYPE(request) << QString::number(_IOC_NR(request), 16) << _IOC_SIZE(request) << request;
             return -1;
     }
 }
@@ -128,7 +152,7 @@ int tablet_ioctl(unsigned long request, char* ptr){
     Q_UNUSED(ptr)
     switch(request){
         default:
-            qDebug() << "UNHANDLED TABLET IOCTL " << request;
+            qDebug() << "UNHANDLED TABLET IOCTL " <<  _IOC_DIR(request) << (char)_IOC_TYPE(request) << QString::number(_IOC_NR(request), 16) << _IOC_SIZE(request) << request;
             return -1;
     }
 }
