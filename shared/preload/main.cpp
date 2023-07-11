@@ -378,6 +378,7 @@ extern "C" {
         }
         return func_write(fd, buf, n);
     }
+    __asm__(".symver write, write@GLIBC_2.4");
 
     __attribute__((visibility("default")))
     bool _Z7qputenvPKcRK10QByteArray(const char* name, const QByteArray& val) {
