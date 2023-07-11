@@ -35,4 +35,3 @@ PRECOMPILED_HEADER = \
     corrupt_stable.h
 
 include(../../qmake/liboxide.pri)
-include(../../qmake/sentry.pri)

@@ -8,7 +8,6 @@ class ChildEntry : public QObject {
     Q_OBJECT
 
 public:
-
     ChildEntry(QObject* parent, pid_t pid, pid_t pgid);
     ~ChildEntry();
 

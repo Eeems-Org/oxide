@@ -1,9 +1,11 @@
 TARGET = oxide
 TEMPLATE = lib
 
+include(../../qmake/common.pri)
+
 CONFIG += plugin
 CONFIG += qpa/genericunixfontdatabase
-CONFIG += c++17
+
 QT += core-private
 QT += gui-private
 QT += input_support-private
@@ -40,4 +42,3 @@ DISTFILES += \
     oxide.json
 
 include(../../qmake/liboxide.pri)
-include(../../qmake/sentry.pri)

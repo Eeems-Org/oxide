@@ -3,9 +3,10 @@
 
 #include <sys/file.h>
 
-
-#define W_WARNING(msg) O_WARNING(identifier() << __PRETTY_FUNCTION__ << msg << guiAPI->getSenderPgid())
-#define W_DEBUG(msg) O_DEBUG(identifier() << __PRETTY_FUNCTION__ << msg << guiAPI->getSenderPgid())
+#define _W_WARNING(msg) O_WARNING(identifier() << __PRETTY_FUNCTION__ << msg << guiAPI->getSenderPgid())
+#define _W_DEBUG(msg) O_DEBUG(identifier() << __PRETTY_FUNCTION__ << msg << guiAPI->getSenderPgid())
+#define W_WARNING(msg) _W_WARNING(msg << guiAPI->getSenderPgid())
+#define W_DEBUG(msg) _W_DEBUG(msg << guiAPI->getSenderPgid())
 #define W_DENIED() W_DEBUG("DENY")
 #define W_ALLOWED() W_DEBUG("ALLOW")
 #define LOCK_MUTEX \
@@ -14,7 +15,7 @@
 
 
 
-Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QRect& geometry, int z)
+Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QRect& geometry, int z, QImage::Format format)
 : QObject{guiAPI},
   m_identifier{id},
   m_enabled{false},
@@ -24,7 +25,7 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
   m_z{z},
   m_file{this},
   m_state{WindowState::LoweredHidden},
-  m_format{DEFAULT_IMAGE_FORMAT},
+  m_format{(QImage::Format)format},
   m_eventPipe{true}
 {
     LOCK_MUTEX;
@@ -277,6 +278,8 @@ void Window::unlock(){
     }
 }
 
+void Window::waitForLastUpdate(){ guiAPI->waitForLastUpdate(); }
+
 bool Window::operator>(Window* other) const{ return m_z > other->z(); }
 
 bool Window::operator<(Window* other) const{ return m_z < other->z(); }
@@ -451,29 +454,31 @@ void Window::createFrameBuffer(const QRect& geometry){
     W_DEBUG("Framebuffer created:" << geometry);
 }
 
-bool Window::writeEvent(SocketPair* pipe, const input_event& event){
-    if(!pipe->enabled()){
-        return false;
-    }
-    if(!m_enabled){
-        W_WARNING("Failed to write to event pipe: Window disabled");
-        return false;
+bool Window::writeEvent(SocketPair* pipe, const input_event& event, bool force){
+    if(!force){
+        if(!pipe->enabled()){
+            return false;
+        }
+        if(!m_enabled){
+            _W_WARNING("Failed to write to event pipe: Window disabled");
+            return false;
+        }
     }
     if(!pipe->isOpen()){
-        W_WARNING("Failed to write to event pipe: Pipe not open");
+        _W_WARNING("Failed to write to event pipe: Pipe not open");
         return false;
     }
     auto size = sizeof(input_event);
-    auto res = pipe->write((const char*)&event, size);
+    auto res = force ? pipe->_write((const char*)&event, size) : pipe->write((const char*)&event, size);
     if(res == -1){
-        W_WARNING("Failed to write to event pipe:" << pipe->writeSocket()->errorString());
+        _W_WARNING("Failed to write to event pipe:" << pipe->writeSocket()->errorString());
         return false;
     }
     if(res != size){
-        W_WARNING("Only wrote" << res << "of" << size << "bytes to pipe");
+        _W_WARNING("Only wrote" << res << "of" << size << "bytes to pipe");
     }
 #ifdef DEBUG_EVENTS
-    W_DEBUG(event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
+    _W_DEBUG(event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
 #endif
     return true;
 }
@@ -481,24 +486,24 @@ bool Window::writeEvent(SocketPair* pipe, const input_event& event){
 void Window::invalidateEventPipes(){
     timeval time;
     if(gettimeofday(&time, NULL) == -1){
-        W_WARNING("Failed to get time of day:" << strerror(errno));
+        _W_WARNING("Failed to get time of day:" << strerror(errno));
     }
-    writeTouchEvent(input_event{
+    writeEvent(&m_touchEventPipe, input_event{
         .time = time,
         .type = EV_SYN,
         .code = SYN_DROPPED,
         .value = 0,
-    });
-    writeTabletEvent(input_event{
+    }, true);
+    writeEvent(&m_tabletEventPipe, input_event{
         .time = time,
         .type = EV_SYN,
         .code = SYN_DROPPED,
         .value = 0,
-    });
-    writeKeyEvent(input_event{
+    }, true);
+    writeEvent(&m_keyEventPipe, input_event{
         .time = time,
         .type = EV_SYN,
         .code = SYN_DROPPED,
         .value = 0,
-    });
+    }, true);
 }

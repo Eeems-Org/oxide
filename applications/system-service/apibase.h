@@ -20,7 +20,8 @@ public:
     APIBase(QObject* parent) : QObject(parent){}
     virtual void setEnabled(bool enabled) = 0;
     virtual bool isEnabled() = 0;
-    int hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
+    bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
+    bool hasPermissionStrict(QString permission, const char* sender = __builtin_FUNCTION());
     int getSenderPgid(){ return getpgid(getSenderPid()); }
 
 protected:

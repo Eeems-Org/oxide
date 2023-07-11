@@ -19,7 +19,9 @@ public:
     QByteArray readAll();
     QByteArray read(qint64 maxlen = 0);
     qint64 bytesAvailable();
+    qint64 _write(const char* data, qint64 size);
     qint64 write(const char* data, qint64 size);
+    qint64 _write(QByteArray data);
     qint64 write(QByteArray data);
     QString errorString();
 

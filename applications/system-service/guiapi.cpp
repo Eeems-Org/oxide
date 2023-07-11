@@ -1,6 +1,9 @@
 #include "guiapi.h"
 #include "appsapi.h"
 #include "digitizerhandler.h"
+#include "dbusservice.h"
+
+#include <QSignalSpy>
 
 #define W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << msg << getSenderPgid())
 #define W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << msg << getSenderPgid())
@@ -50,7 +53,7 @@ void GuiAPI::shutdown(){
 }
 
 QRect GuiAPI::geometry(){
-    if(!hasPermission("gui")){
+    if(!hasPermission()){
         W_DENIED();
         return QRect();
     }
@@ -72,18 +75,16 @@ void GuiAPI::setEnabled(bool enabled){
 
 bool GuiAPI::isEnabled(){ return m_enabled; }
 
-QDBusObjectPath GuiAPI::createWindow(int x, int y, int width, int height){ return createWindow(QRect(x, y, width, height)); }
-
-QDBusObjectPath GuiAPI::createWindow(QRect geometry){
-    if(!hasPermission("gui")){
+Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
+    if(!hasPermission()){
         W_DENIED();
-        return QDBusObjectPath("/");
+        return nullptr;
     }
     W_ALLOWED();
     auto id = QUuid::createUuid().toString(QUuid::Id128);
     auto path = QString(OXIDE_SERVICE_PATH) + "/window/" + QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
     auto pgid = getSenderPgid();
-    auto window = new Window(id, path, pgid, geometry, m_windows.count());
+    auto window = new Window(id, path, pgid, geometry, m_windows.count(), format);
     m_windows.insert(path, window);
     sortWindows();
     connect(window, &Window::closed, this, [this, window, path]{
@@ -145,16 +146,45 @@ QDBusObjectPath GuiAPI::createWindow(QRect geometry){
         }
     }
     window->setEnabled(m_enabled);
-    return window->path();
+    return window;
 }
 
-QDBusObjectPath GuiAPI::createWindow(){
-    return createWindow(
-        m_screenGeometry.x(),
-        m_screenGeometry.y(),
-        m_screenGeometry.width(),
-        m_screenGeometry.height()
+QDBusObjectPath GuiAPI::createWindow(int x, int y, int width, int height, int format){
+    if(!hasPermission()){
+        W_DENIED();
+        return QDBusObjectPath("/");
+    }
+    W_ALLOWED();
+    Window* window = _createWindow(QRect(x, y, width, height), (QImage::Format)format);
+    return window == nullptr ? QDBusObjectPath("/") : window->path();
+}
+
+QDBusObjectPath GuiAPI::createWindow(QRect geometry, int format){
+    if(!hasPermission()){
+        W_DENIED();
+        return QDBusObjectPath("/");
+    }
+    W_ALLOWED();
+    Window* window = _createWindow(geometry, (QImage::Format)format);
+    return window == nullptr ? QDBusObjectPath("/") : window->path();
+}
+
+QDBusObjectPath GuiAPI::createWindow(int format){
+    if(!hasPermission()){
+        W_DENIED();
+        return QDBusObjectPath("/");
+    }
+    W_ALLOWED();
+    Window* window = _createWindow(
+        QRect(
+            m_screenGeometry.x(),
+            m_screenGeometry.y(),
+            m_screenGeometry.width(),
+            m_screenGeometry.height()
+        ),
+        (QImage::Format)format
     );
+    return window == nullptr ? QDBusObjectPath("/") : window->path();
 }
 
 QList<QDBusObjectPath> GuiAPI::windows(){
@@ -277,6 +307,7 @@ void GuiAPI::redraw(){
         window->unlock();
     }
     m_dirty = false;
+    emit m_repaintNotifier.repainted();
 }
 
 bool GuiAPI::isThisPgId(pid_t valid_pgid){
@@ -300,6 +331,14 @@ void GuiAPI::closeWindows(pid_t pgid){
         if(window->pgid() == pgid){
             window->_close();
         }
+    }
+}
+
+void GuiAPI::waitForLastUpdate(){
+    if(m_dirty){
+        QSignalSpy spy(&m_repaintNotifier, &RepaintNotifier::repainted);
+        // TODO - determine if there is a reasonable max time to wait
+        spy.wait();
     }
 }
 
@@ -358,4 +397,12 @@ void GuiAPI::sortWindows(){
     for(auto window : windows){
         window->setZ(z++);
     }
+}
+
+bool GuiAPI::hasPermission(){
+    pid_t pgid = getSenderPgid();
+    if(dbusService->isChildGroup(pgid)){
+        return true;
+    }
+    return pgid == ::getpgrp();
 }

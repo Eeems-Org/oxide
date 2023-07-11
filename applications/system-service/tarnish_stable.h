@@ -69,8 +69,8 @@
 #include <unistd.h>
 #include <unordered_map>
 #include <zlib.h>
+#include <mxcfb.h>
 
 #include "apibase.h"
-#include "mxcfb.h"
 #include "supplicant.h"
 #endif

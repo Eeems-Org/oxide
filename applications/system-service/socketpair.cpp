@@ -53,14 +53,23 @@ QByteArray SocketPair::read(qint64 maxlen){ return m_allowWriteSocketRead ? m_wr
 
 qint64 SocketPair::bytesAvailable(){ return m_allowWriteSocketRead ? m_writeSocket.bytesAvailable() : 0; }
 
+qint64 SocketPair::_write(const char* data, qint64 size){ return m_writeSocket.write(data, size); }
+
 qint64 SocketPair::write(const char* data, qint64 size){
     if(!m_enabled){
         return 0;
     }
-    return m_writeSocket.write(data, size);
+    return _write(data, size);
 }
 
-qint64 SocketPair::write(QByteArray data){ return write(data.constData(), data.size()); }
+qint64 SocketPair::_write(QByteArray data){ return m_writeSocket.write(data); }
+
+qint64 SocketPair::write(QByteArray data){
+    if(!m_enabled){
+        return 0;
+    }
+    return _write(data);
+}
 
 QString SocketPair::errorString(){
     if(!m_enabled){

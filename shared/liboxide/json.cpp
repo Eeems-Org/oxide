@@ -25,13 +25,13 @@ static bool qIsNumericType(uint tp){
 
 int compareAsString(const QVariant* v1, const QVariant* v2){
     int r = v1->toString().compare(v2->toString(), Qt::CaseInsensitive);
-    if (r == 0) {
+    if(r == 0) {
         return (v1->type() < v2->type()) ? -1 : 1;
     }
     return r;
 }
 int compare(const QVariant* v1, const QVariant* v2){
-    if (qIsNumericType(v1->type()) && qIsNumericType(v2->type())){
+    if(qIsNumericType(v1->type()) && qIsNumericType(v2->type())){
         if(v1 == v2){
             return 0;
         }
@@ -40,7 +40,7 @@ int compare(const QVariant* v1, const QVariant* v2){
         }
         return 1;
     }
-    if ((int)v1->type() >= (int)QMetaType::User) {
+    if((int)v1->type() >= (int)QMetaType::User){
         int result;
         const void* v1d = v1->constData();
         const void* v2d = v2->constData();
@@ -48,7 +48,7 @@ int compare(const QVariant* v1, const QVariant* v2){
             return result;
         }
     }
-    switch (v1->type()){
+    switch(v1->type()){
         case QVariant::Date:
             return v1->toDate() < v2->toDate() ? -1 : 1;
         case QVariant::Time:
@@ -63,26 +63,26 @@ int compare(const QVariant* v1, const QVariant* v2){
 }
 
 bool operator<(const QVariant& lhs, const QVariant& rhs){
-    const QVariant* v1 = &lhs;
-    const QVariant* v2 = &rhs;
+    QVariant v1(lhs);
+    QVariant v2(rhs);
     if(lhs.type() != rhs.type()){
-        if (v2->canConvert(v1->type())) {
-            QVariant converted2 = *v2;
-            if (converted2.convert(v1->type())){
-                v2 = &converted2;
+        if(v2.canConvert(v1.type())){
+            QVariant converted2(v2);
+            if(converted2.convert(v1.type())){
+                v2.swap(converted2);
             }
         }
-        if (v1->type() != v2->type() && v1->canConvert(v2->type())) {
-            QVariant converted1 = *v1;
-            if (converted1.convert(v2->type())){
-                v1 = &converted1;
+        if(v1.type() != v2.type() && v1.canConvert(v2.type())){
+            QVariant converted1(v1);
+            if(converted1.convert(v2.type())){
+                v1.swap(converted1);
             }
         }
-        if (v1->type() != v2->type()) {
-            return compareAsString(v1, v2) < 0;
+        if(v1.type() != v2.type()){
+            return compareAsString(&v1, &v2) < 0;
         }
     }
-    return compare(v1, v2) < 0;
+    return compare(&v1, &v2) < 0;
 }
 
 namespace Oxide::JSON {

@@ -555,6 +555,13 @@ private:
         for(auto key : environment().keys()){
             env.insert(key, environment().value(key, "").toString());
         }
+        if(!flags().contains("nopreload")){
+            // TODO - detect if spaces are the seperator instead
+            // TODO - strip out rm2fb
+            auto preload = environment().value("LD_PRELOAD", "").toString().split(':');
+            preload.prepend("/opt/lib/liboxide_preload.so");
+            env.insert("LD_PRELOAD", preload.join(':'));
+        }
         m_process->setEnvironment(env.toStringList());
     }
     void mkdirs(const QString& path, mode_t mode = 0700){

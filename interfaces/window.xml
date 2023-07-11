@@ -74,5 +74,7 @@
     <method name="setVisible">
       <arg name="visible" type="b" direction="in"/>
     </method>
+    <method name="waitForLastUpdate">
+    </method>
   </interface>
 </node>

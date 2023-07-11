@@ -2,7 +2,9 @@ TEMPLATE = subdirs
 
 SUBDIRS = \
     liboxide \
-    qpa
+    qpa \
+    preload
 
 qpa.depends = liboxide
+preload.depends = liboxide
 INSTALLS += $$SUBDIRS

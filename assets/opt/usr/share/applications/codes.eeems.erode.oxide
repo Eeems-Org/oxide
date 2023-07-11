@@ -4,6 +4,5 @@
     "icon": "oxide:erode-48",
     "splash": "oxide:splash:erode-702",
     "bin": "/opt/bin/erode",
-    "permissioms": ["gui"],
-    "flags": ["nosavescreen", "nomanageinput"]
+    "flags": ["nopreload"]
 }

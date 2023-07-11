@@ -38,12 +38,15 @@ bool stopProcess(pid_t pid){
     return true;
 }
 
+Q_DECLARE_METATYPE(input_event)
+
 int main(int argc, char* argv[]){
     setpgid(0, 0);
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
         O_WARNING("rm2fb not detected. Running xochitl instead!");
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
+    qRegisterMetaType<input_event>();
     deviceSettings.setupQtEnvironment(DeviceSettings::QtEnvironmentType::NoPen);
     QGuiApplication app(argc, argv);
     sentry_init("tarnish", argv);

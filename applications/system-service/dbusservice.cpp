@@ -3,7 +3,6 @@
 DBusService* DBusService::singleton(){
     auto bus = QDBusConnection::systemBus();
     if(instance == nullptr){
-        qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
         qDebug() << "Creating DBusService instance";
         instance = new DBusService(nullptr);
         if(!bus.isConnected()){
@@ -97,6 +96,7 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(){
                     .path = QString(OXIDE_SERVICE_PATH) + "/gui",
                     .dependants = new QStringList(),
                     .instance = new GuiAPI(this),
+                    .security = APISecurity::Open
                 });
             });
         });

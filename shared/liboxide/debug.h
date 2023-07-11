@@ -6,7 +6,6 @@
 #pragma once
 
 #include "liboxide_global.h"
-#include "linux/input.h"
 
 #include <QDebug>
 /*!

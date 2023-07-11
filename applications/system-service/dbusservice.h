@@ -29,10 +29,17 @@
 using namespace std;
 using namespace Oxide::Sentry;
 
+enum APISecurity{
+    Default = 0, // Registered apps require the permission, otherwise it's open
+    Secure, // Only registered apps with permissions can use it
+    Open // Anybody can use it
+};
+
 struct APIEntry {
     QString path;
     QStringList* dependants;
     APIBase* instance;
+    APISecurity security = APISecurity::Default;
 };
 
 class DBusService : public APIBase {
@@ -80,18 +87,50 @@ public:
 
     Q_INVOKABLE void unregisterChild(){ unregisterChild(getSenderPid()); }
 
+    bool isChild(pid_t pid){
+        for(auto child : children){
+            if(child->pid() == pid){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool isChildGroup(pid_t pgid){
+        for(auto child : children){
+            if(child->pgid() == pgid){
+                return true;
+            }
+        }
+        return false;
+    }
+
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message) {
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", ("requestAPI() " + name).toStdString().c_str(), "query");
 #endif
-        if(!hasPermission(name)){
-            return QDBusObjectPath("/");
-        }
         if(!apis.contains(name)){
             return QDBusObjectPath("/");
         }
         auto api = apis[name];
+        switch(api.security){
+            case APISecurity::Default:
+                if(!hasPermission(name)){
+                    return QDBusObjectPath("/");
+                }
+                break;
+            case APISecurity::Secure:
+                if(!hasPermissionStrict(name)){
+                    return QDBusObjectPath("/");
+                }
+                break;
+            case APISecurity::Open:
+                break;
+            default:
+                qWarning() << "Unknown APISecurity" << api.security;
+                return QDBusObjectPath("/");
+        }
         auto bus = QDBusConnection::systemBus();
         if(bus.objectRegisteredAt(api.path) == nullptr){
             bus.registerObject(api.path, api.instance, QDBusConnection::ExportAllContents);

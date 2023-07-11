@@ -11,6 +11,8 @@
 #ifndef LIBOXIDE_DBUS_H
 #define LIBOXIDE_DBUS_H
 
+#include "meta.h"
+
 #include "dbusservice_interface.h"
 #include "powerapi_interface.h"
 #include "wifiapi_interface.h"

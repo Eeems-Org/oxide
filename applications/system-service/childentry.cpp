@@ -10,7 +10,6 @@ ChildEntry::ChildEntry(QObject* parent, pid_t pid, pid_t pgid)
   m_pgid{pgid},
   m_socketPair{true}
 {
-    qRegisterMetaType<QAbstractSocket::SocketState>();
     connect(&m_socketPair, &SocketPair::readyRead, this, &ChildEntry::readSocket);
     auto pidfd = syscall(SYS_pidfd_open, pid, 0);
     if(pidfd == -1){

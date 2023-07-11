@@ -2,8 +2,8 @@
     "displayName": "Startup application",
     "description": "Handles the password screen on resume",
     "bin": "/opt/bin/decay",
-    "flags": ["hidden", "nosavescreen", "nomanageinput"],
+    "flags": ["hidden", "nopreload"],
     "type": "foreground",
     "splash": "oxide:splash:oxide-702",
-    "permissions": ["apps", "power", "system", "wifi", "gui"]
+    "permissions": ["apps", "power", "system", "wifi"]
 }

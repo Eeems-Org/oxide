@@ -61,7 +61,6 @@ struct Touch {
 QDebug operator<<(QDebug debug, const Touch& touch);
 QDebug operator<<(QDebug debug, Touch* touch);
 Q_DECLARE_METATYPE(Touch)
-Q_DECLARE_METATYPE(input_event)
 
 class SystemAPI : public APIBase {
     Q_OBJECT
@@ -198,7 +197,6 @@ public:
                     inhibitPowerOff();
                 });
             });
-            qRegisterMetaType<input_event>();
             Oxide::Sentry::sentry_span(t, "input", "Connect input events", [this]{
                 connect(touchHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
                 connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);

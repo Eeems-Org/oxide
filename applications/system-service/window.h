@@ -31,7 +31,7 @@ public:
         RaisedHidden,
         LoweredHidden
     } WindowState;
-    Window(const QString& identifier, const QString& path, const pid_t& pgid, const QRect& geometry, int z);
+    Window(const QString& identifier, const QString& path, const pid_t& pgid, const QRect& geometry, int z, QImage::Format format);
     ~Window();
 
     void setEnabled(bool enabled);
@@ -62,6 +62,7 @@ public:
     WindowState state();
     void lock();
     void unlock();
+    Q_INVOKABLE void waitForLastUpdate();
 
     bool operator>(Window* other) const;
     bool operator<(Window* other) const;
@@ -108,6 +109,6 @@ private:
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);
-    bool writeEvent(SocketPair* pipe, const input_event& event);
+    bool writeEvent(SocketPair* pipe, const input_event& event, bool force = false);
     void invalidateEventPipes();
 };

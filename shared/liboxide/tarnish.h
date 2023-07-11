@@ -10,7 +10,29 @@
 
 #include <QLocalSocket>
 
+#ifndef SHIM_INPUT_FOR_PRELOAD
 #include <linux/input.h>
+#else
+struct input_event {
+#if (__BITS_PER_LONG != 32 || !defined(__USE_TIME_BITS64)) && !defined(__KERNEL__)
+    struct timeval time;
+#define input_event_sec time.tv_sec
+#define input_event_usec time.tv_usec
+#else
+    __kernel_ulong_t __sec;
+#if defined(__sparc__) && defined(__arch64__)
+    unsigned int __usec;
+#else
+    __kernel_ulong_t __usec;
+#endif
+#define input_event_sec  __sec
+#define input_event_usec __usec
+#endif
+    __u16 type;
+    __u16 code;
+    __s32 value;
+};
+#endif
 #include <epframebuffer.h>
 
 namespace Oxide::Tarnish {
@@ -90,12 +112,12 @@ namespace Oxide::Tarnish {
      * \brief getFrameBuffer
      * \return
      */
-    LIBOXIDE_EXPORT int getFrameBufferFd();
+    LIBOXIDE_EXPORT int getFrameBufferFd(QImage::Format format = DEFAULT_IMAGE_FORMAT);
     /*!
      * \brief frameBuffer
      * \return
      */
-    LIBOXIDE_EXPORT uchar* frameBuffer();
+    LIBOXIDE_EXPORT uchar* frameBuffer(QImage::Format format = DEFAULT_IMAGE_FORMAT);
     /*!
      * \brief lockFrameBuffer
      * \return
@@ -110,7 +132,7 @@ namespace Oxide::Tarnish {
      * \brief frameBuffer
      * \return
      */
-    LIBOXIDE_EXPORT QImage frameBufferImage();
+    LIBOXIDE_EXPORT QImage frameBufferImage(QImage::Format format = DEFAULT_IMAGE_FORMAT);
     /*!
      * \brief getTouchEventPipeFd
      * \return
@@ -151,6 +173,10 @@ namespace Oxide::Tarnish {
      * \param mode
      */
     LIBOXIDE_EXPORT void screenUpdate(QRect rect);
+    /*!
+     * \brief waitForLastUpdate
+     */
+    LIBOXIDE_EXPORT void waitForLastUpdate();
     /*!
      * \brief powerAPI
      * \return

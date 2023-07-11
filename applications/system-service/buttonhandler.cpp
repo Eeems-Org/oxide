@@ -17,20 +17,6 @@ void flush_stream(istream* stream){
     stream->read((char*)&ie, sie);
 }
 void press_button(event_device& evdev, int code, istream* stream){
-    bool manageInput = false;
-    for(auto path : appsAPI->runningApplicationsNoSecurityCheck()){
-        auto app = appsAPI->getApplication(path.value<QDBusObjectPath>());
-        if(app == nullptr){
-            continue;
-        }
-        if(!app->flags().contains("nomanageinput")){
-            manageInput = true;
-            break;
-        }
-    }
-    if(!manageInput){
-        return;
-    }
 #ifdef DEBUG
     qDebug() << "inject button " << code;
 #endif
