@@ -446,7 +446,7 @@ extern "C" {
             qFatal("Failed to connect SIGTERM");
         }
         if(Oxide::Tarnish::getSocket() == nullptr){
-            qFatal("Failed to connec to tarnish");
+            qFatal("Failed to connect to tarnish");
         }
         deviceSettings;
         if(DEBUG_LOGGING){
