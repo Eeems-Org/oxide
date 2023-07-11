@@ -24,6 +24,10 @@ ChildEntry::ChildEntry(QObject* parent, pid_t pid, pid_t pgid)
     connect(&m_process, &QFile::readChannelFinished, this, &ChildEntry::finished);
     m_socketPair.setEnabled(true);
     // TODO - handle communication on m_socketPair
+    // TODO - Allow child to request that tarnish connect with ptrace to avoid touching the
+    //        framebuffer at the same time.
+    //        https://man7.org/linux/man-pages/man2/ptrace.2.html     PTRACE_SEIZE
+    //        https://nullprogram.com/blog/2018/06/23/
 }
 
 ChildEntry::~ChildEntry(){ }

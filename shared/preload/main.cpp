@@ -183,7 +183,14 @@ int open_from_tarnish(const char* pathname){
     }
 }
 
+static ssize_t (*func_write)(int, const void*, size_t);
+
 extern "C" {
+    void __attribute__ ((constructor)) init(void);
+    void init(void){
+        func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");
+    }
+
 //    __attribute__((visibility("default")))
 //    void _ZN6QImageC1EiiNS_6FormatE(void* that, int x, int y, int f){
 //        static bool FIRST_ALLOC = true;
@@ -227,8 +234,8 @@ extern "C" {
         }
         int fd = open_from_tarnish(pathname);
         if(fd == -2){
-            static const auto func_open = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open64");
-            fd = func_open(pathname, flags, mode);
+            static const auto func_open64 = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open64");
+            fd = func_open64(pathname, flags, mode);
         }
         if(DEBUG_LOGGING){
             printf("opened ");
@@ -258,8 +265,8 @@ extern "C" {
             fd = open_from_tarnish(QString("%1/%2").arg(path, pathname).toStdString().c_str());
         }
         if(fd == -2){
-            static const auto func_open = (int(*)(int, const char*, int, mode_t))dlsym(RTLD_NEXT, "openat");
-            fd = func_open(dirfd, pathname, flags, mode);
+            static const auto func_openat = (int(*)(int, const char*, int, mode_t))dlsym(RTLD_NEXT, "openat");
+            fd = func_openat(dirfd, pathname, flags, mode);
         }
         if(DEBUG_LOGGING){
             printf("opened ");
@@ -336,8 +343,40 @@ extern "C" {
                 return key_ioctl(request, ptr);
             }
         }
-        static auto func_ioctl = (int(*)(int, unsigned long request, ...))dlsym(RTLD_NEXT, "ioctl");
+        static auto func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
         return func_ioctl(fd, request, ptr);
+    }
+
+    __attribute__((visibility("default")))
+    ssize_t write(int fd, const void* buf, size_t n){
+        if(DEBUG_LOGGING){
+            printf("write ");
+            printf(std::to_string(fd).c_str());
+            printf(" ");
+            printf(std::to_string(n).c_str());
+            printf("\n");
+        }
+        if(IS_INITIALIZED){
+            if(fbFd != -1 && fd == fbFd){
+                Oxide::Tarnish::lockFrameBuffer();
+                auto res = func_write(fd, buf, n);
+                Oxide::Tarnish::unlockFrameBuffer();
+                return res;
+            }
+            if(touchFd != -1 && fd == touchFd){
+                errno = EBADF;
+                return -1;
+            }
+            if(tabletFd != -1 && fd == tabletFd){
+                errno = EBADF;
+                return -1;
+            }
+            if(keyFd != -1 && fd == keyFd){
+                errno = EBADF;
+                return -1;
+            }
+        }
+        return func_write(fd, buf, n);
     }
 
     __attribute__((visibility("default")))
