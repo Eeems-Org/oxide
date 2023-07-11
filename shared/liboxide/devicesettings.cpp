@@ -175,15 +175,7 @@ namespace Oxide {
             .maximum;
         return _touchPressure;
     }
-    bool DeviceSettings::supportsMultiTouch() const{
-        auto path = getTouchDevicePath();
-        if(QString::fromLatin1(path).isEmpty()){
-            return false;
-        }
-        return 1 < event_device(path, O_RDONLY)
-            .abs_info(ABS_MT_SLOT)
-            .maximum;
-    }
+    bool DeviceSettings::supportsMultiTouch() const{ return getTouchSlots() > 1; }
     bool DeviceSettings::isTouchTypeB() const{
         switch(getDeviceType()) {
             case DeviceType::RM1:
@@ -192,6 +184,20 @@ namespace Oxide {
             default:
                 return false;
         }
+    }
+    static int _touchSlots = -1;
+    int DeviceSettings::getTouchSlots() const{
+        if(_touchSlots != -1){
+            return _touchSlots;
+        }
+        auto path = getTouchDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return false;
+        }
+        _touchSlots = event_device(path, O_RDONLY)
+            .abs_info(ABS_MT_SLOT)
+            .maximum;
+        return _touchSlots;
     }
 
     static int _wacomWidth = -1;

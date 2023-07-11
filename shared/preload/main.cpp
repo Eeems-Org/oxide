@@ -6,12 +6,17 @@
 #include <mxcfb.h>
 #include <dlfcn.h>
 #include <linux/fb.h>
-#include <linux/ioctl.h>
+#include <asm/fcntl.h>
 #include <asm/ioctl.h>
 #include <liboxide/meta.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
 #include <liboxide/tarnish.h>
+
+// Don't import <linux/input.h> to avoid conflicting declarations
+#define EVIOCGRAB       _IOW('E', 0x90, int)			/* Grab/Release device */
+#define EVIOCREVOKE     _IOW('E', 0x91, int)			/* Revoke device access */
+#define EVIOCGNAME(len) _IOC(_IOC_READ, 'E', 0x06, len)	/* get device name */
 
 class ClockWatch {
 public:
@@ -34,6 +39,9 @@ static int fbFd = -1;
 static int touchFd = -1;
 static int tabletFd = -1;
 static int keyFd = -1;
+static ssize_t(*func_write)(int, const void*, size_t);
+static int(*func_open)(const char*, int, mode_t);
+static int(*func_ioctl)(int, unsigned long, ...);
 
 void __sigacton__handler(int signo, siginfo_t* info, void* context){
     Q_UNUSED(info)
@@ -53,6 +61,11 @@ int fb_ioctl(unsigned long request, char* ptr){
             }
             mxcfb_update_data* update = reinterpret_cast<mxcfb_update_data*>(ptr);
             auto region = update->update_region;
+            // TODO - Add support for recommending these
+            //update->update_mode;
+            //update->dither_mode;
+            //update->temp;
+            //update->update_marker;
             Oxide::Tarnish::screenUpdate(QRect(region.top, region.left, region.width, region.height), (EPFrameBuffer::WaveformMode)update->waveform_mode);
             return 0;
         }
@@ -61,9 +74,6 @@ int fb_ioctl(unsigned long request, char* ptr){
                 qDebug() << "ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE";
             }
             ClockWatch cz;
-            if(DEBUG_LOGGING){
-                qDebug() << "CLIENT: sync";
-            }
             Oxide::Tarnish::waitForLastUpdate();
             if(DEBUG_LOGGING){
                 qDebug() << "FINISHED WAIT IOCTL " << cz.elapsed();
@@ -140,26 +150,63 @@ int fb_ioctl(unsigned long request, char* ptr){
 }
 
 int touch_ioctl(unsigned long request, char* ptr){
-    Q_UNUSED(ptr)
+    static auto func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
     switch(request){
+        case EVIOCGNAME(sizeof(char[256])):{
+            if(DEBUG_LOGGING){
+                qDebug() << "ioctl touch EVIOCGNAME";
+            }
+            int fd = func_open(deviceSettings.getTouchDevicePath(), O_RDONLY, 0);
+            if(fd != -1){
+                return func_ioctl(fd, request, ptr);
+            }
+            qDebug() << "Failed to open touch device for ioctl:" << strerror(errno);
+            return -1;
+        }
+        case EVIOCGRAB: return 0;
+        case EVIOCREVOKE: return 0;
         default:
-            qDebug() << "UNHANDLED TOUCH IOCTL " <<  _IOC_DIR(request) << (char)_IOC_TYPE(request) << QString::number(_IOC_NR(request), 16) << _IOC_SIZE(request) << request;
+            qDebug() << "UNHANDLED TOUCH IOCTL " << _IOC_DIR(request) << (char)_IOC_TYPE(request) << QString::number(_IOC_NR(request), 16) << _IOC_SIZE(request) << request;
             return -1;
     }
 }
 
 int tablet_ioctl(unsigned long request, char* ptr){
-    Q_UNUSED(ptr)
     switch(request){
+        case EVIOCGNAME(sizeof(char[256])):{
+            if(DEBUG_LOGGING){
+                qDebug() << "ioctl tablet EVIOCGNAME";
+            }
+            int fd = func_open(deviceSettings.getWacomDevicePath(), O_RDONLY, 0);
+            if(fd != -1){
+                return func_ioctl(fd, request, ptr);
+            }
+            qDebug() << "Failed to open wacom device for ioctl:" << strerror(errno);
+            return -1;
+        }
+        case EVIOCGRAB: return 0;
+        case EVIOCREVOKE: return 0;
         default:
-            qDebug() << "UNHANDLED TABLET IOCTL " <<  _IOC_DIR(request) << (char)_IOC_TYPE(request) << QString::number(_IOC_NR(request), 16) << _IOC_SIZE(request) << request;
+            qDebug() << "UNHANDLED TABLET IOCTL " << _IOC_DIR(request) << (char)_IOC_TYPE(request) << QString::number(_IOC_NR(request), 16) << _IOC_SIZE(request) << request;
             return -1;
     }
 }
 
 int key_ioctl(unsigned long request, char* ptr){
-    Q_UNUSED(ptr)
     switch(request){
+        case EVIOCGNAME(sizeof(char[256])):{
+            if(DEBUG_LOGGING){
+                qDebug() << "ioctl key EVIOCGNAME";
+            }
+            int fd = func_open(deviceSettings.getButtonsDevicePath(), O_RDONLY, 0);
+            if(fd != -1){
+                return func_ioctl(fd, request, ptr);
+            }
+            qDebug() << "Failed to open key device for ioctl:" << strerror(errno);
+            return -1;
+        }
+        case EVIOCGRAB: return 0;
+        case EVIOCREVOKE: return 0;
         default:
             qDebug() << "UNHANDLED KEY IOCTL " << request;
             return -1;
@@ -183,12 +230,12 @@ int open_from_tarnish(const char* pathname){
     }
 }
 
-static ssize_t (*func_write)(int, const void*, size_t);
-
 extern "C" {
     void __attribute__ ((constructor)) init(void);
     void init(void){
         func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");
+        func_open = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open");
+        func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
     }
 
 //    __attribute__((visibility("default")))
@@ -287,7 +334,6 @@ extern "C" {
         }
         int fd = open_from_tarnish(pathname);
         if(fd == -2){
-            static const auto func_open = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open");
             fd = func_open(pathname, flags, mode);
         }
         if(DEBUG_LOGGING){
@@ -343,7 +389,6 @@ extern "C" {
                 return key_ioctl(request, ptr);
             }
         }
-        static auto func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
         return func_ioctl(fd, request, ptr);
     }
 

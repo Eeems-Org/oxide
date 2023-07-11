@@ -242,6 +242,7 @@ void GuiAPI::redraw(){
             continue;
         }
         repaintRegion += rect;
+        // TODO - have way to do per-region waveform updates instead of just grouping them all with the largest
         if(item.waveform > waveform){
             waveform = item.waveform;
         }
@@ -279,7 +280,7 @@ void GuiAPI::redraw(){
         for(auto window : visibleWindows){
             const QRect windowRect = window->_geometry().translated(-screenOffset);
             const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
-            O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << rect << windowIntersect);
+            O_DEBUG(__PRETTY_FUNCTION__ << window->identifier() << rect << windowIntersect);
             // TODO - See if there is a way to detect if there is just transparency in the region
             //        and don't mark this as repainted.
             painter.drawImage(rect, window->toImage(), windowIntersect);
@@ -293,7 +294,6 @@ void GuiAPI::redraw(){
         //        Maybe hash the data before and compare after? https://doc.qt.io/qt-5/qcryptographichash.html
         if(waveform == EPFrameBuffer::Initialize){
             waveform = EPFrameBuffer::Mono;
-            // TODO - have way to do per-region waveform updates instead of just grouping them all with the largest
             // TODO - profile if it makes sense to do this instead of just picking one to always use
             for(int x = rect.left(); x < rect.right(); x++){
                 for(int y = rect.top(); y < rect.bottom(); y++){
@@ -313,6 +313,7 @@ void GuiAPI::redraw(){
         auto mode =  rect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
         EPFrameBuffer::sendUpdate(rect, waveform, mode);
     }
+    EPFrameBuffer::waitForLastUpdate();
     for(auto window : visibleWindows){
         window->unlock();
     }

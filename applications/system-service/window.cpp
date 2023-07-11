@@ -495,18 +495,78 @@ void Window::invalidateEventPipes(){
     if(gettimeofday(&time, NULL) == -1){
         _W_WARNING("Failed to get time of day:" << strerror(errno));
     }
+    // Invalidate anything in transmission
     writeEvent(&m_touchEventPipe, input_event{
         .time = time,
         .type = EV_SYN,
         .code = SYN_DROPPED,
         .value = 0,
     }, true);
+    // End the invalid event so we can insert our own
+    writeEvent(&m_touchEventPipe, input_event{
+        .time = time,
+        .type = EV_SYN,
+        .code = SYN_REPORT,
+        .value = 0,
+    }, true);
+    // Release all touch slots
+    for(auto i = 0; i < deviceSettings.getTouchSlots(); i++){
+        writeEvent(&m_touchEventPipe, input_event{
+            .time = time,
+            .type = EV_ABS,
+            .code = ABS_MT_SLOT,
+            .value = i,
+        }, true);
+        writeEvent(&m_touchEventPipe, input_event{
+            .time = time,
+            .type = EV_SYN,
+            .code = SYN_MT_REPORT,
+            .value = 0,
+        }, true);
+    }
+    writeEvent(&m_touchEventPipe, input_event{
+        .time = time,
+        .type = EV_SYN,
+        .code = SYN_REPORT,
+        .value = 0,
+    }, true);
+    // Invalidate anything still in transmission
+    writeEvent(&m_touchEventPipe, input_event{
+        .time = time,
+        .type = EV_SYN,
+        .code = SYN_DROPPED,
+        .value = 0,
+    }, true);
+
+    // Invalidate anything in transmission
     writeEvent(&m_tabletEventPipe, input_event{
         .time = time,
         .type = EV_SYN,
         .code = SYN_DROPPED,
         .value = 0,
     }, true);
+    // End the invalid event so we can insert our own
+    writeEvent(&m_tabletEventPipe, input_event{
+        .time = time,
+        .type = EV_SYN,
+        .code = SYN_REPORT,
+        .value = 0,
+    }, true);
+    // Release pen touch
+    writeEvent(&m_tabletEventPipe, input_event{
+        .time = time,
+        .type = EV_KEY,
+        .code = BTN_TOOL_PEN,
+        .value = 0,
+    }, true);
+    // Invalidate anything still in transmission
+    writeEvent(&m_tabletEventPipe, input_event{
+        .time = time,
+        .type = EV_SYN,
+        .code = SYN_DROPPED,
+        .value = 0,
+    }, true);
+    // Invalidate anything still in transmission
     writeEvent(&m_keyEventPipe, input_event{
         .time = time,
         .type = EV_SYN,

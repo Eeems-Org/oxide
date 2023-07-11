@@ -1,5 +1,6 @@
 #pragma once
 #include <QMap>
+#include <epframebuffer.h>
 
 #include "apibase.h"
 #include "window.h"

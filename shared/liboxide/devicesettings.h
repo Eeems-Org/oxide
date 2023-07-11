@@ -96,6 +96,11 @@ namespace Oxide{
          */
         bool isTouchTypeB() const;
         /*!
+         * \brief getTouchSlots
+         * \return
+         */
+        int getTouchSlots() const;
+        /*!
          * \brief getWacomWidth
          * \return
          */
