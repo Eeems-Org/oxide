@@ -190,7 +190,7 @@ void Window::setVisible(bool visible){
     }
     emit stateChanged(m_state);
     if(wasVisible != _isVisible()){
-        emit dirty(m_geometry);
+        emit dirty(m_geometry, EPFrameBuffer::Initialize);
     }
 }
 
@@ -321,7 +321,7 @@ void Window::move(int x, int y){
     }
 }
 
-void Window::repaint(QRect region){
+void Window::repaint(QRect region, int waveform){
     if(!hasPermissions()){
         W_DENIED();
         return;
@@ -329,11 +329,11 @@ void Window::repaint(QRect region){
     W_ALLOWED();
     if(_isVisible()){
         invalidateEventPipes();
-        emit dirty(region);
+        emit dirty(region, (EPFrameBuffer::WaveformMode)waveform);
     }
 }
 
-void Window::repaint(){ repaint(m_geometry); }
+void Window::repaint(int waveform){ repaint(m_geometry, waveform); }
 
 void Window::raise(){
     if(!hasPermissions()){

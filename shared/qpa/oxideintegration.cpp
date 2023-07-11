@@ -120,8 +120,8 @@ void OxideIntegration::initialize(){
         tabletData->processInputEvent(&event);
     });
     // Setup key event handling
-    auto keyPipeFd = QFdContainer(Oxide::Tarnish::getKeyEventPipeFd());
-    auto keyHandler = new QEvdevKeyboardHandler("oxide", keyPipeFd, false, false, "");
+    QFdContainer keyHandlerFd(Oxide::Tarnish::getKeyEventPipeFd());
+    auto keyHandler = new QEvdevKeyboardHandler("oxide", keyHandlerFd, false, false, "");
     QObject::connect(Oxide::Tarnish::topWindow(), &codes::eeems::oxide1::Window::closed, [=]{ delete keyHandler; });
 }
 

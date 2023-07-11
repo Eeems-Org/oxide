@@ -101,16 +101,18 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
         auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
         m_repaintList.append(Repaint{
             .window = nullptr,
-            .region = region
+            .region = region,
+            .waveform = EPFrameBuffer::Initialize
         });
         window->setEnabled(false);
         window->deleteLater();
         scheduleUpdate();
     });
-    connect(window, &Window::dirty, this, [=](const QRect& region){
+    connect(window, &Window::dirty, this, [=](const QRect& region, EPFrameBuffer::WaveformMode waveform){
         m_repaintList.append(Repaint{
             .window = window,
-            .region = region
+            .region = region,
+            .waveform = waveform
         });
         scheduleUpdate();
     });
@@ -218,6 +220,7 @@ void GuiAPI::redraw(){
     const QPoint screenOffset = m_screenGeometry.topLeft();
     const QRect screenRect = m_screenGeometry.translated(-screenOffset);
     QRegion repaintRegion;
+    auto waveform = EPFrameBuffer::Initialize;
     while(!m_repaintList.isEmpty()){
         auto item = m_repaintList.takeFirst();
         auto window = item.window;
@@ -239,6 +242,9 @@ void GuiAPI::redraw(){
             continue;
         }
         repaintRegion += rect;
+        if(item.waveform > waveform){
+            waveform = item.waveform;
+        }
     }
     // Get windows in order of Z sort order, and filter out invalid windows
     auto visibleWindows = sortedWindows();
@@ -284,20 +290,24 @@ void GuiAPI::redraw(){
     // Send updates for all the repainted regions
     for(auto rect : repaintedRegion){
         // TODO - detect if there was no change to the repainted region and skip, maybe compare against previous window states?
-        // TODO - profile if it makes sense to do this instead of just picking one to always use
-        auto waveform = EPFrameBuffer::Mono;
-        for(int x = rect.left(); x < rect.right(); x++){
-            for(int y = rect.top(); y < rect.bottom(); y++){
-                auto color = frameBuffer->pixelColor(x, y);
-                if(color == Qt::white || color == Qt::black || color == Qt::transparent){
-                    continue;
+        //        Maybe hash the data before and compare after? https://doc.qt.io/qt-5/qcryptographichash.html
+        if(waveform == EPFrameBuffer::Initialize){
+            waveform = EPFrameBuffer::Mono;
+            // TODO - have way to do per-region waveform updates instead of just grouping them all with the largest
+            // TODO - profile if it makes sense to do this instead of just picking one to always use
+            for(int x = rect.left(); x < rect.right(); x++){
+                for(int y = rect.top(); y < rect.bottom(); y++){
+                    auto color = frameBuffer->pixelColor(x, y);
+                    if(color == Qt::white || color == Qt::black || color == Qt::transparent){
+                        continue;
+                    }
+                    if(color == Qt::gray){
+                        waveform = EPFrameBuffer::Grayscale;
+                        continue;
+                    }
+                    waveform = EPFrameBuffer::HighQualityGrayscale;
+                    break;
                 }
-                if(color == Qt::gray){
-                    waveform = EPFrameBuffer::Grayscale;
-                    continue;
-                }
-                waveform = EPFrameBuffer::HighQualityGrayscale;
-                break;
             }
         }
         auto mode =  rect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;

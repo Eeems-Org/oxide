@@ -574,7 +574,8 @@ namespace Oxide::Tarnish {
         return &keyEventFile;
     }
 
-    void screenUpdate(){
+
+    void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode waveform){
         if(fbData == nullptr){
             return;
         }
@@ -582,10 +583,10 @@ namespace Oxide::Tarnish {
             O_WARNING(__PRETTY_FUNCTION__ << "Failed to sync:" << strerror(errno))
             return;
         }
-        window->repaint();
+        window->repaint(rect, waveform);
     }
 
-    void screenUpdate(QRect rect){
+    void screenUpdate(EPFrameBuffer::WaveformMode waveform){
         if(fbData == nullptr){
             return;
         }
@@ -593,7 +594,7 @@ namespace Oxide::Tarnish {
             O_WARNING(__PRETTY_FUNCTION__ << "Failed to sync:" << strerror(errno))
             return;
         }
-        window->repaint(rect);
+        window->repaint(waveform);
     }
 
     void waitForLastUpdate(){

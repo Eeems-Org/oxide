@@ -74,7 +74,10 @@ public:
 
     ICommand(bool allowEmpty);
     virtual int arguments(){ return EXIT_FAILURE; }
-    virtual int command(const QStringList& args){ return EXIT_FAILURE; }
+    virtual int command(const QStringList& args){
+        Q_UNUSED(args)
+        return EXIT_FAILURE;
+    }
 
 protected:
     bool allowEmpty = false;

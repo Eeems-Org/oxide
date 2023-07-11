@@ -59,6 +59,7 @@ private:
     struct Repaint {
         Window* window;
         QRect region;
+        EPFrameBuffer::WaveformMode waveform;
     };
     QList<Repaint> m_repaintList;
     QRect m_screenGeometry;

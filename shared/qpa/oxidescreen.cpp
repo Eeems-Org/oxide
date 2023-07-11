@@ -102,7 +102,22 @@ void OxideScreen::redraw(){
     Oxide::Tarnish::unlockFrameBuffer();
     for(auto rect : repaintedRegion){
         // TODO - detect if there was no change to the repainted region and skip
-        Oxide::Tarnish::screenUpdate(rect);
+        auto waveform = EPFrameBuffer::Mono;
+        for(int x = rect.left(); x < rect.right(); x++){
+            for(int y = rect.top(); y < rect.bottom(); y++){
+                auto color = frameBuffer.pixelColor(x, y);
+                if(color == Qt::white || color == Qt::black || color == Qt::transparent){
+                    continue;
+                }
+                if(color == Qt::gray){
+                    waveform = EPFrameBuffer::Grayscale;
+                    continue;
+                }
+                waveform = EPFrameBuffer::HighQualityGrayscale;
+                break;
+            }
+        }
+        Oxide::Tarnish::screenUpdate(rect, waveform);
     }
     mRepaintRegion = QRegion();
 }

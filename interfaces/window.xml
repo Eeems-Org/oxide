@@ -40,10 +40,6 @@
     <signal name="formatChanged">
       <arg type="i" direction="out"/>
     </signal>
-    <signal name="dirty">
-      <arg name="region" type="(iiii)" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QRect"/>
-    </signal>
     <signal name="zChanged">
       <arg type="i" direction="out"/>
     </signal>
@@ -59,6 +55,14 @@
     <method name="repaint">
       <arg name="region" type="(iiii)" direction="in"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QRect"/>
+      <arg name="waveform" type="i" direction="in"/>
+    </method>
+    <method name="repaint">
+      <arg name="region" type="(iiii)" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QRect"/>
+    </method>
+    <method name="repaint">
+      <arg name="waveform" type="i" direction="in"/>
     </method>
     <method name="repaint">
     </method>

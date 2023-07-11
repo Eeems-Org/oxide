@@ -165,14 +165,15 @@ namespace Oxide::Tarnish {
     LIBOXIDE_EXPORT InputEventSocket* getKeyEventPipe();
     /*!
      * \brief screenUpdate
+     * \param waveform
      */
-    LIBOXIDE_EXPORT void screenUpdate();
+    LIBOXIDE_EXPORT void screenUpdate(EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Mono);
     /*!
      * \brief screenUpdate
      * \param rect
-     * \param mode
+     * \param waveform
      */
-    LIBOXIDE_EXPORT void screenUpdate(QRect rect);
+    LIBOXIDE_EXPORT void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Mono);
     /*!
      * \brief waitForLastUpdate
      */

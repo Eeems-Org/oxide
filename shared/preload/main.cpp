@@ -53,7 +53,7 @@ int fb_ioctl(unsigned long request, char* ptr){
             }
             mxcfb_update_data* update = reinterpret_cast<mxcfb_update_data*>(ptr);
             auto region = update->update_region;
-            Oxide::Tarnish::screenUpdate(QRect(region.top, region.left, region.width, region.height));
+            Oxide::Tarnish::screenUpdate(QRect(region.top, region.left, region.width, region.height), (EPFrameBuffer::WaveformMode)update->waveform_mode);
             return 0;
         }
         case MXCFB_WAIT_FOR_UPDATE_COMPLETE:{
