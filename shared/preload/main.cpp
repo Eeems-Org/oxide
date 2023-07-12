@@ -118,13 +118,49 @@ void __printf(char const* file, int line, char const* func, int priority, Args..
 #define _INFO(...) _PRINTF(LOG_INFO, __VA_ARGS__)
 #define _CRIT(...) _PRINTF(LOG_CRIT, __VA_ARGS__)
 
+static struct sigaction int_action;
+static struct sigaction term_action;
+static struct sigaction segv_action;
 void __sigacton__handler(int signo, siginfo_t* info, void* context){
     Q_UNUSED(info)
     Q_UNUSED(context)
+    switch(signo){
+        case SIGSEGV:
+            sigaction(signo, &segv_action, NULL);
+            break;
+        case SIGTERM:
+            sigaction(signo, &term_action, NULL);
+            break;
+        case SIGINT:
+            sigaction(signo, &int_action, NULL);
+            break;
+        default:
+            signal(signo, SIG_DFL);
+    }
     _DEBUG("Signal", strsignal(signo), "recieved.");
     Oxide::Tarnish::disconnect();
     QCoreApplication::processEvents(QEventLoop::AllEvents);
     raise(signo);
+}
+
+bool __sigaction_connect(int signo){
+    switch(signo){
+        case SIGSEGV:
+            sigaction(signo, NULL, &segv_action);
+            break;
+        case SIGTERM:
+            sigaction(signo, NULL, &term_action);
+            break;
+        case SIGINT:
+            sigaction(signo, NULL, &int_action);
+            break;
+        default:
+            return false;
+    }
+    struct sigaction action;
+    action.sa_flags = SA_SIGINFO | SA_RESETHAND;
+    action.sa_sigaction = &__sigacton__handler;
+    return sigaction(signo, &action, NULL) != -1;
 }
 
 int fb_ioctl(unsigned long request, char* ptr){
@@ -532,25 +568,22 @@ extern "C" {
     static void _libhook_init() __attribute__((constructor));
     static void _libhook_init(){
         DEBUG_LOGGING = qEnvironmentVariableIsSet("OXIDE_PRELOAD_DEBUG");
-        struct sigaction action;
-        action.sa_flags = SA_SIGINFO | SA_RESETHAND;
-        action.sa_sigaction = &__sigacton__handler;
-        if(sigaction(SIGSEGV, &action, NULL) == -1){
+        if(!__sigaction_connect(SIGSEGV)){
+            _CRIT("Failed to connect SIGSEGV:", strerror(errno));
             FAILED_INIT = true;
             DEBUG_LOGGING = true;
-            _CRIT("Failed to connect SIGSEGV");
             return;
         }
-        if(sigaction(SIGINT, &action, NULL) == -1){
+        if(!__sigaction_connect(SIGINT)){
+            _CRIT("Failed to connect SIGINT:", strerror(errno));
             FAILED_INIT = true;
             DEBUG_LOGGING = true;
-            _CRIT("Failed to connect SIGINT");
             return;
         }
-        if(sigaction(SIGTERM, &action, NULL) == -1){
+        if(!__sigaction_connect(SIGTERM)){
+            _CRIT("Failed to connect SIGTERM:", strerror(errno));
             FAILED_INIT = true;
             DEBUG_LOGGING = true;
-            _CRIT("Failed to connect SIGTERM");
             return;
         }
         auto pgid = getpgrp();
