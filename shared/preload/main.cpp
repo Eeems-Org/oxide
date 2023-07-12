@@ -111,7 +111,18 @@ void __printf(char const* file, int line, char const* func, int priority, Args..
         default:
             level = "Debug";
     }
-    fprintf(stderr, "%s: %s (%s:%u, %s)\n", level.c_str(), msg.toStdString().c_str(), file, line, func);
+    fprintf(
+        stderr,
+        "[%i %i %s] %s: %s (%s:%u, %s)\n",
+        getpid(),
+        getpgrp(),
+        appName().toStdString().c_str(),
+        level.c_str(),
+        msg.toStdString().c_str(),
+        file,
+        line,
+        func
+    );
 }
 #define _PRINTF(priority, ...) __printf("shared/preload/main.cpp", __LINE__, __PRETTY_FUNCTION__, priority, __VA_ARGS__)
 #define _DEBUG(...) _PRINTF(LOG_DEBUG, __VA_ARGS__)
