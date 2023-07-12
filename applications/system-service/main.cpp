@@ -41,6 +41,7 @@ bool stopProcess(pid_t pid){
 Q_DECLARE_METATYPE(input_event)
 
 int main(int argc, char* argv[]){
+    sd_notify(0, "STATUS=initializing");
     setpgid(0, 0);
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
         O_WARNING("rm2fb not detected. Running xochitl instead!");
@@ -108,44 +109,24 @@ int main(int argc, char* argv[]){
             return EXIT_FAILURE;
         }
     }
-    QObject::connect(&app, &QGuiApplication::aboutToQuit, &app, [lock]{
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, [lock]{
         qDebug() << "Releasing lock " << lockPath;
         Oxide::releaseLock(lock, lockPath);
-    }, Qt::QueuedConnection);
-
+    });
     QFile pidFile(pidPath);
-    if(!pidFile.open(QFile::ReadWrite)){
+    if(pidFile.open(QFile::ReadWrite)){
+        pidFile.seek(0);
+        pidFile.write(actualPid.toUtf8());
+        pidFile.close();
+        QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
+            qDebug() << "Deleting" << pidPath;
+            remove(pidPath);
+        });
+    }else{
         qWarning() << "Unable to create " << pidPath;
-        return app.exec();
     }
-    pidFile.seek(0);
-    pidFile.write(actualPid.toUtf8());
-    pidFile.close();
-    QObject::connect(&app, &QGuiApplication::aboutToQuit, &app, []{
-        qDebug() << "Deleting" << pidPath;
-        remove(pidPath);
-    }, Qt::QueuedConnection);
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, []{ sd_notify(0, "STATUS=stopped"); });
     QObject::connect(signalHandler, &SignalHandler::sigInt, dbusService, &DBusService::shutdown);
     QObject::connect(signalHandler, &SignalHandler::sigTerm, dbusService, &DBusService::shutdown);
-    uint64_t time;
-    int res = sd_watchdog_enabled(0, &time);
-    if(res > 0){
-        sd_notify(0, "READY=1");
-        QTimer watchdog(qApp);
-        watchdog.setSingleShot(false);
-        watchdog.setTimerType(Qt::PreciseTimer);
-        // Send at the recommended rate of half the interval allowed
-        watchdog.setInterval((time / 2) * 1000); // convert to milliseconds
-        QObject::connect(&watchdog, &QTimer::timeout, qApp, []{
-            O_DEBUG("Watchdog keepalive");
-            sd_notify(0, "WATCHDOG=1");
-        });
-        watchdog.start();
-        qInfo() << "Watchdog timer running";
-    }else if(res < 0){
-        qWarning() << "Failed to detect if watchdog timer is expected:" << strerror(-res);
-    }else{
-        qInfo() << "No watchdog timer required";
-    }
     return app.exec();
 }

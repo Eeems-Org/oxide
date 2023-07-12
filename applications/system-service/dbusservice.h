@@ -12,6 +12,7 @@
 #include <QLocalServer>
 #include <fstream>
 #include <liboxide.h>
+#include <systemd/sd-daemon.h>
 
 #include "powerapi.h"
 #include "wifiapi.h"
@@ -179,6 +180,13 @@ signals:
     void apiAvailable(QDBusObjectPath api);
     void apiUnavailable(QDBusObjectPath api);
     void aboutToQuit();
+protected:
+    void timerEvent(QTimerEvent* event) override{
+        if(event->timerId() == watchdogTimer){
+            O_DEBUG("Watchdog keepalive sent");
+            sd_notify(0, "WATCHDOG=1");
+        }
+    }
 
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){
@@ -204,6 +212,7 @@ private slots:
 private:
     QMap<QString, APIEntry> apis;
     QList<ChildEntry*> children;
+    int watchdogTimer;
     void unregisterChild(pid_t pid){
         O_DEBUG("unregisterCHild" << pid << "requested");
         QMutableListIterator<ChildEntry*> i(children);

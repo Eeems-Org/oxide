@@ -548,36 +548,6 @@ extern "C" {
         return orig_fn(name, val);
     }
 
-//    typedef uint32_t (*NotifyFunc)(void*, void*);
-
-//    NotifyFunc f_notify = 0;
-
-//    void new_update_int4(void* arg, int x1, int y1, int x2, int y2, int waveform, int flags) {
-//        if(DEBUG_LOGGING){
-//            qDebug() << "UPDATE HOOK CALLED" << Qt::endl
-//                << "x " << x1 << " " << x2 << Qt::endl
-//                << "y " << y1 << " " << y2 << Qt::endl
-//                << "wav " << waveform << " flags " << flags;
-//        }
-//        // TODO - Allow requesting a specific waveform
-//        Oxide::Tarnish::screenUpdate(QRect(QPoint(x1, y1), QPoint(x2, y2)));
-//        if(f_notify != 0){
-//            QRect someRect(x1, y1, x2-x1, y2-y1);
-//            f_notify(arg, &someRect);
-//        }
-//    }
-
-//    void new_update_QRect(void* arg, QRect& rect, int waveform, bool flags) {
-//        new_update_int4(
-//            arg,
-//            rect.x(), rect.y(),
-//            rect.x() + rect.width(),
-//            rect.y() + rect.height(),
-//            waveform,
-//            flags
-//        );
-//    }
-
     void __attribute__ ((constructor)) init(void);
     void init(void){
         func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");

@@ -1,5 +1,7 @@
 #include "dbusservice.h"
 
+using namespace std::chrono;
+
 DBusService* DBusService::singleton(){
     auto bus = QDBusConnection::systemBus();
     if(instance == nullptr){
@@ -35,8 +37,11 @@ DBusService* DBusService::singleton(){
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", "startup", "navigation");
 #endif
+        sd_notify(0, "STATUS=startup");
         guiAPI->startup();
         appsAPI->startup();
+        sd_notify(0, "STATUS=running");
+        sd_notify(0, "READY=1");
     }
     return instance;
 }
@@ -47,6 +52,32 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(){
     sentry_breadcrumb("dbusservice", "Initializing APIs", "info");
 #endif
     Oxide::Sentry::sentry_transaction("dbus", "init", [this](Oxide::Sentry::Transaction* t){
+        uint64_t time;
+        int res = sd_watchdog_enabled(0, &time);
+        if(res > 0){
+            auto usec = microseconds(time);
+            auto hrs = duration_cast<hours>(usec);
+            auto mins = duration_cast<minutes>(usec - hrs);
+            auto secs = duration_cast<seconds>(usec - hrs - mins);
+            auto ms = duration_cast<milliseconds>(usec - hrs - mins - secs);
+            qInfo() << "Watchdog notification expected every" << QString("%1:%2:%3.%4").arg(hrs.count()).arg(mins.count()).arg(secs.count()).arg(ms.count());
+            usec = usec / 2;
+            hrs = duration_cast<hours>(usec);
+            mins = duration_cast<minutes>(usec - hrs);
+            secs = duration_cast<seconds>(usec - hrs - mins);
+            ms = duration_cast<milliseconds>(usec - hrs - mins - secs);
+            qInfo() << "Watchdog scheduled for every " << QString("%1:%2:%3.%4").arg(hrs.count()).arg(mins.count()).arg(secs.count()).arg(ms.count());
+            watchdogTimer = startTimer(duration_cast<milliseconds>(usec).count(), Qt::PreciseTimer);
+            if(watchdogTimer == 0){
+                qCritical() << "Watchdog timer failed to start";
+            }else{
+                qInfo() << "Watchdog timer running";
+            }
+        }else if(res < 0){
+            qWarning() << "Failed to detect if watchdog timer is expected:" << strerror(-res);
+        }else{
+            qInfo() << "No watchdog timer required";
+        }
         Oxide::Sentry::sentry_span(t, "apis", "Initialize APIs", [this](Oxide::Sentry::Span* s){
             Oxide::Sentry::sentry_span(s, "wifi", "Initialize wifi API", [this]{
                 apis.insert("wifi", APIEntry{
@@ -170,6 +201,8 @@ void DBusService::shutdown(){
     if(calledFromDBus()){
         return;
     }
+    sd_notify(0, "STATUS=stopping");
+    sd_notify(0, "STOPPING=1");
     emit aboutToQuit();
     appsAPI->shutdown();
     guiAPI->shutdown();
