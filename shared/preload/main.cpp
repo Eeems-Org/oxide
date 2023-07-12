@@ -44,7 +44,7 @@ static int keyFd = -1;
 static ssize_t(*func_write)(int, const void*, size_t);
 static int(*func_open)(const char*, int, mode_t);
 static int(*func_ioctl)(int, unsigned long, ...);
-static QMutex mutex;
+static QMutex logMutex;
 QString appName(){
     if(!qApp->startingUp()){
         return qApp->applicationName();
@@ -79,8 +79,9 @@ void __printf(char const* file, int line, char const* func, int priority, Args..
     if(!DEBUG_LOGGING){
         return;
     }
-    QString msg("");
-    ([&]{ msg = (QStringList() << msg << QVariant(args).toString()).join(' '); }(), ...);
+    QStringList list;
+    ([&]{ list << QVariant(args).toString(); }(), ...);
+    auto msg = list.join(' ');
     sd_journal_send(
         "MESSAGE=%s", msg.toStdString().c_str(),
         "PRIORITY=%i", priority,
@@ -94,8 +95,8 @@ void __printf(char const* file, int line, char const* func, int priority, Args..
     if(!isatty(fileno(stdin)) || !isatty(fileno(stdout)) || !isatty(fileno(stderr))){
         return;
     }
-    QMutexLocker locker(&mutex);
-    Q_UNUSED(mutex)
+    QMutexLocker locker(&logMutex);
+    Q_UNUSED(logMutex)
     std::string level;
     switch(priority){
         case LOG_INFO:
@@ -121,6 +122,7 @@ void __printf(char const* file, int line, char const* func, int priority, Args..
 static struct sigaction int_action;
 static struct sigaction term_action;
 static struct sigaction segv_action;
+static struct sigaction abrt_action;
 void __sigacton__handler(int signo, siginfo_t* info, void* context){
     Q_UNUSED(info)
     Q_UNUSED(context)
@@ -133,6 +135,10 @@ void __sigacton__handler(int signo, siginfo_t* info, void* context){
             break;
         case SIGINT:
             sigaction(signo, &int_action, NULL);
+            break;
+        case SIGABRT:
+            sigaction(signo, &abrt_action, NULL);
+            break;
             break;
         default:
             signal(signo, SIG_DFL);
@@ -153,6 +159,9 @@ bool __sigaction_connect(int signo){
             break;
         case SIGINT:
             sigaction(signo, NULL, &int_action);
+            break;
+        case SIGABRT:
+            sigaction(signo, NULL, &abrt_action);
             break;
         default:
             return false;
@@ -586,24 +595,32 @@ extern "C" {
             DEBUG_LOGGING = true;
             return;
         }
-        auto pgid = getpgrp();
-        if(!qEnvironmentVariableIsSet("OXIDE_PRELOAD")){
+        if(!__sigaction_connect(SIGABRT)){
+            _CRIT("Failed to connect SIGABRT:", strerror(errno));
+            FAILED_INIT = true;
+            DEBUG_LOGGING = true;
+            return;
+        }
+        bool doConnect = !qEnvironmentVariableIsSet("OXIDE_PRELOAD");
+        if(!doConnect){
             bool ok;
             auto epgid = qEnvironmentVariableIntValue("OXIDE_PRELOAD", &ok);
-            if(!ok || epgid != pgid){
-                auto pid = QString::number(getpid());
-                _DEBUG("Connecting", pid, "to tarnish");
-                if(Oxide::Tarnish::getSocket() == nullptr){
-                    FAILED_INIT = true;
-                    DEBUG_LOGGING = true;
-                    _CRIT("Failed to connect", pid, "to tarnish");
-                    return;
-                }
-                _DEBUG("Connected", pid, "to tarnish");
+            doConnect = !ok || epgid != getpgrp();
+        }
+        if(doConnect){
+            auto pid = QString::number(getpid());
+            _DEBUG("Connecting", pid, "to tarnish");
+            auto socket = Oxide::Tarnish::getSocket();
+            if(socket == nullptr){
+                FAILED_INIT = true;
+                DEBUG_LOGGING = true;
+                _CRIT("Failed to connect", pid, "to tarnish");
+                return;
             }
+            _DEBUG("Connected", pid, "to tarnish");
         }
         IS_INITIALIZED = true;
-        qputenv("OXIDE_PRELOAD", QByteArray::number(pgid));
+        qputenv("OXIDE_PRELOAD", QByteArray::number(getpgrp()));
     }
 
     __attribute__((visibility("default")))
@@ -620,7 +637,8 @@ extern "C" {
             return EXIT_FAILURE;
         }
         auto func_main = (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
+        auto res = func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
         Oxide::Tarnish::disconnect();
-        return func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
+        return res;
     }
 }

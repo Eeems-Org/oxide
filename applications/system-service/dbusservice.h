@@ -205,6 +205,7 @@ private:
     QMap<QString, APIEntry> apis;
     QList<ChildEntry*> children;
     void unregisterChild(pid_t pid){
+        O_DEBUG("unregisterCHild" << pid << "requested");
         QMutableListIterator<ChildEntry*> i(children);
         while(i.hasNext()){
             auto child = i.next();
