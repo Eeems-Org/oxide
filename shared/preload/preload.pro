@@ -19,5 +19,6 @@ INSTALLS += target
 INCLUDEPATH += ../../shared/mxcfb
 
 DEFINES += SHIM_INPUT_FOR_PRELOAD
+DEFINES += QT_MESSAGELOGCONTEXT
 
 include(../../qmake/liboxide.pri)

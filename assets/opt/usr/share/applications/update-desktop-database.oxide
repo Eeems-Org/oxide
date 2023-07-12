@@ -5,5 +5,5 @@
     "flags": ["autoStart", "hidden"],
     "type": "background",
     "splash": "oxide:splash:oxide-702",
-    "permissions": ["apps"]
+    "permissions": ["apps", "nopreload"]
 }

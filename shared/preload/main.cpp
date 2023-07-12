@@ -1,10 +1,11 @@
 #include <iostream>
+#include <chrono>
 #include <unistd.h>
 #include <dirent.h>
-#include <chrono>
 #include <signal.h>
 #include <mxcfb.h>
 #include <dlfcn.h>
+#include <stdio.h>
 #include <linux/fb.h>
 #include <asm/fcntl.h>
 #include <asm/ioctl.h>
@@ -12,6 +13,7 @@
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
 #include <liboxide/tarnish.h>
+#include <systemd/sd-journal.h>
 
 // Don't import <linux/input.h> to avoid conflicting declarations
 #define EVIOCGRAB       _IOW('E', 0x90, int)			/* Grab/Release device */
@@ -32,9 +34,9 @@ public:
 };
 
 static bool IS_INITIALIZED = false;
+thread_local bool IS_OPENING = false;
 static bool DEBUG_LOGGING = false;
-static int argc;
-static char** argv;
+static bool FAILED_INIT = false;
 static int fbFd = -1;
 static int touchFd = -1;
 static int tabletFd = -1;
@@ -42,10 +44,84 @@ static int keyFd = -1;
 static ssize_t(*func_write)(int, const void*, size_t);
 static int(*func_open)(const char*, int, mode_t);
 static int(*func_ioctl)(int, unsigned long, ...);
+static QMutex mutex;
+QString appName(){
+    if(!qApp->startingUp()){
+        return qApp->applicationName();
+    }
+    static QString name;
+    if(!name.isEmpty()){
+        return name;
+    }
+    int fd = func_open("/proc/self/comm", O_RDONLY, 0);
+    if(fd != -1){
+        FILE* f = fdopen(fd, "r");
+        fseek(f, 0, SEEK_END);
+        size_t size = ftell(f);
+        char* where = new char[size];
+        rewind(f);
+        fread(where, sizeof(char), size, f);
+        name = QString::fromLatin1(where, size);
+        delete[] where;
+    }
+    if(!name.isEmpty()){
+        return name;
+    }
+    name = QFileInfo("/proc/self/exe").canonicalFilePath();
+    if(name.isEmpty()){
+        return "libtarnish_preload.so";
+    }
+    return name;
+}
+
+template<class... Args>
+void __printf(char const* file, int line, char const* func, int priority, Args... args){
+    if(!DEBUG_LOGGING){
+        return;
+    }
+    QString msg("");
+    ([&]{ msg = (QStringList() << msg << QVariant(args).toString()).join(' '); }(), ...);
+    sd_journal_send(
+        "MESSAGE=%s", msg.toStdString().c_str(),
+        "PRIORITY=%i", priority,
+        "CODE_FILE=%s", file,
+        "CODE_LINE=%i", line,
+        "CODE_FUNC=%s", func,
+        "SYSLOG_IDENTIFIER=%s", appName().toStdString().c_str(),
+        "SYSLOG_FACILITY=%s", "LOG_DAEMON",
+        NULL
+    );
+    if(!isatty(fileno(stdin)) || !isatty(fileno(stdout)) || !isatty(fileno(stderr))){
+        return;
+    }
+    QMutexLocker locker(&mutex);
+    Q_UNUSED(mutex)
+    std::string level;
+    switch(priority){
+        case LOG_INFO:
+            level = "Info";
+        break;
+        case LOG_WARNING:
+            level = "Warning";
+        break;
+        case LOG_CRIT:
+            level = "Critical";
+        break;
+        default:
+            level = "Debug";
+    }
+    fprintf(stderr, "%s: %s (%s:%u, %s)\n", level.c_str(), msg.toStdString().c_str(), file, line, func);
+}
+#define _PRINTF(priority, ...) __printf("shared/preload/main.cpp", __LINE__, __PRETTY_FUNCTION__, priority, __VA_ARGS__)
+#define _DEBUG(...) _PRINTF(LOG_DEBUG, __VA_ARGS__)
+#define _WARN(...) _PRINTF(LOG_WARNING, __VA_ARGS__)
+#define _INFO(...) _PRINTF(LOG_INFO, __VA_ARGS__)
+#define _CRIT(...) _PRINTF(LOG_CRIT, __VA_ARGS__)
 
 void __sigacton__handler(int signo, siginfo_t* info, void* context){
     Q_UNUSED(info)
     Q_UNUSED(context)
+    _DEBUG("Signal", strsignal(signo), "recieved.");
     Oxide::Tarnish::disconnect();
     QCoreApplication::processEvents(QEventLoop::AllEvents);
     raise(signo);
@@ -56,9 +132,7 @@ int fb_ioctl(unsigned long request, char* ptr){
         // Look at linux/fb.h and mxcfb.h for more possible request types
         // https://www.kernel.org/doc/html/latest/fb/api.html
         case MXCFB_SEND_UPDATE:{
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl /dev/fb0 MXCFB_SEND_UPDATE";
-            }
+            _DEBUG("ioctl /dev/fb0 MXCFB_SEND_UPDATE");
             mxcfb_update_data* update = reinterpret_cast<mxcfb_update_data*>(ptr);
             auto region = update->update_region;
             // TODO - Add support for recommending these
@@ -67,23 +141,25 @@ int fb_ioctl(unsigned long request, char* ptr){
             //update->temp;
             //update->update_marker;
             Oxide::Tarnish::screenUpdate(QRect(region.top, region.left, region.width, region.height), (EPFrameBuffer::WaveformMode)update->waveform_mode);
+            if(deviceSettings.getDeviceType() != Oxide::DeviceSettings::RM2){
+                return 0;
+            }
+            QString path = QFileInfo("/proc/self/exe").canonicalFilePath();
+            if(path.isEmpty() || path != "/usr/bin/xochitl"){
+                return 0;
+            }
+            // TODO - notify on rM2 for screensharing
             return 0;
         }
         case MXCFB_WAIT_FOR_UPDATE_COMPLETE:{
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE";
-            }
+            _DEBUG("ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE");
             ClockWatch cz;
             Oxide::Tarnish::waitForLastUpdate();
-            if(DEBUG_LOGGING){
-                qDebug() << "FINISHED WAIT IOCTL " << cz.elapsed();
-            }
+            _DEBUG("FINISHED WAIT IOCTL", cz.elapsed());
             return 0;
         }
         case FBIOGET_VSCREENINFO:{
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl /dev/fb0 FBIOGET_VSCREENINFO";
-            }
+            _DEBUG("ioctl /dev/fb0 FBIOGET_VSCREENINFO");
             auto frameBuffer = Oxide::Tarnish::frameBufferImage(QImage::Format_RGB16);
             auto pixelFormat = frameBuffer.pixelFormat();
             fb_var_screeninfo* screenInfo = reinterpret_cast<fb_var_screeninfo*>(ptr);
@@ -105,9 +181,7 @@ int fb_ioctl(unsigned long request, char* ptr){
             return 0;
         }
         case FBIOGET_FSCREENINFO:{
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl /dev/fb0 FBIOGET_FSCREENINFO";
-            }
+            _DEBUG("ioctl /dev/fb0 FBIOGET_FSCREENINFO");
             fb_fix_screeninfo* screeninfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
             auto frameBuffer = Oxide::Tarnish::frameBufferImage(QImage::Format_RGB16);
             screeninfo->smem_len = frameBuffer.sizeInBytes();
@@ -118,33 +192,30 @@ int fb_ioctl(unsigned long request, char* ptr){
             return 0;
         }
         case FBIOPUT_VSCREENINFO:
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl /dev/fb0 FBIOPUT_VSCREENINFO";
-            }
+            _DEBUG("ioctl /dev/fb0 FBIOPUT_VSCREENINFO");
             // TODO - Explore allowing some screen info updating
             return -1;
         case MXCFB_SET_AUTO_UPDATE_MODE:
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl /dev/fb0 MXCFB_SET_AUTO_UPDATE_MODE";
-            }
+            _DEBUG("ioctl /dev/fb0 MXCFB_SET_AUTO_UPDATE_MODE");
             return 0;
         case MXCFB_SET_UPDATE_SCHEME:
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl /dev/fb0 MXCFB_SET_UPDATE_SCHEME";
-            }
+            _DEBUG("ioctl /dev/fb0 MXCFB_SET_UPDATE_SCHEME");
             return 0;
         case MXCFB_ENABLE_EPDC_ACCESS:
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl /dev/fb0 MXCFB_ENABLE_EPDC_ACCESS";
-            }
+            _DEBUG("ioctl /dev/fb0 MXCFB_ENABLE_EPDC_ACCESS");
             return 0;
         case MXCFB_DISABLE_EPDC_ACCESS:
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl /dev/fb0 MXCFB_DISABLE_EPDC_ACCESS";
-            }
+            _DEBUG("ioctl /dev/fb0 MXCFB_DISABLE_EPDC_ACCESS");
             return 0;
         default:
-            qDebug() << "UNHANDLED FB IOCTL " << _IOC_DIR(request) << (char)_IOC_TYPE(request) << QString::number(_IOC_NR(request), 16) << _IOC_SIZE(request) << request;
+            _WARN(
+                "UNHANDLED FB IOCTL ",
+                QString::number(_IOC_DIR(request)),
+                (char)_IOC_TYPE(request),
+                QString::number(_IOC_NR(request), 16),
+                QString::number(_IOC_SIZE(request)),
+                QString::number(request)
+            );
             return -1;
     }
 }
@@ -153,20 +224,25 @@ int touch_ioctl(unsigned long request, char* ptr){
     static auto func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
     switch(request){
         case EVIOCGNAME(sizeof(char[256])):{
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl touch EVIOCGNAME";
-            }
+            _DEBUG("ioctl touch EVIOCGNAME");
             int fd = func_open(deviceSettings.getTouchDevicePath(), O_RDONLY, 0);
             if(fd != -1){
                 return func_ioctl(fd, request, ptr);
             }
-            qDebug() << "Failed to open touch device for ioctl:" << strerror(errno);
+            _WARN("Failed to open touch device for ioctl:", strerror(errno));
             return -1;
         }
         case EVIOCGRAB: return 0;
         case EVIOCREVOKE: return 0;
         default:
-            qDebug() << "UNHANDLED TOUCH IOCTL " << _IOC_DIR(request) << (char)_IOC_TYPE(request) << QString::number(_IOC_NR(request), 16) << _IOC_SIZE(request) << request;
+            _WARN(
+                "UNHANDLED TOUCH IOCTL ",
+                QString::number(_IOC_DIR(request)),
+                (char)_IOC_TYPE(request),
+                QString::number(_IOC_NR(request), 16),
+                QString::number(_IOC_SIZE(request)),
+                QString::number(request)
+            );
             return -1;
     }
 }
@@ -174,20 +250,25 @@ int touch_ioctl(unsigned long request, char* ptr){
 int tablet_ioctl(unsigned long request, char* ptr){
     switch(request){
         case EVIOCGNAME(sizeof(char[256])):{
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl tablet EVIOCGNAME";
-            }
+            _DEBUG("ioctl tablet EVIOCGNAME");
             int fd = func_open(deviceSettings.getWacomDevicePath(), O_RDONLY, 0);
             if(fd != -1){
                 return func_ioctl(fd, request, ptr);
             }
-            qDebug() << "Failed to open wacom device for ioctl:" << strerror(errno);
+            _WARN("Failed to open wacom device for ioctl:", strerror(errno));
             return -1;
         }
         case EVIOCGRAB: return 0;
         case EVIOCREVOKE: return 0;
         default:
-            qDebug() << "UNHANDLED TABLET IOCTL " << _IOC_DIR(request) << (char)_IOC_TYPE(request) << QString::number(_IOC_NR(request), 16) << _IOC_SIZE(request) << request;
+            _WARN(
+                "UNHANDLED TABLET IOCTL ",
+                QString::number(_IOC_DIR(request)),
+                (char)_IOC_TYPE(request),
+                QString::number(_IOC_NR(request), 16),
+                QString::number(_IOC_SIZE(request)),
+                QString::number(request)
+            );
             return -1;
     }
 }
@@ -195,49 +276,49 @@ int tablet_ioctl(unsigned long request, char* ptr){
 int key_ioctl(unsigned long request, char* ptr){
     switch(request){
         case EVIOCGNAME(sizeof(char[256])):{
-            if(DEBUG_LOGGING){
-                qDebug() << "ioctl key EVIOCGNAME";
-            }
+            _DEBUG("ioctl key EVIOCGNAME");
             int fd = func_open(deviceSettings.getButtonsDevicePath(), O_RDONLY, 0);
             if(fd != -1){
                 return func_ioctl(fd, request, ptr);
             }
-            qDebug() << "Failed to open key device for ioctl:" << strerror(errno);
+            _WARN("Failed to open key device for ioctl:", strerror(errno));
             return -1;
         }
         case EVIOCGRAB: return 0;
         case EVIOCREVOKE: return 0;
         default:
-            qDebug() << "UNHANDLED KEY IOCTL " << request;
+            _WARN(
+                "UNHANDLED KEY IOCTL ",
+                QString::number(_IOC_DIR(request)),
+                (char)_IOC_TYPE(request),
+                QString::number(_IOC_NR(request), 16),
+                QString::number(_IOC_SIZE(request)),
+                QString::number(request)
+            );
             return -1;
     }
 }
 
 int open_from_tarnish(const char* pathname){
-    if(!IS_INITIALIZED){
+    if(!IS_INITIALIZED || IS_OPENING){
         return -2;
     }
+    IS_OPENING = true;
+    int res = -2;
     if(pathname == std::string("/dev/fb0")){
-        return fbFd = Oxide::Tarnish::getFrameBufferFd(QImage::Format_RGB16);
+        res = fbFd = Oxide::Tarnish::getFrameBufferFd(QImage::Format_RGB16);
     }else if(pathname == deviceSettings.getTouchDevicePath()){
-        return touchFd = Oxide::Tarnish::getTouchEventPipeFd();
+        res = touchFd = Oxide::Tarnish::getTouchEventPipeFd();
     }else if(pathname == deviceSettings.getWacomDevicePath()){
-        return tabletFd = Oxide::Tarnish::getTabletEventPipeFd();
+        res = tabletFd = Oxide::Tarnish::getTabletEventPipeFd();
     }else if(pathname == deviceSettings.getButtonsDevicePath()){
-        return keyFd = Oxide::Tarnish::getKeyEventPipeFd();
-    }else{
-        return -2;
+        res = keyFd = Oxide::Tarnish::getKeyEventPipeFd();
     }
+    IS_OPENING = false;
+    return res;
 }
 
 extern "C" {
-    void __attribute__ ((constructor)) init(void);
-    void init(void){
-        func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");
-        func_open = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open");
-        func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
-    }
-
 //    __attribute__((visibility("default")))
 //    void _ZN6QImageC1EiiNS_6FormatE(void* that, int x, int y, int f){
 //        static bool FIRST_ALLOC = true;
@@ -274,33 +355,26 @@ extern "C" {
 
     __attribute__((visibility("default")))
     int open64(const char* pathname, int flags, mode_t mode = 0){
-        if(DEBUG_LOGGING){
-            printf("open64 ");
-            printf(pathname);
-            printf("\n");
+        static const auto func_open64 = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open64");
+        if(!IS_INITIALIZED){
+            return func_open64(pathname, flags, mode);
         }
+        _DEBUG("open64", pathname);
         int fd = open_from_tarnish(pathname);
         if(fd == -2){
-            static const auto func_open64 = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open64");
             fd = func_open64(pathname, flags, mode);
         }
-        if(DEBUG_LOGGING){
-            printf("opened ");
-            printf(pathname);
-            printf(" with fd ");
-            printf(std::to_string(fd).c_str());
-            printf("\n");
-        }
+        _DEBUG("opened", pathname, "with fd", fd);
         return fd;
     }
 
     __attribute__((visibility("default")))
     int openat(int dirfd, const char* pathname, int flags, mode_t mode = 0){
-        if(DEBUG_LOGGING){
-            printf("openat ");
-            printf(pathname);
-            printf("\n");
+        static const auto func_openat = (int(*)(int, const char*, int, mode_t))dlsym(RTLD_NEXT, "openat");
+        if(!IS_INITIALIZED){
+            return func_openat(dirfd, pathname, flags, mode);
         }
+        _DEBUG("openat", pathname);
         int fd = open_from_tarnish(pathname);
         if(fd == -2){
             DIR* save = opendir(".");
@@ -312,62 +386,46 @@ extern "C" {
             fd = open_from_tarnish(QString("%1/%2").arg(path, pathname).toStdString().c_str());
         }
         if(fd == -2){
-            static const auto func_openat = (int(*)(int, const char*, int, mode_t))dlsym(RTLD_NEXT, "openat");
             fd = func_openat(dirfd, pathname, flags, mode);
         }
-        if(DEBUG_LOGGING){
-            printf("opened ");
-            printf(pathname);
-            printf(" with fd ");
-            printf(std::to_string(fd).c_str());
-            printf("\n");
-        }
+        _DEBUG("opened", pathname, "with fd", fd);
         return fd;
     }
 
     __attribute__((visibility("default")))
     int open(const char* pathname, int flags, mode_t mode = 0){
-        if(DEBUG_LOGGING){
-            printf("open ");
-            printf(pathname);
-            printf("\n");
+        if(!IS_INITIALIZED){
+            return func_open(pathname, flags, mode);;
         }
+        _DEBUG("open", pathname);
         int fd = open_from_tarnish(pathname);
         if(fd == -2){
             fd = func_open(pathname, flags, mode);
         }
-        if(DEBUG_LOGGING){
-            printf("opened ");
-            printf(pathname);
-            printf(" with fd ");
-            printf(std::to_string(fd).c_str());
-            printf("\n");
-        }
+        _DEBUG("opened", pathname, "with fd", fd);
         return fd;
     }
 
     __attribute__((visibility("default")))
     int close(int fd){
-        if(DEBUG_LOGGING){
-            printf("close ");
-            printf(std::to_string(fd).c_str());
-            printf("\n");
-        }
-        if(fbFd != -1 && fd == fbFd){
-            // Maybe actually close it?
-            return 0;
-        }
-        if(touchFd != -1 && fd == touchFd){
-            // Maybe actually close it?
-            return 0;
-        }
-        if(tabletFd != -1 && fd == tabletFd){
-            // Maybe actually close it?
-            return 0;
-        }
-        if(keyFd != -1 && fd == keyFd){
-            // Maybe actually close it?
-            return 0;
+        if(IS_INITIALIZED){
+            _DEBUG("close", fd);
+            if(fbFd != -1 && fd == fbFd){
+                // Maybe actually close it?
+                return 0;
+            }
+            if(touchFd != -1 && fd == touchFd){
+                // Maybe actually close it?
+                return 0;
+            }
+            if(tabletFd != -1 && fd == tabletFd){
+                // Maybe actually close it?
+                return 0;
+            }
+            if(keyFd != -1 && fd == keyFd){
+                // Maybe actually close it?
+                return 0;
+            }
         }
         static const auto func_close = (int(*)(int))dlsym(RTLD_NEXT, "close");
         return func_close(fd);
@@ -394,14 +452,11 @@ extern "C" {
 
     __attribute__((visibility("default")))
     ssize_t write(int fd, const void* buf, size_t n){
-        if(DEBUG_LOGGING){
-            printf("write ");
-            printf(std::to_string(fd).c_str());
-            printf(" ");
-            printf(std::to_string(n).c_str());
-            printf("\n");
-        }
         if(IS_INITIALIZED){
+            if(fd > 2){
+                // No need to debug stdout/stderr writes
+                _DEBUG("write", fd, n);
+            }
             if(fbFd != -1 && fd == fbFd){
                 Oxide::Tarnish::lockFrameBuffer();
                 auto res = func_write(fd, buf, n);
@@ -467,91 +522,72 @@ extern "C" {
 //        );
 //    }
 
-//    // this should work fine as a proof of concept, but for optimal performance, you
-//    // could cache the sendUpdateMethod/newSendUpdate lookup done below.
-//    const QMetaObject *metaObject = QMetaType::metaObjectForType(QMetaType::type("EPFramebuffer*"));
-//    Q_ASSERT_X(metaObject, "", "EPFramebuffer is missing");
-
-//    bool newSendUpdate = false;
-//    std::optional<QMetaMethod> sendUpdateMethod;
-//    for (int i = 0; i < metaObject->methodCount(); ++i) {
-//        const auto &method = metaObject->method(i);
-//        if (method.methodSignature() == "sendUpdate(QRect,EPFramebuffer::Waveform,EPFramebuffer::UpdateFlags)") {
-//            newSendUpdate = true;
-//            sendUpdateMethod = method;
-//            break;
-//        } else if (method.methodSignature() == "sendUpdate(QRect,EPFramebuffer::WaveformMode,EPFramebuffer::UpdateFlags)") {
-//            sendUpdateMethod = method;
-//            break;
-//        }
-//        // qDebug() << i << method.name() << method.methodSignature();
-//    }
-//    Q_ASSERT_X(sendUpdateMethod.has_value(), "", "EPFramebuffer::sendUpdate is missing");
-
-//    // now actually make the call..
-//    QRect rect;
-
-//    int waveform = 0;
-//    int flags = 0;
-
-//    if (newSendUpdate) {
-//        // 3.3+ here
-//        // NOTE: the waveform values have changed from 3.3+
-//        // 1 = mono (DU), 3 = greyscale
-//        // so you might need to remap them appropriately..
-//        qDebug() << "sendUpdate 3.3+";
-//        QGenericArgument argWaveform("EPFramebuffer::Waveform", &waveform);
-//        QGenericArgument argUpdateMode("EPFramebuffer::UpdateFlags", &flags);
-//        sendUpdateMethod->invoke(instance, Q_ARG(QRect, rect), argWaveform, argUpdateMode);
-//    } else {
-//        // call earlier versions here
-//        qDebug() << "sendUpdate old";
-//        QGenericArgument argWaveform("EPFramebuffer::WaveformMode", &waveform);
-//        QGenericArgument argUpdateMode("EPFramebuffer::UpdateFlags", &flags);
-//        sendUpdateMethod->invoke(instance, Q_ARG(QRect, rect), argWaveform, argUpdateMode);
-//    }
+    void __attribute__ ((constructor)) init(void);
+    void init(void){
+        func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");
+        func_open = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open");
+        func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
+    }
 
     static void _libhook_init() __attribute__((constructor));
     static void _libhook_init(){
         DEBUG_LOGGING = qEnvironmentVariableIsSet("OXIDE_PRELOAD_DEBUG");
-        if(DEBUG_LOGGING){
-            qDebug() << "Connecting to tarnish";
-        }
-        setenv("OXIDE_PRELOAD", "1", true);
         struct sigaction action;
         action.sa_flags = SA_SIGINFO | SA_RESETHAND;
         action.sa_sigaction = &__sigacton__handler;
         if(sigaction(SIGSEGV, &action, NULL) == -1){
-            qFatal("Failed to connect SIGSEGV");
+            FAILED_INIT = true;
+            DEBUG_LOGGING = true;
+            _CRIT("Failed to connect SIGSEGV");
+            return;
         }
         if(sigaction(SIGINT, &action, NULL) == -1){
-            qFatal("Failed to connect SIGINT");
+            FAILED_INIT = true;
+            DEBUG_LOGGING = true;
+            _CRIT("Failed to connect SIGINT");
+            return;
         }
         if(sigaction(SIGTERM, &action, NULL) == -1){
-            qFatal("Failed to connect SIGTERM");
+            FAILED_INIT = true;
+            DEBUG_LOGGING = true;
+            _CRIT("Failed to connect SIGTERM");
+            return;
         }
-        if(Oxide::Tarnish::getSocket() == nullptr){
-            qFatal("Failed to connect to tarnish");
-        }
-        deviceSettings;
-        if(DEBUG_LOGGING){
-            qDebug() << "Connected to tarnish";
+        auto pgid = getpgrp();
+        if(!qEnvironmentVariableIsSet("OXIDE_PRELOAD")){
+            bool ok;
+            auto epgid = qEnvironmentVariableIntValue("OXIDE_PRELOAD", &ok);
+            if(!ok || epgid != pgid){
+                auto pid = QString::number(getpid());
+                _DEBUG("Connecting", pid, "to tarnish");
+                if(Oxide::Tarnish::getSocket() == nullptr){
+                    FAILED_INIT = true;
+                    DEBUG_LOGGING = true;
+                    _CRIT("Failed to connect", pid, "to tarnish");
+                    return;
+                }
+                _DEBUG("Connected", pid, "to tarnish");
+            }
         }
         IS_INITIALIZED = true;
+        qputenv("OXIDE_PRELOAD", QByteArray::number(pgid));
     }
+
     __attribute__((visibility("default")))
     int __libc_start_main(
         int(*_main)(int, char**, char**),
-        int _argc,
-        char** _argv,
+        int argc,
+        char** argv,
         int(*init)(int, char**, char**),
         void(*fini)(void),
         void(*rtld_fini)(void),
         void* stack_end
     ){
-        argc = _argc;
-        argv = _argv;
+        if(FAILED_INIT){
+            return EXIT_FAILURE;
+        }
         auto func_main = (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
-        return func_main(_main, _argc, _argv, init, fini, rtld_fini, stack_end);
+        Oxide::Tarnish::disconnect();
+        return func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
     }
 }

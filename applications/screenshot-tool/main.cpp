@@ -11,7 +11,7 @@ using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
 
 void unixSignalHandler(int signal){
-    qDebug() << "Recieved signal" << signal;
+    qDebug() << "Recieved signal" << strsignal(signal);
     exit(EXIT_SUCCESS);
 }
 void onExit(){

@@ -43,6 +43,7 @@ public:
     QList<Window*> sortedWindows();
     void closeWindows(pid_t pgid);
     void waitForLastUpdate();
+    void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize);
 
 public slots:
     void touchEvent(const input_event& event);

@@ -56,15 +56,19 @@
       <arg name="region" type="(iiii)" direction="in"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QRect"/>
       <arg name="waveform" type="i" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
     </method>
     <method name="repaint">
       <arg name="region" type="(iiii)" direction="in"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QRect"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
     </method>
     <method name="repaint">
       <arg name="waveform" type="i" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
     </method>
     <method name="repaint">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
     </method>
     <method name="raise">
     </method>

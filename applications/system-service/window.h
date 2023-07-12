@@ -70,8 +70,8 @@ public:
 public slots:
     QDBusUnixFileDescriptor resize(int width, int height);
     void move(int x, int y);
-    void repaint(QRect region, int waveform = EPFrameBuffer::Mono);
-    void repaint(int waveform = EPFrameBuffer::Mono);
+    Q_NOREPLY void repaint(QRect region, int waveform = EPFrameBuffer::Mono);
+    Q_NOREPLY void repaint(int waveform = EPFrameBuffer::Mono);
     void raise();
     void lower();
     void close();
@@ -86,7 +86,6 @@ signals:
     void sizeInBytesChanged(const qulonglong&);
     void bytesPerLineChanged(const qulonglong&);
     void formatChanged(const int&);
-    void dirty(const QRect& region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize);
     void zChanged(const int&);
 
 private:

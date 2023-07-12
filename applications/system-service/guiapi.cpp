@@ -108,14 +108,6 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
         window->deleteLater();
         scheduleUpdate();
     });
-    connect(window, &Window::dirty, this, [=](const QRect& region, EPFrameBuffer::WaveformMode waveform){
-        m_repaintList.append(Repaint{
-            .window = window,
-            .region = region,
-            .waveform = waveform
-        });
-        scheduleUpdate();
-    });
     connect(window, &Window::raised, this, [=]{
         auto windows = sortedWindows();
         int z = 0;
@@ -353,6 +345,15 @@ void GuiAPI::waitForLastUpdate(){
     }
 }
 
+void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform){
+    m_repaintList.append(Repaint{
+        .window = window,
+        .region = region,
+        .waveform = waveform
+    });
+    scheduleUpdate();
+}
+
 void GuiAPI::touchEvent(const input_event& event){
     O_EVENT(event);
     for(auto window : m_windows){
@@ -398,7 +399,7 @@ bool GuiAPI::event(QEvent* event){
 void GuiAPI::scheduleUpdate(){
     if(!m_dirty){
         m_dirty = true;
-        QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest));
+        QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest), Qt::HighEventPriority);
     }
 }
 

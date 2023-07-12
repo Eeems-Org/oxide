@@ -190,7 +190,7 @@ void Window::setVisible(bool visible){
     }
     emit stateChanged(m_state);
     if(wasVisible != _isVisible()){
-        emit dirty(m_geometry, EPFrameBuffer::Initialize);
+        guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize);
     }
 }
 
@@ -314,10 +314,10 @@ void Window::move(int x, int y){
     m_geometry.setY(y);
     emit geometryChanged(oldGeometry, m_geometry);
     if(wasVisible){
-        emit dirty(oldGeometry);
+        guiAPI->dirty(this, oldGeometry);
     }
     if(_isVisible()){
-        emit dirty(m_geometry);
+        guiAPI->dirty(this, m_geometry);
     }
 }
 
@@ -328,8 +328,7 @@ void Window::repaint(QRect region, int waveform){
     }
     W_ALLOWED();
     if(_isVisible()){
-        invalidateEventPipes();
-        emit dirty(region, (EPFrameBuffer::WaveformMode)waveform);
+        guiAPI->dirty(this, region, (EPFrameBuffer::WaveformMode)waveform);
     }
 }
 
@@ -356,7 +355,7 @@ void Window::raise(){
     }
     if(_isVisible()){
         invalidateEventPipes();
-        emit dirty(m_geometry);
+        guiAPI->dirty(this, m_geometry);
     }
     emit stateChanged(m_state);
     emit raised();
@@ -384,7 +383,7 @@ void Window::lower(){
     }
     if(wasVisible){
         invalidateEventPipes();
-        emit dirty(m_geometry);
+        guiAPI->dirty(this, m_geometry);
     }
     emit stateChanged(m_state);
     emit lowered();
@@ -462,6 +461,8 @@ void Window::createFrameBuffer(const QRect& geometry){
 }
 
 bool Window::writeEvent(SocketPair* pipe, const input_event& event, bool force){
+    // TODO - add logic to skip emitting anything until the next EV_SYN SYN_REPORT
+    //        after the window has changed states to now be visible/enabled
     if(!force){
         if(!pipe->enabled()){
             return false;

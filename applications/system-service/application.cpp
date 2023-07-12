@@ -55,6 +55,7 @@ void Application::launchNoSecurityCheck(){
                 m_process->setProgram(bin());
             }
             updateEnvironment();
+            // TODO - switch to systemd-nspawn: https://www.man7.org/linux/man-pages/man1/systemd-nspawn.1.html
             umountAll();
             if(chroot()){
                 mountAll();

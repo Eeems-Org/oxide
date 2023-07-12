@@ -76,9 +76,13 @@ bool setupFbFd(int fd){
 void _disconnect(){
     fbData = nullptr;
     fbFile.close();
+    childSocket.disconnect();
     childSocket.close();
+    touchEventFile.disconnect();
     touchEventFile.close();
+    tabletEventFile.disconnect();
     tabletEventFile.close();
+    keyEventFile.disconnect();
     keyEventFile.close();
 #define freeAPI(name) \
     if(api_##name != nullptr){ \
@@ -120,7 +124,7 @@ namespace Oxide::Tarnish {
             input_event event;
             if(stream.readRawData((char*)&event, size) == -1){
 #ifdef DEBUG_EVENTS
-                qDebug() << __PRETTY_FUNCTION__ << "Failed to read event" << strerror(errno);
+                O_WARNING(__PRETTY_FUNCTION__ << "Failed to read event" << strerror(errno));
 #endif
                 return;
             }
@@ -132,12 +136,18 @@ namespace Oxide::Tarnish {
         }
     }
 
-    codes::eeems::oxide1::General* getAPI(){ return api_general; }
+    codes::eeems::oxide1::General* getAPI(){
+        if(api_general == nullptr){
+            connect();
+        }
+        return api_general;
+    }
 
     QString requestAPI(std::string name){
         connect();
         if(api_general == nullptr){
-            qFatal(QString("Unable to request %1 api: Could not connect to general API").arg(name.c_str()).toStdString().c_str());
+            O_WARNING(__PRETTY_FUNCTION__ << "Unable to request " << name.c_str() << " api: Unable to connect to API");
+            return "/";
         }
         auto reply = api_general->requestAPI(QString::fromStdString(name));
         if(reply.isError()){
@@ -161,11 +171,16 @@ namespace Oxide::Tarnish {
         if(verifyConnection()){
             return;
         }
-        O_DEBUG(__PRETTY_FUNCTION__ << "Connecting to tarnish");
+        O_DEBUG(__PRETTY_FUNCTION__ << "Connecting to tarnish over DBus...");
         auto bus = QDBusConnection::systemBus();
-        if(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
-            O_DEBUG(__PRETTY_FUNCTION__ << "Waiting for tarnish to start up...");
-            while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){
+        auto interface = bus.interface();
+        if(interface == nullptr){
+            O_DEBUG(__PRETTY_FUNCTION__ << "DBus interface not available!");
+            return;
+        }
+        if(!interface->registeredServiceNames().value().contains(OXIDE_SERVICE)){
+            O_DEBUG(__PRETTY_FUNCTION__ << "Waiting for tarnish DBus service to start up...");
+            while(!interface->registeredServiceNames().value().contains(OXIDE_SERVICE)){
                 timespec args{
                     .tv_sec = 1,
                     .tv_nsec = 0
@@ -173,10 +188,11 @@ namespace Oxide::Tarnish {
                 nanosleep(&args, NULL);
             }
         }
+        O_DEBUG(__PRETTY_FUNCTION__ << "Tarnish DBus service is online, connecting...");
         api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, qApp);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(api_general, &codes::eeems::oxide1::General::aboutToQuit, [conn]{
-            qDebug() << "Tarnish has indicated that it is about to quit!";
+            O_WARNING(__PRETTY_FUNCTION__ << "Tarnish has indicated that it is about to quit!");
             if(!childSocket.isOpen()){
                 _disconnect();
             }
@@ -187,7 +203,7 @@ namespace Oxide::Tarnish {
             O_DEBUG(__PRETTY_FUNCTION__ << "Connecting to QGuiApplication::aboutToQuit");
             QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{ disconnect(); });
         }
-        O_DEBUG(__PRETTY_FUNCTION__ << "Connected to tarnish");
+        O_DEBUG(__PRETTY_FUNCTION__ << "Connected to tarnish Dbus service");
     }
 
     void disconnect(){
@@ -230,7 +246,10 @@ namespace Oxide::Tarnish {
         if(childSocket.isOpen()){
             return &childSocket;
         }
-        connect();
+        if(getAPI() == nullptr){
+            O_WARNING(__PRETTY_FUNCTION__ << "Unable to register child: Unable to get general API");
+            return nullptr;
+        }
         O_DEBUG(__PRETTY_FUNCTION__ << "Connecting to tarnish command socket");
         auto reply = api_general->registerChild();
         if(reply.isError()){
@@ -255,7 +274,7 @@ namespace Oxide::Tarnish {
         }
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(&childSocket, &QLocalSocket::readChannelFinished, [conn]{
-            qDebug() << "Lost connection to tarnish socket!";
+            O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to tarnish socket!");
             _disconnect();
             QObject::disconnect(*conn);
             delete conn;
@@ -265,7 +284,10 @@ namespace Oxide::Tarnish {
     }
 
     int tarnishPid(){
-        connect();
+        if(getAPI() == nullptr){
+            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get tarnish PID: Unable to get general API");
+            return -1;
+        }
         return api_general->tarnishPid();
     }
 
@@ -279,7 +301,6 @@ namespace Oxide::Tarnish {
         }
         QMutexLocker locker(&fbMutex);
         Q_UNUSED(locker);
-        connect();
         if(guiAPI() == nullptr){
             O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer: Unable to get GUI API");
             return -1;
@@ -440,7 +461,6 @@ namespace Oxide::Tarnish {
         if(touchEventFile.isOpen()){
             return touchEventFile.socketDescriptor();
         }
-        connect();
         if(window == nullptr && getFrameBufferFd() == -1){
             O_WARNING(__PRETTY_FUNCTION__ << "Unable to get touch event pipe, no window");
             return -1;
@@ -474,7 +494,7 @@ namespace Oxide::Tarnish {
         touchEventFile.moveToThread(&inputThread);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(&touchEventFile, &InputEventSocket::readChannelFinished, [conn]{
-            qDebug() << "Lost connection to touch event pipe!";
+            O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to touch event pipe!");
             touchEventFile.close();
             QObject::disconnect(*conn);
             delete conn;
@@ -486,7 +506,6 @@ namespace Oxide::Tarnish {
         if(tabletEventFile.isOpen()){
             return tabletEventFile.socketDescriptor();
         }
-        connect();
         if(window == nullptr && getFrameBufferFd() == -1){
             O_WARNING(__PRETTY_FUNCTION__ << "Unable to get tablet event pipe, no window");
             return -1;
@@ -520,7 +539,7 @@ namespace Oxide::Tarnish {
         tabletEventFile.moveToThread(&inputThread);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(&touchEventFile, &InputEventSocket::readChannelFinished, [conn]{
-            qDebug() << "Lost connection to tablet event pipe!";
+            O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to tablet event pipe!");
             touchEventFile.close();
             QObject::disconnect(*conn);
             delete conn;
@@ -532,7 +551,6 @@ namespace Oxide::Tarnish {
         if(keyEventFile.isOpen()){
             return keyEventFile.socketDescriptor();
         }
-        connect();
         if(window == nullptr && getFrameBufferFd() == -1){
             O_WARNING(__PRETTY_FUNCTION__ << "Unable to get key event pipe, no window");
             return -1;
@@ -566,7 +584,7 @@ namespace Oxide::Tarnish {
         keyEventFile.moveToThread(&inputThread);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(&touchEventFile, &InputEventSocket::readChannelFinished, [conn]{
-            qDebug() << "Lost connection to key event pipe!";
+            O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to key event pipe!");
             touchEventFile.close();
             QObject::disconnect(*conn);
             delete conn;
