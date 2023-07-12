@@ -194,14 +194,26 @@ namespace Oxide::Tarnish {
         *conn = QObject::connect(api_general, &codes::eeems::oxide1::General::aboutToQuit, [conn]{
             O_WARNING(__PRETTY_FUNCTION__ << "Tarnish has indicated that it is about to quit!");
             if(!childSocket.isOpen()){
-                _disconnect();
+                QEventLoop loop;
+                QTimer::singleShot(0, [&loop]{
+                    _disconnect();
+                    loop.quit();
+                });
+                loop.exec();
             }
             QObject::disconnect(*conn);
             delete conn;
         });
         if(qApp != nullptr){
             O_DEBUG(__PRETTY_FUNCTION__ << "Connecting to QGuiApplication::aboutToQuit");
-            QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{ disconnect(); });
+            QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{
+                QEventLoop loop;
+                QTimer::singleShot(0, [&loop]{
+                    disconnect();
+                    loop.quit();
+                });
+                loop.exec();
+            });
         }
         O_DEBUG(__PRETTY_FUNCTION__ << "Connected to tarnish Dbus service");
     }
@@ -275,7 +287,12 @@ namespace Oxide::Tarnish {
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(&childSocket, &QLocalSocket::readChannelFinished, [conn]{
             O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to tarnish socket!");
-            _disconnect();
+            QEventLoop loop;
+            QTimer::singleShot(0, [&loop]{
+                _disconnect();
+                loop.quit();
+            });
+            loop.exec();
             QObject::disconnect(*conn);
             delete conn;
         });

@@ -11,8 +11,6 @@ BUILD=$(CURDIR)/.build
 
 
 ifneq ($(filter sentry,$(FEATURES)),)
-OBJ += sentry
-RELOBJ += $(DIST)/opt/lib/libsentry.so
 DEFINES += 'DEFINES+="SENTRY"'
 endif
 
@@ -59,8 +57,6 @@ package:
 	mkdir -p $(DIST)
 	cp -a $(BUILD)/package/dist/rmall/*.ipk $(DIST)
 
-sentry: $(BUILD)/sentry/libsentry.so
-
 $(BUILD):
 	mkdir -p $(BUILD)
 
@@ -72,20 +68,3 @@ $(BUILD)/oxide: $(BUILD)/.nobackup
 
 $(BUILD)/oxide/Makefile: $(BUILD)/oxide
 	cd $(BUILD)/oxide && qmake -r $(DEFINES) $(CURDIR)/oxide.pro
-
-$(BUILD)/sentry/libsentry.so: $(BUILD)/.nobackup
-	cd shared/sentry && cmake -B $(BUILD)/sentry/src \
-		-DBUILD_SHARED_LIBS=ON \
-		-DSENTRY_INTEGRATION_QT=ON \
-		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
-		-DSENTRY_PIC=OFF \
-		-DSENTRY_BACKEND=breakpad \
-		-DSENTRY_BREAKPAD_SYSTEM=OFF \
-		-DSENTRY_EXPORT_SYMBOLS=ON \
-		-DSENTRY_PTHREAD=ON
-	cd shared/sentry && cmake --build $(BUILD)/sentry/src --parallel
-	cd shared/sentry && cmake --install $(BUILD)/sentry/src --prefix $(BUILD)/sentry --config RelWithDebInfo
-
-$(DIST)/opt/lib/libsentry.so: sentry
-	mkdir -p $(DIST)/opt/lib
-	cp -a $(BUILD)/sentry/lib/libsentry.so $(DIST)/opt/lib/
