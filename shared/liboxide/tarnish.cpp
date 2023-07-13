@@ -150,23 +150,32 @@ namespace Oxide::Tarnish {
         }
         switch(type){
             case Repaint:{
-                delete reinterpret_cast<GeometryEventArgs*>(data);
+                auto ptr = static_cast<GeometryEventArgs*>(data);
+                if(ptr != nullptr){
+                    delete ptr;
+                }
                 break;
             }
             case Geometry:{
-                delete reinterpret_cast<GeometryEventArgs*>(data);
+                auto ptr = static_cast<GeometryEventArgs*>(data);
+                if(ptr != nullptr){
+                    delete ptr;
+                }
                 break;
             }
             case ImageInfo:{
-                delete reinterpret_cast<ImageInfoEventArgs*>(data);
+                auto ptr = static_cast<ImageInfoEventArgs*>(data);
+                if(ptr != nullptr){
+                    delete ptr;
+                }
                 break;
+            }
             case WaitForPaint:
                 case Raise:
                 case Lower:
                 case Close:
                 case FrameBuffer:
                     break;
-                }
         }
     }
 
@@ -833,17 +842,17 @@ QDataStream& operator<<(QDataStream& stream, const Oxide::Tarnish::WindowEvent& 
     stream << (int)event.type;
     switch(event.type){
         case Repaint:{
-            auto args = reinterpret_cast<RepaintEventArgs*>(event.data);
+            auto args = static_cast<RepaintEventArgs*>(event.data);
             stream << args->geometry << args->waveform;
             break;
         }
         case Geometry:{
-            auto args = reinterpret_cast<GeometryEventArgs*>(event.data);
+            auto args = static_cast<GeometryEventArgs*>(event.data);
             stream << args->geometry << args->z;
             break;
         }
         case ImageInfo:{
-            auto args = reinterpret_cast<ImageInfoEventArgs*>(event.data);
+            auto args = static_cast<ImageInfoEventArgs*>(event.data);
             stream << args->sizeInBytes << args->bytesPerLine << args->format;
             break;
         }

@@ -117,10 +117,10 @@ private:
     bool writeEvent(SocketPair* pipe, const input_event& event, bool force = false);
     void invalidateEventPipes();
     template<typename T>
-    inline void writeEvent(WindowEventType type, T args){
+    void writeEvent(WindowEventType type, T args){
         WindowEvent event;
         event.type = type;
-        event.data = reinterpret_cast<void*>(&args);
+        event.data = static_cast<void*>(&args);
         auto out = m_eventPipe.writeStream();
         out << event;
     }

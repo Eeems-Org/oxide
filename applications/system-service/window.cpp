@@ -77,7 +77,7 @@ void Window::setZ(int z){
         return;
     }
     m_z = z;
-    writeEvent(WindowEventType::Geometry, GeometryEventArgs{
+    writeEvent<GeometryEventArgs>(WindowEventType::Geometry, GeometryEventArgs{
         .geometry = m_geometry,
         .z = m_z
     });
@@ -319,7 +319,7 @@ void Window::move(int x, int y){
     auto oldGeometry = m_geometry;
     m_geometry.setX(x);
     m_geometry.setY(y);
-    writeEvent(WindowEventType::Geometry, GeometryEventArgs{
+    writeEvent<GeometryEventArgs>(WindowEventType::Geometry, GeometryEventArgs{
         .geometry = m_geometry,
         .z = m_z
     });
@@ -370,7 +370,7 @@ void Window::raise(){
         guiAPI->dirty(this, m_geometry);
     }
     emit stateChanged(m_state);
-//    writeEvent(WindowEventType::Raise);
+    writeEvent(WindowEventType::Raise);
     emit raised();
 }
 
@@ -420,12 +420,12 @@ void Window::readyEventPipeRead(){
         *in >> event;
         switch(event.type){
             case Repaint:{
-                auto args = reinterpret_cast<RepaintEventArgs*>(event.data);
+                auto args = static_cast<RepaintEventArgs*>(event.data);
                 repaint(args->geometry, args->waveform);
                 break;
             }
             case Geometry:{
-                auto args = reinterpret_cast<GeometryEventArgs*>(event.data);
+                auto args = static_cast<GeometryEventArgs*>(event.data);
                 setGeometry(args->geometry);
                 break;
             }
@@ -507,12 +507,12 @@ void Window::createFrameBuffer(const QRect& geometry){
     m_bytesPerLine = blankImage.bytesPerLine();
     auto oldGeometry = m_geometry;
     m_geometry = geometry;
-    writeEvent(WindowEventType::ImageInfo, ImageInfoEventArgs{
+    writeEvent<ImageInfoEventArgs>(WindowEventType::ImageInfo, ImageInfoEventArgs{
         .sizeInBytes = size,
         .bytesPerLine = m_bytesPerLine,
         .format = m_format
     });
-    writeEvent(WindowEventType::Geometry, GeometryEventArgs{
+    writeEvent<GeometryEventArgs>(WindowEventType::Geometry, GeometryEventArgs{
         .geometry = m_geometry,
         .z = m_z
     });
