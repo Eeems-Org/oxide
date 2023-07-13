@@ -144,7 +144,31 @@ namespace Oxide::Tarnish {
 
     }
 
-
+    WindowEvent::~WindowEvent(){
+        if(data == nullptr){
+            return;
+        }
+        switch(type){
+            case Repaint:{
+                delete getData<RepaintEventArgs>();
+                break;
+            }
+            case Geometry:{
+                delete getData<GeometryEventArgs>();
+                break;
+            }
+            case ImageInfo:{
+                delete getData<ImageInfoEventArgs>();
+                break;
+            case WaitForPaint:
+                case Raise:
+                case Lower:
+                case Close:
+                case FrameBuffer:
+                    break;
+                }
+        }
+    }
 
     codes::eeems::oxide1::General* getAPI(){
         if(api_general == nullptr){

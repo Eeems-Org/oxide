@@ -9,7 +9,7 @@
 #include "apibase.h"
 #include "screenshot.h"
 
-#define screenAPI ScreenAPI::instance
+#define screenAPI ScreenAPI::singleton()
 
 class ScreenAPI : public APIBase {
     Q_OBJECT
@@ -19,6 +19,7 @@ class ScreenAPI : public APIBase {
 
 public:
     static ScreenAPI* instance;
+    static ScreenAPI* singleton(){ return instance; }
     ScreenAPI(QObject* parent);
     ~ScreenAPI(){}
     void setEnabled(bool enabled);

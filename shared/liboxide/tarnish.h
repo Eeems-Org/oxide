@@ -108,8 +108,9 @@ namespace Oxide::Tarnish {
 
     public:
         WindowEvent();
+        ~WindowEvent();
         WindowEventType type;
-        void* data;
+        void* data = nullptr;
 
         template<typename T>
         void setData(T args){ data = &args; }

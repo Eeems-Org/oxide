@@ -20,6 +20,7 @@ SOURCES += \
     guithread.cpp \
     network.cpp \
     notification.cpp \
+    notificationapi.cpp \
     screenapi.cpp \
     screenshot.cpp \
     socketpair.cpp \

@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <filesystem>
 #include <liboxide.h>
+#include <liboxide/devicesettings.h>
+#include <liboxide/signalhandler.h>
 #include <systemd/sd-daemon.h>
 
 #include "dbusservice.h"
@@ -12,6 +14,7 @@
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 
 using namespace std;
+using namespace Oxide;
 using namespace Oxide::Sentry;
 
 const std::string runPath = "/run/oxide";

@@ -6,6 +6,9 @@
 #include <QTabletEvent>
 #include <QKeyEvent>
 #include <socketpair.h>
+#include <liboxide/tarnish.h>
+
+using namespace  Oxide::Tarnish;
 
 class GuiInputThread;
 
@@ -113,4 +116,13 @@ private:
     void createFrameBuffer(const QRect& geometry);
     bool writeEvent(SocketPair* pipe, const input_event& event, bool force = false);
     void invalidateEventPipes();
+    template<typename T>
+    void writeEvent(WindowEventType type, T* args){
+        WindowEvent event;
+        event.type = type;
+        event.setData<T>(*args);
+        auto out = m_eventPipe.writeStream();
+        out << event;
+    }
+    void writeEvent(WindowEventType type);
 };

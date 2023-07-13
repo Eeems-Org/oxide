@@ -1,7 +1,6 @@
 #include "window.h"
 #include "guiapi.h"
 
-#include <liboxide/tarnish.h>
 #include <sys/file.h>
 
 #define _W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << m_identifier << msg << guiAPI->getSenderPgid())
@@ -14,7 +13,6 @@
     QMutexLocker locker(&m_mutex); \
     Q_UNUSED(locker);
 
-using namespace  Oxide::Tarnish;
 
 Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QRect& geometry, int z, QImage::Format format)
 : QObject{guiAPI},
@@ -77,14 +75,10 @@ void Window::setZ(int z){
         return;
     }
     m_z = z;
-    WindowEvent event;
-    event.type = WindowEventType::Geometry;
-    event.setData(new GeometryEventArgs{
+    writeEvent(WindowEventType::Geometry, new GeometryEventArgs{
         .geometry = m_geometry,
         .z = m_z
     });
-    auto out = m_eventPipe.writeStream();
-    out << event;
     emit zChanged(z);
 }
 
@@ -253,10 +247,7 @@ pid_t Window::pgid(){ return m_pgid; }
 void Window::_close(){
     m_state = WindowState::LoweredHidden;
     invalidateEventPipes();
-    WindowEvent event;
-    event.type = WindowEventType::Close;
-    auto out = m_eventPipe.writeStream();
-    out << event;
+    writeEvent(WindowEventType::Close);
     emit closed();
 }
 
@@ -326,14 +317,10 @@ void Window::move(int x, int y){
     auto oldGeometry = m_geometry;
     m_geometry.setX(x);
     m_geometry.setY(y);
-    WindowEvent event;
-    event.type = WindowEventType::Geometry;
-    event.setData(new GeometryEventArgs{
+    writeEvent(WindowEventType::Geometry, new GeometryEventArgs{
         .geometry = m_geometry,
         .z = m_z
     });
-    auto out = m_eventPipe.writeStream();
-    out << event;
     emit geometryChanged(oldGeometry, m_geometry);
     if(wasVisible){
         guiAPI->dirty(this, oldGeometry);
@@ -381,10 +368,7 @@ void Window::raise(){
         guiAPI->dirty(this, m_geometry);
     }
     emit stateChanged(m_state);
-    WindowEvent event;
-    event.type = WindowEventType::Raise;
-    auto out = m_eventPipe.writeStream();
-    out << event;
+    writeEvent(WindowEventType::Raise);
     emit raised();
 }
 
@@ -413,10 +397,7 @@ void Window::lower(){
         guiAPI->dirty(this, m_geometry);
     }
     emit stateChanged(m_state);
-    WindowEvent event;
-    event.type = WindowEventType::Lower;
-    auto out = m_eventPipe.writeStream();
-    out << event;
+    writeEvent(WindowEventType::Lower);
     emit lowered();
 }
 
@@ -524,23 +505,16 @@ void Window::createFrameBuffer(const QRect& geometry){
     m_bytesPerLine = blankImage.bytesPerLine();
     auto oldGeometry = m_geometry;
     m_geometry = geometry;
-    WindowEvent event;
-    event.type = WindowEventType::ImageInfo;
-    event.setData(new ImageInfoEventArgs{
+    writeEvent(WindowEventType::ImageInfo, new ImageInfoEventArgs{
         .sizeInBytes = size,
         .bytesPerLine = m_bytesPerLine,
         .format = m_format
     });
-    auto out = m_eventPipe.writeStream();
-    out << event;
-    event.type = WindowEventType::Geometry;
-    event.setData(new GeometryEventArgs{
+    writeEvent(WindowEventType::Geometry, new GeometryEventArgs{
         .geometry = m_geometry,
         .z = m_z
     });
-    out << event;
-    event.type = WindowEventType::FrameBuffer;
-    out << event;
+    writeEvent(WindowEventType::FrameBuffer);
     emit sizeInBytesChanged(size);
     emit bytesPerLineChanged(m_bytesPerLine);
     emit geometryChanged(oldGeometry, m_geometry);
@@ -662,4 +636,11 @@ void Window::invalidateEventPipes(){
         .code = SYN_DROPPED,
         .value = 0,
     }, true);
+}
+
+void Window::writeEvent(WindowEventType type){
+    WindowEvent event;
+    event.type = type;
+    auto out = m_eventPipe.writeStream();
+    out << event;
 }

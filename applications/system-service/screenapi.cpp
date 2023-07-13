@@ -11,16 +11,18 @@
 #include <QPainter>
 #include <QDebug>
 
+using namespace Oxide;
+
 ScreenAPI* ScreenAPI::instance = nullptr;
 
 ScreenAPI::ScreenAPI(QObject* parent) : APIBase(parent), m_screenshots(), m_enabled(false) {
     instance = this;
-    Oxide::Sentry::sentry_transaction("screen", "init", [this](Oxide::Sentry::Transaction* t){
+    Sentry::sentry_transaction("screen", "init", [this](Sentry::Transaction* t){
         qDBusRegisterMetaType<QList<double>>();
-        Oxide::Sentry::sentry_span(t, "mkdirs", "Create screenshots directory", [this]{
+        Sentry::sentry_span(t, "mkdirs", "Create screenshots directory", [this]{
             mkdirs("/home/root/screenshots/");
         });
-        Oxide::Sentry::sentry_span(t, "screenshots", "Load existing screenshots", [this]{
+        Sentry::sentry_span(t, "screenshots", "Load existing screenshots", [this]{
             QDir dir("/home/root/screenshots/");
             dir.setNameFilters(QStringList() << "*.png");
             for(auto entry : dir.entryInfoList()){
@@ -73,7 +75,7 @@ bool ScreenAPI::drawFullscreenImage(QString path){
         qDebug() << "Image data invalid" << path;
         return false;
     }
-    Oxide::Sentry::sentry_transaction("screen", "drawFullscrenImage", [img, path](Oxide::Sentry::Transaction* t){
+    Sentry::sentry_transaction("screen", "drawFullscrenImage", [img, path](Sentry::Transaction* t){
         Q_UNUSED(t);
         Oxide::dispatchToMainThread([img]{
             QRect rect = EPFrameBuffer::framebuffer()->rect();
@@ -146,13 +148,13 @@ QDBusObjectPath ScreenAPI::addScreenshot(QByteArray blob){
 
 Screenshot* ScreenAPI::addScreenshot(QString filePath){
     Screenshot* instance;
-    Oxide::Sentry::sentry_transaction("screen", "addScreenshot", [this, filePath, &instance](Oxide::Sentry::Transaction* t){
-        Oxide::Sentry::sentry_span(t, "screenshot", "Create screenshot", [this, filePath, &instance]{
+    Sentry::sentry_transaction("screen", "addScreenshot", [this, filePath, &instance](Sentry::Transaction* t){
+        Sentry::sentry_span(t, "screenshot", "Create screenshot", [this, filePath, &instance]{
             auto path = QString(OXIDE_SERVICE_PATH "/screenshots/") + QFileInfo(filePath).completeBaseName().remove('-').remove('.');
             instance = new Screenshot(path, filePath, this);
             m_screenshots.append(instance);
         });
-        Oxide::Sentry::sentry_span(t, "events", "Connect and emit events", [this, &instance]{
+        Sentry::sentry_span(t, "events", "Connect and emit events", [this, &instance]{
             connect(instance, &Screenshot::removed, [this, instance]{
                 if(m_enabled){
                     emit screenshotRemoved(instance->qPath());

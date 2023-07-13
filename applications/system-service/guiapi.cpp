@@ -1,5 +1,6 @@
 #include "guiapi.h"
 #include "appsapi.h"
+#include "buttonhandler.h"
 #include "digitizerhandler.h"
 #include "dbusservice.h"
 
