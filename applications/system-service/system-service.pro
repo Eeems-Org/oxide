@@ -21,10 +21,12 @@ SOURCES += \
     network.cpp \
     notification.cpp \
     notificationapi.cpp \
+    powerapi.cpp \
     screenapi.cpp \
     screenshot.cpp \
     socketpair.cpp \
     systemapi.cpp \
+    wifiapi.cpp \
     window.cpp \
     wlan.cpp \
     wpa_supplicant.cpp \

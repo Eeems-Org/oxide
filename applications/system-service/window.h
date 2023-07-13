@@ -116,13 +116,13 @@ private:
     void createFrameBuffer(const QRect& geometry);
     bool writeEvent(SocketPair* pipe, const input_event& event, bool force = false);
     void invalidateEventPipes();
-    template<typename T>
-    void writeEvent(WindowEventType type, T* args){
-        WindowEvent event;
-        event.type = type;
-        event.setData<T>(*args);
-        auto out = m_eventPipe.writeStream();
-        out << event;
-    }
-    void writeEvent(WindowEventType type);
+//    template<typename T>
+//    inline void writeEvent(WindowEventType type, T args){
+//        WindowEvent event;
+//        event.type = type;
+//        event.data = reinterpret_cast<void*>(&args);
+//        auto out = m_eventPipe.writeStream();
+//        out << event;
+//    }
+//    void writeEvent(WindowEventType type);
 };

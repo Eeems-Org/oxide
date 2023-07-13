@@ -5,7 +5,7 @@
 
 #include <liboxide/meta.h>
 
-#define dbusService DBusService::singleton()
+#define dbusService DBusService::__singleton()
 
 using namespace std;
 using namespace Oxide::Sentry;
@@ -29,7 +29,7 @@ class DBusService : public APIBase {
     Q_PROPERTY(int tarnishPid READ tarnishPid)
 
 public:
-    static DBusService* singleton();
+    static DBusService* __singleton();
     DBusService(QObject* parent);
     ~DBusService();
     void setEnabled(bool enabled);

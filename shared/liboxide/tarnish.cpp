@@ -150,15 +150,15 @@ namespace Oxide::Tarnish {
         }
         switch(type){
             case Repaint:{
-                delete getData<RepaintEventArgs>();
+                delete reinterpret_cast<GeometryEventArgs*>(data);
                 break;
             }
             case Geometry:{
-                delete getData<GeometryEventArgs>();
+                delete reinterpret_cast<GeometryEventArgs*>(data);
                 break;
             }
             case ImageInfo:{
-                delete getData<ImageInfoEventArgs>();
+                delete reinterpret_cast<ImageInfoEventArgs*>(data);
                 break;
             case WaitForPaint:
                 case Raise:
@@ -863,19 +863,19 @@ QDataStream& operator>>(QDataStream& stream, Oxide::Tarnish::WindowEvent& event)
         case Repaint:{
             RepaintEventArgs args;
             stream >> args.geometry >> args.waveform;
-            event.setData(args);
+            event.data = &args;
             break;
         }
         case Geometry:{
             GeometryEventArgs args;
             stream >> args.geometry >> args.z;
-            event.setData(args);
+            event.data = &args;
             break;
         }
         case ImageInfo:{
             ImageInfoEventArgs args;
             stream >> args.sizeInBytes >> args.bytesPerLine >> args.format;
-            event.setData(args);
+            event.data = &args;
             break;
         case WaitForPaint:
         case Raise:

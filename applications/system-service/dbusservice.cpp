@@ -24,7 +24,7 @@
 
 using namespace std::chrono;
 
-DBusService* DBusService::singleton(){
+DBusService* DBusService::__singleton(){
     auto bus = QDBusConnection::systemBus();
     if(instance == nullptr){
         qApp->thread()->setObjectName("main"); // To make identifying threads from QDebug output easier

@@ -111,12 +111,6 @@ namespace Oxide::Tarnish {
         ~WindowEvent();
         WindowEventType type;
         void* data = nullptr;
-
-        template<typename T>
-        void setData(T args){ data = &args; }
-
-        template<typename T>
-        T* getData(){ return reinterpret_cast<T*>(data); }
     };
     /*!
      * \brief Get the current General API instance
