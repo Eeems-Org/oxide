@@ -32,7 +32,7 @@ void Notification::display(){
         return;
     }
     notificationAPI->lock();
-    Oxide::dispatchToMainThread([=]{
+    Oxide::dispatchToMainThread([this]{
         qDebug() << "Displaying notification" << identifier();
         auto path = appsAPI->currentApplicationNoSecurityCheck();
         Application* resumeApp = nullptr;

@@ -78,6 +78,10 @@ QString SocketPair::errorString(){
     return m_writeSocket.errorString();
 }
 
+QDataStream* SocketPair::readStream(){ return &m_stream; }
+
+QDataStream SocketPair::writeStream(){ return QDataStream(&m_writeSocket); }
+
 void SocketPair::close(){
     m_readSocket.close();
     m_writeSocket.close();

@@ -164,10 +164,8 @@ public:
                         lockTimer.stop();
                     }
                 });
-                connect(&sharedSettings, &Oxide::SharedSettings::autoSleepChanged, [=](int _autoSleep){
-                    emit autoSleepChanged(_autoSleep);
-                });
-                connect(&sharedSettings, &Oxide::SharedSettings::changed, [=](){
+                connect(&sharedSettings, &Oxide::SharedSettings::autoSleepChanged, [this](int _autoSleep){ emit autoSleepChanged(_autoSleep); });
+                connect(&sharedSettings, &Oxide::SharedSettings::changed, [this](){
                     sharedSettings.beginReadArray("swipes");
                     for(short i = Right; i <= Down; i++){
                         sharedSettings.setArrayIndex(i);
@@ -179,7 +177,7 @@ public:
                     sharedSettings.endArray();
                 });
             });
-            Oxide::Sentry::sentry_span(t, "swipes", "Load swipe settings", [=](){
+            Oxide::Sentry::sentry_span(t, "swipes", "Load swipe settings", [this](){
                 sharedSettings.beginReadArray("swipes");
                 for(short i = Right; i <= Down; i++){
                     sharedSettings.setArrayIndex(i);

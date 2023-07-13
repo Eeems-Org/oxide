@@ -24,6 +24,8 @@ public:
     qint64 _write(QByteArray data);
     qint64 write(QByteArray data);
     QString errorString();
+    QDataStream* readStream();
+    QDataStream writeStream();
 
 signals:
     void readyRead();

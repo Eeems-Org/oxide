@@ -1,4 +1,109 @@
 #include "screenshot.h"
 #include"screenapi.h"
 
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#include <liboxide.h>
+
+Screenshot::Screenshot(QString path, QString filePath, QObject* parent) : QObject(parent), m_path(path), mutex() {
+    m_file = new QFile(filePath);
+    if(!m_file->open(QIODevice::ReadWrite)){
+        qDebug() << "Unable to open screenshot file" << m_file->fileName();
+    }
+}
+
+Screenshot::~Screenshot(){
+    unregisterPath();
+    if(m_file->isOpen()){
+        m_file->close();
+    }
+    delete m_file;
+}
+
+void Screenshot::registerPath(){
+    auto bus = QDBusConnection::systemBus();
+    bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
+    if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
+        qDebug() << "Registered" << path() << OXIDE_APPLICATION_INTERFACE;
+    }else{
+        qDebug() << "Failed to register" << path();
+    }
+}
+
+void Screenshot::unregisterPath(){
+    auto bus = QDBusConnection::systemBus();
+    if(bus.objectRegisteredAt(path()) != nullptr){
+        qDebug() << "Unregistered" << path();
+        bus.unregisterObject(path());
+    }
+}
+
+QByteArray Screenshot::blob(){
+    if(!hasPermission("screen")){
+        return QByteArray();
+    }
+    if(!m_file->exists() && !m_file->isOpen()){
+        emit removed();
+        return QByteArray();
+    }
+    mutex.lock();
+    if(!m_file->isOpen() && !m_file->open(QIODevice::ReadWrite)){
+        qDebug() << "Unable to open screenshot file" << m_file->fileName();
+        mutex.unlock();
+        return QByteArray();
+    }
+    m_file->seek(0);
+    auto data = m_file->readAll();
+    mutex.unlock();
+    return data;
+}
+
+void Screenshot::setBlob(QByteArray blob){
+    if(!hasPermission("screen")){
+        return;
+    }
+    mutex.lock();
+    if(!m_file->isOpen() && !m_file->open(QIODevice::ReadWrite)){
+        qDebug() << "Unable to open screenshot file" << m_file->fileName();
+        mutex.unlock();
+        return;
+    }
+    m_file->seek(0);
+    m_file->resize(blob.size());
+    m_file->write(blob);
+    m_file->flush();
+    mutex.unlock();
+    emit modified();
+}
+
+QString Screenshot::getPath(){
+    if(!hasPermission("screen")){
+        return "";
+    }
+    if(!m_file->exists()){
+        emit removed();
+        return "";
+    }
+    return m_file->fileName();
+}
+
+void Screenshot::remove(){
+    if(!hasPermission("screen")){
+        return;
+    }
+    mutex.lock();
+    if(m_file->exists() && !m_file->remove()){
+        qDebug() << "Failed to remove screenshot" << path();
+        mutex.unlock();
+        return;
+    }
+    if(m_file->isOpen()){
+        m_file->close();
+    }
+    mutex.unlock();
+    qDebug() << "Removed screenshot" << path();
+    emit removed();
+}
+
 bool Screenshot::hasPermission(QString permission, const char* sender){ return screenAPI->hasPermission(permission, sender); }

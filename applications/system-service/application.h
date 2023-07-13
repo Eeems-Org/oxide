@@ -138,7 +138,7 @@ public:
     Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false), fifos(), m_pid{-1} {
         m_process = new SandBoxProcess(this);
         connect(m_process, &SandBoxProcess::started, this, &Application::started);
-        connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&SandBoxProcess::finished), [=](int exitCode, QProcess::ExitStatus status){
+        connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&SandBoxProcess::finished), [this](int exitCode, QProcess::ExitStatus status){
             Q_UNUSED(status);
             finished(exitCode);
         });

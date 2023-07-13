@@ -91,9 +91,7 @@ public:
         auto notification = new Notification(getPath(identifier), identifier, owner, application, text, icon, this);
         m_notifications.insert(identifier, notification);
         auto path = notification->qPath();
-        connect(notification, &Notification::changed, this, [=]{
-           emit notificationChanged(path);
-        });
+        connect(notification, &Notification::changed, this, [this, path]{ emit notificationChanged(path); });
         if(m_enabled){
             notification->registerPath();
         }

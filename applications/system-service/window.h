@@ -9,8 +9,7 @@
 
 class GuiInputThread;
 
-class Window : public QObject
-{
+class Window : public QObject{
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_WINDOW_INTERFACE)
     Q_PROPERTY(QString identifier READ identifier)
@@ -19,6 +18,7 @@ class Window : public QObject
     Q_PROPERTY(QDBusUnixFileDescriptor touchEventPipe READ touchEventPipe)
     Q_PROPERTY(QDBusUnixFileDescriptor tabletEventPipe READ tabletEventPipe)
     Q_PROPERTY(QDBusUnixFileDescriptor keyEventPipe READ keyEventPipe)
+    Q_PROPERTY(QDBusUnixFileDescriptor eventPipe READ eventPipe)
     Q_PROPERTY(QRect geometry READ geometry WRITE setGeometry NOTIFY geometryChanged)
     Q_PROPERTY(qulonglong sizeInBytes READ sizeInBytes NOTIFY sizeInBytesChanged)
     Q_PROPERTY(qulonglong bytesPerLine READ bytesPerLine NOTIFY bytesPerLineChanged)
@@ -87,6 +87,9 @@ signals:
     void bytesPerLineChanged(const qulonglong&);
     void formatChanged(const int&);
     void zChanged(const int&);
+
+private slots:
+    void readyEventPipeRead();
 
 private:
     QString m_identifier;

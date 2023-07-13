@@ -70,12 +70,53 @@ namespace Oxide::Tarnish {
     private slots:
         void readEvent();
     };
-    typedef enum{
-        Raised,
-        Lowered,
-        RaisedHidden,
-        LoweredHidden
-    } WindowState;
+    struct RepaintEventArgs{
+        QRect geometry;
+        EPFrameBuffer::WaveformMode waveform;
+    };
+    typedef RepaintEventArgs RepaintEventArgs;
+    struct GeometryEventArgs{
+        QRect geometry;
+        int z;
+    };
+    typedef GeometryEventArgs GeometryEventArgs;
+    struct ImageInfoEventArgs{
+        qulonglong sizeInBytes;
+        qulonglong bytesPerLine;
+        QImage::Format format;
+    };
+    typedef ImageInfoEventArgs ImageInfoEventArgs;
+
+    /*!
+     * \brief The WindowEventType enum
+     */
+    enum WindowEventType{
+        Repaint, /*!< */
+        WaitForPaint, /*!< */
+        Geometry, /*!< */
+        ImageInfo, /*!< */
+        Raise, /*!< */
+        Lower, /*!< */
+        Close, /*!< */
+        FrameBuffer, /*!< */
+    };
+    /*!
+     * \brief The WindowEvent class
+     */
+    class LIBOXIDE_EXPORT WindowEvent : public QObject{
+        Q_OBJECT
+
+    public:
+        WindowEvent();
+        WindowEventType type;
+        void* data;
+
+        template<typename T>
+        void setData(T args){ data = &args; }
+
+        template<typename T>
+        T* getData(){ return reinterpret_cast<T*>(data); }
+    };
     /*!
      * \brief Get the current General API instance
      * \return The current General API instance
@@ -164,6 +205,16 @@ namespace Oxide::Tarnish {
      */
     LIBOXIDE_EXPORT InputEventSocket* getKeyEventPipe();
     /*!
+     * \brief getEventPipeFd
+     * \return
+     */
+    LIBOXIDE_EXPORT int getEventPipeFd();
+    /*!
+     * \brief getEventPipe
+     * \return
+     */
+    LIBOXIDE_EXPORT QDataStream* getEventPipe();
+    /*!
      * \brief screenUpdate
      * \param waveform
      */
@@ -219,3 +270,13 @@ namespace Oxide::Tarnish {
      */
     LIBOXIDE_EXPORT codes::eeems::oxide1::Window* topWindow();
 }
+/*!
+ * \brief operator <<
+ * \return
+ */
+LIBOXIDE_EXPORT QDataStream& operator<<(QDataStream& stream, const Oxide::Tarnish::WindowEvent& event);
+/*!
+ * \brief operator >>
+ * \return
+ */
+LIBOXIDE_EXPORT QDataStream& operator>>(QDataStream& stream, Oxide::Tarnish::WindowEvent& event);

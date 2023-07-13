@@ -44,7 +44,7 @@ namespace Oxide{
       callback(callback)
     {
       watcher = new QDBusServiceWatcher(serviceName, QDBusConnection::systemBus(), QDBusServiceWatcher::WatchForUnregistration, this);
-      QObject::connect(watcher, &QDBusServiceWatcher::serviceUnregistered, this, [=](const QString& name){
+      QObject::connect(watcher, &QDBusServiceWatcher::serviceUnregistered, this, [this, callback, serviceName](const QString& name){
           Q_UNUSED(name);
           if(!m_disconnected){
               O_DEBUG(QDBusError(QDBusError::ServiceUnknown, "The name " + serviceName + " is no longer registered"));
