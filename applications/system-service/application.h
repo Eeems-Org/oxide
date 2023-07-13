@@ -1,13 +1,13 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 
-#include <liboxide/meta.h>
 #include <QObject>
 #include <QDebug>
 #include <QDBusObjectPath>
 #include <QProcess>
 #include <QElapsedTimer>
 
+#include "apibase.h"
 #include "fifohandler.h"
 
 class Window;

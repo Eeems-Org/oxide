@@ -1,11 +1,11 @@
 #ifndef NOTIFICATION_H
 #define NOTIFICATION_H
 
-#include <liboxide/meta.h>
 #include <QObject>
 #include <QImage>
 #include <QtDBus>
 
+#include "apibase.h"
 #include "application.h"
 
 class Notification : public QObject{

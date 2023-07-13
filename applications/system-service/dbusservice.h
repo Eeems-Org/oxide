@@ -1,9 +1,9 @@
 #ifndef DBUSSERVICE_H
 #define DBUSSERVICE_H
 
-#include <liboxide/meta.h>
 #include <QObject>
 
+#include "apibase.h"
 #include "childentry.h"
 
 #define dbusService DBusService::__singleton()
