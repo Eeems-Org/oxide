@@ -111,6 +111,12 @@ namespace Oxide::Tarnish {
         ~WindowEvent();
         WindowEventType type;
         void* data = nullptr;
+
+        template<typename T>
+        T* getData(){ return static_cast<T*>(data); }
+
+        template<typename T>
+        void setData(T data){ this->data = static_cast<void*>(&data); }
     };
     /*!
      * \brief Get the current General API instance
@@ -208,7 +214,12 @@ namespace Oxide::Tarnish {
      * \brief getEventPipe
      * \return
      */
-    LIBOXIDE_EXPORT QDataStream* getEventPipe();
+    LIBOXIDE_EXPORT QLocalSocket* getEventPipe();
+    /*!
+     * \brief getEventStream
+     * \return
+     */
+    LIBOXIDE_EXPORT QDataStream* getEventStream();
     /*!
      * \brief screenUpdate
      * \param waveform

@@ -123,6 +123,58 @@ void OxideIntegration::initialize(){
     QFdContainer keyHandlerFd(Oxide::Tarnish::getKeyEventPipeFd());
     auto keyHandler = new QEvdevKeyboardHandler("oxide", keyHandlerFd, false, false, "");
     QObject::connect(Oxide::Tarnish::topWindow(), &codes::eeems::oxide1::Window::closed, [=]{ delete keyHandler; });
+
+    auto eventPipe = Oxide::Tarnish::getEventPipe();
+    if(eventPipe == nullptr){
+        qFatal("Could not get event pipe");
+    }
+    auto eventStream = Oxide::Tarnish::getEventStream();
+    if(eventStream == nullptr){
+        qFatal("Could not get event stream");
+    }
+    QObject::connect(eventPipe, &QLocalSocket::readyRead, [this, eventPipe, eventStream]{
+        while(!eventStream->atEnd()){
+            Oxide::Tarnish::WindowEvent event;
+            *eventStream >> event;
+            switch(event.type){
+                case Oxide::Tarnish::Geometry:{
+                    auto args = event.getData<Oxide::Tarnish::GeometryEventArgs>();
+                    m_primaryScreen->setGeometry(args->geometry);
+                    auto window = m_primaryScreen->topWindow();
+                    if(window != nullptr){
+                        window->setGeometry(args->geometry);
+                    }
+                    break;
+                }
+                case Oxide::Tarnish::Raise:{
+                    auto window = m_primaryScreen->topWindow();
+                    if(window != nullptr){
+                        window->raise();
+                    }
+                    break;
+                }
+                case Oxide::Tarnish::Lower:{
+                    auto window = m_primaryScreen->topWindow();
+                    if(window != nullptr){
+                        window->lower();
+                    }
+                    break;
+                }
+                case Oxide::Tarnish::Close:{
+                    auto window = m_primaryScreen->topWindow();
+                    if(window != nullptr){
+                        window->close();
+                    }
+                    break;
+                }
+                case Oxide::Tarnish::Repaint:
+                case Oxide::Tarnish::ImageInfo:
+                case Oxide::Tarnish::WaitForPaint:
+                case Oxide::Tarnish::FrameBuffer:
+                    break;
+            }
+        }
+    });
 }
 
 

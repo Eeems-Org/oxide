@@ -12,6 +12,7 @@ class OxideScreen : public QObject, public QPlatformScreen{
 public:
     OxideScreen();
     QRect geometry() const override { return mGeometry; }
+    void setGeometry(QRect geometry) { mGeometry = geometry; }
     int depth() const override { return mDepth; }
     QImage::Format format() const override { return mFormat; }
     QSizeF physicalSize() const override;

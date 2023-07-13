@@ -420,12 +420,12 @@ void Window::readyEventPipeRead(){
         *in >> event;
         switch(event.type){
             case Repaint:{
-                auto args = static_cast<RepaintEventArgs*>(event.data);
+                auto args = event.getData<RepaintEventArgs>();
                 repaint(args->geometry, args->waveform);
                 break;
             }
             case Geometry:{
-                auto args = static_cast<GeometryEventArgs*>(event.data);
+                auto args = event.getData<GeometryEventArgs>();
                 setGeometry(args->geometry);
                 break;
             }

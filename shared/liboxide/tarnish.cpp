@@ -145,26 +145,23 @@ namespace Oxide::Tarnish {
     }
 
     WindowEvent::~WindowEvent(){
-        if(data == nullptr){
-            return;
-        }
         switch(type){
             case Repaint:{
-                auto ptr = static_cast<GeometryEventArgs*>(data);
+                auto ptr = getData<GeometryEventArgs>();
                 if(ptr != nullptr){
                     delete ptr;
                 }
                 break;
             }
             case Geometry:{
-                auto ptr = static_cast<GeometryEventArgs*>(data);
+                auto ptr = getData<GeometryEventArgs>();;
                 if(ptr != nullptr){
                     delete ptr;
                 }
                 break;
             }
             case ImageInfo:{
-                auto ptr = static_cast<ImageInfoEventArgs*>(data);
+                auto ptr = getData<ImageInfoEventArgs>();
                 if(ptr != nullptr){
                     delete ptr;
                 }
@@ -700,14 +697,14 @@ namespace Oxide::Tarnish {
         return eventSocket.socketDescriptor();
     }
 
-    QDataStream* getEventPipe(){
+    QLocalSocket* getEventPipe(){
         auto fd = getEventPipeFd();
         if(fd == -1){
             O_WARNING(__PRETTY_FUNCTION__ << "Unable to get window event pipe: Failed to get pipe fd");
             return nullptr;
         }
         if(eventSocket.isOpen()){
-            return &eventStream;
+            return &eventSocket;
         }
         startInputThread();
         eventSocket.moveToThread(&inputThread);
@@ -718,6 +715,13 @@ namespace Oxide::Tarnish {
             QObject::disconnect(*conn);
             delete conn;
         });
+        return &eventSocket;
+    }
+
+    QDataStream* getEventStream(){
+        if(getEventPipe() == nullptr){
+            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get window event stream: Failed to get pipe");
+        }
         eventStream.setDevice(&eventSocket);
         return &eventStream;
     }

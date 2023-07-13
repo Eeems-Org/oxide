@@ -120,7 +120,7 @@ private:
     void writeEvent(WindowEventType type, T args){
         WindowEvent event;
         event.type = type;
-        event.data = static_cast<void*>(&args);
+        event.setData(args);
         auto out = m_eventPipe.writeStream();
         out << event;
     }
