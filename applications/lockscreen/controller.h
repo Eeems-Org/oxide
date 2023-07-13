@@ -27,7 +27,7 @@ public:
     Controller(QObject* parent)
     : QObject(parent), confirmPin() {
         clockTimer = new QTimer(root);
-        systemApi = Oxide::Tarnish::systemAPI();
+        systemApi = Oxide::Tarnish::systemApi();
         if(systemApi == nullptr){
             qDebug() << "Unable to get system API";
             throw "";
@@ -70,9 +70,7 @@ public:
 
         auto path = appsApi->currentApplication().path();
         auto app = new Application(appsApi->service(), path, appsApi->connection(), this);
-        connect(app, &Application::resumed, [=]{
-            startup();
-        });
+        connect(app, &Application::resumed, [this]{ startup(); });
 
         QSettings settings;
         if(QFile::exists(settings.fileName())){
