@@ -876,19 +876,19 @@ QDataStream& operator>>(QDataStream& stream, Oxide::Tarnish::WindowEvent& event)
         case Repaint:{
             RepaintEventArgs args;
             stream >> args.geometry >> args.waveform;
-            event.data = &args;
+            event.setData(args);
             break;
         }
         case Geometry:{
             GeometryEventArgs args;
             stream >> args.geometry >> args.z;
-            event.data = &args;
+            event.setData(args);
             break;
         }
         case ImageInfo:{
             ImageInfoEventArgs args;
             stream >> args.sizeInBytes >> args.bytesPerLine >> args.format;
-            event.data = &args;
+            event.setData(args);
             break;
         case WaitForPaint:
         case Raise:

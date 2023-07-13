@@ -120,9 +120,9 @@ private:
     void writeEvent(WindowEventType type, T args){
         WindowEvent event;
         event.type = type;
-        event.setData(args);
-        auto out = m_eventPipe.writeStream();
-        out << event;
+//        event.setData(args);
+//        auto out = m_eventPipe.writeStream();
+//        out << event;
     }
     void writeEvent(WindowEventType type);
 };

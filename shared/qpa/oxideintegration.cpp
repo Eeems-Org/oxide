@@ -81,7 +81,7 @@ void OxideIntegration::initialize(){
         qFatal("Could not get tarnish private socket");
     }
     QObject::connect(Oxide::Tarnish::getSocket(), &QLocalSocket::readChannelFinished, []{ qApp->quit(); });
-    connect(socket, &QLocalSocket::readyRead, [socket]{
+    QObject::connect(socket, &QLocalSocket::readyRead, [socket]{
         // TODO - read commands
         while(!socket->atEnd()){
             O_DEBUG(socket->readAll());
@@ -100,7 +100,7 @@ void OxideIntegration::initialize(){
             qApp->exit(EXIT_FAILURE);
         }
     });
-    connect(touchPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [touchData](input_event event){
+    QObject::connect(touchPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [touchData](input_event event){
         O_EVENT(event);
         touchData->processInputEvent(&event);
     });
@@ -122,17 +122,20 @@ void OxideIntegration::initialize(){
     // Setup key event handling
     QFdContainer keyHandlerFd(Oxide::Tarnish::getKeyEventPipeFd());
     auto keyHandler = new QEvdevKeyboardHandler("oxide", keyHandlerFd, false, false, "");
-    QObject::connect(Oxide::Tarnish::topWindow(), &codes::eeems::oxide1::Window::closed, [=]{ delete keyHandler; });
-
     auto eventPipe = Oxide::Tarnish::getEventPipe();
     if(eventPipe == nullptr){
         qFatal("Could not get event pipe");
     }
+    QObject::connect(eventPipe, &QLocalSocket::readChannelFinished, []{
+        if(!qApp->closingDown()){
+            qApp->exit(EXIT_FAILURE);
+        }
+    });
     auto eventStream = Oxide::Tarnish::getEventStream();
     if(eventStream == nullptr){
         qFatal("Could not get event stream");
     }
-    QObject::connect(eventPipe, &QLocalSocket::readyRead, [this, eventPipe, eventStream]{
+    QObject::connect(eventPipe, &QLocalSocket::readyRead, [this, eventPipe, eventStream, keyHandler]{
         while(!eventStream->atEnd()){
             Oxide::Tarnish::WindowEvent event;
             *eventStream >> event;
@@ -165,6 +168,7 @@ void OxideIntegration::initialize(){
                     if(window != nullptr){
                         window->close();
                     }
+                    delete keyHandler;
                     break;
                 }
                 case Oxide::Tarnish::Repaint:
