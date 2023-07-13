@@ -8,7 +8,7 @@
 #include "network.h"
 #include "bss.h"
 
-#define wifiAPI WifiAPI::singleton()
+#define wifiAPI WifiAPI::__singleton()
 
 class WifiAPI : public APIBase {
     Q_OBJECT
@@ -23,7 +23,7 @@ class WifiAPI : public APIBase {
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
 
 public:
-    static WifiAPI* singleton(WifiAPI* self = nullptr);
+    static WifiAPI* __singleton(WifiAPI* self = nullptr);
     WifiAPI(QObject* parent);
     ~WifiAPI();
     void setEnabled(bool enabled);

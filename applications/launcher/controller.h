@@ -74,7 +74,7 @@ public:
         notifications = new NotificationList();
         qDebug() << "Requesting APIs";
         connect(Oxide::Tarnish::getAPI(), &General::aboutToQuit, qApp, &QGuiApplication::quit);
-        powerApi = Oxide::Tarnish::powerAPI();
+        powerApi = Oxide::Tarnish::powerApi();
         if(powerApi == nullptr){
             qFatal("Power API was not available");
         }
@@ -87,7 +87,7 @@ public:
         connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
         connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
         connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
-        wifiApi = Oxide::Tarnish::wifiAPI();
+        wifiApi = Oxide::Tarnish::wifiApi();
         if(wifiApi == nullptr){
             qFatal("Wifi API was not available");
         }
@@ -117,7 +117,7 @@ public:
                 networkConnected(network);
             }
         });
-        systemApi = Oxide::Tarnish::systemAPI();
+        systemApi = Oxide::Tarnish::systemApi();
         if(systemApi == nullptr){
             qFatal("Could not request system API");
         }
@@ -141,13 +141,13 @@ public:
         }
         emit powerOffInhibitedChanged(powerOffInhibited());
         emit sleepInhibitedChanged(sleepInhibited());
-        appsApi = Oxide::Tarnish::appsAPI();
+        appsApi = Oxide::Tarnish::appsApi();
         if(appsApi == nullptr){
             qFatal("Apps API was not available");
         }
         connect(appsApi, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
         connect(appsApi, &Apps::applicationRegistered, this, &Controller::registerApplication);
-        notificationApi = Oxide::Tarnish::notificationAPI();
+        notificationApi = Oxide::Tarnish::notificationApi();
         if(notificationApi == nullptr){
             qFatal("Notification API was not available");
         }

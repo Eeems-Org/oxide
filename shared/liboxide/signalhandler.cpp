@@ -29,7 +29,7 @@ namespace Oxide {
         initialized = false;
         return 0;
     }
-    SignalHandler* SignalHandler::singleton(){
+    SignalHandler* SignalHandler::__singleton(){
         static SignalHandler* instance;
         if(instance == nullptr){
             instance = new SignalHandler(qApp);

@@ -6,7 +6,9 @@
 #include "window.h"
 #include "guithread.h"
 
-#define guiAPI GuiAPI::singleton()
+#define guiAPI GuiAPI::__singleton()
+
+using namespace Oxide;
 
 class RepaintNotifier : public QObject{
     Q_OBJECT
@@ -15,7 +17,6 @@ signals:
     void repainted();
 };
 
-using namespace Oxide;
 
 class GuiAPI : public APIBase {
     Q_OBJECT
@@ -24,7 +25,7 @@ class GuiAPI : public APIBase {
 
 public:
     QMutex m_repaintMutex;
-    static GuiAPI* singleton(GuiAPI* self = nullptr);
+    static GuiAPI* __singleton(GuiAPI* self = nullptr);
     GuiAPI(QObject* parent);
     ~GuiAPI();
     void startup();

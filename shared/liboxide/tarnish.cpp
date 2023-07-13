@@ -373,7 +373,7 @@ namespace Oxide::Tarnish {
         }
         QMutexLocker locker(&fbMutex);
         Q_UNUSED(locker);
-        if(guiAPI() == nullptr){
+        if(guiApi() == nullptr){
             O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer: Unable to get GUI API");
             return -1;
         }
@@ -742,7 +742,7 @@ namespace Oxide::Tarnish {
         window->waitForLastUpdate();
     }
 
-    codes::eeems::oxide1::Power* powerAPI(){
+    codes::eeems::oxide1::Power* powerApi(){
         if(api_power != nullptr){
             return api_power;
         }
@@ -754,7 +754,7 @@ namespace Oxide::Tarnish {
         return api_power;
     }
 
-    codes::eeems::oxide1::Wifi* wifiAPI(){
+    codes::eeems::oxide1::Wifi* wifiApi(){
         if(api_wifi != nullptr){
             return api_wifi;
         }
@@ -766,7 +766,7 @@ namespace Oxide::Tarnish {
         return api_wifi;
     }
 
-    codes::eeems::oxide1::Screen* screenAPI(){
+    codes::eeems::oxide1::Screen* screenApi(){
         if(api_screen != nullptr){
             return api_screen;
         }
@@ -778,7 +778,7 @@ namespace Oxide::Tarnish {
         return api_screen;
     }
 
-    codes::eeems::oxide1::Apps* appsAPI(){
+    codes::eeems::oxide1::Apps* appsApi(){
         if(api_apps != nullptr){
             return api_apps;
         }
@@ -790,7 +790,7 @@ namespace Oxide::Tarnish {
         return api_apps;
     }
 
-    codes::eeems::oxide1::System* systemAPI(){
+    codes::eeems::oxide1::System* systemApi(){
         if(api_system != nullptr){
             return api_system;
         }
@@ -802,7 +802,7 @@ namespace Oxide::Tarnish {
         return api_system;
     }
 
-    codes::eeems::oxide1::Notifications* notificationAPI(){
+    codes::eeems::oxide1::Notifications* notificationApi(){
         if(api_notification != nullptr){
             return api_notification;
         }
@@ -814,7 +814,7 @@ namespace Oxide::Tarnish {
         return api_notification;
     }
 
-    codes::eeems::oxide1::Gui* guiAPI(){
+    codes::eeems::oxide1::Gui* guiApi(){
         if(api_gui != nullptr){
             return api_gui;
         }

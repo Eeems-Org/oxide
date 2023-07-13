@@ -1,14 +1,14 @@
 #pragma once
-
 #include "apibase.h"
 
 #include <QTouchEvent>
 #include <QTabletEvent>
 #include <QKeyEvent>
 #include <socketpair.h>
+#include <liboxide/meta.h>
 #include <liboxide/tarnish.h>
 
-using namespace  Oxide::Tarnish;
+using namespace Oxide::Tarnish;
 
 class GuiInputThread;
 
@@ -116,13 +116,13 @@ private:
     void createFrameBuffer(const QRect& geometry);
     bool writeEvent(SocketPair* pipe, const input_event& event, bool force = false);
     void invalidateEventPipes();
-//    template<typename T>
-//    inline void writeEvent(WindowEventType type, T args){
-//        WindowEvent event;
-//        event.type = type;
-//        event.data = reinterpret_cast<void*>(&args);
-//        auto out = m_eventPipe.writeStream();
-//        out << event;
-//    }
-//    void writeEvent(WindowEventType type);
+    template<typename T>
+    inline void writeEvent(WindowEventType type, T args){
+        WindowEvent event;
+        event.type = type;
+        event.data = reinterpret_cast<void*>(&args);
+        auto out = m_eventPipe.writeStream();
+        out << event;
+    }
+    void writeEvent(WindowEventType type);
 };

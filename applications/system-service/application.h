@@ -1,6 +1,7 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 
+#include <liboxide/meta.h>
 #include <QObject>
 #include <QDebug>
 #include <QDBusObjectPath>

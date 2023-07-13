@@ -15,7 +15,7 @@ static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-963
 
 static GUIThread m_thread;
 
-GuiAPI* GuiAPI::singleton(GuiAPI* self){
+GuiAPI* GuiAPI::__singleton(GuiAPI* self){
     static GuiAPI* instance;
     if(self != nullptr){
         instance = self;
@@ -29,7 +29,7 @@ GuiAPI::GuiAPI(QObject* parent)
     Oxide::Sentry::sentry_transaction("gui", "init", [this](Oxide::Sentry::Transaction* t){
         Q_UNUSED(t);
         m_screenGeometry = deviceSettings.screenGeometry();
-        singleton(this);
+        __singleton(this);
         connect(touchHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
         connect(wacomHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
         connect(buttonHandler, &ButtonHandler::rawEvent, this, &GuiAPI::touchEvent);

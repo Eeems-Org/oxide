@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <liboxide.h>
 
-WifiAPI* WifiAPI::singleton(WifiAPI* self){
+WifiAPI* WifiAPI::__singleton(WifiAPI* self){
     static WifiAPI* instance;
     if(self != nullptr){
         instance = self;
@@ -28,7 +28,7 @@ WifiAPI::WifiAPI(QObject* parent)
 {
     Oxide::Sentry::sentry_transaction("wifi", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
-            singleton(this);
+            __singleton(this);
         });
         Oxide::Sentry::sentry_span(t, "sysfs", "Finding wireless devices", [this](Oxide::Sentry::Span* s){
             QDir dir("/sys/class/net");

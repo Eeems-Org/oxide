@@ -1,7 +1,10 @@
+#include <sys/file.h>
+
 #include "window.h"
 #include "guiapi.h"
 
-#include <sys/file.h>
+
+using namespace  Oxide::Tarnish;
 
 #define _W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << m_identifier << msg << guiAPI->getSenderPgid())
 #define _W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << m_identifier << msg << guiAPI->getSenderPgid())
@@ -74,10 +77,10 @@ void Window::setZ(int z){
         return;
     }
     m_z = z;
-//    writeEvent(WindowEventType::Geometry, GeometryEventArgs{
-//        .geometry = m_geometry,
-//        .z = m_z
-//    });
+    writeEvent(WindowEventType::Geometry, GeometryEventArgs{
+        .geometry = m_geometry,
+        .z = m_z
+    });
     emit zChanged(z);
 }
 
@@ -246,7 +249,7 @@ pid_t Window::pgid(){ return m_pgid; }
 void Window::_close(){
     m_state = WindowState::LoweredHidden;
     invalidateEventPipes();
-//    writeEvent(WindowEventType::Close);
+    writeEvent(WindowEventType::Close);
     emit closed();
 }
 
@@ -316,10 +319,10 @@ void Window::move(int x, int y){
     auto oldGeometry = m_geometry;
     m_geometry.setX(x);
     m_geometry.setY(y);
-//    writeEvent(WindowEventType::Geometry, GeometryEventArgs{
-//        .geometry = m_geometry,
-//        .z = m_z
-//    });
+    writeEvent(WindowEventType::Geometry, GeometryEventArgs{
+        .geometry = m_geometry,
+        .z = m_z
+    });
     emit geometryChanged(oldGeometry, m_geometry);
     if(wasVisible){
         guiAPI->dirty(this, oldGeometry);
@@ -396,7 +399,7 @@ void Window::lower(){
         guiAPI->dirty(this, m_geometry);
     }
     emit stateChanged(m_state);
-//    writeEvent(WindowEventType::Lower);
+    writeEvent(WindowEventType::Lower);
     emit lowered();
 }
 
@@ -410,43 +413,43 @@ void Window::close(){
 }
 
 void Window::readyEventPipeRead(){
-//    auto in = m_eventPipe.readStream();
-//    auto out = m_eventPipe.writeStream();
-//    while(!in->atEnd()){
-//        WindowEvent event;
-//        *in >> event;
-//        switch(event.type){
-//            case Repaint:{
-//                auto args = reinterpret_cast<RepaintEventArgs*>(event.data);
-//                repaint(args->geometry, args->waveform);
-//                break;
-//            }
-//            case Geometry:{
-//                auto args = reinterpret_cast<GeometryEventArgs*>(event.data);
-//                setGeometry(args->geometry);
-//                break;
-//            }
-//            case ImageInfo:{
-//                break;
-//            }
-//            case WaitForPaint:{
-//                waitForLastUpdate();
-//                out << event;
-//                break;
-//            }
-//            case Raise:
-//                raise();
-//                break;
-//            case Lower:
-//                lower();
-//                break;
-//            case Close:
-//                close();
-//                break;
-//            case FrameBuffer:
-//                break;
-//        }
-//    }
+    auto in = m_eventPipe.readStream();
+    auto out = m_eventPipe.writeStream();
+    while(!in->atEnd()){
+        WindowEvent event;
+        *in >> event;
+        switch(event.type){
+            case Repaint:{
+                auto args = reinterpret_cast<RepaintEventArgs*>(event.data);
+                repaint(args->geometry, args->waveform);
+                break;
+            }
+            case Geometry:{
+                auto args = reinterpret_cast<GeometryEventArgs*>(event.data);
+                setGeometry(args->geometry);
+                break;
+            }
+            case ImageInfo:{
+                break;
+            }
+            case WaitForPaint:{
+                waitForLastUpdate();
+                out << event;
+                break;
+            }
+            case Raise:
+                raise();
+                break;
+            case Lower:
+                lower();
+                break;
+            case Close:
+                close();
+                break;
+            case FrameBuffer:
+                break;
+        }
+    }
 }
 
 bool Window::hasPermissions(){ return guiAPI->isThisPgId(m_pgid); }
@@ -504,16 +507,16 @@ void Window::createFrameBuffer(const QRect& geometry){
     m_bytesPerLine = blankImage.bytesPerLine();
     auto oldGeometry = m_geometry;
     m_geometry = geometry;
-//    writeEvent(WindowEventType::ImageInfo, ImageInfoEventArgs{
-//        .sizeInBytes = size,
-//        .bytesPerLine = m_bytesPerLine,
-//        .format = m_format
-//    });
-//    writeEvent(WindowEventType::Geometry, GeometryEventArgs{
-//        .geometry = m_geometry,
-//        .z = m_z
-//    });
-//    writeEvent(WindowEventType::FrameBuffer);
+    writeEvent(WindowEventType::ImageInfo, ImageInfoEventArgs{
+        .sizeInBytes = size,
+        .bytesPerLine = m_bytesPerLine,
+        .format = m_format
+    });
+    writeEvent(WindowEventType::Geometry, GeometryEventArgs{
+        .geometry = m_geometry,
+        .z = m_z
+    });
+    writeEvent(WindowEventType::FrameBuffer);
     emit sizeInBytesChanged(size);
     emit bytesPerLineChanged(m_bytesPerLine);
     emit geometryChanged(oldGeometry, m_geometry);
@@ -637,9 +640,9 @@ void Window::invalidateEventPipes(){
     }, true);
 }
 
-//void Window::writeEvent(WindowEventType type){
-//    WindowEvent event;
-//    event.type = type;
-//    auto out = m_eventPipe.writeStream();
-//    out << event;
-//}
+void Window::writeEvent(WindowEventType type){
+    WindowEvent event;
+    event.type = type;
+    auto out = m_eventPipe.writeStream();
+    out << event;
+}

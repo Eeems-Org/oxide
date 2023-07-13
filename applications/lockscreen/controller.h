@@ -37,7 +37,7 @@ public:
         connect(systemApi, &System::deviceSuspending, this, &Controller::deviceSuspending);
 
         qDebug() << "Requesting power API...";
-        powerApi = Oxide::Tarnish::powerAPI();
+        powerApi = Oxide::Tarnish::powerApi();
         if(powerApi == nullptr){
             qDebug() << "Unable to get power API";
             throw "";
@@ -51,7 +51,7 @@ public:
         connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
 
         qDebug() << "Requesting wifi API...";
-        wifiApi = Oxide::Tarnish::wifiAPI();
+        wifiApi = Oxide::Tarnish::wifiApi();
         if(wifiApi == nullptr){
             qDebug() << "Unable to get wifi API";
             throw "";
@@ -62,7 +62,7 @@ public:
         connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
 
         qDebug() << "Requesting apps API...";
-        appsApi = Oxide::Tarnish::appsAPI();
+        appsApi = Oxide::Tarnish::appsApi();
         if(appsApi == nullptr){
             qDebug() << "Unable to get apps API";
             throw "";

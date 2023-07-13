@@ -30,7 +30,7 @@ public:
     Controller(QObject* parent)
     : QObject(parent), settings(this), applications() {
         screenshots = new ScreenshotList();
-        screenApi = Oxide::Tarnish::screenAPI();
+        screenApi = Oxide::Tarnish::screenApi();
         if(screenApi == nullptr){
             qFatal("Screen API is not available");
         }

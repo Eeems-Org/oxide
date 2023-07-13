@@ -39,11 +39,7 @@
       <arg type="o" direction="out"/>
       <arg type="i" direction="out"/>
     </signal>
-    <method name="leftHeld">
-    </method>
     <method name="openDefaultApplication">
-    </method>
-    <method name="homeHeld">
     </method>
     <method name="openTaskManager">
     </method>

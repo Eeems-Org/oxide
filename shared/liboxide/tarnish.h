@@ -228,37 +228,37 @@ namespace Oxide::Tarnish {
      * \brief powerAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Power* powerAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Power* powerApi();
     /*!
      * \brief wifiAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Wifi* wifiAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Wifi* wifiApi();
     /*!
      * \brief screenAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Screen* screenAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Screen* screenApi();
     /*!
      * \brief appsAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Apps* appsAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Apps* appsApi();
     /*!
      * \brief systemAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::System* systemAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::System* systemApi();
     /*!
      * \brief notificationAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Notifications* notificationAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Notifications* notificationApi();
     /*!
      * \brief guiAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Gui* guiAPI();
+    LIBOXIDE_EXPORT codes::eeems::oxide1::Gui* guiApi();
     /*!
      * \brief topWindow
      * \return

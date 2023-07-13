@@ -39,14 +39,14 @@ public:
         connect(signalHandler, &SignalHandler::sigUsr2, this, &Controller::sigUsr2);
 
         qDebug() << "Requesting screen API...";
-        screenApi = Oxide::Tarnish::screenAPI();
+        screenApi = Oxide::Tarnish::screenApi();
         if(screenApi == nullptr){
             qDebug() << "Unable to get screen API";
             throw "";
         }
 
         qDebug() << "Requesting apps API...";
-        appsApi = Oxide::Tarnish::appsAPI();
+        appsApi = Oxide::Tarnish::appsApi();
         if(appsApi == nullptr){
             qDebug() << "Unable to get apps API";
             throw "";

@@ -476,7 +476,7 @@ namespace Oxide::Applications{
             O_DEBUG(__PRETTY_FUNCTION__ << "Failed to add to tarnish cache: Invalid configuration");
             return false;
         }
-        auto apps = Tarnish::appsAPI();
+        auto apps = Tarnish::appsApi();
         if(apps == nullptr){
             O_DEBUG(__PRETTY_FUNCTION__ << "Failed to add to tarnish cache: Failed to get apps API");
             return false;

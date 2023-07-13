@@ -66,7 +66,7 @@ class LaunchCommand : ICommand{
             }
             return EXIT_FAILURE;
         }
-        auto apps = Oxide::Tarnish::appsAPI();
+        auto apps = Oxide::Tarnish::appsApi();
         if(apps == nullptr){
             GIO_ERROR(url, path, "Error registering transient application", "Unable to get apps API");
             return EXIT_FAILURE;

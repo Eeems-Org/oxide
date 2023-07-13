@@ -13,7 +13,7 @@
 /*!
  * \brief signalHandler()
  */
-#define signalHandler Oxide::SignalHandler::singleton()
+#define signalHandler Oxide::SignalHandler::__singleton()
 
 namespace Oxide {
     /*!
@@ -40,7 +40,7 @@ namespace Oxide {
          * \return The static instance
          * \sa signalHandler
          */
-        static SignalHandler* singleton();
+        static SignalHandler* __singleton();
         /*!
          * \brief Create an instance of SignalHandler.
          * \param parent Optional QObject parent
