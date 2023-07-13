@@ -38,6 +38,7 @@ public:
         instance = new DigitizerHandler(touchScreen_device);
         instance->setObjectName("touchscreen");
         instance->start();
+        instance->moveToThread(instance);
         return instance;
     }
     static DigitizerHandler* singleton_wacom(){
@@ -54,6 +55,7 @@ public:
         instance = new DigitizerHandler(wacom_device);
         instance->setObjectName("wacom");
         instance->start();
+        instance->moveToThread(instance);
         return instance;
     }
     static string exec(const char* cmd);

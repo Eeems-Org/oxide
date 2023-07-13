@@ -209,6 +209,7 @@ public:
     ~SystemAPI(){
         qDebug() << "Removing all inhibitors";
         rguard(false);
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<Inhibitor> i(inhibitors);
         while(i.hasNext()){
             auto inhibitor = i.next();
@@ -585,6 +586,7 @@ private:
         rguard(true);
     }
     void releaseSleepInhibitors(bool block = false){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<Inhibitor> i(inhibitors);
         while(i.hasNext()){
             auto inhibitor = i.next();
@@ -597,6 +599,7 @@ private:
         }
     }
     void releasePowerOffInhibitors(bool block = false){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<Inhibitor> i(inhibitors);
         while(i.hasNext()){
             auto inhibitor = i.next();

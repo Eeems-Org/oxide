@@ -4,10 +4,9 @@
 
 #include "apibase.h"
 #include "window.h"
+#include "guithread.h"
 
 #define guiAPI GuiAPI::singleton()
-
-using namespace Oxide;
 
 class RepaintNotifier : public QObject{
     Q_OBJECT
@@ -16,12 +15,15 @@ signals:
     void repainted();
 };
 
+using namespace Oxide;
+
 class GuiAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_GUI_INTERFACE)
     Q_PROPERTY(QRect geometry READ geometry)
 
 public:
+    QMutex m_repaintMutex;
     static GuiAPI* singleton(GuiAPI* self = nullptr);
     GuiAPI(QObject* parent);
     ~GuiAPI();
@@ -37,7 +39,7 @@ public:
     Q_INVOKABLE QDBusObjectPath createWindow(QRect geometry, int format = DEFAULT_IMAGE_FORMAT);
     Q_INVOKABLE QDBusObjectPath createWindow(int format = DEFAULT_IMAGE_FORMAT);
     Q_INVOKABLE QList<QDBusObjectPath> windows();
-    void redraw();
+    Q_INVOKABLE void repaint();
     bool isThisPgId(pid_t valid_pgid);
     QMap<QString, Window*> allWindows();
     QList<Window*> sortedWindows();
@@ -50,22 +52,11 @@ public slots:
     void tabletEvent(const input_event& event);
     void keyEvent(const input_event& event);
 
-protected:
-    bool event(QEvent* event) override;
-
 private:
     bool m_enabled;
-    bool m_dirty;
     QMap<QString, Window*> m_windows;
     RepaintNotifier m_repaintNotifier;
-    struct Repaint {
-        Window* window;
-        QRect region;
-        EPFrameBuffer::WaveformMode waveform;
-    };
-    QList<Repaint> m_repaintList;
     QRect m_screenGeometry;
-    void scheduleUpdate();
     void sortWindows();
     bool hasPermission();
 };

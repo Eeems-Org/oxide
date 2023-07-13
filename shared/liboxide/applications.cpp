@@ -186,9 +186,6 @@ namespace Oxide::Applications{
                 flags << value;
             }
             if(flags.contains("nosavescreen")){
-                if(type == "background"){
-                    addError(ErrorLevel::Hint, "Key \"flags\" contains \"nosavescreen\" while \"type\" has value \"background\"");
-                }
                 addError(ErrorLevel::Deprecation, "Key \"flags\" contains \"nosavescreen\" which is deprecated");
             }
         } else shouldExit

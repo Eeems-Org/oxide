@@ -169,6 +169,7 @@ namespace Oxide::JSON {
         }
         if(userType == QMetaType::QVariantList){
             QVariantList list = value.toList();
+            // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
             QMutableListIterator<QVariant> i(list);
             while(i.hasNext()){
                 i.setValue(sanitizeForJson(i.next()));

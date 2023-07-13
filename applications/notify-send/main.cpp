@@ -2,7 +2,6 @@
 #include <QJsonValue>
 #include <QJsonDocument>
 #include <QSet>
-#include <QMutableListIterator>
 
 #include <liboxide.h>
 

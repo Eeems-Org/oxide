@@ -34,6 +34,7 @@ public:
         if(network != nullptr){
             delete network;
         }
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<BSS*> i(bsss);
         while(i.hasNext()){
             auto bss = i.next();
@@ -96,6 +97,7 @@ public:
             network = nullptr;
             return;
         }
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<BSS*> i(bsss);
         while(i.hasNext()){
             auto bss = i.next();
@@ -211,6 +213,7 @@ public:
         sort();
     }
     void append(QList<BSS*> bsss){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<BSS*> i(bsss);
         while(i.hasNext()){
             auto bss = i.next();
@@ -253,6 +256,7 @@ public:
                 toRemove.append(network);
             }
         }
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<WifiNetwork*> i(networks);
         while(i.hasNext()){
             auto network = i.next();
@@ -303,6 +307,7 @@ public:
         }
     }
     void remove(const QDBusObjectPath& path){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<WifiNetwork*> i(networks);
         while(i.hasNext()){
             auto network = i.next();
@@ -333,6 +338,7 @@ public:
     bool scanning(){ return api->scanning(); }
     Q_INVOKABLE void scan(bool active){ api->scan(active).waitForFinished(); }
     Q_INVOKABLE void remove(QString ssid){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<WifiNetwork*> i(networks);
         while(i.hasNext()){
             auto network = i.next();

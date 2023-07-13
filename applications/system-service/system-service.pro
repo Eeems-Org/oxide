@@ -17,6 +17,7 @@ SOURCES += \
     childentry.cpp \
     dbusservice.cpp \
     guiapi.cpp \
+    guithread.cpp \
     network.cpp \
     notification.cpp \
     screenapi.cpp \
@@ -64,6 +65,7 @@ HEADERS += \
     digitizerhandler.h \
     fifohandler.h \
     guiapi.h \
+    guithread.h \
     network.h \
     notification.h \
     notificationapi.h \

@@ -32,9 +32,11 @@
 #include <liboxide.h>
 
 #include "mxcfb.h"
+#include "guiapi.h"
 #include "screenapi.h"
 #include "fifohandler.h"
 #include "buttonhandler.h"
+#include "window.h"
 
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
@@ -361,62 +363,6 @@ public:
 
     const QVariantMap& getConfig(){ return m_config; }
     void setConfig(const QVariantMap& config);
-    void saveScreen(){
-        if(m_screenCapture != nullptr){
-            return;
-        }
-        Oxide::Sentry::sentry_transaction("application", "saveScreen", [this](Oxide::Sentry::Transaction* t){
-            qDebug() << "Saving screen...";
-            QByteArray bytes;
-            Oxide::Sentry::sentry_span(t, "save", "Save the framebuffer", [&bytes]{
-                QBuffer buffer(&bytes);
-                buffer.open(QIODevice::WriteOnly);
-                dispatchToMainThread([&buffer]{
-                    if(!EPFrameBuffer::framebuffer()->save(&buffer, "JPG", 100)){
-                        O_WARNING("Failed to save buffer");
-                    }
-                });
-            });
-            qDebug() << "Compressing data...";
-            Oxide::Sentry::sentry_span(t, "compress", "Compress the framebuffer", [this, bytes]{
-                m_screenCapture = new QByteArray(qCompress(bytes));
-            });
-            qDebug() << "Screen saved " << m_screenCapture->size() << "bytes";
-        });
-    }
-    void recallScreen(){
-        if(m_screenCapture == nullptr){
-            return;
-        }
-        Oxide::Sentry::sentry_transaction("application", "recallScreen", [this](Oxide::Sentry::Transaction* t){
-            qDebug() << "Uncompressing screen...";
-            QImage img;
-            Oxide::Sentry::sentry_span(t, "decompress", "Decompress the framebuffer", [this, &img]{
-                img = QImage::fromData(screenCaptureNoSecurityCheck(), "JPG");
-            });
-            if(img.isNull()){
-                qDebug() << "Screen capture was corrupt";
-                qDebug() << m_screenCapture->size();
-                delete m_screenCapture;
-                return;
-            }
-            qDebug() << "Recalling screen...";
-            Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, img]{
-                dispatchToMainThread([img]{
-                    auto size = EPFrameBuffer::framebuffer()->size();
-                    QRect rect(0, 0, size.width(), size.height());
-                    QPainter painter(EPFrameBuffer::framebuffer());
-                    painter.drawImage(rect, img);
-                    painter.end();
-                    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
-                    EPFrameBuffer::waitForLastUpdate();
-                });
-                delete m_screenCapture;
-                m_screenCapture = nullptr;
-            });
-            qDebug() << "Screen recalled.";
-        });
-    }
     void waitForFinished(){
         if(m_process->processId()){
             m_process->waitForFinished();
@@ -533,6 +479,7 @@ private:
     int p_stderr_fd = -1;
     QTextStream* p_stderr = nullptr;
     pid_t m_pid;
+    Window* m_window = nullptr;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds){

@@ -49,6 +49,7 @@ ButtonHandler* ButtonHandler::init(){
     instance = new ButtonHandler();
     instance->setObjectName("buttons");
     instance->start();
+    instance->moveToThread(instance);
     return instance;
 }
 

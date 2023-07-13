@@ -564,6 +564,7 @@ public:
     void BSSRemoved(Wlan* wlan, const QDBusObjectPath& path){
         Q_UNUSED(wlan);
         auto sPath = path.path();
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<BSS*> i(bsss);
         while(i.hasNext()){
             auto bss = i.next();
@@ -614,6 +615,7 @@ public:
     void NetworkRemoved(Wlan* wlan, const QDBusObjectPath& path){
         Q_UNUSED(wlan);
         auto sPath = path.path();
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<Network*> i(networks);
         while(i.hasNext()){
             auto network = i.next();

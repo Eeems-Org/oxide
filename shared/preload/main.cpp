@@ -156,7 +156,9 @@ void __sigacton__handler(int signo, siginfo_t* info, void* context){
     }
     _DEBUG("Signal", strsignal(signo), "recieved.");
     Oxide::Tarnish::disconnect();
-    QCoreApplication::processEvents(QEventLoop::AllEvents);
+    if(!QCoreApplication::startingUp()){
+        QCoreApplication::processEvents(QEventLoop::AllEvents);
+    }
     raise(signo);
 }
 
@@ -239,18 +241,27 @@ int fb_ioctl(unsigned long request, char* ptr){
         case FBIOGET_FSCREENINFO:{
             _DEBUG("ioctl /dev/fb0 FBIOGET_FSCREENINFO");
             fb_fix_screeninfo* screeninfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
+            int fd = func_open("/dev/fb0", O_RDONLY, 0);
+            if(fd != -1){
+                func_ioctl(fd, request, ptr);
+            }else{
+                // Failed to get the actual information, try to dummy our way with our own
+                constexpr char fb_id[] = "mxcfb";
+                memcpy(screeninfo->id, fb_id, sizeof(fb_id));
+            }
             auto frameBuffer = Oxide::Tarnish::frameBufferImage(QImage::Format_RGB16);
             screeninfo->smem_len = frameBuffer.sizeInBytes();
             screeninfo->smem_start = (unsigned long)Oxide::Tarnish::frameBuffer(QImage::Format_RGB16);
             screeninfo->line_length = frameBuffer.bytesPerLine();
-            constexpr char fb_id[] = "mxcfb";
-            memcpy(screeninfo->id, fb_id, sizeof(fb_id));
             return 0;
         }
         case FBIOPUT_VSCREENINFO:
             _DEBUG("ioctl /dev/fb0 FBIOPUT_VSCREENINFO");
             // TODO - Explore allowing some screen info updating
-            return -1;
+            //fb_fix_screeninfo* screeninfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
+            //errno = EACCES;
+            //return -1;
+            return 0;
         case MXCFB_SET_AUTO_UPDATE_MODE:
             _DEBUG("ioctl /dev/fb0 MXCFB_SET_AUTO_UPDATE_MODE");
             return 0;
@@ -375,39 +386,38 @@ int open_from_tarnish(const char* pathname){
 }
 
 extern "C" {
-//    __attribute__((visibility("default")))
-//    void _ZN6QImageC1EiiNS_6FormatE(void* that, int x, int y, int f){
-//        static bool FIRST_ALLOC = true;
-//        static const auto qImageCtor = (void(*)(void*, int, int, int))dlsym(RTLD_NEXT, "_ZN6QImageC1EiiNS_6FormatE");
-//        static const auto qImageCtorWithBuffer = (void(*)(
-//            void*,
-//            uint8_t*,
-//            int32_t,
-//            int32_t,
-//            int32_t,
-//            int,
-//            void(*)(void*),
-//            void*
-//        ))dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
-
-//        auto frameBuffer = Oxide::Tarnish::frameBufferImage(QImage::Format_RGB16);
-//        if(!FIRST_ALLOC || x != frameBuffer.width() || y != frameBuffer.height()){
-//            qImageCtor(that, x, y, f);
-//            return;
-//        }
-//        qDebug() << "REPLACING THE IMAGE with shared memory";
-//        FIRST_ALLOC = false;
-//        qImageCtorWithBuffer(
-//            that,
-//            (uint8_t *)Oxide::Tarnish::frameBuffer(QImage::Format_RGB16),
-//            frameBuffer.width(),
-//            frameBuffer.height(),
-//            frameBuffer.sizeInBytes(),
-//            frameBuffer.format(),
-//            nullptr,
-//            nullptr
-//        );
-//    }
+    __attribute__((visibility("default")))
+    void _ZN6QImageC1EiiNS_6FormatE(void* that, int x, int y, int f){
+        static bool FIRST_ALLOC = true;
+        static const auto qImageCtor = (void(*)(void*, int, int, int))dlsym(RTLD_NEXT, "_ZN6QImageC1EiiNS_6FormatE");
+        static const auto qImageCtorWithBuffer = (void(*)(
+            void*,
+            uint8_t*,
+            int32_t,
+            int32_t,
+            int32_t,
+            int,
+            void(*)(void*),
+            void*
+        ))dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
+        auto frameBuffer = Oxide::Tarnish::frameBufferImage(QImage::Format_RGB16);
+        if(!FIRST_ALLOC || x != frameBuffer.width() || y != frameBuffer.height()){
+            qImageCtor(that, x, y, f);
+            return;
+        }
+        _DEBUG("REPLACING THE IMAGE with shared memory");
+        FIRST_ALLOC = false;
+        qImageCtorWithBuffer(
+            that,
+            (uint8_t *)Oxide::Tarnish::frameBuffer(QImage::Format_RGB16),
+            frameBuffer.width(),
+            frameBuffer.height(),
+            frameBuffer.sizeInBytes(),
+            frameBuffer.format(),
+            nullptr,
+            nullptr
+        );
+    }
 
     __attribute__((visibility("default")))
     int open64(const char* pathname, int flags, mode_t mode = 0){
@@ -536,17 +546,17 @@ extern "C" {
     }
     __asm__(".symver write, write@GLIBC_2.4");
 
-    __attribute__((visibility("default")))
-    bool _Z7qputenvPKcRK10QByteArray(const char* name, const QByteArray& val) {
-        static const auto orig_fn = (bool(*)(const char*, const QByteArray&))dlsym(RTLD_NEXT, "_Z7qputenvPKcRK10QByteArray");
-        if(strcmp(name, "QMLSCENE_DEVICE") == 0 || strcmp(name, "QT_QUICK_BACKEND") == 0){
-            return orig_fn(name, "software");
-        }
-        if(strcmp(name, "QT_QPA_PLATFORM") == 0){
-            return orig_fn(name, "epaper:enable_fonts");
-        }
-        return orig_fn(name, val);
-    }
+//    __attribute__((visibility("default")))
+//    bool _Z7qputenvPKcRK10QByteArray(const char* name, const QByteArray& val) {
+//        static const auto orig_fn = (bool(*)(const char*, const QByteArray&))dlsym(RTLD_NEXT, "_Z7qputenvPKcRK10QByteArray");
+//        if(strcmp(name, "QMLSCENE_DEVICE") == 0 || strcmp(name, "QT_QUICK_BACKEND") == 0){
+//            return orig_fn(name, "software");
+//        }
+//        if(strcmp(name, "QT_QPA_PLATFORM") == 0){
+//            return orig_fn(name, "epaper:enable_fonts");
+//        }
+//        return orig_fn(name, val);
+//    }
 
     void __attribute__ ((constructor)) init(void);
     void init(void){

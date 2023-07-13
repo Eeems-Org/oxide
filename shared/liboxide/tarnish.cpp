@@ -194,12 +194,16 @@ namespace Oxide::Tarnish {
         *conn = QObject::connect(api_general, &codes::eeems::oxide1::General::aboutToQuit, [conn]{
             O_WARNING(__PRETTY_FUNCTION__ << "Tarnish has indicated that it is about to quit!");
             if(!childSocket.isOpen()){
-                QEventLoop loop;
-                QTimer::singleShot(0, [&loop]{
+                if(!QCoreApplication::startingUp()){
+                    QEventLoop loop;
+                    QTimer::singleShot(0, [&loop]{
+                        _disconnect();
+                        loop.quit();
+                    });
+                    loop.exec();
+                }else{
                     _disconnect();
-                    loop.quit();
-                });
-                loop.exec();
+                }
             }
             QObject::disconnect(*conn);
             delete conn;
@@ -207,12 +211,16 @@ namespace Oxide::Tarnish {
         if(qApp != nullptr){
             O_DEBUG(__PRETTY_FUNCTION__ << "Connecting to QGuiApplication::aboutToQuit");
             QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{
-                QEventLoop loop;
-                QTimer::singleShot(0, [&loop]{
-                    disconnect();
-                    loop.quit();
-                });
-                loop.exec();
+                if(!QCoreApplication::startingUp()){
+                    QEventLoop loop;
+                    QTimer::singleShot(0, [&loop]{
+                        _disconnect();
+                        loop.quit();
+                    });
+                    loop.exec();
+                }else{
+                    _disconnect();
+                }
             });
         }
         O_DEBUG(__PRETTY_FUNCTION__ << "Connected to tarnish Dbus service");
@@ -287,12 +295,16 @@ namespace Oxide::Tarnish {
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(&childSocket, &QLocalSocket::readChannelFinished, [conn]{
             O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to tarnish socket!");
-            QEventLoop loop;
-            QTimer::singleShot(0, [&loop]{
+            if(!QCoreApplication::startingUp()){
+                QEventLoop loop;
+                QTimer::singleShot(0, [&loop]{
+                    _disconnect();
+                    loop.quit();
+                });
+                loop.exec();
+            }else{
                 _disconnect();
-                loop.quit();
-            });
-            loop.exec();
+            }
             QObject::disconnect(*conn);
             delete conn;
         });

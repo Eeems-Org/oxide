@@ -5,6 +5,7 @@ using namespace std::chrono;
 DBusService* DBusService::singleton(){
     auto bus = QDBusConnection::systemBus();
     if(instance == nullptr){
+        qApp->thread()->setObjectName("main"); // To make identifying threads from QDebug output easier
         qDebug() << "Creating DBusService instance";
         instance = new DBusService(nullptr);
         if(!bus.isConnected()){
@@ -206,6 +207,7 @@ void DBusService::shutdown(){
     emit aboutToQuit();
     appsAPI->shutdown();
     guiAPI->shutdown();
+    // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
     QMutableListIterator i(children);
     while(i.hasNext()){
         auto child = i.next();

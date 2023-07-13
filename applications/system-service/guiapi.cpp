@@ -12,6 +12,8 @@
 
 static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
 
+static GUIThread m_thread;
+
 GuiAPI* GuiAPI::singleton(GuiAPI* self){
     static GuiAPI* instance;
     if(self != nullptr){
@@ -21,8 +23,7 @@ GuiAPI* GuiAPI::singleton(GuiAPI* self){
 }
 GuiAPI::GuiAPI(QObject* parent)
 : APIBase(parent),
-  m_enabled(false),
-  m_dirty(false)
+  m_enabled(false)
 {
     Oxide::Sentry::sentry_transaction("gui", "init", [this](Oxide::Sentry::Transaction* t){
         Q_UNUSED(t);
@@ -42,6 +43,11 @@ GuiAPI::~GuiAPI(){
 
 void GuiAPI::startup(){
     W_DEBUG("Startup");
+    m_thread.setObjectName("gui");
+    m_thread.m_repaintNotifier = &m_repaintNotifier;
+    m_thread.m_screenGeometry = &m_screenGeometry;
+    m_thread.start();
+    m_thread.moveToThread(&m_thread);
 }
 
 void GuiAPI::shutdown(){
@@ -50,6 +56,7 @@ void GuiAPI::shutdown(){
         auto window = m_windows.take(m_windows.firstKey());
         window->_close();
     }
+    m_thread.quit();
 }
 
 QRect GuiAPI::geometry(){
@@ -91,24 +98,12 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
         if(m_windows.remove(path)){
             sortWindows();
         }
-        QMutableListIterator i(m_repaintList);
-        while(i.hasNext()){
-            Repaint& item = i.next();
-            if(item.window == window){
-                i.remove();
-            }
-        }
         auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
-        m_repaintList.append(Repaint{
-            .window = nullptr,
-            .region = region,
-            .waveform = EPFrameBuffer::Initialize
-        });
         window->setEnabled(false);
         window->deleteLater();
-        scheduleUpdate();
+        QCoreApplication::postEvent(&m_thread, new RepaintEvent(nullptr, region, EPFrameBuffer::Initialize), Qt::HighEventPriority);
     });
-    connect(window, &Window::raised, this, [=]{
+    connect(window, &Window::raised, this, [this, window]{
         auto windows = sortedWindows();
         int z = 0;
         for(auto w : windows){
@@ -118,7 +113,7 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
         }
         window->setZ(z);
     });
-    connect(window, &Window::lowered, this, [=]{
+    connect(window, &Window::lowered, this, [this, window]{
         auto windows = sortedWindows();
         window->setZ(0);
         int z = 1;
@@ -169,15 +164,7 @@ QDBusObjectPath GuiAPI::createWindow(int format){
         return QDBusObjectPath("/");
     }
     W_ALLOWED();
-    Window* window = _createWindow(
-        QRect(
-            m_screenGeometry.x(),
-            m_screenGeometry.y(),
-            m_screenGeometry.width(),
-            m_screenGeometry.height()
-        ),
-        (QImage::Format)format
-    );
+    Window* window = _createWindow(m_screenGeometry, (QImage::Format)format);
     return window == nullptr ? QDBusObjectPath("/") : window->path();
 }
 
@@ -192,125 +179,14 @@ QList<QDBusObjectPath> GuiAPI::windows(){
     return windows;
 }
 
-void GuiAPI::redraw(){
-    // This should already be on the main thread, but just in case
-    if(qApp->thread() != QThread::currentThread()){
-        O_WARNING(__PRETTY_FUNCTION__ << "Not called from main thread");
+void GuiAPI::repaint(){
+    if(!APIBase::hasPermission("gui")){
+        W_DENIED();
         return;
     }
-    if(!m_dirty){
-        O_WARNING(__PRETTY_FUNCTION__ << "Not dirty");
-        return;
-    }
-    if(m_repaintList.isEmpty()){
-        O_WARNING(__PRETTY_FUNCTION__ << "Nothing to repaint");
-        m_dirty = false;
-        return;
-    }
-    O_WARNING(__PRETTY_FUNCTION__ << "Repainting");
-    // Get the regions that need to be repainted
-    const QPoint screenOffset = m_screenGeometry.topLeft();
-    const QRect screenRect = m_screenGeometry.translated(-screenOffset);
-    QRegion repaintRegion;
-    auto waveform = EPFrameBuffer::Initialize;
-    while(!m_repaintList.isEmpty()){
-        auto item = m_repaintList.takeFirst();
-        auto window = item.window;
-        auto region = item.region;
-        if(region.isEmpty()){
-            continue;
-        }
-        QRect rect;
-        if(window == nullptr){
-            rect = region;
-        }else{
-            // Get visible region on the screen to repaint
-            auto geometry = window->_geometry();
-            const QRect intersection = region.intersected(geometry);
-            const QPoint screenOffset = geometry.topLeft();
-            rect = intersection.translated(-screenOffset).intersected(screenRect);
-        }
-        if(rect.isEmpty()){
-            continue;
-        }
-        repaintRegion += rect;
-        // TODO - have way to do per-region waveform updates instead of just grouping them all with the largest
-        if(item.waveform > waveform){
-            waveform = item.waveform;
-        }
-    }
-    // Get windows in order of Z sort order, and filter out invalid windows
-    auto visibleWindows = sortedWindows();
-    QMutableListIterator i(visibleWindows);
-    while(i.hasNext()){
-        auto window = i.next();
-        if(window == nullptr){
-            i.remove();
-            continue;
-        }
-        if(!window->_isVisible()){
-            i.remove();
-            continue;
-        }
-        auto image = window->toImage();
-        if(image.isNull()){
-            O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Null framebuffer");
-            i.remove();
-            continue;
-        }
-        window->lock();
-    }
-    // Paint the regions
-    // TODO - explore using QPainter::clipRegion to see if it can speed things up
-    QRegion repaintedRegion;
-    auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
-    Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
-    QPainter painter(frameBuffer);
-    for(QRect rect : repaintRegion){
-        painter.setCompositionMode(QPainter::CompositionMode_Source);
-        painter.fillRect(rect, colour);
-        for(auto window : visibleWindows){
-            const QRect windowRect = window->_geometry().translated(-screenOffset);
-            const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
-            O_DEBUG(__PRETTY_FUNCTION__ << window->identifier() << rect << windowIntersect);
-            // TODO - See if there is a way to detect if there is just transparency in the region
-            //        and don't mark this as repainted.
-            painter.drawImage(rect, window->toImage(), windowIntersect);
-            repaintedRegion += windowIntersect;
-        }
-    }
-    painter.end();
-    // Send updates for all the repainted regions
-    for(auto rect : repaintedRegion){
-        // TODO - detect if there was no change to the repainted region and skip, maybe compare against previous window states?
-        //        Maybe hash the data before and compare after? https://doc.qt.io/qt-5/qcryptographichash.html
-        if(waveform == EPFrameBuffer::Initialize){
-            waveform = EPFrameBuffer::Mono;
-            // TODO - profile if it makes sense to do this instead of just picking one to always use
-            for(int x = rect.left(); x < rect.right(); x++){
-                for(int y = rect.top(); y < rect.bottom(); y++){
-                    auto color = frameBuffer->pixelColor(x, y);
-                    if(color == Qt::white || color == Qt::black || color == Qt::transparent){
-                        continue;
-                    }
-                    if(color == Qt::gray){
-                        waveform = EPFrameBuffer::Grayscale;
-                        continue;
-                    }
-                    waveform = EPFrameBuffer::HighQualityGrayscale;
-                    break;
-                }
-            }
-        }
-        auto mode =  rect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
-        EPFrameBuffer::sendUpdate(rect, waveform, mode);
-    }
-    EPFrameBuffer::waitForLastUpdate();
-    for(auto window : visibleWindows){
-        window->unlock();
-    }
-    m_dirty = false;
-    emit m_repaintNotifier.repainted();
+    W_ALLOWED();
+    QCoreApplication::postEvent(&m_thread, new RepaintEvent(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale), Qt::HighEventPriority);
+    waitForLastUpdate();
 }
 
 bool GuiAPI::isThisPgId(pid_t valid_pgid){
@@ -338,20 +214,14 @@ void GuiAPI::closeWindows(pid_t pgid){
 }
 
 void GuiAPI::waitForLastUpdate(){
-    if(m_dirty){
-        QSignalSpy spy(&m_repaintNotifier, &RepaintNotifier::repainted);
-        // TODO - determine if there is a reasonable max time to wait
-        spy.wait();
-    }
+    // TODO - identify if there is actually a pending paint
+    QSignalSpy spy(&m_repaintNotifier, &RepaintNotifier::repainted);
+    // TODO - determine if there is a reasonable max time to wait
+    spy.wait();
 }
 
 void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform){
-    m_repaintList.append(Repaint{
-        .window = window,
-        .region = region,
-        .waveform = waveform
-    });
-    scheduleUpdate();
+    QCoreApplication::postEvent(&m_thread, new RepaintEvent(window, region, waveform), Qt::HighEventPriority);
 }
 
 void GuiAPI::touchEvent(const input_event& event){
@@ -378,28 +248,6 @@ void GuiAPI::keyEvent(const input_event& event){
         if(window != nullptr && window->_isVisible()){
             window->writeKeyEvent(event);
         }
-    }
-}
-
-bool GuiAPI::event(QEvent* event){
-    if(event->type() != QEvent::UpdateRequest){
-        return QObject::event(event);
-    }
-    QTimer* timer = new QTimer(this);
-    timer->moveToThread(qApp->thread());
-    timer->setSingleShot(true);
-    QObject::connect(timer, &QTimer::timeout, this, [timer, this](){
-        redraw();
-        timer->deleteLater();
-    }, Qt::QueuedConnection);
-    timer->start(0);
-    return true;
-}
-
-void GuiAPI::scheduleUpdate(){
-    if(!m_dirty){
-        m_dirty = true;
-        QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest), Qt::HighEventPriority);
     }
 }
 

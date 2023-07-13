@@ -129,6 +129,7 @@ public:
         emit updated();
     }
     Q_INVOKABLE void remove(QString identifier){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<NotificationItem*> i(notifications);
         while(i.hasNext()){
             auto notification = i.next();
@@ -142,7 +143,8 @@ public:
         }
         emit updated();
     }
-    int removeAll(Notification* notification) {
+    int removeAll(Notification* notification){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<NotificationItem*> i(notifications);
         int count = 0;
         while(i.hasNext()){

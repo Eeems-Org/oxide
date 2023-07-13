@@ -19,7 +19,6 @@
         "/run/systemd",
         "/run/systemd/resolve",
         "/run/udev",
-        "/sbin/fw_setenv",
         "/tmp/runtime-root",
         "/usr/share",
         "/usr/share/remarkable/templates",
@@ -30,12 +29,7 @@
     ],
     "environment": {
         "HOME": "/home/root",
-        "QT_QPA_PLATFORM": "oxide",
-        "QMLSCENE_DEVICE": "software",
-        "QT_QUICK_BACKEND": "software",
-        "QT_PLUGIN_PATH": "/opt/usr/lib/plugins",
         "SYSTEMD_IGNORE_CHROOT": "true",
-        "XDG_RUNTIME_DIR": "/tmp/runtime-root",
-        "QT_DEBUG_PLUGINS": "1"
+        "XDG_RUNTIME_DIR": "/tmp/runtime-root"
     }
 }

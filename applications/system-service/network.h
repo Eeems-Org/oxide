@@ -160,6 +160,7 @@ public:
         QObject::connect(network, &INetwork::PropertiesChanged, this, &Network::PropertiesChanged, Qt::QueuedConnection);
     }
     void removeNetwork(const QString& path){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<INetwork*> i(networks);
         while(i.hasNext()){
             auto network = i.next();
@@ -170,6 +171,7 @@ public:
         }
     }
     void removeInterface(Interface* interface){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<INetwork*> i(networks);
         while(i.hasNext()){
             auto network = i.next();

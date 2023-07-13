@@ -75,6 +75,7 @@ public:
         QObject::connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
     }
     void removeBSS(const QString& path){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<IBSS*> i(bsss);
         while(i.hasNext()){
             auto bss = i.next();

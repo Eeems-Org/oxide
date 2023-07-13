@@ -44,5 +44,7 @@
     <method name="windows">
       <arg type="ao" direction="out"/>
     </method>
+    <method name="repaint">
+    </method>
   </interface>
 </node>

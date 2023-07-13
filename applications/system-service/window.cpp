@@ -3,8 +3,8 @@
 
 #include <sys/file.h>
 
-#define _W_WARNING(msg) O_WARNING(identifier() << __PRETTY_FUNCTION__ << msg << guiAPI->getSenderPgid())
-#define _W_DEBUG(msg) O_DEBUG(identifier() << __PRETTY_FUNCTION__ << msg << guiAPI->getSenderPgid())
+#define _W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << m_identifier << msg << guiAPI->getSenderPgid())
+#define _W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << m_identifier << msg << guiAPI->getSenderPgid())
 #define W_WARNING(msg) _W_WARNING(msg << guiAPI->getSenderPgid())
 #define W_DEBUG(msg) _W_DEBUG(msg << guiAPI->getSenderPgid())
 #define W_DENIED() W_DEBUG("DENY")
@@ -30,10 +30,10 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
 {
     LOCK_MUTEX;
     createFrameBuffer(geometry);
-    O_DEBUG(m_identifier << __PRETTY_FUNCTION__ << "Window created" << pgid);
+    O_DEBUG(__PRETTY_FUNCTION__ << m_identifier << "Window created" << pgid);
 }
 Window::~Window(){
-    O_DEBUG(m_identifier << __PRETTY_FUNCTION__ << "Window closed" << m_pgid);
+    O_DEBUG(__PRETTY_FUNCTION__ << m_identifier << "Window closed" << m_pgid);
 }
 
 void Window::setEnabled(bool enabled){
@@ -328,6 +328,7 @@ void Window::repaint(QRect region, int waveform){
     }
     W_ALLOWED();
     if(_isVisible()){
+        W_DEBUG(region << waveform);
         guiAPI->dirty(this, region, (EPFrameBuffer::WaveformMode)waveform);
     }
 }

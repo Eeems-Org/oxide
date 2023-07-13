@@ -116,6 +116,7 @@ public:
         emit updated();
     }
     Q_INVOKABLE void remove(QString path){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<ScreenshotItem*> i(screenshots);
         while(i.hasNext()){
             auto screenshot = i.next();
@@ -136,6 +137,7 @@ public:
         }
     }
     int removeAll(Screenshot* screenshot) {
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<ScreenshotItem*> i(screenshots);
         int count = 0;
         while(i.hasNext()){

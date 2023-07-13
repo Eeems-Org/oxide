@@ -131,6 +131,7 @@ public:
         emit updated();
     }
     Q_INVOKABLE void remove(int pid){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<TaskItem*> i(taskItems);
         while(i.hasNext()){
             auto taskItem = i.next();
@@ -144,6 +145,7 @@ public:
         emit updated();
     }
     int removeAll(TaskItem* taskItem) {
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<TaskItem*> i(taskItems);
         int count = 0;
         while(i.hasNext()){
@@ -162,6 +164,7 @@ public:
     int length() { return taskItems.length(); }
     bool empty() { return taskItems.empty(); }
     void reload(){
+        // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
         QMutableListIterator<TaskItem*> i(taskItems);
         while(i.hasNext()){
             auto taskItem = i.next();

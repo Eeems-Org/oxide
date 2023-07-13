@@ -7,5 +7,5 @@ QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 CONFIG += c++17
-CONFIG += c++18
-CONFIG += c++19
+CONFIG += c++20
+CONFIG += c++latest
