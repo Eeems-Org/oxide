@@ -1,9 +1,5 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
-  <interface name="local.RepaintNotifier">
-    <signal name="repainted">
-    </signal>
-  </interface>
   <interface name="codes.eeems.oxide1.Gui">
     <property name="geometry" type="(iiii)" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QRect"/>

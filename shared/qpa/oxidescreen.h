@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMutex>
+#include <QEventLoop>
 #include <qpa/qplatformscreen.h>
 
 #include "oxidebackingstore.h"
@@ -21,6 +22,7 @@ public:
     QWindow* topWindow() const;
     void addWindow(OxideWindow* window);
     void removeWindow(OxideWindow* window);
+    QEventLoop paintWaitLoop;
 
 protected:
     bool event(QEvent *event) override;
@@ -32,6 +34,5 @@ private:
     QSize mPhysicalSize;
     bool mUpdatePending;
     QRegion mRepaintRegion;
-    QMutex mutex;
     void redraw();
 };

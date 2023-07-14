@@ -23,6 +23,7 @@ SOURCES += \
     liboxide.cpp \
     oxide_sentry.cpp \
     power.cpp \
+    qt.cpp \
     settingsfile.cpp \
     slothandler.cpp \
     sysobject.cpp \
@@ -43,6 +44,7 @@ HEADERS += \
     oxide_sentry.h \
     power.h \
     json.h \
+    qt.h \
     settingsfile.h \
     slothandler.h \
     sysobject.h \

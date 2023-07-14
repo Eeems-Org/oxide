@@ -33,6 +33,7 @@ GuiAPI::GuiAPI(QObject* parent)
         connect(touchHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
         connect(wacomHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
         connect(buttonHandler, &ButtonHandler::rawEvent, this, &GuiAPI::touchEvent);
+        connect(&m_repaintNotifier, &RepaintNotifier::repainted, this, &GuiAPI::repainted);
     });
 }
 GuiAPI::~GuiAPI(){
@@ -100,9 +101,9 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
             sortWindows();
         }
         auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
-        window->setEnabled(false);
+        QCoreApplication::postEvent(&m_thread, new RepaintEvent(nullptr, region, EPFrameBuffer::Initialize, 0), Qt::HighEventPriority);
+        QMetaObject::invokeMethod(&m_thread, &GUIThread::flush, Qt::BlockingQueuedConnection);
         window->deleteLater();
-        QCoreApplication::postEvent(&m_thread, new RepaintEvent(nullptr, region, EPFrameBuffer::Initialize), Qt::HighEventPriority);
     });
     connect(window, &Window::raised, this, [this, window]{
         auto windows = sortedWindows();
@@ -186,7 +187,7 @@ void GuiAPI::repaint(){
         return;
     }
     W_ALLOWED();
-    QCoreApplication::postEvent(&m_thread, new RepaintEvent(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale), Qt::HighEventPriority);
+    QCoreApplication::postEvent(&m_thread, new RepaintEvent(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, 0), Qt::HighEventPriority);
     waitForLastUpdate();
 }
 
@@ -218,11 +219,11 @@ void GuiAPI::waitForLastUpdate(){
     // TODO - identify if there is actually a pending paint
     QSignalSpy spy(&m_repaintNotifier, &RepaintNotifier::repainted);
     // TODO - determine if there is a reasonable max time to wait
-    spy.wait();
+    spy.wait(1000);
 }
 
-void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform){
-    QCoreApplication::postEvent(&m_thread, new RepaintEvent(window, region, waveform), Qt::HighEventPriority);
+void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker){
+    QCoreApplication::postEvent(&m_thread, new RepaintEvent(window, region, waveform, marker), Qt::HighEventPriority);
 }
 
 void GuiAPI::touchEvent(const input_event& event){
@@ -249,6 +250,12 @@ void GuiAPI::keyEvent(const input_event& event){
         if(window != nullptr && window->_isVisible()){
             window->writeKeyEvent(event);
         }
+    }
+}
+
+void GuiAPI::repainted(Window* window, unsigned int marker){
+    if(window != nullptr){
+        window->repainted(marker);
     }
 }
 

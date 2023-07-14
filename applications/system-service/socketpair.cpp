@@ -21,7 +21,6 @@ SocketPair::SocketPair(bool allowWriteSocketRead)
         O_WARNING(__PRETTY_FUNCTION__ << "Unable to open socket pair write socket:" << m_writeSocket.errorString());
     }
     if(allowWriteSocketRead){
-        m_stream.setDevice(&m_writeSocket);
         connect(&m_writeSocket, &QLocalSocket::readyRead, this, &SocketPair::_readyRead);
     }
     connect(&m_writeSocket, &QLocalSocket::bytesWritten, this, &SocketPair::bytesWritten);
@@ -78,10 +77,6 @@ QString SocketPair::errorString(){
     return m_writeSocket.errorString();
 }
 
-QDataStream* SocketPair::readStream(){ return &m_stream; }
-
-QDataStream SocketPair::writeStream(){ return QDataStream(&m_writeSocket); }
-
 void SocketPair::close(){
     m_readSocket.close();
     m_writeSocket.close();
@@ -91,6 +86,6 @@ void SocketPair::_readyRead(){
     if(m_enabled){
         emit readyRead();
     }else{
-        while(m_stream.skipRawData(1024) > 0){ }
+        while(m_writeSocket.skip(1024) > 0){}
     }
 }

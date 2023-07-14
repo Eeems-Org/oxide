@@ -61,11 +61,16 @@ public:
     bool writeTabletEvent(const input_event& event);
     bool writeKeyEvent(const input_event& event);
     pid_t pgid();
+    void _repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker);
+    void _raise();
+    void _lower();
     void _close();
     WindowState state();
     void lock();
     void unlock();
+    void waitForUpdate(unsigned int marker);
     Q_INVOKABLE void waitForLastUpdate();
+    void repainted(unsigned int marker);
 
     bool operator>(Window* other) const;
     bool operator<(Window* other) const;
@@ -93,6 +98,8 @@ signals:
 
 private slots:
     void readyEventPipeRead();
+    void ping();
+    void pingDeadline();
 
 private:
     QString m_identifier;
@@ -111,18 +118,19 @@ private:
     SocketPair m_tabletEventPipe;
     SocketPair m_keyEventPipe;
     SocketPair m_eventPipe;
+    QTimer m_pingTimer;
+    QTimer m_pingDeadlineTimer;
+    unsigned int m_pendingMarker;
+    unsigned int m_completedMarker;
+    QEventLoop m_eventLoop;
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);
     bool writeEvent(SocketPair* pipe, const input_event& event, bool force = false);
     void invalidateEventPipes();
-    template<typename T>
-    void writeEvent(WindowEventType type, T args){
-        WindowEvent event;
-        event.type = type;
-//        event.setData(args);
-//        auto out = m_eventPipe.writeStream();
-//        out << event;
-    }
+    void writeEvent(RepaintEventArgs args);
+    void writeEvent(GeometryEventArgs args);
+    void writeEvent(ImageInfoEventArgs args);
+    void writeEvent(WaitForPaintEventArgs args);
     void writeEvent(WindowEventType type);
 };

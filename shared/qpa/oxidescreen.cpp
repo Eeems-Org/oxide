@@ -56,8 +56,6 @@ bool OxideScreen::event(QEvent* event){
     return QObject::event(event);
 }
 void OxideScreen::redraw(){
-    QMutexLocker locker(&mutex);
-    Q_UNUSED(locker);
     if(mRepaintRegion.isEmpty()){
         return;
     }
@@ -120,4 +118,8 @@ void OxideScreen::redraw(){
         Oxide::Tarnish::screenUpdate(rect, waveform);
     }
     mRepaintRegion = QRegion();
+    qDebug() << __PRETTY_FUNCTION__ << "Wait for last update";
+    Oxide::Tarnish::requestWaitForLastUpdate();
+    paintWaitLoop.exec();
+    qDebug() << __PRETTY_FUNCTION__ << "last update complete";
 }

@@ -14,9 +14,8 @@ class RepaintNotifier : public QObject{
     Q_OBJECT
 
 signals:
-    void repainted();
+    void repainted(Window* window, unsigned int marker);
 };
-
 
 class GuiAPI : public APIBase {
     Q_OBJECT
@@ -46,12 +45,15 @@ public:
     QList<Window*> sortedWindows();
     void closeWindows(pid_t pgid);
     void waitForLastUpdate();
-    void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize);
+    void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize, unsigned int marker = 0);
 
 public slots:
     void touchEvent(const input_event& event);
     void tabletEvent(const input_event& event);
     void keyEvent(const input_event& event);
+
+private slots:
+    void repainted(Window* window, unsigned int marker);
 
 private:
     bool m_enabled;

@@ -7,6 +7,7 @@
 #pragma once
 #include "liboxide_global.h"
 #include "dbus.h"
+#include "debug.h"
 
 #include <QLocalSocket>
 
@@ -70,27 +71,50 @@ namespace Oxide::Tarnish {
     private slots:
         void readEvent();
     };
+
     struct RepaintEventArgs{
+        static const qsizetype size = (sizeof(int) * 4) + sizeof(quint64) + sizeof(unsigned int);
         QRect geometry;
         EPFrameBuffer::WaveformMode waveform;
+        unsigned int marker;
     };
     typedef RepaintEventArgs RepaintEventArgs;
+    QByteArray& operator>>(QByteArray& l, RepaintEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, RepaintEventArgs& r);
+
     struct GeometryEventArgs{
+        static const qsizetype size = sizeof(int) * 5;
         QRect geometry;
         int z;
     };
     typedef GeometryEventArgs GeometryEventArgs;
+    QByteArray& operator>>(QByteArray& l, GeometryEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, GeometryEventArgs& r);
+
     struct ImageInfoEventArgs{
+        static const qsizetype size = (sizeof(qulonglong) * 2) + sizeof(int);
         qulonglong sizeInBytes;
         qulonglong bytesPerLine;
         QImage::Format format;
     };
     typedef ImageInfoEventArgs ImageInfoEventArgs;
+    QByteArray& operator>>(QByteArray& l, ImageInfoEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, ImageInfoEventArgs& r);
+
+    struct WaitForPaintEventArgs{
+        static const qsizetype size = sizeof(unsigned int);
+        unsigned int marker;
+    };
+    typedef WaitForPaintEventArgs WaitForPaintEventArgs;
+    QByteArray& operator>>(QByteArray& l, WaitForPaintEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, WaitForPaintEventArgs& r);
 
     /*!
      * \brief The WindowEventType enum
      */
-    enum WindowEventType{
+    enum WindowEventType : unsigned short{
+        Invalid = 0, /*!< Invalid event */
+        Ping, /*!< */
         Repaint, /*!< */
         WaitForPaint, /*!< */
         Geometry, /*!< */
@@ -100,24 +124,31 @@ namespace Oxide::Tarnish {
         Close, /*!< */
         FrameBuffer, /*!< */
     };
+    QDebug operator<<(QDebug debug, const WindowEventType& type);
     /*!
      * \brief The WindowEvent class
      */
-    class LIBOXIDE_EXPORT WindowEvent : public QObject{
-        Q_OBJECT
-
+    class LIBOXIDE_EXPORT WindowEvent{
     public:
+        static WindowEvent fromSocket(QLocalSocket* socket);
+        bool toSocket(QLocalSocket* socket);
+
         WindowEvent();
+        WindowEvent(const WindowEvent& event);
         ~WindowEvent();
+        bool isValid();
         WindowEventType type;
-        void* data = nullptr;
+        RepaintEventArgs repaintData;
+        GeometryEventArgs geometryData;
+        ImageInfoEventArgs imageInfoData;
+        WaitForPaintEventArgs waitForPaintData;
 
-        template<typename T>
-        T* getData(){ return static_cast<T*>(data); }
-
-        template<typename T>
-        void setData(T data){ this->data = static_cast<void*>(&data); }
+    private:
+        static QMutex m_writeMutex;
+        static QMutex m_readMutex;
     };
+    QDebug operator<<(QDebug debug, const WindowEvent& event);
+    QDebug operator<<(QDebug debug, WindowEvent* event);
     /*!
      * \brief Get the current General API instance
      * \return The current General API instance
@@ -216,25 +247,20 @@ namespace Oxide::Tarnish {
      */
     LIBOXIDE_EXPORT QLocalSocket* getEventPipe();
     /*!
-     * \brief getEventStream
-     * \return
-     */
-    LIBOXIDE_EXPORT QDataStream* getEventStream();
-    /*!
      * \brief screenUpdate
      * \param waveform
      */
-    LIBOXIDE_EXPORT void screenUpdate(EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Mono);
+    LIBOXIDE_EXPORT void screenUpdate(EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Mono, unsigned int marker = 0);
     /*!
      * \brief screenUpdate
      * \param rect
      * \param waveform
      */
-    LIBOXIDE_EXPORT void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Mono);
+    LIBOXIDE_EXPORT void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Mono, unsigned int marker = 0);
     /*!
      * \brief waitForLastUpdate
      */
-    LIBOXIDE_EXPORT void waitForLastUpdate();
+    LIBOXIDE_EXPORT void requestWaitForLastUpdate();
     /*!
      * \brief powerAPI
      * \return
@@ -276,13 +302,3 @@ namespace Oxide::Tarnish {
      */
     LIBOXIDE_EXPORT codes::eeems::oxide1::Window* topWindow();
 }
-/*!
- * \brief operator <<
- * \return
- */
-LIBOXIDE_EXPORT QDataStream& operator<<(QDataStream& stream, const Oxide::Tarnish::WindowEvent& event);
-/*!
- * \brief operator >>
- * \return
- */
-LIBOXIDE_EXPORT QDataStream& operator>>(QDataStream& stream, Oxide::Tarnish::WindowEvent& event);

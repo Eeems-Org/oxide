@@ -42,6 +42,7 @@ private:
     unsigned m_options;
     bool m_debug;
     QStringList m_spec;
+    QMutex m_mutex;
 };
 
 QT_END_NAMESPACE

@@ -27,20 +27,36 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
   m_file{this},
   m_state{WindowState::LoweredHidden},
   m_format{(QImage::Format)format},
-  m_eventPipe{true}
+  m_eventPipe{true},
+  m_pendingMarker{0},
+  m_completedMarker{0}
 {
     LOCK_MUTEX;
     createFrameBuffer(geometry);
     O_DEBUG(__PRETTY_FUNCTION__ << m_identifier << "Window created" << pgid);
     connect(&m_eventPipe, &SocketPair::readyRead, this, &Window::readyEventPipeRead);
+    m_pingTimer.setInterval(30 * 1000); // 30 seconds
+    m_pingTimer.setSingleShot(true);
+    m_pingTimer.setTimerType(Qt::PreciseTimer);
+    m_pingDeadlineTimer.setInterval(60 * 1000); // 1 minute
+    m_pingDeadlineTimer.setSingleShot(true);
+    m_pingDeadlineTimer.setTimerType(Qt::CoarseTimer);
+    connect(&m_pingTimer, &QTimer::timeout, this, &Window::ping);
+    connect(&m_pingDeadlineTimer, &QTimer::timeout, this, &Window::pingDeadline);
 }
 Window::~Window(){
     O_DEBUG(__PRETTY_FUNCTION__ << m_identifier << "Window closed" << m_pgid);
+    m_completedMarker = m_pendingMarker;
+    if(m_eventLoop.isRunning()){
+        m_eventLoop.quit();
+    }
 }
 
 void Window::setEnabled(bool enabled){
     if(m_enabled != enabled){
-        invalidateEventPipes();
+        if(_isVisible()){
+            invalidateEventPipes();
+        }
         m_touchEventPipe.setEnabled(enabled);
         m_tabletEventPipe.setEnabled(enabled);
         m_keyEventPipe.setEnabled(enabled);
@@ -77,7 +93,7 @@ void Window::setZ(int z){
         return;
     }
     m_z = z;
-    writeEvent<GeometryEventArgs>(WindowEventType::Geometry, GeometryEventArgs{
+    writeEvent(GeometryEventArgs{
         .geometry = m_geometry,
         .z = m_z
     });
@@ -132,6 +148,10 @@ QDBusUnixFileDescriptor Window::eventPipe(){
     }
     W_ALLOWED();
     m_eventPipe.setEnabled(true);
+    if(!m_pingDeadlineTimer.isActive()){
+        m_pingTimer.start();
+        m_pingDeadlineTimer.start();
+    }
     return QDBusUnixFileDescriptor(m_eventPipe.readSocket()->socketDescriptor());
 }
 
@@ -246,11 +266,77 @@ bool Window::writeKeyEvent(const input_event& event){ return writeEvent(&m_keyEv
 
 pid_t Window::pgid(){ return m_pgid; }
 
+void Window::_repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker){
+    if(marker > 0){
+        m_pendingMarker = marker;
+    }
+    if(_isVisible()){
+        guiAPI->dirty(this, region, waveform, marker);
+    }
+}
+
+void Window::_raise(){
+    switch(m_state){
+        case WindowState::Lowered:
+            m_state = WindowState::Raised;
+        break;
+        case WindowState::LoweredHidden:
+            m_state = WindowState::RaisedHidden;
+        break;
+        case WindowState::Raised:
+        case WindowState::RaisedHidden:
+            return;
+        default:
+        break;
+    }
+    if(_isVisible()){
+        invalidateEventPipes();
+        guiAPI->dirty(this, m_geometry);
+    }
+    emit stateChanged(m_state);
+    writeEvent(WindowEventType::Raise);
+    emit raised();
+}
+
+void Window::_lower(){
+    bool wasVisible = _isVisible();
+    switch(m_state){
+        case WindowState::Raised:
+            m_state = WindowState::Lowered;
+        break;
+        case WindowState::RaisedHidden:
+            m_state = WindowState::LoweredHidden;
+        break;
+        case WindowState::Lowered:
+        case WindowState::LoweredHidden:
+            return;
+        default:
+        break;
+    }
+    if(wasVisible){
+        invalidateEventPipes();
+        guiAPI->dirty(this, m_geometry);
+    }
+    emit stateChanged(m_state);
+    writeEvent(WindowEventType::Lower);
+    emit lowered();
+}
+
 void Window::_close(){
+    auto wasVisible = _isVisible();
     m_state = WindowState::LoweredHidden;
-    invalidateEventPipes();
+    if(wasVisible){
+        invalidateEventPipes();
+    }
     writeEvent(WindowEventType::Close);
+    readyEventPipeRead();
+    setEnabled(false);
+    m_touchEventPipe.close();
+    m_tabletEventPipe.close();
+    m_keyEventPipe.close();
     emit closed();
+    QEventLoop().processEvents();
+    this->deleteLater();
 }
 
 Window::WindowState Window::state(){ return m_state; }
@@ -285,13 +371,35 @@ void Window::unlock(){
     }
 }
 
+void Window::waitForUpdate(unsigned int marker){
+    while(marker > m_completedMarker){
+        if(m_eventLoop.isRunning()){
+            m_eventLoop.processEvents();
+        }else{
+            m_eventLoop.exec();
+            W_DEBUG("repainted event detected" << marker << m_completedMarker);
+        }
+    }
+    W_DEBUG("Done waiting for update" << marker << m_completedMarker);
+}
+
 void Window::waitForLastUpdate(){
     if(!hasPermissions()){
         W_DENIED();
         return;
     }
     W_ALLOWED();
-    guiAPI->waitForLastUpdate();
+    waitForUpdate(m_pendingMarker);
+}
+
+void Window::repainted(unsigned int marker){
+    if(marker > m_completedMarker){
+        m_completedMarker = marker;
+    }
+    W_DEBUG("Repaint" << marker << "finished");
+    if(m_eventLoop.isRunning()){
+        m_eventLoop.quit();
+    }
 }
 
 bool Window::operator>(Window* other) const{ return m_z > other->z(); }
@@ -319,7 +427,7 @@ void Window::move(int x, int y){
     auto oldGeometry = m_geometry;
     m_geometry.setX(x);
     m_geometry.setY(y);
-    writeEvent<GeometryEventArgs>(WindowEventType::Geometry, GeometryEventArgs{
+    writeEvent(GeometryEventArgs{
         .geometry = m_geometry,
         .z = m_z
     });
@@ -338,13 +446,17 @@ void Window::repaint(QRect region, int waveform){
         return;
     }
     W_ALLOWED();
-    if(_isVisible()){
-        W_DEBUG(region << waveform);
-        guiAPI->dirty(this, region, (EPFrameBuffer::WaveformMode)waveform);
-    }
+    _repaint(region, (EPFrameBuffer::WaveformMode)waveform, 0);
 }
 
-void Window::repaint(int waveform){ repaint(m_geometry, waveform); }
+void Window::repaint(int waveform){
+    if(!hasPermissions()){
+        W_DENIED();
+        return;
+    }
+    W_ALLOWED();
+    _repaint(m_geometry, (EPFrameBuffer::WaveformMode)waveform, 0);
+}
 
 void Window::raise(){
     if(!hasPermissions()){
@@ -352,26 +464,7 @@ void Window::raise(){
         return;
     }
     W_ALLOWED();
-    switch(m_state){
-        case WindowState::Lowered:
-            m_state = WindowState::Raised;
-        break;
-        case WindowState::LoweredHidden:
-            m_state = WindowState::RaisedHidden;
-        break;
-        case WindowState::Raised:
-        case WindowState::RaisedHidden:
-            return;
-        default:
-        break;
-    }
-    if(_isVisible()){
-        invalidateEventPipes();
-        guiAPI->dirty(this, m_geometry);
-    }
-    emit stateChanged(m_state);
-    writeEvent(WindowEventType::Raise);
-    emit raised();
+    _raise();
 }
 
 void Window::lower(){
@@ -380,27 +473,7 @@ void Window::lower(){
         return;
     }
     W_ALLOWED();
-    bool wasVisible = _isVisible();
-    switch(m_state){
-        case WindowState::Raised:
-            m_state = WindowState::Lowered;
-        break;
-        case WindowState::RaisedHidden:
-            m_state = WindowState::LoweredHidden;
-        break;
-        case WindowState::Lowered:
-        case WindowState::LoweredHidden:
-            return;
-        default:
-        break;
-    }
-    if(wasVisible){
-        invalidateEventPipes();
-        guiAPI->dirty(this, m_geometry);
-    }
-    emit stateChanged(m_state);
-    writeEvent(WindowEventType::Lower);
-    emit lowered();
+    _lower();
 }
 
 void Window::close(){
@@ -413,43 +486,65 @@ void Window::close(){
 }
 
 void Window::readyEventPipeRead(){
-    auto in = m_eventPipe.readStream();
-    auto out = m_eventPipe.writeStream();
-    while(!in->atEnd()){
-        WindowEvent event;
-        *in >> event;
+    W_DEBUG("Reading events");
+    while(!m_eventPipe.atEnd()){
+        auto event = WindowEvent::fromSocket(m_eventPipe.writeSocket());
         switch(event.type){
             case Repaint:{
-                auto args = event.getData<RepaintEventArgs>();
-                repaint(args->geometry, args->waveform);
+                auto marker = event.repaintData.marker;
+                W_DEBUG("Repaint" << marker << "queued");
+                _repaint(event.repaintData.geometry, event.repaintData.waveform, marker);
                 break;
             }
             case Geometry:{
-                auto args = event.getData<GeometryEventArgs>();
-                setGeometry(args->geometry);
+                createFrameBuffer(event.geometryData.geometry);
                 break;
             }
             case ImageInfo:{
+                // Send back real info?
                 break;
             }
             case WaitForPaint:{
-                waitForLastUpdate();
-                out << event;
+                auto marker = event.waitForPaintData.marker ? event.waitForPaintData.marker : m_pendingMarker;
+                W_DEBUG("Queued wait for update" << marker);
+                QTimer::singleShot(0, [this, marker]{
+                    W_DEBUG("Waiting for update" << marker);
+                    waitForUpdate(marker);
+                    W_DEBUG("Update" << marker << "is finished");
+                    writeEvent(WaitForPaintEventArgs{
+                       .marker = marker
+                   });
+                });
                 break;
             }
             case Raise:
-                raise();
+                _raise();
                 break;
             case Lower:
-                lower();
+                _lower();
                 break;
             case Close:
-                close();
+                _close();
+                break;
+            case Ping:
+                m_pingTimer.stop();
+                m_pingDeadlineTimer.stop();
+                m_pingTimer.start();
+                m_pingDeadlineTimer.start();
                 break;
             case FrameBuffer:
+            case Invalid:
+            default:
                 break;
         }
     }
+}
+
+void Window::ping(){ writeEvent(WindowEventType::Ping); }
+
+void Window::pingDeadline(){
+    _W_WARNING("Process failed to respond to ping, it may be deadlocked");
+    //_close();
 }
 
 bool Window::hasPermissions(){ return guiAPI->isThisPgId(m_pgid); }
@@ -507,12 +602,12 @@ void Window::createFrameBuffer(const QRect& geometry){
     m_bytesPerLine = blankImage.bytesPerLine();
     auto oldGeometry = m_geometry;
     m_geometry = geometry;
-    writeEvent<ImageInfoEventArgs>(WindowEventType::ImageInfo, ImageInfoEventArgs{
+    writeEvent(ImageInfoEventArgs{
         .sizeInBytes = size,
         .bytesPerLine = m_bytesPerLine,
         .format = m_format
     });
-    writeEvent<GeometryEventArgs>(WindowEventType::Geometry, GeometryEventArgs{
+    writeEvent(GeometryEventArgs{
         .geometry = m_geometry,
         .z = m_z
     });
@@ -640,9 +735,36 @@ void Window::invalidateEventPipes(){
     }, true);
 }
 
+void Window::writeEvent(RepaintEventArgs args){
+    WindowEvent event;
+    event.type = WindowEventType::Repaint;
+    event.repaintData = args;
+    event.toSocket(m_eventPipe.writeSocket());
+}
+
+void Window::writeEvent(GeometryEventArgs args){
+    WindowEvent event;
+    event.type = WindowEventType::Geometry;
+    event.geometryData = args;
+    event.toSocket(m_eventPipe.writeSocket());
+}
+
+void Window::writeEvent(ImageInfoEventArgs args){
+    WindowEvent event;
+    event.type = WindowEventType::ImageInfo;
+    event.imageInfoData = args;
+    event.toSocket(m_eventPipe.writeSocket());
+}
+
+void Window::writeEvent(WaitForPaintEventArgs args){
+    WindowEvent event;
+    event.type = WindowEventType::WaitForPaint;
+    event.waitForPaintData = args;
+    event.toSocket(m_eventPipe.writeSocket());
+}
+
 void Window::writeEvent(WindowEventType type){
     WindowEvent event;
     event.type = type;
-    auto out = m_eventPipe.writeStream();
-    out << event;
+    event.toSocket(m_eventPipe.writeSocket());
 }

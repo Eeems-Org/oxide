@@ -711,7 +711,7 @@ void WifiAPI::validateSupplicant(){
         while(!serviceNames.contains(WPA_SUPPLICANT_SERVICE)){
             timespec args{
                 .tv_sec = 1,
-                        .tv_nsec = 0
+                .tv_nsec = 0
             };
             nanosleep(&args, NULL);
             serviceNames = bus.interface()->registeredServiceNames();

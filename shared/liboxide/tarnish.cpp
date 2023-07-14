@@ -1,6 +1,6 @@
 #include "tarnish.h"
 #include "meta.h"
-#include "debug.h"
+#include "qt.h"
 
 #include <sys/mman.h>
 #include <sys/prctl.h>
@@ -8,6 +8,7 @@
 #include <QDBusConnection>
 #include <QImage>
 #include <QThread>
+#include <QAtomicInteger>
 
 using namespace Oxide::Tarnish;
 
@@ -33,6 +34,7 @@ InputEventSocket tabletEventSocket;
 InputEventSocket keyEventSocket;
 QLocalSocket eventSocket;
 QDataStream eventStream;
+QAtomicInteger repaintMarker(1);
 
 // TODO - Get liboxide to automate journalctl logging
 //        https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
@@ -140,40 +142,283 @@ namespace Oxide::Tarnish {
         }
     }
 
-    WindowEvent::WindowEvent() : QObject(){
-
+    QByteArray& operator>>(QByteArray& l, RepaintEventArgs& r){
+        Q_ASSERT_X(l.size() >= RepaintEventArgs::size, "QByteArray >> RepaintEventArgs", "Not enough data available");
+        int x, y, width, height;
+        quint64 waveform;
+        l >> r.marker >> waveform >> height >> width >> y >> x;
+        r.geometry.setRect(x, y, width, height);
+        r.waveform = (EPFrameBuffer::WaveformMode)waveform;
+        return l;
     }
 
-    WindowEvent::~WindowEvent(){
+    QByteArray& operator<<(QByteArray& l, RepaintEventArgs& r){
+        QByteArray a;
+        a << r.geometry.x()
+            << r.geometry.y()
+            << r.geometry.width()
+            << r.geometry.height()
+            << (quint64)r.waveform
+            << r.marker;
+        Q_ASSERT_X(
+            a.size() == RepaintEventArgs::size, "QByteArray << RepaintEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(RepaintEventArgs::size).toStdString().c_str()
+        );
+        l += a;
+        return l;
+    }
+
+    QByteArray& operator>>(QByteArray& l, GeometryEventArgs& r){
+        Q_ASSERT_X(l.size() >= GeometryEventArgs::size, "QByteArray >> GeometryEventArgs", "Not enough data available");
+        int x, y, width, height;
+        l >> r.z >> height >> width >> y >> x;
+        r.geometry.setRect(x, y, width, height);
+        return l;
+    }
+
+    QByteArray& operator<<(QByteArray& l, GeometryEventArgs& r){
+        QByteArray a;
+        a << r.geometry.x()
+            << r.geometry.y()
+            << r.geometry.width()
+            << r.geometry.height()
+            << r.z;
+        Q_ASSERT_X(
+            a.size() == GeometryEventArgs::size, "QByteArray << GeometryEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(GeometryEventArgs::size).toStdString().c_str()
+        );
+        l += a;
+        return l;
+    }
+
+    QByteArray& operator>>(QByteArray& l, ImageInfoEventArgs& r){
+        Q_ASSERT_X(l.size() >= ImageInfoEventArgs::size, "QByteArray >> ImageInfoEventArgs", "Not enough data available");
+        int format;
+        l >> format >> r.bytesPerLine >> r.sizeInBytes;
+        r.format = (QImage::Format)format;
+        return l;
+    }
+
+    QByteArray& operator<<(QByteArray& l, ImageInfoEventArgs& r){
+        QByteArray a;
+        a << r.sizeInBytes
+            << r.bytesPerLine
+            << (int)r.format;
+        Q_ASSERT_X(
+            a.size() == ImageInfoEventArgs::size, "QByteArray << ImageInfoEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(ImageInfoEventArgs::size).toStdString().c_str()
+        );
+        l += a;
+        return l;
+    }
+
+    QByteArray& operator>>(QByteArray& l, WaitForPaintEventArgs& r){
+        Q_ASSERT_X(l.size() >= WaitForPaintEventArgs::size, "QByteArray >> WaitForPaintEventArgs", "Not enough data available");
+        l >> r.marker;
+        return l;
+    }
+
+    QByteArray& operator<<(QByteArray& l, WaitForPaintEventArgs& r){
+        QByteArray a;
+        a << r.marker;
+        Q_ASSERT_X(
+            a.size() == WaitForPaintEventArgs::size, "QByteArray << WaitForPaintEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(WaitForPaintEventArgs::size).toStdString().c_str()
+        );
+        l += a;
+        return l;
+    }
+
+    QDebug operator<<(QDebug debug, const WindowEventType& type){
+        QDebugStateSaver saver(debug);
+        Q_UNUSED(saver);
         switch(type){
+            case Repaint: debug.nospace() << "Repaint"; break;
+            case Geometry: debug.nospace() << "Geometry"; break;
+            case ImageInfo: debug.nospace() << "ImageInfo"; break;
+            case WaitForPaint: debug.nospace() << "WaitForPaint"; break;
+            case Raise: debug.nospace() << "Raise"; break;
+            case Lower: debug.nospace() << "Lower"; break;
+            case Close: debug.nospace() << "Close"; break;
+            case FrameBuffer: debug.nospace() << "FrameBuffer"; break;
+            case Ping: debug.nospace() << "Ping"; break;
+            case Invalid:
+            default:
+                 debug.nospace() << "Invalid";
+        }
+        return debug;
+    }
+
+    WindowEvent WindowEvent::fromSocket(QLocalSocket* socket){
+        QMutexLocker locker(&m_readMutex);
+        Q_UNUSED(locker);
+        O_DEBUG(__PRETTY_FUNCTION__ << "Reading event from socket");
+        WindowEvent event;
+        if(socket->atEnd()){
+            O_WARNING(__PRETTY_FUNCTION__ << "Failed to read event from socket: There are no events waiting");
+            return event;
+        }
+        qsizetype size = sizeof(unsigned short);
+        auto data = socket->read(size);
+        if(data.size() != size){
+            O_WARNING(__PRETTY_FUNCTION__ << "Failed to read event from socket: Expected" << size << "bytes but instead recieved" << data.size() << "bytes");
+            return event;
+        }
+        unsigned short type;
+        data >> type;
+        switch((WindowEventType)type){
             case Repaint:{
-                auto ptr = getData<GeometryEventArgs>();
-                if(ptr != nullptr){
-                    delete ptr;
-                }
+                auto data = socket->read(event.repaintData.size);
+                data >> event.repaintData;
                 break;
             }
             case Geometry:{
-                auto ptr = getData<GeometryEventArgs>();;
-                if(ptr != nullptr){
-                    delete ptr;
-                }
+                auto data = socket->read(event.geometryData.size);
+                data >> event.geometryData;
                 break;
             }
             case ImageInfo:{
-                auto ptr = getData<ImageInfoEventArgs>();
-                if(ptr != nullptr){
-                    delete ptr;
-                }
+                auto data = socket->read(event.imageInfoData.size);
+                data >> event.imageInfoData;
                 break;
             }
-            case WaitForPaint:
-                case Raise:
-                case Lower:
-                case Close:
-                case FrameBuffer:
-                    break;
+            case WaitForPaint:{
+                auto data = socket->read(event.waitForPaintData.size);
+                data >> event.waitForPaintData;
+                break;
+            }
+            case Raise:
+            case Lower:
+            case Close:
+            case FrameBuffer:
+            case Ping:
+            case Invalid:
+                break;
+            default:
+                O_WARNING(__PRETTY_FUNCTION__ << "Unknown event type:" << type);
+                // TODO - skip to end and send some sort of "oops, I lost track" event?
+                return event;
         }
+        event.type = (WindowEventType)type;
+        O_DEBUG(__PRETTY_FUNCTION__ << "Read event from socket" << event);
+        return event;
+    }
+
+    bool WindowEvent::toSocket(QLocalSocket* socket){
+        QMutexLocker locker(&m_writeMutex);
+        Q_UNUSED(locker);
+        O_DEBUG(__PRETTY_FUNCTION__ << "Writing event to socket" << this);
+        if(!socket->isWritable()){
+            O_WARNING(__PRETTY_FUNCTION__ << "Socket is not writable");
+            return false;
+        }
+        if(!isValid()){
+            O_WARNING(__PRETTY_FUNCTION__ << "Invalid WindowEvent");
+            return false;
+        }
+        QByteArray data;
+        data << (unsigned short)type;
+        switch(type){
+            case Repaint:
+                data << repaintData;
+                break;
+            case Geometry:
+                data << geometryData;
+                break;
+            case ImageInfo:
+                data << imageInfoData;
+                break;
+            case WaitForPaint:
+                data << waitForPaintData;
+                break;
+            case Raise:
+            case Lower:
+            case Close:
+            case FrameBuffer:
+            case Ping:
+                break;
+            default:
+                O_WARNING(__PRETTY_FUNCTION__ << "Unknown event type:" << type)
+                return false;
+        }
+        auto res = socket->write(data);
+        if(res < data.size()){
+            O_WARNING(__PRETTY_FUNCTION__ << "Expected to write" << data.size() << "bytes but only wrote" << res << "bytes");
+            return false;
+        }
+        socket->flush();
+        return true;
+    }
+
+    WindowEvent::WindowEvent() : type{Invalid}{}
+
+    WindowEvent::WindowEvent(const WindowEvent& event)
+    : type{event.type},
+      repaintData{event.repaintData},
+      geometryData{event.geometryData},
+      imageInfoData{event.imageInfoData}
+    {}
+
+    WindowEvent::~WindowEvent(){}
+
+    bool WindowEvent::isValid(){
+       switch(type){
+            case Repaint:
+            case Geometry:
+            case ImageInfo:
+            case WaitForPaint:
+            case Raise:
+            case Lower:
+            case Close:
+            case FrameBuffer:
+            case Ping:
+                return true;
+            default:
+                return false;
+       }
+    }
+
+    QMutex WindowEvent::m_writeMutex;
+    QMutex WindowEvent::m_readMutex;
+
+    QDebug operator<<(QDebug debug, const WindowEvent& event){
+        QDebugStateSaver saver(debug);
+        Q_UNUSED(saver);
+        debug.nospace() << "<WindowEvent " << event.type;
+        switch(event.type){
+            case Repaint:
+                debug.nospace() << ' ' << event.repaintData.geometry << ' ' << event.repaintData.waveform << ' ' << event.repaintData.marker;
+                break;
+            case Geometry:
+                debug.nospace() << ' ' << event.geometryData.geometry << ' ' << event.geometryData.z;
+                break;
+            case ImageInfo:
+                debug.nospace() << ' ' << event.imageInfoData.sizeInBytes << ' ' << event.imageInfoData.bytesPerLine << ' ' << event.imageInfoData.format;
+                break;
+            case WaitForPaint:
+                debug.nospace() << ' ' << event.waitForPaintData.marker;
+            case Raise:
+            case Lower:
+            case Close:
+            case FrameBuffer:
+            case Invalid:
+            case Ping:
+            default:
+                break;
+        }
+        debug.nospace() << '>';
+        return debug;
+    }
+
+    QDebug operator<<(QDebug debug, WindowEvent* event){
+        QDebugStateSaver saver(debug);
+        Q_UNUSED(saver);
+        if(event != nullptr){
+            debug.nospace() << *event;
+        }else{
+            debug.nospace() << "<Invalid>";
+        }
+        return debug;
     }
 
     codes::eeems::oxide1::General* getAPI(){
@@ -358,6 +603,7 @@ namespace Oxide::Tarnish {
             }
         });
         O_DEBUG(__PRETTY_FUNCTION__ << "Connected to tarnish command socket");
+        qRegisterMetaType<QAbstractSocket::SocketState>();
         return &childSocket;
     }
 
@@ -423,9 +669,6 @@ namespace Oxide::Tarnish {
                     return;
                 }
                 setupFbFd(frameBufferFd);
-            });
-            QObject::connect(window, &codes::eeems::oxide1::Window::zChanged, [=](int z){
-                O_DEBUG(__PRETTY_FUNCTION__ << "Window z sort changed:" << z);
             });
             QObject::connect(window, &codes::eeems::oxide1::Window::closed, [=](){
                 O_DEBUG(__PRETTY_FUNCTION__ << "Window closed");
@@ -689,7 +932,7 @@ namespace Oxide::Tarnish {
             return -1;
         }
         fd = dup(fd);
-        if(!eventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
+        if(!eventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered)){
             ::close(fd);
             O_WARNING(__PRETTY_FUNCTION__ << "Unable to get window event pipe:" << eventSocket.errorString());
             return -1;
@@ -718,42 +961,69 @@ namespace Oxide::Tarnish {
         return &eventSocket;
     }
 
-    QDataStream* getEventStream(){
-        if(getEventPipe() == nullptr){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get window event stream: Failed to get pipe");
-        }
-        eventStream.setDevice(&eventSocket);
-        return &eventStream;
-    }
-
-    void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode waveform){
+    void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode waveform, unsigned int marker){
         if(fbData == nullptr){
             return;
         }
         if(msync(fbData, fbFile.size(), MS_SYNC | MS_INVALIDATE) == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Failed to sync:" << strerror(errno))
+            O_WARNING(__PRETTY_FUNCTION__ << "Failed update screen:" << strerror(errno))
             return;
         }
-        window->repaint(rect, waveform);
+        if(!eventSocket.isOpen()){
+            O_WARNING(__PRETTY_FUNCTION__ << "Failed update screen: event socket not open");
+            return;
+        }
+        if(marker == 0){
+            marker = ++repaintMarker;
+        }
+        WindowEvent event;
+        event.type = WindowEventType::Repaint;
+        event.repaintData.geometry = rect;
+        event.repaintData.waveform = waveform;
+        event.repaintData.marker = marker;
+        event.toSocket(&eventSocket);
     }
 
-    void screenUpdate(EPFrameBuffer::WaveformMode waveform){
+    void screenUpdate(EPFrameBuffer::WaveformMode waveform, unsigned int marker){
         if(fbData == nullptr){
             return;
         }
         if(msync(fbData, fbFile.size(), MS_SYNC | MS_INVALIDATE) == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Failed to sync:" << strerror(errno))
+            O_WARNING(__PRETTY_FUNCTION__ << "Failed update screen:" << strerror(errno))
             return;
         }
-        window->repaint(waveform);
+        if(!eventSocket.isOpen()){
+            O_WARNING(__PRETTY_FUNCTION__ << "Failed update screen: event socket not open");
+            return;
+        }
+        auto image = frameBufferImage();
+        if(image.isNull()){
+            O_WARNING(__PRETTY_FUNCTION__ << "Failed update screen: Image is null");
+            return;
+        }
+        if(marker == 0){
+            marker = ++repaintMarker;
+        }
+        WindowEvent event;
+        event.type = WindowEventType::Repaint;
+        event.repaintData.geometry = image.rect();
+        event.repaintData.waveform = waveform;
+        event.repaintData.marker = marker;
+        event.toSocket(&eventSocket);
     }
 
-    void waitForLastUpdate(){
-        if(fbData == nullptr){
+    void requestWaitForUpdate(unsigned int marker){
+        if(!eventSocket.isOpen()){
+            O_WARNING(__PRETTY_FUNCTION__ << "Failed wait for screen update: event socket not open");
             return;
         }
-        window->waitForLastUpdate();
+        WindowEvent event;
+        event.type = WindowEventType::WaitForPaint;
+        event.waitForPaintData.marker = marker == 0 ? repaintMarker.loadRelaxed() : marker;
+        event.toSocket(&eventSocket);
     }
+
+    void requestWaitForLastUpdate(){ requestWaitForUpdate(0); }
 
     codes::eeems::oxide1::Power* powerApi(){
         if(api_power != nullptr){
@@ -840,63 +1110,5 @@ namespace Oxide::Tarnish {
     }
 
     codes::eeems::oxide1::Window* topWindow(){ return window; }
-}
 
-QDataStream& operator<<(QDataStream& stream, const Oxide::Tarnish::WindowEvent& event){
-    stream << (int)event.type;
-    switch(event.type){
-        case Repaint:{
-            auto args = static_cast<RepaintEventArgs*>(event.data);
-            stream << args->geometry << args->waveform;
-            break;
-        }
-        case Geometry:{
-            auto args = static_cast<GeometryEventArgs*>(event.data);
-            stream << args->geometry << args->z;
-            break;
-        }
-        case ImageInfo:{
-            auto args = static_cast<ImageInfoEventArgs*>(event.data);
-            stream << args->sizeInBytes << args->bytesPerLine << args->format;
-            break;
-        }
-        case WaitForPaint:
-        case Raise:
-        case Lower:
-        case Close:
-        case FrameBuffer:
-            break;
-    }
-    return stream;
-}
-
-QDataStream& operator>>(QDataStream& stream, Oxide::Tarnish::WindowEvent& event){
-    stream >> event.type;
-    switch(event.type){
-        case Repaint:{
-            RepaintEventArgs args;
-            stream >> args.geometry >> args.waveform;
-            event.setData(args);
-            break;
-        }
-        case Geometry:{
-            GeometryEventArgs args;
-            stream >> args.geometry >> args.z;
-            event.setData(args);
-            break;
-        }
-        case ImageInfo:{
-            ImageInfoEventArgs args;
-            stream >> args.sizeInBytes >> args.bytesPerLine >> args.format;
-            event.setData(args);
-            break;
-        case WaitForPaint:
-        case Raise:
-        case Lower:
-        case Close:
-        case FrameBuffer:
-            break;
-        }
-    }
-    return stream;
 }

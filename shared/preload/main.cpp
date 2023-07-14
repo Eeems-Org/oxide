@@ -15,6 +15,8 @@
 #include <liboxide/tarnish.h>
 #include <systemd/sd-journal.h>
 
+#include "repaintnotifier.h"
+
 // Don't import <linux/input.h> to avoid conflicting declarations
 #define EVIOCGRAB       _IOW('E', 0x90, int)			/* Grab/Release device */
 #define EVIOCREVOKE     _IOW('E', 0x91, int)			/* Revoke device access */
@@ -37,6 +39,7 @@ static bool IS_INITIALIZED = false;
 thread_local bool IS_OPENING = false;
 static bool DEBUG_LOGGING = false;
 static bool FAILED_INIT = false;
+static bool FB_OPENED = false;
 static int fbFd = -1;
 static int touchFd = -1;
 static int tabletFd = -1;
@@ -45,8 +48,12 @@ static ssize_t(*func_write)(int, const void*, size_t);
 static int(*func_open)(const char*, int, mode_t);
 static int(*func_ioctl)(int, unsigned long, ...);
 static QMutex logMutex;
+static unsigned int completedMarker;
+static QMutex completedMarkerMutex;
+static RepaintNotifier repaintNotifier;
+
 QString appName(){
-    if(!qApp->startingUp()){
+    if(!QCoreApplication::startingUp()){
         return qApp->applicationName();
     }
     static QString name;
@@ -134,6 +141,7 @@ static struct sigaction int_action;
 static struct sigaction term_action;
 static struct sigaction segv_action;
 static struct sigaction abrt_action;
+
 void __sigacton__handler(int signo, siginfo_t* info, void* context){
     Q_UNUSED(info)
     Q_UNUSED(context)
@@ -156,9 +164,7 @@ void __sigacton__handler(int signo, siginfo_t* info, void* context){
     }
     _DEBUG("Signal", strsignal(signo), "recieved.");
     Oxide::Tarnish::disconnect();
-    if(!QCoreApplication::startingUp()){
-        QCoreApplication::processEvents(QEventLoop::AllEvents);
-    }
+    QCoreApplication::processEvents(QEventLoop::AllEvents);
     raise(signo);
 }
 
@@ -185,6 +191,47 @@ bool __sigaction_connect(int signo){
     return sigaction(signo, &action, NULL) != -1;
 }
 
+void __read_event_pipe(){
+    auto eventPipe = Oxide::Tarnish::getEventPipe();
+    if(eventPipe == nullptr){
+        return;
+    }
+    while(eventPipe->isOpen() && !eventPipe->atEnd()){
+        auto event = Oxide::Tarnish::WindowEvent::fromSocket(eventPipe);
+        switch(event.type){
+            case Oxide::Tarnish::WaitForPaint:
+                _DEBUG("Wait for paint finished");
+                QMetaObject::invokeMethod(
+                    &repaintNotifier,
+                    "repainted",
+                    Qt::QueuedConnection,
+                    Q_ARG(unsigned int, event.waitForPaintData.marker)
+                );
+                break;
+            case Oxide::Tarnish::Close:
+                _INFO("Window closed");
+                kill(getpid(), SIGTERM);
+                break;
+            case Oxide::Tarnish::Ping:
+                event.toSocket(eventPipe);
+                break;
+            case Oxide::Tarnish::Invalid:
+            case Oxide::Tarnish::Raise:
+            case Oxide::Tarnish::Lower:
+            case Oxide::Tarnish::Repaint:
+            // TODO - sort out how to manage changes to the framebuffer
+            //        being reflected in the app
+            case Oxide::Tarnish::Geometry:
+            case Oxide::Tarnish::ImageInfo:
+            case Oxide::Tarnish::FrameBuffer:
+                break;
+            default:
+                _DEBUG("Recieved unhandled WindowEvent", QString::number(event.type));
+                break;
+        }
+    }
+}
+
 int fb_ioctl(unsigned long request, char* ptr){
     switch(request){
         // Look at linux/fb.h and mxcfb.h for more possible request types
@@ -197,8 +244,12 @@ int fb_ioctl(unsigned long request, char* ptr){
             //update->update_mode;
             //update->dither_mode;
             //update->temp;
-            //update->update_marker;
-            Oxide::Tarnish::screenUpdate(QRect(region.top, region.left, region.width, region.height), (EPFrameBuffer::WaveformMode)update->waveform_mode);
+            QRect rect;
+            rect.setLeft(region.left);
+            rect.setTop(region.top);
+            rect.setWidth(region.width);
+            rect.setHeight(region.height);
+            Oxide::Tarnish::screenUpdate(rect, (EPFrameBuffer::WaveformMode)update->waveform_mode, update->update_marker);
             if(deviceSettings.getDeviceType() != Oxide::DeviceSettings::RM2){
                 return 0;
             }
@@ -211,9 +262,44 @@ int fb_ioctl(unsigned long request, char* ptr){
         }
         case MXCFB_WAIT_FOR_UPDATE_COMPLETE:{
             _DEBUG("ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE");
+            mxcfb_update_marker_data* update = reinterpret_cast<mxcfb_update_marker_data*>(ptr);
             ClockWatch cz;
-            Oxide::Tarnish::waitForLastUpdate();
-            _DEBUG("FINISHED WAIT IOCTL", cz.elapsed());
+            completedMarkerMutex.lock();
+            if(update->update_marker > completedMarker){
+                completedMarkerMutex.unlock();
+                auto eventPipe = Oxide::Tarnish::getEventPipe();
+                if(eventPipe == nullptr){
+                    qFatal("Unable to get event pipe");
+                }
+                Oxide::Tarnish::WindowEvent event;
+                event.type = Oxide::Tarnish::WaitForPaint;
+                event.waitForPaintData.marker = update->update_marker;
+                event.toSocket(eventPipe);
+                QEventLoop loop;
+                QMetaObject::Connection conn;
+                conn = QObject::connect(&repaintNotifier, &RepaintNotifier::repainted, [update, &loop](unsigned int marker){
+                    if(marker <= update->update_marker){
+                        loop.quit();
+                    }
+                });
+                QTimer timer;
+                timer.setInterval(5000);
+                QObject::connect(&timer, &QTimer::timeout, [eventPipe, update]{
+                    _WARN("It's been 5 seconds since we started waiting for a screen update, we might be deadlocked.");
+                    Oxide::Tarnish::WindowEvent event;
+                    event.type = Oxide::Tarnish::WaitForPaint;
+                    event.waitForPaintData.marker = update->update_marker;
+                    event.toSocket(eventPipe);
+                });
+                _DEBUG("Waiting for marker", QString::number(update->update_marker));
+                timer.start();
+                loop.exec();
+                timer.stop();
+                QObject::disconnect(conn);
+            }else{
+                completedMarkerMutex.unlock();
+            }
+            _DEBUG("ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE done:", cz.elapsed());
             return 0;
         }
         case FBIOGET_VSCREENINFO:{
@@ -381,6 +467,15 @@ int open_from_tarnish(const char* pathname){
     }else if(pathname == deviceSettings.getButtonsDevicePath()){
         res = keyFd = Oxide::Tarnish::getKeyEventPipeFd();
     }
+    if(!FB_OPENED && res > 0){
+        FB_OPENED = true;
+        auto eventPipe = Oxide::Tarnish::getEventPipe();
+        if(eventPipe == nullptr){
+            qFatal("Could not get event pipe");
+        }
+        QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, &__read_event_pipe);
+        QObject::connect(eventPipe, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
+    }
     IS_OPENING = false;
     return res;
 }
@@ -546,17 +641,17 @@ extern "C" {
     }
     __asm__(".symver write, write@GLIBC_2.4");
 
-//    __attribute__((visibility("default")))
-//    bool _Z7qputenvPKcRK10QByteArray(const char* name, const QByteArray& val) {
-//        static const auto orig_fn = (bool(*)(const char*, const QByteArray&))dlsym(RTLD_NEXT, "_Z7qputenvPKcRK10QByteArray");
-//        if(strcmp(name, "QMLSCENE_DEVICE") == 0 || strcmp(name, "QT_QUICK_BACKEND") == 0){
-//            return orig_fn(name, "software");
-//        }
-//        if(strcmp(name, "QT_QPA_PLATFORM") == 0){
-//            return orig_fn(name, "epaper:enable_fonts");
-//        }
-//        return orig_fn(name, val);
-//    }
+    __attribute__((visibility("default")))
+    bool _Z7qputenvPKcRK10QByteArray(const char* name, const QByteArray& val) {
+        static const auto orig_fn = (bool(*)(const char*, const QByteArray&))dlsym(RTLD_NEXT, "_Z7qputenvPKcRK10QByteArray");
+        if(strcmp(name, "QMLSCENE_DEVICE") == 0 || strcmp(name, "QT_QUICK_BACKEND") == 0){
+            return orig_fn(name, "software");
+        }
+        if(strcmp(name, "QT_QPA_PLATFORM") == 0){
+            return orig_fn(name, "epaper:enable_fonts");
+        }
+        return orig_fn(name, val);
+    }
 
     void __attribute__ ((constructor)) init(void);
     void init(void){
@@ -608,6 +703,7 @@ extern "C" {
                 _CRIT("Failed to connect", pid, "to tarnish");
                 return;
             }
+            QObject::connect(socket, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
             _DEBUG("Connected", pid, "to tarnish");
         }
         IS_INITIALIZED = true;
@@ -627,7 +723,27 @@ extern "C" {
         if(FAILED_INIT){
             return EXIT_FAILURE;
         }
+        QObject::connect(&repaintNotifier, &RepaintNotifier::repainted, [](unsigned int marker){
+            QMutexLocker locker(&completedMarkerMutex);
+            Q_UNUSED(locker);
+            _DEBUG("/dev/fb0 update_marker", QString::number(marker), "recieved");
+            if(marker > completedMarker){
+                completedMarker = marker;
+            }
+        });
         auto func_main = (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
+        if(QFileInfo("/proc/self/exe").canonicalFilePath() != "/usr/bin/xochitl" && !qEnvironmentVariableIsSet("OXIDE_PRELOAD_NO_QAPP")){
+            QCoreApplication app(argc, argv);
+            QThread thread;
+            thread.setObjectName("QCoreApplication");
+            QObject::connect(&thread, &QThread::started, &app, [&]{
+                auto res = func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
+                Oxide::Tarnish::disconnect();
+                app.exit(res);
+            }, Qt::DirectConnection);
+            thread.start();
+            return app.exec();
+        }
         auto res = func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
         Oxide::Tarnish::disconnect();
         return res;

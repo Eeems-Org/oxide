@@ -7,6 +7,10 @@ CONFIG += hide_symbols
 
 QT -= gui
 
+HEADERS += \
+    functions.h \
+    repaintnotifier.h
+
 SOURCES += main.cpp
 
 LIBS += -lrt -ldl -Wl,--exclude-libs,ALL

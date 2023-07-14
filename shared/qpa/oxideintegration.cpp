@@ -131,21 +131,17 @@ void OxideIntegration::initialize(){
             qApp->exit(EXIT_FAILURE);
         }
     });
-    auto eventStream = Oxide::Tarnish::getEventStream();
-    if(eventStream == nullptr){
-        qFatal("Could not get event stream");
-    }
-    QObject::connect(eventPipe, &QLocalSocket::readyRead, [this, eventPipe, eventStream, keyHandler]{
-        while(!eventStream->atEnd()){
-            Oxide::Tarnish::WindowEvent event;
-            *eventStream >> event;
+    QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, [this, eventPipe, keyHandler]{
+        QMutexLocker locker(&m_mutex);
+        Q_UNUSED(locker);
+        while(!eventPipe->atEnd()){
+            auto event = Oxide::Tarnish::WindowEvent::fromSocket(eventPipe);
             switch(event.type){
                 case Oxide::Tarnish::Geometry:{
-                    auto args = event.getData<Oxide::Tarnish::GeometryEventArgs>();
-                    m_primaryScreen->setGeometry(args->geometry);
+                    m_primaryScreen->setGeometry(event.geometryData.geometry);
                     auto window = m_primaryScreen->topWindow();
                     if(window != nullptr){
-                        window->setGeometry(args->geometry);
+                        window->setGeometry(event.geometryData.geometry);
                     }
                     break;
                 }
@@ -171,14 +167,21 @@ void OxideIntegration::initialize(){
                     delete keyHandler;
                     break;
                 }
-                case Oxide::Tarnish::Repaint:
+                case Oxide::Tarnish::Ping:
+                    event.toSocket(eventPipe);
+                    break;
+                case Oxide::Tarnish::WaitForPaint:{
+                    m_primaryScreen->paintWaitLoop.quit();
+                }
                 case Oxide::Tarnish::ImageInfo:
-                case Oxide::Tarnish::WaitForPaint:
+                case Oxide::Tarnish::Repaint:
                 case Oxide::Tarnish::FrameBuffer:
+                case Oxide::Tarnish::Invalid:
+                default:
                     break;
             }
         }
-    });
+    }, Qt::QueuedConnection);
 }
 
 

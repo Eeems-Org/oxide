@@ -2,14 +2,13 @@
 
 QEvent::Type RepaintEvent::eventType = QEvent::None;
 
-RepaintEvent::RepaintEvent(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform)
+RepaintEvent::RepaintEvent(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker)
 : QEvent(registeredType()),
   m_window{window},
   m_region{region},
-  m_waveform{waveform}
-{
-
-}
+  m_waveform{waveform},
+  m_marker{marker}
+{}
 
 QEvent::Type RepaintEvent::registeredType(){
     if(eventType == QEvent::None){
@@ -34,16 +33,21 @@ void GUIThread::run(){
 }
 
 void GUIThread::repaintWindow(QPainter* painter, Window* window, QRect* rect){
+    if(window == nullptr){
+        return;
+    }
     const QRect windowRect = window->_geometry().translated(-m_screenGeometry->topLeft());
     const QRect windowIntersect = rect->translated(-windowRect.left(), -windowRect.top());
     if(windowIntersect.isEmpty()){
         return;
     }
-    O_DEBUG(__PRETTY_FUNCTION__ << window->identifier() << windowIntersect);
+    O_DEBUG(__PRETTY_FUNCTION__ << window->identifier() << windowIntersect << window->z());
     // TODO - See if there is a way to detect if there is just transparency in the region
     //        and don't mark this as repainted.
     painter->drawImage(*rect, window->toImage(), windowIntersect);
 }
+
+void GUIThread::flush(){ qApp->sendPostedEvents(this, RepaintEvent::eventType); }
 
 void GUIThread::redraw(RepaintEvent* event){
     if(QThread::currentThread() != (QThread*)this){
@@ -162,6 +166,6 @@ void GUIThread::redraw(RepaintEvent* event){
         EPFrameBuffer::sendUpdate(rect, waveform, mode);
     }
     EPFrameBuffer::waitForLastUpdate();
-    emit m_repaintNotifier->repainted();
+    emit m_repaintNotifier->repainted(window, event->marker());
     O_DEBUG(__PRETTY_FUNCTION__ << "Repaint done");
 }
