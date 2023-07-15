@@ -129,8 +129,9 @@ namespace Oxide::Tarnish {
     };
     struct KeyEventArgs{
         static qsizetype size();
-        unsigned int code; // Native keycode
+        unsigned int code; // Qt keycode
         KeyEventType type;
+        unsigned short unicode;
     };
     QByteArray& operator>>(QByteArray& l, KeyEventArgs& r);
     QByteArray& operator<<(QByteArray& l, KeyEventArgs& r);

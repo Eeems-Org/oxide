@@ -177,6 +177,39 @@ void OxideIntegration::initialize(){
                         Qt::QueuedConnection,
                         Q_ARG(unsigned int, event.waitForPaintData.marker)
                     );
+                    break;
+                case Oxide::Tarnish::Key:{
+                    auto data = event.keyData;
+                    QEvent::Type type = QEvent::None;
+                    bool repeat = false;
+                    switch(data.type){
+                        case Oxide::Tarnish::Release:
+                            type = QEvent::KeyRelease;
+                            break;
+                        case Oxide::Tarnish::Press:
+                            type = QEvent::KeyPress;
+                            break;
+                        case Oxide::Tarnish::Repeat:
+                            type = QEvent::KeyPress;
+                            repeat = true;
+                            break;
+                    }
+                    // TODO - sort out how to get key modifiers state
+                    QWindowSystemInterface::handleKeyEvent(
+                        nullptr,
+                        type,
+                        data.code,
+                        Qt::NoModifier,
+                        "",
+                        repeat
+                    );
+                    break;
+                }
+                case Oxide::Tarnish::Touch:{
+                    auto data = event.touchData;
+                    // TODO - emit touch event
+                    break;
+                }
                 case Oxide::Tarnish::ImageInfo:
                 case Oxide::Tarnish::Repaint:
                 case Oxide::Tarnish::FrameBuffer:

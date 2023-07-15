@@ -219,6 +219,10 @@ void __read_event_pipe(){
             case Oxide::Tarnish::Raise:
             case Oxide::Tarnish::Lower:
             case Oxide::Tarnish::Repaint:
+            // TODO - sort out how to use these instead of the raw pipes
+            //        so they can be removed
+            case Oxide::Tarnish::Key:
+            case Oxide::Tarnish::Touch:
             // TODO - sort out how to manage changes to the framebuffer
             //        being reflected in the app
             case Oxide::Tarnish::Geometry:

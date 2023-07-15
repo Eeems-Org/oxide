@@ -254,19 +254,19 @@ namespace Oxide::Tarnish {
         return l;
     }
 
-    qsizetype KeyEventArgs::size(){ return sizeof(KeyEventType) + sizeof(unsigned int); }
+    qsizetype KeyEventArgs::size(){ return sizeof(KeyEventType) + sizeof(unsigned int) + sizeof(unsigned short); }
 
     QByteArray& operator>>(QByteArray& l, KeyEventArgs& r){
         Q_ASSERT_X(l.size() >= KeyEventArgs::size(), "QByteArray >> KeyEventArgs", "Not enough data available");
         unsigned short type;
-        l >> type >> r.code;
+        l >> type >> r.code >> r.unicode;
         r.type = (KeyEventType)type;
         return l;
     }
 
     QByteArray& operator<<(QByteArray& l, KeyEventArgs& r){
         QByteArray a;
-        a << r.code << (unsigned short)r.type;
+        a << r.unicode << r.code << (unsigned short)r.type;
         Q_ASSERT_X(
             a.size() == KeyEventArgs::size(), "QByteArray << KeyEventArgs",
             QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(KeyEventArgs::size()).toStdString().c_str()

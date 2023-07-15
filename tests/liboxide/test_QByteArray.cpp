@@ -3,6 +3,7 @@
 #include <QLocalServer>
 
 #include <liboxide/qt.h>
+#include <sys/socket.h>
 #include <liboxide/tarnish.h>
 
 using namespace Oxide::Tarnish;
@@ -29,15 +30,34 @@ private slots:
     void test_WaitForPaintEventArgs();
     void test_KeyEventArgs();
     void test_TouchEventArgs();
-    void test_WindowEvent();
+    void test_WindowEvent_Invalid();
+    void test_WindowEvent_Ping();
+    void test_WindowEvent_Repaint();
+    void test_WindowEvent_WaitForPaint();
+    void test_WindowEvent_Geometry();
+    void test_WindowEvent_ImageInfo();
+    void test_WindowEvent_Raise();
+    void test_WindowEvent_Lower();
+    void test_WindowEvent_Close();
+    void test_WindowEvent_FrameBuffer();
+    void test_WindowEvent_Key();
+    void test_WindowEvent_Touch();
+
+private:
+    QLocalSocket socketIn;
+    QLocalSocket socketOut;
 };
 
 test_QByteArray::test_QByteArray(){
-
+    int fds[2];
+    Q_ASSERT(::socketpair(AF_UNIX, SOCK_STREAM, 0, fds) != -1);
+    Q_ASSERT(socketIn.setSocketDescriptor(fds[0], QLocalSocket::ConnectedState, QLocalSocket::WriteOnly | QLocalSocket::Unbuffered));
+    Q_ASSERT(socketOut.setSocketDescriptor(fds[1], QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered));
 }
 
 test_QByteArray::~test_QByteArray(){
-
+    socketIn.close();
+    socketOut.close();
 }
 
 void test_QByteArray::test_qint8(){
@@ -122,8 +142,8 @@ void test_QByteArray::test_quint64(){
 
 void test_QByteArray::test_RepaintEventArgs(){
     RepaintEventArgs a;
-    a.x = 10;
-    a.y = 10;
+    a.x = -10;
+    a.y = -10;
     a.width = 10;
     a.height = 10;
     a.marker = 100;
@@ -140,8 +160,8 @@ void test_QByteArray::test_RepaintEventArgs(){
 
 void test_QByteArray::test_GeometryEventArgs(){
     GeometryEventArgs a;
-    a.x = 10;
-    a.y = 10;
+    a.x = -10;
+    a.y = -10;
     a.width = 10;
     a.height = 10;
     a.z = 100;
@@ -184,6 +204,7 @@ void test_QByteArray::test_KeyEventArgs(){
     KeyEventArgs a;
     a.code = 100;
     a.type = KeyEventType::Repeat;
+    a.unicode = 'a';
     QByteArray d;
     d << a;
     QCOMPARE(d.size(), KeyEventArgs::size());
@@ -200,12 +221,12 @@ void test_QByteArray::test_TouchEventArgs(){
     a.pressure = 100;
     a.distance = 100;
     a.orientation = -100;
-    a.position.x = 100;
-    a.position.y = 100;
+    a.position.x = -100;
+    a.position.y = -100;
     a.position.width = 100;
     a.position.height = 100;
-    a.toolPosition.x = 100;
-    a.toolPosition.y = 100;
+    a.toolPosition.x = -100;
+    a.toolPosition.y = -100;
     a.toolPosition.width = 100;
     a.toolPosition.height = 100;
     QByteArray d;
@@ -222,161 +243,162 @@ void test_QByteArray::test_TouchEventArgs(){
     QCOMPARE(a.toolPosition.geometry(), b.toolPosition.geometry());
 }
 
-void test_QByteArray::test_WindowEvent(){
-    QLocalServer server;
-    server.listen("-");
-    QLocalSocket socketIn;
-    socketIn.connectToServer("-", QLocalSocket::WriteOnly);
-    server.waitForNewConnection();
-    auto socketOut = server.nextPendingConnection();
+void test_QByteArray::test_WindowEvent_Invalid(){
+    WindowEvent a;
+    a.type = WindowEventType::Invalid;
+    a.toSocket(&socketIn);
+    // Don't call socketOut.waitForReadyRead(); here because it'll block for 30s
+    // It is required in the other methods to make sure data is available
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+}
 
-    {
-        WindowEvent a;
-        a.type = WindowEventType::Invalid;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::Ping;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::Repaint;
-        a.repaintData.x = 100;
-        a.repaintData.y = 100;
-        a.repaintData.width = 100;
-        a.repaintData.height = 100;
-        a.repaintData.waveform = EPFrameBuffer::HighQualityGrayscale;
-        a.repaintData.marker = 100;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-        QCOMPARE(a.repaintData.geometry(), b.repaintData.geometry());
-        QCOMPARE(a.repaintData.waveform, b.repaintData.waveform);
-        QCOMPARE(a.repaintData.marker, b.repaintData.marker);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::WaitForPaint;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::Geometry;
-        a.geometryData.x = 100;
-        a.geometryData.y = 100;
-        a.geometryData.width = 100;
-        a.geometryData.height = 100;
-        a.geometryData.z = 100;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-        QCOMPARE(a.geometryData.geometry(), b.geometryData.geometry());
-        QCOMPARE(a.geometryData.z, b.geometryData.z);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::ImageInfo;
-        a.imageInfoData.bytesPerLine = 100;
-        a.imageInfoData.sizeInBytes = 100;
-        a.imageInfoData.format = QImage::Format_Alpha8;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-        QCOMPARE(a.imageInfoData.bytesPerLine, b.imageInfoData.bytesPerLine);
-        QCOMPARE(a.imageInfoData.sizeInBytes, b.imageInfoData.sizeInBytes);
-        QCOMPARE(a.imageInfoData.format, b.imageInfoData.format);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::Raise;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::Lower;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::Close;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::FrameBuffer;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::Key;
-        a.keyData.code = 100;
-        a.keyData.type = KeyEventType::Repeat;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-        QCOMPARE(a.keyData.code, b.keyData.code);
-        QCOMPARE(a.keyData.type, b.keyData.type);
-    }
-    {
-        WindowEvent a;
-        a.type = WindowEventType::Touch;
-        a.touchData.type = TouchEventType::End;
-        a.touchData.toolType = TouchEventTool::Palm;
-        a.touchData.pressure = 100;
-        a.touchData.distance = 100;
-        a.touchData.orientation = -100;
-        a.touchData.id = 100;
-        a.touchData.position.x = -100;
-        a.touchData.position.y = -100;
-        a.touchData.position.width = 100;
-        a.touchData.position.height = 100;
-        a.touchData.toolPosition.x = -100;
-        a.touchData.toolPosition.y = -100;
-        a.touchData.toolPosition.width = 100;
-        a.touchData.toolPosition.height = 100;
-        a.toSocket(&socketIn);
-        socketOut->waitForReadyRead();
-        auto b = WindowEvent::fromSocket(socketOut);
-        QCOMPARE(a.type, b.type);
-        QCOMPARE(a.touchData.type, b.touchData.type);
-        QCOMPARE(a.touchData.toolType, b.touchData.toolType);
-        QCOMPARE(a.touchData.pressure, b.touchData.pressure);
-        QCOMPARE(a.touchData.distance, b.touchData.distance);
-        QCOMPARE(a.touchData.orientation, b.touchData.orientation);
-        QCOMPARE(a.touchData.id, b.touchData.id);
-        QCOMPARE(a.touchData.position.geometry(), b.touchData.position.geometry());
-        QCOMPARE(a.touchData.toolPosition.geometry(), b.touchData.toolPosition.geometry());
-    }
-    socketIn.close();
-    socketOut->close();
-    server.close();
+void test_QByteArray::test_WindowEvent_Ping(){
+    WindowEvent a;
+    a.type = WindowEventType::Ping;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+}
+
+void test_QByteArray::test_WindowEvent_Repaint(){
+    WindowEvent a;
+    a.type = WindowEventType::Repaint;
+    a.repaintData.x = -100;
+    a.repaintData.y = -100;
+    a.repaintData.width = 100;
+    a.repaintData.height = 100;
+    a.repaintData.waveform = EPFrameBuffer::HighQualityGrayscale;
+    a.repaintData.marker = 100;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+    QCOMPARE(a.repaintData.geometry(), b.repaintData.geometry());
+    QCOMPARE(a.repaintData.waveform, b.repaintData.waveform);
+    QCOMPARE(a.repaintData.marker, b.repaintData.marker);
+}
+
+void test_QByteArray::test_WindowEvent_WaitForPaint(){
+    WindowEvent a;
+    a.type = WindowEventType::WaitForPaint;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+}
+
+void test_QByteArray::test_WindowEvent_Geometry(){
+    WindowEvent a;
+    a.type = WindowEventType::Geometry;
+    a.geometryData.x = -100;
+    a.geometryData.y = -100;
+    a.geometryData.width = 100;
+    a.geometryData.height = 100;
+    a.geometryData.z = 100;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+    QCOMPARE(a.geometryData.geometry(), b.geometryData.geometry());
+    QCOMPARE(a.geometryData.z, b.geometryData.z);
+}
+
+void test_QByteArray::test_WindowEvent_ImageInfo(){
+    WindowEvent a;
+    a.type = WindowEventType::ImageInfo;
+    a.imageInfoData.bytesPerLine = 100;
+    a.imageInfoData.sizeInBytes = 100;
+    a.imageInfoData.format = QImage::Format_Alpha8;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+    QCOMPARE(a.imageInfoData.bytesPerLine, b.imageInfoData.bytesPerLine);
+    QCOMPARE(a.imageInfoData.sizeInBytes, b.imageInfoData.sizeInBytes);
+    QCOMPARE(a.imageInfoData.format, b.imageInfoData.format);
+}
+
+void test_QByteArray::test_WindowEvent_Raise(){
+    WindowEvent a;
+    a.type = WindowEventType::Raise;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+}
+
+
+void test_QByteArray::test_WindowEvent_Lower(){
+    WindowEvent a;
+    a.type = WindowEventType::Lower;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+}
+
+void test_QByteArray::test_WindowEvent_Close(){
+    WindowEvent a;
+    a.type = WindowEventType::Close;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+}
+
+void test_QByteArray::test_WindowEvent_FrameBuffer(){
+    WindowEvent a;
+    a.type = WindowEventType::FrameBuffer;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+}
+
+void test_QByteArray::test_WindowEvent_Key(){
+    WindowEvent a;
+    a.type = WindowEventType::Key;
+    a.keyData.code = 100;
+    a.keyData.type = KeyEventType::Repeat;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+    QCOMPARE(a.keyData.code, b.keyData.code);
+    QCOMPARE(a.keyData.type, b.keyData.type);
+}
+
+void test_QByteArray::test_WindowEvent_Touch(){
+    WindowEvent a;
+    a.type = WindowEventType::Touch;
+    a.touchData.type = TouchEventType::End;
+    a.touchData.toolType = TouchEventTool::Palm;
+    a.touchData.pressure = 100;
+    a.touchData.distance = 100;
+    a.touchData.orientation = -100;
+    a.touchData.id = 100;
+    a.touchData.position.x = -100;
+    a.touchData.position.y = -100;
+    a.touchData.position.width = 100;
+    a.touchData.position.height = 100;
+    a.touchData.toolPosition.x = -100;
+    a.touchData.toolPosition.y = -100;
+    a.touchData.toolPosition.width = 100;
+    a.touchData.toolPosition.height = 100;
+    a.toSocket(&socketIn);
+    socketOut.waitForReadyRead();
+    auto b = WindowEvent::fromSocket(&socketOut);
+    QCOMPARE(a.type, b.type);
+    QCOMPARE(a.touchData.type, b.touchData.type);
+    QCOMPARE(a.touchData.toolType, b.touchData.toolType);
+    QCOMPARE(a.touchData.pressure, b.touchData.pressure);
+    QCOMPARE(a.touchData.distance, b.touchData.distance);
+    QCOMPARE(a.touchData.orientation, b.touchData.orientation);
+    QCOMPARE(a.touchData.id, b.touchData.id);
+    QCOMPARE(a.touchData.position.geometry(), b.touchData.position.geometry());
+    QCOMPARE(a.touchData.toolPosition.geometry(), b.touchData.toolPosition.geometry());
 }
 
 QTEST_APPLESS_MAIN(test_QByteArray)

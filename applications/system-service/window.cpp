@@ -533,6 +533,8 @@ void Window::readyEventPipeRead(){
                 m_pingTimer.start();
                 m_pingDeadlineTimer.start();
                 break;
+            case Touch:
+            case Key:
             case FrameBuffer:
             case Invalid:
             default:
