@@ -20,7 +20,7 @@ QSizeF OxideScreen::physicalSize() const{
 void OxideScreen::scheduleUpdate(){
     if(!mUpdatePending){
         mUpdatePending = true;
-        QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest), Qt::HighEventPriority);
+        QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest));
     }
 }
 void OxideScreen::setDirty(const QRect& rect){

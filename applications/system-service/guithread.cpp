@@ -104,7 +104,7 @@ void GUIThread::enqueue(Window* window, QRect region, EPFrameBuffer::WaveformMod
         .global = global
     });
     m_mutex.unlock();
-    QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest), Qt::HighEventPriority);
+    QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest));
 }
 
 void GUIThread::repaintWindow(QPainter* painter, QRect* rect, Window* window){
@@ -240,7 +240,10 @@ void GUIThread::redraw(RepaintRequest& event){
         O_DEBUG(__PRETTY_FUNCTION__ << "Sending screen update" << rect << waveform << mode);
         EPFrameBuffer::sendUpdate(rect, waveform, mode);
     }
-    EPFrameBuffer::waitForLastUpdate();
-    emit m_repaintNotifier->windowRepainted(event.window, event.marker);
+    // TODO - switch to using lower level ioctl waiting
+    QTimer::singleShot(0, [this, event]{
+        EPFrameBuffer::waitForLastUpdate();
+        emit m_repaintNotifier->windowRepainted(event.window, event.marker);
+    });
     O_DEBUG(__PRETTY_FUNCTION__ << "Repaint" << rect << "done");
 }
