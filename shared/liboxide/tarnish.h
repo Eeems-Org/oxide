@@ -72,27 +72,38 @@ namespace Oxide::Tarnish {
         void readEvent();
     };
 
+    // WindowEventType::Repaint
     struct RepaintEventArgs{
-        static const qsizetype size = (sizeof(int) * 4) + sizeof(quint64) + sizeof(unsigned int);
-        QRect geometry;
+        static qsizetype size();
+        int x;
+        int y;
+        int width;
+        int height;
         EPFrameBuffer::WaveformMode waveform;
         unsigned int marker;
+        QRect geometry() const;
     };
     typedef RepaintEventArgs RepaintEventArgs;
     QByteArray& operator>>(QByteArray& l, RepaintEventArgs& r);
     QByteArray& operator<<(QByteArray& l, RepaintEventArgs& r);
 
+    // WindowEventType::Geometry
     struct GeometryEventArgs{
-        static const qsizetype size = sizeof(int) * 5;
-        QRect geometry;
+        static qsizetype size();
+        int x;
+        int y;
+        int width;
+        int height;
         int z;
+        QRect geometry() const;
     };
     typedef GeometryEventArgs GeometryEventArgs;
     QByteArray& operator>>(QByteArray& l, GeometryEventArgs& r);
     QByteArray& operator<<(QByteArray& l, GeometryEventArgs& r);
 
+    // WindowEventType::ImageInfo
     struct ImageInfoEventArgs{
-        static const qsizetype size = (sizeof(qulonglong) * 2) + sizeof(int);
+        static qsizetype size();
         qulonglong sizeInBytes;
         qulonglong bytesPerLine;
         QImage::Format format;
@@ -101,13 +112,60 @@ namespace Oxide::Tarnish {
     QByteArray& operator>>(QByteArray& l, ImageInfoEventArgs& r);
     QByteArray& operator<<(QByteArray& l, ImageInfoEventArgs& r);
 
+    // WindowEventType::WaitForPaint
     struct WaitForPaintEventArgs{
-        static const qsizetype size = sizeof(unsigned int);
+        static qsizetype size();
         unsigned int marker;
     };
     typedef WaitForPaintEventArgs WaitForPaintEventArgs;
     QByteArray& operator>>(QByteArray& l, WaitForPaintEventArgs& r);
     QByteArray& operator<<(QByteArray& l, WaitForPaintEventArgs& r);
+
+    //WindowEventType::Key
+    enum KeyEventType: unsigned short{
+        Release = 0,
+        Press,
+        Repeat,
+    };
+    struct KeyEventArgs{
+        static qsizetype size();
+        unsigned int code; // Native keycode
+        KeyEventType type;
+    };
+    QByteArray& operator>>(QByteArray& l, KeyEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, KeyEventArgs& r);
+
+    // WindowEventType::Touch
+    enum TouchEventType: unsigned short{
+        Begin = 0,
+        Update,
+        End,
+    };
+    enum TouchEventTool: unsigned short{
+        Finger = 0,
+        Pen,
+        Palm,
+    };
+    struct TouchEventPosition{
+        int x;
+        int y;
+        unsigned int width;
+        unsigned int height;
+        QRect geometry() const;
+    };
+    struct TouchEventArgs{
+        static qsizetype size();
+        TouchEventType type;
+        TouchEventTool toolType;
+        unsigned int pressure;
+        unsigned int distance;
+        int orientation;
+        int id;
+        TouchEventPosition position;
+        TouchEventPosition toolPosition;
+    };
+    QByteArray& operator>>(QByteArray& l, TouchEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, TouchEventArgs& r);
 
     /*!
      * \brief The WindowEventType enum
@@ -123,6 +181,8 @@ namespace Oxide::Tarnish {
         Lower, /*!< */
         Close, /*!< */
         FrameBuffer, /*!< */
+        Key, /*!< */
+        Touch, /*!< */
     };
     QDebug operator<<(QDebug debug, const WindowEventType& type);
     /*!
@@ -142,6 +202,8 @@ namespace Oxide::Tarnish {
         GeometryEventArgs geometryData;
         ImageInfoEventArgs imageInfoData;
         WaitForPaintEventArgs waitForPaintData;
+        KeyEventArgs keyData;
+        TouchEventArgs touchData;
 
     private:
         static QMutex m_writeMutex;

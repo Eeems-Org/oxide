@@ -51,6 +51,7 @@ void GuiAPI::startup(){
     m_thread.m_repaintNotifier = &m_repaintNotifier;
     m_thread.m_screenGeometry = &m_screenGeometry;
     m_thread.start();
+    Oxide::startThreadWithPriority(&m_thread, QThread::TimeCriticalPriority);
 }
 
 void GuiAPI::shutdown(){

@@ -1,10 +1,12 @@
 #include "tarnish.h"
 #include "meta.h"
 #include "qt.h"
+#include "liboxide.h"
 
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/file.h>
+#include <pthread.h>
 #include <QDBusConnection>
 #include <QImage>
 #include <QThread>
@@ -28,6 +30,7 @@ uchar* fbData = nullptr;
 QFile fbFile;
 QMutex fbMutex;
 QThread inputThread;
+QThread eventThread;
 QLocalSocket childSocket;
 InputEventSocket touchEventSocket;
 InputEventSocket tabletEventSocket;
@@ -43,10 +46,18 @@ void startInputThread(){
     if(inputThread.isRunning()){
         return;
     }
-    O_DEBUG("Starting input thread");
-    inputThread.setObjectName("input");
-    inputThread.start();
-    inputThread.setPriority(QThread::TimeCriticalPriority);
+    inputThread.setObjectName("liboxide::input");
+    Oxide::startThreadWithPriority(&inputThread, QThread::HighestPriority);
+    inputThread.moveToThread(&inputThread);
+}
+
+void startEventThread(){
+    if(eventThread.isRunning()){
+        return;
+    }
+    eventThread.setObjectName("liboxide::event");
+    Oxide::startThreadWithPriority(&eventThread, QThread::TimeCriticalPriority);
+    eventThread.moveToThread(&eventThread);
 }
 
 bool verifyConnection(){
@@ -107,8 +118,14 @@ void _disconnect(){
     if(inputThread.isRunning()){
         inputThread.quit();
         inputThread.requestInterruption();
-        inputThread.wait();
     }
+    if(eventThread.isRunning()){
+        eventThread.quit();
+        eventThread.requestInterruption();
+    }
+    // Wait after requesting the quit for both to make sure both are stopping at the same time
+    inputThread.wait();
+    eventThread.wait();
     if(window != nullptr){
         delete window;
         window = nullptr;
@@ -142,57 +159,63 @@ namespace Oxide::Tarnish {
         }
     }
 
+    qsizetype RepaintEventArgs::size(){ return (sizeof(int) * 4) + sizeof(quint64) + sizeof(unsigned int); }
+
+    QRect RepaintEventArgs::geometry() const{ return QRect(x, y, width, height); }
+
     QByteArray& operator>>(QByteArray& l, RepaintEventArgs& r){
-        Q_ASSERT_X(l.size() >= RepaintEventArgs::size, "QByteArray >> RepaintEventArgs", "Not enough data available");
-        int x, y, width, height;
+        Q_ASSERT_X(l.size() >= RepaintEventArgs::size(), "QByteArray >> RepaintEventArgs", "Not enough data available");
         quint64 waveform;
-        l >> r.marker >> waveform >> height >> width >> y >> x;
-        r.geometry.setRect(x, y, width, height);
+        l >> r.marker >> waveform >> r.height >> r.width >> r.y >> r.x;
         r.waveform = (EPFrameBuffer::WaveformMode)waveform;
         return l;
     }
 
     QByteArray& operator<<(QByteArray& l, RepaintEventArgs& r){
         QByteArray a;
-        a << r.geometry.x()
-            << r.geometry.y()
-            << r.geometry.width()
-            << r.geometry.height()
+        a << r.x
+            << r.y
+            << r.width
+            << r.height
             << (quint64)r.waveform
             << r.marker;
         Q_ASSERT_X(
-            a.size() == RepaintEventArgs::size, "QByteArray << RepaintEventArgs",
-            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(RepaintEventArgs::size).toStdString().c_str()
+            a.size() == RepaintEventArgs::size(), "QByteArray << RepaintEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(RepaintEventArgs::size()).toStdString().c_str()
         );
         l += a;
         return l;
     }
 
+    qsizetype GeometryEventArgs::size(){ return sizeof(int) * 5; }
+
+    QRect GeometryEventArgs::geometry() const{ return QRect(x, y, width, height); }
+
     QByteArray& operator>>(QByteArray& l, GeometryEventArgs& r){
-        Q_ASSERT_X(l.size() >= GeometryEventArgs::size, "QByteArray >> GeometryEventArgs", "Not enough data available");
-        int x, y, width, height;
-        l >> r.z >> height >> width >> y >> x;
-        r.geometry.setRect(x, y, width, height);
+        Q_ASSERT_X(l.size() >= GeometryEventArgs::size(), "QByteArray >> GeometryEventArgs", "Not enough data available");
+        l >> r.z >> r.height >> r.width >> r.y >> r.x;
         return l;
     }
 
     QByteArray& operator<<(QByteArray& l, GeometryEventArgs& r){
         QByteArray a;
-        a << r.geometry.x()
-            << r.geometry.y()
-            << r.geometry.width()
-            << r.geometry.height()
+        a << r.x
+            << r.y
+            << r.width
+            << r.height
             << r.z;
         Q_ASSERT_X(
-            a.size() == GeometryEventArgs::size, "QByteArray << GeometryEventArgs",
-            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(GeometryEventArgs::size).toStdString().c_str()
+            a.size() == GeometryEventArgs::size(), "QByteArray << GeometryEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(GeometryEventArgs::size()).toStdString().c_str()
         );
         l += a;
         return l;
     }
 
+    qsizetype ImageInfoEventArgs::size(){ return (sizeof(qulonglong) * 2) + sizeof(int); }
+
     QByteArray& operator>>(QByteArray& l, ImageInfoEventArgs& r){
-        Q_ASSERT_X(l.size() >= ImageInfoEventArgs::size, "QByteArray >> ImageInfoEventArgs", "Not enough data available");
+        Q_ASSERT_X(l.size() >= ImageInfoEventArgs::size(), "QByteArray >> ImageInfoEventArgs", "Not enough data available");
         int format;
         l >> format >> r.bytesPerLine >> r.sizeInBytes;
         r.format = (QImage::Format)format;
@@ -205,15 +228,17 @@ namespace Oxide::Tarnish {
             << r.bytesPerLine
             << (int)r.format;
         Q_ASSERT_X(
-            a.size() == ImageInfoEventArgs::size, "QByteArray << ImageInfoEventArgs",
-            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(ImageInfoEventArgs::size).toStdString().c_str()
+            a.size() == ImageInfoEventArgs::size(), "QByteArray << ImageInfoEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(ImageInfoEventArgs::size()).toStdString().c_str()
         );
         l += a;
         return l;
     }
 
+    qsizetype WaitForPaintEventArgs::size(){ return sizeof(unsigned int); }
+
     QByteArray& operator>>(QByteArray& l, WaitForPaintEventArgs& r){
-        Q_ASSERT_X(l.size() >= WaitForPaintEventArgs::size, "QByteArray >> WaitForPaintEventArgs", "Not enough data available");
+        Q_ASSERT_X(l.size() >= WaitForPaintEventArgs::size(), "QByteArray >> WaitForPaintEventArgs", "Not enough data available");
         l >> r.marker;
         return l;
     }
@@ -222,8 +247,72 @@ namespace Oxide::Tarnish {
         QByteArray a;
         a << r.marker;
         Q_ASSERT_X(
-            a.size() == WaitForPaintEventArgs::size, "QByteArray << WaitForPaintEventArgs",
-            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(WaitForPaintEventArgs::size).toStdString().c_str()
+            a.size() == WaitForPaintEventArgs::size(), "QByteArray << WaitForPaintEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(WaitForPaintEventArgs::size()).toStdString().c_str()
+        );
+        l += a;
+        return l;
+    }
+
+    qsizetype KeyEventArgs::size(){ return sizeof(KeyEventType) + sizeof(unsigned int); }
+
+    QByteArray& operator>>(QByteArray& l, KeyEventArgs& r){
+        Q_ASSERT_X(l.size() >= KeyEventArgs::size(), "QByteArray >> KeyEventArgs", "Not enough data available");
+        unsigned short type;
+        l >> type >> r.code;
+        r.type = (KeyEventType)type;
+        return l;
+    }
+
+    QByteArray& operator<<(QByteArray& l, KeyEventArgs& r){
+        QByteArray a;
+        a << r.code << (unsigned short)r.type;
+        Q_ASSERT_X(
+            a.size() == KeyEventArgs::size(), "QByteArray << KeyEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(KeyEventArgs::size()).toStdString().c_str()
+        );
+        l += a;
+        return l;
+    }
+
+    qsizetype TouchEventArgs::size(){
+        return (sizeof(unsigned short) * 2)
+            + (sizeof(unsigned int) * 2)
+            + (sizeof(int) * 2)
+            + (sizeof(TouchEventPosition) * 2);
+    }
+
+    QRect TouchEventPosition::geometry() const{ return QRect(x, y, width, height); }
+
+    QByteArray& operator>>(QByteArray& l, TouchEventArgs& r){
+        Q_ASSERT_X(l.size() >= TouchEventArgs::size(), "QByteArray >> TouchEventArgs", "Not enough data available");
+        unsigned short type, toolType;
+        l >> r.toolPosition.height >> r.toolPosition.width >> r.toolPosition.y >> r.toolPosition.x
+            >> r.position.height >> r.position.width >> r.position.y >> r.position.x
+            >> r.id
+            >> r.orientation
+            >> r.distance
+            >> r.pressure
+            >> toolType
+            >> type;
+        r.type = (TouchEventType)type;
+        r.toolType = (TouchEventTool)toolType;
+        return l;
+    }
+
+    QByteArray& operator<<(QByteArray& l, TouchEventArgs& r){
+        QByteArray a;
+        a << (unsigned short)r.type
+            << (unsigned short)r.toolType
+            << r.pressure
+            << r.distance
+            << r.orientation
+            << r.id
+            << r.position.x << r.position.y << r.position.width << r.position.height
+            << r.toolPosition.x << r.toolPosition.y << r.toolPosition.width << r.toolPosition.height;
+        Q_ASSERT_X(
+            a.size() == TouchEventArgs::size(), "QByteArray << TouchEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(TouchEventArgs::size()).toStdString().c_str()
         );
         l += a;
         return l;
@@ -242,6 +331,8 @@ namespace Oxide::Tarnish {
             case Close: debug.nospace() << "Close"; break;
             case FrameBuffer: debug.nospace() << "FrameBuffer"; break;
             case Ping: debug.nospace() << "Ping"; break;
+            case Key: debug.nospace() << "Key"; break;
+            case Touch: debug.nospace() << "Touch"; break;
             case Invalid:
             default:
                  debug.nospace() << "Invalid";
@@ -268,23 +359,33 @@ namespace Oxide::Tarnish {
         data >> type;
         switch((WindowEventType)type){
             case Repaint:{
-                auto data = socket->read(event.repaintData.size);
+                auto data = socket->read(event.repaintData.size());
                 data >> event.repaintData;
                 break;
             }
             case Geometry:{
-                auto data = socket->read(event.geometryData.size);
+                auto data = socket->read(event.geometryData.size());
                 data >> event.geometryData;
                 break;
             }
             case ImageInfo:{
-                auto data = socket->read(event.imageInfoData.size);
+                auto data = socket->read(event.imageInfoData.size());
                 data >> event.imageInfoData;
                 break;
             }
             case WaitForPaint:{
-                auto data = socket->read(event.waitForPaintData.size);
+                auto data = socket->read(event.waitForPaintData.size());
                 data >> event.waitForPaintData;
+                break;
+            }
+            case Key:{
+                auto data = socket->read(event.keyData.size());
+                data >> event.keyData;
+                break;
+            }
+            case Touch:{
+                auto data = socket->read(event.touchData.size());
+                data >> event.touchData;
                 break;
             }
             case Raise:
@@ -331,6 +432,12 @@ namespace Oxide::Tarnish {
             case WaitForPaint:
                 data << waitForPaintData;
                 break;
+            case Key:
+                data << keyData;
+                break;
+            case Touch:
+                data << touchData;
+                break;
             case Raise:
             case Lower:
             case Close:
@@ -356,7 +463,9 @@ namespace Oxide::Tarnish {
     : type{event.type},
       repaintData{event.repaintData},
       geometryData{event.geometryData},
-      imageInfoData{event.imageInfoData}
+      imageInfoData{event.imageInfoData},
+      keyData{event.keyData},
+      touchData{event.touchData}
     {}
 
     WindowEvent::~WindowEvent(){}
@@ -372,6 +481,8 @@ namespace Oxide::Tarnish {
             case Close:
             case FrameBuffer:
             case Ping:
+            case Key:
+            case Touch:
                 return true;
             default:
                 return false;
@@ -386,17 +497,50 @@ namespace Oxide::Tarnish {
         Q_UNUSED(saver);
         debug.nospace() << "<WindowEvent " << event.type;
         switch(event.type){
-            case Repaint:
-                debug.nospace() << ' ' << event.repaintData.geometry << ' ' << event.repaintData.waveform << ' ' << event.repaintData.marker;
+            case Repaint:{
+                auto data = event.repaintData;
+                debug.nospace() << ' ' << data.geometry() << ' ' << data.waveform << ' ' << data.marker;
                 break;
-            case Geometry:
-                debug.nospace() << ' ' << event.geometryData.geometry << ' ' << event.geometryData.z;
+            }
+            case Geometry:{
+                auto data = event.geometryData;
+                debug.nospace() << ' ' << data.geometry() << ' ' << data.z;
                 break;
-            case ImageInfo:
-                debug.nospace() << ' ' << event.imageInfoData.sizeInBytes << ' ' << event.imageInfoData.bytesPerLine << ' ' << event.imageInfoData.format;
+            }
+            case ImageInfo:{
+                auto data = event.imageInfoData;
+                debug.nospace() << ' ' << data.sizeInBytes << ' ' << data.bytesPerLine << ' ' << data.format;
                 break;
+            }
             case WaitForPaint:
                 debug.nospace() << ' ' << event.waitForPaintData.marker;
+                break;
+            case Key:{
+                auto data = event.keyData;
+                switch(data.type){
+                    case Release: debug << "Release"; break;
+                    case Press: debug << "Press"; break;
+                    case Repeat: debug << "Repeat"; break;
+                }
+                debug.nospace() << data.code << ' ';
+                break;
+            }
+            case Touch:{
+                auto data = event.touchData;
+                switch(data.type){
+                    case Begin: debug << "Begin"; break;
+                    case Update: debug << "Update"; break;
+                    case End: debug << "End"; break;
+                }
+                switch(data.toolType){
+                    case Finger: debug << "Finger"; break;
+                    case Pen: debug << "Pen"; break;
+                    case Palm: debug << "Palm"; break;
+                }
+                debug << data.pressure << data.distance << data.orientation << data.position.geometry();
+                debug.nospace() << data.toolPosition.geometry();
+                break;
+            }
             case Raise:
             case Lower:
             case Close:
@@ -760,7 +904,11 @@ namespace Oxide::Tarnish {
             if(!QCoreApplication::startingUp()){
                 qApp->processEvents(QEventLoop::AllEvents, 100);
             }else{
-                usleep(100);
+                timespec args{
+                    .tv_sec = 0,
+                    .tv_nsec = 100 * 1000
+                };
+                nanosleep(&args, NULL);
             }
         }
     }
@@ -949,10 +1097,10 @@ namespace Oxide::Tarnish {
         if(eventSocket.isOpen()){
             return &eventSocket;
         }
-        startInputThread();
-        eventSocket.moveToThread(&inputThread);
+        startEventThread();
+        eventSocket.moveToThread(&eventThread);
         auto conn = new QMetaObject::Connection;
-        *conn = QObject::connect(&eventSocket, &InputEventSocket::readChannelFinished, [conn]{
+        *conn = QObject::connect(&eventSocket, &QLocalSocket::readChannelFinished, [conn]{
             O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to window event pipe!");
             eventSocket.close();
             QObject::disconnect(*conn);
@@ -978,7 +1126,10 @@ namespace Oxide::Tarnish {
         }
         WindowEvent event;
         event.type = WindowEventType::Repaint;
-        event.repaintData.geometry = rect;
+        event.repaintData.x = rect.x();
+        event.repaintData.y = rect.y();
+        event.repaintData.width = rect.width();
+        event.repaintData.height = rect.height();
         event.repaintData.waveform = waveform;
         event.repaintData.marker = marker;
         event.toSocket(&eventSocket);
@@ -1006,7 +1157,11 @@ namespace Oxide::Tarnish {
         }
         WindowEvent event;
         event.type = WindowEventType::Repaint;
-        event.repaintData.geometry = image.rect();
+        auto rect = image.rect();
+        event.repaintData.x = rect.x();
+        event.repaintData.y = rect.y();
+        event.repaintData.width = rect.width();
+        event.repaintData.height = rect.height();
         event.repaintData.waveform = waveform;
         event.repaintData.marker = marker;
         event.toSocket(&eventSocket);
@@ -1111,5 +1266,4 @@ namespace Oxide::Tarnish {
     }
 
     codes::eeems::oxide1::Window* topWindow(){ return window; }
-
 }

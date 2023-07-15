@@ -37,7 +37,7 @@ public:
         }
         instance = new DigitizerHandler(touchScreen_device);
         instance->setObjectName("touchscreen");
-        instance->start();
+        Oxide::startThreadWithPriority(instance, QThread::HighestPriority);
         instance->moveToThread(instance);
         return instance;
     }
@@ -54,7 +54,7 @@ public:
         }
         instance = new DigitizerHandler(wacom_device);
         instance->setObjectName("wacom");
-        instance->start();
+        Oxide::startThreadWithPriority(instance, QThread::HighestPriority);
         instance->moveToThread(instance);
         return instance;
     }

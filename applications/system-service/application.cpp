@@ -40,7 +40,13 @@
 
 using namespace Oxide::Applications;
 
-Window* Application::m_window = nullptr;
+static Window* __window = nullptr;
+Window* Application::_window(){
+    if(__window == nullptr){
+        __window = guiAPI->_createWindow(deviceSettings.screenGeometry(), DEFAULT_IMAGE_FORMAT);
+    }
+    return __window;
+}
 
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
 
@@ -195,7 +201,7 @@ void Application::launchNoSecurityCheck(){
             m_process->start();
             m_process->waitForStarted();
             if(!flags().contains("nosplash")){
-                m_window->lower();
+                _window()->lower();
             }
             if(type() == Background){
                 startSpan("background", "Application is in the background");
@@ -745,9 +751,6 @@ void Application::finished(int exitCode){
         guiAPI->closeWindows(m_pid);
     }
     m_pid = -1;
-    if(m_window != nullptr){
-        m_window->close();
-    }
 }
 
 void Application::readyReadStandardError(){
@@ -1126,10 +1129,10 @@ void Application::showSplashScreen(){
 #endif
         qDebug() << "Displaying splashscreen for" << name();
         Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
-            auto image = m_window->toImage();
+            auto image = _window()->toImage();
             QPainter painter(&image);
             auto fm = painter.fontMetrics();
-            auto geometry = m_window->geometry();
+            auto geometry = _window()->geometry();
             painter.fillRect(geometry, Qt::white);
             QString splashPath = splash();
             if(splashPath.isEmpty() || !QFile::exists(splashPath)){
@@ -1164,10 +1167,10 @@ void Application::showSplashScreen(){
             );
             painter.end();
         });
-        if(!m_window->_isVisible()){
-            m_window->raise();
+        if(!_window()->_isVisible()){
+            _window()->raise();
         }else{
-            m_window->_repaint(m_window->geometry(), EPFrameBuffer::HighQualityGrayscale, 0);
+            _window()->_repaint(_window()->geometry(), EPFrameBuffer::HighQualityGrayscale, 0);
         }
     });
     qDebug() << "Finished painting splash screen for" << name();

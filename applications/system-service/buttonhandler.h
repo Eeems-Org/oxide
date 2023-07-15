@@ -53,7 +53,8 @@ public:
         timer.setInterval(100);
         timer.setSingleShot(false);
         connect(&timer, &QTimer::timeout, this, &ButtonHandler::timeout);
-        timer.start();
+        Oxide::startThreadWithPriority(this, QThread::HighestPriority);
+        moveToThread(this);
     }
     void setEnabled(bool enabled){
         m_enabled = enabled;

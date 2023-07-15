@@ -746,6 +746,13 @@ void Window::invalidateEventPipes(){
     }, true);
 }
 
+void Window::writeEvent(WindowEventType type){
+    WindowEvent event;
+    event.type = type;
+    W_DEBUG(event);
+    event.toSocket(m_eventPipe.writeSocket());
+}
+
 void Window::writeEvent(RepaintEventArgs args){
     WindowEvent event;
     event.type = WindowEventType::Repaint;
@@ -778,9 +785,18 @@ void Window::writeEvent(WaitForPaintEventArgs args){
     event.toSocket(m_eventPipe.writeSocket());
 }
 
-void Window::writeEvent(WindowEventType type){
+void Window::writeEvent(KeyEventArgs args){
     WindowEvent event;
-    event.type = type;
+    event.type = WindowEventType::Key;
+    event.keyData = args;
+    W_DEBUG(event);
+    event.toSocket(m_eventPipe.writeSocket());
+}
+
+void Window::writeEvent(TouchEventArgs args){
+    WindowEvent event;
+    event.type = WindowEventType::Touch;
+    event.touchData = args;
     W_DEBUG(event);
     event.toSocket(m_eventPipe.writeSocket());
 }

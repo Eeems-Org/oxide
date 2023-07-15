@@ -279,13 +279,10 @@ int fb_ioctl(unsigned long request, char* ptr){
                     }
                 });
                 QTimer timer;
-                timer.setInterval(5000);
-                QObject::connect(&timer, &QTimer::timeout, [eventPipe, update]{
-                    _WARN("It's been 5 seconds since we started waiting for a screen update, we might be deadlocked.");
-                    Oxide::Tarnish::WindowEvent event;
-                    event.type = Oxide::Tarnish::WaitForPaint;
-                    event.waitForPaintData.marker = update->update_marker;
-                    event.toSocket(eventPipe);
+                timer.setInterval(7000);
+                QObject::connect(&timer, &QTimer::timeout, [&loop]{
+                    _WARN("It's been 7 seconds since we started waiting for a screen update, we might be deadlocked.");
+                    loop.quit();
                 });
                 timer.start();
                 QTimer::singleShot(0, [update, eventPipe]{
@@ -643,17 +640,17 @@ extern "C" {
     }
     __asm__(".symver write, write@GLIBC_2.4");
 
-    __attribute__((visibility("default")))
-    bool _Z7qputenvPKcRK10QByteArray(const char* name, const QByteArray& val) {
-        static const auto orig_fn = (bool(*)(const char*, const QByteArray&))dlsym(RTLD_NEXT, "_Z7qputenvPKcRK10QByteArray");
-        if(strcmp(name, "QMLSCENE_DEVICE") == 0 || strcmp(name, "QT_QUICK_BACKEND") == 0){
-            return orig_fn(name, "software");
-        }
-        if(strcmp(name, "QT_QPA_PLATFORM") == 0){
-            return orig_fn(name, "epaper:enable_fonts");
-        }
-        return orig_fn(name, val);
-    }
+//    __attribute__((visibility("default")))
+//    bool _Z7qputenvPKcRK10QByteArray(const char* name, const QByteArray& val) {
+//        static const auto orig_fn = (bool(*)(const char*, const QByteArray&))dlsym(RTLD_NEXT, "_Z7qputenvPKcRK10QByteArray");
+//        if(strcmp(name, "QMLSCENE_DEVICE") == 0 || strcmp(name, "QT_QUICK_BACKEND") == 0){
+//            return orig_fn(name, "software");
+//        }
+//        if(strcmp(name, "QT_QPA_PLATFORM") == 0){
+//            return orig_fn(name, "epaper:enable_fonts");
+//        }
+//        return orig_fn(name, val);
+//    }
 
     void __attribute__ ((constructor)) init(void);
     void init(void){

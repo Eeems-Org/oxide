@@ -127,9 +127,11 @@ private:
     void createFrameBuffer(const QRect& geometry);
     bool writeEvent(SocketPair* pipe, const input_event& event, bool force = false);
     void invalidateEventPipes();
+    void writeEvent(WindowEventType type);
     void writeEvent(RepaintEventArgs args);
     void writeEvent(GeometryEventArgs args);
     void writeEvent(ImageInfoEventArgs args);
     void writeEvent(WaitForPaintEventArgs args);
-    void writeEvent(WindowEventType type);
+    void writeEvent(KeyEventArgs args);
+    void writeEvent(TouchEventArgs args);
 };

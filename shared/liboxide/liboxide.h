@@ -59,6 +59,12 @@ Q_DECLARE_METATYPE(WifiNetworks);
  */
 namespace Oxide {
     /*!
+     * \brief startThreadWithPriority
+     * \param thread
+     * \param priority
+     */
+    LIBOXIDE_EXPORT void startThreadWithPriority(QThread* thread, QThread::Priority priority);
+    /*!
      * \brief Try to get a lock
      * \param lockName Path to the lock file
      * \return File descriptor of the lock file
