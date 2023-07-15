@@ -247,8 +247,9 @@ void test_QByteArray::test_WindowEvent_Invalid(){
     WindowEvent a;
     a.type = WindowEventType::Invalid;
     a.toSocket(&socketIn);
-    // Don't call socketOut.waitForReadyRead(); here because it'll block for 30s
-    // It is required in the other methods to make sure data is available
+    // Use socketIn.flush() instead of socketOut.waitForReadyRead()
+    // to avoid blocking for 30s
+    socketIn.flush();
     auto b = WindowEvent::fromSocket(&socketOut);
     QCOMPARE(a.type, b.type);
 }
