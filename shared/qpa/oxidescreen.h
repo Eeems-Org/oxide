@@ -9,7 +9,9 @@
 
 class OxideWindow;
 
-class OxideScreen : public QObject, public QPlatformScreen{
+class Q_DECL_EXPORT OxideScreen : public QObject, public QPlatformScreen{
+    Q_OBJECT
+
 public:
     OxideScreen();
     QRect geometry() const override { return mGeometry; }
@@ -22,7 +24,9 @@ public:
     QWindow* topWindow() const;
     void addWindow(OxideWindow* window);
     void removeWindow(OxideWindow* window);
-    QEventLoop paintWaitLoop;
+
+signals:
+    void waitForPaint(unsigned int marker);
 
 protected:
     bool event(QEvent *event) override;
@@ -35,4 +39,5 @@ private:
     bool mUpdatePending;
     QRegion mRepaintRegion;
     void redraw();
+    unsigned int m_marker;
 };

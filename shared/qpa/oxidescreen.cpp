@@ -9,8 +9,9 @@ OxideScreen::OxideScreen()
 : mGeometry(deviceSettings.screenGeometry()),
   mDepth(32),
   mFormat(DEFAULT_IMAGE_FORMAT),
-  mUpdatePending(false){
-}
+  mUpdatePending(false),
+  m_marker{0}
+{}
 
 QSizeF OxideScreen::physicalSize() const{
     static const int dpi = 228;
@@ -19,7 +20,7 @@ QSizeF OxideScreen::physicalSize() const{
 void OxideScreen::scheduleUpdate(){
     if(!mUpdatePending){
         mUpdatePending = true;
-        QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest));
+        QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest), Qt::HighEventPriority);
     }
 }
 void OxideScreen::setDirty(const QRect& rect){
@@ -47,6 +48,7 @@ void OxideScreen::removeWindow(OxideWindow* window){
     QWindow* w = topWindow();
     QWindowSystemInterface::handleWindowActivated(w);
 }
+
 bool OxideScreen::event(QEvent* event){
     if(event->type() == QEvent::UpdateRequest){
         redraw();
@@ -115,11 +117,7 @@ void OxideScreen::redraw(){
                 break;
             }
         }
-        Oxide::Tarnish::screenUpdate(rect, waveform);
+        Oxide::Tarnish::screenUpdate(rect, waveform, ++m_marker);
     }
     mRepaintRegion = QRegion();
-    qDebug() << __PRETTY_FUNCTION__ << "Wait for last update";
-    Oxide::Tarnish::requestWaitForLastUpdate();
-    paintWaitLoop.exec();
-    qDebug() << __PRETTY_FUNCTION__ << "last update complete";
 }

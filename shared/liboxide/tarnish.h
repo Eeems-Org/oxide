@@ -258,9 +258,15 @@ namespace Oxide::Tarnish {
      */
     LIBOXIDE_EXPORT void screenUpdate(QRect rect, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Mono, unsigned int marker = 0);
     /*!
+     * \brief requestWaitForUpdate
+     * \param marker
+     * \return
+     */
+    LIBOXIDE_EXPORT unsigned int requestWaitForUpdate(unsigned int marker);
+    /*!
      * \brief waitForLastUpdate
      */
-    LIBOXIDE_EXPORT void requestWaitForLastUpdate();
+    LIBOXIDE_EXPORT unsigned int requestWaitForLastUpdate();
     /*!
      * \brief powerAPI
      * \return

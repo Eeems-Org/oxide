@@ -11,6 +11,7 @@
 #include <QJsonArray>
 
 #include "appsapi.h"
+#include "guiapi.h"
 #include "notificationapi.h"
 
 using namespace Oxide;
@@ -121,6 +122,8 @@ AppsAPI::~AppsAPI() {
 }
 
 void AppsAPI::startup(){
+    O_DEBUG(__PRETTY_FUNCTION__ << "Startup")
+    Application::m_window = guiAPI->_createWindow(deviceSettings.screenGeometry(), DEFAULT_IMAGE_FORMAT);
     Oxide::Sentry::sentry_transaction("apps", "startup", [this](Oxide::Sentry::Transaction* t){
         if(applications.isEmpty()){
             qDebug() << "No applications found";

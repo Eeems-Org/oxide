@@ -104,6 +104,13 @@ qint64 ChildEntry::write(QByteArray data){ return m_socketPair.write(data); }
 
 QString ChildEntry::errorString(){ return m_socketPair.errorString(); }
 
+void ChildEntry::close(){
+    blockSignals(true);
+    m_socketPair.setEnabled(false);
+    m_socketPair.close();
+    m_process.close();
+}
+
 void ChildEntry::readSocket(){
     auto socket = m_socketPair.writeSocket();
     while(!socket->atEnd()){

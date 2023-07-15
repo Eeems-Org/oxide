@@ -170,9 +170,13 @@ void OxideIntegration::initialize(){
                 case Oxide::Tarnish::Ping:
                     event.toSocket(eventPipe);
                     break;
-                case Oxide::Tarnish::WaitForPaint:{
-                    m_primaryScreen->paintWaitLoop.quit();
-                }
+                case Oxide::Tarnish::WaitForPaint:
+                    QMetaObject::invokeMethod(
+                        m_primaryScreen,
+                        "waitForPaint",
+                        Qt::QueuedConnection,
+                        Q_ARG(unsigned int, event.waitForPaintData.marker)
+                    );
                 case Oxide::Tarnish::ImageInfo:
                 case Oxide::Tarnish::Repaint:
                 case Oxide::Tarnish::FrameBuffer:

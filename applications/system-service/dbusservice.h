@@ -56,6 +56,7 @@ signals:
     void apiAvailable(QDBusObjectPath api);
     void apiUnavailable(QDBusObjectPath api);
     void aboutToQuit();
+
 protected:
     void timerEvent(QTimerEvent* event) override;
 

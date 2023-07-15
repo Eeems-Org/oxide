@@ -40,6 +40,8 @@
 
 using namespace Oxide::Applications;
 
+Window* Application::m_window = nullptr;
+
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
 
 Application::Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
@@ -132,7 +134,7 @@ void Application::launchNoSecurityCheck(){
             Q_UNUSED(t);
 #endif
             appsAPI->recordPreviousApplication();
-            qDebug() << "Launching " << path();
+            qDebug() << "Launching " << path().toStdString().c_str();
             appsAPI->pauseAll();
             if(!flags().contains("nosplash")){
                 showSplashScreen();
@@ -169,7 +171,7 @@ void Application::launchNoSecurityCheck(){
                             close(p_stdout_fd);
                         }else{
                             p_stdout = new QTextStream(log);
-                            qDebug() << "Opened stdout for " << name();
+                            qDebug() << "Opened stdout for " << name().toStdString().c_str();
                         }
                     }
                 }
@@ -185,13 +187,16 @@ void Application::launchNoSecurityCheck(){
                             close(p_stderr_fd);
                         }else{
                             p_stderr = new QTextStream(log);
-                            qDebug() << "Opened stderr for " << name();
+                            qDebug() << "Opened stderr for " << name().toStdString().c_str();
                         }
                     }
                 }
             }
             m_process->start();
             m_process->waitForStarted();
+            if(!flags().contains("nosplash")){
+                m_window->lower();
+            }
             if(type() == Background){
                 startSpan("background", "Application is in the background");
             }else{
@@ -423,7 +428,6 @@ void Application::stopNoSecurityCheck(){
         Application* pausedApplication = nullptr;
         if(state == Paused){
             Oxide::Sentry::sentry_span(t, "resume", "Resume paused application", [this, &pausedApplication](){
-                touchHandler->clear_buffer();
                 auto currentApplication = appsAPI->currentApplicationNoSecurityCheck();
                 if(currentApplication.path() != path()){
                     pausedApplication = appsAPI->getApplication(currentApplication);
@@ -741,6 +745,9 @@ void Application::finished(int exitCode){
         guiAPI->closeWindows(m_pid);
     }
     m_pid = -1;
+    if(m_window != nullptr){
+        m_window->close();
+    }
 }
 
 void Application::readyReadStandardError(){
@@ -1109,9 +1116,6 @@ QStringList Application::getActiveMounts(){
 }
 
 void Application::showSplashScreen(){
-    if(m_window == nullptr){
-        m_window = guiAPI->_createWindow(deviceSettings.screenGeometry());
-    }
     Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
@@ -1137,12 +1141,12 @@ void Application::showSplashScreen(){
                 QSize splashSize(splashWidth, splashWidth);
                 QImage splash = QImage(splashPath).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
                 QRect splashRect(
-                            QPoint(
-                                (geometry.width() / 2) - (splashWidth / 2),
-                                (geometry.height() / 2) - (splashWidth / 2)
-                                ),
-                            splashSize
-                            );
+                    QPoint(
+                        (geometry.width() / 2) - (splashWidth / 2),
+                        (geometry.height() / 2) - (splashWidth / 2)
+                    ),
+                    splashSize
+                );
                 painter.drawImage(splashRect, splash, splash.rect());
             }
             painter.setPen(Qt::black);
@@ -1150,21 +1154,21 @@ void Application::showSplashScreen(){
             int padding = 10;
             int textHeight = fm.height() + padding;
             QRect textRect(
-                        QPoint(0 + padding, geometry.height() - textHeight),
-                        QSize(geometry.width() - padding * 2, textHeight)
-                        );
+                QPoint(0 + padding, geometry.height() - textHeight),
+                QSize(geometry.width() - padding * 2, textHeight)
+            );
             painter.drawText(
-                        textRect,
-                        Qt::AlignVCenter | Qt::AlignRight,
-                        text
-                        );
+                textRect,
+                Qt::AlignVCenter | Qt::AlignRight,
+                text
+            );
             painter.end();
         });
-        qDebug() << "Waiting for screen to finish...";
-        Oxide::Sentry::sentry_span(t, "wait", "Wait for screen finish updating", [this](){
+        if(!m_window->_isVisible()){
             m_window->raise();
-            m_window->waitForLastUpdate();
-        });
+        }else{
+            m_window->_repaint(m_window->geometry(), EPFrameBuffer::HighQualityGrayscale, 0);
+        }
     });
     qDebug() << "Finished painting splash screen for" << name();
 }

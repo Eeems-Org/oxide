@@ -3,13 +3,14 @@
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
 #include "dbusservice.h"
-
-#include <QSignalSpy>
+#include "repaintnotifier.h"
 
 #define W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << msg << getSenderPgid())
 #define W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << msg << getSenderPgid())
 #define W_DENIED() W_DEBUG("DENY")
 #define W_ALLOWED() W_DEBUG("ALLOW")
+
+Q_DECLARE_METATYPE(EPFrameBuffer::WaveformMode)
 
 static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
 
@@ -26,6 +27,8 @@ GuiAPI::GuiAPI(QObject* parent)
 : APIBase(parent),
   m_enabled(false)
 {
+    qRegisterMetaType<EPFrameBuffer::WaveformMode>();
+    qRegisterMetaType<QAbstractSocket::SocketState>();
     Oxide::Sentry::sentry_transaction("gui", "init", [this](Oxide::Sentry::Transaction* t){
         Q_UNUSED(t);
         m_screenGeometry = deviceSettings.screenGeometry();
@@ -33,7 +36,7 @@ GuiAPI::GuiAPI(QObject* parent)
         connect(touchHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
         connect(wacomHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
         connect(buttonHandler, &ButtonHandler::rawEvent, this, &GuiAPI::touchEvent);
-        connect(&m_repaintNotifier, &RepaintNotifier::repainted, this, &GuiAPI::repainted);
+        connect(&m_repaintNotifier, &RepaintNotifier::windowRepainted, this, &GuiAPI::repainted);
     });
 }
 GuiAPI::~GuiAPI(){
@@ -45,11 +48,9 @@ GuiAPI::~GuiAPI(){
 
 void GuiAPI::startup(){
     W_DEBUG("Startup");
-    m_thread.setObjectName("gui");
     m_thread.m_repaintNotifier = &m_repaintNotifier;
     m_thread.m_screenGeometry = &m_screenGeometry;
     m_thread.start();
-    m_thread.moveToThread(&m_thread);
 }
 
 void GuiAPI::shutdown(){
@@ -58,6 +59,7 @@ void GuiAPI::shutdown(){
         auto window = m_windows.take(m_windows.firstKey());
         window->_close();
     }
+    emit m_repaintNotifier.windowRepainted(nullptr, std::numeric_limits<unsigned int>::max());
     m_thread.quit();
 }
 
@@ -85,11 +87,6 @@ void GuiAPI::setEnabled(bool enabled){
 bool GuiAPI::isEnabled(){ return m_enabled; }
 
 Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
-    if(!hasPermission()){
-        W_DENIED();
-        return nullptr;
-    }
-    W_ALLOWED();
     auto id = QUuid::createUuid().toString(QUuid::Id128);
     auto path = QString(OXIDE_SERVICE_PATH) + "/window/" + QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
     auto pgid = getSenderPgid();
@@ -101,9 +98,7 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
             sortWindows();
         }
         auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
-        QCoreApplication::postEvent(&m_thread, new RepaintEvent(nullptr, region, EPFrameBuffer::Initialize, 0), Qt::HighEventPriority);
-        QMetaObject::invokeMethod(&m_thread, &GUIThread::flush, Qt::BlockingQueuedConnection);
-        window->deleteLater();
+        m_thread.enqueue(nullptr, region, EPFrameBuffer::Initialize, 0, true);
     });
     connect(window, &Window::raised, this, [this, window]{
         auto windows = sortedWindows();
@@ -187,7 +182,7 @@ void GuiAPI::repaint(){
         return;
     }
     W_ALLOWED();
-    QCoreApplication::postEvent(&m_thread, new RepaintEvent(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, 0), Qt::HighEventPriority);
+    m_thread.enqueue(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, 0, true);
     waitForLastUpdate();
 }
 
@@ -216,20 +211,35 @@ void GuiAPI::closeWindows(pid_t pgid){
 }
 
 void GuiAPI::waitForLastUpdate(){
-    // TODO - identify if there is actually a pending paint
-    QSignalSpy spy(&m_repaintNotifier, &RepaintNotifier::repainted);
-    // TODO - determine if there is a reasonable max time to wait
-    spy.wait(1000);
+    QMutexLocker locker(&m_thread.m_mutex);
+    if(!m_thread.active()){
+        locker.unlock();
+        return;
+    }
+    // TODO - Should there be a timeout?
+    QEventLoop loop;
+    QMetaObject::Connection conn;
+    conn = QObject::connect(&m_repaintNotifier, &RepaintNotifier::windowRepainted, [&loop, &conn](Window* window, unsigned int marker){
+        Q_UNUSED(window)
+        Q_UNUSED(marker);
+        QObject::disconnect(conn);
+        loop.exit();
+    });
+    locker.unlock();
+    loop.exec();
 }
 
 void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker){
-    QCoreApplication::postEvent(&m_thread, new RepaintEvent(window, region, waveform, marker), Qt::HighEventPriority);
+    Q_ASSERT(window != nullptr);
+    m_thread.enqueue(window, region, waveform, marker);
 }
+
+GUIThread* GuiAPI::guiThread(){ return &m_thread; }
 
 void GuiAPI::touchEvent(const input_event& event){
     O_EVENT(event);
     for(auto window : m_windows){
-        if(window != nullptr && window->_isVisible()){
+        if(window->_isVisible()){
             window->writeTouchEvent(event);
         }
     }
@@ -238,7 +248,7 @@ void GuiAPI::touchEvent(const input_event& event){
 void GuiAPI::tabletEvent(const input_event& event){
     O_EVENT(event);
     for(auto window : m_windows){
-        if(window != nullptr && window->_isVisible()){
+        if(window->_isVisible()){
             window->writeTabletEvent(event);
         }
     }
@@ -247,7 +257,7 @@ void GuiAPI::tabletEvent(const input_event& event){
 void GuiAPI::keyEvent(const input_event& event){
     O_EVENT(event);
     for(auto window : m_windows){
-        if(window != nullptr && window->_isVisible()){
+        if(window->_isVisible()){
             window->writeKeyEvent(event);
         }
     }
@@ -255,7 +265,12 @@ void GuiAPI::keyEvent(const input_event& event){
 
 void GuiAPI::repainted(Window* window, unsigned int marker){
     if(window != nullptr){
-        window->repainted(marker);
+        QMetaObject::invokeMethod(
+            &window->m_repaintNotifier,
+            "repainted",
+            Qt::AutoConnection,
+            Q_ARG(unsigned int, marker)
+        );
     }
 }
 

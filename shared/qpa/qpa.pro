@@ -7,6 +7,7 @@ CONFIG += plugin
 CONFIG += qpa/genericunixfontdatabase
 
 QT += core-private
+QT += core
 QT += gui-private
 QT += input_support-private
 

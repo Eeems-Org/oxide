@@ -411,6 +411,7 @@ void DBusService::unregisterChild(pid_t pid){
         O_DEBUG("unregisterChild" << child->pid() << child->pgid());
         guiAPI->closeWindows(child->pid());
         i.remove();
+        child->close();
         child->deleteLater();
     }
 }

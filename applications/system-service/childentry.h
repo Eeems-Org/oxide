@@ -21,6 +21,7 @@ public:
     void resume();
     qint64 write(QByteArray data);
     QString errorString();
+    void close();
 
 signals:
     void finished();

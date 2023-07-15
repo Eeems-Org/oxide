@@ -6,8 +6,8 @@
 
 using namespace  Oxide::Tarnish;
 
-#define _W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << m_identifier << msg << guiAPI->getSenderPgid())
-#define _W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << m_identifier << msg << guiAPI->getSenderPgid())
+#define _W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << m_identifier.toStdString().c_str() << msg << guiAPI->getSenderPgid())
+#define _W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << m_identifier.toStdString().c_str() << msg << guiAPI->getSenderPgid())
 #define W_WARNING(msg) _W_WARNING(msg << guiAPI->getSenderPgid())
 #define W_DEBUG(msg) _W_DEBUG(msg << guiAPI->getSenderPgid())
 #define W_DENIED() W_DEBUG("DENY")
@@ -28,12 +28,11 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
   m_state{WindowState::LoweredHidden},
   m_format{(QImage::Format)format},
   m_eventPipe{true},
-  m_pendingMarker{0},
-  m_completedMarker{0}
+  m_pendingMarker{0}
 {
     LOCK_MUTEX;
     createFrameBuffer(geometry);
-    O_DEBUG(__PRETTY_FUNCTION__ << m_identifier << "Window created" << pgid);
+    O_DEBUG(__PRETTY_FUNCTION__ << m_identifier.toStdString().c_str() << "Window created" << pgid);
     connect(&m_eventPipe, &SocketPair::readyRead, this, &Window::readyEventPipeRead);
     m_pingTimer.setInterval(30 * 1000); // 30 seconds
     m_pingTimer.setSingleShot(true);
@@ -43,13 +42,10 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
     m_pingDeadlineTimer.setTimerType(Qt::CoarseTimer);
     connect(&m_pingTimer, &QTimer::timeout, this, &Window::ping);
     connect(&m_pingDeadlineTimer, &QTimer::timeout, this, &Window::pingDeadline);
+    connect(this, &Window::destroyed, [this]{ W_DEBUG("Window destoyred"); });
 }
 Window::~Window(){
-    O_DEBUG(__PRETTY_FUNCTION__ << m_identifier << "Window closed" << m_pgid);
-    m_completedMarker = m_pendingMarker;
-    if(m_eventLoop.isRunning()){
-        m_eventLoop.quit();
-    }
+    O_DEBUG(__PRETTY_FUNCTION__ << m_identifier.toStdString().c_str() << "Window deleted" << m_pgid);
 }
 
 void Window::setEnabled(bool enabled){
@@ -323,20 +319,23 @@ void Window::_lower(){
 }
 
 void Window::_close(){
-    auto wasVisible = _isVisible();
     m_state = WindowState::LoweredHidden;
-    if(wasVisible){
-        invalidateEventPipes();
-    }
     writeEvent(WindowEventType::Close);
-    readyEventPipeRead();
     setEnabled(false);
     m_touchEventPipe.close();
     m_tabletEventPipe.close();
     m_keyEventPipe.close();
+    m_eventPipe.close();
     emit closed();
-    QEventLoop().processEvents();
-    this->deleteLater();
+    emit m_repaintNotifier.repainted(std::numeric_limits<unsigned int>::max());
+    setParent(nullptr);
+    moveToThread(nullptr);
+    auto thread = guiAPI->guiThread();
+    thread->m_mutex.lock();
+    thread->m_deleteQueue.enqueue(this);
+    thread->m_mutex.unlock();
+    blockSignals(true);
+    W_DEBUG("Window closed");
 }
 
 Window::WindowState Window::state(){ return m_state; }
@@ -372,15 +371,26 @@ void Window::unlock(){
 }
 
 void Window::waitForUpdate(unsigned int marker){
-    while(marker > m_completedMarker){
-        if(m_eventLoop.isRunning()){
-            m_eventLoop.processEvents();
-        }else{
-            m_eventLoop.exec();
-            W_DEBUG("repainted event detected" << marker << m_completedMarker);
-        }
+    W_DEBUG("Waiting for update" << marker);
+    auto thread = guiAPI->guiThread();
+    QMutexLocker locker(&thread->m_mutex);
+    if(!thread->active()){
+        W_DEBUG("Done waiting for update" << marker);
+        return;
     }
-    W_DEBUG("Done waiting for update" << marker << m_completedMarker);
+    // TODO - Should there be a timeout?
+    QEventLoop loop;
+    QMetaObject::Connection conn;
+    conn = QObject::connect(&m_repaintNotifier, &RepaintNotifier::repainted, [this, &loop, &conn, marker](unsigned int finishedMarker){
+        W_DEBUG("Checking markers" << finishedMarker << marker);
+        if(finishedMarker >= marker){
+            QObject::disconnect(conn);
+            loop.exit();
+        }
+    });
+    locker.unlock();
+    loop.exec();
+    W_DEBUG("Done waiting for update" << marker);
 }
 
 void Window::waitForLastUpdate(){
@@ -390,16 +400,6 @@ void Window::waitForLastUpdate(){
     }
     W_ALLOWED();
     waitForUpdate(m_pendingMarker);
-}
-
-void Window::repainted(unsigned int marker){
-    if(marker > m_completedMarker){
-        m_completedMarker = marker;
-    }
-    W_DEBUG("Repaint" << marker << "finished");
-    if(m_eventLoop.isRunning()){
-        m_eventLoop.quit();
-    }
 }
 
 bool Window::operator>(Window* other) const{ return m_z > other->z(); }
@@ -489,6 +489,7 @@ void Window::readyEventPipeRead(){
     W_DEBUG("Reading events");
     while(!m_eventPipe.atEnd()){
         auto event = WindowEvent::fromSocket(m_eventPipe.writeSocket());
+        W_DEBUG(event);
         switch(event.type){
             case Repaint:{
                 auto marker = event.repaintData.marker;
@@ -567,7 +568,7 @@ void Window::createFrameBuffer(const QRect& geometry){
         return;
     }
     QImage blankImage(geometry.width(), geometry.height(), m_format);
-    blankImage.fill(Qt::white);
+    blankImage.fill(blankImage.hasAlphaChannel() ? Qt::transparent : Qt::white);
     size_t size = blankImage.sizeInBytes();
     if(ftruncate(fd, size)){
         W_WARNING("Unable to truncate memfd for framebuffer:" << strerror(errno));
@@ -622,30 +623,40 @@ void Window::createFrameBuffer(const QRect& geometry){
 bool Window::writeEvent(SocketPair* pipe, const input_event& event, bool force){
     // TODO - add logic to skip emitting anything until the next EV_SYN SYN_REPORT
     //        after the window has changed states to now be visible/enabled
+    std::string name;
+    if(pipe == &m_touchEventPipe){
+        name = "touch";
+    }else if(pipe == &m_tabletEventPipe){
+        name = "tablet";
+    }else if(pipe == &m_keyEventPipe){
+        name = "key";
+    }else{
+        Q_ASSERT(false);
+    }
     if(!force){
         if(!pipe->enabled()){
             return false;
         }
         if(!m_enabled){
-            _W_WARNING("Failed to write to event pipe: Window disabled");
+            _W_WARNING("Failed to write to " << name.c_str() << " event pipe: Window disabled");
             return false;
         }
     }
     if(!pipe->isOpen()){
-        _W_WARNING("Failed to write to event pipe: Pipe not open");
+        _W_WARNING("Failed to write to " << name.c_str() << " event pipe: Pipe not open");
         return false;
     }
     auto size = sizeof(input_event);
     auto res = force ? pipe->_write((const char*)&event, size) : pipe->write((const char*)&event, size);
     if(res == -1){
-        _W_WARNING("Failed to write to event pipe:" << pipe->writeSocket()->errorString());
+        _W_WARNING("Failed to write to " << name.c_str() << " event pipe:" << pipe->writeSocket()->errorString());
         return false;
     }
     if(res != size){
-        _W_WARNING("Only wrote" << res << "of" << size << "bytes to pipe");
+        _W_WARNING("Only wrote" << res << "of" << size << "bytes to " << name.c_str() << "event pipe");
     }
 #ifdef DEBUG_EVENTS
-    _W_DEBUG(event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
+    _W_DEBUG(name.c_str() << event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
 #endif
     return true;
 }
@@ -739,6 +750,7 @@ void Window::writeEvent(RepaintEventArgs args){
     WindowEvent event;
     event.type = WindowEventType::Repaint;
     event.repaintData = args;
+    W_DEBUG(event);
     event.toSocket(m_eventPipe.writeSocket());
 }
 
@@ -746,6 +758,7 @@ void Window::writeEvent(GeometryEventArgs args){
     WindowEvent event;
     event.type = WindowEventType::Geometry;
     event.geometryData = args;
+    W_DEBUG(event);
     event.toSocket(m_eventPipe.writeSocket());
 }
 
@@ -753,6 +766,7 @@ void Window::writeEvent(ImageInfoEventArgs args){
     WindowEvent event;
     event.type = WindowEventType::ImageInfo;
     event.imageInfoData = args;
+    W_DEBUG(event);
     event.toSocket(m_eventPipe.writeSocket());
 }
 
@@ -760,11 +774,13 @@ void Window::writeEvent(WaitForPaintEventArgs args){
     WindowEvent event;
     event.type = WindowEventType::WaitForPaint;
     event.waitForPaintData = args;
+    W_DEBUG(event);
     event.toSocket(m_eventPipe.writeSocket());
 }
 
 void Window::writeEvent(WindowEventType type){
     WindowEvent event;
     event.type = type;
+    W_DEBUG(event);
     event.toSocket(m_eventPipe.writeSocket());
 }

@@ -3,26 +3,14 @@
 #include <epframebuffer.h>
 
 #include "guiapi.h"
+#include "repaintnotifier.h"
 
-class RepaintNotifier;
-
-class RepaintEvent : public QEvent{
-
-public:
-    static QEvent::Type eventType;
-    RepaintEvent(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker);
-
-    Window* window(){ return m_window; }
-    const QRect& region(){ return m_region; }
-    EPFrameBuffer::WaveformMode waveform(){ return m_waveform; }
-    unsigned int marker(){ return m_marker; }
-
-private:
-    static QEvent::Type registeredType();
-    Window* m_window;
-    QRect m_region;
-    EPFrameBuffer::WaveformMode m_waveform;
-    unsigned int m_marker;
+struct RepaintRequest{
+    Window* window;
+    QRect region;
+    EPFrameBuffer::WaveformMode waveform;
+    unsigned int marker;
+    bool global;
 };
 
 class GUIThread : public QThread{
@@ -30,14 +18,23 @@ class GUIThread : public QThread{
 
 protected:
     bool event(QEvent* event) override;
+    void timerEvent(QTimerEvent* event) override;
 
 public:
-    void run() override;
-    void repaintWindow(QPainter* painter, Window* window, QRect* rect);
+    GUIThread();
     void flush();
+    bool active();
     RepaintNotifier* m_repaintNotifier;
     QRect* m_screenGeometry;
+    QMutex m_mutex;
+    QQueue<RepaintRequest> m_repaintEvents;
+    QQueue<Window*> m_deleteQueue;
+
+public slots:
+    void enqueue(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool global = false);
 
 private:
-    void redraw(RepaintEvent* event);
+    void repaintWindow(QPainter* painter, QRect* rect, Window* window);
+    void redraw(RepaintRequest& event);
+    bool m_processing;
 };

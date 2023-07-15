@@ -1,5 +1,6 @@
 #pragma once
 #include "apibase.h"
+#include "repaintnotifier.h"
 
 #include <QTouchEvent>
 #include <QTabletEvent>
@@ -70,10 +71,10 @@ public:
     void unlock();
     void waitForUpdate(unsigned int marker);
     Q_INVOKABLE void waitForLastUpdate();
-    void repainted(unsigned int marker);
 
     bool operator>(Window* other) const;
     bool operator<(Window* other) const;
+    RepaintNotifier m_repaintNotifier;
 
 public slots:
     QDBusUnixFileDescriptor resize(int width, int height);
@@ -121,8 +122,6 @@ private:
     QTimer m_pingTimer;
     QTimer m_pingDeadlineTimer;
     unsigned int m_pendingMarker;
-    unsigned int m_completedMarker;
-    QEventLoop m_eventLoop;
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);

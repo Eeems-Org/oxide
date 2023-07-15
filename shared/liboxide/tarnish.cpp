@@ -1012,18 +1012,19 @@ namespace Oxide::Tarnish {
         event.toSocket(&eventSocket);
     }
 
-    void requestWaitForUpdate(unsigned int marker){
+    unsigned int requestWaitForUpdate(unsigned int marker){
         if(!eventSocket.isOpen()){
             O_WARNING(__PRETTY_FUNCTION__ << "Failed wait for screen update: event socket not open");
-            return;
+            return 0;
         }
         WindowEvent event;
         event.type = WindowEventType::WaitForPaint;
         event.waitForPaintData.marker = marker == 0 ? repaintMarker.loadRelaxed() : marker;
         event.toSocket(&eventSocket);
+        return event.waitForPaintData.marker;
     }
 
-    void requestWaitForLastUpdate(){ requestWaitForUpdate(0); }
+    unsigned int requestWaitForLastUpdate(){ return requestWaitForUpdate(0); }
 
     codes::eeems::oxide1::Power* powerApi(){
         if(api_power != nullptr){

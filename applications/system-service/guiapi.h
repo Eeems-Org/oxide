@@ -10,12 +10,7 @@
 
 using namespace Oxide;
 
-class RepaintNotifier : public QObject{
-    Q_OBJECT
-
-signals:
-    void repainted(Window* window, unsigned int marker);
-};
+class GUIThread;
 
 class GuiAPI : public APIBase {
     Q_OBJECT
@@ -23,7 +18,6 @@ class GuiAPI : public APIBase {
     Q_PROPERTY(QRect geometry READ geometry)
 
 public:
-    QMutex m_repaintMutex;
     static GuiAPI* __singleton(GuiAPI* self = nullptr);
     GuiAPI(QObject* parent);
     ~GuiAPI();
@@ -34,7 +28,7 @@ public:
     void setEnabled(bool enabled);
     bool isEnabled();
 
-    Window* _createWindow(QRect geometry, QImage::Format format = DEFAULT_IMAGE_FORMAT);
+    Window* _createWindow(QRect geometry, QImage::Format format);
     Q_INVOKABLE QDBusObjectPath createWindow(int x, int y, int width, int height, int format = DEFAULT_IMAGE_FORMAT);
     Q_INVOKABLE QDBusObjectPath createWindow(QRect geometry, int format = DEFAULT_IMAGE_FORMAT);
     Q_INVOKABLE QDBusObjectPath createWindow(int format = DEFAULT_IMAGE_FORMAT);
@@ -46,6 +40,7 @@ public:
     void closeWindows(pid_t pgid);
     void waitForLastUpdate();
     void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize, unsigned int marker = 0);
+    GUIThread* guiThread();
 
 public slots:
     void touchEvent(const input_event& event);

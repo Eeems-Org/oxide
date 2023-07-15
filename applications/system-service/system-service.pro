@@ -73,6 +73,7 @@ HEADERS += \
     notification.h \
     notificationapi.h \
     powerapi.h \
+    repaintnotifier.h \
     screenapi.h \
     screenshot.h \
     socketpair.h \

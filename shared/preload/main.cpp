@@ -271,10 +271,6 @@ int fb_ioctl(unsigned long request, char* ptr){
                 if(eventPipe == nullptr){
                     qFatal("Unable to get event pipe");
                 }
-                Oxide::Tarnish::WindowEvent event;
-                event.type = Oxide::Tarnish::WaitForPaint;
-                event.waitForPaintData.marker = update->update_marker;
-                event.toSocket(eventPipe);
                 QEventLoop loop;
                 QMetaObject::Connection conn;
                 conn = QObject::connect(&repaintNotifier, &RepaintNotifier::repainted, [update, &loop](unsigned int marker){
@@ -291,8 +287,14 @@ int fb_ioctl(unsigned long request, char* ptr){
                     event.waitForPaintData.marker = update->update_marker;
                     event.toSocket(eventPipe);
                 });
-                _DEBUG("Waiting for marker", QString::number(update->update_marker));
                 timer.start();
+                QTimer::singleShot(0, [update, eventPipe]{
+                    Oxide::Tarnish::WindowEvent event;
+                    event.type = Oxide::Tarnish::WaitForPaint;
+                    event.waitForPaintData.marker = update->update_marker;
+                    event.toSocket(eventPipe);
+                });
+                _DEBUG("Waiting for marker", QString::number(update->update_marker));
                 loop.exec();
                 timer.stop();
                 QObject::disconnect(conn);
