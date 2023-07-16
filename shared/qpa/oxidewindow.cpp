@@ -32,7 +32,7 @@ bool OxideWindow::close(){
     if(platformScreen()->topPlatformWindow() == this){
         Oxide::Tarnish::topWindow()->close(); // TODO - replace with event socket call
     }
-    return true;
+    return QPlatformWindow::close();
 }
 
 void OxideWindow::raise(){

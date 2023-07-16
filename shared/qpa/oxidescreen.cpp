@@ -44,12 +44,12 @@ OxideWindow* OxideScreen::topPlatformWindow() const{ return m_windows.isEmpty() 
 void OxideScreen::addWindow(OxideWindow* window){
     m_windows.append(window);
     setDirty(window->geometry());
-    QWindowSystemInterface::handleWindowActivated(window->window());
+    window->requestActivateWindow();
 }
 void OxideScreen::removeWindow(OxideWindow* window){
     m_windows.removeAll(window);
     setDirty(window->geometry());
-    QWindowSystemInterface::handleWindowActivated(window->window());
+    window->requestActivateWindow();
 }
 
 bool OxideScreen::event(QEvent* event){
