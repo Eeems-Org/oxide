@@ -17,19 +17,20 @@ void flush_stream(istream* stream){
     stream->read((char*)&ie, sie);
 }
 void press_button(event_device& evdev, int code, istream* stream){
+    Q_UNUSED(stream)
 #ifdef DEBUG
     qDebug() << "inject button " << code;
 #endif
-    evdev.unlock();
+//    evdev.unlock();
     evdev.write(EV_KEY, code, 1);
-    flush_stream(stream);
+//    flush_stream(stream);
     evdev.ev_syn();
-    flush_stream(stream);
+//    flush_stream(stream);
     evdev.write(EV_KEY, code, 0);
-    flush_stream(stream);
+//    flush_stream(stream);
     evdev.ev_syn();
-    flush_stream(stream);
-    evdev.lock();
+//    flush_stream(stream);
+//    evdev.lock();
 }
 
 ButtonHandler* ButtonHandler::init(){
@@ -58,7 +59,7 @@ void ButtonHandler::run(){
     memset(name, 0, sizeof(name));
     ioctl(buttons.fd, EVIOCGNAME(sizeof(name)), name);
     qDebug() << "Reading From : " << buttons.device.c_str() << " (" << name << ")";
-    buttons.lock();
+    //buttons.lock();
     qDebug() << "Registering exit handler...";
     // Mapping the correct button IDs.
     unordered_map<int, PressRecord> map;
@@ -82,7 +83,7 @@ void ButtonHandler::run(){
             // Toggle the button state.
             map[ie.code].pressed = !map[ie.code].pressed;
             if(!map[ie.code].pressed && map[ie.code].name == "Unknown"){
-                press_button(buttons, ie.code, &stream);
+                //press_button(buttons, ie.code, &stream);
             }else if(map[ie.code].pressed){
                 emit keyDown(map[ie.code].keyCode);
             }else{

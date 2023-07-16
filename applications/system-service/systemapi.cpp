@@ -11,12 +11,12 @@
 #include "screenapi.h"
 #include "digitizerhandler.h"
 
-QDebug operator<<(QDebug debug, const Touch& touch){
+QDebug operator<<(QDebug debug, const TouchData& touch){
     QDebugStateSaver saver(debug);
     debug.nospace() << touch.debugString().c_str();
     return debug.maybeSpace();
 }
-QDebug operator<<(QDebug debug, Touch* touch){
+QDebug operator<<(QDebug debug, TouchData* touch){
     QDebugStateSaver saver(debug);
     debug.nospace() << touch->debugString().c_str();
     return debug.maybeSpace();
@@ -618,9 +618,9 @@ void SystemAPI::touchEvent(const input_event& event){
                     // Always mark the current slot as modified
                     auto touch = getEvent(currentSlot);
                     touch->modified = true;
-                    QList<Touch*> released;
-                    QList<Touch*> pressed;
-                    QList<Touch*> moved;
+                    QList<TouchData*> released;
+                    QList<TouchData*> pressed;
+                    QList<TouchData*> moved;
                     for(auto touch : touches.values()){
                         if(touch->id == -1){
                             touch->active = false;
@@ -761,12 +761,12 @@ void SystemAPI::rguard(bool install){
     QProcess::execute("/opt/bin/rguard", QStringList() << (install ? "-1" : "-0"));
 }
 
-Touch* SystemAPI::getEvent(int slot){
+TouchData* SystemAPI::getEvent(int slot){
     if(slot == -1){
         return nullptr;
     }
     if(!touches.contains(slot)){
-        touches.insert(slot, new Touch{
+        touches.insert(slot, new TouchData{
                            .slot = slot
                        });
     }
@@ -774,12 +774,12 @@ Touch* SystemAPI::getEvent(int slot){
 }
 
 int SystemAPI::getCurrentFingers(){
-    return std::count_if(touches.begin(), touches.end(), [](Touch* touch){
+    return std::count_if(touches.begin(), touches.end(), [](TouchData* touch){
         return touch->active;
     });
 }
 
-void SystemAPI::touchDown(QList<Touch*> touches){
+void SystemAPI::touchDown(QList<TouchData*> touches){
     if(penActive){
         return;
     }
@@ -822,7 +822,7 @@ void SystemAPI::touchDown(QList<Touch*> touches){
     startLocation = location = QPoint(touch->x, touch->y);
 }
 
-void SystemAPI::touchUp(QList<Touch*> touches){
+void SystemAPI::touchUp(QList<TouchData*> touches){
     if(Oxide::debugEnabled()){
         qDebug() << "UP" << touches;
     }
@@ -913,7 +913,7 @@ void SystemAPI::touchUp(QList<Touch*> touches){
     }
 }
 
-void SystemAPI::touchMove(QList<Touch*> touches){
+void SystemAPI::touchMove(QList<TouchData*> touches){
     if(Oxide::debugEnabled()){
         qDebug() << "MOVE" << touches;
     }
@@ -945,7 +945,7 @@ void SystemAPI::touchMove(QList<Touch*> touches){
     }
 }
 
-void SystemAPI::cancelSwipe(Touch* touch){
+void SystemAPI::cancelSwipe(TouchData* touch){
     if(Oxide::debugEnabled()){
         qDebug() << "Swipe Cancelled";
     }
@@ -954,7 +954,7 @@ void SystemAPI::cancelSwipe(Touch* touch){
     writeTouchUp(touch);
 }
 
-void SystemAPI::writeTouchUp(Touch* touch){
+void SystemAPI::writeTouchUp(TouchData* touch){
     bool grabbed = touchHandler->grabbed();
     if(grabbed){
         touchHandler->ungrab();
@@ -975,7 +975,7 @@ void SystemAPI::writeTouchUp(Touch* touch){
     }
 }
 
-void SystemAPI::writeTouchMove(Touch* touch){
+void SystemAPI::writeTouchMove(TouchData* touch){
     bool grabbed = touchHandler->grabbed();
     if(grabbed){
         touchHandler->ungrab();
@@ -1063,6 +1063,6 @@ void Inhibitor::release(){
 
 bool Inhibitor::released() { return fd == -1; }
 
-string Touch::debugString() const{
+string TouchData::debugString() const{
     return "<Touch " + to_string(id) + " (" + to_string(x) + ", " + to_string(y) + ") " + (active ? "pressed" : "released") + ">";
 }

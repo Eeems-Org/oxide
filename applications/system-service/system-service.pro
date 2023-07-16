@@ -16,6 +16,7 @@ SOURCES += \
     buttonhandler.cpp \
     childentry.cpp \
     dbusservice.cpp \
+    eventlistener.cpp \
     guiapi.cpp \
     guithread.cpp \
     network.cpp \
@@ -66,6 +67,7 @@ HEADERS += \
     childentry.h \
     dbusservice.h \
     digitizerhandler.h \
+    eventlistener.h \
     fifohandler.h \
     guiapi.h \
     guithread.h \

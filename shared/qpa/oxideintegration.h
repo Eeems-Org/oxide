@@ -43,6 +43,7 @@ private:
     bool m_debug;
     QStringList m_spec;
     QMutex m_mutex;
+    bool m_tabletPenDown;
 };
 
 QT_END_NAMESPACE

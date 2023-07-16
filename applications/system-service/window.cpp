@@ -90,7 +90,10 @@ void Window::setZ(int z){
     }
     m_z = z;
     writeEvent(GeometryEventArgs{
-        .geometry = m_geometry,
+        .x = m_geometry.x(),
+        .y = m_geometry.y(),
+        .width = m_geometry.width(),
+        .height = m_geometry.height(),
         .z = m_z
     });
     emit zChanged(z);
@@ -402,6 +405,30 @@ void Window::waitForLastUpdate(){
     waitForUpdate(m_pendingMarker);
 }
 
+void Window::writeEvent(KeyEventArgs args){
+    WindowEvent event;
+    event.type = WindowEventType::Key;
+    event.keyData = args;
+    W_DEBUG(event);
+    event.toSocket(m_eventPipe.writeSocket());
+}
+
+void Window::writeEvent(TouchEventArgs args){
+    WindowEvent event;
+    event.type = WindowEventType::Touch;
+    event.touchData = args;
+    W_DEBUG(event);
+    event.toSocket(m_eventPipe.writeSocket());
+}
+
+void Window::writeEvent(TabletEventArgs args){
+    WindowEvent event;
+    event.type = WindowEventType::Tablet;
+    event.tabletData = args;
+    W_DEBUG(event);
+    event.toSocket(m_eventPipe.writeSocket());
+}
+
 bool Window::operator>(Window* other) const{ return m_z > other->z(); }
 
 bool Window::operator<(Window* other) const{ return m_z < other->z(); }
@@ -428,7 +455,10 @@ void Window::move(int x, int y){
     m_geometry.setX(x);
     m_geometry.setY(y);
     writeEvent(GeometryEventArgs{
-        .geometry = m_geometry,
+       .x = m_geometry.x(),
+       .y = m_geometry.y(),
+       .width = m_geometry.width(),
+       .height = m_geometry.height(),
         .z = m_z
     });
     emit geometryChanged(oldGeometry, m_geometry);
@@ -494,11 +524,11 @@ void Window::readyEventPipeRead(){
             case Repaint:{
                 auto marker = event.repaintData.marker;
                 W_DEBUG("Repaint" << marker << "queued");
-                _repaint(event.repaintData.geometry, event.repaintData.waveform, marker);
+                _repaint(event.repaintData.geometry(), event.repaintData.waveform, marker);
                 break;
             }
             case Geometry:{
-                createFrameBuffer(event.geometryData.geometry);
+                createFrameBuffer(event.geometryData.geometry());
                 break;
             }
             case ImageInfo:{
@@ -611,7 +641,10 @@ void Window::createFrameBuffer(const QRect& geometry){
         .format = m_format
     });
     writeEvent(GeometryEventArgs{
-        .geometry = m_geometry,
+       .x = m_geometry.x(),
+       .y = m_geometry.y(),
+       .width = m_geometry.width(),
+       .height = m_geometry.height(),
         .z = m_z
     });
     writeEvent(WindowEventType::FrameBuffer);
@@ -783,22 +816,6 @@ void Window::writeEvent(WaitForPaintEventArgs args){
     WindowEvent event;
     event.type = WindowEventType::WaitForPaint;
     event.waitForPaintData = args;
-    W_DEBUG(event);
-    event.toSocket(m_eventPipe.writeSocket());
-}
-
-void Window::writeEvent(KeyEventArgs args){
-    WindowEvent event;
-    event.type = WindowEventType::Key;
-    event.keyData = args;
-    W_DEBUG(event);
-    event.toSocket(m_eventPipe.writeSocket());
-}
-
-void Window::writeEvent(TouchEventArgs args){
-    WindowEvent event;
-    event.type = WindowEventType::Touch;
-    event.touchData = args;
     W_DEBUG(event);
     event.toSocket(m_eventPipe.writeSocket());
 }

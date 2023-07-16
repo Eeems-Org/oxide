@@ -71,6 +71,9 @@ public:
     void unlock();
     void waitForUpdate(unsigned int marker);
     Q_INVOKABLE void waitForLastUpdate();
+    void writeEvent(KeyEventArgs args);
+    void writeEvent(TouchEventArgs args);
+    void writeEvent(TabletEventArgs args);
 
     bool operator>(Window* other) const;
     bool operator<(Window* other) const;
@@ -132,6 +135,4 @@ private:
     void writeEvent(GeometryEventArgs args);
     void writeEvent(ImageInfoEventArgs args);
     void writeEvent(WaitForPaintEventArgs args);
-    void writeEvent(KeyEventArgs args);
-    void writeEvent(TouchEventArgs args);
 };

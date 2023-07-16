@@ -123,29 +123,29 @@ namespace Oxide::Tarnish {
 
     //WindowEventType::Key
     enum KeyEventType: unsigned short{
-        Release = 0,
-        Press,
-        Repeat,
+        ReleaseKey = 0,
+        PressKey,
+        RepeatKey,
     };
     struct KeyEventArgs{
         static qsizetype size();
         unsigned int code; // Qt keycode
         KeyEventType type;
-        unsigned short unicode;
+        unsigned int unicode;
     };
+    typedef KeyEventArgs KeyEventArgs;
     QByteArray& operator>>(QByteArray& l, KeyEventArgs& r);
     QByteArray& operator<<(QByteArray& l, KeyEventArgs& r);
 
     // WindowEventType::Touch
     enum TouchEventType: unsigned short{
-        Begin = 0,
-        Update,
-        End,
+        TouchPress = 0,
+        TouchUpdate,
+        TouchRelease,
     };
     enum TouchEventTool: unsigned short{
         Finger = 0,
-        Pen,
-        Palm,
+        Token,
     };
     struct TouchEventPosition{
         int x;
@@ -153,20 +153,46 @@ namespace Oxide::Tarnish {
         unsigned int width;
         unsigned int height;
         QRect geometry() const;
+        QPoint point() const;
+        QSize size() const;
     };
     struct TouchEventArgs{
         static qsizetype size();
         TouchEventType type;
-        TouchEventTool toolType;
+        TouchEventTool tool;
         unsigned int pressure;
-        unsigned int distance;
         int orientation;
         int id;
         TouchEventPosition position;
-        TouchEventPosition toolPosition;
     };
+    typedef TouchEventArgs TouchEventArgs;
     QByteArray& operator>>(QByteArray& l, TouchEventArgs& r);
     QByteArray& operator<<(QByteArray& l, TouchEventArgs& r);
+
+    // WindowEventType::Tablet
+    enum TabletEventType: unsigned short{
+        PenPress = 0,
+        PenUpdate,
+        PenRelease,
+    };
+    enum TabletEventTool: unsigned short{
+        Pen = 0,
+        Eraser,
+    };
+    struct TabletEventArgs{
+        static qsizetype size();
+        TabletEventType type;
+        TabletEventTool tool;
+        int x;
+        int y;
+        unsigned int pressure;
+        int tiltX;
+        int tiltY;
+        QPoint point() const;
+    };
+    typedef TabletEventArgs TabletEventArgs;
+    QByteArray& operator>>(QByteArray& l, TabletEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, TabletEventArgs& r);
 
     /*!
      * \brief The WindowEventType enum
@@ -184,6 +210,7 @@ namespace Oxide::Tarnish {
         FrameBuffer, /*!< */
         Key, /*!< */
         Touch, /*!< */
+        Tablet, /*!< */
     };
     QDebug operator<<(QDebug debug, const WindowEventType& type);
     /*!
@@ -191,8 +218,8 @@ namespace Oxide::Tarnish {
      */
     class LIBOXIDE_EXPORT WindowEvent{
     public:
-        static WindowEvent fromSocket(QLocalSocket* socket);
-        bool toSocket(QLocalSocket* socket);
+        static WindowEvent fromSocket(QIODevice* socket);
+        bool toSocket(QIODevice* socket);
 
         WindowEvent();
         WindowEvent(const WindowEvent& event);
@@ -205,6 +232,7 @@ namespace Oxide::Tarnish {
         WaitForPaintEventArgs waitForPaintData;
         KeyEventArgs keyData;
         TouchEventArgs touchData;
+        TabletEventArgs tabletData;
 
     private:
         static QMutex m_writeMutex;

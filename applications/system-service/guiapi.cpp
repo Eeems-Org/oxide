@@ -4,6 +4,7 @@
 #include "digitizerhandler.h"
 #include "dbusservice.h"
 #include "repaintnotifier.h"
+#include "eventlistener.h"
 
 #define W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << msg << getSenderPgid())
 #define W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << msg << getSenderPgid())
@@ -34,9 +35,34 @@ GuiAPI::GuiAPI(QObject* parent)
         m_screenGeometry = deviceSettings.screenGeometry();
         __singleton(this);
         connect(touchHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
-        connect(wacomHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
-        connect(buttonHandler, &ButtonHandler::rawEvent, this, &GuiAPI::touchEvent);
+        connect(wacomHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::tabletEvent);
+        connect(buttonHandler, &ButtonHandler::rawEvent, this, &GuiAPI::keyEvent);
         connect(&m_repaintNotifier, &RepaintNotifier::windowRepainted, this, &GuiAPI::repainted);
+        eventListener->append([this](QObject* object, QEvent* event){
+            Q_UNUSED(object)
+            switch(event->type()){
+                case QEvent::KeyPress:
+                case QEvent::KeyRelease:
+                    writeKeyEvent(event);
+                    return true;
+                case QEvent::TouchBegin:
+                case QEvent::TouchCancel:
+                case QEvent::TouchEnd:
+                case QEvent::TouchUpdate:
+                    writeTouchEvent(event);
+                    return true;
+                case QEvent::TabletEnterProximity:
+                case QEvent::TabletLeaveProximity:
+                case QEvent::TabletPress:
+                case QEvent::TabletMove:
+                case QEvent::TabletRelease:
+                case QEvent::TabletTrackingChange:
+                    writeTabletEvent(event);
+                    return true;
+                default:
+                    return false;
+            }
+        });
     });
 }
 GuiAPI::~GuiAPI(){
@@ -236,6 +262,143 @@ void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode wav
 }
 
 GUIThread* GuiAPI::guiThread(){ return &m_thread; }
+
+void GuiAPI::writeTouchEvent(QEvent* event){
+    W_DEBUG(event);
+    TouchEventType type;
+    switch(event->type()){
+        case QEvent::TouchBegin:
+            type = TouchEventType::TouchPress;
+            break;
+        case QEvent::TouchEnd:
+            type = TouchEventType::TouchRelease;
+            break;
+        case QEvent::TouchUpdate:
+            type = TouchEventType::TouchUpdate;
+            break;
+        case QEvent::TouchCancel:
+            // TODO - implement this in the protocol
+        default:
+            return;
+    }
+    auto touchEvent = static_cast<QTouchEvent*>(event);
+    for(auto point : touchEvent->touchPoints()){
+        switch(point.state()){
+            case Qt::TouchPointMoved:
+                if(type != TouchEventType::TouchUpdate){
+                    continue;
+                }
+                break;
+            case Qt::TouchPointPressed:
+                if(type != TouchEventType::TouchPress){
+                    continue;
+                }
+                break;
+            case Qt::TouchPointStationary:
+                continue;
+            case Qt::TouchPointReleased:
+                if(type != TouchEventType::TouchRelease){
+                    continue;
+                }
+                break;
+        }
+        TouchEventArgs args{
+            .type = type,
+            .tool = TouchEventTool::Finger,
+            .pressure = (unsigned int)point.pressure(),
+            .orientation = (int)point.rotation(),
+            .id = (int)point.uniqueId().numericId(),
+            .position = TouchEventPosition{
+                .x = (int)point.screenPos().x(),
+                .y = (int)point.screenPos().y(),
+                .width = (unsigned int)point.ellipseDiameters().width(),
+                .height = (unsigned int)point.ellipseDiameters().height(),
+            },
+        };
+        for(auto window : m_windows){
+            if(!window->_isVisible()){
+                continue;
+            }
+            // TODO - adjust position and filter if it doesn't apply
+            window->writeEvent(args);
+        }
+    }
+}
+
+void GuiAPI::writeTabletEvent(QEvent* event){
+    W_DEBUG(event);
+    TabletEventType type;
+    switch(event->type()){
+        case QEvent::TabletPress:
+            type = TabletEventType::PenPress;
+            break;
+        case QEvent::TabletMove:
+            type = TabletEventType::PenUpdate;
+            break;
+        case QEvent::TabletRelease:
+            type = TabletEventType::PenRelease;
+            break;
+        case QEvent::TabletEnterProximity:
+        case QEvent::TabletLeaveProximity:
+        case QEvent::TabletTrackingChange:
+            // TODO - implement these in the protocol
+        default:
+            return;
+    }
+    TabletEventTool tool;
+    auto tabletEvent = static_cast<QTabletEvent*>(event);
+    switch(tabletEvent->pointerType()){
+        case QTabletEvent::Pen:
+            tool = TabletEventTool::Pen;
+            break;
+        case QTabletEvent::Eraser:
+            tool = TabletEventTool::Eraser;
+            break;
+        case QTabletEvent::UnknownPointer:
+        case QTabletEvent::Cursor:
+            // TODO - implement these in the protocol
+            return;
+    }
+    TabletEventArgs args{
+        .type = type,
+        .tool = tool,
+        .x = tabletEvent->pos().x(),
+        .y = tabletEvent->pos().y(),
+        .pressure = (unsigned int)tabletEvent->pressure(),
+        .tiltX = tabletEvent->xTilt(),
+        .tiltY = tabletEvent->yTilt(),
+    };
+    for(auto window : m_windows){
+        if(!window->_isVisible()){
+            continue;
+        }
+        // TODO - massage location and filter if it doesn't apply
+        window->writeEvent(args);
+    }
+}
+
+void GuiAPI::writeKeyEvent(QEvent* event){
+    W_DEBUG(event);
+    auto keyEvent = static_cast<QKeyEvent*>(event);
+    auto text = keyEvent->text().left(0);
+    KeyEventArgs args{
+        .code = (unsigned int)keyEvent->key(),
+        .type = event->type() == QEvent::KeyPress
+            ? (
+                  keyEvent->isAutoRepeat()
+                      ? KeyEventType::RepeatKey
+                      : KeyEventType::PressKey
+            )
+            : KeyEventType::ReleaseKey,
+        .unicode = (unsigned int)(text.length() ? text.at(0).unicode() : 0),
+    };
+    for(auto window : m_windows){
+        if(!window->_isVisible()){
+            continue;
+        }
+        window->writeEvent(args);
+    }
+}
 
 void GuiAPI::touchEvent(const input_event& event){
     O_EVENT(event);

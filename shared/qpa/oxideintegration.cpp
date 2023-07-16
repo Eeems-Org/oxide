@@ -42,7 +42,13 @@ static inline unsigned parseOptions(const QStringList& paramList){
     return options;
 }
 
-OxideIntegration::OxideIntegration(const QStringList& parameters): m_fontDatabase(nullptr), m_options(parseOptions(parameters)), m_debug(false), m_spec(parameters){
+OxideIntegration::OxideIntegration(const QStringList& parameters)
+: m_fontDatabase(nullptr),
+  m_options(parseOptions(parameters)),
+  m_debug(false),
+  m_spec(parameters),
+  m_tabletPenDown{false}
+{
     if(
         qEnvironmentVariableIsSet(debugQPAEnvironmentVariable)
         && qEnvironmentVariableIntValue(debugQPAEnvironmentVariable) > 0
@@ -89,39 +95,36 @@ void OxideIntegration::initialize(){
     });
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
-    // Setup touch event handling
-    auto touchData = new OxideTouchScreenData(m_spec);
-    auto touchPipe = Oxide::Tarnish::getTouchEventPipe();
-    if(touchPipe == nullptr){
-        qFatal("Could not get touch event pipe");
-    }
-    QObject::connect(touchPipe, &QLocalSocket::readChannelFinished, []{
-        if(!qApp->closingDown()){
-            qApp->exit(EXIT_FAILURE);
-        }
-    });
-    QObject::connect(touchPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [touchData](input_event event){
-        O_EVENT(event);
-        touchData->processInputEvent(&event);
-    });
-    // Setup tablet event handling
-    auto tabletData = new OxideTabletData(Oxide::Tarnish::getTabletEventPipeFd());
-    auto tabletPipe = Oxide::Tarnish::getTouchEventPipe();
-    QObject::connect(tabletPipe, &QLocalSocket::readChannelFinished, []{
-        if(!qApp->closingDown()){
-            qApp->exit(EXIT_FAILURE);
-        }
-    });
-    if(tabletPipe == nullptr){
-        qFatal("Could not get tablet event pipe");
-    }
-    connect(tabletPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [tabletData](input_event event){
-        O_EVENT(event);
-        tabletData->processInputEvent(&event);
-    });
-    // Setup key event handling
-    QFdContainer keyHandlerFd(Oxide::Tarnish::getKeyEventPipeFd());
-    auto keyHandler = new QEvdevKeyboardHandler("oxide", keyHandlerFd, false, false, "");
+//    // Setup touch event handling
+//    auto touchData = new OxideTouchScreenData(m_spec);
+//    auto touchPipe = Oxide::Tarnish::getTouchEventPipe();
+//    if(touchPipe == nullptr){
+//        qFatal("Could not get touch event pipe");
+//    }
+//    QObject::connect(touchPipe, &QLocalSocket::readChannelFinished, []{
+//        if(!qApp->closingDown()){
+//            qApp->exit(EXIT_FAILURE);
+//        }
+//    });
+//    QObject::connect(touchPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [touchData](input_event event){
+//        O_EVENT(event);
+//        touchData->processInputEvent(&event);
+//    });
+//    // Setup tablet event handling
+//    auto tabletData = new OxideTabletData(Oxide::Tarnish::getTabletEventPipeFd());
+//    auto tabletPipe = Oxide::Tarnish::getTouchEventPipe();
+//    QObject::connect(tabletPipe, &QLocalSocket::readChannelFinished, []{
+//        if(!qApp->closingDown()){
+//            qApp->exit(EXIT_FAILURE);
+//        }
+//    });
+//    if(tabletPipe == nullptr){
+//        qFatal("Could not get tablet event pipe");
+//    }
+//    connect(tabletPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [tabletData](input_event event){
+//        O_EVENT(event);
+//        tabletData->processInputEvent(&event);
+//    });
     auto eventPipe = Oxide::Tarnish::getEventPipe();
     if(eventPipe == nullptr){
         qFatal("Could not get event pipe");
@@ -131,17 +134,26 @@ void OxideIntegration::initialize(){
             qApp->exit(EXIT_FAILURE);
         }
     });
-    QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, [this, eventPipe, keyHandler]{
+    QTouchDevice touchscreen;
+    touchscreen.setName("oxide");
+    touchscreen.setType(QTouchDevice::TouchScreen);
+    touchscreen.setCapabilities(QTouchDevice::Position | QTouchDevice::Area | QTouchDevice::Pressure);
+    if(deviceSettings.getTouchPressure()){
+        touchscreen.setCapabilities(touchscreen.capabilities() | QTouchDevice::Pressure);
+    }
+    touchscreen.setMaximumTouchPoints(deviceSettings.getTouchSlots());
+    QWindowSystemInterface::registerTouchDevice(&touchscreen);
+    QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, [this, eventPipe, &touchscreen]{
         QMutexLocker locker(&m_mutex);
         Q_UNUSED(locker);
         while(!eventPipe->atEnd()){
             auto event = Oxide::Tarnish::WindowEvent::fromSocket(eventPipe);
             switch(event.type){
                 case Oxide::Tarnish::Geometry:{
-                    m_primaryScreen->setGeometry(event.geometryData.geometry);
+                    m_primaryScreen->setGeometry(event.geometryData.geometry());
                     auto window = m_primaryScreen->topWindow();
                     if(window != nullptr){
-                        window->setGeometry(event.geometryData.geometry);
+                        window->setGeometry(event.geometryData.geometry());
                     }
                     break;
                 }
@@ -164,7 +176,6 @@ void OxideIntegration::initialize(){
                     if(window != nullptr){
                         window->close();
                     }
-                    delete keyHandler;
                     break;
                 }
                 case Oxide::Tarnish::Ping:
@@ -183,13 +194,13 @@ void OxideIntegration::initialize(){
                     QEvent::Type type = QEvent::None;
                     bool repeat = false;
                     switch(data.type){
-                        case Oxide::Tarnish::Release:
+                        case Oxide::Tarnish::ReleaseKey:
                             type = QEvent::KeyRelease;
                             break;
-                        case Oxide::Tarnish::Press:
+                        case Oxide::Tarnish::PressKey:
                             type = QEvent::KeyPress;
                             break;
-                        case Oxide::Tarnish::Repeat:
+                        case Oxide::Tarnish::RepeatKey:
                             type = QEvent::KeyPress;
                             repeat = true;
                             break;
@@ -200,14 +211,109 @@ void OxideIntegration::initialize(){
                         type,
                         data.code,
                         Qt::NoModifier,
-                        "",
+                        QString((unsigned char)event.keyData.unicode),
                         repeat
                     );
+//                    QWindow *window,
+//                    QEvent::Type t,
+//                    int k,
+//                    Qt::KeyboardModifiers mods,
+//                    const QString & text = QString(),
+//                    bool autorep = false,
+//                    ushort count = 1
                     break;
                 }
                 case Oxide::Tarnish::Touch:{
                     auto data = event.touchData;
-                    // TODO - emit touch event
+                    Qt::TouchPointState state = Qt::TouchPointStationary;
+                    switch(data.type){
+                        case Oxide::Tarnish::TouchPress:
+                            state = Qt::TouchPointPressed;
+                            break;
+                        case Oxide::Tarnish::TouchUpdate:
+                            state = Qt::TouchPointMoved;
+                            //TODO - Qt::TouchPointStationary;
+                            break;
+                        case Oxide::Tarnish::TouchRelease:
+                            state = Qt::TouchPointReleased;
+                            break;
+                    }
+                    QList<QWindowSystemInterface::TouchPoint> points;
+                    QWindowSystemInterface::TouchPoint touch;
+                    touch.uniqueId = data.id;
+                    // normalPosition: touch device coordinates, (0 to 1, 0 to 1)
+                    touch.normalPosition = data.position.point();
+                    // area: dimensions of the elliptical contact patch, unrotated, and centered at position in screen coordinates
+                    //       width is the horizontal diameter, height is the vertical diameter
+                    touch.area = data.position.geometry();
+                    // pressure: 0 to 1
+                    touch.pressure = data.pressure;
+                    // rotation: rotation applied to the elliptical contact patch
+                    //           0 means pointing straight up; 0 if unknown (like QTabletEvent::rotation)
+                    touch.rotation = data.orientation;
+                    touch.state = state;
+                    // velocity: in screen coordinate system, pixels / seconds
+                    touch.velocity = QVector2D();
+                    if(data.tool != Oxide::Tarnish::Finger){
+                        touch.flags = touch.flags | QTouchEvent::TouchPoint::Token;
+                    }
+                    // rawPositions: in screen coordinates
+                    touch.rawPositions.append(data.position.point());
+                    points.append(touch);
+                    QWindowSystemInterface::handleTouchEvent(
+                        (QWindow*)nullptr,
+                        &touchscreen,
+                        points,
+                        qGuiApp->keyboardModifiers()
+                    );
+//                    QWindow *window,
+//                    QTouchDevice *device,
+//                    const QList<struct TouchPoint> &points,
+//                    Qt::KeyboardModifiers mods = Qt::NoModifier
+                    break;
+                }
+                case Oxide::Tarnish::Tablet:{
+                    auto data = event.tabletData;
+                    switch(data.type){
+                        case Oxide::Tarnish::PenPress:
+                            m_tabletPenDown = true;
+                            break;
+                        case Oxide::Tarnish::PenUpdate:
+                            m_tabletPenDown = false;
+                            break;
+                        case Oxide::Tarnish::PenRelease:
+                            break;
+                    }
+                    QWindowSystemInterface::handleTabletEvent(
+                        nullptr,
+                        QPointF(),
+                        data.point(),
+                        int(QTabletEvent::Stylus),
+                        data.tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
+                        m_tabletPenDown ? Qt::LeftButton : Qt::NoButton,
+                        data.pressure,
+                        data.tiltX,
+                        data.tiltY,
+                        0,
+                        0,
+                        0,
+                        Oxide::Tarnish::getEventPipeFd(),
+                        qApp->keyboardModifiers()
+                    );
+//                    QWindow *window,
+//                    const QPointF &local,
+//                    const QPointF &global,
+//                    int device,
+//                    int pointerType,
+//                    Qt::MouseButtons buttons,
+//                    qreal pressure,
+//                    int xTilt,
+//                    int yTilt,
+//                    qreal tangentialPressure,
+//                    qreal rotation,
+//                    int z,
+//                    qint64 uid,
+//                    Qt::KeyboardModifiers modifiers = Qt::NoModifier
                     break;
                 }
                 case Oxide::Tarnish::ImageInfo:

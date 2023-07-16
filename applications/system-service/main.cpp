@@ -1,6 +1,8 @@
 #include <QCommandLineParser>
 #include <QGuiApplication>
 #include <QLockFile>
+#include <QWindow>
+#include <QScreen>
 
 #include <cstdlib>
 #include <filesystem>
@@ -51,7 +53,7 @@ int main(int argc, char* argv[]){
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
     qRegisterMetaType<input_event>();
-    deviceSettings.setupQtEnvironment(DeviceSettings::QtEnvironmentType::NoPen);
+    deviceSettings.setupQtEnvironment(DeviceSettings::QtEnvironmentType::Default);
     QGuiApplication app(argc, argv);
     sentry_init("tarnish", argv);
     app.setOrganizationName("Eeems");
@@ -131,5 +133,12 @@ int main(int argc, char* argv[]){
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{ sd_notify(0, "STATUS=stopped"); });
     QObject::connect(signalHandler, &SignalHandler::sigInt, dbusService, &DBusService::shutdown);
     QObject::connect(signalHandler, &SignalHandler::sigTerm, dbusService, &DBusService::shutdown);
+    // TODO - connect to GUI API's Window objects instead?
+    QScreen* screen = app.primaryScreen();
+    QWindow window(screen);
+    window.resize(screen->size());
+    window.setPosition(0, 0);
+    window.setOpacity(0);
+    window.show();
     return app.exec();
 }

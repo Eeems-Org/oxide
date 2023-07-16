@@ -27,7 +27,7 @@ struct Inhibitor {
 
 #define NULL_TOUCH_COORD -1
 
-struct Touch {
+struct TouchData {
     int slot = 0;
     int id = -1;
     int x = NULL_TOUCH_COORD;
@@ -41,9 +41,9 @@ struct Touch {
     int orientation = 0;
     std::string debugString() const;
 };
-QDebug operator<<(QDebug debug, const Touch& touch);
-QDebug operator<<(QDebug debug, Touch* touch);
-Q_DECLARE_METATYPE(Touch)
+QDebug operator<<(QDebug debug, const TouchData& touch);
+QDebug operator<<(QDebug debug, TouchData* touch);
+Q_DECLARE_METATYPE(TouchData)
 
 class SystemAPI : public APIBase {
     Q_OBJECT
@@ -131,7 +131,7 @@ private:
     QStringList sleepInhibitors;
     QStringList powerOffInhibitors;
     QMutex mutex;
-    QMap<int, Touch*> touches;
+    QMap<int, TouchData*> touches;
     int currentSlot = 0;
     bool wifiWasOn = false;
     bool penActive = false;
@@ -147,15 +147,15 @@ private:
     void releaseSleepInhibitors(bool block = false);
     void releasePowerOffInhibitors(bool block = false);
     void rguard(bool install);
-    Touch* getEvent(int slot);
+    TouchData* getEvent(int slot);
     int getCurrentFingers();
 
-    void touchDown(QList<Touch*> touches);
-    void touchUp(QList<Touch*> touches);
-    void touchMove(QList<Touch*> touches);
-    void cancelSwipe(Touch* touch);
-    void writeTouchUp(Touch* touch);
-    void writeTouchMove(Touch* touch);
+    void touchDown(QList<TouchData*> touches);
+    void touchUp(QList<TouchData*> touches);
+    void touchMove(QList<TouchData*> touches);
+    void cancelSwipe(TouchData* touch);
+    void writeTouchUp(TouchData* touch);
+    void writeTouchMove(TouchData* touch);
     void fn();
 };
 #endif // SYSTEMAPI_H

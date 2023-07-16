@@ -20,8 +20,4 @@ include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-applications.files = ../../assets/opt/usr/share/applications/update-desktop-database.oxide
-applications.path = /opt/usr/share/applications/
-INSTALLS += applications
-
 include(../../qmake/liboxide.pri)

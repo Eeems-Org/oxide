@@ -42,6 +42,10 @@ public:
     void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize, unsigned int marker = 0);
     GUIThread* guiThread();
 
+    void writeTouchEvent(QEvent* event);
+    void writeTabletEvent(QEvent* event);
+    void writeKeyEvent(QEvent* event);
+
 public slots:
     void touchEvent(const input_event& event);
     void tabletEvent(const input_event& event);

@@ -103,7 +103,7 @@ private slots:
             emit powerPress();
             return;
         }
-        pressKey(key);
+//        pressKey(key);
     }
     void timeout(){
         if(!m_enabled){

@@ -254,7 +254,7 @@ namespace Oxide::Tarnish {
         return l;
     }
 
-    qsizetype KeyEventArgs::size(){ return sizeof(KeyEventType) + sizeof(unsigned int) + sizeof(unsigned short); }
+    qsizetype KeyEventArgs::size(){ return sizeof(KeyEventType) + (sizeof(unsigned int) * 2); }
 
     QByteArray& operator>>(QByteArray& l, KeyEventArgs& r){
         Q_ASSERT_X(l.size() >= KeyEventArgs::size(), "QByteArray >> KeyEventArgs", "Not enough data available");
@@ -277,42 +277,78 @@ namespace Oxide::Tarnish {
 
     qsizetype TouchEventArgs::size(){
         return (sizeof(unsigned short) * 2)
-            + (sizeof(unsigned int) * 2)
+            + sizeof(unsigned int)
             + (sizeof(int) * 2)
-            + (sizeof(TouchEventPosition) * 2);
+            + sizeof(TouchEventPosition);
     }
 
     QRect TouchEventPosition::geometry() const{ return QRect(x, y, width, height); }
 
+    QPoint TouchEventPosition::point() const{ return QPoint(x, y); }
+
+    QSize TouchEventPosition::size() const{ return QSize(width, height); }
+
     QByteArray& operator>>(QByteArray& l, TouchEventArgs& r){
         Q_ASSERT_X(l.size() >= TouchEventArgs::size(), "QByteArray >> TouchEventArgs", "Not enough data available");
         unsigned short type, toolType;
-        l >> r.toolPosition.height >> r.toolPosition.width >> r.toolPosition.y >> r.toolPosition.x
-            >> r.position.height >> r.position.width >> r.position.y >> r.position.x
+        l >> r.position.height >> r.position.width >> r.position.y >> r.position.x
             >> r.id
             >> r.orientation
-            >> r.distance
             >> r.pressure
             >> toolType
             >> type;
         r.type = (TouchEventType)type;
-        r.toolType = (TouchEventTool)toolType;
+        r.tool = (TouchEventTool)toolType;
         return l;
     }
 
     QByteArray& operator<<(QByteArray& l, TouchEventArgs& r){
         QByteArray a;
         a << (unsigned short)r.type
-            << (unsigned short)r.toolType
+            << (unsigned short)r.tool
             << r.pressure
-            << r.distance
             << r.orientation
             << r.id
-            << r.position.x << r.position.y << r.position.width << r.position.height
-            << r.toolPosition.x << r.toolPosition.y << r.toolPosition.width << r.toolPosition.height;
+            << r.position.x << r.position.y << r.position.width << r.position.height;
         Q_ASSERT_X(
             a.size() == TouchEventArgs::size(), "QByteArray << TouchEventArgs",
             QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(TouchEventArgs::size()).toStdString().c_str()
+        );
+        l += a;
+        return l;
+    }
+
+    qsizetype TabletEventArgs::size(){ return (sizeof(unsigned short) * 2) + (sizeof(int) * 4) + sizeof(unsigned int); }
+
+    QPoint TabletEventArgs::point() const{ return QPoint(x, y); }
+
+    QByteArray& operator>>(QByteArray& l, TabletEventArgs& r){
+        Q_ASSERT_X(l.size() >= TabletEventArgs::size(), "QByteArray >> TabletEventArgs", "Not enough data available");
+        unsigned short type, tool;
+        l >> r.tiltY
+            >> r.tiltX
+            >> r.pressure
+            >> r.y
+            >> r.x
+            >> tool
+            >> type;
+        r.type = (TabletEventType)type;
+        r.tool = (TabletEventTool)tool;
+        return l;
+    }
+
+    QByteArray& operator<<(QByteArray& l, TabletEventArgs& r){
+        QByteArray a;
+        a << (unsigned short)r.type
+            << (unsigned short)r.tool
+            << r.x
+            << r.y
+            << r.pressure
+            << r.tiltX
+            << r.tiltY;
+        Q_ASSERT_X(
+            a.size() == TabletEventArgs::size(), "QByteArray << TabletEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(TabletEventArgs::size()).toStdString().c_str()
         );
         l += a;
         return l;
@@ -333,6 +369,7 @@ namespace Oxide::Tarnish {
             case Ping: debug.nospace() << "Ping"; break;
             case Key: debug.nospace() << "Key"; break;
             case Touch: debug.nospace() << "Touch"; break;
+            case Tablet: debug.nospace() << "Tablet"; break;
             case Invalid:
             default:
                  debug.nospace() << "Invalid";
@@ -340,7 +377,7 @@ namespace Oxide::Tarnish {
         return debug;
     }
 
-    WindowEvent WindowEvent::fromSocket(QLocalSocket* socket){
+    WindowEvent WindowEvent::fromSocket(QIODevice* socket){
         QMutexLocker locker(&m_readMutex);
         Q_UNUSED(locker);
         O_DEBUG(__PRETTY_FUNCTION__ << "Reading event from socket");
@@ -388,6 +425,11 @@ namespace Oxide::Tarnish {
                 data >> event.touchData;
                 break;
             }
+            case Tablet:{
+                auto data = socket->read(event.tabletData.size());
+                data >> event.tabletData;
+                break;
+            }
             case Raise:
             case Lower:
             case Close:
@@ -405,7 +447,7 @@ namespace Oxide::Tarnish {
         return event;
     }
 
-    bool WindowEvent::toSocket(QLocalSocket* socket){
+    bool WindowEvent::toSocket(QIODevice* socket){
         QMutexLocker locker(&m_writeMutex);
         Q_UNUSED(locker);
         O_DEBUG(__PRETTY_FUNCTION__ << "Writing event to socket" << this);
@@ -438,12 +480,16 @@ namespace Oxide::Tarnish {
             case Touch:
                 data << touchData;
                 break;
+            case Tablet:
+                data << tabletData;
+                break;
             case Raise:
             case Lower:
             case Close:
             case FrameBuffer:
             case Ping:
                 break;
+            case Invalid:
             default:
                 O_WARNING(__PRETTY_FUNCTION__ << "Unknown event type:" << type)
                 return false;
@@ -453,7 +499,6 @@ namespace Oxide::Tarnish {
             O_WARNING(__PRETTY_FUNCTION__ << "Expected to write" << data.size() << "bytes but only wrote" << res << "bytes");
             return false;
         }
-        socket->flush();
         return true;
     }
 
@@ -483,6 +528,7 @@ namespace Oxide::Tarnish {
             case Ping:
             case Key:
             case Touch:
+           case Tablet:
                 return true;
             default:
                 return false;
@@ -518,27 +564,42 @@ namespace Oxide::Tarnish {
             case Key:{
                 auto data = event.keyData;
                 switch(data.type){
-                    case Release: debug << "Release"; break;
-                    case Press: debug << "Press"; break;
-                    case Repeat: debug << "Repeat"; break;
+                    case ReleaseKey: debug.nospace() << "Release"; break;
+                    case PressKey: debug.nospace() << "Press"; break;
+                    case RepeatKey: debug.nospace() << "Repeat"; break;
                 }
-                debug.nospace() << data.code << ' ';
+                debug.nospace() << ' ' << data.code << ' ';
                 break;
             }
             case Touch:{
                 auto data = event.touchData;
                 switch(data.type){
-                    case Begin: debug << "Begin"; break;
-                    case Update: debug << "Update"; break;
-                    case End: debug << "End"; break;
+                    case TouchPress: debug.nospace() << "Press"; break;
+                    case TouchUpdate: debug.nospace() << "Update"; break;
+                    case TouchRelease: debug.nospace() << "Release"; break;
                 }
-                switch(data.toolType){
-                    case Finger: debug << "Finger"; break;
+                debug.nospace() << ' ';
+                switch(data.tool){
+                    case Finger: debug.nospace() << "Finger"; break;
+                    case Token: debug.nospace() << "Palm"; break;
+                }
+                debug.nospace() << ' ' << data.pressure << ' ' << data.orientation << ' ' << data.position.geometry();
+                break;
+            }
+            case Tablet:{
+                auto data = event.tabletData;
+                switch(data.type){
+                    case PenPress: debug.nospace() << "Press"; break;
+                    case PenUpdate: debug.nospace() << "Update"; break;
+                    case PenRelease: debug.nospace() << "Release"; break;
+                }
+                debug.nospace() << ' ';
+                switch(data.tool){
                     case Pen: debug << "Pen"; break;
-                    case Palm: debug << "Palm"; break;
+                    case Eraser: debug << "Eraser"; break;
                 }
-                debug << data.pressure << data.distance << data.orientation << data.position.geometry();
-                debug.nospace() << data.toolPosition.geometry();
+                debug.nospace() << ' ' << data.pressure << ' ' << data.point();
+                debug.nospace() << " (" << data.tiltX << ", " << data.tiltY << ')';
                 break;
             }
             case Raise:
