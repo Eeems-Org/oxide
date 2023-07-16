@@ -53,6 +53,8 @@ public:
     void setGeometry(const QRect& geometry);
     Q_INVOKABLE bool isVisible();
     bool _isVisible();
+    bool isAppWindow();
+    bool isAppPaused();
     Q_INVOKABLE void setVisible(bool visible);
     QImage toImage();
     qulonglong sizeInBytes();

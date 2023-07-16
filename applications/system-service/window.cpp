@@ -2,6 +2,7 @@
 
 #include "window.h"
 #include "guiapi.h"
+#include "appsapi.h"
 
 
 using namespace  Oxide::Tarnish;
@@ -187,6 +188,26 @@ bool Window::isVisible(){
 bool Window::_isVisible(){
     LOCK_MUTEX;
     return m_file.isOpen() && m_state == WindowState::Raised;
+}
+
+bool Window::isAppWindow(){
+    for(auto name : appsAPI->runningApplications().keys()){
+        auto app = appsAPI->getApplication(name);
+        if(app->processId() == this->pgid()){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Window::isAppPaused(){
+    for(auto name : appsAPI->pausedApplications().keys()){
+        auto app = appsAPI->getApplication(name);
+        if(app->processId() == this->pgid()){
+            return true;
+        }
+    }
+    return false;
 }
 
 void Window::setVisible(bool visible){

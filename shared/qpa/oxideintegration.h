@@ -48,7 +48,8 @@ private:
     bool m_tabletPenDown;
     QTouchDevice m_touchscreen;
     QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
-    QWindowSystemInterface::TouchPoint getTouchPoint(Oxide::Tarnish::TouchEventArgs* data);
+    QList<QWindowSystemInterface::TouchPoint> m_lastTouchPoints;
+    QWindowSystemInterface::TouchPoint getTouchPoint(const Oxide::Tarnish::TouchEventPoint& data);
     void handleTouch(Oxide::Tarnish::TouchEventArgs* data);
 };
 

@@ -22,6 +22,7 @@ public:
     void scheduleUpdate();
     void setDirty(const QRect& rect);
     QWindow* topWindow() const;
+    OxideWindow* topPlatformWindow() const;
     void addWindow(OxideWindow* window);
     void removeWindow(OxideWindow* window);
 
@@ -40,4 +41,5 @@ private:
     QRegion mRepaintRegion;
     void redraw();
     unsigned int m_marker;
+    QList<OxideWindow*> m_windows;
 };

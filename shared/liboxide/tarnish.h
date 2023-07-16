@@ -85,7 +85,7 @@ namespace Oxide::Tarnish {
     };
     typedef RepaintEventArgs RepaintEventArgs;
     QByteArray& operator>>(QByteArray& l, RepaintEventArgs& r);
-    QByteArray& operator<<(QByteArray& l, RepaintEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, const RepaintEventArgs& r);
 
     // WindowEventType::Geometry
     struct GeometryEventArgs{
@@ -99,7 +99,7 @@ namespace Oxide::Tarnish {
     };
     typedef GeometryEventArgs GeometryEventArgs;
     QByteArray& operator>>(QByteArray& l, GeometryEventArgs& r);
-    QByteArray& operator<<(QByteArray& l, GeometryEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, const GeometryEventArgs& r);
 
     // WindowEventType::ImageInfo
     struct ImageInfoEventArgs{
@@ -110,7 +110,7 @@ namespace Oxide::Tarnish {
     };
     typedef ImageInfoEventArgs ImageInfoEventArgs;
     QByteArray& operator>>(QByteArray& l, ImageInfoEventArgs& r);
-    QByteArray& operator<<(QByteArray& l, ImageInfoEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, const ImageInfoEventArgs& r);
 
     // WindowEventType::WaitForPaint
     struct WaitForPaintEventArgs{
@@ -119,7 +119,7 @@ namespace Oxide::Tarnish {
     };
     typedef WaitForPaintEventArgs WaitForPaintEventArgs;
     QByteArray& operator>>(QByteArray& l, WaitForPaintEventArgs& r);
-    QByteArray& operator<<(QByteArray& l, WaitForPaintEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, const WaitForPaintEventArgs& r);
 
     //WindowEventType::Key
     enum KeyEventType: unsigned short{
@@ -135,7 +135,7 @@ namespace Oxide::Tarnish {
     };
     typedef KeyEventArgs KeyEventArgs;
     QByteArray& operator>>(QByteArray& l, KeyEventArgs& r);
-    QByteArray& operator<<(QByteArray& l, KeyEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, const KeyEventArgs& r);
 
     // WindowEventType::Touch
     enum TouchEventType: unsigned short{
@@ -144,34 +144,42 @@ namespace Oxide::Tarnish {
         TouchRelease,
         TouchCancel,
     };
+    enum TouchEventPointState: unsigned short{
+        PointPress = 0,
+        PointMove,
+        PointRelease,
+        PointStationary,
+    };
     enum TouchEventTool: unsigned short{
         Finger = 0,
         Token,
     };
     struct TouchEventPoint{
         int id;
-        int x;
-        int y;
-        unsigned int width;
-        unsigned int height;
+        TouchEventPointState state;
+        double x;
+        double y;
+        double width;
+        double height;
         TouchEventTool tool;
-        unsigned int pressure;
-        int orientation;
-        QRect geometry() const;
-        QPoint point() const;
-        QSize size() const;
+        double pressure;
+        double rotation;
+        QRectF geometry() const;
+        QPointF point() const;
+        QSizeF size() const;
     };
+    QByteArray& operator>>(QByteArray& l, TouchEventPoint& r);
+    QByteArray& operator<<(QByteArray& l, const TouchEventPoint& r);
     struct TouchEventArgs{
         static qsizetype size();
         static qsizetype itemSize();
         TouchEventType type;
-        unsigned short count;
-        TouchEventPoint points[];
-        qsizetype realSize();
+        std::vector<TouchEventPoint> points;
+        qsizetype realSize() const;
     };
     typedef TouchEventArgs TouchEventArgs;
     QByteArray& operator>>(QByteArray& l, TouchEventArgs& r);
-    QByteArray& operator<<(QByteArray& l, TouchEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, const TouchEventArgs& r);
 
     // WindowEventType::Tablet
     enum TabletEventType: unsigned short{
@@ -196,7 +204,7 @@ namespace Oxide::Tarnish {
     };
     typedef TabletEventArgs TabletEventArgs;
     QByteArray& operator>>(QByteArray& l, TabletEventArgs& r);
-    QByteArray& operator<<(QByteArray& l, TabletEventArgs& r);
+    QByteArray& operator<<(QByteArray& l, const TabletEventArgs& r);
 
     /*!
      * \brief The WindowEventType enum

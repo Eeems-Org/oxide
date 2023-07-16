@@ -38,15 +38,18 @@ QWindow* OxideScreen::topWindow() const{
     }
     return nullptr;
 }
+
+OxideWindow* OxideScreen::topPlatformWindow() const{ return m_windows.isEmpty() ? nullptr : m_windows.first(); }
+
 void OxideScreen::addWindow(OxideWindow* window){
+    m_windows.append(window);
     setDirty(window->geometry());
-    QWindow* w = topWindow();
-    QWindowSystemInterface::handleWindowActivated(w);
+    QWindowSystemInterface::handleWindowActivated(window->window());
 }
 void OxideScreen::removeWindow(OxideWindow* window){
+    m_windows.removeAll(window);
     setDirty(window->geometry());
-    QWindow* w = topWindow();
-    QWindowSystemInterface::handleWindowActivated(w);
+    QWindowSystemInterface::handleWindowActivated(window->window());
 }
 
 bool OxideScreen::event(QEvent* event){

@@ -23,6 +23,8 @@ QByteArray& operator>>(QByteArray& l, quint32& r);
 
 QByteArray& operator>>(QByteArray& l, quint64& r);
 
+QByteArray& operator>>(QByteArray& l, double& r);
+
 QByteArray& operator<<(QByteArray& l, qint8 r);
 
 QByteArray& operator<<(QByteArray& l, qint16 r);
@@ -38,3 +40,5 @@ QByteArray& operator<<(QByteArray& l, quint16 r);
 QByteArray& operator<<(QByteArray& l, quint32 r);
 
 QByteArray& operator<<(QByteArray& l, quint64 r);
+
+QByteArray& operator<<(QByteArray& l, double r);

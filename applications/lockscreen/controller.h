@@ -3,6 +3,8 @@
 
 #include <QObject>
 #include <QQuickItem>
+#include <QGuiApplication>
+#include <QWindow>
 #include <liboxide.h>
 #include <liboxide/tarnish.h>
 
@@ -172,6 +174,11 @@ public:
     }
     bool hasPin(){ return sharedSettings.has_pin() && storedPin().length(); }
     Q_INVOKABLE void previousApplication(){
+        O_DEBUG("Lowering window");
+        for(auto window : qGuiApp->allWindows()){
+            O_DEBUG("Found" << window << "to lower");
+            window->lower();
+        }
         qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
         if(!appsApi->previousApplication()){
             launchStartupApp();

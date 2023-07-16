@@ -265,64 +265,58 @@ GUIThread* GuiAPI::guiThread(){ return &m_thread; }
 
 void GuiAPI::writeTouchEvent(QEvent* event){
     W_DEBUG(event);
-    TouchEventType type;
+    TouchEventArgs args;
     switch(event->type()){
         case QEvent::TouchBegin:
-            type = TouchEventType::TouchPress;
+            args.type = TouchEventType::TouchPress;
             break;
         case QEvent::TouchEnd:
-            type = TouchEventType::TouchRelease;
+            args.type = TouchEventType::TouchRelease;
             break;
         case QEvent::TouchUpdate:
-            type = TouchEventType::TouchUpdate;
+            args.type = TouchEventType::TouchUpdate;
             break;
         case QEvent::TouchCancel:
-            type = TouchEventType::TouchCancel;
+            args.type = TouchEventType::TouchCancel;
             break;
         default:
             return;
     }
     auto touchEvent = static_cast<QTouchEvent*>(event);
     for(auto point : touchEvent->touchPoints()){
+        TouchEventPointState state = TouchEventPointState::PointStationary;
         switch(point.state()){
-            case Qt::TouchPointMoved:
-                if(type != TouchEventType::TouchUpdate){
-                    continue;
-                }
-                break;
             case Qt::TouchPointPressed:
-                if(type != TouchEventType::TouchPress){
-                    continue;
-                }
+                state = TouchEventPointState::PointPress;
+                break;
+            case Qt::TouchPointMoved:
+                state = TouchEventPointState::PointMove;
+                break;
+            case Qt::TouchPointReleased:
+                state = TouchEventPointState::PointRelease;
                 break;
             case Qt::TouchPointStationary:
-                continue;
-            case Qt::TouchPointReleased:
-                if(type != TouchEventType::TouchRelease){
-                    continue;
-                }
                 break;
         }
-        TouchEventArgs args{
-            .type = type,
-            .tool = TouchEventTool::Finger,
-            .pressure = (unsigned int)point.pressure(),
-            .orientation = (int)point.rotation(),
+        args.points.push_back(TouchEventPoint{
             .id = (int)point.uniqueId().numericId(),
-            .position = TouchEventPoint{
-                .x = (int)point.screenPos().x(),
-                .y = (int)point.screenPos().y(),
-                .width = (unsigned int)point.ellipseDiameters().width(),
-                .height = (unsigned int)point.ellipseDiameters().height(),
-            },
-        };
-        for(auto window : m_windows){
-            if(!window->_isVisible()){
-                continue;
-            }
-            // TODO - adjust position and filter if it doesn't apply
-            window->writeEvent(args);
+            .state = state,
+            .x = point.normalizedPos().x(),
+            .y = point.normalizedPos().y(),
+            .width = point.ellipseDiameters().width(),
+            .height = point.ellipseDiameters().height(),
+            .tool = TouchEventTool::Finger,
+            .pressure = point.pressure(),
+            .rotation = point.rotation(),
+        });
+        W_DEBUG(point.normalizedPos() << point.ellipseDiameters());
+    }
+    for(auto window : m_windows){
+        if(!window->_isVisible() || window->isAppPaused()){
+            continue;
         }
+        // TODO - adjust position and filter if it doesn't apply
+        window->writeEvent(args);
     }
 }
 
@@ -370,10 +364,10 @@ void GuiAPI::writeTabletEvent(QEvent* event){
         .tiltY = tabletEvent->yTilt(),
     };
     for(auto window : m_windows){
-        if(!window->_isVisible()){
+        if(!window->_isVisible() || window->isAppPaused()){
             continue;
         }
-        // TODO - massage location and filter if it doesn't apply
+        // TODO - adjust position and filter if it doesn't apply
         window->writeEvent(args);
     }
 }
@@ -394,17 +388,16 @@ void GuiAPI::writeKeyEvent(QEvent* event){
         .unicode = (unsigned int)(text.length() ? text.at(0).unicode() : 0),
     };
     for(auto window : m_windows){
-        if(!window->_isVisible()){
-            continue;
+        if(window->_isVisible() && !window->isAppPaused()){
+            window->writeEvent(args);
         }
-        window->writeEvent(args);
     }
 }
 
 void GuiAPI::touchEvent(const input_event& event){
     O_EVENT(event);
     for(auto window : m_windows){
-        if(window->_isVisible()){
+        if(window->_isVisible() && !window->isAppPaused()){
             window->writeTouchEvent(event);
         }
     }
@@ -413,7 +406,7 @@ void GuiAPI::touchEvent(const input_event& event){
 void GuiAPI::tabletEvent(const input_event& event){
     O_EVENT(event);
     for(auto window : m_windows){
-        if(window->_isVisible()){
+        if(window->_isVisible() && !window->isAppPaused()){
             window->writeTabletEvent(event);
         }
     }
@@ -422,7 +415,7 @@ void GuiAPI::tabletEvent(const input_event& event){
 void GuiAPI::keyEvent(const input_event& event){
     O_EVENT(event);
     for(auto window : m_windows){
-        if(window->_isVisible()){
+        if(window->_isVisible() && !window->isAppPaused()){
             window->writeKeyEvent(event);
         }
     }

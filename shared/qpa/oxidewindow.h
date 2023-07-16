@@ -17,6 +17,10 @@ public:
     OxideScreen* platformScreen() const;
     void setVisible(bool visible) override;
     virtual void repaint(const QRegion& region);
+    virtual bool close() override;
+    virtual void raise() override;
+    virtual void lower() override;
+    virtual void setGeometry(const QRect &rect) override;
 
 protected:
     OxideBackingStore* mBackingStore;
