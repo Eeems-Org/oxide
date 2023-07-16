@@ -240,14 +240,11 @@ void OxideIntegration::initialize(){
             }
         }
     }, Qt::QueuedConnection);
-    for(auto i = 0; i != signalHandler->metaObject()->propertyCount(); ++i){
-        auto prop = signalHandler->metaObject()->property(i);
-        auto sig = prop.notifySignal();
-        if(!sig.isValid()){
-            continue;
-        }
-    }
     connectSignal(signalHandler, "sigCont()", m_primaryScreen, "raiseTopWindow()");
+    connectSignal(signalHandler, "sigUsr1()", m_primaryScreen, "raiseTopWindow()");
+    connectSignal(signalHandler, "sigUsr2()", m_primaryScreen, "lowerTopWindow()");
+    connectSignal(signalHandler, "sigTerm()", m_primaryScreen, "closeTopWindow()");
+    connectSignal(signalHandler, "sigInt()", m_primaryScreen, "closeTopWindow()");
 }
 
 

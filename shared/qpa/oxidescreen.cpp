@@ -56,6 +56,14 @@ void OxideScreen::raiseTopWindow(){
     Oxide::Tarnish::topWindow()->raise(); // TODO - switch to using event pipe
 }
 
+void OxideScreen::lowerTopWindow(){
+    Oxide::Tarnish::topWindow()->lower(); // TODO - switch to using event pipe
+}
+
+void OxideScreen::closeTopWindow(){
+    Oxide::Tarnish::topWindow()->close(); // TODO - switch to using event pipe
+}
+
 bool OxideScreen::event(QEvent* event){
     if(event->type() == QEvent::UpdateRequest){
         redraw();

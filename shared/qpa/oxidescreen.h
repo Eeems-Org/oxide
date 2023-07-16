@@ -28,6 +28,8 @@ public:
 
 public slots:
     void raiseTopWindow();
+    void lowerTopWindow();
+    void closeTopWindow();
 
 protected:
     bool event(QEvent *event) override;

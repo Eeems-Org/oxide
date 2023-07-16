@@ -35,8 +35,11 @@ public:
         blankImage = new QImage(qApp->primaryScreen()->geometry().size(), QImage::Format_Mono);
         this->screenProvider = screenProvider;
         SignalHandler::setup_unix_signal_handlers();
+        connect(signalHandler, &SignalHandler::sigCont, this, &Controller::sigUsr1);
         connect(signalHandler, &SignalHandler::sigUsr1, this, &Controller::sigUsr1);
         connect(signalHandler, &SignalHandler::sigUsr2, this, &Controller::sigUsr2);
+        connect(signalHandler, &SignalHandler::sigTerm, qApp, &QCoreApplication::quit);
+        connect(signalHandler, &SignalHandler::sigInt, qApp, &QCoreApplication::quit);
 
         qDebug() << "Requesting screen API...";
         screenApi = Oxide::Tarnish::screenApi();
