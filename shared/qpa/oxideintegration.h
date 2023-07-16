@@ -4,8 +4,10 @@
 
 #include <qpa/qplatformintegration.h>
 #include <qpa/qplatformnativeinterface.h>
+#include <qpa/qwindowsysteminterface.h>
 #include <QCoreApplication>
 #include <QDebug>
+#include <liboxide/tarnish.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -44,6 +46,10 @@ private:
     QStringList m_spec;
     QMutex m_mutex;
     bool m_tabletPenDown;
+    QTouchDevice m_touchscreen;
+    QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
+    QWindowSystemInterface::TouchPoint getTouchPoint(Oxide::Tarnish::TouchEventArgs* data);
+    void handleTouch(Oxide::Tarnish::TouchEventArgs* data);
 };
 
 QT_END_NAMESPACE

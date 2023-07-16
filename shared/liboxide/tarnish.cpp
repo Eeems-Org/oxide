@@ -164,7 +164,10 @@ namespace Oxide::Tarnish {
     QRect RepaintEventArgs::geometry() const{ return QRect(x, y, width, height); }
 
     QByteArray& operator>>(QByteArray& l, RepaintEventArgs& r){
-        Q_ASSERT_X(l.size() >= RepaintEventArgs::size(), "QByteArray >> RepaintEventArgs", "Not enough data available");
+        Q_ASSERT_X(
+            l.size() >= RepaintEventArgs::size(), "QByteArray << RepaintEventArgs",
+            QString("Not enough data available: %1 != %2").arg(l.size()).arg(RepaintEventArgs::size()).toStdString().c_str()
+        );
         quint64 waveform;
         l >> r.marker >> waveform >> r.height >> r.width >> r.y >> r.x;
         r.waveform = (EPFrameBuffer::WaveformMode)waveform;
@@ -192,7 +195,10 @@ namespace Oxide::Tarnish {
     QRect GeometryEventArgs::geometry() const{ return QRect(x, y, width, height); }
 
     QByteArray& operator>>(QByteArray& l, GeometryEventArgs& r){
-        Q_ASSERT_X(l.size() >= GeometryEventArgs::size(), "QByteArray >> GeometryEventArgs", "Not enough data available");
+        Q_ASSERT_X(
+            l.size() >= GeometryEventArgs::size(), "QByteArray << GeometryEventArgs",
+            QString("Not enough data available: %1 != %2").arg(l.size()).arg(GeometryEventArgs::size()).toStdString().c_str()
+        );
         l >> r.z >> r.height >> r.width >> r.y >> r.x;
         return l;
     }
@@ -215,7 +221,10 @@ namespace Oxide::Tarnish {
     qsizetype ImageInfoEventArgs::size(){ return (sizeof(qulonglong) * 2) + sizeof(int); }
 
     QByteArray& operator>>(QByteArray& l, ImageInfoEventArgs& r){
-        Q_ASSERT_X(l.size() >= ImageInfoEventArgs::size(), "QByteArray >> ImageInfoEventArgs", "Not enough data available");
+        Q_ASSERT_X(
+            l.size() >= ImageInfoEventArgs::size(), "QByteArray << ImageInfoEventArgs",
+            QString("Not enough data available: %1 != %2").arg(l.size()).arg(ImageInfoEventArgs::size()).toStdString().c_str()
+        );
         int format;
         l >> format >> r.bytesPerLine >> r.sizeInBytes;
         r.format = (QImage::Format)format;
@@ -238,7 +247,10 @@ namespace Oxide::Tarnish {
     qsizetype WaitForPaintEventArgs::size(){ return sizeof(unsigned int); }
 
     QByteArray& operator>>(QByteArray& l, WaitForPaintEventArgs& r){
-        Q_ASSERT_X(l.size() >= WaitForPaintEventArgs::size(), "QByteArray >> WaitForPaintEventArgs", "Not enough data available");
+        Q_ASSERT_X(
+            l.size() >= WaitForPaintEventArgs::size(), "QByteArray << WaitForPaintEventArgs",
+            QString("Not enough data available: %1 != %2").arg(l.size()).arg(WaitForPaintEventArgs::size()).toStdString().c_str()
+        );
         l >> r.marker;
         return l;
     }
@@ -257,7 +269,10 @@ namespace Oxide::Tarnish {
     qsizetype KeyEventArgs::size(){ return sizeof(KeyEventType) + (sizeof(unsigned int) * 2); }
 
     QByteArray& operator>>(QByteArray& l, KeyEventArgs& r){
-        Q_ASSERT_X(l.size() >= KeyEventArgs::size(), "QByteArray >> KeyEventArgs", "Not enough data available");
+        Q_ASSERT_X(
+            l.size() >= KeyEventArgs::size(), "QByteArray << KeyEventArgs",
+            QString("Not enough data available: %1 != %2").arg(l.size()).arg(KeyEventArgs::size()).toStdString().c_str()
+        );
         unsigned short type;
         l >> type >> r.code >> r.unicode;
         r.type = (KeyEventType)type;
@@ -275,44 +290,89 @@ namespace Oxide::Tarnish {
         return l;
     }
 
-    qsizetype TouchEventArgs::size(){
-        return (sizeof(unsigned short) * 2)
-            + sizeof(unsigned int)
-            + (sizeof(int) * 2)
-            + sizeof(TouchEventPosition);
+    qsizetype TouchEventArgs::size(){ return sizeof(TouchEventType) + sizeof(unsigned short); }
+
+    qsizetype TouchEventArgs::itemSize(){ return (sizeof(int) * 4) + (sizeof(unsigned int) * 3) + sizeof(TouchEventTool); }
+
+    qsizetype TouchEventArgs::realSize(){
+        return size() + (count * itemSize());
     }
 
-    QRect TouchEventPosition::geometry() const{ return QRect(x, y, width, height); }
+    QRect TouchEventPoint::geometry() const{ return QRect(x, y, width, height); }
 
-    QPoint TouchEventPosition::point() const{ return QPoint(x, y); }
+    QPoint TouchEventPoint::point() const{ return QPoint(x, y); }
 
-    QSize TouchEventPosition::size() const{ return QSize(width, height); }
+    QSize TouchEventPoint::size() const{ return QSize(width, height); }
 
     QByteArray& operator>>(QByteArray& l, TouchEventArgs& r){
-        Q_ASSERT_X(l.size() >= TouchEventArgs::size(), "QByteArray >> TouchEventArgs", "Not enough data available");
-        unsigned short type, toolType;
-        l >> r.position.height >> r.position.width >> r.position.y >> r.position.x
-            >> r.id
-            >> r.orientation
-            >> r.pressure
-            >> toolType
-            >> type;
+        Q_ASSERT_X(
+            l.size() >= TouchEventArgs::size(), "QByteArray << TouchEventArgs",
+            QString("Not enough data available: %1 != %2").arg(l.size()).arg(TouchEventArgs::size()).toStdString().c_str()
+        );
+        unsigned short type;
+        auto a = l.left(TouchEventArgs::size());
+        a >> r.count >> type;
         r.type = (TouchEventType)type;
-        r.tool = (TouchEventTool)toolType;
+        l = l.mid(TouchEventArgs::size());
+        Q_ASSERT_X(
+            l.size() >= TouchEventArgs::itemSize() * r.count, "QByteArray << TouchEventArgs",
+            QString("Not enough data available for %1 items: %2 != %3")
+                .arg(r.count)
+                .arg(l.size())
+                .arg(TouchEventArgs::itemSize() * r.count)
+                .toStdString()
+                .c_str()
+        );
+        for(int i = 0; i < r.count; i++){
+            unsigned short tool;
+            TouchEventPoint p;
+            l >> p.orientation
+                >> p.pressure
+                >> tool
+                >> p.height
+                >> p.width
+                >> p.y
+                >> p.x
+                >> p.id;
+            p.tool = (TouchEventTool)tool;
+            r.points[i] = p;
+        }
         return l;
     }
 
     QByteArray& operator<<(QByteArray& l, TouchEventArgs& r){
         QByteArray a;
         a << (unsigned short)r.type
-            << (unsigned short)r.tool
-            << r.pressure
-            << r.orientation
-            << r.id
-            << r.position.x << r.position.y << r.position.width << r.position.height;
+            << r.count;
         Q_ASSERT_X(
             a.size() == TouchEventArgs::size(), "QByteArray << TouchEventArgs",
             QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(TouchEventArgs::size()).toStdString().c_str()
+        );
+        for(int i = 0; i < r.count; i++){
+            QByteArray b;
+            auto p = r.points[i];
+            b << p.id
+                << p.x
+                << p.y
+                << p.width
+                << p.height
+                << (unsigned short)p.tool
+                << p.pressure
+                << p.orientation;
+            Q_ASSERT_X(
+                b.size() == r.itemSize(), "QByteArray << TouchEventArgs",
+                QString("Resulting size is incorrect for item %1: %2 != %3")
+                    .arg(i)
+                    .arg(b.size())
+                    .arg(r.itemSize())
+                    .toStdString()
+                    .c_str()
+            );
+            a.append(b);
+        }
+        Q_ASSERT_X(
+            a.size() == r.realSize(), "QByteArray << TouchEventArgs",
+            QString("Resulting size is incorrect: %1 != %2").arg(a.size()).arg(r.realSize()).toStdString().c_str()
         );
         l += a;
         return l;
@@ -323,7 +383,10 @@ namespace Oxide::Tarnish {
     QPoint TabletEventArgs::point() const{ return QPoint(x, y); }
 
     QByteArray& operator>>(QByteArray& l, TabletEventArgs& r){
-        Q_ASSERT_X(l.size() >= TabletEventArgs::size(), "QByteArray >> TabletEventArgs", "Not enough data available");
+        Q_ASSERT_X(
+            l.size() >= TabletEventArgs::size(), "QByteArray << TabletEventArgs",
+            QString("Not enough data available: %1 != %2").arg(l.size()).arg(TabletEventArgs::size()).toStdString().c_str()
+        );
         unsigned short type, tool;
         l >> r.tiltY
             >> r.tiltX
@@ -577,13 +640,9 @@ namespace Oxide::Tarnish {
                     case TouchPress: debug.nospace() << "Press"; break;
                     case TouchUpdate: debug.nospace() << "Update"; break;
                     case TouchRelease: debug.nospace() << "Release"; break;
+                    case TouchCancel: debug.nospace() << "Cancel"; break;
                 }
-                debug.nospace() << ' ';
-                switch(data.tool){
-                    case Finger: debug.nospace() << "Finger"; break;
-                    case Token: debug.nospace() << "Palm"; break;
-                }
-                debug.nospace() << ' ' << data.pressure << ' ' << data.orientation << ' ' << data.position.geometry();
+                debug.nospace() << ' ' << data.count << " points";
                 break;
             }
             case Tablet:{

@@ -277,7 +277,8 @@ void GuiAPI::writeTouchEvent(QEvent* event){
             type = TouchEventType::TouchUpdate;
             break;
         case QEvent::TouchCancel:
-            // TODO - implement this in the protocol
+            type = TouchEventType::TouchCancel;
+            break;
         default:
             return;
     }
@@ -308,7 +309,7 @@ void GuiAPI::writeTouchEvent(QEvent* event){
             .pressure = (unsigned int)point.pressure(),
             .orientation = (int)point.rotation(),
             .id = (int)point.uniqueId().numericId(),
-            .position = TouchEventPosition{
+            .position = TouchEventPoint{
                 .x = (int)point.screenPos().x(),
                 .y = (int)point.screenPos().y(),
                 .width = (unsigned int)point.ellipseDiameters().width(),
@@ -345,7 +346,7 @@ void GuiAPI::writeTabletEvent(QEvent* event){
         default:
             return;
     }
-    TabletEventTool tool;
+    TabletEventTool tool = TabletEventTool::Pen;
     auto tabletEvent = static_cast<QTabletEvent*>(event);
     switch(tabletEvent->pointerType()){
         case QTabletEvent::Pen:

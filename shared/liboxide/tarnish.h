@@ -142,28 +142,32 @@ namespace Oxide::Tarnish {
         TouchPress = 0,
         TouchUpdate,
         TouchRelease,
+        TouchCancel,
     };
     enum TouchEventTool: unsigned short{
         Finger = 0,
         Token,
     };
-    struct TouchEventPosition{
+    struct TouchEventPoint{
+        int id;
         int x;
         int y;
         unsigned int width;
         unsigned int height;
+        TouchEventTool tool;
+        unsigned int pressure;
+        int orientation;
         QRect geometry() const;
         QPoint point() const;
         QSize size() const;
     };
     struct TouchEventArgs{
         static qsizetype size();
+        static qsizetype itemSize();
         TouchEventType type;
-        TouchEventTool tool;
-        unsigned int pressure;
-        int orientation;
-        int id;
-        TouchEventPosition position;
+        unsigned short count;
+        TouchEventPoint points[];
+        qsizetype realSize();
     };
     typedef TouchEventArgs TouchEventArgs;
     QByteArray& operator>>(QByteArray& l, TouchEventArgs& r);
@@ -231,8 +235,8 @@ namespace Oxide::Tarnish {
         ImageInfoEventArgs imageInfoData;
         WaitForPaintEventArgs waitForPaintData;
         KeyEventArgs keyData;
-        TouchEventArgs touchData;
         TabletEventArgs tabletData;
+        TouchEventArgs touchData;
 
     private:
         static QMutex m_writeMutex;

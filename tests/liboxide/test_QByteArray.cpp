@@ -222,23 +222,45 @@ void test_QByteArray::test_KeyEventArgs(){
 void test_QByteArray::test_TouchEventArgs(){
     TouchEventArgs a;
     a.type = TouchEventType::TouchRelease;
-    a.tool= TouchEventTool::Token;
-    a.pressure = 100;
-    a.orientation = -100;
-    a.position.x = -100;
-    a.position.y = -100;
-    a.position.width = 100;
-    a.position.height = 100;
+    a.count = 2;
+    TouchEventPoint p;
+    p.id = -100;
+    p.x = -100;
+    p.y = -100;
+    p.width = 100;
+    p.height = 100;
+    p.tool = TouchEventTool::Token;
+    p.pressure = 100;
+    p.orientation = -100;
+    a.points[0] = p;
+    p.id = -100;
+    p.x = -100;
+    p.y = -100;
+    p.width = 100;
+    p.height = 100;
+    p.tool = TouchEventTool::Token;
+    p.pressure = 100;
+    p.orientation = -100;
+    a.points[1] = p;
     QByteArray d;
     d << a;
-    QCOMPARE(d.size(), TouchEventArgs::size());
+    QCOMPARE(d.size(), a.realSize());
     TouchEventArgs b;
     d >> b;
     QCOMPARE((unsigned short)a.type, (unsigned short)b.type);
-    QCOMPARE((unsigned short)a.tool, (unsigned short)b.tool);
-    QCOMPARE(a.pressure, b.pressure);
-    QCOMPARE(a.orientation, b.orientation);
-    QCOMPARE(a.position.geometry(), b.position.geometry());
+    QCOMPARE(a.count, b.count);
+    for(int i = 0; i < a.count; i++){
+        auto a1 = a.points[i];
+        auto b1 = b.points[i];
+        QCOMPARE(a1.id, b1.id);
+        QCOMPARE(a1.x, b1.x);
+        QCOMPARE(a1.y, b1.y);
+        QCOMPARE(a1.width, b1.width);
+        QCOMPARE(a1.height, b1.height);
+        QCOMPARE((unsigned short)a1.tool, (unsigned short)b1.tool);
+        QCOMPARE(a1.pressure, b1.pressure);
+        QCOMPARE(a1.orientation, b1.orientation);
+    }
 }
 
 void test_QByteArray::test_TabletEventArgs(){
@@ -424,26 +446,46 @@ void test_QByteArray::test_WindowEvent_Touch(){
     WindowEvent a;
     a.type = WindowEventType::Touch;
     a.touchData.type = TouchEventType::TouchRelease;
-    a.touchData.tool = TouchEventTool::Token;
-    a.touchData.pressure = 100;
-    a.touchData.orientation = -100;
-    a.touchData.id = 100;
-    a.touchData.position.x = -100;
-    a.touchData.position.y = -100;
-    a.touchData.position.width = 100;
-    a.touchData.position.height = 100;
+    a.touchData.count = 2;
+    TouchEventPoint p;
+    p.id = -100;
+    p.x = -100;
+    p.y = -100;
+    p.width = 100;
+    p.height = 100;
+    p.tool = TouchEventTool::Token;
+    p.pressure = 100;
+    p.orientation = -100;
+    a.touchData.points[0] = p;
+    p.id = -100;
+    p.x = -100;
+    p.y = -100;
+    p.width = 100;
+    p.height = 100;
+    p.tool = TouchEventTool::Token;
+    p.pressure = 100;
+    p.orientation = -100;
+    a.touchData.points[1] = p;
     a.toSocket(&socket);
-    QCOMPARE(buffer.size(), sizeof(unsigned short) + TouchEventArgs::size());
+    QCOMPARE(buffer.size(), sizeof(unsigned short) + a.touchData.realSize());
     socket.seek(0);
     auto b = WindowEvent::fromSocket(&socket);
     QVERIFY(socket.atEnd());
     QCOMPARE((unsigned short)a.type, (unsigned short)b.type);
     QCOMPARE((unsigned short)a.touchData.type, (unsigned short)b.touchData.type);
-    QCOMPARE((unsigned short)a.touchData.tool, (unsigned short)b.touchData.tool);
-    QCOMPARE(a.touchData.pressure, b.touchData.pressure);
-    QCOMPARE(a.touchData.orientation, b.touchData.orientation);
-    QCOMPARE(a.touchData.id, b.touchData.id);
-    QCOMPARE(a.touchData.position.geometry(), b.touchData.position.geometry());
+    QCOMPARE(a.touchData.count, b.touchData.count);
+    for(int i = 0; i < a.touchData.count; i++){
+        auto a1 = a.touchData.points[i];
+        auto b1 = b.touchData.points[i];
+        QCOMPARE(a1.id, b1.id);
+        QCOMPARE(a1.x, b1.x);
+        QCOMPARE(a1.y, b1.y);
+        QCOMPARE(a1.width, b1.width);
+        QCOMPARE(a1.height, b1.height);
+        QCOMPARE((unsigned short)a1.tool, (unsigned short)b1.tool);
+        QCOMPARE(a1.pressure, b1.pressure);
+        QCOMPARE(a1.orientation, b1.orientation);
+    }
 }
 
 void test_QByteArray::test_WindowEvent_Tablet(){

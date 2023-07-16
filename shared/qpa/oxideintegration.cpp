@@ -17,8 +17,8 @@
 #include <private/qevdevkeyboardhandler_p.h>
 #include <private/qgenericunixeventdispatcher_p.h>
 #include <private/qgenericunixfontdatabase_p.h>
+#include <private/qhighdpiscaling_p.h>
 #include <liboxide.h>
-#include <liboxide/tarnish.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -134,16 +134,15 @@ void OxideIntegration::initialize(){
             qApp->exit(EXIT_FAILURE);
         }
     });
-    QTouchDevice touchscreen;
-    touchscreen.setName("oxide");
-    touchscreen.setType(QTouchDevice::TouchScreen);
-    touchscreen.setCapabilities(QTouchDevice::Position | QTouchDevice::Area | QTouchDevice::Pressure);
+    m_touchscreen.setName("oxide");
+    m_touchscreen.setType(QTouchDevice::TouchScreen);
+    m_touchscreen.setCapabilities(QTouchDevice::Position | QTouchDevice::Area | QTouchDevice::Pressure);
     if(deviceSettings.getTouchPressure()){
-        touchscreen.setCapabilities(touchscreen.capabilities() | QTouchDevice::Pressure);
+        m_touchscreen.setCapabilities(m_touchscreen.capabilities() | QTouchDevice::Pressure);
     }
-    touchscreen.setMaximumTouchPoints(deviceSettings.getTouchSlots());
-    QWindowSystemInterface::registerTouchDevice(&touchscreen);
-    QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, [this, eventPipe, &touchscreen]{
+    m_touchscreen.setMaximumTouchPoints(deviceSettings.getTouchSlots());
+    QWindowSystemInterface::registerTouchDevice(&m_touchscreen);
+    QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, [this, eventPipe]{
         QMutexLocker locker(&m_mutex);
         Q_UNUSED(locker);
         while(!eventPipe->atEnd()){
@@ -223,55 +222,7 @@ void OxideIntegration::initialize(){
 //                    ushort count = 1
                     break;
                 }
-                case Oxide::Tarnish::Touch:{
-                    auto data = event.touchData;
-                    Qt::TouchPointState state = Qt::TouchPointStationary;
-                    switch(data.type){
-                        case Oxide::Tarnish::TouchPress:
-                            state = Qt::TouchPointPressed;
-                            break;
-                        case Oxide::Tarnish::TouchUpdate:
-                            state = Qt::TouchPointMoved;
-                            //TODO - Qt::TouchPointStationary;
-                            break;
-                        case Oxide::Tarnish::TouchRelease:
-                            state = Qt::TouchPointReleased;
-                            break;
-                    }
-                    QList<QWindowSystemInterface::TouchPoint> points;
-                    QWindowSystemInterface::TouchPoint touch;
-                    touch.uniqueId = data.id;
-                    // normalPosition: touch device coordinates, (0 to 1, 0 to 1)
-                    touch.normalPosition = data.position.point();
-                    // area: dimensions of the elliptical contact patch, unrotated, and centered at position in screen coordinates
-                    //       width is the horizontal diameter, height is the vertical diameter
-                    touch.area = data.position.geometry();
-                    // pressure: 0 to 1
-                    touch.pressure = data.pressure;
-                    // rotation: rotation applied to the elliptical contact patch
-                    //           0 means pointing straight up; 0 if unknown (like QTabletEvent::rotation)
-                    touch.rotation = data.orientation;
-                    touch.state = state;
-                    // velocity: in screen coordinate system, pixels / seconds
-                    touch.velocity = QVector2D();
-                    if(data.tool != Oxide::Tarnish::Finger){
-                        touch.flags = touch.flags | QTouchEvent::TouchPoint::Token;
-                    }
-                    // rawPositions: in screen coordinates
-                    touch.rawPositions.append(data.position.point());
-                    points.append(touch);
-                    QWindowSystemInterface::handleTouchEvent(
-                        (QWindow*)nullptr,
-                        &touchscreen,
-                        points,
-                        qGuiApp->keyboardModifiers()
-                    );
-//                    QWindow *window,
-//                    QTouchDevice *device,
-//                    const QList<struct TouchPoint> &points,
-//                    Qt::KeyboardModifiers mods = Qt::NoModifier
-                    break;
-                }
+                case Oxide::Tarnish::Touch: handleTouch(&event.touchData); break;
                 case Oxide::Tarnish::Tablet:{
                     auto data = event.tabletData;
                     switch(data.type){
@@ -298,7 +249,7 @@ void OxideIntegration::initialize(){
                         0,
                         0,
                         Oxide::Tarnish::getEventPipeFd(),
-                        qApp->keyboardModifiers()
+                        qGuiApp->keyboardModifiers()
                     );
 //                    QWindow *window,
 //                    const QPointF &local,
@@ -398,6 +349,76 @@ OxideIntegration* OxideIntegration::instance(){
         qDebug() << "OxideIntegration::instance";
     }
     return instance;
+}
+
+QWindowSystemInterface::TouchPoint OxideIntegration::getTouchPoint(Oxide::Tarnish::TouchEventArgs* data){
+    QWindowSystemInterface::TouchPoint point;
+    point.id = data->id;
+    if(data->tool != Oxide::Tarnish::Finger){
+        point.flags = point.flags | QTouchEvent::TouchPoint::Token;
+    }
+    Qt::TouchPointState state = Qt::TouchPointStationary;
+    switch(data->type){
+        case Oxide::Tarnish::TouchPress:
+            state = Qt::TouchPointPressed;
+            break;
+        case Oxide::Tarnish::TouchUpdate:
+            state = Qt::TouchPointMoved;
+            //TODO - Qt::TouchPointStationary;
+            break;
+        case Oxide::Tarnish::TouchRelease:
+            state = Qt::TouchPointReleased;
+            break;
+    }
+    point.state = state;
+    point.area = QRectF(0, 0, data->position.width, data->position.height);
+    point.area.moveCenter(data->position.point());
+    point.pressure = data->pressure;
+    point.normalPosition = QPointF(data->position.x, data->position.y);
+    point.rawPositions.append(QPointF(data->position.x, data->position.y));
+    return point;
+}
+
+void OxideIntegration::handleTouch(Oxide::Tarnish::TouchEventArgs* data){
+    QRect winRect = QHighDpi::toNativePixels(m_primaryScreen->geometry(), m_primaryScreen);
+    if(winRect.isNull()){
+        qWarning() << __PRETTY_FUNCTION__ << "Null screenGeometry";
+        return;
+    }
+    int pointCount = m_touchPoints.count();
+    auto point = getTouchPoint(data);
+    for(int i = 0; i < pointCount; ++i){
+        QWindowSystemInterface::TouchPoint& tp(m_touchPoints[i]);
+        if(tp.id == point.id){
+            m_touchPoints.removeAt(i);
+            break;
+        }
+    }
+    m_touchPoints.append(point);
+    // Map the coordinates based on the normalized position. QPA expects 'area'
+    // to be in screen coordinates.
+    const auto howSize = qreal(deviceSettings.getTouchWidth() + deviceSettings.getTouchHeight());
+    pointCount = m_touchPoints.count();
+    for(int i = 0; i < pointCount; ++i){
+        QWindowSystemInterface::TouchPoint& tp(m_touchPoints[i]);
+        // Generate a screen position that is always inside the active window
+        // or the primary screen.  Even though we report this as a QRectF, internally
+        // Qt uses QRect/QPoint so we need to bound the size to winRect.size() - QSize(1, 1)
+        const qreal wx = winRect.left() + tp.normalPosition.x() * (winRect.width() - 1);
+        const qreal wy = winRect.top() + tp.normalPosition.y() * (winRect.height() - 1);
+        const qreal sizeRatio = (winRect.width() + winRect.height()) / howSize;
+        if(tp.area.width() == -1){
+            // touch major was not provided
+            tp.area = QRectF(0, 0, 8, 8);
+        }else{
+            tp.area = QRectF(0, 0, tp.area.width() * sizeRatio, tp.area.height() * sizeRatio);
+        }
+        tp.area.moveCenter(QPointF(wx, wy));
+        // Calculate normalized pressure.
+        tp.pressure = tp.pressure / deviceSettings.getTouchPressure();
+    }
+    qDebug() << "Sending" << point.area << point.state << point.normalPosition << point.normalPosition;
+    QWindowSystemInterface::handleTouchEvent(nullptr, &m_touchscreen, m_touchPoints);
 }
 
 QT_END_NAMESPACE
