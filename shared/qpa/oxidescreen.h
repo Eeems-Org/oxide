@@ -26,8 +26,8 @@ public:
     void addWindow(OxideWindow* window);
     void removeWindow(OxideWindow* window);
 
-signals:
-    void waitForPaint(unsigned int marker);
+public slots:
+    void raiseTopWindow();
 
 protected:
     bool event(QEvent *event) override;

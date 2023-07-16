@@ -25,6 +25,7 @@ namespace Oxide {
         _sigaction(SIGINT);
         _sigaction(SIGUSR1);
         _sigaction(SIGUSR2);
+        _sigaction(SIGCONT);
 #undef _sigaction
         initialized = false;
         return 0;
@@ -47,14 +48,15 @@ namespace Oxide {
         addNotifier(SIGINT, "sigInt");
         addNotifier(SIGUSR1, "sigUsr1");
         addNotifier(SIGUSR2, "sigUsr2");
+        addNotifier(SIGCONT, "sigCont");
     }
     SignalHandler::~SignalHandler(){}
     void SignalHandler::handleSignal(int signal){
         if(!notifiers.contains(signal)){
+            ::signal(signal, SIG_DFL);
             return;
         }
-        ::signal(signal, SIG_IGN);
-        O_DEBUG("Signal recieved:" << strsignal(signal));
+        O_DEBUG(__PRETTY_FUNCTION__ << "Signal recieved:" << strsignal(signal));
         auto item = notifiers.value(signal);
         char a = 1;
         ::write(item.fd, &a, sizeof(a));
@@ -65,21 +67,24 @@ namespace Oxide {
             if(::socketpair(AF_UNIX, SOCK_STREAM, 0, fds)){
                qFatal("Couldn't create socketpair");
             }
+            auto socket = new QLocalSocket();
+            if(!socket->setSocketDescriptor(fds[1], QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
+                qFatal("Couldn't connect QLocalSocket to socket descriptor");
+            }
             notifiers.insert(signal, NotifierItem{
-                .notifier = new QSocketNotifier(fds[1], QSocketNotifier::Read, this),
+                .notifier = socket,
                 .fd = fds[0]
             });
         }
         auto notifier = notifiers.value(signal).notifier;
-        connect(notifier, &QSocketNotifier::activated, this, [this, notifier, name]{
-            O_DEBUG("emitting" << name);
-            notifier->setEnabled(false);
-            char tmp;
-            ::read(notifier->socket(), &tmp, sizeof(tmp));
-            if(!QMetaObject::invokeMethod(this, name, Qt::QueuedConnection)){
-                O_WARNING("Failed to emit" << name);
+        connect(notifier, &QLocalSocket::readyRead, this, [this, notifier, name]{
+            while(!notifier->atEnd()){
+                notifier->read(sizeof(char));
+                if(!QMetaObject::invokeMethod(this, name, Qt::QueuedConnection)){
+                    O_WARNING(__PRETTY_FUNCTION__ << "Failed to emit" << name);
+                }
+                O_DEBUG(__PRETTY_FUNCTION__ << "emitted" << name);
             }
-            notifier->setEnabled(true);
         }, Qt::QueuedConnection);
     }
     QMap<int, SignalHandler::NotifierItem> SignalHandler::notifiers = QMap<int, SignalHandler::NotifierItem>();

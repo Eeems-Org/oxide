@@ -52,6 +52,10 @@ void OxideScreen::removeWindow(OxideWindow* window){
     window->requestActivateWindow();
 }
 
+void OxideScreen::raiseTopWindow(){
+    Oxide::Tarnish::topWindow()->raise(); // TODO - switch to using event pipe
+}
+
 bool OxideScreen::event(QEvent* event){
     if(event->type() == QEvent::UpdateRequest){
         redraw();

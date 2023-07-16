@@ -47,6 +47,7 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
 }
 Window::~Window(){
     O_DEBUG(__PRETTY_FUNCTION__ << m_identifier.toStdString().c_str() << "Window deleted" << m_pgid);
+    _close();
 }
 
 void Window::setEnabled(bool enabled){
@@ -226,6 +227,9 @@ void Window::setVisible(bool visible){
         case WindowState::Lowered:
         case WindowState::LoweredHidden:
             m_state = visible ? WindowState::Lowered : WindowState::LoweredHidden;
+        case WindowState::Closed:
+            return;
+        default:
         break;
     }
     if(state == m_state){
@@ -305,6 +309,7 @@ void Window::_raise(){
         break;
         case WindowState::Raised:
         case WindowState::RaisedHidden:
+        case WindowState::Closed:
             return;
         default:
         break;
@@ -329,6 +334,7 @@ void Window::_lower(){
         break;
         case WindowState::Lowered:
         case WindowState::LoweredHidden:
+        case WindowState::Closed:
             return;
         default:
         break;
@@ -343,7 +349,10 @@ void Window::_lower(){
 }
 
 void Window::_close(){
-    m_state = WindowState::LoweredHidden;
+    if(m_state == WindowState::Closed){
+        return;
+    }
+    m_state = WindowState::Closed;
     writeEvent(WindowEventType::Close);
     setEnabled(false);
     m_touchEventPipe.close();

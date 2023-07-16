@@ -8,7 +8,7 @@
 #include "liboxide_global.h"
 
 #include <QObject>
-#include <QSocketNotifier>
+#include <QLocalSocket>
 #include <sys/types.h>
 /*!
  * \brief signalHandler()
@@ -17,7 +17,7 @@
 
 namespace Oxide {
     /*!
-     * \brief A class that allows handling SIGUSR1 and SIGUSR2
+     * \brief A class that allows handling various signals
      * \snippet examples/oxide.cpp SignalHandler
      */
     class LIBOXIDE_EXPORT SignalHandler : public QObject
@@ -25,11 +25,12 @@ namespace Oxide {
         Q_OBJECT
     public:
         /*!
-         * \brief Setup the unix signal handlers to listen to SIGUSR1 and SIGUSR2
+         * \brief Setup the unix signal handlers to listen to supported signals
          * \retval SIGTERM Failed to setup SIGTERM
          * \retval SIGINT Failed to setup SIGINT
          * \retval SIGUSR1 Failed to setup SIGUSR1
          * \retval SIGUSR2 Failed to setup SIGUSR2
+         * * \retval SIGCONT Failed to setup SIGCONT
          * \retval 0 Successfully setup both signal handlers
          *
          * This method will automatically create and register the singleton with a parent of qApp.
@@ -68,11 +69,15 @@ namespace Oxide {
          * \brief The process has recieved a SIGUSR2
          */
         void sigUsr2();
+        /*!
+         * \brief The process has recieved a SIGCONT
+         */
+        void sigCont();
 
     private:
         void addNotifier(int signal, const char* name);
         struct NotifierItem {
-            QSocketNotifier* notifier;
+            QLocalSocket* notifier;
             int fd;
         };
         static QMap<int, NotifierItem> notifiers;

@@ -33,7 +33,8 @@ public:
         Raised,
         Lowered,
         RaisedHidden,
-        LoweredHidden
+        LoweredHidden,
+        Closed
     } WindowState;
     Window(const QString& identifier, const QString& path, const pid_t& pgid, const QRect& geometry, int z, QImage::Format format);
     ~Window();

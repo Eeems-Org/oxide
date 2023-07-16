@@ -23,15 +23,11 @@ SOURCES = main.cpp \
           oxideeventfilter.cpp \
           oxideintegration.cpp \
           oxidescreen.cpp \
-          oxidetabletdata.cpp \
-          oxidetouchscreendata.cpp \
           oxidewindow.cpp
 HEADERS = oxidebackingstore.h \
           oxideeventfilter.h \
           oxideintegration.h \
           oxidescreen.h \
-          oxidetabletdata.h \
-          oxidetouchscreendata.h \
           oxidewindow.h
 
 OTHER_FILES += oxide.json
@@ -42,4 +38,5 @@ INSTALLS += target
 DISTFILES += \
     oxide.json
 
+DEFINES += LIBOXIDE_PRIVATE
 include(../../qmake/liboxide.pri)

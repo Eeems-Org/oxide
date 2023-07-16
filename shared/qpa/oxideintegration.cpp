@@ -1,8 +1,6 @@
 #include "oxideintegration.h"
 #include "oxidebackingstore.h"
 #include "oxidescreen.h"
-#include "oxidetabletdata.h"
-#include "oxidetouchscreendata.h"
 #include "oxideeventfilter.h"
 
 #include <QtGui/private/qguiapplication_p.h>
@@ -11,10 +9,6 @@
 #include <qpa/qplatforminputcontextfactory_p.h>
 #include <qpa/qplatformwindow.h>
 
-#include <private/qevdevmousehandler_p.h>
-#include <private/qevdevtouchhandler_p.h>
-#include <private/qevdevtablethandler_p.h>
-#include <private/qevdevkeyboardhandler_p.h>
 #include <private/qgenericunixeventdispatcher_p.h>
 #include <private/qgenericunixfontdatabase_p.h>
 #include <private/qhighdpiscaling_p.h>
@@ -95,36 +89,6 @@ void OxideIntegration::initialize(){
     });
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
-//    // Setup touch event handling
-//    auto touchData = new OxideTouchScreenData(m_spec);
-//    auto touchPipe = Oxide::Tarnish::getTouchEventPipe();
-//    if(touchPipe == nullptr){
-//        qFatal("Could not get touch event pipe");
-//    }
-//    QObject::connect(touchPipe, &QLocalSocket::readChannelFinished, []{
-//        if(!qApp->closingDown()){
-//            qApp->exit(EXIT_FAILURE);
-//        }
-//    });
-//    QObject::connect(touchPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [touchData](input_event event){
-//        O_EVENT(event);
-//        touchData->processInputEvent(&event);
-//    });
-//    // Setup tablet event handling
-//    auto tabletData = new OxideTabletData(Oxide::Tarnish::getTabletEventPipeFd());
-//    auto tabletPipe = Oxide::Tarnish::getTouchEventPipe();
-//    QObject::connect(tabletPipe, &QLocalSocket::readChannelFinished, []{
-//        if(!qApp->closingDown()){
-//            qApp->exit(EXIT_FAILURE);
-//        }
-//    });
-//    if(tabletPipe == nullptr){
-//        qFatal("Could not get tablet event pipe");
-//    }
-//    connect(tabletPipe, &Oxide::Tarnish::InputEventSocket::inputEvent, [tabletData](input_event event){
-//        O_EVENT(event);
-//        tabletData->processInputEvent(&event);
-//    });
     auto eventPipe = Oxide::Tarnish::getEventPipe();
     if(eventPipe == nullptr){
         qFatal("Could not get event pipe");
@@ -276,6 +240,14 @@ void OxideIntegration::initialize(){
             }
         }
     }, Qt::QueuedConnection);
+    for(auto i = 0; i != signalHandler->metaObject()->propertyCount(); ++i){
+        auto prop = signalHandler->metaObject()->property(i);
+        auto sig = prop.notifySignal();
+        if(!sig.isValid()){
+            continue;
+        }
+    }
+    connectSignal(signalHandler, "sigCont()", m_primaryScreen, "raiseTopWindow()");
 }
 
 
@@ -397,6 +369,26 @@ void OxideIntegration::handleTouch(Oxide::Tarnish::TouchEventArgs* data){
         qDebug() << "Sending" << touchPoint.area << touchPoint.state << touchPoint.normalPosition << touchPoint.rawPositions;
     }
     QWindowSystemInterface::handleTouchEvent(nullptr, &m_touchscreen, m_touchPoints);
+}
+
+void OxideIntegration::connectSignal(QObject* sender, QString signal, QObject* reciever, QString slot){
+    auto signalIndex = sender->metaObject()->indexOfSignal(signal.toStdString().c_str());
+    if(signalIndex == -1){
+        qFatal(QString("The index of the signal:").arg(signal).toStdString().c_str());
+    }
+    auto signalMethod = sender->metaObject()->method(signalIndex);
+    if(!signalMethod.isValid()){
+        qFatal(QString("Cannot find signal from index: %1").arg(signal).toStdString().c_str());
+    }
+    auto slotIndex = reciever->metaObject()->indexOfSlot(slot.toStdString().c_str());
+    if(slotIndex == -1){
+        qFatal(QString("The index of the slot: %1").arg(slot).toStdString().c_str());
+    }
+    auto slotMethod = reciever->metaObject()->method(slotIndex);
+    if(!slotMethod.isValid()){
+        qFatal(QString("Cannot find slot from index: %1").arg(slot).toStdString().c_str());
+    }
+    QObject::connect(sender, signalMethod, reciever, slotMethod);
 }
 
 QT_END_NAMESPACE

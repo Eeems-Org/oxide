@@ -11,7 +11,7 @@
 
 QT_BEGIN_NAMESPACE
 
-class OxideIntegration : public QPlatformIntegration, public QPlatformNativeInterface
+class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration, public QPlatformNativeInterface
 {
 public:
     enum Options { // Options to be passed on command line or determined from environment
@@ -51,6 +51,7 @@ private:
     QList<QWindowSystemInterface::TouchPoint> m_lastTouchPoints;
     QWindowSystemInterface::TouchPoint getTouchPoint(const Oxide::Tarnish::TouchEventPoint& data);
     void handleTouch(Oxide::Tarnish::TouchEventArgs* data);
+    static void connectSignal(QObject* sender, QString signal, QObject* reciever, QString slot);
 };
 
 QT_END_NAMESPACE
