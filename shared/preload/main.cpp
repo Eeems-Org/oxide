@@ -644,18 +644,6 @@ extern "C" {
     }
     __asm__(".symver write, write@GLIBC_2.4");
 
-//    __attribute__((visibility("default")))
-//    bool _Z7qputenvPKcRK10QByteArray(const char* name, const QByteArray& val) {
-//        static const auto orig_fn = (bool(*)(const char*, const QByteArray&))dlsym(RTLD_NEXT, "_Z7qputenvPKcRK10QByteArray");
-//        if(strcmp(name, "QMLSCENE_DEVICE") == 0 || strcmp(name, "QT_QUICK_BACKEND") == 0){
-//            return orig_fn(name, "software");
-//        }
-//        if(strcmp(name, "QT_QPA_PLATFORM") == 0){
-//            return orig_fn(name, "epaper:enable_fonts");
-//        }
-//        return orig_fn(name, val);
-//    }
-
     void __attribute__ ((constructor)) init(void);
     void init(void){
         func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");

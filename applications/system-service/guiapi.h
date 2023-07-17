@@ -33,12 +33,11 @@ public:
     Q_INVOKABLE QDBusObjectPath createWindow(QRect geometry, int format = DEFAULT_IMAGE_FORMAT);
     Q_INVOKABLE QDBusObjectPath createWindow(int format = DEFAULT_IMAGE_FORMAT);
     Q_INVOKABLE QList<QDBusObjectPath> windows();
-    Q_INVOKABLE void repaint();
+    Q_INVOKABLE void repaint(QDBusMessage message);
     bool isThisPgId(pid_t valid_pgid);
     QMap<QString, Window*> allWindows();
     QList<Window*> sortedWindows();
     void closeWindows(pid_t pgid);
-    void waitForLastUpdate();
     void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize, unsigned int marker = 0);
     GUIThread* guiThread();
 
@@ -51,13 +50,9 @@ public slots:
     void tabletEvent(const input_event& event);
     void keyEvent(const input_event& event);
 
-private slots:
-    void repainted(Window* window, unsigned int marker);
-
 private:
     bool m_enabled;
     QMap<QString, Window*> m_windows;
-    RepaintNotifier m_repaintNotifier;
     QRect m_screenGeometry;
     void sortWindows();
     bool hasPermission();

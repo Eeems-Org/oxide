@@ -70,7 +70,7 @@ DBusService* DBusService::__singleton(){
 }
 
 
-DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(){
+DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(), m_shuttingDown{false}{
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "Initializing APIs", "info");
 #endif
@@ -345,6 +345,10 @@ QVariantMap DBusService::APIs(){
 
 void DBusService::shutdown(){
     if(calledFromDBus()){
+        return;
+    }
+    if(m_shuttingDown){
+        kill(getpid(), SIGKILL);
         return;
     }
     sd_notify(0, "STATUS=stopping");

@@ -98,7 +98,7 @@ public:
         networks->setAPI(wifiApi);
         auto state = wifiApi->state();
         m_wifion = state != WifiState::WifiOff && state != WifiState::WifiUnknown;
-        QTimer::singleShot(1000, [=](){
+        QTimer::singleShot(1000, [this](){
             // Get initial values when UI is ready
             batteryLevelChanged(powerApi->batteryLevel());
             batteryStateChanged(powerApi->batteryState());

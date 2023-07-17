@@ -1,6 +1,5 @@
 #pragma once
 #include "apibase.h"
-#include "repaintnotifier.h"
 
 #include <QTouchEvent>
 #include <QTabletEvent>
@@ -72,15 +71,14 @@ public:
     WindowState state();
     void lock();
     void unlock();
-    void waitForUpdate(unsigned int marker);
-    Q_INVOKABLE void waitForLastUpdate();
+    void waitForUpdate(unsigned int marker, std::function<void()> callback);
+    Q_INVOKABLE void waitForLastUpdate(QDBusMessage message);
     void writeEvent(KeyEventArgs args);
     void writeEvent(TouchEventArgs args);
     void writeEvent(TabletEventArgs args);
 
     bool operator>(Window* other) const;
     bool operator<(Window* other) const;
-    RepaintNotifier m_repaintNotifier;
 
 public slots:
     QDBusUnixFileDescriptor resize(int width, int height);

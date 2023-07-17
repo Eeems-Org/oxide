@@ -295,6 +295,7 @@ void Window::_repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsign
         m_pendingMarker = marker;
     }
     if(_isVisible()){
+        W_DEBUG("Repaint" << marker << "queued");
         guiAPI->dirty(this, region, waveform, marker);
     }
 }
@@ -360,7 +361,6 @@ void Window::_close(){
     m_keyEventPipe.close();
     m_eventPipe.close();
     emit closed();
-    emit m_repaintNotifier.repainted(std::numeric_limits<unsigned int>::max());
     setParent(nullptr);
     moveToThread(nullptr);
     auto thread = guiAPI->guiThread();
@@ -403,36 +403,26 @@ void Window::unlock(){
     }
 }
 
-void Window::waitForUpdate(unsigned int marker){
+void Window::waitForUpdate(unsigned int marker, std::function<void()> callback){
     W_DEBUG("Waiting for update" << marker);
-    auto thread = guiAPI->guiThread();
-    QMutexLocker locker(&thread->m_mutex);
-    if(!thread->active()){
+    guiAPI->guiThread()->addWait(this, marker, [this, callback, marker]{
+        callback();
         W_DEBUG("Done waiting for update" << marker);
-        return;
-    }
-    // TODO - Should there be a timeout?
-    QEventLoop loop;
-    QMetaObject::Connection conn;
-    conn = QObject::connect(&m_repaintNotifier, &RepaintNotifier::repainted, [this, &loop, &conn, marker](unsigned int finishedMarker){
-        W_DEBUG("Checking markers" << finishedMarker << marker);
-        if(finishedMarker >= marker){
-            QObject::disconnect(conn);
-            loop.exit();
-        }
     });
-    locker.unlock();
-    loop.exec();
-    W_DEBUG("Done waiting for update" << marker);
 }
 
-void Window::waitForLastUpdate(){
+void Window::waitForLastUpdate(QDBusMessage message){
     if(!hasPermissions()){
         W_DENIED();
         return;
     }
     W_ALLOWED();
-    waitForUpdate(m_pendingMarker);
+    message.setDelayedReply(true);
+    auto reply = message.createReply();
+    guiAPI->connection().send(reply);
+    waitForUpdate(m_pendingMarker, [this, reply]{
+        guiAPI->connection().send(reply);
+    });
 }
 
 void Window::writeEvent(KeyEventArgs args){
@@ -553,7 +543,6 @@ void Window::readyEventPipeRead(){
         switch(event.type){
             case Repaint:{
                 auto marker = event.repaintData.marker;
-                W_DEBUG("Repaint" << marker << "queued");
                 _repaint(event.repaintData.geometry(), event.repaintData.waveform, marker);
                 break;
             }
@@ -567,14 +556,10 @@ void Window::readyEventPipeRead(){
             }
             case WaitForPaint:{
                 auto marker = event.waitForPaintData.marker ? event.waitForPaintData.marker : m_pendingMarker;
-                W_DEBUG("Queued wait for update" << marker);
-                QTimer::singleShot(0, [this, marker]{
-                    W_DEBUG("Waiting for update" << marker);
-                    waitForUpdate(marker);
+                W_DEBUG("Waiting for update" << marker);
+                waitForUpdate(marker, [this, marker]{
                     W_DEBUG("Update" << marker << "is finished");
-                    writeEvent(WaitForPaintEventArgs{
-                       .marker = marker
-                   });
+                    writeEvent(WaitForPaintEventArgs{ .marker = marker });
                 });
                 break;
             }

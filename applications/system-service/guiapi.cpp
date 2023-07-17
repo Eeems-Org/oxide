@@ -3,7 +3,6 @@
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
 #include "dbusservice.h"
-#include "repaintnotifier.h"
 #include "eventlistener.h"
 
 #define W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << msg << getSenderPgid())
@@ -37,7 +36,6 @@ GuiAPI::GuiAPI(QObject* parent)
         connect(touchHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
         connect(wacomHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::tabletEvent);
         connect(buttonHandler, &ButtonHandler::rawEvent, this, &GuiAPI::keyEvent);
-        connect(&m_repaintNotifier, &RepaintNotifier::windowRepainted, this, &GuiAPI::repainted);
         eventListener->append([this](QObject* object, QEvent* event){
             Q_UNUSED(object)
             switch(event->type()){
@@ -74,7 +72,6 @@ GuiAPI::~GuiAPI(){
 
 void GuiAPI::startup(){
     W_DEBUG("Startup");
-    m_thread.m_repaintNotifier = &m_repaintNotifier;
     m_thread.m_screenGeometry = &m_screenGeometry;
     m_thread.start();
     Oxide::startThreadWithPriority(&m_thread, QThread::TimeCriticalPriority);
@@ -86,7 +83,6 @@ void GuiAPI::shutdown(){
         auto window = m_windows.take(m_windows.firstKey());
         window->_close();
     }
-    emit m_repaintNotifier.windowRepainted(nullptr, std::numeric_limits<unsigned int>::max());
     m_thread.quit();
 }
 
@@ -203,14 +199,17 @@ QList<QDBusObjectPath> GuiAPI::windows(){
     return windows;
 }
 
-void GuiAPI::repaint(){
+void GuiAPI::repaint(QDBusMessage message){
     if(!APIBase::hasPermission("gui")){
         W_DENIED();
         return;
     }
     W_ALLOWED();
+    message.setDelayedReply(true);
+    auto reply = message.createReply();
+    connection().send(reply);
     m_thread.enqueue(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, 0, true);
-    waitForLastUpdate();
+    m_thread.addWait([this, reply]{ connection().send(reply); });
 }
 
 bool GuiAPI::isThisPgId(pid_t valid_pgid){
@@ -235,25 +234,6 @@ void GuiAPI::closeWindows(pid_t pgid){
             window->_close();
         }
     }
-}
-
-void GuiAPI::waitForLastUpdate(){
-    QMutexLocker locker(&m_thread.m_mutex);
-    if(!m_thread.active()){
-        locker.unlock();
-        return;
-    }
-    // TODO - Should there be a timeout?
-    QEventLoop loop;
-    QMetaObject::Connection conn;
-    conn = QObject::connect(&m_repaintNotifier, &RepaintNotifier::windowRepainted, [&loop, &conn](Window* window, unsigned int marker){
-        Q_UNUSED(window)
-        Q_UNUSED(marker);
-        QObject::disconnect(conn);
-        loop.exit();
-    });
-    locker.unlock();
-    loop.exec();
 }
 
 void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker){
@@ -418,17 +398,6 @@ void GuiAPI::keyEvent(const input_event& event){
         if(window->_isVisible() && !window->isAppPaused()){
             window->writeKeyEvent(event);
         }
-    }
-}
-
-void GuiAPI::repainted(Window* window, unsigned int marker){
-    if(window != nullptr){
-        QMetaObject::invokeMethod(
-            &window->m_repaintNotifier,
-            "repainted",
-            Qt::AutoConnection,
-            Q_ARG(unsigned int, marker)
-        );
     }
 }
 

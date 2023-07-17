@@ -69,6 +69,7 @@ private:
     int watchdogTimer;
     void unregisterChild(pid_t pid);
     static DBusService* instance;
+    bool m_shuttingDown;
 };
 
 #endif // DBUSSERVICE_H
