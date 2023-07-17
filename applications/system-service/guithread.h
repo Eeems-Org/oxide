@@ -11,6 +11,41 @@ struct RepaintRequest{
     unsigned int marker;
     bool global;
 };
+struct PendingMarkerWait{
+    unsigned int marker;
+    QString window;
+    std::function<void()> callback;
+    QElapsedTimer age;
+};
+struct CompletedMarker{
+    unsigned int internalMarker;
+    unsigned int marker;
+    QString window;
+    QElapsedTimer age;
+    bool waited = false;
+};
+
+class WaitThread : public QThread{
+    Q_OBJECT
+
+protected:
+    bool event(QEvent* event) override;
+
+public:
+    WaitThread(int frameBufferFd);
+    QQueue<CompletedMarker> m_completedMarkers;
+    QQueue<PendingMarkerWait> m_pendingMarkerWaits;
+    QMutex m_completedMutex;
+    int m_frameBufferFd;
+
+private:
+    bool m_processing;
+
+    bool isPendingMarkerWaitDone(PendingMarkerWait pendingMarkerWait);
+    void purgeOldCompletedItems();
+    QList<PendingMarkerWait> getPendingMarkers();
+    QQueue<CompletedMarker> getCompletedMarkers();
+};
 
 class GUIThread : public QThread{
     Q_OBJECT
@@ -19,20 +54,6 @@ protected:
     bool event(QEvent* event) override;
 
 public:
-    struct PendingMarkerWait{
-        unsigned int marker;
-        QString window;
-        std::function<void()> callback;
-        QElapsedTimer age;
-    };
-    struct CompletedMarker{
-        unsigned int internalMarker;
-        unsigned int marker;
-        QString window;
-        QElapsedTimer age;
-        bool waited = false;
-    };
-
     GUIThread();
     bool isActive();
     QRect* m_screenGeometry;
@@ -51,15 +72,11 @@ private:
     bool m_processing;
     int m_frameBufferFd;
     QAtomicInteger<unsigned int> m_currentMarker;
-    QList<PendingMarkerWait> m_pendingMarkerWaits;
-    QList<CompletedMarker> m_completedMarkers;
-    QMutex m_completedMutex;
-    QTimer m_completedTimer;
+    WaitThread* m_waitThread;
 
     void repaintWindow(QPainter* painter, QRect* rect, Window* window);
     void redraw(RepaintRequest& event);
     QQueue<RepaintRequest> getRepaintEvents();
     void deletePendingWindows();
     void scheduleUpdate();
-    void resolvePendingMarkerWaits();
 };

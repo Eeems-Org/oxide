@@ -49,7 +49,7 @@ ButtonHandler* ButtonHandler::init(){
     }
     instance = new ButtonHandler();
     instance->setObjectName("buttons");
-    instance->start();
+    Oxide::startThreadWithPriority(instance, QThread::HighestPriority);
     instance->moveToThread(instance);
     return instance;
 }

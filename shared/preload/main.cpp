@@ -15,8 +15,6 @@
 #include <liboxide/tarnish.h>
 #include <systemd/sd-journal.h>
 
-#include "repaintnotifier.h"
-
 // Don't import <linux/input.h> to avoid conflicting declarations
 #define EVIOCGRAB       _IOW('E', 0x90, int)			/* Grab/Release device */
 #define EVIOCREVOKE     _IOW('E', 0x91, int)			/* Revoke device access */
@@ -50,7 +48,6 @@ static int(*func_ioctl)(int, unsigned long, ...);
 static QMutex logMutex;
 static unsigned int completedMarker;
 static QMutex completedMarkerMutex;
-static RepaintNotifier repaintNotifier;
 
 QString appName(){
     if(!QCoreApplication::startingUp()){
@@ -191,6 +188,7 @@ bool __sigaction_connect(int signo){
     return sigaction(signo, &action, NULL) != -1;
 }
 
+// TODO - move to a different thread
 void __read_event_pipe(){
     auto eventPipe = Oxide::Tarnish::getEventPipe();
     if(eventPipe == nullptr){
@@ -200,13 +198,12 @@ void __read_event_pipe(){
         auto event = Oxide::Tarnish::WindowEvent::fromSocket(eventPipe);
         switch(event.type){
             case Oxide::Tarnish::WaitForPaint:
-                _DEBUG("Wait for paint finished");
-                QMetaObject::invokeMethod(
-                    &repaintNotifier,
-                    "repainted",
-                    Qt::QueuedConnection,
-                    Q_ARG(unsigned int, event.waitForPaintData.marker)
-                );
+                _DEBUG("Wait for paint finished", QString::number(event.waitForPaintData.marker));
+                completedMarkerMutex.lock();
+                if(event.waitForPaintData.marker > completedMarker){
+                    completedMarker = event.waitForPaintData.marker;
+                }
+                completedMarkerMutex.unlock();
                 break;
             case Oxide::Tarnish::Close:
                 _INFO("Window closed");
@@ -271,36 +268,18 @@ int fb_ioctl(unsigned long request, char* ptr){
             completedMarkerMutex.lock();
             if(update->update_marker > completedMarker){
                 completedMarkerMutex.unlock();
-                auto eventPipe = Oxide::Tarnish::getEventPipe();
-                if(eventPipe == nullptr){
-                    qFatal("Unable to get event pipe");
-                }
                 QEventLoop loop;
-                QMetaObject::Connection conn;
-                conn = QObject::connect(&repaintNotifier, &RepaintNotifier::repainted, [update, &loop](unsigned int marker){
-                    if(marker <= update->update_marker){
+                QTimer timer;
+                QObject::connect(&timer, &QTimer::timeout, [&loop, &timer, update]{
+                    if(update->update_marker > completedMarker){
+                        timer.stop();
                         loop.quit();
                     }
                 });
-                QTimer timer;
-                timer.setInterval(7000);
-                QObject::connect(&timer, &QTimer::timeout, [&loop]{
-                    _WARN("It's been 7 seconds since we started waiting for a screen update, we might be deadlocked.");
-                    loop.quit();
-                });
-                timer.start();
-                QTimer::singleShot(0, [update, eventPipe]{
-                    Oxide::Tarnish::WindowEvent event;
-                    event.type = Oxide::Tarnish::WaitForPaint;
-                    event.waitForPaintData.marker = update->update_marker;
-                    event.toSocket(eventPipe);
-                });
-                _DEBUG("Waiting for marker", QString::number(update->update_marker));
+                timer.start(0);
                 loop.exec();
-                timer.stop();
-                QObject::disconnect(conn);
             }else{
-                completedMarkerMutex.unlock();
+                completedMarkerMutex.lock();
             }
             _DEBUG("ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE done:", cz.elapsed());
             return 0;
@@ -714,14 +693,6 @@ extern "C" {
         if(FAILED_INIT){
             return EXIT_FAILURE;
         }
-        QObject::connect(&repaintNotifier, &RepaintNotifier::repainted, [](unsigned int marker){
-            QMutexLocker locker(&completedMarkerMutex);
-            Q_UNUSED(locker);
-            _DEBUG("/dev/fb0 update_marker", QString::number(marker), "recieved");
-            if(marker > completedMarker){
-                completedMarker = marker;
-            }
-        });
         auto func_main = (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
         if(QFileInfo("/proc/self/exe").canonicalFilePath() != "/usr/bin/xochitl" && !qEnvironmentVariableIsSet("OXIDE_PRELOAD_NO_QAPP")){
             QCoreApplication app(argc, argv);

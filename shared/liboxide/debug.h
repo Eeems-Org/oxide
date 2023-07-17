@@ -46,6 +46,12 @@
 #else
 #define O_EVENT(event)
 #endif
+/*!
+ * \def O_INFO(msg)
+ * \brief Log an informational message
+ * \param msg Informational message to log
+ */
+#define O_INFO(msg) qInfo() << msg;
 
 namespace Oxide {
     /*!
