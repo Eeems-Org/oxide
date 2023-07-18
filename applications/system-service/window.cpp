@@ -690,8 +690,13 @@ void Window::createFrameBuffer(const QRect& geometry){
 }
 
 bool Window::writeEvent(SocketPair* pipe, const input_event& event, bool force){
+    if(!pipe->enabled()){
+        return false;
+    }
     // TODO - add logic to skip emitting anything until the next EV_SYN SYN_REPORT
-    //        after the window has changed states to now be visible/enabled
+    //        after the window has changed states to now be visible/enabled.
+    //        Although this may not be required if we replace this with the events
+    //        pipe instead
     std::string name;
     if(pipe == &m_touchEventPipe){
         name = "touch";
@@ -701,9 +706,6 @@ bool Window::writeEvent(SocketPair* pipe, const input_event& event, bool force){
         name = "key";
     }else{
         Q_ASSERT(false);
-    }
-    if(!pipe->enabled()){
-        return false;
     }
     if(!force && !m_enabled){
         _W_WARNING("Failed to write to " << name.c_str() << " event pipe: Window disabled");

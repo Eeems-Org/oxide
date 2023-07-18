@@ -53,15 +53,24 @@ void OxideScreen::removeWindow(OxideWindow* window){
 }
 
 void OxideScreen::raiseTopWindow(){
-    Oxide::Tarnish::topWindow()->raise(); // TODO - switch to using event pipe
+    auto window = Oxide::Tarnish::topWindow();
+    if(window != nullptr){
+        window->raise(); // TODO - replace with event socket call
+    }
 }
 
 void OxideScreen::lowerTopWindow(){
-    Oxide::Tarnish::topWindow()->lower(); // TODO - switch to using event pipe
+    auto window = Oxide::Tarnish::topWindow();
+    if(window != nullptr){
+        window->lower(); // TODO - replace with event socket call
+    }
 }
 
 void OxideScreen::closeTopWindow(){
-    Oxide::Tarnish::topWindow()->close(); // TODO - switch to using event pipe
+    auto window = Oxide::Tarnish::topWindow();
+    if(window != nullptr){
+        window->close(); // TODO - replace with event socket call
+    }
 }
 
 bool OxideScreen::event(QEvent* event){

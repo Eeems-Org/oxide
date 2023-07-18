@@ -37,7 +37,7 @@ InputEventSocket tabletEventSocket;
 InputEventSocket keyEventSocket;
 QLocalSocket eventSocket;
 QDataStream eventStream;
-QAtomicInteger repaintMarker(1);
+QAtomicInteger<unsigned int> repaintMarker(1);
 
 // TODO - Get liboxide to automate journalctl logging
 //        https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
@@ -89,6 +89,8 @@ bool setupFbFd(int fd){
 }
 
 void _disconnect(){
+    QMutexLocker locker(&fbMutex);
+    Q_UNUSED(locker);
     fbData = nullptr;
     fbFile.close();
     childSocket.disconnect();
@@ -864,30 +866,13 @@ namespace Oxide::Tarnish {
             O_WARNING("Unable to get child socket:" << childSocket.errorString());
             return nullptr;
         }
-        auto closeConn = new QMetaObject::Connection;
-        auto readConn = new QMetaObject::Connection;
-        *closeConn = QObject::connect(&childSocket, &QLocalSocket::readChannelFinished, [closeConn, readConn]{
+        auto conn = new QMetaObject::Connection;
+        *conn = QObject::connect(&childSocket, &QLocalSocket::readChannelFinished, [conn]{
             O_WARNING("Lost connection to tarnish socket!");
-            if(!QCoreApplication::startingUp()){
-                QEventLoop loop;
-                QTimer::singleShot(0, [&loop]{
-                    _disconnect();
-                    loop.quit();
-                });
-                loop.exec();
-            }else{
-                _disconnect();
-            }
-            QObject::disconnect(*closeConn);
-            QObject::disconnect(*readConn);
-            delete closeConn;
-            delete readConn;
-        });
-        *readConn = QObject::connect(&childSocket, &QLocalSocket::readyRead, [readConn]{
-            // TODO - implement actually communication protocol
-            while(!childSocket.atEnd()){
-                O_DEBUG(childSocket.readAll());
-            }
+            childSocket.close();
+            _disconnect();
+            QObject::disconnect(*conn);
+            delete conn;
         });
         O_DEBUG("Connected to tarnish command socket");
         qRegisterMetaType<QAbstractSocket::SocketState>();
@@ -1317,7 +1302,7 @@ namespace Oxide::Tarnish {
         }
         WindowEvent event;
         event.type = WindowEventType::WaitForPaint;
-        event.waitForPaintData.marker = marker == 0 ? repaintMarker.loadRelaxed() : marker;
+        event.waitForPaintData.marker = marker == 0 ? (unsigned int)repaintMarker : marker;
         event.toSocket(&eventSocket);
         return event.waitForPaintData.marker;
     }

@@ -30,25 +30,37 @@ void OxideWindow::repaint(const QRegion& region){
 
 bool OxideWindow::close(){
     if(platformScreen()->topPlatformWindow() == this){
-        Oxide::Tarnish::topWindow()->close(); // TODO - replace with event socket call
+        auto window = Oxide::Tarnish::topWindow();
+        if(window != nullptr){
+            window->close(); // TODO - replace with event socket call
+        }
     }
     return QPlatformWindow::close();
 }
 
 void OxideWindow::raise(){
     if(platformScreen()->topPlatformWindow() == this){
-        Oxide::Tarnish::topWindow()->raise(); // TODO - replace with event socket call
+        auto window = Oxide::Tarnish::topWindow();
+        if(window != nullptr){
+            window->raise(); // TODO - replace with event socket call
+        }
     }
 }
 
 void OxideWindow::lower(){
     if(platformScreen()->topPlatformWindow() == this){
-        Oxide::Tarnish::topWindow()->lower(); // TODO - replace with event socket call
+        auto window = Oxide::Tarnish::topWindow();
+        if(window != nullptr){
+            window->lower(); // TODO - replace with event socket call
+        }
     }
 }
 
 void OxideWindow::setGeometry(const QRect& rect){
     if(platformScreen()->topPlatformWindow() == this){
-        Oxide::Tarnish::topWindow()->setGeometry(rect); // TODO - replace with event socket call
+        auto window = Oxide::Tarnish::topWindow();
+        if(window != nullptr){
+            window->setGeometry(rect); // TODO - replace with event socket call
+        }
     }
 }
