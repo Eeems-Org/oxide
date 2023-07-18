@@ -1,4 +1,5 @@
 #include "guithread.h"
+#include "dbusservice.h"
 
 bool WaitThread::event(QEvent* event){
     if(event->type() != QEvent::UpdateRequest){
@@ -60,7 +61,7 @@ bool WaitThread::isPendingMarkerWaitDone(PendingMarkerWait pendingMarkerWait){
     if(pendingMarkerWait.marker == 0){
         return true;
     }
-    // Somehow this marker slipped through the cracks, lets assume it's done
+    // Somehow this marker slipped through the cracks, lets assume it's done after 7 seconds
     if(pendingMarkerWait.age.hasExpired(1000 * 7)){
         O_WARNING("Stale MXCFB_WAIT_FOR_UPDATE_COMPLETE marker" << pendingMarkerWait.marker << "for window" << pendingMarkerWait.window);
         return true;
@@ -94,7 +95,8 @@ void WaitThread::purgeOldCompletedItems(){
     // Remove completed items that are older than 7 seconds
     while(i.hasNext()){
         CompletedMarker completedItem = i.next();
-        if(completedItem.age.hasExpired(1000*7)){
+        // Remove if older than 14 seconds
+        if(completedItem.age.hasExpired(1000*14)){
             i.remove();
         }
     }
@@ -225,7 +227,7 @@ bool GUIThread::isComplete(Window* window, unsigned int marker){
             return item.waited;
         }
     }
-    return true;
+    return false;
 }
 
 void GUIThread::repaintWindow(QPainter* painter, QRect* rect, Window* window){
@@ -411,6 +413,7 @@ void GUIThread::deletePendingWindows(){
     if(!m_repaintEvents.isEmpty()){
         return;
     }
+    O_DEBUG("Deleting pending windows");
     while(!m_deleteQueue.isEmpty()){
         auto window = m_deleteQueue.first();
         Q_ASSERT(window != nullptr);

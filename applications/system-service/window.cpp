@@ -59,6 +59,7 @@ void Window::setEnabled(bool enabled){
         if(_isVisible()){
             invalidateEventPipes();
         }
+        // TODO - Return to previous state, as they might not have ever been enabled.
         m_touchEventPipe.setEnabled(enabled);
         m_tabletEventPipe.setEnabled(enabled);
         m_keyEventPipe.setEnabled(enabled);
@@ -319,10 +320,10 @@ void Window::_raise(){
         default:
         break;
     }
-    if(_isVisible()){
-        invalidateEventPipes();
-        guiAPI->dirty(this, m_geometry);
-    }
+    m_z = std::numeric_limits<int>::max();
+    guiAPI->sortWindows();
+    invalidateEventPipes();
+    guiAPI->dirty(this, m_geometry);
     emit stateChanged(m_state);
     writeEvent(WindowEventType::Raise);
     emit raised();
@@ -348,6 +349,8 @@ void Window::_lower(){
         invalidateEventPipes();
         guiAPI->dirty(this, m_geometry);
     }
+    m_z = std::numeric_limits<int>::min();
+    guiAPI->sortWindows();
     emit stateChanged(m_state);
     writeEvent(WindowEventType::Lower);
     emit lowered();
@@ -359,18 +362,20 @@ void Window::_close(){
     }
     m_state = WindowState::Closed;
     writeEvent(WindowEventType::Close);
-//    m_eventPipe.close();
+    m_eventPipe.close();
     setEnabled(false);
-//    m_touchEventPipe.close();
-//    m_tabletEventPipe.close();
-//    m_keyEventPipe.close();
+    m_touchEventPipe.close();
+    m_tabletEventPipe.close();
+    m_keyEventPipe.close();
     emit closed();
     setParent(nullptr);
     moveToThread(nullptr);
     auto thread = guiAPI->guiThread();
-    thread->m_mutex.lock();
-    thread->m_deleteQueue.enqueue(this);
-    thread->m_mutex.unlock();
+    if(thread->isRunning()){
+        thread->m_mutex.lock();
+        thread->m_deleteQueue.enqueue(this);
+        thread->m_mutex.unlock();
+    }
     blockSignals(true);
     W_DEBUG("Window closed");
 }
@@ -430,28 +435,36 @@ void Window::waitForLastUpdate(QDBusMessage message){
 }
 
 void Window::writeEvent(KeyEventArgs args){
-    WindowEvent event;
-    event.type = WindowEventType::Key;
-    event.keyData = args;
-    W_DEBUG(event);
-    event.toSocket(m_eventPipe.writeSocket());
+    if(m_eventPipe.enabled()){
+        WindowEvent event;
+        event.type = WindowEventType::Key;
+        event.keyData = args;
+        W_DEBUG(event);
+        event.toSocket(m_eventPipe.writeSocket());
+    }
 }
 
 void Window::writeEvent(TouchEventArgs args){
-    WindowEvent event;
-    event.type = WindowEventType::Touch;
-    event.touchData = args;
-    W_DEBUG(event);
-    event.toSocket(m_eventPipe.writeSocket());
+    if(m_eventPipe.enabled()){
+        WindowEvent event;
+        event.type = WindowEventType::Touch;
+        event.touchData = args;
+        W_DEBUG(event);
+        event.toSocket(m_eventPipe.writeSocket());
+    }
 }
 
 void Window::writeEvent(TabletEventArgs args){
-    WindowEvent event;
-    event.type = WindowEventType::Tablet;
-    event.tabletData = args;
-    W_DEBUG(event);
-    event.toSocket(m_eventPipe.writeSocket());
+    if(m_eventPipe.enabled()){
+        WindowEvent event;
+        event.type = WindowEventType::Tablet;
+        event.tabletData = args;
+        W_DEBUG(event);
+        event.toSocket(m_eventPipe.writeSocket());
+    }
 }
+
+void Window::disableEventPipe(){ m_eventPipe.setEnabled(false); }
 
 bool Window::operator>(Window* other) const{ return m_z > other->z(); }
 
@@ -541,7 +554,7 @@ void Window::close(){
 
 void Window::readyEventPipeRead(){
     W_DEBUG("Reading events");
-    while(!m_eventPipe.atEnd() && m_eventPipe.isOpen()){
+    while(!m_eventPipe.atEnd() && m_eventPipe.isOpen() && m_eventPipe.enabled()){
         auto event = WindowEvent::fromSocket(m_eventPipe.writeSocket());
         W_DEBUG(event);
         switch(event.type){
@@ -595,8 +608,10 @@ void Window::readyEventPipeRead(){
 void Window::ping(){ writeEvent(WindowEventType::Ping); }
 
 void Window::pingDeadline(){
-    _W_WARNING("Process failed to respond to ping, it may be deadlocked");
-    //_close();
+    if(m_eventPipe.enabled()){
+        _W_WARNING("Process failed to respond to ping, it may be deadlocked");
+        //_close();
+    }
 }
 
 bool Window::hasPermissions(){ return !DBusService::shuttingDown() && guiAPI->isThisPgId(m_pgid); }
@@ -687,14 +702,12 @@ bool Window::writeEvent(SocketPair* pipe, const input_event& event, bool force){
     }else{
         Q_ASSERT(false);
     }
-    if(!force){
-        if(!pipe->enabled()){
-            return false;
-        }
-        if(!m_enabled){
-            _W_WARNING("Failed to write to " << name.c_str() << " event pipe: Window disabled");
-            return false;
-        }
+    if(!pipe->enabled()){
+        return false;
+    }
+    if(!force && !m_enabled){
+        _W_WARNING("Failed to write to " << name.c_str() << " event pipe: Window disabled");
+        return false;
     }
     if(!pipe->isOpen()){
         _W_WARNING("Failed to write to " << name.c_str() << " event pipe: Pipe not open");
@@ -801,40 +814,50 @@ void Window::invalidateEventPipes(){
 }
 
 void Window::writeEvent(WindowEventType type){
-    WindowEvent event;
-    event.type = type;
-    W_DEBUG(event);
-    event.toSocket(m_eventPipe.writeSocket());
+    if(m_eventPipe.enabled()){
+        WindowEvent event;
+        event.type = type;
+        W_DEBUG(event);
+        event.toSocket(m_eventPipe.writeSocket());
+    }
 }
 
 void Window::writeEvent(RepaintEventArgs args){
-    WindowEvent event;
-    event.type = WindowEventType::Repaint;
-    event.repaintData = args;
-    W_DEBUG(event);
-    event.toSocket(m_eventPipe.writeSocket());
+    if(m_eventPipe.enabled()){
+        WindowEvent event;
+        event.type = WindowEventType::Repaint;
+        event.repaintData = args;
+        W_DEBUG(event);
+        event.toSocket(m_eventPipe.writeSocket());
+    }
 }
 
 void Window::writeEvent(GeometryEventArgs args){
-    WindowEvent event;
-    event.type = WindowEventType::Geometry;
-    event.geometryData = args;
-    W_DEBUG(event);
-    event.toSocket(m_eventPipe.writeSocket());
+    if(m_eventPipe.enabled()){
+        WindowEvent event;
+        event.type = WindowEventType::Geometry;
+        event.geometryData = args;
+        W_DEBUG(event);
+        event.toSocket(m_eventPipe.writeSocket());
+    }
 }
 
 void Window::writeEvent(ImageInfoEventArgs args){
-    WindowEvent event;
-    event.type = WindowEventType::ImageInfo;
-    event.imageInfoData = args;
-    W_DEBUG(event);
-    event.toSocket(m_eventPipe.writeSocket());
+    if(m_eventPipe.enabled()){
+        WindowEvent event;
+        event.type = WindowEventType::ImageInfo;
+        event.imageInfoData = args;
+        W_DEBUG(event);
+        event.toSocket(m_eventPipe.writeSocket());
+    }
 }
 
 void Window::writeEvent(WaitForPaintEventArgs args){
-    WindowEvent event;
-    event.type = WindowEventType::WaitForPaint;
-    event.waitForPaintData = args;
-    W_DEBUG(event);
-    event.toSocket(m_eventPipe.writeSocket());
+    if(m_eventPipe.enabled()){
+        WindowEvent event;
+        event.type = WindowEventType::WaitForPaint;
+        event.waitForPaintData = args;
+        W_DEBUG(event);
+        event.toSocket(m_eventPipe.writeSocket());
+    }
 }

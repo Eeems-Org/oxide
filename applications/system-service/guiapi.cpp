@@ -75,22 +75,16 @@ GuiAPI::~GuiAPI(){
 }
 
 void GuiAPI::startup(){
-    O_INFO("Startup");
+    O_INFO("Starting up GUI API");
     m_thread.m_screenGeometry = &m_screenGeometry;
     m_thread.start();
     Oxide::startThreadWithPriority(&m_thread, QThread::TimeCriticalPriority);
 }
 
 void GuiAPI::shutdown(){
-    O_INFO("Shutdown");
-    m_windowMutex.lock();
-    QList<Window*> windows;
+    O_INFO("Closing all remaining windows");
     while(!m_windows.isEmpty()){
-        windows.append(m_windows.take(m_windows.firstKey()));
-    }
-    m_windowMutex.unlock();
-    for(auto window : windows){
-        window->_close();
+        m_windows.first()->_close();
     }
     O_INFO("Stopping thread" << &m_thread);
     m_thread.quit();
@@ -100,6 +94,7 @@ void GuiAPI::shutdown(){
         m_thread.terminate();
         m_thread.wait();
     }
+    O_INFO("GUI API shutdown complete");
 }
 
 QRect GuiAPI::geometry(){
@@ -137,6 +132,7 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
     m_windowMutex.unlock();
     sortWindows();
     connect(window, &Window::closed, this, [this, window, path]{
+        O_INFO("Window" << window->identifier() << "closed");
         m_windowMutex.lock();
         if(m_windows.remove(path)){
             m_windowMutex.unlock();
@@ -144,27 +140,9 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
         }else{
             m_windowMutex.unlock();
         }
-        auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
-        m_thread.enqueue(nullptr, region, EPFrameBuffer::Initialize, 0, true);
-    });
-    connect(window, &Window::raised, this, [this, window]{
-        auto windows = sortedWindows();
-        int z = 0;
-        for(auto w : windows){
-            if(w == window){
-                w->setZ(z++);
-            }
-        }
-        window->setZ(z);
-    });
-    connect(window, &Window::lowered, this, [this, window]{
-        auto windows = sortedWindows();
-        window->setZ(0);
-        int z = 1;
-        for(auto w : windows){
-            if(w != window){
-                w->setZ(z++);
-            }
+        if(!DBusService::shuttingDown()){
+            auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
+            m_thread.enqueue(nullptr, region, EPFrameBuffer::Initialize, 0, true);
         }
     });
     for(auto item : appsAPI->runningApplicationsNoSecurityCheck().values()){
@@ -232,11 +210,20 @@ void GuiAPI::repaint(QDBusMessage message){
     }
     W_ALLOWED();
     message.setDelayedReply(true);
-    auto reply = message.createReply();
+    QDBusMessage reply = message.createReply();
     connection().send(reply);
+    auto data = new RepaintReply{
+        .reply = reply
+    };
+    m_replies.append(data);
     int marker = std::experimental::randint(1, 9999);
     m_thread.enqueue(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, marker, true);
-    m_thread.addWait(marker, [this, &reply]{ connection().send(reply); });
+    m_thread.addWait(marker, [this, data]{
+        // TODO - sort out why this is crashing
+        //connection().send(data->reply);
+        m_replies.removeAll(data);
+        delete data;
+    });
 }
 
 bool GuiAPI::isThisPgId(pid_t valid_pgid){
@@ -253,6 +240,27 @@ QList<Window*> GuiAPI::sortedWindows(){
     auto sortedWindows = m_windows.values();
     std::sort(sortedWindows.begin(), sortedWindows.end());
     return sortedWindows;
+}
+
+void GuiAPI::sortWindows(){
+    auto windows = sortedWindows();
+    int raisedZ = 0;
+    int loweredZ = -1;
+    for(auto window : windows){
+        switch(window->state()){
+            case Window::Raised:
+            case Window::RaisedHidden:
+                window->setZ(raisedZ++);
+                break;
+            case Window::Lowered:
+            case Window::LoweredHidden:
+                window->setZ(loweredZ--);
+                break;
+            case Window::Closed:
+            default:
+                break;
+        }
+    }
 }
 
 void GuiAPI::closeWindows(pid_t pgid){
@@ -443,14 +451,6 @@ void GuiAPI::keyEvent(const input_event& event){
         if(window->_isVisible() && !window->isAppPaused()){
             window->writeKeyEvent(event);
         }
-    }
-}
-
-void GuiAPI::sortWindows(){
-    auto windows = sortedWindows();
-    int z = 0;
-    for(auto window : windows){
-        window->setZ(z++);
     }
 }
 

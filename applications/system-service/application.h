@@ -63,6 +63,9 @@ class Application : public QObject{
     Q_PROPERTY(QByteArray screenCapture READ screenCapture)
 
 public:
+    static Window* _window();
+    static void shutdown();
+
     Application(QDBusObjectPath path, QObject* parent);
     Application(QString path, QObject* parent);
     ~Application();
@@ -186,7 +189,6 @@ private:
     int p_stderr_fd = -1;
     QTextStream* p_stderr = nullptr;
     pid_t m_pid;
-    static Window* _window();
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds);

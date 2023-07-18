@@ -36,6 +36,7 @@ public:
     Q_INVOKABLE void repaint(QDBusMessage message);
     bool isThisPgId(pid_t valid_pgid);
     QList<Window*> sortedWindows();
+    void sortWindows();
     void closeWindows(pid_t pgid);
     void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize, unsigned int marker = 0);
     GUIThread* guiThread();
@@ -54,6 +55,9 @@ private:
     QMap<QString, Window*> m_windows;
     QRect m_screenGeometry;
     QMutex m_windowMutex;
-    void sortWindows();
+    struct RepaintReply{
+        QDBusMessage reply;
+    };
+    QList<RepaintReply*> m_replies;
     bool hasPermission();
 };

@@ -122,7 +122,7 @@ AppsAPI::~AppsAPI() {
 }
 
 void AppsAPI::startup(){
-    O_DEBUG("Startup")
+    O_DEBUG("Starting up Apps API")
     Oxide::Sentry::sentry_transaction("apps", "startup", [this](Oxide::Sentry::Transaction* t){
         if(applications.isEmpty()){
             O_INFO("No applications found");
@@ -167,40 +167,46 @@ void AppsAPI::startup(){
 }
 
 void AppsAPI::shutdown(){
+    O_INFO("Shutting down Apps API");
     m_stopping = true;
-    auto frameBuffer = EPFrameBuffer::framebuffer();
-    auto rect = frameBuffer->rect();
-    QPainter painter(frameBuffer);
+    auto window = Application::_window();
+    auto image = window->toImage();
+    auto rect = image.rect();
+    QPainter painter(&image);
     auto fm = painter.fontMetrics();
-    auto size = frameBuffer->size();
+    auto size = image.size();
     O_INFO("Clearing screen...");
     painter.setPen(Qt::white);
     painter.fillRect(rect, Qt::black);
     painter.end();
-    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+//    QEventLoop loop;
+    window->_repaint(rect, EPFrameBuffer::Mono, 1);
+//    window->waitForUpdate(1, [&loop]{ loop.quit(); });
+//    loop.exec();
+    painter.begin(&image);
+    painter.setPen(Qt::white);
+    painter.fillRect(rect, Qt::black);
+    auto text = "Stopping applications...";
+    int padding = 10;
+    int textHeight = fm.height() + padding;
+    QRect textRect(
+        QPoint(0 + padding, size.height() - textHeight),
+        QSize(size.width() - padding * 2, textHeight)
+    );
+    painter.fillRect(textRect, Qt::black);
+    painter.drawText(
+        textRect,
+        Qt::AlignVCenter | Qt::AlignRight,
+        text
+    );
+    painter.end();
+    window->_repaint(textRect, EPFrameBuffer::Mono, 2);
+//    window->waitForUpdate(2, [&loop]{ loop.quit(); });
+//    loop.exec();
     O_INFO("Stopping applications...");
     for(auto app : applications){
         if(app->stateNoSecurityCheck() != Application::Inactive){
-            painter.begin(frameBuffer);
-            painter.setPen(Qt::white);
-            painter.fillRect(rect, Qt::black);
-            auto text = "Stopping " + app->displayName() + "...";
-            O_INFO(text.toStdString().c_str());
-            int padding = 10;
-            int textHeight = fm.height() + padding;
-            QRect textRect(
-                QPoint(0 + padding, size.height() - textHeight),
-                QSize(size.width() - padding * 2, textHeight)
-            );
-            painter.fillRect(textRect, Qt::black);
-            painter.drawText(
-                textRect,
-                Qt::AlignVCenter | Qt::AlignRight,
-                text
-            );
-            EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
-            EPFrameBuffer::waitForLastUpdate();
-            painter.end();
+            O_INFO("Stopping" << app->name());
         }
         app->stopNoSecurityCheck();
     }
@@ -210,14 +216,19 @@ void AppsAPI::shutdown(){
     }
     applications.clear();
     O_INFO("Displaying final quit message...");
-    painter.begin(frameBuffer);
+    painter.begin(&image);
     painter.setPen(Qt::white);
     painter.fillRect(rect, Qt::black);
     painter.fillRect(rect, Qt::black);
     painter.drawText(rect, Qt::AlignCenter,"Goodbye!");
     painter.end();
-    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-    EPFrameBuffer::waitForLastUpdate();
+    if(window->_isVisible()){
+        window->_repaint(rect, EPFrameBuffer::Mono, 0);
+    }else{
+        window->_raise();
+    }
+    Application::shutdown();
+    O_INFO("Apps API shutdown complete");
 }
 
 void AppsAPI::setEnabled(bool enabled){

@@ -44,8 +44,15 @@ static Window* __window = nullptr;
 Window* Application::_window(){
     if(__window == nullptr){
         __window = guiAPI->_createWindow(deviceSettings.screenGeometry(), DEFAULT_IMAGE_FORMAT);
+        __window->disableEventPipe();
     }
     return __window;
+}
+void Application::shutdown(){
+    if(__window != nullptr){
+        __window->_close();
+        __window = nullptr;
+    }
 }
 
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);

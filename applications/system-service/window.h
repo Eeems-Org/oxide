@@ -76,6 +76,7 @@ public:
     void writeEvent(KeyEventArgs args);
     void writeEvent(TouchEventArgs args);
     void writeEvent(TabletEventArgs args);
+    void disableEventPipe();
 
     bool operator>(Window* other) const;
     bool operator<(Window* other) const;
