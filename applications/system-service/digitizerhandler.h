@@ -32,7 +32,7 @@ public:
         // Get event devices
         event_device touchScreen_device(deviceSettings.getTouchDevicePath(), O_RDWR);
         if(touchScreen_device.fd == -1){
-            qDebug() << "Failed to open event device: " << touchScreen_device.device.c_str();
+            O_INFO("Failed to open event device: " << touchScreen_device.device.c_str());
             throw QException();
         }
         instance = new DigitizerHandler(touchScreen_device);
@@ -49,7 +49,7 @@ public:
         // Get event devices
         event_device wacom_device(deviceSettings.getWacomDevicePath(), O_RDWR);
         if(wacom_device.fd == -1){
-            qDebug() << "Failed to open event device: " << wacom_device.device.c_str();
+            O_INFO("Failed to open event device: " << wacom_device.device.c_str());
             throw QException();
         }
         instance = new DigitizerHandler(wacom_device);
@@ -97,7 +97,7 @@ public:
         auto event = createEvent(type, code, value);
         ::write(device.fd, &event, sizeof(input_event));
 #ifdef DEBUG
-        qDebug() << "Emitted event " << event.input_event_sec << event.input_event_usec << type << code << value;
+        O_INFO("Emitted event " << event.input_event_sec << event.input_event_usec << type << code << value);
 #endif
     }
     void write(input_event* events, size_t size){
@@ -111,7 +111,7 @@ public:
             return;
         }
 #ifdef DEBUG
-        qDebug() << "Clearing event buffer on" << device.device.c_str();
+        O_INFO("Clearing event buffer on" << device.device.c_str());
 #endif
         write(flood, 512 * 8 * 4 * sizeof(input_event));
     }
@@ -147,8 +147,8 @@ protected:
         char name[256];
         memset(name, 0, sizeof(name));
         ioctl(device.fd, EVIOCGNAME(sizeof(name)), name);
-        qDebug() << "Reading From : " << device.device.c_str() << " (" << name << ")";
-        qDebug() << "Listening for events...";
+        O_INFO("Reading From : " << device.device.c_str() << " (" << name << ")");
+        O_INFO("Listening for events...");
         while(handle_events()){
             qApp->processEvents(QEventLoop::AllEvents, 100);
             QThread::yieldCurrentThread();

@@ -1,12 +1,16 @@
 #include "apibase.h"
 #include "appsapi.h"
+#include "dbusservice.h"
 
 
 bool APIBase::hasPermission(QString permission, const char* sender){
+    if(DBusService::shuttingDown()){
+        return false;
+    }
     if(getpgid(getpid()) == getSenderPgid()){
         return true;
     }
-    qDebug() << "Checking permission" << permission << "from" << sender;
+    O_INFO("Checking permission" << permission << "from" << sender);
     for(auto name : appsAPI->runningApplicationsNoSecurityCheck().keys()){
         auto app = appsAPI->getApplication(name);
         if(app == nullptr){
@@ -14,19 +18,22 @@ bool APIBase::hasPermission(QString permission, const char* sender){
         }
         if(app->processId() == getSenderPgid()){
             auto result = app->permissions().contains(permission);
-            qDebug() << app->name() << result;
+            O_INFO(app->name() << result);
             return result;
         }
     }
-    qDebug() << "app not found, permission granted";
+    O_INFO("app not found, permission granted");
     return true;
 }
 
 bool APIBase::hasPermissionStrict(QString permission, const char* sender){
+    if(DBusService::shuttingDown()){
+        return false;
+    }
     if(getpgid(getpid()) == getSenderPgid()){
         return true;
     }
-    qDebug() << "Checking permission" << permission << "from" << sender;
+    O_INFO("Checking permission" << permission << "from" << sender);
     for(auto name : appsAPI->runningApplicationsNoSecurityCheck().keys()){
         auto app = appsAPI->getApplication(name);
         if(app == nullptr){
@@ -34,10 +41,10 @@ bool APIBase::hasPermissionStrict(QString permission, const char* sender){
         }
         if(app->processId() == getSenderPgid()){
             auto result = app->permissions().contains(permission);
-            qDebug() << app->name() << result;
+            O_INFO(app->name() << result);
             return result;
         }
     }
-    qDebug() << "app not found, permission denied";
+    O_INFO("app not found, permission denied");
     return false;
 }

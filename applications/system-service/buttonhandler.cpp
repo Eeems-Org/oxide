@@ -19,7 +19,7 @@ void flush_stream(istream* stream){
 void press_button(event_device& evdev, int code, istream* stream){
     Q_UNUSED(stream)
 #ifdef DEBUG
-    qDebug() << "inject button " << code;
+    O_INFO("inject button " << code);
 #endif
 //    evdev.unlock();
     evdev.write(EV_KEY, code, 1);
@@ -40,7 +40,7 @@ ButtonHandler* ButtonHandler::init(){
     }
     // Get event devices
     if(buttons.fd == -1){
-        qDebug() << "Failed to open event device: " << buttons.device.c_str();
+        O_INFO("Failed to open event device: " << buttons.device.c_str());
         throw QException();
     }
     if(atexit(button_exit_handler)){
@@ -58,9 +58,9 @@ void ButtonHandler::run(){
     char name[256];
     memset(name, 0, sizeof(name));
     ioctl(buttons.fd, EVIOCGNAME(sizeof(name)), name);
-    qDebug() << "Reading From : " << buttons.device.c_str() << " (" << name << ")";
+    O_INFO("Reading From : " << buttons.device.c_str() << " (" << name << ")");
     //buttons.lock();
-    qDebug() << "Registering exit handler...";
+    O_INFO("Registering exit handler...");
     // Mapping the correct button IDs.
     unordered_map<int, PressRecord> map;
     map[105] = PressRecord("Left", Qt::Key_Left);
@@ -68,7 +68,7 @@ void ButtonHandler::run(){
     map[106] = PressRecord("Right", Qt::Key_Right);
     map[116] = PressRecord("Power", Qt::Key_PowerOff);
 
-    qDebug() << "Listening for keypresses...";
+    O_INFO("Listening for keypresses...");
     // Get the size of an input event in the right format!
     input_event ie;
     streamsize sie = static_cast<streamsize>(sizeof(struct input_event));

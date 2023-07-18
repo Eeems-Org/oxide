@@ -36,16 +36,16 @@ void Notification::registerPath(){
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
-        qDebug() << "Registered" << path() << OXIDE_APPLICATION_INTERFACE;
+        O_INFO("Registered" << path() << OXIDE_APPLICATION_INTERFACE);
     }else{
-        qDebug() << "Failed to register" << path();
+        O_INFO("Failed to register" << path());
     }
 }
 
 void Notification::unregisterPath(){
     auto bus = QDBusConnection::systemBus();
     if(bus.objectRegisteredAt(path()) != nullptr){
-        qDebug() << "Unregistered" << path();
+        O_INFO("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }
@@ -103,13 +103,13 @@ void Notification::display(){
         return;
     }
     if(notificationAPI->locked()){
-        qDebug() << "Queueing notification display";
+        O_INFO("Queueing notification display");
         notificationAPI->notificationDisplayQueue.append(this);
         return;
     }
     notificationAPI->lock();
     Oxide::dispatchToMainThread([this]{
-        qDebug() << "Displaying notification" << identifier();
+        O_INFO("Displaying notification" << identifier());
         auto path = appsAPI->currentApplicationNoSecurityCheck();
         Application* resumeApp = nullptr;
         if(path.path() != "/"){
@@ -136,12 +136,12 @@ void Notification::click(){
 }
 
 void Notification::paintNotification(Application* resumeApp){
-    qDebug() << "Painting notification" << identifier();
+    O_INFO("Painting notification" << identifier());
     dispatchToMainThread([this]{
         screenBackup = screenAPI->copy();
     });
     updateRect = notificationAPI->paintNotification(text(), m_icon);
-    qDebug() << "Painted notification" << identifier();
+    O_INFO("Painted notification" << identifier());
     emit displayed();
     QTimer::singleShot(2000, [this, resumeApp]{
         dispatchToMainThread([this]{
@@ -149,7 +149,7 @@ void Notification::paintNotification(Application* resumeApp){
             painter.drawImage(updateRect, screenBackup, updateRect);
             painter.end();
             EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-            qDebug() << "Finished displaying notification" << identifier();
+            O_INFO("Finished displaying notification" << identifier());
             EPFrameBuffer::waitForLastUpdate();
         });
         if(!notificationAPI->notificationDisplayQueue.isEmpty()){

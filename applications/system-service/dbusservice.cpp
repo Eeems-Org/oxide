@@ -28,7 +28,7 @@ DBusService* DBusService::__singleton(){
     auto bus = QDBusConnection::systemBus();
     if(instance == nullptr){
         qApp->thread()->setObjectName("main"); // To make identifying threads from QDebug output easier
-        qDebug() << "Creating DBusService instance";
+        O_INFO("Creating DBusService instance");
         instance = new DBusService(nullptr);
         if(!bus.isConnected()){
 #ifdef SENTRY
@@ -37,7 +37,7 @@ DBusService* DBusService::__singleton(){
             qFatal("Failed to connect to system bus.");
         }
         QDBusConnectionInterface* interface = bus.interface();
-        qDebug() << "Registering service...";
+        O_INFO("Registering service...");
         auto reply = interface->registerService(OXIDE_SERVICE);
         bus.registerService(OXIDE_SERVICE);
         if(!reply.isValid()){
@@ -47,7 +47,7 @@ DBusService* DBusService::__singleton(){
 #endif
             qFatal("Unable to register service: %s", ex.message().toStdString().c_str());
         }
-        qDebug() << "Registering object...";
+        O_INFO("Registering object...");
         if(!bus.registerObject(OXIDE_SERVICE_PATH, instance, QDBusConnection::ExportAllContents)){
 #ifdef SENTRY
             sentry_breadcrumb("dbusservice", "Unable to register interface", "error");
@@ -55,7 +55,7 @@ DBusService* DBusService::__singleton(){
             qFatal("Unable to register interface: %s", bus.lastError().message().toStdString().c_str());
         }
         connect(bus.interface(), &QDBusConnectionInterface::serviceOwnerChanged, instance, &DBusService::serviceOwnerChanged);
-        qDebug() << "Registered";
+        O_INFO("Registered");
 
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", "startup", "navigation");
@@ -70,7 +70,7 @@ DBusService* DBusService::__singleton(){
 }
 
 
-DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(), m_shuttingDown{false}{
+DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(){
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "Initializing APIs", "info");
 #endif
@@ -171,7 +171,7 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(),
                 }
                 auto currentApplication = appsAPI->getApplication(appsAPI->currentApplicationNoSecurityCheck());
                 if(currentApplication != nullptr && currentApplication->path() == appsAPI->lockscreenApplication().path()){
-                    qDebug() << "Left Action cancelled. On lockscreen";
+                    O_INFO("Left Action cancelled. On lockscreen");
                     return;
                 }
                 if(!appsAPI->previousApplicationNoSecurityCheck()){
@@ -201,15 +201,15 @@ DBusService::~DBusService(){
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "Disconnecting APIs", "info");
 #endif
-    qDebug() << "Deleting APIs";
+    O_INFO("Deleting APIs");
     while(!apis.isEmpty()){
         auto name = apis.firstKey();
-        qDebug() << "Deleting API" << name;
+        O_INFO("Deleting API" << name);
         auto api = apis.take(name);
         delete api.dependants;
         delete api.instance;
     }
-    qDebug() << "All APIs removed";
+    O_INFO("All APIs removed");
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
 #endif
@@ -221,6 +221,8 @@ bool DBusService::isEnabled(){
     auto reply = QDBusConnection::systemBus().interface()->registeredServiceNames();
     return reply.isValid() && reply.value().contains(OXIDE_SERVICE);
 }
+
+bool DBusService::shuttingDown(){ return m_shuttingDown; }
 
 QObject* DBusService::getAPI(QString name){
     if(!apis.contains(name)){
@@ -234,22 +236,22 @@ int DBusService::tarnishPid(){ return qApp->applicationPid(); }
 QDBusUnixFileDescriptor DBusService::registerChild(){
     auto childPid = getSenderPid();
     auto childPgid = getSenderPgid();
-    qDebug() << "registerChild::" << childPid << childPgid;
+    O_INFO("registerChild::" << childPid << childPgid);
     for(auto child : children){
         if(child->pid() == childPid){
-            qDebug() << "registerChild::Found existing";
+            O_INFO("registerChild::Found existing");
             return QDBusUnixFileDescriptor(child->socket()->socketDescriptor());
         }
     }
     auto child = new ChildEntry(this, childPid, childPgid);
     if(!child->isValid()){
-        qDebug() << "registerChild::Not valid";
+        O_INFO("registerChild::Not valid");
         child->deleteLater();
         return QDBusUnixFileDescriptor();
     }
     connect(child, &ChildEntry::finished, this, [this, child]{ unregisterChild(child->pid()); });
     children.append(child);
-    qDebug() << "registerChild::success";
+    O_INFO("registerChild::success");
     return QDBusUnixFileDescriptor(child->socket()->socketDescriptor());
 }
 
@@ -303,7 +305,7 @@ QDBusObjectPath DBusService::requestAPI(QString name, QDBusMessage message) {
         bus.registerObject(api.path, api.instance, QDBusConnection::ExportAllContents);
     }
     if(!api.dependants->size()){
-        qDebug() << "Registering " << api.path;
+        O_INFO("Registering " << api.path);
         api.instance->setEnabled(true);
         emit apiAvailable(QDBusObjectPath(api.path));
     }
@@ -322,7 +324,7 @@ void DBusService::releaseAPI(QString name, QDBusMessage message) {
     auto client = message.service();
     api.dependants->removeAll(client);
     if(!api.dependants->size()){
-        qDebug() << "Unregistering " << api.path;
+        O_INFO("Unregistering " << api.path);
         api.instance->setEnabled(false);
         QDBusConnection::systemBus().unregisterObject(api.path, QDBusConnection::UnregisterNode);
         emit apiUnavailable(QDBusObjectPath(api.path));
@@ -371,6 +373,26 @@ void DBusService::shutdown(){
         emit apiUnavailable(QDBusObjectPath(api.path));
     }
     bus.unregisterService(OXIDE_SERVICE);
+    O_INFO("Stopping threads" << buttonHandler << touchHandler << wacomHandler);
+    buttonHandler->quit();
+    touchHandler->quit();
+    wacomHandler->quit();
+    QDeadlineTimer deadline(1000);
+    if(!buttonHandler->wait(deadline)){
+        O_WARNING("Terminated thread" << buttonHandler);
+        buttonHandler->terminate();
+        buttonHandler->wait();
+    }
+    if(!touchHandler->wait(deadline)){
+        O_WARNING("Terminated thread" << touchHandler);
+        touchHandler->terminate();
+        touchHandler->wait();
+    }
+    if(!wacomHandler->wait(deadline)){
+        O_WARNING("Terminated thread" << wacomHandler);
+        wacomHandler->terminate();
+        wacomHandler->wait();
+    }
     delete instance;
     instance = nullptr;
     qApp->quit();
@@ -394,7 +416,7 @@ void DBusService::serviceOwnerChanged(const QString& name, const QString& oldOwn
         auto api = apis[key];
         api.dependants->removeAll(name);
         if(!api.dependants->size() && bus.objectRegisteredAt(api.path) != nullptr){
-            qDebug() << "Automatically unregistering " << api.path;
+            O_INFO("Automatically unregistering " << api.path);
             api.instance->setEnabled(false);
             bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);
             emit apiUnavailable(QDBusObjectPath(api.path));
@@ -421,3 +443,4 @@ void DBusService::unregisterChild(pid_t pid){
 }
 
 DBusService* DBusService::instance = nullptr;
+bool DBusService::m_shuttingDown = false;

@@ -5,6 +5,8 @@
 #include "dbusservice.h"
 #include "eventlistener.h"
 
+#include <experimental/random>
+
 #define W_WARNING(msg) O_WARNING(msg << getSenderPgid())
 #define W_DEBUG(msg) O_DEBUG(msg << getSenderPgid())
 #define W_DENIED() W_DEBUG("DENY")
@@ -73,21 +75,31 @@ GuiAPI::~GuiAPI(){
 }
 
 void GuiAPI::startup(){
-    W_DEBUG("Startup");
+    O_INFO("Startup");
     m_thread.m_screenGeometry = &m_screenGeometry;
     m_thread.start();
     Oxide::startThreadWithPriority(&m_thread, QThread::TimeCriticalPriority);
 }
 
 void GuiAPI::shutdown(){
-    W_DEBUG("Shutdown");
-    QMutexLocker locker(&m_windowMutex);
-    Q_UNUSED(locker)
+    O_INFO("Shutdown");
+    m_windowMutex.lock();
+    QList<Window*> windows;
     while(!m_windows.isEmpty()){
-        auto window = m_windows.take(m_windows.firstKey());
+        windows.append(m_windows.take(m_windows.firstKey()));
+    }
+    m_windowMutex.unlock();
+    for(auto window : windows){
         window->_close();
     }
+    O_INFO("Stopping thread" << &m_thread);
     m_thread.quit();
+    QDeadlineTimer deadline(1000);
+    if(!m_thread.wait(deadline)){
+        O_WARNING("Terminated thread" << &m_thread);
+        m_thread.terminate();
+        m_thread.wait();
+    }
 }
 
 QRect GuiAPI::geometry(){
@@ -102,7 +114,7 @@ QRect GuiAPI::geometry(){
 QRect GuiAPI::_geometry(){ return m_screenGeometry; }
 
 void GuiAPI::setEnabled(bool enabled){
-    qDebug() << "GUI API" << enabled;
+    O_INFO("GUI API" << enabled);
     m_enabled = enabled;
     QMutexLocker locker(&m_windowMutex);
     Q_UNUSED(locker)
@@ -222,8 +234,9 @@ void GuiAPI::repaint(QDBusMessage message){
     message.setDelayedReply(true);
     auto reply = message.createReply();
     connection().send(reply);
-    m_thread.enqueue(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, 0, true);
-    m_thread.addWait([this, reply]{ connection().send(reply); });
+    int marker = std::experimental::randint(1, 9999);
+    m_thread.enqueue(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, marker, true);
+    m_thread.addWait(marker, [this, &reply]{ connection().send(reply); });
 }
 
 bool GuiAPI::isThisPgId(pid_t valid_pgid){
@@ -442,6 +455,9 @@ void GuiAPI::sortWindows(){
 }
 
 bool GuiAPI::hasPermission(){
+    if(DBusService::shuttingDown()){
+        return false;
+    }
     pid_t pgid = getSenderPgid();
     if(dbusService->isChildGroup(pgid)){
         return true;

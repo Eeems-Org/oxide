@@ -51,7 +51,7 @@ void Network::registerNetwork(){
         }
         if(!found){
 #ifdef DEBUG
-            qDebug() << realProps();
+            O_INFO(realProps());
 #endif
             QDBusObjectPath path = interface->AddNetwork(realProps());
             auto network = new INetwork(WPA_SUPPLICANT_SERVICE, path.path(), QDBusConnection::systemBus(), interface);

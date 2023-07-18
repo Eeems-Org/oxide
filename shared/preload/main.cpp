@@ -36,7 +36,9 @@ public:
 static bool IS_INITIALIZED = false;
 thread_local bool IS_OPENING = false;
 static bool DEBUG_LOGGING = false;
-static bool FAILED_INIT = false;
+static bool FAILED_INIT = true;
+static bool IS_XOCHITL = false;
+static bool IS_LOADABLE_APP = false;
 static bool FB_OPENED = false;
 static int fbFd = -1;
 static int touchFd = -1;
@@ -49,6 +51,7 @@ static QMutex logMutex;
 static unsigned int completedMarker;
 static QMutex completedMarkerMutex;
 
+// Use this instead of Oxide::getAppName to avoid recursion when logging in open()
 QString appName(){
     if(!QCoreApplication::startingUp()){
         return qApp->applicationName();
@@ -478,7 +481,7 @@ extern "C" {
             void*
         ))dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
         auto frameBuffer = Oxide::Tarnish::frameBufferImage(QImage::Format_RGB16);
-        if(!FIRST_ALLOC || x != frameBuffer.width() || y != frameBuffer.height()){
+        if(!IS_INITIALIZED  || !FIRST_ALLOC || x != frameBuffer.width() || y != frameBuffer.height()){
             qImageCtor(that, x, y, f);
             return;
         }
@@ -633,50 +636,51 @@ extern "C" {
     static void _libhook_init() __attribute__((constructor));
     static void _libhook_init(){
         DEBUG_LOGGING = qEnvironmentVariableIsSet("OXIDE_PRELOAD_DEBUG");
-        if(!__sigaction_connect(SIGSEGV)){
-            _CRIT("Failed to connect SIGSEGV:", strerror(errno));
-            FAILED_INIT = true;
-            DEBUG_LOGGING = true;
-            return;
-        }
-        if(!__sigaction_connect(SIGINT)){
-            _CRIT("Failed to connect SIGINT:", strerror(errno));
-            FAILED_INIT = true;
-            DEBUG_LOGGING = true;
-            return;
-        }
-        if(!__sigaction_connect(SIGTERM)){
-            _CRIT("Failed to connect SIGTERM:", strerror(errno));
-            FAILED_INIT = true;
-            DEBUG_LOGGING = true;
-            return;
-        }
-        if(!__sigaction_connect(SIGABRT)){
-            _CRIT("Failed to connect SIGABRT:", strerror(errno));
-            FAILED_INIT = true;
-            DEBUG_LOGGING = true;
-            return;
-        }
-        bool doConnect = !qEnvironmentVariableIsSet("OXIDE_PRELOAD");
-        if(!doConnect){
-            bool ok;
-            auto epgid = qEnvironmentVariableIntValue("OXIDE_PRELOAD", &ok);
-            doConnect = !ok || epgid != getpgrp();
-        }
-        if(doConnect){
-            auto pid = QString::number(getpid());
-            _DEBUG("Connecting", pid, "to tarnish");
-            auto socket = Oxide::Tarnish::getSocket();
-            if(socket == nullptr){
-                FAILED_INIT = true;
+        QString path = QFileInfo("/proc/self/exe").canonicalFilePath();
+        IS_XOCHITL = path == "/usr/bin/xochitl";
+        IS_LOADABLE_APP = IS_XOCHITL || path.isEmpty() || path.startsWith("/home") || path.startsWith("/home");
+        if(IS_LOADABLE_APP){
+            if(!__sigaction_connect(SIGSEGV)){
+                _CRIT("Failed to connect SIGSEGV:", strerror(errno));
                 DEBUG_LOGGING = true;
-                _CRIT("Failed to connect", pid, "to tarnish");
                 return;
             }
-            QObject::connect(socket, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
-            _DEBUG("Connected", pid, "to tarnish");
+            if(!__sigaction_connect(SIGINT)){
+                _CRIT("Failed to connect SIGINT:", strerror(errno));
+                DEBUG_LOGGING = true;
+                return;
+            }
+            if(!__sigaction_connect(SIGTERM)){
+                _CRIT("Failed to connect SIGTERM:", strerror(errno));
+                DEBUG_LOGGING = true;
+                return;
+            }
+            if(!__sigaction_connect(SIGABRT)){
+                _CRIT("Failed to connect SIGABRT:", strerror(errno));
+                DEBUG_LOGGING = true;
+                return;
+            }
+            bool doConnect = !qEnvironmentVariableIsSet("OXIDE_PRELOAD");
+            if(!doConnect){
+                bool ok;
+                auto epgid = qEnvironmentVariableIntValue("OXIDE_PRELOAD", &ok);
+                doConnect = !ok || epgid != getpgrp();
+            }
+            if(doConnect){
+                auto pid = QString::number(getpid());
+                _DEBUG("Connecting", pid, "to tarnish");
+                auto socket = Oxide::Tarnish::getSocket();
+                if(socket == nullptr){
+                    DEBUG_LOGGING = true;
+                    _CRIT("Failed to connect", pid, "to tarnish");
+                    return;
+                }
+                QObject::connect(socket, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
+                _DEBUG("Connected", pid, "to tarnish");
+            }
         }
-        IS_INITIALIZED = true;
+        FAILED_INIT = false;
+        IS_INITIALIZED = IS_LOADABLE_APP;
         qputenv("OXIDE_PRELOAD", QByteArray::number(getpgrp()));
     }
 
@@ -694,11 +698,10 @@ extern "C" {
             return EXIT_FAILURE;
         }
         auto func_main = (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
-        QString path = QFileInfo("/proc/self/exe").canonicalFilePath();
-        if(!path.startsWith("/home") && !path.startsWith("/home") && path != "/usr/bin/xochtil"){
+        if(!IS_LOADABLE_APP){
             return func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
         }
-        if(path != "/usr/bin/xochitl" && !qEnvironmentVariableIsSet("OXIDE_PRELOAD_NO_QAPP")){
+        if(!qEnvironmentVariableIsSet("OXIDE_PRELOAD_NO_QAPP")){
             QCoreApplication app(argc, argv);
             QThread thread;
             thread.setObjectName("QCoreApplication");

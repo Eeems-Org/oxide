@@ -34,7 +34,7 @@ ScreenAPI::ScreenAPI(QObject* parent) : APIBase(parent), m_screenshots(), m_enab
 
 void ScreenAPI::setEnabled(bool enabled){
     m_enabled = enabled;
-    qDebug() << "Screen API" << enabled;
+    O_INFO("Screen API" << enabled);
     for(auto screenshot : m_screenshots){
         if(enabled){
             screenshot->registerPath();
@@ -67,12 +67,12 @@ bool ScreenAPI::drawFullscreenImage(QString path){
         return false;
     }
     if(!QFile(path).exists()){
-        qDebug() << "Can't find image" << path;
+        O_INFO("Can't find image" << path);
         return false;
     }
     QImage img(path);
     if(img.isNull()){
-        qDebug() << "Image data invalid" << path;
+        O_INFO("Image data invalid" << path);
         return false;
     }
     Sentry::sentry_transaction("screen", "drawFullscrenImage", [img, path](Sentry::Transaction* t){
@@ -93,10 +93,10 @@ QDBusObjectPath ScreenAPI::screenshot(){
     if(!hasPermission("screen")){
         return QDBusObjectPath("/");
     }
-    qDebug() << "Taking screenshot";
+    O_INFO("Taking screenshot");
     auto filePath = getNextPath();
 #ifdef DEBUG
-    qDebug() << "Using path" << filePath;
+    O_INFO("Using path" << filePath);
 #endif
     return dispatchToMainThread<QDBusObjectPath>([this, filePath]{
         QImage screen = copy();
@@ -104,7 +104,7 @@ QDBusObjectPath ScreenAPI::screenshot(){
         EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
         QDBusObjectPath path("/");
         if(!screen.save(filePath)){
-            qDebug() << "Failed to take screenshot";
+            O_INFO("Failed to take screenshot");
         }else{
             path = addScreenshot(filePath)->qPath();
         }
@@ -119,7 +119,7 @@ QDBusObjectPath ScreenAPI::screenshot(){
 QImage ScreenAPI::copy(){
     return Oxide::dispatchToMainThread<QImage>([]{
         auto frameBuffer = EPFrameBuffer::framebuffer();
-        qDebug() << "Waiting for other painting to finish...";
+        O_INFO("Waiting for other painting to finish...");
         while(frameBuffer->paintingActive()){
             EPFrameBuffer::waitForLastUpdate();
         }
@@ -131,7 +131,7 @@ QDBusObjectPath ScreenAPI::addScreenshot(QByteArray blob){
     if(!hasPermission("screen")){
         return QDBusObjectPath("/");
     }
-    qDebug() << "Adding external screenshot";
+    O_INFO("Adding external screenshot");
     mutex.lock();
     auto filePath = getNextPath();
     QFile file(filePath);

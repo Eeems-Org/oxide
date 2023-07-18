@@ -24,7 +24,7 @@ bool NotificationAPI::isEnabled(){ return m_enabled; }
 
 void NotificationAPI::setEnabled(bool enabled){
     m_enabled = enabled;
-    qDebug() << "Notification API" << enabled;
+    O_INFO("Notification API" << enabled);
     for(auto notification : m_notifications.values()){
         if(enabled){
             notification->registerPath();
@@ -94,7 +94,7 @@ Notification* NotificationAPI::getByIdentifier(const QString& identifier){
 
 QRect NotificationAPI::paintNotification(const QString& text, const QString& iconPath){
     return dispatchToMainThread<QRect>([text, iconPath]{
-        qDebug() << "Painting to framebuffer...";
+        O_INFO("Painting to framebuffer...");
         auto frameBuffer = EPFrameBuffer::framebuffer();
         QPainter painter(frameBuffer);
         auto size = frameBuffer->size();
@@ -115,7 +115,7 @@ QRect NotificationAPI::paintNotification(const QString& text, const QString& ico
         QRect textRect(left + padding, top + padding, width - iconSize - (padding * 2), height - padding);
         painter.drawText(textRect, Qt::AlignCenter | Qt::TextWordWrap, text);
         painter.end();
-        qDebug() << "Updating screen " << updateRect << "...";
+        O_INFO("Updating screen " << updateRect << "...");
         EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
         if(!icon.isNull()){
             QPainter painter2(frameBuffer);
@@ -133,11 +133,11 @@ QRect NotificationAPI::paintNotification(const QString& text, const QString& ico
 void NotificationAPI::errorNotification(const QString& text){
     dispatchToMainThread([]{
         auto frameBuffer = EPFrameBuffer::framebuffer();
-        qDebug() << "Waiting for other painting to finish...";
+        O_INFO("Waiting for other painting to finish...");
         while(frameBuffer->paintingActive()){
             EPFrameBuffer::waitForLastUpdate();
         }
-        qDebug() << "Displaying error text";
+        O_INFO("Displaying error text");
         QPainter painter(frameBuffer);
         painter.fillRect(frameBuffer->rect(), Qt::white);
         painter.end();

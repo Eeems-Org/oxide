@@ -33,6 +33,7 @@ protected:
 
 public:
     WaitThread(int frameBufferFd);
+    ~WaitThread();
     QQueue<CompletedMarker> m_completedMarkers;
     QQueue<PendingMarkerWait> m_pendingMarkerWaits;
     QMutex m_completedMutex;
@@ -52,9 +53,11 @@ class GUIThread : public QThread{
 
 protected:
     bool event(QEvent* event) override;
+    void run() override;
 
 public:
     GUIThread();
+    ~GUIThread();
     bool isActive();
     QRect* m_screenGeometry;
     QMutex m_mutex;
@@ -62,7 +65,6 @@ public:
     QQueue<Window*> m_deleteQueue;
     void addWait(Window* window, unsigned int marker, std::function<void()> callback);
     void addWait(unsigned int marker, std::function<void()> callback);
-    void addWait(std::function<void()> callback);
     bool isComplete(Window* window, unsigned int marker);
 
 public slots:

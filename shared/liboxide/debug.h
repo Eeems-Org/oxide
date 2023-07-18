@@ -10,7 +10,7 @@
 
 #include <QDebug>
 #define __DEBUG_LOCATION__ QString("(%1:%2, %3)").arg(__FILE__).arg(__LINE__).arg(__PRETTY_FUNCTION__).toStdString().c_str()
-#define __DEBUG_APPLICATION_INFO__ QString("[%1 %2 %3]").arg(::getpid()).arg(::getpgrp()).arg(qApp->applicationName()).toStdString().c_str()
+#define __DEBUG_APPLICATION_INFO__ QString("[%1 %2 %3]").arg(::getpid()).arg(::getpgrp()).arg(Oxide::getAppName().c_str()).toStdString().c_str()
 /*!
  * \def O_DEBUG(msg)
  * \brief Log a debug message if compiled with DEBUG mode, and debugging is enabled
@@ -22,7 +22,7 @@
 #endif
 #endif
 #ifdef DEBUG
-#define O_DEBUG(msg) if(Oxide::debugEnabled()){ qDebug() << __DEBUG_APPLICATION_INFO__ << msg << __DEBUG_LOCATION__; }
+#define O_DEBUG(msg) if(Oxide::debugEnabled()){ qDebug() << __DEBUG_APPLICATION_INFO__ << "Debug:" << msg << __DEBUG_LOCATION__; }
 #else
 #define O_DEBUG(msg)
 #endif
@@ -31,7 +31,7 @@
  * \brief Log a warning message if debugging is enabled
  * \param msg Warning message to log
  */
-#define O_WARNING(msg) if(Oxide::debugEnabled()){ qWarning() << __DEBUG_APPLICATION_INFO__ << msg << __DEBUG_LOCATION__; }
+#define O_WARNING(msg) if(Oxide::debugEnabled()){ qWarning() << __DEBUG_APPLICATION_INFO__ << "Warning:" << msg << __DEBUG_LOCATION__; }
 
 /*!
  * \def O_EVENT(msg)
@@ -54,7 +54,7 @@
  * \brief Log an informational message
  * \param msg Informational message to log
  */
-#define O_INFO(msg) qInfo() << msg;
+#define O_INFO(msg) qInfo() << __DEBUG_APPLICATION_INFO__ << "Info:" << msg << __DEBUG_LOCATION__;
 
 namespace Oxide {
     /*!
@@ -63,5 +63,10 @@ namespace Oxide {
      * \snippet examples/oxide.cpp debugEnabled
      */
     LIBOXIDE_EXPORT bool debugEnabled();
+    /*!
+     * \brief Get the name of the application
+     * \return The name of the application
+     */
+    LIBOXIDE_EXPORT std::string getAppName();
 }
 /*! @} */

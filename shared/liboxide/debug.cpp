@@ -1,4 +1,5 @@
 #include "debug.h"
+#include <fcntl.h>
 
 namespace Oxide {
     bool debugEnabled(){
@@ -8,4 +9,27 @@ namespace Oxide {
         QString env = qgetenv("DEBUG");
         return !(QStringList() << "0" << "n" << "no" << "false").contains(env.toLower());
     }
+
+    std::string getAppName(){
+        if(!QCoreApplication::startingUp()){
+            return qApp->applicationName().toStdString().c_str();
+        }
+        static std::string name;
+        if(!name.empty()){
+            return name.c_str();
+        }
+        QFile file("/proc/self/comm");
+        if(file.open(QIODevice::ReadOnly)){
+           name = file.readAll().toStdString();
+        }
+        if(!name.empty()){
+            return name.c_str();
+        }
+        name = QFileInfo("/proc/self/exe").canonicalFilePath().toStdString();
+        if(name.empty()){
+            return "unknown";
+        }
+        return name.c_str();
+    }
+
 }

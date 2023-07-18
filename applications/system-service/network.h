@@ -32,15 +32,15 @@ public:
         auto bus = QDBusConnection::systemBus();
         bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
         if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
-            qDebug() << "Registered" << path() << OXIDE_NETWORK_INTERFACE;
+            O_INFO("Registered" << path() << OXIDE_NETWORK_INTERFACE);
         }else{
-            qDebug() << "Failed to register" << path();
+            O_INFO("Failed to register" << path());
         }
     }
     void unregisterPath(){
         auto bus = QDBusConnection::systemBus();
         if(bus.objectRegisteredAt(path()) != nullptr){
-            qDebug() << "Unregistered" << path();
+            O_INFO("Unregistered" << path());
             bus.unregisterObject(path());
         }
     }

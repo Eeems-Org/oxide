@@ -62,7 +62,7 @@ public:
             return;
         }
 #ifdef DEBUG
-        qDebug() << "Clearing event buffer on" << buttons.device.c_str();
+        O_INFO("Clearing event buffer on" << buttons.device.c_str());
 #endif
         ::write(buttons.fd, flood, 512 * 8 * 4 * sizeof(input_event));
     }
@@ -75,7 +75,7 @@ private slots:
         if(!m_enabled){
             return;
         }
-        qDebug() << "Down" << key;
+        O_INFO("Down" << key);
         if(validKeys.contains(key) && !pressed.contains(key)){
             QElapsedTimer timer;
             timer.start();
@@ -86,7 +86,7 @@ private slots:
         if(!m_enabled){
             return;
         }
-        qDebug() << "Up" << key;
+        O_INFO("Up" << key);
         if(!pressed.contains(key)){
             // This should never happen
             return;
@@ -112,7 +112,7 @@ private slots:
             if(!pressed.value(key).hasExpired(700)){
                 continue;
             }
-            qDebug() << "Key held" << key;
+            O_INFO("Key held" << key);
             switch(key){
                 case Qt::Key_Left:
                     emit leftHeld();

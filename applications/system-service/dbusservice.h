@@ -35,6 +35,7 @@ public:
     ~DBusService();
     void setEnabled(bool enabled);
     bool isEnabled();
+    static bool shuttingDown();
 
     QObject* getAPI(QString name);
 
@@ -69,7 +70,7 @@ private:
     int watchdogTimer;
     void unregisterChild(pid_t pid);
     static DBusService* instance;
-    bool m_shuttingDown;
+    static bool m_shuttingDown;
 };
 
 #endif // DBUSSERVICE_H

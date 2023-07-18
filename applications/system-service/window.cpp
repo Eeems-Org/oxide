@@ -3,6 +3,7 @@
 #include "window.h"
 #include "guiapi.h"
 #include "appsapi.h"
+#include "dbusservice.h"
 
 
 using namespace  Oxide::Tarnish;
@@ -598,7 +599,7 @@ void Window::pingDeadline(){
     //_close();
 }
 
-bool Window::hasPermissions(){ return guiAPI->isThisPgId(m_pgid); }
+bool Window::hasPermissions(){ return !DBusService::shuttingDown() && guiAPI->isThisPgId(m_pgid); }
 
 void Window::createFrameBuffer(const QRect& geometry){
     // No mutex, as it should be handled by the calling function

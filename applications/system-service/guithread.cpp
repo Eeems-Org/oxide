@@ -17,7 +17,11 @@ bool WaitThread::event(QEvent* event){
             while(i.hasNext()){
                 PendingMarkerWait pendingMarkerWait = i.next();
                 if(isPendingMarkerWaitDone(pendingMarkerWait)){
-                    O_DEBUG("Marker wait completed" << pendingMarkerWait.window << pendingMarkerWait.marker);
+                    if(pendingMarkerWait.window.isEmpty()){
+                        O_DEBUG("Global marker wait completed" << pendingMarkerWait.marker);
+                    }else{
+                        O_DEBUG("Window marker wait completed" << pendingMarkerWait.window << pendingMarkerWait.marker);
+                    }
                     i.remove();
                     callbacks.append(pendingMarkerWait.callback);
                 }
@@ -41,10 +45,19 @@ WaitThread::WaitThread(int frameBufferFd) : QThread(), m_frameBufferFd{frameBuff
     moveToThread(this);
 }
 
+WaitThread::~WaitThread(){
+    m_completedMutex.lock();
+    for(auto pendingWaitMarker : m_pendingMarkerWaits){
+        pendingWaitMarker.callback();
+    }
+    m_pendingMarkerWaits.clear();
+    m_completedMarkers.clear();
+    m_completedMutex.unlock();
+}
+
 bool WaitThread::isPendingMarkerWaitDone(PendingMarkerWait pendingMarkerWait){
-    // This marker was waiting for any update.
-    // The window will always be empty if marker is 0, but we are checking both just in case.
-    if(pendingMarkerWait.window.isEmpty() || pendingMarkerWait.marker == 0){
+    // Marker should never be 0, but just in case
+    if(pendingMarkerWait.marker == 0){
         return true;
     }
     // Somehow this marker slipped through the cracks, lets assume it's done
@@ -130,22 +143,41 @@ bool GUIThread::event(QEvent* event){
     return true;
 }
 
+void GUIThread::run(){
+    O_INFO("Thread started");
+    auto res = exec();
+    O_INFO("Stopping thread" << m_waitThread);
+    m_waitThread->quit();
+    QDeadlineTimer deadline(1000);
+    if(!m_waitThread->wait(deadline)){
+        O_WARNING("Terminated thread" << m_waitThread);
+        m_waitThread->terminate();
+        m_waitThread->wait();
+    }
+    O_INFO("Thread stopped with exit code:" << res);
+}
+
 GUIThread::GUIThread() : QThread(), m_processing{false}{
     m_frameBufferFd = open("/dev/fb0", O_RDWR);
     if(m_frameBufferFd == -1){
         qFatal("Failed to open framebuffer");
     }
     m_waitThread = new WaitThread(m_frameBufferFd);
-    connect(this, &QThread::started, [this]{
-        O_WARNING("Thread started");
-    });
-    connect(this, &QThread::finished, [this]{
-        m_waitThread->quit();
-        O_WARNING("Thread stopped");
-    });
     setObjectName("gui");
     moveToThread(this);
     Oxide::startThreadWithPriority(m_waitThread, priority());
+}
+
+GUIThread::~GUIThread(){
+    m_mutex.lock();
+    m_processing = true;
+    m_repaintEvents.clear();
+    for(auto window : m_deleteQueue){
+        if(window != nullptr){
+            window->deleteLater();
+        }
+    }
+    m_mutex.unlock();
 }
 
 bool GUIThread::isActive(){ return !m_repaintEvents.isEmpty() || m_processing; }
@@ -183,8 +215,6 @@ void GUIThread::addWait(Window* window, unsigned int marker, std::function<void 
 }
 
 void GUIThread::addWait(unsigned int marker, std::function<void()> callback){ addWait(nullptr, marker, callback); }
-
-void GUIThread::addWait(std::function<void ()> callback){ addWait(nullptr, 0, callback); }
 
 bool GUIThread::isComplete(Window* window, unsigned int marker){
     QMutexLocker locker(&m_waitThread->m_completedMutex);
