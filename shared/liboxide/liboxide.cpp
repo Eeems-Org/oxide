@@ -115,6 +115,18 @@ namespace Oxide {
             return 0;
         });
     }
+    void runInEventLoop(std::function<void(std::function<void()>)> callback){
+        QEventLoop loop;
+        QTimer timer;
+        QObject::connect(&timer, &QTimer::timeout, [&loop, &timer, callback]{
+            if(loop.isRunning()){
+                timer.stop();
+                callback([&loop]{ loop.quit(); });
+            }
+        });
+        timer.start(0);
+        loop.exec();
+    }
     uid_t getUID(const QString& name){
         char buffer[1024];
         struct passwd user;

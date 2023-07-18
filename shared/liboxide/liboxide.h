@@ -120,6 +120,11 @@ namespace Oxide {
         return result;
     }
     /*!
+     * \brief runInEventLoop
+     * \param callback
+     */
+    LIBOXIDE_EXPORT void runInEventLoop(std::function<void(std::function<void()>)> callback);
+    /*!
      * \brief Get the UID for a username
      * \param name Username to search for
      * \throws std::runtime_error Failed to get the UID for the username

@@ -45,6 +45,9 @@ void OxideScreen::addWindow(OxideWindow* window){
     m_windows.append(window);
     setDirty(window->geometry());
     window->requestActivateWindow();
+    if(m_windows.length() == 1){
+        raiseTopWindow();
+    }
 }
 void OxideScreen::removeWindow(OxideWindow* window){
     m_windows.removeAll(window);

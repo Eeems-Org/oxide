@@ -1,5 +1,6 @@
 #include "screenapi.h"
 #include "notificationapi.h"
+#include "window.h"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -78,12 +79,17 @@ bool ScreenAPI::drawFullscreenImage(QString path){
     Sentry::sentry_transaction("screen", "drawFullscrenImage", [img, path](Sentry::Transaction* t){
         Q_UNUSED(t);
         Oxide::dispatchToMainThread([img]{
-            QRect rect = EPFrameBuffer::framebuffer()->rect();
-            QPainter painter(EPFrameBuffer::framebuffer());
+            auto window = Application::_window();
+            auto image = window->toImage();
+            QRect rect = image.rect();
+            QPainter painter(&image);
             painter.drawImage(rect, img);
             painter.end();
-            EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
-            EPFrameBuffer::waitForLastUpdate();
+            if(window->_isVisible()){
+                window->_repaint(rect, EPFrameBuffer::HighQualityGrayscale, 0, false);
+            }else{
+                window->_raise(false);
+            }
         });
     });
     return true;

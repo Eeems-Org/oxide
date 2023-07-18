@@ -10,12 +10,13 @@ struct RepaintRequest{
     EPFrameBuffer::WaveformMode waveform;
     unsigned int marker;
     bool global;
+    std::function<void()> callback = nullptr;
 };
 struct PendingMarkerWait{
     unsigned int marker;
     QString window;
     std::function<void()> callback;
-    QElapsedTimer age;
+    QDeadlineTimer deadline;
 };
 struct CompletedMarker{
     unsigned int internalMarker;
@@ -66,9 +67,10 @@ public:
     void addWait(Window* window, unsigned int marker, std::function<void()> callback);
     void addWait(unsigned int marker, std::function<void()> callback);
     bool isComplete(Window* window, unsigned int marker);
+    void addCompleted(QString window, unsigned int marker, unsigned int internalMarker, bool waited);
 
 public slots:
-    void enqueue(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool global = false);
+    void enqueue(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool global = false, std::function<void()> callback = nullptr);
 
 private:
     bool m_processing;

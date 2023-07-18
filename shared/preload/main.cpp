@@ -460,6 +460,9 @@ int open_from_tarnish(const char* pathname){
         }
         QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, &__read_event_pipe);
         QObject::connect(eventPipe, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
+        Oxide::Tarnish::WindowEvent event;
+        event.type = Oxide::Tarnish::Raise;
+        event.toSocket(eventPipe);
     }
     IS_OPENING = false;
     return res;

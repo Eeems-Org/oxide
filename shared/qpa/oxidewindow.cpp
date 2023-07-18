@@ -11,6 +11,12 @@ void OxideWindow::setVisible(bool visible){
     }else{
         screen->removeWindow(this);
     }
+    if(platformScreen()->topPlatformWindow() == this){
+        auto window = Oxide::Tarnish::topWindow();
+        if(window != nullptr){
+            window->setVisible(visible); // TODO - replace with event socket call
+        }
+    }
     setGeometry(screen->geometry());
 }
 

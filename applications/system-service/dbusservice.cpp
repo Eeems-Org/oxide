@@ -350,9 +350,11 @@ void DBusService::shutdown(){
         return;
     }
     if(m_shuttingDown){
+        O_WARNING("Already shutting down, forcing stop");
         kill(getpid(), SIGKILL);
         return;
     }
+    m_shuttingDown = true;
     sd_notify(0, "STATUS=stopping");
     sd_notify(0, "STOPPING=1");
     emit aboutToQuit();

@@ -948,7 +948,6 @@ namespace Oxide::Tarnish {
                 window = nullptr;
             });
             window->setVisible(true);
-            window->raise();
             O_DEBUG("Window created woth z sort:" << window->z());
         }
         O_DEBUG("Getting framebuffer fd");

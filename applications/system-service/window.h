@@ -64,9 +64,9 @@ public:
     bool writeTabletEvent(const input_event& event);
     bool writeKeyEvent(const input_event& event);
     pid_t pgid();
-    void _repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker);
-    void _raise();
-    void _lower();
+    void _repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async = true);
+    void _raise(bool async = true);
+    void _lower(bool async = true);
     void _close();
     WindowState state();
     void lock();

@@ -33,12 +33,12 @@ public:
     Q_INVOKABLE QDBusObjectPath createWindow(QRect geometry, int format = DEFAULT_IMAGE_FORMAT);
     Q_INVOKABLE QDBusObjectPath createWindow(int format = DEFAULT_IMAGE_FORMAT);
     Q_INVOKABLE QList<QDBusObjectPath> windows();
-    Q_INVOKABLE void repaint(QDBusMessage message);
+    Q_INVOKABLE void repaint();
     bool isThisPgId(pid_t valid_pgid);
     QList<Window*> sortedWindows();
     void sortWindows();
     void closeWindows(pid_t pgid);
-    void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize, unsigned int marker = 0);
+    void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize, unsigned int marker = 0, bool async = true);
     GUIThread* guiThread();
 
     void writeTouchEvent(QEvent* event);
@@ -55,9 +55,7 @@ private:
     QMap<QString, Window*> m_windows;
     QRect m_screenGeometry;
     QMutex m_windowMutex;
-    struct RepaintReply{
-        QDBusMessage reply;
-    };
-    QList<RepaintReply*> m_replies;
+    QAtomicInteger<unsigned int> m_currentMarker;
+
     bool hasPermission();
 };

@@ -179,10 +179,11 @@ void AppsAPI::shutdown(){
     painter.setPen(Qt::white);
     painter.fillRect(rect, Qt::black);
     painter.end();
-//    QEventLoop loop;
-    window->_repaint(rect, EPFrameBuffer::Mono, 1);
-//    window->waitForUpdate(1, [&loop]{ loop.quit(); });
-//    loop.exec();
+    if(window->_isVisible()){
+        window->_repaint(rect, EPFrameBuffer::Mono, 0, false);
+    }else{
+        window->_raise(false);
+    }
     painter.begin(&image);
     painter.setPen(Qt::white);
     painter.fillRect(rect, Qt::black);
@@ -200,9 +201,11 @@ void AppsAPI::shutdown(){
         text
     );
     painter.end();
-    window->_repaint(textRect, EPFrameBuffer::Mono, 2);
-//    window->waitForUpdate(2, [&loop]{ loop.quit(); });
-//    loop.exec();
+    if(window->_isVisible()){
+        window->_repaint(textRect, EPFrameBuffer::Mono, 0, false);
+    }else{
+        window->_raise(false);
+    }
     O_INFO("Stopping applications...");
     for(auto app : applications){
         if(app->stateNoSecurityCheck() != Application::Inactive){
@@ -223,9 +226,9 @@ void AppsAPI::shutdown(){
     painter.drawText(rect, Qt::AlignCenter,"Goodbye!");
     painter.end();
     if(window->_isVisible()){
-        window->_repaint(rect, EPFrameBuffer::Mono, 0);
+        window->_repaint(rect, EPFrameBuffer::Mono, 0, false);
     }else{
-        window->_raise();
+        window->_raise(false);
     }
     Application::shutdown();
     O_INFO("Apps API shutdown complete");

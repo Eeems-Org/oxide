@@ -27,7 +27,8 @@ GuiAPI* GuiAPI::__singleton(GuiAPI* self){
 }
 GuiAPI::GuiAPI(QObject* parent)
 : APIBase(parent),
-  m_enabled(false)
+  m_enabled(false),
+  m_currentMarker{0}
 {
     qRegisterMetaType<EPFrameBuffer::WaveformMode>();
     qRegisterMetaType<QAbstractSocket::SocketState>();
@@ -203,26 +204,15 @@ QList<QDBusObjectPath> GuiAPI::windows(){
     return windows;
 }
 
-void GuiAPI::repaint(QDBusMessage message){
+void GuiAPI::repaint(){
     if(!APIBase::hasPermission("gui")){
         W_DENIED();
         return;
     }
     W_ALLOWED();
-    message.setDelayedReply(true);
-    QDBusMessage reply = message.createReply();
-    connection().send(reply);
-    auto data = new RepaintReply{
-        .reply = reply
-    };
-    m_replies.append(data);
     int marker = std::experimental::randint(1, 9999);
-    m_thread.enqueue(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, marker, true);
-    m_thread.addWait(marker, [this, data]{
-        // TODO - sort out why this is crashing
-        //connection().send(data->reply);
-        m_replies.removeAll(data);
-        delete data;
+    Oxide::runInEventLoop([this, marker](std::function<void()> quit){
+        m_thread.enqueue(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, marker, true, quit);
     });
 }
 
@@ -277,9 +267,21 @@ void GuiAPI::closeWindows(pid_t pgid){
     }
 }
 
-void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker){
+void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async){
     Q_ASSERT(window != nullptr);
-    m_thread.enqueue(window, region, waveform, marker);
+    if(async){
+        m_thread.enqueue(window, region, waveform, marker);
+        return;
+    }
+    marker = marker == 0 ? ++m_currentMarker : marker;
+    O_DEBUG("Waiting for repaint" << marker);
+    Oxide::runInEventLoop([this, window, region, waveform, marker](std::function<void()> quit){
+        m_thread.enqueue(window, region, waveform, marker, false, [marker, quit]{
+            O_DEBUG("Repaint callback done" << marker);
+            quit();
+        });
+    });
+    O_DEBUG("Repaint done" << marker);
 }
 
 GUIThread* GuiAPI::guiThread(){ return &m_thread; }

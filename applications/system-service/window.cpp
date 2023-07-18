@@ -245,7 +245,7 @@ void Window::setVisible(bool visible){
     }
     emit stateChanged(m_state);
     if(wasVisible != _isVisible()){
-        guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize);
+        guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize, 0, false);
     }
 }
 
@@ -295,17 +295,20 @@ bool Window::writeKeyEvent(const input_event& event){ return writeEvent(&m_keyEv
 
 pid_t Window::pgid(){ return m_pgid; }
 
-void Window::_repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker){
+void Window::_repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async){
     if(marker > 0){
         m_pendingMarker = marker;
     }
     if(_isVisible()){
         W_DEBUG("Repaint" << marker << "queued");
-        guiAPI->dirty(this, region, waveform, marker);
+        guiAPI->dirty(this, region, waveform, marker, async);
+    }else{
+        W_DEBUG("Repaint" << marker << "skipped");
+        guiAPI->guiThread()->addCompleted(identifier(), marker, 1, true);
     }
 }
 
-void Window::_raise(){
+void Window::_raise(bool async){
     switch(m_state){
         case WindowState::Lowered:
             m_state = WindowState::Raised;
@@ -323,13 +326,13 @@ void Window::_raise(){
     m_z = std::numeric_limits<int>::max();
     guiAPI->sortWindows();
     invalidateEventPipes();
-    guiAPI->dirty(this, m_geometry);
+    guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize, 0, async);
     emit stateChanged(m_state);
     writeEvent(WindowEventType::Raise);
     emit raised();
 }
 
-void Window::_lower(){
+void Window::_lower(bool async){
     bool wasVisible = _isVisible();
     switch(m_state){
         case WindowState::Raised:
@@ -347,7 +350,7 @@ void Window::_lower(){
     }
     if(wasVisible){
         invalidateEventPipes();
-        guiAPI->dirty(this, m_geometry);
+        guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize, 0, async);
     }
     m_z = std::numeric_limits<int>::min();
     guiAPI->sortWindows();
@@ -500,10 +503,10 @@ void Window::move(int x, int y){
     });
     emit geometryChanged(oldGeometry, m_geometry);
     if(wasVisible){
-        guiAPI->dirty(this, oldGeometry);
+        guiAPI->dirty(this, oldGeometry, EPFrameBuffer::Initialize, 0, false);
     }
     if(_isVisible()){
-        guiAPI->dirty(this, m_geometry);
+        guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize, 0, false);
     }
 }
 
@@ -513,7 +516,7 @@ void Window::repaint(QRect region, int waveform){
         return;
     }
     W_ALLOWED();
-    _repaint(region, (EPFrameBuffer::WaveformMode)waveform, 0);
+    _repaint(region, (EPFrameBuffer::WaveformMode)waveform, 0, false);
 }
 
 void Window::repaint(int waveform){
@@ -522,7 +525,7 @@ void Window::repaint(int waveform){
         return;
     }
     W_ALLOWED();
-    _repaint(m_geometry, (EPFrameBuffer::WaveformMode)waveform, 0);
+    _repaint(m_geometry, (EPFrameBuffer::WaveformMode)waveform, 0, false);
 }
 
 void Window::raise(){
@@ -531,7 +534,7 @@ void Window::raise(){
         return;
     }
     W_ALLOWED();
-    _raise();
+    _raise(false);
 }
 
 void Window::lower(){
@@ -540,7 +543,7 @@ void Window::lower(){
         return;
     }
     W_ALLOWED();
-    _lower();
+    _lower(false);
 }
 
 void Window::close(){
@@ -581,10 +584,10 @@ void Window::readyEventPipeRead(){
                 break;
             }
             case Raise:
-                _raise();
+                _raise(0);
                 break;
             case Lower:
-                _lower();
+                _lower(0);
                 break;
             case Close:
                 _close();

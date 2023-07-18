@@ -208,7 +208,7 @@ void Application::launchNoSecurityCheck(){
             m_process->start();
             m_process->waitForStarted();
             if(!flags().contains("nosplash")){
-                _window()->lower();
+                _window()->_lower();
             }
             if(type() == Background){
                 startSpan("background", "Application is in the background");
@@ -1139,7 +1139,7 @@ void Application::showSplashScreen(){
             auto image = _window()->toImage();
             QPainter painter(&image);
             auto fm = painter.fontMetrics();
-            auto geometry = _window()->geometry();
+            auto geometry = _window()->_geometry();
             painter.fillRect(geometry, Qt::white);
             QString splashPath = splash();
             if(splashPath.isEmpty() || !QFile::exists(splashPath)){
@@ -1175,9 +1175,9 @@ void Application::showSplashScreen(){
             painter.end();
         });
         if(!_window()->_isVisible()){
-            _window()->raise();
+            _window()->_raise(false);
         }else{
-            _window()->_repaint(_window()->geometry(), EPFrameBuffer::HighQualityGrayscale, 0);
+            _window()->_repaint(_window()->_geometry(), EPFrameBuffer::HighQualityGrayscale, 0, false);
         }
     });
     O_INFO("Finished painting splash screen for" << name());
