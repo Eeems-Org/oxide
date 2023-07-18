@@ -75,16 +75,16 @@ bool verifyConnection(){
 bool setupFbFd(int fd){
     fbFile.close();
     if(!fbFile.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
-        O_WARNING(__PRETTY_FUNCTION__ << "Unable to open framebuffer QFile:" << fbFile.errorString());
+        O_WARNING("Unable to open framebuffer QFile:" << fbFile.errorString());
         if(::close(fd) == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable close fd:" << strerror(errno));
+            O_WARNING("Unable close fd:" << strerror(errno));
         }
         return false;
     }
     fbGeometry = window->geometry();
     fbLineSize = window->bytesPerLine();
     fbFormat = (QImage::Format)window->format();
-    O_DEBUG(__PRETTY_FUNCTION__ << "FrameBuffer" << fbGeometry << fbLineSize << fbFormat << fbFile.size() - sizeof(std::mutex));
+    O_DEBUG("FrameBuffer" << fbGeometry << fbLineSize << fbFormat << fbFile.size() - sizeof(std::mutex));
     return true;
 }
 
@@ -147,7 +147,7 @@ namespace Oxide::Tarnish {
             input_event event;
             if(stream.readRawData((char*)&event, size) == -1){
 #ifdef DEBUG_EVENTS
-                O_WARNING(__PRETTY_FUNCTION__ << "Failed to read event" << strerror(errno));
+                O_WARNING("Failed to read event" << strerror(errno));
 #endif
                 return;
             }
@@ -433,16 +433,16 @@ namespace Oxide::Tarnish {
     WindowEvent WindowEvent::fromSocket(QIODevice* socket){
         QMutexLocker locker(&m_readMutex);
         Q_UNUSED(locker);
-        O_DEBUG(__PRETTY_FUNCTION__ << "Reading event from socket");
+        O_DEBUG("Reading event from socket");
         WindowEvent event;
         if(socket->atEnd()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Failed to read event from socket: There are no events waiting");
+            O_WARNING("Failed to read event from socket: There are no events waiting");
             return event;
         }
         qsizetype size = sizeof(unsigned short);
         auto data = socket->read(size);
         if(data.size() != size){
-            O_WARNING(__PRETTY_FUNCTION__ << "Failed to read event from socket: Expected" << size << "bytes but instead recieved" << data.size() << "bytes");
+            O_WARNING("Failed to read event from socket: Expected" << size << "bytes but instead recieved" << data.size() << "bytes");
             return event;
         }
         unsigned short type;
@@ -495,25 +495,29 @@ namespace Oxide::Tarnish {
             case Invalid:
                 break;
             default:
-                O_WARNING(__PRETTY_FUNCTION__ << "Unknown event type:" << type);
+                O_WARNING("Unknown event type:" << type);
                 // TODO - skip to end and send some sort of "oops, I lost track" event?
                 return event;
         }
         event.type = (WindowEventType)type;
-        O_DEBUG(__PRETTY_FUNCTION__ << "Read event from socket" << event);
+        O_DEBUG("Read event from socket" << event);
         return event;
     }
 
     bool WindowEvent::toSocket(QIODevice* socket){
         QMutexLocker locker(&m_writeMutex);
         Q_UNUSED(locker);
-        O_DEBUG(__PRETTY_FUNCTION__ << "Writing event to socket" << this);
+        O_DEBUG("Writing event to socket" << this);
+        if(!socket->isOpen()){
+            O_WARNING("Socket is not open");
+            return false;
+        }
         if(!socket->isWritable()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Socket is not writable");
+            O_WARNING("Socket is not writable");
             return false;
         }
         if(!isValid()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Invalid WindowEvent");
+            O_WARNING("Invalid WindowEvent");
             return false;
         }
         QByteArray data;
@@ -548,12 +552,12 @@ namespace Oxide::Tarnish {
                 break;
             case Invalid:
             default:
-                O_WARNING(__PRETTY_FUNCTION__ << "Unknown event type:" << type)
+                O_WARNING("Unknown event type:" << type)
                 return false;
         }
         auto res = socket->write(data);
         if(res < data.size()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Expected to write" << data.size() << "bytes but only wrote" << res << "bytes");
+            O_WARNING("Expected to write" << data.size() << "bytes but only wrote" << res << "bytes");
             return false;
         }
         return true;
@@ -714,17 +718,17 @@ namespace Oxide::Tarnish {
     QString requestAPI(std::string name){
         connect();
         if(api_general == nullptr){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to request " << name.c_str() << " api: Unable to connect to API");
+            O_WARNING("Unable to request " << name.c_str() << " api: Unable to connect to API");
             return "/";
         }
         auto reply = api_general->requestAPI(QString::fromStdString(name));
         if(reply.isError()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to request " << name.c_str() << " api:" << reply.error());
+            O_WARNING("Unable to request " << name.c_str() << " api:" << reply.error());
             return "/";
         }
         QDBusObjectPath path = reply;
         if(path.path() == "/"){
-            O_WARNING(__PRETTY_FUNCTION__ << "API " << name.c_str() << " request denied, or unavailable");
+            O_WARNING("API " << name.c_str() << " request denied, or unavailable");
         }
         return path.path();
     }
@@ -739,15 +743,15 @@ namespace Oxide::Tarnish {
         if(verifyConnection()){
             return;
         }
-        O_DEBUG(__PRETTY_FUNCTION__ << "Connecting to tarnish over DBus...");
+        O_DEBUG("Connecting to tarnish over DBus...");
         auto bus = QDBusConnection::systemBus();
         auto interface = bus.interface();
         if(interface == nullptr){
-            O_DEBUG(__PRETTY_FUNCTION__ << "DBus interface not available!");
+            O_DEBUG("DBus interface not available!");
             return;
         }
         if(!interface->registeredServiceNames().value().contains(OXIDE_SERVICE)){
-            O_DEBUG(__PRETTY_FUNCTION__ << "Waiting for tarnish DBus service to start up...");
+            O_DEBUG("Waiting for tarnish DBus service to start up...");
             while(!interface->registeredServiceNames().value().contains(OXIDE_SERVICE)){
                 timespec args{
                     .tv_sec = 1,
@@ -756,11 +760,11 @@ namespace Oxide::Tarnish {
                 nanosleep(&args, NULL);
             }
         }
-        O_DEBUG(__PRETTY_FUNCTION__ << "Tarnish DBus service is online, connecting...");
+        O_DEBUG("Tarnish DBus service is online, connecting...");
         api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, qApp);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(api_general, &codes::eeems::oxide1::General::aboutToQuit, [conn]{
-            O_WARNING(__PRETTY_FUNCTION__ << "Tarnish has indicated that it is about to quit!");
+            O_WARNING("Tarnish has indicated that it is about to quit!");
             if(!childSocket.isOpen()){
                 if(!QCoreApplication::startingUp()){
                     QEventLoop loop;
@@ -777,7 +781,7 @@ namespace Oxide::Tarnish {
             delete conn;
         });
         if(qApp != nullptr){
-            O_DEBUG(__PRETTY_FUNCTION__ << "Connecting to QGuiApplication::aboutToQuit");
+            O_DEBUG("Connecting to QGuiApplication::aboutToQuit");
             QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{
                 if(!QCoreApplication::startingUp()){
                     QEventLoop loop;
@@ -791,11 +795,11 @@ namespace Oxide::Tarnish {
                 }
             });
         }
-        O_DEBUG(__PRETTY_FUNCTION__ << "Connected to tarnish Dbus service");
+        O_DEBUG("Connected to tarnish Dbus service");
     }
 
     void disconnect(){
-        O_DEBUG(__PRETTY_FUNCTION__ << "Disconnecting from tarnish");
+        O_DEBUG("Disconnecting from tarnish");
         if(window != nullptr){
             window->close();
             window->deleteLater();
@@ -835,35 +839,35 @@ namespace Oxide::Tarnish {
             return &childSocket;
         }
         if(getAPI() == nullptr){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to register child: Unable to get general API");
+            O_WARNING("Unable to register child: Unable to get general API");
             return nullptr;
         }
-        O_DEBUG(__PRETTY_FUNCTION__ << "Connecting to tarnish command socket");
+        O_DEBUG("Connecting to tarnish command socket");
         auto reply = api_general->registerChild();
         if(reply.isError()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to register child: " << reply.error().message());
+            O_WARNING("Unable to register child: " << reply.error().message());
             return nullptr;
         }
         auto qfd = reply.value();
         if(!qfd.isValid()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to register child: Invalid fd provided");
+            O_WARNING("Unable to register child: Invalid fd provided");
             return nullptr;
         }
         auto fd = qfd.fileDescriptor();
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get child socket: No pipe provided");
+            O_WARNING("Unable to get child socket: No pipe provided");
             return nullptr;
         }
         fd = dup(fd);
         if(!childSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered)){
             ::close(fd);
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get child socket:" << childSocket.errorString());
+            O_WARNING("Unable to get child socket:" << childSocket.errorString());
             return nullptr;
         }
         auto closeConn = new QMetaObject::Connection;
         auto readConn = new QMetaObject::Connection;
         *closeConn = QObject::connect(&childSocket, &QLocalSocket::readChannelFinished, [closeConn, readConn]{
-            O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to tarnish socket!");
+            O_WARNING("Lost connection to tarnish socket!");
             if(!QCoreApplication::startingUp()){
                 QEventLoop loop;
                 QTimer::singleShot(0, [&loop]{
@@ -885,14 +889,14 @@ namespace Oxide::Tarnish {
                 O_DEBUG(childSocket.readAll());
             }
         });
-        O_DEBUG(__PRETTY_FUNCTION__ << "Connected to tarnish command socket");
+        O_DEBUG("Connected to tarnish command socket");
         qRegisterMetaType<QAbstractSocket::SocketState>();
         return &childSocket;
     }
 
     int tarnishPid(){
         if(getAPI() == nullptr){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get tarnish PID: Unable to get general API");
+            O_WARNING("Unable to get tarnish PID: Unable to get general API");
             return -1;
         }
         return api_general->tarnishPid();
@@ -901,7 +905,7 @@ namespace Oxide::Tarnish {
     int getFrameBufferFd(QImage::Format format){
         if(fbFile.isOpen()){
             if(fbFormat != format){
-                O_WARNING(__PRETTY_FUNCTION__ << "Framebuffer format requested does not match the current format" << format << fbFormat);
+                O_WARNING("Framebuffer format requested does not match the current format" << format << fbFormat);
                 return -1;
             }
             return fbFile.handle();
@@ -909,85 +913,85 @@ namespace Oxide::Tarnish {
         QMutexLocker locker(&fbMutex);
         Q_UNUSED(locker);
         if(guiApi() == nullptr){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer: Unable to get GUI API");
+            O_WARNING("Unable to get framebuffer: Unable to get GUI API");
             return -1;
         }
         if(getSocket() == nullptr){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer: Unable get command socket");
+            O_WARNING("Unable to get framebuffer: Unable get command socket");
             return -1;
         }
         if(window == nullptr){
-            O_DEBUG(__PRETTY_FUNCTION__ << "Creating with with" << format << "image format");
+            O_DEBUG("Creating with with" << format << "image format");
             QDBusPendingReply<QDBusObjectPath> reply = api_gui->createWindow(format);
             reply.waitForFinished();
             if(reply.isError()){
-                O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer:" << reply.error());
+                O_WARNING("Unable to get framebuffer:" << reply.error());
                 return -1;
             }
             auto path = reply.value().path();
             if(path == "/"){
-                O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer: Unable to create window");
+                O_WARNING("Unable to get framebuffer: Unable to create window");
                 return -1;
             }
             window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection(), qApp);
             QObject::connect(window, &codes::eeems::oxide1::Window::frameBufferChanged, [=](const QDBusUnixFileDescriptor& fd){
-                O_DEBUG(__PRETTY_FUNCTION__ << "frameBufferChanged");
+                O_DEBUG("frameBufferChanged");
                 fbFile.close();
                 fbGeometry.adjust(0, 0, 0, 0);
                 fbLineSize = 0;
                 fbFormat = QImage::Format_Invalid;
                 fbData = nullptr;
                 if(!fd.isValid()){
-                    O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer: Invalid DBus response");
+                    O_WARNING("Unable to get framebuffer: Invalid DBus response");
                     return;
                 }
                 auto fb = fd.fileDescriptor();
                 if(fb == -1){
-                    O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer: File descriptor is -1");
+                    O_WARNING("Unable to get framebuffer: File descriptor is -1");
                     return;
                 }
                 auto frameBufferFd = dup(fb);
                 if(frameBufferFd == -1){
-                    O_WARNING(__PRETTY_FUNCTION__ << "Failed to unmap framebuffer:" << fbFile.errorString());
+                    O_WARNING("Failed to unmap framebuffer:" << fbFile.errorString());
                     return;
                 }
                 setupFbFd(frameBufferFd);
             });
             QObject::connect(window, &codes::eeems::oxide1::Window::closed, [=](){
-                O_DEBUG(__PRETTY_FUNCTION__ << "Window closed");
+                O_DEBUG("Window closed");
                 window->deleteLater();
                 window = nullptr;
             });
             window->setVisible(true);
             window->raise();
-            O_DEBUG(__PRETTY_FUNCTION__ << "Window created woth z sort:" << window->z());
+            O_DEBUG("Window created woth z sort:" << window->z());
         }
-        O_DEBUG(__PRETTY_FUNCTION__ << "Getting framebuffer fd");
+        O_DEBUG("Getting framebuffer fd");
         auto qfd = window->frameBuffer();
-        O_DEBUG(__PRETTY_FUNCTION__ << "Checking framebuffer fd");
+        O_DEBUG("Checking framebuffer fd");
         if(!qfd.isValid()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer: Invalid DBus response");
+            O_WARNING("Unable to get framebuffer: Invalid DBus response");
             return -1;
         }
         int fd = qfd.fileDescriptor();
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer: File descriptor is -1");
+            O_WARNING("Unable to get framebuffer: File descriptor is -1");
             return -1;
         }
         fd = dup(fd);
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to dup framebuffer fd:" << strerror(errno));
+            O_WARNING("Unable to dup framebuffer fd:" << strerror(errno));
             return -1;
         }
         if(!setupFbFd(fd)){
             return -1;
         }
         if(fbFormat != format){
-            O_WARNING(__PRETTY_FUNCTION__ << "Framebuffer format requested does not match the current format" << format << fbFormat);
+            O_WARNING("Framebuffer format requested does not match the current format" << format << fbFormat);
             fbFile.close();
             return -1;
         }
-        O_DEBUG(__PRETTY_FUNCTION__ << "Framebuffer fd:" << fd);
+        O_DEBUG("Framebuffer fd:" << fd);
         return fbFile.handle();
     }
 
@@ -997,12 +1001,12 @@ namespace Oxide::Tarnish {
         }
         auto fd = getFrameBufferFd(format);
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer fd");
+            O_WARNING("Unable to get framebuffer fd");
             return nullptr;
         }
         fbData = fbFile.map(0, fbFile.size());
         if(fbData == nullptr){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer data:" << fbFile.errorString());
+            O_WARNING("Unable to get framebuffer data:" << fbFile.errorString());
             return nullptr;
         }
         return fbData;
@@ -1015,7 +1019,7 @@ namespace Oxide::Tarnish {
         }
         while(flock(fbFile.handle(), LOCK_EX | LOCK_NB) == -1){
             if(errno != EWOULDBLOCK && errno != EINTR){
-                O_DEBUG(__PRETTY_FUNCTION__ << "Failed to lock framebuffer:" << strerror(errno));
+                O_DEBUG("Failed to lock framebuffer:" << strerror(errno));
                 continue;
             }
             if(!QCoreApplication::startingUp()){
@@ -1037,7 +1041,7 @@ namespace Oxide::Tarnish {
         }
         while(flock(fbFile.handle(), LOCK_UN | LOCK_NB) == -1){
             if(errno != EWOULDBLOCK && errno != EINTR){
-                O_DEBUG(__PRETTY_FUNCTION__ << "Failed to unlock framebuffer:" << strerror(errno));
+                O_DEBUG("Failed to unlock framebuffer:" << strerror(errno));
                 continue;
             }
             if(!QCoreApplication::startingUp()){
@@ -1055,12 +1059,12 @@ namespace Oxide::Tarnish {
     QImage frameBufferImage(QImage::Format format){
         auto data = frameBuffer(format);
         if(data == nullptr){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer image: Could not get buffer");
+            O_WARNING("Unable to get framebuffer image: Could not get buffer");
             return QImage();
         }
         QImage image((uchar*)data, fbGeometry.width(), fbGeometry.height(), fbLineSize, fbFormat);
         if(image.isNull()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get framebuffer image: Image is null");
+            O_WARNING("Unable to get framebuffer image: Image is null");
         }
         return image;
     }
@@ -1070,23 +1074,23 @@ namespace Oxide::Tarnish {
             return touchEventSocket.socketDescriptor();
         }
         if(window == nullptr && getFrameBufferFd() == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get touch event pipe, no window");
+            O_WARNING("Unable to get touch event pipe, no window");
             return -1;
         }
         auto qfd = window->touchEventPipe();
         if(!qfd.isValid()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get touch event pipe: Invalid DBus response");
+            O_WARNING("Unable to get touch event pipe: Invalid DBus response");
             return -1;
         }
         auto fd = qfd.fileDescriptor();
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get touch event pipe: No pipe provided");
+            O_WARNING("Unable to get touch event pipe: No pipe provided");
             return -1;
         }
         fd = dup(fd);
         if(!touchEventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
             ::close(fd);
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get touch event pipe:" << touchEventSocket.errorString());
+            O_WARNING("Unable to get touch event pipe:" << touchEventSocket.errorString());
             return -1;
         }
         return touchEventSocket.socketDescriptor();
@@ -1095,14 +1099,14 @@ namespace Oxide::Tarnish {
     InputEventSocket* getTouchEventPipe(){
         auto fd = getTouchEventPipeFd();
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get touch event pipe: Failed to get pipe fd");
+            O_WARNING("Unable to get touch event pipe: Failed to get pipe fd");
             return nullptr;
         }
         startInputThread();
         touchEventSocket.moveToThread(&inputThread);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(&touchEventSocket, &InputEventSocket::readChannelFinished, [conn]{
-            O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to touch event pipe!");
+            O_WARNING("Lost connection to touch event pipe!");
             touchEventSocket.close();
             QObject::disconnect(*conn);
             delete conn;
@@ -1115,23 +1119,23 @@ namespace Oxide::Tarnish {
             return tabletEventSocket.socketDescriptor();
         }
         if(window == nullptr && getFrameBufferFd() == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get tablet event pipe, no window");
+            O_WARNING("Unable to get tablet event pipe, no window");
             return -1;
         }
         auto qfd = window->tabletEventPipe();
         if(!qfd.isValid()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get tablet event pipe: Invalid DBus response");
+            O_WARNING("Unable to get tablet event pipe: Invalid DBus response");
             return -1;
         }
         auto fd = qfd.fileDescriptor();
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get tablet event pipe: No pipe provided");
+            O_WARNING("Unable to get tablet event pipe: No pipe provided");
             return -1;
         }
         fd = dup(fd);
         if(!tabletEventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
             ::close(fd);
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get tablet event pipe:" << tabletEventSocket.errorString());
+            O_WARNING("Unable to get tablet event pipe:" << tabletEventSocket.errorString());
             return -1;
         }
         return tabletEventSocket.socketDescriptor();
@@ -1140,14 +1144,14 @@ namespace Oxide::Tarnish {
     InputEventSocket* getTabletEventPipe(){
         auto fd = getTabletEventPipeFd();
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get event pipe: Failed to get pipe fd");
+            O_WARNING("Unable to get event pipe: Failed to get pipe fd");
             return nullptr;
         }
         startInputThread();
         tabletEventSocket.moveToThread(&inputThread);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(&tabletEventSocket, &InputEventSocket::readChannelFinished, [conn]{
-            O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to tablet event pipe!");
+            O_WARNING("Lost connection to tablet event pipe!");
             tabletEventSocket.close();
             QObject::disconnect(*conn);
             delete conn;
@@ -1160,23 +1164,23 @@ namespace Oxide::Tarnish {
             return keyEventSocket.socketDescriptor();
         }
         if(window == nullptr && getFrameBufferFd() == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get key event pipe, no window");
+            O_WARNING("Unable to get key event pipe, no window");
             return -1;
         }
         auto qfd = window->keyEventPipe();
         if(!qfd.isValid()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get key event pipe: Invalid DBus response");
+            O_WARNING("Unable to get key event pipe: Invalid DBus response");
             return -1;
         }
         auto fd = qfd.fileDescriptor();
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get key event pipe: No pipe provided");
+            O_WARNING("Unable to get key event pipe: No pipe provided");
             return -1;
         }
         fd = dup(fd);
         if(!keyEventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
             ::close(fd);
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get key event pipe:" << keyEventSocket.errorString());
+            O_WARNING("Unable to get key event pipe:" << keyEventSocket.errorString());
             return -1;
         }
         return keyEventSocket.socketDescriptor();
@@ -1185,14 +1189,14 @@ namespace Oxide::Tarnish {
     InputEventSocket* getKeyEventPipe(){
         auto fd = getKeyEventPipeFd();
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get key event pipe: Failed to get pipe fd");
+            O_WARNING("Unable to get key event pipe: Failed to get pipe fd");
             return nullptr;
         }
         startInputThread();
         keyEventSocket.moveToThread(&inputThread);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(&keyEventSocket, &InputEventSocket::readChannelFinished, [conn]{
-            O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to key event pipe!");
+            O_WARNING("Lost connection to key event pipe!");
             keyEventSocket.close();
             QObject::disconnect(*conn);
             delete conn;
@@ -1205,23 +1209,23 @@ namespace Oxide::Tarnish {
             return eventSocket.socketDescriptor();
         }
         if(window == nullptr && getFrameBufferFd() == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get window event pipe, no window");
+            O_WARNING("Unable to get window event pipe, no window");
             return -1;
         }
         auto qfd = window->eventPipe();
         if(!qfd.isValid()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get window event pipe: Invalid DBus response");
+            O_WARNING("Unable to get window event pipe: Invalid DBus response");
             return -1;
         }
         auto fd = qfd.fileDescriptor();
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get window event pipe: No pipe provided");
+            O_WARNING("Unable to get window event pipe: No pipe provided");
             return -1;
         }
         fd = dup(fd);
         if(!eventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered)){
             ::close(fd);
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get window event pipe:" << eventSocket.errorString());
+            O_WARNING("Unable to get window event pipe:" << eventSocket.errorString());
             return -1;
         }
         return eventSocket.socketDescriptor();
@@ -1230,7 +1234,7 @@ namespace Oxide::Tarnish {
     QLocalSocket* getEventPipe(){
         auto fd = getEventPipeFd();
         if(fd == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Unable to get window event pipe: Failed to get pipe fd");
+            O_WARNING("Unable to get window event pipe: Failed to get pipe fd");
             return nullptr;
         }
         if(eventSocket.isOpen()){
@@ -1240,7 +1244,7 @@ namespace Oxide::Tarnish {
         eventSocket.moveToThread(&eventThread);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(&eventSocket, &QLocalSocket::readChannelFinished, [conn]{
-            O_WARNING(__PRETTY_FUNCTION__ << "Lost connection to window event pipe!");
+            O_WARNING("Lost connection to window event pipe!");
             eventSocket.close();
             QObject::disconnect(*conn);
             delete conn;
@@ -1253,11 +1257,11 @@ namespace Oxide::Tarnish {
             return;
         }
         if(msync(fbData, fbFile.size(), MS_SYNC | MS_INVALIDATE) == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Failed update screen:" << strerror(errno))
+            O_WARNING("Failed update screen:" << strerror(errno))
             return;
         }
         if(!eventSocket.isOpen()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Failed update screen: event socket not open");
+            O_WARNING("Failed update screen: event socket not open");
             return;
         }
         if(marker == 0){
@@ -1279,16 +1283,16 @@ namespace Oxide::Tarnish {
             return;
         }
         if(msync(fbData, fbFile.size(), MS_SYNC | MS_INVALIDATE) == -1){
-            O_WARNING(__PRETTY_FUNCTION__ << "Failed update screen:" << strerror(errno))
+            O_WARNING("Failed update screen:" << strerror(errno))
             return;
         }
         if(!eventSocket.isOpen()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Failed update screen: event socket not open");
+            O_WARNING("Failed update screen: event socket not open");
             return;
         }
         auto image = frameBufferImage();
         if(image.isNull()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Failed update screen: Image is null");
+            O_WARNING("Failed update screen: Image is null");
             return;
         }
         if(marker == 0){
@@ -1308,7 +1312,7 @@ namespace Oxide::Tarnish {
 
     unsigned int requestWaitForUpdate(unsigned int marker){
         if(!eventSocket.isOpen()){
-            O_WARNING(__PRETTY_FUNCTION__ << "Failed wait for screen update: event socket not open");
+            O_WARNING("Failed wait for screen update: event socket not open");
             return 0;
         }
         WindowEvent event;

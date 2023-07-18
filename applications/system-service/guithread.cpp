@@ -11,14 +11,13 @@ bool WaitThread::event(QEvent* event){
             auto pendingMarkerWaits = getPendingMarkers();
             auto completedMarkers = getCompletedMarkers();
             if(pendingMarkerWaits.isEmpty() && completedMarkers.isEmpty()){
-                O_DEBUG(__PRETTY_FUNCTION__ << "No more pending markers or completed markers");
                 break;
             }
             QMutableListIterator i(pendingMarkerWaits);
             while(i.hasNext()){
                 PendingMarkerWait pendingMarkerWait = i.next();
                 if(isPendingMarkerWaitDone(pendingMarkerWait)){
-                    O_DEBUG(__PRETTY_FUNCTION__ << "Marker wait completed" << pendingMarkerWait.window << pendingMarkerWait.marker);
+                    O_DEBUG("Marker wait completed" << pendingMarkerWait.window << pendingMarkerWait.marker);
                     i.remove();
                     callbacks.append(pendingMarkerWait.callback);
                 }
@@ -50,7 +49,7 @@ bool WaitThread::isPendingMarkerWaitDone(PendingMarkerWait pendingMarkerWait){
     }
     // Somehow this marker slipped through the cracks, lets assume it's done
     if(pendingMarkerWait.age.hasExpired(1000 * 7)){
-        O_WARNING(__PRETTY_FUNCTION__ << "Stale MXCFB_WAIT_FOR_UPDATE_COMPLETE marker" << pendingMarkerWait.marker << "for window" << pendingMarkerWait.window);
+        O_WARNING("Stale MXCFB_WAIT_FOR_UPDATE_COMPLETE marker" << pendingMarkerWait.marker << "for window" << pendingMarkerWait.window);
         return true;
     }
     auto completedMarkers = getCompletedMarkers();
@@ -138,11 +137,11 @@ GUIThread::GUIThread() : QThread(), m_processing{false}{
     }
     m_waitThread = new WaitThread(m_frameBufferFd);
     connect(this, &QThread::started, [this]{
-        O_WARNING(__PRETTY_FUNCTION__ << "Thread started");
+        O_WARNING("Thread started");
     });
     connect(this, &QThread::finished, [this]{
         m_waitThread->quit();
-        O_WARNING(__PRETTY_FUNCTION__ << "Thread stopped");
+        O_WARNING("Thread stopped");
     });
     setObjectName("gui");
     moveToThread(this);
@@ -206,7 +205,7 @@ void GUIThread::repaintWindow(QPainter* painter, QRect* rect, Window* window){
     if(windowIntersect.isEmpty()){
         return;
     }
-    O_DEBUG(__PRETTY_FUNCTION__ << window->identifier() << windowIntersect << window->z());
+    O_DEBUG(window->identifier() << windowIntersect << window->z());
     // TODO - See if there is a way to detect if there is just transparency in the region
     //        and don't mark this as repainted.
     painter->drawImage(*rect, window->toImage(), windowIntersect);
@@ -219,15 +218,15 @@ void GUIThread::redraw(RepaintRequest& event){
     const QRect screenRect = m_screenGeometry->translated(-screenOffset);
     auto region = event.region;
     if(region.isEmpty()){
-        O_WARNING(__PRETTY_FUNCTION__ << "Empty repaint region" << region);
+        O_WARNING("Empty repaint region" << region);
         return;
     }
     if(!event.global && event.window == nullptr){
-        O_WARNING(__PRETTY_FUNCTION__ << "Window missing");
+        O_WARNING("Window missing");
         return;
     }
     if(event.global && m_deleteQueue.contains(event.window)){
-        O_WARNING(__PRETTY_FUNCTION__ << "Window has been closed");
+        O_WARNING("Window has been closed");
         return;
     }
     auto windowGeometry = event.window->_geometry();
@@ -242,10 +241,10 @@ void GUIThread::redraw(RepaintRequest& event){
             .intersected(screenRect);
     }
     if(rect.isEmpty()){
-        O_WARNING(__PRETTY_FUNCTION__ << "Window region does not intersect with screen");
+        O_WARNING("Window region does not intersect with screen");
         return;
     }
-    O_WARNING(__PRETTY_FUNCTION__ << "Repainting" << rect);
+    O_WARNING("Repainting" << rect);
     // Get windows in order of Z sort order, and filter out invalid windows
     auto visibleWindows = guiAPI->sortedWindows();
     // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
@@ -257,14 +256,14 @@ void GUIThread::redraw(RepaintRequest& event){
             continue;
         }
         if(getpgid(window->pgid()) < 0){
-            O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "With not running process");
+            O_WARNING(window->identifier() << "With not running process");
             QMetaObject::invokeMethod(window, &Window::close, Qt::QueuedConnection);
             i.remove();
             continue;
         }
         auto image = window->toImage();
         if(image.isNull()){
-            O_WARNING(__PRETTY_FUNCTION__ << window->identifier() << "Null framebuffer");
+            O_WARNING(window->identifier() << "Null framebuffer");
             i.remove();
             continue;
         }
@@ -330,7 +329,7 @@ void GUIThread::redraw(RepaintRequest& event){
             }
         }
         auto mode =  rect == screenRect ? EPFrameBuffer::FullUpdate : EPFrameBuffer::PartialUpdate;
-        O_DEBUG(__PRETTY_FUNCTION__ << "Sending screen update" << rect << waveform << mode);
+        O_DEBUG("Sending screen update" << rect << waveform << mode);
         updateMarker = ++m_currentMarker;
         mxcfb_update_data data{
             .update_region = mxcfb_rect{
@@ -363,7 +362,7 @@ void GUIThread::redraw(RepaintRequest& event){
         m_waitThread->m_completedMutex.unlock();
         QCoreApplication::postEvent(m_waitThread, new QEvent(QEvent::UpdateRequest));
     }
-    O_DEBUG(__PRETTY_FUNCTION__ << "Repaint" << rect << "done");
+    O_DEBUG("Repaint" << rect << "done");
 }
 
 QQueue<RepaintRequest> GUIThread::getRepaintEvents(){

@@ -11,14 +11,14 @@ SocketPair::SocketPair(bool allowWriteSocketRead)
 {
     int fds[2];
     if(::socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == -1){
-        O_WARNING(__PRETTY_FUNCTION__ << "Unable to open socket pair:" << strerror(errno));
+        O_WARNING("Unable to open socket pair:" << strerror(errno));
     }
     if(!m_readSocket.setSocketDescriptor(fds[1], QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
-        O_WARNING(__PRETTY_FUNCTION__ << "Unable to open socket pair read socket:" << m_readSocket.errorString());
+        O_WARNING("Unable to open socket pair read socket:" << m_readSocket.errorString());
     }
     auto mode = allowWriteSocketRead ? QLocalSocket::ReadWrite : QLocalSocket::WriteOnly;
     if(!m_writeSocket.setSocketDescriptor(fds[0], QLocalSocket::ConnectedState, mode | QLocalSocket::Unbuffered)){
-        O_WARNING(__PRETTY_FUNCTION__ << "Unable to open socket pair write socket:" << m_writeSocket.errorString());
+        O_WARNING("Unable to open socket pair write socket:" << m_writeSocket.errorString());
     }
     if(allowWriteSocketRead){
         connect(&m_writeSocket, &QLocalSocket::readyRead, this, &SocketPair::_readyRead);

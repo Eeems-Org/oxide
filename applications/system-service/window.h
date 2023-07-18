@@ -87,7 +87,7 @@ public slots:
     Q_NOREPLY void repaint(int waveform = EPFrameBuffer::Mono);
     void raise();
     void lower();
-    void close();
+    Q_NOREPLY void close();
 
 signals:
     void geometryChanged(const QRect& oldGeometry, const QRect& newGeometry);

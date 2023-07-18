@@ -355,7 +355,7 @@ QWindowSystemInterface::TouchPoint OxideIntegration::getTouchPoint(const Oxide::
 void OxideIntegration::handleTouch(Oxide::Tarnish::TouchEventArgs* data){
     QRect winRect = QHighDpi::toNativePixels(m_primaryScreen->geometry(), m_primaryScreen);
     if(winRect.isNull()){
-        qWarning() << __PRETTY_FUNCTION__ << "Null screenGeometry";
+        O_WARNING("Null screenGeometry");
         return;
     }
     m_lastTouchPoints = m_touchPoints;

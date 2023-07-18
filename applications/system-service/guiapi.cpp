@@ -5,8 +5,8 @@
 #include "dbusservice.h"
 #include "eventlistener.h"
 
-#define W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << msg << getSenderPgid())
-#define W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << msg << getSenderPgid())
+#define W_WARNING(msg) O_WARNING(msg << getSenderPgid())
+#define W_DEBUG(msg) O_DEBUG(msg << getSenderPgid())
 #define W_DENIED() W_DEBUG("DENY")
 #define W_ALLOWED() W_DEBUG("ALLOW")
 
@@ -64,6 +64,8 @@ GuiAPI::GuiAPI(QObject* parent)
     });
 }
 GuiAPI::~GuiAPI(){
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     while(!m_windows.isEmpty()){
         auto window = m_windows.take(m_windows.firstKey());
         delete window;
@@ -79,6 +81,8 @@ void GuiAPI::startup(){
 
 void GuiAPI::shutdown(){
     W_DEBUG("Shutdown");
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     while(!m_windows.isEmpty()){
         auto window = m_windows.take(m_windows.firstKey());
         window->_close();
@@ -100,6 +104,8 @@ QRect GuiAPI::_geometry(){ return m_screenGeometry; }
 void GuiAPI::setEnabled(bool enabled){
     qDebug() << "GUI API" << enabled;
     m_enabled = enabled;
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     for(auto window : m_windows){
         if(window != nullptr){
             window->setEnabled(enabled);
@@ -113,12 +119,18 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
     auto id = QUuid::createUuid().toString(QUuid::Id128);
     auto path = QString(OXIDE_SERVICE_PATH) + "/window/" + QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
     auto pgid = getSenderPgid();
+    m_windowMutex.lock();
     auto window = new Window(id, path, pgid, geometry, m_windows.count(), format);
     m_windows.insert(path, window);
+    m_windowMutex.unlock();
     sortWindows();
     connect(window, &Window::closed, this, [this, window, path]{
+        m_windowMutex.lock();
         if(m_windows.remove(path)){
+            m_windowMutex.unlock();
             sortWindows();
+        }else{
+            m_windowMutex.unlock();
         }
         auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
         m_thread.enqueue(nullptr, region, EPFrameBuffer::Initialize, 0, true);
@@ -191,6 +203,8 @@ QDBusObjectPath GuiAPI::createWindow(int format){
 QList<QDBusObjectPath> GuiAPI::windows(){
     auto pgid = getSenderPgid();
     QList<QDBusObjectPath> windows;
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     for(auto window : m_windows){
         if(window->pgid() == pgid){
             windows.append(window->path());
@@ -220,19 +234,25 @@ bool GuiAPI::isThisPgId(pid_t valid_pgid){
     return pgid == valid_pgid || pgid == getpid();
 }
 
-QMap<QString, Window*> GuiAPI::allWindows(){ return m_windows; }
-
 QList<Window*> GuiAPI::sortedWindows(){
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     auto sortedWindows = m_windows.values();
     std::sort(sortedWindows.begin(), sortedWindows.end());
     return sortedWindows;
 }
 
 void GuiAPI::closeWindows(pid_t pgid){
-    for(auto window : m_windows.values()){
+    m_windowMutex.lock();
+    QList<Window*> windows;
+    for(auto window : windows){
         if(window->pgid() == pgid){
-            window->_close();
+            windows.append(window);
         }
+    }
+    m_windowMutex.unlock();
+    for(auto window : windows){
+        window->_close();
     }
 }
 
@@ -291,6 +311,8 @@ void GuiAPI::writeTouchEvent(QEvent* event){
         });
         W_DEBUG(point.normalizedPos() << point.ellipseDiameters());
     }
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     for(auto window : m_windows){
         if(!window->_isVisible() || window->isAppPaused()){
             continue;
@@ -343,6 +365,8 @@ void GuiAPI::writeTabletEvent(QEvent* event){
         .tiltX = tabletEvent->xTilt(),
         .tiltY = tabletEvent->yTilt(),
     };
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     for(auto window : m_windows){
         if(!window->_isVisible() || window->isAppPaused()){
             continue;
@@ -367,6 +391,8 @@ void GuiAPI::writeKeyEvent(QEvent* event){
             : KeyEventType::ReleaseKey,
         .unicode = (unsigned int)(text.length() ? text.at(0).unicode() : 0),
     };
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     for(auto window : m_windows){
         if(window->_isVisible() && !window->isAppPaused()){
             window->writeEvent(args);
@@ -376,6 +402,8 @@ void GuiAPI::writeKeyEvent(QEvent* event){
 
 void GuiAPI::touchEvent(const input_event& event){
     O_EVENT(event);
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     for(auto window : m_windows){
         if(window->_isVisible() && !window->isAppPaused()){
             window->writeTouchEvent(event);
@@ -385,6 +413,8 @@ void GuiAPI::touchEvent(const input_event& event){
 
 void GuiAPI::tabletEvent(const input_event& event){
     O_EVENT(event);
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     for(auto window : m_windows){
         if(window->_isVisible() && !window->isAppPaused()){
             window->writeTabletEvent(event);
@@ -394,6 +424,8 @@ void GuiAPI::tabletEvent(const input_event& event){
 
 void GuiAPI::keyEvent(const input_event& event){
     O_EVENT(event);
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     for(auto window : m_windows){
         if(window->_isVisible() && !window->isAppPaused()){
             window->writeKeyEvent(event);

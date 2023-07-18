@@ -122,7 +122,7 @@ AppsAPI::~AppsAPI() {
 }
 
 void AppsAPI::startup(){
-    O_DEBUG(__PRETTY_FUNCTION__ << "Startup")
+    O_DEBUG("Startup")
     Oxide::Sentry::sentry_transaction("apps", "startup", [this](Oxide::Sentry::Transaction* t){
         if(applications.isEmpty()){
             qDebug() << "No applications found";

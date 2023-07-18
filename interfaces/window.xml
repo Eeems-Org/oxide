@@ -76,6 +76,7 @@
     <method name="lower">
     </method>
     <method name="close">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
     </method>
     <method name="isVisible">
       <arg type="b" direction="out"/>

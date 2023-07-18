@@ -694,7 +694,11 @@ extern "C" {
             return EXIT_FAILURE;
         }
         auto func_main = (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
-        if(QFileInfo("/proc/self/exe").canonicalFilePath() != "/usr/bin/xochitl" && !qEnvironmentVariableIsSet("OXIDE_PRELOAD_NO_QAPP")){
+        QString path = QFileInfo("/proc/self/exe").canonicalFilePath();
+        if(!path.startsWith("/home") && !path.startsWith("/home") && path != "/usr/bin/xochtil"){
+            return func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
+        }
+        if(path != "/usr/bin/xochitl" && !qEnvironmentVariableIsSet("OXIDE_PRELOAD_NO_QAPP")){
             QCoreApplication app(argc, argv);
             QThread thread;
             thread.setObjectName("QCoreApplication");

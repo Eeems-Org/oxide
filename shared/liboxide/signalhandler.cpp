@@ -56,7 +56,7 @@ namespace Oxide {
             ::signal(signal, SIG_DFL);
             return;
         }
-        O_DEBUG(__PRETTY_FUNCTION__ << "Signal recieved:" << strsignal(signal));
+        O_DEBUG("Signal recieved:" << strsignal(signal));
         auto item = notifiers.value(signal);
         char a = 1;
         ::write(item.fd, &a, sizeof(a));
@@ -81,9 +81,9 @@ namespace Oxide {
             while(!notifier->atEnd()){
                 notifier->read(sizeof(char));
                 if(!QMetaObject::invokeMethod(this, name, Qt::QueuedConnection)){
-                    O_WARNING(__PRETTY_FUNCTION__ << "Failed to emit" << name);
+                    O_WARNING("Failed to emit" << name);
                 }
-                O_DEBUG(__PRETTY_FUNCTION__ << "emitted" << name);
+                O_DEBUG("emitted" << name);
             }
         }, Qt::QueuedConnection);
     }

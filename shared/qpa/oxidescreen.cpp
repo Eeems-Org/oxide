@@ -78,7 +78,7 @@ void OxideScreen::redraw(){
     }
     auto frameBuffer = Oxide::Tarnish::frameBufferImage();
     if(frameBuffer.isNull()){
-        O_WARNING(__PRETTY_FUNCTION__ << "No framebuffer");
+        O_WARNING("No framebuffer");
         return;
     }
     Oxide::Tarnish::lockFrameBuffer();

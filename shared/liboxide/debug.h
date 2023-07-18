@@ -6,8 +6,11 @@
 #pragma once
 
 #include "liboxide_global.h"
+#include <unistd.h>
 
 #include <QDebug>
+#define __DEBUG_LOCATION__ QString("(%1:%2, %3)").arg(__FILE__).arg(__LINE__).arg(__PRETTY_FUNCTION__).toStdString().c_str()
+#define __DEBUG_APPLICATION_INFO__ QString("[%1 %2 %3]").arg(::getpid()).arg(::getpgrp()).arg(qApp->applicationName()).toStdString().c_str()
 /*!
  * \def O_DEBUG(msg)
  * \brief Log a debug message if compiled with DEBUG mode, and debugging is enabled
@@ -19,7 +22,7 @@
 #endif
 #endif
 #ifdef DEBUG
-#define O_DEBUG(msg) if(Oxide::debugEnabled()){ qDebug() << msg; }
+#define O_DEBUG(msg) if(Oxide::debugEnabled()){ qDebug() << __DEBUG_APPLICATION_INFO__ << msg << __DEBUG_LOCATION__; }
 #else
 #define O_DEBUG(msg)
 #endif
@@ -28,7 +31,7 @@
  * \brief Log a warning message if debugging is enabled
  * \param msg Warning message to log
  */
-#define O_WARNING(msg) if(Oxide::debugEnabled()){ qWarning() << msg; }
+#define O_WARNING(msg) if(Oxide::debugEnabled()){ qWarning() << __DEBUG_APPLICATION_INFO__ << msg << __DEBUG_LOCATION__; }
 
 /*!
  * \def O_EVENT(msg)
@@ -42,7 +45,7 @@
 #ifdef input_event_usec
 #define input_event_usec time.tv_usec
 #endif
-#define O_EVENT(event) O_DEBUG(__PRETTY_FUNCTION__ << event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
+#define O_EVENT(event) O_DEBUG(__DEBUG_APPLICATION_INFO__ << event.input_event_sec << event.input_event_usec << event.type << event.code << event.value << __DEBUG_LOCATION__);
 #else
 #define O_EVENT(event)
 #endif

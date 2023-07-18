@@ -466,24 +466,24 @@ namespace Oxide::Applications{
     }
     bool addToTarnishCache(const QString& name, const QJsonObject& app){
         if(app.isEmpty()){
-            O_DEBUG(__PRETTY_FUNCTION__ << "Failed to add to tarnish cache: Empty app registration");
+            O_DEBUG("Failed to add to tarnish cache: Empty app registration");
             return false;
         }
         auto errors = _validateRegistration(name, app, true);
         if(std::any_of(errors.constBegin(), errors.constEnd(), [](const ValidationError& e){
             return e.level == ErrorLevel::Error || e.level == ErrorLevel::Critical;
         })){
-            O_DEBUG(__PRETTY_FUNCTION__ << "Failed to add to tarnish cache: Invalid configuration");
+            O_DEBUG("Failed to add to tarnish cache: Invalid configuration");
             return false;
         }
         auto apps = Tarnish::appsApi();
         if(apps == nullptr){
-            O_DEBUG(__PRETTY_FUNCTION__ << "Failed to add to tarnish cache: Failed to get apps API");
+            O_DEBUG("Failed to add to tarnish cache: Failed to get apps API");
             return false;
         }
         auto properties = registrationToMap(app, name);
         if(properties.isEmpty()){
-            O_DEBUG(__PRETTY_FUNCTION__ << "Failed to add to tarnish cache: Failed to convert to map");
+            O_DEBUG("Failed to add to tarnish cache: Failed to convert to map");
             return false;
         }
         QDBusObjectPath path = apps->registerApplication(properties);

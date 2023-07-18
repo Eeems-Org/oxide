@@ -7,8 +7,8 @@
 
 using namespace  Oxide::Tarnish;
 
-#define _W_WARNING(msg) O_WARNING(__PRETTY_FUNCTION__ << m_identifier.toStdString().c_str() << msg << guiAPI->getSenderPgid())
-#define _W_DEBUG(msg) O_DEBUG(__PRETTY_FUNCTION__ << m_identifier.toStdString().c_str() << msg << guiAPI->getSenderPgid())
+#define _W_WARNING(msg) O_WARNING(m_identifier.toStdString().c_str() << msg << guiAPI->getSenderPgid())
+#define _W_DEBUG(msg) O_DEBUG(m_identifier.toStdString().c_str() << msg << guiAPI->getSenderPgid())
 #define W_WARNING(msg) _W_WARNING(msg << guiAPI->getSenderPgid())
 #define W_DEBUG(msg) _W_DEBUG(msg << guiAPI->getSenderPgid())
 #define W_DENIED() W_DEBUG("DENY")
@@ -32,8 +32,11 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
   m_pendingMarker{0}
 {
     LOCK_MUTEX;
+    m_touchEventPipe.setEnabled(false);
+    m_tabletEventPipe.setEnabled(false);
+    m_keyEventPipe.setEnabled(false);
     createFrameBuffer(geometry);
-    O_DEBUG(__PRETTY_FUNCTION__ << m_identifier.toStdString().c_str() << "Window created" << pgid);
+    O_DEBUG(m_identifier.toStdString().c_str() << "Window created" << pgid);
     connect(&m_eventPipe, &SocketPair::readyRead, this, &Window::readyEventPipeRead);
     m_pingTimer.setInterval(30 * 1000); // 30 seconds
     m_pingTimer.setSingleShot(true);
@@ -46,7 +49,7 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
     connect(this, &Window::destroyed, [this]{ W_DEBUG("Window destoyred"); });
 }
 Window::~Window(){
-    O_DEBUG(__PRETTY_FUNCTION__ << m_identifier.toStdString().c_str() << "Window deleted" << m_pgid);
+    O_DEBUG(m_identifier.toStdString().c_str() << "Window deleted" << m_pgid);
     _close();
 }
 
@@ -355,11 +358,11 @@ void Window::_close(){
     }
     m_state = WindowState::Closed;
     writeEvent(WindowEventType::Close);
+//    m_eventPipe.close();
     setEnabled(false);
-    m_touchEventPipe.close();
-    m_tabletEventPipe.close();
-    m_keyEventPipe.close();
-    m_eventPipe.close();
+//    m_touchEventPipe.close();
+//    m_tabletEventPipe.close();
+//    m_keyEventPipe.close();
     emit closed();
     setParent(nullptr);
     moveToThread(nullptr);
@@ -532,12 +535,12 @@ void Window::close(){
         return;
     }
     W_ALLOWED();
-    _close();
+    QTimer::singleShot(0, [this]{ _close(); });
 }
 
 void Window::readyEventPipeRead(){
     W_DEBUG("Reading events");
-    while(!m_eventPipe.atEnd()){
+    while(!m_eventPipe.atEnd() && m_eventPipe.isOpen()){
         auto event = WindowEvent::fromSocket(m_eventPipe.writeSocket());
         W_DEBUG(event);
         switch(event.type){

@@ -35,7 +35,6 @@ public:
     Q_INVOKABLE QList<QDBusObjectPath> windows();
     Q_INVOKABLE void repaint(QDBusMessage message);
     bool isThisPgId(pid_t valid_pgid);
-    QMap<QString, Window*> allWindows();
     QList<Window*> sortedWindows();
     void closeWindows(pid_t pgid);
     void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize, unsigned int marker = 0);
@@ -54,6 +53,7 @@ private:
     bool m_enabled;
     QMap<QString, Window*> m_windows;
     QRect m_screenGeometry;
+    QMutex m_windowMutex;
     void sortWindows();
     bool hasPermission();
 };
