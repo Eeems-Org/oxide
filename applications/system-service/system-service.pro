@@ -13,7 +13,6 @@ SOURCES += \
     application.cpp \
     appsapi.cpp \
     bss.cpp \
-    buttonhandler.cpp \
     childentry.cpp \
     dbusservice.cpp \
     eventlistener.cpp \
@@ -63,7 +62,6 @@ HEADERS += \
     application.h \
     appsapi.h \
     bss.h \
-    buttonhandler.h \
     childentry.h \
     dbusservice.h \
     digitizerhandler.h \

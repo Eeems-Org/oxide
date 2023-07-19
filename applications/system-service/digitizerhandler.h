@@ -71,25 +71,11 @@ public:
         if(device.fd == -1){
             return;
         }
-        if(device.locked){
-            ungrab();
-        }
         close(device.fd);
     }
     void setEnabled(bool enabled){
         m_enabled = enabled;
     }
-    void grab(){
-        if(!grabbed()){
-            device.lock();
-        }
-    }
-    void ungrab(){
-        if(grabbed()){
-            device.unlock();
-        }
-    }
-    bool grabbed() { return device.locked; }
     void write(ushort type, ushort code, int value){
         auto event = createEvent(type, code, value);
         ::write(device.fd, &event, sizeof(input_event));

@@ -41,6 +41,18 @@ public:
     void addWait(unsigned int marker, std::function<void()> callback);
     bool isComplete(Window* window, unsigned int marker);
     void addCompleted(QString window, unsigned int marker, unsigned int internalMarker, bool waited);
+    void shutdown(){
+        O_INFO("Stopping thread" << this);
+        requestInterruption();
+        m_pendingtWait.notify_all();
+        quit();
+        QDeadlineTimer deadline(6000);
+        if(!wait(deadline)){
+            O_WARNING("Terminated thread" << this);
+            terminate();
+            wait();
+        }
+    }
 
 private:
     int m_frameBufferFd;
@@ -68,6 +80,19 @@ public:
     void addCompleted(QString window, unsigned int marker, unsigned int internalMarker, bool waited);
     void deleteWindowLater(Window* window);
     WaitThread* waitThread();
+    void shutdown(){
+        m_waitThread->shutdown();
+        O_INFO("Stopping thread" << this);
+        requestInterruption();
+        m_repaintWait.notify_all();
+        quit();
+        QDeadlineTimer deadline(6000);
+        if(!wait(deadline)){
+            O_WARNING("Terminated thread" << this);
+            terminate();
+            wait();
+        }
+    }
 
 public slots:
     void enqueue(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool global = false, std::function<void()> callback = nullptr);

@@ -1,6 +1,5 @@
 #include "guiapi.h"
 #include "appsapi.h"
-#include "buttonhandler.h"
 #include "digitizerhandler.h"
 #include "dbusservice.h"
 #include "eventlistener.h"
@@ -38,32 +37,6 @@ GuiAPI::GuiAPI(QObject* parent)
         __singleton(this);
         connect(touchHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::touchEvent);
         connect(wacomHandler, &DigitizerHandler::inputEvent, this, &GuiAPI::tabletEvent);
-        connect(buttonHandler, &ButtonHandler::rawEvent, this, &GuiAPI::keyEvent);
-        eventListener->append([this](QObject* object, QEvent* event){
-            Q_UNUSED(object)
-            switch(event->type()){
-                case QEvent::KeyPress:
-                case QEvent::KeyRelease:
-                    writeKeyEvent(event);
-                    return true;
-                case QEvent::TouchBegin:
-                case QEvent::TouchCancel:
-                case QEvent::TouchEnd:
-                case QEvent::TouchUpdate:
-                    writeTouchEvent(event);
-                    return true;
-                case QEvent::TabletEnterProximity:
-                case QEvent::TabletLeaveProximity:
-                case QEvent::TabletPress:
-                case QEvent::TabletMove:
-                case QEvent::TabletRelease:
-                case QEvent::TabletTrackingChange:
-                    writeTabletEvent(event);
-                    return true;
-                default:
-                    return false;
-            }
-        });
     });
 }
 GuiAPI::~GuiAPI(){
@@ -86,14 +59,7 @@ void GuiAPI::shutdown(){
     while(!m_windows.isEmpty()){
         m_windows.first()->_close();
     }
-    O_INFO("Stopping thread" << &m_thread);
-    m_thread.quit();
-    QDeadlineTimer deadline(1000);
-    if(!m_thread.wait(deadline)){
-        O_WARNING("Terminated thread" << &m_thread);
-        m_thread.terminate();
-        m_thread.wait();
-    }
+    m_thread.shutdown();
     O_INFO("GUI API shutdown complete");
 }
 
@@ -133,11 +99,7 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
     sortWindows();
     connect(window, &Window::closed, this, [this, window, path]{
         O_INFO("Window" << window->identifier() << "closed");
-        m_windowMutex.lock();
-        if(m_windows.remove(path)){
-            sortWindows();
-        }
-        m_windowMutex.unlock();
+        removeWindow(path);
         if(!DBusService::shuttingDown()){
             auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
             m_thread.enqueue(nullptr, region, EPFrameBuffer::Initialize, 0, true);
@@ -492,4 +454,12 @@ bool GuiAPI::hasPermission(){
         return true;
     }
     return pgid == ::getpgrp();
+}
+
+void GuiAPI::removeWindow(QString path){
+    QMutexLocker locker(&m_windowMutex);
+    if(m_windows.remove(path)){
+        locker.unlock();
+        sortWindows();
+    }
 }

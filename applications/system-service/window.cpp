@@ -418,7 +418,6 @@ void Window::waitForUpdate(unsigned int marker, std::function<void()> callback){
         callback();
         W_DEBUG("Done waiting for update" << marker);
     });
-    QCoreApplication::postEvent(thread, new QEvent(QEvent::UpdateRequest));
 }
 
 void Window::waitForLastUpdate(QDBusMessage message){

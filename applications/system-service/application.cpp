@@ -32,7 +32,6 @@
 #include "appsapi.h"
 #include "systemapi.h"
 #include "guiapi.h"
-#include "buttonhandler.h"
 #include "digitizerhandler.h"
 #include "window.h"
 

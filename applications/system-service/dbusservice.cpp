@@ -6,7 +6,6 @@
 #include "screenapi.h"
 #include "notificationapi.h"
 #include "guiapi.h"
-#include "buttonhandler.h"
 #include "digitizerhandler.h"
 
 #include <QDBusAbstractAdaptor>
@@ -158,12 +157,6 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(){
         sentry_breadcrumb("dbusservice", "Connecting events", "info");
 #endif
         Oxide::Sentry::sentry_span(t, "connect", "Connect events", [this]{
-            connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
-            connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
-            connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
-            connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
-            connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
-            connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
             connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
             connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
                 if(notificationAPI->locked()){
@@ -375,16 +368,10 @@ void DBusService::shutdown(){
         emit apiUnavailable(QDBusObjectPath(api.path));
     }
     bus.unregisterService(OXIDE_SERVICE);
-    O_INFO("Stopping threads" << buttonHandler << touchHandler << wacomHandler);
-    buttonHandler->quit();
+    O_INFO("Stopping threads" << touchHandler << wacomHandler);
     touchHandler->quit();
     wacomHandler->quit();
     QDeadlineTimer deadline(1000);
-    if(!buttonHandler->wait(deadline)){
-        O_WARNING("Terminated thread" << buttonHandler);
-        buttonHandler->terminate();
-        buttonHandler->wait();
-    }
     if(!touchHandler->wait(deadline)){
         O_WARNING("Terminated thread" << touchHandler);
         touchHandler->terminate();

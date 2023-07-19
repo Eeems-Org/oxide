@@ -9,6 +9,27 @@
 #include <unistd.h>
 
 #include <QDebug>
+
+/*!
+ * \def DEBUG
+ * \brief If this is defined, debug code will be compiled in
+ * \note If QT_NO_DEBUG is not defined, DEBUG will be automatically defined
+ */
+#ifndef DEBUG
+#ifndef QT_NO_DEBUG
+#define DEBUG
+#endif
+#endif
+/*!
+ * \def __RIGHT_HERE__
+ * \brief Log the current file and line number
+ * \note This is only available if DEBUG is defined
+ */
+#ifdef DEBUG
+#define __RIGHT_HERE__ qDebug() << "<============================" << __FILE__ << ":" << __LINE__;
+#else
+#define __RIGHT_HERE__
+#endif
 /*!
  * \def __DEBUG_LOCATION__
  * \brief Get the current debug location
@@ -26,11 +47,6 @@
  * \brief Log a debug message if compiled with DEBUG mode, and debugging is enabled
  * \param msg Debug message to log
  */
-#ifndef DEBUG
-#ifndef QT_NO_DEBUG
-#define DEBUG
-#endif
-#endif
 #ifdef DEBUG
 #define O_DEBUG(msg) if(Oxide::debugEnabled()){ qDebug() << __DEBUG_APPLICATION_INFO__ << "Debug:" << msg << __DEBUG_LOCATION__; }
 #else

@@ -60,4 +60,5 @@ private:
     QAtomicInteger<unsigned int> m_currentMarker;
 
     bool hasPermission();
+    void removeWindow(QString path);
 };

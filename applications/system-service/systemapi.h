@@ -141,6 +141,7 @@ private:
     QMap<SwipeDirection, bool> swipeStates;
     QMap<SwipeDirection, int> swipeLengths;
     bool m_enabled;
+    QMap<int, QTimer*> m_pressStates;
 
     void inhibitSleep();
     void inhibitPowerOff();

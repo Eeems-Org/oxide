@@ -1,15 +1,17 @@
 #include <liboxide.h>
 #include <QMutableListIterator>
 #include <QMetaType>
+#include <QKeyEvent>
 
 #include "systemapi.h"
 #include "appsapi.h"
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "notificationapi.h"
-#include "buttonhandler.h"
 #include "screenapi.h"
+#include "guiapi.h"
 #include "digitizerhandler.h"
+#include "eventlistener.h"
 
 QDebug operator<<(QDebug debug, const TouchData& touch){
     QDebugStateSaver saver(debug);
@@ -53,7 +55,6 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 }
             });
             Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this, device]{
-                buttonHandler->setEnabled(false);
                 if(device == Oxide::DeviceSettings::DeviceType::RM2){
                     if(wifiAPI->state() != WifiAPI::State::Off){
                         wifiWasOn = true;
@@ -104,7 +105,6 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 }
             });
             Oxide::Sentry::sentry_span(t, "enable", "Enable various services", [this, device]{
-                buttonHandler->setEnabled(true);
                 emit deviceResuming();
                 if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
                     O_INFO("Suspend timer re-enabled due to resume");
@@ -248,10 +248,112 @@ SystemAPI::SystemAPI(QObject* parent)
             });
         });
         Oxide::Sentry::sentry_span(t, "input", "Connect input events", [this]{
-            connect(touchHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
             connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
-            connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
             connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
+            eventListener->append([this](QObject* object, QEvent* event){
+                Q_UNUSED(object)
+                O_DEBUG(event);
+                switch(event->type()){
+                    case QEvent::KeyPress:{
+                        activity();
+                        auto keyEvent = static_cast<QKeyEvent*>(event);
+                        auto key = keyEvent->key();
+                        switch(key){
+                            case Qt::Key_PowerOff:
+                            case Qt::Key_Left:
+                            case Qt::Key_Right:
+                            case Qt::Key_Home:
+                                break;
+                            default:
+                                return false;
+                        }
+                        if(!m_pressStates.contains(key)){
+                            m_pressStates.insert(key, new QTimer(this));
+                            connect(m_pressStates[key], &QTimer::timeout, this, ([this, key]{
+                                switch(key){
+                                    case Qt::Key_PowerOff: return &SystemAPI::suspend;
+                                    case Qt::Key_Left: return &SystemAPI::leftAction;
+                                    case Qt::Key_Right: return &SystemAPI::rightAction;
+                                    case Qt::Key_Home: return &SystemAPI::homeAction;
+                                }
+                                Q_ASSERT(false);
+                            })());
+                        }
+                        m_pressStates[key]->start(700);
+                        return true;
+                    }
+                    case QEvent::KeyRelease:{
+                        activity();
+                        auto keyEvent = static_cast<QKeyEvent*>(event);
+                        auto key = keyEvent->key();
+                        switch(key){
+                            case Qt::Key_PowerOff:
+                            case Qt::Key_Left:
+                            case Qt::Key_Right:
+                            case Qt::Key_Home:
+                                break;
+                            default:
+                                dispatchToThread(guiAPI->thread(), [keyEvent]{ guiAPI->writeKeyEvent(keyEvent); });
+                                return false;
+                        }
+                        if(!m_pressStates.contains(key) || !m_pressStates[key]->isActive()){
+                            return true;
+                        }
+                        dispatchToThread(guiAPI->thread(), [keyEvent, key]{
+                            timeval time;
+                            gettimeofday (&time, NULL);
+                            input_event event{
+                                .time = time,
+                                .type = EV_KEY,
+                                .code = (unsigned short)keyEvent->nativeScanCode(),
+                                .value = 1,
+                            };
+                            input_event syn{
+                                .time = time,
+                                .type = EV_SYN,
+                                .code = SYN_REPORT,
+                                .value = 0,
+                            };
+                            guiAPI->keyEvent(event);
+                            guiAPI->keyEvent(syn);
+                            gettimeofday (&time, NULL);
+                            event.time = time;
+                            event.value = 0;
+                            guiAPI->keyEvent(event);
+                            guiAPI->keyEvent(syn);
+                            guiAPI->writeKeyEvent(keyEvent);
+                            guiAPI->writeKeyEvent(new QKeyEvent(QEvent::KeyPress, key, keyEvent->modifiers(), keyEvent->text()));
+                        });
+                        return true;
+                    }
+                    case QEvent::TabletEnterProximity:
+                        activity();
+                        penActive = true;
+                        dispatchToThread(guiAPI->thread(), [event]{ guiAPI->writeTabletEvent(event); });
+                        return true;
+                    case QEvent::TabletLeaveProximity:
+                        activity();
+                        penActive = false;
+                        dispatchToThread(guiAPI->thread(), [event]{ guiAPI->writeTabletEvent(event); });
+                        return true;
+                    case QEvent::TabletPress:
+                    case QEvent::TabletMove:
+                    case QEvent::TabletRelease:
+                    case QEvent::TabletTrackingChange:
+                        activity();
+                        dispatchToThread(guiAPI->thread(), [event]{ guiAPI->writeTabletEvent(event); });
+                        return true;
+                    case QEvent::TouchBegin:
+                    case QEvent::TouchCancel:
+                    case QEvent::TouchEnd:
+                    case QEvent::TouchUpdate:
+                        activity();
+                        dispatchToThread(guiAPI->thread(), [event]{ guiAPI->writeTouchEvent(event); });
+                        return true;
+                    default:
+                        return false;
+                }
+            });
         });
         O_INFO("System API ready to use");
     });
@@ -830,11 +932,8 @@ void SystemAPI::touchUp(QList<TouchData*> touches){
         if(Oxide::debugEnabled()){
             O_INFO("Not swiping");
         }
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchUp(touch);
-            }
-            touchHandler->ungrab();
+        for(auto touch : touches){
+            writeTouchUp(touch);
         }
         return;
     }
@@ -842,10 +941,8 @@ void SystemAPI::touchUp(QList<TouchData*> touches){
         if(Oxide::debugEnabled()){
             O_INFO("Still swiping");
         }
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchUp(touch);
-            }
+        for(auto touch : touches){
+            writeTouchUp(touch);
         }
         return;
     }
@@ -853,11 +950,8 @@ void SystemAPI::touchUp(QList<TouchData*> touches){
         if(Oxide::debugEnabled()){
             O_INFO("Too many fingers");
         }
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchUp(touch);
-            }
-            touchHandler->ungrab();
+        for(auto touch : touches){
+            writeTouchUp(touch);
         }
         swipeDirection = None;
         return;
@@ -904,7 +998,6 @@ void SystemAPI::touchUp(QList<TouchData*> touches){
         }
     }
     swipeDirection = None;
-    touchHandler->ungrab();
     touch->x = -1;
     touch->y = -1;
     writeTouchUp(touch);
@@ -918,11 +1011,8 @@ void SystemAPI::touchMove(QList<TouchData*> touches){
         O_INFO("MOVE" << touches);
     }
     if(swipeDirection == None){
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchMove(touch);
-            }
-            touchHandler->ungrab();
+        for(auto touch : touches){
+            writeTouchMove(touch);
         }
         return;
     }
@@ -930,11 +1020,8 @@ void SystemAPI::touchMove(QList<TouchData*> touches){
         if(Oxide::debugEnabled()){
             O_INFO("Too many fingers");
         }
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchMove(touch);
-            }
-            touchHandler->ungrab();
+        for(auto touch : touches){
+            writeTouchMove(touch);
         }
         swipeDirection = None;
         return;
@@ -950,15 +1037,10 @@ void SystemAPI::cancelSwipe(TouchData* touch){
         O_INFO("Swipe Cancelled");
     }
     swipeDirection = None;
-    touchHandler->ungrab();
     writeTouchUp(touch);
 }
 
 void SystemAPI::writeTouchUp(TouchData* touch){
-    bool grabbed = touchHandler->grabbed();
-    if(grabbed){
-        touchHandler->ungrab();
-    }
     writeTouchMove(touch);
     if(Oxide::debugEnabled()){
         O_INFO("Write touch up" << touch);
@@ -970,16 +1052,9 @@ void SystemAPI::writeTouchUp(TouchData* touch){
     events[2] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
     touchHandler->write(events, size);
     free(events);
-    if(grabbed){
-        touchHandler->grab();
-    }
 }
 
 void SystemAPI::writeTouchMove(TouchData* touch){
-    bool grabbed = touchHandler->grabbed();
-    if(grabbed){
-        touchHandler->ungrab();
-    }
     if(Oxide::debugEnabled()){
         O_INFO("Write touch move" << touch);
     }
@@ -1006,9 +1081,6 @@ void SystemAPI::writeTouchMove(TouchData* touch){
     events[2] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
     touchHandler->write(events, size);
     free(events);
-    if(grabbed){
-        touchHandler->grab();
-    }
 }
 
 void SystemAPI::fn(){
