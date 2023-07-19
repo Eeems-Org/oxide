@@ -38,7 +38,9 @@ thread_local bool IS_OPENING = false;
 static bool DEBUG_LOGGING = false;
 static bool FAILED_INIT = true;
 static bool IS_XOCHITL = false;
+static bool IS_FBDEPTH = false;
 static bool IS_LOADABLE_APP = false;
+static bool DO_HANDLE_FB = true;
 static bool FB_OPENED = false;
 static int fbFd = -1;
 static int touchFd = -1;
@@ -158,7 +160,6 @@ void __sigacton__handler(int signo, siginfo_t* info, void* context){
         case SIGABRT:
             sigaction(signo, &abrt_action, NULL);
             break;
-            break;
         default:
             signal(signo, SIG_DFL);
     }
@@ -253,7 +254,24 @@ int fb_ioctl(unsigned long request, char* ptr){
             rect.setTop(region.top);
             rect.setWidth(region.width);
             rect.setHeight(region.height);
-            Oxide::Tarnish::screenUpdate(rect, (EPFrameBuffer::WaveformMode)update->waveform_mode, update->update_marker);
+
+            auto eventPipe = Oxide::Tarnish::getEventPipe();
+            if(eventPipe == nullptr){
+                _DEBUG("Unable to get event pipe");
+                errno = EBADF;
+                return -1;
+            }
+            Oxide::Tarnish::WindowEvent event;
+            event.type = Oxide::Tarnish::Repaint;
+            event.repaintData = Oxide::Tarnish::RepaintEventArgs{
+                    .x = rect.x(),
+                    .y = rect.y(),
+                    .width = rect.width(),
+                    .height = rect.height(),
+                    .waveform = (EPFrameBuffer::WaveformMode)update->waveform_mode,
+                    .marker = update->update_marker,
+            };
+            event.toSocket(eventPipe);
             if(deviceSettings.getDeviceType() != Oxide::DeviceSettings::RM2){
                 return 0;
             }
@@ -326,13 +344,36 @@ int fb_ioctl(unsigned long request, char* ptr){
             screeninfo->line_length = frameBuffer.bytesPerLine();
             return 0;
         }
-        case FBIOPUT_VSCREENINFO:
+        case FBIOPUT_VSCREENINFO:{
             _DEBUG("ioctl /dev/fb0 FBIOPUT_VSCREENINFO");
             // TODO - Explore allowing some screen info updating
-            //fb_fix_screeninfo* screeninfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
-            //errno = EACCES;
-            //return -1;
+//            fb_var_screeninfo* screenInfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
+//            auto eventPipe = Oxide::Tarnish::getEventPipe();
+//            if(eventPipe == nullptr){
+//                _DEBUG("Unable to get event pipe");
+//                errno = EBADF;
+//                return -1;
+//            }
+//            Oxide::Tarnish::WindowEvent geometryEvent;
+//            geometryEvent.type = Oxide::Tarnish::Geometry;
+//            geometryEvent.geometryData = Oxide::Tarnish::GeometryEventArgs{
+//                .x = 0,
+//                .y = 0,
+//                .width = screenInfo->xres_virtual,
+//                .height = screenInfo->yres_virtual,
+//            };
+//            geometryEvent.toSocket(eventPipe);
+//            QEventLoop loop;
+//            QTimer timer;
+//            QObject::connect(&timer, &QTimer::timeout, [&loop, &timer]{
+//                //Do whatever is needed here to wait for changes
+//                timer.stop();
+//                loop.quit();
+//            });
+//            timer.start(0);
+//            loop.exec();
             return 0;
+        }
         case MXCFB_SET_AUTO_UPDATE_MODE:
             _DEBUG("ioctl /dev/fb0 MXCFB_SET_AUTO_UPDATE_MODE");
             return 0;
@@ -354,7 +395,7 @@ int fb_ioctl(unsigned long request, char* ptr){
                 QString::number(_IOC_SIZE(request)),
                 QString::number(request)
             );
-            return -1;
+            return 0;
     }
 }
 
@@ -443,14 +484,14 @@ int open_from_tarnish(const char* pathname){
     }
     IS_OPENING = true;
     int res = -2;
-    if(pathname == std::string("/dev/fb0")){
-        res = fbFd = Oxide::Tarnish::getFrameBufferFd(QImage::Format_RGB16);
-    }else if(pathname == deviceSettings.getTouchDevicePath()){
+    if(pathname == deviceSettings.getTouchDevicePath()){
         res = touchFd = Oxide::Tarnish::getTouchEventPipeFd();
     }else if(pathname == deviceSettings.getWacomDevicePath()){
         res = tabletFd = Oxide::Tarnish::getTabletEventPipeFd();
     }else if(pathname == deviceSettings.getButtonsDevicePath()){
         res = keyFd = Oxide::Tarnish::getKeyEventPipeFd();
+    }else if(DO_HANDLE_FB && pathname == std::string("/dev/fb0")){
+        res = fbFd = Oxide::Tarnish::getFrameBufferFd(QImage::Format_RGB16);
     }
     if(!FB_OPENED && res > 0){
         FB_OPENED = true;
@@ -469,39 +510,6 @@ int open_from_tarnish(const char* pathname){
 }
 
 extern "C" {
-    __attribute__((visibility("default")))
-    void _ZN6QImageC1EiiNS_6FormatE(void* that, int x, int y, int f){
-        static bool FIRST_ALLOC = true;
-        static const auto qImageCtor = (void(*)(void*, int, int, int))dlsym(RTLD_NEXT, "_ZN6QImageC1EiiNS_6FormatE");
-        static const auto qImageCtorWithBuffer = (void(*)(
-            void*,
-            uint8_t*,
-            int32_t,
-            int32_t,
-            int32_t,
-            int,
-            void(*)(void*),
-            void*
-        ))dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
-        auto frameBuffer = Oxide::Tarnish::frameBufferImage(QImage::Format_RGB16);
-        if(!IS_INITIALIZED  || !FIRST_ALLOC || x != frameBuffer.width() || y != frameBuffer.height()){
-            qImageCtor(that, x, y, f);
-            return;
-        }
-        _DEBUG("REPLACING THE IMAGE with shared memory");
-        FIRST_ALLOC = false;
-        qImageCtorWithBuffer(
-            that,
-            (uint8_t *)Oxide::Tarnish::frameBuffer(QImage::Format_RGB16),
-            frameBuffer.width(),
-            frameBuffer.height(),
-            frameBuffer.sizeInBytes(),
-            frameBuffer.format(),
-            nullptr,
-            nullptr
-        );
-    }
-
     __attribute__((visibility("default")))
     int open64(const char* pathname, int flags, mode_t mode = 0){
         static const auto func_open64 = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open64");
@@ -559,7 +567,7 @@ extern "C" {
     int close(int fd){
         if(IS_INITIALIZED){
             _DEBUG("close", fd);
-            if(fbFd != -1 && fd == fbFd){
+            if(DO_HANDLE_FB&& fbFd != -1 && fd == fbFd){
                 // Maybe actually close it?
                 return 0;
             }
@@ -583,7 +591,7 @@ extern "C" {
     __attribute__((visibility("default")))
     int ioctl(int fd, unsigned long request, char* ptr){
         if(IS_INITIALIZED){
-            if(fbFd != -1 && fd == fbFd){
+            if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
                 return fb_ioctl(request, ptr);
             }
             if(touchFd != -1 && fd == touchFd){
@@ -606,7 +614,7 @@ extern "C" {
                 // No need to debug stdout/stderr writes
                 _DEBUG("write", fd, n);
             }
-            if(fbFd != -1 && fd == fbFd){
+            if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
                 Oxide::Tarnish::lockFrameBuffer();
                 auto res = func_write(fd, buf, n);
                 Oxide::Tarnish::unlockFrameBuffer();
@@ -639,9 +647,11 @@ extern "C" {
     static void _libhook_init() __attribute__((constructor));
     static void _libhook_init(){
         DEBUG_LOGGING = qEnvironmentVariableIsSet("OXIDE_PRELOAD_DEBUG");
+        DO_HANDLE_FB = !qEnvironmentVariableIsSet("OXIDE_PRELOAD_EXPOSE_FB");
         QString path = QFileInfo("/proc/self/exe").canonicalFilePath();
         IS_XOCHITL = path == "/usr/bin/xochitl";
-        IS_LOADABLE_APP = IS_XOCHITL || path.isEmpty() || path.startsWith("/home") || path.startsWith("/home");
+        IS_FBDEPTH = path.endsWith("fbdepth");
+        IS_LOADABLE_APP = IS_XOCHITL || path.isEmpty() || path.startsWith("/opt") || path.startsWith("/home");
         if(IS_LOADABLE_APP){
             if(!__sigaction_connect(SIGSEGV)){
                 _CRIT("Failed to connect SIGSEGV:", strerror(errno));
@@ -717,6 +727,7 @@ extern "C" {
             return app.exec();
         }
         auto res = func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
+        _DEBUG("Exit code:", QString::number(res));
         Oxide::Tarnish::disconnect();
         return res;
     }

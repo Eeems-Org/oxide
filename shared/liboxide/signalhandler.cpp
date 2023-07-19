@@ -26,6 +26,7 @@ namespace Oxide {
         _sigaction(SIGUSR1);
         _sigaction(SIGUSR2);
         _sigaction(SIGCONT);
+        _sigaction(SIGPIPE);
 #undef _sigaction
         initialized = false;
         return 0;
@@ -49,6 +50,7 @@ namespace Oxide {
         addNotifier(SIGUSR1, "sigUsr1");
         addNotifier(SIGUSR2, "sigUsr2");
         addNotifier(SIGCONT, "sigCont");
+        addNotifier(SIGPIPE, "sigPipe");
     }
     SignalHandler::~SignalHandler(){}
     void SignalHandler::handleSignal(int signal){

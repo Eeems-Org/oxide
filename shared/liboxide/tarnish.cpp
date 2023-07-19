@@ -803,7 +803,6 @@ namespace Oxide::Tarnish {
     void disconnect(){
         O_DEBUG("Disconnecting from tarnish");
         if(window != nullptr){
-            window->close();
             window->deleteLater();
             window = nullptr;
         }
@@ -824,8 +823,8 @@ namespace Oxide::Tarnish {
         freeAPI(general);
         freeAPI(gui);
 #undef freeAPI
-        QDBusConnection::disconnectFromBus(QDBusConnection::systemBus().name());
         _disconnect();
+        O_DEBUG("Disconnected");
     }
 
     int getSocketFd(){
@@ -906,7 +905,24 @@ namespace Oxide::Tarnish {
             return -1;
         }
         if(window == nullptr){
-            O_DEBUG("Creating with with" << format << "image format");
+            auto reply = api_gui->windows();
+            if(!reply.isError()){
+                for(QDBusObjectPath qpath : reply.value()){
+                    auto path = qpath.path();
+                    if(path == "/"){
+                        continue;
+                    }
+                    window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection(), qApp);
+                    if(window->format() == (int)format){
+                        break;
+                    }
+                    delete window;
+                    window = nullptr;
+                }
+            }
+        }
+        if(window == nullptr){
+            O_DEBUG("Creating with" << format << "image format");
             QDBusPendingReply<QDBusObjectPath> reply = api_gui->createWindow(format);
             reply.waitForFinished();
             if(reply.isError()){
@@ -948,7 +964,6 @@ namespace Oxide::Tarnish {
                 window = nullptr;
             });
             window->setVisible(true);
-            O_DEBUG("Window created woth z sort:" << window->z());
         }
         O_DEBUG("Getting framebuffer fd");
         auto qfd = window->frameBuffer();

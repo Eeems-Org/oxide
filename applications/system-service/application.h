@@ -208,6 +208,8 @@ private:
     QStringList getActiveApplicationMounts();
     QStringList getActiveMounts();
     void startSpan(std::string operation, std::string description);
+    void saveScreen();
+    void recallScreen();
 };
 
 #endif // APPLICATION_H

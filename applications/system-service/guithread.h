@@ -22,8 +22,9 @@ struct CompletedMarker{
     unsigned int internalMarker;
     unsigned int marker;
     QString window;
-    QElapsedTimer age;
-    bool waited = false;
+    bool waited;
+    QDeadlineTimer deadline;
+    QDeadlineTimer cleanupDeadline;
 };
 
 class WaitThread : public QThread{
@@ -35,9 +36,15 @@ protected:
 public:
     WaitThread(int frameBufferFd);
     ~WaitThread();
+    bool isEmpty();
+    void addWait(Window* window, unsigned int marker, std::function<void()> callback);
+    void addWait(unsigned int marker, std::function<void()> callback);
+    bool isComplete(Window* window, unsigned int marker);
+    void addCompleted(QString window, unsigned int marker, unsigned int internalMarker, bool waited);
     QQueue<CompletedMarker> m_completedMarkers;
     QQueue<PendingMarkerWait> m_pendingMarkerWaits;
     QMutex m_completedMutex;
+    QMutex m_pendingMutex;
     int m_frameBufferFd;
 
 private:
@@ -61,18 +68,17 @@ public:
     ~GUIThread();
     bool isActive();
     QRect* m_screenGeometry;
-    QMutex m_mutex;
+    QMutex m_deleteQueueMutex;
     QQueue<RepaintRequest> m_repaintEvents;
     QQueue<Window*> m_deleteQueue;
-    void addWait(Window* window, unsigned int marker, std::function<void()> callback);
-    void addWait(unsigned int marker, std::function<void()> callback);
-    bool isComplete(Window* window, unsigned int marker);
     void addCompleted(QString window, unsigned int marker, unsigned int internalMarker, bool waited);
+    WaitThread* waitThread();
 
 public slots:
     void enqueue(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool global = false, std::function<void()> callback = nullptr);
 
 private:
+    QMutex m_mutex;
     bool m_processing;
     int m_frameBufferFd;
     QAtomicInteger<unsigned int> m_currentMarker;

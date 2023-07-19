@@ -268,6 +268,9 @@ void Application::interruptApplication(){
 #else
         Q_UNUSED(t);
 #endif
+        if(environment().contains("OXIDE_PRELOAD_EXPOSE_FB")){
+            saveScreen();
+        }
         if(!onPause().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onPause", "Run onPause action", [this](){
                 system(onPause().toStdString().c_str());
@@ -298,11 +301,13 @@ void Application::interruptApplication(){
                         O_INFO("SIGUSR2 ack recieved");
                         startSpan("background", "Application is in the background");
                     }
+                    guiAPI->lowerWindows(m_pid);
                     break;
                 case Foreground:
                 default:
                     kill(-m_process->processId(), SIGSTOP);
                     waitForPause();
+                    guiAPI->lowerWindows(m_pid);
                     startSpan("stopped", "Application is stopped");
             }
         });
@@ -376,6 +381,9 @@ void Application::uninterruptApplication(){
 #else
         Q_UNUSED(t);
 #endif
+        if(environment().contains("OXIDE_PRELOAD_EXPOSE_FB")){
+            recallScreen();
+        }
         if(!onResume().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onResume", "Run onResume action", [this](){
                 system(onResume().toStdString().c_str());
@@ -400,11 +408,13 @@ void Application::uninterruptApplication(){
                         O_INFO("SIGUSR1 ack recieved");
                     }
                     m_backgrounded = false;
+                    guiAPI->raiseWindows(m_pid);
                     startSpan("background", "Application is in the background");
                     break;
                 case Foreground:
                 default:
                     kill(-m_process->processId(), SIGCONT);
+                    guiAPI->raiseWindows(m_pid);
                     startSpan("foreground", "Application is in the foreground");
             }
         });
@@ -1209,6 +1219,63 @@ void Application::startSpan(std::string operation, std::string description){
         return;
     }
     span = Oxide::Sentry::start_span(transaction, operation, description);
+}
+
+void Application::saveScreen(){
+    if(m_screenCapture != nullptr){
+        return;
+    }
+    Oxide::Sentry::sentry_transaction("application", "saveScreen", [this](Oxide::Sentry::Transaction* t){
+        qDebug() << "Saving screen...";
+        QByteArray bytes;
+        Oxide::Sentry::sentry_span(t, "save", "Save the framebuffer", [&bytes]{
+            QBuffer buffer(&bytes);
+            buffer.open(QIODevice::WriteOnly);
+            if(!EPFrameBuffer::framebuffer()->save(&buffer, "JPG", 100)){
+                O_WARNING("Failed to save buffer");
+            }
+        });
+        qDebug() << "Compressing data...";
+        Oxide::Sentry::sentry_span(t, "compress", "Compress the framebuffer", [this, bytes]{
+            m_screenCapture = new QByteArray(qCompress(bytes));
+        });
+        qDebug() << "Screen saved " << m_screenCapture->size() << "bytes";
+    });
+}
+
+void Application::recallScreen(){
+    if(m_screenCapture == nullptr){
+        return;
+    }
+    Oxide::Sentry::sentry_transaction("application", "recallScreen", [this](Oxide::Sentry::Transaction* t){
+        qDebug() << "Uncompressing screen...";
+        QImage img;
+        Oxide::Sentry::sentry_span(t, "decompress", "Decompress the framebuffer", [this, &img]{
+            img = QImage::fromData(qUncompress(*m_screenCapture), "JPG");
+        });
+        if(img.isNull()){
+            qDebug() << "Screen capture was corrupt";
+            qDebug() << m_screenCapture->size();
+            delete m_screenCapture;
+            return;
+        }
+        qDebug() << "Recalling screen...";
+        Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, img]{
+            auto rect = _window()->geometry();
+            auto image = _window()->toImage();
+            QPainter painter(&image);
+            painter.drawImage(rect, img);
+            painter.end();
+            if(!_window()->_isVisible()){
+                _window()->_raise(false);
+            }else{
+                _window()->_repaint(rect, EPFrameBuffer::HighQualityGrayscale, 0, false);
+            }
+            delete m_screenCapture;
+            m_screenCapture = nullptr;
+        });
+        qDebug() << "Screen recalled.";
+    });
 }
 
 SandBoxProcess::SandBoxProcess(QObject* parent)

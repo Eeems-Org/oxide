@@ -1,35 +1,11 @@
 {
     "displayName": "Xochitl",
     "description": "Read documents and take notes",
-    "bin": "/opt/bin/xochitl",
+    "bin": "/usr/bin/xochitl",
     "icon": "oxide:xochitl-48",
-    "flags": ["nosplash", "chroot"],
+    "flags": ["nosplash"],
     "permissions": ["power"],
-    "directories": [
-        "/dev/shm",
-        "/etc",
-        "/home/root",
-        "/home/root/.local/share",
-        "/home/root/.local/share/remarkable",
-        "/opt/etc",
-        "/opt/lib",
-        "/opt/usr/lib/plugins",
-        "/run/dbus",
-        "/run/lock",
-        "/run/systemd",
-        "/run/systemd/resolve",
-        "/run/udev",
-        "/tmp/runtime-root",
-        "/usr/share",
-        "/usr/share/remarkable/templates",
-        "/usr/local/share/ca-certificates",
-        "/var/cache/fontconfig",
-        "/var/lib/dbus",
-        "/var/volatile/tmp"
-    ],
     "environment": {
-        "HOME": "/home/root",
-        "SYSTEMD_IGNORE_CHROOT": "true",
-        "XDG_RUNTIME_DIR": "/tmp/runtime-root"
+        "OXIDE_PRELOAD_EXPOSE_FB": "1"
     }
 }

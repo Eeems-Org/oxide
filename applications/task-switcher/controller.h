@@ -40,6 +40,7 @@ public:
         connect(signalHandler, &SignalHandler::sigUsr2, this, &Controller::sigUsr2);
         connect(signalHandler, &SignalHandler::sigTerm, qApp, &QCoreApplication::quit);
         connect(signalHandler, &SignalHandler::sigInt, qApp, &QCoreApplication::quit);
+        connect(signalHandler, &SignalHandler::sigPipe, qApp, &QCoreApplication::quit);
 
         qDebug() << "Requesting screen API...";
         screenApi = Oxide::Tarnish::screenApi();

@@ -30,7 +30,8 @@ namespace Oxide {
          * \retval SIGINT Failed to setup SIGINT
          * \retval SIGUSR1 Failed to setup SIGUSR1
          * \retval SIGUSR2 Failed to setup SIGUSR2
-         * * \retval SIGCONT Failed to setup SIGCONT
+         * \retval SIGCONT Failed to setup SIGCONT
+         * \retval SIGPIPE Failed to setup SIGPIPE
          * \retval 0 Successfully setup both signal handlers
          *
          * This method will automatically create and register the singleton with a parent of qApp.
@@ -73,6 +74,10 @@ namespace Oxide {
          * \brief The process has recieved a SIGCONT
          */
         void sigCont();
+        /*!
+         * \brief The process has recieved a SIGPIPE
+         */
+        void sigPipe();
 
     private:
         void addNotifier(int signal, const char* name);

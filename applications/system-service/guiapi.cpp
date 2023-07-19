@@ -267,6 +267,34 @@ void GuiAPI::closeWindows(pid_t pgid){
     }
 }
 
+void GuiAPI::lowerWindows(pid_t pgid){
+    m_windowMutex.lock();
+    QList<Window*> windows;
+    for(auto window : windows){
+        if(window->pgid() == pgid){
+            windows.append(window);
+        }
+    }
+    m_windowMutex.unlock();
+    for(auto window : windows){
+        window->_lower();
+    }
+}
+
+void GuiAPI::raiseWindows(pid_t pgid){
+    m_windowMutex.lock();
+    QList<Window*> windows;
+    for(auto window : windows){
+        if(window->pgid() == pgid){
+            windows.append(window);
+        }
+    }
+    m_windowMutex.unlock();
+    for(auto window : windows){
+        window->_raise();
+    }
+}
+
 void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async){
     Q_ASSERT(window != nullptr);
     if(async){

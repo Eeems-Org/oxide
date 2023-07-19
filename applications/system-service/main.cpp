@@ -133,6 +133,7 @@ int main(int argc, char* argv[]){
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{ sd_notify(0, "STATUS=stopped"); });
     QObject::connect(signalHandler, &SignalHandler::sigInt, dbusService, &DBusService::shutdown);
     QObject::connect(signalHandler, &SignalHandler::sigTerm, dbusService, &DBusService::shutdown);
+    QObject::connect(signalHandler, &SignalHandler::sigPipe, []{ O_WARNING("SIGPIPE recieved.");});
     // TODO - connect to GUI API's Window objects instead?
     QScreen* screen = app.primaryScreen();
     QWindow window(screen);

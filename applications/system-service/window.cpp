@@ -375,9 +375,9 @@ void Window::_close(){
     moveToThread(nullptr);
     auto thread = guiAPI->guiThread();
     if(thread->isRunning()){
-        thread->m_mutex.lock();
+        thread->m_deleteQueueMutex.lock();
         thread->m_deleteQueue.enqueue(this);
-        thread->m_mutex.unlock();
+        thread->m_deleteQueueMutex.unlock();
     }
     blockSignals(true);
     W_DEBUG("Window closed");
@@ -417,10 +417,12 @@ void Window::unlock(){
 
 void Window::waitForUpdate(unsigned int marker, std::function<void()> callback){
     W_DEBUG("Waiting for update" << marker);
-    guiAPI->guiThread()->addWait(this, marker, [this, callback, marker]{
+    auto thread = guiAPI->guiThread()->waitThread();
+    thread->addWait(this, marker, [this, callback, marker]{
         callback();
         W_DEBUG("Done waiting for update" << marker);
     });
+    QCoreApplication::postEvent(thread, new QEvent(QEvent::UpdateRequest));
 }
 
 void Window::waitForLastUpdate(QDBusMessage message){
