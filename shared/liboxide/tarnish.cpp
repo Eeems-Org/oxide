@@ -768,34 +768,14 @@ namespace Oxide::Tarnish {
         *conn = QObject::connect(api_general, &codes::eeems::oxide1::General::aboutToQuit, [conn]{
             O_WARNING("Tarnish has indicated that it is about to quit!");
             if(!childSocket.isOpen()){
-                if(!QCoreApplication::startingUp()){
-                    QEventLoop loop;
-                    QTimer::singleShot(0, [&loop]{
-                        _disconnect();
-                        loop.quit();
-                    });
-                    loop.exec();
-                }else{
-                    _disconnect();
-                }
+                _disconnect();
             }
             QObject::disconnect(*conn);
             delete conn;
         });
         if(qApp != nullptr){
             O_DEBUG("Connecting to QGuiApplication::aboutToQuit");
-            QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{
-                if(!QCoreApplication::startingUp()){
-                    QEventLoop loop;
-                    QTimer::singleShot(0, [&loop]{
-                        _disconnect();
-                        loop.quit();
-                    });
-                    loop.exec();
-                }else{
-                    _disconnect();
-                }
-            });
+            QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{ _disconnect(); });
         }
         O_DEBUG("Connected to tarnish Dbus service");
     }
