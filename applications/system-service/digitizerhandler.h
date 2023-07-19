@@ -67,9 +67,7 @@ public:
        filebuf(device.fd, ios::in),
        stream(&filebuf),
        m_enabled(true),
-       device(device) {
-        flood = build_flood();
-    }
+       device(device) {}
     ~DigitizerHandler(){
         if(device.fd == -1){
             return;
@@ -106,15 +104,6 @@ public:
     void syn(){
         write(EV_SYN, SYN_REPORT, 0);
     }
-    void clear_buffer(){
-        if(device.fd == -1){
-            return;
-        }
-#ifdef DEBUG
-        O_INFO("Clearing event buffer on" << device.device.c_str());
-#endif
-        write(flood, 512 * 8 * 4 * sizeof(input_event));
-    }
     static inline input_event createEvent(ushort type, ushort code, int value){
         struct input_event event;
         event.type = type;
@@ -128,21 +117,6 @@ signals:
     void inputEvent(const input_event& event);
 
 protected:
-    input_event* flood;
-    input_event* build_flood(){
-        auto n = 512 * 8;
-        auto num_inst = 4;
-        input_event* ev = (input_event*)malloc(sizeof(struct input_event) * n * num_inst);
-        memset(ev, 0, sizeof(input_event) * n * num_inst);
-        auto i = 0;
-        while (i < n) {
-            ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 1);
-            ev[i++] = createEvent(EV_SYN, 0, 0);
-            ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 2);
-            ev[i++] = createEvent(EV_SYN, 0, 0);
-        }
-        return ev;
-    }
     void run(){
         char name[256];
         memset(name, 0, sizeof(name));

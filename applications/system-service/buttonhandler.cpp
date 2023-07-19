@@ -54,6 +54,14 @@ ButtonHandler* ButtonHandler::init(){
     return instance;
 }
 
+ButtonHandler::ButtonHandler() : QThread(), filebuf(buttons.fd, ios::in), stream(&filebuf), pressed(), timer(this), m_enabled(true) {
+    timer.setInterval(100);
+    timer.setSingleShot(false);
+    connect(&timer, &QTimer::timeout, this, &ButtonHandler::timeout);
+}
+
+void ButtonHandler::setEnabled(bool enabled){ m_enabled = enabled; }
+
 void ButtonHandler::run(){
     char name[256];
     memset(name, 0, sizeof(name));
@@ -95,23 +103,88 @@ void ButtonHandler::run(){
         }
     }
 }
+
 void ButtonHandler::pressKey(Qt::Key key){
     int code;
     switch(key){
         case Qt::Key_Left:
             code = 105;
-        break;
+            break;
         case Qt::Key_Home:
             code = 102;
-        break;
+            break;
         case Qt::Key_Right:
             code = 106;
-        break;
+            break;
         case Qt::Key_PowerOff:
             code = 116;
-        break;
+            break;
         default:
             return;
     }
     press_button(buttons, code, &stream);
+}
+
+void ButtonHandler::keyDown(Qt::Key key){
+    if(!m_enabled){
+        return;
+    }
+    O_INFO("Down" << key);
+    if(validKeys.contains(key) && !pressed.contains(key)){
+        QElapsedTimer timer;
+        timer.start();
+        pressed.insert(key, timer);
+    }
+}
+
+void ButtonHandler::keyUp(Qt::Key key){
+    if(!m_enabled){
+        return;
+    }
+    O_INFO("Up" << key);
+    if(!pressed.contains(key)){
+        // This should never happen
+        return;
+    }
+    auto value = pressed.value(key);
+    pressed.remove(key);
+    if(value.hasExpired(700)){
+        // Held event already fired
+        return;
+    }
+    if(key == Qt::Key_PowerOff){
+        emit powerPress();
+        return;
+    }
+    //        pressKey(key);
+}
+
+void ButtonHandler::timeout(){
+    if(!m_enabled){
+        return;
+    }
+    for(auto key : pressed.keys()){
+        // If the key has been held for a while
+        if(!pressed.value(key).hasExpired(700)){
+            continue;
+        }
+        O_INFO("Key held" << key);
+        switch(key){
+            case Qt::Key_Left:
+                emit leftHeld();
+                break;
+            case Qt::Key_Home:
+                emit homeHeld();
+                break;
+            case Qt::Key_Right:
+                emit rightHeld();
+                break;
+            case Qt::Key_PowerOff:
+                emit powerHeld();
+                break;
+            default:
+                continue;
+        }
+        pressed.remove(key);
+    }
 }

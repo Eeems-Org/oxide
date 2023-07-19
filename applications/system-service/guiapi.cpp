@@ -78,7 +78,6 @@ GuiAPI::~GuiAPI(){
 void GuiAPI::startup(){
     O_INFO("Starting up GUI API");
     m_thread.m_screenGeometry = &m_screenGeometry;
-    m_thread.start();
     Oxide::startThreadWithPriority(&m_thread, QThread::TimeCriticalPriority);
 }
 
