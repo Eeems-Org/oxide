@@ -1,49 +1,46 @@
 #include "guithread.h"
 #include "dbusservice.h"
 
-bool WaitThread::event(QEvent* event){
-    if(event->type() != QEvent::UpdateRequest){
-        return QObject::event(event);
-    }
-    if(!m_processing){
-        m_processing = true;
+void WaitThread::run(){
+    O_INFO("Thread started");
+    QTimer::singleShot(0, [this]{
+        Q_ASSERT(QThread::currentThread() == (QThread*)this);
         forever{
-            auto pendingMarkerWaits = getPendingMarkers();
-            if(pendingMarkerWaits.isEmpty()){
-                break;
-            }
-            if(pendingMarkerWaits.length()){
-                O_DEBUG(pendingMarkerWaits.length() << "pending marker waits");
-                QQueue<std::function<void()>> callbacks;
-                QMutableListIterator i(pendingMarkerWaits);
-                while(i.hasNext()){
-                    PendingMarkerWait pendingMarkerWait = i.next();
-                    if(isPendingMarkerWaitDone(pendingMarkerWait)){
-                        if(pendingMarkerWait.window.isEmpty()){
-                            O_DEBUG("Global marker wait completed" << pendingMarkerWait.marker);
-                        }else{
-                            O_DEBUG("Window marker wait completed" << pendingMarkerWait.window << pendingMarkerWait.marker);
-                        }
-                        i.remove();
-                        callbacks.append(pendingMarkerWait.callback);
-                    }
-                }
-                while(!callbacks.isEmpty()){
-                    auto callback = callbacks.dequeue();
-                    callback();
-                }
-            }
-            purgeOldCompletedItems();
             m_pendingMutex.lock();
-            m_pendingMarkerWaits.append(pendingMarkerWaits);
+            if(m_pendingMarkerWaits.isEmpty()){
+                m_pendingtWait.wait(&m_pendingMutex);
+            }
+            QList<PendingMarkerWait> requeue;
+            QList<std::function<void()>> callbacks;
+            while(!m_pendingMarkerWaits.isEmpty()){
+                auto pendingMarkerWait = m_pendingMarkerWaits.dequeue();
+                m_pendingMutex.unlock();
+                if(!isPendingMarkerWaitDone(pendingMarkerWait)){
+                    requeue.append(pendingMarkerWait);
+                    m_pendingMutex.lock();
+                    continue;
+                }
+                if(pendingMarkerWait.window.isEmpty()){
+                    O_DEBUG("Global marker wait completed" << pendingMarkerWait.marker);
+                }else{
+                    O_DEBUG("Window marker wait completed" << pendingMarkerWait.window << pendingMarkerWait.marker);
+                }
+                callbacks.append(pendingMarkerWait.callback);
+                m_pendingMutex.lock();
+            }
+            m_pendingMarkerWaits.append(requeue);
             m_pendingMutex.unlock();
+            purgeOldCompletedItems();
+            for(auto callback : callbacks){
+                callback();
+            }
         }
-        m_processing = false;
-    }
-    return true;
+    });
+    auto res = exec();
+    O_INFO("Thread stopped with exit code:" << res);
 }
 
-WaitThread::WaitThread(int frameBufferFd) : QThread(), m_frameBufferFd{frameBufferFd}, m_processing{false}{
+WaitThread::WaitThread(int frameBufferFd) : QThread(), m_frameBufferFd{frameBufferFd}{
     setObjectName("ioctl");
     moveToThread(this);
 }
@@ -70,11 +67,12 @@ void WaitThread::addWait(Window* window, unsigned int marker, std::function<void
     m_completedMutex.lock();
     PendingMarkerWait pendingMarkerWait{
         .marker = marker,
-        .window = window == nullptr ? "" : window->identifier(),
-        .callback = callback,
-        .deadline = QDeadlineTimer(1000 * 7, Qt::PreciseTimer),
+                .window = window == nullptr ? "" : window->identifier(),
+                .callback = callback,
+                .deadline = QDeadlineTimer(1000 * 7, Qt::PreciseTimer),
     };
     m_pendingMarkerWaits.append(pendingMarkerWait);
+    m_pendingtWait.notify_all();
     m_completedMutex.unlock();
 }
 
@@ -121,8 +119,9 @@ bool WaitThread::isPendingMarkerWaitDone(PendingMarkerWait pendingMarkerWait){
         O_WARNING("Stale MXCFB_WAIT_FOR_UPDATE_COMPLETE marker" << pendingMarkerWait.marker << "for window" << pendingMarkerWait.window);
         return true;
     }
-    auto completedMarkers = getCompletedMarkers();
-    for(auto completedItem : completedMarkers){
+    QMutexLocker locker(&m_completedMutex);
+    Q_UNUSED(locker);
+    for(auto completedItem : m_completedMarkers){
         if(pendingMarkerWait.window != completedItem.window || pendingMarkerWait.marker != completedItem.marker){
             continue;
         }
@@ -160,54 +159,28 @@ void WaitThread::purgeOldCompletedItems(){
             i.remove();
         }
     }
-    O_DEBUG("Completed markers" << m_completedMarkers.length());
-}
-
-QList<PendingMarkerWait> WaitThread::getPendingMarkers(){
-    QMutexLocker locker(&m_pendingMutex);
-    Q_UNUSED(locker);
-    QQueue<PendingMarkerWait> pendingMarkerWaits;
-    while(!m_pendingMarkerWaits.isEmpty()){
-        pendingMarkerWaits.enqueue(m_pendingMarkerWaits.dequeue());
-    }
-    return pendingMarkerWaits;
-}
-
-QQueue<CompletedMarker> WaitThread::getCompletedMarkers(){
-    QMutexLocker locker(&m_completedMutex);
-    Q_UNUSED(locker);
-    QQueue<CompletedMarker> completedMarkers;
-    for(auto marker : m_completedMarkers){
-        completedMarkers.enqueue(marker);
-    }
-    return completedMarkers;
-}
-
-bool GUIThread::event(QEvent* event){
-    if(event->type() != QEvent::UpdateRequest){
-        return QObject::event(event);
-    }
-    if(!m_processing){
-        m_processing = true;
-        forever{
-            auto events = getRepaintEvents();
-            if(events.isEmpty()){
-                break;
-            }
-            while(!events.isEmpty()){
-                auto event = events.dequeue();
-                redraw(event);
-            }
-        }
-        deletePendingWindows();
-        m_processing = false;
-    }
-    QCoreApplication::postEvent(m_waitThread, new QEvent(QEvent::UpdateRequest));
-    return true;
 }
 
 void GUIThread::run(){
     O_INFO("Thread started");
+    QTimer::singleShot(0, [this]{
+        Q_ASSERT(QThread::currentThread() == (QThread*)this);
+        forever{
+            m_repaintMutex.lock();
+            if(!m_repaintCount.available()){
+                m_repaintWait.wait(&m_repaintMutex);
+            }
+            while(m_repaintCount.available()){
+                m_repaintCount.acquire();
+                auto event = m_repaintEvents.dequeue();
+                m_repaintMutex.unlock();
+                redraw(event);
+                m_repaintMutex.lock();
+            }
+            m_repaintMutex.unlock();
+            deletePendingWindows();
+        }
+    });
     auto res = exec();
     O_INFO("Stopping thread" << m_waitThread);
     m_waitThread->quit();
@@ -220,7 +193,7 @@ void GUIThread::run(){
     O_INFO("Thread stopped with exit code:" << res);
 }
 
-GUIThread::GUIThread() : QThread(), m_processing{false}{
+GUIThread::GUIThread() : QThread(){
     m_frameBufferFd = open("/dev/fb0", O_RDWR);
     if(m_frameBufferFd == -1){
         qFatal("Failed to open framebuffer");
@@ -232,24 +205,23 @@ GUIThread::GUIThread() : QThread(), m_processing{false}{
 }
 
 GUIThread::~GUIThread(){
-    m_mutex.lock();
-    m_processing = true;
-    m_repaintEvents.clear();
-    m_mutex.unlock();
+    m_repaintMutex.lock();
     m_deleteQueueMutex.lock();
+    m_repaintEvents.clear();
     for(auto window : m_deleteQueue){
         if(window != nullptr){
             window->deleteLater();
         }
     }
     m_deleteQueueMutex.unlock();
+    m_repaintMutex.unlock();
 }
 
-bool GUIThread::isActive(){ return !m_repaintEvents.isEmpty() || m_processing; }
+bool GUIThread::isActive(){ return m_repaintCount.available(); }
 
 void GUIThread::enqueue(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool global, std::function<void()> callback){
     Q_ASSERT(global || window != nullptr);
-    m_mutex.lock();
+    m_repaintMutex.lock();
     m_repaintEvents.enqueue(RepaintRequest{
         .window = window,
         .region = region,
@@ -258,14 +230,21 @@ void GUIThread::enqueue(Window* window, QRect region, EPFrameBuffer::WaveformMod
         .global = global,
         .callback = callback
     });
-    m_mutex.unlock();
+    m_repaintCount.release(); // Indicate that there is an item in the queue
+    m_repaintWait.notify_all();
+    m_repaintMutex.unlock();
     if(callback != nullptr){
         m_waitThread->addWait(window, marker, callback);
     }
-    scheduleUpdate();
 }
 
 void GUIThread::addCompleted(QString window, unsigned int marker, unsigned int internalMarker, bool waited){ m_waitThread->addCompleted(window, marker, internalMarker, waited); }
+
+void GUIThread::deleteWindowLater(Window* window){
+    m_deleteQueueMutex.lock();
+    m_deleteQueue.append(window);
+    m_deleteQueueMutex.unlock();
+}
 
 WaitThread* GUIThread::waitThread(){ return m_waitThread; }
 
@@ -296,10 +275,11 @@ void GUIThread::redraw(RepaintRequest& event){
         O_WARNING("Window missing");
         return;
     }
-    if(event.global && m_deleteQueue.contains(event.window)){
+    if(event.global && inDeleteQueue(event.window)){
         O_WARNING("Window has been closed");
         return;
     }
+    m_deleteQueueMutex.unlock();
     // Get visible region on the screen to repaint
     QRect rect;
     if(event.global){
@@ -327,7 +307,7 @@ void GUIThread::redraw(RepaintRequest& event){
             continue;
         }
         if(getpgid(window->pgid()) < 0){
-            O_WARNING(window->identifier() << "With not running process");
+            O_WARNING(window->identifier() << "With no running process");
             QMetaObject::invokeMethod(window, &Window::close, Qt::QueuedConnection);
             i.remove();
             continue;
@@ -426,44 +406,39 @@ void GUIThread::redraw(RepaintRequest& event){
     O_DEBUG("Repaint" << rect << "done in" << repaintRegion.rectCount() << "paints");
 }
 
-QQueue<RepaintRequest> GUIThread::getRepaintEvents(){
-    QMutexLocker locker(&m_mutex);
-    Q_UNUSED(locker);
-    QQueue<RepaintRequest> events;
-    while(!m_repaintEvents.isEmpty()){
-        events.enqueue(m_repaintEvents.dequeue());
-    }
-    return events;
-}
-
 void GUIThread::deletePendingWindows(){
-    m_mutex.lock();
-    if(!m_repaintEvents.isEmpty() || m_deleteQueue.isEmpty() || !m_waitThread->isEmpty()){
-        m_mutex.unlock();
+    if(m_repaintCount.available() || !m_waitThread->isEmpty()){
         return;
     }
-    m_mutex.unlock();
     m_deleteQueueMutex.lock();
-    O_DEBUG("Deleting pending windows");
-    while(!m_deleteQueue.isEmpty()){
-        auto window = m_deleteQueue.first();
-        Q_ASSERT(window != nullptr);
-        bool skip = false;
-        for(auto event : m_repaintEvents){
-            if(event.window == window){
-                skip = true;
-                break;
-            }
-        }
-        if(!skip){
-            m_deleteQueue.dequeue();
+    unsigned int count = 0;
+    QMutableListIterator i(m_deleteQueue);
+    while(i.hasNext()){
+        auto window = i.next();
+        if(!inRepaintEvents(window)){
+            count++;
+            i.remove();
             window->deleteLater();
         }
     }
+    O_DEBUG("deleted" << count << "pending windows");
     m_deleteQueueMutex.unlock();
 }
 
-void GUIThread::scheduleUpdate(){
-    QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest));
-    QCoreApplication::postEvent(m_waitThread, new QEvent(QEvent::UpdateRequest));
+bool GUIThread::inDeleteQueue(Window* window){
+    QMutexLocker locker(&m_deleteQueueMutex);
+    Q_UNUSED(locker);
+    return m_deleteQueue.contains(window);
+}
+
+bool GUIThread::inRepaintEvents(Window* window){
+    Q_ASSERT(window != nullptr);
+    QMutexLocker locker(&m_repaintMutex);
+    Q_UNUSED(locker);
+    for(auto event : m_repaintEvents){
+        if(event.window == window){
+            return true;
+        }
+    }
+    return false;
 }

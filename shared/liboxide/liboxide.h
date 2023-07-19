@@ -20,6 +20,7 @@
 #include "debug.h"
 #include "devicesettings.h"
 #include "oxide_sentry.h"
+#include "threading.h"
 
 #include <QDebug>
 #include <QScopeGuard>
@@ -59,12 +60,6 @@ Q_DECLARE_METATYPE(WifiNetworks);
  */
 namespace Oxide {
     /*!
-     * \brief startThreadWithPriority
-     * \param thread
-     * \param priority
-     */
-    LIBOXIDE_EXPORT void startThreadWithPriority(QThread* thread, QThread::Priority priority);
-    /*!
      * \brief Try to get a lock
      * \param lockName Path to the lock file
      * \return File descriptor of the lock file
@@ -88,42 +83,6 @@ namespace Oxide {
      * \return list of pids that have the file open
      */
     LIBOXIDE_EXPORT QList<int> lsof(const QString& path);
-    /*!
-     * \brief Run code on the main Qt thread
-     * \param callback The code to run on the main thread
-     *
-     * \snippet examples/oxide.cpp dispatchToMainThread
-     */
-    LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
-    /*!
-     * \brief Run code on the main Qt thread
-     * \param callback The code to run on the main thread
-     * \return Return value of callback
-     *
-     * \snippet examples/oxide.cpp dispatchToMainThread
-     */
-    template<typename T> LIBOXIDE_EXPORT T dispatchToMainThread(std::function<T()> callback){
-        if(QThread::currentThread() == qApp->thread()){
-            return callback();
-        }
-        // any thread
-        QTimer* timer = new QTimer();
-        timer->moveToThread(qApp->thread());
-        timer->setSingleShot(true);
-        T result;
-        QObject::connect(timer, &QTimer::timeout, [timer, &result, callback](){
-            // main thread
-            result = callback();
-            timer->deleteLater();
-        });
-        QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
-        return result;
-    }
-    /*!
-     * \brief runInEventLoop
-     * \param callback
-     */
-    LIBOXIDE_EXPORT void runInEventLoop(std::function<void(std::function<void()>)> callback);
     /*!
      * \brief Get the UID for a username
      * \param name Username to search for

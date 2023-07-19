@@ -9,8 +9,18 @@
 #include <unistd.h>
 
 #include <QDebug>
-#define __DEBUG_LOCATION__ QString("(%1:%2, %3)").arg(__FILE__).arg(__LINE__).arg(__PRETTY_FUNCTION__).toStdString().c_str()
-#define __DEBUG_APPLICATION_INFO__ QString("[%1 %2 %3]").arg(::getpid()).arg(::getpgrp()).arg(Oxide::getAppName().c_str()).toStdString().c_str()
+/*!
+ * \def __DEBUG_LOCATION__
+ * \brief Get the current debug location
+ * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and O_EVENT
+ */
+#define __DEBUG_LOCATION__ Oxide::getDebugLocation(__FILE__, __LINE__, __PRETTY_FUNCTION__).c_str()
+/*!
+ * \def __DEBUG_APPLICATION_INFO__
+ * \brief Get the current application information string
+ * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and O_EVENT
+ */
+#define __DEBUG_APPLICATION_INFO__ Oxide::getDebugApplicationInfo().c_str()
 /*!
  * \def O_DEBUG(msg)
  * \brief Log a debug message if compiled with DEBUG mode, and debugging is enabled
@@ -57,6 +67,21 @@
 #define O_INFO(msg) qInfo() << __DEBUG_APPLICATION_INFO__ << "Info:" << msg << __DEBUG_LOCATION__;
 
 namespace Oxide {
+    /*!
+     * \brief Get a formatted application information string
+     * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and O_EVENT
+     * \return Formatted string containing information about the application and current thread
+     */
+    LIBOXIDE_EXPORT std::string getDebugApplicationInfo();
+    /*!
+     * \brief Get a formatted debug information string
+     * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and O_EVENT
+     * \param Name of file
+     * \param Line number in file
+     * \param Function information
+     * \return Formatted debug location string
+     */
+    LIBOXIDE_EXPORT std::string getDebugLocation(const char* file, unsigned int line, const char* function);
     /*!
      * \brief Return the state of debugging
      * \return Debugging state

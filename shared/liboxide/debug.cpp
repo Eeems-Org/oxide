@@ -32,4 +32,21 @@ namespace Oxide {
         return name.c_str();
     }
 
+    std::string getDebugApplicationInfo(){
+        return QString("[%1:%2:%3 %4]")
+            .arg(::getpgrp())
+            .arg(::getpid())
+            .arg(::gettid())
+            .arg(Oxide::getAppName().c_str())
+            .toStdString();
+    }
+
+    std::string getDebugLocation(const char* file, unsigned int line, const char* function){
+        return QString("(%1:%2, %3)")
+            .arg(file)
+            .arg(line)
+            .arg(function)
+            .toStdString();
+    }
+
 }

@@ -374,11 +374,7 @@ void Window::_close(){
     setParent(nullptr);
     moveToThread(nullptr);
     auto thread = guiAPI->guiThread();
-    if(thread->isRunning()){
-        thread->m_deleteQueueMutex.lock();
-        thread->m_deleteQueue.enqueue(this);
-        thread->m_deleteQueueMutex.unlock();
-    }
+    thread->deleteWindowLater(this);
     blockSignals(true);
     W_DEBUG("Window closed");
 }

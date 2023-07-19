@@ -135,11 +135,9 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
         O_INFO("Window" << window->identifier() << "closed");
         m_windowMutex.lock();
         if(m_windows.remove(path)){
-            m_windowMutex.unlock();
             sortWindows();
-        }else{
-            m_windowMutex.unlock();
         }
+        m_windowMutex.unlock();
         if(!DBusService::shuttingDown()){
             auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
             m_thread.enqueue(nullptr, region, EPFrameBuffer::Initialize, 0, true);
@@ -233,6 +231,8 @@ QList<Window*> GuiAPI::sortedWindows(){
 
 void GuiAPI::sortWindows(){
     auto windows = sortedWindows();
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
     int raisedZ = 0;
     int loweredZ = -1;
     for(auto window : windows){

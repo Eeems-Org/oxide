@@ -39,6 +39,8 @@ QLocalSocket eventSocket;
 QDataStream eventStream;
 QAtomicInteger<unsigned int> repaintMarker(1);
 
+using namespace Oxide;
+
 // TODO - Get liboxide to automate journalctl logging
 //        https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
 
@@ -93,16 +95,26 @@ void _disconnect(){
     Q_UNUSED(locker);
     fbData = nullptr;
     fbFile.close();
-    childSocket.disconnect();
-    childSocket.close();
-    touchEventSocket.disconnect();
-    touchEventSocket.close();
-    tabletEventSocket.disconnect();
-    tabletEventSocket.close();
-    keyEventSocket.disconnect();
-    keyEventSocket.close();
-    eventSocket.disconnect();
-    eventSocket.close();
+    dispatchToThread(childSocket.thread(), []{
+        childSocket.disconnect();
+        childSocket.close();
+    });
+    dispatchToThread(touchEventSocket.thread(), []{
+        touchEventSocket.disconnect();
+        touchEventSocket.close();
+    });
+    dispatchToThread(tabletEventSocket.thread(), []{
+        tabletEventSocket.disconnect();
+        tabletEventSocket.close();
+    });
+    dispatchToThread(keyEventSocket.thread(), []{
+        keyEventSocket.disconnect();
+        keyEventSocket.close();
+    });
+    dispatchToThread(eventSocket.thread(), []{
+        eventSocket.disconnect();
+        eventSocket.close();
+    });
 #define freeAPI(name) \
     if(api_##name != nullptr){ \
         delete api_##name; \
@@ -451,41 +463,42 @@ namespace Oxide::Tarnish {
         data >> type;
         switch((WindowEventType)type){
             case Repaint:{
-                auto data = socket->read(event.repaintData.size());
+                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.repaintData.size()); });
                 data >> event.repaintData;
                 break;
             }
             case Geometry:{
-                auto data = socket->read(event.geometryData.size());
+                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.geometryData.size()); });
                 data >> event.geometryData;
                 break;
             }
             case ImageInfo:{
-                auto data = socket->read(event.imageInfoData.size());
+                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.imageInfoData.size()); });
                 data >> event.imageInfoData;
                 break;
             }
             case WaitForPaint:{
-                auto data = socket->read(event.waitForPaintData.size());
+                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.waitForPaintData.size()); });
                 data >> event.waitForPaintData;
                 break;
             }
             case Key:{
-                auto data = socket->read(event.keyData.size());
+                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.keyData.size()); });
                 data >> event.keyData;
                 break;
             }
-            case Touch:{
-                auto data = socket->read(event.touchData.size());
-                unsigned int size;
-                auto d = data.left(sizeof(unsigned int));
-                d >> size;
-                data.append(socket->read(TouchEventArgs::itemSize() * size));
-                data >> event.touchData;
+            case Touch:
+                dispatchToThread(socket->thread(), [socket, &event]{
+                    auto data = socket->read(event.touchData.size());
+                    unsigned int size;
+                    auto d = data.left(sizeof(unsigned int));
+                    d >> size;
+                    data.append(socket->read(TouchEventArgs::itemSize() * size));
+                    data >> event.touchData;
+                });
                 break;
-            }
             case Tablet:{
-                auto data = socket->read(event.tabletData.size());
+                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.tabletData.size()); });
                 data >> event.tabletData;
                 break;
             }
@@ -557,7 +570,7 @@ namespace Oxide::Tarnish {
                 O_WARNING("Unknown event type:" << type)
                 return false;
         }
-        auto res = socket->write(data);
+        auto res = dispatchToThread<qint64>(socket->thread(), [socket, data]{ return socket->write(data); });
         if(res < data.size()){
             O_WARNING("Expected to write" << data.size() << "bytes but only wrote" << res << "bytes");
             return false;
@@ -1067,7 +1080,9 @@ namespace Oxide::Tarnish {
             return -1;
         }
         fd = dup(fd);
-        if(!touchEventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
+        if(!dispatchToThread<bool>(touchEventSocket.thread(), [fd]{
+            return touchEventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered);
+        })){
             ::close(fd);
             O_WARNING("Unable to get touch event pipe:" << touchEventSocket.errorString());
             return -1;
@@ -1112,7 +1127,9 @@ namespace Oxide::Tarnish {
             return -1;
         }
         fd = dup(fd);
-        if(!tabletEventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
+        if(!dispatchToThread<bool>(tabletEventSocket.thread(), [fd]{
+            return tabletEventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered);
+        })){
             ::close(fd);
             O_WARNING("Unable to get tablet event pipe:" << tabletEventSocket.errorString());
             return -1;
@@ -1157,7 +1174,9 @@ namespace Oxide::Tarnish {
             return -1;
         }
         fd = dup(fd);
-        if(!keyEventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered)){
+        if(!dispatchToThread<bool>(keyEventSocket.thread(), [fd]{
+            return keyEventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly | QLocalSocket::Unbuffered);
+        })){
             ::close(fd);
             O_WARNING("Unable to get key event pipe:" << keyEventSocket.errorString());
             return -1;
@@ -1202,7 +1221,9 @@ namespace Oxide::Tarnish {
             return -1;
         }
         fd = dup(fd);
-        if(!eventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered)){
+        if(!dispatchToThread<bool>(eventSocket.thread(), [fd]{
+            return eventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered);
+        })){
             ::close(fd);
             O_WARNING("Unable to get window event pipe:" << eventSocket.errorString());
             return -1;

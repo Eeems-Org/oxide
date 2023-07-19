@@ -28,7 +28,8 @@ SOURCES += \
     slothandler.cpp \
     sysobject.cpp \
     signalhandler.cpp \
-    tarnish.cpp
+    tarnish.cpp \
+    threading.cpp
 
 HEADERS += \
     ../epaper/epframebuffer.h \
@@ -49,7 +50,8 @@ HEADERS += \
     slothandler.h \
     sysobject.h \
     signalhandler.h \
-    tarnish.h
+    tarnish.h \
+    threading.h
 
 PRECOMPILED_HEADER = \
     liboxide_stable.h
