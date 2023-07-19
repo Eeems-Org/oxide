@@ -35,10 +35,7 @@ public:
             O_INFO("Failed to open event device: " << touchScreen_device.device.c_str());
             throw QException();
         }
-        instance = new DigitizerHandler(touchScreen_device);
-        instance->setObjectName("touchscreen");
-        Oxide::startThreadWithPriority(instance, QThread::HighestPriority);
-        instance->moveToThread(instance);
+        instance = new DigitizerHandler(touchScreen_device, "touchscreen");
         return instance;
     }
     static DigitizerHandler* singleton_wacom(){
@@ -52,22 +49,24 @@ public:
             O_INFO("Failed to open event device: " << wacom_device.device.c_str());
             throw QException();
         }
-        instance = new DigitizerHandler(wacom_device);
-        instance->setObjectName("wacom");
-        Oxide::startThreadWithPriority(instance, QThread::HighestPriority);
-        instance->moveToThread(instance);
+        instance = new DigitizerHandler(wacom_device, "wacom");
         return instance;
     }
     static string exec(const char* cmd);
     static vector<std::string> split_string_by_newline(const std::string& str);
     static int is_uint(string input);
 
-    DigitizerHandler(event_device& device)
+    DigitizerHandler(event_device& device, QString name)
      : QThread(),
        filebuf(device.fd, ios::in),
        stream(&filebuf),
        m_enabled(true),
-       device(device) {}
+       device(device)
+    {
+        setObjectName(name);
+        moveToThread(this);
+        Oxide::startThreadWithPriority(this, QThread::HighestPriority);
+    }
     ~DigitizerHandler(){
         if(device.fd == -1){
             return;

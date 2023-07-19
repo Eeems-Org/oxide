@@ -41,7 +41,7 @@ static bool IS_XOCHITL = false;
 static bool IS_FBDEPTH = false;
 static bool IS_LOADABLE_APP = false;
 static bool DO_HANDLE_FB = true;
-static bool FB_OPENED = false;
+static bool PIPE_OPENED = false;
 static int fbFd = -1;
 static int touchFd = -1;
 static int tabletFd = -1;
@@ -493,8 +493,8 @@ int open_from_tarnish(const char* pathname){
     }else if(DO_HANDLE_FB && pathname == std::string("/dev/fb0")){
         res = fbFd = Oxide::Tarnish::getFrameBufferFd(QImage::Format_RGB16);
     }
-    if(!FB_OPENED && res > 0){
-        FB_OPENED = true;
+    if(!PIPE_OPENED && res != -2){
+        PIPE_OPENED = true;
         auto eventPipe = Oxide::Tarnish::getEventPipe();
         if(eventPipe == nullptr){
             qFatal("Could not get event pipe");
@@ -506,6 +506,9 @@ int open_from_tarnish(const char* pathname){
         event.toSocket(eventPipe);
     }
     IS_OPENING = false;
+    if(res == -1){
+        errno = EIO;
+    }
     return res;
 }
 

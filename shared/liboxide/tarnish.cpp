@@ -763,7 +763,7 @@ namespace Oxide::Tarnish {
             }
         }
         O_DEBUG("Tarnish DBus service is online, connecting...");
-        api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus, qApp);
+        api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(api_general, &codes::eeems::oxide1::General::aboutToQuit, [conn]{
             O_WARNING("Tarnish has indicated that it is about to quit!");
@@ -912,7 +912,7 @@ namespace Oxide::Tarnish {
                     if(path == "/"){
                         continue;
                     }
-                    window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection(), qApp);
+                    window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection());
                     if(window->format() == (int)format){
                         break;
                     }
@@ -934,7 +934,7 @@ namespace Oxide::Tarnish {
                 O_WARNING("Unable to get framebuffer: Unable to create window");
                 return -1;
             }
-            window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection(), qApp);
+            window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection());
             QObject::connect(window, &codes::eeems::oxide1::Window::frameBufferChanged, [=](const QDBusUnixFileDescriptor& fd){
                 O_DEBUG("frameBufferChanged");
                 fbFile.close();
@@ -1331,7 +1331,7 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_power = new codes::eeems::oxide1::Power(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        api_power = new codes::eeems::oxide1::Power(OXIDE_SERVICE, path, api_general->connection());
         return api_power;
     }
 
@@ -1343,7 +1343,7 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_wifi = new codes::eeems::oxide1::Wifi(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        api_wifi = new codes::eeems::oxide1::Wifi(OXIDE_SERVICE, path, api_general->connection());
         return api_wifi;
     }
 
@@ -1355,7 +1355,7 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_screen = new codes::eeems::oxide1::Screen(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        api_screen = new codes::eeems::oxide1::Screen(OXIDE_SERVICE, path, api_general->connection());
         return api_screen;
     }
 
@@ -1367,7 +1367,7 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_apps = new codes::eeems::oxide1::Apps(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        api_apps = new codes::eeems::oxide1::Apps(OXIDE_SERVICE, path, api_general->connection());
         return api_apps;
     }
 
@@ -1379,7 +1379,7 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_system = new codes::eeems::oxide1::System(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        api_system = new codes::eeems::oxide1::System(OXIDE_SERVICE, path, api_general->connection());
         return api_system;
     }
 
@@ -1391,7 +1391,7 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_notification = new codes::eeems::oxide1::Notifications(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        api_notification = new codes::eeems::oxide1::Notifications(OXIDE_SERVICE, path, api_general->connection());
         return api_notification;
     }
 
@@ -1403,7 +1403,7 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_gui = new codes::eeems::oxide1::Gui(OXIDE_SERVICE, path, api_general->connection(), (QObject*)qApp);
+        api_gui = new codes::eeems::oxide1::Gui(OXIDE_SERVICE, path, api_general->connection());
         return api_gui;
     }
 

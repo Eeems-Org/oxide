@@ -48,9 +48,6 @@ ButtonHandler* ButtonHandler::init(){
         throw QException();
     }
     instance = new ButtonHandler();
-    instance->setObjectName("buttons");
-    Oxide::startThreadWithPriority(instance, QThread::HighestPriority);
-    instance->moveToThread(instance);
     return instance;
 }
 
@@ -58,6 +55,9 @@ ButtonHandler::ButtonHandler() : QThread(), filebuf(buttons.fd, ios::in), stream
     timer.setInterval(100);
     timer.setSingleShot(false);
     connect(&timer, &QTimer::timeout, this, &ButtonHandler::timeout);
+    setObjectName("buttons");
+    moveToThread(this);
+    Oxide::startThreadWithPriority(this, QThread::HighestPriority);
 }
 
 void ButtonHandler::setEnabled(bool enabled){ m_enabled = enabled; }
