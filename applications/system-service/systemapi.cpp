@@ -268,7 +268,7 @@ SystemAPI::SystemAPI(QObject* parent)
                                 return false;
                         }
                         if(!m_pressStates.contains(key)){
-                            m_pressStates.insert(key, new QTimer(this));
+                            m_pressStates.insert(key, new QTimer());
                             connect(m_pressStates[key], &QTimer::timeout, this, ([this, key]{
                                 switch(key){
                                     case Qt::Key_PowerOff: return &SystemAPI::suspend;
@@ -299,6 +299,7 @@ SystemAPI::SystemAPI(QObject* parent)
                         if(!m_pressStates.contains(key) || !m_pressStates[key]->isActive()){
                             return true;
                         }
+                        m_pressStates[key]->stop();
                         dispatchToThread(guiAPI->thread(), [keyEvent, key]{
                             timeval time;
                             gettimeofday (&time, NULL);
