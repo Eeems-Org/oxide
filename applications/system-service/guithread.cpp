@@ -304,6 +304,10 @@ void GUIThread::redraw(RepaintRequest& event){
     m_deleteQueueMutex.unlock();
     // Get visible region on the screen to repaint
     QRect rect;
+    if(region.isEmpty()){
+        O_WARNING("Empty repaint region provided");
+        return;
+    }
     if(event.global){
         rect = region;
     }else{
