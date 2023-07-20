@@ -1,4 +1,5 @@
 #include "screenapi.h"
+#include "appsapi.h"
 #include "notificationapi.h"
 #include "window.h"
 
@@ -78,19 +79,17 @@ bool ScreenAPI::drawFullscreenImage(QString path){
     }
     Sentry::sentry_transaction("screen", "drawFullscrenImage", [img, path](Sentry::Transaction* t){
         Q_UNUSED(t);
-        Oxide::dispatchToMainThread([img]{
-            auto window = Application::_window();
-            auto image = window->toImage();
-            QRect rect = image.rect();
-            QPainter painter(&image);
-            painter.drawImage(rect, img);
-            painter.end();
-            if(window->_isVisible()){
-                window->_repaint(rect, EPFrameBuffer::HighQualityGrayscale, 0, false);
-            }else{
-                window->_raise(false);
-            }
-        });
+        auto window = AppsAPI::_window();
+        auto image = window->toImage();
+        QRect rect = image.rect();
+        QPainter painter(&image);
+        painter.drawImage(rect, img);
+        painter.end();
+        if(window->_isVisible()){
+            window->_repaint(rect, EPFrameBuffer::HighQualityGrayscale, 0, false);
+        }else{
+            window->_setVisible(true);
+        }
     });
     return true;
 }
@@ -99,39 +98,32 @@ QDBusObjectPath ScreenAPI::screenshot(){
     if(!hasPermission("screen")){
         return QDBusObjectPath("/");
     }
-    O_INFO("Taking screenshot");
-    auto filePath = getNextPath();
-#ifdef DEBUG
-    O_INFO("Using path" << filePath);
-#endif
-    return dispatchToMainThread<QDBusObjectPath>([this, filePath]{
-        QImage screen = copy();
-        QRect rect = notificationAPI->paintNotification("Taking Screenshot...", "");
-        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
-        QDBusObjectPath path("/");
-        if(!screen.save(filePath)){
-            O_INFO("Failed to take screenshot");
-        }else{
-            path = addScreenshot(filePath)->qPath();
-        }
-        QPainter painter(EPFrameBuffer::framebuffer());
-        painter.drawImage(rect, screen, rect);
-        painter.end();
-        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::PartialUpdate, true);
-        return path;
-    });
+    auto filePath = _screenshot();
+    QDBusObjectPath path("/");
+    if(filePath.isEmpty()){
+        O_INFO("Failed to take screenshot");
+    }else{
+        path = addScreenshot(filePath)->qPath();
+    }
+    return path;
 }
 
-QImage ScreenAPI::copy(){
-    return Oxide::dispatchToMainThread<QImage>([]{
-        auto frameBuffer = EPFrameBuffer::framebuffer();
-        O_INFO("Waiting for other painting to finish...");
-        while(frameBuffer->paintingActive()){
-            EPFrameBuffer::waitForLastUpdate();
-        }
-        return frameBuffer->copy();
-    });
+QString ScreenAPI::_screenshot(){
+    auto filePath = getNextPath();
+#ifdef DEBUG
+    O_INFO("Taking screenshot using path" << filePath);
+#endif
+    QImage screen = copy();
+    notificationAPI->paintNotification("Taking Screenshot...", "");
+    if(!screen.save(filePath)){
+        O_INFO("Failed to take screenshot");
+        return "";
+    }
+    NotificationAPI::_window()->_setVisible(false);
+    return filePath;
 }
+
+QImage ScreenAPI::copy(){ return EPFrameBuffer::framebuffer()->copy(); }
 
 QDBusObjectPath ScreenAPI::addScreenshot(QByteArray blob){
     if(!hasPermission("screen")){

@@ -118,6 +118,9 @@ namespace Oxide::JSON {
     }
     QVariant sanitizeForJson(QVariant value){
         auto userType = value.userType();
+        if(userType == QMetaType::type("QDBusUnixFileDescriptor")){
+            return value.value<QDBusUnixFileDescriptor>().fileDescriptor();
+        }
         if(userType == QMetaType::type("QDBusObjectPath")){
             return value.value<QDBusObjectPath>().path();
         }
@@ -150,6 +153,24 @@ namespace Oxide::JSON {
                 list.append(value.path());
             }
             return list;
+        }
+        if(userType == QMetaType::QRect){
+            auto rect = value.toRect();
+            QVariantMap map;
+            map.insert("x", rect.x());
+            map.insert("y", rect.y());
+            map.insert("width", rect.width());
+            map.insert("height", rect.height());
+            return map;
+        }
+        if(userType == QMetaType::QRectF){
+            auto rect = value.toRectF();
+            QVariantMap map;
+            map.insert("x", rect.x());
+            map.insert("y", rect.y());
+            map.insert("width", rect.width());
+            map.insert("height", rect.height());
+            return map;
         }
         if(userType == QMetaType::QByteArray){
             auto byteArray = value.toByteArray();

@@ -41,7 +41,7 @@ public:
     Q_INVOKABLE void display();
     Q_INVOKABLE void remove();
     Q_INVOKABLE void click();
-    void paintNotification(Application* resumeApp);
+    void paintNotification();
 
 signals:
     void changed(QVariantMap);
@@ -57,8 +57,6 @@ private:
     QString m_application;
     QString m_text;
     QString m_icon;
-    QImage screenBackup;
-    QRect updateRect;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 };

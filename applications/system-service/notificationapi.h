@@ -18,6 +18,7 @@ class NotificationAPI : public APIBase {
     Q_PROPERTY(QList<QDBusObjectPath> unownedNotifications READ getUnownedNotifications)
 
 public:
+    static Window* _window();
     static NotificationAPI* singleton(NotificationAPI* self = nullptr);
     NotificationAPI(QObject* parent);
     ~NotificationAPI(){}
@@ -32,7 +33,7 @@ public:
 
     Notification* add(const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon);
     Notification* getByIdentifier(const QString& identifier);
-    QRect paintNotification(const QString& text, const QString& iconPath);
+    void paintNotification(const QString& text, const QString& iconPath);
     void errorNotification(const QString& text);
 
 public slots:

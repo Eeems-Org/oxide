@@ -299,11 +299,22 @@ int main(int argc, char *argv[]){
 #endif
         api = new Gui(OXIDE_SERVICE, path, bus);
         if(parser.isSet("object")){
-            qDebug() << "Paths are not valid for the system API";
+            auto object = parser.value("object");
 #ifdef SENTRY
-            sentry_breadcrumb("error", "invalid arguments");
+            sentry_breadcrumb("object", object.toStdString().c_str());
 #endif
-            return qExit(EXIT_FAILURE);
+            auto type = object.mid(0, object.indexOf(":"));
+            auto path = object.mid(object.indexOf(":") + 1);
+            path = OXIDE_SERVICE_PATH + QString("/" + path);
+            if(type == "Window"){
+                api = new Window(OXIDE_SERVICE, path, bus);
+            }else{
+                qDebug() << "Unknown object type" << type;
+#ifdef SENTRY
+                sentry_breadcrumb("error", "Unknown object type");
+#endif
+                return qExit(EXIT_FAILURE);
+            }
         }
     }else{
         qDebug() << "API not initialized? Please log a bug.";

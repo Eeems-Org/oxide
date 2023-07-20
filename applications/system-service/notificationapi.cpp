@@ -1,8 +1,26 @@
 #include "notificationapi.h"
+#include "guiapi.h"
+#include "window.h"
 
 #include <liboxide.h>
 
 using namespace Oxide;
+
+static Window* __window = nullptr;
+Window* NotificationAPI::_window(){
+    if(__window == nullptr){
+        auto screenRect = deviceSettings.screenGeometry();
+        int x = screenRect.width() / 2;
+        int y = screenRect.height() / 8;
+        __window = guiAPI->_createWindow(QRect(x, y * 7, x, y), QImage::Format_RGBA8888_Premultiplied);
+        __window->setZ(std::numeric_limits<int>::max());
+        __window->disableEventPipe();
+        __window->setSystemWindow();
+        __window->_setVisible(false);
+        __window->_raise();
+    }
+    return __window;
+}
 
 NotificationAPI* NotificationAPI::singleton(NotificationAPI* self){
     static NotificationAPI* instance;
@@ -92,57 +110,41 @@ Notification* NotificationAPI::getByIdentifier(const QString& identifier){
     return m_notifications.value(identifier);
 }
 
-QRect NotificationAPI::paintNotification(const QString& text, const QString& iconPath){
-    return dispatchToMainThread<QRect>([text, iconPath]{
-        O_INFO("Painting to framebuffer...");
-        auto frameBuffer = EPFrameBuffer::framebuffer();
-        QPainter painter(frameBuffer);
-        auto size = frameBuffer->size();
-        auto padding = 10;
-        auto radius = 10;
-        QImage icon(iconPath);
-        auto iconSize = icon.isNull() ? 0 : 50;
-        auto boundingRect = painter.fontMetrics().boundingRect(QRect(0, 0, size.width() / 2, size.height() / 8), Qt::AlignCenter | Qt::TextWordWrap, text);
-        auto width = boundingRect.width() + iconSize + (padding * 3);
-        auto height = std::max(boundingRect.height(), iconSize) + (padding * 2);
-        auto left = size.width() - width;
-        auto top = size.height() - height;
-        QRect updateRect(left, top, width, height);
-        painter.fillRect(updateRect, Qt::black);
-        painter.setPen(Qt::black);
-        painter.drawRoundedRect(updateRect, radius, radius);
-        painter.setPen(Qt::white);
-        QRect textRect(left + padding, top + padding, width - iconSize - (padding * 2), height - padding);
-        painter.drawText(textRect, Qt::AlignCenter | Qt::TextWordWrap, text);
-        painter.end();
-        O_INFO("Updating screen " << updateRect << "...");
-        EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
-        if(!icon.isNull()){
-            QPainter painter2(frameBuffer);
-            QRect iconRect(size.width() - iconSize - padding, top + padding, iconSize, iconSize);
-            painter2.fillRect(iconRect, Qt::white);
-            painter2.drawImage(iconRect, icon);
-            painter2.end();
-            EPFrameBuffer::sendUpdate(iconRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
-        }
-        EPFrameBuffer::waitForLastUpdate();
-        return updateRect;
-    });
+void NotificationAPI::paintNotification(const QString& text, const QString& iconPath){
+    auto image = _window()->toImage();
+    QPainter painter(&image);
+    auto padding = 10;
+    auto radius = 10;
+    QImage icon(iconPath);
+    auto iconSize = icon.isNull() ? 0 : 50;
+    auto boundingRect = painter.fontMetrics().boundingRect(image.rect(), Qt::AlignCenter | Qt::TextWordWrap, text);
+    auto width = boundingRect.width() + iconSize + (padding * 3);
+    auto height = std::max(boundingRect.height(), iconSize) + (padding * 2);
+    auto left = image.width() - width;
+    auto top = image.height() - height;
+    painter.fillRect(image.rect(), Qt::transparent);
+    QRect updateRect(left, top, width, height);
+    painter.fillRect(updateRect, Qt::black);
+    painter.setPen(Qt::black);
+    painter.drawRoundedRect(updateRect, radius, radius);
+    painter.setPen(Qt::white);
+    QRect textRect(left + padding, top + padding, width - iconSize - (padding * 2), height - padding);
+    painter.drawText(textRect, Qt::AlignCenter | Qt::TextWordWrap, text);
+    if(!icon.isNull()){
+        QRect iconRect(image.width() - iconSize - padding, top + padding, iconSize, iconSize);
+        painter.fillRect(iconRect, Qt::white);
+        painter.drawImage(iconRect, icon);
+    }
+    painter.end();
+    if(_window()->_isVisible()){
+        _window()->_repaint(image.rect(), EPFrameBuffer::Mono, 0, false);
+    }else{
+        _window()->_setVisible(true);
+    }
 }
 
 void NotificationAPI::errorNotification(const QString& text){
-    dispatchToMainThread([]{
-        auto frameBuffer = EPFrameBuffer::framebuffer();
-        O_INFO("Waiting for other painting to finish...");
-        while(frameBuffer->paintingActive()){
-            EPFrameBuffer::waitForLastUpdate();
-        }
-        O_INFO("Displaying error text");
-        QPainter painter(frameBuffer);
-        painter.fillRect(frameBuffer->rect(), Qt::white);
-        painter.end();
-        EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-    });
+    // TODO - clear screen?
     notificationAPI->paintNotification(text, "");
 }
 

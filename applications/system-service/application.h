@@ -63,9 +63,6 @@ class Application : public QObject{
     Q_PROPERTY(QByteArray screenCapture READ screenCapture)
 
 public:
-    static Window* _window();
-    static void shutdown();
-
     Application(QDBusObjectPath path, QObject* parent);
     Application(QString path, QObject* parent);
     ~Application();

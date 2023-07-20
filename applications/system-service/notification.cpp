@@ -2,6 +2,7 @@
 #include "notificationapi.h"
 #include "appsapi.h"
 #include "screenapi.h"
+#include "window.h"
 
 #include <QFontDatabase>
 #include <liboxide.h>
@@ -110,13 +111,7 @@ void Notification::display(){
     notificationAPI->lock();
     Oxide::dispatchToMainThread([this]{
         O_INFO("Displaying notification" << identifier());
-        auto path = appsAPI->currentApplicationNoSecurityCheck();
-        Application* resumeApp = nullptr;
-        if(path.path() != "/"){
-            resumeApp = appsAPI->getApplication(path);
-            resumeApp->interruptApplication();
-        }
-        paintNotification(resumeApp);
+        paintNotification();
     });
 }
 
@@ -135,31 +130,16 @@ void Notification::click(){
     emit clicked();
 }
 
-void Notification::paintNotification(Application* resumeApp){
+void Notification::paintNotification(){
     O_INFO("Painting notification" << identifier());
-    dispatchToMainThread([this]{
-        screenBackup = screenAPI->copy();
-    });
-    updateRect = notificationAPI->paintNotification(text(), m_icon);
+    notificationAPI->paintNotification(text(), m_icon);
     O_INFO("Painted notification" << identifier());
     emit displayed();
-    QTimer::singleShot(2000, [this, resumeApp]{
-        dispatchToMainThread([this]{
-            QPainter painter(EPFrameBuffer::framebuffer());
-            painter.drawImage(updateRect, screenBackup, updateRect);
-            painter.end();
-            EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-            O_INFO("Finished displaying notification" << identifier());
-            EPFrameBuffer::waitForLastUpdate();
-        });
+    QTimer::singleShot(2000, [this]{
+        NotificationAPI::_window()->_setVisible(false);
         if(!notificationAPI->notificationDisplayQueue.isEmpty()){
-            Oxide::dispatchToMainThread([resumeApp] {
-                notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification(resumeApp);
-            });
+            notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification();
             return;
-        }
-        if(resumeApp != nullptr){
-            resumeApp->uninterruptApplication();
         }
         notificationAPI->unlock();
     });

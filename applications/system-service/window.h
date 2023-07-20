@@ -35,7 +35,7 @@ public:
         LoweredHidden,
         Closed
     } WindowState;
-    Window(const QString& identifier, const QString& path, const pid_t& pgid, const QRect& geometry, int z, QImage::Format format);
+    Window(const QString& identifier, const QString& path, const pid_t& pgid, const QRect& geometry, QImage::Format format);
     ~Window();
 
     void setEnabled(bool enabled);
@@ -56,6 +56,7 @@ public:
     bool isAppWindow();
     bool isAppPaused();
     Q_INVOKABLE void setVisible(bool visible);
+    void _setVisible(bool visible);
     QImage toImage();
     qulonglong sizeInBytes();
     qulonglong bytesPerLine();
@@ -77,6 +78,8 @@ public:
     void writeEvent(TouchEventArgs args);
     void writeEvent(TabletEventArgs args);
     void disableEventPipe();
+    bool systemWindow();
+    void setSystemWindow();
 
     bool operator>(Window* other) const;
     bool operator<(Window* other) const;
@@ -127,6 +130,7 @@ private:
     QTimer m_pingTimer;
     QTimer m_pingDeadlineTimer;
     unsigned int m_pendingMarker;
+    bool m_systemWindow;
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);

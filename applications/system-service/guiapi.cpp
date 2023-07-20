@@ -93,7 +93,7 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
     auto path = QString(OXIDE_SERVICE_PATH) + "/window/" + QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
     auto pgid = getSenderPgid();
     m_windowMutex.lock();
-    auto window = new Window(id, path, pgid, geometry, m_windows.count(), format);
+    auto window = new Window(id, path, pgid, geometry, format);
     m_windows.insert(path, window);
     m_windowMutex.unlock();
     sortWindows();
@@ -151,12 +151,15 @@ QDBusObjectPath GuiAPI::createWindow(int format){
 }
 
 QList<QDBusObjectPath> GuiAPI::windows(){
-    auto pgid = getSenderPgid();
     QList<QDBusObjectPath> windows;
-    QMutexLocker locker(&m_windowMutex);
-    Q_UNUSED(locker)
-    for(auto window : m_windows){
-        if(window->pgid() == pgid){
+    if(!hasPermission()){
+        W_DENIED();
+        return windows;
+    }
+    W_ALLOWED();
+    auto pgid = getSenderPgid();
+    for(auto window : sortedWindows()){
+        if(window->pgid() == pgid || qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")){
             windows.append(window->path());
         }
     }
@@ -198,6 +201,9 @@ void GuiAPI::sortWindows(){
     int raisedZ = 0;
     int loweredZ = -1;
     for(auto window : windows){
+        if(window->systemWindow()){
+            continue;
+        }
         switch(window->state()){
             case Window::Raised:
             case Window::RaisedHidden:
@@ -448,6 +454,9 @@ void GuiAPI::keyEvent(const input_event& event){
 bool GuiAPI::hasPermission(){
     if(DBusService::shuttingDown()){
         return false;
+    }
+    if(qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")){
+        return true;
     }
     pid_t pgid = getSenderPgid();
     if(dbusService->isChildGroup(pgid)){

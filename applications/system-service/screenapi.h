@@ -27,6 +27,7 @@ public:
     QList<QDBusObjectPath> screenshots();
     Q_INVOKABLE bool drawFullscreenImage(QString path);
     Q_INVOKABLE QDBusObjectPath screenshot();
+    QString _screenshot();
     QImage copy();
 
 public slots:

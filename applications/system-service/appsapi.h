@@ -29,6 +29,7 @@ class AppsAPI : public APIBase {
     Q_PROPERTY(QVariantMap pausedApplications READ pausedApplications)
 
 public:
+    static Window* _window();
     static AppsAPI* singleton(AppsAPI* self = nullptr);
     AppsAPI(QObject* parent);
     ~AppsAPI();

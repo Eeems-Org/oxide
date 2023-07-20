@@ -252,7 +252,6 @@ SystemAPI::SystemAPI(QObject* parent)
             connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
             eventListener->append([this](QObject* object, QEvent* event){
                 Q_UNUSED(object)
-                O_DEBUG(event);
                 switch(event->type()){
                     case QEvent::KeyPress:{
                         activity();

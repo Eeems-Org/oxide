@@ -16,6 +16,19 @@
 
 using namespace Oxide;
 
+static Window* __window = nullptr;
+Window* AppsAPI::_window(){
+    if(__window == nullptr){
+        __window = guiAPI->_createWindow(deviceSettings.screenGeometry(), DEFAULT_IMAGE_FORMAT);
+        __window->setZ(std::numeric_limits<int>::max() - 1);
+        __window->disableEventPipe();
+        __window->_setVisible(false);
+        __window->setSystemWindow();
+        __window->_raise();
+    }
+    return __window;
+}
+
 AppsAPI* AppsAPI::singleton(AppsAPI* self){
     static AppsAPI* instance;
     if(self != nullptr){
@@ -169,7 +182,7 @@ void AppsAPI::startup(){
 void AppsAPI::shutdown(){
     O_INFO("Shutting down Apps API");
     m_stopping = true;
-    auto window = Application::_window();
+    auto window = _window();
     auto image = window->toImage();
     auto rect = image.rect();
     QPainter painter(&image);
@@ -230,7 +243,10 @@ void AppsAPI::shutdown(){
     }else{
         window->_raise(false);
     }
-    Application::shutdown();
+    if(__window != nullptr){
+        __window->_close();
+        __window = nullptr;
+    }
     O_INFO("Apps API shutdown complete");
 }
 

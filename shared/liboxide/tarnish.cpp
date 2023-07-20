@@ -899,7 +899,7 @@ namespace Oxide::Tarnish {
         }
         if(window == nullptr){
             auto reply = api_gui->windows();
-            if(!reply.isError()){
+            if(reply.isValid()){
                 for(QDBusObjectPath qpath : reply.value()){
                     auto path = qpath.path();
                     if(path == "/"){

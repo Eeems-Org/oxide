@@ -39,21 +39,6 @@
 
 using namespace Oxide::Applications;
 
-static Window* __window = nullptr;
-Window* Application::_window(){
-    if(__window == nullptr){
-        __window = guiAPI->_createWindow(deviceSettings.screenGeometry(), DEFAULT_IMAGE_FORMAT);
-        __window->disableEventPipe();
-    }
-    return __window;
-}
-void Application::shutdown(){
-    if(__window != nullptr){
-        __window->_close();
-        __window = nullptr;
-    }
-}
-
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
 
 Application::Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
@@ -207,7 +192,7 @@ void Application::launchNoSecurityCheck(){
             m_process->start();
             m_process->waitForStarted();
             if(!flags().contains("nosplash")){
-                _window()->_lower();
+                AppsAPI::_window()->_setVisible(false);
             }
             if(type() == Background){
                 startSpan("background", "Application is in the background");
@@ -1145,10 +1130,10 @@ void Application::showSplashScreen(){
 #endif
         O_INFO("Displaying splashscreen for" << name());
         Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
-            auto image = _window()->toImage();
+            auto image = AppsAPI::_window()->toImage();
             QPainter painter(&image);
             auto fm = painter.fontMetrics();
-            auto geometry = _window()->_geometry();
+            auto geometry = AppsAPI::_window()->_geometry();
             painter.fillRect(geometry, Qt::white);
             QString splashPath = splash();
             if(splashPath.isEmpty() || !QFile::exists(splashPath)){
@@ -1183,10 +1168,10 @@ void Application::showSplashScreen(){
             );
             painter.end();
         });
-        if(!_window()->_isVisible()){
-            _window()->_raise(false);
+        if(!AppsAPI::_window()->_isVisible()){
+            AppsAPI::_window()->_setVisible(true);
         }else{
-            _window()->_repaint(_window()->_geometry(), EPFrameBuffer::HighQualityGrayscale, 0, false);
+            AppsAPI::_window()->_repaint(AppsAPI::_window()->_geometry(), EPFrameBuffer::HighQualityGrayscale, 0, false);
         }
     });
     O_INFO("Finished painting splash screen for" << name());
@@ -1260,15 +1245,15 @@ void Application::recallScreen(){
         }
         qDebug() << "Recalling screen...";
         Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, img]{
-            auto rect = _window()->geometry();
-            auto image = _window()->toImage();
+            auto rect = AppsAPI::_window()->geometry();
+            auto image = AppsAPI::_window()->toImage();
             QPainter painter(&image);
             painter.drawImage(rect, img);
             painter.end();
-            if(!_window()->_isVisible()){
-                _window()->_raise(false);
+            if(AppsAPI::_window()->_isVisible()){
+                AppsAPI::_window()->_repaint(rect, EPFrameBuffer::HighQualityGrayscale, 0, false);
             }else{
-                _window()->_repaint(rect, EPFrameBuffer::HighQualityGrayscale, 0, false);
+                AppsAPI::_window()->_setVisible(true);
             }
             delete m_screenCapture;
             m_screenCapture = nullptr;

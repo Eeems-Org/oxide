@@ -18,19 +18,20 @@ using namespace  Oxide::Tarnish;
     QMutexLocker locker(&m_mutex); \
     Q_UNUSED(locker);
 
-Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QRect& geometry, int z, QImage::Format format)
+Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QRect& geometry, QImage::Format format)
 : QObject{guiAPI},
   m_identifier{id},
   m_enabled{false},
   m_path{path},
   m_pgid{pgid},
   m_geometry{geometry},
-  m_z{z},
+  m_z{0},
   m_file{this},
   m_state{WindowState::LoweredHidden},
   m_format{(QImage::Format)format},
   m_eventPipe{true},
-  m_pendingMarker{0}
+  m_pendingMarker{0},
+  m_systemWindow{false}
 {
     LOCK_MUTEX;
     m_touchEventPipe.setEnabled(false);
@@ -92,7 +93,7 @@ const QString& Window::identifier(){ return m_identifier; }
 int Window::z(){ return m_z; }
 
 void Window::setZ(int z){
-    if(m_z == z){
+    if(m_z == z || m_systemWindow){
         return;
     }
     m_z = z;
@@ -222,6 +223,10 @@ void Window::setVisible(bool visible){
         return;
     }
     W_ALLOWED();
+    _setVisible(visible);
+}
+
+void Window::_setVisible(bool visible){
     auto wasVisible = _isVisible();
     auto state = m_state;
     switch(m_state){
@@ -323,7 +328,9 @@ void Window::_raise(bool async){
         default:
         break;
     }
-    m_z = std::numeric_limits<int>::max();
+    if(!m_systemWindow){
+        m_z = std::numeric_limits<int>::max() - 2;
+    }
     guiAPI->sortWindows();
     invalidateEventPipes();
     guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize, 0, async);
@@ -352,7 +359,9 @@ void Window::_lower(bool async){
         invalidateEventPipes();
         guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize, 0, async);
     }
-    m_z = std::numeric_limits<int>::min();
+    if(!m_systemWindow){
+        m_z = std::numeric_limits<int>::min();
+    }
     guiAPI->sortWindows();
     emit stateChanged(m_state);
     writeEvent(WindowEventType::Lower);
@@ -465,6 +474,12 @@ void Window::writeEvent(TabletEventArgs args){
 }
 
 void Window::disableEventPipe(){ m_eventPipe.setEnabled(false); }
+
+bool Window::systemWindow(){ return m_systemWindow; }
+
+void Window::setSystemWindow(){
+    m_systemWindow = true;
+}
 
 bool Window::operator>(Window* other) const{ return m_z > other->z(); }
 
@@ -614,7 +629,7 @@ void Window::pingDeadline(){
     }
 }
 
-bool Window::hasPermissions(){ return !DBusService::shuttingDown() && guiAPI->isThisPgId(m_pgid); }
+bool Window::hasPermissions(){ return !DBusService::shuttingDown() && (guiAPI->isThisPgId(m_pgid) || qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")); }
 
 void Window::createFrameBuffer(const QRect& geometry){
     // No mutex, as it should be handled by the calling function
