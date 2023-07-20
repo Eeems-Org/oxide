@@ -263,15 +263,14 @@ void GuiAPI::raiseWindows(pid_t pgid){
 }
 
 void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async){
-    Q_ASSERT(window != nullptr);
     if(async){
-        m_thread.enqueue(window, region, waveform, marker);
+        m_thread.enqueue(window, region, waveform, marker, window == nullptr);
         return;
     }
     marker = marker == 0 ? ++m_currentMarker : marker;
     O_DEBUG("Waiting for repaint" << marker);
     Oxide::runInEventLoop([this, window, region, waveform, marker](std::function<void()> quit){
-        m_thread.enqueue(window, region, waveform, marker, false, [marker, quit]{
+        m_thread.enqueue(window, region, waveform, marker, window == nullptr, [marker, quit]{
             O_DEBUG("Repaint callback done" << marker);
             quit();
         });

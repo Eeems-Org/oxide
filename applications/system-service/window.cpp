@@ -247,12 +247,14 @@ void Window::_setVisible(bool visible){
     if(state == m_state){
         return;
     }
-    if(wasVisible != _isVisible()){
+    bool visibilityChanged = wasVisible != _isVisible();
+    O_DEBUG("Visibility change?" << visibilityChanged);
+    if(visibilityChanged){
         invalidateEventPipes();
     }
     emit stateChanged(m_state);
-    if(wasVisible != _isVisible()){
-        guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, false);
+    if(visibilityChanged){
+        guiAPI->dirty(nullptr, m_geometry, EPFrameBuffer::Initialize, 0, false);
     }
 }
 
@@ -359,7 +361,7 @@ void Window::_lower(bool async){
     }
     if(wasVisible){
         invalidateEventPipes();
-        guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, async);
+        guiAPI->dirty(nullptr, m_geometry, EPFrameBuffer::Initialize, 0, async);
     }
     if(!m_systemWindow){
         m_z = std::numeric_limits<int>::min();
@@ -479,9 +481,7 @@ void Window::disableEventPipe(){ m_eventPipe.setEnabled(false); }
 
 bool Window::systemWindow(){ return m_systemWindow; }
 
-void Window::setSystemWindow(){
-    m_systemWindow = true;
-}
+void Window::setSystemWindow(){ m_systemWindow = true; }
 
 bool Window::operator>(Window* other) const{ return m_z > other->z(); }
 
@@ -517,7 +517,7 @@ void Window::move(int x, int y){
     });
     emit geometryChanged(oldGeometry, m_geometry);
     if(wasVisible){
-        guiAPI->dirty(this, QRect(0, 0, oldGeometry.width(), oldGeometry.height()), EPFrameBuffer::Initialize, 0, false);
+        guiAPI->dirty(nullptr, oldGeometry, EPFrameBuffer::Initialize, 0, false);
     }
     if(_isVisible()){
         guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, false);
@@ -640,6 +640,7 @@ void Window::createFrameBuffer(const QRect& geometry){
         return;
     }
     unlock();
+    // TODO - copy old data to new image after cropping if required
     m_file.close();
     if(geometry.isEmpty() || geometry.isNull() || !geometry.isValid()){
         W_WARNING("Invalid geometry for framebuffer:" << geometry);
@@ -703,6 +704,10 @@ void Window::createFrameBuffer(const QRect& geometry){
     emit bytesPerLineChanged(m_bytesPerLine);
     emit geometryChanged(oldGeometry, m_geometry);
     emit frameBufferChanged(QDBusUnixFileDescriptor(fd));
+    // Don't repaint the new region as it doesn't have data yet
+    for(auto rect : QRegion(oldGeometry).subtracted(m_geometry)){
+        guiAPI->guiThread()->enqueue(nullptr, rect, EPFrameBuffer::Initialize, 0, true);
+    }
     W_DEBUG("Framebuffer created:" << geometry);
 }
 

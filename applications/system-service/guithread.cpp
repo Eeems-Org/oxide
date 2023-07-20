@@ -72,9 +72,9 @@ void WaitThread::addWait(Window* window, unsigned int marker, std::function<void
     m_completedMutex.lock();
     PendingMarkerWait pendingMarkerWait{
         .marker = marker,
-                .window = window == nullptr ? "" : window->identifier(),
-                .callback = callback,
-                .deadline = QDeadlineTimer(1000 * 7, Qt::PreciseTimer),
+        .window = window == nullptr ? "" : window->identifier(),
+        .callback = callback,
+        .deadline = QDeadlineTimer(1000 * 7, Qt::PreciseTimer),
     };
     m_pendingMarkerWaits.append(pendingMarkerWait);
     m_pendingtWait.notify_all();
