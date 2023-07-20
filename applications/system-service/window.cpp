@@ -173,6 +173,8 @@ QRect Window::geometry(){
 
 QRect Window::_geometry(){ return m_geometry; }
 
+QRect Window::_normalizedGeometry(){ return QRect(0, 0, m_geometry.width(), m_geometry.height()); }
+
 void Window::setGeometry(const QRect& geometry){
     if(!hasPermissions()){
         W_DENIED();
@@ -250,7 +252,7 @@ void Window::_setVisible(bool visible){
     }
     emit stateChanged(m_state);
     if(wasVisible != _isVisible()){
-        guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize, 0, false);
+        guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, false);
     }
 }
 
@@ -333,7 +335,7 @@ void Window::_raise(bool async){
     }
     guiAPI->sortWindows();
     invalidateEventPipes();
-    guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize, 0, async);
+    guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, async);
     emit stateChanged(m_state);
     writeEvent(WindowEventType::Raise);
     emit raised();
@@ -357,7 +359,7 @@ void Window::_lower(bool async){
     }
     if(wasVisible){
         invalidateEventPipes();
-        guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize, 0, async);
+        guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, async);
     }
     if(!m_systemWindow){
         m_z = std::numeric_limits<int>::min();
@@ -507,18 +509,18 @@ void Window::move(int x, int y){
     m_geometry.setX(x);
     m_geometry.setY(y);
     writeEvent(GeometryEventArgs{
-       .x = m_geometry.x(),
-       .y = m_geometry.y(),
-       .width = m_geometry.width(),
-       .height = m_geometry.height(),
+        .x = m_geometry.x(),
+        .y = m_geometry.y(),
+        .width = m_geometry.width(),
+        .height = m_geometry.height(),
         .z = m_z
     });
     emit geometryChanged(oldGeometry, m_geometry);
     if(wasVisible){
-        guiAPI->dirty(this, oldGeometry, EPFrameBuffer::Initialize, 0, false);
+        guiAPI->dirty(this, QRect(0, 0, oldGeometry.width(), oldGeometry.height()), EPFrameBuffer::Initialize, 0, false);
     }
     if(_isVisible()){
-        guiAPI->dirty(this, m_geometry, EPFrameBuffer::Initialize, 0, false);
+        guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, false);
     }
 }
 

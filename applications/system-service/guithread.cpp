@@ -312,13 +312,12 @@ void GUIThread::redraw(RepaintRequest& event){
         rect = region;
     }else{
         auto windowGeometry = event.window->_geometry();
-        rect = region
+        rect = region.translated(windowGeometry.topLeft())
             .intersected(windowGeometry)
-            .translated(-windowGeometry.topLeft())
             .intersected(screenRect);
     }
     if(rect.isEmpty()){
-        O_WARNING("Window region does not intersect with screen");
+        O_WARNING("Window region does not intersect with screen:" << region);
         return;
     }
     O_DEBUG("Repainting" << rect);
@@ -366,8 +365,8 @@ void GUIThread::redraw(RepaintRequest& event){
     auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
     Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
     QPainter painter(frameBuffer);
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
     for(auto rect : repaintRegion){
-        painter.setCompositionMode(QPainter::CompositionMode_Source);
         if(!event.global){
             repaintWindow(&painter, &rect, event.window);
         }else if(visibleWindows.isEmpty()){

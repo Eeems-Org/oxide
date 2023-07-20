@@ -2,6 +2,8 @@
 #include "guiapi.h"
 #include "window.h"
 
+#include <QPainterPath>
+
 #include <liboxide.h>
 
 using namespace Oxide;
@@ -18,6 +20,9 @@ Window* NotificationAPI::_window(){
         __window->setSystemWindow();
         __window->_setVisible(false);
         __window->_raise();
+        if(!__window->toImage().hasAlphaChannel()){
+            qFatal("Notification window doesn't have alpha channel");
+        }
     }
     return __window;
 }
@@ -111,27 +116,60 @@ Notification* NotificationAPI::getByIdentifier(const QString& identifier){
 }
 
 void NotificationAPI::paintNotification(const QString& text, const QString& iconPath){
-    auto image = _window()->toImage();
-    QPainter painter(&image);
-    auto padding = 10;
-    auto radius = 10;
+    auto screenRect = deviceSettings.screenGeometry();
+    int x = screenRect.width() / 2;
+    int y = screenRect.height() / 8;
+    auto maxRect = QRect(x, y * 7, x, y);
+
+    QPainter painter;
     QImage icon(iconPath);
-    auto iconSize = icon.isNull() ? 0 : 50;
-    auto boundingRect = painter.fontMetrics().boundingRect(image.rect(), Qt::AlignCenter | Qt::TextWordWrap, text);
-    auto width = boundingRect.width() + iconSize + (padding * 3);
-    auto height = std::max(boundingRect.height(), iconSize) + (padding * 2);
-    auto left = image.width() - width;
-    auto top = image.height() - height;
-    painter.fillRect(image.rect(), Qt::transparent);
-    QRect updateRect(left, top, width, height);
-    painter.fillRect(updateRect, Qt::black);
-    painter.setPen(Qt::black);
-    painter.drawRoundedRect(updateRect, radius, radius);
-    painter.setPen(Qt::white);
-    QRect textRect(left + padding, top + padding, width - iconSize - (padding * 2), height - padding);
-    painter.drawText(textRect, Qt::AlignCenter | Qt::TextWordWrap, text);
+    unsigned int radius = 10;
+    unsigned int padding = 20;
+    unsigned int minWidth = screenRect.width() / 4;
+    auto margins = QMargins(padding, padding, padding, padding);
+    unsigned int iconSize = 0;
     if(!icon.isNull()){
-        QRect iconRect(image.width() - iconSize - padding, top + padding, iconSize, iconSize);
+        iconSize = 50;
+        margins.setLeft(margins.left() + padding + iconSize);
+    }
+    // Calculate size needed
+    auto boundingRect = painter
+        .fontMetrics()
+        .boundingRect(
+            maxRect.marginsRemoved(margins),
+            Qt::TextWordWrap,
+            text
+        );
+
+    // Calculate the update rectangle location
+    auto updateRect = boundingRect.marginsAdded(margins);
+    if((unsigned int)updateRect.width() < minWidth){
+        updateRect.setWidth(minWidth);
+    }
+    updateRect.moveBottomRight(maxRect.bottomRight());
+
+    _window()->setGeometry(updateRect);
+    auto image = _window()->toImage();
+    image.fill(Qt::transparent);
+    painter.begin(&image);
+
+    // Draw a rounded white rectangle with a black border
+    QPainterPath rectPath;
+    rectPath.addRoundedRect(image.rect(), radius, radius);
+    painter.setPen(Qt::black);
+    painter.fillPath(rectPath, Qt::white);
+    painter.drawPath(rectPath);
+
+    // Add text
+    painter.setPen(Qt::black);
+    painter.drawText(image.rect().marginsRemoved(margins), Qt::AlignCenter | Qt::TextWordWrap, text);
+
+    // Add icon if there is one
+    if(!icon.isNull()){
+        auto iconRect = QRect(
+            QPoint(padding, margins.top()),
+            QSize(iconSize, iconSize)
+        );
         painter.fillRect(iconRect, Qt::white);
         painter.drawImage(iconRect, icon);
     }

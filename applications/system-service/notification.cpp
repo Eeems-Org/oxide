@@ -136,11 +136,12 @@ void Notification::paintNotification(){
     O_INFO("Painted notification" << identifier());
     emit displayed();
     QTimer::singleShot(2000, [this]{
-        NotificationAPI::_window()->_setVisible(false);
         if(!notificationAPI->notificationDisplayQueue.isEmpty()){
             notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification();
             return;
         }
+        NotificationAPI::_window()->_setVisible(false);
+        O_INFO("No more notifications to display");
         notificationAPI->unlock();
     });
 }

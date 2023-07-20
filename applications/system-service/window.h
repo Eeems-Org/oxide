@@ -50,6 +50,7 @@ public:
     QDBusUnixFileDescriptor eventPipe();
     QRect geometry();
     QRect _geometry();
+    QRect _normalizedGeometry();
     void setGeometry(const QRect& geometry);
     Q_INVOKABLE bool isVisible();
     bool _isVisible();

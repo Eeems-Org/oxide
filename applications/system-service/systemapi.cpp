@@ -277,6 +277,8 @@ SystemAPI::SystemAPI(QObject* parent)
                                 }
                                 Q_ASSERT(false);
                             })());
+                            m_pressStates[key]->setSingleShot(true);
+                            m_pressStates[key]->setTimerType(Qt::PreciseTimer);
                         }
                         m_pressStates[key]->start(700);
                         return true;

@@ -95,6 +95,7 @@ void OxideScreen::redraw(){
     }
     Oxide::Tarnish::lockFrameBuffer();
     const QPoint screenOffset = mGeometry.topLeft();
+    // TODO - determine if this logic actually works?
     const QRect screenRect = mGeometry.translated(-screenOffset);
     QPainter painter(&frameBuffer);
     Qt::GlobalColor colour = frameBuffer.hasAlphaChannel() ? Qt::transparent : Qt::black;
@@ -114,6 +115,7 @@ void OxideScreen::redraw(){
             if(!window->isVisible()){
                 continue;
             }
+            // TODO - determine if this logic actually works?
             const QRect windowRect = window->geometry().translated(-screenOffset);
             const QRect windowIntersect = rect.translated(-windowRect.left(), -windowRect.top());
             OxideBackingStore* backingStore = static_cast<OxideWindow*>(window->handle())->backingStore();
