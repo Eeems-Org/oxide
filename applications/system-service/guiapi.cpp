@@ -166,6 +166,22 @@ QList<QDBusObjectPath> GuiAPI::windows(){
     return windows;
 }
 
+QList<QDBusObjectPath> GuiAPI::visibleWindows(){
+    QList<QDBusObjectPath> windows;
+    if(!hasPermission()){
+        W_DENIED();
+        return windows;
+    }
+    W_ALLOWED();
+    auto pgid = getSenderPgid();
+    for(auto window : sortedWindows()){
+        if((window->pgid() == pgid || qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")) && window->_isVisible()){
+            windows.append(window->path());
+        }
+    }
+    return windows;
+}
+
 void GuiAPI::repaint(){
     if(!APIBase::hasPermission("gui")){
         W_DENIED();

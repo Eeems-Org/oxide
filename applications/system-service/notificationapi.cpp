@@ -123,7 +123,6 @@ void NotificationAPI::paintNotification(const QString& text, const QString& icon
 
     QPainter painter;
     QImage icon(iconPath);
-    unsigned int radius = 10;
     unsigned int padding = 20;
     unsigned int minWidth = screenRect.width() / 4;
     auto margins = QMargins(padding, padding, padding, padding);
@@ -153,12 +152,10 @@ void NotificationAPI::paintNotification(const QString& text, const QString& icon
     image.fill(Qt::transparent);
     painter.begin(&image);
 
-    // Draw a rounded white rectangle with a black border
-    QPainterPath rectPath;
-    rectPath.addRoundedRect(image.rect(), radius, radius);
+    // Draw a white rectangle with a black border
+    painter.fillRect(image.rect(), Qt::white);
     painter.setPen(Qt::black);
-    painter.fillPath(rectPath, Qt::white);
-    painter.drawPath(rectPath);
+    painter.drawRect(image.rect());
 
     // Add text
     painter.setPen(Qt::black);

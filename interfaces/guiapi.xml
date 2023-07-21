@@ -40,6 +40,9 @@
     <method name="windows">
       <arg type="ao" direction="out"/>
     </method>
+    <method name="visibleWindows">
+      <arg type="ao" direction="out"/>
+    </method>
     <method name="repaint">
     </method>
   </interface>
