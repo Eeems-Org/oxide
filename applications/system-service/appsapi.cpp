@@ -22,7 +22,7 @@ Window* AppsAPI::_window(){
         __window = guiAPI->_createWindow(deviceSettings.screenGeometry(), DEFAULT_IMAGE_FORMAT);
         __window->setZ(std::numeric_limits<int>::max() - 1);
         __window->disableEventPipe();
-        __window->_setVisible(false);
+        __window->_setVisible(false, true);
         __window->setSystemWindow();
         __window->_raise();
     }

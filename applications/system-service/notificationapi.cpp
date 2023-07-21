@@ -18,7 +18,7 @@ Window* NotificationAPI::_window(){
         __window->setZ(std::numeric_limits<int>::max());
         __window->disableEventPipe();
         __window->setSystemWindow();
-        __window->_setVisible(false);
+        __window->_setVisible(false, true);
         __window->_raise();
         if(!__window->toImage().hasAlphaChannel()){
             qFatal("Notification window doesn't have alpha channel");
@@ -121,8 +121,8 @@ void NotificationAPI::paintNotification(const QString& text, const QString& icon
     int y = screenRect.height() / 8;
     auto maxRect = QRect(x, y * 7, x, y);
 
-    QPainter painter;
     QImage icon(iconPath);
+    unsigned int radius = 10;
     unsigned int padding = 20;
     unsigned int minWidth = screenRect.width() / 4;
     auto margins = QMargins(padding, padding, padding, padding);
@@ -131,6 +131,8 @@ void NotificationAPI::paintNotification(const QString& text, const QString& icon
         iconSize = 50;
         margins.setLeft(margins.left() + padding + iconSize);
     }
+    auto image = _window()->toImage();
+    QPainter painter(&image);
     // Calculate size needed
     auto boundingRect = painter
         .fontMetrics()
@@ -139,6 +141,7 @@ void NotificationAPI::paintNotification(const QString& text, const QString& icon
             Qt::TextWordWrap,
             text
         );
+    painter.end();
 
     // Calculate the update rectangle location
     auto updateRect = boundingRect.marginsAdded(margins);
@@ -148,14 +151,17 @@ void NotificationAPI::paintNotification(const QString& text, const QString& icon
     updateRect.moveBottomRight(maxRect.bottomRight());
 
     _window()->setGeometry(updateRect);
-    auto image = _window()->toImage();
+    image = _window()->toImage();
     image.fill(Qt::transparent);
     painter.begin(&image);
+    painter.setBackgroundMode(Qt::TransparentMode);
 
-    // Draw a white rectangle with a black border
-    painter.fillRect(image.rect(), Qt::white);
+    // Draw a rounded white rectangle with a black border
+    QPainterPath rectPath;
+    rectPath.addRoundedRect(image.rect(), radius, radius);
     painter.setPen(Qt::black);
-    painter.drawRect(image.rect());
+    painter.fillPath(rectPath, Qt::white);
+    painter.drawPath(rectPath);
 
     // Add text
     painter.setPen(Qt::black);
@@ -174,7 +180,7 @@ void NotificationAPI::paintNotification(const QString& text, const QString& icon
     if(_window()->_isVisible()){
         _window()->_repaint(image.rect(), EPFrameBuffer::Mono, 0, false);
     }else{
-        _window()->_setVisible(true);
+        _window()->_setVisible(true, false);
     }
 }
 

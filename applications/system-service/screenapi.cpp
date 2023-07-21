@@ -88,7 +88,7 @@ bool ScreenAPI::drawFullscreenImage(QString path){
         if(window->_isVisible()){
             window->_repaint(rect, EPFrameBuffer::HighQualityGrayscale, 0, false);
         }else{
-            window->_setVisible(true);
+            window->_setVisible(true, false);
         }
     });
     return true;
@@ -119,7 +119,7 @@ QString ScreenAPI::_screenshot(){
         O_INFO("Failed to take screenshot");
         return "";
     }
-    NotificationAPI::_window()->_setVisible(false);
+    NotificationAPI::_window()->_setVisible(false, true);
     return filePath;
 }
 

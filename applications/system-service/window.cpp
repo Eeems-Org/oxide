@@ -225,10 +225,10 @@ void Window::setVisible(bool visible){
         return;
     }
     W_ALLOWED();
-    _setVisible(visible);
+    _setVisible(visible, false);
 }
 
-void Window::_setVisible(bool visible){
+void Window::_setVisible(bool visible, bool async){
     auto wasVisible = _isVisible();
     auto state = m_state;
     switch(m_state){
@@ -254,7 +254,7 @@ void Window::_setVisible(bool visible){
     }
     emit stateChanged(m_state);
     if(visibilityChanged){
-        guiAPI->dirty(nullptr, m_geometry, EPFrameBuffer::Initialize, 0, false);
+        guiAPI->dirty(nullptr, m_geometry, EPFrameBuffer::Initialize, 0, async);
     }
 }
 

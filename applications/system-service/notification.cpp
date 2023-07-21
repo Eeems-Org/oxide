@@ -140,7 +140,7 @@ void Notification::paintNotification(){
             notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification();
             return;
         }
-        NotificationAPI::_window()->_setVisible(false);
+        NotificationAPI::_window()->_setVisible(false, true);
         O_INFO("No more notifications to display");
         notificationAPI->unlock();
     });

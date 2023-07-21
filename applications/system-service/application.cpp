@@ -29,6 +29,7 @@
 #include "mxcfb.h"
 #include "guiapi.h"
 #include "screenapi.h"
+#include "notificationapi.h"
 #include "appsapi.h"
 #include "systemapi.h"
 #include "guiapi.h"
@@ -133,7 +134,9 @@ void Application::launchNoSecurityCheck(){
             appsAPI->recordPreviousApplication();
             O_INFO("Launching " << path().toStdString().c_str());
             appsAPI->pauseAll();
-            if(!flags().contains("nosplash")){
+            if(flags().contains("nosplash")){
+                notificationAPI->paintNotification("Loading " + displayName() + "...", icon());
+            }else{
                 showSplashScreen();
             }
             if(m_process->program() != bin()){
@@ -191,8 +194,10 @@ void Application::launchNoSecurityCheck(){
             }
             m_process->start();
             m_process->waitForStarted();
-            if(!flags().contains("nosplash")){
-                AppsAPI::_window()->_setVisible(false);
+            if(flags().contains("nosplash")){
+                NotificationAPI::_window()->_setVisible(false, false);
+            }else{
+                AppsAPI::_window()->_setVisible(false, false);
             }
             if(type() == Background){
                 startSpan("background", "Application is in the background");
@@ -1169,7 +1174,7 @@ void Application::showSplashScreen(){
             painter.end();
         });
         if(!AppsAPI::_window()->_isVisible()){
-            AppsAPI::_window()->_setVisible(true);
+            AppsAPI::_window()->_setVisible(true, false);
         }else{
             AppsAPI::_window()->_repaint(AppsAPI::_window()->_geometry(), EPFrameBuffer::HighQualityGrayscale, 0, false);
         }
@@ -1253,7 +1258,7 @@ void Application::recallScreen(){
             if(AppsAPI::_window()->_isVisible()){
                 AppsAPI::_window()->_repaint(rect, EPFrameBuffer::HighQualityGrayscale, 0, false);
             }else{
-                AppsAPI::_window()->_setVisible(true);
+                AppsAPI::_window()->_setVisible(true, false);
             }
             delete m_screenCapture;
             m_screenCapture = nullptr;

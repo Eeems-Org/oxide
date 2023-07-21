@@ -57,7 +57,7 @@ public:
     bool isAppWindow();
     bool isAppPaused();
     Q_INVOKABLE void setVisible(bool visible);
-    void _setVisible(bool visible);
+    void _setVisible(bool visible, bool async = true);
     QImage toImage();
     qulonglong sizeInBytes();
     qulonglong bytesPerLine();
