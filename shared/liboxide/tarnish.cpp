@@ -790,6 +790,7 @@ namespace Oxide::Tarnish {
             O_DEBUG("Connecting to QGuiApplication::aboutToQuit");
             QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{ _disconnect(); });
         }
+        qRegisterMetaType<QAbstractSocket::SocketState>();
         O_DEBUG("Connected to tarnish Dbus service");
     }
 
@@ -867,7 +868,6 @@ namespace Oxide::Tarnish {
             delete conn;
         });
         O_DEBUG("Connected to tarnish command socket");
-        qRegisterMetaType<QAbstractSocket::SocketState>();
         return &childSocket;
     }
 
