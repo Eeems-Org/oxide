@@ -15,6 +15,7 @@ public:
     pid_t pgid() const;
     QLocalSocket* socket();
     bool isValid();
+    bool isRunning();
     bool signal(int signal);
     bool signalGroup(int signal);
     void pause();

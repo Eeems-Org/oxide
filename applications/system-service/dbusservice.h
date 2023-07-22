@@ -71,6 +71,7 @@ private:
     void unregisterChild(pid_t pid);
     static DBusService* instance;
     static bool m_shuttingDown;
+    QTimer m_childTimer;
 };
 
 #endif // DBUSSERVICE_H

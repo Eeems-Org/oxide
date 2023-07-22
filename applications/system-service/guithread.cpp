@@ -362,7 +362,7 @@ void GUIThread::redraw(RepaintRequest& event){
     // Get windows in order of Z sort order, and filter out invalid windows
     auto visibleWindows = guiAPI->sortedWindows();
     // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
-    QMutableListIterator i(visibleWindows);
+    QMutableListIterator<Window*> i(visibleWindows);
     while(i.hasNext()){
         auto window = i.next();
         if(!window->_isVisible()){
@@ -371,7 +371,7 @@ void GUIThread::redraw(RepaintRequest& event){
         }
         if(getpgid(window->pgid()) < 0){
             O_WARNING(window->identifier() << "With no running process");
-            // TODO - figure out how to safely trigger a close after repainting is done
+            Oxide::runLater(window->thread(), [window]{ window->_close(); });
             i.remove();
             continue;
         }

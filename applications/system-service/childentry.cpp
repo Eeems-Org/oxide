@@ -11,17 +11,7 @@ ChildEntry::ChildEntry(QObject* parent, pid_t pid, pid_t pgid)
   m_socketPair{true}
 {
     connect(&m_socketPair, &SocketPair::readyRead, this, &ChildEntry::readSocket);
-    auto pidfd = syscall(SYS_pidfd_open, pid, 0);
-    if(pidfd == -1){
-        O_WARNING("Failed to open pidfd for child:" << strerror(errno));
-        return;
-    }
-    if(!m_process.open(pidfd, QFile::ReadOnly, QFile::AutoCloseHandle)){
-        O_WARNING("Failed to open pidfd for child:" << m_process.errorString());
-        ::close(pidfd);
-        return;
-    }
-    connect(&m_process, &QFile::readChannelFinished, this, &ChildEntry::finished);
+    connect(&m_socketPair, &SocketPair::disconnected, this, &ChildEntry::finished);
     m_socketPair.setEnabled(true);
     // TODO - handle communication on m_socketPair
     // TODO - Allow child to request that tarnish connect with ptrace to avoid touching the
@@ -38,10 +28,12 @@ pid_t ChildEntry::pgid() const{ return m_pgid; }
 
 QLocalSocket* ChildEntry::socket(){ return m_socketPair.readSocket(); }
 
-bool ChildEntry::isValid(){ return m_socketPair.isValid() && m_process.isOpen(); }
+bool ChildEntry::isValid(){ return m_socketPair.isValid() && isRunning(); }
+
+bool ChildEntry::isRunning(){ return getpgid(m_pid) != -1; }
 
 bool ChildEntry::signal(int signal){
-    if(!m_process.isOpen()){
+    if(!isRunning()){
         errno = ESRCH;
         return false;
     }
@@ -49,7 +41,7 @@ bool ChildEntry::signal(int signal){
 }
 
 bool ChildEntry::signalGroup(int signal){
-    if(!m_process.isOpen()){
+    if(!isRunning()){
         errno = ESRCH;
         return false;
     }
@@ -108,7 +100,6 @@ void ChildEntry::close(){
     blockSignals(true);
     m_socketPair.setEnabled(false);
     m_socketPair.close();
-    m_process.close();
 }
 
 void ChildEntry::readSocket(){

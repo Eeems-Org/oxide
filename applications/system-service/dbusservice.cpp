@@ -187,6 +187,15 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(){
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", "APIs initialized", "info");
 #endif
+        connect(&m_childTimer, &QTimer::timeout, this, [this]{
+            for(auto child : children){
+                if(!child->isRunning()){
+                    QMetaObject::invokeMethod(child, "finished", Qt::QueuedConnection);
+                }
+            }
+        });
+        m_childTimer.setInterval(100);
+        m_childTimer.start();
     });
 }
 
@@ -229,22 +238,22 @@ int DBusService::tarnishPid(){ return qApp->applicationPid(); }
 QDBusUnixFileDescriptor DBusService::registerChild(){
     auto childPid = getSenderPid();
     auto childPgid = getSenderPgid();
-    O_INFO("registerChild::" << childPid << childPgid);
+    O_INFO("registerChild:" << childPid << childPgid);
     for(auto child : children){
         if(child->pid() == childPid){
-            O_INFO("registerChild::Found existing");
+            O_INFO("registerChild: Found existing");
             return QDBusUnixFileDescriptor(child->socket()->socketDescriptor());
         }
     }
     auto child = new ChildEntry(this, childPid, childPgid);
     if(!child->isValid()){
-        O_INFO("registerChild::Not valid");
+        O_INFO("registerChild: Not valid");
         child->deleteLater();
         return QDBusUnixFileDescriptor();
     }
     connect(child, &ChildEntry::finished, this, [this, child]{ unregisterChild(child->pid()); });
     children.append(child);
-    O_INFO("registerChild::success");
+    O_INFO("registerChild: success");
     return QDBusUnixFileDescriptor(child->socket()->socketDescriptor());
 }
 
@@ -418,6 +427,7 @@ void DBusService::unregisterChild(pid_t pid){
             continue;
         }
         O_DEBUG("unregisterChild" << child->pid() << child->pgid());
+        guiAPI->closeWindows(child->pgid());
         guiAPI->closeWindows(child->pid());
         i.remove();
         child->close();

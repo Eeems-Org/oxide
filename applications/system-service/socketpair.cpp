@@ -23,6 +23,7 @@ SocketPair::SocketPair(bool allowWriteSocketRead)
     if(allowWriteSocketRead){
         connect(&m_writeSocket, &QLocalSocket::readyRead, this, &SocketPair::_readyRead);
     }
+    connect(&m_writeSocket, &QLocalSocket::disconnected, this, &SocketPair::disconnected);
     connect(&m_writeSocket, &QLocalSocket::bytesWritten, this, &SocketPair::bytesWritten);
 }
 

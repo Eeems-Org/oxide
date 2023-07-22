@@ -28,6 +28,7 @@ public:
 signals:
     void readyRead();
     void bytesWritten(qint64 bytes);
+    void disconnected();
 
 public slots:
     void close();
