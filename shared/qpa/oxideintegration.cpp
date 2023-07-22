@@ -340,7 +340,7 @@ QWindowSystemInterface::TouchPoint OxideIntegration::getTouchPoint(const Oxide::
             point.state = Qt::TouchPointStationary;
             break;
         default:
-            Q_ASSERT_X(false, "TouchEventPoint.state", QString("State is invalid").arg(data.state).toStdString().c_str());
+            Q_ASSERT_X(false, "TouchEventPoint.state", QString("State is invalid: %1").arg(data.state).toStdString().c_str());
     }
     QRect winRect = QHighDpi::toNativePixels(m_primaryScreen->geometry(), m_primaryScreen);
     auto rawPosition = QPoint(data.x * winRect.width(), data.y * winRect.height());

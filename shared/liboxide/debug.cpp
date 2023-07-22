@@ -20,12 +20,12 @@ namespace Oxide {
         }
         QFile file("/proc/self/comm");
         if(file.open(QIODevice::ReadOnly)){
-           name = file.readAll().toStdString();
+           name = file.readAll().trimmed().toStdString();
         }
         if(!name.empty()){
             return name.c_str();
         }
-        name = QFileInfo("/proc/self/exe").canonicalFilePath().toStdString();
+        name = QFileInfo("/proc/self/exe").canonicalFilePath().trimmed().toStdString();
         if(name.empty()){
             return "unknown";
         }

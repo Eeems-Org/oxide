@@ -37,41 +37,6 @@ struct input_event {
 #include <epframebuffer.h>
 
 namespace Oxide::Tarnish {
-    /*!
-     * \brief The InputEventSocket class
-     */
-    class LIBOXIDE_EXPORT InputEventSocket : public QLocalSocket {
-        Q_OBJECT
-
-    public:
-        /*!
-         * \brief InputEventSocket
-         */
-        InputEventSocket();
-        /*!
-         * \brief ~InputEventSocket
-         */
-        ~InputEventSocket();
-        /*!
-         * \brief setCallback
-         * \param callback
-         */
-        void setCallback(std::function<void(const input_event&)> callback);
-
-    signals:
-        /*!
-         * \brief inputEvent
-         */
-        void inputEvent(const input_event&);
-
-    private:
-        QDataStream stream;
-        std::function<void(const input_event&)> m_callback = nullptr;
-
-    private slots:
-        void readEvent();
-    };
-
     // WindowEventType::Repaint
     struct RepaintEventArgs{
         static qsizetype size();
@@ -132,6 +97,7 @@ namespace Oxide::Tarnish {
         unsigned int code; // Qt keycode
         KeyEventType type;
         unsigned int unicode;
+        unsigned int scanCode; // Native keycode
     };
     typedef KeyEventArgs KeyEventArgs;
     QByteArray& operator>>(QByteArray& l, KeyEventArgs& r);
@@ -157,15 +123,16 @@ namespace Oxide::Tarnish {
     struct TouchEventPoint{
         int id;
         TouchEventPointState state;
-        double x;
-        double y;
+        double x; // Normalized: 0 is left edge, 1 is right edge
+        double y; // Normalized: 0 is top edge, 1 is bottom edge
         double width;
         double height;
         TouchEventTool tool;
-        double pressure;
+        double pressure; // Normalized: 0 is no pressure, 1 is max pressure
         double rotation;
         QRectF geometry() const;
         QPointF point() const;
+        QPointF originalPoint() const;
         QSizeF size() const;
     };
     QByteArray& operator>>(QByteArray& l, TouchEventPoint& r);
@@ -285,15 +252,20 @@ namespace Oxide::Tarnish {
      */
     LIBOXIDE_EXPORT int tarnishPid();
     /*!
+     * \brief setFrameBufferFormat
+     * \param format
+     */
+    LIBOXIDE_EXPORT void setFrameBufferFormat(QImage::Format format);
+    /*!
      * \brief getFrameBuffer
      * \return
      */
-    LIBOXIDE_EXPORT int getFrameBufferFd(QImage::Format format = DEFAULT_IMAGE_FORMAT);
+    LIBOXIDE_EXPORT int getFrameBufferFd();
     /*!
      * \brief frameBuffer
      * \return
      */
-    LIBOXIDE_EXPORT uchar* frameBuffer(QImage::Format format = DEFAULT_IMAGE_FORMAT);
+    LIBOXIDE_EXPORT uchar* frameBuffer();
     /*!
      * \brief lockFrameBuffer
      * \return
@@ -308,37 +280,7 @@ namespace Oxide::Tarnish {
      * \brief frameBuffer
      * \return
      */
-    LIBOXIDE_EXPORT QImage frameBufferImage(QImage::Format format = DEFAULT_IMAGE_FORMAT);
-    /*!
-     * \brief getTouchEventPipeFd
-     * \return
-     */
-    LIBOXIDE_EXPORT int getTouchEventPipeFd();
-    /*!
-     * \brief getTouchEventPipe
-     * \return
-     */
-    LIBOXIDE_EXPORT InputEventSocket* getTouchEventPipe();
-    /*!
-     * \brief getTabletEventPipeFd
-     * \return
-     */
-    LIBOXIDE_EXPORT int getTabletEventPipeFd();
-    /*!
-     * \brief getTabletEventPipe
-     * \return
-     */
-    LIBOXIDE_EXPORT InputEventSocket* getTabletEventPipe();
-    /*!
-     * \brief getKeyEventPipeFd
-     * \return
-     */
-    LIBOXIDE_EXPORT int getKeyEventPipeFd();
-    /*!
-     * \brief getKeyEventPipe
-     * \return
-     */
-    LIBOXIDE_EXPORT InputEventSocket* getKeyEventPipe();
+    LIBOXIDE_EXPORT QImage frameBufferImage();
     /*!
      * \brief getEventPipeFd
      * \return

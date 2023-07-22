@@ -56,10 +56,15 @@ namespace Oxide{
          */
         const char* getTouchDevicePath() const;
         /*!
-         * \brief Get the Qt environment settings for the device
-         * \return The Qt environment settings for the device
+         * \brief Get the Qt environment settings for the touch device
+         * \return The Qt environment settings for the touch device
          */
         const char* getTouchEnvSetting() const;
+        /*!
+         * \brief Get the Qt environment settings for the wacom device
+         * \return The Qt environment settings for the wacom device
+         */
+        const char* getWacomEnvSetting() const;
         /*!
          * \brief Get the device type
          * \return The device type

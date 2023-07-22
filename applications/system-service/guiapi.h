@@ -17,6 +17,9 @@ class GuiAPI : public APIBase {
     Q_CLASSINFO("D-Bus Interface", OXIDE_GUI_INTERFACE)
     Q_PROPERTY(QRect geometry READ geometry)
 
+protected:
+    bool event(QEvent* event) override;
+
 public:
     static GuiAPI* __singleton(GuiAPI* self = nullptr);
     GuiAPI(QObject* parent);
@@ -44,15 +47,6 @@ public:
     void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize, unsigned int marker = 0, bool async = true);
     GUIThread* guiThread();
 
-    void writeTouchEvent(QEvent* event);
-    void writeTabletEvent(QEvent* event);
-    void writeKeyEvent(QEvent* event);
-
-public slots:
-    void touchEvent(const input_event& event);
-    void tabletEvent(const input_event& event);
-    void keyEvent(const input_event& event);
-
 private:
     bool m_enabled;
     QMap<QString, Window*> m_windows;
@@ -62,4 +56,7 @@ private:
 
     bool hasPermission();
     void removeWindow(QString path);
+    void writeTouchEvent(QEvent* event);
+    void writeTabletEvent(QEvent* event);
+    void writeKeyEvent(QEvent* event);
 };

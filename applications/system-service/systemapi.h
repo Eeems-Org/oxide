@@ -87,6 +87,7 @@ public:
     void setSwipeLength(SwipeDirection direction, int length);
     Q_INVOKABLE int getSwipeLength(int direction);
     int getSwipeLength(SwipeDirection direction);
+
 public slots:
     void suspend();
     void powerOff();
@@ -97,6 +98,7 @@ public slots:
     void inhibitPowerOff(QDBusMessage message);
     void uninhibitPowerOff(QDBusMessage message);
     void toggleSwipes();
+
 signals:
     void leftAction();
     void homeAction();
@@ -118,7 +120,6 @@ private slots:
     void suspendTimeout();
     void lockTimeout();
     void touchEvent(const input_event& event);
-    void penEvent(const input_event& event);
 
 private:
     Manager* systemd;

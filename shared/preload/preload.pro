@@ -7,7 +7,8 @@ CONFIG += hide_symbols
 
 QT -= gui
 
-HEADERS +=
+HEADERS += \
+    input.h
 
 SOURCES += main.cpp
 

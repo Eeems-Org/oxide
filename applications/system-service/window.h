@@ -18,14 +18,16 @@ class Window : public QObject{
     Q_PROPERTY(QString identifier READ identifier)
     Q_PROPERTY(int z READ z NOTIFY zChanged)
     Q_PROPERTY(QDBusUnixFileDescriptor frameBuffer READ frameBuffer NOTIFY frameBufferChanged)
-    Q_PROPERTY(QDBusUnixFileDescriptor touchEventPipe READ touchEventPipe)
-    Q_PROPERTY(QDBusUnixFileDescriptor tabletEventPipe READ tabletEventPipe)
-    Q_PROPERTY(QDBusUnixFileDescriptor keyEventPipe READ keyEventPipe)
     Q_PROPERTY(QDBusUnixFileDescriptor eventPipe READ eventPipe)
     Q_PROPERTY(QRect geometry READ geometry WRITE setGeometry NOTIFY geometryChanged)
     Q_PROPERTY(qulonglong sizeInBytes READ sizeInBytes NOTIFY sizeInBytesChanged)
     Q_PROPERTY(qulonglong bytesPerLine READ bytesPerLine NOTIFY bytesPerLineChanged)
     Q_PROPERTY(int format READ format)
+
+protected:
+    bool event(QEvent* event) override{
+        return QObject::event(event);
+    }
 
 public:
     typedef enum{
@@ -44,9 +46,6 @@ public:
     int z();
     void setZ(int z);
     QDBusUnixFileDescriptor frameBuffer();
-    QDBusUnixFileDescriptor touchEventPipe();
-    QDBusUnixFileDescriptor tabletEventPipe();
-    QDBusUnixFileDescriptor keyEventPipe();
     QDBusUnixFileDescriptor eventPipe();
     QRect geometry();
     QRect _geometry();
@@ -62,9 +61,6 @@ public:
     qulonglong sizeInBytes();
     qulonglong bytesPerLine();
     int format();
-    bool writeTouchEvent(const input_event& event);
-    bool writeTabletEvent(const input_event& event);
-    bool writeKeyEvent(const input_event& event);
     pid_t pgid();
     void _repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async = true);
     void _raise(bool async = true);
@@ -124,9 +120,6 @@ private:
     WindowState m_state;
     QMutex m_mutex;
     QImage::Format m_format;
-    SocketPair m_touchEventPipe;
-    SocketPair m_tabletEventPipe;
-    SocketPair m_keyEventPipe;
     SocketPair m_eventPipe;
     QTimer m_pingTimer;
     QTimer m_pingDeadlineTimer;
@@ -135,8 +128,6 @@ private:
 
     bool hasPermissions();
     void createFrameBuffer(const QRect& geometry);
-    bool writeEvent(SocketPair* pipe, const input_event& event, bool force = false);
-    void invalidateEventPipes();
     void writeEvent(WindowEventType type);
     void writeEvent(RepaintEventArgs args);
     void writeEvent(GeometryEventArgs args);

@@ -7,18 +7,19 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <linux/fb.h>
+#include <linux/input-event-codes.h>
 #include <asm/fcntl.h>
 #include <asm/ioctl.h>
+#include <sys/socket.h>
+#include <sys/time.h>
 #include <liboxide/meta.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
 #include <liboxide/tarnish.h>
+#include <liboxide/threading.h>
 #include <systemd/sd-journal.h>
 
-// Don't import <linux/input.h> to avoid conflicting declarations
-#define EVIOCGRAB       _IOW('E', 0x90, int)			/* Grab/Release device */
-#define EVIOCREVOKE     _IOW('E', 0x91, int)			/* Revoke device access */
-#define EVIOCGNAME(len) _IOC(_IOC_READ, 'E', 0x06, len)	/* get device name */
+#include "input.h"
 
 class ClockWatch {
 public:
@@ -43,9 +44,9 @@ static bool IS_LOADABLE_APP = false;
 static bool DO_HANDLE_FB = true;
 static bool PIPE_OPENED = false;
 static int fbFd = -1;
-static int touchFd = -1;
-static int tabletFd = -1;
-static int keyFd = -1;
+static int touchFds[2] = {-1, -1};
+static int tabletFds[2] = {-1, -1};
+static int keyFds[2] = {-1, -1};
 static ssize_t(*func_write)(int, const void*, size_t);
 static int(*func_open)(const char*, int, mode_t);
 static int(*func_ioctl)(int, unsigned long, ...);
@@ -122,9 +123,10 @@ void __printf(char const* file, int line, char const* func, int priority, Args..
     }
     fprintf(
         stderr,
-        "[%i %i %s] %s: %s (%s:%u, %s)\n",
-        getpid(),
+        "[%i:%i:%i %s] %s: %s (%s:%u, %s)\n",
         getpgrp(),
+        getpid(),
+        gettid(),
         appName().toStdString().c_str(),
         level.c_str(),
         msg.toStdString().c_str(),
@@ -192,7 +194,21 @@ bool __sigaction_connect(int signo){
     return sigaction(signo, &action, NULL) != -1;
 }
 
-// TODO - move to a different thread
+void writeInputEvent(int fd, timeval time, short unsigned int type, short unsigned int code, int value){
+    input_event ie{
+        .time = time,
+        .type = type,
+        .code = code,
+        .value = value
+    };
+    int res = func_write(fd, &ie, sizeof(input_event));
+    if(res == -1){
+        _WARN("Failed to write input event", strerror(errno));
+    }else if((unsigned int)res < sizeof(input_event)){
+        _WARN("Only wrote", res, "of", sizeof(input_event), "bytes of input_event");
+    }
+}
+
 void __read_event_pipe(){
     auto eventPipe = Oxide::Tarnish::getEventPipe();
     if(eventPipe == nullptr){
@@ -214,16 +230,158 @@ void __read_event_pipe(){
                 kill(getpid(), SIGTERM);
                 break;
             case Oxide::Tarnish::Ping:
-                event.toSocket(eventPipe);
+                Oxide::runLater(eventPipe->thread(), [eventPipe]{
+                    Oxide::Tarnish::WindowEvent event;
+                    event.type = Oxide::Tarnish::Ping;
+                    event.toSocket(eventPipe);
+                });
                 break;
+            case Oxide::Tarnish::Key:{
+                if(keyFds[0] == -1){
+                    break;
+                }
+                auto data = event.keyData;
+                timeval time;
+                ::gettimeofday(&time, NULL);
+                writeInputEvent(keyFds[0], time, EV_KEY, data.scanCode, data.type);
+                writeInputEvent(keyFds[0], time, EV_SYN, SYN_REPORT, 0);
+                break;
+            }
+            case Oxide::Tarnish::Touch:{
+                if(touchFds[0] == -1){
+                    break;
+                }
+                auto data = event.touchData;
+                timeval time;
+                ::gettimeofday(&time, NULL);
+                switch(data.type){
+                    case Oxide::Tarnish::TouchPress:
+                        for(unsigned int i = 0; i < data.points.size(); i++){
+                            auto point = data.points[i];
+                            if(point.state != Oxide::Tarnish::PointPress){
+                                continue;
+                            }
+                            auto pos = point.originalPoint();
+                            unsigned int x = ceil(pos.x() * deviceSettings.getTouchWidth());
+                            unsigned int y = ceil(pos.y() * deviceSettings.getTouchHeight());
+                            unsigned int pressure = ceil(point.pressure * deviceSettings.getTouchPressure());
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_SLOT, i);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, point.id);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_X, x);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_Y, y);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MAJOR, point.width);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MINOR, point.height);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_PRESSURE, pressure);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_ORIENTATION, point.rotation);
+                            writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
+                            _DEBUG("touch", i, point.id, x, y, pressure);
+                        }
+                        break;
+                    case Oxide::Tarnish::TouchUpdate:
+                        for(unsigned int i = 0; i < data.points.size(); i++){
+                            auto point = data.points[i];
+                            if(point.state != Oxide::Tarnish::PointMove){
+                                continue;
+                            }
+                            auto pos = point.originalPoint();
+                            unsigned int x = ceil(pos.x() * deviceSettings.getTouchWidth());
+                            unsigned int y = ceil(pos.y() * deviceSettings.getTouchHeight());
+                            unsigned int pressure = ceil(point.pressure * deviceSettings.getTouchPressure());
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_SLOT, i);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, point.id);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_X, x);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_Y, y);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MAJOR, point.width);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MINOR, point.height);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_PRESSURE, pressure);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_ORIENTATION, point.rotation);
+                            writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
+                            _DEBUG("touch", i, point.id, x, y, pressure);
+                        }
+                        break;
+                    case Oxide::Tarnish::TouchRelease:
+                        for(unsigned int i = 0; i < data.points.size(); i++){
+                            auto point = data.points[i];
+                            if(point.state != Oxide::Tarnish::PointRelease){
+                                continue;
+                            }
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_SLOT, i);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, -1);
+                            writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
+                            _DEBUG("touch", i, point.id, "release");
+                        }
+                        break;
+                    case Oxide::Tarnish::TouchCancel:
+                        // TODO - cancel in progress touches
+                        break;
+                }
+                writeInputEvent(touchFds[0], time, EV_SYN, SYN_REPORT, 0);
+                // TODO write to touchFds[0] socket
+                break;
+            }
+            case Oxide::Tarnish::Tablet:{
+                if(tabletFds[0] == -1){
+                    break;
+                }
+                auto data = event.tabletData;
+                auto size = Oxide::Tarnish::frameBufferImage().size();
+                // Convert from screen size to device size
+                unsigned int x = ceil(qreal(data.x) * deviceSettings.getWacomWidth() / size.width());
+                unsigned int y = ceil(qreal(data.y) * deviceSettings.getWacomHeight() / size.height());
+                unsigned int pressure = ceil(qreal(data.pressure) * deviceSettings.getWacomPressure());
+                _DEBUG("tablet", x, y, pressure);
+                timeval time;
+                ::gettimeofday(&time, NULL);
+                switch(data.type){
+                    case Oxide::Tarnish::PenPress:
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, data.tiltY);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
+                        writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOUCH, 1);
+                        switch(data.tool){
+                            case Oxide::Tarnish::Eraser:
+                                writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOOL_RUBBER, 1);
+                                break;
+                            case Oxide::Tarnish::Pen:
+                            default:
+                                writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOOL_PEN, 1);
+                        }
+                        break;
+                    case Oxide::Tarnish::PenUpdate:
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, data.tiltY);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
+                        break;
+                    case Oxide::Tarnish::PenRelease:
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, data.tiltY);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
+                        writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOUCH, 0);
+                        switch(data.tool){
+                            case Oxide::Tarnish::Eraser:
+                                writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOOL_RUBBER, 0);
+                                break;
+                            case Oxide::Tarnish::Pen:
+                            default:
+                                writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOOL_PEN, 0);
+                        }
+                        break;
+                }
+                writeInputEvent(tabletFds[0], time, EV_SYN, SYN_REPORT, 0);
+
+
+                break;
+            }
             case Oxide::Tarnish::Invalid:
             case Oxide::Tarnish::Raise:
             case Oxide::Tarnish::Lower:
             case Oxide::Tarnish::Repaint:
-            // TODO - sort out how to use these instead of the raw pipes
-            //        so they can be removed
-            case Oxide::Tarnish::Key:
-            case Oxide::Tarnish::Touch:
             // TODO - sort out how to manage changes to the framebuffer
             //        being reflected in the app
             case Oxide::Tarnish::Geometry:
@@ -261,17 +419,19 @@ int fb_ioctl(unsigned long request, char* ptr){
                 errno = EBADF;
                 return -1;
             }
-            Oxide::Tarnish::WindowEvent event;
-            event.type = Oxide::Tarnish::Repaint;
-            event.repaintData = Oxide::Tarnish::RepaintEventArgs{
+            Oxide::runLater(eventPipe->thread(), [eventPipe, rect, update]{
+                Oxide::Tarnish::WindowEvent event;
+                event.type = Oxide::Tarnish::Repaint;
+                event.repaintData = Oxide::Tarnish::RepaintEventArgs{
                     .x = rect.x(),
                     .y = rect.y(),
                     .width = rect.width(),
                     .height = rect.height(),
                     .waveform = (EPFrameBuffer::WaveformMode)update->waveform_mode,
                     .marker = update->update_marker,
-            };
-            event.toSocket(eventPipe);
+                };
+                event.toSocket(eventPipe);
+            });
             if(deviceSettings.getDeviceType() != Oxide::DeviceSettings::RM2){
                 return 0;
             }
@@ -307,7 +467,7 @@ int fb_ioctl(unsigned long request, char* ptr){
         }
         case FBIOGET_VSCREENINFO:{
             _DEBUG("ioctl /dev/fb0 FBIOGET_VSCREENINFO");
-            auto frameBuffer = Oxide::Tarnish::frameBufferImage(QImage::Format_RGB16);
+            auto frameBuffer = Oxide::Tarnish::frameBufferImage();
             auto pixelFormat = frameBuffer.pixelFormat();
             fb_var_screeninfo* screenInfo = reinterpret_cast<fb_var_screeninfo*>(ptr);
             screenInfo->xres = frameBuffer.width();
@@ -338,9 +498,9 @@ int fb_ioctl(unsigned long request, char* ptr){
                 constexpr char fb_id[] = "mxcfb";
                 memcpy(screeninfo->id, fb_id, sizeof(fb_id));
             }
-            auto frameBuffer = Oxide::Tarnish::frameBufferImage(QImage::Format_RGB16);
+            auto frameBuffer = Oxide::Tarnish::frameBufferImage();
             screeninfo->smem_len = frameBuffer.sizeInBytes();
-            screeninfo->smem_start = (unsigned long)Oxide::Tarnish::frameBuffer(QImage::Format_RGB16);
+            screeninfo->smem_start = (unsigned long)Oxide::Tarnish::frameBuffer();
             screeninfo->line_length = frameBuffer.bytesPerLine();
             return 0;
         }
@@ -399,83 +559,129 @@ int fb_ioctl(unsigned long request, char* ptr){
     }
 }
 
-int touch_ioctl(unsigned long request, char* ptr){
+int evdev_ioctl(const char* path, unsigned long request, char* ptr){
     static auto func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
     switch(request){
-        case EVIOCGNAME(sizeof(char[256])):{
-            _DEBUG("ioctl touch EVIOCGNAME");
-            int fd = func_open(deviceSettings.getTouchDevicePath(), O_RDONLY, 0);
-            if(fd != -1){
-                return func_ioctl(fd, request, ptr);
-            }
-            _WARN("Failed to open touch device for ioctl:", strerror(errno));
-            return -1;
+        case EVIOCGID:
+        case EVIOCGREP:
+        case EVIOCGVERSION:
+        case EVIOCGKEYCODE:
+        case EVIOCGKEYCODE_V2:
+            int fd = func_open(path, O_RDONLY, 0);
+            auto res = func_ioctl(fd, request, ptr);
+            close(fd);
+            return res;
+    }
+    unsigned int cmd = request;
+    switch(EVIOC_MASK_SIZE(cmd)){
+        case EVIOCGPROP(0):
+        case EVIOCGMTSLOTS(0):
+        case EVIOCGKEY(0):
+        case EVIOCGLED(0):
+        case EVIOCGSND(0):
+        case EVIOCGSW(0):
+        case EVIOCGNAME(0):
+        case EVIOCGPHYS(0):
+        case EVIOCGUNIQ(0):
+        case EVIOC_MASK_SIZE(EVIOCSFF):
+            int fd = func_open(path, O_RDONLY, 0);
+            auto res = func_ioctl(fd, request, ptr);
+            close(fd);
+            return res;
+    }
+
+    if(_IOC_DIR(cmd) == _IOC_READ){
+        if((_IOC_NR(cmd) & ~EV_MAX) == _IOC_NR(EVIOCGBIT(0, 0))){
+            int fd = func_open(path, O_RDONLY, 0);
+            auto res = func_ioctl(fd, request, ptr);
+            close(fd);
+            return res;
+        }else if((_IOC_NR(cmd) & ~ABS_MAX) == _IOC_NR(EVIOCGABS(0))){
+            int fd = func_open(path, O_RDONLY, 0);
+            auto res = func_ioctl(fd, request, ptr);
+            close(fd);
+            return res;
         }
+    }
+    return -2;
+}
+
+int touch_ioctl(unsigned long request, char* ptr){
+    switch(request){
         case EVIOCGRAB: return 0;
         case EVIOCREVOKE: return 0;
         default:
-            _WARN(
-                "UNHANDLED TOUCH IOCTL ",
-                QString::number(_IOC_DIR(request)),
-                (char)_IOC_TYPE(request),
-                QString::number(_IOC_NR(request), 16),
-                QString::number(_IOC_SIZE(request)),
-                QString::number(request)
-            );
-            return -1;
+            auto res = evdev_ioctl(deviceSettings.getTouchDevicePath(), request, ptr);
+            if(res == -2){
+                _WARN(
+                    "UNHANDLED TOUCH IOCTL ",
+                    QString::number(_IOC_DIR(request)),
+                    (char)_IOC_TYPE(request),
+                    QString::number(_IOC_NR(request), 16),
+                    QString::number(_IOC_SIZE(request)),
+                    QString::number(request)
+                );
+                return -1;
+            }
+            return res;
     }
 }
 
 int tablet_ioctl(unsigned long request, char* ptr){
     switch(request){
-        case EVIOCGNAME(sizeof(char[256])):{
-            _DEBUG("ioctl tablet EVIOCGNAME");
-            int fd = func_open(deviceSettings.getWacomDevicePath(), O_RDONLY, 0);
-            if(fd != -1){
-                return func_ioctl(fd, request, ptr);
-            }
-            _WARN("Failed to open wacom device for ioctl:", strerror(errno));
-            return -1;
-        }
         case EVIOCGRAB: return 0;
         case EVIOCREVOKE: return 0;
         default:
-            _WARN(
-                "UNHANDLED TABLET IOCTL ",
-                QString::number(_IOC_DIR(request)),
-                (char)_IOC_TYPE(request),
-                QString::number(_IOC_NR(request), 16),
-                QString::number(_IOC_SIZE(request)),
-                QString::number(request)
-            );
-            return -1;
+            auto res = evdev_ioctl(deviceSettings.getWacomDevicePath(), request, ptr);
+            if(res == -2){
+                _WARN(
+                    "UNHANDLED TABLET IOCTL ",
+                    QString::number(_IOC_DIR(request)),
+                    (char)_IOC_TYPE(request),
+                    QString::number(_IOC_NR(request), 16),
+                    QString::number(_IOC_SIZE(request)),
+                    QString::number(request)
+                );
+                return -1;
+            }
+            return res;
     }
 }
 
 int key_ioctl(unsigned long request, char* ptr){
     switch(request){
-        case EVIOCGNAME(sizeof(char[256])):{
-            _DEBUG("ioctl key EVIOCGNAME");
-            int fd = func_open(deviceSettings.getButtonsDevicePath(), O_RDONLY, 0);
-            if(fd != -1){
-                return func_ioctl(fd, request, ptr);
-            }
-            _WARN("Failed to open key device for ioctl:", strerror(errno));
-            return -1;
-        }
         case EVIOCGRAB: return 0;
         case EVIOCREVOKE: return 0;
         default:
-            _WARN(
-                "UNHANDLED KEY IOCTL ",
-                QString::number(_IOC_DIR(request)),
-                (char)_IOC_TYPE(request),
-                QString::number(_IOC_NR(request), 16),
-                QString::number(_IOC_SIZE(request)),
-                QString::number(request)
-            );
-            return -1;
+            auto res = evdev_ioctl(deviceSettings.getButtonsDevicePath(), request, ptr);
+            if(res == -2){
+                _WARN(
+                    "UNHANDLED KEY IOCTL ",
+                    QString::number(_IOC_DIR(request)),
+                    (char)_IOC_TYPE(request),
+                    QString::number(_IOC_NR(request), 16),
+                    QString::number(_IOC_SIZE(request)),
+                    QString::number(request)
+                );
+                return -1;
+            }
+            return res;
     }
+}
+
+void connectEventPipe(){
+    auto eventPipe = Oxide::Tarnish::getEventPipe();
+    if(eventPipe == nullptr){
+        qFatal("Could not get event pipe");
+    }
+    QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, &__read_event_pipe);
+    QObject::connect(eventPipe, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
+    Oxide::dispatchToThread(eventPipe->thread(), [eventPipe]{
+        Oxide::Tarnish::WindowEvent event;
+        event.type = Oxide::Tarnish::Raise;
+        event.toSocket(eventPipe);
+    });
+    _DEBUG("Connected to event pipe");
 }
 
 int open_from_tarnish(const char* pathname){
@@ -484,26 +690,43 @@ int open_from_tarnish(const char* pathname){
     }
     IS_OPENING = true;
     int res = -2;
-    if(pathname == deviceSettings.getTouchDevicePath()){
-        res = touchFd = Oxide::Tarnish::getTouchEventPipeFd();
-    }else if(pathname == deviceSettings.getWacomDevicePath()){
-        res = tabletFd = Oxide::Tarnish::getTabletEventPipeFd();
-    }else if(pathname == deviceSettings.getButtonsDevicePath()){
-        res = keyFd = Oxide::Tarnish::getKeyEventPipeFd();
-    }else if(DO_HANDLE_FB && pathname == std::string("/dev/fb0")){
-        res = fbFd = Oxide::Tarnish::getFrameBufferFd(QImage::Format_RGB16);
+    if(strcmp(pathname, deviceSettings.getTouchDevicePath()) == 0){
+        if(touchFds[1] == -1){
+            _DEBUG("Opening touch device socket");
+            // TODO - handle events written to touchFds[1] by program
+            res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, touchFds);
+        }
+        if(res != -1 && touchFds[1] != -1){
+            res = touchFds[1];
+        }
+    }else if(strcmp(pathname, deviceSettings.getWacomDevicePath()) == 0){
+        if(tabletFds[1] == -1){
+            _DEBUG("Opening tablet device socket");
+            // TODO - handle events written to touchFds[1] by program
+            res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, tabletFds);
+        }
+        if(res != -1 && tabletFds[1] != -1){
+            res = tabletFds[1];
+        }
+    }else if(strcmp(pathname, deviceSettings.getButtonsDevicePath()) == 0){
+        if(keyFds[1] == -1){
+            _DEBUG("Opening buttons device socket");
+            // TODO - handle events written to touchFds[1] by program
+            res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, keyFds);
+        }
+        if(res != -1 && keyFds[1] != -1){
+            res = keyFds[1];
+        }
+    }else if(DO_HANDLE_FB && strcmp(pathname, "/dev/fb0") == 0){
+        res = fbFd = Oxide::Tarnish::getFrameBufferFd();
     }
     if(!PIPE_OPENED && res != -2){
         PIPE_OPENED = true;
-        auto eventPipe = Oxide::Tarnish::getEventPipe();
-        if(eventPipe == nullptr){
-            qFatal("Could not get event pipe");
+        if(QCoreApplication::startingUp()){
+            QTimer::singleShot(0, []{ connectEventPipe(); });
+        }else{
+            connectEventPipe();
         }
-        QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, &__read_event_pipe);
-        QObject::connect(eventPipe, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
-        Oxide::Tarnish::WindowEvent event;
-        event.type = Oxide::Tarnish::Raise;
-        event.toSocket(eventPipe);
     }
     IS_OPENING = false;
     if(res == -1){
@@ -574,15 +797,15 @@ extern "C" {
                 // Maybe actually close it?
                 return 0;
             }
-            if(touchFd != -1 && fd == touchFd){
+            if(touchFds[1] != -1 && fd == touchFds[1]){
                 // Maybe actually close it?
                 return 0;
             }
-            if(tabletFd != -1 && fd == tabletFd){
+            if(tabletFds[1] != -1 && fd == tabletFds[1]){
                 // Maybe actually close it?
                 return 0;
             }
-            if(keyFd != -1 && fd == keyFd){
+            if(keyFds[1] != -1 && fd == keyFds[1]){
                 // Maybe actually close it?
                 return 0;
             }
@@ -597,13 +820,13 @@ extern "C" {
             if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
                 return fb_ioctl(request, ptr);
             }
-            if(touchFd != -1 && fd == touchFd){
+            if(touchFds[1] != -1 && fd == touchFds[1]){
                 return touch_ioctl(request, ptr);
             }
-            if(tabletFd != -1 && fd == tabletFd){
+            if(tabletFds[1] != -1 && fd == tabletFds[1]){
                 return tablet_ioctl(request, ptr);
             }
-            if(keyFd != -1 && fd == keyFd){
+            if(keyFds[1] != -1 && fd == keyFds[1]){
                 return key_ioctl(request, ptr);
             }
         }
@@ -623,15 +846,15 @@ extern "C" {
                 Oxide::Tarnish::unlockFrameBuffer();
                 return res;
             }
-            if(touchFd != -1 && fd == touchFd){
+            if(touchFds[1] != -1 && fd == touchFds[1]){
                 errno = EBADF;
                 return -1;
             }
-            if(tabletFd != -1 && fd == tabletFd){
+            if(tabletFds[1] != -1 && fd == tabletFds[1]){
                 errno = EBADF;
                 return -1;
             }
-            if(keyFd != -1 && fd == keyFd){
+            if(keyFds[1] != -1 && fd == keyFds[1]){
                 errno = EBADF;
                 return -1;
             }
@@ -682,16 +905,29 @@ extern "C" {
                 auto epgid = qEnvironmentVariableIntValue("OXIDE_PRELOAD", &ok);
                 doConnect = !ok || epgid != getpgrp();
             }
+            Oxide::Tarnish::setFrameBufferFormat(QImage::Format_RGB16);
             if(doConnect){
                 auto pid = QString::number(getpid());
                 _DEBUG("Connecting", pid, "to tarnish");
-                auto socket = Oxide::Tarnish::getSocket();
-                if(socket == nullptr){
-                    DEBUG_LOGGING = true;
-                    _CRIT("Failed to connect", pid, "to tarnish");
-                    return;
+                if(qEnvironmentVariableIsSet("OXIDE_PRELOAD_NO_QAPP")){
+                    QTimer::singleShot(0, [pid]{
+                        auto socket = Oxide::Tarnish::getSocket();
+                        if(socket == nullptr){
+                            DEBUG_LOGGING = true;
+                            _CRIT("Failed to connect", pid, "to tarnish");
+                            return;
+                        }
+                        QObject::connect(socket, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
+                    });
+                }else{
+                    auto socket = Oxide::Tarnish::getSocket();
+                    if(socket == nullptr){
+                        DEBUG_LOGGING = true;
+                        _CRIT("Failed to connect", pid, "to tarnish");
+                        return;
+                    }
+                    QObject::connect(socket, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
                 }
-                QObject::connect(socket, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
                 _DEBUG("Connected", pid, "to tarnish");
             }
         }
@@ -717,21 +953,23 @@ extern "C" {
         if(!IS_LOADABLE_APP){
             return func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
         }
-        if(!qEnvironmentVariableIsSet("OXIDE_PRELOAD_NO_QAPP")){
-            QCoreApplication app(argc, argv);
-            QThread thread;
-            thread.setObjectName("QCoreApplication");
-            QObject::connect(&thread, &QThread::started, &app, [&]{
-                auto res = func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
-                Oxide::Tarnish::disconnect();
-                app.exit(res);
-            }, Qt::DirectConnection);
-            thread.start();
-            return app.exec();
+        if(qEnvironmentVariableIsSet("OXIDE_PRELOAD_NO_QAPP")){
+            deviceSettings.setupQtEnvironment(Oxide::DeviceSettings::Default);
+            auto res = func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
+            _DEBUG("Exit code:", QString::number(res));
+            Oxide::Tarnish::disconnect();
+            return res;
         }
-        auto res = func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
-        _DEBUG("Exit code:", QString::number(res));
-        Oxide::Tarnish::disconnect();
-        return res;
+        QCoreApplication app(argc, argv);
+        QThread thread;
+        thread.setObjectName("QCoreApplication");
+        QObject::connect(&thread, &QThread::started, &app, [&]{
+            auto res = func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
+            _DEBUG("Exit code:", QString::number(res));
+            Oxide::Tarnish::disconnect();
+            app.exit(res);
+        }, Qt::DirectConnection);
+        thread.start();
+        return app.exec();
     }
 }

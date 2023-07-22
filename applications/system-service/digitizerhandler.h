@@ -18,7 +18,6 @@ using namespace std;
 using namespace Oxide;
 
 #define touchHandler DigitizerHandler::singleton_touchScreen()
-#define wacomHandler DigitizerHandler::singleton_wacom()
 
 class DigitizerHandler : public QThread {
     Q_OBJECT
@@ -36,20 +35,6 @@ public:
             throw QException();
         }
         instance = new DigitizerHandler(touchScreen_device, "touchscreen");
-        return instance;
-    }
-    static DigitizerHandler* singleton_wacom(){
-        static DigitizerHandler* instance;
-        if(instance != nullptr){
-            return instance;
-        }
-        // Get event devices
-        event_device wacom_device(deviceSettings.getWacomDevicePath(), O_RDWR);
-        if(wacom_device.fd == -1){
-            O_INFO("Failed to open event device: " << wacom_device.device.c_str());
-            throw QException();
-        }
-        instance = new DigitizerHandler(wacom_device, "wacom");
         return instance;
     }
     static string exec(const char* cmd);
@@ -73,9 +58,7 @@ public:
         }
         close(device.fd);
     }
-    void setEnabled(bool enabled){
-        m_enabled = enabled;
-    }
+    void setEnabled(bool enabled){ m_enabled = enabled; }
     void write(ushort type, ushort code, int value){
         auto event = createEvent(type, code, value);
         ::write(device.fd, &event, sizeof(input_event));

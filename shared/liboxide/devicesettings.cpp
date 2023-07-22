@@ -132,6 +132,15 @@ namespace Oxide {
         }
     }
 
+    const char* DeviceSettings::getWacomEnvSetting() const {
+        switch(getDeviceType()) {
+            case DeviceType::RM1:
+            case DeviceType::RM2:
+            default:
+                return "";
+        }
+    }
+
     static int _touchWidth = -1;
     int DeviceSettings::getTouchWidth() const {
         if(_touchWidth != -1){
@@ -302,6 +311,7 @@ namespace Oxide {
             if(type != DeviceSettings::NoPen){
                 qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
                 qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
+                qputenv("QT_QPA_EVDEV_TABLET_PARAMETERS", deviceSettings.getWacomEnvSetting());
             }
 #endif
         }else{

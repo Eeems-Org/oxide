@@ -34,9 +34,6 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
   m_systemWindow{false}
 {
     LOCK_MUTEX;
-    m_touchEventPipe.setEnabled(false);
-    m_tabletEventPipe.setEnabled(false);
-    m_keyEventPipe.setEnabled(false);
     createFrameBuffer(geometry);
     O_DEBUG(m_identifier.toStdString().c_str() << "Window created" << pgid);
     connect(&m_eventPipe, &SocketPair::readyRead, this, &Window::readyEventPipeRead);
@@ -57,13 +54,7 @@ Window::~Window(){
 
 void Window::setEnabled(bool enabled){
     if(m_enabled != enabled){
-        if(_isVisible()){
-            invalidateEventPipes();
-        }
         // TODO - Return to previous state, as they might not have ever been enabled.
-        m_touchEventPipe.setEnabled(enabled);
-        m_tabletEventPipe.setEnabled(enabled);
-        m_keyEventPipe.setEnabled(enabled);
         m_enabled = enabled;
     }
     auto bus = QDBusConnection::systemBus();
@@ -115,36 +106,6 @@ QDBusUnixFileDescriptor Window::frameBuffer(){
     W_ALLOWED();
     LOCK_MUTEX;
     return QDBusUnixFileDescriptor(m_file.handle());
-}
-
-QDBusUnixFileDescriptor Window::touchEventPipe(){
-    if(!hasPermissions()){
-        W_DENIED();
-        return QDBusUnixFileDescriptor();
-    }
-    W_ALLOWED();
-    m_touchEventPipe.setEnabled(true);
-    return QDBusUnixFileDescriptor(m_touchEventPipe.readSocket()->socketDescriptor());
-}
-
-QDBusUnixFileDescriptor Window::tabletEventPipe(){
-    if(!hasPermissions()){
-        W_DENIED();
-        return QDBusUnixFileDescriptor();
-    }
-    W_ALLOWED();
-    m_tabletEventPipe.setEnabled(true);
-    return QDBusUnixFileDescriptor(m_tabletEventPipe.readSocket()->socketDescriptor());
-}
-
-QDBusUnixFileDescriptor Window::keyEventPipe(){
-    if(!hasPermissions()){
-        W_DENIED();
-        return QDBusUnixFileDescriptor();
-    }
-    W_ALLOWED();
-    m_keyEventPipe.setEnabled(true);
-    return QDBusUnixFileDescriptor(m_keyEventPipe.readSocket()->socketDescriptor());
 }
 
 QDBusUnixFileDescriptor Window::eventPipe(){
@@ -249,9 +210,6 @@ void Window::_setVisible(bool visible, bool async){
     }
     bool visibilityChanged = wasVisible != _isVisible();
     O_DEBUG("Visibility change?" << visibilityChanged);
-    if(visibilityChanged){
-        invalidateEventPipes();
-    }
     emit stateChanged(m_state);
     if(visibilityChanged){
         guiAPI->dirty(nullptr, m_geometry, EPFrameBuffer::Initialize, 0, async);
@@ -296,12 +254,6 @@ int Window::format(){
     return m_file.isOpen() ? m_format : QImage::Format_Invalid;
 }
 
-bool Window::writeTouchEvent(const input_event& event){ return writeEvent(&m_touchEventPipe, event); }
-
-bool Window::writeTabletEvent(const input_event& event){ return writeEvent(&m_tabletEventPipe, event); }
-
-bool Window::writeKeyEvent(const input_event& event){ return writeEvent(&m_keyEventPipe, event); }
-
 pid_t Window::pgid(){ return m_pgid; }
 
 void Window::_repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async){
@@ -336,7 +288,6 @@ void Window::_raise(bool async){
         m_z = std::numeric_limits<int>::max() - 2;
     }
     guiAPI->sortWindows();
-    invalidateEventPipes();
     guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, async);
     emit stateChanged(m_state);
     writeEvent(WindowEventType::Raise);
@@ -360,7 +311,6 @@ void Window::_lower(bool async){
         break;
     }
     if(wasVisible){
-        invalidateEventPipes();
         guiAPI->dirty(nullptr, m_geometry, EPFrameBuffer::Initialize, 0, async);
     }
     if(!m_systemWindow){
@@ -380,9 +330,6 @@ void Window::_close(){
     writeEvent(WindowEventType::Close);
     m_eventPipe.close();
     setEnabled(false);
-    m_touchEventPipe.close();
-    m_tabletEventPipe.close();
-    m_keyEventPipe.close();
     emit closed();
     setParent(nullptr);
     moveToThread(nullptr);
@@ -709,132 +656,6 @@ void Window::createFrameBuffer(const QRect& geometry){
         guiAPI->guiThread()->enqueue(nullptr, rect, EPFrameBuffer::Initialize, 0, true);
     }
     W_DEBUG("Framebuffer created:" << geometry);
-}
-
-bool Window::writeEvent(SocketPair* pipe, const input_event& event, bool force){
-    if(!pipe->enabled()){
-        return false;
-    }
-    // TODO - add logic to skip emitting anything until the next EV_SYN SYN_REPORT
-    //        after the window has changed states to now be visible/enabled.
-    //        Although this may not be required if we replace this with the events
-    //        pipe instead
-    std::string name;
-    if(pipe == &m_touchEventPipe){
-        name = "touch";
-    }else if(pipe == &m_tabletEventPipe){
-        name = "tablet";
-    }else if(pipe == &m_keyEventPipe){
-        name = "key";
-    }else{
-        Q_ASSERT(false);
-    }
-    if(!force && !m_enabled){
-        _W_WARNING("Failed to write to " << name.c_str() << " event pipe: Window disabled");
-        return false;
-    }
-    if(!pipe->isOpen()){
-        _W_WARNING("Failed to write to " << name.c_str() << " event pipe: Pipe not open");
-        return false;
-    }
-    auto size = sizeof(input_event);
-    auto res = force ? pipe->_write((const char*)&event, size) : pipe->write((const char*)&event, size);
-    if(res == -1){
-        _W_WARNING("Failed to write to " << name.c_str() << " event pipe:" << pipe->writeSocket()->errorString());
-        return false;
-    }
-    if(res != size){
-        _W_WARNING("Only wrote" << res << "of" << size << "bytes to " << name.c_str() << "event pipe");
-    }
-#ifdef DEBUG_EVENTS
-    _W_DEBUG(name.c_str() << event.input_event_sec << event.input_event_usec << event.type << event.code << event.value);
-#endif
-    return true;
-}
-
-void Window::invalidateEventPipes(){
-    timeval time;
-    if(gettimeofday(&time, NULL) == -1){
-        _W_WARNING("Failed to get time of day:" << strerror(errno));
-    }
-    // Invalidate anything in transmission
-    writeEvent(&m_touchEventPipe, input_event{
-        .time = time,
-        .type = EV_SYN,
-        .code = SYN_DROPPED,
-        .value = 0,
-    }, true);
-    // End the invalid event so we can insert our own
-    writeEvent(&m_touchEventPipe, input_event{
-        .time = time,
-        .type = EV_SYN,
-        .code = SYN_REPORT,
-        .value = 0,
-    }, true);
-    // Release all touch slots
-    for(auto i = 0; i < deviceSettings.getTouchSlots(); i++){
-        writeEvent(&m_touchEventPipe, input_event{
-            .time = time,
-            .type = EV_ABS,
-            .code = ABS_MT_SLOT,
-            .value = i,
-        }, true);
-        writeEvent(&m_touchEventPipe, input_event{
-            .time = time,
-            .type = EV_SYN,
-            .code = SYN_MT_REPORT,
-            .value = 0,
-        }, true);
-    }
-    writeEvent(&m_touchEventPipe, input_event{
-        .time = time,
-        .type = EV_SYN,
-        .code = SYN_REPORT,
-        .value = 0,
-    }, true);
-    // Invalidate anything still in transmission
-    writeEvent(&m_touchEventPipe, input_event{
-        .time = time,
-        .type = EV_SYN,
-        .code = SYN_DROPPED,
-        .value = 0,
-    }, true);
-
-    // Invalidate anything in transmission
-    writeEvent(&m_tabletEventPipe, input_event{
-        .time = time,
-        .type = EV_SYN,
-        .code = SYN_DROPPED,
-        .value = 0,
-    }, true);
-    // End the invalid event so we can insert our own
-    writeEvent(&m_tabletEventPipe, input_event{
-        .time = time,
-        .type = EV_SYN,
-        .code = SYN_REPORT,
-        .value = 0,
-    }, true);
-    // Release pen touch
-    writeEvent(&m_tabletEventPipe, input_event{
-        .time = time,
-        .type = EV_KEY,
-        .code = BTN_TOOL_PEN,
-        .value = 0,
-    }, true);
-    // Invalidate anything still in transmission
-    writeEvent(&m_tabletEventPipe, input_event{
-        .time = time,
-        .type = EV_SYN,
-        .code = SYN_DROPPED,
-        .value = 0,
-    }, true);
-    // Invalidate anything still in transmission
-    writeEvent(&m_keyEventPipe, input_event{
-        .time = time,
-        .type = EV_SYN,
-        .code = SYN_DROPPED,
-        .value = 0,
-    }, true);
 }
 
 void Window::writeEvent(WindowEventType type){

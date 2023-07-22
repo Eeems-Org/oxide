@@ -238,6 +238,7 @@ void test_QByteArray::test_KeyEventArgs(){
     a.code = 100;
     a.type = KeyEventType::RepeatKey;
     a.unicode = 'a';
+    a.scanCode = 10;
     QByteArray d;
     d << a;
     QCOMPARE(d.size(), KeyEventArgs::size());
@@ -245,6 +246,8 @@ void test_QByteArray::test_KeyEventArgs(){
     d >> b;
     QCOMPARE(a.code, b.code);
     QCOMPARE((unsigned short)a.type, (unsigned short)b.type);
+    QCOMPARE(a.unicode, b.unicode);
+    QCOMPARE(a.scanCode, b.scanCode);
 }
 
 void test_QByteArray::test_TouchEventArgs(){
@@ -274,7 +277,7 @@ void test_QByteArray::test_TouchEventArgs(){
     QCOMPARE(p0.rotation, a0.rotation);
     TouchEventPoint p1;
     p1.id = -200;
-    p0.state = TouchEventPointState::PointRelease;
+    p1.state = TouchEventPointState::PointRelease;
     p1.x = -200;
     p1.y = -200;
     p1.width = 200;

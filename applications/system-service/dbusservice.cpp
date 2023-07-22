@@ -368,19 +368,13 @@ void DBusService::shutdown(){
         emit apiUnavailable(QDBusObjectPath(api.path));
     }
     bus.unregisterService(OXIDE_SERVICE);
-    O_INFO("Stopping threads" << touchHandler << wacomHandler);
+    O_INFO("Stopping thread" << touchHandler);
     touchHandler->quit();
-    wacomHandler->quit();
     QDeadlineTimer deadline(1000);
     if(!touchHandler->wait(deadline)){
         O_WARNING("Terminated thread" << touchHandler);
         touchHandler->terminate();
         touchHandler->wait();
-    }
-    if(!wacomHandler->wait(deadline)){
-        O_WARNING("Terminated thread" << wacomHandler);
-        wacomHandler->terminate();
-        wacomHandler->wait();
     }
     delete instance;
     instance = nullptr;

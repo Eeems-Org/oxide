@@ -44,6 +44,19 @@ namespace Oxide{
 
     void dispatchToMainThread(std::function<void()> callback){ dispatchToThread(qApp->thread(), [callback]{ callback(); }); }
 
+    void runLater(QThread* thread, std::function<void ()> callback){
+        QTimer* timer = new QTimer();
+        timer->moveToThread(thread);
+        timer->setSingleShot(true);
+        QObject::connect(timer, &QTimer::timeout, [timer, callback]{
+            callback();
+            timer->deleteLater();
+        });
+        QMetaObject::invokeMethod(timer, "start", Qt::QueuedConnection, Q_ARG(int, 0));
+    }
+
+    void runLaterInMainThread(std::function<void ()> callback){ runLater(qApp->thread(), callback); }
+
     void runInEventLoop(std::function<void (std::function<void()>)> callback){
         QEventLoop loop;
         QTimer timer;

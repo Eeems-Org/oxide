@@ -13,6 +13,9 @@
 #include "digitizerhandler.h"
 #include "eventlistener.h"
 
+#define SLEEPING_IMAGE_PATH "/usr/share/remarkable/sleeping.png"
+#define SUSPENDED_IMAGE_PATH "/usr/share/remarkable/suspended.png"
+
 QDebug operator<<(QDebug debug, const TouchData& touch){
     QDebugStateSaver saver(debug);
     debug.nospace() << touch.debugString().c_str();
@@ -48,10 +51,10 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 }
             });
             Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", []{
-                if(QFile::exists("/usr/share/remarkable/sleeping.png")){
-                    screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png");
+                if(QFile::exists(SLEEPING_IMAGE_PATH)){
+                    screenAPI->drawFullscreenImage(SLEEPING_IMAGE_PATH);
                 }else{
-                    screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
+                    screenAPI->drawFullscreenImage(SUSPENDED_IMAGE_PATH);
                 }
             });
             Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this, device]{
@@ -103,6 +106,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 }else{
                     O_INFO("Unable to find an app to resume");
                 }
+                AppsAPI::_window()->_setVisible(false, false);
             });
             Oxide::Sentry::sentry_span(t, "enable", "Enable various services", [this, device]{
                 emit deviceResuming();
@@ -249,9 +253,10 @@ SystemAPI::SystemAPI(QObject* parent)
         });
         Oxide::Sentry::sentry_span(t, "input", "Connect input events", [this]{
             connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
-            connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
             eventListener->append([this](QObject* object, QEvent* event){
-                Q_UNUSED(object)
+                if(object == (QObject*)guiAPI){
+                    return false;
+                }
                 switch(event->type()){
                     case QEvent::KeyPress:{
                         activity();
@@ -264,13 +269,14 @@ SystemAPI::SystemAPI(QObject* parent)
                             case Qt::Key_Home:
                                 break;
                             default:
-                                return false;
+                                QCoreApplication::postEvent(guiAPI, new QKeyEvent(QEvent::KeyPress, key, keyEvent->modifiers(), keyEvent->text()));
+                                return true;
                         }
                         if(!m_pressStates.contains(key)){
                             m_pressStates.insert(key, new QTimer());
                             connect(m_pressStates[key], &QTimer::timeout, this, ([this, key]{
                                 switch(key){
-                                    case Qt::Key_PowerOff: return &SystemAPI::suspend;
+                                    case Qt::Key_PowerOff: return &SystemAPI::powerAction;
                                     case Qt::Key_Left: return &SystemAPI::leftAction;
                                     case Qt::Key_Right: return &SystemAPI::rightAction;
                                     case Qt::Key_Home: return &SystemAPI::homeAction;
@@ -294,64 +300,72 @@ SystemAPI::SystemAPI(QObject* parent)
                             case Qt::Key_Home:
                                 break;
                             default:
-                                dispatchToThread(guiAPI->thread(), [keyEvent]{ guiAPI->writeKeyEvent(keyEvent); });
+                                QCoreApplication::postEvent(guiAPI, new QKeyEvent(QEvent::KeyRelease, key, keyEvent->modifiers(), keyEvent->text()));
                                 return false;
                         }
-                        if(!m_pressStates.contains(key) || !m_pressStates[key]->isActive()){
+                        if(!m_pressStates.contains(key)){
+                            return true;
+                        }else if(key == Qt::Key_PowerOff){
+                            if(m_pressStates[key]->isActive()){
+                                m_pressStates[key]->stop();
+                                suspend();
+                                return true;
+                            }
+                        }else if(!m_pressStates[key]->isActive()){
                             return true;
                         }
                         m_pressStates[key]->stop();
-                        dispatchToThread(guiAPI->thread(), [keyEvent, key]{
-                            timeval time;
-                            gettimeofday (&time, NULL);
-                            input_event event{
-                                .time = time,
-                                .type = EV_KEY,
-                                .code = (unsigned short)keyEvent->nativeScanCode(),
-                                .value = 1,
-                            };
-                            input_event syn{
-                                .time = time,
-                                .type = EV_SYN,
-                                .code = SYN_REPORT,
-                                .value = 0,
-                            };
-                            guiAPI->keyEvent(event);
-                            guiAPI->keyEvent(syn);
-                            gettimeofday (&time, NULL);
-                            event.time = time;
-                            event.value = 0;
-                            guiAPI->keyEvent(event);
-                            guiAPI->keyEvent(syn);
-                            guiAPI->writeKeyEvent(keyEvent);
-                            guiAPI->writeKeyEvent(new QKeyEvent(QEvent::KeyPress, key, keyEvent->modifiers(), keyEvent->text()));
-                        });
+                        QCoreApplication::postEvent(guiAPI, new QKeyEvent(QEvent::KeyPress, key, keyEvent->modifiers(), keyEvent->text()));
+                        QCoreApplication::postEvent(guiAPI, new QKeyEvent(QEvent::KeyRelease, key, keyEvent->modifiers(), keyEvent->text()));
                         return true;
                     }
-                    case QEvent::TabletEnterProximity:
-                        activity();
-                        penActive = true;
-                        dispatchToThread(guiAPI->thread(), [event]{ guiAPI->writeTabletEvent(event); });
-                        return true;
-                    case QEvent::TabletLeaveProximity:
-                        activity();
-                        penActive = false;
-                        dispatchToThread(guiAPI->thread(), [event]{ guiAPI->writeTabletEvent(event); });
-                        return true;
                     case QEvent::TabletPress:
                     case QEvent::TabletMove:
                     case QEvent::TabletRelease:
                     case QEvent::TabletTrackingChange:
+                    case QEvent::TabletEnterProximity:
+                    case QEvent::TabletLeaveProximity:{
                         activity();
-                        dispatchToThread(guiAPI->thread(), [event]{ guiAPI->writeTabletEvent(event); });
+                        if(event->type() == QEvent::TabletEnterProximity){
+                            penActive = true;
+                        }else if(event->type() == QEvent::TabletLeaveProximity){
+                            penActive = false;
+                        }
+                        auto tabletEvent = static_cast<QTabletEvent*>(event);
+                        QCoreApplication::postEvent(guiAPI, new QTabletEvent(
+                            event->type(),
+                            tabletEvent->posF(),
+                            tabletEvent->globalPosF(),
+                            tabletEvent->deviceType(),
+                            tabletEvent->pointerType(),
+                            tabletEvent->pressure(),
+                            tabletEvent->xTilt(),
+                            tabletEvent->yTilt(),
+                            tabletEvent->tangentialPressure(),
+                            tabletEvent->rotation(),
+                            tabletEvent->z(),
+                            tabletEvent->modifiers(),
+                            tabletEvent->uniqueId(),
+                            tabletEvent->button(),
+                            tabletEvent->buttons()
+                        ));
                         return true;
+                    }
                     case QEvent::TouchBegin:
                     case QEvent::TouchCancel:
                     case QEvent::TouchEnd:
-                    case QEvent::TouchUpdate:
+                    case QEvent::TouchUpdate:{
                         activity();
-                        dispatchToThread(guiAPI->thread(), [event]{ guiAPI->writeTouchEvent(event); });
+                        auto touchEvent = static_cast<QTouchEvent*>(event);
+                        QCoreApplication::postEvent(guiAPI, new QTouchEvent(
+                            event->type(),
+                            touchEvent->device(),
+                            touchEvent->modifiers(),
+                            touchEvent->touchPointStates(),
+                            touchEvent->touchPoints()
+                        ));
                         return true;
+                    }
                     default:
                         return false;
                 }
@@ -811,16 +825,6 @@ void SystemAPI::touchEvent(const input_event& event){
                 }break;
             }
             break;
-    }
-}
-
-void SystemAPI::penEvent(const input_event& event){
-    if(event.type != EV_KEY || event.code != BTN_TOOL_PEN){
-        return;
-    }
-    penActive = event.value;
-    if(Oxide::debugEnabled()){
-        O_INFO("Pen state: " << (penActive ? "Active" : "Inactive"));
     }
 }
 

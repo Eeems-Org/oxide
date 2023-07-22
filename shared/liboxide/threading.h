@@ -5,6 +5,8 @@
  * \file
  */
 #pragma once
+#include <QTimer>
+
 namespace Oxide {
     /*!
      * \brief startThreadWithPriority
@@ -29,11 +31,13 @@ namespace Oxide {
     template<typename T> LIBOXIDE_EXPORT T dispatchToMainThread(std::function<T()> callback){ return dispatchToThread<T>(qApp->thread(), callback); }
     /*!
      * \brief Run code on a specific thread
+     * \param thread The thread to run the callback in
      * \param callback The code to run on the thread
      */
     LIBOXIDE_EXPORT void dispatchToThread(QThread* thread, std::function<void()> callback);
     /*!
      * \brief Run code on a specific thread
+     * \param thread The thread to run the callback in
      * \param callback The code to run on the thread
      * \return Return value of callback
      */
@@ -55,6 +59,17 @@ namespace Oxide {
         QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
         return result;
     }
+    /*!
+     * \brief Run code on a specific thread at some point in the near future
+     * \param thread The thread to run the callback in
+     * \param callback The code to run on the thread
+     */
+    LIBOXIDE_EXPORT void runLater(QThread* thread, std::function<void()> callback);
+    /*!
+     * \brief Run code on the main thread at some point in the near future
+     * \param callback The code to run on the thread
+     */
+    LIBOXIDE_EXPORT void runLaterInMainThread(std::function<void()> callback);
     /*!
      * \brief runInEventLoop
      * \param callback
