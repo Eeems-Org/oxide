@@ -31,10 +31,10 @@ public:
     void setEnabled(bool enabled);
     bool isEnabled();
 
-    Window* _createWindow(QRect geometry, QImage::Format format);
-    Q_INVOKABLE QDBusObjectPath createWindow(int x, int y, int width, int height, int format = DEFAULT_IMAGE_FORMAT);
-    Q_INVOKABLE QDBusObjectPath createWindow(QRect geometry, int format = DEFAULT_IMAGE_FORMAT);
-    Q_INVOKABLE QDBusObjectPath createWindow(int format = DEFAULT_IMAGE_FORMAT);
+    Window* _createWindow(QString name, QRect geometry, QImage::Format format);
+    Q_INVOKABLE QDBusObjectPath createWindow(int x, int y, int width, int height, QString name = "", int format = DEFAULT_IMAGE_FORMAT);
+    Q_INVOKABLE QDBusObjectPath createWindow(QRect geometry, QString name = "", int format = DEFAULT_IMAGE_FORMAT);
+    Q_INVOKABLE QDBusObjectPath createWindow(QString name = "", int format = DEFAULT_IMAGE_FORMAT);
     Q_INVOKABLE QList<QDBusObjectPath> windows();
     Q_INVOKABLE QList<QDBusObjectPath> visibleWindows();
     Q_INVOKABLE void repaint();
@@ -46,6 +46,7 @@ public:
     void raiseWindows(pid_t pgid);
     void dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform = EPFrameBuffer::Initialize, unsigned int marker = 0, bool async = true);
     GUIThread* guiThread();
+    void removeWindow(QString path);
 
 private:
     bool m_enabled;
@@ -55,7 +56,6 @@ private:
     QAtomicInteger<unsigned int> m_currentMarker;
 
     bool hasPermission();
-    void removeWindow(QString path);
     void writeTouchEvent(QEvent* event);
     void writeTabletEvent(QEvent* event);
     void writeKeyEvent(QEvent* event);

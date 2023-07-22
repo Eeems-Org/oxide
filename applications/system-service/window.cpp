@@ -18,9 +18,10 @@ using namespace  Oxide::Tarnish;
     QMutexLocker locker(&m_mutex); \
     Q_UNUSED(locker);
 
-Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QRect& geometry, QImage::Format format)
+Window::Window(const QString& id, const QString& path, const pid_t& pgid, const QString& name, const QRect& geometry, QImage::Format format)
 : QObject{guiAPI},
   m_identifier{id},
+  m_name{name},
   m_enabled{false},
   m_path{path},
   m_pgid{pgid},
@@ -45,7 +46,7 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
     m_pingDeadlineTimer.setTimerType(Qt::CoarseTimer);
     connect(&m_pingTimer, &QTimer::timeout, this, &Window::ping);
     connect(&m_pingDeadlineTimer, &QTimer::timeout, this, &Window::pingDeadline);
-    connect(this, &Window::destroyed, [this]{ W_DEBUG("Window destoyred"); });
+    connect(this, &Window::destroyed, [this]{ W_DEBUG("Window destroyed"); });
 }
 Window::~Window(){
     O_DEBUG(m_identifier.toStdString().c_str() << "Window deleted" << m_pgid);
@@ -326,17 +327,22 @@ void Window::_close(){
     if(m_state == WindowState::Closed){
         return;
     }
+    auto wasVisible = _isVisible() && !QCoreApplication::closingDown();
     m_state = WindowState::Closed;
+    if(wasVisible){
+        guiAPI->dirty(nullptr, m_geometry, EPFrameBuffer::Initialize, 0, true);
+    }
     writeEvent(WindowEventType::Close);
     m_eventPipe.close();
     setEnabled(false);
     emit closed();
+    guiAPI->removeWindow(m_path);
     setParent(nullptr);
     moveToThread(nullptr);
     auto thread = guiAPI->guiThread();
-    thread->deleteWindowLater(this);
     blockSignals(true);
     W_DEBUG("Window closed");
+    thread->deleteWindowLater(this);
 }
 
 Window::WindowState Window::state(){ return m_state; }
@@ -513,7 +519,7 @@ void Window::close(){
         return;
     }
     W_ALLOWED();
-    QTimer::singleShot(0, [this]{ _close(); });
+    _close();
 }
 
 void Window::readyEventPipeRead(){
@@ -545,10 +551,10 @@ void Window::readyEventPipeRead(){
                 break;
             }
             case Raise:
-                _raise(0);
+                _raise(true);
                 break;
             case Lower:
-                _lower(0);
+                _lower(true);
                 break;
             case Close:
                 _close();

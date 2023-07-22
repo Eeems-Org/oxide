@@ -333,7 +333,7 @@ void GUIThread::redraw(RepaintRequest& event){
         }
         if(getpgid(window->pgid()) < 0){
             O_WARNING(window->identifier() << "With no running process");
-            QMetaObject::invokeMethod(window, &Window::close, Qt::QueuedConnection);
+            // TODO - figure out how to safely trigger a close after repainting is done
             i.remove();
             continue;
         }

@@ -893,7 +893,7 @@ namespace Oxide::Tarnish {
         }
         if(window == nullptr){
             O_DEBUG("Creating with" << fbRequestedFormat << "image format");
-            QDBusPendingReply<QDBusObjectPath> reply = api_gui->createWindow(fbRequestedFormat);
+            QDBusPendingReply<QDBusObjectPath> reply = api_gui->createWindow(QString::fromStdString(Oxide::getAppName()), fbRequestedFormat);
             reply.waitForFinished();
             if(reply.isError()){
                 O_WARNING("Unable to get framebuffer:" << reply.error());

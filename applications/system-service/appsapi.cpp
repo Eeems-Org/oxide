@@ -19,7 +19,7 @@ using namespace Oxide;
 static Window* __window = nullptr;
 Window* AppsAPI::_window(){
     if(__window == nullptr){
-        __window = guiAPI->_createWindow(deviceSettings.screenGeometry(), DEFAULT_IMAGE_FORMAT);
+        __window = guiAPI->_createWindow("__splashscreen", deviceSettings.screenGeometry(), DEFAULT_IMAGE_FORMAT);
         __window->setZ(std::numeric_limits<int>::max() - 1);
         __window->disableEventPipe();
         __window->_setVisible(false, true);

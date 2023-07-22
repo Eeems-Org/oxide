@@ -14,7 +14,7 @@ Window* NotificationAPI::_window(){
         auto screenRect = deviceSettings.screenGeometry();
         int x = screenRect.width() / 2;
         int y = screenRect.height() / 8;
-        __window = guiAPI->_createWindow(QRect(x, y * 7, x, y), QImage::Format_RGBA8888_Premultiplied);
+        __window = guiAPI->_createWindow("__notifications", QRect(x, y * 7, x, y), QImage::Format_RGBA8888_Premultiplied);
         __window->setZ(std::numeric_limits<int>::max());
         __window->disableEventPipe();
         __window->setSystemWindow();

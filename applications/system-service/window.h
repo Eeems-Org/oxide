@@ -16,6 +16,7 @@ class Window : public QObject{
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_WINDOW_INTERFACE)
     Q_PROPERTY(QString identifier READ identifier)
+    Q_PROPERTY(QString name READ name)
     Q_PROPERTY(int z READ z NOTIFY zChanged)
     Q_PROPERTY(QDBusUnixFileDescriptor frameBuffer READ frameBuffer NOTIFY frameBufferChanged)
     Q_PROPERTY(QDBusUnixFileDescriptor eventPipe READ eventPipe)
@@ -37,12 +38,13 @@ public:
         LoweredHidden,
         Closed
     } WindowState;
-    Window(const QString& identifier, const QString& path, const pid_t& pgid, const QRect& geometry, QImage::Format format);
+    Window(const QString& identifier, const QString& path, const pid_t& pgid, const QString& name, const QRect& geometry, QImage::Format format);
     ~Window();
 
     void setEnabled(bool enabled);
     QDBusObjectPath path();
     const QString& identifier();
+    const QString& name(){ return m_name; }
     int z();
     void setZ(int z);
     QDBusUnixFileDescriptor frameBuffer();
@@ -109,6 +111,7 @@ private slots:
 
 private:
     QString m_identifier;
+    QString m_name;
     bool m_enabled;
     QString m_path;
     pid_t m_pgid;

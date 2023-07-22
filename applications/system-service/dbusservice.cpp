@@ -409,7 +409,7 @@ void DBusService::serviceOwnerChanged(const QString& name, const QString& oldOwn
 }
 
 void DBusService::unregisterChild(pid_t pid){
-    O_DEBUG("unregisterCHild" << pid << "requested");
+    O_DEBUG("unregisterChild" << pid << "requested");
     // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
     QMutableListIterator<ChildEntry*> i(children);
     while(i.hasNext()){

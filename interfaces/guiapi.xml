@@ -10,7 +10,16 @@
       <arg name="y" type="i" direction="in"/>
       <arg name="width" type="i" direction="in"/>
       <arg name="height" type="i" direction="in"/>
+      <arg name="name" type="s" direction="in"/>
       <arg name="format" type="i" direction="in"/>
+    </method>
+    <method name="createWindow">
+      <arg type="o" direction="out"/>
+      <arg name="x" type="i" direction="in"/>
+      <arg name="y" type="i" direction="in"/>
+      <arg name="width" type="i" direction="in"/>
+      <arg name="height" type="i" direction="in"/>
+      <arg name="name" type="s" direction="in"/>
     </method>
     <method name="createWindow">
       <arg type="o" direction="out"/>
@@ -23,7 +32,14 @@
       <arg type="o" direction="out"/>
       <arg name="geometry" type="(iiii)" direction="in"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QRect"/>
+      <arg name="name" type="s" direction="in"/>
       <arg name="format" type="i" direction="in"/>
+    </method>
+    <method name="createWindow">
+      <arg type="o" direction="out"/>
+      <arg name="geometry" type="(iiii)" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QRect"/>
+      <arg name="name" type="s" direction="in"/>
     </method>
     <method name="createWindow">
       <arg type="o" direction="out"/>
@@ -32,7 +48,12 @@
     </method>
     <method name="createWindow">
       <arg type="o" direction="out"/>
+      <arg name="name" type="s" direction="in"/>
       <arg name="format" type="i" direction="in"/>
+    </method>
+    <method name="createWindow">
+      <arg type="o" direction="out"/>
+      <arg name="name" type="s" direction="in"/>
     </method>
     <method name="createWindow">
       <arg type="o" direction="out"/>

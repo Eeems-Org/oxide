@@ -112,23 +112,15 @@ void GuiAPI::setEnabled(bool enabled){
 
 bool GuiAPI::isEnabled(){ return m_enabled; }
 
-Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
+Window* GuiAPI::_createWindow(QString name, QRect geometry, QImage::Format format){
     auto id = QUuid::createUuid().toString(QUuid::Id128);
     auto path = QString(OXIDE_SERVICE_PATH) + "/window/" + QUuid::createUuidV5(NS, id).toString(QUuid::Id128);
     auto pgid = getSenderPgid();
     m_windowMutex.lock();
-    auto window = new Window(id, path, pgid, geometry, format);
+    auto window = new Window(id, path, pgid, name, geometry, format);
     m_windows.insert(path, window);
     m_windowMutex.unlock();
     sortWindows();
-    connect(window, &Window::closed, this, [this, window, path]{
-        O_INFO("Window" << window->identifier() << "closed");
-        removeWindow(path);
-        if(!DBusService::shuttingDown()){
-            auto region = window->_geometry().intersected(m_screenGeometry.translated(-m_screenGeometry.topLeft()));
-            m_thread.enqueue(nullptr, region, EPFrameBuffer::Initialize, 0, true);
-        }
-    });
     for(auto item : appsAPI->runningApplicationsNoSecurityCheck().values()){
         Application* app = appsAPI->getApplication(item.value<QDBusObjectPath>());
         if(app->processId() == pgid){
@@ -144,33 +136,33 @@ Window* GuiAPI::_createWindow(QRect geometry, QImage::Format format){
     return window;
 }
 
-QDBusObjectPath GuiAPI::createWindow(int x, int y, int width, int height, int format){
+QDBusObjectPath GuiAPI::createWindow(int x, int y, int width, int height, QString name, int format){
     if(!hasPermission()){
         W_DENIED();
         return QDBusObjectPath("/");
     }
     W_ALLOWED();
-    Window* window = _createWindow(QRect(x, y, width, height), (QImage::Format)format);
+    Window* window = _createWindow(name, QRect(x, y, width, height), (QImage::Format)format);
     return window == nullptr ? QDBusObjectPath("/") : window->path();
 }
 
-QDBusObjectPath GuiAPI::createWindow(QRect geometry, int format){
+QDBusObjectPath GuiAPI::createWindow(QRect geometry, QString name, int format){
     if(!hasPermission()){
         W_DENIED();
         return QDBusObjectPath("/");
     }
     W_ALLOWED();
-    Window* window = _createWindow(geometry, (QImage::Format)format);
+    Window* window = _createWindow(name, geometry, (QImage::Format)format);
     return window == nullptr ? QDBusObjectPath("/") : window->path();
 }
 
-QDBusObjectPath GuiAPI::createWindow(int format){
+QDBusObjectPath GuiAPI::createWindow(QString name, int format){
     if(!hasPermission()){
         W_DENIED();
         return QDBusObjectPath("/");
     }
     W_ALLOWED();
-    Window* window = _createWindow(m_screenGeometry, (QImage::Format)format);
+    Window* window = _createWindow(name, m_screenGeometry, (QImage::Format)format);
     return window == nullptr ? QDBusObjectPath("/") : window->path();
 }
 
@@ -475,6 +467,7 @@ bool GuiAPI::hasPermission(){
 void GuiAPI::removeWindow(QString path){
     QMutexLocker locker(&m_windowMutex);
     if(m_windows.remove(path)){
+        O_DEBUG("Window" << path << "removed from list");
         locker.unlock();
         sortWindows();
     }
