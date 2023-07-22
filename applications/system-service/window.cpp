@@ -50,7 +50,6 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
 }
 Window::~Window(){
     O_DEBUG(m_identifier.toStdString().c_str() << "Window deleted" << m_pgid);
-    _close();
 }
 
 void Window::setEnabled(bool enabled){
@@ -333,7 +332,8 @@ void Window::_close(){
         guiAPI->dirty(nullptr, m_geometry, EPFrameBuffer::Initialize, 0, true);
     }
     writeEvent(WindowEventType::Close);
-    m_eventPipe.close();
+    m_eventPipe.setEnabled(false);
+    m_eventPipe.disconnect();
     setEnabled(false);
     emit closed();
     guiAPI->removeWindow(m_path);

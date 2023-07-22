@@ -141,5 +141,6 @@ int main(int argc, char* argv[]){
     window.setPosition(0, 0);
     window.setOpacity(0);
     window.show();
+    ::signal(SIGPIPE, SIG_IGN);
     return app.exec();
 }
