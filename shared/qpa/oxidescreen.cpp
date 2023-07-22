@@ -55,6 +55,27 @@ void OxideScreen::removeWindow(OxideWindow* window){
     window->requestActivateWindow();
 }
 
+void OxideScreen::raiseTopWindow(){
+    auto window = topPlatformWindow();
+    if(window != nullptr){
+        window->raise();
+    }
+}
+
+void OxideScreen::lowerTopWindow(){
+    auto window = topPlatformWindow();
+    if(window != nullptr){
+        window->lower();
+    }
+}
+
+void OxideScreen::closeTopWindow(){
+    auto window = topPlatformWindow();
+    if(window != nullptr){
+        window->close();
+    }
+}
+
 bool OxideScreen::event(QEvent* event){
     if(event->type() == QEvent::UpdateRequest){
         redraw();
