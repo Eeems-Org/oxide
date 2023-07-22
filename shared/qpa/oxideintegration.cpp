@@ -80,7 +80,7 @@ void OxideIntegration::initialize(){
     if(socket == nullptr){
         qFatal("Could not get tarnish private socket");
     }
-    QObject::connect(Oxide::Tarnish::getSocket(), &QLocalSocket::readChannelFinished, []{ qApp->quit(); });
+    QObject::connect(Oxide::Tarnish::getSocket(), &QLocalSocket::disconnected, []{ qApp->quit(); });
     QObject::connect(socket, &QLocalSocket::readyRead, [socket]{
         // TODO - read commands
         while(!socket->atEnd()){
@@ -93,7 +93,7 @@ void OxideIntegration::initialize(){
     if(eventPipe == nullptr){
         qFatal("Could not get event pipe");
     }
-    QObject::connect(eventPipe, &QLocalSocket::readChannelFinished, []{
+    QObject::connect(eventPipe, &QLocalSocket::disconnected, []{
         if(!qApp->closingDown()){
             qApp->exit(EXIT_FAILURE);
         }

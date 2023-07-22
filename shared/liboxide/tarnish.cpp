@@ -839,7 +839,7 @@ namespace Oxide::Tarnish {
             return nullptr;
         }
         auto conn = new QMetaObject::Connection;
-        *conn = QObject::connect(&childSocket, &QLocalSocket::readChannelFinished, [conn]{
+        *conn = QObject::connect(&childSocket, &QLocalSocket::disconnected, [conn]{
             O_WARNING("Lost connection to tarnish socket!");
             childSocket.close();
             Oxide::runLaterInMainThread([]{ _disconnect(); });
@@ -1066,7 +1066,7 @@ namespace Oxide::Tarnish {
             Oxide::dispatchToThread(eventSocket.thread(), []{ eventSocket.moveToThread(&eventThread); });
         }
         auto conn = new QMetaObject::Connection;
-        *conn = QObject::connect(&eventSocket, &QLocalSocket::readChannelFinished, [conn]{
+        *conn = QObject::connect(&eventSocket, &QLocalSocket::disconnected, [conn]{
             O_WARNING("Lost connection to window event pipe!");
             eventSocket.close();
             QObject::disconnect(*conn);

@@ -675,7 +675,7 @@ void connectEventPipe(){
         qFatal("Could not get event pipe");
     }
     QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, &__read_event_pipe);
-    QObject::connect(eventPipe, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
+    QObject::connect(eventPipe, &QLocalSocket::disconnected, []{ kill(getpid(), SIGTERM); });
     Oxide::dispatchToThread(eventPipe->thread(), [eventPipe]{
         Oxide::Tarnish::WindowEvent event;
         event.type = Oxide::Tarnish::Raise;
@@ -917,7 +917,7 @@ extern "C" {
                             _CRIT("Failed to connect", pid, "to tarnish");
                             return;
                         }
-                        QObject::connect(socket, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
+                        QObject::connect(socket, &QLocalSocket::disconnected, []{ kill(getpid(), SIGTERM); });
                     });
                 }else{
                     auto socket = Oxide::Tarnish::getSocket();
@@ -926,7 +926,7 @@ extern "C" {
                         _CRIT("Failed to connect", pid, "to tarnish");
                         return;
                     }
-                    QObject::connect(socket, &QLocalSocket::readChannelFinished, []{ kill(getpid(), SIGTERM); });
+                    QObject::connect(socket, &QLocalSocket::disconnected, []{ kill(getpid(), SIGTERM); });
                 }
                 _DEBUG("Connected", pid, "to tarnish");
             }
