@@ -286,6 +286,7 @@ void Window::_raise(bool async){
         default:
         break;
     }
+    auto oldZ = m_z;
     if(!m_systemWindow){
         m_z = std::numeric_limits<int>::max() - 2;
     }
@@ -296,8 +297,10 @@ void Window::_raise(bool async){
     if(m_state != oldState){
         emit stateChanged(m_state);
     }
-    writeEvent(WindowEventType::Raise);
-    emit raised();
+    if(m_z != oldZ){
+        writeEvent(WindowEventType::Raise);
+        emit raised();
+    }
 }
 
 void Window::_lower(bool async){
@@ -320,6 +323,7 @@ void Window::_lower(bool async){
     if(wasVisible){
         guiAPI->dirty(nullptr, m_geometry, EPFrameBuffer::Initialize, 0, async);
     }
+    auto oldZ = m_z;
     if(!m_systemWindow){
         m_z = std::numeric_limits<int>::min();
     }
@@ -327,8 +331,10 @@ void Window::_lower(bool async){
     if(m_state != oldState){
         emit stateChanged(m_state);
     }
-    writeEvent(WindowEventType::Lower);
-    emit lowered();
+    if(m_z != oldZ){
+        writeEvent(WindowEventType::Lower);
+        emit lowered();
+    }
 }
 
 void Window::_close(){

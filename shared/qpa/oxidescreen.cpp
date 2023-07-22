@@ -46,34 +46,13 @@ void OxideScreen::addWindow(OxideWindow* window){
     setDirty(window->geometry());
     window->requestActivateWindow();
     if(m_windows.length() == 1){
-        raiseTopWindow();
+        window->raise();
     }
 }
 void OxideScreen::removeWindow(OxideWindow* window){
     m_windows.removeAll(window);
     setDirty(window->geometry());
     window->requestActivateWindow();
-}
-
-void OxideScreen::raiseTopWindow(){
-    auto window = Oxide::Tarnish::topWindow();
-    if(window != nullptr){
-        window->raise(); // TODO - replace with event socket call
-    }
-}
-
-void OxideScreen::lowerTopWindow(){
-    auto window = Oxide::Tarnish::topWindow();
-    if(window != nullptr){
-        window->lower(); // TODO - replace with event socket call
-    }
-}
-
-void OxideScreen::closeTopWindow(){
-    auto window = Oxide::Tarnish::topWindow();
-    if(window != nullptr){
-        window->close(); // TODO - replace with event socket call
-    }
 }
 
 bool OxideScreen::event(QEvent* event){

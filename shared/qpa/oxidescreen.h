@@ -26,11 +26,6 @@ public:
     void addWindow(OxideWindow* window);
     void removeWindow(OxideWindow* window);
 
-public slots:
-    void raiseTopWindow();
-    void lowerTopWindow();
-    void closeTopWindow();
-
 protected:
     bool event(QEvent *event) override;
 

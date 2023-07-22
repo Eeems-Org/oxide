@@ -38,7 +38,8 @@ bool OxideWindow::close(){
     if(platformScreen()->topPlatformWindow() == this){
         auto window = Oxide::Tarnish::topWindow();
         if(window != nullptr){
-            window->close(); // TODO - replace with event socket call
+            // TODO - replace with event socket call
+            window->close();
         }
     }
     return QPlatformWindow::close();
@@ -48,7 +49,8 @@ void OxideWindow::raise(){
     if(platformScreen()->topPlatformWindow() == this){
         auto window = Oxide::Tarnish::topWindow();
         if(window != nullptr){
-            window->raise(); // TODO - replace with event socket call
+            // TODO - replace with event socket call
+            window->raise();
         }
     }
 }
@@ -57,7 +59,8 @@ void OxideWindow::lower(){
     if(platformScreen()->topPlatformWindow() == this){
         auto window = Oxide::Tarnish::topWindow();
         if(window != nullptr){
-            window->lower(); // TODO - replace with event socket call
+            // TODO - replace with event socket call
+            window->lower();
         }
     }
 }
@@ -66,7 +69,8 @@ void OxideWindow::setGeometry(const QRect& rect){
     if(platformScreen()->topPlatformWindow() == this){
         auto window = Oxide::Tarnish::topWindow();
         if(window != nullptr){
-            window->setGeometry(rect); // TODO - replace with event socket call
+            // TODO - replace with event socket call
+            window->setGeometry(rect);
         }
     }
 }
