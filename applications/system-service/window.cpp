@@ -270,6 +270,8 @@ void Window::_repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsign
 }
 
 void Window::_raise(bool async){
+    bool wasVisible = _isVisible();
+    auto oldState = m_state;
     switch(m_state){
         case WindowState::Lowered:
             m_state = WindowState::Raised;
@@ -277,10 +279,10 @@ void Window::_raise(bool async){
         case WindowState::LoweredHidden:
             m_state = WindowState::RaisedHidden;
         break;
-        case WindowState::Raised:
-        case WindowState::RaisedHidden:
         case WindowState::Closed:
             return;
+        case WindowState::Raised:
+        case WindowState::RaisedHidden:
         default:
         break;
     }
@@ -288,14 +290,19 @@ void Window::_raise(bool async){
         m_z = std::numeric_limits<int>::max() - 2;
     }
     guiAPI->sortWindows();
-    guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, async);
-    emit stateChanged(m_state);
+    if(!wasVisible){
+        guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, async);
+    }
+    if(m_state != oldState){
+        emit stateChanged(m_state);
+    }
     writeEvent(WindowEventType::Raise);
     emit raised();
 }
 
 void Window::_lower(bool async){
     bool wasVisible = _isVisible();
+    auto oldState = m_state;
     switch(m_state){
         case WindowState::Raised:
             m_state = WindowState::Lowered;
@@ -303,10 +310,10 @@ void Window::_lower(bool async){
         case WindowState::RaisedHidden:
             m_state = WindowState::LoweredHidden;
         break;
-        case WindowState::Lowered:
-        case WindowState::LoweredHidden:
         case WindowState::Closed:
             return;
+        case WindowState::Lowered:
+        case WindowState::LoweredHidden:
         default:
         break;
     }
@@ -317,7 +324,9 @@ void Window::_lower(bool async){
         m_z = std::numeric_limits<int>::min();
     }
     guiAPI->sortWindows();
-    emit stateChanged(m_state);
+    if(m_state != oldState){
+        emit stateChanged(m_state);
+    }
     writeEvent(WindowEventType::Lower);
     emit lowered();
 }
