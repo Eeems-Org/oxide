@@ -113,6 +113,19 @@ void WaitThread::addCompleted(QString window, unsigned int marker, unsigned int 
     m_pendingtWait.notify_all();
 }
 
+void WaitThread::shutdown(){
+    O_INFO("Stopping thread" << this);
+    requestInterruption();
+    m_pendingtWait.notify_all();
+    quit();
+    QDeadlineTimer deadline(6000);
+    if(!wait(deadline)){
+        O_WARNING("Terminated thread" << this);
+        terminate();
+        wait();
+    }
+}
+
 bool WaitThread::isPendingMarkerWaitDone(PendingMarkerWait pendingMarkerWait){
     // Marker should never be 0, but just in case
     if(pendingMarkerWait.marker == 0){
@@ -437,10 +450,12 @@ void GUIThread::deletePendingWindows(){
     }
     m_deleteQueueMutex.lock();
     unsigned int count = 0;
-    QMutableListIterator i(m_deleteQueue);
+    QMutableListIterator<Window*> i(m_deleteQueue);
     while(i.hasNext()){
         auto window = i.next();
+        O_DEBUG("Checking pending window" << window->identifier());
         if(!inRepaintEvents(window)){
+            O_DEBUG("Deleting pending window" << window->identifier());
             count++;
             i.remove();
             window->deleteLater();
