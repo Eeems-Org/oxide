@@ -189,14 +189,32 @@ void OxideIntegration::initialize(){
                 case Oxide::Tarnish::Touch: handleTouch(&event.touchData); break;
                 case Oxide::Tarnish::Tablet:{
                     auto data = event.tabletData;
+                    if(data.type == Oxide::Tarnish::PenEnterProximity){
+                        QWindowSystemInterface::handleTabletEnterProximityEvent(
+                            QTabletEvent::Stylus,
+                            data.tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
+                            int(QTabletEvent::Stylus)
+                        );
+                        break;
+                    }
+                    if(data.type == Oxide::Tarnish::PenLeaveProximity){
+                        QWindowSystemInterface::handleTabletLeaveProximityEvent(
+                            QTabletEvent::Stylus,
+                            data.tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
+                            int(QTabletEvent::Stylus)
+                        );
+                        break;
+                    }
                     switch(data.type){
                         case Oxide::Tarnish::PenPress:
                             m_tabletPenDown = true;
                             break;
                         case Oxide::Tarnish::PenUpdate:
-                            m_tabletPenDown = false;
                             break;
                         case Oxide::Tarnish::PenRelease:
+                            m_tabletPenDown = false;
+                            break;
+                        default:
                             break;
                     }
                     QWindowSystemInterface::handleTabletEvent(

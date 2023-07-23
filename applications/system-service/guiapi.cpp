@@ -385,9 +385,11 @@ void GuiAPI::writeTabletEvent(QEvent* event){
             type = TabletEventType::PenRelease;
             break;
         case QEvent::TabletEnterProximity:
+            type = TabletEventType::PenEnterProximity;
+            break;
         case QEvent::TabletLeaveProximity:
-        case QEvent::TabletTrackingChange:
-            // TODO - implement these in the protocol
+            type = TabletEventType::PenLeaveProximity;
+            break;
         default:
             return;
     }

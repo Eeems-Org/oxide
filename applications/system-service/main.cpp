@@ -12,6 +12,7 @@
 #include <systemd/sd-daemon.h>
 
 #include "dbusservice.h"
+#include "wacom.h"
 
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 
@@ -53,7 +54,7 @@ int main(int argc, char* argv[]){
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
     qRegisterMetaType<input_event>();
-    deviceSettings.setupQtEnvironment(DeviceSettings::QtEnvironmentType::Default);
+    deviceSettings.setupQtEnvironment(DeviceSettings::QtEnvironmentType::NoPen);
     QGuiApplication app(argc, argv);
     sentry_init("tarnish", argv);
     app.setOrganizationName("Eeems");
@@ -134,6 +135,8 @@ int main(int argc, char* argv[]){
     QObject::connect(signalHandler, &SignalHandler::sigInt, dbusService, &DBusService::shutdown);
     QObject::connect(signalHandler, &SignalHandler::sigTerm, dbusService, &DBusService::shutdown);
     QObject::connect(signalHandler, &SignalHandler::sigPipe, []{ O_WARNING("SIGPIPE recieved.");});
+    auto wacom = new Wacom();
+    Q_UNUSED(wacom);
     // TODO - connect to GUI API's Window objects instead?
     QScreen* screen = app.primaryScreen();
     QWindow window(screen);

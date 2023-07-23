@@ -26,6 +26,7 @@ SOURCES += \
     screenshot.cpp \
     socketpair.cpp \
     systemapi.cpp \
+    wacom.cpp \
     wifiapi.cpp \
     window.cpp \
     wlan.cpp \
@@ -79,6 +80,7 @@ HEADERS += \
     supplicant.h \
     systemapi.h \
     tarnish_stable.h \
+    wacom.h \
     wifiapi.h \
     window.h \
     wlan.h \

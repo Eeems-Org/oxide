@@ -251,6 +251,62 @@ namespace Oxide {
             .maximum;
         return _wacomPressure;
     }
+    static int _wacomMinXTilt = 0;
+    int DeviceSettings::getWacomMinXTilt() const{
+        if(_wacomMinXTilt != 0){
+            return _wacomMinXTilt;
+        }
+        auto path = getWacomDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return -1;
+        }
+        _wacomMinXTilt = event_device(path, O_RDONLY)
+            .abs_info(ABS_TILT_X)
+            .minimum;
+        return _wacomMinXTilt;
+    }
+    static int _wacomMinYTilt = 0;
+    int DeviceSettings::getWacomMinYTilt() const{
+        if(_wacomMinYTilt != 0){
+            return _wacomMinYTilt;
+        }
+        auto path = getWacomDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return -1;
+        }
+        _wacomMinYTilt = event_device(path, O_RDONLY)
+            .abs_info(ABS_TILT_Y)
+            .minimum;
+        return _wacomMinYTilt;
+    }
+    static int _wacomMaxXTilt = 0;
+    int DeviceSettings::getWacomMaxXTilt() const{
+        if(_wacomMaxXTilt != 0){
+            return _wacomMaxXTilt;
+        }
+        auto path = getWacomDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return -1;
+        }
+        _wacomMaxXTilt = event_device(path, O_RDONLY)
+            .abs_info(ABS_TILT_X)
+            .maximum;
+        return _wacomMaxXTilt;
+    }
+    static int _wacomMaxYTilt = 0;
+    int DeviceSettings::getWacomMaxYTilt() const{
+        if(_wacomMaxYTilt != 0){
+            return _wacomMaxYTilt;
+        }
+        auto path = getWacomDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return -1;
+        }
+        _wacomMaxYTilt = event_device(path, O_RDONLY)
+            .abs_info(ABS_TILT_Y)
+            .maximum;
+        return _wacomMaxYTilt;
+    }
     const QStringList DeviceSettings::getLocales(){ return execute("localectl", QStringList() << "list-locales" << "--no-pager").split("\n"); }
     QString DeviceSettings::getLocale() {
         QFile file("/etc/locale.conf");
@@ -308,9 +364,9 @@ namespace Oxide {
             qputenv("QMLSCENE_DEVICE", "epaper");
             qputenv("QT_QUICK_BACKEND","epaper");
             qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
+            qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
             if(type != DeviceSettings::NoPen){
                 qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
-                qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
                 qputenv("QT_QPA_EVDEV_TABLET_PARAMETERS", deviceSettings.getWacomEnvSetting());
             }
 #endif

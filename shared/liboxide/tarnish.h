@@ -153,6 +153,8 @@ namespace Oxide::Tarnish {
         PenPress = 0,
         PenUpdate,
         PenRelease,
+        PenEnterProximity,
+        PenLeaveProximity,
     };
     enum TabletEventTool: unsigned short{
         Pen = 0,

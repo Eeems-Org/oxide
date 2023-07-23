@@ -121,6 +121,26 @@ namespace Oxide{
          */
         int getWacomPressure() const;
         /*!
+         * \brief getWacomMinXTilt
+         * \return
+         */
+        int getWacomMinXTilt() const;
+        /*!
+         * \brief getWacomMinYTilt
+         * \return
+         */
+        int getWacomMinYTilt() const;
+        /*!
+         * \brief getWacomMaxXTilt
+         * \return
+         */
+        int getWacomMaxXTilt() const;
+        /*!
+         * \brief getWacomMaxYTilt
+         * \return
+         */
+        int getWacomMaxYTilt() const;
+        /*!
          * \brief Get the list of possible locales on the device
          * \return The list of possible locales on the device
          */

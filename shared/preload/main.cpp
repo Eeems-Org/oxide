@@ -79,7 +79,7 @@ QString appName(){
     }
     name = QFileInfo("/proc/self/exe").canonicalFilePath();
     if(name.isEmpty()){
-        return "libtarnish_preload.so";
+        return "liboxide_preload.so";
     }
     return name;
 }
@@ -165,9 +165,12 @@ void __sigacton__handler(int signo, siginfo_t* info, void* context){
         default:
             signal(signo, SIG_DFL);
     }
+    static bool KILLED = false;
     _DEBUG("Signal", strsignal(signo), "recieved.");
-    Oxide::Tarnish::disconnect();
-    QCoreApplication::processEvents(QEventLoop::AllEvents);
+    if(!KILLED){
+        KILLED=true;
+        Oxide::Tarnish::disconnect();
+    }
     raise(signo);
 }
 
@@ -323,6 +326,10 @@ void __read_event_pipe(){
                 if(tabletFds[0] == -1){
                     break;
                 }
+                static bool penDown = false;
+                static unsigned int lastPressure = 0;
+                static int lastTiltX = 0;
+                static int lastTiltY = 0;
                 auto data = event.tabletData;
                 auto size = Oxide::Tarnish::frameBufferImage().size();
                 // Convert from screen size to device size
@@ -334,6 +341,7 @@ void __read_event_pipe(){
                 ::gettimeofday(&time, NULL);
                 switch(data.type){
                     case Oxide::Tarnish::PenPress:
+                        penDown = true;
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
@@ -348,20 +356,37 @@ void __read_event_pipe(){
                             default:
                                 writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOOL_PEN, 1);
                         }
+                        writeInputEvent(tabletFds[0], time, EV_SYN, SYN_REPORT, 0);
                         break;
                     case Oxide::Tarnish::PenUpdate:
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, data.tiltY);
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
+                        if(penDown){
+                            if(data.tiltX != lastTiltX){
+                                writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
+                            }
+                            if(data.tiltY != lastTiltY){
+                                writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, data.tiltY);
+                            }
+                            if(pressure != lastPressure){
+                                writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
+                            }
+                        }
+                        writeInputEvent(tabletFds[0], time, EV_SYN, SYN_REPORT, 0);
                         break;
                     case Oxide::Tarnish::PenRelease:
+                        penDown = false;
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, data.tiltY);
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
+                        if(data.tiltX != lastTiltX){
+                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
+                        }
+                        if(data.tiltY != lastTiltY){
+                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, data.tiltY);
+                        }
+                        if(pressure != lastPressure){
+                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
+                        }
                         writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOUCH, 0);
                         switch(data.tool){
                             case Oxide::Tarnish::Eraser:
@@ -371,11 +396,15 @@ void __read_event_pipe(){
                             default:
                                 writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOOL_PEN, 0);
                         }
+                        writeInputEvent(tabletFds[0], time, EV_SYN, SYN_REPORT, 0);
+                        break;
+                    case Oxide::Tarnish::PenEnterProximity:
+                    case Oxide::Tarnish::PenLeaveProximity:
                         break;
                 }
-                writeInputEvent(tabletFds[0], time, EV_SYN, SYN_REPORT, 0);
-
-
+                lastPressure = pressure;
+                lastTiltX = data.tiltX;
+                lastTiltY = data.tiltY;
                 break;
             }
             case Oxide::Tarnish::Invalid:

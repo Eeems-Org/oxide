@@ -96,15 +96,17 @@ void _disconnect(){
     freeAPI(general);
     freeAPI(gui);
 #undef freeAPI
-    if(eventThread.isRunning()){
-        eventThread.quit();
-        eventThread.requestInterruption();
-    }
-    // Wait after requesting the quit for both to make sure both are stopping at the same time
-    eventThread.wait();
     if(window != nullptr){
         delete window;
         window = nullptr;
+    }
+    if(eventThread.isRunning()){
+        // Wait after requesting the quit for both to make sure both are stopping at the same time
+        runLaterInMainThread([]{
+            eventThread.quit();
+            eventThread.requestInterruption();
+            eventThread.wait();
+        });
     }
 }
 namespace Oxide::Tarnish {
@@ -661,6 +663,8 @@ namespace Oxide::Tarnish {
                     case PenPress: debug.nospace() << "Press"; break;
                     case PenUpdate: debug.nospace() << "Update"; break;
                     case PenRelease: debug.nospace() << "Release"; break;
+                    case PenEnterProximity: debug.nospace() << "EnterProximity"; break;
+                    case PenLeaveProximity: debug.nospace() << "LeaveProximity"; break;
                     default: debug.nospace() << "Unknown"; break;
                 }
                 debug.nospace() << ' ';
