@@ -45,12 +45,6 @@ private:
     bool m_debug;
     QStringList m_spec;
     QMutex m_mutex;
-    bool m_tabletPenDown;
-    QTouchDevice m_touchscreen;
-    QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
-    QList<QWindowSystemInterface::TouchPoint> m_lastTouchPoints;
-    QWindowSystemInterface::TouchPoint getTouchPoint(const Oxide::Tarnish::TouchEventPoint& data);
-    void handleTouch(Oxide::Tarnish::TouchEventArgs* data);
     static void connectSignal(QObject* sender, QString signal, QObject* reciever, QString slot);
 };
 

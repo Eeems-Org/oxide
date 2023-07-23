@@ -183,7 +183,7 @@ public:
         emit wifiOnChanged(true);
         connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
         return true;
-    };
+    }
     Q_INVOKABLE void turnOffWifi(){
         wifiApi->disable();
         m_wifion = false;
@@ -191,7 +191,7 @@ public:
         disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
         networks->removeUnknown();
         wifiApi->flushBSSCache(0);
-    };
+    }
     bool wifiOn(){
         return m_wifion;
     }
