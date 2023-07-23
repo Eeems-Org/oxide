@@ -6,6 +6,6 @@
     "flags": ["nosplash"],
     "permissions": ["power"],
     "environment": {
-        "OXIDE_PRELOAD_EXPOSE_FB": "1"
+        "OXIDE_PRELOAD_NO_QAPP": "1"
     }
 }

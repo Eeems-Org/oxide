@@ -872,6 +872,7 @@ void Application::updateEnvironment(){
         // TODO - detect if spaces are the seperator instead
         // TODO - strip out rm2fb
         auto preload = environment().value("LD_PRELOAD", "").toString().split(':');
+        preload.prepend("/opt/lib/liboxide_qt_preload.so");
         preload.prepend("/opt/lib/liboxide_preload.so");
         env.insert("LD_PRELOAD", preload.join(':'));
     }
