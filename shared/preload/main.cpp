@@ -263,6 +263,7 @@ void __read_event_pipe(){
                 static std::vector<Oxide::Tarnish::TouchEventPoint> previousPoints;
                 timeval time;
                 ::gettimeofday(&time, NULL);
+                previousPoints.reserve(data.points.size());
                 switch(data.type){
                     case Oxide::Tarnish::TouchPress:
                         for(unsigned int i = 0; i < data.points.size(); i++){
@@ -273,35 +274,35 @@ void __read_event_pipe(){
                             auto pos = point.originalPoint();
                             bool existingPoint = previousPoints.size() > i;
                             writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_SLOT, i);
-                            if(existingPoint && previousPoints[i].id != point.id){
+                            if(!existingPoint || previousPoints[i].id != point.id){
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, point.id);
                             }
-                            if(existingPoint && previousPoints[i].x != point.x){
+                            if(!existingPoint || previousPoints[i].x != point.x){
                                 unsigned int x = ceil(pos.x() * deviceSettings.getTouchWidth());
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_X, x);
                             }
-                            if(existingPoint && previousPoints[i].y != point.y){
+                            if(!existingPoint || previousPoints[i].y != point.y){
                                 unsigned int y = ceil(pos.y() * deviceSettings.getTouchHeight());
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_Y, y);
                             }
-                            if(existingPoint && previousPoints[i].width != point.width){
+                            if(!existingPoint || previousPoints[i].width != point.width){
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MAJOR, point.width);
                             }
-                            if(existingPoint && previousPoints[i].height != point.height){
+                            if(!existingPoint || previousPoints[i].height != point.height){
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MINOR, point.height);
                             }
-                            if(existingPoint && previousPoints[i].pressure != point.pressure){
+                            if(!existingPoint || previousPoints[i].pressure != point.pressure){
                                 unsigned int pressure = ceil(point.pressure * deviceSettings.getTouchPressure());
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_PRESSURE, pressure);
                             }
-                            if(existingPoint && previousPoints[i].rotation != point.rotation){
+                            if(!existingPoint || previousPoints[i].rotation != point.rotation){
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_ORIENTATION, point.rotation);
                             }
                             writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
                             _DEBUG("touch press", i, point.id);
+                            previousPoints[i] = data.points[i];
                         }
                         writeInputEvent(touchFds[0], time, EV_SYN, SYN_REPORT, 0);
-                        previousPoints = data.points;
                         break;
                     case Oxide::Tarnish::TouchUpdate:
                         for(unsigned int i = 0; i < data.points.size(); i++){
@@ -312,35 +313,35 @@ void __read_event_pipe(){
                             auto pos = point.originalPoint();
                             bool existingPoint = previousPoints.size() > i;
                             writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_SLOT, i);
-                            if(existingPoint && previousPoints[i].id != point.id){
+                            if(!existingPoint || previousPoints[i].id != point.id){
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, point.id);
                             }
-                            if(existingPoint && previousPoints[i].x != point.x){
+                            if(!existingPoint || previousPoints[i].x != point.x){
                                 unsigned int x = ceil(pos.x() * deviceSettings.getTouchWidth());
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_X, x);
                             }
-                            if(existingPoint && previousPoints[i].y != point.y){
+                            if(!existingPoint || previousPoints[i].y != point.y){
                                 unsigned int y = ceil(pos.y() * deviceSettings.getTouchHeight());
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_Y, y);
                             }
-                            if(existingPoint && previousPoints[i].width != point.width){
+                            if(!existingPoint || previousPoints[i].width != point.width){
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MAJOR, point.width);
                             }
-                            if(existingPoint && previousPoints[i].height != point.height){
+                            if(!existingPoint || previousPoints[i].height != point.height){
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MINOR, point.height);
                             }
-                            if(existingPoint && previousPoints[i].pressure != point.pressure){
+                            if(!existingPoint || previousPoints[i].pressure != point.pressure){
                                 unsigned int pressure = ceil(point.pressure * deviceSettings.getTouchPressure());
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_PRESSURE, pressure);
                             }
-                            if(existingPoint && previousPoints[i].rotation != point.rotation){
+                            if(!existingPoint || previousPoints[i].rotation != point.rotation){
                                 writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_ORIENTATION, point.rotation);
                             }
                             writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
                             _DEBUG("touch update", i, point.id);
+                            previousPoints[i] = data.points[i];
                         }
                         writeInputEvent(touchFds[0], time, EV_SYN, SYN_REPORT, 0);
-                        previousPoints = data.points;
                         break;
                     case Oxide::Tarnish::TouchRelease:
                         for(unsigned int i = 0; i < data.points.size(); i++){
@@ -352,9 +353,9 @@ void __read_event_pipe(){
                             writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, -1);
                             writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
                             _DEBUG("touch release", i, point.id);
+                            previousPoints[i] = data.points[i];
                         }
                         writeInputEvent(touchFds[0], time, EV_SYN, SYN_REPORT, 0);
-                        previousPoints = data.points;
                         break;
                     case Oxide::Tarnish::TouchCancel:
                         // TODO - cancel in progress touches

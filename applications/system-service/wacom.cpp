@@ -79,6 +79,7 @@ void Wacom::report(){
     qreal x = state.x / qreal(m_maxX);
     qreal y = state.y / qreal(m_maxY);
     qreal pressure = state.pressure / qreal(m_maxPressure);
+    // TODO, how to keep negative values in this. Needs to be in degrees, vaue should already be clipped from -60 to 60 by the driver
     qreal tiltX = ((state.tiltX - m_minXTilt) / qreal(m_maxXTilt - m_minXTilt)) * 180;
     qreal tiltY = ((state.tiltY - m_minYTilt) / qreal(m_maxYTilt - m_minYTilt)) * 180;
     QRect winRect = QGuiApplication::primaryScreen()->geometry();
