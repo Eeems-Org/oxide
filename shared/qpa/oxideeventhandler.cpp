@@ -6,7 +6,7 @@
 #include <liboxide/threading.h>
 
 OxideEventHandler::OxideEventHandler(QLocalSocket* socket, OxideScreen* primaryScreen)
-: QDaemonThread(nullptr),
+: QObject(nullptr),
   m_socket{socket},
   m_primaryScreen{primaryScreen},
   m_tabletPenDown{false}
@@ -20,15 +20,10 @@ OxideEventHandler::OxideEventHandler(QLocalSocket* socket, OxideScreen* primaryS
     m_touchscreen.setMaximumTouchPoints(deviceSettings.getTouchSlots());
     QWindowSystemInterface::registerTouchDevice(&m_touchscreen);
     connect(m_socket, &QLocalSocket::readyRead, this, &OxideEventHandler::readEvents);
-    setObjectName("qpa::event");
-    Oxide::startThreadWithPriority(this, QThread::HighPriority);
-    moveToThread(this);
+    moveToThread(socket->thread());
 }
 
-OxideEventHandler::~OxideEventHandler(){
-    quit();
-    wait();
-}
+OxideEventHandler::~OxideEventHandler(){ }
 
 void OxideEventHandler::readEvents(){
     QMutexLocker locker(&m_eventMutex);

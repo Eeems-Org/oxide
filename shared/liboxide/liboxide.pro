@@ -3,6 +3,7 @@ QT += quick
 QT += dbus
 QT += core
 QT += network
+QT += core_private
 
 TEMPLATE = lib
 DEFINES += LIBOXIDE_LIBRARY

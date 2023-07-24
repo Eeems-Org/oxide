@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include <QDBusConnection>
 #include <QImage>
-#include <QThread>
+#include <QtCore/private/qthread_p.h>
 #include <QAtomicInteger>
 
 using namespace Oxide::Tarnish;
@@ -30,7 +30,7 @@ QImage::Format fbRequestedFormat = DEFAULT_IMAGE_FORMAT;
 uchar* fbData = nullptr;
 QFile fbFile;
 QMutex fbMutex;
-QThread eventThread;
+QDaemonThread eventThread;
 QLocalSocket childSocket;
 QLocalSocket eventSocket;
 QDataStream eventStream;

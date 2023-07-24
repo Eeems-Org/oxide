@@ -221,6 +221,7 @@ void __read_event_pipe(){
     if(eventPipe == nullptr){
         return;
     }
+    Q_ASSERT(QThread::currentThread() == eventPipe->thread());
     while(eventPipe->isOpen() && !eventPipe->atEnd()){
         auto event = Oxide::Tarnish::WindowEvent::fromSocket(eventPipe);
         switch(event.type){
@@ -382,24 +383,27 @@ void __read_event_pipe(){
                 }
                 static bool penDown = false;
                 static unsigned int lastPressure = 0;
+                static int lastX = 0;
+                static int lastY = 0;
                 static int lastTiltX = 0;
                 static int lastTiltY = 0;
                 auto data = event.tabletData;
                 auto size = Oxide::Tarnish::frameBufferImage().size();
                 // Convert from screen size to device size
-                unsigned int x = ceil(qreal(data.x) * deviceSettings.getWacomWidth() / size.width());
-                unsigned int y = ceil(qreal(data.y) * deviceSettings.getWacomHeight() / size.height());
-                unsigned int pressure = ceil(qreal(data.pressure) * deviceSettings.getWacomPressure());
-                _DEBUG("tablet", x, y, pressure);
                 timeval time;
                 ::gettimeofday(&time, NULL);
                 switch(data.type){
-                    case Oxide::Tarnish::PenPress:
+                    case Oxide::Tarnish::PenPress:{
                         penDown = true;
+                        unsigned int x = ceil(qreal(data.x) * deviceSettings.getWacomWidth() / size.width());
+                        unsigned int y = ceil(qreal(data.y) * deviceSettings.getWacomHeight() / size.height());
+                        unsigned int tiltX = ceil(qreal(data.tiltX) * deviceSettings.getWacomMaxXTilt() / deviceSettings.getWacomMinXTilt());
+                        unsigned int tiltY = ceil(qreal(data.tiltY) * deviceSettings.getWacomMaxYTilt() / deviceSettings.getWacomMinYTilt());
+                        unsigned int pressure = ceil(qreal(data.pressure) * deviceSettings.getWacomPressure());
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, data.tiltY);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, tiltX);
+                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, tiltY);
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
                         writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOUCH, 1);
                         switch(data.tool){
@@ -411,34 +415,56 @@ void __read_event_pipe(){
                                 writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOOL_PEN, 1);
                         }
                         writeInputEvent(tabletFds[0], time, EV_SYN, SYN_REPORT, 0);
+                        _DEBUG("tablet press", data.x, data.y, data.tiltX, data.tiltY, data.pressure);
                         break;
-                    case Oxide::Tarnish::PenUpdate:
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
+                    }
+                    case Oxide::Tarnish::PenUpdate:{
+                        if(data.x != lastX){
+                            unsigned int x = ceil(qreal(data.x) * deviceSettings.getWacomWidth() / size.width());
+                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
+                        }
+                        if(data.y != lastY){
+                            unsigned int y = ceil(qreal(data.y) * deviceSettings.getWacomHeight() / size.height());
+                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
+                        }
                         if(penDown){
                             if(data.tiltX != lastTiltX){
-                                writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
+                                unsigned int tiltX = ceil(qreal(data.tiltX) * deviceSettings.getWacomMaxXTilt() / deviceSettings.getWacomMinXTilt());
+                                writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, tiltX);
                             }
                             if(data.tiltY != lastTiltY){
-                                writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, data.tiltY);
+                                unsigned int tiltY = ceil(qreal(data.tiltY) * deviceSettings.getWacomMaxYTilt() / deviceSettings.getWacomMinYTilt());
+                                writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, tiltY);
                             }
-                            if(pressure != lastPressure){
+                            if(data.pressure != lastPressure){
+                                unsigned int pressure = ceil(qreal(data.pressure) * deviceSettings.getWacomPressure());
                                 writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
                             }
                         }
                         writeInputEvent(tabletFds[0], time, EV_SYN, SYN_REPORT, 0);
+                        _DEBUG("tablet update", data.x, data.y, data.tiltX, data.tiltY, data.pressure);
                         break;
-                    case Oxide::Tarnish::PenRelease:
+                    }
+                    case Oxide::Tarnish::PenRelease:{
                         penDown = false;
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
-                        writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
+                        if(data.x != lastX){
+                            unsigned int x = ceil(qreal(data.x) * deviceSettings.getWacomWidth() / size.width());
+                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
+                        }
+                        if(data.y != lastY){
+                            unsigned int y = ceil(qreal(data.y) * deviceSettings.getWacomHeight() / size.height());
+                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
+                        }
                         if(data.tiltX != lastTiltX){
-                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, data.tiltX);
+                            unsigned int tiltX = ceil(qreal(data.tiltX) * deviceSettings.getWacomMaxXTilt() / deviceSettings.getWacomMinXTilt());
+                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, tiltX);
                         }
                         if(data.tiltY != lastTiltY){
-                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, data.tiltY);
+                            unsigned int tiltY = ceil(qreal(data.tiltY) * deviceSettings.getWacomMaxYTilt() / deviceSettings.getWacomMinYTilt());
+                            writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, tiltY);
                         }
-                        if(pressure != lastPressure){
+                        if(data.pressure != lastPressure){
+                            unsigned int pressure = ceil(qreal(data.pressure) * deviceSettings.getWacomPressure());
                             writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
                         }
                         writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOUCH, 0);
@@ -451,12 +477,16 @@ void __read_event_pipe(){
                                 writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOOL_PEN, 0);
                         }
                         writeInputEvent(tabletFds[0], time, EV_SYN, SYN_REPORT, 0);
+                        _DEBUG("tablet release", data.x, data.y, data.tiltX, data.tiltY, data.pressure);
                         break;
+                    }
                     case Oxide::Tarnish::PenEnterProximity:
                     case Oxide::Tarnish::PenLeaveProximity:
                         break;
                 }
-                lastPressure = pressure;
+                lastPressure = data.pressure;
+                lastX = data.x;
+                lastY = data.y;
                 lastTiltX = data.tiltX;
                 lastTiltY = data.tiltY;
                 break;
@@ -757,7 +787,7 @@ void connectEventPipe(){
     if(eventPipe == nullptr){
         qFatal("Could not get event pipe");
     }
-    QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, &__read_event_pipe);
+    QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, &__read_event_pipe, Qt::DirectConnection);
     QObject::connect(eventPipe, &QLocalSocket::disconnected, []{ kill(getpid(), SIGTERM); });
     Oxide::dispatchToThread(eventPipe->thread(), [eventPipe]{
         Oxide::Tarnish::WindowEvent event;

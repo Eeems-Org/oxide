@@ -79,8 +79,8 @@ void Wacom::report(){
     qreal x = state.x / qreal(m_maxX);
     qreal y = state.y / qreal(m_maxY);
     qreal pressure = state.pressure / qreal(m_maxPressure);
-    qreal tiltX = (state.tiltX - m_minXTilt) / qreal(m_maxXTilt - m_minXTilt);
-    qreal tiltY = (state.tiltY - m_minYTilt) / qreal(m_maxYTilt - m_minYTilt);
+    qreal tiltX = ((state.tiltX - m_minXTilt) / qreal(m_maxXTilt - m_minXTilt)) * 180;
+    qreal tiltY = ((state.tiltY - m_minYTilt) / qreal(m_maxYTilt - m_minYTilt)) * 180;
     QRect winRect = QGuiApplication::primaryScreen()->geometry();
     QPointF globalPos(x * winRect.width(), y * winRect.height());
     int pointer = state.tool;
@@ -88,6 +88,7 @@ void Wacom::report(){
         globalPos = state.lastReportPos;
         pointer = state.lastReportTool;
     }
+    O_DEBUG(tiltX << tiltY);
     if(!state.lastReportTool && state.tool){
         QGuiApplication::postEvent(qApp, new QTabletEvent(
             QTabletEvent::TabletEnterProximity,

@@ -7,7 +7,7 @@
 #include <QtCore/private/qthread_p.h>
 #include <liboxide/tarnish.h>
 
-class OxideEventHandler : public QDaemonThread{
+class OxideEventHandler : public QObject{
 public:
     explicit OxideEventHandler(QLocalSocket* socket, OxideScreen* primaryScreen);
     ~OxideEventHandler();
