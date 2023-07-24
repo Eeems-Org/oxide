@@ -139,3 +139,18 @@ The primary configuration file can be found in one of the following locations:
   3. ``/home/root/.config/oxide.conf``
 
 Other configuration files can be found in ``/home/root/.config/Eeems/``.
+
+Can I disable a specific gesture?
+=================================
+
+Yes, you can disable specific gestures with the following commands:
+
+.. code:: bash
+  # Disable swipe from left edge of the screen
+  rot system call setSwipeEnabled 'int:1' 'bool:false'
+  # Disable swipe from right edge of the screen
+  rot system call setSwipeEnabled 'int:2' 'bool:false'
+  # Disable swipe from bottom of the screen
+  rot system call setSwipeEnabled 'int:3' 'bool:false'
+  # Disable swipe from top of the screen
+  rot system call setSwipeEnabled 'int:4' 'bool:false'
