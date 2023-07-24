@@ -18,32 +18,6 @@ static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-963
 
 static GUIThread m_thread;
 
-bool GuiAPI::event(QEvent* event){
-    Q_ASSERT(QThread::currentThread() == thread());
-    switch(event->type()){
-        case QEvent::KeyPress:
-        case QEvent::KeyRelease:
-            writeKeyEvent(event);
-            return true;
-        case QEvent::TabletEnterProximity:
-        case QEvent::TabletLeaveProximity:
-        case QEvent::TabletPress:
-        case QEvent::TabletMove:
-        case QEvent::TabletRelease:
-        case QEvent::TabletTrackingChange:
-            writeTabletEvent(event);
-            return true;
-        case QEvent::TouchBegin:
-        case QEvent::TouchCancel:
-        case QEvent::TouchEnd:
-        case QEvent::TouchUpdate:
-            writeTouchEvent(event);
-            return true;
-        default:
-            return QObject::event(event);
-    }
-}
-
 GuiAPI* GuiAPI::__singleton(GuiAPI* self){
     static GuiAPI* instance;
     if(self != nullptr){
@@ -328,12 +302,15 @@ void GuiAPI::writeTouchEvent(QEvent* event){
     W_DEBUG(event);
     auto windows = sortedVisibleWindows();
     if(windows.isEmpty()){
+        W_DEBUG("No visible windows");
         return;
     }
     auto window = windows.last();
     if(window->isAppPaused()){
+        W_DEBUG("Application paused for window with focus");
         return;
     }
+    W_DEBUG("Window with focus" << window->identifier() << window->name());
     TouchEventArgs args;
     switch(event->type()){
         case QEvent::TouchBegin:
@@ -372,7 +349,7 @@ void GuiAPI::writeTouchEvent(QEvent* event){
             case Qt::TouchPointStationary:
                 break;
         }
-        auto pos = point.normalizedPos();
+        auto pos = point.screenPos();
         args.points.push_back(TouchEventPoint{
             .id = point.id(),
             .state = state,
@@ -384,7 +361,7 @@ void GuiAPI::writeTouchEvent(QEvent* event){
             .pressure = point.pressure(),
             .rotation = point.rotation(),
         });
-        W_DEBUG(point.normalizedPos() << point.ellipseDiameters());
+        W_DEBUG(point.screenPos() << point.normalizedPos() << geometry);
     }
     if(valid){
         window->writeEvent(args);
@@ -399,12 +376,15 @@ void GuiAPI::writeTabletEvent(QEvent* event){
     W_DEBUG(event);
     auto windows = sortedVisibleWindows();
     if(windows.isEmpty()){
+        W_DEBUG("No visible windows");
         return;
     }
     auto window = windows.last();
     if(window->isAppPaused()){
+        W_DEBUG("Application paused for window with focus");
         return;
     }
+    W_DEBUG("Window with focus" << window->identifier() << window->name());
     auto tabletEvent = static_cast<QTabletEvent*>(event);
     auto pos = tabletEvent->globalPos();
     auto geometry = window->_geometry();
@@ -447,13 +427,11 @@ void GuiAPI::writeTabletEvent(QEvent* event){
             return;
     }
     // Translate position to position on window
-    pos.setX(pos.x() + geometry.topLeft().x());
-    pos.setX(pos.y() + geometry.topLeft().y());
     TabletEventArgs args{
         .type = type,
         .tool = tool,
-        .x = pos.x(),
-        .y = pos.y(),
+        .x = pos.x() - geometry.x(),
+        .y = pos.y() - geometry.y(),
         .pressure = (unsigned int)tabletEvent->pressure(),
         .tiltX = tabletEvent->xTilt(),
         .tiltY = tabletEvent->yTilt(),
@@ -465,12 +443,15 @@ void GuiAPI::writeKeyEvent(QEvent* event){
     W_DEBUG(event);
     auto windows = sortedVisibleWindows();
     if(windows.isEmpty()){
+        W_DEBUG("No visible windows");
         return;
     }
     auto window = windows.last();
     if(window->isAppPaused()){
+        W_DEBUG("Application paused for window with focus");
         return;
     }
+    W_DEBUG("Window with focus" << window->identifier() << window->name());
     auto keyEvent = static_cast<QKeyEvent*>(event);
     auto text = keyEvent->text().left(0);
     KeyEventArgs args{

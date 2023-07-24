@@ -254,9 +254,7 @@ SystemAPI::SystemAPI(QObject* parent)
         Oxide::Sentry::sentry_span(t, "input", "Connect input events", [this]{
             connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
             eventListener->append([this](QObject* object, QEvent* event){
-                if(object == (QObject*)guiAPI){
-                    return false;
-                }
+                Q_UNUSED(object);
                 switch(event->type()){
                     case QEvent::KeyPress:{
                         activity();
@@ -269,7 +267,7 @@ SystemAPI::SystemAPI(QObject* parent)
                             case Qt::Key_Home:
                                 break;
                             default:
-                                QCoreApplication::postEvent(guiAPI, new QKeyEvent(QEvent::KeyPress, key, keyEvent->modifiers(), keyEvent->text()));
+                                guiAPI->writeKeyEvent(keyEvent);
                                 return true;
                         }
                         if(!m_pressStates.contains(key)){
@@ -300,7 +298,7 @@ SystemAPI::SystemAPI(QObject* parent)
                             case Qt::Key_Home:
                                 break;
                             default:
-                                QCoreApplication::postEvent(guiAPI, new QKeyEvent(QEvent::KeyRelease, key, keyEvent->modifiers(), keyEvent->text()));
+                                guiAPI->writeKeyEvent(keyEvent);
                                 return false;
                         }
                         if(!m_pressStates.contains(key)){
@@ -315,8 +313,9 @@ SystemAPI::SystemAPI(QObject* parent)
                             return true;
                         }
                         m_pressStates[key]->stop();
-                        QCoreApplication::postEvent(guiAPI, new QKeyEvent(QEvent::KeyPress, key, keyEvent->modifiers(), keyEvent->text()));
-                        QCoreApplication::postEvent(guiAPI, new QKeyEvent(QEvent::KeyRelease, key, keyEvent->modifiers(), keyEvent->text()));
+                        QKeyEvent pressEvent(QEvent::KeyPress, key, keyEvent->modifiers(), keyEvent->text());
+                        guiAPI->writeKeyEvent(&pressEvent);
+                        guiAPI->writeKeyEvent(keyEvent);
                         return true;
                     }
                     case QEvent::TabletPress:
@@ -332,23 +331,7 @@ SystemAPI::SystemAPI(QObject* parent)
                             penActive = false;
                         }
                         auto tabletEvent = static_cast<QTabletEvent*>(event);
-                        QCoreApplication::postEvent(guiAPI, new QTabletEvent(
-                            event->type(),
-                            tabletEvent->posF(),
-                            tabletEvent->globalPosF(),
-                            tabletEvent->deviceType(),
-                            tabletEvent->pointerType(),
-                            tabletEvent->pressure(),
-                            tabletEvent->xTilt(),
-                            tabletEvent->yTilt(),
-                            tabletEvent->tangentialPressure(),
-                            tabletEvent->rotation(),
-                            tabletEvent->z(),
-                            tabletEvent->modifiers(),
-                            tabletEvent->uniqueId(),
-                            tabletEvent->button(),
-                            tabletEvent->buttons()
-                        ));
+                        guiAPI->writeTabletEvent(tabletEvent);
                         return true;
                     }
                     case QEvent::TouchBegin:
@@ -357,13 +340,7 @@ SystemAPI::SystemAPI(QObject* parent)
                     case QEvent::TouchUpdate:{
                         activity();
                         auto touchEvent = static_cast<QTouchEvent*>(event);
-                        QCoreApplication::postEvent(guiAPI, new QTouchEvent(
-                            event->type(),
-                            touchEvent->device(),
-                            touchEvent->modifiers(),
-                            touchEvent->touchPointStates(),
-                            touchEvent->touchPoints()
-                        ));
+                        guiAPI->writeTouchEvent(touchEvent);
                         return true;
                     }
                     default:

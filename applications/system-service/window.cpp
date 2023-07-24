@@ -174,7 +174,7 @@ bool Window::isAppPaused(){
     for(auto name : appsAPI->pausedApplications().keys()){
         auto app = appsAPI->getApplication(name);
         if(app->processId() == this->pgid()){
-            return true;
+            return app->state() == Application::Paused;
         }
     }
     return false;
