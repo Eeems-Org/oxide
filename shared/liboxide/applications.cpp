@@ -22,7 +22,10 @@ const QList<QString> Flags {
     "nosavescreen",
     "system",
     "nolog",
-    "nopreload"
+    "nopreload",
+    "preload.qt",
+    "preload.expose.fb",
+    "preload.expose.input"
 };
 
 namespace Oxide::Applications{
@@ -246,6 +249,25 @@ namespace Oxide::Applications{
         isIcon("icon", ErrorLevel::Warning, false);
         if(isIcon("splash", ErrorLevel::Warning, false) && flags.contains("nosplash")){
             addError(ErrorLevel::Hint, "Key \"splash\" provided while \"flags\" contains \"nosplash\" value");
+        } else shouldExit
+        if(flags.contains("nopreload")){
+            if(flags.contains("preload.expose.fb")){
+                addError(ErrorLevel::Warning, "Key \"flags\" contains \"nopreload\" and \"preload.expose.fb\" at the same time");
+            }
+            if(flags.contains("preload.expose.input")){
+                addError(ErrorLevel::Warning, "Key \"flags\" contains \"nopreload\" and \"preload.expose.input\" at the same time");
+            }
+            if(flags.contains("nopreload")){
+                addError(ErrorLevel::Warning, "Key \"flags\" contains \"nopreload\" and \"preload.qt\" at the same time");
+            }
+        } else shouldExit
+        if(flags.contains("preload.qt")){
+            if(flags.contains("preload.expose.fb")){
+                addError(ErrorLevel::Warning, "Key \"flags\" contains \"preload.qt\" and \"preload.expose.fb\" at the same time");
+            }
+            if(flags.contains("preload.expose.input")){
+                addError(ErrorLevel::Warning, "Key \"flags\" contains \"preload.qt\" and \"preload.expose.input\" at the same time");
+            }
         } else shouldExit
         if(registrationToMap(app, name).isEmpty()){
             addError(ErrorLevel::Critical, "Unable to convert registration to QVariantMap");

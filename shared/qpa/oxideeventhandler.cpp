@@ -31,6 +31,8 @@ OxideEventHandler::~OxideEventHandler(){
 }
 
 void OxideEventHandler::readEvents(){
+    QMutexLocker locker(&m_eventMutex);
+    Q_UNUSED(locker);
     while(!m_socket->atEnd()){
         auto event = Oxide::Tarnish::WindowEvent::fromSocket(m_socket);
         switch(event.type){

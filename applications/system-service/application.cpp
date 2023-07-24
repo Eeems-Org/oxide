@@ -869,10 +869,19 @@ void Application::updateEnvironment(){
         env.insert(key, environment().value(key, "").toString());
     }
     if(!flags().contains("nopreload")){
+        if(flags().contains("preload.expose.fb")){
+            env.insert("OXIDE_PRELOAD_EXPOSE_FB", "1");
+        }
+        if(flags().contains("preload.expose.input")){
+            env.insert("OXIDE_PRELOAD_EXPOSE_INPUT", "1");
+        }
         // TODO - detect if spaces are the seperator instead
         // TODO - strip out rm2fb
         auto preload = environment().value("LD_PRELOAD", "").toString().split(':');
-        preload.prepend("/opt/lib/liboxide_qt_preload.so");
+        if(flags().contains("preload.qt")){
+            env.insert("OXIDE_PRELOAD_NO_QAPP", "1");
+            preload.prepend("/opt/lib/liboxide_qt_preload.so");
+        }
         preload.prepend("/opt/lib/liboxide_preload.so");
         env.insert("LD_PRELOAD", preload.join(':'));
     }

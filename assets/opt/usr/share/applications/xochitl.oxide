@@ -3,9 +3,6 @@
     "description": "Read documents and take notes",
     "bin": "/usr/bin/xochitl",
     "icon": "oxide:xochitl-48",
-    "flags": ["nosplash"],
-    "permissions": ["power"],
-    "environment": {
-        "OXIDE_PRELOAD_NO_QAPP": "1"
-    }
+    "flags": ["nosplash", "preload.qt"],
+    "permissions": ["power"]
 }

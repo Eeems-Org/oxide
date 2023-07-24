@@ -42,6 +42,7 @@ static bool IS_XOCHITL = false;
 static bool IS_FBDEPTH = false;
 static bool IS_LOADABLE_APP = false;
 static bool DO_HANDLE_FB = true;
+static bool DO_HANDLE_INPUT = true;
 static bool PIPE_OPENED = false;
 static int fbFd = -1;
 static int touchFds[2] = {-1, -1};
@@ -53,6 +54,7 @@ static int(*func_ioctl)(int, unsigned long, ...);
 static QMutex logMutex;
 static unsigned int completedMarker;
 static QMutex completedMarkerMutex;
+static QMutex eventPipeMutex;
 
 // Use this instead of Oxide::getAppName to avoid recursion when logging in open()
 QString appName(){
@@ -213,6 +215,8 @@ void writeInputEvent(int fd, timeval time, short unsigned int type, short unsign
 }
 
 void __read_event_pipe(){
+    QMutexLocker locker(&eventPipeMutex);
+    Q_UNUSED(locker);
     auto eventPipe = Oxide::Tarnish::getEventPipe();
     if(eventPipe == nullptr){
         return;
@@ -240,7 +244,7 @@ void __read_event_pipe(){
                 });
                 break;
             case Oxide::Tarnish::Key:{
-                if(keyFds[0] == -1){
+                if(!DO_HANDLE_INPUT || keyFds[0] == -1){
                     break;
                 }
                 auto data = event.keyData;
@@ -251,10 +255,11 @@ void __read_event_pipe(){
                 break;
             }
             case Oxide::Tarnish::Touch:{
-                if(touchFds[0] == -1){
+                if(!DO_HANDLE_INPUT || touchFds[0] == -1){
                     break;
                 }
                 auto data = event.touchData;
+                static std::vector<Oxide::Tarnish::TouchEventPoint> previousPoints;
                 timeval time;
                 ::gettimeofday(&time, NULL);
                 switch(data.type){
@@ -265,20 +270,37 @@ void __read_event_pipe(){
                                 continue;
                             }
                             auto pos = point.originalPoint();
-                            unsigned int x = ceil(pos.x() * deviceSettings.getTouchWidth());
-                            unsigned int y = ceil(pos.y() * deviceSettings.getTouchHeight());
-                            unsigned int pressure = ceil(point.pressure * deviceSettings.getTouchPressure());
+                            bool existingPoint = previousPoints.size() > i;
                             writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_SLOT, i);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, point.id);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_X, x);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_Y, y);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MAJOR, point.width);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MINOR, point.height);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_PRESSURE, pressure);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_ORIENTATION, point.rotation);
+                            if(existingPoint && previousPoints[i].id != point.id){
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, point.id);
+                            }
+                            if(existingPoint && previousPoints[i].x != point.x){
+                                unsigned int x = ceil(pos.x() * deviceSettings.getTouchWidth());
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_X, x);
+                            }
+                            if(existingPoint && previousPoints[i].y != point.y){
+                                unsigned int y = ceil(pos.y() * deviceSettings.getTouchHeight());
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_Y, y);
+                            }
+                            if(existingPoint && previousPoints[i].width != point.width){
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MAJOR, point.width);
+                            }
+                            if(existingPoint && previousPoints[i].height != point.height){
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MINOR, point.height);
+                            }
+                            if(existingPoint && previousPoints[i].pressure != point.pressure){
+                                unsigned int pressure = ceil(point.pressure * deviceSettings.getTouchPressure());
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_PRESSURE, pressure);
+                            }
+                            if(existingPoint && previousPoints[i].rotation != point.rotation){
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_ORIENTATION, point.rotation);
+                            }
                             writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
-                            _DEBUG("touch", i, point.id, x, y, pressure);
+                            _DEBUG("touch press", i, point.id);
                         }
+                        writeInputEvent(touchFds[0], time, EV_SYN, SYN_REPORT, 0);
+                        previousPoints = data.points;
                         break;
                     case Oxide::Tarnish::TouchUpdate:
                         for(unsigned int i = 0; i < data.points.size(); i++){
@@ -287,20 +309,37 @@ void __read_event_pipe(){
                                 continue;
                             }
                             auto pos = point.originalPoint();
-                            unsigned int x = ceil(pos.x() * deviceSettings.getTouchWidth());
-                            unsigned int y = ceil(pos.y() * deviceSettings.getTouchHeight());
-                            unsigned int pressure = ceil(point.pressure * deviceSettings.getTouchPressure());
+                            bool existingPoint = previousPoints.size() > i;
                             writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_SLOT, i);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, point.id);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_X, x);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_Y, y);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MAJOR, point.width);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MINOR, point.height);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_PRESSURE, pressure);
-                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_ORIENTATION, point.rotation);
+                            if(existingPoint && previousPoints[i].id != point.id){
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, point.id);
+                            }
+                            if(existingPoint && previousPoints[i].x != point.x){
+                                unsigned int x = ceil(pos.x() * deviceSettings.getTouchWidth());
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_X, x);
+                            }
+                            if(existingPoint && previousPoints[i].y != point.y){
+                                unsigned int y = ceil(pos.y() * deviceSettings.getTouchHeight());
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_Y, y);
+                            }
+                            if(existingPoint && previousPoints[i].width != point.width){
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MAJOR, point.width);
+                            }
+                            if(existingPoint && previousPoints[i].height != point.height){
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TOUCH_MINOR, point.height);
+                            }
+                            if(existingPoint && previousPoints[i].pressure != point.pressure){
+                                unsigned int pressure = ceil(point.pressure * deviceSettings.getTouchPressure());
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_PRESSURE, pressure);
+                            }
+                            if(existingPoint && previousPoints[i].rotation != point.rotation){
+                                writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_ORIENTATION, point.rotation);
+                            }
                             writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
-                            _DEBUG("touch", i, point.id, x, y, pressure);
+                            _DEBUG("touch update", i, point.id);
                         }
+                        writeInputEvent(touchFds[0], time, EV_SYN, SYN_REPORT, 0);
+                        previousPoints = data.points;
                         break;
                     case Oxide::Tarnish::TouchRelease:
                         for(unsigned int i = 0; i < data.points.size(); i++){
@@ -311,19 +350,34 @@ void __read_event_pipe(){
                             writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_SLOT, i);
                             writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, -1);
                             writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
-                            _DEBUG("touch", i, point.id, "release");
+                            _DEBUG("touch release", i, point.id);
                         }
+                        writeInputEvent(touchFds[0], time, EV_SYN, SYN_REPORT, 0);
+                        previousPoints = data.points;
                         break;
                     case Oxide::Tarnish::TouchCancel:
                         // TODO - cancel in progress touches
+                        for(unsigned int i = 0; i < data.points.size(); i++){
+                            auto point = data.points[i];
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_SLOT, i);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, point.id);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_X, -1);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_POSITION_Y, -1);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_PRESSURE, 0);
+                            writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_SLOT, i);
+                            writeInputEvent(touchFds[0], time, EV_ABS, ABS_MT_TRACKING_ID, -1);
+                            writeInputEvent(touchFds[0], time, EV_SYN, SYN_MT_REPORT, 0);
+                            _DEBUG("touch cancel", i, point.id);
+                        }
+                        writeInputEvent(touchFds[0], time, EV_SYN, SYN_REPORT, 0);
+                        previousPoints.clear();
                         break;
                 }
-                writeInputEvent(touchFds[0], time, EV_SYN, SYN_REPORT, 0);
-                // TODO write to touchFds[0] socket
                 break;
             }
             case Oxide::Tarnish::Tablet:{
-                if(tabletFds[0] == -1){
+                if(!DO_HANDLE_INPUT || tabletFds[0] == -1){
                     break;
                 }
                 static bool penDown = false;
@@ -719,34 +773,37 @@ int open_from_tarnish(const char* pathname){
     }
     IS_OPENING = true;
     int res = -2;
-    if(strcmp(pathname, deviceSettings.getTouchDevicePath()) == 0){
-        if(touchFds[1] == -1){
-            _DEBUG("Opening touch device socket");
-            // TODO - handle events written to touchFds[1] by program
-            res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, touchFds);
+    if(DO_HANDLE_INPUT){
+        if(strcmp(pathname, deviceSettings.getTouchDevicePath()) == 0){
+            if(touchFds[1] == -1){
+                _DEBUG("Opening touch device socket");
+                // TODO - handle events written to touchFds[1] by program
+                res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, touchFds);
+            }
+            if(res != -1 && touchFds[1] != -1){
+                res = touchFds[1];
+            }
+        }else if(strcmp(pathname, deviceSettings.getWacomDevicePath()) == 0){
+            if(tabletFds[1] == -1){
+                _DEBUG("Opening tablet device socket");
+                // TODO - handle events written to touchFds[1] by program
+                res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, tabletFds);
+            }
+            if(res != -1 && tabletFds[1] != -1){
+                res = tabletFds[1];
+            }
+        }else if(strcmp(pathname, deviceSettings.getButtonsDevicePath()) == 0){
+            if(keyFds[1] == -1){
+                _DEBUG("Opening buttons device socket");
+                // TODO - handle events written to touchFds[1] by program
+                res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, keyFds);
+            }
+            if(res != -1 && keyFds[1] != -1){
+                res = keyFds[1];
+            }
         }
-        if(res != -1 && touchFds[1] != -1){
-            res = touchFds[1];
-        }
-    }else if(strcmp(pathname, deviceSettings.getWacomDevicePath()) == 0){
-        if(tabletFds[1] == -1){
-            _DEBUG("Opening tablet device socket");
-            // TODO - handle events written to touchFds[1] by program
-            res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, tabletFds);
-        }
-        if(res != -1 && tabletFds[1] != -1){
-            res = tabletFds[1];
-        }
-    }else if(strcmp(pathname, deviceSettings.getButtonsDevicePath()) == 0){
-        if(keyFds[1] == -1){
-            _DEBUG("Opening buttons device socket");
-            // TODO - handle events written to touchFds[1] by program
-            res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, keyFds);
-        }
-        if(res != -1 && keyFds[1] != -1){
-            res = keyFds[1];
-        }
-    }else if(DO_HANDLE_FB && strcmp(pathname, "/dev/fb0") == 0){
+    }
+    if(DO_HANDLE_FB && strcmp(pathname, "/dev/fb0") == 0){
         res = fbFd = Oxide::Tarnish::getFrameBufferFd();
     }
     if(!PIPE_OPENED && res != -2){
@@ -822,21 +879,23 @@ extern "C" {
     int close(int fd){
         if(IS_INITIALIZED){
             _DEBUG("close", fd);
-            if(DO_HANDLE_FB&& fbFd != -1 && fd == fbFd){
+            if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
                 // Maybe actually close it?
                 return 0;
             }
-            if(touchFds[1] != -1 && fd == touchFds[1]){
-                // Maybe actually close it?
-                return 0;
-            }
-            if(tabletFds[1] != -1 && fd == tabletFds[1]){
-                // Maybe actually close it?
-                return 0;
-            }
-            if(keyFds[1] != -1 && fd == keyFds[1]){
-                // Maybe actually close it?
-                return 0;
+            if(DO_HANDLE_INPUT){
+                if(touchFds[1] != -1 && fd == touchFds[1]){
+                    // Maybe actually close it?
+                    return 0;
+                }
+                if(tabletFds[1] != -1 && fd == tabletFds[1]){
+                    // Maybe actually close it?
+                    return 0;
+                }
+                if(keyFds[1] != -1 && fd == keyFds[1]){
+                    // Maybe actually close it?
+                    return 0;
+                }
             }
         }
         static const auto func_close = (int(*)(int))dlsym(RTLD_NEXT, "close");
@@ -849,14 +908,16 @@ extern "C" {
             if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
                 return fb_ioctl(request, ptr);
             }
-            if(touchFds[1] != -1 && fd == touchFds[1]){
-                return touch_ioctl(request, ptr);
-            }
-            if(tabletFds[1] != -1 && fd == tabletFds[1]){
-                return tablet_ioctl(request, ptr);
-            }
-            if(keyFds[1] != -1 && fd == keyFds[1]){
-                return key_ioctl(request, ptr);
+            if(DO_HANDLE_INPUT){
+                if(touchFds[1] != -1 && fd == touchFds[1]){
+                    return touch_ioctl(request, ptr);
+                }
+                if(tabletFds[1] != -1 && fd == tabletFds[1]){
+                    return tablet_ioctl(request, ptr);
+                }
+                if(keyFds[1] != -1 && fd == keyFds[1]){
+                    return key_ioctl(request, ptr);
+                }
             }
         }
         return func_ioctl(fd, request, ptr);
@@ -875,17 +936,19 @@ extern "C" {
                 Oxide::Tarnish::unlockFrameBuffer();
                 return res;
             }
-            if(touchFds[1] != -1 && fd == touchFds[1]){
-                errno = EBADF;
-                return -1;
-            }
-            if(tabletFds[1] != -1 && fd == tabletFds[1]){
-                errno = EBADF;
-                return -1;
-            }
-            if(keyFds[1] != -1 && fd == keyFds[1]){
-                errno = EBADF;
-                return -1;
+            if(DO_HANDLE_INPUT){
+                if(touchFds[1] != -1 && fd == touchFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(tabletFds[1] != -1 && fd == tabletFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(keyFds[1] != -1 && fd == keyFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
             }
         }
         return func_write(fd, buf, n);
@@ -903,6 +966,7 @@ extern "C" {
     static void _libhook_init(){
         DEBUG_LOGGING = qEnvironmentVariableIsSet("OXIDE_PRELOAD_DEBUG");
         DO_HANDLE_FB = !qEnvironmentVariableIsSet("OXIDE_PRELOAD_EXPOSE_FB");
+        DO_HANDLE_INPUT = !qEnvironmentVariableIsSet("OXIDE_PRELOAD_EXPOSE_INPUT");
         QString path = QFileInfo("/proc/self/exe").canonicalFilePath();
         IS_XOCHITL = path == "/usr/bin/xochitl";
         IS_FBDEPTH = path.endsWith("fbdepth");

@@ -17,6 +17,7 @@ private:
     OxideScreen* m_primaryScreen;
     bool m_tabletPenDown;
     QTouchDevice m_touchscreen;
+    QMutex m_eventMutex;
     QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
     QList<QWindowSystemInterface::TouchPoint> m_lastTouchPoints;
 
