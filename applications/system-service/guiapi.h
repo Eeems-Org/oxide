@@ -40,6 +40,7 @@ public:
     Q_INVOKABLE void repaint();
     bool isThisPgId(pid_t valid_pgid);
     QList<Window*> sortedWindows();
+    QList<Window*> sortedVisibleWindows();
     void sortWindows();
     void closeWindows(pid_t pgid);
     void lowerWindows(pid_t pgid);

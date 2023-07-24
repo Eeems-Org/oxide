@@ -4,6 +4,7 @@
 #include "dbusservice.h"
 #include "eventlistener.h"
 
+#include <QScreen>
 #include <experimental/random>
 
 #define W_WARNING(msg) O_WARNING(msg << getSenderPgid())
@@ -225,6 +226,17 @@ QList<Window*> GuiAPI::sortedWindows(){
     std::sort(sortedWindows.begin(), sortedWindows.end());
     return sortedWindows;
 }
+QList<Window*> GuiAPI::sortedVisibleWindows(){
+    auto windows = sortedWindows();
+    QMutableListIterator<Window*> i(windows);
+    while(i.hasNext()){
+        auto window = i.next();
+        if(window->systemWindow() || !window->_isVisible()){
+            i.remove();
+        }
+    }
+    return windows;
+}
 
 void GuiAPI::sortWindows(){
     auto windows = sortedWindows();
@@ -314,6 +326,14 @@ GUIThread* GuiAPI::guiThread(){ return &m_thread; }
 
 void GuiAPI::writeTouchEvent(QEvent* event){
     W_DEBUG(event);
+    auto windows = sortedVisibleWindows();
+    if(windows.isEmpty()){
+        return;
+    }
+    auto window = windows.last();
+    if(window->isAppPaused()){
+        return;
+    }
     TouchEventArgs args;
     switch(event->type()){
         case QEvent::TouchBegin:
@@ -331,8 +351,13 @@ void GuiAPI::writeTouchEvent(QEvent* event){
         default:
             return;
     }
+    bool valid = false;
+    auto geometry = window->_geometry();
     auto touchEvent = static_cast<QTouchEvent*>(event);
     for(auto point : touchEvent->touchPoints()){
+        if(geometry.contains(point.screenPos().toPoint())){
+            valid = true;
+        }
         TouchEventPointState state = TouchEventPointState::PointStationary;
         switch(point.state()){
             case Qt::TouchPointPressed:
@@ -347,11 +372,12 @@ void GuiAPI::writeTouchEvent(QEvent* event){
             case Qt::TouchPointStationary:
                 break;
         }
+        auto pos = point.normalizedPos();
         args.points.push_back(TouchEventPoint{
             .id = point.id(),
             .state = state,
-            .x = point.normalizedPos().x(),
-            .y = point.normalizedPos().y(),
+            .x = (pos.x() - geometry.x()) / qreal(geometry.width()),
+            .y = (pos.y() - geometry.y()) / qreal(geometry.height()),
             .width = point.ellipseDiameters().width(),
             .height = point.ellipseDiameters().height(),
             .tool = TouchEventTool::Finger,
@@ -360,19 +386,33 @@ void GuiAPI::writeTouchEvent(QEvent* event){
         });
         W_DEBUG(point.normalizedPos() << point.ellipseDiameters());
     }
-    QMutexLocker locker(&m_windowMutex);
-    Q_UNUSED(locker)
-    for(auto window : m_windows){
-        if(!window->_isVisible() || window->isAppPaused()){
-            continue;
-        }
-        // TODO - adjust position and filter if it doesn't apply
+    if(valid){
         window->writeEvent(args);
+    }else{
+        args.type = TouchEventType::TouchCancel;
+        window->writeEvent(args);
+        // TODO - change window that has focus
     }
 }
 
 void GuiAPI::writeTabletEvent(QEvent* event){
     W_DEBUG(event);
+    auto windows = sortedVisibleWindows();
+    if(windows.isEmpty()){
+        return;
+    }
+    auto window = windows.last();
+    if(window->isAppPaused()){
+        return;
+    }
+    auto tabletEvent = static_cast<QTabletEvent*>(event);
+    auto pos = tabletEvent->globalPos();
+    auto geometry = window->_geometry();
+    if(!geometry.contains(pos)){
+        // TODO - cancel tablet events
+        // TODO - change window that has focus
+        return;
+    }
     TabletEventType type;
     switch(event->type()){
         case QEvent::TabletPress:
@@ -394,7 +434,6 @@ void GuiAPI::writeTabletEvent(QEvent* event){
             return;
     }
     TabletEventTool tool = TabletEventTool::Pen;
-    auto tabletEvent = static_cast<QTabletEvent*>(event);
     switch(tabletEvent->pointerType()){
         case QTabletEvent::Pen:
             tool = TabletEventTool::Pen;
@@ -407,28 +446,31 @@ void GuiAPI::writeTabletEvent(QEvent* event){
             // TODO - implement these in the protocol
             return;
     }
+    // Translate position to position on window
+    pos.setX(pos.x() + geometry.topLeft().x());
+    pos.setX(pos.y() + geometry.topLeft().y());
     TabletEventArgs args{
         .type = type,
         .tool = tool,
-        .x = tabletEvent->globalX(),
-        .y = tabletEvent->globalY(),
+        .x = pos.x(),
+        .y = pos.y(),
         .pressure = (unsigned int)tabletEvent->pressure(),
         .tiltX = tabletEvent->xTilt(),
         .tiltY = tabletEvent->yTilt(),
     };
-    QMutexLocker locker(&m_windowMutex);
-    Q_UNUSED(locker)
-    for(auto window : m_windows){
-        if(!window->_isVisible() || window->isAppPaused()){
-            continue;
-        }
-        // TODO - adjust position and filter if it doesn't apply
-        window->writeEvent(args);
-    }
+    window->writeEvent(args);
 }
 
 void GuiAPI::writeKeyEvent(QEvent* event){
     W_DEBUG(event);
+    auto windows = sortedVisibleWindows();
+    if(windows.isEmpty()){
+        return;
+    }
+    auto window = windows.last();
+    if(window->isAppPaused()){
+        return;
+    }
     auto keyEvent = static_cast<QKeyEvent*>(event);
     auto text = keyEvent->text().left(0);
     KeyEventArgs args{
@@ -443,13 +485,7 @@ void GuiAPI::writeKeyEvent(QEvent* event){
         .unicode = (unsigned int)(text.length() ? text.at(0).unicode() : 0),
         .scanCode = (unsigned int)keyEvent->nativeScanCode(),
     };
-    QMutexLocker locker(&m_windowMutex);
-    Q_UNUSED(locker)
-    for(auto window : m_windows){
-        if(window->_isVisible() && !window->isAppPaused()){
-            window->writeEvent(args);
-        }
-    }
+    window->writeEvent(args);
 }
 
 bool GuiAPI::hasPermission(){
