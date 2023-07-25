@@ -6,6 +6,7 @@
  */
 #pragma once
 #include <QTimer>
+#include <QThread>
 
 namespace Oxide {
     /*!

@@ -20,7 +20,8 @@ SUBDIRS = \
     xdg-desktop-menu \
     xdg-icon-resource \
     xdg-open \
-    xdg-settings
+    xdg-settings \
+    fbinfo
 
 launcher.depends = system-service update-desktop-database
 lockscreen.depends = system-service
@@ -41,5 +42,6 @@ xdg-icon-resource.depends = system-service
 desktop-file-edit.depends =
 desktop-file-install.depends =
 inject_evdev.depends =
+fbinfo.depends = 
 
 INSTALLS += $$SUBDIRS
