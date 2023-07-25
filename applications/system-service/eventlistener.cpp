@@ -6,7 +6,7 @@ EventListener* EventListener::instance(){
     static EventListener* instance = nullptr;
     if(instance == nullptr){
         instance = new EventListener();
-        qApp->installEventFilter((QObject*)instance);
+        qApp->installEventFilter(static_cast<QObject*>(instance));
     }
     return instance;
 }
