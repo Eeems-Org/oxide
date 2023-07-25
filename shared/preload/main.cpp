@@ -90,7 +90,7 @@ QString appName(){
 }
 
 template<class... Args>
-void __printf(char const* file, int line, char const* func, int priority, Args... args){
+void __printf(char const* file, unsigned int line, char const* func, int priority, Args... args){
     if(!DEBUG_LOGGING){
         return;
     }
