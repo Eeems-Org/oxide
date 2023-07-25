@@ -34,7 +34,6 @@ SOURCES += \
     threading.cpp
 
 HEADERS += \
-    ../epaper/epframebuffer.h \
     applications.h \
     dbus.h \
     debug.h \
@@ -81,8 +80,7 @@ liboxide_liboxide_h.target = include/liboxide/liboxide.h
 liboxide_liboxide_h.commands = \
     mkdir -p include/liboxide && \
     echo $$HEADERS | xargs -rn1 | xargs -rI {} cp $$PWD/{} include/liboxide/ && \
-    echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename \"{}\" .xml | xargs -rI {} cp $$OUT_PWD/\"{}\"_interface.h include/liboxide/ && \
-    mv $$OUT_PWD/include/liboxide/epframebuffer.h $$OUT_PWD/include/
+    echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename \"{}\" .xml | xargs -rI {} cp $$OUT_PWD/\"{}\"_interface.h include/liboxide/
 
 liboxide_h.target = include/liboxide.h
 liboxide_h.depends += liboxide_liboxide_h
