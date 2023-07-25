@@ -497,9 +497,13 @@ void __read_event_pipe(){
                 lastTiltY = data.tiltY;
                 break;
             }
-            case Oxide::Tarnish::Invalid:
             case Oxide::Tarnish::Raise:
+                IS_RAISED = true;
+                break;
             case Oxide::Tarnish::Lower:
+                IS_RAISED = false;
+                break;
+            case Oxide::Tarnish::Invalid:
             case Oxide::Tarnish::Repaint:
             // TODO - sort out how to manage changes to the framebuffer
             //        being reflected in the app
@@ -540,7 +544,6 @@ int fb_ioctl(unsigned long request, char* ptr){
             }
             Oxide::runLater(eventPipe->thread(), [eventPipe, rect, update]{
                 if(!IS_RAISED){
-                    IS_RAISED = true;
                     Oxide::Tarnish::WindowEvent event;
                     event.type = Oxide::Tarnish::Raise;
                     event.toSocket(eventPipe);

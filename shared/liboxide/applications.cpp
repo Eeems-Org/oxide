@@ -257,7 +257,7 @@ namespace Oxide::Applications{
             if(flags.contains("preload.expose.input")){
                 addError(ErrorLevel::Warning, "Key \"flags\" contains \"nopreload\" and \"preload.expose.input\" at the same time");
             }
-            if(flags.contains("nopreload")){
+            if(flags.contains("preload.qt")){
                 addError(ErrorLevel::Warning, "Key \"flags\" contains \"nopreload\" and \"preload.qt\" at the same time");
             }
         } else shouldExit
