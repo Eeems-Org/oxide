@@ -540,6 +540,7 @@ int fb_ioctl(unsigned long request, char* ptr){
             }
             Oxide::runLater(eventPipe->thread(), [eventPipe, rect, update]{
                 if(!IS_RAISED){
+                    IS_RAISED = true;
                     Oxide::Tarnish::WindowEvent event;
                     event.type = Oxide::Tarnish::Raise;
                     event.toSocket(eventPipe);
