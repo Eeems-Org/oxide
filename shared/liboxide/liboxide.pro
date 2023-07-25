@@ -105,6 +105,5 @@ INSTALLS += target
 
 INCLUDEPATH += ../../shared/mxcfb
 
-LIBS += -L$$PWD/../epaper -lqsgepaper
-INCLUDEPATH += $$PWD/../epaper
+include(../../qmake/epaper.pri)
 include(../../qmake/sentry.pri)

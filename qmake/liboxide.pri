@@ -7,3 +7,4 @@ INCLUDEPATH += $$OUT_PWD/../../shared/liboxide/include
 QT += network
 QT += dbus
 include(sentry.pri)
+include(epaper.pri)

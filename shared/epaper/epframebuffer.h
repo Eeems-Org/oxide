@@ -10,17 +10,8 @@
 #include <atomic>
 #include <mutex>
 
-#if defined(LIBOXIDE_LIBRARY)
-#include "liboxide_global.h"
-#ifdef __arm__
-Q_IMPORT_PLUGIN(QsgEpaperPlugin)
-#endif
-#else
-#include <liboxide/liboxide_global.h>
-#endif
 
-
-class LIBOXIDE_EXPORT EPFrameBuffer : public QObject
+class EPFrameBuffer : public QObject
 {
     Q_OBJECT
 
