@@ -45,6 +45,7 @@ static bool IS_LOADABLE_APP = false;
 static bool DO_HANDLE_FB = true;
 static bool DO_HANDLE_INPUT = true;
 static bool PIPE_OPENED = false;
+static bool IS_RAISED = false;
 static int fbFd = -1;
 static int touchFds[2] = {-1, -1};
 static int tabletFds[2] = {-1, -1};
@@ -171,8 +172,9 @@ void __sigacton__handler(int signo, siginfo_t* info, void* context){
     static bool KILLED = false;
     _DEBUG("Signal", strsignal(signo), "recieved.");
     if(!KILLED){
-        KILLED=true;
+        KILLED = true;
         Oxide::Tarnish::disconnect();
+        qApp->exit(signo);
     }
     raise(signo);
 }
@@ -536,6 +538,11 @@ int fb_ioctl(unsigned long request, char* ptr){
                 return -1;
             }
             Oxide::runLater(eventPipe->thread(), [eventPipe, rect, update]{
+                if(!IS_RAISED){
+                    Oxide::Tarnish::WindowEvent event;
+                    event.type = Oxide::Tarnish::Raise;
+                    event.toSocket(eventPipe);
+                }
                 Oxide::Tarnish::WindowEvent event;
                 event.type = Oxide::Tarnish::Repaint;
                 event.repaintData = Oxide::Tarnish::RepaintEventArgs{
@@ -586,33 +593,41 @@ int fb_ioctl(unsigned long request, char* ptr){
             auto frameBuffer = Oxide::Tarnish::frameBufferImage();
             auto pixelFormat = frameBuffer.pixelFormat();
             fb_var_screeninfo* screenInfo = reinterpret_cast<fb_var_screeninfo*>(ptr);
+            int fd = func_open("/dev/fb0", O_RDONLY, 0);
+            if(fd == -1){
+                return -1;
+            }
+            if(func_ioctl(fd, request, ptr) == -1){
+                return -1;
+            }
             screenInfo->xres = frameBuffer.width();
             screenInfo->yres = frameBuffer.height();
-            screenInfo->bits_per_pixel = pixelFormat.bitsPerPixel();
-            screenInfo->grayscale = 0;
             screenInfo->xres_virtual = frameBuffer.width();
             screenInfo->yres_virtual = frameBuffer.height();
+            screenInfo->bits_per_pixel = pixelFormat.bitsPerPixel();
+            screenInfo->grayscale = 0;
             // QImage::Format_RGB16
             screenInfo->red.offset = 11;
             screenInfo->red.length = 5;
+            screenInfo->red.msb_right = 0;
             screenInfo->green.offset = 5;
             screenInfo->green.length = 6;
+            screenInfo->green.msb_right = 0;
             screenInfo->blue.offset = 0;
             screenInfo->blue.length = 5;
-            Q_UNUSED(screenInfo)
-            Q_UNUSED(frameBuffer)
+            screenInfo->blue.msb_right = 0;
             return 0;
         }
         case FBIOGET_FSCREENINFO:{
             _DEBUG("ioctl /dev/fb0 FBIOGET_FSCREENINFO");
             fb_fix_screeninfo* screeninfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
             int fd = func_open("/dev/fb0", O_RDONLY, 0);
-            if(fd != -1){
-                func_ioctl(fd, request, ptr);
-            }else{
+            if(fd == -1){
                 // Failed to get the actual information, try to dummy our way with our own
                 constexpr char fb_id[] = "mxcfb";
                 memcpy(screeninfo->id, fb_id, sizeof(fb_id));
+            }else if(func_ioctl(fd, request, ptr) == -1){
+                return -1;
             }
             auto frameBuffer = Oxide::Tarnish::frameBufferImage();
             screeninfo->smem_len = frameBuffer.sizeInBytes();
@@ -792,11 +807,6 @@ void connectEventPipe(){
     }
     QObject::connect(eventPipe, &QLocalSocket::readyRead, eventPipe, &__read_event_pipe, Qt::DirectConnection);
     QObject::connect(eventPipe, &QLocalSocket::disconnected, []{ kill(getpid(), SIGTERM); });
-    Oxide::dispatchToThread(eventPipe->thread(), [eventPipe]{
-        Oxide::Tarnish::WindowEvent event;
-        event.type = Oxide::Tarnish::Raise;
-        event.toSocket(eventPipe);
-    });
     _DEBUG("Connected to event pipe");
 }
 
@@ -1097,5 +1107,14 @@ extern "C" {
         }, Qt::DirectConnection);
         thread.start();
         return app.exec();
+    }
+
+    __attribute__((visibility("default")))
+    void exit(int status){
+        _DEBUG("exit", status);
+        Oxide::Tarnish::disconnect();
+        qApp->exit(status);
+        static const auto func_exit = (void(*)(int))dlsym(RTLD_NEXT, "exit");
+        func_exit(status);
     }
 }

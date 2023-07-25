@@ -194,6 +194,11 @@ namespace Oxide{
          * \return
          */
         QRect screenGeometry();
+        /*!
+         * \brief virtualScreenGeometry
+         * \return
+         */
+        QRect virtualScreenGeometry();
 
     private:
         DeviceType _deviceType;

@@ -421,6 +421,31 @@ namespace Oxide {
             errno = err;
             return QRect();
         }
-        return QRect(0, 0, vinfo.xres, vinfo.yres);
+        _screenGeometry = QRect(0, 0, vinfo.xres, vinfo.yres);
+        return _screenGeometry;
+    }
+    QRect _virtualScreenGeometry;
+    QRect DeviceSettings::virtualScreenGeometry(){
+        if(!_virtualScreenGeometry.isNull()){
+            return _virtualScreenGeometry;
+        }
+        auto path = getScreenDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return QRect();
+        }
+        auto fd = open(path, O_RDONLY);
+        if(fd == -1){
+            return QRect();
+        }
+        fb_var_screeninfo vinfo;
+        auto res = ioctl(fd, FBIOGET_VSCREENINFO, &vinfo);
+        auto err = errno;
+        close(fd);
+        if(res == -1){
+            errno = err;
+            return QRect();
+        }
+        _virtualScreenGeometry = QRect(0, 0, vinfo.xres_virtual, vinfo.yres_virtual);
+        return _virtualScreenGeometry;
     }
 }

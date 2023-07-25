@@ -102,7 +102,7 @@ void _disconnect(){
     }
     if(eventThread.isRunning()){
         // Wait after requesting the quit for both to make sure both are stopping at the same time
-        runLaterInMainThread([]{
+        dispatchToMainThread([]{
             eventThread.quit();
             eventThread.requestInterruption();
             eventThread.wait();
