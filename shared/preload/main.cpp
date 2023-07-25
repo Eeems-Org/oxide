@@ -53,6 +53,7 @@ static int keyFds[2] = {-1, -1};
 static ssize_t(*func_write)(int, const void*, size_t);
 static int(*func_open)(const char*, int, mode_t);
 static int(*func_ioctl)(int, unsigned long, ...);
+static int(*func_close)(int);
 static QMutex logMutex;
 static unsigned int completedMarker;
 static QMutex completedMarkerMutex;
@@ -700,7 +701,7 @@ int evdev_ioctl(const char* path, unsigned long request, char* ptr){
         case EVIOCGKEYCODE_V2:
             int fd = func_open(path, O_RDONLY, 0);
             auto res = func_ioctl(fd, request, ptr);
-            close(fd);
+            func_close(fd);
             return res;
     }
     unsigned int cmd = request;
@@ -717,7 +718,7 @@ int evdev_ioctl(const char* path, unsigned long request, char* ptr){
         case EVIOC_MASK_SIZE(EVIOCSFF):
             int fd = func_open(path, O_RDONLY, 0);
             auto res = func_ioctl(fd, request, ptr);
-            close(fd);
+            func_close(fd);
             return res;
     }
 
@@ -725,12 +726,12 @@ int evdev_ioctl(const char* path, unsigned long request, char* ptr){
         if((_IOC_NR(cmd) & ~EV_MAX) == _IOC_NR(EVIOCGBIT(0, 0))){
             int fd = func_open(path, O_RDONLY, 0);
             auto res = func_ioctl(fd, request, ptr);
-            close(fd);
+            func_close(fd);
             return res;
         }else if((_IOC_NR(cmd) & ~ABS_MAX) == _IOC_NR(EVIOCGABS(0))){
             int fd = func_open(path, O_RDONLY, 0);
             auto res = func_ioctl(fd, request, ptr);
-            close(fd);
+            func_close(fd);
             return res;
         }
     }
@@ -1003,6 +1004,7 @@ extern "C" {
         func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");
         func_open = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open");
         func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
+        func_close = (int(*)(int))dlsym(RTLD_NEXT, "close");
     }
 
     static void _libhook_init() __attribute__((constructor));
@@ -1110,11 +1112,38 @@ extern "C" {
     }
 
     __attribute__((visibility("default")))
-    void exit(int status){
+    [[noreturn]] void exit(int status){
         _DEBUG("exit", status);
         Oxide::Tarnish::disconnect();
         qApp->exit(status);
-        static const auto func_exit = (void(*)(int))dlsym(RTLD_NEXT, "exit");
-        func_exit(status);
+        ((void(*)(int))dlsym(RTLD_NEXT, "exit"))(status);
+        while(1);; // Make compiler happy about noreturn
+    }
+
+    __attribute__((visibility("default")))
+    [[noreturn]] void abort() noexcept{
+        _DEBUG("abort");
+        Oxide::Tarnish::disconnect();
+        qApp->exit(SIGABRT);
+        ((void(*)(void) noexcept)dlsym(RTLD_NEXT, "abort"))();
+        while(1);; // Make compiler happy about noreturn
+    }
+
+    __attribute__((visibility("default")))
+    [[noreturn]] void terminate() noexcept{
+        _DEBUG("terminate");
+        Oxide::Tarnish::disconnect();
+        qApp->exit(SIGTERM);
+        ((void(*)(void) noexcept)dlsym(RTLD_NEXT, "terminate"))();
+        while(1);; // Make compiler happy about noreturn
+    }
+
+    __attribute__((visibility("default")))
+    [[noreturn]] void quick_exit(int exit_code) noexcept{
+        _DEBUG("quick_exit", exit_code);
+        Oxide::Tarnish::disconnect();
+        qApp->exit(exit_code);
+        ((void(*)(int) noexcept)dlsym(RTLD_NEXT, "quick_exit"))(exit_code);
+        while(1);; // Make compiler happy about noreturn
     }
 }

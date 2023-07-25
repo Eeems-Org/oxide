@@ -79,6 +79,11 @@ void _disconnect(){
         childSocket.close();
     });
     dispatchToThread(eventSocket.thread(), []{
+        if(eventSocket.isOpen()){
+            WindowEvent event;
+            event.type = Close;
+            event.toSocket(&eventSocket);
+        }
         eventSocket.disconnect();
         eventSocket.close();
     });
