@@ -6,11 +6,12 @@ on:
     paths:
       - 'web/**'
       - 'shared/liboxide/**'
+      - '.github/workflows/publish.yml'
       - '.github/actions/web/**'
       - '.github/actions/sync-repository/**'
   workflow_dispatch:
 jobs:
-  publish:
+  build:
     name: Build and publish the website
     runs-on: ubuntu-20.04
     steps:
@@ -20,10 +21,21 @@ jobs:
           submodules: true
       - name: Build web
         uses: ./.github/actions/web
-      - name: Sync website with the remote repository
-        uses: ./.github/actions/sync-repository
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
         with:
-          local-path: web/dist/
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          ssh-known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
-          remote-path: ${{ secrets.REMOTE_SSH }}:/_web
+          path: 'web/dist/'
+  deploy:
+    needs: build
+    if: ${{ github.ref == 'refs/heads/master' }}
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
