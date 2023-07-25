@@ -4,7 +4,6 @@
 #include <QtQuick>
 
 #include <cstdlib>
-#include <liboxide/eventfilter.h>
 #include <liboxide/dbus.h>
 #include <liboxide/tarnish.h>
 
@@ -18,8 +17,6 @@ int main(int argc, char *argv[]){
     deviceSettings.setupQtEnvironment(DeviceSettings::Oxide);
     QGuiApplication app(argc, argv);
     sentry_init("decay", argv);
-    auto filter = new EventFilter(&app);
-    app.installEventFilter(filter);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("decay");
@@ -36,7 +33,6 @@ int main(int argc, char *argv[]){
         return -1;
     }
     auto root = engine.rootObjects().first();
-    filter->root = (QQuickItem*)root;
     controller.setRoot(root);
     return app.exec();
 }

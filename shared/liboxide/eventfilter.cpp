@@ -121,16 +121,16 @@ namespace Oxide{
         auto type = ev->type();
         bool filtered = QObject::eventFilter(obj, ev);
         if(!filtered){
-//            if(type == QEvent::TabletPress){
-//                O_DEBUG_EVENT(ev << ev->isAccepted());
-//                postEvent(QMouseEvent::MouseButtonPress, ev, root);
-//            }else if(type == QEvent::TabletRelease){
-//                O_DEBUG_EVENT(ev << ev->isAccepted());
-//                postEvent(QMouseEvent::MouseButtonRelease, ev, root);
-//            }else if(type == QEvent::TabletMove){
-//                O_DEBUG_EVENT(ev << ev->isAccepted());
-//                postEvent(QMouseEvent::MouseMove, ev, root);
-//            }
+            if(type == QEvent::TabletPress){
+                O_DEBUG_EVENT(ev << ev->isAccepted());
+                postEvent(QMouseEvent::MouseButtonPress, ev, root);
+            }else if(type == QEvent::TabletRelease){
+                O_DEBUG_EVENT(ev << ev->isAccepted());
+                postEvent(QMouseEvent::MouseButtonRelease, ev, root);
+            }else if(type == QEvent::TabletMove){
+                O_DEBUG_EVENT(ev << ev->isAccepted());
+                postEvent(QMouseEvent::MouseMove, ev, root);
+            }
 #ifdef DEBUG_EVENTS
             /*else */if(
                 type != QEvent::MetaCall

@@ -30,17 +30,14 @@ int main(int argc, char* argv[]){
     deviceSettings.setupQtEnvironment(DeviceSettings::Oxide);
     QGuiApplication app(argc, argv);
     sentry_init("oxide", argv);
-    auto filter = new EventFilter(&app);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("oxide");
     app.setApplicationDisplayName("Launcher");
-    app.installEventFilter(filter);
     Tarnish::getSocketFd();
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();
-    controller->filter = filter;
     qmlRegisterAnonymousType<AppItem>("codes.eeems.oxide", 2);
     qmlRegisterAnonymousType<Controller>("codes.eeems.oxide", 2);
     context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
@@ -53,7 +50,6 @@ int main(int argc, char* argv[]){
     }
     QObject* root = engine.rootObjects().first();
     controller->root = root;
-    filter->root = (QQuickItem*)root;
     QObject* stateController = root->findChild<QObject*>("stateController");
     if(!stateController){
         qDebug() << "Can't find stateController";

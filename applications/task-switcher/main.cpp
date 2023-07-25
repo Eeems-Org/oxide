@@ -6,7 +6,6 @@
 #include <cstdlib>
 #include <signal.h>
 #include <liboxide.h>
-#include <liboxide/eventfilter.h>
 #include <liboxide/tarnish.h>
 
 #include "controller.h"
@@ -26,8 +25,6 @@ int main(int argc, char *argv[]){
     deviceSettings.setupQtEnvironment(DeviceSettings::Oxide);
     QGuiApplication app(argc, argv);
     sentry_init("corrupt", argv);
-    auto filter = new EventFilter(&app);
-    app.installEventFilter(filter);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("corrupt");
@@ -48,7 +45,6 @@ int main(int argc, char *argv[]){
         return -1;
     }
     auto root = engine.rootObjects().first();
-    filter->root = (QQuickItem*)root;
     controller.setRoot(root);
 
     signal(SIGINT, sigHandler);

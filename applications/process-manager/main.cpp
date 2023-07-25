@@ -9,7 +9,6 @@
 #include <fcntl.h>
 #include <liboxide.h>
 #include <liboxide/tarnish.h>
-#include <liboxide/eventfilter.h>
 
 #include "controller.h"
 
@@ -27,8 +26,6 @@ int main(int argc, char *argv[]){
     app.setApplicationDisplayName("Process Monitor");
     app.setApplicationVersion(APP_VERSION);
     Tarnish::getSocketFd();
-    EventFilter filter;
-    app.installEventFilter(&filter);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller controller(&engine);
@@ -40,7 +37,6 @@ int main(int argc, char *argv[]){
         return -1;
     }
     QObject* root = engine.rootObjects().first();
-    filter.root = (QQuickItem*)root;
     QQuickItem* tasksView = root->findChild<QQuickItem*>("tasksView");
     if(!tasksView){
         qDebug() << "Can't find tasksView";
