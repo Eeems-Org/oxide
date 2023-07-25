@@ -5,6 +5,7 @@
  * \file
  */
 #pragma once
+#include "liboxide_global.h"
 
 /*!
  * \def deviceSettings()
@@ -40,6 +41,11 @@ namespace Oxide{
          * \sa deviceSettings
          */
         static DeviceSettings& instance();
+        /*!
+         * \brief getScreenDevicePath
+         * \return
+         */
+        const char* getScreenDevicePath() const;
         /*!
          * \brief Get the path to the buttons input device
          * \return Path to the buttons device

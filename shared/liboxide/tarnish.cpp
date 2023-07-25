@@ -364,7 +364,7 @@ namespace Oxide::Tarnish {
         return l;
     }
 
-    qsizetype TabletEventArgs::size(){ return (sizeof(unsigned short) * 2) + (sizeof(int) * 4) + sizeof(unsigned int); }
+    qsizetype TabletEventArgs::size(){ return (sizeof(unsigned short) * 2) + (sizeof(int) * 4) + sizeof(double); }
 
     QPoint TabletEventArgs::point() const{ return QPoint(x, y); }
 

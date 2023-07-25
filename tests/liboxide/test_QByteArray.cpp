@@ -1,6 +1,5 @@
-#include <QtTest>
+#include "test_QByteArray.h"
 #include <QImage>
-#include <QBuffer>
 
 #include <liboxide/qt.h>
 #include <sys/socket.h>
@@ -8,61 +7,18 @@
 
 using namespace Oxide::Tarnish;
 
-class test_QByteArray : public QObject{
-    Q_OBJECT
-
-public:
-    test_QByteArray();
-    ~test_QByteArray();
-
-private slots:
-    void test_qint8();
-    void test_qint16();
-    void test_qint32();
-    void test_qint64();
-    void test_quint8();
-    void test_quint16();
-    void test_quint32();
-    void test_quint64();
-    void test_TouchEventPoint();
-    void test_RepaintEventArgs();
-    void test_GeometryEventArgs();
-    void test_ImageInfoEventArgs();
-    void test_WaitForPaintEventArgs();
-    void test_KeyEventArgs();
-    void test_TouchEventArgs();
-    void test_TabletEventArgs();
-    void test_WindowEvent_Invalid();
-    void test_WindowEvent_Ping();
-    void test_WindowEvent_Repaint();
-    void test_WindowEvent_WaitForPaint();
-    void test_WindowEvent_Geometry();
-    void test_WindowEvent_ImageInfo();
-    void test_WindowEvent_Raise();
-    void test_WindowEvent_Lower();
-    void test_WindowEvent_Close();
-    void test_WindowEvent_FrameBuffer();
-    void test_WindowEvent_Key();
-    void test_WindowEvent_Touch();
-    void test_WindowEvent_Tablet();
-
-private:
-    QByteArray buffer;
-    QBuffer socket;
-    void setup_WindowEvent();
-};
-
-test_QByteArray::test_QByteArray() : socket{&buffer}{
-    QVERIFY(socket.open(QIODevice::ReadWrite));
-}
+test_QByteArray::test_QByteArray() : socket{&buffer}{}
 
 test_QByteArray::~test_QByteArray(){}
 
-void test_QByteArray::setup_WindowEvent(){
+void test_QByteArray::init(){
+    QVERIFY(socket.open(QIODevice::ReadWrite));
+    QVERIFY(socket.atEnd());
+}
+
+void test_QByteArray::cleanup(){
     socket.close();
     buffer.clear();
-    QVERIFY(socket.atEnd());
-    QVERIFY(socket.open(QIODevice::ReadWrite));
     QVERIFY(socket.atEnd());
 }
 
@@ -348,7 +304,6 @@ void test_QByteArray::test_TabletEventArgs(){
 }
 
 void test_QByteArray::test_WindowEvent_Invalid(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::Invalid;
     QVERIFY(!a.toSocket(&socket));
@@ -356,7 +311,6 @@ void test_QByteArray::test_WindowEvent_Invalid(){
 }
 
 void test_QByteArray::test_WindowEvent_Ping(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::Ping;
     a.toSocket(&socket);
@@ -368,7 +322,6 @@ void test_QByteArray::test_WindowEvent_Ping(){
 }
 
 void test_QByteArray::test_WindowEvent_Repaint(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::Repaint;
     a.repaintData.x = -100;
@@ -389,7 +342,6 @@ void test_QByteArray::test_WindowEvent_Repaint(){
 }
 
 void test_QByteArray::test_WindowEvent_WaitForPaint(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::WaitForPaint;
     a.waitForPaintData.marker = 100;
@@ -403,7 +355,6 @@ void test_QByteArray::test_WindowEvent_WaitForPaint(){
 }
 
 void test_QByteArray::test_WindowEvent_Geometry(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::Geometry;
     a.geometryData.x = -100;
@@ -422,7 +373,6 @@ void test_QByteArray::test_WindowEvent_Geometry(){
 }
 
 void test_QByteArray::test_WindowEvent_ImageInfo(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::ImageInfo;
     a.imageInfoData.bytesPerLine = 100;
@@ -440,7 +390,6 @@ void test_QByteArray::test_WindowEvent_ImageInfo(){
 }
 
 void test_QByteArray::test_WindowEvent_Raise(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::Raise;
     a.toSocket(&socket);
@@ -452,7 +401,6 @@ void test_QByteArray::test_WindowEvent_Raise(){
 }
 
 void test_QByteArray::test_WindowEvent_Lower(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::Lower;
     a.toSocket(&socket);
@@ -464,7 +412,6 @@ void test_QByteArray::test_WindowEvent_Lower(){
 }
 
 void test_QByteArray::test_WindowEvent_Close(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::Close;
     a.toSocket(&socket);
@@ -476,7 +423,6 @@ void test_QByteArray::test_WindowEvent_Close(){
 }
 
 void test_QByteArray::test_WindowEvent_FrameBuffer(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::FrameBuffer;
     a.toSocket(&socket);
@@ -488,8 +434,7 @@ void test_QByteArray::test_WindowEvent_FrameBuffer(){
 }
 
 void test_QByteArray::test_WindowEvent_Key(){
-    setup_WindowEvent();
-    WindowEvent a;
+        WindowEvent a;
     a.type = WindowEventType::Key;
     a.keyData.code = 100;
     a.keyData.type = KeyEventType::RepeatKey;
@@ -504,7 +449,6 @@ void test_QByteArray::test_WindowEvent_Key(){
 }
 
 void test_QByteArray::test_WindowEvent_Touch(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::Touch;
     a.touchData.type = TouchEventType::TouchRelease;
@@ -564,7 +508,6 @@ void test_QByteArray::test_WindowEvent_Touch(){
 }
 
 void test_QByteArray::test_WindowEvent_Tablet(){
-    setup_WindowEvent();
     WindowEvent a;
     a.type = WindowEventType::Tablet;
     a.tabletData.type = TabletEventType::PenRelease;
@@ -588,6 +531,4 @@ void test_QByteArray::test_WindowEvent_Tablet(){
     QCOMPARE(a.tabletData.tiltY, b.tabletData.tiltY);
 }
 
-QTEST_APPLESS_MAIN(test_QByteArray)
-
-#include "test_QByteArray.moc"
+DECLARE_TEST(test_QByteArray)

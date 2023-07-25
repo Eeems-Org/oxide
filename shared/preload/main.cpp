@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <liboxide/meta.h>
+#include <liboxide/math.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
 #include <liboxide/tarnish.h>
@@ -398,9 +399,10 @@ void __read_event_pipe(){
                         penDown = true;
                         unsigned int x = ceil(qreal(data.x) * deviceSettings.getWacomWidth() / size.width());
                         unsigned int y = ceil(qreal(data.y) * deviceSettings.getWacomHeight() / size.height());
-                        unsigned int tiltX = ceil(qreal(data.tiltX) * deviceSettings.getWacomMaxXTilt() / deviceSettings.getWacomMinXTilt());
-                        unsigned int tiltY = ceil(qreal(data.tiltY) * deviceSettings.getWacomMaxYTilt() / deviceSettings.getWacomMinYTilt());
-                        unsigned int pressure = ceil(qreal(data.pressure) * deviceSettings.getWacomPressure());
+                        // Raw axis need to be inverted on a rM1
+                        int tiltX = Oxide::Math::convertRange(data.tiltY, -90, 90, deviceSettings.getWacomMinYTilt(), deviceSettings.getWacomMaxYTilt());
+                        int tiltY = Oxide::Math::convertRange(data.tiltX, -90, 90, deviceSettings.getWacomMinXTilt(), deviceSettings.getWacomMaxXTilt());
+                        unsigned int pressure = ceil(data.pressure * deviceSettings.getWacomPressure());
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_X, x);
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
                         writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, tiltX);
@@ -430,15 +432,15 @@ void __read_event_pipe(){
                         }
                         if(penDown){
                             if(data.tiltX != lastTiltX){
-                                unsigned int tiltX = ceil(qreal(data.tiltX) * deviceSettings.getWacomMaxXTilt() / deviceSettings.getWacomMinXTilt());
+                                int tiltX = Oxide::Math::convertRange(data.tiltY, -90, 90, deviceSettings.getWacomMinYTilt(), deviceSettings.getWacomMaxYTilt());
                                 writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, tiltX);
                             }
                             if(data.tiltY != lastTiltY){
-                                unsigned int tiltY = ceil(qreal(data.tiltY) * deviceSettings.getWacomMaxYTilt() / deviceSettings.getWacomMinYTilt());
+                                int tiltY = Oxide::Math::convertRange(data.tiltX, -90, 90, deviceSettings.getWacomMinXTilt(), deviceSettings.getWacomMaxXTilt());
                                 writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, tiltY);
                             }
                             if(data.pressure != lastPressure){
-                                unsigned int pressure = ceil(qreal(data.pressure) * deviceSettings.getWacomPressure());
+                                unsigned int pressure = ceil(data.pressure * deviceSettings.getWacomPressure());
                                 writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
                             }
                         }
@@ -457,15 +459,15 @@ void __read_event_pipe(){
                             writeInputEvent(tabletFds[0], time, EV_ABS, ABS_Y, y);
                         }
                         if(data.tiltX != lastTiltX){
-                            unsigned int tiltX = ceil(qreal(data.tiltX) * deviceSettings.getWacomMaxXTilt() / deviceSettings.getWacomMinXTilt());
+                            int tiltX = Oxide::Math::convertRange(data.tiltY, -90, 90, deviceSettings.getWacomMinYTilt(), deviceSettings.getWacomMaxYTilt());
                             writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_X, tiltX);
                         }
                         if(data.tiltY != lastTiltY){
-                            unsigned int tiltY = ceil(qreal(data.tiltY) * deviceSettings.getWacomMaxYTilt() / deviceSettings.getWacomMinYTilt());
+                            int tiltY = Oxide::Math::convertRange(data.tiltX, -90, 90, deviceSettings.getWacomMinXTilt(), deviceSettings.getWacomMaxXTilt());
                             writeInputEvent(tabletFds[0], time, EV_ABS, ABS_TILT_Y, tiltY);
                         }
                         if(data.pressure != lastPressure){
-                            unsigned int pressure = ceil(qreal(data.pressure) * deviceSettings.getWacomPressure());
+                            unsigned int pressure = ceil(data.pressure * deviceSettings.getWacomPressure());
                             writeInputEvent(tabletFds[0], time, EV_ABS, ABS_PRESSURE, pressure);
                         }
                         writeInputEvent(tabletFds[0], time, EV_KEY, BTN_TOUCH, 0);

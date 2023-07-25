@@ -2,6 +2,7 @@
 #include "event_device.h"
 #include "debug.h"
 
+#include <mxcfb.h>
 #include <sys/file.h>
 
 #define BITS_PER_LONG (sizeof(long) * 8)
@@ -31,6 +32,20 @@ namespace Oxide {
         }
         return *INSTANCE;
     }
+
+    const char* DeviceSettings::getScreenDevicePath() const{
+        switch(getDeviceType()){
+            case DeviceType::RM1:
+            case DeviceType::RM2:
+                return "/dev/fb0";
+            default:
+                if(QFileInfo::exists("/dev/fb0")){
+                    return "/dev/fb0";
+                }
+                return "";
+        }
+    }
+
     DeviceSettings::DeviceSettings(): _deviceType(DeviceType::RM1) {
         readDeviceType();
 
@@ -110,6 +125,7 @@ namespace Oxide {
     const char* DeviceSettings::getWacomDevicePath() const { return wacomPath.c_str(); }
 
     const char* DeviceSettings::getTouchDevicePath() const { return touchPath.c_str(); }
+
     const char* DeviceSettings::getDeviceName() const {
         switch(getDeviceType()){
             case DeviceType::RM1:
@@ -384,13 +400,27 @@ namespace Oxide {
 #endif
         }
     }
+    QRect _screenGeometry;
     QRect DeviceSettings::screenGeometry(){
-        switch(getDeviceType()){
-            case DeviceType::RM1:
-            case DeviceType::RM2:
-                return QRect(0, 0, 1404, 1872);
-            default:
-                return QRect();
+        if(!_screenGeometry.isNull()){
+            return _screenGeometry;
         }
+        auto path = getScreenDevicePath();
+        if(QString::fromLatin1(path).isEmpty()){
+            return QRect();
+        }
+        auto fd = open(path, O_RDONLY);
+        if(fd == -1){
+            return QRect();
+        }
+        fb_var_screeninfo vinfo;
+        auto res = ioctl(fd, FBIOGET_VSCREENINFO, &vinfo);
+        auto err = errno;
+        close(fd);
+        if(res == -1){
+            errno = err;
+            return QRect();
+        }
+        return QRect(0, 0, vinfo.xres, vinfo.yres);
     }
 }

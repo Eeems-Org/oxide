@@ -21,6 +21,7 @@
 #include "devicesettings.h"
 #include "oxide_sentry.h"
 #include "threading.h"
+#include "math.h"
 
 #include <QDebug>
 #include <QScopeGuard>

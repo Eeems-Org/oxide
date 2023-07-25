@@ -166,7 +166,7 @@ namespace Oxide::Tarnish {
         TabletEventTool tool;
         int x;
         int y;
-        unsigned int pressure;
+        double pressure;
         int tiltX;
         int tiltY;
         QPoint point() const;

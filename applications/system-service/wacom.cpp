@@ -79,9 +79,9 @@ void Wacom::report(){
     qreal x = state.x / qreal(m_maxX);
     qreal y = state.y / qreal(m_maxY);
     qreal pressure = state.pressure / qreal(m_maxPressure);
-    // TODO, how to keep negative values in this. Needs to be in degrees, vaue should already be clipped from -60 to 60 by the driver
-    qreal tiltX = ((state.tiltX - m_minXTilt) / qreal(m_maxXTilt - m_minXTilt)) * 180;
-    qreal tiltY = ((state.tiltY - m_minYTilt) / qreal(m_maxYTilt - m_minYTilt)) * 180;
+    // Raw axis need to be inverted on a rM1
+    int tiltX = Oxide::Math::convertRange(state.tiltY, deviceSettings.getWacomMinYTilt(), deviceSettings.getWacomMaxYTilt(), -90, 90);
+    int tiltY = Oxide::Math::convertRange(state.tiltX, deviceSettings.getWacomMinXTilt(), deviceSettings.getWacomMaxXTilt(), -90, 90);
     QRect winRect = QGuiApplication::primaryScreen()->geometry();
     QPointF globalPos(x * winRect.width(), y * winRect.height());
     int pointer = state.tool;
@@ -89,7 +89,7 @@ void Wacom::report(){
         globalPos = state.lastReportPos;
         pointer = state.lastReportTool;
     }
-    O_DEBUG(tiltX << tiltY);
+    O_DEBUG(state.pressure << pressure << (unsigned int)ceil(qreal(pressure) * deviceSettings.getWacomPressure()));
     if(!state.lastReportTool && state.tool){
         QGuiApplication::postEvent(qApp, new QTabletEvent(
             QTabletEvent::TabletEnterProximity,

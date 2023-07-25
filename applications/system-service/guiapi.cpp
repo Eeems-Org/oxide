@@ -432,7 +432,7 @@ void GuiAPI::writeTabletEvent(QEvent* event){
         .tool = tool,
         .x = pos.x() - geometry.x(),
         .y = pos.y() - geometry.y(),
-        .pressure = (unsigned int)tabletEvent->pressure(),
+        .pressure = (double)tabletEvent->pressure(),
         .tiltX = tabletEvent->xTilt(),
         .tiltY = tabletEvent->yTilt(),
     };

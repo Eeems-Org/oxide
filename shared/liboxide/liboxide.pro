@@ -22,6 +22,7 @@ SOURCES += \
     eventfilter.cpp \
     json.cpp \
     liboxide.cpp \
+    math.cpp \
     oxide_sentry.cpp \
     power.cpp \
     qt.cpp \
@@ -42,6 +43,7 @@ HEADERS += \
     eventfilter.h \
     liboxide_global.h \
     liboxide.h \
+    math.h \
     meta.h \
     oxide_sentry.h \
     power.h \
@@ -100,6 +102,8 @@ include(../../qmake/common.pri)
 TARGET = oxide
 target.path = /opt/lib
 INSTALLS += target
+
+INCLUDEPATH += ../../shared/mxcfb
 
 LIBS += -L$$PWD/../epaper -lqsgepaper
 INCLUDEPATH += $$PWD/../epaper
