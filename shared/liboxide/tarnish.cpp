@@ -79,7 +79,7 @@ void _disconnect(){
         childSocket.close();
     });
     dispatchToThread(eventSocket.thread(), []{
-        if(eventSocket.isOpen()){
+        if(eventSocket.isOpen() && getpid() == getpgrp()){
             WindowEvent event;
             event.type = Close;
             event.toSocket(&eventSocket);

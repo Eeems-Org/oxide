@@ -4,12 +4,13 @@
 #include <qpa/qwindowsysteminterface_p.h>
 #include <QTabletEvent>
 #include <QEvent>
+#include <QCoreApplication>
 
 OxideEventFilter::OxideEventFilter(QObject* parent) : QObject(parent){ }
 
 bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev){
     bool filtered = QObject::eventFilter(obj, ev);
-    if(!filtered && !ev->isAccepted()){
+    if(isEnabled() && !filtered && !ev->isAccepted()){
         auto type = ev->type();
         switch(type){
             case QEvent::TabletPress:{
@@ -77,3 +78,8 @@ QPointF OxideEventFilter::transpose(QPointF pointF){
 }
 
 QPointF OxideEventFilter::swap(QPointF pointF){ return QPointF(pointF.y(), pointF.x()); }
+
+bool OxideEventFilter::isEnabled(){
+    return !qEnvironmentVariableIsSet("OXIDE_QPA_DISBLE_TABLET_SYNTHESIZE")
+            && qApp->testAttribute(Qt::AA_SynthesizeMouseForUnhandledTabletEvents);
+}

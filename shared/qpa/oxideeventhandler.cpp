@@ -221,7 +221,6 @@ void OxideEventHandler::handleTouch(Oxide::Tarnish::TouchEventArgs* data){
     for(const auto& point : data->points){
         auto touchPoint = getTouchPoint(point);
         m_touchPoints.append(touchPoint);
-        qDebug() << "Sending" << touchPoint.area << touchPoint.state << touchPoint.normalPosition << touchPoint.rawPositions;
     }
     QWindowSystemInterface::handleTouchEvent(nullptr, &m_touchscreen, m_touchPoints);
 }
