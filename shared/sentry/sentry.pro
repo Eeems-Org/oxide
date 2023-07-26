@@ -3,9 +3,7 @@ TEMPLATE = aux
 PRE_TARGETDEPS += $$OUT_PWD/src/Makefile
 sentry_makefile.target = $$OUT_PWD/src/Makefile
 sentry_makefile.commands = \
-    cd $$OUT_PWD \
-    && make qmake \
-    && cmake -B $$OUT_PWD/src \
+    cmake -B $$OUT_PWD/src \
         -S $$PWD/src \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DBUILD_SHARED_LIBS=ON \

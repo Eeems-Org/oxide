@@ -19,6 +19,8 @@ clean:
 	rm -rf $(DIST) $(BUILD)
 
 release: clean build $(DIST)
+	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
+	cd $(BUILD)/oxide/shared/sentry && make qmake
 	INSTALL_ROOT=$(DIST) $(MAKE) -C $(BUILD)/oxide install
 
 build: $(OBJ)
@@ -53,7 +55,7 @@ $(BUILD)/oxide: $(BUILD)/.nobackup
 	mkdir -p $(BUILD)/oxide
 
 $(BUILD)/oxide/Makefile: $(BUILD)/oxide
-	cd $(BUILD)/oxide && qmake -r $(DEFINES) $(CURDIR)/oxide.pro && $(MAKE) qmake_all
+	cd $(BUILD)/oxide && qmake -r $(DEFINES) $(CURDIR)
 
 $(BUILD)/package:
 	mkdir -p $(BUILD)/package
