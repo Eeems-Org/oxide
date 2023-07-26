@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: MIT
 
 pkgnames=(oxide oxide-extra oxide-utils inject_evdev liboxide libsentry)
-_oxidever=2.6
+_oxidever=3.0
 pkgver="$_oxidever~VERSION~"
-_sentryver=0.5.0
+_sentryver=0.6.5
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
@@ -55,7 +55,7 @@ how-to-enable() {
 build() {
     find . -name "*.pro" -type f -print0 \
         | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
-    CMAKE_TOOLCHAIN_FILE="/usr/share/cmake/$CHOST.cmake" make FEATURES=sentry release
+    CMAKE_TOOLCHAIN_FILE="/usr/share/cmake/$CHOST.cmake" make -j$(nproc) FEATURES=sentry release
 }
 
 oxide() {

@@ -1,4 +1,8 @@
+#if defined(LIBOXIDE_LIBRARY)
 #include "oxide_sentry.h"
+#else
+#include "sentry.h"
+#endif
 #include "liboxide.h"
 
 #include <QtGlobal>

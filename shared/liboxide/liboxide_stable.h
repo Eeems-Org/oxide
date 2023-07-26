@@ -50,6 +50,7 @@
 #include <sys/un.h>
 #include <systemd/sd-id128.h>
 #include <unistd.h>
+#include <cmath>
 
 #include "application_interface.h"
 #include "appsapi_interface.h"
@@ -61,7 +62,11 @@
 #include "powerapi_interface.h"
 #include "systemapi_interface.h"
 #include "wifiapi_interface.h"
+#include "guiapi_interface.h"
+#include "window_interface.h"
 
 #include "liboxide_global.h"
 #include "meta.h"
+#include "oxide_math.h"
+#include "qt.h"
 #endif

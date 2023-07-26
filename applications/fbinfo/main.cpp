@@ -3,7 +3,7 @@
 #include <QDebug>
 
 #include <liboxide/meta.h>
-#include <liboxide/oxide_sentry.h>
+#include <liboxide/sentry.h>
 #include <liboxide/threading.h>
 #include <liboxide/devicesettings.h>
 #include <epframebuffer.h>

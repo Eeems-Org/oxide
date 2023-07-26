@@ -2,7 +2,7 @@
  * \addtogroup Sentry
  * \brief The Sentry module
  * @{
- * \file
+ * \file sentry.h
  */
 #pragma once
 

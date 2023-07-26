@@ -19,9 +19,14 @@
 #include "sysobject.h"
 #include "debug.h"
 #include "devicesettings.h"
-#include "oxide_sentry.h"
 #include "threading.h"
+#if defined(LIBOXIDE_LIBRARY)
+#include "oxide_sentry.h"
+#include "oxide_math.h"
+#else
 #include "math.h"
+#include "sentry.h"
+#endif
 
 #include <QDebug>
 #include <QScopeGuard>

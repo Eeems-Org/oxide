@@ -972,9 +972,9 @@ extern "C" {
     }
 
     __attribute__((visibility("default")))
-    ssize_t write(int fd, const void* buf, size_t n){
+    ssize_t _write(int fd, const void* buf, size_t n){
         if(IS_INITIALIZED){
-            if(fd > 2){
+            if(fd < 3){
                 // No need to debug stdout/stderr writes
                 _DEBUG("write", fd, n);
             }
@@ -1001,7 +1001,7 @@ extern "C" {
         }
         return func_write(fd, buf, n);
     }
-    __asm__(".symver write, write@GLIBC_2.4");
+    __asm__(".symver _write, write@GLIBC_2.4");
 
     void __attribute__ ((constructor)) init(void);
     void init(void){

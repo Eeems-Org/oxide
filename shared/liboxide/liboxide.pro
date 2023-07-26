@@ -22,7 +22,7 @@ SOURCES += \
     eventfilter.cpp \
     json.cpp \
     liboxide.cpp \
-    math.cpp \
+    oxide_math.cpp \
     oxide_sentry.cpp \
     power.cpp \
     qt.cpp \
@@ -42,8 +42,8 @@ HEADERS += \
     eventfilter.h \
     liboxide_global.h \
     liboxide.h \
-    math.h \
     meta.h \
+    oxide_math.h \
     oxide_sentry.h \
     power.h \
     json.h \
@@ -80,6 +80,8 @@ liboxide_liboxide_h.target = include/liboxide/liboxide.h
 liboxide_liboxide_h.commands = \
     mkdir -p include/liboxide && \
     echo $$HEADERS | xargs -rn1 | xargs -rI {} cp $$PWD/{} include/liboxide/ && \
+    mv include/liboxide/oxide_math.h include/liboxide/math.h && \
+    mv include/liboxide/oxide_sentry.h include/liboxide/sentry.h && \
     echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename \"{}\" .xml | xargs -rI {} cp $$OUT_PWD/\"{}\"_interface.h include/liboxide/
 
 liboxide_h.target = include/liboxide.h
