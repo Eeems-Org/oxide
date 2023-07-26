@@ -14,15 +14,15 @@
 
 using namespace Oxide::Tarnish;
 
-QSharedPointer<codes::eeems::oxide1::General> api_general = nullptr;
-QSharedPointer<codes::eeems::oxide1::Power> api_power = nullptr;
-QSharedPointer<codes::eeems::oxide1::Wifi> api_wifi = nullptr;
-QSharedPointer<codes::eeems::oxide1::Screen> api_screen = nullptr;
-QSharedPointer<codes::eeems::oxide1::Apps> api_apps = nullptr;
-QSharedPointer<codes::eeems::oxide1::System> api_system = nullptr;
-QSharedPointer<codes::eeems::oxide1::Notifications> api_notification = nullptr;
-QSharedPointer<codes::eeems::oxide1::Gui> api_gui = nullptr;
-QSharedPointer<codes::eeems::oxide1::Window> window = nullptr;
+QSharedPointer<codes::eeems::oxide1::General> api_general;
+QSharedPointer<codes::eeems::oxide1::Power> api_power;
+QSharedPointer<codes::eeems::oxide1::Wifi> api_wifi;
+QSharedPointer<codes::eeems::oxide1::Screen> api_screen;
+QSharedPointer<codes::eeems::oxide1::Apps> api_apps;
+QSharedPointer<codes::eeems::oxide1::System> api_system;
+QSharedPointer<codes::eeems::oxide1::Notifications> api_notification;
+QSharedPointer<codes::eeems::oxide1::Gui> api_gui;
+QSharedPointer<codes::eeems::oxide1::Window> window;
 QRect fbGeometry;
 qulonglong fbLineSize = 0;
 QImage::Format fbFormat = QImage::Format_Invalid;
@@ -42,12 +42,11 @@ using namespace Oxide;
 //        https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
 
 bool verifyConnection(){
-    if(api_general == nullptr){
+    if(api_general.isNull()){
         return false;
     }
     if(!api_general->isValid()){
-        api_general->deleteLater();
-        api_general = nullptr;
+        api_general.clear();
         return false;
     }
     return true;
@@ -67,52 +66,6 @@ bool setupFbFd(int fd){
     fbFormat = (QImage::Format)window->format();
     O_DEBUG("FrameBuffer" << fbGeometry << fbLineSize << fbFormat << fbFile.size() - sizeof(std::mutex));
     return true;
-}
-
-void _disconnect(){
-    QMutexLocker locker(&fbMutex);
-    Q_UNUSED(locker);
-    fbData = nullptr;
-    fbFile.close();
-    dispatchToThread(childSocket.thread(), []{
-        childSocket.disconnect();
-        childSocket.close();
-    });
-    dispatchToThread(eventSocket.thread(), []{
-        if(eventSocket.isOpen() && getpid() == getpgrp()){
-            WindowEvent event;
-            event.type = Close;
-            event.toSocket(&eventSocket);
-        }
-        eventSocket.disconnect();
-        eventSocket.close();
-    });
-#define freeAPI(name) \
-    if(api_##name != nullptr){ \
-        api_##name.clear(); \
-        api_##name = nullptr; \
-    }
-    freeAPI(power);
-    freeAPI(wifi);
-    freeAPI(screen);
-    freeAPI(apps);
-    freeAPI(system);
-    freeAPI(notification);
-    freeAPI(general);
-    freeAPI(gui);
-#undef freeAPI
-    if(window != nullptr){
-        window.clear();
-        window = nullptr;
-    }
-    if(eventThread.isRunning()){
-        // Wait after requesting the quit for both to make sure both are stopping at the same time
-        dispatchToMainThread([]{
-            eventThread.quit();
-            eventThread.requestInterruption();
-            eventThread.wait();
-        });
-    }
 }
 namespace Oxide::Tarnish {
     qsizetype RepaintEventArgs::size(){ return (sizeof(int) * 4) + sizeof(quint64) + sizeof(unsigned int); }
@@ -707,7 +660,7 @@ namespace Oxide::Tarnish {
     }
 
     QSharedPointer<codes::eeems::oxide1::General> getAPI(){
-        if(api_general == nullptr){
+        if(api_general.isNull()){
             connect();
         }
         return api_general;
@@ -715,7 +668,7 @@ namespace Oxide::Tarnish {
 
     QString requestAPI(std::string name){
         connect();
-        if(api_general == nullptr){
+        if(api_general.isNull()){
             O_WARNING("Unable to request " << name.c_str() << " api: Unable to connect to API");
             return "/";
         }
@@ -760,12 +713,12 @@ namespace Oxide::Tarnish {
         }
         O_DEBUG("Tarnish DBus service is online, connecting...");
         auto instance = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-        api_general = QSharedPointer<codes::eeems::oxide1::General>(instance);
+        api_general.reset(instance, &QObject::deleteLater);
         auto conn = new QMetaObject::Connection;
         *conn = QObject::connect(instance, &codes::eeems::oxide1::General::aboutToQuit, [conn]{
             O_WARNING("Tarnish has indicated that it is about to quit!");
             if(!childSocket.isOpen()){
-                Oxide::runLaterInMainThread([]{ _disconnect(); });
+                disconnect();
             }
             QObject::disconnect(*conn);
             delete conn;
@@ -774,7 +727,7 @@ namespace Oxide::Tarnish {
             O_DEBUG("Connecting to QGuiApplication::aboutToQuit");
             QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{
                 O_DEBUG("Application about to quit");
-                Oxide::dispatchToMainThread([]{ _disconnect(); });
+                disconnect();
             });
         }
         qRegisterMetaType<QAbstractSocket::SocketState>();
@@ -783,30 +736,52 @@ namespace Oxide::Tarnish {
 
     void disconnect(){
         O_DEBUG("Disconnecting from tarnish");
-        if(window != nullptr){
-            window->deleteLater();
-            window = nullptr;
-        }
-#define freeAPI(name) \
-        if(api_##name != nullptr){ \
-            if(strcmp(#name, "general") == 0){ \
-                releaseAPI(#name);\
-            } \
-            api_##name.clear(); \
-            api_##name = nullptr; \
-        }
-        freeAPI(power);
-        freeAPI(wifi);
-        freeAPI(screen);
-        freeAPI(apps);
-        freeAPI(system);
-        freeAPI(notification);
-        freeAPI(general);
-        freeAPI(gui);
-#undef freeAPI
         Oxide::dispatchToMainThread([]{
+            QMutexLocker locker(&fbMutex);
+            Q_UNUSED(locker);
+            fbData = nullptr;
+            fbFile.close();
+            dispatchToThread(childSocket.thread(), []{
+                childSocket.disconnect();
+                childSocket.close();
+            });
+            dispatchToThread(eventSocket.thread(), []{
+                if(eventSocket.isOpen() && getpid() == getpgrp()){
+                    WindowEvent event;
+                    event.type = Close;
+                    event.toSocket(&eventSocket);
+                }
+                eventSocket.disconnect();
+                eventSocket.close();
+            });
+#define freeAPI(name) \
+            if(!api_##name.isNull()){ \
+                if(strcmp(#name, "general") == 0){ \
+                    releaseAPI(#name); \
+                } \
+                api_##name.clear(); \
+            }
+            freeAPI(power);
+            freeAPI(wifi);
+            freeAPI(screen);
+            freeAPI(apps);
+            freeAPI(system);
+            freeAPI(notification);
+            freeAPI(gui);
+            freeAPI(general);
+#undef freeAPI
+            if(!window.isNull()){
+                window.clear();
+            }
+            if(eventThread.isRunning()){
+                // Wait after requesting the quit for both to make sure both are stopping at the same time
+                dispatchToMainThread([]{
+                    eventThread.quit();
+                    eventThread.requestInterruption();
+                    eventThread.wait();
+                });
+            }
             O_DEBUG("Disconnected");
-            _disconnect();
         });
     }
 
@@ -852,7 +827,7 @@ namespace Oxide::Tarnish {
         *conn = QObject::connect(&childSocket, &QLocalSocket::disconnected, [conn]{
             O_WARNING("Lost connection to tarnish socket!");
             childSocket.close();
-            Oxide::runLaterInMainThread([]{ _disconnect(); });
+            disconnect();
             QObject::disconnect(*conn);
             delete conn;
         });
@@ -1169,86 +1144,86 @@ namespace Oxide::Tarnish {
     unsigned int requestWaitForLastUpdate(){ return requestWaitForUpdate(0); }
 
     QSharedPointer<codes::eeems::oxide1::Power> powerApi(){
-        if(api_power != nullptr){
+        if(!api_power.isNull()){
             return api_power;
         }
         auto path = requestAPI("power");
         if(path == "/"){
-            return nullptr;
+            return api_power;
         }
-        api_power = QSharedPointer<codes::eeems::oxide1::Power>(new codes::eeems::oxide1::Power(OXIDE_SERVICE, path, api_general->connection()));
+        api_power.reset(new codes::eeems::oxide1::Power(OXIDE_SERVICE, path, api_general->connection()), &QObject::deleteLater);
         return api_power;
     }
 
     QSharedPointer<codes::eeems::oxide1::Wifi> wifiApi(){
-        if(api_wifi != nullptr){
+        if(!api_wifi.isNull()){
             return api_wifi;
         }
         auto path = requestAPI("wifi");
         if(path == "/"){
-            return nullptr;
+            return api_wifi;
         }
-        api_wifi = QSharedPointer<codes::eeems::oxide1::Wifi>(new codes::eeems::oxide1::Wifi(OXIDE_SERVICE, path, api_general->connection()));
+        api_wifi.reset(new codes::eeems::oxide1::Wifi(OXIDE_SERVICE, path, api_general->connection()), &QObject::deleteLater);
         return api_wifi;
     }
 
     QSharedPointer<codes::eeems::oxide1::Screen> screenApi(){
-        if(api_screen != nullptr){
+        if(!api_screen.isNull()){
             return api_screen;
         }
         auto path = requestAPI("screen");
         if(path == "/"){
-            return nullptr;
+            return api_screen;
         }
-        api_screen = QSharedPointer<codes::eeems::oxide1::Screen>(new codes::eeems::oxide1::Screen(OXIDE_SERVICE, path, api_general->connection()));
+        api_screen.reset(new codes::eeems::oxide1::Screen(OXIDE_SERVICE, path, api_general->connection()), &QObject::deleteLater);
         return api_screen;
     }
 
     QSharedPointer<codes::eeems::oxide1::Apps> appsApi(){
-        if(api_apps != nullptr){
+        if(!api_apps.isNull()){
             return api_apps;
         }
         auto path = requestAPI("apps");
         if(path == "/"){
-            return nullptr;
+            return api_apps;
         }
-        api_apps = QSharedPointer<codes::eeems::oxide1::Apps>(new codes::eeems::oxide1::Apps(OXIDE_SERVICE, path, api_general->connection()));
+        api_apps.reset(new codes::eeems::oxide1::Apps(OXIDE_SERVICE, path, api_general->connection()), &QObject::deleteLater);
         return api_apps;
     }
 
     QSharedPointer<codes::eeems::oxide1::System> systemApi(){
-        if(api_system != nullptr){
+        if(!api_system.isNull()){
             return api_system;
         }
         auto path = requestAPI("system");
         if(path == "/"){
-            return nullptr;
+            return api_system;
         }
-        api_system = QSharedPointer<codes::eeems::oxide1::System>(new codes::eeems::oxide1::System(OXIDE_SERVICE, path, api_general->connection()));
+        api_system.reset(new codes::eeems::oxide1::System(OXIDE_SERVICE, path, api_general->connection()), &QObject::deleteLater);
         return api_system;
     }
 
     QSharedPointer<codes::eeems::oxide1::Notifications> notificationApi(){
-        if(api_notification != nullptr){
+        if(!api_notification.isNull()){
             return api_notification;
         }
         auto path = requestAPI("notification");
         if(path == "/"){
-            return nullptr;
+            return api_notification;
         }
-        api_notification = QSharedPointer<codes::eeems::oxide1::Notifications>(new codes::eeems::oxide1::Notifications(OXIDE_SERVICE, path, api_general->connection()));
+        api_notification.reset(new codes::eeems::oxide1::Notifications(OXIDE_SERVICE, path, api_general->connection()), &QObject::deleteLater);
         return api_notification;
     }
 
     QSharedPointer<codes::eeems::oxide1::Gui> guiApi(){
-        if(api_gui != nullptr){
+        if(!api_gui.isNull()){
             return api_gui;
         }
         auto path = requestAPI("gui");
         if(path == "/"){
-            return nullptr;
+            return api_gui;
         }
-        api_gui = QSharedPointer<codes::eeems::oxide1::Gui>(new codes::eeems::oxide1::Gui(OXIDE_SERVICE, path, api_general->connection()));
+        api_gui.reset(new codes::eeems::oxide1::Gui(OXIDE_SERVICE, path, api_general->connection()), &QObject::deleteLater);
         return api_gui;
     }
 

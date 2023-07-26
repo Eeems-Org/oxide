@@ -43,22 +43,23 @@ public:
         connect(signalHandler, &SignalHandler::sigPipe, qApp, &QCoreApplication::quit);
 
         qDebug() << "Requesting screen API...";
-        screenApi = Oxide::Tarnish::screenApi().get();
-        if(screenApi == nullptr){
+        auto screenApi = Oxide::Tarnish::screenApi();
+        if(screenApi.isNull()){
             qDebug() << "Unable to get screen API";
             throw "";
         }
 
         qDebug() << "Requesting apps API...";
-        appsApi = Oxide::Tarnish::appsApi().get();
-        if(appsApi == nullptr){
+        appsApi = Oxide::Tarnish::appsApi();
+        if(appsApi.isNull()){
             qDebug() << "Unable to get apps API";
             throw "";
         }
-        connect(appsApi, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
-        connect(appsApi, &Apps::applicationRegistered, this, &Controller::registerApplication);
-        connect(appsApi, &Apps::applicationLaunched, this, &Controller::reload);
-        connect(appsApi, &Apps::applicationExited, this, &Controller::reload);
+        auto appsInstance = appsApi.get();
+        connect(appsInstance, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
+        connect(appsInstance, &Apps::applicationRegistered, this, &Controller::registerApplication);
+        connect(appsInstance, &Apps::applicationLaunched, this, &Controller::reload);
+        connect(appsInstance, &Apps::applicationExited, this, &Controller::reload);
 
         updateImage();
     }
@@ -222,7 +223,7 @@ public:
     }
 
     void setRoot(QObject* root){ this->root = root; }
-    Apps* getAppsApi() { return appsApi; }
+    QSharedPointer<Apps> getAppsApi() { return appsApi; }
 
 signals:
     void reload();
@@ -260,8 +261,7 @@ private slots:
     }
 
 private:
-    Screen* screenApi;
-    Apps* appsApi;
+    QSharedPointer<Apps> appsApi;
     QObject* root = nullptr;
     QObject* stateControllerUI = nullptr;
     ScreenProvider* screenProvider;

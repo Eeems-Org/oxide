@@ -29,43 +29,46 @@ public:
     Controller(QObject* parent)
     : QObject(parent), confirmPin() {
         clockTimer = new QTimer(root);
-        systemApi = Oxide::Tarnish::systemApi().get();
-        if(systemApi == nullptr){
+        systemApi = Oxide::Tarnish::systemApi();
+        if(systemApi.isNull()){
             qDebug() << "Unable to get system API";
             throw "";
         }
-        connect(systemApi, &System::sleepInhibitedChanged, this, &Controller::sleepInhibitedChanged);
-        connect(systemApi, &System::powerOffInhibitedChanged, this, &Controller::powerOffInhibitedChanged);
-        connect(systemApi, &System::deviceSuspending, this, &Controller::deviceSuspending);
+        auto systemInstance = systemApi.get();
+        connect(systemInstance, &System::sleepInhibitedChanged, this, &Controller::sleepInhibitedChanged);
+        connect(systemInstance, &System::powerOffInhibitedChanged, this, &Controller::powerOffInhibitedChanged);
+        connect(systemInstance, &System::deviceSuspending, this, &Controller::deviceSuspending);
 
         qDebug() << "Requesting power API...";
-        powerApi = Oxide::Tarnish::powerApi().get();
-        if(powerApi == nullptr){
+        powerApi = Oxide::Tarnish::powerApi();
+        if(powerApi.isNull()){
             qDebug() << "Unable to get power API";
             throw "";
         }
-        connect(powerApi, &Power::batteryLevelChanged, this, &Controller::batteryLevelChanged);
-        connect(powerApi, &Power::batteryStateChanged, this, &Controller::batteryStateChanged);
-        connect(powerApi, &Power::chargerStateChanged, this, &Controller::chargerStateChanged);
-        connect(powerApi, &Power::stateChanged, this, &Controller::powerStateChanged);
-        connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
-        connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
-        connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
+        auto powerInstance = powerApi.get();
+        connect(powerInstance, &Power::batteryLevelChanged, this, &Controller::batteryLevelChanged);
+        connect(powerInstance, &Power::batteryStateChanged, this, &Controller::batteryStateChanged);
+        connect(powerInstance, &Power::chargerStateChanged, this, &Controller::chargerStateChanged);
+        connect(powerInstance, &Power::stateChanged, this, &Controller::powerStateChanged);
+        connect(powerInstance, &Power::batteryAlert, this, &Controller::batteryAlert);
+        connect(powerInstance, &Power::batteryWarning, this, &Controller::batteryWarning);
+        connect(powerInstance, &Power::chargerWarning, this, &Controller::chargerWarning);
 
         qDebug() << "Requesting wifi API...";
-        wifiApi = Oxide::Tarnish::wifiApi().get();
-        if(wifiApi == nullptr){
+        wifiApi = Oxide::Tarnish::wifiApi();
+        if(wifiApi.isNull()){
             qDebug() << "Unable to get wifi API";
             throw "";
         }
-        connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
-        connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
-        connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
-        connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
+        auto wifiInstance = wifiApi.get();
+        connect(wifiInstance, &Wifi::disconnected, this, &Controller::disconnected);
+        connect(wifiInstance, &Wifi::networkConnected, this, &Controller::networkConnected);
+        connect(wifiInstance, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
+        connect(wifiInstance, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
 
         qDebug() << "Requesting apps API...";
-        appsApi = Oxide::Tarnish::appsApi().get();
-        if(appsApi == nullptr){
+        appsApi = Oxide::Tarnish::appsApi();
+        if(appsApi.isNull()){
             qDebug() << "Unable to get apps API";
             throw "";
         }
@@ -458,10 +461,10 @@ private slots:
 
 private:
     QString confirmPin;
-    System* systemApi;
-    codes::eeems::oxide1::Power* powerApi;
-    Wifi* wifiApi;
-    Apps* appsApi;
+    QSharedPointer<System> systemApi;
+    QSharedPointer<codes::eeems::oxide1::Power> powerApi;
+    QSharedPointer<Wifi> wifiApi;
+    QSharedPointer<Apps> appsApi;
     QTimer* clockTimer = nullptr;
     QObject* root = nullptr;
     QObject* batteryUI = nullptr;

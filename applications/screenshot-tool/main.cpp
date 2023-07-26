@@ -18,7 +18,7 @@ void onExit(){
     qDebug() << "Exiting";
 }
 
-void addNotification(Notifications* notifications, QString text, QString icon = ""){
+void addNotification(QSharedPointer<Notifications> notifications, QString text, QString icon = ""){
     auto guid = QUuid::createUuid().toString();
     qDebug() << "Adding notification" << guid;
     QDBusObjectPath path = notifications->add(guid, "codes.eeems.fret", text, icon);
@@ -49,26 +49,26 @@ int main(int argc, char *argv[]){
     app.setApplicationName("fret");
     app.setApplicationVersion(APP_VERSION);
     Oxide::Tarnish::getSocketFd();
-    auto system = Oxide::Tarnish::systemApi().get();
-    if(system == nullptr){
+    auto system = Oxide::Tarnish::systemApi();
+    if(system.isNull()){
         qDebug() << "Unable to get system API";
         return EXIT_FAILURE;
     }
     qDebug() << "Requesting screen API...";
     auto screen = Oxide::Tarnish::screenApi();
-    if(screen == nullptr){
+    if(screen.isNull()){
         qDebug() << "Unable to get screen API";
         return EXIT_FAILURE;
     }
     qDebug() << "Requesting notification API...";
-    auto notifications = Oxide::Tarnish::notificationApi().get();
-    if(notifications == nullptr){
+    auto notifications = Oxide::Tarnish::notificationApi();
+    if(notifications.isNull()){
         qDebug() << "Unable to get notification API";
         return EXIT_FAILURE;
     }
     qDebug() << "Connecting signal listener...";
     auto bus = notifications->connection();
-    QObject::connect(system, &System::rightAction, [screen, notifications, bus, &app]{
+    QObject::connect(system.get(), &System::rightAction, [screen, notifications, bus, &app]{
         qDebug() << "Taking screenshot";
         auto reply = screen->screenshot();
         reply.waitForFinished();

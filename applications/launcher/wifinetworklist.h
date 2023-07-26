@@ -15,7 +15,7 @@ class WifiNetwork : public QObject {
     Q_PROPERTY(bool known READ known NOTIFY knownChanged)
 
 public:
-    WifiNetwork(Network* network, Wifi* api, QObject* parent)
+    WifiNetwork(Network* network, QSharedPointer<Wifi> api, QObject* parent)
     : QObject(parent),
       api(api),
       network(network),
@@ -23,7 +23,7 @@ public:
       m_protocol(network->protocol()),
       m_connected(false),
       bsss() {}
-    WifiNetwork(QString ssid, Wifi* api, QObject* parent)
+    WifiNetwork(QString ssid, QSharedPointer<Wifi> api, QObject* parent)
     : QObject(parent),
       api(api),
       network(nullptr),
@@ -85,7 +85,7 @@ public:
         return m_connected || bsss.length() || (network != nullptr && network->bSSs().length() > 0);
     }
     bool known(){ return network != nullptr; }
-    void setAPI(Wifi* api){
+    void setAPI(QSharedPointer<Wifi> api){
         this->api = api;
     }
     void appendBSS(BSS* bss){
@@ -121,7 +121,7 @@ signals:
     void knownChanged(bool);
 
 private:
-    Wifi* api;
+    QSharedPointer<Wifi> api;
     Network* network;
     QString m_ssid;
     QString m_protocol;
@@ -132,7 +132,7 @@ private:
 class WifiNetworkList : public QAbstractListModel
 {
     Q_OBJECT
-    Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged);
+    Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
 
 public:
     explicit WifiNetworkList() : QAbstractListModel(nullptr), networks() {}
@@ -326,12 +326,12 @@ public:
         }
         sort();
     }
-    void setAPI(Wifi* api){
+    void setAPI(QSharedPointer<Wifi> api){
         this->api = api;
         for(auto network : networks){
             network->setAPI(api);
         }
-        connect(api, &Wifi::scanningChanged, this, [this](bool scanning){
+        connect(api.get(), &Wifi::scanningChanged, this, [this](bool scanning){
             emit scanningChanged(scanning);
         });
     }
@@ -355,7 +355,7 @@ signals:
     void scanningChanged(bool);
 
 private:
-    Wifi* api = nullptr;
+    QSharedPointer<Wifi> api;
     QList<WifiNetwork*> networks;
 };
 

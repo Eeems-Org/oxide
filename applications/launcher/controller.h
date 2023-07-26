@@ -73,27 +73,28 @@ public:
         auto guiApi = Oxide::Tarnish::getAPI();
         connect(guiApi.get(), &General::aboutToQuit, qApp, &QGuiApplication::quit);
         guiApi.clear();
-        powerApi = Oxide::Tarnish::powerApi().get();
-        if(powerApi == nullptr){
+        powerApi = Oxide::Tarnish::powerApi();
+        if(powerApi.isNull()){
             qFatal("Power API was not available");
         }
-        // Connect to signals
-        connect(powerApi, &Power::batteryLevelChanged, this, &Controller::batteryLevelChanged);
-        connect(powerApi, &Power::batteryStateChanged, this, &Controller::batteryStateChanged);
-        connect(powerApi, &Power::batteryTemperatureChanged, this, &Controller::batteryTemperatureChanged);
-        connect(powerApi, &Power::chargerStateChanged, this, &Controller::chargerStateChanged);
-        connect(powerApi, &Power::stateChanged, this, &Controller::powerStateChanged);
-        connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
-        connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
-        connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
-        wifiApi = Oxide::Tarnish::wifiApi().get();
-        if(wifiApi == nullptr){
+        auto powerInstance = powerApi.get();
+        connect(powerInstance, &Power::batteryLevelChanged, this, &Controller::batteryLevelChanged);
+        connect(powerInstance, &Power::batteryStateChanged, this, &Controller::batteryStateChanged);
+        connect(powerInstance, &Power::batteryTemperatureChanged, this, &Controller::batteryTemperatureChanged);
+        connect(powerInstance, &Power::chargerStateChanged, this, &Controller::chargerStateChanged);
+        connect(powerInstance, &Power::stateChanged, this, &Controller::powerStateChanged);
+        connect(powerInstance, &Power::batteryAlert, this, &Controller::batteryAlert);
+        connect(powerInstance, &Power::batteryWarning, this, &Controller::batteryWarning);
+        connect(powerInstance, &Power::chargerWarning, this, &Controller::chargerWarning);
+        wifiApi = Oxide::Tarnish::wifiApi();
+        if(wifiApi.isNull()){
             qFatal("Wifi API was not available");
         }
-        connect(wifiApi, &Wifi::disconnected, this, &Controller::disconnected);
-        connect(wifiApi, &Wifi::networkConnected, this, &Controller::networkConnected);
-        connect(wifiApi, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
-        connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
+        auto wifiInstance = wifiApi.get();
+        connect(wifiInstance, &Wifi::disconnected, this, &Controller::disconnected);
+        connect(wifiInstance, &Wifi::networkConnected, this, &Controller::networkConnected);
+        connect(wifiInstance, &Wifi::stateChanged, this, &Controller::wifiStateChanged);
+        connect(wifiInstance, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
         networks->setAPI(wifiApi);
         auto state = wifiApi->state();
         m_wifion = state != WifiState::WifiOff && state != WifiState::WifiUnknown;
@@ -116,22 +117,19 @@ public:
                 networkConnected(network);
             }
         });
-        systemApi = Oxide::Tarnish::systemApi().get();
-        if(systemApi == nullptr){
+        systemApi = Oxide::Tarnish::systemApi();
+        if(systemApi.isNull()){
             qFatal("Could not request system API");
         }
-        connect(systemApi, &System::powerOffInhibitedChanged, this, &Controller::powerOffInhibitedChanged);
-        connect(systemApi, &System::powerOffInhibitedChanged, [=](bool value){
-            qDebug() << "Power Off Inhibited:" << value;
-        });
-        connect(systemApi, &System::sleepInhibitedChanged, this, &Controller::sleepInhibitedChanged);
-        connect(systemApi, &System::autoSleepChanged, [this](int sleepAfter){
+        auto systemInstance = systemApi.get();
+        connect(systemInstance, &System::powerOffInhibitedChanged, this, &Controller::powerOffInhibitedChanged);
+        connect(systemInstance, &System::powerOffInhibitedChanged, [=](bool value){ qDebug() << "Power Off Inhibited:" << value; });
+        connect(systemInstance, &System::sleepInhibitedChanged, this, &Controller::sleepInhibitedChanged);
+        connect(systemInstance, &System::autoSleepChanged, [this](int sleepAfter){
             setAutomaticSleep(sleepAfter);
             setSleepAfter(sleepAfter);
         });
-        connect(systemApi, &System::swipeLengthChanged, [this](int direction, int length){
-            setSwipeLength(direction, length);
-        });
+        connect(systemInstance, &System::swipeLengthChanged, [this](int direction, int length){ setSwipeLength(direction, length); });
         auto autoSleep = systemApi->autoSleep();
         setAutomaticSleep(autoSleep);
         setSleepAfter(autoSleep);
@@ -140,19 +138,21 @@ public:
         }
         emit powerOffInhibitedChanged(powerOffInhibited());
         emit sleepInhibitedChanged(sleepInhibited());
-        appsApi = Oxide::Tarnish::appsApi().get();
-        if(appsApi == nullptr){
+        appsApi = Oxide::Tarnish::appsApi();
+        if(appsApi.isNull()){
             qFatal("Apps API was not available");
         }
-        connect(appsApi, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
-        connect(appsApi, &Apps::applicationRegistered, this, &Controller::registerApplication);
-        notificationApi = Oxide::Tarnish::notificationApi().get();
-        if(notificationApi == nullptr){
+        auto appsInstance = appsApi.get();
+        connect(appsInstance, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
+        connect(appsInstance, &Apps::applicationRegistered, this, &Controller::registerApplication);
+        notificationApi = Oxide::Tarnish::notificationApi();
+        if(notificationApi.isNull()){
             qFatal("Notification API was not available");
         }
-        connect(notificationApi, &Notifications::notificationAdded, this, &Controller::notificationAdded);
-        connect(notificationApi, &Notifications::notificationRemoved, this, &Controller::notificationRemoved);
-        connect(notificationApi, &Notifications::notificationChanged, this, &Controller::notificationChanged);
+        auto notificationsInstance = notificationApi.get();
+        connect(notificationsInstance, &Notifications::notificationAdded, this, &Controller::notificationAdded);
+        connect(notificationsInstance, &Notifications::notificationRemoved, this, &Controller::notificationRemoved);
+        connect(notificationsInstance, &Notifications::notificationChanged, this, &Controller::notificationChanged);
         connect(notifications, &NotificationList::updated, this, &Controller::notificationsUpdated);
 
         uiTimer = new QTimer(this);
@@ -180,14 +180,14 @@ public:
         }
         m_wifion = true;
         emit wifiOnChanged(true);
-        connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
+        connect(wifiApi.get(), &Wifi::bssRemoved, this, &Controller::bssRemoved);
         return true;
     }
     Q_INVOKABLE void turnOffWifi(){
         wifiApi->disable();
         m_wifion = false;
         emit wifiOnChanged(false);
-        disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
+        disconnect(wifiApi.get(), &Wifi::bssRemoved, this, &Controller::bssRemoved);
         networks->removeUnknown();
         wifiApi->flushBSSCache(0);
     }
@@ -296,10 +296,11 @@ public:
     int maxTouchHeight(){ return deviceSettings.getTouchHeight() * 0.9; }
 
     Q_INVOKABLE void disconnectWifiSignals(){
-        disconnect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
-        disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-        disconnect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
-        disconnect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
+        auto wifiInstance = wifiApi.get();
+        disconnect(wifiInstance, &Wifi::bssFound, this, &Controller::bssFound);
+        disconnect(wifiInstance, &Wifi::bssRemoved, this, &Controller::bssRemoved);
+        disconnect(wifiInstance, &Wifi::networkAdded, this, &Controller::networkAdded);
+        disconnect(wifiInstance, &Wifi::networkRemoved, this, &Controller::networkRemoved);
     }
     Q_INVOKABLE void connectWifiSignals(){
         networks->clear();
@@ -327,12 +328,13 @@ public:
         networks->append(bsssToAdd);
         networks->sort();
         networks->setConnected(wifiApi->network());
-        connect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
-        connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
-        connect(wifiApi, &Wifi::networkAdded, this, &Controller::networkAdded);
-        connect(wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved);
+        auto wifiInstance = wifiApi.get();
+        connect(wifiInstance, &Wifi::bssFound, this, &Controller::bssFound);
+        connect(wifiInstance, &Wifi::bssRemoved, this, &Controller::bssRemoved);
+        connect(wifiInstance, &Wifi::networkAdded, this, &Controller::networkAdded);
+        connect(wifiInstance, &Wifi::networkRemoved, this, &Controller::networkRemoved);
     }
-    Apps* getAppsApi() { return appsApi; }
+    QSharedPointer<Apps> getAppsApi() { return appsApi; }
 signals:
     void reload();
     void automaticSleepChanged(bool);
@@ -632,11 +634,11 @@ private:
     bool m_wifion;
     SysObject wifi;
     QTimer* uiTimer;
-    Power* powerApi = nullptr;
-    Wifi* wifiApi = nullptr;
-    System* systemApi = nullptr;
-    Apps* appsApi = nullptr;
-    Notifications* notificationApi = nullptr;
+    QSharedPointer<Power> powerApi;
+    QSharedPointer<Wifi> wifiApi;
+    QSharedPointer<System> systemApi;
+    QSharedPointer<Apps> appsApi;
+    QSharedPointer<Notifications> notificationApi;
     QList<QObject*> applications;
     AppItem* getApplication(QString name);
     WifiNetworkList* networks;

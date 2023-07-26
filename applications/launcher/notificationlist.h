@@ -163,8 +163,10 @@ public:
     }
     int length() { return notifications.length(); }
     bool empty() { return notifications.empty(); }
+
 signals:
     void updated();
+
 private:
     QList<NotificationItem*> notifications;
 };
