@@ -49,7 +49,7 @@ int main(int argc, char *argv[]){
     app.setApplicationName("fret");
     app.setApplicationVersion(APP_VERSION);
     Oxide::Tarnish::getSocketFd();
-    auto system = Oxide::Tarnish::systemApi();
+    auto system = Oxide::Tarnish::systemApi().get();
     if(system == nullptr){
         qDebug() << "Unable to get system API";
         return EXIT_FAILURE;
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]){
         return EXIT_FAILURE;
     }
     qDebug() << "Requesting notification API...";
-    auto notifications = Oxide::Tarnish::notificationApi();
+    auto notifications = Oxide::Tarnish::notificationApi().get();
     if(notifications == nullptr){
         qDebug() << "Unable to get notification API";
         return EXIT_FAILURE;

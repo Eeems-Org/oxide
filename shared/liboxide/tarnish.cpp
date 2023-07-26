@@ -14,15 +14,15 @@
 
 using namespace Oxide::Tarnish;
 
-codes::eeems::oxide1::General* api_general = nullptr;
-codes::eeems::oxide1::Power* api_power = nullptr;
-codes::eeems::oxide1::Wifi* api_wifi = nullptr;
-codes::eeems::oxide1::Screen* api_screen = nullptr;
-codes::eeems::oxide1::Apps* api_apps = nullptr;
-codes::eeems::oxide1::System* api_system = nullptr;
-codes::eeems::oxide1::Notifications* api_notification = nullptr;
-codes::eeems::oxide1::Gui* api_gui = nullptr;
-codes::eeems::oxide1::Window* window = nullptr;
+QSharedPointer<codes::eeems::oxide1::General> api_general = nullptr;
+QSharedPointer<codes::eeems::oxide1::Power> api_power = nullptr;
+QSharedPointer<codes::eeems::oxide1::Wifi> api_wifi = nullptr;
+QSharedPointer<codes::eeems::oxide1::Screen> api_screen = nullptr;
+QSharedPointer<codes::eeems::oxide1::Apps> api_apps = nullptr;
+QSharedPointer<codes::eeems::oxide1::System> api_system = nullptr;
+QSharedPointer<codes::eeems::oxide1::Notifications> api_notification = nullptr;
+QSharedPointer<codes::eeems::oxide1::Gui> api_gui = nullptr;
+QSharedPointer<codes::eeems::oxide1::Window> window = nullptr;
 QRect fbGeometry;
 qulonglong fbLineSize = 0;
 QImage::Format fbFormat = QImage::Format_Invalid;
@@ -89,7 +89,7 @@ void _disconnect(){
     });
 #define freeAPI(name) \
     if(api_##name != nullptr){ \
-        delete api_##name; \
+        api_##name.clear(); \
         api_##name = nullptr; \
     }
     freeAPI(power);
@@ -102,7 +102,7 @@ void _disconnect(){
     freeAPI(gui);
 #undef freeAPI
     if(window != nullptr){
-        delete window;
+        window.clear();
         window = nullptr;
     }
     if(eventThread.isRunning()){
@@ -706,7 +706,7 @@ namespace Oxide::Tarnish {
         return debug;
     }
 
-    codes::eeems::oxide1::General* getAPI(){
+    QSharedPointer<codes::eeems::oxide1::General> getAPI(){
         if(api_general == nullptr){
             connect();
         }
@@ -759,9 +759,10 @@ namespace Oxide::Tarnish {
             }
         }
         O_DEBUG("Tarnish DBus service is online, connecting...");
-        api_general = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+        auto instance = new codes::eeems::oxide1::General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+        api_general = QSharedPointer<codes::eeems::oxide1::General>(instance);
         auto conn = new QMetaObject::Connection;
-        *conn = QObject::connect(api_general, &codes::eeems::oxide1::General::aboutToQuit, [conn]{
+        *conn = QObject::connect(instance, &codes::eeems::oxide1::General::aboutToQuit, [conn]{
             O_WARNING("Tarnish has indicated that it is about to quit!");
             if(!childSocket.isOpen()){
                 Oxide::runLaterInMainThread([]{ _disconnect(); });
@@ -791,7 +792,7 @@ namespace Oxide::Tarnish {
             if(strcmp(#name, "general") == 0){ \
                 releaseAPI(#name);\
             } \
-            delete api_##name; \
+            api_##name.clear(); \
             api_##name = nullptr; \
         }
         freeAPI(power);
@@ -891,11 +892,11 @@ namespace Oxide::Tarnish {
                     if(path == "/"){
                         continue;
                     }
-                    window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection());
+                    window = QSharedPointer<codes::eeems::oxide1::Window>(new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection()));
                     if(window->format() == (int)fbRequestedFormat){
                         break;
                     }
-                    delete window;
+                    window.clear();
                     window = nullptr;
                 }
             }
@@ -913,8 +914,9 @@ namespace Oxide::Tarnish {
                 O_WARNING("Unable to get framebuffer: Unable to create window");
                 return -1;
             }
-            window = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection());
-            QObject::connect(window, &codes::eeems::oxide1::Window::frameBufferChanged, [=](const QDBusUnixFileDescriptor& fd){
+            auto instance = new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection());
+            window = QSharedPointer<codes::eeems::oxide1::Window>(instance);
+            QObject::connect(instance, &codes::eeems::oxide1::Window::frameBufferChanged, [=](const QDBusUnixFileDescriptor& fd){
                 O_DEBUG("frameBufferChanged");
                 fbFile.close();
                 fbGeometry.adjust(0, 0, 0, 0);
@@ -937,9 +939,9 @@ namespace Oxide::Tarnish {
                 }
                 setupFbFd(frameBufferFd);
             });
-            QObject::connect(window, &codes::eeems::oxide1::Window::closed, [=](){
+            QObject::connect(instance, &codes::eeems::oxide1::Window::closed, [=](){
                 O_DEBUG("Window closed");
-                window->deleteLater();
+                window.clear();
                 window = nullptr;
             });
             window->setVisible(true);
@@ -1166,7 +1168,7 @@ namespace Oxide::Tarnish {
 
     unsigned int requestWaitForLastUpdate(){ return requestWaitForUpdate(0); }
 
-    codes::eeems::oxide1::Power* powerApi(){
+    QSharedPointer<codes::eeems::oxide1::Power> powerApi(){
         if(api_power != nullptr){
             return api_power;
         }
@@ -1174,11 +1176,11 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_power = new codes::eeems::oxide1::Power(OXIDE_SERVICE, path, api_general->connection());
+        api_power = QSharedPointer<codes::eeems::oxide1::Power>(new codes::eeems::oxide1::Power(OXIDE_SERVICE, path, api_general->connection()));
         return api_power;
     }
 
-    codes::eeems::oxide1::Wifi* wifiApi(){
+    QSharedPointer<codes::eeems::oxide1::Wifi> wifiApi(){
         if(api_wifi != nullptr){
             return api_wifi;
         }
@@ -1186,11 +1188,11 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_wifi = new codes::eeems::oxide1::Wifi(OXIDE_SERVICE, path, api_general->connection());
+        api_wifi = QSharedPointer<codes::eeems::oxide1::Wifi>(new codes::eeems::oxide1::Wifi(OXIDE_SERVICE, path, api_general->connection()));
         return api_wifi;
     }
 
-    codes::eeems::oxide1::Screen* screenApi(){
+    QSharedPointer<codes::eeems::oxide1::Screen> screenApi(){
         if(api_screen != nullptr){
             return api_screen;
         }
@@ -1198,11 +1200,11 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_screen = new codes::eeems::oxide1::Screen(OXIDE_SERVICE, path, api_general->connection());
+        api_screen = QSharedPointer<codes::eeems::oxide1::Screen>(new codes::eeems::oxide1::Screen(OXIDE_SERVICE, path, api_general->connection()));
         return api_screen;
     }
 
-    codes::eeems::oxide1::Apps* appsApi(){
+    QSharedPointer<codes::eeems::oxide1::Apps> appsApi(){
         if(api_apps != nullptr){
             return api_apps;
         }
@@ -1210,11 +1212,11 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_apps = new codes::eeems::oxide1::Apps(OXIDE_SERVICE, path, api_general->connection());
+        api_apps = QSharedPointer<codes::eeems::oxide1::Apps>(new codes::eeems::oxide1::Apps(OXIDE_SERVICE, path, api_general->connection()));
         return api_apps;
     }
 
-    codes::eeems::oxide1::System* systemApi(){
+    QSharedPointer<codes::eeems::oxide1::System> systemApi(){
         if(api_system != nullptr){
             return api_system;
         }
@@ -1222,11 +1224,11 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_system = new codes::eeems::oxide1::System(OXIDE_SERVICE, path, api_general->connection());
+        api_system = QSharedPointer<codes::eeems::oxide1::System>(new codes::eeems::oxide1::System(OXIDE_SERVICE, path, api_general->connection()));
         return api_system;
     }
 
-    codes::eeems::oxide1::Notifications* notificationApi(){
+    QSharedPointer<codes::eeems::oxide1::Notifications> notificationApi(){
         if(api_notification != nullptr){
             return api_notification;
         }
@@ -1234,11 +1236,11 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_notification = new codes::eeems::oxide1::Notifications(OXIDE_SERVICE, path, api_general->connection());
+        api_notification = QSharedPointer<codes::eeems::oxide1::Notifications>(new codes::eeems::oxide1::Notifications(OXIDE_SERVICE, path, api_general->connection()));
         return api_notification;
     }
 
-    codes::eeems::oxide1::Gui* guiApi(){
+    QSharedPointer<codes::eeems::oxide1::Gui> guiApi(){
         if(api_gui != nullptr){
             return api_gui;
         }
@@ -1246,9 +1248,9 @@ namespace Oxide::Tarnish {
         if(path == "/"){
             return nullptr;
         }
-        api_gui = new codes::eeems::oxide1::Gui(OXIDE_SERVICE, path, api_general->connection());
+        api_gui = QSharedPointer<codes::eeems::oxide1::Gui>(new codes::eeems::oxide1::Gui(OXIDE_SERVICE, path, api_general->connection()));
         return api_gui;
     }
 
-    codes::eeems::oxide1::Window* topWindow(){ return window; }
+    QSharedPointer<codes::eeems::oxide1::Window> topWindow(){ return window; }
 }

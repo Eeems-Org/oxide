@@ -1,41 +1,61 @@
 #include "oxidewindow.h"
 #include <liboxide/tarnish.h>
 
-OxideScreen* OxideWindow::platformScreen() const{ return static_cast<OxideScreen*>(window()->screen()->handle()); }
+OxideScreen* OxideWindow::platformScreen() const{
+    auto window = this->window();
+    if(window == nullptr){
+        return nullptr;
+    }
+    auto screen = window->screen();
+    if(screen == nullptr){
+        return nullptr;
+    }
+    auto handle = screen->handle();
+    if(handle == nullptr){
+        return nullptr;
+    }
+    return static_cast<OxideScreen*>(handle);
+}
 
 void OxideWindow::setVisible(bool visible){
     QPlatformWindow::setVisible(visible);
     auto screen = platformScreen();
-    if(visible){
-        screen->addWindow(this);
-    }else{
-        screen->removeWindow(this);
-    }
-    if(platformScreen()->topPlatformWindow() == this){
-        auto window = Oxide::Tarnish::topWindow();
-        if(window != nullptr){
-            window->setVisible(visible); // TODO - replace with event socket call
+    if(screen != nullptr){
+        if(visible){
+            screen->addWindow(this);
+        }else{
+            screen->removeWindow(this);
+        }
+        if(screen->topPlatformWindow() == this){
+            auto window = Oxide::Tarnish::topWindow();
+            if(window != nullptr){
+                window->setVisible(visible); // TODO - replace with event socket call
+            }
         }
     }
     setGeometry(screen->geometry());
 }
 
 void OxideWindow::repaint(const QRegion& region){
+    auto screen = platformScreen();
+    if(screen == nullptr){
+        return;
+    }
     const QRect currentGeometry = geometry();
     const QRect oldGeometryLocal = mOldGeometry;
     mOldGeometry = currentGeometry;
     // If this is a move, redraw the previous location
     if(oldGeometryLocal != currentGeometry){
-        platformScreen()->setDirty(oldGeometryLocal);
+        screen->setDirty(oldGeometryLocal);
     }
     auto topLeft = currentGeometry.topLeft();
     for(auto rect : region){
-        platformScreen()->setDirty(rect.translated(topLeft));
+        screen->setDirty(rect.translated(topLeft));
     }
 }
 
 bool OxideWindow::close(){
-    if(platformScreen()->topPlatformWindow() == this){
+    if(isTopWindow()){
         auto window = Oxide::Tarnish::topWindow();
         if(window != nullptr){
             // TODO - replace with event socket call
@@ -46,7 +66,7 @@ bool OxideWindow::close(){
 }
 
 void OxideWindow::raise(){
-    if(platformScreen()->topPlatformWindow() == this){
+    if(isTopWindow()){
         auto window = Oxide::Tarnish::topWindow();
         if(window != nullptr){
             // TODO - replace with event socket call
@@ -56,7 +76,7 @@ void OxideWindow::raise(){
 }
 
 void OxideWindow::lower(){
-    if(platformScreen()->topPlatformWindow() == this){
+    if(isTopWindow()){
         auto window = Oxide::Tarnish::topWindow();
         if(window != nullptr){
             // TODO - replace with event socket call
@@ -66,11 +86,16 @@ void OxideWindow::lower(){
 }
 
 void OxideWindow::setGeometry(const QRect& rect){
-    if(platformScreen()->topPlatformWindow() == this){
+    if(isTopWindow()){
         auto window = Oxide::Tarnish::topWindow();
         if(window != nullptr){
             // TODO - replace with event socket call
             window->setGeometry(rect);
         }
     }
+}
+
+bool OxideWindow::isTopWindow(){
+    auto screen = platformScreen();
+    return screen != nullptr && screen->topPlatformWindow() == this;
 }

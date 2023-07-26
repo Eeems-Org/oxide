@@ -29,7 +29,7 @@ public:
     Controller(QObject* parent)
     : QObject(parent), confirmPin() {
         clockTimer = new QTimer(root);
-        systemApi = Oxide::Tarnish::systemApi();
+        systemApi = Oxide::Tarnish::systemApi().get();
         if(systemApi == nullptr){
             qDebug() << "Unable to get system API";
             throw "";
@@ -39,7 +39,7 @@ public:
         connect(systemApi, &System::deviceSuspending, this, &Controller::deviceSuspending);
 
         qDebug() << "Requesting power API...";
-        powerApi = Oxide::Tarnish::powerApi();
+        powerApi = Oxide::Tarnish::powerApi().get();
         if(powerApi == nullptr){
             qDebug() << "Unable to get power API";
             throw "";
@@ -53,7 +53,7 @@ public:
         connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
 
         qDebug() << "Requesting wifi API...";
-        wifiApi = Oxide::Tarnish::wifiApi();
+        wifiApi = Oxide::Tarnish::wifiApi().get();
         if(wifiApi == nullptr){
             qDebug() << "Unable to get wifi API";
             throw "";
@@ -64,7 +64,7 @@ public:
         connect(wifiApi, &Wifi::rssiChanged, this, &Controller::wifiRssiChanged);
 
         qDebug() << "Requesting apps API...";
-        appsApi = Oxide::Tarnish::appsApi();
+        appsApi = Oxide::Tarnish::appsApi().get();
         if(appsApi == nullptr){
             qDebug() << "Unable to get apps API";
             throw "";

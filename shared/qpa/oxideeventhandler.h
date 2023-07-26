@@ -24,4 +24,6 @@ private:
     void readEvents();
     QWindowSystemInterface::TouchPoint getTouchPoint(const Oxide::Tarnish::TouchEventPoint& data);
     void handleTouch(Oxide::Tarnish::TouchEventArgs* data);
+    void handleTablet(Oxide::Tarnish::TabletEventArgs* data);
+    void handleKey(Oxide::Tarnish::KeyEventArgs* data);
 };

@@ -225,7 +225,7 @@ namespace Oxide::Tarnish {
      * \brief Get the current General API instance
      * \return The current General API instance
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::General* getAPI();
+    LIBOXIDE_EXPORT QSharedPointer<codes::eeems::oxide1::General> getAPI();
     /*!
      * \brief Request access to an API
      * \param Name of the API
@@ -318,40 +318,40 @@ namespace Oxide::Tarnish {
      * \brief powerAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Power* powerApi();
+    LIBOXIDE_EXPORT QSharedPointer<codes::eeems::oxide1::Power> powerApi();
     /*!
      * \brief wifiAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Wifi* wifiApi();
+    LIBOXIDE_EXPORT QSharedPointer<codes::eeems::oxide1::Wifi> wifiApi();
     /*!
      * \brief screenAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Screen* screenApi();
+    LIBOXIDE_EXPORT QSharedPointer<codes::eeems::oxide1::Screen> screenApi();
     /*!
      * \brief appsAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Apps* appsApi();
+    LIBOXIDE_EXPORT QSharedPointer<codes::eeems::oxide1::Apps> appsApi();
     /*!
      * \brief systemAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::System* systemApi();
+    LIBOXIDE_EXPORT QSharedPointer<codes::eeems::oxide1::System> systemApi();
     /*!
      * \brief notificationAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Notifications* notificationApi();
+    LIBOXIDE_EXPORT QSharedPointer<codes::eeems::oxide1::Notifications> notificationApi();
     /*!
      * \brief guiAPI
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Gui* guiApi();
+    LIBOXIDE_EXPORT QSharedPointer<codes::eeems::oxide1::Gui> guiApi();
     /*!
      * \brief topWindow
      * \return
      */
-    LIBOXIDE_EXPORT codes::eeems::oxide1::Window* topWindow();
+    LIBOXIDE_EXPORT QSharedPointer<codes::eeems::oxide1::Window> topWindow();
 }

@@ -21,6 +21,7 @@ public:
     void raise() override;
     void lower() override;
     void setGeometry(const QRect &rect) override;
+    bool isTopWindow();
 
 protected:
     OxideBackingStore* mBackingStore;

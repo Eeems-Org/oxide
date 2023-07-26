@@ -70,8 +70,10 @@ public:
         networks = new WifiNetworkList();
         notifications = new NotificationList();
         qDebug() << "Requesting APIs";
-        connect(Oxide::Tarnish::getAPI(), &General::aboutToQuit, qApp, &QGuiApplication::quit);
-        powerApi = Oxide::Tarnish::powerApi();
+        auto guiApi = Oxide::Tarnish::getAPI();
+        connect(guiApi.get(), &General::aboutToQuit, qApp, &QGuiApplication::quit);
+        guiApi.clear();
+        powerApi = Oxide::Tarnish::powerApi().get();
         if(powerApi == nullptr){
             qFatal("Power API was not available");
         }
@@ -84,7 +86,7 @@ public:
         connect(powerApi, &Power::batteryAlert, this, &Controller::batteryAlert);
         connect(powerApi, &Power::batteryWarning, this, &Controller::batteryWarning);
         connect(powerApi, &Power::chargerWarning, this, &Controller::chargerWarning);
-        wifiApi = Oxide::Tarnish::wifiApi();
+        wifiApi = Oxide::Tarnish::wifiApi().get();
         if(wifiApi == nullptr){
             qFatal("Wifi API was not available");
         }
@@ -114,7 +116,7 @@ public:
                 networkConnected(network);
             }
         });
-        systemApi = Oxide::Tarnish::systemApi();
+        systemApi = Oxide::Tarnish::systemApi().get();
         if(systemApi == nullptr){
             qFatal("Could not request system API");
         }
@@ -138,13 +140,13 @@ public:
         }
         emit powerOffInhibitedChanged(powerOffInhibited());
         emit sleepInhibitedChanged(sleepInhibited());
-        appsApi = Oxide::Tarnish::appsApi();
+        appsApi = Oxide::Tarnish::appsApi().get();
         if(appsApi == nullptr){
             qFatal("Apps API was not available");
         }
         connect(appsApi, &Apps::applicationUnregistered, this, &Controller::unregisterApplication);
         connect(appsApi, &Apps::applicationRegistered, this, &Controller::registerApplication);
-        notificationApi = Oxide::Tarnish::notificationApi();
+        notificationApi = Oxide::Tarnish::notificationApi().get();
         if(notificationApi == nullptr){
             qFatal("Notification API was not available");
         }

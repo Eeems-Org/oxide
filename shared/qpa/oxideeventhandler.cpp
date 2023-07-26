@@ -32,6 +32,10 @@ void OxideEventHandler::readEvents(){
         auto event = Oxide::Tarnish::WindowEvent::fromSocket(m_socket);
         switch(event.type){
             case Oxide::Tarnish::Geometry:{
+                if(m_primaryScreen == nullptr){
+                    O_WARNING("No primary screen");
+                    break;
+                }
                 m_primaryScreen->setGeometry(event.geometryData.geometry());
                 auto window = m_primaryScreen->topWindow();
                 if(window != nullptr){
@@ -40,6 +44,13 @@ void OxideEventHandler::readEvents(){
                 break;
             }
             case Oxide::Tarnish::Raise:{
+                if(m_primaryScreen == nullptr){
+                    O_WARNING("No primary screen");
+                    break;
+                }
+                if(QCoreApplication::closingDown()){
+                    break;
+                }
                 auto window = m_primaryScreen->topWindow();
                 if(window != nullptr){
                     window->raise();
@@ -47,6 +58,13 @@ void OxideEventHandler::readEvents(){
                 break;
             }
             case Oxide::Tarnish::Lower:{
+                if(m_primaryScreen == nullptr){
+                    O_WARNING("No primary screen");
+                    break;
+                }
+                if(QCoreApplication::closingDown()){
+                    break;
+                }
                 auto window = m_primaryScreen->topWindow();
                 if(window != nullptr){
                     window->lower();
@@ -54,6 +72,13 @@ void OxideEventHandler::readEvents(){
                 break;
             }
             case Oxide::Tarnish::Close:{
+                if(m_primaryScreen == nullptr){
+                    O_WARNING("No primary screen");
+                    break;
+                }
+                if(QCoreApplication::closingDown()){
+                    break;
+                }
                 auto window = m_primaryScreen->topWindow();
                 if(window != nullptr){
                     window->close();
@@ -64,6 +89,13 @@ void OxideEventHandler::readEvents(){
                 event.toSocket(m_socket);
                 break;
             case Oxide::Tarnish::WaitForPaint:
+                if(m_primaryScreen == nullptr){
+                    O_WARNING("No primary screen");
+                    break;
+                }
+                if(QCoreApplication::closingDown()){
+                    break;
+                }
                 QMetaObject::invokeMethod(
                     m_primaryScreen,
                     "waitForPaint",
@@ -71,103 +103,9 @@ void OxideEventHandler::readEvents(){
                     Q_ARG(unsigned int, event.waitForPaintData.marker)
                 );
                 break;
-            case Oxide::Tarnish::Key:{
-                auto data = event.keyData;
-                QEvent::Type type = QEvent::None;
-                bool repeat = false;
-                switch(data.type){
-                    case Oxide::Tarnish::ReleaseKey:
-                        type = QEvent::KeyRelease;
-                        break;
-                    case Oxide::Tarnish::PressKey:
-                        type = QEvent::KeyPress;
-                        break;
-                    case Oxide::Tarnish::RepeatKey:
-                        type = QEvent::KeyPress;
-                        repeat = true;
-                        break;
-                }
-                // TODO - sort out how to get key modifiers state
-                QWindowSystemInterface::handleKeyEvent(
-                    nullptr,
-                    type,
-                    data.code,
-                    Qt::NoModifier,
-                    QString((unsigned char)event.keyData.unicode),
-                    repeat
-                );
-//                QWindow *window,
-//                QEvent::Type t,
-//                int k,
-//                Qt::KeyboardModifiers mods,
-//                const QString & text = QString(),
-//                bool autorep = false,
-//                ushort count = 1
-                break;
-            }
+            case Oxide::Tarnish::Key: handleKey(&event.keyData); break;
             case Oxide::Tarnish::Touch: handleTouch(&event.touchData); break;
-            case Oxide::Tarnish::Tablet:{
-                auto data = event.tabletData;
-                if(data.type == Oxide::Tarnish::PenEnterProximity){
-                    QWindowSystemInterface::handleTabletEnterProximityEvent(
-                        QTabletEvent::Stylus,
-                        data.tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
-                        int(QTabletEvent::Stylus)
-                    );
-                    break;
-                }
-                if(data.type == Oxide::Tarnish::PenLeaveProximity){
-                    QWindowSystemInterface::handleTabletLeaveProximityEvent(
-                        QTabletEvent::Stylus,
-                        data.tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
-                        int(QTabletEvent::Stylus)
-                    );
-                    break;
-                }
-                switch(data.type){
-                    case Oxide::Tarnish::PenPress:
-                        m_tabletPenDown = true;
-                        break;
-                    case Oxide::Tarnish::PenUpdate:
-                        break;
-                    case Oxide::Tarnish::PenRelease:
-                        m_tabletPenDown = false;
-                        break;
-                    default:
-                        break;
-                }
-                QWindowSystemInterface::handleTabletEvent(
-                    nullptr,
-                    QPointF(),
-                    data.point(),
-                    int(QTabletEvent::Stylus),
-                    data.tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
-                    m_tabletPenDown ? Qt::LeftButton : Qt::NoButton,
-                    data.pressure,
-                    data.tiltX,
-                    data.tiltY,
-                    0,
-                    0,
-                    0,
-                    Oxide::Tarnish::getEventPipeFd(),
-                    qGuiApp->keyboardModifiers()
-                );
-//                QWindow *window,
-//                const QPointF &local,
-//                const QPointF &global,
-//                int device,
-//                int pointerType,
-//                Qt::MouseButtons buttons,
-//                qreal pressure,
-//                int xTilt,
-//                int yTilt,
-//                qreal tangentialPressure,
-//                qreal rotation,
-//                int z,
-//                qint64 uid,
-//                Qt::KeyboardModifiers modifiers = Qt::NoModifier
-                break;
-            }
+            case Oxide::Tarnish::Tablet: handleTablet(&event.tabletData); break;
             case Oxide::Tarnish::ImageInfo:
             case Oxide::Tarnish::Repaint:
             case Oxide::Tarnish::FrameBuffer:
@@ -180,6 +118,10 @@ void OxideEventHandler::readEvents(){
 
 QWindowSystemInterface::TouchPoint OxideEventHandler::getTouchPoint(const Oxide::Tarnish::TouchEventPoint& data){
     QWindowSystemInterface::TouchPoint point;
+    if(m_primaryScreen == nullptr){
+        O_WARNING("No primary screen");
+        return point;
+    }
     point.id = data.id;
     if(data.tool != Oxide::Tarnish::Finger){
         point.flags = point.flags | QTouchEvent::TouchPoint::Token;
@@ -211,6 +153,13 @@ QWindowSystemInterface::TouchPoint OxideEventHandler::getTouchPoint(const Oxide:
 }
 
 void OxideEventHandler::handleTouch(Oxide::Tarnish::TouchEventArgs* data){
+    if(m_primaryScreen == nullptr){
+        O_WARNING("No primary screen");
+        return;
+    }
+    if(QCoreApplication::closingDown()){
+        return;
+    }
     QRect winRect = QHighDpi::toNativePixels(m_primaryScreen->geometry(), m_primaryScreen);
     if(winRect.isNull()){
         O_WARNING("Null screenGeometry");
@@ -224,3 +173,112 @@ void OxideEventHandler::handleTouch(Oxide::Tarnish::TouchEventArgs* data){
     }
     QWindowSystemInterface::handleTouchEvent(nullptr, &m_touchscreen, m_touchPoints);
 }
+
+void OxideEventHandler::handleTablet(Oxide::Tarnish::TabletEventArgs* data){
+    if(m_primaryScreen == nullptr){
+        O_WARNING("No primary screen");
+        return;
+    }
+    if(QCoreApplication::closingDown()){
+        return;
+    }
+    if(data->type == Oxide::Tarnish::PenEnterProximity){
+        QWindowSystemInterface::handleTabletEnterProximityEvent(
+            QTabletEvent::Stylus,
+            data->tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
+            int(QTabletEvent::Stylus)
+        );
+        return;
+    }
+    if(data->type == Oxide::Tarnish::PenLeaveProximity){
+        QWindowSystemInterface::handleTabletLeaveProximityEvent(
+            QTabletEvent::Stylus,
+            data->tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
+            int(QTabletEvent::Stylus)
+        );
+        return;
+    }
+    switch(data->type){
+        case Oxide::Tarnish::PenPress:
+            m_tabletPenDown = true;
+            break;
+        case Oxide::Tarnish::PenUpdate:
+            break;
+        case Oxide::Tarnish::PenRelease:
+            m_tabletPenDown = false;
+            break;
+        default:
+            break;
+    }
+    QWindowSystemInterface::handleTabletEvent(
+        nullptr,
+        QPointF(),
+        data->point(),
+        int(QTabletEvent::Stylus),
+        data->tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
+        m_tabletPenDown ? Qt::LeftButton : Qt::NoButton,
+        data->pressure,
+        data->tiltX,
+        data->tiltY,
+        0,
+        0,
+        0,
+        Oxide::Tarnish::getEventPipeFd(),
+        qGuiApp->keyboardModifiers()
+    );
+//    QWindow *window,
+//    const QPointF &local,
+//    const QPointF &global,
+//    int device,
+//    int pointerType,
+//    Qt::MouseButtons buttons,
+//    qreal pressure,
+//    int xTilt,
+//    int yTilt,
+//    qreal tangentialPressure,
+//    qreal rotation,
+//    int z,
+//    qint64 uid,
+//    Qt::KeyboardModifiers modifiers = Qt::NoModifier
+}
+
+void OxideEventHandler::handleKey(Oxide::Tarnish::KeyEventArgs* data){
+    if(m_primaryScreen == nullptr){
+        O_WARNING("No primary screen");
+        return;
+    }
+    if(QCoreApplication::closingDown()){
+        return;
+    }
+    QEvent::Type type = QEvent::None;
+    bool repeat = false;
+    switch(data->type){
+        case Oxide::Tarnish::ReleaseKey:
+            type = QEvent::KeyRelease;
+            break;
+        case Oxide::Tarnish::PressKey:
+            type = QEvent::KeyPress;
+            break;
+        case Oxide::Tarnish::RepeatKey:
+            type = QEvent::KeyPress;
+            repeat = true;
+            break;
+    }
+    // TODO - sort out how to get key modifiers state
+    QWindowSystemInterface::handleKeyEvent(
+        nullptr,
+        type,
+        data->code,
+        Qt::NoModifier,
+        QString((unsigned char)data->unicode),
+        repeat
+    );
+//    QWindow *window,
+//    QEvent::Type t,
+//    int k,
+//    Qt::KeyboardModifiers mods,
+//    const QString & text = QString(),
+//    bool autorep = false,
+//    ushort count = 1
+}
+

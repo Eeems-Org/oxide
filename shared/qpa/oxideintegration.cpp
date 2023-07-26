@@ -56,7 +56,9 @@ OxideIntegration::OxideIntegration(const QStringList& parameters)
 
 OxideIntegration::~OxideIntegration(){
     QWindowSystemInterface::handleScreenRemoved(m_primaryScreen);
-    delete m_fontDatabase;
+    if(m_fontDatabase != nullptr){
+        delete m_fontDatabase;
+    }
 }
 
 bool OxideIntegration::hasCapability(QPlatformIntegration::Capability cap) const{
@@ -79,7 +81,11 @@ void OxideIntegration::initialize(){
     if(socket == nullptr){
         qFatal("Could not get tarnish private socket");
     }
-    QObject::connect(Oxide::Tarnish::getSocket(), &QLocalSocket::disconnected, []{ qApp->quit(); });
+    QObject::connect(Oxide::Tarnish::getSocket(), &QLocalSocket::disconnected, []{
+        if(!qApp->closingDown()){
+            qApp->quit();
+        }
+    });
     QObject::connect(socket, &QLocalSocket::readyRead, [socket]{
         // TODO - read commands
         while(!socket->atEnd()){
