@@ -109,7 +109,7 @@ extern "C" {
                || strcmp(name, "QT_QUICK_BACKEND") == 0
                || strcmp(name, "QT_QPA_PLATFORM") == 0
                || strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0
-               || strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0
+               || (strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0 && !qEnvironmentVariableIsSet("OXIDE_PRELOAD_FORCE_QSGEPAPER"))
                || strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0
                || strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0
                || strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0
@@ -134,10 +134,17 @@ extern "C" {
         void* stack_end
     ){
         // Initialize environment
-        setenv("QMLSCENE_DEVICE", "software", 1);
-        setenv("QT_QUICK_BACKEND", "software", 1);
+        if(qEnvironmentVariableIsSet("OXIDE_PRELOAD_FORCE_QSGEPAPER")){
+            setenv("QMLSCENE_DEVICE", "epaper", 1);
+            setenv("QT_QUICK_BACKEND", "epaper", 1);
+        }else{
+            setenv("QMLSCENE_DEVICE", "software", 1);
+            setenv("QT_QUICK_BACKEND", "software", 1);
+        }
         setenv("QT_QPA_PLATFORM", "oxide:enable_fonts", 1);
-        setenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet", 1);
+        if(!qEnvironmentVariableIsSet("OXIDE_PRELOAD_FORCE_QSGEPAPER")){
+            setenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet", 1);
+        }
         setenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", "", 1);
         setenv("QT_QPA_EVDEV_MOUSE_PARAMETERS", "", 1);
         setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
