@@ -138,16 +138,18 @@ SystemAPI* SystemAPI::singleton(SystemAPI* self){
 }
 
 SystemAPI::SystemAPI(QObject* parent)
-    : APIBase(parent),
-      suspendTimer(this),
-      lockTimer(this),
-      settings(this),
-      sleepInhibitors(),
-      powerOffInhibitors(),
-      mutex(),
-      touches(),
-      swipeStates(),
-      swipeLengths() {
+    : APIBase{parent},
+      suspendTimer{this},
+      lockTimer{this},
+      settings{this},
+      sleepInhibitors{},
+      powerOffInhibitors{},
+      mutex{},
+      touches{},
+      swipeStates{},
+      swipeLengths{},
+      m_powerStateFifo{"power/state", "/var/run/tarnish/power/state", this, true}
+{
     Oxide::Sentry::sentry_transaction("system", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "settings", "Sync settings", [this](Oxide::Sentry::Span* s){
             Oxide::Sentry::sentry_span(s, "swipes", "Default swipe values", [this]{
@@ -347,6 +349,9 @@ SystemAPI::SystemAPI(QObject* parent)
                         return false;
                 }
             });
+        });
+        Oxide::Sentry::sentry_span(t, "fifo", "Connect to fifos", [this]{
+            connect(&m_powerStateFifo, &FifoHandler::dataRecieved, this, &SystemAPI::powerStateDataRecieved);
         });
         O_INFO("System API ready to use");
     });
@@ -802,6 +807,15 @@ void SystemAPI::touchEvent(const input_event& event){
                 }break;
             }
             break;
+    }
+}
+
+void SystemAPI::powerStateDataRecieved(FifoHandler* handler, const QString& data){
+    Q_UNUSED(handler);
+    if((QStringList() << "mem" << "freeze" << "standby").contains(data)){
+        systemAPI->suspend();
+    }else{
+        O_WARNING("Unknown power state call: " << data);
     }
 }
 

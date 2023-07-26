@@ -161,7 +161,6 @@ private slots:
     void readyReadStandardOutput();
     void stateChanged(QProcess::ProcessState state);
     void errorOccurred(QProcess::ProcessError error);
-    void powerStateDataRecieved(FifoHandler* handler, const QString& data);
 
 private:
     QVariantMap m_config;

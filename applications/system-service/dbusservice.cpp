@@ -61,6 +61,7 @@ DBusService* DBusService::__singleton(){
 #endif
         sd_notify(0, "STATUS=startup");
         guiAPI->startup();
+        systemAPI->startup();
         appsAPI->startup();
         sd_notify(0, "STATUS=running");
         sd_notify(0, "READY=1");
@@ -360,6 +361,7 @@ void DBusService::shutdown(){
     sd_notify(0, "STATUS=stopping");
     sd_notify(0, "STOPPING=1");
     emit aboutToQuit();
+    systemAPI->shutdown();
     appsAPI->shutdown();
     guiAPI->shutdown();
     // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators

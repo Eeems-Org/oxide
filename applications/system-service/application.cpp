@@ -923,19 +923,6 @@ void Application::showSplashScreen(){
     O_INFO("Finished painting splash screen for" << name());
 }
 
-void Application::powerStateDataRecieved(FifoHandler* handler, const QString& data){
-    Q_UNUSED(handler);
-    if(!permissions().contains("power")){
-        O_WARNING("Denied powerState request");
-        return;
-    }
-    if((QStringList() << "mem" << "freeze" << "standby").contains(data)){
-        systemAPI->suspend();
-    }else{
-        O_WARNING("Unknown power state call: " << data);
-    }
-}
-
 void Application::startSpan(std::string operation, std::string description){
     if(!sharedSettings.applicationUsage()){
         return;

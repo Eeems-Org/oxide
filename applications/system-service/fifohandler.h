@@ -12,7 +12,7 @@ class FifoHandler : public QObject {
     Q_OBJECT
 
 public:
-    FifoHandler(QString name, QString path, QObject* host)
+    FifoHandler(QString name, QString path, QObject* host, bool create = false)
     : QObject(),
       host(host),
       _thread(this),
@@ -21,6 +21,12 @@ public:
       path(path),
       in(),
       out() {
+        if(create && !QFileInfo::exists(path)){
+            QDir().mkpath(QFileInfo(path).absolutePath());
+            if(mkfifo(path.toStdString().c_str(), 0644)){
+                qFatal("Failed to create fifo");
+            }
+        }
         _thread.setObjectName(QString("fifo %1").arg(name));
         connect(host, &QObject::destroyed, this, &QObject::deleteLater);
         connect(&_thread, &QThread::started, [this]{
@@ -45,6 +51,7 @@ public:
         });
         thread->setObjectName(QString("fifo -init %1").arg(name));
         thread->start();
+        setObjectName(QString("fifo %1").arg(name));
         moveToThread(&_thread);
     }
     ~FifoHandler(){

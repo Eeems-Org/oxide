@@ -815,7 +815,7 @@ void connectEventPipe(){
     _DEBUG("Connected to event pipe");
 }
 
-int open_from_tarnish(const char* pathname){
+int open_from_tarnish(const char* pathname, int flags, mode_t mode){
     if(!IS_INITIALIZED || IS_OPENING){
         return -2;
     }
@@ -855,7 +855,7 @@ int open_from_tarnish(const char* pathname){
         res = fbFd = Oxide::Tarnish::getFrameBufferFd();
     }
     if(strcmp(pathname, "/sys/power/state") == 0){
-        // TODO - passoff to systemctl
+        res = func_open("/var/run/tarnish/power/state", flags, mode);
     }
     if(!PIPE_OPENED && res != -2){
         PIPE_OPENED = true;
@@ -880,7 +880,7 @@ extern "C" {
             return func_open64(pathname, flags, mode);
         }
         _DEBUG("open64", pathname);
-        int fd = open_from_tarnish(pathname);
+        int fd = open_from_tarnish(pathname, flags, mode);
         if(fd == -2){
             fd = func_open64(pathname, flags, mode);
         }
@@ -895,7 +895,7 @@ extern "C" {
             return func_openat(dirfd, pathname, flags, mode);
         }
         _DEBUG("openat", pathname);
-        int fd = open_from_tarnish(pathname);
+        int fd = open_from_tarnish(pathname, flags, mode);
         if(fd == -2){
             DIR* save = opendir(".");
             fchdir(dirfd);
@@ -903,7 +903,7 @@ extern "C" {
             getcwd(path, PATH_MAX);
             fchdir(::dirfd(save));
             closedir(save);
-            fd = open_from_tarnish(QString("%1/%2").arg(path, pathname).toStdString().c_str());
+            fd = open_from_tarnish(QString("%1/%2").arg(path, pathname).toStdString().c_str(), flags, mode);
         }
         if(fd == -2){
             fd = func_openat(dirfd, pathname, flags, mode);
@@ -918,7 +918,7 @@ extern "C" {
             return func_open(pathname, flags, mode);;
         }
         _DEBUG("open", pathname);
-        int fd = open_from_tarnish(pathname);
+        int fd = open_from_tarnish(pathname, flags, mode);
         if(fd == -2){
             fd = func_open(pathname, flags, mode);
         }

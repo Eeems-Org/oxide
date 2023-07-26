@@ -62,6 +62,12 @@ public:
     ~SystemAPI();
     void setEnabled(bool enabled);
     bool isEnabled();
+    void startup(){
+        m_powerStateFifo.start();
+    }
+    void shutdown(){
+        m_powerStateFifo.quit();
+    }
     int autoSleep();
     void setAutoSleep(int _autoSleep);
     int autoLock();
@@ -120,6 +126,7 @@ private slots:
     void suspendTimeout();
     void lockTimeout();
     void touchEvent(const input_event& event);
+    void powerStateDataRecieved(FifoHandler* handler, const QString& data);
 
 private:
     Manager* systemd;
@@ -143,6 +150,7 @@ private:
     QMap<SwipeDirection, int> swipeLengths;
     bool m_enabled;
     QMap<int, QTimer*> m_pressStates;
+    FifoHandler m_powerStateFifo;
 
     void inhibitSleep();
     void inhibitPowerOff();
