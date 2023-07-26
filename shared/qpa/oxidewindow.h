@@ -9,11 +9,11 @@ class OxideScreen;
 
 class OxideWindow : public QPlatformWindow {
 public:
-    OxideWindow(QWindow* window) : QPlatformWindow(window), mBackingStore(nullptr){ }
-    ~OxideWindow(){ }
+    OxideWindow(QWindow* window);
+    ~OxideWindow();
 
-    void setBackingStore(OxideBackingStore* store) { mBackingStore = store; }
-    OxideBackingStore* backingStore() const { return mBackingStore; }
+    void setBackingStore(OxideBackingStore* store);
+    OxideBackingStore* backingStore() const;
     OxideScreen* platformScreen() const;
     void setVisible(bool visible) override;
     virtual void repaint(const QRegion& region);

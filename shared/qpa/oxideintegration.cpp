@@ -55,10 +55,16 @@ OxideIntegration::OxideIntegration(const QStringList& parameters)
 }
 
 OxideIntegration::~OxideIntegration(){
-    QWindowSystemInterface::handleScreenRemoved(m_primaryScreen);
+    if(m_primaryScreen != nullptr){
+        QWindowSystemInterface::handleScreenRemoved(m_primaryScreen);
+        delete m_primaryScreen;
+        m_primaryScreen = nullptr;
+    }
     if(m_fontDatabase != nullptr){
         delete m_fontDatabase;
+        m_fontDatabase = nullptr;
     }
+    m_inputContext = nullptr;
 }
 
 bool OxideIntegration::hasCapability(QPlatformIntegration::Capability cap) const{

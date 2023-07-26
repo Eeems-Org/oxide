@@ -23,7 +23,9 @@ OxideEventHandler::OxideEventHandler(QLocalSocket* socket, OxideScreen* primaryS
     moveToThread(socket->thread());
 }
 
-OxideEventHandler::~OxideEventHandler(){ }
+OxideEventHandler::~OxideEventHandler(){
+    m_primaryScreen = nullptr;
+}
 
 void OxideEventHandler::readEvents(){
     QMutexLocker locker(&m_eventMutex);
@@ -79,10 +81,7 @@ void OxideEventHandler::readEvents(){
                 if(QCoreApplication::closingDown()){
                     break;
                 }
-                auto window = m_primaryScreen->topWindow();
-                if(window != nullptr){
-                    window->close();
-                }
+                qApp->quit();
                 break;
             }
             case Oxide::Tarnish::Ping:

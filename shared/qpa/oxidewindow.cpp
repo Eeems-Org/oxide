@@ -1,6 +1,14 @@
 #include "oxidewindow.h"
 #include <liboxide/tarnish.h>
 
+OxideWindow::OxideWindow(QWindow* window) : QPlatformWindow(window), mBackingStore(nullptr){ }
+
+OxideWindow::~OxideWindow(){ }
+
+void OxideWindow::setBackingStore(OxideBackingStore* store) { mBackingStore = store; }
+
+OxideBackingStore* OxideWindow::backingStore() const { return mBackingStore; }
+
 OxideScreen* OxideWindow::platformScreen() const{
     auto window = this->window();
     if(window == nullptr){
