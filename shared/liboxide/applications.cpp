@@ -192,26 +192,12 @@ namespace Oxide::Applications{
                 addError(ErrorLevel::Deprecation, "Key \"flags\" contains \"nosavescreen\" which is deprecated");
             }
         } else shouldExit
+        if(flags.contains("chroot")){
+            addError(ErrorLevel::Deprecation, "Key \"flags\" contains \"chroot\" which has been deprecated and no longer does anything");
+        }else shouldExit
         if(isArray("directories", ErrorLevel::Critical, false)){
-            auto directories = app["directories"].toArray();
-            for(int i = 0; i < directories.count(); i++){
-                QJsonValue entry = directories[i];
-                if(!entry.isString()){
-                    addError(ErrorLevel::Error, QString(
-                        "Value \"%1\" for key \"directories[%2]\" contains an entry that is not a string \"%3\""
-                    ).arg(Oxide::JSON::toJson(directories), QString::number(i), Oxide::JSON::toJson(entry)));
-                    continue;
-                }
-                auto directory = entry.toString();
-                if(!QFile::exists(directory)){
-                    addError(ErrorLevel::Error, QString(
-                        "Value \"%1\" for key \"directories[%2]\" contains a path that does not exist \"%3\""
-                    ).arg(Oxide::JSON::toJson(directories), QString::number(i), directory));
-                }
-            }
-        } else shouldExit else if(flags.contains("chroot")){
-            addError(ErrorLevel::Hint, "Key \"flags\" contains \"chroot\" while \"directories\" is missing");
-        }
+            addError(ErrorLevel::Deprecation, "Key \"directories\" exists, which has been deprecated and no longer does anything");
+        }else shouldExit
         if(isArray("permissions", ErrorLevel::Critical, false)){
             auto permissions = app["permissions"].toArray();
             for(int i = 0; i < permissions.count(); i++){

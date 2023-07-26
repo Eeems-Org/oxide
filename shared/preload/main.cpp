@@ -854,6 +854,9 @@ int open_from_tarnish(const char* pathname){
     if(DO_HANDLE_FB && strcmp(pathname, "/dev/fb0") == 0){
         res = fbFd = Oxide::Tarnish::getFrameBufferFd();
     }
+    if(strcmp(pathname, "/sys/power/state") == 0){
+        // TODO - passoff to systemctl
+    }
     if(!PIPE_OPENED && res != -2){
         PIPE_OPENED = true;
         if(QCoreApplication::startingUp()){

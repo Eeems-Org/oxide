@@ -45,16 +45,16 @@ const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
 Application::Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
 
 Application::Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false), fifos(), m_pid{-1} {
-    m_process = new SandBoxProcess(this);
-    connect(m_process, &SandBoxProcess::started, this, &Application::started);
-    connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&SandBoxProcess::finished), [this](int exitCode, QProcess::ExitStatus status){
+    m_process = new Process(this);
+    connect(m_process, &Process::started, this, &Application::started);
+    connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&Process::finished), [this](int exitCode, QProcess::ExitStatus status){
         Q_UNUSED(status);
         finished(exitCode);
     });
-    connect(m_process, &SandBoxProcess::readyReadStandardError, this, &Application::readyReadStandardError);
-    connect(m_process, &SandBoxProcess::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
-    connect(m_process, &SandBoxProcess::stateChanged, this, &Application::stateChanged);
-    connect(m_process, &SandBoxProcess::errorOccurred, this, &Application::errorOccurred);
+    connect(m_process, &Process::readyReadStandardError, this, &Application::readyReadStandardError);
+    connect(m_process, &Process::readyReadStandardOutput, this, &Application::readyReadStandardOutput);
+    connect(m_process, &Process::stateChanged, this, &Application::stateChanged);
+    connect(m_process, &Process::errorOccurred, this, &Application::errorOccurred);
 }
 
 Application::~Application() {
@@ -63,7 +63,6 @@ Application::~Application() {
     if(m_screenCapture != nullptr){
         delete m_screenCapture;
     }
-    umountAll();
     if(p_stdout != nullptr){
         p_stdout->flush();
         delete p_stdout;
@@ -143,16 +142,7 @@ void Application::launchNoSecurityCheck(){
                 m_process->setProgram(bin());
             }
             updateEnvironment();
-            // TODO - switch to systemd-nspawn: https://www.man7.org/linux/man-pages/man1/systemd-nspawn.1.html
-            umountAll();
-            if(chroot()){
-                mountAll();
-                m_process->setChroot(chrootPath());
-                m_process->setWorkingDirectory(chrootPath() + "/" + workingDirectory());
-            }else{
-                m_process->setChroot("");
-                m_process->setWorkingDirectory(workingDirectory());
-            }
+            m_process->setWorkingDirectory(workingDirectory());
             m_process->setUser(user());
             m_process->setGroup(group());
             if(flags().contains("nolog")){
@@ -686,21 +676,9 @@ void Application::setWorkingDirectory(const QString& workingDirectory){
     emit workingDirectoryChanged(workingDirectory);
 }
 
-bool Application::chroot(){ return flags().contains("chroot"); }
-
 QString Application::user(){ return value("user", getuid()).toString(); }
 
 QString Application::group(){ return value("group", getgid()).toString(); }
-
-QStringList Application::directories() { return value("directories", QStringList()).toStringList(); }
-
-void Application::setDirectories(QStringList directories){
-    if(!hasPermission("permissions")){
-        return;
-    }
-    setValue("directories", directories);
-    emit directoriesChanged(directories);
-}
 
 QByteArray Application::screenCapture(){
     if(!hasPermission("permissions")){
@@ -749,7 +727,6 @@ void Application::finished(int exitCode){
     emit exited(exitCode);
     appsAPI->resumeIfNone();
     emit appsAPI->applicationExited(qPath(), exitCode);
-    umountAll();
     if(transient()){
         unregister();
     }
@@ -886,252 +863,6 @@ void Application::updateEnvironment(){
         env.insert("LD_PRELOAD", preload.join(':'));
     }
     m_process->setEnvironment(env.toStringList());
-}
-
-void Application::mkdirs(const QString& path, mode_t mode){
-    QDir dir(path);
-    if(!dir.exists()){
-        QString subpath = "";
-        for(auto part : path.split("/")){
-            subpath += "/" + part;
-            QDir dir(subpath);
-            if(!dir.exists()){
-                mkdir(subpath.toStdString().c_str(), mode);
-            }
-        }
-    }
-}
-
-void Application::bind(const QString& source, const QString& target, bool readOnly){
-    umount(target);
-    if(QFileInfo(source).isDir()){
-        mkdirs(target, 744);
-    }else{
-        mkdirs(QFileInfo(target).dir().path(), 744);
-    }
-    auto ctarget = target.toStdString();
-    auto csource = source.toStdString();
-    O_INFO("mount" << source << target);
-    if(mount(csource.c_str(), ctarget.c_str(), NULL, MS_BIND, NULL)){
-        O_WARNING("Failed to create bindmount: " << ::strerror(errno));
-        return;
-    }
-    if(!readOnly){
-        return;
-    }
-    if(mount(csource.c_str(), ctarget.c_str(), NULL, MS_REMOUNT | MS_BIND | MS_RDONLY, NULL)){
-        O_WARNING("Failed to remount bindmount read only: " << ::strerror(errno));
-    }
-    O_INFO("mount ro" << source << target);
-}
-
-void Application::sysfs(const QString& path){
-    mkdirs(path, 744);
-    umount(path);
-    O_INFO("sysfs" << path);
-    if(mount("none", path.toStdString().c_str(), "sysfs", 0, "")){
-        O_WARNING("Failed to mount sysfs: " << ::strerror(errno));
-    }
-}
-
-void Application::ramdisk(const QString& path){
-    mkdirs(path, 744);
-    umount(path);
-    O_INFO("ramdisk" << path);
-    if(mount("tmpfs", path.toStdString().c_str(), "tmpfs", 0, "size=249m,mode=755")){
-        O_WARNING("Failed to create ramdisk: " << ::strerror(errno));
-    }
-}
-
-void Application::umount(const QString& path){
-    if(!isMounted(path)){
-        return;
-    }
-    auto cpath = path.toStdString();
-    auto ret = ::umount2(cpath.c_str(), MNT_DETACH);
-    if((ret && ret != EINVAL && ret != ENOENT) || isMounted(path)){
-        O_INFO("umount failed" << path);
-        return;
-    }
-    QDir dir(path);
-    if(dir.exists()){
-        rmdir(cpath.c_str());
-    }
-    O_INFO("umount" << path);
-}
-
-FifoHandler* Application::mkfifo(const QString& name, const QString& target){
-    if(isMounted(target)){
-        O_WARNING(target << "Already mounted");
-        return fifos.contains(name) ? fifos[name] : nullptr;
-    }
-    auto source = resourcePath() + "/" + name;
-    if(!QFile::exists(source)){
-        if(::mkfifo(source.toStdString().c_str(), 0644)){
-            O_WARNING("Failed to create " << name << " fifo: " << ::strerror(errno));
-        }
-    }
-    if(!QFile::exists(source)){
-        O_WARNING("No fifo for " << name);
-        return fifos.contains(name) ? fifos[name] : nullptr;
-    }
-    bind(source, target);
-    if(!fifos.contains(name)){
-        O_INFO("Creating fifo thread for" << source);
-        auto handler = new FifoHandler(name, source.toStdString().c_str(), this);
-        O_INFO("Connecting fifo thread events for" << source);
-        connect(handler, &FifoHandler::finished, [this, name]{
-            if(fifos.contains(name)){
-                fifos.take(name);
-            }
-        });
-        fifos[name] = handler;
-        O_INFO("Starting fifo thread for" << source);
-        handler->start();
-        O_INFO("Fifo thread for " << source << "started");
-    }
-    return fifos[name];
-}
-
-void Application::symlink(const QString& source, const QString& target){
-    if(QFile::exists(source)){
-        return;
-    }
-    O_INFO("symlink" << source << target);
-    if(::symlink(target.toStdString().c_str(), source.toStdString().c_str())){
-        O_WARNING("Failed to create symlink: " << ::strerror(errno));
-        return;
-    }
-}
-
-const QString Application::resourcePath() { return "/tmp/tarnish-chroot/" + name(); }
-
-const QString Application::chrootPath() { return resourcePath() + "/chroot"; }
-
-void Application::mountAll(){
-    Oxide::Sentry::sentry_transaction("application", "mount", [this](Oxide::Sentry::Transaction* t){
-#ifdef SENTRY
-        if(t != nullptr){
-            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
-        }
-#endif
-        auto path = chrootPath();
-        O_INFO("Setting up chroot" << path);
-        Oxide::Sentry::sentry_span(t, "bind", "Bind directories", [this, path]{
-            // System tmpfs folders
-            bind("/dev", path + "/dev");
-            bind("/proc", path + "/proc");
-            sysfs(path + "/sys");
-            // Folders required to run things
-            bind("/bin", path + "/bin", true);
-            bind("/sbin", path + "/sbin", true);
-            bind("/lib", path + "/lib", true);
-            bind("/usr/lib", path + "/usr/lib", true);
-            bind("/usr/bin", path + "/usr/bin", true);
-            bind("/usr/sbin", path + "/usr/sbin", true);
-            bind("/opt/bin", path + "/opt/bin", true);
-            bind("/opt/lib", path + "/opt/lib", true);
-            bind("/opt/usr/bin", path + "/opt/usr/bin", true);
-            bind("/opt/usr/lib", path + "/opt/usr/lib", true);
-        });
-        Oxide::Sentry::sentry_span(t, "ramdisk", "Create ramdisks", [this, path]{
-            // tmpfs folders
-            mkdirs(path + "/tmp", 744);
-            if(!QFile::exists(path + "/run")){
-                ramdisk(path + "/run");
-            }
-            if(!QFile::exists(path + "/var/volatile")){
-                ramdisk(path + "/var/volatile");
-            }
-        });
-        Oxide::Sentry::sentry_span(t, "configured", "Bind configured directories", [this, path]{
-            // Configured folders
-            for(auto directory : directories()){
-                bind(directory, path + directory);
-            }
-        });
-        Oxide::Sentry::sentry_span(t, "fifo", "Create fifos", [this, path]{
-            // Fake sys devices
-            auto fifo = mkfifo("powerState", path + "/sys/power/state");
-            connect(fifo, &FifoHandler::dataRecieved, this, &Application::powerStateDataRecieved);
-        });
-        Oxide::Sentry::sentry_span(t, "symlink", "Create symlinks", [this, path]{
-            // Missing symlinks
-            symlink(path + "/var/run", "../run");
-            symlink(path + "/var/lock", "../run/lock");
-            symlink(path + "/var/tmp", "volatile/tmp");
-        });
-    });
-}
-
-void Application::umountAll(){
-    Oxide::Sentry::sentry_transaction("application", "umount", [this](Oxide::Sentry::Transaction* t){
-#ifdef SENTRY
-        if(t != nullptr){
-            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
-        }
-#endif
-        auto path = chrootPath();
-        Oxide::Sentry::sentry_span(t, "fifos", "Remove fifos", [this]{
-            for(auto name : fifos.keys()){
-                auto fifo = fifos.take(name);
-                fifo->quit();
-                fifo->deleteLater();
-            }
-        });
-        QDir dir(path);
-        if(!dir.exists()){
-            return;
-        }
-        O_INFO("Tearing down chroot" << path);
-        Oxide::Sentry::sentry_span(t, "dirs", "Remove directories", [dir]{
-            for(auto file : dir.entryList(QDir::Files)){
-                QFile::remove(file);
-            }
-        });
-        Oxide::Sentry::sentry_span(t, "umount", "Unmount all mounts", [this]{
-            for(auto mount : getActiveApplicationMounts()){
-                umount(mount);
-            }
-        });
-        if(!getActiveApplicationMounts().isEmpty()){
-            O_INFO("Some items are still mounted in chroot" << path);
-            return;
-        }
-        Oxide::Sentry::sentry_span(t, "rm", "Remove final folder", [&dir]{
-            dir.removeRecursively();
-        });
-    });
-}
-
-bool Application::isMounted(const QString& path){ return getActiveMounts().contains(path); }
-
-QStringList Application::getActiveApplicationMounts(){
-    auto path = chrootPath() + "/";
-    QStringList activeMounts = getActiveMounts().filter(QRegularExpression("^" + QRegularExpression::escape(path) + ".*"));
-    activeMounts.sort(Qt::CaseSensitive);
-    std::reverse(std::begin(activeMounts), std::end(activeMounts));
-    return activeMounts;
-}
-
-QStringList Application::getActiveMounts(){
-    QFile mounts("/proc/mounts");
-    if(!mounts.open(QIODevice::ReadOnly)){
-        O_INFO("Unable to open /proc/mounts");
-        return QStringList();
-    }
-    QString line;
-    QStringList activeMounts;
-    while(!(line = mounts.readLine()).isEmpty()){
-        auto mount = line.section(' ', 1, 1);
-        if(mount.startsWith("/")){
-            activeMounts.append(mount);
-        }
-    }
-    mounts.close();
-    activeMounts.sort(Qt::CaseSensitive);
-    std::reverse(std::begin(activeMounts), std::end(activeMounts));
-    return activeMounts;
 }
 
 void Application::showSplashScreen(){
@@ -1277,10 +1008,10 @@ void Application::recallScreen(){
     });
 }
 
-SandBoxProcess::SandBoxProcess(QObject* parent)
-    : QProcess(parent), m_gid(0), m_uid(0), m_chroot(""), m_mask(0) {}
+Process::Process(QObject* parent)
+    : QProcess(parent), m_gid(0), m_uid(0), m_mask(0) {}
 
-bool SandBoxProcess::setUser(const QString& name){
+bool Process::setUser(const QString& name){
     try{
         m_uid = Oxide::getUID(name);
         return true;
@@ -1290,7 +1021,7 @@ bool SandBoxProcess::setUser(const QString& name){
     }
 }
 
-bool SandBoxProcess::setGroup(const QString& name){
+bool Process::setGroup(const QString& name){
     try{
         m_gid = Oxide::getGID(name);
         return true;
@@ -1300,30 +1031,13 @@ bool SandBoxProcess::setGroup(const QString& name){
     }
 }
 
-bool SandBoxProcess::setChroot(const QString& path){
-    if(path.isEmpty() || path == "/"){
-        m_chroot = "";
-        return true;
-    }
-    QDir dir(path);
-    if(dir.exists()){
-        m_chroot = path;
-        return true;
-    }
-    return false;
-}
-
-void SandBoxProcess::setMask(mode_t mask){
+void Process::setMask(mode_t mask){
     m_mask = mask;
 }
 
-void SandBoxProcess::setupChildProcess() {
+void Process::setupChildProcess() {
     // Drop all privileges in the child process
     setgroups(0, 0);
-    if(!m_chroot.isEmpty()){
-        // enter a chroot jail.
-        chroot(m_chroot.toStdString().c_str());
-    }
     // Change to correct user
     setresgid(m_gid, m_gid, m_gid);
     setresuid(m_uid, m_uid, m_uid);
