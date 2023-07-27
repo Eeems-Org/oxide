@@ -181,7 +181,6 @@ QVector<QDBusObjectPath> GuiAPI::allWindows(){
     }
     W_ALLOWED();
     for(auto window : _sortedWindows()){
-        qDebug() << window->z() << window->identifier() << window->name();
         windows.append(window->path());
     }
     return windows;
@@ -195,7 +194,6 @@ QVector<QDBusObjectPath> GuiAPI::allVisibleWindows(){
     }
     W_ALLOWED();
     for(auto window : _sortedVisibleWindows()){
-        qDebug() << window->z() << window->identifier() << window->name();
         windows.append(window->path());
     }
     return windows;
