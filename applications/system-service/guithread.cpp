@@ -360,9 +360,9 @@ void GUIThread::redraw(RepaintRequest& event){
     }
     O_DEBUG("Repainting" << rect);
     // Get windows in order of Z sort order, and filter out invalid windows
-    auto visibleWindows = guiAPI->sortedWindows();
+    auto visibleWindows = guiAPI->_sortedWindows();
     // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
-    QMutableListIterator<Window*> i(visibleWindows);
+    QMutableVectorIterator<Window*> i(visibleWindows);
     while(i.hasNext()){
         auto window = i.next();
         if(!window->_isVisible()){

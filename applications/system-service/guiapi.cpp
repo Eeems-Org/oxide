@@ -141,15 +141,15 @@ QDBusObjectPath GuiAPI::createWindow(QString name, int format){
     return window == nullptr ? QDBusObjectPath("/") : window->path();
 }
 
-QList<QDBusObjectPath> GuiAPI::windows(){
-    QList<QDBusObjectPath> windows;
+QVector<QDBusObjectPath> GuiAPI::windows(){
+    QVector<QDBusObjectPath> windows;
     if(!hasPermission()){
         W_DENIED();
         return windows;
     }
     W_ALLOWED();
     auto pgid = getSenderPgid();
-    for(auto window : sortedWindows()){
+    for(auto window : _sortedWindows()){
         if(window->pgid() == pgid){
             windows.append(window->path());
         }
@@ -157,46 +157,46 @@ QList<QDBusObjectPath> GuiAPI::windows(){
     return windows;
 }
 
-QList<QDBusObjectPath> GuiAPI::visibleWindows(){
-    QList<QDBusObjectPath> windows;
+QVector<QDBusObjectPath> GuiAPI::visibleWindows(){
+    QVector<QDBusObjectPath> windows;
     if(!hasPermission()){
         W_DENIED();
         return windows;
     }
     W_ALLOWED();
     auto pgid = getSenderPgid();
-    for(auto window : sortedWindows()){
-        if(window->pgid() == pgid && window->_isVisible()){
+    for(auto window : _sortedVisibleWindows()){
+        if(window->pgid() == pgid){
             windows.append(window->path());
         }
     }
     return windows;
 }
 
-QList<QDBusObjectPath> GuiAPI::allWindows(){
-    QList<QDBusObjectPath> windows;
+QVector<QDBusObjectPath> GuiAPI::allWindows(){
+    QVector<QDBusObjectPath> windows;
     if(!qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS") || !hasPermission()){
         W_DENIED();
         return windows;
     }
     W_ALLOWED();
-    for(auto window : sortedWindows()){
+    for(auto window : _sortedWindows()){
+        qDebug() << window->z() << window->identifier() << window->name();
         windows.append(window->path());
     }
     return windows;
 }
 
-QList<QDBusObjectPath> GuiAPI::allVisibleWindows(){
-    QList<QDBusObjectPath> windows;
+QVector<QDBusObjectPath> GuiAPI::allVisibleWindows(){
+    QVector<QDBusObjectPath> windows;
     if(!qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS") || !hasPermission()){
         W_DENIED();
         return windows;
     }
     W_ALLOWED();
-    for(auto window : sortedWindows()){
-        if(window->_isVisible()){
-            windows.append(window->path());
-        }
+    for(auto window : _sortedVisibleWindows()){
+        qDebug() << window->z() << window->identifier() << window->name();
+        windows.append(window->path());
     }
     return windows;
 }
@@ -221,16 +221,17 @@ bool GuiAPI::isThisPgId(pid_t valid_pgid){
     return pgid == valid_pgid || pgid == getpid();
 }
 
-QList<Window*> GuiAPI::sortedWindows(){
+QVector<Window*> GuiAPI::_sortedWindows(){
     QMutexLocker locker(&m_windowMutex);
     Q_UNUSED(locker)
     auto sortedWindows = m_windows.values();
     std::sort(sortedWindows.begin(), sortedWindows.end());
-    return sortedWindows;
+    return sortedWindows.toVector();
 }
-QList<Window*> GuiAPI::sortedVisibleWindows(){
-    auto windows = sortedWindows();
-    QMutableListIterator<Window*> i(windows);
+
+QVector<Window*> GuiAPI::_sortedVisibleWindows(){
+    auto windows = _sortedWindows();
+    QMutableVectorIterator<Window*> i(windows);
     while(i.hasNext()){
         auto window = i.next();
         if(window->systemWindow() || !window->_isVisible()){
@@ -241,7 +242,7 @@ QList<Window*> GuiAPI::sortedVisibleWindows(){
 }
 
 void GuiAPI::sortWindows(){
-    auto windows = sortedWindows();
+    auto windows = _sortedWindows();
     QMutexLocker locker(&m_windowMutex);
     Q_UNUSED(locker)
     int raisedZ = 0;
@@ -328,7 +329,7 @@ GUIThread* GuiAPI::guiThread(){ return &m_thread; }
 
 void GuiAPI::writeTouchEvent(QEvent* event){
     W_DEBUG(event);
-    auto windows = sortedVisibleWindows();
+    auto windows = _sortedVisibleWindows();
     if(windows.isEmpty()){
         W_DEBUG("No visible windows");
         return;
@@ -402,7 +403,7 @@ void GuiAPI::writeTouchEvent(QEvent* event){
 
 void GuiAPI::writeTabletEvent(QEvent* event){
     W_DEBUG(event);
-    auto windows = sortedVisibleWindows();
+    auto windows = _sortedVisibleWindows();
     if(windows.isEmpty()){
         W_DEBUG("No visible windows");
         return;
@@ -469,7 +470,7 @@ void GuiAPI::writeTabletEvent(QEvent* event){
 
 void GuiAPI::writeKeyEvent(QEvent* event){
     W_DEBUG(event);
-    auto windows = sortedVisibleWindows();
+    auto windows = _sortedVisibleWindows();
     if(windows.isEmpty()){
         W_DEBUG("No visible windows");
         return;
