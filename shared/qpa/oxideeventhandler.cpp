@@ -7,11 +7,10 @@
 #include <liboxide/threading.h>
 
 OxideEventHandler::OxideEventHandler(QLocalSocket* socket)
-: QObject(),
+: QObject(qApp),
   m_socket{socket},
   m_tabletPenDown{false}
 {
-    connect(qApp, &QGuiApplication::aboutToQuit, this, &QObject::deleteLater);
     m_touchscreen = new QTouchDevice();
     m_touchscreen->setName("oxide");
     m_touchscreen->setType(QTouchDevice::TouchScreen);
@@ -25,7 +24,7 @@ OxideEventHandler::OxideEventHandler(QLocalSocket* socket)
     moveToThread(socket->thread());
 }
 
-OxideEventHandler::~OxideEventHandler(){ QWindowSystemInterface::unregisterTouchDevice(m_touchscreen); }
+OxideEventHandler::~OxideEventHandler(){ }
 
 void OxideEventHandler::readEvents(){
     QMutexLocker locker(&m_eventMutex);

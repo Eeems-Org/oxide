@@ -46,7 +46,6 @@ private:
     mutable QPlatformFontDatabase* m_fontDatabase = nullptr;
     QPlatformInputContext* m_inputContext = nullptr;
     QPointer<OxideScreen> m_primaryScreen;
-    QPointer<OxideEventFilter> m_eventFilter;
     unsigned short m_options;
     bool m_debug;
     QMutex m_mutex;

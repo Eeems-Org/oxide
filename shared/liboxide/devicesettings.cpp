@@ -375,7 +375,7 @@ namespace Oxide {
             qputenv("QT_DEBUG_PLUGINS", "1");
         }
 #endif
-        if(type != DeviceSettings::Oxide || qEnvironmentVariableIsSet("OXIDE_PRELOAD")){
+        if(type != DeviceSettings::Oxide){
 #ifdef __arm__
             qputenv("QMLSCENE_DEVICE", "epaper");
             qputenv("QT_QUICK_BACKEND","epaper");

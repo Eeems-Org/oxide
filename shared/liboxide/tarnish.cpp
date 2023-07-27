@@ -725,9 +725,8 @@ namespace Oxide::Tarnish {
         });
         if(qApp != nullptr){
             O_DEBUG("Connecting to QGuiApplication::aboutToQuit");
-            QObject::connect(qApp, &QCoreApplication::aboutToQuit, [conn]{
+            QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{
                 O_DEBUG("Application about to quit");
-                QObject::disconnect(*conn);
                 disconnect();
             });
         }
@@ -737,16 +736,25 @@ namespace Oxide::Tarnish {
 
     void disconnect(){
         O_DEBUG("Disconnecting from tarnish");
+        if(!verifyConnection()){
+            O_DEBUG("Already disconnected");
+            return;
+        }
+        if(!fbMutex.tryLock()){
+            O_DEBUG("Already disconnecting");
+            return;
+        }
         Oxide::dispatchToMainThread([]{
-            QMutexLocker locker(&fbMutex);
-            Q_UNUSED(locker);
             fbData = nullptr;
             fbFile.close();
             dispatchToThread(childSocket.thread(), []{
+                O_DEBUG("Closing child socket");
                 childSocket.disconnect();
                 childSocket.close();
+                O_DEBUG("Child socket closed");
             });
             dispatchToThread(eventSocket.thread(), []{
+                O_DEBUG("Closing event socket");
                 if(eventSocket.isOpen() && getpid() == getpgrp()){
                     WindowEvent event;
                     event.type = Close;
@@ -754,6 +762,7 @@ namespace Oxide::Tarnish {
                 }
                 eventSocket.disconnect();
                 eventSocket.close();
+                O_DEBUG("Event socket closed");
             });
 #define freeAPI(name) \
             if(!api_##name.isNull()){ \
@@ -776,14 +785,15 @@ namespace Oxide::Tarnish {
             }
             if(eventThread.isRunning()){
                 // Wait after requesting the quit for both to make sure both are stopping at the same time
-                dispatchToMainThread([]{
-                    eventThread.quit();
-                    eventThread.requestInterruption();
-                    eventThread.wait();
-                });
+                O_DEBUG("Instructing event thread to quit");
+                eventThread.quit();
+                eventThread.requestInterruption();
+                eventThread.wait();
+                O_DEBUG("Event thread has quit");
             }
             O_DEBUG("Disconnected");
         });
+        fbMutex.unlock();
     }
 
     int getSocketFd(){

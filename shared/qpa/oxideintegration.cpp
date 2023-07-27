@@ -91,8 +91,7 @@ void OxideIntegration::initialize(){
             O_DEBUG(socket->readAll());
         }
     });
-    m_eventFilter = new OxideEventFilter(qApp);
-    qApp->installEventFilter(m_eventFilter);
+    qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
     auto eventPipe = Oxide::Tarnish::getEventPipe();
     if(eventPipe == nullptr){
