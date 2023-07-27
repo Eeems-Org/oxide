@@ -150,7 +150,7 @@ QList<QDBusObjectPath> GuiAPI::windows(){
     W_ALLOWED();
     auto pgid = getSenderPgid();
     for(auto window : sortedWindows()){
-        if(window->pgid() == pgid || qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")){
+        if(window->pgid() == pgid){
             windows.append(window->path());
         }
     }
@@ -166,7 +166,35 @@ QList<QDBusObjectPath> GuiAPI::visibleWindows(){
     W_ALLOWED();
     auto pgid = getSenderPgid();
     for(auto window : sortedWindows()){
-        if((window->pgid() == pgid || qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")) && window->_isVisible()){
+        if(window->pgid() == pgid && window->_isVisible()){
+            windows.append(window->path());
+        }
+    }
+    return windows;
+}
+
+QList<QDBusObjectPath> GuiAPI::allWindows(){
+    QList<QDBusObjectPath> windows;
+    if(!qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS") || !hasPermission()){
+        W_DENIED();
+        return windows;
+    }
+    W_ALLOWED();
+    for(auto window : sortedWindows()){
+        windows.append(window->path());
+    }
+    return windows;
+}
+
+QList<QDBusObjectPath> GuiAPI::allVisibleWindows(){
+    QList<QDBusObjectPath> windows;
+    if(!qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS") || !hasPermission()){
+        W_DENIED();
+        return windows;
+    }
+    W_ALLOWED();
+    for(auto window : sortedWindows()){
+        if(window->_isVisible()){
             windows.append(window->path());
         }
     }

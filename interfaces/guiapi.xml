@@ -64,6 +64,12 @@
     <method name="visibleWindows">
       <arg type="ao" direction="out"/>
     </method>
+    <method name="allWindows">
+      <arg type="ao" direction="out"/>
+    </method>
+    <method name="allVisibleWindows">
+      <arg type="ao" direction="out"/>
+    </method>
     <method name="repaint">
     </method>
   </interface>

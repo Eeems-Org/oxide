@@ -829,9 +829,11 @@ namespace Oxide::Tarnish {
             return nullptr;
         }
         fd = dup(fd);
-        if(!childSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered)){
+        if(!dispatchToThread<bool>(childSocket.thread(), [fd]{
+            return childSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered);
+        })){
             ::close(fd);
-            O_WARNING("Unable to get child socket:" << childSocket.errorString());
+            O_WARNING("Unable to get child socket:" << eventSocket.errorString());
             return nullptr;
         }
         auto conn = new QMetaObject::Connection;
@@ -870,24 +872,32 @@ namespace Oxide::Tarnish {
             O_WARNING("Unable to get framebuffer: Unable get command socket");
             return -1;
         }
-        if(window == nullptr){
+        if(window.isNull()){
+            O_DEBUG("Checking to see if there is an existing window");
             auto reply = api_gui->windows();
-            if(reply.isValid()){
+            if(reply.isError()){
+                O_WARNING("Unable to request existing windows:" << reply.error().message());
+            }else{
+                auto windowName = QString::fromStdString(Oxide::getAppName());
                 for(QDBusObjectPath qpath : reply.value()){
                     auto path = qpath.path();
                     if(path == "/"){
                         continue;
                     }
+                    O_DEBUG("Checking window at" << path << "to see if it has the correct format");
                     window = QSharedPointer<codes::eeems::oxide1::Window>(new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection()));
-                    if(window->format() == (int)fbRequestedFormat){
+                    if(window->name() == windowName && window->format() == (int)fbRequestedFormat){
+                        O_DEBUG("Found existing window with the correct format");
                         break;
                     }
                     window.clear();
-                    window = nullptr;
+                }
+                if(debugEnabled() && window.isNull()){
+                    O_DEBUG("No existing window found");
                 }
             }
         }
-        if(window == nullptr){
+        if(window.isNull()){
             O_DEBUG("Creating with" << fbRequestedFormat << "image format");
             QDBusPendingReply<QDBusObjectPath> reply = api_gui->createWindow(QString::fromStdString(Oxide::getAppName()), fbRequestedFormat);
             reply.waitForFinished();

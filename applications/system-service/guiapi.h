@@ -34,6 +34,8 @@ public:
     Q_INVOKABLE QDBusObjectPath createWindow(QString name = "", int format = DEFAULT_IMAGE_FORMAT);
     Q_INVOKABLE QList<QDBusObjectPath> windows();
     Q_INVOKABLE QList<QDBusObjectPath> visibleWindows();
+    Q_INVOKABLE QList<QDBusObjectPath> allWindows();
+    Q_INVOKABLE QList<QDBusObjectPath> allVisibleWindows();
     Q_INVOKABLE void repaint();
     bool isThisPgId(pid_t valid_pgid);
     QList<Window*> sortedWindows();
