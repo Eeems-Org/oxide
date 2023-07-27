@@ -17,10 +17,10 @@ QT_BEGIN_NAMESPACE
 
 class QCoreTextFontEngine;
 
-static const char debugQPAEnvironmentVariable[] = "QT_DEBUG_OXIDE_QPA";
+#define debugQPAEnvironmentVariable "QT_DEBUG_OXIDE_QPA"
 
 
-static inline unsigned parseOptions(const QStringList& paramList){
+static inline unsigned short parseOptions(const QStringList& paramList){
     unsigned options = 0;
     for (const QString &param : paramList) {
         if(!param.compare(QLatin1String("enable_fonts"), Qt::CaseInsensitive)){
@@ -38,39 +38,31 @@ static inline unsigned parseOptions(const QStringList& paramList){
 OxideIntegration::OxideIntegration(const QStringList& parameters)
 : m_fontDatabase(nullptr),
   m_options(parseOptions(parameters)),
-  m_debug(false),
-  m_spec(parameters)
+  m_debug(false)
 {
+    if(m_debug){
+        qDebug() << "OxideIntegration::OxideIntegration";
+    }
     if(
         qEnvironmentVariableIsSet(debugQPAEnvironmentVariable)
         && qEnvironmentVariableIntValue(debugQPAEnvironmentVariable) > 0
-    ) {
+    ){
         m_options |= DebugQPA | EnableFonts;
         m_debug = true;
     }
-
-    m_primaryScreen = new OxideScreen();
-    QWindowSystemInterface::handleScreenAdded(m_primaryScreen);
 }
 
 OxideIntegration::~OxideIntegration(){
-    if(m_primaryScreen != nullptr){
-        QWindowSystemInterface::handleScreenRemoved(m_primaryScreen);
-        delete m_primaryScreen;
-        m_primaryScreen = nullptr;
+    if(m_debug){
+        qDebug() << "OxideIntegration::~OxideIntegration";
     }
-    if(m_fontDatabase != nullptr){
-        delete m_fontDatabase;
-        m_fontDatabase = nullptr;
-    }
-    m_inputContext = nullptr;
 }
 
 bool OxideIntegration::hasCapability(QPlatformIntegration::Capability cap) const{
     if(m_debug){
         qDebug() << "OxideIntegration::hasCapability";
     }
-    switch (cap) {
+    switch(cap){
         case ThreadedPixmaps: return true;
         case MultipleWindows: return true;
         default: return QPlatformIntegration::hasCapability(cap);
@@ -82,6 +74,8 @@ void OxideIntegration::initialize(){
         qDebug() << "OxideIntegration::initialize";
     }
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
+    m_primaryScreen = new OxideScreen();
+    QWindowSystemInterface::handleScreenAdded(m_primaryScreen);
     auto socket = Oxide::Tarnish::getSocket();
     if(socket == nullptr){
         qFatal("Could not get tarnish private socket");
@@ -109,7 +103,7 @@ void OxideIntegration::initialize(){
             qApp->exit(EXIT_FAILURE);
         }
     });
-    m_eventHandler = new OxideEventHandler(eventPipe, m_primaryScreen);
+    new OxideEventHandler(eventPipe);
     connectSignal(signalHandler, "sigCont()", m_primaryScreen, "raiseTopWindow()");
     connectSignal(signalHandler, "sigUsr1()", m_primaryScreen, "raiseTopWindow()");
     connectSignal(signalHandler, "sigUsr2()", m_primaryScreen, "lowerTopWindow()");
@@ -118,8 +112,18 @@ void OxideIntegration::initialize(){
 }
 
 void OxideIntegration::destroy(){
-    qApp->removeEventFilter(m_eventFilter);
-    Oxide::Tarnish::disconnect();
+    if(m_debug){
+        qDebug() << "OxideIntegration::destroy";
+    }
+    QWindowSystemInterface::handleScreenRemoved(m_primaryScreen);
+}
+
+void OxideIntegration::sync(){
+    // TODO - get sync state with tarnish
+}
+
+void OxideIntegration::beep() const{
+    // TODO - show notification?
 }
 
 
@@ -132,20 +136,19 @@ public:
 };
 
 QPlatformFontDatabase* OxideIntegration::fontDatabase() const{
-    if(m_debug){
-        qDebug() << "OxideIntegration::fontDatabase";
-    }
-    if(!m_fontDatabase && (m_options & EnableFonts)){
-        if(!m_fontDatabase){
+    if(!m_fontDatabase){
+        if(m_debug){
+            qDebug() << "OxideIntegration::fontDatabase";
+        }
+        if(m_options & EnableFonts){
 #if QT_CONFIG(fontconfig)
             m_fontDatabase = new QGenericUnixFontDatabase;
 #else
             m_fontDatabase = QPlatformIntegration::fontDatabase();
 #endif
+        }else{
+            m_fontDatabase = new DummyFontDatabase;
         }
-    }
-    if(!m_fontDatabase){
-        m_fontDatabase = new DummyFontDatabase;
     }
     return m_fontDatabase;
 }
@@ -186,6 +189,10 @@ QPlatformNativeInterface* OxideIntegration::nativeInterface() const{
     }
     return const_cast<OxideIntegration*>(this);
 }
+
+OxideScreen* OxideIntegration::primaryScreen(){ return m_primaryScreen; }
+
+unsigned short OxideIntegration::options() const { return m_options; }
 
 OxideIntegration* OxideIntegration::instance(){
     auto instance = static_cast<OxideIntegration*>(QGuiApplicationPrivate::platformIntegration());

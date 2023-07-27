@@ -1,31 +1,31 @@
 #include "oxideeventhandler.h"
+#include "oxideintegration.h"
 
 #include <QGuiApplication>
 #include <private/qhighdpiscaling_p.h>
 #include <liboxide/devicesettings.h>
 #include <liboxide/threading.h>
 
-OxideEventHandler::OxideEventHandler(QLocalSocket* socket, OxideScreen* primaryScreen)
-: QObject(nullptr),
+OxideEventHandler::OxideEventHandler(QLocalSocket* socket)
+: QObject(),
   m_socket{socket},
-  m_primaryScreen{primaryScreen},
   m_tabletPenDown{false}
 {
-    m_touchscreen.setName("oxide");
-    m_touchscreen.setType(QTouchDevice::TouchScreen);
-    m_touchscreen.setCapabilities(QTouchDevice::Position | QTouchDevice::NormalizedPosition | QTouchDevice::Area | QTouchDevice::Pressure);
+    connect(qApp, &QGuiApplication::aboutToQuit, this, &QObject::deleteLater);
+    m_touchscreen = new QTouchDevice();
+    m_touchscreen->setName("oxide");
+    m_touchscreen->setType(QTouchDevice::TouchScreen);
+    m_touchscreen->setCapabilities(QTouchDevice::Position | QTouchDevice::NormalizedPosition | QTouchDevice::Area | QTouchDevice::Pressure);
     if(deviceSettings.getTouchPressure()){
-        m_touchscreen.setCapabilities(m_touchscreen.capabilities() | QTouchDevice::Pressure);
+        m_touchscreen->setCapabilities(m_touchscreen->capabilities() | QTouchDevice::Pressure);
     }
-    m_touchscreen.setMaximumTouchPoints(deviceSettings.getTouchSlots());
-    QWindowSystemInterface::registerTouchDevice(&m_touchscreen);
+    m_touchscreen->setMaximumTouchPoints(deviceSettings.getTouchSlots());
+    QWindowSystemInterface::registerTouchDevice(m_touchscreen);
     connect(m_socket, &QLocalSocket::readyRead, this, &OxideEventHandler::readEvents);
     moveToThread(socket->thread());
 }
 
-OxideEventHandler::~OxideEventHandler(){
-    m_primaryScreen = nullptr;
-}
+OxideEventHandler::~OxideEventHandler(){ QWindowSystemInterface::unregisterTouchDevice(m_touchscreen); }
 
 void OxideEventHandler::readEvents(){
     QMutexLocker locker(&m_eventMutex);
@@ -34,50 +34,37 @@ void OxideEventHandler::readEvents(){
         auto event = Oxide::Tarnish::WindowEvent::fromSocket(m_socket);
         switch(event.type){
             case Oxide::Tarnish::Geometry:{
-                if(m_primaryScreen == nullptr){
-                    O_WARNING("No primary screen");
-                    break;
-                }
-                m_primaryScreen->setGeometry(event.geometryData.geometry());
-                auto window = m_primaryScreen->topWindow();
+                auto primaryScreen = OxideIntegration::instance()->primaryScreen();
+                primaryScreen->setGeometry(event.geometryData.geometry());
+                auto window = primaryScreen->topWindow();
                 if(window != nullptr){
                     window->setGeometry(event.geometryData.geometry());
                 }
                 break;
             }
             case Oxide::Tarnish::Raise:{
-                if(m_primaryScreen == nullptr){
-                    O_WARNING("No primary screen");
-                    break;
-                }
                 if(QCoreApplication::closingDown()){
                     break;
                 }
-                auto window = m_primaryScreen->topWindow();
+                auto primaryScreen = OxideIntegration::instance()->primaryScreen();
+                auto window = primaryScreen->topWindow();
                 if(window != nullptr){
                     window->raise();
                 }
                 break;
             }
             case Oxide::Tarnish::Lower:{
-                if(m_primaryScreen == nullptr){
-                    O_WARNING("No primary screen");
-                    break;
-                }
                 if(QCoreApplication::closingDown()){
                     break;
                 }
-                auto window = m_primaryScreen->topWindow();
+                auto primaryScreen = OxideIntegration::instance()->primaryScreen();
+                auto window = primaryScreen->topWindow();
                 if(window != nullptr){
                     window->lower();
                 }
                 break;
             }
             case Oxide::Tarnish::Close:{
-                if(m_primaryScreen == nullptr){
-                    O_WARNING("No primary screen");
-                    break;
-                }
                 if(QCoreApplication::closingDown()){
                     break;
                 }
@@ -88,15 +75,11 @@ void OxideEventHandler::readEvents(){
                 event.toSocket(m_socket);
                 break;
             case Oxide::Tarnish::WaitForPaint:
-                if(m_primaryScreen == nullptr){
-                    O_WARNING("No primary screen");
-                    break;
-                }
                 if(QCoreApplication::closingDown()){
                     break;
                 }
                 QMetaObject::invokeMethod(
-                    m_primaryScreen,
+                    OxideIntegration::instance()->primaryScreen(),
                     "waitForPaint",
                     Qt::QueuedConnection,
                     Q_ARG(unsigned int, event.waitForPaintData.marker)
@@ -117,10 +100,6 @@ void OxideEventHandler::readEvents(){
 
 QWindowSystemInterface::TouchPoint OxideEventHandler::getTouchPoint(const Oxide::Tarnish::TouchEventPoint& data){
     QWindowSystemInterface::TouchPoint point;
-    if(m_primaryScreen == nullptr){
-        O_WARNING("No primary screen");
-        return point;
-    }
     point.id = data.id;
     if(data.tool != Oxide::Tarnish::Finger){
         point.flags = point.flags | QTouchEvent::TouchPoint::Token;
@@ -141,7 +120,8 @@ QWindowSystemInterface::TouchPoint OxideEventHandler::getTouchPoint(const Oxide:
         default:
             Q_ASSERT_X(false, "TouchEventPoint.state", QString("State is invalid: %1").arg(data.state).toStdString().c_str());
     }
-    QRect winRect = QHighDpi::toNativePixels(m_primaryScreen->geometry(), m_primaryScreen);
+    auto primaryScreen = OxideIntegration::instance()->primaryScreen();
+    QRect winRect = QHighDpi::toNativePixels(primaryScreen->geometry(), primaryScreen);
     auto rawPosition = QPoint(data.x * winRect.width(), data.y * winRect.height());
     point.area = QRectF(0, 0, data.width, data.height);
     point.area.moveCenter(rawPosition);
@@ -152,14 +132,11 @@ QWindowSystemInterface::TouchPoint OxideEventHandler::getTouchPoint(const Oxide:
 }
 
 void OxideEventHandler::handleTouch(Oxide::Tarnish::TouchEventArgs* data){
-    if(m_primaryScreen == nullptr){
-        O_WARNING("No primary screen");
-        return;
-    }
     if(QCoreApplication::closingDown()){
         return;
     }
-    QRect winRect = QHighDpi::toNativePixels(m_primaryScreen->geometry(), m_primaryScreen);
+    auto primaryScreen = OxideIntegration::instance()->primaryScreen();
+    QRect winRect = QHighDpi::toNativePixels(primaryScreen->geometry(), primaryScreen);
     if(winRect.isNull()){
         O_WARNING("Null screenGeometry");
         return;
@@ -170,14 +147,10 @@ void OxideEventHandler::handleTouch(Oxide::Tarnish::TouchEventArgs* data){
         auto touchPoint = getTouchPoint(point);
         m_touchPoints.append(touchPoint);
     }
-    QWindowSystemInterface::handleTouchEvent(nullptr, &m_touchscreen, m_touchPoints);
+    QWindowSystemInterface::handleTouchEvent(nullptr, m_touchscreen, m_touchPoints);
 }
 
 void OxideEventHandler::handleTablet(Oxide::Tarnish::TabletEventArgs* data){
-    if(m_primaryScreen == nullptr){
-        O_WARNING("No primary screen");
-        return;
-    }
     if(QCoreApplication::closingDown()){
         return;
     }
@@ -242,10 +215,6 @@ void OxideEventHandler::handleTablet(Oxide::Tarnish::TabletEventArgs* data){
 }
 
 void OxideEventHandler::handleKey(Oxide::Tarnish::KeyEventArgs* data){
-    if(m_primaryScreen == nullptr){
-        O_WARNING("No primary screen");
-        return;
-    }
     if(QCoreApplication::closingDown()){
         return;
     }

@@ -725,8 +725,9 @@ namespace Oxide::Tarnish {
         });
         if(qApp != nullptr){
             O_DEBUG("Connecting to QGuiApplication::aboutToQuit");
-            QObject::connect(qApp, &QCoreApplication::aboutToQuit, []{
+            QObject::connect(qApp, &QCoreApplication::aboutToQuit, [conn]{
                 O_DEBUG("Application about to quit");
+                QObject::disconnect(*conn);
                 disconnect();
             });
         }

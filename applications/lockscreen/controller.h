@@ -28,7 +28,7 @@ class Controller : public QObject {
 public:
     Controller(QObject* parent)
     : QObject(parent), confirmPin() {
-        clockTimer = new QTimer(root);
+        clockTimer = new QTimer(this);
         systemApi = Oxide::Tarnish::systemApi();
         if(systemApi.isNull()){
             qDebug() << "Unable to get system API";

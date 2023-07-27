@@ -52,7 +52,12 @@ namespace Oxide {
         addNotifier(SIGCONT, "sigCont");
         addNotifier(SIGPIPE, "sigPipe");
     }
-    SignalHandler::~SignalHandler(){}
+    SignalHandler::~SignalHandler(){
+        while(!notifiers.isEmpty()){
+            auto notifier = notifiers.take(notifiers.firstKey());
+            delete notifier.notifier;
+        }
+    }
     void SignalHandler::handleSignal(int signal){
         if(!notifiers.contains(signal)){
             ::signal(signal, SIG_DFL);

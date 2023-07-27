@@ -16,7 +16,7 @@ QT_BEGIN_NAMESPACE
 class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration, public QPlatformNativeInterface
 {
 public:
-    enum Options { // Options to be passed on command line or determined from environment
+    enum Options: unsigned short{ // Options to be passed on command line or determined from environment
         DebugQPA = 0x1,
         EnableFonts = 0x2,
         FreeTypeFontDatabase = 0x4,
@@ -29,26 +29,26 @@ public:
     bool hasCapability(QPlatformIntegration::Capability cap) const override;
     void initialize() override;
     void destroy() override;
+    void sync() override;
+    void beep() const override;
     QPlatformFontDatabase* fontDatabase() const override;
     QPlatformInputContext* inputContext() const override;
     QPlatformWindow* createPlatformWindow(QWindow* window) const override;
     QPlatformBackingStore* createPlatformBackingStore(QWindow* window) const override;
     QAbstractEventDispatcher* createEventDispatcher() const override;
     QPlatformNativeInterface* nativeInterface() const override;
-
-    unsigned options() const { return m_options; }
+    OxideScreen* primaryScreen();
+    unsigned short options() const;
 
     static OxideIntegration* instance();
 
 private:
-    mutable QPlatformFontDatabase* m_fontDatabase;
-    QPlatformInputContext* m_inputContext;
-    OxideScreen* m_primaryScreen;
-    OxideEventFilter* m_eventFilter;
-    OxideEventHandler* m_eventHandler;
-    unsigned m_options;
+    mutable QPlatformFontDatabase* m_fontDatabase = nullptr;
+    QPlatformInputContext* m_inputContext = nullptr;
+    QPointer<OxideScreen> m_primaryScreen;
+    QPointer<OxideEventFilter> m_eventFilter;
+    unsigned short m_options;
     bool m_debug;
-    QStringList m_spec;
     QMutex m_mutex;
     static void connectSignal(QObject* sender, QString signal, QObject* reciever, QString slot);
 };

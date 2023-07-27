@@ -9,14 +9,13 @@
 
 class OxideEventHandler : public QObject{
 public:
-    explicit OxideEventHandler(QLocalSocket* socket, OxideScreen* primaryScreen);
+    explicit OxideEventHandler(QLocalSocket* socket);
     ~OxideEventHandler();
 
 private:
-    QLocalSocket* m_socket;
-    OxideScreen* m_primaryScreen;
+    QLocalSocket* m_socket = nullptr;
     bool m_tabletPenDown;
-    QTouchDevice m_touchscreen;
+    QTouchDevice* m_touchscreen;
     QMutex m_eventMutex;
     QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
     QList<QWindowSystemInterface::TouchPoint> m_lastTouchPoints;
