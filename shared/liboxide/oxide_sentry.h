@@ -159,5 +159,14 @@ namespace Oxide::Sentry{
      * \brief Trigger a crash. Useful to test that sentry integration is working
      */
     LIBOXIDE_EXPORT void trigger_crash();
+    /*!
+     * \brief Set a tag on a transaction
+     * \param The transaction to set the tag on
+     * \param name The name of the tag
+     * \param tag The tag value
+     */
+    LIBOXIDE_EXPORT
+    ATTRIBUTE_NO_SANITIZE_ADDRESS
+    void set_tag(Transaction* transaction, const std::string& name, const std::string& tag);
 }
 /*! @} */

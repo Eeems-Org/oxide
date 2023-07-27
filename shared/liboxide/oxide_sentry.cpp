@@ -253,6 +253,7 @@ namespace Oxide::Sentry{
         auto scopeGuard = qScopeGuard([transaction] {
             stop_transaction(transaction);
         });
+        Q_UNUSED(scopeGuard);
         callback(transaction);
 #else
         Q_UNUSED(name);
@@ -318,6 +319,7 @@ namespace Oxide::Sentry{
         auto scopeGuard = qScopeGuard([span] {
             stop_span(span);
         });
+        Q_UNUSED(scopeGuard);
         callback(span);
 #else
         Q_UNUSED(transaction);
@@ -350,6 +352,7 @@ namespace Oxide::Sentry{
             auto scopeGuard = qScopeGuard([span] {
                 stop_span(span);
             });
+            Q_UNUSED(scopeGuard);
             callback(span);
 #else
             Q_UNUSED(parent);
@@ -359,4 +362,11 @@ namespace Oxide::Sentry{
 #endif
     }
     void trigger_crash(){ memset((char *)invalid_mem, 1, 100); }
+
+    void set_tag(Transaction* transaction, const std::string& name, const std::string& tag){
+#ifdef SENTRY
+        sentry_transaction_set_tag_n(transaction->inner, name.c_str(), name.size(), tag.c_str(), tag.size());
+#endif
+    }
+
 }

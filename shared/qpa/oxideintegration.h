@@ -1,6 +1,8 @@
 #pragma once
 #include "oxidescreen.h"
 #include "oxidewindow.h"
+#include "oxideeventfilter.h"
+#include "oxideeventhandler.h"
 
 #include <qpa/qplatformintegration.h>
 #include <qpa/qplatformnativeinterface.h>
@@ -26,6 +28,7 @@ public:
 
     bool hasCapability(QPlatformIntegration::Capability cap) const override;
     void initialize() override;
+    void destroy() override;
     QPlatformFontDatabase* fontDatabase() const override;
     QPlatformInputContext* inputContext() const override;
     QPlatformWindow* createPlatformWindow(QWindow* window) const override;
@@ -41,6 +44,8 @@ private:
     mutable QPlatformFontDatabase* m_fontDatabase;
     QPlatformInputContext* m_inputContext;
     OxideScreen* m_primaryScreen;
+    OxideEventFilter* m_eventFilter;
+    OxideEventHandler* m_eventHandler;
     unsigned m_options;
     bool m_debug;
     QStringList m_spec;

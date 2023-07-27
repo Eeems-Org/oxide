@@ -113,23 +113,14 @@ void Application::launchNoSecurityCheck(){
     if(m_process->processId()){
         resumeNoSecurityCheck();
     }else{
+        auto name = this->name().toStdString();
         if(sharedSettings.applicationUsage()){
             transaction = Oxide::Sentry::start_transaction("application", "run");
-#ifdef SENTRY
-            if(transaction != nullptr){
-                sentry_transaction_set_tag(transaction->inner, "application", name().toStdString().c_str());
-            }
-#endif
+            Oxide::Sentry::set_tag(transaction, "application", name);
             startSpan("starting", "Application is starting");
         }
-        Oxide::Sentry::sentry_transaction("application", "launch", [this](Oxide::Sentry::Transaction* t){
-#ifdef SENTRY
-            if(t != nullptr){
-                sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
-            }
-#else
-            Q_UNUSED(t);
-#endif
+        Oxide::Sentry::sentry_transaction("application", "launch", [this, name](Oxide::Sentry::Transaction* t){
+            Oxide::Sentry::set_tag(t, "application", name);
             appsAPI->recordPreviousApplication();
             O_INFO("Launching " << path().toStdString().c_str());
             appsAPI->pauseAll();
@@ -150,7 +141,7 @@ void Application::launchNoSecurityCheck(){
                 m_process->closeReadChannel(QProcess::StandardOutput);
             }else{
                 if(p_stdout == nullptr){
-                    p_stdout_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_INFO, 1);
+                    p_stdout_fd = sd_journal_stream_fd(name.c_str(), LOG_INFO, 1);
                     if (p_stdout_fd < 0) {
                         errno = -p_stdout_fd;
                         O_INFO("Failed to create stdout fd:" << -p_stdout_fd);
@@ -161,12 +152,12 @@ void Application::launchNoSecurityCheck(){
                             close(p_stdout_fd);
                         }else{
                             p_stdout = new QTextStream(log);
-                            O_INFO("Opened stdout for " << name().toStdString().c_str());
+                            O_INFO("Opened stdout for " << name.c_str());
                         }
                     }
                 }
                 if(p_stderr == nullptr){
-                    p_stderr_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_ERR, 1);
+                    p_stderr_fd = sd_journal_stream_fd(name.c_str(), LOG_ERR, 1);
                     if (p_stderr_fd < 0) {
                         errno = -p_stderr_fd;
                         O_INFO("Failed to create sterr fd:" << -p_stderr_fd);
@@ -177,7 +168,7 @@ void Application::launchNoSecurityCheck(){
                             close(p_stderr_fd);
                         }else{
                             p_stderr = new QTextStream(log);
-                            O_INFO("Opened stderr for " << name().toStdString().c_str());
+                            O_INFO("Opened stderr for " << name.c_str());
                         }
                     }
                 }
@@ -215,13 +206,7 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
     }
     O_INFO("Pausing " << path());
     Oxide::Sentry::sentry_transaction("application", "pause", [this, startIfNone](Oxide::Sentry::Transaction* t){
-#ifdef SENTRY
-        if(t != nullptr){
-            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
-        }
-#else
-        Q_UNUSED(t);
-#endif
+        Oxide::Sentry::set_tag(t, "application", name().toStdString());
         interruptApplication();
         if(startIfNone){
             appsAPI->resumeIfNone();
@@ -240,13 +225,7 @@ void Application::interruptApplication(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "interrupt", [this](Oxide::Sentry::Transaction* t){
-#ifdef SENTRY
-        if(t != nullptr){
-            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
-        }
-#else
-        Q_UNUSED(t);
-#endif
+        Oxide::Sentry::set_tag(t, "application", name().toStdString());
         if(environment().contains("OXIDE_PRELOAD_EXPOSE_FB")){
             saveScreen();
         }
@@ -326,13 +305,7 @@ void Application::resumeNoSecurityCheck(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "resume", [this](Oxide::Sentry::Transaction* t){
-#ifdef SENTRY
-        if(t != nullptr){
-            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
-        }
-#else
-        Q_UNUSED(t);
-#endif
+        Oxide::Sentry::set_tag(t, "application", name().toStdString());
         appsAPI->recordPreviousApplication();
         O_INFO("Resuming " << path());
         appsAPI->pauseAll();
@@ -353,13 +326,7 @@ void Application::uninterruptApplication(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "uninterrupt", [this](Oxide::Sentry::Transaction* t){
-#ifdef SENTRY
-        if(t != nullptr){
-            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
-        }
-#else
-        Q_UNUSED(t);
-#endif
+        Oxide::Sentry::set_tag(t, "application", name().toStdString());
         if(environment().contains("OXIDE_PRELOAD_EXPOSE_FB")){
             recallScreen();
         }
@@ -413,13 +380,7 @@ void Application::stopNoSecurityCheck(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "stop", [this, state](Oxide::Sentry::Transaction* t){
-#ifdef SENTRY
-        if(t != nullptr){
-            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
-        }
-#else
-        Q_UNUSED(t);
-#endif
+        Oxide::Sentry::set_tag(t, "application", name().toStdString());
         O_INFO("Stopping " << path());
         if(!onStop().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onStop", "Run onStop action", [this](){
@@ -491,7 +452,7 @@ void Application::unregisterNoSecurityCheck(){
     appsAPI->unregisterApplication(this);
 }
 
-QString Application::name() { return value("name").toString(); }
+QString Application::name() { return value("name", path()).toString(); }
 
 int Application::processId() { return m_process->processId(); }
 
@@ -867,13 +828,7 @@ void Application::updateEnvironment(){
 
 void Application::showSplashScreen(){
     Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this](Oxide::Sentry::Transaction* t){
-#ifdef SENTRY
-        if(t != nullptr){
-            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
-        }
-#else
-        Q_UNUSED(t);
-#endif
+        Oxide::Sentry::set_tag(t, "application", name().toStdString());
         O_INFO("Displaying splashscreen for" << name());
         Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
             auto image = AppsAPI::_window()->toImage();

@@ -1,7 +1,6 @@
 #include "oxideintegration.h"
 #include "oxidebackingstore.h"
 #include "oxidescreen.h"
-#include "oxideeventfilter.h"
 #include "oxideeventhandler.h"
 
 #include <QtGui/private/qguiapplication_p.h>
@@ -98,7 +97,8 @@ void OxideIntegration::initialize(){
             O_DEBUG(socket->readAll());
         }
     });
-    qApp->installEventFilter(new OxideEventFilter(qApp));
+    m_eventFilter = new OxideEventFilter(qApp);
+    qApp->installEventFilter(m_eventFilter);
     m_inputContext = QPlatformInputContextFactory::create();
     auto eventPipe = Oxide::Tarnish::getEventPipe();
     if(eventPipe == nullptr){
@@ -109,12 +109,17 @@ void OxideIntegration::initialize(){
             qApp->exit(EXIT_FAILURE);
         }
     });
-    new OxideEventHandler(eventPipe, m_primaryScreen);
+    m_eventHandler = new OxideEventHandler(eventPipe, m_primaryScreen);
     connectSignal(signalHandler, "sigCont()", m_primaryScreen, "raiseTopWindow()");
     connectSignal(signalHandler, "sigUsr1()", m_primaryScreen, "raiseTopWindow()");
     connectSignal(signalHandler, "sigUsr2()", m_primaryScreen, "lowerTopWindow()");
     connectSignal(signalHandler, "sigTerm()", m_primaryScreen, "closeTopWindow()");
     connectSignal(signalHandler, "sigInt()", m_primaryScreen, "closeTopWindow()");
+}
+
+void OxideIntegration::destroy(){
+    qApp->removeEventFilter(m_eventFilter);
+    Oxide::Tarnish::disconnect();
 }
 
 
