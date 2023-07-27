@@ -224,21 +224,18 @@ bool GuiAPI::isThisPgId(pid_t valid_pgid){
 QVector<Window*> GuiAPI::_sortedWindows(){
     QMutexLocker locker(&m_windowMutex);
     Q_UNUSED(locker)
-    auto sortedWindows = m_windows.values();
-    std::sort(sortedWindows.begin(), sortedWindows.end());
-    return sortedWindows.toVector();
+    auto sortedWindows = m_windows.values().toVector();
+    std::sort(sortedWindows.begin(), sortedWindows.end(), [](const Window* w0, const Window* w1){ return w0->z() < w1->z(); });
+    return sortedWindows;
 }
 
 QVector<Window*> GuiAPI::_sortedVisibleWindows(){
-    auto windows = _sortedWindows();
-    QMutableVectorIterator<Window*> i(windows);
-    while(i.hasNext()){
-        auto window = i.next();
-        if(window->systemWindow() || !window->_isVisible()){
-            i.remove();
-        }
-    }
-    return windows;
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker)
+    auto sortedWindows = m_windows.values().toVector();
+    sortedWindows.erase(std::remove_if(sortedWindows.begin(), sortedWindows.end(), [](Window* w){ return !w->_isVisible(); }), sortedWindows.end());
+    std::sort(sortedWindows.begin(), sortedWindows.end(), [](const Window* w0, const Window* w1){ return w0->z() < w1->z(); });
+    return sortedWindows;
 }
 
 void GuiAPI::sortWindows(){

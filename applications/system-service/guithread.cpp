@@ -360,28 +360,20 @@ void GUIThread::redraw(RepaintRequest& event){
     }
     O_DEBUG("Repainting" << rect);
     // Get windows in order of Z sort order, and filter out invalid windows
-    auto visibleWindows = guiAPI->_sortedWindows();
-    // TODO - Use STL style iterators https://doc.qt.io/qt-5/containers.html#stl-style-iterators
-    QMutableVectorIterator<Window*> i(visibleWindows);
-    while(i.hasNext()){
-        auto window = i.next();
-        if(!window->_isVisible()){
-            i.remove();
-            continue;
-        }
+    auto visibleWindows = guiAPI->_sortedVisibleWindows();
+    visibleWindows.erase(std::remove_if(visibleWindows.begin(), visibleWindows.end(), [](Window* window){
         if(getpgid(window->pgid()) < 0){
             O_WARNING(window->identifier() << "With no running process");
             Oxide::runLater(window->thread(), [window]{ window->_close(); });
-            i.remove();
-            continue;
+            return true;
         }
         auto image = window->toImage();
         if(image.isNull()){
             O_WARNING(window->identifier() << "Null framebuffer");
-            i.remove();
-            continue;
+            return true;
         }
-    }
+        return false;
+    }), visibleWindows.end());
     // TODO - explore using QPainter::clipRegion to see if it can speed things up
     QRegion repaintRegion(rect);
     if(!event.global){

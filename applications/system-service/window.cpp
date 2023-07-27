@@ -81,7 +81,7 @@ QDBusObjectPath Window::path(){ return QDBusObjectPath(m_path); }
 
 const QString& Window::identifier(){ return m_identifier; }
 
-int Window::z(){ return m_z; }
+int Window::z() const{ return m_z; }
 
 void Window::setZ(int z){
     if(m_z == z || m_systemWindow){
@@ -123,7 +123,7 @@ QDBusUnixFileDescriptor Window::eventPipe(){
     return QDBusUnixFileDescriptor(m_eventPipe.readSocket()->socketDescriptor());
 }
 
-QRect Window::geometry(){
+QRect Window::geometry() const{
     if(!hasPermissions()){
         W_DENIED();
         return QRect();
@@ -132,9 +132,9 @@ QRect Window::geometry(){
     return m_geometry;
 }
 
-QRect Window::_geometry(){ return m_geometry; }
+QRect Window::_geometry() const{ return m_geometry; }
 
-QRect Window::_normalizedGeometry(){ return QRect(0, 0, m_geometry.width(), m_geometry.height()); }
+QRect Window::_normalizedGeometry() const{ return QRect(0, 0, m_geometry.width(), m_geometry.height()); }
 
 void Window::setGeometry(const QRect& geometry){
     if(!hasPermissions()){
@@ -160,7 +160,7 @@ bool Window::_isVisible(){
     return m_file.isOpen() && m_state == WindowState::Raised;
 }
 
-bool Window::isAppWindow(){
+bool Window::isAppWindow() const{
     for(auto name : appsAPI->runningApplications().keys()){
         auto app = appsAPI->getApplication(name);
         if(app->processId() == this->pgid()){
@@ -170,7 +170,7 @@ bool Window::isAppWindow(){
     return false;
 }
 
-bool Window::isAppPaused(){
+bool Window::isAppPaused() const{
     for(auto name : appsAPI->pausedApplications().keys()){
         auto app = appsAPI->getApplication(name);
         if(app->processId() == this->pgid()){
@@ -254,7 +254,7 @@ int Window::format(){
     return m_file.isOpen() ? m_format : QImage::Format_Invalid;
 }
 
-pid_t Window::pgid(){ return m_pgid; }
+pid_t Window::pgid() const{ return m_pgid; }
 
 void Window::_repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async){
     if(marker > 0){
@@ -360,7 +360,7 @@ void Window::_close(){
     thread->deleteWindowLater(this);
 }
 
-Window::WindowState Window::state(){ return m_state; }
+Window::WindowState Window::state() const{ return m_state; }
 
 void Window::lock(){
     // TODO - explore if mprotect/msync work. This might not be doing anything.
@@ -450,10 +450,6 @@ void Window::disableEventPipe(){ m_eventPipe.setEnabled(false); }
 bool Window::systemWindow(){ return m_systemWindow; }
 
 void Window::setSystemWindow(){ m_systemWindow = true; }
-
-bool Window::operator>(Window* other) const{ return m_z > other->z(); }
-
-bool Window::operator<(Window* other) const{ return m_z < other->z(); }
 
 QDBusUnixFileDescriptor Window::resize(int width, int height){
     if(!hasPermissions()){
@@ -599,7 +595,7 @@ void Window::pingDeadline(){
     }
 }
 
-bool Window::hasPermissions(){ return !DBusService::shuttingDown() && (guiAPI->isThisPgId(m_pgid) || qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")); }
+bool Window::hasPermissions() const{ return !DBusService::shuttingDown() && (guiAPI->isThisPgId(m_pgid) || qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")); }
 
 void Window::createFrameBuffer(const QRect& geometry){
     // No mutex, as it should be handled by the calling function

@@ -45,30 +45,30 @@ public:
     QDBusObjectPath path();
     const QString& identifier();
     const QString& name(){ return m_name; }
-    int z();
+    int z() const;
     void setZ(int z);
     QDBusUnixFileDescriptor frameBuffer();
     QDBusUnixFileDescriptor eventPipe();
-    QRect geometry();
-    QRect _geometry();
-    QRect _normalizedGeometry();
+    QRect geometry() const;
+    QRect _geometry() const;
+    QRect _normalizedGeometry() const;
     void setGeometry(const QRect& geometry);
     Q_INVOKABLE bool isVisible();
     bool _isVisible();
-    bool isAppWindow();
-    bool isAppPaused();
+    bool isAppWindow() const;
+    bool isAppPaused() const;
     Q_INVOKABLE void setVisible(bool visible);
     void _setVisible(bool visible, bool async = true);
     QImage toImage();
     qulonglong sizeInBytes();
     qulonglong bytesPerLine();
     int format();
-    pid_t pgid();
+    pid_t pgid() const;
     void _repaint(QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async = true);
     void _raise(bool async = true);
     void _lower(bool async = true);
     void _close();
-    WindowState state();
+    WindowState state() const;
     void lock();
     void unlock();
     void waitForUpdate(unsigned int marker, std::function<void()> callback);
@@ -79,9 +79,6 @@ public:
     void disableEventPipe();
     bool systemWindow();
     void setSystemWindow();
-
-    bool operator>(Window* other) const;
-    bool operator<(Window* other) const;
 
 public slots:
     QDBusUnixFileDescriptor resize(int width, int height);
@@ -129,7 +126,7 @@ private:
     unsigned int m_pendingMarker;
     bool m_systemWindow;
 
-    bool hasPermissions();
+    bool hasPermissions() const;
     void createFrameBuffer(const QRect& geometry);
     void writeEvent(WindowEventType type);
     void writeEvent(RepaintEventArgs args);
