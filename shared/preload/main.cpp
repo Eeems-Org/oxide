@@ -224,13 +224,14 @@ void writeInputEvent(int fd, timeval time, short unsigned int type, short unsign
 }
 
 void __read_event_pipe(){
-    QMutexLocker locker(&eventPipeMutex);
-    Q_UNUSED(locker);
     auto eventPipe = Oxide::Tarnish::getEventPipe();
     if(eventPipe == nullptr){
         return;
     }
     Q_ASSERT(QThread::currentThread() == eventPipe->thread());
+    if(!eventPipeMutex.tryLock()){
+        return;
+    }
     while(eventPipe->isOpen() && !eventPipe->atEnd()){
         auto event = Oxide::Tarnish::WindowEvent::fromSocket(eventPipe);
         switch(event.type){
@@ -521,6 +522,7 @@ void __read_event_pipe(){
                 break;
         }
     }
+    eventPipeMutex.unlock();
 }
 
 int fb_ioctl(unsigned long request, char* ptr){

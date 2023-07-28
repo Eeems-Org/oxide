@@ -379,77 +379,78 @@ namespace Oxide::Tarnish {
     }
 
     WindowEvent WindowEvent::fromSocket(QIODevice* socket){
-        QMutexLocker locker(&m_readMutex);
-        Q_UNUSED(locker);
-        O_DEBUG("Reading event from socket");
         WindowEvent event;
-        if(socket->atEnd()){
-            O_WARNING("Failed to read event from socket: There are no events waiting");
-            return event;
-        }
-        qsizetype size = sizeof(unsigned short);
-        auto data = socket->read(size);
-        if(data.size() != size){
-            O_WARNING("Failed to read event from socket: Expected" << size << "bytes but instead recieved" << data.size() << "bytes");
-            return event;
-        }
-        unsigned short type;
-        data >> type;
-        switch((WindowEventType)type){
-            case Repaint:{
-                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.repaintData.size()); });
-                data >> event.repaintData;
-                break;
+        dispatchToThread(socket->thread(), [socket, &event]{
+            QMutexLocker locker(&m_readMutex);
+            Q_UNUSED(locker);
+            O_DEBUG("Reading event from socket");
+            if(socket->atEnd()){
+                O_WARNING("Failed to read event from socket: There are no events waiting");
+                return;
             }
-            case Geometry:{
-                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.geometryData.size()); });
-                data >> event.geometryData;
-                break;
+            qsizetype size = sizeof(unsigned short);
+            auto data = socket->read(size);
+            if(data.size() != size){
+                O_WARNING("Failed to read event from socket: Expected" << size << "bytes but instead recieved" << data.size() << "bytes");
+                return;
             }
-            case ImageInfo:{
-                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.imageInfoData.size()); });
-                data >> event.imageInfoData;
-                break;
-            }
-            case WaitForPaint:{
-                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.waitForPaintData.size()); });
-                data >> event.waitForPaintData;
-                break;
-            }
-            case Key:{
-                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.keyData.size()); });
-                data >> event.keyData;
-                break;
-            }
-            case Touch:
-                dispatchToThread(socket->thread(), [socket, &event]{
+            unsigned short type;
+            data >> type;
+            switch((WindowEventType)type){
+                case Repaint:{
+                    auto data = socket->read(event.repaintData.size());
+                    data >> event.repaintData;
+                    break;
+                }
+                case Geometry:{
+                    auto data = socket->read(event.geometryData.size());
+                    data >> event.geometryData;
+                    break;
+                }
+                case ImageInfo:{
+                    auto data = socket->read(event.imageInfoData.size());
+                    data >> event.imageInfoData;
+                    break;
+                }
+                case WaitForPaint:{
+                    auto data = socket->read(event.waitForPaintData.size());
+                    data >> event.waitForPaintData;
+                    break;
+                }
+                case Key:{
+                    auto data = socket->read(event.keyData.size());
+                    data >> event.keyData;
+                    break;
+                }
+                case Touch:{
                     auto data = socket->read(event.touchData.size());
                     unsigned int size;
                     auto d = data.left(sizeof(unsigned int));
                     d >> size;
                     data.append(socket->read(TouchEventArgs::itemSize() * size));
                     data >> event.touchData;
-                });
-                break;
-            case Tablet:{
-                auto data = dispatchToThread<QByteArray>(socket->thread(), [socket, &event]{ return socket->read(event.tabletData.size()); });
-                data >> event.tabletData;
-                break;
+                    break;
+                }
+                case Tablet:{
+                    auto data = socket->read(event.tabletData.size());
+                    data >> event.tabletData;
+                    break;
+                }
+                case Raise:
+                case Lower:
+                case Close:
+                case FrameBuffer:
+                case Ping:
+                case Invalid:
+                    break;
+                default:
+                    O_WARNING("Unknown event type:" << type);
+                    // TODO - skip to end and send some sort of "oops, I lost track" event?
+                    return;
             }
-            case Raise:
-            case Lower:
-            case Close:
-            case FrameBuffer:
-            case Ping:
-            case Invalid:
-                break;
-            default:
-                O_WARNING("Unknown event type:" << type);
-                // TODO - skip to end and send some sort of "oops, I lost track" event?
-                return event;
-        }
-        event.type = (WindowEventType)type;
-        O_DEBUG("Read event from socket" << event);
+            event.type = (WindowEventType)type;
+            O_DEBUG("Read event from socket" << event);
+        });
         return event;
     }
 
