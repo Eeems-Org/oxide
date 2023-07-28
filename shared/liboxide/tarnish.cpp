@@ -454,7 +454,7 @@ namespace Oxide::Tarnish {
         return event;
     }
 
-    bool WindowEvent::toSocket(QIODevice* socket){
+    bool WindowEvent::toSocket(QIODevice* socket){ return dispatchToThread<bool>(socket->thread(), [this, socket]{
         QMutexLocker locker(&m_writeMutex);
         Q_UNUSED(locker);
         O_DEBUG("Writing event to socket" << this);
@@ -505,13 +505,13 @@ namespace Oxide::Tarnish {
                 O_WARNING("Unknown event type:" << type)
                 return false;
         }
-        auto res = dispatchToThread<qint64>(socket->thread(), [socket, data]{ return socket->write(data); });
+        auto res = socket->write(data);
         if(res < data.size()){
             O_WARNING("Expected to write" << data.size() << "bytes but only wrote" << res << "bytes");
             return false;
         }
         return true;
-    }
+    }); }
 
     WindowEvent::WindowEvent() : type{Invalid}{}
 
