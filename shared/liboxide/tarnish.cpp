@@ -830,11 +830,14 @@ namespace Oxide::Tarnish {
             return nullptr;
         }
         fd = dup(fd);
-        if(!dispatchToThread<bool>(childSocket.thread(), [fd]{
-            return childSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered);
-        })){
-            ::close(fd);
+        if(dispatchToThread<bool>(childSocket.thread(), [fd]{
+            if(childSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered)){
+                return false;
+            }
             O_WARNING("Unable to get child socket:" << eventSocket.errorString());
+            ::close(fd);
+            return true;
+        })){
             return nullptr;
         }
         auto conn = new QMetaObject::Connection;
@@ -1060,11 +1063,14 @@ namespace Oxide::Tarnish {
             return -1;
         }
         fd = dup(fd);
-        if(!dispatchToThread<bool>(eventSocket.thread(), [fd]{
-            return eventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered);
-        })){
-            ::close(fd);
+        if(dispatchToThread<bool>(eventSocket.thread(), [fd]{
+            if(eventSocket.setSocketDescriptor(fd, QLocalSocket::ConnectedState, QLocalSocket::ReadWrite | QLocalSocket::Unbuffered)){
+                return false;
+            }
             O_WARNING("Unable to get window event pipe:" << eventSocket.errorString());
+            ::close(fd);
+            return true;
+        })){
             return -1;
         }
         if(!eventThread.isRunning()){
