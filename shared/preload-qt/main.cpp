@@ -109,7 +109,7 @@ extern "C" {
                || strcmp(name, "QT_QUICK_BACKEND") == 0
                || strcmp(name, "QT_QPA_PLATFORM") == 0
                || strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0
-               || (strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0 && !qEnvironmentVariableIsSet("OXIDE_PRELOAD_FORCE_QSGEPAPER"))
+               || (strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0 && ::getenv("OXIDE_PRELOAD_FORCE_QSGEPAPER") == nullptr)
                || strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0
                || strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0
                || strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0

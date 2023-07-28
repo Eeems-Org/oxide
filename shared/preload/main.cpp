@@ -40,7 +40,6 @@ thread_local bool IS_OPENING = false;
 static bool DEBUG_LOGGING = false;
 static bool FAILED_INIT = true;
 static bool IS_XOCHITL = false;
-static bool IS_FBDEPTH = false;
 static bool IS_LOADABLE_APP = false;
 static bool DO_HANDLE_FB = true;
 static bool DO_HANDLE_INPUT = true;
@@ -1237,9 +1236,10 @@ extern "C" {
         DEBUG_LOGGING = qEnvironmentVariableIsSet("OXIDE_PRELOAD_DEBUG");
         DO_HANDLE_FB = !qEnvironmentVariableIsSet("OXIDE_PRELOAD_EXPOSE_FB");
         DO_HANDLE_INPUT = !qEnvironmentVariableIsSet("OXIDE_PRELOAD_EXPOSE_INPUT");
+        _DEBUG("Handle framebuffer:", DO_HANDLE_FB);
+        _DEBUG("Handle input:", DO_HANDLE_INPUT);
         QString path = QFileInfo("/proc/self/exe").canonicalFilePath();
         IS_XOCHITL = path == "/usr/bin/xochitl";
-        IS_FBDEPTH = path.endsWith("fbdepth");
         IS_LOADABLE_APP = IS_XOCHITL || path.isEmpty() || path.startsWith("/opt") || path.startsWith("/home");
         if(IS_LOADABLE_APP){
             if(!__sigaction_connect(SIGSEGV)){
@@ -1297,6 +1297,7 @@ extern "C" {
         FAILED_INIT = false;
         IS_INITIALIZED = IS_LOADABLE_APP;
         qputenv("OXIDE_PRELOAD", QByteArray::number(getpgrp()));
+        _DEBUG("Should handle app:", IS_LOADABLE_APP);
     }
 
     __attribute__((visibility("default")))
