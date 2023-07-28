@@ -51,6 +51,12 @@ static int touchFds[2] = {-1, -1};
 static int tabletFds[2] = {-1, -1};
 static int keyFds[2] = {-1, -1};
 static ssize_t(*func_write)(int, const void*, size_t);
+static ssize_t(*func_writev)(int, const iovec*, int);
+static ssize_t(*func_writev64)(int, const iovec*, int);
+static ssize_t(*func_pwrite)(int, const void*, size_t, int);
+static ssize_t(*func_pwrite64)(int, const void*, size_t, int);
+static ssize_t(*func_pwritev)(int, const iovec*, int, int);
+static ssize_t(*func_pwritev64)(int, const iovec*, int, int);
 static int(*func_open)(const char*, int, mode_t);
 static int(*func_ioctl)(int, unsigned long, ...);
 static int(*func_close)(int);
@@ -976,11 +982,12 @@ extern "C" {
 
     __attribute__((visibility("default")))
     ssize_t _write(int fd, const void* buf, size_t n){
+        if(fd < 3){
+            // No need to debug stdout/stderr writes
+            return func_write(fd, buf, n);
+        }
         if(IS_INITIALIZED){
-            if(fd < 3){
-                // No need to debug stdout/stderr writes
-                _DEBUG("write", fd, n);
-            }
+            _DEBUG("write", fd, n);
             if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
                 Oxide::Tarnish::lockFrameBuffer();
                 auto res = func_write(fd, buf, n);
@@ -988,6 +995,7 @@ extern "C" {
                 return res;
             }
             if(DO_HANDLE_INPUT){
+                // TODO - allow writing to loopback pipe
                 if(touchFds[1] != -1 && fd == touchFds[1]){
                     errno = EBADF;
                     return -1;
@@ -1006,9 +1014,219 @@ extern "C" {
     }
     __asm__(".symver _write, write@GLIBC_2.4");
 
+    __attribute__((visibility("default")))
+    ssize_t _writev(int fd, const iovec* iov, int iovcnt){
+        if(fd < 3){
+            // No need to debug stdout/stderr writes
+            return func_writev(fd, iov, iovcnt);
+        }
+        if(IS_INITIALIZED){
+            _DEBUG("writev", fd, iovcnt);
+            if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
+                Oxide::Tarnish::lockFrameBuffer();
+                auto res = func_writev(fd, iov, iovcnt);
+                Oxide::Tarnish::unlockFrameBuffer();
+                return res;
+            }
+            if(DO_HANDLE_INPUT){
+                // TODO - allow writing to loopback pipe
+                if(touchFds[1] != -1 && fd == touchFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(tabletFds[1] != -1 && fd == tabletFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(keyFds[1] != -1 && fd == keyFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+            }
+        }
+        return func_writev(fd, iov, iovcnt);
+    }
+    __asm__(".symver _writev, writev@GLIBC_2.4");
+
+    __attribute__((visibility("default")))
+    ssize_t _writev64(int fd, const iovec* iov, int iovcnt){
+        if(fd < 3){
+            // No need to debug stdout/stderr writes
+            return func_writev64(fd, iov, iovcnt);
+        }
+        if(IS_INITIALIZED){
+            _DEBUG("writev64", fd, iovcnt);
+            if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
+                Oxide::Tarnish::lockFrameBuffer();
+                auto res = func_writev64(fd, iov, iovcnt);
+                Oxide::Tarnish::unlockFrameBuffer();
+                return res;
+            }
+            if(DO_HANDLE_INPUT){
+                // TODO - allow writing to loopback pipe
+                if(touchFds[1] != -1 && fd == touchFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(tabletFds[1] != -1 && fd == tabletFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(keyFds[1] != -1 && fd == keyFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+            }
+        }
+        return func_writev64(fd, iov, iovcnt);
+    }
+    __asm__(".symver _writev64, writev64@GLIBC_2.4");
+
+    __attribute__((visibility("default")))
+    ssize_t _pwrite(int fd, const void* buf, size_t n, int offset){
+        if(fd < 3){
+            // No need to debug stdout/stderr writes
+            return func_pwrite(fd, buf, n, offset);
+        }
+        if(IS_INITIALIZED){
+            _DEBUG("pwrite", fd, n, offset);
+            if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
+                Oxide::Tarnish::lockFrameBuffer();
+                auto res = func_pwrite(fd, buf, n, offset);
+                Oxide::Tarnish::unlockFrameBuffer();
+                return res;
+            }
+            if(DO_HANDLE_INPUT){
+                // TODO - allow writing to loopback pipe
+                if(touchFds[1] != -1 && fd == touchFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(tabletFds[1] != -1 && fd == tabletFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(keyFds[1] != -1 && fd == keyFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+            }
+        }
+        return func_pwrite(fd, buf, n, offset);
+    }
+    __asm__(".symver _pwrite, pwrite@GLIBC_2.4");
+
+    __attribute__((visibility("default")))
+    ssize_t _pwrite64(int fd, const void* buf, size_t n, int offset){
+        if(fd < 3){
+            // No need to debug stdout/stderr writes
+            return func_pwrite64(fd, buf, n, offset);
+        }
+        if(IS_INITIALIZED){
+            _DEBUG("pwrite64", fd, n, offset);
+            if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
+                Oxide::Tarnish::lockFrameBuffer();
+                auto res = func_pwrite64(fd, buf, n, offset);
+                Oxide::Tarnish::unlockFrameBuffer();
+                return res;
+            }
+            if(DO_HANDLE_INPUT){
+                // TODO - allow writing to loopback pipe
+                if(touchFds[1] != -1 && fd == touchFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(tabletFds[1] != -1 && fd == tabletFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(keyFds[1] != -1 && fd == keyFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+            }
+        }
+        return func_pwrite64(fd, buf, n, offset);
+    }
+    __asm__(".symver _pwrite64, pwrite64@GLIBC_2.4");
+
+    __attribute__((visibility("default")))
+    ssize_t _pwritev(int fd, const iovec* iov, int iovcnt, int offset){
+        if(fd < 3){
+            // No need to debug stdout/stderr writes
+            return func_pwritev(fd, iov, iovcnt, offset);
+        }
+        if(IS_INITIALIZED){
+            _DEBUG("pwritev", fd, iovcnt, offset);
+            if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
+                Oxide::Tarnish::lockFrameBuffer();
+                auto res = func_pwritev(fd, iov, iovcnt, offset);
+                Oxide::Tarnish::unlockFrameBuffer();
+                return res;
+            }
+            if(DO_HANDLE_INPUT){
+                // TODO - allow writing to loopback pipe
+                if(touchFds[1] != -1 && fd == touchFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(tabletFds[1] != -1 && fd == tabletFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(keyFds[1] != -1 && fd == keyFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+            }
+        }
+        return func_pwritev(fd, iov, iovcnt, offset);
+    }
+    __asm__(".symver _pwritev, pwritev@GLIBC_2.4");
+
+    __attribute__((visibility("default")))
+    ssize_t _pwritev64(int fd, const iovec* iov, int iovcnt, int offset){
+        if(fd < 3){
+            // No need to debug stdout/stderr writes
+            return func_pwritev64(fd, iov, iovcnt, offset);
+        }
+        if(IS_INITIALIZED){
+            _DEBUG("pwritev64", fd, iovcnt, offset);
+            if(DO_HANDLE_FB && fbFd != -1 && fd == fbFd){
+                Oxide::Tarnish::lockFrameBuffer();
+                auto res = func_pwritev64(fd, iov, iovcnt, offset);
+                Oxide::Tarnish::unlockFrameBuffer();
+                return res;
+            }
+            if(DO_HANDLE_INPUT){
+                // TODO - allow writing to loopback pipe
+                if(touchFds[1] != -1 && fd == touchFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(tabletFds[1] != -1 && fd == tabletFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+                if(keyFds[1] != -1 && fd == keyFds[1]){
+                    errno = EBADF;
+                    return -1;
+                }
+            }
+        }
+        return func_pwritev64(fd, iov, iovcnt, offset);
+    }
+    __asm__(".symver _pwritev64, pwritev64@GLIBC_2.4");
+
     void __attribute__ ((constructor)) init(void);
     void init(void){
         func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");
+        func_writev = (ssize_t(*)(int, const iovec*, int))dlvsym(RTLD_NEXT, "writev", "GLIBC_2.4");
+        func_writev64 = (ssize_t(*)(int, const iovec*, int))dlvsym(RTLD_NEXT, "writev64", "GLIBC_2.4");
+        func_pwrite = (ssize_t(*)(int, const void*, size_t, int))dlvsym(RTLD_NEXT, "pwrite", "GLIBC_2.4");
+        func_pwrite64 = (ssize_t(*)(int, const void*, size_t, int))dlvsym(RTLD_NEXT, "pwrite64", "GLIBC_2.4");
+        func_pwritev = (ssize_t(*)(int, const iovec*, int, int))dlvsym(RTLD_NEXT, "pwritev", "GLIBC_2.4");
+        func_pwritev64 = (ssize_t(*)(int, const iovec*, int, int))dlvsym(RTLD_NEXT, "pwritev64", "GLIBC_2.4");
         func_open = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open");
         func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
         func_close = (int(*)(int))dlsym(RTLD_NEXT, "close");
