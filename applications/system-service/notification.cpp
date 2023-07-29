@@ -109,10 +109,8 @@ void Notification::display(){
         return;
     }
     notificationAPI->lock();
-    Oxide::dispatchToMainThread([this]{
-        O_INFO("Displaying notification" << identifier());
-        paintNotification();
-    });
+    O_INFO("Displaying notification" << identifier());
+    paintNotification();
 }
 
 void Notification::remove(){

@@ -1320,6 +1320,7 @@ extern "C" {
             return func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
         }
         if(qEnvironmentVariableIsSet("OXIDE_PRELOAD_NO_QAPP")){
+            QThread::currentThread()->setObjectName("QCoreApplication");
             auto res = func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
             _DEBUG("Exit code:", QString::number(res));
             Oxide::Tarnish::disconnect();

@@ -30,6 +30,7 @@ QImage::Format fbRequestedFormat = DEFAULT_IMAGE_FORMAT;
 uchar* fbData = nullptr;
 QFile fbFile;
 QMutex fbMutex;
+QMutex socketMutex;
 QDaemonThread eventThread;
 QLocalSocket childSocket;
 QLocalSocket eventSocket;
@@ -381,8 +382,6 @@ namespace Oxide::Tarnish {
     WindowEvent WindowEvent::fromSocket(QIODevice* socket){
         WindowEvent event;
         dispatchToThread(socket->thread(), [socket, &event]{
-            QMutexLocker locker(&m_readMutex);
-            Q_UNUSED(locker);
             O_DEBUG("Reading event from socket");
             if(socket->atEnd()){
                 O_WARNING("Failed to read event from socket: There are no events waiting");
@@ -454,64 +453,64 @@ namespace Oxide::Tarnish {
         return event;
     }
 
-    bool WindowEvent::toSocket(QIODevice* socket){ return dispatchToThread<bool>(socket->thread(), [this, socket]{
-        QMutexLocker locker(&m_writeMutex);
-        Q_UNUSED(locker);
-        O_DEBUG("Writing event to socket" << this);
-        if(!socket->isOpen()){
-            O_WARNING("Socket is not open");
-            return false;
-        }
-        if(!socket->isWritable()){
-            O_WARNING("Socket is not writable");
-            return false;
-        }
-        if(!isValid()){
-            O_WARNING("Invalid WindowEvent");
-            return false;
-        }
-        QByteArray data;
-        data << (unsigned short)type;
-        switch(type){
-            case Repaint:
-                data << repaintData;
-                break;
-            case Geometry:
-                data << geometryData;
-                break;
-            case ImageInfo:
-                data << imageInfoData;
-                break;
-            case WaitForPaint:
-                data << waitForPaintData;
-                break;
-            case Key:
-                data << keyData;
-                break;
-            case Touch:
-                data << touchData;
-                break;
-            case Tablet:
-                data << tabletData;
-                break;
-            case Raise:
-            case Lower:
-            case Close:
-            case FrameBuffer:
-            case Ping:
-                break;
-            case Invalid:
-            default:
-                O_WARNING("Unknown event type:" << type)
+    bool WindowEvent::toSocket(QIODevice* socket){
+        return dispatchToThread<bool>(socket->thread(), [this, socket]{
+            O_DEBUG("Writing event to socket" << this);
+            if(!socket->isOpen()){
+                O_WARNING("Socket is not open");
                 return false;
-        }
-        auto res = socket->write(data);
-        if(res < data.size()){
-            O_WARNING("Expected to write" << data.size() << "bytes but only wrote" << res << "bytes");
-            return false;
-        }
-        return true;
-    }); }
+            }
+            if(!socket->isWritable()){
+                O_WARNING("Socket is not writable");
+                return false;
+            }
+            if(!isValid()){
+                O_WARNING("Invalid WindowEvent");
+                return false;
+            }
+            QByteArray data;
+            data << (unsigned short)type;
+            switch(type){
+                case Repaint:
+                    data << repaintData;
+                    break;
+                case Geometry:
+                    data << geometryData;
+                    break;
+                case ImageInfo:
+                    data << imageInfoData;
+                    break;
+                case WaitForPaint:
+                    data << waitForPaintData;
+                    break;
+                case Key:
+                    data << keyData;
+                    break;
+                case Touch:
+                    data << touchData;
+                    break;
+                case Tablet:
+                    data << tabletData;
+                    break;
+                case Raise:
+                case Lower:
+                case Close:
+                case FrameBuffer:
+                case Ping:
+                    break;
+                case Invalid:
+                default:
+                    O_WARNING("Unknown event type:" << type)
+                    return false;
+            }
+            auto res = socket->write(data);
+            if(res < data.size()){
+                O_WARNING("Expected to write" << data.size() << "bytes but only wrote" << res << "bytes");
+                return false;
+            }
+            return true;
+        });
+    }
 
     WindowEvent::WindowEvent() : type{Invalid}{}
 
@@ -545,10 +544,6 @@ namespace Oxide::Tarnish {
                 return false;
        }
     }
-
-    QMutex WindowEvent::m_writeMutex;
-
-    QMutex WindowEvent::m_readMutex;
 
     QDebug operator<<(QDebug debug, const WindowEvent& event){
         QDebugStateSaver saver(debug);
@@ -809,6 +804,12 @@ namespace Oxide::Tarnish {
         if(childSocket.isOpen()){
             return &childSocket;
         }
+        QMutexLocker locker(&socketMutex);
+        Q_UNUSED(locker);
+        // Check again in case something else got the mutex and successfully opened it
+        if(childSocket.isOpen()){
+            return &childSocket;
+        }
         if(getAPI() == nullptr){
             O_WARNING("Unable to register child: Unable to get general API");
             return nullptr;
@@ -868,6 +869,10 @@ namespace Oxide::Tarnish {
         }
         QMutexLocker locker(&fbMutex);
         Q_UNUSED(locker);
+        // Check again in case something else got the mutex and successfully opened it
+        if(fbFile.isOpen()){
+            return fbFile.handle();
+        }
         if(guiApi() == nullptr){
             O_WARNING("Unable to get framebuffer: Unable to get GUI API");
             return -1;

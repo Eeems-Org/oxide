@@ -5,6 +5,7 @@
  * \file
  */
 #pragma once
+#include "liboxide_global.h"
 #include <QTimer>
 #include <QThread>
 
@@ -43,21 +44,10 @@ namespace Oxide {
      * \return Return value of callback
      */
     template<typename T> LIBOXIDE_EXPORT T dispatchToThread(QThread* thread, std::function<T()> callback){
-        if(QThread::currentThread() == thread){
-            // Already on the correct thread
-            return callback();
-        }
-        // We are on a different thread
-        QTimer* timer = new QTimer();
-        timer->moveToThread(thread);
-        timer->setSingleShot(true);
         T result;
-        QObject::connect(timer, &QTimer::timeout, [timer, &result, callback](){
-            // This runs on the correct thread
+        dispatchToThread(thread, [callback, &result]{
             result = callback();
-            timer->deleteLater();
         });
-        QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
         return result;
     }
     /*!

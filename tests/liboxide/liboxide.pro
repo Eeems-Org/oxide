@@ -15,7 +15,8 @@ TEMPLATE = app
 SOURCES += \
     main.cpp \
     test_Math.cpp \
-    test_QByteArray.cpp
+    test_QByteArray.cpp \
+    test_Threading.cpp
 
 include(../../qmake/common.pri)
 include(../../qmake/liboxide.pri)
@@ -23,4 +24,5 @@ include(../../qmake/liboxide.pri)
 HEADERS += \
     autotest.h \
     test_Math.h \
-    test_QByteArray.h
+    test_QByteArray.h \
+    test_Threading.h

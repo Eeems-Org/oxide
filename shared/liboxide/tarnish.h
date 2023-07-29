@@ -214,10 +214,6 @@ namespace Oxide::Tarnish {
         KeyEventArgs keyData;
         TabletEventArgs tabletData;
         TouchEventArgs touchData;
-
-    private:
-        static QMutex m_writeMutex;
-        static QMutex m_readMutex;
     };
     QDebug operator<<(QDebug debug, const WindowEvent& event);
     QDebug operator<<(QDebug debug, WindowEvent* event);
