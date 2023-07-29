@@ -116,7 +116,7 @@ void __printf(char const* file, unsigned int line, char const* func, int priorit
         return;
     }
     QMutexLocker locker(&logMutex);
-    Q_UNUSED(logMutex)
+    Q_UNUSED(locker)
     std::string level;
     switch(priority){
         case LOG_INFO:
@@ -247,13 +247,12 @@ void __read_event_pipe(){
                 _INFO("Window closed");
                 kill(getpid(), SIGTERM);
                 break;
-            case Oxide::Tarnish::Ping:
-                Oxide::runLater(eventPipe->thread(), [eventPipe]{
-                    Oxide::Tarnish::WindowEvent event;
-                    event.type = Oxide::Tarnish::Ping;
-                    event.toSocket(eventPipe);
-                });
+            case Oxide::Tarnish::Ping:{
+                Oxide::Tarnish::WindowEvent event;
+                event.type = Oxide::Tarnish::Ping;
+                event.toSocket(eventPipe);
                 break;
+            }
             case Oxide::Tarnish::Key:{
                 if(!DO_HANDLE_INPUT || keyFds[0] == -1){
                     break;
@@ -532,6 +531,7 @@ int fb_ioctl(unsigned long request, char* ptr){
         case MXCFB_SEND_UPDATE:{
             _DEBUG("ioctl /dev/fb0 MXCFB_SEND_UPDATE");
             mxcfb_update_data* update = reinterpret_cast<mxcfb_update_data*>(ptr);
+            ClockWatch cz;
             auto region = update->update_region;
             // TODO - Add support for recommending these
             //update->update_mode;
@@ -549,32 +549,31 @@ int fb_ioctl(unsigned long request, char* ptr){
                 errno = EBADF;
                 return -1;
             }
-            Oxide::runLater(eventPipe->thread(), [eventPipe, rect, update]{
-                if(!IS_RAISED){
-                    Oxide::Tarnish::WindowEvent event;
-                    event.type = Oxide::Tarnish::Raise;
-                    event.toSocket(eventPipe);
-                }
+            if(!IS_RAISED){
                 Oxide::Tarnish::WindowEvent event;
-                event.type = Oxide::Tarnish::Repaint;
-                event.repaintData = Oxide::Tarnish::RepaintEventArgs{
-                    .x = rect.x(),
-                    .y = rect.y(),
-                    .width = rect.width(),
-                    .height = rect.height(),
-                    .waveform = (EPFrameBuffer::WaveformMode)update->waveform_mode,
-                    .marker = update->update_marker,
-                };
+                event.type = Oxide::Tarnish::Raise;
                 event.toSocket(eventPipe);
-            });
-            if(deviceSettings.getDeviceType() != Oxide::DeviceSettings::RM2){
-                return 0;
             }
-            QString path = QFileInfo("/proc/self/exe").canonicalFilePath();
-            if(path.isEmpty() || path != "/usr/bin/xochitl"){
-                return 0;
-            }
+            Oxide::Tarnish::WindowEvent event;
+            event.type = Oxide::Tarnish::Repaint;
+            event.repaintData = Oxide::Tarnish::RepaintEventArgs{
+                .x = rect.x(),
+                .y = rect.y(),
+                .width = rect.width(),
+                .height = rect.height(),
+                .waveform = (EPFrameBuffer::WaveformMode)update->waveform_mode,
+                .marker = update->update_marker,
+            };
+            event.toSocket(eventPipe);
+            _DEBUG("ioctl /dev/fb0 MXCFB_SEND_UPDATE done:", cz.elapsed());
             // TODO - notify on rM2 for screensharing
+//            if(deviceSettings.getDeviceType() != Oxide::DeviceSettings::RM2){
+//                return 0;
+//            }
+//            QString path = QFileInfo("/proc/self/exe").canonicalFilePath();
+//            if(path.isEmpty() || path != "/usr/bin/xochitl"){
+//                return 0;
+//            }
             return 0;
         }
         case MXCFB_WAIT_FOR_UPDATE_COMPLETE:{
@@ -582,20 +581,21 @@ int fb_ioctl(unsigned long request, char* ptr){
             mxcfb_update_marker_data* update = reinterpret_cast<mxcfb_update_marker_data*>(ptr);
             ClockWatch cz;
             completedMarkerMutex.lock();
-            if(update->update_marker > completedMarker){
-                completedMarkerMutex.unlock();
+            bool pending = update->update_marker > completedMarker;
+            completedMarkerMutex.unlock();
+            if(pending){
                 QEventLoop loop;
                 QTimer timer;
                 QObject::connect(&timer, &QTimer::timeout, [&loop, &timer, update]{
+                    completedMarkerMutex.lock();
                     if(update->update_marker > completedMarker){
                         timer.stop();
                         loop.quit();
                     }
+                    completedMarkerMutex.unlock();
                 });
                 timer.start(0);
                 loop.exec();
-            }else{
-                completedMarkerMutex.lock();
             }
             _DEBUG("ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE done:", cz.elapsed());
             return 0;
@@ -883,10 +883,12 @@ extern "C" {
     __attribute__((visibility("default")))
     int open64(const char* pathname, int flags, mode_t mode = 0){
         static const auto func_open64 = (int(*)(const char*, int, mode_t))dlsym(RTLD_NEXT, "open64");
-        if(!IS_INITIALIZED){
-            return func_open64(pathname, flags, mode);
-        }
         _DEBUG("open64", pathname);
+        if(!IS_INITIALIZED){
+            int fd = func_open64(pathname, flags, mode);
+            _DEBUG("opened", pathname, "with fd", fd);
+            return fd;
+        }
         int fd = open_from_tarnish(pathname, flags, mode);
         if(fd == -2){
             fd = func_open64(pathname, flags, mode);
@@ -899,7 +901,9 @@ extern "C" {
     int openat(int dirfd, const char* pathname, int flags, mode_t mode = 0){
         static const auto func_openat = (int(*)(int, const char*, int, mode_t))dlsym(RTLD_NEXT, "openat");
         if(!IS_INITIALIZED){
-            return func_openat(dirfd, pathname, flags, mode);
+            int fd = func_openat(dirfd, pathname, flags, mode);
+            _DEBUG("opened", pathname, "with fd", fd);
+            return fd;
         }
         _DEBUG("openat", pathname);
         int fd = open_from_tarnish(pathname, flags, mode);
@@ -922,7 +926,9 @@ extern "C" {
     __attribute__((visibility("default")))
     int open(const char* pathname, int flags, mode_t mode = 0){
         if(!IS_INITIALIZED){
-            return func_open(pathname, flags, mode);;
+            int fd = func_open(pathname, flags, mode);;
+            _DEBUG("opened", pathname, "with fd", fd);
+            return fd;
         }
         _DEBUG("open", pathname);
         int fd = open_from_tarnish(pathname, flags, mode);
