@@ -1336,7 +1336,10 @@ extern "C" {
             app.exit(res);
         }, Qt::DirectConnection);
         thread.start();
-        return app.exec();
+        auto res = app.exec();
+        thread.quit();
+        thread.wait();
+        return res;
     }
 
     __attribute__((visibility("default")))

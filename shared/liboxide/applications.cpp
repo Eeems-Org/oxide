@@ -24,8 +24,10 @@ const QList<QString> Flags {
     "nolog",
     "nopreload",
     "preload.qt",
+    "preload.qt.tablet.nosynthesize",
     "preload.expose.fb",
-    "preload.expose.input"
+    "preload.expose.input",
+    "preload.qt.qsgepaper"
 };
 
 namespace Oxide::Applications{
@@ -254,7 +256,14 @@ namespace Oxide::Applications{
             if(flags.contains("preload.expose.input")){
                 addError(ErrorLevel::Warning, "Key \"flags\" contains \"preload.qt\" and \"preload.expose.input\" at the same time");
             }
-        } else shouldExit
+        }else shouldExit {
+            if(flags.contains("preload.qt.tablet.nosynthesize")){
+                addError(ErrorLevel::Warning, "Key \"flags\" contains \"preload.qt.tablet.nosynthesize\" but not \"preload.qt\"");
+            } else shouldExit
+            if(flags.contains("preload.qt.qsgepaper")){
+                addError(ErrorLevel::Warning, "Key \"flags\" contains \"preload.qt.qsgepaper\" but not \"preload.qt\"");
+            } else shouldExit
+        }
         if(registrationToMap(app, name).isEmpty()){
             addError(ErrorLevel::Critical, "Unable to convert registration to QVariantMap");
         }

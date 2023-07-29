@@ -819,6 +819,12 @@ void Application::updateEnvironment(){
         if(flags().contains("preload.qt")){
             env.insert("OXIDE_PRELOAD_NO_QAPP", "1");
             preload.prepend("/opt/lib/liboxide_qt_preload.so");
+            if(flags().contains("preload.qt.tablet.nosynthesize")){
+                env.insert("OXIDE_QPA_DISBLE_TABLET_SYNTHESIZE", "1");
+            }
+            if(flags().contains("preload.qt.qsgepaper")){
+                env.insert("OXIDE_PRELOAD_FORCE_QSGEPAPER", "1");
+            }
         }
         preload.prepend("/opt/lib/liboxide_preload.so");
         env.insert("LD_PRELOAD", preload.join(':'));
