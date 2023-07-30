@@ -42,7 +42,7 @@ PowerAPI::PowerAPI(QObject* parent)
 }
 
 PowerAPI::~PowerAPI(){
-    O_INFO("Killing timer");
+    O_DEBUG("Killing timer");
     timer->stop();
     delete timer;
 }

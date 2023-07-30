@@ -2,7 +2,7 @@
 #include "dbusservice.h"
 
 void WaitThread::run(){
-    O_INFO("Thread started");
+    O_DEBUG("Thread started");
     QTimer::singleShot(0, [this]{
         Q_ASSERT(QThread::currentThread() == (QThread*)this);
         forever{
@@ -42,7 +42,7 @@ void WaitThread::run(){
         }
     });
     auto res = exec();
-    O_INFO("Thread stopped with exit code:" << res);
+    O_DEBUG("Thread stopped with exit code:" << res);
 }
 
 WaitThread::WaitThread(int frameBufferFd) : QThread(), m_frameBufferFd{frameBufferFd}{
@@ -114,7 +114,7 @@ void WaitThread::addCompleted(QString window, unsigned int marker, unsigned int 
 }
 
 void WaitThread::shutdown(){
-    O_INFO("Stopping thread" << this);
+    O_DEBUG("Stopping thread" << this);
     requestInterruption();
     m_pendingtWait.notify_all();
     quit();
@@ -196,7 +196,7 @@ void WaitThread::purgeOldCompletedItems(){
 }
 
 void GUIThread::run(){
-    O_INFO("Thread started");
+    O_DEBUG("Thread started");
     QTimer::singleShot(0, [this]{
         Q_ASSERT(QThread::currentThread() == (QThread*)this);
         forever{
@@ -220,7 +220,7 @@ void GUIThread::run(){
         }
     });
     auto res = exec();
-    O_INFO("Stopping thread" << m_waitThread);
+    O_DEBUG("Stopping thread" << m_waitThread);
     m_waitThread->requestInterruption();
     m_waitThread->quit();
     QDeadlineTimer deadline(3000);
@@ -229,7 +229,7 @@ void GUIThread::run(){
         m_waitThread->terminate();
         m_waitThread->wait();
     }
-    O_INFO("Thread stopped with exit code:" << res);
+    O_DEBUG("Thread stopped with exit code:" << res);
 }
 
 GUIThread::GUIThread() : QThread(){
@@ -301,7 +301,7 @@ WaitThread* GUIThread::waitThread(){ return m_waitThread; }
 
 void GUIThread::shutdown(){
     m_waitThread->shutdown();
-    O_INFO("Stopping thread" << this);
+    O_DEBUG("Stopping thread" << this);
     requestInterruption();
     m_repaintWait.notify_all();
     quit();

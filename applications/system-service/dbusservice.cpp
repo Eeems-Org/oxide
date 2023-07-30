@@ -36,7 +36,7 @@ DBusService* DBusService::__singleton(){
             qFatal("Failed to connect to system bus.");
         }
         QDBusConnectionInterface* interface = bus.interface();
-        O_INFO("Registering service...");
+        O_DEBUG("Registering service...");
         auto reply = interface->registerService(OXIDE_SERVICE);
         bus.registerService(OXIDE_SERVICE);
         if(!reply.isValid()){
@@ -46,7 +46,7 @@ DBusService* DBusService::__singleton(){
 #endif
             qFatal("Unable to register service: %s", ex.message().toStdString().c_str());
         }
-        O_INFO("Registering object...");
+        O_DEBUG("Registering object...");
         if(!bus.registerObject(OXIDE_SERVICE_PATH, instance, QDBusConnection::ExportAllContents)){
 #ifdef SENTRY
             sentry_breadcrumb("dbusservice", "Unable to register interface", "error");
@@ -54,7 +54,7 @@ DBusService* DBusService::__singleton(){
             qFatal("Unable to register interface: %s", bus.lastError().message().toStdString().c_str());
         }
         connect(bus.interface(), &QDBusConnectionInterface::serviceOwnerChanged, instance, &DBusService::serviceOwnerChanged);
-        O_INFO("Registered");
+        O_DEBUG("Registered");
 
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", "startup", "navigation");
@@ -165,7 +165,7 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(), children(){
                 }
                 auto currentApplication = appsAPI->getApplication(appsAPI->currentApplicationNoSecurityCheck());
                 if(currentApplication != nullptr && currentApplication->path() == appsAPI->lockscreenApplication().path()){
-                    O_INFO("Left Action cancelled. On lockscreen");
+                    O_DEBUG("Left Action cancelled. On lockscreen");
                     return;
                 }
                 if(!appsAPI->previousApplicationNoSecurityCheck()){
@@ -204,15 +204,15 @@ DBusService::~DBusService(){
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "Disconnecting APIs", "info");
 #endif
-    O_INFO("Deleting APIs");
+    O_DEBUG("Deleting APIs");
     while(!apis.isEmpty()){
         auto name = apis.firstKey();
-        O_INFO("Deleting API" << name);
+        O_DEBUG("Deleting API" << name);
         auto api = apis.take(name);
         delete api.dependants;
         delete api.instance;
     }
-    O_INFO("All APIs removed");
+    O_DEBUG("All APIs removed");
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
 #endif
@@ -242,19 +242,19 @@ QDBusUnixFileDescriptor DBusService::registerChild(){
     O_INFO("registerChild:" << childPid << childPgid);
     for(auto child : children){
         if(child->pid() == childPid){
-            O_INFO("registerChild: Found existing");
+            O_DEBUG("registerChild: Found existing");
             return QDBusUnixFileDescriptor(child->socket()->socketDescriptor());
         }
     }
     auto child = new ChildEntry(this, childPid, childPgid);
     if(!child->isValid()){
-        O_INFO("registerChild: Not valid");
+        O_WARNING("registerChild: Not valid");
         child->deleteLater();
         return QDBusUnixFileDescriptor();
     }
     connect(child, &ChildEntry::finished, this, [this, child]{ unregisterChild(child->pid()); });
     children.append(child);
-    O_INFO("registerChild: success");
+    O_DEBUG("registerChild: success");
     return QDBusUnixFileDescriptor(child->socket()->socketDescriptor());
 }
 
@@ -308,7 +308,7 @@ QDBusObjectPath DBusService::requestAPI(QString name, QDBusMessage message) {
         bus.registerObject(api.path, api.instance, QDBusConnection::ExportAllContents);
     }
     if(!api.dependants->size()){
-        O_INFO("Registering " << api.path);
+        O_DEBUG("Registering " << api.path);
         api.instance->setEnabled(true);
         emit apiAvailable(QDBusObjectPath(api.path));
     }
@@ -327,7 +327,7 @@ void DBusService::releaseAPI(QString name, QDBusMessage message) {
     auto client = message.service();
     api.dependants->removeAll(client);
     if(!api.dependants->size()){
-        O_INFO("Unregistering " << api.path);
+        O_DEBUG("Unregistering " << api.path);
         api.instance->setEnabled(false);
         QDBusConnection::systemBus().unregisterObject(api.path, QDBusConnection::UnregisterNode);
         emit apiUnavailable(QDBusObjectPath(api.path));
@@ -379,7 +379,7 @@ void DBusService::shutdown(){
         emit apiUnavailable(QDBusObjectPath(api.path));
     }
     bus.unregisterService(OXIDE_SERVICE);
-    O_INFO("Stopping thread" << touchHandler);
+    O_DEBUG("Stopping thread" << touchHandler);
     touchHandler->quit();
     QDeadlineTimer deadline(1000);
     if(!touchHandler->wait(deadline)){
@@ -410,7 +410,7 @@ void DBusService::serviceOwnerChanged(const QString& name, const QString& oldOwn
         auto api = apis[key];
         api.dependants->removeAll(name);
         if(!api.dependants->size() && bus.objectRegisteredAt(api.path) != nullptr){
-            O_INFO("Automatically unregistering " << api.path);
+            O_DEBUG("Automatically unregistering " << api.path);
             api.instance->setEnabled(false);
             bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);
             emit apiUnavailable(QDBusObjectPath(api.path));
@@ -428,7 +428,7 @@ void DBusService::unregisterChild(pid_t pid){
         if(child->pid() != pid){
             continue;
         }
-        O_DEBUG("unregisterChild" << child->pid() << child->pgid());
+        O_INFO("unregisterChild" << child->pid() << child->pgid());
         guiAPI->closeWindows(child->pgid());
         guiAPI->closeWindows(child->pid());
         i.remove();

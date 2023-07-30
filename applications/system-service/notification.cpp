@@ -37,16 +37,16 @@ void Notification::registerPath(){
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
-        O_INFO("Registered" << path() << OXIDE_APPLICATION_INTERFACE);
+        O_DEBUG("Registered" << path() << OXIDE_APPLICATION_INTERFACE);
     }else{
-        O_INFO("Failed to register" << path());
+        O_WARNING("Failed to register" << path());
     }
 }
 
 void Notification::unregisterPath(){
     auto bus = QDBusConnection::systemBus();
     if(bus.objectRegisteredAt(path()) != nullptr){
-        O_INFO("Unregistered" << path());
+        O_DEBUG("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }
@@ -104,12 +104,12 @@ void Notification::display(){
         return;
     }
     if(notificationAPI->locked()){
-        O_INFO("Queueing notification display");
+        O_DEBUG("Queueing notification display");
         notificationAPI->notificationDisplayQueue.append(this);
         return;
     }
     notificationAPI->lock();
-    O_INFO("Displaying notification" << identifier());
+    O_DEBUG("Displaying notification" << identifier());
     paintNotification();
 }
 
@@ -129,9 +129,9 @@ void Notification::click(){
 }
 
 void Notification::paintNotification(){
-    O_INFO("Painting notification" << identifier());
+    O_DEBUG("Painting notification" << identifier());
     notificationAPI->paintNotification(text(), m_icon);
-    O_INFO("Painted notification" << identifier());
+    O_DEBUG("Painted notification" << identifier());
     emit displayed();
     QTimer::singleShot(2000, [this]{
         if(!notificationAPI->notificationDisplayQueue.isEmpty()){
@@ -139,7 +139,7 @@ void Notification::paintNotification(){
             return;
         }
         NotificationAPI::_window()->_setVisible(false, true);
-        O_INFO("No more notifications to display");
+        O_DEBUG("No more notifications to display");
         notificationAPI->unlock();
     });
 }

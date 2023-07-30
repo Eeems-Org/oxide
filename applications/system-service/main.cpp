@@ -84,27 +84,27 @@ int main(int argc, char* argv[]){
     ).trimmed();
     if(pid != "0" && pid != actualPid){
         if(!parser.isSet(breakLockOption)){
-            O_INFO("tarnish.service is already running");
+            O_WARNING("tarnish.service is already running");
             return EXIT_FAILURE;
         }
         if(QProcess::execute("systemctl", QStringList() << "stop" << "tarnish")){
-            O_INFO("tarnish.service is already running");
-            O_INFO("Unable to stop service");
+            O_WARNING("tarnish.service is already running");
+            O_WARNING("Unable to stop service");
             return EXIT_FAILURE;
         }
     }
-    O_INFO("Creating lock file" << lockPath);
+    O_DEBUG("Creating lock file" << lockPath);
     if(!QFile::exists(QString::fromStdString(runPath)) && !std::filesystem::create_directories(runPath)){
-        O_INFO("Failed to create" << runPath.c_str());
+        O_WARNING("Failed to create" << runPath.c_str());
         return EXIT_FAILURE;
     }
     int lock = Oxide::tryGetLock(lockPath);
     if(lock < 0){
-        O_INFO("Unable to establish lock on" << lockPath << strerror(errno));
+        O_DEBUG("Unable to establish lock on" << lockPath << strerror(errno));
         if(!parser.isSet(breakLockOption)){
             return EXIT_FAILURE;
         }
-        O_INFO("Attempting to stop all other instances of tarnish" << lockPath);
+        O_DEBUG("Attempting to stop all other instances of tarnish" << lockPath);
         for(auto lockingPid : Oxide::lsof(lockPath)){
             if(Oxide::processExists(lockingPid)){
                 stopProcess(lockingPid);
@@ -112,12 +112,12 @@ int main(int argc, char* argv[]){
         }
         lock = Oxide::tryGetLock(lockPath);
         if(lock < 0){
-            O_INFO("Unable to establish lock on" << lockPath << strerror(errno));
+            O_WARNING("Unable to establish lock on" << lockPath << strerror(errno));
             return EXIT_FAILURE;
         }
     }
     QObject::connect(&app, &QGuiApplication::aboutToQuit, [lock]{
-        O_INFO("Releasing lock " << lockPath);
+        O_DEBUG("Releasing lock " << lockPath);
         Oxide::releaseLock(lock, lockPath);
     });
     QFile pidFile(pidPath);
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]){
         pidFile.write(actualPid.toUtf8());
         pidFile.close();
         QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
-            O_INFO("Deleting" << pidPath);
+            O_DEBUG("Deleting" << pidPath);
             remove(pidPath);
         });
     }else{

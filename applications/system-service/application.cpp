@@ -685,7 +685,7 @@ void Application::started(){
 }
 
 void Application::finished(int exitCode){
-    O_DEBUG("Application" << name() << "exit code" << exitCode);
+    O_INFO("Application" << name() << "exit code" << exitCode);
     emit exited(exitCode);
     appsAPI->resumeIfNone();
     emit appsAPI->applicationExited(qPath(), exitCode);

@@ -47,7 +47,7 @@ bool NotificationAPI::isEnabled(){ return m_enabled; }
 
 void NotificationAPI::setEnabled(bool enabled){
     m_enabled = enabled;
-    O_INFO("Notification API" << enabled);
+    O_DEBUG("Notification API" << enabled);
     for(auto notification : m_notifications.values()){
         if(enabled){
             notification->registerPath();

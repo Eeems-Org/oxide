@@ -36,7 +36,7 @@ ScreenAPI::ScreenAPI(QObject* parent) : APIBase(parent), m_screenshots(), m_enab
 
 void ScreenAPI::setEnabled(bool enabled){
     m_enabled = enabled;
-    O_INFO("Screen API" << enabled);
+    O_DEBUG("Screen API" << enabled);
     for(auto screenshot : m_screenshots){
         if(enabled){
             screenshot->registerPath();
@@ -69,12 +69,12 @@ bool ScreenAPI::drawFullscreenImage(QString path){
         return false;
     }
     if(!QFile(path).exists()){
-        O_INFO("Can't find image" << path);
+        O_WARNING("Can't find image" << path);
         return false;
     }
     QImage img(path);
     if(img.isNull()){
-        O_INFO("Image data invalid" << path);
+        O_WARNING("Image data invalid" << path);
         return false;
     }
     Sentry::sentry_transaction("screen", "drawFullscrenImage", [img, path](Sentry::Transaction* t){
@@ -101,7 +101,7 @@ QDBusObjectPath ScreenAPI::screenshot(){
     auto filePath = _screenshot();
     QDBusObjectPath path("/");
     if(filePath.isEmpty()){
-        O_INFO("Failed to take screenshot");
+        O_WARNING("Failed to take screenshot");
     }else{
         path = addScreenshot(filePath)->qPath();
     }
@@ -110,13 +110,11 @@ QDBusObjectPath ScreenAPI::screenshot(){
 
 QString ScreenAPI::_screenshot(){
     auto filePath = getNextPath();
-#ifdef DEBUG
-    O_INFO("Taking screenshot using path" << filePath);
-#endif
+    O_DEBUG("Taking screenshot using path" << filePath);
     QImage screen = copy();
     notificationAPI->paintNotification("Taking Screenshot...", "");
     if(!screen.save(filePath)){
-        O_INFO("Failed to take screenshot");
+        O_WARNING("Failed to take screenshot");
         return "";
     }
     NotificationAPI::_window()->_setVisible(false, true);
@@ -129,7 +127,7 @@ QDBusObjectPath ScreenAPI::addScreenshot(QByteArray blob){
     if(!hasPermission("screen")){
         return QDBusObjectPath("/");
     }
-    O_INFO("Adding external screenshot");
+    O_DEBUG("Adding external screenshot");
     mutex.lock();
     auto filePath = getNextPath();
     QFile file(filePath);

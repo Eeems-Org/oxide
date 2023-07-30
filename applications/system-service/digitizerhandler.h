@@ -31,7 +31,7 @@ public:
         // Get event devices
         event_device touchScreen_device(deviceSettings.getTouchDevicePath(), O_RDWR);
         if(touchScreen_device.fd == -1){
-            O_INFO("Failed to open event device: " << touchScreen_device.device.c_str());
+            O_WARNING("Failed to open event device: " << touchScreen_device.device.c_str());
             throw QException();
         }
         instance = new DigitizerHandler(touchScreen_device, "touchscreen");
@@ -62,9 +62,7 @@ public:
     void write(ushort type, ushort code, int value){
         auto event = createEvent(type, code, value);
         ::write(device.fd, &event, sizeof(input_event));
-#ifdef DEBUG
-        O_INFO("Emitted event " << event.input_event_sec << event.input_event_usec << type << code << value);
-#endif
+        O_DEBUG("Emitted event " << event.input_event_sec << event.input_event_usec << type << code << value);
     }
     void write(input_event* events, size_t size){
         ::write(device.fd, events, size);
@@ -89,8 +87,8 @@ protected:
         char name[256];
         memset(name, 0, sizeof(name));
         ioctl(device.fd, EVIOCGNAME(sizeof(name)), name);
-        O_INFO("Reading From : " << device.device.c_str() << " (" << name << ")");
-        O_INFO("Listening for events...");
+        O_DEBUG("Reading From : " << device.device.c_str() << " (" << name << ")");
+        O_DEBUG("Listening for events...");
         while(handle_events()){
             qApp->processEvents(QEventLoop::AllEvents, 100);
             QThread::yieldCurrentThread();

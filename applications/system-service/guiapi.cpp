@@ -48,18 +48,18 @@ GuiAPI::~GuiAPI(){
 }
 
 void GuiAPI::startup(){
-    O_INFO("Starting up GUI API");
+    O_DEBUG("Starting up GUI API");
     m_thread.m_screenGeometry = &m_screenGeometry;
     Oxide::startThreadWithPriority(&m_thread, QThread::TimeCriticalPriority);
 }
 
 void GuiAPI::shutdown(){
-    O_INFO("Closing all remaining windows");
+    O_DEBUG("Closing all remaining windows");
     while(!m_windows.isEmpty()){
         m_windows.first()->_close();
     }
     m_thread.shutdown();
-    O_INFO("GUI API shutdown complete");
+    O_DEBUG("GUI API shutdown complete");
 }
 
 QRect GuiAPI::geometry(){
@@ -74,7 +74,7 @@ QRect GuiAPI::geometry(){
 QRect GuiAPI::_geometry(){ return m_screenGeometry; }
 
 void GuiAPI::setEnabled(bool enabled){
-    O_INFO("GUI API" << enabled);
+    O_DEBUG("GUI API" << enabled);
     m_enabled = enabled;
     QMutexLocker locker(&m_windowMutex);
     Q_UNUSED(locker)
