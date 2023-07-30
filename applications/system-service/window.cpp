@@ -8,10 +8,9 @@
 
 using namespace  Oxide::Tarnish;
 
-#define _W_WARNING(msg) O_WARNING(m_identifier.toStdString().c_str() << msg << guiAPI->getSenderPgid())
-#define _W_DEBUG(msg) O_DEBUG(m_identifier.toStdString().c_str() << msg << guiAPI->getSenderPgid())
-#define W_WARNING(msg) _W_WARNING(msg << guiAPI->getSenderPgid())
-#define W_DEBUG(msg) _W_DEBUG(msg << guiAPI->getSenderPgid())
+#define _W_DEBUG(msg) O_DEBUG(msg << m_identifier.toStdString().c_str() << m_name.toStdString().c_str() << guiAPI->getSenderPgid())
+#define W_WARNING(msg) O_WARNING(msg << m_identifier.toStdString().c_str() << m_name.toStdString().c_str() << guiAPI->getSenderPgid())
+#define W_DEBUG(msg) _W_DEBUG(msg)
 #define W_DENIED() W_DEBUG("DENY")
 #define W_ALLOWED() W_DEBUG("ALLOW")
 #define LOCK_MUTEX \
@@ -36,7 +35,7 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
 {
     LOCK_MUTEX;
     createFrameBuffer(geometry);
-    O_DEBUG(m_identifier.toStdString().c_str() << "Window created" << pgid);
+    O_INFO("Window created" << m_identifier.toStdString().c_str() << name.toStdString().c_str() << pgid);
     connect(&m_eventPipe, &SocketPair::readyRead, this, &Window::readyEventPipeRead);
     m_pingTimer.setInterval(30 * 1000); // 30 seconds
     m_pingTimer.setSingleShot(true);
@@ -49,7 +48,7 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
     connect(this, &Window::destroyed, [this]{ W_DEBUG("Window destroyed"); });
 }
 Window::~Window(){
-    O_DEBUG(m_identifier.toStdString().c_str() << "Window deleted" << m_pgid);
+    O_DEBUG("Window deleted" << m_identifier.toStdString().c_str() << m_name.toStdString().c_str() << m_pgid);
 }
 
 void Window::setEnabled(bool enabled){
@@ -590,7 +589,7 @@ void Window::ping(){ writeEvent(WindowEventType::Ping); }
 
 void Window::pingDeadline(){
     if(m_eventPipe.enabled()){
-        _W_WARNING("Process failed to respond to ping, it may be deadlocked");
+        W_WARNING("Process failed to respond to ping, it may be deadlocked");
         //_close();
     }
 }
