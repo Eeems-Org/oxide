@@ -696,7 +696,7 @@ void SystemAPI::uninhibitPowerOff(QDBusMessage message){
 }
 void SystemAPI::suspendTimeout(){
     if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-        O_DEBUG("Automatic suspend due to inactivity...");
+        O_INFO("Automatic suspend due to inactivity...");
         suspend();
     }
 }
@@ -704,7 +704,7 @@ void SystemAPI::lockTimeout(){
     if(autoLock()){
         auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
         if(lockscreenApp != nullptr){
-            O_DEBUG("Automatic lock due to inactivity...");
+            O_INFO("Automatic lock due to inactivity...");
             lockscreenApp->resumeNoSecurityCheck();
         }
     }
