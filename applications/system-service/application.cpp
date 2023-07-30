@@ -85,16 +85,16 @@ void Application::registerPath(){
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
-        O_INFO("Registered" << path() << OXIDE_APPLICATION_INTERFACE);
+        O_DEBUG("Registered" << path() << OXIDE_APPLICATION_INTERFACE);
     }else{
-        O_INFO("Failed to register" << path());
+        O_WARNING("Failed to register" << path());
     }
 }
 
 void Application::unregisterPath(){
     auto bus = QDBusConnection::systemBus();
     if(bus.objectRegisteredAt(path()) != nullptr){
-        O_INFO("Unregistered" << path());
+        O_DEBUG("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }
@@ -144,15 +144,15 @@ void Application::launchNoSecurityCheck(){
                     p_stdout_fd = sd_journal_stream_fd(name.c_str(), LOG_INFO, 1);
                     if (p_stdout_fd < 0) {
                         errno = -p_stdout_fd;
-                        O_INFO("Failed to create stdout fd:" << -p_stdout_fd);
+                        O_WARNING("Failed to create stdout fd:" << -p_stdout_fd);
                     }else{
                         FILE* log = fdopen(p_stdout_fd, "w");
                         if(!log){
-                            O_INFO("Failed to create stdout FILE:" << errno);
+                            O_WARNING("Failed to create stdout FILE:" << errno);
                             close(p_stdout_fd);
                         }else{
                             p_stdout = new QTextStream(log);
-                            O_INFO("Opened stdout for " << name.c_str());
+                            O_DEBUG("Opened stdout for " << name.c_str());
                         }
                     }
                 }
@@ -160,15 +160,15 @@ void Application::launchNoSecurityCheck(){
                     p_stderr_fd = sd_journal_stream_fd(name.c_str(), LOG_ERR, 1);
                     if (p_stderr_fd < 0) {
                         errno = -p_stderr_fd;
-                        O_INFO("Failed to create sterr fd:" << -p_stderr_fd);
+                        O_WARNING("Failed to create sterr fd:" << -p_stderr_fd);
                     }else{
                         FILE* log = fdopen(p_stderr_fd, "w");
                         if(!log){
-                            O_INFO("Failed to create stderr FILE:" << errno);
+                            O_WARNING("Failed to create stderr FILE:" << errno);
                             close(p_stderr_fd);
                         }else{
                             p_stderr = new QTextStream(log);
-                            O_INFO("Opened stderr for " << name.c_str());
+                            O_DEBUG("Opened stderr for " << name.c_str());
                         }
                     }
                 }
@@ -214,8 +214,9 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
         emit paused();
         emit appsAPI->applicationPaused(qPath());
     });
-    O_INFO("Paused " << path());
+    O_DEBUG("Paused " << path());
 }
+
 void Application::interruptApplication(){
     if(
         !m_process->processId()
@@ -241,22 +242,22 @@ void Application::interruptApplication(){
                     startSpan("background", "Application is in the background");
                     return;
                 case Backgroundable:
-                    O_INFO("Waiting for SIGUSR2 ack");
+                    O_DEBUG("Waiting for SIGUSR2 ack");
                     appsAPI->connectSignals(this, 2);
                     kill(-m_process->processId(), SIGUSR2);
                     timer.restart();
                     delayUpTo(1000);
                     appsAPI->disconnectSignals(this, 2);
                     if(stateNoSecurityCheck() == Inactive){
-                        O_INFO("Application crashed while pausing");
+                        O_WARNING("Application crashed while pausing");
                     }else if(timer.isValid()){
-                        O_INFO("Application took too long to background" << name());
+                        O_WARNING("Application took too long to background" << name());
                         kill(-m_process->processId(), SIGSTOP);
                         waitForPause();
                         startSpan("stopped", "Application is stopped");
                     }else{
                         m_backgrounded = true;
-                        O_INFO("SIGUSR2 ack recieved");
+                        O_DEBUG("SIGUSR2 ack recieved");
                         startSpan("background", "Application is in the background");
                     }
                     guiAPI->lowerWindows(m_pid);
@@ -301,7 +302,7 @@ void Application::resumeNoSecurityCheck(){
         || stateNoSecurityCheck() == InForeground
         || (type() == Background && stateNoSecurityCheck() == InBackground)
     ){
-        O_INFO("Can't Resume" << path() << "Already running!");
+        O_WARNING("Can't Resume" << path() << "Already running!");
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "resume", [this](Oxide::Sentry::Transaction* t){
@@ -314,7 +315,7 @@ void Application::resumeNoSecurityCheck(){
         emit resumed();
         emit appsAPI->applicationResumed(qPath());
     });
-    O_INFO("Resumed " << path());
+    O_DEBUG("Resumed " << path());
 }
 
 void Application::uninterruptApplication(){
@@ -342,16 +343,16 @@ void Application::uninterruptApplication(){
                     if(stateNoSecurityCheck() == Paused){
                         kill(-m_process->processId(), SIGCONT);
                     }
-                    O_INFO("Waiting for SIGUSR1 ack");
+                    O_DEBUG("Waiting for SIGUSR1 ack");
                     appsAPI->connectSignals(this, 1);
                     kill(-m_process->processId(), SIGUSR1);
                     delayUpTo(1000);
                     appsAPI->disconnectSignals(this, 1);
                     if(timer.isValid()){
                         // No need to fall through, we've just assumed it continued
-                        O_INFO("Warning: application took too long to forground" << name());
+                        O_WARNING("Warning: application took too long to forground" << name());
                     }else{
-                        O_INFO("SIGUSR1 ack recieved");
+                        O_DEBUG("SIGUSR1 ack recieved");
                     }
                     m_backgrounded = false;
                     guiAPI->raiseWindows(m_pid);
@@ -384,8 +385,8 @@ void Application::stopNoSecurityCheck(){
         O_INFO("Stopping " << path());
         if(!onStop().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onStop", "Run onStop action", [this](){
-                O_INFO("onStop: " << onStop());
-                O_INFO("exit code: " << QProcess::execute(onStop(), QStringList()));
+                O_DEBUG("onStop: " << onStop());
+                O_DEBUG("exit code: " << QProcess::execute(onStop(), QStringList()));
             });
         }
         Application* pausedApplication = nullptr;
@@ -614,7 +615,7 @@ void Application::setEnvironment(QVariantMap environment){
     for(auto key : environment.keys()){
         auto value = environment.value(key, QVariant());
         if(!value.isValid()){
-            O_INFO(key << " has invalid value: " << value);
+            O_WARNING(key << " has invalid value: " << value);
             return;
         }
     }
@@ -684,7 +685,7 @@ void Application::started(){
 }
 
 void Application::finished(int exitCode){
-    O_INFO("Application" << name() << "exit code" << exitCode);
+    O_DEBUG("Application" << name() << "exit code" << exitCode);
     emit exited(exitCode);
     appsAPI->resumeIfNone();
     emit appsAPI->applicationExited(qPath(), exitCode);
@@ -730,13 +731,13 @@ void Application::readyReadStandardOutput(){
 void Application::stateChanged(QProcess::ProcessState state){
     switch(state){
         case QProcess::Starting:
-            O_INFO("Application" << name() << "is starting.");
+            O_DEBUG("Application" << name() << "is starting.");
             break;
         case QProcess::Running:
-            O_INFO("Application" << name() << "is running.");
+            O_DEBUG("Application" << name() << "is running.");
             break;
         case QProcess::NotRunning:
-            O_INFO("Application" << name() << "is not running.");
+            O_DEBUG("Application" << name() << "is not running.");
             if(sharedSettings.applicationUsage()){
                 if(span != nullptr){
                     Oxide::Sentry::stop_span(span);
@@ -751,14 +752,14 @@ void Application::stateChanged(QProcess::ProcessState state){
             }
             break;
         default:
-            O_INFO("Application" << name() << "unknown state" << state);
+            O_WARNING("Application" << name() << "unknown state" << state);
     }
 }
 
 void Application::errorOccurred(QProcess::ProcessError error){
     switch(error){
         case QProcess::FailedToStart:
-            O_INFO("Application" << name() << "failed to start.");
+            O_WARNING("Application" << name() << "failed to start.");
             emit exited(-1);
             emit appsAPI->applicationExited(qPath(), -1);
             if(transient()){
@@ -766,20 +767,20 @@ void Application::errorOccurred(QProcess::ProcessError error){
             }
             break;
         case QProcess::Crashed:
-            O_INFO("Application" << name() << "crashed.");
+            O_WARNING("Application" << name() << "crashed.");
             break;
         case QProcess::Timedout:
-            O_INFO("Application" << name() << "timed out.");
+            O_WARNING("Application" << name() << "timed out.");
             break;
         case QProcess::WriteError:
-            O_INFO("Application" << name() << "unable to write to stdin.");
+            O_WARNING("Application" << name() << "unable to write to stdin.");
             break;
         case QProcess::ReadError:
-            O_INFO("Application" << name() << "unable to read from stdout or stderr.");
+            O_WARNING("Application" << name() << "unable to read from stdout or stderr.");
             break;
         case QProcess::UnknownError:
         default:
-            O_INFO("Application" << name() << "unknown error.");
+            O_WARNING("Application" << name() << "unknown error.");
     }
 }
 
@@ -835,7 +836,7 @@ void Application::updateEnvironment(){
 void Application::showSplashScreen(){
     Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::set_tag(t, "application", name().toStdString());
-        O_INFO("Displaying splashscreen for" << name());
+        O_DEBUG("Displaying splashscreen for" << name());
         Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
             auto image = AppsAPI::_window()->toImage();
             QPainter painter(&image);
@@ -847,7 +848,7 @@ void Application::showSplashScreen(){
                 splashPath = icon();
             }
             if(!splashPath.isEmpty() && QFile::exists(splashPath)){
-                O_INFO("Using image" << splashPath);
+                O_DEBUG("Using image" << splashPath);
                 int splashWidth = geometry.width() / 2;
                 QSize splashSize(splashWidth, splashWidth);
                 QImage splash = QImage(splashPath).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
@@ -881,7 +882,7 @@ void Application::showSplashScreen(){
             AppsAPI::_window()->_repaint(AppsAPI::_window()->_geometry(), EPFrameBuffer::HighQualityGrayscale, 0, false);
         }
     });
-    O_INFO("Finished painting splash screen for" << name());
+    O_DEBUG("Finished painting splash screen for" << name());
 }
 
 void Application::startSpan(std::string operation, std::string description){
@@ -956,8 +957,7 @@ void Application::recallScreen(){
     });
 }
 
-Process::Process(QObject* parent)
-    : QProcess(parent), m_gid(0), m_uid(0), m_mask(0) {}
+Process::Process(QObject* parent) : QProcess(parent), m_gid(0), m_uid(0), m_mask(0) {}
 
 bool Process::setUser(const QString& name){
     try{
