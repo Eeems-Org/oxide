@@ -858,7 +858,7 @@ int open_from_tarnish(const char* pathname, int flags, mode_t mode){
             openInputMutex.lock();
             if(tabletFds[1] == -1){
                 _DEBUG("Opening tablet device socket");
-                // TODO - handle events written to touchFds[1] by program
+                // TODO - handle events written to tabletFds[1] by program
                 res = __open_input_socketpair(flags, tabletFds);
             }
             openInputMutex.unlock();
@@ -869,7 +869,7 @@ int open_from_tarnish(const char* pathname, int flags, mode_t mode){
             openInputMutex.lock();
             if(keyFds[1] == -1){
                 _DEBUG("Opening buttons device socket");
-                // TODO - handle events written to touchFds[1] by program
+                // TODO - handle events written to keyFds[1] by program
                 res = __open_input_socketpair(flags, keyFds);
             }
             openInputMutex.unlock();
