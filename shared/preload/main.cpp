@@ -36,7 +36,6 @@ public:
 };
 
 static bool IS_INITIALIZED = false;
-thread_local bool IS_OPENING = false;
 static bool DEBUG_LOGGING = false;
 static bool FAILED_INIT = true;
 static bool IS_XOCHITL = false;
@@ -63,6 +62,7 @@ static QMutex logMutex;
 static unsigned int completedMarker;
 static QMutex completedMarkerMutex;
 static QMutex eventPipeMutex;
+static QMutex openInputMutex;
 
 // Use this instead of Oxide::getAppName to avoid recursion when logging in open()
 QString appName(){
@@ -812,7 +812,7 @@ int key_ioctl(unsigned long request, char* ptr){
     }
 }
 
-void connectEventPipe(){
+void __connect_event_pipe(){
     auto eventPipe = Oxide::Tarnish::getEventPipe();
     if(eventPipe == nullptr){
         qFatal("Could not get event pipe");
@@ -822,37 +822,57 @@ void connectEventPipe(){
     _DEBUG("Connected to event pipe");
 }
 
+int __open_input_socketpair(int flags, int fds[2]){
+    int socketFlags = SOCK_STREAM;
+    if((flags & O_NONBLOCK) || (flags & O_NDELAY)){
+        socketFlags |= SOCK_NONBLOCK;
+    }
+    int res = ::socketpair(AF_UNIX, socketFlags, 0, fds);
+    if(res != -1){
+        timeval time;
+        ::gettimeofday(&time, NULL);
+        writeInputEvent(fds[0], time, EV_SYN, SYN_DROPPED, 0);
+        writeInputEvent(fds[0], time, EV_SYN, SYN_REPORT, 0);
+    }
+    return res;
+}
+
 int open_from_tarnish(const char* pathname, int flags, mode_t mode){
-    if(!IS_INITIALIZED || IS_OPENING){
+    if(!IS_INITIALIZED){
         return -2;
     }
-    IS_OPENING = true;
     int res = -2;
     if(DO_HANDLE_INPUT){
         if(strcmp(pathname, deviceSettings.getTouchDevicePath()) == 0){
+            openInputMutex.lock();
             if(touchFds[1] == -1){
                 _DEBUG("Opening touch device socket");
                 // TODO - handle events written to touchFds[1] by program
-                res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, touchFds);
+                res = __open_input_socketpair(flags, touchFds);
             }
+            openInputMutex.unlock();
             if(res != -1 && touchFds[1] != -1){
                 res = touchFds[1];
             }
         }else if(strcmp(pathname, deviceSettings.getWacomDevicePath()) == 0){
+            openInputMutex.lock();
             if(tabletFds[1] == -1){
                 _DEBUG("Opening tablet device socket");
                 // TODO - handle events written to touchFds[1] by program
-                res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, tabletFds);
+                res = __open_input_socketpair(flags, tabletFds);
             }
+            openInputMutex.unlock();
             if(res != -1 && tabletFds[1] != -1){
                 res = tabletFds[1];
             }
         }else if(strcmp(pathname, deviceSettings.getButtonsDevicePath()) == 0){
+            openInputMutex.lock();
             if(keyFds[1] == -1){
                 _DEBUG("Opening buttons device socket");
                 // TODO - handle events written to touchFds[1] by program
-                res = ::socketpair(AF_UNIX, SOCK_STREAM, 0, keyFds);
+                res = __open_input_socketpair(flags, keyFds);
             }
+            openInputMutex.unlock();
             if(res != -1 && keyFds[1] != -1){
                 res = keyFds[1];
             }
@@ -867,12 +887,11 @@ int open_from_tarnish(const char* pathname, int flags, mode_t mode){
     if(!PIPE_OPENED && res != -2){
         PIPE_OPENED = true;
         if(QCoreApplication::startingUp()){
-            QTimer::singleShot(0, []{ connectEventPipe(); });
+            QTimer::singleShot(0, []{ __connect_event_pipe(); });
         }else{
-            connectEventPipe();
+            __connect_event_pipe();
         }
     }
-    IS_OPENING = false;
     if(res == -1){
         errno = EIO;
     }
@@ -1303,6 +1322,7 @@ extern "C" {
             }
         }
         FAILED_INIT = false;
+        deviceSettings; // Force load of device information before startup is complete to avoid infinite loops
         IS_INITIALIZED = IS_LOADABLE_APP;
         qputenv("OXIDE_PRELOAD", QByteArray::number(getpgrp()));
         _DEBUG("Should handle app:", IS_LOADABLE_APP);
