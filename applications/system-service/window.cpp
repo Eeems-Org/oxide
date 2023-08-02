@@ -159,24 +159,21 @@ bool Window::_isVisible(){
     return m_file.isOpen() && m_state == WindowState::Raised;
 }
 
-bool Window::isAppWindow() const{
+bool Window::isAppWindow() const{ return application() != nullptr; }
+
+bool Window::isAppPaused() const{
+    auto app = application();
+    return app != nullptr && app->state() == Application::Paused;
+}
+
+Application* Window::application() const{
     for(auto name : appsAPI->runningApplications().keys()){
         auto app = appsAPI->getApplication(name);
         if(app->processId() == this->pgid()){
-            return true;
+            return app;
         }
     }
-    return false;
-}
-
-bool Window::isAppPaused() const{
-    for(auto name : appsAPI->pausedApplications().keys()){
-        auto app = appsAPI->getApplication(name);
-        if(app->processId() == this->pgid()){
-            return app->state() == Application::Paused;
-        }
-    }
-    return false;
+    return nullptr;
 }
 
 void Window::setVisible(bool visible){
@@ -593,7 +590,12 @@ void Window::pingDeadline(){
     }
 }
 
-bool Window::hasPermissions() const{ return !DBusService::shuttingDown() && (guiAPI->isThisPgId(m_pgid) || qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")); }
+bool Window::hasPermissions() const{
+    if(DBusService::shuttingDown()){
+        return false;
+    }
+    return guiAPI->isThisPgId(m_pgid) || qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS") || guiAPI->hasWindowPermission();
+}
 
 void Window::createFrameBuffer(const QRect& geometry){
     // No mutex, as it should be handled by the calling function

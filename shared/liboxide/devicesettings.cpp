@@ -325,6 +325,7 @@ namespace Oxide {
     }
     const QStringList DeviceSettings::getLocales(){ return execute("localectl", QStringList() << "list-locales" << "--no-pager").split("\n"); }
     QString DeviceSettings::getLocale() {
+        // TODO - switch to dbus https://www.freedesktop.org/software/systemd/man/org.freedesktop.locale1.html
         QFile file("/etc/locale.conf");
         if(file.open(QFile::ReadOnly)){
             while(!file.atEnd()){
@@ -339,14 +340,19 @@ namespace Oxide {
         return qEnvironmentVariable("LANG", "C");
     }
     void DeviceSettings::setLocale(const QString& locale) {
+        // TODO - switch to dbus https://www.freedesktop.org/software/systemd/man/org.freedesktop.locale1.html
         if(debugEnabled()){
             qDebug() << "Setting locale:" << locale;
         }
         qputenv("LANG", locale.toUtf8());
         QProcess::execute("localectl", QStringList() << "set-locale" << locale);
     }
-    const QStringList DeviceSettings::getTimezones(){ return execute("timedatectl", QStringList() << "list-timezones" << "--no-pager").split("\n"); }
+    const QStringList DeviceSettings::getTimezones(){
+        // TODO - switch to https://www.freedesktop.org/software/systemd/man/org.freedesktop.timedate1.html
+        return execute("timedatectl", QStringList() << "list-timezones" << "--no-pager").split("\n");
+    }
     QString DeviceSettings::getTimezone() {
+        // TODO - switch to https://www.freedesktop.org/software/systemd/man/org.freedesktop.timedate1.html
         auto lines = execute("timedatectl", QStringList() << "show").split("\n");
         for(auto line : lines){
             QStringList fields = line.split("=");
@@ -357,7 +363,8 @@ namespace Oxide {
         }
         return "UTC";
     }
-    void DeviceSettings::setTimezone(const QString& timezone) {
+    void DeviceSettings::setTimezone(const QString& timezone){
+        // TODO - switch to https://www.freedesktop.org/software/systemd/man/org.freedesktop.timedate1.html
         if(debugEnabled()){
             qDebug() << "Setting timezone:" << timezone;
         }

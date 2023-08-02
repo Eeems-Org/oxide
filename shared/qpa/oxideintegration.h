@@ -8,13 +8,14 @@
 #include <qpa/qplatformnativeinterface.h>
 #include <qpa/qwindowsysteminterface.h>
 #include <qpa/qplatformservices.h>
+#include <qpa/qplatformclipboard.h>
 #include <QCoreApplication>
 #include <QDebug>
 #include <liboxide/tarnish.h>
 
 QT_BEGIN_NAMESPACE
 
-class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration, public QPlatformNativeInterface, public QPlatformServices
+class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration, public QPlatformNativeInterface, public QPlatformServices, public QPlatformClipboard
 {
 public:
     enum Options: unsigned short{ // Options to be passed on command line or determined from environment
@@ -49,6 +50,10 @@ public:
     bool openUrl(const QUrl& url) override;
     bool openDocument(const QUrl& url) override;
     QByteArray desktopEnvironment() const override;
+    QMimeData* mimeData(QClipboard::Mode mode = QClipboard::Clipboard) override;
+    void setMimeData(QMimeData* data, QClipboard::Mode mode = QClipboard::Clipboard) override;
+    bool supportsMode(QClipboard::Mode mode) const override;
+    bool ownsMode(QClipboard::Mode mode) const override;
 
     static OxideIntegration* instance();
 
@@ -56,6 +61,7 @@ private:
     mutable QPlatformFontDatabase* m_fontDatabase = nullptr;
     QPlatformInputContext* m_inputContext = nullptr;
     QPointer<OxideScreen> m_primaryScreen;
+    QPointer<QMimeData> m_clipboard;
     unsigned short m_options;
     bool m_debug;
     QMutex m_mutex;

@@ -417,6 +417,14 @@ void SystemAPI::setLockOnSuspend(bool _lockOnSuspend){
 bool SystemAPI::sleepInhibited(){ return sleepInhibitors.length(); }
 
 bool SystemAPI::powerOffInhibited(){ return powerOffInhibitors.length(); }
+
+const QByteArray& SystemAPI::clipboard(){ return m_clipboard; }
+
+void SystemAPI::setClipboard(QByteArray clipboard){
+    m_clipboard.swap(clipboard);
+    emit clipboardChanged(m_clipboard);
+}
+
 void SystemAPI::uninhibitAll(QString name){
     if(powerOffInhibited()){
         powerOffInhibitors.removeAll(name);

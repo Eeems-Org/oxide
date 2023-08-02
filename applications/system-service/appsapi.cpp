@@ -539,6 +539,19 @@ Application* AppsAPI::getApplication(const QString& name){
     return nullptr;
 }
 
+Application* AppsAPI::getApplication(const pid_t pgid){
+    for(auto app : applications){
+        auto state = app->stateNoSecurityCheck();
+        if(state != Application::InForeground && state != Application::InBackground){
+            continue;
+        }
+        if(app->processId() == pgid){
+            return app;
+        }
+    }
+    return nullptr;
+}
+
 void AppsAPI::connectSignals(Application* app, int signal){
     switch(signal){
         case 1:

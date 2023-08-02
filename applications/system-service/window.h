@@ -11,6 +11,7 @@
 using namespace Oxide::Tarnish;
 
 class GuiInputThread;
+class Application;
 
 class Window : public QObject{
     Q_OBJECT
@@ -57,6 +58,7 @@ public:
     bool _isVisible();
     bool isAppWindow() const;
     bool isAppPaused() const;
+    Application* application() const;
     Q_INVOKABLE void setVisible(bool visible);
     void _setVisible(bool visible, bool async = true);
     QImage toImage();

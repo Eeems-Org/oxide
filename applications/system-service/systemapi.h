@@ -53,6 +53,7 @@ class SystemAPI : public APIBase {
     Q_PROPERTY(bool lockOnSuspend READ lockOnSuspend WRITE setLockOnSuspend NOTIFY lockOnSuspendChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
+    Q_PROPERTY(QByteArray clipboard READ clipboard WRITE setClipboard NOTIFY clipboardChanged)
 
 public:
     enum SwipeDirection { None, Right, Left, Up, Down };
@@ -76,6 +77,8 @@ public:
     void setLockOnSuspend(bool _lockOnSuspend);
     bool sleepInhibited();
     bool powerOffInhibited();
+    const QByteArray& clipboard();
+    void setClipboard(QByteArray clipboard);
     void uninhibitAll(QString name);
     void stopSuspendTimer();
     void stopLockTimer();
@@ -112,11 +115,12 @@ signals:
     void powerAction();
     void bottomAction();
     void topAction();
-    void sleepInhibitedChanged(bool);
-    void powerOffInhibitedChanged(bool);
     void autoSleepChanged(int);
     void autoLockChanged(int);
     void lockOnSuspendChanged(bool);
+    void sleepInhibitedChanged(bool);
+    void powerOffInhibitedChanged(bool);
+    void clipboardChanged(const QByteArray&);
     void swipeLengthChanged(int, int);
     void deviceSuspending();
     void deviceResuming();
@@ -151,6 +155,7 @@ private:
     bool m_enabled;
     QMap<int, QTimer*> m_pressStates;
     FifoHandler m_powerStateFifo;
+    QByteArray m_clipboard;
 
     void inhibitSleep();
     void inhibitPowerOff();

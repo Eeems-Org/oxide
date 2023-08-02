@@ -171,7 +171,7 @@ QVector<QDBusObjectPath> GuiAPI::visibleWindows(){
 
 QVector<QDBusObjectPath> GuiAPI::allWindows(){
     QVector<QDBusObjectPath> windows;
-    if(!qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS") || !hasPermission()){
+    if(!hasWindowPermission()){
         W_DENIED();
         return windows;
     }
@@ -184,7 +184,7 @@ QVector<QDBusObjectPath> GuiAPI::allWindows(){
 
 QVector<QDBusObjectPath> GuiAPI::allVisibleWindows(){
     QVector<QDBusObjectPath> windows;
-    if(!qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS") || !hasPermission()){
+    if(!hasWindowPermission()){
         W_DENIED();
         return windows;
     }
@@ -213,6 +213,18 @@ bool GuiAPI::isThisPgId(pid_t valid_pgid){
     }
     auto pgid = getSenderPgid();
     return pgid == valid_pgid || pgid == getpid();
+}
+
+bool GuiAPI::hasWindowPermission(){
+    if(!calledFromDBus() || qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")){
+        return true;
+    }
+    auto pgid = getSenderPgid();
+    if(pgid == getpid()){
+        return true;
+    }
+    auto app = appsAPI->getApplication(pgid);
+    return app != nullptr && app->permissions().contains("window");
 }
 
 QVector<Window*> GuiAPI::_sortedWindows(){
@@ -519,14 +531,11 @@ bool GuiAPI::hasPermission(){
     if(DBusService::shuttingDown()){
         return false;
     }
-    if(qEnvironmentVariableIsSet("OXIDE_EXPOSE_ALL_WINDOWS")){
-        return true;
-    }
     pid_t pgid = getSenderPgid();
-    if(dbusService->isChildGroup(pgid)){
+    if(dbusService->isChildGroup(pgid) || pgid == ::getpgrp()){
         return true;
     }
-    return pgid == ::getpgrp();
+    return hasWindowPermission();
 }
 
 void GuiAPI::removeWindow(QString path){

@@ -40,6 +40,11 @@ int main(int argc, char *argv[]){
         "Exit on the first signal when listening."
     );
     parser.addOption(onceOption);
+    QCommandLineOption rawOption(
+        {"r", "raw"},
+        "Attempt to coerce output into a raw string"
+    );
+    parser.addOption(rawOption);
 
     parser.process(app);
 
@@ -337,7 +342,11 @@ int main(int argc, char *argv[]){
                 return qExit(EXIT_FAILURE);
             }
         }
-        qStdOut << toJson(value).toStdString().c_str() << Qt::endl;
+        if(parser.isSet(rawOption)){
+            qStdOut << value.toString().toStdString().c_str() << Qt::endl;
+        }else{
+            qStdOut << toJson(value).toStdString().c_str() << Qt::endl;
+        }
     }else if(action == "set"){
         auto property = args.at(2).toStdString();
         if(!api->setProperty(property.c_str(), args.at(3).toStdString().c_str())){
@@ -365,7 +374,7 @@ int main(int argc, char *argv[]){
                 }
             },
             [](){ qApp->exit(EXIT_SUCCESS); },
-            parser.isSet("once")
+            parser.isSet(onceOption)
         )){
             return app.exec();
         }

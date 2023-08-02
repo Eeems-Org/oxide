@@ -71,6 +71,7 @@ public:
     QStringList getPreviousApplications();
     Q_INVOKABLE QDBusObjectPath getApplicationPath(const QString& name);
     Application* getApplication(const QString& name);
+    Application* getApplication(const pid_t pgid);
     void connectSignals(Application* app, int signal);
     void disconnectSignals(Application* app, int signal);
     Q_INVOKABLE bool previousApplication();

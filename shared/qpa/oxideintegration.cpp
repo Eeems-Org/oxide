@@ -75,6 +75,7 @@ void OxideIntegration::initialize(){
     }
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     m_primaryScreen = new OxideScreen();
+    m_clipboard = new QMimeData();
     QWindowSystemInterface::handleScreenAdded(m_primaryScreen);
     auto socket = Oxide::Tarnish::getSocket();
     if(socket == nullptr){
@@ -108,6 +109,14 @@ void OxideIntegration::initialize(){
     connectSignal(signalHandler, "sigUsr2()", m_primaryScreen, "lowerTopWindow()");
     connectSignal(signalHandler, "sigTerm()", m_primaryScreen, "closeTopWindow()");
     connectSignal(signalHandler, "sigInt()", m_primaryScreen, "closeTopWindow()");
+    auto system = Oxide::Tarnish::systemApi();
+    if(system != nullptr){
+        // TODO - sort out how to avoid storing a copy of the clipboard in the application unless it's being used
+        QObject::connect(system.data(), &codes::eeems::oxide1::System::clipboardChanged, [this](const QByteArray& data){
+            m_clipboard->setData("application/octet-stream", data);
+        });
+        m_clipboard->setData("application/octet-stream", system->clipboard());
+    }
 }
 
 void OxideIntegration::destroy(){
@@ -129,7 +138,7 @@ void OxideIntegration::beep() const{
 // Dummy font database that does not scan the fonts directory to be
 // used for command line tools like qmlplugindump that do not create windows
 // unless DebugBackingStore is activated.
-class DummyFontDatabase : public QPlatformFontDatabase{
+class DummyFontDatabase : public QPlatformFontDatabase, public QPlatformClipboard{
 public:
     void populateFontDatabase() override {}
 };
@@ -154,8 +163,10 @@ QPlatformFontDatabase* OxideIntegration::fontDatabase() const{
 
 #ifndef QT_NO_CLIPBOARD
 QPlatformClipboard* OxideIntegration::clipboard() const{
-    // TODO - implement shared clipboard in tarnish
-    return QPlatformIntegration::clipboard();
+    if(m_debug){
+        qDebug() << "OxideIntegration::nativeInterface";
+    }
+    return const_cast<OxideIntegration*>(this);
 }
 #endif
 
@@ -230,6 +241,30 @@ bool OxideIntegration::openDocument(const QUrl& url){
 }
 
 QByteArray OxideIntegration::desktopEnvironment() const{ return qgetenv("XDG_CURRENT_DESKTOP"); }
+
+QMimeData* OxideIntegration::mimeData(QClipboard::Mode mode){
+    Q_UNUSED(mode)
+    return m_clipboard.data();
+}
+
+void OxideIntegration::setMimeData(QMimeData* data, QClipboard::Mode mode){
+    if(mode != QClipboard::Clipboard){
+        return;
+    }
+    m_clipboard = data;
+    auto system = Oxide::Tarnish::systemApi();
+    if(system != nullptr){
+        system->setClipboard(data->data(""));
+    }
+    QPlatformClipboard::emitChanged(mode);
+}
+
+bool OxideIntegration::supportsMode(QClipboard::Mode mode) const{ return mode == QClipboard::Clipboard; }
+
+bool OxideIntegration::ownsMode(QClipboard::Mode mode) const{
+    Q_UNUSED(mode)
+    return false;
+}
 
 OxideIntegration* OxideIntegration::instance(){
     auto instance = static_cast<OxideIntegration*>(QGuiApplicationPrivate::platformIntegration());

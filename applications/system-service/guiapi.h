@@ -38,6 +38,7 @@ public:
     Q_INVOKABLE QVector<QDBusObjectPath> allVisibleWindows();
     Q_INVOKABLE void repaint();
     bool isThisPgId(pid_t valid_pgid);
+    bool hasWindowPermission();
     QVector<Window*> _sortedWindows();
     QVector<Window*> _sortedVisibleWindows();
     void sortWindows();
