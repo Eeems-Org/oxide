@@ -16,6 +16,7 @@ class GuiAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_GUI_INTERFACE)
     Q_PROPERTY(QRect geometry READ geometry)
+    Q_PROPERTY(QByteArray clipboard READ clipboard WRITE setClipboard NOTIFY clipboardChanged)
 
 public:
     static GuiAPI* __singleton(GuiAPI* self = nullptr);
@@ -25,6 +26,8 @@ public:
     void shutdown();
     QRect geometry();
     QRect _geometry();
+    QByteArray clipboard();
+    void setClipboard(QByteArray clipboard);
     void setEnabled(bool enabled);
     bool isEnabled();
 
@@ -39,6 +42,7 @@ public:
     Q_INVOKABLE void repaint();
     bool isThisPgId(pid_t valid_pgid);
     bool hasWindowPermission();
+    bool hasClipboardPermission();
     QVector<Window*> _sortedWindows();
     QVector<Window*> _sortedVisibleWindows();
     void sortWindows();
@@ -53,12 +57,16 @@ public:
     void writeTabletEvent(QEvent* event);
     void writeKeyEvent(QEvent* event);
 
+signals:
+    void clipboardChanged(const QByteArray&);
+
 private:
     bool m_enabled;
     QMap<QString, Window*> m_windows;
     QRect m_screenGeometry;
     QMutex m_windowMutex;
     QAtomicInteger<unsigned int> m_currentMarker;
+    QByteArray m_clipboard;
 
     bool hasPermission();
 };

@@ -109,13 +109,13 @@ void OxideIntegration::initialize(){
     connectSignal(signalHandler, "sigUsr2()", m_primaryScreen, "lowerTopWindow()");
     connectSignal(signalHandler, "sigTerm()", m_primaryScreen, "closeTopWindow()");
     connectSignal(signalHandler, "sigInt()", m_primaryScreen, "closeTopWindow()");
-    auto system = Oxide::Tarnish::systemApi();
-    if(system != nullptr){
+    auto api = Oxide::Tarnish::guiApi();
+    if(api != nullptr){
         // TODO - sort out how to avoid storing a copy of the clipboard in the application unless it's being used
-        QObject::connect(system.data(), &codes::eeems::oxide1::System::clipboardChanged, [this](const QByteArray& data){
+        QObject::connect(api.data(), &codes::eeems::oxide1::Gui::clipboardChanged, [this](const QByteArray& data){
             m_clipboard->setData("application/octet-stream", data);
         });
-        m_clipboard->setData("application/octet-stream", system->clipboard());
+        m_clipboard->setData("application/octet-stream", api->clipboard());
     }
 }
 
@@ -252,9 +252,9 @@ void OxideIntegration::setMimeData(QMimeData* data, QClipboard::Mode mode){
         return;
     }
     m_clipboard = data;
-    auto system = Oxide::Tarnish::systemApi();
-    if(system != nullptr){
-        system->setClipboard(data->data(""));
+    auto api = Oxide::Tarnish::guiApi();
+    if(api != nullptr){
+        api->setClipboard(data->data(""));
     }
     QPlatformClipboard::emitChanged(mode);
 }

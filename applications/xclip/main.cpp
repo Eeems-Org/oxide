@@ -52,14 +52,14 @@ int main(int argc, char *argv[]){
     if(parser.isSet(verboseOption)){
         qputenv("DEBUG", "1");
     }
-    auto system = Oxide::Tarnish::systemApi();
-    if(system == nullptr){
+    auto gui = Oxide::Tarnish::guiApi();
+    if(gui == nullptr){
         qDebug() << "Failed to get system API";
         return EXIT_FAILURE;
     }
     QStringList args = parser.positionalArguments();
     if(parser.isSet(outOption)){
-        auto data = system->clipboard();
+        auto data = gui->clipboard();
         if(parser.isSet(rmlastnlOption) && data.right(1) == "\n"){
             data.chop(1);
         }
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]){
         return EXIT_SUCCESS;
     }
     if(args.empty()){
-        system->setClipboard(QTextStream(stdin).readAll().toUtf8());
+        gui->setClipboard(QTextStream(stdin).readAll().toUtf8());
         return EXIT_SUCCESS;
     }
     for(auto path : args){
@@ -85,6 +85,6 @@ int main(int argc, char *argv[]){
         }
         data += file.readAll();
     }
-    system->setClipboard(data);
+    gui->setClipboard(data);
     return EXIT_SUCCESS;
 }

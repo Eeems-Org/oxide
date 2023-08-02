@@ -73,6 +73,25 @@ QRect GuiAPI::geometry(){
 
 QRect GuiAPI::_geometry(){ return m_screenGeometry; }
 
+QByteArray GuiAPI::clipboard(){
+    if(!hasClipboardPermission()){
+        W_DENIED();
+        return QByteArray();
+    }
+    W_ALLOWED();
+    return m_clipboard;
+}
+
+void GuiAPI::setClipboard(QByteArray clipboard){
+    if(!hasClipboardPermission()){
+        W_DENIED();
+        return;
+    }
+    W_ALLOWED();
+    m_clipboard.swap(clipboard);
+    emit clipboardChanged(m_clipboard);
+}
+
 void GuiAPI::setEnabled(bool enabled){
     O_DEBUG("GUI API" << enabled);
     m_enabled = enabled;
@@ -225,6 +244,18 @@ bool GuiAPI::hasWindowPermission(){
     }
     auto app = appsAPI->getApplication(pgid);
     return app != nullptr && app->permissions().contains("window");
+}
+
+bool GuiAPI::hasClipboardPermission(){
+    if(!calledFromDBus()){
+        return true;
+    }
+    auto pgid = getSenderPgid();
+    if(pgid == getpid()){
+        return true;
+    }
+    auto app = appsAPI->getApplication(pgid);
+    return app == nullptr || app->permissions().contains("clipboard");
 }
 
 QVector<Window*> GuiAPI::_sortedWindows(){
