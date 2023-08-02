@@ -112,6 +112,6 @@ namespace Oxide {
     /*!
      * \brief Print the current backtrace
      */
-    LIBOXIDE_EXPORT std::vector<std::string> backtrace(unsigned short depth = 10);
+    LIBOXIDE_EXPORT std::vector<std::string> backtrace(unsigned short depth);
 }
 /*! @} */
