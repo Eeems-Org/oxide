@@ -5,6 +5,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
     DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x051510
 }
 CONFIG(debug, debug|release){
+    LIBS += -lunwind
     contains(DEFINES, SANITIZER){
         QMAKE_LFLAGS += -fno-omit-frame-pointer
         QMAKE_LFLAGS += -fsanitize-recover=address

@@ -109,5 +109,9 @@ namespace Oxide {
      * \return The name of the application
      */
     LIBOXIDE_EXPORT std::string getAppName();
+    /*!
+     * \brief Print the current backtrace
+     */
+    LIBOXIDE_EXPORT std::vector<std::string> backtrace(unsigned short depth = 10);
 }
 /*! @} */

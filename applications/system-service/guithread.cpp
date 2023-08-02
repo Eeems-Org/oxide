@@ -279,7 +279,9 @@ void GUIThread::enqueue(Window* window, QRect region, EPFrameBuffer::WaveformMod
 void GUIThread::addCompleted(QString window, unsigned int marker, unsigned int internalMarker, bool waited){ m_waitThread->addCompleted(window, marker, internalMarker, waited); }
 
 void GUIThread::deleteWindowLater(Window* window){
+    O_DEBUG("Removing waits" << window->identifier() << window->name() << window->pgid());
     m_waitThread->removeWait(window->identifier());
+    O_DEBUG("Removing repaints" << window->identifier() << window->name() << window->pgid());
     m_repaintMutex.lock();
     QMutableListIterator<RepaintRequest> i(m_repaintEvents);
     while(i.hasNext()){
@@ -294,6 +296,7 @@ void GUIThread::deleteWindowLater(Window* window){
     }
     m_repaintWait.notify_all();
     m_repaintMutex.unlock();
+    O_DEBUG("Deleting window" << window->identifier() << window->name() << window->pgid());
     window->deleteLater();
 }
 
@@ -362,7 +365,7 @@ void GUIThread::redraw(RepaintRequest& event){
     // Get windows in order of Z sort order, and filter out invalid windows
     auto visibleWindows = guiAPI->_sortedVisibleWindows();
     visibleWindows.erase(std::remove_if(visibleWindows.begin(), visibleWindows.end(), [](Window* window){
-        if(getpgid(window->pgid()) < 0){
+        if(!window->systemWindow() && getpgid(window->pgid()) < 0){
             O_WARNING(window->identifier() << "With no running process");
             Oxide::runLater(window->thread(), [window]{ window->_close(); });
             return true;

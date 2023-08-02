@@ -99,12 +99,10 @@ Window* GuiAPI::_createWindow(QString name, QRect geometry, QImage::Format forma
     for(auto item : appsAPI->runningApplicationsNoSecurityCheck().values()){
         Application* app = appsAPI->getApplication(item.value<QDBusObjectPath>());
         if(app->processId() == pgid){
-            connect(app, &Application::paused, window, [=]{
-                window->setVisible(false);
-            });
-            connect(app, &Application::resumed, window, [=]{
-                window->setVisible(true);
-            });
+            O_DEBUG("Window is for application" << app->name().toStdString().c_str());
+            connect(app, &Application::paused, window, [window]{ window->_setVisible(false); });
+            connect(app, &Application::resumed, window, [window]{ window->_setVisible(true); });
+            connect(app, &Application::exited, window, [window]{ window->_close(); });
         }
     }
     window->setEnabled(m_enabled);
@@ -242,8 +240,14 @@ void GuiAPI::sortWindows(){
     Q_UNUSED(locker)
     int raisedZ = 0;
     int loweredZ = -1;
-    for(auto window : windows){
+    for(Window* window : windows){
         if(window->systemWindow()){
+            continue;
+        }
+        auto pgid = window->pgid();
+        if(pgid != ::getpid() && !dbusService->isChild(pgid) && !dbusService->isChildGroup(pgid)){
+            O_DEBUG("Cleaning up window with no registered child:" << window->identifier().toStdString().c_str() << window->name().toStdString().c_str() << pgid);
+            runLater(thread(), [window]{ window->_close(); });
             continue;
         }
         switch(window->state()){
@@ -264,6 +268,7 @@ void GuiAPI::sortWindows(){
 
 void GuiAPI::closeWindows(pid_t pgid){
     m_windowMutex.lock();
+    O_DEBUG("Closing windows for" << pgid);
     QList<Window*> windows;
     for(auto window : windows){
         if(window->pgid() == pgid){
@@ -272,12 +277,14 @@ void GuiAPI::closeWindows(pid_t pgid){
     }
     m_windowMutex.unlock();
     for(auto window : windows){
+        O_DEBUG("Closing" << window->identifier() << window->name() << window->pgid());
         window->_close();
     }
 }
 
 void GuiAPI::lowerWindows(pid_t pgid){
     m_windowMutex.lock();
+    O_DEBUG("Lowering windows for" << pgid);
     QList<Window*> windows;
     for(auto window : windows){
         if(window->pgid() == pgid){
@@ -286,12 +293,14 @@ void GuiAPI::lowerWindows(pid_t pgid){
     }
     m_windowMutex.unlock();
     for(auto window : windows){
+        O_DEBUG("Lowering" << window->identifier() << window->name() << window->pgid());
         window->_lower();
     }
 }
 
 void GuiAPI::raiseWindows(pid_t pgid){
     m_windowMutex.lock();
+    O_DEBUG("Raising windows for" << pgid);
     QList<Window*> windows;
     for(auto window : windows){
         if(window->pgid() == pgid){
@@ -300,6 +309,7 @@ void GuiAPI::raiseWindows(pid_t pgid){
     }
     m_windowMutex.unlock();
     for(auto window : windows){
+        O_DEBUG("Raising" << window->identifier() << window->name() << window->pgid());
         window->_raise();
     }
 }

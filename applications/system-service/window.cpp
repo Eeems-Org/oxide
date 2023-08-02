@@ -1,4 +1,5 @@
 #include <sys/file.h>
+#include <liboxide/debug.h>
 
 #include "window.h"
 #include "guiapi.h"
@@ -45,7 +46,6 @@ Window::Window(const QString& id, const QString& path, const pid_t& pgid, const 
     m_pingDeadlineTimer.setTimerType(Qt::CoarseTimer);
     connect(&m_pingTimer, &QTimer::timeout, this, &Window::ping);
     connect(&m_pingDeadlineTimer, &QTimer::timeout, this, &Window::pingDeadline);
-    connect(this, &Window::destroyed, [this]{ W_DEBUG("Window destroyed"); });
 }
 Window::~Window(){
     O_DEBUG("Window deleted" << m_identifier.toStdString().c_str() << m_name.toStdString().c_str() << m_pgid);
@@ -351,8 +351,6 @@ void Window::_close(){
     setEnabled(false);
     emit closed();
     guiAPI->removeWindow(m_path);
-    setParent(nullptr);
-    moveToThread(nullptr);
     auto thread = guiAPI->guiThread();
     blockSignals(true);
     W_DEBUG("Window closed");

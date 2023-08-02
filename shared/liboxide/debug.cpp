@@ -1,5 +1,6 @@
 #include "debug.h"
 #include <fcntl.h>
+#include <execinfo.h>
 
 namespace Oxide {
     bool debugEnabled(){
@@ -47,6 +48,18 @@ namespace Oxide {
             .arg(line)
             .arg(function)
             .toStdString();
+    }
+
+    std::vector<std::string> backtrace(unsigned short depth){
+        void* array[depth];
+        size_t size = ::backtrace(array, depth);
+        char** messages = ::backtrace_symbols(array, size);
+        std::vector<std::string> stack;
+        stack.reserve(size);
+        for(size_t i = 1; i < size && messages != NULL; ++i){
+            stack.push_back(messages[i]);
+        }
+        return stack;
     }
 
 }
