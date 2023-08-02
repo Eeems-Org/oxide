@@ -13,6 +13,21 @@ OxideScreen::OxideScreen()
   m_marker{0}
 {}
 
+QRect OxideScreen::geometry() const { return mGeometry; }
+
+void OxideScreen::setGeometry(QRect geometry) {
+    auto window = Oxide::Tarnish::topWindow();
+    if(window != nullptr){
+        // TODO - replace with event socket call
+        window->setGeometry(geometry);
+    }
+    mGeometry = window->geometry();
+}
+
+int OxideScreen::depth() const { return mDepth; }
+
+QImage::Format OxideScreen::format() const { return mFormat; }
+
 QSizeF OxideScreen::physicalSize() const{
     static const int dpi = 228;
     return QSizeF(geometry().size()) / dpi * qreal(25.4);

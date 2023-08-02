@@ -4,11 +4,15 @@
 #include <qpa/qwindowsysteminterface_p.h>
 #include <QTabletEvent>
 #include <QEvent>
+#include <QDebug>
 #include <QCoreApplication>
 
 OxideEventFilter::OxideEventFilter(QObject* parent) : QObject(parent){ }
 
 bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev){
+    if(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS")){
+        qDebug() << obj << ev;
+    }
     bool filtered = QObject::eventFilter(obj, ev);
     if(isEnabled() && !filtered && !ev->isAccepted()){
         auto type = ev->type();

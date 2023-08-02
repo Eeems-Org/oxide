@@ -20,7 +20,6 @@ public:
     bool close() override;
     void raise() override;
     void lower() override;
-    void setGeometry(const QRect &rect) override;
     bool isTopWindow();
 
 protected:

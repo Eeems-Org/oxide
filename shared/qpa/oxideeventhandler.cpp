@@ -146,6 +146,9 @@ void OxideEventHandler::handleTouch(Oxide::Tarnish::TouchEventArgs* data){
         auto touchPoint = getTouchPoint(point);
         m_touchPoints.append(touchPoint);
     }
+    if(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS")){
+        qDebug() << m_touchPoints;
+    }
     QWindowSystemInterface::handleTouchEvent(nullptr, m_touchscreen, m_touchPoints);
 }
 

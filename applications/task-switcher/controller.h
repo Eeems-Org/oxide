@@ -12,7 +12,6 @@
 #include <liboxide.h>
 #include <liboxide/tarnish.h>
 
-#include "screenprovider.h"
 #include "appitem.h"
 
 using namespace codes::eeems::oxide1;
@@ -30,10 +29,8 @@ class Controller : public QObject {
     Q_OBJECT
 
 public:
-    Controller(QObject* parent, ScreenProvider* screenProvider)
+    Controller(QObject* parent)
     : QObject(parent),applications() {
-        blankImage = new QImage(qApp->primaryScreen()->geometry().size(), QImage::Format_Mono);
-        this->screenProvider = screenProvider;
         SignalHandler::setup_unix_signal_handlers();
         connect(signalHandler, &SignalHandler::sigCont, this, &Controller::sigUsr1);
         connect(signalHandler, &SignalHandler::sigUsr1, this, &Controller::sigUsr1);
@@ -60,8 +57,6 @@ public:
         connect(appsInstance, &Apps::applicationRegistered, this, &Controller::registerApplication);
         connect(appsInstance, &Apps::applicationLaunched, this, &Controller::reload);
         connect(appsInstance, &Apps::applicationExited, this, &Controller::reload);
-
-        updateImage();
     }
     ~Controller(){}
 
@@ -184,44 +179,6 @@ public:
         }
         stateControllerUI->setProperty("state", state);
     }
-    void updateImage(){
-        qDebug() << "Updating background...";
-        Oxide::Sentry::sentry_transaction("controller", "updateImage", [this](Oxide::Sentry::Transaction* t){
-            QImage* img = nullptr;
-            Oxide::Sentry::sentry_span(t, "previousApplications", "Get image from previous application", [this, &img](Oxide::Sentry::Span* s){
-                auto previousApplications = appsApi->previousApplications();
-                while(img == nullptr && !previousApplications.isEmpty()){
-                    auto name = previousApplications.takeLast();
-                    Oxide::Sentry::sentry_span(s, name.toStdString(), "Load image from application", [this, &img, previousApplications, name]{
-                        auto path = ((QDBusObjectPath)appsApi->getApplicationPath(name)).path();
-                        if(path == "/"){
-                            O_WARNING("Unable to get save screen for" << name);
-                            return;
-                        }
-                        auto bus = QDBusConnection::systemBus();
-                        Application app(OXIDE_SERVICE, path, bus, this);
-                        auto data = app.screenCapture();
-                        auto image = QImage::fromData(data, "JPG");
-                        if(image.isNull()){
-                            O_WARNING("Image for " << name << " is corrupt, trying next application");
-                            return;
-                        }
-                        img = new QImage(image);
-                        qDebug() << "Using save screen from " << name;
-                    });
-                }
-            });
-            Oxide::Sentry::sentry_span(t, "update", "Update image", [this, img]{
-                if(img != nullptr){
-                    screenProvider->updateImage(img);
-                    return;
-                }
-                qWarning() << "No previous application. Using blank screen";
-                screenProvider->updateImage(blankImage);
-            });
-        });
-    }
-
     void setRoot(QObject* root){ this->root = root; }
     QSharedPointer<Apps> getAppsApi() { return appsApi; }
 
@@ -233,7 +190,6 @@ private slots:
         ::kill(tarnishPid(), SIGUSR1);
         qDebug() << "Sent to the foreground...";
         setState("loading");
-        updateImage();
     }
     void sigUsr2(){
         qDebug() << "Sent to the background...";
@@ -264,9 +220,7 @@ private:
     QSharedPointer<Apps> appsApi;
     QObject* root = nullptr;
     QObject* stateControllerUI = nullptr;
-    ScreenProvider* screenProvider;
     QList<QObject*> applications;
-    QImage* blankImage;
 
     int tarnishPid() { return Oxide::Tarnish::tarnishPid(); }
     QObject* getStateControllerUI(){

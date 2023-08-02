@@ -93,16 +93,6 @@ void OxideWindow::lower(){
     }
 }
 
-void OxideWindow::setGeometry(const QRect& rect){
-    if(isTopWindow()){
-        auto window = Oxide::Tarnish::topWindow();
-        if(window != nullptr){
-            // TODO - replace with event socket call
-            window->setGeometry(rect);
-        }
-    }
-}
-
 bool OxideWindow::isTopWindow(){
     auto screen = platformScreen();
     return screen != nullptr && screen->topPlatformWindow() == this;

@@ -260,13 +260,15 @@ void Application::interruptApplication(){
                         O_DEBUG("SIGUSR2 ack recieved");
                         startSpan("background", "Application is in the background");
                     }
-                    guiAPI->lowerWindows(m_pid);
+                    // No need to lower since the other window gets raised right?
+//                    guiAPI->lowerWindows(m_pid);
                     break;
                 case Foreground:
                 default:
                     kill(-m_process->processId(), SIGSTOP);
                     waitForPause();
-                    guiAPI->lowerWindows(m_pid);
+                    // No need to lower since the other window gets raised right?
+//                    guiAPI->lowerWindows(m_pid);
                     startSpan("stopped", "Application is stopped");
             }
         });
@@ -312,6 +314,7 @@ void Application::resumeNoSecurityCheck(){
         appsAPI->pauseAll();
         uninterruptApplication();
         waitForResume();
+        guiAPI->raiseWindows(m_pid);
         emit resumed();
         emit appsAPI->applicationResumed(qPath());
     });
@@ -355,13 +358,11 @@ void Application::uninterruptApplication(){
                         O_DEBUG("SIGUSR1 ack recieved");
                     }
                     m_backgrounded = false;
-                    guiAPI->raiseWindows(m_pid);
                     startSpan("background", "Application is in the background");
                     break;
                 case Foreground:
                 default:
                     kill(-m_process->processId(), SIGCONT);
-                    guiAPI->raiseWindows(m_pid);
                     startSpan("foreground", "Application is in the foreground");
             }
         });

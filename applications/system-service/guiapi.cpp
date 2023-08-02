@@ -100,8 +100,6 @@ Window* GuiAPI::_createWindow(QString name, QRect geometry, QImage::Format forma
         Application* app = appsAPI->getApplication(item.value<QDBusObjectPath>());
         if(app->processId() == pgid){
             O_DEBUG("Window is for application" << app->name().toStdString().c_str());
-            connect(app, &Application::paused, window, [window]{ window->_setVisible(false); });
-            connect(app, &Application::resumed, window, [window]{ window->_setVisible(true); });
             connect(app, &Application::exited, window, [window]{ window->_close(); });
         }
     }

@@ -21,5 +21,4 @@
 #include <unistd.h>
 
 #include "controller.h"
-#include "screenprovider.h"
 #endif

@@ -10,8 +10,6 @@
 
 #include "controller.h"
 
-#include "screenprovider.h"
-
 using namespace std;
 using namespace Oxide;
 using namespace Oxide::Sentry;
@@ -30,15 +28,21 @@ int main(int argc, char *argv[]){
     app.setApplicationName("corrupt");
     app.setApplicationVersion(APP_VERSION);
     Tarnish::getSocketFd();
-    auto screenProvider = new ScreenProvider(&app);
-    Controller controller(&app, screenProvider);
+    auto window = Tarnish::topWindow();
+    if(window == nullptr){
+        qDebug() << "No window";
+        return EXIT_FAILURE;
+    }
+    auto geometry = app.primaryScreen()->geometry();
+    geometry.setY(geometry.height() - 150);
+    geometry.setHeight(150);
+    window->setGeometry(geometry);
+    Controller controller(&app);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
-    context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
+    context->setContextProperty("screenGeometry", geometry);
     context->setContextProperty("apps", QVariant::fromValue(controller.getApps()));
     context->setContextProperty("controller", &controller);
-    engine.rootContext()->setContextProperty("screenProvider", screenProvider);
-    engine.addImageProvider("screen", screenProvider);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty()){
         qDebug() << "Nothing to display";
