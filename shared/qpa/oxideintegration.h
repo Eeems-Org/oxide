@@ -1,5 +1,6 @@
 #pragma once
 #include "oxidescreen.h"
+#include "oxideservices.h"
 #include "oxidewindow.h"
 #include "oxideeventfilter.h"
 #include "oxideeventhandler.h"
@@ -32,13 +33,19 @@ public:
     void sync() override;
     void beep() const override;
     QPlatformFontDatabase* fontDatabase() const override;
+#ifndef QT_NO_CLIPBOARD
+    QPlatformClipboard* clipboard() const override;
+#endif
     QPlatformInputContext* inputContext() const override;
     QPlatformWindow* createPlatformWindow(QWindow* window) const override;
     QPlatformBackingStore* createPlatformBackingStore(QWindow* window) const override;
     QAbstractEventDispatcher* createEventDispatcher() const override;
     QPlatformNativeInterface* nativeInterface() const override;
+    QPlatformServices* services() const override;
     OxideScreen* primaryScreen();
     unsigned short options() const;
+    QStringList themeNames() const override;
+    QPlatformTheme* createPlatformTheme(const QString& name) const override;
 
     static OxideIntegration* instance();
 
@@ -46,6 +53,7 @@ private:
     mutable QPlatformFontDatabase* m_fontDatabase = nullptr;
     QPlatformInputContext* m_inputContext = nullptr;
     QPointer<OxideScreen> m_primaryScreen;
+    OxideServices m_services;
     unsigned short m_options;
     bool m_debug;
     QMutex m_mutex;

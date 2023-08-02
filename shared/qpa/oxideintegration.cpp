@@ -152,6 +152,13 @@ QPlatformFontDatabase* OxideIntegration::fontDatabase() const{
     return m_fontDatabase;
 }
 
+#ifndef QT_NO_CLIPBOARD
+QPlatformClipboard* OxideIntegration::clipboard() const{
+    // TODO - implement shared clipboard in tarnish
+    return QPlatformIntegration::clipboard();
+}
+#endif
+
 QPlatformInputContext* OxideIntegration::inputContext() const{
     if(m_debug){
         qDebug() << "OxideIntegration::inputContext";
@@ -189,9 +196,21 @@ QPlatformNativeInterface* OxideIntegration::nativeInterface() const{
     return const_cast<OxideIntegration*>(this);
 }
 
+QPlatformServices* OxideIntegration::services() const{ return &m_services; }
+
 OxideScreen* OxideIntegration::primaryScreen(){ return m_primaryScreen; }
 
 unsigned short OxideIntegration::options() const { return m_options; }
+
+QStringList OxideIntegration::themeNames() const{
+    // TODO - implement custom theme
+    return QPlatformIntegration::themeNames();
+}
+
+QPlatformTheme* OxideIntegration::createPlatformTheme(const QString& name) const{
+    // TODO - implement custom theme
+    return QPlatformIntegration::createPlatformTheme(name);
+}
 
 OxideIntegration* OxideIntegration::instance(){
     auto instance = static_cast<OxideIntegration*>(QGuiApplicationPrivate::platformIntegration());

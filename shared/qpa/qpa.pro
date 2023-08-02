@@ -24,12 +24,14 @@ SOURCES = main.cpp \
           oxideeventhandler.cpp \
           oxideintegration.cpp \
           oxidescreen.cpp \
+          oxideservices.cpp \
           oxidewindow.cpp
 HEADERS = oxidebackingstore.h \
           oxideeventfilter.h \
           oxideeventhandler.h \
           oxideintegration.h \
           oxidescreen.h \
+          oxideservices.h \
           oxidewindow.h
 
 OTHER_FILES += oxide.json

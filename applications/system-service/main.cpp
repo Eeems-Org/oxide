@@ -53,6 +53,7 @@ int main(int argc, char* argv[]){
         O_WARNING("rm2fb not detected. Running xochitl instead!");
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
+    qputenv("XDG_CURRENT_DESKTOP", "OXIDE");
     QThread::currentThread()->setObjectName("main");
     qRegisterMetaType<input_event>();
     deviceSettings.setupQtEnvironment(DeviceSettings::QtEnvironmentType::NoPen);
