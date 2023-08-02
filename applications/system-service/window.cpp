@@ -343,6 +343,7 @@ void Window::_close(){
     auto wasVisible = _isVisible() && !QCoreApplication::closingDown();
     m_state = WindowState::Closed;
     if(wasVisible){
+        // TODO - only repaint regions where the window was the top z sort
         guiAPI->dirty(nullptr, m_geometry, EPFrameBuffer::Initialize, 0, true);
     }
     writeEvent(WindowEventType::Close);
