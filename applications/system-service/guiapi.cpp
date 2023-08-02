@@ -315,6 +315,17 @@ void GuiAPI::raiseWindows(pid_t pgid){
     }
 }
 
+bool GuiAPI::hasRaisedWindows(pid_t pgid){
+    QMutexLocker locker(&m_windowMutex);
+    Q_UNUSED(locker);
+    for(auto window : m_windows.values()){
+        if(window->pgid() == pgid && window->state() == Window::Raised){
+            return true;
+        }
+    }
+    return false;
+}
+
 void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async){
     if(async){
         m_thread.enqueue(window, region, waveform, marker, window == nullptr);

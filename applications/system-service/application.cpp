@@ -178,7 +178,15 @@ void Application::launchNoSecurityCheck(){
             if(flags().contains("nosplash")){
                 NotificationAPI::_window()->_setVisible(false, false);
             }else{
-                AppsAPI::_window()->_setVisible(false, false);
+                auto timer = new QTimer();
+                connect(timer, &QTimer::timeout, [timer, this]{
+                    if(stateNoSecurityCheck() != InForeground || guiAPI->hasRaisedWindows(m_pid)){
+                        timer->stop();
+                        AppsAPI::_window()->_setVisible(false, false);
+                        timer->deleteLater();
+                    }
+                });
+                timer->start(10);
             }
             if(type() == Background){
                 startSpan("background", "Application is in the background");
