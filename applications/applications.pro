@@ -21,7 +21,8 @@ SUBDIRS = \
     xdg-icon-resource \
     xdg-open \
     xdg-settings \
-    fbinfo
+    fbinfo \
+    xclip
 
 launcher.depends = system-service update-desktop-database
 lockscreen.depends = system-service
@@ -43,5 +44,6 @@ desktop-file-edit.depends =
 desktop-file-install.depends =
 inject_evdev.depends =
 fbinfo.depends = 
+xclip.depends = system-service
 
 INSTALLS += $$SUBDIRS

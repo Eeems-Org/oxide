@@ -40,6 +40,7 @@ int main(int argc, char *argv[]){
     parser.applicationDescription();
     parser.addHelpOption();
     parser.addVersionOption();
+    parser.addPositionalArgument("path", "The file or URL to open", "{ file | URL }");
     parser.process(app);
     QStringList args = parser.positionalArguments();
     if (args.isEmpty() || args.length() > 1) {

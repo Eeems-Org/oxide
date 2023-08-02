@@ -46,6 +46,11 @@ notify-send
 
 https://man.archlinux.org/man/notify-send.1.en
 
+xclip
+=====
+
+https://man.archlinux.org/man/xclip.1.en
+
 inject_evdev
 ============
 
