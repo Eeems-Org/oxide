@@ -292,7 +292,7 @@ void GuiAPI::lowerWindows(pid_t pgid){
     m_windowMutex.unlock();
     for(auto window : windows){
         O_DEBUG("Lowering" << window->identifier() << window->name() << window->pgid());
-        window->_lower();
+        window->_lower(false);
     }
 }
 
@@ -308,7 +308,7 @@ void GuiAPI::raiseWindows(pid_t pgid){
     m_windowMutex.unlock();
     for(auto window : windows){
         O_DEBUG("Raising" << window->identifier() << window->name() << window->pgid());
-        window->_raise();
+        window->_raise(false);
     }
 }
 

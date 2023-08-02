@@ -646,6 +646,7 @@ void AppsAPI::openDefaultApplication(){
            && (path == m_startupApplication || path == m_lockscreenApplication)
            ){
             O_DEBUG("Already in default application");
+            currentApplication->resumeNoSecurityCheck();
             return;
         }
     }
@@ -673,6 +674,11 @@ void AppsAPI::openTaskManager(){
             O_DEBUG("Can't open task manager, on the lockscreen");
             return;
         }
+        if(path == m_processManagerApplication){
+            O_DEBUG("Already on the process manager");
+            currentApplication->resumeNoSecurityCheck();
+            return;
+        }
     }
     auto app = getApplication(m_processManagerApplication);
     if(app == nullptr){
@@ -696,6 +702,7 @@ void AppsAPI::openLockScreen(){
            && path == m_lockscreenApplication
         ){
             O_DEBUG("Already on the lockscreen");
+            currentApplication->resumeNoSecurityCheck();
             return;
         }
     }
@@ -725,6 +732,7 @@ void AppsAPI::openTaskSwitcher(){
             }
             if(path == m_taskSwitcherApplication){
                 O_DEBUG("Already on the task switcher");
+                currentApplication->resumeNoSecurityCheck();
                 return;
             }
         }

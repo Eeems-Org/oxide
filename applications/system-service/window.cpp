@@ -290,7 +290,7 @@ void Window::_raise(bool async){
         m_z = std::numeric_limits<int>::max() - 2;
     }
     guiAPI->sortWindows();
-    if(!wasVisible){
+    if(!wasVisible || m_z != oldZ){
         guiAPI->dirty(this, _normalizedGeometry(), EPFrameBuffer::Initialize, 0, async);
     }
     if(m_state != oldState){

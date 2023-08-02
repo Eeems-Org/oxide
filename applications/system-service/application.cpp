@@ -305,6 +305,7 @@ void Application::resumeNoSecurityCheck(){
         || (type() == Background && stateNoSecurityCheck() == InBackground)
     ){
         O_WARNING("Can't Resume" << path() << "Already running!");
+        guiAPI->raiseWindows(m_pid);
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "resume", [this](Oxide::Sentry::Transaction* t){
@@ -314,9 +315,9 @@ void Application::resumeNoSecurityCheck(){
         appsAPI->pauseAll();
         uninterruptApplication();
         waitForResume();
-        guiAPI->raiseWindows(m_pid);
         emit resumed();
         emit appsAPI->applicationResumed(qPath());
+        guiAPI->raiseWindows(m_pid);
     });
     O_DEBUG("Resumed " << path());
 }
