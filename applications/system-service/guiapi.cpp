@@ -267,13 +267,14 @@ void GuiAPI::sortWindows(){
 void GuiAPI::closeWindows(pid_t pgid){
     m_windowMutex.lock();
     O_DEBUG("Closing windows for" << pgid);
-    QList<Window*> windows;
-    for(auto window : windows){
+    QVector<Window*> windows;
+    for(auto window : m_windows.values()){
         if(window->pgid() == pgid){
             windows.append(window);
         }
     }
     m_windowMutex.unlock();
+    std::sort(windows.begin(), windows.end(), [](const Window* w0, const Window* w1){ return w0->z() < w1->z(); });
     for(auto window : windows){
         O_DEBUG("Closing" << window->identifier() << window->name() << window->pgid());
         window->_close();
@@ -283,13 +284,14 @@ void GuiAPI::closeWindows(pid_t pgid){
 void GuiAPI::lowerWindows(pid_t pgid){
     m_windowMutex.lock();
     O_DEBUG("Lowering windows for" << pgid);
-    QList<Window*> windows;
-    for(auto window : windows){
+    QVector<Window*> windows;
+    for(auto window : m_windows.values()){
         if(window->pgid() == pgid){
             windows.append(window);
         }
     }
     m_windowMutex.unlock();
+    std::sort(windows.begin(), windows.end(), [](const Window* w0, const Window* w1){ return w0->z() < w1->z(); });
     for(auto window : windows){
         O_DEBUG("Lowering" << window->identifier() << window->name() << window->pgid());
         window->_lower(false);
@@ -299,13 +301,14 @@ void GuiAPI::lowerWindows(pid_t pgid){
 void GuiAPI::raiseWindows(pid_t pgid){
     m_windowMutex.lock();
     O_DEBUG("Raising windows for" << pgid);
-    QList<Window*> windows;
-    for(auto window : windows){
+    QVector<Window*> windows;
+    for(auto window : m_windows.values()){
         if(window->pgid() == pgid){
             windows.append(window);
         }
     }
     m_windowMutex.unlock();
+    std::sort(windows.begin(), windows.end(), [](const Window* w0, const Window* w1){ return w0->z() < w1->z(); });
     for(auto window : windows){
         O_DEBUG("Raising" << window->identifier() << window->name() << window->pgid());
         window->_raise(false);
