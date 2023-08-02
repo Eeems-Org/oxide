@@ -196,7 +196,12 @@ QPlatformNativeInterface* OxideIntegration::nativeInterface() const{
     return const_cast<OxideIntegration*>(this);
 }
 
-QPlatformServices* OxideIntegration::services() const{ return &m_services; }
+QPlatformServices* OxideIntegration::services() const{
+    if(m_debug){
+        qDebug() << "OxideIntegration::nativeInterface";
+    }
+    return const_cast<OxideIntegration*>(this);
+}
 
 OxideScreen* OxideIntegration::primaryScreen(){ return m_primaryScreen; }
 
@@ -211,6 +216,20 @@ QPlatformTheme* OxideIntegration::createPlatformTheme(const QString& name) const
     // TODO - implement custom theme
     return QPlatformIntegration::createPlatformTheme(name);
 }
+
+bool OxideIntegration::openUrl(const QUrl& url){ return openDocument(url); }
+
+bool OxideIntegration::openDocument(const QUrl& url){
+    QStringList args = QProcess::splitCommand("xdg-open " + QLatin1String(url.toEncoded()));
+    bool ok = false;
+    if (!args.isEmpty()) {
+        QString program = args.takeFirst();
+        ok = QProcess::startDetached(program, args);
+    }
+    return ok;
+}
+
+QByteArray OxideIntegration::desktopEnvironment() const{ return qgetenv("XDG_CURRENT_DESKTOP"); }
 
 OxideIntegration* OxideIntegration::instance(){
     auto instance = static_cast<OxideIntegration*>(QGuiApplicationPrivate::platformIntegration());

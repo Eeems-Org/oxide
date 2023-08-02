@@ -1,6 +1,5 @@
 #pragma once
 #include "oxidescreen.h"
-#include "oxideservices.h"
 #include "oxidewindow.h"
 #include "oxideeventfilter.h"
 #include "oxideeventhandler.h"
@@ -8,13 +7,14 @@
 #include <qpa/qplatformintegration.h>
 #include <qpa/qplatformnativeinterface.h>
 #include <qpa/qwindowsysteminterface.h>
+#include <qpa/qplatformservices.h>
 #include <QCoreApplication>
 #include <QDebug>
 #include <liboxide/tarnish.h>
 
 QT_BEGIN_NAMESPACE
 
-class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration, public QPlatformNativeInterface
+class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration, public QPlatformNativeInterface, public QPlatformServices
 {
 public:
     enum Options: unsigned short{ // Options to be passed on command line or determined from environment
@@ -46,6 +46,9 @@ public:
     unsigned short options() const;
     QStringList themeNames() const override;
     QPlatformTheme* createPlatformTheme(const QString& name) const override;
+    bool openUrl(const QUrl& url) override;
+    bool openDocument(const QUrl& url) override;
+    QByteArray desktopEnvironment() const override;
 
     static OxideIntegration* instance();
 
@@ -53,7 +56,6 @@ private:
     mutable QPlatformFontDatabase* m_fontDatabase = nullptr;
     QPlatformInputContext* m_inputContext = nullptr;
     QPointer<OxideScreen> m_primaryScreen;
-    OxideServices m_services;
     unsigned short m_options;
     bool m_debug;
     QMutex m_mutex;
