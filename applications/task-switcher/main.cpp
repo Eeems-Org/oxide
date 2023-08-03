@@ -22,6 +22,7 @@ void sigHandler(int signal){
 int main(int argc, char *argv[]){
     deviceSettings.setupQtEnvironment(DeviceSettings::Oxide);
     QGuiApplication app(argc, argv);
+    app.setAttribute(Qt::AA_SynthesizeMouseForUnhandledTabletEvents);
     sentry_init("corrupt", argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);

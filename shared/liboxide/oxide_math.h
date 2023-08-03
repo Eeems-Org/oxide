@@ -35,4 +35,11 @@ namespace Oxide::Math{
      * \return
      */
     LIBOXIDE_EXPORT QPointF normalize(QPoint pos, QRect bounds);
+    /*!
+     * \brief normalize
+     * \param pos
+     * \param bounds
+     * \return
+     */
+    LIBOXIDE_EXPORT QRectF normalize(QRect rect, QRect bounds);
 }

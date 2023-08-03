@@ -135,6 +135,8 @@ QRect Window::_geometry() const{ return m_geometry; }
 
 QRect Window::_normalizedGeometry() const{ return QRect(0, 0, m_geometry.width(), m_geometry.height()); }
 
+QRect Window::_tabletGeometry() const{ return m_tabletGeometry; }
+
 void Window::setGeometry(const QRect& geometry){
     if(!hasPermissions()){
         W_DENIED();
@@ -590,6 +592,8 @@ void Window::pingDeadline(){
     }
 }
 
+QTransform Window::m_tabletTransform = QTransform::fromTranslate(0.5, 0.5).rotate(90).translate(-0.5, -0.5);
+
 bool Window::hasPermissions() const{
     if(DBusService::shuttingDown()){
         return false;
@@ -651,6 +655,12 @@ void Window::createFrameBuffer(const QRect& geometry){
     m_bytesPerLine = blankImage.bytesPerLine();
     auto oldGeometry = m_geometry;
     m_geometry = geometry;
+    auto screen = guiAPI->geometry();
+    QRectF tabletGeometry = m_tabletTransform.mapRect(Oxide::Math::normalize(geometry, screen));
+    m_tabletGeometry.setLeft(tabletGeometry.left() * screen.width());
+    m_tabletGeometry.setTop(tabletGeometry.top() * screen.height());
+    m_tabletGeometry.setRight(tabletGeometry.right() * screen.width());
+    m_tabletGeometry.setBottom(tabletGeometry.bottom() * screen.height());
     writeEvent(ImageInfoEventArgs{
         .sizeInBytes = size,
         .bytesPerLine = m_bytesPerLine,
@@ -672,7 +682,7 @@ void Window::createFrameBuffer(const QRect& geometry){
     for(auto rect : QRegion(oldGeometry).subtracted(m_geometry)){
         guiAPI->guiThread()->enqueue(nullptr, rect, EPFrameBuffer::Initialize, 0, true);
     }
-    W_DEBUG("Framebuffer created:" << geometry);
+    W_DEBUG("Framebuffer created:" << m_geometry);
 }
 
 void Window::writeEvent(WindowEventType type){

@@ -186,13 +186,10 @@ void OxideEventHandler::handleTablet(Oxide::Tarnish::TabletEventArgs* data){
         default:
             break;
     }
-    QPointF pos = m_tabletTransform.map(Oxide::Math::normalize(data->point(), Oxide::Tarnish::frameBufferImage().rect()));
-    pos.setX(pos.x() * deviceSettings.getWacomWidth());
-    pos.setY(pos.y() * deviceSettings.getWacomHeight());
     QWindowSystemInterface::handleTabletEvent(
         nullptr,
         QPointF(),
-        pos.toPoint(),
+        data->point(),
         int(QTabletEvent::Stylus),
         data->tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
         m_tabletPenDown ? Qt::LeftButton : Qt::NoButton,

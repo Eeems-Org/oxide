@@ -37,7 +37,6 @@ GuiAPI::GuiAPI(QObject* parent)
         m_screenGeometry = deviceSettings.screenGeometry();
         __singleton(this);
     });
-    m_rotateTablet = QTransform::fromTranslate(0.5, 0.5).rotate(270).translate(-0.5, -0.5);
 }
 GuiAPI::~GuiAPI(){
     QMutexLocker locker(&m_windowMutex);
@@ -515,9 +514,8 @@ void GuiAPI::writeTabletEvent(QEvent* event){
     W_DEBUG("Window with focus" << window->identifier() << window->name());
     auto tabletEvent = static_cast<QTabletEvent*>(event);
     auto pos = tabletEvent->globalPos();
-    auto screenPos = tabletScreenPosition(pos);
-    auto geometry = window->_geometry();
-    if(!geometry.contains(screenPos)){
+    auto geometry = window->_tabletGeometry();
+    if(!geometry.contains(pos)){
         // TODO - cancel tablet events
         // TODO - change window that has focus
         return;
@@ -559,8 +557,8 @@ void GuiAPI::writeTabletEvent(QEvent* event){
     TabletEventArgs args{
         .type = type,
         .tool = tool,
-        .x = screenPos.x() - geometry.x(),
-        .y = screenPos.y() - geometry.y(),
+        .x = pos.x() - geometry.x(),
+        .y = pos.y() - geometry.y(),
         .pressure = (double)tabletEvent->pressure(),
         .tiltX = tabletEvent->xTilt(),
         .tiltY = tabletEvent->yTilt(),
@@ -607,14 +605,6 @@ bool GuiAPI::hasPermission(){
         return true;
     }
     return hasWindowPermission();
-}
-
-QPoint GuiAPI::tabletScreenPosition(QPoint pos){
-    auto screen = QGuiApplication::primaryScreen()->geometry();
-    QPointF screenPos = m_rotateTablet.map(Oxide::Math::normalize(pos, screen));
-    screenPos.setX(screenPos.x() * screen.width());
-    screenPos.setY(screenPos.y() * screen.height());
-    return screenPos.toPoint();
 }
 
 void GuiAPI::removeWindow(QString path){

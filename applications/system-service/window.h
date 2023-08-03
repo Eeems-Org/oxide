@@ -53,6 +53,7 @@ public:
     QRect geometry() const;
     QRect _geometry() const;
     QRect _normalizedGeometry() const;
+    QRect _tabletGeometry() const;
     void setGeometry(const QRect& geometry);
     Q_INVOKABLE bool isVisible();
     bool _isVisible();
@@ -115,6 +116,7 @@ private:
     QString m_path;
     pid_t m_pgid;
     QRect m_geometry;
+    QRect m_tabletGeometry;
     int m_z;
     QFile m_file;
     uchar* m_data = nullptr;
@@ -127,6 +129,7 @@ private:
     QTimer m_pingDeadlineTimer;
     unsigned int m_pendingMarker;
     bool m_systemWindow;
+    static QTransform m_tabletTransform;
 
     bool hasPermissions() const;
     void createFrameBuffer(const QRect& geometry);

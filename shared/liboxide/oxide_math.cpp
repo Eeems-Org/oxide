@@ -12,7 +12,7 @@ namespace Oxide::Math{
     }
 
     double normalize(int value, int min, int max){
-        Q_ASSERT(min != max);
+        Q_ASSERT(min < max);
         return (value - min) / double(max - min);
     }
 
@@ -20,6 +20,13 @@ namespace Oxide::Math{
         return QPointF(
             normalize(pos.x(), bounds.left(), bounds.right()),
             normalize(pos.y(), bounds.top(), bounds.bottom())
+        );
+    }
+
+    QRectF normalize(QRect rect, QRect bounds){
+        return QRectF(
+            normalize(rect.topLeft(), bounds),
+            normalize(rect.bottomRight(), bounds)
         );
     }
 }
