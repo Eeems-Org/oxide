@@ -5,12 +5,14 @@
 #include <private/qhighdpiscaling_p.h>
 #include <liboxide/devicesettings.h>
 #include <liboxide/threading.h>
+#include <liboxide/math.h>
 
 OxideEventHandler::OxideEventHandler(QLocalSocket* socket)
 : QObject(qApp),
   m_socket{socket},
   m_tabletPenDown{false}
 {
+    m_tabletTransform = QTransform::fromTranslate(0.5, 0.5).rotate(90).translate(-0.5, -0.5);
     m_touchscreen = new QTouchDevice();
     m_touchscreen->setName("oxide");
     m_touchscreen->setType(QTouchDevice::TouchScreen);
@@ -184,10 +186,13 @@ void OxideEventHandler::handleTablet(Oxide::Tarnish::TabletEventArgs* data){
         default:
             break;
     }
+    QPointF pos = m_tabletTransform.map(Oxide::Math::normalize(data->point(), Oxide::Tarnish::frameBufferImage().rect()));
+    pos.setX(pos.x() * deviceSettings.getWacomWidth());
+    pos.setY(pos.y() * deviceSettings.getWacomHeight());
     QWindowSystemInterface::handleTabletEvent(
         nullptr,
         QPointF(),
-        data->point(),
+        pos.toPoint(),
         int(QTabletEvent::Stylus),
         data->tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
         m_tabletPenDown ? Qt::LeftButton : Qt::NoButton,

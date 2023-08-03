@@ -1,5 +1,6 @@
 #pragma once
 #include <QThread>
+#include <QTabletEvent>
 
 #include <liboxide/event_device.h>
 
@@ -32,8 +33,8 @@ private:
         int tiltY;
         bool down;
         bool lastReportDown;
-        int tool;
-        int lastReportTool;
+        QTabletEvent::PointerType tool;
+        QTabletEvent::PointerType lastReportTool;
         QPointF lastReportPos;
     } state;
 };

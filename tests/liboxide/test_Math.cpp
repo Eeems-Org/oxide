@@ -15,6 +15,20 @@ void test_Math::test_normalize(){
 
     QCOMPARE(normalize(deviceSettings.getWacomMinYTilt(), deviceSettings.getWacomMinYTilt(), deviceSettings.getWacomMaxYTilt()), 0);
     QCOMPARE(normalize(deviceSettings.getWacomMaxYTilt(), deviceSettings.getWacomMinYTilt(), deviceSettings.getWacomMaxYTilt()), 1);
+
+    QCOMPARE(normalize(QPoint(0, 0), QRect(QPoint(0, 0), QPoint(10, 10))), QPointF(0, 0));
+    QCOMPARE(normalize(QPoint(5, 5), QRect(QPoint(0, 0), QPoint(10, 10))), QPointF(0.5, 0.5));
+    QCOMPARE(normalize(QPoint(10, 10), QRect(QPoint(0, 0), QPoint(10, 10))), QPointF(1, 1));
+    QCOMPARE(normalize(QPoint(-10, -10), QRect(QPoint(-10, -10), QPoint(10, 10))), QPointF(0, 0));
+    QCOMPARE(normalize(QPoint(0, 0), QRect(QPoint(-10, -10), QPoint(10, 10))), QPointF(0.5, 0.5));
+    QCOMPARE(normalize(QPoint(10, 10), QRect(QPoint(-10, -10), QPoint(10, 10))), QPointF(1, 1));
+
+    QCOMPARE(normalize(QPoint(0, 0), QRect(QPoint(0, 0), QPoint(1404, 1872))), QPointF(0, 0));
+    QCOMPARE(
+        normalize(QPoint(100, 100), QRect(QPoint(0, 0), QPoint(1404, 1872))),
+        QPointF(0.0712250712251, 0.0534188034188)
+    );
+    QCOMPARE(normalize(QPoint(1404, 1872), QRect(QPoint(0, 0), QPoint(1404, 1872))), QPointF(1, 1));
 }
 
 void test_Math::test_convertRange(){

@@ -3,7 +3,6 @@
 #include <liboxide/threading.h>
 #include <liboxide/devicesettings.h>
 
-#include <QTabletEvent>
 #include <QScreen>
 
 Wacom::Wacom()
@@ -61,10 +60,10 @@ void Wacom::processEvent(input_event* event){
                 state.down = event->value != 0;
                 break;
             case BTN_TOOL_PEN:
-                state.tool = event->value ? QTabletEvent::Pen : 0;
+                state.tool = event->value ? QTabletEvent::Pen : QTabletEvent::UnknownPointer;
                 break;
             case BTN_TOOL_RUBBER:
-                state.tool = event->value ? QTabletEvent::Eraser : 0;
+                state.tool = event->value ? QTabletEvent::Eraser : QTabletEvent::UnknownPointer;
                 break;
             default:
                 break;
@@ -95,7 +94,7 @@ void Wacom::report(){
             QTabletEvent::TabletEnterProximity,
             globalPos,
             globalPos,
-            0, // deviceid
+            QTabletEvent::Stylus,
             pointer,
             pressure,
             tiltX,
@@ -120,7 +119,7 @@ void Wacom::report(){
         type,
         globalPos,
         globalPos,
-        0, // deviceid
+        QTabletEvent::Stylus,
         pointer,
         pressure,
         tiltX,
@@ -138,7 +137,7 @@ void Wacom::report(){
             QTabletEvent::TabletLeaveProximity,
             globalPos,
             globalPos,
-            0, // deviceid
+            QTabletEvent::Stylus,
             pointer,
             pressure,
             tiltX,

@@ -1,7 +1,4 @@
 #include "qt.h"
-// TODO - flip >> operators to pull from the left
-//        and update the deserialization in Oxide::Tarnish
-//        to simplify the logic and hurt my brain less
 QByteArray& operator>>(QByteArray& l, qint8& r){
     Q_ASSERT((size_t)l.size() >= sizeof(qint8));
     auto d = l.left(sizeof(qint8));

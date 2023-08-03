@@ -77,6 +77,8 @@ private:
     QByteArray m_clipboard;
     QByteArray m_primarySelection;
     QByteArray m_secondarySelection;
+    QTransform m_rotateTablet;
 
     bool hasPermission();
+    QPoint tabletScreenPosition(QPoint pos);
 };

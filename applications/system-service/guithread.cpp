@@ -323,7 +323,7 @@ void GUIThread::repaintWindow(QPainter* painter, QRect* rect, Window* window){
     if(windowIntersect.isEmpty()){
         return;
     }
-    O_DEBUG(window->identifier() << windowIntersect << window->z());
+    O_DEBUG("Repaint window" << window->identifier().toStdString().c_str() << windowIntersect);
     // TODO - See if there is a way to detect if there is just transparency in the region
     //        and don't mark this as repainted.
     painter->drawImage(*rect, window->toImage(), windowIntersect);

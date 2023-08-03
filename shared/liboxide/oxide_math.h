@@ -5,6 +5,9 @@
  * \file math.h
  */
 #pragma once
+#include "liboxide_global.h"
+#include <QPointF>
+#include <QRect>
 
 namespace Oxide::Math{
     /*!
@@ -16,7 +19,7 @@ namespace Oxide::Math{
      * \param newMax
      * \return
      */
-    int convertRange(int value, int oldMin, int oldMax, int newMin, int newMax);
+    LIBOXIDE_EXPORT int convertRange(int value, int oldMin, int oldMax, int newMin, int newMax);
     /*!
      * \brief normalize
      * \param value
@@ -24,5 +27,12 @@ namespace Oxide::Math{
      * \param max
      * \return
      */
-    double normalize(int value, int min, int max);
+    LIBOXIDE_EXPORT double normalize(int value, int min, int max);
+    /*!
+     * \brief normalize
+     * \param pos
+     * \param bounds
+     * \return
+     */
+    LIBOXIDE_EXPORT QPointF normalize(QPoint pos, QRect bounds);
 }

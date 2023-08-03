@@ -19,6 +19,7 @@ private:
     QMutex m_eventMutex;
     QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
     QList<QWindowSystemInterface::TouchPoint> m_lastTouchPoints;
+    QTransform m_tabletTransform;
 
     void readEvents();
     QWindowSystemInterface::TouchPoint getTouchPoint(const Oxide::Tarnish::TouchEventPoint& data);
