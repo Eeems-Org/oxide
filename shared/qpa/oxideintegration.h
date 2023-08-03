@@ -62,6 +62,7 @@ private:
     QPlatformInputContext* m_inputContext = nullptr;
     QPointer<OxideScreen> m_primaryScreen;
     QPointer<QMimeData> m_clipboard;
+    QPointer<QMimeData> m_selection;
     unsigned short m_options;
     bool m_debug;
     QMutex m_mutex;

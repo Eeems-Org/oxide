@@ -17,6 +17,8 @@ class GuiAPI : public APIBase {
     Q_CLASSINFO("D-Bus Interface", OXIDE_GUI_INTERFACE)
     Q_PROPERTY(QRect geometry READ geometry)
     Q_PROPERTY(QByteArray clipboard READ clipboard WRITE setClipboard NOTIFY clipboardChanged)
+    Q_PROPERTY(QByteArray primarySelection READ primarySelection WRITE setPrimarySelection NOTIFY primarySelectionChanged)
+    Q_PROPERTY(QByteArray secondarySelection READ secondarySelection WRITE setSecondarySelection NOTIFY secondarySelectionChanged)
 
 public:
     static GuiAPI* __singleton(GuiAPI* self = nullptr);
@@ -28,6 +30,10 @@ public:
     QRect _geometry();
     QByteArray clipboard();
     void setClipboard(QByteArray clipboard);
+    QByteArray primarySelection();
+    void setPrimarySelection(QByteArray selection);
+    QByteArray secondarySelection();
+    void setSecondarySelection(QByteArray selection);
     void setEnabled(bool enabled);
     bool isEnabled();
 
@@ -59,6 +65,8 @@ public:
 
 signals:
     void clipboardChanged(const QByteArray&);
+    void primarySelectionChanged(const QByteArray&);
+    void secondarySelectionChanged(const QByteArray&);
 
 private:
     bool m_enabled;
@@ -67,6 +75,8 @@ private:
     QMutex m_windowMutex;
     QAtomicInteger<unsigned int> m_currentMarker;
     QByteArray m_clipboard;
+    QByteArray m_primarySelection;
+    QByteArray m_secondarySelection;
 
     bool hasPermission();
 };

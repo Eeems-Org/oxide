@@ -5,7 +5,15 @@
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QRect"/>
     </property>
     <property name="clipboard" type="ay" access="readwrite"/>
+    <property name="primarySelection" type="ay" access="readwrite"/>
+    <property name="secondarySelection" type="ay" access="readwrite"/>
     <signal name="clipboardChanged">
+      <arg type="ay" direction="out"/>
+    </signal>
+    <signal name="primarySelectionChanged">
+      <arg type="ay" direction="out"/>
+    </signal>
+    <signal name="secondarySelectionChanged">
       <arg type="ay" direction="out"/>
     </signal>
     <method name="createWindow">

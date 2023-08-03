@@ -92,6 +92,44 @@ void GuiAPI::setClipboard(QByteArray clipboard){
     emit clipboardChanged(m_clipboard);
 }
 
+QByteArray GuiAPI::primarySelection(){
+    if(!hasClipboardPermission()){
+        W_DENIED();
+        return QByteArray();
+    }
+    W_ALLOWED();
+    return m_primarySelection;
+}
+
+void GuiAPI::setPrimarySelection(QByteArray selection){
+    if(!hasClipboardPermission()){
+        W_DENIED();
+        return;
+    }
+    W_ALLOWED();
+    m_primarySelection.swap(selection);
+    emit primarySelectionChanged(m_primarySelection);
+}
+
+QByteArray GuiAPI::secondarySelection(){
+    if(!hasClipboardPermission()){
+        W_DENIED();
+        return QByteArray();
+    }
+    W_ALLOWED();
+    return m_secondarySelection;
+}
+
+void GuiAPI::setSecondarySelection(QByteArray selection){
+    if(!hasClipboardPermission()){
+        W_DENIED();
+        return;
+    }
+    W_ALLOWED();
+    m_secondarySelection.swap(selection);
+    emit secondarySelectionChanged(m_secondarySelection);
+}
+
 void GuiAPI::setEnabled(bool enabled){
     O_DEBUG("GUI API" << enabled);
     m_enabled = enabled;

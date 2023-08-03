@@ -159,14 +159,8 @@ Properties
 |                  |              |          | application.          |
 |                  |              |          | Default is ``/``.     |
 +------------------+--------------+----------+-----------------------+
-| directories      | string array | No       | When an               |
-|                  |              |          | application is        |
-|                  |              |          | running in a          |
-|                  |              |          | chroot, also map      |
-|                  |              |          | these directories     |
-|                  |              |          | into the chroot       |
-|                  |              |          | with read/write       |
-|                  |              |          | privileges.           |
+| directories      | string array | No       | This is deprecated    |
+|                  |              |          | and no longer is used |
 +------------------+--------------+----------+-----------------------+
 | permissions      | string array | No       | API permissions to    |
 |                  |              |          | grant this            |
@@ -207,6 +201,17 @@ Properties
 |                  |              |          |                       |
 |                  |              |          | ``"wifi"``:           |
 |                  |              |          | Wifi API access       |
+|                  |              |          |                       |
+|                  |              |          | ``"gui"``:            |
+|                  |              |          | GUI API access        |
+|                  |              |          |                       |
+|                  |              |          | ``"window"``:         |
+|                  |              |          | Access to all windows |
+|                  |              |          | in the GUI API        |
+|                  |              |          |                       |
+|                  |              |          | ``"clipboard"``:      |
+|                  |              |          | Access to the         |
+|                  |              |          | clipboard             |
 +------------------+--------------+----------+-----------------------+
 | environment      | string map   | No       | Extra environment     |
 |                  |              |          | variables to set      |

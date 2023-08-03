@@ -76,6 +76,7 @@ void OxideIntegration::initialize(){
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     m_primaryScreen = new OxideScreen();
     m_clipboard = new QMimeData();
+    m_selection = new QMimeData();
     QWindowSystemInterface::handleScreenAdded(m_primaryScreen);
     auto socket = Oxide::Tarnish::getSocket();
     if(socket == nullptr){
@@ -115,7 +116,11 @@ void OxideIntegration::initialize(){
         QObject::connect(api.data(), &codes::eeems::oxide1::Gui::clipboardChanged, [this](const QByteArray& data){
             m_clipboard->setData("application/octet-stream", data);
         });
+        QObject::connect(api.data(), &codes::eeems::oxide1::Gui::primarySelectionChanged, [this](const QByteArray& data){
+            m_selection->setData("application/octet-stream", data);
+        });
         m_clipboard->setData("application/octet-stream", api->clipboard());
+        m_selection->setData("application/octet-stream", api->primarySelection());
     }
 }
 
@@ -254,12 +259,18 @@ void OxideIntegration::setMimeData(QMimeData* data, QClipboard::Mode mode){
     m_clipboard = data;
     auto api = Oxide::Tarnish::guiApi();
     if(api != nullptr){
-        api->setClipboard(data->data(""));
+        if(mode == QClipboard::Clipboard){
+            api->setClipboard(data->data(""));
+        }else if(mode == QClipboard::Selection){
+            api->setPrimarySelection(data->data(""));
+        }
     }
     QPlatformClipboard::emitChanged(mode);
 }
 
-bool OxideIntegration::supportsMode(QClipboard::Mode mode) const{ return mode == QClipboard::Clipboard; }
+bool OxideIntegration::supportsMode(QClipboard::Mode mode) const{
+    return mode == QClipboard::Clipboard || mode == QClipboard::Selection;
+}
 
 bool OxideIntegration::ownsMode(QClipboard::Mode mode) const{
     Q_UNUSED(mode)
