@@ -123,7 +123,7 @@ QWindowSystemInterface::TouchPoint OxideEventHandler::getTouchPoint(const Oxide:
     }
     auto primaryScreen = OxideIntegration::instance()->primaryScreen();
     QRect winRect = QHighDpi::toNativePixels(primaryScreen->geometry(), primaryScreen);
-    auto rawPosition = QPoint(data.x * winRect.width(), data.y * winRect.height());
+    auto rawPosition = QPoint((data.x * winRect.width()) + winRect.x(), (data.y * winRect.height()) + winRect.y());
     point.area = QRectF(0, 0, data.width, data.height);
     point.area.moveCenter(rawPosition);
     point.pressure = data.pressure;
