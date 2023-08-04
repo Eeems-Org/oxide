@@ -108,9 +108,6 @@ Window {
                     onLongPress: {
                         controller.breadcrumb("appsView.app", "longPress", "ui");
                         model.modelData.stop();
-                        if(index === 0){
-                            background.source = "";
-                        }
                     }
                 }
                 function pageSize(){
