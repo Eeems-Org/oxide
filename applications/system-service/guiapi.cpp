@@ -459,7 +459,8 @@ void GuiAPI::writeTouchEvent(QEvent* event){
     auto geometry = window->_geometry();
     auto touchEvent = static_cast<QTouchEvent*>(event);
     for(auto point : touchEvent->touchPoints()){
-        if(geometry.contains(point.screenPos().toPoint())){
+        auto pos = point.screenPos();
+        if(geometry.contains(pos.toPoint())){
             valid = true;
         }
         TouchEventPointState state = TouchEventPointState::PointStationary;
@@ -476,12 +477,11 @@ void GuiAPI::writeTouchEvent(QEvent* event){
             case Qt::TouchPointStationary:
                 break;
         }
-        auto pos = point.screenPos();
         args.points.push_back(TouchEventPoint{
             .id = point.id(),
             .state = state,
-            .x = (pos.x() - geometry.x()) / qreal(geometry.width()),
-            .y = (pos.y() - geometry.y()) / qreal(geometry.height()),
+            .x = Oxide::Math::normalize(pos.x(), geometry.left(), geometry.right()),
+            .y = Oxide::Math::normalize(pos.y(), geometry.top(), geometry.bottom()),
             .width = point.ellipseDiameters().width(),
             .height = point.ellipseDiameters().height(),
             .tool = TouchEventTool::Finger,
