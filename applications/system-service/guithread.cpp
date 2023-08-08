@@ -424,7 +424,12 @@ void GUIThread::redraw(RepaintRequest& event){
             // TODO - profile if it makes sense to do this instead of just picking one to always use
             for(int x = rect.left(); x < rect.right(); x++){
                 for(int y = rect.top(); y < rect.bottom(); y++){
-                    auto color = frameBuffer->pixelColor(x, y);
+                    auto pos = QPoint(x, y);
+                    // This should not happen, but just in case, ignore if the position is outside the screen
+                    if(!frameBuffer->rect().contains(pos)){
+                        continue;
+                    }
+                    auto color = frameBuffer->pixelColor(pos);
                     if(color == Qt::white || color == Qt::black || color == Qt::transparent){
                         continue;
                     }
