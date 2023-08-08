@@ -50,6 +50,8 @@ GuiAPI::~GuiAPI(){
 void GuiAPI::startup(){
     O_DEBUG("Starting up GUI API");
     m_thread.m_screenGeometry = &m_screenGeometry;
+    // Initialize framebuffer
+    EPFrameBuffer::instance();
     Oxide::startThreadWithPriority(&m_thread, QThread::TimeCriticalPriority);
 }
 
