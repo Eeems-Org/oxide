@@ -9,8 +9,13 @@
 
 OxideEventFilter::OxideEventFilter(QObject* parent) : QObject(parent){ }
 
+QVector<QEvent::Type> ignoreTypes{
+    QEvent::MetaCall,
+    QEvent::ThreadChange,
+};
+
 bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev){
-    if(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS")){
+    if(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS") && !ignoreTypes.contains(ev->type())){
         qDebug() << obj << ev;
     }
     bool filtered = QObject::eventFilter(obj, ev);

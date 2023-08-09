@@ -179,12 +179,18 @@ void OxideEventHandler::handleTablet(Oxide::Tarnish::TabletEventArgs* data){
             m_tabletPenDown = true;
             break;
         case Oxide::Tarnish::PenUpdate:
+            if(!m_tabletPenDown && !qEnvironmentVariableIsSet("OXIDE_QPA_HOVER_EVENTS")){
+                return;
+            }
             break;
         case Oxide::Tarnish::PenRelease:
             m_tabletPenDown = false;
             break;
         default:
             break;
+    }
+    if(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS")){
+        qDebug() << data->point() << m_tabletPenDown;
     }
     QWindowSystemInterface::handleTabletEvent(
         nullptr,
