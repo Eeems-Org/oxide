@@ -14,6 +14,7 @@ class Q_DECL_EXPORT OxideScreen : public QObject, public QPlatformScreen{
 
 public:
     OxideScreen();
+    QRect tabletGeometry() const;
     QRect geometry() const override;
     void setGeometry(QRect geometry);
     int depth() const override;
@@ -46,6 +47,7 @@ private:
     QRegion mRepaintRegion;
     unsigned int m_marker;
     QList<OxideWindow*> m_windows;
+    QRect m_tabletGeometry;
 
     void redraw();
 };

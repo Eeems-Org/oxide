@@ -12,10 +12,20 @@ OxideScreen::OxideScreen()
   m_marker{0}
 {}
 
+QRect OxideScreen::tabletGeometry() const{ return m_tabletGeometry; }
+
 QRect OxideScreen::geometry() const { return m_geometry; }
+
+static QTransform m_tabletTransform = QTransform::fromTranslate(0.5, 0.5).rotate(90).translate(-0.5, -0.5);
 
 void OxideScreen::setGeometry(QRect geometry){
     m_geometry = geometry;
+    auto screenGeometry = deviceSettings.screenGeometry();
+    QRectF tabletGeometry = m_tabletTransform.mapRect(Oxide::Math::normalize(geometry, screenGeometry));
+    m_tabletGeometry.setLeft(tabletGeometry.left() * screenGeometry.width());
+    m_tabletGeometry.setTop(tabletGeometry.top() * screenGeometry.height());
+    m_tabletGeometry.setRight(tabletGeometry.right() * screenGeometry.width());
+    m_tabletGeometry.setBottom(tabletGeometry.bottom() * screenGeometry.height());
     qDebug() << "Screen geometry set to:" << geometry << screen();
     QWindowSystemInterface::handleScreenGeometryChange(screen(), geometry, geometry);
 }

@@ -34,6 +34,8 @@ void test_Math::test_normalize(){
     QCOMPARE(normalize(rect(0, 0, 1, 1), rect(0, 0, 10, 10)), rectF(0, 0, 0.1, 0.1));
     QCOMPARE(normalize(rect(4, 4, 6, 6), rect(0, 0, 10, 10)), rectF(0.4, 0.4, 0.6, 0.6));
     QCOMPARE(normalize(rect(9, 9, 10, 10), rect(0, 0, 10, 10)), rectF(0.9, 0.9, 1, 1));
+
+    QCOMPARE(normalize(QPoint(0, 0), QRect(0, 0, 1404, 1872)), QPointF(0, 0));
 }
 
 void test_Math::test_convertRange(){
