@@ -194,10 +194,16 @@ void OxideEventHandler::handleTablet(Oxide::Tarnish::TabletEventArgs* data){
             break;
     }
     auto pos = data->point();
-    //pos += OxideIntegration::instance()->primaryScreen()->geometry().topLeft();
+    // TODO - For some reason when the geometry of the screen is offset, the position is being tracked
+    //        as if it's in that coordinate system, even though tablet events have a bottom right origin
+    //        and not a top left origin. This means leads to odd behavior, like only clicks on the far
+    //        right in the task switcher
     if(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS")){
+        auto screen = QGuiApplication::screenAt(pos);
         auto window = QGuiApplication::topLevelAt(pos);
-        qDebug() << (m_tabletPenDown ? "DOWN" : "UP") << pos << window << (window != nullptr ? window->geometry() : QRect());
+        qDebug() << (m_tabletPenDown ? "DOWN" : "UP") << pos
+            << screen << (screen != nullptr ? screen->geometry() : QRect())
+            << window << (window != nullptr ? window->geometry() : QRect());
     }
     QWindowSystemInterface::handleTabletEvent(
         nullptr,
