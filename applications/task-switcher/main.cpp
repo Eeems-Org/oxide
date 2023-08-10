@@ -20,6 +20,8 @@ void sigHandler(int signal){
 }
 
 int main(int argc, char *argv[]){
+    qputenv("OXIDE_QPA_WINDOW_HEIGHT", "150");
+    qputenv("OXIDE_QPA_WINDOW_Y", "-150");
     deviceSettings.setupQtEnvironment(DeviceSettings::Oxide);
     QGuiApplication app(argc, argv);
     app.setAttribute(Qt::AA_SynthesizeMouseForUnhandledTabletEvents);
@@ -28,20 +30,9 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("corrupt");
     app.setApplicationVersion(APP_VERSION);
-    Tarnish::getSocketFd();
-    auto window = Tarnish::topWindow();
-    if(window == nullptr){
-        qDebug() << "No window";
-        return EXIT_FAILURE;
-    }
-    auto geometry = app.primaryScreen()->geometry();
-    geometry.setY(geometry.height() - 150);
-    geometry.setHeight(150);
-    window->setGeometry(geometry);
     Controller controller(&app);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
-    context->setContextProperty("screenGeometry", geometry);
     context->setContextProperty("apps", QVariant::fromValue(controller.getApps()));
     context->setContextProperty("controller", &controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));

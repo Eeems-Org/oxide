@@ -6,44 +6,52 @@
 #include <liboxide.h>
 
 OxideScreen::OxideScreen()
-: mGeometry(deviceSettings.screenGeometry()),
-  mDepth(32),
-  mFormat(DEFAULT_IMAGE_FORMAT),
+: m_depth(32),
+  m_format(DEFAULT_IMAGE_FORMAT),
   mUpdatePending(false),
   m_marker{0}
 {}
 
-QRect OxideScreen::geometry() const { return mGeometry; }
+QRect OxideScreen::geometry() const { return m_geometry; }
 
-void OxideScreen::setGeometry(QRect geometry) {
-    auto window = Oxide::Tarnish::topWindow();
-    if(window != nullptr){
-        // TODO - replace with event socket call
-        window->setGeometry(geometry);
-    }
-    mGeometry = window->geometry();
+void OxideScreen::setGeometry(QRect geometry){
+    m_geometry = geometry;
+    qDebug() << "Screen geometry set to:" << geometry << screen();
+    QWindowSystemInterface::handleScreenGeometryChange(screen(), geometry, geometry);
 }
 
-int OxideScreen::depth() const { return mDepth; }
+int OxideScreen::depth() const { return m_depth; }
 
-QImage::Format OxideScreen::format() const { return mFormat; }
+QImage::Format OxideScreen::format() const { return m_format; }
 
 QSizeF OxideScreen::physicalSize() const{
     static const int dpi = 228;
     return QSizeF(geometry().size()) / dpi * qreal(25.4);
 }
+
+Qt::ScreenOrientation OxideScreen::orientation() const{ return Qt::PortraitOrientation; }
+
+Qt::ScreenOrientation OxideScreen::nativeOrientation() const{ return Qt::PortraitOrientation; }
+
+QString OxideScreen::name() const{
+    auto window = Oxide::Tarnish::topWindow();
+    return window != nullptr ? window->identifier() : "";
+}
+
 void OxideScreen::scheduleUpdate(){
     if(!mUpdatePending){
         mUpdatePending = true;
         QCoreApplication::postEvent(this, new QEvent(QEvent::UpdateRequest));
     }
 }
+
 void OxideScreen::setDirty(const QRect& rect){
-    const QRect intersection = rect.intersected(mGeometry);
-    const QPoint screenOffset = mGeometry.topLeft();
+    const QRect intersection = rect.intersected(m_geometry);
+    const QPoint screenOffset = m_geometry.topLeft();
     mRepaintRegion += intersection.translated(-screenOffset);
     scheduleUpdate();
 }
+
 QWindow* OxideScreen::topWindow() const{
     for(auto window : windows()){
         auto type = window->type();
@@ -109,9 +117,9 @@ void OxideScreen::redraw(){
         return;
     }
     Oxide::Tarnish::lockFrameBuffer();
-    const QPoint screenOffset = mGeometry.topLeft();
+    const QPoint screenOffset = m_geometry.topLeft();
     // TODO - determine if this logic actually works?
-    const QRect screenRect = mGeometry.translated(-screenOffset);
+    const QRect screenRect = m_geometry.translated(-screenOffset);
     QPainter painter(&frameBuffer);
     Qt::GlobalColor colour = frameBuffer.hasAlphaChannel() ? Qt::transparent : Qt::black;
     QRegion repaintedRegion;

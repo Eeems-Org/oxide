@@ -255,6 +255,11 @@ namespace Oxide::Tarnish {
      */
     LIBOXIDE_EXPORT void setFrameBufferFormat(QImage::Format format);
     /*!
+     * \brief setFrameBufferGeometry
+     * \param geometry
+     */
+    LIBOXIDE_EXPORT void setFrameBufferGeometry(QRect geometry);
+    /*!
      * \brief getFrameBuffer
      * \return
      */

@@ -18,7 +18,10 @@ public:
     void setGeometry(QRect geometry);
     int depth() const override;
     QImage::Format format() const override;
-    QSizeF physicalSize() const override;
+    QSizeF physicalSize() const;
+    Qt::ScreenOrientation orientation() const override;
+    Qt::ScreenOrientation nativeOrientation() const override;
+    QString name() const override;
     void scheduleUpdate();
     void setDirty(const QRect& rect);
     QWindow* topWindow() const;
@@ -35,13 +38,14 @@ protected:
     bool event(QEvent *event) override;
 
 private:
-    QRect mGeometry;
-    int mDepth;
-    QImage::Format mFormat;
+    QRect m_geometry;
+    int m_depth;
+    QImage::Format m_format;
     QSize mPhysicalSize;
     bool mUpdatePending;
     QRegion mRepaintRegion;
-    void redraw();
     unsigned int m_marker;
     QList<OxideWindow*> m_windows;
+
+    void redraw();
 };

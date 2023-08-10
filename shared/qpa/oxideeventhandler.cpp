@@ -8,7 +8,7 @@
 #include <liboxide/math.h>
 
 OxideEventHandler::OxideEventHandler(QLocalSocket* socket)
-: QObject(qApp),
+: QObject(),
   m_socket{socket},
   m_tabletPenDown{false}
 {
@@ -24,6 +24,7 @@ OxideEventHandler::OxideEventHandler(QLocalSocket* socket)
     QWindowSystemInterface::registerTouchDevice(m_touchscreen);
     connect(m_socket, &QLocalSocket::readyRead, this, &OxideEventHandler::readEvents);
     moveToThread(socket->thread());
+    connect(qApp, &QGuiApplication::aboutToQuit, this, &OxideEventHandler::deleteLater);
 }
 
 OxideEventHandler::~OxideEventHandler(){ }
@@ -36,11 +37,14 @@ void OxideEventHandler::readEvents(){
         switch(event.type){
             case Oxide::Tarnish::Geometry:{
                 auto primaryScreen = OxideIntegration::instance()->primaryScreen();
-                primaryScreen->setGeometry(event.geometryData.geometry());
+                auto geometry = event.geometryData.geometry();
+                primaryScreen->setGeometry(geometry);
                 auto window = primaryScreen->topWindow();
                 if(window != nullptr){
-                    window->setGeometry(event.geometryData.geometry());
+                    window->setGeometry(geometry);
                 }
+                primaryScreen->setDirty(geometry);
+                primaryScreen->scheduleUpdate();
                 break;
             }
             case Oxide::Tarnish::Raise:{
@@ -189,13 +193,16 @@ void OxideEventHandler::handleTablet(Oxide::Tarnish::TabletEventArgs* data){
         default:
             break;
     }
+    auto pos = data->point();
+    //pos += OxideIntegration::instance()->primaryScreen()->geometry().topLeft();
     if(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS")){
-        qDebug() << data->point() << m_tabletPenDown;
+        auto window = QGuiApplication::topLevelAt(pos);
+        qDebug() << (m_tabletPenDown ? "DOWN" : "UP") << pos << window << (window != nullptr ? window->geometry() : QRect());
     }
     QWindowSystemInterface::handleTabletEvent(
         nullptr,
         QPointF(),
-        data->point(),
+        pos,
         int(QTabletEvent::Stylus),
         data->tool == Oxide::Tarnish::Pen ? QTabletEvent::Pen : QTabletEvent::Eraser,
         m_tabletPenDown ? Qt::LeftButton : Qt::NoButton,

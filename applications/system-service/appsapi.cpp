@@ -17,7 +17,9 @@
 using namespace Oxide;
 
 static Window* __window = nullptr;
+static QMutex __window_mutex;
 Window* AppsAPI::_window(){
+    __window_mutex.lock();
     if(__window == nullptr){
         __window = guiAPI->_createWindow("__splashscreen", deviceSettings.screenGeometry(), DEFAULT_IMAGE_FORMAT);
         __window->setZ(std::numeric_limits<int>::max() - 1);
@@ -26,6 +28,7 @@ Window* AppsAPI::_window(){
         __window->setSystemWindow();
         __window->_raise();
     }
+    __window_mutex.unlock();
     return __window;
 }
 

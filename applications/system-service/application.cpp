@@ -847,11 +847,12 @@ void Application::showSplashScreen(){
     Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::set_tag(t, "application", name().toStdString());
         O_DEBUG("Displaying splashscreen for" << name());
-        Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
-            auto image = AppsAPI::_window()->toImage();
+        auto window = AppsAPI::_window();
+        Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this, window](){
+            auto image = window->toImage();
             QPainter painter(&image);
             auto fm = painter.fontMetrics();
-            auto geometry = AppsAPI::_window()->_geometry();
+            auto geometry = window->_geometry();
             painter.fillRect(geometry, Qt::white);
             QString splashPath = splash();
             if(splashPath.isEmpty() || !QFile::exists(splashPath)){
@@ -886,10 +887,10 @@ void Application::showSplashScreen(){
             );
             painter.end();
         });
-        if(!AppsAPI::_window()->_isVisible()){
-            AppsAPI::_window()->_setVisible(true, false);
+        if(!window->_isVisible()){
+            window->_setVisible(true, false);
         }else{
-            AppsAPI::_window()->_repaint(AppsAPI::_window()->_geometry(), EPFrameBuffer::HighQualityGrayscale, 0, false);
+            window->_repaint(window->_geometry(), EPFrameBuffer::HighQualityGrayscale, 0, false);
         }
     });
     O_DEBUG("Finished painting splash screen for" << name());
@@ -950,15 +951,16 @@ void Application::recallScreen(){
         }
         qDebug() << "Recalling screen...";
         Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, img]{
-            auto rect = AppsAPI::_window()->geometry();
-            auto image = AppsAPI::_window()->toImage();
+            auto window = AppsAPI::_window();
+            auto rect = window->geometry();
+            auto image = window->toImage();
             QPainter painter(&image);
             painter.drawImage(rect, img);
             painter.end();
-            if(AppsAPI::_window()->_isVisible()){
-                AppsAPI::_window()->_repaint(rect, EPFrameBuffer::HighQualityGrayscale, 0, false);
+            if(window->_isVisible()){
+                window->_repaint(rect, EPFrameBuffer::HighQualityGrayscale, 0, false);
             }else{
-                AppsAPI::_window()->_setVisible(true, false);
+                window->_setVisible(true, false);
             }
             delete m_screenCapture;
             m_screenCapture = nullptr;

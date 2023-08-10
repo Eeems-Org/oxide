@@ -8,13 +8,10 @@ Window {
     id: window
     objectName: "window"
     visible: stateController.state === "loaded"
-    width: screenGeometry.width
-    height: screenGeometry.height
     title: qsTr("Corrupt")
-    property int itemPadding: 10
     Connections {
         target: controller
-        onReload: {
+        function onReload(){
             appsView.model = controller.getApps();
             if(appsView.currentIndex > appsView.count){
                 appsView.currentIndex = appsView.count
@@ -22,17 +19,16 @@ Window {
         }
     }
     Component.onCompleted: controller.startup()
-    Rectangle {
+    Rectangle{
         color: "black"
-        width: parent.width
         height: 1
-        anchors.left: parent.left
-        anchors.top: parent.top
+        width: parent.width
     }
     RowLayout {
+        id: content
         focus: true
-        width: screenGeometry.width
-        height: screenGeometry.height
+        width: Math.max(parent.width, 460)
+        height: Math.max(parent.height, 150)
         Keys.onPressed: (event)=>{
             if(event.key === Qt.Key_Left){
                 leftButton.clicked();
@@ -64,8 +60,8 @@ Window {
             source: "qrc:/img/left.svg"
             enabled: appsView.currentIndex > 0
             opacity: enabled ? 1 : 0.5
-            height: parent.height
             width: height / 2
+            height: parent.height
             onClicked: {
                 controller.breadcrumb("appsView", "scroll.left", "ui");
                 console.log("Scroll left");
@@ -126,8 +122,8 @@ Window {
             source: "qrc:/img/right.svg"
             enabled: !appsView.rightBound()
             opacity: enabled ? 1 : 0.5
-            height: parent.height
             width: height / 2
+            height: parent.height
             onClicked: {
                 controller.breadcrumb("appsView", "scroll.right", "ui");
                 console.log("Scroll right");
@@ -157,6 +153,8 @@ Window {
                 from: "*"; to: "loaded"
                 SequentialAnimation {
                     ScriptAction { script: {
+                        console.log("Window: " + window.x + ',' + window.y + " " + window.width + 'x' + window.height);
+                        console.log("Content: " + content.x + ',' + content.y + " " + content.width + 'x' + content.height);
                         controller.breadcrumb("navigation", "main", "navigation");
                         console.log("Display loaded");
                     } }

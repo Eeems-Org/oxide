@@ -27,6 +27,7 @@ QRect fbGeometry;
 qulonglong fbLineSize = 0;
 QImage::Format fbFormat = QImage::Format_Invalid;
 QImage::Format fbRequestedFormat = DEFAULT_IMAGE_FORMAT;
+QRect fbRequestedGeometry;
 uchar* fbData = nullptr;
 QFile fbFile;
 QMutex fbMutex;
@@ -863,6 +864,8 @@ namespace Oxide::Tarnish {
 
     void setFrameBufferFormat(QImage::Format format){ fbRequestedFormat = format; }
 
+    void setFrameBufferGeometry(QRect geometry){ fbRequestedGeometry = geometry; }
+
     int getFrameBufferFd(){
         if(fbFile.isOpen()){
             return fbFile.handle();
@@ -895,7 +898,7 @@ namespace Oxide::Tarnish {
                     }
                     O_DEBUG("Checking window at" << path << "to see if it has the correct format");
                     window = QSharedPointer<codes::eeems::oxide1::Window>(new codes::eeems::oxide1::Window(OXIDE_SERVICE, path, api_gui->connection()));
-                    if(window->name() == windowName && window->format() == (int)fbRequestedFormat){
+                    if(window->name() == windowName && window->format() == (int)fbRequestedFormat && (fbRequestedGeometry.isNull() || window->geometry() == fbRequestedGeometry)){
                         O_DEBUG("Found existing window with the correct format");
                         break;
                     }
@@ -908,7 +911,15 @@ namespace Oxide::Tarnish {
         }
         if(window.isNull()){
             O_DEBUG("Creating with" << fbRequestedFormat << "image format");
-            QDBusPendingReply<QDBusObjectPath> reply = api_gui->createWindow(QString::fromStdString(Oxide::getAppName()), fbRequestedFormat);
+            if(!fbRequestedGeometry.isNull()){
+                O_DEBUG("Requesting" << fbRequestedGeometry << "geometry");
+            }
+            QDBusPendingReply<QDBusObjectPath> reply;
+            if(fbRequestedGeometry.isNull()){
+                reply = api_gui->createWindow(QString::fromStdString(Oxide::getAppName()), fbRequestedFormat);
+            }else{
+                reply = api_gui->createWindow(fbRequestedGeometry, QString::fromStdString(Oxide::getAppName()), fbRequestedFormat);
+            }
             reply.waitForFinished();
             if(reply.isError()){
                 O_WARNING("Unable to get framebuffer:" << reply.error());

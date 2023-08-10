@@ -17,7 +17,7 @@ QT_BEGIN_NAMESPACE
 
 class QCoreTextFontEngine;
 
-#define debugQPAEnvironmentVariable "QT_DEBUG_OXIDE_QPA"
+#define debugQPAEnvironmentVariable "OXIDE_QPA_DEBUG"
 
 
 static inline unsigned short parseOptions(const QStringList& paramList){
@@ -73,8 +73,61 @@ void OxideIntegration::initialize(){
     if(m_debug){
         qDebug() << "OxideIntegration::initialize";
     }
+    auto geometry = deviceSettings.screenGeometry();
+    bool ok;
+    int width = qEnvironmentVariableIntValue("OXIDE_QPA_WINDOW_WIDTH", &ok);
+    if(ok){
+        if(m_debug){
+            qDebug() << "OXIDE_QPA_WINDOW_WIDTH:" << width;
+        }
+        if(width < 0){
+            width += geometry.width();
+        }
+    }else{
+        width = geometry.width();
+    }
+    int height = qEnvironmentVariableIntValue("OXIDE_QPA_WINDOW_HEIGHT", &ok);
+    if(ok){
+        if(m_debug){
+            qDebug() << "OXIDE_QPA_WINDOW_HEIGHT:" << height;
+        }
+        if(height < 0){
+            height += m_primaryScreen->geometry().height();
+        }
+    }else{
+        height = geometry.height();
+    }
+    int x = qEnvironmentVariableIntValue("OXIDE_QPA_WINDOW_X", &ok);
+    if(ok){
+        if(m_debug){
+            qDebug() << "OXIDE_QPA_WINDOW_X:" << x;
+        }
+        if(x < 0){
+            x += geometry.right();
+        }
+    }else{
+        x = geometry.x();
+    }
+    int y = qEnvironmentVariableIntValue("OXIDE_QPA_WINDOW_Y", &ok);
+    if(ok){
+        if(m_debug){
+            qDebug() << "OXIDE_QPA_WINDOW_Y:" << y;
+        }
+        if(y < 0){
+            y += geometry.bottom();
+        }
+    }else{
+        y = geometry.y();
+    }
+    geometry = QRect(x, y, width, height);
+    if(m_debug){
+        qDebug() << "Screen geometry:" << geometry;
+    }
+    Oxide::Tarnish::setFrameBufferGeometry(geometry);
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     m_primaryScreen = new OxideScreen();
+    m_primaryScreen->setGeometry(geometry);
+    QWindowSystemInterface::handleScreenAdded(m_primaryScreen, true);
     m_clipboard = new QMimeData();
     m_selection = new QMimeData();
     QWindowSystemInterface::handleScreenAdded(m_primaryScreen);
