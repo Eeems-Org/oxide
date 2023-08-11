@@ -1,6 +1,7 @@
 TEMPLATE = subdirs
 
 SUBDIRS = \
-    liboxide
+    liboxide \
+    preload-sysfs
 
 INSTALLS += $$SUBDIRS
