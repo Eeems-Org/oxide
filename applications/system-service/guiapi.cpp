@@ -16,7 +16,7 @@ Q_DECLARE_METATYPE(EPFrameBuffer::WaveformMode)
 
 static const QUuid NS = QUuid::fromString(QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}"));
 
-static GUIThread m_thread;
+static GUIThread* m_thread = nullptr;
 
 GuiAPI* GuiAPI::__singleton(GuiAPI* self){
     static GuiAPI* instance;
@@ -49,10 +49,11 @@ GuiAPI::~GuiAPI(){
 
 void GuiAPI::startup(){
     O_DEBUG("Starting up GUI API");
-    m_thread.m_screenGeometry = &m_screenGeometry;
+    m_thread = new GUIThread();
+    m_thread->m_screenGeometry = &m_screenGeometry;
     // Initialize framebuffer
     EPFrameBuffer::instance();
-    Oxide::startThreadWithPriority(&m_thread, QThread::TimeCriticalPriority);
+    Oxide::startThreadWithPriority(m_thread, QThread::TimeCriticalPriority);
 }
 
 void GuiAPI::shutdown(){
@@ -60,7 +61,7 @@ void GuiAPI::shutdown(){
     while(!m_windows.isEmpty()){
         m_windows.first()->_close();
     }
-    m_thread.shutdown();
+    m_thread->shutdown();
     O_DEBUG("GUI API shutdown complete");
 }
 
@@ -262,7 +263,7 @@ void GuiAPI::repaint(){
     W_ALLOWED();
     int marker = std::experimental::randint(1, 9999);
     Oxide::runInEventLoop([this, marker](std::function<void()> quit){
-        m_thread.enqueue(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, marker, true, quit);
+        m_thread->enqueue(nullptr, m_screenGeometry, EPFrameBuffer::HighQualityGrayscale, marker, true, quit);
     });
 }
 
@@ -411,13 +412,13 @@ bool GuiAPI::hasRaisedWindows(pid_t pgid){
 
 void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode waveform, unsigned int marker, bool async){
     if(async){
-        m_thread.enqueue(window, region, waveform, marker, window == nullptr);
+        m_thread->enqueue(window, region, waveform, marker, window == nullptr);
         return;
     }
     marker = marker == 0 ? ++m_currentMarker : marker;
     O_DEBUG("Waiting for repaint" << marker);
     Oxide::runInEventLoop([this, window, region, waveform, marker](std::function<void()> quit){
-        m_thread.enqueue(window, region, waveform, marker, window == nullptr, [marker, quit]{
+        m_thread->enqueue(window, region, waveform, marker, window == nullptr, [marker, quit]{
             O_DEBUG("Repaint callback done" << marker);
             quit();
         });
@@ -425,7 +426,7 @@ void GuiAPI::dirty(Window* window, QRect region, EPFrameBuffer::WaveformMode wav
     O_DEBUG("Repaint done" << marker);
 }
 
-GUIThread* GuiAPI::guiThread(){ return &m_thread; }
+GUIThread* GuiAPI::guiThread(){ return m_thread; }
 
 void GuiAPI::writeTouchEvent(QEvent* event){
     W_DEBUG(event);

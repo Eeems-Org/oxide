@@ -10,7 +10,6 @@ struct RepaintRequest{
     EPFrameBuffer::WaveformMode waveform;
     unsigned int marker;
     bool global;
-    std::function<void()> callback = nullptr;
 };
 struct PendingMarkerWait{
     unsigned int marker;

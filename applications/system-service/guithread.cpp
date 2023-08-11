@@ -102,11 +102,11 @@ void WaitThread::addCompleted(QString window, unsigned int marker, unsigned int 
     m_completedMutex.lock();
     CompletedMarker completedMarker{
         .internalMarker = internalMarker,
-                .marker = marker,
-                .window = window,
-                .waited = waited,
-                .deadline = QDeadlineTimer(1000 * 7, Qt::PreciseTimer),
-                .cleanupDeadline = QDeadlineTimer(1000 * 14, Qt::PreciseTimer),
+        .marker = marker,
+        .window = window,
+        .waited = waited,
+        .deadline = QDeadlineTimer(1000 * 7, Qt::PreciseTimer),
+        .cleanupDeadline = QDeadlineTimer(1000 * 14, Qt::PreciseTimer),
     };
     m_completedMarkers.append(completedMarker);
     m_completedMutex.unlock();
@@ -265,8 +265,7 @@ void GUIThread::enqueue(Window* window, QRect region, EPFrameBuffer::WaveformMod
         .region = region,
         .waveform = waveform,
         .marker = marker,
-        .global = global,
-        .callback = callback
+        .global = global
     });
     m_repaintCount.release(); // Indicate that there is an item in the queue
     m_repaintWait.notify_all();
@@ -288,7 +287,6 @@ void GUIThread::deleteWindowLater(Window* window){
         auto& event = i.next();
         if(event.window == window){
             event.window = nullptr;
-            event.callback = nullptr;
             event.marker = 0;
             event.global = true;
             event.region = window->_geometry();
