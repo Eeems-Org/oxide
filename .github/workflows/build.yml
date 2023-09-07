@@ -61,6 +61,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: build
+          path: .build
       - name: Create Sentry release
         uses: getsentry/action-release@v1
         env:
