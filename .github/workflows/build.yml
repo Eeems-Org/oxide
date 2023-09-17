@@ -34,7 +34,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
       - name: Install toltecmk
         run: pip install toltecmk requests==2.26.0
       - name: Build packages
@@ -49,10 +49,10 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: build
-          path: package/dist
+          path: .build/package/dist
   release:
     needs: build
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -61,6 +61,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: build
+          path: .build
       - name: Create Sentry release
         uses: getsentry/action-release@v1
         env:
