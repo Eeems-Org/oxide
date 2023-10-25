@@ -145,6 +145,7 @@ void OxideScreen::redraw(){
         // TODO - detect if there was no change to the repainted region and skip, maybe compare against previous window states?
         //        Maybe hash the data before and compare after? https://doc.qt.io/qt-5/qcryptographichash.html
         painter.setCompositionMode(QPainter::CompositionMode_Source);
+        // TODO - don't wipe the area, and instead clear it only if nothing was painted over it
         painter.fillRect(rect, colour);
         // TODO - have some sort of stack to determine which window is on top
         for(auto window : windows()){
@@ -157,7 +158,7 @@ void OxideScreen::redraw(){
             OxideBackingStore* backingStore = static_cast<OxideWindow*>(window->handle())->backingStore();
             if(backingStore){
                 // TODO - See if there is a way to detect if there is just transparency in the region
-                //        and don't mark this as repainted.
+                //        and don't mark this as repainted
                 painter.drawImage(rect, backingStore->toImage(), windowIntersect);
                 repaintedRegion += windowIntersect;
             }
