@@ -71,20 +71,20 @@ QByteArray& operator>>(QByteArray& l, double& r){
     return l;
 }
 
-QByteArray& operator<<(QByteArray& l, qint8 r){ return l.append((const char*)&r, sizeof(qint8)); }
+QByteArray& operator<<(QByteArray& l, qint8 r){ return l.append(const_cast<const char*>(reinterpret_cast<char*>(&r)), sizeof(qint8)); }
 
-QByteArray& operator<<(QByteArray& l, qint16 r){ return l.append((const char*)&r, sizeof(qint16)); }
+QByteArray& operator<<(QByteArray& l, qint16 r){ return l.append(const_cast<const char*>(reinterpret_cast<char*>(&r)), sizeof(qint16)); }
 
-QByteArray& operator<<(QByteArray& l, qint32 r){ return l.append((const char*)&r, sizeof(qint32)); }
+QByteArray& operator<<(QByteArray& l, qint32 r){ return l.append(const_cast<const char*>(reinterpret_cast<char*>(&r)), sizeof(qint32)); }
 
-QByteArray& operator<<(QByteArray& l, qint64 r){ return l.append((const char*)&r, sizeof(qint64)); }
+QByteArray& operator<<(QByteArray& l, qint64 r){ return l.append(const_cast<const char*>(reinterpret_cast<char*>(&r)), sizeof(qint64)); }
 
-QByteArray& operator<<(QByteArray& l, quint8 r){ return l.append((const char*)&r, sizeof(quint8));  }
+QByteArray& operator<<(QByteArray& l, quint8 r){ return l.append(const_cast<const char*>(reinterpret_cast<char*>(&r)), sizeof(quint8));  }
 
-QByteArray& operator<<(QByteArray& l, quint16 r){ return l.append((const char*)&r, sizeof(quint16)); }
+QByteArray& operator<<(QByteArray& l, quint16 r){ return l.append(const_cast<const char*>(reinterpret_cast<char*>(&r)), sizeof(quint16)); }
 
-QByteArray& operator<<(QByteArray& l, quint32 r){ return l.append((const char*)&r, sizeof(quint32)); }
+QByteArray& operator<<(QByteArray& l, quint32 r){ return l.append(const_cast<const char*>(reinterpret_cast<char*>(&r)), sizeof(quint32)); }
 
-QByteArray& operator<<(QByteArray& l, quint64 r){ return l.append((const char*)&r, sizeof(quint64)); }
+QByteArray& operator<<(QByteArray& l, quint64 r){ return l.append(const_cast<const char*>(reinterpret_cast<char*>(&r)), sizeof(quint64)); }
 
-QByteArray& operator<<(QByteArray& l, double r){ return l.append((const char*)&r, sizeof(double)); }
+QByteArray& operator<<(QByteArray& l, double r){ return l.append(const_cast<const char*>(reinterpret_cast<char*>(&r)), sizeof(double)); }
