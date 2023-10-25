@@ -133,7 +133,7 @@ void OxideScreen::redraw(){
     // TODO - determine if this logic actually works?
     const QRect screenRect = m_geometry.translated(-screenOffset);
     QPainter painter(&frameBuffer);
-    Qt::GlobalColor colour = frameBuffer.hasAlphaChannel() ? Qt::transparent : Qt::black;
+    Qt::GlobalColor colour = frameBuffer.hasAlphaChannel() ? Qt::transparent : Qt::white;
     QRegion repaintedRegion;
     // Paint the regions
     // TODO - explore using QPainter::clipRegion to see if it can speed things up
