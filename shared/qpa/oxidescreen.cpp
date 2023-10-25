@@ -19,15 +19,17 @@ QRect OxideScreen::geometry() const { return m_geometry; }
 static QTransform m_tabletTransform = QTransform::fromTranslate(0.5, 0.5).rotate(90).translate(-0.5, -0.5);
 
 void OxideScreen::setGeometry(QRect geometry){
-    m_geometry = geometry;
-    auto screenGeometry = deviceSettings.screenGeometry();
-    QRectF tabletGeometry = m_tabletTransform.mapRect(Oxide::Math::normalize(geometry, screenGeometry));
-    m_tabletGeometry.setLeft(tabletGeometry.left() * screenGeometry.width());
-    m_tabletGeometry.setTop(tabletGeometry.top() * screenGeometry.height());
-    m_tabletGeometry.setRight(tabletGeometry.right() * screenGeometry.width());
-    m_tabletGeometry.setBottom(tabletGeometry.bottom() * screenGeometry.height());
-    qDebug() << "Screen geometry set to:" << geometry << screen();
-    QWindowSystemInterface::handleScreenGeometryChange(screen(), geometry, geometry);
+    if(m_geometry != geometry){
+        m_geometry = geometry;
+        auto screenGeometry = deviceSettings.screenGeometry();
+        QRectF tabletGeometry = m_tabletTransform.mapRect(Oxide::Math::normalize(geometry, screenGeometry));
+        m_tabletGeometry.setLeft(tabletGeometry.left() * screenGeometry.width());
+        m_tabletGeometry.setTop(tabletGeometry.top() * screenGeometry.height());
+        m_tabletGeometry.setRight(tabletGeometry.right() * screenGeometry.width());
+        m_tabletGeometry.setBottom(tabletGeometry.bottom() * screenGeometry.height());
+        qDebug() << "Screen geometry set to:" << geometry << screen();
+        QWindowSystemInterface::handleScreenGeometryChange(screen(), geometry, geometry);
+    }
 }
 
 int OxideScreen::depth() const { return m_depth; }
@@ -141,6 +143,7 @@ void OxideScreen::redraw(){
             continue;
         }
         // TODO - detect if there was no change to the repainted region and skip, maybe compare against previous window states?
+        //        Maybe hash the data before and compare after? https://doc.qt.io/qt-5/qcryptographichash.html
         painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.fillRect(rect, colour);
         // TODO - have some sort of stack to determine which window is on top
@@ -164,6 +167,7 @@ void OxideScreen::redraw(){
     Oxide::Tarnish::unlockFrameBuffer();
     for(auto rect : repaintedRegion){
         // TODO - detect if there was no change to the repainted region and skip
+        //        Maybe hash the data before and compare after? https://doc.qt.io/qt-5/qcryptographichash.html
         auto waveform = EPFrameBuffer::Mono;
         for(int x = rect.left(); x < rect.right(); x++){
             for(int y = rect.top(); y < rect.bottom(); y++){
