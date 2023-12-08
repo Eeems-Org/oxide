@@ -40,8 +40,6 @@
 
 using namespace Oxide::Applications;
 
-const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
-
 Application::Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
 
 Application::Application(QString path, QObject* parent) : QObject(parent), m_path(path), m_backgrounded(false), fifos(), m_pid{-1} {
@@ -235,7 +233,7 @@ void Application::interruptApplication(){
     }
     Oxide::Sentry::sentry_transaction("application", "interrupt", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::set_tag(t, "application", name().toStdString());
-        if(environment().contains("OXIDE_PRELOAD_EXPOSE_FB")){
+        if(environment().contains("OXIDE_PRELOAD_EXPOSE_FB") || flags().contains("preload.expose.fb")){
             saveScreen();
         }
         if(!onPause().isEmpty()){
@@ -329,6 +327,21 @@ void Application::resumeNoSecurityCheck(){
     });
     O_DEBUG("Resumed " << path());
 }
+static input_event* input_flood = nullptr;
+static input_event* button_flood = nullptr;
+const auto flood_event_count = 4;
+const auto flood_amount = 512 * 8;
+const size_t flood_size = flood_amount * flood_event_count * sizeof(input_event);
+static event_device buttonDevice(deviceSettings.getButtonsDevicePath(), O_WRONLY);
+static event_device wacomDevice(deviceSettings.getWacomDevicePath(), O_WRONLY);
+
+static inline input_event createEvent(ushort type, ushort code, int value){
+    struct input_event event;
+    event.type = type;
+    event.code = code;
+    event.value = value;
+    return event;
+}
 
 void Application::uninterruptApplication(){
     if(
@@ -340,8 +353,38 @@ void Application::uninterruptApplication(){
     }
     Oxide::Sentry::sentry_transaction("application", "uninterrupt", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::set_tag(t, "application", name().toStdString());
-        if(environment().contains("OXIDE_PRELOAD_EXPOSE_FB")){
+        if(environment().contains("OXIDE_PRELOAD_EXPOSE_FB") || flags().contains("preload.expose.fb")){
             recallScreen();
+        }
+        if(environment().contains("OXIDE_PRELOAD_EXPOSE_INPUT") || flags().contains("preload.expose.input")){
+            if(input_flood == nullptr){
+                O_INFO("Creating event flood");
+                input_flood = (input_event*)malloc(flood_size);
+                memset(input_flood, 0, flood_size);
+                auto i = 0;
+                while (i < flood_amount) {
+                    input_flood[i++] = createEvent(EV_ABS, ABS_DISTANCE, 1);
+                    input_flood[i++] = createEvent(EV_SYN, 0, 0);
+                    input_flood[i++] = createEvent(EV_ABS, ABS_DISTANCE, 2);
+                    input_flood[i++] = createEvent(EV_SYN, 0, 0);
+                }
+                button_flood = (input_event*)malloc(flood_size);
+                memset(button_flood, 0, flood_size);
+                i = 0;
+                while (i < flood_amount) {
+                    button_flood[i++] = createEvent(EV_SYN, SYN_CONFIG, 0);
+                    button_flood[i++] = createEvent(EV_SYN, SYN_REPORT, 0);
+                    button_flood[i++] = createEvent(EV_SYN, SYN_REPORT, 1);
+                    button_flood[i++] = createEvent(EV_SYN, SYN_REPORT, 0);
+                }
+                buttonDevice.open();
+                wacomDevice.open();
+            }
+            O_INFO("Writing event floods");
+            touchHandler->write(input_flood, flood_size);
+            ::write(wacomDevice.fd, input_flood, flood_size);
+            ::write(buttonDevice.fd, button_flood, flood_size);
+            O_INFO("Event floods written");
         }
         if(!onResume().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onResume", "Run onResume action", [this](){
@@ -916,7 +959,7 @@ void Application::saveScreen(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "saveScreen", [this](Oxide::Sentry::Transaction* t){
-        qDebug() << "Saving screen...";
+        O_DEBUG("Saving screen...");
         QByteArray bytes;
         Oxide::Sentry::sentry_span(t, "save", "Save the framebuffer", [&bytes]{
             QBuffer buffer(&bytes);
@@ -925,11 +968,11 @@ void Application::saveScreen(){
                 O_WARNING("Failed to save buffer");
             }
         });
-        qDebug() << "Compressing data...";
+        O_DEBUG("Compressing data...");
         Oxide::Sentry::sentry_span(t, "compress", "Compress the framebuffer", [this, bytes]{
             m_screenCapture = new QByteArray(qCompress(bytes));
         });
-        qDebug() << "Screen saved " << m_screenCapture->size() << "bytes";
+        O_DEBUG("Screen saved " << m_screenCapture->size() << "bytes");
     });
 }
 
@@ -938,18 +981,18 @@ void Application::recallScreen(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "recallScreen", [this](Oxide::Sentry::Transaction* t){
-        qDebug() << "Uncompressing screen...";
+        O_DEBUG("Uncompressing screen...");
         QImage img;
         Oxide::Sentry::sentry_span(t, "decompress", "Decompress the framebuffer", [this, &img]{
             img = QImage::fromData(qUncompress(*m_screenCapture), "JPG");
         });
         if(img.isNull()){
-            qDebug() << "Screen capture was corrupt";
-            qDebug() << m_screenCapture->size();
+            O_DEBUG("Screen capture was corrupt");
+            O_DEBUG(m_screenCapture->size());
             delete m_screenCapture;
             return;
         }
-        qDebug() << "Recalling screen...";
+        O_DEBUG("Recalling screen...");
         Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, img]{
             auto window = AppsAPI::_window();
             auto rect = window->geometry();
@@ -965,7 +1008,7 @@ void Application::recallScreen(){
             delete m_screenCapture;
             m_screenCapture = nullptr;
         });
-        qDebug() << "Screen recalled.";
+        O_DEBUG("Screen recalled.");
     });
 }
 
