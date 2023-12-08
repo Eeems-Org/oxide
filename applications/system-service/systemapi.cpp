@@ -607,6 +607,16 @@ void SystemAPI::suspend(){
     O_DEBUG("Suspend requested.");
 }
 
+void SystemAPI::lockscreen(){
+    auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
+    if(lockscreenApp != nullptr){
+        O_DEBUG("Switching to lock screen application");
+        lockscreenApp->resumeNoSecurityCheck();
+    }else{
+        O_DEBUG("No lock screen application found");
+    }
+}
+
 void SystemAPI::powerOff() {
     if(powerOffInhibited()){
         O_WARNING("Unable to power off. Action is currently inhibited.");
@@ -703,11 +713,8 @@ void SystemAPI::suspendTimeout(){
 }
 void SystemAPI::lockTimeout(){
     if(autoLock()){
-        auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
-        if(lockscreenApp != nullptr){
-            O_INFO("Automatic lock due to inactivity...");
-            lockscreenApp->resumeNoSecurityCheck();
-        }
+        O_INFO("Automatic lock due to inactivity...");
+        lockscreen();
     }
 }
 

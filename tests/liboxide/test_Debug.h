@@ -11,5 +11,9 @@ public:
     ~test_Debug();
 
 private slots:
+    void test_getDebugApplicationInfo();
+    void test_getDebugLocation();
+    void test_debugEnabled();
+    void test_getAppName();
     void test_backtrace();
 };

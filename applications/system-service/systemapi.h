@@ -96,6 +96,7 @@ public:
 
 public slots:
     void suspend();
+    void lockscreen();
     void powerOff();
     void reboot();
     void activity();

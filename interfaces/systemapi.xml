@@ -43,6 +43,8 @@
     </signal>
     <method name="suspend">
     </method>
+    <method name="lockscreen">
+    </method>
     <method name="powerOff">
     </method>
     <method name="reboot">

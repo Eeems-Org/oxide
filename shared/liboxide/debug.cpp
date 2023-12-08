@@ -11,8 +11,8 @@ namespace Oxide {
         return !(QStringList() << "0" << "n" << "no" << "false").contains(env.toLower());
     }
 
-    std::string getAppName(){
-        if(!QCoreApplication::startingUp()){
+    std::string getAppName(bool ignoreQApp){
+        if(!ignoreQApp && !QCoreApplication::startingUp()){
             return qApp->applicationName().toStdString().c_str();
         }
         static std::string name;

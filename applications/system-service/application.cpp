@@ -377,8 +377,6 @@ void Application::uninterruptApplication(){
                     button_flood[i++] = createEvent(EV_SYN, SYN_REPORT, 1);
                     button_flood[i++] = createEvent(EV_SYN, SYN_REPORT, 0);
                 }
-                buttonDevice.open();
-                wacomDevice.open();
             }
             O_INFO("Writing event floods");
             touchHandler->write(input_flood, flood_size);
