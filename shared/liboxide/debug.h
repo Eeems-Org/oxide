@@ -109,7 +109,7 @@ namespace Oxide {
      * \param Don't use qApp's application name
      * \return The name of the application
      */
-    LIBOXIDE_EXPORT std::string getAppName(bool ignoreQApp = false);
+    LIBOXIDE_EXPORT std::string getAppName(bool ignoreQApp);
     /*!
      * \brief Print the current backtrace
      */

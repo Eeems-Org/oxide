@@ -366,6 +366,10 @@ namespace Oxide::Sentry{
     void set_tag(Transaction* transaction, const std::string& name, const std::string& tag){
 #ifdef SENTRY
         sentry_transaction_set_tag_n(transaction->inner, name.c_str(), name.size(), tag.c_str(), tag.size());
+#else
+        Q_UNUSED(transaction);
+        Q_UNUSED(name);
+        Q_UNUSED(tag);
 #endif
     }
 

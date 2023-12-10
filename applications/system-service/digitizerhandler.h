@@ -32,7 +32,7 @@ public:
         event_device touchScreen_device(deviceSettings.getTouchDevicePath(), O_RDWR);
         if(touchScreen_device.fd == -1){
             O_WARNING("Failed to open event device: " << touchScreen_device.device.c_str());
-            throw QException();
+
         }
         instance = new DigitizerHandler(touchScreen_device, "touchscreen");
         return instance;
@@ -60,11 +60,17 @@ public:
     }
     void setEnabled(bool enabled){ m_enabled = enabled; }
     void write(ushort type, ushort code, int value){
+        if(device.fd == -1){
+            return;
+        }
         auto event = createEvent(type, code, value);
         ::write(device.fd, &event, sizeof(input_event));
         O_DEBUG("Emitted event " << event.input_event_sec << event.input_event_usec << type << code << value);
     }
     void write(input_event* events, size_t size){
+        if(device.fd == -1){
+            return;
+        }
         ::write(device.fd, events, size);
     }
     void syn(){
@@ -84,6 +90,10 @@ signals:
 
 protected:
     void run(){
+        if(device.fd == -1){
+            O_WARNING("No device, not starting for thread");
+            return;
+        }
         char name[256];
         memset(name, 0, sizeof(name));
         ioctl(device.fd, EVIOCGNAME(sizeof(name)), name);

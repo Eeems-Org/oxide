@@ -211,6 +211,11 @@ bool WifiAPI::enable(){
     if(!hasPermission("wifi")){
         return false;
     }
+    if(interfaces().isEmpty()){
+        O_WARNING("There are no interfaces to enable");
+        disable();
+        return false;
+    }
     O_INFO("Turning wifi on");
     if(m_state == Off){
         setState(Disconnected);
@@ -347,12 +352,16 @@ void WifiAPI::reconnect(){
         return;
     }
     O_INFO("Reconnecting to wifi");
-    QList<QDBusPendingReply<void>> replies;
-    for(auto interface : interfaces()){
-        replies.append(interface->Reconnect());
-    }
-    for(auto reply : replies){
-        reply.waitForFinished();
+    try{
+        QList<QDBusPendingReply<void>> replies;
+        for(auto interface : interfaces()){
+            replies.append(interface->Reconnect());
+        }
+        for(auto reply : replies){
+            reply.waitForFinished();
+        }
+    }catch(const std::exception& e){
+        O_WARNING("Failed to reconnect to wifi: " << e.what());
     }
 }
 
@@ -689,10 +698,14 @@ void WifiAPI::PropertiesChanged(const QVariantMap& properties){
 
 QList<Interface*> WifiAPI::interfaces(){
     QList<Interface*> result;
-    for(auto wlan : wlans){
-        if(wlan->interface() != nullptr){
-            result.append(wlan->interface());
+    try{
+        for(auto wlan : wlans){
+            if(wlan->interface() != nullptr){
+                result.append(wlan->interface());
+            }
         }
+    }catch(const std::exception& e){
+        O_WARNING("Failed to get wifi interfaces: " << e.what());
     }
     return result;
 }

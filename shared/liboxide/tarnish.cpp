@@ -890,7 +890,7 @@ namespace Oxide::Tarnish {
             if(reply.isError()){
                 O_WARNING("Unable to request existing windows:" << reply.error().message());
             }else{
-                auto windowName = QString::fromStdString(Oxide::getAppName());
+                auto windowName = QString::fromStdString(Oxide::getAppName(false));
                 for(QDBusObjectPath qpath : reply.value()){
                     auto path = qpath.path();
                     if(path == "/"){
@@ -916,9 +916,9 @@ namespace Oxide::Tarnish {
             }
             QDBusPendingReply<QDBusObjectPath> reply;
             if(fbRequestedGeometry.isNull()){
-                reply = api_gui->createWindow(QString::fromStdString(Oxide::getAppName()), fbRequestedFormat);
+                reply = api_gui->createWindow(QString::fromStdString(Oxide::getAppName(false)), fbRequestedFormat);
             }else{
-                reply = api_gui->createWindow(fbRequestedGeometry, QString::fromStdString(Oxide::getAppName()), fbRequestedFormat);
+                reply = api_gui->createWindow(fbRequestedGeometry, QString::fromStdString(Oxide::getAppName(false)), fbRequestedFormat);
             }
             reply.waitForFinished();
             if(reply.isError()){

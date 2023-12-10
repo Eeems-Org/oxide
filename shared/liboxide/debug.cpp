@@ -38,7 +38,7 @@ namespace Oxide {
             .arg(::getpgrp())
             .arg(::getpid())
             .arg(::gettid())
-            .arg(Oxide::getAppName().c_str())
+            .arg(Oxide::getAppName(false).c_str())
             .toStdString();
     }
 

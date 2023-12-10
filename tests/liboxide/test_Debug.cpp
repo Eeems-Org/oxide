@@ -36,11 +36,11 @@ void test_Debug::test_debugEnabled(){
 }
 
 void test_Debug::test_getAppName(){
-    QCOMPARE(QString::fromStdString(Oxide::getAppName()), QString("liboxide"));
+    QCOMPARE(QString::fromStdString(Oxide::getAppName(false)), QString("liboxide"));
     qApp->setApplicationName("liboxide-test");
-    QCOMPARE(QString::fromStdString(Oxide::getAppName()), QString("liboxide-test"));
+    QCOMPARE(QString::fromStdString(Oxide::getAppName(false)), QString("liboxide-test"));
     qApp->setApplicationName("liboxide");
-    QCOMPARE(QString::fromStdString(Oxide::getAppName()), QString("liboxide"));
+    QCOMPARE(QString::fromStdString(Oxide::getAppName(false)), QString("liboxide"));
     QCOMPARE(QString::fromStdString(Oxide::getAppName(true)), QString("liboxide"));
     // TODO - test /proc/self/comm changing
     // TODO - test /proc/self/exe changing
