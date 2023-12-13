@@ -49,7 +49,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: build
-          path: .build/package/dist
+          path: .build/package/build/rmall/src/release
   release:
     needs: build
     if: ${{ github.ref == 'refs/heads/master' }}
