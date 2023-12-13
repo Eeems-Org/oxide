@@ -24,4 +24,3 @@ epframebuffer_h.commands = cp $$PWD/epframebuffer.h $$OUT_PWD
 QMAKE_EXTRA_TARGETS += epframebuffer_h
 PRE_TARGETDEPS += $$epframebuffer_h.target
 QMAKE_CLEAN += $$epframebuffer_h.target
-
