@@ -23,6 +23,8 @@ clean:
 
 release: clean build $(RELOBJ)
 	mkdir -p $(DIST)
+	# Force liboxide makefile to regenerate so that install targets get when being build in toltecmk
+	cd $(BUILD)/oxide/shared/liboxide && make qmake
 	INSTALL_ROOT=$(DIST) $(MAKE) -C $(BUILD)/oxide install
 
 build: $(BUILD) $(OBJ)
