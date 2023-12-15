@@ -17,10 +17,13 @@ endif
 
 OBJ += $(BUILD)/oxide/Makefile
 
-clean:
-	rm -rf $(DIST) $(BUILD)
+clean-base:
+	rm -rf $(DIST) $(BUILD)/oxide
 
-release: clean build $(DIST)
+clean: clean-base
+	rm -rf $(BUILD)
+
+release: clean-base build $(DIST)
 	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
 	cd $(BUILD)/oxide/shared/sentry && make qmake
 	# Force liboxide makefile to regenerate so that install targets get when being build in toltecmk

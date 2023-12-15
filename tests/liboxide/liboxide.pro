@@ -2,12 +2,14 @@ QT += testlib
 QT += gui
 
 target.path = /opt/share/tests/liboxide/liboxide
+INSTALLS += target
 
 CONFIG += qt
 CONFIG += console
 CONFIG += warn_on
 CONFIG += depend_includepath
 CONFIG += testcase
+CONFIG += no_testcase_installs
 CONFIG -= app_bundle
 
 TEMPLATE = app
