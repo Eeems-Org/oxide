@@ -4,6 +4,8 @@ all: release
 
 .NOTPARALLEL:
 
+MAKEFLAGS := --jobs=$(shell nproc)
+
 # FEATURES += sentry
 
 DIST=$(CURDIR)/release
@@ -25,10 +27,10 @@ release: clean build $(RELOBJ)
 	mkdir -p $(DIST)
 	# Force liboxide makefile to regenerate so that install targets get when being build in toltecmk
 	cd $(BUILD)/oxide/shared/liboxide && make qmake
-	INSTALL_ROOT=$(DIST) $(MAKE) -C $(BUILD)/oxide install
+	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/oxide install
 
 build: $(BUILD) $(OBJ)
-	$(MAKE) -C $(BUILD)/oxide all
+	$(MAKE) --output-sync=target -C $(BUILD)/oxide all
 
 package: REV="~r$(shell git rev-list --count HEAD).$(shell git rev-parse --short HEAD)"
 package:

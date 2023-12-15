@@ -111,3 +111,5 @@ void ButtonHandler::pressKey(Qt::Key key){
     }
     press_button(buttons, code, &stream);
 }
+
+#include "moc_buttonhandler.cpp"

@@ -99,3 +99,5 @@ void Notification::setIcon(QString icon){
 }
 
 bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }
+
+#include "moc_notification.cpp"

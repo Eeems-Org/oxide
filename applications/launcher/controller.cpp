@@ -415,3 +415,5 @@ void Controller::setLockAfter(int lockAfter){
     qDebug() << "Lock After: " << lockAfter << " minutes";
     emit lockAfterChanged(m_lockAfter);
 }
+
+#include "moc_controller.cpp"

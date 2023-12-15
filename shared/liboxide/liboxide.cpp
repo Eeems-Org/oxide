@@ -357,3 +357,5 @@ namespace Oxide {
     O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, onLogin)
     O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, onFailedLogin)
 }
+
+#include "moc_liboxide.cpp"
