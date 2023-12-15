@@ -64,10 +64,12 @@ jobs:
         id: repo
         with:
           name: repo
+          path: repo
       - uses: actions/download-artifact@v3
         id: build
         with:
           name: build
+          path: build
       - name: Copy tests
         run: |
           mkdir -p ${{ steps.repo.outputs.download-path }}/tests
@@ -85,7 +87,10 @@ jobs:
             opkg update
             opkg install oxide oxide-extra inject_evdev liboxide-dev
             # TODO test tarnish service
-            find tests -type f -executable -print | xargs -rI{} bash -c 'exec {}'
+            find tests -type f -executable -print | while read test; do
+              echo "Running test $test"
+              "$test"
+            done
             opkg remove --force-removal-of-dependent-packages liboxide libsentry
           path: ${{ steps.repo.outputs.download-path }}
   release:
