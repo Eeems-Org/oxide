@@ -55,7 +55,7 @@ how-to-enable() {
 build() {
     find . -name "*.pro" -type f -print0 \
         | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
-    CMAKE_TOOLCHAIN_FILE="/usr/share/cmake/$CHOST.cmake" make -j$(nproc) FEATURES=sentry release
+    CMAKE_TOOLCHAIN_FILE="/usr/share/cmake/$CHOST.cmake" make FEATURES=sentry release
 }
 
 oxide() {
