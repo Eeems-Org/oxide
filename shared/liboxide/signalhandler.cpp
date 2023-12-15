@@ -96,3 +96,5 @@ namespace Oxide {
     }
     QMap<int, SignalHandler::NotifierItem> SignalHandler::notifiers = QMap<int, SignalHandler::NotifierItem>();
 }
+
+#include "moc_signalhandler.cpp"

@@ -193,3 +193,5 @@ QString ScreenAPI::getNextPath() {
     } while(QFile::exists(filePath));
     return filePath;
 }
+
+#include "moc_screenapi.cpp"

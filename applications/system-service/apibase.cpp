@@ -48,3 +48,6 @@ bool APIBase::hasPermissionStrict(QString permission, const char* sender){
     O_DEBUG("app not found, permission denied");
     return false;
 }
+
+#include "moc_apibase.cpp"
+

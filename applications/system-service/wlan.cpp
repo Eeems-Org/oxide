@@ -65,3 +65,5 @@ std::string Wlan::exec(QString cmd){
     }
     return result;
 }
+
+#include "moc_wlan.cpp"

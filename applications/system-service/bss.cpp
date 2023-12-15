@@ -36,3 +36,5 @@ QDBusObjectPath BSS::network(){
 }
 
 bool BSS::hasPermission(QString permission, const char* sender){ return wifiAPI->hasPermission(permission,sender); }
+
+#include "moc_bss.cpp"

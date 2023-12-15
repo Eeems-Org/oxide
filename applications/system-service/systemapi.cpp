@@ -1115,3 +1115,5 @@ bool Inhibitor::released() { return fd == -1; }
 string TouchData::debugString() const{
     return "<Touch " + to_string(id) + " (" + to_string(x) + ", " + to_string(y) + ") " + (active ? "pressed" : "released") + ">";
 }
+
+#include "moc_systemapi.cpp"

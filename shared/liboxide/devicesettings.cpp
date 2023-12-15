@@ -456,3 +456,5 @@ namespace Oxide {
         return _virtualScreenGeometry;
     }
 }
+
+#include "moc_devicesettings.cpp"

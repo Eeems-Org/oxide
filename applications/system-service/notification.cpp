@@ -178,3 +178,5 @@ void Notification::setOwner(QString owner){
 }
 
 bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }
+
+#include "moc_notification.cpp"

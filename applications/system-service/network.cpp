@@ -69,3 +69,5 @@ QList<QDBusObjectPath> Network::bSSs(){
 }
 
 bool Network::hasPermission(QString permission, const char* sender){ return wifiAPI->hasPermission(permission, sender); }
+
+#include "moc_network.cpp"

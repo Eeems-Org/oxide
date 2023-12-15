@@ -1046,3 +1046,6 @@ void Process::setupChildProcess() {
     setsid();
     prctl(PR_SET_PDEATHSIG, SIGTERM);
 }
+
+#include "moc_application.cpp"
+
