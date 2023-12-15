@@ -70,9 +70,10 @@ jobs:
           name: build
       - name: Copy tests
         run: |
+          mkdir -p ${{ steps.repo.outputs.download-path }}/tests
           cp -al \
-            ${{ steps.build.outputs.download-path }}/opt/share/tests \
-            ${{ steps.repo.outputs.download-path }}
+            ${{ steps.build.outputs.download-path }}/opt/share/tests/. \
+            ${{ steps.repo.outputs.download-path }}/tests
       - uses: Eeems-Org/run-in-remarkable-action@v1
         with:
           setup: |
