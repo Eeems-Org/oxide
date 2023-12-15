@@ -8,6 +8,9 @@ DEFINES += LIBOXIDE_LIBRARY
 CONFIG += c++11
 CONFIG += warn_on
 CONFIG += precompile_header
+CONFIG += create_pc
+CONFIG += create_prl
+CONFIG += no_install_prl
 
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
@@ -78,7 +81,15 @@ liboxide_h.commands = \
 clean_headers.target = include/.clean-target
 clean_headers.commands = rm -rf include
 
-QMAKE_EXTRA_TARGETS += liboxide_liboxide_h liboxide_h clean_headers
+liboxide_h_install.files = \
+    include/liboxide.h \
+    include/liboxide \
+    include/epframebuffer.h
+liboxide_h_install.depends = liboxide_h
+liboxide_h_install.path = /opt/include/
+INSTALLS += liboxide_h_install
+
+QMAKE_EXTRA_TARGETS += liboxide_liboxide_h liboxide_h clean_headers liboxide_h_install
 PRE_TARGETDEPS += $$clean_headers.target
 POST_TARGETDEPS += $$liboxide_liboxide_h.target $$liboxide_h.target
 QMAKE_CLEAN += $$liboxide_h.target include/liboxide/*.h
@@ -90,3 +101,11 @@ INSTALLS += target
 LIBS += -L$$PWD/../epaper -lqsgepaper
 INCLUDEPATH += $$PWD/../epaper
 include(../../qmake/sentry.pri)
+
+QMAKE_PKGCONFIG_NAME = liboxide
+QMAKE_PKGCONFIG_DESCRIPTION = Shared library for Oxide application development
+QMAKE_PKGCONFIG_VERSION = $$VERSION
+QMAKE_PKGCONFIG_PREFIX = /opt
+QMAKE_PKGCONFIG_LIBDIR = /opt/lib
+QMAKE_PKGCONFIG_INCDIR = /opt/include
+QMAKE_PKGCONFIG_DESTDIR = pkgconfig

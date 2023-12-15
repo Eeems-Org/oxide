@@ -260,3 +260,5 @@ void SystemAPI::toggleSwipes(){
     notification->setText(message);
     notification->display();
 }
+
+#include "moc_systemapi.cpp"

@@ -27,3 +27,5 @@ QDBusObjectPath ScreenAPI::screenshot(){
         return path;
     });
 }
+
+#include "moc_screenapi.cpp"

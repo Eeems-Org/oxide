@@ -554,3 +554,5 @@ void Application::startSpan(std::string operation, std::string description){
     }
     span = Oxide::Sentry::start_span(transaction, operation, description);
 }
+
+#include "moc_application.cpp"

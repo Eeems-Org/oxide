@@ -47,4 +47,4 @@ Uninstall Oxide
 
 1. ``systemctl disable --now tarnish``
 2. ``systemctl enable --now xochitl``
-3. ``opkg remove -force-removal-of-dependent-packages liboxide``
+3. ``opkg remove --force-removal-of-dependent-packages liboxide``
