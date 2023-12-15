@@ -1,7 +1,7 @@
 QT += testlib
 QT += gui
 
-target.path = /opt/share/tests/liboxide/liboxide
+target.path = /opt/share/tests/liboxide
 INSTALLS += target
 
 CONFIG += qt

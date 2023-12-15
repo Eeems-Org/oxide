@@ -50,7 +50,7 @@ void test_Debug::test_getAppName(){
 void test_Debug::test_backtrace(){
     auto trace = Oxide::backtrace(2);
     QCOMPARE(trace.size(), 1);
-    QVERIFY(trace[0].starts_with("/usr/share/tests/liboxide/liboxide()"));
+    QCOMPARE(QString::fromStdString(trace[0].substr(0, 36)), "/opt/share/tests/liboxide/liboxide()");
 }
 
 DECLARE_TEST(test_Debug)
