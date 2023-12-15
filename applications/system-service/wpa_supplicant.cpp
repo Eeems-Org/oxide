@@ -63,3 +63,4 @@ FiW1Wpa_supplicant1NetworkInterface::~FiW1Wpa_supplicant1NetworkInterface()
 {
 }
 
+#include "moc_wpa_supplicant.cpp"

@@ -152,3 +152,5 @@ namespace Oxide{
         return filtered;
     }
 }
+
+#include "moc_eventfilter.cpp"

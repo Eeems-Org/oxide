@@ -77,7 +77,7 @@ jobs:
             # systemctl disable --now xochitl
             # systemctl enable --now tarnish
             # TODO install and run tests
-            opkg remove --force-removal-of-dependent-packages --autoremove liboxide
+            opkg remove --force-removal-of-dependent-packages liboxide
           path: ${{ steps.download.outputs.download-path }}
   release:
     needs: [build,test]
