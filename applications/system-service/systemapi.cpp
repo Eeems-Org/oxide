@@ -54,7 +54,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
                         wifiWasOn = true;
                         wifiAPI->disable();
                     }
-                    system("rmmod brcmfmac");
+                    system("/sbin/rmmod brcmfmac");
                 }
                 releaseSleepInhibitors();
             });
@@ -115,7 +115,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     lockTimer.start(autoLock() * 60 * 1000);
                 }
                 if(device == Oxide::DeviceSettings::DeviceType::RM2){
-                    system("modprobe brcmfmac");
+                    system("/sbin/modprobe brcmfmac");
                     if(wifiWasOn){
                         wifiAPI->enable();
                     }
