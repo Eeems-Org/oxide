@@ -41,7 +41,14 @@ bool stopProcess(pid_t pid){
 
 int main(int argc, char* argv[]){
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
+        bool enabled = Oxide::debugEnabled();
+        if(!enabled){
+            qputenv("DEBUG", "1");
+        }
         O_WARNING("rm2fb not detected. Running xochitl instead!");
+        if(!enabled){
+            qputenv("DEBUG", "0");
+        }
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
     deviceSettings.setupQtEnvironment(false);
