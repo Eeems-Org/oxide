@@ -6,6 +6,7 @@
     <property name="lockOnSuspend" type="b" access="readwrite"/>
     <property name="sleepInhibited" type="b" access="read"/>
     <property name="powerOffInhibited" type="b" access="read"/>
+    <property name="landscape" type="b" access="read"/>
     <signal name="leftAction">
     </signal>
     <signal name="homeAction">
@@ -36,6 +37,9 @@
     <signal name="swipeLengthChanged">
       <arg type="i" direction="out"/>
       <arg type="i" direction="out"/>
+    </signal>
+    <signal name="landscapeChanged">
+      <arg type="b" direction="out"/>
     </signal>
     <signal name="deviceSuspending">
     </signal>

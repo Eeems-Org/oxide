@@ -58,6 +58,7 @@ HEADERS += \
     appsapi.h \
     bss.h \
     buttonhandler.h \
+    controller.h \
     dbusservice.h \
     digitizerhandler.h \
     eventlistener.h \
@@ -92,3 +93,6 @@ include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
 
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
+
+RESOURCES += \
+    qml.qrc

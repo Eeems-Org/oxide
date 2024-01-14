@@ -3,12 +3,15 @@
 #include <QLockFile>
 #include <QWindow>
 #include <QScreen>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
 
 #include <cstdlib>
 #include <filesystem>
 #include <liboxide.h>
 
 #include "dbusservice.h"
+#include "controller.h"
 
 using namespace std;
 using namespace Oxide::Sentry;
@@ -139,14 +142,18 @@ int main(int argc, char* argv[]){
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
         remove(pidPath);
     });
-    QScreen* screen = app.primaryScreen();
-    QWindow window(screen);
-    window.resize(screen->size());
-    window.setPosition(0, 0);
-    window.setOpacity(0);
-    window.show();
-    deviceSettings.onKeyboardAttachedChanged([]{
-        qDebug() << "Keyboard Attached Changed:" << deviceSettings.keyboardAttached();
-    });
+    QQmlApplicationEngine engine;
+    QQmlContext* context = engine.rootContext();
+    Controller controller(&app);
+    context->setContextProperty("controller", &controller);
+    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+    if (engine.rootObjects().isEmpty()){
+        QScreen* screen = app.primaryScreen();
+        QWindow window(screen);
+        window.resize(screen->size());
+        window.setPosition(0, 0);
+        window.setOpacity(0);
+        window.show();
+    }
     return app.exec();
 }

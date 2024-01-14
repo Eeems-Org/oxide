@@ -327,15 +327,36 @@ namespace Oxide {
         }
     }
     bool DeviceSettings::keyboardAttached(){
-        auto count = QGuiApplicationPrivate::inputDeviceManager()->deviceCount(QInputDeviceManager::DeviceTypeKeyboard);
-        switch(getDeviceType()){
-            case RM2:
-                return count > 3;
-            case RM1:
-                return count > 2;
-            default:
-                return count;
+        QDir dir("/dev/input");
+        for(auto path : dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::System)){
+            O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
+            QString fullPath(dir.path() + "/" + path);
+            if(
+                fullPath == QString::fromStdString(buttonsPath)
+                || fullPath == QString::fromStdString(wacomPath)
+                || fullPath == QString::fromStdString(touchPath)
+            ){
+                continue;
+            }
+            QFile device(fullPath);
+            device.open(QIODevice::ReadOnly);
+            int fd = device.handle();
+            int version;
+            if(ioctl(fd, EVIOCGVERSION, &version)){
+                continue;
+            }
+            unsigned long bit[EV_MAX];
+            ioctl(fd, EVIOCGBIT(0, EV_MAX), bit);
+            if(!test_bit(EV_KEY, bit)){
+                continue;
+            }
+            if(checkBitSet(fd, EV_KEY, BTN_STYLUS) && test_bit(EV_ABS, bit)){
+                continue;
+            }
+            SysObject sys("/sys/class/input/" + path + "/device");
+            return sys.strProperty("name") != "keyd virtual keyboard";
         }
+        return false;
     }
     void DeviceSettings::onKeyboardAttachedChanged(std::function<void()> callback){
         auto manager = QGuiApplicationPrivate::inputDeviceManager();

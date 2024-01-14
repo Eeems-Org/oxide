@@ -72,6 +72,7 @@ class SystemAPI : public APIBase {
     Q_PROPERTY(bool lockOnSuspend READ lockOnSuspend WRITE setLockOnSuspend NOTIFY lockOnSuspendChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
+    Q_PROPERTY(bool landscape READ landscape NOTIFY landscapeChanged)
 
 public:
     enum SwipeDirection { None, Right, Left, Up, Down };
@@ -223,6 +224,9 @@ public:
                     }
                     return false;
                 });
+                deviceSettings.onKeyboardAttachedChanged([this]{
+                    emit landscapeChanged(landscape());
+                });
             });
             qDebug() << "System API ready to use";
         });
@@ -249,6 +253,7 @@ public:
     void setLockOnSuspend(bool _lockOnSuspend);
     bool sleepInhibited(){ return sleepInhibitors.length(); }
     bool powerOffInhibited(){ return powerOffInhibitors.length(); }
+    bool landscape(){ return deviceSettings.keyboardAttached(); }
     void uninhibitAll(QString name);
     void stopSuspendTimer(){
         qDebug() << "Suspend timer disabled";
@@ -458,6 +463,7 @@ signals:
     void autoLockChanged(int);
     void lockOnSuspendChanged(bool);
     void swipeLengthChanged(int, int);
+    void landscapeChanged(bool);
     void deviceSuspending();
     void deviceResuming();
 
