@@ -25,11 +25,11 @@ Window{
         onActivated: controller.back()
     }
     Shortcut{
-        sequences: [Qt.Key_Suspend, "Ctrl+Shift+Alt+P+S"]
+        sequences: [Qt.Key_Suspend, "Ctrl+Shift+Alt+S"]
         onActivated: controller.suspend()
     }
     Shortcut{
-        sequences: [Qt.Key_PowerDown, "Ctrl+Shift+Alt+P+O"]
+        sequences: [Qt.Key_PowerDown, "Ctrl+Shift+Alt+O"]
         onActivated: controller.powerOff()
     }
     Shortcut{
