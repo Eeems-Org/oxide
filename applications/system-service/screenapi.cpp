@@ -42,7 +42,7 @@ QDBusObjectPath ScreenAPI::screenshot(){
     });
 }
 
-bool ScreenAPI::drawFullscreenImage(QString path) {
+bool ScreenAPI::drawFullscreenImage(QString path, float rotate) {
     if (!hasPermission("screen")) {
         return false;
     }
@@ -54,6 +54,9 @@ bool ScreenAPI::drawFullscreenImage(QString path) {
     if (img.isNull()) {
         qDebug() << "Image data invalid" << path;
         return false;
+    }
+    if(rotate){
+        img = img.transformed(QTransform().rotate(rotate));
     }
     Oxide::Sentry::sentry_transaction(
         "screen", "drawFullscrenImage",

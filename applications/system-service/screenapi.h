@@ -88,7 +88,7 @@ public:
         return list;
     }
 
-    Q_INVOKABLE bool drawFullscreenImage(QString path);
+    Q_INVOKABLE bool drawFullscreenImage(QString path, float rotate = 0);
 
     Q_INVOKABLE QDBusObjectPath screenshot();
     QImage copy(){
