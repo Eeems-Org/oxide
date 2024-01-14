@@ -106,8 +106,10 @@ public:
         }
         return m_notifications.value(identifier);
     }
-    QRect paintNotification(const QString &text, const QString &iconPath);
-    void errorNotification(const QString &text);
+    QRect paintNotification(const QString& text, const QString& iconPath);
+    void errorNotification(const QString& text);
+    QImage notificationImage(const QString& text, const QString& iconPath);
+    void drawNotificationText(const QString& text, QColor color = Qt::black, QColor background = Qt::transparent);
 
 public slots:
     QDBusObjectPath add(const QString& identifier, const QString& application, const QString& text, const QString& icon, QDBusMessage message){

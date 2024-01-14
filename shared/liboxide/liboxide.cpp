@@ -354,11 +354,22 @@ namespace Oxide {
                 continue;
             }
             SysObject sys("/sys/class/input/" + path + "/device");
-            if(sys.strProperty("name") == "keyd virtual keyboard"){
+            auto vendor = sys.strProperty("id/vendor");
+            if(vendor == "0000"){
                 continue;
             }
+            auto product = sys.strProperty("id/product");
+            if(product == "0000"){
+                continue;
+            }
+            auto id = vendor+":"+product;
+            if(id == "0fac:0ade" || id == "0fac:1ade"){
+                continue;
+            }
+            O_DEBUG("Keyboard found: " << sys.strProperty("name").c_str());
             return true;
         }
+        O_DEBUG("No keyboard found");
         return false;
     }
     void DeviceSettings::onKeyboardAttachedChanged(std::function<void()> callback){

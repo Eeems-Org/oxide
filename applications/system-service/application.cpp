@@ -10,6 +10,7 @@
 #include "systemapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
+#include "notificationapi.h"
 
 using namespace Oxide::Applications;
 
@@ -508,21 +509,8 @@ void Application::showSplashScreen(){
                     painter.drawImage(splashRect, splash, splash.rect());
                     EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
                 }
-                painter.setPen(Qt::black);
-                auto text = "Loading " + displayName() + "...";
-                int padding = 10;
-                int textHeight = fm.height() + padding;
-                QRect textRect(
-                    QPoint(0 + padding, size.height() - textHeight),
-                    QSize(size.width() - padding * 2, textHeight)
-                );
-                painter.drawText(
-                    textRect,
-                    Qt::AlignVCenter | Qt::AlignRight,
-                    text
-                );
-                EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Grayscale, EPFrameBuffer::PartialUpdate, true);
                 painter.end();
+                notificationAPI->drawNotificationText("Loading " + displayName() + "...");
             });
         });
         qDebug() << "Waitng for screen to finish...";

@@ -16,10 +16,12 @@ QDBusObjectPath ScreenAPI::screenshot(){
         QRect rect = notificationAPI->paintNotification("Taking Screenshot...", "");
         EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
         QDBusObjectPath path("/");
-        if(systemAPI->landscape()){
-            screen = screen.transformed(QTransform().rotate(270.0));
-        }
-        if(!screen.save(filePath)){
+        bool saved = (
+            systemAPI->landscape()
+                ? screen.transformed(QTransform().rotate(270.0))
+                : screen
+        ).save(filePath);
+        if(!saved){
             qDebug() << "Failed to take screenshot";
         }else{
             path = addScreenshot(filePath)->qPath();
@@ -29,6 +31,13 @@ QDBusObjectPath ScreenAPI::screenshot(){
         painter.drawImage(rect, screen, rect);
         painter.end();
         EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::PartialUpdate, true);
+        notificationAPI->add(
+            QUuid::createUuid().toString(),
+            "codes.eeems.tarnish",
+            "codes.eeems.tarnish",
+            saved ? "Screenshot taken" : "Failed to take screenshot",
+            saved ? filePath : ""
+        )->display();
         return path;
     });
 }
