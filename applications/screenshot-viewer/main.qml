@@ -5,12 +5,11 @@ import QtQuick.Layouts 1.0
 import "qrc:/codes.eeems.oxide"
 import "./widgets"
 
-ApplicationWindow {
+OxideWindow {
     id: window
     objectName: "window"
     visible: stateController.state !== "loading"
-    width: screenGeometry.width
-    height: screenGeometry.height
+    backgroundColor: "white"
     title: {
         if(stateController.state !== "viewing" || !viewer.model){
             return Qt.application.displayName;
@@ -18,96 +17,103 @@ ApplicationWindow {
         return viewer.model.display.path;
     }
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
-    Component.onCompleted: {
-        controller.startup();
+    Component.onCompleted: controller.startup()
+    Shortcut{
+        sequence: StandardKey.Quit
+        context: Qt.ApplicationShortcut
+        onActivated: Qt.quit()
     }
-    header: Rectangle {
-        color: "black"
-        height: menu.height
-        RowLayout {
-            id: menu
-            anchors.left: parent.left
-            anchors.right: parent.right
-            Label {
-                text: "⬅️"
-                color: "white"
-                topPadding: 5
-                bottomPadding: 5
-                leftPadding: 10
-                rightPadding: 10
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        controller.breadcrumb("back", "click", "ui");
-                        if(stateController.state !== "viewing"){
-                            Qt.quit();
-                            return;
-                        }
-                        viewer.model = undefined;
-                        stateController.state = "loaded";
+    Shortcut{
+        sequences: [StandardKey.Cancel, Qt.Key_Backspace]
+        context: Qt.ApplicationShortcut
+        onActivated: backButton.clicked()
+    }
+    Shortcut{
+        sequence: StandardKey.Delete
+        context: Qt.ApplicationShortcut
+        onActivated: deleteButton.clicked()
+    }
+
+    leftMenu: [
+        Label {
+            text: "⬅️"
+            color: "white"
+            topPadding: 5
+            bottomPadding: 5
+            leftPadding: 10
+            rightPadding: 10
+            MouseArea {
+                id: backButton
+                anchors.fill: parent
+                onClicked: {
+                    controller.breadcrumb("back", "click", "ui");
+                    if(stateController.state !== "viewing"){
+                        Qt.quit();
+                        return;
                     }
+                    viewer.model = undefined;
+                    stateController.state = "loaded";
                 }
             }
-            Item { Layout.fillWidth: true }
-            Label {
-                color: "white"
-                text: window.title
-            }
-            Item { Layout.fillWidth: true }
-            Label {
-                text: "Delete"
-                color: "white"
-                visible: stateController.state === "viewing"
-                topPadding: 5
-                bottomPadding: 5
-                leftPadding: 10
-                rightPadding: 10
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        controller.breadcrumb("menu.delete", "click", "ui");
-                        controller.screenshots.remove(viewer.model.display.path);
-                        viewer.model = undefined;
-                        stateController.state = "loading";
-                    }
+        }
+    ]
+    centerMenu: [
+        Label {
+            color: "white"
+            text: window.title
+        }
+    ]
+    rightMenu: [
+        Label {
+            text: "Delete"
+            color: "white"
+            visible: stateController.state === "viewing"
+            topPadding: 5
+            bottomPadding: 5
+            leftPadding: 10
+            rightPadding: 10
+            MouseArea {
+                id: deleteButton
+                anchors.fill: parent
+                onClicked: {
+                    controller.breadcrumb("menu.delete", "click", "ui");
+                    controller.screenshots.remove(viewer.model.display.path);
+                    viewer.model = undefined;
+                    stateController.state = "loading";
                 }
             }
-            CustomMenu {
-                visible: stateController.state === "loaded"
-                OxideMenu {
-                    title: qsTr("");
-                    font: iconFont.name
-                    width: 310
-                    Action {
-                        text: controller.columns === 4 ? "* Small" : "Small"
-                        onTriggered: {
-                            controller.breadcrumb("menu.small", "click", "ui");
-                            controller.columns = 4;
-                        }
+        },
+        CustomMenu {
+            visible: stateController.state === "loaded"
+            OxideMenu {
+                title: qsTr("");
+                font: iconFont.name
+                width: 310
+                Action {
+                    text: controller.columns === 4 ? "* Small" : "Small"
+                    onTriggered: {
+                        controller.breadcrumb("menu.small", "click", "ui");
+                        controller.columns = 4;
                     }
-                    Action {
-                        text: controller.columns === 3 ? "* Medium" : "Medium"
-                        onTriggered: {
-                            controller.breadcrumb("menu.medium", "click", "ui");
-                            controller.columns = 3;
-                        }
+                }
+                Action {
+                    text: controller.columns === 3 ? "* Medium" : "Medium"
+                    onTriggered: {
+                        controller.breadcrumb("menu.medium", "click", "ui");
+                        controller.columns = 3;
                     }
-                    Action {
-                        text: controller.columns === 2 ? "* Large" : "Large"
-                        onTriggered: {
-                            controller.breadcrumb("menu.large", "click", "ui");
-                            controller.columns = 2;
-                        }
+                }
+                Action {
+                    text: controller.columns === 2 ? "* Large" : "Large"
+                    onTriggered: {
+                        controller.breadcrumb("menu.large", "click", "ui");
+                        controller.columns = 2;
                     }
                 }
             }
         }
-    }
-    contentData: [
-        Rectangle {
-            anchors.fill: parent
-            color: "white"
-        },
+    ]
+    initialItem: Item{
         ColumnLayout {
             anchors.fill: parent
             enabled: stateController.state == "loaded"
@@ -200,7 +206,7 @@ ApplicationWindow {
                     }
                 }
             }
-        },
+        }
         Item {
             id: viewer
             anchors.fill: parent
@@ -222,7 +228,7 @@ ApplicationWindow {
                 sourceSize.height: height
             }
         }
-    ]
+    }
     StateGroup {
         id: stateController
         objectName: "stateController"

@@ -15,7 +15,7 @@ ApplicationWindow {
     property alias backgroundColor: background.color
     property alias headerBackgroundColor: header.color
     property bool landscape: Oxide.landscape
-    Component.onCompleted: page.forceActiveFocus()
+    Component.onCompleted: stack.forceActiveFocus()
     function orientationWidth(){ return landscape ? height : width; }
     function orientationHeight(){ return landscape ? width : height;  }
     signal keyPressed(var event)
