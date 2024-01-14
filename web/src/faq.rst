@@ -32,13 +32,23 @@ What kind of information is collected by telemetry?
 How can I disable the telemetry?
 ================================
 
+As of 2.6 you can disable telemetry with the following commands:
+
 .. code:: bash
 
   xdg-settings set telemetry false
   xdg-settings set crashReport false
   xdg-settings set applicationUsage false
 
-Or you can compile the applications manually without the ``sentry`` feature enabled.
+On 2.5 or earlier you can use the following commands to disable telemetry:
+
+.. code:: bash
+
+  rot settings set telemetry 'bool:false'
+  rot settings set crashReport 'bool:false'
+  rot settings set applicationUsage 'bool:false'
+
+Alternatively, you can compile the applications manually without the ``sentry`` feature enabled.
 
 How can I get the time to display in my timezone?
 =================================================
@@ -139,3 +149,19 @@ The primary configuration file can be found in one of the following locations:
   3. ``/home/root/.config/oxide.conf``
 
 Other configuration files can be found in ``/home/root/.config/Eeems/``.
+
+Can I disable a specific gesture?
+=================================
+
+Yes, you can disable specific gestures with the following commands:
+
+.. code:: bash
+
+  # Disable swipe from left edge of the screen
+  rot system call setSwipeEnabled 'int:1' 'bool:false'
+  # Disable swipe from right edge of the screen
+  rot system call setSwipeEnabled 'int:2' 'bool:false'
+  # Disable swipe from bottom of the screen
+  rot system call setSwipeEnabled 'int:3' 'bool:false'
+  # Disable swipe from top of the screen
+  rot system call setSwipeEnabled 'int:4' 'bool:false'

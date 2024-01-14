@@ -56,6 +56,17 @@ public:
         return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
     }
     int link(){
+        QDBusPendingReply<QVariant> res = m_interface->SignalPoll();
+        res.waitForFinished();
+        if(!res.isError()){
+            auto props = qdbus_cast<QVariantMap>(res.value());
+            auto result = props["linkspeed"].toInt();
+            if(result < 0){
+                return 0;
+            }
+            return result;
+        }
+        O_WARNING("SignalPoll error: " << res.error());
         auto out = exec("grep " + iface() + " /proc/net/wireless | awk '{print $3}'");
         if(QString(out.c_str()).isEmpty()){
             return 0;
@@ -67,19 +78,32 @@ public:
             qDebug() << "link failed: " << out.c_str();
             return 0;
         }
+        return -100;
     }
     signed int rssi(){
-        QDBusMessage message = m_interface->call("SignalPoll");
-        if (message.type() == QDBusMessage::ErrorMessage) {
-            O_WARNING("SignalPoll error: " << message.errorMessage());
-            return -100;
+        QDBusPendingReply<QVariant> res = m_interface->SignalPoll();
+        res.waitForFinished();
+        if(!res.isError()){
+            auto props = qdbus_cast<QVariantMap>(res.value());
+            auto result = props["rssi"].toInt();
+            if(result >= 0){
+                return -100;
+            }
+            return result;
         }
-        auto props = qdbus_cast<QVariantMap>(message.arguments().at(0).value<QDBusVariant>().variant().value<QDBusArgument>());
-        auto result = props["rssi"].toInt();
-        if(result >= 0){
-            return -100;
+        O_WARNING("SignalPoll error: " << res.error());
+        auto out = exec("grep " + iface() + " /proc/net/wireless | awk '{print $4}'");
+        if(QString(out.c_str()).isEmpty()){
+            return 0;
         }
-        return result;
+        try {
+            return std::stoi(out);
+        }
+        catch (const std::invalid_argument& e) {
+            qDebug() << "signal failed: " << out.c_str();
+            return 0;
+        }
+        return -100;
     }
 signals:
     void BSSAdded(Wlan*, QDBusObjectPath, QVariantMap);

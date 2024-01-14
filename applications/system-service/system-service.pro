@@ -1,4 +1,5 @@
 QT += dbus
+QT += quick
 
 CONFIG += c++17
 CONFIG += console
@@ -85,7 +86,6 @@ DISTFILES += \
     generate_xml.sh \
     org.freedesktop.login1.xml
 
-include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
 

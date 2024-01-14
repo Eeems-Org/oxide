@@ -470,54 +470,60 @@ void Application::showSplashScreen(){
         Q_UNUSED(t);
 #endif
         Oxide::Sentry::sentry_span(t, "wait", "Wait for screen to be ready", [frameBuffer](){
-            while(frameBuffer->paintingActive()){
-                EPFrameBuffer::waitForLastUpdate();
-            }
+            dispatchToMainThread([frameBuffer]{
+                while(frameBuffer->paintingActive()){
+                    EPFrameBuffer::waitForLastUpdate();
+                }
+            });
         });
         qDebug() << "Displaying splashscreen for" << name();
         Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this, frameBuffer](){
-            QPainter painter(frameBuffer);
-            auto fm = painter.fontMetrics();
-            auto size = frameBuffer->size();
-            painter.fillRect(frameBuffer->rect(), Qt::white);
-            QString splashPath = splash();
-            if(splashPath.isEmpty() || !QFile::exists(splashPath)){
-                splashPath = icon();
-            }
-            if(!splashPath.isEmpty() && QFile::exists(splashPath)){
-                qDebug() << "Using image" << splashPath;
-                int splashWidth = size.width() / 2;
-                QSize splashSize(splashWidth, splashWidth);
-                QImage splash = QImage(splashPath).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                QRect splashRect(
-                    QPoint(
-                        (size.width() / 2) - (splashWidth / 2),
-                        (size.height() / 2) - (splashWidth / 2)
-                    ),
-                    splashSize
+            dispatchToMainThread([this, frameBuffer]{
+                QPainter painter(frameBuffer);
+                auto fm = painter.fontMetrics();
+                auto size = frameBuffer->size();
+                painter.fillRect(frameBuffer->rect(), Qt::white);
+                QString splashPath = splash();
+                if(splashPath.isEmpty() || !QFile::exists(splashPath)){
+                    splashPath = icon();
+                }
+                if(!splashPath.isEmpty() && QFile::exists(splashPath)){
+                    qDebug() << "Using image" << splashPath;
+                    int splashWidth = size.width() / 2;
+                    QSize splashSize(splashWidth, splashWidth);
+                    QImage splash = QImage(splashPath).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                    QRect splashRect(
+                        QPoint(
+                            (size.width() / 2) - (splashWidth / 2),
+                            (size.height() / 2) - (splashWidth / 2)
+                        ),
+                        splashSize
+                    );
+                    painter.drawImage(splashRect, splash, splash.rect());
+                    EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
+                }
+                painter.setPen(Qt::black);
+                auto text = "Loading " + displayName() + "...";
+                int padding = 10;
+                int textHeight = fm.height() + padding;
+                QRect textRect(
+                    QPoint(0 + padding, size.height() - textHeight),
+                    QSize(size.width() - padding * 2, textHeight)
                 );
-                painter.drawImage(splashRect, splash, splash.rect());
-                EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
-            }
-            painter.setPen(Qt::black);
-            auto text = "Loading " + displayName() + "...";
-            int padding = 10;
-            int textHeight = fm.height() + padding;
-            QRect textRect(
-                QPoint(0 + padding, size.height() - textHeight),
-                QSize(size.width() - padding * 2, textHeight)
-            );
-            painter.drawText(
-                textRect,
-                Qt::AlignVCenter | Qt::AlignRight,
-                text
-            );
-            EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Grayscale, EPFrameBuffer::PartialUpdate, true);
-            painter.end();
+                painter.drawText(
+                    textRect,
+                    Qt::AlignVCenter | Qt::AlignRight,
+                    text
+                );
+                EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Grayscale, EPFrameBuffer::PartialUpdate, true);
+                painter.end();
+            });
         });
         qDebug() << "Waitng for screen to finish...";
         Oxide::Sentry::sentry_span(t, "wait", "Wait for screen finish updating", [](){
-            EPFrameBuffer::waitForLastUpdate();
+            dispatchToMainThread([]{
+                EPFrameBuffer::waitForLastUpdate();
+            });
         });
     });
     qDebug() << "Finished painting splash screen for" << name();
@@ -548,3 +554,5 @@ void Application::startSpan(std::string operation, std::string description){
     }
     span = Oxide::Sentry::start_span(transaction, operation, description);
 }
+
+#include "moc_application.cpp"

@@ -12,15 +12,9 @@
 
 #include "screenprovider.h"
 
-#ifdef __arm__
-Q_IMPORT_PLUGIN(QsgEpaperPlugin)
-#endif
-
 using namespace std;
 using namespace Oxide;
 using namespace Oxide::Sentry;
-
-const char* qt_version = qVersion();
 
 void sigHandler(int signal){
     ::signal(signal, SIG_DFL);
@@ -28,17 +22,7 @@ void sigHandler(int signal){
 }
 
 int main(int argc, char *argv[]){
-    if (strcmp(qt_version, QT_VERSION_STR) != 0){
-        qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
-    }
-#ifdef __arm__
-    // Setup epaper
-    qputenv("QMLSCENE_DEVICE", "epaper");
-    qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
-    qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
-    qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
-//    qputenv("QT_DEBUG_BACKINGSTORE", "1");
-#endif
+    deviceSettings.setupQtEnvironment();
     QGuiApplication app(argc, argv);
     sentry_init("corrupt", argv);
     app.setOrganizationName("Eeems");

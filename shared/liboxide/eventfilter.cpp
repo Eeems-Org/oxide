@@ -95,3 +95,5 @@ namespace Oxide{
         return false;
     }
 }
+
+#include "moc_eventfilter.cpp"

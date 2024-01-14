@@ -103,24 +103,28 @@ public:
         }
         Oxide::Sentry::sentry_transaction("screen", "drawFullscrenImage", [img, path](Oxide::Sentry::Transaction* t){
             Q_UNUSED(t);
-            QRect rect = EPFrameBuffer::framebuffer()->rect();
-            QPainter painter(EPFrameBuffer::framebuffer());
-            painter.drawImage(rect, img);
-            painter.end();
-            EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
-            EPFrameBuffer::waitForLastUpdate();
+            Oxide::dispatchToMainThread([img]{
+                QRect rect = EPFrameBuffer::framebuffer()->rect();
+                QPainter painter(EPFrameBuffer::framebuffer());
+                painter.drawImage(rect, img);
+                painter.end();
+                EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
+                EPFrameBuffer::waitForLastUpdate();
+            });
         });
         return true;
     }
 
     Q_INVOKABLE QDBusObjectPath screenshot();
     QImage copy(){
-        auto frameBuffer = EPFrameBuffer::framebuffer();
-        qDebug() << "Waiting for other painting to finish...";
-        while(frameBuffer->paintingActive()){
-            EPFrameBuffer::waitForLastUpdate();
-        }
-        return frameBuffer->copy();
+        return Oxide::dispatchToMainThread<QImage>([]{
+            auto frameBuffer = EPFrameBuffer::framebuffer();
+            qDebug() << "Waiting for other painting to finish...";
+            while(frameBuffer->paintingActive()){
+                EPFrameBuffer::waitForLastUpdate();
+            }
+            return frameBuffer->copy();
+        });
     }
 
 public slots:

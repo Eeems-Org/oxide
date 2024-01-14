@@ -10,18 +10,22 @@ QDBusObjectPath ScreenAPI::screenshot(){
 #ifdef DEBUG
     qDebug() << "Using path" << filePath;
 #endif
-    QImage screen = copy();
-    QRect rect = notificationAPI->paintNotification("Taking Screenshot...", "");
-    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
-    QDBusObjectPath path("/");
-    if(!screen.save(filePath)){
-        qDebug() << "Failed to take screenshot";
-    }else{
-        path = addScreenshot(filePath)->qPath();
-    }
-    QPainter painter(EPFrameBuffer::framebuffer());
-    painter.drawImage(rect, screen, rect);
-    painter.end();
-    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::PartialUpdate, true);
-    return path;
+    return dispatchToMainThread<QDBusObjectPath>([this, filePath]{
+        QImage screen = copy();
+        QRect rect = notificationAPI->paintNotification("Taking Screenshot...", "");
+        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+        QDBusObjectPath path("/");
+        if(!screen.save(filePath)){
+            qDebug() << "Failed to take screenshot";
+        }else{
+            path = addScreenshot(filePath)->qPath();
+        }
+        QPainter painter(EPFrameBuffer::framebuffer());
+        painter.drawImage(rect, screen, rect);
+        painter.end();
+        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::PartialUpdate, true);
+        return path;
+    });
 }
+
+#include "moc_screenapi.cpp"

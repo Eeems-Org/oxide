@@ -11,7 +11,6 @@
 using namespace std;
 using namespace Oxide::Sentry;
 
-const char* qt_version = qVersion();
 const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/oxide.pid";
 const char* lockPath = "/run/oxide/oxide.lock";
@@ -45,14 +44,7 @@ int main(int argc, char* argv[]){
         O_WARNING("rm2fb not detected. Running xochitl instead!");
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
-    if (strcmp(qt_version, QT_VERSION_STR) != 0){
-        O_WARNING("Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR);
-    }
-#ifdef __arm__
-    // Setup epaper
-    qputenv("QMLSCENE_DEVICE", "epaper");
-    qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
-#endif
+    deviceSettings.setupQtEnvironment(false);
     QGuiApplication app(argc, argv);
     sentry_init("tarnish", argv);
     app.setOrganizationName("Eeems");

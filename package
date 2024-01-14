@@ -2,8 +2,8 @@
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 
-pkgnames=(oxide oxide-extra oxide-utils inject_evdev liboxide libsentry)
-_oxidever=2.6
+pkgnames=(oxide oxide-extra oxide-utils inject_evdev liboxide liboxide-dev libsentry)
+_oxidever=2.7
 pkgver="$_oxidever~VERSION~"
 _sentryver=0.5.0
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
@@ -61,7 +61,7 @@ build() {
 oxide() {
     pkgdesc="Launcher application"
     section="launchers"
-    installdepends=("oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver")
+    installdepends=("oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver" "reboot-guard")
     replaces=(erode tarnish decay corrupt)
     conflicts=(erode tarnish decay corrupt)
 
@@ -157,6 +157,7 @@ oxide-utils() {
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-desktop-menu
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-desktop-icon
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-open
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-settings
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/gio
     }
 }
@@ -177,6 +178,19 @@ liboxide() {
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libliboxide.so*
+    }
+}
+
+liboxide-dev() {
+    pkgdesc="Shared library for oxide applications"
+    section="devel"
+    installdepends=("liboxide=$pkgver")
+
+    package() {
+        install -D -m 755 -t "$pkgdir"/opt/lib/pkgconfig "$srcdir"/release/opt/lib/pkgconfig/liboxide.pc
+        install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/epframebuffer.h
+        install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/liboxide.h
+        cp -ar "$srcdir"/release/opt/include/liboxide/ "$pkgdir"/opt/include/
     }
 }
 

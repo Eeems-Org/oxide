@@ -38,7 +38,7 @@ xdg-open.depends = system-service
 gio.depends = system-service
 xdg-settings.depends = system-service
 xdg-icon-resource.depends = system-service
-desktop-file-edit.depends = desktop-file-edit
+desktop-file-edit.depends =
 desktop-file-install.depends =
 inject_evdev.depends =
 

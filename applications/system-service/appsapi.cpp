@@ -184,3 +184,5 @@ void AppsAPI::ensureForegroundApp() {
         }
     });
 }
+
+#include "moc_appsapi.cpp"

@@ -12,7 +12,6 @@
 #include <sys/file.h>
 #include <fcntl.h>
 
-
 #define BITS_PER_LONG (sizeof(long) * 8)
 #define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
 #define OFF(x)  ((x)%BITS_PER_LONG)
@@ -97,20 +96,10 @@ namespace Oxide {
         return pids;
     }
     void dispatchToMainThread(std::function<void()> callback){
-        if(QThread::currentThread() == qApp->thread()){
+        dispatchToMainThread<int>([callback]{
             callback();
-            return;
-        }
-        // any thread
-        QTimer* timer = new QTimer();
-        timer->moveToThread(qApp->thread());
-        timer->setSingleShot(true);
-        QObject::connect(timer, &QTimer::timeout, [=](){
-            // main thread
-            callback();
-            timer->deleteLater();
+            return 0;
         });
-        QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
     }
     uid_t getUID(const QString& name){
         char buffer[1024];
@@ -307,6 +296,20 @@ namespace Oxide {
         }
         QProcess::execute("timedatectl", QStringList() << "set-timezone" << timezone);
     }
+    void DeviceSettings::setupQtEnvironment(bool touch){
+        auto qt_version = qVersion();
+        if (strcmp(qt_version, QT_VERSION_STR) != 0){
+            qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
+        }
+#ifdef __arm__
+        qputenv("QMLSCENE_DEVICE", "epaper");
+        qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
+#endif
+        if(touch){
+            qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
+            qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
+        }
+    }
     WifiNetworks XochitlSettings::wifinetworks(){
         beginGroup("wifinetworks");
         QMap<QString, QVariantMap> wifinetworks;
@@ -354,3 +357,5 @@ namespace Oxide {
     O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, onLogin)
     O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, onFailedLogin)
 }
+
+#include "moc_liboxide.cpp"
