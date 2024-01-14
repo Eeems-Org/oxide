@@ -16,6 +16,9 @@ QDBusObjectPath ScreenAPI::screenshot(){
         QRect rect = notificationAPI->paintNotification("Taking Screenshot...", "");
         EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
         QDBusObjectPath path("/");
+        if(systemAPI->landscape()){
+            screen = screen.transformed(QTransform().rotate(270.0));
+        }
         if(!screen.save(filePath)){
             qDebug() << "Failed to take screenshot";
         }else{
