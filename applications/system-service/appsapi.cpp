@@ -225,6 +225,13 @@ AppsAPI::~AppsAPI() {
         qDebug() << "Displaying final quit message...";
         painter2.fillRect(rect, Qt::black);
         painter2.setPen(Qt::white);
+        if(systemAPI->landscape()){
+            auto x = rect.width() / 2;
+            auto y = rect.height() / 2;
+            painter2.translate(x, y);
+            painter2.rotate(90.0);
+            painter2.translate(-x, -y);
+        }
         painter2.drawText(rect, Qt::AlignCenter, "Goodbye!");
         EPFrameBuffer::waitForLastUpdate();
         EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
