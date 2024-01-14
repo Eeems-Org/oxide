@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
+#include <liboxide/oxideqml.h>
 
 #include "controller.h"
 
@@ -14,6 +15,7 @@
 
 using namespace std;
 using namespace Oxide;
+using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
 void sigHandler(int signal){
@@ -32,8 +34,8 @@ int main(int argc, char *argv[]){
     auto screenProvider = new ScreenProvider(&app);
     Controller controller(&app, screenProvider);
     QQmlApplicationEngine engine;
+    registerQML(&engine);
     QQmlContext* context = engine.rootContext();
-    context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("apps", QVariant::fromValue(controller.getApps()));
     context->setContextProperty("controller", &controller);
     engine.rootContext()->setContextProperty("screenProvider", screenProvider);
