@@ -9,11 +9,13 @@
 #include <fcntl.h>
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
+#include <liboxide/oxideqml.h>
 
 #include "controller.h"
 
 using namespace std;
 using namespace Oxide;
+using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
 int main(int argc, char *argv[]){
@@ -26,9 +28,9 @@ int main(int argc, char *argv[]){
     app.setApplicationDisplayName("Process Monitor");
     app.setApplicationVersion(APP_VERSION);
     QQmlApplicationEngine engine;
+    registerQML(&engine);
     QQmlContext* context = engine.rootContext();
     Controller controller(&engine);
-    context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("controller", &controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty()){
