@@ -354,7 +354,10 @@ namespace Oxide {
                 continue;
             }
             SysObject sys("/sys/class/input/" + path + "/device");
-            return sys.strProperty("name") != "keyd virtual keyboard";
+            if(sys.strProperty("name") == "keyd virtual keyboard"){
+                continue;
+            }
+            return true;
         }
         return false;
     }

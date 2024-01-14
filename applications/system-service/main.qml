@@ -9,19 +9,35 @@ Window{
     opacity: 0
     visible: true
     Shortcut{
-        sequence: "Alt+Tab"
+        sequences: ["Alt+Tab"]
         onActivated: controller.taskSwitcher()
     }
     Shortcut{
-        sequences: ["Shift+Option+S", "Shift+Meta+S", "Shift+End+S"]
+        sequences: ["Shift+Meta+S", "Shift+End+S", StandardKey.Print]
         onActivated: controller.screenshot()
     }
     Shortcut{
-        sequence: ["Ctrl+Shift+Esc", "Ctrl+Shift+1"]
+        sequences: ["Ctrl+Shift+Esc", "Ctrl+Shift+1", Qt.Key_Launch0]
         onActivated: controller.processManager()
     }
     Shortcut{
-        sequence: ["Option+Backspace", "Meta+Backspace", "End+Backspace"]
+        sequences: ["Meta+Backspace", "End+Backspace"]
         onActivated: controller.back()
+    }
+    Shortcut{
+        sequences: [Qt.Key_Suspend, "Ctrl+Shift+Alt+P+S"]
+        onActivated: controller.suspend()
+    }
+    Shortcut{
+        sequences: [Qt.Key_PowerDown, "Ctrl+Shift+Alt+P+O"]
+        onActivated: controller.powerOff()
+    }
+    Shortcut{
+        sequences: [Qt.Key_LogOff, Qt.Key_ScreenSaver, "End+L", "Meta+L"]
+        onActivated: controller.lock()
+    }
+    Shortcut{
+        sequences: [Qt.Key_Terminal, "Ctrl+Alt+T"]
+        onActivated: controller.terminal()
     }
 }

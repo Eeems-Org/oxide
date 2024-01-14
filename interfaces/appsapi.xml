@@ -51,6 +51,8 @@
     </method>
     <method name="openTaskSwitcher">
     </method>
+    <method name="openTerminal">
+    </method>
     <method name="registerApplication">
       <arg type="o" direction="out"/>
       <arg name="properties" type="a{sv}" direction="in"/>

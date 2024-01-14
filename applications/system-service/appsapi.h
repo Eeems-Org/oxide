@@ -547,6 +547,36 @@ public slots:
         qDebug() << "Opening task switcher";
         app->launchNoSecurityCheck();
     }
+    void openTerminal(){
+        if(locked() || !hasPermission("apps")){
+            return;
+        }
+        auto path = this->currentApplicationNoSecurityCheck();
+        if(path.path() != "/"){
+            auto currentApplication = getApplication(path);
+            if(
+                currentApplication != nullptr
+                && currentApplication->stateNoSecurityCheck() != Application::Inactive
+                ){
+                if(path == m_lockscreenApplication){
+                    qDebug() << "Can't open task switcher, on the lockscreen";
+                    return;
+                }
+            }
+        }
+        auto app = getApplication("yaft");
+        if(app != nullptr){
+            app->launchNoSecurityCheck();
+            return;
+        }
+        app = getApplication("fingerterm");
+        if(app == nullptr){
+            qDebug() << "Unable to find terminal application";
+            return;
+        }
+        qDebug() << "Opening terminal";
+        app->launchNoSecurityCheck();
+    }
 
 private:
     bool m_stopping;
