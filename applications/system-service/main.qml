@@ -25,14 +25,6 @@ Window{
         onActivated: controller.back()
     }
     Shortcut{
-        sequences: [Qt.Key_Suspend, "Ctrl+Shift+Alt+S"]
-        onActivated: controller.suspend()
-    }
-    Shortcut{
-        sequences: [Qt.Key_PowerDown, "Ctrl+Shift+Alt+O"]
-        onActivated: controller.powerOff()
-    }
-    Shortcut{
         sequences: [Qt.Key_LogOff, Qt.Key_ScreenSaver, "End+L", "Meta+L"]
         onActivated: controller.lock()
     }

@@ -4,7 +4,6 @@
 
 #include "appsapi.h"
 #include "screenapi.h"
-#include "systemapi.h"
 
 class Controller : public QObject{
     Q_OBJECT
@@ -14,8 +13,6 @@ public:
     Q_INVOKABLE void taskSwitcher(){ appsAPI->openTaskSwitcher(); }
     Q_INVOKABLE void processManager(){ appsAPI->openTaskManager(); }
     Q_INVOKABLE void back(){ appsAPI->previousApplication(); }
-    Q_INVOKABLE void suspend(){ systemAPI->suspend(); }
-    Q_INVOKABLE void powerOff(){ systemAPI->powerOff(); }
     Q_INVOKABLE void lock(){ appsAPI->openLockScreen(); }
     Q_INVOKABLE void terminal(){ appsAPI->openTerminal(); }
 };

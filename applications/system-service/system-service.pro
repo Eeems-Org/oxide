@@ -40,6 +40,10 @@ service.files = ../../assets/etc/systemd/system/tarnish.service
 service.path = /etc/systemd/system/
 INSTALLS += service
 
+keyd.files = ../../assets/opt/etc/keyd/oxide.conf
+keyd.path = /opt/etc/keyd/
+INSTALLS += keyd
+
 applications.files = ../../assets/opt/usr/share/applications/xochitl.oxide
 applications.path = /opt/usr/share/applications/
 INSTALLS += applications
