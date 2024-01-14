@@ -5,6 +5,9 @@
 #include <QCoreApplication>
 #include <QTimer>
 
+#include <private/qguiapplication_p.h>
+#include <private/qinputdevicemanager_p.h>
+
 #include <pwd.h>
 #include <grp.h>
 #include <linux/input.h>
@@ -143,39 +146,51 @@ namespace Oxide {
             device.open(QIODevice::ReadOnly);
             int fd = device.handle();
             int version;
-            if (ioctl(fd, EVIOCGVERSION, &version)){
+            if(ioctl(fd, EVIOCGVERSION, &version)){
                 O_DEBUG("    Invalid");
                 continue;
             }
             unsigned long bit[EV_MAX];
             ioctl(fd, EVIOCGBIT(0, EV_MAX), bit);
-            if (test_bit(EV_KEY, bit)) {
-                if (checkBitSet(fd, EV_KEY, BTN_STYLUS) && test_bit(EV_ABS, bit)) {
+            if(test_bit(EV_KEY, bit)){
+                if(checkBitSet(fd, EV_KEY, BTN_STYLUS) && test_bit(EV_ABS, bit)){
                     O_DEBUG("    Wacom input device detected");
-                    wacomPath = fullPath.toStdString();
+                    if(wacomPath.empty()){
+                        wacomPath = fullPath.toStdString();
+                    }
                     continue;
                 }
-                if (checkBitSet(fd, EV_KEY, KEY_POWER)) {
+                if(checkBitSet(fd, EV_KEY, KEY_POWER)){
                     O_DEBUG("    Buttons input device detected");
-                    buttonsPath = fullPath.toStdString();
+                    if(buttonsPath.empty()){
+                        buttonsPath = fullPath.toStdString();
+                    }
                     continue;
                 }
             }
-            if (checkBitSet(fd, EV_ABS, ABS_MT_SLOT)) {
+            if(checkBitSet(fd, EV_ABS, ABS_MT_SLOT)){
                 O_DEBUG("    Touch input device detected");
-                touchPath = fullPath.toStdString();
+                if(touchPath.empty()){
+                    touchPath = fullPath.toStdString();
+                }
                 continue;
             }
             O_DEBUG("    Invalid");
         }
-        if (wacomPath.empty()) {
+        if(wacomPath.empty()){
             O_WARNING("Wacom input device not found");
+        }else{
+            O_DEBUG(("Wacom input device: " + wacomPath).c_str());
         }
-        if (touchPath.empty()) {
+        if(touchPath.empty()){
             O_WARNING("Touch input device not found");
+        }else{
+            O_DEBUG(("Touch input device: " + touchPath).c_str());
         }
-        if (buttonsPath.empty()){
+        if(buttonsPath.empty()){
             O_WARNING("Buttons input device not found");
+        }else{
+            O_DEBUG(("Buttons input device: " + buttonsPath).c_str());
         }
     }
     DeviceSettings::~DeviceSettings(){}
@@ -303,12 +318,32 @@ namespace Oxide {
         }
 #ifdef __arm__
         qputenv("QMLSCENE_DEVICE", "epaper");
+        qputenv("QT_QUICK_BACKEND","epaper");
         qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
 #endif
         if(touch){
             qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
             qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
         }
+    }
+    bool DeviceSettings::keyboardAttached(){
+        auto count = QGuiApplicationPrivate::inputDeviceManager()->deviceCount(QInputDeviceManager::DeviceTypeKeyboard);
+        switch(getDeviceType()){
+            case RM2:
+                return count > 3;
+            case RM1:
+                return count > 2;
+            default:
+                return count;
+        }
+    }
+    void DeviceSettings::onKeyboardAttachedChanged(std::function<void()> callback){
+        auto manager = QGuiApplicationPrivate::inputDeviceManager();
+        QObject::connect(manager, &QInputDeviceManager::deviceListChanged, [callback](QInputDeviceManager::DeviceType type){
+            if(type == QInputDeviceManager::DeviceTypeKeyboard){
+                callback();
+            }
+        });
     }
     WifiNetworks XochitlSettings::wifinetworks(){
         beginGroup("wifinetworks");

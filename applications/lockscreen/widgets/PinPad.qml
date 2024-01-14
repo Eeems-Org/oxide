@@ -5,15 +5,17 @@ import "."
 
 GridLayout {
     id: root
+    focus: true
     property string value: ""
     property string label: "PIN"
     property string message: ""
     property bool showPress: true
+    property alias buttonsVisible: buttons.visible
     signal submit(string pin)
 
     anchors.centerIn: parent
-    rowSpacing: children[3].width / 2
-    columnSpacing: children[3].width / 2
+    rowSpacing: buttons.rowSpacing
+    columnSpacing: buttons.columnSpacing
     columns: 3
     rows: 6
 
@@ -27,6 +29,46 @@ GridLayout {
             return;
         }
         submitTimer.start();
+    }
+    function keyPress(event){
+        event.accepted = true;
+
+    }
+
+    function keyRelease(event){
+        switch(event.key){
+            case Qt.Key_0:
+                button0.clicked();
+                break;
+            case Qt.Key_1:
+                button1.clicked();
+                break;
+            case Qt.Key_2:
+                button2.clicked();
+                break;
+            case Qt.Key_3:
+                button3.clicked();
+                break;
+            case Qt.Key_4:
+                button4.clicked();
+                break;
+            case Qt.Key_5:
+                button5.clicked();
+                break;
+            case Qt.Key_6:
+                button6.clicked();
+                break;
+            case Qt.Key_7:
+                button7.clicked();
+                break;
+            case Qt.Key_8:
+                button8.clicked();
+                break;
+            case Qt.Key_9:
+                button9.clicked();
+                break;
+        }
+        event.accepted = true;
     }
 
     Timer {
@@ -103,34 +145,43 @@ GridLayout {
         }
         Item { Layout.fillWidth: true }
     }
+    GridLayout {
+        id: buttons
+        rowSpacing: children[3].width / 2
+        columnSpacing: children[3].width / 2
+        Layout.columnSpan: 3
+        Layout.rowSpan: 4
+        columns: 3
+        rows: 4
+        PinButton { id: button1; text: "1"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+        PinButton { id: button2; text: "2"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+        PinButton { id: button3; text: "3"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
 
-    PinButton { text: "1"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
-    PinButton { text: "2"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
-    PinButton { text: "3"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+        PinButton { id: button4; text: "4"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+        PinButton { id: button5; text: "5"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+        PinButton { id: button6; text: "6"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
 
-    PinButton { text: "4"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
-    PinButton { text: "5"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
-    PinButton { text: "6"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+        PinButton { id: button7; text: "7"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+        PinButton { id: button8; text: "8"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+        PinButton { id: button9; text: "9"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
 
-    PinButton { text: "7"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
-    PinButton { text: "8"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
-    PinButton { text: "9"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
-
-    Item { Layout.fillWidth: true }
-    PinButton { text: "0"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
-    PinButton {
-        contentItem: Item {
-            Image {
-                anchors.centerIn: parent
-                width: parent.width / 2
-                height: width
-                source: "qrc:/img/backspace.png"
-                fillMode: Image.PreserveAspectFit
+        Item { Layout.fillWidth: true }
+        PinButton { id: button0; text: "0"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
+        PinButton {
+            contentItem: Item {
+                Image {
+                    anchors.centerIn: parent
+                    width: parent.width / 2
+                    height: width
+                    source: "qrc:/img/backspace.png"
+                    fillMode: Image.PreserveAspectFit
+                }
             }
+            hideBorder: true
+            onClicked: root.value = root.value.slice(0, -1)
+            enabled: root.value.length
+            showPress: root.showPress
         }
-        hideBorder: true
-        onClicked: root.value = root.value.slice(0, -1)
-        enabled: root.value.length
-        showPress: root.showPress
     }
+    Keys.onPressed: keyPress
 }

@@ -1,6 +1,8 @@
 QT -= gui
 QT += quick
 QT += dbus
+QT += core_private
+QT += gui-private
 
 TEMPLATE = lib
 DEFINES += LIBOXIDE_LIBRARY
@@ -109,3 +111,9 @@ QMAKE_PKGCONFIG_PREFIX = /opt
 QMAKE_PKGCONFIG_LIBDIR = /opt/lib
 QMAKE_PKGCONFIG_INCDIR = /opt/include
 QMAKE_PKGCONFIG_DESTDIR = pkgconfig
+
+RESOURCES += \
+    oxide.qrc
+
+DISTFILES += \
+    OxideWindow.qml

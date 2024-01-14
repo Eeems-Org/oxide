@@ -1,6 +1,8 @@
 #include <QCommandLineParser>
 #include <QGuiApplication>
 #include <QLockFile>
+#include <QWindow>
+#include <QScreen>
 
 #include <cstdlib>
 #include <filesystem>
@@ -136,6 +138,15 @@ int main(int argc, char* argv[]){
     pidFile.close();
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
         remove(pidPath);
+    });
+    QScreen* screen = app.primaryScreen();
+    QWindow window(screen);
+    window.resize(screen->size());
+    window.setPosition(0, 0);
+    window.setOpacity(0);
+    window.show();
+    deviceSettings.onKeyboardAttachedChanged([]{
+        qDebug() << "Keyboard Attached Changed:" << deviceSettings.keyboardAttached();
     });
     return app.exec();
 }

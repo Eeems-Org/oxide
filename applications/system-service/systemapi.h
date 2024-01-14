@@ -13,6 +13,7 @@
 #include "application.h"
 #include "screenapi.h"
 #include "digitizerhandler.h"
+#include "eventlistener.h"
 #include "login1_interface.h"
 
 #define systemAPI SystemAPI::singleton()
@@ -198,10 +199,30 @@ public:
             });
             qRegisterMetaType<input_event>();
             Oxide::Sentry::sentry_span(t, "input", "Connect input events", [this]{
-                connect(touchHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
                 connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
-                connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
                 connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
+                eventListener->append([this](QObject* object, QEvent* event){
+                    Q_UNUSED(object);
+                    switch(event->type()){
+                        case QEvent::KeyRelease:
+                        case QEvent::KeyPress:
+                        case QEvent::TabletPress:
+                        case QEvent::TabletMove:
+                        case QEvent::TabletRelease:
+                        case QEvent::TabletTrackingChange:
+                        case QEvent::TabletEnterProximity:
+                        case QEvent::TabletLeaveProximity:
+                        case QEvent::TouchBegin:
+                        case QEvent::TouchCancel:
+                        case QEvent::TouchEnd:
+                        case QEvent::TouchUpdate:
+                            activity();
+                            break;
+                        default:
+                            break;
+                    }
+                    return false;
+                });
             });
             qDebug() << "System API ready to use";
         });

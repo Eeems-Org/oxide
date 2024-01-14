@@ -21,6 +21,7 @@ class Controller : public QObject {
     Q_PROPERTY(bool telemetry READ telemetry WRITE setTelemetry NOTIFY telemetryChanged)
     Q_PROPERTY(bool applicationUsage READ applicationUsage WRITE setApplicationUsage NOTIFY applicationUsageChanged)
     Q_PROPERTY(bool crashReport READ crashReport WRITE setCrashReport NOTIFY crashReportChanged)
+    Q_PROPERTY(bool landscape READ landscape NOTIFY landscapeChanged)
 
 public:
     Controller(QObject* parent)
@@ -112,6 +113,11 @@ public:
         connect(&sharedSettings, &Oxide::SharedSettings::telemetryChanged, this, &Controller::telemetryChanged);
         connect(&sharedSettings, &Oxide::SharedSettings::applicationUsageChanged, this, &Controller::applicationUsageChanged);
         connect(&sharedSettings, &Oxide::SharedSettings::crashReportChanged, this, &Controller::crashReportChanged);
+
+        deviceSettings.onKeyboardAttachedChanged([this]{
+            O_DEBUG("Keyboard Attached Changed");
+            emit landscapeChanged(deviceSettings.keyboardAttached());
+        });
     }
     ~Controller(){
         if(clockTimer->isActive()){
@@ -126,6 +132,7 @@ public:
     void setApplicationUsage(bool applicationUsage){ sharedSettings.set_applicationUsage(applicationUsage); }
     bool crashReport(){ return sharedSettings.crashReport(); }
     void setCrashReport(bool crashReport){ sharedSettings.set_crashReport(crashReport); }
+    bool landscape(){ return deviceSettings.keyboardAttached(); }
 
     Q_INVOKABLE void startup(){
         if(!getBatteryUI() || !getWifiUI() || !getClockUI() || !getStateControllerUI()){
@@ -325,6 +332,7 @@ signals:
     void telemetryChanged(bool);
     void applicationUsageChanged(bool);
     void crashReportChanged(bool);
+    void landscapeChanged(bool);
 
 private slots:
     void deviceSuspending(){
