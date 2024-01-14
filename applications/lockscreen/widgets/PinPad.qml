@@ -67,6 +67,9 @@ GridLayout {
             case Qt.Key_9:
                 button9.clicked();
                 break;
+            case Qt.Key_Backspace:
+                buttonBackspace.clicked();
+                break;
         }
         event.accepted = true;
     }
@@ -168,6 +171,7 @@ GridLayout {
         Item { Layout.fillWidth: true }
         PinButton { id: button0; text: "0"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
         PinButton {
+            id: buttonBackspace
             contentItem: Item {
                 Image {
                     anchors.centerIn: parent

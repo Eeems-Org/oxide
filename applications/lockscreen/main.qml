@@ -10,15 +10,12 @@ OxideWindow {
     objectName: "window"
     visible: stateController.state != "loading"
     title: qsTr("Oxide")
-    landscape: controller.landscape
-    disableQuitShortcut: true
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted: {
         controller.startup();
         pinEntry.forceActiveFocus();
     }
-    focus: true
     centerMenu: [
         Label {
             objectName: "clock"
@@ -94,11 +91,16 @@ OxideWindow {
             }
         },
         CustomMenu {
-            BetterMenu {
+            OxideMenu {
                 id: powerMenu
                 title: qsTr("");
                 font: iconFont.name
                 width: 260
+                color: "white"
+                backgroundColor: "black"
+                activeColor: "black"
+                activeBackgroundColor: "white"
+                borderColor: "white"
                 Action {
                     text: qsTr(" Suspend")
                     enabled: !controller.sleepInhibited
@@ -126,17 +128,13 @@ OxideWindow {
             }
         }
     ]
-    pageContent: [
-        Rectangle {
-            anchors.fill: parent
-            color: "black"
-        },
+    initialItem: Item {
+        anchors.fill: parent
         PinPad {
             id: pinEntry
             focus: true
             objectName: "pinEntry"
-            visible: false
-            buttonsVisible: !controller.landscape
+            buttonsVisible: !window.landscape
             showPress: false
             anchors.centerIn: parent
             label: {
@@ -163,16 +161,18 @@ OxideWindow {
                 }
                 message = "";
             }
-        },
-        Popup {
-            visible: stateController.state == "import"
-            x: (parent.width / 2) - (width / 2)
-            y: (parent.height / 2) - (height / 2)
+        }
+    }
+    Component {
+        id: importDialog
+        Rectangle{
+            color: "white"
+            anchors.centerIn: parent
             width: 1000
+            height: contentItem.implicitHeight
             clip: true
-            closePolicy: Popup.NoAutoClose
             ColumnLayout {
-                anchors.fill: parent
+                anchors.centerIn: parent
                 RowLayout {
                     Item { Layout.fillWidth: true }
                     Label {
@@ -206,16 +206,18 @@ OxideWindow {
                     }
                 }
             }
-        },
-        Popup {
-            visible: stateController.state == "pinPrompt"
-            x: (parent.width / 2) - (width / 2)
-            y: (parent.height / 2) - (height / 2)
+        }
+    }
+    Component {
+        id: pinPrompt
+        Rectangle{
+            color: "white"
+            anchors.centerIn: parent
             width: 1000
+            height: contentItem.implicitHeight
             clip: true
-            closePolicy: Popup.NoAutoClose
             ColumnLayout {
-                anchors.fill: parent
+                anchors.centerIn: parent
                 RowLayout {
                     Item { Layout.fillWidth: true }
                     Label {
@@ -249,16 +251,18 @@ OxideWindow {
                     }
                 }
             }
-        },
-        Popup {
-            visible: stateController.state == "telemetry"
-            x: (parent.width / 2) - (width / 2)
-            y: (parent.height / 2) - (height / 2)
+        }
+    }
+    Component {
+        id: telemetryDialog
+        Rectangle{
+            color: "white"
+            anchors.centerIn: parent
+            height: contentItem.implicitHeight
             width: 1000
             clip: true
-            closePolicy: Popup.NoAutoClose
             ColumnLayout {
-                anchors.fill: parent
+                anchors.centerIn: parent
                 RowLayout {
                     Item { Layout.fillWidth: true }
                     Label {
@@ -269,7 +273,6 @@ OxideWindow {
                 }
                 Label {
                     text: "Oxide has basic telemetry and crash reporting.\nWould you like to enable it?\nSee https://oxide.eeems.codes/faq.html for more\ninformation."
-
                     Layout.fillWidth: true
                 }
                 Item {
@@ -330,9 +333,9 @@ OxideWindow {
                         }
                     }
                 }
-            }
         }
-    ]
+        }
+    }
     StateGroup {
         id: stateController
         objectName: "stateController"
@@ -356,27 +359,27 @@ OxideWindow {
                         console.log("PIN Entry");
                         pinEntry.value = "";
                         pinEntry.forceActiveFocus();
+                        window.stack.pop(window.stack.initialItem);
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: true }
                 }
             },
             Transition {
                 from: "*"; to: "pinPrompt"
                 SequentialAnimation {
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                     ScriptAction { script: {
-                            controller.breadcrumb("navigation", "pinPrompt", "navigation");
+                        controller.breadcrumb("navigation", "pinPrompt", "navigation");
                         console.log("Prompt for PIN creation");
+                        window.stack.push(pinPrompt);
                     } }
                 }
             },
             Transition {
                 from: "*"; to: "telemetry"
                 SequentialAnimation {
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                     ScriptAction { script: {
-                            controller.breadcrumb("navigation", "telemetry", "navigation");
+                        controller.breadcrumb("navigation", "telemetry", "navigation");
                         console.log("Telemetry opt-in screen");
+                        window.stack.push(telemetryDialog);
                     } }
                 }
             },
@@ -388,8 +391,8 @@ OxideWindow {
                         console.log("PIN Confirmation");
                         pinEntry.value = "";
                         pinEntry.forceActiveFocus();
+                        window.stack.pop(window.stack.initialItem);
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: true }
                 }
             },
             Transition {
@@ -398,8 +401,8 @@ OxideWindow {
                     ScriptAction { script: {
                         controller.breadcrumb("navigation", "import", "navigation");
                         console.log("Import PIN");
+                        window.stack.push(importDialog);
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                 }
             },
             Transition {
@@ -410,47 +413,28 @@ OxideWindow {
                         console.log("PIN Setup");
                         pinEntry.value = "";
                         pinEntry.forceActiveFocus();
+                        window.stack.pop(window.stack.initialItem);
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: true }
                 }
             },
             Transition {
                 from: "*"; to: "noPin"
                 SequentialAnimation {
                     ScriptAction { script: controller.breadcrumb("navigation", "noPin", "navigation"); }
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                 }
             },
             Transition {
                 from: "*"; to: "loading"
                 SequentialAnimation {
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                     ScriptAction { script: {
                         controller.breadcrumb("navigation", "loading", "navigation");
                         console.log("Loading display");
                         controller.startup();
+                        window.stack.pop(window.stack.initialItem);
                     } }
                 }
             }
         ]
-    }
-    Shortcut {
-        sequences: [
-            Qt.Key_0,
-            Qt.Key_1,
-            Qt.Key_2,
-            Qt.Key_3,
-            Qt.Key_4,
-            Qt.Key_5,
-            Qt.Key_6,
-            Qt.Key_7,
-            Qt.Key_8,
-            Qt.Key_9,
-        ]
-        onActivated: {
-            console.log("key pressed");
-            pinEntry.forceActiveFocus();
-        }
     }
     onKeyPressed: (event) => pinEntry.keyPress(event)
     onKeyReleased: (event) => pinEntry.keyRelease(event)

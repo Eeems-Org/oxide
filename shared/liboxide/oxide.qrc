@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/codes.eeems.oxide">
         <file>OxideWindow.qml</file>
+        <file>OxideMenu.qml</file>
     </qresource>
 </RCC>

@@ -16,11 +16,13 @@
 #include <cstdlib>
 #include <signal.h>
 #include <liboxide.h>
+#include <liboxide/oxideqml.h>
 
 #include "controller.h"
 
 using namespace std;
 using namespace Oxide;
+using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
 function<void(int)> shutdown_handler;
@@ -42,7 +44,7 @@ int main(int argc, char* argv[]){
     controller->filter = filter;
     qmlRegisterAnonymousType<AppItem>("codes.eeems.oxide", 2);
     qmlRegisterAnonymousType<Controller>("codes.eeems.oxide", 2);
-    context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
+    registerQML(&engine);
     context->setContextProperty("apps", QVariant::fromValue(controller->getApps()));
     context->setContextProperty("controller", controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));

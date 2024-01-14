@@ -1,5 +1,5 @@
 import QtQuick 2.10
-import QtQuick.Window 2.3
+import QtQuick.Window 2.15
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
 
@@ -10,17 +10,22 @@ ApplicationWindow {
     property alias leftMenu: leftMenu.children
     property alias rightMenu: rightMenu.children
     property alias centerMenu: centerMenu.children
-    property alias pageContent: page.contentData
-    property bool landscape: false
-    property bool disableQuitShortcut: false
+    property alias stack: stack
+    property alias initialItem: stack.initialItem
+    property alias backgroundColor: background.color
+    property alias headerBackgroundColor: header.color
+    property bool landscape: Oxide.landscape
+    Component.onCompleted: page.forceActiveFocus()
     function orientationWidth(){ return landscape ? height : width; }
     function orientationHeight(){ return landscape ? width : height;  }
     signal keyPressed(var event)
     signal keyReleased(var event)
     width: Screen.width
     height: Screen.height
+    contentOrientation: landscape ? Qt.LandscapeOrientation : Qt.PortraitOrientation
     Page {
         id: page
+        focus: true
         title: window.title
         visible: window.visible
         rotation: landscape ? 90 : 0
@@ -29,31 +34,41 @@ ApplicationWindow {
         width: window.orientationWidth()
         height: window.orientationHeight()
         header: Rectangle {
+            id: header
             color: "black"
+            height: Math.max(leftMenu.height, centerMenu.height, rightMenu.height)
             RowLayout {
                 id: leftMenu
                 anchors.left: parent.left
-                height: parent.height
             }
             RowLayout {
                 id: rightMenu
                 anchors.right: parent.right
-                height: parent.height
             }
+            // Comes last to make sure it is overtop of any overflow
             RowLayout {
                 id: centerMenu
-                anchors.centerIn: parent
-                height: parent.height
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
             }
         }
         background: Rectangle {
             id: background
             color: "black"
         }
-        Shortcut {
-            sequence: StandardKey.Quit
-            onActivated: !disableQuitShortcut && Qt.quit()
-        }
+        contentData: [
+            StackView {
+                id: stack
+                anchors.fill: parent
+                popEnter: Transition{}
+                popExit: Transition{}
+                pushEnter: Transition{}
+                pushExit: Transition{}
+                replaceEnter: Transition{}
+                replaceExit: Transition{}
+            }
+        ]
         Keys.onPressed: (event) => window.keyPressed(event)
         Keys.onReleased: (event) => window.keyReleased(event)
     }

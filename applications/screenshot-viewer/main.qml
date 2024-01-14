@@ -2,6 +2,7 @@ import QtQuick 2.10
 import QtQuick.Window 2.3
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
+import "qrc:/codes.eeems.oxide"
 import "./widgets"
 
 ApplicationWindow {
@@ -73,7 +74,7 @@ ApplicationWindow {
             }
             CustomMenu {
                 visible: stateController.state === "loaded"
-                BetterMenu {
+                OxideMenu {
                     title: qsTr("");
                     font: iconFont.name
                     width: 310

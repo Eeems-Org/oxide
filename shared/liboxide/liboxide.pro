@@ -13,6 +13,10 @@ CONFIG += precompile_header
 CONFIG += create_pc
 CONFIG += create_prl
 CONFIG += no_install_prl
+CONFIG += qmltypes
+
+QML_IMPORT_NAME = codes.eeems.oxide
+QML_IMPORT_MAJOR_VERSION = 2
 
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
@@ -24,6 +28,7 @@ SOURCES += \
     json.cpp \
     liboxide.cpp \
     oxide_sentry.cpp \
+    oxideqml.cpp \
     power.cpp \
     settingsfile.cpp \
     slothandler.cpp \
@@ -41,6 +46,7 @@ HEADERS += \
     liboxide.h \
     meta.h \
     oxide_sentry.h \
+    oxideqml.h \
     power.h \
     json.h \
     settingsfile.h \
@@ -116,4 +122,5 @@ RESOURCES += \
     oxide.qrc
 
 DISTFILES += \
+    OxideMenu.qml \
     OxideWindow.qml
