@@ -47,62 +47,7 @@ public:
         return instance;
     }
     AppsAPI(QObject* parent);
-    ~AppsAPI() {
-        m_stopping = true;
-        writeApplications();
-        settings.sync();
-        dispatchToMainThread([this]{
-            auto frameBuffer = EPFrameBuffer::framebuffer();
-            qDebug() << "Waiting for other painting to finish...";
-            while(frameBuffer->paintingActive()){
-                EPFrameBuffer::waitForLastUpdate();
-            }
-            QPainter painter(frameBuffer);
-            auto rect = frameBuffer->rect();
-            auto fm = painter.fontMetrics();
-            auto size = frameBuffer->size();
-            qDebug() << "Clearing screen...";
-            painter.setPen(Qt::white);
-            painter.fillRect(rect, Qt::black);
-            EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-            EPFrameBuffer::waitForLastUpdate();
-            qDebug() << "Stopping applications...";
-            for(auto app : applications){
-                if(app->stateNoSecurityCheck() != Application::Inactive){
-                    auto text = "Stopping " + app->displayName() + "...";
-                    qDebug() << text.toStdString().c_str();
-                    int padding = 10;
-                    int textHeight = fm.height() + padding;
-                    QRect textRect(
-                        QPoint(0 + padding, size.height() - textHeight),
-                        QSize(size.width() - padding * 2, textHeight)
-                    );
-                    painter.fillRect(textRect, Qt::black);
-                    painter.drawText(
-                        textRect,
-                        Qt::AlignVCenter | Qt::AlignRight,
-                        text
-                    );
-                    EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
-                    EPFrameBuffer::waitForLastUpdate();
-                }
-                app->stopNoSecurityCheck();
-            }
-            qDebug() << "Ensuring all applications have stopped...";
-            for(auto app : applications){
-                app->waitForFinished();
-                app->deleteLater();
-            }
-            applications.clear();
-            qDebug() << "Displaying final quit message...";
-            painter.fillRect(rect, Qt::black);
-            painter.drawText(rect, Qt::AlignCenter,"Goodbye!");
-            EPFrameBuffer::waitForLastUpdate();
-            EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-            painter.end();
-            EPFrameBuffer::waitForLastUpdate();
-        });
-    }
+    ~AppsAPI();
     void startup();
     int state() { return 0; } // Ignore this, it's a kludge to get the xml to generate
 

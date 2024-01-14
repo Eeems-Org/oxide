@@ -382,39 +382,7 @@ public:
             qDebug() << "Screen saved " << m_screenCapture->size() << "bytes";
         });
     }
-    void recallScreen(){
-        if(m_screenCapture == nullptr){
-            return;
-        }
-        Oxide::Sentry::sentry_transaction("application", "recallScreen", [this](Oxide::Sentry::Transaction* t){
-            qDebug() << "Uncompressing screen...";
-            QImage img;
-            Oxide::Sentry::sentry_span(t, "decompress", "Decompress the framebuffer", [this, &img]{
-                img = QImage::fromData(screenCaptureNoSecurityCheck(), "JPG");
-            });
-            if(img.isNull()){
-                qDebug() << "Screen capture was corrupt";
-                qDebug() << m_screenCapture->size();
-                delete m_screenCapture;
-                return;
-            }
-            qDebug() << "Recalling screen...";
-            Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, img]{
-                dispatchToMainThread([img]{
-                    auto size = EPFrameBuffer::framebuffer()->size();
-                    QRect rect(0, 0, size.width(), size.height());
-                    QPainter painter(EPFrameBuffer::framebuffer());
-                    painter.drawImage(rect, img);
-                    painter.end();
-                    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
-                    EPFrameBuffer::waitForLastUpdate();
-                });
-                delete m_screenCapture;
-                m_screenCapture = nullptr;
-            });
-            qDebug() << "Screen recalled.";
-        });
-    }
+    void recallScreen();
     void waitForFinished(){
         if(m_process->processId()){
             m_process->waitForFinished();

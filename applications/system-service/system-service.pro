@@ -20,6 +20,7 @@ SOURCES += \
     eventlistener.cpp \
     network.cpp \
     notification.cpp \
+    notificationapi.cpp \
     screenapi.cpp \
     screenshot.cpp \
     systemapi.cpp \

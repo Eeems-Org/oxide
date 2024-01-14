@@ -88,32 +88,7 @@ public:
         return list;
     }
 
-    Q_INVOKABLE bool drawFullscreenImage(QString path){
-        if(!hasPermission("screen")){
-            return false;
-        }
-        if(!QFile(path).exists()){
-            qDebug() << "Can't find image" << path;
-            return false;
-        }
-        QImage img(path);
-        if(img.isNull()){
-            qDebug() << "Image data invalid" << path;
-            return false;
-        }
-        Oxide::Sentry::sentry_transaction("screen", "drawFullscrenImage", [img, path](Oxide::Sentry::Transaction* t){
-            Q_UNUSED(t);
-            Oxide::dispatchToMainThread([img]{
-                QRect rect = EPFrameBuffer::framebuffer()->rect();
-                QPainter painter(EPFrameBuffer::framebuffer());
-                painter.drawImage(rect, img);
-                painter.end();
-                EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
-                EPFrameBuffer::waitForLastUpdate();
-            });
-        });
-        return true;
-    }
+    Q_INVOKABLE bool drawFullscreenImage(QString path);
 
     Q_INVOKABLE QDBusObjectPath screenshot();
     QImage copy(){

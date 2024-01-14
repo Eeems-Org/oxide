@@ -1,5 +1,6 @@
 #include <QTimer>
 #include <QFile>
+#include <QTransform>
 
 #include <signal.h>
 #include <liboxide.h>
@@ -480,9 +481,10 @@ void Application::showSplashScreen(){
         Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this, frameBuffer](){
             dispatchToMainThread([this, frameBuffer]{
                 QPainter painter(frameBuffer);
-                auto fm = painter.fontMetrics();
                 auto size = frameBuffer->size();
-                painter.fillRect(frameBuffer->rect(), Qt::white);
+                auto rect = frameBuffer->rect();
+                auto fm = painter.fontMetrics();
+                painter.fillRect(rect, Qt::white);
                 QString splashPath = splash();
                 if(splashPath.isEmpty() || !QFile::exists(splashPath)){
                     splashPath = icon();
@@ -491,7 +493,11 @@ void Application::showSplashScreen(){
                     qDebug() << "Using image" << splashPath;
                     int splashWidth = size.width() / 2;
                     QSize splashSize(splashWidth, splashWidth);
-                    QImage splash = QImage(splashPath).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                    QImage splash = QImage(splashPath);
+                    if(systemAPI->landscape()){
+                        splash = splash.transformed(QTransform().rotate(90.0));
+                    }
+                    splash = splash.scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
                     QRect splashRect(
                         QPoint(
                             (size.width() / 2) - (splashWidth / 2),
@@ -555,4 +561,46 @@ void Application::startSpan(std::string operation, std::string description){
     span = Oxide::Sentry::start_span(transaction, operation, description);
 }
 
+void Application::recallScreen() {
+    if (m_screenCapture == nullptr) {
+        return;
+    }
+    Oxide::Sentry::sentry_transaction(
+        "application", "recallScreen", [this](Oxide::Sentry::Transaction *t) {
+            qDebug() << "Uncompressing screen...";
+            QImage img;
+            Oxide::Sentry::sentry_span(
+                t, "decompress", "Decompress the framebuffer", [this, &img] {
+                    img = QImage::fromData(screenCaptureNoSecurityCheck(), "JPG");
+                });
+            if (img.isNull()) {
+                qDebug() << "Screen capture was corrupt";
+                qDebug() << m_screenCapture->size();
+                delete m_screenCapture;
+                return;
+            }
+            qDebug() << "Recalling screen...";
+            Oxide::Sentry::sentry_span(
+                t, "recall", "Recall the screen", [this, img] {
+                    dispatchToMainThread([img] {
+                        auto size = EPFrameBuffer::framebuffer()->size();
+                        QRect rect(0, 0, size.width(), size.height());
+                        auto frameBuffer = EPFrameBuffer::framebuffer();
+                        QPainter painter(frameBuffer);
+                        painter.drawImage(rect, img);
+                        painter.end();
+                        EPFrameBuffer::sendUpdate(
+                            rect,
+                            EPFrameBuffer::HighQualityGrayscale,
+                            EPFrameBuffer::FullUpdate,
+                            true
+                        );
+                        EPFrameBuffer::waitForLastUpdate();
+                    });
+                    delete m_screenCapture;
+                    m_screenCapture = nullptr;
+                });
+            qDebug() << "Screen recalled.";
+        });
+}
 #include "moc_application.cpp"
