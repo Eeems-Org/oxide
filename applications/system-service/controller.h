@@ -15,4 +15,27 @@ public:
     Q_INVOKABLE void back(){ appsAPI->previousApplication(); }
     Q_INVOKABLE void lock(){ appsAPI->openLockScreen(); }
     Q_INVOKABLE void terminal(){ appsAPI->openTerminal(); }
+    Q_INVOKABLE void close(){
+        auto path = appsAPI->currentApplicationNoSecurityCheck();
+        if(path.path() == "/"){
+            return;
+        }
+        if(path == appsAPI->lockscreenApplication()){
+            return;
+        }
+        if(path == appsAPI->startupApplication()){
+            return;
+        }
+        if(path == appsAPI->taskSwitcherApplication()){
+            return;
+        }
+        auto currentApplication = appsAPI->getApplication(path);
+        if(
+            currentApplication == nullptr
+            || currentApplication->stateNoSecurityCheck() == Application::Inactive
+        ){
+            return;
+        }
+        currentApplication->stop();
+    }
 };

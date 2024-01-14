@@ -32,4 +32,8 @@ Window{
         sequences: [Qt.Key_Terminal, "Ctrl+Alt+T"]
         onActivated: controller.terminal()
     }
+    Shortcut{
+        sequences: ["End+Alt+4", "Alt+F4"]
+        onActivated: controller.close()
+    }
 }
