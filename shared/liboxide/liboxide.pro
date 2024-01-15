@@ -32,6 +32,7 @@ SOURCES += \
     oxideqml.cpp \
     power.cpp \
     settingsfile.cpp \
+    sharedsettings.cpp \
     slothandler.cpp \
     sysobject.cpp \
     signalhandler.cpp \
@@ -52,6 +53,7 @@ HEADERS += \
     power.h \
     json.h \
     settingsfile.h \
+    sharedsettings.h \
     slothandler.h \
     sysobject.h \
     signalhandler.h \

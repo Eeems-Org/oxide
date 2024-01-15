@@ -1,5 +1,5 @@
 #include "oxide_sentry.h"
-#include "liboxide.h"
+#include "sharedsettings.h"
 
 #include <QtGlobal>
 #include <QUuid>
