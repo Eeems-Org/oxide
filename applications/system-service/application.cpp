@@ -513,7 +513,7 @@ void Application::showSplashScreen(){
                 notificationAPI->drawNotificationText("Loading " + displayName() + "...");
             });
         });
-        qDebug() << "Waitng for screen to finish...";
+        qDebug() << "Waiting for screen to finish...";
         Oxide::Sentry::sentry_span(t, "wait", "Wait for screen finish updating", [](){
             dispatchToMainThread([]{
                 EPFrameBuffer::waitForLastUpdate();

@@ -1,0 +1,261 @@
+#include "udev.h"
+#include "debug.h"
+#include "liboxide.h"
+
+#include <fcntl.h>
+#include <cerrno>
+
+#include <QtConcurrent/QtConcurrentRun>
+#include <QThread>
+
+namespace Oxide {
+
+    UDev* UDev::singleton(){
+        static UDev* instance;
+        if(instance == nullptr){
+            instance = new UDev();
+            instance->start();
+        }
+        return instance;
+    }
+
+    UDev::UDev() : QObject(), _thread(this){
+        qRegisterMetaType<Device>("UDev::Device");
+        udevLib = udev_new();
+        connect(&_thread, &QThread::started, [this]{
+            O_DEBUG("UDev::Thread started");
+        });
+        connect(&_thread, &QThread::finished, [this]{
+            O_DEBUG("UDev::Thread finished");
+        });
+        _thread.start(QThread::LowPriority);
+        moveToThread(&_thread);
+    }
+
+    UDev::~UDev(){
+        if(udevLib != nullptr){
+            udev_unref(udevLib);
+            udevLib = nullptr;
+        }
+    }
+
+    void UDev::subsystem(const QString& subsystem, std::function<void(const Device&)> callback){
+        deviceType(subsystem, NULL, callback);
+    }
+
+    void UDev::subsystem(const QString& subsystem, std::function<void()> callback){
+        deviceType(subsystem, NULL, callback);
+    }
+
+    void UDev::deviceType(const QString& subsystem, const QString& deviceType, std::function<void(const Device&)> callback){
+        connect(singleton(), &UDev::event, [callback, subsystem, deviceType](const Device& device){
+            if(device.subsystem == subsystem && (deviceType == NULL || device.deviceType == deviceType)){
+                callback(device);
+            }
+        });
+        singleton()->addMonitor(subsystem, deviceType);
+    }
+
+    void UDev::deviceType(const QString& subsystem, const QString& deviceType, std::function<void()> callback){
+        UDev::deviceType(subsystem, deviceType, [callback](const Device& device){
+            Q_UNUSED(device);
+            callback();
+        });
+    }
+
+    void UDev::start(){
+        statelock.lock();
+        O_DEBUG("UDev::Starting...");
+        exitRequested = false;
+        if(running){
+            statelock.unlock();
+            O_DEBUG("UDev::Already running");
+            return;
+        }
+        QTimer::singleShot(0, [this](){
+            monitor();
+            statelock.unlock();
+            O_DEBUG("UDev::Started");
+        });
+    }
+
+    void UDev::stop(){
+        statelock.lock();
+        O_DEBUG("UDev::Stopping...");
+        if(running){
+            exitRequested = true;
+        }
+        statelock.unlock();
+    }
+
+    bool UDev::isRunning(){ return running; }
+
+    void UDev::wait(){
+        if(isRunning()){
+            O_DEBUG("UDev::Waiting to stop...");
+            while(running){
+                qApp->processEvents();
+            }
+        }
+    }
+
+    void UDev::addMonitor(QString subsystem, QString deviceType){
+        O_DEBUG("UDev::Adding" << subsystem << deviceType);
+        QStringList* list;
+        if(monitors.contains(subsystem)){
+            list = monitors[subsystem];
+        }else{
+            list = new QStringList();
+            monitors.insert(subsystem, list);
+        }
+        if(!list->contains(deviceType)){
+            list->append(deviceType);
+            update = true;
+        }
+    }
+    void UDev::removeMonitor(QString subsystem, QString deviceType){
+        O_DEBUG("UDev::Removing" << subsystem << deviceType);
+        if(monitors.contains(subsystem)){
+            monitors[subsystem]->removeAll(deviceType);
+            update = true;
+        }
+    }
+
+    QList<UDev::Device> UDev::getDeviceList(const QString& subsystem){
+        QList<Device> deviceList;
+        struct udev_enumerate* udevEnumeration = udev_enumerate_new(udevLib);
+        if(udevEnumeration == nullptr){
+            return deviceList;
+        }
+        udev_enumerate_add_match_subsystem(udevEnumeration, subsystem.toUtf8().constData());
+        udev_enumerate_scan_devices(udevEnumeration);
+        struct udev_list_entry* udevDeviceList  = udev_enumerate_get_list_entry(udevEnumeration);
+        if(udevDeviceList != nullptr){
+            struct udev_list_entry* entry = nullptr;
+            udev_list_entry_foreach(entry, udevDeviceList){
+                if(entry == nullptr){
+                    continue;
+                }
+                const char* path = udev_list_entry_get_name(entry);
+                if(path == nullptr){
+                    continue;
+                }
+                Device device;
+                struct udev_device* udevDevice = udev_device_new_from_syspath(udevLib, path);
+                device.action = getActionType(udevDevice);
+                device.path = path;
+                device.subsystem = subsystem;
+                device.deviceType = QString(udev_device_get_devtype(udevDevice));
+                udev_device_unref(udevDevice);
+                deviceList.append(device);
+            }
+        }
+        udev_enumerate_unref(udevEnumeration);
+        return deviceList;
+    }
+
+    UDev::ActionType UDev::getActionType(udev_device* udevDevice){
+        if(udevDevice == nullptr){
+            return Unknown;
+        }
+        return getActionType(QString(udev_device_get_action(udevDevice)).trimmed().toUpper());
+    }
+
+    UDev::ActionType UDev::getActionType(const QString& actionType){
+        if(actionType == "ADD"){
+            return Add;
+        }
+        if(actionType == "REMOVE"){
+            return Remove;
+        }
+        if(actionType == "Change"){
+            return Change;
+        }
+        if(actionType == "OFFLINE"){
+            return Offline;
+        }
+        if(actionType == "ONLINE"){
+            return Online;
+        }
+        return Unknown;
+    }
+
+    void UDev::monitor(){
+        running = true;
+        O_DEBUG("UDev::Monitor starting...");
+        udev_monitor* mon = udev_monitor_new_from_netlink(udevLib, "udev");
+        if(!mon){
+            O_WARNING("UDev::Monitor Unable to listen to UDev: Failed to create netlink monitor");
+            O_DEBUG(strerror(errno))
+            return;
+        }
+        O_DEBUG("UDev::Monitor applying filters...");
+        for(QString subsystem : monitors.keys()){
+            for(QString deviceType : *monitors[subsystem]){
+                O_DEBUG("UDev::Monitor filter" << subsystem << deviceType);
+                int err = udev_monitor_filter_add_match_subsystem_devtype(
+                    mon,
+                    subsystem.toUtf8().constData(),
+                    deviceType.isNull() || deviceType.isEmpty() ? deviceType.toUtf8().constData() : NULL
+                );
+                if(err < 0){
+                    O_WARNING("UDev::Monitor Unable to add filter: " << strerror(err));
+                }
+            }
+        }
+        O_DEBUG("UDev::Monitor enabling...");
+        int err = udev_monitor_enable_receiving(mon);
+        if(err < 0){
+            O_WARNING("UDev::Monitor Unable to listen to UDev:" << strerror(err));
+            udev_monitor_unref(mon);
+            return;
+        }
+        O_DEBUG("UDev::Monitor setting up timer...");
+        auto timer = new QTimer();
+        timer->setTimerType(Qt::PreciseTimer);
+        timer->setSingleShot(true);
+        connect(timer, &QTimer::timeout, [this, mon, timer]{
+            if(exitRequested){
+                O_DEBUG("UDev::Monitor stopping...");
+                udev_monitor_unref(mon);
+                timer->deleteLater();
+                running = false;
+                O_DEBUG("UDev::Stopped");
+                return;
+            }
+            if(update || !mon){
+                O_DEBUG("UDev::Monitor reloading...");
+                update = false;
+                udev_monitor_unref(mon);
+                timer->deleteLater();
+                QTimer::singleShot(0, [this]{
+                    monitor();
+                });
+                return;
+            }
+            udev_device* dev = udev_monitor_receive_device(mon);
+            if(dev != nullptr){
+                Device device;
+                device.action = getActionType(dev);
+                device.path = QString(udev_device_get_devnode(dev));
+                device.subsystem = QString(udev_device_get_subsystem(dev));
+                device.deviceType = QString(udev_device_get_devtype(dev));
+                udev_device_unref(dev);
+                O_DEBUG("UDev::Monitor UDev event" << device);
+                emit event(device);
+            }else if(errno && errno != EAGAIN){
+                O_WARNING("UDev::Monitor error checking event:" << strerror(errno));
+            }
+            timer->start(30);
+        });
+        timer->start(30);
+        O_DEBUG("UDev::Monitor event loop started");
+    }
+
+    QDebug operator<<(QDebug debug, const UDev::Device& device){
+        QDebugStateSaver saver(debug);
+        Q_UNUSED(saver)
+        debug.nospace() << device.debugString().c_str();
+        return debug.maybeSpace();
+    }
+}
