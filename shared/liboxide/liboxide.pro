@@ -90,8 +90,7 @@ clean_headers.commands = rm -rf include
 
 liboxide_h_install.files = \
     include/liboxide.h \
-    include/liboxide \
-    include/epframebuffer.h
+    include/liboxide
 liboxide_h_install.depends = liboxide_h
 liboxide_h_install.path = /opt/include/
 INSTALLS += liboxide_h_install

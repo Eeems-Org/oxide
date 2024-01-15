@@ -56,6 +56,8 @@ int main(int argc, char* argv[]){
         }
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
+    qputenv("XDG_CURRENT_DESKTOP", "OXIDE");
+    QThread::currentThread()->setObjectName("main");
     deviceSettings.setupQtEnvironment(false);
     QGuiApplication app(argc, argv);
     sentry_init("tarnish", argv);
