@@ -66,10 +66,23 @@ bool ScreenAPI::drawFullscreenImage(QString path, float rotate) {
                 auto frameBuffer = EPFrameBuffer::framebuffer();
                 QRect rect = frameBuffer->rect();
                 QPainter painter(frameBuffer);
-                painter.drawImage(rect, img);
+                painter.fillRect(rect, Qt::white);
+                painter.setRenderHints(
+                    QPainter::Antialiasing | QPainter::SmoothPixmapTransform,
+                    1
+                );
+                QPixmap pxmap;
+                QPoint center(rect.width() / 2, rect.height() / 2);
+                painter.translate(center);
+                painter.scale(
+                    1* (rect.width() / qreal(img.height())),
+                    1 * (rect.width() / qreal(img.height()))
+                );
+                painter.translate(0 - img.width() / 2, 0 - img.height() / 2);
+                painter.drawPixmap(img.rect(), QPixmap::fromImage(img));
                 painter.end();
                 EPFrameBuffer::sendUpdate(
-                    rect,
+                    frameBuffer->rect(),
                     EPFrameBuffer::HighQualityGrayscale,
                     EPFrameBuffer::FullUpdate,
                     true
