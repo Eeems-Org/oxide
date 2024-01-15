@@ -23,6 +23,7 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs depr
 SOURCES += \
     applications.cpp \
     debug.cpp \
+    devicesettings.cpp \
     event_device.cpp \
     eventfilter.cpp \
     json.cpp \
@@ -33,12 +34,14 @@ SOURCES += \
     settingsfile.cpp \
     slothandler.cpp \
     sysobject.cpp \
-    signalhandler.cpp
+    signalhandler.cpp \
+    xochitlsettings.cpp
 
 HEADERS += \
     applications.h \
     dbus.h \
     debug.h \
+    devicesettings.h \
     event_device.h \
     eventfilter.h \
     liboxide_global.h \
@@ -51,7 +54,8 @@ HEADERS += \
     settingsfile.h \
     slothandler.h \
     sysobject.h \
-    signalhandler.h
+    signalhandler.h \
+    xochitlsettings.h
 
 PRECOMPILED_HEADER = \
     liboxide_stable.h
