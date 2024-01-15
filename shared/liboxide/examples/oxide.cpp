@@ -41,6 +41,7 @@ try{
 #include <QtPlugin>
 
 #import <liboxide>
+#include <liboxide/eventfilter.h>
 
 #ifdef __arm__
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
@@ -49,10 +50,6 @@ Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 using namespace Oxide;
 int main(int argc, char *argv[]){
      QGuiApplication app(argc, argv);
-
-     auto filter = new EventFilter(&app);
-     app.installEventFilter(filter);
-
      QQmlApplicationEngine engine;
      QQmlContext* context = engine.rootContext();
      context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
@@ -63,7 +60,7 @@ int main(int argc, char *argv[]){
      }
 
      auto root = engine.rootObjects().first();
-     filter->root = (QQuickItem*)root;
+     root->installEventFilter(new EventFilter(&app));
      return app.exec();
 }
 //! [EventFilter]
@@ -76,3 +73,13 @@ if(lo.exists()){
      qCritical("Loopback is missing?");
 }
 //! [SysObject]
+//! [setupQtEnvironment]
+#include <liboxide.h>
+#ifdef __arm__
+Q_IMPORT_PLUGIN(QsgEpaperPlugin)
+#endif
+
+int main(int argc, char* argv[]){
+     deviceSettings.setupQtEnvironment();
+}
+//! [setupQtEnvironment]

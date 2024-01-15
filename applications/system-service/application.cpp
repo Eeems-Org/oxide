@@ -1,5 +1,6 @@
 #include <QTimer>
 #include <QFile>
+#include <QTransform>
 
 #include <signal.h>
 #include <liboxide.h>
@@ -9,6 +10,7 @@
 #include "systemapi.h"
 #include "buttonhandler.h"
 #include "digitizerhandler.h"
+#include "notificationapi.h"
 
 using namespace Oxide::Applications;
 
@@ -470,54 +472,52 @@ void Application::showSplashScreen(){
         Q_UNUSED(t);
 #endif
         Oxide::Sentry::sentry_span(t, "wait", "Wait for screen to be ready", [frameBuffer](){
-            while(frameBuffer->paintingActive()){
-                EPFrameBuffer::waitForLastUpdate();
-            }
+            dispatchToMainThread([frameBuffer]{
+                while(frameBuffer->paintingActive()){
+                    EPFrameBuffer::waitForLastUpdate();
+                }
+            });
         });
         qDebug() << "Displaying splashscreen for" << name();
         Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this, frameBuffer](){
-            QPainter painter(frameBuffer);
-            auto fm = painter.fontMetrics();
-            auto size = frameBuffer->size();
-            painter.fillRect(frameBuffer->rect(), Qt::white);
-            QString splashPath = splash();
-            if(splashPath.isEmpty() || !QFile::exists(splashPath)){
-                splashPath = icon();
-            }
-            if(!splashPath.isEmpty() && QFile::exists(splashPath)){
-                qDebug() << "Using image" << splashPath;
-                int splashWidth = size.width() / 2;
-                QSize splashSize(splashWidth, splashWidth);
-                QImage splash = QImage(splashPath).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                QRect splashRect(
-                    QPoint(
-                        (size.width() / 2) - (splashWidth / 2),
-                        (size.height() / 2) - (splashWidth / 2)
-                    ),
-                    splashSize
-                );
-                painter.drawImage(splashRect, splash, splash.rect());
-                EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
-            }
-            painter.setPen(Qt::black);
-            auto text = "Loading " + displayName() + "...";
-            int padding = 10;
-            int textHeight = fm.height() + padding;
-            QRect textRect(
-                QPoint(0 + padding, size.height() - textHeight),
-                QSize(size.width() - padding * 2, textHeight)
-            );
-            painter.drawText(
-                textRect,
-                Qt::AlignVCenter | Qt::AlignRight,
-                text
-            );
-            EPFrameBuffer::sendUpdate(textRect, EPFrameBuffer::Grayscale, EPFrameBuffer::PartialUpdate, true);
-            painter.end();
+            dispatchToMainThread([this, frameBuffer]{
+                QPainter painter(frameBuffer);
+                auto size = frameBuffer->size();
+                auto rect = frameBuffer->rect();
+                auto fm = painter.fontMetrics();
+                painter.fillRect(rect, Qt::white);
+                QString splashPath = splash();
+                if(splashPath.isEmpty() || !QFile::exists(splashPath)){
+                    splashPath = icon();
+                }
+                if(!splashPath.isEmpty() && QFile::exists(splashPath)){
+                    qDebug() << "Using image" << splashPath;
+                    int splashWidth = size.width() / 2;
+                    QSize splashSize(splashWidth, splashWidth);
+                    QImage splash = QImage(splashPath);
+                    if(systemAPI->landscape()){
+                        splash = splash.transformed(QTransform().rotate(90.0));
+                    }
+                    splash = splash.scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                    QRect splashRect(
+                        QPoint(
+                            (size.width() / 2) - (splashWidth / 2),
+                            (size.height() / 2) - (splashWidth / 2)
+                        ),
+                        splashSize
+                    );
+                    painter.drawImage(splashRect, splash, splash.rect());
+                    EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
+                }
+                painter.end();
+                notificationAPI->drawNotificationText("Loading " + displayName() + "...");
+            });
         });
         qDebug() << "Waiting for screen to finish...";
         Oxide::Sentry::sentry_span(t, "wait", "Wait for screen finish updating", [](){
-            EPFrameBuffer::waitForLastUpdate();
+            dispatchToMainThread([]{
+                EPFrameBuffer::waitForLastUpdate();
+            });
         });
     });
     qDebug() << "Finished painting splash screen for" << name();
@@ -548,3 +548,47 @@ void Application::startSpan(std::string operation, std::string description){
     }
     span = Oxide::Sentry::start_span(transaction, operation, description);
 }
+
+void Application::recallScreen() {
+    if (m_screenCapture == nullptr) {
+        return;
+    }
+    Oxide::Sentry::sentry_transaction(
+        "application", "recallScreen", [this](Oxide::Sentry::Transaction *t) {
+            qDebug() << "Uncompressing screen...";
+            QImage img;
+            Oxide::Sentry::sentry_span(
+                t, "decompress", "Decompress the framebuffer", [this, &img] {
+                    img = QImage::fromData(screenCaptureNoSecurityCheck(), "JPG");
+                });
+            if (img.isNull()) {
+                qDebug() << "Screen capture was corrupt";
+                qDebug() << m_screenCapture->size();
+                delete m_screenCapture;
+                return;
+            }
+            qDebug() << "Recalling screen...";
+            Oxide::Sentry::sentry_span(
+                t, "recall", "Recall the screen", [this, img] {
+                    dispatchToMainThread([img] {
+                        auto size = EPFrameBuffer::framebuffer()->size();
+                        QRect rect(0, 0, size.width(), size.height());
+                        auto frameBuffer = EPFrameBuffer::framebuffer();
+                        QPainter painter(frameBuffer);
+                        painter.drawImage(rect, img);
+                        painter.end();
+                        EPFrameBuffer::sendUpdate(
+                            rect,
+                            EPFrameBuffer::HighQualityGrayscale,
+                            EPFrameBuffer::FullUpdate,
+                            true
+                        );
+                        EPFrameBuffer::waitForLastUpdate();
+                    });
+                    delete m_screenCapture;
+                    m_screenCapture = nullptr;
+                });
+            qDebug() << "Screen recalled.";
+        });
+}
+#include "moc_application.cpp"

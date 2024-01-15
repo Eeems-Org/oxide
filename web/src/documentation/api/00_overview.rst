@@ -23,11 +23,12 @@ Options for interacting with the API
 
 There are a number of options for interacting with the API.
 
-  1. Using the `rot` command line tool and :doc:`../02_oxide-utils`.
+  1. Using the ``rot`` command line tool and :doc:`../02_oxide-utils`.
   2. Making calls using `dbus-send <https://man.archlinux.org/man/dbus-send.1.en>`_.
   3. Generating classes using the
      `automatic interface xml files <https://github.com/Eeems/oxide/tree/master/interfaces>`_.
   4. Making D-Bus calls manually in your language of choice.
+  5. Using the python wrapper for the ``rot`` command line `python-liboxide <https://github.com/Eeems-Org/python-liboxide>`_
 
 For the purposes of this documentation we will document using :ref:`rot` as
 well as using Qt generated classes.

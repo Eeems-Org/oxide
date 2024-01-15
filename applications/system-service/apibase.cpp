@@ -20,3 +20,5 @@ int APIBase::hasPermission(QString permission, const char* sender){
     qDebug() << "app not found, permission granted";
     return true;
 }
+
+#include "moc_apibase.cpp"

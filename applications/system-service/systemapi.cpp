@@ -40,11 +40,12 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     resumeApp = nullptr;
                 }
             });
-            Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", []{
+            auto rotate = landscape() ? 90 : 0;
+            Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", [rotate]{
                 if(QFile::exists("/usr/share/remarkable/sleeping.png")){
-                    screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png");
+                    screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png", rotate);
                 }else{
-                    screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png");
+                    screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png", rotate);
                 }
             });
             Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this, device]{
@@ -54,11 +55,11 @@ void SystemAPI::PrepareForSleep(bool suspending){
                         wifiWasOn = true;
                         wifiAPI->disable();
                     }
-                    system("rmmod brcmfmac");
+                    system("/sbin/rmmod brcmfmac");
                 }
                 releaseSleepInhibitors();
             });
-            Oxide::Sentry::sentry_span(t, "clear-input", "Clear input buffers", [this]{
+            Oxide::Sentry::sentry_span(t, "clear-input", "Clear input buffers", []{
                 touchHandler->clear_buffer();
                 wacomHandler->clear_buffer();
                 buttonHandler->clear_buffer();
@@ -115,7 +116,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     lockTimer.start(autoLock() * 60 * 1000);
                 }
                 if(device == Oxide::DeviceSettings::DeviceType::RM2){
-                    system("modprobe brcmfmac");
+                    system("/sbin/modprobe brcmfmac");
                     if(wifiWasOn){
                         wifiAPI->enable();
                     }
@@ -260,3 +261,5 @@ void SystemAPI::toggleSwipes(){
     notification->setText(message);
     notification->display();
 }
+
+#include "moc_systemapi.cpp"

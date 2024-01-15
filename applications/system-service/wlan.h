@@ -28,9 +28,9 @@ public:
         }
     }
     QString iface() { return m_iface; }
-    bool up() { return !system(("ifconfig " + iface() + " up").toStdString().c_str()); }
-    bool down() { return !system(("ifconfig " + iface() + " down").toStdString().c_str()); }
-    bool isUp(){ return !system(("ip addr show " + iface() + " | grep UP > /dev/null").toStdString().c_str()); }
+    bool up() { return !system(("/sbin/ifconfig " + iface() + " up").toStdString().c_str()); }
+    bool down() { return !system(("/sbin/ifconfig " + iface() + " down").toStdString().c_str()); }
+    bool isUp(){ return !system(("/sbin/ip addr show " + iface() + " | /bin/grep UP > /dev/null").toStdString().c_str()); }
     Interface* interface() { return m_interface; }
     QSet<QString> blobs(){ return m_blobs; }
     QString operstate(){
@@ -41,7 +41,7 @@ public:
     }
     bool pingIP(std::string ip, const char* port) {
         auto process = new QProcess();
-        process->setProgram("bash");
+        process->setProgram("/bin/bash");
         std::string cmd("{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port + "; } > /dev/null 2>&1");
         process->setArguments(QStringList() << "-c" << cmd.c_str());
         process->start();
@@ -52,11 +52,22 @@ public:
         return !process->exitCode();
     }
     bool isConnected(){
-        auto ip = exec("ip r | grep " + iface() + " | grep default | awk '{print $3}'");
+        auto ip = exec("/sbin/ip r | /bin/grep " + iface() + " | /bin/grep default | /usr/bin/awk '{print $3}'");
         return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
     }
     int link(){
-        auto out = exec("grep " + iface() + " /proc/net/wireless | awk '{print $3}'");
+        QDBusPendingReply<QVariant> res = m_interface->SignalPoll();
+        res.waitForFinished();
+        if(!res.isError()){
+            auto props = qdbus_cast<QVariantMap>(res.value());
+            auto result = props["linkspeed"].toInt();
+            if(result < 0){
+                return 0;
+            }
+            return result;
+        }
+        O_WARNING("SignalPoll error: " << res.error());
+        auto out = exec("/bin/grep " + iface() + " /proc/net/wireless | /usr/bin/awk '{print $3}'");
         if(QString(out.c_str()).isEmpty()){
             return 0;
         }
@@ -67,19 +78,32 @@ public:
             qDebug() << "link failed: " << out.c_str();
             return 0;
         }
+        return -100;
     }
     signed int rssi(){
-        QDBusMessage message = m_interface->call("SignalPoll");
-        if (message.type() == QDBusMessage::ErrorMessage) {
-            O_WARNING("SignalPoll error: " << message.errorMessage());
-            return -100;
+        QDBusPendingReply<QVariant> res = m_interface->SignalPoll();
+        res.waitForFinished();
+        if(!res.isError()){
+            auto props = qdbus_cast<QVariantMap>(res.value());
+            auto result = props["rssi"].toInt();
+            if(result >= 0){
+                return -100;
+            }
+            return result;
         }
-        auto props = qdbus_cast<QVariantMap>(message.arguments().at(0).value<QDBusVariant>().variant().value<QDBusArgument>());
-        auto result = props["rssi"].toInt();
-        if(result >= 0){
-            return -100;
+        O_WARNING("SignalPoll error: " << res.error());
+        auto out = exec("/bin/grep " + iface() + " /proc/net/wireless | /usr/bin/awk '{print $4}'");
+        if(QString(out.c_str()).isEmpty()){
+            return 0;
         }
-        return result;
+        try {
+            return std::stoi(out);
+        }
+        catch (const std::invalid_argument& e) {
+            qDebug() << "signal failed: " << out.c_str();
+            return 0;
+        }
+        return -100;
     }
 signals:
     void BSSAdded(Wlan*, QDBusObjectPath, QVariantMap);

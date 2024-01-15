@@ -2,6 +2,7 @@
 
 #include "appsapi.h"
 #include "notificationapi.h"
+#include "systemapi.h"
 
 using namespace Oxide;
 
@@ -184,3 +185,58 @@ void AppsAPI::ensureForegroundApp() {
         }
     });
 }
+
+AppsAPI::~AppsAPI() {
+    m_stopping = true;
+    writeApplications();
+    settings.sync();
+    dispatchToMainThread([this] {
+        auto frameBuffer = EPFrameBuffer::framebuffer();
+        qDebug() << "Waiting for other painting to finish...";
+        while (frameBuffer->paintingActive()) {
+            EPFrameBuffer::waitForLastUpdate();
+        }
+        QPainter painter(frameBuffer);
+        auto rect = frameBuffer->rect();
+        auto fm = painter.fontMetrics();
+        qDebug() << "Clearing screen...";
+        painter.setPen(Qt::white);
+        painter.fillRect(rect, Qt::black);
+        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+        EPFrameBuffer::waitForLastUpdate();
+        painter.end();
+        qDebug() << "Stopping applications...";
+        for (auto app : applications) {
+            if (app->stateNoSecurityCheck() != Application::Inactive) {
+                auto text = "Stopping " + app->displayName() + "...";
+                qDebug() << text.toStdString().c_str();
+                notificationAPI->drawNotificationText(text, Qt::white, Qt::black);
+                EPFrameBuffer::waitForLastUpdate();
+            }
+            app->stopNoSecurityCheck();
+        }
+        qDebug() << "Ensuring all applications have stopped...";
+        for (auto app : applications) {
+            app->waitForFinished();
+            app->deleteLater();
+        }
+        applications.clear();
+        QPainter painter2(frameBuffer);
+        qDebug() << "Displaying final quit message...";
+        painter2.fillRect(rect, Qt::black);
+        painter2.setPen(Qt::white);
+        if(systemAPI->landscape()){
+            auto x = rect.width() / 2;
+            auto y = rect.height() / 2;
+            painter2.translate(x, y);
+            painter2.rotate(90.0);
+            painter2.translate(-x, -y);
+        }
+        painter2.drawText(rect, Qt::AlignCenter, "Goodbye!");
+        EPFrameBuffer::waitForLastUpdate();
+        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+        painter2.end();
+        EPFrameBuffer::waitForLastUpdate();
+    });
+}
+#include "moc_appsapi.cpp"

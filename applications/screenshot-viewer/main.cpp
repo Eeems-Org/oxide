@@ -6,18 +6,14 @@
 #include <cstdlib>
 #include <signal.h>
 #include <liboxide.h>
+#include <liboxide/oxideqml.h>
 
 #include "controller.h"
 
-#ifdef __arm__
-Q_IMPORT_PLUGIN(QsgEpaperPlugin)
-#endif
-
 using namespace std;
 using namespace Oxide;
+using namespace Oxide::QML;
 using namespace Oxide::Sentry;
-
-const char* qt_version = qVersion();
 
 void sigHandler(int signal){
     ::signal(signal, SIG_DFL);
@@ -25,21 +21,9 @@ void sigHandler(int signal){
 }
 
 int main(int argc, char *argv[]){
-    if (strcmp(qt_version, QT_VERSION_STR) != 0){
-        qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
-    }
-#ifdef __arm__
-    // Setup epaper
-    qputenv("QMLSCENE_DEVICE", "epaper");
-    qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
-    qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
-    qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
-//    qputenv("QT_DEBUG_BACKINGSTORE", "1");
-#endif
+    deviceSettings.setupQtEnvironment();
     QGuiApplication app(argc, argv);
     sentry_init("anxiety", argv);
-    auto filter = new EventFilter(&app);
-    app.installEventFilter(filter);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("anxiety");
@@ -47,8 +31,8 @@ int main(int argc, char *argv[]){
     app.setApplicationVersion(APP_VERSION);
     Controller controller(&app);
     QQmlApplicationEngine engine;
+    registerQML(&engine);
     QQmlContext* context = engine.rootContext();
-    context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("controller", &controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty()){
@@ -56,7 +40,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
     auto root = engine.rootObjects().first();
-    filter->root = (QQuickItem*)root;
+    root->installEventFilter(new EventFilter(&app));
     controller.setRoot(root);
 
     signal(SIGINT, sigHandler);

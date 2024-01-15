@@ -1,17 +1,21 @@
 #include <QCommandLineParser>
 #include <QGuiApplication>
 #include <QLockFile>
+#include <QWindow>
+#include <QScreen>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
 
 #include <cstdlib>
 #include <filesystem>
 #include <liboxide.h>
 
 #include "dbusservice.h"
+#include "controller.h"
 
 using namespace std;
 using namespace Oxide::Sentry;
 
-const char* qt_version = qVersion();
 const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/oxide.pid";
 const char* lockPath = "/run/oxide/oxide.lock";
@@ -42,17 +46,17 @@ bool stopProcess(pid_t pid){
 
 int main(int argc, char* argv[]){
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
+        bool enabled = Oxide::debugEnabled();
+        if(!enabled){
+            qputenv("DEBUG", "1");
+        }
         O_WARNING("rm2fb not detected. Running xochitl instead!");
+        if(!enabled){
+            qputenv("DEBUG", "0");
+        }
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
-    if (strcmp(qt_version, QT_VERSION_STR) != 0){
-        O_WARNING("Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR);
-    }
-#ifdef __arm__
-    // Setup epaper
-    qputenv("QMLSCENE_DEVICE", "epaper");
-    qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
-#endif
+    deviceSettings.setupQtEnvironment(false);
     QGuiApplication app(argc, argv);
     sentry_init("tarnish", argv);
     app.setOrganizationName("Eeems");
@@ -138,5 +142,18 @@ int main(int argc, char* argv[]){
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
         remove(pidPath);
     });
+    QQmlApplicationEngine engine;
+    QQmlContext* context = engine.rootContext();
+    Controller controller(&app);
+    context->setContextProperty("controller", &controller);
+    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+    if (engine.rootObjects().isEmpty()){
+        QScreen* screen = app.primaryScreen();
+        QWindow window(screen);
+        window.resize(screen->size());
+        window.setPosition(0, 0);
+        window.setOpacity(0);
+        window.show();
+    }
     return app.exec();
 }

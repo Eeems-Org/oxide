@@ -40,6 +40,5 @@ RESOURCES += \
 PRECOMPILED_HEADER = \
     anxiety_stable.h
 
-include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)

@@ -54,9 +54,6 @@ public:
         instance->start();
         return instance;
     }
-    static string exec(const char* cmd);
-    static vector<std::string> split_string_by_newline(const std::string& str);
-    static int is_uint(string input);
 
     DigitizerHandler(event_device& device)
      : QThread(),
