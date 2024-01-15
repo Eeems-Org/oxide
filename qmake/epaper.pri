@@ -1,2 +1,2 @@
-#LIBS += -L$$PWD/../shared/epaper -lqsgepaper
-#INCLUDEPATH += $$PWD/../shared/epaper
+LIBS += -L$$OUT_PWD/../../shared/epaper -lqsgepaper
+INCLUDEPATH += $$OUT_PWD/../../shared/epaper

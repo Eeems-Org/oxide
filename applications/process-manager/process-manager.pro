@@ -41,4 +41,3 @@ PRECOMPILED_HEADER = \
 LIBS += -lsystemd
 
 include(../../qmake/liboxide.pri)
-include(../../qmake/sentry.pri)

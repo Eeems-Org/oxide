@@ -1,6 +1,5 @@
 #include "buttonhandler.h"
 
-#include "dbusservice.h"
 
 using namespace Oxide;
 
@@ -51,6 +50,28 @@ ButtonHandler* ButtonHandler::init(){
     return instance;
 }
 
+ButtonHandler::ButtonHandler() : QThread(), filebuf(buttons.fd, ios::in), stream(&filebuf), pressed(), timer(this), m_enabled(true) {
+    flood = build_flood();
+    timer.setInterval(100);
+    timer.setSingleShot(false);
+    connect(&timer, &QTimer::timeout, this, &ButtonHandler::timeout);
+    timer.start();
+}
+
+void ButtonHandler::setEnabled(bool enabled){
+    m_enabled = enabled;
+}
+
+void ButtonHandler::clear_buffer(){
+    if(buttons.fd == -1){
+        return;
+    }
+#ifdef DEBUG
+    qDebug() << "Clearing event buffer on" << buttons.device.c_str();
+#endif
+    ::write(buttons.fd, flood, 512 * 8 * 4 * sizeof(input_event));
+}
+
 void ButtonHandler::run(){
     char name[256];
     memset(name, 0, sizeof(name));
@@ -91,25 +112,112 @@ void ButtonHandler::run(){
         }
     }
 }
+
+input_event* ButtonHandler::build_flood(){
+    auto n = 512 * 8;
+    auto num_inst = 4;
+    input_event* ev = (input_event *)malloc(sizeof(struct input_event) * n * num_inst);
+    memset(ev, 0, sizeof(input_event) * n * num_inst);
+    auto i = 0;
+    while (i < n) {
+        ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 1);
+        ev[i++] = createEvent(EV_SYN, 0, 0);
+        ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 2);
+        ev[i++] = createEvent(EV_SYN, 0, 0);
+    }
+    return ev;
+}
+
+input_event ButtonHandler::createEvent(ushort type, ushort code, int value){
+    struct input_event event;
+    event.type = type;
+    event.code = code;
+    event.value = value;
+    return event;
+}
 void ButtonHandler::pressKey(Qt::Key key){
     int code;
     switch(key){
         case Qt::Key_Left:
             code = 105;
-        break;
+            break;
         case Qt::Key_Home:
             code = 102;
-        break;
+            break;
         case Qt::Key_Right:
             code = 106;
-        break;
+            break;
         case Qt::Key_PowerOff:
             code = 116;
-        break;
+            break;
         default:
             return;
     }
     press_button(buttons, code, &stream);
+}
+
+void ButtonHandler::keyDown(Qt::Key key){
+    if(!m_enabled){
+        return;
+    }
+    qDebug() << "Down" << key;
+    if(validKeys.contains(key) && !pressed.contains(key)){
+        QElapsedTimer timer;
+        timer.start();
+        pressed.insert(key, timer);
+    }
+}
+
+void ButtonHandler::keyUp(Qt::Key key){
+    if(!m_enabled){
+        return;
+    }
+    qDebug() << "Up" << key;
+    if(!pressed.contains(key)){
+        // This should never happen
+        return;
+    }
+    auto value = pressed.value(key);
+    pressed.remove(key);
+    if(value.hasExpired(700)){
+        // Held event already fired
+        return;
+    }
+    if(key == Qt::Key_PowerOff){
+        emit powerPress();
+        return;
+    }
+    pressKey(key);
+}
+
+void ButtonHandler::timeout(){
+    if(!m_enabled){
+        return;
+    }
+    for(auto key : pressed.keys()){
+        // If the key has been held for a while
+        if(!pressed.value(key).hasExpired(700)){
+            continue;
+        }
+        qDebug() << "Key held" << key;
+        switch(key){
+            case Qt::Key_Left:
+                emit leftHeld();
+                break;
+            case Qt::Key_Home:
+                emit homeHeld();
+                break;
+            case Qt::Key_Right:
+                emit rightHeld();
+                break;
+            case Qt::Key_PowerOff:
+                emit powerHeld();
+                break;
+            default:
+                continue;
+        }
+        pressed.remove(key);
+    }
 }
 
 #include "moc_buttonhandler.cpp"

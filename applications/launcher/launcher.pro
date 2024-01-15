@@ -50,4 +50,3 @@ PRECOMPILED_HEADER = \
     oxide_stable.h
 
 include(../../qmake/liboxide.pri)
-include(../../qmake/sentry.pri)

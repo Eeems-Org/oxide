@@ -29,4 +29,3 @@ target.path = /opt/bin
 INSTALLS += target
 
 include(../../qmake/liboxide.pri)
-include(../../qmake/sentry.pri)

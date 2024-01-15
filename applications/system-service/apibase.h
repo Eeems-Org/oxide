@@ -19,14 +19,9 @@ public:
     virtual void setEnabled(bool enabled) = 0;
     int hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 
-protected:
-    int getSenderPid(){
-        if(!calledFromDBus()){
-            return getpid();
-        }
-        return connection().interface()->servicePid(message().service());
-    }
-    int getSenderPgid(){ return getpgid(getSenderPid()); }
+  protected:
+    int getSenderPid();
+    int getSenderPgid();
 };
 
 #endif // APIBASE_H
