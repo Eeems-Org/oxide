@@ -110,7 +110,7 @@ namespace Oxide {
         struct passwd* result;
         auto status = getpwnam_r(name.toStdString().c_str(), &user, buffer, sizeof(buffer), &result);
         if(status != 0){
-            throw std::runtime_error("Failed to get user" + status);
+            throw std::runtime_error(QString("Failed to get user: %1").arg(std::strerror(status)).toStdString());
         }
         if(result == NULL){
             throw std::runtime_error("Invalid user name: " + name.toStdString());
@@ -123,7 +123,7 @@ namespace Oxide {
         struct group* result;
         auto status = getgrnam_r(name.toStdString().c_str(), &grp, buffer, sizeof(buffer), &result);
         if(status != 0){
-            throw std::runtime_error("Failed to get group" + status);
+            throw std::runtime_error(QString("Failed to get group: %1").arg(std::strerror(status)).toStdString());
         }
         if(result == NULL){
             throw std::runtime_error("Invalid group name: " + name.toStdString());
