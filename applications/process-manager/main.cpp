@@ -9,11 +9,13 @@
 #include <fcntl.h>
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
+#include <liboxide/oxideqml.h>
 
 #include "controller.h"
 
 using namespace std;
 using namespace Oxide;
+using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
 int main(int argc, char *argv[]){
@@ -25,12 +27,10 @@ int main(int argc, char *argv[]){
     app.setApplicationName("tarnish");
     app.setApplicationDisplayName("Process Monitor");
     app.setApplicationVersion(APP_VERSION);
-    EventFilter filter;
-    app.installEventFilter(&filter);
     QQmlApplicationEngine engine;
+    registerQML(&engine);
     QQmlContext* context = engine.rootContext();
     Controller controller(&engine);
-    context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("controller", &controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty()){
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
     QObject* root = engine.rootObjects().first();
-    filter.root = (QQuickItem*)root;
+    root->installEventFilter(new EventFilter(&app));
     QQuickItem* tasksView = root->findChild<QQuickItem*>("tasksView");
     if(!tasksView){
         qDebug() << "Can't find tasksView";

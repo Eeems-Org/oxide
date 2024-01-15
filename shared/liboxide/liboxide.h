@@ -235,6 +235,16 @@ namespace Oxide {
          * \snippet examples/oxide.cpp setupQtEnvironment
          */
         void setupQtEnvironment(bool touch = true);
+        /*!
+         * \brief Check if a keyboard is attached
+         * \return If a keyboard is attached
+         */
+        bool keyboardAttached();
+        /*!
+         * \brief Run a callback when keyboardAttached changes
+         * \param callback Callback to run
+         */
+        void onKeyboardAttachedChanged(std::function<void()> callback);
 
     private:
         DeviceType _deviceType;

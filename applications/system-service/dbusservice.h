@@ -141,9 +141,11 @@ public:
             sentry_breadcrumb("dbusservice", "Connecting button handler events", "info");
 #endif
             Oxide::Sentry::sentry_span(t, "connect", "Connect events", []{
-                connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
-                connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
-                connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
+                if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+                    connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
+                    connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
+                    connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
+                }
                 connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
                 connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
                 connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);

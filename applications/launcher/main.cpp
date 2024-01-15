@@ -16,11 +16,14 @@
 #include <cstdlib>
 #include <signal.h>
 #include <liboxide.h>
+#include <liboxide/oxideqml.h>
+#include <liboxide/eventfilter.h>
 
 #include "controller.h"
 
 using namespace std;
 using namespace Oxide;
+using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
 function<void(int)> shutdown_handler;
@@ -30,19 +33,16 @@ int main(int argc, char* argv[]){
     deviceSettings.setupQtEnvironment();
     QGuiApplication app(argc, argv);
     sentry_init("oxide", argv);
-    auto filter = new EventFilter(&app);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("oxide");
     app.setApplicationDisplayName("Launcher");
-    app.installEventFilter(filter);
     QQmlApplicationEngine engine;
     QQmlContext* context = engine.rootContext();
     Controller* controller = new Controller();
-    controller->filter = filter;
     qmlRegisterAnonymousType<AppItem>("codes.eeems.oxide", 2);
     qmlRegisterAnonymousType<Controller>("codes.eeems.oxide", 2);
-    context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
+    registerQML(&engine);
     context->setContextProperty("apps", QVariant::fromValue(controller->getApps()));
     context->setContextProperty("controller", controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
@@ -52,7 +52,7 @@ int main(int argc, char* argv[]){
     }
     QObject* root = engine.rootObjects().first();
     controller->root = root;
-    filter->root = (QQuickItem*)root;
+    root->installEventFilter(new EventFilter(&app));
     QObject* stateController = root->findChild<QObject*>("stateController");
     if(!stateController){
         qDebug() << "Can't find stateController";

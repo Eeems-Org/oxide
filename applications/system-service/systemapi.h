@@ -13,6 +13,7 @@
 #include "application.h"
 #include "screenapi.h"
 #include "digitizerhandler.h"
+#include "eventlistener.h"
 #include "login1_interface.h"
 
 #define systemAPI SystemAPI::singleton()
@@ -71,6 +72,7 @@ class SystemAPI : public APIBase {
     Q_PROPERTY(bool lockOnSuspend READ lockOnSuspend WRITE setLockOnSuspend NOTIFY lockOnSuspendChanged)
     Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
     Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
+    Q_PROPERTY(bool landscape READ landscape NOTIFY landscapeChanged)
 
 public:
     enum SwipeDirection { None, Right, Left, Up, Down };
@@ -198,10 +200,33 @@ public:
             });
             qRegisterMetaType<input_event>();
             Oxide::Sentry::sentry_span(t, "input", "Connect input events", [this]{
-                connect(touchHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
                 connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
-                connect(wacomHandler, &DigitizerHandler::activity, this, &SystemAPI::activity);
                 connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
+                eventListener->append([this](QObject* object, QEvent* event){
+                    Q_UNUSED(object);
+                    switch(event->type()){
+                        case QEvent::KeyRelease:
+                        case QEvent::KeyPress:
+                        case QEvent::TabletPress:
+                        case QEvent::TabletMove:
+                        case QEvent::TabletRelease:
+                        case QEvent::TabletTrackingChange:
+                        case QEvent::TabletEnterProximity:
+                        case QEvent::TabletLeaveProximity:
+                        case QEvent::TouchBegin:
+                        case QEvent::TouchCancel:
+                        case QEvent::TouchEnd:
+                        case QEvent::TouchUpdate:
+                            activity();
+                            break;
+                        default:
+                            break;
+                    }
+                    return false;
+                });
+                deviceSettings.onKeyboardAttachedChanged([this]{
+                    emit landscapeChanged(landscape());
+                });
             });
             qDebug() << "System API ready to use";
         });
@@ -228,6 +253,7 @@ public:
     void setLockOnSuspend(bool _lockOnSuspend);
     bool sleepInhibited(){ return sleepInhibitors.length(); }
     bool powerOffInhibited(){ return powerOffInhibitors.length(); }
+    bool landscape(){ return deviceSettings.keyboardAttached(); }
     void uninhibitAll(QString name);
     void stopSuspendTimer(){
         qDebug() << "Suspend timer disabled";
@@ -437,6 +463,7 @@ signals:
     void autoLockChanged(int);
     void lockOnSuspendChanged(bool);
     void swipeLengthChanged(int, int);
+    void landscapeChanged(bool);
     void deviceSuspending();
     void deviceResuming();
 

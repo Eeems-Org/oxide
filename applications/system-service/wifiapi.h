@@ -238,7 +238,7 @@ public:
         if(m_state == Off){
             setState(Disconnected);
         }
-        if(system("rfkill unblock wifi")){
+        if(system("/usr/sbin/rfkill unblock wifi")){
             qDebug() << "Failed to enable wifi devices";
             return false;
         }
@@ -269,7 +269,7 @@ public:
                 qDebug() << "Failed to disable " + wlan->iface();
             }
         }
-        if(system("rfkill block wifi")){
+        if(system("/usr/sbin/rfkill block wifi")){
             qDebug() << "Failed to disable wifi devices";
         }
         flushBSSCache(0);
@@ -722,9 +722,9 @@ private:
         QDBusConnection bus = QDBusConnection::systemBus();
         QStringList serviceNames = bus.interface()->registeredServiceNames();
         if (!serviceNames.contains(WPA_SUPPLICANT_SERVICE)){
-            if(system("systemctl --quiet is-active wpa_supplicant")){
+            if(system("/bin/systemctl --quiet is-active wpa_supplicant")){
                 qDebug() << "Starting wpa_supplicant...";
-                if(system("systemctl --quiet start wpa_supplicant")){
+                if(system("/bin/systemctl --quiet start wpa_supplicant")){
                     qCritical() << "Failed to start wpa_supplicant";
                     throw QException();
                 }

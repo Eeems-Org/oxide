@@ -382,39 +382,7 @@ public:
             qDebug() << "Screen saved " << m_screenCapture->size() << "bytes";
         });
     }
-    void recallScreen(){
-        if(m_screenCapture == nullptr){
-            return;
-        }
-        Oxide::Sentry::sentry_transaction("application", "recallScreen", [this](Oxide::Sentry::Transaction* t){
-            qDebug() << "Uncompressing screen...";
-            QImage img;
-            Oxide::Sentry::sentry_span(t, "decompress", "Decompress the framebuffer", [this, &img]{
-                img = QImage::fromData(screenCaptureNoSecurityCheck(), "JPG");
-            });
-            if(img.isNull()){
-                qDebug() << "Screen capture was corrupt";
-                qDebug() << m_screenCapture->size();
-                delete m_screenCapture;
-                return;
-            }
-            qDebug() << "Recalling screen...";
-            Oxide::Sentry::sentry_span(t, "recall", "Recall the screen", [this, img]{
-                dispatchToMainThread([img]{
-                    auto size = EPFrameBuffer::framebuffer()->size();
-                    QRect rect(0, 0, size.width(), size.height());
-                    QPainter painter(EPFrameBuffer::framebuffer());
-                    painter.drawImage(rect, img);
-                    painter.end();
-                    EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
-                    EPFrameBuffer::waitForLastUpdate();
-                });
-                delete m_screenCapture;
-                m_screenCapture = nullptr;
-            });
-            qDebug() << "Screen recalled.";
-        });
-    }
+    void recallScreen();
     void waitForFinished(){
         if(m_process->processId()){
             m_process->waitForFinished();
@@ -541,14 +509,26 @@ private:
     }
     void updateEnvironment(){
         auto env = QProcessEnvironment::systemEnvironment();
+        auto envPath = env.value("PATH", DEFAULT_PATH).split(":");
         auto defaults = QString(DEFAULT_PATH).split(":");
-        auto envPath = env.value("PATH", DEFAULT_PATH);
         for(auto item : defaults){
             if(!envPath.contains(item)){
                 envPath.append(item);
             }
         }
-        env.insert("PATH", envPath);
+        env.insert("PATH", envPath.join(":"));
+        auto preload = env.value("LD_PRELOAD", "").split(":");
+        QString sysfs_preload("/opt/lib/libsysfs_preload.so");
+        if(!preload.contains(sysfs_preload)){
+            preload.append(sysfs_preload);
+        }
+        if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
+            QString rm2fb_client("/opt/lib/librm2fb_client.so");
+            if(!preload.contains(rm2fb_client)){
+                preload.append(rm2fb_client);
+            }
+        }
+        env.insert("LD_PRELOAD", preload.join(":"));
         for(auto key : environment().keys()){
             env.insert(key, environment().value(key, "").toString());
         }

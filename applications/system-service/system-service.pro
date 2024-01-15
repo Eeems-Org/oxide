@@ -17,8 +17,10 @@ SOURCES += \
     appsapi.cpp \
     bss.cpp \
     buttonhandler.cpp \
+    eventlistener.cpp \
     network.cpp \
     notification.cpp \
+    notificationapi.cpp \
     screenapi.cpp \
     screenshot.cpp \
     systemapi.cpp \
@@ -39,6 +41,10 @@ service.files = ../../assets/etc/systemd/system/tarnish.service
 service.path = /etc/systemd/system/
 INSTALLS += service
 
+keyd.files = ../../assets/opt/etc/keyd/oxide.conf
+keyd.path = /opt/etc/keyd/
+INSTALLS += keyd
+
 applications.files = ../../assets/opt/usr/share/applications/xochitl.oxide
 applications.path = /opt/usr/share/applications/
 INSTALLS += applications
@@ -57,8 +63,10 @@ HEADERS += \
     appsapi.h \
     bss.h \
     buttonhandler.h \
+    controller.h \
     dbusservice.h \
     digitizerhandler.h \
+    eventlistener.h \
     fifohandler.h \
     mxcfb.h \
     network.h \
@@ -90,3 +98,6 @@ include(../../qmake/liboxide.pri)
 include(../../qmake/sentry.pri)
 
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
+
+RESOURCES += \
+    qml.qrc
