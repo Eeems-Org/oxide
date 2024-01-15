@@ -18,7 +18,14 @@
 #include "slothandler.h"
 #include "sysobject.h"
 #include "debug.h"
+#if defined(LIBOXIDE_LIBRARY)
 #include "oxide_sentry.h"
+#else
+#include "sentry.h"
+#ifdef __arm__
+Q_IMPORT_PLUGIN(QsgEpaperPlugin)
+#endif
+#endif
 
 #include <QDebug>
 #include <QScopeGuard>

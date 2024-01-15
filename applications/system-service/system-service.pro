@@ -17,13 +17,18 @@ SOURCES += \
     appsapi.cpp \
     bss.cpp \
     buttonhandler.cpp \
+    dbusservice.cpp \
+    digitizerhandler.cpp \
     eventlistener.cpp \
+    fifohandler.cpp \
     network.cpp \
     notification.cpp \
     notificationapi.cpp \
+    powerapi.cpp \
     screenapi.cpp \
     screenshot.cpp \
     systemapi.cpp \
+    wifiapi.cpp \
     wlan.cpp \
     wpa_supplicant.cpp \
     main.cpp
@@ -68,7 +73,6 @@ HEADERS += \
     digitizerhandler.h \
     eventlistener.h \
     fifohandler.h \
-    mxcfb.h \
     network.h \
     notification.h \
     notificationapi.h \
@@ -94,8 +98,9 @@ DISTFILES += \
     generate_xml.sh \
     org.freedesktop.login1.xml
 
+INCLUDEPATH += ../../shared/mxcfb
+
 include(../../qmake/liboxide.pri)
-include(../../qmake/sentry.pri)
 
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 

@@ -36,7 +36,6 @@ SOURCES += \
     signalhandler.cpp
 
 HEADERS += \
-    ../epaper/epframebuffer.h \
     applications.h \
     dbus.h \
     debug.h \
@@ -77,8 +76,8 @@ liboxide_liboxide_h.target = include/liboxide/liboxide.h
 liboxide_liboxide_h.commands = \
     mkdir -p include/liboxide && \
     echo $$HEADERS | xargs -rn1 | xargs -rI {} cp $$PWD/{} include/liboxide/ && \
-    echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename \"{}\" .xml | xargs -rI {} cp $$OUT_PWD/\"{}\"_interface.h include/liboxide/ && \
-    mv $$OUT_PWD/include/liboxide/epframebuffer.h $$OUT_PWD/include/
+    mv include/liboxide/oxide_sentry.h include/liboxide/sentry.h && \
+    echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename \"{}\" .xml | xargs -rI {} cp $$OUT_PWD/\"{}\"_interface.h include/liboxide/
 
 liboxide_h.target = include/liboxide.h
 liboxide_h.depends += liboxide_liboxide_h
@@ -91,11 +90,14 @@ clean_headers.commands = rm -rf include
 
 liboxide_h_install.files = \
     include/liboxide.h \
-    include/liboxide \
-    include/epframebuffer.h
+    include/liboxide
 liboxide_h_install.depends = liboxide_h
 liboxide_h_install.path = /opt/include/
 INSTALLS += liboxide_h_install
+
+epframebuffer_h_install.files = ../epaper/epframebuffer.h
+epframebuffer_h_install.path = /opt/include
+INSTALLS += epframebuffer_h_install
 
 QMAKE_EXTRA_TARGETS += liboxide_liboxide_h liboxide_h clean_headers liboxide_h_install
 PRE_TARGETDEPS += $$clean_headers.target
@@ -103,11 +105,13 @@ POST_TARGETDEPS += $$liboxide_liboxide_h.target $$liboxide_h.target
 QMAKE_CLEAN += $$liboxide_h.target include/liboxide/*.h
 
 include(../../qmake/common.pri)
+TARGET = oxide
 target.path = /opt/lib
 INSTALLS += target
 
-LIBS += -L$$PWD/../epaper -lqsgepaper
-INCLUDEPATH += $$PWD/../epaper
+INCLUDEPATH += ../../shared/mxcfb
+
+include(../../qmake/epaper.pri)
 include(../../qmake/sentry.pri)
 
 QMAKE_PKGCONFIG_NAME = liboxide

@@ -20,4 +20,3 @@ applications.path = /opt/usr/share/applications/
 INSTALLS += applications
 
 include(../../qmake/liboxide.pri)
-include(../../qmake/sentry.pri)
