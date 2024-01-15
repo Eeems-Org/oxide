@@ -115,7 +115,7 @@ public:
         }
         emit clicked();
     }
-    void paintNotification(Application* resumeApp);
+    void paintNotification(Application *resumeApp);
 
 signals:
     void changed(QVariantMap);

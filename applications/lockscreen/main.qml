@@ -2,144 +2,139 @@ import QtQuick 2.10
 import QtQuick.Window 2.3
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
+import "qrc:/codes.eeems.oxide"
 import "widgets"
 
-ApplicationWindow {
+OxideWindow {
     id: window
     objectName: "window"
     visible: stateController.state != "loading"
-    width: screenGeometry.width
-    height: screenGeometry.height
     title: qsTr("Oxide")
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
-    Component.onCompleted: controller.startup()
-    header: Rectangle {
-        color: "black"
-        height: menu.height
-        RowLayout {
-            id: menu
-            width: parent.width
-            Label { Layout.fillWidth: true }
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignRight
-                StatusIcon {
-                    id: wifiState
-                    objectName: "wifiState"
-                    property string state: "unknown"
-                    property int rssi: 0
-                    property bool connected: false
-                    source: {
-                        var icon;
-                        if(state === "unknown"){
-                            icon = "unknown";
-                        }else if(state === "down"){
-                            icon = "down";
-                        }else if(!connected){
-                            icon = "disconnected";
-                        }else if(rssi > -50) {
-                            icon = "4_bar";
-                        }else if(rssi > -60){
-                            icon = "3_bar";
-                        }else if(rssi > -70){
-                            icon = "2_bar";
-                        }else if(rssi > -80){
-                            icon = "1_bar";
-                        }else{
-                            icon = "0_bar";
-                        }
-                        return "qrc:/img/wifi/" + icon + ".png";
+    Component.onCompleted: {
+        controller.startup();
+        pinEntry.forceActiveFocus();
+    }
+    centerMenu: [
+        Label {
+            objectName: "clock"
+            Layout.alignment: Qt.AlignCenter
+            color: "white"
+        }
+    ]
+    rightMenu: [
+        StatusIcon {
+            id: wifiState
+            objectName: "wifiState"
+            property string state: "unknown"
+            property int rssi: 0
+            property bool connected: false
+            source: {
+                var icon;
+                if(state === "unknown"){
+                    icon = "unknown";
+                }else if(state === "down"){
+                    icon = "down";
+                }else if(!connected){
+                    icon = "disconnected";
+                }else if(rssi > -50) {
+                    icon = "4_bar";
+                }else if(rssi > -60){
+                    icon = "3_bar";
+                }else if(rssi > -70){
+                    icon = "2_bar";
+                }else if(rssi > -80){
+                    icon = "1_bar";
+                }else{
+                    icon = "0_bar";
+                }
+                return "qrc:/img/wifi/" + icon + ".png";
+            }
+        },
+        StatusIcon {
+            id: batteryLevel
+            objectName: "batteryLevel"
+            property bool alert: false
+            property bool warning: false
+            property bool charging: false
+            property bool connected: false
+            property bool present: true
+            property int level: 0
+            source: {
+                var icon = "";
+                if(alert || !present){
+                    icon = "alert";
+                }else if(warning){
+                    icon = "unknown";
+                }else{
+                    if(charging || connected){
+                        icon = "charging_";
+                    }
+                    if(level < 25){
+                        icon += "20";
+                    }else if(level < 35){
+                        icon += "30";
+                    }else if(level < 55){
+                        icon += "50";
+                    }else if(level < 65){
+                        icon += "60";
+                    }else if(level < 85){
+                        icon += "80";
+                    }else if(level < 95){
+                        icon += "90";
+                    }else{
+                        icon += 100;
                     }
                 }
-                StatusIcon {
-                    id: batteryLevel
-                    objectName: "batteryLevel"
-                    property bool alert: false
-                    property bool warning: false
-                    property bool charging: false
-                    property bool connected: false
-                    property bool present: true
-                    property int level: 0
-                    source: {
-                        var icon = "";
-                        if(alert || !present){
-                            icon = "alert";
-                        }else if(warning){
-                            icon = "unknown";
-                        }else{
-                            if(charging || connected){
-                                icon = "charging_";
-                            }
-                            if(level < 25){
-                                icon += "20";
-                            }else if(level < 35){
-                                icon += "30";
-                            }else if(level < 55){
-                                icon += "50";
-                            }else if(level < 65){
-                                icon += "60";
-                            }else if(level < 85){
-                                icon += "80";
-                            }else if(level < 95){
-                                icon += "90";
-                            }else{
-                                icon += 100;
-                            }
-                        }
-                        return "qrc:/img/battery/" + icon + ".png";
+                return "qrc:/img/battery/" + icon + ".png";
+            }
+        },
+        CustomMenu {
+            OxideMenu {
+                id: powerMenu
+                title: qsTr("");
+                font: iconFont.name
+                width: 260
+                color: "white"
+                backgroundColor: "black"
+                activeColor: "black"
+                activeBackgroundColor: "white"
+                borderColor: "white"
+                Action {
+                    text: qsTr(" Suspend")
+                    enabled: !controller.sleepInhibited
+                    onTriggered: {
+                        controller.breadcrumb("menu.suspend", "clicked", "ui");
+                        controller.suspend();
                     }
                 }
-                CustomMenu {
-                    BetterMenu {
-                        id: powerMenu
-                        title: qsTr("");
-                        font: iconFont.name
-                        width: 260
-                        Action {
-                            text: qsTr(" Suspend")
-                            enabled: !controller.sleepInhibited
-                            onTriggered: {
-                                controller.breadcrumb("menu.suspend", "clicked", "ui");
-                                controller.suspend();
-                            }
-                        }
-                        Action {
-                            text: qsTr(" Reboot")
-                            enabled: !controller.powerOffInhibited
-                            onTriggered: {
-                                controller.breadcrumb("menu.reboot", "clicked", "ui");
-                                controller.reboot();
-                            }
-                        }
-                        Action {
-                            text: qsTr(" Shutdown")
-                            enabled: !controller.powerOffInhibited
-                            onTriggered: {
-                                controller.breadcrumb("menu.shutdown", "clicked", "ui");
-                                controller.powerOff();
-                            }
-                        }
+                Action {
+                    text: qsTr(" Reboot")
+                    enabled: !controller.powerOffInhibited
+                    onTriggered: {
+                        controller.breadcrumb("menu.reboot", "clicked", "ui");
+                        controller.reboot();
+                    }
+                }
+                Action {
+                    text: qsTr(" Shutdown")
+                    enabled: !controller.powerOffInhibited
+                    onTriggered: {
+                        controller.breadcrumb("menu.shutdown", "clicked", "ui");
+                        controller.powerOff();
                     }
                 }
             }
         }
-        Label {
-            objectName: "clock"
-            anchors.centerIn: parent
-            color: "white"
-        }
-    }
-    background: Rectangle { color: "black" }
-    contentData: [
-        Rectangle {
-            anchors.fill: parent
-            color: "black"
-        },
+    ]
+    initialItem: Item {
+        anchors.fill: parent
         PinPad {
             id: pinEntry
+            focus: true
             objectName: "pinEntry"
-            visible: false
+            buttonsVisible: !window.landscape
             showPress: false
             anchors.centerIn: parent
             label: {
@@ -166,16 +161,18 @@ ApplicationWindow {
                 }
                 message = "";
             }
-        },
-        Popup {
-            visible: stateController.state == "import"
-            x: (parent.width / 2) - (width / 2)
-            y: (parent.height / 2) - (height / 2)
+        }
+    }
+    Component {
+        id: importDialog
+        Rectangle{
+            color: "white"
+            anchors.centerIn: parent
             width: 1000
+            height: contentItem.implicitHeight
             clip: true
-            closePolicy: Popup.NoAutoClose
             ColumnLayout {
-                anchors.fill: parent
+                anchors.centerIn: parent
                 RowLayout {
                     Item { Layout.fillWidth: true }
                     Label {
@@ -209,16 +206,18 @@ ApplicationWindow {
                     }
                 }
             }
-        },
-        Popup {
-            visible: stateController.state == "pinPrompt"
-            x: (parent.width / 2) - (width / 2)
-            y: (parent.height / 2) - (height / 2)
+        }
+    }
+    Component {
+        id: pinPrompt
+        Rectangle{
+            color: "white"
+            anchors.centerIn: parent
             width: 1000
+            height: contentItem.implicitHeight
             clip: true
-            closePolicy: Popup.NoAutoClose
             ColumnLayout {
-                anchors.fill: parent
+                anchors.centerIn: parent
                 RowLayout {
                     Item { Layout.fillWidth: true }
                     Label {
@@ -252,16 +251,18 @@ ApplicationWindow {
                     }
                 }
             }
-        },
-        Popup {
-            visible: stateController.state == "telemetry"
-            x: (parent.width / 2) - (width / 2)
-            y: (parent.height / 2) - (height / 2)
+        }
+    }
+    Component {
+        id: telemetryDialog
+        Rectangle{
+            color: "white"
+            anchors.centerIn: parent
+            height: contentItem.implicitHeight
             width: 1000
             clip: true
-            closePolicy: Popup.NoAutoClose
             ColumnLayout {
-                anchors.fill: parent
+                anchors.centerIn: parent
                 RowLayout {
                     Item { Layout.fillWidth: true }
                     Label {
@@ -272,7 +273,6 @@ ApplicationWindow {
                 }
                 Label {
                     text: "Oxide has basic telemetry and crash reporting.\nWould you like to enable it?\nSee https://oxide.eeems.codes/faq.html for more\ninformation."
-
                     Layout.fillWidth: true
                 }
                 Item {
@@ -333,9 +333,9 @@ ApplicationWindow {
                         }
                     }
                 }
-            }
         }
-    ]
+        }
+    }
     StateGroup {
         id: stateController
         objectName: "stateController"
@@ -358,27 +358,28 @@ ApplicationWindow {
                         controller.breadcrumb("navigation", "main", "navigation");
                         console.log("PIN Entry");
                         pinEntry.value = "";
+                        pinEntry.forceActiveFocus();
+                        window.stack.pop(window.stack.initialItem);
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: true }
                 }
             },
             Transition {
                 from: "*"; to: "pinPrompt"
                 SequentialAnimation {
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                     ScriptAction { script: {
-                            controller.breadcrumb("navigation", "pinPrompt", "navigation");
+                        controller.breadcrumb("navigation", "pinPrompt", "navigation");
                         console.log("Prompt for PIN creation");
+                        window.stack.push(pinPrompt);
                     } }
                 }
             },
             Transition {
                 from: "*"; to: "telemetry"
                 SequentialAnimation {
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                     ScriptAction { script: {
-                            controller.breadcrumb("navigation", "telemetry", "navigation");
+                        controller.breadcrumb("navigation", "telemetry", "navigation");
                         console.log("Telemetry opt-in screen");
+                        window.stack.push(telemetryDialog);
                     } }
                 }
             },
@@ -389,8 +390,9 @@ ApplicationWindow {
                         controller.breadcrumb("navigation", "confirmPin", "navigation");
                         console.log("PIN Confirmation");
                         pinEntry.value = "";
+                        pinEntry.forceActiveFocus();
+                        window.stack.pop(window.stack.initialItem);
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: true }
                 }
             },
             Transition {
@@ -399,8 +401,8 @@ ApplicationWindow {
                     ScriptAction { script: {
                         controller.breadcrumb("navigation", "import", "navigation");
                         console.log("Import PIN");
+                        window.stack.push(importDialog);
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                 }
             },
             Transition {
@@ -410,28 +412,30 @@ ApplicationWindow {
                         controller.breadcrumb("navigation", "prompt", "navigation");
                         console.log("PIN Setup");
                         pinEntry.value = "";
+                        pinEntry.forceActiveFocus();
+                        window.stack.pop(window.stack.initialItem);
                     } }
-                    PropertyAction { target: pinEntry; property: "visible"; value: true }
                 }
             },
             Transition {
                 from: "*"; to: "noPin"
                 SequentialAnimation {
                     ScriptAction { script: controller.breadcrumb("navigation", "noPin", "navigation"); }
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                 }
             },
             Transition {
                 from: "*"; to: "loading"
                 SequentialAnimation {
-                    PropertyAction { target: pinEntry; property: "visible"; value: false }
                     ScriptAction { script: {
-                            controller.breadcrumb("navigation", "loading", "navigation");
+                        controller.breadcrumb("navigation", "loading", "navigation");
                         console.log("Loading display");
                         controller.startup();
+                        window.stack.pop(window.stack.initialItem);
                     } }
                 }
             }
         ]
     }
+    onKeyPressed: (event) => pinEntry.keyPress(event)
+    onKeyReleased: (event) => pinEntry.keyRelease(event)
 }

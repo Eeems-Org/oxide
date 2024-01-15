@@ -3,6 +3,7 @@
 #include "notification.h"
 #include "notificationapi.h"
 #include "appsapi.h"
+#include "systemapi.h"
 
 Notification::Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
  : QObject(parent),
@@ -52,35 +53,7 @@ void Notification::remove(){
     emit removed();
 }
 
-void Notification::paintNotification(Application* resumeApp){
-    qDebug() << "Painting notification" << identifier();
-    dispatchToMainThread([this]{
-        screenBackup = screenAPI->copy();
-    });
-    updateRect = notificationAPI->paintNotification(text(), m_icon);
-    qDebug() << "Painted notification" << identifier();
-    emit displayed();
-    QTimer::singleShot(2000, [this, resumeApp]{
-        dispatchToMainThread([this]{
-            QPainter painter(EPFrameBuffer::framebuffer());
-            painter.drawImage(updateRect, screenBackup, updateRect);
-            painter.end();
-            EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-            qDebug() << "Finished displaying notification" << identifier();
-            EPFrameBuffer::waitForLastUpdate();
-        });
-        if(!notificationAPI->notificationDisplayQueue.isEmpty()){
-            Oxide::dispatchToMainThread([resumeApp] {
-                notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification(resumeApp);
-            });
-            return;
-        }
-        if(resumeApp != nullptr){
-            resumeApp->uninterruptApplication();
-        }
-        notificationAPI->unlock();
-    });
-}
+
 
 void Notification::setIcon(QString icon){
     if(!hasPermission("notification")){
@@ -100,4 +73,40 @@ void Notification::setIcon(QString icon){
 
 bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }
 
+void Notification::paintNotification(Application *resumeApp) {
+    qDebug() << "Painting notification" << identifier();
+    dispatchToMainThread([this] { screenBackup = screenAPI->copy(); });
+    updateRect = notificationAPI->paintNotification(text(), m_icon);
+    qDebug() << "Painted notification" << identifier();
+    emit displayed();
+    QTimer::singleShot(2000, [this, resumeApp] {
+        dispatchToMainThread([this] {
+            auto frameBuffer = EPFrameBuffer::framebuffer();
+            QPainter painter(frameBuffer);
+            painter.drawImage(updateRect, screenBackup, updateRect);
+            painter.end();
+            EPFrameBuffer::sendUpdate(
+                updateRect,
+                EPFrameBuffer::Mono,
+                EPFrameBuffer::FullUpdate,
+                true
+            );
+            qDebug() << "Finished displaying notification" << identifier();
+            EPFrameBuffer::waitForLastUpdate();
+        });
+        if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
+            Oxide::dispatchToMainThread([resumeApp] {
+                notificationAPI
+                    ->notificationDisplayQueue
+                    .takeFirst()
+                    ->paintNotification(resumeApp);
+            });
+            return;
+        }
+        if (resumeApp != nullptr) {
+            resumeApp->uninterruptApplication();
+        }
+        notificationAPI->unlock();
+    });
+}
 #include "moc_notification.cpp"

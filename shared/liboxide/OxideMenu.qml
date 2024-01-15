@@ -2,6 +2,22 @@ import QtQuick 2.10
 import QtQuick.Controls 2.4
 
 Menu {
+    id: menu
+    property color color: "black"
+    property alias backgroundColor: background.color
+    property color borderColor: background.border.color
+    property color activeBackgroundColor: "black"
+    property color activeColor: "white"
+    // contentItem.rotation: Oxide.landscape ? 90 : 0
+    background: Rectangle{
+        id: background
+        // rotation: contentItem.rotation
+        implicitWidth: 200
+        implicitHeight: 40
+        color: "white"
+        border.color: "black"
+        radius: 2
+    }
     delegate: MenuItem {
         id: menuItem
         implicitWidth: 250
@@ -47,7 +63,7 @@ Menu {
             text: menuItem.text
             font: menuItem.font
             opacity: enabled ? 1.0 : 0.3
-            color: "black"
+            color: menuItem.highlighted ? menu.activeColor : menu.color
             horizontalAlignment: Text.AlignLeft
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
@@ -56,7 +72,7 @@ Menu {
             implicitWidth: menuItem.implicitWidth
             implicitHeight: menuItem.implicitHeight
             opacity: enabled ? 1 : 0.3
-            color: "transparent"
+            color: menuItem.highlighted ? menu.activeBackgroundColor : "transparent"
         }
     }
 }

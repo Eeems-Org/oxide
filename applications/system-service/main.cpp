@@ -1,12 +1,17 @@
 #include <QCommandLineParser>
 #include <QGuiApplication>
 #include <QLockFile>
+#include <QWindow>
+#include <QScreen>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
 
 #include <cstdlib>
 #include <filesystem>
 #include <liboxide.h>
 
 #include "dbusservice.h"
+#include "controller.h"
 
 using namespace std;
 using namespace Oxide::Sentry;
@@ -41,7 +46,14 @@ bool stopProcess(pid_t pid){
 
 int main(int argc, char* argv[]){
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
+        bool enabled = Oxide::debugEnabled();
+        if(!enabled){
+            qputenv("DEBUG", "1");
+        }
         O_WARNING("rm2fb not detected. Running xochitl instead!");
+        if(!enabled){
+            qputenv("DEBUG", "0");
+        }
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
     deviceSettings.setupQtEnvironment(false);
@@ -130,5 +142,18 @@ int main(int argc, char* argv[]){
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
         remove(pidPath);
     });
+    QQmlApplicationEngine engine;
+    QQmlContext* context = engine.rootContext();
+    Controller controller(&app);
+    context->setContextProperty("controller", &controller);
+    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+    if (engine.rootObjects().isEmpty()){
+        QScreen* screen = app.primaryScreen();
+        QWindow window(screen);
+        window.resize(screen->size());
+        window.setPosition(0, 0);
+        window.setOpacity(0);
+        window.show();
+    }
     return app.exec();
 }
