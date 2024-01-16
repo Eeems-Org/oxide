@@ -27,10 +27,15 @@
  */
 #define OXIDE_SERVICE_PATH "/codes/eeems/oxide1"
 /*!
- * \def OXIDE_INTERFACE_VERSION
+ * \def OXIDE_VERSION
  * \brief Version of Tarnish and liboxide
  */
-#define OXIDE_INTERFACE_VERSION "2.7.0"
+#define OXIDE_VERSION "2.8"
+/*!
+ * \def OXIDE_INTERFACE_VERSION
+ * \brief Version of Tarnish and liboxide for dbus
+ */
+#define OXIDE_INTERFACE_VERSION OXIDE_VERSION ".0"
 /*!
  * \def OXIDE_GENERAL_INTERFACE
  * \brief DBus service for the general API

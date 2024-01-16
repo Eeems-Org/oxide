@@ -78,9 +78,12 @@ DBUS_INTERFACES += \
 
 LIBS += -lsystemd
 
+include(../../qmake/common.pri)
+
 liboxide_liboxide_h.target = include/liboxide/liboxide.h
 liboxide_liboxide_h.commands = \
     mkdir -p include/liboxide && \
+    sed -i \'s/define OXIDE_VERSION .*/define OXIDE_VERSION \"$$VERSION\"/\' $$_PRO_FILE_PWD_/meta.h && \
     echo $$HEADERS | xargs -rn1 | xargs -rI {} cp $$PWD/{} include/liboxide/ && \
     mv include/liboxide/oxide_sentry.h include/liboxide/sentry.h && \
     echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename \"{}\" .xml | xargs -rI {} cp $$OUT_PWD/\"{}\"_interface.h include/liboxide/
@@ -110,7 +113,6 @@ PRE_TARGETDEPS += $$clean_headers.target
 POST_TARGETDEPS += $$liboxide_liboxide_h.target $$liboxide_h.target
 QMAKE_CLEAN += $$liboxide_h.target include/liboxide/*.h
 
-include(../../qmake/common.pri)
 TARGET = oxide
 target.path = /opt/lib
 INSTALLS += target
