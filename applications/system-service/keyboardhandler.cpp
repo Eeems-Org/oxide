@@ -1,6 +1,4 @@
 #include "keyboardhandler.h"
-#include "eventlistener.h"
-#include "buttonhandler.h"
 
 #include <QFileInfo>
 #include <QKeyEvent>
@@ -12,6 +10,7 @@ KeyboardHandler* KeyboardHandler::init(){
         return instance;
     }
     instance = new KeyboardHandler();
+    instance->moveToThread(instance);
     instance->start();
     return instance;
 }
@@ -662,7 +661,6 @@ void KeyboardHandler::reloadDevices(){
         }
         if(!hasDevice(device) && device.fd != -1){
             auto keyboard = new KeyboardDevice(this, device);
-            keyboard->moveToThread(this);
             O_DEBUG(keyboard->name() << "added");
             devices.append(keyboard);
             keyboard->readEvents();

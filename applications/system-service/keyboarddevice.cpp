@@ -7,7 +7,6 @@ KeyboardDevice::KeyboardDevice(QThread* handler, event_device device)
   device(device),
   sys("/sys/class/input/" + devName() + "/device/")
 {
-    moveToThread(handler);
     _name = sys.strProperty("name").c_str();
     device.lock();
     notifier = new QSocketNotifier(device.fd, QSocketNotifier::Read, this);
