@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 
-ApplicationWindow{
+ApplicationWindow {
     width: Screen.width
     height: Screen.height
     x: 0
@@ -12,4 +12,5 @@ ApplicationWindow{
         color: "white"
         anchors.fill: parent
     }
+    contentData: []
 }

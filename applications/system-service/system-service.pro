@@ -1,6 +1,5 @@
 QT += dbus
 QT += quick
-QT += gui
 
 CONFIG += c++17
 CONFIG += console

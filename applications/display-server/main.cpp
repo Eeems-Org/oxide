@@ -7,18 +7,16 @@
 #include <QQmlContext>
 
 #include <cstdlib>
+#include <signal.h>
 #include <filesystem>
 #include <liboxide.h>
-
-#include "dbusservice.h"
-#include "controller.h"
 
 using namespace std;
 using namespace Oxide::Sentry;
 
 const std::string runPath = "/run/oxide";
-const char* pidPath = "/run/oxide/oxide.pid";
-const char* lockPath = "/run/oxide/oxide.lock";
+const char* pidPath = "/run/oxide/blight.pid";
+const char* lockPath = "/run/oxide/blight.lock";
 
 void sigHandler(int signal){
     ::signal(signal, SIG_DFL);
@@ -60,19 +58,19 @@ int main(int argc, char* argv[]){
     QThread::currentThread()->setObjectName("main");
     deviceSettings.setupQtEnvironment(false);
     QGuiApplication app(argc, argv);
-    sentry_init("tarnish", argv);
+    sentry_init("blight", argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
-    app.setApplicationName("tarnish");
+    app.setApplicationName("blight");
     app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
     QCommandLineParser parser;
-    parser.setApplicationDescription("Oxide system service");
+    parser.setApplicationDescription("Oxide display service");
     parser.addHelpOption();
     parser.applicationDescription();
     parser.addVersionOption();
     QCommandLineOption breakLockOption(
         {"f", "break-lock"},
-        "Break existing locks and force startup if another version of tarnish is already running"
+        "Break existing locks and force startup if another version of blight is already running"
     );
     parser.addOption(breakLockOption);
     parser.process(app);
@@ -83,15 +81,15 @@ int main(int argc, char* argv[]){
     auto actualPid = QString::number(app.applicationPid());
     QString pid = Oxide::execute(
         "systemctl",
-        QStringList() << "--no-pager" << "show" << "--property" << "MainPID" << "--value" << "tarnish"
+        QStringList() << "--no-pager" << "show" << "--property" << "MainPID" << "--value" << "blight"
     ).trimmed();
     if(pid != "0" && pid != actualPid){
         if(!parser.isSet(breakLockOption)){
-            qDebug() << "tarnish.service is already running";
+            qDebug() << "blight.service is already running";
             return EXIT_FAILURE;
         }
-        if(QProcess::execute("systemctl", QStringList() << "stop" << "tarnish")){
-            qDebug() << "tarnish.service is already running";
+        if(QProcess::execute("systemctl", QStringList() << "stop" << "blight")){
+            qDebug() << "blight.service is already running";
             qDebug() << "Unable to stop service";
             return EXIT_FAILURE;
         }
@@ -107,7 +105,7 @@ int main(int argc, char* argv[]){
         if(!parser.isSet(breakLockOption)){
             return EXIT_FAILURE;
         }
-        qDebug() << "Attempting to stop all other instances of tarnish" << lockPath;
+        qDebug() << "Attempting to stop all other instances of blight" << lockPath;
         for(auto lockingPid : Oxide::lsof(lockPath)){
             if(Oxide::processExists(lockingPid)){
                 stopProcess(lockingPid);
@@ -128,11 +126,6 @@ int main(int argc, char* argv[]){
     signal(SIGINT, sigHandler);
     signal(SIGSEGV, sigHandler);
     signal(SIGTERM, sigHandler);
-
-    dbusService;
-    QTimer::singleShot(0, []{
-        dbusService->startup();
-    });
     QFile pidFile(pidPath);
     if(!pidFile.open(QFile::ReadWrite)){
         qWarning() << "Unable to create " << pidPath;
@@ -145,10 +138,7 @@ int main(int argc, char* argv[]){
         remove(pidPath);
     });
     QQmlApplicationEngine engine;
-    QQmlContext* context = engine.rootContext();
-    Controller controller(&app);
-    context->setContextProperty("controller", &controller);
-    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+    engine.load(QUrl(QStringLiteral("qrc:/Workspace.qml")));
     if(engine.rootObjects().isEmpty()){
         qFatal("Failed to load main layout");
     }
