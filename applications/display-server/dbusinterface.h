@@ -6,7 +6,7 @@
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
 
-#include <liboxide/meta.h>
+#include "../../shared/liboxide/meta.h"
 
 #define BLIGHT_SERVICE "codes.eeems.blight1"
 #define BLIGHT_SERVICE_PATH "/codes/eeems/blight1"
