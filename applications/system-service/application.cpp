@@ -10,7 +10,6 @@
 #include "systemapi.h"
 #include "digitizerhandler.h"
 #include "notificationapi.h"
-#include "mxcfb.h"
 #include "screenapi.h"
 #include "buttonhandler.h"
 

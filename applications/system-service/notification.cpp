@@ -5,7 +5,9 @@
 #include "appsapi.h"
 #include "screenapi.h"
 
-#ifndef EPAPER
+#ifdef EPAPER
+#include <epframebuffer.h>
+#else
 #define FRAMEBUFFER new QImage(200, 200, QImage::Format_ARGB32_Premultiplied)
 #endif
 
