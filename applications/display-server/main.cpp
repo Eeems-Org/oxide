@@ -11,6 +11,8 @@
 #include <filesystem>
 #include <liboxide.h>
 
+#include "dbusinterface.h"
+
 using namespace std;
 using namespace Oxide::Sentry;
 
@@ -43,6 +45,7 @@ bool stopProcess(pid_t pid){
 }
 
 int main(int argc, char* argv[]){
+#ifdef __arm__
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
         bool enabled = Oxide::debugEnabled();
         if(!enabled){
@@ -54,9 +57,12 @@ int main(int argc, char* argv[]){
         }
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
+#endif
     qputenv("XDG_CURRENT_DESKTOP", "OXIDE");
     QThread::currentThread()->setObjectName("main");
+#ifdef __arm__
     deviceSettings.setupQtEnvironment(false);
+#endif
     QGuiApplication app(argc, argv);
     sentry_init("blight", argv);
     app.setOrganizationName("Eeems");
@@ -83,9 +89,9 @@ int main(int argc, char* argv[]){
         "systemctl",
         QStringList() << "--no-pager" << "show" << "--property" << "MainPID" << "--value" << "blight"
     ).trimmed();
-    if(pid != "0" && pid != actualPid){
+    if(pid != "0" && pid != "QML debugging is enabled. Only use this in a safe environment.\n0" && pid != actualPid){
         if(!parser.isSet(breakLockOption)){
-            qDebug() << "blight.service is already running";
+            qDebug() << "blight.service is already running" << pid;
             return EXIT_FAILURE;
         }
         if(QProcess::execute("systemctl", QStringList() << "stop" << "blight")){
@@ -142,5 +148,6 @@ int main(int argc, char* argv[]){
     if(engine.rootObjects().isEmpty()){
         qFatal("Failed to load main layout");
     }
+    DbusInterface(qApp).registerService();
     return app.exec();
 }

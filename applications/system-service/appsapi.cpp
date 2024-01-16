@@ -4,6 +4,10 @@
 #include "notificationapi.h"
 #include "systemapi.h"
 
+#ifndef EPAPER
+#define FRAMEBUFFER new QImage(200, 200, QImage::Format_ARGB32_Premultiplied)
+#endif
+
 using namespace Oxide;
 
 AppsAPI* AppsAPI::singleton(AppsAPI* self){
@@ -853,19 +857,25 @@ AppsAPI::~AppsAPI() {
     writeApplications();
     settings.sync();
     dispatchToMainThread([this] {
+#ifdef EPAPER
         auto frameBuffer = EPFrameBuffer::framebuffer();
         qDebug() << "Waiting for other painting to finish...";
         while (frameBuffer->paintingActive()) {
             EPFrameBuffer::waitForLastUpdate();
         }
+#else
+        auto frameBuffer = FRAMEBUFFER;
+#endif
         QPainter painter(frameBuffer);
         auto rect = frameBuffer->rect();
         auto fm = painter.fontMetrics();
         qDebug() << "Clearing screen...";
         painter.setPen(Qt::white);
         painter.fillRect(rect, Qt::black);
+#ifdef EPAPER
         EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
         EPFrameBuffer::waitForLastUpdate();
+#endif
         painter.end();
         qDebug() << "Stopping applications...";
         for (auto app : applications) {
@@ -873,7 +883,9 @@ AppsAPI::~AppsAPI() {
                 auto text = "Stopping " + app->displayName() + "...";
                 qDebug() << text.toStdString().c_str();
                 notificationAPI->drawNotificationText(text, Qt::white, Qt::black);
+#ifdef EPAPER
                 EPFrameBuffer::waitForLastUpdate();
+#endif
             }
             app->stopNoSecurityCheck();
         }
@@ -895,10 +907,14 @@ AppsAPI::~AppsAPI() {
             painter2.translate(-x, -y);
         }
         painter2.drawText(rect, Qt::AlignCenter, "Goodbye!");
+#ifdef EPAPER
         EPFrameBuffer::waitForLastUpdate();
         EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
+#endif
         painter2.end();
+#ifdef EPAPER
         EPFrameBuffer::waitForLastUpdate();
+#endif
     });
 }
 #include "moc_appsapi.cpp"

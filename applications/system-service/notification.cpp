@@ -5,6 +5,10 @@
 #include "appsapi.h"
 #include "screenapi.h"
 
+#ifndef EPAPER
+#define FRAMEBUFFER new QImage(200, 200, QImage::Format_ARGB32_Premultiplied)
+#endif
+
 Notification::Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
  : QObject(parent),
    m_path(path),
@@ -181,10 +185,15 @@ void Notification::paintNotification(Application *resumeApp) {
     emit displayed();
     QTimer::singleShot(2000, [this, resumeApp] {
         dispatchToMainThread([this] {
+#ifdef EPAPER
             auto frameBuffer = EPFrameBuffer::framebuffer();
+#else
+            auto frameBuffer = FRAMEBUFFER;
+#endif
             QPainter painter(frameBuffer);
             painter.drawImage(updateRect, screenBackup, updateRect);
             painter.end();
+#ifdef EPAPER
             EPFrameBuffer::sendUpdate(
                 updateRect,
                 EPFrameBuffer::Mono,
@@ -193,6 +202,7 @@ void Notification::paintNotification(Application *resumeApp) {
             );
             qDebug() << "Finished displaying notification" << identifier();
             EPFrameBuffer::waitForLastUpdate();
+#endif
         });
         if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
             Oxide::dispatchToMainThread([resumeApp] {

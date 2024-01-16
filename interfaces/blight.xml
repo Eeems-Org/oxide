@@ -1,3 +1,9 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
+  <interface name="codes.eeems.blight1.Compositor">
+    <property name="pid" type="i" access="read"/>
+    <method name="open">
+      <arg type="h" direction="out"/>
+    </method>
+  </interface>
 </node>

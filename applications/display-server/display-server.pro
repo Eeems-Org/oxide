@@ -11,6 +11,7 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs depr
 QMAKE_CFLAGS += -std=c99
 
 SOURCES += \
+    connection.cpp \
     dbusinterface.cpp \
     main.cpp
 
@@ -25,6 +26,7 @@ target.path = /opt/bin
 INSTALLS += target
 
 HEADERS += \
+    connection.h \
     dbusinterface.h
 
 INCLUDEPATH += ../../shared/mxcfb

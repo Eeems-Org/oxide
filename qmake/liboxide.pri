@@ -9,5 +9,7 @@ QT += dbus
 QT += gui
 
 QML_IMPORT_PATH += qrc:/codes.eeems.oxide
-include(sentry.pri)
-include(epaper.pri)
+linux-oe-g++{
+    include(sentry.pri)
+    include(epaper.pri)
+}

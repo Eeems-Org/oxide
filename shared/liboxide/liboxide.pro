@@ -32,6 +32,7 @@ SOURCES += \
     settingsfile.cpp \
     sharedsettings.cpp \
     slothandler.cpp \
+    socketpair.cpp \
     sysobject.cpp \
     signalhandler.cpp \
     xochitlsettings.cpp
@@ -54,6 +55,7 @@ HEADERS += \
     settingsfile.h \
     sharedsettings.h \
     slothandler.h \
+    socketpair.h \
     sysobject.h \
     signalhandler.h \
     xochitlsettings.h
@@ -73,7 +75,8 @@ DBUS_INTERFACES += \
     ../../interfaces/screenapi.xml \
     ../../interfaces/screenshot.xml \
     ../../interfaces/notificationapi.xml \
-    ../../interfaces/notification.xml
+    ../../interfaces/notification.xml \
+    ../../interfaces/blight.xml
 
 LIBS += -lsystemd
 
@@ -118,9 +121,11 @@ TARGET = oxide
 target.path = /opt/lib
 INSTALLS += target
 
-INCLUDEPATH += ../../shared/mxcfb
-
-include(../../qmake/epaper.pri)
+linux-oe-g++{
+    DEFINES += EPAPER
+    INCLUDEPATH += ../../shared/mxcfb
+    include(../../qmake/epaper.pri)
+}
 include(../../qmake/sentry.pri)
 
 QMAKE_PKGCONFIG_NAME = liboxide

@@ -1,6 +1,12 @@
 #include "screenapi.h"
 #include "notificationapi.h"
 #include "systemapi.h"
+#ifdef EPAPER
+#include <epframebuffer.h>
+#include "mxcfb.h"
+#else
+#define FRAMEBUFFER new QImage(200, 200, QImage::Format_ARGB32_Premultiplied)
+#endif
 
 #include <liboxide/epaper.h>
 
@@ -16,7 +22,9 @@ QDBusObjectPath ScreenAPI::screenshot(){
     return dispatchToMainThread<QDBusObjectPath>([this, filePath]{
         QImage screen = copy();
         QRect rect = notificationAPI->paintNotification("Taking Screenshot...", "");
+#ifdef EPAPER
         EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
+#endif
         QDBusObjectPath path("/");
         bool saved = (
             systemAPI->landscape()
@@ -28,11 +36,17 @@ QDBusObjectPath ScreenAPI::screenshot(){
         }else{
             path = addScreenshot(filePath)->qPath();
         }
+#ifdef EPAPER
         auto frameBuffer = EPFrameBuffer::framebuffer();
+#else
+        auto frameBuffer = FRAMEBUFFER;
+#endif
         QPainter painter(frameBuffer);
         painter.drawImage(rect, screen, rect);
         painter.end();
+#ifdef EPAPER
         EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::PartialUpdate, true);
+#endif
         notificationAPI->add(
             QUuid::createUuid().toString(),
             "codes.eeems.tarnish",
@@ -46,11 +60,17 @@ QDBusObjectPath ScreenAPI::screenshot(){
 
 QImage ScreenAPI::copy(){
     return Oxide::dispatchToMainThread<QImage>([]{
+#ifdef EPAPER
         auto frameBuffer = EPFrameBuffer::framebuffer();
+#else
+        auto frameBuffer = FRAMEBUFFER;
+#endif
         qDebug() << "Waiting for other painting to finish...";
+#ifdef EPAPER
         while(frameBuffer->paintingActive()){
             EPFrameBuffer::waitForLastUpdate();
         }
+#endif
         return frameBuffer->copy();
     });
 }
@@ -208,7 +228,11 @@ bool ScreenAPI::drawFullscreenImage(QString path, double rotate) {
         [img, path](Oxide::Sentry::Transaction *t) {
             Q_UNUSED(t);
             Oxide::dispatchToMainThread([img] {
+#ifdef EPAPER
                 auto frameBuffer = EPFrameBuffer::framebuffer();
+#else
+                auto frameBuffer = FRAMEBUFFER;
+#endif
                 QRect rect = frameBuffer->rect();
                 QPainter painter(frameBuffer);
                 painter.fillRect(rect, Qt::white);
@@ -226,6 +250,7 @@ bool ScreenAPI::drawFullscreenImage(QString path, double rotate) {
                 painter.translate(0 - img.width() / 2, 0 - img.height() / 2);
                 painter.drawPixmap(img.rect(), QPixmap::fromImage(img));
                 painter.end();
+#ifdef EPAPER
                 EPFrameBuffer::sendUpdate(
                     frameBuffer->rect(),
                     EPFrameBuffer::HighQualityGrayscale,
@@ -233,6 +258,7 @@ bool ScreenAPI::drawFullscreenImage(QString path, double rotate) {
                     true
                 );
                 EPFrameBuffer::waitForLastUpdate();
+#endif
             });
         });
     return true;

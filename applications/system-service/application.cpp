@@ -1048,9 +1048,10 @@ void Application::recallScreen() {
             Oxide::Sentry::sentry_span(
                 t, "recall", "Recall the screen", [this, img] {
                     dispatchToMainThread([img] {
-                        auto size = EPFrameBuffer::framebuffer()->size();
-                        QRect rect(0, 0, size.width(), size.height());
                         auto frameBuffer = EPFrameBuffer::framebuffer();
+                        auto size = frameBuffer->size();
+                        QRect rect(0, 0, size.width(), size.height());
+
                         QPainter painter(frameBuffer);
                         painter.drawImage(rect, img);
                         painter.end();

@@ -24,5 +24,7 @@
 #include "notificationapi_interface.h"
 #include "notification_interface.h"
 
+#include "blight_interface.h"
+
 #endif // LIBOXIDE_DBUS_H
 /*! @} */
