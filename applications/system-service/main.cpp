@@ -5,6 +5,7 @@
 #include <QScreen>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQuickItem>
 
 #include <cstdlib>
 #include <filesystem>
@@ -149,13 +150,10 @@ int main(int argc, char* argv[]){
     Controller controller(&app);
     context->setContextProperty("controller", &controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-    if (engine.rootObjects().isEmpty()){
-        QScreen* screen = app.primaryScreen();
-        QWindow window(screen);
-        window.resize(screen->size());
-        window.setPosition(0, 0);
-        window.setOpacity(0);
-        window.show();
+    if(engine.rootObjects().isEmpty()){
+        qFatal("Failed to load main layout");
     }
+    engine.load(QUrl(QStringLiteral("qrc:/window.qml")));
+    qDebug() << engine.rootObjects();
     return app.exec();
 }
