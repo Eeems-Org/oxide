@@ -5,6 +5,7 @@
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "notificationapi.h"
+#include "keyboardhandler.h"
 
 QDebug operator<<(QDebug debug, const Touch& touch){
     QDebugStateSaver saver(debug);
@@ -59,10 +60,8 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 }
                 releaseSleepInhibitors();
             });
-            Oxide::Sentry::sentry_span(t, "clear-input", "Clear input buffers", []{
-                touchHandler->clear_buffer();
-                wacomHandler->clear_buffer();
-                buttonHandler->clear_buffer();
+            Oxide::Sentry::sentry_span(t, "clear-input", "Clear input buffers", [this]{
+                clearDeviceBuffers();
             });
             qDebug() << "Suspending...";
         });
@@ -277,6 +276,7 @@ SystemAPI::SystemAPI(QObject* parent)
             deviceSettings.onKeyboardAttachedChanged([this]{
                 emit landscapeChanged(landscape());
             });
+            keyboardHandler;
         });
         qDebug() << "System API ready to use";
     });
@@ -384,6 +384,14 @@ void SystemAPI::startLockTimer(){
 void SystemAPI::lock(){ mutex.lock(); }
 
 void SystemAPI::unlock() { mutex.unlock(); }
+
+void SystemAPI::clearDeviceBuffers(){
+    touchHandler->clear_buffer();
+    wacomHandler->clear_buffer();
+    buttonHandler->clear_buffer();
+    clearKeyboardBuffers();
+}
+void SystemAPI::clearKeyboardBuffers(){ keyboardHandler->flood(); }
 
 void SystemAPI::setSwipeEnabled(int direction, bool enabled){
     if(!hasPermission("system")){
@@ -897,14 +905,22 @@ void SystemAPI::touchUp(QList<Touch*> touches){
             cancelSwipe(touch);
             return;
         }
-        emit bottomAction();
+        if(landscape()){
+            emit rightAction();
+        }else{
+            emit bottomAction();
+        }
     }else if(swipeDirection == Down){
         if(!swipeStates[Down] || touch->y > location.y() || startLocation.y() - touch->y < swipeLengths[Down]){
             // Must end swiping down and having gone far enough
             cancelSwipe(touch);
             return;
         }
-        emit topAction();
+        if(landscape()){
+            emit leftAction();
+        }else{
+            emit topAction();
+        }
     }else if(swipeDirection == Right || swipeDirection == Left){
         auto isRM2 = deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2;
         auto invalidLeft = !swipeStates[Left] || touch->x < location.x() || touch->x - startLocation.x() < swipeLengths[Left];
@@ -919,9 +935,17 @@ void SystemAPI::touchUp(QList<Touch*> touches){
             return;
         }
         if(swipeDirection == Left){
-            emit rightAction();
+            if(landscape()){
+                emit topAction();
+            }else{
+                emit rightAction();
+            }
         }else{
-            emit leftAction();
+            if(landscape()){
+                emit bottomAction();
+            }else{
+                emit leftAction();
+            }
         }
     }
     swipeDirection = None;

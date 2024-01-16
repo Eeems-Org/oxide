@@ -125,7 +125,7 @@ QObject* getObj(QStringList* args, int isGet = false){
     return obj;
 }
 
-int get(QCommandLineParser& parser){
+int get_command(QCommandLineParser& parser){
     parser.clearPositionalArguments();
     parser.addPositionalArgument("", "", "get");
     parser.addPositionalArgument("property", "Property to get", "{property}");
@@ -151,7 +151,7 @@ int get(QCommandLineParser& parser){
     return EXIT_SUCCESS;
 }
 
-int check(QCommandLineParser& parser){
+int check_command(QCommandLineParser& parser){
     parser.clearPositionalArguments();
     parser.addPositionalArgument("", "", "check");
     parser.addPositionalArgument("property", "Property to check", "{property}");
@@ -177,7 +177,7 @@ int check(QCommandLineParser& parser){
     return EXIT_SUCCESS;
 }
 
-int set(QCommandLineParser& parser){
+int set_command(QCommandLineParser& parser){
     parser.clearPositionalArguments();
     parser.addPositionalArgument("", "", "set");
     parser.addPositionalArgument("property", "Property to set", "{property}");
@@ -211,7 +211,7 @@ int set(QCommandLineParser& parser){
     return EXIT_FAILURE;
 }
 
-int list(QCommandLineParser& parser){
+int list_command(QCommandLineParser& parser){
     if(!parser.positionalArguments().isEmpty()){
         parser.showHelp(EXIT_FAILURE);
     }
@@ -261,7 +261,7 @@ int main(int argc, char *argv[]){
     parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsOptions);
     QStringList args = parser.positionalArguments();
     if(parser.isSet(listOption)){
-        return list(parser);
+        return list_command(parser);
     }
     if (args.isEmpty()) {
         parser.showHelp(EXIT_FAILURE);
@@ -271,15 +271,15 @@ int main(int argc, char *argv[]){
     auto command = args.first();
     if(command == "get"){
         parser.clearPositionalArguments();
-        return get(parser);
+        return get_command(parser);
     }
     if(command == "check"){
         parser.clearPositionalArguments();
-        return check(parser);
+        return check_command(parser);
     }
     if(command == "set"){
         parser.clearPositionalArguments();
-        return set(parser);
+        return set_command(parser);
     }
     parser.showHelp(EXIT_FAILURE);
 }

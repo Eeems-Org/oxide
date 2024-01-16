@@ -87,6 +87,8 @@ public:
     void startLockTimer();
     void lock();
     void unlock();
+    void clearDeviceBuffers();
+    void clearKeyboardBuffers();
     Q_INVOKABLE void setSwipeEnabled(int direction, bool enabled);
     void setSwipeEnabled(SwipeDirection direction, bool enabled);
     Q_INVOKABLE bool getSwipeEnabled(int direction);
@@ -97,6 +99,7 @@ public:
     void setSwipeLength(SwipeDirection direction, int length);
     Q_INVOKABLE int getSwipeLength(int direction);
     int getSwipeLength(SwipeDirection direction);
+
 public slots:
     void suspend();
     void powerOff();
@@ -107,6 +110,7 @@ public slots:
     void inhibitPowerOff(QDBusMessage message);
     void uninhibitPowerOff(QDBusMessage message);
     void toggleSwipes();
+
 signals:
     void leftAction();
     void homeAction();

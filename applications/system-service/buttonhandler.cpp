@@ -69,8 +69,10 @@ void ButtonHandler::clear_buffer(){
 #ifdef DEBUG
     qDebug() << "Clearing event buffer on" << buttons.device.c_str();
 #endif
-    ::write(buttons.fd, flood, 512 * 8 * 4 * sizeof(input_event));
+    ::write(buttons.fd, flood, EVENT_FLOOD_SIZE);
 }
+
+input_event* ButtonHandler::event_flood(){ return flood; }
 
 void ButtonHandler::run(){
     char name[256];
