@@ -23,6 +23,8 @@ std::string readFile(const std::string& path){
     buffer << t.rdbuf();
     return buffer.str();
 }
+
+#include "devicesettings.h"
 #endif
 
 static void* invalid_mem = (void *)1;
