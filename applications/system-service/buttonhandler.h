@@ -29,6 +29,7 @@ using namespace std;
 using namespace Oxide;
 
 #define buttonHandler ButtonHandler::init()
+#define EVENT_FLOOD_SIZE 512 * 8 * 4 * sizeof(input_event)
 
 struct PressRecord {
     bool pressed = false;
@@ -51,6 +52,7 @@ public:
     ButtonHandler();
     void setEnabled(bool enabled);
     void clear_buffer();
+    input_event* event_flood();
 
 public slots:
     void pressKey(Qt::Key);

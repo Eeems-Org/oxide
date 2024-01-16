@@ -5,6 +5,7 @@
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "notificationapi.h"
+#include "keyboardhandler.h"
 
 QDebug operator<<(QDebug debug, const Touch& touch){
     QDebugStateSaver saver(debug);
@@ -59,10 +60,8 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 }
                 releaseSleepInhibitors();
             });
-            Oxide::Sentry::sentry_span(t, "clear-input", "Clear input buffers", []{
-                touchHandler->clear_buffer();
-                wacomHandler->clear_buffer();
-                buttonHandler->clear_buffer();
+            Oxide::Sentry::sentry_span(t, "clear-input", "Clear input buffers", [this]{
+                clearDeviceBuffers();
             });
             qDebug() << "Suspending...";
         });
@@ -277,6 +276,7 @@ SystemAPI::SystemAPI(QObject* parent)
             deviceSettings.onKeyboardAttachedChanged([this]{
                 emit landscapeChanged(landscape());
             });
+            keyboardHandler;
         });
         qDebug() << "System API ready to use";
     });
@@ -384,6 +384,14 @@ void SystemAPI::startLockTimer(){
 void SystemAPI::lock(){ mutex.lock(); }
 
 void SystemAPI::unlock() { mutex.unlock(); }
+
+void SystemAPI::clearDeviceBuffers(){
+    touchHandler->clear_buffer();
+    wacomHandler->clear_buffer();
+    buttonHandler->clear_buffer();
+    clearKeyboardBuffers();
+}
+void SystemAPI::clearKeyboardBuffers(){ keyboardHandler->flood(); }
 
 void SystemAPI::setSwipeEnabled(int direction, bool enabled){
     if(!hasPermission("system")){

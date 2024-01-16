@@ -284,7 +284,7 @@ void Application::uninterruptApplication(){
                 case Background:
                 case Backgroundable:
                     if(stateNoSecurityCheck() == Paused){
-                        touchHandler->clear_buffer();
+                        systemAPI->clearDeviceBuffers();
                         kill(-m_process->processId(), SIGCONT);
                     }
                     qDebug() << "Waiting for SIGUSR1 ack";
@@ -303,7 +303,7 @@ void Application::uninterruptApplication(){
                     break;
                 case Foreground:
                 default:
-                    touchHandler->clear_buffer();
+                    systemAPI->clearDeviceBuffers();
                     kill(-m_process->processId(), SIGCONT);
                     startSpan("foreground", "Application is in the foreground");
             }
@@ -339,7 +339,7 @@ void Application::stopNoSecurityCheck(){
         Application* pausedApplication = nullptr;
         if(state == Paused){
             Oxide::Sentry::sentry_span(t, "resume", "Resume paused application", [this, &pausedApplication](){
-                touchHandler->clear_buffer();
+                systemAPI->clearDeviceBuffers();
                 auto currentApplication = appsAPI->currentApplicationNoSecurityCheck();
                 if(currentApplication.path() != path()){
                     pausedApplication = appsAPI->getApplication(currentApplication);

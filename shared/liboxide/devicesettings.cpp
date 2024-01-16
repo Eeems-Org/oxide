@@ -25,6 +25,9 @@ namespace Oxide {
         O_DEBUG("Looking for input devices...");
         QDir dir("/dev/input");
         for(auto path : dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::System)){
+            if(!wacomPath.empty() && !touchPath.empty() && !buttonsPath.empty()){
+                break;
+            }
             O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
             QString fullPath(dir.path() + "/" + path);
             QFile device(fullPath);
@@ -211,10 +214,19 @@ namespace Oxide {
             qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
         }
     }
-    bool DeviceSettings::keyboardAttached(){
+    bool DeviceSettings::keyboardAttached(){ return !physicalKeyboards().empty(); }
+    void DeviceSettings::onKeyboardAttachedChanged(std::function<void()> callback){
+        auto manager = QGuiApplicationPrivate::inputDeviceManager();
+        QObject::connect(manager, &QInputDeviceManager::deviceListChanged, [callback](QInputDeviceManager::DeviceType type){
+            if(type == QInputDeviceManager::DeviceTypeKeyboard){
+                callback();
+            }
+        });
+    }
+    QList<event_device> DeviceSettings::keyboards(){
+        QList<event_device> keyboards;
         QDir dir("/dev/input");
         for(auto path : dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::System)){
-            O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
             QString fullPath(dir.path() + "/" + path);
             if(
                 fullPath == QString::fromStdString(buttonsPath)
@@ -247,22 +259,39 @@ namespace Oxide {
             if(product == "0000"){
                 continue;
             }
-            auto id = vendor+":"+product;
-            if(id == "0fac:0ade" || id == "0fac:1ade"){
-                continue;
-            }
-            O_DEBUG("Keyboard found: " << sys.strProperty("name").c_str());
-            return true;
+            keyboards.append(event_device(fullPath.toStdString(), O_RDWR | O_NONBLOCK));
         }
-        O_DEBUG("No keyboard found");
-        return false;
+        return keyboards;
     }
-    void DeviceSettings::onKeyboardAttachedChanged(std::function<void()> callback){
-        auto manager = QGuiApplicationPrivate::inputDeviceManager();
-        QObject::connect(manager, &QInputDeviceManager::deviceListChanged, [callback](QInputDeviceManager::DeviceType type){
-            if(type == QInputDeviceManager::DeviceTypeKeyboard){
-                callback();
+    static QStringList VIRTUAL_KEYBOARD_IDS(
+        QStringList() << "0fac:0ade" << "0fac:1ade" << "0000:ffff"
+    );
+    QList<event_device> DeviceSettings::physicalKeyboards(){
+        QList<event_device> physicalKeyboards;
+        for(auto device : keyboards()){
+            auto name = QFileInfo(device.device.c_str()).baseName();
+            SysObject sys("/sys/class/input/" + name + "/device/id");
+            auto id = QString("%1:%2")
+                .arg(sys.strProperty("vendor").c_str())
+                .arg(sys.strProperty("product").c_str());
+            if(!VIRTUAL_KEYBOARD_IDS.contains(id)){
+                physicalKeyboards.append(device);
             }
-        });
+        }
+        return physicalKeyboards;
+    }
+    QList<event_device> DeviceSettings::virtualKeyboards(){
+        QList<event_device> physicalKeyboards;
+        for(auto device : keyboards()){
+            auto name = QFileInfo(device.device.c_str()).baseName();
+            SysObject sys("/sys/class/input/" + name + "/device/id");
+            auto id = QString("%1:%2")
+                .arg(sys.strProperty("vendor").c_str())
+                .arg(sys.strProperty("product").c_str());
+            if(VIRTUAL_KEYBOARD_IDS.contains(id)){
+                physicalKeyboards.append(device);
+            }
+        }
+        return physicalKeyboards;
     }
 }

@@ -6,6 +6,7 @@
  */
 #pragma once
 #include "liboxide_global.h"
+#include "event_device.h"
 
 /*!
  * \def deviceSettings()
@@ -118,6 +119,21 @@ namespace Oxide{
          * \param callback Callback to run
          */
         void onKeyboardAttachedChanged(std::function<void()> callback);
+        /*!
+         * \brief Get the list of all keyboard evdev devices
+         * \return All keyboard devices
+         */
+        QList<event_device> keyboards();
+        /*!
+         * \brief Get the list of all physical keyboard evdev devices
+         * \return All physical keyboard devices
+         */
+        QList<event_device> physicalKeyboards();
+        /*!
+         * \brief Get the list of all virtual keyboard evdev devices
+         * \return All virtual keyboard devices
+         */
+        QList<event_device> virtualKeyboards();
 
     private:
         DeviceType _deviceType;

@@ -26,8 +26,8 @@ namespace Oxide{
          * \return The static instance
          * \sa sharedSettings
          */
-            // cppcheck-suppress uninitMemberVarPrivate
-            O_SETTINGS(SharedSettings, "/home/root/.config/Eeems/shared.conf")
+        // cppcheck-suppress uninitMemberVarPrivate
+        O_SETTINGS(SharedSettings, "/home/root/.config/Eeems/shared.conf")
         /*!
          * \property version
          * \brief Current version of the settings file
@@ -204,8 +204,8 @@ namespace Oxide{
          */
         O_SETTINGS_PROPERTY(QString, Lockscreen, onFailedLogin)
 
-        private:
-                  ~SharedSettings();
+    private:
+        ~SharedSettings();
     };
 }
 
