@@ -19,6 +19,10 @@ public:
     QString id();
     bool isValid();
     QImage* image();
+    void repaint();
+
+signals:
+    void update(const QRect& geometry);
 
 private:
     QRect geometry;

@@ -4,6 +4,7 @@ import codes.eeems.blight 1.0 as Blight
 
 Item{
     Blight.Surface{
+        identifier: parent.objectName
         anchors.fill: parent
     }
     MouseArea{

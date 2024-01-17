@@ -48,8 +48,8 @@ int main(int argc, char *argv[]){
         if(!bus.interface()->isServiceRegistered(BLIGHT_SERVICE)){
             qFatal(BLIGHT_SERVICE " can't be found");
         }
-        Compositor compositor(BLIGHT_SERVICE, "/", bus);
-        auto res = compositor.open();
+        auto compositor = new Compositor(BLIGHT_SERVICE, "/", bus, qApp);
+        auto res = compositor->open();
         if(res.isError()){
             qFatal("Failed to get connection: %s", res.error().message().toStdString().c_str());
         }
@@ -57,10 +57,8 @@ int main(int argc, char *argv[]){
         if(!qfd.isValid()){
             qFatal("Failed to get connection: Invalid file descriptor");
         }
-        {
-            auto fd = qfd.fileDescriptor();
-            qDebug() << fd;
-        }
+        auto cfd = qfd.fileDescriptor();
+        O_DEBUG("Connection file descriptor" << cfd);
 
         QRect geometry(50, 50, 100, 100);
         auto identifier = QUuid::createUuid().toString();
@@ -88,38 +86,63 @@ int main(int argc, char *argv[]){
             }
             return;
         }
-        QFile file;
-        if(!file.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
-            O_WARNING("Failed to open QFile:" << file.errorString());
+        auto file = new QFile();
+        if(!file->open(fd, QFile::ReadWrite, QFile::DontCloseHandle)){
+            O_WARNING("Failed to open QFile:" << file->errorString());
             if(::close(fd) == -1){
                 O_WARNING("Failed to close fd:" << strerror(errno));
             }
             return;
         }
-        auto data = file.map(0, size);
+        uchar* data = file->map(0, size);
         if(data == nullptr){
             O_WARNING("Failed to map framebuffer:" << strerror(errno));
-            file.close();
+            file->close();
             return;
         }
         memcpy(data, blankImage.constBits(), size);
-        auto bytesPerLine = blankImage.bytesPerLine();
-        qDebug() << bytesPerLine;
-        auto res2 = compositor.addSurface(
+        auto image = new QImage(
+            data,
+            blankImage.width(),
+            blankImage.height(),
+            blankImage.bytesPerLine(),
+            blankImage.format()
+        );
+        if(image->isNull()){
+            O_WARNING("Null image");
+        }
+        if(image->size() != geometry.size()){
+            O_WARNING("Invalid size" << image->size());
+        }
+        auto res2 = compositor->addSurface(
             QDBusUnixFileDescriptor(fd),
             geometry.x(),
             geometry.y(),
-            geometry.width(),
-            geometry.height(),
-            blankImage.bytesPerLine(),
-            (int)blankImage.format()
+            image->width(),
+            image->height(),
+            image->bytesPerLine(),
+            (int)image->format()
         );
+        res.waitForFinished();
         if(res2.isError()){
             qFatal("Failed to add surface: %s", res2.error().message().toStdString().c_str());
         }
         auto id = res2.value();
-        O_DEBUG("Surface added: " << id);
-        QTimer::singleShot(10000, []{ qApp->exit(); });
+        O_DEBUG("Surface added:" << id);
+        QTimer::singleShot(2000, [id, compositor, image, file]{
+            O_DEBUG("Switching to yellow");
+            image->fill(Qt::yellow);
+            O_DEBUG("Repainting" << id);
+            auto reply = compositor->repaint(id);
+            reply.waitForFinished();
+            if(reply.isError()){
+                O_WARNING(reply.error().message());
+            }else{
+                O_DEBUG("Done!");
+            }
+            file->close();
+            QTimer::singleShot(2000, []{ qApp->exit(); });
+        });
     });
     return app.exec();
 }

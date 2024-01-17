@@ -1,6 +1,7 @@
 #include "surface.h"
 #include "connection.h"
 #include "dbusinterface.h"
+#include "surfacewidget.h"
 
 #include <unistd.h>
 #include <liboxide/debug.h>
@@ -28,13 +29,25 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
             {"visible", true},
         }
     ));
-    component->update();
+    auto widget = component->findChild<SurfaceWidget*>("Surface");
+    if(widget == nullptr){
+        O_WARNING("Failed to get surface widget");
+        return;
+    }
+    connect(this, &Surface::update, widget, &SurfaceWidget::update);
 }
 
 Surface::~Surface(){
+    O_DEBUG("Surface" << id() << "destroyed");
     file.close();
+    if(m_image != nullptr){
+        delete m_image;
+        m_image = nullptr;
+    }
     if(component != nullptr){
+        component->setVisible(false);
         component->deleteLater();
+        component = nullptr;
     }
 }
 
@@ -46,5 +59,7 @@ QString Surface::id(){
 bool Surface::isValid(){ return component != nullptr; }
 
 QImage* Surface::image(){ return m_image; }
+
+void Surface::repaint(){ emit update(QRect(QPoint(0, 0), geometry.size())); }
 
 #include "moc_surface.cpp"

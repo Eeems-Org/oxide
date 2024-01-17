@@ -25,9 +25,11 @@ Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
     //        framebuffer at the same time.
     //        https://man7.org/linux/man-pages/man2/ptrace.2.html     PTRACE_SEIZE
     //        https://nullprogram.com/blog/2018/06/23/
+    O_DEBUG("Connection" << id() << "created");
 }
 
 Connection::~Connection(){
+    O_DEBUG("Connection" << id() << "destroyed");
     while(!surfaces.isEmpty()){
         delete surfaces.takeFirst();
     }

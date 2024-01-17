@@ -133,7 +133,9 @@ QDBusUnixFileDescriptor DbusInterface::open(QDBusMessage message){
         return QDBusUnixFileDescriptor();
     }
     connect(connection, &Connection::finished, this, [this, connection]{
-        removeConnection(connection->pid());
+        O_DEBUG("Connection" << connection->pid() << "closed");
+        connections.removeAll(connection);
+        connection->deleteLater();
     });
     connections.append(connection);
     O_DEBUG("success" << connection->socket()->socketDescriptor());
@@ -182,6 +184,15 @@ QString DbusInterface::addSurface(
     return surface->id();
 }
 
+void DbusInterface::repaint(QString identifier){
+    auto surface = getSurface(identifier);
+    if(surface == nullptr){
+        sendErrorReply(QDBusError::BadAddress, "Surface not found");
+        return;
+    }
+    surface->repaint();
+}
+
 void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){
     Q_UNUSED(oldOwner);
     if(!newOwner.isEmpty()){
@@ -189,25 +200,6 @@ void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldO
     }
     Q_UNUSED(name);
     // TODO - keep track of things this name owns and remove them
-
-}
-
-void DbusInterface::removeConnection(pid_t pid){
-    O_DEBUG("unregisterChild" << pid << "requested");
-    // TODO - Use STL style iterators
-    //        https://doc.qt.io/qt-5/containers.html#stl-style-iterators
-    QMutableListIterator<Connection*> i(connections);
-    while(i.hasNext()){
-        auto connection = i.next();
-        if(connection->pid() != pid){
-            continue;
-        }
-        O_INFO("unregisterChild" << connection->pid() << connection->pgid());
-        // TODO - remove anything this connection owns
-        i.remove();
-        connection->close();
-        connection->deleteLater();
-    }
 }
 
 Connection* DbusInterface::getConnection(QDBusMessage message){

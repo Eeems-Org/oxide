@@ -38,6 +38,7 @@ public slots:
         int format,
         QDBusMessage message
     );
+    void repaint(QString identifier);
 
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);
@@ -47,7 +48,6 @@ private:
     QList<Connection*> connections;
     QTimer connectionTimer;
 
-    void removeConnection(pid_t pid);
     Connection* getConnection(QDBusMessage message);
     QObject* workspace();
 };

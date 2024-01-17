@@ -3,8 +3,10 @@
 
 #include <QPainter>
 
-SurfaceWidget::SurfaceWidget(QQuickItem* parent) : QQuickPaintedItem(parent){
-
+SurfaceWidget::SurfaceWidget(QQuickItem* parent)
+: QQuickPaintedItem(parent)
+{
+    setObjectName("Surface");
 }
 
 QString SurfaceWidget::identifier(){ return m_identifier; }
