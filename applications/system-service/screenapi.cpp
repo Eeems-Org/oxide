@@ -187,7 +187,7 @@ QList<QDBusObjectPath> ScreenAPI::screenshots(){
     return list;
 }
 
-bool ScreenAPI::drawFullscreenImage(QString path, float rotate) {
+bool ScreenAPI::drawFullscreenImage(QString path, double rotate) {
     if (!hasPermission("screen")) {
         return false;
     }
