@@ -43,7 +43,6 @@ public slots:
     QDBusObjectPath add(const QString& identifier, const QString& application, const QString& text, const QString& icon, QDBusMessage message);
     bool take(QString identifier, QDBusMessage message);
     QList<QDBusObjectPath> notifications(QDBusMessage message);
-
     void remove(Notification* notification);
     bool locked();
     void lock();

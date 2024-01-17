@@ -10,6 +10,10 @@
 #include <liboxide.h>
 #include <unistd.h>
 
+#ifdef Q_MOC_RUN
+#include "../../shared/liboxide/meta.h"
+#endif
+
 
 class APIBase : public QObject, protected QDBusContext {
     Q_OBJECT

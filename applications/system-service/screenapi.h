@@ -39,7 +39,7 @@ public:
     bool enabled();
     QList<QDBusObjectPath> screenshots();
 
-    Q_INVOKABLE bool drawFullscreenImage(QString path, float rotate = 0);
+    Q_INVOKABLE bool drawFullscreenImage(QString path, double rotate = 0);
 
     Q_INVOKABLE QDBusObjectPath screenshot();
     QImage copy();
