@@ -62,7 +62,7 @@ int main(int argc, char *argv[]){
             qDebug() << fd;
         }
 
-        QRect geometry(0, 0, 100, 100);
+        QRect geometry(50, 50, 100, 100);
         auto identifier = QUuid::createUuid().toString();
 
         int fd = memfd_create(identifier.toStdString().c_str(), MFD_ALLOW_SEALING);
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]){
             return;
         }
         QImage blankImage(geometry.size(), QImage::Format_ARGB32_Premultiplied);
-        blankImage.fill(blankImage.hasAlphaChannel() ? Qt::transparent : Qt::white);
+        blankImage.fill(Qt::black);
         size_t size = blankImage.sizeInBytes();
         if(ftruncate(fd, size)){
             O_WARNING("Unable to truncate memfd for framebuffer:" << strerror(errno));
@@ -107,10 +107,12 @@ int main(int argc, char *argv[]){
         qDebug() << bytesPerLine;
         auto res2 = compositor.addSurface(
             QDBusUnixFileDescriptor(fd),
-            0,
-            0,
-            blankImage.width(),
-            blankImage.height()
+            geometry.x(),
+            geometry.y(),
+            geometry.width(),
+            geometry.height(),
+            blankImage.bytesPerLine(),
+            (int)blankImage.format()
         );
         if(res2.isError()){
             qFatal("Failed to add surface: %s", res2.error().message().toStdString().c_str());

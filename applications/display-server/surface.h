@@ -2,6 +2,9 @@
 
 #include <QObject>
 #include <QRect>
+#include <QQuickItem>
+#include <QQuickPaintedItem>
+#include <QImage>
 
 #include "../../shared/liboxide/meta.h"
 
@@ -11,11 +14,18 @@ class Surface : public QObject {
     Q_CLASSINFO("D-Bus Interface", BLIGHT_SURFACE_INTERFACE)
 
 public:
-    Surface(QObject* parent, int fd, QRect geometry);
+    Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Format format);
     ~Surface();
     QString id();
+    bool isValid();
+    QImage* image();
 
 private:
-    int fd;
     QRect geometry;
+    int stride;
+    QImage::Format format;
+    QFile file;
+    uchar* data;
+    QImage* m_image;
+    QQuickItem* component;
 };

@@ -33,7 +33,8 @@ public:
     qint64 write(QByteArray data);
     QString errorString();
     void close();
-    Surface* addSurface(int fd, QRect geometry);
+    Surface* addSurface(int fd, QRect geometry, int stride, QImage::Format format);
+    Surface* getSurface(QString identifier);
 
 signals:
     void finished();

@@ -12,6 +12,8 @@
       <arg name="y" type="i" direction="in"/>
       <arg name="width" type="i" direction="in"/>
       <arg name="height" type="i" direction="in"/>
+      <arg name="stride" type="i" direction="in"/>
+      <arg name="format" type="i" direction="in"/>
     </method>
   </interface>
 </node>

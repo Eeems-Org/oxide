@@ -1,15 +1,23 @@
 import QtQuick 2.15
 import QtQuick.Window 2.15
+import codes.eeems.blight 1.0 as Blight
 
-Window {
-    x: 0
-    y: 0
-    width: 100
-    height: 100
-    visible: true
-    Rectangle{
+Item{
+    Blight.Surface{
         anchors.fill: parent
-        color: "black"
     }
-    Component.onCompleted: console.log("HELLO WORLD")
+    MouseArea{
+        anchors.fill: parent
+    }
+    MultiPointTouchArea{
+        anchors.fill: parent
+    }
+    Keys.onPressed: function(event){
+        console.log(event);
+        event.accepted = true;
+    }
+    Keys.onReleased: function(event){
+        console.log(event);
+        event.accepted = true;
+    }
 }

@@ -4,9 +4,16 @@ QT += gui
 
 CONFIG += c++17
 CONFIG -= app_bundle
+CONFIG += qml_debug
+CONFIG += qtquickcompiler
+CONFIG += qmltypes
 
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+QML_IMPORT_NAME = codes.eeems.blight
+QML_IMPORT_PATH += .
+QML_IMPORT_MAJOR_VERSION = 1
 
 QMAKE_CFLAGS += -std=c99
 
@@ -14,7 +21,8 @@ SOURCES += \
     connection.cpp \
     dbusinterface.cpp \
     main.cpp \
-    surface.cpp
+    surface.cpp \
+    surfacewidget.cpp
 
 
 configFile.files = ../../assets/etc/dbus-1/system.d/codes.eeems.blight.conf
@@ -29,7 +37,8 @@ INSTALLS += target
 HEADERS += \
     connection.h \
     dbusinterface.h \
-    surface.h
+    surface.h \
+    surfacewidget.h
 
 INCLUDEPATH += ../../shared/mxcfb
 

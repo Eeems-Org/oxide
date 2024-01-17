@@ -115,10 +115,19 @@ void Connection::close(){
     m_socketPair.close();
 }
 
-Surface* Connection::addSurface(int fd, QRect geometry){
-    auto surface = new Surface(this, fd, geometry);
+Surface* Connection::addSurface(int fd, QRect geometry, int stride, QImage::Format format){
+    auto surface = new Surface(this, fd, geometry, stride, format);
     surfaces.append(surface);
     return surface;
+}
+
+Surface* Connection::getSurface(QString identifier){
+    for(auto surface : qAsConst(surfaces)){
+        if(surface->id() == identifier){
+            return surface;
+        }
+    }
+    return nullptr;
 }
 
 void Connection::readSocket(){
