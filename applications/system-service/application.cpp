@@ -14,7 +14,6 @@
 #include "screenapi.h"
 #include "buttonhandler.h"
 
-
 using namespace Oxide::Applications;
 
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);

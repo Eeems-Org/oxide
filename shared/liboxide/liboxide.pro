@@ -18,8 +18,6 @@ CONFIG += qmltypes
 QML_IMPORT_NAME = codes.eeems.oxide
 QML_IMPORT_MAJOR_VERSION = 2
 
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-
 SOURCES += \
     applications.cpp \
     debug.cpp \
@@ -43,6 +41,7 @@ HEADERS += \
     dbus.h \
     debug.h \
     devicesettings.h \
+    epaper.h \
     event_device.h \
     eventfilter.h \
     liboxide_global.h \
@@ -104,9 +103,11 @@ liboxide_h_install.depends = liboxide_h
 liboxide_h_install.path = /opt/include/
 INSTALLS += liboxide_h_install
 
-epframebuffer_h_install.files = ../epaper/epframebuffer.h
-epframebuffer_h_install.path = /opt/include
-INSTALLS += epframebuffer_h_install
+linux-oe-g++{
+    epframebuffer_h_install.files = ../epaper/epframebuffer.h
+    epframebuffer_h_install.path = /opt/include
+    INSTALLS += epframebuffer_h_install
+}
 
 QMAKE_EXTRA_TARGETS += liboxide_liboxide_h liboxide_h clean_headers liboxide_h_install
 PRE_TARGETDEPS += $$clean_headers.target

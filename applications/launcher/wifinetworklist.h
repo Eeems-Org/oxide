@@ -326,7 +326,7 @@ public:
         for(auto network : networks){
             network->setAPI(api);
         }
-        connect(api, &Wifi::scanningChanged, this, [=](bool scanning){
+        connect(api, &Wifi::scanningChanged, this, [this](bool scanning){
             emit scanningChanged(scanning);
         });
     }

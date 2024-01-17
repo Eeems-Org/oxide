@@ -21,13 +21,11 @@
 #include "devicesettings.h"
 #include "xochitlsettings.h"
 #include "sharedsettings.h"
+#include "epaper.h"
 #if defined(LIBOXIDE_LIBRARY)
 #include "oxide_sentry.h"
 #else
 #include "sentry.h"
-#ifdef __arm__
-Q_IMPORT_PLUGIN(QsgEpaperPlugin)
-#endif
 #endif
 
 #include <QDebug>

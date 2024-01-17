@@ -5,7 +5,6 @@
 #include <QImage>
 #include <QQuickItem>
 #include <liboxide.h>
-#include <epframebuffer.h>
 
 #include "screenshotlist.h"
 

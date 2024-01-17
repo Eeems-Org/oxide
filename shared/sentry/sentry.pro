@@ -1,3 +1,6 @@
+!contains(DEFINES, SENTRY){
+    error("Not configured to build sentry")
+}
 TEMPLATE = aux
 
 PRE_TARGETDEPS += $$OUT_PWD/src/Makefile

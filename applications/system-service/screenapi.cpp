@@ -2,6 +2,8 @@
 #include "notificationapi.h"
 #include "systemapi.h"
 
+#include <liboxide/epaper.h>
+
 QDBusObjectPath ScreenAPI::screenshot(){
     if(!hasPermission("screen")){
         return QDBusObjectPath("/");

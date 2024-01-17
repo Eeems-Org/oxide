@@ -16,7 +16,6 @@
 
 class PowerAPI : public APIBase {
     Q_OBJECT
-    Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_POWER_INTERFACE)
     Q_PROPERTY(int state READ state WRITE setState NOTIFY stateChanged)
     Q_PROPERTY(int batteryState READ batteryState NOTIFY batteryStateChanged)

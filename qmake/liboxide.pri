@@ -6,6 +6,7 @@ contains(DEFINES, LIBOXIDE_PRIVATE){
 INCLUDEPATH += $$OUT_PWD/../../shared/liboxide/include
 QT += network
 QT += dbus
+QT += gui
 
 QML_IMPORT_PATH += qrc:/codes.eeems.oxide
 include(sentry.pri)

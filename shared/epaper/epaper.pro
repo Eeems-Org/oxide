@@ -1,9 +1,14 @@
+!linux-oe-g++{
+    error("epaper is only supported on the reMarkable")
+}
 TEMPLATE = lib
 QT += core
 
 include(../../qmake/common.pri)
 
 VERSION = 1.0
+
+DISTFILES = epframebuffer.h
 
 TARGET = qsgepaper
 target.path = /opt/lib

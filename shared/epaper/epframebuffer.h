@@ -10,17 +10,17 @@
 #include <atomic>
 #include <mutex>
 
-#if defined(LIBOXIDE_LIBRARY)
-#include "liboxide_global.h"
-#ifdef __arm__
-Q_IMPORT_PLUGIN(QsgEpaperPlugin)
-#endif
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+#  if defined(EPFRAMEBUFFER_EXPORT)
+#    define EPFRAMEBUFFER_EXPORT Q_DECL_EXPORT
+#  else
+#    define EPFRAMEBUFFER_EXPORT Q_DECL_IMPORT
+#  endif
 #else
-#include <liboxide/liboxide_global.h>
+#  define EPFRAMEBUFFER_EXPORT
 #endif
 
-
-class LIBOXIDE_EXPORT EPFrameBuffer : public QObject
+class EPFRAMEBUFFER_EXPORT EPFrameBuffer : public QObject
 {
     Q_OBJECT
 
