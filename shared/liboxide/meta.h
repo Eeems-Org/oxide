@@ -99,4 +99,6 @@
 
 #define BLIGHT_SERVICE "codes.eeems.blight1"
 #define BLIGHT_INTERFACE BLIGHT_SERVICE ".Compositor"
+#define BLIGHT_CONNECTION_INTERFACE BLIGHT_INTERFACE ".Connection"
+#define BLIGHT_SURFACE_INTERFACE BLIGHT_INTERFACE ".Surface"
 /*! @} */

@@ -7,8 +7,12 @@
 #include <liboxide/eventfilter.h>
 #include <liboxide/dbus.h>
 #include <liboxide/meta.h>
+#include <liboxide/debug.h>
 #include <liboxide/sentry.h>
 #include <liboxide/oxideqml.h>
+#include <sys/file.h>
+#include <sys/mman.h>
+#include <errno.h>
 
 using namespace codes::eeems::blight1;
 using namespace Oxide;
@@ -35,7 +39,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
     engine.rootObjects().first()->installEventFilter(new EventFilter(&app));
-    QTimer::singleShot(0, [&app]{
+    QTimer::singleShot(0, []{
 #ifdef EPAPER
         auto bus = QDBusConnection::systemBus();
 #else
@@ -53,9 +57,67 @@ int main(int argc, char *argv[]){
         if(!qfd.isValid()){
             qFatal("Failed to get connection: Invalid file descriptor");
         }
-        auto fd = qfd.fileDescriptor();
-        qDebug() << fd;
-        app.exit();
+        {
+            auto fd = qfd.fileDescriptor();
+            qDebug() << fd;
+        }
+
+        QRect geometry(0, 0, 100, 100);
+        auto identifier = QUuid::createUuid().toString();
+
+        int fd = memfd_create(identifier.toStdString().c_str(), MFD_ALLOW_SEALING);
+        if(fd == -1){
+            O_WARNING("Unable to create memfd for framebuffer:" << strerror(errno));
+            return;
+        }
+        QImage blankImage(geometry.size(), QImage::Format_ARGB32_Premultiplied);
+        blankImage.fill(blankImage.hasAlphaChannel() ? Qt::transparent : Qt::white);
+        size_t size = blankImage.sizeInBytes();
+        if(ftruncate(fd, size)){
+            O_WARNING("Unable to truncate memfd for framebuffer:" << strerror(errno));
+            if(::close(fd) == -1){
+                O_WARNING("Failed to close fd:" << strerror(errno));
+            }
+            return;
+        }
+        int flags = fcntl(fd, F_GET_SEALS);
+        if(fcntl(fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW)){
+            O_WARNING("Unable to seal memfd for framebuffer:" << strerror(errno));
+            if(::close(fd) == -1){
+                O_WARNING("Failed to close fd:" << strerror(errno));
+            }
+            return;
+        }
+        QFile file;
+        if(!file.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
+            O_WARNING("Failed to open QFile:" << file.errorString());
+            if(::close(fd) == -1){
+                O_WARNING("Failed to close fd:" << strerror(errno));
+            }
+            return;
+        }
+        auto data = file.map(0, size);
+        if(data == nullptr){
+            O_WARNING("Failed to map framebuffer:" << strerror(errno));
+            file.close();
+            return;
+        }
+        memcpy(data, blankImage.constBits(), size);
+        auto bytesPerLine = blankImage.bytesPerLine();
+        qDebug() << bytesPerLine;
+        auto res2 = compositor.addSurface(
+            QDBusUnixFileDescriptor(fd),
+            0,
+            0,
+            blankImage.width(),
+            blankImage.height()
+        );
+        if(res2.isError()){
+            qFatal("Failed to add surface: %s", res2.error().message().toStdString().c_str());
+        }
+        auto id = res2.value();
+        O_DEBUG("Surface added: " << id);
+        QTimer::singleShot(10000, []{ qApp->exit(); });
     });
     return app.exec();
 }

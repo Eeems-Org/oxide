@@ -13,7 +13,8 @@ QMAKE_CFLAGS += -std=c99
 SOURCES += \
     connection.cpp \
     dbusinterface.cpp \
-    main.cpp
+    main.cpp \
+    surface.cpp
 
 
 configFile.files = ../../assets/etc/dbus-1/system.d/codes.eeems.blight.conf
@@ -27,7 +28,8 @@ INSTALLS += target
 
 HEADERS += \
     connection.h \
-    dbusinterface.h
+    dbusinterface.h \
+    surface.h
 
 INCLUDEPATH += ../../shared/mxcfb
 

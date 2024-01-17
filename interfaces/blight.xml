@@ -5,5 +5,13 @@
     <method name="open">
       <arg type="h" direction="out"/>
     </method>
+    <method name="addSurface">
+      <arg type="s" direction="out"/>
+      <arg name="fd" type="h" direction="in"/>
+      <arg name="x" type="i" direction="in"/>
+      <arg name="y" type="i" direction="in"/>
+      <arg name="width" type="i" direction="in"/>
+      <arg name="height" type="i" direction="in"/>
+    </method>
   </interface>
 </node>

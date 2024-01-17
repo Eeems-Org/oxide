@@ -9,6 +9,8 @@
 #include <QElapsedTimer>
 #include <QCoreApplication>
 
+#include "surface.h"
+
 Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
 : QObject(parent),
   m_pid{pid},
@@ -25,7 +27,13 @@ Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
     //        https://nullprogram.com/blog/2018/06/23/
 }
 
-Connection::~Connection(){ }
+Connection::~Connection(){
+    while(!surfaces.isEmpty()){
+        delete surfaces.takeFirst();
+    }
+}
+
+QString Connection::id(){ return QString("connection/%1").arg(m_pid); }
 
 pid_t Connection::pid() const{ return m_pid; }
 
@@ -105,6 +113,12 @@ void Connection::close(){
     blockSignals(true);
     m_socketPair.setEnabled(false);
     m_socketPair.close();
+}
+
+Surface* Connection::addSurface(int fd, QRect geometry){
+    auto surface = new Surface(this, fd, geometry);
+    surfaces.append(surface);
+    return surface;
 }
 
 void Connection::readSocket(){
