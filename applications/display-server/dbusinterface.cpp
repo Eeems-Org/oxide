@@ -5,7 +5,10 @@
 #include <unistd.h>
 #include <liboxide/debug.h>
 
-DbusInterface::DbusInterface(QObject* parent) : QObject(parent) {}
+DbusInterface::DbusInterface(QObject* parent) : QObject(parent){
+    // Needed to trick QtDBus into exposing the object
+    setProperty("__init__", true);
+}
 
 void DbusInterface::registerService(){
 #ifdef EPAPER
@@ -17,31 +20,24 @@ void DbusInterface::registerService(){
         qFatal("Failed to connect to system bus.");
     }
     QDBusConnectionInterface* interface = bus.interface();
-    auto reply = interface->registerService(BLIGHT_SERVICE);
-    bus.registerService(BLIGHT_SERVICE);
-    if(!reply.isValid()){
-        QDBusError ex = reply.error();
-        qFatal("Unable to register service: %s", ex.message().toStdString().c_str());
-    }
     if(!bus.registerObject("/", this, QDBusConnection::ExportAllContents)){
         qFatal("Unable to register interface: %s", bus.lastError().message().toStdString().c_str());
     }
     if(!bus.objectRegisteredAt("/")){
         qFatal("Object not appearing!");
     }
-    if(!bus.registerObject(BLIGHT_SERVICE_PATH, this, QDBusConnection::ExportAllContents)){
-        qFatal("Unable to register interface: %s", bus.lastError().message().toStdString().c_str());
+    auto reply = interface->registerService(BLIGHT_SERVICE);
+    bus.registerService(BLIGHT_SERVICE);
+    if(!reply.isValid()){
+        QDBusError ex = reply.error();
+        qFatal("Unable to register service: %s", ex.message().toStdString().c_str());
     }
-    if(!bus.objectRegisteredAt(BLIGHT_SERVICE_PATH)){
-        qFatal("Object not appearing!");
-    }
-    O_DEBUG("Object registered to " BLIGHT_SERVICE_PATH);
     connect(
         interface,
         &QDBusConnectionInterface::serviceOwnerChanged,
         this,
         &DbusInterface::serviceOwnerChanged
-        );
+    );
     O_DEBUG("Connected service to bus");
 }
 

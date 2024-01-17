@@ -148,6 +148,7 @@ int main(int argc, char* argv[]){
     if(engine.rootObjects().isEmpty()){
         qFatal("Failed to load main layout");
     }
-    DbusInterface(qApp).registerService();
+    DbusInterface interface(qApp);
+    interface.registerService();
     return app.exec();
 }

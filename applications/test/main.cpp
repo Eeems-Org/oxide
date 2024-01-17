@@ -49,9 +49,6 @@ int main(int argc, char *argv[]){
         if(res.isError()){
             qFatal("Failed to get connection: %s", res.error().message().toStdString().c_str());
         }
-        if(!res.isValid()){
-            qFatal("Failed to get connection: Invalid DBus response");
-        }
         auto qfd = res.value();
         if(!qfd.isValid()){
             qFatal("Failed to get connection: Invalid file descriptor");

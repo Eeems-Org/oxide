@@ -10,7 +10,7 @@
 
 #include "../../shared/liboxide/meta.h"
 
-class DbusInterface : public QObject, public QDBusContext {
+class DbusInterface : public QObject, protected QDBusContext {
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", BLIGHT_INTERFACE)

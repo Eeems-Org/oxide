@@ -98,6 +98,5 @@
 #define OXIDE_SCREENSHOT_INTERFACE OXIDE_SERVICE ".Screenshot"
 
 #define BLIGHT_SERVICE "codes.eeems.blight1"
-#define BLIGHT_SERVICE_PATH "/codes/eeems/blight1"
 #define BLIGHT_INTERFACE BLIGHT_SERVICE ".Compositor"
 /*! @} */
