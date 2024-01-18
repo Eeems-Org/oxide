@@ -14,12 +14,17 @@
 Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
 : QObject(parent),
   m_pid{pid},
-  m_pgid{pgid},
-  m_socketPair{true}
+  m_pgid{pgid}
 {
-    connect(&m_socketPair, &SocketPair::readyRead, this, &Connection::readSocket);
-    connect(&m_socketPair, &SocketPair::disconnected, this, &Connection::finished);
-    m_socketPair.setEnabled(true);
+    int fds[2];
+    if(::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) == -1){
+        O_WARNING("Unable to open socket pair:" << strerror(errno));
+    }
+    m_clientFd = fds[0];
+    m_serverFd = fds[1];
+    m_notifier = new QSocketNotifier(m_serverFd, QSocketNotifier::Read, this);
+    connect(m_notifier, &QSocketNotifier::activated, this, &Connection::readSocket);
+
     // TODO - handle communication on m_socketPair
     // TODO - Allow child to request that tarnish connect with ptrace to avoid touching the
     //        framebuffer at the same time.
@@ -41,9 +46,9 @@ pid_t Connection::pid() const{ return m_pid; }
 
 pid_t Connection::pgid() const{ return m_pgid; }
 
-QLocalSocket* Connection::socket(){ return m_socketPair.readSocket(); }
+int Connection::socketDescriptor(){ return m_clientFd; }
 
-bool Connection::isValid(){ return m_socketPair.isValid() && isRunning(); }
+bool Connection::isValid(){ return m_clientFd > 0 && m_serverFd > 0 && isRunning(); }
 
 bool Connection::isRunning(){ return getpgid(m_pid) != -1; }
 
@@ -107,14 +112,11 @@ void Connection::resume(){
     waitid(P_PID, m_pid, &info, WCONTINUED);
 }
 
-qint64 Connection::write(QByteArray data){ return m_socketPair.write(data); }
-
-QString Connection::errorString(){ return m_socketPair.errorString(); }
-
 void Connection::close(){
     blockSignals(true);
-    m_socketPair.setEnabled(false);
-    m_socketPair.close();
+    m_notifier->deleteLater();
+    ::close(m_clientFd);
+    ::close(m_serverFd);
 }
 
 Surface* Connection::addSurface(int fd, QRect geometry, int stride, QImage::Format format){
@@ -133,23 +135,23 @@ Surface* Connection::getSurface(QString identifier){
 }
 
 void Connection::readSocket(){
-    auto socket = m_socketPair.writeSocket();
-    QByteArray buf;
-    while(!socket->atEnd()){
-        buf += socket->readAll();
-    }
-    while(!buf.isEmpty()){
-        auto message = Blight::message_t::from_data(buf.data());
-        qDebug() << buf.mid(0, sizeof(Blight::header_t) + message.header.size);
+    m_notifier->setEnabled(false);
+    O_DEBUG("Data received");
+    while(true){
+        auto message = Blight::message_t::from_socket(m_serverFd);
+        if(message == nullptr){
+            break;
+        }
         O_DEBUG(
             "Handling message: "
-            << "type=" << message.header.type
-            << ", ackid=" << message.header.ackid
-            << ", size=" << message.header.size
+            << "type=" << message->header.type
+            << ", ackid=" << message->header.ackid
+            << ", size=" << message->header.size
+            << ", socket=" << m_serverFd
         );
-        switch(message.header.type){
+        switch(message->header.type){
             case Blight::MessageType::Repaint:{
-                auto repaint = Blight::repaint_t::from_message(&message);
+                auto repaint = Blight::repaint_t::from_message(message);
                 O_DEBUG("Repaint requested: " << repaint.identifier.c_str());
                 auto surface = getSurface(repaint.identifier.c_str());
                 if(surface != nullptr){
@@ -168,24 +170,29 @@ void Connection::readSocket(){
                 O_WARNING("Unexpected ack from client");
                 break;
             default:
-                O_WARNING("Unexpected message type" << message.header.type);
+                O_WARNING("Unexpected message type" << message->header.type);
         }
         auto ack = Blight::message_t::create_ack(message);
         auto res = ::send(
-            socket->socketDescriptor(),
+            m_serverFd,
             reinterpret_cast<char*>(ack),
             sizeof(Blight::header_t),
             MSG_EOR
         );
         delete ack;
         if(res < 0){
-            O_WARNING("Failed to write to socket:" << socket->errorString());
+            O_WARNING("Failed to write to socket:" << strerror(errno));
         }else if(res != sizeof(Blight::header_t)){
             O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
         }else{
-            O_DEBUG("Acked" << message.header.ackid);
+            O_DEBUG("Acked" << message->header.ackid);
         }
-        buf.remove(0, sizeof(Blight::header_t) + message.header.size);
-    }
+        if(message->data != nullptr){
+            delete message->data;
+            message->data = nullptr;
+        }
+        delete message;
+    };
+    m_notifier->setEnabled(true);
 }
 #include "moc_connection.cpp"

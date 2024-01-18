@@ -123,7 +123,7 @@ QDBusUnixFileDescriptor DbusInterface::open(QDBusMessage message){
     auto connection = getConnection(message);
     if(connection != nullptr){
         O_DEBUG("Found existing");
-        return QDBusUnixFileDescriptor(connection->socket()->socketDescriptor());
+        return QDBusUnixFileDescriptor(connection->socketDescriptor());
     }
     connection = new Connection(this, pid, pgid);
     if(!connection->isValid()){
@@ -138,8 +138,8 @@ QDBusUnixFileDescriptor DbusInterface::open(QDBusMessage message){
         connection->deleteLater();
     });
     connections.append(connection);
-    O_DEBUG("success" << connection->socket()->socketDescriptor());
-    return QDBusUnixFileDescriptor(connection->socket()->socketDescriptor());
+    O_DEBUG("success" << connection->socketDescriptor());
+    return QDBusUnixFileDescriptor(connection->socketDescriptor());
 }
 
 QString DbusInterface::addSurface(

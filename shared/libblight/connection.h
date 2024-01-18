@@ -16,7 +16,7 @@ namespace Blight {
         Connection(int fd);
         ~Connection();
         void onDisconnect(std::function<void(int)> callback);
-        const message_t* read();
+        message_t* read();
         int write(const message_t& message);
         bool send(MessageType type, data_t data, size_t size);
         void repaint(std::string identifier, int x, int y, int width, int height);

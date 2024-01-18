@@ -34,51 +34,7 @@ namespace Blight{
         mutex.unlock();
     }
 
-    const message_t* Connection::read(){
-        auto message = new message_t;
-        auto res = ::recv(m_fd, &message->header, sizeof(header_t), MSG_WAITALL);
-        if(res < 0){
-            delete message;
-            return nullptr;
-        }
-        if(res != sizeof(header_t)){
-            std::cerr
-                << "Failed to read connection message header: Size mismatch!"
-                << std::endl;
-            delete message;
-            errno = EMSGSIZE;
-            return nullptr;
-        }
-        if(!message->header.size){
-            return message;
-        }
-        res = -1;
-        // Handle the
-        while(res < 0){
-            auto res = ::recv(m_fd, message->data, message->header.size, MSG_WAITALL);
-            if((size_t)res == message->header.size){
-                break;
-            }
-            if(res > 0){
-                errno = EMSGSIZE;
-            }
-            if(errno != EAGAIN){
-                std::cerr
-                    << "Failed to read connection message body: "
-                    << std::strerror(errno)
-                    << std::endl;
-                delete message;
-                return nullptr;
-            }
-            timespec remaining;
-            timespec requested{
-                .tv_sec = 0,
-                .tv_nsec = 5000
-            };
-            nanosleep(&requested, &remaining);
-        }
-        return message;
-    }
+    message_t* Connection::read(){ return message_t::from_socket(m_fd); }
     int Connection::write(const message_t& message){
         auto res = ::send(m_fd, &message.header, sizeof(header_t), MSG_EOR);
         if(res < 0){
@@ -137,8 +93,18 @@ namespace Blight{
                 << std::endl;
             return false;
         }
+        std::cerr
+            << "Sent: "
+            << std::to_string(_ackid)
+            << " "
+            << std::to_string(type)
+            << std::endl;
         // Wait for ack from server
         condition.wait(lock);
+        std::cerr
+            << "Completed: "
+            << std::to_string(_ackid)
+            << std::endl;
         return true;
     }
     void Connection::repaint(std::string identifier, int x, int y, int width, int height){
@@ -265,6 +231,11 @@ namespace Blight{
                         << std::to_string(message->header.type)
                         << std::endl;
             }
+            if(message->data != nullptr){
+                delete message->data;
+                message->data = nullptr;
+            }
+            delete message;
         }
         std::cerr
             << "[BlightWorker] Quitting"

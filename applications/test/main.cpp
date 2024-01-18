@@ -109,8 +109,8 @@ int main(int argc, char *argv[]){
             }
         });
         sleep(1);
-        O_DEBUG("Switching to yellow");
-        image->fill(Qt::yellow);
+        O_DEBUG("Switching to gray");
+        image->fill(Qt::gray);
         O_DEBUG("Repainting" << id.c_str());
         connection->repaint(
             id,

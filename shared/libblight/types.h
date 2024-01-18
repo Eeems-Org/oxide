@@ -72,6 +72,7 @@ namespace Blight{
         static message_t from_data(void* data);
         static data_t create_ack(message_t* message);
         static data_t create_ack(const message_t& message);
+        static message_t* from_socket(int fd);
     } message_t;
     LIBBLIGHT_EXPORT typedef struct repaint_header_t{
         int x;
