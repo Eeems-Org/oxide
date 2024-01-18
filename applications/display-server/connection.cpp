@@ -142,7 +142,7 @@ void Connection::readSocket(){
         auto message = Blight::message_t::from_data(buf.data());
         qDebug() << buf.mid(0, sizeof(Blight::header_t) + message.header.size);
         O_DEBUG(
-            "Handleing message: "
+            "Handling message: "
             << "type=" << message.header.type
             << ", ackid=" << message.header.ackid
             << ", size=" << message.header.size
@@ -181,7 +181,7 @@ void Connection::readSocket(){
         }else if(res != sizeof(Blight::header_t)){
             O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
         }else{
-            O_DEBUG("Acked " << message.header.ackid);
+            O_DEBUG("Acked" << message.header.ackid);
         }
         buf.remove(0, sizeof(Blight::header_t) + message.header.size);
     }

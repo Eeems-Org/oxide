@@ -6,6 +6,7 @@
 #include <sys/prctl.h>
 #include <mutex>
 #include <poll.h>
+#include <sys/epoll.h>
 
 static std::atomic<unsigned int> ackid;
 
@@ -37,6 +38,13 @@ namespace Blight{
             return nullptr;
         }
         if(::read(m_fd, message->data, message->header.size) < 0){
+            // In theory this could happen with a EAGAIN result,
+            // but the server sends it all at once, so something
+            // probably went wrong if this happens
+            std::cerr
+                << "Failed to read connection message body: "
+                << std::strerror(errno)
+                << std::endl;
             delete message;
             return nullptr;
         }
@@ -50,7 +58,8 @@ namespace Blight{
                 << std::strerror(errno)
                 << std::endl;
             return -errno;
-        }else if(res != sizeof(header_t)){
+        }
+        if(res != sizeof(header_t)){
             std::cerr
                 << "Failed to write connection message header: Size mismatch!"
                 << std::endl;
@@ -63,7 +72,8 @@ namespace Blight{
                 << std::strerror(errno)
                 << std::endl;
             return -errno;
-        }else if(res != (ssize_t)message.header.size){
+        }
+        if(res != (ssize_t)message.header.size){
             std::cerr
                 << "Failed to write connection message data: Size mismatch!"
                 << std::endl;
@@ -74,15 +84,22 @@ namespace Blight{
     bool Connection::send(MessageType type, data_t data, size_t size){
         auto _ackid = ++ackid;
         std::unique_lock lock(mutex);
+        if(!thread.joinable()){
+            lock.unlock();
+            std::cerr
+                << "Failed to write connection message: BlightWorker not running"
+                << std::endl;
+            return false;
+        }
         std::condition_variable condition;
         acks[_ackid] = &condition;
         if(write(message_t{
-                .header = {
-                    .type = type,
-                    .ackid = _ackid,
-                    .size = size
-                },
-                .data = data
+            .header = {
+                .type = type,
+                .ackid = _ackid,
+                .size = size
+            },
+            .data = data
         }) < 0){
             lock.unlock();
             std::cerr
@@ -91,8 +108,8 @@ namespace Blight{
                 << std::endl;
             return false;
         }
+        // Wait for ack from server
         condition.wait(lock);
-        // TODO - wait for ack to come back with _ackid
         return true;
     }
     void Connection::repaint(std::string identifier, int x, int y, int width, int height){
@@ -128,30 +145,62 @@ namespace Blight{
         auto stop_token = connection.stop_source.get_token();
         std::vector<unsigned int> pending;
         int error = 0;
+        pollfd pfd;
+        pfd.fd = connection.m_fd;
+        pfd.events = POLLIN;
         while(!stop_token.stop_requested()){
             // Handle any pending items that are now being waited on
+            connection.mutex.lock();
             auto iter = pending.begin();
             while(iter != pending.end()){
                 auto ackid = *iter;
-                connection.mutex.lock();
-                if(!connection.acks.contains(ackid)) {
+                if(!connection.acks.contains(ackid)){
                     ++iter;
                     continue;
                 }
                 iter = pending.erase(iter);
                 connection.acks[ackid]->notify_all();
                 connection.acks.erase(ackid);
-                connection.mutex.unlock();
                 std::cerr
                     << "[BlightWorker] Ack handled: "
                     << std::to_string(ackid)
                     << std::endl;
             }
+            connection.mutex.unlock();
+            // Commented out, as this for some reason will result in no
+            // data ever being read.
+            // // Wait for data on the socket, or for a 500ms timeout
+            // auto res = poll(&pfd, 1, 500);
+            // if(res == 0){
+            //     continue;
+            // }
+            // if(pfd.revents & POLLHUP){
+            //     std::cerr
+            //         << "[BlightWorker] Failed to read message: Socket disconnected!"
+            //         << std::endl;
+            //     error = ECONNRESET;
+            //     break;
+            // }
+            // if(!(pfd.revents & POLLIN)){
+            //     std::cerr
+            //         << "[BlightWorker] Unexpected revents:"
+            //         << std::to_string(pfd.revents)
+            //         << std::endl;
+            //     continue;
+            // }
+            // TODO - see if epoll would work?
             auto message = connection.read();
             if(message == nullptr){
                 if(errno == EAGAIN){
                     // Wait 10ms and try again
-                    usleep(10000);
+                    // This must use nanosleep, as using usleep
+                    // results in no data ever being read.
+                    timespec remaining;
+                    timespec requested{
+                        .tv_sec = 0,
+                        .tv_nsec = 10000
+                    };
+                    nanosleep(&requested, &remaining);
                     continue;
                 }
                 std::cerr
@@ -182,6 +231,11 @@ namespace Blight{
             << "[BlightWorker] Quitting"
             << std::endl;
         connection.mutex.lock();
+        // Release any pending acks
+        for(auto& condition : connection.acks){
+            condition.second->notify_all();
+        }
+        connection.acks.clear();
         for(auto& callback : connection.disconnectCallbacks){
             callback(error);
         }
