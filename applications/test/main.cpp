@@ -5,7 +5,6 @@
 
 #include <cstdlib>
 #include <liboxide/eventfilter.h>
-#include <liboxide/dbus.h>
 #include <liboxide/meta.h>
 #include <liboxide/debug.h>
 #include <liboxide/sentry.h>
@@ -13,8 +12,10 @@
 #include <sys/file.h>
 #include <sys/mman.h>
 #include <errno.h>
+#include <cstring>
+#include <libblight.h>
+#include <libblight/connection.h>
 
-using namespace codes::eeems::blight1;
 using namespace Oxide;
 using namespace Oxide::QML;
 using namespace Oxide::Sentry;
@@ -41,68 +42,41 @@ int main(int argc, char *argv[]){
     engine.rootObjects().first()->installEventFilter(new EventFilter(&app));
     QTimer::singleShot(0, []{
 #ifdef EPAPER
-        auto bus = QDBusConnection::systemBus();
+        Blight::connect(true);
 #else
-        auto bus = QDBusConnection::sessionBus();
+        Blight::connect(false);
 #endif
-        if(!bus.interface()->isServiceRegistered(BLIGHT_SERVICE)){
-            qFatal(BLIGHT_SERVICE " can't be found");
-        }
-        auto compositor = new Compositor(BLIGHT_SERVICE, "/", bus, qApp);
-        auto res = compositor->open();
-        if(res.isError()){
-            qFatal("Failed to get connection: %s", res.error().message().toStdString().c_str());
-        }
-        auto qfd = res.value();
-        if(!qfd.isValid()){
-            qFatal("Failed to get connection: Invalid file descriptor");
-        }
-        auto cfd = qfd.fileDescriptor();
-        O_DEBUG("Connection file descriptor" << cfd);
-
-        QRect geometry(50, 50, 100, 100);
-        auto identifier = QUuid::createUuid().toString();
-
-        int fd = memfd_create(identifier.toStdString().c_str(), MFD_ALLOW_SEALING);
-        if(fd == -1){
-            O_WARNING("Unable to create memfd for framebuffer:" << strerror(errno));
+        if(!Blight::exists()){
+            O_WARNING("Service not found!");
+            qApp->exit(EXIT_FAILURE);
             return;
         }
+        int bfd = Blight::open();
+        if(bfd < 0){
+            O_WARNING(std::strerror(errno));
+            qApp->exit(EXIT_FAILURE);
+            return;
+        }
+        O_DEBUG("Connection file descriptor:" << bfd);
+        QRect geometry(50, 50, 100, 100);
         QImage blankImage(geometry.size(), QImage::Format_ARGB32_Premultiplied);
         blankImage.fill(Qt::black);
         size_t size = blankImage.sizeInBytes();
-        if(ftruncate(fd, size)){
-            O_WARNING("Unable to truncate memfd for framebuffer:" << strerror(errno));
-            if(::close(fd) == -1){
-                O_WARNING("Failed to close fd:" << strerror(errno));
-            }
+        auto buffer = Blight::createBuffer(
+            geometry.x(),
+            geometry.y(),
+            geometry.width(),
+            geometry.height(),
+            blankImage.bytesPerLine(),
+            Blight::Format::Format_ARGB32_Premultiplied
+        );
+        if(buffer.fd == -1 || buffer.data == nullptr){
+            O_WARNING("Failed to create buffer:" << strerror(errno));
             return;
         }
-        int flags = fcntl(fd, F_GET_SEALS);
-        if(fcntl(fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW)){
-            O_WARNING("Unable to seal memfd for framebuffer:" << strerror(errno));
-            if(::close(fd) == -1){
-                O_WARNING("Failed to close fd:" << strerror(errno));
-            }
-            return;
-        }
-        auto file = new QFile();
-        if(!file->open(fd, QFile::ReadWrite, QFile::DontCloseHandle)){
-            O_WARNING("Failed to open QFile:" << file->errorString());
-            if(::close(fd) == -1){
-                O_WARNING("Failed to close fd:" << strerror(errno));
-            }
-            return;
-        }
-        uchar* data = file->map(0, size);
-        if(data == nullptr){
-            O_WARNING("Failed to map framebuffer:" << strerror(errno));
-            file->close();
-            return;
-        }
-        memcpy(data, blankImage.constBits(), size);
+        memcpy(buffer.data, blankImage.constBits(), size);
         auto image = new QImage(
-            data,
+            buffer.data,
             blankImage.width(),
             blankImage.height(),
             blankImage.bytesPerLine(),
@@ -114,35 +88,46 @@ int main(int argc, char *argv[]){
         if(image->size() != geometry.size()){
             O_WARNING("Invalid size" << image->size());
         }
-        auto res2 = compositor->addSurface(
-            QDBusUnixFileDescriptor(fd),
+        std::string id = Blight::addSurface(
+            buffer.fd,
             geometry.x(),
             geometry.y(),
             image->width(),
             image->height(),
             image->bytesPerLine(),
-            (int)image->format()
+            (Blight::Format)image->format()
         );
-        res.waitForFinished();
-        if(res2.isError()){
-            qFatal("Failed to add surface: %s", res2.error().message().toStdString().c_str());
+        if(id.empty()){
+            O_WARNING("No identifier provided");
         }
-        auto id = res2.value();
-        O_DEBUG("Surface added:" << id);
-        QTimer::singleShot(2000, [id, compositor, image, file]{
-            O_DEBUG("Switching to yellow");
-            image->fill(Qt::yellow);
-            O_DEBUG("Repainting" << id);
-            auto reply = compositor->repaint(id);
-            reply.waitForFinished();
-            if(reply.isError()){
-                O_WARNING(reply.error().message());
-            }else{
-                O_DEBUG("Done!");
-            }
-            file->close();
-            QTimer::singleShot(2000, []{ qApp->exit(); });
-        });
+        O_DEBUG("Surface added:" << id.c_str());
+        auto connection = new Blight::Connection(bfd);
+        msghdr msg;
+        memset(&msg, 0, sizeof(msghdr));
+        iovec i;
+        auto d = Blight::MessageType::Invalid;
+        i.iov_base = &d;
+        i.iov_len = 1;
+        if(sendmsg(bfd, &msg, 0) < 0){
+            O_WARNING(std::strerror(errno));
+        }else{
+            O_DEBUG("Sent message");
+        }
+        sleep(1);
+        O_DEBUG("Switching to yellow");
+        image->fill(Qt::yellow);
+        O_DEBUG("Repainting" << id.c_str());
+        connection->repaint(
+            id,
+            geometry.x(),
+            geometry.y(),
+            geometry.width(),
+            geometry.height()
+        );
+        O_DEBUG("Done!");
+        buffer.close();
+        delete connection;
+        QTimer::singleShot(2000, []{ qApp->exit(); });
     });
     return app.exec();
 }

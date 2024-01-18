@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QFile>
 #include <liboxide/socketpair.h>
+#include <libblight/connection.h>
 
 #include "surface.h"
 

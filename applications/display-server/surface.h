@@ -7,6 +7,7 @@
 #include <QImage>
 
 #include "../../shared/liboxide/meta.h"
+#include "../../shared/libblight/meta.h"
 
 class Surface : public QObject {
     Q_OBJECT

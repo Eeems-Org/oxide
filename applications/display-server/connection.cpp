@@ -134,8 +134,22 @@ Surface* Connection::getSurface(QString identifier){
 
 void Connection::readSocket(){
     auto socket = m_socketPair.writeSocket();
+    Blight::Connection connection(socket->socketDescriptor());
     while(!socket->atEnd()){
-        O_DEBUG(socket->readAll());
+        auto message = connection.read();
+        switch(message.type()){
+            case Blight::MessageType::Repaint:{
+                auto identifier = message.block(1).to_string();
+                auto surface = getSurface(identifier.c_str());
+                if(surface != nullptr){
+                    auto data = message.block(2);
+                    emit surface->update(QRect(data[0], data[1], data[2], data[3]));
+                }
+                break;
+            }
+            default:
+                O_WARNING("Unexpected message type" << message.type());
+        }
     }
 }
 #include "moc_connection.cpp"

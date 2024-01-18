@@ -1,0 +1,6 @@
+#pragma once
+
+#define BLIGHT_SERVICE "codes.eeems.blight1"
+#define BLIGHT_INTERFACE BLIGHT_SERVICE ".Compositor"
+#define BLIGHT_SURFACE_INTERFACE BLIGHT_SERVICE ".Surface"
+#define BLIGHT_MAX_IDENTIFIER_LENGTH 255

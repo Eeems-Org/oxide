@@ -25,3 +25,4 @@ RESOURCES += \
     qml.qrc
 
 include(../../qmake/liboxide.pri)
+include(../../qmake/libblight.pri)
