@@ -70,13 +70,14 @@ int main(int argc, char *argv[]){
             blankImage.bytesPerLine(),
             Blight::Format::Format_ARGB32_Premultiplied
         );
-        if(buffer.fd == -1 || buffer.data == nullptr){
+        if(buffer->fd == -1 || buffer->data == nullptr){
             O_WARNING("Failed to create buffer:" << strerror(errno));
+            qApp->exit(EXIT_FAILURE);
             return;
         }
-        memcpy(buffer.data, blankImage.constBits(), size);
+        memcpy(buffer->data, blankImage.constBits(), size);
         auto image = new QImage(
-            buffer.data,
+            buffer->data,
             blankImage.width(),
             blankImage.height(),
             blankImage.bytesPerLine(),
@@ -89,7 +90,7 @@ int main(int argc, char *argv[]){
             O_WARNING("Invalid size" << image->size());
         }
         std::string id = Blight::addSurface(
-            buffer.fd,
+            buffer->fd,
             geometry.x(),
             geometry.y(),
             image->width(),
@@ -119,7 +120,7 @@ int main(int argc, char *argv[]){
             geometry.height()
         );
         O_DEBUG("Done!");
-        buffer.close();
+        delete buffer;
         delete connection;
         QTimer::singleShot(1000, []{ qApp->exit(); });
     });

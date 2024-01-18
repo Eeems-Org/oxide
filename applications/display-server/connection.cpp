@@ -171,9 +171,11 @@ void Connection::readSocket(){
                 O_WARNING("Unexpected message type" << message.header.type);
         }
         auto ack = Blight::message_t::create_ack(message);
-        auto res = socket->write(
+        auto res = ::send(
+            socket->socketDescriptor(),
             reinterpret_cast<char*>(ack),
-            sizeof(Blight::header_t)
+            sizeof(Blight::header_t),
+            MSG_EOR
         );
         delete ack;
         if(res < 0){

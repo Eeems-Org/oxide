@@ -5,7 +5,7 @@ namespace Blight{
     bool LIBBLIGHT_EXPORT connect(bool use_system = true);
     bool LIBBLIGHT_EXPORT exists();
     int LIBBLIGHT_EXPORT open();
-    buf_t createBuffer(int x, int y, int width, int height, int stride, Format format);
+    buf_t* createBuffer(int x, int y, int width, int height, int stride, Format format);
     std::string LIBBLIGHT_EXPORT addSurface(
         int fd,
         int x,

@@ -1,5 +1,6 @@
 #pragma once
 #include "libblight_global.h"
+#include <string>
 
 namespace Blight{
     enum Format{

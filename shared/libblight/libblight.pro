@@ -29,21 +29,22 @@ PRECOMPILED_HEADER = \
 LIBS += -lsystemd
 
 include(../../qmake/common.pri)
+RELATIVE_PWD = $$system(realpath --relative-to $$OUT_PWD $$PWD)
 
 libblight_libblight_h.target = include/libblight/libblight.h
+for(h, HEADERS){
+    libblight_libblight_h.depends += $${RELATIVE_PWD}/$${h}
+}
 libblight_libblight_h.commands = \
     mkdir -p include/libblight && \
     echo $$HEADERS | xargs -rn1 | xargs -rI {} cp $$PWD/{} include/libblight/ && \
     echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename \"{}\" .xml | xargs -rI {} cp $$OUT_PWD/\"{}\"_interface.h include/libblight/
 
 libblight_h.target = include/libblight.h
-libblight_h.depends += libblight_libblight_h
+libblight_h.depends = libblight_libblight_h
 libblight_h.commands = \
     echo \\$$LITERAL_HASH"pragma once" > include/libblight.h && \
     echo \"$$LITERAL_HASH"include \\\"libblight/libblight.h\\\"\"" >> include/libblight.h
-
-clean_headers.target = include/.clean-target
-clean_headers.commands = rm -rf include
 
 libblight_h_install.files = \
     include/libblight.h \
@@ -52,8 +53,7 @@ libblight_h_install.depends = libblight_h
 libblight_h_install.path = /opt/include/
 INSTALLS += libblight_h_install
 
-QMAKE_EXTRA_TARGETS += libblight_libblight_h libblight_h clean_headers libblight_h_install
-PRE_TARGETDEPS += $$clean_headers.target
+QMAKE_EXTRA_TARGETS += libblight_libblight_h libblight_h libblight_h_install
 POST_TARGETDEPS += $$libblight_libblight_h.target $$libblight_h.target
 QMAKE_CLEAN += $$libblight_h.target include/libblight/*.h
 

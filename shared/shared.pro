@@ -2,8 +2,10 @@ TEMPLATE = subdirs
 
 SUBDIRS = \
     liboxide \
-    libblight
+    libblight \
+    libblight_client
 
+libblight_client.depends = libblight
 contains(DEFINES, SENTRY){
     SUBDIRS += sentry
     liboxide.depends += sentry

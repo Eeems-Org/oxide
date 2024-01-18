@@ -13,12 +13,15 @@ static std::atomic<unsigned int> ackid;
 namespace Blight{
     Connection::Connection(int fd)
     : m_fd(fcntl(fd, F_DUPFD_CLOEXEC, 3)),
-      thread(run, std::ref(*this))
+      thread(run, std::ref(*this)),
+      stop_requested(false)
     {
+        int flags = fcntl(fd, F_GETFD, NULL);
+        fcntl(fd, F_SETFD, flags | O_NONBLOCK);
     }
 
     Connection::~Connection(){
-        stop_source.request_stop();
+        stop_requested = true;
         if(thread.joinable()){
             thread.join();
         }
@@ -33,25 +36,51 @@ namespace Blight{
 
     const message_t* Connection::read(){
         auto message = new message_t;
-        if(::read(m_fd, &message->header, sizeof(header_t)) < 0){
+        auto res = ::recv(m_fd, &message->header, sizeof(header_t), MSG_WAITALL);
+        if(res < 0){
             delete message;
             return nullptr;
         }
-        if(::read(m_fd, message->data, message->header.size) < 0){
-            // In theory this could happen with a EAGAIN result,
-            // but the server sends it all at once, so something
-            // probably went wrong if this happens
+        if(res != sizeof(header_t)){
             std::cerr
-                << "Failed to read connection message body: "
-                << std::strerror(errno)
+                << "Failed to read connection message header: Size mismatch!"
                 << std::endl;
             delete message;
+            errno = EMSGSIZE;
             return nullptr;
+        }
+        if(!message->header.size){
+            return message;
+        }
+        res = -1;
+        // Handle the
+        while(res < 0){
+            auto res = ::recv(m_fd, message->data, message->header.size, MSG_WAITALL);
+            if((size_t)res == message->header.size){
+                break;
+            }
+            if(res > 0){
+                errno = EMSGSIZE;
+            }
+            if(errno != EAGAIN){
+                std::cerr
+                    << "Failed to read connection message body: "
+                    << std::strerror(errno)
+                    << std::endl;
+                delete message;
+                return nullptr;
+            }
+            timespec remaining;
+            timespec requested{
+                .tv_sec = 0,
+                .tv_nsec = 5000
+            };
+            nanosleep(&requested, &remaining);
         }
         return message;
     }
     int Connection::write(const message_t& message){
-        auto res = ::write(m_fd, &message.header, sizeof(header_t));
+        auto res = ::send(m_fd, &message.header, sizeof(header_t), MSG_EOR);
         if(res < 0){
             std::cerr
                 << "Failed to write connection message header: "
@@ -65,7 +94,7 @@ namespace Blight{
                 << std::endl;
             return -EMSGSIZE;
         }
-        res = ::write(m_fd, message.data, message.header.size);
+        res = ::send(m_fd, message.data, message.header.size, MSG_EOR);
         if(res < 0){
             std::cerr
                 << "Failed to write connection message data: "
@@ -142,13 +171,9 @@ namespace Blight{
             << "[BlightWorker] Starting"
             << std::endl;
         prctl(PR_SET_NAME,"BlightWorker\0", 0, 0, 0);
-        auto stop_token = connection.stop_source.get_token();
         std::vector<unsigned int> pending;
         int error = 0;
-        pollfd pfd;
-        pfd.fd = connection.m_fd;
-        pfd.events = POLLIN;
-        while(!stop_token.stop_requested()){
+        while(!connection.stop_requested){
             // Handle any pending items that are now being waited on
             connection.mutex.lock();
             auto iter = pending.begin();
@@ -169,8 +194,23 @@ namespace Blight{
             connection.mutex.unlock();
             // Commented out, as this for some reason will result in no
             // data ever being read.
+            // TODO - see if epoll would work?
             // // Wait for data on the socket, or for a 500ms timeout
+            // pollfd pfd;
+            // pfd.fd = connection.m_fd;
+            // pfd.events = POLLIN;
             // auto res = poll(&pfd, 1, 500);
+            // if(res < 0){
+            //     if(errno == EAGAIN || errno == EINTR){
+            //         continue;
+            //     }
+            //     std::cerr
+            //         << "[BlightWorker] Failed to poll connection socket:"
+            //         << std::strerror(errno)
+            //         << std::endl;
+            //     error = errno;
+            //     break;
+            // }
             // if(res == 0){
             //     continue;
             // }
@@ -188,7 +228,6 @@ namespace Blight{
             //         << std::endl;
             //     continue;
             // }
-            // TODO - see if epoll would work?
             auto message = connection.read();
             if(message == nullptr){
                 if(errno == EAGAIN){

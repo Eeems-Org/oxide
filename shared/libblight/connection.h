@@ -7,6 +7,8 @@
 #include <thread>
 #include <map>
 #include <condition_variable>
+#include <functional>
+#include <atomic>
 
 namespace Blight {
     class LIBBLIGHT_EXPORT Connection {
@@ -23,7 +25,7 @@ namespace Blight {
     private:
         int m_fd;
         std::thread thread;
-        std::stop_source stop_source;
+        std::atomic<bool> stop_requested;
         std::mutex mutex;
         std::map<int, std::condition_variable*> acks;
         std::vector<std::function<void(int)>> disconnectCallbacks;

@@ -1,4 +1,5 @@
 #include "types.h"
+#include <unistd.h>
 
 size_t Blight::buf_t::size(){ return width * stride * height; }
 
@@ -63,9 +64,8 @@ Blight::repaint_header_t Blight::repaint_header_t::from_data(data_t data){
 }
 
 Blight::repaint_t Blight::repaint_t::from_message(const message_t* message){
-    repaint_t repaint{
-        .header = repaint_header_t::from_data(message->data)
-    };
+    repaint_t repaint;
+    repaint.header = repaint_header_t::from_data(message->data);
     repaint.identifier.assign(
         reinterpret_cast<char*>(&message->data[sizeof(repaint.header)]),
         repaint.header.identifier_len
@@ -80,9 +80,8 @@ Blight::move_header_t Blight::move_header_t::from_data(data_t data){
 }
 
 Blight::move_t Blight::move_t::from_message(const message_t* message){
-    move_t repaint{
-        .header = move_header_t::from_data(message->data)
-    };
+    move_t repaint;
+    repaint.header = move_header_t::from_data(message->data);
     repaint.identifier.assign(
         reinterpret_cast<char*>(&message->data[sizeof(repaint.header)]),
         repaint.header.identifier_len

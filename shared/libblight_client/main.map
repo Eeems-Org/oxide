@@ -1,0 +1,9 @@
+GLIBC_2.4 {
+   write;
+   writev;
+   writev64;
+   pwrite;
+   pwrite64;
+   pwritev;
+   pwritev64;
+};

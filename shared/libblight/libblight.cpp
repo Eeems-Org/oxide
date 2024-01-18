@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include <random>
 #include <sstream>
+#include <unistd.h>
 
 std::string generate_uuid_v4(){
     static std::random_device rd;
@@ -110,8 +111,8 @@ namespace Blight{
         sd_bus_message_unref(msg);
         return dfd;
     }
-    buf_t createBuffer(int x, int y, int width, int height, int stride, Format format){
-        buf_t buf{
+    buf_t* createBuffer(int x, int y, int width, int height, int stride, Format format){
+        auto buf = new buf_t{
             .fd = -1,
             .x = x,
             .y = y,
@@ -122,41 +123,41 @@ namespace Blight{
             .data = nullptr,
             .uuid = generate_uuid_v4()
         };
-        buf.fd = memfd_create(buf.uuid.c_str(), MFD_ALLOW_SEALING);
-        if(buf.fd == -1){
+        buf->fd = memfd_create(buf->uuid.c_str(), MFD_ALLOW_SEALING);
+        if(buf->fd == -1){
             std::cerr
                 << "[Blight::createBuffer()::memfd_create(...)] "
-                << std::strerror(-buf.fd)
+                << std::strerror(-buf->fd)
                 << std::endl;
             return buf;
         }
-        if(ftruncate(buf.fd, width * stride * height)){
+        if(ftruncate(buf->fd, width * stride * height)){
             std::cerr
                 << "[Blight::createBuffer()::ftruncate(...)] "
                 << std::strerror(errno)
                 << std::endl;
             int e = errno;
-            buf.close();
+            buf->close();
             errno = e;
             return buf;
         }
-        int flags = fcntl(buf.fd, F_GET_SEALS);
-        if(fcntl(buf.fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW)){
+        int flags = fcntl(buf->fd, F_GET_SEALS);
+        if(fcntl(buf->fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW)){
             std::cerr
                 << "[Blight::createBuffer()::fcntl(...)] "
                 << std::strerror(errno)
                 << std::endl;
             int e = errno;
-            buf.close();
+            buf->close();
             errno = e;
             return buf;
         }
         void* data = mmap(
             NULL,
-            buf.size(),
+            buf->size(),
             PROT_READ | PROT_WRITE,
             MAP_SHARED_VALIDATE,
-            buf.fd,
+            buf->fd,
             0
         );
         if(data == MAP_FAILED || data == nullptr){
@@ -165,11 +166,11 @@ namespace Blight{
                 << std::strerror(errno)
                 << std::endl;
             int e = errno;
-            buf.close();
+            buf->close();
             errno = e;
             return buf;
         }
-        buf.data = reinterpret_cast<data_t>(data);
+        buf->data = reinterpret_cast<data_t>(data);
         return buf;
     }
     std::string addSurface(
