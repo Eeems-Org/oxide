@@ -102,32 +102,21 @@ int main(int argc, char *argv[]){
         }
         O_DEBUG("Surface added:" << id.c_str());
         auto connection = new Blight::Connection(bfd);
-        msghdr msg;
-        memset(&msg, 0, sizeof(msghdr));
-        iovec i;
-        auto d = Blight::MessageType::Invalid;
-        i.iov_base = &d;
-        i.iov_len = 1;
-        if(sendmsg(bfd, &msg, 0) < 0){
-            O_WARNING(std::strerror(errno));
-        }else{
-            O_DEBUG("Sent message");
-        }
         sleep(1);
         O_DEBUG("Switching to yellow");
         image->fill(Qt::yellow);
         O_DEBUG("Repainting" << id.c_str());
         connection->repaint(
             id,
-            geometry.x(),
-            geometry.y(),
+            0,
+            0,
             geometry.width(),
             geometry.height()
         );
         O_DEBUG("Done!");
         buffer.close();
         delete connection;
-        QTimer::singleShot(2000, []{ qApp->exit(); });
+        QTimer::singleShot(1000, []{ qApp->exit(); });
     });
     return app.exec();
 }

@@ -134,22 +134,56 @@ Surface* Connection::getSurface(QString identifier){
 
 void Connection::readSocket(){
     auto socket = m_socketPair.writeSocket();
-    Blight::Connection connection(socket->socketDescriptor());
+    QByteArray buf;
     while(!socket->atEnd()){
-        auto message = connection.read();
-        switch(message.type()){
+        buf += socket->readAll();
+    }
+    while(!buf.isEmpty()){
+        auto message = Blight::message_t::from_data(buf.data());
+        qDebug() << buf.mid(0, sizeof(Blight::header_t) + message.header.size);
+        O_DEBUG(
+            "Handleing message: "
+            << "type=" << message.header.type
+            << ", ackid=" << message.header.ackid
+            << ", size=" << message.header.size
+        );
+        switch(message.header.type){
             case Blight::MessageType::Repaint:{
-                auto identifier = message.block(1).to_string();
-                auto surface = getSurface(identifier.c_str());
+                auto repaint = Blight::repaint_t::from_message(&message);
+                O_DEBUG("Repaint requested: " << repaint.identifier.c_str());
+                auto surface = getSurface(repaint.identifier.c_str());
                 if(surface != nullptr){
-                    auto data = message.block(2);
-                    emit surface->update(QRect(data[0], data[1], data[2], data[3]));
+                    emit surface->update(QRect(
+                        repaint.header.x,
+                        repaint.header.y,
+                        repaint.header.width,
+                        repaint.header.height
+                    ));
+                }else{
+                    O_WARNING("Could not find surface for identifier repaint");
                 }
                 break;
             }
+            case Blight::MessageType::Ack:
+                O_WARNING("Unexpected ack from client");
+                break;
             default:
-                O_WARNING("Unexpected message type" << message.type());
+                O_WARNING("Unexpected message type" << message.header.type);
         }
+        auto ack = Blight::message_t::create_ack(message);
+        auto res = socket->write(
+            reinterpret_cast<char*>(ack),
+            sizeof(Blight::header_t)
+        );
+        delete ack;
+        if(res < 0){
+            O_WARNING("Failed to write to socket:" << socket->errorString());
+        }else if(res != sizeof(Blight::header_t)){
+            O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
+        }else{
+            O_DEBUG("Acked " << message.header.ackid);
+        }
+        buf.remove(0, sizeof(Blight::header_t) + message.header.size);
     }
 }
 #include "moc_connection.cpp"

@@ -42,20 +42,9 @@ std::string generate_uuid_v4(){
 static Blight::DBus* dbus = nullptr;
 
 namespace Blight{
-    size_t buf_t::size(){ return width * stride * height; }
-    int buf_t::close(){
-        if(data != nullptr){
-            munmap(data, size());
-            data = nullptr;
-        }
-        if(fd != -1){
-            int res = ::close(fd);
-            fd = -1;
-            return res;
-        }
-        return 0;
-    }
-    buf_t::~buf_t(){ close(); }
+
+
+
     bool connect(bool use_system){
         if(dbus != nullptr){
             return true;

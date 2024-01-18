@@ -12,7 +12,8 @@ CONFIG += no_install_prl
 SOURCES += \
     connection.cpp \
     dbus.cpp \
-    libblight.cpp
+    libblight.cpp \
+    types.cpp
 
 HEADERS += \
     connection.h \
