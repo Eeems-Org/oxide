@@ -13,6 +13,7 @@ namespace Blight {
     public:
         Connection(int fd);
         ~Connection();
+        void onDisconnect(std::function<void(int)> callback);
         const message_t* read();
         int write(const message_t& message);
         bool send(MessageType type, data_t data, size_t size);
@@ -25,6 +26,7 @@ namespace Blight {
         std::stop_source stop_source;
         std::mutex mutex;
         std::map<int, std::condition_variable*> acks;
+        std::vector<std::function<void(int)>> disconnectCallbacks;
         static void run(Connection& connection);
     };
 }

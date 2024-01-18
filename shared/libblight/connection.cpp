@@ -23,6 +23,13 @@ namespace Blight{
         }
         ::close(m_fd);
     }
+
+    void Connection::onDisconnect(std::function<void(int)> callback){
+        mutex.lock();
+        disconnectCallbacks.push_back(callback);
+        mutex.unlock();
+    }
+
     const message_t* Connection::read(){
         auto message = new message_t;
         if(::read(m_fd, &message->header, sizeof(header_t)) < 0){
@@ -114,14 +121,19 @@ namespace Blight{
     }
 
     void Connection::run(Connection& connection){
+        std::cerr
+            << "[BlightWorker] Starting"
+            << std::endl;
         prctl(PR_SET_NAME,"BlightWorker\0", 0, 0, 0);
         auto stop_token = connection.stop_source.get_token();
         std::vector<unsigned int> pending;
+        int error = 0;
         while(!stop_token.stop_requested()){
             // Handle any pending items that are now being waited on
             auto iter = pending.begin();
             while(iter != pending.end()){
                 auto ackid = *iter;
+                connection.mutex.lock();
                 if(!connection.acks.contains(ackid)) {
                     ++iter;
                     continue;
@@ -129,6 +141,7 @@ namespace Blight{
                 iter = pending.erase(iter);
                 connection.acks[ackid]->notify_all();
                 connection.acks.erase(ackid);
+                connection.mutex.unlock();
                 std::cerr
                     << "[BlightWorker] Ack handled: "
                     << std::to_string(ackid)
@@ -144,9 +157,8 @@ namespace Blight{
                 std::cerr
                     << "[BlightWorker] Failed to read message: "
                     << std::strerror(errno)
-                    << std::endl
-                    << "[BlightWorker] Quitting"
                     << std::endl;
+                error = errno;
                 break;
             }
             switch(message->header.type){
@@ -166,5 +178,13 @@ namespace Blight{
                         << std::endl;
             }
         }
+        std::cerr
+            << "[BlightWorker] Quitting"
+            << std::endl;
+        connection.mutex.lock();
+        for(auto& callback : connection.disconnectCallbacks){
+            callback(error);
+        }
+        connection.mutex.unlock();
     }
 }

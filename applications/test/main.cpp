@@ -102,6 +102,11 @@ int main(int argc, char *argv[]){
         }
         O_DEBUG("Surface added:" << id.c_str());
         auto connection = new Blight::Connection(bfd);
+        connection->onDisconnect([](int res){
+            if(res){
+                qApp->exit(res);
+            }
+        });
         sleep(1);
         O_DEBUG("Switching to yellow");
         image->fill(Qt::yellow);
