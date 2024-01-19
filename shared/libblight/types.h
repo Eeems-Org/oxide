@@ -79,6 +79,7 @@ namespace Blight{
         int y;
         int width;
         int height;
+        unsigned int marker;
         size_t identifier_len;
         static repaint_header_t from_data(data_t data);
     } repaint_header_t;

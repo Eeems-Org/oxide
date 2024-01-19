@@ -36,6 +36,7 @@ static bool IS_INITIALIZED = false;
 static int DEBUG_LOGGING = 4;
 static bool FAILED_INIT = true;
 static bool DO_HANDLE_FB = true;
+static bool FAKE_RM1 = false;
 static Blight::buf_t* blightBuffer = nullptr;
 static Blight::Connection* blightConnection = nullptr;
 static std::string blightSurfaceId = "";
@@ -123,7 +124,8 @@ int fb_ioctl(unsigned long request, char* ptr){
                 region.left,
                 region.top,
                 region.width,
-                region.height
+                region.height,
+                update->update_marker
             );
             _DEBUG("ioctl /dev/fb0 MXCFB_SEND_UPDATE done: %f", cz.elapsed())
             // TODO - notify on rM2 for screensharing
@@ -219,7 +221,7 @@ int __open(const char* pathname){
         return -2;
     }
     int res = -2;
-    if(strcmp(pathname, "/sys/devices/soc0/machine") == 0){
+    if(FAKE_RM1 && strcmp(pathname, "/sys/devices/soc0/machine") == 0){
         int fd = memfd_create("machine", MFD_ALLOW_SEALING);
         auto data = "reMarkable 1.0";
         func_write(fd, data, sizeof(data));
@@ -594,6 +596,9 @@ extern "C" {
             DEBUG_LOGGING = 0;
             FAILED_INIT = false;
             return;
+        }
+        if(path == "/opt/bin/yaft"){
+            FAKE_RM1 = true;
         }
         DO_HANDLE_FB = getenv("OXIDE_PRELOAD_EXPOSE_FB") == nullptr;
         _DEBUG("Handle framebuffer: %d", DO_HANDLE_FB);
