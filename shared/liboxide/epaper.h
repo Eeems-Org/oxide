@@ -10,6 +10,7 @@
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 #include <epframebuffer.h>
+#include <epimagenode.h>
 #else
 #include <QImage>
 #include <QObject>

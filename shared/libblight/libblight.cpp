@@ -43,9 +43,6 @@ std::string generate_uuid_v4(){
 static Blight::DBus* dbus = nullptr;
 
 namespace Blight{
-
-
-
     bool connect(bool use_system){
         if(dbus != nullptr){
             return true;
@@ -131,10 +128,13 @@ namespace Blight{
                 << std::endl;
             return buf;
         }
-        if(ftruncate(buf->fd, width * stride * height)){
+        if(ftruncate(buf->fd, buf->size())){
             std::cerr
                 << "[Blight::createBuffer()::ftruncate(...)] "
                 << std::strerror(errno)
+                << std::endl
+                << "    Requested size: "
+                << std::to_string(buf->size())
                 << std::endl;
             int e = errno;
             buf->close();
@@ -164,6 +164,9 @@ namespace Blight{
             std::cerr
                 << "[Blight::createBuffer()::mmap(...)] "
                 << std::strerror(errno)
+                << std::endl
+                << "    Requested size: "
+                << std::to_string(buf->size())
                 << std::endl;
             int e = errno;
             buf->close();

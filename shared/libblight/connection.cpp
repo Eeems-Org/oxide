@@ -158,54 +158,42 @@ namespace Blight{
                     << std::endl;
             }
             connection.mutex.unlock();
-            // Commented out, as this for some reason will result in no
-            // data ever being read.
-            // TODO - see if epoll would work?
-            // // Wait for data on the socket, or for a 500ms timeout
-            // pollfd pfd;
-            // pfd.fd = connection.m_fd;
-            // pfd.events = POLLIN;
-            // auto res = poll(&pfd, 1, 500);
-            // if(res < 0){
-            //     if(errno == EAGAIN || errno == EINTR){
-            //         continue;
-            //     }
-            //     std::cerr
-            //         << "[BlightWorker] Failed to poll connection socket:"
-            //         << std::strerror(errno)
-            //         << std::endl;
-            //     error = errno;
-            //     break;
-            // }
-            // if(res == 0){
-            //     continue;
-            // }
-            // if(pfd.revents & POLLHUP){
-            //     std::cerr
-            //         << "[BlightWorker] Failed to read message: Socket disconnected!"
-            //         << std::endl;
-            //     error = ECONNRESET;
-            //     break;
-            // }
-            // if(!(pfd.revents & POLLIN)){
-            //     std::cerr
-            //         << "[BlightWorker] Unexpected revents:"
-            //         << std::to_string(pfd.revents)
-            //         << std::endl;
-            //     continue;
-            // }
+            // Wait for data on the socket, or for a 500ms timeout
+            pollfd pfd;
+            pfd.fd = connection.m_fd;
+            pfd.events = POLLIN;
+            auto res = poll(&pfd, 1, 500);
+            if(res < 0){
+                if(errno == EAGAIN || errno == EINTR){
+                    continue;
+                }
+                std::cerr
+                    << "[BlightWorker] Failed to poll connection socket:"
+                    << std::strerror(errno)
+                    << std::endl;
+                error = errno;
+                break;
+            }
+            if(res == 0){
+                continue;
+            }
+            if(pfd.revents & POLLHUP){
+                std::cerr
+                    << "[BlightWorker] Failed to read message: Socket disconnected!"
+                    << std::endl;
+                error = ECONNRESET;
+                break;
+            }
+            if(!(pfd.revents & POLLIN)){
+                std::cerr
+                    << "[BlightWorker] Unexpected revents:"
+                    << std::to_string(pfd.revents)
+                    << std::endl;
+                continue;
+            }
             auto message = connection.read();
             if(message == nullptr){
                 if(errno == EAGAIN){
-                    // Wait 10ms and try again
-                    // This must use nanosleep, as using usleep
-                    // results in no data ever being read.
-                    timespec remaining;
-                    timespec requested{
-                        .tv_sec = 0,
-                        .tv_nsec = 10000
-                    };
-                    nanosleep(&requested, &remaining);
                     continue;
                 }
                 std::cerr

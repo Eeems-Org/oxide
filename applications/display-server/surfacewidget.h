@@ -1,9 +1,19 @@
 #pragma once
 
+#ifdef EPAPER
 #include <QQuickPaintedItem>
+#else
+#include <QQuickItem>
+#endif
 #include "surface.h"
 
-class SurfaceWidget : public QQuickPaintedItem{
+class SurfaceWidget
+#ifdef EPAPER
+: public QQuickPaintedItem
+#else
+: public QQuickItem
+#endif
+{
     Q_OBJECT
     Q_PROPERTY(QString identifier READ identifier WRITE setIdentifier NOTIFY identifierChanged)
     QML_NAMED_ELEMENT(Surface)
@@ -20,7 +30,11 @@ protected slots:
     void updated();
 
 protected:
+#ifdef EPAPER
     void paint(QPainter* painter);
+#else
+    QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*);
+#endif
     Surface* surface();
     QImage* image();
 

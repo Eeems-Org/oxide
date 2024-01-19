@@ -62,6 +62,10 @@ int main(int argc, char* argv[]){
     QThread::currentThread()->setObjectName("main");
 #ifdef __arm__
     deviceSettings.setupQtEnvironment(false);
+    // qputenv("QMLSCENE_DEVICE", "");
+    // qputenv("QT_QUICK_BACKEND","");
+    // qputenv("QT_QPA_PLATFORM", "directfb");
+    // qputenv("QT_QPA_PLATFORM", "vnc:size=1404x1872");
 #endif
     QGuiApplication app(argc, argv);
     sentry_init("blight", argv);

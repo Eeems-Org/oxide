@@ -33,4 +33,5 @@ private:
     uchar* data;
     QImage* m_image;
     QQuickItem* component;
+    QString m_id;
 };

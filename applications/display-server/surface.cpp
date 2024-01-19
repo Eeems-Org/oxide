@@ -12,6 +12,8 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
   stride(stride),
   format(format)
 {
+    auto connection = dynamic_cast<Connection*>(parent);
+    m_id = QString("%1/surface/%2").arg(connection->id()).arg(fd);
     if(!file.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
         O_WARNING("Failed to open file");
     }
@@ -29,9 +31,15 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
             {"visible", true},
         }
     ));
+    if(component == nullptr){
+        O_WARNING("Failed to create surface widget");
+        return;
+    }
     auto widget = component->findChild<SurfaceWidget*>("Surface");
     if(widget == nullptr){
         O_WARNING("Failed to get surface widget");
+        component->deleteLater();
+        component = nullptr;
         return;
     }
     connect(this, &Surface::update, widget, &SurfaceWidget::update);
@@ -51,10 +59,7 @@ Surface::~Surface(){
     }
 }
 
-QString Surface::id(){
-    auto connection = dynamic_cast<Connection*>(parent());
-    return QString("%1/surface/%2").arg(connection->id()).arg(file.handle());
-}
+QString Surface::id(){ return m_id; }
 
 bool Surface::isValid(){ return component != nullptr; }
 

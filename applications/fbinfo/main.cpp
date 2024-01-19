@@ -5,7 +5,7 @@
 #include <liboxide/meta.h>
 #include <liboxide/sentry.h>
 #include <liboxide/devicesettings.h>
-#include <epframebuffer.h>
+#include <liboxide/epaper.h>
 #include <QFile>
 #include <mxcfb.h>
 #include <sys/ioctl.h>

@@ -121,12 +121,18 @@ void Connection::close(){
 
 Surface* Connection::addSurface(int fd, QRect geometry, int stride, QImage::Format format){
     auto surface = new Surface(this, fd, geometry, stride, format);
+    connect(surface, &Surface::destroyed, this, [this, surface]{
+        surfaces.removeAll(surface);
+    });
     surfaces.append(surface);
     return surface;
 }
 
 Surface* Connection::getSurface(QString identifier){
     for(auto surface : qAsConst(surfaces)){
+        if(surface == nullptr){
+            continue;
+        }
         if(surface->id() == identifier){
             return surface;
         }
@@ -152,7 +158,17 @@ void Connection::readSocket(){
         switch(message->header.type){
             case Blight::MessageType::Repaint:{
                 auto repaint = Blight::repaint_t::from_message(message);
-                O_DEBUG("Repaint requested: " << repaint.identifier.c_str());
+                O_DEBUG(
+                    "Repaint requested: "
+                    << repaint.identifier.c_str()
+                    << QString("(%1,%2) %3x%4")
+                        .arg(repaint.header.x)
+                        .arg(repaint.header.y)
+                        .arg(repaint.header.width)
+                        .arg(repaint.header.height)
+                        .toStdString()
+                        .c_str()
+                );
                 auto surface = getSurface(repaint.identifier.c_str());
                 if(surface != nullptr){
                     emit surface->update(QRect(

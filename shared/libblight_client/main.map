@@ -6,4 +6,7 @@ GLIBC_2.4 {
    pwrite64;
    pwritev;
    pwritev64;
+   open64;
+   openat;
+   open;
 };

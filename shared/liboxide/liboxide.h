@@ -54,10 +54,15 @@ namespace Oxide {
      * \brief Execute a program and return it's output
      * \param program Program to run
      * \param args Arguments to pass to the program
+     * \param readStderr Include stderr in the output
      * \return Output if it ran.
      * \retval NULL Program was not able to execute
      */
-    LIBOXIDE_EXPORT QString execute(const QString& program, const QStringList& args);
+    LIBOXIDE_EXPORT QString execute(
+        const QString& program,
+        const QStringList& args,
+        bool readStderr = true
+    );
     /*!
      * \brief Try to get a lock
      * \param lockName Path to the lock file

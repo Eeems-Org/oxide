@@ -9,7 +9,7 @@ CONFIG += qtquickcompiler
 SOURCES += \
         main.cpp
 
-TARGET = test
+TARGET = test_blight
 include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target

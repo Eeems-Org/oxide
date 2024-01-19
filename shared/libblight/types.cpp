@@ -1,7 +1,9 @@
 #include "types.h"
 #include <unistd.h>
 
-size_t Blight::buf_t::size(){ return width * stride * height; }
+size_t Blight::buf_t::size(){
+    return static_cast<size_t>(stride) * height;
+}
 
 int Blight::buf_t::close(){
     if(data != nullptr){
@@ -126,6 +128,7 @@ Blight::message_t* Blight::message_t::from_socket(int fd){
             delete message;
             return nullptr;
         }
+        // TODO use poll
         timespec remaining;
         timespec requested{
             .tv_sec = 0,

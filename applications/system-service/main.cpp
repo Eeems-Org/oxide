@@ -83,7 +83,14 @@ int main(int argc, char* argv[]){
     auto actualPid = QString::number(app.applicationPid());
     QString pid = Oxide::execute(
         "systemctl",
-        QStringList() << "--no-pager" << "show" << "--property" << "MainPID" << "--value" << "tarnish"
+        QStringList()
+            << "--no-pager"
+            << "show"
+            << "--property"
+            << "MainPID"
+            << "--value"
+            << "tarnish",
+        false
     ).trimmed();
     if(pid != "0" && pid != actualPid){
         if(!parser.isSet(breakLockOption)){

@@ -58,24 +58,23 @@ int main(int argc, char *argv[]){
             return;
         }
         O_DEBUG("Connection file descriptor:" << bfd);
-        QRect geometry(50, 50, 100, 100);
-        QImage blankImage(geometry.size(), QImage::Format_ARGB32_Premultiplied);
+        QRect geometry(0, 0, 1404, 1872);
+        QImage blankImage(geometry.size(), QImage::Format_RGB16);
         blankImage.fill(Qt::black);
-        size_t size = blankImage.sizeInBytes();
         auto buffer = Blight::createBuffer(
             geometry.x(),
             geometry.y(),
             geometry.width(),
             geometry.height(),
             blankImage.bytesPerLine(),
-            Blight::Format::Format_ARGB32_Premultiplied
+            Blight::Format::Format_RGB16
         );
         if(buffer->fd == -1 || buffer->data == nullptr){
             O_WARNING("Failed to create buffer:" << strerror(errno));
             qApp->exit(EXIT_FAILURE);
             return;
         }
-        memcpy(buffer->data, blankImage.constBits(), size);
+        memcpy(buffer->data, blankImage.constBits(), buffer->size());
         auto image = new QImage(
             buffer->data,
             blankImage.width(),
@@ -100,6 +99,8 @@ int main(int argc, char *argv[]){
         );
         if(id.empty()){
             O_WARNING("No identifier provided");
+            qApp->exit(EXIT_FAILURE);
+            return;
         }
         O_DEBUG("Surface added:" << id.c_str());
         auto connection = new Blight::Connection(bfd);
