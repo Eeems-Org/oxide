@@ -127,12 +127,12 @@ namespace Blight{
                 << std::endl;
             return ackid_t(this, 0);
         }
-        std::cerr
-            << "Sent: "
-            << std::to_string(_ackid)
-            << " "
-            << std::to_string(type)
-            << std::endl;
+        // std::cerr
+        //     << "Sent: "
+        //     << std::to_string(_ackid)
+        //     << " "
+        //     << std::to_string(type)
+        //     << std::endl;
         return ackid_t(this, _ackid);
     }
     void Connection::waitFor(ackid_t ackid, int timeout){
@@ -173,6 +173,29 @@ namespace Blight{
         //     << std::endl;
         return;
     }
+
+    void Connection::waitForMarker(unsigned int marker){
+        std::unique_lock lock(mutex);
+        if(!markers.contains(marker)){
+            lock.unlock();
+            return;
+        }
+        auto ackid = markers[marker];
+        markers.erase(marker);
+        if(!acks.contains(ackid)){
+            return;
+        }
+        auto condition = acks[ackid];
+        if(condition != nullptr){
+            condition->wait(lock);
+            return;
+        }
+        {
+            std::condition_variable condition;
+            acks[ackid] = &condition;
+            condition.wait(lock);
+        }
+    }
     ackid_t Connection::repaint(
         std::string identifier,
         int x,
@@ -187,12 +210,15 @@ namespace Blight{
             .y = y,
             .width = width,
             .height = height,
-            .marker = marker,
             .identifier_len = identifier.size()
         };
         memcpy(buf, &header, sizeof(header));
         memcpy(&buf[sizeof(header)], identifier.data(), identifier.size());
-        return send(MessageType::Repaint, reinterpret_cast<data_t>(&buf), sizeof(buf));
+        auto ackid = send(MessageType::Repaint, reinterpret_cast<data_t>(&buf), sizeof(buf));
+        if(marker){
+            markers[marker] = ackid.ackid;
+        }
+        return ackid;
     }
     ackid_t Connection::move(std::string identifier, int x, int y){
         unsigned char buf[sizeof(move_header_t) + identifier.size()];
@@ -229,10 +255,18 @@ namespace Blight{
                     condition->notify_all();
                 }
                 connection.acks.erase(ackid);
-                std::cerr
-                    << "[BlightWorker] Ack handled: "
-                    << std::to_string(ackid)
-                    << std::endl;
+                std::map<unsigned int, unsigned int>::iterator iter2 = connection.markers.begin();
+                while(iter2 != connection.markers.end()){
+                    if(iter2->second == ackid){
+                        iter2 = connection.markers.erase(iter2);
+                        continue;
+                    }
+                    ++iter2;
+                }
+                // std::cerr
+                //     << "[BlightWorker] Ack handled: "
+                //     << std::to_string(ackid)
+                //     << std::endl;
             }
             connection.mutex.unlock();
             // Wait for data on the socket, or for a 500ms timeout

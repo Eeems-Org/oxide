@@ -117,7 +117,7 @@ int fb_ioctl(unsigned long request, char* ptr){
                 _CRIT("Failed to create surface: %s", std::strerror(errno));
                 std::exit(errno);
             }
-            mxcfb_update_data* update = reinterpret_cast<mxcfb_update_data*>(ptr);
+            auto update = reinterpret_cast<mxcfb_update_data*>(ptr);
             auto region = update->update_region;
             blightConnection->repaint(
                 blightSurfaceId,
@@ -134,14 +134,14 @@ int fb_ioctl(unsigned long request, char* ptr){
         case MXCFB_WAIT_FOR_UPDATE_COMPLETE:{
             _DEBUG("%s", "ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE");
             ClockWatch cz;
-            // mxcfb_update_marker_data* update = reinterpret_cast<mxcfb_update_marker_data*>(ptr);
-            // update->update_marker;
+            auto update = reinterpret_cast<mxcfb_update_marker_data*>(ptr);
+            blightConnection->waitForMarker(update->update_marker);
             _DEBUG("ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE done: %f", cz.elapsed());
             return 0;
         }
         case FBIOGET_VSCREENINFO:{
             _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_VSCREENINFO");
-            fb_var_screeninfo* screenInfo = reinterpret_cast<fb_var_screeninfo*>(ptr);
+            auto screenInfo = reinterpret_cast<fb_var_screeninfo*>(ptr);
             int fd = func_open("/dev/fb0", O_RDONLY, 0);
             if(fd == -1){
                 return -1;
@@ -170,7 +170,7 @@ int fb_ioctl(unsigned long request, char* ptr){
         }
         case FBIOGET_FSCREENINFO:{
             _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_FSCREENINFO");
-            fb_fix_screeninfo* screeninfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
+            auto screeninfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
             memcpy(screeninfo->id, "mxc_epdc_fb", 11);
             screeninfo->smem_len = blightBuffer->size();
             screeninfo->smem_start = (unsigned long)blightBuffer->data;
@@ -323,6 +323,7 @@ extern "C" {
                 std::exit(errno);
                 return -1;
             }
+            _DEBUG("%s", "rm2fb ipc repaint");
             auto buf = (swtfb::swtfb_update*)msgp;
             auto region = buf->mdata.update.update_region;
             blightConnection->repaint(

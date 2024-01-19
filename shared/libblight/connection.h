@@ -30,6 +30,7 @@ namespace Blight {
         int write(const message_t& message);
         ackid_t send(MessageType type, data_t data, size_t size);
         void waitFor(ackid_t ackid, int timeout = 0);
+        void waitForMarker(unsigned int marker);
         ackid_t repaint(
             std::string identifier,
             int x,
@@ -43,6 +44,7 @@ namespace Blight {
         std::mutex mutex;
         std::map<unsigned int, std::condition_variable*> acks;
     private:
+        std::map<unsigned int, unsigned int> markers;
         int m_fd;
         std::thread thread;
         std::atomic<bool> stop_requested;
