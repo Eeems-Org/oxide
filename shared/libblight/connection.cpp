@@ -86,7 +86,23 @@ namespace Blight{
             .ackid = _ackid,
             .size = size
         };
-        auto res = ::send(m_fd, &header, sizeof(header_t), MSG_EOR);
+        int res = -1;
+        while(res < 0){
+            res = ::send(m_fd, &header, sizeof(header_t), MSG_EOR);
+            if(res > -1){
+                break;
+            }
+            if(errno == EAGAIN || errno == EINTR){
+                timespec remaining;
+                timespec requested{
+                    .tv_sec = 0,
+                    .tv_nsec = 5000
+                };
+                nanosleep(&requested, &remaining);
+                continue;
+            }
+            break;
+        }
         if(res < 0){
             std::cerr
                 << "Failed to write connection message header: "
@@ -101,7 +117,23 @@ namespace Blight{
             errno = EMSGSIZE;
             return ackid_ptr_t(new ackid_t(this));
         }
-        res = ::send(m_fd, data, size, MSG_EOR);
+        res = -1;
+        while(res < 0){
+            res = ::send(m_fd, data, size, MSG_EOR);
+            if(res > -1){
+                break;
+            }
+            if(errno == EAGAIN || errno == EINTR){
+                timespec remaining;
+                timespec requested{
+                    .tv_sec = 0,
+                    .tv_nsec = 5000
+                };
+                nanosleep(&requested, &remaining);
+                continue;
+            }
+            break;
+        }
         if(res < 0){
             std::cerr
                 << "Failed to write connection message data: "

@@ -123,22 +123,14 @@ QDBusUnixFileDescriptor DbusInterface::open(QDBusMessage message){
     O_INFO("Open connection for: " << pid << pgid);
     auto connection = getConnection(message);
     if(connection != nullptr){
-        O_DEBUG("Found existing");
+        O_DEBUG("Found existing for: " << connection->pid());
         return QDBusUnixFileDescriptor(connection->socketDescriptor());
     }
-    connection = new Connection(this, pid, pgid);
-    if(!connection->isValid()){
-        O_WARNING("Not valid");
-        connection->deleteLater();
+    connection = createConnection(pid);
+    if(connection == nullptr){
         sendErrorReply(QDBusError::InternalError, "Unable to create connection");
         return QDBusUnixFileDescriptor();
     }
-    connect(connection, &Connection::finished, this, [this, connection]{
-        O_DEBUG("Connection" << connection->pid() << "closed");
-        connections.removeAll(connection);
-        connection->deleteLater();
-    });
-    connections.append(connection);
     O_DEBUG("success" << connection->socketDescriptor());
     return QDBusUnixFileDescriptor(connection->socketDescriptor());
 }
@@ -246,6 +238,22 @@ QObject* DbusInterface::workspace(){
     }
     O_WARNING("Failed to get workspace");
     return nullptr;
+}
+
+Connection* DbusInterface::createConnection(int pid){
+    pid_t pgid = ::getpgid(pid);
+    auto connection = new Connection(this, pid, pgid);
+    if(!connection->isValid()){
+        connection->deleteLater();
+        return nullptr;
+    }
+    connect(connection, &Connection::finished, this, [this, connection]{
+        O_DEBUG("Connection" << connection->pid() << "closed");
+        connections.removeAll(connection);
+        connection->deleteLater();
+    });
+    connections.append(connection);
+    return connection;
 }
 
 #include "moc_dbusinterface.cpp"

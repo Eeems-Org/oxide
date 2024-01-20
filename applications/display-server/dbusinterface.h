@@ -53,4 +53,5 @@ private:
 
     Connection* getConnection(QDBusMessage message);
     QObject* workspace();
+    Connection* createConnection(int pid);
 };

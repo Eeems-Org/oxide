@@ -246,7 +246,7 @@ int __open(const char* pathname){
         if(blightBuffer->format != Blight::Format::Format_Invalid){
             return blightBuffer->fd;
         }
-        auto surfaceIds = Blight::surfaces();
+        auto surfaceIds = blightConnection->surfaces();
         if(!surfaceIds.empty()){
             for(auto& identifier : surfaceIds){
                 auto buffer = blightConnection->getBuffer(identifier);
@@ -664,7 +664,8 @@ extern "C" {
         blightConnection = new Blight::Connection(fd);
         blightConnection->onDisconnect([](int res){
             _WARN("Disconnected from display server: %s", std::strerror(res));
-            // TODO - handle reconnect or force quit
+            // TODO - handle reconnect
+            std::exit(res);
         });
         _DEBUG("Connected %d to blight on %d", pid, fd);
         setenv("RM2FB_ACTIVE", "1", true);
