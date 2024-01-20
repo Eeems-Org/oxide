@@ -58,7 +58,7 @@ int main(int argc, char *argv[]){
             return;
         }
         O_DEBUG("Connection file descriptor:" << bfd);
-        QRect geometry(0, 0, 1404, 1872);
+        QRect geometry(0, 0, 100, 100);
         QImage blankImage(geometry.size(), QImage::Format_RGB16);
         blankImage.fill(Qt::black);
         auto buffer = Blight::createBuffer(
@@ -75,34 +75,26 @@ int main(int argc, char *argv[]){
             return;
         }
         memcpy(buffer->data, blankImage.constBits(), buffer->size());
-        auto image = new QImage(
+        QImage image(
             buffer->data,
             blankImage.width(),
             blankImage.height(),
             blankImage.bytesPerLine(),
             blankImage.format()
         );
-        if(image->isNull()){
+        if(image.isNull()){
             O_WARNING("Null image");
         }
-        if(image->size() != geometry.size()){
-            O_WARNING("Invalid size" << image->size());
+        if(image.size() != geometry.size()){
+            O_WARNING("Invalid size" << image.size());
         }
-        std::string id = Blight::addSurface(
-            buffer->fd,
-            geometry.x(),
-            geometry.y(),
-            image->width(),
-            image->height(),
-            image->bytesPerLine(),
-            (Blight::Format)image->format()
-        );
-        if(id.empty()){
+        Blight::addSurface(buffer);
+        if(buffer->surface.empty()){
             O_WARNING("No identifier provided");
             qApp->exit(EXIT_FAILURE);
             return;
         }
-        O_DEBUG("Surface added:" << id.c_str());
+        O_DEBUG("Surface added:" << buffer->surface.c_str());
         auto connection = new Blight::Connection(bfd);
         connection->onDisconnect([](int res){
             if(res){
@@ -111,18 +103,67 @@ int main(int argc, char *argv[]){
         });
         sleep(1);
         O_DEBUG("Switching to gray");
-        image->fill(Qt::gray);
-        O_DEBUG("Repainting" << id.c_str());
+        image.fill(Qt::gray);
+        O_DEBUG("Repainting" << buffer->surface.c_str());
         connection->repaint(
-            id,
+            buffer,
             0,
             0,
             geometry.width(),
             geometry.height()
         )->wait();
+        sleep(1);
+        O_DEBUG("Moving " << buffer->surface.c_str());
+        geometry.setTopLeft(QPoint(100, 100));
+        connection->move(buffer, geometry.x(), geometry.y());
+        sleep(1);
+        O_DEBUG("Switching to black");
+        image.fill(Qt::black);
+        O_DEBUG("Repainting" << buffer->surface.c_str());
+        connection->repaint(
+            buffer,
+            0,
+            0,
+            geometry.width(),
+            geometry.height()
+        )->wait();
+        sleep(1);
+        O_DEBUG("Resizing" << buffer->surface.c_str());
+        geometry.setSize(QSize(300, 300));
+        auto resizedImage = image.scaled(geometry.size());
+        buffer = connection->resize(
+            buffer,
+            geometry.width(),
+            geometry.height(),
+            resizedImage.bytesPerLine(),
+            (Blight::data_t)resizedImage.constBits()
+        );
         O_DEBUG("Done!");
+        sleep(3);
+        auto surfaces = connection->surfaces();
+        auto buffers = connection->buffers();
         delete connection;
-        QTimer::singleShot(1000, []{ qApp->exit(); });
+        if(surfaces.size() != 1){
+            O_WARNING("There should only be one surface!");
+            qApp->exit(1);
+            return;
+        }
+        if(surfaces.front() != buffer->surface){
+            O_WARNING("Surface identifier does not match!");
+            qApp->exit(1);
+            return;
+        }
+        if(buffers.size() != 1){
+            O_WARNING("There should only be one buffer!");
+            qApp->exit(1);
+            return;
+        }
+        if(buffers.front()->surface != buffer->surface){
+            O_WARNING("Buffer surface identifier does not match!");
+            qApp->exit(1);
+            return;
+        }
+        qApp->exit();
     });
     return app.exec();
 }

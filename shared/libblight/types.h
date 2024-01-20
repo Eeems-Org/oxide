@@ -51,17 +51,22 @@ namespace Blight{
         Format format;
         data_t data;
         std::string uuid;
+        std::string surface;
         size_t size();
         int close();
         ~buf_t();
+        shared_buf_t clone();
         static shared_buf_t new_ptr();
+        static std::string new_uuid();
     } buf_t;
     enum MessageType{
         Invalid,
         Ack,
         Repaint,
         Move,
-        SurfaceInfo,
+        Info,
+        Delete,
+        List
     };
     LIBBLIGHT_EXPORT typedef struct header_t{
         MessageType type;
@@ -118,4 +123,19 @@ namespace Blight{
         Format format;
         static surface_info_t from_data(data_t data);
     } surface_info_t;
+    LIBBLIGHT_EXPORT typedef struct list_header_t{
+        unsigned int count;
+        static list_header_t from_data(data_t data);
+    } list_header_t;
+    LIBBLIGHT_EXPORT typedef struct list_item_t{
+        size_t identifier_len;
+        std::string identifier;
+        static list_item_t from_data(data_t data);
+    } list_item_t;
+    LIBBLIGHT_EXPORT typedef struct list_t{
+        list_header_t header;
+        std::vector<list_item_t> items;
+        std::vector<std::string> identifiers();
+        static list_t from_data(data_t data);
+    } list_t;
 }

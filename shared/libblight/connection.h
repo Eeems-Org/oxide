@@ -15,7 +15,7 @@ namespace Blight {
     typedef struct ackid_t{
         unsigned int ackid;
         Connection* connection;
-        bool waited;
+        std::atomic<bool> done;
         unsigned int data_size;
         shared_data_t data;
         std::condition_variable condition;
@@ -25,6 +25,7 @@ namespace Blight {
             unsigned int data_size = 0,
             data_t data = nullptr
         );
+        ~ackid_t();
         bool wait(int timeout = 0);
         void notify_all();
     } ackid_t;
@@ -45,9 +46,29 @@ namespace Blight {
             int height,
             unsigned int marker = 0
         );
+        inline ackid_ptr_t repaint(
+            shared_buf_t buf,
+            int x,
+            int y,
+            int width,
+            int height,
+            unsigned int marker = 0
+        ){
+            return repaint(buf->surface, x, y, width, height, marker);
+        }
+        void move(shared_buf_t buf, int x, int y);
+        shared_buf_t resize(
+            shared_buf_t buf,
+            int width,
+            int height,
+            int stride,
+            data_t new_data
+        );
         ackid_ptr_t move(std::string identifier, int x, int y);
         shared_buf_t getBuffer(std::string identifier);
         std::vector<shared_buf_t> buffers();
+        ackid_ptr_t remove(shared_buf_t buf);
+        std::vector<std::string> surfaces();
 
         std::mutex mutex;
         std::map<unsigned int, ackid_ptr_t> acks;

@@ -199,15 +199,6 @@ void DbusInterface::repaint(QString identifier, QDBusMessage message){
     surface->repaint();
 }
 
-QStringList DbusInterface::surfaces(QDBusMessage message){
-    auto connection = getConnection(message);
-    if(connection == nullptr){
-        sendErrorReply(QDBusError::AccessDenied, "You must first open a connection");
-        return QStringList();
-    }
-    return connection->getSurfaces();
-}
-
 QDBusUnixFileDescriptor DbusInterface::getSurface(QString identifier, QDBusMessage message){
     auto connection = getConnection(message);
     if(connection == nullptr){

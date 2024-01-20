@@ -18,9 +18,6 @@
     <method name="repaint">
       <arg name="identifier" type="s" direction="in"/>
     </method>
-    <method name="surfaces">
-      <arg type="as" direction="out"/>
-    </method>
     <method name="getSurface">
       <arg type="h" direction="out"/>
       <arg name="identifier" type="s" direction="in"/>

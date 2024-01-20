@@ -167,7 +167,8 @@ void Connection::readSocket(){
             << ", socket=" << m_serverFd
         );
         unsigned int ack_size = 0;
-        Blight::shared_data_t ack_data;
+        Blight::data_t ack_data = nullptr;
+        std::function<void()> ack_free = NULL;
         switch(message->header.type){
             case Blight::MessageType::Repaint:{
                 auto repaint = Blight::repaint_t::from_message(message.get());
@@ -195,10 +196,26 @@ void Connection::readSocket(){
                 ));
                 break;
             }
-            case Blight::MessageType::Move:
-                O_WARNING("Move not implemented yet");
+            case Blight::MessageType::Move:{
+                auto move = Blight::move_t::from_message(message.get());
+                O_DEBUG(
+                    "Move requested: "
+                    << move.identifier.c_str()
+                    << QString("(%1,%2)")
+                           .arg(move.header.x)
+                           .arg(move.header.y)
+                           .toStdString()
+                           .c_str()
+                    );
+                auto surface = getSurface(move.identifier.c_str());
+                if(surface == nullptr){
+                    O_WARNING("Could not find surface " << move.identifier.c_str());
+                    break;
+                }
+                surface->move(move.header.x, move.header.y);
                 break;
-            case Blight::MessageType::SurfaceInfo:{
+            }
+            case Blight::MessageType::Info:{
                 std::string identifier;
                 identifier.assign(
                     reinterpret_cast<char*>(message->data.get()),
@@ -210,7 +227,7 @@ void Connection::readSocket(){
                     break;
                 }
                 auto geometry = surface->geometry();
-                auto info = new Blight::surface_info_t{
+                ack_data = (Blight::data_t)new Blight::surface_info_t{
                     .x = geometry.x(),
                     .y = geometry.y(),
                     .width = geometry.width(),
@@ -218,8 +235,50 @@ void Connection::readSocket(){
                     .stride = surface->stride(),
                     .format = (Blight::Format)surface->format(),
                 };
-                ack_data = Blight::shared_data_t(reinterpret_cast<Blight::data_t>(info));
                 ack_size = sizeof(Blight::surface_info_t);
+                break;
+            }
+            case Blight::MessageType::Delete:{
+                std::string identifier;
+                identifier.assign(
+                    reinterpret_cast<char*>(message->data.get()),
+                    message->header.size
+                );
+                auto surface = getSurface(identifier.c_str());
+                if(surface == nullptr){
+                    O_WARNING("Could not find surface " << identifier.c_str());
+                    break;
+                }
+                surfaces.removeAll(surface);
+                surface->deleteLater();
+                break;
+            }
+            case Blight::MessageType::List:{
+                O_DEBUG("List requested");
+                std::vector<std::string> list;
+                for(QString& surface : getSurfaces()){
+                    auto string = surface.toStdString();
+                    ack_size += sizeof(Blight::list_item_t::identifier_len) + string.size();
+                    list.push_back(string);
+                }
+                ack_size += sizeof(Blight::list_header_t);
+                ack_data = (Blight::data_t)malloc(ack_size);
+                unsigned int offset = sizeof(Blight::list_header_t);
+                Blight::list_header_t header{
+                    .count = list.size()
+                };
+                memcpy(ack_data, &header, offset);
+                for(auto& identifier : list){
+                    auto size = identifier.size();
+                    memcpy(&ack_data[offset], &size, sizeof(Blight::list_item_t::identifier_len));
+                    offset += sizeof(Blight::list_item_t::identifier_len);
+                    memcpy(&ack_data[offset], identifier.data(), size);
+                    offset += size;
+                }
+                if(offset != ack_size){
+                    O_WARNING("Size mismatch on list data");
+                }
+                ack_free = [&ack_data]{ free(ack_data); };
                 break;
             }
             case Blight::MessageType::Ack:
@@ -228,7 +287,7 @@ void Connection::readSocket(){
             default:
                 O_WARNING("Unexpected message type" << message->header.type);
         }
-        if(ack_size && ack_data != nullptr){
+        if(ack_size && ack_data == nullptr){
             O_WARNING("Ack expected data, but none sent");
             ack_size = 0;
         }
@@ -244,16 +303,21 @@ void Connection::readSocket(){
         }else if(res != sizeof(Blight::header_t)){
             O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
         }else if(ack_size){
-            res = ::send(m_serverFd, ack_data.get(), ack_size, MSG_EOR);
+            res = ::send(m_serverFd, ack_data, ack_size, MSG_EOR);
             if(res < 0){
                 O_WARNING("Failed to write to socket:" << strerror(errno));
-            }else if(res != sizeof(Blight::header_t)){
+            }else if((unsigned int)res != ack_size){
                 O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
             }else{
                 O_DEBUG("Acked" << message->header.ackid);
             }
         }else{
             O_DEBUG("Acked" << message->header.ackid);
+        }
+        if(ack_free){
+            ack_free();
+        }else if(ack_data != nullptr){
+            delete ack_data;
         }
     };
     m_notifier->setEnabled(true);

@@ -23,18 +23,19 @@ namespace Blight{
     )
     : ackid(ackid),
       connection(connection),
-      waited(false),
+      done(false),
       data_size(data_size),
       data(data)
     {}
 
+    ackid_t::~ackid_t(){}
+
     bool ackid_t::wait(int timeout){
-        waited = true;
         if(!ackid){
             return true;
         }
         std::unique_lock lock(connection->mutex);
-        if(!connection->acks.contains(ackid)){
+        if(done){
             lock.unlock();
             return true;
         }
@@ -46,10 +47,11 @@ namespace Blight{
     }
 
     void ackid_t::notify_all(){ condition.notify_all(); }
+
     Connection::Connection(int fd)
-        : m_fd(fcntl(fd, F_DUPFD_CLOEXEC, 3)),
-          thread(run, std::ref(*this)),
-          stop_requested(false)
+    : m_fd(fcntl(fd, F_DUPFD_CLOEXEC, 3)),
+      thread(run, std::ref(*this)),
+      stop_requested(false)
     {
         int flags = fcntl(fd, F_GETFD, NULL);
         fcntl(fd, F_SETFD, flags | O_NONBLOCK);
@@ -70,6 +72,7 @@ namespace Blight{
     }
 
     message_ptr_t Connection::read(){ return message_t::from_socket(m_fd); }
+
     ackid_ptr_t Connection::send(MessageType type, data_t data, size_t size){
         if(!thread.joinable()){
             std::cerr
@@ -120,7 +123,11 @@ namespace Blight{
         //     << " "
         //     << std::to_string(type)
         //     << std::endl;
-        return ackid_ptr_t(new ackid_t(this, _ackid));
+        mutex.lock();
+        auto ack = ackid_ptr_t(new ackid_t(this, _ackid));
+        acks[_ackid] = ack;
+        mutex.unlock();
+        return ack;
     }
 
     void Connection::waitForMarker(unsigned int marker){
@@ -139,6 +146,7 @@ namespace Blight{
         }
         ack->wait();
     }
+
     ackid_ptr_t Connection::repaint(
         std::string identifier,
         int x,
@@ -163,11 +171,40 @@ namespace Blight{
         }
         return ackid;
     }
+
+    void Connection::move(shared_buf_t buf, int x, int y){
+        auto ack =  move(buf->surface, x, y);
+        ack->wait();
+        buf->x = x;
+        buf->y = y;
+    }
+
+    shared_buf_t Connection::resize(
+        shared_buf_t buf,
+        int width,
+        int height,
+        int stride,
+        data_t new_data
+    ){
+        auto buf2 = Blight::createBuffer(
+            buf->x,
+            buf->y,
+            width,
+            height,
+            stride,
+            buf->format
+        );
+        memcpy(buf2->data, new_data, buf2->size());
+        Blight::addSurface(buf2);
+        remove(buf)->wait();
+        return buf2;
+    }
+
     ackid_ptr_t Connection::move(std::string identifier, int x, int y){
         unsigned char buf[sizeof(move_header_t) + identifier.size()];
         move_header_t header{
-            .x = x,
-            .y = y,
+             .x = x,
+             .y = y,
             .identifier_len = identifier.size()
         };
         memcpy(buf, &header, sizeof(header));
@@ -185,7 +222,8 @@ namespace Blight{
             .stride = 0,
             .format = Format::Format_Invalid,
             .data = nullptr,
-            .uuid = ""
+            .uuid = "",
+            .surface = identifier
         };
         if(buf->fd == -1){
             std::cerr
@@ -194,7 +232,7 @@ namespace Blight{
                 << std::endl;
             return shared_buf_t(buf);;
         }
-        auto ack = send(MessageType::SurfaceInfo, (data_t)identifier.data(), identifier.size());
+        auto ack = send(MessageType::Info, (data_t)identifier.data(), identifier.size());
         ack->wait();
         if(ack->data_size < sizeof(surface_info_t)){
             std::cerr
@@ -227,13 +265,31 @@ namespace Blight{
 
     std::vector<shared_buf_t> Connection::buffers(){
         std::vector<shared_buf_t> buffers;
-        for(const auto& identifier : Blight::surfaces()){
+        for(const auto& identifier : surfaces()){
             auto buffer = getBuffer(identifier);
             if(buffer->data != nullptr){
                 buffers.push_back(buffer);
             }
         }
         return buffers;
+    }
+
+    ackid_ptr_t Connection::remove(shared_buf_t buf){
+        auto ack = send(MessageType::Delete, (data_t)buf->surface.data(), buf->surface.size());
+        buf->surface = "";
+        return ack;
+    }
+
+    std::vector<std::string> Connection::surfaces(){
+        auto ack = send(MessageType::List, nullptr, 0);
+        ack->wait();
+        if(ack->data == nullptr){
+            std::cerr
+                << "[BlightWorker] Missing list data pointer!"
+                << std::endl;
+            return std::vector<std::string>();
+        }
+        return list_t::from_data(ack->data.get()).identifiers();
     }
 
     void Connection::run(Connection& connection){
@@ -260,6 +316,7 @@ namespace Blight{
                     ack->data = message->data;
                     ack->data_size = message->header.size;
                 }
+                ack->done = true;
                 ack->notify_all();
                 connection.acks.erase(ackid);
                 std::map<unsigned int, unsigned int>::iterator iter2 = connection.markers.begin();

@@ -17,8 +17,14 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
     if(!file.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
         O_WARNING("Failed to open file");
     }
-    data = file.map(0, file.size());
-    m_image = new QImage(data, geometry.width(), geometry.height(), stride, format);
+    data = file.map(0, m_stride * m_geometry.height());
+    m_image = new QImage(
+        data,
+        geometry.width(),
+        geometry.height(),
+        stride,
+        format
+    );
     auto interface = dynamic_cast<DbusInterface*>(parent->parent());
     component = dynamic_cast<QQuickItem*>(interface->loadComponent(
         "qrc:/Surface.qml",
@@ -74,5 +80,11 @@ const QRect& Surface::geometry(){ return m_geometry; }
 int Surface::stride(){ return m_stride; }
 
 QImage::Format Surface::format(){ return m_format; }
+
+void Surface::move(int x, int y){
+    m_geometry.moveTopLeft(QPoint(x, y));
+    component->setX(x);
+    component->setY(y);
+}
 
 #include "moc_surface.cpp"

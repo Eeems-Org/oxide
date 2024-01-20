@@ -1,5 +1,41 @@
 #include "types.h"
+
 #include <unistd.h>
+#include <random>
+#include <sstream>
+
+#include "libblight.h"
+
+std::string generate_uuid_v4(){
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    static std::uniform_int_distribution<> dis(0, 15);
+    static std::uniform_int_distribution<> dis2(8, 11);
+    std::stringstream ss;
+    int i;
+    ss << std::hex;
+    for (i = 0; i < 8; i++) {
+        ss << dis(gen);
+    }
+    ss << "-";
+    for (i = 0; i < 4; i++) {
+        ss << dis(gen);
+    }
+    ss << "-4";
+    for (i = 0; i < 3; i++) {
+        ss << dis(gen);
+    }
+    ss << "-";
+    ss << dis2(gen);
+    for (i = 0; i < 3; i++) {
+        ss << dis(gen);
+    }
+    ss << "-";
+    for (i = 0; i < 12; i++) {
+        ss << dis(gen);
+    };
+    return ss.str();
+}
 
 size_t Blight::buf_t::size(){
     return static_cast<size_t>(stride) * height;
@@ -20,6 +56,12 @@ int Blight::buf_t::close(){
 
 Blight::buf_t::~buf_t(){ close(); }
 
+Blight::shared_buf_t Blight::buf_t::clone(){
+    auto buf = Blight::createBuffer(x, y, width, height, stride, format);
+    memcpy(buf->data, data, size());
+    return buf;
+}
+
 Blight::shared_buf_t Blight::buf_t::new_ptr(){
     return shared_buf_t(new buf_t{
         .fd = -1,
@@ -30,9 +72,12 @@ Blight::shared_buf_t Blight::buf_t::new_ptr(){
         .stride = 0,
         .format = Format::Format_Invalid,
         .data = nullptr,
-        .uuid = ""
+        .uuid = new_uuid(),
+        .surface = ""
     });
 }
+
+std::string Blight::buf_t::new_uuid(){ return generate_uuid_v4(); }
 
 Blight::header_t Blight::header_t::from_data(data_t data){
     header_t header;
@@ -163,13 +208,14 @@ Blight::message_ptr_t Blight::message_t::from_socket(int fd){
 
 Blight::message_ptr_t Blight::message_t::new_ptr(){
     return message_ptr_t(new message_t{
-        .header = header_t::new_invalid()
+        .header = header_t::new_invalid(),
+        .data = shared_data_t()
     });
 }
 
 Blight::repaint_header_t Blight::repaint_header_t::from_data(data_t data){
     repaint_header_t header;
-    memcpy(&header, data, sizeof(repaint_header_t));
+    memcpy(&header, data, sizeof(header));
     return header;
 }
 
@@ -186,23 +232,59 @@ Blight::repaint_t Blight::repaint_t::from_message(const message_t* message){
 
 Blight::move_header_t Blight::move_header_t::from_data(data_t data){
     move_header_t header;
-    memcpy(&header, data, sizeof(move_header_t));
+    memcpy(&header, data, sizeof(header));
     return header;
 }
 
 Blight::move_t Blight::move_t::from_message(const message_t* message){
     const data_t data = message->data.get();
-    move_t repaint;
-    repaint.header = move_header_t::from_data(data);
-    repaint.identifier.assign(
-        reinterpret_cast<char*>(&data[sizeof(repaint.header)]),
-        repaint.header.identifier_len
+    move_t move;
+    move.header = move_header_t::from_data(data);
+    move.identifier.assign(
+        reinterpret_cast<char*>(&data[sizeof(move.header)]),
+        move.header.identifier_len
     );
-    return repaint;
+    return move;
 }
 
 Blight::surface_info_t Blight::surface_info_t::from_data(data_t data){
     surface_info_t header;
     memcpy(&header, data, sizeof(surface_info_t));
     return header;
+}
+
+Blight::list_header_t Blight::list_header_t::from_data(data_t data){
+    list_header_t header;
+    memcpy(&header, data, sizeof(header));
+    return header;
+}
+
+Blight::list_item_t Blight::list_item_t::from_data(data_t data){
+    list_item_t item;
+    memcpy(&item.identifier_len, data, sizeof(item.identifier_len));
+    item.identifier.assign(
+        reinterpret_cast<char*>(&data[sizeof(item.identifier_len)]),
+        item.identifier_len
+    );
+    return item;
+}
+
+Blight::list_t Blight::list_t::from_data(data_t data){
+    list_t list;
+    list.header = list_header_t::from_data(data);
+    unsigned int offset = sizeof(list.header.count);
+    for(unsigned int i = 0; i < list.header.count; i++){
+        auto item = list_item_t::from_data(&data[offset]);
+        list.items.push_back(item);
+        offset += sizeof(item.identifier_len) + item.identifier_len;
+    }
+    return list;
+}
+
+std::vector<std::string> Blight::list_t::identifiers(){
+    std::vector<std::string> identifiers;
+    for(auto& item : items){
+        identifiers.push_back(item.identifier);
+    }
+    return identifiers;
 }

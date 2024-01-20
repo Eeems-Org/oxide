@@ -41,7 +41,6 @@ public slots:
         QDBusMessage message
     );
     void repaint(QString identifier, QDBusMessage message);
-    QStringList surfaces(QDBusMessage message);
     QDBusUnixFileDescriptor getSurface(QString identifier, QDBusMessage message);
 
 private slots:

@@ -6,40 +6,8 @@
 #include <cstring>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <random>
-#include <sstream>
 #include <unistd.h>
 
-std::string generate_uuid_v4(){
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<> dis(0, 15);
-    static std::uniform_int_distribution<> dis2(8, 11);
-    std::stringstream ss;
-    int i;
-    ss << std::hex;
-    for (i = 0; i < 8; i++) {
-        ss << dis(gen);
-    }
-    ss << "-";
-    for (i = 0; i < 4; i++) {
-        ss << dis(gen);
-    }
-    ss << "-4";
-    for (i = 0; i < 3; i++) {
-        ss << dis(gen);
-    }
-    ss << "-";
-    ss << dis2(gen);
-    for (i = 0; i < 3; i++) {
-        ss << dis(gen);
-    }
-    ss << "-";
-    for (i = 0; i < 12; i++) {
-        ss << dis(gen);
-    };
-    return ss.str();
-}
 static Blight::DBus* dbus = nullptr;
 
 namespace Blight{
@@ -56,6 +24,7 @@ namespace Blight{
         }
     }
     bool exists(){ return connect() && dbus->has_service(BLIGHT_SERVICE); }
+
     int open(){
         if(!exists()){
             errno = EAGAIN;
@@ -75,8 +44,8 @@ namespace Blight{
         );
         if(res < 0){
             std::cerr
-                << "[Blight::open()::sd_bus_call_method(...)] "
-                << err.message
+                << "[Blight::open()::sd_bus_call_method(...)] Error: "
+                << (err.message == NULL ? std::strerror(-res) : err.message)
                 << std::endl;
             sd_bus_error_free(&err);
             sd_bus_message_unref(msg);
@@ -108,6 +77,7 @@ namespace Blight{
         sd_bus_message_unref(msg);
         return dfd;
     }
+
     shared_buf_t createBuffer(int x, int y, int width, int height, int stride, Format format){
         auto buf = new buf_t{
             .fd = -1,
@@ -118,7 +88,8 @@ namespace Blight{
             .stride = stride,
             .format = format,
             .data = nullptr,
-            .uuid = generate_uuid_v4()
+            .uuid = buf_t::new_uuid(),
+            .surface = ""
         };
         buf->fd = memfd_create(buf->uuid.c_str(), MFD_ALLOW_SEALING);
         if(buf->fd == -1){
@@ -135,17 +106,6 @@ namespace Blight{
                 << std::endl
                 << "    Requested size: "
                 << std::to_string(buf->size())
-                << std::endl;
-            int e = errno;
-            buf->close();
-            errno = e;
-            return shared_buf_t(buf);
-        }
-        int flags = fcntl(buf->fd, F_GET_SEALS);
-        if(fcntl(buf->fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW)){
-            std::cerr
-                << "[Blight::createBuffer()::fcntl(...)] "
-                << std::strerror(errno)
                 << std::endl;
             int e = errno;
             buf->close();
@@ -176,6 +136,7 @@ namespace Blight{
         buf->data = reinterpret_cast<data_t>(data);
         return shared_buf_t(buf);
     }
+
     std::string addSurface(
         int fd,
         int x,
@@ -210,8 +171,8 @@ namespace Blight{
         );
         if(res < 0){
             std::cerr
-                << "[Blight::addSurface()::sd_bus_call_method(...)] "
-                << err.message
+                << "[Blight::addSurface()::sd_bus_call_method(...)] Error: "
+                << (err.message == NULL ? std::strerror(-res) : err.message)
                 << std::endl;
             sd_bus_error_free(&err);
             sd_bus_message_unref(msg);
@@ -231,6 +192,7 @@ namespace Blight{
         }
         return std::string(identifier);
     }
+
     int repaint(std::string identifier){
         if(!exists()){
             errno = EAGAIN;
@@ -251,8 +213,8 @@ namespace Blight{
         );
         if(res < 0){
             std::cerr
-                << "[Blight::repaint()::sd_bus_call_method(...)] "
-                << err.message
+                << "[Blight::repaint()::sd_bus_call_method(...)] Error: "
+                << (err.message == NULL ? std::strerror(-res) : err.message)
                 << std::endl;
             errno = -res;
         }
@@ -260,6 +222,7 @@ namespace Blight{
         sd_bus_message_unref(msg);
         return res;
     }
+
     int getSurface(std::string identifier){
         if(!exists()){
             errno = EAGAIN;
@@ -280,8 +243,8 @@ namespace Blight{
         );
         if(res < 0){
             std::cerr
-                << "[Blight::getBuffer()::sd_bus_call_method(...)] "
-                << err.message
+                << "[Blight::getBuffer()::sd_bus_call_method(...)] Error: "
+                << (err.message == NULL ? std::strerror(-res) : err.message)
                 << std::endl;
             sd_bus_error_free(&err);
             sd_bus_message_unref(msg);
@@ -309,54 +272,5 @@ namespace Blight{
             return -errno;
         }
         return dfd;
-    }
-
-    std::vector<std::string> surfaces(){
-        std::vector<std::string> surfaces;
-        if(!exists()){
-            errno = EAGAIN;
-            return surfaces;
-        }
-        sd_bus_error err = SD_BUS_ERROR_NULL;
-        sd_bus_message* msg = nullptr;
-        int res = sd_bus_call_method(
-            dbus->bus(),
-            BLIGHT_SERVICE,
-            "/",
-            BLIGHT_INTERFACE,
-            "surfaces",
-            &err,
-            &msg,
-            ""
-        );
-        if(res < 0){
-            std::cerr
-                << "[Blight::surfaces()::sd_bus_call_method(...)] "
-                << err.message
-                << std::endl;
-            sd_bus_error_free(&err);
-            sd_bus_message_unref(msg);
-            errno = -res;
-            return surfaces;
-        }
-        while(true){
-            size_t size;
-            const void* data;
-            res = sd_bus_message_read_array(msg, 's', &data, &size);
-            if(!res){
-                break;
-            }
-            if(res < 0){
-                std::cerr
-                    << "[Blight::surfaces()::sd_bus_call_method(...)] "
-                    << err.message
-                    << std::endl;
-                break;
-            }
-            std::string identifier;
-            identifier.assign(reinterpret_cast<const char*>(data), size);
-            surfaces.push_back(identifier);
-        }
-        return surfaces;
     }
 }

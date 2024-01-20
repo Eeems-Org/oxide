@@ -25,6 +25,7 @@ public:
     const QRect& geometry();
     int stride();
     QImage::Format format();
+    void move(int x, int y);
 
 signals:
     void update(const QRect& geometry);

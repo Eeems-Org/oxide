@@ -39,7 +39,6 @@ static bool DO_HANDLE_FB = true;
 static bool FAKE_RM1 = false;
 static Blight::shared_buf_t blightBuffer = Blight::buf_t::new_ptr();
 static Blight::Connection* blightConnection = nullptr;
-static std::string blightSurfaceId = "";
 static ssize_t(*func_write)(int, const void*, size_t);
 static ssize_t(*func_writev)(int, const iovec*, int);
 static ssize_t(*func_writev64)(int, const iovec*, int);
@@ -110,17 +109,17 @@ int fb_ioctl(unsigned long request, char* ptr){
         case MXCFB_SEND_UPDATE:{
             _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SEND_UPDATE")
             ClockWatch cz;
-            if(blightSurfaceId.empty()){
-                blightSurfaceId = Blight::addSurface(*blightBuffer);
+            if(blightBuffer->surface.empty()){
+                Blight::addSurface(blightBuffer);
             }
-            if(blightSurfaceId.empty()){
+            if(blightBuffer->surface.empty()){
                 _CRIT("Failed to create surface: %s", std::strerror(errno));
                 std::exit(errno);
             }
             auto update = reinterpret_cast<mxcfb_update_data*>(ptr);
             auto region = update->update_region;
             blightConnection->repaint(
-                blightSurfaceId,
+                blightBuffer,
                 region.left,
                 region.top,
                 region.width,
@@ -244,8 +243,32 @@ int __open(const char* pathname){
             || strcmp(pathname, "/dev/shm/swtfb.01") == 0
         )
     ){
+        if(blightBuffer->format != Blight::Format::Format_Invalid){
+            return blightBuffer->fd;
+        }
         auto surfaceIds = Blight::surfaces();
-        if(surfaceIds.empty()){
+        if(!surfaceIds.empty()){
+            for(auto& identifier : surfaceIds){
+                auto buffer = blightConnection->getBuffer(identifier);
+                if(buffer->data == nullptr){
+                    continue;
+                }
+                if(
+                    buffer->x != 0
+                    || buffer->y != 0
+                    || buffer->width != 1404
+                    || buffer->height != 1872
+                    || buffer->stride != 2808
+                    || buffer->format != Blight::Format::Format_RGB16
+                ){
+                    continue;
+                }
+                _DEBUG("Reusing existing surface: %s", identifier);
+                blightBuffer = buffer;
+                break;
+            }
+        }
+        if(blightBuffer->format == Blight::Format::Format_Invalid){
             /// Emulate rM1 screen
             blightBuffer = Blight::createBuffer(
                 0,
@@ -255,23 +278,19 @@ int __open(const char* pathname){
                 2808,
                 Blight::Format::Format_RGB16
             );
-        }else{
-            for(auto& identifier : surfaceIds){
-                auto buffer = blightConnection->getBuffer(identifier);
-                if(buffer->data == nullptr){
-                    continue;
-                }
-                blightBuffer = buffer;
-                blightSurfaceId = identifier;
-                break;
+            // We don't ever plan on resizing, and we shouldn't let anything try
+            int flags = fcntl(blightBuffer->fd, F_GET_SEALS);
+            fcntl(
+                blightBuffer->fd,
+                F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW
+                );
+            res = blightBuffer->fd;
+            if(res < 0){
+                _CRIT("Failed to create buffer: %s", std::strerror(errno));
+                std::exit(errno);
+            }else{
+                _DEBUG("Created buffer %s on fd %d", blightBuffer->uuid.c_str(), blightBuffer->fd);
             }
-        }
-        res = blightBuffer->fd;
-        if(res < 0){
-            _CRIT("Failed to create buffer: %s", std::strerror(errno));
-            std::exit(errno);
-        }else{
-            _DEBUG("Created buffer %s on fd %d", blightBuffer->uuid.c_str(), blightBuffer->fd);
         }
     }
     if(res == -1){
@@ -327,10 +346,10 @@ extern "C" {
             return func_msgsnd(msqid, msgp, msgsz, msgflg);
         }
         if(msqid == msgq){
-            if(blightSurfaceId.empty()){
-                blightSurfaceId = Blight::addSurface(*blightBuffer);
+            if(blightBuffer->surface.empty()){
+                Blight::addSurface(blightBuffer);
             }
-            if(blightSurfaceId.empty()){
+            if(blightBuffer->surface.empty()){
                 _CRIT("Failed to create surface: %s", std::strerror(errno));
                 std::exit(errno);
                 return -1;
@@ -339,7 +358,7 @@ extern "C" {
             auto buf = (swtfb::swtfb_update*)msgp;
             auto region = buf->mdata.update.update_region;
             blightConnection->repaint(
-                blightSurfaceId,
+                blightBuffer,
                 region.left,
                 region.top,
                 region.width,

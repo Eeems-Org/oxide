@@ -22,18 +22,17 @@ namespace Blight{
         int stride,
         Format format
     );
-    LIBBLIGHT_EXPORT inline std::string addSurface(buf_t buf){
-        return addSurface(
-            buf.fd,
-            buf.x,
-            buf.y,
-            buf.width,
-            buf.height,
-            buf.stride,
-            buf.format
+    LIBBLIGHT_EXPORT inline void addSurface(shared_buf_t buf){
+        buf->surface = addSurface(
+            buf->fd,
+            buf->x,
+            buf->y,
+            buf->width,
+            buf->height,
+            buf->stride,
+            buf->format
         );
     }
     LIBBLIGHT_EXPORT int repaint(std::string identifier);
     LIBBLIGHT_EXPORT int getSurface(std::string identifier);
-    LIBBLIGHT_EXPORT std::vector<std::string> surfaces();
 }
