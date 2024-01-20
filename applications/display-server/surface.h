@@ -21,14 +21,18 @@ public:
     bool isValid();
     QImage* image();
     void repaint();
+    int fd();
+    const QRect& geometry();
+    int stride();
+    QImage::Format format();
 
 signals:
     void update(const QRect& geometry);
 
 private:
-    QRect geometry;
-    int stride;
-    QImage::Format format;
+    QRect m_geometry;
+    int m_stride;
+    QImage::Format m_format;
     QFile file;
     uchar* data;
     QImage* m_image;

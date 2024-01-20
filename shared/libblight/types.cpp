@@ -20,6 +20,20 @@ int Blight::buf_t::close(){
 
 Blight::buf_t::~buf_t(){ close(); }
 
+Blight::shared_buf_t Blight::buf_t::new_ptr(){
+    return shared_buf_t(new buf_t{
+        .fd = -1,
+        .x = 0,
+        .y = 0,
+        .width = 0,
+        .height = 0,
+        .stride = 0,
+        .format = Format::Format_Invalid,
+        .data = nullptr,
+        .uuid = ""
+    });
+}
+
 Blight::header_t Blight::header_t::from_data(data_t data){
     header_t header;
     memcpy(&header, data, sizeof(header_t));
@@ -34,11 +48,20 @@ Blight::header_t Blight::header_t::from_data(void* data){
     return from_data(reinterpret_cast<data_t>(data));
 }
 
-Blight::message_t Blight::message_t::from_data(data_t _data){
-    return message_t{
-        .header = header_t::from_data(_data),
-        .data = &_data[sizeof(header)]
+Blight::header_t Blight::header_t::new_invalid(){
+    return header_t{
+        .type = MessageType::Invalid,
+        .ackid = 0,
+        .size = 0,
     };
+}
+
+Blight::message_t Blight::message_t::from_data(data_t _data){
+    message_t message;
+    message.header = header_t::from_data(_data);
+    message.data = shared_data_t(new unsigned char[message.header.size]);
+    memcpy(message.data.get(), &_data[sizeof(message.header)], message.header.size);
+    return message;
 }
 
 Blight::message_t Blight::message_t::from_data(char* data){
@@ -49,19 +72,20 @@ Blight::message_t Blight::message_t::from_data(void* data){
     return from_data(reinterpret_cast<data_t>(data));
 }
 
-Blight::data_t Blight::message_t::create_ack(message_t* message){ return create_ack(*message); }
+Blight::data_t Blight::message_t::create_ack(message_t* message, size_t size){
+    return create_ack(*message, size);
+}
 
-Blight::data_t Blight::message_t::create_ack(const message_t& message){
+Blight::data_t Blight::message_t::create_ack(const message_t& message, size_t size){
     return reinterpret_cast<data_t>(new header_t{
         .type = MessageType::Ack,
         .ackid = message.header.ackid,
-        .size = 0
+        .size = size
     });
 }
 
-Blight::message_t* Blight::message_t::from_socket(int fd){
-    auto message = new message_t;
-    message->data = nullptr;
+Blight::message_ptr_t Blight::message_t::from_socket(int fd){
+    auto message = message_t::new_ptr();
     ssize_t res = -1;
     while(res < 0){
         res = ::recv(fd, &message->header, sizeof(header_t), 0);
@@ -72,8 +96,7 @@ Blight::message_t* Blight::message_t::from_socket(int fd){
             errno = EMSGSIZE;
         }
         if(errno == EAGAIN){
-            delete message;
-            return nullptr;
+            return message;
         }
         if(errno == EINTR){
             timespec remaining;
@@ -91,8 +114,7 @@ Blight::message_t* Blight::message_t::from_socket(int fd){
             << "socket: "
             << std::to_string(fd)
             << std::endl;
-        delete message;
-        return nullptr;
+        return message;
     }
     if(!message->header.size){
         return message;
@@ -125,8 +147,7 @@ Blight::message_t* Blight::message_t::from_socket(int fd){
                 << ", size="
                 << std::to_string(message->header.size)
                 << std::endl;
-            delete message;
-            return nullptr;
+            return message;
         }
         // TODO use poll
         timespec remaining;
@@ -136,8 +157,14 @@ Blight::message_t* Blight::message_t::from_socket(int fd){
         };
         nanosleep(&requested, &remaining);
     }
-    message->data = data;
+    message->data = shared_data_t(data);
     return message;
+}
+
+Blight::message_ptr_t Blight::message_t::new_ptr(){
+    return message_ptr_t(new message_t{
+        .header = header_t::new_invalid()
+    });
 }
 
 Blight::repaint_header_t Blight::repaint_header_t::from_data(data_t data){
@@ -147,12 +174,13 @@ Blight::repaint_header_t Blight::repaint_header_t::from_data(data_t data){
 }
 
 Blight::repaint_t Blight::repaint_t::from_message(const message_t* message){
+    const data_t data = message->data.get();
     repaint_t repaint;
-    repaint.header = repaint_header_t::from_data(message->data);
+    repaint.header = repaint_header_t::from_data(data);
     repaint.identifier.assign(
-        reinterpret_cast<char*>(&message->data[sizeof(repaint.header)]),
+        reinterpret_cast<char*>(&data[sizeof(repaint.header)]),
         repaint.header.identifier_len
-        );
+    );
     return repaint;
 }
 
@@ -163,11 +191,18 @@ Blight::move_header_t Blight::move_header_t::from_data(data_t data){
 }
 
 Blight::move_t Blight::move_t::from_message(const message_t* message){
+    const data_t data = message->data.get();
     move_t repaint;
-    repaint.header = move_header_t::from_data(message->data);
+    repaint.header = move_header_t::from_data(data);
     repaint.identifier.assign(
-        reinterpret_cast<char*>(&message->data[sizeof(repaint.header)]),
+        reinterpret_cast<char*>(&data[sizeof(repaint.header)]),
         repaint.header.identifier_len
-        );
+    );
     return repaint;
+}
+
+Blight::surface_info_t Blight::surface_info_t::from_data(data_t data){
+    surface_info_t header;
+    memcpy(&header, data, sizeof(surface_info_t));
+    return header;
 }

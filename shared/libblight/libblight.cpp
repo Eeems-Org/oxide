@@ -108,7 +108,7 @@ namespace Blight{
         sd_bus_message_unref(msg);
         return dfd;
     }
-    buf_t* createBuffer(int x, int y, int width, int height, int stride, Format format){
+    shared_buf_t createBuffer(int x, int y, int width, int height, int stride, Format format){
         auto buf = new buf_t{
             .fd = -1,
             .x = x,
@@ -126,7 +126,7 @@ namespace Blight{
                 << "[Blight::createBuffer()::memfd_create(...)] "
                 << std::strerror(-buf->fd)
                 << std::endl;
-            return buf;
+            return shared_buf_t(buf);
         }
         if(ftruncate(buf->fd, buf->size())){
             std::cerr
@@ -139,7 +139,7 @@ namespace Blight{
             int e = errno;
             buf->close();
             errno = e;
-            return buf;
+            return shared_buf_t(buf);
         }
         int flags = fcntl(buf->fd, F_GET_SEALS);
         if(fcntl(buf->fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW)){
@@ -150,7 +150,7 @@ namespace Blight{
             int e = errno;
             buf->close();
             errno = e;
-            return buf;
+            return shared_buf_t(buf);
         }
         void* data = mmap(
             NULL,
@@ -171,10 +171,10 @@ namespace Blight{
             int e = errno;
             buf->close();
             errno = e;
-            return buf;
+            return shared_buf_t(buf);
         }
         buf->data = reinterpret_cast<data_t>(data);
-        return buf;
+        return shared_buf_t(buf);
     }
     std::string addSurface(
         int fd,
@@ -259,5 +259,104 @@ namespace Blight{
         sd_bus_error_free(&err);
         sd_bus_message_unref(msg);
         return res;
+    }
+    int getSurface(std::string identifier){
+        if(!exists()){
+            errno = EAGAIN;
+            return -1;
+        }
+        sd_bus_error err = SD_BUS_ERROR_NULL;
+        sd_bus_message* msg = nullptr;
+        int res = sd_bus_call_method(
+            dbus->bus(),
+            BLIGHT_SERVICE,
+            "/",
+            BLIGHT_INTERFACE,
+            "getSurface",
+            &err,
+            &msg,
+            "s",
+            identifier.c_str()
+        );
+        if(res < 0){
+            std::cerr
+                << "[Blight::getBuffer()::sd_bus_call_method(...)] "
+                << err.message
+                << std::endl;
+            sd_bus_error_free(&err);
+            sd_bus_message_unref(msg);
+            errno = -res;
+            return -res;
+        }
+        int fd;
+        res = sd_bus_message_read(msg, "h", &fd);
+        if(res < 0){
+            std::cerr
+                << "[Blight::getBuffer()::sd_bus_message_read(...)] "
+                << std::strerror(-res)
+                << std::endl;
+            errno = -res;
+            return -res;
+        }
+        int dfd = dup(fd);
+        if(dfd == -1){
+            std::cerr
+                << "[Blight::getBuffer()::dup("
+                << fd
+                << ")] "
+                << std::strerror(errno)
+                << std::endl;
+            return -errno;
+        }
+        return dfd;
+    }
+
+    std::vector<std::string> surfaces(){
+        std::vector<std::string> surfaces;
+        if(!exists()){
+            errno = EAGAIN;
+            return surfaces;
+        }
+        sd_bus_error err = SD_BUS_ERROR_NULL;
+        sd_bus_message* msg = nullptr;
+        int res = sd_bus_call_method(
+            dbus->bus(),
+            BLIGHT_SERVICE,
+            "/",
+            BLIGHT_INTERFACE,
+            "surfaces",
+            &err,
+            &msg,
+            ""
+        );
+        if(res < 0){
+            std::cerr
+                << "[Blight::surfaces()::sd_bus_call_method(...)] "
+                << err.message
+                << std::endl;
+            sd_bus_error_free(&err);
+            sd_bus_message_unref(msg);
+            errno = -res;
+            return surfaces;
+        }
+        while(true){
+            size_t size;
+            const void* data;
+            res = sd_bus_message_read_array(msg, 's', &data, &size);
+            if(!res){
+                break;
+            }
+            if(res < 0){
+                std::cerr
+                    << "[Blight::surfaces()::sd_bus_call_method(...)] "
+                    << err.message
+                    << std::endl;
+                break;
+            }
+            std::string identifier;
+            identifier.assign(reinterpret_cast<const char*>(data), size);
+            surfaces.push_back(identifier);
+        }
+        return surfaces;
     }
 }

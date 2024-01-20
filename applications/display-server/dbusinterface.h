@@ -3,10 +3,12 @@
 #include <QObject>
 #include <QDBusContext>
 #include <QDBusConnection>
+#pragma once
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
 #include <QTimer>
 #include <QQmlApplicationEngine>
+#include <QDBusUnixFileDescriptor>
 
 #include "connection.h"
 
@@ -38,7 +40,9 @@ public slots:
         int format,
         QDBusMessage message
     );
-    void repaint(QString identifier);
+    void repaint(QString identifier, QDBusMessage message);
+    QStringList surfaces(QDBusMessage message);
+    QDBusUnixFileDescriptor getSurface(QString identifier, QDBusMessage message);
 
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);

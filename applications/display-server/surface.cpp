@@ -8,9 +8,9 @@
 
 Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Format format)
 : QObject(parent),
-  geometry(geometry),
-  stride(stride),
-  format(format)
+  m_geometry(geometry),
+  m_stride(stride),
+  m_format(format)
 {
     auto connection = dynamic_cast<Connection*>(parent);
     m_id = QString("%1/surface/%2").arg(connection->id()).arg(fd);
@@ -65,6 +65,14 @@ bool Surface::isValid(){ return component != nullptr; }
 
 QImage* Surface::image(){ return m_image; }
 
-void Surface::repaint(){ emit update(QRect(QPoint(0, 0), geometry.size())); }
+void Surface::repaint(){ emit update(QRect(QPoint(0, 0), m_geometry.size())); }
+
+int Surface::fd(){ return file.handle(); }
+
+const QRect& Surface::geometry(){ return m_geometry; }
+
+int Surface::stride(){ return m_stride; }
+
+QImage::Format Surface::format(){ return m_format; }
 
 #include "moc_surface.cpp"

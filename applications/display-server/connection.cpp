@@ -140,12 +140,23 @@ Surface* Connection::getSurface(QString identifier){
     return nullptr;
 }
 
+QStringList Connection::getSurfaces(){
+    QStringList identifiers;
+    for(auto surface : qAsConst(surfaces)){
+        if(surface == nullptr){
+            continue;
+        }
+        identifiers.append(surface->id());
+    }
+    return identifiers;
+}
+
 void Connection::readSocket(){
     m_notifier->setEnabled(false);
     O_DEBUG("Data received");
     while(true){
         auto message = Blight::message_t::from_socket(m_serverFd);
-        if(message == nullptr){
+        if(message->header.type == Blight::MessageType::Invalid){
             break;
         }
         O_DEBUG(
@@ -155,9 +166,11 @@ void Connection::readSocket(){
             << ", size=" << message->header.size
             << ", socket=" << m_serverFd
         );
+        unsigned int ack_size = 0;
+        Blight::shared_data_t ack_data;
         switch(message->header.type){
             case Blight::MessageType::Repaint:{
-                auto repaint = Blight::repaint_t::from_message(message);
+                auto repaint = Blight::repaint_t::from_message(message.get());
                 O_DEBUG(
                     "Repaint requested: "
                     << repaint.identifier.c_str()
@@ -170,16 +183,43 @@ void Connection::readSocket(){
                         .c_str()
                 );
                 auto surface = getSurface(repaint.identifier.c_str());
-                if(surface != nullptr){
-                    emit surface->update(QRect(
-                        repaint.header.x,
-                        repaint.header.y,
-                        repaint.header.width,
-                        repaint.header.height
-                    ));
-                }else{
-                    O_WARNING("Could not find surface for identifier repaint");
+                if(surface == nullptr){
+                    O_WARNING("Could not find surface " << repaint.identifier.c_str());
+                    break;
                 }
+                emit surface->update(QRect(
+                    repaint.header.x,
+                    repaint.header.y,
+                    repaint.header.width,
+                    repaint.header.height
+                ));
+                break;
+            }
+            case Blight::MessageType::Move:
+                O_WARNING("Move not implemented yet");
+                break;
+            case Blight::MessageType::SurfaceInfo:{
+                std::string identifier;
+                identifier.assign(
+                    reinterpret_cast<char*>(message->data.get()),
+                    message->header.size
+                );
+                auto surface = getSurface(identifier.c_str());
+                if(surface == nullptr){
+                    O_WARNING("Could not find surface " << identifier.c_str());
+                    break;
+                }
+                auto geometry = surface->geometry();
+                auto info = new Blight::surface_info_t{
+                    .x = geometry.x(),
+                    .y = geometry.y(),
+                    .width = geometry.width(),
+                    .height = geometry.height(),
+                    .stride = surface->stride(),
+                    .format = (Blight::Format)surface->format(),
+                };
+                ack_data = Blight::shared_data_t(reinterpret_cast<Blight::data_t>(info));
+                ack_size = sizeof(Blight::surface_info_t);
                 break;
             }
             case Blight::MessageType::Ack:
@@ -188,26 +228,33 @@ void Connection::readSocket(){
             default:
                 O_WARNING("Unexpected message type" << message->header.type);
         }
-        auto ack = Blight::message_t::create_ack(message);
+        if(ack_size && ack_data != nullptr){
+            O_WARNING("Ack expected data, but none sent");
+            ack_size = 0;
+        }
+        auto ack = Blight::message_t::create_ack(message.get(), ack_size);
         auto res = ::send(
             m_serverFd,
             reinterpret_cast<char*>(ack),
             sizeof(Blight::header_t),
             MSG_EOR
         );
-        delete ack;
         if(res < 0){
             O_WARNING("Failed to write to socket:" << strerror(errno));
         }else if(res != sizeof(Blight::header_t)){
             O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
+        }else if(ack_size){
+            res = ::send(m_serverFd, ack_data.get(), ack_size, MSG_EOR);
+            if(res < 0){
+                O_WARNING("Failed to write to socket:" << strerror(errno));
+            }else if(res != sizeof(Blight::header_t)){
+                O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
+            }else{
+                O_DEBUG("Acked" << message->header.ackid);
+            }
         }else{
             O_DEBUG("Acked" << message->header.ackid);
         }
-        if(message->data != nullptr){
-            delete message->data;
-            message->data = nullptr;
-        }
-        delete message;
     };
     m_notifier->setEnabled(true);
 }

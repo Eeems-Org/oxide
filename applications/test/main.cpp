@@ -119,9 +119,8 @@ int main(int argc, char *argv[]){
             0,
             geometry.width(),
             geometry.height()
-        );
+        )->wait();
         O_DEBUG("Done!");
-        delete buffer;
         delete connection;
         QTimer::singleShot(1000, []{ qApp->exit(); });
     });

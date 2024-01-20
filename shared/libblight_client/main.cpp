@@ -37,7 +37,7 @@ static int DEBUG_LOGGING = 4;
 static bool FAILED_INIT = true;
 static bool DO_HANDLE_FB = true;
 static bool FAKE_RM1 = false;
-static Blight::buf_t* blightBuffer = nullptr;
+static Blight::shared_buf_t blightBuffer = Blight::buf_t::new_ptr();
 static Blight::Connection* blightConnection = nullptr;
 static std::string blightSurfaceId = "";
 static ssize_t(*func_write)(int, const void*, size_t);
@@ -244,15 +244,28 @@ int __open(const char* pathname){
             || strcmp(pathname, "/dev/shm/swtfb.01") == 0
         )
     ){
-        /// Emulate rM1 screen
-        blightBuffer = Blight::createBuffer(
-            0,
-            0,
-            1404,
-            1872,
-            2808,
-            Blight::Format::Format_RGB16
-        );
+        auto surfaceIds = Blight::surfaces();
+        if(surfaceIds.empty()){
+            /// Emulate rM1 screen
+            blightBuffer = Blight::createBuffer(
+                0,
+                0,
+                1404,
+                1872,
+                2808,
+                Blight::Format::Format_RGB16
+            );
+        }else{
+            for(auto& identifier : surfaceIds){
+                auto buffer = blightConnection->getBuffer(identifier);
+                if(buffer->data == nullptr){
+                    continue;
+                }
+                blightBuffer = buffer;
+                blightSurfaceId = identifier;
+                break;
+            }
+        }
         res = blightBuffer->fd;
         if(res < 0){
             _CRIT("Failed to create buffer: %s", std::strerror(errno));
@@ -290,7 +303,6 @@ namespace swtfb {
         } mdata;
     };
 }
-
 extern "C" {
     __attribute__((visibility("default")))
     int msgget(key_t key, int msgflg){
@@ -418,7 +430,7 @@ extern "C" {
     int close(int fd){
         if(IS_INITIALIZED){
             _DEBUG("close %d", fd);
-            if(DO_HANDLE_FB && blightBuffer != nullptr && blightBuffer->fd != -1 && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && fd == blightBuffer->fd){
                 // Maybe actually close it?
                 return 0;
             }
@@ -430,7 +442,7 @@ extern "C" {
     __attribute__((visibility("default")))
     int ioctl(int fd, unsigned long request, char* ptr){
         if(IS_INITIALIZED){
-            if(DO_HANDLE_FB && blightBuffer != nullptr && blightBuffer->fd != -1 && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && fd == blightBuffer->fd){
                 return fb_ioctl(request, ptr);
             }
         }
@@ -445,7 +457,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("write %d %zu", fd, n);
-            if(DO_HANDLE_FB && blightBuffer != nullptr && blightBuffer->fd != -1 && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && fd == blightBuffer->fd){
                 auto res = func_write(fd, buf, n);
                 return res;
             }
@@ -462,7 +474,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("writev %d %d", fd, iovcnt);
-            if(DO_HANDLE_FB && blightBuffer != nullptr && blightBuffer->fd != -1 && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && fd == blightBuffer->fd){
                 auto res = func_writev(fd, iov, iovcnt);
                 return res;
             }
@@ -479,7 +491,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("writv64 %d %d", fd, iovcnt);
-            if(DO_HANDLE_FB && blightBuffer != nullptr && blightBuffer->fd != -1 && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && fd == blightBuffer->fd){
                 auto res = func_writev64(fd, iov, iovcnt);
                 return res;
             }
@@ -496,7 +508,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("pwrite %d %zu %d", fd, n, offset);
-            if(DO_HANDLE_FB && blightBuffer != nullptr && blightBuffer->fd != -1 && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && fd == blightBuffer->fd){
                 auto res = func_pwrite(fd, buf, n, offset);
                 return res;
             }
@@ -513,7 +525,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("pwrite64 %d %zu %d", fd, n, offset);
-            if(DO_HANDLE_FB && blightBuffer != nullptr && blightBuffer->fd != -1 && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && fd == blightBuffer->fd){
                 auto res = func_pwrite64(fd, buf, n, offset);
                 return res;
             }
@@ -530,7 +542,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("pwritev %d %d %d", fd, iovcnt, offset);
-            if(DO_HANDLE_FB && blightBuffer != nullptr && blightBuffer->fd != -1 && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && fd == blightBuffer->fd){
                 auto res = func_pwritev(fd, iov, iovcnt, offset);
                 return res;
             }
@@ -547,7 +559,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("pwritev64 %d %d %d", fd, iovcnt, offset);
-            if(DO_HANDLE_FB && blightBuffer != nullptr && blightBuffer->fd != -1 && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && fd == blightBuffer->fd){
                 auto res = func_pwritev64(fd, iov, iovcnt, offset);
                 return res;
             }
@@ -598,7 +610,10 @@ extern "C" {
             FAILED_INIT = false;
             return;
         }
-        if(path == "/opt/bin/yaft"){
+        if(
+            path == "/opt/bin/yaft"
+            // || path == "/opt/bin/something"
+        ){
             FAKE_RM1 = true;
         }
         DO_HANDLE_FB = getenv("OXIDE_PRELOAD_EXPOSE_FB") == nullptr;

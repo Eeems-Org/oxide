@@ -32,6 +32,7 @@ public:
     void close();
     Surface* addSurface(int fd, QRect geometry, int stride, QImage::Format format);
     Surface* getSurface(QString identifier);
+    QStringList getSurfaces();
 
 signals:
     void finished();

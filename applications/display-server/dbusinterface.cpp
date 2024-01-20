@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QQmlComponent>
 #include <unistd.h>
+#include <QDBusMetaType>
 #include <liboxide/debug.h>
 
 DbusInterface* DbusInterface::singleton = nullptr;
@@ -184,13 +185,41 @@ QString DbusInterface::addSurface(
     return surface->id();
 }
 
-void DbusInterface::repaint(QString identifier){
-    auto surface = getSurface(identifier);
+void DbusInterface::repaint(QString identifier, QDBusMessage message){
+    auto connection = getConnection(message);
+    if(connection == nullptr){
+        sendErrorReply(QDBusError::AccessDenied, "You must first open a connection");
+        return;
+    }
+    auto surface = connection->getSurface(identifier);
     if(surface == nullptr){
         sendErrorReply(QDBusError::BadAddress, "Surface not found");
         return;
     }
     surface->repaint();
+}
+
+QStringList DbusInterface::surfaces(QDBusMessage message){
+    auto connection = getConnection(message);
+    if(connection == nullptr){
+        sendErrorReply(QDBusError::AccessDenied, "You must first open a connection");
+        return QStringList();
+    }
+    return connection->getSurfaces();
+}
+
+QDBusUnixFileDescriptor DbusInterface::getSurface(QString identifier, QDBusMessage message){
+    auto connection = getConnection(message);
+    if(connection == nullptr){
+        sendErrorReply(QDBusError::AccessDenied, "You must first open a connection");
+        return QDBusUnixFileDescriptor();
+    }
+    auto surface = connection->getSurface(identifier);
+    if(surface == nullptr){
+        sendErrorReply(QDBusError::BadAddress, "Surface not found");
+        return QDBusUnixFileDescriptor();
+    }
+    return QDBusUnixFileDescriptor(surface->fd());
 }
 
 void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){

@@ -1,6 +1,8 @@
 #pragma once
 #include "libblight_global.h"
 #include <string>
+#include <memory>
+#include <vector>
 
 namespace Blight{
     enum Format{
@@ -36,6 +38,9 @@ namespace Blight{
         Format_BGR888,
     };
     LIBBLIGHT_EXPORT typedef unsigned char* data_t;
+    LIBBLIGHT_EXPORT typedef std::shared_ptr<unsigned char[]> shared_data_t;
+    struct buf_t;
+    LIBBLIGHT_EXPORT typedef std::shared_ptr<buf_t> shared_buf_t;
     LIBBLIGHT_EXPORT typedef struct buf_t{
         int fd;
         int x;
@@ -49,12 +54,14 @@ namespace Blight{
         size_t size();
         int close();
         ~buf_t();
+        static shared_buf_t new_ptr();
     } buf_t;
     enum MessageType{
         Invalid,
         Ack,
         Repaint,
         Move,
+        SurfaceInfo,
     };
     LIBBLIGHT_EXPORT typedef struct header_t{
         MessageType type;
@@ -63,16 +70,20 @@ namespace Blight{
         static header_t from_data(data_t data);
         static header_t from_data(char* data);
         static header_t from_data(void* data);
+        static header_t new_invalid();
     } header_t;
+    struct message_t;
+    LIBBLIGHT_EXPORT typedef std::shared_ptr<message_t> message_ptr_t;
     LIBBLIGHT_EXPORT typedef struct message_t{
         header_t header;
-        data_t data;
+        shared_data_t data;
         static message_t from_data(data_t _data);
         static message_t from_data(char* data);
         static message_t from_data(void* data);
-        static data_t create_ack(message_t* message);
-        static data_t create_ack(const message_t& message);
-        static message_t* from_socket(int fd);
+        static data_t create_ack(message_t* message, size_t size = 0);
+        static data_t create_ack(const message_t& message, size_t size = 0);
+        static message_ptr_t from_socket(int fd);
+        static message_ptr_t new_ptr();
     } message_t;
     LIBBLIGHT_EXPORT typedef struct repaint_header_t{
         int x;
@@ -87,7 +98,7 @@ namespace Blight{
         std::string identifier;
         static repaint_t from_message(const message_t* message);
     } repaint_t;
-    LIBBLIGHT_EXPORT typedef struct  move_header_t{
+    LIBBLIGHT_EXPORT typedef struct move_header_t{
         int x;
         int y;
         size_t identifier_len;
@@ -98,4 +109,13 @@ namespace Blight{
         std::string identifier;
         static move_t from_message(const message_t* message);
     } move_t;
+    LIBBLIGHT_EXPORT typedef struct surface_info_t{
+        int x;
+        int y;
+        int width;
+        int height;
+        int stride;
+        Format format;
+        static surface_info_t from_data(data_t data);
+    } surface_info_t;
 }

@@ -2,11 +2,18 @@
 #include "types.h"
 
 namespace Blight{
-    bool LIBBLIGHT_EXPORT connect(bool use_system = true);
-    bool LIBBLIGHT_EXPORT exists();
-    int LIBBLIGHT_EXPORT open();
-    buf_t* createBuffer(int x, int y, int width, int height, int stride, Format format);
-    std::string LIBBLIGHT_EXPORT addSurface(
+    LIBBLIGHT_EXPORT bool connect(bool use_system = true);
+    LIBBLIGHT_EXPORT bool exists();
+    LIBBLIGHT_EXPORT int open();
+    LIBBLIGHT_EXPORT shared_buf_t createBuffer(
+        int x,
+        int y,
+        int width,
+        int height,
+        int stride,
+        Format format
+    );
+    LIBBLIGHT_EXPORT std::string LIBBLIGHT_EXPORT addSurface(
         int fd,
         int x,
         int y,
@@ -15,7 +22,7 @@ namespace Blight{
         int stride,
         Format format
     );
-    inline std::string LIBBLIGHT_EXPORT addSurface(buf_t buf){
+    LIBBLIGHT_EXPORT inline std::string addSurface(buf_t buf){
         return addSurface(
             buf.fd,
             buf.x,
@@ -26,5 +33,7 @@ namespace Blight{
             buf.format
         );
     }
-    int repaint(std::string identifier);
+    LIBBLIGHT_EXPORT int repaint(std::string identifier);
+    LIBBLIGHT_EXPORT int getSurface(std::string identifier);
+    LIBBLIGHT_EXPORT std::vector<std::string> surfaces();
 }
