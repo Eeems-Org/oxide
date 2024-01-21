@@ -105,13 +105,16 @@ int main(int argc, char *argv[]){
         O_DEBUG("Switching to gray");
         image.fill(Qt::gray);
         O_DEBUG("Repainting" << buffer->surface.c_str());
-        connection->repaint(
+        auto ack = connection->repaint(
             buffer,
             0,
             0,
             geometry.width(),
             geometry.height()
-        )->wait();
+        );
+        if(ack.has_value()){
+            ack.value()->wait();
+        }
         sleep(1);
         O_DEBUG("Moving " << buffer->surface.c_str());
         geometry.setTopLeft(QPoint(100, 100));
@@ -120,26 +123,32 @@ int main(int argc, char *argv[]){
         O_DEBUG("Switching to black");
         image.fill(Qt::black);
         O_DEBUG("Repainting" << buffer->surface.c_str());
-        connection->repaint(
+        ack = connection->repaint(
             buffer,
             0,
             0,
             geometry.width(),
             geometry.height()
-        )->wait();
+        );
+        if(ack.has_value()){
+            ack.value()->wait();
+        }
         sleep(1);
         O_DEBUG("Resizing" << buffer->surface.c_str());
         geometry.setSize(QSize(300, 300));
         auto resizedImage = image.scaled(geometry.size());
-        buffer = connection->resize(
+        auto res = connection->resize(
             buffer,
             geometry.width(),
             geometry.height(),
             resizedImage.bytesPerLine(),
             (Blight::data_t)resizedImage.constBits()
         );
+        if(res.has_value()){
+            buffer = res.value();
+        }
         O_DEBUG("Done!");
-        sleep(3);
+        sleep(1);
         auto surfaces = connection->surfaces();
         auto buffers = connection->buffers();
         delete connection;

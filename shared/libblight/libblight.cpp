@@ -30,51 +30,32 @@ namespace Blight{
             errno = EAGAIN;
             return -EAGAIN;
         }
-        sd_bus_error err = SD_BUS_ERROR_NULL;
-        sd_bus_message* msg = nullptr;
-        int res = sd_bus_call_method(
-            dbus->bus(),
-            BLIGHT_SERVICE,
-            "/",
-            BLIGHT_INTERFACE,
-            "open",
-            &err,
-            &msg,
-            ""
-        );
-        if(res < 0){
+        auto reply = dbus->call_method(BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "open");
+        if(reply->isError()){
             std::cerr
-                << "[Blight::open()::sd_bus_call_method(...)] Error: "
-                << (err.message == NULL ? std::strerror(-res) : err.message)
+                << "[Blight::open()::call_method(...)] Error: "
+                << reply->error_message()
                 << std::endl;
-            sd_bus_error_free(&err);
-            sd_bus_message_unref(msg);
-            errno = -res;
-            return res;
+            return reply->return_value;
         }
-        sd_bus_error_free(&err);
-        int fd;
-        res = sd_bus_message_read(msg, "h", &fd);
-        if(res < 0){
+        auto fd = reply->read_value<int>("h");
+        if(!fd.has_value()){
             std::cerr
-                << "[Blight::open()::sd_bus_message_read(...)] "
-                << std::strerror(-res)
+                << "[Blight::open()::read_value(...)] "
+                << reply->error_message()
                 << std::endl;
-            sd_bus_message_unref(msg);
-            errno = -res;
-            return res;
+            return reply->return_value;
         }
-        int dfd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+        int dfd = fcntl(fd.value(), F_DUPFD_CLOEXEC, 3);
         if(dfd < 0){
             std::cerr
                 << "[Blight::open()::dup("
-                << std::to_string(fd)
+                << std::to_string(fd.value())
                 << ")] "
                 << std::strerror(errno)
                 << std::endl;
             errno = -dfd;
         }
-        sd_bus_message_unref(msg);
         return dfd;
     }
 
@@ -150,16 +131,11 @@ namespace Blight{
             errno = EAGAIN;
             return "";
         }
-        sd_bus_error err = SD_BUS_ERROR_NULL;
-        sd_bus_message* msg = nullptr;
-        int res = sd_bus_call_method(
-            dbus->bus(),
+        auto reply = dbus->call_method(
             BLIGHT_SERVICE,
             "/",
             BLIGHT_INTERFACE,
             "addSurface",
-            &err,
-            &msg,
             "hiiiiii",
             fd,
             x,
@@ -169,28 +145,22 @@ namespace Blight{
             stride,
             format
         );
-        if(res < 0){
+        if(reply->isError()){
             std::cerr
-                << "[Blight::addSurface()::sd_bus_call_method(...)] Error: "
-                << (err.message == NULL ? std::strerror(-res) : err.message)
+                << "[Blight::addSurface()::call_method(...)] Error: "
+                << reply->error_message()
                 << std::endl;
-            sd_bus_error_free(&err);
-            sd_bus_message_unref(msg);
-            errno = -res;
             return "";
         }
-        char* identifier;
-        res = sd_bus_message_read(msg, "s", &identifier);
-        sd_bus_message_unref(msg);
-        if(res < 0){
+        auto identifier = reply->read_value<char*>("s");
+        if(!identifier.has_value()){
             std::cerr
-                << "[Blight::addSurface()::sd_bus_message_read(...)] "
-                << std::strerror(-res)
+                << "[Blight::addSurface()::read_value(...)] "
+                << reply->error_message()
                 << std::endl;
-            errno = -res;
             return "";
         }
-        return std::string(identifier);
+        return std::string(identifier.value());
     }
 
     int repaint(std::string identifier){
@@ -198,29 +168,21 @@ namespace Blight{
             errno = EAGAIN;
             return -errno;
         }
-        sd_bus_error err = SD_BUS_ERROR_NULL;
-        sd_bus_message* msg = nullptr;
-        int res = sd_bus_call_method(
-            dbus->bus(),
+        auto reply = dbus->call_method(
             BLIGHT_SERVICE,
             "/",
             BLIGHT_INTERFACE,
             "repaint",
-            &err,
-            &msg,
             "s",
             identifier.c_str()
         );
-        if(res < 0){
+        if(reply->isError()){
             std::cerr
-                << "[Blight::repaint()::sd_bus_call_method(...)] Error: "
-                << (err.message == NULL ? std::strerror(-res) : err.message)
+                << "[Blight::repaint()::call_method(...)] Error: "
+                << reply->error_message()
                 << std::endl;
-            errno = -res;
         }
-        sd_bus_error_free(&err);
-        sd_bus_message_unref(msg);
-        return res;
+        return reply->return_value;
     }
 
     int getSurface(std::string identifier){
@@ -228,44 +190,35 @@ namespace Blight{
             errno = EAGAIN;
             return -1;
         }
-        sd_bus_error err = SD_BUS_ERROR_NULL;
-        sd_bus_message* msg = nullptr;
-        int res = sd_bus_call_method(
-            dbus->bus(),
+        auto reply = dbus->call_method(
             BLIGHT_SERVICE,
             "/",
             BLIGHT_INTERFACE,
             "getSurface",
-            &err,
-            &msg,
             "s",
             identifier.c_str()
         );
-        if(res < 0){
+        if(reply->isError()){
             std::cerr
-                << "[Blight::getBuffer()::sd_bus_call_method(...)] Error: "
-                << (err.message == NULL ? std::strerror(-res) : err.message)
+                << "[Blight::getSurface()::call_method(...)] Error: "
+                << reply->error_message()
                 << std::endl;
-            sd_bus_error_free(&err);
-            sd_bus_message_unref(msg);
-            errno = -res;
-            return -res;
+            return reply->return_value;
         }
-        int fd;
-        res = sd_bus_message_read(msg, "h", &fd);
-        if(res < 0){
+        auto fd = reply->read_value<int>("h");
+        if(!fd.has_value()){
             std::cerr
-                << "[Blight::getBuffer()::sd_bus_message_read(...)] "
-                << std::strerror(-res)
+                << "[Blight::getBuffer()::read_value(...)] "
+                << reply->error_message()
                 << std::endl;
-            errno = -res;
-            return -res;
+            return reply->return_value;
+
         }
-        int dfd = dup(fd);
+        int dfd = dup(fd.value());
         if(dfd == -1){
             std::cerr
                 << "[Blight::getBuffer()::dup("
-                << fd
+                << fd.value()
                 << ")] "
                 << std::strerror(errno)
                 << std::endl;

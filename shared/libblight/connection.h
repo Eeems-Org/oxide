@@ -30,15 +30,16 @@ namespace Blight {
         void notify_all();
     } ackid_t;
     typedef std::shared_ptr<ackid_t> ackid_ptr_t;
+    typedef std::optional<ackid_ptr_t> maybe_ackid_ptr_t;
     class LIBBLIGHT_EXPORT Connection {
     public:
         Connection(int fd);
         ~Connection();
         void onDisconnect(std::function<void(int)> callback);
         message_ptr_t read();
-        ackid_ptr_t send(MessageType type, data_t data, size_t size);
+        maybe_ackid_ptr_t send(MessageType type, data_t data, size_t size);
         void waitForMarker(unsigned int marker);
-        ackid_ptr_t repaint(
+        maybe_ackid_ptr_t repaint(
             std::string identifier,
             int x,
             int y,
@@ -46,28 +47,26 @@ namespace Blight {
             int height,
             unsigned int marker = 0
         );
-        inline ackid_ptr_t repaint(
+        inline maybe_ackid_ptr_t repaint(
             shared_buf_t buf,
             int x,
             int y,
             int width,
             int height,
             unsigned int marker = 0
-        ){
-            return repaint(buf->surface, x, y, width, height, marker);
-        }
+        ){ return repaint(buf->surface, x, y, width, height, marker); }
         void move(shared_buf_t buf, int x, int y);
-        shared_buf_t resize(
+        std::optional<shared_buf_t> resize(
             shared_buf_t buf,
             int width,
             int height,
             int stride,
             data_t new_data
         );
-        ackid_ptr_t move(std::string identifier, int x, int y);
-        shared_buf_t getBuffer(std::string identifier);
+        maybe_ackid_ptr_t move(std::string identifier, int x, int y);
+        std::optional<shared_buf_t> getBuffer(std::string identifier);
         std::vector<shared_buf_t> buffers();
-        ackid_ptr_t remove(shared_buf_t buf);
+        maybe_ackid_ptr_t remove(shared_buf_t buf);
         std::vector<std::string> surfaces();
 
         std::mutex mutex;

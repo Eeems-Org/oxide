@@ -208,13 +208,6 @@ int fb_ioctl(unsigned long request, char* ptr){
     }
 }
 
-
-// # define F_SEAL_SEAL	0x0001	/* Prevent further seals from being set.  */
-// # define F_SEAL_SHRINK	0x0002	/* Prevent file from shrinking.  */
-// # define F_SEAL_GROW	0x0004	/* Prevent file from growing.  */
-// # define F_SEAL_WRITE	0x0008	/* Prevent writes.  */
-// # define F_SEAL_FUTURE_WRITE	0x0010	/* Prevent future writes while mapped */
-
 int __open(const char* pathname){
     if(!IS_INITIALIZED){
         return -2;
@@ -618,12 +611,12 @@ extern "C" {
             && (
                    !path.starts_with("/opt")
                    || path.starts_with("/opt/sbin")
-                   )
+            )
             && (
                    !path.starts_with("/home")
                    || path.starts_with("/home/root/.entware/sbin")
-                   )
-            ){
+            )
+        ){
             // We ignore this executable
             DEBUG_LOGGING = 0;
             FAILED_INIT = false;
@@ -637,17 +630,6 @@ extern "C" {
         }
         DO_HANDLE_FB = getenv("OXIDE_PRELOAD_EXPOSE_FB") == nullptr;
         _DEBUG("Handle framebuffer: %d", DO_HANDLE_FB);
-        // Detect an existing connection, and sort out what to do?
-        // auto spid = getenv("OXIDE_PRELOAD");
-        // doConnect = spid == nullptr;
-        // if(!doConnect){
-        //     try{
-        //     auto epgid = std::stoi(spid);
-        //     doConnect = epgid != getpgrp();
-        //     }
-        //     catch(std::invalid_argument&){}
-        //     catch(std::out_of_range&){}
-        // }
         auto pid = getpid();
         _DEBUG("Connecting %d to blight", pid);
 #ifdef __arm__
@@ -672,6 +654,7 @@ extern "C" {
         FAILED_INIT = false;
         IS_INITIALIZED = true;
         setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
+        setenv("RM2FB_DISALBE", "1", true);
     }
 
     __attribute__((visibility("default")))

@@ -21,12 +21,32 @@ char** strv_free(char** v) {
 }
 
 namespace Blight {
+    DBusReply::DBusReply()
+    : error(SD_BUS_ERROR_NULL)
+    {}
+
+    Blight::DBusReply::~DBusReply(){
+        if(message != nullptr){
+            sd_bus_message_unref(message);
+        }
+        sd_bus_error_free(&error);
+    }
+
+    std::string Blight::DBusReply::error_message(){
+        if(error.message != NULL){
+            return error.message;
+        }
+        return std::strerror(-return_value);
+    }
+
+    bool Blight::DBusReply::isError(){ return return_value < 0; }
+
     DBusException::DBusException(std::string message)
-    : std::runtime_error(message.c_str())
+        : std::runtime_error(message.c_str())
     {}
 
     DBus::DBus(bool use_system)
-    : m_bus(nullptr)
+        : m_bus(nullptr)
     {
         int res;
         if(use_system){
