@@ -242,7 +242,11 @@ int __open(const char* pathname){
         auto surfaceIds = blightConnection->surfaces();
         if(!surfaceIds.empty()){
             for(auto& identifier : surfaceIds){
-                auto buffer = blightConnection->getBuffer(identifier);
+                auto maybe = blightConnection->getBuffer(identifier);
+                if(!maybe.has_value()){
+                    continue;
+                }
+                auto buffer = maybe.value();
                 if(buffer->data == nullptr){
                     continue;
                 }
@@ -263,7 +267,7 @@ int __open(const char* pathname){
         }
         if(blightBuffer->format == Blight::Format::Format_Invalid){
             /// Emulate rM1 screen
-            blightBuffer = Blight::createBuffer(
+            auto maybe = Blight::createBuffer(
                 0,
                 0,
                 1404,
@@ -271,12 +275,16 @@ int __open(const char* pathname){
                 2808,
                 Blight::Format::Format_RGB16
             );
+            if(!maybe.has_value()){
+                return -1;
+            }
+            blightBuffer = maybe.value();
             // We don't ever plan on resizing, and we shouldn't let anything try
             int flags = fcntl(blightBuffer->fd, F_GET_SEALS);
             fcntl(
                 blightBuffer->fd,
                 F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW
-                );
+            );
             res = blightBuffer->fd;
             if(res < 0){
                 _CRIT("Failed to create buffer: %s", std::strerror(errno));
@@ -284,6 +292,7 @@ int __open(const char* pathname){
             }else{
                 _DEBUG("Created buffer %s on fd %d", blightBuffer->uuid.c_str(), blightBuffer->fd);
             }
+            return res;
         }
     }
     if(res == -1){

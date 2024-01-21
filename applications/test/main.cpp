@@ -61,7 +61,7 @@ int main(int argc, char *argv[]){
         QRect geometry(0, 0, 100, 100);
         QImage blankImage(geometry.size(), QImage::Format_RGB16);
         blankImage.fill(Qt::black);
-        auto buffer = Blight::createBuffer(
+        auto maybe = Blight::createBuffer(
             geometry.x(),
             geometry.y(),
             geometry.width(),
@@ -69,6 +69,12 @@ int main(int argc, char *argv[]){
             blankImage.bytesPerLine(),
             Blight::Format::Format_RGB16
         );
+        if(!maybe.has_value()){
+            O_WARNING("Failed to create buffer:" << strerror(errno));
+            qApp->exit(EXIT_FAILURE);
+            return;
+        }
+        auto buffer = maybe.value();
         if(buffer->fd == -1 || buffer->data == nullptr){
             O_WARNING("Failed to create buffer:" << strerror(errno));
             qApp->exit(EXIT_FAILURE);

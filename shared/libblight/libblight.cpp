@@ -59,7 +59,7 @@ namespace Blight{
         return dfd;
     }
 
-    shared_buf_t createBuffer(int x, int y, int width, int height, int stride, Format format){
+    std::optional<shared_buf_t> createBuffer(int x, int y, int width, int height, int stride, Format format){
         auto buf = new buf_t{
             .fd = -1,
             .x = x,
@@ -76,9 +76,10 @@ namespace Blight{
         if(buf->fd == -1){
             std::cerr
                 << "[Blight::createBuffer()::memfd_create(...)] "
-                << std::strerror(-buf->fd)
+                << std::strerror(errno)
                 << std::endl;
-            return shared_buf_t(buf);
+            delete buf;
+            return {};
         }
         if(ftruncate(buf->fd, buf->size())){
             std::cerr
@@ -90,8 +91,9 @@ namespace Blight{
                 << std::endl;
             int e = errno;
             buf->close();
+            delete buf;
             errno = e;
-            return shared_buf_t(buf);
+            return {};
         }
         void* data = mmap(
             NULL,
@@ -111,14 +113,15 @@ namespace Blight{
                 << std::endl;
             int e = errno;
             buf->close();
+            delete buf;
             errno = e;
-            return shared_buf_t(buf);
+            return {};
         }
         buf->data = reinterpret_cast<data_t>(data);
         return shared_buf_t(buf);
     }
 
-    std::string addSurface(
+    std::optional<std::string> addSurface(
         int fd,
         int x,
         int y,
@@ -129,7 +132,7 @@ namespace Blight{
     ){
         if(!exists()){
             errno = EAGAIN;
-            return "";
+            return {};
         }
         auto reply = dbus->call_method(
             BLIGHT_SERVICE,
@@ -150,7 +153,7 @@ namespace Blight{
                 << "[Blight::addSurface()::call_method(...)] Error: "
                 << reply->error_message()
                 << std::endl;
-            return "";
+            return {};
         }
         auto identifier = reply->read_value<char*>("s");
         if(!identifier.has_value()){
@@ -158,7 +161,7 @@ namespace Blight{
                 << "[Blight::addSurface()::read_value(...)] "
                 << reply->error_message()
                 << std::endl;
-            return "";
+            return {};
         }
         return std::string(identifier.value());
     }

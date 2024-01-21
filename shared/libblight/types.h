@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <optional>
 
 namespace Blight{
     enum Format{
@@ -55,7 +56,7 @@ namespace Blight{
         size_t size();
         int close();
         ~buf_t();
-        shared_buf_t clone();
+        std::optional<shared_buf_t> clone();
         static shared_buf_t new_ptr();
         static std::string new_uuid();
     } buf_t;

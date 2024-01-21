@@ -56,8 +56,12 @@ int Blight::buf_t::close(){
 
 Blight::buf_t::~buf_t(){ close(); }
 
-Blight::shared_buf_t Blight::buf_t::clone(){
-    auto buf = Blight::createBuffer(x, y, width, height, stride, format);
+std::optional<Blight::shared_buf_t> Blight::buf_t::clone(){
+    auto res = Blight::createBuffer(x, y, width, height, stride, format);
+    if(!res.has_value()){
+        return {};
+    }
+    auto buf = res.value();
     memcpy(buf->data, data, size());
     return buf;
 }

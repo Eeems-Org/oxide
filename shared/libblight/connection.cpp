@@ -223,7 +223,7 @@ namespace Blight{
         int stride,
         data_t new_data
     ){
-        auto buf2 = Blight::createBuffer(
+        auto res = Blight::createBuffer(
             buf->x,
             buf->y,
             width,
@@ -231,6 +231,10 @@ namespace Blight{
             stride,
             buf->format
         );
+        if(!res.has_value()){
+            return {};
+        }
+        auto buf2 = res.value();
         memcpy(buf2->data, new_data, buf2->size());
         Blight::addSurface(buf2);
         if(buf2->surface.empty()){
