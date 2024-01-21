@@ -120,6 +120,11 @@ namespace Oxide{
          */
         void onKeyboardAttachedChanged(std::function<void()> callback);
         /*!
+         * \brief Get the list of all evdev devices
+         * \return All input devices
+         */
+        QList<event_device> inputDevices();
+        /*!
          * \brief Get the list of all keyboard evdev devices
          * \return All keyboard devices
          */

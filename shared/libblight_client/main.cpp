@@ -39,6 +39,7 @@ static bool DO_HANDLE_FB = true;
 static bool FAKE_RM1 = false;
 static Blight::shared_buf_t blightBuffer = Blight::buf_t::new_ptr();
 static Blight::Connection* blightConnection = nullptr;
+static std::map<int, std::string> inputDeviceMap;
 static ssize_t(*func_write)(int, const void*, size_t);
 static ssize_t(*func_writev)(int, const iovec*, int);
 static ssize_t(*func_writev64)(int, const iovec*, int);
@@ -170,7 +171,7 @@ int fb_ioctl(unsigned long request, char* ptr){
         case FBIOGET_FSCREENINFO:{
             _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_FSCREENINFO");
             auto screeninfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
-            memcpy(screeninfo->id, "mxc_epdc_fb", 11);
+            memcpy(screeninfo->id, "mxc_epdc_fb\0", 12);
             screeninfo->smem_len = blightBuffer->size();
             screeninfo->smem_start = (unsigned long)blightBuffer->data;
             screeninfo->line_length = blightBuffer->stride;
@@ -260,7 +261,7 @@ int __open(const char* pathname){
                 ){
                     continue;
                 }
-                _DEBUG("Reusing existing surface: %s", identifier);
+                _INFO("Reusing existing surface: %s", identifier.c_str());
                 blightBuffer = buffer;
                 break;
             }
@@ -290,9 +291,15 @@ int __open(const char* pathname){
                 _CRIT("Failed to create buffer: %s", std::strerror(errno));
                 std::exit(errno);
             }else{
-                _DEBUG("Created buffer %s on fd %d", blightBuffer->uuid.c_str(), blightBuffer->fd);
+                _INFO("Created buffer %s on fd %d", blightBuffer->uuid.c_str(), blightBuffer->fd);
             }
             return res;
+        }
+    }else if(strlen(pathname) >= 11 && (strncmp("/dev/input/", pathname, 11) == 0 )){
+        _INFO("Opening event device: %s", pathname);
+        res = Blight::open_input();
+        if(res > 0){
+            inputDeviceMap[res] = pathname;
         }
     }
     if(res == -1){
@@ -461,13 +468,31 @@ extern "C" {
     }
 
     __attribute__((visibility("default")))
-    int ioctl(int fd, unsigned long request, char* ptr){
+    int ioctl(int fd, unsigned long request, ...){
+        va_list args;
+        va_start(args, request);
         if(IS_INITIALIZED){
             if(DO_HANDLE_FB && fd == blightBuffer->fd){
-                return fb_ioctl(request, ptr);
+                char* ptr = va_arg(args, char*);
+                int res = fb_ioctl(request, ptr);
+                va_end(args);
+                return res;
+            }
+            if(inputDeviceMap.contains(fd)){
+                auto path = inputDeviceMap[fd];
+                auto fd = func_open(path.c_str(), O_RDONLY, 0);
+                int res = fd;
+                if(fd > 0){
+                    res = func_ioctl(fd, request, args);
+                    func_close(fd);
+                }
+                va_end(args);
+                return res;
             }
         }
-        return func_ioctl(fd, request, ptr);
+        int res = func_ioctl(fd, request, args);
+        va_end(args);
+        return res;
     }
 
     __attribute__((visibility("default")))
@@ -632,7 +657,8 @@ extern "C" {
             return;
         }
         if(
-            path == "/opt/bin/yaft"
+            getenv("OXIDE_PRELOAD_FORCE_RM1") != nullptr
+            || path == "/opt/bin/yaft"
             // || path == "/opt/bin/something"
         ){
             FAKE_RM1 = true;

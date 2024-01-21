@@ -30,6 +30,9 @@ public:
 signals:
     void update(const QRect& geometry);
 
+private slots:
+    void activeFocusChanged(bool focus);
+
 private:
     QRect m_geometry;
     int m_stride;

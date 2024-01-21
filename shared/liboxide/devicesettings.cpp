@@ -223,18 +223,12 @@ namespace Oxide {
             }
         });
     }
-    QList<event_device> DeviceSettings::keyboards(){
-        QList<event_device> keyboards;
+
+    QList<event_device> DeviceSettings::inputDevices(){
+        QList<event_device> devices;
         QDir dir("/dev/input");
         for(auto path : dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::System)){
             QString fullPath(dir.path() + "/" + path);
-            if(
-                fullPath == QString::fromStdString(buttonsPath)
-                || fullPath == QString::fromStdString(wacomPath)
-                || fullPath == QString::fromStdString(touchPath)
-                ){
-                continue;
-            }
             QFile device(fullPath);
             device.open(QIODevice::ReadOnly);
             int fd = device.handle();
@@ -242,6 +236,22 @@ namespace Oxide {
             if(ioctl(fd, EVIOCGVERSION, &version)){
                 continue;
             }
+            devices.append(event_device(fullPath.toStdString(), O_RDWR | O_NONBLOCK));
+        }
+        return devices;
+    }
+
+    QList<event_device> DeviceSettings::keyboards(){
+        QList<event_device> keyboards;
+        for(auto device : inputDevices()){
+            if(
+                device.device == buttonsPath
+                || device.device == wacomPath
+                || device.device == touchPath
+            ){
+                continue;
+            }
+            int fd = device.fd;
             unsigned long bit[EV_MAX];
             ioctl(fd, EVIOCGBIT(0, EV_MAX), bit);
             if(!test_bit(EV_KEY, bit)){
@@ -250,7 +260,8 @@ namespace Oxide {
             if(checkBitSet(fd, EV_KEY, BTN_STYLUS) && test_bit(EV_ABS, bit)){
                 continue;
             }
-            SysObject sys("/sys/class/input/" + path + "/device");
+            auto name = QFileInfo(device.device.c_str()).baseName();
+            SysObject sys("/sys/class/input/" + name + "/device");
             auto vendor = sys.strProperty("id/vendor");
             if(vendor == "0000"){
                 continue;
@@ -259,7 +270,7 @@ namespace Oxide {
             if(product == "0000"){
                 continue;
             }
-            keyboards.append(event_device(fullPath.toStdString(), O_RDWR | O_NONBLOCK));
+            keyboards.append(device);
         }
         return keyboards;
     }

@@ -1,4 +1,6 @@
 #include "dbusinterface.h"
+#include "evdevhandler.h"
+
 #include <QDBusConnection>
 #include <QDBusUnixFileDescriptor>
 #include <QCoreApplication>
@@ -11,7 +13,8 @@ DbusInterface* DbusInterface::singleton = nullptr;
 
 DbusInterface::DbusInterface(QObject* parent, QQmlApplicationEngine* engine)
 : QObject(parent),
-  engine(engine)
+  engine(engine),
+  m_focused(nullptr)
 {
     if(singleton != nullptr){
         qFatal("DbusInterface singleton already exists");
@@ -142,7 +145,7 @@ QDBusUnixFileDescriptor DbusInterface::openInput(QDBusMessage message){
         return QDBusUnixFileDescriptor();
     }
     O_INFO("Open input for: " << connection->pid());
-    return QDBusUnixFileDescriptor(connection.inputSocketDescriptor());
+    return QDBusUnixFileDescriptor(connection->inputSocketDescriptor());
 }
 
 QString DbusInterface::addSurface(
@@ -214,6 +217,19 @@ QDBusUnixFileDescriptor DbusInterface::getSurface(QString identifier, QDBusMessa
     }
     return QDBusUnixFileDescriptor(surface->fd());
 }
+
+void DbusInterface::setFocused(Connection* connection){
+    m_focused = connection;
+    if(m_focused == nullptr){
+        evdevHandler->setInputFd(-1);
+        O_DEBUG("No surface has focus");
+    }else{
+        evdevHandler->setInputFd(connection->inputSocketDescriptor());
+        O_DEBUG(connection->id() << " has focus");
+    }
+}
+
+Connection* DbusInterface::focused(){ return m_focused; }
 
 void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){
     Q_UNUSED(oldOwner);

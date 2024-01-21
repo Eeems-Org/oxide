@@ -5,12 +5,12 @@
 
 using namespace Oxide;
 
-class KeyboardDevice : public QObject{
+class EvDevDevice : public QObject{
     Q_OBJECT
 
 public:
-    KeyboardDevice(QThread* handler, event_device device);
-    ~KeyboardDevice();
+    EvDevDevice(QThread* handler, event_device device);
+    ~EvDevDevice();
     QString devName();
     QString name();
     QString path();

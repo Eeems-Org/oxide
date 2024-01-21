@@ -17,8 +17,8 @@ QMAKE_CFLAGS += -std=c99
 SOURCES += \
     connection.cpp \
     dbusinterface.cpp \
-    keyboarddevice.cpp \
-    keyboardhandler.cpp \
+    evdevdevice.cpp \
+    evdevhandler.cpp \
     main.cpp \
     surface.cpp \
     surfacewidget.cpp
@@ -36,8 +36,8 @@ INSTALLS += target
 HEADERS += \
     connection.h \
     dbusinterface.h \
-    keyboarddevice.h \
-    keyboardhandler.h \
+    evdevdevice.h \
+    evdevhandler.h \
     surface.h \
     surfacewidget.h
 

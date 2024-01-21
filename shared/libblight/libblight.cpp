@@ -8,9 +8,9 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-static Blight::DBus* dbus = nullptr;
-
 namespace Blight{
+    static DBus* dbus = nullptr;
+
     bool connect(bool use_system){
         if(dbus != nullptr){
             return true;
@@ -23,6 +23,7 @@ namespace Blight{
             return false;
         }
     }
+
     bool exists(){ return connect() && dbus->has_service(BLIGHT_SERVICE); }
 
     int open(){
@@ -31,6 +32,40 @@ namespace Blight{
             return -EAGAIN;
         }
         auto reply = dbus->call_method(BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "open");
+        if(reply->isError()){
+            std::cerr
+                << "[Blight::open()::call_method(...)] Error: "
+                << reply->error_message()
+                << std::endl;
+            return reply->return_value;
+        }
+        auto fd = reply->read_value<int>("h");
+        if(!fd.has_value()){
+            std::cerr
+                << "[Blight::open()::read_value(...)] "
+                << reply->error_message()
+                << std::endl;
+            return reply->return_value;
+        }
+        int dfd = fcntl(fd.value(), F_DUPFD_CLOEXEC, 3);
+        if(dfd < 0){
+            std::cerr
+                << "[Blight::open()::dup("
+                << std::to_string(fd.value())
+                << ")] "
+                << std::strerror(errno)
+                << std::endl;
+            errno = -dfd;
+        }
+        return dfd;
+    }
+
+    int open_input(){
+        if(!exists()){
+            errno = EAGAIN;
+            return -EAGAIN;
+        }
+        auto reply = dbus->call_method(BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "openInput");
         if(reply->isError()){
             std::cerr
                 << "[Blight::open()::call_method(...)] Error: "

@@ -43,6 +43,8 @@ public slots:
     );
     void repaint(QString identifier, QDBusMessage message);
     QDBusUnixFileDescriptor getSurface(QString identifier, QDBusMessage message);
+    void setFocused(Connection* connection);
+    Connection* focused();
 
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);
@@ -50,6 +52,7 @@ private slots:
 private:
     QQmlApplicationEngine* engine;
     QList<Connection*> connections;
+    Connection* m_focused;
     QTimer connectionTimer;
 
     Connection* getConnection(QDBusMessage message);

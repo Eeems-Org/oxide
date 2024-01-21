@@ -25,7 +25,7 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
         stride,
         format
     );
-    auto interface = dynamic_cast<DbusInterface*>(parent->parent());
+    auto interface = dynamic_cast<DbusInterface*>(connection->parent());
     component = dynamic_cast<QQuickItem*>(interface->loadComponent(
         "qrc:/Surface.qml",
         id(),
@@ -35,6 +35,7 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
             {"width", geometry.width()},
             {"height", geometry.height()},
             {"visible", true},
+            {"focus", true}
         }
     ));
     if(component == nullptr){
@@ -48,7 +49,10 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
         component = nullptr;
         return;
     }
+    widget->forceActiveFocus();
     connect(this, &Surface::update, widget, &SurfaceWidget::update);
+    connect(widget, &SurfaceWidget::activeFocusChanged, this, &Surface::activeFocusChanged);
+    interface->setFocused(connection);
 }
 
 Surface::~Surface(){
@@ -85,6 +89,14 @@ void Surface::move(int x, int y){
     m_geometry.moveTopLeft(QPoint(x, y));
     component->setX(x);
     component->setY(y);
+}
+
+void Surface::activeFocusChanged(bool focus){
+    if(focus){
+        auto connection = dynamic_cast<Connection*>(parent());
+        auto interface = dynamic_cast<DbusInterface*>(connection->parent());
+        interface->setFocused(connection);
+    }
 }
 
 #include "moc_surface.cpp"

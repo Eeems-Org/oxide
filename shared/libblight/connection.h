@@ -2,6 +2,7 @@
 #include "libblight_global.h"
 #include "types.h"
 
+#include <linux/input.h>
 #include <sys/socket.h>
 #include <vector>
 #include <thread>
@@ -37,6 +38,7 @@ namespace Blight {
         ~Connection();
         void onDisconnect(std::function<void(int)> callback);
         message_ptr_t read();
+        std::optional<input_event> read_event();
         maybe_ackid_ptr_t send(MessageType type, data_t data, size_t size);
         void waitForMarker(unsigned int marker);
         maybe_ackid_ptr_t repaint(
@@ -68,13 +70,14 @@ namespace Blight {
         std::vector<shared_buf_t> buffers();
         maybe_ackid_ptr_t remove(shared_buf_t buf);
         std::vector<std::string> surfaces();
-        int open_input();
 
         std::mutex mutex;
         std::map<unsigned int, ackid_ptr_t> acks;
+
     private:
         std::map<unsigned int, unsigned int> markers;
         int m_fd;
+        int m_inputFd;
         std::thread thread;
         std::atomic<bool> stop_requested;
         std::vector<std::function<void(int)>> disconnectCallbacks;

@@ -5,6 +5,9 @@
     <method name="open">
       <arg type="h" direction="out"/>
     </method>
+    <method name="openInput">
+      <arg type="h" direction="out"/>
+    </method>
     <method name="addSurface">
       <arg type="s" direction="out"/>
       <arg name="fd" type="h" direction="in"/>

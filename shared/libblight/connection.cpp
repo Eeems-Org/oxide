@@ -55,6 +55,13 @@ namespace Blight{
     {
         int flags = fcntl(fd, F_GETFD, NULL);
         fcntl(fd, F_SETFD, flags | O_NONBLOCK);
+        m_inputFd = Blight::open_input();
+        if(m_inputFd < 0){
+            std::cerr
+                << "Failed to open input stream:"
+                << std::strerror(errno)
+                << std::endl;
+        }
     }
 
     Connection::~Connection(){
@@ -69,6 +76,18 @@ namespace Blight{
         mutex.lock();
         disconnectCallbacks.push_back(callback);
         mutex.unlock();
+    }
+
+    std::optional<input_event> Connection::read_event(){
+        if(m_inputFd < 0){
+            return {};
+        }
+        input_event ie;
+        auto res = ::recv(m_inputFd, &ie, sizeof(ie), 0);
+        if(res < 0){
+            return {};
+        }
+        return ie;
     }
 
     message_ptr_t Connection::read(){ return message_t::from_socket(m_fd); }
@@ -351,10 +370,6 @@ namespace Blight{
             return std::vector<std::string>();
         }
         return list_t::from_data(ack.value()->data.get()).identifiers();
-    }
-
-    int Connection::open_input(){
-
     }
 
     void Connection::run(Connection& connection){
