@@ -68,6 +68,7 @@ namespace Blight {
         std::vector<shared_buf_t> buffers();
         maybe_ackid_ptr_t remove(shared_buf_t buf);
         std::vector<std::string> surfaces();
+        int open_input();
 
         std::mutex mutex;
         std::map<unsigned int, ackid_ptr_t> acks;

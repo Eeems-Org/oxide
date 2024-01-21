@@ -30,6 +30,7 @@ public:
 
 public slots:
     QDBusUnixFileDescriptor open(QDBusMessage message);
+    QDBusUnixFileDescriptor openInput(QDBusMessage message);
     QString addSurface(
         QDBusUnixFileDescriptor fd,
         int x,

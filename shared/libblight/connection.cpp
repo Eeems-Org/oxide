@@ -353,6 +353,10 @@ namespace Blight{
         return list_t::from_data(ack.value()->data.get()).identifiers();
     }
 
+    int Connection::open_input(){
+
+    }
+
     void Connection::run(Connection& connection){
         std::cerr
             << "[BlightWorker] Starting"

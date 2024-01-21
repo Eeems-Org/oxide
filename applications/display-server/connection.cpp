@@ -8,6 +8,7 @@
 #include <sys/syscall.h>
 #include <QElapsedTimer>
 #include <QCoreApplication>
+#include <cstring>
 
 #include "surface.h"
 
@@ -25,11 +26,12 @@ Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
     m_notifier = new QSocketNotifier(m_serverFd, QSocketNotifier::Read, this);
     connect(m_notifier, &QSocketNotifier::activated, this, &Connection::readSocket);
 
-    // TODO - handle communication on m_socketPair
-    // TODO - Allow child to request that tarnish connect with ptrace to avoid touching the
-    //        framebuffer at the same time.
-    //        https://man7.org/linux/man-pages/man2/ptrace.2.html     PTRACE_SEIZE
-    //        https://nullprogram.com/blog/2018/06/23/
+    if(::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) == -1){
+        O_WARNING("Unable to open input socket pair:" << strerror(errno));
+    }
+    m_clientInputFd = fds[0];
+    m_serverInputFd = fds[1];
+
     O_DEBUG("Connection" << id() << "created");
 }
 
@@ -47,6 +49,8 @@ pid_t Connection::pid() const{ return m_pid; }
 pid_t Connection::pgid() const{ return m_pgid; }
 
 int Connection::socketDescriptor(){ return m_clientFd; }
+
+int Connection::inputSocketDescriptor(){ return m_clientInputFd; }
 
 bool Connection::isValid(){ return m_clientFd > 0 && m_serverFd > 0 && isRunning(); }
 
@@ -149,6 +153,31 @@ QStringList Connection::getSurfaces(){
         identifiers.append(surface->id());
     }
     return identifiers;
+}
+
+void Connection::inputEvent(const input_event& event){
+    int res = -1;
+    while(res < 0){
+        res = ::send(m_serverInputFd, &event, sizeof(event), MSG_EOR);
+        if(res > -1){
+            break;
+        }
+        if(errno == EAGAIN || errno == EINTR){
+            timespec remaining;
+            timespec requested{
+                .tv_sec = 0,
+                .tv_nsec = 5000
+            };
+            nanosleep(&requested, &remaining);
+            continue;
+        }
+        break;
+    }
+    if(res < 0){
+        O_WARNING("Failed to write input event: " << std::strerror(errno));
+    }else if(res != sizeof(event)){
+        O_WARNING("Failed to write input event: Size mismatch!");
+    }
 }
 
 void Connection::readSocket(){

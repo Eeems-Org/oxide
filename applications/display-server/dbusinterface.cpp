@@ -118,7 +118,7 @@ Surface* DbusInterface::getSurface(QString identifier){
 }
 
 QDBusUnixFileDescriptor DbusInterface::open(QDBusMessage message){
-    pid_t pid = connection().interface()->servicePid(message.service());;
+    pid_t pid = connection().interface()->servicePid(message.service());
     pid_t pgid = ::getpgid(pid);
     O_INFO("Open connection for: " << pid << pgid);
     auto connection = getConnection(message);
@@ -133,6 +133,16 @@ QDBusUnixFileDescriptor DbusInterface::open(QDBusMessage message){
     }
     O_DEBUG("success" << connection->socketDescriptor());
     return QDBusUnixFileDescriptor(connection->socketDescriptor());
+}
+
+QDBusUnixFileDescriptor DbusInterface::openInput(QDBusMessage message){
+    auto connection = getConnection(message);
+    if(connection == nullptr){
+        sendErrorReply(QDBusError::AccessDenied, "You must first open a connection");
+        return QDBusUnixFileDescriptor();
+    }
+    O_INFO("Open input for: " << connection->pid());
+    return QDBusUnixFileDescriptor(connection.inputSocketDescriptor());
 }
 
 QString DbusInterface::addSurface(

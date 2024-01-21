@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QSocketNotifier>
 #include <libblight/connection.h>
+#include <linux/input.h>
 
 #include "surface.h"
 
@@ -23,6 +24,7 @@ public:
     pid_t pid() const;
     pid_t pgid() const;
     int socketDescriptor();
+    int inputSocketDescriptor();
     bool isValid();
     bool isRunning();
     bool signal(int signal);
@@ -33,6 +35,7 @@ public:
     Surface* addSurface(int fd, QRect geometry, int stride, QImage::Format format);
     Surface* getSurface(QString identifier);
     QStringList getSurfaces();
+    void inputEvent(const input_event& event);
 
 signals:
     void finished();
@@ -46,6 +49,8 @@ private:
     QFile m_process;
     int m_clientFd;
     int m_serverFd;
+    int m_clientInputFd;
+    int m_serverInputFd;
     QSocketNotifier* m_notifier;
     QList<Surface*> surfaces;
 };
