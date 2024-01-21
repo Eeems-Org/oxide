@@ -36,6 +36,8 @@ namespace Blight {
     public:
         Connection(int fd);
         ~Connection();
+        int handle();
+        int input_handle();
         void onDisconnect(std::function<void(int)> callback);
         message_ptr_t read();
         std::optional<input_event> read_event();
@@ -70,6 +72,7 @@ namespace Blight {
         std::vector<shared_buf_t> buffers();
         maybe_ackid_ptr_t remove(shared_buf_t buf);
         std::vector<std::string> surfaces();
+        void focused();
 
         std::mutex mutex;
         std::map<unsigned int, ackid_ptr_t> acks;

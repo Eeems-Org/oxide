@@ -24,7 +24,8 @@ public:
     pid_t pid() const;
     pid_t pgid() const;
     int socketDescriptor();
-    int inputSocketDescriptor();
+    int inputReadSocketDescriptor();
+    int inputWriteSocketDescriptor();
     bool isValid();
     bool isRunning();
     bool signal(int signal);
@@ -39,6 +40,7 @@ public:
 
 signals:
     void finished();
+    void focused();
 
 private slots:
     void readSocket();

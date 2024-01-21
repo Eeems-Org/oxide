@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <iostream>
 #include <chrono>
+#include <sys/poll.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <signal.h>
@@ -14,6 +15,7 @@
 #include <asm/ioctl.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/prctl.h>
 #include <sys/mman.h>
 #include <systemd/sd-journal.h>
 #include <libblight.h>
@@ -39,6 +41,7 @@ static bool DO_HANDLE_FB = true;
 static bool FAKE_RM1 = false;
 static Blight::shared_buf_t blightBuffer = Blight::buf_t::new_ptr();
 static Blight::Connection* blightConnection = nullptr;
+static int inputFds[2] = {-1, -1};
 static std::map<int, std::string> inputDeviceMap;
 static ssize_t(*func_write)(int, const void*, size_t);
 static ssize_t(*func_writev)(int, const iovec*, int);
@@ -101,6 +104,95 @@ void __printf_footer(char const* file, unsigned int line, char const* func){
 #define _WARN(...) _PRINTF(LOG_WARNING, __VA_ARGS__)
 #define _INFO(...) _PRINTF(LOG_INFO, __VA_ARGS__)
 #define _CRIT(...) _PRINTF(LOG_CRIT, __VA_ARGS__)
+
+void writeInputEvent(int fd, input_event* ie){
+    int res = func_write(fd, ie, sizeof(input_event));
+    if(res == -1){
+        _WARN("Failed to write input event", strerror(errno));
+    }else if((unsigned int)res < sizeof(input_event)){
+        _WARN("Only wrote", res, "of", sizeof(input_event), "bytes of input_event");
+    }
+}
+
+void writeInputEvent(
+    int fd,
+    timeval time,
+    short unsigned int type,
+    short unsigned int code,
+    int value
+    ){
+    input_event ie{
+        .time = time,
+        .type = type,
+        .code = code,
+        .value = value
+    };
+    writeInputEvent(fd, &ie);
+}
+
+int __open_input_socketpair(int flags, int fds[2]){
+    int socketFlags = SOCK_STREAM;
+    if((flags & O_NONBLOCK) || (flags & O_NDELAY)){
+        socketFlags |= SOCK_NONBLOCK;
+    }
+    int res = ::socketpair(AF_UNIX, socketFlags, 0, fds);
+    if(res != -1){
+        timeval time;
+        ::gettimeofday(&time, NULL);
+        writeInputEvent(fds[0], time, EV_SYN, SYN_DROPPED, 0);
+        writeInputEvent(fds[0], time, EV_SYN, SYN_REPORT, 0);
+    }
+    return res;
+}
+
+
+void __readInput(){
+    _INFO("%s", "InputWorker starting");
+    prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
+    while(blightConnection != nullptr && inputFds[0] > 0){
+        pollfd pfd;
+        pfd.fd = blightConnection->input_handle();
+        pfd.events = POLLIN;
+        auto res = poll(&pfd, 1, -1);
+        if(res < 0){
+            if(errno == EAGAIN || errno == EINTR){
+                continue;
+            }
+            _WARN("[InputWorker] Failed to poll connection socket: %s", std::strerror(errno));
+            break;
+        }
+        if(res == 0){
+            _INFO("%s", "InputWorker loop");
+            continue;
+        }
+        if(pfd.revents & POLLHUP){
+            _WARN("%s", "[InputWorker] Failed to read message: Socket disconnected!");
+            break;
+        }
+        if(!(pfd.revents & POLLIN)){
+            _WARN("[InputWorker] Unexpected revents: %d", pfd.revents);
+            continue;
+        }
+        auto maybe = blightConnection->read_event();
+        if(!maybe.has_value()){
+            if(errno == EAGAIN || errno == EINTR){
+                timespec remaining;
+                timespec requested{
+                    .tv_sec = 0,
+                    .tv_nsec = 5000
+                };
+                nanosleep(&requested, &remaining);
+                continue;
+            }
+            _WARN("[InputWorker] Failed to read message %s", std::strerror(errno));
+            break;
+        }
+        auto event = maybe.value();
+        _DEBUG("input_event %d %d %d", event.type, event.code, event.value);
+        writeInputEvent(inputFds[0], &event);
+    }
+    _INFO("%s", "InputWorker quitting");
+}
 
 
 int fb_ioctl(unsigned long request, char* ptr){
@@ -209,7 +301,7 @@ int fb_ioctl(unsigned long request, char* ptr){
     }
 }
 
-int __open(const char* pathname){
+int __open(const char* pathname, int flags){
     if(!IS_INITIALIZED){
         return -2;
     }
@@ -297,8 +389,13 @@ int __open(const char* pathname){
         }
     }else if(strlen(pathname) >= 11 && (strncmp("/dev/input/", pathname, 11) == 0 )){
         _INFO("Opening event device: %s", pathname);
-        res = Blight::open_input();
+        res = blightConnection->input_handle();
         if(res > 0){
+            if(inputFds[0] < 0){
+                __open_input_socketpair(flags, inputFds);
+                new std::thread(__readInput);
+            }
+            res = inputFds[1];
             inputDeviceMap[res] = pathname;
         }
     }
@@ -388,7 +485,7 @@ extern "C" {
             return fd;
         }
         _DEBUG("open64 %s", pathname);
-        int fd = __open(pathname);
+        int fd = __open(pathname, flags);
         if(fd == -2){
             va_list args;
             va_start(args, flags);
@@ -410,7 +507,7 @@ extern "C" {
             return fd;
         }
         _DEBUG("openat %s", pathname);
-        int fd = __open(pathname);
+        int fd = __open(pathname, flags);
         if(fd == -2){
             DIR* save = opendir(".");
             fchdir(dirfd);
@@ -421,7 +518,7 @@ extern "C" {
             std::string fullpath(path);
             fullpath += "/";
             fullpath += pathname;
-            fd = __open(fullpath.c_str());
+            fd = __open(fullpath.c_str(), flags);
         }
         if(fd == -2){
             va_list args;
@@ -443,7 +540,7 @@ extern "C" {
             return fd;
         }
         _DEBUG("open %s", pathname);
-        int fd = __open(pathname);
+        int fd = __open(pathname, flags);
         if(fd == -2){
             va_list args;
             va_start(args, flags);

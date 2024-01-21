@@ -141,9 +141,6 @@ Blight::message_ptr_t Blight::message_t::from_socket(int fd){
         if(res > 0){
             break;
         }
-        if(res > 0){
-            errno = EMSGSIZE;
-        }
         if(errno == EAGAIN){
             return message;
         }

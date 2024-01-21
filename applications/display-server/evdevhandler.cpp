@@ -42,10 +42,10 @@ void EvDevHandler::writeEvent(int type, int code, int val){
 }
 
 void EvDevHandler::writeEvent(input_event* ie){
-    O_DEBUG("writeEvent(" << ie->type << ie->code << ie->value << ")");
     if(m_fd < 0){
         return;
     }
+    O_DEBUG("writeEvent(" << ie->type << ie->code << ie->value << ")");
     int res = -1;
     while(res < 0){
         res = ::send(m_fd, ie, sizeof(ie), MSG_EOR);

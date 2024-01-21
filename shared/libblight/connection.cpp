@@ -72,6 +72,10 @@ namespace Blight{
         ::close(m_fd);
     }
 
+    int Connection::handle(){ return m_fd; }
+
+    int Connection::input_handle(){ return m_inputFd; }
+
     void Connection::onDisconnect(std::function<void(int)> callback){
         mutex.lock();
         disconnectCallbacks.push_back(callback);
@@ -80,11 +84,20 @@ namespace Blight{
 
     std::optional<input_event> Connection::read_event(){
         if(m_inputFd < 0){
+            std::cerr
+                << "Failed to read event: Input stream not open"
+                << std::endl;
             return {};
         }
         input_event ie;
         auto res = ::recv(m_inputFd, &ie, sizeof(ie), 0);
         if(res < 0){
+            if(errno != EAGAIN && errno != EINTR){
+                std::cerr
+                    << "Failed to read event: "
+                    << std::strerror(errno)
+                    << std::endl;
+            }
             return {};
         }
         return ie;
@@ -287,18 +300,6 @@ namespace Blight{
                 << std::endl;
             return {};
         }
-        auto buf = new buf_t{
-            .fd = fd,
-            .x = 0,
-            .y = 0,
-            .width = 0,
-            .height = 0,
-            .stride = 0,
-            .format = Format::Format_Invalid,
-            .data = nullptr,
-            .uuid = "",
-            .surface = identifier
-        };
         auto ack = send(MessageType::Info, (data_t)identifier.data(), identifier.size());
         if(!ack.has_value()){
             ::close(fd);
@@ -318,12 +319,18 @@ namespace Blight{
             return {};
         }
         auto info = reinterpret_cast<surface_info_t*>(ack.value()->data.get());
-        buf->x = info->x;
-        buf->y = info->y;
-        buf->width = info->width;
-        buf->height = info->height;
-        buf->stride = info->stride;
-        buf->format = info->format;
+        auto buf = new buf_t{
+            .fd = fd,
+            .x = info->x,
+            .y = info->y,
+            .width = info->width,
+            .height = info->height,
+            .stride = info->stride,
+            .format = info->format,
+            .data = nullptr,
+            .uuid = "",
+            .surface = identifier
+        };
         buf->data = new unsigned char[buf->size()];
         auto res = mmap(NULL, buf->size(), PROT_READ, MAP_SHARED_VALIDATE, fd, 0);
         if(res == MAP_FAILED){
@@ -334,6 +341,8 @@ namespace Blight{
                 << std::to_string(errno)
                 << std::endl;
             ::close(fd);
+            delete buf->data;
+            delete buf;
             return {};
         }
         buf->data = reinterpret_cast<data_t>(res);
@@ -376,7 +385,7 @@ namespace Blight{
         std::cerr
             << "[BlightWorker] Starting"
             << std::endl;
-        prctl(PR_SET_NAME,"BlightWorker\0", 0, 0, 0);
+        prctl(PR_SET_NAME, "BlightWorker\0", 0, 0, 0);
         std::vector<std::shared_ptr<message_t>> pending;
         int error = 0;
         while(!connection.stop_requested){

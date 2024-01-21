@@ -145,7 +145,7 @@ QDBusUnixFileDescriptor DbusInterface::openInput(QDBusMessage message){
         return QDBusUnixFileDescriptor();
     }
     O_INFO("Open input for: " << connection->pid());
-    return QDBusUnixFileDescriptor(connection->inputSocketDescriptor());
+    return QDBusUnixFileDescriptor(connection->inputReadSocketDescriptor());
 }
 
 QString DbusInterface::addSurface(
@@ -218,17 +218,6 @@ QDBusUnixFileDescriptor DbusInterface::getSurface(QString identifier, QDBusMessa
     return QDBusUnixFileDescriptor(surface->fd());
 }
 
-void DbusInterface::setFocused(Connection* connection){
-    m_focused = connection;
-    if(m_focused == nullptr){
-        evdevHandler->setInputFd(-1);
-        O_DEBUG("No surface has focus");
-    }else{
-        evdevHandler->setInputFd(connection->inputSocketDescriptor());
-        O_DEBUG(connection->id() << " has focus");
-    }
-}
-
 Connection* DbusInterface::focused(){ return m_focused; }
 
 void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){
@@ -277,6 +266,14 @@ Connection* DbusInterface::createConnection(int pid){
         O_DEBUG("Connection" << connection->pid() << "closed");
         connections.removeAll(connection);
         connection->deleteLater();
+        if(m_focused == connection){
+            m_focused = nullptr;
+            evdevHandler->setInputFd(-1);
+        }
+    });
+    connect(connection, &Connection::focused, this, [connection]{
+        evdevHandler->setInputFd(connection->inputWriteSocketDescriptor());
+        O_DEBUG(connection->id() << " has focus");
     });
     connections.append(connection);
     return connection;

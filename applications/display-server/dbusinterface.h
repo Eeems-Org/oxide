@@ -43,7 +43,6 @@ public slots:
     );
     void repaint(QString identifier, QDBusMessage message);
     QDBusUnixFileDescriptor getSurface(QString identifier, QDBusMessage message);
-    void setFocused(Connection* connection);
     Connection* focused();
 
 private slots:
