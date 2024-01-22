@@ -17,13 +17,12 @@ public:
     static EvDevHandler* init();
     EvDevHandler();
     ~EvDevHandler();
-    void writeEvent(int type, int code, int val);
-    void writeEvent(input_event* ie);
-    void setInputFd(int fd);
+
+signals:
+    void inputEvents(unsigned int device, const std::vector<input_event>& events);
 
 private:
     QList<EvDevDevice*> devices;
     bool hasDevice(event_device device);
     void reloadDevices();
-    int m_fd;
 };

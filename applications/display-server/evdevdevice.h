@@ -17,9 +17,13 @@ public:
     QString name();
     QString path();
     QString id();
+    unsigned int number();
     bool exists();
     void lock();
     void unlock();
+
+signals:
+    void inputEvents(const std::vector<input_event> events);
 
 public slots:
     void readEvents();
@@ -29,4 +33,5 @@ private:
     SysObject sys;
     QString _name;
     QSocketNotifier* notifier;
+    std::vector<input_event> events;
 };

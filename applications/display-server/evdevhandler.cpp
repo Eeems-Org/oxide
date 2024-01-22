@@ -20,8 +20,7 @@ EvDevHandler* EvDevHandler::init(){
 }
 
 EvDevHandler::EvDevHandler()
-: QThread(),
-  m_fd(-1)
+: QThread()
 {
     setObjectName("EvDevHandler");
     reloadDevices();
@@ -29,49 +28,6 @@ EvDevHandler::EvDevHandler()
 }
 
 EvDevHandler::~EvDevHandler(){}
-
-void EvDevHandler::writeEvent(int type, int code, int val){
-    input_event ie;
-    ie.type = type;
-    ie.code = code;
-    ie.value = val;
-    // timestamp values below are ignored
-    ie.time.tv_sec = 0;
-    ie.time.tv_usec = 0;
-    writeEvent(&ie);
-}
-
-void EvDevHandler::writeEvent(input_event* ie){
-    if(m_fd < 0){
-        return;
-    }
-    O_DEBUG("writeEvent(" << ie->type << ie->code << ie->value << ")");
-    int res = -1;
-    while(res < 0){
-        res = ::send(m_fd, ie, sizeof(ie), MSG_EOR);
-        if(res > -1){
-            break;
-        }
-        if(errno == EAGAIN || errno == EINTR){
-            timespec remaining;
-            timespec requested{
-                .tv_sec = 0,
-                .tv_nsec = 5000
-            };
-            nanosleep(&requested, &remaining);
-            continue;
-        }
-        break;
-    }
-    if(res < 0){
-        O_WARNING("Failed to write input event: " << std::strerror(errno));
-    }else if(res != sizeof(ie)){
-        O_WARNING("Failed to write input event: Size mismatch!");
-    }
-}
-
-void EvDevHandler::setInputFd(int fd){ m_fd = fd; }
-
 
 bool EvDevHandler::hasDevice(event_device device){
     for(auto input : qAsConst(devices)){
@@ -90,6 +46,9 @@ void EvDevHandler::reloadDevices(){
         }
         if(!hasDevice(device) && device.fd != -1){
             auto input = new EvDevDevice(this, device);
+            connect(input, &EvDevDevice::inputEvents, this, [this, input](auto events){
+                emit inputEvents(input->number(), events);
+            });
             O_DEBUG(input->name() << "added");
             devices.append(input);
             input->readEvents();

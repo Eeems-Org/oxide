@@ -1,5 +1,6 @@
 #pragma once
 #include "libblight_global.h"
+#include <linux/input.h>
 #include <string>
 #include <memory>
 #include <vector>
@@ -38,6 +39,10 @@ namespace Blight{
         Format_Grayscale16,
         Format_BGR888,
     };
+    LIBBLIGHT_EXPORT typedef struct {
+        unsigned int device;
+        input_event event;
+    } event_packet_t;
     LIBBLIGHT_EXPORT typedef unsigned char* data_t;
     LIBBLIGHT_EXPORT typedef std::shared_ptr<unsigned char[]> shared_data_t;
     struct buf_t;

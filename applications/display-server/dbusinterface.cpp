@@ -5,9 +5,12 @@
 #include <QDBusUnixFileDescriptor>
 #include <QCoreApplication>
 #include <QQmlComponent>
+#include <sys/poll.h>
 #include <unistd.h>
 #include <QDBusMetaType>
 #include <liboxide/debug.h>
+#include <libblight/types.h>
+#include <cstring>
 
 DbusInterface* DbusInterface::singleton = nullptr;
 
@@ -66,6 +69,13 @@ DbusInterface::DbusInterface(QObject* parent, QQmlApplicationEngine* engine)
     });
     connectionTimer.setInterval(100);
     connectionTimer.start();
+    connect(
+        evdevHandler,
+        &EvDevHandler::inputEvents,
+        this,
+        &::DbusInterface::inputEvents,
+        Qt::BlockingQueuedConnection
+    );
 }
 
 int DbusInterface::pid(){ return qApp->applicationPid(); }
@@ -229,6 +239,63 @@ void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldO
     // TODO - keep track of things this name owns and remove them
 }
 
+void DbusInterface::inputEvents(unsigned int device, const std::vector<input_event>& events){
+    if(m_focused == nullptr){
+        return;
+    }
+    auto fd = m_focused->inputWriteSocketDescriptor();
+    for(const input_event& ie : events){
+        O_DEBUG("writeEvent(" << device << ie.type << ie.code << ie.value << ")");
+        int res = -1;
+        int count = 0;
+        while(res < 1 && count < 5){
+            pollfd pfd;
+            pfd.fd = fd;
+            pfd.events = POLLOUT;
+            res = poll(&pfd, 1, -1);
+            if(res < 0){
+                if(errno == EAGAIN || errno == EINTR){
+                    count++;
+                    continue;
+                }
+                break;
+            }
+            if(res == 0){
+                continue;
+            }
+            if(pfd.revents & POLLHUP){
+                errno = ECONNRESET;
+                res = -1;
+                break;
+            }
+            if(!(pfd.revents & POLLOUT)){
+                O_WARNING("Unexpected revents:" << pfd.revents);
+                res = 0;
+                continue;
+            }
+            Blight::event_packet_t data = { device, ie };
+            res = ::send(fd, &data, sizeof(data), MSG_EOR);
+            if(res >= 0){
+                break;
+            }
+            if(errno == EAGAIN || errno == EINTR){
+                count++;
+                continue;
+            }
+            break;
+        }
+        if(res < 0){
+            O_WARNING("Failed to write input event: " << std::strerror(errno));
+            break;
+        }
+        if(res != sizeof(Blight::event_packet_t)){
+            O_WARNING("Failed to write input event: Size mismatch! " << res);
+            break;
+        }
+        O_DEBUG("Write finished");
+    }
+}
+
 Connection* DbusInterface::getConnection(QDBusMessage message){
     pid_t pid = connection().interface()->servicePid(message.service());;
     for(auto connection : qAsConst(connections)){
@@ -268,12 +335,11 @@ Connection* DbusInterface::createConnection(int pid){
         connection->deleteLater();
         if(m_focused == connection){
             m_focused = nullptr;
-            evdevHandler->setInputFd(-1);
         }
     });
-    connect(connection, &Connection::focused, this, [connection]{
-        evdevHandler->setInputFd(connection->inputWriteSocketDescriptor());
-        O_DEBUG(connection->id() << " has focus");
+    connect(connection, &Connection::focused, this, [this, connection]{
+        m_focused = connection;
+        O_DEBUG(connection->id() << "has focus");
     });
     connections.append(connection);
     return connection;

@@ -82,15 +82,15 @@ namespace Blight{
         mutex.unlock();
     }
 
-    std::optional<input_event> Connection::read_event(){
+    std::optional<event_packet_t> Connection::read_event(){
         if(m_inputFd < 0){
             std::cerr
                 << "Failed to read event: Input stream not open"
                 << std::endl;
             return {};
         }
-        input_event ie;
-        auto res = ::recv(m_inputFd, &ie, sizeof(ie), 0);
+        event_packet_t data;
+        auto res = ::recv(m_inputFd, &data, sizeof(data), 0);
         if(res < 0){
             if(errno != EAGAIN && errno != EINTR){
                 std::cerr
@@ -100,7 +100,14 @@ namespace Blight{
             }
             return {};
         }
-        return ie;
+        if(res != sizeof(data)){
+            std::cerr
+                << "Failed to read event: Size mismatch!"
+                << std::to_string(res)
+                << std::endl;
+            return {};
+        }
+        return data;
     }
 
     message_ptr_t Connection::read(){ return message_t::from_socket(m_fd); }
@@ -428,7 +435,9 @@ namespace Blight{
             pfd.events = POLLIN;
             auto res = poll(&pfd, 1, 500);
             if(res < 0){
-                if(errno == EAGAIN || errno == EINTR){
+
+                inputFds[device][0] = fds[0];
+                res = inputFds[device][1] = fds[1];                if(errno == EAGAIN || errno == EINTR){
                     continue;
                 }
                 std::cerr

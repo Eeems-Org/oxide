@@ -11,6 +11,7 @@
 #include <QDBusUnixFileDescriptor>
 
 #include "connection.h"
+#include "evdevdevice.h"
 
 #include "../../shared/liboxide/meta.h"
 
@@ -47,6 +48,7 @@ public slots:
 
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);
+    void inputEvents(unsigned int device, const std::vector<input_event>& events);
 
 private:
     QQmlApplicationEngine* engine;

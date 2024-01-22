@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <mutex>
 #include <linux/fb.h>
-#include <linux/input-event-codes.h>
+#include <linux/input.h>
 #include <asm/ioctl.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -20,6 +20,7 @@
 #include <systemd/sd-journal.h>
 #include <libblight.h>
 #include <libblight/connection.h>
+#include <filesystem>
 
 class ClockWatch {
 public:
@@ -41,8 +42,8 @@ static bool DO_HANDLE_FB = true;
 static bool FAKE_RM1 = false;
 static Blight::shared_buf_t blightBuffer = Blight::buf_t::new_ptr();
 static Blight::Connection* blightConnection = nullptr;
-static int inputFds[2] = {-1, -1};
-static std::map<int, std::string> inputDeviceMap;
+static std::map<int, int[2]> inputFds;
+static std::map<int, int> inputDeviceMap;
 static ssize_t(*func_write)(int, const void*, size_t);
 static ssize_t(*func_writev)(int, const iovec*, int);
 static ssize_t(*func_writev64)(int, const iovec*, int);
@@ -106,7 +107,37 @@ void __printf_footer(char const* file, unsigned int line, char const* func){
 #define _CRIT(...) _PRINTF(LOG_CRIT, __VA_ARGS__)
 
 void writeInputEvent(int fd, input_event* ie){
-    int res = func_write(fd, ie, sizeof(input_event));
+    int res = -1;
+    while(res < 0){
+        pollfd pfd;
+        pfd.fd = fd;
+        pfd.events = POLLOUT;
+        res = poll(&pfd, 1, -1);
+        if(res < 0){
+            if(errno == EAGAIN || errno == EINTR){
+                continue;
+            }
+            break;
+        }
+        if(res == 0){
+            res = -1;
+            continue;
+        }
+        if(pfd.revents & POLLHUP){
+            res = ECONNRESET;
+            break;
+        }
+        if(!(pfd.revents & POLLOUT)){
+            res = -1;
+            _WARN("Unexpected revents: %d", pfd.revents);
+            continue;
+        }
+        res = send(fd, ie, sizeof(input_event), 0);
+        if(res < 0 && (errno == EAGAIN || errno == EINTR)){
+            continue;
+        }
+        break;
+    }
     if(res == -1){
         _WARN("Failed to write input event", strerror(errno));
     }else if((unsigned int)res < sizeof(input_event)){
@@ -120,7 +151,7 @@ void writeInputEvent(
     short unsigned int type,
     short unsigned int code,
     int value
-    ){
+){
     input_event ie{
         .time = time,
         .type = type,
@@ -149,7 +180,7 @@ int __open_input_socketpair(int flags, int fds[2]){
 void __readInput(){
     _INFO("%s", "InputWorker starting");
     prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
-    while(blightConnection != nullptr && inputFds[0] > 0){
+    while(blightConnection != nullptr){
         pollfd pfd;
         pfd.fd = blightConnection->input_handle();
         pfd.events = POLLIN;
@@ -187,15 +218,32 @@ void __readInput(){
             _WARN("[InputWorker] Failed to read message %s", std::strerror(errno));
             break;
         }
-        auto event = maybe.value();
-        _DEBUG("input_event %d %d %d", event.type, event.code, event.value);
-        writeInputEvent(inputFds[0], &event);
+        const auto& device = maybe.value().device;
+        if(!inputFds.contains(device)){
+            _INFO("Ignoring event for unopened device: %d", device);
+            continue;
+        }
+        int fd = inputFds[device][0];
+        if(fd < 0){
+            _INFO("Ignoring event for invalid device: %d", device);
+            continue;
+        }
+        auto& event = maybe.value().event;
+        _DEBUG(
+            "event%d fd=%d,input_event={ %d %d %d }",
+            device,
+            fd,
+            event.type,
+            event.code,
+            event.value
+        );
+        writeInputEvent(fd, &event);
     }
     _INFO("%s", "InputWorker quitting");
 }
 
 
-int fb_ioctl(unsigned long request, char* ptr){
+int __fb_ioctl(unsigned long request, char* ptr){
     switch(request){
         // Look at linux/fb.h and mxcfb.h for more possible request types
         // https://www.kernel.org/doc/html/latest/fb/api.html
@@ -301,12 +349,25 @@ int fb_ioctl(unsigned long request, char* ptr){
     }
 }
 
+int __input_ioctlv(int fd, unsigned long request, char* ptr){
+    switch(request){
+        case EVIOCGRAB: return 0;
+        case EVIOCREVOKE: return 0;
+        default:
+            return func_ioctl(fd, request, ptr);
+    }
+}
+
 int __open(const char* pathname, int flags){
     if(!IS_INITIALIZED){
         return -2;
     }
+    std::string actualpath(pathname);
+    if(std::filesystem::exists(actualpath)){
+        actualpath = realpath(pathname, NULL);
+    }
     int res = -2;
-    if(FAKE_RM1 && strcmp(pathname, "/sys/devices/soc0/machine") == 0){
+    if(FAKE_RM1 && actualpath == "/sys/devices/soc0/machine"){
         int fd = memfd_create("machine", MFD_ALLOW_SEALING);
         auto data = "reMarkable 1.0";
         func_write(fd, data, sizeof(data));
@@ -325,8 +386,8 @@ int __open(const char* pathname, int flags){
     }else if(
         DO_HANDLE_FB
         && (
-            strcmp(pathname, "/dev/fb0") == 0
-            || strcmp(pathname, "/dev/shm/swtfb.01") == 0
+            actualpath == "/dev/fb0"
+            || actualpath == "/dev/shm/swtfb.01"
         )
     ){
         if(blightBuffer->format != Blight::Format::Format_Invalid){
@@ -387,16 +448,40 @@ int __open(const char* pathname, int flags){
             }
             return res;
         }
-    }else if(strlen(pathname) >= 11 && (strncmp("/dev/input/", pathname, 11) == 0 )){
-        _INFO("Opening event device: %s", pathname);
-        res = blightConnection->input_handle();
-        if(res > 0){
-            if(inputFds[0] < 0){
-                __open_input_socketpair(flags, inputFds);
+    }else if(actualpath.starts_with("/dev/input/event")){
+        _INFO("Opening event device: %s", actualpath.c_str());
+        if(blightConnection->input_handle() > 0){
+            if(inputFds.empty()){
                 new std::thread(__readInput);
             }
-            res = inputFds[1];
-            inputDeviceMap[res] = pathname;
+            std::string path(basename(actualpath.c_str()));
+            try{
+                unsigned int device = stol(path.substr(5));
+                if(inputFds.contains(device)){
+                    res = inputFds[device][1];
+                }else{
+                    // TODO - what if they open it a second time with different flags?
+                    res = __open_input_socketpair(flags, inputFds[device]);
+                    if(res < 0){
+                        inputFds.erase(device);
+                        _WARN("Failed to open event socket stream %s", std::strerror(errno));
+                    }else{
+                        res = inputFds[device][1];
+                        inputDeviceMap[res] = func_open(actualpath.c_str(), O_RDWR, 0);
+                    }
+                }
+            }
+            catch(std::invalid_argument&){
+                _WARN("Resolved event device name invalid: %s", path.c_str());
+                res = -1;
+            }
+            catch(std::out_of_range&){
+                _WARN("Resolved event device number out of range: %s", path.c_str());
+                res = -1;
+            }
+        }else{
+            _WARN("Could not open connection input stream", "");
+            res = -1;
         }
     }
     if(res == -1){
@@ -404,6 +489,7 @@ int __open(const char* pathname, int flags){
     }
     return res;
 }
+
 namespace swtfb {
     struct xochitl_data {
         int x1;
@@ -445,6 +531,7 @@ extern "C" {
         }
         return func_msgget(key, msgflg);
     }
+
     __attribute__((visibility("default")))
     int msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg){
         static const auto func_msgsnd = (int(*)(int, const void*, size_t, int))dlsym(RTLD_NEXT, "msgsnd");
@@ -474,6 +561,7 @@ extern "C" {
         }
         return func_msgsnd(msqid, msgp, msgsz, msgflg);
     }
+
     __attribute__((visibility("default")))
     int open64(const char* pathname, int flags, ...){
         static const auto func_open64 = (int(*)(const char*, int, ...))dlsym(RTLD_NEXT, "open64");
@@ -559,6 +647,10 @@ extern "C" {
                 // Maybe actually close it?
                 return 0;
             }
+            if(inputDeviceMap.contains(fd)){
+                // Maybe actually close it?
+                return 0;
+            }
         }
         static const auto func_close = (int(*)(int))dlsym(RTLD_NEXT, "close");
         return func_close(fd);
@@ -571,18 +663,13 @@ extern "C" {
         if(IS_INITIALIZED){
             if(DO_HANDLE_FB && fd == blightBuffer->fd){
                 char* ptr = va_arg(args, char*);
-                int res = fb_ioctl(request, ptr);
+                int res = __fb_ioctl(request, ptr);
                 va_end(args);
                 return res;
             }
             if(inputDeviceMap.contains(fd)){
-                auto path = inputDeviceMap[fd];
-                auto fd = func_open(path.c_str(), O_RDONLY, 0);
-                int res = fd;
-                if(fd > 0){
-                    res = func_ioctl(fd, request, args);
-                    func_close(fd);
-                }
+                char* ptr = va_arg(args, char*);
+                int res = __input_ioctlv(inputDeviceMap[fd], request, ptr);
                 va_end(args);
                 return res;
             }
@@ -755,7 +842,7 @@ extern "C" {
         }
         if(
             getenv("OXIDE_PRELOAD_FORCE_RM1") != nullptr
-            || path == "/opt/bin/yaft"
+            // || path == "/opt/bin/yaft"
             // || path == "/opt/bin/something"
         ){
             FAKE_RM1 = true;
@@ -786,7 +873,8 @@ extern "C" {
         FAILED_INIT = false;
         IS_INITIALIZED = true;
         setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
-        setenv("RM2FB_DISALBE", "1", true);
+        setenv("RM2FB_DISABLE", "1", true);
+        setenv("RM2FB_SHIM", "1", true);
     }
 
     __attribute__((visibility("default")))

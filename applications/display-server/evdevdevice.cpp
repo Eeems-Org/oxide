@@ -1,7 +1,7 @@
 #include "evdevdevice.h"
-#include "evdevhandler.h"
 
 #include <QFileInfo>
+#include <QThread>
 
 EvDevDevice::EvDevDevice(QThread* handler, event_device device)
 : QObject(handler),
@@ -16,11 +16,13 @@ EvDevDevice::EvDevDevice(QThread* handler, event_device device)
 
 EvDevDevice::~EvDevDevice(){ unlock(); }
 
-QString EvDevDevice::devName(){ return QFileInfo(device.device.c_str()).baseName(); }
+QString EvDevDevice::devName(){ return QFileInfo(path()).baseName(); }
 
 QString EvDevDevice::name(){ return _name; }
 
-QString EvDevDevice::path(){ return device.device.c_str(); }
+QString EvDevDevice::path(){
+    return QFileInfo(device.device.c_str()).canonicalFilePath();
+}
 
 QString EvDevDevice::id(){
     return QString("%1:%2").arg(
@@ -29,19 +31,32 @@ QString EvDevDevice::id(){
     );
 }
 
+unsigned int EvDevDevice::number(){ return devName().midRef(5).toInt(); }
+
 bool EvDevDevice::exists(){ return QFile::exists(path()); }
 
 void EvDevDevice::lock(){ exists() && device.lock(); }
 
 void EvDevDevice::unlock(){ exists() && device.locked && device.unlock(); }
 
-
 void EvDevDevice::readEvents(){
     notifier->setEnabled(false);
-    auto handler = static_cast<EvDevHandler*>(parent());
     input_event event;
     while(::read(device.fd, &event, sizeof(input_event)) > 0){
-        handler->writeEvent(&event);
+        events.push_back(event);
+        switch(event.type){
+            case EV_SYN:
+                switch(event.code){
+                    case SYN_DROPPED:
+                        events.clear();
+                        break;
+                    case SYN_REPORT:
+                        emit inputEvents(events);
+                        events.clear();
+                        break;
+                }
+                break;
+        }
     }
     notifier->setEnabled(true);
 }
