@@ -35,8 +35,8 @@ protected:
 #else
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*);
 #endif
-    Surface* surface();
-    QImage* image();
+    std::shared_ptr<Surface> surface();
+    std::shared_ptr<QImage> image();
 
 private:
     QString m_identifier;

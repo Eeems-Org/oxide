@@ -19,6 +19,7 @@ SOURCES += \
     dbusinterface.cpp \
     evdevdevice.cpp \
     evdevhandler.cpp \
+    guithread.cpp \
     main.cpp \
     surface.cpp \
     surfacewidget.cpp
@@ -38,6 +39,7 @@ HEADERS += \
     dbusinterface.h \
     evdevdevice.h \
     evdevhandler.h \
+    guithread.h \
     surface.h \
     surfacewidget.h
 

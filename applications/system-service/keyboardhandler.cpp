@@ -4,18 +4,18 @@
 #include <QKeyEvent>
 #include <liboxide/devicesettings.h>
 
-EvDevHandler* EvDevHandler::init(){
-    static EvDevHandler* instance;
+KeyboardHandler* KeyboardHandler::init(){
+    static KeyboardHandler* instance;
     if(instance != nullptr){
         return instance;
     }
-    instance = new EvDevHandler();
+    instance = new KeyboardHandler();
     instance->moveToThread(instance);
     instance->start();
     return instance;
 }
 
-EvDevHandler::EvDevHandler(){
+KeyboardHandler::KeyboardHandler(){
     setObjectName("OxideVirtKeyboard");
     fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
     if(fd == -1){
@@ -611,14 +611,14 @@ EvDevHandler::EvDevHandler(){
     deviceSettings.onKeyboardAttachedChanged([this]{ reloadDevices(); });
 }
 
-EvDevHandler::~EvDevHandler(){
+KeyboardHandler::~KeyboardHandler(){
     if(fd != -1){
         ioctl(fd, UI_DEV_DESTROY);
         close(fd);
     }
 }
 
-void EvDevHandler::flood(){
+void KeyboardHandler::flood(){
     qDebug() << "Flooding";
     for(int i = 0; i < 512 * 8; i+=4){
         writeEvent(EV_KEY, KEY_ROTATE_LOCK_TOGGLE, 1);
@@ -628,7 +628,7 @@ void EvDevHandler::flood(){
     }
 }
 
-void EvDevHandler::writeEvent(int type, int code, int val){
+void KeyboardHandler::writeEvent(int type, int code, int val){
     input_event ie;
     ie.type = type;
     ie.code = code;
@@ -639,12 +639,12 @@ void EvDevHandler::writeEvent(int type, int code, int val){
     ::write(fd, &ie, sizeof(input_event));
 }
 
-void EvDevHandler::keyEvent(int code, int value){
+void KeyboardHandler::keyEvent(int code, int value){
     writeEvent(EV_KEY, code, value);
     writeEvent(EV_SYN, SYN_REPORT, 0);
 }
 
-bool EvDevHandler::hasDevice(event_device device){
+bool KeyboardHandler::hasDevice(event_device device){
     for(auto keyboard : devices){
         if(device.device.c_str() == keyboard->path()){
             return true;
@@ -653,22 +653,22 @@ bool EvDevHandler::hasDevice(event_device device){
     return false;
 }
 
-void EvDevHandler::reloadDevices(){
+void KeyboardHandler::reloadDevices(){
     O_DEBUG("Reloading keyboards");
     for(auto device : deviceSettings.keyboards()){
         if(device.device == deviceSettings.getButtonsDevicePath()){
             continue;
         }
         if(!hasDevice(device) && device.fd != -1){
-            auto keyboard = new EvDevDevice(this, device);
+            auto keyboard = new KeyboardDevice(this, device);
             O_DEBUG(keyboard->name() << "added");
             devices.append(keyboard);
             keyboard->readEvents();
         }
     }
-    QMutableListIterator<EvDevDevice*> i(devices);
+    QMutableListIterator<KeyboardDevice*> i(devices);
     while(i.hasNext()){
-        EvDevDevice* device = i.next();
+        KeyboardDevice* device = i.next();
         if(device->exists()){
             continue;
         }

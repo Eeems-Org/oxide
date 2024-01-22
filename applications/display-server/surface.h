@@ -19,13 +19,15 @@ public:
     ~Surface();
     QString id();
     bool isValid();
-    QImage* image();
+    std::shared_ptr<QImage> image();
     void repaint();
     int fd();
     const QRect& geometry();
     int stride();
     QImage::Format format();
     void move(int x, int y);
+    int z();
+    void setZ(int z);
 
 signals:
     void update(const QRect& geometry);
@@ -39,7 +41,7 @@ private:
     QImage::Format m_format;
     QFile file;
     uchar* data;
-    QImage* m_image;
+    std::shared_ptr<QImage> m_image;
     QQuickItem* component;
     QString m_id;
 };

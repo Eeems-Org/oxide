@@ -11,7 +11,6 @@
 #include <QDBusUnixFileDescriptor>
 
 #include "connection.h"
-#include "evdevdevice.h"
 
 #include "../../shared/liboxide/meta.h"
 
@@ -27,7 +26,7 @@ public:
 
     int pid();
     QObject* loadComponent(QString url, QString identifier, QVariantMap properties = QVariantMap());
-    Surface* getSurface(QString identifier);
+    std::shared_ptr<Surface> getSurface(QString identifier);
 
 public slots:
     QDBusUnixFileDescriptor open(QDBusMessage message);
@@ -44,7 +43,7 @@ public slots:
     );
     void repaint(QString identifier, QDBusMessage message);
     QDBusUnixFileDescriptor getSurface(QString identifier, QDBusMessage message);
-    Connection* focused();
+    std::shared_ptr<Connection> focused();
 
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);
@@ -52,11 +51,13 @@ private slots:
 
 private:
     QQmlApplicationEngine* engine;
-    QList<Connection*> connections;
-    Connection* m_focused;
+    QList<std::shared_ptr<Connection>> connections;
+    std::shared_ptr<Connection> m_focused;
     QTimer connectionTimer;
 
-    Connection* getConnection(QDBusMessage message);
+    std::shared_ptr<Connection> getConnection(QDBusMessage message);
     QObject* workspace();
-    Connection* createConnection(int pid);
+    std::shared_ptr<Connection> createConnection(int pid);
+    QList<QString> surfaces();
+    void sortZ();
 };

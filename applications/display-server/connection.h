@@ -33,8 +33,8 @@ public:
     void pause();
     void resume();
     void close();
-    Surface* addSurface(int fd, QRect geometry, int stride, QImage::Format format);
-    Surface* getSurface(QString identifier);
+    std::shared_ptr<Surface> addSurface(int fd, QRect geometry, int stride, QImage::Format format);
+    std::shared_ptr<Surface> getSurface(QString identifier);
     QStringList getSurfaces();
     void inputEvent(const input_event& event);
 
@@ -54,5 +54,5 @@ private:
     int m_clientInputFd;
     int m_serverInputFd;
     QSocketNotifier* m_notifier;
-    QList<Surface*> surfaces;
+    QList<std::shared_ptr<Surface>> surfaces;
 };

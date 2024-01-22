@@ -435,9 +435,7 @@ namespace Blight{
             pfd.events = POLLIN;
             auto res = poll(&pfd, 1, 500);
             if(res < 0){
-
-                inputFds[device][0] = fds[0];
-                res = inputFds[device][1] = fds[1];                if(errno == EAGAIN || errno == EINTR){
+                if(errno == EAGAIN || errno == EINTR){
                     continue;
                 }
                 std::cerr

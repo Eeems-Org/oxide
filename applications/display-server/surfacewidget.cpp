@@ -32,11 +32,12 @@ void SurfaceWidget::updated(){ update(); }
 
 #ifdef EPAPER
 void SurfaceWidget::paint(QPainter* painter){
-    auto image = this->image();
-    if(image == nullptr || image->isNull()){
-        return;
-    }
-    painter->drawImage(painter->clipBoundingRect(), *image, painter->clipBoundingRect());
+    Q_UNUSED(painter);
+    // auto image = this->image();
+    // if(image == nullptr || image->isNull()){
+    //     return;
+    // }
+    // painter->drawImage(painter->clipBoundingRect(), *image, painter->clipBoundingRect());
 }
 #else
 QSGNode* SurfaceWidget::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){
@@ -62,9 +63,9 @@ QSGNode* SurfaceWidget::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){
 }
 #endif
 
-Surface* SurfaceWidget::surface(){ return DbusInterface::singleton->getSurface(identifier()); }
+std::shared_ptr<Surface> SurfaceWidget::surface(){ return DbusInterface::singleton->getSurface(identifier()); }
 
-QImage* SurfaceWidget::image(){
+std::shared_ptr<QImage> SurfaceWidget::image(){
     auto surface = this->surface();
     if(surface == nullptr){
         return nullptr;

@@ -9,13 +9,13 @@ using namespace Oxide;
 
 #define keyboardHandler KeyboardHandler::init()
 
-class EvDevHandler : public QThread{
+class KeyboardHandler : public QThread{
     Q_OBJECT
 
 public:
-    static EvDevHandler* init();
-    EvDevHandler();
-    ~EvDevHandler();
+    static KeyboardHandler* init();
+    KeyboardHandler();
+    ~KeyboardHandler();
     void flood();
     void writeEvent(int type, int code, int val);
 
@@ -26,7 +26,7 @@ private:
     int fd;
     uinput_setup usetup;
     
-    QList<EvDevDevice*> devices;
+    QList<KeyboardDevice*> devices;
     bool hasDevice(event_device device);
     void reloadDevices();
 };

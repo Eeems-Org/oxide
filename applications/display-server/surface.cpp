@@ -18,13 +18,13 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
         O_WARNING("Failed to open file");
     }
     data = file.map(0, m_stride * m_geometry.height());
-    m_image = new QImage(
+    m_image = std::shared_ptr<QImage>(new QImage(
         data,
         geometry.width(),
         geometry.height(),
         stride,
         format
-    );
+    ));
     auto interface = dynamic_cast<DbusInterface*>(connection->parent());
     component = dynamic_cast<QQuickItem*>(interface->loadComponent(
         "qrc:/Surface.qml",
@@ -35,7 +35,7 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
             {"width", geometry.width()},
             {"height", geometry.height()},
             {"visible", true},
-            {"focus", true}
+            {"focus", true},
         }
     ));
     if(component == nullptr){
@@ -58,10 +58,6 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
 Surface::~Surface(){
     O_DEBUG("Surface" << id() << "destroyed");
     file.close();
-    if(m_image != nullptr){
-        delete m_image;
-        m_image = nullptr;
-    }
     if(component != nullptr){
         component->setVisible(false);
         component->deleteLater();
@@ -73,7 +69,7 @@ QString Surface::id(){ return m_id; }
 
 bool Surface::isValid(){ return component != nullptr; }
 
-QImage* Surface::image(){ return m_image; }
+std::shared_ptr<QImage> Surface::image(){ return m_image; }
 
 void Surface::repaint(){ emit update(QRect(QPoint(0, 0), m_geometry.size())); }
 
@@ -89,6 +85,19 @@ void Surface::move(int x, int y){
     m_geometry.moveTopLeft(QPoint(x, y));
     component->setX(x);
     component->setY(y);
+}
+
+int Surface::z(){
+    if(component == nullptr){
+        return -1;
+    }
+    return component->z();
+}
+
+void Surface::setZ(int z){
+    if(component != nullptr){
+        component->setZ(z);
+    }
 }
 
 void Surface::activeFocusChanged(bool focus){
