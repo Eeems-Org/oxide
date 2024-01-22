@@ -33,11 +33,11 @@ void SurfaceWidget::updated(){ update(); }
 #ifdef EPAPER
 void SurfaceWidget::paint(QPainter* painter){
     Q_UNUSED(painter);
-    // auto image = this->image();
-    // if(image == nullptr || image->isNull()){
-    //     return;
-    // }
-    // painter->drawImage(painter->clipBoundingRect(), *image, painter->clipBoundingRect());
+    auto image = this->image();
+    if(image == nullptr || image->isNull()){
+        return;
+    }
+    painter->drawImage(painter->clipBoundingRect(), *image, painter->clipBoundingRect());
 }
 #else
 QSGNode* SurfaceWidget::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){

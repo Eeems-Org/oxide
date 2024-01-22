@@ -58,12 +58,9 @@ DbusInterface::DbusInterface(QObject* parent, QQmlApplicationEngine* engine)
         );
     O_DEBUG("Connected service to bus");
     connect(&connectionTimer, &QTimer::timeout, this, [this]{
-        QMutableListIterator<std::shared_ptr<Connection>> i(connections);
-        while(i.hasNext()){
-            auto connection = i.next();
+        for(auto& connection : qAsConst(connections)){
             if(!connection->isRunning()){
-                i.remove();
-                QMetaObject::invokeMethod(connection.get(), "finished", Qt::QueuedConnection);
+                emit connection->finished();
             }
         }
     });
@@ -193,7 +190,6 @@ QString DbusInterface::addSurface(
         return "";
     }
     if(!surface->isValid()){
-        surface->deleteLater();
         sendErrorReply(QDBusError::InternalError, "Unable to create surface");
         return "";
     }
@@ -324,31 +320,41 @@ QObject* DbusInterface::workspace(){
 
 std::shared_ptr<Connection> DbusInterface::createConnection(int pid){
     pid_t pgid = ::getpgid(pid);
-    auto connection = std::shared_ptr<Connection>(new Connection(this, pid, pgid));
+    auto connection = new Connection(this, pid, pgid);
     if(!connection->isValid()){
         connection->deleteLater();
         return nullptr;
     }
-    connect(connection.get(), &Connection::finished, this, [this, connection]{
+    auto ptr = std::shared_ptr<Connection>(connection);
+    connect(connection, &Connection::finished, this, [this, connection]{
         O_DEBUG("Connection" << connection->pid() << "closed");
-        QMutableListIterator<std::shared_ptr<Connection>> i(connections);
-        while(i.hasNext()){
-            auto item = i.next();
-            if(item == connection){
-                i.remove();
+        auto found = false;
+        for(auto& ptr : qAsConst(connections)){
+            if(ptr.get() == connection){
+                found = true;
+                connections.removeAll(ptr);
+                break;
             }
         }
-        if(m_focused == connection){
+        if(!found){
+            O_WARNING("Could not find connection to remove!");
+        }
+        if(m_focused != nullptr && m_focused.get() == connection){
             m_focused = nullptr;
         }
         sortZ();
     });
-    connect(connection.get(), &Connection::focused, this, [this, connection]{
-        m_focused = connection;
-        O_DEBUG(connection->id() << "has focus");
+    connect(connection, &Connection::focused, this, [this, connection]{
+        for(auto& ptr : qAsConst(connections)){
+            if(ptr.get() == connection){
+                m_focused = ptr;
+                O_DEBUG(connection->id() << "has focus");
+                break;
+            }
+        }
     });
-    connections.append(connection);
-    return connection;
+    connections.append(ptr);
+    return ptr;
 }
 
 QList<QString> DbusInterface::surfaces(){
@@ -386,7 +392,7 @@ void DbusInterface::sortZ(){
         }
         surface->setZ(z++);
     }
-    if(m_focused != nullptr){
+    if(m_focused != nullptr || sorted.empty()){
         return;
     }
     auto surface = getSurface(sorted.last());

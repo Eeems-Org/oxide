@@ -36,8 +36,8 @@ Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
 }
 
 Connection::~Connection(){
+    close();
     O_DEBUG("Connection" << id() << "destroyed");
-    surfaces.empty();
 }
 
 QString Connection::id(){ return QString("connection/%1").arg(m_pid); }
@@ -116,6 +116,8 @@ void Connection::resume(){
 }
 
 void Connection::close(){
+    surfaces.clear();
+    emit finished();
     blockSignals(true);
     m_notifier->deleteLater();
     ::close(m_clientFd);
@@ -124,15 +126,6 @@ void Connection::close(){
 
 std::shared_ptr<Surface> Connection::addSurface(int fd, QRect geometry, int stride, QImage::Format format){
     auto surface = std::shared_ptr<Surface>(new Surface(this, fd, geometry, stride, format));
-    connect(surface.get(), &Surface::destroyed, this, [this, surface]{
-        QMutableListIterator<std::shared_ptr<Surface>> i(surfaces);
-        while(i.hasNext()){
-            auto item = i.next();
-            if(item == surface){
-                i.remove();
-            }
-        }
-    });
     surfaces.append(surface);
     return surface;
 }

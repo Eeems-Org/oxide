@@ -52,10 +52,9 @@ int main(int argc, char* argv[]){
             qputenv("DEBUG", "1");
         }
         O_WARNING("rm2fb not detected. Running xochitl instead!");
-        if(!enabled){
-            qputenv("DEBUG", "0");
-        }
-        return QProcess::execute("/usr/bin/xochitl", QStringList());
+        execl("/usr/bin/xochitl", "/usr/bin/xochitl", NULL);
+        O_WARNING("Failed to run xochitl: " << std::strerror(errno));
+        return errno;
     }
 #endif
     qputenv("XDG_CURRENT_DESKTOP", "OXIDE");
