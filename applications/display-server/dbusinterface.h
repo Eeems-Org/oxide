@@ -14,6 +14,8 @@
 
 #include "../../shared/liboxide/meta.h"
 
+#define dbusInterface DbusInterface::singleton()
+
 class DbusInterface : public QObject, public QDBusContext {
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
@@ -21,12 +23,21 @@ class DbusInterface : public QObject, public QDBusContext {
     Q_PROPERTY(int pid READ pid CONSTANT)
 
 public:
-    static DbusInterface* singleton;
-    DbusInterface(QObject* parent, QQmlApplicationEngine* engine);
+    static DbusInterface* singleton(){
+        static DbusInterface* instance = nullptr;
+        if(instance == nullptr){
+            instance = new DbusInterface(qApp);
+        }
+        return instance;
+    }
 
     int pid();
     QObject* loadComponent(QString url, QString identifier, QVariantMap properties = QVariantMap());
     std::shared_ptr<Surface> getSurface(QString identifier);
+    QList<std::shared_ptr<Surface>> surfaces();
+    QList<std::shared_ptr<Surface>> sortedSurfaces();
+    QList<std::shared_ptr<Surface>> visibleSurfaces();
+
 
 public slots:
     QDBusUnixFileDescriptor open(QDBusMessage message);
@@ -50,7 +61,8 @@ private slots:
     void inputEvents(unsigned int device, const std::vector<input_event>& events);
 
 private:
-    QQmlApplicationEngine* engine;
+    DbusInterface(QObject* parent);
+    QQmlApplicationEngine engine;
     QList<std::shared_ptr<Connection>> connections;
     std::shared_ptr<Connection> m_focused;
     QTimer connectionTimer;
@@ -58,6 +70,5 @@ private:
     std::shared_ptr<Connection> getConnection(QDBusMessage message);
     QObject* workspace();
     std::shared_ptr<Connection> createConnection(int pid);
-    QList<QString> surfaces();
     void sortZ();
 };

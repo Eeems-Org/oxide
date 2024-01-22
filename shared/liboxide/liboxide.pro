@@ -35,6 +35,7 @@ SOURCES += \
     socketpair.cpp \
     sysobject.cpp \
     signalhandler.cpp \
+    threading.cpp \
     xochitlsettings.cpp
 
 HEADERS += \
@@ -58,6 +59,7 @@ HEADERS += \
     socketpair.h \
     sysobject.h \
     signalhandler.h \
+    threading.h \
     xochitlsettings.h
 
 PRECOMPILED_HEADER = \
@@ -85,7 +87,7 @@ RELATIVE_PWD = $$system(realpath --relative-to $$OUT_PWD $$PWD)
 
 liboxide_liboxide_h.target = include/liboxide/liboxide.h
 for(h, HEADERS){
-    libblight_libblight_h.depends += $${RELATIVE_PWD}/$${h}
+    liboxide_liboxide_h.depends += $${RELATIVE_PWD}/$${h}
 }
 liboxide_liboxide_h.commands = \
     mkdir -p include/liboxide && \

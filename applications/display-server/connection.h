@@ -35,7 +35,8 @@ public:
     void close();
     std::shared_ptr<Surface> addSurface(int fd, QRect geometry, int stride, QImage::Format format);
     std::shared_ptr<Surface> getSurface(QString identifier);
-    QStringList getSurfaces();
+    QStringList getSurfaceIds();
+    const QList<std::shared_ptr<Surface>>& getSurfaces();
     void inputEvent(const input_event& event);
 
 signals:
@@ -55,4 +56,5 @@ private:
     int m_serverInputFd;
     QSocketNotifier* m_notifier;
     QList<std::shared_ptr<Surface>> surfaces;
+    void ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
 };

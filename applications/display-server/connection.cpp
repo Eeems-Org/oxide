@@ -10,6 +10,9 @@
 #include <QCoreApplication>
 #include <cstring>
 
+#ifdef EPAPER
+#include "guithread.h"
+#endif
 #include "surface.h"
 
 Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
@@ -142,7 +145,7 @@ std::shared_ptr<Surface> Connection::getSurface(QString identifier){
     return nullptr;
 }
 
-QStringList Connection::getSurfaces(){
+QStringList Connection::getSurfaceIds(){
     QStringList identifiers;
     for(auto surface : qAsConst(surfaces)){
         if(surface == nullptr){
@@ -152,6 +155,8 @@ QStringList Connection::getSurfaces(){
     }
     return identifiers;
 }
+
+const QList<std::shared_ptr<Surface>>& Connection::getSurfaces(){ return surfaces; }
 
 void Connection::inputEvent(const input_event& event){
     int res = -1;
@@ -193,6 +198,7 @@ void Connection::readSocket(){
             << ", size=" << message->header.size
             << ", socket=" << m_serverFd
         );
+        bool do_ack = true;
         unsigned int ack_size = 0;
         Blight::data_t ack_data = nullptr;
         std::function<void()> ack_free = NULL;
@@ -215,12 +221,27 @@ void Connection::readSocket(){
                     O_WARNING("Could not find surface " << repaint.identifier.c_str());
                     break;
                 }
-                emit surface->update(QRect(
+                QRect rect(
                     repaint.header.x,
                     repaint.header.y,
                     repaint.header.width,
                     repaint.header.height
-                ));
+                );
+#ifdef EPAPER
+                guiThread->enqueue(
+                    surface,
+                    rect,
+                    (EPFrameBuffer::WaveformMode)repaint.header.waveform,
+                    message->header.ackid,
+                    false,
+                    [message, this]{
+                        ack(message, 0, nullptr);
+                    }
+                );
+                do_ack = false;
+#else
+                emit surface->update(rect);
+#endif
                 break;
             }
             case Blight::MessageType::Move:{
@@ -282,7 +303,7 @@ void Connection::readSocket(){
             case Blight::MessageType::List:{
                 O_DEBUG("List requested");
                 std::vector<std::string> list;
-                for(QString& surface : getSurfaces()){
+                for(QString& surface : getSurfaceIds()){
                     auto string = surface.toStdString();
                     ack_size += sizeof(Blight::list_item_t::identifier_len) + string.size();
                     list.push_back(string);
@@ -317,28 +338,8 @@ void Connection::readSocket(){
             O_WARNING("Ack expected data, but none sent");
             ack_size = 0;
         }
-        auto ack = Blight::message_t::create_ack(message.get(), ack_size);
-        auto res = ::send(
-            m_serverFd,
-            reinterpret_cast<char*>(ack),
-            sizeof(Blight::header_t),
-            MSG_EOR
-        );
-        if(res < 0){
-            O_WARNING("Failed to write to socket:" << strerror(errno));
-        }else if(res != sizeof(Blight::header_t)){
-            O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
-        }else if(ack_size){
-            res = ::send(m_serverFd, ack_data, ack_size, MSG_EOR);
-            if(res < 0){
-                O_WARNING("Failed to write to socket:" << strerror(errno));
-            }else if((unsigned int)res != ack_size){
-                O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
-            }else{
-                O_DEBUG("Acked" << message->header.ackid);
-            }
-        }else{
-            O_DEBUG("Acked" << message->header.ackid);
+        if(do_ack){
+            ack(message, ack_size, ack_data);
         }
         if(ack_free){
             ack_free();
@@ -347,5 +348,31 @@ void Connection::readSocket(){
         }
     };
     m_notifier->setEnabled(true);
+}
+
+void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data){
+    auto ack = Blight::message_t::create_ack(message.get(), size);
+    auto res = ::send(
+        m_serverFd,
+        reinterpret_cast<char*>(ack),
+        sizeof(Blight::header_t),
+        MSG_EOR
+        );
+    if(res < 0){
+        O_WARNING("Failed to write to socket:" << strerror(errno));
+    }else if(res != sizeof(Blight::header_t)){
+        O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
+    }else if(size){
+        res = ::send(m_serverFd, data, size, MSG_EOR);
+        if(res < 0){
+            O_WARNING("Failed to write to socket:" << strerror(errno));
+        }else if((unsigned int)res != size){
+            O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
+        }else{
+            O_DEBUG("Acked" << message->header.ackid);
+        }
+    }else{
+        O_DEBUG("Acked" << message->header.ackid);
+    }
 }
 #include "moc_connection.cpp"

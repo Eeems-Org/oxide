@@ -39,6 +39,26 @@ namespace Blight{
         Format_Grayscale16,
         Format_BGR888,
     };
+    enum Waveform {
+        INIT = 0,
+        DU = 1,
+        GC16 = 2,
+        GL16 = 3,
+        GLR16 = 4,
+        GLD16 = 5,
+        A2 = 6,
+        DU4 = 7,
+        UNKNOWN = 8,
+        INIT2 = 9
+    };
+    enum WaveformMode{
+        Initialize = Waveform::INIT,
+        Mono = Waveform::DU,
+        Grayscale = Waveform::GL16,
+        HighQualityGrayscale = Waveform::GC16,
+        Highlight = Waveform::UNKNOWN
+    };
+
     LIBBLIGHT_EXPORT typedef struct {
         unsigned int device;
         input_event event;
@@ -101,6 +121,7 @@ namespace Blight{
         int y;
         int width;
         int height;
+        WaveformMode waveform;
         size_t identifier_len;
         static repaint_header_t from_data(data_t data);
     } repaint_header_t;

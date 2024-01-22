@@ -12,17 +12,14 @@
 #include <libblight/types.h>
 #include <cstring>
 
-DbusInterface* DbusInterface::singleton = nullptr;
-
-DbusInterface::DbusInterface(QObject* parent, QQmlApplicationEngine* engine)
+DbusInterface::DbusInterface(QObject* parent)
 : QObject(parent),
-  engine(engine),
   m_focused(nullptr)
 {
-    if(singleton != nullptr){
-        qFatal("DbusInterface singleton already exists");
+    engine.load(QUrl(QStringLiteral("qrc:/Workspace.qml")));
+    if(engine.rootObjects().isEmpty()){
+        qFatal("Failed to load main layout");
     }
-    singleton = this;
     // Needed to trick QtDBus into exposing the object
     setProperty("__init__", true);
 #ifdef EPAPER
@@ -55,7 +52,7 @@ DbusInterface::DbusInterface(QObject* parent, QQmlApplicationEngine* engine)
         &QDBusConnectionInterface::serviceOwnerChanged,
         this,
         &DbusInterface::serviceOwnerChanged
-        );
+    );
     O_DEBUG("Connected service to bus");
     connect(&connectionTimer, &QTimer::timeout, this, [this]{
         for(auto& connection : qAsConst(connections)){
@@ -78,7 +75,7 @@ DbusInterface::DbusInterface(QObject* parent, QQmlApplicationEngine* engine)
 int DbusInterface::pid(){ return qApp->applicationPid(); }
 
 QObject* DbusInterface::loadComponent(QString url, QString identifier, QVariantMap properties){
-    auto object = engine->findChild<QObject*>(identifier);
+    auto object = engine.findChild<QObject*>(identifier);
     if(object != nullptr){
         for(auto i = properties.cbegin(), end = properties.cend(); i != end; ++i){
             object->setProperty(i.key().toStdString().c_str(), i.value());
@@ -306,7 +303,7 @@ std::shared_ptr<Connection> DbusInterface::getConnection(QDBusMessage message){
 }
 
 QObject* DbusInterface::workspace(){
-    QListIterator<QObject*> i(engine->rootObjects());
+    QListIterator<QObject*> i(engine.rootObjects());
     while(i.hasNext()){
         auto item = i.next();
         if(item->objectName() == "Workspace"){
@@ -357,8 +354,8 @@ std::shared_ptr<Connection> DbusInterface::createConnection(int pid){
     return ptr;
 }
 
-QList<QString> DbusInterface::surfaces(){
-    QList<QString> surfaces;
+QList<std::shared_ptr<Surface>> DbusInterface::surfaces(){
+    QList<std::shared_ptr<Surface>> surfaces;
     for(auto& connection : connections){
         for(auto& surface : connection->getSurfaces()){
             surfaces.append(surface);
@@ -367,26 +364,38 @@ QList<QString> DbusInterface::surfaces(){
     return surfaces;
 }
 
-void DbusInterface::sortZ(){
+QList<std::shared_ptr<Surface>> DbusInterface::sortedSurfaces(){
     auto sorted = surfaces().toVector();
     std::sort(
         sorted.begin(),
         sorted.end(),
-        [this](const QString& identifier0, const QString& identifier1){
-            auto surface0 = getSurface(identifier0);
+        [](std::shared_ptr<Surface> surface0, std::shared_ptr<Surface> surface1){
             if(surface0 == nullptr){
                 return false;
             }
-            auto surface1 = getSurface(identifier1);
             if(surface1 == nullptr){
                 return true;
             }
             return surface0->z() < surface1->z();
         }
     );
+    return QList<std::shared_ptr<Surface>>::fromVector(sorted);
+}
+
+QList<std::shared_ptr<Surface> > DbusInterface::visibleSurfaces(){
+    QList<std::shared_ptr<Surface>> surfaces;
+    for(auto& surface : sortedSurfaces()){
+        if(surface->visible()){
+            surfaces.append(surface);
+        }
+    }
+    return surfaces;
+}
+
+void DbusInterface::sortZ(){
+    auto sorted = sortedSurfaces();
     int z = 0;
-    for(auto& identifier : sorted){
-        auto surface = getSurface(identifier);
+    for(auto surface : sorted){
         if(surface == nullptr){
             continue;
         }
@@ -395,7 +404,7 @@ void DbusInterface::sortZ(){
     if(m_focused != nullptr || sorted.empty()){
         return;
     }
-    auto surface = getSurface(sorted.last());
+    auto surface = sorted.last();
     if(surface == nullptr){
         return;
     }

@@ -12,6 +12,9 @@
 #include <liboxide.h>
 
 #include "dbusinterface.h"
+#ifdef EPAPER
+#include "guithread.h"
+#endif
 
 using namespace std;
 using namespace Oxide::Sentry;
@@ -146,11 +149,9 @@ int main(int argc, char* argv[]){
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
         remove(pidPath);
     });
-    QQmlApplicationEngine engine;
-    engine.load(QUrl(QStringLiteral("qrc:/Workspace.qml")));
-    if(engine.rootObjects().isEmpty()){
-        qFatal("Failed to load main layout");
-    }
-    DbusInterface interface(qApp, &engine);
+#ifdef EPAPER
+    guiThread;
+#endif
+    dbusInterface;
     return app.exec();
 }

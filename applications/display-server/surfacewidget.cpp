@@ -1,5 +1,6 @@
 #include "surfacewidget.h"
 #include "dbusinterface.h"
+#include "guithread.h"
 
 #include <QQuickWindow>
 
@@ -33,11 +34,12 @@ void SurfaceWidget::updated(){ update(); }
 #ifdef EPAPER
 void SurfaceWidget::paint(QPainter* painter){
     Q_UNUSED(painter);
-    auto image = this->image();
-    if(image == nullptr || image->isNull()){
-        return;
-    }
-    painter->drawImage(painter->clipBoundingRect(), *image, painter->clipBoundingRect());
+    guiThread->enqueue(
+        surface(),
+        painter->clipBoundingRect().toRect(),
+        EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+        0
+    );
 }
 #else
 QSGNode* SurfaceWidget::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){
@@ -63,7 +65,9 @@ QSGNode* SurfaceWidget::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){
 }
 #endif
 
-std::shared_ptr<Surface> SurfaceWidget::surface(){ return DbusInterface::singleton->getSurface(identifier()); }
+std::shared_ptr<Surface> SurfaceWidget::surface(){
+    return dbusInterface->getSurface(identifier());
+}
 
 std::shared_ptr<QImage> SurfaceWidget::image(){
     auto surface = this->surface();

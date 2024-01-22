@@ -224,6 +224,7 @@ namespace Blight{
         int y,
         int width,
         int height,
+        WaveformMode waveform,
         unsigned int marker
     ){
         unsigned char buf[sizeof(repaint_header_t) + identifier.size()];
@@ -232,6 +233,7 @@ namespace Blight{
             .y = y,
             .width = width,
             .height = height,
+            .waveform = waveform,
             .identifier_len = identifier.size()
         };
         memcpy(buf, &header, sizeof(header));

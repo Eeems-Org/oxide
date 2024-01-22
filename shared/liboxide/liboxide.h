@@ -22,6 +22,7 @@
 #include "xochitlsettings.h"
 #include "sharedsettings.h"
 #include "epaper.h"
+#include "threading.h"
 #if defined(LIBOXIDE_LIBRARY)
 #include "oxide_sentry.h"
 #else
@@ -87,37 +88,6 @@ namespace Oxide {
      * \return list of pids that have the file open
      */
     LIBOXIDE_EXPORT QList<int> lsof(const QString& path);
-    /*!
-     * \brief Run code on the main Qt thread
-     * \param callback The code to run on the main thread
-     *
-     * \snippet examples/oxide.cpp dispatchToMainThread
-     */
-    LIBOXIDE_EXPORT void dispatchToMainThread(std::function<void()> callback);
-    /*!
-     * \brief Run code on the main Qt thread
-     * \param callback The code to run on the main thread
-     * \return Return value of callback
-     *
-     * \snippet examples/oxide.cpp dispatchToMainThread
-     */
-    template<typename T> LIBOXIDE_EXPORT T dispatchToMainThread(std::function<T()> callback){
-        if(QThread::currentThread() == qApp->thread()){
-            return callback();
-        }
-        // any thread
-        QTimer* timer = new QTimer();
-        timer->moveToThread(qApp->thread());
-        timer->setSingleShot(true);
-        T result;
-        QObject::connect(timer, &QTimer::timeout, [timer, &result, callback](){
-            // main thread
-            result = callback();
-            timer->deleteLater();
-        });
-        QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
-        return result;
-    }
     /*!
      * \brief Get the UID for a username
      * \param name Username to search for

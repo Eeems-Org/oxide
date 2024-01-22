@@ -7,6 +7,7 @@
 #endif
 #ifdef EPAPER
 #ifdef __arm__
+#include <QtPlugin>
 Q_IMPORT_PLUGIN(QsgEpaperPlugin)
 #endif
 #include <epframebuffer.h>

@@ -265,6 +265,7 @@ int __fb_ioctl(unsigned long request, char* ptr){
                 region.top,
                 region.width,
                 region.height,
+                (Blight::WaveformMode)update->waveform_mode,
                 update->update_marker
             );
             _DEBUG("ioctl /dev/fb0 MXCFB_SEND_UPDATE done: %f", cz.elapsed())

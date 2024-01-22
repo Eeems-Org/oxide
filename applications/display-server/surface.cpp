@@ -25,8 +25,7 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
         stride,
         format
     ));
-    auto interface = dynamic_cast<DbusInterface*>(connection->parent());
-    component = dynamic_cast<QQuickItem*>(interface->loadComponent(
+    component = dynamic_cast<QQuickItem*>(dbusInterface->loadComponent(
         "qrc:/Surface.qml",
         id(),
         QVariantMap{
@@ -87,6 +86,19 @@ void Surface::move(int x, int y){
     component->setY(y);
 }
 
+void Surface::setVisible(bool visible){
+    if(component != nullptr){
+        component->setVisible(visible);
+    }
+}
+
+bool Surface::visible(){
+    if(component == nullptr){
+        return false;
+    }
+    return component->isVisible();
+}
+
 int Surface::z(){
     if(component == nullptr){
         return -1;
@@ -99,6 +111,8 @@ void Surface::setZ(int z){
         component->setZ(z);
     }
 }
+
+bool Surface::has(QString flag){ return flags.contains(flag); }
 
 void Surface::activeFocusChanged(bool focus){
     if(focus){

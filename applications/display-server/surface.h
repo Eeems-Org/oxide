@@ -26,8 +26,11 @@ public:
     int stride();
     QImage::Format format();
     void move(int x, int y);
+    bool visible();
+    void setVisible(bool visible);
     int z();
     void setZ(int z);
+    bool has(QString flag);
 
 signals:
     void update(const QRect& geometry);
@@ -44,4 +47,5 @@ private:
     std::shared_ptr<QImage> m_image;
     QQuickItem* component;
     QString m_id;
+    QStringList flags;
 };
