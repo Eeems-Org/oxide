@@ -428,6 +428,10 @@ void GUIThread::redraw(RepaintRequest& event){
     auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
     Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
     QPainter painter(frameBuffer);
+    while(!painter.isActive()){
+        eventDispatcher()->processEvents(QEventLoop::AllEvents);
+        painter.begin(frameBuffer);
+    }
     painter.setCompositionMode(QPainter::CompositionMode_Source);
     for(auto rect : repaintRegion){
         if(!event.global){
