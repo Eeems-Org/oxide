@@ -1,6 +1,7 @@
 #include "surface.h"
 #include "connection.h"
 #include "dbusinterface.h"
+#include "guithread.h"
 #include "surfacewidget.h"
 
 #include <unistd.h>
@@ -57,6 +58,17 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
 Surface::~Surface(){
     O_DEBUG("Surface" << id() << "destroyed");
     file.close();
+#ifdef EPAPER
+    if(visible()){
+        guiThread->enqueue(
+            nullptr,
+            geometry(),
+            EPFrameBuffer::HighQualityGrayscale,
+            0,
+            true
+        );
+    }
+#endif
     if(component != nullptr){
         component->setVisible(false);
         component->deleteLater();

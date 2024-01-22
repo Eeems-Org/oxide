@@ -1,4 +1,5 @@
 #include "guithread.h"
+#ifdef EPAPER
 #include "connection.h"
 #include "dbusinterface.h"
 
@@ -521,3 +522,4 @@ bool GUIThread::inRepaintEvents(std::shared_ptr<Surface> surface){
     }
     return false;
 }
+#endif

@@ -7,18 +7,18 @@ Item{
         identifier: parent.objectName
         anchors.fill: parent
     }
-    MouseArea{
-        anchors.fill: parent
-    }
-    MultiPointTouchArea{
-        anchors.fill: parent
-    }
-    Keys.onPressed: function(event){
-        console.log(event);
-        event.accepted = true;
-    }
-    Keys.onReleased: function(event){
-        console.log(event);
-        event.accepted = true;
-    }
+    // MouseArea{
+    //     anchors.fill: parent
+    // }
+    // MultiPointTouchArea{
+    //     anchors.fill: parent
+    // }
+    // Keys.onPressed: function(event){
+    //     console.log(event);
+    //     event.accepted = true;
+    // }
+    // Keys.onReleased: function(event){
+    //     console.log(event);
+    //     event.accepted = true;
+    // }
 }

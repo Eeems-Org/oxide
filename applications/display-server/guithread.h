@@ -1,4 +1,5 @@
 #pragma once
+#ifdef EPAPER
 #include <QThread>
 #include <QWaitCondition>
 #include <QSemaphore>
@@ -114,3 +115,4 @@ private:
     void scheduleUpdate();
     bool inRepaintEvents(std::shared_ptr<Surface> surface);
 };
+#endif

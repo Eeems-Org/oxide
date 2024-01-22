@@ -17,7 +17,6 @@ ApplicationWindow {
         }
         return comp.createObject(workspace, props).objectName;
     }
-
     background: Rectangle{
         color: "white"
         anchors.fill: parent

@@ -62,11 +62,11 @@ int main(int argc, char* argv[]){
 #endif
     qputenv("XDG_CURRENT_DESKTOP", "OXIDE");
     QThread::currentThread()->setObjectName("main");
-#ifdef __arm__
-    deviceSettings.setupQtEnvironment(false);
-    // qputenv("QMLSCENE_DEVICE", "");
-    // qputenv("QT_QUICK_BACKEND","");
-    // qputenv("QT_QPA_PLATFORM", "directfb");
+#ifdef EPAPER
+    // Force use of offscreen as we'll be using EPFrameBuffer directly
+    qputenv("QMLSCENE_DEVICE", "");
+    qputenv("QT_QUICK_BACKEND","");
+    qputenv("QT_QPA_PLATFORM", "offscreen");
     // qputenv("QT_QPA_PLATFORM", "vnc:size=1404x1872");
 #endif
     QGuiApplication app(argc, argv);
