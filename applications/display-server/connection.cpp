@@ -120,11 +120,14 @@ void Connection::resume(){
 
 void Connection::close(){
     surfaces.clear();
-    emit finished();
-    blockSignals(true);
-    m_notifier->deleteLater();
-    ::close(m_clientFd);
-    ::close(m_serverFd);
+    if(m_notifier != nullptr){
+        emit finished();
+        blockSignals(true);
+        m_notifier->deleteLater();
+        m_notifier = nullptr;
+        ::close(m_clientFd);
+        ::close(m_serverFd);
+    }
 }
 
 std::shared_ptr<Surface> Connection::addSurface(int fd, QRect geometry, int stride, QImage::Format format){
@@ -184,6 +187,10 @@ void Connection::inputEvent(const input_event& event){
 }
 
 void Connection::readSocket(){
+    if(m_notifier == nullptr){
+        O_DEBUG("Connection already closed, discarding data");
+        return;
+    }
     m_notifier->setEnabled(false);
     O_DEBUG("Data received");
     while(true){
@@ -260,7 +267,33 @@ void Connection::readSocket(){
                     O_WARNING("Could not find surface " << move.identifier.c_str());
                     break;
                 }
+#ifdef EPAPER
+                auto rect = surface->geometry();
                 surface->move(move.header.x, move.header.y);
+                guiThread->enqueue(
+                    nullptr,
+                    rect,
+                    EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+                    message->header.ackid,
+                    true,
+                    [this, message, surface]{
+                        guiThread->enqueue(
+                            surface,
+                            // Surface repaints are local to their coordinates, thus (0,0)
+                            QRect(QPoint(0, 0), surface->size()),
+                            EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+                            message->header.ackid,
+                            false,
+                            [message, this]{
+                                ack(message, 0, nullptr);
+                            }
+                        );
+                    }
+                );
+                do_ack = false;
+#else
+                surface->move(move.header.x, move.header.y);
+#endif
                 break;
             }
             case Blight::MessageType::Info:{

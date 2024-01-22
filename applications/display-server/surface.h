@@ -23,6 +23,7 @@ public:
     void repaint();
     int fd();
     const QRect& geometry();
+    const QSize size();
     int stride();
     QImage::Format format();
     void move(int x, int y);

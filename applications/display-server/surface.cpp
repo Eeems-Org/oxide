@@ -1,8 +1,10 @@
 #include "surface.h"
 #include "connection.h"
 #include "dbusinterface.h"
-#include "guithread.h"
 #include "surfacewidget.h"
+#ifdef EPAPER
+#include "guithread.h"
+#endif
 
 #include <unistd.h>
 #include <liboxide/debug.h>
@@ -53,6 +55,17 @@ Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Fo
     connect(this, &Surface::update, widget, &SurfaceWidget::update);
     connect(widget, &SurfaceWidget::activeFocusChanged, this, &Surface::activeFocusChanged);
     emit connection->focused();
+#ifdef EPAPER
+    if(visible()){
+        guiThread->enqueue(
+            nullptr,
+            geometry,
+            EPFrameBuffer::HighQualityGrayscale,
+            0,
+            true
+        );
+    }
+#endif
 }
 
 Surface::~Surface(){
@@ -87,6 +100,8 @@ void Surface::repaint(){ emit update(QRect(QPoint(0, 0), m_geometry.size())); }
 int Surface::fd(){ return file.handle(); }
 
 const QRect& Surface::geometry(){ return m_geometry; }
+
+const QSize Surface::size(){ return m_geometry.size(); }
 
 int Surface::stride(){ return m_stride; }
 
