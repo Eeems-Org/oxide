@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QFile>
 #include <QSocketNotifier>
+#include <QLocalSocket>
 #include <libblight/connection.h>
 #include <linux/input.h>
 
@@ -49,12 +50,15 @@ private slots:
 private:
     pid_t m_pid;
     pid_t m_pgid;
+    int m_pidFd;
     QFile m_process;
     int m_clientFd;
     int m_serverFd;
     int m_clientInputFd;
     int m_serverInputFd;
     QSocketNotifier* m_notifier;
+    QLocalSocket m_pidNotifier;
     QList<std::shared_ptr<Surface>> surfaces;
+    std::atomic_flag m_closed;
     void ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
 };

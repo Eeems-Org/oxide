@@ -18,4 +18,8 @@ Window{
         color: "black"
         anchors.centerIn: parent
     }
+    MouseArea{
+        anchors.fill: parent
+        onClicked: Qt.quit()
+    }
 }

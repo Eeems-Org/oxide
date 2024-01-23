@@ -76,7 +76,6 @@ private:
     QQmlApplicationEngine engine;
     QList<std::shared_ptr<Connection>> connections;
     std::shared_ptr<Connection> m_focused;
-    QTimer connectionTimer;
     struct {
         QByteArray clipboard;
         QByteArray selection;

@@ -10,17 +10,31 @@
 #include <QElapsedTimer>
 #include <QCoreApplication>
 #include <cstring>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #ifdef EPAPER
 #include "guithread.h"
 #endif
 #include "surface.h"
 
+static int pidfd_open(pid_t pid, unsigned int flags){
+    return syscall(SYS_pidfd_open, pid, flags);
+}
+
 Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
 : QObject(parent),
   m_pid{pid},
-  m_pgid{pgid}
+  m_pgid{pgid},
+  m_closed{false}
 {
+    m_pidFd = pidfd_open(m_pid, 0);
+    if(m_pidFd < 0){
+        O_WARNING(std::strerror(errno));
+    }else{
+        connect(&m_pidNotifier, &QLocalSocket::disconnected, this, &Connection::finished);
+        m_pidNotifier.setSocketDescriptor(m_pidFd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly);
+    }
     int fds[2];
     if(::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) == -1){
         O_WARNING("Unable to open socket pair:" << strerror(errno));
@@ -121,14 +135,18 @@ void Connection::resume(){
 
 void Connection::close(){
     surfaces.clear();
+    if(!m_closed.test_and_set()){
+        return;
+    }
+    emit finished();
+    blockSignals(true);
     if(m_notifier != nullptr){
-        emit finished();
-        blockSignals(true);
         m_notifier->deleteLater();
         m_notifier = nullptr;
-        ::close(m_clientFd);
-        ::close(m_serverFd);
     }
+    ::close(m_clientFd);
+    ::close(m_serverFd);
+    ::close(m_pidFd);
 }
 
 std::shared_ptr<Surface> Connection::addSurface(int fd, QRect geometry, int stride, QImage::Format format){

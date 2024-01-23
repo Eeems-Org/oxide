@@ -54,13 +54,19 @@ DbusInterface::DbusInterface(QObject* parent)
         &DbusInterface::serviceOwnerChanged
     );
     O_DEBUG("Connected service to bus");
-    connect(&connectionTimer, &QTimer::timeout, this, [this]{
-        for(auto& connection : qAsConst(connections)){
-            if(!connection->isRunning()){
-                emit connection->finished();
-            }
-        }
-    });
+    // connect(&connectionTimer, &QTimer::timeout, this, [this]{
+    //     QMutableListIterator<std::shared_ptr<Connection>> i(connections);
+    //     while(i.hasNext()){
+    //         auto connection = i.next();
+    //         if(connection->isRunning()){
+    //             continue;
+    //         }
+    //         i.remove();
+    //         if(m_focused == connection){
+    //             m_focused = nullptr;
+    //         }
+    //     }
+    // });
     connectionTimer.setInterval(100);
     connectionTimer.start();
     connect(
@@ -245,7 +251,8 @@ void DbusInterface::inputEvents(unsigned int device, const std::vector<input_eve
             pollfd pfd;
             pfd.fd = fd;
             pfd.events = POLLOUT;
-            res = poll(&pfd, 1, -1);
+            // Only block for 50ms at a time as we give up if it fails after 5 tries
+            res = poll(&pfd, 1, 50);
             if(res < 0){
                 if(errno == EAGAIN || errno == EINTR){
                     count++;
