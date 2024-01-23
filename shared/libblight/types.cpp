@@ -121,16 +121,16 @@ Blight::message_t Blight::message_t::from_data(void* data){
     return from_data(reinterpret_cast<data_t>(data));
 }
 
-Blight::data_t Blight::message_t::create_ack(message_t* message, size_t size){
+Blight::header_t Blight::message_t::create_ack(message_t* message, size_t size){
     return create_ack(*message, size);
 }
 
-Blight::data_t Blight::message_t::create_ack(const message_t& message, size_t size){
-    return reinterpret_cast<data_t>(new header_t{
+Blight::header_t Blight::message_t::create_ack(const message_t& message, size_t size){
+    return header_t{
         .type = MessageType::Ack,
         .ackid = message.header.ackid,
         .size = size
-    });
+    };
 }
 
 Blight::message_ptr_t Blight::message_t::from_socket(int fd){

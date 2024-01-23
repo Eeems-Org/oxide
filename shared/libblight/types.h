@@ -129,8 +129,8 @@ namespace Blight{
         static message_t from_data(data_t _data);
         static message_t from_data(char* data);
         static message_t from_data(void* data);
-        static data_t create_ack(message_t* message, size_t size = 0);
-        static data_t create_ack(const message_t& message, size_t size = 0);
+        static header_t create_ack(message_t* message, size_t size = 0);
+        static header_t create_ack(const message_t& message, size_t size = 0);
         static message_ptr_t from_socket(int fd);
         static message_ptr_t new_ptr();
     } message_t;

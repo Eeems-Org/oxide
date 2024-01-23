@@ -512,7 +512,7 @@ void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::d
     auto ack = Blight::message_t::create_ack(message.get(), size);
     auto res = ::send(
         m_serverFd,
-        reinterpret_cast<char*>(ack),
+        reinterpret_cast<char*>(&ack),
         sizeof(Blight::header_t),
         MSG_EOR
     );
