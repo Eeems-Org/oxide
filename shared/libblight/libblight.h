@@ -1,10 +1,12 @@
 #include "libblight_global.h"
 #include "types.h"
+#include "connection.h"
 #include <optional>
 
 namespace Blight{
     LIBBLIGHT_EXPORT bool connect(bool use_system = true);
     LIBBLIGHT_EXPORT bool exists();
+    LIBBLIGHT_EXPORT Connection* connection();
     LIBBLIGHT_EXPORT int open();
     LIBBLIGHT_EXPORT int open_input();
     LIBBLIGHT_EXPORT std::optional<clipboard_t> clipboard();

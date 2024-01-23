@@ -12,7 +12,10 @@ public:
     QPlatformIntegration* create(const QString&, const QStringList&) override;
 };
 
-QPlatformIntegration* OxideIntegrationPlugin::create(const QString& system, const QStringList& paramList){
+QPlatformIntegration* OxideIntegrationPlugin::create(
+    const QString& system,
+    const QStringList& paramList
+){
     if(!system.compare(QLatin1String("oxide"), Qt::CaseInsensitive)){
         return new OxideIntegration(paramList);
     }

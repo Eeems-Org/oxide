@@ -1,6 +1,7 @@
 #include "oxidewindow.h"
-#include "oxideintegration.h"
+
 #include <libblight.h>
+#include <libblight/types.h>
 
 OxideWindow::OxideWindow(QWindow* window) : QPlatformWindow(window), mBackingStore(nullptr){ }
 
@@ -41,30 +42,12 @@ void OxideWindow::setVisible(bool visible){
     setGeometry(screen->geometry());
 }
 
-void OxideWindow::repaint(const QRegion& region){
-    if(mBackingStore == nullptr){
-        return;
-    }
-    auto buffer = mBackingStore->buffer();
-    for(auto rect : region){
-        OxideIntegration::instance()->connection->repaint(
-            buffer,
-            rect.x(),
-            rect.y(),
-            rect.width(),
-            rect.height(),
-            Blight::WaveformMode::Mono
-        );
-    }
-}
-
 void OxideWindow::raise(){
     if(mBackingStore == nullptr){
         return;
     }
-    auto maybe = OxideIntegration::instance()
-        ->connection
-        ->raise(mBackingStore->buffer());
+    auto buffer = mBackingStore->buffer();
+    auto maybe = Blight::connection()->raise(buffer);
     if(maybe.has_value()){
         maybe.value()->wait();
     }
@@ -74,9 +57,8 @@ void OxideWindow::lower(){
     if(mBackingStore == nullptr){
         return;
     }
-    auto maybe = OxideIntegration::instance()
-         ->connection
-         ->lower(mBackingStore->buffer());
+    auto buffer = mBackingStore->buffer();
+    auto maybe = Blight::connection()->lower(buffer);
     if(maybe.has_value()){
         maybe.value()->wait();
     }

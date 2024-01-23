@@ -25,7 +25,7 @@ public:
 private:
     QImage image;
     const bool mDebug;
-    Blight::shared_buf_t mBuffer;
+    Blight::shared_buf_t mBuffer = nullptr;
 };
 
 QT_END_NAMESPACE

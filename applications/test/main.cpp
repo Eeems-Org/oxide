@@ -57,12 +57,18 @@ int main(int argc, char *argv[]){
         }
         O_DEBUG(clipboard.name.c_str() << QString::fromStdString(clipboard.to_string()));
     }
-    int bfd = Blight::open();
-    if(bfd < 0){
+    auto connection = Blight::connection();
+    if(connection == nullptr){
         O_WARNING(std::strerror(errno));
         return EXIT_FAILURE;
     }
-    O_DEBUG("Connection file descriptor:" << bfd);
+    connection->onDisconnect([](int res){
+        if(res){
+            qApp->exit(res);
+        }
+    });
+    O_DEBUG("Connection socket descriptor:" << connection->handle());
+    O_DEBUG("Input socket descriptor:" << connection->input_handle());
     QRect geometry(0, 0, 100, 100);
     QImage blankImage(geometry.size(), QImage::Format_RGB16);
     blankImage.fill(Qt::black);
@@ -103,12 +109,6 @@ int main(int argc, char *argv[]){
         return EXIT_FAILURE;
     }
     O_DEBUG("Surface added:" << buffer->surface.c_str());
-    auto connection = new Blight::Connection(bfd);
-    connection->onDisconnect([](int res){
-        if(res){
-            qApp->exit(res);
-        }
-    });
     sleep(1);
     O_DEBUG("Switching to gray");
     image.fill(Qt::gray);
@@ -193,7 +193,6 @@ int main(int argc, char *argv[]){
     O_DEBUG("Validating surface count");
     auto surfaces = connection->surfaces();
     auto buffers = connection->buffers();
-    delete connection;
     if(surfaces.size() != 1){
         O_WARNING("There should only be one surface!");
         return EXIT_FAILURE;

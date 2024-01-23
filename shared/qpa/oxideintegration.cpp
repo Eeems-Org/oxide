@@ -78,11 +78,15 @@ void OxideIntegration::initialize(){
     if(m_debug){
         qDebug() << "OxideIntegration::initialize";
     }
-    auto fd = Blight::open();
-    if(fd < 0){
+#ifdef EPAPER
+    Blight::connect(true);
+#else
+    Blight::connect(false);
+#endif
+    auto connection = Blight::connection();
+    if(connection == nullptr){
         qFatal("Could not connect to display server: %s", std::strerror(errno));
     }
-    connection = std::shared_ptr<Blight::Connection>(new Blight::Connection(fd));
     // rM1 geometry as default
     auto geometry = QRect(0, 0, 1404, 1872);
     bool ok;
@@ -157,7 +161,7 @@ void OxideIntegration::destroy(){
 }
 
 void OxideIntegration::sync(){
-    // TODO - get sync state with tarnish
+    // TODO - get sync state with display server
 }
 
 void OxideIntegration::beep() const{

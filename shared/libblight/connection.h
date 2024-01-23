@@ -83,7 +83,6 @@ namespace Blight {
         void focused();
 
     private:
-        std::map<unsigned int, unsigned int> markers;
         int m_fd;
         int m_inputFd;
         std::atomic<bool> stop_requested;

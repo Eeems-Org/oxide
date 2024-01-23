@@ -68,6 +68,18 @@ namespace Blight{
 
     bool exists(){ return connect() && dbus->has_service(BLIGHT_SERVICE); }
 
+    Connection* connection(){
+        static Connection* instance = nullptr;
+        if(instance == nullptr){
+            int fd = open();
+            if(fd < 0){
+                return nullptr;
+            }
+            instance = new Connection(fd);
+        }
+        return instance;
+    }
+
     int open(){
         if(!exists()){
             errno = EAGAIN;

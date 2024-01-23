@@ -23,14 +23,30 @@ OxideBackingStore::OxideBackingStore(QWindow* window)
 }
 
 OxideBackingStore::~OxideBackingStore(){
-    OxideIntegration::instance()->connection->remove(mBuffer);
+    Blight::connection()->remove(mBuffer);
 }
 
 QPaintDevice* OxideBackingStore::paintDevice(){ return &image; }
 
 void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoint& offset){
     Q_UNUSED(offset);
-    (static_cast<OxideWindow*>(window->handle()))->repaint(region);
+    Q_UNUSED(window);
+    if(mBuffer == nullptr){
+        return;
+    }
+    if(mDebug){
+        qDebug() << "OxideBackingStore::repaint:";
+    }
+    for(auto rect : region){
+        Blight::connection()->repaint(
+            mBuffer,
+            rect.x(),
+            rect.y(),
+            rect.width(),
+            rect.height(),
+            Blight::WaveformMode::Mono
+        );
+    }
 }
 
 void OxideBackingStore::resize(const QSize& size, const QRegion& region){
@@ -38,8 +54,11 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
     if(image.size() == size){
         return;
     }
+    if(mDebug){
+        qDebug() << "OxideBackingStore::resize:" << size;
+    }
     QImage blankImage(size, QImage::Format_RGB16);
-    auto maybe = OxideIntegration::instance()->connection->resize(
+    auto maybe = Blight::connection()->resize(
         mBuffer,
         blankImage.width(),
         blankImage.height(),

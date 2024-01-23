@@ -17,7 +17,6 @@ public:
     OxideBackingStore* backingStore() const;
     OxideScreen* platformScreen() const;
     void setVisible(bool visible) override;
-    virtual void repaint(const QRegion& region);
     void raise() override;
     void lower() override;
 

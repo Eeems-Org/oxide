@@ -831,18 +831,20 @@ extern "C" {
         bool connected = Blight::connect(false);
 #endif
         if(!connected){
-            _CRIT("%s", "Could not connect to display server");
+            _CRIT("%s", "Could not connect to display server: %s", std::strerror(errno));
             std::quick_exit(EXIT_FAILURE);
         }
-        auto fd = Blight::open();
-        // TODO - handle error if invalid fd
-        blightConnection = new Blight::Connection(fd);
+        blightConnection = Blight::connection();
+        if(blightConnection == nullptr){
+            _WARN("Failed to connect to display server: %s", std::strerror(errno));
+            std::exit(errno);
+        }
         blightConnection->onDisconnect([](int res){
             _WARN("Disconnected from display server: %s", std::strerror(res));
             // TODO - handle reconnect
             std::exit(res);
         });
-        _DEBUG("Connected %d to blight on %d", pid, fd);
+        _DEBUG("Connected %d to blight on %d", pid, blightConnection->handle());
         setenv("RM2FB_ACTIVE", "1", true);
         setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
         setenv("RM2FB_DISABLE", "1", true);

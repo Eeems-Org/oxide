@@ -61,7 +61,6 @@ public:
     bool ownsMode(QClipboard::Mode mode) const override;
 #endif
     static OxideIntegration* instance();
-    std::shared_ptr<Blight::Connection> connection;
 
 private:
     mutable QPlatformFontDatabase* m_fontDatabase = nullptr;

@@ -17,6 +17,7 @@ namespace Blight{
     static std::atomic<unsigned int> ackid;
     static std::mutex ackMutex;
     static auto acks = new std::map<unsigned int, ackid_ptr_t>();
+    static auto markers = new std::map<unsigned int, unsigned int>();
 
     ackid_t::ackid_t(
         Connection* connection,
@@ -214,12 +215,12 @@ namespace Blight{
 
     void Connection::waitForMarker(unsigned int marker){
         ackMutex.lock();
-        if(!markers.contains(marker)){
+        if(!markers->contains(marker)){
             ackMutex.unlock();
             return;
         }
-        auto ackid = markers[marker];
-        markers.erase(marker);
+        auto ackid = markers->at(marker);
+        markers->erase(marker);
         if(!acks->contains(ackid)){
             ackMutex.unlock();
             return;
@@ -254,7 +255,7 @@ namespace Blight{
             return {};
         }
         if(marker){
-            markers[marker] = ackid.value()->ackid;
+            (*markers)[marker] = ackid.value()->ackid;
         }
         return ackid;
     }
@@ -483,10 +484,10 @@ namespace Blight{
                     iter = pending.erase(iter);
                     acks->erase(ackid);
                     ack->notify_all();
-                    auto iter2 = connection->markers.begin();
-                    while(iter2 != connection->markers.end()){
+                    auto iter2 = markers->begin();
+                    while(iter2 != markers->end()){
                         if(iter2->second == ackid){
-                            iter2 = connection->markers.erase(iter2);
+                            iter2 = markers->erase(iter2);
                             continue;
                         }
                         ++iter2;
