@@ -5,6 +5,7 @@
 #include <QtCore/qdebug.h>
 #include <qpa/qplatformscreen.h>
 #include <private/qguiapplication_p.h>
+#include <liboxide/debug.h>
 #include <liboxide/meta.h>
 #include <libblight.h>
 
@@ -58,17 +59,46 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
         qDebug() << "OxideBackingStore::resize:" << size;
     }
     QImage blankImage(size, QImage::Format_RGB16);
-    auto maybe = Blight::connection()->resize(
-        mBuffer,
-        blankImage.width(),
-        blankImage.height(),
-        blankImage.bytesPerLine(),
-        (Blight::data_t)blankImage.constBits()
-    );
-    if(!maybe.has_value()){
-        qWarning() << "Failed to resize surface:" << mBuffer->surface.c_str();
+    if(mBuffer == nullptr){
+        auto maybe = Blight::createBuffer(
+            window()->x(),
+            window()->y(),
+            blankImage.width(),
+            blankImage.height(),
+            blankImage.bytesPerLine(),
+            (Blight::Format)blankImage.format()
+        );
+        if(!maybe.has_value()){
+            qWarning() << "Failed to create buffer:" << strerror(errno);
+            return;
+        }
+        mBuffer = maybe.value();
+        Blight::addSurface(mBuffer);
+        if(mBuffer->surface.empty()){
+            qWarning() << "Failed to create surface:" << strerror(errno);
+            return;
+        }
+
+    }else{
+        auto maybe = Blight::connection()->resize(
+            mBuffer,
+            blankImage.width(),
+            blankImage.height(),
+            blankImage.bytesPerLine(),
+            (Blight::data_t)blankImage.constBits()
+        );
+        if(!maybe.has_value()){
+            qWarning() << "Failed to resize surface:" << mBuffer->surface.c_str();
+            return;
+        }
+        mBuffer = maybe.value();
     }
-    mBuffer = maybe.value();
+    image = QImage(
+        mBuffer->data,
+        mBuffer->width,
+        mBuffer->height,
+        (QImage::Format)mBuffer->format
+    );
 }
 
 bool OxideBackingStore::scroll(const QRegion& area, int dx, int dy){

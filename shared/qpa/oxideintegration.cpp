@@ -87,67 +87,15 @@ void OxideIntegration::initialize(){
     if(connection == nullptr){
         qFatal("Could not connect to display server: %s", std::strerror(errno));
     }
-    // rM1 geometry as default
-    auto geometry = QRect(0, 0, 1404, 1872);
-    bool ok;
-    int width = qEnvironmentVariableIntValue("OXIDE_QPA_WINDOW_WIDTH", &ok);
-    if(ok){
-        if(m_debug){
-            qDebug() << "OXIDE_QPA_WINDOW_WIDTH:" << width;
-        }
-        if(width < 0){
-            width += geometry.width();
-        }
-    }else{
-        width = geometry.width();
-    }
-    int height = qEnvironmentVariableIntValue("OXIDE_QPA_WINDOW_HEIGHT", &ok);
-    if(ok){
-        if(m_debug){
-            qDebug() << "OXIDE_QPA_WINDOW_HEIGHT:" << height;
-        }
-        if(height < 0){
-            height += m_primaryScreen->geometry().height();
-        }
-    }else{
-        height = geometry.height();
-    }
-    int x = qEnvironmentVariableIntValue("OXIDE_QPA_WINDOW_X", &ok);
-    if(ok){
-        if(m_debug){
-            qDebug() << "OXIDE_QPA_WINDOW_X:" << x;
-        }
-        if(x < 0){
-            x += geometry.right();
-        }
-    }else{
-        x = geometry.x();
-    }
-    int y = qEnvironmentVariableIntValue("OXIDE_QPA_WINDOW_Y", &ok);
-    if(ok){
-        if(m_debug){
-            qDebug() << "OXIDE_QPA_WINDOW_Y:" << y;
-        }
-        if(y < 0){
-            y += geometry.bottom();
-        }
-    }else{
-        y = geometry.y();
-    }
-    geometry = QRect(x, y, width, height);
-    if(m_debug){
-        qDebug() << "Screen geometry:" << geometry;
-    }
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     m_primaryScreen = new OxideScreen();
-    m_primaryScreen->setGeometry(geometry);
+    // rM1 geometry as default
+    m_primaryScreen->setGeometry(QRect(0, 0, 1404, 1872));
     QWindowSystemInterface::handleScreenAdded(m_primaryScreen, true);
 #ifndef QT_NO_CLIPBOARD
     m_clipboard = new QMimeData();
     m_selection = new QMimeData();
 #endif
-    QWindowSystemInterface::handleScreenAdded(m_primaryScreen);
-
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
     // TODO - connect clipboard/selection changes
