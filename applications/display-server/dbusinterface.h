@@ -39,6 +39,10 @@ public:
     QList<std::shared_ptr<Surface>> surfaces();
     QList<std::shared_ptr<Surface>> sortedSurfaces();
     QList<std::shared_ptr<Surface>> visibleSurfaces();
+    void sortZ();
+    std::shared_ptr<Connection> focused();
+
+    // Property getter/setters
     const QByteArray& clipboard();
     void setClipboard(const QByteArray& data);
     const QByteArray& selection();
@@ -60,8 +64,7 @@ public slots:
     );
     void repaint(QString identifier, QDBusMessage message);
     QDBusUnixFileDescriptor getSurface(QString identifier, QDBusMessage message);
-    std::shared_ptr<Connection> focused();
-    void sortZ();
+    void setFlags(QString identifier, const QStringList& flags, QDBusMessage message);
 
 signals:
     void clipboardChanged(const QByteArray& data);

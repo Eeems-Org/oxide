@@ -33,7 +33,9 @@
       <arg type="h" direction="out"/>
       <arg name="identifier" type="s" direction="in"/>
     </method>
-    <method name="sortZ">
+    <method name="setFlags">
+      <arg name="identifier" type="s" direction="in"/>
+      <arg name="flags" type="as" direction="in"/>
     </method>
   </interface>
 </node>

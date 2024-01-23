@@ -139,7 +139,15 @@ void Surface::setZ(int z){
     }
 }
 
-bool Surface::has(QString flag){ return flags.contains(flag); }
+bool Surface::has(const QString& flag){ return flags.contains(flag); }
+
+void Surface::set(const QString& flag){
+    if(!has(flag)){
+        flags.append(flag);
+    }
+}
+
+void Surface::unset(const QString& flag){ flags.removeAll(flag); }
 
 void Surface::activeFocusChanged(bool focus){
     if(focus){

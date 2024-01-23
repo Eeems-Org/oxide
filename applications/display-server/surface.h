@@ -31,7 +31,9 @@ public:
     void setVisible(bool visible);
     int z();
     void setZ(int z);
-    bool has(QString flag);
+    bool has(const QString& flag);
+    void set(const QString& flag);
+    void unset(const QString& flag);
 
 signals:
     void update(const QRect& geometry);
