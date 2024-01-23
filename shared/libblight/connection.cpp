@@ -462,10 +462,7 @@ namespace Blight{
 
     static std::atomic<bool> running = false;
 
-#define ACK_DEBUG
-
     void Connection::run(Connection* connection){
-        BLIGHT_DEBUG_LOGGING = 7;
         prctl(PR_SET_NAME, "BlightWorker\0", 0, 0, 0);
         if(running){
             _WARN("Already running");
@@ -572,7 +569,15 @@ namespace Blight{
 #ifdef ACK_DEBUG
                     _DEBUG("pong %d", message->header.ackid);
 #endif
-                    connection->send(MessageType::Ack, nullptr, 0, message->header.ackid);
+                    auto maybe = connection->send(
+                        MessageType::Ack,
+                        nullptr,
+                        0,
+                        message->header.ackid
+                    );
+                    if(!maybe.has_value()){
+                        _WARN("Failed to ack ping: %s", std::strerror(errno));
+                    }
                     break;
                 }
                 case MessageType::Ack:{
