@@ -213,6 +213,23 @@ namespace Blight{
         return ack;
     }
 
+    std::optional<std::chrono::duration<double>> Connection::ping(int timeout){
+        const auto start = std::chrono::steady_clock::now();
+        auto ack = send(MessageType::Ping, nullptr, 0);
+        if(!ack.has_value()){
+            _WARN("Failed to ping: %s", std::strerror(errno));
+            return {};
+        }
+        if(!ack.value()->wait(timeout)){
+            _WARN("Ping timed out");
+            return {};
+        }
+        const auto end = std::chrono::steady_clock::now();
+        auto duration = end - start;
+        _DEBUG("ping in %lld", duration.count());
+        return duration;
+    }
+
     void Connection::waitForMarker(unsigned int marker){
         ackMutex.lock();
         if(!markers->contains(marker)){
@@ -536,6 +553,13 @@ namespace Blight{
                 break;
             }
             switch(message->header.type){
+                case MessageType::Ping:{
+#ifdef ACK_DEBUG
+                    _DEBUG("pong %d", message->header.ackid);
+#endif
+                    connection->send(MessageType::Ack, nullptr, 0);
+                    break;
+                }
                 case MessageType::Ack:{
 #ifdef ACK_DEBUG
                     auto ackid = message->header.ackid;

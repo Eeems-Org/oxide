@@ -50,6 +50,13 @@ Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
     m_clientInputFd = fds[0];
     m_serverInputFd = fds[1];
 
+    m_timer.setTimerType(Qt::PreciseTimer);
+    m_timer.setInterval(500);
+    m_timer.setSingleShot(true);
+    connect(&m_timer, &QTimer::timeout, this, &Connection::timeout);
+    m_timer.start();
+
+
     O_DEBUG("Connection" << id() << "created");
 }
 
@@ -453,8 +460,22 @@ void Connection::readSocket(){
 #endif
                 break;
             }
+            case Blight::MessageType::Ping:{
+                O_DEBUG("Pong" << message->header.ackid);
+                break;
+            }
             case Blight::MessageType::Ack:
-                O_WARNING("Unexpected ack from client");
+                switch(message->header.type){
+                    case Blight::MessageType::Ping:{
+                        O_DEBUG("Ping recieved");
+                        m_timer.stop();
+                        m_timer.start();
+                        break;
+                    }
+                    default:
+                        O_WARNING("Unexpected ack from client");
+                }
+
                 break;
             default:
                 O_WARNING("Unexpected message type" << message->header.type);
@@ -475,6 +496,11 @@ void Connection::readSocket(){
     m_notifier->setEnabled(true);
 }
 
+void Connection::timeout(){
+    O_WARNING("Connection failed to respond to ping in time:" << id());
+    m_timer.start();
+}
+
 void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data){
     auto ack = Blight::message_t::create_ack(message.get(), size);
     auto res = ::send(
@@ -482,7 +508,7 @@ void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::d
         reinterpret_cast<char*>(ack),
         sizeof(Blight::header_t),
         MSG_EOR
-        );
+    );
     if(res < 0){
         O_WARNING("Failed to write to socket:" << strerror(errno));
     }else if(res != sizeof(Blight::header_t)){
@@ -498,6 +524,29 @@ void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::d
         }
     }else{
         O_DEBUG("Acked" << message->header.ackid);
+    }
+}
+
+static std::atomic_uint pingId = 0;
+
+void Connection::ping(){
+    Blight::header_t ping{
+        .type = Blight::MessageType::Ping,
+        .ackid = ++pingId,
+        .size = 0
+    };
+    auto res = ::send(
+        m_serverFd,
+        reinterpret_cast<char*>(&ping),
+        sizeof(Blight::header_t),
+        MSG_EOR
+    );
+    if(res < 0){
+        O_WARNING("Failed to write to socket:" << strerror(errno));
+    }else if(res != sizeof(Blight::header_t)){
+        O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
+    }else{
+        O_DEBUG("Ping" << ping.ackid);
     }
 }
 #include "moc_connection.cpp"

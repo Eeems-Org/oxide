@@ -43,6 +43,7 @@ namespace Blight {
         message_ptr_t read();
         std::optional<event_packet_t> read_event();
         maybe_ackid_ptr_t send(MessageType type, data_t data, size_t size);
+        std::optional<std::chrono::duration<double>> ping(int timeout = 0);
         void waitForMarker(unsigned int marker);
         maybe_ackid_ptr_t repaint(
             std::string identifier,

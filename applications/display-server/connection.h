@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QSocketNotifier>
 #include <QLocalSocket>
+#include <QTimer>
 #include <libblight/connection.h>
 #include <linux/input.h>
 
@@ -46,6 +47,7 @@ signals:
 
 private slots:
     void readSocket();
+    void timeout();
 
 private:
     pid_t m_pid;
@@ -60,5 +62,7 @@ private:
     QLocalSocket m_pidNotifier;
     QList<std::shared_ptr<Surface>> surfaces;
     std::atomic_flag m_closed;
+    QTimer m_timer;
     void ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
+    void ping();
 };

@@ -103,6 +103,7 @@ namespace Blight{
     enum MessageType{
         Invalid,
         Ack,
+        Ping,
         Repaint,
         Move,
         Info,

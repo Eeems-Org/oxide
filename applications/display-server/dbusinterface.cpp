@@ -54,21 +54,6 @@ DbusInterface::DbusInterface(QObject* parent)
         &DbusInterface::serviceOwnerChanged
     );
     O_DEBUG("Connected service to bus");
-    // connect(&connectionTimer, &QTimer::timeout, this, [this]{
-    //     QMutableListIterator<std::shared_ptr<Connection>> i(connections);
-    //     while(i.hasNext()){
-    //         auto connection = i.next();
-    //         if(connection->isRunning()){
-    //             continue;
-    //         }
-    //         i.remove();
-    //         if(m_focused == connection){
-    //             m_focused = nullptr;
-    //         }
-    //     }
-    // });
-    connectionTimer.setInterval(100);
-    connectionTimer.start();
     connect(
         evdevHandler,
         &EvDevHandler::inputEvents,
