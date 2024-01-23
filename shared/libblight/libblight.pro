@@ -18,6 +18,7 @@ SOURCES += \
 HEADERS += \
     connection.h \
     dbus.h \
+    debug.h \
     libblight_global.h \
     libblight.h \
     meta.h \

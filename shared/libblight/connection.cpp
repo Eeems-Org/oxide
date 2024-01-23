@@ -1,5 +1,6 @@
 #include "connection.h"
 #include "libblight.h"
+#include "debug.h"
 
 #include <unistd.h>
 #include <atomic>
@@ -12,9 +13,11 @@
 
 using namespace std::chrono_literals;
 
-static std::atomic<unsigned int> ackid;
-
 namespace Blight{
+    static std::atomic<unsigned int> ackid;
+    static std::mutex ackMutex;
+    static auto acks = new std::map<unsigned int, ackid_ptr_t>();
+
     ackid_t::ackid_t(
         Connection* connection,
         unsigned int ackid,
@@ -26,41 +29,74 @@ namespace Blight{
       done(false),
       data_size(data_size),
       data(data)
-    {}
+    {
+#ifdef ACK_DEBUG
+        _DEBUG("Ack registered: %d", ackid);
+#endif
+    }
 
-    ackid_t::~ackid_t(){}
+    ackid_t::~ackid_t(){
+        notify_all();
+#ifdef ACK_DEBUG
+        _DEBUG("Ack deleted: %d", ackid);
+#endif
+    }
 
     bool ackid_t::wait(int timeout){
         if(!ackid){
             return true;
         }
-        std::unique_lock lock(connection->mutex);
-        if(done){
+        ackMutex.lock();
+        if(!acks->contains(ackid)){
+            ackMutex.unlock();
+#ifdef ACK_DEBUG
+            _WARN("Ack missing due to timing issues: %d", ackid);
+#endif
+            return true;
+        }
+#ifdef ACK_DEBUG
+        _DEBUG("Waiting for ack: %d", ackid);
+#endif
+        std::unique_lock lock(mutex);
+        ackMutex.unlock();
+        if(timeout <= 0){
+            condition.wait(lock, [this]{ return done; });
+#ifdef ACK_DEBUG
+            _DEBUG("Ack returned: %d", ackid);
+#endif
             lock.unlock();
             return true;
         }
-        if(timeout <= 0){
-            condition.wait(lock);
-            return true;
-        }
-        return condition.wait_for(lock, timeout * 1ms) == std::cv_status::timeout;
+        bool res = condition.wait_for(
+           lock,
+           timeout * 1ms,
+           [this]{ return done; }
+        );
+#ifdef ACK_DEBUG
+        _DEBUG("Ack returned: %d", ackid);
+#endif
+        lock.unlock();
+        return res;
     }
 
-    void ackid_t::notify_all(){ condition.notify_all(); }
+    void ackid_t::notify_all(){
+#ifdef ACK_DEBUG
+        _DEBUG("Ack notified: %d", ackid);
+#endif
+        std::lock_guard lock(mutex);
+        condition.notify_all();
+    }
 
     Connection::Connection(int fd)
     : m_fd(fcntl(fd, F_DUPFD_CLOEXEC, 3)),
-      thread(run, std::ref(*this)),
-      stop_requested(false)
+      stop_requested(false),
+      thread(run, this)
     {
         int flags = fcntl(fd, F_GETFD, NULL);
         fcntl(fd, F_SETFD, flags | O_NONBLOCK);
         m_inputFd = Blight::open_input();
         if(m_inputFd < 0){
-            std::cerr
-                << "Failed to open input stream:"
-                << std::strerror(errno)
-                << std::endl;
+            _CRIT("Failed to open input stream: %s", std::strerror(errno));
         }
     }
 
@@ -77,34 +113,26 @@ namespace Blight{
     int Connection::input_handle(){ return m_inputFd; }
 
     void Connection::onDisconnect(std::function<void(int)> callback){
-        mutex.lock();
+        ackMutex.lock();
         disconnectCallbacks.push_back(callback);
-        mutex.unlock();
+        ackMutex.unlock();
     }
 
     std::optional<event_packet_t> Connection::read_event(){
         if(m_inputFd < 0){
-            std::cerr
-                << "Failed to read event: Input stream not open"
-                << std::endl;
+            _WARN("Failed to read event: %s", "Input stream not open");
             return {};
         }
         event_packet_t data;
         auto res = ::recv(m_inputFd, &data, sizeof(data), 0);
         if(res < 0){
             if(errno != EAGAIN && errno != EINTR){
-                std::cerr
-                    << "Failed to read event: "
-                    << std::strerror(errno)
-                    << std::endl;
+                _WARN("Failed to read event: %s", std::strerror(errno));
             }
             return {};
         }
         if(res != sizeof(data)){
-            std::cerr
-                << "Failed to read event: Size mismatch!"
-                << std::to_string(res)
-                << std::endl;
+            _WARN("Failed to read event: Size mismatch! %d", res);
             return {};
         }
         return data;
@@ -113,13 +141,12 @@ namespace Blight{
     message_ptr_t Connection::read(){ return message_t::from_socket(m_fd); }
 
     maybe_ackid_ptr_t Connection::send(MessageType type, data_t data, size_t size){
-        if(!thread.joinable()){
-            std::cerr
-                << "Failed to write connection message: BlightWorker not running"
-                << std::endl;
-            return {};
-        }
+        // Adding acks to queue to make sure it's there by the time a response
+        // comes back from the server
+        ackMutex.lock();
         auto _ackid = ++ackid;
+        auto ack = (*acks)[_ackid] = ackid_ptr_t(new ackid_t(this, _ackid));
+        ackMutex.unlock();
         header_t header{
             .type = type,
             .ackid = _ackid,
@@ -143,17 +170,13 @@ namespace Blight{
             break;
         }
         if(res < 0){
-            std::cerr
-                << "Failed to write connection message header: "
-                << std::strerror(errno)
-                << std::endl;
+            _WARN("Failed to write connection message header: %s", std::strerror(errno));
             return {};
         }
         if(res != sizeof(header_t)){
-            std::cerr
-                << "Failed to write connection message header: Size mismatch!"
-                << std::endl;
+             _WARN("Failed to write connection message header: %s", "Size mismatch!");
             errno = EMSGSIZE;
+            // No need to erase the ack, something went really wrong
             return {};
         }
         res = -1;
@@ -174,47 +197,35 @@ namespace Blight{
             break;
         }
         if(res < 0){
-            std::cerr
-                << "Failed to write connection message data: "
-                << std::strerror(errno)
-                << std::endl;
+            _WARN("Failed to write connection message data: %s", std::strerror(errno));
             return {};
         }
         if(res != (ssize_t)size){
-            std::cerr
-                << "Failed to write connection message data: Size mismatch!"
-                << std::endl;
+            _WARN("Failed to write connection message data: %s", "Size mismatch!");
             errno = EMSGSIZE;
+            // No need to erase the ack, something went really wrong
             return {};
         }
-
-        // std::cerr
-        //     << "Sent: "
-        //     << std::to_string(_ackid)
-        //     << " "
-        //     << std::to_string(type)
-        //     << std::endl;
-        mutex.lock();
-        auto ack = ackid_ptr_t(new ackid_t(this, _ackid));
-        acks[_ackid] = ack;
-        mutex.unlock();
+#ifdef ACK_DEBUG
+        _DEBUG("Sent: %d %d", _ackid, type);
+#endif
         return ack;
     }
 
     void Connection::waitForMarker(unsigned int marker){
-        ackid_ptr_t ack;
-        {
-            std::scoped_lock lock(mutex);
-            if(!markers.contains(marker)){
-                return;
-            }
-            auto ackid = markers[marker];
-            markers.erase(marker);
-            if(!acks.contains(ackid)){
-                return;
-            }
-            ack = acks[ackid];
+        ackMutex.lock();
+        if(!markers.contains(marker)){
+            ackMutex.unlock();
+            return;
         }
+        auto ackid = markers[marker];
+        markers.erase(marker);
+        if(!acks->contains(ackid)){
+            ackMutex.unlock();
+            return;
+        }
+        auto ack = acks->at(ackid);
+        ackMutex.unlock();
         ack->wait();
     }
 
@@ -331,27 +342,18 @@ namespace Blight{
     std::optional<shared_buf_t> Connection::getBuffer(std::string identifier){
         int fd = getSurface(identifier);
         if(fd == -1){
-            std::cerr
-                << "Failed to get buffer for surface: "
-                << identifier.c_str()
-                << std::endl;
+            _WARN("Failed to get buffer for surface: %s", identifier.c_str());
             return {};
         }
         auto ack = send(MessageType::Info, (data_t)identifier.data(), identifier.size());
         if(!ack.has_value()){
             ::close(fd);
-            std::cerr
-                << "Failed to get info for surface: "
-                << identifier.c_str()
-                << std::endl;
+            _WARN("Failed to get info for surface: %s", identifier.c_str());
             return {};
         }
         ack.value()->wait();
         if(ack.value()->data_size < sizeof(surface_info_t)){
-            std::cerr
-                << "Surface info size mismatch for surface: "
-                << identifier.c_str()
-                << std::endl;
+            _WARN("Surface info size mismatch for surface: %s", identifier.c_str());
             ::close(fd);
             return {};
         }
@@ -371,12 +373,11 @@ namespace Blight{
         buf->data = new unsigned char[buf->size()];
         auto res = mmap(NULL, buf->size(), PROT_READ, MAP_SHARED_VALIDATE, fd, 0);
         if(res == MAP_FAILED){
-            std::cerr
-                << "Failed to map buffer for surface: "
-                << identifier.c_str()
-                << " error: "
-                << std::to_string(errno)
-                << std::endl;
+            _WARN(
+                "Failed to map buffer for surface: %s error: %s",
+                identifier.c_str(),
+                std::strerror(errno)
+            );
             ::close(fd);
             delete buf->data;
             delete buf;
@@ -423,68 +424,89 @@ namespace Blight{
         }
         ack.value()->wait();
         if(ack.value()->data == nullptr){
-            std::cerr
-                << "[BlightWorker] Missing list data pointer!"
-                << std::endl;
+            _WARN("Missing list data pointer!");
             return std::vector<std::string>();
         }
         return list_t::from_data(ack.value()->data.get()).identifiers();
     }
 
-    void Connection::run(Connection& connection){
-        std::cerr
-            << "[BlightWorker] Starting"
-            << std::endl;
+    static std::atomic<bool> running = false;
+
+    void Connection::run(Connection* connection){
         prctl(PR_SET_NAME, "BlightWorker\0", 0, 0, 0);
+        if(running){
+            _WARN("Already running");
+            return;
+        }
+        running = true;
+        _INFO("Starting");
         std::vector<std::shared_ptr<message_t>> pending;
         int error = 0;
-        while(!connection.stop_requested){
+        while(!connection->stop_requested){
             // Handle any pending items that are now being waited on
-            connection.mutex.lock();
-            auto iter = pending.begin();
-            while(iter != pending.end()){
-                auto message = *iter;
-                auto ackid = message->header.ackid;
-                if(!connection.acks.contains(ackid)){
-                    ++iter;
-                    continue;
+            ackMutex.lock();
+#ifdef ACK_DEBUG
+
+            {
+                std::string msg;
+                for(auto i = acks->begin(); i != acks->end(); ++i){
+                    msg += std::to_string(i->first) + ",";
                 }
-                iter = pending.erase(iter);
-                auto ack = connection.acks[ackid];
-                if(message->header.size){
-                    ack->data = message->data;
-                    ack->data_size = message->header.size;
+                _DEBUG("Waiting acks: [%s]", msg.c_str());
+            }
+            {
+                std::string msg;
+                for(auto i = pending.begin(); i != pending.end(); ++i){
+                    msg += std::to_string((*i)->header.ackid) + ",";
                 }
-                ack->done = true;
-                ack->notify_all();
-                connection.acks.erase(ackid);
-                std::map<unsigned int, unsigned int>::iterator iter2 = connection.markers.begin();
-                while(iter2 != connection.markers.end()){
-                    if(iter2->second == ackid){
-                        iter2 = connection.markers.erase(iter2);
+                _DEBUG("Completed acks: [%s]", msg.c_str());
+            }
+#endif
+            if(!pending.empty()){
+                auto iter = pending.begin();
+                while(iter != pending.end()){
+                    auto message = *iter;
+                    auto ackid = message->header.ackid;
+                    if(!acks->contains(ackid)){
+                        ++iter;
+#ifdef ACK_DEBUG
+                        _WARN("Ack still pending: %d", ackid);
+#endif
                         continue;
                     }
-                    ++iter2;
+                    ackid_ptr_t ack = acks->at(ackid);;
+                    if(message->header.size){
+                        ack->data = message->data;
+                        ack->data_size = message->header.size;
+                    }
+                    ack->done = true;
+                    iter = pending.erase(iter);
+                    acks->erase(ackid);
+                    ack->notify_all();
+                    auto iter2 = connection->markers.begin();
+                    while(iter2 != connection->markers.end()){
+                        if(iter2->second == ackid){
+                            iter2 = connection->markers.erase(iter2);
+                            continue;
+                        }
+                        ++iter2;
+                    }
+#ifdef ACK_DEBUG
+                    _DEBUG("Ack handled: %d", ackid);
+#endif
                 }
-                // std::cerr
-                //     << "[BlightWorker] Ack handled: "
-                //     << std::to_string(ackid)
-                //     << std::endl;
             }
-            connection.mutex.unlock();
+            ackMutex.unlock();
             // Wait for data on the socket, or for a 500ms timeout
             pollfd pfd;
-            pfd.fd = connection.m_fd;
+            pfd.fd = connection->m_fd;
             pfd.events = POLLIN;
             auto res = poll(&pfd, 1, 500);
             if(res < 0){
                 if(errno == EAGAIN || errno == EINTR){
                     continue;
                 }
-                std::cerr
-                    << "[BlightWorker] Failed to poll connection socket:"
-                    << std::strerror(errno)
-                    << std::endl;
+                _WARN("Failed to poll connection socket: %s", std::strerror(errno));
                 error = errno;
                 break;
             }
@@ -492,6 +514,7 @@ namespace Blight{
                 continue;
             }
             if(pfd.revents & POLLHUP){
+                _WARN("Failed to read message: %s", "Socket disconnected!");
                 std::cerr
                     << "[BlightWorker] Failed to read message: Socket disconnected!"
                     << std::endl;
@@ -499,53 +522,42 @@ namespace Blight{
                 break;
             }
             if(!(pfd.revents & POLLIN)){
-                std::cerr
-                    << "[BlightWorker] Unexpected revents:"
-                    << std::to_string(pfd.revents)
-                    << std::endl;
+                _WARN("Unexpected revents: %d", pfd.revents);
                 continue;
             }
-            auto message = connection.read();
+            auto message = connection->read();
             if(message->header.type == MessageType::Invalid){
                 if(errno == EAGAIN){
                     continue;
                 }
-                std::cerr
-                    << "[BlightWorker] Failed to read message: "
-                    << std::strerror(errno)
-                    << std::endl;
+                _WARN("Failed to read message: %s", std::strerror(errno));
                 error = errno;
                 break;
             }
             switch(message->header.type){
                 case MessageType::Ack:{
-                    // auto ackid = message->header.ackid;
-                    // std::cerr
-                    //     << "[BlightWorker] Ack received: "
-                    //     << std::to_string(ackid)
-                    //     << std::endl;
+#ifdef ACK_DEBUG
+                    auto ackid = message->header.ackid;
+                    _DEBUG("Ack recieved: %d", ackid);
+#endif
                     pending.push_back(message);
                     break;
                 }
                 default:
-                    std::cerr
-                        << "[BlightWorker] Unexpected message type: "
-                        << std::to_string(message->header.type)
-                        << std::endl;
+                    _WARN("Unexpected message type: %d", message->header.type);
             }
         }
-        std::cerr
-            << "[BlightWorker] Quitting"
-            << std::endl;
-        connection.mutex.lock();
+        _INFO("Quitting");
+        ackMutex.lock();
         // Release any pending acks
-        for(auto& condition : connection.acks){
+        for(auto& condition : *acks){
             condition.second->notify_all();
         }
-        connection.acks.clear();
-        for(auto& callback : connection.disconnectCallbacks){
+        acks->clear();
+        for(auto& callback : connection->disconnectCallbacks){
             callback(error);
         }
-        connection.mutex.unlock();
+        ackMutex.unlock();
+        running = false;
     }
 }

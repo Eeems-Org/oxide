@@ -20,6 +20,7 @@
 #include <systemd/sd-journal.h>
 #include <libblight.h>
 #include <libblight/connection.h>
+#include <libblight/debug.h>
 #include <filesystem>
 
 class ClockWatch {
@@ -36,7 +37,6 @@ public:
 };
 
 static bool IS_INITIALIZED = false;
-static int DEBUG_LOGGING = 4;
 static bool FAILED_INIT = true;
 static bool DO_HANDLE_FB = true;
 static bool FAKE_RM1 = false;
@@ -56,55 +56,6 @@ static int(*func_ioctl)(int, unsigned long, ...);
 static int(*func_close)(int);
 static int(*func_msgget)(key_t, int);
 static int msgq = -1;
-
-static std::mutex __log_mutex;
-void __printf_header(int priority){
-    std::string level;
-    switch(priority){
-        case LOG_INFO:
-            level = "Info";
-            break;
-        case LOG_WARNING:
-            level = "Warning";
-            break;
-        case LOG_CRIT:
-            level = "Critical";
-            break;
-        default:
-            level = "Debug";
-    }
-    std::string path(realpath("/proc/self/exe", NULL));
-    fprintf(
-        stderr,
-        "[%i:%i:%i %s] %s: ",
-        getpgrp(),
-        getpid(),
-        gettid(),
-        path.c_str(),
-        level.c_str()
-    );
-}
-void __printf_footer(char const* file, unsigned int line, char const* func){
-    fprintf(
-        stderr,
-        " (%s:%u, %s)\n",
-        file,
-        line,
-        func
-    );
-}
-#define _PRINTF(priority, fmt, ...) \
-    if(priority <= DEBUG_LOGGING){ \
-        __log_mutex.lock(); \
-        __printf_header(priority); \
-        fprintf(stderr, fmt, __VA_ARGS__); \
-        __printf_footer("shared/libblight_client/main.cpp", __LINE__, __PRETTY_FUNCTION__); \
-        __log_mutex.unlock(); \
-    }
-#define _DEBUG(...) _PRINTF(LOG_DEBUG, __VA_ARGS__)
-#define _WARN(...) _PRINTF(LOG_WARNING, __VA_ARGS__)
-#define _INFO(...) _PRINTF(LOG_INFO, __VA_ARGS__)
-#define _CRIT(...) _PRINTF(LOG_CRIT, __VA_ARGS__)
 
 void writeInputEvent(int fd, input_event* ie){
     int res = -1;
@@ -841,7 +792,7 @@ extern "C" {
         auto debugLevel = getenv("OXIDE_PRELOAD_DEBUG");
         if(debugLevel != nullptr){
             try{
-                DEBUG_LOGGING = std::stoi(debugLevel);
+                BLIGHT_DEBUG_LOGGING = std::stoi(debugLevel);
             }
             catch(std::invalid_argument&){}
             catch(std::out_of_range&){}
@@ -859,7 +810,7 @@ extern "C" {
             )
         ){
             // We ignore this executable
-            DEBUG_LOGGING = 0;
+            BLIGHT_DEBUG_LOGGING = 0;
             FAILED_INIT = false;
             return;
         }

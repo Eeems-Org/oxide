@@ -16,9 +16,10 @@ namespace Blight {
     typedef struct ackid_t{
         unsigned int ackid;
         Connection* connection;
-        std::atomic<bool> done;
+        bool done;
         unsigned int data_size;
         shared_data_t data;
+        std::mutex mutex;
         std::condition_variable condition;
         ackid_t(
             Connection* connection,
@@ -81,16 +82,13 @@ namespace Blight {
         std::vector<std::string> surfaces();
         void focused();
 
-        std::mutex mutex;
-        std::map<unsigned int, ackid_ptr_t> acks;
-
     private:
         std::map<unsigned int, unsigned int> markers;
         int m_fd;
         int m_inputFd;
-        std::thread thread;
         std::atomic<bool> stop_requested;
         std::vector<std::function<void(int)>> disconnectCallbacks;
-        static void run(Connection& connection);
+        std::thread thread;
+        static void run(Connection* connection);
     };
 }
