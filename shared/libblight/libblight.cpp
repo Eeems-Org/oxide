@@ -11,6 +11,48 @@
 namespace Blight{
     static DBus* dbus = nullptr;
 
+    std::optional<clipboard_t> getClipboard(std::string name){
+        if(!exists()){
+            errno = EAGAIN;
+            return {};
+        }
+        auto reply = dbus->get_property(
+            BLIGHT_SERVICE,
+            "/",
+            BLIGHT_INTERFACE,
+            name.c_str(),
+            "ay"
+        );
+        if(reply->isError()){
+            std::cerr
+                << "[Blight::"
+                << name.c_str()
+                << "()::get_property(...)] Error: "
+                << reply->error_message()
+                << std::endl;
+            return {};
+        }
+        const void* clipboard = nullptr;
+        size_t size = 0;
+        auto res = sd_bus_message_read_array(reply->message, 'y', &clipboard, &size);
+        if (res < 0) {
+            std::cerr
+                << "[Blight::"
+                << name.c_str()
+                << "()::sd_bus_message_read_array(...)] Error: "
+                << reply->error_message()
+                << std::endl;
+            return {};
+        }
+        auto data = new unsigned char[size];
+        memcpy(data, clipboard, size);
+        return clipboard_t{
+            .data = shared_data_t(data),
+            .size = size,
+            .name = name
+        };
+    }
+
     bool connect(bool use_system){
         if(dbus != nullptr){
             return true;
@@ -263,5 +305,143 @@ namespace Blight{
             return -errno;
         }
         return dfd;
+    }
+
+    std::optional<clipboard_t> clipboard(){ return getClipboard("clipboard"); }
+
+    std::optional<clipboard_t> selection(){ return getClipboard("selection"); }
+
+
+    bool setClipboard(clipboard_t& clipboard){
+        if(clipboard.name != "clipboard" && clipboard.name != "selection"){
+            std::cerr
+                << "[Blight::setClipboard()] Invalid clipboard name: "
+                << clipboard.name.c_str()
+                << std::endl;
+            return false;
+        }
+        char buf[sizeof(clipboard.size) + clipboard.size];
+        memcpy(buf, &clipboard.size, sizeof(clipboard.size));
+        memcpy(&buf[sizeof(clipboard.size)], clipboard.data.get(), sizeof(clipboard.size));
+        sd_bus_message* message;
+        auto res = sd_bus_message_new_method_call(
+            dbus->bus(),
+            &message,
+            BLIGHT_SERVICE,
+            "/",
+            "org.freedesktop.DBus.Properties",
+            "Set"
+        );
+        if(res < 0){
+            std::cerr
+                << "[Blight::setClipboard("
+                << clipboard.name.c_str()
+                << ")::sd_bus_message_new_method_call()] "
+                << std::strerror(-res)
+                << std::endl;
+            if(message != nullptr){
+                sd_bus_message_unref(message);
+            }
+            // Attempt to reset to the current value
+            updateClipboard(clipboard);
+            return false;
+        }
+        res = sd_bus_message_append(
+            message,
+            "ss",
+            BLIGHT_INTERFACE,
+            // sd_bus_message_append seems to destroy the string,
+            // so a copy is needed
+            std::string(clipboard.name).c_str()
+        );
+        if(res < 0){
+            std::cerr
+                << "[Blight::setClipboard("
+                << clipboard.name.c_str()
+                << ")::sd_bus_message_append()] "
+                << std::strerror(-res)
+                << std::endl;
+            sd_bus_message_unref(message);
+            // Attempt to reset to the current value
+            updateClipboard(clipboard);
+            return false;
+        }
+        res = sd_bus_message_open_container(message, 'v', "ay");
+        if(res < 0){
+            std::cerr
+                << "[Blight::setClipboard("
+                << clipboard.name.c_str()
+                << ")::sd_bus_message_open_container()] "
+                << std::strerror(-res)
+                << std::endl;
+            sd_bus_message_unref(message);
+            // Attempt to reset to the current value
+            updateClipboard(clipboard);
+            return false;
+        }
+        res = sd_bus_message_append_array(
+            message,
+            'y',
+            clipboard.data.get(),
+            clipboard.size
+        );
+        if(res < 0){
+            std::cerr
+                << "[Blight::setClipboard("
+                << clipboard.name.c_str()
+                << ")::sd_bus_message_append_array()] "
+                << std::strerror(-res)
+                << std::endl;
+            sd_bus_message_unref(message);
+            // Attempt to reset to the current value
+            updateClipboard(clipboard);
+            return false;
+        }
+        res = sd_bus_message_close_container(message);
+        if(res < 0){
+            std::cerr
+                << "[Blight::setClipboard("
+                << clipboard.name.c_str()
+                << ")::sd_bus_message_close_container()] "
+                << std::strerror(-res)
+                << std::endl;
+            sd_bus_message_unref(message);
+            // Attempt to reset to the current value
+            updateClipboard(clipboard);
+            return false;
+        }
+        sd_bus_error error = SD_BUS_ERROR_NULL;
+        res = sd_bus_call(dbus->bus(), message, 0, &error, NULL);
+        if(res < 0){
+            std::cerr
+                << "[Blight::setClipboard("
+                << clipboard.name.c_str()
+                << ")::sd_bus_call()] "
+                << (error.message != NULL ? error.message : std::strerror(-res))
+                << std::endl;
+            sd_bus_message_unref(message);
+            sd_bus_error_free(&error);
+            // Attempt to reset to the current value
+            updateClipboard(clipboard);
+            return false;
+        }
+        sd_bus_message_unref(message);
+        sd_bus_error_free(&error);
+        return true;
+    }
+
+    bool updateClipboard(clipboard_t& clipboard){
+        if(clipboard.name != "clipboard" && clipboard.name != "selection"){
+            std::cerr
+                << "[Blight::updateClipboard()] Invalid clipboard name: "
+                << clipboard.name.c_str()
+                << std::endl;
+            return false;
+        }
+        // Reload data just in case;
+        auto newClipboard = getClipboard(clipboard.name);
+        clipboard.size = newClipboard->size;
+        clipboard.data = newClipboard->data;
+        return true;
     }
 }

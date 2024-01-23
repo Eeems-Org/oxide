@@ -40,7 +40,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
     engine.rootObjects().first()->installEventFilter(new EventFilter(&app));
-    QTimer::singleShot(0, []{
+    QTimer::singleShot(0, &app, []{
 #ifdef EPAPER
         Blight::connect(true);
 #else
@@ -50,6 +50,23 @@ int main(int argc, char *argv[]){
             O_WARNING("Service not found!");
             qApp->exit(EXIT_FAILURE);
             return;
+        }
+        {
+            auto maybe = Blight::clipboard();
+            if(!maybe.has_value()){
+                O_WARNING("Could not read clipboard!");
+                qApp->exit(EXIT_FAILURE);
+                return;
+            }
+            auto clipboard = maybe.value();
+            O_DEBUG(clipboard.name.c_str() << QString::fromStdString(clipboard.to_string()));
+            O_DEBUG("Updating clipboard");
+            if(!clipboard.set("Test")){
+                O_WARNING("Could not update clipboard!");
+                qApp->exit(EXIT_FAILURE);
+                return;
+            }
+            O_DEBUG(clipboard.name.c_str() << QString::fromStdString(clipboard.to_string()));
         }
         int bfd = Blight::open();
         if(bfd < 0){
@@ -125,6 +142,7 @@ int main(int argc, char *argv[]){
         O_DEBUG("Moving " << buffer->surface.c_str());
         geometry.setTopLeft(QPoint(100, 100));
         connection->move(buffer, geometry.x(), geometry.y());
+        O_DEBUG("Move done" << buffer->surface.c_str());
         sleep(1);
         O_DEBUG("Switching to black");
         image.fill(Qt::black);
@@ -153,8 +171,9 @@ int main(int argc, char *argv[]){
         if(res.has_value()){
             buffer = res.value();
         }
-        O_DEBUG("Done!");
+        O_DEBUG("Resize done" << buffer->surface.c_str());
         sleep(1);
+        O_DEBUG("Validating surface count");
         auto surfaces = connection->surfaces();
         auto buffers = connection->buffers();
         delete connection;
@@ -178,6 +197,7 @@ int main(int argc, char *argv[]){
             qApp->exit(1);
             return;
         }
+        O_DEBUG("Test passes");
         qApp->exit();
     });
     return app.exec();

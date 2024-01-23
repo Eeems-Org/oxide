@@ -67,6 +67,21 @@ namespace Blight{
     LIBBLIGHT_EXPORT typedef std::shared_ptr<unsigned char[]> shared_data_t;
     struct buf_t;
     LIBBLIGHT_EXPORT typedef std::shared_ptr<buf_t> shared_buf_t;
+    LIBBLIGHT_EXPORT typedef struct clipboard_t {
+        shared_data_t data;
+        size_t size;
+        const std::string name;
+        const std::string to_string();
+        bool update();
+        bool set(shared_data_t data, size_t size);
+        inline bool set(const char* data, size_t size){
+            auto buf = new unsigned char[size];
+            memcpy(buf, data, size);
+            return set(shared_data_t(buf), size);
+        }
+        inline bool set(const data_t data, size_t size){ return set((char*)data, size); }
+        inline bool set(const std::string& data){ return set(data.data(), data.size()); }
+    } clipboard_t;
     LIBBLIGHT_EXPORT typedef struct buf_t{
         int fd;
         int x;

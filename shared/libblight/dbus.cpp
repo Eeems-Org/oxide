@@ -46,7 +46,7 @@ namespace Blight {
     {}
 
     DBus::DBus(bool use_system)
-        : m_bus(nullptr)
+    : m_bus(nullptr)
     {
         int res;
         if(use_system){
@@ -91,5 +91,29 @@ namespace Blight {
     bool DBus::has_service(std::string service){
         auto services = this->services();
         return std::find(services.begin(), services.end(), service) != services.end();
+    }
+
+    dbus_reply_t DBus::get_property(
+        std::string service,
+        std::string path,
+        std::string interface,
+        std::string member,
+        std::string property_type
+    ){
+        auto res = dbus_reply_t(new DBusReply());
+        res->return_value = sd_bus_get_property(
+            m_bus,
+            service.c_str(),
+            path.c_str(),
+            interface.c_str(),
+            member.c_str(),
+            &res->error,
+            &res->message,
+            property_type.c_str()
+        );
+        if(res->isError()){
+            errno = -res->return_value;
+        }
+        return res;
     }
 }

@@ -21,6 +21,8 @@ class DbusInterface : public QObject, public QDBusContext {
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", BLIGHT_INTERFACE)
     Q_PROPERTY(int pid READ pid CONSTANT)
+    Q_PROPERTY(QByteArray clipboard READ clipboard WRITE setClipboard NOTIFY clipboardChanged)
+    Q_PROPERTY(QByteArray selection READ selection WRITE setSelection NOTIFY selectionChanged)
 
 public:
     static DbusInterface* singleton(){
@@ -37,6 +39,10 @@ public:
     QList<std::shared_ptr<Surface>> surfaces();
     QList<std::shared_ptr<Surface>> sortedSurfaces();
     QList<std::shared_ptr<Surface>> visibleSurfaces();
+    const QByteArray& clipboard();
+    void setClipboard(const QByteArray& data);
+    const QByteArray& selection();
+    void setSelection(const QByteArray& data);
 
 
 public slots:
@@ -56,6 +62,10 @@ public slots:
     QDBusUnixFileDescriptor getSurface(QString identifier, QDBusMessage message);
     std::shared_ptr<Connection> focused();
 
+signals:
+    void clipboardChanged(const QByteArray& data);
+    void selectionChanged(const QByteArray& data);
+
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);
     void inputEvents(unsigned int device, const std::vector<input_event>& events);
@@ -66,6 +76,10 @@ private:
     QList<std::shared_ptr<Connection>> connections;
     std::shared_ptr<Connection> m_focused;
     QTimer connectionTimer;
+    struct {
+        QByteArray clipboard;
+        QByteArray selection;
+    } clipboards;
 
     std::shared_ptr<Connection> getConnection(QDBusMessage message);
     QObject* workspace();

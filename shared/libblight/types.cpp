@@ -289,3 +289,19 @@ std::vector<std::string> Blight::list_t::identifiers(){
     }
     return identifiers;
 }
+
+const std::string Blight::clipboard_t::to_string(){
+    std::string res;
+    if(data != nullptr && size){
+        res.assign((char*)data.get(), size);
+    }
+    return res;
+}
+
+bool Blight::clipboard_t::update(){ return Blight::updateClipboard(*this); }
+
+bool Blight::clipboard_t::set(shared_data_t data, size_t size){
+    this->data = data;
+    this->size = size;
+    return Blight::setClipboard(*this);
+}

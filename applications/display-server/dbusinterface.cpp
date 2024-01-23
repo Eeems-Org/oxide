@@ -392,6 +392,20 @@ QList<std::shared_ptr<Surface> > DbusInterface::visibleSurfaces(){
     return surfaces;
 }
 
+const QByteArray& DbusInterface::clipboard(){ return clipboards.clipboard; }
+
+void DbusInterface::setClipboard(const QByteArray& data){
+    clipboards.clipboard = data;
+    emit clipboardChanged(clipboard());
+}
+
+const QByteArray& DbusInterface::selection(){ return clipboards.selection; }
+
+void DbusInterface::setSelection(const QByteArray& data){
+    clipboards.selection = data;
+    emit selectionChanged(selection());
+}
+
 void DbusInterface::sortZ(){
     auto sorted = sortedSurfaces();
     int z = 0;

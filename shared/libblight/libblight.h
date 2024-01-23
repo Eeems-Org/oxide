@@ -7,6 +7,10 @@ namespace Blight{
     LIBBLIGHT_EXPORT bool exists();
     LIBBLIGHT_EXPORT int open();
     LIBBLIGHT_EXPORT int open_input();
+    LIBBLIGHT_EXPORT std::optional<clipboard_t> clipboard();
+    LIBBLIGHT_EXPORT std::optional<clipboard_t> selection();
+    LIBBLIGHT_EXPORT bool setClipboard(clipboard_t& clipboard);
+    LIBBLIGHT_EXPORT bool updateClipboard(clipboard_t& clipboard);
     LIBBLIGHT_EXPORT std::optional<shared_buf_t> createBuffer(
         int x,
         int y,

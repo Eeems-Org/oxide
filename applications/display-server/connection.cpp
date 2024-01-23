@@ -1,4 +1,5 @@
 #include "connection.h"
+#include "dbusinterface.h"
 
 #include <liboxide/signalhandler.h>
 #include <liboxide/debug.h>

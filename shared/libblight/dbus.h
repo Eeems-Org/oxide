@@ -72,12 +72,21 @@ namespace Blight {
             }
             return res;
         }
+
         inline dbus_reply_t call_method(
             std::string service,
             std::string path,
             std::string interface,
             std::string member
         ){ return call_method(service, path, interface, member, ""); }
+
+        dbus_reply_t get_property(
+            std::string service,
+            std::string path,
+            std::string interface,
+            std::string member,
+            std::string property_type
+        );
 
     private:
         sd_bus* m_bus;
