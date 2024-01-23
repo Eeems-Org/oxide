@@ -141,12 +141,20 @@ namespace Blight{
 
     message_ptr_t Connection::read(){ return message_t::from_socket(m_fd); }
 
-    maybe_ackid_ptr_t Connection::send(MessageType type, data_t data, size_t size){
+    maybe_ackid_ptr_t Connection::send(
+        MessageType type,
+        data_t data,
+        size_t size,
+        unsigned int __ackid
+    ){
         // Adding acks to queue to make sure it's there by the time a response
         // comes back from the server
         ackMutex.lock();
-        auto _ackid = ++ackid;
-        auto ack = (*acks)[_ackid] = ackid_ptr_t(new ackid_t(this, _ackid));
+        auto _ackid = __ackid ? __ackid : ++ackid;
+        auto ack = ackid_ptr_t(new ackid_t(this, _ackid));
+        if(type != MessageType::Ack){
+            (*acks)[_ackid] = ack;
+        }
         ackMutex.unlock();
         header_t header{
             .type = type,
@@ -210,6 +218,10 @@ namespace Blight{
 #ifdef ACK_DEBUG
         _DEBUG("Sent: %d %d", _ackid, type);
 #endif
+        if(type == MessageType::Ack){
+            // Clear the ackid so that it will not block on wait
+            ack->ackid = 0;
+        }
         return ack;
     }
 
@@ -450,7 +462,10 @@ namespace Blight{
 
     static std::atomic<bool> running = false;
 
+#define ACK_DEBUG
+
     void Connection::run(Connection* connection){
+        BLIGHT_DEBUG_LOGGING = 7;
         prctl(PR_SET_NAME, "BlightWorker\0", 0, 0, 0);
         if(running){
             _WARN("Already running");
@@ -557,7 +572,7 @@ namespace Blight{
 #ifdef ACK_DEBUG
                     _DEBUG("pong %d", message->header.ackid);
 #endif
-                    connection->send(MessageType::Ack, nullptr, 0);
+                    connection->send(MessageType::Ack, nullptr, 0, message->header.ackid);
                     break;
                 }
                 case MessageType::Ack:{

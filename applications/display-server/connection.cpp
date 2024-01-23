@@ -50,12 +50,18 @@ Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
     m_clientInputFd = fds[0];
     m_serverInputFd = fds[1];
 
-    m_timer.setTimerType(Qt::PreciseTimer);
-    m_timer.setInterval(500);
-    m_timer.setSingleShot(true);
-    connect(&m_timer, &QTimer::timeout, this, &Connection::timeout);
-    m_timer.start();
 
+    m_pingTimer.setTimerType(Qt::PreciseTimer);
+    m_pingTimer.setInterval(1000);
+    m_pingTimer.setSingleShot(true);
+    connect(&m_pingTimer, &QTimer::timeout, this, &Connection::ping);
+    m_pingTimer.start();
+
+    m_notRespondingTimer.setTimerType(Qt::PreciseTimer);
+    m_notRespondingTimer.setInterval(m_pingTimer.interval() * 2);
+    m_notRespondingTimer.setSingleShot(true);
+    connect(&m_notRespondingTimer, &QTimer::timeout, this, &Connection::notResponding);
+    m_notRespondingTimer.start();
 
     O_DEBUG("Connection" << id() << "created");
 }
@@ -211,6 +217,8 @@ void Connection::inputEvent(const input_event& event){
         O_WARNING("Failed to write input event: Size mismatch!");
     }
 }
+
+static std::atomic_uint pingId = 0;
 
 void Connection::readSocket(){
     if(m_notifier == nullptr){
@@ -465,17 +473,16 @@ void Connection::readSocket(){
                 break;
             }
             case Blight::MessageType::Ack:
-                switch(message->header.type){
-                    case Blight::MessageType::Ping:{
-                        O_DEBUG("Ping recieved");
-                        m_timer.stop();
-                        m_timer.start();
-                        break;
-                    }
-                    default:
-                        O_WARNING("Unexpected ack from client");
+                do_ack = false;
+                if(message->header.ackid == pingId){
+                    O_DEBUG("Pong recieved" << message->header.ackid);
+                    m_notRespondingTimer.stop();
+                    m_pingTimer.stop();
+                    m_pingTimer.start();
+                    m_notRespondingTimer.start();
+                    break;
                 }
-
+                O_WARNING("Unexpected ack from client" << message->header.ackid);
                 break;
             default:
                 O_WARNING("Unexpected message type" << message->header.type);
@@ -496,9 +503,9 @@ void Connection::readSocket(){
     m_notifier->setEnabled(true);
 }
 
-void Connection::timeout(){
+void Connection::notResponding(){
     O_WARNING("Connection failed to respond to ping in time:" << id());
-    m_timer.start();
+    m_notRespondingTimer.start();
 }
 
 void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data){
@@ -527,8 +534,6 @@ void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::d
     }
 }
 
-static std::atomic_uint pingId = 0;
-
 void Connection::ping(){
     Blight::header_t ping{
         .type = Blight::MessageType::Ping,
@@ -548,5 +553,6 @@ void Connection::ping(){
     }else{
         O_DEBUG("Ping" << ping.ackid);
     }
+    m_pingTimer.start();
 }
 #include "moc_connection.cpp"

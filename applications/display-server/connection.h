@@ -47,7 +47,8 @@ signals:
 
 private slots:
     void readSocket();
-    void timeout();
+    void notResponding();
+    void ping();
 
 private:
     pid_t m_pid;
@@ -62,7 +63,8 @@ private:
     QLocalSocket m_pidNotifier;
     QList<std::shared_ptr<Surface>> surfaces;
     std::atomic_flag m_closed;
-    QTimer m_timer;
+    QTimer m_notRespondingTimer;
+    QTimer m_pingTimer;
+    unsigned int pingId;
     void ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
-    void ping();
 };
