@@ -3,6 +3,7 @@
 #include <qpa/qplatformbackingstore.h>
 #include <qpa/qplatformwindow.h>
 #include <QtGui/QImage>
+#include <libblight/types.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -19,10 +20,12 @@ public:
     QImage toImage() const override;
     const QImage& getImageRef() const;
     QPlatformGraphicsBuffer* graphicsBuffer() const override;
+    Blight::shared_buf_t buffer();
 
 private:
     QImage image;
     const bool mDebug;
+    Blight::shared_buf_t mBuffer;
 };
 
 QT_END_NAMESPACE

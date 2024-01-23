@@ -262,7 +262,7 @@ void Connection::readSocket(){
                            .arg(move.header.y)
                            .toStdString()
                            .c_str()
-                    );
+                );
                 auto surface = getSurface(move.identifier.c_str());
                 if(surface == nullptr){
                     O_WARNING("Could not find surface " << move.identifier.c_str());
@@ -303,6 +303,10 @@ void Connection::readSocket(){
                     reinterpret_cast<char*>(message->data.get()),
                     message->header.size
                 );
+                O_DEBUG(
+                    "Info requested: "
+                    << identifier.c_str()
+                );
                 auto surface = getSurface(identifier.c_str());
                 if(surface == nullptr){
                     O_WARNING("Could not find surface " << identifier.c_str());
@@ -325,6 +329,10 @@ void Connection::readSocket(){
                 identifier.assign(
                     reinterpret_cast<char*>(message->data.get()),
                     message->header.size
+                );
+                O_DEBUG(
+                    "Delete requested: "
+                    << identifier.c_str()
                 );
                 auto surface = getSurface(identifier.c_str());
                 if(surface == nullptr){
@@ -360,6 +368,71 @@ void Connection::readSocket(){
                     O_WARNING("Size mismatch on list data");
                 }
                 ack_free = [&ack_data]{ free(ack_data); };
+                break;
+            }
+            case Blight::MessageType::Raise:{
+                std::string identifier;
+                identifier.assign(
+                    reinterpret_cast<char*>(message->data.get()),
+                    message->header.size
+                );
+                O_DEBUG(
+                    "Raise requested: "
+                    << identifier.c_str()
+                );
+                auto surface = getSurface(identifier.c_str());
+                if(surface == nullptr){
+                    O_WARNING("Could not find surface " << identifier.c_str());
+                    break;
+                }
+                surface->setVisible(true);
+                dbusInterface->sortZ();
+#ifdef EPAPER
+                guiThread->enqueue(
+                    surface,
+                    // Surface repaints are local to their coordinates, thus (0,0)
+                    QRect(QPoint(0, 0), surface->size()),
+                    EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+                    message->header.ackid,
+                    false,
+                    [message, this]{
+                        ack(message, 0, nullptr);
+                    }
+                );
+                do_ack = false;
+#endif
+                break;
+            }
+            case Blight::MessageType::Lower:{
+                std::string identifier;
+                identifier.assign(
+                    reinterpret_cast<char*>(message->data.get()),
+                    message->header.size
+                );
+                O_DEBUG(
+                    "Lower requested: "
+                    << identifier.c_str()
+                );
+                auto surface = getSurface(identifier.c_str());
+                if(surface == nullptr){
+                    O_WARNING("Could not find surface " << identifier.c_str());
+                    break;
+                }
+                surface->setVisible(false);
+                dbusInterface->sortZ();
+#ifdef EPAPER
+                guiThread->enqueue(
+                    nullptr,
+                    surface->geometry(),
+                    EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+                    message->header.ackid,
+                    true,
+                    [message, this]{
+                        ack(message, 0, nullptr);
+                    }
+                );
+                do_ack = false;
+#endif
                 break;
             }
             case Blight::MessageType::Ack:

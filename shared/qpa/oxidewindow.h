@@ -4,7 +4,7 @@
 
 #include <QScreen>
 #include <qpa/qplatformwindow.h>
-#include <libblight/types.h>>
+#include <libblight/types.h>
 
 class OxideScreen;
 
@@ -18,12 +18,9 @@ public:
     OxideScreen* platformScreen() const;
     void setVisible(bool visible) override;
     virtual void repaint(const QRegion& region);
-    bool close() override;
     void raise() override;
     void lower() override;
-    bool isTopWindow();
 
 protected:
     OxideBackingStore* mBackingStore;
-    QRect mOldGeometry;
 };

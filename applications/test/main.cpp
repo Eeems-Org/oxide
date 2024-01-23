@@ -173,6 +173,30 @@ int main(int argc, char *argv[]){
         }
         O_DEBUG("Resize done" << buffer->surface.c_str());
         sleep(1);
+        O_DEBUG("Lowering" << buffer->surface.c_str());
+        {
+            auto maybe = connection->lower(buffer);
+            if(!maybe.has_value()){
+                O_WARNING("Could not lower surface!");
+                qApp->exit(1);
+                return;
+            }
+            maybe.value()->wait();
+        }
+        O_DEBUG("Lowering done" << buffer->surface.c_str());
+        sleep(1);
+        O_DEBUG("Raising" << buffer->surface.c_str());
+        {
+            auto maybe = connection->raise(buffer);
+            if(!maybe.has_value()){
+                O_WARNING("Could not raise surface!");
+                qApp->exit(1);
+                return;
+            }
+            maybe.value()->wait();
+        }
+        O_DEBUG("Raising done" << buffer->surface.c_str());
+        sleep(1);
         O_DEBUG("Validating surface count");
         auto surfaces = connection->surfaces();
         auto buffers = connection->buffers();

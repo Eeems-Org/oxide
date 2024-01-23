@@ -107,7 +107,9 @@ namespace Blight{
         Move,
         Info,
         Delete,
-        List
+        List,
+        Raise,
+        Lower
     };
     LIBBLIGHT_EXPORT typedef struct header_t{
         MessageType type;

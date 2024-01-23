@@ -62,6 +62,7 @@ namespace Blight {
             unsigned int marker = 0
         ){ return repaint(buf->surface, x, y, width, height, waveform, marker); }
         void move(shared_buf_t buf, int x, int y);
+        maybe_ackid_ptr_t move(std::string identifier, int x, int y);
         std::optional<shared_buf_t> resize(
             shared_buf_t buf,
             int width,
@@ -69,10 +70,14 @@ namespace Blight {
             int stride,
             data_t new_data
         );
-        maybe_ackid_ptr_t move(std::string identifier, int x, int y);
+        maybe_ackid_ptr_t raise(std::string identifier);
+        maybe_ackid_ptr_t raise(shared_buf_t buf);
+        maybe_ackid_ptr_t lower(std::string identifier);
+        maybe_ackid_ptr_t lower(shared_buf_t buf);
         std::optional<shared_buf_t> getBuffer(std::string identifier);
         std::vector<shared_buf_t> buffers();
         maybe_ackid_ptr_t remove(shared_buf_t buf);
+        maybe_ackid_ptr_t remove(std::string identifier);
         std::vector<std::string> surfaces();
         void focused();
 

@@ -1,8 +1,5 @@
 #pragma once
 #include "oxidescreen.h"
-#include "oxidewindow.h"
-#include "oxideeventfilter.h"
-#include "oxideeventhandler.h"
 
 #include <qpa/qplatformintegration.h>
 #include <qpa/qplatformnativeinterface.h>
@@ -11,10 +8,18 @@
 #include <qpa/qplatformclipboard.h>
 #include <QCoreApplication>
 #include <QDebug>
+#include <QPointer>
+#include <libblight/connection.h>
 
 QT_BEGIN_NAMESPACE
 
-class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration, public QPlatformNativeInterface, public QPlatformServices, public QPlatformClipboard
+class Q_DECL_EXPORT OxideIntegration
+: public QPlatformIntegration,
+  public QPlatformNativeInterface,
+  public QPlatformServices
+#ifndef QT_NO_CLIPBOARD
+  , public QPlatformClipboard
+#endif
 {
 public:
     enum Options: unsigned short{ // Options to be passed on command line or determined from environment
@@ -49,19 +54,23 @@ public:
     bool openUrl(const QUrl& url) override;
     bool openDocument(const QUrl& url) override;
     QByteArray desktopEnvironment() const override;
+#ifndef QT_NO_CLIPBOARD
     QMimeData* mimeData(QClipboard::Mode mode = QClipboard::Clipboard) override;
     void setMimeData(QMimeData* data, QClipboard::Mode mode = QClipboard::Clipboard) override;
     bool supportsMode(QClipboard::Mode mode) const override;
     bool ownsMode(QClipboard::Mode mode) const override;
-
+#endif
     static OxideIntegration* instance();
+    std::shared_ptr<Blight::Connection> connection;
 
 private:
     mutable QPlatformFontDatabase* m_fontDatabase = nullptr;
     QPlatformInputContext* m_inputContext = nullptr;
     QPointer<OxideScreen> m_primaryScreen;
+#ifndef QT_NO_CLIPBOARD
     QPointer<QMimeData> m_clipboard;
     QPointer<QMimeData> m_selection;
+#endif
     unsigned short m_options;
     bool m_debug;
     QMutex m_mutex;

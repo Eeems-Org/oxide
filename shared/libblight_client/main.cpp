@@ -799,6 +799,28 @@ extern "C" {
     }
     __asm__(".symver _pwritev64, pwritev64@GLIBC_2.4");
 
+    __attribute__((visibility("default")))
+    int setenv(const char* name, const char* value, int overwrite){
+        static const auto orig_setenv = (bool(*)(const char*, const char*, int))dlsym(RTLD_NEXT, "setenv");
+        if(IS_INITIALIZED){
+            if(
+                strcmp(name, "QMLSCENE_DEVICE") == 0
+                || strcmp(name, "QT_QUICK_BACKEND") == 0
+                || strcmp(name, "QT_QPA_PLATFORM") == 0
+                || strcmp(name, "QT_PLUGIN_PATH") == 0
+                || strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0
+                // || strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0
+                // || strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0
+                // || strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0
+                ){
+                _DEBUG("IGNORED setenv %s=%s", name, value);
+                return 0;
+            }
+        }
+        _DEBUG("setenv %s=%s", name, value);
+        return orig_setenv(name, value, overwrite);
+    }
+
     void __attribute__ ((constructor)) init(void);
     void init(void){
         func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");
@@ -871,11 +893,11 @@ extern "C" {
         });
         _DEBUG("Connected %d to blight on %d", pid, fd);
         setenv("RM2FB_ACTIVE", "1", true);
-        FAILED_INIT = false;
-        IS_INITIALIZED = true;
         setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
         setenv("RM2FB_DISABLE", "1", true);
         setenv("RM2FB_SHIM", "1", true);
+        FAILED_INIT = false;
+        IS_INITIALIZED = true;
     }
 
     __attribute__((visibility("default")))

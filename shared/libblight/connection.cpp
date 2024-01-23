@@ -288,6 +288,34 @@ namespace Blight{
         return buf2;
     }
 
+    maybe_ackid_ptr_t Connection::raise(std::string identifier){
+        if(identifier.empty()){
+            return {};
+        }
+        return send(MessageType::Raise, (data_t)identifier.data(), identifier.size());
+    }
+
+    maybe_ackid_ptr_t Connection::raise(shared_buf_t buf){
+        if(buf == nullptr){
+            return {};
+        }
+        return raise(buf->surface);
+    }
+
+    maybe_ackid_ptr_t Connection::lower(std::string identifier){
+        if(identifier.empty()){
+            return {};
+        }
+        return send(MessageType::Lower, (data_t)identifier.data(), identifier.size());
+    }
+
+    maybe_ackid_ptr_t Connection::lower(shared_buf_t buf){
+        if(buf == nullptr){
+            return {};
+        }
+        return lower(buf->surface);
+    }
+
     maybe_ackid_ptr_t Connection::move(std::string identifier, int x, int y){
         unsigned char buf[sizeof(move_header_t) + identifier.size()];
         move_header_t header{
@@ -370,9 +398,22 @@ namespace Blight{
     }
 
     maybe_ackid_ptr_t Connection::remove(shared_buf_t buf){
-        auto ack = send(MessageType::Delete, (data_t)buf->surface.data(), buf->surface.size());
+        if(buf == nullptr){
+            return {};
+        }
+        auto ack = remove(buf->surface);
+        if(!ack.has_value()){
+            return {};
+        }
         buf->surface = "";
         return ack;
+    }
+
+    maybe_ackid_ptr_t Connection::remove(std::string identifier){
+        if(identifier.empty()){
+            return {};
+        }
+        return send(MessageType::Delete, (data_t)identifier.data(), identifier.size());
     }
 
     std::vector<std::string> Connection::surfaces(){

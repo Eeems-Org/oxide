@@ -1,15 +1,19 @@
 #include "oxideintegration.h"
 #include "oxidebackingstore.h"
+#include "oxideeventfilter.h"
 #include "oxidescreen.h"
-#include "oxideeventhandler.h"
 
 #include <QMetaMethod>
 #include <QMimeData>
+#include <QProcess>
 #include <QtGui/private/qguiapplication_p.h>
 #include <QtGui/private/qpixmap_raster_p.h>
 #include <qpa/qplatformfontdatabase.h>
 #include <qpa/qplatforminputcontextfactory_p.h>
 #include <qpa/qplatformwindow.h>
+#include <libblight.h>
+#include <liboxide/devicesettings.h>
+#include <cstring>
 
 #include <private/qgenericunixeventdispatcher_p.h>
 #include <private/qgenericunixfontdatabase_p.h>
@@ -74,7 +78,13 @@ void OxideIntegration::initialize(){
     if(m_debug){
         qDebug() << "OxideIntegration::initialize";
     }
-    auto geometry = deviceSettings.screenGeometry();
+    auto fd = Blight::open();
+    if(fd < 0){
+        qFatal("Could not connect to display server: %s", std::strerror(errno));
+    }
+    connection = std::shared_ptr<Blight::Connection>(new Blight::Connection(fd));
+    // rM1 geometry as default
+    auto geometry = QRect(0, 0, 1404, 1872);
     bool ok;
     int width = qEnvironmentVariableIntValue("OXIDE_QPA_WINDOW_WIDTH", &ok);
     if(ok){
@@ -124,58 +134,19 @@ void OxideIntegration::initialize(){
     if(m_debug){
         qDebug() << "Screen geometry:" << geometry;
     }
-    Oxide::Tarnish::setFrameBufferGeometry(geometry);
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     m_primaryScreen = new OxideScreen();
     m_primaryScreen->setGeometry(geometry);
     QWindowSystemInterface::handleScreenAdded(m_primaryScreen, true);
+#ifndef QT_NO_CLIPBOARD
     m_clipboard = new QMimeData();
     m_selection = new QMimeData();
+#endif
     QWindowSystemInterface::handleScreenAdded(m_primaryScreen);
-    auto socket = Oxide::Tarnish::getSocket();
-    if(socket == nullptr){
-        qFatal("Could not get tarnish private socket");
-    }
-    QObject::connect(Oxide::Tarnish::getSocket(), &QLocalSocket::disconnected, []{
-        if(!qApp->closingDown()){
-            qApp->quit();
-        }
-    });
-    QObject::connect(socket, &QLocalSocket::readyRead, [socket]{
-        // TODO - read commands
-        while(!socket->atEnd()){
-            O_DEBUG(socket->readAll());
-        }
-    });
+
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
-    auto eventPipe = Oxide::Tarnish::getEventPipe();
-    if(eventPipe == nullptr){
-        qFatal("Could not get event pipe");
-    }
-    QObject::connect(eventPipe, &QLocalSocket::disconnected, []{
-        if(!qApp->closingDown()){
-            qApp->exit(EXIT_FAILURE);
-        }
-    });
-    new OxideEventHandler(eventPipe);
-    connectSignal(signalHandler, "sigCont()", m_primaryScreen, "raiseTopWindow()");
-    connectSignal(signalHandler, "sigUsr1()", m_primaryScreen, "raiseTopWindow()");
-    connectSignal(signalHandler, "sigUsr2()", m_primaryScreen, "lowerTopWindow()");
-    connectSignal(signalHandler, "sigTerm()", m_primaryScreen, "closeTopWindow()");
-    connectSignal(signalHandler, "sigInt()", m_primaryScreen, "closeTopWindow()");
-    auto api = Oxide::Tarnish::guiApi();
-    if(api != nullptr){
-        // TODO - sort out how to avoid storing a copy of the clipboard in the application unless it's being used
-        QObject::connect(api.data(), &codes::eeems::oxide1::Gui::clipboardChanged, [this](const QByteArray& data){
-            m_clipboard->setData("application/octet-stream", data);
-        });
-        QObject::connect(api.data(), &codes::eeems::oxide1::Gui::primarySelectionChanged, [this](const QByteArray& data){
-            m_selection->setData("application/octet-stream", data);
-        });
-        m_clipboard->setData("application/octet-stream", api->clipboard());
-        m_selection->setData("application/octet-stream", api->primarySelection());
-    }
+    // TODO - connect clipboard/selection changes
 }
 
 void OxideIntegration::destroy(){
@@ -197,7 +168,12 @@ void OxideIntegration::beep() const{
 // Dummy font database that does not scan the fonts directory to be
 // used for command line tools like qmlplugindump that do not create windows
 // unless DebugBackingStore is activated.
-class DummyFontDatabase : public QPlatformFontDatabase, public QPlatformClipboard{
+class DummyFontDatabase
+: public QPlatformFontDatabase
+#ifndef QT_NO_CLIPBOARD
+  , public QPlatformClipboard
+#endif
+{
 public:
     void populateFontDatabase() override {}
 };
@@ -301,25 +277,39 @@ bool OxideIntegration::openDocument(const QUrl& url){
 
 QByteArray OxideIntegration::desktopEnvironment() const{ return qgetenv("XDG_CURRENT_DESKTOP"); }
 
+#ifndef Q_NO_CLIPBOARD
 QMimeData* OxideIntegration::mimeData(QClipboard::Mode mode){
-    Q_UNUSED(mode)
-    return m_clipboard.data();
+    switch(mode){
+        case QClipboard::Clipboard:
+            return m_clipboard.data();
+        case QClipboard::Selection:
+            return m_selection.data();
+        default:
+            return nullptr;
+    }
 }
 
 void OxideIntegration::setMimeData(QMimeData* data, QClipboard::Mode mode){
-    if(mode != QClipboard::Clipboard){
-        return;
-    }
-    m_clipboard = data;
-    auto api = Oxide::Tarnish::guiApi();
-    if(api != nullptr){
-        if(mode == QClipboard::Clipboard){
-            api->setClipboard(data->data(""));
-        }else if(mode == QClipboard::Selection){
-            api->setPrimarySelection(data->data(""));
+    switch(mode){
+        case QClipboard::Clipboard:{
+            m_clipboard = data;
+            auto clipboard = Blight::clipboard();
+            auto constData = data->data("");
+            clipboard->set(constData, constData.size());
+            QPlatformClipboard::emitChanged(mode);
+            break;
         }
+        case QClipboard::Selection:{
+            m_selection = data;
+            auto selection = Blight::selection();
+            auto constData = data->data("");
+            selection->set(constData, constData.size());
+            QPlatformClipboard::emitChanged(mode);
+            break;
+        }
+        default:
+            break;
     }
-    QPlatformClipboard::emitChanged(mode);
 }
 
 bool OxideIntegration::supportsMode(QClipboard::Mode mode) const{
@@ -330,6 +320,7 @@ bool OxideIntegration::ownsMode(QClipboard::Mode mode) const{
     Q_UNUSED(mode)
     return false;
 }
+#endif
 
 OxideIntegration* OxideIntegration::instance(){
     auto instance = static_cast<OxideIntegration*>(QGuiApplicationPrivate::platformIntegration());

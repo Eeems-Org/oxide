@@ -61,6 +61,7 @@ public slots:
     void repaint(QString identifier, QDBusMessage message);
     QDBusUnixFileDescriptor getSurface(QString identifier, QDBusMessage message);
     std::shared_ptr<Connection> focused();
+    void sortZ();
 
 signals:
     void clipboardChanged(const QByteArray& data);
@@ -84,5 +85,4 @@ private:
     std::shared_ptr<Connection> getConnection(QDBusMessage message);
     QObject* workspace();
     std::shared_ptr<Connection> createConnection(int pid);
-    void sortZ();
 };

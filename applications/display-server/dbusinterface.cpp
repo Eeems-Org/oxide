@@ -370,10 +370,10 @@ QList<std::shared_ptr<Surface>> DbusInterface::sortedSurfaces(){
         sorted.begin(),
         sorted.end(),
         [](std::shared_ptr<Surface> surface0, std::shared_ptr<Surface> surface1){
-            if(surface0 == nullptr){
+            if(surface0 == nullptr || !surface0->visible()){
                 return false;
             }
-            if(surface1 == nullptr){
+            if(surface1 == nullptr || !surface1->visible()){
                 return true;
             }
             return surface0->z() < surface1->z();
