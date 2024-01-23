@@ -16,6 +16,6 @@ Window{
     Label{
         text: "Hello World!"
         color: "black"
-        anchors.fill: parent
+        anchors.centerIn: parent
     }
 }
