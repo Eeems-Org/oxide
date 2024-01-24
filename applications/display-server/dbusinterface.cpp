@@ -285,6 +285,7 @@ void DbusInterface::inputEvents(unsigned int device, const std::vector<input_eve
                 break;
             }
             if(res == 0){
+                count++;
                 continue;
             }
             if(pfd.revents & POLLHUP){
@@ -306,6 +307,10 @@ void DbusInterface::inputEvents(unsigned int device, const std::vector<input_eve
                 count++;
                 continue;
             }
+            break;
+        }
+        if(count == 5){
+            O_WARNING("Failed to write input event: Too many attempts");
             break;
         }
         if(res < 0){
