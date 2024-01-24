@@ -13,68 +13,63 @@ void short_pause(){
 std::optional<Blight::data_t> Blight::recv(
     int fd,
     ssize_t size,
-    int attempts,
-    int timeout
+    unsigned int attempts,
+    unsigned int timeout
 ){
     auto data = new unsigned char[size];
     ssize_t res = -1;
-    int count = 0;
-    if(attempts < 0){
-        count = attempts - 1;
-    }
+    unsigned int count = 0;
     while(res < 0 && count < attempts){
         pollfd pfd;
         pfd.fd = fd;
         pfd.events = POLLOUT;
         res = poll(&pfd, 1, timeout);
         if(res < 0){
+            // Temporary error, try again
             if(errno == EAGAIN || errno == EINTR){
-                if(attempts > 0){
-                    count++;
-                }
+                count++;
                 continue;
             }
-            break;
+            delete[] data;
+            return {};
         }
+        // We timed out, try again
         if(res == 0){
-            if(attempts > 0){
-                count++;
-            }
+            count++;
             continue;
         }
+        // Socket disconnected
         if(pfd.revents & POLLHUP){
             errno = ECONNRESET;
             delete[] data;
             return {};
         }
+        // We only expect POLLOUT this is odd
         if(!(pfd.revents & POLLOUT)){
             res = 0;
-            if(attempts > 0){
-                count++;
-            }
+            count++;
             continue;
         }
-        res = ::recv(fd, data, size, 0);
-        if(res > 0){
+        // Recieve the data
+        res = ::recv(fd, data, size, MSG_DONTWAIT);
+        if(res > -1){
             break;
         }
-        if(errno == EAGAIN || errno == EINTR){
-            if(attempts > 0){
-                count++;
-            }
-            continue;
+        // We got an unexpected error
+        if(errno != EAGAIN && errno != EINTR){
+            delete[] data;
+            return {};
         }
-        return {};
+        // Temporary error, try again
+        count++;
     }
-    if(attempts > 0 && count == attempts){
+    // We retried too many times
+    if(count == attempts){
         delete[] data;
         errno = EAGAIN;
         return {};
     }
-    if(res < 0){
-        delete[] data;
-        return {};
-    }
+    // The data we recieved isn't the same size as what we expected
     if(res != size){
         _WARN("recv %d != %d", res, size);
         delete[] data;
@@ -89,19 +84,19 @@ std::optional<Blight::data_t> Blight::recv_blocking(int fd, ssize_t size){
     ssize_t res = -1;
     while(res < 0){
         res = ::recv(fd, data, size, 0);
+        // Something was recieved
         if(res > 0){
             break;
         }
-        if(errno == EAGAIN || errno == EINTR){
-            short_pause();
-            continue;
+        // We had an unexpected error
+        if(errno != EAGAIN && errno != EINTR){
+            delete[] data;
+            return {};
         }
-        return {};
+        // Temporary error, try again
+        short_pause();
     }
-    if(res < 0){
-        delete[] data;
-        return {};
-    }
+    // The data we recieved isn't the same size as what we expected
     if(res != size){
         _WARN("recv %d != %d", res, size);
         delete[] data;
@@ -111,68 +106,63 @@ std::optional<Blight::data_t> Blight::recv_blocking(int fd, ssize_t size){
     return data;
 }
 
-
 bool Blight::send(
     int fd,
     const data_t data,
     ssize_t size,
-    int attempts,
-    int timeout
+    unsigned int attempts,
+    unsigned int timeout
 ){
     int res = -1;
-    int count = 0;
-    if(attempts < 0){
-        count = attempts - 1;
-    }
+    unsigned int count = 0;
     while(res < 1 && count < attempts){
         pollfd pfd;
         pfd.fd = fd;
         pfd.events = POLLOUT;
         res = poll(&pfd, 1, timeout);
         if(res < 0){
+            // Temporary error, try again
             if(errno == EAGAIN || errno == EINTR){
-                if(attempts > 0){
-                    count++;
-                }
+                count++;
                 continue;
             }
-            break;
+            return false;
         }
+        // We timed out, try again
         if(res == 0){
             count++;
             continue;
         }
+        // Lost connection while waiting
         if(pfd.revents & POLLHUP){
             errno = ECONNRESET;
-            res = -1;
-            break;
+            return false;
         }
+        // Somehow we didn't get a POLLOUT message
+        // Try again
         if(!(pfd.revents & POLLOUT)){
             res = 0;
-            if(attempts > 0){
-                count++;
-            }
+            count++;
             continue;
         }
-        res = ::send(fd, &data, size, MSG_EOR);
-        if(res >= 0){
+        res = ::send(fd, &data, size, MSG_EOR | MSG_NOSIGNAL | MSG_DONTWAIT);
+        // Something was sent
+        if(res > -1){
             break;
         }
-        if(errno == EAGAIN || errno == EINTR){
-            if(attempts > 0){
-                count++;
-            }
-            continue;
+        // We got an error
+        if(errno != EAGAIN && errno != EINTR){
+            return false;
         }
-        break;
+          // We couln't send yet, try again
+        count++;
     }
-    if(attempts > 0 && count == attempts){
+    // Too many attempts
+    if(count == attempts){
         errno = EAGAIN;
         return false;
     }
-    if(res < 0){
-        return false;
-    }
+    // We didn't send all the data we expected to
     if(res != size){
         _WARN("send %d != %d", res, size);
         errno = EBADMSG;
@@ -184,19 +174,19 @@ bool Blight::send(
 bool Blight::send_blocking(int fd, const data_t data, ssize_t size){
     int res = -1;
     while(res < 0){
-        res = ::send(fd, data, size, MSG_EOR);
+        res = ::send(fd, data, size, MSG_EOR | MSG_NOSIGNAL);
+        // We sent something
         if(res > -1){
             break;
         }
-        if(errno == EAGAIN || errno == EINTR){
-            short_pause();
-            continue;
+        // We had an unexpected error
+        if(errno != EAGAIN && errno != EINTR){
+            return false;
         }
-        break;
+        // Temporary error, try again
+        short_pause();
     }
-    if(res < 0){
-        return false;
-    }
+    // The data we sent isn't the same size as what we expected
     if(res != size){
         errno = EMSGSIZE;
         return false;

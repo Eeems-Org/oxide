@@ -3,6 +3,7 @@
 
 #include <liboxide/signalhandler.h>
 #include <liboxide/debug.h>
+#include <libblight/socket.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
@@ -195,27 +196,12 @@ QStringList Connection::getSurfaceIds(){
 const QList<std::shared_ptr<Surface>>& Connection::getSurfaces(){ return surfaces; }
 
 void Connection::inputEvent(const input_event& event){
-    int res = -1;
-    while(res < 0){
-        res = ::send(m_serverInputFd, &event, sizeof(event), MSG_EOR);
-        if(res > -1){
-            break;
-        }
-        if(errno == EAGAIN || errno == EINTR){
-            timespec remaining;
-            timespec requested{
-                .tv_sec = 0,
-                .tv_nsec = 5000
-            };
-            nanosleep(&requested, &remaining);
-            continue;
-        }
-        break;
-    }
-    if(res < 0){
+    if(!Blight::send_blocking(
+        m_serverInputFd,
+        (Blight::data_t)&event,
+        sizeof(input_event)
+    )){
         O_WARNING("Failed to write input event: " << std::strerror(errno));
-    }else if(res != sizeof(event)){
-        O_WARNING("Failed to write input event: Size mismatch!");
     }
 }
 
@@ -514,27 +500,14 @@ void Connection::notResponding(){
 
 void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data){
     auto ack = Blight::message_t::create_ack(message.get(), size);
-    auto res = ::send(
+    if(!Blight::send_blocking(
         m_serverFd,
-        reinterpret_cast<char*>(&ack),
-        sizeof(Blight::header_t),
-        MSG_EOR
-    );
-    if(res < 0){
-        O_WARNING("Failed to write to socket:" << strerror(errno));
-    }else if(res != sizeof(Blight::header_t)){
-        O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
-    }else if(size){
-        res = ::send(m_serverFd, data, size, MSG_EOR);
-        if(res < 0){
-            O_WARNING("Failed to write to socket:" << strerror(errno));
-        }else if((unsigned int)res != size){
-            O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
-        }else{
-            O_DEBUG("Acked" << message->header.ackid);
-        }
-    }else{
-        O_DEBUG("Acked" << message->header.ackid);
+        reinterpret_cast<Blight::data_t>(&ack),
+        sizeof(Blight::header_t)
+    )){
+        O_WARNING("Failed to write ack header to socket:" << strerror(errno));
+    }else if(size && !Blight::send_blocking(m_serverFd, data, size)){
+        O_WARNING("Failed to write ack data to socket:" << strerror(errno));
     }
 }
 
@@ -547,16 +520,12 @@ void Connection::ping(){
         .ackid = ++pingId,
         .size = 0
     };
-    auto res = ::send(
+    if(!Blight::send_blocking(
         m_serverFd,
-        reinterpret_cast<char*>(&ping),
-        sizeof(Blight::header_t),
-        MSG_EOR
-    );
-    if(res < 0){
+        reinterpret_cast<Blight::data_t>(&ping),
+        sizeof(Blight::header_t)
+    )){
         O_WARNING("Failed to write to socket:" << strerror(errno));
-    }else if(res != sizeof(Blight::header_t)){
-        O_WARNING("Failed to write to socket: Size of written bytes doesn't match!");
     }else{
         O_DEBUG("Ping" << ping.ackid);
     }

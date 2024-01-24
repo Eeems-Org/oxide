@@ -8,8 +8,8 @@ namespace Blight{
     LIBBLIGHT_EXPORT std::optional<data_t> recv(
         int fd,
         ssize_t size,
-        int attempts = 5,
-        int timeout = 50
+        unsigned int attempts = 5,
+        unsigned int timeout = 50
     );
     LIBBLIGHT_EXPORT std::optional<data_t> recv_blocking(
         int fd,
@@ -19,8 +19,8 @@ namespace Blight{
         int fd,
         const data_t data,
         ssize_t size,
-        int attempts = 5,
-        int timeout = 50
+        unsigned int attempts = 5,
+        unsigned int timeout = 50
     );
     LIBBLIGHT_EXPORT bool send_blocking(
         int fd,
