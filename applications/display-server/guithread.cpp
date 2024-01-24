@@ -22,6 +22,9 @@ void GUIThread::run(){
             //        entire application
             m_repaintMutex.lock();
             if(!m_repaintCount.available()){
+                m_repaintMutex.unlock();
+                dbusInterface->processClosingConnections();
+                m_repaintMutex.lock();
                 m_repaintWait.wait(&m_repaintMutex);
             }
             // Surface is required as the callback may
@@ -102,9 +105,11 @@ void GUIThread::enqueue(
     });
     // Indicate that there is an item in the queue
     m_repaintCount.release();
-    m_repaintWait.notify_all();
+    notify();
     m_repaintMutex.unlock();
 }
+
+void GUIThread::notify(){ m_repaintWait.notify_all(); }
 
 void GUIThread::clearFrameBuffer(){
     EPFrameBuffer::instance()->framebuffer()->fill(Qt::white);
@@ -189,7 +194,7 @@ void GUIThread::redraw(RepaintRequest& event){
             visibleSurfaces.begin(),
             visibleSurfaces.end(),
             [](std::shared_ptr<Surface> surface){
-                auto connection = dynamic_cast<Connection*>(surface->parent());
+                auto connection = surface->connection();
                 if(!surface->has("system") && getpgid(connection->pgid()) < 0){
                     O_WARNING(surface->id() << "With no running process");
                     return true;

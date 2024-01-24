@@ -6,6 +6,9 @@
 #include <QQuickPaintedItem>
 #include <QImage>
 
+#include "connection.h"
+class Connection;
+
 #include "../../shared/liboxide/meta.h"
 #include "../../shared/libblight/meta.h"
 
@@ -15,7 +18,7 @@ class Surface : public QObject {
     Q_CLASSINFO("D-Bus Interface", BLIGHT_SURFACE_INTERFACE)
 
 public:
-    Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Format format);
+    Surface(Connection* connection, int fd, QRect geometry, int stride, QImage::Format format);
     ~Surface();
     QString id();
     bool isValid();
@@ -34,6 +37,7 @@ public:
     bool has(const QString& flag);
     void set(const QString& flag);
     void unset(const QString& flag);
+    Connection* connection();
 
 signals:
     void update(const QRect& geometry);
@@ -42,6 +46,7 @@ private slots:
     void activeFocusChanged(bool focus);
 
 private:
+    Connection* m_connection;
     QRect m_geometry;
     int m_stride;
     QImage::Format m_format;

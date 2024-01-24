@@ -9,13 +9,13 @@
 #include <unistd.h>
 #include <liboxide/debug.h>
 
-Surface::Surface(QObject* parent, int fd, QRect geometry, int stride, QImage::Format format)
-: QObject(parent),
+Surface::Surface(Connection* connection, int fd, QRect geometry, int stride, QImage::Format format)
+: QObject(),
+  m_connection(connection),
   m_geometry(geometry),
   m_stride(stride),
   m_format(format)
 {
-    auto connection = dynamic_cast<Connection*>(parent);
     m_id = QString("%1/surface/%2").arg(connection->id()).arg(fd);
     if(!file.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
         O_WARNING("Failed to open file");
@@ -149,9 +149,11 @@ void Surface::set(const QString& flag){
 
 void Surface::unset(const QString& flag){ flags.removeAll(flag); }
 
+Connection* Surface::connection(){ return m_connection; }
+
 void Surface::activeFocusChanged(bool focus){
     if(focus){
-        emit dynamic_cast<Connection*>(parent())->focused();
+        emit m_connection->focused();
     }
 }
 

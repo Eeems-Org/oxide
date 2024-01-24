@@ -83,36 +83,37 @@
 #define O_INFO(msg) qInfo() << __DEBUG_APPLICATION_INFO__ << "Info:" << msg << __DEBUG_LOCATION__;
 
 namespace Oxide {
-/*!
- * \brief Get a formatted application information string
- * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and O_EVENT
- * \return Formatted string containing information about the application and current thread
- */
-LIBOXIDE_EXPORT std::string getDebugApplicationInfo();
-/*!
- * \brief Get a formatted debug information string
- * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and O_EVENT
- * \param Name of file
- * \param Line number in file
- * \param Function information
- * \return Formatted debug location string
- */
-LIBOXIDE_EXPORT std::string getDebugLocation(const char* file, unsigned int line, const char* function);
-/*!
- * \brief Return the state of debugging
- * \return Debugging state
- * \snippet examples/oxide.cpp debugEnabled
- */
-LIBOXIDE_EXPORT bool debugEnabled();
-/*!
- * \brief Get the name of the application
- * \param Don't use qApp's application name
- * \return The name of the application
- */
-LIBOXIDE_EXPORT std::string getAppName(bool ignoreQApp);
-/*!
- * \brief Print the current backtrace
- */
-LIBOXIDE_EXPORT std::vector<std::string> backtrace(unsigned short depth);
+    /*!
+     * \brief Get a formatted application information string
+     * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and O_EVENT
+     * \return Formatted string containing information about the application and current thread
+     */
+    LIBOXIDE_EXPORT std::string getDebugApplicationInfo();
+    /*!
+     * \brief Get a formatted debug information string
+     * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and O_EVENT
+     * \param Name of file
+     * \param Line number in file
+     * \param Function information
+     * \return Formatted debug location string
+     */
+    LIBOXIDE_EXPORT std::string getDebugLocation(const char* file, unsigned int line, const char* function);
+    /*!
+     * \brief Return the state of debugging
+     * \return Debugging state
+     * \snippet examples/oxide.cpp debugEnabled
+     */
+    LIBOXIDE_EXPORT bool debugEnabled();
+    /*!
+     * \brief Get the name of the application
+     * \param Don't use qApp's application name
+     * \return The name of the application
+     */
+    LIBOXIDE_EXPORT std::string getAppName(bool ignoreQApp);
+    /*!
+     * \brief Print the current backtrace
+     */
+    LIBOXIDE_EXPORT std::vector<std::string> backtrace(unsigned short depth);
+    LIBOXIDE_EXPORT std::string getThreadName();
 }
 /*! @} */

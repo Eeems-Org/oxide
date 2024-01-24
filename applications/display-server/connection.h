@@ -9,6 +9,7 @@
 #include <linux/input.h>
 
 #include "surface.h"
+class Surface;
 
 #include "../../shared/liboxide/meta.h"
 
@@ -18,7 +19,7 @@ class Connection : public QObject {
     Q_CLASSINFO("D-Bus Interface", BLIGHT_SURFACE_INTERFACE)
 
 public:
-    Connection(QObject* parent, pid_t pid, pid_t pgid);
+    Connection(pid_t pid, pid_t pgid);
     ~Connection();
 
     QString id();
@@ -65,6 +66,6 @@ private:
     std::atomic_flag m_closed;
     QTimer m_notRespondingTimer;
     QTimer m_pingTimer;
-    unsigned int pingId;
+    std::atomic_uint pingId;
     void ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
 };

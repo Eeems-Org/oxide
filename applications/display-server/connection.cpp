@@ -22,11 +22,12 @@ static int pidfd_open(pid_t pid, unsigned int flags){
     return syscall(SYS_pidfd_open, pid, flags);
 }
 
-Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
-: QObject(parent),
+Connection::Connection(pid_t pid, pid_t pgid)
+: QObject(),
   m_pid{pid},
   m_pgid{pgid},
-  m_closed{false}
+  m_closed{false},
+  pingId{0}
 {
     m_pidFd = pidfd_open(m_pid, 0);
     if(m_pidFd < 0){
@@ -68,6 +69,14 @@ Connection::Connection(QObject* parent, pid_t pid, pid_t pgid)
 
 Connection::~Connection(){
     close();
+    surfaces.clear();
+    if(m_notifier != nullptr){
+        m_notifier->deleteLater();
+        m_notifier = nullptr;
+    }
+    ::close(m_clientFd);
+    ::close(m_serverFd);
+    ::close(m_pidFd);
     O_DEBUG("Connection" << id() << "destroyed");
 }
 
@@ -147,19 +156,11 @@ void Connection::resume(){
 }
 
 void Connection::close(){
-    surfaces.clear();
     if(!m_closed.test_and_set()){
-        return;
+        m_pingTimer.stop();
+        m_notRespondingTimer.stop();
+        emit finished();
     }
-    emit finished();
-    blockSignals(true);
-    if(m_notifier != nullptr){
-        m_notifier->deleteLater();
-        m_notifier = nullptr;
-    }
-    ::close(m_clientFd);
-    ::close(m_serverFd);
-    ::close(m_pidFd);
 }
 
 std::shared_ptr<Surface> Connection::addSurface(int fd, QRect geometry, int stride, QImage::Format format){
@@ -217,8 +218,6 @@ void Connection::inputEvent(const input_event& event){
         O_WARNING("Failed to write input event: Size mismatch!");
     }
 }
-
-static std::atomic_uint pingId = 0;
 
 void Connection::readSocket(){
     if(m_notifier == nullptr){
@@ -504,6 +503,11 @@ void Connection::readSocket(){
 }
 
 void Connection::notResponding(){
+    if(!isRunning()){
+        close();
+        m_pingTimer.stop();
+        return;
+    }
     O_WARNING("Connection failed to respond to ping in time:" << id());
     m_notRespondingTimer.start();
 }
@@ -535,6 +539,9 @@ void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::d
 }
 
 void Connection::ping(){
+    if(!isRunning()){
+        return;
+    }
     Blight::header_t ping{
         .type = Blight::MessageType::Ping,
         .ackid = ++pingId,

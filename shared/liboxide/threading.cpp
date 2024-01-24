@@ -35,6 +35,13 @@ void startThreadWithPriority(QThread* thread, QThread::Priority priority){
     thread->start(priority);
 }
 
+void dispatchToMainThread(std::function<void()> callback){
+    dispatchToMainThread<int>([callback]{
+        callback();
+        return 0;
+    });
+}
+
 void dispatchToThread(QThread* thread, std::function<void()> callback){
     if(QThread::currentThread() == thread){
         // Already on the correct thread

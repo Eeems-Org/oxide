@@ -1,5 +1,6 @@
 #include "dbusinterface.h"
 #include "evdevhandler.h"
+#include "guithread.h"
 
 #include <QDBusConnection>
 #include <QDBusUnixFileDescriptor>
@@ -63,6 +64,18 @@ DbusInterface::DbusInterface(QObject* parent)
     );
 }
 
+
+DbusInterface* DbusInterface::singleton(){
+    static DbusInterface* instance = nullptr;
+    if(instance == nullptr){
+        instance = Oxide::dispatchToMainThread<DbusInterface*>([]{
+            O_DEBUG("Initializing DBus interface");
+            return new DbusInterface(qApp);
+        });
+    }
+    return instance;
+}
+
 int DbusInterface::pid(){ return qApp->applicationPid(); }
 
 QObject* DbusInterface::loadComponent(QString url, QString identifier, QVariantMap properties){
@@ -102,6 +115,17 @@ QObject* DbusInterface::loadComponent(QString url, QString identifier, QVariantM
     return object;
 }
 
+void DbusInterface::processClosingConnections(){
+    closingMutex.lock();
+    if(!closingConnections.isEmpty()){
+        O_DEBUG("Cleaning up old connections");
+        while(!closingConnections.isEmpty()){
+            closingConnections.takeFirst()->deleteLater();
+        }
+    }
+    closingMutex.unlock();
+}
+
 std::shared_ptr<Surface> DbusInterface::getSurface(QString identifier){
     for(auto connection : qAsConst(connections)){
         if(!connection->isRunning()){
@@ -109,7 +133,7 @@ std::shared_ptr<Surface> DbusInterface::getSurface(QString identifier){
         }
         auto surface = connection->getSurface(identifier);
         if(surface != nullptr){
-            return std::shared_ptr(surface);
+            return surface;
         }
     }
     return nullptr;
@@ -227,7 +251,7 @@ void DbusInterface::setFlags(QString identifier, const QStringList& flags, QDBus
     }
 }
 
-std::shared_ptr<Connection> DbusInterface::focused(){ return m_focused; }
+Connection* DbusInterface::focused(){ return m_focused; }
 
 void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){
     Q_UNUSED(oldOwner);
@@ -296,7 +320,7 @@ void DbusInterface::inputEvents(unsigned int device, const std::vector<input_eve
     }
 }
 
-std::shared_ptr<Connection> DbusInterface::getConnection(QDBusMessage message){
+Connection* DbusInterface::getConnection(QDBusMessage message){
     pid_t pid = connection().interface()->servicePid(message.service());;
     for(auto connection : qAsConst(connections)){
         if(!connection->isRunning()){
@@ -322,43 +346,46 @@ QObject* DbusInterface::workspace(){
     return nullptr;
 }
 
-std::shared_ptr<Connection> DbusInterface::createConnection(int pid){
+Connection* DbusInterface::createConnection(int pid){
     pid_t pgid = ::getpgid(pid);
-    auto connection = new Connection(this, pid, pgid);
+    auto connection = new Connection(pid, pgid);
     if(!connection->isValid()){
         connection->deleteLater();
         return nullptr;
     }
-    auto ptr = std::shared_ptr<Connection>(connection);
     connect(connection, &Connection::finished, this, [this, connection]{
         O_DEBUG("Connection" << connection->pid() << "closed");
         auto found = false;
         for(auto& ptr : qAsConst(connections)){
-            if(ptr.get() == connection){
+            if(ptr == connection){
                 found = true;
                 connections.removeAll(ptr);
+                closingMutex.lock();
+                closingConnections.append(ptr);
+                closingMutex.unlock();
+                guiThread->notify();
                 break;
             }
         }
         if(!found){
             O_WARNING("Could not find connection to remove!");
         }
-        if(m_focused != nullptr && m_focused.get() == connection){
+        if(m_focused != nullptr && m_focused == connection){
             m_focused = nullptr;
         }
         sortZ();
     });
     connect(connection, &Connection::focused, this, [this, connection]{
         for(auto& ptr : qAsConst(connections)){
-            if(ptr.get() == connection){
+            if(ptr == connection){
                 m_focused = ptr;
                 O_DEBUG(connection->id() << "has focus");
                 break;
             }
         }
     });
-    connections.append(ptr);
-    return ptr;
+    connections.append(connection);
+    return connection;
 }
 
 QList<std::shared_ptr<Surface>> DbusInterface::surfaces(){
@@ -429,9 +456,9 @@ void DbusInterface::sortZ(){
     if(surface == nullptr){
         return;
     }
-    auto connection = dynamic_cast<Connection*>(surface->parent());
+    auto connection = surface->connection();
     for(auto& ptr : connections){
-        if(ptr.get() == connection){
+        if(ptr == connection){
             m_focused = ptr;
             break;
         }

@@ -50,6 +50,7 @@ public slots:
         bool global = false,
         std::function<void()> callback = nullptr
     );
+    void notify();
     void clearFrameBuffer();
 
 private:

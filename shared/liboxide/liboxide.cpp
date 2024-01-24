@@ -93,12 +93,6 @@ namespace Oxide {
         }
         return pids;
     }
-    void dispatchToMainThread(std::function<void()> callback){
-        dispatchToMainThread<int>([callback]{
-            callback();
-            return 0;
-        });
-    }
     uid_t getUID(const QString& name){
         char buffer[1024];
         struct passwd user;

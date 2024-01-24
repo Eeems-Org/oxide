@@ -1,12 +1,12 @@
 #pragma once
 
 #include <QObject>
+#include <QMutex>
+#include <QTimer>
 #include <QDBusContext>
 #include <QDBusConnection>
-#pragma once
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
-#include <QTimer>
 #include <QQmlApplicationEngine>
 #include <QDBusUnixFileDescriptor>
 
@@ -25,22 +25,17 @@ class DbusInterface : public QObject, public QDBusContext {
     Q_PROPERTY(QByteArray selection READ selection WRITE setSelection NOTIFY selectionChanged)
 
 public:
-    static DbusInterface* singleton(){
-        static DbusInterface* instance = nullptr;
-        if(instance == nullptr){
-            instance = new DbusInterface(qApp);
-        }
-        return instance;
-    }
+    static DbusInterface* singleton();
 
     int pid();
     QObject* loadComponent(QString url, QString identifier, QVariantMap properties = QVariantMap());
+    void processClosingConnections();
     std::shared_ptr<Surface> getSurface(QString identifier);
     QList<std::shared_ptr<Surface>> surfaces();
     QList<std::shared_ptr<Surface>> sortedSurfaces();
     QList<std::shared_ptr<Surface>> visibleSurfaces();
     void sortZ();
-    std::shared_ptr<Connection> focused();
+    Connection* focused();
 
     // Property getter/setters
     const QByteArray& clipboard();
@@ -77,14 +72,16 @@ private slots:
 private:
     DbusInterface(QObject* parent);
     QQmlApplicationEngine engine;
-    QList<std::shared_ptr<Connection>> connections;
-    std::shared_ptr<Connection> m_focused;
+    QList<Connection*> connections;
+    QMutex closingMutex;
+    QList<Connection*> closingConnections;
+    Connection* m_focused;
     struct {
         QByteArray clipboard;
         QByteArray selection;
     } clipboards;
 
-    std::shared_ptr<Connection> getConnection(QDBusMessage message);
+    Connection* getConnection(QDBusMessage message);
     QObject* workspace();
-    std::shared_ptr<Connection> createConnection(int pid);
+    Connection* createConnection(int pid);
 };
