@@ -16,4 +16,3 @@ INSTALLS += target
 
 INCLUDEPATH += ../../shared/mxcfb
 
-include(../../qmake/liboxide.pri)

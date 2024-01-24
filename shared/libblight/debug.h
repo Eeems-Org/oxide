@@ -3,6 +3,9 @@
 #include <systemd/sd-journal.h>
 #include <unistd.h>
 #include <linux/prctl.h>
+#include <stdio.h>
+#include <mutex>
+#include <sys/prctl.h>
 
 static std::mutex __log_mutex;
 void __printf_header(int priority){
@@ -56,4 +59,4 @@ if(priority <= BLIGHT_DEBUG_LOGGING){ \
 #define _WARN(...) _PRINTF(LOG_WARNING, __VA_ARGS__)
 #define _INFO(...) _PRINTF(LOG_INFO, __VA_ARGS__)
 #define _CRIT(...) _PRINTF(LOG_CRIT, __VA_ARGS__)
-#define __RIGHT_HERE__ fprintf("<============================ %s:%d", __FILE__, __LINE__)
+#define __RIGHT_HERE__ fprintf(stderr, "<============================ %s:%d\n", __FILE__, __LINE__)

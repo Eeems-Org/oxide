@@ -22,6 +22,7 @@
 #include <libblight/connection.h>
 #include <libblight/debug.h>
 #include <filesystem>
+#include <cstdint>
 
 class ClockWatch {
 public:
@@ -55,6 +56,7 @@ static int(*func_open)(const char*, int, ...);
 static int(*func_ioctl)(int, unsigned long, ...);
 static int(*func_close)(int);
 static int(*func_msgget)(key_t, int);
+static void*(*func_mmap)(void*, size_t, int, int, int, __off_t);
 static int msgq = -1;
 
 void writeInputEvent(int fd, input_event* ie){
@@ -243,11 +245,13 @@ int __fb_ioctl(unsigned long request, char* ptr){
             }
             screenInfo->xres = blightBuffer->width;
             screenInfo->yres = blightBuffer->height;
+            screenInfo->xoffset = 0;
+            screenInfo->yoffset = 0;
             screenInfo->xres_virtual = blightBuffer->width;
             screenInfo->yres_virtual = blightBuffer->height;
+            screenInfo->bits_per_pixel = blightBuffer->stride / blightBuffer->width * 8;
             // TODO - determine the following from the buffer format
-            // Format_RGB16
-            screenInfo->bits_per_pixel = 16;
+            // Format_RGB16 / RGB565
             screenInfo->grayscale = 0;
             screenInfo->red.offset = 11;
             screenInfo->red.length = 5;
@@ -258,22 +262,127 @@ int __fb_ioctl(unsigned long request, char* ptr){
             screenInfo->blue.offset = 0;
             screenInfo->blue.length = 5;
             screenInfo->blue.msb_right = 0;
+            // TODO what should this even be?
+            screenInfo->nonstd = 0;
+            screenInfo->activate = 0;
+            // It would be cool to have the actual mm width/height here
+            screenInfo->height = 0;
+            screenInfo->width = 0;
+            screenInfo->accel_flags = 0;
+            // screenInfo->pixclock = 28800; // Stick with what is reported
+            screenInfo->left_margin = 0;
+            screenInfo->right_margin = 0;
+            screenInfo->upper_margin = 0;
+            screenInfo->lower_margin = 0;
+            screenInfo->hsync_len = 0;
+            screenInfo->vsync_len = 2;
+            screenInfo->sync = 0;
+            screenInfo->vmode = 0;
+            screenInfo->rotate = 0;
+            screenInfo->colorspace = 0;
+            screenInfo->reserved[0] = 0;
+            screenInfo->reserved[1] = 0;
+            screenInfo->reserved[2] = 0;
+            screenInfo->reserved[3] = 0;
             return 0;
         }
         case FBIOGET_FSCREENINFO:{
             _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_FSCREENINFO");
-            auto screeninfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
-            memcpy(screeninfo->id, "mxc_epdc_fb\0", 12);
-            screeninfo->smem_len = blightBuffer->size();
-            screeninfo->smem_start = (unsigned long)blightBuffer->data;
-            screeninfo->line_length = blightBuffer->stride;
-            // TODO get values for the rest
+            auto screenInfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
+            int fd = func_open("/dev/fb0", O_RDONLY, 0);
+            if(fd == -1){
+                return -1;
+            }
+            if(func_ioctl(fd, request, ptr) == -1){
+                return -1;
+            }
+            // TODO determine all the values dynamically
+            screenInfo->smem_len = blightBuffer->size();
+            screenInfo->smem_start = (unsigned long)blightBuffer->data;
+            screenInfo->type = 0;
+            screenInfo->type_aux = 0;
+            screenInfo->visual = 0;
+            screenInfo->xpanstep = 8;
+            screenInfo->ypanstep = 0;
+            screenInfo->ywrapstep = 5772;
+            screenInfo->line_length = blightBuffer->stride;
+            screenInfo->mmio_start = 0;
+            screenInfo->mmio_len = 0;
+            screenInfo->accel = 0;
+            screenInfo->reserved[0] = 0;
+            screenInfo->reserved[1] = 0;
             return 0;
         }
         case FBIOPUT_VSCREENINFO:{
             _DEBUG("%s", "ioctl /dev/fb0 FBIOPUT_VSCREENINFO");
             // TODO - Explore allowing some screen info updating
-            // fb_var_screeninfo* screenInfo = reinterpret_cast<fb_fix_screeninfo*>(ptr);
+            auto screenInfo = reinterpret_cast<fb_var_screeninfo*>(ptr);
+            _DEBUG(
+                "\n"
+                "res: %dx%d\n"
+                "res_virtual: %dx%d\n"
+                "offset: %d, %d\n"
+                "bits_per_pixel: %d\n"
+                "grayscale: %d\n"
+                "red: %d, %d, %d\n"
+                "green: %d, %d, %d\n"
+                "blue: %d, %d, %d\n"
+                "tansp: %d, %d, %d\n"
+                "nonstd: %d\n"
+                "activate: %d\n"
+                "size: %dx%dmm\n"
+                "accel_flags: %d\n"
+                "pixclock: %d\n"
+                "margins: %d %d %d %d\n"
+                "hsync_len: %d\n"
+                "vsync_len: %d\n"
+                "sync: %d\n"
+                "vmode: %d\n"
+                "rotate: %d\n"
+                "colorspace: %d\n"
+                "reserved: %d, %d, %d, %d\n",
+                screenInfo->xres,
+                screenInfo->yres,
+                screenInfo->xres_virtual,
+                screenInfo->yres_virtual,
+                screenInfo->xoffset,
+                screenInfo->yoffset,
+                screenInfo->bits_per_pixel,
+                screenInfo->grayscale,
+                screenInfo->red.offset,
+                screenInfo->red.length,
+                screenInfo->red.msb_right,
+                screenInfo->green.offset,
+                screenInfo->green.length,
+                screenInfo->green.msb_right,
+                screenInfo->blue.offset,
+                screenInfo->blue.length,
+                screenInfo->blue.msb_right,
+                screenInfo->transp.offset,
+                screenInfo->transp.length,
+                screenInfo->transp.msb_right,
+                screenInfo->nonstd,
+                screenInfo->activate,
+                screenInfo->height,
+                screenInfo->width,
+                screenInfo->accel_flags,
+                screenInfo->pixclock,
+                screenInfo->left_margin,
+                screenInfo->right_margin,
+                screenInfo->upper_margin,
+                screenInfo->lower_margin,
+                screenInfo->hsync_len,
+                screenInfo->vsync_len,
+                screenInfo->sync,
+                screenInfo->vmode,
+                screenInfo->rotate,
+                screenInfo->colorspace,
+                screenInfo->reserved[0],
+                screenInfo->reserved[1],
+                screenInfo->reserved[2],
+                screenInfo->reserved[3]
+            );
+            // TODO allow resizing?
             return 0;
         }
         case MXCFB_SET_AUTO_UPDATE_MODE:
@@ -632,6 +741,51 @@ extern "C" {
     }
 
     __attribute__((visibility("default")))
+    void* mmap(void* addr, size_t len, int prot, int flags, int fd, __off_t offset){
+        if(IS_INITIALIZED){
+            _DEBUG(
+                "mmap 0x%04x %lld %d 0x%02x %d %d",
+                reinterpret_cast<std::uintptr_t>(addr),
+                len,
+                prot,
+                flags,
+                fd,
+                offset
+            );
+            if(DO_HANDLE_FB && fd == blightBuffer->fd){
+                if(len + offset > blightBuffer->size()){
+                    _CRIT(
+                        "Requested size + offset is larger than the buffer: %d",
+                        blightBuffer->size()
+                    );
+                    errno = EINVAL;
+                    return MAP_FAILED;
+                }
+                return &blightBuffer->data[offset];
+            }
+        }
+        return func_mmap(addr, len, prot, flags, fd, offset);
+    }
+
+    __attribute__((visibility("default")))
+    int munmap(void* addr, size_t len){
+        if(IS_INITIALIZED){
+            _DEBUG(
+                "munmap 0x%04x %s",
+                reinterpret_cast<std::uintptr_t>(addr),
+                len
+            );
+            // TODO - handle when pointer + len are inside the data
+            if(DO_HANDLE_FB && addr == blightBuffer->data){
+                // Maybe actually close it?
+                return 0;
+            }
+        }
+        static const auto func_munmap = (int(*)(void*, size_t))dlsym(RTLD_NEXT, "munmap");
+        return func_munmap(addr, len);
+    }
+
+    __attribute__((visibility("default")))
     ssize_t _write(int fd, const void* buf, size_t n){
         if(fd < 3){
             // No need to handle stdout/stderr writes
@@ -750,28 +904,6 @@ extern "C" {
     }
     __asm__(".symver _pwritev64, pwritev64@GLIBC_2.4");
 
-    __attribute__((visibility("default")))
-    int setenv(const char* name, const char* value, int overwrite){
-        static const auto orig_setenv = (bool(*)(const char*, const char*, int))dlsym(RTLD_NEXT, "setenv");
-        if(IS_INITIALIZED){
-            if(
-                strcmp(name, "QMLSCENE_DEVICE") == 0
-                || strcmp(name, "QT_QUICK_BACKEND") == 0
-                || strcmp(name, "QT_QPA_PLATFORM") == 0
-                || strcmp(name, "QT_PLUGIN_PATH") == 0
-                || strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0
-                // || strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0
-                // || strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0
-                // || strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0
-                ){
-                _DEBUG("IGNORED setenv %s=%s", name, value);
-                return 0;
-            }
-        }
-        _DEBUG("setenv %s=%s", name, value);
-        return orig_setenv(name, value, overwrite);
-    }
-
     void __attribute__ ((constructor)) init(void);
     void init(void){
         func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");
@@ -785,6 +917,34 @@ extern "C" {
         func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
         func_close = (int(*)(int))dlsym(RTLD_NEXT, "close");
         func_msgget = (int(*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
+        func_mmap = (void*(*)(void*, size_t, int, int, int, __off_t))dlsym(RTLD_NEXT, "mmap");
+    }
+
+    __attribute__((visibility("default")))
+    void _ZN6QImageC1EiiNS_6FormatE(void* data, int width, int height, int format) {
+        static bool FIRST_ALLOC = true;
+        static const auto qImageCtor = (
+            void(*)(void*, int, int, int)
+        )dlsym(RTLD_NEXT, "_ZN6QImageC1EiiNS_6FormatE");
+        static const auto qImageCtorWithBuffer = (
+            void(*)(void*, uint8_t*, int32_t, int32_t, int32_t, int, void(*)(void*), void*)
+        )dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
+        if(width == blightBuffer->width && height == blightBuffer->height && FIRST_ALLOC) {
+            _INFO("Replacing image with buffer");
+            FIRST_ALLOC = false;
+            qImageCtorWithBuffer(
+                data,
+                (uint8_t *)blightBuffer->data,
+                blightBuffer->width,
+                blightBuffer->height,
+                blightBuffer->stride,
+                format,
+                nullptr,
+                nullptr
+            );
+            return;
+        }
+        qImageCtor(data, width, height, format);
     }
 
     static void _libhook_init() __attribute__((constructor));
@@ -814,11 +974,7 @@ extern "C" {
             FAILED_INIT = false;
             return;
         }
-        if(
-            getenv("OXIDE_PRELOAD_FORCE_RM1") != nullptr
-            // || path == "/opt/bin/yaft"
-            // || path == "/opt/bin/something"
-        ){
+        if(getenv("OXIDE_PRELOAD_FORCE_RM1") != nullptr){
             FAKE_RM1 = true;
         }
         DO_HANDLE_FB = getenv("OXIDE_PRELOAD_EXPOSE_FB") == nullptr;

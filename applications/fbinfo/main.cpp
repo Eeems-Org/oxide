@@ -1,18 +1,13 @@
 #include <QCommandLineParser>
 #include <QTextStream>
 #include <QDebug>
-
-#include <liboxide/meta.h>
-#include <liboxide/sentry.h>
-#include <liboxide/devicesettings.h>
-#include <liboxide/epaper.h>
 #include <QFile>
 #include <mxcfb.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-using namespace Oxide::Sentry;
+#include "../../shared/liboxide/meta.h"
 
 QDebug operator<<(QDebug debug, const fb_bitfield& bitfield){
     QDebugStateSaver saver(debug);
@@ -61,12 +56,35 @@ QDebug operator<<(QDebug debug, const fb_var_screeninfo& vinfo){
         << "reserved 3: " << vinfo.reserved[3] << Qt::endl;
 }
 
+QString to_hex(unsigned long x){ return "0x" + QString::number(x, 16).toUpper(); }
+
+QDebug operator<<(QDebug debug, const fb_fix_screeninfo& finfo){
+    QDebugStateSaver saver(debug);
+    Q_UNUSED(saver);
+    return debug.nospace().noquote()
+        << "id: " << finfo.id << Qt::endl
+        << "smem_start: " << to_hex(finfo.smem_start) << Qt::endl
+        << "smem_len: " << finfo.smem_len << Qt::endl
+        << "type: " << finfo.type << Qt::endl
+        << "type_aux: " << finfo.type_aux << Qt::endl
+        << "visual: " << finfo.visual << Qt::endl
+        << "xpanstep: " << finfo.xpanstep << Qt::endl
+        << "ypanstep: " << finfo.ypanstep << Qt::endl
+        << "ywrapstep: " << finfo.ywrapstep << Qt::endl
+        << "line_length: " << finfo.line_length << Qt::endl
+        << "mmio_start: " << to_hex(finfo.mmio_start) << Qt::endl
+        << "mmio_len: " << finfo.mmio_len << Qt::endl
+        << "accel: " << finfo.accel << Qt::endl
+        << "capabilities: " << to_hex(finfo.capabilities) << Qt::endl
+        << "reserved 0: " << finfo.reserved[0] << Qt::endl
+        << "reserved 1: " << finfo.reserved[1] << Qt::endl;
+}
+
 int main(int argc, char *argv[]){
     QCoreApplication app(argc, argv);
-    sentry_init("fbinfo", argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
-    app.setApplicationName("notify-send");
+    app.setApplicationName("fbinfo");
     app.setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
     parser.setApplicationDescription("a tool to get framebuffer information");
@@ -84,15 +102,28 @@ int main(int argc, char *argv[]){
     fb_var_screeninfo vinfo;
     auto res = ioctl(fd, FBIOGET_VSCREENINFO, &vinfo);
     auto err = errno;
+    if(res == -1){
+        qDebug() << "Failed to get variable screen info:" << strerror(err);
+        return err;
+    }
+    fb_fix_screeninfo finfo;
+    res = ioctl(fd, FBIOGET_FSCREENINFO, &finfo);
+    err = errno;
     close(fd);
     if(res == -1){
-        qDebug() << "Failed to get screen info:" << strerror(err);
+        qDebug() << "Failed to get fixed screen info:" << strerror(err);
         return err;
     }
     QFile file;
     file.open(stdout, QIODevice::WriteOnly);
-    QDebug(&file)
-        << "path:" << path << Qt::endl
-        << vinfo;
+    QDebug(&file).nospace()
+        << "[framebuffer]" << Qt::endl
+        << "path: " << path << Qt::endl
+        << Qt::endl
+        << "[fb_var_screeninfo]" << Qt::endl
+        << vinfo
+        << Qt::endl
+        << "[fb_fix_screeninfo]" << Qt::endl
+        << finfo;
     return EXIT_SUCCESS;
 }
