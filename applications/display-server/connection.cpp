@@ -195,13 +195,25 @@ QStringList Connection::getSurfaceIds(){
 
 const QList<std::shared_ptr<Surface>>& Connection::getSurfaces(){ return surfaces; }
 
-void Connection::inputEvent(const input_event& event){
-    if(!Blight::send_blocking(
-        m_serverInputFd,
-        (Blight::data_t)&event,
-        sizeof(input_event)
-    )){
-        O_WARNING("Failed to write input event: " << std::strerror(errno));
+void Connection::inputEvents(unsigned int device, const std::vector<input_event>& events){
+    // TODO - Allow non-blocking send.
+    //        If the client isn't reading input, the buffer will fill up, and then the entire
+    //        display server will freeze until the client reads it's first event.
+    //        It's probably worth adding some sort of acking mechanism to this to ensure that
+    //        events are being read, as well as don't send anything until the client tells you
+    //        that it's ready to start reading events.
+    for(const input_event& event : events){
+        O_DEBUG("writeEvent(" << device << event.type << event.code << event.value << ")");
+        Blight::event_packet_t data = { device, event };
+        if(!Blight::send_blocking(
+            m_serverInputFd,
+            reinterpret_cast<Blight::data_t>(&data),
+            sizeof(input_event)
+        )){
+            O_WARNING("Failed to write input event: " << std::strerror(errno));
+            continue;
+        }
+        O_DEBUG("Write finished");
     }
 }
 

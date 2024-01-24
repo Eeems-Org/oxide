@@ -264,22 +264,8 @@ void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldO
 }
 
 void DbusInterface::inputEvents(unsigned int device, const std::vector<input_event>& events){
-    if(m_focused == nullptr){
-        return;
-    }
-    auto fd = m_focused->inputWriteSocketDescriptor();
-    for(const input_event& ie : events){
-        O_DEBUG("writeEvent(" << device << ie.type << ie.code << ie.value << ")");
-        Blight::event_packet_t data = { device, ie };
-        if(!Blight::send_blocking(
-            fd,
-            reinterpret_cast<Blight::data_t>(&data),
-            sizeof(Blight::event_packet_t)
-        )){
-            O_WARNING("Failed to write input event: " << std::strerror(errno));
-            continue;
-        }
-        O_DEBUG("Write finished");
+    if(m_focused != nullptr){
+        m_focused->inputEvents(device, events);
     }
 }
 

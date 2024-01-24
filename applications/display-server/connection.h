@@ -40,7 +40,7 @@ public:
     std::shared_ptr<Surface> getSurface(QString identifier);
     QStringList getSurfaceIds();
     const QList<std::shared_ptr<Surface>>& getSurfaces();
-    void inputEvent(const input_event& event);
+    void inputEvents(unsigned int device, const std::vector<input_event>& events);
 
 signals:
     void finished();
