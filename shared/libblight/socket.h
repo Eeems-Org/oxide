@@ -11,16 +11,20 @@ namespace Blight{
         int attempts = 5,
         int timeout = 50
     );
+    LIBBLIGHT_EXPORT std::optional<data_t> recv_blocking(
+        int fd,
+        ssize_t size
+    );
     LIBBLIGHT_EXPORT bool send(
         int fd,
-        data_t data,
+        const data_t data,
         ssize_t size,
         int attempts = 5,
         int timeout = 50
     );
     LIBBLIGHT_EXPORT bool send_blocking(
         int fd,
-        data_t data,
+        const data_t data,
         ssize_t size
     );
 }

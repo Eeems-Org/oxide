@@ -11,7 +11,6 @@
 #include <QDBusMetaType>
 #include <liboxide/debug.h>
 #include <libblight/types.h>
-#include <libblight/socket.h>
 #include <cstring>
 
 DbusInterface::DbusInterface(QObject* parent)
@@ -270,10 +269,57 @@ void DbusInterface::inputEvents(unsigned int device, const std::vector<input_eve
     auto fd = m_focused->inputWriteSocketDescriptor();
     for(const input_event& ie : events){
         O_DEBUG("writeEvent(" << device << ie.type << ie.code << ie.value << ")");
+        int res = -1;
+        int count = 0;
         Blight::event_packet_t data = { device, ie };
-        if(!Blight::send(fd, reinterpret_cast<Blight::data_t>(&data), sizeof(data))){
+        while(res < 1 && count < 5){
+            pollfd pfd;
+            pfd.fd = fd;
+            pfd.events = POLLOUT;
+            // Only block for 50ms at a time as we give up if it fails after 5 tries
+            res = poll(&pfd, 1, 50);
+            if(res < 0){
+                if(errno == EAGAIN || errno == EINTR){
+                    count++;
+                    continue;
+                }
+                break;
+            }
+            if(res == 0){
+                count++;
+                continue;
+            }
+            if(pfd.revents & POLLHUP){
+                errno = ECONNRESET;
+                res = -1;
+                break;
+            }
+            if(!(pfd.revents & POLLOUT)){
+                O_WARNING("Unexpected revents:" << pfd.revents);
+                res = 0;
+                continue;
+            }
+            res = ::send(fd, &data, sizeof(Blight::event_packet_t), MSG_EOR);
+            if(res >= 0){
+                break;
+            }
+            if(errno == EAGAIN || errno == EINTR){
+                count++;
+                continue;
+            }
+            break;
+        }
+        if(count == 5){
+            O_WARNING("Failed to write input event: Too many attempts");
+            break;
+        }
+        if(res < 0){
             O_WARNING("Failed to write input event: " << std::strerror(errno));
-            continue;
+            break;
+        }
+        if(res != sizeof(Blight::event_packet_t)){
+            O_WARNING("Failed to write input event: Size mismatch! " << res);
+            break;
         }
         O_DEBUG("Write finished");
     }

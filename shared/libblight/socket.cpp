@@ -1,6 +1,15 @@
 #include "socket.h"
 #include "debug.h"
 
+void short_pause(){
+    timespec remaining;
+    timespec requested{
+        .tv_sec = 0,
+        .tv_nsec = 5000
+    };
+    nanosleep(&requested, &remaining);
+}
+
 std::optional<Blight::data_t> Blight::recv(
     int fd,
     ssize_t size,
@@ -75,9 +84,37 @@ std::optional<Blight::data_t> Blight::recv(
     return data;
 }
 
+std::optional<Blight::data_t> Blight::recv_blocking(int fd, ssize_t size){
+    auto data = new unsigned char[size];
+    ssize_t res = -1;
+    while(res < 0){
+        res = ::recv(fd, data, size, 0);
+        if(res > 0){
+            break;
+        }
+        if(errno == EAGAIN || errno == EINTR){
+            short_pause();
+            continue;
+        }
+        return {};
+    }
+    if(res < 0){
+        delete[] data;
+        return {};
+    }
+    if(res != size){
+        _WARN("recv %d != %d", res, size);
+        delete[] data;
+        errno = EBADMSG;
+        return {};
+    }
+    return data;
+}
+
+
 bool Blight::send(
     int fd,
-    data_t data,
+    const data_t data,
     ssize_t size,
     int attempts,
     int timeout
@@ -144,7 +181,7 @@ bool Blight::send(
     return true;
 }
 
-bool Blight::send_blocking(int fd, data_t data, ssize_t size){
+bool Blight::send_blocking(int fd, const data_t data, ssize_t size){
     int res = -1;
     while(res < 0){
         res = ::send(fd, data, size, MSG_EOR);
@@ -152,18 +189,13 @@ bool Blight::send_blocking(int fd, data_t data, ssize_t size){
             break;
         }
         if(errno == EAGAIN || errno == EINTR){
-            timespec remaining;
-            timespec requested{
-                .tv_sec = 0,
-                .tv_nsec = 5000
-            };
-            nanosleep(&requested, &remaining);
+            short_pause();
             continue;
         }
         break;
     }
     if(res < 0){
-        return {};
+        return false;
     }
     if(res != size){
         errno = EMSGSIZE;

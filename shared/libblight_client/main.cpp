@@ -134,29 +134,6 @@ void __readInput(){
     _INFO("%s", "InputWorker starting");
     prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
     while(blightConnection != nullptr){
-        pollfd pfd;
-        pfd.fd = blightConnection->input_handle();
-        pfd.events = POLLIN;
-        auto res = poll(&pfd, 1, -1);
-        if(res < 0){
-            if(errno == EAGAIN || errno == EINTR){
-                continue;
-            }
-            _WARN("[InputWorker] Failed to poll connection socket: %s", std::strerror(errno));
-            break;
-        }
-        if(res == 0){
-            _INFO("%s", "InputWorker loop");
-            continue;
-        }
-        if(pfd.revents & POLLHUP){
-            _WARN("%s", "[InputWorker] Failed to read message: Socket disconnected!");
-            break;
-        }
-        if(!(pfd.revents & POLLIN)){
-            _WARN("[InputWorker] Unexpected revents: %d", pfd.revents);
-            continue;
-        }
         auto maybe = blightConnection->read_event();
         if(!maybe.has_value()){
             if(errno == EAGAIN || errno == EINTR){
