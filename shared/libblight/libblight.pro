@@ -12,7 +12,9 @@ CONFIG += no_install_prl
 SOURCES += \
     connection.cpp \
     dbus.cpp \
+    debug.cpp \
     libblight.cpp \
+    socket.cpp \
     types.cpp
 
 HEADERS += \
@@ -22,6 +24,7 @@ HEADERS += \
     libblight_global.h \
     libblight.h \
     meta.h \
+    socket.h \
     types.h
 
 PRECOMPILED_HEADER = \

@@ -1,6 +1,7 @@
 #include "connection.h"
 #include "libblight.h"
 #include "debug.h"
+#include "socket.h"
 
 #include <unistd.h>
 #include <atomic>
@@ -161,58 +162,12 @@ namespace Blight{
             .ackid = _ackid,
             .size = size
         };
-        int res = -1;
-        while(res < 0){
-            res = ::send(m_fd, &header, sizeof(header_t), MSG_EOR);
-            if(res > -1){
-                break;
-            }
-            if(errno == EAGAIN || errno == EINTR){
-                timespec remaining;
-                timespec requested{
-                    .tv_sec = 0,
-                    .tv_nsec = 5000
-                };
-                nanosleep(&requested, &remaining);
-                continue;
-            }
-            break;
-        }
-        if(res < 0){
+        if(!Blight::send_blocking(m_fd, reinterpret_cast<data_t>(&header), sizeof(header_t))){
             _WARN("Failed to write connection message header: %s", std::strerror(errno));
             return {};
         }
-        if(res != sizeof(header_t)){
-             _WARN("Failed to write connection message header: %s", "Size mismatch!");
-            errno = EMSGSIZE;
-            // No need to erase the ack, something went really wrong
-            return {};
-        }
-        res = -1;
-        while(res < 0){
-            res = ::send(m_fd, data, size, MSG_EOR);
-            if(res > -1){
-                break;
-            }
-            if(errno == EAGAIN || errno == EINTR){
-                timespec remaining;
-                timespec requested{
-                    .tv_sec = 0,
-                    .tv_nsec = 5000
-                };
-                nanosleep(&requested, &remaining);
-                continue;
-            }
-            break;
-        }
-        if(res < 0){
+        if(size&& !Blight::send_blocking(m_fd, data, size)){
             _WARN("Failed to write connection message data: %s", std::strerror(errno));
-            return {};
-        }
-        if(res != (ssize_t)size){
-            _WARN("Failed to write connection message data: %s", "Size mismatch!");
-            errno = EMSGSIZE;
-            // No need to erase the ack, something went really wrong
             return {};
         }
 #ifdef ACK_DEBUG
@@ -527,34 +482,6 @@ namespace Blight{
                 }
             }
             ackMutex.unlock();
-            // Wait for data on the socket, or for a 500ms timeout
-            pollfd pfd;
-            pfd.fd = connection->m_fd;
-            pfd.events = POLLIN;
-            auto res = poll(&pfd, 1, 500);
-            if(res < 0){
-                if(errno == EAGAIN || errno == EINTR){
-                    continue;
-                }
-                _WARN("Failed to poll connection socket: %s", std::strerror(errno));
-                error = errno;
-                break;
-            }
-            if(res == 0){
-                continue;
-            }
-            if(pfd.revents & POLLHUP){
-                _WARN("Failed to read message: %s", "Socket disconnected!");
-                std::cerr
-                    << "[BlightWorker] Failed to read message: Socket disconnected!"
-                    << std::endl;
-                error = ECONNRESET;
-                break;
-            }
-            if(!(pfd.revents & POLLIN)){
-                _WARN("Unexpected revents: %d", pfd.revents);
-                continue;
-            }
             auto message = connection->read();
             if(message->header.type == MessageType::Invalid){
                 if(errno == EAGAIN){

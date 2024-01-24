@@ -63,8 +63,9 @@ int main(int argc, char *argv[]){
         return EXIT_FAILURE;
     }
     connection->onDisconnect([](int res){
+        O_DEBUG("Connection closed:" << res);
         if(res){
-            qApp->exit(res);
+            std::exit(res);
         }
     });
     O_DEBUG("Connection socket descriptor:" << connection->handle());

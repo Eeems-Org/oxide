@@ -485,6 +485,8 @@ void Connection::readSocket(){
                 break;
             default:
                 O_WARNING("Unexpected message type" << message->header.type);
+                close();
+                return;
         }
         if(ack_size && ack_data == nullptr){
             O_WARNING("Ack expected data, but none sent");

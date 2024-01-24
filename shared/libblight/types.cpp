@@ -4,7 +4,9 @@
 #include <random>
 #include <sstream>
 
+#include "debug.h"
 #include "libblight.h"
+#include "socket.h"
 
 std::string generate_uuid_v4(){
     static std::random_device rd;
@@ -135,75 +137,35 @@ Blight::header_t Blight::message_t::create_ack(const message_t& message, size_t 
 
 Blight::message_ptr_t Blight::message_t::from_socket(int fd){
     auto message = message_t::new_ptr();
-    ssize_t res = -1;
-    while(res < 0){
-        res = ::recv(fd, &message->header, sizeof(header_t), 0);
-        if(res > 0){
-            break;
+    auto maybe = Blight::recv(fd, sizeof(header_t), 1);
+    if(!maybe.has_value()){
+        if(errno != EAGAIN && errno != EINTR){
+            _WARN(
+                "Failed to read connection message header: %s socket=%d",
+                std::strerror(errno),
+                fd
+            );
         }
-        if(errno == EAGAIN){
-            return message;
-        }
-        if(errno == EINTR){
-            timespec remaining;
-            timespec requested{
-                .tv_sec = 0,
-                .tv_nsec = 5000
-            };
-            nanosleep(&requested, &remaining);
-            continue;
-        }
-        std::cerr
-            << "Failed to read connection message header: "
-            << std::strerror(errno)
-            << std::endl
-            << "socket: "
-            << std::to_string(fd)
-            << std::endl;
         return message;
     }
+    memcpy(&message->header, maybe.value(), sizeof(header_t));
+    delete[] maybe.value();
     if(!message->header.size){
         return message;
     }
-    // TODO - create data buffer
-    res = -1;
-    auto data = new unsigned char[message->header.size];
-    // Handle the
-    while(res < 0){
-        auto res = ::recv(fd, data, message->header.size, 0);
-        if((size_t)res == message->header.size){
-            break;
-        }
-        if(res > 0){
-            errno = EMSGSIZE;
-        }
-        if(errno != EAGAIN && errno != EINTR){
-            std::cerr
-                << "Failed to read connection message body: "
-                << std::to_string(errno)
-                << " "
-                << std::strerror(errno)
-                << std::endl
-                << "socket="
-                << std::to_string(fd)
-                << ", ackid="
-                << std::to_string(message->header.ackid)
-                << ", type="
-                << std::to_string(message->header.type)
-                << ", size="
-                << std::to_string(message->header.size)
-                << std::endl;
-            return message;
-        }
-        // TODO use poll
-        timespec remaining;
-        timespec requested{
-            .tv_sec = 0,
-            .tv_nsec = 5000
-        };
-        nanosleep(&requested, &remaining);
+    maybe = Blight::recv(fd, message->header.size, -1, 500);
+    if(!maybe.has_value()){
+        _WARN(
+            "Failed to read connection message body: %s socket=%d, ackid=%d, type=%d, size=%d",
+            std::strerror(errno),
+            fd,
+            message->header.ackid,
+            message->header.type,
+            message->header.size
+        );
+        return message;
     }
-    message->data = shared_data_t(data);
+    message->data = shared_data_t(maybe.value());
     return message;
 }
 
