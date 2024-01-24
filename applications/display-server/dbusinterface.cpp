@@ -165,7 +165,7 @@ QDBusUnixFileDescriptor DbusInterface::openInput(QDBusMessage message){
         return QDBusUnixFileDescriptor();
     }
     O_INFO("Open input for: " << connection->pid());
-    return QDBusUnixFileDescriptor(connection->inputReadSocketDescriptor());
+    return QDBusUnixFileDescriptor(connection->inputSocketDescriptor());
 }
 
 QString DbusInterface::addSurface(

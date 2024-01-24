@@ -89,8 +89,7 @@ pid_t Connection::pgid() const{ return m_pgid; }
 
 int Connection::socketDescriptor(){ return m_clientFd; }
 
-int Connection::inputReadSocketDescriptor(){ return m_clientInputFd; }
-int Connection::inputWriteSocketDescriptor(){ return m_serverInputFd; }
+int Connection::inputSocketDescriptor(){ return m_clientInputFd; }
 
 bool Connection::isValid(){ return m_clientFd > 0 && m_serverFd > 0 && isRunning(); }
 

@@ -27,8 +27,7 @@ public:
     pid_t pid() const;
     pid_t pgid() const;
     int socketDescriptor();
-    int inputReadSocketDescriptor();
-    int inputWriteSocketDescriptor();
+    int inputSocketDescriptor();
     bool isValid();
     bool isRunning();
     bool signal(int signal);
