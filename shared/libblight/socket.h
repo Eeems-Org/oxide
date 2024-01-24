@@ -15,13 +15,6 @@ namespace Blight{
         int fd,
         ssize_t size
     );
-    LIBBLIGHT_EXPORT bool send(
-        int fd,
-        const data_t data,
-        ssize_t size,
-        unsigned int attempts = 5,
-        unsigned int timeout = 50
-    );
     LIBBLIGHT_EXPORT bool send_blocking(
         int fd,
         const data_t data,
