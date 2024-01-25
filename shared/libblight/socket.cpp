@@ -59,7 +59,7 @@ std::optional<Blight::data_t> Blight::recv(
     }
     // The data we recieved isn't the same size as what we expected
     if(res != size){
-        _WARN("recv %d != %d", size, res);
+        _WARN("recv %ld != %ld", (long int)size, (long int)res);
         delete[] data;
         errno = EBADMSG;
         return {};
@@ -86,7 +86,7 @@ std::optional<Blight::data_t> Blight::recv_blocking(int fd, ssize_t size){
     }
     // The data we recieved isn't the same size as what we expected
     if(res != size){
-        _WARN("recv_blocking %d != %d", size, res);
+        _WARN("recv_blocking %ld != %ld", (long int)size, (long int)res);
         delete[] data;
         errno = EBADMSG;
         return {};
@@ -114,7 +114,7 @@ bool Blight::send_blocking(int fd, const data_t data, ssize_t size){
     }
     // The data we sent isn't the same size as what we expected
     if(res != size){
-        _WARN("send_blocking %d != %d", size, res);
+        _WARN("send_blocking %ld != %d", (long int)size, res);
         errno = EMSGSIZE;
         return false;
     }

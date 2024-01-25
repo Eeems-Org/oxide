@@ -74,7 +74,8 @@ namespace Blight{
     LIBBLIGHT_EXPORT typedef struct clipboard_t {
         shared_data_t data;
         size_t size;
-        const std::string name;
+        std::string name;
+        clipboard_t(const std::string name, data_t data = nullptr, size_t size = 0);
         const std::string to_string();
         bool update();
         bool set(shared_data_t data, size_t size);

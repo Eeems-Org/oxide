@@ -20,42 +20,23 @@ void readClipboard(Blight::clipboard_t& clipboard, bool rmlastnlOption){
     }
     qStdOut() << data;
 }
-
-int setClipboard(Blight::clipboard_t& clipboard, QByteArray& data){
-    if(clipboard.set(data.data(), data.size())){
-        return EXIT_SUCCESS;
-    }
-    qDebug() << "Failed to set clipboard:" << std::strerror(errno);
-    return EXIT_FAILURE;
-}
-
-int setClipboard(const QString& selection, QByteArray& data, bool verbose){
+int setClipboard(const QString& selection, QByteArray& data, bool verbose,  bool rmlastnlOption){
     if(verbose){
         qDebug() << "Setting selection:" << selection;
     }
-    Blight::clipboard_t clipboard;
-    if(selection == "secondary"){
-        auto maybe = Blight::secondary();
-        if(!maybe.has_value()){
-            qDebug() << "Failed to get clipboard:" << std::strerror(errno);
-            return EXIT_FAILURE;
-        }
-        return setClipboard(clipboard, data);
+    if(rmlastnlOption && data.right(1) == "\n"){
+        data.chop(1);
     }
-    if(selection == "clipboard"){
-        auto maybe = Blight::clipboard();
-        if(!maybe.has_value()){
-            qDebug() << "Failed to get clipboard:" << std::strerror(errno);
-            return EXIT_FAILURE;
-        }
-        return setClipboard(clipboard, data);
+    auto name = selection.toStdString();
+    if(name != "secondary" && name != "clipboard"){
+        name = "selection";
     }
-    auto maybe = Blight::selection();
-    if(!maybe.has_value()){
-        qDebug() << "Failed to get clipboard:" << std::strerror(errno);
-        return EXIT_FAILURE;
+    Blight::clipboard_t clipboard(name, (Blight::data_t)data.data(), data.size());
+    if(Blight::setClipboard(clipboard)){
+        return EXIT_SUCCESS;
     }
-    return setClipboard(clipboard, data);
+    qDebug() << "Failed to get clipboard:" << std::strerror(errno);
+    return EXIT_FAILURE;
 }
 
 int main(int argc, char *argv[]){
@@ -146,7 +127,7 @@ int main(int argc, char *argv[]){
     if(args.empty()){
         auto data = QTextStream(stdin).readAll().toUtf8();
         auto selection = parser.value(selectionOption);
-        return setClipboard(selection, data, verbose);
+        return setClipboard(selection, data, verbose, parser.isSet(rmlastnlOption));
     }
     for(auto path : args){
         if(!QFile::exists(path)){
@@ -164,5 +145,5 @@ int main(int argc, char *argv[]){
         data += file.readAll();
     }
     auto selection = parser.value(selectionOption);
-    return setClipboard(selection, data, verbose);
+    return setClipboard(selection, data, verbose, parser.isSet(rmlastnlOption));
 }

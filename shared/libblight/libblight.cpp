@@ -46,11 +46,7 @@ namespace Blight{
         }
         auto data = new unsigned char[size];
         memcpy(data, clipboard, size);
-        return clipboard_t{
-            .data = shared_data_t(data),
-            .size = size,
-            .name = name
-        };
+        return clipboard_t(name, data, size);
     }
 
     bool connect(bool use_system){
@@ -336,6 +332,7 @@ namespace Blight{
                 << "[Blight::setClipboard()] Invalid clipboard name: "
                 << clipboard.name.c_str()
                 << std::endl;
+            errno = EINVAL;
             return false;
         }
         char buf[sizeof(clipboard.size) + clipboard.size];
@@ -458,6 +455,7 @@ namespace Blight{
                 << "[Blight::updateClipboard()] Invalid clipboard name: "
                 << clipboard.name.c_str()
                 << std::endl;
+            errno = EINVAL;
             return false;
         }
         // Reload data just in case;

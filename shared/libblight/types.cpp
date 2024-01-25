@@ -160,7 +160,7 @@ Blight::message_ptr_t Blight::message_t::from_socket(int fd){
             "socket=%d, "
             "ackid=%d, "
             "type=%d, "
-            "size=%d",
+            "size=%ld",
             std::strerror(errno),
             fd,
             message->header.ackid,
@@ -256,6 +256,12 @@ std::vector<std::string> Blight::list_t::identifiers(){
     }
     return identifiers;
 }
+
+Blight::clipboard_t::clipboard_t(const std::string name, data_t data, size_t size)
+: data{data},
+  size{size},
+  name{name}
+{}
 
 const std::string Blight::clipboard_t::to_string(){
     std::string res;
