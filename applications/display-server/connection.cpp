@@ -251,11 +251,12 @@ void Connection::readSocket(){
                 O_DEBUG(
                     "Repaint requested: "
                     << repaint.identifier.c_str()
-                    << QString("(%1,%2) %3x%4")
+                    << QString("(%1,%2) %3x%4 %5")
                         .arg(repaint.header.x)
                         .arg(repaint.header.y)
                         .arg(repaint.header.width)
                         .arg(repaint.header.height)
+                        .arg(repaint.header.waveform)
                         .toStdString()
                         .c_str()
                 );

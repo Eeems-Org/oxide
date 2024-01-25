@@ -91,16 +91,7 @@ int __open_input_socketpair(int flags, int fds[2]){
     if(flags & O_NONBLOCK || flags & O_NDELAY){
         socketFlags |= SOCK_NONBLOCK;
     }
-    int res = ::socketpair(AF_UNIX, socketFlags, 0, fds);
-    if(res != -1){
-        timeval time;
-        ::gettimeofday(&time, NULL);
-        for(int i = 0; i < 10; i++){
-            writeInputEvent(fds[0], time, EV_SYN, SYN_DROPPED, 0);
-            writeInputEvent(fds[0], time, EV_SYN, SYN_REPORT, 0);
-        }
-    }
-    return res;
+    return ::socketpair(AF_UNIX, socketFlags, 0, fds);
 }
 
 
@@ -134,19 +125,20 @@ void __readInput(){
             continue;
         }
         auto& event = maybe.value().event;
+        auto& queue = events[device];
         if(event.type == EV_SYN && event.code == SYN_DROPPED){
-            events[device].clear();
+            queue.clear();
             continue;
         }
-        events[device].push_back(event);
+        queue.push_back(event);
         if(event.type != EV_SYN && event.code != SYN_REPORT){
             continue;
         }
         timeval time;
         ::gettimeofday(&time, NULL);
-        std::vector<input_event> data(events.size());
-        for(unsigned int i = 0; i < events.size(); i++){
-            auto& event = events[device][i];
+        std::vector<input_event> data(queue.size());
+        for(unsigned int i = 0; i < queue.size(); i++){
+            auto& event = queue[i];
             data[i] = input_event{
                 .time = time,
                 .type = event.type,
@@ -160,8 +152,10 @@ void __readInput(){
             sizeof(input_event) * data.size()
         )){
             _CRIT("%d input events failed to send: %s", data.size(), std::strerror(errno));
+        }else{
+            _DEBUG("Sent %d input events", data.size());
         }
-        events[device].clear();
+        queue.clear();
     }
     _INFO("%s", "InputWorker quitting");
 }

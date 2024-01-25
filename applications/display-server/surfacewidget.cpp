@@ -33,7 +33,6 @@ void SurfaceWidget::updated(){ update(); }
 
 #ifdef EPAPER
 void SurfaceWidget::paint(QPainter* painter){
-    Q_UNUSED(painter);
     guiThread->enqueue(
         surface(),
         painter->clipBoundingRect().toRect(),

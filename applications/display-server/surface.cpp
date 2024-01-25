@@ -57,6 +57,7 @@ Surface::Surface(Connection* connection, int fd, QRect geometry, int stride, QIm
     emit connection->focused();
 #ifdef EPAPER
     if(visible()){
+        // Draw on first display
         guiThread->enqueue(
             nullptr,
             geometry,
@@ -73,6 +74,7 @@ Surface::~Surface(){
     file.close();
 #ifdef EPAPER
     if(visible()){
+        // Display whatever was beneath this when it's closed
         guiThread->enqueue(
             nullptr,
             geometry(),
