@@ -323,9 +323,15 @@ namespace Blight{
 
     std::optional<clipboard_t> selection(){ return getClipboard("selection"); }
 
+    std::optional<clipboard_t> secondary(){ return getClipboard("secondary"); }
+
 
     bool setClipboard(clipboard_t& clipboard){
-        if(clipboard.name != "clipboard" && clipboard.name != "selection"){
+        if(
+           clipboard.name != "clipboard"
+           && clipboard.name != "selection"
+           && clipboard.name != "secondary"
+        ){
             std::cerr
                 << "[Blight::setClipboard()] Invalid clipboard name: "
                 << clipboard.name.c_str()
@@ -443,7 +449,11 @@ namespace Blight{
     }
 
     bool updateClipboard(clipboard_t& clipboard){
-        if(clipboard.name != "clipboard" && clipboard.name != "selection"){
+        if(
+           clipboard.name != "clipboard"
+           && clipboard.name != "selection"
+           && clipboard.name != "secondary"
+        ){
             std::cerr
                 << "[Blight::updateClipboard()] Invalid clipboard name: "
                 << clipboard.name.c_str()

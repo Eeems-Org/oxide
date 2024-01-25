@@ -23,6 +23,7 @@ class DbusInterface : public QObject, public QDBusContext {
     Q_PROPERTY(int pid READ pid CONSTANT)
     Q_PROPERTY(QByteArray clipboard READ clipboard WRITE setClipboard NOTIFY clipboardChanged)
     Q_PROPERTY(QByteArray selection READ selection WRITE setSelection NOTIFY selectionChanged)
+    Q_PROPERTY(QByteArray secondary READ secondary WRITE setSecondary NOTIFY secondaryChanged)
 
 public:
     static DbusInterface* singleton();
@@ -42,6 +43,8 @@ public:
     void setClipboard(const QByteArray& data);
     const QByteArray& selection();
     void setSelection(const QByteArray& data);
+    const QByteArray& secondary();
+    void setSecondary(const QByteArray& data);
 
 
 public slots:
@@ -64,6 +67,7 @@ public slots:
 signals:
     void clipboardChanged(const QByteArray& data);
     void selectionChanged(const QByteArray& data);
+    void secondaryChanged(const QByteArray& data);
 
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);
@@ -79,6 +83,7 @@ private:
     struct {
         QByteArray clipboard;
         QByteArray selection;
+        QByteArray secondary;
     } clipboards;
 
     Connection* getConnection(QDBusMessage message);

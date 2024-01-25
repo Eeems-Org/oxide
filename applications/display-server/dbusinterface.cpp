@@ -389,6 +389,13 @@ void DbusInterface::setSelection(const QByteArray& data){
     emit selectionChanged(selection());
 }
 
+const QByteArray& DbusInterface::secondary(){ return clipboards.secondary; }
+
+void DbusInterface::setSecondary(const QByteArray& data){
+    clipboards.secondary = data;
+    emit clipboardChanged(secondary());
+}
+
 void DbusInterface::sortZ(){
     auto sorted = sortedSurfaces();
     int z = 0;

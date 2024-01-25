@@ -4,10 +4,14 @@
     <property name="pid" type="i" access="read"/>
     <property name="clipboard" type="ay" access="readwrite"/>
     <property name="selection" type="ay" access="readwrite"/>
+    <property name="secondary" type="ay" access="readwrite"/>
     <signal name="clipboardChanged">
       <arg name="data" type="ay" direction="out"/>
     </signal>
     <signal name="selectionChanged">
+      <arg name="data" type="ay" direction="out"/>
+    </signal>
+    <signal name="secondaryChanged">
       <arg name="data" type="ay" direction="out"/>
     </signal>
     <method name="open">
