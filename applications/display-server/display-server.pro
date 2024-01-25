@@ -7,7 +7,11 @@ CONFIG += c++17
 CONFIG -= app_bundle
 CONFIG += qml_debug
 CONFIG += qtquickcompiler
-CONFIG += qmltypes # disables all the APIs deprecated before Qt 6.0.0
+CONFIG += qmltypes
+
+QT_CONFIG -= no-pkg-config
+CONFIG += link_pkgconfig
+PKGCONFIG += libevdev
 
 QML_IMPORT_NAME = codes.eeems.blight
 QML_IMPORT_PATH += .
@@ -24,7 +28,6 @@ SOURCES += \
     main.cpp \
     surface.cpp \
     surfacewidget.cpp
-
 
 configFile.files = ../../assets/etc/dbus-1/system.d/codes.eeems.blight.conf
 configFile.path = /etc/dbus-1/system.d/

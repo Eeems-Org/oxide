@@ -2,6 +2,7 @@
 
 #include <liboxide/debug.h>
 #include <liboxide/threading.h>
+#include <libevdev/libevdev.h>
 #include <QFileInfo>
 #include <QThread>
 
@@ -14,12 +15,14 @@ EvDevDevice::EvDevDevice(QThread* handler, event_device device)
     notifier = new QSocketNotifier(device.fd, QSocketNotifier::Read, this);
     connect(notifier, &QSocketNotifier::activated, this, &EvDevDevice::readEvents);
     notifier->setEnabled(true);
+    libevdev_new_from_fd(device.fd, &dev);
 }
 
 EvDevDevice::~EvDevDevice(){
     notifier->setEnabled(false);
     notifier->deleteLater();
     unlock();
+    libevdev_free(dev);
 }
 
 QString EvDevDevice::devName(){ return QFileInfo(path()).baseName(); }
@@ -48,38 +51,25 @@ void EvDevDevice::unlock(){ exists() && device.locked && device.unlock(); }
 void EvDevDevice::readEvents(){
     Oxide::dispatchToThread(thread(), [this]{
         notifier->setEnabled(false);
-        input_event event;
-        int res = 1;
-        while(res > 0){
-            res = ::read(device.fd, &event, sizeof(input_event));
-            if(res < 0){
-                if(errno == ENODEV){
-                    return;
-                }
-                if(errno != EAGAIN && errno != EINTR){
-                    O_DEBUG(strerror(errno));
-                }
-                break;
-            }
-            if((size_t)res < sizeof(input_event)){
-                O_WARNING("Partial input_event read!");
-                break;
+        int res;
+        bool sync = false;
+        do{
+            input_event event;
+            res = libevdev_next_event(
+                dev,
+                sync ? LIBEVDEV_READ_FLAG_SYNC : LIBEVDEV_READ_FLAG_NORMAL,
+                &event
+            );
+            sync = res == LIBEVDEV_READ_STATUS_SYNC;
+            if(res != LIBEVDEV_READ_STATUS_SUCCESS && res != LIBEVDEV_READ_STATUS_SYNC){
+                continue;
             }
             events.push_back(event);
-            switch(event.type){
-                case EV_SYN:
-                    switch(event.code){
-                        case SYN_DROPPED:
-                            events.clear();
-                            break;
-                        case SYN_REPORT:
-                            emit inputEvents(events);
-                            events.clear();
-                            break;
-                    }
-                    break;
+            if(event.type == EV_SYN && event.code == SYN_REPORT){
+                emit inputEvents(events);
+                events.clear();
             }
-        }
+        }while(res == LIBEVDEV_READ_STATUS_SUCCESS);
         notifier->setEnabled(true);
     });
 }

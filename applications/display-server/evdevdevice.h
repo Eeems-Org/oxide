@@ -4,6 +4,7 @@
 #include <QSocketNotifier>
 #include <liboxide/event_device.h>
 #include <liboxide/sysobject.h>
+#include <libevdev/libevdev.h>
 
 using namespace Oxide;
 
@@ -34,4 +35,5 @@ private:
     QString _name;
     QSocketNotifier* notifier;
     std::vector<input_event> events;
+    libevdev* dev;
 };
