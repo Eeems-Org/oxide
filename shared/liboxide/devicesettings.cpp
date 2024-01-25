@@ -222,6 +222,7 @@ namespace Oxide {
         QObject::connect(
             manager,
             &QInputDeviceManager::deviceListChanged,
+            manager,
             [callback](QInputDeviceManager::DeviceType type){
                 if(type == QInputDeviceManager::DeviceTypeKeyboard){
                     callback();
@@ -252,6 +253,7 @@ namespace Oxide {
         QObject::connect(
             manager,
             &QInputDeviceManager::deviceListChanged,
+            manager,
             [callback](QInputDeviceManager::DeviceType type){
                 Q_UNUSED(type);
                 callback();

@@ -20,7 +20,7 @@ private slots:
 
 private:
     void setup(
-        QDeviceDiscovery::QDeviceType privateType,
+        QDeviceDiscovery::QDeviceTypes privateTypes,
         QInputDeviceManager::DeviceType publicType
     );
     QMap<QInputDeviceManager::DeviceType, QStringList> m_devices;

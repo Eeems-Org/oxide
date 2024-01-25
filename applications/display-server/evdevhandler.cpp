@@ -8,6 +8,8 @@
 #include <sys/socket.h>
 #include <cstring>
 
+#include <private/qdevicediscovery_p.h>
+
 EvDevHandler* EvDevHandler::init(){
     static EvDevHandler* instance;
     if(instance != nullptr){
@@ -24,7 +26,9 @@ EvDevHandler::EvDevHandler()
 {
     setObjectName("EvDevHandler");
     reloadDevices();
-    deviceSettings.onKeyboardAttachedChanged([this]{ reloadDevices(); });
+    auto deviceDiscovery = QDeviceDiscovery::create(QDeviceDiscovery::Device_InputMask, this);
+    connect(deviceDiscovery, &QDeviceDiscovery::deviceDetected, this, &EvDevHandler::reloadDevices);
+    connect(deviceDiscovery, &QDeviceDiscovery::deviceRemoved, this, &EvDevHandler::reloadDevices);
 }
 
 EvDevHandler::~EvDevHandler(){}
@@ -39,7 +43,7 @@ bool EvDevHandler::hasDevice(event_device device){
 }
 
 void EvDevHandler::reloadDevices(){
-    O_DEBUG("Reloading keyboards");
+    O_DEBUG("Reloading devices");
     for(auto& device : deviceSettings.inputDevices()){
         if(device.device == deviceSettings.getButtonsDevicePath()){
             continue;

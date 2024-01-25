@@ -91,15 +91,12 @@ namespace Blight{
 
     Connection::Connection(int fd)
     : m_fd(fcntl(fd, F_DUPFD_CLOEXEC, 3)),
+      m_inputFd{-1},
       stop_requested(false),
       thread(run, this)
     {
         int flags = fcntl(fd, F_GETFD, NULL);
         fcntl(fd, F_SETFD, flags | O_NONBLOCK);
-        m_inputFd = Blight::open_input();
-        if(m_inputFd < 0){
-            _CRIT("Failed to open input stream: %s", std::strerror(errno));
-        }
     }
 
     Connection::~Connection(){
@@ -112,7 +109,15 @@ namespace Blight{
 
     int Connection::handle(){ return m_fd; }
 
-    int Connection::input_handle(){ return m_inputFd; }
+    int Connection::input_handle(){
+        if(m_inputFd < 0){
+            m_inputFd = Blight::open_input();
+            if(m_inputFd < 0){
+                _CRIT("Failed to open input stream: %s", std::strerror(errno));
+            }
+        }
+        return m_inputFd;
+    }
 
     void Connection::onDisconnect(std::function<void(int)> callback){
         ackMutex.lock();
@@ -121,11 +126,13 @@ namespace Blight{
     }
 
     std::optional<event_packet_t> Connection::read_event(){
-        if(m_inputFd < 0){
+        // Use input_handle() since we don't know if it's open yet
+        auto fd = input_handle();
+        if(fd < 0){
             _WARN("Failed to read event: %s", "Input stream not open");
             return {};
         }
-        auto maybe = Blight::recv_blocking(m_inputFd, sizeof(event_packet_t));
+        auto maybe = Blight::recv(fd, sizeof(event_packet_t));
         if(!maybe.has_value()){
             if(errno != EAGAIN && errno != EINTR){
                 _WARN("Failed to read event: %s", std::strerror(errno));

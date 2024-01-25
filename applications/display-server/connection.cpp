@@ -201,19 +201,25 @@ void Connection::inputEvents(unsigned int device, const std::vector<input_event>
     //        It's probably worth adding some sort of acking mechanism to this to ensure that
     //        events are being read, as well as don't send anything until the client tells you
     //        that it's ready to start reading events.
-    for(const input_event& event : events){
-        O_DEBUG("writeEvent(" << device << event.type << event.code << event.value << ")");
-        Blight::event_packet_t data = { device, event };
-        if(!Blight::send_blocking(
-            m_serverInputFd,
-            reinterpret_cast<Blight::data_t>(&data),
-            sizeof(input_event)
-        )){
-            O_WARNING("Failed to write input event: " << std::strerror(errno));
-            continue;
-        }
-        O_DEBUG("Write finished");
+    O_DEBUG("Writing" << events.size() << "input events");
+    std::vector<Blight::event_packet_t> data(events.size());
+    for(unsigned int i = 0; i < events.size(); i++){
+        auto& ie = events[i];
+        auto& packet = data[i];
+        packet.device = device;
+        auto& event = packet.event;
+        event.type = ie.type;
+        event.code = ie.code;
+        event.value = ie.value;
     }
+    if(!Blight::send_blocking(
+        m_serverInputFd,
+        reinterpret_cast<Blight::data_t>(data.data()),
+        sizeof(Blight::event_packet_t) * data.size()
+    )){
+        O_WARNING("Failed to write input event: " << std::strerror(errno));
+    }
+    O_DEBUG("Write finished");
 }
 
 void Connection::readSocket(){

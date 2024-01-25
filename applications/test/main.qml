@@ -21,10 +21,14 @@ Window{
     MouseArea{
         anchors.fill: parent
         onClicked: Qt.quit()
+        focus: true
     }
     Shortcut{
         sequences: [StandardKey.Quit, "Ctrl+Q", "Ctrl+W"]
         context: Qt.ApplicationShortcut
         onActivated: Qt.quit()
+    }
+    Keys.onPressed: function(event){
+        console.log(event.key);
     }
 }

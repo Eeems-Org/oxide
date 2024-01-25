@@ -1,5 +1,7 @@
 #include "evdevdevice.h"
 
+#include <liboxide/debug.h>
+#include <liboxide/threading.h>
 #include <QFileInfo>
 #include <QThread>
 
@@ -14,7 +16,11 @@ EvDevDevice::EvDevDevice(QThread* handler, event_device device)
     notifier->setEnabled(true);
 }
 
-EvDevDevice::~EvDevDevice(){ unlock(); }
+EvDevDevice::~EvDevDevice(){
+    notifier->setEnabled(false);
+    notifier->deleteLater();
+    unlock();
+}
 
 QString EvDevDevice::devName(){ return QFileInfo(path()).baseName(); }
 
@@ -40,23 +46,40 @@ void EvDevDevice::lock(){ exists() && device.lock(); }
 void EvDevDevice::unlock(){ exists() && device.locked && device.unlock(); }
 
 void EvDevDevice::readEvents(){
-    notifier->setEnabled(false);
-    input_event event;
-    while(::read(device.fd, &event, sizeof(input_event)) > 0){
-        events.push_back(event);
-        switch(event.type){
-            case EV_SYN:
-                switch(event.code){
-                    case SYN_DROPPED:
-                        events.clear();
-                        break;
-                    case SYN_REPORT:
-                        emit inputEvents(events);
-                        events.clear();
-                        break;
+    Oxide::dispatchToThread(thread(), [this]{
+        notifier->setEnabled(false);
+        input_event event;
+        int res = 1;
+        while(res > 0){
+            res = ::read(device.fd, &event, sizeof(input_event));
+            if(res < 0){
+                if(errno == ENODEV){
+                    return;
+                }
+                if(errno != EAGAIN && errno != EINTR){
+                    O_DEBUG(strerror(errno));
                 }
                 break;
+            }
+            if((size_t)res < sizeof(input_event)){
+                O_WARNING("Partial input_event read!");
+                break;
+            }
+            events.push_back(event);
+            switch(event.type){
+                case EV_SYN:
+                    switch(event.code){
+                        case SYN_DROPPED:
+                            events.clear();
+                            break;
+                        case SYN_REPORT:
+                            emit inputEvents(events);
+                            events.clear();
+                            break;
+                    }
+                    break;
+            }
         }
-    }
-    notifier->setEnabled(true);
+        notifier->setEnabled(true);
+    });
 }

@@ -10,6 +10,7 @@
 #include <private/qevdevkeyboardhandler_p.h>
 
 #include <liboxide/event_device.h>
+#include <libblight/types.h>
 
 class OxideEventManager;
 
@@ -42,10 +43,10 @@ public:
 
 private slots:
     void readyRead();
-    void processKeyboardEvent(DeviceData* data, input_event* event);
-    void processTabletEvent(DeviceData* data, input_event* event);
-    void processTouchEvent(DeviceData* data, input_event* event);
-    void processPointerEvent(DeviceData* data, input_event* event);
+    void processKeyboardEvent(DeviceData* data, Blight::partial_input_event_t* event);
+    void processTabletEvent(DeviceData* data, Blight::partial_input_event_t* event);
+    void processTouchEvent(DeviceData* data, Blight::partial_input_event_t* event);
+    void processPointerEvent(DeviceData* data, Blight::partial_input_event_t* event);
 
 private:
     OxideEventManager* m_manager;

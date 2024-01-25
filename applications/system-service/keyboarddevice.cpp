@@ -2,6 +2,8 @@
 #include "buttonhandler.h"
 #include "keyboardhandler.h"
 
+#include <liboxide/threading.h>
+
 KeyboardDevice::KeyboardDevice(QThread* handler, event_device device)
 : QObject(handler),
   device(device),
@@ -18,6 +20,8 @@ KeyboardDevice::~KeyboardDevice(){
     if(exists() && device.locked){
         device.unlock();
     }
+    notifier->setEnabled(false);
+    notifier->deleteLater();
 }
 
 QString KeyboardDevice::devName(){ return QFileInfo(device.device.c_str()).baseName(); }
@@ -42,29 +46,42 @@ void KeyboardDevice::flood(){
 }
 
 void KeyboardDevice::readEvents(){
-    notifier->setEnabled(false);
-    input_event event;
-    while(::read(device.fd, &event, sizeof(input_event)) > 0){
-        switch(event.type){
-            case EV_KEY:
-                pressed[event.code] = event.value;
-                break;
-            case EV_SYN:
-                switch(event.code){
-                    case SYN_DROPPED:
-                        pressed.clear();
-                        break;
-                    case SYN_REPORT:
-                        auto handler = static_cast<KeyboardHandler*>(parent());
-                        for(auto code : pressed.keys()){
-                            handler->writeEvent(EV_KEY, code, pressed[code]);
-                        }
-                        handler->writeEvent(EV_SYN, SYN_REPORT, 0);
-                        pressed.clear();
-                        break;
+    Oxide::dispatchToThread(thread(), [this]{
+        notifier->setEnabled(false);
+        input_event event;
+        int res = 1;
+        while(res > 0){
+            res = ::read(device.fd, &event, sizeof(input_event));
+            if(res < 1){
+                if(errno == ENODEV){
+                    return;
+                }
+                if(errno != EAGAIN || errno != EINTR){
+                    O_WARNING(std::strerror(errno));
                 }
                 break;
+            }
+            switch(event.type){
+                case EV_KEY:
+                    pressed[event.code] = event.value;
+                    break;
+                case EV_SYN:
+                    switch(event.code){
+                        case SYN_DROPPED:
+                            pressed.clear();
+                            break;
+                        case SYN_REPORT:
+                            auto handler = static_cast<KeyboardHandler*>(parent());
+                            for(auto code : pressed.keys()){
+                                handler->writeEvent(EV_KEY, code, pressed[code]);
+                            }
+                            handler->writeEvent(EV_SYN, SYN_REPORT, 0);
+                            pressed.clear();
+                            break;
+                    }
+                    break;
+            }
         }
-    }
-    notifier->setEnabled(true);
+        notifier->setEnabled(true);
+    });
 }

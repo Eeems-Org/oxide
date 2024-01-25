@@ -21,6 +21,7 @@
 #include <libblight.h>
 #include <libblight/connection.h>
 #include <libblight/debug.h>
+#include <libblight/socket.h>
 #include <filesystem>
 #include <cstdint>
 
@@ -60,41 +61,12 @@ static void*(*func_mmap)(void*, size_t, int, int, int, __off_t);
 static int msgq = -1;
 
 void writeInputEvent(int fd, input_event* ie){
-    int res = -1;
-    while(res < 0){
-        pollfd pfd;
-        pfd.fd = fd;
-        pfd.events = POLLOUT;
-        res = poll(&pfd, 1, -1);
-        if(res < 0){
-            if(errno == EAGAIN || errno == EINTR){
-                continue;
-            }
-            break;
-        }
-        if(res == 0){
-            res = -1;
-            continue;
-        }
-        if(pfd.revents & POLLHUP){
-            res = ECONNRESET;
-            break;
-        }
-        if(!(pfd.revents & POLLOUT)){
-            res = -1;
-            _WARN("Unexpected revents: %d", pfd.revents);
-            continue;
-        }
-        res = send(fd, ie, sizeof(input_event), 0);
-        if(res < 0 && (errno == EAGAIN || errno == EINTR)){
-            continue;
-        }
-        break;
-    }
-    if(res == -1){
+    if(!Blight::send_blocking(
+        fd,
+        reinterpret_cast<Blight::data_t>(ie),
+        sizeof(input_event)
+    )){
         _WARN("Failed to write input event", strerror(errno));
-    }else if((unsigned int)res < sizeof(input_event)){
-        _WARN("Only wrote", res, "of", sizeof(input_event), "bytes of input_event");
     }
 }
 
@@ -116,15 +88,17 @@ void writeInputEvent(
 
 int __open_input_socketpair(int flags, int fds[2]){
     int socketFlags = SOCK_STREAM;
-    if((flags & O_NONBLOCK) || (flags & O_NDELAY)){
+    if(flags & O_NONBLOCK || flags & O_NDELAY){
         socketFlags |= SOCK_NONBLOCK;
     }
     int res = ::socketpair(AF_UNIX, socketFlags, 0, fds);
     if(res != -1){
         timeval time;
         ::gettimeofday(&time, NULL);
-        writeInputEvent(fds[0], time, EV_SYN, SYN_DROPPED, 0);
-        writeInputEvent(fds[0], time, EV_SYN, SYN_REPORT, 0);
+        for(int i = 0; i < 10; i++){
+            writeInputEvent(fds[0], time, EV_SYN, SYN_DROPPED, 0);
+            writeInputEvent(fds[0], time, EV_SYN, SYN_REPORT, 0);
+        }
     }
     return res;
 }
@@ -133,16 +107,17 @@ int __open_input_socketpair(int flags, int fds[2]){
 void __readInput(){
     _INFO("%s", "InputWorker starting");
     prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
+    auto fd = blightConnection->input_handle();
+    std::map<unsigned int,std::vector<Blight::partial_input_event_t>> events;
     while(blightConnection != nullptr){
+        if(!Blight::wait_for_read(fd)){
+            _WARN("[InputWorker] Failed to read message %s", std::strerror(errno));
+            continue;
+        }
+        _DEBUG("Reading next input event");
         auto maybe = blightConnection->read_event();
         if(!maybe.has_value()){
             if(errno == EAGAIN || errno == EINTR){
-                timespec remaining;
-                timespec requested{
-                    .tv_sec = 0,
-                    .tv_nsec = 5000
-                };
-                nanosleep(&requested, &remaining);
                 continue;
             }
             _WARN("[InputWorker] Failed to read message %s", std::strerror(errno));
@@ -159,15 +134,34 @@ void __readInput(){
             continue;
         }
         auto& event = maybe.value().event;
-        _DEBUG(
-            "event%d fd=%d,input_event={ %d %d %d }",
-            device,
+        if(event.type == EV_SYN && event.code == SYN_DROPPED){
+            events[device].clear();
+            continue;
+        }
+        events[device].push_back(event);
+        if(event.type != EV_SYN && event.code != SYN_REPORT){
+            continue;
+        }
+        timeval time;
+        ::gettimeofday(&time, NULL);
+        std::vector<input_event> data(events.size());
+        for(unsigned int i = 0; i < events.size(); i++){
+            auto& event = events[device][i];
+            data[i] = input_event{
+                .time = time,
+                .type = event.type,
+                .code = event.code,
+                .value = event.value
+            };
+        }
+        if(!Blight::send_blocking(
             fd,
-            event.type,
-            event.code,
-            event.value
-        );
-        writeInputEvent(fd, &event);
+            reinterpret_cast<Blight::data_t>(data.data()),
+            sizeof(input_event) * data.size()
+        )){
+            _CRIT("%d input events failed to send: %s", data.size(), std::strerror(errno));
+        }
+        events[device].clear();
     }
     _INFO("%s", "InputWorker quitting");
 }

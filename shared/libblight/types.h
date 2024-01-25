@@ -58,10 +58,14 @@ namespace Blight{
         HighQualityGrayscale = Waveform::GC16,
         Highlight = Waveform::UNKNOWN
     };
-
+    LIBBLIGHT_EXPORT typedef struct{
+        __u16 type;
+        __u16 code;
+        __s32 value;
+    } partial_input_event_t;
     LIBBLIGHT_EXPORT typedef struct {
         unsigned int device;
-        input_event event;
+        partial_input_event_t event;
     } event_packet_t;
     LIBBLIGHT_EXPORT typedef unsigned char* data_t;
     LIBBLIGHT_EXPORT typedef std::shared_ptr<unsigned char[]> shared_data_t;

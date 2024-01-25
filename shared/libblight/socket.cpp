@@ -20,35 +20,13 @@ std::optional<Blight::data_t> Blight::recv(
     ssize_t res = -1;
     unsigned int count = 0;
     while(res < 0 && count < attempts){
-        pollfd pfd;
-        pfd.fd = fd;
-        pfd.events = POLLOUT;
-        res = poll(&pfd, 1, timeout);
-        if(res < 0){
-            // Temporary error, try again
+        if(!wait_for_read(fd, timeout)){
             if(errno == EAGAIN || errno == EINTR){
                 count++;
                 continue;
             }
             delete[] data;
             return {};
-        }
-        // We timed out, try again
-        if(res == 0){
-            count++;
-            continue;
-        }
-        // Socket disconnected
-        if(pfd.revents & POLLHUP){
-            errno = ECONNRESET;
-            delete[] data;
-            return {};
-        }
-        // We only expect POLLOUT this is odd
-        if(!(pfd.revents & POLLOUT)){
-            res = 0;
-            count++;
-            continue;
         }
         // Recieve the data
         res = ::recv(fd, data, size, MSG_WAITALL | MSG_DONTWAIT);
@@ -139,3 +117,39 @@ bool Blight::send_blocking(int fd, const data_t data, ssize_t size){
     }
     return true;
 }
+
+bool wait_for(int fd, int timeout, int event){
+    while(true){
+        pollfd pfd;
+        pfd.fd = fd;
+        pfd.events = event;
+        auto res = poll(&pfd, 1, timeout);
+        if(res < 0){
+            // Temporary error, try again
+            // TODO keep track of timeout and try again with only remaining time
+            if(errno == EAGAIN || errno == EINTR){
+                continue;
+            }
+            return false;
+        }
+        // We timed out
+        if(res == 0){
+            errno = EAGAIN;
+            return false;
+        }
+        // Socket disconnected
+        if(pfd.revents & POLLHUP){
+            errno = ECONNRESET;
+            return false;
+        }
+        // Event triggered
+        if(pfd.revents & event){
+            return true;
+        }
+        // This should never happen, but just in case try again
+    }
+}
+
+bool Blight::wait_for_send(int fd, int timeout){ return wait_for(fd, timeout, POLLOUT); }
+
+bool Blight::wait_for_read(int fd, int timeout){ return wait_for(fd, timeout, POLLIN); }

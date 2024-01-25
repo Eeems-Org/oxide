@@ -15,15 +15,17 @@ OxideEventManager::OxideEventManager(const QStringList& parameters)
     setup(QDeviceDiscovery::Device_Keyboard, QInputDeviceManager::DeviceTypeKeyboard);
     setup(QDeviceDiscovery::Device_Tablet, QInputDeviceManager::DeviceTypeTablet);
     setup(QDeviceDiscovery::Device_Touchscreen, QInputDeviceManager::DeviceTypeTouch);
-    setup(QDeviceDiscovery::Device_Mouse, QInputDeviceManager::DeviceTypePointer);
-    setup(QDeviceDiscovery::Device_Touchpad, QInputDeviceManager::DeviceTypePointer);
+    setup(
+        QDeviceDiscovery::Device_Mouse | QDeviceDiscovery::Device_Touchpad,
+        QInputDeviceManager::DeviceTypePointer
+    );
 }
 
 void OxideEventManager::setup(
-    QDeviceDiscovery::QDeviceType privateType,
+    QDeviceDiscovery::QDeviceTypes privateTypes,
     QInputDeviceManager::DeviceType publicType
 ){
-    if(auto deviceDiscovery = QDeviceDiscovery::create(privateType, this)){
+    if(auto deviceDiscovery = QDeviceDiscovery::create(privateTypes, this)){
         auto devices = deviceDiscovery->scanConnectedDevices();
         for(const QString& device : qAsConst(devices)){
             deviceDetected(publicType, device);

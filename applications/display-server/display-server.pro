@@ -1,6 +1,7 @@
 QT += dbus
 QT += quick
 QT += gui
+QT += input_support-private
 
 CONFIG += c++17
 CONFIG -= app_bundle

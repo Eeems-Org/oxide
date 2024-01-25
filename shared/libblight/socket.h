@@ -20,4 +20,6 @@ namespace Blight{
         const data_t data,
         ssize_t size
     );
+    LIBBLIGHT_EXPORT bool wait_for_send(int fd, int timeout = -1);
+    LIBBLIGHT_EXPORT bool wait_for_read(int fd, int timeout = -1);
 }
