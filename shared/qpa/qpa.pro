@@ -27,6 +27,7 @@ SOURCES = main.cpp \
           oxidescreen.cpp \
           oxidewindow.cpp
 HEADERS = oxidebackingstore.h \
+          default_keymap.h \
           oxideeventfilter.h \
           oxideeventhandler.h \
           oxideeventmanager.h \

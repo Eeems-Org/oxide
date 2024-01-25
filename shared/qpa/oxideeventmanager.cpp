@@ -7,10 +7,10 @@
 #include <private/qguiapplication_p.h>
 #include <private/qmemory_p.h>
 
-OxideEventManager::OxideEventManager()
+OxideEventManager::OxideEventManager(const QStringList& parameters)
 : QObject(),
   m_devices(),
-  m_handler(this)
+  m_handler(this, parameters)
 {
     setup(QDeviceDiscovery::Device_Keyboard, QInputDeviceManager::DeviceTypeKeyboard);
     setup(QDeviceDiscovery::Device_Tablet, QInputDeviceManager::DeviceTypeTablet);

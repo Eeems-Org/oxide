@@ -73,6 +73,7 @@ private:
     unsigned short m_options;
     bool m_debug;
     QMutex m_mutex;
+    QStringList m_parameters;
     static void connectSignal(QObject* sender, QString signal, QObject* reciever, QString slot);
 };
 

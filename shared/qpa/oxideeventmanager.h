@@ -11,7 +11,7 @@
 class OxideEventManager : public QObject {
     Q_OBJECT
 public:
-    OxideEventManager();
+    OxideEventManager(const QStringList& parameters);
 
 private slots:
     void deviceDetected(QInputDeviceManager::DeviceType type, const QString& device);

@@ -28,7 +28,7 @@ class QCoreTextFontEngine;
 
 static inline unsigned short parseOptions(const QStringList& paramList){
     unsigned options = 0;
-    for (const QString &param : paramList) {
+    for(const QString& param : paramList){
         if(!param.compare(QLatin1String("enable_fonts"), Qt::CaseInsensitive)){
             options |= OxideIntegration::EnableFonts;
         }else if(!param.compare(QLatin1String("freetype"), Qt::CaseInsensitive)){
@@ -44,7 +44,8 @@ static inline unsigned short parseOptions(const QStringList& paramList){
 OxideIntegration::OxideIntegration(const QStringList& parameters)
 : m_fontDatabase(nullptr),
   m_options(parseOptions(parameters)),
-  m_debug(false)
+  m_debug(false),
+  m_parameters(parameters)
 {
     if(m_debug){
         qDebug() << "OxideIntegration::OxideIntegration";
@@ -99,7 +100,7 @@ void OxideIntegration::initialize(){
 #endif
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
-    new OxideEventManager();
+    new OxideEventManager(m_parameters);
     // TODO - connect clipboard/selection changes
 }
 

@@ -22,4 +22,9 @@ Window{
         anchors.fill: parent
         onClicked: Qt.quit()
     }
+    Shortcut{
+        sequences: [StandardKey.Quit, "Ctrl+Q", "Ctrl+W"]
+        context: Qt.ApplicationShortcut
+        onActivated: Qt.quit()
+    }
 }

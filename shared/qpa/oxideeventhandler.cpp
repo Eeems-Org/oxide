@@ -1,9 +1,9 @@
 #include "oxideeventhandler.h"
 #include "oxideeventmanager.h"
+#include "default_keymap.h"
 
 #include <libblight.h>
 #include <liboxide/debug.h>
-#include <private/qevdevkeyboardhandler_p.h>
 
 typedef struct KeyboardData {
     quint8 m_modifiers;
@@ -11,12 +11,6 @@ typedef struct KeyboardData {
     int m_composing;
     quint16 m_dead_unicode;
     quint8 m_langLock;
-    bool m_no_zap;
-    bool m_do_compose;
-    const QEvdevKeyboardMap::Mapping* m_keymap;
-    int m_keymap_size;
-    const QEvdevKeyboardMap::Composing* m_keycompose;
-    int m_keycompose_size;
 } KeyboardData;
 
 typedef struct TabletData {
@@ -30,6 +24,15 @@ typedef struct TabletData {
         QPointF lastReportPos;
     } state;
     int lastEventType;
+
+    TabletData()
+    : lastEventType{0}
+    {
+        memset(&minValues, 0, sizeof(minValues));
+        memset(&maxValues, 0, sizeof(maxValues));
+        memset(&maxValues, 0, sizeof(maxValues));
+        memset((void*)&state, 0, (sizeof(int) * 6) + (sizeof(bool) * 2));
+    }
 } TabletData;
 
 typedef struct TouchData {
@@ -48,30 +51,18 @@ DeviceData::DeviceData(unsigned int device, QInputDeviceManager::DeviceType type
 {
     switch(type){
         case QInputDeviceManager::DeviceTypeKeyboard:{
-            auto keyboardData = new KeyboardData{
-                .m_modifiers = 0,
-                .m_composing = 0,
-                .m_dead_unicode = 0xffff,
-                .m_langLock = 0,
-                .m_no_zap = false,
-                .m_do_compose = false,
-                .m_keymap = 0,
-                .m_keymap_size = 0,
-                .m_keycompose = 0,
-                .m_keycompose_size = 0
-            };
-            memset(&keyboardData->m_locks, 0, sizeof(keyboardData->m_locks));
-            data = keyboardData;
+            auto keyboardData = set<KeyboardData>();
+            keyboardData->m_dead_unicode = 0xffff;
             break;
         }
         case QInputDeviceManager::DeviceTypeTablet:
-            data = new TabletData;
+            m_data = new TabletData();
             break;
         case QInputDeviceManager::DeviceTypeTouch:
-            data = new TouchData;
+            set<TouchData>();
             break;
         case QInputDeviceManager::DeviceTypePointer:
-            data = new PointerData;
+            set<PointerData>();
             break;
         default:
             break;
@@ -81,16 +72,16 @@ DeviceData::DeviceData(unsigned int device, QInputDeviceManager::DeviceType type
 DeviceData::~DeviceData(){
     switch(type){
         case QInputDeviceManager::DeviceTypeKeyboard:
-            delete (KeyboardData*)data;
+            delete get<KeyboardData>();
             break;
         case QInputDeviceManager::DeviceTypeTablet:
-            delete (TabletData*)data;
+            delete get<TabletData>();
             break;
         case QInputDeviceManager::DeviceTypeTouch:
-            delete (TouchData*)data;
+            delete get<TouchData>();
             break;
         case QInputDeviceManager::DeviceTypePointer:
-            delete (PointerData*)data;
+            delete get<PointerData>();
             break;
         default:
             break;
@@ -98,10 +89,23 @@ DeviceData::~DeviceData(){
 }
 
 
-OxideEventHandler::OxideEventHandler(OxideEventManager* manager)
+OxideEventHandler::OxideEventHandler(OxideEventManager* manager, const QStringList& parameters)
 : m_manager(manager),
-  m_fd(Blight::connection()->input_handle())
+  m_fd(Blight::connection()->input_handle()),
+  m_keymap{0},
+  m_keymap_size{0},
+  m_keycompose{0},
+  m_keycompose_size{0}
 {
+    QString keymap;
+    for(const QString& param : parameters){
+        if(param.startsWith(QLatin1String("keymap="), Qt::CaseInsensitive)){
+            keymap = param.split('=').last();
+        }
+    }
+    if(keymap.isEmpty() || !loadKeymap(keymap)){
+        unloadKeymap();
+    }
     m_notifier = new QSocketNotifier(m_fd, QSocketNotifier::Read, this);
     connect(m_notifier, &QSocketNotifier::activated, this, &OxideEventHandler::readyRead);
     start();
@@ -167,10 +171,12 @@ void OxideEventHandler::readyRead(){
 }
 
 void OxideEventHandler::processKeyboardEvent(DeviceData* data, input_event* event){
+    Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeKeyboard);
+    // Ignore EV_SYN etc
     if(event->type != EV_KEY){
         return;
     }
-    auto keyboardData = reinterpret_cast<KeyboardData*>(data->data);
+    auto keyboardData = data->get<KeyboardData>();
     auto& keycode = event->code;
     bool pressed = event->value;
     bool autorepeat = event->value == 2;
@@ -180,8 +186,8 @@ void OxideEventHandler::processKeyboardEvent(DeviceData* data, input_event* even
     const QEvdevKeyboardMap::Mapping* map_withmod = 0;
     quint8 modifiers = keyboardData->m_modifiers;
 
-    for(int i = 0; i < keyboardData->m_keymap_size && !(map_plain && map_withmod); ++i){
-        const QEvdevKeyboardMap::Mapping *m = keyboardData->m_keymap + i;
+    for(int i = 0; i < m_keymap_size && !(map_plain && map_withmod); ++i){
+        const QEvdevKeyboardMap::Mapping* m = m_keymap + i;
         if(m->keycode == keycode){
             if(m->modifiers == 0){
                 map_plain = m;
@@ -201,6 +207,7 @@ void OxideEventHandler::processKeyboardEvent(DeviceData* data, input_event* even
             }
         }
     }
+
     if(
         keyboardData->m_locks[0] /*CapsLock*/
         && map_withmod
@@ -211,6 +218,7 @@ void OxideEventHandler::processKeyboardEvent(DeviceData* data, input_event* even
     const QEvdevKeyboardMap::Mapping* it = map_withmod ? map_withmod : map_plain;
     // we couldn't even find a plain mapping
     if(!it){
+        O_WARNING("No mapping for keycode found");
         return;
     }
     bool skip = false;
@@ -235,26 +243,19 @@ void OxideEventHandler::processKeyboardEvent(DeviceData* data, input_event* even
     }else if((it->flags & QEvdevKeyboardMap::IsSystem) && it->special && first_press){
         switch(it->special){
             case QEvdevKeyboardMap::SystemZap:
-                if(!keyboardData->m_no_zap){
+                if(!m_no_zap){
                     qApp->quit();
                 }
                 break;
         }
-
         skip = true; // no need to tell Qt about it
-    }else if(
-        qtcode == Qt::Key_Multi_key
-        && keyboardData->m_do_compose
-    ){
+    }else if(qtcode == Qt::Key_Multi_key && m_do_compose){
         // the Compose key was pressed
         if(first_press){
             keyboardData->m_composing = 2;
         }
         skip = true;
-    } else if(
-        it->flags & QEvdevKeyboardMap::IsDead
-        && keyboardData->m_do_compose
-    ){
+    } else if(it->flags & QEvdevKeyboardMap::IsDead && m_do_compose){
         // a Dead key was pressed twice
         if(
             first_press
@@ -303,12 +304,12 @@ void OxideEventHandler::processKeyboardEvent(DeviceData* data, input_event* even
             if(unicode != 0xffff){
                 int idx = 0;
                 // check if this code is in the compose table at all
-                for( ; idx < keyboardData->m_keycompose_size; ++idx){
-                    if(keyboardData->m_keycompose[idx].first == unicode){
+                for( ; idx < m_keycompose_size; ++idx){
+                    if(m_keycompose[idx].first == unicode){
                         break;
                     }
                 }
-                if(idx < keyboardData->m_keycompose_size){
+                if(idx < m_keycompose_size){
                     // found it -> simulate a Dead key press
                     keyboardData->m_dead_unicode = unicode;
                     unicode = 0xffff;
@@ -330,16 +331,16 @@ void OxideEventHandler::processKeyboardEvent(DeviceData* data, input_event* even
             if(unicode != 0xffff){
                 int idx = 0;
                 // check if this code is in the compose table at all
-                for( ; idx < keyboardData->m_keycompose_size; ++idx){
+                for( ; idx < m_keycompose_size; ++idx){
                     if(
-                        keyboardData->m_keycompose[idx].first == keyboardData->m_dead_unicode
-                        && keyboardData->m_keycompose[idx].second == unicode
+                        m_keycompose[idx].first == keyboardData->m_dead_unicode
+                        && m_keycompose[idx].second == unicode
                     ){
                         break;
                     }
                 }
-                if(idx < keyboardData->m_keycompose_size){
-                    quint16 composed = keyboardData->m_keycompose[idx].result;
+                if(idx < m_keycompose_size){
+                    quint16 composed = m_keycompose[idx].result;
                     if(composed != 0xffff){
                         unicode = composed;
                         qtcode = Qt::Key_unknown;
@@ -353,6 +354,7 @@ void OxideEventHandler::processKeyboardEvent(DeviceData* data, input_event* even
             }
             keyboardData->m_composing = 0;
         }
+        qDebug() << keycode << event->value << skip;
         if(!skip){
             // Up until now qtcode contained both the key and modifiers. Split it.
             Qt::KeyboardModifiers qtmods = Qt::KeyboardModifiers(qtcode & modmask);
@@ -431,8 +433,9 @@ void OxideEventHandler::processKeyboardEvent(DeviceData* data, input_event* even
 }
 
 void OxideEventHandler::processTabletEvent(DeviceData* data, input_event* event){
+    Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeTablet);
     auto device = data->device;
-    auto tabletData = reinterpret_cast<TabletData*>(data->data);
+    auto tabletData = data->get<TabletData>();
     auto& state = tabletData->state;
     auto& lastEventType = tabletData->lastEventType;
     auto& minValues = tabletData->minValues;
@@ -523,11 +526,71 @@ void OxideEventHandler::processTabletEvent(DeviceData* data, input_event* event)
 }
 
 void OxideEventHandler::processTouchEvent(DeviceData* data, input_event* event){
+    Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeTouch);
     auto device = data->device;
-    auto touchData = reinterpret_cast<TouchData*>(data->data);
+    auto touchData = data->get<TouchData>();
 }
 
 void OxideEventHandler::processPointerEvent(DeviceData* data, input_event* event){
+    Q_ASSERT(data->type == QInputDeviceManager::DeviceTypePointer);
     auto device = data->device;
-    auto pointerData = reinterpret_cast<PointerData*>(data->data);
+    auto pointerData = data->get<PointerData>();
+}
+
+void OxideEventHandler::unloadKeymap(){
+    if(m_keymap && m_keymap != s_keymap_default){
+        delete [] m_keymap;
+    }
+    if(m_keycompose && m_keycompose != s_keycompose_default){
+        delete [] m_keycompose;
+    }
+    m_keymap = s_keymap_default;
+    m_keymap_size = sizeof(s_keymap_default) / sizeof(s_keymap_default[0]);
+    m_keycompose = s_keycompose_default;
+    m_keycompose_size = sizeof(s_keycompose_default) / sizeof(s_keycompose_default[0]);
+}
+
+bool OxideEventHandler::loadKeymap(const QString& file){
+    QFile f(file);
+    if(!f.open(QIODevice::ReadOnly)){
+        O_WARNING("Could not open keymap file" << qUtf16Printable(file));
+        return false;
+    }
+    quint32 qmap_magic, qmap_version, qmap_keymap_size, qmap_keycompose_size;
+    QDataStream ds(&f);
+    ds >> qmap_magic >> qmap_version >> qmap_keymap_size >> qmap_keycompose_size;
+    if(
+        ds.status() != QDataStream::Ok
+        || qmap_magic != QEvdevKeyboardMap::FileMagic
+        || qmap_version != 1
+        || qmap_keymap_size == 0
+    ){
+        O_WARNING(qUtf16Printable(file) << " is not a valid .qmap keymap file");
+        return false;
+    }
+    QEvdevKeyboardMap::Mapping *qmap_keymap = new QEvdevKeyboardMap::Mapping[qmap_keymap_size];
+    QEvdevKeyboardMap::Composing *qmap_keycompose = qmap_keycompose_size
+        ? new QEvdevKeyboardMap::Composing[qmap_keycompose_size]
+        : 0;
+    for(quint32 i = 0; i < qmap_keymap_size; ++i){
+        ds >> qmap_keymap[i];
+    }
+    for(quint32 i = 0; i < qmap_keycompose_size; ++i){
+        ds >> qmap_keycompose[i];
+    }
+    if(ds.status() != QDataStream::Ok){
+        delete [] qmap_keymap;
+        delete [] qmap_keycompose;
+        O_WARNING("Keymap file" << qUtf16Printable(file) << "cannot be loaded.");
+        return false;
+    }
+    // unload currently active and clear state
+    unloadKeymap();
+
+    m_keymap = qmap_keymap;
+    m_keymap_size = qmap_keymap_size;
+    m_keycompose = qmap_keycompose;
+    m_keycompose_size = qmap_keycompose_size;
+    m_do_compose = true;
+    return true;
 }

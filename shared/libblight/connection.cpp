@@ -125,7 +125,7 @@ namespace Blight{
             _WARN("Failed to read event: %s", "Input stream not open");
             return {};
         }
-        auto maybe = Blight::recv(m_inputFd, sizeof(event_packet_t));
+        auto maybe = Blight::recv_blocking(m_inputFd, sizeof(event_packet_t));
         if(!maybe.has_value()){
             if(errno != EAGAIN && errno != EINTR){
                 _WARN("Failed to read event: %s", std::strerror(errno));
