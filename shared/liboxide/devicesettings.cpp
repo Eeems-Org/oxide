@@ -214,14 +214,20 @@ namespace Oxide {
             qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
         }
     }
+
     bool DeviceSettings::keyboardAttached(){ return !physicalKeyboards().empty(); }
+
     void DeviceSettings::onKeyboardAttachedChanged(std::function<void()> callback){
         auto manager = QGuiApplicationPrivate::inputDeviceManager();
-        QObject::connect(manager, &QInputDeviceManager::deviceListChanged, [callback](QInputDeviceManager::DeviceType type){
-            if(type == QInputDeviceManager::DeviceTypeKeyboard){
-                callback();
+        QObject::connect(
+            manager,
+            &QInputDeviceManager::deviceListChanged,
+            [callback](QInputDeviceManager::DeviceType type){
+                if(type == QInputDeviceManager::DeviceTypeKeyboard){
+                    callback();
+                }
             }
-        });
+        );
     }
 
     QList<event_device> DeviceSettings::inputDevices(){
@@ -239,6 +245,18 @@ namespace Oxide {
             devices.append(event_device(fullPath.toStdString(), O_RDWR | O_NONBLOCK));
         }
         return devices;
+    }
+
+    void DeviceSettings::onInputDevicesChanged(std::function<void()> callback){
+        auto manager = QGuiApplicationPrivate::inputDeviceManager();
+        QObject::connect(
+            manager,
+            &QInputDeviceManager::deviceListChanged,
+            [callback](QInputDeviceManager::DeviceType type){
+                Q_UNUSED(type);
+                callback();
+            }
+        );
     }
 
     QList<event_device> DeviceSettings::keyboards(){

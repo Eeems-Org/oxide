@@ -21,11 +21,15 @@ qtHaveModule(eventdispatcher_support-private) {
 SOURCES = main.cpp \
           oxidebackingstore.cpp \
           oxideeventfilter.cpp \
+          oxideeventhandler.cpp \
+          oxideeventmanager.cpp \
           oxideintegration.cpp \
           oxidescreen.cpp \
           oxidewindow.cpp
 HEADERS = oxidebackingstore.h \
           oxideeventfilter.h \
+          oxideeventhandler.h \
+          oxideeventmanager.h \
           oxideintegration.h \
           oxidescreen.h \
           oxidewindow.h

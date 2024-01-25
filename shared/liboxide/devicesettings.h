@@ -125,6 +125,11 @@ namespace Oxide{
          */
         QList<event_device> inputDevices();
         /*!
+         * \brief Run a callback when inputDevices changes
+         * \param callback callback to run
+         */
+        void onInputDevicesChanged(std::function<void()> callback);
+        /*!
          * \brief Get the list of all keyboard evdev devices
          * \return All keyboard devices
          */

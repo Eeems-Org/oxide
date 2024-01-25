@@ -1,6 +1,7 @@
 #include "oxideintegration.h"
 #include "oxidebackingstore.h"
 #include "oxideeventfilter.h"
+#include "oxideeventmanager.h"
 #include "oxidescreen.h"
 
 #include <QMetaMethod>
@@ -8,13 +9,13 @@
 #include <QProcess>
 #include <QtGui/private/qguiapplication_p.h>
 #include <QtGui/private/qpixmap_raster_p.h>
-#include <qpa/qplatformfontdatabase.h>
-#include <qpa/qplatforminputcontextfactory_p.h>
-#include <qpa/qplatformwindow.h>
 #include <libblight.h>
 #include <liboxide/devicesettings.h>
 #include <cstring>
 
+#include <qpa/qplatformfontdatabase.h>
+#include <qpa/qplatforminputcontextfactory_p.h>
+#include <qpa/qplatformwindow.h>
 #include <private/qgenericunixeventdispatcher_p.h>
 #include <private/qgenericunixfontdatabase_p.h>
 
@@ -98,6 +99,7 @@ void OxideIntegration::initialize(){
 #endif
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
+    new OxideEventManager();
     // TODO - connect clipboard/selection changes
 }
 

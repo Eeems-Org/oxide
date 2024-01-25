@@ -134,7 +134,7 @@ namespace Blight{
         }
         event_packet_t data;
         memcpy(&data, maybe.value(), sizeof(event_packet_t));
-        delete maybe.value();
+        delete[] maybe.value();
         return data;
     }
 

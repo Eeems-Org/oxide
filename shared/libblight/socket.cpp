@@ -51,7 +51,7 @@ std::optional<Blight::data_t> Blight::recv(
             continue;
         }
         // Recieve the data
-        res = ::recv(fd, data, size, MSG_DONTWAIT);
+        res = ::recv(fd, data, size, MSG_WAITALL | MSG_DONTWAIT);
         if(res > -1){
             break;
         }
@@ -69,9 +69,19 @@ std::optional<Blight::data_t> Blight::recv(
         errno = EAGAIN;
         return {};
     }
+    // We started getting data, but didn't get all of it, try getting some more
+    if(res && res < size){
+        // TODO this should be in the main loop
+        auto maybe = recv_blocking(fd, size - res);
+        if(maybe.has_value()){
+            memcpy(&data[res], maybe.value(), size - res);
+            delete[] maybe.value();
+            return data;
+        }
+    }
     // The data we recieved isn't the same size as what we expected
     if(res != size){
-        _WARN("recv %d != %d", res, size);
+        _WARN("recv %d != %d", size, res);
         delete[] data;
         errno = EBADMSG;
         return {};
@@ -83,7 +93,7 @@ std::optional<Blight::data_t> Blight::recv_blocking(int fd, ssize_t size){
     auto data = new unsigned char[size];
     ssize_t res = -1;
     while(res < 0){
-        res = ::recv(fd, data, size, 0);
+        res = ::recv(fd, data, size, MSG_WAITALL);
         // Something was recieved
         if(res > 0){
             break;
@@ -98,7 +108,7 @@ std::optional<Blight::data_t> Blight::recv_blocking(int fd, ssize_t size){
     }
     // The data we recieved isn't the same size as what we expected
     if(res != size){
-        _WARN("recv %d != %d", res, size);
+        _WARN("recv_blocking %d != %d", size, res);
         delete[] data;
         errno = EBADMSG;
         return {};
@@ -123,6 +133,7 @@ bool Blight::send_blocking(int fd, const data_t data, ssize_t size){
     }
     // The data we sent isn't the same size as what we expected
     if(res != size){
+        _WARN("send_blocking %d != %d", size, res);
         errno = EMSGSIZE;
         return false;
     }
