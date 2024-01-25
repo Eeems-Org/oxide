@@ -95,6 +95,9 @@ std::optional<Blight::data_t> Blight::recv_blocking(int fd, ssize_t size){
 }
 
 bool Blight::send_blocking(int fd, const data_t data, ssize_t size){
+    // TODO explore MSG_ZEROCOPY, this will require owning the buffer instead of allowing
+    //      the user to pass in one we wont touch. As we'll need to ensure we don't delete
+    //      it until the kernel tells us it's done using it.
     int res = -1;
     while(res < 0){
         res = ::send(fd, data, size, MSG_EOR | MSG_NOSIGNAL);
