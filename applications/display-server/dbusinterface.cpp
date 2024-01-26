@@ -297,7 +297,7 @@ Connection* DbusInterface::createConnection(int pid){
         return nullptr;
     }
     connect(connection, &Connection::finished, this, [this, connection]{
-        O_DEBUG("Connection" << connection->pid() << "closed");
+        O_INFO("Connection" << connection->pid() << "closed");
         auto found = false;
         for(auto& ptr : qAsConst(connections)){
             if(ptr == connection){
@@ -322,7 +322,7 @@ Connection* DbusInterface::createConnection(int pid){
         for(auto& ptr : qAsConst(connections)){
             if(ptr == connection){
                 m_focused = ptr;
-                O_DEBUG(connection->id() << "has focus");
+                O_INFO(connection->id() << "has focus");
                 break;
             }
         }

@@ -42,6 +42,7 @@ static bool IS_INITIALIZED = false;
 static bool FAILED_INIT = true;
 static bool DO_HANDLE_FB = true;
 static bool FAKE_RM1 = false;
+static unsigned int INPUT_BATCH_SIZE = 16;
 static Blight::shared_buf_t blightBuffer = Blight::buf_t::new_ptr();
 static Blight::Connection* blightConnection = nullptr;
 static std::map<int, int[2]> inputFds;
@@ -161,7 +162,17 @@ void __readInput(){
         auto& event = maybe.value().event;
         auto& queue = events[device];
         queue.push_back(event);
-        if(queue.size() > 16){
+        if(
+           (
+               INPUT_BATCH_SIZE
+               && queue.size() >= INPUT_BATCH_SIZE
+           )
+           || (
+               !INPUT_BATCH_SIZE
+               && event.type == EV_SYN
+               && event.code == SYN_REPORT
+           )
+        ){
             __sendEvents(device, queue);
         }
     }
@@ -494,13 +505,14 @@ int __open(const char* pathname, int flags){
                 if(inputFds.contains(device)){
                     res = inputFds[device][1];
                 }else{
+                    int fds[2];
                     // TODO - what if they open it a second time with different flags?
-                    res = __open_input_socketpair(flags, inputFds[device]);
+                    res = __open_input_socketpair(flags, fds);
                     if(res < 0){
-                        inputFds.erase(device);
                         _WARN("Failed to open event socket stream %s", std::strerror(errno));
                     }else{
-                        res = inputFds[device][1];
+                        inputFds[device][0] = fds[0];
+                        res = inputFds[device][1] = fds[1];
                         inputDeviceMap[res] = func_open(actualpath.c_str(), O_RDWR, 0);
                     }
                 }
@@ -715,48 +727,48 @@ extern "C" {
 
     __attribute__((visibility("default")))
     void* mmap(void* addr, size_t len, int prot, int flags, int fd, __off_t offset){
-        if(IS_INITIALIZED){
-            _DEBUG(
-                "mmap 0x%04x %lld 0x%02x 0x%02x %d %d",
-                reinterpret_cast<std::uintptr_t>(addr),
-                len,
-                prot,
-                flags,
-                fd,
-                offset
-            );
-            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
-                unsigned long size = len + offset;
-                if(size > blightBuffer->size()){
-                    _CRIT(
-                        "Requested size + offset is larger than the buffer: %d < %d + %d",
-                        blightBuffer->size(),
-                        size,
-                        offset
-                    );
-                    errno = EINVAL;
-                    return MAP_FAILED;
-                }
-                return &blightBuffer->data[offset];
-            }
-        }
+        _DEBUG(
+            "mmap 0x%u %lld 0x%02x 0x%02x %d %d",
+            (unsigned)addr,
+            len,
+            prot,
+            flags,
+            fd,
+            offset
+        );
+//        if(IS_INITIALIZED){
+//            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
+//                unsigned long size = len + offset;
+//                if(size > blightBuffer->size()){
+//                    _CRIT(
+//                        "Requested size + offset is larger than the buffer: %d < %d + %d",
+//                        blightBuffer->size(),
+//                        size,
+//                        offset
+//                    );
+//                    errno = EINVAL;
+//                    return MAP_FAILED;
+//                }
+//                return &blightBuffer->data[offset];
+//            }
+//        }
         return func_mmap(addr, len, prot, flags, fd, offset);
     }
 
     __attribute__((visibility("default")))
     int munmap(void* addr, size_t len){
-        if(IS_INITIALIZED){
-            _DEBUG(
-                "munmap 0x%04x %s",
-                reinterpret_cast<std::uintptr_t>(addr),
-                len
-            );
-            // TODO - handle when pointer + len are inside the data
-            if(DO_HANDLE_FB && addr == blightBuffer->data){
-                // Maybe actually close it?
-                return 0;
-            }
-        }
+//        _DEBUG(
+//            "munmap 0x%u %s",
+//            (unsigned)addr,
+//            len
+//        );
+//        if(IS_INITIALIZED){
+//            // TODO - handle when pointer + len are inside the data
+//            if(DO_HANDLE_FB && addr == blightBuffer->data){
+//                // Maybe actually close it?
+//                return 0;
+//            }
+//        }
         static const auto func_munmap = (int(*)(void*, size_t))dlsym(RTLD_NEXT, "munmap");
         return func_munmap(addr, len);
     }
@@ -929,6 +941,14 @@ extern "C" {
         if(debugLevel != nullptr){
             try{
                 BLIGHT_DEBUG_LOGGING = std::stoi(debugLevel);
+            }
+            catch(std::invalid_argument&){}
+            catch(std::out_of_range&){}
+        }
+        auto batch_size = getenv("OXIDE_INPUT_BATCH_SIZE");
+        if(batch_size != nullptr){
+            try{
+                INPUT_BATCH_SIZE = std::stoi(batch_size);
             }
             catch(std::invalid_argument&){}
             catch(std::out_of_range&){}
