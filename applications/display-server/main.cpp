@@ -12,6 +12,7 @@
 #include <liboxide.h>
 
 #include "dbusinterface.h"
+#include "evdevhandler.h"
 #ifdef EPAPER
 #include "guithread.h"
 #endif
@@ -153,5 +154,6 @@ int main(int argc, char* argv[]){
     guiThread;
 #endif
     dbusInterface;
+    evdevHandler;
     return app.exec();
 }

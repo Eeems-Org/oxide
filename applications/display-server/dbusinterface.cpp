@@ -55,14 +55,8 @@ DbusInterface::DbusInterface(QObject* parent)
         this,
         &DbusInterface::serviceOwnerChanged
     );
+    qRegisterMetaType<std::vector<input_event>>("std::vector<input_event>");
     O_DEBUG("Connected service to bus");
-    connect(
-        evdevHandler,
-        &EvDevHandler::inputEvents,
-        this,
-        &::DbusInterface::inputEvents,
-        Qt::BlockingQueuedConnection
-    );
 }
 
 

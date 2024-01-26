@@ -36,4 +36,6 @@ private:
     QSocketNotifier* notifier;
     std::vector<input_event> events;
     libevdev* dev;
+
+    void emitSomeEvents();
 };

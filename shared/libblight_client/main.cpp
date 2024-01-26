@@ -95,67 +95,73 @@ int __open_input_socketpair(int flags, int fds[2]){
 }
 
 
+void __sendEvents(unsigned int device, std::vector<Blight::partial_input_event_t>& queue){
+    if(queue.empty()){
+        return;
+    }
+    timeval time;
+    ::gettimeofday(&time, NULL);
+    std::vector<input_event> data(queue.size());
+    for(unsigned int i = 0; i < queue.size(); i++){
+        auto& event = queue[i];
+        data[i] = input_event{
+            .time = time,
+            .type = event.type,
+            .code = event.code,
+            .value = event.value
+        };
+    }
+    auto fd = inputFds[device][0];
+    if(!Blight::send_blocking(
+        fd,
+        reinterpret_cast<Blight::data_t>(data.data()),
+        sizeof(input_event) * data.size()
+    )){
+        _CRIT("%d input events failed to send: %s", data.size(), std::strerror(errno));
+    }else{
+        _DEBUG("Sent %d input events", data.size());
+    }
+    queue.clear();
+}
+
+
 void __readInput(){
     _INFO("%s", "InputWorker starting");
     prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
     auto fd = blightConnection->input_handle();
     std::map<unsigned int,std::vector<Blight::partial_input_event_t>> events;
     while(blightConnection != nullptr){
-        if(!Blight::wait_for_read(fd)){
-            _WARN("[InputWorker] Failed to read message %s", std::strerror(errno));
-            continue;
-        }
-        _DEBUG("Reading next input event");
         auto maybe = blightConnection->read_event();
         if(!maybe.has_value()){
-            if(errno == EAGAIN || errno == EINTR){
-                continue;
+            if(errno != EAGAIN && errno != EINTR){
+                _WARN("[InputWorker] Failed to read message %s", std::strerror(errno));
+                break;
             }
-            _WARN("[InputWorker] Failed to read message %s", std::strerror(errno));
-            break;
+            for(auto& item : events){
+                __sendEvents(item.first, item.second);
+            }
+            _DEBUG("Waiting for next input event");
+            if(!Blight::wait_for_read(fd) && errno != EAGAIN){
+                _WARN("[InputWorker] Failed to wait for next input event %s", std::strerror(errno));
+                break;
+            }
+            continue;
         }
         const auto& device = maybe.value().device;
         if(!inputFds.contains(device)){
             _INFO("Ignoring event for unopened device: %d", device);
             continue;
         }
-        int fd = inputFds[device][0];
-        if(fd < 0){
+        if(inputFds[device][0] < 0){
             _INFO("Ignoring event for invalid device: %d", device);
             continue;
         }
         auto& event = maybe.value().event;
         auto& queue = events[device];
-        if(event.type == EV_SYN && event.code == SYN_DROPPED){
-            queue.clear();
-            continue;
-        }
         queue.push_back(event);
-        if(event.type != EV_SYN && event.code != SYN_REPORT){
-            continue;
+        if(queue.size() > 16){
+            __sendEvents(device, queue);
         }
-        timeval time;
-        ::gettimeofday(&time, NULL);
-        std::vector<input_event> data(queue.size());
-        for(unsigned int i = 0; i < queue.size(); i++){
-            auto& event = queue[i];
-            data[i] = input_event{
-                .time = time,
-                .type = event.type,
-                .code = event.code,
-                .value = event.value
-            };
-        }
-        if(!Blight::send_blocking(
-            fd,
-            reinterpret_cast<Blight::data_t>(data.data()),
-            sizeof(input_event) * data.size()
-        )){
-            _CRIT("%d input events failed to send: %s", data.size(), std::strerror(errno));
-        }else{
-            _DEBUG("Sent %d input events", data.size());
-        }
-        queue.clear();
     }
     _INFO("%s", "InputWorker quitting");
 }

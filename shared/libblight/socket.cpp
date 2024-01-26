@@ -49,6 +49,7 @@ std::optional<Blight::data_t> Blight::recv(
     }
     // We started getting data, but didn't get all of it, try getting some more
     if(res && res < size){
+        _WARN("Partial read (%d), waiting for the rest of the data (%d)", res, size - res);
         // TODO this should be in the main loop
         auto maybe = recv_blocking(fd, size - res);
         if(maybe.has_value()){

@@ -1,4 +1,5 @@
 #include "evdevhandler.h"
+#include "dbusinterface.h"
 
 #include <QFileInfo>
 #include <QKeyEvent>
@@ -51,8 +52,8 @@ void EvDevHandler::reloadDevices(){
         if(!hasDevice(device) && device.fd != -1){
             auto input = new EvDevDevice(this, device);
             connect(input, &EvDevDevice::inputEvents, this, [this, input](auto events){
-                emit inputEvents(input->number(), events);
-            });
+                dbusInterface->inputEvents(input->number(), events);
+            }, Qt::QueuedConnection);
             O_DEBUG(input->name() << "added");
             devices.append(input);
             input->readEvents();

@@ -37,6 +37,7 @@ public:
     QList<std::shared_ptr<Surface>> visibleSurfaces();
     void sortZ();
     Connection* focused();
+    void inputEvents(unsigned int device, const std::vector<input_event>& events);
 
     // Property getter/setters
     const QByteArray& clipboard();
@@ -71,7 +72,6 @@ signals:
 
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);
-    void inputEvents(unsigned int device, const std::vector<input_event>& events);
 
 private:
     DbusInterface(QObject* parent);

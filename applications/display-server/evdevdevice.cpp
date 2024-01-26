@@ -69,7 +69,35 @@ void EvDevDevice::readEvents(){
                 emit inputEvents(events);
                 events.clear();
             }
-        }while(res == LIBEVDEV_READ_STATUS_SUCCESS);
+//            if(events.size() > 16){
+//                emitSomeEvents();
+//            }
+        }while(res == LIBEVDEV_READ_STATUS_SUCCESS || res == LIBEVDEV_READ_STATUS_SYNC);
+        emitSomeEvents();
+        if(res == -ENODEV){
+            // Device went away
+            O_WARNING("Device dissapeared while reading events");
+            return;
+        }
+        if(res != -EAGAIN){
+            O_WARNING("Failed to read input:" << strerror(errno));
+        }
         notifier->setEnabled(true);
     });
+}
+
+void EvDevDevice::emitSomeEvents(){
+    if(events.empty()){
+        return;
+    }
+    for(auto i = events.rbegin();  i != events.rend(); ++i){
+        auto& event = *i;
+        if(event.type == EV_SYN && event.code == SYN_REPORT){
+            auto index = std::next(i-1).base();
+            auto some = std::vector(events.begin(), index);
+            emit inputEvents(some);
+            events.erase(events.begin(), index);
+            break;
+        }
+    }
 }
