@@ -1,6 +1,7 @@
 #include "libblight.h"
 #include "dbus.h"
 #include "meta.h"
+#include "types.h"
 
 #include <errno.h>
 #include <cstring>
@@ -34,7 +35,12 @@ namespace Blight{
         }
         const void* clipboard = nullptr;
         size_t size = 0;
-        auto res = sd_bus_message_read_array(reply->message, 'y', &clipboard, &size);
+        auto res = sd_bus_message_read_array(
+            reply->message,
+            'y',
+            &clipboard,
+            static_cast<::size_t*>(&size)
+        );
         if (res < 0) {
             std::cerr
                 << "[Blight::"

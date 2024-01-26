@@ -60,7 +60,9 @@ static int(*func_msgget)(key_t, int);
 static void*(*func_mmap)(void*, size_t, int, int, int, __off_t);
 static int msgq = -1;
 
-void writeInputEvent(int fd, input_event* ie){
+bool __is_fb(int fd){ return DO_HANDLE_FB && blightBuffer->fd > 0 && blightBuffer->fd == fd; }
+
+void __writeInputEvent(int fd, input_event* ie){
     if(!Blight::send_blocking(
         fd,
         reinterpret_cast<Blight::data_t>(ie),
@@ -70,7 +72,7 @@ void writeInputEvent(int fd, input_event* ie){
     }
 }
 
-void writeInputEvent(
+void __writeInputEvent(
     int fd,
     timeval time,
     short unsigned int type,
@@ -83,7 +85,7 @@ void writeInputEvent(
         .code = code,
         .value = value
     };
-    writeInputEvent(fd, &ie);
+    __writeInputEvent(fd, &ie);
 }
 
 int __open_input_socketpair(int flags, int fds[2]){
@@ -401,19 +403,19 @@ int __open(const char* pathname, int flags){
     int res = -2;
     if(FAKE_RM1 && actualpath == "/sys/devices/soc0/machine"){
         int fd = memfd_create("machine", MFD_ALLOW_SEALING);
-        auto data = "reMarkable 1.0";
-        func_write(fd, data, sizeof(data));
-        int flags = fcntl(fd, F_GET_SEALS);
+        std::string data("reMarkable 1.0");
+        // Don't include trailing null
+        func_write(fd, data.data(), data.size());
         fcntl(
             fd,
             F_ADD_SEALS,
-            flags
-            | F_SEAL_SEAL
+            F_SEAL_SEAL
             | F_SEAL_SHRINK
             | F_SEAL_GROW
             | F_SEAL_WRITE
             | F_SEAL_FUTURE_WRITE
         );
+        lseek(fd, 0, SEEK_SET);
         return fd;
     }else if(
         DO_HANDLE_FB
@@ -675,7 +677,7 @@ extern "C" {
     int close(int fd){
         if(IS_INITIALIZED){
             _DEBUG("close %d", fd);
-            if(DO_HANDLE_FB && fd == blightBuffer->fd){
+            if(__is_fb(fd)){
                 // Maybe actually close it?
                 return 0;
             }
@@ -693,7 +695,7 @@ extern "C" {
         va_list args;
         va_start(args, request);
         if(IS_INITIALIZED){
-            if(DO_HANDLE_FB && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
                 char* ptr = va_arg(args, char*);
                 int res = __fb_ioctl(request, ptr);
                 va_end(args);
@@ -715,7 +717,7 @@ extern "C" {
     void* mmap(void* addr, size_t len, int prot, int flags, int fd, __off_t offset){
         if(IS_INITIALIZED){
             _DEBUG(
-                "mmap 0x%04x %lld %d 0x%02x %d %d",
+                "mmap 0x%04x %lld 0x%02x 0x%02x %d %d",
                 reinterpret_cast<std::uintptr_t>(addr),
                 len,
                 prot,
@@ -723,11 +725,14 @@ extern "C" {
                 fd,
                 offset
             );
-            if(DO_HANDLE_FB && fd == blightBuffer->fd){
-                if(len + offset > blightBuffer->size()){
+            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
+                unsigned long size = len + offset;
+                if(size > blightBuffer->size()){
                     _CRIT(
-                        "Requested size + offset is larger than the buffer: %d",
-                        blightBuffer->size()
+                        "Requested size + offset is larger than the buffer: %d < %d + %d",
+                        blightBuffer->size(),
+                        size,
+                        offset
                     );
                     errno = EINVAL;
                     return MAP_FAILED;
@@ -764,7 +769,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("write %d %zu", fd, n);
-            if(DO_HANDLE_FB && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
                 auto res = func_write(fd, buf, n);
                 return res;
             }
@@ -781,7 +786,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("writev %d %d", fd, iovcnt);
-            if(DO_HANDLE_FB && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
                 auto res = func_writev(fd, iov, iovcnt);
                 return res;
             }
@@ -798,7 +803,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("writv64 %d %d", fd, iovcnt);
-            if(DO_HANDLE_FB && fd == blightBuffer->fd){
+            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
                 auto res = func_writev64(fd, iov, iovcnt);
                 return res;
             }
@@ -815,7 +820,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("pwrite %d %zu %d", fd, n, offset);
-            if(DO_HANDLE_FB && fd == blightBuffer->fd){
+            if(__is_fb(fd)){
                 auto res = func_pwrite(fd, buf, n, offset);
                 return res;
             }
@@ -832,7 +837,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("pwrite64 %d %zu %d", fd, n, offset);
-            if(DO_HANDLE_FB && fd == blightBuffer->fd){
+            if(__is_fb(fd)){
                 auto res = func_pwrite64(fd, buf, n, offset);
                 return res;
             }
@@ -849,7 +854,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("pwritev %d %d %d", fd, iovcnt, offset);
-            if(DO_HANDLE_FB && fd == blightBuffer->fd){
+            if(__is_fb(fd)){
                 auto res = func_pwritev(fd, iov, iovcnt, offset);
                 return res;
             }
@@ -866,7 +871,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("pwritev64 %d %d %d", fd, iovcnt, offset);
-            if(DO_HANDLE_FB && fd == blightBuffer->fd){
+            if(__is_fb(fd)){
                 auto res = func_pwritev64(fd, iov, iovcnt, offset);
                 return res;
             }

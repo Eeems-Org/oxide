@@ -39,8 +39,8 @@ std::string generate_uuid_v4(){
     return ss.str();
 }
 
-size_t Blight::buf_t::size(){
-    return static_cast<size_t>(stride) * height;
+Blight::size_t Blight::buf_t::size(){
+    return static_cast<size_t>(stride) * static_cast<size_t>(height);
 }
 
 int Blight::buf_t::close(){
@@ -165,7 +165,7 @@ Blight::message_ptr_t Blight::message_t::from_socket(int fd){
             fd,
             message->header.ackid,
             message->header.type,
-            message->header.size
+            (long int)message->header.size
         );
         message->header.type = MessageType::Invalid;
         return message;

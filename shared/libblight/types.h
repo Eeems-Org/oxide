@@ -58,6 +58,7 @@ namespace Blight{
         HighQualityGrayscale = Waveform::GC16,
         Highlight = Waveform::UNKNOWN
     };
+    LIBBLIGHT_EXPORT typedef unsigned int size_t;
     LIBBLIGHT_EXPORT typedef struct{
         __u16 type;
         __u16 code;
@@ -120,7 +121,7 @@ namespace Blight{
     LIBBLIGHT_EXPORT typedef struct header_t{
         MessageType type;
         unsigned int ackid;
-        size_t size;
+        unsigned long size;
         static header_t from_data(data_t data);
         static header_t from_data(char* data);
         static header_t from_data(void* data);
@@ -145,7 +146,7 @@ namespace Blight{
         int width;
         int height;
         WaveformMode waveform;
-        size_t identifier_len;
+        unsigned long identifier_len;
         static repaint_header_t from_data(data_t data);
     } repaint_header_t;
     LIBBLIGHT_EXPORT typedef struct repaint_t{

@@ -202,7 +202,7 @@ namespace Blight{
         }
         const auto end = std::chrono::steady_clock::now();
         auto duration = end - start;
-        _DEBUG("ping in %ld", duration.count());
+        _DEBUG("ping in %lld", duration.count());
         return duration;
     }
 
