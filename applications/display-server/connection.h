@@ -34,7 +34,6 @@ public:
     bool signalGroup(int signal);
     void pause();
     void resume();
-    void close();
     std::shared_ptr<Surface> addSurface(int fd, QRect geometry, int stride, QImage::Format format);
     std::shared_ptr<Surface> getSurface(QString identifier);
     QStringList getSurfaceIds();
@@ -44,6 +43,9 @@ public:
 signals:
     void finished();
     void focused();
+
+public slots:
+    void close();
 
 private slots:
     void readSocket();

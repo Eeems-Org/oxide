@@ -115,11 +115,17 @@ void __sendEvents(unsigned int device, std::vector<Blight::partial_input_event_t
         };
     }
     auto fd = inputFds[device][0];
-    if(!Blight::send_blocking(
-        fd,
-        reinterpret_cast<Blight::data_t>(data.data()),
-        sizeof(input_event) * data.size()
-    )){
+//    if(!Blight::send_blocking(
+//        fd,
+//        reinterpret_cast<Blight::data_t>(data.data()),
+//        sizeof(input_event) * data.size()
+//    )){
+//        _CRIT("%d input events failed to send: %s", data.size(), std::strerror(errno));
+//    }else{
+//        _DEBUG("Sent %d input events", data.size());
+//    }
+    auto res = func_write(fd, data.data(), sizeof(input_event) * data.size());
+    if(res < 0){
         _CRIT("%d input events failed to send: %s", data.size(), std::strerror(errno));
     }else{
         _DEBUG("Sent %d input events", data.size());

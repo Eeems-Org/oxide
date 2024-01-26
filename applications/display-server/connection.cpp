@@ -34,7 +34,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
     if(m_pidFd < 0){
         O_WARNING(std::strerror(errno));
     }else{
-        connect(&m_pidNotifier, &QLocalSocket::disconnected, this, &Connection::finished);
+        connect(&m_pidNotifier, &QLocalSocket::disconnected, this, &Connection::close);
         m_pidNotifier.setSocketDescriptor(m_pidFd, QLocalSocket::ConnectedState, QLocalSocket::ReadOnly);
     }
     int fds[2];

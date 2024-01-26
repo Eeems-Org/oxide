@@ -56,16 +56,14 @@ Surface::Surface(Connection* connection, int fd, QRect geometry, int stride, QIm
     connect(widget, &SurfaceWidget::activeFocusChanged, this, &Surface::activeFocusChanged);
     emit connection->focused();
 #ifdef EPAPER
-    if(visible()){
-        // Draw on first display
-        guiThread->enqueue(
-            nullptr,
-            geometry,
-            EPFrameBuffer::HighQualityGrayscale,
-            0,
-            true
-        );
-    }
+    // Draw on first display
+    guiThread->enqueue(
+        nullptr,
+        geometry,
+        EPFrameBuffer::HighQualityGrayscale,
+        0,
+        true
+    );
 #endif
 }
 
@@ -73,16 +71,14 @@ Surface::~Surface(){
     O_DEBUG("Surface" << id() << "destroyed");
     file.close();
 #ifdef EPAPER
-    if(visible()){
-        // Display whatever was beneath this when it's closed
-        guiThread->enqueue(
-            nullptr,
-            geometry(),
-            EPFrameBuffer::HighQualityGrayscale,
-            0,
-            true
-        );
-    }
+    // Display whatever was beneath this when it's closed
+    guiThread->enqueue(
+        nullptr,
+        geometry(),
+        EPFrameBuffer::HighQualityGrayscale,
+        0,
+        true
+    );
 #endif
     if(component != nullptr){
         component->setVisible(false);
