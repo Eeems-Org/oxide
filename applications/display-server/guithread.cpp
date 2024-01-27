@@ -31,9 +31,9 @@ void GUIThread::run(){
                 dbusInterface->processRemovedSurfaces();
                 dbusInterface->processClosingConnections();
                 if(!m_repaintEvents.try_dequeue(event)){
-                    // What happens if something is enqueued by this time?
+                    // What happens if something is enqueued by the time we aquire the lock?
                     m_repaintMutex.lock();
-                    m_repaintWait.wait(&m_repaintMutex);
+                    m_repaintWait.wait(&m_repaintMutex, 500);
                     auto found = m_repaintEvents.try_dequeue(event);
                     m_repaintMutex.unlock();
                     if(!found){
@@ -111,11 +111,7 @@ void GUIThread::enqueue(
     notify();
 }
 
-void GUIThread::notify(){
-    m_repaintMutex.lock();
-    m_repaintWait.notify_one();
-    m_repaintMutex.unlock();
-}
+void GUIThread::notify(){ m_repaintWait.notify_one(); }
 
 void GUIThread::clearFrameBuffer(){
     EPFrameBuffer::instance()->framebuffer()->fill(Qt::white);
