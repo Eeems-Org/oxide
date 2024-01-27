@@ -83,7 +83,6 @@ GUIThread::~GUIThread(){
     wait();
 }
 
-// https://stackoverflow.com/a/11673600
 void GUIThread::enqueue(
     std::shared_ptr<Surface> surface,
     QRect region,
