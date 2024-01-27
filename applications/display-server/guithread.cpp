@@ -140,14 +140,6 @@ void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<S
 
 void GUIThread::redraw(RepaintRequest& event){
     Q_ASSERT(QThread::currentThread() == (QThread*)this);
-    // Get the regions that need to be repainted
-    const QPoint screenOffset = m_screenGeometry.topLeft();
-    const QRect screenRect = m_screenGeometry.translated(-screenOffset);
-    auto region = event.region;
-    if(region.isEmpty()){
-        O_WARNING("Empty repaint region" << region);
-        return;
-    }
     if(!event.global){
         if(event.surface == nullptr){
             O_WARNING("surface missing");
@@ -157,6 +149,14 @@ void GUIThread::redraw(RepaintRequest& event){
             return;
         }
     }
+    auto region = event.region;
+    if(region.isEmpty()){
+        O_WARNING("Empty repaint region" << region);
+        return;
+    }
+    // Get the regions that need to be repainted
+    const QPoint screenOffset = m_screenGeometry.topLeft();
+    const QRect screenRect = m_screenGeometry.translated(-screenOffset);
     // Get visible region on the screen to repaint
     QRect rect;
     if(region.isEmpty()){
