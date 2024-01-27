@@ -23,7 +23,6 @@ void GUIThread::run(){
     clearFrameBuffer();
     QTimer::singleShot(0, this, [this]{
         Q_ASSERT(QThread::currentThread() == (QThread*)this);
-        std::vector<callback_t> callbacks;
         forever{
             // New repaint request each loop as we have a shared pointer we need to clear
             RepaintRequest event;
@@ -33,7 +32,7 @@ void GUIThread::run(){
                 if(!m_repaintEvents.try_dequeue(event)){
                     // What happens if something is enqueued by the time we aquire the lock?
                     m_repaintMutex.lock();
-                    m_repaintWait.wait(&m_repaintMutex, 500);
+                    m_repaintWait.wait(&m_repaintMutex, 100);
                     auto found = m_repaintEvents.try_dequeue(event);
                     m_repaintMutex.unlock();
                     if(!found){
@@ -45,19 +44,14 @@ void GUIThread::run(){
             forever{
                 redraw(event);
                 if(event.callback != nullptr){
-                    callbacks.push_back(callback_t{
-                        .callback = event.callback,
-                        .surface = event.surface
-                    });
+                    // TODO - send callbacks to another thread to call ioctl to
+                    //        wait for the update marker to finish
+                    event.callback();
                 }
                 if(!m_repaintEvents.try_dequeue(event)){
                     break;
                 }
             }
-            for(auto& item : callbacks){
-                item.callback();
-            }
-            callbacks.clear();
             eventDispatcher()->processEvents(QEventLoop::AllEvents);
             if(isInterruptionRequested()){
                 O_DEBUG("Interruption requested, leaving loop");

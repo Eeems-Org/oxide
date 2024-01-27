@@ -349,9 +349,7 @@ void Connection::readSocket(){
                             EPFrameBuffer::WaveformMode::HighQualityGrayscale,
                             message->header.ackid,
                             false,
-                            [message, this]{
-                                ack(message, 0, nullptr);
-                            }
+                            [message, this]{ ack(message, 0, nullptr); }
                         );
                     }
                 );
@@ -427,9 +425,7 @@ void Connection::readSocket(){
                     EPFrameBuffer::WaveformMode::HighQualityGrayscale,
                     message->header.ackid,
                     false,
-                    [message, this]{
-                        ack(message, 0, nullptr);
-                    }
+                    [message, this]{ ack(message, 0, nullptr); }
                 );
                 do_ack = false;
 #endif
@@ -452,9 +448,7 @@ void Connection::readSocket(){
                     EPFrameBuffer::WaveformMode::HighQualityGrayscale,
                     message->header.ackid,
                     true,
-                    [message, this]{
-                        ack(message, 0, nullptr);
-                    }
+                    [message, this]{ ack(message, 0, nullptr); }
                 );
                 do_ack = false;
 #endif
