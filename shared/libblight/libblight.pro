@@ -19,6 +19,7 @@ SOURCES += \
 
 HEADERS += \
     connection.h \
+    concurrentqueue.h \
     dbus.h \
     debug.h \
     libblight_global.h \

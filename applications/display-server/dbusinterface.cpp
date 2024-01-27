@@ -364,7 +364,7 @@ QList<std::shared_ptr<Surface>> DbusInterface::sortedSurfaces(){
     return QList<std::shared_ptr<Surface>>::fromVector(sorted);
 }
 
-QList<std::shared_ptr<Surface> > DbusInterface::visibleSurfaces(){
+QList<std::shared_ptr<Surface>> DbusInterface::visibleSurfaces(){
     QList<std::shared_ptr<Surface>> surfaces;
     for(auto& surface : sortedSurfaces()){
         if(surface->visible()){

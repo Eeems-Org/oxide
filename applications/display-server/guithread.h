@@ -6,15 +6,15 @@
 #include <QQueue>
 #include <liboxide/epaper.h>
 #include <liboxide/threading.h>
+#include <libblight/concurrentqueue.h>
 
 #include "surface.h"
-#include "concurrentqueue.h"
 
 #define guiThread GUIThread::singleton()
 
 struct RepaintRequest{
     std::shared_ptr<Surface> surface;
-    QRect region;
+    QRegion region;
     EPFrameBuffer::WaveformMode waveform;
     unsigned int marker;
     bool global;
@@ -30,7 +30,6 @@ protected:
 public:
     static GUIThread* singleton();
     ~GUIThread();
-    QRect m_screenGeometry;
 
 public slots:
     void enqueue(
@@ -46,19 +45,24 @@ public slots:
     int framebuffer();
 
 private:
-    GUIThread();
+    GUIThread(QRect screenGeometry);
     moodycamel::ConcurrentQueue<RepaintRequest> m_repaintEvents;
     int m_frameBufferFd;
     QAtomicInteger<unsigned int> m_currentMarker;
     QMutex m_repaintMutex;
     QWaitCondition m_repaintWait;
+    QRect m_screenGeometry;
+    QPoint m_screenOffset;
+    QRect m_screenRect;
 
     void repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface);
     void redraw(RepaintRequest& event);
     void scheduleUpdate();
+    void sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode previousWaveform);
     EPFrameBuffer::WaveformMode getWaveFormMode(
         const QRect& region,
         EPFrameBuffer::WaveformMode defaultValue
     );
+    QList<std::shared_ptr<Surface>> visibleSurfaces();
 };
 #endif

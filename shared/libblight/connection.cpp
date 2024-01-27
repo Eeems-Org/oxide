@@ -2,6 +2,7 @@
 #include "libblight.h"
 #include "debug.h"
 #include "socket.h"
+#include "concurrentqueue.h"
 
 #include <unistd.h>
 #include <atomic>
@@ -16,9 +17,7 @@ using namespace std::chrono_literals;
 
 namespace Blight{
     static std::atomic<unsigned int> ackid;
-    static std::mutex ackMutex;
-    static auto acks = new std::map<unsigned int, ackid_ptr_t>();
-
+    static moodycamel::ConcurrentQueue<ackid_ptr_t> acks;
     ackid_t::ackid_t(
         Connection* connection,
         unsigned int ackid,
@@ -32,26 +31,24 @@ namespace Blight{
       data(data)
     {
 #ifdef ACK_DEBUG
-        _DEBUG("Ack registered: %d", ackid);
+        _DEBUG("Ack created: %d", ackid);
 #endif
     }
 
     ackid_t::~ackid_t(){
-        notify_all();
+        if(!ackid){
+            return;
+        }
 #ifdef ACK_DEBUG
         _DEBUG("Ack deleted: %d", ackid);
 #endif
+        notify_all();
     }
 
     bool ackid_t::wait(int timeout){
         if(!ackid){
-            return true;
-        }
-        ackMutex.lock();
-        if(!acks->contains(ackid)){
-            ackMutex.unlock();
 #ifdef ACK_DEBUG
-            _WARN("Ack missing due to timing issues: %d", ackid);
+            _DEBUG("Can't wait for invalid ack");
 #endif
             return true;
         }
@@ -59,7 +56,6 @@ namespace Blight{
         _DEBUG("Waiting for ack: %d", ackid);
 #endif
         std::unique_lock lock(mutex);
-        ackMutex.unlock();
         if(timeout <= 0){
             condition.wait(lock, [this]{ return done; });
 #ifdef ACK_DEBUG
@@ -119,9 +115,7 @@ namespace Blight{
     }
 
     void Connection::onDisconnect(std::function<void(int)> callback){
-        ackMutex.lock();
         disconnectCallbacks.push_back(callback);
-        ackMutex.unlock();
     }
 
     std::optional<event_packet_t> Connection::read_event(){
@@ -152,15 +146,20 @@ namespace Blight{
         size_t size,
         unsigned int __ackid
     ){
-        // Adding acks to queue to make sure it's there by the time a response
-        // comes back from the server
-        ackMutex.lock();
         auto _ackid = __ackid ? __ackid : ++ackid;
         auto ack = ackid_ptr_t(new ackid_t(this, _ackid));
         if(type != MessageType::Ack){
-            (*acks)[_ackid] = ack;
+            // Adding acks to queue to make sure it's there by the time a response
+            // comes back from the server
+            acks.enqueue(ack);
+#ifdef ACK_DEBUG
+            _DEBUG("Ack enqueued: %d", _ackid);
+#endif
+        }else{
+#ifdef ACK_DEBUG
+            _DEBUG("No ack enqueue needed: %d", _ackid);
+#endif
         }
-        ackMutex.unlock();
         header_t header{
             .type = type,
             .ackid = _ackid,
@@ -456,55 +455,68 @@ namespace Blight{
         }
         running = true;
         _INFO("Starting");
-        std::vector<std::shared_ptr<message_t>> pending;
+        std::vector<std::shared_ptr<message_t>> completed;
+        std::map<unsigned int, ackid_ptr_t> waiting;
         int error = 0;
         while(!connection->stop_requested){
-            // Handle any pending items that are now being waited on
-            ackMutex.lock();
+            // Get any new waiting items
+            {
+                // Contain scope to avoid longer lived shared pointer
+                ackid_ptr_t ptr;
+                while(acks.try_dequeue(ptr)){
+                    waiting[ptr->ackid] = ptr;
 #ifdef ACK_DEBUG
-
+                    _DEBUG("Ack dequeued: %d", ptr->ackid);
+#endif
+                }
+            }
+#ifdef ACK_DEBUG
             {
                 std::string msg;
-                for(auto i = acks->begin(); i != acks->end(); ++i){
-                    msg += std::to_string(i->first) + ",";
+                auto iter = waiting.begin();
+                while(iter != waiting.end()){
+                    auto ackid = (*iter).first;
+                    msg += std::to_string(ackid) + ",";
+                    ++iter;
                 }
                 _DEBUG("Waiting acks: [%s]", msg.c_str());
             }
             {
                 std::string msg;
-                for(auto i = pending.begin(); i != pending.end(); ++i){
+                for(auto i = completed.begin(); i != completed.end(); ++i){
                     msg += std::to_string((*i)->header.ackid) + ",";
                 }
                 _DEBUG("Completed acks: [%s]", msg.c_str());
             }
 #endif
-            if(!pending.empty()){
-                auto iter = pending.begin();
-                while(iter != pending.end()){
+            // Handle any pending items that are now being waited on
+            if(!completed.empty()){
+#ifdef ACK_DEBUG
+                _DEBUG("Resolving %d waiting acks", completed.size());
+#endif
+                auto iter = completed.begin();
+                while(iter != completed.end()){
                     auto message = *iter;
                     auto ackid = message->header.ackid;
-                    if(!acks->contains(ackid)){
+
+                    if(!waiting.contains(ackid)){
                         ++iter;
-#ifdef ACK_DEBUG
-                        _WARN("Ack still pending: %d", ackid);
-#endif
                         continue;
                     }
-                    ackid_ptr_t ack = acks->at(ackid);;
+                    ackid_ptr_t& ack = waiting[ackid];
                     if(message->header.size){
                         ack->data = message->data;
                         ack->data_size = message->header.size;
                     }
                     ack->done = true;
-                    iter = pending.erase(iter);
-                    acks->erase(ackid);
                     ack->notify_all();
+                    iter = completed.erase(iter);
+                    waiting.erase(ackid);
 #ifdef ACK_DEBUG
                     _DEBUG("Ack handled: %d", ackid);
 #endif
                 }
             }
-            ackMutex.unlock();
             auto message = connection->read();
             if(message->header.type == MessageType::Invalid){
                 if(errno == EAGAIN){
@@ -535,7 +547,7 @@ namespace Blight{
                     auto ackid = message->header.ackid;
                     _DEBUG("Ack recieved: %d", ackid);
 #endif
-                    pending.push_back(message);
+                    completed.push_back(message);
                     break;
                 }
                 default:
@@ -543,16 +555,19 @@ namespace Blight{
             }
         }
         _INFO("Quitting");
-        ackMutex.lock();
-        // Release any pending acks
-        for(auto& condition : *acks){
-            condition.second->notify_all();
+        ackid_ptr_t ptr;
+        while(acks.try_dequeue(ptr)){
+            ptr->notify_all();
         }
-        acks->clear();
+        auto iter = waiting.begin();
+        while(iter != waiting.end()){
+            auto ack = (*iter).second;
+            ack->notify_all();
+            iter = waiting.erase(iter);
+        }
         for(auto& callback : connection->disconnectCallbacks){
             callback(error);
         }
-        ackMutex.unlock();
         running = false;
     }
 }

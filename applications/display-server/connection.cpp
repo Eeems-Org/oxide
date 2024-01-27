@@ -342,22 +342,21 @@ void Connection::readSocket(){
                 auto rect = surface->geometry();
                 surface->move(move.x, move.y);
                 guiThread->enqueue(
+                    surface,
+                    // Surface repaints are local to their coordinates, thus (0,0)
+                    QRect(QPoint(0, 0), surface->size()),
+                    EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+                    message->header.ackid,
+                    false,
+                    [message, this]{ ack(message, 0, nullptr); }
+                );
+                guiThread->enqueue(
                     nullptr,
                     rect,
                     EPFrameBuffer::WaveformMode::HighQualityGrayscale,
                     message->header.ackid,
                     true,
-                    [this, message, surface]{
-                        guiThread->enqueue(
-                            surface,
-                            // Surface repaints are local to their coordinates, thus (0,0)
-                            QRect(QPoint(0, 0), surface->size()),
-                            EPFrameBuffer::WaveformMode::HighQualityGrayscale,
-                            message->header.ackid,
-                            false,
-                            [message, this]{ ack(message, 0, nullptr); }
-                        );
-                    }
+                    nullptr
                 );
                 do_ack = false;
 #else
@@ -526,6 +525,8 @@ void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::d
         O_WARNING("Failed to write ack header to socket:" << strerror(errno));
     }else if(size && !Blight::send_blocking(m_serverFd, data, size)){
         O_WARNING("Failed to write ack data to socket:" << strerror(errno));
+    }else{
+        O_DEBUG("Acked:" << ack.ackid);
     }
 }
 
