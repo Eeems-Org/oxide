@@ -8,6 +8,7 @@
 #include <liboxide/threading.h>
 
 #include "surface.h"
+#include "concurrentqueue.h"
 
 #define guiThread GUIThread::singleton()
 
@@ -37,7 +38,6 @@ public:
         return instance;
     }
     ~GUIThread();
-    bool isActive();
     QRect m_screenGeometry;
     void shutdown();
 
@@ -55,17 +55,15 @@ public slots:
 
 private:
     GUIThread();
-    QQueue<RepaintRequest> m_repaintEvents;
-    QMutex m_repaintMutex;
-    QSemaphore m_repaintCount;
-    QWaitCondition m_repaintWait;
+    moodycamel::ConcurrentQueue<RepaintRequest> m_repaintEvents;
     int m_frameBufferFd;
     QAtomicInteger<unsigned int> m_currentMarker;
+    QMutex m_repaintMutex;
+    QWaitCondition m_repaintWait;
 
     void repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface);
     void redraw(RepaintRequest& event);
     void scheduleUpdate();
-    bool inRepaintEvents(std::shared_ptr<Surface> surface);
     EPFrameBuffer::WaveformMode getWaveFormMode(
         const QRect& region,
         EPFrameBuffer::WaveformMode defaultValue

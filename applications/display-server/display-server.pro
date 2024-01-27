@@ -39,6 +39,7 @@ target.path = /opt/bin
 INSTALLS += target
 
 HEADERS += \
+    concurrentqueue.h \
     connection.h \
     dbusinterface.h \
     evdevdevice.h \

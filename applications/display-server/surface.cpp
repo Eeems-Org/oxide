@@ -73,10 +73,11 @@ Surface::Surface(
         true
     );
 #endif
+    O_INFO("Surface" << id() << "created");
 }
 
 Surface::~Surface(){
-    O_DEBUG("Surface" << id() << "destroyed");
+    O_INFO("Surface" << id() << "destroyed");
     file.close();
 #ifdef EPAPER
     // Display whatever was beneath this when it's closed

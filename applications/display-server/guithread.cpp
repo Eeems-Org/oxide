@@ -11,34 +11,38 @@
 #include <liboxide/debug.h>
 #include <liboxide/threading.h>
 
+// Surface is required as the callback may
+// depend on it existing still
+typedef struct {
+    std::function<void()> callback;
+    std::shared_ptr<Surface> surface;
+} callback_t;
+
 void GUIThread::run(){
     O_DEBUG("Thread started");
     clearFrameBuffer();
     QTimer::singleShot(0, this, [this]{
         Q_ASSERT(QThread::currentThread() == (QThread*)this);
+        std::vector<callback_t> callbacks;
         forever{
-            // TODO - In rare cases with lots of redraws this sometimes can get into
-            //        and locked state where nothing happens anymore at all in the
-            //        entire application
-            m_repaintMutex.lock();
-            if(!m_repaintCount.available()){
-                m_repaintMutex.unlock();
-                dbusInterface->processClosingConnections();
+            // New repaint request each loop as we have a shared pointer we need to clear
+            RepaintRequest event;
+            if(!m_repaintEvents.try_dequeue(event)){
                 dbusInterface->processRemovedSurfaces();
-                m_repaintMutex.lock();
-                m_repaintWait.wait(&m_repaintMutex);
+                dbusInterface->processClosingConnections();
+                if(!m_repaintEvents.try_dequeue(event)){
+                    // What happens if something is enqueued by this time?
+                    m_repaintMutex.lock();
+                    m_repaintWait.wait(&m_repaintMutex);
+                    auto found = m_repaintEvents.try_dequeue(event);
+                    m_repaintMutex.unlock();
+                    if(!found){
+                        // Woken by something needing to cleanup connections/surfaces
+                        continue;
+                    }
+                }
             }
-            // Surface is required as the callback may
-            // depend on it existing still
-            typedef struct {
-                std::function<void()> callback;
-                std::shared_ptr<Surface> surface;
-            } callback_t;
-            std::vector<callback_t> callbacks;
-            while(m_repaintCount.available()){
-                m_repaintCount.acquire();
-                auto event = m_repaintEvents.dequeue();
-                m_repaintMutex.unlock();
+            forever{
                 redraw(event);
                 if(event.callback != nullptr){
                     callbacks.push_back(callback_t{
@@ -46,12 +50,14 @@ void GUIThread::run(){
                         .surface = event.surface
                     });
                 }
-                m_repaintMutex.lock();
+                if(!m_repaintEvents.try_dequeue(event)){
+                    break;
+                }
             }
-            m_repaintMutex.unlock();
             for(auto& item : callbacks){
                 item.callback();
             }
+            callbacks.clear();
             eventDispatcher()->processEvents(QEventLoop::AllEvents);
             if(isInterruptionRequested()){
                 O_DEBUG("Interruption requested, leaving loop");
@@ -73,15 +79,14 @@ GUIThread::GUIThread() : QThread(){
 }
 
 GUIThread::~GUIThread(){
-    auto repaintLocked = m_repaintMutex.tryLock(100);
-    m_repaintEvents.clear();
-    if(repaintLocked){
-        m_repaintMutex.unlock();
-    }
+    RepaintRequest event;
+    while(m_repaintEvents.try_dequeue(event));
+    requestInterruption();
+    quit();
+    wait();
 }
 
-bool GUIThread::isActive(){ return m_repaintCount.available(); }
-
+// https://stackoverflow.com/a/11673600
 void GUIThread::enqueue(
     std::shared_ptr<Surface> surface,
     QRect region,
@@ -95,7 +100,6 @@ void GUIThread::enqueue(
         return;
     }
     Q_ASSERT(global || surface != nullptr);
-    m_repaintMutex.lock();
     m_repaintEvents.enqueue(RepaintRequest{
         .surface = surface,
         .region = region,
@@ -104,13 +108,14 @@ void GUIThread::enqueue(
         .global = global,
         .callback = callback
     });
-    // Indicate that there is an item in the queue
-    m_repaintCount.release();
     notify();
-    m_repaintMutex.unlock();
 }
 
-void GUIThread::notify(){ m_repaintWait.notify_all(); }
+void GUIThread::notify(){
+    m_repaintMutex.lock();
+    m_repaintWait.notify_one();
+    m_repaintMutex.unlock();
+}
 
 void GUIThread::clearFrameBuffer(){
     EPFrameBuffer::instance()->framebuffer()->fill(Qt::white);
@@ -131,7 +136,6 @@ void GUIThread::clearFrameBuffer(){
 void GUIThread::shutdown(){
     O_DEBUG("Stopping thread" << this);
     requestInterruption();
-    m_repaintWait.notify_all();
     quit();
     QDeadlineTimer deadline(6000);
     if(!wait(deadline)){
@@ -282,18 +286,6 @@ void GUIThread::redraw(RepaintRequest& event){
     }
     painter.end();
     O_DEBUG("Repaint" << rect << "done in" << repaintRegion.rectCount() << "paints");
-}
-
-bool GUIThread::inRepaintEvents(std::shared_ptr<Surface> surface){
-    Q_ASSERT(surface != nullptr);
-    QMutexLocker locker(&m_repaintMutex);
-    Q_UNUSED(locker);
-    for(auto& event : m_repaintEvents){
-        if(event.surface == surface){
-            return true;
-        }
-    }
-    return false;
 }
 
 EPFrameBuffer::WaveformMode GUIThread::getWaveFormMode(

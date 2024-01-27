@@ -66,13 +66,13 @@ Connection::Connection(pid_t pid, pid_t pgid)
     connect(&m_notRespondingTimer, &QTimer::timeout, this, &Connection::notResponding);
     m_notRespondingTimer.start();
 
-    O_DEBUG("Connection" << id() << "created");
+    O_INFO("Connection" << id() << "created");
 }
 
 Connection::~Connection(){
     close();
     surfaces.clear();
-    removedSurfaces.clear();
+    processRemovedSurfaces();
     if(m_notifier != nullptr){
         m_notifier->deleteLater();
         m_notifier = nullptr;
@@ -80,15 +80,13 @@ Connection::~Connection(){
     ::close(m_clientFd);
     ::close(m_serverFd);
     ::close(m_pidFd);
-    O_DEBUG("Connection" << id() << "destroyed");
+    O_INFO("Connection" << id() << "destroyed");
 }
 
 void Connection::processRemovedSurfaces(){
     removedMutex.lock();
-    if(!removedSurfaces.empty()){
-        O_DEBUG("Cleaning up old surfaces");
-        removedSurfaces.clear();
-    }
+    O_DEBUG("Cleaning up old surfaces");
+    removedSurfaces.clear();
     removedMutex.unlock();
 }
 
@@ -394,6 +392,7 @@ void Connection::readSocket(){
                 removedSurfaces.push_back(surfaces[identifier]);
                 removedMutex.unlock();
                 surfaces.erase(identifier);
+                guiThread->notify();
                 break;
             }
             case Blight::MessageType::List:{
