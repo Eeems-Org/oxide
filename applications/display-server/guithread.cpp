@@ -16,6 +16,7 @@ void GUIThread::run(){
     clearFrameBuffer();
     QTimer::singleShot(0, this, [this]{
         Q_ASSERT(QThread::currentThread() == (QThread*)this);
+        m_repaintMutex.lock();
         forever{
             // New repaint request each loop as we have a shared pointer we need to clear
             RepaintRequest event;
@@ -23,11 +24,9 @@ void GUIThread::run(){
                 dbusInterface->processRemovedSurfaces();
                 dbusInterface->processClosingConnections();
                 if(!m_repaintEvents.try_dequeue(event)){
-                    // What happens if something is enqueued by the time we aquire the lock?
-                    m_repaintMutex.lock();
-                    m_repaintWait.wait(&m_repaintMutex, 100);
+                    // Wait for up to 500ms before trying again
+                    m_repaintWait.wait(&m_repaintMutex, 500);
                     auto found = m_repaintEvents.try_dequeue(event);
-                    m_repaintMutex.unlock();
                     if(!found){
                         // Woken by something needing to cleanup connections/surfaces
                         continue;
@@ -51,6 +50,7 @@ void GUIThread::run(){
                 break;
             }
         }
+        m_repaintMutex.unlock();
     });
     clearFrameBuffer();
     auto res = exec();
