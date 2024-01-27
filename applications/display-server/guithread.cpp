@@ -24,6 +24,7 @@ void GUIThread::run(){
             if(!m_repaintCount.available()){
                 m_repaintMutex.unlock();
                 dbusInterface->processClosingConnections();
+                dbusInterface->processRemovedSurfaces();
                 m_repaintMutex.lock();
                 m_repaintWait.wait(&m_repaintMutex);
             }
@@ -147,7 +148,7 @@ void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<S
     if(surfaceIntersect.isEmpty()){
         return;
     }
-    O_DEBUG("Repaint window" << surface->id().toStdString().c_str() << surfaceIntersect);
+    O_DEBUG("Repaint surface" << surface->id().toStdString().c_str() << surfaceIntersect);
     // TODO - See if there is a way to detect if there is just transparency in the region
     //        and don't mark this as repainted.
     painter->drawImage(*rect, *surface->image().get(), surfaceIntersect);
@@ -164,7 +165,7 @@ void GUIThread::redraw(RepaintRequest& event){
         return;
     }
     if(!event.global && event.surface == nullptr){
-        O_WARNING("Window missing");
+        O_WARNING("surface missing");
         return;
     }
     // Get visible region on the screen to repaint
@@ -176,18 +177,18 @@ void GUIThread::redraw(RepaintRequest& event){
     if(event.global){
         rect = region;
     }else{
-        auto windowGeometry = event.surface->geometry();
+        auto surfaceGeometry = event.surface->geometry();
         rect = region
-            .translated(windowGeometry.topLeft())
-            .intersected(windowGeometry)
+            .translated(surfaceGeometry.topLeft())
+            .intersected(surfaceGeometry)
             .intersected(screenRect);
     }
     if(rect.isEmpty()){
-        O_WARNING("Window region does not intersect with screen:" << region);
+        O_WARNING("Surface region does not intersect with screen:" << region);
         return;
     }
     O_DEBUG("Repainting" << rect);
-    // Get windows in order of Z sort order, and filter out invalid windows
+    // Get surfaces in order of Z sort order, and filter out invalid surfaces
     auto visibleSurfaces = dbusInterface->visibleSurfaces();
     visibleSurfaces.erase(
         std::remove_if(
@@ -212,7 +213,7 @@ void GUIThread::redraw(RepaintRequest& event){
     // TODO - explore using QPainter::clipRegion to see if it can speed things up
     QRegion repaintRegion(rect);
     if(!event.global){
-        // Don't repaint portions covered by another window
+        // Don't repaint portions covered by another surface
         auto i = visibleSurfaces.constEnd();
         while(i != visibleSurfaces.constBegin()) {
             --i;

@@ -79,7 +79,7 @@ Blight::shared_buf_t Blight::buf_t::new_ptr(){
         .format = Format::Format_Invalid,
         .data = nullptr,
         .uuid = new_uuid(),
-        .surface = ""
+        .surface = 0
     });
 }
 
@@ -181,37 +181,16 @@ Blight::message_ptr_t Blight::message_t::new_ptr(){
     });
 }
 
-Blight::repaint_header_t Blight::repaint_header_t::from_data(data_t data){
-    repaint_header_t header;
-    memcpy(&header, data, sizeof(header));
-    return header;
-}
-
 Blight::repaint_t Blight::repaint_t::from_message(const message_t* message){
     const data_t data = message->data.get();
     repaint_t repaint;
-    repaint.header = repaint_header_t::from_data(data);
-    repaint.identifier.assign(
-        reinterpret_cast<char*>(&data[sizeof(repaint.header)]),
-        repaint.header.identifier_len
-    );
+    memcpy(&repaint, data, sizeof(repaint));
     return repaint;
 }
 
-Blight::move_header_t Blight::move_header_t::from_data(data_t data){
-    move_header_t header;
-    memcpy(&header, data, sizeof(header));
-    return header;
-}
-
 Blight::move_t Blight::move_t::from_message(const message_t* message){
-    const data_t data = message->data.get();
     move_t move;
-    move.header = move_header_t::from_data(data);
-    move.identifier.assign(
-        reinterpret_cast<char*>(&data[sizeof(move.header)]),
-        move.header.identifier_len
-    );
+    memcpy(&move, message->data.get(), sizeof(move_t));
     return move;
 }
 
@@ -219,42 +198,6 @@ Blight::surface_info_t Blight::surface_info_t::from_data(data_t data){
     surface_info_t header;
     memcpy(&header, data, sizeof(surface_info_t));
     return header;
-}
-
-Blight::list_header_t Blight::list_header_t::from_data(data_t data){
-    list_header_t header;
-    memcpy(&header, data, sizeof(header));
-    return header;
-}
-
-Blight::list_item_t Blight::list_item_t::from_data(data_t data){
-    list_item_t item;
-    memcpy(&item.identifier_len, data, sizeof(item.identifier_len));
-    item.identifier.assign(
-        reinterpret_cast<char*>(&data[sizeof(item.identifier_len)]),
-        item.identifier_len
-    );
-    return item;
-}
-
-Blight::list_t Blight::list_t::from_data(data_t data){
-    list_t list;
-    list.header = list_header_t::from_data(data);
-    unsigned int offset = sizeof(list.header.count);
-    for(unsigned int i = 0; i < list.header.count; i++){
-        auto item = list_item_t::from_data(&data[offset]);
-        list.items.push_back(item);
-        offset += sizeof(item.identifier_len) + item.identifier_len;
-    }
-    return list;
-}
-
-std::vector<std::string> Blight::list_t::identifiers(){
-    std::vector<std::string> identifiers;
-    for(auto& item : items){
-        identifiers.push_back(item.identifier);
-    }
-    return identifiers;
 }
 
 Blight::clipboard_t::clipboard_t(const std::string name, data_t data, size_t size)

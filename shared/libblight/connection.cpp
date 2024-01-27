@@ -224,7 +224,7 @@ namespace Blight{
     }
 
     maybe_ackid_ptr_t Connection::repaint(
-        std::string identifier,
+        surface_id_t identifier,
         int x,
         int y,
         int width,
@@ -232,18 +232,19 @@ namespace Blight{
         WaveformMode waveform,
         unsigned int marker
     ){
-        unsigned char buf[sizeof(repaint_header_t) + identifier.size()];
-        repaint_header_t header{
+        if(!identifier){
+            errno = EINVAL;
+            return {};
+        }
+        repaint_t repaint{
             .x = x,
             .y = y,
             .width = width,
             .height = height,
             .waveform = waveform,
-            .identifier_len = identifier.size()
+            .identifier = identifier
         };
-        memcpy(buf, &header, sizeof(header));
-        memcpy(&buf[sizeof(header)], identifier.data(), identifier.size());
-        auto ackid = send(MessageType::Repaint, buf, sizeof(buf));
+        auto ackid = send(MessageType::Repaint, (data_t)&repaint, sizeof(repaint));
         if(!ackid.has_value()){
             return {};
         }
@@ -269,6 +270,10 @@ namespace Blight{
         int stride,
         data_t new_data
     ){
+        if(!buf->surface){
+            errno = EINVAL;
+            return {};
+        }
         auto res = Blight::createBuffer(
             buf->x,
             buf->y,
@@ -283,7 +288,7 @@ namespace Blight{
         auto buf2 = res.value();
         memcpy(buf2->data, new_data, buf2->size());
         Blight::addSurface(buf2);
-        if(buf2->surface.empty()){
+        if(!buf2->surface){
             return {};
         }
         auto ack = remove(buf);
@@ -293,65 +298,85 @@ namespace Blight{
         return buf2;
     }
 
-    maybe_ackid_ptr_t Connection::raise(std::string identifier){
-        if(identifier.empty()){
+    maybe_ackid_ptr_t Connection::raise(surface_id_t identifier){
+        if(!identifier){
+            errno = EINVAL;
             return {};
         }
-        return send(MessageType::Raise, (data_t)identifier.data(), identifier.size());
+        return send(MessageType::Raise, (data_t)&identifier, sizeof(surface_id_t));
     }
 
     maybe_ackid_ptr_t Connection::raise(shared_buf_t buf){
         if(buf == nullptr){
+            errno = EINVAL;
             return {};
         }
         return raise(buf->surface);
     }
 
-    maybe_ackid_ptr_t Connection::lower(std::string identifier){
-        if(identifier.empty()){
+    maybe_ackid_ptr_t Connection::lower(surface_id_t identifier){
+        if(!identifier){
+            errno = EINVAL;
             return {};
         }
-        return send(MessageType::Lower, (data_t)identifier.data(), identifier.size());
+        return send(MessageType::Lower, (data_t)&identifier, sizeof(surface_id_t));
     }
 
     maybe_ackid_ptr_t Connection::lower(shared_buf_t buf){
         if(buf == nullptr){
+            errno = EINVAL;
             return {};
         }
         return lower(buf->surface);
     }
 
-    maybe_ackid_ptr_t Connection::move(std::string identifier, int x, int y){
-        unsigned char buf[sizeof(move_header_t) + identifier.size()];
-        move_header_t header{
-             .x = x,
-             .y = y,
-            .identifier_len = identifier.size()
+    maybe_ackid_ptr_t Connection::move(surface_id_t identifier, int x, int y){
+        if(!identifier){
+            errno = EINVAL;
+            return {};
+        }
+        move_t move{
+            .identifier = identifier,
+            .x = x,
+            .y = y,
         };
-        memcpy(buf, &header, sizeof(header));
-        memcpy(&buf[sizeof(header)], identifier.data(), identifier.size());
-        return send(MessageType::Move, buf, sizeof(buf));
+        return send(MessageType::Move, (data_t)&move, sizeof(move));
     }
 
-    std::optional<shared_buf_t> Connection::getBuffer(std::string identifier){
+    std::optional<shared_buf_t> Connection::getBuffer(surface_id_t identifier){
+        if(!identifier){
+            _WARN("Failed to get buffer for surface %d: Invalid identifier", identifier);
+            return {};
+        }
         int fd = getSurface(identifier);
         if(fd == -1){
-            _WARN("Failed to get buffer for surface: %s", identifier.c_str());
+            _WARN("Failed to get buffer for surface %d: %s", identifier, std::strerror(errno));
             return {};
         }
-        auto ack = send(MessageType::Info, (data_t)identifier.data(), identifier.size());
-        if(!ack.has_value()){
+        auto maybe = send(MessageType::Info, (data_t)&identifier, sizeof(surface_id_t));
+        if(!maybe.has_value()){
             ::close(fd);
-            _WARN("Failed to get info for surface: %s", identifier.c_str());
+            _WARN("Failed to get info for surface %d: %s", identifier, std::strerror(errno));
             return {};
         }
-        ack.value()->wait();
-        if(ack.value()->data_size < sizeof(surface_info_t)){
-            _WARN("Surface info size mismatch for surface: %s", identifier.c_str());
+        auto ack = maybe.value();
+        ack->wait();
+        if(!ack->data_size){
+            ::close(fd);
+            _WARN("Failed to get info for surface %d: It does not exist", identifier);
+            return {};
+        }
+        if(ack->data_size < sizeof(surface_info_t)){
+            _WARN(
+                "Surface %d info size mismatch: size=%d, expected=%d",
+                identifier,
+                ack->data_size,
+                sizeof(surface_info_t)
+            );
             ::close(fd);
             return {};
         }
-        auto info = reinterpret_cast<surface_info_t*>(ack.value()->data.get());
+        auto info = reinterpret_cast<surface_info_t*>(ack->data.get());
         auto buf = new buf_t{
             .fd = fd,
             .x = info->x,
@@ -368,8 +393,8 @@ namespace Blight{
         auto res = mmap(NULL, buf->size(), PROT_READ, MAP_SHARED_VALIDATE, fd, 0);
         if(res == MAP_FAILED){
             _WARN(
-                "Failed to map buffer for surface: %s error: %s",
-                identifier.c_str(),
+                "Failed to map buffer for surface: %d error: %s",
+                identifier,
                 std::strerror(errno)
             );
             ::close(fd);
@@ -384,9 +409,13 @@ namespace Blight{
     std::vector<shared_buf_t> Connection::buffers(){
         std::vector<shared_buf_t> buffers;
         for(const auto& identifier : surfaces()){
-            auto buffer = getBuffer(identifier);
-            if(buffer.has_value() && buffer.value()->data != nullptr){
-                buffers.push_back(buffer.value());
+            auto maybe = getBuffer(identifier);
+            if(!maybe.has_value()){
+                continue;
+            }
+            auto buf = maybe.value();
+            if(buf->surface && buf->data != nullptr){
+                buffers.push_back(maybe.value());
             }
         }
         return buffers;
@@ -400,28 +429,31 @@ namespace Blight{
         if(!ack.has_value()){
             return {};
         }
-        buf->surface = "";
+        buf->surface = 0;
         return ack;
     }
 
-    maybe_ackid_ptr_t Connection::remove(std::string identifier){
-        if(identifier.empty()){
+    maybe_ackid_ptr_t Connection::remove(surface_id_t identifier){
+        if(!identifier){
+            errno = EINVAL;
             return {};
         }
-        return send(MessageType::Delete, (data_t)identifier.data(), identifier.size());
+        return send(MessageType::Delete, (data_t)&identifier, sizeof(surface_id_t));
     }
 
-    std::vector<std::string> Connection::surfaces(){
-        auto ack = send(MessageType::List, nullptr, 0);
-        if(!ack.has_value()){
-            return std::vector<std::string>();
+    std::vector<surface_id_t> Connection::surfaces(){
+        auto maybe = send(MessageType::List, nullptr, 0);
+        if(!maybe.has_value()){
+            return std::vector<surface_id_t>();
         }
-        ack.value()->wait();
-        if(ack.value()->data == nullptr){
+        auto ack = maybe.value();
+        ack->wait();
+        if(ack->data == nullptr){
             _WARN("Missing list data pointer!");
-            return std::vector<std::string>();
+            return std::vector<surface_id_t>();
         }
-        return list_t::from_data(ack.value()->data.get()).identifiers();
+        auto buf = ack->data.get();
+        return std::vector<surface_id_t>(buf, buf + (ack->data_size / sizeof(surface_id_t)));
     }
 
     static std::atomic<bool> running = false;

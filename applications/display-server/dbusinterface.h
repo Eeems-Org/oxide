@@ -31,6 +31,7 @@ public:
     int pid();
     QObject* loadComponent(QString url, QString identifier, QVariantMap properties = QVariantMap());
     void processClosingConnections();
+    void processRemovedSurfaces();
     std::shared_ptr<Surface> getSurface(QString identifier);
     QList<std::shared_ptr<Surface>> surfaces();
     QList<std::shared_ptr<Surface>> sortedSurfaces();
@@ -51,7 +52,7 @@ public:
 public slots:
     QDBusUnixFileDescriptor open(QDBusMessage message);
     QDBusUnixFileDescriptor openInput(QDBusMessage message);
-    QString addSurface(
+    ushort addSurface(
         QDBusUnixFileDescriptor fd,
         int x,
         int y,
@@ -62,7 +63,7 @@ public slots:
         QDBusMessage message
     );
     void repaint(QString identifier, QDBusMessage message);
-    QDBusUnixFileDescriptor getSurface(QString identifier, QDBusMessage message);
+    QDBusUnixFileDescriptor getSurface(ushort identifier, QDBusMessage message);
     void setFlags(QString identifier, const QStringList& flags, QDBusMessage message);
 
 signals:

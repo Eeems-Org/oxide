@@ -121,6 +121,12 @@ void DbusInterface::processClosingConnections(){
     closingMutex.unlock();
 }
 
+void DbusInterface::processRemovedSurfaces(){
+    for(auto connection : qAsConst(connections)){
+        connection->processRemovedSurfaces();
+    }
+}
+
 std::shared_ptr<Surface> DbusInterface::getSurface(QString identifier){
     for(auto connection : qAsConst(connections)){
         if(!connection->isRunning()){
@@ -162,7 +168,7 @@ QDBusUnixFileDescriptor DbusInterface::openInput(QDBusMessage message){
     return QDBusUnixFileDescriptor(connection->inputSocketDescriptor());
 }
 
-QString DbusInterface::addSurface(
+Blight::surface_id_t DbusInterface::addSurface(
     QDBusUnixFileDescriptor fd,
     int x,
     int y,
@@ -174,17 +180,17 @@ QString DbusInterface::addSurface(
 ){
     if(!fd.isValid()){
         sendErrorReply(QDBusError::InvalidArgs, "Invalid file descriptor");
-        return "";
+        return 0;
     }
     auto connection = getConnection(message);
     if(connection == nullptr){
         sendErrorReply(QDBusError::AccessDenied, "You must first open a connection");
-        return "";
+        return 0;
     }
     auto dfd = dup(fd.fileDescriptor());
     if(dfd == -1){
         sendErrorReply(QDBusError::InternalError, strerror(errno));
-        return "";
+        return 0;
     }
     auto surface = connection->addSurface(
         dfd,
@@ -194,22 +200,21 @@ QString DbusInterface::addSurface(
     );
     if(surface == nullptr){
         sendErrorReply(QDBusError::InternalError, "Unable to create surface");
-        return "";
+        return 0;
     }
     if(!surface->isValid()){
         sendErrorReply(QDBusError::InternalError, "Unable to create surface");
-        return "";
+        return 0;
     }
-    return surface->id();
+    return surface->identifier();
 }
 
 void DbusInterface::repaint(QString identifier, QDBusMessage message){
-    auto connection = getConnection(message);
-    if(connection == nullptr){
-        sendErrorReply(QDBusError::AccessDenied, "You must first open a connection");
+    if(message.service() != "codes.eeems.oxide1"){
+        sendErrorReply(QDBusError::AccessDenied, "Access denied");
         return;
     }
-    auto surface = connection->getSurface(identifier);
+    auto surface = getSurface(identifier);
     if(surface == nullptr){
         sendErrorReply(QDBusError::BadAddress, "Surface not found");
         return;
@@ -217,7 +222,7 @@ void DbusInterface::repaint(QString identifier, QDBusMessage message){
     surface->repaint();
 }
 
-QDBusUnixFileDescriptor DbusInterface::getSurface(QString identifier, QDBusMessage message){
+QDBusUnixFileDescriptor DbusInterface::getSurface(Blight::surface_id_t identifier, QDBusMessage message){
     auto connection = getConnection(message);
     if(connection == nullptr){
         sendErrorReply(QDBusError::AccessDenied, "You must first open a connection");

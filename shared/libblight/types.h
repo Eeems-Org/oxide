@@ -59,6 +59,7 @@ namespace Blight{
         Highlight = Waveform::UNKNOWN
     };
     LIBBLIGHT_EXPORT typedef unsigned int size_t;
+    LIBBLIGHT_EXPORT typedef unsigned short surface_id_t;
     LIBBLIGHT_EXPORT typedef struct{
         __u16 type;
         __u16 code;
@@ -98,7 +99,7 @@ namespace Blight{
         Format format;
         data_t data;
         std::string uuid;
-        std::string surface;
+        surface_id_t surface;
         size_t size();
         int close();
         ~buf_t();
@@ -140,29 +141,19 @@ namespace Blight{
         static message_ptr_t from_socket(int fd);
         static message_ptr_t new_ptr();
     } message_t;
-    LIBBLIGHT_EXPORT typedef struct repaint_header_t{
+    LIBBLIGHT_EXPORT typedef struct repaint_t{
         int x;
         int y;
         int width;
         int height;
         WaveformMode waveform;
-        unsigned long identifier_len;
-        static repaint_header_t from_data(data_t data);
-    } repaint_header_t;
-    LIBBLIGHT_EXPORT typedef struct repaint_t{
-        repaint_header_t header;
-        std::string identifier;
+        surface_id_t identifier;
         static repaint_t from_message(const message_t* message);
     } repaint_t;
-    LIBBLIGHT_EXPORT typedef struct move_header_t{
+    LIBBLIGHT_EXPORT typedef struct move_t{
+        surface_id_t identifier;
         int x;
         int y;
-        size_t identifier_len;
-        static move_header_t from_data(data_t data);
-    } move_header_t;
-    LIBBLIGHT_EXPORT typedef struct move_t{
-        move_header_t header;
-        std::string identifier;
         static move_t from_message(const message_t* message);
     } move_t;
     LIBBLIGHT_EXPORT typedef struct surface_info_t{
@@ -174,19 +165,4 @@ namespace Blight{
         Format format;
         static surface_info_t from_data(data_t data);
     } surface_info_t;
-    LIBBLIGHT_EXPORT typedef struct list_header_t{
-        unsigned int count;
-        static list_header_t from_data(data_t data);
-    } list_header_t;
-    LIBBLIGHT_EXPORT typedef struct list_item_t{
-        size_t identifier_len;
-        std::string identifier;
-        static list_item_t from_data(data_t data);
-    } list_item_t;
-    LIBBLIGHT_EXPORT typedef struct list_t{
-        list_header_t header;
-        std::vector<list_item_t> items;
-        std::vector<std::string> identifiers();
-        static list_t from_data(data_t data);
-    } list_t;
 }

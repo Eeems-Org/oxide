@@ -28,7 +28,8 @@ Connection::Connection(pid_t pid, pid_t pgid)
   m_pid{pid},
   m_pgid{pgid},
   m_closed{false},
-  pingId{0}
+  pingId{0},
+  m_surfaceId{0}
 {
     m_pidFd = pidfd_open(m_pid, 0);
     if(m_pidFd < 0){
@@ -71,6 +72,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
 Connection::~Connection(){
     close();
     surfaces.clear();
+    removedSurfaces.clear();
     if(m_notifier != nullptr){
         m_notifier->deleteLater();
         m_notifier = nullptr;
@@ -79,6 +81,15 @@ Connection::~Connection(){
     ::close(m_serverFd);
     ::close(m_pidFd);
     O_DEBUG("Connection" << id() << "destroyed");
+}
+
+void Connection::processRemovedSurfaces(){
+    removedMutex.lock();
+    if(!removedSurfaces.empty()){
+        O_DEBUG("Cleaning up old surfaces");
+        removedSurfaces.clear();
+    }
+    removedMutex.unlock();
 }
 
 QString Connection::id(){ return QString("connection/%1").arg(m_pid); }
@@ -164,13 +175,16 @@ void Connection::close(){
 }
 
 std::shared_ptr<Surface> Connection::addSurface(int fd, QRect geometry, int stride, QImage::Format format){
-    auto surface = std::shared_ptr<Surface>(new Surface(this, fd, geometry, stride, format));
-    surfaces.append(surface);
+    // TODO - add validation that id is never 0, and that it doesn't point to an existsing surface
+    auto id = ++m_surfaceId;
+    auto surface = std::shared_ptr<Surface>(new Surface(this, fd, id, geometry, stride, format));
+    surfaces.insert_or_assign(id, surface);
     return surface;
 }
 
 std::shared_ptr<Surface> Connection::getSurface(QString identifier){
-    for(auto surface : qAsConst(surfaces)){
+    for(auto& item: surfaces){
+        auto& surface = item.second;
         if(surface == nullptr){
             continue;
         }
@@ -181,9 +195,17 @@ std::shared_ptr<Surface> Connection::getSurface(QString identifier){
     return nullptr;
 }
 
-QStringList Connection::getSurfaceIds(){
+std::shared_ptr<Surface> Connection::getSurface(Blight::surface_id_t id){
+    if(!surfaces.contains(id)){
+        return nullptr;
+    }
+    return surfaces[id];
+}
+
+QStringList Connection::getSurfaceIdentifiers(){
     QStringList identifiers;
-    for(auto surface : qAsConst(surfaces)){
+    for(auto& item: surfaces){
+        auto& surface = item.second;
         if(surface == nullptr){
             continue;
         }
@@ -192,7 +214,16 @@ QStringList Connection::getSurfaceIds(){
     return identifiers;
 }
 
-const QList<std::shared_ptr<Surface>>& Connection::getSurfaces(){ return surfaces; }
+const QList<std::shared_ptr<Surface>> Connection::getSurfaces(){
+    QList<std::shared_ptr<Surface>> values;
+    for(auto& item: surfaces){
+        auto& surface = item.second;
+        if(surface != nullptr){
+            values.append(surface);
+        }
+    }
+    return values;
+}
 
 void Connection::inputEvents(unsigned int device, const std::vector<input_event>& events){
     // TODO - Allow non-blocking send.
@@ -236,7 +267,7 @@ void Connection::readSocket(){
             break;
         }
         O_DEBUG(
-            "Handling message: "
+            "Handling message:"
             << "type=" << message->header.type
             << ", ackid=" << message->header.ackid
             << ", size=" << message->header.size
@@ -250,38 +281,36 @@ void Connection::readSocket(){
             case Blight::MessageType::Repaint:{
                 auto repaint = Blight::repaint_t::from_message(message.get());
                 O_DEBUG(
-                    "Repaint requested: "
-                    << repaint.identifier.c_str()
-                    << QString("(%1,%2) %3x%4 %5")
-                        .arg(repaint.header.x)
-                        .arg(repaint.header.y)
-                        .arg(repaint.header.width)
-                        .arg(repaint.header.height)
-                        .arg(repaint.header.waveform)
+                    "Repaint requested:"
+                    << QString("%6 (%1,%2) %3x%4 %5")
+                        .arg(repaint.x)
+                        .arg(repaint.y)
+                        .arg(repaint.width)
+                        .arg(repaint.height)
+                        .arg(repaint.waveform)
+                        .arg(repaint.identifier)
                         .toStdString()
                         .c_str()
                 );
-                auto surface = getSurface(repaint.identifier.c_str());
+                auto surface = getSurface(repaint.identifier);
                 if(surface == nullptr){
-                    O_WARNING("Could not find surface " << repaint.identifier.c_str());
+                    O_WARNING("Could not find surface" << repaint.identifier);
                     break;
                 }
                 QRect rect(
-                    repaint.header.x,
-                    repaint.header.y,
-                    repaint.header.width,
-                    repaint.header.height
+                    repaint.x,
+                    repaint.y,
+                    repaint.width,
+                    repaint.height
                 );
 #ifdef EPAPER
                 guiThread->enqueue(
                     surface,
                     rect,
-                    (EPFrameBuffer::WaveformMode)repaint.header.waveform,
+                    (EPFrameBuffer::WaveformMode)repaint.waveform,
                     message->header.ackid,
                     false,
-                    [message, this]{
-                        ack(message, 0, nullptr);
-                    }
+                    [message, this]{ ack(message, 0, nullptr); }
                 );
                 do_ack = false;
 #else
@@ -292,22 +321,22 @@ void Connection::readSocket(){
             case Blight::MessageType::Move:{
                 auto move = Blight::move_t::from_message(message.get());
                 O_DEBUG(
-                    "Move requested: "
-                    << move.identifier.c_str()
-                    << QString("(%1,%2)")
-                           .arg(move.header.x)
-                           .arg(move.header.y)
+                    "Move requested:"
+                    << QString("%3 (%1,%2)")
+                           .arg(move.x)
+                           .arg(move.y)
+                           .arg(move.identifier)
                            .toStdString()
                            .c_str()
                 );
-                auto surface = getSurface(move.identifier.c_str());
+                auto surface = getSurface(move.identifier);
                 if(surface == nullptr){
-                    O_WARNING("Could not find surface " << move.identifier.c_str());
+                    O_WARNING("Could not find surface" << move.identifier);
                     break;
                 }
 #ifdef EPAPER
                 auto rect = surface->geometry();
-                surface->move(move.header.x, move.header.y);
+                surface->move(move.x, move.y);
                 guiThread->enqueue(
                     nullptr,
                     rect,
@@ -335,20 +364,13 @@ void Connection::readSocket(){
                 break;
             }
             case Blight::MessageType::Info:{
-                std::string identifier;
-                identifier.assign(
-                    reinterpret_cast<char*>(message->data.get()),
-                    message->header.size
-                );
-                O_DEBUG(
-                    "Info requested: "
-                    << identifier.c_str()
-                );
-                auto surface = getSurface(identifier.c_str());
-                if(surface == nullptr){
-                    O_WARNING("Could not find surface " << identifier.c_str());
+                auto identifier = (Blight::surface_id_t)*message->data.get();
+                O_DEBUG("Info requested:" << identifier);
+                if(!surfaces.contains(identifier)){
+                    O_WARNING("Could not find surface" << identifier);
                     break;
                 }
+                auto surface = surfaces[identifier];
                 auto geometry = surface->geometry();
                 ack_data = (Blight::data_t)new Blight::surface_info_t{
                     .x = geometry.x(),
@@ -362,66 +384,40 @@ void Connection::readSocket(){
                 break;
             }
             case Blight::MessageType::Delete:{
-                std::string identifier;
-                identifier.assign(
-                    reinterpret_cast<char*>(message->data.get()),
-                    message->header.size
-                );
-                O_DEBUG(
-                    "Delete requested: "
-                    << identifier.c_str()
-                );
-                auto surface = getSurface(identifier.c_str());
-                if(surface == nullptr){
-                    O_WARNING("Could not find surface " << identifier.c_str());
+                auto identifier = (Blight::surface_id_t)*message->data.get();
+                O_DEBUG("Delete requested:" << identifier);
+                if(!surfaces.contains(identifier)){
+                    O_WARNING("Could not find surface" << identifier);
                     break;
                 }
-                surfaces.removeAll(surface);
+                removedMutex.lock();
+                removedSurfaces.push_back(surfaces[identifier]);
+                removedMutex.unlock();
+                surfaces.erase(identifier);
                 break;
             }
             case Blight::MessageType::List:{
                 O_DEBUG("List requested");
-                std::vector<std::string> list;
-                for(QString& surface : getSurfaceIds()){
-                    auto string = surface.toStdString();
-                    ack_size += sizeof(Blight::list_item_t::identifier_len) + string.size();
-                    list.push_back(string);
+                std::vector<Blight::surface_id_t> list;
+                for(auto& item: surfaces){
+                    if(item.second != nullptr){
+                        list.push_back(item.first);
+                    }
                 }
-                ack_size += sizeof(Blight::list_header_t);
+                ack_size = list.size() * sizeof(decltype(list)::value_type);
                 ack_data = (Blight::data_t)malloc(ack_size);
-                unsigned int offset = sizeof(Blight::list_header_t);
-                Blight::list_header_t header{
-                    .count = (unsigned int)list.size()
-                };
-                memcpy(ack_data, &header, offset);
-                for(auto& identifier : list){
-                    auto size = identifier.size();
-                    memcpy(&ack_data[offset], &size, sizeof(Blight::list_item_t::identifier_len));
-                    offset += sizeof(Blight::list_item_t::identifier_len);
-                    memcpy(&ack_data[offset], identifier.data(), size);
-                    offset += size;
-                }
-                if(offset != ack_size){
-                    O_WARNING("Size mismatch on list data");
-                }
+                memcpy(ack_data, list.data(), ack_size);
                 ack_free = [&ack_data]{ free(ack_data); };
                 break;
             }
             case Blight::MessageType::Raise:{
-                std::string identifier;
-                identifier.assign(
-                    reinterpret_cast<char*>(message->data.get()),
-                    message->header.size
-                );
-                O_DEBUG(
-                    "Raise requested: "
-                    << identifier.c_str()
-                );
-                auto surface = getSurface(identifier.c_str());
-                if(surface == nullptr){
-                    O_WARNING("Could not find surface " << identifier.c_str());
+                auto identifier = (Blight::surface_id_t)*message->data.get();
+                O_DEBUG("Raise requested:" << identifier);
+                if(!surfaces.contains(identifier)){
+                    O_WARNING("Could not find surface" << identifier);
                     break;
                 }
+                auto surface = surfaces[identifier];
                 surface->setVisible(true);
                 dbusInterface->sortZ();
 #ifdef EPAPER
@@ -441,20 +437,13 @@ void Connection::readSocket(){
                 break;
             }
             case Blight::MessageType::Lower:{
-                std::string identifier;
-                identifier.assign(
-                    reinterpret_cast<char*>(message->data.get()),
-                    message->header.size
-                );
-                O_DEBUG(
-                    "Lower requested: "
-                    << identifier.c_str()
-                );
-                auto surface = getSurface(identifier.c_str());
-                if(surface == nullptr){
-                    O_WARNING("Could not find surface " << identifier.c_str());
+                auto identifier = (Blight::surface_id_t)*message->data.get();
+                O_DEBUG("Lower requested:" << identifier);
+                if(!surfaces.contains(identifier)){
+                    O_WARNING("Could not find surface" << identifier);
                     break;
                 }
+                auto surface = surfaces[identifier];
                 surface->setVisible(false);
                 dbusInterface->sortZ();
 #ifdef EPAPER

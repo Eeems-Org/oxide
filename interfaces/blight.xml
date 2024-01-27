@@ -21,7 +21,7 @@
       <arg type="h" direction="out"/>
     </method>
     <method name="addSurface">
-      <arg type="s" direction="out"/>
+      <arg type="q" direction="out"/>
       <arg name="fd" type="h" direction="in"/>
       <arg name="x" type="i" direction="in"/>
       <arg name="y" type="i" direction="in"/>
@@ -35,7 +35,7 @@
     </method>
     <method name="getSurface">
       <arg type="h" direction="out"/>
-      <arg name="identifier" type="s" direction="in"/>
+      <arg name="identifier" type="q" direction="in"/>
     </method>
     <method name="setFlags">
       <arg name="identifier" type="s" direction="in"/>

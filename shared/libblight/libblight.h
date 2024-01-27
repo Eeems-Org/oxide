@@ -22,7 +22,7 @@ namespace Blight{
         int stride,
         Format format
     );
-    LIBBLIGHT_EXPORT std::optional<std::string> addSurface(
+    LIBBLIGHT_EXPORT std::optional<surface_id_t> addSurface(
         int fd,
         int x,
         int y,
@@ -40,8 +40,8 @@ namespace Blight{
             buf->height,
             buf->stride,
             buf->format
-        ).value_or("");
+        ).value_or(0);
     }
     LIBBLIGHT_EXPORT int repaint(std::string identifier);
-    LIBBLIGHT_EXPORT int getSurface(std::string identifier);
+    LIBBLIGHT_EXPORT int getSurface(surface_id_t identifier);
 }

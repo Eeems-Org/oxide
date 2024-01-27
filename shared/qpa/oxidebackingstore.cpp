@@ -74,7 +74,7 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
         }
         mBuffer = maybe.value();
         Blight::addSurface(mBuffer);
-        if(mBuffer->surface.empty()){
+        if(!mBuffer->surface){
             qWarning() << "Failed to create surface:" << strerror(errno);
             return;
         }
@@ -88,7 +88,7 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
             (Blight::data_t)blankImage.constBits()
         );
         if(!maybe.has_value()){
-            qWarning() << "Failed to resize surface:" << mBuffer->surface.c_str();
+            qWarning() << "Failed to resize surface:" << mBuffer->surface;
             return;
         }
         mBuffer = maybe.value();

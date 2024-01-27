@@ -18,9 +18,17 @@ class Surface : public QObject {
     Q_CLASSINFO("D-Bus Interface", BLIGHT_SURFACE_INTERFACE)
 
 public:
-    Surface(Connection* connection, int fd, QRect geometry, int stride, QImage::Format format);
+    Surface(
+        Connection* connection,
+        int fd,
+        Blight::surface_id_t identifier,
+        QRect geometry,
+        int stride,
+        QImage::Format format
+    );
     ~Surface();
     QString id();
+    Blight::surface_id_t identifier(){ return m_identifier; }
     bool isValid();
     std::shared_ptr<QImage> image();
     void repaint();
@@ -47,6 +55,7 @@ private slots:
 
 private:
     Connection* m_connection;
+    Blight::surface_id_t m_identifier;
     QRect m_geometry;
     int m_stride;
     QImage::Format m_format;

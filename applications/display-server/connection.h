@@ -5,6 +5,8 @@
 #include <QSocketNotifier>
 #include <QLocalSocket>
 #include <QTimer>
+#include <QMutex>
+
 #include <libblight/connection.h>
 #include <linux/input.h>
 
@@ -22,8 +24,8 @@ public:
     Connection(pid_t pid, pid_t pgid);
     ~Connection();
 
+    void processRemovedSurfaces();
     QString id();
-
     pid_t pid() const;
     pid_t pgid() const;
     int socketDescriptor();
@@ -36,8 +38,9 @@ public:
     void resume();
     std::shared_ptr<Surface> addSurface(int fd, QRect geometry, int stride, QImage::Format format);
     std::shared_ptr<Surface> getSurface(QString identifier);
-    QStringList getSurfaceIds();
-    const QList<std::shared_ptr<Surface>>& getSurfaces();
+    std::shared_ptr<Surface> getSurface(Blight::surface_id_t id);
+    QStringList getSurfaceIdentifiers();
+    const QList<std::shared_ptr<Surface>> getSurfaces();
     void inputEvents(unsigned int device, const std::vector<input_event>& events);
 
 signals:
@@ -63,10 +66,13 @@ private:
     int m_serverInputFd;
     QSocketNotifier* m_notifier;
     QLocalSocket m_pidNotifier;
-    QList<std::shared_ptr<Surface>> surfaces;
+    std::map<Blight::surface_id_t, std::shared_ptr<Surface>> surfaces;
+    QMutex removedMutex;
+    std::vector<std::shared_ptr<Surface>> removedSurfaces;
     std::atomic_flag m_closed;
     QTimer m_notRespondingTimer;
     QTimer m_pingTimer;
     std::atomic_uint pingId;
+    std::atomic_ushort m_surfaceId;
     void ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
 };

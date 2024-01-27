@@ -15,6 +15,7 @@
 #include <cstring>
 #include <libblight.h>
 #include <libblight/connection.h>
+#include <libblight/debug.h>
 
 using namespace Oxide;
 using namespace Oxide::QML;
@@ -33,6 +34,9 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("test_blight");
     app.setApplicationVersion(APP_VERSION);
+    if(Oxide::debugEnabled()){
+        BLIGHT_DEBUG_LOGGING = 7;
+    }
 #ifdef EPAPER
     Blight::connect(true);
 #else
@@ -105,15 +109,15 @@ int main(int argc, char *argv[]){
         O_WARNING("Invalid size" << image.size());
     }
     Blight::addSurface(buffer);
-    if(buffer->surface.empty()){
+    if(!buffer->surface){
         O_WARNING("No identifier provided");
         return EXIT_FAILURE;
     }
-    O_DEBUG("Surface added:" << buffer->surface.c_str());
+    O_DEBUG("Surface added:" << buffer->surface);
     sleep(1);
     O_DEBUG("Switching to gray");
     image.fill(Qt::gray);
-    O_DEBUG("Repainting" << buffer->surface.c_str());
+    O_DEBUG("Repainting" << buffer->surface);
     {
         auto ack = connection->repaint(
             buffer,
@@ -130,14 +134,14 @@ int main(int argc, char *argv[]){
     }
     O_DEBUG("Repainting done");
     sleep(1);
-    O_DEBUG("Moving " << buffer->surface.c_str());
+    O_DEBUG("Moving " << buffer->surface);
     geometry.setTopLeft(QPoint(100, 100));
     connection->move(buffer, geometry.x(), geometry.y());
-    O_DEBUG("Move done" << buffer->surface.c_str());
+    O_DEBUG("Move done" << buffer->surface);
     sleep(1);
     O_DEBUG("Switching to black");
     image.fill(Qt::black);
-    O_DEBUG("Repainting" << buffer->surface.c_str());
+    O_DEBUG("Repainting" << buffer->surface);
     {
         auto ack = connection->repaint(
             buffer,
@@ -154,7 +158,7 @@ int main(int argc, char *argv[]){
     }
     O_DEBUG("Repainting done");
     sleep(1);
-    O_DEBUG("Resizing" << buffer->surface.c_str());
+    O_DEBUG("Resizing" << buffer->surface);
     geometry.setSize(QSize(300, 300));
     auto resizedImage = image.scaled(geometry.size());
     auto res = connection->resize(
@@ -167,9 +171,9 @@ int main(int argc, char *argv[]){
     if(res.has_value()){
         buffer = res.value();
     }
-    O_DEBUG("Resize done" << buffer->surface.c_str());
+    O_DEBUG("Resize done" << buffer->surface);
     sleep(1);
-    O_DEBUG("Lowering" << buffer->surface.c_str());
+    O_DEBUG("Lowering" << buffer->surface);
     {
         auto ack = connection->lower(buffer);
         if(!ack.has_value()){
@@ -178,9 +182,9 @@ int main(int argc, char *argv[]){
         }
         ack.value()->wait();
     }
-    O_DEBUG("Lowering done" << buffer->surface.c_str());
+    O_DEBUG("Lowering done" << buffer->surface);
     sleep(1);
-    O_DEBUG("Raising" << buffer->surface.c_str());
+    O_DEBUG("Raising" << buffer->surface);
     {
         auto ack = connection->raise(buffer);
         if(!ack.has_value()){
@@ -189,25 +193,25 @@ int main(int argc, char *argv[]){
         }
         ack.value()->wait();
     }
-    O_DEBUG("Raising done" << buffer->surface.c_str());
+    O_DEBUG("Raising done" << buffer->surface);
     sleep(1);
     O_DEBUG("Validating surface count");
     auto surfaces = connection->surfaces();
-    auto buffers = connection->buffers();
     if(surfaces.size() != 1){
-        O_WARNING("There should only be one surface!");
+        O_WARNING("There should only be one surface!" << surfaces.size());
         return EXIT_FAILURE;
     }
     if(surfaces.front() != buffer->surface){
-        O_WARNING("Surface identifier does not match!");
+        O_WARNING("Surface identifier does not match!" << surfaces.front());
         return EXIT_FAILURE;
     }
+    auto buffers = connection->buffers();
     if(buffers.size() != 1){
-        O_WARNING("There should only be one buffer!");
+        O_WARNING("There should only be one buffer!" << buffers.size());
         return EXIT_FAILURE;
     }
     if(buffers.front()->surface != buffer->surface){
-        O_WARNING("Buffer surface identifier does not match!");
+        O_WARNING("Buffer surface identifier does not match!" << buffers.front()->surface);
         return EXIT_FAILURE;
     }
     O_DEBUG("Test passes");

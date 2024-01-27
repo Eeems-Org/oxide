@@ -193,10 +193,10 @@ int __fb_ioctl(unsigned long request, char* ptr){
         case MXCFB_SEND_UPDATE:{
             _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SEND_UPDATE")
             ClockWatch cz;
-            if(blightBuffer->surface.empty()){
+            if(!blightBuffer->surface){
                 Blight::addSurface(blightBuffer);
             }
-            if(blightBuffer->surface.empty()){
+            if(!blightBuffer->surface){
                 _CRIT("Failed to create surface: %s", std::strerror(errno));
                 std::exit(errno);
             }
@@ -465,7 +465,7 @@ int __open(const char* pathname, int flags){
                 ){
                     continue;
                 }
-                _INFO("Reusing existing surface: %s", identifier.c_str());
+                _INFO("Reusing existing surface: %s", identifier);
                 blightBuffer = buffer;
                 break;
             }
@@ -591,10 +591,10 @@ extern "C" {
             return func_msgsnd(msqid, msgp, msgsz, msgflg);
         }
         if(msqid == msgq){
-            if(blightBuffer->surface.empty()){
+            if(!blightBuffer->surface){
                 Blight::addSurface(blightBuffer);
             }
-            if(blightBuffer->surface.empty()){
+            if(!blightBuffer->surface){
                 _CRIT("Failed to create surface: %s", std::strerror(errno));
                 std::exit(errno);
                 return -1;

@@ -9,14 +9,22 @@
 #include <unistd.h>
 #include <liboxide/debug.h>
 
-Surface::Surface(Connection* connection, int fd, QRect geometry, int stride, QImage::Format format)
+Surface::Surface(
+    Connection* connection,
+    int fd,
+    Blight::surface_id_t identifier,
+    QRect geometry,
+    int stride,
+    QImage::Format format
+)
 : QObject(),
   m_connection(connection),
+  m_identifier{identifier},
   m_geometry(geometry),
   m_stride(stride),
   m_format(format)
 {
-    m_id = QString("%1/surface/%2").arg(connection->id()).arg(fd);
+    m_id = QString("%1/surface/%2").arg(connection->id()).arg(identifier);
     if(!file.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
         O_WARNING("Failed to open file");
     }
