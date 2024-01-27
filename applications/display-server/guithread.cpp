@@ -34,9 +34,7 @@ void GUIThread::run(){
                 }
             }
             forever{
-                if(event.surface == nullptr || !event.surface->isRemoved()){
-                    redraw(event);
-                }
+                redraw(event);
                 if(event.callback != nullptr){
                     event.callback();
                 }
@@ -127,18 +125,6 @@ void GUIThread::clearFrameBuffer(){
 
 int GUIThread::framebuffer(){ return m_frameBufferFd; }
 
-void GUIThread::shutdown(){
-    O_DEBUG("Stopping thread" << this);
-    requestInterruption();
-    quit();
-    QDeadlineTimer deadline(6000);
-    if(!wait(deadline)){
-        O_WARNING("Terminated thread" << this);
-        terminate();
-        wait();
-    }
-}
-
 void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface){
     const QRect surfaceGeometry = surface->geometry();
     const QRect surfaceRect = surfaceGeometry.translated(-m_screenGeometry.topLeft());
@@ -162,9 +148,14 @@ void GUIThread::redraw(RepaintRequest& event){
         O_WARNING("Empty repaint region" << region);
         return;
     }
-    if(!event.global && event.surface == nullptr){
-        O_WARNING("surface missing");
-        return;
+    if(!event.global){
+        if(event.surface == nullptr){
+            O_WARNING("surface missing");
+            return;
+        }
+        if(event.surface->isRemoved()){
+            return;
+        }
     }
     // Get visible region on the screen to repaint
     QRect rect;

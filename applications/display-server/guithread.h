@@ -31,7 +31,6 @@ public:
     static GUIThread* singleton();
     ~GUIThread();
     QRect m_screenGeometry;
-    void shutdown();
 
 public slots:
     void enqueue(
