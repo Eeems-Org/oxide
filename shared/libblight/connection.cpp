@@ -448,6 +448,9 @@ namespace Blight{
         }
         auto ack = maybe.value();
         ack->wait();
+        if(!ack->data_size){
+            return std::vector<surface_id_t>();
+        }
         if(ack->data == nullptr){
             _WARN("Missing list data pointer!");
             return std::vector<surface_id_t>();
