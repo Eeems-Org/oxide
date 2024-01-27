@@ -11,13 +11,6 @@
 #include <liboxide/debug.h>
 #include <liboxide/threading.h>
 
-// Surface is required as the callback may
-// depend on it existing still
-typedef struct {
-    std::function<void()> callback;
-    std::shared_ptr<Surface> surface;
-} callback_t;
-
 void GUIThread::run(){
     O_DEBUG("Thread started");
     clearFrameBuffer();
@@ -42,10 +35,10 @@ void GUIThread::run(){
                 }
             }
             forever{
-                redraw(event);
+                if(event.surface == nullptr || !event.surface->isRemoved()){
+                    redraw(event);
+                }
                 if(event.callback != nullptr){
-                    // TODO - send callbacks to another thread to call ioctl to
-                    //        wait for the update marker to finish
                     event.callback();
                 }
                 if(!m_repaintEvents.try_dequeue(event)){
@@ -62,6 +55,16 @@ void GUIThread::run(){
     clearFrameBuffer();
     auto res = exec();
     O_DEBUG("Thread stopped with exit code:" << res);
+}
+
+GUIThread* GUIThread::singleton(){
+    static GUIThread* instance = nullptr;
+    if(instance == nullptr){
+        instance = new GUIThread();
+        instance->m_screenGeometry = EPFrameBuffer::instance()->framebuffer()->rect();
+        Oxide::startThreadWithPriority(instance, QThread::TimeCriticalPriority);
+    }
+    return instance;
 }
 
 GUIThread::GUIThread() : QThread(){
@@ -122,6 +125,8 @@ void GUIThread::clearFrameBuffer(){
         true
     );
 }
+
+int GUIThread::framebuffer(){ return m_frameBufferFd; }
 
 void GUIThread::shutdown(){
     O_DEBUG("Stopping thread" << this);

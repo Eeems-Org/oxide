@@ -74,5 +74,6 @@ private:
     QTimer m_pingTimer;
     std::atomic_uint pingId;
     std::atomic_ushort m_surfaceId;
+
     void ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
 };

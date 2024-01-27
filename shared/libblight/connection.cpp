@@ -18,7 +18,6 @@ namespace Blight{
     static std::atomic<unsigned int> ackid;
     static std::mutex ackMutex;
     static auto acks = new std::map<unsigned int, ackid_ptr_t>();
-    static auto markers = new std::map<unsigned int, unsigned int>();
 
     ackid_t::ackid_t(
         Connection* connection,
@@ -207,20 +206,10 @@ namespace Blight{
     }
 
     void Connection::waitForMarker(unsigned int marker){
-        ackMutex.lock();
-        if(!markers->contains(marker)){
-            ackMutex.unlock();
-            return;
+        auto maybe = send(MessageType::Wait, reinterpret_cast<data_t>(&marker), sizeof(marker));
+        if(maybe.has_value()){
+            maybe.value()->wait();
         }
-        auto ackid = markers->at(marker);
-        markers->erase(marker);
-        if(!acks->contains(ackid)){
-            ackMutex.unlock();
-            return;
-        }
-        auto ack = acks->at(ackid);
-        ackMutex.unlock();
-        ack->wait();
     }
 
     maybe_ackid_ptr_t Connection::repaint(
@@ -242,14 +231,12 @@ namespace Blight{
             .width = width,
             .height = height,
             .waveform = waveform,
-            .identifier = identifier
+            .marker = marker,
+            .identifier = identifier,
         };
         auto ackid = send(MessageType::Repaint, (data_t)&repaint, sizeof(repaint));
         if(!ackid.has_value()){
             return {};
-        }
-        if(marker){
-            (*markers)[marker] = ackid.value()->ackid;
         }
         return ackid;
     }
@@ -512,14 +499,6 @@ namespace Blight{
                     iter = pending.erase(iter);
                     acks->erase(ackid);
                     ack->notify_all();
-                    auto iter2 = markers->begin();
-                    while(iter2 != markers->end()){
-                        if(iter2->second == ackid){
-                            iter2 = markers->erase(iter2);
-                            continue;
-                        }
-                        ++iter2;
-                    }
 #ifdef ACK_DEBUG
                     _DEBUG("Ack handled: %d", ackid);
 #endif

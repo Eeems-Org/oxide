@@ -22,7 +22,8 @@ Surface::Surface(
   m_identifier{identifier},
   m_geometry(geometry),
   m_stride(stride),
-  m_format(format)
+  m_format(format),
+  m_removed{false}
 {
     m_id = QString("%1/surface/%2").arg(connection->id()).arg(identifier);
     if(!file.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
@@ -157,6 +158,10 @@ void Surface::set(const QString& flag){
 void Surface::unset(const QString& flag){ flags.removeAll(flag); }
 
 Connection* Surface::connection(){ return m_connection; }
+
+bool Surface::isRemoved(){ return m_removed; }
+
+void Surface::removed(){ m_removed = true; }
 
 void Surface::activeFocusChanged(bool focus){
     if(focus){

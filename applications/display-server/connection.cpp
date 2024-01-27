@@ -16,6 +16,7 @@
 
 #ifdef EPAPER
 #include "guithread.h"
+#include <mxcfb.h>
 #endif
 #include "surface.h"
 
@@ -168,6 +169,9 @@ void Connection::close(){
     if(!m_closed.test_and_set()){
         m_pingTimer.stop();
         m_notRespondingTimer.stop();
+        for(auto& item : surfaces){
+            item.second->removed();
+        }
         emit finished();
     }
 }
@@ -387,7 +391,9 @@ void Connection::readSocket(){
                     break;
                 }
                 removedMutex.lock();
-                removedSurfaces.push_back(surfaces[identifier]);
+                auto surface = surfaces[identifier];
+                surface->removed();
+                removedSurfaces.push_back(surface);
                 removedMutex.unlock();
                 surfaces.erase(identifier);
                 guiThread->notify();
@@ -451,6 +457,15 @@ void Connection::readSocket(){
                     [message, this]{ ack(message, 0, nullptr); }
                 );
                 do_ack = false;
+#endif
+                break;
+            }
+            case Blight::MessageType::Wait:{
+#ifdef EPAPER
+                auto marker = (unsigned int)*message->data.get();
+                O_DEBUG("Wait requested:" << marker);
+                mxcfb_update_marker_data data{ marker, 0 };
+                ioctl(guiThread->framebuffer(), MXCFB_WAIT_FOR_UPDATE_COMPLETE, &data);
 #endif
                 break;
             }

@@ -28,15 +28,7 @@ protected:
     void run() override;
 
 public:
-    static GUIThread* singleton(){
-        static GUIThread* instance = nullptr;
-        if(instance == nullptr){
-            instance = new GUIThread();
-            instance->m_screenGeometry = EPFrameBuffer::instance()->framebuffer()->rect();
-            Oxide::startThreadWithPriority(instance, QThread::TimeCriticalPriority);
-        }
-        return instance;
-    }
+    static GUIThread* singleton();
     ~GUIThread();
     QRect m_screenGeometry;
     void shutdown();
@@ -52,6 +44,7 @@ public slots:
     );
     void notify();
     void clearFrameBuffer();
+    int framebuffer();
 
 private:
     GUIThread();

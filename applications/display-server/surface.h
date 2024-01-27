@@ -46,6 +46,8 @@ public:
     void set(const QString& flag);
     void unset(const QString& flag);
     Connection* connection();
+    bool isRemoved();
+    void removed();
 
 signals:
     void update(const QRect& geometry);
@@ -65,4 +67,5 @@ private:
     QQuickItem* component;
     QString m_id;
     QStringList flags;
+    bool m_removed;
 };

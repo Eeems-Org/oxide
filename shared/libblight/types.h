@@ -117,7 +117,8 @@ namespace Blight{
         Delete,
         List,
         Raise,
-        Lower
+        Lower,
+        Wait
     };
     LIBBLIGHT_EXPORT typedef struct header_t{
         MessageType type;
@@ -147,6 +148,7 @@ namespace Blight{
         int width;
         int height;
         WaveformMode waveform;
+        unsigned int marker;
         surface_id_t identifier;
         static repaint_t from_message(const message_t* message);
     } repaint_t;
