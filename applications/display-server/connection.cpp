@@ -86,8 +86,10 @@ Connection::~Connection(){
 
 void Connection::processRemovedSurfaces(){
     removedMutex.lock();
-    O_DEBUG("Cleaning up old surfaces");
-    removedSurfaces.clear();
+    if(!removedSurfaces.empty()){
+        O_DEBUG("Cleaning up old surfaces");
+        removedSurfaces.clear();
+    }
     removedMutex.unlock();
 }
 
