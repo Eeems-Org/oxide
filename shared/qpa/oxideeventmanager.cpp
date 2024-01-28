@@ -12,13 +12,13 @@ OxideEventManager::OxideEventManager(const QStringList& parameters)
   m_devices(),
   m_handler(this, parameters)
 {
-    setup(QDeviceDiscovery::Device_Keyboard, QInputDeviceManager::DeviceTypeKeyboard);
     setup(QDeviceDiscovery::Device_Tablet, QInputDeviceManager::DeviceTypeTablet);
     setup(QDeviceDiscovery::Device_Touchscreen, QInputDeviceManager::DeviceTypeTouch);
     setup(
         QDeviceDiscovery::Device_Mouse | QDeviceDiscovery::Device_Touchpad,
         QInputDeviceManager::DeviceTypePointer
     );
+    setup(QDeviceDiscovery::Device_Keyboard, QInputDeviceManager::DeviceTypeKeyboard);
 }
 
 void OxideEventManager::setup(

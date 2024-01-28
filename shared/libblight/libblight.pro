@@ -10,6 +10,7 @@ CONFIG += create_prl
 CONFIG += no_install_prl
 
 SOURCES += \
+    clock.cpp \
     connection.cpp \
     dbus.cpp \
     debug.cpp \

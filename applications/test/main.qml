@@ -9,6 +9,7 @@ Window{
     x: 0
     y: 0
     visible: true
+    Component.onCompleted: mouseArea.forceActiveFocus()
     Rectangle{
         color: "white"
         anchors.fill: parent
@@ -19,6 +20,7 @@ Window{
         anchors.centerIn: parent
     }
     MouseArea{
+        id: mouseArea
         anchors.fill: parent
         onClicked: Qt.quit()
         focus: true

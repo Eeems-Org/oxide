@@ -37,184 +37,186 @@ int main(int argc, char *argv[]){
     if(Oxide::debugEnabled()){
         BLIGHT_DEBUG_LOGGING = 7;
     }
+    if(!qEnvironmentVariableIsSet("SKIP_TEST")){
 #ifdef EPAPER
-    Blight::connect(true);
+        Blight::connect(true);
 #else
-    Blight::connect(false);
+        Blight::connect(false);
 #endif
-    if(!Blight::exists()){
-        O_WARNING("Service not found!");
-        return EXIT_FAILURE;
-    }
-    {
-        auto maybe = Blight::clipboard();
+        if(!Blight::exists()){
+            O_WARNING("Service not found!");
+            return EXIT_FAILURE;
+        }
+        {
+            auto maybe = Blight::clipboard();
+            if(!maybe.has_value()){
+                O_WARNING("Could not read clipboard!");
+                return EXIT_FAILURE;
+            }
+            auto clipboard = maybe.value();
+            O_DEBUG(clipboard.name.c_str() << QString::fromStdString(clipboard.to_string()));
+            O_DEBUG("Updating clipboard");
+            if(!clipboard.set("Test")){
+                O_WARNING("Could not update clipboard!");
+                return EXIT_FAILURE;
+            }
+            O_DEBUG(clipboard.name.c_str() << QString::fromStdString(clipboard.to_string()));
+        }
+        auto connection = Blight::connection();
+        if(connection == nullptr){
+            O_WARNING(std::strerror(errno));
+            return EXIT_FAILURE;
+        }
+        connection->onDisconnect([](int res){
+            O_DEBUG("Connection closed:" << res);
+            if(res){
+                std::exit(res);
+            }
+        });
+        O_DEBUG("Connection socket descriptor:" << connection->handle());
+        O_DEBUG("Input socket descriptor:" << connection->input_handle());
+        QRect geometry(0, 0, 100, 100);
+        QImage blankImage(geometry.size(), QImage::Format_RGB16);
+        blankImage.fill(Qt::black);
+        auto maybe = Blight::createBuffer(
+            geometry.x(),
+            geometry.y(),
+            geometry.width(),
+            geometry.height(),
+            blankImage.bytesPerLine(),
+            Blight::Format::Format_RGB16
+        );
         if(!maybe.has_value()){
-            O_WARNING("Could not read clipboard!");
+            O_WARNING("Failed to create buffer:" << strerror(errno));
             return EXIT_FAILURE;
         }
-        auto clipboard = maybe.value();
-        O_DEBUG(clipboard.name.c_str() << QString::fromStdString(clipboard.to_string()));
-        O_DEBUG("Updating clipboard");
-        if(!clipboard.set("Test")){
-            O_WARNING("Could not update clipboard!");
+        auto buffer = maybe.value();
+        if(buffer->fd == -1 || buffer->data == nullptr){
+            O_WARNING("Failed to create buffer:" << strerror(errno));
             return EXIT_FAILURE;
         }
-        O_DEBUG(clipboard.name.c_str() << QString::fromStdString(clipboard.to_string()));
-    }
-    auto connection = Blight::connection();
-    if(connection == nullptr){
-        O_WARNING(std::strerror(errno));
-        return EXIT_FAILURE;
-    }
-    connection->onDisconnect([](int res){
-        O_DEBUG("Connection closed:" << res);
-        if(res){
-            std::exit(res);
+        memcpy(buffer->data, blankImage.constBits(), buffer->size());
+        QImage image(
+            buffer->data,
+            blankImage.width(),
+            blankImage.height(),
+            blankImage.bytesPerLine(),
+            blankImage.format()
+        );
+        if(image.isNull()){
+            O_WARNING("Null image");
         }
-    });
-    O_DEBUG("Connection socket descriptor:" << connection->handle());
-    O_DEBUG("Input socket descriptor:" << connection->input_handle());
-    QRect geometry(0, 0, 100, 100);
-    QImage blankImage(geometry.size(), QImage::Format_RGB16);
-    blankImage.fill(Qt::black);
-    auto maybe = Blight::createBuffer(
-        geometry.x(),
-        geometry.y(),
-        geometry.width(),
-        geometry.height(),
-        blankImage.bytesPerLine(),
-        Blight::Format::Format_RGB16
-    );
-    if(!maybe.has_value()){
-        O_WARNING("Failed to create buffer:" << strerror(errno));
-        return EXIT_FAILURE;
-    }
-    auto buffer = maybe.value();
-    if(buffer->fd == -1 || buffer->data == nullptr){
-        O_WARNING("Failed to create buffer:" << strerror(errno));
-        return EXIT_FAILURE;
-    }
-    memcpy(buffer->data, blankImage.constBits(), buffer->size());
-    QImage image(
-        buffer->data,
-        blankImage.width(),
-        blankImage.height(),
-        blankImage.bytesPerLine(),
-        blankImage.format()
-    );
-    if(image.isNull()){
-        O_WARNING("Null image");
-    }
-    if(image.size() != geometry.size()){
-        O_WARNING("Invalid size" << image.size());
-    }
-    Blight::addSurface(buffer);
-    if(!buffer->surface){
-        O_WARNING("No identifier provided");
-        return EXIT_FAILURE;
-    }
-    O_DEBUG("Surface added:" << buffer->surface);
-    sleep(1);
-    O_DEBUG("Switching to gray");
-    image.fill(Qt::gray);
-    O_DEBUG("Repainting" << buffer->surface);
-    {
-        auto ack = connection->repaint(
+        if(image.size() != geometry.size()){
+            O_WARNING("Invalid size" << image.size());
+        }
+        Blight::addSurface(buffer);
+        if(!buffer->surface){
+            O_WARNING("No identifier provided");
+            return EXIT_FAILURE;
+        }
+        O_DEBUG("Surface added:" << buffer->surface);
+        sleep(1);
+        O_DEBUG("Switching to gray");
+        image.fill(Qt::gray);
+        O_DEBUG("Repainting" << buffer->surface);
+        {
+            auto ack = connection->repaint(
+                buffer,
+                0,
+                0,
+                geometry.width(),
+                geometry.height()
+                );
+            if(!ack.has_value()){
+                O_WARNING("Failed to repaint");
+                return EXIT_FAILURE;
+            }
+            ack.value()->wait();
+        }
+        O_DEBUG("Repainting done");
+        sleep(1);
+        O_DEBUG("Moving " << buffer->surface);
+        geometry.setTopLeft(QPoint(100, 100));
+        connection->move(buffer, geometry.x(), geometry.y());
+        O_DEBUG("Move done" << buffer->surface);
+        sleep(1);
+        O_DEBUG("Switching to black");
+        image.fill(Qt::black);
+        O_DEBUG("Repainting" << buffer->surface);
+        {
+            auto ack = connection->repaint(
+                buffer,
+                0,
+                0,
+                geometry.width(),
+                geometry.height()
+                );
+            if(!ack.has_value()){
+                O_WARNING("Failed to repaint");
+                return EXIT_FAILURE;
+            }
+            ack.value()->wait();
+        }
+        O_DEBUG("Repainting done");
+        sleep(1);
+        O_DEBUG("Resizing" << buffer->surface);
+        geometry.setSize(QSize(300, 300));
+        auto resizedImage = image.scaled(geometry.size());
+        auto res = connection->resize(
             buffer,
-            0,
-            0,
             geometry.width(),
-            geometry.height()
-            );
-        if(!ack.has_value()){
-            O_WARNING("Failed to repaint");
+            geometry.height(),
+            resizedImage.bytesPerLine(),
+            (Blight::data_t)resizedImage.constBits()
+        );
+        if(res.has_value()){
+            buffer = res.value();
+        }
+        O_DEBUG("Resize done" << buffer->surface);
+        sleep(1);
+        O_DEBUG("Lowering" << buffer->surface);
+        {
+            auto ack = connection->lower(buffer);
+            if(!ack.has_value()){
+                O_WARNING("Could not lower surface!");
+                return EXIT_FAILURE;
+            }
+            ack.value()->wait();
+        }
+        O_DEBUG("Lowering done" << buffer->surface);
+        sleep(1);
+        O_DEBUG("Raising" << buffer->surface);
+        {
+            auto ack = connection->raise(buffer);
+            if(!ack.has_value()){
+                O_WARNING("Could not raise surface!");
+                return EXIT_FAILURE;
+            }
+            ack.value()->wait();
+        }
+        O_DEBUG("Raising done" << buffer->surface);
+        sleep(1);
+        O_DEBUG("Validating surface count");
+        auto surfaces = connection->surfaces();
+        if(surfaces.size() != 1){
+            O_WARNING("There should only be one surface!" << surfaces.size());
             return EXIT_FAILURE;
         }
-        ack.value()->wait();
-    }
-    O_DEBUG("Repainting done");
-    sleep(1);
-    O_DEBUG("Moving " << buffer->surface);
-    geometry.setTopLeft(QPoint(100, 100));
-    connection->move(buffer, geometry.x(), geometry.y());
-    O_DEBUG("Move done" << buffer->surface);
-    sleep(1);
-    O_DEBUG("Switching to black");
-    image.fill(Qt::black);
-    O_DEBUG("Repainting" << buffer->surface);
-    {
-        auto ack = connection->repaint(
-            buffer,
-            0,
-            0,
-            geometry.width(),
-            geometry.height()
-            );
-        if(!ack.has_value()){
-            O_WARNING("Failed to repaint");
+        if(surfaces.front() != buffer->surface){
+            O_WARNING("Surface identifier does not match!" << surfaces.front());
             return EXIT_FAILURE;
         }
-        ack.value()->wait();
-    }
-    O_DEBUG("Repainting done");
-    sleep(1);
-    O_DEBUG("Resizing" << buffer->surface);
-    geometry.setSize(QSize(300, 300));
-    auto resizedImage = image.scaled(geometry.size());
-    auto res = connection->resize(
-        buffer,
-        geometry.width(),
-        geometry.height(),
-        resizedImage.bytesPerLine(),
-        (Blight::data_t)resizedImage.constBits()
-    );
-    if(res.has_value()){
-        buffer = res.value();
-    }
-    O_DEBUG("Resize done" << buffer->surface);
-    sleep(1);
-    O_DEBUG("Lowering" << buffer->surface);
-    {
-        auto ack = connection->lower(buffer);
-        if(!ack.has_value()){
-            O_WARNING("Could not lower surface!");
+        auto buffers = connection->buffers();
+        if(buffers.size() != 1){
+            O_WARNING("There should only be one buffer!" << buffers.size());
             return EXIT_FAILURE;
         }
-        ack.value()->wait();
-    }
-    O_DEBUG("Lowering done" << buffer->surface);
-    sleep(1);
-    O_DEBUG("Raising" << buffer->surface);
-    {
-        auto ack = connection->raise(buffer);
-        if(!ack.has_value()){
-            O_WARNING("Could not raise surface!");
+        if(buffers.front()->surface != buffer->surface){
+            O_WARNING("Buffer surface identifier does not match!" << buffers.front()->surface);
             return EXIT_FAILURE;
         }
-        ack.value()->wait();
+        O_DEBUG("Test passes");
     }
-    O_DEBUG("Raising done" << buffer->surface);
-    sleep(1);
-    O_DEBUG("Validating surface count");
-    auto surfaces = connection->surfaces();
-    if(surfaces.size() != 1){
-        O_WARNING("There should only be one surface!" << surfaces.size());
-        return EXIT_FAILURE;
-    }
-    if(surfaces.front() != buffer->surface){
-        O_WARNING("Surface identifier does not match!" << surfaces.front());
-        return EXIT_FAILURE;
-    }
-    auto buffers = connection->buffers();
-    if(buffers.size() != 1){
-        O_WARNING("There should only be one buffer!" << buffers.size());
-        return EXIT_FAILURE;
-    }
-    if(buffers.front()->surface != buffer->surface){
-        O_WARNING("Buffer surface identifier does not match!" << buffers.front()->surface);
-        return EXIT_FAILURE;
-    }
-    O_DEBUG("Test passes");
     QQmlApplicationEngine engine;
     registerQML(&engine);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));

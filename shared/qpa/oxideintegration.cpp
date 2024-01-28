@@ -90,6 +90,8 @@ void OxideIntegration::initialize(){
         qFatal("Could not connect to display server: %s", std::strerror(errno));
     }
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
+    qApp->setAttribute(Qt::AA_SynthesizeMouseForUnhandledTabletEvents);
+    qApp->setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents);
     m_primaryScreen = new OxideScreen();
     // rM1 geometry as default
     m_primaryScreen->setGeometry(QRect(0, 0, 1404, 1872));

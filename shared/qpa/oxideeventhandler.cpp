@@ -2,9 +2,11 @@
 #include "oxideeventmanager.h"
 #include "default_keymap.h"
 
+#include <private/qhighdpiscaling_p.h>
 #include <libblight.h>
 #include <libblight/socket.h>
 #include <liboxide/debug.h>
+#include <private/qevdevtouchfilter_p.h>
 
 typedef struct KeyboardData {
     quint8 m_modifiers;
@@ -14,10 +16,13 @@ typedef struct KeyboardData {
     quint8 m_langLock;
 } KeyboardData;
 
+typedef struct rect_t {
+    int x, y, p, d;
+} rect_t;
+
 typedef struct TabletData {
-    struct {
-        int x, y, p, d;
-    } minValues, maxValues;
+    rect_t minValues;
+    rect_t maxValues;
     struct {
         int x, y, p, d;
         bool down, lastReportDown;
@@ -36,8 +41,59 @@ typedef struct TabletData {
     }
 } TabletData;
 
-typedef struct TouchData {
+typedef struct Contact {
+    int trackingId = -1;
+    int x = 0;
+    int y = 0;
+    int maj = -1;
+    int pressure = 0;
+    Qt::TouchPointState state = Qt::TouchPointPressed;
+    QTouchEvent::TouchPoint::InfoFlags flags;
+} Contact;
 
+typedef struct TouchData {
+    int lastEventType;
+    Contact currentData;
+    int currentSlot;
+    double timeStamp;
+    double lastTimeStamp;
+    int minX;
+    int maxX;
+    int minY;
+    int maxY;
+    int minPressure;
+    int maxPressure;
+    bool isTypeB;
+    bool singleTouch;
+    QList<QWindowSystemInterface::TouchPoint> touchPoints;
+    QList<QWindowSystemInterface::TouchPoint> lastTouchPoints;
+    QHash<int, Contact> contacts;
+    QHash<int, Contact> lastContacts;
+    QTouchDevice* device = nullptr;
+    TouchData()
+    : lastEventType{-1},
+      currentSlot{0},
+      timeStamp{0},
+      lastTimeStamp{0},
+      minX{0},
+      maxX{0},
+      minY{0},
+      maxY{0},
+      minPressure{0},
+      maxPressure{0},
+      isTypeB{false},
+      singleTouch{false},
+      touchPoints{},
+      lastTouchPoints{},
+      contacts{},
+      lastContacts{}
+    {}
+    ~TouchData(){
+        if(device != nullptr){
+            QWindowSystemInterface::unregisterTouchDevice(device);
+            delete device;
+        }
+    }
 } TouchData;
 
 typedef struct PointerData {
@@ -46,10 +102,23 @@ typedef struct PointerData {
 
 DeviceData::DeviceData() : DeviceData(0, QInputDeviceManager::DeviceTypeUnknown){}
 
+#define LONG_BITS (sizeof(long) << 3)
+#define NUM_LONGS(bits) (((bits) + LONG_BITS - 1) / LONG_BITS)
+static inline bool testBit(long bit, const long *array){
+    return (array[bit / LONG_BITS] >> bit % LONG_BITS) & 1;
+}
+
 DeviceData::DeviceData(unsigned int device, QInputDeviceManager::DeviceType type)
-    : device(device),
+: device(device),
   type(type)
 {
+    auto path = QString("/dev/input/event%1").arg(device);
+    auto fd = ::open(path.toStdString().c_str(), O_RDWR);
+    char name[1024];
+    QString hw_name;
+    if(ioctl(fd, EVIOCGNAME(sizeof(name) - 1), name) >= 0){
+        hw_name = QString::fromLocal8Bit(name);
+    }
     switch(type){
         case QInputDeviceManager::DeviceTypeKeyboard:{
             auto keyboardData = set<KeyboardData>();
@@ -59,15 +128,46 @@ DeviceData::DeviceData(unsigned int device, QInputDeviceManager::DeviceType type
         case QInputDeviceManager::DeviceTypeTablet:
             m_data = new TabletData();
             break;
-        case QInputDeviceManager::DeviceTypeTouch:
-            set<TouchData>();
+        case QInputDeviceManager::DeviceTypeTouch:{
+            auto touchData = new TouchData();
+            m_data = touchData;
+            long absbits[NUM_LONGS(ABS_CNT)];
+            if(ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(absbits)), absbits) >= 0){
+                touchData->isTypeB = testBit(ABS_MT_SLOT, absbits);
+                touchData->singleTouch = !testBit(ABS_MT_POSITION_X, absbits);
+            }
+            input_absinfo absInfo;
+            memset(&absInfo, 0, sizeof(input_absinfo));
+            if(ioctl(fd, EVIOCGABS((touchData->singleTouch ? ABS_X : ABS_MT_POSITION_X)), &absInfo) >= 0){
+                touchData->minX = absInfo.minimum;
+                touchData->maxX = absInfo.maximum;
+            }
+            if(ioctl(fd, EVIOCGABS((touchData->singleTouch ? ABS_Y : ABS_MT_POSITION_Y)), &absInfo) >= 0){
+                touchData->minY = absInfo.minimum;
+                touchData->maxY = absInfo.maximum;
+            }
+            if(ioctl(fd, EVIOCGABS(ABS_PRESSURE), &absInfo) >= 0 && absInfo.maximum > absInfo.minimum){
+                touchData->minPressure = absInfo.minimum;
+                touchData->maxPressure = absInfo.maximum;
+            }
+            auto touchDevice = new QTouchDevice;
+            touchDevice->setName(hw_name);
+            touchDevice->setType(QTouchDevice::TouchScreen);
+            touchDevice->setCapabilities(QTouchDevice::Position | QTouchDevice::Area);
+            if(touchData->maxPressure > touchData->minPressure){
+                touchDevice->setCapabilities(touchDevice->capabilities() | QTouchDevice::Pressure);
+            }
+            touchData->device = touchDevice;
+            QWindowSystemInterface::registerTouchDevice(touchDevice);
             break;
+        }
         case QInputDeviceManager::DeviceTypePointer:
             set<PointerData>();
             break;
         default:
             break;
     }
+    ::close(fd);
 }
 
 DeviceData::~DeviceData(){
@@ -119,13 +219,15 @@ OxideEventHandler::~OxideEventHandler(){
 
 void OxideEventHandler::add(unsigned int number, QInputDeviceManager::DeviceType type){
     if(!m_devices.contains(number)){
-        m_devices.insert(number, DeviceData(number, type));
+        m_devices.insert(number, new DeviceData(number, type));
     }
 }
 
 void OxideEventHandler::remove(unsigned int number, QInputDeviceManager::DeviceType type){
-    if(m_devices.contains(number) && m_devices[number].type == type){
+    if(m_devices.contains(number) && m_devices[number]->type == type){
+        auto device = m_devices[number];
         m_devices.remove(number);
+        delete device;
     }
 }
 
@@ -149,7 +251,7 @@ void OxideEventHandler::readyRead(){
             continue;
         }
         auto& event = maybe.value().event;
-        auto data = &m_devices[device];
+        auto data = m_devices[device];
         switch(data->type){
             case QInputDeviceManager::DeviceTypeKeyboard:
                 processKeyboardEvent(data, &event);
@@ -438,7 +540,11 @@ void OxideEventHandler::processKeyboardEvent(
         << qtmods
         << pressed
         << autorepeat
-        << (unicode != 0xffff ? QString(QChar(unicode)) : QString());
+        << (
+            unicode != 0xffff
+            ? QString(QChar(unicode))
+            : QString()
+        );
 }
 
 void OxideEventHandler::processTabletEvent(
@@ -469,7 +575,7 @@ void OxideEventHandler::processTabletEvent(
             default:
                 break;
         }
-    }else if (event->type == EV_KEY){
+    }else if(event->type == EV_KEY){
         // code BTN_TOOL_* value 1 -> proximity enter
         // code BTN_TOOL_* value 0 -> proximity leave
         // code BTN_TOUCH value 1 -> contact with screen
@@ -537,13 +643,264 @@ void OxideEventHandler::processTabletEvent(
     lastEventType = event->type;
 }
 
+
+
+void addTouchPoint(TouchData* touchData, const Contact& contact, Qt::TouchPointStates* combinedStates){
+    QWindowSystemInterface::TouchPoint tp;
+    tp.id = contact.trackingId;
+    tp.flags = contact.flags;
+    tp.state = contact.state;
+    *combinedStates |= tp.state;
+
+    // Store the HW coordinates for now, will be updated later.
+    tp.area = QRectF(0, 0, contact.maj, contact.maj);
+    tp.area.moveCenter(QPoint(contact.x, contact.y));
+    tp.pressure = contact.pressure;
+
+    // Get a normalized position in range 0..1.
+    tp.normalPosition = QPointF(
+        (contact.x - touchData->minX)
+            / qreal(touchData->maxX - touchData->minX),
+        (contact.y - touchData->minY)
+            / qreal(touchData->maxY - touchData->minY)
+    );
+    tp.rawPositions.append(QPointF(contact.x, contact.y));
+    touchData->touchPoints.append(tp);
+}
+
+int findClosestContact(const QHash<int, Contact> &contacts, int x, int y, int *dist){
+    int minDist = -1, id = -1;
+    for(QHash<int, Contact>::const_iterator it = contacts.constBegin(), ite = contacts.constEnd();
+         it != ite; ++it) {
+        const Contact &contact(it.value());
+        int dx = x - contact.x;
+        int dy = y - contact.y;
+        int dist = dx * dx + dy * dy;
+        if(minDist == -1 || dist < minDist){
+            minDist = dist;
+            id = contact.trackingId;
+        }
+    }
+    if(dist){
+        *dist = minDist;
+    }
+    return id;
+}
+
 void OxideEventHandler::processTouchEvent(
     DeviceData* data,
     Blight::partial_input_event_t* event
 ){
     Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeTouch);
-    auto device = data->device;
     auto touchData = data->get<TouchData>();
+    if(event->type == EV_ABS){
+        if(event->code == ABS_MT_POSITION_X || (touchData->singleTouch && event->code == ABS_X)){
+            touchData->currentData.x = qBound(touchData->minX, event->value, touchData->maxX);
+            if(touchData->singleTouch){
+                touchData->contacts[touchData->currentSlot].x = touchData->currentData.x;
+            }
+            if(touchData->isTypeB){
+                touchData->contacts[touchData->currentSlot].x = touchData->currentData.x;
+                if(touchData->contacts[touchData->currentSlot].state == Qt::TouchPointStationary){
+                    touchData->contacts[touchData->currentSlot].state = Qt::TouchPointMoved;
+                }
+            }
+        }else if(event->code == ABS_MT_POSITION_Y || (touchData->singleTouch && event->code == ABS_Y)){
+            touchData->currentData.y = qBound(touchData->minY, event->value, touchData->maxY);
+            if(touchData->singleTouch){
+                touchData->contacts[touchData->currentSlot].y = touchData->currentData.y;
+            }
+            if(touchData->isTypeB){
+                touchData->contacts[touchData->currentSlot].y = touchData->currentData.y;
+                if(touchData->contacts[touchData->currentSlot].state == Qt::TouchPointStationary){
+                    touchData->contacts[touchData->currentSlot].state = Qt::TouchPointMoved;
+                }
+            }
+        }else if(event->code == ABS_MT_TRACKING_ID){
+            touchData->currentData.trackingId = event->value;
+            if(touchData->isTypeB){
+                if(touchData->currentData.trackingId == -1){
+                    touchData->contacts[touchData->currentSlot].state = Qt::TouchPointReleased;
+                }else{
+                    touchData->contacts[touchData->currentSlot].state = Qt::TouchPointPressed;
+                    touchData->contacts[touchData->currentSlot].trackingId = touchData->currentData.trackingId;
+                }
+            }
+        }else if(event->code == ABS_MT_TOUCH_MAJOR){
+            touchData->currentData.maj = event->value;
+            if(event->value == 0){
+                touchData->currentData.state = Qt::TouchPointReleased;
+            }
+            if(touchData->isTypeB){
+                touchData->contacts[touchData->currentSlot].maj = touchData->currentData.maj;
+            }
+        }else if(event->code == ABS_PRESSURE || event->code == ABS_MT_PRESSURE){
+            touchData->currentData.pressure = qBound(touchData->minPressure, event->value, touchData->maxPressure);
+            if(touchData->isTypeB || touchData->singleTouch){
+                touchData->contacts[touchData->currentSlot].pressure = touchData->currentData.pressure;
+            }
+        }else if(event->code == ABS_MT_SLOT){
+            touchData->currentSlot = event->value;
+        }
+    }else if(event->type == EV_KEY && !touchData->isTypeB){
+        if(event->code == BTN_TOUCH && event->value == 0){
+            touchData->contacts[touchData->currentSlot].state = Qt::TouchPointReleased;
+        }
+    }else if(event->type == EV_SYN && event->code == SYN_MT_REPORT && touchData->lastEventType != EV_SYN){
+        // If there is no tracking id, one will be generated later.
+        // Until that use a temporary key.
+        int key = touchData->currentData.trackingId;
+        if(key == -1){
+            key = touchData->contacts.count();
+        }
+        touchData->contacts.insert(key, touchData->currentData);
+        touchData->currentData = Contact();
+    }else if(event->type == EV_SYN && event->code == SYN_REPORT){
+        // Ensure valid IDs even when the driver does not report ABS_MT_TRACKING_ID.
+        if(!touchData->contacts.isEmpty() && touchData->contacts.constBegin().value().trackingId == -1){
+            QHash<int, Contact> candidates = touchData->lastContacts, pending = touchData->contacts, newContacts;
+            int maxId = -1;
+            QHash<int, Contact>::iterator it, ite, bestMatch;
+            while(!pending.isEmpty() && !candidates.isEmpty()){
+                int bestDist = -1, bestId = 0;
+                for(it = pending.begin(), ite = pending.end(); it != ite; ++it){
+                    int dist;
+                    int id = findClosestContact(candidates, it->x, it->y, &dist);
+                    if(id >= 0 && (bestDist == -1 || dist < bestDist)){
+                        bestDist = dist;
+                        bestId = id;
+                        bestMatch = it;
+                    }
+                }
+                if(bestDist >= 0){
+                    bestMatch->trackingId = bestId;
+                    newContacts.insert(bestId, *bestMatch);
+                    candidates.remove(bestId);
+                    pending.erase(bestMatch);
+                    if(bestId > maxId){
+                        maxId = bestId;
+                    }
+                }
+            }
+            if(candidates.isEmpty()){
+                for(it = pending.begin(), ite = pending.end(); it != ite; ++it){
+                    it->trackingId = ++maxId;
+                    newContacts.insert(it->trackingId, *it);
+                }
+            }
+            touchData->contacts = newContacts;
+        }
+        // update timestamps
+        touchData->lastTimeStamp = touchData->timeStamp;
+        touchData->timeStamp = std::chrono::duration<double>(
+            std::chrono::high_resolution_clock::now().time_since_epoch()
+        ).count();
+
+        touchData->lastTouchPoints = touchData->touchPoints;
+        touchData->touchPoints.clear();
+        Qt::TouchPointStates combinedStates;
+        bool hasPressure = false;
+        for(auto i = touchData->contacts.begin(), end = touchData->contacts.end(); i != end; /*erasing*/){
+            auto it = i++;
+            Contact &contact(it.value());
+            if(!contact.state){
+                continue;
+            }
+            int key = touchData->isTypeB ? it.key() : contact.trackingId;
+            if(!touchData->isTypeB && touchData->lastContacts.contains(key)){
+                const Contact &prev(touchData->lastContacts.value(key));
+                if(contact.state == Qt::TouchPointReleased){
+                    // Copy over the previous values for released points, just in case.
+                    contact.x = prev.x;
+                    contact.y = prev.y;
+                    contact.maj = prev.maj;
+                }else{
+                    contact.state = prev.x == contact.x && prev.y == contact.y
+                        ? Qt::TouchPointStationary
+                        : Qt::TouchPointMoved;
+                }
+            }
+            // Avoid reporting a contact in released state more than once.
+            if(!touchData->isTypeB && contact.state == Qt::TouchPointReleased && !touchData->lastContacts.contains(key)){
+                touchData->contacts.erase(it);
+                continue;
+            }
+            if(contact.pressure){
+                hasPressure = true;
+            }
+            addTouchPoint(touchData, contact, &combinedStates);
+        }
+        // Now look for contacts that have disappeared since the last sync.
+        for(auto it = touchData->lastContacts.begin(), end = touchData->lastContacts.end(); it != end; ++it){
+            Contact &contact(it.value());
+            int key = touchData->isTypeB ? it.key() : contact.trackingId;
+            if(touchData->isTypeB){
+                if(contact.trackingId != touchData->contacts[key].trackingId && contact.state){
+                    contact.state = Qt::TouchPointReleased;
+                    addTouchPoint(touchData, contact, &combinedStates);
+                }
+            }else if(!touchData->contacts.contains(key)){
+                contact.state = Qt::TouchPointReleased;
+                addTouchPoint(touchData, contact, &combinedStates);
+            }
+        }
+        // Remove contacts that have just been reported as released.
+        for(auto i = touchData->contacts.begin(), end = touchData->contacts.end(); i != end; /*erasing*/){
+            auto it = i++;
+            Contact &contact(it.value());
+            if(!contact.state){
+                continue;
+            }
+            if(contact.state != Qt::TouchPointReleased){
+                contact.state = Qt::TouchPointStationary;
+            }else if(touchData->isTypeB){
+                contact.state = static_cast<Qt::TouchPointState>(0);
+            }else{
+                touchData->contacts.erase(it);
+            }
+        }
+        touchData->lastContacts = touchData->contacts;
+        if(!touchData->isTypeB && !touchData->singleTouch){
+            touchData->contacts.clear();
+        }
+        if(!touchData->touchPoints.isEmpty() && (hasPressure || combinedStates != Qt::TouchPointStationary)){
+            auto screen = QGuiApplication::primaryScreen();
+            QRect winRect = QHighDpi::toNativePixels(screen->geometry(), screen);
+            if(winRect.isNull()){
+                return;
+            }
+            const int hw_w = touchData->maxX - touchData->minX;
+            const int hw_h = touchData->maxY - touchData->minY;
+            // Map the coordinates based on the normalized position. QPA expects 'area'
+            // to be in screen coordinates.
+            const int pointCount = touchData->touchPoints.count();
+            for(int i = 0; i < pointCount; ++i){
+                QWindowSystemInterface::TouchPoint &tp(touchData->touchPoints[i]);
+                // Generate a screen position that is always inside the active window
+                // or the primary screen.  Even though we report this as a QRectF, internally
+                // Qt uses QRect/QPoint so we need to bound the size to winRect.size() - QSize(1, 1)
+                const qreal wx = winRect.left() + tp.normalPosition.x() * (winRect.width() - 1);
+                const qreal wy = winRect.top() + tp.normalPosition.y() * (winRect.height() - 1);
+                const qreal sizeRatio = (winRect.width() + winRect.height()) / qreal(hw_w + hw_h);
+                if(tp.area.width() == -1){
+                    // touch major was not provided
+                    tp.area = QRectF(0, 0, 8, 8);
+                }else{
+                    tp.area = QRectF(0, 0, tp.area.width() * sizeRatio, tp.area.height() * sizeRatio);
+                }
+                tp.area.moveCenter(QPointF(wx, wy));
+                // Calculate normalized pressure.
+                if(!touchData->minPressure && !touchData->maxPressure){
+                    tp.pressure = tp.state == Qt::TouchPointReleased ? 0 : 1;
+                }else{
+                    tp.pressure = (tp.pressure - touchData->minPressure) / qreal(touchData->maxPressure - touchData->minPressure);
+                }
+            }
+            // Let qguiapp pick the target window.
+            QWindowSystemInterface::handleTouchEvent(nullptr, touchData->device, touchData->touchPoints);
+        }
+    }
+    touchData->lastEventType = event->type;
 }
 
 void OxideEventHandler::processPointerEvent(

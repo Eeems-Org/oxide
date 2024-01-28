@@ -50,7 +50,7 @@ private slots:
 
 private:
     OxideEventManager* m_manager;
-    QMap<unsigned int, DeviceData> m_devices;
+    QMap<unsigned int, DeviceData*> m_devices;
     int m_fd;
     QSocketNotifier* m_notifier;
     const QEvdevKeyboardMap::Mapping* m_keymap;
