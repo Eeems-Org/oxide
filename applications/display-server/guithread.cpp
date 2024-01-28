@@ -247,10 +247,6 @@ void GUIThread::redraw(RepaintRequest& event){
 }
 
 void GUIThread::sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode waveform){
-    // TODO - detect if there was no change to the repainted region and skip,
-    //        Maybe hash the data before and compare after?
-    //        Also properly handle when it was previously gray and needs to now be white
-    // https://doc.qt.io/qt-5/qcryptographichash.html
     auto mode = rect == m_screenRect
         ? EPFrameBuffer::FullUpdate
         : EPFrameBuffer::PartialUpdate;
