@@ -89,6 +89,11 @@ void OxideIntegration::initialize(){
     if(connection == nullptr){
         qFatal("Could not connect to display server: %s", std::strerror(errno));
     }
+    connection->onDisconnect([](int res){
+        if(res){
+            qApp->exit(res);
+        }
+    });
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     qApp->setAttribute(Qt::AA_SynthesizeMouseForUnhandledTabletEvents);
     qApp->setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents);

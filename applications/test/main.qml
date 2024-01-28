@@ -2,21 +2,17 @@ import QtQuick 2.15
 import QtQuick.Window 2.3
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
+import "qrc:/codes.eeems.oxide"
 
-Window{
-    width: Screen.width
-    height: Screen.height
-    x: 0
-    y: 0
+OxideWindow{
+    id: window
+    objectName: "window"
     visible: true
-    Component.onCompleted:{
-        mouseArea.forceActiveFocus();
-        console.log(activeFocusItem);
-    }
-    Page{
+    focus: true
+    Component.onCompleted:mouseArea.forceActiveFocus()
+    initialItem: Item{
         anchors.fill: parent
         focus: true
-        Keys.onPressed: (event) => console.log(event.key)
         Shortcut{
             sequences: [StandardKey.Quit, StandardKey.Cancel, Qt.Key_Backspace, "Ctrl+Q", "Ctrl+W"]
             context: Qt.ApplicationShortcut

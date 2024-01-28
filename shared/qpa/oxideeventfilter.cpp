@@ -12,6 +12,7 @@ OxideEventFilter::OxideEventFilter(QObject* parent) : QObject(parent){ }
 QVector<QEvent::Type> ignoreTypes{
     QEvent::MetaCall,
     QEvent::ThreadChange,
+    QEvent::SockAct
 };
 
 bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev){

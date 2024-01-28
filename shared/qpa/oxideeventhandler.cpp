@@ -125,9 +125,29 @@ DeviceData::DeviceData(unsigned int device, QInputDeviceManager::DeviceType type
             keyboardData->m_dead_unicode = 0xffff;
             break;
         }
-        case QInputDeviceManager::DeviceTypeTablet:
-            m_data = new TabletData();
+        case QInputDeviceManager::DeviceTypeTablet:{
+            auto tabletData = new TabletData();
+            m_data = tabletData;
+            input_absinfo absInfo;
+            memset(&absInfo, 0, sizeof(input_absinfo));
+            if(ioctl(fd, EVIOCGABS(ABS_X), &absInfo) >= 0){
+                tabletData->minValues.x = absInfo.minimum;
+                tabletData->maxValues.x = absInfo.maximum;
+            }
+            if(ioctl(fd, EVIOCGABS(ABS_Y), &absInfo) >= 0){
+                tabletData->minValues.y = absInfo.minimum;
+                tabletData->maxValues.y = absInfo.maximum;
+            }
+            if(ioctl(fd, EVIOCGABS(ABS_PRESSURE), &absInfo) >= 0){
+                tabletData->minValues.p = absInfo.minimum;
+                tabletData->maxValues.p = absInfo.maximum;
+            }
+            if(ioctl(fd, EVIOCGABS(ABS_DISTANCE), &absInfo) >= 0){
+                tabletData->minValues.d = absInfo.minimum;
+                tabletData->maxValues.d = absInfo.maximum;
+            }
             break;
+        }
         case QInputDeviceManager::DeviceTypeTouch:{
             auto touchData = new TouchData();
             m_data = touchData;
@@ -194,13 +214,16 @@ DeviceData::~DeviceData(){
 
 
 OxideEventHandler::OxideEventHandler(OxideEventManager* manager, const QStringList& parameters)
-: m_manager(manager),
+: QDaemonThread(),
+  m_manager(manager),
   m_fd(Blight::connection()->input_handle()),
   m_keymap{0},
   m_keymap_size{0},
   m_keycompose{0},
   m_keycompose_size{0}
 {
+    setObjectName("OxideInput");
+    moveToThread(this);
     QString keymap;
     for(const QString& param : parameters){
         if(param.startsWith(QLatin1String("keymap="), Qt::CaseInsensitive)){
@@ -211,11 +234,13 @@ OxideEventHandler::OxideEventHandler(OxideEventManager* manager, const QStringLi
         unloadKeymap();
     }
     m_notifier = new QSocketNotifier(m_fd, QSocketNotifier::Read, this);
+    m_notifier->moveToThread(this);
     connect(m_notifier, &QSocketNotifier::activated, this, &OxideEventHandler::readyRead);
     start();
 }
 
 OxideEventHandler::~OxideEventHandler(){
+    m_notifier->setEnabled(false);
     quit();
     wait();
 }
@@ -235,17 +260,16 @@ void OxideEventHandler::remove(unsigned int number, QInputDeviceManager::DeviceT
 }
 
 void OxideEventHandler::readyRead(){
+    Q_ASSERT(thread() == QThread::currentThread());
+    Q_ASSERT(m_notifier->thread() == QThread::currentThread());
     m_notifier->setEnabled(false);
     auto connection = Blight::connection();
-    auto fd = connection->input_handle();
     while(true){
-        if(!Blight::wait_for_read(fd)){
-            break;
-        }
         auto maybe = connection->read_event();
         if(!maybe.has_value()){
-            if(errno == EAGAIN || errno == EINTR){
-                continue;
+            if(errno != EAGAIN && errno != EINTR){
+                O_WARNING("Failed reading input stream" << strerror(errno));
+                return;
             }
             break;
         }
@@ -595,7 +619,7 @@ void OxideEventHandler::processTabletEvent(
         QPointF globalPos(nx * winRect.width(), ny * winRect.height());
         int pointer = tabletData->state.tool;
         // Prevent sending confusing values of 0 when moving the pen outside the active area.
-        if (!tabletData->state.down && tabletData->state.lastReportDown) {
+        if(!tabletData->state.down && tabletData->state.lastReportDown){
             globalPos = tabletData->state.lastReportPos;
             pointer = tabletData->state.lastReportTool;
         }
@@ -604,17 +628,25 @@ void OxideEventHandler::processTabletEvent(
             ? (tabletData->state.p - tabletData->minValues.p) / qreal(pressureRange)
             : qreal(1);
         if(tabletData->state.down || tabletData->state.lastReportDown){
+            auto button = tabletData->state.down ? Qt::LeftButton : Qt::NoButton;
             QWindowSystemInterface::handleTabletEvent(
-                0,
+                nullptr,
                 QPointF(),
                 globalPos,
-                QTabletEvent::Stylus, pointer,
-                tabletData->state.down ? Qt::LeftButton : Qt::NoButton,
+                QTabletEvent::Stylus,
+                pointer,
+                button,
                 pressure,
-                0, 0, 0, 0, 0,
+                0,
+                0,
+                0,
+                0,
+                0,
                 device,
                 qGuiApp->keyboardModifiers()
             );
+            auto global = QHighDpi::fromNativePixels(globalPos, (QWindow*)nullptr);
+            qDebug() << globalPos << global << QGuiApplication::topLevelAt(global.toPoint());
         }
         if(tabletData->state.lastReportTool && !tabletData->state.tool){
             QWindowSystemInterface::handleTabletLeaveProximityEvent(
