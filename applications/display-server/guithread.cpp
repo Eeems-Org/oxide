@@ -10,6 +10,7 @@
 #include <mxcfb.h>
 #include <liboxide/debug.h>
 #include <liboxide/threading.h>
+#include <libblight/clock.h>
 
 void GUIThread::run(){
     O_DEBUG("Thread started");
@@ -213,6 +214,7 @@ void GUIThread::redraw(RepaintRequest& event){
         O_WARNING("Empty repaint region" << region);
         return;
     }
+    Blight::ClockWatch cw;
     // Get visible region on the screen to repaint
     O_DEBUG("Repainting" << region.boundingRect());
     auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
@@ -224,11 +226,11 @@ void GUIThread::redraw(RepaintRequest& event){
     }
     painter.setCompositionMode(QPainter::CompositionMode_Source);
     for(QRect rect : event.region){
-        // Get the waveform required to draw the current data,
-        // as we may be transitioning from grayscale to white.
-        // The request may not know that and try to use Mono
-        auto waveform = getWaveFormMode(rect, event.waveform);
         if(event.global){
+            // TODO - for global events only ever use fillRect
+            //        Update GUIThread::enqueue() to enqueue for
+            //        the visible surface at the time of the request
+            //        where possible, and only use global for empty space
             painter.fillRect(rect, colour);
             for(auto& surface : visibleSurfaces()){
                 if(surface != nullptr){
@@ -238,18 +240,17 @@ void GUIThread::redraw(RepaintRequest& event){
         }else{
             repaintSurface(&painter, &rect, event.surface);
         }
-        sendUpdate(rect, waveform);
+        sendUpdate(rect, event.waveform);
     }
     painter.end();
-    O_DEBUG("Repaint" << region.boundingRect() << "done in" << region.rectCount() << "paints");
+    O_DEBUG("Repaint" << region.boundingRect() << "done in" << region.rectCount() << "paints, and" << cw.elapsed() << "seconds");
 }
 
-void GUIThread::sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode previousWaveform){
+void GUIThread::sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode waveform){
     // TODO - detect if there was no change to the repainted region and skip,
     //        Maybe hash the data before and compare after?
     //        Also properly handle when it was previously gray and needs to now be white
     // https://doc.qt.io/qt-5/qcryptographichash.html
-    auto waveform = getWaveFormMode(rect, previousWaveform);
     auto mode = rect == m_screenRect
         ? EPFrameBuffer::FullUpdate
         : EPFrameBuffer::PartialUpdate;
@@ -273,36 +274,6 @@ void GUIThread::sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode previo
         .alt_buffer_data = mxcfb_alt_buffer_data{},
     };
     ioctl(m_frameBufferFd, MXCFB_SEND_UPDATE, &data);
-}
-
-EPFrameBuffer::WaveformMode GUIThread::getWaveFormMode(
-    const QRect& rect,
-    EPFrameBuffer::WaveformMode defaultValue
-){
-    if(defaultValue == EPFrameBuffer::HighQualityGrayscale){
-        return defaultValue;
-    }
-    auto frameBuffer = EPFrameBuffer::framebuffer();
-    auto fbRect = frameBuffer->rect();
-    for(int x = rect.left(); x < rect.right(); x++){
-        for(int y = rect.top(); y < rect.bottom(); y++){
-            auto pos = QPoint(x, y);
-            // This should not happen, but just in case,
-            // ignore if the position is outside the screen
-            if(!fbRect.contains(pos)){
-                continue;
-            }
-            auto color = frameBuffer->pixelColor(pos);
-            if(color == Qt::white || color == Qt::black || color == Qt::transparent){
-                continue;
-            }
-            if(color == Qt::gray){
-                return EPFrameBuffer::Grayscale;
-            }
-            return EPFrameBuffer::HighQualityGrayscale;
-        }
-    }
-    return defaultValue;
 }
 
 QList<std::shared_ptr<Surface>> GUIThread::visibleSurfaces(){

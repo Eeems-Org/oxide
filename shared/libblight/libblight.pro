@@ -18,6 +18,7 @@ SOURCES += \
     types.cpp
 
 HEADERS += \
+    clock.h \
     connection.h \
     concurrentqueue.h \
     dbus.h \

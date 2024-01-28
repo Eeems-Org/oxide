@@ -22,21 +22,9 @@
 #include <libblight/connection.h>
 #include <libblight/debug.h>
 #include <libblight/socket.h>
+#include <libblight/clock.h>
 #include <filesystem>
 #include <cstdint>
-
-class ClockWatch {
-public:
-    std::chrono::high_resolution_clock::time_point t1;
-
-    ClockWatch(){ t1 = std::chrono::high_resolution_clock::now(); }
-
-    auto elapsed(){
-        auto t2 = std::chrono::high_resolution_clock::now();
-        auto time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-        return time_span.count();
-    }
-};
 
 static bool IS_INITIALIZED = false;
 static bool FAILED_INIT = true;
@@ -192,7 +180,7 @@ int __fb_ioctl(unsigned long request, char* ptr){
         // https://www.kernel.org/doc/html/latest/fb/api.html
         case MXCFB_SEND_UPDATE:{
             _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SEND_UPDATE")
-            ClockWatch cz;
+            Blight::ClockWatch cw;
             if(!blightBuffer->surface){
                 Blight::addSurface(blightBuffer);
             }
@@ -202,7 +190,7 @@ int __fb_ioctl(unsigned long request, char* ptr){
             }
             auto update = reinterpret_cast<mxcfb_update_data*>(ptr);
             auto region = update->update_region;
-            blightConnection->repaint(
+            auto maybe = blightConnection->repaint(
                 blightBuffer,
                 region.left,
                 region.top,
@@ -211,16 +199,19 @@ int __fb_ioctl(unsigned long request, char* ptr){
                 (Blight::WaveformMode)update->waveform_mode,
                 update->update_marker
             );
-            _DEBUG("ioctl /dev/fb0 MXCFB_SEND_UPDATE done: %f", cz.elapsed())
+            if(maybe.has_value()){
+                maybe.value()->wait();
+            }
+            _DEBUG("ioctl /dev/fb0 MXCFB_SEND_UPDATE done: %f", cw.elapsed())
             // TODO - notify on rM2 for screensharing
             return 0;
         }
         case MXCFB_WAIT_FOR_UPDATE_COMPLETE:{
             _DEBUG("%s", "ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE");
-            ClockWatch cz;
+            Blight::ClockWatch cw;
             auto update = reinterpret_cast<mxcfb_update_marker_data*>(ptr);
             blightConnection->waitForMarker(update->update_marker);
-            _DEBUG("ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE done: %f", cz.elapsed());
+            _DEBUG("ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE done: %f", cw.elapsed());
             return 0;
         }
         case FBIOGET_VSCREENINFO:{

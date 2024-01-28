@@ -59,10 +59,6 @@ private:
     void redraw(RepaintRequest& event);
     void scheduleUpdate();
     void sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode previousWaveform);
-    EPFrameBuffer::WaveformMode getWaveFormMode(
-        const QRect& region,
-        EPFrameBuffer::WaveformMode defaultValue
-    );
     QList<std::shared_ptr<Surface>> visibleSurfaces();
 };
 #endif

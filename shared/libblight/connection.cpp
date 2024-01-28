@@ -3,6 +3,7 @@
 #include "debug.h"
 #include "socket.h"
 #include "concurrentqueue.h"
+#include "clock.h"
 
 #include <unistd.h>
 #include <atomic>
@@ -11,7 +12,6 @@
 #include <mutex>
 #include <poll.h>
 #include <sys/epoll.h>
-#include <chrono>
 
 using namespace std::chrono_literals;
 
@@ -188,7 +188,7 @@ namespace Blight{
     }
 
     std::optional<std::chrono::duration<double>> Connection::ping(int timeout){
-        const auto start = std::chrono::steady_clock::now();
+        ClockWatch cw;
         auto ack = send(MessageType::Ping, nullptr, 0);
         if(!ack.has_value()){
             _WARN("Failed to ping: %s", std::strerror(errno));
@@ -198,9 +198,8 @@ namespace Blight{
             _WARN("Ping timed out");
             return {};
         }
-        const auto end = std::chrono::steady_clock::now();
-        auto duration = end - start;
-        _DEBUG("ping in %lld", duration.count());
+        auto duration = cw.diff();
+        _DEBUG("ping in %fs", duration.count());
         return duration;
     }
 
