@@ -92,14 +92,14 @@ void OxideIntegration::initialize(){
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     qApp->setAttribute(Qt::AA_SynthesizeMouseForUnhandledTabletEvents);
     qApp->setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents);
-    m_primaryScreen = new OxideScreen();
-    // rM1 geometry as default
-    m_primaryScreen->setGeometry(QRect(0, 0, 1404, 1872));
-    QWindowSystemInterface::handleScreenAdded(m_primaryScreen, true);
 #ifndef QT_NO_CLIPBOARD
     m_clipboard = new QMimeData();
     m_selection = new QMimeData();
 #endif
+    m_primaryScreen = new OxideScreen();
+    // rM1 geometry as default
+    m_primaryScreen->setGeometry(QRect(0, 0, 1404, 1872));
+    QWindowSystemInterface::handleScreenAdded(m_primaryScreen, true);
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
     new OxideEventManager(m_parameters);

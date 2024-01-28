@@ -157,6 +157,9 @@ DeviceData::DeviceData(unsigned int device, QInputDeviceManager::DeviceType type
             if(touchData->maxPressure > touchData->minPressure){
                 touchDevice->setCapabilities(touchDevice->capabilities() | QTouchDevice::Pressure);
             }
+            if(ioctl(fd, EVIOCGABS(ABS_MT_SLOT), &absInfo)){
+                touchDevice->setMaximumTouchPoints(absInfo.maximum);
+            }
             touchData->device = touchDevice;
             QWindowSystemInterface::registerTouchDevice(touchDevice);
             break;
@@ -519,32 +522,19 @@ void OxideEventHandler::processKeyboardEvent(
             QEvdevKeyboardHandler::toQtModifiers(keyboardData->m_modifiers)
         );
     }
+    QEvent::Type type = pressed ? QEvent::KeyPress : QEvent::KeyRelease;
+    QString text = unicode != 0xffff ? QString(QChar(unicode)) : QString();
     QWindowSystemInterface::handleExtendedKeyEvent(
-        0,
-        pressed
-            ? QEvent::KeyPress
-            : QEvent::KeyRelease,
+        nullptr,
+        type,
         qtcode,
         qtmods,
         keycode + 8,
         0,
         int(modifiers),
-        unicode != 0xffff
-            ? QString(QChar(unicode))
-            : QString(),
+        text,
         autorepeat
     );
-    qDebug()
-        << keycode
-        << (Qt::Key)qtcode
-        << qtmods
-        << pressed
-        << autorepeat
-        << (
-            unicode != 0xffff
-            ? QString(QChar(unicode))
-            : QString()
-        );
 }
 
 void OxideEventHandler::processTabletEvent(
@@ -554,23 +544,20 @@ void OxideEventHandler::processTabletEvent(
     Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeTablet);
     auto device = data->device;
     auto tabletData = data->get<TabletData>();
-    auto& state = tabletData->state;
-    auto& lastEventType = tabletData->lastEventType;
-    auto& minValues = tabletData->minValues;
-    auto& maxValues = tabletData->maxValues;
+    // TODO handle tilt
     if(event->type == EV_ABS){
-        switch (event->code) {
+        switch (event->code){
             case ABS_X:
-                state.x = event->value;
+                tabletData->state.x = event->value;
                 break;
             case ABS_Y:
-                state.y = event->value;
+                tabletData->state.y = event->value;
                 break;
             case ABS_PRESSURE:
-                state.p = event->value;
+                tabletData->state.p = event->value;
                 break;
             case ABS_DISTANCE:
-                state.d = event->value;
+                tabletData->state.d = event->value;
                 break;
             default:
                 break;
@@ -582,68 +569,66 @@ void OxideEventHandler::processTabletEvent(
         // code BTN_TOUCH value 0 -> no contact
         switch (event->code) {
             case BTN_TOUCH:
-                state.down = event->value != 0;
+                tabletData->state.down = event->value != 0;
                 break;
             case BTN_TOOL_PEN:
-                state.tool = event->value ? QTabletEvent::Pen : 0;
+                tabletData->state.tool = event->value ? QTabletEvent::Pen : 0;
                 break;
             case BTN_TOOL_RUBBER:
-                state.tool = event->value ? QTabletEvent::Eraser : 0;
+                tabletData->state.tool = event->value ? QTabletEvent::Eraser : 0;
                 break;
             default:
                 break;
         }
-    }else if(event->type == EV_SYN && event->code == SYN_REPORT && lastEventType != event->type){
-        if(!state.lastReportTool && state.tool){
+    }else if(event->type == EV_SYN && event->code == SYN_REPORT && tabletData->lastEventType != event->type){
+        if(!tabletData->state.lastReportTool && tabletData->state.tool){
             QWindowSystemInterface::handleTabletEnterProximityEvent(
                 QTabletEvent::Stylus,
-                state.tool,
+                tabletData->state.tool,
                 device
             );
         }
-        qreal nx = (state.x - minValues.x) / qreal(maxValues.x - minValues.x);
-        qreal ny = (state.y - minValues.y) / qreal(maxValues.y - minValues.y);
+        qreal nx = (tabletData->state.x - tabletData->minValues.x) / qreal(tabletData->maxValues.x - tabletData->minValues.x);
+        qreal ny = (tabletData->state.y - tabletData->minValues.y) / qreal(tabletData->maxValues.y - tabletData->minValues.y);
 
         QRect winRect = QGuiApplication::primaryScreen()->geometry();
         QPointF globalPos(nx * winRect.width(), ny * winRect.height());
-        int pointer = state.tool;
+        int pointer = tabletData->state.tool;
         // Prevent sending confusing values of 0 when moving the pen outside the active area.
-        if (!state.down && state.lastReportDown) {
-            globalPos = state.lastReportPos;
-            pointer = state.lastReportTool;
+        if (!tabletData->state.down && tabletData->state.lastReportDown) {
+            globalPos = tabletData->state.lastReportPos;
+            pointer = tabletData->state.lastReportTool;
         }
-        int pressureRange = maxValues.p - minValues.p;
+        int pressureRange = tabletData->maxValues.p - tabletData->minValues.p;
         qreal pressure = pressureRange
-            ? (state.p - minValues.p) / qreal(pressureRange)
+            ? (tabletData->state.p - tabletData->minValues.p) / qreal(pressureRange)
             : qreal(1);
-        if(state.down || state.lastReportDown){
+        if(tabletData->state.down || tabletData->state.lastReportDown){
             QWindowSystemInterface::handleTabletEvent(
                 0,
                 QPointF(),
                 globalPos,
                 QTabletEvent::Stylus, pointer,
-                state.down ? Qt::LeftButton : Qt::NoButton,
+                tabletData->state.down ? Qt::LeftButton : Qt::NoButton,
                 pressure,
                 0, 0, 0, 0, 0,
                 device,
                 qGuiApp->keyboardModifiers()
             );
         }
-        if(state.lastReportTool && !state.tool){
+        if(tabletData->state.lastReportTool && !tabletData->state.tool){
             QWindowSystemInterface::handleTabletLeaveProximityEvent(
                 QTabletEvent::Stylus,
-                state.tool,
+                tabletData->state.tool,
                 device
             );
         }
-        state.lastReportDown = state.down;
-        state.lastReportTool = state.tool;
-        state.lastReportPos = globalPos;
+        tabletData->state.lastReportDown = tabletData->state.down;
+        tabletData->state.lastReportTool = tabletData->state.tool;
+        tabletData->state.lastReportPos = globalPos;
     }
-    lastEventType = event->type;
+    tabletData->lastEventType = event->type;
 }
-
-
 
 void addTouchPoint(TouchData* touchData, const Contact& contact, Qt::TouchPointStates* combinedStates){
     QWindowSystemInterface::TouchPoint tp;
