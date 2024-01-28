@@ -233,7 +233,7 @@ OxideEventHandler::OxideEventHandler(OxideEventManager* manager, const QStringLi
     if(keymap.isEmpty() || !loadKeymap(keymap)){
         unloadKeymap();
     }
-    m_notifier = new QSocketNotifier(m_fd, QSocketNotifier::Read, this);
+    m_notifier = new QSocketNotifier(m_fd, QSocketNotifier::Read);
     m_notifier->moveToThread(this);
     connect(m_notifier, &QSocketNotifier::activated, this, &OxideEventHandler::readyRead);
     start();
@@ -241,6 +241,7 @@ OxideEventHandler::OxideEventHandler(OxideEventManager* manager, const QStringLi
 
 OxideEventHandler::~OxideEventHandler(){
     m_notifier->setEnabled(false);
+    m_notifier->deleteLater();
     quit();
     wait();
 }
