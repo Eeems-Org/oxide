@@ -7,17 +7,22 @@
 #include <QMetaMethod>
 #include <QMimeData>
 #include <QProcess>
+
+#include <cstring>
+#include <libblight.h>
+#include <libblight/meta.h>
+#include <liboxide/devicesettings.h>
+#include <liboxide/dbus.h>
+
 #include <QtGui/private/qguiapplication_p.h>
 #include <QtGui/private/qpixmap_raster_p.h>
-#include <libblight.h>
-#include <liboxide/devicesettings.h>
-#include <cstring>
-
 #include <qpa/qplatformfontdatabase.h>
 #include <qpa/qplatforminputcontextfactory_p.h>
 #include <qpa/qplatformwindow.h>
 #include <private/qgenericunixeventdispatcher_p.h>
 #include <private/qgenericunixfontdatabase_p.h>
+
+using namespace codes::eeems::blight1;
 
 QT_BEGIN_NAMESPACE
 
@@ -108,7 +113,25 @@ void OxideIntegration::initialize(){
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();
     new OxideEventManager(m_parameters);
-    // TODO - connect clipboard/selection changes
+#ifndef QT_NO_CLIPBOARD
+    auto compositor = new Compositor(
+        BLIGHT_SERVICE,
+        "/",
+#ifdef EPAPER
+        QDBusConnection::systemBus()
+#else
+        QDBusConnection::sessionBus()
+#endif
+    );
+    connect(compositor, &Compositor::clipboardChanged, this, [this](const QByteArray& data){
+        m_clipboard->setData("application/octet-stream", data);
+    });
+    m_clipboard->setData("application/octet-stream", compositor->clipboard());
+    connect(compositor, &Compositor::selectionChanged, this, [this](const QByteArray& data){
+        m_selection->setData("application/octet-stream", data);
+    });
+    m_selection->setData("application/octet-stream", compositor->selection());
+#endif
 }
 
 void OxideIntegration::destroy(){
