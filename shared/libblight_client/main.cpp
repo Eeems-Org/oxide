@@ -889,21 +889,28 @@ extern "C" {
     }
     __asm__(".symver _pwritev64, pwritev64@GLIBC_2.4");
 
-    void __attribute__ ((constructor)) init(void);
-    void init(void){
-        func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");
-        func_writev = (ssize_t(*)(int, const iovec*, int))dlvsym(RTLD_NEXT, "writev", "GLIBC_2.4");
-        func_writev64 = (ssize_t(*)(int, const iovec*, int))dlvsym(RTLD_NEXT, "writev64", "GLIBC_2.4");
-        func_pwrite = (ssize_t(*)(int, const void*, size_t, int))dlvsym(RTLD_NEXT, "pwrite", "GLIBC_2.4");
-        func_pwrite64 = (ssize_t(*)(int, const void*, size_t, int))dlvsym(RTLD_NEXT, "pwrite64", "GLIBC_2.4");
-        func_pwritev = (ssize_t(*)(int, const iovec*, int, int))dlvsym(RTLD_NEXT, "pwritev", "GLIBC_2.4");
-        func_pwritev64 = (ssize_t(*)(int, const iovec*, int, int))dlvsym(RTLD_NEXT, "pwritev64", "GLIBC_2.4");
-        func_open = (int(*)(const char*, int, ...))dlsym(RTLD_NEXT, "open");
-        func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
-        func_close = (int(*)(int))dlsym(RTLD_NEXT, "close");
-        func_msgget = (int(*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
-        func_mmap = (void*(*)(void*, size_t, int, int, int, __off_t))dlsym(RTLD_NEXT, "mmap");
-    }
+    __attribute__((visibility("default")))
+   int setenv(const char* name, const char* value, int overwrite){
+       static const auto orig_setenv = (bool(*)(const char*, const char*, int))dlsym(RTLD_NEXT, "setenv");
+       if(IS_INITIALIZED && getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr){
+           if(
+              strcmp(name, "QMLSCENE_DEVICE") == 0
+              || strcmp(name, "QT_QUICK_BACKEND") == 0
+              || strcmp(name, "QT_QPA_PLATFORM") == 0
+              || strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0
+              || strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0
+              || strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0
+              || strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0
+              || strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0
+              || strcmp(name, "QT_PLUGIN_PATH") == 0
+           ){
+               _DEBUG("IGNORED setenv", name, value);
+               return 0;
+           }
+       }
+       _DEBUG("setenv", name, value);
+       return orig_setenv(name, value, overwrite);
+   }
 
     __attribute__((visibility("default")))
     void _ZN6QImageC1EiiNS_6FormatE(void* data, int width, int height, int format) {
@@ -930,6 +937,22 @@ extern "C" {
             return;
         }
         qImageCtor(data, width, height, format);
+    }
+
+    void __attribute__ ((constructor)) init(void);
+    void init(void){
+        func_write = (ssize_t(*)(int, const void*, size_t))dlvsym(RTLD_NEXT, "write", "GLIBC_2.4");
+        func_writev = (ssize_t(*)(int, const iovec*, int))dlvsym(RTLD_NEXT, "writev", "GLIBC_2.4");
+        func_writev64 = (ssize_t(*)(int, const iovec*, int))dlvsym(RTLD_NEXT, "writev64", "GLIBC_2.4");
+        func_pwrite = (ssize_t(*)(int, const void*, size_t, int))dlvsym(RTLD_NEXT, "pwrite", "GLIBC_2.4");
+        func_pwrite64 = (ssize_t(*)(int, const void*, size_t, int))dlvsym(RTLD_NEXT, "pwrite64", "GLIBC_2.4");
+        func_pwritev = (ssize_t(*)(int, const iovec*, int, int))dlvsym(RTLD_NEXT, "pwritev", "GLIBC_2.4");
+        func_pwritev64 = (ssize_t(*)(int, const iovec*, int, int))dlvsym(RTLD_NEXT, "pwritev64", "GLIBC_2.4");
+        func_open = (int(*)(const char*, int, ...))dlsym(RTLD_NEXT, "open");
+        func_ioctl = (int(*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
+        func_close = (int(*)(int))dlsym(RTLD_NEXT, "close");
+        func_msgget = (int(*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
+        func_mmap = (void*(*)(void*, size_t, int, int, int, __off_t))dlsym(RTLD_NEXT, "mmap");
     }
 
     static void _libhook_init() __attribute__((constructor));
@@ -998,6 +1021,15 @@ extern "C" {
         setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
         setenv("RM2FB_DISABLE", "1", true);
         setenv("RM2FB_SHIM", "1", true);
+        if(getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr){
+            setenv("QMLSCENE_DEVICE", "software", 1);
+            setenv("QT_QUICK_BACKEND", "software", 1);
+            setenv("QT_QPA_PLATFORM", "oxide:enable_fonts", 1);
+            setenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", "", 1);
+            setenv("QT_QPA_EVDEV_MOUSE_PARAMETERS", "", 1);
+            setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
+            setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
+        }
         FAILED_INIT = false;
         IS_INITIALIZED = true;
     }
