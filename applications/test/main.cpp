@@ -217,6 +217,20 @@ int main(int argc, char *argv[]){
             O_WARNING("Buffer surface identifier does not match!" << buffers.front()->surface);
             return EXIT_FAILURE;
         }
+        O_DEBUG("Removing surface");
+        {
+            auto ack = connection->remove(buffer);
+            if(!ack.has_value()){
+                O_WARNING("Failed to remove buffer:" << std::strerror(errno));
+                return EXIT_FAILURE;
+            }
+            ack.value()->wait();
+        }
+        O_DEBUG("Surface removed");
+        if(!connection->surfaces().empty()){
+            O_WARNING("There are still surfaces even though it was removed!");
+            return EXIT_FAILURE;
+        }
         O_DEBUG("Test passes");
     }
     QQmlApplicationEngine engine;
