@@ -1,5 +1,3 @@
-#include "canvas.h"
-
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QtPlugin>
@@ -235,7 +233,6 @@ int main(int argc, char *argv[]){
     }
     QQmlApplicationEngine engine;
     registerQML(&engine);
-    qmlRegisterType<Canvas>("codes.eeems.test", 1, 0, "Canvas");
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty()){
         O_WARNING("Nothing to display");

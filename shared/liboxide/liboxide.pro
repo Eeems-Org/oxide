@@ -129,6 +129,8 @@ linux-oe-g++{
     include(../../qmake/epaper.pri)
 }
 include(../../qmake/sentry.pri)
+DEFINES += LIBBLIGHT_PRIVATE
+include(../../qmake/libblight.pri)
 
 QMAKE_PKGCONFIG_NAME = liboxide
 QMAKE_PKGCONFIG_DESCRIPTION = Shared library for Oxide application development
