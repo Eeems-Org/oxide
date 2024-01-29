@@ -87,6 +87,7 @@ namespace Oxide {
                 return;
             }
             m_lastPoint = event->localPos();
+            emit drawStart();
         }
 
         void Canvas::mouseMoveEvent(QMouseEvent* event){
@@ -134,25 +135,24 @@ namespace Oxide {
 #ifdef EPAPER
             auto color = m_brush.color();
             if(
-                m_brush.isOpaque()
+                !m_brush.isOpaque()
                 && (
-                    color == Qt::black || color == Qt::white
+                    color != Qt::black || color != Qt::white
                 )
             ){
-                return;
+                auto buf = getSurfaceForWindow(window());
+                auto rect = mapRectToScene(boundingRect());
+                Blight::connection()->repaint(
+                    buf,
+                    rect.x(),
+                    rect.y(),
+                    rect.width(),
+                    rect.height(),
+                    Blight::WaveformMode::Grayscale
+                );
             }
-            auto buf = getSurfaceForWindow(window());
-            QImage image(buf->data, buf->width, buf->height, buf->stride, (QImage::Format)buf->format);
-            auto rect = mapRectToScene(boundingRect());
-            Blight::connection()->repaint(
-                buf,
-                rect.x(),
-                rect.y(),
-                rect.width(),
-                rect.height(),
-                Blight::WaveformMode::Grayscale
-            );
 #endif
+            emit drawDone();
         }
 
 #ifdef EPAPER

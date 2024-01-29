@@ -47,38 +47,68 @@ OxideWindow{
             color: "white"
             anchors.fill: parent
         }
+        component MyButton: Button{
+            id: control
+            contentItem: Text {
+                text: control.text
+                font: control.font
+                color: control.enabled ? "black" : "white"
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+            }
+            background: Rectangle{
+                color: control.enabled ? "white" : "black"
+                border.color: "black"
+                border.width: 1
+                radius: 2
+            }
+        }
         RowLayout{
             id: buttons
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
-            Button{
+
+            MyButton{
                 text: "Black Pen"
+                enabled: canvas.brush !== Oxide.brushFromColor("black")
                 onClicked: canvas.brush = Oxide.brushFromColor("black")
             }
-            Button{
+            MyButton{
                 text: "White Pen"
+                enabled: canvas.brush !== Oxide.brushFromColor("white")
                 onClicked: canvas.brush = Oxide.brushFromColor("white")
             }
             Item{
                 Layout.fillWidth: true
             }
-            Button{
+            MyButton{
                 text: "3px"
+                enabled: canvas.penWidth !== 3
                 onClicked: canvas.penWidth = 3
             }
-            Button{
+            MyButton{
                 text: "6px"
+                enabled: canvas.penWidth !== 6
                 onClicked: canvas.penWidth = 6
             }
-            Button{
+            MyButton{
                 text: "12px"
+                enabled: canvas.penWidth !== 12
                 onClicked: canvas.penWidth = 12
             }
-            Button{
+            MyButton{
                 text: "24px"
+                enabled: canvas.penWidth !== 24
                 onClicked: canvas.penWidth = 24
             }
+        }
+        Label{
+            id: message
+            text: "Ctrl-Q, Ctrl-W, Backspace, or Escape to quit"
+            color: "black"
+            anchors.centerIn: parent
         }
         Canvas{
             id: canvas
@@ -86,11 +116,8 @@ OxideWindow{
             anchors.right: parent.right
             anchors.top: buttons.bottom
             anchors.bottom: parent.bottom
-        }
-        Label{
-            text: "Ctrl-Q, Ctrl-W, Backspace, or Escape to quit"
-            color: "black"
-            anchors.centerIn: parent
+            onDrawStart: message.visible = false
+            onDrawDone: message.visible = true
         }
     }
 }

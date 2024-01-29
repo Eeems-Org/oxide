@@ -44,6 +44,8 @@ namespace Oxide {
             QImage* image();
 
         signals:
+            void drawStart();
+            void drawDone();
             void brushChanged(const QBrush& brush);
             void penWidthChanged(qreal pendWidth);
 
