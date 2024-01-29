@@ -59,10 +59,13 @@ private:
     int m_keycompose_size;
     bool m_no_zap;
     bool m_do_compose;
+    QTransform m_rotate;
 
     static const QEvdevKeyboardMap::Mapping s_keymap_default[];
     static const QEvdevKeyboardMap::Composing s_keycompose_default[];
 
     void unloadKeymap();
     bool loadKeymap(const QString& file);
+    void parseKeyParams(const QStringList& parameters);
+    void parseTouchParams(const QStringList& parameters);
 };

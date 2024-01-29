@@ -6,6 +6,7 @@
 #include <libblight.h>
 #include <libblight/socket.h>
 #include <liboxide/debug.h>
+#include <liboxide/devicesettings.h>
 #include <private/qevdevtouchfilter_p.h>
 
 typedef struct KeyboardData {
@@ -224,15 +225,9 @@ OxideEventHandler::OxideEventHandler(OxideEventManager* manager, const QStringLi
 {
     setObjectName("OxideInput");
     moveToThread(this);
-    QString keymap;
-    for(const QString& param : parameters){
-        if(param.startsWith(QLatin1String("keymap="), Qt::CaseInsensitive)){
-            keymap = param.split('=').last();
-        }
-    }
-    if(keymap.isEmpty() || !loadKeymap(keymap)){
-        unloadKeymap();
-    }
+    parseKeyParams(parameters);
+    parseTouchParams(QString(deviceSettings.getTouchEnvSetting()).split(QLatin1Char(':')));
+    parseTouchParams(parameters);
     m_notifier = new QSocketNotifier(m_fd, QSocketNotifier::Read);
     m_notifier->moveToThread(this);
     connect(m_notifier, &QSocketNotifier::activated, this, &OxideEventHandler::readyRead);
@@ -661,7 +656,7 @@ void OxideEventHandler::processTabletEvent(
     tabletData->lastEventType = event->type;
 }
 
-void addTouchPoint(TouchData* touchData, const Contact& contact, Qt::TouchPointStates* combinedStates){
+void addTouchPoint(QTransform rotate, TouchData* touchData, const Contact& contact, Qt::TouchPointStates* combinedStates){
     QWindowSystemInterface::TouchPoint tp;
     tp.id = contact.trackingId;
     tp.flags = contact.flags;
@@ -680,6 +675,9 @@ void addTouchPoint(TouchData* touchData, const Contact& contact, Qt::TouchPointS
         (contact.y - touchData->minY)
             / qreal(touchData->maxY - touchData->minY)
     );
+    if(!rotate.isIdentity()){
+        tp.normalPosition = rotate.map(tp.normalPosition);
+    }
     tp.rawPositions.append(QPointF(contact.x, contact.y));
     touchData->touchPoints.append(tp);
 }
@@ -844,7 +842,7 @@ void OxideEventHandler::processTouchEvent(
             if(contact.pressure){
                 hasPressure = true;
             }
-            addTouchPoint(touchData, contact, &combinedStates);
+            addTouchPoint(m_rotate, touchData, contact, &combinedStates);
         }
         // Now look for contacts that have disappeared since the last sync.
         for(auto it = touchData->lastContacts.begin(), end = touchData->lastContacts.end(); it != end; ++it){
@@ -853,11 +851,11 @@ void OxideEventHandler::processTouchEvent(
             if(touchData->isTypeB){
                 if(contact.trackingId != touchData->contacts[key].trackingId && contact.state){
                     contact.state = Qt::TouchPointReleased;
-                    addTouchPoint(touchData, contact, &combinedStates);
+                    addTouchPoint(m_rotate, touchData, contact, &combinedStates);
                 }
             }else if(!touchData->contacts.contains(key)){
                 contact.state = Qt::TouchPointReleased;
-                addTouchPoint(touchData, contact, &combinedStates);
+                addTouchPoint(m_rotate, touchData, contact, &combinedStates);
             }
         }
         // Remove contacts that have just been reported as released.
@@ -984,4 +982,52 @@ bool OxideEventHandler::loadKeymap(const QString& file){
     m_keycompose_size = qmap_keycompose_size;
     m_do_compose = true;
     return true;
+}
+
+void OxideEventHandler::parseKeyParams(const QStringList& parameters){
+    QString keymap;
+    for(const QString& param : parameters){
+        if(param.startsWith(QLatin1String("keymap="), Qt::CaseInsensitive)){
+            keymap = param.section(QLatin1Char('='), 1, 1);
+        }
+    }
+    if(keymap.isEmpty() || !loadKeymap(keymap)){
+        unloadKeymap();
+    }
+}
+
+void OxideEventHandler::parseTouchParams(const QStringList& parameters){
+    int rotationAngle = 0;
+    bool invertx = false;
+    bool inverty = false;
+    for(const QString& param : parameters){
+        if(param.startsWith(QLatin1String("rotate"))){
+            QString rotateArg = param.section(QLatin1Char('='), 1, 1);
+            bool ok;
+            uint argValue = rotateArg.toUInt(&ok);
+            if(ok){
+                switch(argValue){
+                    case 90:
+                    case 180:
+                    case 270:
+                        rotationAngle = argValue;
+                    default:
+                        break;
+                }
+            }
+        }else if(param == QLatin1String("invertx")){
+            invertx = true;
+        }else if(param == QLatin1String("inverty")){
+            inverty = true;
+        }
+    }
+    if(rotationAngle){
+        m_rotate = QTransform::fromTranslate(0.5, 0.5).rotate(rotationAngle).translate(-0.5, -0.5);
+    }
+    if(invertx){
+        m_rotate *= QTransform::fromTranslate(0.5, 0.5).scale(-1.0, 1.0).translate(-0.5, -0.5);
+    }
+    if(inverty){
+        m_rotate *= QTransform::fromTranslate(0.5, 0.5).scale(1.0, -1.0).translate(-0.5, -0.5);
+    }
 }
