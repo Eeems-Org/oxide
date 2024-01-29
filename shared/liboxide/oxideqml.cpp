@@ -22,6 +22,10 @@ namespace Oxide {
 
         bool OxideQml::landscape(){ return deviceSettings.keyboardAttached(); }
 
+        QBrush OxideQml::brushFromColor(const QColor& color){
+            return QBrush(color, Qt::SolidPattern);
+        }
+
         OxideQml* getSingleton(){
             static OxideQml* instance = new OxideQml(qApp);
             return instance;
@@ -40,8 +44,8 @@ namespace Oxide {
           m_penWidth{6}
         {
             setAcceptedMouseButtons(Qt::AllButtons);
-            m_drawn = QImage(width(), height(), QImage::Format_Grayscale8);
-            m_drawn.fill(Qt::white);
+            m_drawn = QImage(width(), height(), QImage::Format_ARGB32_Premultiplied);
+            m_drawn.fill(Qt::transparent);
         }
 
         void Canvas::paint(QPainter* painter){
@@ -66,8 +70,16 @@ namespace Oxide {
 
         void Canvas::geometryChanged(const QRectF& newGeometry, const QRectF& oldGeometry){
             Q_UNUSED(oldGeometry);
-            m_drawn = QImage(newGeometry.size().toSize(), QImage::Format_Grayscale8);
-            m_drawn.fill(Qt::white);
+            auto size = newGeometry.size().toSize();
+            if(size.isEmpty()){
+                return;
+            }
+            QImage image(size, QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter p(&image);
+            p.drawImage(image.rect(), m_drawn, m_drawn.rect());
+            p.end();
+            m_drawn = image;
         }
 
         void Canvas::mousePressEvent(QMouseEvent* event){
@@ -102,7 +114,6 @@ namespace Oxide {
                 p.setClipRect(mapRectToScene(boundingRect()));
                 p.setPen(pen);
                 p.drawLine(globalStart, globalEnd);
-                qDebug() << rect << QRect(buf->x, buf->y, buf->width, buf->height);
                 Blight::connection()->repaint(
                     buf,
                     rect.x(),
@@ -116,6 +127,32 @@ namespace Oxide {
             update(rect);
 #endif
             m_lastPoint = event->localPos();
+        }
+
+        void Canvas::mouseReleaseEvent(QMouseEvent* event){
+            Q_UNUSED(event);
+#ifdef EPAPER
+            auto color = m_brush.color();
+            if(
+                m_brush.isOpaque()
+                && (
+                    color == Qt::black || color == Qt::white
+                )
+            ){
+                return;
+            }
+            auto buf = getSurfaceForWindow(window());
+            QImage image(buf->data, buf->width, buf->height, buf->stride, (QImage::Format)buf->format);
+            auto rect = mapRectToScene(boundingRect());
+            Blight::connection()->repaint(
+                buf,
+                rect.x(),
+                rect.y(),
+                rect.width(),
+                rect.height(),
+                Blight::WaveformMode::Grayscale
+            );
+#endif
         }
 
 #ifdef EPAPER

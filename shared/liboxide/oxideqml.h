@@ -17,12 +17,13 @@ namespace Oxide {
 
         class OxideQml : public QObject{
             Q_OBJECT
-            Q_PROPERTY(bool landscape READ landscape NOTIFY landscapeChanged REVISION 1)
+            Q_PROPERTY(bool landscape READ landscape NOTIFY landscapeChanged)
             QML_NAMED_ELEMENT(Oxide)
             QML_SINGLETON
         public:
             explicit OxideQml(QObject *parent = nullptr);
             bool landscape();
+            Q_INVOKABLE QBrush brushFromColor(const QColor& color);
 
         signals:
             void landscapeChanged(bool);
@@ -30,8 +31,8 @@ namespace Oxide {
 
         class Canvas : public QQuickPaintedItem {
             Q_OBJECT
-            Q_PROPERTY(QBrush brush READ brush WRITE setBrush NOTIFY brushChanged FINAL)
-            Q_PROPERTY(qreal penWidth READ penWidth WRITE setPenWidth NOTIFY penWidthChanged FINAL)
+            Q_PROPERTY(QBrush brush READ brush WRITE setBrush NOTIFY brushChanged)
+            Q_PROPERTY(qreal penWidth READ penWidth WRITE setPenWidth NOTIFY penWidthChanged)
             QML_ELEMENT
         public:
             Canvas(QQuickItem* parent = nullptr);
@@ -50,6 +51,8 @@ namespace Oxide {
             void geometryChanged(const QRectF& newGeometry, const QRectF& oldGeometry) override;
             void mousePressEvent(QMouseEvent *event) override;
             void mouseMoveEvent(QMouseEvent *event) override;
+            void mouseReleaseEvent(QMouseEvent *event) override;
+
         private:
             QPointF m_lastPoint;
             QImage m_drawn;

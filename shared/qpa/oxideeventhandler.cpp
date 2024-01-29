@@ -646,8 +646,6 @@ void OxideEventHandler::processTabletEvent(
                 device,
                 qGuiApp->keyboardModifiers()
             );
-            auto global = QHighDpi::fromNativePixels(globalPos, (QWindow*)nullptr);
-            qDebug() << globalPos << global << QGuiApplication::topLevelAt(global.toPoint());
         }
         if(tabletData->state.lastReportTool && !tabletData->state.tool){
             QWindowSystemInterface::handleTabletLeaveProximityEvent(

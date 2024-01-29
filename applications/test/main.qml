@@ -43,8 +43,13 @@ OxideWindow{
     initialItem: Item{
         anchors.fill: parent
         focus: true
+        Rectangle{
+            color: "white"
+            anchors.fill: parent
+        }
         Canvas{
             anchors.fill: parent
+            penWidth: 3
         }
         Label{
             text: "Ctrl-Q, Ctrl-W, Backspace, or Escape to quit"
