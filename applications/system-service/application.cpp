@@ -647,11 +647,9 @@ void Application::updateEnvironment(){
     if(!preload.contains(sysfs_preload)){
         preload.append(sysfs_preload);
     }
-    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
-        QString rm2fb_client("/opt/lib/librm2fb_client.so");
-        if(!preload.contains(rm2fb_client)){
-            preload.append(rm2fb_client);
-        }
+    QString blight_client("/opt/lib/libblight_client.so");
+    if(!preload.contains(blight_client)){
+        preload.append(blight_client);
     }
     env.insert("LD_PRELOAD", preload.join(":"));
     for(auto key : environment().keys()){
