@@ -67,7 +67,10 @@ int main(int argc, char* argv[]){
     }
     qputenv("XDG_CURRENT_DESKTOP", "OXIDE");
     QThread::currentThread()->setObjectName("main");
-    deviceSettings.setupQtEnvironment(false);
+    qputenv("QMLSCENE_DEVICE", "software");
+    qputenv("QT_QUICK_BACKEND","software");
+    qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
+    QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
     QGuiApplication app(argc, argv);
     sentry_init("tarnish", argv);
     app.setOrganizationName("Eeems");
