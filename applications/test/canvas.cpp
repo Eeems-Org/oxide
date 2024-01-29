@@ -60,7 +60,7 @@ void Canvas::mouseMoveEvent(QMouseEvent* event){
             .normalized()
             .marginsAdded(QMargins(24, 24, 24, 24));
         qDebug() << rect << QRect(buf->x, buf->y, buf->width, buf->height);
-        auto maybe = Blight::connection()->repaint(
+        Blight::connection()->repaint(
             buf,
             rect.x(),
             rect.y(),
