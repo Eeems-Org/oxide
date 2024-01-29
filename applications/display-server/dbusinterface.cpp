@@ -270,6 +270,14 @@ QStringList DbusInterface::getSurfaces(QDBusMessage message){
     return surfaces;
 }
 
+QDBusUnixFileDescriptor DbusInterface::frameBuffer(QDBusMessage message){
+    if(message.service() != "codes.eeems.oxide1"){
+        sendErrorReply(QDBusError::AccessDenied, "Access denied");
+        return QDBusUnixFileDescriptor();
+    }
+    return QDBusUnixFileDescriptor(::open("/dev/fb0", O_RDWR));
+}
+
 Connection* DbusInterface::focused(){ return m_focused; }
 
 void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){

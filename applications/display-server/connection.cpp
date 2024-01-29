@@ -286,13 +286,14 @@ void Connection::readSocket(){
                 auto repaint = Blight::repaint_t::from_message(message.get());
                 O_DEBUG(
                     "Repaint requested:"
-                    << QString("%6 (%1,%2) %3x%4 %5")
+                    << QString("%6 (%1,%2) %3x%4 %5 %7")
                         .arg(repaint.x)
                         .arg(repaint.y)
                         .arg(repaint.width)
                         .arg(repaint.height)
                         .arg(repaint.waveform)
                         .arg(repaint.identifier)
+                        .arg(repaint.marker)
                         .toStdString()
                         .c_str()
                 );
@@ -312,7 +313,7 @@ void Connection::readSocket(){
                     surface,
                     rect,
                     (EPFrameBuffer::WaveformMode)repaint.waveform,
-                    message->header.ackid,
+                    repaint.marker,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
                 );
@@ -471,13 +472,17 @@ void Connection::readSocket(){
                 break;
             }
             case Blight::MessageType::Ping:{
+#ifdef ACK_DEBUG
                 O_DEBUG("Pong" << message->header.ackid);
+#endif
                 break;
             }
             case Blight::MessageType::Ack:
                 do_ack = false;
                 if(message->header.ackid == pingId){
+#ifdef ACK_DEBUG
                     O_DEBUG("Pong recieved" << message->header.ackid);
+#endif
                     m_notRespondingTimer.stop();
                     m_pingTimer.stop();
                     m_pingTimer.start();

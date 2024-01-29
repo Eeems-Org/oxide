@@ -855,17 +855,13 @@ AppsAPI::~AppsAPI() {
     settings.sync();
     dispatchToMainThread([this]{
         auto frameBuffer = getFrameBuffer();
-        qDebug() << "Waiting for other painting to finish...";
-        while(frameBuffer->paintingActive()){
-            // TODO - don't spinlock
-        }
-        QPainter painter(frameBuffer);
-        auto rect = frameBuffer->rect();
+        QPainter painter(&frameBuffer);
+        auto rect = frameBuffer.rect();
         auto fm = painter.fontMetrics();
         qDebug() << "Clearing screen...";
         painter.setPen(Qt::white);
         painter.fillRect(rect, Qt::black);
-        Oxide::QML::repaint(getFrameBufferWindow(), rect, Blight::Mono, true);
+        Oxide::QML::repaint(getFrameBufferWindow(), rect, Blight::Mono/*, true*/);
         painter.end();
         qDebug() << "Stopping applications...";
         for(auto app : applications){
@@ -882,7 +878,7 @@ AppsAPI::~AppsAPI() {
             app->deleteLater();
         }
         applications.clear();
-        QPainter painter2(frameBuffer);
+        QPainter painter2(&frameBuffer);
         qDebug() << "Displaying final quit message...";
         painter2.fillRect(rect, Qt::black);
         painter2.setPen(Qt::white);
@@ -894,7 +890,7 @@ AppsAPI::~AppsAPI() {
             painter2.translate(-x, -y);
         }
         painter2.drawText(rect, Qt::AlignCenter, "Goodbye!");
-        Oxide::QML::repaint(getFrameBufferWindow(), rect, Blight::Mono, true);
+        Oxide::QML::repaint(getFrameBufferWindow(), rect, Blight::Mono/*, true*/);
         painter2.end();
     });
 }

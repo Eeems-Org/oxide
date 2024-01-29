@@ -66,6 +66,7 @@ public slots:
     QDBusUnixFileDescriptor getSurface(ushort identifier, QDBusMessage message);
     void setFlags(QString identifier, const QStringList& flags, QDBusMessage message);
     QStringList getSurfaces(QDBusMessage message);
+    QDBusUnixFileDescriptor frameBuffer(QDBusMessage message);
 
 signals:
     void clipboardChanged(const QByteArray& data);

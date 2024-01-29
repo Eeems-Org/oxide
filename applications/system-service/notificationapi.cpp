@@ -108,33 +108,29 @@ QRect NotificationAPI::paintNotification(const QString &text, const QString &ico
     return dispatchToMainThread<QRect>([&notification]{
         qDebug() << "Painting to framebuffer...";
         auto frameBuffer = getFrameBuffer();
-        QPainter painter(frameBuffer);
-        QPoint pos(0, frameBuffer->height() - notification.height());
+        QPainter painter(&frameBuffer);
+        QPoint pos(0, frameBuffer.height() - notification.height());
         if(systemAPI->landscape()){
             notification = notification.transformed(QTransform().rotate(90.0));
             pos.setX(0);
-            pos.setY(frameBuffer->height() - notification.height());
+            pos.setY(frameBuffer.height() - notification.height());
         }
         auto updateRect = notification.rect().translated(pos);
         painter.drawImage(updateRect, notification);
         painter.end();
         qDebug() << "Updating screen " << updateRect << "...";
-        Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer->rect(), Blight::Grayscale, true);
+        Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer.rect(), Blight::Grayscale/*, true*/);
         return updateRect;
     });
 }
 void NotificationAPI::errorNotification(const QString &text) {
     dispatchToMainThread([] {
         auto frameBuffer = getFrameBuffer();
-        qDebug() << "Waiting for other painting to finish...";
-        while (frameBuffer->paintingActive()) {
-            // TODO - don't spinlock
-        }
         qDebug() << "Displaying error text";
-        QPainter painter(frameBuffer);
-        painter.fillRect(frameBuffer->rect(), Qt::white);
+        QPainter painter(&frameBuffer);
+        painter.fillRect(frameBuffer.rect(), Qt::white);
         painter.end();
-        Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer->rect(), Blight::Mono, true);
+        Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer.rect(), Blight::Mono/*, true*/);
     });
     notificationAPI->paintNotification(text, "");
 }
@@ -142,8 +138,8 @@ QImage NotificationAPI::notificationImage(const QString& text, const QString& ic
     auto padding = 10;
     auto radius = 10;
     auto frameBuffer = getFrameBuffer();
-    auto size = frameBuffer->size();
-    auto boundingRect = QPainter(frameBuffer).fontMetrics().boundingRect(
+    auto size = frameBuffer.size();
+    auto boundingRect = QPainter(&frameBuffer).fontMetrics().boundingRect(
         QRect(0, 0, size.width() / 2, size.height() / 8),
         Qt::AlignCenter | Qt::TextWordWrap, text
     );
@@ -184,11 +180,11 @@ QImage NotificationAPI::notificationImage(const QString& text, const QString& ic
 }
 
 void NotificationAPI::drawNotificationText(const QString& text, QColor color, QColor background){
-    auto frameBuffer = getFrameBuffer();
-    dispatchToMainThread([frameBuffer, text, color, background]{
-        QPainter painter(frameBuffer);
+    dispatchToMainThread([text, color, background]{
+        auto frameBuffer = getFrameBuffer();
+        QPainter painter(&frameBuffer);
         int padding = 10;
-        auto size = frameBuffer->size();
+        auto size = frameBuffer.size();
         auto fm = painter.fontMetrics();
         int textHeight = fm.height() + padding;
         QImage textImage(

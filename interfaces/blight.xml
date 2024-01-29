@@ -44,5 +44,8 @@
     <method name="getSurfaces">
       <arg type="as" direction="out"/>
     </method>
+    <method name="frameBuffer">
+      <arg type="h" direction="out"/>
+    </method>
   </interface>
 </node>

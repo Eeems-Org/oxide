@@ -148,7 +148,7 @@ namespace Oxide {
 
         void repaint(QWindow* window, QRectF rect, Blight::WaveformMode waveform, bool sync){
             auto buf = getSurfaceForWindow(window);
-            auto _marker = 0;
+            unsigned int _marker = 0;
             if(sync){
                 _marker = ++marker;
             }

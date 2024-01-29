@@ -29,6 +29,6 @@ public:
     int getSenderPgid();
 };
 QWindow* getFrameBufferWindow();
-QImage* getFrameBuffer();
+QImage getFrameBuffer();
 
 #endif // APIBASE_H

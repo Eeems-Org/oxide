@@ -904,9 +904,9 @@ QStringList Application::getActiveMounts(){
     return activeMounts;
 }
 void Application::showSplashScreen(){
-    auto frameBuffer = getFrameBuffer();
+    return;
     qDebug() << "Waiting for other painting to finish...";
-    Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this, frameBuffer](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -914,19 +914,13 @@ void Application::showSplashScreen(){
 #else
             Q_UNUSED(t);
 #endif
-        Oxide::Sentry::sentry_span(t, "wait", "Wait for screen to be ready", [frameBuffer](){
-            dispatchToMainThread([frameBuffer]{
-                while(frameBuffer->paintingActive()){
-                    // TODO - don't spinlock
-                }
-            });
-        });
         qDebug() << "Displaying splashscreen for" << name();
-        Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this, frameBuffer](){
-            dispatchToMainThread([this, frameBuffer]{
-                QPainter painter(frameBuffer);
-                auto size = frameBuffer->size();
-                auto rect = frameBuffer->rect();
+        Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
+            dispatchToMainThread([this]{
+                auto frameBuffer = getFrameBuffer();
+                QPainter painter(&frameBuffer);
+                auto size = frameBuffer.size();
+                auto rect = frameBuffer.rect();
                 auto fm = painter.fontMetrics();
                 painter.fillRect(rect, Qt::white);
                 QString splashPath = splash();
@@ -946,11 +940,11 @@ void Application::showSplashScreen(){
                         QPoint(
                             (size.width() / 2) - (splashWidth / 2),
                             (size.height() / 2) - (splashWidth / 2)
-                            ),
+                        ),
                         splashSize
-                        );
+                    );
                     painter.drawImage(splashRect, splash, splash.rect());
-                    Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer->rect(), Blight::HighQualityGrayscale, true);
+                    Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer.rect(), Blight::HighQualityGrayscale/*, true*/);
                 }
                 painter.end();
                 notificationAPI->drawNotificationText("Loading " + displayName() + "...");

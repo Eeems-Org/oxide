@@ -11,6 +11,7 @@
 #include <liboxide.h>
 #include <liboxide/oxideqml.h>
 #include <libblight.h>
+#include <libblight/connection.h>
 
 #include "dbusservice.h"
 #include "controller.h"
@@ -65,6 +66,12 @@ int main(int argc, char* argv[]){
         }
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
+    Blight::connection()->onDisconnect([](int res){
+        // TODO - attempt to reconnect
+        if(res){
+            qApp->exit(res);
+        }
+    });
     qputenv("XDG_CURRENT_DESKTOP", "OXIDE");
     QThread::currentThread()->setObjectName("main");
     qputenv("QMLSCENE_DEVICE", "software");

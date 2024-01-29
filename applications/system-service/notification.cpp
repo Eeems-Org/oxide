@@ -175,7 +175,8 @@ void Notification::setOwner(QString owner){
 
 bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }
 
-void Notification::paintNotification(Application *resumeApp) {
+void Notification::paintNotification(Application *resumeApp){
+    return;
     qDebug() << "Painting notification" << identifier();
     dispatchToMainThread([this] { screenBackup = screenAPI->copy(); });
     updateRect = notificationAPI->paintNotification(text(), m_icon);
@@ -184,11 +185,11 @@ void Notification::paintNotification(Application *resumeApp) {
     QTimer::singleShot(2000, [this, resumeApp] {
         dispatchToMainThread([this]{
             auto frameBuffer = getFrameBuffer();
-            QPainter painter(frameBuffer);
+            QPainter painter(&frameBuffer);
             painter.drawImage(updateRect, screenBackup, updateRect);
             painter.end();
             qDebug() << "Finished displaying notification" << identifier();
-            Oxide::QML::repaint(getFrameBufferWindow(), updateRect, Blight::Mono, true);
+            Oxide::QML::repaint(getFrameBufferWindow(), updateRect, Blight::Mono/*, true*/);
         });
         if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
             Oxide::dispatchToMainThread([resumeApp] {
