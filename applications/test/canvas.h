@@ -18,7 +18,9 @@ protected:
     void geometryChanged(const QRectF& newGeometry, const QRectF& oldGeometry) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
+#ifdef EPAPER
     Blight::shared_buf_t getSurfaceForWindow();
+#endif
 
 private:
     QPointF m_lastPoint;

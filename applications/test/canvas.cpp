@@ -46,6 +46,11 @@ void Canvas::mouseMoveEvent(QMouseEvent* event){
     p.setPen(QPen(Qt::black, 6));
     p.drawLine(m_lastPoint, event->localPos());
     p.end();
+    const QPoint globalStart = mapToScene(m_lastPoint).toPoint();
+    const QPoint globalEnd = event->globalPos();
+    auto rect = QRect(globalStart, globalEnd)
+        .normalized()
+        .marginsAdded(QMargins(24, 24, 24, 24));
 #ifdef EPAPER
     {
         auto buf = getSurfaceForWindow();
@@ -53,12 +58,7 @@ void Canvas::mouseMoveEvent(QMouseEvent* event){
         QPainter p(&image);
         p.setClipRect(mapRectToScene(boundingRect()));
         p.setPen(QPen(Qt::black, 6));
-        const QPoint globalStart = mapToScene(m_lastPoint).toPoint();
-        const QPoint globalEnd = event->globalPos();
         p.drawLine(globalStart, globalEnd);
-        auto rect = QRect(globalStart, globalEnd)
-            .normalized()
-            .marginsAdded(QMargins(24, 24, 24, 24));
         qDebug() << rect << QRect(buf->x, buf->y, buf->width, buf->height);
         Blight::connection()->repaint(
             buf,
@@ -70,16 +70,12 @@ void Canvas::mouseMoveEvent(QMouseEvent* event){
         );
     }
 #else
-    const QPoint globalStart = mapToScene(m_lastPoint).toPoint();
-    const QPoint globalEnd = event->globalPos();
-    auto rect = QRect(globalStart, globalEnd)
-        .normalized()
-        .marginsAdded(QMargins(24, 24, 24, 24));
     update(rect);
 #endif
     m_lastPoint = event->localPos();
 }
 
+#ifdef EPAPER
 Blight::shared_buf_t Canvas::getSurfaceForWindow(){
     static auto fn = (Blight::shared_buf_t(*)(QWindow*))qGuiApp->platformFunction("getSurfaceForWindow");
     if(fn == nullptr){
@@ -87,3 +83,4 @@ Blight::shared_buf_t Canvas::getSurfaceForWindow(){
     }
     return fn(window());
 }
+#endif
