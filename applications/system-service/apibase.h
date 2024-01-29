@@ -6,6 +6,7 @@
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
+#include <QImage>
 
 #include <liboxide.h>
 #include <unistd.h>
@@ -27,5 +28,7 @@ public:
     int getSenderPid();
     int getSenderPgid();
 };
+QWindow* getFrameBufferWindow();
+QImage* getFrameBuffer();
 
 #endif // APIBASE_H

@@ -251,6 +251,25 @@ void DbusInterface::setFlags(QString identifier, const QStringList& flags, QDBus
     }
 }
 
+QStringList DbusInterface::getSurfaces(QDBusMessage message){
+    if(message.service() != "codes.eeems.oxide1"){
+        sendErrorReply(QDBusError::AccessDenied, "Access denied");
+        return QStringList();
+    }
+    QStringList surfaces;
+    for(auto connection : qAsConst(connections)){
+        if(!connection->isRunning()){
+            continue;
+        }
+        for(auto& surface : connection->getSurfaces()){
+            if(surface != nullptr){
+                surfaces.append(surface->id());
+            }
+        }
+    }
+    return surfaces;
+}
+
 Connection* DbusInterface::focused(){ return m_focused; }
 
 void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){

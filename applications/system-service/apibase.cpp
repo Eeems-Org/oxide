@@ -1,6 +1,8 @@
 #include "apibase.h"
 #include "appsapi.h"
 
+#include <liboxide/oxideqml.h>
+
 int APIBase::hasPermission(QString permission, const char* sender){
     if(getpgid(getpid()) == getSenderPgid()){
         return true;
@@ -30,3 +32,13 @@ int APIBase::getSenderPid() {
 int APIBase::getSenderPgid() { return getpgid(getSenderPid()); }
 
 #include "moc_apibase.cpp"
+
+QImage* getFrameBuffer(){
+    static auto framebuffer = Oxide::QML::getImageForWindow(getFrameBufferWindow());
+    return &framebuffer;
+}
+
+QWindow* getFrameBufferWindow(){
+    static auto window = qApp->focusWindow();
+    return window;
+}

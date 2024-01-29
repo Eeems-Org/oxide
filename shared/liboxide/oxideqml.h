@@ -8,9 +8,7 @@
 #include <QQuickPaintedItem>
 #include <QBrush>
 
-#ifdef EPAPER
 #include <libblight/types.h>
-#endif
 
 namespace Oxide {
     namespace QML{
@@ -62,9 +60,14 @@ namespace Oxide {
             qreal m_penWidth;
         };
 
-#ifdef EPAPER
         Blight::shared_buf_t getSurfaceForWindow(QWindow* window);
-#endif
+        QImage getImageForWindow(QWindow* window);
+        void repaint(
+            QWindow* window,
+            QRectF rect,
+            Blight::WaveformMode waveform = Blight::WaveformMode::HighQualityGrayscale,
+            bool sync = false
+        );
 
         OxideQml* getSingleton();
         void registerQML(QQmlApplicationEngine* engine);

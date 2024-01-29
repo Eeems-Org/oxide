@@ -2,15 +2,16 @@
 #include "liboxide.h"
 
 #include <QPainter>
-
-#ifdef EPAPER
 #include <QQuickWindow>
 #include <QGuiApplication>
 #include <QFunctionPointer>
 
 #include <libblight.h>
 #include <libblight/connection.h>
-#endif
+#include <atomic>
+
+
+static std::atomic<unsigned int> marker = 0;
 
 namespace Oxide {
     namespace QML{
@@ -107,32 +108,19 @@ namespace Oxide {
             auto rect = QRect(globalStart, globalEnd)
                 .normalized()
                 .marginsAdded(QMargins(24, 24, 24, 24));
-#ifdef EPAPER
             {
-                auto buf = getSurfaceForWindow(window());
-                QImage image(buf->data, buf->width, buf->height, buf->stride, (QImage::Format)buf->format);
+                auto image = getImageForWindow(window());
                 QPainter p(&image);
                 p.setClipRect(mapRectToScene(boundingRect()));
                 p.setPen(pen);
                 p.drawLine(globalStart, globalEnd);
-                Blight::connection()->repaint(
-                    buf,
-                    rect.x(),
-                    rect.y(),
-                    rect.width(),
-                    rect.height(),
-                    Blight::WaveformMode::Mono
-                );
+                repaint(window(), rect, Blight::WaveformMode::Mono);
             }
-#else
-            update(rect);
-#endif
             m_lastPoint = event->localPos();
         }
 
         void Canvas::mouseReleaseEvent(QMouseEvent* event){
             Q_UNUSED(event);
-#ifdef EPAPER
             auto color = m_brush.color();
             if(
                 !m_brush.isOpaque()
@@ -140,22 +128,11 @@ namespace Oxide {
                     color != Qt::black || color != Qt::white
                 )
             ){
-                auto buf = getSurfaceForWindow(window());
-                auto rect = mapRectToScene(boundingRect());
-                Blight::connection()->repaint(
-                    buf,
-                    rect.x(),
-                    rect.y(),
-                    rect.width(),
-                    rect.height(),
-                    Blight::WaveformMode::Grayscale
-                );
+                repaint(window(), mapRectToScene(boundingRect()));
             }
-#endif
             emit drawDone();
         }
 
-#ifdef EPAPER
         Blight::shared_buf_t getSurfaceForWindow(QWindow* window){
             static auto fn = (Blight::shared_buf_t(*)(QWindow*))qGuiApp->platformFunction("getSurfaceForWindow");
             if(fn == nullptr){
@@ -163,6 +140,30 @@ namespace Oxide {
             }
             return fn(window);
         }
-#endif
+
+        QImage getImageForWindow(QWindow* window){
+            auto buf = getSurfaceForWindow(window);
+            return QImage(buf->data, buf->width, buf->height, buf->stride, (QImage::Format)buf->format);
+        }
+
+        void repaint(QWindow* window, QRectF rect, Blight::WaveformMode waveform, bool sync){
+            auto buf = getSurfaceForWindow(window);
+            auto _marker = 0;
+            if(sync){
+                _marker = ++marker;
+            }
+            Blight::connection()->repaint(
+                buf,
+                rect.x(),
+                rect.y(),
+                rect.width(),
+                rect.height(),
+                waveform,
+                _marker
+            );
+            if(sync){
+                Blight::connection()->waitForMarker(_marker);
+            }
+        }
     }
 }

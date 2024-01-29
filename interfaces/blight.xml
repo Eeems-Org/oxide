@@ -41,5 +41,8 @@
       <arg name="identifier" type="s" direction="in"/>
       <arg name="flags" type="as" direction="in"/>
     </method>
+    <method name="getSurfaces">
+      <arg type="as" direction="out"/>
+    </method>
   </interface>
 </node>

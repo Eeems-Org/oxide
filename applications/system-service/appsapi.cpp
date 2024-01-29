@@ -1,14 +1,9 @@
 #include <liboxide.h>
+#include <liboxide/oxideqml.h>
 
 #include "appsapi.h"
 #include "notificationapi.h"
 #include "systemapi.h"
-
-#ifdef EPAPER
-#include <epframebuffer.h>
-#else
-#define FRAMEBUFFER new QImage(200, 200, QImage::Format_ARGB32_Premultiplied)
-#endif
 
 using namespace Oxide;
 
@@ -858,41 +853,31 @@ AppsAPI::~AppsAPI() {
     m_stopping = true;
     writeApplications();
     settings.sync();
-    dispatchToMainThread([this] {
-#ifdef EPAPER
-        auto frameBuffer = EPFrameBuffer::framebuffer();
+    dispatchToMainThread([this]{
+        auto frameBuffer = getFrameBuffer();
         qDebug() << "Waiting for other painting to finish...";
-        while (frameBuffer->paintingActive()) {
-            EPFrameBuffer::waitForLastUpdate();
+        while(frameBuffer->paintingActive()){
+            // TODO - don't spinlock
         }
-#else
-        auto frameBuffer = FRAMEBUFFER;
-#endif
         QPainter painter(frameBuffer);
         auto rect = frameBuffer->rect();
         auto fm = painter.fontMetrics();
         qDebug() << "Clearing screen...";
         painter.setPen(Qt::white);
         painter.fillRect(rect, Qt::black);
-#ifdef EPAPER
-        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-        EPFrameBuffer::waitForLastUpdate();
-#endif
+        Oxide::QML::repaint(getFrameBufferWindow(), rect, Blight::Mono, true);
         painter.end();
         qDebug() << "Stopping applications...";
-        for (auto app : applications) {
+        for(auto app : applications){
             if (app->stateNoSecurityCheck() != Application::Inactive) {
                 auto text = "Stopping " + app->displayName() + "...";
                 qDebug() << text.toStdString().c_str();
                 notificationAPI->drawNotificationText(text, Qt::white, Qt::black);
-#ifdef EPAPER
-                EPFrameBuffer::waitForLastUpdate();
-#endif
             }
             app->stopNoSecurityCheck();
         }
         qDebug() << "Ensuring all applications have stopped...";
-        for (auto app : applications) {
+        for(auto app : applications){
             app->waitForFinished();
             app->deleteLater();
         }
@@ -909,14 +894,8 @@ AppsAPI::~AppsAPI() {
             painter2.translate(-x, -y);
         }
         painter2.drawText(rect, Qt::AlignCenter, "Goodbye!");
-#ifdef EPAPER
-        EPFrameBuffer::waitForLastUpdate();
-        EPFrameBuffer::sendUpdate(rect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-#endif
+        Oxide::QML::repaint(getFrameBufferWindow(), rect, Blight::Mono, true);
         painter2.end();
-#ifdef EPAPER
-        EPFrameBuffer::waitForLastUpdate();
-#endif
     });
 }
 #include "moc_appsapi.cpp"

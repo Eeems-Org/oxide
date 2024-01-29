@@ -18,8 +18,6 @@ SOURCES += \
     digitizerhandler.cpp \
     eventlistener.cpp \
     fifohandler.cpp \
-    keyboarddevice.cpp \
-    keyboardhandler.cpp \
     network.cpp \
     notification.cpp \
     notificationapi.cpp \
@@ -72,8 +70,6 @@ HEADERS += \
     digitizerhandler.h \
     eventlistener.h \
     fifohandler.h \
-    keyboarddevice.h \
-    keyboardhandler.h \
     network.h \
     notification.h \
     notificationapi.h \
@@ -102,6 +98,7 @@ DISTFILES += \
 INCLUDEPATH += ../../shared/mxcfb
 
 include(../../qmake/liboxide.pri)
+include(../../qmake/libblight.pri)
 
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 

@@ -2,11 +2,8 @@
 
 #include "notificationapi.h"
 #include "systemapi.h"
-#ifdef EPAPER
-#include <epframebuffer.h>
-#else
-#define FRAMEBUFFER new QImage(200, 200, QImage::Format_ARGB32_Premultiplied)
-#endif
+
+#include <liboxide/oxideqml.h>
 
 NotificationAPI* NotificationAPI::singleton(NotificationAPI* self){
     static NotificationAPI* instance;
@@ -16,7 +13,13 @@ NotificationAPI* NotificationAPI::singleton(NotificationAPI* self){
     return instance;
 }
 
-NotificationAPI::NotificationAPI(QObject* parent) : APIBase(parent), notificationDisplayQueue(), m_enabled(false), m_notifications(), m_lock() {
+NotificationAPI::NotificationAPI(QObject* parent)
+: APIBase(parent),
+  notificationDisplayQueue(),
+  m_enabled(false),
+  m_notifications(),
+  m_lock()
+{
     Oxide::Sentry::sentry_transaction("apps", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
             singleton(this);
@@ -104,11 +107,7 @@ QRect NotificationAPI::paintNotification(const QString &text, const QString &ico
     QImage notification = notificationImage(text, iconPath);
     return dispatchToMainThread<QRect>([&notification]{
         qDebug() << "Painting to framebuffer...";
-#ifdef EPAPER
-        auto frameBuffer = EPFrameBuffer::framebuffer();
-#else
-        auto frameBuffer = FRAMEBUFFER;
-#endif
+        auto frameBuffer = getFrameBuffer();
         QPainter painter(frameBuffer);
         QPoint pos(0, frameBuffer->height() - notification.height());
         if(systemAPI->landscape()){
@@ -119,53 +118,30 @@ QRect NotificationAPI::paintNotification(const QString &text, const QString &ico
         auto updateRect = notification.rect().translated(pos);
         painter.drawImage(updateRect, notification);
         painter.end();
-#ifdef EPAPER
         qDebug() << "Updating screen " << updateRect << "...";
-        EPFrameBuffer::sendUpdate(
-            updateRect,
-            EPFrameBuffer::Grayscale,
-            EPFrameBuffer::PartialUpdate,
-            true
-        );
-        EPFrameBuffer::waitForLastUpdate();
-#endif
+        Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer->rect(), Blight::Grayscale, true);
         return updateRect;
     });
 }
 void NotificationAPI::errorNotification(const QString &text) {
     dispatchToMainThread([] {
-#ifdef EPAPER
-        auto frameBuffer = EPFrameBuffer::framebuffer();
+        auto frameBuffer = getFrameBuffer();
         qDebug() << "Waiting for other painting to finish...";
         while (frameBuffer->paintingActive()) {
-            EPFrameBuffer::waitForLastUpdate();
+            // TODO - don't spinlock
         }
-#else
-        auto frameBuffer = FRAMEBUFFER;
-#endif
         qDebug() << "Displaying error text";
         QPainter painter(frameBuffer);
         painter.fillRect(frameBuffer->rect(), Qt::white);
         painter.end();
-#ifdef EPAPER
-        EPFrameBuffer::sendUpdate(
-            frameBuffer->rect(),
-            EPFrameBuffer::Mono,
-            EPFrameBuffer::FullUpdate,
-            true
-        );
-#endif
+        Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer->rect(), Blight::Mono, true);
     });
     notificationAPI->paintNotification(text, "");
 }
 QImage NotificationAPI::notificationImage(const QString& text, const QString& iconPath){
     auto padding = 10;
     auto radius = 10;
-#ifdef EPAPER
-    auto frameBuffer = EPFrameBuffer::framebuffer();
-#else
-    auto frameBuffer = FRAMEBUFFER;
-#endif
+    auto frameBuffer = getFrameBuffer();
     auto size = frameBuffer->size();
     auto boundingRect = QPainter(frameBuffer).fontMetrics().boundingRect(
         QRect(0, 0, size.width() / 2, size.height() / 8),
@@ -208,11 +184,7 @@ QImage NotificationAPI::notificationImage(const QString& text, const QString& ic
 }
 
 void NotificationAPI::drawNotificationText(const QString& text, QColor color, QColor background){
-#ifdef EPAPER
-    auto frameBuffer = EPFrameBuffer::framebuffer();
-#else
-    auto frameBuffer = FRAMEBUFFER;
-#endif
+    auto frameBuffer = getFrameBuffer();
     dispatchToMainThread([frameBuffer, text, color, background]{
         QPainter painter(frameBuffer);
         int padding = 10;
@@ -243,14 +215,7 @@ void NotificationAPI::drawNotificationText(const QString& text, QColor color, QC
         }
         auto textRect = textImage.rect().translated(textPos);
         painter.drawImage(textRect, textImage);
-#ifdef EPAPER
-        EPFrameBuffer::sendUpdate(
-            textRect,
-            EPFrameBuffer::Grayscale,
-            EPFrameBuffer::PartialUpdate,
-            true
-        );
-#endif
+        Oxide::QML::repaint(getFrameBufferWindow(), textRect, Blight::Grayscale);
         painter.end();
     });
 }

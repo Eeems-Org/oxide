@@ -4,6 +4,7 @@
 
 #include <signal.h>
 #include <liboxide.h>
+#include <liboxide/oxideqml.h>
 
 #include "application.h"
 #include "appsapi.h"
@@ -12,6 +13,7 @@
 #include "notificationapi.h"
 #include "screenapi.h"
 #include "buttonhandler.h"
+#include "apibase.h"
 
 using namespace Oxide::Applications;
 
@@ -131,9 +133,6 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
         Q_UNUSED(t);
 #endif
         interruptApplication();
-        if(!flags().contains("nosavescreen")){
-            saveScreen();
-        }
         if(startIfNone){
             appsAPI->resumeIfNone();
         }
@@ -246,9 +245,6 @@ void Application::resumeNoSecurityCheck(){
         appsAPI->recordPreviousApplication();
         qDebug() << "Resuming " << path();
         appsAPI->pauseAll();
-        if(!flags().contains("nosavescreen") && (type() != Backgroundable || stateNoSecurityCheck() == Paused)){
-            recallScreen();
-        }
         uninterruptApplication();
         waitForResume();
         emit resumed();
@@ -282,7 +278,6 @@ void Application::uninterruptApplication(){
                 case Background:
                 case Backgroundable:
                     if(stateNoSecurityCheck() == Paused){
-                        systemAPI->clearDeviceBuffers();
                         kill(-m_process->processId(), SIGCONT);
                     }
                     qDebug() << "Waiting for SIGUSR1 ack";
@@ -301,7 +296,6 @@ void Application::uninterruptApplication(){
                     break;
                 case Foreground:
                 default:
-                    systemAPI->clearDeviceBuffers();
                     kill(-m_process->processId(), SIGCONT);
                     startSpan("foreground", "Application is in the foreground");
             }
@@ -337,7 +331,6 @@ void Application::stopNoSecurityCheck(){
         Application* pausedApplication = nullptr;
         if(state == Paused){
             Oxide::Sentry::sentry_span(t, "resume", "Resume paused application", [this, &pausedApplication](){
-                systemAPI->clearDeviceBuffers();
                 auto currentApplication = appsAPI->currentApplicationNoSecurityCheck();
                 if(currentApplication.path() != path()){
                     pausedApplication = appsAPI->getApplication(currentApplication);
@@ -529,30 +522,6 @@ void Application::setConfig(const QVariantMap& config){
     if(!QFile::exists(bin())){
         setValue("bin", oldBin);
     }
-}
-
-void Application::saveScreen(){
-    if(m_screenCapture != nullptr){
-        return;
-    }
-    Oxide::Sentry::sentry_transaction("application", "saveScreen", [this](Oxide::Sentry::Transaction* t){
-        qDebug() << "Saving screen...";
-        QByteArray bytes;
-        Oxide::Sentry::sentry_span(t, "save", "Save the framebuffer", [&bytes]{
-            QBuffer buffer(&bytes);
-            buffer.open(QIODevice::WriteOnly);
-            dispatchToMainThread([&buffer]{
-                if(!EPFrameBuffer::framebuffer()->save(&buffer, "JPG", 100)){
-                    O_WARNING("Failed to save buffer");
-                }
-            });
-        });
-        qDebug() << "Compressing data...";
-        Oxide::Sentry::sentry_span(t, "compress", "Compress the framebuffer", [this, bytes]{
-            m_screenCapture = new QByteArray(qCompress(bytes));
-        });
-        qDebug() << "Screen saved " << m_screenCapture->size() << "bytes";
-    });
 }
 void Application::started(){
     emit launched();
@@ -937,7 +906,7 @@ QStringList Application::getActiveMounts(){
     return activeMounts;
 }
 void Application::showSplashScreen(){
-    auto frameBuffer = EPFrameBuffer::framebuffer();
+    auto frameBuffer = getFrameBuffer();
     qDebug() << "Waiting for other painting to finish...";
     Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this, frameBuffer](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
@@ -950,7 +919,7 @@ void Application::showSplashScreen(){
         Oxide::Sentry::sentry_span(t, "wait", "Wait for screen to be ready", [frameBuffer](){
             dispatchToMainThread([frameBuffer]{
                 while(frameBuffer->paintingActive()){
-                    EPFrameBuffer::waitForLastUpdate();
+                    // TODO - don't spinlock
                 }
             });
         });
@@ -983,16 +952,10 @@ void Application::showSplashScreen(){
                         splashSize
                         );
                     painter.drawImage(splashRect, splash, splash.rect());
-                    EPFrameBuffer::sendUpdate(frameBuffer->rect(), EPFrameBuffer::HighQualityGrayscale, EPFrameBuffer::FullUpdate, true);
+                    Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer->rect(), Blight::HighQualityGrayscale, true);
                 }
                 painter.end();
                 notificationAPI->drawNotificationText("Loading " + displayName() + "...");
-            });
-        });
-        qDebug() << "Waitng for screen to finish...";
-        Oxide::Sentry::sentry_span(t, "wait", "Wait for screen finish updating", [](){
-            dispatchToMainThread([]{
-                EPFrameBuffer::waitForLastUpdate();
             });
         });
     });
@@ -1023,50 +986,6 @@ void Application::startSpan(std::string operation, std::string description){
         return;
     }
     span = Oxide::Sentry::start_span(transaction, operation, description);
-}
-
-void Application::recallScreen() {
-    if (m_screenCapture == nullptr) {
-        return;
-    }
-    Oxide::Sentry::sentry_transaction(
-        "application", "recallScreen", [this](Oxide::Sentry::Transaction *t) {
-            qDebug() << "Uncompressing screen...";
-            QImage img;
-            Oxide::Sentry::sentry_span(
-                t, "decompress", "Decompress the framebuffer", [this, &img] {
-                    img = QImage::fromData(screenCaptureNoSecurityCheck(), "JPG");
-                });
-            if (img.isNull()) {
-                qDebug() << "Screen capture was corrupt";
-                qDebug() << m_screenCapture->size();
-                delete m_screenCapture;
-                return;
-            }
-            qDebug() << "Recalling screen...";
-            Oxide::Sentry::sentry_span(
-                t, "recall", "Recall the screen", [this, img] {
-                    dispatchToMainThread([img] {
-                        auto frameBuffer = EPFrameBuffer::framebuffer();
-                        auto size = frameBuffer->size();
-                        QRect rect(0, 0, size.width(), size.height());
-
-                        QPainter painter(frameBuffer);
-                        painter.drawImage(rect, img);
-                        painter.end();
-                        EPFrameBuffer::sendUpdate(
-                            rect,
-                            EPFrameBuffer::HighQualityGrayscale,
-                            EPFrameBuffer::FullUpdate,
-                            true
-                        );
-                        EPFrameBuffer::waitForLastUpdate();
-                    });
-                    delete m_screenCapture;
-                    m_screenCapture = nullptr;
-                });
-            qDebug() << "Screen recalled.";
-        });
 }
 
 void Application::waitForFinished(){

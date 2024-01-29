@@ -153,8 +153,6 @@ public:
 
     const QVariantMap& getConfig();
     void setConfig(const QVariantMap& config);
-    void saveScreen();
-    void recallScreen();
     void waitForFinished();
     void signal(int signal);
     QVariant value(QString name, QVariant defaultValue = QVariant());

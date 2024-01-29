@@ -87,8 +87,6 @@ public:
     void startLockTimer();
     void lock();
     void unlock();
-    void clearDeviceBuffers();
-    void clearKeyboardBuffers();
     Q_INVOKABLE void setSwipeEnabled(int direction, bool enabled);
     void setSwipeEnabled(SwipeDirection direction, bool enabled);
     Q_INVOKABLE bool getSwipeEnabled(int direction);

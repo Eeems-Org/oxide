@@ -1,13 +1,14 @@
 import QtQuick 2.15
 import QtQuick.Window 2.15
+import "qrc:/codes.eeems.oxide"
 
-Window{
+OxideWindow{
     width: Screen.width
     height: Screen.width
     x: 0
     y: 0
-    opacity: 0
     visible: true
+    backgroundColor: "transparent"
     Shortcut{
         sequences: ["Alt+Tab"]
         context: Qt.ApplicationShortcut
@@ -19,7 +20,7 @@ Window{
         onActivated: controller.screenshot()
     }
     Shortcut{
-        sequences: ["Ctrl+Shift+Esc", "Ctrl+Shift+1", Qt.Key_Launch0]
+        sequences: ["Ctrl+Shift+Esc", "Ctrl+Shift+1", "Launch0"]
         context: Qt.ApplicationShortcut
         onActivated: controller.processManager()
     }
@@ -29,12 +30,12 @@ Window{
         onActivated: controller.back()
     }
     Shortcut{
-        sequences: [Qt.Key_LogOff, Qt.Key_ScreenSaver, "End+L", "Meta+L"]
+        sequences: ["LogOff", "ScreenSaver", "End+L", "Meta+L"]
         context: Qt.ApplicationShortcut
         onActivated: controller.lock()
     }
     Shortcut{
-        sequences: [Qt.Key_Terminal, "Ctrl+Alt+T"]
+        sequences: ["Terminal", "Ctrl+Alt+T"]
         context: Qt.ApplicationShortcut
         onActivated: controller.terminal()
     }

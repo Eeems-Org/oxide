@@ -5,11 +5,7 @@
 #include "appsapi.h"
 #include "screenapi.h"
 
-#ifdef EPAPER
-#include <epframebuffer.h>
-#else
-#define FRAMEBUFFER new QImage(200, 200, QImage::Format_ARGB32_Premultiplied)
-#endif
+#include <liboxide/oxideqml.h>
 
 Notification::Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
  : QObject(parent),
@@ -186,25 +182,13 @@ void Notification::paintNotification(Application *resumeApp) {
     qDebug() << "Painted notification" << identifier();
     emit displayed();
     QTimer::singleShot(2000, [this, resumeApp] {
-        dispatchToMainThread([this] {
-#ifdef EPAPER
-            auto frameBuffer = EPFrameBuffer::framebuffer();
-#else
-            auto frameBuffer = FRAMEBUFFER;
-#endif
+        dispatchToMainThread([this]{
+            auto frameBuffer = getFrameBuffer();
             QPainter painter(frameBuffer);
             painter.drawImage(updateRect, screenBackup, updateRect);
             painter.end();
-#ifdef EPAPER
-            EPFrameBuffer::sendUpdate(
-                updateRect,
-                EPFrameBuffer::Mono,
-                EPFrameBuffer::FullUpdate,
-                true
-            );
             qDebug() << "Finished displaying notification" << identifier();
-            EPFrameBuffer::waitForLastUpdate();
-#endif
+            Oxide::QML::repaint(getFrameBufferWindow(), updateRect, Blight::Mono, true);
         });
         if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
             Oxide::dispatchToMainThread([resumeApp] {

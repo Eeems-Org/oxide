@@ -9,12 +9,15 @@
 #include <cstdlib>
 #include <filesystem>
 #include <liboxide.h>
+#include <liboxide/oxideqml.h>
+#include <libblight.h>
 
 #include "dbusservice.h"
 #include "controller.h"
 
 using namespace std;
 using namespace Oxide::Sentry;
+using namespace Oxide::QML;
 
 const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/oxide.pid";
@@ -45,12 +48,18 @@ bool stopProcess(pid_t pid){
 }
 
 int main(int argc, char* argv[]){
-    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
+#ifdef EPAPER
+    auto connected = Blight::connect(true);
+#else
+    auto connected = Blight::connect(false);
+#endif
+    if(!connected){
+        // TODO - attempt to start display server instance
         bool enabled = Oxide::debugEnabled();
         if(!enabled){
             qputenv("DEBUG", "1");
         }
-        O_WARNING("rm2fb not detected. Running xochitl instead!");
+        O_WARNING("Display server not available. Running xochitl instead!");
         if(!enabled){
             qputenv("DEBUG", "0");
         }
@@ -152,6 +161,7 @@ int main(int argc, char* argv[]){
         remove(pidPath);
     });
     QQmlApplicationEngine engine;
+    registerQML(&engine);
     QQmlContext* context = engine.rootContext();
     Controller controller(&app);
     context->setContextProperty("controller", &controller);

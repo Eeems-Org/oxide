@@ -58,6 +58,7 @@ private:
     bool m_enabled;
     QMap<QString, Notification*> m_notifications;
     QMutex m_lock;
+    QWindow* m_window;
 
     QString getPath(QString id);
 };
