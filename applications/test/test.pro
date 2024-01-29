@@ -7,6 +7,7 @@ CONFIG += qml_debug
 CONFIG += qtquickcompiler
 
 SOURCES += \
+        canvas.cpp \
         main.cpp
 
 TARGET = test_blight
@@ -23,3 +24,6 @@ RESOURCES += \
 
 include(../../qmake/liboxide.pri)
 include(../../qmake/libblight.pri)
+
+HEADERS += \
+    canvas.h

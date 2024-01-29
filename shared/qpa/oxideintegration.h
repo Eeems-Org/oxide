@@ -47,6 +47,7 @@ public:
     QAbstractEventDispatcher* createEventDispatcher() const override;
     QPlatformNativeInterface* nativeInterface() const override;
     QPlatformServices* services() const override;
+    QFunctionPointer platformFunction(const QByteArray& function) const override;
     OxideScreen* primaryScreen();
     unsigned short options() const;
     QStringList themeNames() const override;
@@ -61,6 +62,8 @@ public:
     bool ownsMode(QClipboard::Mode mode) const override;
 #endif
     static OxideIntegration* instance();
+    static Blight::shared_buf_t getSurfaceForWindowStatic(QWindow* qwindow);
+    static QImage getImageForWindowStatic(QWindow* qwindow);
 
 private:
     mutable QPlatformFontDatabase* m_fontDatabase = nullptr;

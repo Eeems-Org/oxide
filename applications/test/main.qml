@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.0
+import codes.eeems.test 1.0
 import "qrc:/codes.eeems.oxide"
 
 OxideWindow{
@@ -9,6 +10,12 @@ OxideWindow{
     objectName: "window"
     visible: true
     focus: true
+    Shortcut{
+        sequences: [StandardKey.Quit, StandardKey.Cancel, "Backspace", "Ctrl+Q", "Ctrl+W"]
+        context: Qt.ApplicationShortcut
+        autoRepeat: false
+        onActivated: Qt.quit()
+    }
     leftMenu: [
         Button{
             text: "Click to Quit"
@@ -36,14 +43,7 @@ OxideWindow{
     initialItem: Item{
         anchors.fill: parent
         focus: true
-        Shortcut{
-            sequences: [StandardKey.Quit, StandardKey.Cancel, "Backspace", "Ctrl+Q", "Ctrl+W"]
-            context: Qt.ApplicationShortcut
-            autoRepeat: false
-            onActivated: Qt.quit()
-        }
-        Rectangle{
-            color: "white"
+        Canvas{
             anchors.fill: parent
         }
         Label{

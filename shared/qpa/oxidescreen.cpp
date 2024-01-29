@@ -47,3 +47,12 @@ void OxideScreen::removeWindow(OxideWindow* window){
     m_windows.removeAll(window);
     window->requestActivateWindow();
 }
+
+OxideWindow* OxideScreen::getWindow(const WId& winId){
+    for(auto& window : m_windows){
+        if(window->winId() == winId){
+            return window;
+        }
+    }
+    return nullptr;
+}

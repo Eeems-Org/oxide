@@ -229,9 +229,25 @@ QPlatformNativeInterface* OxideIntegration::nativeInterface() const{
 
 QPlatformServices* OxideIntegration::services() const{
     if(m_debug){
-        qDebug() << "OxideIntegration::nativeInterface";
+        qDebug() << "OxideIntegration::services";
     }
     return const_cast<OxideIntegration*>(this);
+}
+
+Blight::shared_buf_t OxideIntegration::getSurfaceForWindowStatic(QWindow* qwindow){
+    auto screen = static_cast<OxideScreen*>(OxideScreen::platformScreenForWindow(qwindow));
+    auto window = screen->getWindow(qwindow->winId());
+    return window->backingStore()->buffer();
+}
+
+QFunctionPointer OxideIntegration::platformFunction(const QByteArray& function) const{
+    if(m_debug){
+        qDebug() << "OxideIntegration::platformFunction";
+    }
+    if(function == "getSurfaceForWindow"){
+        return QFunctionPointer((void(*))getSurfaceForWindowStatic);
+    }
+    return nullptr;
 }
 
 OxideScreen* OxideIntegration::primaryScreen(){ return m_primaryScreen; }

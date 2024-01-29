@@ -23,6 +23,7 @@ public:
     QString name() const override;
     void addWindow(OxideWindow* window);
     void removeWindow(OxideWindow* window);
+    OxideWindow* getWindow(const WId& winId);
 
 private:
     QRect m_geometry;
