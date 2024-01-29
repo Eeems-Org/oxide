@@ -47,9 +47,45 @@ OxideWindow{
             color: "white"
             anchors.fill: parent
         }
+        RowLayout{
+            id: buttons
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            Button{
+                text: "Black Pen"
+                onClicked: canvas.brush = Oxide.brushFromColor("black")
+            }
+            Button{
+                text: "White Pen"
+                onClicked: canvas.brush = Oxide.brushFromColor("white")
+            }
+            Item{
+                Layout.fillWidth: true
+            }
+            Button{
+                text: "3px"
+                onClicked: canvas.penWidth = 3
+            }
+            Button{
+                text: "6px"
+                onClicked: canvas.penWidth = 6
+            }
+            Button{
+                text: "12px"
+                onClicked: canvas.penWidth = 12
+            }
+            Button{
+                text: "24px"
+                onClicked: canvas.penWidth = 24
+            }
+        }
         Canvas{
-            anchors.fill: parent
-            penWidth: 3
+            id: canvas
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: buttons.bottom
+            anchors.bottom: parent.bottom
         }
         Label{
             text: "Ctrl-Q, Ctrl-W, Backspace, or Escape to quit"
