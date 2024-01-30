@@ -33,6 +33,9 @@
 
 #include "fifohandler.h"
 
+class Notification;
+#include "notification.h"
+
 // Must be included so that generate_xml.sh will work
 #include "../../shared/liboxide/meta.h"
 
@@ -208,6 +211,7 @@ private:
     QTextStream* p_stdout = nullptr;
     int p_stderr_fd = -1;
     QTextStream* p_stderr = nullptr;
+    Notification* m_notification = nullptr;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds);

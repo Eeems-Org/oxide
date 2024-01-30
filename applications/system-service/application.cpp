@@ -527,6 +527,11 @@ void Application::setConfig(const QVariantMap& config){
     }
 }
 void Application::started(){
+    if(m_notification != nullptr){
+        m_notification->remove();
+        m_notification = nullptr;
+    }
+    getFrameBufferWindow()->lower();
     emit launched();
     emit appsAPI->applicationLaunched(qPath());
 }
@@ -609,7 +614,7 @@ void Application::errorOccurred(QProcess::ProcessError error){
                 QUuid::createUuid().toString(),
                 "codes.eeems.tarnish",
                 "codes.eeems.tarnish",
-                QString("%1 failed to start").arg(name()),
+                QString("%1 failed to start").arg(displayName()),
                 ""
             )->display();
             if(transient()){
@@ -622,7 +627,7 @@ void Application::errorOccurred(QProcess::ProcessError error){
                 QUuid::createUuid().toString(),
                 "codes.eeems.tarnish",
                 "codes.eeems.tarnish",
-                QString("%1 crashed").arg(name()),
+                QString("%1 crashed").arg(displayName()),
                 ""
             )->display();
             break;
@@ -922,8 +927,6 @@ QStringList Application::getActiveMounts(){
     return activeMounts;
 }
 void Application::showSplashScreen(){
-    return;
-    qDebug() << "Waiting for other painting to finish...";
     Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
@@ -933,40 +936,53 @@ void Application::showSplashScreen(){
             Q_UNUSED(t);
 #endif
         qDebug() << "Displaying splashscreen for" << name();
-        // Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
-        //     dispatchToMainThread([this]{
-        //         auto frameBuffer = getFrameBuffer();
-        //         QPainter painter(&frameBuffer);
-        //         auto size = frameBuffer.size();
-        //         auto rect = frameBuffer.rect();
-        //         painter.fillRect(rect, Qt::white);
-        //         QString splashPath = splash();
-        //         if(splashPath.isEmpty() || !QFile::exists(splashPath)){
-        //             splashPath = icon();
-        //         }
-        //         if(!splashPath.isEmpty() && QFile::exists(splashPath)){
-        //             qDebug() << "Using image" << splashPath;
-        //             int splashWidth = size.width() / 2;
-        //             QSize splashSize(splashWidth, splashWidth);
-        //             QImage splash = QImage(splashPath);
-        //             if(systemAPI->landscape()){
-        //                 splash = splash.transformed(QTransform().rotate(90.0));
-        //             }
-        //             splash = splash.scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        //             QRect splashRect(
-        //                 QPoint(
-        //                     (size.width() / 2) - (splashWidth / 2),
-        //                     (size.height() / 2) - (splashWidth / 2)
-        //                 ),
-        //                 splashSize
-        //             );
-        //             painter.drawImage(splashRect, splash, splash.rect());
-        //             Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer.rect(), Blight::HighQualityGrayscale, true);
-        //         }
-        //         painter.end();
-        //         notificationAPI->drawNotificationText("Loading " + displayName() + "...");
-        //     });
-        // });
+        Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
+            dispatchToMainThread([this]{
+                auto frameBuffer = getFrameBuffer();
+                QPainter painter(&frameBuffer);
+                auto size = frameBuffer.size();
+                auto rect = frameBuffer.rect();
+                painter.fillRect(rect, Qt::white);
+                QString splashPath = splash();
+                if(splashPath.isEmpty() || !QFile::exists(splashPath)){
+                    splashPath = icon();
+                }
+                if(!splashPath.isEmpty() && QFile::exists(splashPath)){
+                    qDebug() << "Using image" << splashPath;
+                    int splashWidth = size.width() / 2;
+                    QSize splashSize(splashWidth, splashWidth);
+                    QImage splash = QImage(splashPath);
+                    if(systemAPI->landscape()){
+                        splash = splash.transformed(QTransform().rotate(90.0));
+                    }
+                    splash = splash.scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                    QRect splashRect(
+                      QPoint(
+                        (size.width() / 2) - (splashWidth / 2),
+                        (size.height() / 2) - (splashWidth / 2)
+                        ),
+                      splashSize
+                      );
+                    painter.drawImage(splashRect, splash, splash.rect());
+                    auto window = getFrameBufferWindow();
+                    if(window->isVisible()){
+                        Oxide::QML::repaint(window, frameBuffer.rect(), Blight::HighQualityGrayscale, true);
+                    }else{
+                        window->show();
+                        window->raise();
+                    }
+                }
+                painter.end();
+                m_notification = notificationAPI->add(
+                  QUuid::createUuid().toString(),
+                  "codes.eeems.tarnish",
+                  "codes.eeems.tarnish",
+                  QString("Loading %1...").arg(displayName()),
+                  ""
+                  );
+                m_notification->display();
+            });
+        });
     });
     qDebug() << "Finished painting splash screen for" << name();
 }
