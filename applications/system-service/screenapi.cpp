@@ -9,53 +9,73 @@ QDBusObjectPath ScreenAPI::screenshot(){
     if(!hasPermission("screen")){
         return QDBusObjectPath("/");
     }
-    qDebug() << "Taking screenshot";
+    O_INFO("Taking screenshot");
     auto filePath = getNextPath();
-#ifdef DEBUG
-    qDebug() << "Using path" << filePath;
-#endif
-    return dispatchToMainThread<QDBusObjectPath>([this, filePath]{
-        QImage screen = copy();
-        QRect rect = notificationAPI->paintNotification("Taking Screenshot...", "");
-        Oxide::QML::repaint(getFrameBufferWindow(), rect, Blight::Mono/*, true*/);
-        QDBusObjectPath path("/");
-        bool saved = (
-            systemAPI->landscape()
-                ? screen.transformed(QTransform().rotate(270.0))
-                : screen
-        ).save(filePath);
-        if(!saved){
-            qDebug() << "Failed to take screenshot";
-        }else{
-            path = addScreenshot(filePath)->qPath();
+    O_DEBUG("Using path" << filePath);
+    auto notification = notificationAPI->add(
+        QUuid::createUuid().toString(),
+        "codes.eeems.tarnish",
+        "codes.eeems.tarnish",
+        "Taking Screenshot...",
+        ""
+    );
+    notification->display();
+    QImage screen = copy();
+    bool saved = false;
+    QDBusObjectPath path("/");
+    if(screen.size().isEmpty()){
+        O_WARNING("Could not get copy of screen");
+    }else{
+        if(systemAPI->landscape()){
+            screen = screen.transformed(QTransform().rotate(270.0));
         }
-        notificationAPI->add(
-            QUuid::createUuid().toString(),
-            "codes.eeems.tarnish",
-            "codes.eeems.tarnish",
-            saved ? "Screenshot taken" : "Failed to take screenshot",
-            saved ? filePath : ""
-        )->display();
-        return path;
-    });
+        saved = screen.save(filePath);
+        if(saved){
+            path = addScreenshot(filePath)->qPath();
+        }else if(!saved){
+            O_WARNING("Failed to save screenshot");
+        }
+    }
+    notification->remove();
+    notificationAPI->add(
+        QUuid::createUuid().toString(),
+        "codes.eeems.tarnish",
+        "codes.eeems.tarnish",
+        saved ? "Screenshot taken" : "Failed to take screenshot",
+        saved ? filePath : ""
+    )->display();
+    return path;
 }
 
 QImage ScreenAPI::copy(){
-    return Oxide::dispatchToMainThread<QImage>([]{
-        return getFrameBuffer().copy();
-    });
+    auto compositor = getCompositorDBus();
+    auto reply = compositor->frameBuffer();
+    reply.waitForFinished();
+    if(reply.isError()){
+        O_WARNING("Failed to get framebuffer fd" << reply.error().message());
+        return QImage();
+    }
+    QDBusUnixFileDescriptor qfd = reply.value();
+    if(!qfd.isValid()){
+        O_WARNING("Framebuffer fd is not valid");
+        return QImage();
+    }
+    QFile file;
+    file.open(qfd.fileDescriptor(), QFile::ReadOnly);
+    auto data = file.map(0, file.size());
+    return QImage(data, 1404, 1872, 2808, QImage::Format_RGB16).copy();
 }
 
 QDBusObjectPath ScreenAPI::addScreenshot(QByteArray blob){
     if(!hasPermission("screen")){
         return QDBusObjectPath("/");
     }
-    qDebug() << "Adding external screenshot";
+    O_INFO("Adding external screenshot");
     mutex.lock();
     auto filePath = getNextPath();
     QFile file(filePath);
     if(!file.open(QIODevice::WriteOnly)){
-        qDebug("Failed to add screenshot");
+        O_WARNING("Failed to add screenshot");
         mutex.unlock();
         return QDBusObjectPath("");
     }
@@ -150,7 +170,7 @@ ScreenAPI::~ScreenAPI(){}
 
 void ScreenAPI::setEnabled(bool enabled){
     m_enabled = enabled;
-    qDebug() << "Screen API" << enabled;
+    O_INFO("Screen API" << enabled);
     for(auto screenshot : m_screenshots){
         if(enabled){
             screenshot->registerPath();
@@ -176,50 +196,5 @@ QList<QDBusObjectPath> ScreenAPI::screenshots(){
         list.append(screenshot->qPath());
     }
     return list;
-}
-
-bool ScreenAPI::drawFullscreenImage(QString path, double rotate){
-    if (!hasPermission("screen")) {
-        return false;
-    }
-    if (!QFile(path).exists()) {
-        qDebug() << "Can't find image" << path;
-        return false;
-    }
-    QImage img(path);
-    if (img.isNull()) {
-        qDebug() << "Image data invalid" << path;
-        return false;
-    }
-    if(rotate){
-        img = img.transformed(QTransform().rotate(rotate));
-    }
-    Oxide::Sentry::sentry_transaction(
-        "screen", "drawFullscrenImage",
-        [img, path](Oxide::Sentry::Transaction *t) {
-            Q_UNUSED(t);
-            Oxide::dispatchToMainThread([img]{
-                auto frameBuffer = getFrameBuffer();
-                QRect rect = frameBuffer.rect();
-                QPainter painter(&frameBuffer);
-                painter.fillRect(rect, Qt::white);
-                painter.setRenderHints(
-                    QPainter::Antialiasing | QPainter::SmoothPixmapTransform,
-                    1
-                    );
-                QPixmap pxmap;
-                QPoint center(rect.width() / 2, rect.height() / 2);
-                painter.translate(center);
-                painter.scale(
-                    1* (rect.width() / qreal(img.height())),
-                    1 * (rect.width() / qreal(img.height()))
-                    );
-                painter.translate(0 - img.width() / 2, 0 - img.height() / 2);
-                painter.drawPixmap(img.rect(), QPixmap::fromImage(img));
-                painter.end();
-                Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer.rect(), Blight::HighQualityGrayscale/*, true*/);
-            });
-        });
-    return true;
 }
 #include "moc_screenapi.cpp"

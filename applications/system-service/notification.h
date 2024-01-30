@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QImage>
 #include <QtDBus>
+#include <QQuickWindow>
 
 #include <liboxide.h>
 
@@ -23,7 +24,14 @@ class Notification : public QObject{
     Q_PROPERTY(QString icon READ icon WRITE setIcon)
 
 public:
-    Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent);
+    Notification(
+        const QString& path,
+        const QString& identifier,
+        const QString& owner,
+        const QString& application,
+        const QString& text,
+        const QString& icon, QObject* parent
+    );
     ~Notification();
     QString path();
     QDBusObjectPath qPath();
@@ -45,7 +53,7 @@ public:
     Q_INVOKABLE void display();
     Q_INVOKABLE void remove();
     Q_INVOKABLE void click();
-    void paintNotification(Application *resumeApp);
+    void paintNotification();
 
 signals:
     void changed(QVariantMap);
@@ -61,8 +69,6 @@ private:
     QString m_application;
     QString m_text;
     QString m_icon;
-    QImage screenBackup;
-    QRect updateRect;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 };

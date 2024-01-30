@@ -196,6 +196,34 @@ int main(int argc, char *argv[]){
         }
         O_DEBUG("Raising done" << buffer->surface);
         sleep(1);
+        O_DEBUG("Adding transparent hole");
+        image = QImage(
+            buffer->data,
+            resizedImage.width(),
+            resizedImage.height(),
+            resizedImage.bytesPerLine(),
+            (QImage::Format)buffer->format
+        );
+        QPainter p(&image);
+        p.fillRect(QRect(10, 10, 50, 50), Qt::transparent);
+        p.end();
+        O_DEBUG("Repainting" << buffer->surface);
+        {
+            auto ack = connection->repaint(
+                buffer,
+                0,
+                0,
+                geometry.width(),
+                geometry.height()
+            );
+            if(!ack.has_value()){
+                O_WARNING("Failed to repaint");
+                return EXIT_FAILURE;
+            }
+            ack.value()->wait();
+        }
+        O_DEBUG("Repainting done");
+        sleep(1);
         O_DEBUG("Validating surface count");
         auto surfaces = connection->surfaces();
         if(surfaces.size() != 1){
@@ -234,7 +262,7 @@ int main(int argc, char *argv[]){
     QQmlApplicationEngine engine;
     registerQML(&engine);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-    if (engine.rootObjects().isEmpty()){
+    if(engine.rootObjects().isEmpty()){
         O_WARNING("Nothing to display");
         return EXIT_FAILURE;
     }

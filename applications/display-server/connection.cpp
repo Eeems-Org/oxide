@@ -20,6 +20,10 @@
 #endif
 #include "surface.h"
 
+#define C_DEBUG(msg) O_DEBUG("[" << id() << "]" << msg)
+#define C_WARNING(msg) O_WARNING("[" << id() << "]" << msg)
+#define C_INFO(msg) O_INFO("[" << id() << "]" << msg)
+
 static int pidfd_open(pid_t pid, unsigned int flags){
     return syscall(SYS_pidfd_open, pid, flags);
 }
@@ -41,7 +45,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
     }
     int fds[2];
     if(::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) == -1){
-        O_WARNING("Unable to open socket pair:" << strerror(errno));
+        C_WARNING("Unable to open socket pair:" << strerror(errno));
     }
     m_clientFd = fds[0];
     m_serverFd = fds[1];
@@ -49,7 +53,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
     connect(m_notifier, &QSocketNotifier::activated, this, &Connection::readSocket);
 
     if(::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) == -1){
-        O_WARNING("Unable to open input socket pair:" << strerror(errno));
+        C_WARNING("Unable to open input socket pair:" << strerror(errno));
     }
     m_clientInputFd = fds[0];
     m_serverInputFd = fds[1];
@@ -67,7 +71,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
     connect(&m_notRespondingTimer, &QTimer::timeout, this, &Connection::notResponding);
     m_notRespondingTimer.start();
 
-    O_INFO("Connection" << id() << "created");
+    C_INFO("Connection created");
 }
 
 Connection::~Connection(){
@@ -81,13 +85,13 @@ Connection::~Connection(){
     ::close(m_clientFd);
     ::close(m_serverFd);
     ::close(m_pidFd);
-    O_INFO("Connection" << id() << "destroyed");
+    C_INFO("Connection destroyed");
 }
 
 void Connection::processRemovedSurfaces(){
     removedMutex.lock();
     if(!removedSurfaces.empty()){
-        O_DEBUG("Cleaning up old surfaces");
+        C_DEBUG("Cleaning up old surfaces");
         removedSurfaces.clear();
     }
     removedMutex.unlock();
@@ -106,6 +110,15 @@ int Connection::inputSocketDescriptor(){ return m_clientInputFd; }
 bool Connection::isValid(){ return m_clientFd > 0 && m_serverFd > 0 && isRunning(); }
 
 bool Connection::isRunning(){ return getpgid(m_pid) != -1; }
+
+bool Connection::isStopped(){
+    QFile file(QString("/proc/%1/stat").arg(m_pid));
+    if(!file.open(QFile::ReadOnly)){
+        O_WARNING("Failed checking process status" << file.errorString());
+        return false;
+    }
+    return file.readAll().split(' ')[2] == "T";
+}
 
 bool Connection::signal(int signal){
     if(!isRunning()){
@@ -230,13 +243,17 @@ const QList<std::shared_ptr<Surface>> Connection::getSurfaces(){
 }
 
 void Connection::inputEvents(unsigned int device, const std::vector<input_event>& events){
+    if(!isRunning() || isStopped()){
+        dbusInterface->sortZ();
+        return;
+    }
     // TODO - Allow non-blocking send.
     //        If the client isn't reading input, the buffer will fill up, and then the entire
     //        display server will freeze until the client reads it's first event.
     //        It's probably worth adding some sort of acking mechanism to this to ensure that
     //        events are being read, as well as don't send anything until the client tells you
     //        that it's ready to start reading events.
-//    O_DEBUG("Writing" << events.size() << "input events");
+    C_DEBUG("Writing" << events.size() << "input events");
     std::vector<Blight::event_packet_t> data(events.size());
     for(unsigned int i = 0; i < events.size(); i++){
         auto& ie = events[i];
@@ -252,31 +269,52 @@ void Connection::inputEvents(unsigned int device, const std::vector<input_event>
         reinterpret_cast<Blight::data_t>(data.data()),
         sizeof(Blight::event_packet_t) * data.size()
     )){
-        O_WARNING("Failed to write input event: " << std::strerror(errno));
+        C_WARNING("Failed to write input event: " << std::strerror(errno));
     }else{
-//        O_DEBUG("Write finished");
+        C_DEBUG("Write finished");
     }
 }
 
+bool Connection::has(const QString& flag){ return flags.contains(flag); }
+
+void Connection::set(const QString& flag){
+    if(!has(flag)){
+        flags.append(flag);
+    }
+}
+
+void Connection::unset(const QString& flag){ flags.removeAll(flag); }
+
 void Connection::readSocket(){
     if(m_notifier == nullptr){
-        O_DEBUG("Connection already closed, discarding data");
+        C_DEBUG("Connection already closed, discarding data");
         return;
     }
     m_notifier->setEnabled(false);
-    O_DEBUG("Data received");
+#ifdef ACK_DEBUG
+    C_DEBUG("Data received");
+#endif
     while(true){
         auto message = Blight::message_t::from_socket(m_serverFd);
         if(message->header.type == Blight::MessageType::Invalid){
             break;
         }
-        O_DEBUG(
-            "Handling message:"
-            << "type=" << message->header.type
-            << ", ackid=" << message->header.ackid
-            << ", size=" << message->header.size
-            << ", socket=" << m_serverFd
-        );
+#ifndef ACK_DEBUG
+        if(
+            message->header.type != Blight::MessageType::Ping
+            && message->header.type != Blight::MessageType::Ack
+        ){
+#endif
+            C_DEBUG(
+                "Handling message:"
+                << "type=" << message->header.type
+                << ", ackid=" << message->header.ackid
+                << ", size=" << message->header.size
+                << ", socket=" << m_serverFd
+            );
+#ifndef ACK_DEBUG
+        }
+#endif
         bool do_ack = true;
         unsigned int ack_size = 0;
         Blight::data_t ack_data = nullptr;
@@ -284,7 +322,7 @@ void Connection::readSocket(){
         switch(message->header.type){
             case Blight::MessageType::Repaint:{
                 auto repaint = Blight::repaint_t::from_message(message.get());
-                O_DEBUG(
+                C_DEBUG(
                     "Repaint requested:"
                     << QString("%6 (%1,%2) %3x%4 %5 %7")
                         .arg(repaint.x)
@@ -299,7 +337,7 @@ void Connection::readSocket(){
                 );
                 auto surface = getSurface(repaint.identifier);
                 if(surface == nullptr){
-                    O_WARNING("Could not find surface" << repaint.identifier);
+                    C_WARNING("Could not find surface" << repaint.identifier);
                     break;
                 }
                 QRect rect(
@@ -325,7 +363,7 @@ void Connection::readSocket(){
             }
             case Blight::MessageType::Move:{
                 auto move = Blight::move_t::from_message(message.get());
-                O_DEBUG(
+                C_DEBUG(
                     "Move requested:"
                     << QString("%3 (%1,%2)")
                            .arg(move.x)
@@ -336,7 +374,7 @@ void Connection::readSocket(){
                 );
                 auto surface = getSurface(move.identifier);
                 if(surface == nullptr){
-                    O_WARNING("Could not find surface" << move.identifier);
+                    C_WARNING("Could not find surface" << move.identifier);
                     break;
                 }
 #ifdef EPAPER
@@ -367,9 +405,9 @@ void Connection::readSocket(){
             }
             case Blight::MessageType::Info:{
                 auto identifier = (Blight::surface_id_t)*message->data.get();
-                O_DEBUG("Info requested:" << identifier);
+                C_DEBUG("Info requested:" << identifier);
                 if(!surfaces.contains(identifier)){
-                    O_WARNING("Could not find surface" << identifier);
+                    C_WARNING("Could not find surface" << identifier);
                     break;
                 }
                 auto surface = surfaces[identifier];
@@ -387,9 +425,9 @@ void Connection::readSocket(){
             }
             case Blight::MessageType::Delete:{
                 auto identifier = (Blight::surface_id_t)*message->data.get();
-                O_DEBUG("Delete requested:" << identifier);
+                C_DEBUG("Delete requested:" << identifier);
                 if(!surfaces.contains(identifier)){
-                    O_WARNING("Could not find surface" << identifier);
+                    C_WARNING("Could not find surface" << identifier);
                     break;
                 }
                 removedMutex.lock();
@@ -402,7 +440,7 @@ void Connection::readSocket(){
                 break;
             }
             case Blight::MessageType::List:{
-                O_DEBUG("List requested");
+                C_DEBUG("List requested");
                 std::vector<Blight::surface_id_t> list;
                 for(auto& item: surfaces){
                     if(item.second != nullptr){
@@ -417,13 +455,14 @@ void Connection::readSocket(){
             }
             case Blight::MessageType::Raise:{
                 auto identifier = (Blight::surface_id_t)*message->data.get();
-                O_DEBUG("Raise requested:" << identifier);
+                C_DEBUG("Raise requested:" << identifier);
                 if(!surfaces.contains(identifier)){
-                    O_WARNING("Could not find surface" << identifier);
+                    C_WARNING("Could not find surface" << identifier);
                     break;
                 }
                 auto surface = surfaces[identifier];
                 surface->setVisible(true);
+                surface->setZ(std::numeric_limits<int>::max());
                 dbusInterface->sortZ();
 #ifdef EPAPER
                 guiThread->enqueue(
@@ -441,9 +480,9 @@ void Connection::readSocket(){
             }
             case Blight::MessageType::Lower:{
                 auto identifier = (Blight::surface_id_t)*message->data.get();
-                O_DEBUG("Lower requested:" << identifier);
+                C_DEBUG("Lower requested:" << identifier);
                 if(!surfaces.contains(identifier)){
-                    O_WARNING("Could not find surface" << identifier);
+                    C_WARNING("Could not find surface" << identifier);
                     break;
                 }
                 auto surface = surfaces[identifier];
@@ -465,7 +504,7 @@ void Connection::readSocket(){
             case Blight::MessageType::Wait:{
 #ifdef EPAPER
                 auto marker = (unsigned int)*message->data.get();
-                O_DEBUG("Wait requested:" << marker);
+                C_DEBUG("Wait requested:" << marker);
                 mxcfb_update_marker_data data{ marker, 0 };
                 ioctl(guiThread->framebuffer(), MXCFB_WAIT_FOR_UPDATE_COMPLETE, &data);
 #endif
@@ -489,13 +528,13 @@ void Connection::readSocket(){
                     m_notRespondingTimer.start();
                     break;
                 }
-                O_WARNING("Unexpected ack from client" << message->header.ackid);
+                C_WARNING("Unexpected ack from client" << message->header.ackid);
                 break;
             default:
-                O_WARNING("Unexpected message type" << message->header.type);
+                C_WARNING("Unexpected message type" << message->header.type);
         }
         if(ack_size && ack_data == nullptr){
-            O_WARNING("Ack expected data, but none sent");
+            C_WARNING("Ack expected data, but none sent");
             ack_size = 0;
         }
         if(do_ack){
@@ -516,7 +555,11 @@ void Connection::notResponding(){
         m_pingTimer.stop();
         return;
     }
-    O_WARNING("Connection failed to respond to ping in time:" << id());
+    if(!isStopped()){
+        C_WARNING("Connection failed to respond to ping in time:" << id());
+    }else if(this == dbusInterface->focused()){
+        dbusInterface->sortZ();
+    }
     m_notRespondingTimer.start();
 }
 
@@ -527,11 +570,11 @@ void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::d
         reinterpret_cast<Blight::data_t>(&ack),
         sizeof(Blight::header_t)
     )){
-        O_WARNING("Failed to write ack header to socket:" << strerror(errno));
+        C_WARNING("Failed to write ack header to socket:" << strerror(errno));
     }else if(size && !Blight::send_blocking(m_serverFd, data, size)){
-        O_WARNING("Failed to write ack data to socket:" << strerror(errno));
+        C_WARNING("Failed to write ack data to socket:" << strerror(errno));
     }else{
-        O_DEBUG("Acked:" << ack.ackid);
+        C_DEBUG("Acked:" << ack.ackid);
     }
 }
 
@@ -539,19 +582,23 @@ void Connection::ping(){
     if(!isRunning()){
         return;
     }
-    Blight::header_t ping{
-        .type = Blight::MessageType::Ping,
-        .ackid = ++pingId,
-        .size = 0
-    };
-    if(!Blight::send_blocking(
-        m_serverFd,
-        reinterpret_cast<Blight::data_t>(&ping),
-        sizeof(Blight::header_t)
-    )){
-        O_WARNING("Failed to write to socket:" << strerror(errno));
-    }else{
-        O_DEBUG("Ping" << ping.ackid);
+    if(!isStopped()){
+        Blight::header_t ping{
+            .type = Blight::MessageType::Ping,
+            .ackid = ++pingId,
+            .size = 0
+        };
+        if(!Blight::send_blocking(
+            m_serverFd,
+            reinterpret_cast<Blight::data_t>(&ping),
+            sizeof(Blight::header_t)
+        )){
+            C_WARNING("Failed to write to socket:" << strerror(errno));
+        }else{
+#ifdef ACK_DEBUG
+            C_DEBUG("Ping" << ping.ackid);
+#endif
+        }
     }
     m_pingTimer.start();
 }

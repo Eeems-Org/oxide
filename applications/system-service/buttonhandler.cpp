@@ -16,9 +16,7 @@ void flush_stream(istream* stream){
     stream->read((char*)&ie, sie);
 }
 void press_button(event_device& evdev, int code, istream* stream){
-#ifdef DEBUG
-    qDebug() << "inject button " << code;
-#endif
+    O_DEBUG("inject button " << code);
     evdev.unlock();
     evdev.write(EV_KEY, code, 1);
     flush_stream(stream);
@@ -38,7 +36,7 @@ ButtonHandler* ButtonHandler::init(){
     }
     // Get event devices
     if(buttons.fd == -1){
-        qDebug() << "Failed to open event device: " << buttons.device.c_str();
+        O_WARNING("Failed to open event device: " << buttons.device.c_str());
         throw QException();
     }
     if(atexit(button_exit_handler)){
@@ -66,9 +64,7 @@ void ButtonHandler::clear_buffer(){
     if(buttons.fd == -1){
         return;
     }
-#ifdef DEBUG
-    qDebug() << "Clearing event buffer on" << buttons.device.c_str();
-#endif
+    O_DEBUG("Clearing event buffer on" << buttons.device.c_str());
     ::write(buttons.fd, flood, EVENT_FLOOD_SIZE);
 }
 
@@ -78,9 +74,9 @@ void ButtonHandler::run(){
     char name[256];
     memset(name, 0, sizeof(name));
     ioctl(buttons.fd, EVIOCGNAME(sizeof(name)), name);
-    qDebug() << "Reading From : " << buttons.device.c_str() << " (" << name << ")";
+    O_DEBUG("Reading From : " << buttons.device.c_str() << " (" << name << ")");
     buttons.lock();
-    qDebug() << "Registering exit handler...";
+    O_DEBUG("Registering exit handler...");
     // Mapping the correct button IDs.
     unordered_map<int, PressRecord> map;
     map[105] = PressRecord("Left", Qt::Key_Left);
@@ -88,7 +84,7 @@ void ButtonHandler::run(){
     map[106] = PressRecord("Right", Qt::Key_Right);
     map[116] = PressRecord("Power", Qt::Key_PowerOff);
 
-    qDebug() << "Listening for keypresses...";
+    O_DEBUG("Listening for keypresses...");
     // Get the size of an input event in the right format!
     input_event ie;
     streamsize sie = static_cast<streamsize>(sizeof(struct input_event));
@@ -162,7 +158,7 @@ void ButtonHandler::keyDown(Qt::Key key){
     if(!m_enabled){
         return;
     }
-    qDebug() << "Down" << key;
+    O_DEBUG("Down" << key);
     if(validKeys.contains(key) && !pressed.contains(key)){
         QElapsedTimer timer;
         timer.start();
@@ -174,7 +170,7 @@ void ButtonHandler::keyUp(Qt::Key key){
     if(!m_enabled){
         return;
     }
-    qDebug() << "Up" << key;
+    O_DEBUG("Up" << key);
     if(!pressed.contains(key)){
         // This should never happen
         return;
@@ -201,7 +197,7 @@ void ButtonHandler::timeout(){
         if(!pressed.value(key).hasExpired(700)){
             continue;
         }
-        qDebug() << "Key held" << key;
+        O_DEBUG("Key held" << key);
         switch(key){
             case Qt::Key_Left:
                 emit leftHeld();

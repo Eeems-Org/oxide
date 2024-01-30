@@ -1,7 +1,8 @@
 #include "oxidebackingstore.h"
 #include "oxideintegration.h"
 
-#include <qscreen.h>
+#include <QPainter>
+#include <QScreen>
 #include <QtCore/qdebug.h>
 #include <qpa/qplatformscreen.h>
 #include <private/qguiapplication_p.h>
@@ -32,9 +33,10 @@ QPaintDevice* OxideBackingStore::paintDevice(){ return &image; }
 void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoint& offset){
     Q_UNUSED(offset);
     Q_UNUSED(window);
-    if(mBuffer == nullptr){
+    if(mBuffer == nullptr || region.isEmpty()){
         return;
     }
+    qDebug() << "repaint" << mBuffer->surface << offset << region;
     if(mDebug){
         qDebug() << "OxideBackingStore::repaint:";
     }
@@ -45,7 +47,7 @@ void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoi
             rect.y(),
             rect.width(),
             rect.height(),
-            Blight::WaveformMode::Mono
+            Blight::WaveformMode::HighQualityGrayscale
         );
     }
 }
@@ -58,7 +60,8 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
     if(mDebug){
         qDebug() << "OxideBackingStore::resize:" << size;
     }
-    QImage blankImage(size, QImage::Format_RGB16);
+    qDebug() << "resize" << (mBuffer == nullptr ? 0 : mBuffer->surface) << size << region;
+    QImage blankImage(size, QImage::Format_ARGB32_Premultiplied);
     if(mBuffer == nullptr){
         auto maybe = Blight::createBuffer(
             window()->x(),
@@ -72,14 +75,24 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
             qWarning() << "Failed to create buffer:" << strerror(errno);
             return;
         }
-        mBuffer = maybe.value();
-        Blight::addSurface(mBuffer);
-        if(!mBuffer->surface){
+        auto buffer = maybe.value();
+        QImage(
+            buffer->data,
+            buffer->width,
+            buffer->height,
+            (QImage::Format)buffer->format
+        ).fill(Qt::transparent);
+        Blight::addSurface(buffer);
+        if(!buffer->surface){
             qWarning() << "Failed to create surface:" << strerror(errno);
             return;
         }
-
+        mBuffer = buffer;
     }else{
+        blankImage.fill(Qt::transparent);
+        QPainter p(&blankImage);
+        p.drawImage(blankImage.rect(), image, image.rect());
+        p.end();
         auto maybe = Blight::connection()->resize(
             mBuffer,
             blankImage.width(),
@@ -88,7 +101,7 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
             (Blight::data_t)blankImage.constBits()
         );
         if(!maybe.has_value()){
-            qWarning() << "Failed to resize surface:" << mBuffer->surface;
+            qWarning() << "Failed to resize surface:" << strerror(errno);
             return;
         }
         mBuffer = maybe.value();
@@ -99,6 +112,7 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
         mBuffer->height,
         (QImage::Format)mBuffer->format
     );
+    qDebug() << "resized" << mBuffer->surface;
 }
 
 bool OxideBackingStore::scroll(const QRegion& area, int dx, int dy){

@@ -204,14 +204,18 @@ namespace Oxide {
         if (strcmp(qt_version, QT_VERSION_STR) != 0){
             qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
         }
-    #ifdef __arm__
-        qputenv("QMLSCENE_DEVICE", "epaper");
-        qputenv("QT_QUICK_BACKEND","epaper");
-        qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
-    #endif
+        QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
+        qputenv("QMLSCENE_DEVICE", "software");
+        qputenv("QT_QUICK_BACKEND","software");
         if(touch){
-            qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
-            qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
+            qputenv(
+                "QT_QPA_PLATFORM",
+                QString("oxide:enable_fonts:%1")
+                    .arg(deviceSettings.getTouchEnvSetting())
+                    .toUtf8()
+            );
+        }else{
+            qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
         }
     }
 

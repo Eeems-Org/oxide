@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <QDBusMetaType>
 #include <liboxide/debug.h>
+#include <liboxide/epaper.h>
 #include <libblight/types.h>
 #include <libblight/socket.h>
 #include <cstring>
@@ -210,10 +211,8 @@ Blight::surface_id_t DbusInterface::addSurface(
 }
 
 void DbusInterface::repaint(QString identifier, QDBusMessage message){
-    if(message.service() != "codes.eeems.oxide1"){
-        sendErrorReply(QDBusError::AccessDenied, "Access denied");
-        return;
-    }
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
     auto surface = getSurface(identifier);
     if(surface == nullptr){
         sendErrorReply(QDBusError::BadAddress, "Surface not found");
@@ -237,8 +236,13 @@ QDBusUnixFileDescriptor DbusInterface::getSurface(Blight::surface_id_t identifie
 }
 
 void DbusInterface::setFlags(QString identifier, const QStringList& flags, QDBusMessage message){
-    if(message.service() != "codes.eeems.oxide1"){
-        sendErrorReply(QDBusError::AccessDenied, "Access denied");
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(identifier);
+    if(connection != nullptr){
+        for(auto& flag : flags){
+            connection->set(flag);
+        }
         return;
     }
     auto surface = getSurface(identifier);
@@ -252,10 +256,8 @@ void DbusInterface::setFlags(QString identifier, const QStringList& flags, QDBus
 }
 
 QStringList DbusInterface::getSurfaces(QDBusMessage message){
-    if(message.service() != "codes.eeems.oxide1"){
-        sendErrorReply(QDBusError::AccessDenied, "Access denied");
-        return QStringList();
-    }
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
     QStringList surfaces;
     for(auto connection : qAsConst(connections)){
         if(!connection->isRunning()){
@@ -271,11 +273,41 @@ QStringList DbusInterface::getSurfaces(QDBusMessage message){
 }
 
 QDBusUnixFileDescriptor DbusInterface::frameBuffer(QDBusMessage message){
-    if(message.service() != "codes.eeems.oxide1"){
-        sendErrorReply(QDBusError::AccessDenied, "Access denied");
-        return QDBusUnixFileDescriptor();
-    }
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
     return QDBusUnixFileDescriptor(::open("/dev/fb0", O_RDWR));
+}
+
+void DbusInterface::lower(QString identifier, QDBusMessage message){
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(identifier);
+    if(connection == nullptr){
+        sendErrorReply(QDBusError::BadAddress, "Connection not found");
+        return;
+    }
+    if(m_focused == connection){
+        m_focused = nullptr;
+    }
+    for(auto& surface : connection->getSurfaces()){
+        surface->setVisible(false);
+    }
+    sortZ();
+}
+
+void DbusInterface::raise(QString identifier, QDBusMessage message){
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(identifier);
+    if(connection == nullptr){
+        sendErrorReply(QDBusError::BadAddress, "Connection not found");
+        return;
+    }
+    for(auto& surface : connection->getSurfaces()){
+        surface->setVisible(true);
+        surface->setZ(std::numeric_limits<int>::max());
+    }
+    sortZ();
 }
 
 Connection* DbusInterface::focused(){ return m_focused; }
@@ -293,6 +325,11 @@ void DbusInterface::inputEvents(unsigned int device, const std::vector<input_eve
     if(m_focused != nullptr){
         m_focused->inputEvents(device, events);
     }
+    for(auto connection : qAsConst(connections)){
+        if(connection->has("system")){
+            connection->inputEvents(device, events);
+        }
+    }
 }
 
 Connection* DbusInterface::getConnection(QDBusMessage message){
@@ -302,6 +339,15 @@ Connection* DbusInterface::getConnection(QDBusMessage message){
             continue;
         }
         if(connection->pid() == pid){
+            return connection;
+        }
+    }
+    return nullptr;
+}
+
+Connection* DbusInterface::getConnection(QString identifier){
+    for(auto connection : qAsConst(connections)){
+        if(connection->id() == identifier){
             return connection;
         }
     }
@@ -352,7 +398,7 @@ Connection* DbusInterface::createConnection(int pid){
     });
     connect(connection, &Connection::focused, this, [this, connection]{
         for(auto& ptr : qAsConst(connections)){
-            if(ptr == connection){
+            if(ptr == connection && !ptr->has("system")){
                 m_focused = ptr;
                 O_INFO(connection->id() << "has focus");
                 break;
@@ -385,6 +431,12 @@ QList<std::shared_ptr<Surface>> DbusInterface::sortedSurfaces(){
             if(surface1 == nullptr || !surface1->visible()){
                 return true;
             }
+            if(surface0->has("system")){
+                return false;
+            }
+            if(surface1->has("system")){
+                return true;
+            }
             return surface0->z() < surface1->z();
         }
     );
@@ -394,7 +446,12 @@ QList<std::shared_ptr<Surface>> DbusInterface::sortedSurfaces(){
 QList<std::shared_ptr<Surface>> DbusInterface::visibleSurfaces(){
     QList<std::shared_ptr<Surface>> surfaces;
     for(auto& surface : sortedSurfaces()){
-        if(surface->visible()){
+        auto connection = surface->connection();
+        if(
+            surface->visible()
+            && connection->isRunning()
+            && !connection->isStopped()
+        ){
             surfaces.append(surface);
         }
     }
@@ -431,19 +488,33 @@ void DbusInterface::sortZ(){
         }
         surface->setZ(z++);
     }
-    if(m_focused != nullptr || sorted.empty()){
+    if(
+        m_focused != nullptr
+        && (
+            !m_focused->isRunning()
+            || m_focused->isStopped()
+        )
+    ){
+        m_focused = nullptr;
+    }else if(m_focused != nullptr || sorted.empty()){
         return;
     }
-    auto surface = sorted.last();
-    if(surface == nullptr){
-        return;
-    }
-    auto connection = surface->connection();
-    for(auto& ptr : connections){
-        if(ptr == connection){
-            m_focused = ptr;
-            break;
+    std::reverse(sorted.begin(), sorted.end());
+    for(auto& surface : sorted){
+        if(surface == nullptr){
+            continue;
         }
+        auto connection = surface->connection();
+        if(!connection->isRunning() || connection->isStopped()){
+            continue;
+        }
+        for(auto& ptr : connections){
+            if(ptr == connection && !ptr->has("system")){
+                m_focused = ptr;
+                break;
+            }
+        }
+        break;
     }
 }
 

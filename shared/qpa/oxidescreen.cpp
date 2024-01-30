@@ -20,7 +20,7 @@ void OxideScreen::setGeometry(QRect geometry){
 
 int OxideScreen::depth() const { return 16; }
 
-QImage::Format OxideScreen::format() const { return QImage::Format_RGB16; }
+QImage::Format OxideScreen::format() const { return QImage::Format_ARGB32_Premultiplied; }
 
 QSizeF OxideScreen::physicalSize() const{
     static const int dpi = 228;

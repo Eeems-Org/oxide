@@ -9,6 +9,10 @@
 #include <unistd.h>
 #include <liboxide/debug.h>
 
+#define S_DEBUG(msg) O_DEBUG("[" << id() << "]" << msg)
+#define S_WARNING(msg) O_WARNING("[" << id() << "]" << msg)
+#define S_INFO(msg) O_INFO("[" << id() << "]" << msg)
+
 Surface::Surface(
     Connection* connection,
     int fd,
@@ -27,7 +31,7 @@ Surface::Surface(
 {
     m_id = QString("%1/surface/%2").arg(connection->id()).arg(identifier);
     if(!file.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
-        O_WARNING("Failed to open file");
+        S_WARNING("Failed to open file");
     }
     data = file.map(0, m_stride * m_geometry.height());
     m_image = std::shared_ptr<QImage>(new QImage(
@@ -46,16 +50,15 @@ Surface::Surface(
             {"width", geometry.width()},
             {"height", geometry.height()},
             {"visible", true},
-            {"focus", true},
         }
     ));
     if(component == nullptr){
-        O_WARNING("Failed to create surface widget");
+        S_WARNING("Failed to create surface widget");
         return;
     }
     auto widget = component->findChild<SurfaceWidget*>("Surface");
     if(widget == nullptr){
-        O_WARNING("Failed to get surface widget");
+        S_WARNING("Failed to get surface widget");
         component->deleteLater();
         component = nullptr;
         return;
@@ -64,34 +67,15 @@ Surface::Surface(
     connect(this, &Surface::update, widget, &SurfaceWidget::update);
     connect(widget, &SurfaceWidget::activeFocusChanged, this, &Surface::activeFocusChanged);
     emit connection->focused();
-#ifdef EPAPER
-    // Draw on first display
-    guiThread->enqueue(
-        nullptr,
-        geometry,
-        EPFrameBuffer::HighQualityGrayscale,
-        0,
-        true
-    );
-#endif
-    O_INFO("Surface" << id() << "created");
+    setVisible(true);
+    S_INFO("Surface created");
 }
 
 Surface::~Surface(){
-    O_INFO("Surface" << id() << "destroyed");
+    S_INFO("Surface destroyed");
     file.close();
-#ifdef EPAPER
-    // Display whatever was beneath this when it's closed
-    guiThread->enqueue(
-        nullptr,
-        geometry(),
-        EPFrameBuffer::HighQualityGrayscale,
-        0,
-        true
-    );
-#endif
+    setVisible(false);
     if(component != nullptr){
-        component->setVisible(false);
         component->deleteLater();
         component = nullptr;
     }
@@ -124,6 +108,15 @@ void Surface::move(int x, int y){
 void Surface::setVisible(bool visible){
     if(component != nullptr){
         component->setVisible(visible);
+#ifdef EPAPER
+        guiThread->enqueue(
+            nullptr,
+            geometry(),
+            EPFrameBuffer::HighQualityGrayscale,
+            0,
+            true
+        );
+#endif
     }
 }
 

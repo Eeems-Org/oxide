@@ -32,6 +32,7 @@ public:
     int inputSocketDescriptor();
     bool isValid();
     bool isRunning();
+    bool isStopped();
     bool signal(int signal);
     bool signalGroup(int signal);
     void pause();
@@ -42,6 +43,9 @@ public:
     QStringList getSurfaceIdentifiers();
     const QList<std::shared_ptr<Surface>> getSurfaces();
     void inputEvents(unsigned int device, const std::vector<input_event>& events);
+    bool has(const QString& flag);
+    void set(const QString& flag);
+    void unset(const QString& flag);
 
 signals:
     void finished();
@@ -74,6 +78,7 @@ private:
     QTimer m_pingTimer;
     std::atomic_uint pingId;
     std::atomic_ushort m_surfaceId;
+    QStringList flags;
 
     void ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
 };

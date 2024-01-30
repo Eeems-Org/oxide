@@ -74,10 +74,7 @@ int main(int argc, char* argv[]){
     });
     qputenv("XDG_CURRENT_DESKTOP", "OXIDE");
     QThread::currentThread()->setObjectName("main");
-    qputenv("QMLSCENE_DEVICE", "software");
-    qputenv("QT_QUICK_BACKEND","software");
-    qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
-    QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
+    deviceSettings.setupQtEnvironment(false);
     QGuiApplication app(argc, argv);
     sentry_init("tarnish", argv);
     app.setOrganizationName("Eeems");
@@ -156,9 +153,6 @@ int main(int argc, char* argv[]){
     signal(SIGTERM, sigHandler);
 
     dbusService;
-    QTimer::singleShot(0, []{
-        dbusService->startup();
-    });
     QFile pidFile(pidPath);
     if(!pidFile.open(QFile::ReadWrite)){
         qWarning() << "Unable to create " << pidPath;
@@ -167,9 +161,8 @@ int main(int argc, char* argv[]){
     pidFile.seek(0);
     pidFile.write(actualPid.toUtf8());
     pidFile.close();
-    QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
-        remove(pidPath);
-    });
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, []{ remove(pidPath); });
+
     QQmlApplicationEngine engine;
     registerQML(&engine);
     QQmlContext* context = engine.rootContext();
@@ -179,5 +172,7 @@ int main(int argc, char* argv[]){
     if(engine.rootObjects().isEmpty()){
         qFatal("Failed to load main layout");
     }
+
+    QTimer::singleShot(0, [&engine]{ dbusService->startup(&engine); });
     return app.exec();
 }

@@ -33,12 +33,15 @@ void SurfaceWidget::updated(){ update(); }
 
 #ifdef EPAPER
 void SurfaceWidget::paint(QPainter* painter){
-    guiThread->enqueue(
-        surface(),
-        painter->clipBoundingRect().toRect(),
-        EPFrameBuffer::WaveformMode::HighQualityGrayscale,
-        0
-    );
+    auto surface = this->surface();
+    if(surface != nullptr){
+        guiThread->enqueue(
+            surface,
+            painter->clipBoundingRect().toRect(),
+            EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+            0
+        );
+    }
 }
 #else
 QSGNode* SurfaceWidget::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){

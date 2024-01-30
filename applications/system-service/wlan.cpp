@@ -91,7 +91,7 @@ int Wlan::link(){
         return std::stoi(out);
     }
     catch (const std::invalid_argument& e) {
-        qDebug() << "link failed: " << out.c_str();
+        O_WARNING("link failed: " << out.c_str());
         return 0;
     }
     return -100;
@@ -117,7 +117,7 @@ signed int Wlan::rssi(){
         return std::stoi(out);
     }
     catch (const std::invalid_argument& e) {
-        qDebug() << "signal failed: " << out.c_str();
+        O_WARNING("signal failed: " << out.c_str());
         return 0;
     }
     return -100;

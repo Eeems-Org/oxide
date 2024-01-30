@@ -20,16 +20,16 @@ void BSS::registerPath(){
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
-        qDebug() << "Registered" << path() << OXIDE_BSS_INTERFACE;
+        O_DEBUG("Registered" << path() << OXIDE_BSS_INTERFACE);
     }else{
-        qDebug() << "Failed to register" << path();
+        O_DEBUG("Failed to register" << path());
     }
 }
 
 void BSS::unregisterPath(){
     auto bus = QDBusConnection::systemBus();
     if(bus.objectRegisteredAt(path()) != nullptr){
-        qDebug() << "Unregistered" << path();
+        O_DEBUG("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }

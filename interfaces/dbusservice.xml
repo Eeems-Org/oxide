@@ -22,7 +22,5 @@
       <arg type="a{sv}" direction="out"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
     </method>
-    <method name="startup">
-    </method>
   </interface>
 </node>

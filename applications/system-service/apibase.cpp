@@ -3,12 +3,13 @@
 
 #include <QWindow>
 #include <liboxide/oxideqml.h>
+#include <libblight/meta.h>
 
 int APIBase::hasPermission(QString permission, const char* sender){
     if(getpgid(getpid()) == getSenderPgid()){
         return true;
     }
-    qDebug() << "Checking permission" << permission << "from" << sender;
+    O_DEBUG("Checking permission" << permission << "from" << sender);
     for(auto name : appsAPI->runningApplicationsNoSecurityCheck().keys()){
         auto app = appsAPI->getApplication(name);
         if(app == nullptr){
@@ -16,11 +17,11 @@ int APIBase::hasPermission(QString permission, const char* sender){
         }
         if(app->processId() == getSenderPgid()){
             auto result = app->permissions().contains(permission);
-            qDebug() << app->name() << result;
+            O_DEBUG(app->name() << result);
             return result;
         }
     }
-    qDebug() << "app not found, permission granted";
+    O_DEBUG("app not found, permission granted");
     return true;
 }
 
@@ -40,6 +41,20 @@ QWindow* getFrameBufferWindow(){
 QImage getFrameBuffer(){
     static auto frameBuffer = Oxide::QML::getImageForWindow(getFrameBufferWindow());
     return frameBuffer;
+}
+
+Compositor* getCompositorDBus(){
+    static auto compositor = new Compositor(
+        BLIGHT_SERVICE,
+        "/",
+#ifdef EPAPER
+        QDBusConnection::systemBus(),
+#else
+        QDBusConnection::sessionBus(),
+#endif
+        qApp
+    );
+    return compositor;
 }
 
 #include "moc_apibase.cpp"

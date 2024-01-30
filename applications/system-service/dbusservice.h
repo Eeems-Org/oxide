@@ -10,6 +10,8 @@
 #include <QDBusConnection>
 #include <fstream>
 #include <QGuiApplication>
+#include <QQmlApplicationEngine>
+
 #include <liboxide.h>
 
 // Must be included so that generate_xml.sh will work
@@ -35,18 +37,18 @@ public:
     static DBusService* singleton();
     DBusService(QObject* parent);
     ~DBusService();
-    void setEnabled(bool enabled);;
+    void setEnabled(bool enabled);
 
     QObject* getAPI(QString name);
+    QQmlApplicationEngine* engine();
 
     int tarnishPid();
+    void startup(QQmlApplicationEngine* engine);
 
 public slots:
-    QDBusObjectPath requestAPI(QString name, QDBusMessage message);;
-    Q_NOREPLY void releaseAPI(QString name, QDBusMessage message);;
-    QVariantMap APIs();;
-
-    void startup();
+    QDBusObjectPath requestAPI(QString name, QDBusMessage message);
+    Q_NOREPLY void releaseAPI(QString name, QDBusMessage message);
+    QVariantMap APIs();
 
 
 signals:
@@ -58,6 +60,7 @@ private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);
 
 private:
+    QQmlApplicationEngine* m_engine;
     QMap<QString, APIEntry> apis;
 };
 

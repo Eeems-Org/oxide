@@ -195,6 +195,7 @@ void Application::interruptApplication(){
                     startSpan("stopped", "Application is stopped");
             }
         });
+        getCompositorDBus()->lower(QString("connection/%1").arg(m_process->processId()));
     });
 }
 void Application::waitForPause(){
@@ -301,6 +302,7 @@ void Application::uninterruptApplication(){
             }
         });
     });
+    getCompositorDBus()->raise(QString("connection/%1").arg(m_process->processId()));
 }
 void Application::stop(){
     if(!hasPermission("apps")){
@@ -328,6 +330,7 @@ void Application::stopNoSecurityCheck(){
                 qDebug() << "exit code: " << QProcess::execute(onStop(), QStringList());
             });
         }
+        getCompositorDBus()->lower(QString("connection/%1").arg(m_process->processId()));
         Application* pausedApplication = nullptr;
         if(state == Paused){
             Oxide::Sentry::sentry_span(t, "resume", "Resume paused application", [this, &pausedApplication](){
@@ -529,6 +532,7 @@ void Application::started(){
 }
 void Application::finished(int exitCode){
     qDebug() << "Application" << name() << "exit code" << exitCode;
+    getCompositorDBus()->lower(QString("connection/%1").arg(m_process->processId()));
     emit exited(exitCode);
     appsAPI->resumeIfNone();
     emit appsAPI->applicationExited(qPath(), exitCode);
@@ -601,12 +605,26 @@ void Application::errorOccurred(QProcess::ProcessError error){
             qDebug() << "Application" << name() << "failed to start.";
             emit exited(-1);
             emit appsAPI->applicationExited(qPath(), -1);
+            notificationAPI->add(
+                QUuid::createUuid().toString(),
+                "codes.eeems.tarnish",
+                "codes.eeems.tarnish",
+                QString("%1 failed to start").arg(name()),
+                ""
+            )->display();
             if(transient()){
                 unregister();
             }
             break;
         case QProcess::Crashed:
             qDebug() << "Application" << name() << "crashed.";
+            notificationAPI->add(
+                QUuid::createUuid().toString(),
+                "codes.eeems.tarnish",
+                "codes.eeems.tarnish",
+                QString("%1 crashed").arg(name()),
+                ""
+            )->display();
             break;
         case QProcess::Timedout:
             qDebug() << "Application" << name() << "timed out.";
@@ -915,41 +933,40 @@ void Application::showSplashScreen(){
             Q_UNUSED(t);
 #endif
         qDebug() << "Displaying splashscreen for" << name();
-        Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
-            dispatchToMainThread([this]{
-                auto frameBuffer = getFrameBuffer();
-                QPainter painter(&frameBuffer);
-                auto size = frameBuffer.size();
-                auto rect = frameBuffer.rect();
-                auto fm = painter.fontMetrics();
-                painter.fillRect(rect, Qt::white);
-                QString splashPath = splash();
-                if(splashPath.isEmpty() || !QFile::exists(splashPath)){
-                    splashPath = icon();
-                }
-                if(!splashPath.isEmpty() && QFile::exists(splashPath)){
-                    qDebug() << "Using image" << splashPath;
-                    int splashWidth = size.width() / 2;
-                    QSize splashSize(splashWidth, splashWidth);
-                    QImage splash = QImage(splashPath);
-                    if(systemAPI->landscape()){
-                        splash = splash.transformed(QTransform().rotate(90.0));
-                    }
-                    splash = splash.scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                    QRect splashRect(
-                        QPoint(
-                            (size.width() / 2) - (splashWidth / 2),
-                            (size.height() / 2) - (splashWidth / 2)
-                        ),
-                        splashSize
-                    );
-                    painter.drawImage(splashRect, splash, splash.rect());
-                    Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer.rect(), Blight::HighQualityGrayscale/*, true*/);
-                }
-                painter.end();
-                notificationAPI->drawNotificationText("Loading " + displayName() + "...");
-            });
-        });
+        // Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
+        //     dispatchToMainThread([this]{
+        //         auto frameBuffer = getFrameBuffer();
+        //         QPainter painter(&frameBuffer);
+        //         auto size = frameBuffer.size();
+        //         auto rect = frameBuffer.rect();
+        //         painter.fillRect(rect, Qt::white);
+        //         QString splashPath = splash();
+        //         if(splashPath.isEmpty() || !QFile::exists(splashPath)){
+        //             splashPath = icon();
+        //         }
+        //         if(!splashPath.isEmpty() && QFile::exists(splashPath)){
+        //             qDebug() << "Using image" << splashPath;
+        //             int splashWidth = size.width() / 2;
+        //             QSize splashSize(splashWidth, splashWidth);
+        //             QImage splash = QImage(splashPath);
+        //             if(systemAPI->landscape()){
+        //                 splash = splash.transformed(QTransform().rotate(90.0));
+        //             }
+        //             splash = splash.scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        //             QRect splashRect(
+        //                 QPoint(
+        //                     (size.width() / 2) - (splashWidth / 2),
+        //                     (size.height() / 2) - (splashWidth / 2)
+        //                 ),
+        //                 splashSize
+        //             );
+        //             painter.drawImage(splashRect, splash, splash.rect());
+        //             Oxide::QML::repaint(getFrameBufferWindow(), frameBuffer.rect(), Blight::HighQualityGrayscale, true);
+        //         }
+        //         painter.end();
+        //         notificationAPI->drawNotificationText("Loading " + displayName() + "...");
+        //     });
+        // });
     });
     qDebug() << "Finished painting splash screen for" << name();
 }

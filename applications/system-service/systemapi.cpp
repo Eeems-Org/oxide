@@ -43,9 +43,9 @@ void SystemAPI::PrepareForSleep(bool suspending){
             auto rotate = landscape() ? 90 : 0;
             Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", [rotate]{
                 if(QFile::exists("/usr/share/remarkable/sleeping.png")){
-                    screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png", rotate);
+                    // screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png", rotate);
                 }else{
-                    screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png", rotate);
+                    // screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png", rotate);
                 }
             });
             Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this, device]{
@@ -130,16 +130,17 @@ SystemAPI* SystemAPI::singleton(SystemAPI* self){
 }
 
 SystemAPI::SystemAPI(QObject* parent)
-    : APIBase(parent),
-      suspendTimer(this),
-      lockTimer(this),
-      settings(this),
-      sleepInhibitors(),
-      powerOffInhibitors(),
-      mutex(),
-      touches(),
-      swipeStates(),
-      swipeLengths() {
+: APIBase(parent),
+  suspendTimer(this),
+  lockTimer(this),
+  settings(this),
+  sleepInhibitors(),
+  powerOffInhibitors(),
+  mutex(),
+  touches(),
+  swipeStates(),
+  swipeLengths()
+{
     Oxide::Sentry::sentry_transaction("system", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "settings", "Sync settings", [this](Oxide::Sentry::Span* s){
             Oxide::Sentry::sentry_span(s, "swipes", "Default swipe values", [this]{

@@ -67,6 +67,8 @@ public slots:
     void setFlags(QString identifier, const QStringList& flags, QDBusMessage message);
     QStringList getSurfaces(QDBusMessage message);
     QDBusUnixFileDescriptor frameBuffer(QDBusMessage message);
+    void lower(QString identifier, QDBusMessage message);
+    void raise(QString identifier, QDBusMessage message);
 
 signals:
     void clipboardChanged(const QByteArray& data);
@@ -90,6 +92,7 @@ private:
     } clipboards;
 
     Connection* getConnection(QDBusMessage message);
+    Connection* getConnection(QString identifier);
     QObject* workspace();
     Connection* createConnection(int pid);
 };

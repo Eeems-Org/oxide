@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QtDBus>
 #include <QMutex>
+#include <QQuickWindow>
 
 #include <liboxide.h>
 
@@ -25,6 +26,7 @@ public:
     ~NotificationAPI();
     bool enabled();
     void setEnabled(bool enabled);
+    void startup();
 
     Q_INVOKABLE QDBusObjectPath get(QString identifier);
 
@@ -34,10 +36,8 @@ public:
 
     Notification* add(const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon);
     Notification* getByIdentifier(const QString& identifier);
-    QRect paintNotification(const QString& text, const QString& iconPath);
+    QQuickWindow* paintNotification(const QString& text, const QString& iconPath);
     void errorNotification(const QString& text);
-    QImage notificationImage(const QString& text, const QString& iconPath);
-    void drawNotificationText(const QString& text, QColor color = Qt::black, QColor background = Qt::transparent);
 
 public slots:
     QDBusObjectPath add(const QString& identifier, const QString& application, const QString& text, const QString& icon, QDBusMessage message);
@@ -58,7 +58,7 @@ private:
     bool m_enabled;
     QMap<QString, Notification*> m_notifications;
     QMutex m_lock;
-    QWindow* m_window;
+    QQuickWindow* m_window = nullptr;
 
     QString getPath(QString id);
 };

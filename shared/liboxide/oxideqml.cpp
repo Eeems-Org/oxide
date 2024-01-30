@@ -152,7 +152,7 @@ namespace Oxide {
             if(sync){
                 _marker = ++marker;
             }
-            Blight::connection()->repaint(
+            auto maybe = Blight::connection()->repaint(
                 buf,
                 rect.x(),
                 rect.y(),
@@ -161,7 +161,7 @@ namespace Oxide {
                 waveform,
                 _marker
             );
-            if(sync){
+            if(sync && maybe.has_value()){
                 Blight::connection()->waitForMarker(_marker);
             }
         }

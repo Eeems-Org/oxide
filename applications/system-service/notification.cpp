@@ -4,24 +4,33 @@
 #include "notificationapi.h"
 #include "appsapi.h"
 #include "screenapi.h"
+#include "dbusservice.h"
 
 #include <liboxide/oxideqml.h>
 
-Notification::Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
- : QObject(parent),
-   m_path(path),
-   m_identifier(identifier),
-   m_owner(owner),
-   m_application(application),
-   m_text(text),
-   m_icon(icon) {
+Notification::Notification(
+  const QString& path,
+  const QString& identifier,
+  const QString& owner,
+  const QString& application,
+  const QString& text,
+  const QString& icon,
+  QObject* parent
+)
+: QObject(parent),
+  m_path(path),
+  m_identifier(identifier),
+  m_owner(owner),
+  m_application(application),
+  m_text(text),
+  m_icon(icon)
+{
     m_created = QDateTime::currentSecsSinceEpoch();
-    if(!icon.isEmpty()){
-        return;
-    }
-    auto app = appsAPI->getApplication(m_application);
-    if(app != nullptr && !app->icon().isEmpty()){
-        m_icon = app->icon();
+    if(icon.isEmpty()){
+        auto app = appsAPI->getApplication(m_application);
+        if(app != nullptr && !app->icon().isEmpty()){
+            m_icon = app->icon();
+        }
     }
 }
 
@@ -37,16 +46,16 @@ void Notification::registerPath(){
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
-        qDebug() << "Registered" << path() << OXIDE_APPLICATION_INTERFACE;
+        O_INFO("Registered" << path() << OXIDE_APPLICATION_INTERFACE);
     }else{
-        qDebug() << "Failed to register" << path();
+        O_WARNING("Failed to register" << path());
     }
 }
 
 void Notification::unregisterPath(){
     auto bus = QDBusConnection::systemBus();
     if(bus.objectRegisteredAt(path()) != nullptr){
-        qDebug() << "Unregistered" << path();
+        O_DEBUG("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }
@@ -106,21 +115,13 @@ void Notification::display(){
         return;
     }
     if(notificationAPI->locked()){
-        qDebug() << "Queueing notification display";
+        O_DEBUG("Queueing notification display");
         notificationAPI->notificationDisplayQueue.append(this);
         return;
     }
     notificationAPI->lock();
-    Oxide::dispatchToMainThread([this]{
-        qDebug() << "Displaying notification" << identifier();
-        auto path = appsAPI->currentApplicationNoSecurityCheck();
-        Application* resumeApp = nullptr;
-        if(path.path() != "/"){
-            resumeApp = appsAPI->getApplication(path);
-            resumeApp->interruptApplication();
-        }
-        paintNotification(resumeApp);
-    });
+    O_DEBUG("Displaying notification" << identifier());
+    paintNotification();
 }
 
 void Notification::remove(){
@@ -137,8 +138,6 @@ void Notification::click(){
     }
     emit clicked();
 }
-
-
 
 void Notification::setIcon(QString icon){
     if(!hasPermission("notification")){
@@ -173,35 +172,25 @@ void Notification::setOwner(QString owner){
     emit changed(result);
 }
 
-bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }
+bool Notification::hasPermission(QString permission, const char* sender){
+    return notificationAPI->hasPermission(permission, sender);
+}
 
-void Notification::paintNotification(Application *resumeApp){
-    return;
-    qDebug() << "Painting notification" << identifier();
-    dispatchToMainThread([this] { screenBackup = screenAPI->copy(); });
-    updateRect = notificationAPI->paintNotification(text(), m_icon);
-    qDebug() << "Painted notification" << identifier();
+void Notification::paintNotification(){
+    O_DEBUG("Painting notification" << identifier());
+    auto notification = notificationAPI->paintNotification(m_text, m_icon);
+    O_DEBUG("Painted notification" << identifier());
     emit displayed();
-    QTimer::singleShot(2000, [this, resumeApp] {
-        dispatchToMainThread([this]{
-            auto frameBuffer = getFrameBuffer();
-            QPainter painter(&frameBuffer);
-            painter.drawImage(updateRect, screenBackup, updateRect);
-            painter.end();
-            qDebug() << "Finished displaying notification" << identifier();
-            Oxide::QML::repaint(getFrameBufferWindow(), updateRect, Blight::Mono/*, true*/);
-        });
-        if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
-            Oxide::dispatchToMainThread([resumeApp] {
-                notificationAPI
-                    ->notificationDisplayQueue
-                    .takeFirst()
-                    ->paintNotification(resumeApp);
-            });
+    QTimer::singleShot(2000, [this, notification] {
+        O_DEBUG("Finished displaying notification" << identifier());
+        if(!notificationAPI->notificationDisplayQueue.isEmpty()){
+            notificationAPI
+                ->notificationDisplayQueue
+                .takeFirst()
+                ->paintNotification();
             return;
-        }
-        if (resumeApp != nullptr) {
-            resumeApp->uninterruptApplication();
+        }else{
+            notification->lower();
         }
         notificationAPI->unlock();
     });

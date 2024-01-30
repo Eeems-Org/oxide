@@ -19,7 +19,6 @@ void GUIThread::run(){
         Q_ASSERT(QThread::currentThread() == (QThread*)this);
         m_repaintMutex.lock();
         forever{
-            m_repaintMutex.unlock();
             // New repaint request each loop as we have a shared pointer we need to clear
             RepaintRequest event;
             if(!m_repaintEvents.try_dequeue(event)){
@@ -27,7 +26,6 @@ void GUIThread::run(){
                 dbusInterface->processClosingConnections();
                 if(!m_repaintEvents.try_dequeue(event)){
                     // Wait for up to 500ms before trying again
-                    m_repaintMutex.lock();
                     m_repaintWait.wait(&m_repaintMutex, 500);
                     auto found = m_repaintEvents.try_dequeue(event);
                     if(!found){
@@ -108,7 +106,7 @@ void GUIThread::enqueue(
         intersected = region;
     }else{
         if(!surface->visible()){
-            O_WARNING("Surface is not currently visible:" << surface->id());
+            O_WARNING("Surface is not currently visible" << surface->id());
             if(callback != nullptr){
                 callback();
             }
@@ -121,19 +119,18 @@ void GUIThread::enqueue(
             .intersected(m_screenRect);
     }
     if(intersected.isEmpty()){
-        O_WARNING("Region does not intersect with screen:" << region);
+        O_WARNING("Region does not intersect with screen" << surface->id() << region);
         if(callback != nullptr){
             callback();
         }
         return;
     }
-    m_repaintMutex.lock();
     auto visibleSurfaces = this->visibleSurfaces();
     QRegion repaintRegion(intersected);
     if(!global){
         // Don't repaint portions covered by another surface
         auto i = visibleSurfaces.constEnd();
-        while(i != visibleSurfaces.constBegin()) {
+        while(i != visibleSurfaces.constBegin()){
             --i;
             auto _surface = *i;
             if(surface == _surface){
@@ -147,7 +144,7 @@ void GUIThread::enqueue(
         }
     }
     if(repaintRegion.isEmpty()){
-        O_WARNING("Region is not currently visible:" << region);
+        O_WARNING("Region is not currently visible" << surface->id() << region);
         if(callback != nullptr){
             callback();
         }
@@ -162,7 +159,6 @@ void GUIThread::enqueue(
         .callback = callback
     });
     notify();
-    m_repaintMutex.unlock();
 }
 
 void GUIThread::notify(){ m_repaintWait.notify_one(); }
@@ -192,7 +188,7 @@ void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<S
     if(surfaceIntersect.isEmpty()){
         return;
     }
-    O_DEBUG("Repaint surface" << surface->id().toStdString().c_str() << surfaceIntersect);
+    O_DEBUG("Repaint surface" << surface->id() << surfaceIntersect);
     // TODO - See if there is a way to detect if there is just transparency in the region
     //        and don't mark this as repainted.
     painter->drawImage(*rect, *surface->image().get(), surfaceIntersect);
@@ -224,13 +220,9 @@ void GUIThread::redraw(RepaintRequest& event){
         eventDispatcher()->processEvents(QEventLoop::AllEvents);
         painter.begin(frameBuffer);
     }
-    painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     for(QRect rect : event.region){
-        if(event.global){
-            // TODO - for global events only ever use fillRect
-            //        Update GUIThread::enqueue() to enqueue for
-            //        the visible surface at the time of the request
-            //        where possible, and only use global for empty space
+        if(event.global || event.surface->image()->hasAlphaChannel()){
             painter.fillRect(rect, colour);
             for(auto& surface : visibleSurfaces()){
                 if(surface != nullptr){
@@ -240,13 +232,13 @@ void GUIThread::redraw(RepaintRequest& event){
         }else{
             repaintSurface(&painter, &rect, event.surface);
         }
-        sendUpdate(rect, event.waveform);
+        sendUpdate(rect, event.waveform, event.marker);
     }
     painter.end();
     O_DEBUG("Repaint" << region.boundingRect() << "done in" << region.rectCount() << "paints, and" << cw.elapsed() << "seconds");
 }
 
-void GUIThread::sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode waveform){
+void GUIThread::sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode waveform, unsigned int marker){
     auto mode = rect == m_screenRect
         ? EPFrameBuffer::FullUpdate
         : EPFrameBuffer::PartialUpdate;
@@ -260,7 +252,7 @@ void GUIThread::sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode wavefo
         },
         .waveform_mode = waveform,
         .update_mode = mode,
-        .update_marker = ++m_currentMarker,
+        .update_marker = marker ? marker : ++m_currentMarker,
         // TODO allow this to be passed through
         .temp = 0x0018,
         .flags = 0,
