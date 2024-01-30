@@ -615,7 +615,7 @@ void Application::errorOccurred(QProcess::ProcessError error){
                 "codes.eeems.tarnish",
                 "codes.eeems.tarnish",
                 QString("%1 failed to start").arg(displayName()),
-                ""
+                icon()
             )->display();
             if(transient()){
                 unregister();
@@ -628,7 +628,7 @@ void Application::errorOccurred(QProcess::ProcessError error){
                 "codes.eeems.tarnish",
                 "codes.eeems.tarnish",
                 QString("%1 crashed").arg(displayName()),
-                ""
+                icon()
             )->display();
             break;
         case QProcess::Timedout:
@@ -957,12 +957,12 @@ void Application::showSplashScreen(){
                     }
                     splash = splash.scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
                     QRect splashRect(
-                      QPoint(
-                        (size.width() / 2) - (splashWidth / 2),
-                        (size.height() / 2) - (splashWidth / 2)
+                        QPoint(
+                            (size.width() / 2) - (splashWidth / 2),
+                            (size.height() / 2) - (splashWidth / 2)
                         ),
-                      splashSize
-                      );
+                        splashSize
+                    );
                     painter.drawImage(splashRect, splash, splash.rect());
                     auto window = getFrameBufferWindow();
                     if(window->isVisible()){
@@ -978,8 +978,8 @@ void Application::showSplashScreen(){
                   "codes.eeems.tarnish",
                   "codes.eeems.tarnish",
                   QString("Loading %1...").arg(displayName()),
-                  ""
-                  );
+                  icon()
+                );
                 m_notification->display();
             });
         });
