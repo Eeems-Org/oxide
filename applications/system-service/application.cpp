@@ -938,6 +938,7 @@ void Application::showSplashScreen(){
         qDebug() << "Displaying splashscreen for" << name();
         Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
             dispatchToMainThread([this]{
+                // TODO - change this to be a splashscreen qml file
                 auto frameBuffer = getFrameBuffer();
                 QPainter painter(&frameBuffer);
                 auto size = frameBuffer.size();
