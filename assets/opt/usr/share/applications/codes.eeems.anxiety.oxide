@@ -4,7 +4,6 @@
         "bin": "/opt/bin/anxiety",
         "icon": "oxide:image-48",
         "splash": "oxide:splash:anxiety-702",
-        "flags": [],
         "type": "foreground",
         "permissions": ["screen"]
 }

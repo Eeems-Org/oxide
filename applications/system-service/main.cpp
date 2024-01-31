@@ -163,6 +163,29 @@ int main(int argc, char* argv[]){
     pidFile.close();
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{ remove(pidPath); });
 
+    Blight::shared_buf_t buffer = createBuffer();
+    if(buffer != nullptr){
+        auto frameBuffer = getFrameBuffer();
+        auto size = frameBuffer->size();
+        int splashWidth = size.width() / 2;
+        QSize splashSize(splashWidth, splashWidth);
+        QRect splashRect(QPoint(
+            (size.width() / 2) - (splashWidth / 2),
+            (size.height() / 2) - (splashWidth / 2)
+        ), splashSize);
+        auto image = Oxide::QML::getImageForSurface(buffer);
+        QPainter painter(&image);
+        painter.setPen(Qt::white);
+        painter.fillRect(image.rect(), Qt::white);
+        QString path("/opt/usr/share/icons/oxide/702x702/splash/oxide.png");
+        if(QFileInfo(path).exists()){
+            auto splash =  QImage(path).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            painter.drawImage(splashRect, splash, splash.rect());
+        }
+        painter.end();
+        addSystemBuffer(buffer);
+    }
+
     QQmlApplicationEngine engine;
     registerQML(&engine);
     QQmlContext* context = engine.rootContext();
@@ -172,7 +195,9 @@ int main(int argc, char* argv[]){
     if(engine.rootObjects().isEmpty()){
         qFatal("Failed to load main layout");
     }
-
-    QTimer::singleShot(0, [&engine]{ dbusService->startup(&engine); });
+    QTimer::singleShot(0, [&engine, &buffer]{
+        dbusService->startup(&engine);
+        Blight::connection()->remove(buffer);
+    });
     return app.exec();
 }

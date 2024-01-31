@@ -533,6 +533,7 @@ void Application::started(){
         m_notification = nullptr;
     }
     hideSplashScreen();
+    getCompositorDBus()->raise(QString("connection/%1").arg(m_process->processId()));
     emit launched();
     emit appsAPI->applicationLaunched(qPath());
 }
