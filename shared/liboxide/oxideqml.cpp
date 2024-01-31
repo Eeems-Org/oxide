@@ -142,8 +142,7 @@ namespace Oxide {
         }
 
         QImage getImageForWindow(QWindow* window){
-            auto buf = getSurfaceForWindow(window);
-            return QImage(buf->data, buf->width, buf->height, buf->stride, (QImage::Format)buf->format);
+            return getImageForSurface(getSurfaceForWindow(window));
         }
 
         void repaint(QWindow* window, QRectF rect, Blight::WaveformMode waveform, bool sync){
@@ -164,6 +163,16 @@ namespace Oxide {
             if(sync && maybe.has_value()){
                 Blight::connection()->waitForMarker(_marker);
             }
+        }
+
+        QImage getImageForSurface(Blight::shared_buf_t buffer){
+            return QImage(
+                buffer->data,
+                buffer->width,
+                buffer->height,
+                buffer->stride,
+                (QImage::Format)buffer->format
+            );
         }
     }
 }

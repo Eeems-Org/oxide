@@ -47,24 +47,7 @@ QDBusObjectPath ScreenAPI::screenshot(){
     return path;
 }
 
-QImage ScreenAPI::copy(){
-    auto compositor = getCompositorDBus();
-    auto reply = compositor->frameBuffer();
-    reply.waitForFinished();
-    if(reply.isError()){
-        O_WARNING("Failed to get framebuffer fd" << reply.error().message());
-        return QImage();
-    }
-    QDBusUnixFileDescriptor qfd = reply.value();
-    if(!qfd.isValid()){
-        O_WARNING("Framebuffer fd is not valid");
-        return QImage();
-    }
-    QFile file;
-    file.open(qfd.fileDescriptor(), QFile::ReadOnly);
-    auto data = file.map(0, file.size());
-    return QImage(data, 1404, 1872, 2808, QImage::Format_RGB16).copy();
-}
+QImage ScreenAPI::copy(){ return getFrameBuffer()->copy(); }
 
 QDBusObjectPath ScreenAPI::addScreenshot(QByteArray blob){
     if(!hasPermission("screen")){

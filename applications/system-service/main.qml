@@ -3,11 +3,12 @@ import QtQuick.Window 2.15
 import "qrc:/codes.eeems.oxide"
 
 OxideWindow{
-    width: Screen.width
-    height: Screen.width
     x: 0
     y: 0
+    width: 1
+    height: 1
     visible: true
+    opacity: 0
     backgroundColor: "transparent"
     Shortcut{
         sequences: ["Alt+Tab"]

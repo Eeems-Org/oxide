@@ -1,9 +1,11 @@
 #include <liboxide.h>
 #include <liboxide/oxideqml.h>
+#include <libblight.h>
 
 #include "appsapi.h"
 #include "notificationapi.h"
 #include "systemapi.h"
+#include "dbusservice.h"
 
 using namespace Oxide;
 
@@ -854,15 +856,16 @@ AppsAPI::~AppsAPI() {
     writeApplications();
     settings.sync();
     dispatchToMainThread([this]{
-        // auto frameBuffer = getFrameBuffer();
-        // QPainter painter(&frameBuffer);
-        // auto rect = frameBuffer.rect();
-        // auto fm = painter.fontMetrics();
-        // qDebug() << "Clearing screen...";
-        // painter.setPen(Qt::white);
-        // painter.fillRect(rect, Qt::black);
-        // Oxide::QML::repaint(getFrameBufferWindow(), rect, Blight::Mono, true);
-        // painter.end();
+        Blight::shared_buf_t buffer = createBuffer();
+        if(buffer != nullptr){
+            auto image = Oxide::QML::getImageForSurface(buffer);
+            QPainter painter(&image);
+            qDebug() << "Clearing screen...";
+            painter.setPen(Qt::white);
+            painter.fillRect(image.rect(), Qt::black);
+            painter.end();
+            addSystemBuffer(buffer);
+        }
         qDebug() << "Stopping applications...";
         auto notification = notificationAPI->paintNotification("", "");
         for(auto app : applications){
@@ -880,20 +883,27 @@ AppsAPI::~AppsAPI() {
         }
         applications.clear();
         notification->lower();
-        // QPainter painter2(&frameBuffer);
-        // qDebug() << "Displaying final quit message...";
-        // painter2.fillRect(rect, Qt::black);
-        // painter2.setPen(Qt::white);
-        // if(systemAPI->landscape()){
-        //     auto x = rect.width() / 2;
-        //     auto y = rect.height() / 2;
-        //     painter2.translate(x, y);
-        //     painter2.rotate(90.0);
-        //     painter2.translate(-x, -y);
-        // }
-        // painter2.drawText(rect, Qt::AlignCenter, "Goodbye!");
-        // Oxide::QML::repaint(getFrameBufferWindow(), rect, Blight::Mono, true);
-        // painter2.end();
+        if(buffer != nullptr){
+            auto image = Oxide::QML::getImageForSurface(buffer);
+            QPainter painter(&image);
+            qDebug() << "Displaying final quit message...";
+            auto rect = image.rect();
+            painter.fillRect(rect, Qt::black);
+            painter.setPen(Qt::white);
+            if(systemAPI->landscape()){
+                auto x = rect.width() / 2;
+                auto y = rect.height() / 2;
+                painter.translate(x, y);
+                painter.rotate(90.0);
+                painter.translate(-x, -y);
+            }
+            painter.drawText(rect, Qt::AlignCenter, "Goodbye!");
+            painter.end();
+            auto maybe = Blight::connection()->repaint(buffer);
+            if(maybe.has_value()){
+                maybe.value()->wait();
+            }
+        }
     });
 }
 #include "moc_appsapi.cpp"

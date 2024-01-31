@@ -243,16 +243,18 @@ void DbusInterface::setFlags(QString identifier, const QStringList& flags, QDBus
         for(auto& flag : flags){
             connection->set(flag);
         }
+        sortZ();
         return;
     }
     auto surface = getSurface(identifier);
     if(surface == nullptr){
-        sendErrorReply(QDBusError::BadAddress, "Surface not found");
+        sendErrorReply(QDBusError::BadAddress, "Connection or Surface not found");
         return;
     }
     for(auto& flag : flags){
         surface->set(flag);
     }
+    sortZ();
 }
 
 QStringList DbusInterface::getSurfaces(QDBusMessage message){
@@ -281,9 +283,15 @@ QDBusUnixFileDescriptor DbusInterface::frameBuffer(QDBusMessage message){
 void DbusInterface::lower(QString identifier, QDBusMessage message){
     Q_UNUSED(message);
     // TODO - only allow tarnish to make this call
+    auto surface = getSurface(identifier);
+    if(surface != nullptr){
+        surface->setVisible(false);
+        sortZ();
+        return;
+    }
     auto connection = getConnection(identifier);
     if(connection == nullptr){
-        sendErrorReply(QDBusError::BadAddress, "Connection not found");
+        sendErrorReply(QDBusError::BadAddress, "Connection or Surface not found");
         return;
     }
     if(m_focused == connection){
@@ -298,9 +306,15 @@ void DbusInterface::lower(QString identifier, QDBusMessage message){
 void DbusInterface::raise(QString identifier, QDBusMessage message){
     Q_UNUSED(message);
     // TODO - only allow tarnish to make this call
+    auto surface = getSurface(identifier);
+    if(surface != nullptr){
+        surface->setVisible(true);
+        sortZ();
+        return;
+    }
     auto connection = getConnection(identifier);
     if(connection == nullptr){
-        sendErrorReply(QDBusError::BadAddress, "Connection not found");
+        sendErrorReply(QDBusError::BadAddress, "Connection or Surface not found");
         return;
     }
     for(auto& surface : connection->getSurfaces()){

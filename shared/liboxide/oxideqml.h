@@ -61,6 +61,7 @@ namespace Oxide {
         };
 
         Blight::shared_buf_t getSurfaceForWindow(QWindow* window);
+        QImage getImageForSurface(Blight::shared_buf_t buffer);
         QImage getImageForWindow(QWindow* window);
         void repaint(
             QWindow* window,

@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <algorithm>
 #include <liboxide.h>
+#include <libblight/types.h>
 
 #include "fifohandler.h"
 
@@ -212,6 +213,7 @@ private:
     int p_stderr_fd = -1;
     QTextStream* p_stderr = nullptr;
     Notification* m_notification = nullptr;
+    Blight::shared_buf_t m_buffer = nullptr;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds);
@@ -231,6 +233,7 @@ private:
     QStringList getActiveApplicationMounts();
     QStringList getActiveMounts();
     void startSpan(std::string operation, std::string description);
+    void hideSplashScreen();
 };
 
 #endif // APPLICATION_H

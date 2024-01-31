@@ -43,14 +43,13 @@ public:
     AppsAPI(QObject* parent);
     ~AppsAPI();
     void startup();
-    int state() { return 0; } // Ignore this, it's a kludge to get the xml to generate
+    int state(){ return 0; } // Ignore this, it's a kludge to get the xml to generate
 
     void setEnabled(bool enabled);
 
     Q_INVOKABLE QDBusObjectPath registerApplication(QVariantMap properties);
     QDBusObjectPath registerApplicationNoSecurityCheck(QVariantMap properties);
     Q_INVOKABLE bool unregisterApplication(QDBusObjectPath path);
-
     Q_INVOKABLE void reload();
 
     QDBusObjectPath startupApplication();

@@ -63,6 +63,11 @@ namespace Blight {
             WaveformMode waveform = WaveformMode::HighQualityGrayscale,
             unsigned int marker = 0
         ){ return repaint(buf->surface, x, y, width, height, waveform, marker); }
+        inline maybe_ackid_ptr_t repaint(
+            shared_buf_t buf,
+            WaveformMode waveform = WaveformMode::HighQualityGrayscale,
+            unsigned int marker = 0
+        ){ return repaint(buf->surface, buf->x, buf->y, buf->width, buf->height, waveform, marker); }
         void move(shared_buf_t buf, int x, int y);
         maybe_ackid_ptr_t move(surface_id_t identifier, int x, int y);
         std::optional<shared_buf_t> resize(

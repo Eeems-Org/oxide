@@ -43,6 +43,7 @@ public slots:
     void notify();
     void clearFrameBuffer();
     int framebuffer();
+    void sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode waveform, unsigned int marker);
 
 private:
     GUIThread(QRect screenGeometry);
@@ -58,7 +59,6 @@ private:
     void repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface);
     void redraw(RepaintRequest& event);
     void scheduleUpdate();
-    void sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode previousWaveform, unsigned int marker);
     QList<std::shared_ptr<Surface>> visibleSurfaces();
 };
 #endif

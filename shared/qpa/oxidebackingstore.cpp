@@ -40,6 +40,12 @@ void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoi
     if(mDebug){
         qDebug() << "OxideBackingStore::repaint:";
     }
+    bool ok;
+    auto waveform = (Blight::WaveformMode)window->property("WA_WAVEFORM").toInt(&ok);
+    qDebug() << "WA_WAVEFORM" << waveform;
+    if(!ok || !waveform){
+        waveform = Blight::HighQualityGrayscale;
+    }
     for(auto rect : region){
         Blight::connection()->repaint(
             mBuffer,
@@ -47,7 +53,7 @@ void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoi
             rect.y(),
             rect.width(),
             rect.height(),
-            Blight::WaveformMode::HighQualityGrayscale
+            waveform
         );
     }
 }
@@ -61,7 +67,12 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
         qDebug() << "OxideBackingStore::resize:" << size;
     }
     qDebug() << "resize" << (mBuffer == nullptr ? 0 : mBuffer->surface) << size << region;
-    QImage blankImage(size, QImage::Format_ARGB32_Premultiplied);
+    bool ok;
+    auto format = (QImage::Format)window()->property("WA_FORMAT").toInt(&ok);
+    if(!ok || !format){
+        format = QImage::Format_ARGB32_Premultiplied;
+    }
+    QImage blankImage(size, format);
     if(mBuffer == nullptr){
         auto maybe = Blight::createBuffer(
             window()->x(),

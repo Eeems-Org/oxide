@@ -15,3 +15,4 @@ target.path = /opt/bin
 INSTALLS += target
 
 include(../../qmake/liboxide.pri)
+include(../../qmake/libblight.pri)

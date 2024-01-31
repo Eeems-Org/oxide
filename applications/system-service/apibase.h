@@ -8,9 +8,10 @@
 #include <QDBusMessage>
 #include <QImage>
 
+#include <unistd.h>
 #include <liboxide.h>
 #include <liboxide/dbus.h>
-#include <unistd.h>
+#include <libblight.h>
 
 #ifdef Q_MOC_RUN
 #include "../../shared/liboxide/meta.h"
@@ -31,8 +32,10 @@ public:
     int getSenderPid();
     int getSenderPgid();
 };
-QWindow* getFrameBufferWindow();
-QImage getFrameBuffer();
+QImage* getFrameBuffer();
 Compositor* getCompositorDBus();
+Blight::shared_buf_t createBuffer(const QRect& rect, unsigned int stride, Blight::Format format);
+Blight::shared_buf_t createBuffer();
+void addSystemBuffer(Blight::shared_buf_t buffer);
 
 #endif // APIBASE_H
