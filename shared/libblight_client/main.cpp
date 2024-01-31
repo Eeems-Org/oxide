@@ -493,7 +493,7 @@ int __open(const char* pathname, int flags){
     }else if(actualpath.starts_with("/dev/input/event")){
         _INFO("Opening event device: %s", actualpath.c_str());
         if(blightConnection->input_handle() > 0){
-            if(inputFds.empty()){
+            if(inputFds.empty() && getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr){
                 new std::thread(__readInput);
             }
             std::string path(basename(actualpath.c_str()));

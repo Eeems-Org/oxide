@@ -85,6 +85,7 @@ void OxideIntegration::initialize(){
     if(m_debug){
         qDebug() << "OxideIntegration::initialize";
     }
+    setenv("OXIDE_PRELOAD_DISABLE_INPUT", "1", true);
 #ifdef EPAPER
     Blight::connect(true);
 #else
