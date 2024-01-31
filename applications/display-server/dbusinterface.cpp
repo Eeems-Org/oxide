@@ -414,7 +414,7 @@ Connection* DbusInterface::createConnection(int pid){
         for(auto& ptr : qAsConst(connections)){
             if(ptr == connection && !ptr->has("system")){
                 m_focused = ptr;
-                O_INFO(connection->id() << "has focus");
+                O_INFO(m_focused->id() << "has focus");
                 break;
             }
         }
@@ -525,6 +525,7 @@ void DbusInterface::sortZ(){
         for(auto& ptr : connections){
             if(ptr == connection && !ptr->has("system")){
                 m_focused = ptr;
+                O_INFO(m_focused->id() << "has focus");
                 break;
             }
         }
