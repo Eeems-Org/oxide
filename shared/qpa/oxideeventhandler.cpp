@@ -346,7 +346,7 @@ void OxideEventHandler::processKeyboardEvent(
     const QEvdevKeyboardMap::Mapping* it = map_withmod ? map_withmod : map_plain;
     // we couldn't even find a plain mapping
     if(!it){
-        O_WARNING("No mapping for keycode found");
+        O_WARNING("No mapping for keycode found:" << keycode);
         return;
     }
     quint16 unicode = it->unicode;

@@ -11,3 +11,4 @@ QT += gui
 QML_IMPORT_PATH += qrc:/codes.eeems.oxide
 include(sentry.pri)
 include(epaper.pri)
+include(libblight.pri)

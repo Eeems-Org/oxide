@@ -649,6 +649,10 @@ const QEvdevKeyboardMap::Mapping OxideEventHandler::s_keymap_default[] = {
     { KEY_VOLUMEUP,     0xffff, Qt::Key_VolumeUp,       0x00, 0x00, 0x0000 },
     { KEY_POWER,        0xffff, Qt::Key_PowerOff,       0x00, 0x00, 0x0000 },
     { KEY_PAUSE,        0xffff, Qt::Key_Pause,          0x00, 0x00, 0x0000 },
+
+    { KEY_LEFTMETA,     0xffff, Qt::Key_Meta,           0x00, 0x00, 0x0000 },
+    { KEY_RIGHTMETA,    0xffff, Qt::Key_Meta,           0x00, 0x00, 0x0000 },
+
     { KEY_STOP,         0xffff, Qt::Key_Stop,           0x00, 0x00, 0x0000 },
     { KEY_SETUP,        0xffff, Qt::Key_Settings,       0x00, 0x00, 0x0000 },
     { KEY_RECORD,       0xffff, Qt::Key_MediaRecord,    0x00, 0x00, 0x0000 },
