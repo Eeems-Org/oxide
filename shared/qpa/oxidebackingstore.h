@@ -24,7 +24,6 @@ public:
 
 private:
     QImage image;
-    const bool mDebug;
     Blight::shared_buf_t mBuffer = nullptr;
 };
 

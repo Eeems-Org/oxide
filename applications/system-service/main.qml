@@ -9,7 +9,7 @@ OxideWindow{
     height: 1
     visible: true
     opacity: 0
-    backgroundColor: "transparent"
+    color: "transparent"
     Shortcut{
         sequences: ["Alt+Tab"]
         context: Qt.ApplicationShortcut

@@ -197,7 +197,6 @@ void Application::interruptApplication(){
                     startSpan("stopped", "Application is stopped");
             }
         });
-        getCompositorDBus()->lower(QString("connection/%1").arg(m_process->processId()));
     });
 }
 void Application::waitForPause(){

@@ -8,17 +8,14 @@ import "./widgets"
 OxideWindow {
     id: window
     objectName: "window"
-    visible: stateController.state === "loaded"
-    backgroundColor: "transparent"
+    flags: Qt.FramelessWindowHint
     title: qsTr("Corrupt")
-    property int itemPadding: 10
-    Connections{
-        target: screenProvider
-        onImageChanged: background.reload()
-    }
+    color: "transparent"
+    Component.onCompleted: controller.startup()
+    visible: true
     Connections {
         target: controller
-        onReload: {
+        function onReload(){
             appsView.model = controller.getApps();
             if(appsView.currentIndex > appsView.count){
                 appsView.currentIndex = appsView.count
@@ -26,49 +23,21 @@ OxideWindow {
         }
     }
     Shortcut{
-        sequence: [StandardKey.Cancel, Qt.Key_Backspace]
+        sequences: [StandardKey.Cancel, "Backspace"]
         context: Qt.ApplicationShortcut
         onActivated: controller.previousApplication()
     }
-
-    Component.onCompleted: {
-        controller.startup();
-    }
-    background: Rectangle {
-        Image {
-            id: background
-            objectName: "background"
-            anchors.fill: parent
-            cache: false
-            source: "image://screen/image"
-            visible: stateController.state === "loaded"
-            property bool counter: false
-            function reload(){
-                controller.breadcrumb("background", "reload");
-                console.log("Reloading background");
-                counter = !counter
-                source = "image://screen/image?id=" + counter
-            }
-        }
-    }
-    initialItem: MouseArea {
+    initialItem: MouseArea{
         anchors.fill: parent
-        enabled: stateController.state === "loaded"
-        onClicked: {
-            controller.breadcrumb("background", "click", "ui");
-            controller.previousApplication();
-        }
+        onClicked: controller.previousApplication()
     }
-    page.header: Item{}
     page.footer: Rectangle {
         id: footer
         color: "white"
         border.color: "black"
         border.width: 1
+        width: parent.width
         height: 150
-        anchors.left: parent.left
-        anchors.right: parent.right
-        visible: stateController.state === "loaded"
         clip: true
         RowLayout {
             anchors.fill: parent

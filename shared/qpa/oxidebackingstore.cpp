@@ -13,10 +13,9 @@
 QT_BEGIN_NAMESPACE
 
 OxideBackingStore::OxideBackingStore(QWindow* window)
-: QPlatformBackingStore(window),
-  mDebug(OxideIntegration::instance()->options() & OxideIntegration::DebugQPA)
+: QPlatformBackingStore(window)
 {
-    if(mDebug){
+    if(OxideIntegration::instance()->options() & OxideIntegration::DebugQPA){
         qDebug() << "OxideBackingStore::OxideBackingStore:" << (quintptr)this;
     }
     if(window != nullptr && window->handle()){
@@ -36,7 +35,7 @@ void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoi
     if(mBuffer == nullptr || region.isEmpty()){
         return;
     }
-    if(mDebug){
+    if(OxideIntegration::instance()->options() & OxideIntegration::DebugQPA){
         qDebug() << "OxideBackingStore::repaint:" << mBuffer->surface << offset << region;
     }
     bool ok;
@@ -61,7 +60,7 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
     if(image.size() == size){
         return;
     }
-    if(mDebug){
+    if(OxideIntegration::instance()->options() & OxideIntegration::DebugQPA){
         qDebug() << "OxideBackingStore::resize:" << (mBuffer == nullptr ? 0 : mBuffer->surface) << size << region;
     }
     bool ok;
@@ -127,7 +126,7 @@ bool OxideBackingStore::scroll(const QRegion& area, int dx, int dy){
     Q_UNUSED(area)
     Q_UNUSED(dx)
     Q_UNUSED(dy)
-    if(mDebug){
+    if(OxideIntegration::instance()->options() & OxideIntegration::DebugQPA){
         qDebug() << "OxideBackingStore::scroll";
     }
     return false;

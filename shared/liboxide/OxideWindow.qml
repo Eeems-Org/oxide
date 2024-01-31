@@ -12,7 +12,6 @@ ApplicationWindow {
     property alias centerMenu: centerMenu.children
     property alias stack: stack
     property alias initialItem: stack.initialItem
-    property alias backgroundColor: background.color
     property alias headerBackgroundColor: header.color
     property bool landscape: Oxide.landscape
     Component.onCompleted: stack.forceActiveFocus()
@@ -55,7 +54,7 @@ ApplicationWindow {
         }
         background: Rectangle {
             id: background
-            color: "black"
+            color: window.color
         }
         contentData: [
             StackView {

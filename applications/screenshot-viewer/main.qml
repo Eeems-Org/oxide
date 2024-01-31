@@ -9,7 +9,6 @@ OxideWindow {
     id: window
     objectName: "window"
     visible: stateController.state !== "loading"
-    backgroundColor: "white"
     title: {
         if(stateController.state !== "viewing" || !viewer.model){
             return Qt.application.displayName;

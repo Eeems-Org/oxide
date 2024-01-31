@@ -42,6 +42,12 @@ static inline unsigned short parseOptions(const QStringList& paramList){
             options |= OxideIntegration::FontconfigDatabase;
         }
     }
+    if(
+        qEnvironmentVariableIsSet(debugQPAEnvironmentVariable)
+        && qEnvironmentVariableIntValue(debugQPAEnvironmentVariable) > 0
+    ){
+        options |= OxideIntegration::DebugQPA | OxideIntegration::EnableFonts;
+    }
     QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     return options;
 }
@@ -52,15 +58,9 @@ OxideIntegration::OxideIntegration(const QStringList& parameters)
   m_debug(false),
   m_parameters(parameters)
 {
+    m_debug = m_options & DebugQPA;
     if(m_debug){
         qDebug() << "OxideIntegration::OxideIntegration";
-    }
-    if(
-        qEnvironmentVariableIsSet(debugQPAEnvironmentVariable)
-        && qEnvironmentVariableIntValue(debugQPAEnvironmentVariable) > 0
-    ){
-        m_options |= DebugQPA | EnableFonts;
-        m_debug = true;
     }
 }
 

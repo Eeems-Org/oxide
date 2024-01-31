@@ -22,12 +22,13 @@ class Q_DECL_EXPORT OxideIntegration
 #endif
 {
 public:
-    enum Options: unsigned short{ // Options to be passed on command line or determined from environment
+    enum Option: unsigned short{ // Options to be passed on command line or determined from environment
         DebugQPA = 0x1,
         EnableFonts = 0x2,
         FreeTypeFontDatabase = 0x4,
         FontconfigDatabase = 0x8
     };
+    Q_DECLARE_FLAGS(Options, Option)
 
     explicit OxideIntegration(const QStringList &parameters);
     ~OxideIntegration();

@@ -464,7 +464,6 @@ QList<std::shared_ptr<Surface>> DbusInterface::visibleSurfaces(){
         if(
             surface->visible()
             && connection->isRunning()
-            && !connection->isStopped()
         ){
             surfaces.append(surface);
         }

@@ -207,15 +207,17 @@ namespace Oxide {
         QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
         qputenv("QMLSCENE_DEVICE", "software");
         qputenv("QT_QUICK_BACKEND","software");
+        QString platform("oxide:enable_fonts:freetype:freetype");
         if(touch){
             qputenv(
                 "QT_QPA_PLATFORM",
-                QString("oxide:enable_fonts:%1")
+                QString("%1:%2")
+                    .arg(platform)
                     .arg(deviceSettings.getTouchEnvSetting())
                     .toUtf8()
             );
         }else{
-            qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
+            qputenv("QT_QPA_PLATFORM", platform.toUtf8());
         }
     }
 

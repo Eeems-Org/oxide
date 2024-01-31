@@ -15,8 +15,6 @@ using namespace Oxide;
 using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
-#define DEBUG_EVENTS
-
 int main(int argc, char *argv[]){
     deviceSettings.setupQtEnvironment();
     QGuiApplication app(argc, argv);
