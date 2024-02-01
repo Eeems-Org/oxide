@@ -58,6 +58,7 @@ OxideIntegration::OxideIntegration(const QStringList& parameters)
   m_debug(false),
   m_parameters(parameters)
 {
+    setenv("OXIDE_PRELOAD_DISABLE_INPUT", "1", true);
     m_debug = m_options & DebugQPA;
     if(m_debug){
         qDebug() << "OxideIntegration::OxideIntegration";
@@ -85,7 +86,6 @@ void OxideIntegration::initialize(){
     if(m_debug){
         qDebug() << "OxideIntegration::initialize";
     }
-    setenv("OXIDE_PRELOAD_DISABLE_INPUT", "1", true);
 #ifdef EPAPER
     Blight::connect(true);
 #else

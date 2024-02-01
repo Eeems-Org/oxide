@@ -127,7 +127,7 @@ void __readInput(){
     prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
     auto fd = blightConnection->input_handle();
     std::map<unsigned int,std::vector<Blight::partial_input_event_t>> events;
-    while(blightConnection != nullptr){
+    while(blightConnection != nullptr && getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr){
         auto maybe = blightConnection->read_event();
         if(!maybe.has_value()){
             if(errno != EAGAIN && errno != EINTR){

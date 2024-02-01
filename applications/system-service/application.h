@@ -46,12 +46,10 @@ class SandBoxProcess : public QProcess{
     Q_OBJECT
 
 public:
-    SandBoxProcess(QObject* parent = nullptr)
-    : QProcess(parent), m_gid(0), m_uid(0), m_chroot(""), m_mask(0) {}
+    SandBoxProcess(QObject* parent = nullptr);
 
     bool setUser(const QString& name);
     bool setGroup(const QString& name);
-    bool setChroot(const QString& path);
     void setMask(mode_t mask);
 
 protected:
@@ -60,7 +58,6 @@ protected:
 private:
     gid_t m_gid;
     uid_t m_uid;
-    QString m_chroot;
     mode_t m_mask;
 };
 
@@ -87,10 +84,6 @@ class Application : public QObject{
     Q_PROPERTY(QString splash READ splash WRITE setSplash NOTIFY splashChanged)
     Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
     Q_PROPERTY(QString workingDirectory READ workingDirectory WRITE setWorkingDirectory NOTIFY workingDirectoryChanged)
-    Q_PROPERTY(bool chroot READ chroot)
-    Q_PROPERTY(QString user READ user)
-    Q_PROPERTY(QString group READ group)
-    Q_PROPERTY(QStringList directories READ directories WRITE setDirectories NOTIFY directoriesChanged)
     Q_PROPERTY(QByteArray screenCapture READ screenCapture)
 
 public:
@@ -147,11 +140,6 @@ public:
     Q_INVOKABLE void setEnvironment(QVariantMap environment);
     QString workingDirectory();
     void setWorkingDirectory(const QString& workingDirectory);
-    bool chroot();
-    QString user();
-    QString group();
-    QStringList directories();
-    void setDirectories(QStringList directories);
     QByteArray screenCapture();
     QByteArray screenCaptureNoSecurityCheck();
 
@@ -217,20 +205,6 @@ private:
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds);
     void updateEnvironment();
-    void mkdirs(const QString& path, mode_t mode = 0700);
-    void bind(const QString& source, const QString& target, bool readOnly = false);
-    void sysfs(const QString& path);
-    void ramdisk(const QString& path);
-    void umount(const QString& path);
-    FifoHandler* mkfifo(const QString& name, const QString& target);
-    void symlink(const QString& source, const QString& target);
-    const QString resourcePath();
-    const QString chrootPath();
-    void mountAll();
-    void umountAll();
-    bool isMounted(const QString& path);
-    QStringList getActiveApplicationMounts();
-    QStringList getActiveMounts();
     void startSpan(std::string operation, std::string description);
 };
 
