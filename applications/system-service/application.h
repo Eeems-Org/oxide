@@ -42,11 +42,11 @@ class Notification;
 
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
-class SandBoxProcess : public QProcess{
+class ApplicationProcess : public QProcess{
     Q_OBJECT
 
 public:
-    SandBoxProcess(QObject* parent = nullptr);
+    ApplicationProcess(QObject* parent = nullptr);
 
     bool setUser(const QString& name);
     bool setGroup(const QString& name);
@@ -84,7 +84,8 @@ class Application : public QObject{
     Q_PROPERTY(QString splash READ splash WRITE setSplash NOTIFY splashChanged)
     Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
     Q_PROPERTY(QString workingDirectory READ workingDirectory WRITE setWorkingDirectory NOTIFY workingDirectoryChanged)
-    Q_PROPERTY(QByteArray screenCapture READ screenCapture)
+    Q_PROPERTY(QString user READ user)
+    Q_PROPERTY(QString group READ group)
 
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
@@ -140,8 +141,8 @@ public:
     Q_INVOKABLE void setEnvironment(QVariantMap environment);
     QString workingDirectory();
     void setWorkingDirectory(const QString& workingDirectory);
-    QByteArray screenCapture();
-    QByteArray screenCaptureNoSecurityCheck();
+    QString user();
+    QString group();
 
     const QVariantMap& getConfig();
     void setConfig(const QVariantMap& config);
@@ -189,7 +190,7 @@ private slots:
 private:
     QVariantMap m_config;
     QString m_path;
-    SandBoxProcess* m_process;
+    ApplicationProcess* m_process;
     bool m_backgrounded;
     QByteArray* m_screenCapture = nullptr;
     QElapsedTimer timer;

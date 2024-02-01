@@ -195,10 +195,10 @@ namespace Oxide::Applications{
             addError(ErrorLevel::Hint, "Key \"flags\" contains \"nosavescreen\" while \"type\" has value \"background\"");
         }
     }else shouldExit
+    if(app.contains("directories")){
+        addError(ErrorLevel::Deprecation, QString("Key \"directories\" is no longer used");
+    }else shouldExit
     if(isArray("directories", ErrorLevel::Critical, false)){
-        addError(ErrorLevel::Deprecation, QString(
-            "Key \"directories\" is no longer used"
-        ).arg(user, e.what()));
         auto directories = app["directories"].toArray();
         for(int i = 0; i < directories.count(); i++){
             QJsonValue entry = directories[i];
@@ -233,9 +233,6 @@ namespace Oxide::Applications{
     isString("displayName", false); shouldExit
     isString("description", false); shouldExit
     if(isString("user", false)){
-        addError(ErrorLevel::Deprecation, QString(
-          "Key \"user\" is no longer used"
-        ).arg(user, e.what()));
         auto user = app["user"].toString();
         try{
             Oxide::getUID(user);
@@ -246,9 +243,6 @@ namespace Oxide::Applications{
         }
     }else shouldExit
     if(isString("group", false)){
-        addError(ErrorLevel::Deprecation, QString(
-            "Key \"group\" is no longer used"
-        ).arg(user, e.what()));
         auto group = app["group"].toString();
         try{
             Oxide::getGID(group);
@@ -262,7 +256,7 @@ namespace Oxide::Applications{
     if(isIcon("splash", ErrorLevel::Warning, false) && flags.contains("nosplash")){
         addError(ErrorLevel::Hint, "Key \"splash\" provided while \"flags\" contains \"nosplash\" value");
     }else shouldExit
-    if(isString("splash", false)){
+    if(app.contains("splash")){
         addError(ErrorLevel::Deprecation, "Key \"splash\" is no longer used");
     }else shouldExit
     if(registrationToMap(app, name).isEmpty()){

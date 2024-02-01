@@ -66,7 +66,6 @@ void Application::launchNoSecurityCheck(){
             }
             updateEnvironment();
             m_process->setWorkingDirectory(workingDirectory());
-            m_process->setUser(user());
             m_process->setGroup(group());
             if(p_stdout == nullptr){
                 p_stdout_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_INFO, 1);
@@ -491,30 +490,9 @@ void Application::setWorkingDirectory(const QString& workingDirectory){
     emit workingDirectoryChanged(workingDirectory);
 }
 
-bool Application::chroot(){ return flags().contains("chroot"); }
-
 QString Application::user(){ return value("user", getuid()).toString(); }
 
 QString Application::group(){ return value("group", getgid()).toString(); }
-
-QStringList Application::directories() { return value("directories", QStringList()).toStringList(); }
-
-void Application::setDirectories(QStringList directories){
-    if(!hasPermission("permissions")){
-        return;
-    }
-    setValue("directories", directories);
-    emit directoriesChanged(directories);
-}
-
-QByteArray Application::screenCapture(){
-    if(!hasPermission("permissions")){
-        return QByteArray();
-    }
-    return screenCaptureNoSecurityCheck();
-}
-
-QByteArray Application::screenCaptureNoSecurityCheck(){ return qUncompress(*m_screenCapture); }
 
 const QVariantMap& Application::getConfig(){ return m_config; }
 void Application::setConfig(const QVariantMap& config){
@@ -670,13 +648,13 @@ void Application::updateEnvironment(){
     }
     env.insert("PATH", envPath.join(":"));
     auto preload = env.value("LD_PRELOAD", "").split(":");
-    if(!flags.contains("nopreload") && !flags.contains("nopreload.sysfs")){
+    if(!flags().contains("nopreload") && !flags().contains("nopreload.sysfs")){
         QString sysfs_preload("/opt/lib/libsysfs_preload.so");
         if(!preload.contains(sysfs_preload)){
             preload.append(sysfs_preload);
         }
     }
-    if(!flags.contains("nopreload") && !flags.contains("nopreload.compositor")){
+    if(!flags().contains("nopreload") && !flags().contains("nopreload.compositor")){
         QString blight_client("/opt/lib/libblight_client.so");
         if(!preload.contains(blight_client)){
             preload.append(blight_client);
@@ -728,11 +706,11 @@ Application::Application(QString path, QObject *parent)
   m_backgrounded(false),
   fifos()
 {
-    m_process = new SandBoxProcess(this);
-    connect(m_process, &SandBoxProcess::started, this, &Application::started);
+    m_process = new ApplicationProcess(this);
+    connect(m_process, &ApplicationProcess::started, this, &Application::started);
     connect(
         m_process,
-        QOverload<int, QProcess::ExitStatus>::of(&SandBoxProcess::finished),
+        QOverload<int, QProcess::ExitStatus>::of(&ApplicationProcess::finished),
         [this](int exitCode, QProcess::ExitStatus status) {
             Q_UNUSED(status);
             finished(exitCode);
@@ -740,25 +718,25 @@ Application::Application(QString path, QObject *parent)
     );
     connect(
         m_process,
-        &SandBoxProcess::readyReadStandardError,
+        &ApplicationProcess::readyReadStandardError,
         this,
         &Application::readyReadStandardError
     );
     connect(
         m_process,
-        &SandBoxProcess::readyReadStandardOutput,
+        &ApplicationProcess::readyReadStandardOutput,
         this,
         &Application::readyReadStandardOutput
     );
     connect(
         m_process,
-        &SandBoxProcess::stateChanged,
+        &ApplicationProcess::stateChanged,
         this,
         &Application::stateChanged
     );
     connect(
         m_process,
-        &SandBoxProcess::errorOccurred,
+        &ApplicationProcess::errorOccurred,
         this,
         &Application::errorOccurred
     );
@@ -888,14 +866,14 @@ int Application::state(){
     return stateNoSecurityCheck();
 }
 
-SandBoxProcess::SandBoxProcess(QObject* parent)
+ApplicationProcess::ApplicationProcess(QObject* parent)
 : QProcess(parent),
   m_gid(0),
   m_uid(0),
   m_mask(0)
 {}
 
-bool SandBoxProcess::setUser(const QString& name){
+bool ApplicationProcess::setUser(const QString& name){
     try{
         m_uid = Oxide::getUID(name);
         return true;
@@ -905,7 +883,7 @@ bool SandBoxProcess::setUser(const QString& name){
     }
 }
 
-bool SandBoxProcess::setGroup(const QString& name){
+bool ApplicationProcess::setGroup(const QString& name){
     try{
         m_gid = Oxide::getGID(name);
         return true;
@@ -915,11 +893,11 @@ bool SandBoxProcess::setGroup(const QString& name){
     }
 }
 
-void SandBoxProcess::setMask(mode_t mask){
+void ApplicationProcess::setMask(mode_t mask){
     m_mask = mask;
 }
 
-void SandBoxProcess::setupChildProcess() {
+void ApplicationProcess::setupChildProcess() {
     // Drop all privileges in the child process
     setgroups(0, 0);
     // Change to correct user
