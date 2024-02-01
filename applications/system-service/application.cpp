@@ -52,7 +52,14 @@ void Application::launchNoSecurityCheck(){
             qDebug() << "Launching " << path();
             appsAPI->pauseAll();
             if(!flags().contains("nosplash")){
-                showSplashScreen();
+                m_notification = notificationAPI->add(
+                    QUuid::createUuid().toString(),
+                    "codes.eeems.tarnish",
+                    "codes.eeems.tarnish",
+                    QString("Loading %1...").arg(displayName()),
+                    icon()
+                );
+                m_notification->display();
             }
             if(m_process->program() != bin()){
                 m_process->setProgram(bin());
@@ -532,15 +539,12 @@ void Application::started(){
         m_notification->remove();
         m_notification = nullptr;
     }
-    hideSplashScreen();
-    getCompositorDBus()->raise(QString("connection/%1").arg(m_process->processId()));
     emit launched();
     emit appsAPI->applicationLaunched(qPath());
 }
 void Application::finished(int exitCode){
     qDebug() << "Application" << name() << "exit code" << exitCode;
     getCompositorDBus()->lower(QString("connection/%1").arg(m_process->processId()));
-    hideSplashScreen();
     if(exitCode){
         notificationAPI->add(
             QUuid::createUuid().toString(),
@@ -595,7 +599,6 @@ void Application::stateChanged(QProcess::ProcessState state){
             qDebug() << "Application" << name() << "is starting.";
             break;
         case QProcess::Running:
-            hideSplashScreen();
             qDebug() << "Application" << name() << "is running.";
             break;
         case QProcess::NotRunning:
@@ -630,7 +633,6 @@ void Application::errorOccurred(QProcess::ProcessError error){
                 QString("%1 failed to start").arg(displayName()),
                 icon()
             )->display();
-            hideSplashScreen();
             if(transient()){
                 unregister();
             }
@@ -933,62 +935,6 @@ QStringList Application::getActiveMounts(){
     std::reverse(std::begin(activeMounts), std::end(activeMounts));
     return activeMounts;
 }
-void Application::showSplashScreen(){
-    Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this](Oxide::Sentry::Transaction* t){
-#ifdef SENTRY
-        if(t != nullptr){
-            sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
-        }
-#else
-            Q_UNUSED(t);
-#endif
-        qDebug() << "Displaying splashscreen for" << name();
-        Oxide::Sentry::sentry_span(t, "paint", "Draw splash screen", [this](){
-            QString splashPath = splash();
-            if(splashPath.isEmpty() || !QFile::exists(splashPath)){
-                splashPath = icon();
-            }
-            if(!splashPath.isEmpty() && QFile::exists(splashPath)){
-                auto frameBuffer = getFrameBuffer();
-                auto size = frameBuffer->size();
-                int splashWidth = size.width() / 2;
-                QSize splashSize(splashWidth, splashWidth);
-                QRect splashRect(QPoint(
-                   (size.width() / 2) - (splashWidth / 2),
-                   (size.height() / 2) - (splashWidth / 2)
-                ), splashSize);
-                m_buffer = createBuffer(
-                    splashRect,
-                    splashWidth * 2,
-                    Blight::Format_RGB16
-                );
-                if(m_buffer != nullptr){
-                    auto frameBuffer = Oxide::QML::getImageForSurface(m_buffer);
-                    frameBuffer.fill(Qt::white);
-                    QPainter painter(&frameBuffer);
-                    qDebug() << "Using image" << splashPath;
-                    QImage splash = QImage(splashPath);
-                    if(systemAPI->landscape()){
-                        splash = splash.transformed(QTransform().rotate(90.0));
-                    }
-                    splash = splash.scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                    painter.drawImage(QRect(QPoint(0, 0), splashSize), splash, splash.rect());
-                    painter.end();
-                    addSystemBuffer(m_buffer);
-                }
-            }
-            m_notification = notificationAPI->add(
-                QUuid::createUuid().toString(),
-                "codes.eeems.tarnish",
-                "codes.eeems.tarnish",
-                QString("Loading %1...").arg(displayName()),
-                icon()
-            );
-            m_notification->display();
-        });
-    });
-    qDebug() << "Finished painting splash screen for" << name();
-}
 void Application::powerStateDataRecieved(FifoHandler* handler, const QString& data){
     Q_UNUSED(handler);
     if(!permissions().contains("power")){
@@ -1014,13 +960,6 @@ void Application::startSpan(std::string operation, std::string description){
         return;
     }
     span = Oxide::Sentry::start_span(transaction, operation, description);
-}
-
-void Application::hideSplashScreen(){
-    if(m_buffer != nullptr){
-        Blight::connection()->remove(m_buffer);
-        m_buffer = nullptr;
-    }
 }
 
 void Application::waitForFinished(){

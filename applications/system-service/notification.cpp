@@ -190,7 +190,7 @@ void Notification::paintNotification(){
                 ->paintNotification();
             return;
         }else{
-            notification->lower();
+            notification->setProperty("notificationVisible", false);
         }
         notificationAPI->unlock();
     });

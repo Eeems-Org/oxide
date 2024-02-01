@@ -16,6 +16,7 @@ public:
     void setBackingStore(OxideBackingStore* store);
     OxideBackingStore* backingStore() const;
     OxideScreen* platformScreen() const;
+    void setGeometry(const QRect& rect) override;
     void setVisible(bool visible) override;
     void raise() override;
     void lower() override;

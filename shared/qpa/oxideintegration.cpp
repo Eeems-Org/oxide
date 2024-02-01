@@ -31,8 +31,8 @@ class QCoreTextFontEngine;
 #define debugQPAEnvironmentVariable "OXIDE_QPA_DEBUG"
 
 
-static inline unsigned short parseOptions(const QStringList& paramList){
-    unsigned options = 0;
+static inline OxideIntegration::Options parseOptions(const QStringList& paramList){
+    OxideIntegration::Options options{{}};
     for(const QString& param : paramList){
         if(!param.compare(QLatin1String("enable_fonts"), Qt::CaseInsensitive)){
             options |= OxideIntegration::EnableFonts;
@@ -253,7 +253,7 @@ QFunctionPointer OxideIntegration::platformFunction(const QByteArray& function) 
 
 OxideScreen* OxideIntegration::primaryScreen(){ return m_primaryScreen; }
 
-unsigned short OxideIntegration::options() const { return m_options; }
+OxideIntegration::Options OxideIntegration::options() const { return m_options; }
 
 QStringList OxideIntegration::themeNames() const{
     // TODO - implement custom theme

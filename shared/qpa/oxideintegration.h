@@ -22,11 +22,11 @@ class Q_DECL_EXPORT OxideIntegration
 #endif
 {
 public:
-    enum Option: unsigned short{ // Options to be passed on command line or determined from environment
-        DebugQPA = 0x1,
-        EnableFonts = 0x2,
-        FreeTypeFontDatabase = 0x4,
-        FontconfigDatabase = 0x8
+    enum Option{ // Options to be passed on command line or determined from environment
+        DebugQPA = 1,
+        EnableFonts = 2,
+        FreeTypeFontDatabase = 4,
+        FontconfigDatabase = 8
     };
     Q_DECLARE_FLAGS(Options, Option)
 
@@ -50,7 +50,7 @@ public:
     QPlatformServices* services() const override;
     QFunctionPointer platformFunction(const QByteArray& function) const override;
     OxideScreen* primaryScreen();
-    unsigned short options() const;
+    OxideIntegration::Options options() const;
     QStringList themeNames() const override;
     QPlatformTheme* createPlatformTheme(const QString& name) const override;
     bool openUrl(const QUrl& url) override;
@@ -74,11 +74,13 @@ private:
     QPointer<QMimeData> m_clipboard;
     QPointer<QMimeData> m_selection;
 #endif
-    unsigned short m_options;
+    Options m_options;
     bool m_debug;
     QMutex m_mutex;
     QStringList m_parameters;
     static void connectSignal(QObject* sender, QString signal, QObject* reciever, QString slot);
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(OxideIntegration::Options)
 
 QT_END_NAMESPACE

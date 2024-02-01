@@ -882,7 +882,7 @@ AppsAPI::~AppsAPI() {
             app->deleteLater();
         }
         applications.clear();
-        notification->lower();
+        notification->setProperty("notificationVisible", false);
         if(buffer != nullptr){
             auto image = Oxide::QML::getImageForSurface(buffer);
             QPainter painter(&image);

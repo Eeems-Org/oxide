@@ -266,5 +266,12 @@ int main(int argc, char *argv[]){
         O_WARNING("Nothing to display");
         return EXIT_FAILURE;
     }
+    engine.load(QUrl(QStringLiteral("qrc:/notification.qml")));
+    auto notification = static_cast<QQuickWindow*>(engine.rootObjects().last());
+    notification->setProperty("WA_WAVEFORM", Blight::WaveformMode::Mono);
+    notification->setProperty("text", "Testing");
+    notification->setProperty("image", QUrl::fromLocalFile("/opt/usr/share/icons/oxide/702x702/splash/oxide.png"));
+    notification->setProperty("notificationVisible", true);
+    notification->raise();
     return app.exec();
 }

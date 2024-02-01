@@ -1,9 +1,8 @@
 {
-	"displayName": "Launcher",
-	"description": "Application launcher",
-	"bin": "/opt/bin/oxide",
-	"type": "foreground",
-        "flags": ["hidden"],
-        "splash": "oxide:splash:oxide-702",
-        "permissions": ["apps", "wifi", "power", "system", "notification"]
+    "displayName": "Launcher",
+    "description": "Application launcher",
+    "bin": "/opt/bin/oxide",
+    "type": "foreground",
+    "flags": ["hidden"],
+    "permissions": ["apps", "wifi", "power", "system", "notification"]
 }

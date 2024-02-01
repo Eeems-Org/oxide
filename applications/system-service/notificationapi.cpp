@@ -57,6 +57,8 @@ void NotificationAPI::startup(){
             .arg(buffer->surface),
         QStringList() << "system"
     );
+    m_window->setProperty("notificationVisible", false);
+    m_window->lower();
 }
 
 QDBusObjectPath NotificationAPI::get(QString identifier){
@@ -128,6 +130,7 @@ QQuickWindow* NotificationAPI::paintNotification(const QString& text, const QStr
     }
     m_window->show();
     m_window->raise();
+    m_window->setProperty("notificationVisible", true);
     return m_window;
 }
 

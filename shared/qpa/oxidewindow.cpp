@@ -1,7 +1,9 @@
 #include "oxidewindow.h"
+#include "oxideintegration.h"
 
 #include <libblight.h>
 #include <libblight/types.h>
+#include <libblight/connection.h>
 
 OxideWindow::OxideWindow(QWindow* window) : QPlatformWindow(window), mBackingStore(nullptr){ }
 
@@ -29,6 +31,15 @@ OxideScreen* OxideWindow::platformScreen() const{
     return static_cast<OxideScreen*>(handle);
 }
 
+void OxideWindow::setGeometry(const QRect& rect){
+    auto buffer = mBackingStore->buffer();
+    if(OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)){
+        qDebug() << "OxideWindow::setGeometry:" << mBackingStore->buffer()->surface << geometry() << rect;
+    }
+    QPlatformWindow::setGeometry(rect);
+    Blight::connection()->move(buffer, rect.x(), rect.y());
+}
+
 void OxideWindow::setVisible(bool visible){
     QPlatformWindow::setVisible(visible);
     auto screen = platformScreen();
@@ -39,12 +50,14 @@ void OxideWindow::setVisible(bool visible){
             screen->removeWindow(this);
         }
     }
-    setGeometry(screen->geometry());
 }
 
 void OxideWindow::raise(){
     if(mBackingStore == nullptr){
         return;
+    }
+    if(OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)){
+        qDebug() << "OxideWindow::raise" << mBackingStore->buffer()->surface;
     }
     auto buffer = mBackingStore->buffer();
     auto maybe = Blight::connection()->raise(buffer);
@@ -56,6 +69,9 @@ void OxideWindow::raise(){
 void OxideWindow::lower(){
     if(mBackingStore == nullptr){
         return;
+    }
+    if(OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)){
+        qDebug() << "OxideWindow::lower" << mBackingStore->buffer()->surface;
     }
     auto buffer = mBackingStore->buffer();
     auto maybe = Blight::connection()->lower(buffer);

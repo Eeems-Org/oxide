@@ -15,7 +15,7 @@ QT_BEGIN_NAMESPACE
 OxideBackingStore::OxideBackingStore(QWindow* window)
 : QPlatformBackingStore(window)
 {
-    if(OxideIntegration::instance()->options() & OxideIntegration::DebugQPA){
+    if(OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)){
         qDebug() << "OxideBackingStore::OxideBackingStore:" << (quintptr)this;
     }
     if(window != nullptr && window->handle()){
@@ -32,16 +32,27 @@ QPaintDevice* OxideBackingStore::paintDevice(){ return &image; }
 void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoint& offset){
     Q_UNUSED(offset);
     Q_UNUSED(window);
-    if(mBuffer == nullptr || region.isEmpty()){
+    if(mBuffer == nullptr){
         return;
     }
-    if(OxideIntegration::instance()->options() & OxideIntegration::DebugQPA){
+    if(OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)){
         qDebug() << "OxideBackingStore::repaint:" << mBuffer->surface << offset << region;
     }
     bool ok;
     auto waveform = (Blight::WaveformMode)window->property("WA_WAVEFORM").toInt(&ok);
     if(!ok || !waveform){
         waveform = Blight::HighQualityGrayscale;
+    }
+    if(region.isEmpty()){
+        Blight::connection()->repaint(
+            mBuffer,
+            mBuffer->x,
+            mBuffer->y,
+            mBuffer->width,
+            mBuffer->height,
+            waveform
+        );
+        return;
     }
     for(auto rect : region){
         Blight::connection()->repaint(
@@ -60,7 +71,7 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
     if(image.size() == size){
         return;
     }
-    if(OxideIntegration::instance()->options() & OxideIntegration::DebugQPA){
+    if(OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)){
         qDebug() << "OxideBackingStore::resize:" << (mBuffer == nullptr ? 0 : mBuffer->surface) << size << region;
     }
     bool ok;
@@ -119,14 +130,16 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region){
         mBuffer->height,
         (QImage::Format)mBuffer->format
     );
-    qDebug() << "resized" << mBuffer->surface;
+    if(OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)){
+        qDebug() << "OxideBackingStore::resized" << mBuffer->surface;
+    }
 }
 
 bool OxideBackingStore::scroll(const QRegion& area, int dx, int dy){
     Q_UNUSED(area)
     Q_UNUSED(dx)
     Q_UNUSED(dy)
-    if(OxideIntegration::instance()->options() & OxideIntegration::DebugQPA){
+    if(OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)){
         qDebug() << "OxideBackingStore::scroll";
     }
     return false;

@@ -309,6 +309,7 @@ void DbusInterface::raise(QString identifier, QDBusMessage message){
     auto surface = getSurface(identifier);
     if(surface != nullptr){
         surface->setVisible(true);
+        surface->setZ(std::numeric_limits<int>::max());
         sortZ();
         return;
     }
