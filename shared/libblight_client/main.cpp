@@ -400,13 +400,19 @@ int __input_ioctlv(int fd, unsigned long request, char* ptr){
     }
 }
 
+void __realpath(const char* pathname, std::string& path){
+    auto absolutepath = realpath(pathname, NULL);
+    path = absolutepath;
+    free(absolutepath);
+}
+
 int __open(const char* pathname, int flags){
     if(!IS_INITIALIZED){
         return -2;
     }
     std::string actualpath(pathname);
     if(std::filesystem::exists(actualpath)){
-        actualpath = realpath(pathname, NULL);
+        __realpath(pathname, actualpath);
     }
     int res = -2;
     if(FAKE_RM1 && actualpath == "/sys/devices/soc0/machine"){
@@ -974,7 +980,8 @@ extern "C" {
             catch(std::invalid_argument&){}
             catch(std::out_of_range&){}
         }
-        std::string path(realpath("/proc/self/exe", NULL));
+        std::string path;
+        __realpath("/proc/self/exe", path);
         if(
             path != "/usr/bin/xochitl"
             && (

@@ -17,17 +17,18 @@ void __printf_header(int priority){
     }
     char name[16];
     prctl(PR_GET_NAME, name);
-    std::string path(realpath("/proc/self/exe", NULL));
+    auto selfpath = realpath("/proc/self/exe", NULL);
     fprintf(
         stderr,
         "[%i:%i:%i %s - %s] %s: ",
         getpgrp(),
         getpid(),
         gettid(),
-        path.c_str(),
+        selfpath,
         name,
         level.c_str()
     );
+    free(selfpath);
 }
 
 void __printf_footer(const char* file, unsigned int line, const char* func){

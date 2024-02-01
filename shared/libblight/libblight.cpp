@@ -281,7 +281,6 @@ namespace Blight{
                 reply->error_message().c_str()
             );
             return reply->return_value;
-
         }
         int dfd = dup(fd.value());
         if(dfd == -1){

@@ -32,6 +32,7 @@ namespace Oxide {
             Q_PROPERTY(QBrush brush READ brush WRITE setBrush NOTIFY brushChanged)
             Q_PROPERTY(qreal penWidth READ penWidth WRITE setPenWidth NOTIFY penWidthChanged)
             QML_ELEMENT
+
         public:
             Canvas(QQuickItem* parent = nullptr);
             void paint(QPainter* painter) override;

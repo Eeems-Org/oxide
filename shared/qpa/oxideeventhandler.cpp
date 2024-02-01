@@ -98,7 +98,7 @@ typedef struct TouchData {
 } TouchData;
 
 typedef struct PointerData {
-
+    // TODO - populate
 } PointerData;
 
 DeviceData::DeviceData() : DeviceData(0, QInputDeviceManager::DeviceTypeUnknown){}
