@@ -69,6 +69,7 @@ public slots:
     QDBusUnixFileDescriptor frameBuffer(QDBusMessage message);
     void lower(QString identifier, QDBusMessage message);
     void raise(QString identifier, QDBusMessage message);
+    void waitForNoRepaints(QDBusMessage message);
 
 signals:
     void clipboardChanged(const QByteArray& data);

@@ -325,6 +325,14 @@ void DbusInterface::raise(QString identifier, QDBusMessage message){
     sortZ();
 }
 
+void DbusInterface::waitForNoRepaints(QDBusMessage message){
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
+    QEventLoop loop;
+    connect(guiThread, &GUIThread::settled, &loop, &QEventLoop::quit);
+    loop.exec();
+}
+
 Connection* DbusInterface::focused(){ return m_focused; }
 
 void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){

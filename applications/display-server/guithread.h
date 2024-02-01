@@ -31,6 +31,9 @@ public:
     static GUIThread* singleton();
     ~GUIThread();
 
+signals:
+    void settled();
+
 public slots:
     void enqueue(
         std::shared_ptr<Surface> surface,

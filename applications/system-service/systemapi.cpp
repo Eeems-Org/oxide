@@ -27,20 +27,6 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 qDebug() << "Auto Lock timestamp:" << lockTimestamp;
             }
             qDebug() << "Preparing for suspend...";
-            Oxide::Sentry::sentry_span(t, "prepare", "Prepare for suspend", [this]{
-                wifiAPI->stopUpdating();
-                emit deviceSuspending();
-                appsAPI->recordPreviousApplication();
-                auto path = appsAPI->currentApplicationNoSecurityCheck();
-                if(path.path() != "/"){
-                    resumeApp = appsAPI->getApplication(path);
-                    resumeApp->pauseNoSecurityCheck(false);
-                    qDebug() << "Resume app set to " << resumeApp->name();
-                }else{
-                    qDebug() << "Unable to set resume app";
-                    resumeApp = nullptr;
-                }
-            });
             Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", [this]{
                 QString path("/usr/share/remarkable/sleeping.png");
                 if(!QFile::exists(path)){
@@ -71,15 +57,33 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 QPoint center(rect.width() / 2, rect.height() / 2);
                 painter.translate(center);
                 painter.scale(
-                    1* (rect.width() / qreal(img.height())),
+                    1 * (rect.width() / qreal(img.height())),
                     1 * (rect.width() / qreal(img.height()))
                 );
                 painter.translate(0 - img.width() / 2, 0 - img.height() / 2);
                 painter.drawPixmap(img.rect(), QPixmap::fromImage(img));
                 painter.end();
                 addSystemBuffer(m_buffer);
-                Blight::connection()->repaint(m_buffer, Blight::HighQualityGrayscale, 1);
-                Blight::connection()->waitForMarker(1);
+                auto maybe = Blight::connection()->raise(m_buffer);
+                // Repaint to attempt to reduce ghosting
+                Blight::connection()->repaint(m_buffer, Blight::HighQualityGrayscale, m_buffer->surface);
+                if(maybe.has_value()){
+                    maybe.value()->wait();
+                }
+            });
+            Oxide::Sentry::sentry_span(t, "prepare", "Prepare for suspend", [this]{
+                wifiAPI->stopUpdating();
+                emit deviceSuspending();
+                appsAPI->recordPreviousApplication();
+                auto path = appsAPI->currentApplicationNoSecurityCheck();
+                if(path.path() != "/"){
+                    resumeApp = appsAPI->getApplication(path);
+                    resumeApp->pauseNoSecurityCheck(false);
+                    qDebug() << "Resume app set to " << resumeApp->name();
+                }else{
+                    qDebug() << "Unable to set resume app";
+                    resumeApp = nullptr;
+                }
             });
             Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this, device]{
                 buttonHandler->setEnabled(false);
@@ -89,6 +93,10 @@ void SystemAPI::PrepareForSleep(bool suspending){
                         wifiAPI->disable();
                     }
                     system("/sbin/rmmod brcmfmac");
+                }
+                getCompositorDBus()->waitForNoRepaints().waitForFinished();
+                if(m_buffer != nullptr){
+                    Blight::connection()->waitForMarker(m_buffer->surface);
                 }
                 releaseSleepInhibitors();
             });
