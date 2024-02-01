@@ -31,7 +31,7 @@ namespace Blight{
       data(data)
     {
 #ifdef ACK_DEBUG
-        _DEBUG("Ack created: %d", ackid);
+        _DEBUG("Ack created: %u", ackid);
 #endif
     }
 
@@ -40,7 +40,7 @@ namespace Blight{
             return;
         }
 #ifdef ACK_DEBUG
-        _DEBUG("Ack deleted: %d", ackid);
+        _DEBUG("Ack deleted: %u", ackid);
 #endif
         notify_all();
     }
@@ -53,13 +53,13 @@ namespace Blight{
             return true;
         }
 #ifdef ACK_DEBUG
-        _DEBUG("Waiting for ack: %d", ackid);
+        _DEBUG("Waiting for ack: %u", ackid);
 #endif
         std::unique_lock lock(mutex);
         if(timeout <= 0){
             condition.wait(lock, [this]{ return done; });
 #ifdef ACK_DEBUG
-            _DEBUG("Ack returned: %d", ackid);
+            _DEBUG("Ack returned: %u", ackid);
 #endif
             lock.unlock();
             return true;
@@ -70,7 +70,7 @@ namespace Blight{
            [this]{ return done; }
         );
 #ifdef ACK_DEBUG
-        _DEBUG("Ack returned: %d", ackid);
+        _DEBUG("Ack returned: %u", ackid);
 #endif
         lock.unlock();
         return res;
@@ -78,7 +78,7 @@ namespace Blight{
 
     void ackid_t::notify_all(){
 #ifdef ACK_DEBUG
-        _DEBUG("Ack notified: %d", ackid);
+        _DEBUG("Ack notified: %u", ackid);
 #endif
         std::lock_guard lock(mutex);
         condition.notify_all();
@@ -153,11 +153,11 @@ namespace Blight{
             // comes back from the server
             acks.enqueue(ack);
 #ifdef ACK_DEBUG
-            _DEBUG("Ack enqueued: %d", _ackid);
+            _DEBUG("Ack enqueued: %u", _ackid);
 #endif
         }else{
 #ifdef ACK_DEBUG
-            _DEBUG("No ack enqueue needed: %d", _ackid);
+            _DEBUG("No ack enqueue needed: %u", _ackid);
 #endif
         }
         header_t header{
@@ -178,7 +178,7 @@ namespace Blight{
             return {};
         }
 #ifdef ACK_DEBUG
-        _DEBUG("Sent: %d %d", _ackid, type);
+        _DEBUG("Sent: %u %d", _ackid, type);
 #endif
         if(type == MessageType::Ack){
             // Clear the ackid so that it will not block on wait
@@ -330,30 +330,30 @@ namespace Blight{
 
     std::optional<shared_buf_t> Connection::getBuffer(surface_id_t identifier){
         if(!identifier){
-            _WARN("Failed to get buffer for surface %d: Invalid identifier", identifier);
+            _WARN("Failed to get buffer for surface %hu: Invalid identifier", identifier);
             return {};
         }
         int fd = getSurface(identifier);
         if(fd == -1){
-            _WARN("Failed to get buffer for surface %d: %s", identifier, std::strerror(errno));
+            _WARN("Failed to get buffer for surface %hu: %s", identifier, std::strerror(errno));
             return {};
         }
         auto maybe = send(MessageType::Info, (data_t)&identifier, sizeof(surface_id_t));
         if(!maybe.has_value()){
             ::close(fd);
-            _WARN("Failed to get info for surface %d: %s", identifier, std::strerror(errno));
+            _WARN("Failed to get info for surface %hu: %s", identifier, std::strerror(errno));
             return {};
         }
         auto ack = maybe.value();
         ack->wait();
         if(!ack->data_size){
             ::close(fd);
-            _WARN("Failed to get info for surface %d: It does not exist", identifier);
+            _WARN("Failed to get info for surface %hu: It does not exist", identifier);
             return {};
         }
         if(ack->data_size < sizeof(surface_info_t)){
             _WARN(
-                "Surface %d info size mismatch: size=%d, expected=%d",
+                "Surface %d info size mismatch: size=%hu, expected=%u",
                 identifier,
                 ack->data_size,
                 sizeof(surface_info_t)
@@ -378,7 +378,7 @@ namespace Blight{
         auto res = mmap(NULL, buf->size(), PROT_READ, MAP_SHARED_VALIDATE, fd, 0);
         if(res == MAP_FAILED){
             _WARN(
-                "Failed to map buffer for surface: %d error: %s",
+                "Failed to map buffer for surface: %hu error: %s",
                 identifier,
                 std::strerror(errno)
             );
@@ -465,7 +465,7 @@ namespace Blight{
                 while(acks.try_dequeue(ptr)){
                     waiting[ptr->ackid] = ptr;
 #ifdef ACK_DEBUG
-                    _DEBUG("Ack dequeued: %d", ptr->ackid);
+                    _DEBUG("Ack dequeued: %u", ptr->ackid);
 #endif
                 }
             }
@@ -491,7 +491,7 @@ namespace Blight{
             // Handle any pending items that are now being waited on
             if(!completed.empty()){
 #ifdef ACK_DEBUG
-                _DEBUG("Resolving %d waiting acks", completed.size());
+                _DEBUG("Resolving %u waiting acks", completed.size());
 #endif
                 auto iter = completed.begin();
                 while(iter != completed.end()){
@@ -512,7 +512,7 @@ namespace Blight{
                     iter = completed.erase(iter);
                     waiting.erase(ackid);
 #ifdef ACK_DEBUG
-                    _DEBUG("Ack handled: %d", ackid);
+                    _DEBUG("Ack handled: %u", ackid);
 #endif
                 }
             }
@@ -528,7 +528,7 @@ namespace Blight{
             switch(message->header.type){
                 case MessageType::Ping:{
 #ifdef ACK_DEBUG
-                    _DEBUG("pong %d", message->header.ackid);
+                    _DEBUG("pong %u", message->header.ackid);
 #endif
                     auto maybe = connection->send(
                         MessageType::Ack,
@@ -544,7 +544,7 @@ namespace Blight{
                 case MessageType::Ack:{
 #ifdef ACK_DEBUG
                     auto ackid = message->header.ackid;
-                    _DEBUG("Ack recieved: %d", ackid);
+                    _DEBUG("Ack recieved: %u", ackid);
 #endif
                     completed.push_back(message);
                     break;

@@ -158,7 +158,7 @@ Blight::message_ptr_t Blight::message_t::from_socket(int fd){
         _WARN(
             "Failed to read connection message data: %s "
             "socket=%d, "
-            "ackid=%d, "
+            "ackid=%u, "
             "type=%d, "
             "size=%ld",
             std::strerror(errno),
@@ -209,7 +209,7 @@ Blight::clipboard_t::clipboard_t(const std::string name, data_t data, size_t siz
 const std::string Blight::clipboard_t::to_string(){
     std::string res;
     if(data != nullptr && size){
-        res.assign((char*)data.get(), size);
+        res.assign(reinterpret_cast<char*>(data.get()), size);
     }
     return res;
 }

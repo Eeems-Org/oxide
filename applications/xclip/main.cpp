@@ -14,7 +14,7 @@ QTextStream& qStdOut(){
 
 void readClipboard(Blight::clipboard_t& clipboard, bool rmlastnlOption){
     QByteArray data;
-    data.setRawData((char*)clipboard.data.get(), clipboard.size);
+    data.setRawData(reinterpret_cast<char*>(clipboard.data.get()), clipboard.size);
     if(rmlastnlOption && data.right(1) == "\n"){
         data.chop(1);
     }

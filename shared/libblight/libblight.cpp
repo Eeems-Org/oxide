@@ -13,7 +13,7 @@
 namespace Blight{
     static DBus* dbus = nullptr;
 
-    std::optional<clipboard_t> getClipboard(std::string name){
+    std::optional<clipboard_t> getClipboard(const std::string& name){
         if(!exists()){
             errno = EAGAIN;
             return {};
@@ -22,7 +22,7 @@ namespace Blight{
             BLIGHT_SERVICE,
             "/",
             BLIGHT_INTERFACE,
-            name.c_str(),
+            name,
             "ay"
         );
         if(reply->isError()){
@@ -221,7 +221,7 @@ namespace Blight{
         return identifier.value();
     }
 
-    int repaint(std::string identifier){
+    int repaint(const std::string& identifier){
         if(!exists()){
             errno = EAGAIN;
             return -errno;
@@ -236,7 +236,7 @@ namespace Blight{
             BLIGHT_INTERFACE,
             "repaint",
             "s",
-            identifier.c_str()
+            identifier
         );
         if(reply->isError()){
             _WARN(

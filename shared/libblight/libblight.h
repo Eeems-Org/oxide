@@ -42,6 +42,6 @@ namespace Blight{
             buf->format
         ).value_or(0);
     }
-    LIBBLIGHT_EXPORT int repaint(std::string identifier);
+    LIBBLIGHT_EXPORT int repaint(const std::string& identifier);
     LIBBLIGHT_EXPORT int getSurface(surface_id_t identifier);
 }

@@ -1,6 +1,8 @@
 #include "clock.h"
 
-Blight::ClockWatch::ClockWatch(){ t1 = std::chrono::high_resolution_clock::now(); }
+Blight::ClockWatch::ClockWatch()
+: t1{std::chrono::high_resolution_clock::now()}
+{}
 
 std::chrono::duration<double> Blight::ClockWatch::diff(){
     auto t2 = std::chrono::high_resolution_clock::now();

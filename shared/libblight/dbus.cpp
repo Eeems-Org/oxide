@@ -22,7 +22,8 @@ char** strv_free(char** v) {
 
 namespace Blight {
     DBusReply::DBusReply()
-    : error(SD_BUS_ERROR_NULL)
+    : error(SD_BUS_ERROR_NULL),
+      return_value{0}
     {}
 
     Blight::DBusReply::~DBusReply(){
@@ -41,8 +42,8 @@ namespace Blight {
 
     bool Blight::DBusReply::isError(){ return return_value < 0; }
 
-    DBusException::DBusException(std::string message)
-        : std::runtime_error(message.c_str())
+    DBusException::DBusException(const std::string message)
+    : std::runtime_error(message.c_str())
     {}
 
     DBus::DBus(bool use_system)
@@ -94,11 +95,11 @@ namespace Blight {
     }
 
     dbus_reply_t DBus::get_property(
-        std::string service,
-        std::string path,
-        std::string interface,
-        std::string member,
-        std::string property_type
+        const std::string& service,
+        const std::string& path,
+        const std::string& interface,
+        const std::string& member,
+        const std::string& property_type
     ){
         auto res = dbus_reply_t(new DBusReply());
         res->return_value = sd_bus_get_property(

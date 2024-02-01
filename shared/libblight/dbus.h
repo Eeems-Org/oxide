@@ -33,7 +33,7 @@ namespace Blight {
 
     class LIBBLIGHT_EXPORT DBusException : public std::runtime_error{
     public:
-        DBusException(std::string message);
+        DBusException(const std::string message);
     };
     class LIBBLIGHT_EXPORT DBus {
     public:
@@ -44,11 +44,11 @@ namespace Blight {
         bool has_service(std::string service);
         template <typename ... Args>
         dbus_reply_t call_method(
-            std::string service,
-            std::string path,
-            std::string interface,
-            std::string member,
-            std::string argument_types,
+            const std::string& service,
+            const std::string& path,
+            const std::string& interface,
+            const std::string& member,
+            const std::string& argument_types,
             Args... args
         ){
             auto res = dbus_reply_t(new DBusReply());
@@ -74,18 +74,18 @@ namespace Blight {
         }
 
         inline dbus_reply_t call_method(
-            std::string service,
-            std::string path,
-            std::string interface,
-            std::string member
+            const std::string& service,
+            const std::string& path,
+            const std::string& interface,
+            const std::string& member
         ){ return call_method(service, path, interface, member, ""); }
 
         dbus_reply_t get_property(
-            std::string service,
-            std::string path,
-            std::string interface,
-            std::string member,
-            std::string property_type
+            const std::string& service,
+            const std::string& path,
+            const std::string& interface,
+            const std::string& member,
+            const std::string& property_type
         );
 
     private:
