@@ -1,4 +1,5 @@
 #include <liboxide.h>
+#include <liboxide/oxideqml.h>
 
 #include "systemapi.h"
 #include "appsapi.h"
@@ -40,13 +41,45 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     resumeApp = nullptr;
                 }
             });
-            auto rotate = landscape() ? 90 : 0;
-            Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", [rotate]{
-                if(QFile::exists("/usr/share/remarkable/sleeping.png")){
-                    // screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png", rotate);
-                }else{
-                    // screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png", rotate);
+            Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", [this]{
+                QString path("/usr/share/remarkable/sleeping.png");
+                if(!QFile::exists(path)){
+                    path = "/usr/share/remarkable/suspended.png";
                 }
+                if(!QFile::exists(path)){
+                    return;
+                }
+                m_buffer = createBuffer();
+                if(m_buffer == nullptr){
+                    return;
+                }
+                QImage img(path);
+                if(img.isNull()){
+                    return;
+                }
+                if(landscape()){
+                    img = img.transformed(QTransform().rotate(90));
+                }
+                auto image = Oxide::QML::getImageForSurface(m_buffer);
+                image.fill(Qt::white);
+                QPainter painter(&image);
+                painter.setRenderHints(
+                    QPainter::Antialiasing | QPainter::SmoothPixmapTransform,
+                    1
+                );
+                auto rect = image.rect();
+                QPoint center(rect.width() / 2, rect.height() / 2);
+                painter.translate(center);
+                painter.scale(
+                    1* (rect.width() / qreal(img.height())),
+                    1 * (rect.width() / qreal(img.height()))
+                );
+                painter.translate(0 - img.width() / 2, 0 - img.height() / 2);
+                painter.drawPixmap(img.rect(), QPixmap::fromImage(img));
+                painter.end();
+                addSystemBuffer(m_buffer);
+                Blight::connection()->repaint(m_buffer, Blight::HighQualityGrayscale, 1);
+                Blight::connection()->waitForMarker(1);
             });
             Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this, device]{
                 buttonHandler->setEnabled(false);
@@ -118,6 +151,10 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 }
                 wifiAPI->resumeUpdating();
             });
+            if(m_buffer != nullptr){
+                Blight::connection()->remove(m_buffer);
+                m_buffer = nullptr;
+            }
         });
     }
 }

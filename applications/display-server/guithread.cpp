@@ -191,7 +191,7 @@ void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<S
     if(imageRect.isEmpty() || !imageRect.isValid() || sourceRect.isEmpty() || !sourceRect.isValid()){
         return;
     }
-    O_DEBUG("Repaint surface" << surface->id() << imageRect);
+    O_DEBUG("Repaint surface" << surface->id() << sourceRect << imageRect);
     // TODO - See if there is a way to detect if there is just transparency in the region
     //        and don't mark this as repainted.
     painter->drawImage(sourceRect, *surface->image().get(), imageRect);

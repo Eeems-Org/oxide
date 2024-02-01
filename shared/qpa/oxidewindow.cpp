@@ -46,8 +46,10 @@ void OxideWindow::setVisible(bool visible){
     if(screen != nullptr){
         if(visible){
             screen->addWindow(this);
+            raise();
         }else{
             screen->removeWindow(this);
+            lower();
         }
     }
 }

@@ -153,6 +153,7 @@ private:
     QPoint startLocation;
     QMap<SwipeDirection, bool> swipeStates;
     QMap<SwipeDirection, int> swipeLengths;
+    Blight::shared_buf_t m_buffer = nullptr;
 
     void inhibitSleep();
     void inhibitPowerOff();

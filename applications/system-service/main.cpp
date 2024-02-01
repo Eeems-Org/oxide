@@ -180,6 +180,9 @@ int main(int argc, char* argv[]){
         QString path("/opt/usr/share/icons/oxide/702x702/splash/oxide.png");
         if(QFileInfo(path).exists()){
             auto splash =  QImage(path).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            if(deviceSettings.keyboardAttached()){
+                splash = splash.transformed(QTransform().rotate(90));
+            }
             painter.drawImage(splashRect, splash, splash.rect());
         }
         painter.end();
