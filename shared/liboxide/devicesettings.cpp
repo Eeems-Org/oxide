@@ -1,8 +1,5 @@
 #include "devicesettings.h"
 
-#include <private/qguiapplication_p.h>
-#include <private/qinputdevicemanager_p.h>
-
 #include "debug.h"
 #include "liboxide.h"
 
@@ -80,6 +77,7 @@ namespace Oxide {
         }else{
             O_DEBUG(("Buttons input device: " + buttonsPath).c_str());
         }
+        watcher = new QFileSystemWatcher(QStringList() << "/dev/input", qApp);
     }
     DeviceSettings::~DeviceSettings(){}
     bool DeviceSettings::checkBitSet(int fd, int type, int i) {
@@ -224,17 +222,15 @@ namespace Oxide {
     bool DeviceSettings::keyboardAttached(){ return !physicalKeyboards().empty(); }
 
     void DeviceSettings::onKeyboardAttachedChanged(std::function<void()> callback){
-        auto manager = QGuiApplicationPrivate::inputDeviceManager();
-        QObject::connect(
-            manager,
-            &QInputDeviceManager::deviceListChanged,
-            manager,
-            [callback](QInputDeviceManager::DeviceType type){
-                if(type == QInputDeviceManager::DeviceTypeKeyboard){
-                    callback();
-                }
+        bool initialValue = keyboardAttached();
+        onInputDevicesChanged([this, callback, initialValue]{
+            static bool attached = initialValue;
+            bool nowAttached = keyboardAttached();
+            if(attached != nowAttached){
+                callback();
             }
-        );
+            attached = nowAttached;
+        });
     }
 
     QList<event_device> DeviceSettings::inputDevices(){
@@ -255,16 +251,11 @@ namespace Oxide {
     }
 
     void DeviceSettings::onInputDevicesChanged(std::function<void()> callback){
-        auto manager = QGuiApplicationPrivate::inputDeviceManager();
-        QObject::connect(
-            manager,
-            &QInputDeviceManager::deviceListChanged,
-            manager,
-            [callback](QInputDeviceManager::DeviceType type){
-                Q_UNUSED(type);
+        watcher->connect(watcher, &QFileSystemWatcher::directoryChanged, qApp, [callback](const QString& path){
+            if(path == "/dev/input"){
                 callback();
             }
-        );
+        });
     }
 
     QList<event_device> DeviceSettings::keyboards(){
