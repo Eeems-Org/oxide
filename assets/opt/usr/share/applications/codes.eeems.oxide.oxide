@@ -3,6 +3,6 @@
     "description": "Application launcher",
     "bin": "/opt/bin/oxide",
     "type": "foreground",
-    "flags": ["hidden"],
+    "flags": ["hidden", "nopreload"],
     "permissions": ["apps", "wifi", "power", "system", "notification"]
 }

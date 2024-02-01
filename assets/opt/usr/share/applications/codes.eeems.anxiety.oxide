@@ -4,5 +4,6 @@
     "bin": "/opt/bin/anxiety",
     "icon": "oxide:image-48",
     "type": "foreground",
-    "permissions": ["screen"]
+    "permissions": ["screen"],
+    "flags": ["nopreload"]
 }

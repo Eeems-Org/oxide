@@ -68,6 +68,7 @@ Surface::Surface(
     connect(widget, &SurfaceWidget::activeFocusChanged, this, &Surface::activeFocusChanged);
     emit connection->focused();
     setVisible(true);
+    setZ(std::numeric_limits<int>::max());
     S_INFO("Surface created");
 }
 
@@ -75,6 +76,9 @@ Surface::~Surface(){
     S_INFO("Surface destroyed");
     file.close();
     setVisible(false);
+#ifdef EPAPER
+    repaint();
+#endif
     if(component != nullptr){
         component->deleteLater();
         component = nullptr;
@@ -87,13 +91,30 @@ bool Surface::isValid(){ return component != nullptr; }
 
 std::shared_ptr<QImage> Surface::image(){ return m_image; }
 
-void Surface::repaint(){ emit update(QRect(QPoint(0, 0), m_geometry.size())); }
+void Surface::repaint(QRect rect){
+    if(rect.isEmpty()){
+        rect = this->rect();
+    }
+#ifdef EPAPER
+    guiThread->enqueue(
+        nullptr,
+        geometry(),
+        EPFrameBuffer::HighQualityGrayscale,
+        0,
+        true
+    );
+#else
+    emit update(rect);
+#endif
+}
 
 int Surface::fd(){ return file.handle(); }
 
 const QRect& Surface::geometry(){ return m_geometry; }
 
 const QSize Surface::size(){ return m_geometry.size(); }
+
+const QRect Surface::rect(){ return QRect(QPoint(0, 0), size()); }
 
 int Surface::stride(){ return m_stride; }
 
@@ -108,15 +129,6 @@ void Surface::move(int x, int y){
 void Surface::setVisible(bool visible){
     if(component != nullptr){
         component->setVisible(visible);
-#ifdef EPAPER
-        guiThread->enqueue(
-            nullptr,
-            geometry(),
-            EPFrameBuffer::HighQualityGrayscale,
-            0,
-            true
-        );
-#endif
     }
 }
 

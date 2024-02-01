@@ -485,9 +485,10 @@ int __open(const char* pathname, int flags){
             if(res < 0){
                 _CRIT("Failed to create buffer: %s", std::strerror(errno));
                 std::exit(errno);
-            }else{
-                _INFO("Created buffer %s on fd %d", blightBuffer->uuid.c_str(), blightBuffer->fd);
             }
+            // Initialize the buffer with white
+            memset((std::uint16_t*)blightBuffer->data, std::uint16_t(0xFFFFFFFF), 2808 * 1872);
+            _INFO("Created buffer %s on fd %d", blightBuffer->uuid.c_str(), blightBuffer->fd);
             return res;
         }
     }else if(actualpath.starts_with("/dev/input/event")){

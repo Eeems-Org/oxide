@@ -196,6 +196,8 @@ std::shared_ptr<Surface> Connection::addSurface(int fd, QRect geometry, int stri
     auto id = ++m_surfaceId;
     auto surface = std::shared_ptr<Surface>(new Surface(this, fd, id, geometry, stride, format));
     surfaces.insert_or_assign(id, surface);
+    dbusInterface->sortZ();
+    surface->repaint();
     return surface;
 }
 
@@ -382,8 +384,7 @@ void Connection::readSocket(){
                 surface->move(move.x, move.y);
                 guiThread->enqueue(
                     surface,
-                    // Surface repaints are local to their coordinates, thus (0,0)
-                    QRect(QPoint(0, 0), surface->size()),
+                    surface->rect(),
                     EPFrameBuffer::WaveformMode::HighQualityGrayscale,
                     message->header.ackid,
                     false,
@@ -467,8 +468,7 @@ void Connection::readSocket(){
 #ifdef EPAPER
                 guiThread->enqueue(
                     surface,
-                    // Surface repaints are local to their coordinates, thus (0,0)
-                    QRect(QPoint(0, 0), surface->size()),
+                    surface->rect(),
                     EPFrameBuffer::WaveformMode::HighQualityGrayscale,
                     message->header.ackid,
                     false,

@@ -31,10 +31,11 @@ public:
     Blight::surface_id_t identifier(){ return m_identifier; }
     bool isValid();
     std::shared_ptr<QImage> image();
-    void repaint();
+    void repaint(QRect rect = QRect());
     int fd();
     const QRect& geometry();
     const QSize size();
+    const QRect rect();
     int stride();
     QImage::Format format();
     void move(int x, int y);

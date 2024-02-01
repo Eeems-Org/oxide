@@ -287,6 +287,7 @@ void DbusInterface::lower(QString identifier, QDBusMessage message){
     if(surface != nullptr){
         surface->setVisible(false);
         sortZ();
+        surface->repaint();
         return;
     }
     auto connection = getConnection(identifier);
@@ -299,6 +300,7 @@ void DbusInterface::lower(QString identifier, QDBusMessage message){
     }
     for(auto& surface : connection->getSurfaces()){
         surface->setVisible(false);
+        surface->repaint();
     }
     sortZ();
 }
@@ -311,6 +313,7 @@ void DbusInterface::raise(QString identifier, QDBusMessage message){
         surface->setVisible(true);
         surface->setZ(std::numeric_limits<int>::max());
         sortZ();
+        surface->repaint();
         return;
     }
     auto connection = getConnection(identifier);
@@ -321,6 +324,7 @@ void DbusInterface::raise(QString identifier, QDBusMessage message){
     for(auto& surface : connection->getSurfaces()){
         surface->setVisible(true);
         surface->setZ(std::numeric_limits<int>::max());
+        surface->repaint();
     }
     sortZ();
 }
@@ -549,7 +553,7 @@ void DbusInterface::sortZ(){
         if(
             !connection->isRunning()
             || connection->isStopped()
-            || connection->has("system")
+          || connection->has("system")
         ){
             continue;
         }
