@@ -196,7 +196,7 @@ namespace Oxide::Applications{
         }
     }else shouldExit
     if(app.contains("directories")){
-        addError(ErrorLevel::Deprecation, QString("Key \"directories\" is no longer used");
+        addError(ErrorLevel::Deprecation, QString("Key \"directories\" is no longer used"));
     }else shouldExit
     if(isArray("directories", ErrorLevel::Critical, false)){
         auto directories = app["directories"].toArray();

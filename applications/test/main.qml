@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.0
-import codes.eeems.oxide 2.8
+import codes.eeems.oxide 3.0
 import "qrc:/codes.eeems.oxide"
 
 OxideWindow{

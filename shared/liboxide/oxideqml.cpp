@@ -36,7 +36,7 @@ namespace Oxide {
             QQmlContext* context = engine->rootContext();
             context->setContextProperty("Oxide", getSingleton());
             engine->addImportPath( "qrc:/codes.eeems.oxide");
-            qmlRegisterType<Canvas>("codes.eeems.oxide", 2, 8, "Canvas");
+            qmlRegisterType<Canvas>("codes.eeems.oxide", 3, 0, "Canvas");
         }
 
         Canvas::Canvas(QQuickItem* parent)
