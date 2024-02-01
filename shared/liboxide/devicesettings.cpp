@@ -252,6 +252,7 @@ namespace Oxide {
 
     void DeviceSettings::onInputDevicesChanged(std::function<void()> callback){
         watcher->connect(watcher, &QFileSystemWatcher::directoryChanged, qApp, [callback](const QString& path){
+            qDebug() << path;
             if(path == "/dev/input"){
                 callback();
             }
