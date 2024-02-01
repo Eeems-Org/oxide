@@ -295,7 +295,7 @@ void DbusInterface::lower(QString identifier, QDBusMessage message){
         return;
     }
     if(m_focused == connection){
-        m_focused = nullptr;
+        setFocus(nullptr);
     }
     for(auto& surface : connection->getSurfaces()){
         surface->setVisible(false);
@@ -325,6 +325,17 @@ void DbusInterface::raise(QString identifier, QDBusMessage message){
     sortZ();
 }
 
+void DbusInterface::focus(QString identifier, QDBusMessage message){
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(identifier);
+    if(connection == nullptr){
+        sendErrorReply(QDBusError::BadAddress, "Connection not found");
+        return;
+    }
+    setFocus(connection);
+}
+
 void DbusInterface::waitForNoRepaints(QDBusMessage message){
     Q_UNUSED(message);
     // TODO - only allow tarnish to make this call
@@ -334,6 +345,15 @@ void DbusInterface::waitForNoRepaints(QDBusMessage message){
 }
 
 Connection* DbusInterface::focused(){ return m_focused; }
+
+void DbusInterface::setFocus(Connection* connection){
+    m_focused = connection;
+    if(m_focused != nullptr){
+        O_INFO(m_focused->id() << "has focus");
+    }else{
+        O_INFO("Nothing is in focus");
+    }
+}
 
 void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){
     Q_UNUSED(oldOwner);
@@ -415,15 +435,14 @@ Connection* DbusInterface::createConnection(int pid){
             O_WARNING("Could not find connection to remove!");
         }
         if(m_focused != nullptr && m_focused == connection){
-            m_focused = nullptr;
+            setFocus(nullptr);
         }
         sortZ();
     });
     connect(connection, &Connection::focused, this, [this, connection]{
         for(auto& ptr : qAsConst(connections)){
             if(ptr == connection && !ptr->has("system")){
-                m_focused = ptr;
-                O_INFO(m_focused->id() << "has focus");
+                setFocus(ptr);
                 break;
             }
         }
@@ -517,7 +536,7 @@ void DbusInterface::sortZ(){
             || m_focused->isStopped()
         )
     ){
-        m_focused = nullptr;
+        setFocus(nullptr);
     }else if(m_focused != nullptr || sorted.empty()){
         return;
     }
@@ -527,13 +546,16 @@ void DbusInterface::sortZ(){
             continue;
         }
         auto connection = surface->connection();
-        if(!connection->isRunning() || connection->isStopped()){
+        if(
+            !connection->isRunning()
+            || connection->isStopped()
+            || connection->has("system")
+        ){
             continue;
         }
         for(auto& ptr : connections){
-            if(ptr == connection && !ptr->has("system")){
-                m_focused = ptr;
-                O_INFO(m_focused->id() << "has focus");
+            if(ptr == connection){
+                setFocus(ptr);
                 break;
             }
         }

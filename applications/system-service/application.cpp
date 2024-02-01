@@ -221,6 +221,8 @@ void Application::waitForResume(){
     waitid(P_PID, m_process->processId(), &info, WCONTINUED);
 }
 
+QString Application::id(){ return QString("connection/%1").arg(m_process->processId()); }
+
 void Application::sigUsr1(){
     timer.invalidate();
 }
@@ -310,7 +312,9 @@ void Application::uninterruptApplication(){
             }
         });
     });
-    getCompositorDBus()->raise(QString("connection/%1").arg(m_process->processId()));
+    auto compositor = getCompositorDBus();
+    compositor->raise(id());
+    compositor->focus(id());
 }
 void Application::stop(){
     if(!hasPermission("apps")){
@@ -687,6 +691,7 @@ void Application::updateEnvironment(){
     for(auto key : environment().keys()){
         env.insert(key, environment().value(key, "").toString());
     }
+    env.remove("OXIDE_PRELOAD_DISABLE_INPUT");
     m_process->setEnvironment(env.toStringList());
 }
 

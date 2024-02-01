@@ -38,6 +38,7 @@ public:
     QList<std::shared_ptr<Surface>> visibleSurfaces();
     void sortZ();
     Connection* focused();
+    void setFocus(Connection* connection);
     void inputEvents(unsigned int device, const std::vector<input_event>& events);
 
     // Property getter/setters
@@ -47,7 +48,6 @@ public:
     void setSelection(const QByteArray& data);
     const QByteArray& secondary();
     void setSecondary(const QByteArray& data);
-
 
 public slots:
     QDBusUnixFileDescriptor open(QDBusMessage message);
@@ -69,6 +69,7 @@ public slots:
     QDBusUnixFileDescriptor frameBuffer(QDBusMessage message);
     void lower(QString identifier, QDBusMessage message);
     void raise(QString identifier, QDBusMessage message);
+    void focus(QString identifier, QDBusMessage message);
     void waitForNoRepaints(QDBusMessage message);
 
 signals:

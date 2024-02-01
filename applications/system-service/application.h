@@ -165,6 +165,7 @@ public:
     void uninterruptApplication();
     void waitForPause();
     void waitForResume();
+    QString id();
 
 signals:
     void launched();

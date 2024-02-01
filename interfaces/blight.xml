@@ -53,6 +53,9 @@
     <method name="raise">
       <arg name="identifier" type="s" direction="in"/>
     </method>
+    <method name="focus">
+      <arg name="identifier" type="s" direction="in"/>
+    </method>
     <method name="waitForNoRepaints">
     </method>
   </interface>
