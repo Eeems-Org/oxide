@@ -11,7 +11,7 @@ Conflicts=sync.service
 [Service]
 Type=dbus
 BusName=codes.eeems.blight1
-ExecStart=/opt/bin/blight --break-lock
+ExecStart=/opt/bin/rm2fb-client /opt/bin/blight --break-lock
 Restart=on-failure
 RestartSec=5
 
