@@ -129,13 +129,16 @@ void GUIThread::enqueue(
     auto visibleSurfaces = this->visibleSurfaces();
     QRegion repaintRegion(intersected);
     if(!global){
-        // Don't repaint portions covered by another surface
+        // Don't repaint portions covered by another surface that doesn't have alpha channel
         auto i = visibleSurfaces.constEnd();
         while(i != visibleSurfaces.constBegin()){
             --i;
             auto _surface = *i;
             if(surface == _surface){
                 break;
+            }
+            if(surface->image()->hasAlphaChannel()){
+                continue;
             }
             auto geometry = _surface->geometry();
             repaintRegion -= region
