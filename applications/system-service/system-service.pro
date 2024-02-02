@@ -93,7 +93,11 @@ LIBS += -lz
 DISTFILES += \
     fi.w1.wpa_supplicant1.xml \
     generate_xml.sh \
-    org.freedesktop.login1.xml
+    org.freedesktop.login1.xml \
+    ../../assets/etc/dbus-1/system.d/codes.eeems.oxide.conf \
+    ../../assets/etc/systemd/system/tarnish.service \
+    ../../assets/opt/usr/share/applications/xochitl.oxide \
+    ../../assets/opt/etc/keyd/oxide.conf
 
 INCLUDEPATH += ../../shared/mxcfb
 

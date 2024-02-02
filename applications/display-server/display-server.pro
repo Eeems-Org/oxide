@@ -33,6 +33,14 @@ configFile.files = ../../assets/etc/dbus-1/system.d/codes.eeems.blight.conf
 configFile.path = /etc/dbus-1/system.d/
 INSTALLS += configFile
 
+service.files = ../../assets/etc/systemd/system/blight.service
+service.path = /etc/systemd/system/
+INSTALLS += service
+
+client.files = blight-client
+client.path = /opt/bin/
+INSTALLS += client
+
 TARGET = blight
 include(../../qmake/common.pri)
 target.path = /opt/bin
@@ -59,4 +67,6 @@ RESOURCES += \
 
 DISTFILES += \
     ../../assets/etc/dbus-1/system.d/codes.eeems.blight.conf \
-    generate_xml.sh
+    ../../assets/etc/systemd/system/blight.service \
+    generate_xml.sh \
+    blight-client

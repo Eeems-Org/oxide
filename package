@@ -2,7 +2,17 @@
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 
-pkgnames=(oxide oxide-extra oxide-utils inject_evdev liboxide liboxide-dev libsentry)
+pkgnames=(
+    fbinfo
+    inject_evdev
+    liboxide
+    liboxide-dev
+    libsentry
+    oxide
+    oxide-display
+    oxide-extra
+    oxide-utils
+)
 _oxidever=$(grep 'VERSION =' qmake/common.pri | awk '{print $3}')
 pkgver="$_oxidever~VERSION~"
 _sentryver=0.7.0
@@ -24,7 +34,7 @@ build() {
 oxide() {
     pkgdesc="Launcher application"
     section="launchers"
-    installdepends=("oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver" "reboot-guard")
+    installdepends=("oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver" "oxide-display=$pkgver" reboot-guard)
     replaces=(erode tarnish decay corrupt)
     conflicts=(erode tarnish decay corrupt)
 
@@ -49,6 +59,8 @@ oxide() {
         # Task switcher
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/corrupt
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.corrupt.oxide
+        # Keyd configuration
+        install -D -m 644 -t "$pkgdir"/opt/etc/keyd "$srcdir"/release/opt/etc/keyd/oxide.conf
     }
 
     configure(){
@@ -77,6 +89,23 @@ oxide() {
 
     postremove() {
         systemctl daemon-reload
+    }
+}
+
+oxide-display() {
+    pkgdesc="Oxide display server"
+    section="devel"
+    installdepends=("liboxide=$pkgver" "libsentry=$_sentryver")
+
+    package(){
+        # Display server
+        install -D -m 644 -t "$pkgdir"/etc/dbus-1/system.d "$srcdir"/release/etc/dbus-1/system.d/codes.eeems.blight.conf
+        install -D -m 644 -t "$pkgdir"/lib/systemd/system "$srcdir"/release/etc/systemd/system/blight.service
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/blight
+        # Client
+        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight_client.so*
+        # QPA
+        install -D -m 755 -t "$pkgdir"/opt/usr/lib/plugins/platforms "$srcdir"/release/opt/usr/lib/plugins/platforms/liboxide.so*
     }
 }
 
@@ -113,15 +142,16 @@ oxide-utils() {
     conflicts=(rot notify-send update-desktop-database desktop-file-validate)
 
     package() {
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/rot
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/notify-send
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/update-desktop-database
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/desktop-file-validate
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-desktop-menu
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/gio
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/notify-send
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/rot
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/update-desktop-database
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xclip
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-desktop-icon
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-desktop-menu
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-open
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-settings
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/gio
     }
 }
 
@@ -135,6 +165,15 @@ inject_evdev() {
     }
 }
 
+fbinfo() {
+    pkgdesc="Print out framebuffer info"
+    section="utils"
+
+    package() {
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/fbinfo
+    }
+}
+
 liboxide() {
     pkgdesc="Shared library for oxide applications"
     section="devel"
@@ -142,6 +181,7 @@ liboxide() {
     package() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/liboxide.so*
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libqsgepaper.so*
+        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight.so*
     }
 }
 
