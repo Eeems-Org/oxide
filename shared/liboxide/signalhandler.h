@@ -27,6 +27,7 @@ namespace Oxide {
          * \brief Setup the unix signal handlers to listen to SIGUSR1 and SIGUSR2
          * \retval 1 Failed to setup SIGUSR1
          * \retval 2 Failed to setup SIGUSR2
+         * \retval 3 Failed to setup SIGUSR2
          * \retval 0 Successfully setup both signal handlers
          *
          * This method will automatically create and register the singleton with a parent of qApp.
@@ -48,10 +49,12 @@ namespace Oxide {
         ~SignalHandler();
         static void usr1SignalHandler(int unused);
         static void usr2SignalHandler(int unused);
+        static void contSignalHandler(int unused);
 
     public slots:
         void handleSigUsr1();
         void handleSigUsr2();
+        void handleSigCont();
 
     signals:
         /*!
@@ -62,10 +65,15 @@ namespace Oxide {
          * \brief The process has recieved a SIGUSR2
          */
         void sigUsr2();
+        /*
+         * \brief The process has recieved a SIGCONT
+         */
+        void sigCont();
 
     private:
         QSocketNotifier* snUsr1;
         QSocketNotifier* snUsr2;
+        QSocketNotifier* snCont;
     };
 }
 /*! @} */

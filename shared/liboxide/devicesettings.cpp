@@ -2,6 +2,9 @@
 
 #include "debug.h"
 #include "liboxide.h"
+#include "signalhandler.h"
+
+#include <private/qdevicediscovery_p.h>
 
 #define BITS_PER_LONG (sizeof(long) * 8)
 #define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
@@ -77,7 +80,6 @@ namespace Oxide {
         }else{
             O_DEBUG(("Buttons input device: " + buttonsPath).c_str());
         }
-        watcher = new QFileSystemWatcher(QStringList() << "/dev/input", qApp);
     }
     DeviceSettings::~DeviceSettings(){}
     bool DeviceSettings::checkBitSet(int fd, int type, int i) {
@@ -251,11 +253,17 @@ namespace Oxide {
     }
 
     void DeviceSettings::onInputDevicesChanged(std::function<void()> callback){
-        watcher->connect(watcher, &QFileSystemWatcher::directoryChanged, qApp, [callback](const QString& path){
-            qDebug() << path;
-            if(path == "/dev/input"){
-                callback();
-            }
+        static auto deviceDiscovery = QDeviceDiscovery::create(QDeviceDiscovery::Device_InputMask, qApp);
+        QObject::connect(deviceDiscovery, &QDeviceDiscovery::deviceDetected, qApp, [callback](const QString& device){
+            Q_UNUSED(device);
+            callback();
+        });
+        QObject::connect(deviceDiscovery, &QDeviceDiscovery::deviceRemoved, qApp, [callback](const QString& device){
+            Q_UNUSED(device);
+            callback();
+        });
+        QObject::connect(signalHandler, &SignalHandler::sigCont, qApp, [callback]{
+            callback();
         });
     }
 

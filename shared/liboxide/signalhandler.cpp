@@ -9,13 +9,14 @@
 
 static int sigUsr1Fd[2];
 static int sigUsr2Fd[2];
+static int sigContFd[2];
 
 namespace Oxide {
     int SignalHandler::setup_unix_signal_handlers(){
         if(!signalHandler){
             new SignalHandler(qApp);
         }
-        struct sigaction usr1, usr2;
+        struct sigaction usr1, usr2, cont;
 
         usr1.sa_handler = SignalHandler::usr1SignalHandler;
         sigemptyset(&usr1.sa_mask);
@@ -31,6 +32,14 @@ namespace Oxide {
         usr2.sa_flags |= SA_RESTART;
         if(sigaction(SIGUSR2, &usr2, 0)){
             return 2;
+        }
+
+        cont.sa_handler = SignalHandler::contSignalHandler;
+        sigemptyset(&cont.sa_mask);
+        cont.sa_flags = 0;
+        cont.sa_flags |= SA_RESTART;
+        if(sigaction(SIGCONT, &cont, 0)){
+            return 3;
         }
 
         return 0;
@@ -55,6 +64,8 @@ namespace Oxide {
         connect(snUsr1, &QSocketNotifier::activated, this, &SignalHandler::handleSigUsr1, Qt::QueuedConnection);
         snUsr2 = new QSocketNotifier(sigUsr2Fd[1], QSocketNotifier::Read, this);
         connect(snUsr2, &QSocketNotifier::activated, this, &SignalHandler::handleSigUsr2, Qt::QueuedConnection);
+        snCont = new QSocketNotifier(sigContFd[1], QSocketNotifier::Read, this);
+        connect(snCont, &QSocketNotifier::activated, this, &SignalHandler::handleSigCont, Qt::QueuedConnection);
     }
     SignalHandler::~SignalHandler(){}
     void SignalHandler::usr1SignalHandler(int unused){
@@ -66,6 +77,11 @@ namespace Oxide {
         Q_UNUSED(unused)
         char a = 1;
         ::write(sigUsr2Fd[0], &a, sizeof(a));
+    }
+    void SignalHandler::contSignalHandler(int unused){
+        Q_UNUSED(unused)
+        char a = 1;
+        ::write(sigContFd[0], &a, sizeof(a));
     }
     void SignalHandler::handleSigUsr1(){
         snUsr1->setEnabled(false);
@@ -80,6 +96,13 @@ namespace Oxide {
         ::read(sigUsr2Fd[1], &tmp, sizeof(tmp));
         emit sigUsr2();
         snUsr2->setEnabled(true);
+    }
+    void SignalHandler::handleSigCont(){
+        snCont->setEnabled(false);
+        char tmp;
+        ::read(sigContFd[1], &tmp, sizeof(tmp));
+        emit sigCont();
+        snCont->setEnabled(true);
     }
 }
 

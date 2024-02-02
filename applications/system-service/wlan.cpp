@@ -67,8 +67,12 @@ bool Wlan::pingIP(std::string ip, const char* port) {
 }
 
 bool Wlan::isConnected(){
-    auto ip = exec("/sbin/ip r | /bin/grep " + iface() + " | /bin/grep default | /usr/bin/awk '{print $3}'");
-    return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
+    try{
+        auto ip = exec("/sbin/ip r | /bin/grep " + iface() + " | /bin/grep default | /usr/bin/awk '{print $3}'");
+        return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
+    }catch(const std::runtime_error&){
+        return false;
+    }
 }
 
 int Wlan::link(){
@@ -83,15 +87,18 @@ int Wlan::link(){
         return result;
     }
     O_WARNING("SignalPoll error: " << res.error());
-    auto out = exec("/bin/grep " + iface() + " /proc/net/wireless | /usr/bin/awk '{print $3}'");
-    if(QString(out.c_str()).isEmpty()){
-        return 0;
-    }
-    try {
-        return std::stoi(out);
-    }
-    catch (const std::invalid_argument& e) {
-        O_WARNING("link failed: " << out.c_str());
+    try{
+        auto out = exec("/bin/grep " + iface() + " /proc/net/wireless | /usr/bin/awk '{print $3}'");
+        if(QString(out.c_str()).isEmpty()){
+            return 0;
+        }
+        try{
+            return std::stoi(out);
+        }catch(const std::invalid_argument& e){
+            O_WARNING("link failed: " << out.c_str());
+            return 0;
+        }
+    }catch(const std::runtime_error&){
         return 0;
     }
     return -100;
@@ -109,17 +116,22 @@ signed int Wlan::rssi(){
         return result;
     }
     O_WARNING("SignalPoll error: " << res.error());
-    auto out = exec("/bin/grep " + iface() + " /proc/net/wireless | /usr/bin/awk '{print $4}'");
-    if(QString(out.c_str()).isEmpty()){
+    try{
+        auto out = exec("/bin/grep " + iface() + " /proc/net/wireless | /usr/bin/awk '{print $4}'");
+        if(QString(out.c_str()).isEmpty()){
+            return 0;
+        }
+        try {
+            return std::stoi(out);
+        }
+        catch (const std::invalid_argument& e) {
+            O_WARNING("signal failed: " << out.c_str());
+            return 0;
+        }
+    }catch(const std::runtime_error&){
         return 0;
     }
-    try {
-        return std::stoi(out);
-    }
-    catch (const std::invalid_argument& e) {
-        O_WARNING("signal failed: " << out.c_str());
-        return 0;
-    }
+
     return -100;
 }
 
@@ -158,7 +170,7 @@ std::string Wlan::exec(QString cmd) {
     std::array<char, 128> buffer;
     std::string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.toStdString().c_str(), "r"), pclose);
-    if (!pipe) {
+    if(!pipe){
         throw std::runtime_error("popen() failed!");
     }
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {

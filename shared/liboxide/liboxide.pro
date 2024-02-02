@@ -3,6 +3,7 @@ QT += quick
 QT += dbus
 QT += core_private
 QT += gui-private
+QT += input_support-private
 
 TEMPLATE = lib
 DEFINES += LIBOXIDE_LIBRARY
