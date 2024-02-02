@@ -14,7 +14,6 @@ typedef struct KeyboardData {
     quint8 m_locks[3];
     int m_composing;
     quint16 m_dead_unicode;
-    quint8 m_langLock;
 } KeyboardData;
 
 typedef struct rect_t {
@@ -326,9 +325,6 @@ void OxideEventHandler::processKeyboardEvent(
                 && (m->flags & QEvdevKeyboardMap::IsLetter)
             ){
                 testmods ^= QEvdevKeyboardMap::ModShift;
-            }
-            if(keyboardData->m_langLock){
-                testmods ^= QEvdevKeyboardMap::ModAltGr;
             }
             if(m->modifiers == testmods){
                 map_withmod = m;

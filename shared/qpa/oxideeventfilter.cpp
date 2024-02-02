@@ -13,7 +13,10 @@ QVector<QEvent::Type> ignoreTypes{
     QEvent::MetaCall,
     QEvent::ThreadChange,
     QEvent::SockAct,
-    QEvent::Timer
+    QEvent::Timer,
+    QEvent::ChildAdded,
+    QEvent::ChildRemoved,
+    QEvent::DeferredDelete
 };
 
 bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev){

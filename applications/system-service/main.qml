@@ -76,7 +76,7 @@ Window{
         onActivated: controller.taskSwitcher()
     }
     Shortcut{
-        sequences: ["Shift+Meta+S", "Shift+End+S", StandardKey.Print]
+        sequences: ["Meta+Shift+S", "End+Shift+S", StandardKey.Print]
         context: Qt.ApplicationShortcut
         onActivated: controller.screenshot()
     }
@@ -101,7 +101,7 @@ Window{
         onActivated: controller.terminal()
     }
     Shortcut{
-        sequences: ["End+Alt+4", "Alt+F4"]
+        sequences: ["End+Alt+4", "Alt+F4", "Meta+Alt+4"]
         context: Qt.ApplicationShortcut
         onActivated: controller.close()
     }
