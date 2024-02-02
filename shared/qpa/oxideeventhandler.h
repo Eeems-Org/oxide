@@ -69,5 +69,4 @@ private:
     bool loadKeymap(const QString& file);
     void parseKeyParams(const QStringList& parameters);
     void parseTouchParams(const QStringList& parameters);
-
 };
