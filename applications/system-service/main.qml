@@ -81,12 +81,12 @@ Window{
         onActivated: controller.screenshot()
     }
     Shortcut{
-        sequences: ["Ctrl+Shift+Esc", "Ctrl+Shift+1", "Launch0"]
+        sequences: ["Ctrl+Shift+Esc", "Ctrl+Shift+1"]
         context: Qt.ApplicationShortcut
         onActivated: controller.processManager()
     }
     Shortcut{
-        sequences: ["Meta+Backspace", "End+Backspace"]
+        sequences: ["Meta+Backspace", "End+Backspace", StandardKey.Back]
         context: Qt.ApplicationShortcut
         onActivated: controller.back()
     }
