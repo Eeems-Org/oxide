@@ -24,6 +24,10 @@
 #define C_WARNING(msg) O_WARNING("[" << id() << "]" << msg)
 #define C_INFO(msg) O_INFO("[" << id() << "]" << msg)
 
+#ifndef SYS_pidfd_open
+# define SYS_pidfd_open 434
+#endif
+
 static int pidfd_open(pid_t pid, unsigned int flags){
     return syscall(SYS_pidfd_open, pid, flags);
 }
