@@ -8,7 +8,6 @@ Window{
     width: Screen.width
     height: Screen.height
     visible: true
-    opacity: 0
     color: "transparent"
     Item{
         anchors.fill: parent

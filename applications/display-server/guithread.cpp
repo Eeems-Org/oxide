@@ -137,7 +137,7 @@ void GUIThread::enqueue(
             if(surface == _surface){
                 break;
             }
-            if(surface->image()->hasAlphaChannel()){
+            if(_surface->image()->hasAlphaChannel()){
                 continue;
             }
             auto geometry = _surface->geometry();
@@ -148,7 +148,7 @@ void GUIThread::enqueue(
         }
     }
     if(repaintRegion.isEmpty()){
-        O_WARNING("Region is not currently visible" << surface->id() << region);
+        O_WARNING("Region is currently covered" << surface->id() << region);
         if(callback != nullptr){
             callback();
         }
