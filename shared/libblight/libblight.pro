@@ -36,7 +36,7 @@ PRECOMPILED_HEADER = \
 LIBS += -lsystemd
 
 include(../../qmake/common.pri)
-RELATIVE_PWD = $$system(realpath --relative-to $$OUT_PWD $$PWD)
+RELATIVE_PWD = $$system(realpath --canonicalize-missing --relative-to $$OUT_PWD $$PWD)
 
 libblight_libblight_h.target = include/libblight/libblight.h
 for(h, HEADERS){

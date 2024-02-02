@@ -83,7 +83,7 @@ DBUS_INTERFACES += \
 LIBS += -lsystemd
 
 include(../../qmake/common.pri)
-RELATIVE_PWD = $$system(realpath --relative-to $$OUT_PWD $$PWD)
+RELATIVE_PWD = $$system(realpath --canonicalize-missing --relative-to  $$OUT_PWD $$PWD)
 
 liboxide_liboxide_h.target = include/liboxide/liboxide.h
 for(h, HEADERS){

@@ -34,12 +34,12 @@ namespace Blight{
             return {};
         }
         const void* clipboard = nullptr;
-        size_t size = 0;
+        ::size_t size = 0;
         auto res = sd_bus_message_read_array(
             reply->message,
             'y',
             &clipboard,
-            static_cast<::size_t*>(&size)
+            &size
         );
         if(res < 0){
             _WARN(
@@ -51,7 +51,7 @@ namespace Blight{
         }
         auto data = new unsigned char[size];
         memcpy(data, clipboard, size);
-        return clipboard_t(name, data, size);
+        return clipboard_t(name, data, static_cast<size_t>(size));
     }
 
     bool connect(bool use_system){

@@ -733,7 +733,7 @@ extern "C" {
     void* mmap(void* addr, size_t len, int prot, int flags, int fd, __off_t offset){
         _DEBUG(
             "mmap 0x%u %lld 0x%02x 0x%02x %d %d",
-            (unsigned)addr,
+            static_cast<int>(reinterpret_cast<std::uintptr_t>(addr)),
             len,
             prot,
             flags,

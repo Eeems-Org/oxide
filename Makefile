@@ -24,8 +24,10 @@ clean: clean-base
 	rm -rf $(BUILD)
 
 release: clean-base build $(DIST)
+ifneq ($(filter sentry,$(FEATURES)),)
 	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
 	cd $(BUILD)/oxide/shared/sentry && make qmake
+endif
 	# Force liboxide makefile to regenerate so that install targets get when being build in toltecmk
 	cd $(BUILD)/oxide/shared/liboxide && make qmake
 	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/oxide install
