@@ -15,7 +15,6 @@ SOURCES += \
     bss.cpp \
     buttonhandler.cpp \
     dbusservice.cpp \
-    digitizerhandler.cpp \
     eventlistener.cpp \
     fifohandler.cpp \
     network.cpp \
@@ -67,7 +66,6 @@ HEADERS += \
     buttonhandler.h \
     controller.h \
     dbusservice.h \
-    digitizerhandler.h \
     eventlistener.h \
     fifohandler.h \
     network.h \

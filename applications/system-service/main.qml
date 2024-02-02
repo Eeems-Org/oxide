@@ -105,4 +105,10 @@ Window{
         context: Qt.ApplicationShortcut
         onActivated: controller.close()
     }
+    Shortcut{
+        enabled: Oxide.deviceName != "reMarkable 2"
+        sequences: ["PowerOff"]
+        context: Qt.ApplicationShortcut
+        onActivated: controller.suspend()
+    }
 }

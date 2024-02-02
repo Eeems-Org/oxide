@@ -23,6 +23,10 @@ namespace Oxide {
 
         bool OxideQml::landscape(){ return deviceSettings.keyboardAttached(); }
 
+        QString OxideQml::deviceName(){
+            return deviceSettings.getDeviceName();
+        }
+
         QBrush OxideQml::brushFromColor(const QColor& color){
             return QBrush(color, Qt::SolidPattern);
         }

@@ -12,15 +12,16 @@
 
 namespace Oxide {
     namespace QML{
-
         class OxideQml : public QObject{
             Q_OBJECT
             Q_PROPERTY(bool landscape READ landscape NOTIFY landscapeChanged)
+            Q_PROPERTY(QString deviceName READ deviceName CONSTANT)
             QML_NAMED_ELEMENT(Oxide)
             QML_SINGLETON
         public:
             explicit OxideQml(QObject *parent = nullptr);
             bool landscape();
+            QString deviceName();
             Q_INVOKABLE QBrush brushFromColor(const QColor& color);
 
         signals:

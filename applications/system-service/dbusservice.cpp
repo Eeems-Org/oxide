@@ -6,7 +6,6 @@
 #include "screenapi.h"
 #include "notificationapi.h"
 #include "buttonhandler.h"
-#include "digitizerhandler.h"
 
 DBusService* DBusService::singleton(){
     static DBusService* instance;

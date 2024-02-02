@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <liboxide/oxideqml.h>
 
 #include "appsapi.h"
 #include "screenapi.h"
@@ -86,6 +87,7 @@ public:
         currentApplication->stop();
     }
     Q_INVOKABLE void toggleSwipes(){ systemAPI->toggleSwipes(); }
+    Q_INVOKABLE void suspend(){ systemAPI->suspend(); }
 
     bool leftSwipeEnabled(){ return systemAPI->getSwipeEnabled(SystemAPI::Left); }
     bool rightSwipeEnabled(){ return systemAPI->getSwipeEnabled(SystemAPI::Right); }

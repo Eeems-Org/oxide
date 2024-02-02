@@ -12,7 +12,6 @@
 #include "buttonhandler.h"
 #include "application.h"
 #include "screenapi.h"
-#include "digitizerhandler.h"
 #include "eventlistener.h"
 #include "login1_interface.h"
 
