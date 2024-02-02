@@ -45,7 +45,7 @@ namespace Oxide {
          *
          * Manually constructing this class will attempt to register it as the singleton instance.
          */
-        SignalHandler(QObject *parent = 0);
+        SignalHandler(QObject* parent = 0);
         ~SignalHandler();
         static void usr1SignalHandler(int unused);
         static void usr2SignalHandler(int unused);

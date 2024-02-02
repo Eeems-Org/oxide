@@ -13,20 +13,24 @@ namespace Oxide {
     event_device::event_device(const string& path, int flags) : device(path), flags(flags){
         this->open();
     }
+
+    event_device::event_device(const event_device& other)
+    : device(other.device),
+      flags(other.flags),
+      fd(::dup(other.fd))
+    {}
     event_device::~event_device(){
         this->close();
     }
 
     void event_device::open(){
-        if(fd > 0){
-            this->close();
-        }
+        this->close();
         fd = ::open(device.c_str(), flags);
         error = fd < 0 ? errno : 0;
     }
 
     void event_device::close(){
-        if(fd < 0){
+        if(fd > 0){
             ::close(fd);
         }
         fd = 0;

@@ -12,7 +12,7 @@ class EvDevDevice : public QObject{
     Q_OBJECT
 
 public:
-    EvDevDevice(QThread* handler, event_device device);
+    EvDevDevice(QThread* handler, const event_device& device);
     ~EvDevDevice();
     QString devName();
     QString name();

@@ -49,7 +49,7 @@ void EvDevHandler::reloadDevices(){
         if(device.device == deviceSettings.getButtonsDevicePath()){
             continue;
         }
-        if(!hasDevice(device) && device.fd != -1){
+        if(!hasDevice(device) && device.fd > 0){
             auto input = new EvDevDevice(this, device);
             connect(input, &EvDevDevice::inputEvents, this, [this, input](auto events){
                 dbusInterface->inputEvents(input->number(), events);

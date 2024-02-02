@@ -6,16 +6,17 @@
 #include <QFileInfo>
 #include <QThread>
 
-EvDevDevice::EvDevDevice(QThread* handler, event_device device)
+EvDevDevice::EvDevDevice(QThread* handler, const event_device& device)
 : QObject(handler),
   device(device),
   sys("/sys/class/input/" + devName() + "/device/")
 {
+    O_DEBUG(device.device.c_str() << this->device.fd);
     _name = sys.strProperty("name").c_str();
-    notifier = new QSocketNotifier(device.fd, QSocketNotifier::Read, this);
+    notifier = new QSocketNotifier(this->device.fd, QSocketNotifier::Read, this);
     connect(notifier, &QSocketNotifier::activated, this, &EvDevDevice::readEvents);
     notifier->setEnabled(true);
-    libevdev_new_from_fd(device.fd, &dev);
+    libevdev_new_from_fd(this->device.fd, &dev);
 }
 
 EvDevDevice::~EvDevDevice(){

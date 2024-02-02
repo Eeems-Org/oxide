@@ -48,6 +48,7 @@ namespace Oxide {
         static SignalHandler* instance;
         if(self != nullptr){
             instance = self;
+            setup_unix_signal_handlers();
         }
         return instance;
     }

@@ -4,7 +4,8 @@
 #include "liboxide.h"
 #include "signalhandler.h"
 
-#include <private/qdevicediscovery_p.h>
+#include <private/qguiapplication_p.h>
+#include <private/qinputdevicemanager_p.h>
 
 #define BITS_PER_LONG (sizeof(long) * 8)
 #define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
@@ -80,6 +81,11 @@ namespace Oxide {
         }else{
             O_DEBUG(("Buttons input device: " + buttonsPath).c_str());
         }
+        QObject::connect(signalHandler, &SignalHandler::sigCont, qApp, [this]{
+            for(auto& callback : callbacks){
+                callback();
+            }
+        });
     }
     DeviceSettings::~DeviceSettings(){}
     bool DeviceSettings::checkBitSet(int fd, int type, int i) {
@@ -253,16 +259,10 @@ namespace Oxide {
     }
 
     void DeviceSettings::onInputDevicesChanged(std::function<void()> callback){
-        static auto deviceDiscovery = QDeviceDiscovery::create(QDeviceDiscovery::Device_InputMask, qApp);
-        QObject::connect(deviceDiscovery, &QDeviceDiscovery::deviceDetected, qApp, [callback](const QString& device){
-            Q_UNUSED(device);
-            callback();
-        });
-        QObject::connect(deviceDiscovery, &QDeviceDiscovery::deviceRemoved, qApp, [callback](const QString& device){
-            Q_UNUSED(device);
-            callback();
-        });
-        QObject::connect(signalHandler, &SignalHandler::sigCont, qApp, [callback]{
+        callbacks.push_back(callback);
+        auto manager = QGuiApplicationPrivate::inputDeviceManager();
+        QObject::connect(manager, &QInputDeviceManager::deviceListChanged, qApp, [callback](QInputDeviceManager::DeviceType type){
+            Q_UNUSED(type);
             callback();
         });
     }

@@ -7,7 +7,6 @@
 #pragma once
 #include "liboxide_global.h"
 #include "event_device.h"
-#include <QFileSystemWatcher>
 
 /*!
  * \def deviceSettings()
@@ -156,7 +155,7 @@ namespace Oxide{
         std::string buttonsPath = "";
         std::string wacomPath = "";
         std::string touchPath = "";
-        QFileSystemWatcher* watcher = nullptr;
+        std::vector<std::function<void()>> callbacks;
     };
 }
 /*! @} */
