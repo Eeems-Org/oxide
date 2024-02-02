@@ -538,14 +538,13 @@ void OxideEventHandler::processKeyboardEvent(
             toQtModifiers(keyboardData->m_modifiers)
         );
     }
-    qDebug() << toQtModifiers(keyboardData->m_modifiers) << toQtModifiers(it->special) << it->special;
     QEvent::Type type = pressed ? QEvent::KeyPress : QEvent::KeyRelease;
     QString text = unicode != 0xffff ? QString(QChar(unicode)) : QString();
     QWindowSystemInterface::handleExtendedKeyEvent(
         nullptr,
         type,
         qtcode,
-        qtmods,
+        toQtModifiers(keyboardData->m_modifiers),
         keycode + 8,
         0,
         int(modifiers),
