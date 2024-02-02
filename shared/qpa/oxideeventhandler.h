@@ -63,9 +63,11 @@ private:
 
     static const QEvdevKeyboardMap::Mapping s_keymap_default[];
     static const QEvdevKeyboardMap::Composing s_keycompose_default[];
+    static Qt::KeyboardModifiers toQtModifiers(quint16 mod);
 
     void unloadKeymap();
     bool loadKeymap(const QString& file);
     void parseKeyParams(const QStringList& parameters);
     void parseTouchParams(const QStringList& parameters);
+
 };

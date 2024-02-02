@@ -54,7 +54,7 @@
 #include "oxideeventhandler.h"
 #include <linux/input.h>
 
-QT_BEGIN_NAMESPACE;
+QT_BEGIN_NAMESPACE
 
 enum Flags {
     None = 0x00,

@@ -10,7 +10,7 @@
 #include <private/qevdevtouchfilter_p.h>
 
 typedef struct KeyboardData {
-    quint8 m_modifiers;
+    quint16 m_modifiers;
     quint8 m_locks[3];
     int m_composing;
     quint16 m_dead_unicode;
@@ -353,9 +353,9 @@ void OxideEventHandler::processKeyboardEvent(
     ){
         // this is a modifier, i.e. Shift, Alt, ...
         if(pressed){
-            keyboardData->m_modifiers |= quint8(it->special);
+            keyboardData->m_modifiers |= it->special;
         }else{
-            keyboardData->m_modifiers &= ~quint8(it->special);
+            keyboardData->m_modifiers &= ~it->special;
         }
     } else if(qtcode >= Qt::Key_CapsLock && qtcode <= Qt::Key_ScrollLock){
         // (Caps|Num|Scroll)Lock
@@ -415,7 +415,7 @@ void OxideEventHandler::processKeyboardEvent(
             && !(map_withmod->qtcode & modmask)
         )
     ) {
-        qtcode |= QEvdevKeyboardHandler::toQtModifiers(modifiers);
+        qtcode |= toQtModifiers(modifiers);
     }
     if(
         keyboardData->m_composing == 2
@@ -535,9 +535,10 @@ void OxideEventHandler::processKeyboardEvent(
     // Generate the QPA event.
     if(!autorepeat){
         QGuiApplicationPrivate::inputDeviceManager()->setKeyboardModifiers(
-            QEvdevKeyboardHandler::toQtModifiers(keyboardData->m_modifiers)
+            toQtModifiers(keyboardData->m_modifiers)
         );
     }
+    qDebug() << toQtModifiers(keyboardData->m_modifiers) << toQtModifiers(it->special) << it->special;
     QEvent::Type type = pressed ? QEvent::KeyPress : QEvent::KeyRelease;
     QString text = unicode != 0xffff ? QString(QChar(unicode)) : QString();
     QWindowSystemInterface::handleExtendedKeyEvent(
@@ -920,6 +921,23 @@ void OxideEventHandler::processPointerEvent(
     Q_ASSERT(data->type == QInputDeviceManager::DeviceTypePointer);
     auto device = data->device;
     auto pointerData = data->get<PointerData>();
+}
+
+Qt::KeyboardModifiers OxideEventHandler::toQtModifiers(quint16 mod){
+    Qt::KeyboardModifiers qtmod = Qt::NoModifier;
+    if(mod & (Modifiers::ModShift | Modifiers::ModShiftL | Modifiers::ModShiftR)){
+        qtmod |= Qt::ShiftModifier;
+    }
+    if(mod & (Modifiers::ModControl | Modifiers::ModCtrlL | Modifiers::ModCtrlR)){
+        qtmod |= Qt::ControlModifier;
+    }
+    if(mod & Modifiers::ModAlt || mod & Modifiers::ModAltGr){
+        qtmod |= Qt::AltModifier;
+    }
+    if(mod & Modifiers::ModMeta){
+        qtmod |= Qt::MetaModifier;
+    }
+    return qtmod;
 }
 
 void OxideEventHandler::unloadKeymap(){
