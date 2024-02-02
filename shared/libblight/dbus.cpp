@@ -42,7 +42,7 @@ namespace Blight {
 
     bool Blight::DBusReply::isError(){ return return_value < 0; }
 
-    DBusException::DBusException(const std::string message)
+    DBusException::DBusException(const std::string& message)
     : std::runtime_error(message.c_str())
     {}
 

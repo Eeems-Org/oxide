@@ -33,7 +33,7 @@ namespace Blight {
 
     class LIBBLIGHT_EXPORT DBusException : public std::runtime_error{
     public:
-        DBusException(const std::string message);
+        DBusException(const std::string& message);
     };
     class LIBBLIGHT_EXPORT DBus {
     public:
