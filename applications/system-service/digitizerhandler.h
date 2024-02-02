@@ -18,14 +18,12 @@ using namespace std;
 using namespace Oxide;
 
 #define touchHandler DigitizerHandler::singleton_touchScreen()
-#define wacomHandler DigitizerHandler::singleton_wacom()
 
 class DigitizerHandler : public QThread {
     Q_OBJECT
 
 public:
     static DigitizerHandler* singleton_touchScreen();
-    static DigitizerHandler* singleton_wacom();
 
     DigitizerHandler(event_device& device);
     ~DigitizerHandler();
@@ -40,7 +38,6 @@ public:
     static input_event createEvent(ushort type, ushort code, int value);
 
 signals:
-    void activity();
     void inputEvent(const input_event& event);
 
 protected:

@@ -122,6 +122,7 @@ signals:
     void autoLockChanged(int);
     void lockOnSuspendChanged(bool);
     void swipeLengthChanged(int, int);
+    void swipeEnabledChanged(int, bool);
     void landscapeChanged(bool);
     void deviceSuspending();
     void deviceResuming();
@@ -130,8 +131,6 @@ private slots:
     void PrepareForSleep(bool suspending);
     void suspendTimeout();
     void lockTimeout();
-    void touchEvent(const input_event& event);
-    void penEvent(const input_event& event);
 
 private:
     Manager* systemd;
@@ -144,13 +143,7 @@ private:
     QStringList sleepInhibitors;
     QStringList powerOffInhibitors;
     QMutex mutex;
-    QMap<int, Touch*> touches;
-    int currentSlot = 0;
     bool wifiWasOn = false;
-    bool penActive = false;
-    int swipeDirection = None;
-    QPoint location;
-    QPoint startLocation;
     QMap<SwipeDirection, bool> swipeStates;
     QMap<SwipeDirection, int> swipeLengths;
     Blight::shared_buf_t m_buffer = nullptr;
@@ -160,15 +153,7 @@ private:
     void releaseSleepInhibitors(bool block = false);
     void releasePowerOffInhibitors(bool block = false);
     void rguard(bool install);
-    Touch* getEvent(int slot);
-    int getCurrentFingers();
 
-    void touchDown(QList<Touch*> touches);
-    void touchUp(QList<Touch*> touches);
-    void touchMove(QList<Touch*> touches);
-    void cancelSwipe(Touch* touch);
-    void writeTouchUp(Touch* touch);
-    void writeTouchMove(Touch* touch);
     void fn();
 };
 #endif // SYSTEMAPI_H

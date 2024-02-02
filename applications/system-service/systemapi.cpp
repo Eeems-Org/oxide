@@ -6,6 +6,7 @@
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "notificationapi.h"
+#include "controller.h"
 
 QDebug operator<<(QDebug debug, const Touch& touch){
     QDebugStateSaver saver(debug);
@@ -182,7 +183,6 @@ SystemAPI::SystemAPI(QObject* parent)
   sleepInhibitors(),
   powerOffInhibitors(),
   mutex(),
-  touches(),
   swipeStates(),
   swipeLengths()
 {
@@ -291,13 +291,13 @@ SystemAPI::SystemAPI(QObject* parent)
         });
         qRegisterMetaType<input_event>();
         Oxide::Sentry::sentry_span(t, "input", "Connect input events", [this]{
-            connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
-            connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
             eventListener->append([this](QObject* object, QEvent* event){
                 Q_UNUSED(object);
                 switch(event->type()){
                     case QEvent::KeyRelease:
                     case QEvent::KeyPress:
+                    case QEvent::Shortcut:
+                    case QEvent::ShortcutOverride:
                     case QEvent::TabletPress:
                     case QEvent::TabletMove:
                     case QEvent::TabletRelease:
@@ -308,6 +308,22 @@ SystemAPI::SystemAPI(QObject* parent)
                     case QEvent::TouchCancel:
                     case QEvent::TouchEnd:
                     case QEvent::TouchUpdate:
+                    case QEvent::MouseButtonDblClick:
+                    case QEvent::MouseButtonPress:
+                    case QEvent::MouseButtonRelease:
+                    case QEvent::MouseMove:
+                    case QEvent::MouseTrackingChange:
+                    case QEvent::Wheel:
+                    case QEvent::Pointer:
+                    case QEvent::HoverEnter:
+                    case QEvent::HoverLeave:
+                    case QEvent::HoverMove:
+                    case QEvent::Gesture:
+                    case QEvent::GestureOverride:
+                    case QEvent::NonClientAreaMouseButtonDblClick:
+                    case QEvent::NonClientAreaMouseButtonPress:
+                    case QEvent::NonClientAreaMouseButtonRelease:
+                    case QEvent::NonClientAreaMouseMove:
                         activity();
                         break;
                     default:
@@ -466,6 +482,7 @@ void SystemAPI::setSwipeEnabled(SwipeDirection direction, bool enabled){
     }
     sharedSettings.endArray();
     sharedSettings.sync();
+    emit swipeEnabledChanged(direction, enabled);
 }
 
 bool SystemAPI::getSwipeEnabled(int direction){
@@ -674,116 +691,6 @@ void SystemAPI::lockTimeout(){
     }
 }
 
-void SystemAPI::touchEvent(const input_event& event){
-    switch(event.type){
-        case EV_SYN:
-            switch(event.code){
-                case SYN_REPORT:
-                    // Always mark the current slot as modified
-                    auto touch = getEvent(currentSlot);
-                    touch->modified = true;
-                    QList<Touch*> released;
-                    QList<Touch*> pressed;
-                    QList<Touch*> moved;
-                    for(auto touch : touches.values()){
-                        if(touch->id == -1){
-                            touch->active = false;
-                            released.append(touch);
-                        }else if(!touch->active){
-                            released.append(touch);
-                        }else if(!touch->existing){
-                            pressed.append(touch);
-                        }else if(touch->modified){
-                            moved.append(touch);
-                        }
-                    }
-                    if(!penActive){
-                        if(pressed.length()){
-                            touchDown(pressed);
-                        }
-                        if(moved.length()){
-                            touchMove(moved);
-                        }
-                        if(released.length()){
-                            touchUp(released);
-                        }
-                    }else if(swipeDirection != None){
-                        if(Oxide::debugEnabled()){
-                            qDebug() << "Swiping cancelled due to pen activity";
-                        }
-                        swipeDirection = None;
-                    }
-                    // Cleanup released touches
-                    for(auto touch : released){
-                        if(!touch->active){
-                            touches.remove(touch->slot);
-                            delete touch;
-                        }
-                    }
-                    // Setup touches for next event set
-                    for(auto touch : touches.values()){
-                        touch->modified = false;
-                        touch->existing = touch->existing || (touch->x != NULL_TOUCH_COORD && touch->y != NULL_TOUCH_COORD);
-                    }
-                    break;
-            }
-            break;
-        case EV_ABS:
-            if(currentSlot == -1 && event.code != ABS_MT_SLOT){
-                return;
-            }
-            switch(event.code){
-                case ABS_MT_SLOT:{
-                    currentSlot = event.value;
-                    auto touch = getEvent(currentSlot);
-                    touch->modified = true;
-                }break;
-                case ABS_MT_TRACKING_ID:{
-                    auto touch = getEvent(currentSlot);
-                    touch->active = event.value != -1;
-                    if(touch->active){
-                        touch->id = event.value;
-                    }
-                }break;
-                case ABS_MT_POSITION_X:{
-                    auto touch = getEvent(currentSlot);
-                    touch->x = event.value;
-                }break;
-                case ABS_MT_POSITION_Y:{
-                    auto touch = getEvent(currentSlot);
-                    touch->y = event.value;
-                }break;
-                case ABS_MT_PRESSURE:{
-                    auto touch = getEvent(currentSlot);
-                    touch->pressure = event.value;
-                }break;
-                case ABS_MT_TOUCH_MAJOR:{
-                    auto touch = getEvent(currentSlot);
-                    touch->major = event.value;
-                }break;
-                case ABS_MT_TOUCH_MINOR:{
-                    auto touch = getEvent(currentSlot);
-                    touch->minor = event.value;
-                }break;
-                case ABS_MT_ORIENTATION:{
-                    auto touch = getEvent(currentSlot);
-                    touch->orientation = event.value;
-                }break;
-            }
-            break;
-    }
-}
-
-void SystemAPI::penEvent(const input_event& event){
-    if(event.type != EV_KEY || event.code != BTN_TOOL_PEN){
-        return;
-    }
-    penActive = event.value;
-    if(Oxide::debugEnabled()){
-        qDebug() << "Pen state: " << (penActive ? "Active" : "Inactive");
-    }
-}
-
 void SystemAPI::inhibitSleep(){
     inhibitors.append(Inhibitor(systemd, "sleep", qApp->applicationName(), "Handle sleep screen"));
 }
@@ -821,272 +728,6 @@ void SystemAPI::releasePowerOffInhibitors(bool block){
 
 void SystemAPI::rguard(bool install){
     QProcess::execute("/opt/bin/rguard", QStringList() << (install ? "-1" : "-0"));
-}
-
-Touch* SystemAPI::getEvent(int slot){
-    if(slot == -1){
-        return nullptr;
-    }
-    if(!touches.contains(slot)){
-        touches.insert(slot, new Touch{
-                                 .slot = slot
-                             });
-    }
-    return touches.value(slot);
-}
-
-int SystemAPI::getCurrentFingers(){
-    return std::count_if(touches.begin(), touches.end(), [](Touch* touch){
-        return touch->active;
-    });
-}
-
-void SystemAPI::touchDown(QList<Touch*> touches){
-    if(penActive){
-        return;
-    }
-    if(Oxide::debugEnabled()){
-        qDebug() << "DOWN" << touches;
-    }
-    if(getCurrentFingers() != 1){
-        return;
-    }
-    auto touch = touches.first();
-    if(swipeDirection != None || touch->x == NULL_TOUCH_COORD || touch->y == NULL_TOUCH_COORD){
-        return;
-    }
-    int offset = 20;
-    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
-        offset = 40;
-    }
-    if(touch->y <= offset){
-        swipeDirection = Up;
-    }else if(touch->y > (deviceSettings.getTouchHeight() - offset)){
-        swipeDirection = Down;
-    }else if(touch->x <= offset){
-        if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
-            swipeDirection = Right;
-        }else{
-            swipeDirection = Left;
-        }
-    }else if(touch->x > (deviceSettings.getTouchWidth() - offset)){
-        if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
-            swipeDirection = Left;
-        }else{
-            swipeDirection = Right;
-        }
-    }else{
-        return;
-    }
-    if(Oxide::debugEnabled()){
-        qDebug() << "Swipe started" << swipeDirection;
-    }
-    startLocation = location = QPoint(touch->x, touch->y);
-}
-
-void SystemAPI::touchUp(QList<Touch*> touches){
-    if(Oxide::debugEnabled()){
-        qDebug() << "UP" << touches;
-    }
-    if(swipeDirection == None){
-        if(Oxide::debugEnabled()){
-            qDebug() << "Not swiping";
-        }
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchUp(touch);
-            }
-            touchHandler->ungrab();
-        }
-        return;
-    }
-    if(getCurrentFingers()){
-        if(Oxide::debugEnabled()){
-            qDebug() << "Still swiping";
-        }
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchUp(touch);
-            }
-        }
-        return;
-    }
-    if(touches.length() > 1){
-        if(Oxide::debugEnabled()){
-            qDebug() << "Too many fingers";
-        }
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchUp(touch);
-            }
-            touchHandler->ungrab();
-        }
-        swipeDirection = None;
-        return;
-    }
-    auto touch = touches.first();
-    if(touch->x == NULL_TOUCH_COORD || touch->y == NULL_TOUCH_COORD){
-        if(Oxide::debugEnabled()){
-            qDebug() << "Invalid touch event";
-        }
-        swipeDirection = None;
-        return;
-    }
-    if(swipeDirection == Up){
-        if(!swipeStates[Up] || touch->y < location.y() || touch->y - startLocation.y() < swipeLengths[Up]){
-            // Must end swiping up and having gone far enough
-            cancelSwipe(touch);
-            return;
-        }
-        if(landscape()){
-            emit rightAction();
-        }else{
-            emit bottomAction();
-        }
-    }else if(swipeDirection == Down){
-        if(!swipeStates[Down] || touch->y > location.y() || startLocation.y() - touch->y < swipeLengths[Down]){
-            // Must end swiping down and having gone far enough
-            cancelSwipe(touch);
-            return;
-        }
-        if(landscape()){
-            emit leftAction();
-        }else{
-            emit topAction();
-        }
-    }else if(swipeDirection == Right || swipeDirection == Left){
-        auto isRM2 = deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2;
-        auto invalidLeft = !swipeStates[Left] || touch->x < location.x() || touch->x - startLocation.x() < swipeLengths[Left];
-        auto invalidRight = !swipeStates[Right] || touch->x > location.x() || startLocation.x() - touch->x < swipeLengths[Right];
-        if(swipeDirection == Right && (isRM2 ? invalidLeft : invalidRight)){
-            // Must end swiping right and having gone far enough
-            cancelSwipe(touch);
-            return;
-        }else if(swipeDirection == Left && (isRM2 ? invalidRight : invalidLeft)){
-            // Must end swiping left and having gone far enough
-            cancelSwipe(touch);
-            return;
-        }
-        if(swipeDirection == Left){
-            if(landscape()){
-                emit topAction();
-            }else{
-                emit rightAction();
-            }
-        }else{
-            if(landscape()){
-                emit bottomAction();
-            }else{
-                emit leftAction();
-            }
-        }
-    }
-    swipeDirection = None;
-    touchHandler->ungrab();
-    touch->x = -1;
-    touch->y = -1;
-    writeTouchUp(touch);
-    if(Oxide::debugEnabled()){
-        qDebug() << "Swipe direction" << swipeDirection;
-    }
-}
-
-void SystemAPI::touchMove(QList<Touch*> touches){
-    if(Oxide::debugEnabled()){
-        qDebug() << "MOVE" << touches;
-    }
-    if(swipeDirection == None){
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchMove(touch);
-            }
-            touchHandler->ungrab();
-        }
-        return;
-    }
-    if(touches.length() > 1){
-        if(Oxide::debugEnabled()){
-            qDebug() << "Too many fingers";
-        }
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchMove(touch);
-            }
-            touchHandler->ungrab();
-        }
-        swipeDirection = None;
-        return;
-    }
-    auto touch = touches.first();
-    if(touch->y > location.y()){
-        location = QPoint(touch->x, touch->y);
-    }
-}
-
-void SystemAPI::cancelSwipe(Touch* touch){
-    if(Oxide::debugEnabled()){
-        qDebug() << "Swipe Cancelled";
-    }
-    swipeDirection = None;
-    touchHandler->ungrab();
-    writeTouchUp(touch);
-}
-
-void SystemAPI::writeTouchUp(Touch* touch){
-    bool grabbed = touchHandler->grabbed();
-    if(grabbed){
-        touchHandler->ungrab();
-    }
-    writeTouchMove(touch);
-    if(Oxide::debugEnabled()){
-        qDebug() << "Write touch up" << touch;
-    }
-    int size = sizeof(input_event) * 3;
-    input_event* events = (input_event*)malloc(size);
-    events[0] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
-    events[1] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TRACKING_ID, -1);
-    events[2] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
-    touchHandler->write(events, size);
-    free(events);
-    if(grabbed){
-        touchHandler->grab();
-    }
-}
-
-void SystemAPI::writeTouchMove(Touch* touch){
-    bool grabbed = touchHandler->grabbed();
-    if(grabbed){
-        touchHandler->ungrab();
-    }
-    if(Oxide::debugEnabled()){
-        qDebug() << "Write touch move" << touch;
-    }
-    int count = 8;
-    if(touch->x == NULL_TOUCH_COORD){
-        count--;
-    }
-    if(touch->y == NULL_TOUCH_COORD){
-        count--;
-    }
-    int size = sizeof(input_event) * count;
-    input_event* events = (input_event*)malloc(size);
-    events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
-    if(touch->x != NULL_TOUCH_COORD){
-        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_POSITION_X, touch->x);
-    }
-    if(touch->y != NULL_TOUCH_COORD){
-        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_POSITION_Y, touch->y);
-    }
-    events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_PRESSURE, touch->pressure);
-    events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TOUCH_MAJOR, touch->major);
-    events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TOUCH_MINOR, touch->minor);
-    events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_ORIENTATION, touch->orientation);
-    events[2] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
-    touchHandler->write(events, size);
-    free(events);
-    if(grabbed){
-        touchHandler->grab();
-    }
 }
 
 void SystemAPI::fn(){

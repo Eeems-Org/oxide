@@ -38,6 +38,10 @@
       <arg type="i" direction="out"/>
       <arg type="i" direction="out"/>
     </signal>
+    <signal name="swipeEnabledChanged">
+      <arg type="i" direction="out"/>
+      <arg type="b" direction="out"/>
+    </signal>
     <signal name="landscapeChanged">
       <arg type="b" direction="out"/>
     </signal>

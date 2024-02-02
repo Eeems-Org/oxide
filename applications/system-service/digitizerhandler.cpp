@@ -16,22 +16,6 @@ DigitizerHandler* DigitizerHandler::singleton_touchScreen(){
     return instance;
 }
 
-DigitizerHandler* DigitizerHandler::singleton_wacom(){
-    static DigitizerHandler* instance;
-    if(instance != nullptr){
-        return instance;
-    }
-    // Get event devices
-    event_device wacom_device(deviceSettings.getWacomDevicePath(), O_RDWR);
-    if(wacom_device.fd == -1){
-        O_WARNING("Failed to open event device: " << wacom_device.device.c_str());
-        throw QException();
-    }
-    instance = new DigitizerHandler(wacom_device);
-    instance->start();
-    return instance;
-}
-
 DigitizerHandler::DigitizerHandler(event_device& device)
     : QThread(),
       filebuf(device.fd, ios::in),
@@ -155,7 +139,6 @@ exitLoop:
         for(input_event event : event_buffer){
             emit inputEvent(event);
         }
-        emit activity();
     }
     return success;
 }

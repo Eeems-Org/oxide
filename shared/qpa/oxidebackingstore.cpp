@@ -32,7 +32,7 @@ QPaintDevice* OxideBackingStore::paintDevice(){ return &image; }
 void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoint& offset){
     Q_UNUSED(offset);
     Q_UNUSED(window);
-    if(mBuffer == nullptr){
+    if(mBuffer == nullptr || region.isEmpty()){
         return;
     }
     if(OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)){
@@ -42,17 +42,6 @@ void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoi
     auto waveform = (Blight::WaveformMode)window->property("WA_WAVEFORM").toInt(&ok);
     if(!ok || !waveform){
         waveform = Blight::HighQualityGrayscale;
-    }
-    if(region.isEmpty()){
-        Blight::connection()->repaint(
-            mBuffer,
-            mBuffer->x,
-            mBuffer->y,
-            mBuffer->width,
-            mBuffer->height,
-            waveform
-        );
-        return;
     }
     for(auto rect : region){
         Blight::connection()->repaint(
