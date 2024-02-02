@@ -214,9 +214,10 @@ libsentry() {
 oxide-tests() {
     pkgdesc="Automated tests for oxide"
     section="devel"
-    installdepends=("libblight=$pkgver")
+    installdepends=("oxide-display=$pkgver")
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/libblight
+        install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/liboxide
     }
 }
