@@ -11,7 +11,6 @@
 #include "application.h"
 #include "appsapi.h"
 #include "systemapi.h"
-#include "digitizerhandler.h"
 #include "notificationapi.h"
 #include "screenapi.h"
 #include "buttonhandler.h"

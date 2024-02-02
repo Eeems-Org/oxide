@@ -730,19 +730,6 @@ void SystemAPI::rguard(bool install){
     QProcess::execute("/opt/bin/rguard", QStringList() << (install ? "-1" : "-0"));
 }
 
-void SystemAPI::fn(){
-    auto n = 512 * 8;
-    auto num_inst = 4;
-    input_event* ev = (input_event *)malloc(sizeof(struct input_event) * n * num_inst);
-    memset(ev, 0, sizeof(input_event) * n * num_inst);
-    auto i = 0;
-    while (i < n) {
-        ev[i++] = DigitizerHandler::createEvent(EV_ABS, ABS_DISTANCE, 1);
-        ev[i++] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
-        ev[i++] = DigitizerHandler::createEvent(EV_ABS, ABS_DISTANCE, 2);
-        ev[i++] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
-    }
-}
 void SystemAPI::toggleSwipes(){
     bool state = !swipeStates[Up];
     setSwipeEnabled(Left, state);

@@ -152,7 +152,5 @@ private:
     void releaseSleepInhibitors(bool block = false);
     void releasePowerOffInhibitors(bool block = false);
     void rguard(bool install);
-
-    void fn();
 };
 #endif // SYSTEMAPI_H
