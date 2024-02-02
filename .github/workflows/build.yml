@@ -73,11 +73,11 @@ jobs:
             set -ex
             echo Y | toltecctl generate-opkg-conf
             opkg update
-            opkg install oxide
+            opkg install oxide oxide-tests
             # systemctl disable --now xochitl
             # systemctl enable --now tarnish
-            # TODO install and run tests
-            opkg remove --force-removal-of-dependent-packages liboxide
+            /opt/share/tests/libblight
+            opkg remove --force-removal-of-dependent-packages liboxide libblight
           path: ${{ steps.download.outputs.download-path }}
   release:
     needs: [build,test]

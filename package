@@ -12,6 +12,7 @@ pkgnames=(
     oxide-display
     oxide-extra
     oxide-utils
+    oxide-tests
 )
 _oxidever=$(grep 'VERSION =' qmake/common.pri | awk '{print $3}')
 pkgver="$_oxidever~VERSION~"
@@ -207,5 +208,15 @@ libsentry() {
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libsentry.so
+    }
+}
+
+oxide-tests() {
+    pkgdesc="Automated tests for oxide"
+    section="devel"
+    installdepends=("libblight=$pkgver")
+
+    package() {
+        install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/libblight
     }
 }
