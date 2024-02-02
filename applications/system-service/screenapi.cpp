@@ -20,16 +20,17 @@ QDBusObjectPath ScreenAPI::screenshot(){
         ""
     );
     notification->display();
-    QImage screen = copy();
+    auto screen = getFrameBuffer();
     bool saved = false;
     QDBusObjectPath path("/");
-    if(screen.size().isEmpty()){
+    if(screen->size().isEmpty()){
         O_WARNING("Could not get copy of screen");
     }else{
         if(systemAPI->landscape()){
-            screen = screen.transformed(QTransform().rotate(270.0));
+            saved = screen->transformed(QTransform().rotate(270.0)).save(filePath);
+        }else{
+            saved = screen->save(filePath);
         }
-        saved = screen.save(filePath);
         if(saved){
             path = addScreenshot(filePath)->qPath();
         }else if(!saved){
@@ -46,8 +47,6 @@ QDBusObjectPath ScreenAPI::screenshot(){
     )->display();
     return path;
 }
-
-QImage ScreenAPI::copy(){ return getFrameBuffer()->copy(); }
 
 QDBusObjectPath ScreenAPI::addScreenshot(QByteArray blob){
     if(!hasPermission("screen")){

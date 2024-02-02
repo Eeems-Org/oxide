@@ -39,7 +39,6 @@ public:
     bool enabled();
     QList<QDBusObjectPath> screenshots();
     Q_INVOKABLE QDBusObjectPath screenshot();
-    QImage copy();
 
 public slots:
     QDBusObjectPath addScreenshot(QByteArray blob);

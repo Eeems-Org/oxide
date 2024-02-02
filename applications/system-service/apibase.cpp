@@ -36,6 +36,7 @@ int APIBase::getSenderPgid() { return getpgid(getSenderPid()); }
 
 QImage* getFrameBuffer(){
     static QImage* image = nullptr;
+    static QFile* file = nullptr;
     if(image == nullptr){
         auto compositor = getCompositorDBus();
         auto reply = compositor->frameBuffer();
@@ -49,9 +50,9 @@ QImage* getFrameBuffer(){
             O_WARNING("Framebuffer fd is not valid");
             return nullptr;
         }
-        QFile file;
-        file.open(dup(qfd.fileDescriptor()), QFile::ReadOnly);
-        auto data = file.map(0, file.size());
+        file = new QFile();
+        file->open(dup(qfd.fileDescriptor()), QFile::ReadOnly);
+        uchar* data = file->map(0, file->size());
         image = new QImage(data, 1404, 1872, 2808, QImage::Format_RGB16);
     }
     return image;
