@@ -1,6 +1,7 @@
 TEMPLATE = subdirs
 
 SUBDIRS =  \
-    libblight
+    libblight \
+    liboxide
 
 INSTALLS += $$SUBDIRS
