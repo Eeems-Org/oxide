@@ -68,8 +68,9 @@ jobs:
         with:
           setup: |
             set -ex
-            echo "src/gz local-rmall file:///opt/tmp/src" > /opt/etc/opkg.conf.d/16-local.conf
+            opkg update
             opkg install python # needed for reboot-guard
+            echo "src/gz local-rmall file:///opt/tmp/src" > /opt/etc/opkg.conf.d/16-local.conf
           run: |
             set -ex
             echo Y | toltecctl generate-opkg-conf
