@@ -17,9 +17,11 @@ public:
     static EvDevHandler* init();
     EvDevHandler();
     ~EvDevHandler();
+    void clear_buffers();
 
 private:
     QList<EvDevDevice*> devices;
+    bool m_clearing;
     bool hasDevice(event_device device);
     void reloadDevices();
 };

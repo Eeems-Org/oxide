@@ -95,7 +95,7 @@ void GUIThread::enqueue(
     bool global,
     std::function<void()> callback
 ){
-    if(isInterruptionRequested()){
+    if(isInterruptionRequested() || dbusInterface->inExclusiveMode()){
         if(callback != nullptr){
             callback();
         }
@@ -165,7 +165,11 @@ void GUIThread::enqueue(
     notify();
 }
 
-void GUIThread::notify(){ m_repaintWait.notify_one(); }
+void GUIThread::notify(){
+    if(!dbusInterface->inExclusiveMode()){
+        m_repaintWait.notify_one();
+    }
+}
 
 void GUIThread::clearFrameBuffer(){
     EPFrameBuffer::instance()->framebuffer()->fill(Qt::white);
@@ -203,6 +207,10 @@ void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<S
 
 void GUIThread::redraw(RepaintRequest& event){
     Q_ASSERT(QThread::currentThread() == (QThread*)this);
+    if(dbusInterface->inExclusiveMode()){
+        O_DEBUG("In exclusive mode, skipping redraw");
+        return;
+    }
     if(!event.global){
         if(event.surface == nullptr){
             O_WARNING("surface missing");

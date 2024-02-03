@@ -58,5 +58,11 @@
     </method>
     <method name="waitForNoRepaints">
     </method>
+    <method name="enterExclusiveMode">
+    </method>
+    <method name="exitExclusiveMode">
+    </method>
+    <method name="exclusiveModeRepaint">
+    </method>
   </interface>
 </node>

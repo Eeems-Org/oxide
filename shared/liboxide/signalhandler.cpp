@@ -48,7 +48,9 @@ namespace Oxide {
         static SignalHandler* instance;
         if(self != nullptr){
             instance = self;
-            setup_unix_signal_handlers();
+            QTimer::singleShot(0, qApp, []{
+                setup_unix_signal_handlers();
+            });
         }
         return instance;
     }
@@ -59,6 +61,9 @@ namespace Oxide {
         }
         if(::socketpair(AF_UNIX, SOCK_STREAM, 0, sigUsr2Fd)){
            qFatal("Couldn't create USR2 socketpair");
+        }
+        if(::socketpair(AF_UNIX, SOCK_STREAM, 0, sigContFd)){
+           qFatal("Couldn't create CONT socketpair");
         }
 
         snUsr1 = new QSocketNotifier(sigUsr1Fd[1], QSocketNotifier::Read, this);

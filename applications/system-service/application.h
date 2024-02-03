@@ -202,6 +202,7 @@ private:
     int p_stderr_fd = -1;
     QTextStream* p_stderr = nullptr;
     Notification* m_notification = nullptr;
+    QImage* m_backup = nullptr;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds);

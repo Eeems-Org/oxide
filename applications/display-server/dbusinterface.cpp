@@ -20,7 +20,8 @@
 DbusInterface::DbusInterface(QObject* parent)
 : QObject(parent),
   m_focused(nullptr),
-  buttonsDevNumber{QFileInfo(deviceSettings.getButtonsDevicePath()).baseName().midRef(5).toInt()}
+  m_buttonsDevNumber{QFileInfo(deviceSettings.getButtonsDevicePath()).baseName().midRef(5).toInt()},
+  m_exlusiveMode{false}
 {
     engine.load(QUrl(QStringLiteral("qrc:/Workspace.qml")));
     if(engine.rootObjects().isEmpty()){
@@ -280,7 +281,7 @@ QStringList DbusInterface::getSurfaces(QDBusMessage message){
 QDBusUnixFileDescriptor DbusInterface::frameBuffer(QDBusMessage message){
     Q_UNUSED(message);
     // TODO - only allow tarnish to make this call
-    return QDBusUnixFileDescriptor(::open("/dev/fb0", O_RDWR));
+    return QDBusUnixFileDescriptor(guiThread->framebuffer());
 }
 
 void DbusInterface::lower(QString identifier, QDBusMessage message){
@@ -346,9 +347,49 @@ void DbusInterface::focus(QString identifier, QDBusMessage message){
 void DbusInterface::waitForNoRepaints(QDBusMessage message){
     Q_UNUSED(message);
     // TODO - only allow tarnish to make this call
+#ifdef EPAPER
     QEventLoop loop;
     connect(guiThread, &GUIThread::settled, &loop, &QEventLoop::quit);
     loop.exec();
+#endif
+}
+
+void DbusInterface::enterExclusiveMode(QDBusMessage message){
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
+    O_INFO("Entering exclusive mode");
+    m_exlusiveMode = true;
+    waitForNoRepaints(message);
+    evdevHandler->clear_buffers();
+}
+
+void DbusInterface::exitExclusiveMode(QDBusMessage message){
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
+    O_INFO("Exiting exclusive mode");
+    m_exlusiveMode = false;
+#ifdef EPAPER
+    guiThread->enqueue(
+        nullptr,
+        EPFrameBuffer::instance()->framebuffer()->rect(),
+        EPFrameBuffer::HighQualityGrayscale,
+        0,
+        true
+    );
+#endif
+    waitForNoRepaints(message);
+}
+
+void DbusInterface::exclusiveModeRepaint(QDBusMessage message){
+    Q_UNUSED(message);
+    // TODO - only allow tarnish to make this call
+#ifdef EPAPER
+    guiThread->sendUpdate(
+        EPFrameBuffer::instance()->framebuffer()->rect(),
+        EPFrameBuffer::HighQualityGrayscale,
+        0
+    );
+#endif
 }
 
 Connection* DbusInterface::focused(){ return m_focused; }
@@ -372,7 +413,7 @@ void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldO
 }
 
 void DbusInterface::inputEvents(unsigned int device, const std::vector<input_event>& events){
-    if(m_focused != nullptr && device != buttonsDevNumber){
+    if(!inExclusiveMode() && m_focused != nullptr && device != m_buttonsDevNumber){
         m_focused->inputEvents(device, events);
     }
     for(auto connection : qAsConst(connections)){
@@ -381,6 +422,8 @@ void DbusInterface::inputEvents(unsigned int device, const std::vector<input_eve
         }
     }
 }
+
+bool DbusInterface::inExclusiveMode(){ return m_exlusiveMode; }
 
 Connection* DbusInterface::getConnection(QDBusMessage message){
     pid_t pid = connection().interface()->servicePid(message.service());;

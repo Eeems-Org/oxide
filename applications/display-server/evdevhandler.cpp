@@ -23,7 +23,8 @@ EvDevHandler* EvDevHandler::init(){
 }
 
 EvDevHandler::EvDevHandler()
-: QThread()
+: QThread(),
+  m_clearing{false}
 {
     setObjectName("EvDevHandler");
     reloadDevices();
@@ -33,6 +34,14 @@ EvDevHandler::EvDevHandler()
 }
 
 EvDevHandler::~EvDevHandler(){}
+
+void EvDevHandler::clear_buffers(){
+    m_clearing = true;
+    for(auto input : qAsConst(devices)){
+        input->clear_buffer();
+    }
+    m_clearing = false;
+}
 
 bool EvDevHandler::hasDevice(event_device device){
     for(auto input : qAsConst(devices)){
@@ -49,7 +58,9 @@ void EvDevHandler::reloadDevices(){
         if(!hasDevice(device) && device.fd > 0){
             auto input = new EvDevDevice(this, device);
             connect(input, &EvDevDevice::inputEvents, this, [this, input](auto events){
-                dbusInterface->inputEvents(input->number(), events);
+                if(!m_clearing){
+                    dbusInterface->inputEvents(input->number(), events);
+                }
             }, Qt::QueuedConnection);
             O_DEBUG(input->name() << "added");
             devices.append(input);

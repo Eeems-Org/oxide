@@ -22,6 +22,7 @@ public:
     bool exists();
     void lock();
     void unlock();
+    void clear_buffer();
 
 signals:
     void inputEvents(const std::vector<input_event> events);
@@ -38,4 +39,6 @@ private:
     libevdev* dev;
 
     void emitSomeEvents();
+    input_event createEvent(ushort type, ushort code, int value);
+    input_event* build_flood();
 };

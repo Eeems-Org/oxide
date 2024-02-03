@@ -3,8 +3,5 @@
     "description": "Read documents and take notes",
     "bin": "/opt/bin/xochitl",
     "icon": "oxide:xochitl-48",
-    "flags": ["nosplash"],
-    "environment": {
-        "OXIDE_PRELOAD_FORCE_QT": "1"
-    }
+    "flags": ["nosplash", "exclusive"]
 }

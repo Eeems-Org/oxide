@@ -1028,7 +1028,7 @@ extern "C" {
         setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
         setenv("RM2FB_ACTIVE", "1", true);
         setenv("RM2FB_SHIM", "1", true);
-        if(path != "/usr/bin/xochitl"){
+        if(path != "/usr/bin/xochitl" && getenv("OXIDE_PRELOAD_ALLOW_RM2FB") == nullptr){
             setenv("RM2FB_DISABLE", "1", true);
         }else{
             unsetenv("RM2FB_DISABLE");

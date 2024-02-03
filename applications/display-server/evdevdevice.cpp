@@ -49,6 +49,12 @@ void EvDevDevice::lock(){ exists() && device.lock(); }
 
 void EvDevDevice::unlock(){ exists() && device.locked && device.unlock(); }
 
+void EvDevDevice::clear_buffer(){
+    auto flood = build_flood();
+    ::write(device.fd, flood, 512 * 8 * 4 * sizeof(input_event));
+    delete flood;
+}
+
 void EvDevDevice::readEvents(){
     Oxide::dispatchToThread(thread(), [this]{
         notifier->setEnabled(false);
@@ -70,9 +76,6 @@ void EvDevDevice::readEvents(){
                 emit inputEvents(events);
                 events.clear();
             }
-//            if(events.size() > 16){
-//                emitSomeEvents();
-//            }
         }while(res == LIBEVDEV_READ_STATUS_SUCCESS || res == LIBEVDEV_READ_STATUS_SYNC);
         emitSomeEvents();
         if(res == -ENODEV){
@@ -101,4 +104,27 @@ void EvDevDevice::emitSomeEvents(){
             break;
         }
     }
+}
+
+input_event EvDevDevice::createEvent(ushort type, ushort code, int value){
+    struct input_event event;
+    event.type = type;
+    event.code = code;
+    event.value = value;
+    return event;
+}
+
+input_event* EvDevDevice::build_flood(){
+    auto n = 512 * 8;
+    auto num_inst = 4;
+    input_event* ev = (input_event*)malloc(sizeof(struct input_event) * n * num_inst);
+    memset(ev, 0, sizeof(input_event) * n * num_inst);
+    auto i = 0;
+    while (i < n) {
+        ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 1);
+        ev[i++] = createEvent(EV_SYN, 0, 0);
+        ev[i++] = createEvent(EV_ABS, ABS_DISTANCE, 2);
+        ev[i++] = createEvent(EV_SYN, 0, 0);
+    }
+    return ev;
 }

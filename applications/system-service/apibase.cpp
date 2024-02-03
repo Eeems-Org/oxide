@@ -51,7 +51,7 @@ QImage* getFrameBuffer(){
             return nullptr;
         }
         file = new QFile();
-        file->open(dup(qfd.fileDescriptor()), QFile::ReadOnly);
+        file->open(dup(qfd.fileDescriptor()), QFile::ReadWrite);
         uchar* data = file->map(0, file->size());
         image = new QImage(data, 1404, 1872, 2808, QImage::Format_RGB16);
     }

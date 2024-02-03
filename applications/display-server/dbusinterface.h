@@ -40,6 +40,7 @@ public:
     Connection* focused();
     void setFocus(Connection* connection);
     void inputEvents(unsigned int device, const std::vector<input_event>& events);
+    bool inExclusiveMode();
 
     // Property getter/setters
     const QByteArray& clipboard();
@@ -71,6 +72,9 @@ public slots:
     void raise(QString identifier, QDBusMessage message);
     void focus(QString identifier, QDBusMessage message);
     void waitForNoRepaints(QDBusMessage message);
+    void enterExclusiveMode(QDBusMessage message);
+    void exitExclusiveMode(QDBusMessage message);
+    void exclusiveModeRepaint(QDBusMessage message);
 
 signals:
     void clipboardChanged(const QByteArray& data);
@@ -92,7 +96,8 @@ private:
         QByteArray selection;
         QByteArray secondary;
     } clipboards;
-    unsigned int buttonsDevNumber;
+    unsigned int m_buttonsDevNumber;
+    bool m_exlusiveMode;
 
     Connection* getConnection(QDBusMessage message);
     Connection* getConnection(QString identifier);

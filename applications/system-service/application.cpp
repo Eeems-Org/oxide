@@ -59,6 +59,15 @@ void Application::launchNoSecurityCheck(){
                 );
                 m_notification->display();
             }
+            if(flags().contains("exclusive")){
+                auto compositor = getCompositorDBus();
+                compositor->enterExclusiveMode().waitForFinished();
+                auto frameBuffer = getFrameBuffer();
+                QPainter p(frameBuffer);
+                p.fillRect(frameBuffer->rect(), Qt::white);
+                p.end();
+                compositor->exclusiveModeRepaint().waitForFinished();
+            }
             if(m_process->program() != bin()){
                 m_process->setProgram(bin());
             }
@@ -155,6 +164,9 @@ void Application::interruptApplication(){
 #else
         Q_UNUSED(t);
 #endif
+        if(flags().contains("exclusive")){
+            m_backup = new QImage(getFrameBuffer()->copy());
+        }
         if(!onPause().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onPause", "Run onPause action", [this](){
                 system(onPause().toStdString().c_str());
@@ -193,6 +205,9 @@ void Application::interruptApplication(){
                     startSpan("stopped", "Application is stopped");
             }
         });
+        if(flags().contains("exclusive")){
+            getCompositorDBus()->exitExclusiveMode().waitForFinished();
+        }
     });
 }
 void Application::waitForPause(){
@@ -261,6 +276,21 @@ void Application::uninterruptApplication(){
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "uninterrupt", [this](Oxide::Sentry::Transaction* t){
+        if(flags().contains("exclusive")){
+            auto compositor = getCompositorDBus();
+            compositor->enterExclusiveMode().waitForFinished();
+            auto frameBuffer = getFrameBuffer();
+            QPainter p(frameBuffer);
+            if(m_backup == nullptr){
+                p.fillRect(frameBuffer->rect(), Qt::white);
+            }else{
+                p.drawImage(frameBuffer->rect(), *m_backup, m_backup->rect());
+                delete m_backup;
+                m_backup = nullptr;
+            }
+            p.end();
+            compositor->exclusiveModeRepaint().waitForFinished();
+        }
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -532,6 +562,10 @@ void Application::finished(int exitCode){
     if(transient()){
         unregister();
     }
+    if(m_backup != nullptr){
+        delete m_backup;
+        m_backup = nullptr;
+    }
 }
 
 void Application::readyReadStandardError(){
@@ -652,7 +686,7 @@ void Application::updateEnvironment(){
             preload.append(sysfs_preload);
         }
     }
-    if(!flags().contains("nopreload") && !flags().contains("nopreload.compositor")){
+    if(!flags().contains("exclusive") && !flags().contains("nopreload") && !flags().contains("nopreload.compositor")){
         QString blight_client("/opt/lib/libblight_client.so");
         if(!preload.contains(blight_client)){
             preload.append(blight_client);

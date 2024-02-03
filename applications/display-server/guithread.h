@@ -44,7 +44,6 @@ public slots:
         std::function<void()> callback = nullptr
     );
     void notify();
-    void clearFrameBuffer();
     int framebuffer();
     void sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode waveform, unsigned int marker);
 
@@ -59,9 +58,9 @@ private:
     QPoint m_screenOffset;
     QRect m_screenRect;
 
+    void clearFrameBuffer();
     void repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface);
     void redraw(RepaintRequest& event);
-    void scheduleUpdate();
     QList<std::shared_ptr<Surface>> visibleSurfaces();
 };
 #endif
