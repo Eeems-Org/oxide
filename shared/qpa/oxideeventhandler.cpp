@@ -214,7 +214,7 @@ DeviceData::~DeviceData(){
 
 
 OxideEventHandler::OxideEventHandler(OxideEventManager* manager, const QStringList& parameters)
-: QDaemonThread(),
+: QObject(),
   m_manager(manager),
   m_fd(Blight::connection()->input_handle()),
   m_keymap{0},
@@ -223,22 +223,14 @@ OxideEventHandler::OxideEventHandler(OxideEventManager* manager, const QStringLi
   m_keycompose_size{0}
 {
     setObjectName("OxideInput");
-    moveToThread(this);
     parseKeyParams(parameters);
     parseTouchParams(QString(deviceSettings.getTouchEnvSetting()).split(QLatin1Char(':')));
     parseTouchParams(parameters);
-    m_notifier = new QSocketNotifier(m_fd, QSocketNotifier::Read);
-    m_notifier->moveToThread(this);
+    m_notifier = new QSocketNotifier(m_fd, QSocketNotifier::Read, this);
     connect(m_notifier, &QSocketNotifier::activated, this, &OxideEventHandler::readyRead);
-    start();
 }
 
-OxideEventHandler::~OxideEventHandler(){
-    m_notifier->setEnabled(false);
-    m_notifier->deleteLater();
-    quit();
-    wait();
-}
+OxideEventHandler::~OxideEventHandler(){}
 
 void OxideEventHandler::add(unsigned int number, QInputDeviceManager::DeviceType type){
     if(!m_devices.contains(number)){
@@ -256,7 +248,6 @@ void OxideEventHandler::remove(unsigned int number, QInputDeviceManager::DeviceT
 
 void OxideEventHandler::readyRead(){
     Q_ASSERT(thread() == QThread::currentThread());
-    Q_ASSERT(m_notifier->thread() == QThread::currentThread());
     m_notifier->setEnabled(false);
     auto connection = Blight::connection();
     while(true){

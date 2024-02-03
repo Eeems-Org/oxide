@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QString>
-#include <QThread>
 #include <QSocketNotifier>
 
 #include <QtCore/private/qthread_p.h>
@@ -33,7 +32,7 @@ private:
     void* m_data = nullptr;
 };
 
-class OxideEventHandler : public QDaemonThread {
+class OxideEventHandler : public QObject {
 public:
     OxideEventHandler(OxideEventManager* manager, const QStringList& parameters);
     ~OxideEventHandler();
