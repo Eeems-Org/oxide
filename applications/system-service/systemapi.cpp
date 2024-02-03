@@ -55,15 +55,19 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     1
                 );
                 auto rect = image.rect();
-                QPoint center(rect.width() / 2, rect.height() / 2);
-                painter.translate(center);
-                painter.scale(
-                    1 * (rect.width() / qreal(img.height())),
-                    1 * (rect.width() / qreal(img.height()))
-                );
-                painter.translate(0 - img.width() / 2, 0 - img.height() / 2);
-                painter.drawPixmap(img.rect(), QPixmap::fromImage(img));
-                painter.end();
+                if(rect == img.rect()){
+                    painter.drawImage(rect, img, rect);
+                }else{
+                    QPoint center(rect.width() / 2, rect.height() / 2);
+                    painter.translate(center);
+                    painter.scale(
+                        1 * (rect.width() / qreal(img.height())),
+                        1 * (rect.width() / qreal(img.height()))
+                    );
+                    painter.translate(0 - img.width() / 2, 0 - img.height() / 2);
+                    painter.drawPixmap(img.rect(), QPixmap::fromImage(img));
+                    painter.end();
+                }
                 addSystemBuffer(m_buffer);
                 auto maybe = Blight::connection()->raise(m_buffer);
                 // Repaint to attempt to reduce ghosting
