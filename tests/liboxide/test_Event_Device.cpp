@@ -17,6 +17,9 @@ void test_Event_Device::test_create_device(){
 }
 
 void test_Event_Device::test_event_device(){
+    if(!QFileInfo::exists("/dev/input/event0")){
+        QSKIP("Missing event0");
+    }
     Oxide::event_device event0("/dev/input/event0", O_RDWR);
     QCOMPARE(event0.device, "/dev/input/event0");
     QVERIFY(event0.fd > 0);
