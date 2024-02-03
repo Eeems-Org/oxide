@@ -9,6 +9,7 @@
 
 class Controller : public QObject{
     Q_OBJECT
+    Q_PROPERTY(QString deviceName READ deviceName)
     Q_PROPERTY(bool leftSwipeEnabled READ leftSwipeEnabled NOTIFY leftSwipeEnabledChanged)
     Q_PROPERTY(bool rightSwipeEnabled READ rightSwipeEnabled NOTIFY rightSwipeEnabledChanged)
     Q_PROPERTY(bool upSwipeEnabled READ upSwipeEnabled NOTIFY upSwipeEnabledChanged)
@@ -65,6 +66,7 @@ public:
     Q_INVOKABLE void toggleSwipes(){ systemAPI->toggleSwipes(); }
     Q_INVOKABLE void suspend(){ systemAPI->suspend(); }
 
+    QString deviceName(){ return deviceSettings.getDeviceName(); }
     bool leftSwipeEnabled(){ return systemAPI->getSwipeEnabled(SystemAPI::Left); }
     bool rightSwipeEnabled(){ return systemAPI->getSwipeEnabled(SystemAPI::Right); }
     bool upSwipeEnabled(){ return systemAPI->getSwipeEnabled(SystemAPI::Up); }
