@@ -19,12 +19,13 @@ void test_Event_Device::test_create_device(){
 void test_Event_Device::test_event_device(){
     Oxide::event_device event0("/dev/input/event0", O_RDWR);
     QCOMPARE(event0.device, "/dev/input/event0");
-    QVERIFY(!event0.locked);
-    event0.lock();
-    QVERIFY(event0.locked);
-    event0.unlock();
-    QVERIFY(!event0.locked);
     QVERIFY(event0.fd > 0);
+    QVERIFY(!event0.locked);
+    if(event0.lock() != EBUSY){
+        QVERIFY(event0.locked);
+        event0.unlock();
+        QVERIFY(!event0.locked);
+    }
     event0.close();
     QCOMPARE(event0.fd, 0);
 }
