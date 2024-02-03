@@ -69,7 +69,7 @@ jobs:
           setup: |
             set -ex
             opkg update
-            opkg install python # needed for reboot-guard
+            opkg install python3 # needed for reboot-guard
             echo "src/gz local-rmall file:///opt/tmp/src" > /opt/etc/opkg.conf.d/16-local.conf
           run: |
             set -ex
