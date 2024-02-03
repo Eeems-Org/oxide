@@ -9,7 +9,6 @@
 #include <liboxide.h>
 
 #include "apibase.h"
-#include "buttonhandler.h"
 #include "application.h"
 #include "screenapi.h"
 #include "eventlistener.h"

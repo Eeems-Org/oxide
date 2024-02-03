@@ -20,9 +20,9 @@ QDebug operator<<(QDebug debug, Touch* touch){
 }
 
 void SystemAPI::PrepareForSleep(bool suspending){
-    auto device = deviceSettings.getDeviceType();
     if(suspending){
-        Oxide::Sentry::sentry_transaction("system", "suspend", [this, device](Oxide::Sentry::Transaction* t){
+        Controller::singleton()->enabled = false;
+        Oxide::Sentry::sentry_transaction("system", "suspend", [this](Oxide::Sentry::Transaction* t){
             if(autoLock()){
                 lockTimestamp = QDateTime::currentMSecsSinceEpoch() + lockTimer.remainingTime();
                 qDebug() << "Auto Lock timestamp:" << lockTimestamp;
@@ -86,14 +86,10 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     resumeApp = nullptr;
                 }
             });
-            Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this, device]{
-                buttonHandler->setEnabled(false);
-                if(device == Oxide::DeviceSettings::DeviceType::RM2){
-                    if(wifiAPI->state() != WifiAPI::State::Off){
-                        wifiWasOn = true;
-                        wifiAPI->disable();
-                    }
-                    system("/sbin/rmmod brcmfmac");
+            Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this]{
+                if(wifiAPI->state() != WifiAPI::State::Off){
+                    wifiWasOn = true;
+                    wifiAPI->disable();
                 }
                 getCompositorDBus()->waitForNoRepaints().waitForFinished();
                 if(m_buffer != nullptr){
@@ -104,11 +100,15 @@ void SystemAPI::PrepareForSleep(bool suspending){
             qDebug() << "Suspending...";
         });
     }else{
-        Oxide::Sentry::sentry_transaction("system", "resume", [this, device](Oxide::Sentry::Transaction* t){
+        Oxide::Sentry::sentry_transaction("system", "resume", [this](Oxide::Sentry::Transaction* t){
+            qDebug() << "Resuming...";
             Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep", [this]{
                 inhibitSleep();
             });
-            qDebug() << "Resuming...";
+            if(m_buffer != nullptr){
+                Blight::connection()->remove(m_buffer);
+                m_buffer = nullptr;
+            }
             Oxide::Sentry::sentry_span(t, "process", "Process events", []{
                 QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
             });
@@ -141,8 +141,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     qDebug() << "Unable to find an app to resume";
                 }
             });
-            Oxide::Sentry::sentry_span(t, "enable", "Enable various services", [this, device]{
-                buttonHandler->setEnabled(true);
+            Oxide::Sentry::sentry_span(t, "enable", "Enable various services", [this]{
                 emit deviceResuming();
                 if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
                     qDebug() << "Suspend timer re-enabled due to resume";
@@ -152,19 +151,13 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     qDebug() << "Lock timer re-enabled due to resume";
                     lockTimer.start(autoLock() * 60 * 1000);
                 }
-                if(device == Oxide::DeviceSettings::DeviceType::RM2){
-                    system("/sbin/modprobe brcmfmac");
-                    if(wifiWasOn){
-                        wifiAPI->enable();
-                    }
+                if(wifiWasOn){
+                    wifiAPI->enable();
                 }
                 wifiAPI->resumeUpdating();
             });
-            if(m_buffer != nullptr){
-                Blight::connection()->remove(m_buffer);
-                m_buffer = nullptr;
-            }
         });
+        Controller::singleton()->enabled = true;
     }
 }
 SystemAPI* SystemAPI::singleton(SystemAPI* self){
@@ -294,8 +287,8 @@ SystemAPI::SystemAPI(QObject* parent)
             eventListener->append([this](QObject* object, QEvent* event){
                 Q_UNUSED(object);
                 switch(event->type()){
-                    case QEvent::KeyRelease:
                     case QEvent::KeyPress:
+                    case QEvent::KeyRelease:
                     case QEvent::Shortcut:
                     case QEvent::ShortcutOverride:
                     case QEvent::TabletPress:

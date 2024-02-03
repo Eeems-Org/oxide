@@ -18,9 +18,6 @@ public:
     EvDevHandler();
     ~EvDevHandler();
 
-signals:
-    void inputEvents(unsigned int device, const std::vector<input_event>& events);
-
 private:
     QList<EvDevDevice*> devices;
     bool hasDevice(event_device device);

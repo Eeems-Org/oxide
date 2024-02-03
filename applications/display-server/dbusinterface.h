@@ -92,6 +92,7 @@ private:
         QByteArray selection;
         QByteArray secondary;
     } clipboards;
+    unsigned int buttonsDevNumber;
 
     Connection* getConnection(QDBusMessage message);
     Connection* getConnection(QString identifier);

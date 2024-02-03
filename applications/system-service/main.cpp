@@ -191,8 +191,7 @@ int main(int argc, char* argv[]){
     QQmlApplicationEngine engine;
     registerQML(&engine);
     QQmlContext* context = engine.rootContext();
-    Controller controller(&app);
-    context->setContextProperty("controller", &controller);
+    context->setContextProperty("controller", Controller::singleton());
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
     if(engine.rootObjects().isEmpty()){
         qFatal("Failed to load main layout");

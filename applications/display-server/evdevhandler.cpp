@@ -23,7 +23,8 @@ EvDevHandler* EvDevHandler::init(){
 }
 
 EvDevHandler::EvDevHandler()
-: QThread()
+: QThread(),
+  enabled{true}
 {
     setObjectName("EvDevHandler");
     reloadDevices();
@@ -46,13 +47,12 @@ bool EvDevHandler::hasDevice(event_device device){
 void EvDevHandler::reloadDevices(){
     O_DEBUG("Reloading devices");
     for(auto& device : deviceSettings.inputDevices()){
-        if(device.device == deviceSettings.getButtonsDevicePath()){
-            continue;
-        }
         if(!hasDevice(device) && device.fd > 0){
             auto input = new EvDevDevice(this, device);
             connect(input, &EvDevDevice::inputEvents, this, [this, input](auto events){
-                dbusInterface->inputEvents(input->number(), events);
+                if(enabled){
+                    dbusInterface->inputEvents(input->number(), events);
+                }
             }, Qt::QueuedConnection);
             O_DEBUG(input->name() << "added");
             devices.append(input);

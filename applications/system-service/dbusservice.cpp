@@ -5,7 +5,6 @@
 #include "systemapi.h"
 #include "screenapi.h"
 #include "notificationapi.h"
-#include "buttonhandler.h"
 
 DBusService* DBusService::singleton(){
     static DBusService* instance;
@@ -108,41 +107,8 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(){
                 });
             });
         });
-#ifdef SENTRY
-        sentry_breadcrumb("dbusservice", "Connecting button handler events", "info");
-#endif
         Oxide::Sentry::sentry_span(t, "connect", "Connect events", []{
-            if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-                connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
-                connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
-                connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
-            }
-            connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
-            connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
-            connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
-#ifdef SENTRY
-            sentry_breadcrumb("dbusservice", "Connecting power events", "info");
-#endif
             connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
-#ifdef SENTRY
-            sentry_breadcrumb("dbusservice", "Connecting system events", "info");
-#endif
-            connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
-                if(notificationAPI->locked()){
-                    return;
-                }
-                auto currentApplication = appsAPI->getApplication(appsAPI->currentApplicationNoSecurityCheck());
-                if(currentApplication != nullptr && currentApplication->path() == appsAPI->lockscreenApplication().path()){
-                    O_DEBUG("Left Action cancelled. On lockscreen");
-                    return;
-                }
-                if(!appsAPI->previousApplicationNoSecurityCheck()){
-                    appsAPI->openDefaultApplication();
-                }
-            });
-            connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::openTaskManager);
-            connect(systemAPI, &SystemAPI::bottomAction, appsAPI, &AppsAPI::openTaskSwitcher);
-            connect(systemAPI, &SystemAPI::topAction, systemAPI, &SystemAPI::toggleSwipes);
         });
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", "Cleaning up", "info");

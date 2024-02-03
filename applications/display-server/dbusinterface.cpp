@@ -6,18 +6,21 @@
 #include <QDBusUnixFileDescriptor>
 #include <QCoreApplication>
 #include <QQmlComponent>
+#include <QFileInfo>
 #include <sys/poll.h>
 #include <unistd.h>
 #include <QDBusMetaType>
 #include <liboxide/debug.h>
 #include <liboxide/epaper.h>
+#include <liboxide/devicesettings.h>
 #include <libblight/types.h>
 #include <libblight/socket.h>
 #include <cstring>
 
 DbusInterface::DbusInterface(QObject* parent)
 : QObject(parent),
-  m_focused(nullptr)
+  m_focused(nullptr),
+  buttonsDevNumber{QFileInfo(deviceSettings.getButtonsDevicePath()).baseName().midRef(5).toInt()}
 {
     engine.load(QUrl(QStringLiteral("qrc:/Workspace.qml")));
     if(engine.rootObjects().isEmpty()){
@@ -369,7 +372,7 @@ void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldO
 }
 
 void DbusInterface::inputEvents(unsigned int device, const std::vector<input_event>& events){
-    if(m_focused != nullptr){
+    if(m_focused != nullptr && device != buttonsDevNumber){
         m_focused->inputEvents(device, events);
     }
     for(auto connection : qAsConst(connections)){

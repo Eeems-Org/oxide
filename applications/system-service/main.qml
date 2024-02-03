@@ -9,6 +9,92 @@ Window{
     height: Screen.height
     visible: true
     color: "transparent"
+    property bool enableHeldKeys: controller.deviceName === "reMarkable 1"
+
+    Connections{
+        target: controller
+        property alias enableHeldKeys: window.enableHeldKeys
+        function onKeyPressed(key, modifiers, text){
+            switch(key){
+                case Qt.Key_Left:
+                    if(enableHeldKeys){
+                        leftHeldTimer.start();
+                    }
+                    break;
+                case Qt.Key_Right:
+                    if(enableHeldKeys){
+                        rightHeldTimer.start();
+                    }
+                    break;
+                case Qt.Key_Home:
+                    if(enableHeldKeys){
+                        homeHeldTimer.start();
+                    }
+                    break;
+                case Qt.Key_PowerOff:
+                case Qt.Key_Suspend:
+                    powerHeldTimer.start();
+                    break;
+            }
+        }
+        function onKeyReleased(key, modifiers, text){
+            switch(key){
+                case Qt.Key_Left:
+                    if(enableHeldKeys){
+                        leftHeldTimer.stop();
+                    }
+                    break;
+                case Qt.Key_Right:
+                    if(enableHeldKeys){
+                        rightHeldTimer.stop();
+                    }
+                    break;
+                case Qt.Key_Home:
+                    if(enableHeldKeys){
+                        homeHeldTimer.stop();
+                    }
+                    break;
+                case Qt.Key_PowerOff:
+                case Qt.Key_Suspend:
+                    if(powerHeldTimer.running){
+                        powerHeldTimer.stop();
+                        controller.suspend();
+                    }
+                    break;
+            }
+        }
+    }
+    Timer{
+        id: leftHeldTimer
+        running: false
+        repeat: false
+        interval: 700
+        onTriggered: controller.back()
+    }
+    Timer{
+        id: rightHeldTimer
+        running: false
+        repeat: false
+        interval: 700
+        onTriggered: controller.screenshot()
+    }
+    Timer{
+        id: homeHeldTimer
+        running: false
+        repeat: false
+        interval: 700
+        onTriggered: controller.processManager()
+    }
+    Timer{
+        id: powerHeldTimer
+        running: false
+        repeat: false
+        interval: 700
+        onTriggered:{
+            // TODO - power menu app
+        }
+    }
+
     Item{
         anchors.fill: parent
         MultiPointTouchArea{
@@ -104,11 +190,5 @@ Window{
         sequences: ["End+Alt+4", "Alt+F4", "Meta+Alt+4"]
         context: Qt.ApplicationShortcut
         onActivated: controller.close()
-    }
-    Shortcut{
-        enabled: Oxide.deviceName != "reMarkable 2"
-        sequences: ["PowerOff"]
-        context: Qt.ApplicationShortcut
-        onActivated: controller.suspend()
     }
 }

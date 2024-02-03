@@ -13,7 +13,6 @@
 #include "systemapi.h"
 #include "notificationapi.h"
 #include "screenapi.h"
-#include "buttonhandler.h"
 #include "apibase.h"
 
 using namespace Oxide::Applications;
