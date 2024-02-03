@@ -5,7 +5,7 @@
 pkgnames=(oxide oxide-extra oxide-utils inject_evdev liboxide liboxide-dev libsentry)
 _oxidever=$(grep 'VERSION =' qmake/common.pri | awk '{print $3}')
 pkgver="$_oxidever~VERSION~"
-_sentryver=0.5.0
+_sentryver=0.7.0
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
@@ -14,43 +14,6 @@ flags=(patch_rm2fb)
 image=qt:latest
 source=(oxide.tar.gz)
 sha256sums=(SKIP)
-########################################
-# These functions come from install-lib:
-# https://raw.githubusercontent.com/toltec-dev/toltec/master/scripts/install-lib
-########################################
-is-active() {
-    systemctl --quiet is-active "$1" 2> /dev/null
-}
-is-enabled() {
-    systemctl --quiet is-enabled "$1" 2> /dev/null
-}
-get-conflicts() {
-    # Find enabled units that have a conflicting name
-    for name in $(systemctl cat "$1" | awk -F'=' '/^Alias=/{print $2}'); do
-        local realname
-        if realname="$(basename "$(readlink "/etc/systemd/system/$name")")"; then
-            echo "$realname"
-        fi
-    done
-
-    # Find units that are declared as conflicting
-    # (systemd automatically adds a conflict with "shutdown.target" to all
-    # service units see systemd.service(5), section "Automatic Dependencies")
-    systemctl show "$1" | awk -F'=' '/^Conflicts=/{print $2}' \
-        | sed 's|\bshutdown.target\b||'
-}
-how-to-enable() {
-    for conflict in $(get-conflicts "$1"); do
-        if is-enabled "$conflict"; then
-            echo "$ systemctl disable --now ${conflict/.service/}"
-        fi
-    done
-
-    echo "$ systemctl enable --now ${1/.service/}"
-}
-########################################
-# End of install-lib methods
-########################################
 
 build() {
     find . -name "*.pro" -type f -print0 \
@@ -177,7 +140,8 @@ liboxide() {
     section="devel"
 
     package() {
-        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libliboxide.so*
+        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/liboxide.so*
+        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libqsgepaper.so*
     }
 }
 
@@ -187,7 +151,7 @@ liboxide-dev() {
     installdepends=("liboxide=$pkgver")
 
     package() {
-        install -D -m 755 -t "$pkgdir"/opt/lib/pkgconfig "$srcdir"/release/opt/lib/pkgconfig/liboxide.pc
+        install -D -m 755 -t "$pkgdir"/opt/lib/pkgconfig "$srcdir"/release/opt/lib/pkgconfig/oxide.pc
         install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/epframebuffer.h
         install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/liboxide.h
         cp -ar "$srcdir"/release/opt/include/liboxide/ "$pkgdir"/opt/include/

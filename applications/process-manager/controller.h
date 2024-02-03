@@ -16,7 +16,15 @@ class Controller : public QObject
     Q_PROPERTY(QString sortBy READ sortBy WRITE sortBy NOTIFY sortByChanged)
 public:
     int protectPid;
-    explicit Controller(QQmlApplicationEngine* engine) : QObject(nullptr), mutex(QMutex::NonRecursive), _engine(engine){
+    explicit Controller(QQmlApplicationEngine* engine)
+    : QObject(nullptr),
+#if QT_DEPRECATED_SINCE(5,15)
+      mutex(QMutex::NonRecursive),
+#else
+      mutex(),
+#endif
+      _engine(engine)
+    {
         m_tasks = new TaskList();
         connect(m_tasks, &TaskList::sortByChanged, this, &Controller::sortByChanged);
         emit tasksChanged(m_tasks);

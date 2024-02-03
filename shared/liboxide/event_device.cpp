@@ -34,14 +34,16 @@ namespace Oxide {
 
     int event_device::lock(){
         O_DEBUG("locking " << device.c_str());
-        int result = ioctl(fd, EVIOCGRAB, 1);
-        if(result == EBUSY){
-            O_WARNING("Device is busy");
-        }else if(result != 0){
-            O_WARNING("Unknown error: " << result);
-        }else{
+        if(ioctl(fd, EVIOCGRAB, 1) == 0){
             locked = true;
             O_DEBUG(device.c_str() << " locked");
+            return 0;
+        }
+        int result = errno;
+        if(result == EBUSY){
+            O_WARNING("Device is already grabbed");
+        }else{
+            O_WARNING("Unknown error: " << result);
         }
         return result;
     }

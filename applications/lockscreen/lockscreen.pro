@@ -6,9 +6,6 @@ CONFIG += c++11
 CONFIG += qml_debug
 CONFIG += qtquickcompiler
 
-DEFINES += QT_DEPRECATED_WARNINGS
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-
 SOURCES += \
         main.cpp
 
@@ -28,4 +25,3 @@ RESOURCES += \
     qml.qrc
 
 include(../../qmake/liboxide.pri)
-include(../../qmake/sentry.pri)
