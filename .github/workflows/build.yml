@@ -76,7 +76,9 @@ jobs:
             opkg install oxide oxide-tests
             # systemctl disable --now xochitl
             # systemctl enable --now tarnish
-            find /opt/share/tests -type f | xargs -rn1 sh -c
+            find /opt/share/tests -type f | while read -r test;do
+              $test;
+            done
             opkg remove --force-removal-of-dependent-packages liboxide libblight
           path: ${{ steps.download.outputs.download-path }}
   release:
