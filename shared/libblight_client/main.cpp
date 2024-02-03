@@ -1025,10 +1025,14 @@ extern "C" {
             std::exit(res);
         });
         _DEBUG("Connected %d to blight on %d", pid, blightConnection->handle());
-        setenv("RM2FB_ACTIVE", "1", true);
         setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
-        setenv("RM2FB_DISABLE", "1", true);
+        setenv("RM2FB_ACTIVE", "1", true);
         setenv("RM2FB_SHIM", "1", true);
+        if(path != "/usr/bin/xochitl"){
+            setenv("RM2FB_DISABLE", "1", true);
+        }else{
+            unsetenv("RM2FB_DISABLE");
+        }
         if(getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr){
             setenv("QMLSCENE_DEVICE", "software", 1);
             setenv("QT_QUICK_BACKEND", "software", 1);

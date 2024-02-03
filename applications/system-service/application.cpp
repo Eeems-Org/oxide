@@ -657,8 +657,6 @@ void Application::updateEnvironment(){
         if(!preload.contains(blight_client)){
             preload.append(blight_client);
         }
-        env.insert("RM2FB_SHIM", "1");
-        env.insert("RM2FB_DISABLE", "1");
     }
     env.insert("LD_PRELOAD", preload.join(":"));
     for(auto key : environment().keys()){
