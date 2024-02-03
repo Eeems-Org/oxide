@@ -23,8 +23,7 @@ EvDevHandler* EvDevHandler::init(){
 }
 
 EvDevHandler::EvDevHandler()
-: QThread(),
-  enabled{true}
+: QThread()
 {
     setObjectName("EvDevHandler");
     reloadDevices();
@@ -50,9 +49,7 @@ void EvDevHandler::reloadDevices(){
         if(!hasDevice(device) && device.fd > 0){
             auto input = new EvDevDevice(this, device);
             connect(input, &EvDevDevice::inputEvents, this, [this, input](auto events){
-                if(enabled){
-                    dbusInterface->inputEvents(input->number(), events);
-                }
+                dbusInterface->inputEvents(input->number(), events);
             }, Qt::QueuedConnection);
             O_DEBUG(input->name() << "added");
             devices.append(input);
