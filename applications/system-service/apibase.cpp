@@ -35,6 +35,9 @@ int APIBase::getSenderPid() {
 int APIBase::getSenderPgid() { return getpgid(getSenderPid()); }
 
 QImage* getFrameBuffer(){
+    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+        return EPFrameBuffer::instance()->framebuffer();
+    }
     static QImage* image = nullptr;
     static QFile* file = nullptr;
     if(image == nullptr){

@@ -25,6 +25,7 @@
 #include <libblight/clock.h>
 #include <filesystem>
 #include <cstdint>
+#include <fstream>
 
 static bool IS_INITIALIZED = false;
 static bool FAILED_INIT = true;
@@ -1026,12 +1027,18 @@ extern "C" {
         });
         _DEBUG("Connected %d to blight on %d", pid, blightConnection->handle());
         setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
-        setenv("RM2FB_ACTIVE", "1", true);
-        setenv("RM2FB_SHIM", "1", true);
-        if(path != "/usr/bin/xochitl" && getenv("OXIDE_PRELOAD_ALLOW_RM2FB") == nullptr){
-            setenv("RM2FB_DISABLE", "1", true);
-        }else{
-            unsetenv("RM2FB_DISABLE");
+
+        std::ifstream device_id_file{"/sys/devices/soc0/machine"};
+        std::string device_id;
+        std::getline(device_id_file, device_id);
+        if(device_id == "reMarkable 2.0"){
+            setenv("RM2FB_ACTIVE", "1", true);
+            setenv("RM2FB_SHIM", "1", true);
+            if(path != "/usr/bin/xochitl" && getenv("OXIDE_PRELOAD_ALLOW_RM2FB") == nullptr){
+                setenv("RM2FB_DISABLE", "1", true);
+            }else{
+                unsetenv("RM2FB_DISABLE");
+            }
         }
         if(getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr){
             setenv("QMLSCENE_DEVICE", "software", 1);
