@@ -3,19 +3,11 @@
 #include "guithread.h"
 
 #include <QQuickWindow>
-
-#ifdef EPAPER
-#include <QPainter>
-#else
 #include <QSGImageNode>
-#endif
 
+#ifndef EPAPER
 SurfaceWidget::SurfaceWidget(QQuickItem* parent)
-#ifdef EPAPER
-: QQuickPaintedItem(parent)
-#else
 : QQuickItem(parent)
-#endif
 {
     setObjectName("Surface");
     setFlag(QQuickItem::ItemHasContents);
@@ -31,19 +23,6 @@ void SurfaceWidget::setIdentifier(QString identifier){
 
 void SurfaceWidget::updated(){ update(); }
 
-#ifdef EPAPER
-void SurfaceWidget::paint(QPainter* painter){
-    auto surface = this->surface();
-    if(surface != nullptr){
-        guiThread->enqueue(
-            surface,
-            painter->clipBoundingRect().toRect(),
-            EPFrameBuffer::WaveformMode::HighQualityGrayscale,
-            0
-        );
-    }
-}
-#else
 QSGNode* SurfaceWidget::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){
     if(!oldNode){
         oldNode = window()->createImageNode();
@@ -65,7 +44,6 @@ QSGNode* SurfaceWidget::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){
     node->setRect(rect);
     return oldNode;
 }
-#endif
 
 std::shared_ptr<Surface> SurfaceWidget::surface(){
     return dbusInterface->getSurface(identifier());
@@ -78,3 +56,4 @@ std::shared_ptr<QImage> SurfaceWidget::image(){
     }
     return surface->image();
 }
+#endif

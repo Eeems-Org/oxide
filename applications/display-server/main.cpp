@@ -13,9 +13,6 @@
 
 #include "dbusinterface.h"
 #include "evdevhandler.h"
-#ifdef EPAPER
-#include "guithread.h"
-#endif
 
 using namespace std;
 using namespace Oxide::Sentry;
@@ -153,9 +150,6 @@ int main(int argc, char* argv[]){
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
         remove(pidPath);
     });
-#ifdef EPAPER
-    guiThread;
-#endif
     dbusInterface;
     evdevHandler;
     return app.exec();

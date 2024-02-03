@@ -54,7 +54,9 @@ signals:
     void update(const QRect& geometry);
 
 private slots:
+#ifndef EPAPER
     void activeFocusChanged(bool focus);
+#endif
 
 private:
     Connection* m_connection;
@@ -65,7 +67,9 @@ private:
     QFile file;
     uchar* data;
     std::shared_ptr<QImage> m_image;
+#ifndef EPAPER
     QQuickItem* component;
+#endif
     QString m_id;
     QStringList flags;
     bool m_removed;

@@ -23,10 +23,14 @@ DbusInterface::DbusInterface(QObject* parent)
   m_buttonsDevNumber{QFileInfo(deviceSettings.getButtonsDevicePath()).baseName().midRef(5).toInt()},
   m_exlusiveMode{false}
 {
+#ifdef EPAPER
+    guiThread;
+#else
     engine.load(QUrl(QStringLiteral("qrc:/Workspace.qml")));
     if(engine.rootObjects().isEmpty()){
         qFatal("Failed to load main layout");
     }
+#endif
     // Needed to trick QtDBus into exposing the object
     setProperty("__init__", true);
 #ifdef EPAPER
@@ -78,6 +82,7 @@ DbusInterface* DbusInterface::singleton(){
 
 int DbusInterface::pid(){ return qApp->applicationPid(); }
 
+#ifndef EPAPER
 QObject* DbusInterface::loadComponent(QString url, QString identifier, QVariantMap properties){
     auto object = engine.findChild<QObject*>(identifier);
     if(object != nullptr){
@@ -114,6 +119,7 @@ QObject* DbusInterface::loadComponent(QString url, QString identifier, QVariantM
     O_DEBUG("Created component" << objectName);
     return object;
 }
+#endif
 
 void DbusInterface::processClosingConnections(){
     closingMutex.lock();

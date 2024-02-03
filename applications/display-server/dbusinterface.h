@@ -29,7 +29,9 @@ public:
     static DbusInterface* singleton();
 
     int pid();
+#ifndef EPAPER
     QObject* loadComponent(QString url, QString identifier, QVariantMap properties = QVariantMap());
+#endif
     void processClosingConnections();
     void processRemovedSurfaces();
     std::shared_ptr<Surface> getSurface(QString identifier);

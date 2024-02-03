@@ -1,9 +1,10 @@
 #include "surface.h"
 #include "connection.h"
 #include "dbusinterface.h"
-#include "surfacewidget.h"
 #ifdef EPAPER
 #include "guithread.h"
+#else
+#include "surfacewidget.h"
 #endif
 
 #include <unistd.h>
@@ -41,6 +42,7 @@ Surface::Surface(
         stride,
         format
     ));
+#ifndef EPAPER
     component = dynamic_cast<QQuickItem*>(dbusInterface->loadComponent(
         "qrc:/Surface.qml",
         id(),
@@ -66,6 +68,7 @@ Surface::Surface(
     widget->forceActiveFocus();
     connect(this, &Surface::update, widget, &SurfaceWidget::update);
     connect(widget, &SurfaceWidget::activeFocusChanged, this, &Surface::activeFocusChanged);
+#endif
     emit connection->focused();
     setVisible(true);
     setZ(std::numeric_limits<int>::max());
@@ -78,16 +81,23 @@ Surface::~Surface(){
     setVisible(false);
 #ifdef EPAPER
     repaint();
-#endif
+#else
     if(component != nullptr){
         component->deleteLater();
         component = nullptr;
     }
+#endif
 }
 
 QString Surface::id(){ return m_id; }
 
-bool Surface::isValid(){ return component != nullptr; }
+bool Surface::isValid(){
+#ifdef EPAPER
+    return true;
+#else
+    return component != nullptr;
+#endif
+}
 
 std::shared_ptr<QImage> Surface::image(){ return m_image; }
 
@@ -122,34 +132,52 @@ QImage::Format Surface::format(){ return m_format; }
 
 void Surface::move(int x, int y){
     m_geometry.moveTopLeft(QPoint(x, y));
+#ifndef EPAPER
     component->setX(x);
     component->setY(y);
+#endif
 }
 
 void Surface::setVisible(bool visible){
+#ifdef EPAPER
+    setProperty("visible", visible);
+#else
     if(component != nullptr){
         component->setVisible(visible);
     }
+#endif
 }
 
 bool Surface::visible(){
+#ifdef EPAPER
+    return property("visible").toBool();
+#else
     if(component == nullptr){
         return false;
     }
     return component->isVisible();
+#endif
 }
 
 int Surface::z(){
+#ifdef EPAPER
+    return property("z").toInt();
+#else
     if(component == nullptr){
         return -1;
     }
     return component->z();
+#endif
 }
 
 void Surface::setZ(int z){
+#ifdef EPAPER
+    setProperty("z", z);
+#else
     if(component != nullptr){
         component->setZ(z);
     }
+#endif
 }
 
 bool Surface::has(const QString& flag){ return flags.contains(flag); }
@@ -168,10 +196,12 @@ bool Surface::isRemoved(){ return m_removed; }
 
 void Surface::removed(){ m_removed = true; }
 
+#ifndef EPAPER
 void Surface::activeFocusChanged(bool focus){
     if(focus){
         emit m_connection->focused();
     }
 }
+#endif
 
 #include "moc_surface.cpp"
