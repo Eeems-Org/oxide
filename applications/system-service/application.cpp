@@ -698,6 +698,9 @@ void Application::updateEnvironment(){
         if(!preload.contains(blight_client)){
             preload.append(blight_client);
         }
+        if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
+            env.insert("RM2FB_DISABLE", "1");
+        }
     }
     env.insert("LD_PRELOAD", preload.join(":"));
     for(auto key : environment().keys()){
