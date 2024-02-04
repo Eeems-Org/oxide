@@ -1028,6 +1028,7 @@ extern "C" {
         _DEBUG("Connected %d to blight on %d", pid, blightConnection->handle());
         setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
 
+        std::ios_base::Init i;
         std::ifstream device_id_file{"/sys/devices/soc0/machine"};
         std::string device_id;
         std::getline(device_id_file, device_id);
