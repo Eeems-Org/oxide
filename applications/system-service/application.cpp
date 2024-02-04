@@ -547,12 +547,19 @@ void Application::started(){
 void Application::finished(int exitCode){
     qDebug() << "Application" << name() << "exit code" << exitCode;
     getCompositorDBus()->lower(QString("connection/%1").arg(m_process->processId()));
-    if(exitCode){
+    if(
+        exitCode != EXIT_SUCCESS
+        && exitCode != SIGINT
+        && exitCode != SIGTERM
+        && exitCode != 128 + EXIT_SUCCESS
+        && exitCode != 128 + SIGINT
+        && exitCode != 128 + SIGTERM
+    ){
         notificationAPI->add(
             QUuid::createUuid().toString(),
             "codes.eeems.tarnish",
             "codes.eeems.tarnish",
-            QString("%1 crashed").arg(displayName()),
+            QString("%1 crashed (%2)").arg(displayName()).arg(exitCode),
             icon()
         )->display();
     }
