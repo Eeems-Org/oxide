@@ -97,6 +97,7 @@ void OxideIntegration::initialize(){
     }
     connection->onDisconnect([](int res){
         if(res){
+            qDebug() << "Lost connection to display server:" << res;
             qApp->exit(res);
         }
     });

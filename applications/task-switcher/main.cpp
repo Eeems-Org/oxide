@@ -16,7 +16,7 @@ using namespace Oxide::Sentry;
 
 void sigHandler(int signal){
     ::signal(signal, SIG_DFL);
-    qApp->quit();
+    qApp->exit(signal);
 }
 
 int main(int argc, char *argv[]){
