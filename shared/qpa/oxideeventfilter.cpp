@@ -20,7 +20,13 @@ QVector<QEvent::Type> ignoreTypes{
 };
 
 bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev){
-    if(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS") && !ignoreTypes.contains(ev->type())){
+    if(
+        qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_ALL_EVENTS")
+        || (
+            qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS")
+            && !ignoreTypes.contains(ev->type())
+        )
+    ){
         qDebug() << obj << ev;
     }
     bool filtered = QObject::eventFilter(obj, ev);

@@ -114,9 +114,15 @@ namespace Oxide {
      */
     LIBOXIDE_EXPORT std::string getAppName(bool ignoreQApp);
     /*!
-     * \brief Print the current backtrace
+     * \brief Get the current backtrace
+     * \param depth Maximum number of items to return
+     * \return The current stack trace
      */
     LIBOXIDE_EXPORT std::vector<std::string> backtrace(unsigned short depth);
+    /*!
+     * \brief Get the current thread name
+     * \return The current thread name
+     */
     LIBOXIDE_EXPORT std::string getThreadName();
 }
 /*! @} */

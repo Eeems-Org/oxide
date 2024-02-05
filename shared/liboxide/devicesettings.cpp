@@ -178,10 +178,8 @@ namespace Oxide {
         }
         return qEnvironmentVariable("LANG", "C");
     }
-    void DeviceSettings::setLocale(const QString& locale) {
-        if(debugEnabled()){
-            qDebug() << "Setting locale:" << locale;
-        }
+    void DeviceSettings::setLocale(const QString& locale){
+        O_DEBUG("Setting locale:" << locale);
         qputenv("LANG", locale.toUtf8());
         QProcess::execute("localectl", QStringList() << "set-locale" << locale);
     }
@@ -200,9 +198,7 @@ namespace Oxide {
         return "UTC";
     }
     void DeviceSettings::setTimezone(const QString& timezone) {
-        if(debugEnabled()){
-            qDebug() << "Setting timezone:" << timezone;
-        }
+        O_DEBUG("Setting timezone:" << timezone);
         QProcess::execute("timedatectl", QStringList() << "set-timezone" << timezone);
     }
     void DeviceSettings::setupQtEnvironment(bool touch){
