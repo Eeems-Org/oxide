@@ -160,7 +160,17 @@ OxideWindow {
                     ScriptAction { script: {
                         controller.breadcrumb("navigation", "loading", "navigation");
                         console.log("Loading display");
+                        window.raise();
                         controller.startup();
+                    } }
+                }
+            },
+            Transition {
+                from: "*"; to: "hidden"
+                SequentialAnimation {
+                    ScriptAction { script: {
+                        controller.breadcrumb("navigation", "hidden", "navigation");
+                        window.lower();
                     } }
                 }
             }

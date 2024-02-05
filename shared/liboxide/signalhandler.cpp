@@ -95,7 +95,6 @@ namespace Oxide {
                     O_WARNING("Failed to emit" << name);
                 }
                 O_DEBUG("emitted" << name);
-                ::signal(signal, SIG_DFL);
             }
         }, Qt::QueuedConnection);
     }
