@@ -109,7 +109,7 @@ void Surface::repaint(QRect rect){
     guiThread->enqueue(
         nullptr,
         geometry(),
-        EPFrameBuffer::HighQualityGrayscale,
+        Blight::HighQualityGrayscale,
         0,
         true
     );

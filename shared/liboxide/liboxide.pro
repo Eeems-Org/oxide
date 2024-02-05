@@ -108,12 +108,6 @@ liboxide_h_install.depends = liboxide_h
 liboxide_h_install.path = /opt/include/
 INSTALLS += liboxide_h_install
 
-linux-oe-g++{
-    epframebuffer_h_install.files = ../epaper/epframebuffer.h
-    epframebuffer_h_install.path = /opt/include
-    INSTALLS += epframebuffer_h_install
-}
-
 QMAKE_EXTRA_TARGETS += liboxide_liboxide_h liboxide_h liboxide_h_install
 POST_TARGETDEPS += $$liboxide_liboxide_h.target $$liboxide_h.target
 QMAKE_CLEAN += $$liboxide_h.target include/liboxide/*.h

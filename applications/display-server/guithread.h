@@ -4,7 +4,6 @@
 #include <QWaitCondition>
 #include <QSemaphore>
 #include <QQueue>
-#include <epframebuffer.h>
 #include <liboxide/threading.h>
 #include <libblight/concurrentqueue.h>
 
@@ -15,7 +14,7 @@
 struct RepaintRequest{
     std::shared_ptr<Surface> surface;
     QRegion region;
-    EPFrameBuffer::WaveformMode waveform;
+    Blight::WaveformMode waveform;
     unsigned int marker;
     bool global;
     std::function<void()> callback;
@@ -38,14 +37,14 @@ public slots:
     void enqueue(
         std::shared_ptr<Surface> surface,
         QRect region,
-        EPFrameBuffer::WaveformMode waveform,
+        Blight::WaveformMode waveform,
         unsigned int marker,
         bool global = false,
         std::function<void()> callback = nullptr
     );
     void notify();
     int framebuffer();
-    void sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode waveform, unsigned int marker);
+    void sendUpdate(const QRect& rect, Blight::WaveformMode waveform, unsigned int marker);
 
 private:
     GUIThread(QRect screenGeometry);

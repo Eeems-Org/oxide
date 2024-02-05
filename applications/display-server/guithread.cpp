@@ -3,6 +3,7 @@
 #include "connection.h"
 #include "dbusinterface.h"
 
+#include <epframebuffer.h>
 #include <QAbstractEventDispatcher>
 #include <QTimer>
 #include <QPainter>
@@ -90,7 +91,7 @@ GUIThread::~GUIThread(){
 void GUIThread::enqueue(
     std::shared_ptr<Surface> surface,
     QRect region,
-    EPFrameBuffer::WaveformMode waveform,
+    Blight::WaveformMode waveform,
     unsigned int marker,
     bool global,
     std::function<void()> callback
@@ -253,7 +254,7 @@ void GUIThread::redraw(RepaintRequest& event){
     O_DEBUG("Repaint" << region.boundingRect() << "done in" << region.rectCount() << "paints, and" << cw.elapsed() << "seconds");
 }
 
-void GUIThread::sendUpdate(const QRect& rect, EPFrameBuffer::WaveformMode waveform, unsigned int marker){
+void GUIThread::sendUpdate(const QRect& rect, Blight::WaveformMode waveform, unsigned int marker){
     auto mode = rect == m_screenRect
         ? EPFrameBuffer::FullUpdate
         : EPFrameBuffer::PartialUpdate;

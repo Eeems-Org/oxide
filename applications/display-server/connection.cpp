@@ -356,7 +356,7 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     surface,
                     rect,
-                    (EPFrameBuffer::WaveformMode)repaint.waveform,
+                    repaint.waveform,
                     repaint.marker,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -389,7 +389,7 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     surface,
                     surface->rect(),
-                    EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+                    Blight::HighQualityGrayscale,
                     message->header.ackid,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -397,7 +397,7 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     nullptr,
                     rect,
-                    EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+                    Blight::HighQualityGrayscale,
                     message->header.ackid,
                     true,
                     nullptr
@@ -473,7 +473,7 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     surface,
                     surface->rect(),
-                    EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+                    Blight::HighQualityGrayscale,
                     message->header.ackid,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -496,7 +496,7 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     nullptr,
                     surface->geometry(),
-                    EPFrameBuffer::WaveformMode::HighQualityGrayscale,
+                    Blight::HighQualityGrayscale,
                     message->header.ackid,
                     true,
                     [message, this]{ ack(message, 0, nullptr); }
