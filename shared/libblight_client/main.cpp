@@ -126,6 +126,7 @@ void __sendEvents(unsigned int device, std::vector<Blight::partial_input_event_t
 void __readInput(){
     _INFO("%s", "InputWorker starting");
     prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
+    nice(-10);
     auto fd = blightConnection->input_handle();
     std::map<unsigned int,std::vector<Blight::partial_input_event_t>> events;
     while(blightConnection != nullptr && getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr){

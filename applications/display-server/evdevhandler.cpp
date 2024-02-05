@@ -5,6 +5,7 @@
 #include <QKeyEvent>
 #include <liboxide/devicesettings.h>
 #include <liboxide/debug.h>
+#include <liboxide/threading.h>
 #include <linux/input.h>
 #include <sys/socket.h>
 #include <cstring>
@@ -18,7 +19,7 @@ EvDevHandler* EvDevHandler::init(){
     }
     instance = new EvDevHandler();
     instance->moveToThread(instance);
-    instance->start();
+    Oxide::startThreadWithPriority(instance, QThread::HighestPriority);
     return instance;
 }
 
