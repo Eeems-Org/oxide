@@ -81,13 +81,6 @@ namespace Oxide {
         }else{
             O_DEBUG(("Buttons input device: " + buttonsPath).c_str());
         }
-        QTimer::singleShot(0, qApp, [this]{
-            QObject::connect(signalHandler, &SignalHandler::sigCont, qApp, [this]{
-                for(auto& callback : callbacks){
-                    callback();
-                }
-            });
-        });
     }
     DeviceSettings::~DeviceSettings(){}
     bool DeviceSettings::checkBitSet(int fd, int type, int i) {
