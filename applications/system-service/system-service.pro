@@ -15,7 +15,6 @@ SOURCES += \
     bss.cpp \
     dbusservice.cpp \
     eventlistener.cpp \
-    fifohandler.cpp \
     network.cpp \
     notification.cpp \
     notificationapi.cpp \
@@ -65,7 +64,6 @@ HEADERS += \
     controller.h \
     dbusservice.h \
     eventlistener.h \
-    fifohandler.h \
     network.h \
     notification.h \
     notificationapi.h \

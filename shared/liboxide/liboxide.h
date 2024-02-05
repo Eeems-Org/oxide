@@ -21,7 +21,6 @@
 #include "devicesettings.h"
 #include "xochitlsettings.h"
 #include "sharedsettings.h"
-#include "epaper.h"
 #include "threading.h"
 #if defined(LIBOXIDE_LIBRARY)
 #include "oxide_sentry.h"

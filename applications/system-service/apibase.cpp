@@ -5,6 +5,9 @@
 #include <liboxide/oxideqml.h>
 #include <libblight/meta.h>
 #include <libblight/types.h>
+#ifdef EPAPER
+#include <liboxide/epaper.h>
+#endif
 
 int APIBase::hasPermission(QString permission, const char* sender){
     if(getpgid(getpid()) == getSenderPgid()){
@@ -35,9 +38,11 @@ int APIBase::getSenderPid() {
 int APIBase::getSenderPgid() { return getpgid(getSenderPid()); }
 
 QImage* getFrameBuffer(){
+#ifdef EPAPER
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
         return EPFrameBuffer::instance()->framebuffer();
     }
+#endif
     static QImage* image = nullptr;
     static QFile* file = nullptr;
     if(image == nullptr){

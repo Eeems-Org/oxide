@@ -32,8 +32,6 @@
 #include <liboxide.h>
 #include <libblight/types.h>
 
-#include "fifohandler.h"
-
 class Notification;
 #include "notification.h"
 
@@ -185,7 +183,6 @@ private slots:
     void readyReadStandardOutput();
     void stateChanged(QProcess::ProcessState state);
     void errorOccurred(QProcess::ProcessError error);
-    void powerStateDataRecieved(FifoHandler* handler, const QString& data);
 
 private:
     QVariantMap m_config;
@@ -194,7 +191,6 @@ private:
     bool m_backgrounded;
     QByteArray* m_screenCapture = nullptr;
     QElapsedTimer timer;
-    QMap<QString, FifoHandler*> fifos;
     Oxide::Sentry::Transaction* transaction = nullptr;
     Oxide::Sentry::Span* span = nullptr;
     int p_stdout_fd = -1;

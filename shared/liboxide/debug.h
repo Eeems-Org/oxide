@@ -25,6 +25,9 @@
  * \brief Log the current file and line number
  * \note This is only available if DEBUG is defined
  */
+#ifdef __RIGHT_HERE__
+#undef __RIGHT_HERE__
+#endif
 #ifdef DEBUG
 #define __RIGHT_HERE__ qDebug() << "<============================" << __FILE__ << ":" << __LINE__;
 #else

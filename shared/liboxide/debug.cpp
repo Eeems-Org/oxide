@@ -3,6 +3,7 @@
 #include <execinfo.h>
 #include <linux/prctl.h>
 #include <sys/prctl.h>
+#include <libblight/debug.h>
 
 namespace Oxide{
     bool debugEnabled(){

@@ -710,18 +710,6 @@ void Application::updateEnvironment(){
     m_process->setEnvironment(env.toStringList());
 }
 
-void Application::powerStateDataRecieved(FifoHandler* handler, const QString& data){
-    Q_UNUSED(handler);
-    if(!permissions().contains("power")){
-        O_WARNING("Denied powerState request");
-        return;
-    }
-    if((QStringList() << "mem" << "freeze" << "standby").contains(data)){
-        systemAPI->suspend();
-    }else{
-        O_WARNING("Unknown power state call: " << data);
-    }
-}
 void Application::startSpan(std::string operation, std::string description){
     if(!sharedSettings.applicationUsage()){
         return;
@@ -745,8 +733,7 @@ void Application::waitForFinished(){
 Application::Application(QString path, QObject *parent)
 : QObject(parent),
   m_path(path),
-  m_backgrounded(false),
-  fifos()
+  m_backgrounded(false)
 {
     m_process = new ApplicationProcess(this);
     connect(m_process, &ApplicationProcess::started, this, &Application::started);
