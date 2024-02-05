@@ -5,9 +5,6 @@
 #include <liboxide/oxideqml.h>
 #include <libblight/meta.h>
 #include <libblight/types.h>
-#ifdef EPAPER
-#include <liboxide/epaper.h>
-#endif
 
 int APIBase::hasPermission(QString permission, const char* sender){
     if(getpgid(getpid()) == getSenderPgid()){
@@ -38,14 +35,10 @@ int APIBase::getSenderPid() {
 int APIBase::getSenderPgid() { return getpgid(getSenderPid()); }
 
 QImage* getFrameBuffer(){
-#ifdef EPAPER
-    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-        return EPFrameBuffer::instance()->framebuffer();
-    }
-#endif
     static QImage* image = nullptr;
     static QFile* file = nullptr;
     if(image == nullptr){
+        file = new QFile();
         auto compositor = getCompositorDBus();
         auto reply = compositor->frameBuffer();
         reply.waitForFinished();
@@ -58,10 +51,45 @@ QImage* getFrameBuffer(){
             O_WARNING("Framebuffer fd is not valid");
             return nullptr;
         }
-        file = new QFile();
-        file->open(dup(qfd.fileDescriptor()), QFile::ReadWrite);
-        uchar* data = file->map(0, file->size());
-        image = new QImage(data, 1404, 1872, 2808, QImage::Format_RGB16);
+        int fd = dup(qfd.fileDescriptor());
+        if(fd < 0){
+            O_WARNING("Failed to get framebuffer fd" << std::strerror(errno));
+            return nullptr;
+        }
+        if(!file->open(fd, QFile::ReadWrite)){
+            O_WARNING("Failed to open framebuffer" << file->errorString());
+            ::close(fd);
+            delete file;
+            file = nullptr;
+            return nullptr;
+        }
+        auto stride = deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1 ? 2816 : 2808;
+        uchar* data = file->map(0, stride * 1872);
+        if(data == nullptr){
+            O_WARNING("Failed to map framebuffer" << file->errorString());
+            file->close();
+            delete file;
+            file = nullptr;
+            return nullptr;
+        }
+        image = new QImage(data, 1404, 1872, stride, QImage::Format_RGB16);
+        if(image->isNull()){
+            O_WARNING("Framebuffer is null" << image->size());
+            delete image;
+            image = nullptr;
+            file->unmap(data);
+            file->close();
+            delete file;
+            file = nullptr;
+        }else if(image->size().isEmpty()){
+            O_WARNING("Image is empty" << image->size());
+            delete image;
+            image = nullptr;
+            file->unmap(data);
+            file->close();
+            delete file;
+            file = nullptr;
+        }
     }
     return image;
 }

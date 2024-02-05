@@ -59,6 +59,7 @@ INCLUDEPATH += ../../shared/mxcfb
 
 include(../../qmake/liboxide.pri)
 include(../../qmake/libblight.pri)
+include(../../qmake/epaper.pri)
 
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 

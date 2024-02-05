@@ -3,7 +3,6 @@
 #include "systemapi.h"
 
 #include <liboxide/oxideqml.h>
-#include <liboxide/epaper.h>
 
 QDBusObjectPath ScreenAPI::screenshot(){
     if(!hasPermission("screen")){
@@ -21,9 +20,9 @@ QDBusObjectPath ScreenAPI::screenshot(){
     );
     notification->display();
     auto screen = getFrameBuffer();
-    bool saved = false;
     QDBusObjectPath path("/");
-    if(screen->size().isEmpty()){
+    bool saved = false;
+    if(screen == nullptr || screen->size().isEmpty()){
         O_WARNING("Could not get copy of screen");
     }else{
         if(systemAPI->landscape()){

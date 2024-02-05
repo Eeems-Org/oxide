@@ -4,7 +4,7 @@
 #include <QWaitCondition>
 #include <QSemaphore>
 #include <QQueue>
-#include <liboxide/epaper.h>
+#include <epframebuffer.h>
 #include <liboxide/threading.h>
 #include <libblight/concurrentqueue.h>
 

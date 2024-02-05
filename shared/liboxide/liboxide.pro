@@ -43,7 +43,6 @@ HEADERS += \
     dbus.h \
     debug.h \
     devicesettings.h \
-    epaper.h \
     event_device.h \
     eventfilter.h \
     liboxide_global.h \

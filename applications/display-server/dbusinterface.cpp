@@ -11,11 +11,13 @@
 #include <unistd.h>
 #include <QDBusMetaType>
 #include <liboxide/debug.h>
-#include <liboxide/epaper.h>
 #include <liboxide/devicesettings.h>
 #include <libblight/types.h>
 #include <libblight/socket.h>
 #include <cstring>
+#ifdef EPAPER
+#include <epframebuffer.h>
+#endif
 
 DbusInterface::DbusInterface(QObject* parent)
 : QObject(parent),

@@ -11,6 +11,11 @@
 #include <filesystem>
 #include <liboxide.h>
 
+#ifdef EPAPER
+#include <QtPlugin>
+Q_IMPORT_PLUGIN(QsgEpaperPlugin)
+#endif
+
 #include "dbusinterface.h"
 #include "evdevhandler.h"
 
