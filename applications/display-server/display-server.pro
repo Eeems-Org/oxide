@@ -62,8 +62,11 @@ include(../../qmake/libblight.pri)
 
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 
-RESOURCES += \
-    qml.qrc
+
+!contains(DEFINES, EPAPER){
+    RESOURCES += \
+        qml.qrc
+}
 
 DISTFILES += \
     ../../assets/etc/dbus-1/system.d/codes.eeems.blight.conf \
