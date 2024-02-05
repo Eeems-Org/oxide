@@ -25,6 +25,10 @@ CONFIG(debug, debug|release){
     }
 }
 
+linux-oe-g++{
+    DEFINES += EPAPER
+}
+
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
