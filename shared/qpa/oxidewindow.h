@@ -20,6 +20,7 @@ public:
     void setVisible(bool visible) override;
     void raise() override;
     void lower() override;
+    bool close() override;
 
 protected:
     OxideBackingStore* mBackingStore;

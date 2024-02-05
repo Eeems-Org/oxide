@@ -26,10 +26,6 @@ const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/blight.pid";
 const char* lockPath = "/run/oxide/blight.lock";
 
-void sigHandler(int signal){
-    ::signal(signal, SIG_DFL);
-    qApp->quit();
-}
 bool stopProcess(pid_t pid){
     if(pid <= 1){
         return false;
@@ -140,10 +136,6 @@ int main(int argc, char* argv[]){
         qDebug() << "Releasing lock " << lockPath;
         Oxide::releaseLock(lock, lockPath);
     });
-
-    signal(SIGINT, sigHandler);
-    signal(SIGSEGV, sigHandler);
-    signal(SIGTERM, sigHandler);
     QFile pidFile(pidPath);
     if(!pidFile.open(QFile::ReadWrite)){
         qWarning() << "Unable to create " << pidPath;
@@ -157,5 +149,7 @@ int main(int argc, char* argv[]){
     });
     dbusInterface;
     evdevHandler;
+    ::signal(SIGPIPE, SIG_IGN);
+    ::signal(SIGBUS, SIG_IGN);
     return app.exec();
 }

@@ -34,7 +34,6 @@ class ScreenAPI : public APIBase {
 public:
     static ScreenAPI* singleton(ScreenAPI* self = nullptr);
     ScreenAPI(QObject* parent);
-    ~ScreenAPI();
     void setEnabled(bool enabled);
     bool enabled();
     QList<QDBusObjectPath> screenshots();

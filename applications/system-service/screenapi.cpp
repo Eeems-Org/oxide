@@ -147,8 +147,6 @@ ScreenAPI::ScreenAPI(QObject* parent) : APIBase(parent), m_screenshots(), m_enab
     });
 }
 
-ScreenAPI::~ScreenAPI(){}
-
 void ScreenAPI::setEnabled(bool enabled){
     m_enabled = enabled;
     O_INFO("Screen API" << enabled);

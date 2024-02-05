@@ -23,7 +23,7 @@ class NotificationAPI : public APIBase {
 public:
     static NotificationAPI* singleton(NotificationAPI* self = nullptr);
     NotificationAPI(QObject* parent);
-    ~NotificationAPI();
+    void shutdown();
     bool enabled();
     void setEnabled(bool enabled);
     void startup();

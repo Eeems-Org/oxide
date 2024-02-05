@@ -70,7 +70,6 @@ DbusInterface::DbusInterface(QObject* parent)
     O_DEBUG("Connected service to bus");
 }
 
-
 DbusInterface* DbusInterface::singleton(){
     static DbusInterface* instance = nullptr;
     if(instance == nullptr){

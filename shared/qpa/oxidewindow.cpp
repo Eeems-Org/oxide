@@ -81,3 +81,11 @@ void OxideWindow::lower(){
         maybe.value()->wait();
     }
 }
+
+bool OxideWindow::close(){
+    if(QPlatformWindow::close()){
+        Blight::connection()->remove(mBackingStore->buffer());
+        return true;
+    }
+    return false;
+}

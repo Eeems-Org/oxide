@@ -12,7 +12,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QMutex>
 
 #include "apibase.h"
 #include "application.h"
@@ -41,7 +40,7 @@ class AppsAPI : public APIBase {
 public:
     static AppsAPI* singleton(AppsAPI* self = nullptr);
     AppsAPI(QObject* parent);
-    ~AppsAPI();
+    void shutdown();
     void startup();
     int state(){ return 0; } // Ignore this, it's a kludge to get the xml to generate
 

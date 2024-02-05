@@ -8,15 +8,17 @@
 #include "liboxide_global.h"
 
 #include <QObject>
-#include <QSocketNotifier>
+#include <QLocalSocket>
+#include <sys/types.h>
 /*!
- * \brief signalHandler()
+ * \brief signalHandler
+ * \note This should not be called outside of the Qt event loop
  */
-#define signalHandler Oxide::SignalHandler::singleton()
+#define signalHandler Oxide::SignalHandler::__singleton()
 
 namespace Oxide {
     /*!
-     * \brief A class that allows handling SIGUSR1 and SIGUSR2
+     * \brief A class that allows handling various signals
      * \snippet examples/oxide.cpp SignalHandler
      */
     class LIBOXIDE_EXPORT SignalHandler : public QObject
@@ -24,10 +26,15 @@ namespace Oxide {
         Q_OBJECT
     public:
         /*!
-         * \brief Setup the unix signal handlers to listen to SIGUSR1 and SIGUSR2
-         * \retval 1 Failed to setup SIGUSR1
-         * \retval 2 Failed to setup SIGUSR2
-         * \retval 3 Failed to setup SIGUSR2
+         * \brief Setup the unix signal handlers to listen to supported signals
+         * \retval SIGTERM Failed to setup SIGTERM
+         * \retval SIGINT Failed to setup SIGINT
+         * \retval SIGUSR1 Failed to setup SIGUSR1
+         * \retval SIGUSR2 Failed to setup SIGUSR2
+         * \retval SIGCONT Failed to setup SIGCONT
+         * \retval SIGPIPE Failed to setup SIGPIPE
+         * \retval SIGSEGV Failed to setup SIGSEGV
+         * \retval SIGBUS Failed to setup SIGBUS
          * \retval 0 Successfully setup both signal handlers
          *
          * This method will automatically create and register the singleton with a parent of qApp.
@@ -37,26 +44,30 @@ namespace Oxide {
          * \brief Get the static instance of this class. You should use the signalHandler macro instead.
          * \return The static instance
          * \sa signalHandler
+         * \note This should not be called outside of the Qt event loop
          */
-        static SignalHandler* singleton(SignalHandler* self = nullptr);
+        static SignalHandler* __singleton();
         /*!
          * \brief Create an instance of SignalHandler.
          * \param parent Optional QObject parent
          *
          * Manually constructing this class will attempt to register it as the singleton instance.
+         *
+         * \note This should not be called outside of the Qt event loop
          */
-        SignalHandler(QObject* parent = 0);
+        SignalHandler(QObject *parent = 0);
         ~SignalHandler();
-        static void usr1SignalHandler(int unused);
-        static void usr2SignalHandler(int unused);
-        static void contSignalHandler(int unused);
-
-    public slots:
-        void handleSigUsr1();
-        void handleSigUsr2();
-        void handleSigCont();
+        static void handleSignal(int signal);
 
     signals:
+        /*!
+         * \brief The process has recieved a SIGINT
+         */
+        void sigTerm();
+        /*!
+         * \brief The process has recieved a SIGINT
+         */
+        void sigInt();
         /*!
          * \brief The process has recieved a SIGUSR1
          */
@@ -65,15 +76,30 @@ namespace Oxide {
          * \brief The process has recieved a SIGUSR2
          */
         void sigUsr2();
-        /*
+        /*!
          * \brief The process has recieved a SIGCONT
          */
         void sigCont();
+        /*!
+         * \brief The process has recieved a SIGPIPE
+         */
+        void sigPipe();
+        /*!
+         * \brief The process has recieved a SIGSEGV
+         */
+        void sigSegv();
+        /*!
+         * \brief The process has recieved a SIGBUS
+         */
+        void sigBus();
 
     private:
-        QSocketNotifier* snUsr1;
-        QSocketNotifier* snUsr2;
-        QSocketNotifier* snCont;
+        void addNotifier(int signal, const char* name);
+        struct NotifierItem {
+            QLocalSocket* notifier;
+            int fd;
+        };
+        static QMap<int, NotifierItem> notifiers;
     };
 }
 /*! @} */

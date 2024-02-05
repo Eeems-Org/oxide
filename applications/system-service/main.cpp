@@ -24,10 +24,6 @@ const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/oxide.pid";
 const char* lockPath = "/run/oxide/oxide.lock";
 
-void sigHandler(int signal){
-    ::signal(signal, SIG_DFL);
-    qApp->quit();
-}
 bool stopProcess(pid_t pid){
     if(pid <= 1){
         return false;
@@ -142,27 +138,36 @@ int main(int argc, char* argv[]){
             return EXIT_FAILURE;
         }
     }
-
     QObject::connect(&app, &QGuiApplication::aboutToQuit, [lock]{
         qDebug() << "Releasing lock " << lockPath;
         Oxide::releaseLock(lock, lockPath);
     });
+    QTimer::singleShot(0, &app, []{
+        QObject::connect(signalHandler, &SignalHandler::sigTerm, qApp, []{
+            dbusService->exit(SIGTERM);
+        });
+        QObject::connect(signalHandler, &SignalHandler::sigInt, qApp, []{
+            dbusService->exit(SIGINT);
+        });
+        QObject::connect(signalHandler, &SignalHandler::sigSegv, qApp, []{
+            dbusService->exit(SIGSEGV);
+        });
+        QObject::connect(signalHandler, &SignalHandler::sigBus, qApp, []{
+            dbusService->exit(SIGBUS);
+        });
+    });
 
-    signal(SIGINT, sigHandler);
-    signal(SIGSEGV, sigHandler);
-    signal(SIGTERM, sigHandler);
-
-    dbusService;
     QFile pidFile(pidPath);
     if(!pidFile.open(QFile::ReadWrite)){
         qWarning() << "Unable to create " << pidPath;
-        return app.exec();
+        return EXIT_FAILURE;
     }
     pidFile.seek(0);
     pidFile.write(actualPid.toUtf8());
     pidFile.close();
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{ remove(pidPath); });
 
+    dbusService;
     Blight::shared_buf_t buffer = createBuffer();
     if(buffer != nullptr){
         auto size = getFrameBuffer()->size();

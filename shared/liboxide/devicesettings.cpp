@@ -81,10 +81,12 @@ namespace Oxide {
         }else{
             O_DEBUG(("Buttons input device: " + buttonsPath).c_str());
         }
-        QObject::connect(signalHandler, &SignalHandler::sigCont, qApp, [this]{
-            for(auto& callback : callbacks){
-                callback();
-            }
+        QTimer::singleShot(0, qApp, [this]{
+            QObject::connect(signalHandler, &SignalHandler::sigCont, qApp, [this]{
+                for(auto& callback : callbacks){
+                    callback();
+                }
+            });
         });
     }
     DeviceSettings::~DeviceSettings(){}

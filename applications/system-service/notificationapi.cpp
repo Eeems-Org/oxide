@@ -29,7 +29,11 @@ NotificationAPI::NotificationAPI(QObject* parent)
     });
 }
 
-NotificationAPI::~NotificationAPI(){}
+void NotificationAPI::shutdown(){
+    m_window->close();
+    delete m_window;
+    m_window = nullptr;
+}
 
 bool NotificationAPI::enabled(){ return m_enabled; }
 

@@ -46,6 +46,7 @@ public:
 
     int tarnishPid();
     void startup(QQmlApplicationEngine* engine);
+    void exit(int exitCode);
 
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message);
@@ -58,12 +59,17 @@ signals:
     void apiUnavailable(QDBusObjectPath api);
     void aboutToQuit();
 
+protected:
+    void timerEvent(QTimerEvent* event) override;
+
 private slots:
     void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);
 
 private:
     QQmlApplicationEngine* m_engine;
     QMap<QString, APIEntry> apis;
+    bool m_exiting;
+    int m_watchdogTimer;
 };
 
 #endif // DBUSSERVICE_H

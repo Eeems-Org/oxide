@@ -851,7 +851,7 @@ void AppsAPI::ensureForegroundApp() {
     });
 }
 
-AppsAPI::~AppsAPI() {
+void AppsAPI::shutdown() {
     m_stopping = true;
     writeApplications();
     settings.sync();

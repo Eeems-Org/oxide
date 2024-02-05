@@ -6,22 +6,16 @@
 #include "screenapi.h"
 #include "notificationapi.h"
 
+#include <systemd/sd-daemon.h>
+
+using namespace std::chrono;
+
 DBusService* DBusService::singleton(){
     static DBusService* instance;
     if(instance == nullptr){
         qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
         O_DEBUG("Creating DBusService instance");
         instance = new DBusService(qApp);
-        connect(qApp, &QGuiApplication::aboutToQuit, [=]{
-            if(instance == nullptr){
-                return;
-            }
-            emit instance->aboutToQuit();
-            O_DEBUG("Killing dbus service");
-            delete instance;
-            qApp->processEvents();
-            instance = nullptr;
-        });
         auto bus = QDBusConnection::systemBus();
         if(!bus.isConnected()){
 #ifdef SENTRY
@@ -58,7 +52,49 @@ DBusService* DBusService::singleton(){
     return instance;
 }
 
-DBusService::DBusService(QObject* parent) : APIBase(parent), apis(){
+DBusService::DBusService(QObject* parent)
+: APIBase(parent),
+  apis(),
+  m_exiting{false}
+{
+    uint64_t time;
+    int res = sd_watchdog_enabled(0, &time);
+    if(res > 0){
+        auto usec = microseconds(time);
+        auto hrs = duration_cast<hours>(usec);
+        auto mins = duration_cast<minutes>(usec - hrs);
+        auto secs = duration_cast<seconds>(usec - hrs - mins);
+        auto ms = duration_cast<milliseconds>(usec - hrs - mins - secs);
+        qInfo()
+            << "Watchdog notification expected every"
+            << QString("%1:%2:%3.%4")
+               .arg(hrs.count())
+               .arg(mins.count())
+               .arg(secs.count())
+               .arg(ms.count());
+        usec = usec / 2;
+        hrs = duration_cast<hours>(usec);
+        mins = duration_cast<minutes>(usec - hrs);
+        secs = duration_cast<seconds>(usec - hrs - mins);
+        ms = duration_cast<milliseconds>(usec - hrs - mins - secs);
+        qInfo()
+            << "Watchdog scheduled for every "
+            << QString("%1:%2:%3.%4")
+               .arg(hrs.count())
+               .arg(mins.count())
+               .arg(secs.count())
+               .arg(ms.count());
+        m_watchdogTimer = startTimer(duration_cast<milliseconds>(usec).count(), Qt::PreciseTimer);
+        if(m_watchdogTimer == 0){
+            qCritical() << "Watchdog timer failed to start";
+        }else{
+            qInfo() << "Watchdog timer running";
+        }
+    }else if(res < 0){
+        qWarning() << "Failed to detect if watchdog timer is expected:" << strerror(-res);
+    }else{
+        qInfo() << "No watchdog timer required";
+    }
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "Initializing APIs", "info");
 #endif
@@ -125,24 +161,7 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(){
     });
 }
 
-DBusService::~DBusService(){
-#ifdef SENTRY
-    sentry_breadcrumb("dbusservice", "Disconnecting APIs", "info");
-#endif
-    O_DEBUG("Removing all APIs");
-    auto bus = QDBusConnection::systemBus();
-    for(auto api : apis){
-        api.instance->setEnabled(false);
-        bus.unregisterObject(api.path);
-        emit apiUnavailable(QDBusObjectPath(api.path));
-        delete api.instance;
-        delete api.dependants;
-    }
-    apis.clear();
-#ifdef SENTRY
-    sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
-#endif
-}
+DBusService::~DBusService(){}
 
 void DBusService::setEnabled(bool enabled){ Q_UNUSED(enabled); }
 
@@ -217,11 +236,58 @@ void DBusService::startup(QQmlApplicationEngine* engine){
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "startup", "navigation");
 #endif
+    sd_notify(0, "STATUS=startup");
     m_engine = engine;
     auto compositor = getCompositorDBus();
     compositor->setFlags(QString("connection/%1").arg(::getpid()), QStringList() << "system");
     notificationAPI->startup();
     appsAPI->startup();
+    sd_notify(0, "STATUS=running");
+    sd_notify(0, "READY=1");
+}
+
+void DBusService::exit(int exitCode){
+    if(calledFromDBus()){
+        return;
+    }
+    if(m_exiting){
+        O_WARNING("Already shutting down, forcing stop");
+        kill(getpid(), SIGKILL);
+        return;
+    }
+    m_exiting = true;
+    sd_notify(0, "STATUS=stopping");
+    sd_notify(0, "STOPPING=1");
+    emit aboutToQuit();
+#ifdef SENTRY
+    sentry_breadcrumb("dbusservice", "Disconnecting APIs", "info");
+#endif
+    O_DEBUG("Removing all APIs");
+    auto bus = QDBusConnection::systemBus();
+    for(auto key : apis.keys()){
+        auto api = apis[key];
+        api.instance->setEnabled(false);
+        bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);
+        emit apiUnavailable(QDBusObjectPath(api.path));
+    }
+    powerAPI->shutdown();
+    appsAPI->shutdown();
+    wifiAPI->shutdown();
+    notificationAPI->shutdown();
+    systemAPI->shutdown();
+    bus.unregisterService(OXIDE_SERVICE);
+#ifdef SENTRY
+    sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
+#endif
+    O_DEBUG("Exiting");
+    std::exit(exitCode);
+}
+
+void DBusService::timerEvent(QTimerEvent* event){
+    if(event->timerId() == m_watchdogTimer){
+        O_DEBUG("Watchdog keepalive sent");
+        sd_notify(0, "WATCHDOG=1");
+    }
 }
 
 void DBusService::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){

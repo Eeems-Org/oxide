@@ -67,7 +67,7 @@ public:
     Q_ENUM(SwipeDirection)
     static SystemAPI* singleton(SystemAPI* self = nullptr);
     SystemAPI(QObject* parent);
-    ~SystemAPI();
+    void shutdown();
     void setEnabled(bool enabled);
     int autoSleep();
     void setAutoSleep(int _autoSleep);

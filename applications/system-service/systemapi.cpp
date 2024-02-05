@@ -336,7 +336,7 @@ SystemAPI::SystemAPI(QObject* parent)
     });
 }
 
-SystemAPI::~SystemAPI(){
+void SystemAPI::shutdown(){
     qDebug() << "Removing all inhibitors";
     rguard(false);
     QMutableListIterator<Inhibitor> i(inhibitors);

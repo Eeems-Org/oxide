@@ -147,7 +147,7 @@ WifiAPI::WifiAPI(QObject* parent)
     });
 }
 
-WifiAPI::~WifiAPI(){
+void WifiAPI::shutdown(){
     qDebug() << "Unregistering all networks";
     while(!networks.isEmpty()){
         networks.takeFirst()->deleteLater();
