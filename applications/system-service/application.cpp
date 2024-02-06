@@ -551,6 +551,7 @@ void Application::finished(int exitCode){
         exitCode != EXIT_SUCCESS
         && exitCode != SIGINT
         && exitCode != SIGTERM
+        && exitCode != SIGKILL
         && exitCode != 128 + EXIT_SUCCESS
         && exitCode != 128 + SIGINT
         && exitCode != 128 + SIGTERM
