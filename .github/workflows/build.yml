@@ -68,14 +68,12 @@ jobs:
         with:
           setup: |
             set -ex
-            systemctl start systemd-time-wait-sync
             wget https://github.com/Eeems-Org/sysfs_preload/releases/download/1.0.0/packages.zip -O /tmp/packages.zip
             unzip /tmp/packages.zip -d /tmp
             opkg install /tmp/rmall/sysfs_preload_1.0.0-1_rmall.ipk
             echo "src/gz local-rmall file:///opt/tmp/src" > /opt/etc/opkg.conf.d/16-local.conf
           run: |
             set -ex
-            systemctl start systemd-time-wait-sync
             echo Y | toltecctl generate-opkg-conf
             opkg update
             opkg install oxide
