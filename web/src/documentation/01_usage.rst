@@ -34,7 +34,11 @@ Press on an application to launch, or return to an application. Long press on it
 Application Switcher (corrupt)
 ==============================
 
-* Swipe up from the bottom of the screen to open the application switcher.
+* To open the application switcher:
+
+  * Swipe up from the bottom of the screen
+  * Alt+Tab
+
 * You can select ``Home`` to return to the launcher.
 * You can select any running application to switch to that application.
 * You can long press any running application to close that application.
@@ -47,11 +51,27 @@ Application Switcher (corrupt)
 Background Service (tarnish)
 ============================
 
-* Press and hold the left button, or swipe from the left edge of the screen to return to the previous application.
-* Press and hold the middle button to launch the process manager.
+* To return to the previous application:
+
+  * Opt+Backspace
+  * Press and hold the left button on the rM1.
+  * Swipe from the left edge of the screen.
+
+* To launch the process manager:
+
+  * Press and hold the middle button on the rM1.
+  * Ctrl+Shift+1
+
 * Press the power button to suspend the device.
-* Press and hold the right button, or swipe from the right edge of the screen to take a screenshot.
+* To take a screenshot:
+
+  * Press and hold the right button on the rM1.
+  * Swipe from the right edge of the screen.
+  * Shift+Opt+S
+
 * Swipe from the top of the screen to enable/disable swipe gestures.
+* Opt+L to lock the screen.
+* Ctrl+Alt+T to open yaft or fingerterm if installed
 
 .. _erode:
 
