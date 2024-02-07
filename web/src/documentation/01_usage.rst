@@ -319,3 +319,17 @@ These examples assume you have `jq` installed.
 
   # Disable telemetry
   rot settings set telemetry false
+
+.. _blight_client:
+
+Display Server Client (blight-client)
+=====================================
+
+When running an application from the command line, you can force it to use the display server by running it with ``blight-client``. The client supports configuration with the following environment variables:
+
+- ``OXIDE_PRELOAD_FORCE_QT`` Force a Qt application to use the Oxide QPA.
+- ``OXIDE_PRELOAD_FORCE_RM1`` Force an application to believe it is running on a reMarkable 1 tablet.
+- ``OXIDE_PRELOAD_EXPOSE_FB`` If set, the framebuffer will be directly exposed to the application. It is not recommended to use this, as the display server is not expecting applications to have direct access outside of exclusive mode.
+- ``OXIDE_INPUT_BATCH_SIZE`` Number of input events without a EV_SYN SYN_REPORT to queue before flushing them through to the application. Defaults to 16
+- ``OXIDE_PRELOAD_DEBUG`` Debug level. Defaults to 4.
+- ``OXIDE_PRELOAD_DISABLE_INPUT`` Disable input handling.

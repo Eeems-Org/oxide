@@ -48,3 +48,25 @@ Libblight Shared Library
 Oxide provides a shared library for interacting with the display server.
 
 `You can find the documentation here <../../libblight/index.html>`__
+
+Oxide Qt Platform Abstraction (QPA)
+===================================
+
+Oxide ships a QPA for Qt applications to use. This will automatically use the display server for updating the screen, as well as user input.
+
+If you are using liboxide, a call to `deviceSettings.setupQtEnvironment()` will setup the application to use the Oxide QPA. To manualy use the QPA, you will need to use the following code:
+
+.. code:: cpp
+
+   void setup(){
+     QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
+     qputenv("QMLSCENE_DEVICE", "software");
+     qputenv("QT_QUICK_BACKEND","software");
+     QString platform(
+       "oxide:enable_fonts:freetype:freetype:rotate=180"
+     );
+     if(is_on_rm2){
+       platform += ":invertx"
+     }
+     qputenv("QT_QPA_PLATFORM", platform);
+   }
