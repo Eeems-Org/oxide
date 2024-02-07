@@ -100,6 +100,7 @@ namespace Blight {
          * \param type Type of message
          * \param data Data to send
          * \param size Size of data
+         * \param __ackid Unique identifier to use, will automatically generate if set to 0
          * \return ack_ptr_t if the message was sent
          */
         maybe_ackid_ptr_t send(MessageType type, data_t data, size_t size, unsigned int __ackid = 0);

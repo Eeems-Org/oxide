@@ -27,11 +27,11 @@ runs:
     - name: Build website
       shell: bash
       run: cd web && make prod
-    - name: Generate liboxide docs
-      shell: bash
-      run: |
-        cd shared/liboxide && make prod
     - name: Generate libblight docs
       shell: bash
       run: |
         cd shared/libblight && make prod
+    - name: Generate liboxide docs
+      shell: bash
+      run: |
+        cd shared/liboxide && make prod

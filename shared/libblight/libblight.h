@@ -9,6 +9,9 @@
 #include "connection.h"
 #include <optional>
 
+/*!
+ * \brief Blight namespace
+ */
 namespace Blight{
     /*!
      * \brief Connect to DBus

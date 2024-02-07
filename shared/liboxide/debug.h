@@ -23,7 +23,7 @@
 /*!
  * \def __RIGHT_HERE__
  * \brief Log the current file and line number
- * \note This is only available if DEBUG is defined
+ * \note This will only do anything if DEBUG is defined
  */
 #ifdef __RIGHT_HERE__
 #undef __RIGHT_HERE__
@@ -95,9 +95,9 @@ namespace Oxide {
     /*!
      * \brief Get a formatted debug information string
      * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and O_EVENT
-     * \param Name of file
-     * \param Line number in file
-     * \param Function information
+     * \param file Name of file
+     * \param line Line number in file
+     * \param function Function information
      * \return Formatted debug location string
      */
     LIBOXIDE_EXPORT std::string getDebugLocation(const char* file, unsigned int line, const char* function);
@@ -109,7 +109,7 @@ namespace Oxide {
     LIBOXIDE_EXPORT bool debugEnabled();
     /*!
      * \brief Get the name of the application
-     * \param Don't use qApp's application name
+     * \param ignoreQApp Don't use qApp's application name
      * \return The name of the application
      */
     LIBOXIDE_EXPORT std::string getAppName(bool ignoreQApp);

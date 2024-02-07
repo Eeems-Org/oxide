@@ -137,5 +137,6 @@ RESOURCES += \
     oxide.qrc
 
 DISTFILES += \
+    Doxyfile \
     OxideMenu.qml \
     OxideWindow.qml

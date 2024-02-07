@@ -13,8 +13,13 @@ HTML_EXTRA_FILES = ../doxygen-awesome-css/doxygen-awesome-darkmode-toggle.js \
                    ../doxygen-awesome-css/doxygen-awesome-fragment-copy-button.js \
                    ../doxygen-awesome-css/doxygen-awesome-paragraph-link.js
 HTML_HEADER = ../doxygen-header.html
-PREDEFINED = DOXYGEN_SHOULD_SKIP_THIS
+PREDEFINED += DOXYGEN_SHOULD_SKIP_THIS
+PREDEFINED += IN_DOXYGEN
 HIDE_UNDOC_MEMBERS = YES
 HIDE_UNDOC_CLASSES = YES
 MACRO_EXPANSION = YES
 EXAMPLE_PATH = examples
+GENERATE_TAGFILE = html/libblight.tag
+ALLEXTERNALS = Yes
+ALIASES = "accessors=\par Accessors:^^"
+ALIASES += "notifier=\par Notifier signal:^^"

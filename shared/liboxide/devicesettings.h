@@ -101,7 +101,7 @@ namespace Oxide{
         QString getTimezone();
         /*!
          * \brief Set the current timezone
-         * \param locale Timezone to set
+         * \param timezone Timezone to set
          */
         void setTimezone(const QString& timezone);
         /*!
