@@ -15,6 +15,7 @@ on:
     paths:
       - 'web/**'
       - 'shared/liboxide/**'
+      - 'shared/libblight/**'
       - '.github/actions/web/**'
 jobs:
   web:

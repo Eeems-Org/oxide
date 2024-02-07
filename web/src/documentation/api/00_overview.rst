@@ -40,3 +40,11 @@ Oxide also produces a shared library that can be used for application developmen
 not yet fully encompass the full API provide through D-Bus, but will slowly work towards feature parity.
 
 `You can find the documentation here <../../liboxide/index.html>`__
+
+
+Libblight Shared Library
+========================
+
+Oxide provides a shared library for interacting with the display server.
+
+`You can find the documentation here <../../libblight/index.html>`__

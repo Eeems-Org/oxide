@@ -1,8 +1,8 @@
-PROJECT_NAME = liboxide
+PROJECT_NAME = libblight
 GENERATE_QHP = YES
 GENERATE_LATEX = NO
-QCH_FILE = liboxide.qch
-QHP_NAMESPACE = liboxide
+QCH_FILE = libblight.qch
+QHP_NAMESPACE = libblight
 QHP_VIRTUAL_FOLDER = doc
 QHG_LOCATION = qhelpgenerator
 GENERATE_TREEVIEW = YES
@@ -12,7 +12,7 @@ HTML_EXTRA_STYLESHEET = ../doxygen-awesome-css/doxygen-awesome.css \
 HTML_EXTRA_FILES = ../doxygen-awesome-css/doxygen-awesome-darkmode-toggle.js \
                    ../doxygen-awesome-css/doxygen-awesome-fragment-copy-button.js \
                    ../doxygen-awesome-css/doxygen-awesome-paragraph-link.js
-HTML_HEADER = ../header.html
+HTML_HEADER = ../doxygen-header.html
 PREDEFINED = DOXYGEN_SHOULD_SKIP_THIS
 HIDE_UNDOC_MEMBERS = YES
 HIDE_UNDOC_CLASSES = YES

@@ -31,3 +31,7 @@ runs:
       shell: bash
       run: |
         cd shared/liboxide && make prod
+    - name: Generate libblight docs
+      shell: bash
+      run: |
+        cd shared/libblight && make prod
