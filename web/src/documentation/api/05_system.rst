@@ -19,24 +19,6 @@ System API
 | powerOffInhibited    | ``BOOLEAN`` property | If power off is      |
 |                      | (read)               | inhibited or not.    |
 +----------------------+----------------------+----------------------+
-| leftAction           | signal               | Signal sent when a   |
-|                      |                      | long press on the    |
-|                      |                      | left button happens. |
-+----------------------+----------------------+----------------------+
-| homeAction           | signal               | Signal sent when a   |
-|                      |                      | long press on the    |
-|                      |                      | home button happens. |
-+----------------------+----------------------+----------------------+
-| rightAction          | signal               | Signal sent when a   |
-|                      |                      | long press on the    |
-|                      |                      | right button         |
-|                      |                      | happens.             |
-+----------------------+----------------------+----------------------+
-| powerAction          | signal               | Signal sent when a   |
-|                      |                      | long press on the    |
-|                      |                      | right button         |
-|                      |                      | happens.             |
-+----------------------+----------------------+----------------------+
 | s                    | signal               | Signal sent when     |
 | leepInhibitedChanged | - (out) ``BOOLEAN``  | sleepInhibited       |
 |                      |                      | changes.             |

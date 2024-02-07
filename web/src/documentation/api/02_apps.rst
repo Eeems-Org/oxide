@@ -255,20 +255,12 @@ Application Object
 |                      |                      | directory for the    |
 |                      |                      | application.         |
 +----------------------+----------------------+----------------------+
-| chroot               | ``BOOLEAN`` property | If this application  |
-|                      | (read)               | should be run in a   |
-|                      |                      | chroot or not.       |
-+----------------------+----------------------+----------------------+
 | user                 | ``STRING`` property  | User the application |
 |                      | (read)               | will be run as.      |
 +----------------------+----------------------+----------------------+
 | group                | ``STRING`` property  | Group the            |
 |                      | (read)               | application will be  |
 |                      |                      | run as.              |
-+----------------------+----------------------+----------------------+
-| directories          | ``ARRAY STRING``     | Directories mapped   |
-|                      | property             | into the chroot as   |
-|                      | (read/write)         | read/write.          |
 +----------------------+----------------------+----------------------+
 | launched             | signal               | Signal sent when the |
 |                      |                      | application starts.  |

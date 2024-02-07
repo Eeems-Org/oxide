@@ -27,11 +27,6 @@ Screen API
 |                     | - (out)              |                      |
 |                     | ``OBJECT_PATH``      |                      |
 +---------------------+----------------------+----------------------+
-| drawFullScreenImage | method               | Draw an image to the |
-|                     | - (in) path          | screen.              |
-|                     | ``STRING``           |                      |
-|                     | - (out) ``BOOLEAN``  |                      |
-+---------------------+----------------------+----------------------+
 | screenshot          | method               | Take a screenshot.   |
 |                     | - (out)              |                      |
 |                     | ``OBJECT_PATH``      |                      |

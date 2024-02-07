@@ -238,6 +238,7 @@ ____
                            system
                            screen
                            notification
+                           compositor
     name                   Signal to listen to.
     arguments              Arguments to pass to the method using the following format: <QVariant>:<Value>. e.g. QString:Test
 
