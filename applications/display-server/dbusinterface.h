@@ -12,7 +12,9 @@
 
 #include "connection.h"
 
+// Use direct values to make sure that cpp2xml works
 #include "../../shared/liboxide/meta.h"
+#include "../../shared/libblight/meta.h"
 
 #define dbusInterface DbusInterface::singleton()
 

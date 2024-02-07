@@ -14,12 +14,10 @@
 class Surface;
 
 #include "../../shared/liboxide/meta.h"
-#include "../../shared/libblight/meta.h"
 
 class Connection : public QObject {
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
-    Q_CLASSINFO("D-Bus Interface", BLIGHT_SURFACE_INTERFACE)
 
 public:
     Connection(pid_t pid, pid_t pgid);
