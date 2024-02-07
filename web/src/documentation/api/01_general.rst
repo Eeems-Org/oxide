@@ -16,13 +16,14 @@ all usage of the API away.
 |                |                         | ``SIGUSR2`` signals.    |
 +----------------+-------------------------+-------------------------+
 | apiAvailable   | signal                  | Signal sent when an API |
-|                | - (out) api             | has been successfully   |
-|                | ``OBJECT_PATH``         | requested by something. |
+|                |                         | has been successfully   |
+|                | - (out) api             | requested by something. |
+|                |   ``OBJECT_PATH``       |                         |
 +----------------+-------------------------+-------------------------+
 | apiUnavailable | signal                  | Signal sent when an API |
-|                | - (out) api             | is no longer available. |
-|                | ``OBJECT_PATH``         | This can happen for one |
-|                |                         | of the following        |
+|                |                         | is no longer available. |
+|                | - (out) api             | This can happen for one |
+|                |   ``OBJECT_PATH``       | of the following        |
 |                |                         | reasons:                |
 |                |                         | 1. All applications     |
 |                |                         | that have requested the |
@@ -39,9 +40,9 @@ all usage of the API away.
 |                |                         | to gracefully exit.     |
 +----------------+-------------------------+-------------------------+
 | requestAPI     | method                  | Request access to an    |
-|                | - (in) name ``STRING``  | API.                    |
-|                | - (out) ``OBJECT_PATH`` | Refused requests will   |
-|                |                         | return an               |
+|                |                         | API.                    |
+|                | - (in) name ``STRING``  | Refused requests will   |
+|                | - (out) ``OBJECT_PATH`` | return an               |
 |                |                         | ``OBJECT_PATH`` of      |
 |                |                         | ``/``.                  |
 |                |                         | Successful requests     |
@@ -51,15 +52,15 @@ all usage of the API away.
 |                |                         | API.                    |
 +----------------+-------------------------+-------------------------+
 | releaseAPI     | method                  | Release your request    |
-|                | - (in) name ``STRING``  | for access to an API.   |
-|                |                         | This allows Tarnish to  |
+|                |                         | for access to an API.   |
+|                | - (in) name ``STRING``  | This allows Tarnish to  |
 |                |                         | unregister the API if   |
 |                |                         | nothing is using it.    |
 +----------------+-------------------------+-------------------------+
 | APIs           | method                  | Request the list of     |
-|                | - (out)                 | available APIs on the   |
-|                | ``ARRA                  | system.                 |
-|                | Y{STRING OBJECT_PATH}`` |                         |
+|                |                         | available APIs on the   |
+|                | - (out) ``ARRAY{        | system.                 |
+|                |   STRING OBJECT_PATH}`` |                         |
 +----------------+-------------------------+-------------------------+
 
 .. _example-usage-1:
@@ -69,9 +70,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include <liboxide.h>
-   #include "dbusservice_interface.h"
-   #include "systemapi_interface.h"
+   #include <liboxide/dbus.h>
 
    using namespace codes::eeems::oxide1;
 

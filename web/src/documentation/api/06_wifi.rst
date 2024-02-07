@@ -42,23 +42,27 @@ context here: https://w1.fi/wpa_supplicant/devel/dbus.html
 |                  |                        | networks.              |
 +------------------+------------------------+------------------------+
 | stateChanged     | signal                 | Signal sent when the   |
-|                  | - (out) ``INT32``      | wifi state changes.    |
+|                  |                        | wifi state changes.    |
+|                  | - (out) ``INT32``      |                        |
 +------------------+------------------------+------------------------+
 | linkChanged      | signal                 | Signal sent when the   |
-|                  | - (out) ``INT32``      | wifi link quality      |
-|                  |                        | changes.               |
+|                  |                        | wifi link quality      |
+|                  | - (out) ``INT32``      | changes.               |
 +------------------+------------------------+------------------------+
 | networkAdded     | signal                 | Signal sent when a     |
-|                  | - (out)                | Network is added.      |
+|                  |                        | Network is added.      |
+|                  | - (out)                |                        |
 |                  | ``OBJECT_PATH``        |                        |
 +------------------+------------------------+------------------------+
 | networkRemoved   | signal                 | Signal sent when a     |
-|                  | - (out)                | Network is removed.    |
+|                  |                        | Network is removed.    |
+|                  | - (out)                |                        |
 |                  | ``OBJECT_PATH``        |                        |
 +------------------+------------------------+------------------------+
 | networkConnected | signal                 | Signal sent when a     |
-|                  | - (out)                | Network has been       |
-|                  | ``OBJECT_PATH``        | connected to.          |
+|                  |                        | Network has been       |
+|                  | - (out)                | connected to.          |
+|                  | ``OBJECT_PATH``        |                        |
 +------------------+------------------------+------------------------+
 | disconnected     | signal                 | Signal sent when the   |
 |                  |                        | device is disconnected |
@@ -70,21 +74,23 @@ context here: https://w1.fi/wpa_supplicant/devel/dbus.html
 |                  | ``OBJECT_PATH``        |                        |
 +------------------+------------------------+------------------------+
 | bssRemoved       | signal                 | Signal sent when a BSS |
-|                  | - (out)                | expires from the       |
-|                  | ``OBJECT_PATH``        | cache.                 |
+|                  |                        | expires from the       |
+|                  | - (out)                | cache.                 |
+|                  | ``OBJECT_PATH``        |                        |
 +------------------+------------------------+------------------------+
 | scanningChanged  | signal                 | Signal sent when       |
-|                  | - (out) ``BOOLEAN``    | scanning state         |
-|                  |                        | changes.               |
+|                  |                        | scanning state         |
+|                  | - (out) ``BOOLEAN``    | changes.               |
 +------------------+------------------------+------------------------+
 | enable           | method                 | Enable wifi.           |
-|                  | - (out) ``BOOLEAN``    | Will return if it was  |
-|                  |                        | successful or not.     |
+|                  |                        | Will return if it was  |
+|                  | - (out) ``BOOLEAN``    | successful or not.     |
 +------------------+------------------------+------------------------+
 | disable          | method                 | Disable wifi.          |
 +------------------+------------------------+------------------------+
 | addNetwork       | method                 | Add a Network that can |
-|                  | - (in) ssid ``STRING`` | be connected to.       |
+|                  |                        | be connected to.       |
+|                  | - (in) ssid ``STRING`` |                        |
 |                  | - (in) properties      |                        |
 |                  | ``A                    |                        |
 |                  | RRAY{STRING VARIANT}`` |                        |
@@ -92,23 +98,25 @@ context here: https://w1.fi/wpa_supplicant/devel/dbus.html
 |                  | ``OBJECT_PATH``        |                        |
 +------------------+------------------------+------------------------+
 | getNetwork       | method                 | Get a Network that     |
-|                  | - (in) properties      | matches all the        |
-|                  | ``A                    | supplied properties.   |
+|                  |                        | matches all the        |
+|                  | - (in) properties      | supplied properties.   |
+|                  | ``A                    |                        |
 |                  | RRAY{STRING VARIANT}`` |                        |
 |                  | - (out)                |                        |
 |                  | ``OBJECT_PATH``        |                        |
 +------------------+------------------------+------------------------+
 | getBSS           | method                 | Get a BSS that matches |
-|                  | - (in) properties      | all the supplied       |
-|                  | ``A                    | properties.            |
+|                  |                        | all the supplied       |
+|                  | - (in) properties      | properties.            |
+|                  | ``A                    |                        |
 |                  | RRAY{STRING VARIANT}`` |                        |
 |                  | - (out)                |                        |
 |                  | ``OBJECT_PATH``        |                        |
 +------------------+------------------------+------------------------+
 | scan             | method                 | Scan for networks.     |
-|                  | - (in) active          | If the first argument  |
-|                  | ``BOOLEAN``            | is ``true``, this will |
-|                  |                        | be an active scan.     |
+|                  |                        | If the first argument  |
+|                  | - (in) active          | is ``true``, this will |
+|                  | ``BOOLEAN``            | be an active scan.     |
 |                  |                        | The first argument     |
 |                  |                        | defaults to ``false``. |
 +------------------+------------------------+------------------------+
@@ -123,22 +131,25 @@ context here: https://w1.fi/wpa_supplicant/devel/dbus.html
 |                  |                        | current Network.       |
 +------------------+------------------------+------------------------+
 | flushBSSCache    | method                 | Flush all BSS items    |
-|                  | - (in) age ``UINT32``  | from the cache older   |
-|                  |                        | than a certain age.    |
+|                  |                        | from the cache older   |
+|                  | - (in) age ``UINT32``  | than a certain age.    |
 |                  |                        | If age is ``0``, all   |
 |                  |                        | BSS items will be      |
 |                  |                        | removed.               |
 +------------------+------------------------+------------------------+
 | addBlob          | method                 | Add a blob to the      |
-|                  | - (in) name ``STRING`` | wireless interface.    |
+|                  |                        | wireless interface.    |
+|                  | - (in) name ``STRING`` |                        |
 |                  | - (in) blob            |                        |
 |                  | ``ARRAY BYTE``         |                        |
 +------------------+------------------------+------------------------+
 | removeBlob       | method                 | Remove a blob from the |
-|                  | - (in) name ``STRING`` | wireless interface.    |
+|                  |                        | wireless interface.    |
+|                  | - (in) name ``STRING`` |                        |
 +------------------+------------------------+------------------------+
 | getBlob          | method                 | Get a blob from the    |
-|                  | - (in) name ``STRING`` | wireless interface.    |
+|                  |                        | wireless interface.    |
+|                  | - (in) name ``STRING`` |                        |
 |                  | - (out) ``ARRAY BYTE`` |                        |
 +------------------+------------------------+------------------------+
 
@@ -149,9 +160,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include <liboxide.h>
-   #include "dbusservice_interface.h"
-   #include "wifiapi_interface.h"
+   #include <liboxide/dbus.h>
 
    using namespace codes::eeems::oxide1;
 
@@ -213,13 +222,14 @@ BSS
 +-------------------+-----------------------+-----------------------+
 | propertiesChanged | signal                | Signal sent when      |
 |                   | - (out)               | properties change on  |
-|                   | ``                    | the BSS.              |
+|                   | - (out)               | the BSS.              |
+|                   | ``                    |                       |
 |                   | ARRAY{STRING VALUE}`` |                       |
 +-------------------+-----------------------+-----------------------+
 | connect           | method                | Attempt to connect to |
 |                   | - (out)               | a BSS.                |
-|                   | ``OBJECT_PATH``       | Returns the           |
-|                   |                       | ``OBJECT_PATH`` for   |
+|                   | - (out)               | Returns the           |
+|                   | ``OBJECT_PATH``       | ``OBJECT_PATH`` for   |
 |                   |                       | the network.          |
 |                   |                       | If none exists a new  |
 |                   |                       | network will be       |
@@ -266,12 +276,13 @@ Network
 |                   |                       | configuration file.   |
 +-------------------+-----------------------+-----------------------+
 | stateChanged      | signal                | Signal sent when the  |
-|                   | - (out) ``BOOLEAN``   | enabled property      |
-|                   |                       | changes.              |
+|                   |                       | enabled property      |
+|                   | - (out) ``BOOLEAN``   | changes.              |
 +-------------------+-----------------------+-----------------------+
 | propertiesChanged | signal                | Signal sent when the  |
-|                   | - (out)               | properties of the     |
-|                   | ``AR                  | Network change.       |
+|                   |                       | properties of the     |
+|                   | - (out)               | Network change.       |
+|                   | ``AR                  |                       |
 |                   | RAY{STRING VARIANT}`` |                       |
 +-------------------+-----------------------+-----------------------+
 | connected         | signal                | Signal sent when the  |

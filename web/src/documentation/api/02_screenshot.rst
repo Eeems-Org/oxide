@@ -10,24 +10,29 @@ Screen API
 |                     | property (read)      | device.              |
 +---------------------+----------------------+----------------------+
 | screenshotAdded     | signal               | Signal sent when a   |
-|                     | - (out)              | screenshot is added. |
+|                     |                      | screenshot is added. |
+|                     | - (out)              |                      |
 |                     | ``OBJECT_PATH``      |                      |
 +---------------------+----------------------+----------------------+
 | screenshotRemoved   | signal               | Signal sent when a   |
-|                     | - (out)              | screenshot is        |
-|                     | ``OBJECT_PATH``      | removed.             |
+|                     |                      | screenshot is        |
+|                     | - (out)              | removed.             |
+|                     | ``OBJECT_PATH``      |                      |
 +---------------------+----------------------+----------------------+
 | screenshotModified  | signal               | Signal sent when a   |
-|                     | - (out)              | screenshot is        |
-|                     | ``OBJECT_PATH``      | modified.            |
+|                     |                      | screenshot is        |
+|                     | - (out)              | modified.            |
+|                     | ``OBJECT_PATH``      |                      |
 +---------------------+----------------------+----------------------+
 | addScreenshot       | method               | Add a screenshot     |
-|                     | - (in) blob          | taken by an          |
-|                     | ``ARRAY BYTE``       | application.         |
+|                     |                      | taken by an          |
+|                     | - (in) blob          | application.         |
+|                     | ``ARRAY BYTE``       |                      |
 |                     | - (out)              |                      |
 |                     | ``OBJECT_PATH``      |                      |
 +---------------------+----------------------+----------------------+
 | screenshot          | method               | Take a screenshot.   |
+|                     |                      |                      |
 |                     | - (out)              |                      |
 |                     | ``OBJECT_PATH``      |                      |
 +---------------------+----------------------+----------------------+
@@ -39,9 +44,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include <liboxide.h>
-   #include "dbusservice_interface.h"
-   #include "screenapi_interface.h"
+   #include <liboxide/dbus.h>
 
    using namespace codes::eeems::oxide1;
 
@@ -108,10 +111,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include <liboxide.h>
-   #include "dbusservice_interface.h"
-   #include "screenapi_interface.h"
-   #include "screenshot_interface.h"
+   #include <liboxide/dbus.h>
 
    using namespace codes::eeems::oxide1;
 

@@ -47,30 +47,30 @@ Apps API
 |                         | property (read)               | applications.        |
 +-------------------------+-------------------------------+----------------------+
 | applicationRegistered   | signal                        | Signal sent when a   |
-|                         | - (out)                       | new application is   |
-|                         | ``OBJECT_PATH``               | registered with      |
+|                         |                               | new application is   |
+|                         | - (out) ``OBJECT_PATH``       | registered with      |
 |                         |                               | tarnish.             |
 +-------------------------+-------------------------------+----------------------+
 | applicationLaunched     | signal                        | Signal sent when an  |
-|                         | - (out)                       | application has been |
-|                         | ``OBJECT_PATH``               | launched.            |
+|                         |                               | application has been |
+|                         | - (out) ``OBJECT_PATH``       | launched.            |
 +-------------------------+-------------------------------+----------------------+
 | applicationUnregistered | signal                        | Signal sent when an  |
-|                         | - (out)                       | application has been |
-|                         | ``OBJECT_PATH``               | removed from         |
+|                         |                               | application has been |
+|                         | - (out) ``OBJECT_PATH``       | removed from         |
 |                         |                               | tarnish.             |
 +-------------------------+-------------------------------+----------------------+
 | applicationPaused       | signal                        | Signal sent when an  |
-|                         | - (out)                       | application has been |
-|                         | ``OBJECT_PATH``               | paused.              |
+|                         |                               | application has been |
+|                         | - (out) ``OBJECT_PATH``       | paused.              |
 +-------------------------+-------------------------------+----------------------+
 | applicationResumed      | signal                        | Signal sent when an  |
-|                         | - (out)                       | application has been |
-|                         | ``OBJECT_PATH``               | resumed.             |
+|                         |                               | application has been |
+|                         | - (out) ``OBJECT_PATH``       | resumed.             |
 +-------------------------+-------------------------------+----------------------+
 | applicationExited       | signal                        | Signal sent when an  |
-|                         | - (out)                       | application has      |
-|                         | ``OBJECT_PATH``               | exited.              |
+|                         |                               | application has      |
+|                         | - (out) ``OBJECT_PATH``       | exited.              |
 |                         | - (out) ``INT32``             | The second output    |
 |                         |                               | parameter contains   |
 |                         |                               | the exit code.       |
@@ -91,31 +91,31 @@ Apps API
 |                         |                               | kscreenApplication`` |
 +-------------------------+-------------------------------+----------------------+
 | registerApplication     | method                        | Register a new       |
-|                         | - (in) properties             | application with     |
-|                         | ``ARRAY{STRING VARIANT}``     | tarnish.             |
-|                         | - (out)                       |                      |
-|                         | ``OBJECT_PATH``               |                      |
+|                         |                               | application with     |
+|                         | - (in) properties             | tarnish.             |
+|                         | ``ARRAY{STRING VARIANT}``     |                      |
+|                         | - (out) ``OBJECT_PATH``       |                      |
 |                         |                               |                      |
 +-------------------------+-------------------------------+----------------------+
 | unregisterApplication   | method                        | Remove an            |
-|                         | - (in) path                   | application from     |
-|                         | ``OBJECT_PATH``               | tarnish.             |
+|                         |                               | application from     |
+|                         | - (out) ``OBJECT_PATH``       | tarnish.             |
 +-------------------------+-------------------------------+----------------------+
 | reload                  | method                        | Reload applications  |
 |                         |                               | registered with      |
 |                         |                               | tarnish from disk.   |
 +-------------------------+-------------------------------+----------------------+
 | getApplicationPath      | method                        | Returns the D-Bus    |
-|                         | - (in) name                   | path for an          |
-|                         | ``STRING``                    | application based on |
-|                         | - (out)                       | it's name.           |
-|                         | ``OBJECT_PATH``               | Will return ``/`` if |
+|                         |                               | path for an          |
+|                         | - (in) name ``STRING``        | application based on |
+|                         | - (out) ``OBJECT_PATH``       | it's name.           |
+|                         |                               | Will return ``/`` if |
 |                         |                               | the application does |
 |                         |                               | not exist.           |
 +-------------------------+-------------------------------+----------------------+
 | previousApplication     | method                        | Launch or resume the |
-|                         | - (out) ``BOOLEAN``           | previous application |
-|                         |                               | from                 |
+|                         |                               | previous application |
+|                         | - (out) ``BOOLEAN``           | from                 |
 |                         |                               | ``pre                |
 |                         |                               | viousApplications``. |
 |                         |                               | Will also remove the |
@@ -130,9 +130,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include <liboxide.h>
-   #include "dbusservice_interface.h"
-   #include "appsapi_interface.h"
+   #include <liboxide/dbus.h>
 
    using namespace codes::eeems::oxide1;
 
@@ -279,52 +277,55 @@ Application Object
 |                      |                      | tarnish.             |
 +----------------------+----------------------+----------------------+
 | exited               | signal               | Signal sent when the |
-|                      | - (out) ``INT32``    | application exits.   |
-|                      |                      | First signal         |
+|                      |                      | application exits.   |
+|                      | - (out) ``INT32``    | First signal         |
 |                      |                      | parameter is the     |
 |                      |                      | exit code of the     |
 |                      |                      | application.         |
 +----------------------+----------------------+----------------------+
 | permissionsChanged   | signal               | Signal sent when the |
-|                      | - (out)              | permissions of the   |
-|                      | ``ARRAY STRING``     | application changes. |
+|                      |                      | permissions of the   |
+|                      | - (out)              | application changes. |
+|                      | ``ARRAY STRING``     |                      |
 +----------------------+----------------------+----------------------+
 | displayNameChanged   | signal               | Signal sent when the |
-|                      | - (out) ``STRING``   | displayName of the   |
-|                      |                      | application changes. |
+|                      |                      | displayName of the   |
+|                      | - (out) ``STRING``   | application changes. |
 +----------------------+----------------------+----------------------+
 | onPauseChanged       | signal               | Signal sent when the |
-|                      | - (out) ``STRING``   | onPause of the       |
-|                      |                      | application changes. |
+|                      |                      | onPause of the       |
+|                      | - (out) ``STRING``   | application changes. |
 +----------------------+----------------------+----------------------+
 | onResumeChanged      | signal               | Signal sent when the |
-|                      | - (out) ``STRING``   | onResume of the      |
-|                      |                      | application changes. |
+|                      |                      | onResume of the      |
+|                      | - (out) ``STRING``   | application changes. |
 +----------------------+----------------------+----------------------+
 | onStopChanged        | signal               | Signal sent when the |
 |                      | - (out) ``STRING``   | onStop of the        |
 |                      |                      | application changes. |
 +----------------------+----------------------+----------------------+
 | autoStartChanged     | signal               | Signal sent when     |
-|                      | - (out) ``BOOLEAN``  | autoStart for the    |
-|                      |                      | application chagnes. |
+|                      |                      | autoStart for the    |
+|                      | - (out) ``BOOLEAN``  | application chagnes. |
 +----------------------+----------------------+----------------------+
 | iconChanged          | signal               | Signal sent when the |
-|                      | - (out) ``STRING``   | icon of the          |
-|                      |                      | application changes. |
+|                      |                      | icon of the          |
+|                      | - (out) ``STRING``   | application changes. |
 +----------------------+----------------------+----------------------+
 | environmentChanged   | signal               | Signal sent when the |
-|                      | - (out)              | environment of the   |
-|                      | ``ARRAY STRING``     | application changes. |
+|                      |                      | environment of the   |
+|                      | - (out)              | application changes. |
+|                      | ``ARRAY STRING``     |                      |
 +----------------------+----------------------+----------------------+
 | wor                  | signal               | Signal sent when the |
-| kingDirectoryChanged | - (out) ``STRING``   | working directory of |
-|                      |                      | the application      |
+| kingDirectoryChanged |                      | working directory of |
+|                      | - (out) ``STRING``   | the application      |
 |                      |                      | changes.             |
 +----------------------+----------------------+----------------------+
 | directoriesChanged   | signal               | Signal sent when the |
-|                      | - (out)              | directories of the   |
-|                      | ``ARRAY STRING``     | application changes. |
+|                      |                      | directories of the   |
+|                      | - (out)              | application changes. |
+|                      | ``ARRAY STRING``     |                      |
 +----------------------+----------------------+----------------------+
 | launch               | method               | Launch or resume the |
 |                      |                      | application.         |
@@ -353,10 +354,10 @@ Application Object
 |                      |                      | tarnish.             |
 +----------------------+----------------------+----------------------+
 | setEnvironment       | method               | Change the           |
-|                      | - (in) environment   | environment of the   |
-|                      | ``ARR                | application.         |
-|                      | AY{STRING VARIANT}`` | Changes will be      |
-|                      |                      | applied after the    |
+|                      |                      | environment of the   |
+|                      | - (in) environment   | application.         |
+|                      | ``ARR                | Changes will be      |
+|                      | AY{STRING VARIANT}`` | applied after the    |
 |                      |                      | application          |
 |                      |                      | restarts.            |
 +----------------------+----------------------+----------------------+
@@ -368,10 +369,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include <liboxide.h>
-   #include "dbusservice_interface.h"
-   #include "appsapi_interface.h"
-   #include "application_interface.h"
+   #include <liboxide/dbus.h>
 
    using namespace codes::eeems::oxide1;
 

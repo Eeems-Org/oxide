@@ -20,15 +20,16 @@ System API
 |                      | (read)               | inhibited or not.    |
 +----------------------+----------------------+----------------------+
 | s                    | signal               | Signal sent when     |
-| leepInhibitedChanged | - (out) ``BOOLEAN``  | sleepInhibited       |
-|                      |                      | changes.             |
+| leepInhibitedChanged |                      | sleepInhibited       |
+|                      | - (out) ``BOOLEAN``  | changes.             |
 +----------------------+----------------------+----------------------+
 | powe                 | signal               | Signal sent when     |
-| rOffInhibitedChanged | - (out) ``BOOLEAN``  | powerOffInhibited    |
-|                      |                      | changes.             |
+| rOffInhibitedChanged |                      | powerOffInhibited    |
+|                      | - (out) ``BOOLEAN``  | changes.             |
 +----------------------+----------------------+----------------------+
 | autoSleepChanged     | signal               | Signal sent when     |
-|                      | - (out) ``BOOLEAN``  | autoSleep changes.   |
+|                      |                      | autoSleep changes.   |
+|                      | - (out) ``BOOLEAN``  |                      |
 +----------------------+----------------------+----------------------+
 | deviceSuspending     | signal               | Signal sent when     |
 |                      |                      | system is entering a |
@@ -93,9 +94,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include <liboxide.h>
-   #include "dbusservice_interface.h"
-   #include "systemapi_interface.h"
+   #include <liboxide/dbus.h>
 
    using namespace codes::eeems::oxide1;
 
