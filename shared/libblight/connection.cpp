@@ -25,7 +25,6 @@ namespace Blight{
         data_t data
     )
     : ackid(ackid),
-      connection(connection),
       done(false),
       data_size(data_size),
       data(data)

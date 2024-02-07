@@ -1,8 +1,3 @@
-/*!
- * \addtogroup Blight
- * @{
- * \file
- */
 #pragma once
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
@@ -20,4 +15,3 @@
 #else
 # define ATTRIBUTE_NO_SANITIZE_ADDRESS
 #endif
-/*! @} */
