@@ -30,6 +30,8 @@ ifneq ($(filter sentry,$(FEATURES)),)
 endif
 	# Force liboxide makefile to regenerate so that install targets get when being build in toltecmk
 	cd $(BUILD)/oxide/shared/liboxide && make qmake
+	# Force libblight makefile to regenerate so that install targets get when being build in toltecmk
+	cd $(BUILD)/oxide/shared/libblight && make qmake
 	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/oxide install
 
 build: $(OBJ)
