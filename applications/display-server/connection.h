@@ -14,6 +14,7 @@
 class Surface;
 
 #include "../../shared/liboxide/meta.h"
+#include "../../shared/libblight/meta.h"
 
 class Connection : public QObject {
     Q_OBJECT
