@@ -62,7 +62,7 @@ private:
     QRect m_geometry;
     int m_stride;
     QImage::Format m_format;
-    QFile file;
+    int m_fd;
     uchar* data;
     std::shared_ptr<QImage> m_image;
 #ifndef EPAPER

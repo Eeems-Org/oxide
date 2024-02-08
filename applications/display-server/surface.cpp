@@ -8,6 +8,7 @@
 #endif
 
 #include <unistd.h>
+#include <sys/mman.h>
 #include <liboxide/debug.h>
 
 #define S_DEBUG(msg) O_DEBUG("[" << id() << "]" << msg)
@@ -28,13 +29,22 @@ Surface::Surface(
   m_geometry(geometry),
   m_stride(stride),
   m_format(format),
+  m_fd{fd},
   m_removed{false}
 {
     m_id = QString("%1/surface/%2").arg(connection->id()).arg(identifier);
-    if(!file.open(fd, QFile::ReadWrite, QFile::AutoCloseHandle)){
-        S_WARNING("Failed to open file");
+    data = reinterpret_cast<uchar*>(mmap(
+        NULL,
+        m_stride * m_geometry.height(),
+        PROT_READ | PROT_WRITE,
+        MAP_SHARED_VALIDATE,
+        fd,
+        0
+    ));
+    if(data == MAP_FAILED){
+        S_WARNING("Failed to map buffer");
+        return;
     }
-    data = file.map(0, m_stride * m_geometry.height());
     m_image = std::shared_ptr<QImage>(new QImage(
         data,
         geometry.width(),
@@ -77,7 +87,10 @@ Surface::Surface(
 
 Surface::~Surface(){
     S_INFO("Surface destroyed");
-    file.close();
+    if(data != MAP_FAILED){
+        ::munmap(data, m_stride * m_geometry.height());
+    }
+    ::close(m_fd);
     setVisible(false);
 #ifdef EPAPER
     repaint();
@@ -93,7 +106,7 @@ QString Surface::id(){ return m_id; }
 
 bool Surface::isValid(){
 #ifdef EPAPER
-    return true;
+    return data != MAP_FAILED;
 #else
     return component != nullptr;
 #endif
@@ -118,7 +131,7 @@ void Surface::repaint(QRect rect){
 #endif
 }
 
-int Surface::fd(){ return file.handle(); }
+int Surface::fd(){ return m_fd; }
 
 const QRect& Surface::geometry(){ return m_geometry; }
 
