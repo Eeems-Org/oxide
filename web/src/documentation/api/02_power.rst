@@ -33,24 +33,24 @@ Power API
 |                      |                      | Connected            |
 +----------------------+----------------------+----------------------+
 | stateChanged         | signal               | Signal sent when the |
-|                      | - (out) ``INT32``    | requested power      |
-|                      |                      | state has changed.   |
+|                      |                      | requested power      |
+|                      | - (out) ``INT32``    | state has changed.   |
 +----------------------+----------------------+----------------------+
 | batteryStateChanged  | signal               | Signal sent when the |
-|                      | - (out) ``INT32``    | battery state has    |
-|                      |                      | changed.             |
+|                      |                      | battery state has    |
+|                      | - (out) ``INT32``    | changed.             |
 +----------------------+----------------------+----------------------+
 | batteryLevelChanged  | signal               | Signal sent when the |
-|                      | - (out) ``INT32``    | battery level has    |
-|                      |                      | changed.             |
+|                      |                      | battery level has    |
+|                      | - (out) ``INT32``    | changed.             |
 +----------------------+----------------------+----------------------+
 | batte                | signal               | Signal sent when the |
-| ryTemperatureChanged | - (out) ``INT32``    | battery temperature  |
-|                      |                      | has changed.         |
+| ryTemperatureChanged |                      | battery temperature  |
+|                      | - (out) ``INT32``    | has changed.         |
 +----------------------+----------------------+----------------------+
 | chargerStateChanged  | signal               | Signal sent when the |
-|                      | - (out) ``INT32``    | charger state has    |
-|                      |                      | changed.             |
+|                      |                      | charger state has    |
+|                      | - (out) ``INT32``    | changed.             |
 +----------------------+----------------------+----------------------+
 | batteryWarning       | signal               | Signal sent when a   |
 |                      |                      | battery warning has  |
@@ -72,9 +72,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include <liboxide.h>
-   #include "dbusservice_interface.h"
-   #include "powerapi_interface.h"
+   #include <liboxide/dbus.h>
 
    using namespace codes::eeems::oxide1;
 

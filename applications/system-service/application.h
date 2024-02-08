@@ -30,24 +30,24 @@
 #include <sys/types.h>
 #include <algorithm>
 #include <liboxide.h>
+#include <libblight/types.h>
 
-#include "fifohandler.h"
+class Notification;
+#include "notification.h"
 
 // Must be included so that generate_xml.sh will work
 #include "../../shared/liboxide/meta.h"
 
 #define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
-class SandBoxProcess : public QProcess{
+class ApplicationProcess : public QProcess{
     Q_OBJECT
 
 public:
-    SandBoxProcess(QObject* parent = nullptr)
-    : QProcess(parent), m_gid(0), m_uid(0), m_chroot(""), m_mask(0) {}
+    ApplicationProcess(QObject* parent = nullptr);
 
     bool setUser(const QString& name);
     bool setGroup(const QString& name);
-    bool setChroot(const QString& path);
     void setMask(mode_t mask);
 
 protected:
@@ -56,7 +56,6 @@ protected:
 private:
     gid_t m_gid;
     uid_t m_uid;
-    QString m_chroot;
     mode_t m_mask;
 };
 
@@ -83,11 +82,8 @@ class Application : public QObject{
     Q_PROPERTY(QString splash READ splash WRITE setSplash NOTIFY splashChanged)
     Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
     Q_PROPERTY(QString workingDirectory READ workingDirectory WRITE setWorkingDirectory NOTIFY workingDirectoryChanged)
-    Q_PROPERTY(bool chroot READ chroot)
     Q_PROPERTY(QString user READ user)
     Q_PROPERTY(QString group READ group)
-    Q_PROPERTY(QStringList directories READ directories WRITE setDirectories NOTIFY directoriesChanged)
-    Q_PROPERTY(QByteArray screenCapture READ screenCapture)
 
 public:
     Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
@@ -143,18 +139,11 @@ public:
     Q_INVOKABLE void setEnvironment(QVariantMap environment);
     QString workingDirectory();
     void setWorkingDirectory(const QString& workingDirectory);
-    bool chroot();
     QString user();
     QString group();
-    QStringList directories();
-    void setDirectories(QStringList directories);
-    QByteArray screenCapture();
-    QByteArray screenCaptureNoSecurityCheck();
 
     const QVariantMap& getConfig();
     void setConfig(const QVariantMap& config);
-    void saveScreen();
-    void recallScreen();
     void waitForFinished();
     void signal(int signal);
     QVariant value(QString name, QVariant defaultValue = QVariant());
@@ -163,6 +152,7 @@ public:
     void uninterruptApplication();
     void waitForPause();
     void waitForResume();
+    QString id();
 
 signals:
     void launched();
@@ -187,47 +177,32 @@ public slots:
     void sigUsr2();
 
 private slots:
-    void showSplashScreen();
     void started();
     void finished(int exitCode);
     void readyReadStandardError();
     void readyReadStandardOutput();
     void stateChanged(QProcess::ProcessState state);
     void errorOccurred(QProcess::ProcessError error);
-    void powerStateDataRecieved(FifoHandler* handler, const QString& data);
 
 private:
     QVariantMap m_config;
     QString m_path;
-    SandBoxProcess* m_process;
+    ApplicationProcess* m_process;
     bool m_backgrounded;
     QByteArray* m_screenCapture = nullptr;
     QElapsedTimer timer;
-    QMap<QString, FifoHandler*> fifos;
     Oxide::Sentry::Transaction* transaction = nullptr;
     Oxide::Sentry::Span* span = nullptr;
     int p_stdout_fd = -1;
     QTextStream* p_stdout = nullptr;
     int p_stderr_fd = -1;
     QTextStream* p_stderr = nullptr;
+    Notification* m_notification = nullptr;
+    QImage* m_backup = nullptr;
 
     bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
     void delayUpTo(int milliseconds);
     void updateEnvironment();
-    void mkdirs(const QString& path, mode_t mode = 0700);
-    void bind(const QString& source, const QString& target, bool readOnly = false);
-    void sysfs(const QString& path);
-    void ramdisk(const QString& path);
-    void umount(const QString& path);
-    FifoHandler* mkfifo(const QString& name, const QString& target);
-    void symlink(const QString& source, const QString& target);
-    const QString resourcePath();
-    const QString chrootPath();
-    void mountAll();
-    void umountAll();
-    bool isMounted(const QString& path);
-    QStringList getActiveApplicationMounts();
-    QStringList getActiveMounts();
     void startSpan(std::string operation, std::string description);
 };
 

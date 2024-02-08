@@ -147,7 +147,7 @@ WifiAPI::WifiAPI(QObject* parent)
     });
 }
 
-WifiAPI::~WifiAPI(){
+void WifiAPI::shutdown(){
     qDebug() << "Unregistering all networks";
     while(!networks.isEmpty()){
         networks.takeFirst()->deleteLater();
@@ -209,6 +209,9 @@ bool WifiAPI::enable(){
     if(!hasPermission("wifi")){
         return false;
     }
+    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM2){
+        system("/sbin/modprobe brcmfmac");
+    }
     qDebug() << "Turning wifi on";
     if(m_state == Off){
         setState(Disconnected);
@@ -244,6 +247,9 @@ void WifiAPI::disable(){
         if(wlan->isUp() && !wlan->down()){
             qDebug() << "Failed to disable " + wlan->iface();
         }
+    }
+    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM2){
+        system("/sbin/rmmod brcmfmac");
     }
     if(system("/usr/sbin/rfkill block wifi")){
         qDebug() << "Failed to disable wifi devices";

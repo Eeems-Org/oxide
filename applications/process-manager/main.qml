@@ -8,7 +8,6 @@ import "widgets"
 OxideWindow {
     id: window
     visible: true
-    backgroundColor: "white"
     onAfterSynchronizing: {
         if (stateController.state == "loading") {
             stateController.state = "loaded";

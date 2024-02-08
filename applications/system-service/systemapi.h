@@ -9,10 +9,8 @@
 #include <liboxide.h>
 
 #include "apibase.h"
-#include "buttonhandler.h"
 #include "application.h"
 #include "screenapi.h"
-#include "digitizerhandler.h"
 #include "eventlistener.h"
 #include "login1_interface.h"
 
@@ -69,7 +67,7 @@ public:
     Q_ENUM(SwipeDirection)
     static SystemAPI* singleton(SystemAPI* self = nullptr);
     SystemAPI(QObject* parent);
-    ~SystemAPI();
+    void shutdown();
     void setEnabled(bool enabled);
     int autoSleep();
     void setAutoSleep(int _autoSleep);
@@ -87,8 +85,6 @@ public:
     void startLockTimer();
     void lock();
     void unlock();
-    void clearDeviceBuffers();
-    void clearKeyboardBuffers();
     Q_INVOKABLE void setSwipeEnabled(int direction, bool enabled);
     void setSwipeEnabled(SwipeDirection direction, bool enabled);
     Q_INVOKABLE bool getSwipeEnabled(int direction);
@@ -124,6 +120,7 @@ signals:
     void autoLockChanged(int);
     void lockOnSuspendChanged(bool);
     void swipeLengthChanged(int, int);
+    void swipeEnabledChanged(int, bool);
     void landscapeChanged(bool);
     void deviceSuspending();
     void deviceResuming();
@@ -132,8 +129,6 @@ private slots:
     void PrepareForSleep(bool suspending);
     void suspendTimeout();
     void lockTimeout();
-    void touchEvent(const input_event& event);
-    void penEvent(const input_event& event);
 
 private:
     Manager* systemd;
@@ -146,30 +141,15 @@ private:
     QStringList sleepInhibitors;
     QStringList powerOffInhibitors;
     QMutex mutex;
-    QMap<int, Touch*> touches;
-    int currentSlot = 0;
     bool wifiWasOn = false;
-    bool penActive = false;
-    int swipeDirection = None;
-    QPoint location;
-    QPoint startLocation;
     QMap<SwipeDirection, bool> swipeStates;
     QMap<SwipeDirection, int> swipeLengths;
+    Blight::shared_buf_t m_buffer = nullptr;
 
     void inhibitSleep();
     void inhibitPowerOff();
     void releaseSleepInhibitors(bool block = false);
     void releasePowerOffInhibitors(bool block = false);
     void rguard(bool install);
-    Touch* getEvent(int slot);
-    int getCurrentFingers();
-
-    void touchDown(QList<Touch*> touches);
-    void touchUp(QList<Touch*> touches);
-    void touchMove(QList<Touch*> touches);
-    void cancelSwipe(Touch* touch);
-    void writeTouchUp(Touch* touch);
-    void writeTouchMove(Touch* touch);
-    void fn();
 };
 #endif // SYSTEMAPI_H

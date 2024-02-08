@@ -10,7 +10,6 @@ SUBDIRS = \
     lockscreen \
     notify-send \
     process-manager \
-    screenshot-tool \
     screenshot-viewer \
     settings-manager \
     system-service \
@@ -20,13 +19,15 @@ SUBDIRS = \
     xdg-desktop-menu \
     xdg-icon-resource \
     xdg-open \
-    xdg-settings
+    xdg-settings \
+    display-server \
+    fbinfo \
+    xclip
 
 launcher.depends = system-service update-desktop-database
 lockscreen.depends = system-service
 notify-send.depends = system-service
 process-manager.depends =
-screenshot-tool.depends = system-service
 screenshot-viewer.depends = system-service
 settings-manager.depends = system-service
 system-service.depends =
@@ -41,5 +42,7 @@ xdg-icon-resource.depends = system-service
 desktop-file-edit.depends =
 desktop-file-install.depends =
 inject_evdev.depends =
-
+display-server.depends = system-service
+fbinfo.depends =
+xclip.depends = system-service
 INSTALLS += $$SUBDIRS

@@ -16,16 +16,19 @@ Notification API
 |                      |                      | longer running.      |
 +----------------------+----------------------+----------------------+
 | notificationAdded    | signal               | Signal sent when a   |
-|                      | - (out)              | notification has     |
-|                      | ``OBJECT_PATH``      | been added.          |
+|                      |                      | notification has     |
+|                      | - (out)              | been added.          |
+|                      | ``OBJECT_PATH``      |                      |
 +----------------------+----------------------+----------------------+
 | notificationRemoved  | signal               | Signal sent when a   |
-|                      | - (out)              | notification has     |
-|                      | ``OBJECT_PATH``      | been removed.        |
+|                      |                      | notification has     |
+|                      | - (out)              | been removed.        |
+|                      | ``OBJECT_PATH``      |                      |
 +----------------------+----------------------+----------------------+
 | notificationChanged  | signal               | Signal sent when a   |
-|                      | - (out)              | notification has     |
-|                      | ``OBJECT_PATH``      | been modified.       |
+|                      |                      | notification has     |
+|                      | - (out)              | been modified.       |
+|                      | ``OBJECT_PATH``      |                      |
 +----------------------+----------------------+----------------------+
 | add                  | method               | Add a new            |
 |                      | - (in) identifier    | notification.        |
@@ -40,19 +43,22 @@ Notification API
 |                      | ``OBJECT_PATH``      |                      |
 +----------------------+----------------------+----------------------+
 | take                 | method               | Take ownership of a  |
-|                      | - (in) identifier    | notification.        |
+|                      |                      | notification.        |
+|                      | - (in) identifier    |                      |
 |                      | ``STRING``           |                      |
 |                      | - (out) ``BOOLEAN``  |                      |
 +----------------------+----------------------+----------------------+
 | notifications        | method               | List of all          |
 |                      | - (out)              | notifications owned  |
-|                      | `                    | by the current       |
-|                      | `ARRAY OBJECT_PATH`` | application.         |
+|                      | - (out)              | by the current       |
+|                      | `                    | application.         |
+|                      | `ARRAY OBJECT_PATH`` |                      |
 +----------------------+----------------------+----------------------+
 | get                  | method               | Get the object path  |
-|                      | - (in) identifier    | for a notification   |
-|                      | ``STRING``           | based on it's        |
-|                      | - (out)              | identifier.          |
+|                      |                      | for a notification   |
+|                      | - (in) identifier    | based on it's        |
+|                      | ``STRING``           | identifier.          |
+|                      | - (out)              |                      |
 |                      | ``OBJECT_PATH``      |                      |
 +----------------------+----------------------+----------------------+
 
@@ -63,10 +69,7 @@ Example Usage
 
 .. code:: cpp
 
-   #include <liboxide.h>
-   #include "dbusservice_interface.h"
-   #include "notificationapi_interface.h"
-   #include "notification_interface.h"
+   #include <liboxide/dbus.h>
 
    using namespace codes::eeems::oxide1;
 
@@ -115,10 +118,10 @@ Notification Object
 |             | (read/write)             | notification.            |
 +-------------+--------------------------+--------------------------+
 | changed     | signal                   | Signal sent when         |
-|             | - (out)                  | something on the         |
-|             | `                        | notification has         |
-|             | `ARRAY{STRING VARIANT}`` | changed.                 |
-|             |                          | The first output         |
+|             |                          | something on the         |
+|             | - (out)                  | notification has         |
+|             | `                        | changed.                 |
+|             | `ARRAY{STRING VARIANT}`` | The first output         |
 |             |                          | property contains a map  |
 |             |                          | of changed properties    |
 |             |                          | and their values.        |
@@ -159,10 +162,7 @@ Example Usage
 .. code:: cpp
 
    #include <QUuid>
-   #include <liboxide.h>
-   #include "dbusservice_interface.h"
-   #include "notificationapi_interface.h"
-   #include "notification_interface.h"
+   #include <liboxide/dbus.h>
 
    using namespace codes::eeems::oxide1;
 

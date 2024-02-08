@@ -1,9 +1,8 @@
 {
-        "displayName": "Screenshot daemon",
-        "description": "Takes screenshots and displays notifications",
-	"bin": "/opt/bin/fret",
-        "flags": ["autoStart", "hidden"],
-        "type": "background",
-        "splash": "oxide:splash:oxide-702",
-        "permissions": ["notification", "screen", "system"]
+    "displayName": "Screenshot daemon",
+    "description": "Takes screenshots and displays notifications",
+    "bin": "/opt/bin/fret",
+    "flags": ["autoStart", "hidden", "nopreload"],
+    "type": "background",
+    "permissions": ["notification", "screen", "system"]
 }

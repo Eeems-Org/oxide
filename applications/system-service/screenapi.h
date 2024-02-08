@@ -34,15 +34,10 @@ class ScreenAPI : public APIBase {
 public:
     static ScreenAPI* singleton(ScreenAPI* self = nullptr);
     ScreenAPI(QObject* parent);
-    ~ScreenAPI();
     void setEnabled(bool enabled);
     bool enabled();
     QList<QDBusObjectPath> screenshots();
-
-    Q_INVOKABLE bool drawFullscreenImage(QString path, double rotate = 0);
-
     Q_INVOKABLE QDBusObjectPath screenshot();
-    QImage copy();
 
 public slots:
     QDBusObjectPath addScreenshot(QByteArray blob);
