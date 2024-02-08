@@ -199,6 +199,9 @@ std::shared_ptr<Surface> Connection::addSurface(int fd, QRect geometry, int stri
     // TODO - add validation that id is never 0, and that it doesn't point to an existsing surface
     auto id = ++m_surfaceId;
     auto surface = std::shared_ptr<Surface>(new Surface(this, fd, id, geometry, stride, format));
+    if(!surface->isValid()){
+        return surface;
+    }
     surfaces.insert_or_assign(id, surface);
     dbusInterface->sortZ();
     surface->repaint();
