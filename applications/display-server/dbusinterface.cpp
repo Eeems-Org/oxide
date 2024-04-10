@@ -222,8 +222,11 @@ Blight::surface_id_t DbusInterface::addSurface(
 }
 
 void DbusInterface::repaint(QString identifier, QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(message);
+    if(!connection->has("system")){
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return;
+    }
     auto surface = getSurface(identifier);
     if(surface == nullptr){
         sendErrorReply(QDBusError::BadAddress, "Surface not found");
@@ -247,8 +250,15 @@ QDBusUnixFileDescriptor DbusInterface::getSurface(Blight::surface_id_t identifie
 }
 
 void DbusInterface::setFlags(QString identifier, const QStringList& flags, QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
+    if(connections.count() > 1){
+        // Only validate system flag if there is more than one connection
+        // TODO - also validate that executable is allowed to make this call
+        auto connection = getConnection(message);
+        if(!connection->has("system")){
+            sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+            return;
+        }
+    }
     auto connection = getConnection(identifier);
     if(connection != nullptr){
         for(auto& flag : flags){
@@ -269,9 +279,12 @@ void DbusInterface::setFlags(QString identifier, const QStringList& flags, QDBus
 }
 
 QStringList DbusInterface::getSurfaces(QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(message);
     QStringList surfaces;
+    if(!connection->has("system")){
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return surfaces;
+    }
     for(auto connection : qAsConst(connections)){
         if(!connection->isRunning()){
             continue;
@@ -286,14 +299,20 @@ QStringList DbusInterface::getSurfaces(QDBusMessage message){
 }
 
 QDBusUnixFileDescriptor DbusInterface::frameBuffer(QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(message);
+    if(!connection->has("system")){
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return QDBusUnixFileDescriptor();
+    }
     return QDBusUnixFileDescriptor(guiThread->framebuffer());
 }
 
 void DbusInterface::lower(QString identifier, QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(message);
+    if(!connection->has("system")){
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return;
+    }
     auto surface = getSurface(identifier);
     if(surface != nullptr){
         surface->setVisible(false);
@@ -301,15 +320,15 @@ void DbusInterface::lower(QString identifier, QDBusMessage message){
         surface->repaint();
         return;
     }
-    auto connection = getConnection(identifier);
-    if(connection == nullptr){
+    auto childConnection = getConnection(identifier);
+    if(childConnection == nullptr){
         sendErrorReply(QDBusError::BadAddress, "Connection or Surface not found");
         return;
     }
-    if(m_focused == connection){
+    if(m_focused == childConnection){
         setFocus(nullptr);
     }
-    for(auto& surface : connection->getSurfaces()){
+    for(auto& surface : childConnection->getSurfaces()){
         surface->setVisible(false);
         surface->repaint();
     }
@@ -317,8 +336,11 @@ void DbusInterface::lower(QString identifier, QDBusMessage message){
 }
 
 void DbusInterface::raise(QString identifier, QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(message);
+    if(!connection->has("system")){
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return;
+    }
     auto surface = getSurface(identifier);
     if(surface != nullptr){
         surface->setVisible(true);
@@ -327,12 +349,12 @@ void DbusInterface::raise(QString identifier, QDBusMessage message){
         surface->repaint();
         return;
     }
-    auto connection = getConnection(identifier);
-    if(connection == nullptr){
+    auto childConnection = getConnection(identifier);
+    if(childConnection == nullptr){
         sendErrorReply(QDBusError::BadAddress, "Connection or Surface not found");
         return;
     }
-    for(auto& surface : connection->getSurfaces()){
+    for(auto& surface : childConnection->getSurfaces()){
         surface->setVisible(true);
         surface->setZ(std::numeric_limits<int>::max());
         surface->repaint();
@@ -341,19 +363,25 @@ void DbusInterface::raise(QString identifier, QDBusMessage message){
 }
 
 void DbusInterface::focus(QString identifier, QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
-    auto connection = getConnection(identifier);
-    if(connection == nullptr){
+    auto connection = getConnection(message);
+    if(!connection->has("system")){
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return;
+    }
+    auto childConnection = getConnection(identifier);
+    if(childConnection == nullptr){
         sendErrorReply(QDBusError::BadAddress, "Connection not found");
         return;
     }
-    setFocus(connection);
+    setFocus(childConnection);
 }
 
 void DbusInterface::waitForNoRepaints(QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(message);
+    if(!connection->has("system")){
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return;
+    }
 #ifdef EPAPER
     QEventLoop loop;
     connect(guiThread, &GUIThread::settled, &loop, &QEventLoop::quit);
@@ -362,8 +390,11 @@ void DbusInterface::waitForNoRepaints(QDBusMessage message){
 }
 
 void DbusInterface::enterExclusiveMode(QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(message);
+    if(!connection->has("system")){
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return;
+    }
     O_INFO("Entering exclusive mode");
     m_exlusiveMode = true;
     waitForNoRepaints(message);
@@ -371,8 +402,11 @@ void DbusInterface::enterExclusiveMode(QDBusMessage message){
 }
 
 void DbusInterface::exitExclusiveMode(QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(message);
+    if(!connection->has("system")){
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return;
+    }
     O_INFO("Exiting exclusive mode");
     m_exlusiveMode = false;
 #ifdef EPAPER
@@ -388,8 +422,11 @@ void DbusInterface::exitExclusiveMode(QDBusMessage message){
 }
 
 void DbusInterface::exclusiveModeRepaint(QDBusMessage message){
-    Q_UNUSED(message);
-    // TODO - only allow tarnish to make this call
+    auto connection = getConnection(message);
+    if(!connection->has("system")){
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return;
+    }
 #ifdef EPAPER
     guiThread->sendUpdate(
         EPFrameBuffer::instance()->framebuffer()->rect(),
