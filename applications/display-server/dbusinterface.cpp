@@ -22,7 +22,7 @@
 DbusInterface::DbusInterface(QObject* parent)
 : QObject(parent),
   m_focused(nullptr),
-  m_buttonsDevNumber{QFileInfo(deviceSettings.getButtonsDevicePath()).baseName().midRef(5).toInt()},
+  m_buttonsDevNumber{QFileInfo(deviceSettings.getButtonsDevicePath()).baseName().midRef(5).toUInt()},
   m_exlusiveMode{false}
 {
 #ifdef EPAPER
