@@ -59,6 +59,7 @@ bool Wlan::pingIP(std::string ip, const char* port) {
     std::string cmd("{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port + "; } > /dev/null 2>&1");
     process->setArguments(QStringList() << "-c" << cmd.c_str());
     process->start();
+    process->deleteLater();
     if(!process->waitForFinished(100)){
         process->kill();
         return false;
