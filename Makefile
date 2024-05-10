@@ -1,122 +1,97 @@
-.PHONY: all clean release build liboxide erode tarnish rot fret oxide decay corrupt anxiety sentry
+.PHONY: all clean release build sentry package
 
 all: release
 
 .NOTPARALLEL:
 
+MAKEFLAGS := --jobs=$(shell nproc)
+
 # FEATURES += sentry
 
+DIST=$(CURDIR)/release
+BUILD=$(CURDIR)/.build
+
 ifneq ($(filter sentry,$(FEATURES)),)
-OBJ += sentry
-RELOBJ += release/opt/lib/libsentry.so
-DEFINES += 'DEFINES+="SENTRY"'
+DEFINES += DEFINES+="SENTRY"
 endif
 
-clean:
-	rm -rf .build
-	rm -rf release
+OBJ += $(BUILD)/oxide/Makefile
 
-release: clean build $(RELOBJ)
-	mkdir -p release
-	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/liboxide install
-	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/process-manager install
-	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/system-service install
-	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/settings-manager install
-	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/screenshot-tool install
-	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/screenshot-viewer install
-	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/launcher install
-	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/lockscreen install
-	INSTALL_ROOT=../../release $(MAKE) -j`nproc` -C .build/task-switcher install
+clean-base:
+	rm -rf $(DIST) $(BUILD)/oxide
 
-build: liboxide tarnish erode rot oxide decay corrupt fret anxiety
+clean: clean-base
+	rm -rf $(BUILD)
 
-liboxide: $(OBJ) .build/liboxide/libliboxide.so
+release: clean-base build $(DIST)
+	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
+	cd $(BUILD)/oxide/shared/sentry && make qmake
+	# Force liboxide makefile to regenerate so that install targets get when being build in toltecmk
+	cd $(BUILD)/oxide/shared/liboxide && make qmake
+	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/oxide install
 
-.build/liboxide/libliboxide.so:
-	mkdir -p .build/liboxide
-	cp -r shared/liboxide/* .build/liboxide
-	cd .build/liboxide && qmake $(DEFINES) liboxide.pro
-	$(MAKE) -j`nproc` -C .build/liboxide all
+build: $(OBJ)
+	$(MAKE) --output-sync=target -C $(BUILD)/oxide all
 
-erode: liboxide .build/process-manager/erode
+package: REV="~r$(shell git rev-list --count HEAD).$(shell git rev-parse --short HEAD)"
+package: version.txt $(DIST) $(BUILD)/package/oxide.tar.gz
+	toltecmk \
+		--verbose \
+		-w $(BUILD)/package/build \
+		-d $(BUILD)/package/dist \
+		$(BUILD)/package
+	cp -a $(BUILD)/package/dist/rmall/*.ipk $(DIST)
 
-.build/process-manager/erode:
-	mkdir -p .build/process-manager
-	cp -r applications/process-manager/* .build/process-manager
-	cd .build/process-manager && qmake $(DEFINES) erode.pro
-	$(MAKE) -j`nproc` -C .build/process-manager all
+version.txt:
+	if [ -d .git ];then \
+		echo $(REV) > version.txt; \
+	else \
+		echo "~manual" > version.txt; \
+	fi;
 
-tarnish: liboxide .build/system-service/tarnish
+$(DIST):
+	mkdir -p $(DIST)
 
-.build/system-service/tarnish:
-	mkdir -p .build/system-service
-	cp -r applications/system-service/* .build/system-service
-	cd .build/system-service && qmake $(DEFINES) tarnish.pro
-	$(MAKE) -j`nproc` -C .build/system-service all
+$(BUILD):
+	mkdir -p $(BUILD)
 
-rot: tarnish liboxide .build/settings-manager/rot
+$(BUILD)/.nobackup: $(BUILD)
+	touch $(BUILD)/.nobackup
 
-.build/settings-manager/rot:
-	mkdir -p .build/settings-manager
-	cp -r applications/settings-manager/* .build/settings-manager
-	cd .build/settings-manager && qmake $(DEFINES) rot.pro
-	$(MAKE) -j`nproc` -C .build/settings-manager all
+$(BUILD)/oxide: $(BUILD)/.nobackup
+	mkdir -p $(BUILD)/oxide
 
-fret: tarnish liboxide .build/screenshot-tool/fret
+$(BUILD)/oxide/Makefile: $(BUILD)/oxide
+	cd $(BUILD)/oxide && qmake -r $(DEFINES) $(CURDIR)
 
-.build/screenshot-tool/fret:
-	mkdir -p .build/screenshot-tool
-	cp -r applications/screenshot-tool/* .build/screenshot-tool
-	cd .build/screenshot-tool && qmake $(DEFINES) fret.pro
-	$(MAKE) -j`nproc` -C .build/screenshot-tool all
+$(BUILD)/package:
+	mkdir -p $(BUILD)/package
+	rm -rf $(BUILD)/package/build
 
-oxide: tarnish liboxide .build/launcher/oxide
+$(BUILD)/package/package: $(BUILD)/package
+	sed "s/~VERSION~/`cat version.txt`/" ./package > $(BUILD)/package/package
 
-.build/launcher/oxide:
-	mkdir -p .build/launcher
-	cp -r applications/launcher/* .build/launcher
-	cd .build/launcher && qmake $(DEFINES) oxide.pro
-	$(MAKE) -j`nproc` -C .build/launcher all
+PKG_OBJ = oxide.pro Makefile
+PKG_OBJ += $(wildcard applications/**)
+PKG_OBJ += $(wildcard assets/**)
+PKG_OBJ += $(wildcard interfaces/**)
+PKG_OBJ += $(wildcard qmake/**)
+PKG_OBJ += $(wildcard shared/**)
+PKG_OBJ += $(wildcard tests/**)
 
-decay: tarnish liboxide .build/lockscreen/decay
-
-.build/lockscreen/decay:
-	mkdir -p .build/lockscreen
-	cp -r applications/lockscreen/* .build/lockscreen
-	cd .build/lockscreen && qmake $(DEFINES) decay.pro
-	$(MAKE) -j`nproc` -C .build/lockscreen all
-
-corrupt: tarnish liboxide .build/task-switcher/corrupt
-
-.build/task-switcher/corrupt:
-	mkdir -p .build/task-switcher
-	cp -r applications/task-switcher/* .build/task-switcher
-	cd .build/task-switcher && qmake $(DEFINES) corrupt.pro
-	$(MAKE) -j`nproc` -C .build/task-switcher all
-
-anxiety: tarnish liboxide .build/screenshot-viewer/anxiety
-
-.build/screenshot-viewer/anxiety:
-	mkdir -p .build/screenshot-viewer
-	cp -r applications/screenshot-viewer/* .build/screenshot-viewer
-	cd .build/screenshot-viewer && qmake $(DEFINES) anxiety.pro
-	$(MAKE) -j`nproc` -C .build/screenshot-viewer all
-
-sentry: .build/sentry/libsentry.so
-
-.build/sentry/libsentry.so:
-	cd shared/sentry && cmake -B ../../.build/sentry \
-		-DBUILD_SHARED_LIBS=ON \
-		-DSENTRY_INTEGRATION_QT=ON \
-		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
-		-DSENTRY_PIC=OFF \
-		-DSENTRY_BACKEND=breakpad \
-		-DSENTRY_BREAKPAD_SYSTEM=OFF \
-		-DSENTRY_EXPORT_SYMBOLS=ON \
-		-DSENTRY_PTHREAD=ON
-	cd shared/sentry && cmake --build ../../.build/sentry --parallel
-	cd shared/sentry && cmake --install ../../.build/sentry --prefix ../../.build/sentry --config RelWithDebInfo
-
-release/opt/lib/libsentry.so: sentry
-	mkdir -p release/opt/lib
-	cp .build/sentry/libsentry.so release/opt/lib/
+$(BUILD)/package/oxide.tar.gz: $(BUILD)/package/package $(PKG_OBJ)
+	rm -f $(BUILD)/package/oxide.tar.gz
+	tar \
+		--exclude='$(CURDIR)/.git' \
+		--exclude='$(BUILD)' \
+		--exclude='$(CURDIR)/dist' \
+		--exclude='$(DIST)' \
+		-czvf $(BUILD)/package/oxide.tar.gz \
+		applications \
+		assets \
+		interfaces \
+		qmake \
+		shared \
+		tests \
+		oxide.pro \
+		Makefile

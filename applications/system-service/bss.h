@@ -4,9 +4,12 @@
 #include <QMutableListIterator>
 #include <QMutex>
 
-#include "../../shared/liboxide/liboxide.h"
+#include <liboxide.h>
+
 #include "supplicant.h"
-#include "network.h"
+
+// Must be included so that generate_xml.sh will work
+#include "../../shared/liboxide/meta.h"
 
 class BSS : public QObject{
     Q_OBJECT
@@ -19,119 +22,27 @@ class BSS : public QObject{
     Q_PROPERTY(ushort signal READ signal)
     Q_PROPERTY(QDBusObjectPath network READ network)
     Q_PROPERTY(QStringList key_mgmt READ key_mgmt)
+
 public:
     BSS(QString path, QString bssid, QString ssid, QObject* parent);
     BSS(QString path, IBSS* bss, QObject* parent) : BSS(path, bss->bSSID(), bss->sSID(), parent) {}
 
-    ~BSS(){ unregisterPath(); }
-    QString path(){ return m_path; }
-    void registerPath(){
-        auto bus = QDBusConnection::systemBus();
-        bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
-        if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
-            qDebug() << "Registered" << path() << OXIDE_BSS_INTERFACE;
-        }else{
-            qDebug() << "Failed to register" << path();
-        }
-    }
-    void unregisterPath(){
-        auto bus = QDBusConnection::systemBus();
-        if(bus.objectRegisteredAt(path()) != nullptr){
-            qDebug() << "Unregistered" << path();
-            bus.unregisterObject(path());
-        }
-    }
+    ~BSS();
+    QString path();
+    void registerPath();
+    void unregisterPath();
 
-    QString bssid(){
-        if(!hasPermission("wifi")){
-            return "";
-        }
-        return m_bssid; }
-    QString ssid(){
-        if(!hasPermission("wifi")){
-            return "";
-        }
-        return m_ssid;
-    }
+    QString bssid();
+    QString ssid();
 
-    QList<QString> paths(){
-        QList<QString> result;
-        if(!hasPermission("wifi")){
-            return result;
-        }
-        for(auto bss : bsss){
-            result.append(bss->path());
-        }
-        return result;
-    }
-    void addBSS(const QString& path){
-        if(paths().contains(path)){
-            return;
-        }
-        auto bss = new IBSS(WPA_SUPPLICANT_SERVICE, path, QDBusConnection::systemBus());
-        bsss.append(bss);
-        QObject::connect(bss, &IBSS::PropertiesChanged, this, &BSS::PropertiesChanged, Qt::QueuedConnection);
-    }
-    void removeBSS(const QString& path){
-        QMutableListIterator<IBSS*> i(bsss);
-        while(i.hasNext()){
-            auto bss = i.next();
-            if(!bss->isValid() || bss->path() == path){
-                i.remove();
-                bss->deleteLater();
-            }
-        }
-    }
-    bool privacy(){
-        if(!hasPermission("wifi")){
-            return false;
-        }
-        for(auto bss : bsss){
-            if(bss->privacy()){
-                return true;
-            }
-        }
-        return false;
-    }
-    ushort frequency(){
-        if(!hasPermission("wifi")){
-            return 0;
-        }
-        if(!bsss.size()){
-            return 0;
-        }
-        return bsss.first()->frequency();
-    }
-    short signal(){
-        if(!hasPermission("wifi")){
-            return 0;
-        }
-        if(!bsss.size()){
-            return 0;
-        }
-        int signal = 0;
-        for(auto bss : bsss){
-            auto s = bss->signal();
-            if(s > signal){
-                signal = s;
-            }
-        }
-        return signal;
-    }
+    QList<QString> paths();
+    void addBSS(const QString& path);
+    void removeBSS(const QString& path);
+    bool privacy();
+    ushort frequency();
+    short signal();
     QDBusObjectPath network();
-    QStringList key_mgmt(){
-        QStringList result;
-        if(!hasPermission("wifi")){
-            return result;
-        }
-        if(!bsss.size()){
-            return result;
-        }
-        auto bss = bsss.first();
-        result.append(bss->wPA()["KeyMgmt"].value<QStringList>());
-        result.append(bss->rSN()["KeyMgmt"].value<QStringList>());
-        return result;
-    }
+    QStringList key_mgmt();
     Q_INVOKABLE QDBusObjectPath connect();
 
 signals:
@@ -139,9 +50,7 @@ signals:
     void propertiesChanged(QVariantMap);
 
 private slots:
-    void PropertiesChanged(const QVariantMap& properties){
-        emit propertiesChanged(properties);
-    }
+    void PropertiesChanged(const QVariantMap& properties);
 
 private:
     QString m_path;

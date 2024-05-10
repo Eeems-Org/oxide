@@ -1,9 +1,9 @@
 /*!
- * \file liboxide_global.h
+ * \addtogroup Oxide
+ * @{
+ * \file
  */
-#ifndef LIBOXIDE_GLOBAL_H
-#define LIBOXIDE_GLOBAL_H
-
+#pragma once
 
 #include <QtCore/qglobal.h>
 
@@ -15,7 +15,12 @@
 #  endif
 #else
 #  define SENTRY
+#  define DEBUG
 #  define LIBOXIDE_EXPORT
 #endif
-
-#endif // LIBOXIDE_GLOBAL_H
+#if defined(__clang__) || defined (__GNUC__)
+# define ATTRIBUTE_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#else
+# define ATTRIBUTE_NO_SANITIZE_ADDRESS
+#endif
+/*! @} */

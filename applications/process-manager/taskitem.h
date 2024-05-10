@@ -21,6 +21,7 @@ class TaskItem : public QObject {
     Q_PROPERTY(bool killable MEMBER _killable READ killable WRITE setKillable NOTIFY killableChanged);
     Q_PROPERTY(uint cpu MEMBER _cpu READ cpu WRITE setCpu NOTIFY cpuChanged);
     Q_PROPERTY(QString mem MEMBER _mem READ mem WRITE setMem NOTIFY memChanged);
+
 public:
     TaskItem(int pid, QObject* parent)
     : QObject(parent),

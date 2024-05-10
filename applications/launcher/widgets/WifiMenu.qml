@@ -79,7 +79,7 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 delegate: Rectangle {
                     id: item
-                    width: parent.width - scrollbar.width
+                    width: networks.width - scrollbar.width
                     height: networkRow.implicitHeight
                     visible: !!model.display
                     RowLayout {

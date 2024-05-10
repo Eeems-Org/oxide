@@ -6,12 +6,6 @@
 #include <QQuickItem>
 #include <liboxide.h>
 
-#include "epframebuffer.h"
-
-#include "dbusservice_interface.h"
-#include "screenapi_interface.h"
-#include "screenshot_interface.h"
-
 #include "screenshotlist.h"
 
 using namespace codes::eeems::oxide1;
@@ -28,6 +22,7 @@ class Controller : public QObject {
     Q_OBJECT
     Q_PROPERTY(ScreenshotList* screenshots MEMBER screenshots READ getScreenshots NOTIFY screenshotsChanged)
     Q_PROPERTY(int columns READ columns WRITE setColumns NOTIFY columnsChanged)
+
 public:
     Controller(QObject* parent)
     : QObject(parent), settings(this), applications() {

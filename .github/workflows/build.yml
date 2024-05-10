@@ -2,23 +2,27 @@ name: Build oxide
 
 on:
   push:
+    branches:
+      - master
     paths:
       - '.github/workflows/build.yml'
-      - '.github/actions/setup/**'
       - 'applications/**'
       - 'shared/**'
       - 'assets/**'
       - 'interfaces/**'
+      - 'qmake/**'
+      - 'oxide.pro'
       - 'Makefile'
       - 'package'
   pull_request:
     paths:
       - '.github/workflows/build.yml'
-      - '.github/actions/setup/**'
       - 'applications/**'
       - 'shared/**'
       - 'assets/**'
       - 'interfaces/**'
+      - 'qmake/**'
+      - 'oxide.pro'
       - 'Makefile'
       - 'package'
 jobs:
@@ -26,47 +30,90 @@ jobs:
     name: Build and package
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout toltec Git repository
-        uses: actions/checkout@v2
-        with:
-          repository: toltec-dev/toltec.git
-          ref: testing
-      - name: Cleanup
-        run: |
-          rm -rf package/oxide/*
-          mkdir package/oxide/src
-      - uses: actions/checkout@v2.3.1
-        with:
-          path: package/oxide/src
+      - uses: actions/checkout@v3
       - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
-      - name: Setup Toltec dependencies
-        uses: ./.github/actions/setup
-      - name: Prepare build files
-        run: |
-          cd package/oxide/src
-          echo "r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)" > ../version.txt
-          sed -i "s/~VERSION~/$(cat ../version.txt)/" ./package
-          mv ./package ..
-          tar --exclude='./.git' -czvf ../oxide.tar.gz .
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v2
         with:
           languages: javascript, cpp
-      - name: Build packages
-        run: |
-          make FLAGS=--verbose oxide
-          mkdir output
-          find . -name '*.ipk' | while read -r file; do
-            cp "$file" output/"$(basename $file)"
-          done
-        timeout-minutes: 15
-      - name: Save packages
-        uses: actions/upload-artifact@v2
+        uses: actions/setup-python@v4
         with:
-          name: packages
-          path: output
+          python-version: '3.11'
+      - name: Install toltecmk
+        run: pip install toltecmk requests==2.26.0
+      - name: Build packages
+        run: make package
+        timeout-minutes: 15
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
+      - name: Save packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: packages
+          path: release
+      - name: Save packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: .build/package/build/rmall/src/release
+      - name: Save repo
+        uses: actions/upload-artifact@v3
+        with:
+          name: repo
+          path: .build/package/dist/rmall
+  test:
+    name: Test packages
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/download-artifact@v3
+        id: download
+        with:
+          name: repo
+      - uses: Eeems-Org/run-in-remarkable-action@v1
+        with:
+          setup: |
+            set -ex
+            wget https://github.com/Eeems-Org/sysfs_preload/releases/download/1.0.0/packages.zip -O /tmp/packages.zip
+            unzip /tmp/packages.zip -d /tmp
+            opkg install /tmp/rmall/sysfs_preload_1.0.0-1_rmall.ipk
+            echo "src/gz local-rmall file:///opt/tmp/src" > /opt/etc/opkg.conf.d/16-local.conf
+          run: |
+            set -ex
+            echo Y | toltecctl generate-opkg-conf
+            opkg update
+            opkg install oxide
+            # systemctl disable --now xochitl
+            # systemctl enable --now tarnish
+            # TODO install and run tests
+            opkg remove --force-removal-of-dependent-packages liboxide
+          path: ${{ steps.download.outputs.download-path }}
+  release:
+    needs: [build,test]
+    if: ${{ github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v3
+        with:
+          name: build
+          path: .build
+      - name: Create Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_URL: https://sentry.eeems.codes
+      - name: Setup Sentry CLI
+        uses: mathieu-bour/setup-sentry-cli@v1
+        with:
+          version: latest
+          url: https://sentry.eeems.codes
+          token:  ${{ secrets.SENTRY_AUTH_TOKEN }}
+          organization: ${{ secrets.SENTRY_ORG }}
+          project: ${{ secrets.SENTRY_PROJECT }}
+      - name: Upload debug artifacts
+        run: sentry-cli debug-files upload --include-sources .

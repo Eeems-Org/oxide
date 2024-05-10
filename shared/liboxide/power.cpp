@@ -1,14 +1,16 @@
 #include "power.h"
+#include "debug.h"
+#include "liboxide.h"
 
 #include <QObject>
 #include <QDir>
-#include <QDebug>
 
 using Oxide::SysObject;
 
 
 QList<SysObject>* _batteries = nullptr;
 QList<SysObject>* _chargers = nullptr;
+QList<SysObject>* _usbs = nullptr;
 
 void _setup(){
     if(_batteries != nullptr && _chargers != nullptr){
@@ -24,34 +26,62 @@ void _setup(){
     }else{
         _chargers = new QList<SysObject>();
     }
+    if(_usbs != nullptr){
+        _usbs->clear();
+    }else{
+        _usbs = new QList<SysObject>();
+    }
     QDir dir("/sys/class/power_supply");
-    qDebug() << "Looking for batteries and chargers...";
+    O_DEBUG("Looking for batteries and chargers...");
     for(auto& path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
-        qDebug() << ("  Checking " + path + "...").toStdString().c_str();
+        O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
         SysObject item(dir.path() + "/" + path);
         if(!item.hasProperty("type")){
-            qDebug() << "    Missing type property";
+            O_DEBUG("    Missing type property");
             continue;
         }
         if(item.hasProperty("present") && !item.intProperty("present")){
-            qDebug() << "    Either missing present property, or battery is not present";
+            O_DEBUG("    Either missing present property, or battery is not present");
             continue;
         }
         auto type = item.strProperty("type");
         if(type == "Battery"){
-            qDebug() << "    Found Battery!";
+            O_DEBUG("    Found Battery!");
             _batteries->append(item);
         }else if(type == "USB" || type == "USB_CDP"){
-            qDebug() << "    Found Charger!";
+            O_DEBUG("    Found Charger!");
             _chargers->append(item);
         }else{
-            qDebug() << "    Unknown type";
+            O_DEBUG("    Unknown type");
         }
     }
     if(_chargers->empty()){
         for(SysObject& battery : *_batteries){
             _chargers->append(battery);
         }
+    }
+    auto deviceType = deviceSettings.getDeviceType();
+    if(deviceType != Oxide::DeviceSettings::Unknown){
+        O_DEBUG("Looking for usbs...");
+        dir.setPath("/sys/bus/platform/devices");
+        for(QString& path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
+            if(
+                (deviceType == Oxide::DeviceSettings::RM1 && !path.endsWith(".usbphy")) ||
+                (deviceType == Oxide::DeviceSettings::RM2 && !path.startsWith("usbphy"))
+            ){
+                continue;
+            }
+            O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
+            SysObject item(dir.path() + "/" + path);
+            if(!item.hasProperty("uevent")){
+                O_DEBUG("    Missing uevent property");
+                continue;
+            }
+            O_DEBUG("    Found USB!");
+            _usbs->append(item);
+        }
+    }else{
+        O_WARNING("Unable to detect usbs due to unknown device type");
     }
 }
 int _batteryInt(const QString& property){
@@ -78,6 +108,14 @@ int _chargerInt(const QString& property){
     }
     return result;
 }
+bool _usbPropIs(const QString& property, const QString& value){
+    for(SysObject usb : *Oxide::Power::usbs()){
+        if(usb.uevent().value(property, "") == value){
+            return true;
+        }
+    }
+    return false;
+}
 static const QSet<QString> _batteryAlertState {
     "Overheat",
     "Dead",
@@ -103,6 +141,10 @@ namespace Oxide::Power {
     const QList<SysObject>* chargers(){
         _setup();
         return _chargers;
+    }
+    const QList<SysObject>* usbs(){
+        _setup();
+        return _usbs;
     }
     int batteryLevel(){ return _batteryInt("capacity") / _batteries->length(); }
     int batteryTemperature(){ return _batteryIntMax("temp") / 10; }
@@ -156,5 +198,13 @@ namespace Oxide::Power {
     }
     bool batteryHasWarning(){ return batteryWarning().length(); }
     bool batteryHasAlert(){ return batteryAlert().length(); }
-    bool chargerConnected(){ return _chargerInt("online") || batteryCharging(); }
+    bool chargerConnected(){
+        if(batteryCharging() || _chargerInt("online")){
+            return true;
+        }
+        if(deviceSettings.getDeviceType() == DeviceSettings::DeviceType::Unknown){
+            return false;
+        }
+        return _usbPropIs("USB_CHARGER_STATE", "USB_CHARGER_PRESENT");
+    }
 }

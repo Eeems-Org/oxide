@@ -20,3 +20,13 @@ int APIBase::hasPermission(QString permission, const char* sender){
     qDebug() << "app not found, permission granted";
     return true;
 }
+
+int APIBase::getSenderPid() {
+    if (!calledFromDBus()) {
+        return getpid();
+    }
+    return connection().interface()->servicePid(message().service());
+}
+int APIBase::getSenderPgid() { return getpgid(getSenderPid()); }
+
+#include "moc_apibase.cpp"

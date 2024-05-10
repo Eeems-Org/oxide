@@ -7,14 +7,8 @@
 #include <QGuiApplication>
 #include <QScreen>
 
-#include <epframebuffer.h>
 #include <signal.h>
 #include <liboxide.h>
-
-#include "dbusservice_interface.h"
-#include "screenapi_interface.h"
-#include "appsapi_interface.h"
-#include "application_interface.h"
 
 #include "screenprovider.h"
 #include "appitem.h"
@@ -32,9 +26,10 @@ enum WifiState { WifiUnknown, WifiOff, WifiDisconnected, WifiOffline, WifiOnline
 
 class Controller : public QObject {
     Q_OBJECT
+
 public:
     Controller(QObject* parent, ScreenProvider* screenProvider)
-    : QObject(parent), settings(this), applications() {
+    : QObject(parent),applications() {
         blankImage = new QImage(qApp->primaryScreen()->geometry().size(), QImage::Format_Mono);
         this->screenProvider = screenProvider;
         auto bus = QDBusConnection::systemBus();
@@ -72,11 +67,6 @@ public:
         connect(appsApi, &Apps::applicationLaunched, this, &Controller::reload);
         connect(appsApi, &Apps::applicationExited, this, &Controller::reload);
 
-        settings.sync();
-        auto version = settings.value("version", 0).toInt();
-        if(version < CORRUPT_SETTINGS_VERSION){
-            migrate(&settings, version);
-        }
         updateImage();
     }
     ~Controller(){}
@@ -124,7 +114,6 @@ public:
         for(auto item : runningApplications){
             auto path = item.value<QDBusObjectPath>().path();
             Application app(OXIDE_SERVICE, path, bus, this);
-            qDebug() << app.name() << app.hidden();
             if(app.hidden()){
                 continue;
             }
@@ -212,7 +201,7 @@ public:
                     Oxide::Sentry::sentry_span(s, name.toStdString(), "Load image from application", [this, &img, previousApplications, name]{
                         auto path = ((QDBusObjectPath)appsApi->getApplicationPath(name)).path();
                         if(path == "/"){
-                            qWarning() << "Unable to get save screen for" << name;
+                            O_WARNING("Unable to get save screen for" << name);
                             return;
                         }
                         auto bus = QDBusConnection::systemBus();
@@ -220,7 +209,7 @@ public:
                         auto data = app.screenCapture();
                         auto image = QImage::fromData(data, "JPG");
                         if(image.isNull()){
-                            qWarning() << "Image for " << name << " is corrupt, trying next application";
+                            O_WARNING("Image for " << name << " is corrupt, trying next application");
                             return;
                         }
                         img = new QImage(image);
@@ -278,7 +267,6 @@ private slots:
     }
 
 private:
-    QSettings settings;
     General* api;
     Screen* screenApi;
     Apps* appsApi;
@@ -292,15 +280,6 @@ private:
     QObject* getStateControllerUI(){
         stateControllerUI = root->findChild<QObject*>("stateController");
         return stateControllerUI;
-    }
-
-    static void migrate(QSettings* settings, int fromVersion){
-        if(fromVersion != 0){
-            throw "Unknown settings version";
-        }
-        // In the future migrate changes to settings between versions
-        settings->setValue("version", CORRUPT_SETTINGS_VERSION);
-        settings->sync();
     }
 };
 

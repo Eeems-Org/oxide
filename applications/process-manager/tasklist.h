@@ -69,9 +69,8 @@ public:
     }
     void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override{
         Q_UNUSED(column)
-        Q_UNUSED(order)
         emit layoutAboutToBeChanged();
-        std::sort(taskItems.begin(), taskItems.end(), [=](TaskItem* a, TaskItem* b) -> bool {
+        std::sort(taskItems.begin(), taskItems.end(), [this, order](TaskItem* a, TaskItem* b) -> bool {
             if(order == Qt::DescendingOrder){
                 auto temp = a;
                 a = b;
@@ -179,8 +178,7 @@ public:
             qCritical() << "Unable to access /proc";
             return;
         }
-        directory.setFilter( QDir::Dirs | QDir::NoDot | QDir::NoDotDot);
-        auto processes = directory.entryInfoList(QDir::NoFilter, QDir::SortFlag::Name);
+        auto processes = directory.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable);
         // Get all pids we care about
         for(QFileInfo fi : processes){
             std::string pid = fi.baseName().toStdString();

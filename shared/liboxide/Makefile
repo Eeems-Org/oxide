@@ -1,6 +1,6 @@
 DIST=../../web/dist/liboxide
 
-all: dist
+all: prod
 
 html:
 	doxygen Doxyfile
@@ -11,7 +11,7 @@ $(DIST): html
 prod: $(DIST)
 
 dev: clean prod
-	while inotifywait -e close_write *.h *.cpp examples/*.cpp; do $(MAKE) clean prod; done
+	while inotifywait -re close_write,create,delete .; do $(MAKE) clean prod; done
 
 clean:
 	rm -rf $(DIST)

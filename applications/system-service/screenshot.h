@@ -6,8 +6,10 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <liboxide.h>
 
-#include "../../shared/liboxide/liboxide.h"
+// Must be included so that generate_xml.sh will work
+#include "../../shared/liboxide/meta.h"
 
 class Screenshot : public QObject{
     Q_OBJECT
@@ -15,107 +17,24 @@ class Screenshot : public QObject{
     Q_CLASSINFO("D-Bus Interface", OXIDE_SCREENSHOT_INTERFACE)
     Q_PROPERTY(QByteArray blob READ blob WRITE setBlob)
     Q_PROPERTY(QString path READ getPath)
+
 public:
-    Screenshot(QString path, QString filePath, QObject* parent) : QObject(parent), m_path(path), mutex() {
-        m_file = new QFile(filePath);
-        if(!m_file->open(QIODevice::ReadWrite)){
-            qDebug() << "Unable to open screenshot file" << m_file->fileName();
-        }
-    }
-    ~Screenshot(){
-        unregisterPath();
-        if(m_file->isOpen()){
-            m_file->close();
-        }
-        delete m_file;
-    }
-    QString path() { return m_path; }
-    QDBusObjectPath qPath(){ return QDBusObjectPath(path()); }
-    void registerPath(){
-        auto bus = QDBusConnection::systemBus();
-        bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
-        if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
-            qDebug() << "Registered" << path() << OXIDE_APPLICATION_INTERFACE;
-        }else{
-            qDebug() << "Failed to register" << path();
-        }
-    }
-    void unregisterPath(){
-        auto bus = QDBusConnection::systemBus();
-        if(bus.objectRegisteredAt(path()) != nullptr){
-            qDebug() << "Unregistered" << path();
-            bus.unregisterObject(path());
-        }
-    }
-    QByteArray blob(){
-        if(!hasPermission("screen")){
-            return QByteArray();
-        }
-        if(!m_file->exists() && !m_file->isOpen()){
-            emit removed();
-            return QByteArray();
-        }
-        mutex.lock();
-        if(!m_file->isOpen() && !m_file->open(QIODevice::ReadWrite)){
-            qDebug() << "Unable to open screenshot file" << m_file->fileName();
-            mutex.unlock();
-            return QByteArray();
-        }
-        m_file->seek(0);
-        auto data = m_file->readAll();
-        mutex.unlock();
-        return data;
-    }
-    void setBlob(QByteArray blob){
-        if(!hasPermission("screen")){
-            return;
-        }
-        mutex.lock();
-        if(!m_file->isOpen() && !m_file->open(QIODevice::ReadWrite)){
-            qDebug() << "Unable to open screenshot file" << m_file->fileName();
-            mutex.unlock();
-            return;
-        }
-        m_file->seek(0);
-        m_file->resize(blob.size());
-        m_file->write(blob);
-        m_file->flush();
-        mutex.unlock();
-        emit modified();
-    }
-    QString getPath(){
-        if(!hasPermission("screen")){
-            return "";
-        }
-        if(!m_file->exists()){
-            emit removed();
-            return "";
-        }
-        return m_file->fileName();
-    }
+    Screenshot(QString path, QString filePath, QObject* parent);
+    ~Screenshot();
+    QString path();
+    QDBusObjectPath qPath();
+    void registerPath();
+    void unregisterPath();
+    QByteArray blob();
+    void setBlob(QByteArray blob);
+    QString getPath();
 
 signals:
     void modified();
     void removed();
 
 public slots:
-    void remove(){
-        if(!hasPermission("screen")){
-            return;
-        }
-        mutex.lock();
-        if(m_file->exists() && !m_file->remove()){
-            qDebug() << "Failed to remove screenshot" << path();
-            mutex.unlock();
-            return;
-        }
-        if(m_file->isOpen()){
-            m_file->close();
-        }
-        mutex.unlock();
-        qDebug() << "Removed screenshot" << path();
-        emit removed();
-    }
+    void remove();
 
 private:
     QString m_path;

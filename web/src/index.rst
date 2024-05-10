@@ -2,6 +2,11 @@
 Home
 ====
 
+.. raw:: html
+
+   <img src="_static/images/logo.png" alt="logo" class="logo">
+   <br/>
+
 Oxide is a `desktop environment <https://en.wikipedia.org/wiki/Desktop_environment>`_ for the `reMarkable tablet <https://remarkable.com/>`_.
 
 Features
@@ -22,7 +27,7 @@ Install Oxide
 .. raw:: html
 
   <div class="warning">
-    ⚠️ <b>Warning:</b> Since this changes what application is launched on boot, you'll want to make sure you have your SSH password written down, and it's recommended to <a href="https://remarkablewiki.com/tech/ssh">setup an SSH key</a>.
+    ⚠️ <b>Warning:</b> Since this changes what application is launched on boot, you'll want to make sure you have your SSH password written down, and it's recommended to <a href="https://web.archive.org/web/20230616024159/https://remarkablewiki.com/tech/ssh">setup an SSH key</a>. This way you wont lose access to SSH if something goes wrong and your device soft-bricks.
   </div>
   <p>
     Oxide is available in
@@ -42,4 +47,4 @@ Uninstall Oxide
 
 1. ``systemctl disable --now tarnish``
 2. ``systemctl enable --now xochitl``
-3. ``opkg remove erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry``
+3. ``opkg remove --force-removal-of-dependent-packages liboxide``

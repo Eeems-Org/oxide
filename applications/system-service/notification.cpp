@@ -3,6 +3,7 @@
 #include "notification.h"
 #include "notificationapi.h"
 #include "appsapi.h"
+#include "screenapi.h"
 
 Notification::Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
  : QObject(parent),
@@ -22,6 +23,82 @@ Notification::Notification(const QString& path, const QString& identifier, const
     }
 }
 
+Notification::~Notification(){
+    unregisterPath();
+}
+
+QString Notification::path() { return m_path; }
+
+QDBusObjectPath Notification::qPath(){ return QDBusObjectPath(path()); }
+
+void Notification::registerPath(){
+    auto bus = QDBusConnection::systemBus();
+    bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
+    if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
+        qDebug() << "Registered" << path() << OXIDE_APPLICATION_INTERFACE;
+    }else{
+        qDebug() << "Failed to register" << path();
+    }
+}
+
+void Notification::unregisterPath(){
+    auto bus = QDBusConnection::systemBus();
+    if(bus.objectRegisteredAt(path()) != nullptr){
+        qDebug() << "Unregistered" << path();
+        bus.unregisterObject(path());
+    }
+}
+
+QString Notification::identifier(){
+    if(!hasPermission("notification")){
+        return "";
+    }
+    return m_identifier;
+}
+
+int Notification::created(){ return m_created; }
+
+QString Notification::application(){
+    if(!hasPermission("notification")){
+        return "";
+    }
+    return m_application;
+}
+
+void Notification::setApplication(QString application){
+    if(!hasPermission("notification")){
+        return;
+    }
+    m_application = application;
+    QVariantMap result;
+    result.insert("application", m_application);
+    emit changed(result);
+}
+
+QString Notification::text(){
+    if(!hasPermission("notification")){
+        return "";
+    }
+    return m_text;
+}
+
+void Notification::setText(QString text){
+    if(!hasPermission("notification")){
+        return;
+    }
+    m_text = text;
+    QVariantMap result;
+    result.insert("text", m_text);
+    emit changed(result);
+}
+
+QString Notification::icon(){
+    if(!hasPermission("notification")){
+        return "";
+    }
+    return m_icon;
+}
+
 void Notification::display(){
     if(!hasPermission("notification")){
         return;
@@ -32,7 +109,7 @@ void Notification::display(){
         return;
     }
     notificationAPI->lock();
-    dispatchToMainThread([=]{
+    Oxide::dispatchToMainThread([this]{
         qDebug() << "Displaying notification" << identifier();
         auto path = appsAPI->currentApplicationNoSecurityCheck();
         Application* resumeApp = nullptr;
@@ -52,82 +129,14 @@ void Notification::remove(){
     emit removed();
 }
 
-void Notification::dispatchToMainThread(std::function<void()> callback){
-    if(this->thread() == qApp->thread()){
-        callback();
+void Notification::click(){
+    if(!hasPermission("notification")){
         return;
     }
-    // any thread
-    QTimer* timer = new QTimer();
-    timer->moveToThread(qApp->thread());
-    timer->setSingleShot(true);
-    QObject::connect(timer, &QTimer::timeout, [=](){
-        // main thread
-        callback();
-        timer->deleteLater();
-    });
-    QMetaObject::invokeMethod(timer, "start", Qt::BlockingQueuedConnection, Q_ARG(int, 0));
+    emit clicked();
 }
-void Notification::paintNotification(Application* resumeApp){
-    auto frameBuffer = EPFrameBuffer::framebuffer();
-    qDebug() << "Waiting for other painting to finish...";
-    while(frameBuffer->paintingActive()){
-        EPFrameBuffer::waitForLastUpdate();
-    }
-    qDebug() << "Painting notification" << identifier();
-    screenBackup = frameBuffer->copy();
-    qDebug() << "Painting to framebuffer...";
-    QPainter painter(frameBuffer);
-    auto size = frameBuffer->size();
-    auto fm = painter.fontMetrics();
-    auto padding = 10;
-    auto radius = 10;
-    QImage icon(m_icon);
-    auto iconSize = icon.isNull() ? 0 : 50;
-    auto width = fm.horizontalAdvance(text()) + iconSize + (padding * 3);
-    auto height = max(fm.height(), iconSize) + (padding * 2);
-    auto left = size.width() - width;
-    auto top = size.height() - height;
-    updateRect = QRect(left, top, width, height);
-    painter.fillRect(updateRect, Qt::black);
-    painter.setPen(Qt::black);
-    painter.drawRoundedRect(updateRect, radius, radius);
-    painter.setPen(Qt::white);
-    QRect textRect(left + padding, top + padding, width - iconSize - (padding * 2), height - padding);
-    painter.drawText(textRect, Qt::AlignCenter, text());
-    painter.end();
-    qDebug() << "Updating screen " << updateRect << "...";
-    EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
-    if(!icon.isNull()){
-        QPainter painter2(frameBuffer);
-        QRect iconRect(size.width() - iconSize - padding, top + padding, iconSize, iconSize);
-        painter2.fillRect(iconRect, Qt::white);
-        painter2.drawImage(iconRect, icon);
-        painter2.end();
-        EPFrameBuffer::sendUpdate(iconRect, EPFrameBuffer::Mono, EPFrameBuffer::PartialUpdate, true);
-    }
-    EPFrameBuffer::waitForLastUpdate();
-    qDebug() << "Painted notification" << identifier();
-    emit displayed();
-    QTimer::singleShot(2000, [this, resumeApp]{
-        QPainter painter(EPFrameBuffer::framebuffer());
-        painter.drawImage(updateRect, screenBackup, updateRect);
-        painter.end();
-        EPFrameBuffer::sendUpdate(updateRect, EPFrameBuffer::Mono, EPFrameBuffer::FullUpdate, true);
-        qDebug() << "Finished displaying notification" << identifier();
-        EPFrameBuffer::waitForLastUpdate();
-        if(!notificationAPI->notificationDisplayQueue.isEmpty()){
-            dispatchToMainThread([resumeApp] {
-                notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification(resumeApp);
-            });
-            return;
-        }
-        if(resumeApp != nullptr){
-            resumeApp->uninterruptApplication();
-        }
-        notificationAPI->unlock();
-    });
-}
+
+
 
 void Notification::setIcon(QString icon){
     if(!hasPermission("notification")){
@@ -145,4 +154,59 @@ void Notification::setIcon(QString icon){
     emit changed(result);
 }
 
+QString Notification::owner(){
+    if(!hasPermission("notification")){
+        return "";
+    }
+    return m_owner;
+}
+
+void Notification::setOwner(QString owner){
+    if(!hasPermission("notifications")){
+        return;
+    }
+    m_owner = owner;
+    QVariantMap result;
+    result.insert("owner", m_owner);
+    emit changed(result);
+}
+
 bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }
+
+void Notification::paintNotification(Application *resumeApp) {
+    qDebug() << "Painting notification" << identifier();
+    dispatchToMainThread([this] { screenBackup = screenAPI->copy(); });
+    updateRect = notificationAPI->paintNotification(text(), m_icon);
+    qDebug() << "Painted notification" << identifier();
+    emit displayed();
+    QTimer::singleShot(2000, [this, resumeApp] {
+        dispatchToMainThread([this] {
+            auto frameBuffer = EPFrameBuffer::framebuffer();
+            QPainter painter(frameBuffer);
+            painter.drawImage(updateRect, screenBackup, updateRect);
+            painter.end();
+            EPFrameBuffer::sendUpdate(
+                updateRect,
+                EPFrameBuffer::Mono,
+                EPFrameBuffer::FullUpdate,
+                true
+            );
+            qDebug() << "Finished displaying notification" << identifier();
+            EPFrameBuffer::waitForLastUpdate();
+        });
+        if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
+            Oxide::dispatchToMainThread([resumeApp] {
+                notificationAPI
+                    ->notificationDisplayQueue
+                    .takeFirst()
+                    ->paintNotification(resumeApp);
+            });
+            return;
+        }
+        if (resumeApp != nullptr) {
+            resumeApp->uninterruptApplication();
+        }
+        notificationAPI->unlock();
+    });
+}
+#include "moc_notification.cpp"

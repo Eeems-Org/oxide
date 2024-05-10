@@ -2,6 +2,11 @@
 #include "bss.h"
 #include "wifiapi.h"
 
+Wlan::Wlan(QString path, QObject* parent) : QObject(parent), SysObject(path), m_blobs(), m_iface(){
+    m_iface = QFileInfo(path).fileName();
+    m_interface = nullptr;
+}
+
 void Wlan::setInterface(QString path){
     if(m_interface != nullptr && m_interface->path() == path){
         return;
@@ -20,6 +25,102 @@ void Wlan::setInterface(QString path){
     connect(m_interface, &Interface::NetworkSelected, this, &Wlan::onNetworkSelected, Qt::QueuedConnection);
     connect(m_interface, &Interface::PropertiesChanged, this, &Wlan::onPropertiesChanged, Qt::QueuedConnection);
     connect(m_interface, &Interface::ScanDone, this, &Wlan::onScanDone, Qt::QueuedConnection);
+}
+
+void Wlan::removeInterface(){
+    if(m_interface != nullptr){
+        m_interface->deleteLater();
+        m_interface = nullptr;
+    }
+}
+
+QString Wlan::iface() { return m_iface; }
+
+bool Wlan::up() { return !system(("/sbin/ifconfig " + iface() + " up").toStdString().c_str()); }
+
+bool Wlan::down() { return !system(("/sbin/ifconfig " + iface() + " down").toStdString().c_str()); }
+
+bool Wlan::isUp(){ return !system(("/sbin/ip addr show " + iface() + " | /bin/grep UP > /dev/null").toStdString().c_str()); }
+
+Interface* Wlan::interface() { return m_interface; }
+
+QSet<QString> Wlan::blobs(){ return m_blobs; }
+
+QString Wlan::operstate(){
+    if(hasProperty("operstate")){
+        return QString(strProperty("operstate").c_str());
+    }
+    return "";
+}
+
+bool Wlan::pingIP(std::string ip, const char* port) {
+    auto process = new QProcess();
+    process->setProgram("/bin/bash");
+    std::string cmd("{ echo -n > /dev/tcp/" + ip.substr(0, ip.length() - 1) + "/" + port + "; } > /dev/null 2>&1");
+    process->setArguments(QStringList() << "-c" << cmd.c_str());
+    process->start();
+    if(!process->waitForFinished(100)){
+        process->kill();
+        return false;
+    }
+    return !process->exitCode();
+}
+
+bool Wlan::isConnected(){
+    auto ip = exec("/sbin/ip r | /bin/grep " + iface() + " | /bin/grep default | /usr/bin/awk '{print $3}'");
+    return ip != "" && (pingIP(ip, "53") || pingIP(ip, "80"));
+}
+
+int Wlan::link(){
+    QDBusPendingReply<QVariant> res = m_interface->SignalPoll();
+    res.waitForFinished();
+    if(!res.isError()){
+        auto props = qdbus_cast<QVariantMap>(res.value());
+        auto result = props["linkspeed"].toInt();
+        if(result < 0){
+            return 0;
+        }
+        return result;
+    }
+    O_WARNING("SignalPoll error: " << res.error());
+    auto out = exec("/bin/grep " + iface() + " /proc/net/wireless | /usr/bin/awk '{print $3}'");
+    if(QString(out.c_str()).isEmpty()){
+        return 0;
+    }
+    try {
+        return std::stoi(out);
+    }
+    catch (const std::invalid_argument& e) {
+        qDebug() << "link failed: " << out.c_str();
+        return 0;
+    }
+    return -100;
+}
+
+signed int Wlan::rssi(){
+    QDBusPendingReply<QVariant> res = m_interface->SignalPoll();
+    res.waitForFinished();
+    if(!res.isError()){
+        auto props = qdbus_cast<QVariantMap>(res.value());
+        auto result = props["rssi"].toInt();
+        if(result >= 0){
+            return -100;
+        }
+        return result;
+    }
+    O_WARNING("SignalPoll error: " << res.error());
+    auto out = exec("/bin/grep " + iface() + " /proc/net/wireless | /usr/bin/awk '{print $4}'");
+    if(QString(out.c_str()).isEmpty()){
+        return 0;
+    }
+    try {
+        return std::stoi(out);
+    }
+    catch (const std::invalid_argument& e) {
+        qDebug() << "signal failed: " << out.c_str();
+        return 0;
+    }
+    return -100;
 }
 
 void Wlan::onBSSAdded(const QDBusObjectPath& path, const QVariantMap& properties){
@@ -65,3 +166,5 @@ std::string Wlan::exec(QString cmd) {
     }
     return result;
 }
+
+#include "moc_wlan.cpp"

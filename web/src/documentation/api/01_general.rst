@@ -3,8 +3,8 @@ General API
 ===========
 
 The general API is the main entrypoint into the rest of the API. It is
-unavailable for scripting through ``rot``, as ``rot`` abstracts all
-usage of the API away.
+unavailable for scripting through :ref:`rot`, as :ref:`rot` abstracts
+all usage of the API away.
 
 +----------------+-------------------------+-------------------------+
 | Name           | Specification           | Description             |
@@ -64,8 +64,8 @@ usage of the API away.
 
 .. _example-usage-1:
 
-Example Usage:
-~~~~~~~~~~~~~~
+Example Usage
+~~~~~~~~~~~~~
 
 .. code:: cpp
 

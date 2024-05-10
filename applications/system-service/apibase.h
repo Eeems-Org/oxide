@@ -7,9 +7,13 @@
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
 
+#include <liboxide.h>
 #include <unistd.h>
 
-#include "../../shared/liboxide/liboxide.h"
+#ifdef Q_MOC_RUN
+#include "../../shared/liboxide/meta.h"
+#endif
+
 
 class APIBase : public QObject, protected QDBusContext {
     Q_OBJECT
@@ -19,14 +23,9 @@ public:
     virtual void setEnabled(bool enabled) = 0;
     int hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 
-protected:
-    int getSenderPid(){
-        if(!calledFromDBus()){
-            return getpid();
-        }
-        return connection().interface()->servicePid(message().service());
-    }
-    int getSenderPgid(){ return getpgid(getSenderPid()); }
+  protected:
+    int getSenderPid();
+    int getSenderPgid();
 };
 
 #endif // APIBASE_H

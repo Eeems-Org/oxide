@@ -2,14 +2,7 @@
 #define WIFINETWORK_H
 
 #include <QAbstractListModel>
-
-#include "wifiapi_interface.h"
-#include "network_interface.h"
-#include "bss_interface.h"
-
-#ifndef OXIDE_SERVICE
-#define OXIDE_SERVICE "codes.eeems.oxide1"
-#endif
+#include <liboxide/dbus.h>
 
 using namespace codes::eeems::oxide1;
 
@@ -20,6 +13,7 @@ class WifiNetwork : public QObject {
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
     Q_PROPERTY(bool available READ available NOTIFY availableChanged)
     Q_PROPERTY(bool known READ known NOTIFY knownChanged)
+
 public:
     WifiNetwork(Network* network, Wifi* api, QObject* parent)
     : QObject(parent),
@@ -137,6 +131,7 @@ class WifiNetworkList : public QAbstractListModel
 {
     Q_OBJECT
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged);
+
 public:
     explicit WifiNetworkList() : QAbstractListModel(nullptr), networks() {}
 
@@ -331,7 +326,7 @@ public:
         for(auto network : networks){
             network->setAPI(api);
         }
-        connect(api, &Wifi::scanningChanged, this, [=](bool scanning){
+        connect(api, &Wifi::scanningChanged, this, [this](bool scanning){
             emit scanningChanged(scanning);
         });
     }

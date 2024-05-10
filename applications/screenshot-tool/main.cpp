@@ -6,13 +6,6 @@
 #include <signal.h>
 #include <liboxide.h>
 
-#include "dbusservice_interface.h"
-#include "systemapi_interface.h"
-#include "screenapi_interface.h"
-#include "screenshot_interface.h"
-#include "notificationapi_interface.h"
-#include "notification_interface.h"
-
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
 
@@ -53,7 +46,7 @@ int main(int argc, char *argv[]){
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("fret");
-    app.setApplicationVersion(OXIDE_INTERFACE_VERSION);
+    app.setApplicationVersion(APP_VERSION);
     auto bus = QDBusConnection::systemBus();
     qDebug() << "Waiting for tarnish to start up...";
     while(!bus.interface()->registeredServiceNames().value().contains(OXIDE_SERVICE)){

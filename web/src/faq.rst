@@ -32,13 +32,23 @@ What kind of information is collected by telemetry?
 How can I disable the telemetry?
 ================================
 
+As of 2.6 you can disable telemetry with the following commands:
+
 .. code:: bash
 
-  rot settings set telemetry false
-  rot settings set crashReport false
-  rot settings set applicationUsage false
+  xdg-settings set telemetry false
+  xdg-settings set crashReport false
+  xdg-settings set applicationUsage false
 
-Or you can compile the applications manually without the ``sentry`` feature enabled.
+On 2.5 or earlier you can use the following commands to disable telemetry:
+
+.. code:: bash
+
+  rot settings set telemetry 'bool:false'
+  rot settings set crashReport 'bool:false'
+  rot settings set applicationUsage 'bool:false'
+
+Alternatively, you can compile the applications manually without the ``sentry`` feature enabled.
 
 How can I get the time to display in my timezone?
 =================================================
@@ -63,8 +73,25 @@ Oxide (and most other applications) on the reMarkable 2 requires
 How do I change my pin after I've set it?
 =========================================
 
-There is no way to currently trigger a pin change, but you can wipe your current pin, and trigger
-the pin setting dialog by doing the following:
+As of 2.6 you can change your pin to any 4 numbers with the following command:
+
+.. code:: bash
+
+  xdg-settings set pin <new-pin>
+
+For example:
+
+.. code:: bash
+
+  xdg-settings set pin '0123'
+
+As of 2.6 you can clear your pin to skip the lock screen with the following command:
+
+.. code:: bash
+
+  xdg-settings set pin ''
+
+On 2.5 or earlier you can use the following commands to manually clear your pin:
 
 .. code:: bash
 
@@ -72,6 +99,7 @@ the pin setting dialog by doing the following:
   rm /home/root/.config/Eeems/decay.conf
   systemctl start tarnish
 
+You will then be prompted to enter a new pin
 
 Not all of my applications are listed?
 ======================================
@@ -80,6 +108,12 @@ Oxide doesn't import draft applications automatically, you can import them by us
 top left of the launcher. If your application is still not listed, you may need to review the device
 logs to determine why it's failing to load. If an application is configured in draft to pass arguments
 in the ``call=`` line, it will fail to import as this is not supported by Oxide.
+
+You can check for errors with your application registration files with the following command:
+
+.. code:: bash
+
+  desktop-file-validate /opt/usr/share/applications/*.oxide
 
 How do I review my device logs?
 ===============================
@@ -92,6 +126,19 @@ for Oxide's programs, and any application you run through Oxide, you can run the
 
   journalctl -eau tarnish
 
+As of Oxide 2.5, you can now get logs for specific applications with the following, where
+``codes.eeems.oxide`` is the name of the application as it's been registered.
+
+.. code:: bash
+
+  journalctl -eat codes.eeems.oxide
+
+To get logs for just the :ref:`tarnish`, you can use the following command:
+
+.. code:: bash
+
+  journalctl -eat tarnish
+
 Where are the configuration files?
 ==================================
 
@@ -102,3 +149,19 @@ The primary configuration file can be found in one of the following locations:
   3. ``/home/root/.config/oxide.conf``
 
 Other configuration files can be found in ``/home/root/.config/Eeems/``.
+
+Can I disable a specific gesture?
+=================================
+
+Yes, you can disable specific gestures with the following commands:
+
+.. code:: bash
+
+  # Disable swipe from left edge of the screen
+  rot system call setSwipeEnabled 'int:1' 'bool:false'
+  # Disable swipe from right edge of the screen
+  rot system call setSwipeEnabled 'int:2' 'bool:false'
+  # Disable swipe from bottom of the screen
+  rot system call setSwipeEnabled 'int:3' 'bool:false'
+  # Disable swipe from top of the screen
+  rot system call setSwipeEnabled 'int:4' 'bool:false'
