@@ -27,7 +27,7 @@ Install Oxide
 .. raw:: html
 
   <div class="warning">
-    ⚠️ <b>Warning:</b> Since this changes what application is launched on boot, you'll want to make sure you have your SSH password written down, and it's recommended to <a href="https://web.archive.org/web/20230616024159/https://remarkablewiki.com/tech/ssh">setup an SSH key</a>.
+    ⚠️ <b>Warning:</b> Since this changes what application is launched on boot, you'll want to make sure you have your SSH password written down, and it's recommended to <a href="https://web.archive.org/web/20230616024159/https://remarkablewiki.com/tech/ssh">setup an SSH key</a>. This way you wont lose access to SSH if something goes wrong and your device soft-bricks.
   </div>
   <p>
     Oxide is available in
