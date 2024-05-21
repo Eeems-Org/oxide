@@ -18,6 +18,8 @@ sha256sums=(SKIP)
 build() {
     find . -name "*.pro" -type f -print0 \
         | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
+    find . -name "*.pri" -type f -print0 \
+        | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
     CMAKE_TOOLCHAIN_FILE="/usr/share/cmake/$CHOST.cmake" make FEATURES=sentry release
 }
 
