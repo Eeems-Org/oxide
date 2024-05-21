@@ -4,11 +4,11 @@ runs:
   using: composite
   steps:
     - name: Setup Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: '3.8'
     - name: Cache Python environment
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: cache-python
       with:
         path: web/.venv
