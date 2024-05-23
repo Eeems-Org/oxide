@@ -30,6 +30,7 @@ WifiAPI::WifiAPI(QObject* parent)
                 Wlan* item = new Wlan(dir.path() + "/" + path, this);
                 if(!item->hasDirectory("wireless")){
                     qDebug() << "    Not a wireless device";
+                    item->deleteLater();
                     continue;
                 }
                 qDebug() << "    Wireless device found!";

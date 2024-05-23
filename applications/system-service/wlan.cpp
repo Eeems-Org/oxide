@@ -40,7 +40,7 @@ bool Wlan::up() { return !system(("/sbin/ifconfig " + iface() + " up").toStdStri
 
 bool Wlan::down() { return !system(("/sbin/ifconfig " + iface() + " down").toStdString().c_str()); }
 
-bool Wlan::isUp(){ return !system(("/sbin/ip addr show " + iface() + " | /bin/grep UP > /dev/null").toStdString().c_str()); }
+bool Wlan::isUp(){ return !system(("/sbin/ip addr show " + iface() + " 2>&1 | /bin/grep UP > /dev/null").toStdString().c_str()); }
 
 Interface* Wlan::interface() { return m_interface; }
 
