@@ -117,7 +117,6 @@ target.path = /opt/lib
 INSTALLS += target
 
 linux-oe-g++{
-    DEFINES += EPAPER
     INCLUDEPATH += ../../shared/mxcfb
     include(../../qmake/epaper.pri)
 }

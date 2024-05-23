@@ -4,3 +4,7 @@ contains(DEFINES, LIBBLIGHT_PRIVATE){
     LIBS += -L$$OUT_PWD/../../shared/libblight -lblight
 }
 INCLUDEPATH += $$OUT_PWD/../../shared/libblight/include
+
+linux-oe-g++{
+    DEFINES += EPAPER
+}

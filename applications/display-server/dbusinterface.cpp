@@ -262,6 +262,7 @@ void DbusInterface::setFlags(QString identifier, const QStringList& flags, QDBus
     auto connection = getConnection(identifier);
     if(connection != nullptr){
         for(auto& flag : flags){
+            O_DEBUG("Flag" << flag << "set for connection" << identifier);
             connection->set(flag);
         }
         sortZ();

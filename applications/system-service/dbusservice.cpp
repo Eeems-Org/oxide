@@ -238,8 +238,6 @@ void DBusService::startup(QQmlApplicationEngine* engine){
 #endif
     sd_notify(0, "STATUS=startup");
     m_engine = engine;
-    auto compositor = getCompositorDBus();
-    compositor->setFlags(QString("connection/%1").arg(::getpid()), QStringList() << "system");
     notificationAPI->startup();
     appsAPI->startup();
     sd_notify(0, "STATUS=running");

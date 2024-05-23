@@ -168,6 +168,8 @@ int main(int argc, char* argv[]){
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{ remove(pidPath); });
 
     dbusService;
+    auto compositor = getCompositorDBus();
+    compositor->setFlags(QString("connection/%1").arg(::getpid()), QStringList() << "system");
     Blight::shared_buf_t buffer = createBuffer();
     if(buffer != nullptr){
         auto size = getFrameBuffer()->size();
