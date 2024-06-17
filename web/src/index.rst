@@ -38,13 +38,10 @@ Install Oxide
   </p>
 
 1. ``opkg install oxide``
-2. ``systemctl disable --now xochitl``
-3. If you are installing on a reMarkable 2: ``systemctl enable --now rm2fb``
-4. ``systemctl enable --now tarnish``
+2. ``launcherctl switch-launcher --start oxide``
 
 Uninstall Oxide
 ===============
 
-1. ``systemctl disable --now tarnish``
-2. ``systemctl enable --now xochitl``
+1. ``launcherctl switch-launcher --start xochitl``
 3. ``opkg remove --force-removal-of-dependent-packages liboxide``
