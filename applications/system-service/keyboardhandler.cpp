@@ -619,7 +619,7 @@ KeyboardHandler::~KeyboardHandler(){
 }
 
 void KeyboardHandler::flood(){
-    qDebug() << "Flooding";
+    O_DEBUG("Flooding");
     for(int i = 0; i < 512 * 8; i+=4){
         writeEvent(EV_KEY, KEY_ROTATE_LOCK_TOGGLE, 1);
         writeEvent(EV_SYN, SYN_REPORT, 0);

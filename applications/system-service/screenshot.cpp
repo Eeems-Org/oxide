@@ -4,7 +4,7 @@
 Screenshot::Screenshot(QString path, QString filePath, QObject* parent) : QObject(parent), m_path(path), mutex() {
     m_file = new QFile(filePath);
     if(!m_file->open(QIODevice::ReadWrite)){
-        qDebug() << "Unable to open screenshot file" << m_file->fileName();
+        O_WARNING("Unable to open screenshot file" << m_file->fileName());
     }
 }
 
@@ -24,16 +24,16 @@ void Screenshot::registerPath(){
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
-        qDebug() << "Registered" << path() << OXIDE_APPLICATION_INTERFACE;
+        O_INFO("Registered" << path() << OXIDE_APPLICATION_INTERFACE);
     }else{
-        qDebug() << "Failed to register" << path();
+        O_WARNING("Failed to register" << path());
     }
 }
 
 void Screenshot::unregisterPath(){
     auto bus = QDBusConnection::systemBus();
     if(bus.objectRegisteredAt(path()) != nullptr){
-        qDebug() << "Unregistered" << path();
+        O_INFO("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }
@@ -48,7 +48,7 @@ QByteArray Screenshot::blob(){
     }
     mutex.lock();
     if(!m_file->isOpen() && !m_file->open(QIODevice::ReadWrite)){
-        qDebug() << "Unable to open screenshot file" << m_file->fileName();
+        O_WARNING("Unable to open screenshot file" << m_file->fileName());
         mutex.unlock();
         return QByteArray();
     }
@@ -64,7 +64,7 @@ void Screenshot::setBlob(QByteArray blob){
     }
     mutex.lock();
     if(!m_file->isOpen() && !m_file->open(QIODevice::ReadWrite)){
-        qDebug() << "Unable to open screenshot file" << m_file->fileName();
+        O_WARNING("Unable to open screenshot file" << m_file->fileName());
         mutex.unlock();
         return;
     }
@@ -93,7 +93,7 @@ void Screenshot::remove(){
     }
     mutex.lock();
     if(m_file->exists() && !m_file->remove()){
-        qDebug() << "Failed to remove screenshot" << path();
+        O_INFO("Failed to remove screenshot" << path());
         mutex.unlock();
         return;
     }
@@ -101,7 +101,7 @@ void Screenshot::remove(){
         m_file->close();
     }
     mutex.unlock();
-    qDebug() << "Removed screenshot" << path();
+    O_INFO("Removed screenshot" << path());
     emit removed();
 }
 
