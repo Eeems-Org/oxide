@@ -95,3 +95,25 @@ $(BUILD)/package/oxide.tar.gz: $(BUILD)/package/package $(PKG_OBJ)
 		tests \
 		oxide.pro \
 		Makefile
+
+SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry)
+SRC_FILES += package
+
+lint:
+	shfmt \
+		-d\
+		-s \
+		-i 4 \
+		-bn \
+		-sr \
+		$(SRC_FILES)
+
+format:
+	shfmt \
+		-l \
+		-w \
+		-s \
+		-i 4 \
+		-bn \
+		-sr \
+		$(SRC_FILES)
