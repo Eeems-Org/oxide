@@ -50,20 +50,6 @@ On 2.5 or earlier you can use the following commands to disable telemetry:
 
 Alternatively, you can compile the applications manually without the ``sentry`` feature enabled.
 
-How can I get the time to display in my timezone?
-=================================================
-
-You can use `timedatectl <https://www.freedesktop.org/software/systemd/man/timedatectl.html>`_
-to change your timezone. You can see available timezones by looking into ``/usr/share/zoneinfo/``.
-Do not trust the output of ``timedatectl get-timezones`` as it reports more timezones than are
-actually installed on the device by default. You can install more timezones on the device through
-`Toltec <https://toltec-dev.org>`_ by installing one of the ``zoneinfo-*`` packages.
-
-.. code:: bash
-
-  timedatectl set-timezone America/Denver
-
-
 I'm installing without `Toltec <https://toltec-dev.org>`_ and nothing displays?
 ===============================================================================
 

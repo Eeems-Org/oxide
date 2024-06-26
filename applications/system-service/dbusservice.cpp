@@ -12,14 +12,14 @@ DBusService* DBusService::singleton(){
     static DBusService* instance;
     if(instance == nullptr){
         qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
-        qDebug() << "Creating DBusService instance";
+        O_INFO("Creating DBusService instance");
         instance = new DBusService(qApp);
         connect(qApp, &QGuiApplication::aboutToQuit, [=]{
             if(instance == nullptr){
                 return;
             }
             emit instance->aboutToQuit();
-            qDebug() << "Killing dbus service ";
+            O_INFO("Killing dbus service");
             delete instance;
             qApp->processEvents();
             instance = nullptr;
@@ -32,7 +32,7 @@ DBusService* DBusService::singleton(){
             qFatal("Failed to connect to system bus.");
         }
         QDBusConnectionInterface* interface = bus.interface();
-        qDebug() << "Registering service...";
+        O_INFO("Registering service...");
         auto reply = interface->registerService(OXIDE_SERVICE);
         bus.registerService(OXIDE_SERVICE);
         if(!reply.isValid()){
@@ -42,7 +42,7 @@ DBusService* DBusService::singleton(){
 #endif
             qFatal("Unable to register service: %s", ex.message().toStdString().c_str());
         }
-        qDebug() << "Registering object...";
+        O_DEBUG("Registering object...");
         if(!bus.registerObject(OXIDE_SERVICE_PATH, instance, QDBusConnection::ExportAllContents)){
 #ifdef SENTRY
             sentry_breadcrumb("dbusservice", "Unable to register interface", "error");
@@ -51,7 +51,7 @@ DBusService* DBusService::singleton(){
         }
         connect(bus.interface(), SIGNAL(serviceOwnerChanged(QString,QString,QString)),
                 instance, SLOT(serviceOwnerChanged(QString,QString,QString)));
-        qDebug() << "Registered";
+        O_DEBUG("Registered");
     }
     return instance;
 }
@@ -130,7 +130,7 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(){
                 }
                 auto currentApplication = appsAPI->getApplication(appsAPI->currentApplicationNoSecurityCheck());
                 if(currentApplication != nullptr && currentApplication->path() == appsAPI->lockscreenApplication().path()){
-                    qDebug() << "Left Action cancelled. On lockscreen";
+                    O_DEBUG("Left Action cancelled. On lockscreen");
                     return;
                 }
                 if(!appsAPI->previousApplicationNoSecurityCheck()){
@@ -160,7 +160,7 @@ DBusService::~DBusService(){
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "Disconnecting APIs", "info");
 #endif
-    qDebug() << "Removing all APIs";
+    O_INFO("Removing all APIs");
     auto bus = QDBusConnection::systemBus();
     for(auto api : apis){
         api.instance->setEnabled(false);
@@ -202,7 +202,7 @@ QDBusObjectPath DBusService::requestAPI(QString name, QDBusMessage message) {
         bus.registerObject(api.path, api.instance, QDBusConnection::ExportAllContents);
     }
     if(!api.dependants->size()){
-        qDebug() << "Registering " << api.path;
+        O_INFO("Registering " << api.path);
         api.instance->setEnabled(true);
         emit apiAvailable(QDBusObjectPath(api.path));
     }
@@ -221,7 +221,7 @@ void DBusService::releaseAPI(QString name, QDBusMessage message) {
     auto client = message.service();
     api.dependants->removeAll(client);
     if(!api.dependants->size()){
-        qDebug() << "Unregistering " << api.path;
+        O_INFO("Unregistering " << api.path);
         api.instance->setEnabled(false);
         QDBusConnection::systemBus().unregisterObject(api.path, QDBusConnection::UnregisterNode);
         emit apiUnavailable(QDBusObjectPath(api.path));
@@ -257,7 +257,7 @@ void DBusService::serviceOwnerChanged(const QString& name, const QString& oldOwn
             auto api = apis[key];
             api.dependants->removeAll(name);
             if(!api.dependants->size() && bus.objectRegisteredAt(api.path) != nullptr){
-                qDebug() << "Automatically unregistering " << api.path;
+                O_INFO("Automatically unregistering " << api.path);
                 api.instance->setEnabled(false);
                 bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);
                 apiUnavailable(QDBusObjectPath(api.path));

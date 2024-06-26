@@ -29,6 +29,12 @@
  * \param msg Warning message to log
  */
 #define O_WARNING(msg) if(Oxide::debugEnabled()){ qWarning() << msg; }
+/*!
+ * \def O_INFO(msg)
+ * \brief Log an informational message
+ * \param msg Informational message to log
+ */
+#define O_INFO(msg) qInfo() << msg;
 
 namespace Oxide {
     /*!

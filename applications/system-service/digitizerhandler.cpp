@@ -8,7 +8,7 @@ DigitizerHandler* DigitizerHandler::singleton_touchScreen(){
     // Get event devices
     event_device touchScreen_device(deviceSettings.getTouchDevicePath(), O_RDWR);
     if(touchScreen_device.fd == -1){
-        qDebug() << "Failed to open event device: " << touchScreen_device.device.c_str();
+        O_WARNING("Failed to open event device: " << touchScreen_device.device.c_str());
         throw QException();
     }
     instance = new DigitizerHandler(touchScreen_device);
@@ -24,7 +24,7 @@ DigitizerHandler* DigitizerHandler::singleton_wacom(){
     // Get event devices
     event_device wacom_device(deviceSettings.getWacomDevicePath(), O_RDWR);
     if(wacom_device.fd == -1){
-        qDebug() << "Failed to open event device: " << wacom_device.device.c_str();
+        O_WARNING("Failed to open event device: " << wacom_device.device.c_str());
         throw QException();
     }
     instance = new DigitizerHandler(wacom_device);
@@ -72,9 +72,7 @@ bool DigitizerHandler::grabbed() { return device.locked; }
 void DigitizerHandler::write(ushort type, ushort code, int value){
     auto event = createEvent(type, code, value);
     ::write(device.fd, &event, sizeof(input_event));
-#ifdef DEBUG
-    qDebug() << "Emitted event " << event.time.tv_sec << event.time.tv_usec << type << code << value;
-#endif
+    O_DEBUG("Emitted event " << event.time.tv_sec << event.time.tv_usec << type << code << value);
 }
 
 void DigitizerHandler::write(input_event* events, size_t size){
@@ -89,9 +87,7 @@ void DigitizerHandler::clear_buffer(){
     if(device.fd == -1){
         return;
     }
-#ifdef DEBUG
-    qDebug() << "Clearing event buffer on" << device.device.c_str();
-#endif
+    O_DEBUG("Clearing event buffer on" << device.device.c_str());
     write(flood, 512 * 8 * 4 * sizeof(input_event));
 }
 
@@ -122,8 +118,8 @@ void DigitizerHandler::run(){
     char name[256];
     memset(name, 0, sizeof(name));
     ioctl(device.fd, EVIOCGNAME(sizeof(name)), name);
-    qDebug() << "Reading From : " << device.device.c_str() << " (" << name << ")";
-    qDebug() << "Listening for events...";
+    O_INFO("Reading From : " << device.device.c_str() << " (" << name << ")");
+    O_DEBUG("Listening for events...");
     while(handle_events()){
         qApp->processEvents(QEventLoop::AllEvents, 100);
         QThread::yieldCurrentThread();
