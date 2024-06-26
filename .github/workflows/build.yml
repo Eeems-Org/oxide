@@ -49,7 +49,7 @@ jobs:
               sudo chmod a+x "$install_dir"/shfmt
           fi
       - uses: actions/checkout@v4
-      - name: Build packages
+      - name: Lint
         run: make lint
   build:
     name: Build and package

@@ -105,19 +105,19 @@ SRC_FILES += package
 
 lint:
 	shfmt \
-		--diff \
-		--simplify \
-		--indent 4 \
-		--binary-next-line \
-		--space-redirects \
+		-d\
+		-s \
+		-i 4 \
+		-bn \
+		-sr \
 		$(SRC_FILES)
 
 format:
 	shfmt \
-		--list \
-		--write \
-		--simplify \
-		--indent 4 \
-		--binary-next-line \
-		--space-redirects \
+		-l \
+		-w \
+		-s \
+		-i 4 \
+		-bn \
+		-sr \
 		$(SRC_FILES)
