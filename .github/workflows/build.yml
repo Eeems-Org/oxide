@@ -112,7 +112,7 @@ jobs:
             opkg remove --force-removal-of-dependent-packages liboxide libblight
           path: ${{ steps.download.outputs.download-path }}
   release:
-    needs: [build,test]
+    needs: [build,test,lint]
     if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     steps:
