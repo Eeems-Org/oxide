@@ -11,10 +11,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - name: Ubuntu
+            platform: ubuntu-latest
+          - name: Windows (x64)
+            platform: windows-latest
+          - name: Windows (arm64)
+            platform: windows-latest
+            CMAKE_DEFINES: -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/win_arm64.cmake -A arm64
+          - name: LLVM-MINGW (x64)
+            platform: windows-latest
+            MINGW: 1
+            MINGW_PKG_PREFIX: x86_64-w64-mingw32
+            MINGW_ASM_MASM_COMPILER: llvm-ml;-m64
+            CMAKE_DEFINES: -DCRASHPAD_ZLIB_SYSTEM=OFF -DCRASHPAD_BUILD_TOOLS=OFF -G Ninja
+          - name: LLVM-MINGW (arm64)
+            platform: windows-latest
+            MINGW: 1
+            MINGW_PKG_PREFIX: aarch64-w64-mingw32
+            CMAKE_DEFINES: -DCRASHPAD_ZLIB_SYSTEM=OFF -DCRASHPAD_BUILD_TOOLS=OFF -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/mingw_arm64.cmake -G Ninja
+          - name: macOS
+            platform: macos-latest
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.platform }}
+    env:
+      CMAKE_DEFINES: ${{ matrix.CMAKE_DEFINES }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
 
@@ -24,32 +47,33 @@ jobs:
           sudo apt update
           sudo apt install zlib1g-dev libcurl4-openssl-dev libssl-dev libunwind-dev pkg-config
 
+      - name: Installing LLVM-MINGW Dependencies
+        if: ${{ runner.os == 'Windows' && matrix.MINGW == '1' }}
+        shell: powershell
+        env:
+          MINGW_PKG_PREFIX: ${{ matrix.MINGW_PKG_PREFIX }}
+          MINGW_ASM_MASM_COMPILER: ${{ matrix.MINGW_ASM_MASM_COMPILER }}
+        run: . "cmake\scripts\install-llvm-mingw.ps1"
+
       - name: Build crashpad
+        shell: bash
         run: |
-          cmake -B cmake-build -D CRASHPAD_BUILD_TOOLS=On
+          echo "CMAKE_DEFINES=${CMAKE_DEFINES}"
+          cmake -B cmake-build -D CRASHPAD_BUILD_TOOLS=On ${CMAKE_DEFINES}
           cmake --build cmake-build --parallel
 
       - name: Build crashpad with client-side stack traces
+        shell: bash
         run: |
-          cmake -B cmake-build-stacks -D CRASHPAD_ENABLE_STACKTRACE=ON
+          echo "CMAKE_DEFINES=${CMAKE_DEFINES}"
+          cmake -B cmake-build-stacks -D CRASHPAD_ENABLE_STACKTRACE=ON ${CMAKE_DEFINES}
           cmake --build cmake-build-stacks --parallel
 
-      - name: Build crashpad Windows ARM64
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          cmake -B cmake-build-arm64 -DCMAKE_TOOLCHAIN_FILE="cmake/toolchains/win_arm64.cmake" -DCRASHPAD_BUILD_TOOLS=On
-          cmake --build cmake-build-arm64 --config RelWithDebInfo -- /p:Platform=ARM64
-
-      - name: Build crashpad with client-side stack traces Windows ARM64
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          cmake -B cmake-build-stacks-arm64 -DCMAKE_TOOLCHAIN_FILE="cmake/toolchains/win_arm64.cmake" -DCRASHPAD_ENABLE_STACKTRACE=ON
-          cmake --build cmake-build-stacks-arm64 --config RelWithDebInfo -- /p:Platform=ARM64
-
   build-ios:
+    name: 'iOS'
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       - run: |

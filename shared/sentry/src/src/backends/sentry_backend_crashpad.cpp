@@ -7,10 +7,15 @@ extern "C" {
 #include "sentry_database.h"
 #include "sentry_envelope.h"
 #include "sentry_options.h"
+#ifdef SENTRY_PLATFORM_WINDOWS
+#    include "sentry_os.h"
+#endif
 #include "sentry_path.h"
 #include "sentry_sync.h"
 #include "sentry_transport.h"
-#include "sentry_unix_pageallocator.h"
+#ifdef SENTRY_PLATFORM_LINUX
+#    include "sentry_unix_pageallocator.h"
+#endif
 #include "sentry_utils.h"
 #include "transports/sentry_disk_transport.h"
 }
@@ -109,6 +114,51 @@ crashpad_backend_user_consent_changed(sentry_backend_t *backend)
     }
     data->db->GetSettings()->SetUploadsEnabled(!sentry__should_skip_upload());
 }
+
+#ifdef SENTRY_PLATFORM_WINDOWS
+static void
+crashpad_register_wer_module(
+    const sentry_path_t *absolute_handler_path, const crashpad_state_t *data)
+{
+    windows_version_t win_ver;
+    if (!sentry__get_windows_version(&win_ver) || win_ver.build < 19041) {
+        SENTRY_WARN("Crashpad WER module not registered, because Windows "
+                    "doesn't meet version requirements (build >= 19041).");
+        return;
+    }
+    sentry_path_t *handler_dir = sentry__path_dir(absolute_handler_path);
+    sentry_path_t *wer_path = nullptr;
+    if (handler_dir) {
+        wer_path = sentry__path_join_str(handler_dir, "crashpad_wer.dll");
+        sentry__path_free(handler_dir);
+    }
+
+    if (wer_path && sentry__path_is_file(wer_path)) {
+        SENTRY_TRACEF("registering crashpad WER handler "
+                      "\"%" SENTRY_PATH_PRI "\"",
+            wer_path->path);
+
+        // The WER handler needs to be registered in the registry first.
+        constexpr DWORD dwOne = 1;
+        const LSTATUS reg_res = RegSetKeyValueW(HKEY_CURRENT_USER,
+            L"Software\\Microsoft\\Windows\\Windows Error Reporting\\"
+            L"RuntimeExceptionHelperModules",
+            wer_path->path, REG_DWORD, &dwOne, sizeof(DWORD));
+        if (reg_res != ERROR_SUCCESS) {
+            SENTRY_WARN("registering crashpad WER handler in registry failed");
+        } else {
+            const std::wstring wer_path_string(wer_path->path);
+            if (!data->client->RegisterWerModule(wer_path_string)) {
+                SENTRY_WARN("registering crashpad WER handler module failed");
+            }
+        }
+
+        sentry__path_free(wer_path);
+    } else {
+        SENTRY_WARN("crashpad WER handler module not found");
+    }
+}
+#endif
 
 static void
 crashpad_backend_flush_scope(
@@ -290,6 +340,10 @@ crashpad_backend_startup(
         }
     }
 
+#ifdef SENTRY_PLATFORM_WINDOWS
+    sentry__reserve_thread_stack();
+#endif
+
     // The crashpad client uses shell lookup rules (absolute path, relative
     // path, or bare executable name that is looked up in $PATH).
     // However, it crashes hard when it cant resolve the handler, so we make
@@ -363,39 +417,9 @@ crashpad_backend_startup(
         return 1;
     }
 
-#ifdef CRASHPAD_WER_ENABLED
-    sentry_path_t *handler_dir = sentry__path_dir(absolute_handler_path);
-    sentry_path_t *wer_path = nullptr;
-    if (handler_dir) {
-        wer_path = sentry__path_join_str(handler_dir, "crashpad_wer.dll");
-        sentry__path_free(handler_dir);
-    }
-
-    if (wer_path && sentry__path_is_file(wer_path)) {
-        SENTRY_TRACEF("registering crashpad WER handler "
-                      "\"%" SENTRY_PATH_PRI "\"",
-            wer_path->path);
-
-        // The WER handler needs to be registered in the registry first.
-        DWORD dwOne = 1;
-        LSTATUS reg_res = RegSetKeyValueW(HKEY_CURRENT_USER,
-            L"Software\\Microsoft\\Windows\\Windows Error Reporting\\"
-            L"RuntimeExceptionHelperModules",
-            wer_path->path, REG_DWORD, &dwOne, sizeof(DWORD));
-        if (reg_res != ERROR_SUCCESS) {
-            SENTRY_WARN("registering crashpad WER handler in registry failed");
-        } else {
-            std::wstring wer_path_string(wer_path->path);
-            if (!data->client->RegisterWerModule(wer_path_string)) {
-                SENTRY_WARN("registering crashpad WER handler module failed");
-            }
-        }
-
-        sentry__path_free(wer_path);
-    } else {
-        SENTRY_WARN("crashpad WER handler module not found");
-    }
-#endif // CRASHPAD_WER_ENABLED
+#ifdef SENTRY_PLATFORM_WINDOWS
+    crashpad_register_wer_module(absolute_handler_path, data);
+#endif
 
     sentry__path_free(absolute_handler_path);
 
@@ -530,7 +554,7 @@ report_crash_time(
     // can have a session that starts at, e.g. `0.471`, whereas the crashpad
     // report will be `0`, which would mean our heuristic does not trigger due
     // to rounding.
-    uint64_t time = ((uint64_t)report.creation_time + 1) * 1000;
+    uint64_t time = (static_cast<uint64_t>(report.creation_time) + 1) * 1000000;
     if (time > *crash_time) {
         *crash_time = time;
     }
