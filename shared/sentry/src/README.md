@@ -17,6 +17,10 @@ applications, optimized for C and C++. Sentry allows to add tags, breadcrumbs
 and arbitrary custom context to enrich error reports. Supports Sentry _20.6.0_
 and later.
 
+### Note <!-- omit in toc -->
+
+Using the `sentry-native` SDK in a standalone use case is currently an experimental feature. The SDK’s primary function is to fuel our other SDKs, like [`sentry-java`](https://github.com/getsentry/sentry-java) or [`sentry-unreal`](https://github.com/getsentry/sentry-unreal). Support from our side is best effort and we do what we can to respond to issues in a timely fashion, but please understand if we won’t be able to address your issues or feature suggestions.
+
 ## Resources <!-- omit in toc -->
 
 - [SDK Documentation](https://docs.sentry.io/platforms/native/)
@@ -52,6 +56,7 @@ The SDK bundle contains the following folders:
   directory or copy the header file to your source tree so that it is available
   during the build.
 - `src`: Sources of the Sentry SDK required for building.
+- `ndk`: Sources for the Android NDK JNI layer.
 
 ## Platform and Feature Support
 
@@ -118,11 +123,14 @@ Please refer to the CMake Manual for more details.
 **Android**:
 
 The CMake project can also be configured to correctly work with the Android NDK,
-see the dedicated [CMake Guide] for details on how to integrate it with gradle
+see the dedicated [CMake Guide] for details on how to integrate it with Gradle
 or use it on the command line.
+
+The `ndk` folder provides Gradle project which adds a Java JNI layer for Android, suitable for accessing the sentry-native SDK from Java. See the [NDK Readme] for more details about this topic.
 
 [cmake]: https://cmake.org/cmake/help/latest/
 [cmake guide]: https://developer.android.com/ndk/guides/cmake
+[NDK Readme]: ndk/README.md
 
 **MinGW**:
 
@@ -239,7 +247,10 @@ using `cmake -D BUILD_SHARED_LIBS=OFF ..`.
   Builds the Qt integration, which turns Qt log messages into breadcrumbs.
 
 - `SENTRY_BREAKPAD_SYSTEM` (Default: OFF):
-  This instructs the build system to use system-installed breakpad libraries instead of using the in-tree version. 
+  This instructs the build system to use system-installed breakpad libraries instead of using the in-tree version.
+
+- `SENTRY_TRANSPORT_COMPRESSION` (Default: OFF):
+  Adds Gzip transport compression. Requires `zlib`.
 
 | Feature    | Windows | macOS | Linux | Android | iOS |
 | ---------- | ------- | ----- | ----- | ------- | --- |

@@ -4,7 +4,7 @@ import platform
 import re
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 
 import msgpack
 
@@ -38,14 +38,34 @@ def assert_session(envelope, extra_assertion=None):
         assert_matches(session, extra_assertion)
 
 
+def assert_user_feedback(envelope):
+    user_feedback = None
+    for item in envelope:
+        if item.headers.get("type") == "user_report" and item.payload.json is not None:
+            user_feedback = item.payload.json
+
+    assert user_feedback is not None
+    assert user_feedback["name"] == "some-name"
+    assert user_feedback["email"] == "some-email"
+    assert user_feedback["comments"] == "some-comment"
+
+
 def assert_meta(
     envelope,
     release="test-example-release",
     integration=None,
     transaction="test-transaction",
+    transaction_data=None,
     sdk_override=None,
 ):
     event = envelope.get_event()
+
+    extra = {
+        "extra stuff": "some value",
+        "…unicode key…": "őá…–🤮🚀¿ 한글 테스트",
+    }
+    if transaction_data:
+        extra.update(transaction_data)
 
     expected = {
         "platform": "native",
@@ -54,13 +74,13 @@ def assert_meta(
         "user": {"id": 42, "username": "some_name"},
         "transaction": transaction,
         "tags": {"expected-tag": "some value"},
-        "extra": {"extra stuff": "some value", "…unicode key…": "őá…–🤮🚀¿ 한글 테스트"},
+        "extra": extra,
     }
     expected_sdk = {
         "name": "sentry.native",
-        "version": "0.7.0",
+        "version": "0.7.6",
         "packages": [
-            {"name": "github:getsentry/sentry-native", "version": "0.7.0"},
+            {"name": "github:getsentry/sentry-native", "version": "0.7.6"},
         ],
     }
     if is_android:
@@ -134,16 +154,25 @@ def assert_stacktrace(envelope, inside_exception=False, check_size=True):
         )
 
 
-def assert_breadcrumb(envelope):
-    event = envelope.get_event()
-
+def assert_breadcrumb_inner(breadcrumbs):
     expected = {
         "type": "http",
         "message": "debug crumb",
         "category": "example!",
         "level": "debug",
+        "data": {
+            "url": "https://example.com/api/1.0/users",
+            "method": "GET",
+            "status_code": 200,
+            "reason": "OK",
+        },
     }
-    assert any(matches(b, expected) for b in event["breadcrumbs"])
+    assert any(matches(b, expected) for b in breadcrumbs)
+
+
+def assert_breadcrumb(envelope):
+    event = envelope.get_event()
+    assert_breadcrumb_inner(event["breadcrumbs"])
 
 
 def assert_attachment(envelope):
@@ -164,16 +193,16 @@ def assert_minidump(envelope):
     assert minidump.payload.bytes.startswith(b"MDMP")
 
 
-def assert_timestamp(ts, now=datetime.utcnow()):
+def assert_timestamp(ts, now=datetime.now(UTC)):
     assert ts[:11] == now.isoformat()[:11]
 
 
-def assert_event(envelope):
+def assert_event(envelope, message="Hello World!"):
     event = envelope.get_event()
     expected = {
         "level": "info",
         "logger": "my-logger",
-        "message": {"formatted": "Hello World!"},
+        "message": {"formatted": message},
     }
     assert_matches(event, expected)
     assert_timestamp(event["timestamp"])
@@ -242,6 +271,9 @@ def _load_crashpad_attachments(msg):
     breadcrumb1 = []
     breadcrumb2 = []
     for part in msg.walk():
+        if part.get_filename() is not None:
+            assert part.get("Content-Type") is None
+
         match part.get_filename():
             case "__sentry-event":
                 event = msgpack.unpackb(part.get_payload(decode=True))
@@ -268,17 +300,22 @@ def _validate_breadcrumb_seq(seq, breadcrumb_func):
         assert is_valid_timestamp(breadcrumb["timestamp"])
 
 
-def assert_crashpad_upload(req):
-    multipart = gzip.decompress(req.get_data())
-    msg = email.message_from_bytes(bytes(str(req.headers), encoding="utf8") + multipart)
-    attachments = _load_crashpad_attachments(msg)
-
+def assert_overflowing_breadcrumb(attachments):
     if len(attachments.breadcrumb1) > 3:
         _validate_breadcrumb_seq(range(97), lambda i: attachments.breadcrumb1[3 + i])
         _validate_breadcrumb_seq(
             range(97, 101), lambda i: attachments.breadcrumb2[i - 97]
         )
+    else:
+        assert_breadcrumb_inner(attachments.breadcrumb1)
 
+
+def assert_crashpad_upload(req):
+    multipart = gzip.decompress(req.get_data())
+    msg = email.message_from_bytes(bytes(str(req.headers), encoding="utf8") + multipart)
+    attachments = _load_crashpad_attachments(msg)
+
+    assert_overflowing_breadcrumb(attachments)
     assert attachments.event["level"] == "fatal"
 
     assert any(
@@ -286,3 +323,11 @@ def assert_crashpad_upload(req):
         and b"\n\nMDMP" in part.as_bytes()
         for part in msg.walk()
     )
+
+
+def assert_gzip_file_header(output):
+    assert output[:3] == b"\x1f\x8b\x08"
+
+
+def assert_gzip_content_encoding(req):
+    assert req.content_encoding == "gzip"

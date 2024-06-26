@@ -1,5 +1,81 @@
 # Changelog
 
+## 0.7.6
+
+**Fixes**:
+
+- Remove remaining build blockers for the `crashpad` backend on Windows ARM64 when using LLVM-MINGW. ([#1003](https://github.com/getsentry/sentry-native/pull/1003), [crashpad#101](https://github.com/getsentry/crashpad/pull/101))
+- Ensure `crashpad` targets are included when building as a shared library using our exported CMake config. ([#1007](https://github.com/getsentry/sentry-native/pull/1007))
+- Use `find_dependency()` instead of `find_package()` in the exported CMake config. ([#1007](https://github.com/getsentry/sentry-native/pull/1007), [#1008](https://github.com/getsentry/sentry-native/pull/1008), [crashpad#104](https://github.com/getsentry/crashpad/pull/104))
+
+**Thank you**:
+
+- [@past-due](https://github.com/past-due)
+- [@podlaszczyk](https://github.com/podlaszczyk)
+
+## 0.7.5
+
+**Features**:
+
+- Change the timestamp resolution to microseconds. ([#995](https://github.com/getsentry/sentry-native/pull/995))
+
+**Internal**:
+
+- (Android) Switch ndk back to `libc++_static`, and hide it from prefab ([#996](https://github.com/getsentry/sentry-native/pull/996))
+
+## 0.7.4
+
+**Fixes**:
+
+- Allow `crashpad` to run under [Epic's Anti-Cheat Client](https://dev.epicgames.com/docs/game-services/anti-cheat/using-anti-cheat#external-crash-dumpers) by deferring the full `crashpad_handler` access rights to the client application until a crash occurred. ([#980](https://github.com/getsentry/sentry-native/pull/980), [crashpad#99](https://github.com/getsentry/crashpad/pull/99))
+- Reserve enough stack space on Windows for our handler to run when the stack is exhausted from stack-overflow. ([#982](https://github.com/getsentry/sentry-native/pull/982))
+- Only configure a `sigaltstack` in `inproc` if no previous configuration exists on Linux and Android. ([#982](https://github.com/getsentry/sentry-native/pull/982))
+- Store transaction `data` in the event property `extra` since the `data` property is discarded by `relay`. ([#986](https://github.com/getsentry/sentry-native/issues/986))
+
+**Docs**:
+
+- Add compile-time flag `SENTRY_TRANSPORT_COMPRESSION` description to the `README.md` file. ([#976](https://github.com/getsentry/sentry-native/pull/976))
+
+**Internal**:
+
+- Move sentry-android-ndk JNI related parts from sentry-java to sentry-native ([#944](https://github.com/getsentry/sentry-native/pull/944))
+  This will create a pre-built `io.sentry:sentry-native-ndk` maven artifact, suitable for being consumed by Android apps.
+
+**Thank you**:
+
+- [@AenBleidd](https://github.com/AenBleidd)
+- [@kristjanvalur](https://github.com/kristjanvalur)
+
+## 0.7.2
+
+**Features**:
+
+- Add optional Gzip transport compression via build option `SENTRY_TRANSPORT_COMPRESSION`. Requires system `zlib`. ([#954](https://github.com/getsentry/sentry-native/pull/954))
+- Enable automatic MIME detection of attachments sent with crash-reports from the `crashpad_handler`. ([#973](https://github.com/getsentry/sentry-native/pull/973), [crashpad#98](https://github.com/getsentry/crashpad/pull/98))
+
+**Fixes**:
+
+- Fix the Linux build when targeting RISC-V. ([#972](https://github.com/getsentry/sentry-native/pull/972))
+
+**Thank you**:
+
+- [@Strive-Sun](https://github.com/Strive-Sun)
+- [@jwinarske](https://github.com/jwinarske)
+
+## 0.7.1
+
+**Features**:
+
+- Add user feedback capability to the Native SDK. ([#966](https://github.com/getsentry/sentry-native/pull/966))
+
+**Internal**:
+
+- Remove the `CRASHPAD_WER_ENABLED` build flag. The WER module is now built for all supported Windows targets, and registration is conditional on runtime Windows version checks. ([#950](https://github.com/getsentry/sentry-native/pull/950), [crashpad#96](https://github.com/getsentry/crashpad/pull/96))
+
+**Docs**:
+
+- Add usage of the breadcrumb `data` property to the example. [#951](https://github.com/getsentry/sentry-native/pull/951)
+
 ## 0.7.0
 
 **Breaking changes**:
@@ -25,6 +101,7 @@ Features, fixes and improvements in this release have been contributed by:
 
 - [@compnerd](https://github.com/compnerd)
 - [@stima](https://github.com/stima)
+- [@hyp](https://github.com/hyp)
 
 ## 0.6.7
 
