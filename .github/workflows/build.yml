@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Cache shfmt
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: /usr/local/bin/shfmt
           key: 43439b996942b53dfafa9b6ff084f394555d049c98fb7ec37978f7668b43e1be
