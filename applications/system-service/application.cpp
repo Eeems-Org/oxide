@@ -47,7 +47,7 @@ void Application::launchNoSecurityCheck(){
             Q_UNUSED(t);
 #endif
             appsAPI->recordPreviousApplication();
-            qDebug() << "Launching " << path();
+            O_INFO("Launching " << path());
             appsAPI->pauseAll();
             if(!flags().contains("nosplash")){
                 m_notification = notificationAPI->add(
@@ -78,15 +78,15 @@ void Application::launchNoSecurityCheck(){
                 p_stdout_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_INFO, 1);
                 if (p_stdout_fd < 0) {
                     errno = -p_stdout_fd;
-                    qDebug() << "Failed to create stdout fd:" << -p_stdout_fd;
+                    O_WARNING("Failed to create stdout fd:" << -p_stdout_fd);
                 }else{
                     FILE* log = fdopen(p_stdout_fd, "w");
                     if(!log){
-                        qDebug() << "Failed to create stdout FILE:" << errno;
+                        O_WARNING("Failed to create stdout FILE:" << errno);
                         close(p_stdout_fd);
                     }else{
                         p_stdout = new QTextStream(log);
-                        qDebug() << "Opened stdout for " << name();
+                        O_DEBUG("Opened stdout for " << name());
                     }
                 }
             }
@@ -94,15 +94,15 @@ void Application::launchNoSecurityCheck(){
                 p_stderr_fd = sd_journal_stream_fd(name().toStdString().c_str(), LOG_ERR, 1);
                 if (p_stderr_fd < 0) {
                     errno = -p_stderr_fd;
-                    qDebug() << "Failed to create sterr fd:" << -p_stderr_fd;
+                    O_WARNING("Failed to create sterr fd:" << -p_stderr_fd);
                 }else{
                     FILE* log = fdopen(p_stderr_fd, "w");
                     if(!log){
-                        qDebug() << "Failed to create stderr FILE:" << errno;
+                        O_WARNING("Failed to create stderr FILE:" << errno);
                         close(p_stderr_fd);
                     }else{
                         p_stderr = new QTextStream(log);
-                        qDebug() << "Opened stderr for " << name();
+                        O_DEBUG("Opened stderr for " << name());
                     }
                 }
             }
@@ -130,7 +130,7 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
     ){
         return;
     }
-    qDebug() << "Pausing " << path();
+    O_INFO("Pausing " << path());
     Oxide::Sentry::sentry_transaction("application", "pause", [this, startIfNone](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
@@ -146,7 +146,7 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
         emit paused();
         emit appsAPI->applicationPaused(qPath());
     });
-    qDebug() << "Paused " << path();
+    O_INFO("Paused " << path());
 }
 void Application::interruptApplication(){
     if(
@@ -179,22 +179,22 @@ void Application::interruptApplication(){
                     startSpan("background", "Application is in the background");
                     return;
                 case Backgroundable:
-                    qDebug() << "Waiting for SIGUSR2 ack";
+                    O_INFO("Waiting for SIGUSR2 ack");
                     appsAPI->connectSignals(this, 2);
                     kill(-m_process->processId(), SIGUSR2);
                     timer.restart();
                     delayUpTo(1000);
                     appsAPI->disconnectSignals(this, 2);
                     if(stateNoSecurityCheck() == Inactive){
-                        qDebug() << "Application crashed while pausing";
+                        O_INFO("Application crashed while pausing");
                     }else if(timer.isValid()){
-                        qDebug() << "Application took too long to background" << name();
+                        O_INFO("Application took too long to background" << name());
                         kill(-m_process->processId(), SIGSTOP);
                         waitForPause();
                         startSpan("stopped", "Application is stopped");
                     }else{
                         m_backgrounded = true;
-                        qDebug() << "SIGUSR2 ack recieved";
+                        O_INFO("SIGUSR2 ack recieved");
                         startSpan("background", "Application is in the background");
                     }
                     break;
@@ -246,7 +246,7 @@ void Application::resumeNoSecurityCheck(){
         || stateNoSecurityCheck() == InForeground
         || (type() == Background && stateNoSecurityCheck() == InBackground)
     ){
-        qDebug() << "Can't Resume" << path() << "Already running!";
+        O_DEBUG("Can't Resume" << path() << "Already running!");
         return;
     }
     Oxide::Sentry::sentry_transaction("application", "resume", [this](Oxide::Sentry::Transaction* t){
@@ -258,14 +258,14 @@ void Application::resumeNoSecurityCheck(){
         Q_UNUSED(t);
 #endif
         appsAPI->recordPreviousApplication();
-        qDebug() << "Resuming " << path();
+        O_INFO("Resuming " << path());
         appsAPI->pauseAll();
         uninterruptApplication();
         waitForResume();
         emit resumed();
         emit appsAPI->applicationResumed(qPath());
     });
-    qDebug() << "Resumed " << path();
+    O_INFO("Resumed " << path());
 }
 void Application::uninterruptApplication(){
     if(
@@ -310,16 +310,16 @@ void Application::uninterruptApplication(){
                     if(stateNoSecurityCheck() == Paused){
                         kill(-m_process->processId(), SIGCONT);
                     }
-                    qDebug() << "Waiting for SIGUSR1 ack";
+                    O_INFO("Waiting for SIGUSR1 ack");
                     appsAPI->connectSignals(this, 1);
                     kill(-m_process->processId(), SIGUSR1);
                     delayUpTo(1000);
                     appsAPI->disconnectSignals(this, 1);
                     if(timer.isValid()){
                         // No need to fall through, we've just assumed it continued
-                        qDebug() << "Warning: application took too long to forground" << name();
+                        O_INFO("Warning: application took too long to forground" << name());
                     }else{
-                        qDebug() << "SIGUSR1 ack recieved";
+                        O_INFO("SIGUSR1 ack recieved");
                     }
                     m_backgrounded = false;
                     startSpan("background", "Application is in the background");
@@ -354,11 +354,11 @@ void Application::stopNoSecurityCheck(){
 #else
         Q_UNUSED(t);
 #endif
-        qDebug() << "Stopping " << path();
+        O_INFO("Stopping " << path());
         if(!onStop().isEmpty()){
             Oxide::Sentry::sentry_span(t, "onStop", "Run onStop action", [this](){
-                qDebug() << "onStop: " << onStop();
-                qDebug() << "exit code: " << QProcess::execute(onStop(), QStringList());
+                O_INFO("onStop: " << onStop());
+                O_INFO("exit code: " << QProcess::execute(onStop(), QStringList()));
             });
         }
         getCompositorDBus()->lower(QString("connection/%1").arg(m_process->processId()));
@@ -495,7 +495,7 @@ void Application::setEnvironment(QVariantMap environment){
     for(auto key : environment.keys()){
         auto value = environment.value(key, QVariant());
         if(!value.isValid()){
-            qDebug() << key << " has invalid value: " << value;
+            O_INFO(key << " has invalid value: " << value);
             return;
         }
     }
@@ -545,7 +545,7 @@ void Application::started(){
     emit appsAPI->applicationLaunched(qPath());
 }
 void Application::finished(int exitCode){
-    qDebug() << "Application" << name() << "exit code" << exitCode;
+    O_INFO("Application" << name() << "exit code" << exitCode);
     getCompositorDBus()->lower(QString("connection/%1").arg(m_process->processId()));
     if(
         exitCode != EXIT_SUCCESS
@@ -609,13 +609,13 @@ void Application::readyReadStandardOutput(){
 void Application::stateChanged(QProcess::ProcessState state){
     switch(state){
         case QProcess::Starting:
-            qDebug() << "Application" << name() << "is starting.";
+            O_INFO("Application" << name() << "is starting.");
             break;
         case QProcess::Running:
-            qDebug() << "Application" << name() << "is running.";
+            O_INFO("Application" << name() << "is running.");
             break;
         case QProcess::NotRunning:
-            qDebug() << "Application" << name() << "is not running.";
+            O_INFO("Application" << name() << "is not running.");
             if(sharedSettings.applicationUsage()){
                 if(span != nullptr){
                     Oxide::Sentry::stop_span(span);
@@ -630,13 +630,13 @@ void Application::stateChanged(QProcess::ProcessState state){
             }
             break;
         default:
-            qDebug() << "Application" << name() << "unknown state" << state;
+            O_WARNING("Application" << name() << "unknown state" << state);
     }
 }
 void Application::errorOccurred(QProcess::ProcessError error){
     switch(error){
         case QProcess::FailedToStart:{
-            qDebug() << "Application" << name() << "failed to start.";
+            O_INFO("Application" << name() << "failed to start.");
             emit exited(-1);
             emit appsAPI->applicationExited(qPath(), -1);
             notificationAPI->add(
@@ -652,19 +652,20 @@ void Application::errorOccurred(QProcess::ProcessError error){
             break;
         }
         case QProcess::Crashed: // Let the finished slot handle this
+            O_INFO("Application" << name() << "crashed.");
             break;
         case QProcess::Timedout:
-            qDebug() << "Application" << name() << "timed out.";
+            O_INFO("Application" << name() << "timed out.");
             break;
         case QProcess::WriteError:
-            qDebug() << "Application" << name() << "unable to write to stdin.";
+            O_INFO("Application" << name() << "unable to write to stdin.");
             break;
         case QProcess::ReadError:
-            qDebug() << "Application" << name() << "unable to read from stdout or stderr.";
+            O_INFO("Application" << name() << "unable to read from stdout or stderr.");
             break;
         case QProcess::UnknownError:
         default:
-            qDebug() << "Application" << name() << "unknown error.";
+            O_WARNING("Application" << name() << "unknown error.");
     }
 }
 bool Application::hasPermission(QString permission, const char* sender){ return appsAPI->hasPermission(permission, sender); }
@@ -798,15 +799,15 @@ void Application::registerPath() {
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if (bus.registerObject(path(), this, QDBusConnection::ExportAllContents)) {
-        qDebug() << "Registered" << path() << OXIDE_APPLICATION_INTERFACE;
+        O_INFO("Registered" << path() << OXIDE_APPLICATION_INTERFACE);
     } else {
-        qDebug() << "Failed to register" << path();
+        O_WARNING("Failed to register" << path());
     }
 }
 void Application::unregisterPath() {
     auto bus = QDBusConnection::systemBus();
     if (bus.objectRegisteredAt(path()) != nullptr) {
-        qDebug() << "Unregistered" << path();
+        O_INFO("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }

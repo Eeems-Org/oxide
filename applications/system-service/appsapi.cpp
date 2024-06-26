@@ -109,18 +109,18 @@ AppsAPI::AppsAPI(QObject* parent)
 void AppsAPI::startup(){
     Oxide::Sentry::sentry_transaction("apps", "startup", [this](Oxide::Sentry::Transaction* t){
         if(applications.isEmpty()){
-            qDebug() << "No applications found";
+            O_INFO("No applications found");
             notificationAPI->errorNotification(_noApplicationsMessage);
             return;
         }
         Oxide::Sentry::sentry_span(t, "autoStart", "Launching auto start applications", [this](Oxide::Sentry::Span* s){
             for(auto app : applications){
                 if(app->autoStart()){
-                    qDebug() << "Auto starting" << app->name();
+                    O_INFO("Auto starting" << app->name());
                     Oxide::Sentry::sentry_span(s, app->name().toStdString(), "Launching application", [app]{
                         app->launchNoSecurityCheck();
                         if(app->type() == Backgroundable){
-                            qDebug() << "  Pausing auto started app" << app->name();
+                            O_INFO("  Pausing auto started app" << app->name());
                             app->pauseNoSecurityCheck();
                         }
                     });
@@ -130,20 +130,20 @@ void AppsAPI::startup(){
         Oxide::Sentry::sentry_span(t, "start", "Launching initial application", [this]{
             auto app = getApplication(m_lockscreenApplication);
             if(app == nullptr){
-                qDebug() << "Could not find lockscreen application";
+                O_WARNING("Could not find lockscreen application");
                 app = getApplication(m_startupApplication);
             }
             if(app == nullptr){
-                qDebug() << "Could not find startup application";
-                qDebug() << "Using xochitl due to invalid configuration";
+                O_WARNING("Could not find startup application");
+                O_WARNING("Using xochitl due to invalid configuration");
                 app = getApplication("xochitl");
             }
             if(app == nullptr){
-                qDebug() << "Could not find xochitl";
-                qWarning() << "Using the first application in the list due to invalid configuration";
+                O_WARNING("Could not find xochitl");
+                O_WARNING("Using the first application in the list due to invalid configuration");
                 app = applications.first();
             }
-            qDebug() << "Starting initial application" << app->name();
+            O_INFO("Starting initial application" << app->name());
             app->launchNoSecurityCheck();
             ensureForegroundApp();
         });
@@ -151,7 +151,7 @@ void AppsAPI::startup(){
 }
 
 void AppsAPI::setEnabled(bool enabled){
-    qDebug() << "Apps API" << enabled;
+    O_INFO("Apps API" << enabled);
     for(auto app : applications){
         if(enabled){
             app->registerPath();
@@ -173,19 +173,19 @@ QDBusObjectPath AppsAPI::registerApplicationNoSecurityCheck(QVariantMap properti
     QString bin = properties.value("bin", "").toString();
     int type = properties.value("type", ApplicationType::Foreground).toInt();
     if(type < ApplicationType::Foreground || type > ApplicationType::Backgroundable){
-        qDebug() << "Invalid configuration: Invalid type" << type;
+        O_WARNING("Invalid configuration: Invalid type" << type);
         return QDBusObjectPath("/");
     }
     if(name.isEmpty()){
-        qDebug() << "Invalid configuration: Name is empty";
+        O_WARNING("Invalid configuration: Name is empty");
         return QDBusObjectPath("/");
     }
     if(bin.isEmpty() || !QFile::exists(bin)){
-        qDebug() << "Invalid configuration: " << name << " has invalid bin" << bin;
+        O_WARNING("Invalid configuration: " << name << " has invalid bin" << bin);
         return QDBusObjectPath("/");
     }
     if(!QFileInfo(bin).isExecutable()){
-        qDebug() << "Invalid configuration: " << name << " has bin that is not executable" << bin;
+        O_WARNING("Invalid configuration: " << name << " has bin that is not executable" << bin);
         return QDBusObjectPath("/");
     }
     if(applications.contains(name)){
@@ -394,7 +394,7 @@ void AppsAPI::resumeIfNone(){
     }
     if(app == nullptr){
         if(applications.isEmpty()){
-            qDebug() << "No applications found";
+            O_WARNING("No applications found");
             notificationAPI->errorNotification(_noApplicationsMessage);
             return;
         }
@@ -468,7 +468,7 @@ bool AppsAPI::previousApplicationNoSecurityCheck(){
         return false;
     }
     if(previousApplications.isEmpty()){
-        qDebug() << "No previous applications";
+        O_DEBUG("No previous applications");
         return false;
     }
     bool found = false;
@@ -486,11 +486,11 @@ bool AppsAPI::previousApplicationNoSecurityCheck(){
             currentApplication->pauseNoSecurityCheck(false);
         }
         application->launchNoSecurityCheck();
-        qDebug() << "Resuming previous application" << application->name();
+        O_INFO("Resuming previous application" << application->name());
         found = true;
         break;
     }
-    qDebug() << "Previous Applications" << previousApplications;
+    O_DEBUG("Previous Applications" << previousApplications);
     return found;
 }
 
@@ -503,7 +503,7 @@ void AppsAPI::forceRecordPreviousApplication(){
     auto name = currentApplication->name();
     previousApplications.removeAll(name);
     previousApplications.append(name);
-    qDebug() << "Previous Applications" << previousApplications;
+    O_DEBUG("Previous Applications" << previousApplications);
 }
 
 void AppsAPI::recordPreviousApplication(){
@@ -521,7 +521,7 @@ void AppsAPI::recordPreviousApplication(){
     auto name = currentApplication->name();
     removeFromPreviousApplications(name);
     previousApplications.append(name);
-    qDebug() << "Previous Applications" << previousApplications;
+    O_DEBUG("Previous Applications" << previousApplications);
 }
 
 void AppsAPI::removeFromPreviousApplications(QString name){ previousApplications.removeAll(name); }
@@ -540,16 +540,16 @@ void AppsAPI::openDefaultApplication(){
             && currentApplication->stateNoSecurityCheck() != Application::Inactive
             && (path == m_startupApplication || path == m_lockscreenApplication)
             ){
-            qDebug() << "Already in default application";
+            O_DEBUG("Already in default application");
             return;
         }
     }
     auto app = getApplication(m_startupApplication);
     if(app == nullptr){
-        qDebug() << "Unable to find default application";
+        O_WARNING("Unable to find default application");
         return;
     }
-    qDebug() << "Opening default application";
+    O_INFO("Opening default application");
     app->launchNoSecurityCheck();
 }
 
@@ -567,16 +567,16 @@ void AppsAPI::openTaskManager(){
             && currentApplication->stateNoSecurityCheck() != Application::Inactive
             && path == m_lockscreenApplication
             ){
-            qDebug() << "Can't open task manager, on the lockscreen";
+            O_WARNING("Can't open task manager, on the lockscreen");
             return;
         }
     }
     auto app = getApplication(m_processManagerApplication);
     if(app == nullptr){
-        qDebug() << "Unable to find task manager";
+        O_WARNING("Unable to find task manager");
         return;
     }
-    qDebug() << "Opening task manager";
+    O_INFO("Opening task manager");
     app->launchNoSecurityCheck();
 }
 
@@ -592,16 +592,16 @@ void AppsAPI::openLockScreen(){
             && currentApplication->stateNoSecurityCheck() != Application::Inactive
             && path == m_lockscreenApplication
             ){
-            qDebug() << "Already on the lockscreen";
+            O_DEBUG("Already on the lockscreen");
             return;
         }
     }
     auto app = getApplication(m_lockscreenApplication);
     if(app == nullptr){
-        qDebug() << "Unable to find lockscreen";
+        O_WARNING("Unable to find lockscreen");
         return;
     }
-    qDebug() << "Opening lock screen";
+    O_INFO("Opening lock screen");
     app->launchNoSecurityCheck();
 }
 
@@ -617,11 +617,11 @@ void AppsAPI::openTaskSwitcher(){
             && currentApplication->stateNoSecurityCheck() != Application::Inactive
             ){
             if(path == m_lockscreenApplication){
-                qDebug() << "Can't open task switcher, on the lockscreen";
+                O_WARNING("Can't open task switcher, on the lockscreen");
                 return;
             }
             if(path == m_taskSwitcherApplication){
-                qDebug() << "Already on the task switcher";
+                O_WARNING("Already on the task switcher");
                 return;
             }
         }
@@ -633,10 +633,10 @@ void AppsAPI::openTaskSwitcher(){
     }
     app = getApplication(m_startupApplication);
     if(app == nullptr){
-        qDebug() << "Unable to find default application";
+        O_WARNING("Unable to find default application");
         return;
     }
-    qDebug() << "Opening task switcher";
+    O_INFO("Opening task switcher");
     app->launchNoSecurityCheck();
 }
 
@@ -652,7 +652,7 @@ void AppsAPI::openTerminal(){
             && currentApplication->stateNoSecurityCheck() != Application::Inactive
             ){
             if(path == m_lockscreenApplication){
-                qDebug() << "Can't open task switcher, on the lockscreen";
+                O_WARNING("Can't open task switcher, on the lockscreen");
                 return;
             }
         }
@@ -664,10 +664,10 @@ void AppsAPI::openTerminal(){
     }
     app = getApplication("fingerterm");
     if(app == nullptr){
-        qDebug() << "Unable to find terminal application";
+        O_WARNING("Unable to find terminal application");
         return;
     }
-    qDebug() << "Opening terminal";
+    O_INFO("Opening terminal");
     app->launchNoSecurityCheck();
 }
 
@@ -725,9 +725,7 @@ void AppsAPI::readApplications(){
         auto type = settings.value("type", Foreground).toInt();
         auto bin = settings.value("bin").toString();
         if(type < Foreground || type > Backgroundable || name.isEmpty() || bin.isEmpty()){
-#ifdef DEBUG
-            qDebug() << "Invalid configuration " << name;
-#endif
+            O_DEBUG("Invalid configuration " << name);
             continue;
         }
         QVariantMap properties {
@@ -754,16 +752,12 @@ void AppsAPI::readApplications(){
             properties.insert("group", settings.value("group", "").toString());
         }
         if(applications.contains(name)){
-#ifdef DEBUG
-            qDebug() << "Updating " << name;
-            qDebug() << properties;
-#endif
+            O_DEBUG("Updating " << name);
+            O_DEBUG(properties);
             applications[name]->setConfig(properties);
         }else{
-            qDebug() << name;
-#ifdef DEBUG
-            qDebug() << properties;
-#endif
+            O_INFO(name);
+            O_DEBUG(properties);
             registerApplicationNoSecurityCheck(properties);
         }
     }
@@ -775,7 +769,7 @@ void AppsAPI::readApplications(){
     for(auto entry : dir.entryInfoList()){
         auto app = getRegistration(entry.filePath());
         if(app.isEmpty()){
-            qDebug() << "Invalid file " << entry.filePath();
+            O_WARNING("Invalid file " << entry.filePath());
             continue;
         }
         auto name = entry.completeBaseName();
@@ -786,7 +780,7 @@ void AppsAPI::readApplications(){
     for(auto application : applications.values()){
         auto name = application->name();
         if(!apps.contains(name) && application->systemApp()){
-            qDebug() << name << "Is no longer found on disk";
+            O_WARNING(name << "Is no longer found on disk");
             application->unregisterNoSecurityCheck();
         }
     }
@@ -795,10 +789,8 @@ void AppsAPI::readApplications(){
         auto name = app["name"].toString();
         auto bin = app["bin"].toString();
         if(bin.isEmpty() || !QFile::exists(bin)){
-            qDebug() << name << "Can't find application binary:" << bin;
-#ifdef DEBUG
-            qDebug() << app;
-#endif
+            O_WARNING(name << "Can't find application binary:" << bin);
+            O_DEBUG(app);
             continue;
         }
         if(!app.contains("flags") || !app["flags"].isArray()){
@@ -809,16 +801,12 @@ void AppsAPI::readApplications(){
         app["flags"] = flags;
         auto properties = registrationToMap(app);
         if(applications.contains(name)){
-#ifdef DEBUG
-            qDebug() << "Updating " << name;
-            qDebug() << properties;
-#endif
+            O_DEBUG("Updating " << name);
+            O_DEBUG(properties);
             applications[name]->setConfig(properties);
         }else{
-            qDebug() << "New system app" << name;
-#ifdef DEBUG
-            qDebug() << properties;
-#endif
+            O_INFO("New system app" << name);
+            O_DEBUG(properties);
             registerApplicationNoSecurityCheck(properties);
         }
     }
@@ -866,17 +854,17 @@ void AppsAPI::shutdown() {
             painter.end();
             addSystemBuffer(buffer);
         }
-        qDebug() << "Stopping applications...";
+        O_DEBUG("Stopping applicaLtions...");
         auto notification = notificationAPI->paintNotification("", "");
         for(auto app : applications){
             if (app->stateNoSecurityCheck() != Application::Inactive) {
                 auto text = "Stopping " + app->displayName() + "...";
-                qDebug() << text.toStdString().c_str();
+                O_DEBUG(text.toStdString().c_str());
                 notification->setProperty("text", text);
             }
             app->stopNoSecurityCheck();
         }
-        qDebug() << "Ensuring all applications have stopped...";
+        O_INFO("Ensuring all applications have stopped...");
         for(auto app : applications){
             app->waitForFinished();
             app->deleteLater();
@@ -886,7 +874,7 @@ void AppsAPI::shutdown() {
         if(buffer != nullptr){
             auto image = Oxide::QML::getImageForSurface(buffer);
             QPainter painter(&image);
-            qDebug() << "Displaying final quit message...";
+            O_INFO("Displaying final quit message...");
             auto rect = image.rect();
             painter.fillRect(rect, Qt::black);
             painter.setPen(Qt::white);

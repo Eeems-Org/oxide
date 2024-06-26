@@ -33,7 +33,7 @@ void Screenshot::registerPath(){
 void Screenshot::unregisterPath(){
     auto bus = QDBusConnection::systemBus();
     if(bus.objectRegisteredAt(path()) != nullptr){
-        O_DEBUG("Unregistered" << path());
+        O_INFO("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }
@@ -93,7 +93,7 @@ void Screenshot::remove(){
     }
     mutex.lock();
     if(m_file->exists() && !m_file->remove()){
-        O_WARNING("Failed to remove screenshot" << path());
+        O_INFO("Failed to remove screenshot" << path());
         mutex.unlock();
         return;
     }

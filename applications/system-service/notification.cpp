@@ -55,7 +55,7 @@ void Notification::registerPath(){
 void Notification::unregisterPath(){
     auto bus = QDBusConnection::systemBus();
     if(bus.objectRegisteredAt(path()) != nullptr){
-        O_DEBUG("Unregistered" << path());
+        O_INFO("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }
@@ -115,12 +115,12 @@ void Notification::display(){
         return;
     }
     if(notificationAPI->locked()){
-        O_DEBUG("Queueing notification display");
+        O_INFO("Queueing notification display");
         notificationAPI->notificationDisplayQueue.append(this);
         return;
     }
     notificationAPI->lock();
-    O_DEBUG("Displaying notification" << identifier());
+    O_INFO("Displaying notification" << identifier());
     paintNotification();
 }
 
@@ -177,12 +177,12 @@ bool Notification::hasPermission(QString permission, const char* sender){
 }
 
 void Notification::paintNotification(){
-    O_DEBUG("Painting notification" << identifier());
+    O_INFO("Painting notification" << identifier());
     auto notification = notificationAPI->paintNotification(m_text, m_icon);
-    O_DEBUG("Painted notification" << identifier());
+    O_INFO("Painted notification" << identifier());
     emit displayed();
     QTimer::singleShot(2000, [this, notification] {
-        O_DEBUG("Finished displaying notification" << identifier());
+        O_INFO("Finished displaying notification" << identifier());
         if(!notificationAPI->notificationDisplayQueue.isEmpty()){
             notificationAPI
                 ->notificationDisplayQueue

@@ -10,7 +10,7 @@ int APIBase::hasPermission(QString permission, const char* sender){
     if(getpgid(getpid()) == getSenderPgid()){
         return true;
     }
-    O_DEBUG("Checking permission" << permission << "from" << sender);
+    O_INFO("Checking permission" << permission << "from" << sender);
     for(auto name : appsAPI->runningApplicationsNoSecurityCheck().keys()){
         auto app = appsAPI->getApplication(name);
         if(app == nullptr){
@@ -18,11 +18,11 @@ int APIBase::hasPermission(QString permission, const char* sender){
         }
         if(app->processId() == getSenderPgid()){
             auto result = app->permissions().contains(permission);
-            O_DEBUG(app->name() << result);
+            O_INFO(app->name() << result);
             return result;
         }
     }
-    O_DEBUG("app not found, permission granted");
+    O_INFO("app not found, permission granted");
     return true;
 }
 

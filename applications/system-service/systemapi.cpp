@@ -25,9 +25,9 @@ void SystemAPI::PrepareForSleep(bool suspending){
         Oxide::Sentry::sentry_transaction("system", "suspend", [this](Oxide::Sentry::Transaction* t){
             if(autoLock()){
                 lockTimestamp = QDateTime::currentMSecsSinceEpoch() + lockTimer.remainingTime();
-                qDebug() << "Auto Lock timestamp:" << lockTimestamp;
+                O_DEBUG("Auto Lock timestamp:" << lockTimestamp);
             }
-            qDebug() << "Preparing for suspend...";
+            O_INFO("Preparing for suspend...");
             Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", [this]{
                 QString path("/usr/share/remarkable/sleeping.png");
                 if(!QFile::exists(path)){
@@ -84,9 +84,9 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 if(path.path() != "/"){
                     resumeApp = appsAPI->getApplication(path);
                     resumeApp->pauseNoSecurityCheck(false);
-                    qDebug() << "Resume app set to " << resumeApp->name();
+                    O_INFO("Resume app set to " << resumeApp->name());
                 }else{
-                    qDebug() << "Unable to set resume app";
+                    O_INFO("Unable to set resume app");
                     resumeApp = nullptr;
                 }
             });
@@ -101,7 +101,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 }
                 releaseSleepInhibitors();
             });
-            qDebug() << "Suspending...";
+            O_INFO("Suspending...");
         });
     }else{
         Oxide::Sentry::sentry_transaction("system", "resume", [this](Oxide::Sentry::Transaction* t){
@@ -113,6 +113,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 Blight::connection()->remove(m_buffer);
                 m_buffer = nullptr;
             }
+            O_INFO("Resuming...");
             Oxide::Sentry::sentry_span(t, "process", "Process events", []{
                 QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
             });
@@ -120,39 +121,39 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 auto now = QDateTime::currentMSecsSinceEpoch();
                 bool lockTimeout = autoLock();
                 if(lockTimeout){
-                    qDebug() << "Current timestamp:" << now;
+                    O_DEBUG("Current timestamp:" << now);
                     lockTimeout = now >= lockTimestamp;
                 }
                 if(lockOnSuspend() || lockTimeout){
                     if(lockTimeout){
-                        qDebug() << "Lock timer expired while suspended";
+                        O_DEBUG("Lock timer expired while suspended");
                     }else{
-                        qDebug() << "Always locking after suspend";
+                        O_DEBUG("Always locking after suspend");
                     }
                     auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
                     if(lockscreenApp != nullptr){
-                        qDebug() << "Resume app set to lockscreen application";
+                        O_DEBUG("Resume app set to lockscreen application");
                         resumeApp = lockscreenApp;
                     }
                 }
                 if(resumeApp == nullptr){
-                    qDebug() << "Resume app set to startup application";
+                    O_DEBUG("Resume app set to startup application");
                     resumeApp = appsAPI->getApplication(appsAPI->startupApplication());
                 }
                 if(resumeApp != nullptr){
                     resumeApp->resumeNoSecurityCheck();
                 }else{
-                    qDebug() << "Unable to find an app to resume";
+                    O_WARNING("Unable to find an app to resume");
                 }
             });
             Oxide::Sentry::sentry_span(t, "enable", "Enable various services", [this]{
                 emit deviceResuming();
                 if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-                    qDebug() << "Suspend timer re-enabled due to resume";
+                    O_DEBUG("Suspend timer re-enabled due to resume");
                     suspendTimer.start(autoSleep() * 60 * 1000);
                 }
                 if(autoLock()){
-                    qDebug() << "Lock timer re-enabled due to resume";
+                    O_DEBUG("Lock timer re-enabled due to resume");
                     lockTimer.start(autoLock() * 60 * 1000);
                 }
                 if(wifiWasOn){
@@ -212,10 +213,10 @@ SystemAPI::SystemAPI(QObject* parent)
         Oxide::Sentry::sentry_span(t, "autoSleep", "Setup automatic sleep", [this](Oxide::Sentry::Span* s){
             QSettings settings;
             if(QFile::exists(settings.fileName())){
-                qDebug() << "Importing old settings";
+                O_INFO("Importing old settings");
                 settings.sync();
                 if(settings.contains("autoSleep")){
-                    qDebug() << "Importing old autoSleep";
+                    O_DEBUG("Importing old autoSleep");
                     sharedSettings.set_autoSleep(settings.value("autoSleep").toInt());
                 }
                 int size = settings.beginReadArray("swipes");
@@ -224,7 +225,7 @@ SystemAPI::SystemAPI(QObject* parent)
                     for(short i = Right; i <= Down && i < size; i++){
                         settings.setArrayIndex(i);
                         sharedSettings.setArrayIndex(i);
-                        qDebug() << QString("Importing old swipe[%1]").arg(i);
+                        O_DEBUG(QString("Importing old swipe[%1]").arg(i));
                         sharedSettings.setValue("enabled", settings.value("enabled", true));
                         sharedSettings.setValue("length", settings.value("length", 30));
                     }
@@ -240,7 +241,7 @@ SystemAPI::SystemAPI(QObject* parent)
             }else if(autoSleep() > 10){
                 sharedSettings.set_autoSleep(10);
             }
-            qDebug() << "Auto Sleep" << autoSleep();
+            O_DEBUG("Auto Sleep" << autoSleep());
             Oxide::Sentry::sentry_span(s, "timer", "Setup timers", [this]{
                 if(autoSleep()){
                     suspendTimer.start(autoSleep() * 60 * 1000);
@@ -332,12 +333,12 @@ SystemAPI::SystemAPI(QObject* parent)
                 emit landscapeChanged(landscape());
             });
         });
-        qDebug() << "System API ready to use";
+        O_INFO("System API ready to use");
     });
 }
 
 void SystemAPI::shutdown(){
-    qDebug() << "Removing all inhibitors";
+    O_INFO("Removing all inhibitors");
     rguard(false);
     QMutableListIterator<Inhibitor> i(inhibitors);
     while(i.hasNext()){
@@ -349,7 +350,7 @@ void SystemAPI::shutdown(){
 }
 
 void SystemAPI::setEnabled(bool enabled){
-    qDebug() << "System API" << enabled;
+    O_INFO("System API" << enabled);
 }
 
 int SystemAPI::autoSleep(){return sharedSettings.autoSleep(); }
@@ -358,7 +359,7 @@ void SystemAPI::setAutoSleep(int _autoSleep){
     if(_autoSleep < 0 || _autoSleep > 360){
         return;
     }
-    qDebug() << "Auto Sleep" << _autoSleep;
+    O_INFO("Auto Sleep" << _autoSleep);
     sharedSettings.set_autoSleep(_autoSleep);
     if(_autoSleep && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         suspendTimer.setInterval(_autoSleep * 60 * 1000);
@@ -374,7 +375,7 @@ void SystemAPI::setAutoLock(int _autoLock){
     if(_autoLock < 0 || _autoLock > 360){
         return;
     }
-    qDebug() << "Auto Lock" << _autoLock;
+    O_INFO("Auto Lock" << _autoLock);
     sharedSettings.set_autoLock(_autoLock);
     lockTimer.setInterval(_autoLock * 60 * 1000);
     sharedSettings.sync();
@@ -384,7 +385,7 @@ void SystemAPI::setAutoLock(int _autoLock){
 bool SystemAPI::lockOnSuspend(){return sharedSettings.lockOnSuspend(); }
 void SystemAPI::setLockOnSuspend(bool _lockOnSuspend){
     sharedSettings.set_lockOnSuspend(_lockOnSuspend);
-    qDebug() << "Lock on Suspend" << _lockOnSuspend;
+    O_INFO("Lock on Suspend" << _lockOnSuspend);
     sharedSettings.sync();
     emit lockOnSuspendChanged(_lockOnSuspend);
 }
@@ -408,29 +409,29 @@ void SystemAPI::uninhibitAll(QString name){
         }
     }
     if(!sleepInhibited() && autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
-        qDebug() << "Suspend timer re-enabled due to uninhibit" << name;
+        O_DEBUG("Suspend timer re-enabled due to uninhibit" << name);
         suspendTimer.start(autoSleep() * 60 * 1000);
     }
 }
 
 void SystemAPI::stopSuspendTimer(){
-    qDebug() << "Suspend timer disabled";
+    O_DEBUG("Suspend timer disabled");
     suspendTimer.stop();
 }
 
 void SystemAPI::stopLockTimer(){
-    qDebug() << "Lock timer disabled";
+    O_DEBUG("Lock timer disabled");
     lockTimer.stop();
 }
 void SystemAPI::startSuspendTimer(){
     if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected && !suspendTimer.isActive()){
-        qDebug() << "Suspend timer re-enabled due to start Suspend timer";
+        O_DEBUG("Suspend timer re-enabled due to start Suspend timer");
         suspendTimer.start(autoSleep() * 60 * 1000);
     }
 }
 void SystemAPI::startLockTimer(){
     if(autoLock() && !lockTimer.isActive()){
-        qDebug() << "Lock timer re-enabled due to start lock timer";
+        O_DEBUG("Lock timer re-enabled due to start lock timer");
         lockTimer.start(autoSleep() * 60 * 1000);
     }
 }
@@ -444,7 +445,7 @@ void SystemAPI::setSwipeEnabled(int direction, bool enabled){
         return;
     }
     if(direction <= SwipeDirection::None || direction > SwipeDirection::Down){
-        qDebug() << "Invalid swipe direction: " << direction;
+        O_WARNING("Invalid swipe direction: " << direction);
         return;
     }
     setSwipeEnabled((SwipeDirection)direction, enabled);
@@ -456,16 +457,16 @@ void SystemAPI::setSwipeEnabled(SwipeDirection direction, bool enabled){
     }
     switch(direction){
         case Left:
-            qDebug() << "Swipe Left: " << enabled;
+            O_INFO("Swipe Left: " << enabled);
             break;
         case Right:
-            qDebug() << "Swipe Right: " << enabled;
+            O_INFO("Swipe Right: " << enabled);
             break;
         case Up:
-            qDebug() << "Swipe Up: " << enabled;
+            O_INFO("Swipe Up: " << enabled);
             break;
         case Down:
-            qDebug() << "Swipe Down: " << enabled;
+            O_INFO("Swipe Down: " << enabled);
             break;
         default:
             return;
@@ -487,7 +488,7 @@ bool SystemAPI::getSwipeEnabled(int direction){
         return false;
     }
     if(direction <= SwipeDirection::None || direction > SwipeDirection::Down){
-        qDebug() << "Invalid swipe direction: " << direction;
+        O_WARNING("Invalid swipe direction: " << direction);
         return false;
     }
     return getSwipeEnabled(direction);
@@ -500,7 +501,7 @@ void SystemAPI::toggleSwipeEnabled(int direction){
         return;
     }
     if(direction <= SwipeDirection::None || direction > SwipeDirection::Down){
-        qDebug() << "Invalid swipe direction: " << direction;
+        O_WARNING("Invalid swipe direction: " << direction);
         return;
     }
     toggleSwipeEnabled((SwipeDirection)direction);
@@ -514,7 +515,7 @@ void SystemAPI::setSwipeLength(int direction, int length){
         return;
     }
     if(direction <= SwipeDirection::None || direction > SwipeDirection::Down){
-        qDebug() << "Invalid swipe direction: " << direction;
+        O_WARNING("Invalid swipe direction: " << direction);
         return;
     }
     if(direction == SwipeDirection::Up || direction == SwipeDirection::Down){
@@ -523,7 +524,7 @@ void SystemAPI::setSwipeLength(int direction, int length){
         maxLength = deviceSettings.getTouchWidth();
     }
     if(length < 0 || length > maxLength){
-        qDebug() << "Invalid swipe length: " << direction;
+        O_WARNING("Invalid swipe length: " << direction);
         return;
     }
     setSwipeLength((SwipeDirection)direction, length);
@@ -535,16 +536,16 @@ void SystemAPI::setSwipeLength(SwipeDirection direction, int length){
     }
     switch(direction){
         case Left:
-            qDebug() << "Swipe Left Length: " << length;
+            O_INFO("Swipe Left Length: " << length);
             break;
         case Right:
-            qDebug() << "Swipe Right Length: " << length;
+            O_INFO("Swipe Right Length: " << length);
             break;
         case Up:
-            qDebug() << "Swipe Up Length: " << length;
+            O_INFO("Swipe Up Length: " << length);
             break;
         case Down:
-            qDebug() << "Swipe Down Length: " << length;
+            O_INFO("Swipe Down Length: " << length);
             break;
         default:
             return;
@@ -566,7 +567,7 @@ int SystemAPI::getSwipeLength(int direction){
         return -1;
     }
     if(direction <= SwipeDirection::None || direction > SwipeDirection::Down){
-        qDebug() << "Invalid swipe direction: " << direction;
+        O_WARNING("Invalid swipe direction: " << direction);
         return -1;
     }
     return getSwipeLength((SwipeDirection)direction);
@@ -576,56 +577,56 @@ int SystemAPI::getSwipeLength(SwipeDirection direction){ return swipeLengths[dir
 
 void SystemAPI::suspend(){
     if(sleepInhibited()){
-        qDebug() << "Unable to suspend. Action is currently inhibited.";
+        O_INFO("Unable to suspend. Action is currently inhibited.");
         return;
     }
-    qDebug() << "Requesting Suspend...";
+    O_INFO("Requesting Suspend...");
     systemd->Suspend(false).waitForFinished();
-    qDebug() << "Suspend requested.";
+    O_INFO("Suspend requested.");
 }
 
 void SystemAPI::powerOff() {
     if(powerOffInhibited()){
-        qDebug() << "Unable to power off. Action is currently inhibited.";
+        O_INFO("Unable to power off. Action is currently inhibited.");
         return;
     }
-    qDebug() << "Requesting Power off...";
+    O_INFO("Requesting Power off...");
     releasePowerOffInhibitors(true);
     rguard(false);
     systemd->PowerOff(false).waitForFinished();
-    qDebug() << "Power off requested";
+    O_INFO("Power off requested");
 }
 
 void SystemAPI::reboot() {
     if(powerOffInhibited()){
-        qDebug() << "Unable to reboot. Action is currently inhibited.";
+        O_INFO("Unable to reboot. Action is currently inhibited.");
         return;
     }
-    qDebug() << "Requesting Reboot...";
+    O_INFO("Requesting Reboot...");
     releasePowerOffInhibitors(true);
     rguard(false);
     systemd->Reboot(false).waitForFinished();
-    qDebug() << "Reboot requested";
+    O_INFO("Reboot requested");
 }
 void SystemAPI::activity(){
     auto active = suspendTimer.isActive();
     suspendTimer.stop();
     if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         if(!active){
-            qDebug() << "Suspend timer re-enabled due to activity";
+            O_DEBUG("Suspend timer re-enabled due to activity");
         }
         suspendTimer.start(autoSleep() * 60 * 1000);
     }else if(active){
-        qDebug() << "Suspend timer disabled";
+        O_DEBUG("Suspend timer disabled");
     }
     active = lockTimer.isActive();
     if(autoLock()){
         if(!active){
-            qDebug() << "Lock timer re-enabled due to activity";
+            O_DEBUG("Lock timer re-enabled due to activity");
         }
         lockTimer.start(autoLock() * 60 * 1000);
     }else if(active){
-        qDebug() << "Lock timer disabled";
+        O_DEBUG("Lock timer disabled");
     }
 }
 
@@ -645,7 +646,7 @@ void SystemAPI::uninhibitSleep(QDBusMessage message){
     sleepInhibitors.removeAll(message.service());
     if(!sleepInhibited() && autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
         if(!suspendTimer.isActive()){
-            qDebug() << "Suspend timer re-enabled due to uninhibit sleep" << message.service();
+            O_DEBUG("Suspend timer re-enabled due to uninhibit sleep" << message.service());
             suspendTimer.start(autoSleep() * 60 * 1000);
         }
         releaseSleepInhibitors(true);
@@ -674,7 +675,7 @@ void SystemAPI::uninhibitPowerOff(QDBusMessage message){
 }
 void SystemAPI::suspendTimeout(){
     if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
-        qDebug() << "Automatic suspend due to inactivity...";
+        O_INFO("Automatic suspend due to inactivity...");
         suspend();
     }
 }
@@ -682,7 +683,7 @@ void SystemAPI::lockTimeout(){
     if(autoLock()){
         auto lockscreenApp = appsAPI->getApplication(appsAPI->lockscreenApplication());
         if(lockscreenApp != nullptr){
-            qDebug() << "Automatic lock due to inactivity...";
+            O_INFO("Automatic lock due to inactivity...");
             lockscreenApp->resumeNoSecurityCheck();
         }
     }
@@ -733,7 +734,7 @@ void SystemAPI::toggleSwipes(){
     setSwipeEnabled(Right, state);
     setSwipeEnabled(Up, state);
     QString message = state ? "Swipes Enabled" : "Swipes Disabled";
-    qDebug() << message;
+    O_INFO(message);
     const QString& id = "system-swipe-toggle";
     auto notification = notificationAPI->add(id, OXIDE_SERVICE, "tarnish", message, "");
     if(notification == nullptr){

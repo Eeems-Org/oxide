@@ -550,6 +550,26 @@ fail:
     return NULL;
 }
 
+sentry_envelope_t *
+sentry__prepare_user_feedback(sentry_value_t user_feedback)
+{
+    sentry_envelope_t *envelope = NULL;
+
+    envelope = sentry__envelope_new();
+    if (!envelope
+        || !sentry__envelope_add_user_feedback(envelope, user_feedback)) {
+        goto fail;
+    }
+
+    return envelope;
+
+fail:
+    SENTRY_WARN("dropping user feedback");
+    sentry_envelope_free(envelope);
+    sentry_value_decref(user_feedback);
+    return NULL;
+}
+
 void
 sentry_handle_exception(const sentry_ucontext_t *uctx)
 {
@@ -849,7 +869,7 @@ sentry_transaction_start(
 
     sentry_value_set_by_key(tx, "start_timestamp",
         sentry__value_new_string_owned(
-            sentry__msec_time_to_iso8601(sentry__msec_time())));
+            sentry__usec_time_to_iso8601(sentry__usec_time())));
 
     sentry__transaction_context_free(opaque_tx_cxt);
     return sentry__transaction_new(tx);
@@ -894,7 +914,7 @@ sentry_transaction_finish(sentry_transaction_t *opaque_tx)
     sentry_value_set_by_key(tx, "type", sentry_value_new_string("transaction"));
     sentry_value_set_by_key(tx, "timestamp",
         sentry__value_new_string_owned(
-            sentry__msec_time_to_iso8601(sentry__msec_time())));
+            sentry__usec_time_to_iso8601(sentry__usec_time())));
     // TODO: This might not actually be necessary. Revisit after talking to
     // the relay team about this.
     sentry_value_set_by_key(tx, "level", sentry_value_new_string("info"));
@@ -1091,7 +1111,7 @@ sentry_span_finish(sentry_span_t *opaque_span)
 
     sentry_value_set_by_key(span, "timestamp",
         sentry__value_new_string_owned(
-            sentry__msec_time_to_iso8601(sentry__msec_time())));
+            sentry__usec_time_to_iso8601(sentry__usec_time())));
     sentry_value_remove_by_key(span, "sampled");
 
     size_t max_spans = SENTRY_SPANS_MAX;
@@ -1118,6 +1138,20 @@ sentry_span_finish(sentry_span_t *opaque_span)
 
 fail:
     sentry__span_decref(opaque_span);
+}
+
+void
+sentry_capture_user_feedback(sentry_value_t user_feedback)
+{
+    sentry_envelope_t *envelope = NULL;
+
+    SENTRY_WITH_OPTIONS (options) {
+        envelope = sentry__prepare_user_feedback(user_feedback);
+        if (envelope) {
+            sentry__capture_envelope(options->transport, envelope);
+        }
+    }
+    sentry_value_decref(user_feedback);
 }
 
 int

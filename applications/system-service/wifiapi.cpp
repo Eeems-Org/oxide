@@ -24,16 +24,16 @@ WifiAPI::WifiAPI(QObject* parent)
         });
         Oxide::Sentry::sentry_span(t, "sysfs", "Finding wireless devices", [this](Oxide::Sentry::Span* s){
             QDir dir("/sys/class/net");
-            qDebug() << "Looking for wireless devices...";
+            O_DEBUG("Looking for wireless devices...");
             for(auto path : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable)){
-                qDebug() << ("  Checking " + path + "...").toStdString().c_str();
+                O_DEBUG(("  Checking " + path + "...").toStdString().c_str());
                 Wlan* item = new Wlan(dir.path() + "/" + path, this);
                 if(!item->hasDirectory("wireless")){
-                    qDebug() << "    Not a wireless device";
+                    O_DEBUG("    Not a wireless device");
                     item->deleteLater();
                     continue;
                 }
-                qDebug() << "    Wireless device found!";
+                O_DEBUG("    Wireless device found!");
                 Oxide::Sentry::sentry_span(s, path.toStdString(), "Connect to wireless device", [this, item]{
                     wlans.append(item);
                     connect(item, &Wlan::BSSAdded, this, &WifiAPI::BSSAdded, Qt::QueuedConnection);
@@ -149,21 +149,21 @@ WifiAPI::WifiAPI(QObject* parent)
 }
 
 void WifiAPI::shutdown(){
-    qDebug() << "Unregistering all networks";
+    O_DEBUG("Unregistering all networks");
     while(!networks.isEmpty()){
         networks.takeFirst()->deleteLater();
     }
-    qDebug() << "Unregistering all BSSs";
+    O_DEBUG("Unregistering all BSSs");
     while(!bsss.isEmpty()){
         bsss.takeFirst()->deleteLater();
     }
-    qDebug() << "Killing timer";
+    O_DEBUG("Killing timer");
     timer->stop();
     timer->deleteLater();
 }
 
 void WifiAPI::setEnabled(bool enabled){
-    qDebug() << "Wifi API" << enabled;
+    O_INFO("Wifi API" << enabled);
     m_enabled = enabled;
     if(enabled){
         for(auto network : networks){
@@ -213,17 +213,17 @@ bool WifiAPI::enable(){
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM2){
         system("/sbin/modprobe brcmfmac");
     }
-    qDebug() << "Turning wifi on";
+    O_INFO("Turning wifi on");
     if(m_state == Off){
         setState(Disconnected);
     }
     if(system("/usr/sbin/rfkill unblock wifi")){
-        qDebug() << "Failed to enable wifi devices";
+        O_INFO("Failed to enable wifi devices");
         return false;
     }
     for(auto wlan : wlans){
         if(!wlan->isUp() && !wlan->up()){
-            qDebug() << "Failed to enable " + wlan->iface();
+            O_INFO("Failed to enable " + wlan->iface());
             continue;
         }
     }
@@ -232,7 +232,7 @@ bool WifiAPI::enable(){
     auto state = getCurrentState();
     m_state = state;
     if(state != Online){
-        qDebug() << "State:" << state;
+        O_INFO("State:" << state);
         reconnect();
     }
     return true;
@@ -242,18 +242,18 @@ void WifiAPI::disable(){
     if(!hasPermission("wifi")){
         return;
     }
-    qDebug() << "Turning wifi off";
+    O_INFO("Turning wifi off");
     setState(Off);
     for(auto wlan : wlans){
         if(wlan->isUp() && !wlan->down()){
-            qDebug() << "Failed to disable " + wlan->iface();
+            O_INFO("Failed to disable " + wlan->iface());
         }
     }
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM2){
         system("/sbin/rmmod brcmfmac");
     }
     if(system("/usr/sbin/rfkill block wifi")){
-        qDebug() << "Failed to disable wifi devices";
+        O_INFO("Failed to disable wifi devices");
     }
     flushBSSCache(0);
     xochitlSettings.set_wifion(false);
@@ -351,7 +351,7 @@ void WifiAPI::reconnect(){
     if(!hasPermission("wifi")){
         return;
     }
-    qDebug() << "Reconnecting to wifi";
+    O_INFO("Reconnecting to wifi");
     QList<QDBusPendingReply<void>> replies;
     for(auto interface : interfaces()){
         replies.append(interface->Reconnect());
@@ -553,7 +553,7 @@ void WifiAPI::BSSAdded(Wlan* wlan, const QDBusObjectPath& path, const QVariantMa
             return;
         }
     }
-    qDebug() << "BSS added " << bssid.toUtf8().toHex() << ssid;
+    O_DEBUG("BSS added " << bssid.toUtf8().toHex() << ssid);
     auto bss = new BSS(getPath("bss", bssid), bssid, ssid, this);
     if(m_enabled){
         bss->registerPath();
@@ -606,7 +606,7 @@ void WifiAPI::NetworkAdded(Wlan* wlan, const QDBusObjectPath& path, const QVaria
             return;
         }
     }
-    qDebug() << "Network added " << ssid;
+    O_INFO("Network added " << ssid);
     auto network = new Network(getPath("network", ssid), properties, this);
     network->addNetwork(path.path(), wlan->interface());
     if(m_enabled){
@@ -627,7 +627,7 @@ void WifiAPI::NetworkRemoved(Wlan* wlan, const QDBusObjectPath& path){
             i.remove();
             emit network->removed();
             emit networkRemoved(QDBusObjectPath(network->path()));
-            qDebug() << "Network removed " << network->ssid();
+            O_INFO("Network removed " << network->ssid());
             network->deleteLater();
         }
     }
@@ -637,7 +637,7 @@ void WifiAPI::NetworkSelected(Wlan* wlan, const QDBusObjectPath& path){
     Q_UNUSED(wlan);
     for(auto network : networks){
         if(network->paths().contains(path.path())){
-            qDebug() << "Network selected" << path.path();
+            O_INFO("Network selected" << path.path());
             break;
         }
     }
@@ -681,7 +681,7 @@ void WifiAPI::InterfaceRemoved(const QDBusObjectPath& path){
                 if(network->paths().empty()){
                     emit network->removed();
                     emit networkRemoved(QDBusObjectPath(network->path()));
-                    qDebug() << "Network removed " << network->ssid();
+                    O_INFO("Network removed " << network->ssid());
                 }
             }
             wlan->removeInterface();
@@ -708,13 +708,13 @@ void WifiAPI::validateSupplicant(){
     QStringList serviceNames = bus.interface()->registeredServiceNames();
     if (!serviceNames.contains(WPA_SUPPLICANT_SERVICE)){
         if(system("/bin/systemctl --quiet is-active wpa_supplicant")){
-            qDebug() << "Starting wpa_supplicant...";
+            O_INFO("Starting wpa_supplicant...");
             if(system("/bin/systemctl --quiet start wpa_supplicant")){
                 qCritical() << "Failed to start wpa_supplicant";
                 throw QException();
             }
         }
-        qDebug() << "Waiting for wpa_supplicant dbus service...";
+        O_INFO("Waiting for wpa_supplicant dbus service...");
         while(!serviceNames.contains(WPA_SUPPLICANT_SERVICE)){
             struct timespec args{
                 .tv_sec = 1,
@@ -727,16 +727,16 @@ void WifiAPI::validateSupplicant(){
 }
 
 void WifiAPI::loadNetworks(){
-    qDebug() << "Loading networks from settings...";
+    O_INFO("Loading networks from settings...");
     QList<QMap<QString, QVariant>> registeredNetworks = xochitlSettings.wifinetworks().values();
-    qDebug() << "Registering networks...";
+    O_INFO("Registering networks...");
     for(auto registration : registeredNetworks){
         bool found = false;
         auto ssid = registration["ssid"].toString();
         auto protocol = registration["protocol"].toString();
         for(auto network : networks){
             if(network->ssid() == ssid && network->protocol() == protocol){
-                qDebug() << "  Found network" << network->ssid();
+                O_INFO("  Found network" << network->ssid());
                 found = true;
                 if(network->password() != registration["password"].toString()){
                     network->setPassword(registration["password"].toString());
@@ -761,10 +761,10 @@ void WifiAPI::loadNetworks(){
             }
             networks.append(network);
             emit networkAdded(QDBusObjectPath(network->path()));
-            qDebug() << "  Registered network" << ssid;
+            O_INFO("  Registered network" << ssid);
         }
     }
-    qDebug() << "Loaded networks.";
+    O_INFO("Loaded networks.");
 }
 
 void WifiAPI::update(){
@@ -779,11 +779,11 @@ void WifiAPI::update(){
     }
     auto path = network().path();
     if((state == Online || state == Offline) && m_currentNetwork.path() != path){
-        qDebug() << "Connected to" << path;
+        O_INFO("Connected to" << path);
         m_currentNetwork.setPath(path);
         emit networkConnected(m_currentNetwork);
     }else if((state == Disconnected || state == Off) && m_currentNetwork.path() != "/"){
-        qDebug() << "Disconnected from" << m_currentNetwork.path();
+        O_INFO("Disconnected from" << m_currentNetwork.path());
         m_currentNetwork.setPath("/");
         emit disconnected();
     }
