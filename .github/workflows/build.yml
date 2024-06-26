@@ -26,6 +26,31 @@ on:
       - 'Makefile'
       - 'package'
 jobs:
+  lint:
+    name: Lint source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache shfmt
+        uses: actions/cache@v3
+        with:
+          path: /usr/local/bin/shfmt
+          key: 43439b996942b53dfafa9b6ff084f394555d049c98fb7ec37978f7668b43e1be
+      - name: Install shfmt
+        shell: bash
+        run: |
+          install_dir=/usr/local/bin
+          if ! [[ -f "$install_dir"/shfmt ]]; then
+              shfmt_version=v3.2.1
+              shfmt_checksum=43439b996942b53dfafa9b6ff084f394555d049c98fb7ec37978f7668b43e1be
+              sudo curl --location --silent --fail --tlsv1.2 --proto '=https' \
+                  --output "$install_dir"/shfmt \
+                  https://github.com/mvdan/sh/releases/download/"$shfmt_version"/shfmt_"$shfmt_version"_linux_amd64
+              sha256sum -c <(echo "$shfmt_checksum $install_dir/shfmt") > /dev/null 2>&1
+              sudo chmod a+x "$install_dir"/shfmt
+          fi
+      - uses: actions/checkout@v4
+      - name: Build packages
+        run: make lint
   build:
     name: Build and package
     runs-on: ubuntu-latest
