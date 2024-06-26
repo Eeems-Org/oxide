@@ -1121,7 +1121,7 @@ sentry_value_new_event(void)
 
     sentry_value_set_by_key(rv, "timestamp",
         sentry__value_new_string_owned(
-            sentry__msec_time_to_iso8601(sentry__msec_time())));
+            sentry__usec_time_to_iso8601(sentry__usec_time())));
 
     sentry_value_set_by_key(rv, "platform", sentry_value_new_string("native"));
 
@@ -1162,7 +1162,7 @@ timestamp_value(sentry_value_t value)
 {
     sentry_value_set_by_key(value, "timestamp",
         sentry__value_new_string_owned(
-            sentry__msec_time_to_iso8601(sentry__msec_time())));
+            sentry__usec_time_to_iso8601(sentry__usec_time())));
 }
 
 sentry_value_t
@@ -1263,6 +1263,42 @@ sentry_value_new_stacktrace(void **ips, size_t len)
     sentry_value_set_by_key(stacktrace, "frames", frames);
 
     return stacktrace;
+}
+
+sentry_value_t
+sentry_value_new_user_feedback(const sentry_uuid_t *uuid, const char *name,
+    const char *email, const char *comments)
+{
+    size_t name_len = name ? strlen(name) : 0;
+    size_t email_len = email ? strlen(email) : 0;
+    size_t comments_len = email ? strlen(comments) : 0;
+    return sentry_value_new_user_feedback_n(
+        uuid, name, name_len, email, email_len, comments, comments_len);
+}
+
+sentry_value_t
+sentry_value_new_user_feedback_n(const sentry_uuid_t *uuid, const char *name,
+    size_t name_len, const char *email, size_t email_len, const char *comments,
+    size_t comments_len)
+{
+    sentry_value_t rv = sentry_value_new_object();
+
+    sentry_value_set_by_key(rv, "event_id", sentry__value_new_uuid(uuid));
+
+    if (name) {
+        sentry_value_set_by_key(
+            rv, "name", sentry_value_new_string_n(name, name_len));
+    }
+    if (email) {
+        sentry_value_set_by_key(
+            rv, "email", sentry_value_new_string_n(email, email_len));
+    }
+    if (comments) {
+        sentry_value_set_by_key(
+            rv, "comments", sentry_value_new_string_n(comments, comments_len));
+    }
+
+    return rv;
 }
 
 static sentry_value_t
