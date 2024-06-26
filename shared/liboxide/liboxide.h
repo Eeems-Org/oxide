@@ -39,7 +39,7 @@
 #ifdef APP_VERSION
 #define VERSION APP_VERSION
 #else
-#define VERSION "2.7"
+#define VERSION OXIDE_VERSION
 #endif
 #endif
 #ifndef APP_VERSION
