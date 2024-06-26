@@ -58,7 +58,6 @@ class Controller : public QObject
     Q_PROPERTY(int maxTouchWidth READ maxTouchWidth)
     Q_PROPERTY(int maxTouchHeight READ maxTouchHeight)
 public:
-    static std::string exec(const char* cmd);
     QObject* stateController;
     QObject* root = nullptr;
     explicit Controller(QObject* parent = 0)

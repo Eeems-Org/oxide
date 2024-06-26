@@ -5,25 +5,17 @@
 #include "systemapi.h"
 #include "screenapi.h"
 #include "notificationapi.h"
-#include "buttonhandler.h"
-#include "digitizerhandler.h"
+
+#include <systemd/sd-daemon.h>
+
+using namespace std::chrono;
 
 DBusService* DBusService::singleton(){
     static DBusService* instance;
     if(instance == nullptr){
         qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
-        O_INFO("Creating DBusService instance");
+        O_DEBUG("Creating DBusService instance");
         instance = new DBusService(qApp);
-        connect(qApp, &QGuiApplication::aboutToQuit, [=]{
-            if(instance == nullptr){
-                return;
-            }
-            emit instance->aboutToQuit();
-            O_INFO("Killing dbus service");
-            delete instance;
-            qApp->processEvents();
-            instance = nullptr;
-        });
         auto bus = QDBusConnection::systemBus();
         if(!bus.isConnected()){
 #ifdef SENTRY
@@ -32,7 +24,7 @@ DBusService* DBusService::singleton(){
             qFatal("Failed to connect to system bus.");
         }
         QDBusConnectionInterface* interface = bus.interface();
-        O_INFO("Registering service...");
+        O_DEBUG("Registering service...");
         auto reply = interface->registerService(OXIDE_SERVICE);
         bus.registerService(OXIDE_SERVICE);
         if(!reply.isValid()){
@@ -49,14 +41,60 @@ DBusService* DBusService::singleton(){
 #endif
             qFatal("Unable to register interface: %s", bus.lastError().message().toStdString().c_str());
         }
-        connect(bus.interface(), SIGNAL(serviceOwnerChanged(QString,QString,QString)),
-                instance, SLOT(serviceOwnerChanged(QString,QString,QString)));
+        connect(
+            bus.interface(),
+            SIGNAL(serviceOwnerChanged(QString,QString,QString)),
+            instance,
+            SLOT(serviceOwnerChanged(QString,QString,QString))
+        );
         O_DEBUG("Registered");
     }
     return instance;
 }
 
-DBusService::DBusService(QObject* parent) : APIBase(parent), apis(){
+DBusService::DBusService(QObject* parent)
+: APIBase(parent),
+  apis(),
+  m_exiting{false}
+{
+    uint64_t time;
+    int res = sd_watchdog_enabled(0, &time);
+    if(res > 0){
+        auto usec = microseconds(time);
+        auto hrs = duration_cast<hours>(usec);
+        auto mins = duration_cast<minutes>(usec - hrs);
+        auto secs = duration_cast<seconds>(usec - hrs - mins);
+        auto ms = duration_cast<milliseconds>(usec - hrs - mins - secs);
+        qInfo()
+            << "Watchdog notification expected every"
+            << QString("%1:%2:%3.%4")
+               .arg(hrs.count())
+               .arg(mins.count())
+               .arg(secs.count())
+               .arg(ms.count());
+        usec = usec / 2;
+        hrs = duration_cast<hours>(usec);
+        mins = duration_cast<minutes>(usec - hrs);
+        secs = duration_cast<seconds>(usec - hrs - mins);
+        ms = duration_cast<milliseconds>(usec - hrs - mins - secs);
+        qInfo()
+            << "Watchdog scheduled for every "
+            << QString("%1:%2:%3.%4")
+               .arg(hrs.count())
+               .arg(mins.count())
+               .arg(secs.count())
+               .arg(ms.count());
+        m_watchdogTimer = startTimer(duration_cast<milliseconds>(usec).count(), Qt::PreciseTimer);
+        if(m_watchdogTimer == 0){
+            qCritical() << "Watchdog timer failed to start";
+        }else{
+            qInfo() << "Watchdog timer running";
+        }
+    }else if(res < 0){
+        qWarning() << "Failed to detect if watchdog timer is expected:" << strerror(-res);
+    }else{
+        qInfo() << "No watchdog timer required";
+    }
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "Initializing APIs", "info");
 #endif
@@ -64,82 +102,49 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(){
         Oxide::Sentry::sentry_span(t, "apis", "Initialize APIs", [this](Oxide::Sentry::Span* s){
             Oxide::Sentry::sentry_span(s, "wifi", "Initialize wifi API", [this]{
                 apis.insert("wifi", APIEntry{
-                                        .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
-                                        .dependants = new QStringList(),
-                                        .instance = new WifiAPI(this),
-                                    });
+                    .path = QString(OXIDE_SERVICE_PATH) + "/wifi",
+                    .dependants = new QStringList(),
+                    .instance = new WifiAPI(this),
+                });
             });
             Oxide::Sentry::sentry_span(s, "system", "Initialize system API", [this]{
                 apis.insert("system", APIEntry{
-                                          .path = QString(OXIDE_SERVICE_PATH) + "/system",
-                                          .dependants = new QStringList(),
-                                          .instance = new SystemAPI(this),
-                                      });
+                    .path = QString(OXIDE_SERVICE_PATH) + "/system",
+                    .dependants = new QStringList(),
+                    .instance = new SystemAPI(this),
+                });
             });
             Oxide::Sentry::sentry_span(s, "power", "Initialize power API", [this]{
                 apis.insert("power", APIEntry{
-                                         .path = QString(OXIDE_SERVICE_PATH) + "/power",
-                                         .dependants = new QStringList(),
-                                         .instance = new PowerAPI(this),
-                                     });
+                    .path = QString(OXIDE_SERVICE_PATH) + "/power",
+                    .dependants = new QStringList(),
+                    .instance = new PowerAPI(this),
+                });
             });
             Oxide::Sentry::sentry_span(s, "screen", "Initialize screen API", [this]{
                 apis.insert("screen", APIEntry{
-                                          .path = QString(OXIDE_SERVICE_PATH) + "/screen",
-                                          .dependants = new QStringList(),
-                                          .instance = new ScreenAPI(this),
-                                      });
+                    .path = QString(OXIDE_SERVICE_PATH) + "/screen",
+                    .dependants = new QStringList(),
+                    .instance = new ScreenAPI(this),
+                });
             });
             Oxide::Sentry::sentry_span(s, "apps", "Initialize apps API", [this]{
                 apis.insert("apps", APIEntry{
-                                        .path = QString(OXIDE_SERVICE_PATH) + "/apps",
-                                        .dependants = new QStringList(),
-                                        .instance = new AppsAPI(this),
-                                    });
+                    .path = QString(OXIDE_SERVICE_PATH) + "/apps",
+                    .dependants = new QStringList(),
+                    .instance = new AppsAPI(this),
+                });
             });
             Oxide::Sentry::sentry_span(s, "notification", "Initialize notification API", [this]{
                 apis.insert("notification", APIEntry{
-                                                .path = QString(OXIDE_SERVICE_PATH) + "/notification",
-                                                .dependants = new QStringList(),
-                                                .instance = new NotificationAPI(this),
-                                            });
+                    .path = QString(OXIDE_SERVICE_PATH) + "/notification",
+                    .dependants = new QStringList(),
+                    .instance = new NotificationAPI(this),
+                });
             });
         });
-#ifdef SENTRY
-        sentry_breadcrumb("dbusservice", "Connecting button handler events", "info");
-#endif
         Oxide::Sentry::sentry_span(t, "connect", "Connect events", []{
-            if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-                connect(buttonHandler, &ButtonHandler::leftHeld, systemAPI, &SystemAPI::leftAction);
-                connect(buttonHandler, &ButtonHandler::homeHeld, systemAPI, &SystemAPI::homeAction);
-                connect(buttonHandler, &ButtonHandler::rightHeld, systemAPI, &SystemAPI::rightAction);
-            }
-            connect(buttonHandler, &ButtonHandler::powerHeld, systemAPI, &SystemAPI::powerAction);
-            connect(buttonHandler, &ButtonHandler::powerPress, systemAPI, &SystemAPI::suspend);
-            connect(buttonHandler, &ButtonHandler::activity, systemAPI, &SystemAPI::activity);
-#ifdef SENTRY
-            sentry_breadcrumb("dbusservice", "Connecting power events", "info");
-#endif
             connect(powerAPI, &PowerAPI::chargerStateChanged, systemAPI, &SystemAPI::activity);
-#ifdef SENTRY
-            sentry_breadcrumb("dbusservice", "Connecting system events", "info");
-#endif
-            connect(systemAPI, &SystemAPI::leftAction, appsAPI, []{
-                if(notificationAPI->locked()){
-                    return;
-                }
-                auto currentApplication = appsAPI->getApplication(appsAPI->currentApplicationNoSecurityCheck());
-                if(currentApplication != nullptr && currentApplication->path() == appsAPI->lockscreenApplication().path()){
-                    O_DEBUG("Left Action cancelled. On lockscreen");
-                    return;
-                }
-                if(!appsAPI->previousApplicationNoSecurityCheck()){
-                    appsAPI->openDefaultApplication();
-                }
-            });
-            connect(systemAPI, &SystemAPI::homeAction, appsAPI, &AppsAPI::openTaskManager);
-            connect(systemAPI, &SystemAPI::bottomAction, appsAPI, &AppsAPI::openTaskSwitcher);
-            connect(systemAPI, &SystemAPI::topAction, systemAPI, &SystemAPI::toggleSwipes);
         });
 #ifdef SENTRY
         sentry_breadcrumb("dbusservice", "Cleaning up", "info");
@@ -156,24 +161,7 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(){
     });
 }
 
-DBusService::~DBusService(){
-#ifdef SENTRY
-    sentry_breadcrumb("dbusservice", "Disconnecting APIs", "info");
-#endif
-    O_INFO("Removing all APIs");
-    auto bus = QDBusConnection::systemBus();
-    for(auto api : apis){
-        api.instance->setEnabled(false);
-        bus.unregisterObject(api.path);
-        emit apiUnavailable(QDBusObjectPath(api.path));
-        delete api.instance;
-        delete api.dependants;
-    }
-    apis.clear();
-#ifdef SENTRY
-    sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
-#endif
-}
+DBusService::~DBusService(){}
 
 void DBusService::setEnabled(bool enabled){ Q_UNUSED(enabled); }
 
@@ -183,6 +171,8 @@ QObject* DBusService::getAPI(QString name){
     }
     return apis[name].instance;
 }
+
+QQmlApplicationEngine* DBusService::engine(){ return m_engine; }
 
 int DBusService::tarnishPid(){ return qApp->applicationPid(); }
 
@@ -202,7 +192,7 @@ QDBusObjectPath DBusService::requestAPI(QString name, QDBusMessage message) {
         bus.registerObject(api.path, api.instance, QDBusConnection::ExportAllContents);
     }
     if(!api.dependants->size()){
-        O_INFO("Registering " << api.path);
+        O_DEBUG("Registering " << api.path);
         api.instance->setEnabled(true);
         emit apiAvailable(QDBusObjectPath(api.path));
     }
@@ -221,7 +211,7 @@ void DBusService::releaseAPI(QString name, QDBusMessage message) {
     auto client = message.service();
     api.dependants->removeAll(client);
     if(!api.dependants->size()){
-        O_INFO("Unregistering " << api.path);
+        O_DEBUG("Unregistering " << api.path);
         api.instance->setEnabled(false);
         QDBusConnection::systemBus().unregisterObject(api.path, QDBusConnection::UnregisterNode);
         emit apiUnavailable(QDBusObjectPath(api.path));
@@ -242,11 +232,60 @@ QVariantMap DBusService::APIs(){
     return result;
 }
 
-void DBusService::startup(){
+void DBusService::startup(QQmlApplicationEngine* engine){
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "startup", "navigation");
 #endif
+    sd_notify(0, "STATUS=startup");
+    m_engine = engine;
+    notificationAPI->startup();
     appsAPI->startup();
+    sd_notify(0, "STATUS=running");
+    sd_notify(0, "READY=1");
+}
+
+void DBusService::exit(int exitCode){
+    if(calledFromDBus()){
+        return;
+    }
+    if(m_exiting){
+        O_WARNING("Already shutting down, forcing stop");
+        kill(getpid(), SIGKILL);
+        return;
+    }
+    m_exiting = true;
+    sd_notify(0, "STATUS=stopping");
+    sd_notify(0, "STOPPING=1");
+    emit aboutToQuit();
+#ifdef SENTRY
+    sentry_breadcrumb("dbusservice", "Disconnecting APIs", "info");
+#endif
+    O_DEBUG("Removing all APIs");
+    auto bus = QDBusConnection::systemBus();
+    for(auto key : apis.keys()){
+        auto api = apis[key];
+        api.instance->setEnabled(false);
+        bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);
+        emit apiUnavailable(QDBusObjectPath(api.path));
+    }
+    powerAPI->shutdown();
+    appsAPI->shutdown();
+    wifiAPI->shutdown();
+    notificationAPI->shutdown();
+    systemAPI->shutdown();
+    bus.unregisterService(OXIDE_SERVICE);
+#ifdef SENTRY
+    sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
+#endif
+    O_DEBUG("Exiting");
+    std::exit(exitCode);
+}
+
+void DBusService::timerEvent(QTimerEvent* event){
+    if(event->timerId() == m_watchdogTimer){
+        O_DEBUG("Watchdog keepalive sent");
+        sd_notify(0, "WATCHDOG=1");
+    }
 }
 
 void DBusService::serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner){
@@ -257,7 +296,7 @@ void DBusService::serviceOwnerChanged(const QString& name, const QString& oldOwn
             auto api = apis[key];
             api.dependants->removeAll(name);
             if(!api.dependants->size() && bus.objectRegisteredAt(api.path) != nullptr){
-                O_INFO("Automatically unregistering " << api.path);
+                O_DEBUG("Automatically unregistering " << api.path);
                 api.instance->setEnabled(false);
                 bus.unregisterObject(api.path, QDBusConnection::UnregisterNode);
                 apiUnavailable(QDBusObjectPath(api.path));

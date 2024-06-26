@@ -1,9 +1,8 @@
 {
-        "displayName": "Startup application",
-        "description": "Handles the password screen on resume",
-        "bin": "/opt/bin/decay",
-        "flags": ["hidden"],
-        "type": "foreground",
-        "splash": "oxide:splash:oxide-702",
-        "permissions": ["apps", "power", "system", "wifi"]
+    "displayName": "Startup application",
+    "description": "Handles the password screen on resume",
+    "bin": "/opt/bin/decay",
+    "flags": ["hidden", "nopreload"],
+    "type": "foreground",
+    "permissions": ["apps", "power", "system", "wifi"]
 }

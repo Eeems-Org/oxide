@@ -1,10 +1,11 @@
 #include "devicesettings.h"
 
-#include <private/qguiapplication_p.h>
-#include <private/qinputdevicemanager_p.h>
-
 #include "debug.h"
 #include "liboxide.h"
+#include "signalhandler.h"
+
+#include <private/qguiapplication_p.h>
+#include <private/qinputdevicemanager_p.h>
 
 #define BITS_PER_LONG (sizeof(long) * 8)
 #define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
@@ -172,10 +173,8 @@ namespace Oxide {
         }
         return qEnvironmentVariable("LANG", "C");
     }
-    void DeviceSettings::setLocale(const QString& locale) {
-        if(debugEnabled()){
-            qDebug() << "Setting locale:" << locale;
-        }
+    void DeviceSettings::setLocale(const QString& locale){
+        O_DEBUG("Setting locale:" << locale);
         qputenv("LANG", locale.toUtf8());
         QProcess::execute("localectl", QStringList() << "set-locale" << locale);
     }
@@ -194,9 +193,7 @@ namespace Oxide {
         return "UTC";
     }
     void DeviceSettings::setTimezone(const QString& timezone) {
-        if(debugEnabled()){
-            qDebug() << "Setting timezone:" << timezone;
-        }
+        O_DEBUG("Setting timezone:" << timezone);
         QProcess::execute("timedatectl", QStringList() << "set-timezone" << timezone);
     }
     void DeviceSettings::setupQtEnvironment(bool touch){
@@ -204,37 +201,42 @@ namespace Oxide {
         if (strcmp(qt_version, QT_VERSION_STR) != 0){
             qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
         }
-    #ifdef __arm__
-        qputenv("QMLSCENE_DEVICE", "epaper");
-        qputenv("QT_QUICK_BACKEND","epaper");
-        qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
-    #endif
+        QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
+        qputenv("QMLSCENE_DEVICE", "software");
+        qputenv("QT_QUICK_BACKEND","software");
+        QString platform("oxide:enable_fonts:freetype:freetype");
         if(touch){
-            qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
-            qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
+            qputenv(
+                "QT_QPA_PLATFORM",
+                QString("%1:%2")
+                    .arg(platform)
+                    .arg(deviceSettings.getTouchEnvSetting())
+                    .toUtf8()
+            );
+        }else{
+            qputenv("QT_QPA_PLATFORM", platform.toUtf8());
         }
     }
+
     bool DeviceSettings::keyboardAttached(){ return !physicalKeyboards().empty(); }
+
     void DeviceSettings::onKeyboardAttachedChanged(std::function<void()> callback){
-        auto manager = QGuiApplicationPrivate::inputDeviceManager();
-        QObject::connect(manager, &QInputDeviceManager::deviceListChanged, [callback](QInputDeviceManager::DeviceType type){
-            if(type == QInputDeviceManager::DeviceTypeKeyboard){
+        bool initialValue = keyboardAttached();
+        onInputDevicesChanged([this, callback, initialValue]{
+            static bool attached = initialValue;
+            bool nowAttached = keyboardAttached();
+            if(attached != nowAttached){
                 callback();
             }
+            attached = nowAttached;
         });
     }
-    QList<event_device> DeviceSettings::keyboards(){
-        QList<event_device> keyboards;
+
+    QList<event_device> DeviceSettings::inputDevices(){
+        QList<event_device> devices;
         QDir dir("/dev/input");
         for(auto path : dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::System)){
             QString fullPath(dir.path() + "/" + path);
-            if(
-                fullPath == QString::fromStdString(buttonsPath)
-                || fullPath == QString::fromStdString(wacomPath)
-                || fullPath == QString::fromStdString(touchPath)
-                ){
-                continue;
-            }
             QFile device(fullPath);
             device.open(QIODevice::ReadOnly);
             int fd = device.handle();
@@ -242,6 +244,31 @@ namespace Oxide {
             if(ioctl(fd, EVIOCGVERSION, &version)){
                 continue;
             }
+            devices.append(event_device(fullPath.toStdString(), O_RDWR | O_NONBLOCK));
+        }
+        return devices;
+    }
+
+    void DeviceSettings::onInputDevicesChanged(std::function<void()> callback){
+        callbacks.push_back(callback);
+        auto manager = QGuiApplicationPrivate::inputDeviceManager();
+        QObject::connect(manager, &QInputDeviceManager::deviceListChanged, qApp, [callback](QInputDeviceManager::DeviceType type){
+            Q_UNUSED(type);
+            callback();
+        });
+    }
+
+    QList<event_device> DeviceSettings::keyboards(){
+        QList<event_device> keyboards;
+        for(auto device : inputDevices()){
+            if(
+                device.device == buttonsPath
+                || device.device == wacomPath
+                || device.device == touchPath
+            ){
+                continue;
+            }
+            int fd = device.fd;
             unsigned long bit[EV_MAX];
             ioctl(fd, EVIOCGBIT(0, EV_MAX), bit);
             if(!test_bit(EV_KEY, bit)){
@@ -250,7 +277,8 @@ namespace Oxide {
             if(checkBitSet(fd, EV_KEY, BTN_STYLUS) && test_bit(EV_ABS, bit)){
                 continue;
             }
-            SysObject sys("/sys/class/input/" + path + "/device");
+            auto name = QFileInfo(device.device.c_str()).baseName();
+            SysObject sys("/sys/class/input/" + name + "/device");
             auto vendor = sys.strProperty("id/vendor");
             if(vendor == "0000"){
                 continue;
@@ -259,7 +287,7 @@ namespace Oxide {
             if(product == "0000"){
                 continue;
             }
-            keyboards.append(event_device(fullPath.toStdString(), O_RDWR | O_NONBLOCK));
+            keyboards.append(device);
         }
         return keyboards;
     }

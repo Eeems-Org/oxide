@@ -9,21 +9,21 @@
 #include <cstdlib>
 #include <filesystem>
 #include <liboxide.h>
+#include <liboxide/oxideqml.h>
+#include <libblight.h>
+#include <libblight/connection.h>
 
 #include "dbusservice.h"
 #include "controller.h"
 
 using namespace std;
 using namespace Oxide::Sentry;
+using namespace Oxide::QML;
 
 const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/oxide.pid";
 const char* lockPath = "/run/oxide/oxide.lock";
 
-void sigHandler(int signal){
-    ::signal(signal, SIG_DFL);
-    qApp->quit();
-}
 bool stopProcess(pid_t pid){
     if(pid <= 1){
         return false;
@@ -45,17 +45,29 @@ bool stopProcess(pid_t pid){
 }
 
 int main(int argc, char* argv[]){
-    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
+#ifdef EPAPER
+    auto connected = Blight::connect(true);
+#else
+    auto connected = Blight::connect(false);
+#endif
+    if(!connected){
+        // TODO - attempt to start display server instance
         bool enabled = Oxide::debugEnabled();
         if(!enabled){
             qputenv("DEBUG", "1");
         }
-        O_WARNING("rm2fb not detected. Running xochitl instead!");
+        O_WARNING("Display server not available. Running xochitl instead!");
         if(!enabled){
             qputenv("DEBUG", "0");
         }
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
+    Blight::connection()->onDisconnect([](int res){
+        // TODO - attempt to reconnect
+        if(res){
+            qApp->exit(res);
+        }
+    });
     qputenv("XDG_CURRENT_DESKTOP", "OXIDE");
     QThread::currentThread()->setObjectName("main");
     deviceSettings.setupQtEnvironment(false);
@@ -83,7 +95,14 @@ int main(int argc, char* argv[]){
     auto actualPid = QString::number(app.applicationPid());
     QString pid = Oxide::execute(
         "systemctl",
-        QStringList() << "--no-pager" << "show" << "--property" << "MainPID" << "--value" << "tarnish"
+        QStringList()
+            << "--no-pager"
+            << "show"
+            << "--property"
+            << "MainPID"
+            << "--value"
+            << "tarnish",
+        false
     ).trimmed();
     if(pid != "0" && pid != actualPid){
         if(!parser.isSet(breakLockOption)){
@@ -119,43 +138,74 @@ int main(int argc, char* argv[]){
             return EXIT_FAILURE;
         }
     }
-
     QObject::connect(&app, &QGuiApplication::aboutToQuit, [lock]{
         O_INFO("Releasing lock " << lockPath);
         Oxide::releaseLock(lock, lockPath);
     });
-
-    signal(SIGINT, sigHandler);
-    signal(SIGSEGV, sigHandler);
-    signal(SIGTERM, sigHandler);
-
-    dbusService;
-    QTimer::singleShot(0, []{
-        dbusService->startup();
+    QTimer::singleShot(0, &app, []{
+        QObject::connect(signalHandler, &SignalHandler::sigTerm, qApp, []{
+            dbusService->exit(SIGTERM);
+        });
+        QObject::connect(signalHandler, &SignalHandler::sigInt, qApp, []{
+            dbusService->exit(SIGINT);
+        });
+        QObject::connect(signalHandler, &SignalHandler::sigSegv, qApp, []{
+            dbusService->exit(SIGSEGV);
+        });
+        QObject::connect(signalHandler, &SignalHandler::sigBus, qApp, []{
+            dbusService->exit(SIGBUS);
+        });
     });
+
     QFile pidFile(pidPath);
     if(!pidFile.open(QFile::ReadWrite)){
         qWarning() << "Unable to create " << pidPath;
-        return app.exec();
+        return EXIT_FAILURE;
     }
     pidFile.seek(0);
     pidFile.write(actualPid.toUtf8());
     pidFile.close();
-    QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
-        remove(pidPath);
-    });
-    QQmlApplicationEngine engine;
-    QQmlContext* context = engine.rootContext();
-    Controller controller(&app);
-    context->setContextProperty("controller", &controller);
-    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-    if (engine.rootObjects().isEmpty()){
-        QScreen* screen = app.primaryScreen();
-        QWindow window(screen);
-        window.resize(screen->size());
-        window.setPosition(0, 0);
-        window.setOpacity(0);
-        window.show();
+    QObject::connect(&app, &QGuiApplication::aboutToQuit, []{ remove(pidPath); });
+
+    dbusService;
+    auto compositor = getCompositorDBus();
+    compositor->setFlags(QString("connection/%1").arg(::getpid()), QStringList() << "system");
+    Blight::shared_buf_t buffer = createBuffer();
+    if(buffer != nullptr){
+        auto size = getFrameBuffer()->size();
+        int splashWidth = size.width() / 2;
+        QSize splashSize(splashWidth, splashWidth);
+        QRect splashRect(QPoint(
+            (size.width() / 2) - (splashWidth / 2),
+            (size.height() / 2) - (splashWidth / 2)
+        ), splashSize);
+        auto image = Oxide::QML::getImageForSurface(buffer);
+        QPainter painter(&image);
+        painter.setPen(Qt::white);
+        painter.fillRect(image.rect(), Qt::white);
+        QString path("/opt/usr/share/icons/oxide/702x702/splash/oxide.png");
+        if(QFileInfo(path).exists()){
+            auto splash =  QImage(path).scaled(splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            if(deviceSettings.keyboardAttached()){
+                splash = splash.transformed(QTransform().rotate(90));
+            }
+            painter.drawImage(splashRect, splash, splash.rect());
+        }
+        painter.end();
+        addSystemBuffer(buffer);
     }
+
+    QQmlApplicationEngine engine;
+    registerQML(&engine);
+    QQmlContext* context = engine.rootContext();
+    context->setContextProperty("controller", Controller::singleton());
+    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+    if(engine.rootObjects().isEmpty()){
+        qFatal("Failed to load main layout");
+    }
+    QTimer::singleShot(0, [&engine, &buffer]{
+        dbusService->startup(&engine);
+        Blight::connection()->remove(buffer);
+    });
     return app.exec();
 }

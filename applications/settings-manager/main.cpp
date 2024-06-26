@@ -3,8 +3,10 @@
 #include <QTextStream>
 
 #include <liboxide.h>
+#include <libblight/meta.h>
 
 using namespace codes::eeems::oxide1;
+using namespace codes::eeems::blight1;
 using namespace Oxide::Sentry;
 using namespace Oxide::JSON;
 
@@ -27,7 +29,7 @@ int main(int argc, char *argv[]){
     parser.addHelpOption();
     parser.applicationDescription();
     parser.addVersionOption();
-    parser.addPositionalArgument("api", "settings\nwifi\npower\napps\nsystem\nscreen\nnotification");
+    parser.addPositionalArgument("api", "settings\nwifi\npower\napps\nsystem\nscreen\nnotification\ncompositor");
     parser.addPositionalArgument("action","get\nset\nlisten\ncall");
     QCommandLineOption objectOption(
         {"o", "object"},
@@ -51,7 +53,7 @@ int main(int argc, char *argv[]){
         parser.showHelp(EXIT_FAILURE);
     }
     auto apiName = args.at(0);
-    if(!(QSet<QString> {"settings", "power", "wifi", "apps", "system", "screen", "notification"}).contains(apiName)){
+    if(!(QSet<QString> {"settings", "power", "wifi", "apps", "system", "screen", "notification", "compositor"}).contains(apiName)){
         qDebug() << "Unknown API" << apiName;
 #ifdef SENTRY
         sentry_breadcrumb("error", "Unknown API");
@@ -128,7 +130,7 @@ int main(int argc, char *argv[]){
         return qExit(EXIT_FAILURE);
     }
     QString path = "";
-    if(apiName != "settings"){
+    if(apiName != "settings" && apiName != "compositor"){
         General generalApi(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
         auto reply = generalApi.requestAPI(apiName);
         reply.waitForFinished();
@@ -292,6 +294,18 @@ int main(int argc, char *argv[]){
 #endif
                 return qExit(EXIT_FAILURE);
             }
+        }
+    }else if(apiName == "compositor"){
+#ifdef SENTRY
+        sentry_breadcrumb("api", "compositor");
+#endif
+        api = new Compositor(BLIGHT_SERVICE, "/", bus);
+        if(parser.isSet("object")){
+            qDebug() << "Paths are not valid for the compositor API";
+#ifdef SENTRY
+            sentry_breadcrumb("error", "invalid arguments");
+#endif
+            return qExit(EXIT_FAILURE);
         }
     }else{
         qDebug() << "API not initialized? Please log a bug.";

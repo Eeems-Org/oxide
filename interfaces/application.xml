@@ -22,11 +22,8 @@
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
     </property>
     <property name="workingDirectory" type="s" access="readwrite"/>
-    <property name="chroot" type="b" access="read"/>
     <property name="user" type="s" access="read"/>
     <property name="group" type="s" access="read"/>
-    <property name="directories" type="as" access="readwrite"/>
-    <property name="screenCapture" type="ay" access="read"/>
     <signal name="launched">
     </signal>
     <signal name="paused">

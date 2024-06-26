@@ -30,8 +30,7 @@ namespace Oxide{
          * \param parent The parent object. Usually should be qApp
          */
         explicit EventFilter(QObject* parent = nullptr);
-    signals:
-        void suspend();
+
     protected:
         bool eventFilter(QObject* obj, QEvent* ev);
     };

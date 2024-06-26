@@ -101,7 +101,7 @@ namespace Oxide{
         QString getTimezone();
         /*!
          * \brief Set the current timezone
-         * \param locale Timezone to set
+         * \param timezone Timezone to set
          */
         void setTimezone(const QString& timezone);
         /*!
@@ -119,6 +119,16 @@ namespace Oxide{
          * \param callback Callback to run
          */
         void onKeyboardAttachedChanged(std::function<void()> callback);
+        /*!
+         * \brief Get the list of all evdev devices
+         * \return All input devices
+         */
+        QList<event_device> inputDevices();
+        /*!
+         * \brief Run a callback when inputDevices changes
+         * \param callback callback to run
+         */
+        void onInputDevicesChanged(std::function<void()> callback);
         /*!
          * \brief Get the list of all keyboard evdev devices
          * \return All keyboard devices
@@ -145,6 +155,7 @@ namespace Oxide{
         std::string buttonsPath = "";
         std::string wacomPath = "";
         std::string touchPath = "";
+        std::vector<std::function<void()>> callbacks;
     };
 }
 /*! @} */

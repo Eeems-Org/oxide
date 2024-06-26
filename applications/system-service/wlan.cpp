@@ -132,6 +132,7 @@ signed int Wlan::rssi(){
     }catch(const std::runtime_error&){
         return 0;
     }
+
     return -100;
 }
 
