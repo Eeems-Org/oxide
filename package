@@ -51,6 +51,8 @@ oxide() {
         # Task switcher
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/corrupt
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.corrupt.oxide
+        # launcherctl registration
+        install -D -T -m 755 "$srcdir"/release/opt/share/launcherctl/oxide "$pkgdir"/opt/share/launcherctl/oxide
     }
 
     configure() {
