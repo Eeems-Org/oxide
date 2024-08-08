@@ -44,6 +44,10 @@ keyd.files = ../../assets/opt/etc/keyd/oxide.conf
 keyd.path = /opt/etc/keyd/
 INSTALLS += keyd
 
+launcherctl.files = ../../assets/opt/share/launcherctl/oxide
+launcherctl.path = /opt/share/launcherctl/
+INSTALLS += launcherctl
+
 applications.files = ../../assets/opt/usr/share/applications/xochitl.oxide
 applications.path = /opt/usr/share/applications/
 INSTALLS += applications

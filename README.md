@@ -21,7 +21,7 @@ You can find other (likely outdated) [videos here](https://github.com/Eeems/oxid
 
 ### Binaries
 
- 1. Install the [reMarkable toolchain](https://remarkablewiki.com/devel/toolchain)
+ 1. Install the [reMarkable toolchain](https://remarkable.guide/devel/toolchains.html#official-toolchain)
  2. Run `make release` or `make FEATURES=sentry release`
  3. The built files can be found in the `release/` folder
 
