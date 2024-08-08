@@ -2,6 +2,7 @@
 
 #include "network.h"
 #include "wifiapi.h"
+#include <liboxide/debug.h>
 
 QSet<QString> none{
     "NONE",
@@ -52,7 +53,7 @@ void Network::registerPath(){
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
-        O_DEBUG("Registered" << path() << OXIDE_NETWORK_INTERFACE);
+        O_INFO("Registered" << path() << OXIDE_NETWORK_INTERFACE);
     }else{
         O_WARNING("Failed to register" << path());
     }

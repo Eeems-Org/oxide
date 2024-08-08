@@ -16,15 +16,6 @@
       <arg type="o" direction="out"/>
       <arg name="blob" type="ay" direction="in"/>
     </method>
-    <method name="drawFullscreenImage">
-      <arg type="b" direction="out"/>
-      <arg name="path" type="s" direction="in"/>
-      <arg name="rotate" type="d" direction="in"/>
-    </method>
-    <method name="drawFullscreenImage">
-      <arg type="b" direction="out"/>
-      <arg name="path" type="s" direction="in"/>
-    </method>
     <method name="screenshot">
       <arg type="o" direction="out"/>
     </method>

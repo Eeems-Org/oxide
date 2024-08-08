@@ -11,6 +11,7 @@
 #include <QVariant>
 #include <QJsonArray>
 #include <QDBusArgument>
+#include <QJsonDocument>
 /*!
  * \brief The JSON namespace
  */

@@ -30,6 +30,7 @@ WifiAPI::WifiAPI(QObject* parent)
                 Wlan* item = new Wlan(dir.path() + "/" + path, this);
                 if(!item->hasDirectory("wireless")){
                     O_DEBUG("    Not a wireless device");
+                    item->deleteLater();
                     continue;
                 }
                 O_DEBUG("    Wireless device found!");
@@ -147,7 +148,7 @@ WifiAPI::WifiAPI(QObject* parent)
     });
 }
 
-WifiAPI::~WifiAPI(){
+void WifiAPI::shutdown(){
     O_DEBUG("Unregistering all networks");
     while(!networks.isEmpty()){
         networks.takeFirst()->deleteLater();
@@ -209,6 +210,9 @@ bool WifiAPI::enable(){
     if(!hasPermission("wifi")){
         return false;
     }
+    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM2){
+        system("/sbin/modprobe brcmfmac");
+    }
     O_INFO("Turning wifi on");
     if(m_state == Off){
         setState(Disconnected);
@@ -244,6 +248,9 @@ void WifiAPI::disable(){
         if(wlan->isUp() && !wlan->down()){
             O_INFO("Failed to disable " + wlan->iface());
         }
+    }
+    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM2){
+        system("/sbin/rmmod brcmfmac");
     }
     if(system("/usr/sbin/rfkill block wifi")){
         O_INFO("Failed to disable wifi devices");

@@ -13,12 +13,16 @@
 #include <fcntl.h>
 
 namespace Oxide {
-    QString execute(const QString& program, const QStringList& args){
+    QString execute(
+        const QString& program,
+        const QStringList& args,
+        bool readStderr
+    ){
         QString output;
         QProcess p;
         p.setProgram(program);
         p.setArguments(args);
-        p.setProcessChannelMode(QProcess::MergedChannels);
+        p.setProcessChannelMode(readStderr ? QProcess::MergedChannels : QProcess::SeparateChannels);
         p.connect(&p, &QProcess::readyReadStandardOutput, [&p, &output]{
             output += (QString)p.readAllStandardOutput();
         });
@@ -88,12 +92,6 @@ namespace Oxide {
             }
         }
         return pids;
-    }
-    void dispatchToMainThread(std::function<void()> callback){
-        dispatchToMainThread<int>([callback]{
-            callback();
-            return 0;
-        });
     }
     uid_t getUID(const QString& name){
         char buffer[1024];

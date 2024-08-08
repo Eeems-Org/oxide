@@ -22,7 +22,7 @@ void BSS::registerPath(){
     if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
         O_DEBUG("Registered" << path() << OXIDE_BSS_INTERFACE);
     }else{
-        O_WARNING("Failed to register" << path());
+        O_DEBUG("Failed to register" << path());
     }
 }
 

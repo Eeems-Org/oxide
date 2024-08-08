@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>Workspace.qml</file>
+        <file>Surface.qml</file>
+    </qresource>
+</RCC>

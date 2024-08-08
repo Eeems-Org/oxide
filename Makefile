@@ -24,10 +24,14 @@ clean: clean-base
 	rm -rf $(BUILD)
 
 release: clean-base build $(DIST)
+ifneq ($(filter sentry,$(FEATURES)),)
 	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
 	cd $(BUILD)/oxide/shared/sentry && make qmake
+endif
 	# Force liboxide makefile to regenerate so that install targets get when being build in toltecmk
 	cd $(BUILD)/oxide/shared/liboxide && make qmake
+	# Force libblight makefile to regenerate so that install targets get when being build in toltecmk
+	cd $(BUILD)/oxide/shared/libblight && make qmake
 	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/oxide install
 
 build: $(OBJ)
@@ -96,7 +100,7 @@ $(BUILD)/package/oxide.tar.gz: $(BUILD)/package/package $(PKG_OBJ)
 		oxide.pro \
 		Makefile
 
-SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry)
+SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/doxygen-awesome-css)
 SRC_FILES += package
 
 lint:
