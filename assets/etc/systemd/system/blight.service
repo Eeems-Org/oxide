@@ -1,6 +1,8 @@
 [Unit]
 Description=Oxide display server
 After=home.mount
+After=rm2fb.service
+Wants=rm2fb.service
 StartLimitInterval=30
 StartLimitBurst=5
 OnFailure=remarkable-fail.service

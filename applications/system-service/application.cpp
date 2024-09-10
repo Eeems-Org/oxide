@@ -565,6 +565,9 @@ void Application::finished(int exitCode){
         )->display();
     }
     emit exited(exitCode);
+    if(flags().contains("exclusive")){
+        getCompositorDBus()->exitExclusiveMode().waitForFinished();
+    }
     appsAPI->resumeIfNone();
     emit appsAPI->applicationExited(qPath(), exitCode);
     if(transient()){
