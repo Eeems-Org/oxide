@@ -21,7 +21,8 @@ const QList<QString> Flags {
     "system",
     "nopreload",
     "nopreload.sysfs",
-    "nopreload.compositor"
+    "nopreload.compositor",
+    "exclusive"
 };
 const QList<QString> DeprecatedFlags {
     "chroot"
