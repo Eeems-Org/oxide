@@ -1,6 +1,7 @@
 [Unit]
 Description=Oxide system service
 After=home.mount
+After=blight.service
 StartLimitInterval=30
 StartLimitBurst=5
 #OnFailure=remarkable-fail.service
@@ -21,4 +22,5 @@ Environment="PATH=/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/
 
 [Install]
 Alias=launcher.service
+Alias=oxide.service
 WantedBy=multi-user.target
