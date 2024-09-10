@@ -44,4 +44,4 @@ Uninstall Oxide
 ===============
 
 1. ``launcherctl switch-launcher --start xochitl``
-3. ``opkg remove --force-removal-of-dependent-packages liboxide``
+2. ``opkg remove --force-removal-of-dependent-packages liboxide``
