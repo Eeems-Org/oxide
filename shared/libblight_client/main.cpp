@@ -987,12 +987,12 @@ extern "C" {
         if(
             path != "/usr/bin/xochitl"
             && (
-                   !path.starts_with("/opt")
-                   || path.starts_with("/opt/sbin")
+               !path.starts_with("/opt")
+               || path.starts_with("/opt/sbin")
             )
             && (
-                   !path.starts_with("/home")
-                   || path.starts_with("/home/root/.entware/sbin")
+               !path.starts_with("/home")
+               || path.starts_with("/home/root/.entware/sbin")
             )
         ){
             // We ignore this executable
