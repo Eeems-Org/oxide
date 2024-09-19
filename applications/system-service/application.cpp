@@ -37,7 +37,7 @@ void Application::launchNoSecurityCheck(){
 #endif
             startSpan("starting", "Application is starting");
         }
-        Oxide::Sentry::sentry_transaction("application", "launch", [this](Oxide::Sentry::Transaction* t){
+        Oxide::Sentry::sentry_transaction("Launch Application", "launch", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
             if(t != nullptr){
                 sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -123,7 +123,7 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
         return;
     }
     O_INFO("Pausing " << path());
-    Oxide::Sentry::sentry_transaction("application", "pause", [this, startIfNone](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Pause Application", "pause", [this, startIfNone](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -151,7 +151,7 @@ void Application::interruptApplication(){
     ){
         return;
     }
-    Oxide::Sentry::sentry_transaction("application", "interrupt", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Interrupt Application", "interrupt", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -236,7 +236,7 @@ void Application::resumeNoSecurityCheck(){
         O_DEBUG("Can't Resume" << path() << "Already running!");
         return;
     }
-    Oxide::Sentry::sentry_transaction("application", "resume", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Resume Application", "resume", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -265,7 +265,7 @@ void Application::uninterruptApplication(){
     ){
         return;
     }
-    Oxide::Sentry::sentry_transaction("application", "uninterrupt", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Uninterrupt Application", "uninterrupt", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -320,7 +320,7 @@ void Application::stopNoSecurityCheck(){
     if(state == Inactive){
         return;
     }
-    Oxide::Sentry::sentry_transaction("application", "stop", [this, state](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Stop Application", "stop", [this, state](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -536,7 +536,7 @@ void Application::saveScreen(){
     if(m_screenCapture != nullptr){
         return;
     }
-    Oxide::Sentry::sentry_transaction("application", "saveScreen", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Save screen for Application", "saveScreen", [this](Oxide::Sentry::Transaction* t){
         O_INFO("Saving screen...");
         QByteArray bytes;
         Oxide::Sentry::sentry_span(t, "save", "Save the framebuffer", [&bytes]{
@@ -813,7 +813,7 @@ const QString Application::resourcePath() { return "/tmp/tarnish-chroot/" + name
 const QString Application::chrootPath() { return resourcePath() + "/chroot"; }
 
 void Application::mountAll(){
-    Oxide::Sentry::sentry_transaction("application", "mount", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Mount directories for Application", "mount", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -869,7 +869,7 @@ void Application::mountAll(){
 }
 
 void Application::umountAll(){
-    Oxide::Sentry::sentry_transaction("application", "umount", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Unmount directories for Application", "umount", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -940,7 +940,7 @@ QStringList Application::getActiveMounts(){
 void Application::showSplashScreen(){
     auto frameBuffer = EPFrameBuffer::framebuffer();
     O_DEBUG("Waiting for other painting to finish...");
-    Oxide::Sentry::sentry_transaction("application", "showSplashScreen", [this, frameBuffer](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Show Application Splash Screen", "showSplashScreen", [this, frameBuffer](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -1031,7 +1031,7 @@ void Application::recallScreen() {
         return;
     }
     Oxide::Sentry::sentry_transaction(
-        "application", "recallScreen", [this](Oxide::Sentry::Transaction *t) {
+        "Recall Application Screen", "recallScreen", [this](Oxide::Sentry::Transaction *t) {
             O_DEBUG("Uncompressing screen...");
             QImage img;
             Oxide::Sentry::sentry_span(

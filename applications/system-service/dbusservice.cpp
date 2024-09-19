@@ -60,7 +60,7 @@ DBusService::DBusService(QObject* parent) : APIBase(parent), apis(){
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "Initializing APIs", "info");
 #endif
-    Oxide::Sentry::sentry_transaction("dbus", "init", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("DBus Service Init", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "apis", "Initialize APIs", [this](Oxide::Sentry::Span* s){
             Oxide::Sentry::sentry_span(s, "wifi", "Initialize wifi API", [this]{
                 apis.insert("wifi", APIEntry{

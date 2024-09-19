@@ -18,7 +18,7 @@ WifiAPI::WifiAPI(QObject* parent)
       m_link(0),
       m_scanning(false)
 {
-    Oxide::Sentry::sentry_transaction("wifi", "init", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Wifi API Init", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
             singleton(this);
         });
