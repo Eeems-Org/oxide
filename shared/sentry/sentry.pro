@@ -11,6 +11,7 @@ sentry_makefile.commands = \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DBUILD_SHARED_LIBS=ON \
         -DSENTRY_INTEGRATION_QT=ON \
+        -DQT_DEFAULT_MAJOR_VERSION=5 \
         -DSENTRY_TRANSPORT=curl \
         -DSENTRY_BACKEND=breakpad \
         -DSENTRY_BREAKPAD_SYSTEM=OFF \
