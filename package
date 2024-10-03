@@ -22,7 +22,7 @@ maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
 license=MIT
 flags=(patch_rm2fb)
-image=qt:latest
+image=qt:v3.1
 source=(oxide.tar.gz)
 sha256sums=(SKIP)
 
