@@ -7,7 +7,6 @@
 #include <QGuiApplication>
 #include <QScreen>
 
-#include <epframebuffer.h>
 #include <signal.h>
 #include <liboxide.h>
 

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "liboxide_global.h"
+#include "debug.h"
 
 #include <QSettings>
 #include <QObject>

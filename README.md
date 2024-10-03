@@ -21,7 +21,7 @@ You can find other (likely outdated) [videos here](https://github.com/Eeems/oxid
 
 ### Binaries
 
- 1. Install the [reMarkable toolchain](https://remarkablewiki.com/devel/toolchain)
+ 1. Install the [reMarkable toolchain](https://remarkable.guide/devel/toolchains.html#official-toolchain)
  2. Run `make release` or `make FEATURES=sentry release`
  3. The built files can be found in the `release/` folder
 
@@ -30,10 +30,3 @@ You can find other (likely outdated) [videos here](https://github.com/Eeems/oxid
  1. Install [toltecmk](https://pypi.org/project/toltecmk/)
  2. Run `make package`
  3. The ipk files can be found in the `dist/` folder
-
-### Nix
-Works on x86_64-linux or macOS via [nix-docker](https://github.com/LnL7/nix-docker).
-
-```ShellSession
-$ nix-build --argstr system 'x86_64-linux'
-```

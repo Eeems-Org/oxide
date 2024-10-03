@@ -26,13 +26,38 @@ on:
       - 'Makefile'
       - 'package'
 jobs:
+  lint:
+    name: Lint source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache shfmt
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/shfmt
+          key: 43439b996942b53dfafa9b6ff084f394555d049c98fb7ec37978f7668b43e1be
+      - name: Install shfmt
+        shell: bash
+        run: |
+          install_dir=/usr/local/bin
+          if ! [[ -f "$install_dir"/shfmt ]]; then
+              shfmt_version=v3.2.1
+              shfmt_checksum=43439b996942b53dfafa9b6ff084f394555d049c98fb7ec37978f7668b43e1be
+              sudo curl --location --silent --fail --tlsv1.2 --proto '=https' \
+                  --output "$install_dir"/shfmt \
+                  https://github.com/mvdan/sh/releases/download/"$shfmt_version"/shfmt_"$shfmt_version"_linux_amd64
+              sha256sum -c <(echo "$shfmt_checksum $install_dir/shfmt") > /dev/null 2>&1
+              sudo chmod a+x "$install_dir"/shfmt
+          fi
+      - uses: actions/checkout@v4
+      - name: Lint
+        run: make lint
   build:
     name: Build and package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install toltecmk
@@ -41,17 +66,17 @@ jobs:
         run: make package
         timeout-minutes: 15
       - name: Save packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: packages
           path: release
       - name: Save packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build
           path: .build/package/build/rmall/src/release
       - name: Save repo
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: repo
           path: .build/package/dist/rmall
@@ -60,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         id: download
         with:
           name: repo
@@ -68,6 +93,11 @@ jobs:
         with:
           setup: |
             set -ex
+            wget https://github.com/Eeems-Org/sysfs_preload/releases/download/1.0.0/packages.zip -O /tmp/packages.zip
+            unzip /tmp/packages.zip -d /tmp
+            opkg install /tmp/rmall/sysfs_preload_1.0.0-1_rmall.ipk
+            wget https://github.com/timower/rM2-stuff/releases/download/v0.1.2/rm2display.ipk -O /tmp/rm2display.ipk
+            opkg install /tmp/rm2display.ipk
             echo "src/gz local-rmall file:///opt/tmp/src" > /opt/etc/opkg.conf.d/16-local.conf
           run: |
             set -ex
@@ -80,14 +110,14 @@ jobs:
             opkg remove --force-removal-of-dependent-packages liboxide
           path: ${{ steps.download.outputs.download-path }}
   release:
-    needs: [build,test]
+    needs: [build,test,lint]
     if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: build
           path: .build
@@ -99,12 +129,20 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SENTRY_URL: https://sentry.eeems.codes
       - name: Setup Sentry CLI
-        uses: mathieu-bour/setup-sentry-cli@v1
+        uses: mathieu-bour/setup-sentry-cli@v2
         with:
           version: latest
           url: https://sentry.eeems.codes
           token:  ${{ secrets.SENTRY_AUTH_TOKEN }}
           organization: ${{ secrets.SENTRY_ORG }}
           project: ${{ secrets.SENTRY_PROJECT }}
-      - name: Upload debug artifacts
+      - name: Upload debug artifacts (debug)
+        if: ${{ !runner.debug }}
         run: sentry-cli debug-files upload --include-sources .
+        env:
+          SENTRY_LOG_LEVEL: info
+      - name: Upload debug artifacts
+        if: ${{ runner.debug }}
+        run: sentry-cli debug-files upload --include-sources .
+        env:
+          SENTRY_LOG_LEVEL: debug
