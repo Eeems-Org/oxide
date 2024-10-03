@@ -7,7 +7,6 @@
         <file>widgets/BetterButton.qml</file>
         <file>widgets/BetterCheckBox.qml</file>
         <file>widgets/BetterSpinBox.qml</file>
-        <file>widgets/BetterMenu.qml</file>
         <file>img/icon.png</file>
         <file>img/wifi/0_bar.png</file>
         <file>img/wifi/1_bar.png</file>

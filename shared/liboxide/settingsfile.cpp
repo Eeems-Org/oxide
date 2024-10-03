@@ -147,3 +147,5 @@ namespace Oxide {
         return property(propertyName.toStdString().c_str()).toString();
     }
 }
+
+#include "moc_settingsfile.cpp"

@@ -1,6 +1,8 @@
 /*!
  * \addtogroup DBus
  * \brief The DBus module
+ *
+ * Contains classes [automatically generated DBus interface classes](https://github.com/Eeems-Org/oxide/tree/master/interfaces)
  * @{
  * \file
  */

@@ -2,15 +2,16 @@ import QtQuick 2.10
 import QtQuick.Window 2.3
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
+import "qrc:/codes.eeems.oxide"
 import "widgets"
 
-ApplicationWindow {
+OxideWindow {
     id: window
     objectName: "window"
     visible: true
-    width: screenGeometry.width
-    height: screenGeometry.height
     title: qsTr("Oxide")
+    focus: true
+    backgroundColor: "white"
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     onAfterSynchronizing: {
         if (stateController.state == "loading") {
@@ -21,185 +22,87 @@ ApplicationWindow {
     }
     Connections {
         target: controller
-        onReload: appsView.model = controller.getApps()
+        function onReload() {
+            appsView.model = controller.getApps();
+        }
     }
-    header: Rectangle {
-        enabled: stateController.state === "loaded"
-        color: "black"
-        height: menu.height
-        RowLayout {
-            id: menu
-            width: parent.width
-            RowLayout {
-                Layout.fillWidth: true
-                CustomMenu {
-                    BetterMenu {
-                        id: optionsMenu
-                        title: qsTr("");
-                        font: iconFont.name
-                        width: 310
-                        Action { text: qsTr(" Reload"); onTriggered: {
-                            controller.breadcrumb("menu.reload", "click", "ui");
-                            controller.startup();
-                            appsView.model = controller.getApps();
-                        }}
-                        Action {
-                            text: qsTr(" Import Apps");
-                            onTriggered:{
-                                controller.breadcrumb("menu.import", "click", "ui");
-                                controller.importDraftApps();
-                                appsView.model = controller.getApps();
-                            }
-                        }
-                        Action {
-                            text: qsTr(" Options")
-                            onTriggered: {
-                                controller.breadcrumb("menu.options", "click", "ui");
-                                stateController.state = "settings";
-                            }
-                        }
+    Shortcut{
+        sequence: "Option+L"
+        context: Qt.ApplicationShortcut
+        onActivated: controller.lock()
+    }
+    Shortcut{
+        sequence: "Option+S"
+        context: Qt.ApplicationShortcut
+        onActivated: controller.suspend()
+    }
+    Shortcut{
+        sequence: StandardKey.Refresh
+        context: Qt.ApplicationShortcut
+        onActivated: controller.reload()
+    }
+    Shortcut{
+        sequence: "Ctrl+I"
+        context: Qt.ApplicationShortcut
+        onActivated: controller.importDraftApps()
+    }
+    Shortcut{
+        sequence: StandardKey.Quit
+        context: Qt.ApplicationShortcut
+        onActivated: Qt.quit()
+    }
+    leftMenu: [
+        CustomMenu {
+            OxideMenu {
+                id: optionsMenu
+                title: qsTr("");
+                font: iconFont.name
+                width: 310
+                Action {
+                    text: qsTr(" Reload")
+                    onTriggered: {
+                        controller.breadcrumb("menu.reload", "click", "ui");
+                        controller.startup();
+                        appsView.model = controller.getApps();
                     }
                 }
-                StatusIcon {
-                    source: "qrc:/img/notifications/white.png"
-                    text: controller.notificationText
-                    visible: controller.hasNotification
-                    clip: true
-                    Layout.maximumWidth: 300
-                    MouseArea {
-                        anchors.fill: parent
-                        enabled: parent.visible
-                        onClicked: {
-                            controller.breadcrumb("notifications", "click", "ui");
-                            stateController.state = "notifications";
-                        }
+                Action {
+                    text: qsTr(" Import Apps")
+                    onTriggered:{
+                        controller.breadcrumb("menu.import", "click", "ui");
+                        controller.importDraftApps();
+                        appsView.model = controller.getApps();
+                    }
+                }
+                Action {
+                    text: qsTr(" Options")
+                    onTriggered: {
+                        controller.breadcrumb("menu.options", "click", "ui");
+                        stateController.state = "settings";
                     }
                 }
             }
-            Label { Layout.fillWidth: true }
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignRight
-                StatusIcon {
-                    id: wifiState
-                    objectName: "wifiState"
-                    property string state: "unknown"
-                    property int rssi: 0
-                    property bool connected: false
-                    source: {
-                        var icon;
-                        if(state === "unknown"){
-                            icon = "unknown";
-                        }else if(state === "down"){
-                            icon = "down";
-                        }else if(!connected){
-                            icon = "disconnected";
-                        }else if(rssi > -50) {
-                            icon = "4_bar";
-                        }else if(rssi > -60){
-                            icon = "3_bar";
-                        }else if(rssi > -70){
-                            icon = "2_bar";
-                        }else if(rssi > -80){
-                            icon = "1_bar";
-                        }else{
-                            icon = "0_bar";
-                        }
-                        return "qrc:/img/wifi/" + icon + ".png";
-                    }
-                    text: controller.showWifiDb ? rssi + "dBm" : ""
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            controller.breadcrumb("wifi", "click", "ui");
-                            stateController.state = "wifi";
-                        }
-                    }
-                }
-                StatusIcon {
-                    id: batteryLevel
-                    objectName: "batteryLevel"
-                    property bool alert: false
-                    property bool warning: false
-                    property bool charging: false
-                    property bool connected: false
-                    property bool present: true
-                    property int level: 0
-                    property int temperature: 0
-                    source: {
-                        var icon = "";
-                        if(alert || !present){
-                            icon = "alert";
-                        }else if(warning){
-                            icon = "unknown";
-                        }else{
-                            if(charging || connected){
-                                icon = "charging_";
-                            }
-                            if(level < 25){
-                                icon += "20";
-                            }else if(level < 35){
-                                icon += "30";
-                            }else if(level < 55){
-                                icon += "50";
-                            }else if(level < 65){
-                                icon += "60";
-                            }else if(level < 85){
-                                icon += "80";
-                            }else if(level < 95){
-                                icon += "90";
-                            }else{
-                                icon += 100;
-                            }
-                        }
-                        return "qrc:/img/battery/" + icon + ".png";
-                    }
-                    text: (controller.showBatteryPercent ? level + "% " : "") + (controller.showBatteryTemperature ? temperature + "C" : "")
-                }
-                CustomMenu {
-                    BetterMenu {
-                        id: powerMenu
-                        title: qsTr("");
-                        font: iconFont.name
-                        width: 260
-                        Action {
-                            text: qsTr(" Suspend")
-                            enabled: !controller.sleepInhibited
-                            onTriggered: {
-                                controller.breadcrumb("menu.suspend", "click", "ui");
-                                controller.suspend();
-                            }
-                        }
-                        Action {
-                            text: qsTr(" Reboot")
-                            enabled: !controller.powerOffInhibited
-                            onTriggered: {
-                                controller.breadcrumb("menu.reboot", "click", "ui");
-                                controller.reboot();
-                            }
-                        }
-                        Action {
-                            text: qsTr(" Shutdown")
-                            enabled: !controller.powerOffInhibited
-                            onTriggered: {
-                                controller.breadcrumb("menu.shutdown", "click", "ui");
-                                controller.powerOff();
-                            }
-                        }
-                        Action {
-                            text: qsTr(" Lock")
-                            onTriggered: {
-                                controller.breadcrumb("menu.lock", "click", "ui");
-                                controller.lock();
-                            }
-                        }
-                    }
+        },
+        StatusIcon {
+            source: "qrc:/img/notifications/white.png"
+            text: controller.notificationText
+            visible: controller.hasNotification
+            clip: true
+            Layout.maximumWidth: 300
+            MouseArea {
+                anchors.fill: parent
+                enabled: parent.visible
+                onClicked: {
+                    controller.breadcrumb("notifications", "click", "ui");
+                    stateController.state = "notifications";
                 }
             }
         }
+    ]
+    centerMenu: [
         Label {
             objectName: "clock"
-            anchors.centerIn: parent
+            Layout.alignment: Qt.AlignCenter
             color: "white"
             MouseArea {
                 anchors.fill: parent
@@ -209,13 +112,127 @@ ApplicationWindow {
                 }
             }
         }
-    }
-    background: Rectangle { color: "white" }
-    contentData: [
-        Rectangle {
-            anchors.fill: parent
-            color: "white"
+    ]
+    rightMenu: [
+        StatusIcon {
+            id: wifiState
+            objectName: "wifiState"
+            property string state: "unknown"
+            property int rssi: 0
+            property bool connected: false
+            source: {
+                var icon;
+                if(state === "unknown"){
+                    icon = "unknown";
+                }else if(state === "down"){
+                    icon = "down";
+                }else if(!connected){
+                    icon = "disconnected";
+                }else if(rssi > -50) {
+                    icon = "4_bar";
+                }else if(rssi > -60){
+                    icon = "3_bar";
+                }else if(rssi > -70){
+                    icon = "2_bar";
+                }else if(rssi > -80){
+                    icon = "1_bar";
+                }else{
+                    icon = "0_bar";
+                }
+                return "qrc:/img/wifi/" + icon + ".png";
+            }
+            text: controller.showWifiDb ? rssi + "dBm" : ""
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    controller.breadcrumb("wifi", "click", "ui");
+                    stateController.state = "wifi";
+                }
+            }
         },
+        StatusIcon {
+            id: batteryLevel
+            objectName: "batteryLevel"
+            property bool alert: false
+            property bool warning: false
+            property bool charging: false
+            property bool connected: false
+            property bool present: true
+            property int level: 0
+            property int temperature: 0
+            source: {
+                var icon = "";
+                if(alert || !present){
+                    icon = "alert";
+                }else if(warning){
+                    icon = "unknown";
+                }else{
+                    if(charging || connected){
+                        icon = "charging_";
+                    }
+                    if(level < 25){
+                        icon += "20";
+                    }else if(level < 35){
+                        icon += "30";
+                    }else if(level < 55){
+                        icon += "50";
+                    }else if(level < 65){
+                        icon += "60";
+                    }else if(level < 85){
+                        icon += "80";
+                    }else if(level < 95){
+                        icon += "90";
+                    }else{
+                        icon += 100;
+                    }
+                }
+                return "qrc:/img/battery/" + icon + ".png";
+            }
+            text: (controller.showBatteryPercent ? level + "% " : "") + (controller.showBatteryTemperature ? temperature + "C" : "")
+        },
+        CustomMenu {
+            OxideMenu {
+                id: powerMenu
+                title: qsTr("");
+                font: iconFont.name
+                width: 260
+                Action {
+                    text: qsTr(" Suspend")
+                    enabled: !controller.sleepInhibited
+                    onTriggered: {
+                        controller.breadcrumb("menu.suspend", "click", "ui");
+                        controller.suspend();
+                    }
+                }
+                Action {
+                    text: qsTr(" Reboot")
+                    enabled: !controller.powerOffInhibited
+                    onTriggered: {
+                        controller.breadcrumb("menu.reboot", "click", "ui");
+                        controller.reboot();
+                    }
+                }
+                Action {
+                    text: qsTr(" Shutdown")
+                    enabled: !controller.powerOffInhibited
+                    onTriggered: {
+                        controller.breadcrumb("menu.shutdown", "click", "ui");
+                        controller.powerOff();
+                    }
+                }
+                Action {
+                    text: qsTr(" Lock")
+                    onTriggered: {
+                        controller.breadcrumb("menu.lock", "click", "ui");
+                        controller.lock();
+                    }
+                }
+            }
+        }
+    ]
+    background: Rectangle { color: "white" }
+    initialItem: Item{
+        anchors.fill: parent
         GridView {
             id: appsView
             enabled: stateController.state === "loaded"
@@ -262,7 +279,7 @@ ApplicationWindow {
                     model.modelData.execute();
                 }
             }
-        },
+        }
         Popup {
             id: itemInfo
             visible: false
@@ -376,31 +393,30 @@ ApplicationWindow {
                     }
                 }
             }
-        },
+        }
         SettingsPopup {
             id: settings
             onClosed: stateController.state = "loaded"
             visible: false
-        },
+        }
         WifiMenu {
             id: wifi
             onClosed: stateController.state = "loaded"
             visible: false
             model: controller.networks
-        },
+        }
         CalendarMenu {
             id: calendar
             onClosed: stateController.state = "loaded"
             visible: false
-        },
+        }
         NotificationsPopup {
             id: notifications
             onClosed: stateController.state = "loaded"
             visible: false
             model: controller.notifications
         }
-
-    ]
+    }
     StateGroup {
         id: stateController
         property string previousState;
@@ -428,7 +444,6 @@ ApplicationWindow {
                     PropertyAction { target: wifi; property: "visible"; value: false }
                     PropertyAction { target: calendar; property: "visible"; value: false }
                     PropertyAction { target: notifications; property: "visible"; value: false }
-                    PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
             Transition {
@@ -443,7 +458,6 @@ ApplicationWindow {
                     PropertyAction { target: calendar; property: "visible"; value: false }
                     PropertyAction { target: settings; property: "visible"; value: false }
                     PropertyAction { target: notifications; property: "visible"; value: false }
-                    PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
             Transition {
@@ -458,7 +472,6 @@ ApplicationWindow {
                     PropertyAction { target: settings; property: "visible"; value: false }
                     PropertyAction { target: wifi; property: "visible"; value: false }
                     PropertyAction { target: notifications; property: "visible"; value: false }
-                    PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
             Transition {
@@ -473,7 +486,6 @@ ApplicationWindow {
                     PropertyAction { target: calendar; property: "visible"; value: false }
                     PropertyAction { target: settings; property: "visible"; value: false }
                     PropertyAction { target: wifi; property: "visible"; value: false }
-                    PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
             Transition {
@@ -484,22 +496,19 @@ ApplicationWindow {
                         console.log("Viewing item info");
                     } }
                     PropertyAction { target: itemInfo; property: "visible"; value: true }
-                    PropertyAction { target: menu; property: "focus"; value: false }
                 }
             },
             Transition {
                 from: "*"; to: "loaded"
                 SequentialAnimation {
                     ScriptAction { script: {
-                            controller.breadcrumb("navigation", "main", "navigation");
-                            console.log("Main display");
+                        controller.breadcrumb("navigation", "main", "navigation");
+                        console.log("Main display");
                     } }
                     PropertyAction { target: calendar; property: "visible"; value: false }
                     PropertyAction { target: settings; property: "visible"; value: false }
                     PropertyAction { target: wifi; property: "visible"; value: false }
                     PropertyAction { target: notifications; property: "visible"; value: false }
-                    PropertyAction { target: menu; property: "focus"; value: false }
-                    PropertyAction { target: appsView; property: "focus"; value: true }
                 }
             }
         ]

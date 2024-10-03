@@ -128,6 +128,11 @@ int main(int argc, char *argv[]){
                     }
                 }
                 file.close();
+                if(!properties.contains("name")){
+                    LOG_VERBOSE("No name in properties");
+                    LOG("Failed to import");
+                    continue;
+                }
                 auto name = properties["name"].toString();
                 path = apps.getApplicationPath(name);
                 if(path.path() != "/"){
@@ -143,6 +148,9 @@ int main(int argc, char *argv[]){
                     continue;
                 }
                 LOG_VERBOSE("Not found, creating...");
+                if(Oxide::debugEnabled()){
+                    LOG_VERBOSE(properties);
+                }
                 properties.insert("displayName", name);
                 path = apps.registerApplication(properties);
                 if(path.path() == "/"){

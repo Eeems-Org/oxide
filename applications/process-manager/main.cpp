@@ -9,32 +9,17 @@
 #include <fcntl.h>
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
+#include <liboxide/oxideqml.h>
 
 #include "controller.h"
 
-
-#ifdef __arm__
-Q_IMPORT_PLUGIN(QsgEpaperPlugin)
-#endif
-
 using namespace std;
 using namespace Oxide;
+using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
-const char *qt_version = qVersion();
-
 int main(int argc, char *argv[]){
-    if (strcmp(qt_version, QT_VERSION_STR) != 0){
-        qDebug() << "Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR;
-    }
-#ifdef __arm__
-    // Setup epaper
-    qputenv("QMLSCENE_DEVICE", "epaper");
-    qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
-    qputenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", deviceSettings.getTouchEnvSetting());
-    qputenv("QT_QPA_GENERIC_PLUGINS", "evdevtablet");
-//    qputenv("QT_DEBUG_BACKINGSTORE", "1");
-#endif
+    deviceSettings.setupQtEnvironment();
     QGuiApplication app(argc, argv);
     sentry_init("erode", argv);
     app.setOrganizationName("Eeems");
@@ -42,12 +27,10 @@ int main(int argc, char *argv[]){
     app.setApplicationName("tarnish");
     app.setApplicationDisplayName("Process Monitor");
     app.setApplicationVersion(APP_VERSION);
-    EventFilter filter;
-    app.installEventFilter(&filter);
     QQmlApplicationEngine engine;
+    registerQML(&engine);
     QQmlContext* context = engine.rootContext();
     Controller controller(&engine);
-    context->setContextProperty("screenGeometry", app.primaryScreen()->geometry());
     context->setContextProperty("controller", &controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty()){
@@ -55,7 +38,7 @@ int main(int argc, char *argv[]){
         return -1;
     }
     QObject* root = engine.rootObjects().first();
-    filter.root = (QQuickItem*)root;
+    root->installEventFilter(new EventFilter(&app));
     QQuickItem* tasksView = root->findChild<QQuickItem*>("tasksView");
     if(!tasksView){
         qDebug() << "Can't find tasksView";

@@ -12,14 +12,16 @@ A launcher application for the [reMarkable tablet](https://remarkable.com/).
 
 Head over to the [releases](https://github.com/Eeems/oxide/releases) page for more information on the latest release. You can also see some (likely outdated) [screenshots here](https://github.com/Eeems/oxide/wiki/Screenshots).
 
-Here is an outdated video of it in action:
-[![Oxide v2.0-beta](https://i.imgur.com/1Q9A4NF.png)](https://youtu.be/rIRKgqy21L0 "Oxide v2.0-beta")
+Here is a video of it in action:
+[![Oxide v2.6](https://i.imgur.com/IA7wAsE.png[/img])]([https://youtu.be/rIRKgqy21L0](https://youtu.be/FdgWUUUST9o) "Oxide v2.6")
+
+You can find other (likely outdated) [videos here](https://github.com/Eeems/oxide/wiki/Videos).
 
 ## Building
 
 ### Binaries
 
- 1. Install the [reMarkable toolchain](https://remarkablewiki.com/devel/toolchain)
+ 1. Install the [reMarkable toolchain](https://remarkable.guide/devel/toolchains.html#official-toolchain)
  2. Run `make release` or `make FEATURES=sentry release`
  3. The built files can be found in the `release/` folder
 
@@ -28,10 +30,3 @@ Here is an outdated video of it in action:
  1. Install [toltecmk](https://pypi.org/project/toltecmk/)
  2. Run `make package`
  3. The ipk files can be found in the `dist/` folder
-
-### Nix
-Works on x86_64-linux or macOS via [nix-docker](https://github.com/LnL7/nix-docker).
-
-```ShellSession
-$ nix-build --argstr system 'x86_64-linux'
-```

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "liboxide_global.h"
+#include "debug.h"
 
 #include <QSettings>
 #include <QObject>
@@ -94,12 +95,21 @@
 /*!
  * \def O_SETTINGS_PROPERTY
  * \brief Add a property to a SettingsFile derived class
+ * \param _type Type of property
+ * \param group Group name for property. This usually should be ``General``
+ * \param member Property name
+ * \param _default Optional default value
  * \sa  O_SETTINGS, O_SETTINGS_PROPERTY_BODY, Oxide::SettingsFile
  */
 #define O_SETTINGS_PROPERTY(...) O_SETTINGS_PROPERTY_X(__VA_ARGS__)(__VA_ARGS__)
 /*!
  * \def O_SETTINGS_PROPERTY_BODY
  * \brief Add the body for a property on a SettingsFile derived class
+ * \param _class Class name
+ * \param _type Type of property
+ * \param group Group name for property. This usually should be ``General``
+ * \param member Property name
+ * \param _default Optional default value
  * \sa  O_SETTINGS, O_SETTINGS_PROPERTY, Oxide::SettingsFile
  */
 #define O_SETTINGS_PROPERTY_BODY(...) O_SETTINGS_PROPERTY_BODY_X(__VA_ARGS__)(__VA_ARGS__)
@@ -107,6 +117,8 @@
 /*!
  * \def O_SETTINGS
  * \brief Define the instance() and constructor methods for a SettingsFile derived class
+ * \param _type Class name
+ * \param path Path to file on disk that stores the settings
  * \sa  O_SETTINGS_PROPERTY, O_SETTINGS_PROPERTY_BODY, Oxide::SettingsFile
  */
 #define O_SETTINGS(_type, path) \

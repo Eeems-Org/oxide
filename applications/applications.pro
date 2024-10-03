@@ -5,6 +5,7 @@ SUBDIRS = \
     desktop-file-install \
     desktop-file-validate \
     gio \
+    inject_evdev \
     launcher \
     lockscreen \
     notify-send \
@@ -38,8 +39,9 @@ xdg-open.depends = system-service
 gio.depends = system-service
 xdg-settings.depends = system-service
 xdg-icon-resource.depends = system-service
-desktop-file-edit.depends = desktop-file-edit
+desktop-file-edit.depends =
 desktop-file-install.depends =
 web-browser.depends = system-service
+inject_evdev.depends =
 
 INSTALLS += $$SUBDIRS

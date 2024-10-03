@@ -10,7 +10,17 @@
 #include <atomic>
 #include <mutex>
 
-class EPFrameBuffer : public QObject
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+#  if defined(EPFRAMEBUFFER_EXPORT)
+#    define EPFRAMEBUFFER_EXPORT Q_DECL_EXPORT
+#  else
+#    define EPFRAMEBUFFER_EXPORT Q_DECL_IMPORT
+#  endif
+#else
+#  define EPFRAMEBUFFER_EXPORT
+#endif
+
+class EPFRAMEBUFFER_EXPORT EPFrameBuffer : public QObject
 {
     Q_OBJECT
 

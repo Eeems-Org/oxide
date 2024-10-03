@@ -1,17 +1,21 @@
 #include <QCommandLineParser>
 #include <QGuiApplication>
 #include <QLockFile>
+#include <QWindow>
+#include <QScreen>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
 
 #include <cstdlib>
 #include <filesystem>
 #include <liboxide.h>
 
 #include "dbusservice.h"
+#include "controller.h"
 
 using namespace std;
 using namespace Oxide::Sentry;
 
-const char* qt_version = qVersion();
 const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/oxide.pid";
 const char* lockPath = "/run/oxide/oxide.lock";
@@ -24,16 +28,16 @@ bool stopProcess(pid_t pid){
     if(pid <= 1){
         return false;
     }
-    qDebug() << "Waiting for other instance to stop...";
+    O_INFO("Waiting for other instance to stop...");
     kill(pid, SIGTERM);
     int tries = 0;
     while(0 == kill(pid, 0)){
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if(++tries == 50){
-            qDebug() << "Instance is taking too long, killing...";
+            O_INFO("Instance is taking too long, killing...");
             kill(pid, SIGKILL);
         }else if(tries == 60){
-            qDebug() << "Unable to kill process";
+            O_INFO("Unable to kill process");
             return false;
         }
     }
@@ -42,17 +46,19 @@ bool stopProcess(pid_t pid){
 
 int main(int argc, char* argv[]){
     if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2 && getenv("RM2FB_ACTIVE") == nullptr){
+        bool enabled = Oxide::debugEnabled();
+        if(!enabled){
+            qputenv("DEBUG", "1");
+        }
         O_WARNING("rm2fb not detected. Running xochitl instead!");
+        if(!enabled){
+            qputenv("DEBUG", "0");
+        }
         return QProcess::execute("/usr/bin/xochitl", QStringList());
     }
-    if (strcmp(qt_version, QT_VERSION_STR) != 0){
-        O_WARNING("Version mismatch, Runtime: " << qt_version << ", Build: " << QT_VERSION_STR);
-    }
-#ifdef __arm__
-    // Setup epaper
-    qputenv("QMLSCENE_DEVICE", "epaper");
-    qputenv("QT_QPA_PLATFORM", "epaper:enable_fonts");
-#endif
+    qputenv("XDG_CURRENT_DESKTOP", "OXIDE");
+    QThread::currentThread()->setObjectName("main");
+    deviceSettings.setupQtEnvironment(false);
     QGuiApplication app(argc, argv);
     sentry_init("tarnish", argv);
     app.setOrganizationName("Eeems");
@@ -81,27 +87,27 @@ int main(int argc, char* argv[]){
     ).trimmed();
     if(pid != "0" && pid != actualPid){
         if(!parser.isSet(breakLockOption)){
-            qDebug() << "tarnish.service is already running";
+            O_INFO("tarnish.service is already running");
             return EXIT_FAILURE;
         }
         if(QProcess::execute("systemctl", QStringList() << "stop" << "tarnish")){
-            qDebug() << "tarnish.service is already running";
-            qDebug() << "Unable to stop service";
+            O_INFO("tarnish.service is already running");
+            O_INFO("Unable to stop service");
             return EXIT_FAILURE;
         }
     }
-    qDebug() << "Creating lock file" << lockPath;
+    O_INFO("Creating lock file" << lockPath);
     if(!QFile::exists(QString::fromStdString(runPath)) && !std::filesystem::create_directories(runPath)){
-        qDebug() << "Failed to create" << runPath.c_str();
+        O_INFO("Failed to create" << runPath.c_str());
         return EXIT_FAILURE;
     }
     int lock = Oxide::tryGetLock(lockPath);
     if(lock < 0){
-        qDebug() << "Unable to establish lock on" << lockPath << strerror(errno);
+        O_INFO("Unable to establish lock on" << lockPath << strerror(errno));
         if(!parser.isSet(breakLockOption)){
             return EXIT_FAILURE;
         }
-        qDebug() << "Attempting to stop all other instances of tarnish" << lockPath;
+        O_INFO("Attempting to stop all other instances of tarnish" << lockPath);
         for(auto lockingPid : Oxide::lsof(lockPath)){
             if(Oxide::processExists(lockingPid)){
                 stopProcess(lockingPid);
@@ -109,13 +115,13 @@ int main(int argc, char* argv[]){
         }
         lock = Oxide::tryGetLock(lockPath);
         if(lock < 0){
-            qDebug() << "Unable to establish lock on" << lockPath << strerror(errno);
+            O_INFO("Unable to establish lock on" << lockPath << strerror(errno));
             return EXIT_FAILURE;
         }
     }
 
     QObject::connect(&app, &QGuiApplication::aboutToQuit, [lock]{
-        qDebug() << "Releasing lock " << lockPath;
+        O_INFO("Releasing lock " << lockPath);
         Oxide::releaseLock(lock, lockPath);
     });
 
@@ -138,5 +144,18 @@ int main(int argc, char* argv[]){
     QObject::connect(&app, &QGuiApplication::aboutToQuit, []{
         remove(pidPath);
     });
+    QQmlApplicationEngine engine;
+    QQmlContext* context = engine.rootContext();
+    Controller controller(&app);
+    context->setContextProperty("controller", &controller);
+    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+    if (engine.rootObjects().isEmpty()){
+        QScreen* screen = app.primaryScreen();
+        QWindow window(screen);
+        window.resize(screen->size());
+        window.setPosition(0, 0);
+        window.setOpacity(0);
+        window.show();
+    }
     return app.exec();
 }

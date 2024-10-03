@@ -2,14 +2,14 @@ import QtQuick 2.10
 import QtQuick.Window 2.3
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
+import "qrc:/codes.eeems.oxide"
 import "./widgets"
 
-ApplicationWindow {
+OxideWindow {
     id: window
     objectName: "window"
     visible: stateController.state === "loaded"
-    width: screenGeometry.width
-    height: screenGeometry.height
+    backgroundColor: "transparent"
     title: qsTr("Corrupt")
     property int itemPadding: 10
     Connections{
@@ -25,6 +25,12 @@ ApplicationWindow {
             }
         }
     }
+    Shortcut{
+        sequence: [StandardKey.Cancel, Qt.Key_Backspace]
+        context: Qt.ApplicationShortcut
+        onActivated: controller.previousApplication()
+    }
+
     Component.onCompleted: {
         controller.startup();
     }
@@ -45,17 +51,16 @@ ApplicationWindow {
             }
         }
     }
-    contentData: [
-        MouseArea {
-            anchors.fill: parent
-            enabled: stateController.state === "loaded"
-            onClicked: {
-                controller.breadcrumb("background", "click", "ui");
-                controller.previousApplication();
-            }
+    initialItem: MouseArea {
+        anchors.fill: parent
+        enabled: stateController.state === "loaded"
+        onClicked: {
+            controller.breadcrumb("background", "click", "ui");
+            controller.previousApplication();
         }
-    ]
-    footer: Rectangle {
+    }
+    page.header: Item{}
+    page.footer: Rectangle {
         id: footer
         color: "white"
         border.color: "black"

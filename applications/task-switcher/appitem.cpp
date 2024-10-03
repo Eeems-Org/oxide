@@ -60,3 +60,5 @@ Application* AppItem::getApp(){
     app = instance;
     return app;
 }
+
+#include "moc_appitem.cpp"

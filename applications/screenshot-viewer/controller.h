@@ -6,8 +6,6 @@
 #include <QQuickItem>
 #include <liboxide.h>
 
-#include "epframebuffer.h"
-
 #include "screenshotlist.h"
 
 using namespace codes::eeems::oxide1;
