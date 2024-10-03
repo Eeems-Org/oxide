@@ -50,7 +50,14 @@ namespace Oxide {
 
     void UDev::deviceType(const QString& subsystem, const QString& deviceType, std::function<void(const Device&)> callback){
         connect(singleton(), &UDev::event, [callback, subsystem, deviceType](const Device& device){
-            if(device.subsystem == subsystem && (deviceType == NULL || device.deviceType == deviceType)){
+            if(
+                device.subsystem == subsystem
+                && (
+                    deviceType.isNull()
+                    || deviceType.isEmpty()
+                    || device.deviceType == deviceType
+                )
+            ){
                 callback(device);
             }
         });
