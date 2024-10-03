@@ -41,11 +41,11 @@ namespace Oxide {
     }
 
     void UDev::subsystem(const QString& subsystem, std::function<void(const Device&)> callback){
-        deviceType(subsystem, NULL, callback);
+        deviceType(subsystem, "", callback);
     }
 
     void UDev::subsystem(const QString& subsystem, std::function<void()> callback){
-        deviceType(subsystem, NULL, callback);
+        deviceType(subsystem, "", callback);
     }
 
     void UDev::deviceType(const QString& subsystem, const QString& deviceType, std::function<void(const Device&)> callback){
@@ -144,10 +144,12 @@ namespace Oxide {
         }
         if(udev_enumerate_add_match_subsystem(udevEnumeration, subsystem.toUtf8().constData()) < 0){
             O_WARNING("Failed to add subsystem");
+            udev_enumerate_unref(udevEnumeration);
             return deviceList;
         }
         if(udev_enumerate_scan_devices(udevEnumeration) < 0){
             O_WARNING("Failed to scan devices");
+            udev_enumerate_unref(udevEnumeration);
             return deviceList;
         }
         struct udev_list_entry* udevDeviceList  = udev_enumerate_get_list_entry(udevEnumeration);
