@@ -12,7 +12,7 @@ NotificationAPI* NotificationAPI::singleton(NotificationAPI* self){
 }
 
 NotificationAPI::NotificationAPI(QObject* parent) : APIBase(parent), notificationDisplayQueue(), m_enabled(false), m_notifications(), m_lock() {
-    Oxide::Sentry::sentry_transaction("apps", "init", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Notification API init", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
             singleton(this);
         });

@@ -10,7 +10,7 @@ PowerAPI* PowerAPI::singleton(PowerAPI* self){
 
 PowerAPI::PowerAPI(QObject* parent)
     : APIBase(parent), m_chargerState(ChargerUnknown){
-    Oxide::Sentry::sentry_transaction("power", "init", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Power API Init", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
             singleton(this);
         });

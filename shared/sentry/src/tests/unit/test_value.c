@@ -394,7 +394,7 @@ SENTRY_TEST(value_json_deeply_nested)
         child = new_child;
     }
 
-    sentry_jsonwriter_t *jw = sentry__jsonwriter_new(NULL);
+    sentry_jsonwriter_t *jw = sentry__jsonwriter_new_sb(NULL);
     sentry__jsonwriter_write_value(jw, root);
     size_t serialized_len = 0;
     char *serialized = sentry__jsonwriter_into_string(jw, &serialized_len);
@@ -790,6 +790,70 @@ SENTRY_TEST(user_feedback_is_valid)
     TEST_CHECK_STRING_EQUAL(sentry_value_as_string(sentry_value_get_by_key(
                                 user_feedback, "comments")),
         "some-comment");
+
+    sentry_value_decref(user_feedback);
+}
+
+SENTRY_TEST(user_feedback_with_null_args)
+{
+    sentry_uuid_t event_id
+        = sentry_uuid_from_string("c993afb6-b4ac-48a6-b61b-2558e601d65d");
+    sentry_value_t user_feedback
+        = sentry_value_new_user_feedback(&event_id, NULL, NULL, NULL);
+
+    TEST_CHECK(!sentry_value_is_null(user_feedback));
+    TEST_CHECK(
+        sentry_value_is_null(sentry_value_get_by_key(user_feedback, "name")));
+    TEST_CHECK(
+        sentry_value_is_null(sentry_value_get_by_key(user_feedback, "email")));
+    TEST_CHECK(sentry_value_is_null(
+        sentry_value_get_by_key(user_feedback, "comments")));
+
+    sentry_value_decref(user_feedback);
+
+    user_feedback = sentry_value_new_user_feedback(
+        &event_id, NULL, "some-email", "some-comment");
+
+    TEST_CHECK(!sentry_value_is_null(user_feedback));
+    TEST_CHECK(
+        sentry_value_is_null(sentry_value_get_by_key(user_feedback, "name")));
+    TEST_CHECK_STRING_EQUAL(
+        sentry_value_as_string(sentry_value_get_by_key(user_feedback, "email")),
+        "some-email");
+    TEST_CHECK_STRING_EQUAL(sentry_value_as_string(sentry_value_get_by_key(
+                                user_feedback, "comments")),
+        "some-comment");
+
+    sentry_value_decref(user_feedback);
+
+    user_feedback = sentry_value_new_user_feedback(
+        &event_id, "some-name", NULL, "some-comment");
+
+    TEST_CHECK(!sentry_value_is_null(user_feedback));
+    TEST_CHECK_STRING_EQUAL(
+        sentry_value_as_string(sentry_value_get_by_key(user_feedback, "name")),
+        "some-name");
+    TEST_CHECK(
+        sentry_value_is_null(sentry_value_get_by_key(user_feedback, "email")));
+    TEST_CHECK_STRING_EQUAL(sentry_value_as_string(sentry_value_get_by_key(
+                                user_feedback, "comments")),
+        "some-comment");
+
+    sentry_value_decref(user_feedback);
+
+    user_feedback = sentry_value_new_user_feedback(
+        &event_id, "some-name", "some-email", NULL);
+
+    TEST_CHECK(!sentry_value_is_null(user_feedback));
+
+    TEST_CHECK_STRING_EQUAL(
+        sentry_value_as_string(sentry_value_get_by_key(user_feedback, "name")),
+        "some-name");
+    TEST_CHECK_STRING_EQUAL(
+        sentry_value_as_string(sentry_value_get_by_key(user_feedback, "email")),
+        "some-email");
+    TEST_CHECK(sentry_value_is_null(
+        sentry_value_get_by_key(user_feedback, "comments")));
 
     sentry_value_decref(user_feedback);
 }

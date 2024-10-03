@@ -273,6 +273,9 @@ bool
 sentry__path_filename_matches(const sentry_path_t *path, const char *filename)
 {
     sentry_path_t *fn = sentry__path_from_str(filename);
+    if (!fn) {
+        return false;
+    }
     bool matches = _wcsicmp(sentry__path_filename(path), fn->path) == 0;
     sentry__path_free(fn);
     return matches;
@@ -282,6 +285,9 @@ bool
 sentry__path_ends_with(const sentry_path_t *path, const char *suffix)
 {
     sentry_path_t *s = sentry__path_from_str(suffix);
+    if (!s) {
+        return false;
+    }
     size_t pathlen = wcslen(path->path);
     size_t suffixlen = wcslen(s->path);
     if (suffixlen > pathlen) {
@@ -569,4 +575,67 @@ sentry__path_append_buffer(
     const sentry_path_t *path, const char *buf, size_t buf_len)
 {
     return write_buffer_with_mode(path, buf, buf_len, L"ab");
+}
+
+struct sentry_filewriter_s {
+    size_t byte_count;
+    FILE *f;
+};
+
+MUST_USE sentry_filewriter_t *
+sentry__filewriter_new(const sentry_path_t *path)
+{
+    FILE *f = _wfopen(path->path, L"wb");
+    if (!f) {
+        return NULL;
+    }
+
+    sentry_filewriter_t *result = SENTRY_MAKE(sentry_filewriter_t);
+    if (!result) {
+        fclose(f);
+        return NULL;
+    }
+
+    result->f = f;
+    result->byte_count = 0;
+    return result;
+}
+
+size_t
+sentry__filewriter_write(
+    sentry_filewriter_t *filewriter, const char *buf, size_t buf_len)
+{
+    if (!filewriter) {
+        return 0;
+    }
+    while (buf_len > 0) {
+        size_t n = fwrite(buf, 1, buf_len, filewriter->f);
+        if (n == 0 && errno == EINVAL) {
+            continue;
+        } else if (n < buf_len) {
+            break;
+        }
+        filewriter->byte_count += n;
+        buf += n;
+        buf_len -= n;
+    }
+
+    return buf_len;
+}
+
+void
+sentry__filewriter_free(sentry_filewriter_t *filewriter)
+{
+    if (!filewriter) {
+        return;
+    }
+    fflush(filewriter->f);
+    fclose(filewriter->f);
+    sentry_free(filewriter);
+}
+
+size_t
+sentry__filewriter_byte_count(sentry_filewriter_t *filewriter)
+{
+    return filewriter->byte_count;
 }

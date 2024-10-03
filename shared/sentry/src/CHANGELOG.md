@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.7.9
+
+**Fixes**:
+
+- Check file-writer construction when writing envelope to path. ([#1036](https://github.com/getsentry/sentry-native/pull/1036))
+
+## 0.7.8
+
+**Features**:
+
+- Let the envelope serialization stream directly to the file. ([#1021](https://github.com/getsentry/sentry-native/pull/1021))
+- Support 16kb page sizes on Android 15. ([#1028](https://github.com/getsentry/sentry-native/pull/1028))
+
+## 0.7.7
+
+**Fixes**:
+
+- Further clean up of the exported dependency configuration. ([#1013](https://github.com/getsentry/sentry-native/pull/1013), [crashpad#106](https://github.com/getsentry/crashpad/pull/106))
+- Clean-up scope flushing synchronization in crashpad-backend. ([#1019](https://github.com/getsentry/sentry-native/pull/1019), [crashpad#109](https://github.com/getsentry/crashpad/pull/109))
+- Rectify user-feedback comment parameter guard. ([#1020](https://github.com/getsentry/sentry-native/pull/1020))
+
+**Internal**:
+
+- Updated `crashpad` to 2024-06-11. ([#1014](https://github.com/getsentry/sentry-native/pull/1014), [crashpad#105](https://github.com/getsentry/crashpad/pull/105))
+
+**Thank you**:
+
+- [@JonLiu1993](https://github.com/JonLiu1993)
+- [@dg0yt](https://github.com/dg0yt)
+- [@stima](https://github.com/stima)
+
 ## 0.7.6
 
 **Fixes**:

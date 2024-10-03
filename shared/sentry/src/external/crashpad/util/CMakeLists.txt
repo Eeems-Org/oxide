@@ -249,7 +249,7 @@ endif()
 
 if(LINUX OR ANDROID)
     if (LINUX)
-        if(NOT CURL_FOUND) # Some other lib might bring libcurl already
+        if(NOT TARGET CURL::libcurl) # Some other lib might bring libcurl already
             find_package(CURL REQUIRED)
         endif()
 
@@ -507,6 +507,8 @@ if(APPLE)
             "-framework UIKit"
         )
     endif()
+
+    target_compile_options(crashpad_util PRIVATE "-Wno-deprecated-declarations")
 endif()
 
 if(LINUX)

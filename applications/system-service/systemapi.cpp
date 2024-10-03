@@ -21,7 +21,7 @@ QDebug operator<<(QDebug debug, Touch* touch){
 void SystemAPI::PrepareForSleep(bool suspending){
     auto device = deviceSettings.getDeviceType();
     if(suspending){
-        Oxide::Sentry::sentry_transaction("system", "suspend", [this, device](Oxide::Sentry::Transaction* t){
+        Oxide::Sentry::sentry_transaction("Suspend System", "suspend", [this, device](Oxide::Sentry::Transaction* t){
             if(autoLock()){
                 lockTimestamp = QDateTime::currentMSecsSinceEpoch() + lockTimer.remainingTime();
                 O_DEBUG("Auto Lock timestamp:" << lockTimestamp);
@@ -66,7 +66,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
             O_INFO("Suspending...");
         });
     }else{
-        Oxide::Sentry::sentry_transaction("system", "resume", [this, device](Oxide::Sentry::Transaction* t){
+        Oxide::Sentry::sentry_transaction("Resume System", "resume", [this, device](Oxide::Sentry::Transaction* t){
             Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep", [this]{
                 inhibitSleep();
             });
@@ -144,7 +144,7 @@ SystemAPI::SystemAPI(QObject* parent)
       touches(),
       swipeStates(),
       swipeLengths() {
-    Oxide::Sentry::sentry_transaction("system", "init", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("System API Init", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "settings", "Sync settings", [this](Oxide::Sentry::Span* s){
             Oxide::Sentry::sentry_span(s, "swipes", "Default swipe values", [this]{
                 for(short i = Right; i <= Down; i++){
