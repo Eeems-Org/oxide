@@ -60,6 +60,7 @@ Item {
             if(root.isSelected){
                 if(root.isHeld){
                     root.isSelected = false;
+                    root.isHeld = false;
                 }
                 console.log("release (" + this + ")");
                 root.release()

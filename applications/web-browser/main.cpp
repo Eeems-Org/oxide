@@ -59,17 +59,16 @@ int main(int argc, char *argv[]){
         return -1;
     }
     auto root = engine.rootObjects().first();
-    filter->root = (QQuickItem*)root;
+    filter->root = qobject_cast<QQuickItem*>(root);
     controller.setRoot(root);
     KeyboardHandler* keyboard = root->findChild<KeyboardHandler*>("keyboard");
     if(!keyboard){
         qDebug() << "No keyboard handler";
         return 1;
     }
-    keyboard->root = (QQuickItem*)root;
+    keyboard->root = qobject_cast<QQuickItem*>(root);
 
     signal(SIGINT, sigHandler);
-    signal(SIGSEGV, sigHandler);
     signal(SIGTERM, sigHandler);
 
     return app.exec();

@@ -11,7 +11,7 @@
 class KeyboardHandler : public QObject {
     Q_OBJECT
 public:
-    explicit KeyboardHandler(QObject *parent = 0) : QObject(parent) {}
+    explicit KeyboardHandler(QObject *parent = nullptr) : QObject(parent) {}
    QQuickItem* root;
     Q_INVOKABLE void charPress(const QChar &character, const Qt::KeyboardModifiers &modifier){
         if(character != '\x0'){
