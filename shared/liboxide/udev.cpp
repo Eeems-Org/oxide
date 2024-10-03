@@ -11,11 +11,12 @@
 namespace Oxide {
 
     UDev* UDev::singleton(){
-        static UDev* instance;
-        if(instance == nullptr){
-            instance = new UDev();
-            instance->start();
-        }
+        static std::once_flag initFlag;
+        static UDev* instance = nullptr;
+        std::call_once(initFlag, [](){
+           instance = new UDev();
+           instance->start();
+        });
         return instance;
     }
 
@@ -103,10 +104,10 @@ namespace Oxide {
         O_DEBUG("UDev::Adding" << subsystem << deviceType);
         QStringList* list;
         if(monitors.contains(subsystem)){
-            list = monitors[subsystem];
+            list = monitors[subsystem].data();
         }else{
             list = new QStringList();
-            monitors.insert(subsystem, list);
+            monitors.insert(subsystem, QSharedPointer<QStringList>(list));
         }
         if(!list->contains(deviceType)){
             list->append(deviceType);
@@ -145,7 +146,8 @@ namespace Oxide {
                 device.action = getActionType(udevDevice);
                 device.path = path;
                 device.subsystem = subsystem;
-                device.deviceType = QString(udev_device_get_devtype(udevDevice));
+                auto devType = udev_device_get_devtype(udevDevice);
+                device.deviceType = QString(devType ? devType : "");
                 udev_device_unref(udevDevice);
                 deviceList.append(device);
             }
@@ -168,7 +170,7 @@ namespace Oxide {
         if(actionType == "REMOVE"){
             return Remove;
         }
-        if(actionType == "Change"){
+        if(actionType == "CHANGE"){
             return Change;
         }
         if(actionType == "OFFLINE"){
@@ -228,18 +230,19 @@ namespace Oxide {
                 update = false;
                 udev_monitor_unref(mon);
                 timer->deleteLater();
-                QTimer::singleShot(0, [this]{
-                    monitor();
-                });
+                QTimer::singleShot(0, this, &UDev::monitor);
                 return;
             }
             udev_device* dev = udev_monitor_receive_device(mon);
             if(dev != nullptr){
                 Device device;
                 device.action = getActionType(dev);
-                device.path = QString(udev_device_get_devnode(dev));
-                device.subsystem = QString(udev_device_get_subsystem(dev));
-                device.deviceType = QString(udev_device_get_devtype(dev));
+                auto devNode = udev_device_get_devnode(dev);
+                device.path = QString(devNode ? devNode : "");
+                auto devSubsystem = udev_device_get_subsystem(dev);
+                device.subsystem = QString(devSubsystem ? devSubsystem : "");
+                auto devType = udev_device_get_devtype(dev);
+                device.deviceType = QString(devType ? devType : "");
                 udev_device_unref(dev);
                 O_DEBUG("UDev::Monitor UDev event" << device);
                 emit event(device);

@@ -52,18 +52,20 @@ PowerAPI::~PowerAPI(){
         }
 }
 
-void PowerAPI::setEnabled(bool enabled) {
-    if(enabled){
-            if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-                Oxide::UDev::singleton()->start();
-            }else{
-                timer->start();
-            }
-        }else if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-            Oxide::UDev::singleton()->stop();
+void PowerAPI::setEnabled(bool enabled){
+    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+        if(enabled){
+            Oxide::UDev::singleton()->start();
         }else{
-            timer->stop();
+            Oxide::UDev::singleton()->stop();
         }
+        return;
+    }
+    if(enabled){
+        timer->start();
+    }else{
+        timer->stop();
+    }
 }
 
 int PowerAPI::state(){

@@ -12,8 +12,6 @@
 #include <QObject>
 #include <QMutex>
 
-using namespace std;
-
 namespace Oxide {
     class UDev : public QObject {
         Q_OBJECT
@@ -53,7 +51,7 @@ namespace Oxide {
                     return "UNKNOWN";
                 }
             }
-            string debugString() const {
+            std::string debugString() const {
                 return QString("<Device %1/%2 %3>").arg(subsystem, deviceType, actionString()).toStdString();
             }
         };
@@ -79,7 +77,7 @@ namespace Oxide {
         bool running = false;
         bool exitRequested = false;
         bool update = false;
-        QMap<QString, QStringList*> monitors;
+        QMap<QString, QSharedPointer<QStringList>> monitors;
         QThread _thread;
         QMutex statelock;
 
