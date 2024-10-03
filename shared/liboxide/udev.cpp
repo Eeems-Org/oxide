@@ -198,7 +198,9 @@ namespace Oxide {
                 int err = udev_monitor_filter_add_match_subsystem_devtype(
                     mon,
                     subsystem.toUtf8().constData(),
-                    deviceType.isNull() || deviceType.isEmpty() ? deviceType.toUtf8().constData() : NULL
+                    deviceType.isNull() || deviceType.isEmpty()
+                        ? NULL
+                        : deviceType.toUtf8().constData()
                 );
                 if(err < 0){
                     O_WARNING("UDev::Monitor Unable to add filter: " << strerror(err));
