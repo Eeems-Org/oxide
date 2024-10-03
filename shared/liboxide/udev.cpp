@@ -117,10 +117,14 @@ namespace Oxide {
     }
     void UDev::removeMonitor(QString subsystem, QString deviceType){
         O_DEBUG("UDev::Removing" << subsystem << deviceType);
-        if(monitors.contains(subsystem)){
-            monitors[subsystem].removeAll(deviceType);
-            update = true;
+        if(!monitors.contains(subsystem)){
+            return;
         }
+        monitors[subsystem].removeAll(deviceType);
+        if(monitors[subsystem].isEmpty()){
+            monitors.remove(subsystem);
+        }
+        update = true;
     }
 
     QList<UDev::Device> UDev::getDeviceList(const QString& subsystem){
