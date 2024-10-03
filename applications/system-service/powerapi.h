@@ -2,7 +2,6 @@
 #define BATTERYAPI_H
 
 #include <liboxide.h>
-#include <liboxide/udev.h>
 
 #include <QObject>
 #include <QDebug>

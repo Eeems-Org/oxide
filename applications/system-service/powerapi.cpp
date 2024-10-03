@@ -1,5 +1,7 @@
 #include "powerapi.h"
 
+#include <liboxide/udev.h>
+
 PowerAPI* PowerAPI::singleton(PowerAPI* self){
     static PowerAPI* instance;
     if(self != nullptr){
@@ -23,8 +25,8 @@ PowerAPI::PowerAPI(QObject* parent)
         });
         Oxide::Sentry::sentry_span(t, "monitor", "Setup monitor", [this]{
             if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-                UDev::singleton()->addMonitor("platform", NULL);
-                UDev::singleton()->subsystem("power_supply", [this]{
+                Oxide::UDev::singleton()->addMonitor("platform", NULL);
+                Oxide::UDev::singleton()->subsystem("power_supply", [this]{
                     update();
                 });
             }else{
@@ -46,19 +48,19 @@ PowerAPI::~PowerAPI(){
             delete timer;
         }else{
             qDebug() << "Killing UDev monitor";
-            UDev::singleton()->stop();
+            Oxide::UDev::singleton()->stop();
         }
 }
 
 void PowerAPI::setEnabled(bool enabled) {
     if(enabled){
             if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-                UDev::singleton()->start();
+                Oxide::UDev::singleton()->start();
             }else{
                 timer->start();
             }
         }else if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
-            UDev::singleton()->stop();
+            Oxide::UDev::singleton()->stop();
         }else{
             timer->stop();
         }
