@@ -155,10 +155,6 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_pointers) {
     return EXCEPTION_CONTINUE_SEARCH;
   }
 
-  if (first_chance_handler_ && first_chance_handler_(exception_pointers)) {
-    return EXCEPTION_CONTINUE_SEARCH;
-  }
-
   // Otherwise, we know the handler startup has succeeded, and we can continue.
 
   // Tracks whether a thread has already entered UnhandledExceptionHandler.
@@ -178,6 +174,17 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_pointers) {
   // that's blocked at this location.
   if (base::subtle::Barrier_AtomicIncrement(&have_crashed, 1) > 1) {
     SleepEx(INFINITE, false);
+  }
+
+  // TODO(supervacuus):
+  //  On Windows the first-chance handler is executed inside the UEF which is
+  //  synchronous with respect to thread it is executing on. However, any other
+  //  running thread can also raise an exception and therefore will also execute
+  //  a UEF, at which point they would run concurrently. Adapting to this would
+  //  mean to adapt the pipeline, because even if the handler was UEF-safe,
+  //  there is currently no way in which to correlate non-nested crashes.
+  if (first_chance_handler_ && first_chance_handler_(exception_pointers)) {
+    return EXCEPTION_CONTINUE_SEARCH;
   }
 
   // Otherwise, we're the first thread, so record the exception pointer and

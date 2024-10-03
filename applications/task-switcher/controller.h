@@ -192,7 +192,7 @@ public:
     }
     void updateImage(){
         qDebug() << "Updating background...";
-        Oxide::Sentry::sentry_transaction("controller", "updateImage", [this](Oxide::Sentry::Transaction* t){
+        Oxide::Sentry::sentry_transaction("Update Task Switcher Background Image", "updateImage", [this](Oxide::Sentry::Transaction* t){
             QImage* img = nullptr;
             Oxide::Sentry::sentry_span(t, "previousApplications", "Get image from previous application", [this, &img](Oxide::Sentry::Span* s){
                 auto previousApplications = appsApi->previousApplications();

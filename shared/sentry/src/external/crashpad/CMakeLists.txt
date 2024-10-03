@@ -21,7 +21,7 @@ else()
 endif()
 option(CRASHPAD_ZLIB_SYSTEM "Use system zlib library" "${CRASHPAD_ZLIB_SYSTEM_DEFAULT}")
 
-if(CRASHPAD_ZLIB_SYSTEM AND NOT ZLIB_FOUND)
+if(CRASHPAD_ZLIB_SYSTEM AND NOT TARGET ZLIB::ZLIB)
     find_package(ZLIB REQUIRED)
 endif()
 
@@ -83,7 +83,7 @@ else()
     enable_language(ASM)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(crashpad_interface INTERFACE)

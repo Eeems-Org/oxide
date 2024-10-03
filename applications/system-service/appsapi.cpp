@@ -27,7 +27,7 @@ AppsAPI::AppsAPI(QObject* parent)
   m_processManagerApplication("/"),
   m_taskSwitcherApplication("/"),
   m_sleeping(false) {
-    Oxide::Sentry::sentry_transaction("apps", "init", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Init Apps API", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "start", "Launching initial application", [this](Oxide::Sentry::Span* s){
             Oxide::Sentry::sentry_span(s, "singleton", "Setup singleton", [this]{
                 singleton(this);
@@ -104,7 +104,7 @@ AppsAPI::AppsAPI(QObject* parent)
 }
 
 void AppsAPI::startup(){
-    Oxide::Sentry::sentry_transaction("apps", "startup", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Apps API Startup", "startup", [this](Oxide::Sentry::Transaction* t){
         if(applications.isEmpty()){
             O_INFO("No applications found");
             notificationAPI->errorNotification(_noApplicationsMessage);
@@ -189,7 +189,7 @@ QDBusObjectPath AppsAPI::registerApplicationNoSecurityCheck(QVariantMap properti
         return applications[name]->qPath();
     }
     QDBusObjectPath path;
-    Oxide::Sentry::sentry_transaction("apps", "registerApplication", [this, &path, name, properties](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Register Application", "registerApplication", [this, &path, name, properties](Oxide::Sentry::Transaction* t){
         Q_UNUSED(t);
         path = QDBusObjectPath(getPath(name));
         auto app = new Application(path, reinterpret_cast<QObject*>(this));
@@ -221,7 +221,7 @@ void AppsAPI::reload(){
     if(!hasPermission("apps")){
         return;
     }
-    Oxide::Sentry::sentry_transaction("apps", "reload", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Reload Apps", "reload", [this](Oxide::Sentry::Transaction* t){
         Q_UNUSED(t);
         writeApplications();
         readApplications();
@@ -356,7 +356,7 @@ QVariantMap AppsAPI::pausedApplications(){
 }
 
 void AppsAPI::unregisterApplication(Application* app){
-    Oxide::Sentry::sentry_transaction("apps", "unregisterApplication", [this, app](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Unregister Application", "unregisterApplication", [this, app](Oxide::Sentry::Transaction* t){
         Q_UNUSED(t);
         auto name = app->name();
         if(applications.contains(name)){

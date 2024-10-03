@@ -28,7 +28,9 @@ PRE_TARGETDEPS += $$OUT_PWD/lib/libsentry.so
 sentry_install.target = $$OUT_PWD/lib/libsentry.so
 sentry_install.depends = sentry_build
 sentry_install.commands = \
-    cmake --install $$OUT_PWD/src --prefix $$OUT_PWD --config RelWithDebInfo
+    cmake --install $$OUT_PWD/src \
+        --prefix $$OUT_PWD \
+        --config RelWithDebInfo
 QMAKE_EXTRA_TARGETS += sentry_install
 
 QMAKE_CLEAN += -r $$OUT_PWD/src/
