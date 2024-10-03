@@ -78,7 +78,7 @@ namespace Oxide {
         bool running = false;
         bool exitRequested = false;
         bool update = false;
-        QMap<QString, QSharedPointer<QStringList>> monitors;
+        QMap<QString, QStringList> monitors;
         QThread _thread;
         QMutex statelock;
 

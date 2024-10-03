@@ -109,25 +109,16 @@ namespace Oxide {
 
     void UDev::addMonitor(QString subsystem, QString deviceType){
         O_DEBUG("UDev::Adding" << subsystem << deviceType);
-        auto& list = monitors[subsystem];
-        if (!list) {
-            list = QSharedPointer<QStringList>::create();
-        }
-        if(!list->contains(deviceType)){
-            list->append(deviceType);
+        QStringList& list = monitors[subsystem];
+        if(!list.contains(deviceType)){
+            list.append(deviceType);
             update = true;
         }
     }
     void UDev::removeMonitor(QString subsystem, QString deviceType){
         O_DEBUG("UDev::Removing" << subsystem << deviceType);
         if(monitors.contains(subsystem)){
-            monitors[subsystem]->removeAll(deviceType);
-            update = true;
-        }
-
-        auto it = monitors.find(subsystem);
-        if(it != monitors.end() && *it){
-            (*it)->removeAll(deviceType);
+            monitors[subsystem].removeAll(deviceType);
             update = true;
         }
     }
@@ -186,7 +177,8 @@ namespace Oxide {
         if(udevDevice == nullptr){
             return Unknown;
         }
-        return getActionType(QString(udev_device_get_action(udevDevice)).trimmed().toUpper());
+        auto devType = udev_device_get_action(udevDevice);
+        return getActionType(QString(devType ? devType : "").trimmed().toUpper());
     }
 
     UDev::ActionType UDev::getActionType(const QString& actionType){
@@ -219,7 +211,7 @@ namespace Oxide {
         }
         O_DEBUG("UDev::Monitor applying filters...");
         for(QString subsystem : monitors.keys()){
-            for(QString deviceType : *monitors[subsystem]){
+            for(QString deviceType : monitors[subsystem]){
                 O_DEBUG("UDev::Monitor filter" << subsystem << deviceType);
                 int err = udev_monitor_filter_add_match_subsystem_devtype(
                     mon,
