@@ -11,8 +11,8 @@
 namespace Oxide {
 
     UDev* UDev::singleton(){
-        static std::once_flag initFlag;
         static UDev* instance = nullptr;
+        static std::once_flag initFlag;
         std::call_once(initFlag, [](){
            instance = new UDev();
            instance->start();
@@ -104,17 +104,15 @@ namespace Oxide {
             while(running){
                 qApp->processEvents();
             }
+            _thread.wait(();
         }
     }
 
     void UDev::addMonitor(QString subsystem, QString deviceType){
         O_DEBUG("UDev::Adding" << subsystem << deviceType);
-        QStringList* list;
-        if(monitors.contains(subsystem)){
-            list = monitors[subsystem].data();
-        }else{
-            list = new QStringList();
-            monitors.insert(subsystem, QSharedPointer<QStringList>(list));
+        auto& list = monitors[subsystem];
+        if (!list) {
+            list = QSharedPointer<QStringList>::create();
         }
         if(!list->contains(deviceType)){
             list->append(deviceType);
@@ -127,16 +125,32 @@ namespace Oxide {
             monitors[subsystem]->removeAll(deviceType);
             update = true;
         }
+
+        auto it = monitors.find(subsystem);
+        if(it != monitors.end() && *it){
+            (*it)->removeAll(deviceType);
+            update = true;
+        }
     }
 
     QList<UDev::Device> UDev::getDeviceList(const QString& subsystem){
         QList<Device> deviceList;
         struct udev_enumerate* udevEnumeration = udev_enumerate_new(udevLib);
         if(udevEnumeration == nullptr){
+            static std::once_flag onceFlag;
+            std::call_once(onceFlag, [](){
+                O_WARNING("Failed to enumerate udev");
+            });
             return deviceList;
         }
-        udev_enumerate_add_match_subsystem(udevEnumeration, subsystem.toUtf8().constData());
-        udev_enumerate_scan_devices(udevEnumeration);
+        if(udev_enumerate_add_match_subsystem(udevEnumeration, subsystem.toUtf8().constData()) < 0){
+            O_WARNING("Failed to add subsystem");
+            return deviceList;
+        }
+        if(udev_enumerate_scan_devices(udevEnumeration) < 0){
+            O_WARNING("Failed to scan devices");
+            return deviceList;
+        }
         struct udev_list_entry* udevDeviceList  = udev_enumerate_get_list_entry(udevEnumeration);
         if(udevDeviceList != nullptr){
             struct udev_list_entry* entry = nullptr;
@@ -150,6 +164,10 @@ namespace Oxide {
                 }
                 Device device;
                 struct udev_device* udevDevice = udev_device_new_from_syspath(udevLib, path);
+                if(udevDevice == nullptr) {
+                    O_WARNING("Failed to create udev device from syspath");
+                    continue;
+                }
                 device.action = getActionType(udevDevice);
                 device.path = path;
                 device.subsystem = subsystem;
