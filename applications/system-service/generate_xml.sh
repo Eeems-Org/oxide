@@ -1,9 +1,9 @@
 #!/bin/sh
 cd "$(dirname "$0")"
 mkdir -p ../../interfaces
-p(){
-  echo "qdbuscpp2xml $1"
-  qdbuscpp2xml -A "$1" -o ../../interfaces/"$(basename "$1" .h)".xml
+p() {
+    echo "qdbuscpp2xml $1"
+    qdbuscpp2xml -A "$1" -o ../../interfaces/"$(basename "$1" .h)".xml
 }
 
 p dbusservice.h

@@ -27,7 +27,7 @@ Install Oxide
 .. raw:: html
 
   <div class="warning">
-    ⚠️ <b>Warning:</b> Since this changes what application is launched on boot, you'll want to make sure you have your SSH password written down, and it's recommended to <a href="https://remarkablewiki.com/tech/ssh">setup an SSH key</a>.
+    ⚠️ <b>Warning:</b> Since this changes what application is launched on boot, you'll want to make sure you have your SSH password written down, and it's recommended to <a href="https://web.archive.org/web/20230616024159/https://remarkablewiki.com/tech/ssh">setup an SSH key</a>. This way you wont lose access to SSH if something goes wrong and your device soft-bricks.
   </div>
   <p>
     Oxide is available in
@@ -38,13 +38,10 @@ Install Oxide
   </p>
 
 1. ``opkg install oxide``
-2. ``systemctl disable --now xochitl``
-3. If you are installing on a reMarkable 2: ``systemctl enable --now rm2fb``
-4. ``systemctl enable --now tarnish``
+2. ``launcherctl switch-launcher --start oxide``
 
 Uninstall Oxide
 ===============
 
-1. ``systemctl disable --now tarnish``
-2. ``systemctl enable --now xochitl``
-3. ``opkg remove erode fret oxide rot tarnish decay corrupt anxiety liboxide libsentry``
+1. ``launcherctl switch-launcher --start xochitl``
+2. ``opkg remove --force-removal-of-dependent-packages --autoremove liboxide``

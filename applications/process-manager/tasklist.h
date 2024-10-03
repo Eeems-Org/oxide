@@ -69,9 +69,8 @@ public:
     }
     void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override{
         Q_UNUSED(column)
-        Q_UNUSED(order)
         emit layoutAboutToBeChanged();
-        std::sort(taskItems.begin(), taskItems.end(), [=](TaskItem* a, TaskItem* b) -> bool {
+        std::sort(taskItems.begin(), taskItems.end(), [this, order](TaskItem* a, TaskItem* b) -> bool {
             if(order == Qt::DescendingOrder){
                 auto temp = a;
                 a = b;

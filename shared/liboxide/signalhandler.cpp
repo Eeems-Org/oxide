@@ -82,3 +82,5 @@ namespace Oxide {
         snUsr2->setEnabled(true);
     }
 }
+
+#include "moc_signalhandler.cpp"

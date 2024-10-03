@@ -1,12 +1,10 @@
 QT += dbus
+QT += quick
 
 CONFIG += c++17
 CONFIG += console
 CONFIG -= app_bundle
 CONFIG += precompile_header
-
-DEFINES += QT_DEPRECATED_WARNINGS
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 QMAKE_CFLAGS += -std=c99
 
@@ -16,12 +14,20 @@ SOURCES += \
     appsapi.cpp \
     bss.cpp \
     buttonhandler.cpp \
-    event_device.cpp \
+    dbusservice.cpp \
+    digitizerhandler.cpp \
+    eventlistener.cpp \
+    fifohandler.cpp \
+    keyboarddevice.cpp \
+    keyboardhandler.cpp \
     network.cpp \
     notification.cpp \
+    notificationapi.cpp \
+    powerapi.cpp \
     screenapi.cpp \
     screenshot.cpp \
     systemapi.cpp \
+    wifiapi.cpp \
     wlan.cpp \
     wpa_supplicant.cpp \
     main.cpp
@@ -38,6 +44,14 @@ INSTALLS += configFile
 service.files = ../../assets/etc/systemd/system/tarnish.service
 service.path = /etc/systemd/system/
 INSTALLS += service
+
+keyd.files = ../../assets/opt/etc/keyd/oxide.conf
+keyd.path = /opt/etc/keyd/
+INSTALLS += keyd
+
+launcherctl.files = ../../assets/opt/share/launcherctl/oxide
+launcherctl.path = /opt/share/launcherctl/
+INSTALLS += launcherctl
 
 applications.files = ../../assets/opt/usr/share/applications/xochitl.oxide
 applications.path = /opt/usr/share/applications/
@@ -57,11 +71,13 @@ HEADERS += \
     appsapi.h \
     bss.h \
     buttonhandler.h \
+    controller.h \
     dbusservice.h \
     digitizerhandler.h \
-    event_device.h \
+    eventlistener.h \
     fifohandler.h \
-    mxcfb.h \
+    keyboarddevice.h \
+    keyboardhandler.h \
     network.h \
     notification.h \
     notificationapi.h \
@@ -87,8 +103,11 @@ DISTFILES += \
     generate_xml.sh \
     org.freedesktop.login1.xml
 
-include(../../qmake/epaper.pri)
+INCLUDEPATH += ../../shared/mxcfb
+
 include(../../qmake/liboxide.pri)
-include(../../qmake/sentry.pri)
 
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
+
+RESOURCES += \
+    qml.qrc

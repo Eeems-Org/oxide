@@ -113,7 +113,7 @@ namespace Oxide::JSON {
             arg.endMap();
             return sanitizeForJson(QVariant::fromValue(map));
         }
-        O_WARNING("Unable to sanitize QDBusArgument as it is an unknown type");
+        O_WARNING("Unable to decode QDBusArgument as it is an unknown type");
         return QVariant();
     }
     QVariant sanitizeForJson(QVariant value){

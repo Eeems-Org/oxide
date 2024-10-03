@@ -7,9 +7,6 @@ CONFIG += qml_debug
 CONFIG += qtquickcompiler
 CONFIG += precompile_header
 
-DEFINES += QT_DEPRECATED_WARNINGS
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-
 SOURCES += \
     main.cpp \
     controller.cpp \
@@ -49,6 +46,4 @@ HEADERS += \
 PRECOMPILED_HEADER = \
     oxide_stable.h
 
-include(../../qmake/epaper.pri)
 include(../../qmake/liboxide.pri)
-include(../../qmake/sentry.pri)

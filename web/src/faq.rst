@@ -32,27 +32,23 @@ What kind of information is collected by telemetry?
 How can I disable the telemetry?
 ================================
 
+As of 2.6 you can disable telemetry with the following commands:
+
 .. code:: bash
 
   xdg-settings set telemetry false
   xdg-settings set crashReport false
   xdg-settings set applicationUsage false
 
-Or you can compile the applications manually without the ``sentry`` feature enabled.
-
-How can I get the time to display in my timezone?
-=================================================
-
-You can use `timedatectl <https://www.freedesktop.org/software/systemd/man/timedatectl.html>`_
-to change your timezone. You can see available timezones by looking into ``/usr/share/zoneinfo/``.
-Do not trust the output of ``timedatectl get-timezones`` as it reports more timezones than are
-actually installed on the device by default. You can install more timezones on the device through
-`Toltec <https://toltec-dev.org>`_ by installing one of the ``zoneinfo-*`` packages.
+On 2.5 or earlier you can use the following commands to disable telemetry:
 
 .. code:: bash
 
-  timedatectl set-timezone America/Denver
+  rot settings set telemetry 'bool:false'
+  rot settings set crashReport 'bool:false'
+  rot settings set applicationUsage 'bool:false'
 
+Alternatively, you can compile the applications manually without the ``sentry`` feature enabled.
 
 I'm installing without `Toltec <https://toltec-dev.org>`_ and nothing displays?
 ===============================================================================
@@ -69,12 +65,27 @@ As of 2.6 you can change your pin to any 4 numbers with the following command:
 
   xdg-settings set pin <new-pin>
 
+For example:
+
+.. code:: bash
+
+  xdg-settings set pin '0123'
+
 As of 2.6 you can clear your pin to skip the lock screen with the following command:
 
 .. code:: bash
 
   xdg-settings set pin ''
 
+On 2.5 or earlier you can use the following commands to manually clear your pin:
+
+.. code:: bash
+
+  systemctl stop tarnish
+  rm /home/root/.config/Eeems/decay.conf
+  systemctl start tarnish
+
+You will then be prompted to enter a new pin
 
 Not all of my applications are listed?
 ======================================
@@ -108,6 +119,12 @@ As of Oxide 2.5, you can now get logs for specific applications with the followi
 
   journalctl -eat codes.eeems.oxide
 
+To get logs for just the :ref:`tarnish`, you can use the following command:
+
+.. code:: bash
+
+  journalctl -eat tarnish
+
 Where are the configuration files?
 ==================================
 
@@ -118,3 +135,19 @@ The primary configuration file can be found in one of the following locations:
   3. ``/home/root/.config/oxide.conf``
 
 Other configuration files can be found in ``/home/root/.config/Eeems/``.
+
+Can I disable a specific gesture?
+=================================
+
+Yes, you can disable specific gestures with the following commands:
+
+.. code:: bash
+
+  # Disable swipe from left edge of the screen
+  rot system call setSwipeEnabled 'int:1' 'bool:false'
+  # Disable swipe from right edge of the screen
+  rot system call setSwipeEnabled 'int:2' 'bool:false'
+  # Disable swipe from bottom of the screen
+  rot system call setSwipeEnabled 'int:3' 'bool:false'
+  # Disable swipe from top of the screen
+  rot system call setSwipeEnabled 'int:4' 'bool:false'

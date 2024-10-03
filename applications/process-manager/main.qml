@@ -2,13 +2,13 @@ import QtQuick 2.10
 import QtQuick.Window 2.3
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.11
+import "qrc:/codes.eeems.oxide"
 import "widgets"
 
-ApplicationWindow {
+OxideWindow {
     id: window
     visible: true
-    width: screenGeometry.width
-    height: screenGeometry.height
+    backgroundColor: "white"
     onAfterSynchronizing: {
         if (stateController.state == "loading") {
             stateController.state = "loaded";
@@ -21,37 +21,30 @@ ApplicationWindow {
         running: true
         onTriggered: controller.reload()
     }
-
-    menuBar: ColumnLayout {
-        width: parent.width
-        ToolBar {
-            Layout.fillWidth: true
-            background: Rectangle { color: "black" }
-            RowLayout {
-                width: parent.width
-                BetterButton {
-                    text: "⬅️"
-                    onClicked: quitTimer.start()
-                    Timer {
-                        id: quitTimer
-                        interval: 1000
-                        onTriggered: {
-                            controller.breadcrumb("back", "click", "ui");
-                            Qt.quit();
-                        }
-                    }
-                }
-                Item { Layout.fillWidth: true }
-                Label {
-                    text: "Process Manager"
-                    color: "white"
-                    anchors.centerIn: parent
+    leftMenu: [
+        BetterButton {
+            text: "⬅️"
+            onClicked: quitTimer.start()
+            Timer {
+                id: quitTimer
+                interval: 1000
+                onTriggered: {
+                    controller.breadcrumb("back", "click", "ui");
+                    Qt.quit();
                 }
             }
         }
+    ]
+    centerMenu: [
+        Label {
+            text: "Process Manager"
+            color: "white"
+        }
+    ]
+    initialItem: Item{
         RowLayout {
             id: tasksViewHeaderContent
-            Layout.fillWidth: true
+            width: parent.width
             Label {
                 text: "Process"
                 color: "black"
@@ -124,11 +117,9 @@ ApplicationWindow {
             }
             Item { width: scrollbar.width }
         }
-    }
-    background: Rectangle { color: "white" }
-    contentData: [
         ColumnLayout {
             anchors.fill: parent
+            anchors.topMargin: tasksViewHeaderContent.height
             BetterButton {
                 text: "▲"
                 visible: !tasksView.atYBeginning
@@ -336,8 +327,8 @@ ApplicationWindow {
                 }
             }
         }
-    ]
-    footer: ToolBar {
+    }
+    page.footer: ToolBar {
         background: Rectangle { color: "black" }
     }
     StateGroup {
