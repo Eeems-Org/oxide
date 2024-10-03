@@ -101,10 +101,9 @@ namespace Oxide {
     void UDev::wait(){
         if(isRunning()){
             O_DEBUG("UDev::Waiting to stop...");
-            while(running){
-                qApp->processEvents();
-            }
-            _thread.wait(();
+            QEventLoop loop;
+            connect(this, &UDev::stopped, &loop, &QEventLoop::quit);
+            loop.exec();
         }
     }
 
@@ -250,6 +249,7 @@ namespace Oxide {
                 timer->deleteLater();
                 running = false;
                 O_DEBUG("UDev::Stopped");
+                emit stopped();
                 return;
             }
             if(update || !mon){

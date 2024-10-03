@@ -71,6 +71,7 @@ namespace Oxide {
 
     signals:
         void event(const Device& device);
+        void stopped();
 
     private:
         struct udev* udevLib = nullptr;
