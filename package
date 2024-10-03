@@ -161,3 +161,4 @@ libsentry() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libsentry.so
     }
 }
+
