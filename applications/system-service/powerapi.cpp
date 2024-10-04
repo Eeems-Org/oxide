@@ -27,7 +27,7 @@ PowerAPI::PowerAPI(QObject* parent)
             if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
                 Oxide::UDev::singleton()->addMonitor("platform", NULL);
                 Oxide::UDev::singleton()->subsystem("power_supply", [this]{
-                    update();
+                    QMetaObject::invokeMethod(this, "update", Qt::QueuedConnection);
                 });
             }else{
                 timer = new QTimer(this);
