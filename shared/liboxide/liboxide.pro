@@ -34,6 +34,7 @@ SOURCES += \
     slothandler.cpp \
     sysobject.cpp \
     signalhandler.cpp \
+    udev.cpp \
     xochitlsettings.cpp
 
 HEADERS += \
@@ -56,6 +57,7 @@ HEADERS += \
     slothandler.h \
     sysobject.h \
     signalhandler.h \
+    udev.h \
     xochitlsettings.h
 
 PRECOMPILED_HEADER = \
@@ -75,7 +77,7 @@ DBUS_INTERFACES += \
     ../../interfaces/notificationapi.xml \
     ../../interfaces/notification.xml
 
-LIBS += -lsystemd
+LIBS += -lsystemd -ludev
 
 include(../../qmake/common.pri)
 
