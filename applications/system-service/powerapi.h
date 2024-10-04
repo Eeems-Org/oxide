@@ -63,7 +63,7 @@ signals:
     void chargerWarning();
 
 private:
-    QTimer* timer;
+    QTimer* timer = nullptr;
     int m_state = Normal;
     int m_batteryState = BatteryUnknown;
     int m_batteryLevel = 0;

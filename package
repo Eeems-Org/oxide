@@ -16,7 +16,7 @@ pkgnames=(
 )
 _oxidever=$(grep 'VERSION =' qmake/common.pri | awk '{print $3}')
 pkgver="$_oxidever~VERSION~"
-_sentryver=0.7.6
+_sentryver=0.7.9
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes

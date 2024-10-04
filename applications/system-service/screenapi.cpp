@@ -68,7 +68,7 @@ QDBusObjectPath ScreenAPI::addScreenshot(QByteArray blob){
 
 Screenshot* ScreenAPI::addScreenshot(QString filePath){
     Screenshot* instance;
-    Oxide::Sentry::sentry_transaction("screen", "addScreenshot", [this, filePath, &instance](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Add Screenshot", "addScreenshot", [this, filePath, &instance](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "screenshot", "Create screenshot", [this, filePath, &instance]{
             auto path = QString(OXIDE_SERVICE_PATH "/screenshots/") + QFileInfo(filePath).completeBaseName().remove('-').remove('.');
             instance = new Screenshot(path, filePath, this);
@@ -129,7 +129,7 @@ ScreenAPI* ScreenAPI::singleton(ScreenAPI* self){
 }
 
 ScreenAPI::ScreenAPI(QObject* parent) : APIBase(parent), m_screenshots(), m_enabled(false) {
-    Oxide::Sentry::sentry_transaction("screen", "init", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Screen API Init", "init", [this](Oxide::Sentry::Transaction* t){
         qDBusRegisterMetaType<QList<double>>();
         Oxide::Sentry::sentry_span(t, "mkdirs", "Create screenshots directory", [this]{
             mkdirs("/home/root/screenshots/");

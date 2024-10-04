@@ -1,5 +1,7 @@
 #include "powerapi.h"
 
+#include <liboxide/udev.h>
+
 PowerAPI* PowerAPI::singleton(PowerAPI* self){
     static PowerAPI* instance;
     if(self != nullptr){
@@ -9,8 +11,8 @@ PowerAPI* PowerAPI::singleton(PowerAPI* self){
 }
 
 PowerAPI::PowerAPI(QObject* parent)
-    : APIBase(parent), m_chargerState(ChargerUnknown){
-    Oxide::Sentry::sentry_transaction("power", "init", [this](Oxide::Sentry::Transaction* t){
+: APIBase(parent), m_chargerState(ChargerUnknown){
+    Oxide::Sentry::sentry_transaction("Power API Init", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
             singleton(this);
         });
@@ -21,24 +23,44 @@ PowerAPI::PowerAPI(QObject* parent)
         Oxide::Sentry::sentry_span(t, "update", "Update current state", [this]{
             update();
         });
-        Oxide::Sentry::sentry_span(t, "timer", "Setup timer", [this]{
-            timer = new QTimer(this);
-            timer->setSingleShot(false);
-            timer->setInterval(3 * 1000); // 3 seconds
-            timer->moveToThread(qApp->thread());
-            connect(timer, &QTimer::timeout, this, QOverload<>::of(&PowerAPI::update));
-            timer->start();
+        Oxide::Sentry::sentry_span(t, "monitor", "Setup monitor", [this]{
+            if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+                Oxide::UDev::singleton()->addMonitor("platform", NULL);
+                Oxide::UDev::singleton()->subsystem("power_supply", [this]{
+                    QMetaObject::invokeMethod(this, "update", Qt::QueuedConnection);
+                });
+            }else{
+                timer = new QTimer(this);
+                timer->setSingleShot(false);
+                timer->setInterval(3 * 1000); // 3 seconds
+                timer->moveToThread(qApp->thread());
+                connect(timer, &QTimer::timeout, this, QOverload<>::of(&PowerAPI::update));
+                timer->start();
+            }
         });
     });
 }
 
 void PowerAPI::shutdown(){
-    O_DEBUG("Killing timer");
-    timer->stop();
-    delete timer;
+    if(timer != nullptr){
+            qDebug() << "Killing timer";
+            timer->stop();
+            delete timer;
+        }else{
+            qDebug() << "Killing UDev monitor";
+            Oxide::UDev::singleton()->stop();
+        }
 }
 
-void PowerAPI::setEnabled(bool enabled) {
+void PowerAPI::setEnabled(bool enabled){
+    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1){
+        if(enabled){
+            Oxide::UDev::singleton()->start();
+        }else{
+            Oxide::UDev::singleton()->stop();
+        }
+        return;
+    }
     if(enabled){
         timer->start();
     }else{

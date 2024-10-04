@@ -36,6 +36,7 @@ SOURCES += \
     sysobject.cpp \
     signalhandler.cpp \
     threading.cpp \
+    udev.cpp \
     xochitlsettings.cpp
 
 HEADERS += \
@@ -59,6 +60,7 @@ HEADERS += \
     sysobject.h \
     signalhandler.h \
     threading.h \
+    udev.h \
     xochitlsettings.h
 
 PRECOMPILED_HEADER = \
@@ -79,7 +81,7 @@ DBUS_INTERFACES += \
     ../../interfaces/notification.xml \
     ../../interfaces/blight.xml
 
-LIBS += -lsystemd
+LIBS += -lsystemd -ludev
 
 include(../../qmake/common.pri)
 RELATIVE_PWD = $$system(realpath --canonicalize-missing --relative-to  $$OUT_PWD $$PWD)

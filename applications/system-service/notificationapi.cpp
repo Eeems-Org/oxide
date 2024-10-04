@@ -22,7 +22,7 @@ NotificationAPI::NotificationAPI(QObject* parent)
   m_notifications(),
   m_lock()
 {
-    Oxide::Sentry::sentry_transaction("apps", "init", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Notification API init", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "singleton", "Setup singleton", [this]{
             singleton(this);
         });

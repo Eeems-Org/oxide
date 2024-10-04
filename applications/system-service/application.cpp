@@ -38,7 +38,7 @@ void Application::launchNoSecurityCheck(){
 #endif
             startSpan("starting", "Application is starting");
         }
-        Oxide::Sentry::sentry_transaction("application", "launch", [this](Oxide::Sentry::Transaction* t){
+        Oxide::Sentry::sentry_transaction("Launch Application", "launch", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
             if(t != nullptr){
                 sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -131,7 +131,7 @@ void Application::pauseNoSecurityCheck(bool startIfNone){
         return;
     }
     O_INFO("Pausing " << path());
-    Oxide::Sentry::sentry_transaction("application", "pause", [this, startIfNone](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Pause Application", "pause", [this, startIfNone](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -156,7 +156,7 @@ void Application::interruptApplication(){
     ){
         return;
     }
-    Oxide::Sentry::sentry_transaction("application", "interrupt", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Interrupt Application", "interrupt", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -249,7 +249,7 @@ void Application::resumeNoSecurityCheck(){
         O_DEBUG("Can't Resume" << path() << "Already running!");
         return;
     }
-    Oxide::Sentry::sentry_transaction("application", "resume", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Resume Application", "resume", [this](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
@@ -275,7 +275,7 @@ void Application::uninterruptApplication(){
     ){
         return;
     }
-    Oxide::Sentry::sentry_transaction("application", "uninterrupt", [this](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Uninterrupt Application", "uninterrupt", [this](Oxide::Sentry::Transaction* t){
         if(flags().contains("exclusive")){
             auto compositor = getCompositorDBus();
             compositor->enterExclusiveMode().waitForFinished();
@@ -346,7 +346,7 @@ void Application::stopNoSecurityCheck(){
     if(state == Inactive){
         return;
     }
-    Oxide::Sentry::sentry_transaction("application", "stop", [this, state](Oxide::Sentry::Transaction* t){
+    Oxide::Sentry::sentry_transaction("Stop Application", "stop", [this, state](Oxide::Sentry::Transaction* t){
 #ifdef SENTRY
         if(t != nullptr){
             sentry_transaction_set_tag(t->inner, "application", name().toStdString().c_str());
