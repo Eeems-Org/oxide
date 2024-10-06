@@ -16,6 +16,7 @@ SUBDIRS = \
     system-service \
     task-switcher \
     update-desktop-database \
+    web-browser \
     xdg-desktop-icon \
     xdg-desktop-menu \
     xdg-icon-resource \
@@ -40,6 +41,7 @@ xdg-settings.depends = system-service
 xdg-icon-resource.depends = system-service
 desktop-file-edit.depends =
 desktop-file-install.depends =
+web-browser.depends = system-service
 inject_evdev.depends =
 
 INSTALLS += $$SUBDIRS
