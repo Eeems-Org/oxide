@@ -2,7 +2,6 @@
 #include "debug.h"
 
 #include <QJsonValue>
-#include <QJsonDocument>
 
 static bool qIsNumericType(uint tp){
     static const qulonglong numericTypeBits =

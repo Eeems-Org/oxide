@@ -26,7 +26,7 @@ class PowerAPI : public APIBase {
 public:
     static PowerAPI* singleton(PowerAPI* self = nullptr);
     PowerAPI(QObject* parent);
-    ~PowerAPI();
+    void shutdown();
 
     void setEnabled(bool enabled) override;
 

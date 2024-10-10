@@ -1,0 +1,21 @@
+[Unit]
+Description=Oxide display server
+After=home.mount
+After=rm2fb.service
+Wants=rm2fb.service
+StartLimitInterval=30
+StartLimitBurst=5
+OnFailure=remarkable-fail.service
+Before=remarkable-reboot.service remarkable-shutdown.service
+Conflicts=xochitl.service
+Conflicts=sync.service
+
+[Service]
+Type=dbus
+BusName=codes.eeems.blight1
+ExecStart=/opt/bin/rm2fb-client /opt/bin/blight --break-lock
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

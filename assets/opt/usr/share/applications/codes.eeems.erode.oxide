@@ -1,7 +1,7 @@
 {
-	"displayName": "Process Manager",
-	"description": "List and kill running processes",
-        "icon": "oxide:erode-48",
-        "splash": "oxide:splash:erode-702",
-        "bin": "/opt/bin/erode"
+    "displayName": "Process Manager",
+    "description": "List and kill running processes",
+    "icon": "oxide:erode-48",
+    "bin": "/opt/bin/erode",
+    "flags": ["nopreload"]
 }

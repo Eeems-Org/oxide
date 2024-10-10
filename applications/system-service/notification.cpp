@@ -4,22 +4,33 @@
 #include "notificationapi.h"
 #include "appsapi.h"
 #include "screenapi.h"
+#include "dbusservice.h"
 
-Notification::Notification(const QString& path, const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon, QObject* parent)
- : QObject(parent),
-   m_path(path),
-   m_identifier(identifier),
-   m_owner(owner),
-   m_application(application),
-   m_text(text),
-   m_icon(icon) {
+#include <liboxide/oxideqml.h>
+
+Notification::Notification(
+  const QString& path,
+  const QString& identifier,
+  const QString& owner,
+  const QString& application,
+  const QString& text,
+  const QString& icon,
+  QObject* parent
+)
+: QObject(parent),
+  m_path(path),
+  m_identifier(identifier),
+  m_owner(owner),
+  m_application(application),
+  m_text(text),
+  m_icon(icon)
+{
     m_created = QDateTime::currentSecsSinceEpoch();
-    if(!icon.isEmpty()){
-        return;
-    }
-    auto app = appsAPI->getApplication(m_application);
-    if(app != nullptr && !app->icon().isEmpty()){
-        m_icon = app->icon();
+    if(icon.isEmpty()){
+        auto app = appsAPI->getApplication(m_application);
+        if(app != nullptr && !app->icon().isEmpty()){
+            m_icon = app->icon();
+        }
     }
 }
 
@@ -109,16 +120,8 @@ void Notification::display(){
         return;
     }
     notificationAPI->lock();
-    Oxide::dispatchToMainThread([this]{
-        O_INFO("Displaying notification" << identifier());
-        auto path = appsAPI->currentApplicationNoSecurityCheck();
-        Application* resumeApp = nullptr;
-        if(path.path() != "/"){
-            resumeApp = appsAPI->getApplication(path);
-            resumeApp->interruptApplication();
-        }
-        paintNotification(resumeApp);
-    });
+    O_INFO("Displaying notification" << identifier());
+    paintNotification();
 }
 
 void Notification::remove(){
@@ -135,8 +138,6 @@ void Notification::click(){
     }
     emit clicked();
 }
-
-
 
 void Notification::setIcon(QString icon){
     if(!hasPermission("notification")){
@@ -171,40 +172,25 @@ void Notification::setOwner(QString owner){
     emit changed(result);
 }
 
-bool Notification::hasPermission(QString permission, const char* sender){ return notificationAPI->hasPermission(permission, sender); }
+bool Notification::hasPermission(QString permission, const char* sender){
+    return notificationAPI->hasPermission(permission, sender);
+}
 
-void Notification::paintNotification(Application *resumeApp) {
+void Notification::paintNotification(){
     O_INFO("Painting notification" << identifier());
-    dispatchToMainThread([this] { screenBackup = screenAPI->copy(); });
-    updateRect = notificationAPI->paintNotification(text(), m_icon);
+    auto notification = notificationAPI->paintNotification(m_text, m_icon);
     O_INFO("Painted notification" << identifier());
     emit displayed();
-    QTimer::singleShot(2000, [this, resumeApp] {
-        dispatchToMainThread([this] {
-            auto frameBuffer = EPFrameBuffer::framebuffer();
-            QPainter painter(frameBuffer);
-            painter.drawImage(updateRect, screenBackup, updateRect);
-            painter.end();
-            EPFrameBuffer::sendUpdate(
-                updateRect,
-                EPFrameBuffer::Mono,
-                EPFrameBuffer::FullUpdate,
-                true
-            );
-            O_INFO("Finished displaying notification" << identifier());
-            EPFrameBuffer::waitForLastUpdate();
-        });
-        if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
-            Oxide::dispatchToMainThread([resumeApp] {
-                notificationAPI
-                    ->notificationDisplayQueue
-                    .takeFirst()
-                    ->paintNotification(resumeApp);
-            });
+    QTimer::singleShot(2000, [this, notification] {
+        O_INFO("Finished displaying notification" << identifier());
+        if(!notificationAPI->notificationDisplayQueue.isEmpty()){
+            notificationAPI
+                ->notificationDisplayQueue
+                .takeFirst()
+                ->paintNotification();
             return;
-        }
-        if (resumeApp != nullptr) {
-            resumeApp->uninterruptApplication();
+        }else{
+            notification->setProperty("notificationVisible", false);
         }
         notificationAPI->unlock();
     });

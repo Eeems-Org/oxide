@@ -27,13 +27,23 @@ case "$1" in
         systemctl disable tarnish.service
         ;;
     apps)
-        rot apps get applications | jq -r 'keys | .[]'
+        if ! "$0" is-active; then
+            \ls /opt/usr/share/applications/*.oxide | xargs basename -s .oxide
+            exit
+        fi
+        rot apps get applications 2>/dev/null | jq -r 'keys | .[]'
         ;;
     running)
-        rot apps get runningApplications | jq -r 'keys | .[]'
+        if ! "$0" is-active; then
+            exit
+        fi
+        rot apps get runningApplications 2>/dev/null | jq -r 'keys | .[]'
         ;;
     paused)
-        rot apps get pausedApplications | jq -r 'keys | .[]'
+        if ! "$0" is-active; then
+            exit
+        fi
+        rot apps get pausedApplications 2>/dev/null | jq -r 'keys | .[]'
         ;;
     launch | resume)
         rot apps get applications \

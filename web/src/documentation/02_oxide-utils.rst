@@ -16,6 +16,11 @@ update-desktop-database
 
 https://man.archlinux.org/man/update-desktop-database.1.en
 
+xclip
+=====
+
+https://man.archlinux.org/man/xclip.1.en
+
 xdg-desktop-menu
 ================
 
@@ -77,3 +82,9 @@ Example usage:
   EV_SYN SYN_MT_REPORT
   EV_SYN SYN_REPORT
   EOF
+
+
+fbinfo
+======
+
+This application will output information about the framebuffer in a human readable format.

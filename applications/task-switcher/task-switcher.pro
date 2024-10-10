@@ -23,8 +23,7 @@ INSTALLS += applications
 INCLUDEPATH += ../../shared
 HEADERS += \
     appitem.h \
-    controller.h \
-    screenprovider.h
+    controller.h
 
 RESOURCES += \
     qml.qrc

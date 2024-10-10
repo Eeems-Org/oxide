@@ -32,7 +32,7 @@ class WifiAPI : public APIBase {
 public:
     static WifiAPI* singleton(WifiAPI* self = nullptr);
     WifiAPI(QObject* parent);
-    ~WifiAPI();
+    void shutdown();
     void setEnabled(bool enabled);
     bool getEnabled();
     QList<Wlan*> getWlans();

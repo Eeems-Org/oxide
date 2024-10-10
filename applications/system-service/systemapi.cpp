@@ -1,11 +1,12 @@
 #include <liboxide.h>
+#include <liboxide/oxideqml.h>
 
 #include "systemapi.h"
 #include "appsapi.h"
 #include "powerapi.h"
 #include "wifiapi.h"
 #include "notificationapi.h"
-#include "keyboardhandler.h"
+#include "controller.h"
 
 QDebug operator<<(QDebug debug, const Touch& touch){
     QDebugStateSaver saver(debug);
@@ -19,14 +20,62 @@ QDebug operator<<(QDebug debug, Touch* touch){
 }
 
 void SystemAPI::PrepareForSleep(bool suspending){
-    auto device = deviceSettings.getDeviceType();
     if(suspending){
-        Oxide::Sentry::sentry_transaction("Suspend System", "suspend", [this, device](Oxide::Sentry::Transaction* t){
+        Controller::singleton()->enabled = false;
+        Oxide::Sentry::sentry_transaction("Suspend System", "suspend", [this](Oxide::Sentry::Transaction* t){
             if(autoLock()){
                 lockTimestamp = QDateTime::currentMSecsSinceEpoch() + lockTimer.remainingTime();
                 O_DEBUG("Auto Lock timestamp:" << lockTimestamp);
             }
             O_INFO("Preparing for suspend...");
+            Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", [this]{
+                QString path("/usr/share/remarkable/sleeping.png");
+                if(!QFile::exists(path)){
+                    path = "/usr/share/remarkable/suspended.png";
+                }
+                if(!QFile::exists(path)){
+                    return;
+                }
+                m_buffer = createBuffer();
+                if(m_buffer == nullptr){
+                    return;
+                }
+                QImage img(path);
+                if(img.isNull()){
+                    return;
+                }
+                if(landscape()){
+                    img = img.transformed(QTransform().rotate(90));
+                }
+                auto image = Oxide::QML::getImageForSurface(m_buffer);
+                image.fill(Qt::white);
+                QPainter painter(&image);
+                painter.setRenderHints(
+                    QPainter::Antialiasing | QPainter::SmoothPixmapTransform,
+                    1
+                );
+                auto rect = image.rect();
+                if(rect == img.rect()){
+                    painter.drawImage(rect, img, rect);
+                }else{
+                    QPoint center(rect.width() / 2, rect.height() / 2);
+                    painter.translate(center);
+                    painter.scale(
+                        1 * (rect.width() / qreal(img.height())),
+                        1 * (rect.width() / qreal(img.height()))
+                    );
+                    painter.translate(0 - img.width() / 2, 0 - img.height() / 2);
+                    painter.drawPixmap(img.rect(), QPixmap::fromImage(img));
+                    painter.end();
+                }
+                addSystemBuffer(m_buffer);
+                auto maybe = Blight::connection()->raise(m_buffer);
+                // Repaint to attempt to reduce ghosting
+                Blight::connection()->repaint(m_buffer, Blight::HighQualityGrayscale, m_buffer->surface);
+                if(maybe.has_value()){
+                    maybe.value()->wait();
+                }
+            });
             Oxide::Sentry::sentry_span(t, "prepare", "Prepare for suspend", [this]{
                 wifiAPI->stopUpdating();
                 emit deviceSuspending();
@@ -41,35 +90,29 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     resumeApp = nullptr;
                 }
             });
-            auto rotate = landscape() ? 90 : 0;
-            Oxide::Sentry::sentry_span(t, "screen", "Update screen with suspend image", [rotate]{
-                if(QFile::exists("/usr/share/remarkable/sleeping.png")){
-                    screenAPI->drawFullscreenImage("/usr/share/remarkable/sleeping.png", rotate);
-                }else{
-                    screenAPI->drawFullscreenImage("/usr/share/remarkable/suspended.png", rotate);
+            Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this]{
+                if(wifiAPI->state() != WifiAPI::State::Off){
+                    wifiWasOn = true;
+                    wifiAPI->disable();
                 }
-            });
-            Oxide::Sentry::sentry_span(t, "disable", "Disable various services", [this, device]{
-                buttonHandler->setEnabled(false);
-                if(device == Oxide::DeviceSettings::DeviceType::RM2){
-                    if(wifiAPI->state() != WifiAPI::State::Off){
-                        wifiWasOn = true;
-                        wifiAPI->disable();
-                    }
-                    system("/sbin/rmmod brcmfmac");
+                getCompositorDBus()->waitForNoRepaints().waitForFinished();
+                if(m_buffer != nullptr){
+                    Blight::connection()->waitForMarker(m_buffer->surface);
                 }
                 releaseSleepInhibitors();
-            });
-            Oxide::Sentry::sentry_span(t, "clear-input", "Clear input buffers", [this]{
-                clearDeviceBuffers();
             });
             O_INFO("Suspending...");
         });
     }else{
-        Oxide::Sentry::sentry_transaction("Resume System", "resume", [this, device](Oxide::Sentry::Transaction* t){
+        Oxide::Sentry::sentry_transaction("Resume System", "resume", [this](Oxide::Sentry::Transaction* t){
+            qDebug() << "Resuming...";
             Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep", [this]{
                 inhibitSleep();
             });
+            if(m_buffer != nullptr){
+                Blight::connection()->remove(m_buffer);
+                m_buffer = nullptr;
+            }
             O_INFO("Resuming...");
             Oxide::Sentry::sentry_span(t, "process", "Process events", []{
                 QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
@@ -103,8 +146,7 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     O_WARNING("Unable to find an app to resume");
                 }
             });
-            Oxide::Sentry::sentry_span(t, "enable", "Enable various services", [this, device]{
-                buttonHandler->setEnabled(true);
+            Oxide::Sentry::sentry_span(t, "enable", "Enable various services", [this]{
                 emit deviceResuming();
                 if(autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected){
                     O_DEBUG("Suspend timer re-enabled due to resume");
@@ -114,15 +156,13 @@ void SystemAPI::PrepareForSleep(bool suspending){
                     O_DEBUG("Lock timer re-enabled due to resume");
                     lockTimer.start(autoLock() * 60 * 1000);
                 }
-                if(device == Oxide::DeviceSettings::DeviceType::RM2){
-                    system("/sbin/modprobe brcmfmac");
-                    if(wifiWasOn){
-                        wifiAPI->enable();
-                    }
+                if(wifiWasOn){
+                    wifiAPI->enable();
                 }
                 wifiAPI->resumeUpdating();
             });
         });
+        Controller::singleton()->enabled = true;
     }
 }
 SystemAPI* SystemAPI::singleton(SystemAPI* self){
@@ -134,16 +174,16 @@ SystemAPI* SystemAPI::singleton(SystemAPI* self){
 }
 
 SystemAPI::SystemAPI(QObject* parent)
-    : APIBase(parent),
-      suspendTimer(this),
-      lockTimer(this),
-      settings(this),
-      sleepInhibitors(),
-      powerOffInhibitors(),
-      mutex(),
-      touches(),
-      swipeStates(),
-      swipeLengths() {
+: APIBase(parent),
+  suspendTimer(this),
+  lockTimer(this),
+  settings(this),
+  sleepInhibitors(),
+  powerOffInhibitors(),
+  mutex(),
+  swipeStates(),
+  swipeLengths()
+{
     Oxide::Sentry::sentry_transaction("System API Init", "init", [this](Oxide::Sentry::Transaction* t){
         Oxide::Sentry::sentry_span(t, "settings", "Sync settings", [this](Oxide::Sentry::Span* s){
             Oxide::Sentry::sentry_span(s, "swipes", "Default swipe values", [this]{
@@ -249,13 +289,13 @@ SystemAPI::SystemAPI(QObject* parent)
         });
         qRegisterMetaType<input_event>();
         Oxide::Sentry::sentry_span(t, "input", "Connect input events", [this]{
-            connect(touchHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::touchEvent);
-            connect(wacomHandler, &DigitizerHandler::inputEvent, this, &SystemAPI::penEvent);
             eventListener->append([this](QObject* object, QEvent* event){
                 Q_UNUSED(object);
                 switch(event->type()){
-                    case QEvent::KeyRelease:
                     case QEvent::KeyPress:
+                    case QEvent::KeyRelease:
+                    case QEvent::Shortcut:
+                    case QEvent::ShortcutOverride:
                     case QEvent::TabletPress:
                     case QEvent::TabletMove:
                     case QEvent::TabletRelease:
@@ -266,6 +306,22 @@ SystemAPI::SystemAPI(QObject* parent)
                     case QEvent::TouchCancel:
                     case QEvent::TouchEnd:
                     case QEvent::TouchUpdate:
+                    case QEvent::MouseButtonDblClick:
+                    case QEvent::MouseButtonPress:
+                    case QEvent::MouseButtonRelease:
+                    case QEvent::MouseMove:
+                    case QEvent::MouseTrackingChange:
+                    case QEvent::Wheel:
+                    case QEvent::Pointer:
+                    case QEvent::HoverEnter:
+                    case QEvent::HoverLeave:
+                    case QEvent::HoverMove:
+                    case QEvent::Gesture:
+                    case QEvent::GestureOverride:
+                    case QEvent::NonClientAreaMouseButtonDblClick:
+                    case QEvent::NonClientAreaMouseButtonPress:
+                    case QEvent::NonClientAreaMouseButtonRelease:
+                    case QEvent::NonClientAreaMouseMove:
                         activity();
                         break;
                     default:
@@ -276,13 +332,12 @@ SystemAPI::SystemAPI(QObject* parent)
             deviceSettings.onKeyboardAttachedChanged([this]{
                 emit landscapeChanged(landscape());
             });
-            keyboardHandler;
         });
         O_INFO("System API ready to use");
     });
 }
 
-SystemAPI::~SystemAPI(){
+void SystemAPI::shutdown(){
     O_INFO("Removing all inhibitors");
     rguard(false);
     QMutableListIterator<Inhibitor> i(inhibitors);
@@ -385,14 +440,6 @@ void SystemAPI::lock(){ mutex.lock(); }
 
 void SystemAPI::unlock() { mutex.unlock(); }
 
-void SystemAPI::clearDeviceBuffers(){
-    touchHandler->clear_buffer();
-    wacomHandler->clear_buffer();
-    buttonHandler->clear_buffer();
-    clearKeyboardBuffers();
-}
-void SystemAPI::clearKeyboardBuffers(){ keyboardHandler->flood(); }
-
 void SystemAPI::setSwipeEnabled(int direction, bool enabled){
     if(!hasPermission("system")){
         return;
@@ -433,6 +480,7 @@ void SystemAPI::setSwipeEnabled(SwipeDirection direction, bool enabled){
     }
     sharedSettings.endArray();
     sharedSettings.sync();
+    emit swipeEnabledChanged(direction, enabled);
 }
 
 bool SystemAPI::getSwipeEnabled(int direction){
@@ -641,112 +689,6 @@ void SystemAPI::lockTimeout(){
     }
 }
 
-void SystemAPI::touchEvent(const input_event& event){
-    switch(event.type){
-        case EV_SYN:
-            switch(event.code){
-                case SYN_REPORT:
-                    // Always mark the current slot as modified
-                    auto touch = getEvent(currentSlot);
-                    touch->modified = true;
-                    QList<Touch*> released;
-                    QList<Touch*> pressed;
-                    QList<Touch*> moved;
-                    for(auto touch : touches.values()){
-                        if(touch->id == -1){
-                            touch->active = false;
-                            released.append(touch);
-                        }else if(!touch->active){
-                            released.append(touch);
-                        }else if(!touch->existing){
-                            pressed.append(touch);
-                        }else if(touch->modified){
-                            moved.append(touch);
-                        }
-                    }
-                    if(!penActive){
-                        if(pressed.length()){
-                            touchDown(pressed);
-                        }
-                        if(moved.length()){
-                            touchMove(moved);
-                        }
-                        if(released.length()){
-                            touchUp(released);
-                        }
-                    }else if(swipeDirection != None){
-                        O_DEBUG("Swiping cancelled due to pen activity");
-                        swipeDirection = None;
-                    }
-                    // Cleanup released touches
-                    for(auto touch : released){
-                        if(!touch->active){
-                            touches.remove(touch->slot);
-                            delete touch;
-                        }
-                    }
-                    // Setup touches for next event set
-                    for(auto touch : touches.values()){
-                        touch->modified = false;
-                        touch->existing = touch->existing || (touch->x != NULL_TOUCH_COORD && touch->y != NULL_TOUCH_COORD);
-                    }
-                    break;
-            }
-            break;
-        case EV_ABS:
-            if(currentSlot == -1 && event.code != ABS_MT_SLOT){
-                return;
-            }
-            switch(event.code){
-                case ABS_MT_SLOT:{
-                    currentSlot = event.value;
-                    auto touch = getEvent(currentSlot);
-                    touch->modified = true;
-                }break;
-                case ABS_MT_TRACKING_ID:{
-                    auto touch = getEvent(currentSlot);
-                    touch->active = event.value != -1;
-                    if(touch->active){
-                        touch->id = event.value;
-                    }
-                }break;
-                case ABS_MT_POSITION_X:{
-                    auto touch = getEvent(currentSlot);
-                    touch->x = event.value;
-                }break;
-                case ABS_MT_POSITION_Y:{
-                    auto touch = getEvent(currentSlot);
-                    touch->y = event.value;
-                }break;
-                case ABS_MT_PRESSURE:{
-                    auto touch = getEvent(currentSlot);
-                    touch->pressure = event.value;
-                }break;
-                case ABS_MT_TOUCH_MAJOR:{
-                    auto touch = getEvent(currentSlot);
-                    touch->major = event.value;
-                }break;
-                case ABS_MT_TOUCH_MINOR:{
-                    auto touch = getEvent(currentSlot);
-                    touch->minor = event.value;
-                }break;
-                case ABS_MT_ORIENTATION:{
-                    auto touch = getEvent(currentSlot);
-                    touch->orientation = event.value;
-                }break;
-            }
-            break;
-    }
-}
-
-void SystemAPI::penEvent(const input_event& event){
-    if(event.type != EV_KEY || event.code != BTN_TOOL_PEN){
-        return;
-    }
-    penActive = event.value;
-    O_DEBUG("Pen state: " << (penActive ? "Active" : "Inactive"));
-}
-
 void SystemAPI::inhibitSleep(){
     inhibitors.append(Inhibitor(systemd, "sleep", qApp->applicationName(), "Handle sleep screen"));
 }
@@ -786,259 +728,6 @@ void SystemAPI::rguard(bool install){
     QProcess::execute("/opt/bin/rguard", QStringList() << (install ? "-1" : "-0"));
 }
 
-Touch* SystemAPI::getEvent(int slot){
-    if(slot == -1){
-        return nullptr;
-    }
-    if(!touches.contains(slot)){
-        touches.insert(slot, new Touch{
-                                 .slot = slot
-                             });
-    }
-    return touches.value(slot);
-}
-
-int SystemAPI::getCurrentFingers(){
-    return std::count_if(touches.begin(), touches.end(), [](Touch* touch){
-        return touch->active;
-    });
-}
-
-void SystemAPI::touchDown(QList<Touch*> touches){
-    if(penActive){
-        return;
-    }
-    O_DEBUG("DOWN" << touches);
-    if(getCurrentFingers() != 1){
-        return;
-    }
-    auto touch = touches.first();
-    if(swipeDirection != None || touch->x == NULL_TOUCH_COORD || touch->y == NULL_TOUCH_COORD){
-        return;
-    }
-    int offset = 20;
-    if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
-        offset = 40;
-    }
-    if(touch->y <= offset){
-        swipeDirection = Up;
-    }else if(touch->y > (deviceSettings.getTouchHeight() - offset)){
-        swipeDirection = Down;
-    }else if(touch->x <= offset){
-        if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
-            swipeDirection = Right;
-        }else{
-            swipeDirection = Left;
-        }
-    }else if(touch->x > (deviceSettings.getTouchWidth() - offset)){
-        if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
-            swipeDirection = Left;
-        }else{
-            swipeDirection = Right;
-        }
-    }else{
-        return;
-    }
-    O_DEBUG("Swipe started" << swipeDirection);
-    startLocation = location = QPoint(touch->x, touch->y);
-}
-
-void SystemAPI::touchUp(QList<Touch*> touches){
-    O_DEBUG("UP" << touches);
-    if(swipeDirection == None){
-        O_DEBUG("Not swiping");
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchUp(touch);
-            }
-            touchHandler->ungrab();
-        }
-        return;
-    }
-    if(getCurrentFingers()){
-        O_DEBUG("Still swiping");
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchUp(touch);
-            }
-        }
-        return;
-    }
-    if(touches.length() > 1){
-        O_DEBUG("Too many fingers");
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchUp(touch);
-            }
-            touchHandler->ungrab();
-        }
-        swipeDirection = None;
-        return;
-    }
-    auto touch = touches.first();
-    if(touch->x == NULL_TOUCH_COORD || touch->y == NULL_TOUCH_COORD){
-        O_DEBUG("Invalid touch event");
-        swipeDirection = None;
-        return;
-    }
-    if(swipeDirection == Up){
-        if(!swipeStates[Up] || touch->y < location.y() || touch->y - startLocation.y() < swipeLengths[Up]){
-            // Must end swiping up and having gone far enough
-            cancelSwipe(touch);
-            return;
-        }
-        if(landscape()){
-            emit rightAction();
-        }else{
-            emit bottomAction();
-        }
-    }else if(swipeDirection == Down){
-        if(!swipeStates[Down] || touch->y > location.y() || startLocation.y() - touch->y < swipeLengths[Down]){
-            // Must end swiping down and having gone far enough
-            cancelSwipe(touch);
-            return;
-        }
-        if(landscape()){
-            emit leftAction();
-        }else{
-            emit topAction();
-        }
-    }else if(swipeDirection == Right || swipeDirection == Left){
-        auto isRM2 = deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2;
-        auto invalidLeft = !swipeStates[Left] || touch->x < location.x() || touch->x - startLocation.x() < swipeLengths[Left];
-        auto invalidRight = !swipeStates[Right] || touch->x > location.x() || startLocation.x() - touch->x < swipeLengths[Right];
-        if(swipeDirection == Right && (isRM2 ? invalidLeft : invalidRight)){
-            // Must end swiping right and having gone far enough
-            cancelSwipe(touch);
-            return;
-        }else if(swipeDirection == Left && (isRM2 ? invalidRight : invalidLeft)){
-            // Must end swiping left and having gone far enough
-            cancelSwipe(touch);
-            return;
-        }
-        if(swipeDirection == Left){
-            if(landscape()){
-                emit topAction();
-            }else{
-                emit rightAction();
-            }
-        }else{
-            if(landscape()){
-                emit bottomAction();
-            }else{
-                emit leftAction();
-            }
-        }
-    }
-    swipeDirection = None;
-    touchHandler->ungrab();
-    touch->x = -1;
-    touch->y = -1;
-    writeTouchUp(touch);
-    O_DEBUG("Swipe direction" << swipeDirection);
-}
-
-void SystemAPI::touchMove(QList<Touch*> touches){
-    O_DEBUG("MOVE" << touches);
-    if(swipeDirection == None){
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchMove(touch);
-            }
-            touchHandler->ungrab();
-        }
-        return;
-    }
-    if(touches.length() > 1){
-        O_DEBUG("Too many fingers");
-        if(touchHandler->grabbed()){
-            for(auto touch : touches){
-                writeTouchMove(touch);
-            }
-            touchHandler->ungrab();
-        }
-        swipeDirection = None;
-        return;
-    }
-    auto touch = touches.first();
-    if(touch->y > location.y()){
-        location = QPoint(touch->x, touch->y);
-    }
-}
-
-void SystemAPI::cancelSwipe(Touch* touch){
-    O_DEBUG("Swipe Cancelled");
-    swipeDirection = None;
-    touchHandler->ungrab();
-    writeTouchUp(touch);
-}
-
-void SystemAPI::writeTouchUp(Touch* touch){
-    bool grabbed = touchHandler->grabbed();
-    if(grabbed){
-        touchHandler->ungrab();
-    }
-    writeTouchMove(touch);
-    O_DEBUG("Write touch up" << touch);
-    int size = sizeof(input_event) * 3;
-    input_event* events = (input_event*)malloc(size);
-    events[0] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
-    events[1] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TRACKING_ID, -1);
-    events[2] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
-    touchHandler->write(events, size);
-    free(events);
-    if(grabbed){
-        touchHandler->grab();
-    }
-}
-
-void SystemAPI::writeTouchMove(Touch* touch){
-    bool grabbed = touchHandler->grabbed();
-    if(grabbed){
-        touchHandler->ungrab();
-    }
-    O_DEBUG("Write touch move" << touch);
-    int count = 8;
-    if(touch->x == NULL_TOUCH_COORD){
-        count--;
-    }
-    if(touch->y == NULL_TOUCH_COORD){
-        count--;
-    }
-    int size = sizeof(input_event) * count;
-    input_event* events = (input_event*)malloc(size);
-    events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_SLOT, touch->slot);
-    if(touch->x != NULL_TOUCH_COORD){
-        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_POSITION_X, touch->x);
-    }
-    if(touch->y != NULL_TOUCH_COORD){
-        events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_POSITION_Y, touch->y);
-    }
-    events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_PRESSURE, touch->pressure);
-    events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TOUCH_MAJOR, touch->major);
-    events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_TOUCH_MINOR, touch->minor);
-    events[2] = DigitizerHandler::createEvent(EV_ABS, ABS_MT_ORIENTATION, touch->orientation);
-    events[2] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
-    touchHandler->write(events, size);
-    free(events);
-    if(grabbed){
-        touchHandler->grab();
-    }
-}
-
-void SystemAPI::fn(){
-    auto n = 512 * 8;
-    auto num_inst = 4;
-    input_event* ev = (input_event *)malloc(sizeof(struct input_event) * n * num_inst);
-    memset(ev, 0, sizeof(input_event) * n * num_inst);
-    auto i = 0;
-    while (i < n) {
-        ev[i++] = DigitizerHandler::createEvent(EV_ABS, ABS_DISTANCE, 1);
-        ev[i++] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
-        ev[i++] = DigitizerHandler::createEvent(EV_ABS, ABS_DISTANCE, 2);
-        ev[i++] = DigitizerHandler::createEvent(EV_SYN, 0, 0);
-    }
-}
 void SystemAPI::toggleSwipes(){
     bool state = !swipeStates[Up];
     setSwipeEnabled(Left, state);
