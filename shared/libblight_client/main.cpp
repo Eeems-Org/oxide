@@ -567,7 +567,7 @@ extern "C" {
     __attribute__((visibility("default")))
     int msgget(key_t key, int msgflg){
         static const auto func_msgget = (int(*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
-        if(!IS_INITIALIZED){
+        if(!IS_INITIALIZED || !DO_HANDLE_FB){
             return func_msgget(key, msgflg);
         }
         // Catch rm2fb ipc
@@ -584,7 +584,7 @@ extern "C" {
     __attribute__((visibility("default")))
     int msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg){
         static const auto func_msgsnd = (int(*)(int, const void*, size_t, int))dlsym(RTLD_NEXT, "msgsnd");
-        if(!IS_INITIALIZED){
+        if(!IS_INITIALIZED || !DO_HANDLE_FB){
             return func_msgsnd(msqid, msgp, msgsz, msgflg);
         }
         if(msqid == msgq){
