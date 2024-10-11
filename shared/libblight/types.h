@@ -276,7 +276,8 @@ namespace Blight{
         List,
         Raise,
         Lower,
-        Wait
+        Wait,
+        Focus
     };
     /*!
      * \brief Message header

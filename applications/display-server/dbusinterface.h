@@ -100,7 +100,6 @@ private:
         QByteArray selection;
         QByteArray secondary;
     } clipboards;
-    unsigned int m_buttonsDevNumber;
     bool m_exlusiveMode;
 
     Connection* getConnection(QDBusMessage message);

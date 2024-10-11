@@ -517,6 +517,11 @@ void Connection::readSocket(){
 #endif
                 break;
             }
+            case Blight::MessageType::Focus:{
+                C_DEBUG("Focus requested");
+                dbusInterface->setFocus(this);
+                break;
+            }
             case Blight::MessageType::Ping:{
 #ifdef ACK_DEBUG
                 O_DEBUG("Pong" << message->header.ackid);

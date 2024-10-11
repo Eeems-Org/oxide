@@ -22,7 +22,6 @@
 DbusInterface::DbusInterface(QObject* parent)
 : QObject(parent),
   m_focused(nullptr),
-  m_buttonsDevNumber{QFileInfo(deviceSettings.getButtonsDevicePath()).baseName().midRef(5).toUInt()},
   m_exlusiveMode{false}
 {
 #ifdef EPAPER
@@ -458,7 +457,7 @@ void DbusInterface::serviceOwnerChanged(const QString& name, const QString& oldO
 }
 
 void DbusInterface::inputEvents(unsigned int device, const std::vector<input_event>& events){
-    if(!inExclusiveMode() && m_focused != nullptr && device != m_buttonsDevNumber){
+    if(m_focused != nullptr){
         m_focused->inputEvents(device, events);
     }
     for(auto connection : qAsConst(connections)){

@@ -443,6 +443,16 @@ namespace Blight{
         return std::vector<surface_id_t>(buf, buf + (ack->data_size / sizeof(surface_id_t)));
     }
 
+    void Connection::focused(){
+        auto maybe = send(MessageType::Focus, nullptr, 0);
+        if(!maybe.has_value()){
+            return;
+        }
+        auto ack = maybe.value();
+        ack->wait();
+        return;
+    }
+
     static std::atomic<bool> running = false;
 
     void Connection::run(Connection* connection){

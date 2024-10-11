@@ -68,8 +68,16 @@ namespace {
         timeval time;
         ::gettimeofday(&time, NULL);
         std::vector<input_event> data(queue.size());
+        bool allow_power_button = getenv("OXIDE_PRELOAD_ALLOW_POWER_BUTTON") != nullptr;
         for(unsigned int i = 0; i < queue.size(); i++){
             auto& event = queue[i];
+            if(
+              !allow_power_button
+              && event.type == EV_KEY
+              && event.code == KEY_POWER
+            ){
+                event.value = 0;
+            }
             data[i] = input_event{
                 .time = time,
                 .type = event.type,
@@ -102,7 +110,7 @@ namespace {
         nice(-10);
         auto fd = blightConnection->input_handle();
         std::map<unsigned int,std::vector<Blight::partial_input_event_t>> events;
-        while(blightConnection != nullptr && getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr){
+        while(fd > 0 && blightConnection != nullptr && getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr){
             auto maybe = blightConnection->read_event();
             if(!maybe.has_value()){
                 if(errno != EAGAIN && errno != EINTR){
@@ -701,21 +709,20 @@ extern "C" {
     int ioctl(int fd, unsigned long request, ...){
         va_list args;
         va_start(args, request);
+        char* ptr = va_arg(args, char*);
         if(IS_INITIALIZED){
-            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
-                char* ptr = va_arg(args, char*);
+            if(__is_fb(fd)){
                 int res = __fb_ioctl(request, ptr);
                 va_end(args);
                 return res;
             }
             if(inputDeviceMap.contains(fd)){
-                char* ptr = va_arg(args, char*);
                 int res = __input_ioctlv(inputDeviceMap[fd], request, ptr);
                 va_end(args);
                 return res;
             }
         }
-        int res = func_ioctl(fd, request, args);
+        int res = func_ioctl(fd, request, ptr);
         va_end(args);
         return res;
     }
@@ -731,22 +738,20 @@ extern "C" {
             fd,
             offset
         );
-//        if(IS_INITIALIZED){
-//            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
-//                unsigned long size = len + offset;
-//                if(size > blightBuffer->size()){
-//                    _CRIT(
-//                        "Requested size + offset is larger than the buffer: %d < %d + %d",
-//                        blightBuffer->size(),
-//                        size,
-//                        offset
-//                    );
-//                    errno = EINVAL;
-//                    return MAP_FAILED;
-//                }
-//                return &blightBuffer->data[offset];
-//            }
-//        }
+       // if(IS_INITIALIZED && __is_fb(fd)){
+       //     unsigned long size = len + offset;
+       //     if(size > blightBuffer->size()){
+       //         _CRIT(
+       //             "Requested size + offset is larger than the buffer: %d < %d + %d",
+       //             blightBuffer->size(),
+       //             size,
+       //             offset
+       //         );
+       //         errno = EINVAL;
+       //         return MAP_FAILED;
+       //     }
+       //     return &blightBuffer->data[offset];
+       // }
         return func_mmap(addr, len, prot, flags, fd, offset);
     }
 
@@ -776,7 +781,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("write %d %zu", fd, n);
-            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
+            if(__is_fb(fd)){
                 auto res = func_write(fd, buf, n);
                 return res;
             }
@@ -793,7 +798,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("writev %d %d", fd, iovcnt);
-            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
+            if(__is_fb(fd)){
                 auto res = func_writev(fd, iov, iovcnt);
                 return res;
             }
@@ -810,7 +815,7 @@ extern "C" {
         }
         if(IS_INITIALIZED){
             _DEBUG("writv64 %d %d", fd, iovcnt);
-            if(DO_HANDLE_FB && blightBuffer->fd > 0 && fd == blightBuffer->fd){
+            if(__is_fb(fd)){
                 auto res = func_writev64(fd, iov, iovcnt);
                 return res;
             }
@@ -1042,6 +1047,7 @@ extern "C" {
         }
         FAILED_INIT = false;
         IS_INITIALIZED = true;
+        blightConnection->focused();
     }
 
     __attribute__((visibility("default")))

@@ -112,6 +112,10 @@ void Application::launchNoSecurityCheck(){
                 startSpan("background", "Application is in the background");
             }else{
                 startSpan("foreground", "Application is in the foreground");
+                if(flags().contains("exclusive")){
+                    auto compositor = getCompositorDBus();
+                    compositor->focus(id());
+                }
             }
         });
     }
@@ -698,7 +702,7 @@ void Application::updateEnvironment(){
             preload.append(sysfs_preload);
         }
     }
-    if(!flags().contains("exclusive") && !flags().contains("nopreload") && !flags().contains("nopreload.compositor")){
+    if(!flags().contains("nopreload") && !flags().contains("nopreload.compositor")){
         QString blight_client("/opt/lib/libblight_client.so");
         if(!preload.contains(blight_client)){
             preload.append(blight_client);
@@ -706,6 +710,10 @@ void Application::updateEnvironment(){
         if(deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2){
             env.insert("RM2FB_DISABLE", "1");
         }
+    }
+    if(flags().contains("exclusive")){
+        env.insert("OXIDE_PRELOAD_EXPOSE_FB", "1");
+        env.insert("OXIDE_PRELOAD_ALLOW_RM2FB", "1");
     }
     env.insert("LD_PRELOAD", preload.join(":"));
     for(auto key : environment().keys()){
