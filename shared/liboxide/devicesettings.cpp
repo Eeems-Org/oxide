@@ -322,4 +322,17 @@ namespace Oxide {
         }
         return physicalKeyboards;
     }
+
+    const QString& DeviceSettings::version(){
+        static QString version;
+        static std::once_flag flag;
+        std::call_once(flag, [] {
+            QSettings settings("/usr/share/remarkable/update.conf", QSettings::IniFormat);
+            version = settings.value("REMARKABLE_RELEASE_VERSION").toString();
+            if (version.isEmpty()) {
+                qWarning() << "Failed to read version from update.conf";
+            }
+        });
+        return version;
+    }
 }
