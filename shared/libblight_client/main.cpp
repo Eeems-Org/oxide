@@ -32,7 +32,7 @@ namespace {
     static bool FAILED_INIT = true;
     static bool DO_HANDLE_FB = true;
     static bool FAKE_RM1 = false;
-    static unsigned int INPUT_BATCH_SIZE = 16;
+    static unsigned int INPUT_BATCH_SIZE = 0;
     static Blight::shared_buf_t blightBuffer = Blight::buf_t::new_ptr();
     static Blight::Connection* blightConnection = nullptr;
     static std::map<int, int[2]> inputFds;
@@ -139,6 +139,8 @@ namespace {
             auto& event = maybe.value().event;
             auto& queue = events[device];
             queue.push_back(event);
+            // TODO - input can get stuck if INPUT_BATCH_SIZE is set and not enough events have come through.
+            //        Some sort of timeout should be used to force the queue to flush.
             if(
                (
                    INPUT_BATCH_SIZE
