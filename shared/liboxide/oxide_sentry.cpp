@@ -168,7 +168,7 @@ namespace Oxide::Sentry{
         sentry_value_set_by_key(user, "id", sentry_value_new_string(machineId()));
         sentry_set_user(user);
         // Setup context
-        auto version = deviceSettings.version().toStdString();
+        const auto version = deviceSettings.version().toStdString();
         sentry_set_tag("os.version", version.c_str());
         sentry_set_tag("name", name);
         sentry_value_t device = sentry_value_new_object();

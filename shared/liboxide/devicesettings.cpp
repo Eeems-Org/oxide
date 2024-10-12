@@ -324,16 +324,15 @@ namespace Oxide {
     }
 
     const QString& DeviceSettings::version(){
-        static QString version = "";
-        if(version.isEmpty()){
-            auto lines = QFile("/usr/share/remarkable/update.conf").readAll().split('\n');
-            for(const QString& line : lines){
-                if(line.startsWith("REMARKABLE_RELEASE_VERSION=")){
-                    version = line.mid(27);
-                    break;
-                }
+        static QString version;
+        static std::once_flag flag;
+        std::call_once(flag, [] {
+            QSettings settings("/usr/share/remarkable/update.conf", QSettings::IniFormat);
+            version = settings.value("REMARKABLE_RELEASE_VERSION").toString();
+            if (version.isEmpty()) {
+                qWarning() << "Failed to read version from update.conf";
             }
-        }
+        });
         return version;
     }
 }
