@@ -144,6 +144,11 @@ namespace Oxide{
          * \return All virtual keyboard devices
          */
         QList<event_device> virtualKeyboards();
+        /*!
+         * \brief Get the version of the OS
+         * \return Version string
+         */
+        const QString& version();
 
     private:
         DeviceType _deviceType;
