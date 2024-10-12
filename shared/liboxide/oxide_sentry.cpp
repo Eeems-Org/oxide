@@ -38,7 +38,7 @@ void logMachineIdError(int error, QString name, QString path){
         O_WARNING(path + " has the incorrect format");
     }else if(error == -EPERM){
         O_WARNING(path + " access denied");
-    } if(error == -EINVAL){
+    }else if(error == -EINVAL){
         O_WARNING("Error while reading " + name + ": Buffer invalid");
     }else if(error == -ENXIO){
         O_WARNING("Error while reading " + name + ": No invocation ID is set");
