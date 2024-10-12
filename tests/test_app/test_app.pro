@@ -9,12 +9,12 @@ CONFIG += qtquickcompiler
 SOURCES += \
         main.cpp
 
-TARGET = test_blight
+TARGET = test_app
 include(../../qmake/common.pri)
 target.path = /opt/bin
 INSTALLS += target
 
-applications.files = ../../assets/opt/usr/share/applications/codes.eeems.decay.oxide
+applications.files = ../../assets/opt/usr/share/applications/test_app.oxide
 applications.path = /opt/usr/share/applications/
 INSTALLS += applications
 

@@ -1,0 +1,8 @@
+{
+    "displayName": "Test application",
+    "description": "Oxide Test Application",
+    "bin": "/opt/bin/test_app",
+    "flags": ["hidden", "nopreload"],
+    "type": "foreground",
+    "permissions": ["apps", "power", "system", "wifi"]
+}

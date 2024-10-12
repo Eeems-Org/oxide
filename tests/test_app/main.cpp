@@ -29,10 +29,10 @@ int main(int argc, char *argv[]){
     qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
     QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
     QGuiApplication app(argc, argv);
-    sentry_init("test_blight", argv);
+    sentry_init("test_app", argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
-    app.setApplicationName("test_blight");
+    app.setApplicationName("test_app");
     app.setApplicationVersion(APP_VERSION);
     if(Oxide::debugEnabled()){
         BLIGHT_DEBUG_LOGGING = 7;
