@@ -1,5 +1,8 @@
 TEMPLATE = subdirs
 
-SUBDIRS = 
+SUBDIRS =  \
+    libblight \
+    liboxide \
+    test_app
 
 INSTALLS += $$SUBDIRS

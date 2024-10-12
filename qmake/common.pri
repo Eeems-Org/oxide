@@ -1,15 +1,15 @@
-VERSION = 2.8.4
+VERSION = 3.0
 
 !contains(DEFINES, QT_DEPRECATED_WARNINGS){
     DEFINES += QT_DEPRECATED_WARNINGS
 }
-!contains(DEFINES, QT_DISABLE_DEPRECATED_BEFORE){
-    isEmpty(QT_DISABLE_DEPRECATED_BEFORE){
-        DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
-    }else{
-        DEFINES += QT_DISABLE_DEPRECATED_BEFORE=$${QT_DISABLE_DEPRECATED_BEFORE}
-    }
+isEmpty(QT_DISABLE_DEPRECATED_BEFORE){
+    QT_DISABLE_DEPRECATED_BEFORE = 0x060000
+}else{
+    message("Using override deprecation value")
 }
+DEFINES ~= s/QT_DISABLE_DEPRECATED_BEFORE=.+/
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=$${QT_DISABLE_DEPRECATED_BEFORE}
 CONFIG(debug, debug|release){
     LIBS += -lunwind
     contains(DEFINES, SANITIZER){
@@ -23,6 +23,10 @@ CONFIG(debug, debug|release){
         QMAKE_LFLAGS += -fsanitize=pointer-compare
         QMAKE_LFLAGS += -fsanitize=pointer-subtract
     }
+}
+
+linux-oe-g++{
+    DEFINES += EPAPER
 }
 
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib

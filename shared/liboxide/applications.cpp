@@ -15,11 +15,17 @@ const QList<QString> SystemFlags {
 };
 const QList<QString> Flags {
     "autoStart",
-    "chroot",
     "hidden",
     "nosplash",
     "nosavescreen",
     "system",
+    "nopreload",
+    "nopreload.sysfs",
+    "nopreload.compositor",
+    "exclusive"
+};
+const QList<QString> DeprecatedFlags {
+    "chroot"
 };
 
 namespace Oxide::Applications{
@@ -152,7 +158,7 @@ namespace Oxide::Applications{
                 "Value \"%1\" for key \"bin\" is a path to a file that is not executable"
             ).arg(bin));
         }
-    } else shouldExit
+    }else shouldExit
     QStringList flags;
     if(isArray("flags", ErrorLevel::Critical, false)){
         auto flagsArray = app["flags"].toArray();
@@ -171,7 +177,11 @@ namespace Oxide::Applications{
                 ).arg(flagsJson));
                 continue;
             }
-            if(SystemFlags.contains(value)){
+            if(DeprecatedFlags.contains(value)){
+                addError(ErrorLevel::Deprecation, QString(
+                    "Value \"%1\" for key \"flags\" contains a deprecated entry \"%2\""
+                ).arg(flagsJson, value));
+            }else if(SystemFlags.contains(value)){
                 addError(ErrorLevel::Warning, QString(
                     "Value \"%1\" for key \"flags\" contains an entry that should only be used by the system \"%2\""
                 ).arg(flagsJson, value));
@@ -185,7 +195,10 @@ namespace Oxide::Applications{
         if(type == "background" && flags.contains("nosavescreen")){
             addError(ErrorLevel::Hint, "Key \"flags\" contains \"nosavescreen\" while \"type\" has value \"background\"");
         }
-    } else shouldExit
+    }else shouldExit
+    if(app.contains("directories")){
+        addError(ErrorLevel::Deprecation, QString("Key \"directories\" is no longer used"));
+    }else shouldExit
     if(isArray("directories", ErrorLevel::Critical, false)){
         auto directories = app["directories"].toArray();
         for(int i = 0; i < directories.count(); i++){
@@ -203,7 +216,7 @@ namespace Oxide::Applications{
                 ).arg(Oxide::JSON::toJson(directories), QString::number(i), directory));
             }
         }
-    } else shouldExit else if(flags.contains("chroot")){
+    }else shouldExit else if(flags.contains("chroot")){
         addError(ErrorLevel::Hint, "Key \"flags\" contains \"chroot\" while \"directories\" is missing");
     }
     if(isArray("permissions", ErrorLevel::Critical, false)){
@@ -216,7 +229,7 @@ namespace Oxide::Applications{
                 ).arg(Oxide::JSON::toJson(permissions), QString::number(i), Oxide::JSON::toJson(entry)));
             }
         }
-    } else shouldExit
+    }else shouldExit
     isFile("workingDirectory", ErrorLevel::Error, false); shouldExit
     isString("displayName", false); shouldExit
     isString("description", false); shouldExit
@@ -229,7 +242,7 @@ namespace Oxide::Applications{
                 "Value \"%1\" for key \"user\" is not a valid user: \"%2\""
             ).arg(user, e.what()));
         }
-    } else shouldExit
+    }else shouldExit
     if(isString("group", false)){
         auto group = app["group"].toString();
         try{
@@ -239,11 +252,14 @@ namespace Oxide::Applications{
                 "Value \"%1\" for key \"group\" is not a valid group: \"%2\""
             ).arg(group, e.what()));
         }
-    } else shouldExit
+    }else shouldExit
     isIcon("icon", ErrorLevel::Warning, false);
     if(isIcon("splash", ErrorLevel::Warning, false) && flags.contains("nosplash")){
         addError(ErrorLevel::Hint, "Key \"splash\" provided while \"flags\" contains \"nosplash\" value");
-    } else shouldExit
+    }else shouldExit
+    if(app.contains("splash")){
+        addError(ErrorLevel::Deprecation, "Key \"splash\" is no longer used");
+    }else shouldExit
     if(registrationToMap(app, name).isEmpty()){
         addError(ErrorLevel::Critical, "Unable to convert registration to QVariantMap");
     }

@@ -2,7 +2,18 @@
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
 
-pkgnames=(oxide oxide-extra oxide-utils inject_evdev liboxide liboxide-dev libsentry)
+pkgnames=(
+    fbinfo
+    inject_evdev
+    liboxide
+    liboxide-dev
+    libsentry
+    oxide
+    oxide-display
+    oxide-extra
+    oxide-utils
+    oxide-tests
+)
 _oxidever=$(grep 'VERSION =' qmake/common.pri | awk '{print $3}')
 pkgver="$_oxidever~VERSION~"
 _sentryver=0.7.9
@@ -26,7 +37,7 @@ build() {
 oxide() {
     pkgdesc="Launcher application"
     section="launchers"
-    installdepends=("oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver" reboot-guard jq display launcherctl)
+    installdepends=("oxide-utils=$pkgver" "liboxide=$pkgver" "libsentry=$_sentryver" "oxide-display=$pkgver" reboot-guard sysfs_preload jq launcherctl)
     replaces=(erode tarnish decay corrupt)
     conflicts=(erode tarnish decay corrupt)
 
@@ -38,7 +49,6 @@ oxide() {
         # Task manager
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/erode
         install -D -m 644 -t "$pkgdir"/opt/usr/share/icons/oxide/48x48/apps "$srcdir"/release/opt/usr/share/icons/oxide/48x48/apps/erode.png
-        install -D -m 644 -t "$pkgdir"/opt/usr/share/icons/oxide/702x702/splash "$srcdir"/release/opt/usr/share/icons/oxide/702x702/splash/erode.png
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.erode.oxide
         # Launcher
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/oxide
@@ -51,6 +61,8 @@ oxide() {
         # Task switcher
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/corrupt
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.corrupt.oxide
+        # Keyd configuration
+        install -D -m 644 -t "$pkgdir"/opt/etc/keyd "$srcdir"/release/opt/etc/keyd/oxide.conf
         # launcherctl registration
         install -D -T -m 755 "$srcdir"/release/opt/share/launcherctl/oxide "$pkgdir"/opt/share/launcherctl/oxide
     }
@@ -78,6 +90,23 @@ oxide() {
     }
 }
 
+oxide-display() {
+    pkgdesc="Oxide display server"
+    section="devel"
+    installdepends=("liboxide=$pkgver" "libsentry=$_sentryver")
+
+    package() {
+        # Display server
+        install -D -m 644 -t "$pkgdir"/etc/dbus-1/system.d "$srcdir"/release/etc/dbus-1/system.d/codes.eeems.blight.conf
+        install -D -m 644 -t "$pkgdir"/lib/systemd/system "$srcdir"/release/etc/systemd/system/blight.service
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/blight
+        # Client
+        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight_client.so*
+        # QPA
+        install -D -m 755 -t "$pkgdir"/opt/usr/lib/plugins/platforms "$srcdir"/release/opt/usr/lib/plugins/platforms/liboxide.so*
+    }
+}
+
 oxide-extra() {
     pkgdesc="Extra applications for oxide"
     section="utils"
@@ -86,14 +115,10 @@ oxide-extra() {
     conflicts=(fret anxiety)
 
     package() {
-        # Screenshot daemon
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/fret
-        install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.fret.oxide
         # Screenshot viewer
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/anxiety
         install -D -m 644 -t "$pkgdir"/opt/usr/share/applications "$srcdir"/release/opt/usr/share/applications/codes.eeems.anxiety.oxide
         install -D -m 644 -t "$pkgdir"/opt/usr/share/icons/oxide/48x48/apps "$srcdir"/release/opt/usr/share/icons/oxide/48x48/apps/image.png
-        install -D -m 644 -t "$pkgdir"/opt/usr/share/icons/oxide/702x702/splash "$srcdir"/release/opt/usr/share/icons/oxide/702x702/splash/anxiety.png
     }
 }
 
@@ -105,15 +130,16 @@ oxide-utils() {
     conflicts=(rot notify-send update-desktop-database desktop-file-validate)
 
     package() {
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/rot
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/notify-send
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/update-desktop-database
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/desktop-file-validate
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-desktop-menu
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/gio
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/notify-send
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/rot
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/update-desktop-database
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xclip
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-desktop-icon
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-desktop-menu
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-open
         install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/xdg-settings
-        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/gio
     }
 }
 
@@ -127,6 +153,15 @@ inject_evdev() {
     }
 }
 
+fbinfo() {
+    pkgdesc="Print out framebuffer info"
+    section="utils"
+
+    package() {
+        install -D -m 755 -t "$pkgdir"/opt/bin "$srcdir"/release/opt/bin/fbinfo
+    }
+}
+
 liboxide() {
     pkgdesc="Shared library for oxide applications"
     section="devel"
@@ -134,6 +169,7 @@ liboxide() {
     package() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/liboxide.so*
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libqsgepaper.so*
+        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight.so*
     }
 }
 
@@ -159,5 +195,16 @@ libsentry() {
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libsentry.so
+    }
+}
+
+oxide-tests() {
+    pkgdesc="Automated tests for oxide"
+    section="devel"
+    installdepends=("oxide-display=$pkgver")
+
+    package() {
+        install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/libblight
+        install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/liboxide
     }
 }

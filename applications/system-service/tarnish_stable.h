@@ -69,7 +69,5 @@
 #include <unordered_map>
 #include <zlib.h>
 
-#include "apibase.h"
-#include "mxcfb.h"
 #include "supplicant.h"
 #endif

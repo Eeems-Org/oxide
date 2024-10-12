@@ -13,13 +13,8 @@ SOURCES += \
     application.cpp \
     appsapi.cpp \
     bss.cpp \
-    buttonhandler.cpp \
     dbusservice.cpp \
-    digitizerhandler.cpp \
     eventlistener.cpp \
-    fifohandler.cpp \
-    keyboarddevice.cpp \
-    keyboardhandler.cpp \
     network.cpp \
     notification.cpp \
     notificationapi.cpp \
@@ -70,14 +65,9 @@ HEADERS += \
     application.h \
     appsapi.h \
     bss.h \
-    buttonhandler.h \
     controller.h \
     dbusservice.h \
-    digitizerhandler.h \
     eventlistener.h \
-    fifohandler.h \
-    keyboarddevice.h \
-    keyboardhandler.h \
     network.h \
     notification.h \
     notificationapi.h \
@@ -101,11 +91,16 @@ LIBS += -lz
 DISTFILES += \
     fi.w1.wpa_supplicant1.xml \
     generate_xml.sh \
-    org.freedesktop.login1.xml
+    org.freedesktop.login1.xml \
+    ../../assets/etc/dbus-1/system.d/codes.eeems.oxide.conf \
+    ../../assets/etc/systemd/system/tarnish.service \
+    ../../assets/opt/usr/share/applications/xochitl.oxide \
+    ../../assets/opt/etc/keyd/oxide.conf
 
 INCLUDEPATH += ../../shared/mxcfb
 
 include(../../qmake/liboxide.pri)
+include(../../qmake/libblight.pri)
 
 QMAKE_POST_LINK += sh $$_PRO_FILE_PWD_/generate_xml.sh
 

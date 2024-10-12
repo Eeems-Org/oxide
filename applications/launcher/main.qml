@@ -11,7 +11,6 @@ OxideWindow {
     visible: true
     title: qsTr("Oxide")
     focus: true
-    backgroundColor: "white"
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     onAfterSynchronizing: {
         if (stateController.state == "loading") {

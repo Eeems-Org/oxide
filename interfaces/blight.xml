@@ -1,0 +1,68 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="codes.eeems.blight1.Compositor">
+    <property name="pid" type="i" access="read"/>
+    <property name="clipboard" type="ay" access="readwrite"/>
+    <property name="selection" type="ay" access="readwrite"/>
+    <property name="secondary" type="ay" access="readwrite"/>
+    <signal name="clipboardChanged">
+      <arg name="data" type="ay" direction="out"/>
+    </signal>
+    <signal name="selectionChanged">
+      <arg name="data" type="ay" direction="out"/>
+    </signal>
+    <signal name="secondaryChanged">
+      <arg name="data" type="ay" direction="out"/>
+    </signal>
+    <method name="open">
+      <arg type="h" direction="out"/>
+    </method>
+    <method name="openInput">
+      <arg type="h" direction="out"/>
+    </method>
+    <method name="addSurface">
+      <arg type="q" direction="out"/>
+      <arg name="fd" type="h" direction="in"/>
+      <arg name="x" type="i" direction="in"/>
+      <arg name="y" type="i" direction="in"/>
+      <arg name="width" type="i" direction="in"/>
+      <arg name="height" type="i" direction="in"/>
+      <arg name="stride" type="i" direction="in"/>
+      <arg name="format" type="i" direction="in"/>
+    </method>
+    <method name="repaint">
+      <arg name="identifier" type="s" direction="in"/>
+    </method>
+    <method name="getSurface">
+      <arg type="h" direction="out"/>
+      <arg name="identifier" type="q" direction="in"/>
+    </method>
+    <method name="setFlags">
+      <arg name="identifier" type="s" direction="in"/>
+      <arg name="flags" type="as" direction="in"/>
+    </method>
+    <method name="getSurfaces">
+      <arg type="as" direction="out"/>
+    </method>
+    <method name="frameBuffer">
+      <arg type="h" direction="out"/>
+    </method>
+    <method name="lower">
+      <arg name="identifier" type="s" direction="in"/>
+    </method>
+    <method name="raise">
+      <arg name="identifier" type="s" direction="in"/>
+    </method>
+    <method name="focus">
+      <arg name="identifier" type="s" direction="in"/>
+    </method>
+    <method name="waitForNoRepaints">
+    </method>
+    <method name="enterExclusiveMode">
+    </method>
+    <method name="exitExclusiveMode">
+    </method>
+    <method name="exclusiveModeRepaint">
+    </method>
+  </interface>
+</node>

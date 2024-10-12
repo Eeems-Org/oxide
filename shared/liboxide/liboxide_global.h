@@ -1,8 +1,3 @@
-/*!
- * \addtogroup Oxide
- * @{
- * \file
- */
 #pragma once
 
 #include <QtCore/qglobal.h>
@@ -23,4 +18,3 @@
 #else
 # define ATTRIBUTE_NO_SANITIZE_ADDRESS
 #endif
-/*! @} */

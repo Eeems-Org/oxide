@@ -41,7 +41,7 @@ PowerAPI::PowerAPI(QObject* parent)
     });
 }
 
-PowerAPI::~PowerAPI(){
+void PowerAPI::shutdown(){
     if(timer != nullptr){
             qDebug() << "Killing timer";
             timer->stop();

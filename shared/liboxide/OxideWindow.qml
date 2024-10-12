@@ -12,12 +12,11 @@ ApplicationWindow {
     property alias centerMenu: centerMenu.children
     property alias stack: stack
     property alias initialItem: stack.initialItem
-    property alias backgroundColor: background.color
     property alias headerBackgroundColor: header.color
     property bool landscape: Oxide.landscape
     Component.onCompleted: stack.forceActiveFocus()
     function orientationWidth(){ return landscape ? height : width; }
-    function orientationHeight(){ return landscape ? width : height;  }
+    function orientationHeight(){ return landscape ? width : height; }
     signal keyPressed(var event)
     signal keyReleased(var event)
     width: Screen.width
@@ -28,7 +27,7 @@ ApplicationWindow {
         focus: true
         title: window.title
         visible: window.visible
-        rotation: landscape ? 90 : 0
+        rotation: window.landscape ? 90 : 0
         // Must centerIn and specify width/height to force rotation to actually work
         anchors.centerIn: parent
         width: window.orientationWidth()
@@ -55,7 +54,7 @@ ApplicationWindow {
         }
         background: Rectangle {
             id: background
-            color: "black"
+            color: window.color
         }
         contentData: [
             StackView {

@@ -93,6 +93,8 @@ jobs:
         with:
           setup: |
             set -ex
+            opkg update
+            opkg install python3 # needed for reboot-guard
             wget https://github.com/Eeems-Org/sysfs_preload/releases/download/1.0.0/packages.zip -O /tmp/packages.zip
             unzip /tmp/packages.zip -d /tmp
             opkg install /tmp/rmall/sysfs_preload_1.0.0-1_rmall.ipk
@@ -103,11 +105,13 @@ jobs:
             set -ex
             echo Y | toltecctl generate-opkg-conf
             opkg update
-            opkg install oxide
+            opkg install oxide oxide-tests
             # systemctl disable --now xochitl
             # systemctl enable --now tarnish
-            # TODO install and run tests
-            opkg remove --force-removal-of-dependent-packages liboxide
+            find /opt/share/tests -type f | while read -r test;do
+              $test;
+            done
+            opkg remove --force-removal-of-dependent-packages liboxide libblight
           path: ${{ steps.download.outputs.download-path }}
   release:
     needs: [build,test,lint]

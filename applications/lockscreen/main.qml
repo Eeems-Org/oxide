@@ -10,6 +10,7 @@ OxideWindow {
     objectName: "window"
     visible: stateController.state != "loading"
     title: qsTr("Oxide")
+    color: "black"
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted: {

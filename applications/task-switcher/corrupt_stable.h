@@ -18,7 +18,4 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
-#include "controller.h"
-#include "screenprovider.h"
 #endif
