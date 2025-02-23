@@ -151,7 +151,7 @@ namespace Oxide::Sentry{
         }
         initialized = true;
         // Setup options
-        sentry_options_set_dsn(options, "https://a0136a12d63048c5a353c4a1c2d38914@sentry.eeems.codes/2");
+        sentry_options_set_dsn(options, "https://001cfae777374b0a8ffaf8a1e66c85b3@glitchtip.eeems.codes/1");
         sentry_options_set_symbolize_stacktraces(options, true);
         if(QLibraryInfo::isDebugBuild()){
             sentry_options_set_environment(options, "debug");
