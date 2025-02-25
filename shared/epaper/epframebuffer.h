@@ -32,7 +32,7 @@ enum EPContentType {
 };
 
 class EPFramebuffer {
-public:
+   public:
     enum UpdateFlag {
         NoRefresh = 0,
         CompleteRefresh = 1,
@@ -43,7 +43,7 @@ public:
 };
 
 class EPFramebufferSwtcon : public EPFramebuffer{
-public:
+   public:
     void initialize(void);
     void sync(void);
     // unsigned long update(QRect param_1, int color, PixelMode type, int fullRefresh);
@@ -51,35 +51,35 @@ public:
 
 #ifdef __aarch64__
 class EPFramebufferAcep2 : public EPFramebufferSwtcon {
-public:
+   public:
     EPFramebufferAcep2();
     int sendTModeUpdate(void);
-private:
+   private:
     char OPAQUE_A[EPFR_OFFSET_AUXBUFFER];
-public:
+   public:
     QImage auxBuffer;
-private:
+   private:
     char OPAQUE_B[EPFR_OFFSET_MAINBUFFER - sizeof(QImage) - EPFR_OFFSET_AUXBUFFER];
-public:
+   public:
     QImage mainBuffer;
-private:
+   private:
     char OPAQUE_C[EPFR_SIZE - EPFR_OFFSET_MAINBUFFER - sizeof(QImage)];
 };
 #endif
 
 #ifdef __arm__
 class EPFramebufferFusion : public EPFramebufferSwtcon {
-public:
+   public:
     EPFramebufferFusion();
-private:
+   private:
     char OPAQUE_A[EPFR_OFFSET_AUXBUFFER_RM2];
-public:
+   public:
     QImage auxBuffer;
-private:
+   private:
     char OPAQUE_B[EPFR_OFFSET_MAINBUFFER_RM2 - sizeof(QImage) - EPFR_OFFSET_AUXBUFFER_RM2];
-public:
+   public:
     QImage mainBuffer;
-private:
+   private:
     char OPAQUE_C[EPFR_SIZE_RM2 - EPFR_OFFSET_MAINBUFFER_RM2 - sizeof(QImage)];
 };
 #endif

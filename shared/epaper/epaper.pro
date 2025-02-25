@@ -3,8 +3,20 @@
 }
 TEMPLATE = aux
 
-epframebuffer_h.target = raw_copy
-epframebuffer_h.commands = cp $$PWD/epframebuffer.h $$PWD/libqsgepaper.so $$OUT_PWD
+include(../../qmake/common.pri)
+
+VERSION = 1.0
+
+DISTFILES = \
+    epframebuffer.h
+
+TARGET = qsgepaper
+target.path = /opt/lib
+INSTALLS += target
+
+
+epframebuffer_h.target = epframebuffer.h
+epframebuffer_h.commands = cp $$PWD/epframebuffer.h $$OUT_PWD
 QMAKE_EXTRA_TARGETS += epframebuffer_h
 
 linux-oe-g++{
