@@ -28,17 +28,9 @@ public:
         NoRefresh = 0,
         CompleteRefresh = 1,
     };
-    void setBuffers(std::tuple<QImage, QImage>, QImage *old=nullptr);
+    void setBuffers(std::tuple<QImage, QImage>, QImage* old = nullptr);
     unsigned long swapBuffers(QRect param_1, EPContentType epct, EPScreenMode type, QFlags<EPFramebuffer::UpdateFlag> flags);
-    static class EPFramebufferAcep2 *instance();
-    static inline class EPFramebufferAcep2 *createNonQTInstance() {
-        static EPFramebufferAcep2 *fb = nullptr;
-          if(fb == nullptr) {
-            fb = new EPFramebufferAcep2();
-        }
-        return fb;
-    }
-
+    static class EPFramebuffer* instance();
 };
 
 class EPFramebufferSwtcon : public EPFramebuffer{

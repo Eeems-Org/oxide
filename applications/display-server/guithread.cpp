@@ -53,7 +53,7 @@ void GUIThread::run(){
 GUIThread* GUIThread::singleton(){
     static GUIThread* instance = nullptr;
     if(instance == nullptr){
-        instance = new GUIThread(EPFrameBuffer::instance()->framebuffer()->rect());
+        instance = new GUIThread(EPFramebuffer::instance()->framebuffer()->rect());
         Oxide::startThreadWithPriority(instance, QThread::TimeCriticalPriority);
     }
     return instance;
@@ -168,17 +168,17 @@ void GUIThread::notify(){
 }
 
 void GUIThread::clearFrameBuffer(){
-    EPFrameBuffer::instance()->framebuffer()->fill(Qt::white);
-    EPFrameBuffer::sendUpdate(
+    EPFramebuffer::instance()->framebuffer()->fill(Qt::white);
+    EPFramebuffer::sendUpdate(
         m_screenGeometry,
-        EPFrameBuffer::Initialize,
-        EPFrameBuffer::FullUpdate,
+        EPFramebuffer::Initialize,
+        EPFramebuffer::FullUpdate,
         true
     );
-    EPFrameBuffer::sendUpdate(
+    EPFramebuffer::sendUpdate(
         m_screenGeometry,
-        EPFrameBuffer::HighQualityGrayscale,
-        EPFrameBuffer::FullUpdate,
+        EPFramebuffer::HighQualityGrayscale,
+        EPFramebuffer::FullUpdate,
         true
     );
 }
@@ -241,7 +241,7 @@ void GUIThread::redraw(RepaintRequest& event){
     Blight::ClockWatch cw;
     // Get visible region on the screen to repaint
     O_DEBUG("Repainting" << region.boundingRect());
-    auto frameBuffer = EPFrameBuffer::instance()->framebuffer();
+    auto frameBuffer = EPFramebuffer::instance()->framebuffer();
     Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
     QPainter painter(frameBuffer);
     while(!painter.isActive()){
