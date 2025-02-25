@@ -25,12 +25,12 @@ static bool qIsNumericType(uint tp){
 int compareAsString(const QVariant* v1, const QVariant* v2){
     int r = v1->toString().compare(v2->toString(), Qt::CaseInsensitive);
     if (r == 0) {
-        return (v1->type() < v2->type()) ? -1 : 1;
+        return (v1->metaType() < v2->metaType()) ? -1 : 1;
     }
     return r;
 }
 int compare(const QVariant* v1, const QVariant* v2){
-    if (qIsNumericType(v1->type()) && qIsNumericType(v2->type())){
+    if (qIsNumericType(v1->metaType()) && qIsNumericType(v2->metaType())){
         if(v1 == v2){
             return 0;
         }
@@ -39,15 +39,13 @@ int compare(const QVariant* v1, const QVariant* v2){
         }
         return 1;
     }
-    if ((int)v1->type() >= (int)QMetaType::User) {
+    if ((int)v1->metaType().id() >= (int)QMetaType::User) {
         int result;
-        const void* v1d = v1->constData();
-        const void* v2d = v2->constData();
-        if(QMetaType::compare(v1d, v2d, v1->type(), &result)){
+        if(QMetaType::compare(v1, v2, &result)){
             return result;
         }
     }
-    switch (v1->type()){
+    switch (v1->metaType().id()){
         case QVariant::Date:
             return v1->toDate() < v2->toDate() ? -1 : 1;
         case QVariant::Time:
@@ -64,20 +62,20 @@ int compare(const QVariant* v1, const QVariant* v2){
 bool operator<(const QVariant& lhs, const QVariant& rhs){
     const QVariant* v1 = &lhs;
     const QVariant* v2 = &rhs;
-    if(lhs.type() != rhs.type()){
-        if (v2->canConvert(v1->type())) {
+    if(lhs.metaType() != rhs.metaType()){
+        if (v2->canConvert(v1->metaType())) {
             QVariant converted2 = *v2;
-            if (converted2.convert(v1->type())){
+            if (converted2.convert(v1->metaType())){
                 v2 = &converted2;
             }
         }
-        if (v1->type() != v2->type() && v1->canConvert(v2->type())) {
+        if (v1->metaType() != v2->metaType() && v1->canConvert(v2->metaType())) {
             QVariant converted1 = *v1;
-            if (converted1.convert(v2->type())){
+            if (converted1.convert(v2->metaType())){
                 v1 = &converted1;
             }
         }
-        if (v1->type() != v2->type()) {
+        if (v1->metaType() != v2->metaType()) {
             return compareAsString(v1, v2) < 0;
         }
     }
@@ -116,34 +114,34 @@ namespace Oxide::JSON {
         return QVariant();
     }
     QVariant sanitizeForJson(QVariant value){
-        auto userType = value.userType();
-        if(userType == QMetaType::type("QDBusObjectPath")){
+        auto userType = value.metaType();
+        if(userType == QMetaType::fromName("QDBusObjectPath")){
             return value.value<QDBusObjectPath>().path();
         }
-        if(userType == QMetaType::type("QDBusSignature")){
+        if(userType == QMetaType::fromName("QDBusSignature")){
             return value.value<QDBusSignature>().signature();
         }
-        if(userType == QMetaType::type("QDBusVariant")){
+        if(userType == QMetaType::fromName("QDBusVariant")){
             return value.value<QDBusVariant>().variant();
         }
-        if(userType == QMetaType::type("QDBusArgument")){
+        if(userType == QMetaType::fromName("QDBusArgument")){
             return decodeDBusArgument(value.value<QDBusArgument>());
         }
-        if(userType == QMetaType::type("QList<QDBusVariant>")){
+        if(userType == QMetaType::fromName("QList<QDBusVariant>")){
             QVariantList list;
             for(auto value : value.value<QList<QDBusVariant>>()){
                 list.append(sanitizeForJson(value.variant()));
             }
             return list;
         }
-        if(userType == QMetaType::type("QList<QDBusSignature>")){
+        if(userType == QMetaType::fromName("QList<QDBusSignature>")){
             QStringList list;
             for(auto value : value.value<QList<QDBusSignature>>()){
                 list.append(value.signature());
             }
             return list;
         }
-        if(userType == QMetaType::type("QList<QDBusObjectPath>")){
+        if(userType == QMetaType::fromName("QList<QDBusObjectPath>")){
             QStringList list;
             for(auto value : value.value<QList<QDBusObjectPath>>()){
                 list.append(value.path());

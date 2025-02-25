@@ -73,7 +73,7 @@ namespace Oxide {
 
         QImage* Canvas::image(){ return &m_drawn; }
 
-        void Canvas::geometryChanged(const QRectF& newGeometry, const QRectF& oldGeometry){
+        void Canvas::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry){
             Q_UNUSED(oldGeometry);
             auto size = newGeometry.size().toSize();
             if(size.isEmpty()){
@@ -91,24 +91,24 @@ namespace Oxide {
             if(!isEnabled()){
                 return;
             }
-            m_lastPoint = event->localPos();
+            m_lastPoint = event->position().toPoint();
             emit drawStart();
         }
 
         void Canvas::mouseMoveEvent(QMouseEvent* event){
             if(
                 !isEnabled()
-                || !contains(event->localPos())
+                || !contains(event->position().toPoint())
             ){
                 return;
             }
             QPainter p(&m_drawn);
             QPen pen(m_brush, m_penWidth);
             p.setPen(pen);
-            p.drawLine(m_lastPoint, event->localPos());
+            p.drawLine(m_lastPoint, event->position().toPoint());
             p.end();
             const QPoint globalStart = mapToScene(m_lastPoint).toPoint();
-            const QPoint globalEnd = event->globalPos();
+            const QPoint globalEnd = event->globalPosition().toPoint();
             auto rect = QRect(globalStart, globalEnd)
                 .normalized()
                 .marginsAdded(QMargins(24, 24, 24, 24));
@@ -120,7 +120,7 @@ namespace Oxide {
                 p.drawLine(globalStart, globalEnd);
                 repaint(window(), rect, Blight::WaveformMode::Mono);
             }
-            m_lastPoint = event->localPos();
+            m_lastPoint = event->position().toPoint();
         }
 
         void Canvas::mouseReleaseEvent(QMouseEvent* event){
