@@ -913,7 +913,18 @@ ApplicationProcess::ApplicationProcess(QObject* parent)
   m_gid(0),
   m_uid(0),
   m_mask(0)
-{}
+{
+    setChildProcessModifier([this]{
+        // Drop all privileges in the child process
+        setgroups(0, 0);
+        // Change to correct user
+        setresgid(m_gid, m_gid, m_gid);
+        setresuid(m_uid, m_uid, m_uid);
+        umask(m_mask);
+        setsid();
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
+    });
+}
 
 bool ApplicationProcess::setUser(const QString& name){
     try{
@@ -937,17 +948,6 @@ bool ApplicationProcess::setGroup(const QString& name){
 
 void ApplicationProcess::setMask(mode_t mask){
     m_mask = mask;
-}
-
-void ApplicationProcess::setupChildProcess() {
-    // Drop all privileges in the child process
-    setgroups(0, 0);
-    // Change to correct user
-    setresgid(m_gid, m_gid, m_gid);
-    setresuid(m_uid, m_uid, m_uid);
-    umask(m_mask);
-    setsid();
-    prctl(PR_SET_PDEATHSIG, SIGTERM);
 }
 
 #include "moc_application.cpp"

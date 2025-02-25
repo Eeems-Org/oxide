@@ -144,7 +144,7 @@ public:
             if(aIndex < bIndex){
                 return false;
             }
-            return aName > bIndex;
+            return aName > QChar(bIndex);
         });
         return applications;
     }

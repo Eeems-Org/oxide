@@ -25,12 +25,12 @@ static bool qIsNumericType(uint tp){
 int compareAsString(const QVariant* v1, const QVariant* v2){
     int r = v1->toString().compare(v2->toString(), Qt::CaseInsensitive);
     if (r == 0) {
-        return (v1->type() < v2->type()) ? -1 : 1;
+        return (v1->typeId() < v2->typeId()) ? -1 : 1;
     }
     return r;
 }
 int compare(const QVariant* v1, const QVariant* v2){
-    if (qIsNumericType(v1->type()) && qIsNumericType(v2->type())){
+    if (qIsNumericType(v1->typeId()) && qIsNumericType(v2->typeId())){
         if(v1 == v2){
             return 0;
         }
@@ -39,22 +39,27 @@ int compare(const QVariant* v1, const QVariant* v2){
         }
         return 1;
     }
-    if ((int)v1->type() >= (int)QMetaType::User) {
-        int result;
+    if ((int)v1->typeId() >= (int)QMetaType::User) {
         const void* v1d = v1->constData();
         const void* v2d = v2->constData();
-        if(QMetaType::compare(v1d, v2d, v1->type(), &result)){
-            return result;
+        auto ordering = v1->metaType().compare(v1d, v2d);
+        // Can't convert to int for some reason
+        if(ordering < 0){
+            return -1;
         }
+        if(ordering > 0){
+            return 1;
+        }
+        return 0;
     }
-    switch (v1->type()){
-        case QVariant::Date:
+    switch (v1->typeId()){
+        case QMetaType::QDate:
             return v1->toDate() < v2->toDate() ? -1 : 1;
-        case QVariant::Time:
+        case QMetaType::QTime:
             return v1->toTime() < v2->toTime() ? -1 : 1;
-        case QVariant::DateTime:
+        case QMetaType::QDateTime:
             return v1->toDateTime() < v2->toDateTime() ? -1 : 1;
-        case QVariant::StringList:
+        case QMetaType::QStringList:
             return v1->toStringList() < v2->toStringList() ? -1 : 1;
         default:
             return compareAsString(v1, v2);
@@ -64,20 +69,20 @@ int compare(const QVariant* v1, const QVariant* v2){
 bool operator<(const QVariant& lhs, const QVariant& rhs){
     const QVariant* v1 = &lhs;
     const QVariant* v2 = &rhs;
-    if(lhs.type() != rhs.type()){
-        if (v2->canConvert(v1->type())) {
+    if(lhs.typeId() != rhs.typeId()){
+        if (v2->canConvert(v1->metaType())) {
             QVariant converted2 = *v2;
-            if (converted2.convert(v1->type())){
+            if (converted2.convert(v1->metaType())){
                 v2 = &converted2;
             }
         }
-        if (v1->type() != v2->type() && v1->canConvert(v2->type())) {
+        if (v1->typeId() != v2->typeId() && v1->canConvert(v2->metaType())) {
             QVariant converted1 = *v1;
-            if (converted1.convert(v2->type())){
+            if (converted1.convert(v2->metaType())){
                 v1 = &converted1;
             }
         }
-        if (v1->type() != v2->type()) {
+        if (v1->typeId() != v2->typeId()) {
             return compareAsString(v1, v2) < 0;
         }
     }
@@ -117,33 +122,33 @@ namespace Oxide::JSON {
     }
     QVariant sanitizeForJson(QVariant value){
         auto userType = value.userType();
-        if(userType == QMetaType::type("QDBusObjectPath")){
+        if(userType == QMetaType::fromName("QDBusObjectPath").id()){
             return value.value<QDBusObjectPath>().path();
         }
-        if(userType == QMetaType::type("QDBusSignature")){
+        if(userType == QMetaType::fromName("QDBusSignature").id()){
             return value.value<QDBusSignature>().signature();
         }
-        if(userType == QMetaType::type("QDBusVariant")){
+        if(userType == QMetaType::fromName("QDBusVariant").id()){
             return value.value<QDBusVariant>().variant();
         }
-        if(userType == QMetaType::type("QDBusArgument")){
+        if(userType == QMetaType::fromName("QDBusArgument").id()){
             return decodeDBusArgument(value.value<QDBusArgument>());
         }
-        if(userType == QMetaType::type("QList<QDBusVariant>")){
+        if(userType == QMetaType::fromName("QList<QDBusVariant>").id()){
             QVariantList list;
             for(auto value : value.value<QList<QDBusVariant>>()){
                 list.append(sanitizeForJson(value.variant()));
             }
             return list;
         }
-        if(userType == QMetaType::type("QList<QDBusSignature>")){
+        if(userType == QMetaType::fromName("QList<QDBusSignature>").id()){
             QStringList list;
             for(auto value : value.value<QList<QDBusSignature>>()){
                 list.append(value.signature());
             }
             return list;
         }
-        if(userType == QMetaType::type("QList<QDBusObjectPath>")){
+        if(userType == QMetaType::fromName("QList<QDBusObjectPath>").id()){
             QStringList list;
             for(auto value : value.value<QList<QDBusObjectPath>>()){
                 list.append(value.path());

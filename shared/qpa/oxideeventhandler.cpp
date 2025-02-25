@@ -2,6 +2,8 @@
 #include "oxideeventmanager.h"
 #include "default_keymap.h"
 
+#include <QFile>
+
 #include <private/qhighdpiscaling_p.h>
 #include <libblight.h>
 #include <libblight/socket.h>
@@ -47,8 +49,7 @@ typedef struct Contact {
     int y = 0;
     int maj = -1;
     int pressure = 0;
-    Qt::TouchPointState state = Qt::TouchPointPressed;
-    QTouchEvent::TouchPoint::InfoFlags flags;
+    QEventPoint::State state = QEventPoint::State::Pressed;
 } Contact;
 
 typedef struct TouchData {
@@ -69,7 +70,7 @@ typedef struct TouchData {
     QList<QWindowSystemInterface::TouchPoint> lastTouchPoints;
     QHash<int, Contact> contacts;
     QHash<int, Contact> lastContacts;
-    QTouchDevice* device = nullptr;
+    QPointingDevice* device = nullptr;
     TouchData()
     : lastEventType{-1},
       currentSlot{0},
@@ -90,8 +91,8 @@ typedef struct TouchData {
     {}
     ~TouchData(){
         if(device != nullptr){
-            QWindowSystemInterface::unregisterTouchDevice(device);
-            delete device;
+            device->moveToThread(qApp->thread());
+            device->deleteLater();
         }
     }
 } TouchData;
@@ -170,18 +171,26 @@ DeviceData::DeviceData(unsigned int device, QInputDeviceManager::DeviceType type
                 touchData->minPressure = absInfo.minimum;
                 touchData->maxPressure = absInfo.maximum;
             }
-            auto touchDevice = new QTouchDevice;
-            touchDevice->setName(hw_name);
-            touchDevice->setType(QTouchDevice::TouchScreen);
-            touchDevice->setCapabilities(QTouchDevice::Position | QTouchDevice::Area);
-            if(touchData->maxPressure > touchData->minPressure){
-                touchDevice->setCapabilities(touchDevice->capabilities() | QTouchDevice::Pressure);
-            }
+            int maxPoints = 1;
             if(ioctl(fd, EVIOCGABS(ABS_MT_SLOT), &absInfo)){
-                touchDevice->setMaximumTouchPoints(absInfo.maximum);
+                maxPoints = absInfo.maximum;
             }
+            static int id = 1;
+            // TODO get evdev ID instead of incrementing number
+            // TODO get button count
+            auto touchDevice = new QPointingDevice(
+              hw_name,
+              id++,
+              QPointingDevice::DeviceType::TouchScreen,
+              QPointingDevice::PointerType::Finger,
+              touchData->maxPressure > touchData->minPressure\
+                ? (QPointingDevice::Capability::Position | QPointingDevice::Capability::Area)
+                : QPointingDevice::Capability::None,
+              maxPoints,
+              1
+            );
             touchData->device = touchDevice;
-            QWindowSystemInterface::registerTouchDevice(touchDevice);
+            QWindowSystemInterface::registerInputDevice(touchDevice);
             break;
         }
         case QInputDeviceManager::DeviceTypePointer:
@@ -579,10 +588,10 @@ void OxideEventHandler::processTabletEvent(
                 tabletData->state.down = event->value != 0;
                 break;
             case BTN_TOOL_PEN:
-                tabletData->state.tool = event->value ? QTabletEvent::Pen : 0;
+                tabletData->state.tool = event->value ? (int)QPointingDevice::PointerType::Pen : 0;
                 break;
             case BTN_TOOL_RUBBER:
-                tabletData->state.tool = event->value ? QTabletEvent::Eraser : 0;
+                tabletData->state.tool = event->value ? (int)QPointingDevice::PointerType::Eraser : 0;
                 break;
             default:
                 break;
@@ -590,7 +599,7 @@ void OxideEventHandler::processTabletEvent(
     }else if(event->type == EV_SYN && event->code == SYN_REPORT && tabletData->lastEventType != event->type){
         if(!tabletData->state.lastReportTool && tabletData->state.tool){
             QWindowSystemInterface::handleTabletEnterProximityEvent(
-                QTabletEvent::Stylus,
+                (int)QPointingDevice::PointerType::Pen,
                 tabletData->state.tool,
                 device
             );
@@ -616,7 +625,7 @@ void OxideEventHandler::processTabletEvent(
                 nullptr,
                 QPointF(),
                 globalPos,
-                QTabletEvent::Stylus,
+                (int)QPointingDevice::PointerType::Pen,
                 pointer,
                 button,
                 pressure,
@@ -631,7 +640,7 @@ void OxideEventHandler::processTabletEvent(
         }
         if(tabletData->state.lastReportTool && !tabletData->state.tool){
             QWindowSystemInterface::handleTabletLeaveProximityEvent(
-                QTabletEvent::Stylus,
+                (int)QPointingDevice::PointerType::Pen,
                 tabletData->state.tool,
                 device
             );
@@ -643,10 +652,9 @@ void OxideEventHandler::processTabletEvent(
     tabletData->lastEventType = event->type;
 }
 
-void addTouchPoint(QTransform rotate, TouchData* touchData, const Contact& contact, Qt::TouchPointStates* combinedStates){
+void addTouchPoint(QTransform rotate, TouchData* touchData, const Contact& contact, QEventPoint::States* combinedStates){
     QWindowSystemInterface::TouchPoint tp;
     tp.id = contact.trackingId;
-    tp.flags = contact.flags;
     tp.state = contact.state;
     *combinedStates |= tp.state;
 
@@ -702,8 +710,8 @@ void OxideEventHandler::processTouchEvent(
             }
             if(touchData->isTypeB){
                 touchData->contacts[touchData->currentSlot].x = touchData->currentData.x;
-                if(touchData->contacts[touchData->currentSlot].state == Qt::TouchPointStationary){
-                    touchData->contacts[touchData->currentSlot].state = Qt::TouchPointMoved;
+                if(touchData->contacts[touchData->currentSlot].state == QEventPoint::State::Stationary){
+                    touchData->contacts[touchData->currentSlot].state = QEventPoint::State::Updated;
                 }
             }
         }else if(event->code == ABS_MT_POSITION_Y || (touchData->singleTouch && event->code == ABS_Y)){
@@ -713,24 +721,24 @@ void OxideEventHandler::processTouchEvent(
             }
             if(touchData->isTypeB){
                 touchData->contacts[touchData->currentSlot].y = touchData->currentData.y;
-                if(touchData->contacts[touchData->currentSlot].state == Qt::TouchPointStationary){
-                    touchData->contacts[touchData->currentSlot].state = Qt::TouchPointMoved;
+                if(touchData->contacts[touchData->currentSlot].state == QEventPoint::State::Stationary){
+                    touchData->contacts[touchData->currentSlot].state = QEventPoint::State::Updated;
                 }
             }
         }else if(event->code == ABS_MT_TRACKING_ID){
             touchData->currentData.trackingId = event->value;
             if(touchData->isTypeB){
                 if(touchData->currentData.trackingId == -1){
-                    touchData->contacts[touchData->currentSlot].state = Qt::TouchPointReleased;
+                    touchData->contacts[touchData->currentSlot].state = QEventPoint::State::Released;
                 }else{
-                    touchData->contacts[touchData->currentSlot].state = Qt::TouchPointPressed;
+                    touchData->contacts[touchData->currentSlot].state = QEventPoint::State::Pressed;
                     touchData->contacts[touchData->currentSlot].trackingId = touchData->currentData.trackingId;
                 }
             }
         }else if(event->code == ABS_MT_TOUCH_MAJOR){
             touchData->currentData.maj = event->value;
             if(event->value == 0){
-                touchData->currentData.state = Qt::TouchPointReleased;
+                touchData->currentData.state = QEventPoint::State::Released;
             }
             if(touchData->isTypeB){
                 touchData->contacts[touchData->currentSlot].maj = touchData->currentData.maj;
@@ -745,7 +753,7 @@ void OxideEventHandler::processTouchEvent(
         }
     }else if(event->type == EV_KEY && !touchData->isTypeB){
         if(event->code == BTN_TOUCH && event->value == 0){
-            touchData->contacts[touchData->currentSlot].state = Qt::TouchPointReleased;
+            touchData->contacts[touchData->currentSlot].state = QEventPoint::State::Released;
         }
     }else if(event->type == EV_SYN && event->code == SYN_MT_REPORT && touchData->lastEventType != EV_SYN){
         // If there is no tracking id, one will be generated later.
@@ -799,7 +807,7 @@ void OxideEventHandler::processTouchEvent(
 
         touchData->lastTouchPoints = touchData->touchPoints;
         touchData->touchPoints.clear();
-        Qt::TouchPointStates combinedStates;
+        QEventPoint::States combinedStates;
         bool hasPressure = false;
         for(auto i = touchData->contacts.begin(), end = touchData->contacts.end(); i != end; /*erasing*/){
             auto it = i++;
@@ -810,19 +818,19 @@ void OxideEventHandler::processTouchEvent(
             int key = touchData->isTypeB ? it.key() : contact.trackingId;
             if(!touchData->isTypeB && touchData->lastContacts.contains(key)){
                 const Contact &prev(touchData->lastContacts.value(key));
-                if(contact.state == Qt::TouchPointReleased){
+                if(contact.state == QEventPoint::State::Released){
                     // Copy over the previous values for released points, just in case.
                     contact.x = prev.x;
                     contact.y = prev.y;
                     contact.maj = prev.maj;
                 }else{
                     contact.state = prev.x == contact.x && prev.y == contact.y
-                        ? Qt::TouchPointStationary
-                        : Qt::TouchPointMoved;
+                        ? QEventPoint::State::Stationary
+                        : QEventPoint::State::Updated;
                 }
             }
             // Avoid reporting a contact in released state more than once.
-            if(!touchData->isTypeB && contact.state == Qt::TouchPointReleased && !touchData->lastContacts.contains(key)){
+            if(!touchData->isTypeB && contact.state == QEventPoint::State::Released && !touchData->lastContacts.contains(key)){
                 touchData->contacts.erase(it);
                 continue;
             }
@@ -837,11 +845,11 @@ void OxideEventHandler::processTouchEvent(
             int key = touchData->isTypeB ? it.key() : contact.trackingId;
             if(touchData->isTypeB){
                 if(contact.trackingId != touchData->contacts[key].trackingId && contact.state){
-                    contact.state = Qt::TouchPointReleased;
+                    contact.state = QEventPoint::State::Released;
                     addTouchPoint(m_rotate, touchData, contact, &combinedStates);
                 }
             }else if(!touchData->contacts.contains(key)){
-                contact.state = Qt::TouchPointReleased;
+                contact.state = QEventPoint::State::Released;
                 addTouchPoint(m_rotate, touchData, contact, &combinedStates);
             }
         }
@@ -852,10 +860,10 @@ void OxideEventHandler::processTouchEvent(
             if(!contact.state){
                 continue;
             }
-            if(contact.state != Qt::TouchPointReleased){
-                contact.state = Qt::TouchPointStationary;
+            if(contact.state != QEventPoint::State::Released){
+                contact.state = QEventPoint::State::Stationary;
             }else if(touchData->isTypeB){
-                contact.state = static_cast<Qt::TouchPointState>(0);
+                contact.state = QEventPoint::State::Unknown;
             }else{
                 touchData->contacts.erase(it);
             }
@@ -864,7 +872,7 @@ void OxideEventHandler::processTouchEvent(
         if(!touchData->isTypeB && !touchData->singleTouch){
             touchData->contacts.clear();
         }
-        if(!touchData->touchPoints.isEmpty() && (hasPressure || combinedStates != Qt::TouchPointStationary)){
+        if(!touchData->touchPoints.isEmpty() && (hasPressure || combinedStates != QEventPoint::State::Stationary)){
             auto screen = QGuiApplication::primaryScreen();
             QRect winRect = QHighDpi::toNativePixels(screen->geometry(), screen);
             if(winRect.isNull()){
@@ -892,13 +900,17 @@ void OxideEventHandler::processTouchEvent(
                 tp.area.moveCenter(QPointF(wx, wy));
                 // Calculate normalized pressure.
                 if(!touchData->minPressure && !touchData->maxPressure){
-                    tp.pressure = tp.state == Qt::TouchPointReleased ? 0 : 1;
+                    tp.pressure = tp.state == QEventPoint::State::Released ? 0 : 1;
                 }else{
                     tp.pressure = (tp.pressure - touchData->minPressure) / qreal(touchData->maxPressure - touchData->minPressure);
                 }
             }
             // Let qguiapp pick the target window.
-            QWindowSystemInterface::handleTouchEvent(nullptr, touchData->device, touchData->touchPoints);
+            QWindowSystemInterface::handleTouchEvent(
+              nullptr,
+              touchData->device,
+              touchData->touchPoints
+            );
         }
     }
     touchData->lastEventType = event->type;
@@ -908,9 +920,12 @@ void OxideEventHandler::processPointerEvent(
     DeviceData* data,
     Blight::partial_input_event_t* event
 ){
+    Q_UNUSED(event);
     Q_ASSERT(data->type == QInputDeviceManager::DeviceTypePointer);
     auto device = data->device;
+    Q_UNUSED(device);
     auto pointerData = data->get<PointerData>();
+    Q_UNUSED(pointerData);
 }
 
 Qt::KeyboardModifiers OxideEventHandler::toQtModifiers(quint16 mod){

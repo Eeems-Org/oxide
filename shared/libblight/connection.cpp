@@ -19,7 +19,7 @@ namespace Blight{
     static std::atomic<unsigned int> ackid;
     static moodycamel::ConcurrentQueue<ackid_ptr_t> acks;
     ackid_t::ackid_t(
-        Connection* connection,
+        [[maybe_unused]] Connection* connection,
         unsigned int ackid,
         unsigned int data_size,
         data_t data

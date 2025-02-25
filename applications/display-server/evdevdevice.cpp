@@ -41,7 +41,7 @@ QString EvDevDevice::id(){
     );
 }
 
-unsigned int EvDevDevice::number(){ return devName().midRef(5).toInt(); }
+unsigned int EvDevDevice::number(){ return QStringView(devName()).mid(5).toInt(); }
 
 bool EvDevDevice::exists(){ return QFile::exists(path()); }
 

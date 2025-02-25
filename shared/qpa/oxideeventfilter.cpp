@@ -38,8 +38,8 @@ bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev){
                 auto tabletEvent = static_cast<QTabletEvent*>(ev);
                 QWindowSystemInterface::handleMouseEvent(
                     nullptr,
-                    transpose(tabletEvent->posF()),
-                    transpose(tabletEvent->globalPosF()),
+                    transpose(tabletEvent->position()),
+                    transpose(tabletEvent->globalPosition()),
                     tabletEvent->buttons(),
                     tabletEvent->button(),
                     QEvent::MouseButtonPress,
@@ -53,8 +53,8 @@ bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev){
                 auto tabletEvent = static_cast<QTabletEvent*>(ev);
                 QWindowSystemInterface::handleMouseEvent(
                     nullptr,
-                    transpose(tabletEvent->posF()),
-                    transpose(tabletEvent->globalPosF()),
+                    transpose(tabletEvent->position()),
+                    transpose(tabletEvent->globalPosition()),
                     tabletEvent->buttons(),
                     tabletEvent->button(),
                     QEvent::MouseButtonRelease,
@@ -68,8 +68,8 @@ bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev){
                 auto tabletEvent = static_cast<QTabletEvent*>(ev);
                 QWindowSystemInterface::handleMouseEvent(
                     nullptr,
-                    transpose(tabletEvent->posF()),
-                    transpose(tabletEvent->globalPosF()),
+                    transpose(tabletEvent->position()),
+                    transpose(tabletEvent->globalPosition()),
                     tabletEvent->buttons(),
                     tabletEvent->button(),
                     QEvent::MouseMove,

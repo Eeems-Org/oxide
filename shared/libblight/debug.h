@@ -53,5 +53,7 @@ void __printf_footer(char const* file, unsigned int line, char const* func);
 /*!
  * \brief Log a debug line indicating that a certain line of code has been reached
  */
+#ifndef __RIGHT_HERE__
 #define __RIGHT_HERE__ fprintf(stderr, "<============================ %s:%d\n", __FILE__, __LINE__)
+#endif
 /*! @} */

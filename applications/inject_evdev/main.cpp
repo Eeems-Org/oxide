@@ -976,7 +976,9 @@ int main(int argc, char *argv[]){
     QObject::connect(&notifier, &QSocketNotifier::activated, [&app, &isStream](){
         std::string input;
         std::getline(std::cin, input);
-        auto args = QString(input.c_str()).simplified().split(QRegExp("\\s+"), Qt::SkipEmptyParts);
+        auto args = QString(input.c_str())
+            .simplified()
+            .split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
         auto count = args.count();
         if(count && debugEnabled()){
             qDebug() << args;
