@@ -8,11 +8,8 @@
 #include <QDBusMessage>
 #include <QDBusConnectionInterface>
 #include <QDBusConnection>
-#include <fstream>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-
-#include <liboxide.h>
 
 #include "apibase.h"
 
