@@ -50,7 +50,7 @@ public:
 
 public slots:
     QDBusObjectPath requestAPI(QString name, QDBusMessage message);
-    Q_NOREPLY void releaseAPI(QString name, QDBusMessage message);
+    void releaseAPI(QString name, QDBusMessage message);
     QVariantMap APIs();
 
 
