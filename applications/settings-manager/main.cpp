@@ -378,33 +378,34 @@ int main(int argc, char *argv[]){
 #endif
                     return qExit(EXIT_FAILURE);
                 }
-                auto type = arg.mid(0, arg.indexOf(":"));
+                auto typeName = arg.mid(0, arg.indexOf(":"));
                 auto value = arg.mid(arg.indexOf(":") + 1);
-                int id = QMetaType::type(type.toStdString().c_str());
+                auto type = QMetaType::fromName(type.toStdString().c_str());
+                int id = type.id();
                 if(id == QMetaType::UnknownType){
-                    qDebug() << "Unknown type" << type;
+                    qDebug() << "Unknown type" << typeName;
 #ifdef SENTRY
                     sentry_breadcrumb("error", "Unknown type");
 #endif
                     return qExit(EXIT_FAILURE);
                 }
                 QVariant variant = fromJson(value.toUtf8());
-                if(type == "QDBusObjectPath"){
+                if(typeName == "QDBusObjectPath"){
                     variant = QVariant::fromValue(QDBusObjectPath(variant.toString()));
-                }else if(type == "QDBusSignature"){
+                }else if(typeName == "QDBusSignature"){
                     variant = QVariant::fromValue(QDBusSignature(variant.toString()));
                 }
-                if(!variant.canConvert(id)){
-                    qDebug() << "Unable to convert to type" << type;
+                if(!variant.canConvert(type)){
+                    qDebug() << "Unable to convert to type" << typeName;
                     qDebug() << "Value" << variant;
 #ifdef SENTRY
                     sentry_breadcrumb("error", "Unable to convert to type");
 #endif
                     return qExit(EXIT_FAILURE);
                 }
-                variant.convert(id);
+                variant.convert(type);
                 if(!variant.isValid()){
-                    qDebug() << "Failed converting to " << type;
+                    qDebug() << "Failed converting to " << typeName;
                     qDebug() << "Value" << variant;
 #ifdef SENTRY
                     sentry_breadcrumb("error", "Failed converting");

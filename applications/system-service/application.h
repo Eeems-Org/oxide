@@ -50,9 +50,6 @@ public:
     bool setGroup(const QString& name);
     void setMask(mode_t mask);
 
-protected:
-    void setupChildProcess() override;
-
 private:
     gid_t m_gid;
     uid_t m_uid;

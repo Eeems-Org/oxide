@@ -5,7 +5,6 @@
 
 #include <private/qdevicediscovery_p.h>
 #include <private/qguiapplication_p.h>
-#include <private/qmemory_p.h>
 
 OxideEventManager::OxideEventManager(const QStringList& parameters)
 : QObject(),
@@ -49,7 +48,7 @@ void OxideEventManager::deviceDetected(QInputDeviceManager::DeviceType type, con
     m_devices[type].append(device);
     auto manager = QGuiApplicationPrivate::inputDeviceManager();
     QInputDeviceManagerPrivate::get(manager)->setDeviceCount(type, m_devices[type].count());
-    auto number = QFileInfo(device).baseName().midRef(5).toInt();
+    auto number = QStringView(QFileInfo(device).baseName()).mid(5).toInt();
     m_handler.add(number, type);
 }
 
@@ -57,7 +56,7 @@ void OxideEventManager::deviceRemoved(QInputDeviceManager::DeviceType type, cons
     m_devices[type].removeAll(device);
     auto manager = QGuiApplicationPrivate::inputDeviceManager();
     QInputDeviceManagerPrivate::get(manager)->setDeviceCount(type, m_devices[type].count());
-    auto number = QFileInfo(device).baseName().midRef(5).toInt();
+    auto number = QStringView(QFileInfo(device).baseName()).mid(5).toInt();
     m_handler.remove(number, type);
 }
 

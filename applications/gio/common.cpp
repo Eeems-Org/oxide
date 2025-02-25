@@ -31,7 +31,7 @@ QString ICommand::commandsHelp(){
     for(const auto& name : keys){
         const auto& item = commands->value(name);
         value += "\n" + name.leftJustified(leftSize, ' ');
-        if(item.help > rightSize){
+        if(item.help > QChar(rightSize)){
             QStringList words = item.help.split(' ');
             QString padding = QString().leftJustified(leftSize + 1, ' ');
             bool first = true;

@@ -45,8 +45,8 @@ namespace Oxide{
             auto tabletEvent = (QTabletEvent*)ev;
             QWindowSystemInterface::handleMouseEvent(
                 nullptr,
-                transpose(tabletEvent->posF()),
-                transpose(tabletEvent->globalPosF()),
+                transpose(tabletEvent->position()),
+                transpose(tabletEvent->globalPosition()),
                 tabletEvent->buttons(),
                 tabletEvent->button(),
                 QEvent::MouseButtonPress
@@ -59,8 +59,8 @@ namespace Oxide{
             auto tabletEvent = (QTabletEvent*)ev;
             QWindowSystemInterface::handleMouseEvent(
                 nullptr,
-                transpose(tabletEvent->posF()),
-                transpose(tabletEvent->globalPosF()),
+                transpose(tabletEvent->position()),
+                transpose(tabletEvent->globalPosition()),
                 tabletEvent->buttons(),
                 tabletEvent->button(),
                 QEvent::MouseButtonRelease
@@ -73,8 +73,8 @@ namespace Oxide{
             auto tabletEvent = (QTabletEvent*)ev;
             QWindowSystemInterface::handleMouseEvent(
                 nullptr,
-                transpose(tabletEvent->posF()),
-                transpose(tabletEvent->globalPosF()),
+                transpose(tabletEvent->position()),
+                transpose(tabletEvent->globalPosition()),
                 tabletEvent->buttons(),
                 tabletEvent->button(),
                 QEvent::MouseMove
