@@ -17,8 +17,10 @@
 #include "apibase.h"
 #include "screenshot.h"
 
-#define DISPLAYWIDTH 1404
-#define DISPLAYHEIGHT 1872
+#include <liboxide/devicesettings.h>
+
+#define DISPLAYWIDTH (deviceSettings.getScreenWidth())
+#define DISPLAYHEIGHT (deviceSettings.getScreenHeight())
 #define TEMP_USE_REMARKABLE_DRAW 0x0018
 #define remarkable_color uint16_t
 #define DISPLAYSIZE DISPLAYWIDTH * DISPLAYHEIGHT * sizeof(remarkable_color)

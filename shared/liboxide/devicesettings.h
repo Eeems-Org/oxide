@@ -26,7 +26,8 @@ namespace Oxide{
         enum DeviceType {
             Unknown, /*!< Unknown device type >*/
             RM1, /*!< reMarkable 1 >*/
-            RM2 /*!< reMarkable 2 >*/
+            RM2, /*!< reMarkable 2 >*/
+            RMPP, /*!< reMarkable Paper Pro >*/
         };
         /*!
          * \brief Get the static instance of this class. You should use the deviceSettings macro instead.
@@ -74,6 +75,16 @@ namespace Oxide{
          * \return Max height for touch input
          */
         int getTouchHeight() const;
+        /*!
+         * \brief Get the device screen's resolution's width
+         * \return Screen resolution's width
+         */
+        int getScreenWidth() const;
+        /*!
+         * \brief Get the device screen's resolution's height
+         * \return Screen resolution's height
+         */
+        int getScreenHeight() const;
         /*!
          * \brief Get the list of possible locales on the device
          * \return The list of possible locales on the device
