@@ -43,7 +43,7 @@ class EPFramebuffer {
 };
 
 class EPFramebufferSwtcon : public EPFramebuffer{
-   public:
+public:
     void initialize(void);
     void sync(void);
     // unsigned long update(QRect param_1, int color, PixelMode type, int fullRefresh);
@@ -69,17 +69,17 @@ class EPFramebufferAcep2 : public EPFramebufferSwtcon {
 
 #ifdef __arm__
 class EPFramebufferFusion : public EPFramebufferSwtcon {
-   public:
+public:
     EPFramebufferFusion();
-   private:
+private:
     char OPAQUE_A[EPFR_OFFSET_AUXBUFFER_RM2];
-   public:
+public:
     QImage auxBuffer;
-   private:
+private:
     char OPAQUE_B[EPFR_OFFSET_MAINBUFFER_RM2 - sizeof(QImage) - EPFR_OFFSET_AUXBUFFER_RM2];
-   public:
+public:
     QImage mainBuffer;
-   private:
+private:
     char OPAQUE_C[EPFR_SIZE_RM2 - EPFR_OFFSET_MAINBUFFER_RM2 - sizeof(QImage)];
 };
 #endif

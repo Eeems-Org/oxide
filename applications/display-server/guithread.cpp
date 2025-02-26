@@ -239,7 +239,7 @@ void GUIThread::redraw(RepaintRequest& event){
     Blight::ClockWatch cw;
     // Get visible region on the screen to repaint
     O_DEBUG("Repainting" << region.boundingRect());
-    QImage *frameBuffer = &EPFramebuffer::instance()->auxBuffer;
+    QImage* frameBuffer = &EPFramebuffer::instance()->auxBuffer;
     Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
     QPainter painter(frameBuffer);
     while(!painter.isActive()){
@@ -281,7 +281,7 @@ void GUIThread::sendUpdate(const QRect& rect, Blight::WaveformMode waveform, Bli
         mode == Blight::BlightUpdateMode::FullUpdate
             ? EPScreenMode::QualityFull
             : EPScreenMode::QualityFast,
-        flag = rect == m_screenRect
+        rect == m_screenRect
             ? EPFramebuffer::UpdateFlag::CompleteRefresh
             : EPFramebuffer::UpdateFlag::NoRefresh
     );
