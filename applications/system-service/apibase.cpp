@@ -72,7 +72,7 @@ QImage* getFrameBuffer(){
             file = nullptr;
             return nullptr;
         }
-        image = new QImage(data, 1404, 1872, stride, QImage::Format_RGB16);
+        image = new QImage(data, deviceSettings.getScreenWidth(), deviceSettings.getScreenHeight(), stride, QImage::Format_RGB16);
         if(image->isNull()){
             O_WARNING("Framebuffer is null" << image->size());
             delete image;

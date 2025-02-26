@@ -103,6 +103,11 @@ namespace Oxide {
             _deviceType = DeviceType::RM2;
             return;
         }
+        if (modelName.contains("reMarkable Ferrari")) {
+            O_DEBUG("RMPP detected...");
+            _deviceType = DeviceType::RMPP;
+            return;
+        }
         O_DEBUG("RM1 detected...");
         _deviceType = DeviceType::RM1;
     }
@@ -120,6 +125,8 @@ namespace Oxide {
                 return "reMarkable 1";
             case DeviceType::RM2:
                 return "reMarkable 2";
+            case DeviceType::RMPP:
+                return "reMarkable Paper Pro";
             default:
                 return "Unknown";
         }
@@ -131,6 +138,8 @@ namespace Oxide {
                 return "rotate=180";
             case DeviceType::RM2:
                 return "rotate=180:invertx";
+            case DeviceType::RMPP:
+                return "";
             default:
                 return "";
         }
@@ -142,23 +151,54 @@ namespace Oxide {
                 return 767;
             case DeviceType::RM2:
                 return 1403;
+            case DeviceType::RMPP:
+                return 2064;
             default:
                 return 0;
         }
     }
+
     int DeviceSettings::getTouchHeight() const {
         switch(getDeviceType()) {
             case DeviceType::RM1:
                 return 1023;
             case DeviceType::RM2:
                 return 1871;
+            case DeviceType::RMPP:
+                return 2832;
             default:
                 return 0;
         }
     }
+
+    int DeviceSettings::getScreenWidth() const {
+        switch(getDeviceType()) {
+            case DeviceType::RM1:
+            case DeviceType::RM2:
+                return 1404;
+            case DeviceType::RMPP:
+                return 1620;
+            default:
+                return 0;
+        }
+    }
+
+    int DeviceSettings::getScreenHeight() const {
+        switch(getDeviceType()) {
+            case DeviceType::RM1:
+            case DeviceType::RM2:
+                return 1872;
+            case DeviceType::RMPP:
+                return 2160;
+            default:
+                return 0;
+        }
+    }
+
     const QStringList DeviceSettings::getLocales() {
         return execute("localectl", QStringList() << "list-locales" << "--no-pager").split("\n");
     }
+
     QString DeviceSettings::getLocale() {
         QFile file("/etc/locale.conf");
         if(file.open(QFile::ReadOnly)){
