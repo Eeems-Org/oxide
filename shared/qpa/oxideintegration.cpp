@@ -110,7 +110,7 @@ void OxideIntegration::initialize(){
 #endif
     m_primaryScreen = new OxideScreen();
     // rM1 geometry as default
-    m_primaryScreen->setGeometry(QRect(0, 0, 1404, 1872));
+    m_primaryScreen->setGeometry(QRect(0, 0, deviceSettings.getScreenWidth(), deviceSettings.getScreenHeight()));
     QWindowSystemInterface::handleScreenAdded(m_primaryScreen, true);
     qApp->installEventFilter(new OxideEventFilter(qApp));
     m_inputContext = QPlatformInputContextFactory::create();

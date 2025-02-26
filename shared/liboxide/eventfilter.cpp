@@ -9,9 +9,10 @@
 
 #include <qpa/qwindowsysteminterface.h>
 #include <qpa/qwindowsysteminterface_p.h>
+#include "devicesettings.h"
 
-#define DISPLAYWIDTH 1404
-#define DISPLAYHEIGHT 1872.0
+#define DISPLAYWIDTH (deviceSettings.getScreenWidth())
+#define DISPLAYHEIGHT (deviceSettings.getScreenHeight())
 #define WACOM_X_SCALAR (float(DISPLAYWIDTH) / float(DISPLAYHEIGHT))
 #define WACOM_Y_SCALAR (float(DISPLAYHEIGHT) / float(DISPLAYWIDTH))
 #ifdef DEBUG_EVENTS
