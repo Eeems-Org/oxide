@@ -380,7 +380,7 @@ int main(int argc, char *argv[]){
                 }
                 auto typeName = arg.mid(0, arg.indexOf(":"));
                 auto value = arg.mid(arg.indexOf(":") + 1);
-                auto type = QMetaType::fromName(type.toStdString().c_str());
+                auto type = QMetaType::fromName(typeName.toStdString().c_str());
                 int id = type.id();
                 if(id == QMetaType::UnknownType){
                     qDebug() << "Unknown type" << typeName;
