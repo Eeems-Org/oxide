@@ -10,123 +10,54 @@
 #include <memory>
 #include <vector>
 #include <optional>
+#include <libblight_protocol.h>
 
 namespace Blight{
     /*!
      * \brief Image format of a buffer
      */
-    enum Format{
-        Format_Invalid,
-        Format_Mono,
-        Format_MonoLSB,
-        Format_Indexed8,
-        Format_RGB32,
-        Format_ARGB32,
-        Format_ARGB32_Premultiplied,
-        Format_RGB16,
-        Format_ARGB8565_Premultiplied,
-        Format_RGB666,
-        Format_ARGB6666_Premultiplied,
-        Format_RGB555,
-        Format_ARGB8555_Premultiplied,
-        Format_RGB888,
-        Format_RGB444,
-        Format_ARGB4444_Premultiplied,
-        Format_RGBX8888,
-        Format_RGBA8888,
-        Format_RGBA8888_Premultiplied,
-        Format_BGR30,
-        Format_A2BGR30_Premultiplied,
-        Format_RGB30,
-        Format_A2RGB30_Premultiplied,
-        Format_Alpha8,
-        Format_Grayscale8,
-        Format_RGBX64,
-        Format_RGBA64,
-        Format_RGBA64_Premultiplied,
-        Format_Grayscale16,
-        Format_BGR888,
-    };
+    using Format = BlightProtocol::BlightImageFormat;
     /*!
      * \brief Possible waveforms
      */
-    enum Waveform {
-        INIT = 0,
-        DU = 1,
-        GC16 = 2,
-        GL16 = 3,
-        GLR16 = 4,
-        GLD16 = 5,
-        A2 = 6,
-        DU4 = 7,
-        UNKNOWN = 8,
-        INIT2 = 9
-    };
+    using Waveform = BlightProtocol::BlightWaveform;
     /*!
      * \brief Waveform to use for a repaint
      */
-    enum WaveformMode{
-        Initialize = Waveform::INIT,
-        Mono = Waveform::DU,
-        Grayscale = Waveform::GL16,
-        HighQualityGrayscale = Waveform::GC16,
-        Highlight = Waveform::UNKNOWN
-    };
+    using WaveformMode = BlightProtocol::BlightWaveformMode;
     /*!
      * \brief Size type
      */
-    LIBBLIGHT_EXPORT typedef unsigned int size_t;
+    typedef BlightProtocol::blight_size_t size_t;
     /*!
      * \brief Surface identifier
      */
-    LIBBLIGHT_EXPORT typedef unsigned short surface_id_t;
+    typedef BlightProtocol::blight_surface_id_t surface_id_t;
     /*!
      * \brief Partial input event
      */
-    LIBBLIGHT_EXPORT typedef struct{
-        /*!
-         * \brief Input event type
-         */
-        __u16 type;
-        /*!
-         * \brief Input event code
-         */
-        __u16 code;
-        /*!
-         * \brief Input event value
-         */
-        __s32 value;
-    } partial_input_event_t;
+    typedef BlightProtocol::blight_partial_input_event_t partial_input_event_t;
     /*!
      * \brief Input event packet
      */
-    LIBBLIGHT_EXPORT typedef struct {
-        /*!
-         * \brief Device that this packet is for
-         */
-        unsigned int device;
-        /*!
-         * \brief Partial input event
-         */
-        partial_input_event_t event;
-    } event_packet_t;
+    typedef BlightProtocol::blight_event_packet_t event_packet_t;
     /*!
      * \brief Generic data pointer
      */
-    LIBBLIGHT_EXPORT typedef unsigned char* data_t;
+    typedef unsigned char* data_t;
     /*!
      * \brief Shared pointer to generic data
      */
-    LIBBLIGHT_EXPORT typedef std::shared_ptr<unsigned char[]> shared_data_t;
+    typedef std::shared_ptr<unsigned char[]> shared_data_t;
     struct buf_t;
     /*!
      * \brief Shared pointer to buffer
      */
-    LIBBLIGHT_EXPORT typedef std::shared_ptr<buf_t> shared_buf_t;
+    typedef std::shared_ptr<buf_t> shared_buf_t;
     /*!
      * \brief Clipboard instance
      */
-    LIBBLIGHT_EXPORT typedef struct clipboard_t {
+    typedef struct clipboard_t {
         /*!
          * \brief Data
          */
@@ -201,7 +132,7 @@ namespace Blight{
     /*!
      * \brief A buffer used to represent a surface
      */
-    LIBBLIGHT_EXPORT typedef struct buf_t{
+    typedef struct buf_t{
         /*!
          * \brief File descriptor for the buffer
          */
@@ -265,24 +196,11 @@ namespace Blight{
     /*!
      * \brief Message type
      */
-    enum MessageType{
-        Invalid,
-        Ack,
-        Ping,
-        Repaint,
-        Move,
-        Info,
-        Delete,
-        List,
-        Raise,
-        Lower,
-        Wait,
-        Focus
-    };
+    using MessageType = BlightProtocol::BlightMessageType;
     /*!
      * \brief Message header
      */
-    LIBBLIGHT_EXPORT typedef struct header_t{
+    typedef struct header_t{
         /*!
          * \brief Message type
          */
@@ -323,11 +241,11 @@ namespace Blight{
     /*!
      * \brief Shared pointer to a message
      */
-    LIBBLIGHT_EXPORT typedef std::shared_ptr<message_t> message_ptr_t;
+    typedef std::shared_ptr<message_t> message_ptr_t;
     /*!
      * \brief Message object
      */
-    LIBBLIGHT_EXPORT typedef struct message_t{
+    typedef struct message_t{
         /*!
          * \brief Message header
          */
@@ -383,7 +301,7 @@ namespace Blight{
     /*!
      * \brief Repaint message data
      */
-    LIBBLIGHT_EXPORT typedef struct repaint_t{
+    typedef struct repaint_t{
         /*!
          * \brief x X offset
          */
@@ -422,7 +340,7 @@ namespace Blight{
     /*!
      * \brief Move message data
      */
-    LIBBLIGHT_EXPORT typedef struct move_t{
+    typedef struct move_t{
         /*!
          * \brief identifier Surface identifier
          */
@@ -445,7 +363,7 @@ namespace Blight{
     /*!
      * \brief Surface information message data
      */
-    LIBBLIGHT_EXPORT typedef struct surface_info_t{
+    typedef struct surface_info_t{
         /*!
          * \brief x X coordinate
          */

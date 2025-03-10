@@ -61,7 +61,7 @@ namespace Blight {
     /*!
      * \brief Shared pointer of a DBusReply
      */
-    LIBBLIGHT_EXPORT typedef std::shared_ptr<DBusReply> dbus_reply_t;
+    typedef std::shared_ptr<DBusReply> dbus_reply_t;
     /*!
      * \brief An exception raised by DBus
      * \sa Blight::DBus::DBus(bool)

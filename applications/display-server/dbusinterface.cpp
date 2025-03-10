@@ -413,7 +413,7 @@ void DbusInterface::exitExclusiveMode(QDBusMessage message){
     guiThread->enqueue(
         nullptr,
         EPFrameBuffer::instance()->framebuffer()->rect(),
-        Blight::HighQualityGrayscale,
+        Blight::WaveformMode::HighQualityGrayscale,
         0,
         true
     );
@@ -430,7 +430,7 @@ void DbusInterface::exclusiveModeRepaint(QDBusMessage message){
 #ifdef EPAPER
     guiThread->sendUpdate(
         EPFrameBuffer::instance()->framebuffer()->rect(),
-        Blight::HighQualityGrayscale,
+        Blight::WaveformMode::HighQualityGrayscale,
         0
     );
 #endif

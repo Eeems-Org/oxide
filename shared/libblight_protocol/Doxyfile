@@ -1,0 +1,25 @@
+PROJECT_NAME = libblight
+GENERATE_QHP = YES
+GENERATE_LATEX = NO
+QCH_FILE = libblight.qch
+QHP_NAMESPACE = libblight
+QHP_VIRTUAL_FOLDER = doc
+QHG_LOCATION = qhelpgenerator
+GENERATE_TREEVIEW = YES
+HTML_EXTRA_STYLESHEET = ../doxygen-awesome-css/doxygen-awesome.css \
+                        ../doxygen-awesome-css/doxygen-awesome-sidebar-only.css \
+                        ../doxygen-awesome-css/doxygen-awesome-sidebar-only-darkmode-toggle.css
+HTML_EXTRA_FILES = ../doxygen-awesome-css/doxygen-awesome-darkmode-toggle.js \
+                   ../doxygen-awesome-css/doxygen-awesome-fragment-copy-button.js \
+                   ../doxygen-awesome-css/doxygen-awesome-paragraph-link.js
+HTML_HEADER = ../doxygen-header.html
+PREDEFINED += DOXYGEN_SHOULD_SKIP_THIS
+PREDEFINED += IN_DOXYGEN
+HIDE_UNDOC_MEMBERS = YES
+HIDE_UNDOC_CLASSES = YES
+MACRO_EXPANSION = YES
+EXAMPLE_PATH = examples
+GENERATE_TAGFILE = html/libblight.tag
+ALLEXTERNALS = Yes
+ALIASES = "accessors=\par Accessors:^^"
+ALIASES += "notifier=\par Notifier signal:^^"
