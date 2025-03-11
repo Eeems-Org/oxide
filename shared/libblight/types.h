@@ -44,7 +44,7 @@ namespace Blight{
     /*!
      * \brief Generic data pointer
      */
-    typedef unsigned char* data_t;
+    typedef BlightProtocol::blight_data_t data_t;
     /*!
      * \brief Shared pointer to generic data
      */
@@ -200,19 +200,7 @@ namespace Blight{
     /*!
      * \brief Message header
      */
-    typedef struct header_t{
-        /*!
-         * \brief Message type
-         */
-        MessageType type;
-        /*!
-         * \brief Unique identifier for this message
-         */
-        unsigned int ackid;
-        /*!
-         * \brief Size of data
-         */
-        unsigned long size;
+    typedef struct header_t : public BlightProtocol::blight_header_t{
         /*!
          * \brief Get a header from data
          * \param data Data
@@ -301,35 +289,7 @@ namespace Blight{
     /*!
      * \brief Repaint message data
      */
-    typedef struct repaint_t{
-        /*!
-         * \brief x X offset
-         */
-        int x;
-        /*!
-         * \brief y Y offset
-         */
-        int y;
-        /*!
-         * \brief width Width
-         */
-        int width;
-        /*!
-         * \brief height Height
-         */
-        int height;
-        /*!
-         * \brief waveform Waveform to use
-         */
-        WaveformMode waveform;
-        /*!
-         * \brief marker Marker to use
-         */
-        unsigned int marker;
-        /*!
-         * \brief identifier Surface identifier
-         */
-        surface_id_t identifier;
+    typedef struct repaint_t : public BlightProtocol::blight_packet_repaint_t{
         /*!
          * \brief Get the repaint message data from a message
          * \param message Message
@@ -340,19 +300,7 @@ namespace Blight{
     /*!
      * \brief Move message data
      */
-    typedef struct move_t{
-        /*!
-         * \brief identifier Surface identifier
-         */
-        surface_id_t identifier;
-        /*!
-         * \brief x X coordinate
-         */
-        int x;
-        /*!
-         * \brief y Y coordinate
-         */
-        int y;
+    typedef struct move_t : public BlightProtocol::blight_packet_move_t {
         /*!
          * \brief Get the move message data from a message
          * \param message Message
@@ -363,31 +311,7 @@ namespace Blight{
     /*!
      * \brief Surface information message data
      */
-    typedef struct surface_info_t{
-        /*!
-         * \brief x X coordinate
-         */
-        int x;
-        /*!
-         * \brief y Y coordiante
-         */
-        int y;
-        /*!
-         * \brief width Width
-         */
-        int width;
-        /*!
-         * \brief height Height
-         */
-        int height;
-        /*!
-         * \brief stride Bytes per line
-         */
-        int stride;
-        /*!
-         * \brief format Image format
-         */
-        Format format;
+    typedef struct surface_info_t : public BlightProtocol::blight_packet_surface_info_t {
         /*!
          * \brief Get the surface information message data from data
          * \param data Data

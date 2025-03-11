@@ -20,4 +20,13 @@ void test_c(){
     assert(res > 0);
     close(res);
     blight_bus_deref(bus);
+    fprintf(stderr, "Testing blight_header_from_data\n");
+    blight_header_t x;
+    x.type = 1;
+    x.ackid = 1;
+    x.size = 1;
+    blight_header_t header = blight_header_from_data((blight_data_t)&x);
+    assert(header.type == 1);
+    assert(header.ackid == 1);
+    assert(header.size == 1);
 }

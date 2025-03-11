@@ -421,12 +421,14 @@ void Connection::readSocket(){
                 auto surface = surfaces[identifier];
                 auto geometry = surface->geometry();
                 ack_data = (Blight::data_t)new Blight::surface_info_t{
-                    .x = geometry.x(),
-                    .y = geometry.y(),
-                    .width = geometry.width(),
-                    .height = geometry.height(),
-                    .stride = surface->stride(),
-                    .format = (Blight::Format)surface->format(),
+                    {
+                      .x = geometry.x(),
+                      .y = geometry.y(),
+                      .width = geometry.width(),
+                      .height = geometry.height(),
+                      .stride = surface->stride(),
+                      .format = (Blight::Format)surface->format(),
+                    }
                 };
                 ack_size = sizeof(Blight::surface_info_t);
                 break;
@@ -596,9 +598,11 @@ void Connection::ping(){
     }
     if(!isStopped()){
         Blight::header_t ping{
-            .type = Blight::MessageType::Ping,
-            .ackid = ++pingId,
-            .size = 0
+           {
+             .type = Blight::MessageType::Ping,
+             .ackid = ++pingId,
+             .size = 0
+           }
         };
         if(!Blight::send_blocking(
             m_serverFd,

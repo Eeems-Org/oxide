@@ -8,6 +8,7 @@
 #include <mutex>
 #include <sys/prctl.h>
 #include <cstring>
+#include <linux/socket.h>
 
 #define XCONCATENATE(x, y) x ## y
 #define CONCATENATE(x, y) XCONCATENATE(x, y)
@@ -83,7 +84,7 @@ char** strv_free(char** v) {
     (err.message != nullptr ? err.message : std::strerror(-return_value))
 
 #include <iostream>
-
+using namespace BlightProtocol;
 extern "C" {
     int blight_bus_connect_system(blight_bus** bus){
         return sd_bus_default_system(bus);
@@ -130,7 +131,7 @@ extern "C" {
             errno = EAGAIN;
             return -EAGAIN;
         }
-        sd_bus_error error = SD_BUS_ERROR_NULL;
+        sd_bus_error error{SD_BUS_ERROR_NULL};
         sd_bus_message* message = nullptr;
         int res = sd_bus_call_method(
             bus,
@@ -181,7 +182,7 @@ extern "C" {
             errno = EAGAIN;
             return -EAGAIN;
         }
-        sd_bus_error error = SD_BUS_ERROR_NULL;
+        sd_bus_error error{SD_BUS_ERROR_NULL};
         sd_bus_message* message = nullptr;
         int res = sd_bus_call_method(
             bus,
@@ -226,5 +227,17 @@ extern "C" {
             errno = -dfd;
         }
         return dfd;
+    }
+    blight_header_t blight_header_from_data(blight_data_t data){
+        blight_header_t header;
+        memcpy(&header, data, sizeof(blight_header_t));
+        return header;
+    }
+    blight_message_t blight_message_from_data(blight_data_t data){
+        blight_message_t message;
+        message.header = blight_header_from_data(data);
+        message.data = new unsigned char[message.header.size];
+        memcpy(message.data, &data[sizeof(message.header)], message.header.size);
+        return message;
     }
 }

@@ -26,7 +26,7 @@ namespace BlightProtocol {
     /*!
      * \brief Image format of a buffer
      */
-    enum BlightImageFormat{
+    typedef enum {
         Format_Invalid,
         Format_Mono,
         Format_MonoLSB,
@@ -57,12 +57,12 @@ namespace BlightProtocol {
         Format_RGBA64_Premultiplied,
         Format_Grayscale16,
         Format_BGR888,
-    };
+    } BlightImageFormat;
 
     /*!
      * \brief Possible waveforms
      */
-    enum BlightWaveform {
+    typedef enum {
         INIT = 0,
         DU = 1,
         GC16 = 2,
@@ -73,12 +73,12 @@ namespace BlightProtocol {
         DU4 = 7,
         UNKNOWN = 8,
         INIT2 = 9
-    };
+    } BlightWaveform;
 
     /*!
      * \brief Waveform to use for a repaint
      */
-    enum BlightWaveformMode{
+    typedef enum{
 #ifdef __cplusplus
         Initialize = BlightWaveform::INIT,
         Mono = BlightWaveform::DU,
@@ -92,7 +92,7 @@ namespace BlightProtocol {
         HighQualityGrayscale = 2,
         Highlight = 8
 #endif
-    };
+    } BlightWaveformMode;
 
     /*!
      * \brief Size type used by the protocol
@@ -138,7 +138,7 @@ namespace BlightProtocol {
     /*!
      * \brief Message type
      */
-    enum BlightMessageType{
+    typedef enum {
         Invalid,
         Ack,
         Ping,
@@ -151,9 +151,123 @@ namespace BlightProtocol {
         Lower,
         Wait,
         Focus
-    };
+    } BlightMessageType;
+    /*!
+     * \brief Generic data pointer
+     */
+    typedef unsigned char* blight_data_t;
+    /*!
+     * \brief Message header
+     */
+    typedef struct blight_header_t{
+        /*!
+         * \brief Message type
+         */
+        BlightMessageType type;
+        /*!
+         * \brief Unique identifier for this message
+         */
+        unsigned int ackid;
+        /*!
+         * \brief Size of data
+         */
+        unsigned long size;
+    } blight_header_t;
+    /*!
+     * \brief Message object
+     */
+    typedef struct blight_message_t{
+        /*!
+         * \brief Message header
+         */
+        blight_header_t header;
+        /*!
+         * \brief Message data
+         */
+        blight_data_t data;
+    } blight_message_t;
+    /*!
+     * \brief Repaint message data
+     */
+    typedef struct blight_packet_repaint_t{
+        /*!
+         * \brief x X offset
+         */
+        int x;
+        /*!
+         * \brief y Y offset
+         */
+        int y;
+        /*!
+         * \brief width Width
+         */
+        int width;
+        /*!
+         * \brief height Height
+         */
+        int height;
+        /*!
+         * \brief waveform Waveform to use
+         */
+        BlightWaveformMode waveform;
+        /*!
+         * \brief marker Marker to use
+         */
+        unsigned int marker;
+        /*!
+         * \brief identifier Surface identifier
+         */
+        blight_surface_id_t identifier;
+    } blight_packet_repaint_t;
+    /*!
+     * \brief Move message data
+     */
+    typedef struct blight_packet_move_t{
+        /*!
+         * \brief identifier Surface identifier
+         */
+        blight_surface_id_t identifier;
+        /*!
+         * \brief x X coordinate
+         */
+        int x;
+        /*!
+         * \brief y Y coordinate
+         */
+        int y;
+    } blight_packet_move_t;
+    /*!
+     * \brief Surface information message data
+     */
+    typedef struct blight_packet_surface_info_t{
+        /*!
+         * \brief x X coordinate
+         */
+        int x;
+        /*!
+         * \brief y Y coordiante
+         */
+        int y;
+        /*!
+         * \brief width Width
+         */
+        int width;
+        /*!
+         * \brief height Height
+         */
+        int height;
+        /*!
+         * \brief stride Bytes per line
+         */
+        int stride;
+        /*!
+         * \brief format Image format
+         */
+        BlightImageFormat format;
+    } blight_packet_surface_info_t;
 #ifdef __cplusplus
 }
+using namespace BlightProtocol;
 extern "C" {
 #endif
     typedef sd_bus blight_bus;
@@ -192,6 +306,8 @@ extern "C" {
      * \return
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_service_input_open(blight_bus* bus);
+    LIBBLIGHT_PROTOCOL_EXPORT blight_header_t blight_header_from_data(blight_data_t data);
+    LIBBLIGHT_PROTOCOL_EXPORT blight_message_t blight_message_from_data(blight_data_t data);
 #ifdef __cplusplus
 }
 #endif
