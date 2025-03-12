@@ -170,6 +170,8 @@ liboxide() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/liboxide.so*
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libqsgepaper.so*
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight.so*
+        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight_protocol.so*
+
     }
 }
 
@@ -183,6 +185,10 @@ liboxide-dev() {
         install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/epframebuffer.h
         install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/liboxide.h
         cp -ar "$srcdir"/release/opt/include/liboxide/ "$pkgdir"/opt/include/
+        install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/libblight.h
+        cp -ar "$srcdir"/release/opt/include/libblight/ "$pkgdir"/opt/include/
+        install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/libblight_protocol.h
+        cp -ar "$srcdir"/release/opt/include/libblight_protocol/ "$pkgdir"/opt/include/
     }
 }
 
@@ -205,6 +211,7 @@ oxide-tests() {
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/libblight
+        install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/libblight_protocol
         install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/liboxide
     }
 }
