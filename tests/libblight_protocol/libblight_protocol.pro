@@ -23,4 +23,5 @@ HEADERS += \
     test.h
 
 include(../../qmake/common.pri)
+include(../../qmake/libblight.pri)
 include(../../qmake/libblight_protocol.pri)
