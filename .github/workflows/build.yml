@@ -59,9 +59,9 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
       - name: Install toltecmk
-        run: pip install toltecmk requests==2.26.0
+        run: pip install toltecmk
       - name: Build packages
         run: make package
         timeout-minutes: 15

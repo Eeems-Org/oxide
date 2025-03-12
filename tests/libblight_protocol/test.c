@@ -29,4 +29,11 @@ void test_c(){
     assert(header.type == 1);
     assert(header.ackid == 1);
     assert(header.size == 1);
+    x.type = 0;
+    x.ackid = 0;
+    x.size = 0;
+    blight_header_t header2 = blight_header_from_data((blight_data_t)&x);
+    assert(header2.type == 0);
+    assert(header2.ackid == 0);
+    assert(header2.size == 0);
 }
