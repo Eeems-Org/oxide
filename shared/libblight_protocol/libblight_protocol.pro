@@ -26,7 +26,8 @@ for(h, HEADERS){
 }
 libblight_libblight_protocol_h.commands = \
     mkdir -p include/libblight_protocol && \
-    echo $$HEADERS | xargs -rn1 | xargs -rI {} cp $$PWD/{} include/libblight_protocol/
+    echo $$HEADERS | xargs -rn1 | xargs -rI {} cp $$PWD/{} include/libblight_protocol/ && \
+    echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename \"{}\" .xml | xargs -rI {} cp $$OUT_PWD/\"{}\"_interface.h include/libblight_protocol/
 
 libblight_protocol_h.target = include/libblight_protocol.h
 libblight_protocol_h.depends = libblight_libblight_protocol_h
@@ -34,7 +35,7 @@ libblight_protocol_h.commands = \
     echo \\$$LITERAL_HASH"pragma once" > include/libblight_protocol.h && \
     echo \"$$LITERAL_HASH"include \\\"libblight_protocol/libblight_protocol.h\\\"\"" >> include/libblight_protocol.h
 
-libblight__protocolh_install.files = \
+libblight_protocol_h_install.files = \
     include/libblight_protocol.h \
     include/libblight_protocol
 libblight_protocol_h_install.depends = libblight_protocol_h
