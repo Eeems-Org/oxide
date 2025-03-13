@@ -49,14 +49,12 @@ int main(int argc, char* argv[]){
     QCoreApplication app(argc, argv);
     app.setAttribute(Qt::AA_Use96Dpi, true);
     QTimer::singleShot(0, [&app, argc, argv]{
-        if(QProcess::execute("systemd-detect-virt", QStringList() << "--quiet") != 0){
+        if(getenv("SKIP_C_TESTS") == nullptr){
             int res = run_c_tests(&app);
             if(res){
                 app.exit(res);
                 return;
             }
-        }else{
-            qDebug() << "Skipping C tests, we are in a VM...";
         }
         app.exit(AutoTest::run(argc, argv));
     });
