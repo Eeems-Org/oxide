@@ -306,7 +306,17 @@ extern "C" {
      * \return
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_service_input_open(blight_bus* bus);
+    /*!
+     * \brief blight_header_from_data
+     * \param data
+     * \return
+     */
     LIBBLIGHT_PROTOCOL_EXPORT blight_header_t blight_header_from_data(blight_data_t data);
+    /*!
+     * \brief blight_message_from_data
+     * \param data
+     * \return
+     */
     LIBBLIGHT_PROTOCOL_EXPORT blight_message_t blight_message_from_data(blight_data_t data);
 #ifdef __cplusplus
 }

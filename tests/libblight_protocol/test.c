@@ -1,6 +1,7 @@
 #include <libblight_protocol.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 void test_c(){
@@ -36,4 +37,16 @@ void test_c(){
     assert(header2.type == 0);
     assert(header2.ackid == 0);
     assert(header2.size == 0);
+    fprintf(stderr, "Testing blight_message_from_data\n");
+    blight_data_t data = malloc(sizeof(blight_header_t) + 1);
+    memcpy(data, &header, sizeof(blight_header_t));
+    data[sizeof(blight_header_t)] = 'a';
+    blight_message_t message = blight_message_from_data(data);
+    assert(message.header.type == 1);
+    assert(message.header.ackid == 1);
+    assert(message.header.size == 1);
+    assert(message.data != NULL);
+    assert(*message.data == 'a');
+    free(message.data);
+    free(data);
 }

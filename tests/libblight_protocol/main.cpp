@@ -49,7 +49,7 @@ int main(int argc, char* argv[]){
     QCoreApplication app(argc, argv);
     app.setAttribute(Qt::AA_Use96Dpi, true);
     QTimer::singleShot(0, [&app, argc, argv]{
-        if(!QProcess::execute("systemd-detect-virt", QStringList() << "--quiet")){
+        if(QProcess::execute("systemd-detect-virt", QStringList() << "--quiet") != 0){
             int res = run_c_tests(&app);
             if(res){
                 app.exit(res);
