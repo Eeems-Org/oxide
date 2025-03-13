@@ -267,7 +267,6 @@ namespace BlightProtocol {
     } blight_packet_surface_info_t;
 #ifdef __cplusplus
 }
-using namespace BlightProtocol;
 extern "C" {
 #endif
     typedef sd_bus blight_bus;
@@ -311,13 +310,25 @@ extern "C" {
      * \param data
      * \return
      */
+#ifdef __cplusplus
+    LIBBLIGHT_PROTOCOL_EXPORT BlightProtocol::blight_header_t blight_header_from_data(
+      BlightProtocol::blight_data_t data
+    );
+#else
     LIBBLIGHT_PROTOCOL_EXPORT blight_header_t blight_header_from_data(blight_data_t data);
+#endif
     /*!
      * \brief blight_message_from_data
      * \param data
      * \return
      */
+#ifdef __cplusplus
+    LIBBLIGHT_PROTOCOL_EXPORT BlightProtocol::blight_message_t blight_message_from_data(
+      BlightProtocol::blight_data_t data
+    );
+#else
     LIBBLIGHT_PROTOCOL_EXPORT blight_message_t blight_message_from_data(blight_data_t data);
+#endif
 #ifdef __cplusplus
 }
 #endif
