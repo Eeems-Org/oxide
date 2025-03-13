@@ -23,6 +23,7 @@ int main(int argc, char* argv[]){
 #endif
         );
         if(!dbus->has_service(BLIGHT_SERVICE)){
+            blight.setEnvironment(QStringList() << "RM2FB_ACTIVE=1");
             blight.start("/opt/bin/blight", QStringList());
             qDebug() << "Waiting for blight to start...";
             if(!blight.waitForStarted()){
