@@ -97,7 +97,7 @@ namespace BlightProtocol {
     /*!
      * \brief Size type used by the protocol
      */
-    typedef unsigned int blight_size_t;
+    typedef uint32_t blight_size_t;
 
     /*!
      * \brief Surface identifier
@@ -171,7 +171,7 @@ namespace BlightProtocol {
         /*!
          * \brief Size of data
          */
-        unsigned long size;
+        uint32_t size;
     } blight_header_t;
     /*!
      * \brief Message object
