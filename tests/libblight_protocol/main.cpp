@@ -25,10 +25,18 @@ int main(int argc, char* argv[]){
         if(!dbus->has_service(BLIGHT_SERVICE)){
             blight.start("/opt/bin/blight", QStringList());
             qDebug() << "Waiting for blight to start...";
-            blight.waitForStarted();
+            if(!blight.waitForStarted()){
+                qDebug() << "Failed to start: " << blight.exitCode();
+                app.exit(1);
+            }
             qDebug() << "Waiting for blight dbus service...";
             while(!dbus->has_service(BLIGHT_SERVICE)){
-                app.thread()->sleep(1);
+                app.processEvents(QEventLoop::AllEvents, 1000);
+                if(blight.state() == QProcess::NotRunning){
+                    qDebug() << "Blight failed to start:" << blight.exitCode();
+                    app.exit(blight.exitCode() || 1);
+                    return;
+                }
             }
         }
         delete dbus;
