@@ -9,11 +9,15 @@ CONFIG += create_prl
 CONFIG += no_install_prl
 
 SOURCES += \
-    libblight_protocol.cpp
+    _debug.cpp \
+    libblight_protocol.cpp \
+    socket.cpp
 
 HEADERS += \
+    _debug.h \
     libblight_protocol.h \
-    libblight_protocol_global.h
+    libblight_protocol_global.h \
+    socket.h
 
 LIBS += -lsystemd
 

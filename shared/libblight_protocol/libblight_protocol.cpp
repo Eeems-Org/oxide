@@ -1,14 +1,11 @@
 #include "libblight_protocol.h"
+#include "socket.h"
+#include "_debug.h"
 
-#include <systemd/sd-journal.h>
-#include <unistd.h>
-#include <linux/prctl.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <mutex>
-#include <sys/prctl.h>
 #include <cstring>
 #include <linux/socket.h>
+#include <unistd.h>
 
 #define XCONCATENATE(x, y) x ## y
 #define CONCATENATE(x, y) XCONCATENATE(x, y)
@@ -16,59 +13,6 @@
 #define UNIQ __COUNTER__
 #define _STRV_FOREACH(s, l, i) for(typeof(*(l)) *s, *i = (l); (s = i) && *i; i++)
 #define STRV_FOREACH(s, l) _STRV_FOREACH(s, l, UNIQ_T(i, UNIQ))
-
-static std::mutex __log_mutex;
-
-void __printf_header(int priority){
-    std::string level;
-    switch(priority){
-        case LOG_INFO:
-            level = "Info";
-            break;
-        case LOG_WARNING:
-            level = "Warning";
-            break;
-        case LOG_CRIT:
-            level = "Critical";
-            break;
-        default:
-            level = "Debug";
-    }
-    char name[16];
-    prctl(PR_GET_NAME, name);
-    auto selfpath = realpath("/proc/self/exe", NULL);
-    fprintf(
-        stderr,
-        "[%i:%i:%i %s - %s] %s: ",
-        getpgrp(),
-        getpid(),
-        gettid(),
-        selfpath,
-        name,
-        level.c_str()
-    );
-    free(selfpath);
-}
-
-void __printf_footer(const char* file, unsigned int line, const char* func){
-    fprintf(
-        stderr,
-        " (%s:%u, %s)\n",
-        file,
-        line,
-        func
-    );
-}
-
-#define _PRINTF(priority, ...) \
-    __log_mutex.lock(); \
-    __printf_header(priority); \
-    fprintf(stderr, __VA_ARGS__); \
-    __printf_footer(__FILE__, __LINE__, __PRETTY_FUNCTION__); \
-    __log_mutex.unlock(); \
-
-
-#define _WARN(...) _PRINTF(LOG_WARNING, __VA_ARGS__)
 
 char** strv_free(char** v) {
     if(!v){
@@ -83,7 +27,6 @@ char** strv_free(char** v) {
 #define error_message(err, return_value) \
     (err.message != nullptr ? err.message : std::strerror(-return_value))
 
-#include <iostream>
 using namespace BlightProtocol;
 extern "C" {
     int blight_bus_connect_system(blight_bus** bus){
@@ -175,6 +118,10 @@ extern "C" {
             );
             errno = -dfd;
         }
+        if(message != nullptr){
+            sd_bus_message_unref(message);
+        }
+        sd_bus_error_free(&error);
         return dfd;
     }
     int blight_service_input_open(blight_bus* bus){
@@ -226,6 +173,10 @@ extern "C" {
             );
             errno = -dfd;
         }
+        if(message != nullptr){
+            sd_bus_message_unref(message);
+        }
+        sd_bus_error_free(&error);
         return dfd;
     }
     blight_header_t blight_header_from_data(blight_data_t data){
@@ -233,11 +184,96 @@ extern "C" {
         memcpy(&header, data, sizeof(blight_header_t));
         return header;
     }
-    blight_message_t blight_message_from_data(blight_data_t data){
-        blight_message_t message;
-        message.header = blight_header_from_data(data);
-        message.data = new unsigned char[message.header.size];
-        memcpy(message.data, &data[sizeof(message.header)], message.header.size);
+    blight_message_t* blight_message_from_data(blight_data_t data){
+        auto message = new blight_message_t;
+        message->header = blight_header_from_data(data);
+        if(message->header.size){
+            message->data = new unsigned char[message->header.size];
+            memcpy(message->data, &data[sizeof(message->header)], message->header.size);
+        }else{
+            message->data = nullptr;
+        }
         return message;
+    }
+    int blight_message_from_socket(int fd, blight_message_t** message){
+        auto maybe = recv(fd, sizeof(blight_header_t));
+        if(!maybe.has_value()){
+            if(errno != EAGAIN && errno != EINTR){
+                _WARN(
+                    "Failed to read connection message header: %s socket=%d",
+                    std::strerror(errno),
+                    fd
+                );
+            }
+            return -errno;
+        }
+        auto m = new blight_message_t{
+            .header = blight_header_t{
+              .type = BlightMessageType::Invalid,
+              .ackid = 0,
+              .size = 0
+            },
+            .data = nullptr
+        };
+        memcpy(&m->header, maybe.value(), sizeof(blight_header_t));
+        delete[] maybe.value();
+        if(!m->header.size){
+            *message = m;
+            return 0;
+        }
+        maybe = recv_blocking(fd, m->header.size);
+        if(!maybe.has_value()){
+            _WARN(
+                "Failed to read connection message data: %s "
+                "socket=%d, "
+                "ackid=%u, "
+                "type=%d, "
+                "size=%ld",
+                std::strerror(errno),
+                fd,
+                m->header.ackid,
+                m->header.type,
+                (long int)m->header.size
+            );
+            return -errno;
+        }
+        *message = m;
+        return m->header.size;
+    }
+    void blight_message_deref(blight_message_t* message){
+        if(message->data != nullptr){
+            if(!message->header.size){
+                _WARN("Freeing blight_message_t with a data pointer but a size of 0");
+            }
+            delete message->data;
+        }
+        delete message;
+    }
+    int blight_send_message(
+        int fd,
+        BlightMessageType type,
+        unsigned int ackid,
+        uint32_t size,
+        blight_data_t data
+    ){
+        if(size && data == nullptr){
+            _WARN("Data missing when size is not zero");
+            return -EINVAL;
+        }
+        blight_header_t header{
+            .type = type,
+            .ackid = ackid,
+            .size = size
+        };
+        _WARN("%d %d %d", type, ackid, size);
+        if(!send_blocking(fd, (blight_data_t)&header, sizeof(blight_header_t))){
+            _WARN("Failed to write connection message header: %s", std::strerror(errno));
+            return -errno;
+        }
+        if(size && !send_blocking(fd, data, size)){
+            _WARN("Failed to write connection message data: %s", std::strerror(errno));
+            return -errno;
+        }
+        return size;
     }
 }

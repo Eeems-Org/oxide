@@ -1,4 +1,6 @@
 /*!
+ * \addtogroup BlightProtocol
+ * @{
  * \file
  */
 #pragma once
@@ -267,6 +269,10 @@ namespace BlightProtocol {
     } blight_packet_surface_info_t;
 #ifdef __cplusplus
 }
+#define blight_data_t BlightProtocol::blight_data_t
+#define blight_message_t BlightProtocol::blight_message_t
+#define blight_header_t BlightProtocol::blight_header_t
+#define BlightMessageType BlightProtocol::BlightMessageType
 extern "C" {
 #endif
     typedef sd_bus blight_bus;
@@ -310,25 +316,44 @@ extern "C" {
      * \param data
      * \return
      */
-#ifdef __cplusplus
-    LIBBLIGHT_PROTOCOL_EXPORT BlightProtocol::blight_header_t blight_header_from_data(
-      BlightProtocol::blight_data_t data
-    );
-#else
     LIBBLIGHT_PROTOCOL_EXPORT blight_header_t blight_header_from_data(blight_data_t data);
-#endif
     /*!
      * \brief blight_message_from_data
      * \param data
      * \return
      */
-#ifdef __cplusplus
-    LIBBLIGHT_PROTOCOL_EXPORT BlightProtocol::blight_message_t blight_message_from_data(
-      BlightProtocol::blight_data_t data
+    LIBBLIGHT_PROTOCOL_EXPORT blight_message_t* blight_message_from_data(blight_data_t data);
+    /*!
+     * \brief blight_message_from_socket
+     * \param fd
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_message_from_socket(int fd, blight_message_t** message);
+    /*!
+     * \brief blight_message_deref
+     * \param message
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT void blight_message_deref(blight_message_t* message);
+    /*!
+     * \brief blight_send_message
+     * \param fd
+     * \param type
+     * \param size
+     * \param data
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_send_message(
+        int fd,
+        BlightMessageType type,
+        unsigned int ackid,
+        uint32_t size,
+        blight_data_t data
     );
-#else
-    LIBBLIGHT_PROTOCOL_EXPORT blight_message_t blight_message_from_data(blight_data_t data);
-#endif
 #ifdef __cplusplus
 }
+#undef blight_data_t
+#undef blight_message_t
+#undef blight_header_t
+#undef BlightMessageType
 #endif
+/*! @} */
