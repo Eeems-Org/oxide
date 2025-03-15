@@ -158,6 +158,85 @@ void test_blight_add_surface(blight_buf_t* buf){
     assert(identifier > 0);
     blight_buffer_deref(buf);
 }
+void test_blight_cast_to_repaint_packet(){
+    assert(blight_cast_to_repaint_packet(NULL) == NULL);
+    assert(errno == EINVAL);
+    blight_message_t message;
+    blight_header_t header;
+    header.type = Repaint;
+    header.ackid = 1;
+    header.size = 0;
+    message.header = header;
+    message.data = NULL;
+    assert(blight_cast_to_repaint_packet(&message) == NULL);
+    assert(errno == ENODATA);
+    blight_packet_repaint_t data;
+    message.data = (blight_data_t)&data;
+    assert(blight_cast_to_repaint_packet(&message) == NULL);
+    assert(errno == EMSGSIZE);
+    message.header.size = sizeof(blight_packet_repaint_t);
+    blight_packet_repaint_t* packet = blight_cast_to_repaint_packet(&message);
+    assert(errno == 0);
+    assert(packet != NULL);
+    assert(data.x == packet->x);
+    assert(data.y == packet->y);
+    assert(data.width == packet->width);
+    assert(data.height == packet->height);
+    assert(data.waveform == packet->waveform);
+    assert(data.marker == packet->marker);
+    assert(data.identifier == packet->identifier);
+}
+void test_blight_cast_to_move_packet(){
+    assert(blight_cast_to_move_packet(NULL) == NULL);
+    assert(errno == EINVAL);
+    blight_message_t message;
+    blight_header_t header;
+    header.type = Repaint;
+    header.ackid = 1;
+    header.size = 0;
+    message.header = header;
+    message.data = NULL;
+    assert(blight_cast_to_move_packet(&message) == NULL);
+    assert(errno == ENODATA);
+    blight_packet_move_t data;
+    message.data = (blight_data_t)&data;
+    assert(blight_cast_to_move_packet(&message) == NULL);
+    assert(errno == EMSGSIZE);
+    message.header.size = sizeof(blight_packet_move_t);
+    blight_packet_move_t* packet = blight_cast_to_move_packet(&message);
+    assert(errno == 0);
+    assert(packet != NULL);
+    assert(data.identifier == packet->identifier);
+    assert(data.x == packet->x);
+    assert(data.y == packet->y);
+}
+void test_blight_cast_to_surface_info_packet(){
+    assert(blight_cast_to_surface_info_packet(NULL) == NULL);
+    assert(errno == EINVAL);
+    blight_message_t message;
+    blight_header_t header;
+    header.type = Repaint;
+    header.ackid = 1;
+    header.size = 0;
+    message.header = header;
+    message.data = NULL;
+    assert(blight_cast_to_surface_info_packet(&message) == NULL);
+    assert(errno == ENODATA);
+    blight_packet_surface_info_t data;
+    message.data = (blight_data_t)&data;
+    assert(blight_cast_to_surface_info_packet(&message) == NULL);
+    assert(errno == EMSGSIZE);
+    message.header.size = sizeof(blight_packet_surface_info_t);
+    blight_packet_surface_info_t* packet = blight_cast_to_surface_info_packet(&message);
+    assert(errno == 0);
+    assert(packet != NULL);
+    assert(data.x == packet->x);
+    assert(data.y == packet->y);
+    assert(data.width == packet->width);
+    assert(data.height == packet->height);
+    assert(data.stride == packet->stride);
+    assert(data.format == packet->format);
+}
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclobbered"
@@ -168,7 +247,7 @@ int test_c(){
     TEST(test_blight_message_from_data);
     TEST(test_blight_bus_connect_system);
     TEST(test_blight_service_available);
-    TEST_EXPR("test_blight_service_open", fd = test_blight_service_open());
+    TEST_EXPR(test_blight_service_open, fd = test_blight_service_open());
     TEST(test_blight_service_input_open);
     int pingid = 0;
     TEST_EXPR(test_blight_message_from_socket, pingid = test_blight_message_from_socket(fd));
@@ -176,6 +255,9 @@ int test_c(){
     blight_buf_t* buf = NULL;
     TEST_EXPR(test_blight_create_buffer, buf = test_blight_create_buffer());
     TEST_EXPR(test_blight_add_surface, test_blight_add_surface(buf));
+    TEST(test_blight_cast_to_repaint_packet);
+    TEST(test_blight_cast_to_move_packet);
+    TEST(test_blight_cast_to_surface_info_packet);
     fprintf(
         stderr,
         "Totals: %d passed, %d failed, 0 skipped, 0 blacklisted\n",

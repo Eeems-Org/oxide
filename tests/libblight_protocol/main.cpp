@@ -55,7 +55,7 @@ int main(int argc, char* argv[]){
     QThread::currentThread()->setObjectName("main");
     QCoreApplication app(argc, argv);
     app.setAttribute(Qt::AA_Use96Dpi, true);
-    QTimer::singleShot(0, [&app, argc, argv]{
+    QTimer::singleShot(0, [&app, &argc, &argv]{
         int res = 0;
         if(getenv("SKIP_C_TESTS") == nullptr){
             res = run_c_tests(&app);

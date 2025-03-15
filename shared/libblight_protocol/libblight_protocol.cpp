@@ -428,4 +428,58 @@ extern "C" {
         }
         return identifier;
     }
+    blight_packet_repaint_t* blight_cast_to_repaint_packet(
+        blight_message_t* message
+    ){
+        if(message == nullptr){
+            errno = EINVAL;
+            return nullptr;
+        }
+        if(message->data == nullptr){
+            errno = ENODATA;
+            return nullptr;
+        }
+        if(message->header.size != sizeof(blight_packet_repaint_t)){
+            errno = EMSGSIZE;
+            return nullptr;
+        }
+        errno = 0;
+        return (blight_packet_repaint_t*)message->data;
+    }
+    blight_packet_move_t* blight_cast_to_move_packet(
+        blight_message_t* message
+    ){
+        if(message == nullptr){
+            errno = EINVAL;
+            return nullptr;
+        }
+        if(message->data == nullptr){
+            errno = ENODATA;
+            return nullptr;
+        }
+        if(message->header.size != sizeof(blight_packet_move_t)){
+            errno = EMSGSIZE;
+            return nullptr;
+        }
+        errno = 0;
+        return (blight_packet_move_t*)message->data;
+    }
+    blight_packet_surface_info_t* blight_cast_to_surface_info_packet(
+        blight_message_t* message
+    ){
+        if(message == nullptr){
+            errno = EINVAL;
+            return nullptr;
+        }
+        if(message->data == nullptr){
+            errno = ENODATA;
+            return nullptr;
+        }
+        if(message->header.size != sizeof(blight_packet_surface_info_t)){
+            errno = EMSGSIZE;
+            return nullptr;
+        }
+        errno = 0;
+        return (blight_packet_surface_info_t*)message->data;
+    }
 }

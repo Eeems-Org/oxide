@@ -19,7 +19,6 @@ namespace Blight{
     static std::atomic<unsigned int> ackid;
     static moodycamel::ConcurrentQueue<ackid_ptr_t> acks;
     ackid_t::ackid_t(
-        Connection* connection,
         unsigned int ackid,
         unsigned int data_size,
         data_t data
@@ -146,7 +145,7 @@ namespace Blight{
         unsigned int __ackid
     ){
         auto _ackid = __ackid ? __ackid : ++ackid;
-        auto ack = ackid_ptr_t(new ackid_t(this, _ackid));
+        auto ack = ackid_ptr_t(new ackid_t(_ackid));
         if(type != MessageType::Ack){
             // Adding acks to queue to make sure it's there by the time a response
             // comes back from the server

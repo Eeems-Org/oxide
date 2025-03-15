@@ -38,7 +38,6 @@ namespace Blight {
         std::mutex mutex;
         std::condition_variable condition;
         ackid_t(
-            Connection* connection,
             unsigned int ackid = 0,
             unsigned int data_size = 0,
             data_t data = nullptr

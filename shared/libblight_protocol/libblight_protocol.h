@@ -286,6 +286,9 @@ namespace BlightProtocol {
 #define blight_header_t BlightProtocol::blight_header_t
 #define blight_surface_id_t BlightProtocol::blight_surface_id_t
 #define blight_buf_t BlightProtocol::blight_buf_t
+#define blight_packet_repaint_t BlightProtocol::blight_packet_repaint_t
+#define blight_packet_move_t BlightProtocol::blight_packet_move_t
+#define blight_packet_surface_info_t BlightProtocol::blight_packet_surface_info_t
 #define BlightMessageType BlightProtocol::BlightMessageType
 #define BlightImageFormat BlightProtocol::BlightImageFormat
 extern "C" {
@@ -397,6 +400,31 @@ extern "C" {
         blight_bus* bus,
         blight_buf_t* buf
     );
+    /*!
+     * \brief blight_cast_to_repaint_packet
+     * \param message
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT blight_packet_repaint_t* blight_cast_to_repaint_packet(
+        blight_message_t* message
+    );
+    /*!
+     * \brief blight_cast_to_move_packet
+     * \param message
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT blight_packet_move_t* blight_cast_to_move_packet(
+        blight_message_t* message
+    );
+    /*!
+     * \brief blight_cast_to_surface_info_packet
+     * \param message
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT blight_packet_surface_info_t* blight_cast_to_surface_info_packet(
+        blight_message_t* message
+    );
+
 #ifdef __cplusplus
 }
 #undef blight_data_t
@@ -404,6 +432,9 @@ extern "C" {
 #undef blight_header_t
 #undef blight_surface_id_t
 #undef blight_buf_t
+#undef blight_packet_repaint_t
+#undef blight_packet_move_t
+#undef blight_packet_surface_info_t
 #undef BlightMessageType
 #undef BlightImageFormat
 #endif
