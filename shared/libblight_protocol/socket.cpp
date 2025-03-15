@@ -74,11 +74,17 @@ namespace BlightProtocol{
     std::optional<blight_data_t> recv_blocking(int fd, ssize_t size){
         auto data = new unsigned char[size];
         ssize_t res = -1;
-        while(res < 0){
+        ssize_t total = 0;
+        while(total < size){
             res = ::recv(fd, data, size, MSG_WAITALL);
-            // Something was recieved
-            if(res > 0){
+            // connection was closed
+            if(res == 0){
                 break;
+            }
+            // Something was recieved
+            if(res > -1){
+                total += res;
+                continue;
             }
             // We had an unexpected error
             if(errno != EAGAIN && errno != EINTR){
@@ -89,7 +95,7 @@ namespace BlightProtocol{
             short_pause();
         }
         // The data we recieved isn't the same size as what we expected
-        if(res != size){
+        if(total != size){
             _WARN("recv_blocking %d != %d", size, res);
             delete[] data;
             errno = EBADMSG;
@@ -102,12 +108,14 @@ namespace BlightProtocol{
         // TODO explore MSG_ZEROCOPY, this will require owning the buffer instead of allowing
         //      the user to pass in one we wont touch. As we'll need to ensure we don't delete
         //      it until the kernel tells us it's done using it.
-        int res = -1;
-        while(res < 0){
-            res = ::send(fd, data, size, MSG_EOR | MSG_NOSIGNAL);
+        ssize_t res = -1;
+        ssize_t total = 0;
+        while(total < size){
+            res = ::send(fd, data + total, size - total, MSG_EOR | MSG_NOSIGNAL);
             // We sent something
             if(res > -1){
-                break;
+                total += res;
+                continue;
             }
             // We had an unexpected error
             if(errno != EAGAIN && errno != EINTR){
@@ -117,9 +125,8 @@ namespace BlightProtocol{
             short_pause();
         }
         // The data we sent isn't the same size as what we expected
-        // TODO - when sent is less than size, continue sending the rest
-        if(res != size){
-            _WARN("send_blocking %d != %d", size, res);
+        if(total != size){
+            _WARN("send_blocking %d != %d", size, total);
             errno = EMSGSIZE;
             return false;
         }
