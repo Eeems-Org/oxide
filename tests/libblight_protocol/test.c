@@ -33,6 +33,7 @@ void test_blight_message_from_data(){
     header.ackid = 1;
     header.size = 1;
     blight_data_t data = malloc(sizeof(blight_header_t) + 1);
+    assert(data != NULL);
     memcpy(data, &header, sizeof(blight_header_t));
     data[sizeof(blight_header_t)] = 'a';
     blight_message_t* message = blight_message_from_data(data);
