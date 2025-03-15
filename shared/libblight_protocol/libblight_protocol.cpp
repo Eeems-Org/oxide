@@ -274,7 +274,6 @@ extern "C" {
             .ackid = ackid,
             .size = size
         };
-        _WARN("%d %d %d", type, ackid, size);
         if(!send_blocking(fd, (blight_data_t)&header, sizeof(blight_header_t))){
             _WARN("Failed to write connection message header: %s", std::strerror(errno));
             return -errno;

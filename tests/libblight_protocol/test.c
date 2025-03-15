@@ -50,12 +50,12 @@ void test_c(){
     fprintf(stderr, "Testing blight_service_open\n");
     int res = blight_service_open(bus);
     assert(res > 0);
-    close(res);
+    int fd = res;
 
     fprintf(stderr, "Testing blight_service_input_open\n");
     res = blight_service_input_open(bus);
     assert(res > 0);
-    int fd = res;
+    close(res);
     blight_bus_deref(bus);
 
     fprintf(stderr, "Testing blight_message_from_socket\n");
@@ -66,6 +66,7 @@ void test_c(){
     assert(res == 0);
     assert(message->header.type == Ping);
     int pingid = message->header.ackid;
+    blight_message_deref(message);
 
     fprintf(stderr, "Testing blight_send_message\n");
     res = blight_send_message(fd, Ack, pingid, 0, NULL);
@@ -75,11 +76,20 @@ void test_c(){
         res = blight_message_from_socket(fd, &message);
     }
     assert(res == 0);
-    fprintf(stderr, "%d\n", message->header.type);
-    fprintf(stderr, "%d\n", message->header.ackid);
-    fprintf(stderr, "%d\n", message->header.size);
-    fprintf(stderr, "%d\n", res);
-    assert(message->header.type == Ack);
+    assert(message->header.type == Ping);
+    pingid = message->header.ackid;
     blight_message_deref(message);
+
+    res = blight_send_message(fd, Ping, 1, 0, NULL);
+    assert(res == 0);
+    res = -EAGAIN;
+    while(-res == EAGAIN || -res == EINTR){
+        res = blight_message_from_socket(fd, &message);
+    }
+    assert(res == 0);
+    assert(message->header.type == Ack);
+    assert(message->header.ackid == 1);
+    blight_message_deref(message);
+
     close(fd);
 }
