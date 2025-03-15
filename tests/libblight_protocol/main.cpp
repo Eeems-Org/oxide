@@ -10,13 +10,13 @@
 
 int wait_for_service(QProcess* blight, QCoreApplication* app){
     qDebug() << "Checking to see if blight is running...";
-    std::unique_ptr<Blight::DBus> dbus = std::make_unique<Blight::DBus>(new Blight::DBus(
+    std::unique_ptr<Blight::DBus> dbus = std::make_unique<Blight::DBus>(
 #ifdef EPAPER
       true
 #else
       false
 #endif
-      ));
+    );
     if(!dbus->has_service(BLIGHT_SERVICE)){
         blight->start("/opt/bin/blight", QStringList());
         qDebug() << "Waiting for blight to start...";
