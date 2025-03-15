@@ -116,6 +116,11 @@ extern "C" {
                 "[blight_service_open::fcntl(...)] Error: %s",
                 error_message(error, res)
             );
+            if(message != nullptr){
+                sd_bus_message_unref(message);
+            }
+            sd_bus_error_free(&error);
+            return -errno;
         }
         if(message != nullptr){
             sd_bus_message_unref(message);
@@ -170,6 +175,11 @@ extern "C" {
                 "[blight_service_input_open::fcntl(...)] Error: %s",
                 error_message(error, res)
             );
+            if(message != nullptr){
+                sd_bus_message_unref(message);
+            }
+            sd_bus_error_free(&error);
+            return -errno;
         }
         if(message != nullptr){
             sd_bus_message_unref(message);
@@ -235,6 +245,7 @@ extern "C" {
             );
             return -errno;
         }
+        m->data = maybe.value();
         *message = m;
         return m->header.size;
     }
