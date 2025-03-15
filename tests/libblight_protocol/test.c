@@ -170,7 +170,7 @@ void test_blight_cast_to_repaint_packet(){
     message.data = NULL;
     assert(blight_cast_to_repaint_packet(&message) == NULL);
     assert(errno == ENODATA);
-    blight_packet_repaint_t data;
+    blight_packet_repaint_t data = {0};
     message.data = (blight_data_t)&data;
     assert(blight_cast_to_repaint_packet(&message) == NULL);
     assert(errno == EMSGSIZE);
@@ -178,13 +178,13 @@ void test_blight_cast_to_repaint_packet(){
     blight_packet_repaint_t* packet = blight_cast_to_repaint_packet(&message);
     assert(errno == 0);
     assert(packet != NULL);
-    assert(data.x == packet->x);
-    assert(data.y == packet->y);
-    assert(data.width == packet->width);
-    assert(data.height == packet->height);
-    assert(data.waveform == packet->waveform);
-    assert(data.marker == packet->marker);
-    assert(data.identifier == packet->identifier);
+    assert(packet->x == 0);
+    assert(packet->y == 0);
+    assert(packet->width == 0);
+    assert(packet->height == 0);
+    assert(packet->waveform == 0);
+    assert(packet->marker == 0);
+    assert(packet->identifier == 0);
 }
 void test_blight_cast_to_move_packet(){
     assert(blight_cast_to_move_packet(NULL) == NULL);
@@ -198,7 +198,7 @@ void test_blight_cast_to_move_packet(){
     message.data = NULL;
     assert(blight_cast_to_move_packet(&message) == NULL);
     assert(errno == ENODATA);
-    blight_packet_move_t data;
+    blight_packet_move_t data = {0};
     message.data = (blight_data_t)&data;
     assert(blight_cast_to_move_packet(&message) == NULL);
     assert(errno == EMSGSIZE);
@@ -206,9 +206,9 @@ void test_blight_cast_to_move_packet(){
     blight_packet_move_t* packet = blight_cast_to_move_packet(&message);
     assert(errno == 0);
     assert(packet != NULL);
-    assert(data.identifier == packet->identifier);
-    assert(data.x == packet->x);
-    assert(data.y == packet->y);
+    assert(packet->identifier == 0);
+    assert(packet->x == 0);
+    assert(packet->y == 0);
 }
 void test_blight_cast_to_surface_info_packet(){
     assert(blight_cast_to_surface_info_packet(NULL) == NULL);
@@ -222,7 +222,7 @@ void test_blight_cast_to_surface_info_packet(){
     message.data = NULL;
     assert(blight_cast_to_surface_info_packet(&message) == NULL);
     assert(errno == ENODATA);
-    blight_packet_surface_info_t data;
+    blight_packet_surface_info_t data = {0};
     message.data = (blight_data_t)&data;
     assert(blight_cast_to_surface_info_packet(&message) == NULL);
     assert(errno == EMSGSIZE);
@@ -230,12 +230,12 @@ void test_blight_cast_to_surface_info_packet(){
     blight_packet_surface_info_t* packet = blight_cast_to_surface_info_packet(&message);
     assert(errno == 0);
     assert(packet != NULL);
-    assert(data.x == packet->x);
-    assert(data.y == packet->y);
-    assert(data.width == packet->width);
-    assert(data.height == packet->height);
-    assert(data.stride == packet->stride);
-    assert(data.format == packet->format);
+    assert(packet->x == 0);
+    assert(packet->y == 0);
+    assert(packet->width == 0);
+    assert(packet->height == 0);
+    assert(packet->stride == 0);
+    assert(packet->format == 0);
 }
 
 #pragma GCC diagnostic push
