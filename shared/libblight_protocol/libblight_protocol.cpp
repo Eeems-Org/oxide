@@ -146,21 +146,19 @@ extern "C" {
             return res;
         }
         int dfd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
-        if(dfd < 0){
-            _WARN(
-                "[blight_service_open::fcntl(...)] Error: %s",
-                error_message(error, res)
-            );
-            if(message != nullptr){
-                sd_bus_message_unref(message);
-            }
-            sd_bus_error_free(&error);
-            return -errno;
-        }
+        int e = errno;
         if(message != nullptr){
             sd_bus_message_unref(message);
         }
         sd_bus_error_free(&error);
+        if(dfd < 0){
+            _WARN(
+                "[blight_service_open::fcntl(...)] Error: %s",
+                std::strerror(e)
+            );
+            errno = e;
+            return -errno;
+        }
         return dfd;
     }
     int blight_service_input_open(blight_bus* bus){
@@ -205,21 +203,19 @@ extern "C" {
             return res;
         }
         int dfd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
-        if(dfd < 0){
-            _WARN(
-                "[blight_service_input_open::fcntl(...)] Error: %s",
-                error_message(error, res)
-            );
-            if(message != nullptr){
-                sd_bus_message_unref(message);
-            }
-            sd_bus_error_free(&error);
-            return -errno;
-        }
+        int e = errno;
         if(message != nullptr){
             sd_bus_message_unref(message);
         }
         sd_bus_error_free(&error);
+        if(dfd < 0){
+            _WARN(
+                "[blight_service_input_open::fcntl(...)] Error: %s",
+                std::strerror(e)
+            );
+            errno = e;
+            return -errno;
+        }
         return dfd;
     }
     blight_header_t blight_header_from_data(blight_data_t data){
@@ -368,7 +364,7 @@ extern "C" {
             return;
         }
         if(buf->data != nullptr){
-            ssize_t size = stride * height;
+            ssize_t size = buf->stride * buf->height;
             munmap(buf->data, size);
         }
         delete buf;
