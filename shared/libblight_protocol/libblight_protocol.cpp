@@ -431,7 +431,7 @@ extern "C" {
     blight_packet_repaint_t* blight_cast_to_repaint_packet(
         blight_message_t* message
     ){
-        if(message == nullptr){
+        if(message == nullptr || message->header.type != Repaint){
             errno = EINVAL;
             return nullptr;
         }
@@ -449,7 +449,7 @@ extern "C" {
     blight_packet_move_t* blight_cast_to_move_packet(
         blight_message_t* message
     ){
-        if(message == nullptr){
+        if(message == nullptr || message->header.type != Move){
             errno = EINVAL;
             return nullptr;
         }
@@ -467,7 +467,7 @@ extern "C" {
     blight_packet_surface_info_t* blight_cast_to_surface_info_packet(
         blight_message_t* message
     ){
-        if(message == nullptr){
+        if(message == nullptr || message->header.type != Info){
             errno = EINVAL;
             return nullptr;
         }
