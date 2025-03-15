@@ -92,4 +92,5 @@ void test_c(){
     blight_message_deref(message);
 
     close(fd);
+    fprintf(stderr, "C tests PASS!\n");
 }
