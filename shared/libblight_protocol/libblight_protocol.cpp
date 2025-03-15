@@ -116,7 +116,6 @@ extern "C" {
                 "[blight_service_open::fcntl(...)] Error: %s",
                 error_message(error, res)
             );
-            errno = -dfd;
         }
         if(message != nullptr){
             sd_bus_message_unref(message);
@@ -171,7 +170,6 @@ extern "C" {
                 "[blight_service_input_open::fcntl(...)] Error: %s",
                 error_message(error, res)
             );
-            errno = -dfd;
         }
         if(message != nullptr){
             sd_bus_message_unref(message);
@@ -245,7 +243,7 @@ extern "C" {
             if(!message->header.size){
                 _WARN("Freeing blight_message_t with a data pointer but a size of 0");
             }
-            delete message->data;
+            delete[] message->data;
         }
         delete message;
     }

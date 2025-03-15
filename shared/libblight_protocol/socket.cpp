@@ -117,6 +117,7 @@ namespace BlightProtocol{
             short_pause();
         }
         // The data we sent isn't the same size as what we expected
+        // TODO - when sent is less than size, continue sending the rest
         if(res != size){
             _WARN("send_blocking %d != %d", size, res);
             errno = EMSGSIZE;
