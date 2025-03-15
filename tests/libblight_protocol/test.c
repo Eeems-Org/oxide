@@ -7,6 +7,8 @@
 #include <string.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <sys/time.h>
+
 #define UNUSED(x) (void)(x)
 #define TRY(expression, c_expression, f_expression) \
     { \
@@ -251,6 +253,8 @@ void test_blight_cast_to_surface_info_packet(){
 #pragma GCC diagnostic ignored "-Wclobbered"
 int test_c(){
     fprintf(stderr, "********* Start testing of C tests *********\n");
+    struct timeval start;
+    gettimeofday(&start, NULL);
     int fd = 0;
     TEST(test_blight_header_from_data);
     TEST(test_blight_message_from_data);
@@ -267,11 +271,15 @@ int test_c(){
     TEST(test_blight_cast_to_repaint_packet);
     TEST(test_blight_cast_to_move_packet);
     TEST(test_blight_cast_to_surface_info_packet);
+    struct timeval end;
+    gettimeofday(&end, NULL);
+    unsigned int elapsed = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_usec - start.tv_usec) / 1000.0;
     fprintf(
         stderr,
-        "Totals: %d passed, %d failed, 0 skipped, 0 blacklisted\n",
+        "Totals: %d passed, %d failed, 0 skipped, 0 blacklisted, %ums\n",
         total_tests - failed_tests,
-        failed_tests
+        failed_tests,
+        elapsed
     );
     fprintf(stderr, "********* Finished testing of C tests *********\n");
     return failed_tests;
