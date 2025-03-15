@@ -160,9 +160,11 @@ namespace Blight{
 #endif
         }
         header_t header{
-            .type = type,
-            .ackid = _ackid,
-            .size = size
+            {
+                .type = type,
+                .ackid = _ackid,
+                .size = size
+            }
         };
         if(!Blight::send_blocking(
             m_fd,
@@ -223,13 +225,15 @@ namespace Blight{
             return {};
         }
         repaint_t repaint{
-            .x = x,
-            .y = y,
-            .width = width,
-            .height = height,
-            .waveform = waveform,
-            .marker = marker,
-            .identifier = identifier,
+            {
+                .x = x,
+                .y = y,
+                .width = width,
+                .height = height,
+                .waveform = waveform,
+                .marker = marker,
+                .identifier = identifier,
+            }
         };
         auto ackid = send(MessageType::Repaint, (data_t)&repaint, sizeof(repaint));
         if(!ackid.has_value()){
@@ -320,9 +324,11 @@ namespace Blight{
             return {};
         }
         move_t move{
-            .identifier = identifier,
-            .x = x,
-            .y = y,
+            {
+                .identifier = identifier,
+                .x = x,
+                .y = y,
+            }
         };
         return send(MessageType::Move, (data_t)&move, sizeof(move));
     }

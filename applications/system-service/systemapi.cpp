@@ -71,7 +71,11 @@ void SystemAPI::PrepareForSleep(bool suspending){
                 addSystemBuffer(m_buffer);
                 auto maybe = Blight::connection()->raise(m_buffer);
                 // Repaint to attempt to reduce ghosting
-                Blight::connection()->repaint(m_buffer, Blight::HighQualityGrayscale, m_buffer->surface);
+                Blight::connection()->repaint(
+                    m_buffer,
+                    Blight::WaveformMode::HighQualityGrayscale,
+                    m_buffer->surface
+                );
                 if(maybe.has_value()){
                     maybe.value()->wait();
                 }
