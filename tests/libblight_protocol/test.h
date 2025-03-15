@@ -1,5 +1,5 @@
 #pragma once
 
 extern "C" {
-    void test_c();
+    int test_c();
 }

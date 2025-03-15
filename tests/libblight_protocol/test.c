@@ -5,11 +5,51 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <setjmp.h>
+#include <signal.h>
+#define UNUSED(x) (void)(x)
+#define TRY(expression, c_expression, f_expression) \
+    { \
+        jmp_buf __ex_buf__; \
+        void __ex_handle__(int s){ \
+            UNUSED(s); \
+            assert(signal(SIGABRT, SIG_DFL)  != SIG_ERR); \
+            longjmp(__ex_buf__, 1); \
+        } \
+        assert(signal(SIGABRT, __ex_handle__)  != SIG_ERR); \
+        if(setjmp(__ex_buf__) == 0){ \
+            expression; \
+        }else{ \
+            c_expression; \
+        } \
+        f_expression; \
+    }
+#define THROW longjmp(__ex_buf__, 1)
+
+static int failed_tests = 0;
+static int total_tests = 0;
+#define TEST_EXPR(name, expression) \
+    { \
+        total_tests++; \
+        int __success__ = 0; \
+        TRY(expression, __success__ = 1, { \
+            if(__success__ == 0){ \
+                fprintf(stderr, "PASS"); \
+            }else{ \
+                fprintf(stderr, "FAIL"); \
+            } \
+            fprintf(stderr, "   : " #name "()\n"); \
+        }); \
+        failed_tests += __success__; \
+    }
+#define TEST(method) \
+    TEST_EXPR(method, { \
+        method(); \
+    })
 
 static blight_bus* bus = NULL;
 
 void test_blight_header_from_data(){
-    fprintf(stderr, "Testing blight_header_from_data\n");
     blight_header_t x;
     x.type = 1;
     x.ackid = 1;
@@ -27,13 +67,12 @@ void test_blight_header_from_data(){
     assert(header2.size == 0);
 }
 void test_blight_message_from_data(){
-    fprintf(stderr, "Testing blight_message_from_data\n");
     blight_header_t header;
     header.type = 1;
     header.ackid = 1;
     header.size = 1;
     blight_data_t data = malloc(sizeof(blight_header_t) + 1);
-    assert(data != NULL);
+    assert(data != NULL && "Failed to malloc a header");
     memcpy(data, &header, sizeof(blight_header_t));
     data[sizeof(blight_header_t)] = 'a';
     blight_message_t* message = blight_message_from_data(data);
@@ -47,30 +86,25 @@ void test_blight_message_from_data(){
     free(data);
 }
 void test_blight_bus_connect_system(){
-    fprintf(stderr, "Testing blight_bus_connect_system\n");
     assert(blight_bus_connect_system(&bus) > 0);
     assert(bus != NULL);
 }
 void test_blight_service_available(){
-    fprintf(stderr, "Testing blight_service_available\n");
     assert(blight_service_available(bus));
 }
 int test_blight_service_open(){
-    fprintf(stderr, "Testing blight_service_open\n");
     int res = blight_service_open(bus);
     assert(res > 0);
     return res;
 }
 void test_blight_service_input_open(){
-    fprintf(stderr, "Testing blight_service_input_open\n");
     int res = blight_service_input_open(bus);
     assert(res > 0);
     close(res);
 }
 int test_blight_message_from_socket(int fd){
-    fprintf(stderr, "Testing blight_message_from_socket\n");
     int res = -EAGAIN;
-    blight_message_t* message;
+    blight_message_t* message = NULL;
     while(-res == EAGAIN || -res == EINTR){
         res = blight_message_from_socket(fd, &message);
     }
@@ -82,11 +116,10 @@ int test_blight_message_from_socket(int fd){
     return pingid;
 }
 int test_blight_send_message(int fd, int pingid){
-    fprintf(stderr, "Testing blight_send_message\n");
     int res = blight_send_message(fd, Ack, pingid, 0, NULL);
     assert(res == 0);
     res = -EAGAIN;
-    blight_message_t* message;
+    blight_message_t* message = NULL;
     while(-res == EAGAIN || -res == EINTR){
         res = blight_message_from_socket(fd, &message);
     }
@@ -109,7 +142,6 @@ int test_blight_send_message(int fd, int pingid){
     return pingid;
 }
 blight_buf_t* test_blight_create_buffer(){
-    fprintf(stderr, "Testing blight_create_buffer\n");
     blight_buf_t* buf = blight_create_buffer(10, 10, 100, 100, 200, Format_RGB16);
     assert(buf != NULL);
     assert(buf->x == 10);
@@ -122,27 +154,35 @@ blight_buf_t* test_blight_create_buffer(){
     return buf;
 }
 void test_blight_add_surface(blight_buf_t* buf){
-    fprintf(stderr, "Testing blight_add_surface\n");
     blight_surface_id_t identifier = blight_add_surface(bus, buf);
     assert(identifier > 0);
     blight_buffer_deref(buf);
 }
 
-void test_c(){
-    fprintf(stderr, "Running C tests...\n");
-
-    test_blight_header_from_data();
-    test_blight_message_from_data();
-    test_blight_bus_connect_system();
-    test_blight_service_available();
-    int fd = test_blight_service_open();
-    test_blight_service_input_open();
-    int pingid = test_blight_message_from_socket(fd);
-    pingid = test_blight_send_message(fd, pingid);
-    blight_buf_t* buf = test_blight_create_buffer();
-    test_blight_add_surface(buf);
-
-    close(fd);
-    blight_bus_deref(bus);
-    fprintf(stderr, "PASS - C tests\n");
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclobbered"
+int test_c(){
+    fprintf(stderr, "********* Start testing of C tests *********\n");
+    int fd = 0;
+    TEST(test_blight_header_from_data);
+    TEST(test_blight_message_from_data);
+    TEST(test_blight_bus_connect_system);
+    TEST(test_blight_service_available);
+    TEST_EXPR("test_blight_service_open", fd = test_blight_service_open());
+    TEST(test_blight_service_input_open);
+    int pingid = 0;
+    TEST_EXPR(test_blight_message_from_socket, pingid = test_blight_message_from_socket(fd));
+    TEST_EXPR(test_blight_send_message, pingid = test_blight_send_message(fd, pingid));
+    blight_buf_t* buf = NULL;
+    TEST_EXPR(test_blight_create_buffer, buf = test_blight_create_buffer());
+    TEST_EXPR(test_blight_add_surface, test_blight_add_surface(buf));
+    fprintf(
+        stderr,
+        "Totals: %d passed, %d failed, 0 skipped, 0 blacklisted\n",
+        total_tests - failed_tests,
+        failed_tests
+    );
+    fprintf(stderr, "********* Finished testing of C tests *********\n");
+    return failed_tests;
 }
+#pragma GCC diagnostic pop

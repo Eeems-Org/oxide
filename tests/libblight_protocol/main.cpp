@@ -35,13 +35,13 @@ int run_c_tests(QCoreApplication* app){
         }
     }
     delete dbus;
-    test_c();
+    int res = test_c();
     if(blight.state() != QProcess::NotRunning){
         qDebug() << "Waiting for blight to stop...";
         blight.kill();
         blight.waitForFinished();
     }
-    return 0;
+    return res;
 }
 
 int main(int argc, char* argv[]){
@@ -49,14 +49,12 @@ int main(int argc, char* argv[]){
     QCoreApplication app(argc, argv);
     app.setAttribute(Qt::AA_Use96Dpi, true);
     QTimer::singleShot(0, [&app, argc, argv]{
+        int res = 0;
         if(getenv("SKIP_C_TESTS") == nullptr){
-            int res = run_c_tests(&app);
-            if(res){
-                app.exit(res);
-                return;
-            }
+            res = run_c_tests(&app);
         }
-        app.exit(AutoTest::run(argc, argv));
+        res += AutoTest::run(argc, argv);
+        app.exit(res);
     });
     return app.exec();
 }

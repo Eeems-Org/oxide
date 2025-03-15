@@ -22,6 +22,8 @@ HEADERS += \
     autotest.h \
     test.h
 
+QMAKE_CFLAGS_DEBUG += -save-temps
+
 include(../../qmake/common.pri)
 include(../../qmake/libblight.pri)
 include(../../qmake/libblight_protocol.pri)
