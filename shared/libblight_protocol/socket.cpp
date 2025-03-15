@@ -32,7 +32,7 @@ namespace BlightProtocol{
                 return {};
             }
             // Recieve the data
-            res = ::recv(fd, data, size, MSG_WAITALL | MSG_DONTWAIT);
+            res = ::recv(fd, data, size, MSG_DONTWAIT);
             if(res > -1){
                 break;
             }
