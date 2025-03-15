@@ -368,7 +368,8 @@ extern "C" {
             return;
         }
         if(buf->data != nullptr){
-            delete buf->data;
+            ssize_t size = stride * height;
+            munmap(buf->data, size);
         }
         delete buf;
     }
