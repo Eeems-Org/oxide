@@ -134,23 +134,33 @@ namespace BlightProtocol{
     }
 }
 bool wait_for(int fd, int timeout, int event){
+    int remaining = timeout;
+    auto start = std::chrono::steady_clock::now();
     while(true){
         pollfd pfd;
         pfd.fd = fd;
         pfd.events = event;
-        auto res = poll(&pfd, 1, timeout);
-        if(res < 0){
-            // Temporary error, try again
-            // TODO keep track of timeout and try again with only remaining time
-            if(errno == EAGAIN || errno == EINTR){
-                continue;
-            }
-            return false;
-        }
+        auto res = poll(&pfd, 1, remaining);
         // We timed out
         if(res == 0){
             errno = EAGAIN;
             return false;
+        }
+        if(res < 0){
+            // Temporary error, try again
+            if(errno != EAGAIN && errno != EINTR){
+                return false;
+            }
+            if(timeout > 0){
+                remaining = timeout - std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - start
+                ).count();
+                // We timed out
+                if(remaining <= 0){
+                    return false;
+                }
+            }
+            continue;
         }
         // Socket disconnected
         if(pfd.revents & POLLHUP){
