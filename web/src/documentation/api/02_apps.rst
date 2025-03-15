@@ -93,7 +93,7 @@ Apps API
 | registerApplication     | method                        | Register a new       |
 |                         |                               | application with     |
 |                         | - (in) properties             | tarnish.             |
-|                         | ``ARRAY{STRING VARIANT}``     |                      |
+|                         |   ``ARRAY{STRING VARIANT}``   |                      |
 |                         | - (out) ``OBJECT_PATH``       |                      |
 |                         |                               |                      |
 +-------------------------+-------------------------------+----------------------+
@@ -165,202 +165,202 @@ Example Usage
 Application Object
 ~~~~~~~~~~~~~~~~~~
 
-+----------------------+----------------------+----------------------+
-| Name                 | Specification        | Description          |
-+======================+======================+======================+
-| name                 | ``STRING`` property  | Unique name used to  |
-|                      | (read)               | reference the        |
-|                      |                      | application.         |
-+----------------------+----------------------+----------------------+
-| processId            | ``INT32`` property   | Process Id of the    |
-|                      | (read)               | application if it's  |
-|                      |                      | running.             |
-|                      |                      | Will return ``0`` if |
-|                      |                      | the application is   |
-|                      |                      | not running.         |
-+----------------------+----------------------+----------------------+
-| permissions          | ``ARRAY STRING``     | List of permissions  |
-|                      | property             | that the process     |
-|                      | (read/write)         | has.                 |
-+----------------------+----------------------+----------------------+
-| displayName          | ``STRING`` property  | Name for the         |
-|                      | (read/write)         | application to       |
-|                      |                      | display to the user. |
-+----------------------+----------------------+----------------------+
-| description          | ``STRING`` property  | Description of the   |
-|                      | (read/write)         | application.         |
-+----------------------+----------------------+----------------------+
-| bin                  | ``STRING`` property  | Path to the binary   |
-|                      | (read)               | file used to launch  |
-|                      |                      | the application.     |
-+----------------------+----------------------+----------------------+
-| onPause              | ``STRING`` property  | Simple script to run |
-|                      | (read/write)         | when pausing the     |
-|                      |                      | application.         |
-+----------------------+----------------------+----------------------+
-| onResume             | ``STRING`` property  | Simple script to run |
-|                      | (read/write)         | when resuming the    |
-|                      |                      | application.         |
-+----------------------+----------------------+----------------------+
-| onStop               | ``STRING`` property  | Simple script to run |
-|                      | (read/write)         | when stopping the    |
-|                      |                      | application.         |
-+----------------------+----------------------+----------------------+
-| autoStart            | ``BOOLEAN`` property | If this application  |
-|                      | (read/write)         | should be            |
-|                      |                      | automatically        |
-|                      |                      | started when tarnish |
-|                      |                      | starts up.           |
-+----------------------+----------------------+----------------------+
-| type                 | ``INT32`` property   | Type of application. |
-|                      | (read)               | - ``0`` Foreground   |
-|                      |                      | application          |
-|                      |                      | - ``1`` Background   |
-|                      |                      | application          |
-|                      |                      | - ``2``              |
-|                      |                      | Backgroundable       |
-|                      |                      | application          |
-+----------------------+----------------------+----------------------+
-| state                | ``INT32`` property   | Current state of the |
-|                      | (read)               | application.         |
-|                      |                      | - ``0`` Inactive     |
-|                      |                      | - ``1`` Application  |
-|                      |                      | is in the Foreground |
-|                      |                      | - ``2`` Application  |
-|                      |                      | is in the Background |
-|                      |                      | - ``3`` Application  |
-|                      |                      | is paused            |
-+----------------------+----------------------+----------------------+
-| systemApp            | ``BOOLEAN`` property | If this application  |
-|                      | (read)               | is a system app or   |
-|                      |                      | not.                 |
-+----------------------+----------------------+----------------------+
-| hidden               | ``BOOLEAN`` property | If this application  |
-|                      | (read)               | should be hidden     |
-|                      |                      | from the user on any |
-|                      |                      | UI.                  |
-+----------------------+----------------------+----------------------+
-| icon                 | ``STRING`` property  | Path to the icon     |
-|                      | (read/write)         | used to represent    |
-|                      |                      | this application.    |
-+----------------------+----------------------+----------------------+
-| environment          | ``AR                 | Map of environment   |
-|                      | RAY{STRING STRING}`` | variables to set for |
-|                      | property (read)      | the process.         |
-+----------------------+----------------------+----------------------+
-| workingDirectory     | ``STRING`` property  | Directory to set as  |
-|                      | (read/write)         | the current working  |
-|                      |                      | directory for the    |
-|                      |                      | application.         |
-+----------------------+----------------------+----------------------+
-| user                 | ``STRING`` property  | User the application |
-|                      | (read)               | will be run as.      |
-+----------------------+----------------------+----------------------+
-| group                | ``STRING`` property  | Group the            |
-|                      | (read)               | application will be  |
-|                      |                      | run as.              |
-+----------------------+----------------------+----------------------+
-| launched             | signal               | Signal sent when the |
-|                      |                      | application starts.  |
-+----------------------+----------------------+----------------------+
-| paused               | signal               | Signal sent when the |
-|                      |                      | application is       |
-|                      |                      | paused.              |
-+----------------------+----------------------+----------------------+
-| resumed              | signal               | Signal sent when the |
-|                      |                      | application is       |
-|                      |                      | resumed.             |
-+----------------------+----------------------+----------------------+
-| unregistered         | signal               | Signal sent when the |
-|                      |                      | application is       |
-|                      |                      | removed from         |
-|                      |                      | tarnish.             |
-+----------------------+----------------------+----------------------+
-| exited               | signal               | Signal sent when the |
-|                      |                      | application exits.   |
-|                      | - (out) ``INT32``    | First signal         |
-|                      |                      | parameter is the     |
-|                      |                      | exit code of the     |
-|                      |                      | application.         |
-+----------------------+----------------------+----------------------+
-| permissionsChanged   | signal               | Signal sent when the |
-|                      |                      | permissions of the   |
-|                      | - (out)              | application changes. |
-|                      | ``ARRAY STRING``     |                      |
-+----------------------+----------------------+----------------------+
-| displayNameChanged   | signal               | Signal sent when the |
-|                      |                      | displayName of the   |
-|                      | - (out) ``STRING``   | application changes. |
-+----------------------+----------------------+----------------------+
-| onPauseChanged       | signal               | Signal sent when the |
-|                      |                      | onPause of the       |
-|                      | - (out) ``STRING``   | application changes. |
-+----------------------+----------------------+----------------------+
-| onResumeChanged      | signal               | Signal sent when the |
-|                      |                      | onResume of the      |
-|                      | - (out) ``STRING``   | application changes. |
-+----------------------+----------------------+----------------------+
-| onStopChanged        | signal               | Signal sent when the |
-|                      | - (out) ``STRING``   | onStop of the        |
-|                      |                      | application changes. |
-+----------------------+----------------------+----------------------+
-| autoStartChanged     | signal               | Signal sent when     |
-|                      |                      | autoStart for the    |
-|                      | - (out) ``BOOLEAN``  | application chagnes. |
-+----------------------+----------------------+----------------------+
-| iconChanged          | signal               | Signal sent when the |
-|                      |                      | icon of the          |
-|                      | - (out) ``STRING``   | application changes. |
-+----------------------+----------------------+----------------------+
-| environmentChanged   | signal               | Signal sent when the |
-|                      |                      | environment of the   |
-|                      | - (out)              | application changes. |
-|                      | ``ARRAY STRING``     |                      |
-+----------------------+----------------------+----------------------+
-| wor                  | signal               | Signal sent when the |
-| kingDirectoryChanged |                      | working directory of |
-|                      | - (out) ``STRING``   | the application      |
-|                      |                      | changes.             |
-+----------------------+----------------------+----------------------+
-| directoriesChanged   | signal               | Signal sent when the |
-|                      |                      | directories of the   |
-|                      | - (out)              | application changes. |
-|                      | ``ARRAY STRING``     |                      |
-+----------------------+----------------------+----------------------+
-| launch               | method               | Launch or resume the |
-|                      |                      | application.         |
-+----------------------+----------------------+----------------------+
-| pause                | method               | Pause the            |
-|                      |                      | application.         |
-|                      |                      | If the application   |
-|                      |                      | is backgroundable it |
-|                      |                      | will be moved into   |
-|                      |                      | the background.      |
-+----------------------+----------------------+----------------------+
-| resume               | method               | Resume an            |
-|                      |                      | application.         |
-|                      |                      | If the application   |
-|                      |                      | is backgroundable    |
-|                      |                      | and in the           |
-|                      |                      | background it will   |
-|                      |                      | be moved into the    |
-|                      |                      | foreground.          |
-+----------------------+----------------------+----------------------+
-| stop                 | method               | Stop the             |
-|                      |                      | application.         |
-+----------------------+----------------------+----------------------+
-| unregister           | method               | Remove the           |
-|                      |                      | application from     |
-|                      |                      | tarnish.             |
-+----------------------+----------------------+----------------------+
-| setEnvironment       | method               | Change the           |
-|                      |                      | environment of the   |
-|                      | - (in) environment   | application.         |
-|                      | ``ARR                | Changes will be      |
-|                      | AY{STRING VARIANT}`` | applied after the    |
-|                      |                      | application          |
-|                      |                      | restarts.            |
-+----------------------+----------------------+----------------------+
++----------------------+-----------------------------+----------------------+
+| Name                 | Specification               | Description          |
++======================+=============================+======================+
+| name                 | ``STRING`` property         | Unique name used to  |
+|                      | (read)                      | reference the        |
+|                      |                             | application.         |
++----------------------+-----------------------------+----------------------+
+| processId            | ``INT32`` property          | Process Id of the    |
+|                      | (read)                      | application if it's  |
+|                      |                             | running.             |
+|                      |                             | Will return ``0`` if |
+|                      |                             | the application is   |
+|                      |                             | not running.         |
++----------------------+-----------------------------+----------------------+
+| permissions          | ``ARRAY STRING``            | List of permissions  |
+|                      | property                    | that the process     |
+|                      | (read/write)                | has.                 |
++----------------------+-----------------------------+----------------------+
+| displayName          | ``STRING`` property         | Name for the         |
+|                      | (read/write)                | application to       |
+|                      |                             | display to the user. |
++----------------------+-----------------------------+----------------------+
+| description          | ``STRING`` property         | Description of the   |
+|                      | (read/write)                | application.         |
++----------------------+-----------------------------+----------------------+
+| bin                  | ``STRING`` property         | Path to the binary   |
+|                      | (read)                      | file used to launch  |
+|                      |                             | the application.     |
++----------------------+-----------------------------+----------------------+
+| onPause              | ``STRING`` property         | Simple script to run |
+|                      | (read/write)                | when pausing the     |
+|                      |                             | application.         |
++----------------------+-----------------------------+----------------------+
+| onResume             | ``STRING`` property         | Simple script to run |
+|                      | (read/write)                | when resuming the    |
+|                      |                             | application.         |
++----------------------+-----------------------------+----------------------+
+| onStop               | ``STRING`` property         | Simple script to run |
+|                      | (read/write)                | when stopping the    |
+|                      |                             | application.         |
++----------------------+-----------------------------+----------------------+
+| autoStart            | ``BOOLEAN`` property        | If this application  |
+|                      | (read/write)                | should be            |
+|                      |                             | automatically        |
+|                      |                             | started when tarnish |
+|                      |                             | starts up.           |
++----------------------+-----------------------------+----------------------+
+| type                 | ``INT32`` property          | Type of application. |
+|                      | (read)                      | - ``0`` Foreground   |
+|                      |                             | application          |
+|                      |                             | - ``1`` Background   |
+|                      |                             | application          |
+|                      |                             | - ``2``              |
+|                      |                             | Backgroundable       |
+|                      |                             | application          |
++----------------------+-----------------------------+----------------------+
+| state                | ``INT32`` property          | Current state of the |
+|                      | (read)                      | application.         |
+|                      |                             | - ``0`` Inactive     |
+|                      |                             | - ``1`` Application  |
+|                      |                             | is in the Foreground |
+|                      |                             | - ``2`` Application  |
+|                      |                             | is in the Background |
+|                      |                             | - ``3`` Application  |
+|                      |                             | is paused            |
++----------------------+-----------------------------+----------------------+
+| systemApp            | ``BOOLEAN`` property        | If this application  |
+|                      | (read)                      | is a system app or   |
+|                      |                             | not.                 |
++----------------------+-----------------------------+----------------------+
+| hidden               | ``BOOLEAN`` property        | If this application  |
+|                      | (read)                      | should be hidden     |
+|                      |                             | from the user on any |
+|                      |                             | UI.                  |
++----------------------+-----------------------------+----------------------+
+| icon                 | ``STRING`` property         | Path to the icon     |
+|                      | (read/write)                | used to represent    |
+|                      |                             | this application.    |
++----------------------+-----------------------------+----------------------+
+| environment          | ``AR                        | Map of environment   |
+|                      | RAY{STRING STRING}``        | variables to set for |
+|                      | property (read)             | the process.         |
++----------------------+-----------------------------+----------------------+
+| workingDirectory     | ``STRING`` property         | Directory to set as  |
+|                      | (read/write)                | the current working  |
+|                      |                             | directory for the    |
+|                      |                             | application.         |
++----------------------+-----------------------------+----------------------+
+| user                 | ``STRING`` property         | User the application |
+|                      | (read)                      | will be run as.      |
++----------------------+-----------------------------+----------------------+
+| group                | ``STRING`` property         | Group the            |
+|                      | (read)                      | application will be  |
+|                      |                             | run as.              |
++----------------------+-----------------------------+----------------------+
+| launched             | signal                      | Signal sent when the |
+|                      |                             | application starts.  |
++----------------------+-----------------------------+----------------------+
+| paused               | signal                      | Signal sent when the |
+|                      |                             | application is       |
+|                      |                             | paused.              |
++----------------------+-----------------------------+----------------------+
+| resumed              | signal                      | Signal sent when the |
+|                      |                             | application is       |
+|                      |                             | resumed.             |
++----------------------+-----------------------------+----------------------+
+| unregistered         | signal                      | Signal sent when the |
+|                      |                             | application is       |
+|                      |                             | removed from         |
+|                      |                             | tarnish.             |
++----------------------+-----------------------------+----------------------+
+| exited               | signal                      | Signal sent when the |
+|                      |                             | application exits.   |
+|                      | - (out) ``INT32``           | First signal         |
+|                      |                             | parameter is the     |
+|                      |                             | exit code of the     |
+|                      |                             | application.         |
++----------------------+-----------------------------+----------------------+
+| permissionsChanged   | signal                      | Signal sent when the |
+|                      |                             | permissions of the   |
+|                      | - (out)                     | application changes. |
+|                      |   ``ARRAY STRING``          |                      |
++----------------------+-----------------------------+----------------------+
+| displayNameChanged   | signal                      | Signal sent when the |
+|                      |                             | displayName of the   |
+|                      | - (out) ``STRING``          | application changes. |
++----------------------+-----------------------------+----------------------+
+| onPauseChanged       | signal                      | Signal sent when the |
+|                      |                             | onPause of the       |
+|                      | - (out) ``STRING``          | application changes. |
++----------------------+-----------------------------+----------------------+
+| onResumeChanged      | signal                      | Signal sent when the |
+|                      |                             | onResume of the      |
+|                      | - (out) ``STRING``          | application changes. |
++----------------------+-----------------------------+----------------------+
+| onStopChanged        | signal                      | Signal sent when the |
+|                      | - (out) ``STRING``          | onStop of the        |
+|                      |                             | application changes. |
++----------------------+-----------------------------+----------------------+
+| autoStartChanged     | signal                      | Signal sent when     |
+|                      |                             | autoStart for the    |
+|                      | - (out) ``BOOLEAN``         | application chagnes. |
++----------------------+-----------------------------+----------------------+
+| iconChanged          | signal                      | Signal sent when the |
+|                      |                             | icon of the          |
+|                      | - (out) ``STRING``          | application changes. |
++----------------------+-----------------------------+----------------------+
+| environmentChanged   | signal                      | Signal sent when the |
+|                      |                             | environment of the   |
+|                      | - (out)                     | application changes. |
+|                      |   ``ARRAY STRING``          |                      |
++----------------------+-----------------------------+----------------------+
+| wor                  | signal                      | Signal sent when the |
+| kingDirectoryChanged |                             | working directory of |
+|                      | - (out) ``STRING``          | the application      |
+|                      |                             | changes.             |
++----------------------+-----------------------------+----------------------+
+| directoriesChanged   | signal                      | Signal sent when the |
+|                      |                             | directories of the   |
+|                      | - (out)                     | application changes. |
+|                      |   ``ARRAY STRING``          |                      |
++----------------------+-----------------------------+----------------------+
+| launch               | method                      | Launch or resume the |
+|                      |                             | application.         |
++----------------------+-----------------------------+----------------------+
+| pause                | method                      | Pause the            |
+|                      |                             | application.         |
+|                      |                             | If the application   |
+|                      |                             | is backgroundable it |
+|                      |                             | will be moved into   |
+|                      |                             | the background.      |
++----------------------+-----------------------------+----------------------+
+| resume               | method                      | Resume an            |
+|                      |                             | application.         |
+|                      |                             | If the application   |
+|                      |                             | is backgroundable    |
+|                      |                             | and in the           |
+|                      |                             | background it will   |
+|                      |                             | be moved into the    |
+|                      |                             | foreground.          |
++----------------------+-----------------------------+----------------------+
+| stop                 | method                      | Stop the             |
+|                      |                             | application.         |
++----------------------+-----------------------------+----------------------+
+| unregister           | method                      | Remove the           |
+|                      |                             | application from     |
+|                      |                             | tarnish.             |
++----------------------+-----------------------------+----------------------+
+| setEnvironment       | method                      | Change the           |
+|                      |                             | environment of the   |
+|                      | - (in) environment          | application.         |
+|                      |   ``ARRAY{STRING VARIANT}`` | Changes will be      |
+|                      |                             | applied after the    |
+|                      |                             | application          |
+|                      |                             | restarts.            |
++----------------------+-----------------------------+----------------------+
 
 .. _example-usage-3:
 
