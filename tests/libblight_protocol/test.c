@@ -36,6 +36,7 @@ void test_blight_message_from_data(){
     memcpy(data, &header, sizeof(blight_header_t));
     data[sizeof(blight_header_t)] = 'a';
     blight_message_t* message = blight_message_from_data(data);
+    assert(message != NULL);
     assert(message->header.type == 1);
     assert(message->header.ackid == 1);
     assert(message->header.size == 1);
@@ -73,6 +74,7 @@ int test_blight_message_from_socket(int fd){
         res = blight_message_from_socket(fd, &message);
     }
     assert(res == 0);
+    assert(message != NULL);
     assert(message->header.type == Ping);
     int pingid = message->header.ackid;
     blight_message_deref(message);
@@ -88,6 +90,7 @@ int test_blight_send_message(int fd, int pingid){
         res = blight_message_from_socket(fd, &message);
     }
     assert(res == 0);
+    assert(message != NULL);
     assert(message->header.type == Ping);
     pingid = message->header.ackid;
     blight_message_deref(message);
@@ -98,6 +101,7 @@ int test_blight_send_message(int fd, int pingid){
         res = blight_message_from_socket(fd, &message);
     }
     assert(res == 0);
+    assert(message != NULL);
     assert(message->header.type == Ack);
     assert(message->header.ackid == 1);
     blight_message_deref(message);
