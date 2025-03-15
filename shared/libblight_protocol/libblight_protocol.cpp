@@ -28,8 +28,9 @@ char** strv_free(char** v) {
     free(v);
     return NULL;
 }
-#define error_message(err, return_value) \
-    (err.message != nullptr ? err.message : std::strerror(-return_value))
+inline const char* error_message(const sd_bus_error& err, int return_value){
+    return err.message != nullptr ? err.message : std::strerror(-return_value);
+}
 
 std::string generate_uuid_v4(){
     static std::random_device rd;
@@ -130,6 +131,7 @@ extern "C" {
                 sd_bus_message_unref(message);
             }
             sd_bus_error_free(&error);
+            errno = -res;
             return res;
         }
         int fd;
@@ -143,6 +145,7 @@ extern "C" {
                 sd_bus_message_unref(message);
             }
             sd_bus_error_free(&error);
+            errno = -res;
             return res;
         }
         int dfd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
@@ -187,6 +190,7 @@ extern "C" {
                 sd_bus_message_unref(message);
             }
             sd_bus_error_free(&error);
+            errno = -res;
             return res;
         }
         int fd;
@@ -200,6 +204,7 @@ extern "C" {
                 sd_bus_message_unref(message);
             }
             sd_bus_error_free(&error);
+            errno = -res;
             return res;
         }
         int dfd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
@@ -365,7 +370,9 @@ extern "C" {
         }
         if(buf->data != nullptr){
             ssize_t size = buf->stride * buf->height;
-            munmap(buf->data, size);
+            if (munmap(buf->data, size) != 0) {
+                _WARN("Failed to unmap buffer: %s", std::strerror(errno));
+            }
         }
         delete buf;
     }
@@ -402,6 +409,7 @@ extern "C" {
                 sd_bus_message_unref(message);
             }
             sd_bus_error_free(&error);
+            errno = -res;
             return 0;
         }
         blight_surface_id_t identifier;
@@ -415,6 +423,7 @@ extern "C" {
                 sd_bus_message_unref(message);
             }
             sd_bus_error_free(&error);
+            errno = -res;
             return 0;
         }
         return identifier;
