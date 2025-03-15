@@ -6,6 +6,10 @@
 #include <cstring>
 #include <linux/socket.h>
 #include <unistd.h>
+#include <sys/mman.h>
+#include <random>
+#include <sstream>
+#include <ios>
 
 #define XCONCATENATE(x, y) x ## y
 #define CONCATENATE(x, y) XCONCATENATE(x, y)
@@ -26,6 +30,37 @@ char** strv_free(char** v) {
 }
 #define error_message(err, return_value) \
     (err.message != nullptr ? err.message : std::strerror(-return_value))
+
+std::string generate_uuid_v4(){
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    static std::uniform_int_distribution<> dis(0, 15);
+    static std::uniform_int_distribution<> dis2(8, 11);
+    std::stringstream ss;
+    int i;
+    ss << std::hex;
+    for (i = 0; i < 8; i++) {
+        ss << dis(gen);
+    }
+    ss << "-";
+    for (i = 0; i < 4; i++) {
+        ss << dis(gen);
+    }
+    ss << "-4";
+    for (i = 0; i < 3; i++) {
+        ss << dis(gen);
+    }
+    ss << "-";
+    ss << dis2(gen);
+    for (i = 0; i < 3; i++) {
+        ss << dis(gen);
+    }
+    ss << "-";
+    for (i = 0; i < 12; i++) {
+        ss << dis(gen);
+    };
+    return ss.str();
+}
 
 using namespace BlightProtocol;
 extern "C" {
@@ -283,5 +318,108 @@ extern "C" {
             return -errno;
         }
         return size;
+    }
+    blight_buf_t* blight_create_buffer(
+        int x,
+        int y,
+        int width,
+        int height,
+        int stride,
+        BlightImageFormat format
+    ){
+        int fd = memfd_create(generate_uuid_v4().c_str(), MFD_ALLOW_SEALING);
+        if(fd < 0){
+            return nullptr;
+        }
+        ssize_t size = stride * height;
+        if(ftruncate(fd, size)){
+            int e = errno;
+            close(fd);
+            errno = e;
+            return nullptr;
+        }
+        void* data = mmap(
+            NULL,
+            size,
+            PROT_READ | PROT_WRITE,
+            MAP_SHARED_VALIDATE,
+            fd,
+            0
+        );
+        if(data == MAP_FAILED || data == nullptr){
+            int e = errno;
+            close(fd);
+            errno = e;
+            return nullptr;
+        }
+        return new blight_buf_t{
+            .fd = fd,
+            .x = x,
+            .y = y,
+            .width = width,
+            .height = height,
+            .stride = stride,
+            .format = format,
+            .data = (blight_data_t)data
+        };
+    }
+    void blight_buffer_deref(blight_buf_t* buf){
+        if(buf == nullptr){
+            return;
+        }
+        if(buf->data != nullptr){
+            delete buf->data;
+        }
+        delete buf;
+    }
+    blight_surface_id_t blight_add_surface(blight_bus* bus, blight_buf_t* buf){
+        if(!blight_service_available(bus)){
+            errno = EAGAIN;
+            return 0;
+        }
+        sd_bus_error error{SD_BUS_ERROR_NULL};
+        sd_bus_message* message = nullptr;
+        int res = sd_bus_call_method(
+            bus,
+            BLIGHT_SERVICE,
+            "/",
+            BLIGHT_INTERFACE,
+            "addSurface",
+            &error,
+            &message,
+            "hiiiiii",
+            buf->fd,
+            buf->x,
+            buf->y,
+            buf->width,
+            buf->height,
+            buf->stride,
+            buf->format
+        );
+        if(res < 0){
+            _WARN(
+                "[blight_add_surface::sd_bus_call_method(...)] Error: %s",
+                error_message(error, res)
+            );
+            if(message != nullptr){
+                sd_bus_message_unref(message);
+            }
+            sd_bus_error_free(&error);
+            return 0;
+        }
+        blight_surface_id_t identifier;
+        res = sd_bus_message_read(message, "q", &identifier);
+        if(res < 0){
+            _WARN(
+                "[blight_add_surface::sd_bus_message_read(...)] Error: %s",
+                error_message(error, res)
+            );
+            if(message != nullptr){
+                sd_bus_message_unref(message);
+            }
+            sd_bus_error_free(&error);
+            return 0;
+        }
+        return identifier;
     }
 }

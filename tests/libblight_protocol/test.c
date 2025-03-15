@@ -56,7 +56,6 @@ void test_c(){
     res = blight_service_input_open(bus);
     assert(res > 0);
     close(res);
-    blight_bus_deref(bus);
 
     fprintf(stderr, "Testing blight_message_from_socket\n");
     res = -EAGAIN;
@@ -91,6 +90,23 @@ void test_c(){
     assert(message->header.ackid == 1);
     blight_message_deref(message);
 
+    fprintf(stderr, "Testing blight_create_buffer\n");
+    blight_buf_t* buf = blight_create_buffer(10, 10, 100, 100, 200, Format_RGB16);
+    assert(buf != NULL);
+    assert(buf->x == 10);
+    assert(buf->y == 10);
+    assert(buf->width == 100);
+    assert(buf->height == 100);
+    assert(buf->stride == 200);
+    assert(buf->format == Format_RGB16);
+    assert(buf->data != NULL);
+
+    fprintf(stderr, "Testing blight_add_surface\n");
+    blight_surface_id_t identifier = blight_add_surface(bus, buf);
+    assert(identifier > 0);
+
+    blight_buffer_deref(buf);
     close(fd);
+    blight_bus_deref(bus);
     fprintf(stderr, "C tests PASS!\n");
 }

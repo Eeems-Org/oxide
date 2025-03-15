@@ -100,7 +100,6 @@ namespace BlightProtocol {
      * \brief Size type used by the protocol
      */
     typedef uint32_t blight_size_t;
-
     /*!
      * \brief Surface identifier
      */
@@ -158,6 +157,19 @@ namespace BlightProtocol {
      * \brief Generic data pointer
      */
     typedef unsigned char* blight_data_t;
+    /*!
+     * \brief
+     */
+    typedef struct {
+        int fd;
+        int x;
+        int y;
+        int width;
+        int height;
+        int stride;
+        BlightImageFormat format;
+        blight_data_t data;
+    } blight_buf_t;
     /*!
      * \brief Message header
      */
@@ -272,7 +284,10 @@ namespace BlightProtocol {
 #define blight_data_t BlightProtocol::blight_data_t
 #define blight_message_t BlightProtocol::blight_message_t
 #define blight_header_t BlightProtocol::blight_header_t
+#define blight_surface_id_t BlightProtocol::blight_surface_id_t
+#define blight_buf_t BlightProtocol::blight_buf_t
 #define BlightMessageType BlightProtocol::BlightMessageType
+#define BlightImageFormat BlightProtocol::BlightImageFormat
 extern "C" {
 #endif
     typedef sd_bus blight_bus;
@@ -349,11 +364,47 @@ extern "C" {
         uint32_t size,
         blight_data_t data
     );
+    /*!
+     * \brief blight_create_buffer
+     * \param x
+     * \param y
+     * \param width
+     * \param height
+     * \param stride
+     * \param format
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT blight_buf_t* blight_create_buffer(
+        int x,
+        int y,
+        int width,
+        int height,
+        int stride,
+        BlightImageFormat format
+    );
+    /*!
+     * \brief blight_buffer_deref
+     * \param buf
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT void blight_buffer_deref(blight_buf_t* buf);
+    /*!
+     * \brief blight_add_surface
+     * \param bus
+     * \param buf
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT blight_surface_id_t blight_add_surface(
+        blight_bus* bus,
+        blight_buf_t* buf
+    );
 #ifdef __cplusplus
 }
 #undef blight_data_t
 #undef blight_message_t
 #undef blight_header_t
+#undef blight_surface_id_t
+#undef blight_buf_t
 #undef BlightMessageType
+#undef BlightImageFormat
 #endif
 /*! @} */
