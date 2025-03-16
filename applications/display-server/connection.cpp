@@ -592,6 +592,13 @@ void Connection::ack(Blight::message_ptr_t message, unsigned int size, Blight::d
     }
 }
 
+/**
+ * @brief Sends a ping message to the server to verify connectivity.
+ *
+ * If the connection is active (running and not stopped), this function constructs a ping message
+ * with an incremented acknowledgement identifier and sends it using a blocking operation.
+ * If the send fails, a warning is logged. In all cases, the ping timer is restarted.
+ */
 void Connection::ping(){
     if(!isRunning()){
         return;

@@ -81,6 +81,16 @@ namespace Blight{
         return instance;
     }
 
+    /**
+     * @brief Opens a connection to the D-Bus service and returns a duplicated file descriptor.
+     *
+     * This function checks if the D-Bus service is available and invokes its "open" method to
+     * retrieve a file descriptor. It then duplicates the descriptor using `F_DUPFD_CLOEXEC` starting from
+     * 3 to ensure proper close-on-exec semantics. On failure—whether due to service unavailability, 
+     * a D-Bus error, or descriptor duplication error—a negative error code is returned and errno is set accordingly.
+     *
+     * @return int The duplicated file descriptor on success, or a negative error code on failure.
+     */
     int open(){
         if(!exists()){
             errno = EAGAIN;
@@ -104,6 +114,16 @@ namespace Blight{
         return dfd;
     }
 
+    /**
+     * @brief Opens an input connection to the D-Bus service.
+     *
+     * Calls the "openInput" method via D-Bus to retrieve an input file descriptor and duplicates it
+     * using fcntl() with the F_DUPFD_CLOEXEC flag. If the D-Bus service is unavailable or an error occurs
+     * during the call, file descriptor retrieval, or duplication, the function logs an error and returns
+     * a negative error code (with errno set appropriately).
+     *
+     * @return int A duplicated file descriptor on success, or a negative error code on failure.
+     */
     int open_input(){
         if(!exists()){
             errno = EAGAIN;

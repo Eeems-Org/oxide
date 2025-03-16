@@ -10,6 +10,143 @@
 #include <vector>
 #include <tuple>
 
+/*!
+ * \brief Encapsulates a reply from a D-Bus method call.
+ *
+ * This class holds the D-Bus message, error details, and the return code of the last operation.
+ */
+
+/*!
+ * \brief Constructs a new DBusReply object.
+ *
+ * Initializes the message pointer to nullptr and sets default values for error tracking.
+ */
+
+/*!
+ * \brief Destructs the DBusReply object.
+ *
+ * Releases any resources associated with the D-Bus reply.
+ */
+
+/*!
+ * \brief Retrieves a descriptive error message.
+ *
+ * If an error occurred during the D-Bus operation, this function returns the corresponding error message;
+ * otherwise, it returns an empty string.
+ *
+ * \return A string containing the error message or an empty string if no error is present.
+ */
+
+/*!
+ * \brief Checks if the DBusReply indicates an error.
+ *
+ * \return true if an error occurred during the last D-Bus operation, false otherwise.
+ */
+
+/*!
+ * \brief Reads a value of type T from the D-Bus reply message.
+ *
+ * Attempts to extract a value using the specified D-Bus type signature. On failure, sets errno to the negative return code and returns an empty optional.
+ *
+ * \tparam T The type to read from the reply.
+ * \param argument_type The D-Bus signature of the expected value.
+ * \return A std::optional containing the value if successful; otherwise, an empty std::optional.
+ */
+
+/*!
+ * \brief Defines a shared pointer type for DBusReply objects.
+ */
+
+/*!
+ * \brief Represents an exception thrown during D-Bus operations.
+ *
+ * Inherits from std::runtime_error.
+ */
+
+/*!
+ * \brief Constructs a new DBusException with an error message.
+ *
+ * \param message A string describing the error.
+ */
+
+/*!
+ * \brief Provides an interface for managing D-Bus connections and communications.
+ *
+ * The DBus class handles establishing connections to the D-Bus, invoking methods, and retrieving properties from services.
+ */
+
+/*!
+ * \brief Creates a new D-Bus connection.
+ *
+ * Connects to the system bus if \a use_system is true; otherwise, connects to the session bus.
+ *
+ * \param use_system If true, use the system bus instead of the session bus.
+ * \throws DBusException if the connection fails.
+ */
+
+/*!
+ * \brief Closes the D-Bus connection and releases associated resources.
+ */
+
+/*!
+ * \brief Returns the underlying sd_bus object for D-Bus communication.
+ *
+ * \return A pointer to the sd_bus instance.
+ */
+
+/*!
+ * \brief Retrieves a list of available D-Bus services.
+ *
+ * \return A vector of strings where each element is a service name available on the D-Bus.
+ */
+
+/*!
+ * \brief Checks if a given D-Bus service is available.
+ *
+ * \param service The name of the service to check.
+ * \return true if the specified service is present on the bus, false otherwise.
+ */
+
+/*!
+ * \brief Calls a method on a D-Bus service with arguments.
+ *
+ * Verifies that the number of argument type characters matches the number of provided arguments.
+ * If the counts differ, the reply's return value is set to EINVAL. Invokes the method and returns a DBusReply shared pointer.
+ * Updates errno with the negative return code if an error occurs.
+ *
+ * \param service The target service name.
+ * \param path The object path on the D-Bus.
+ * \param interface The D-Bus interface name.
+ * \param member The method name to call.
+ * \param argument_types A string specifying the expected argument types.
+ * \param args The arguments to pass to the D-Bus method.
+ * \return A shared pointer to a DBusReply containing the result.
+ */
+
+/*!
+ * \brief Calls a method on a D-Bus service without arguments.
+ *
+ * A convenience overload that invokes the method with an empty argument type signature.
+ *
+ * \param service The target service name.
+ * \param path The object path on the D-Bus.
+ * \param interface The D-Bus interface name.
+ * \param member The method name to call.
+ * \return A shared pointer to a DBusReply containing the result.
+ */
+
+/*!
+ * \brief Retrieves the value of a property from a D-Bus service.
+ *
+ * Queries a property from the specified service and returns the reply.
+ *
+ * \param service The service name.
+ * \param path The object path on the D-Bus.
+ * \param interface The interface that contains the property.
+ * \param member The property name.
+ * \param property_type The D-Bus signature of the property's type.
+ * \return A shared pointer to a DBusReply containing the property value.
+ */
 namespace Blight {
     /*!
      * \brief The DBusReply class

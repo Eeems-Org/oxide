@@ -18,6 +18,16 @@ using namespace std::chrono_literals;
 namespace Blight{
     static std::atomic<unsigned int> ackid;
     static moodycamel::ConcurrentQueue<ackid_ptr_t> acks;
+    /**
+     * @brief Constructs an acknowledgment object.
+     *
+     * Initializes the acknowledgment with a unique identifier, the expected size of the data,
+     * and the data payload. The acknowledgment is initially marked as incomplete.
+     *
+     * @param ackid A unique identifier for this acknowledgment.
+     * @param data_size The size (in bytes) of the associated data payload.
+     * @param data The data payload related to this acknowledgment.
+     */
     ackid_t::ackid_t(
         unsigned int ackid,
         unsigned int data_size,
@@ -138,6 +148,20 @@ namespace Blight{
 
     message_ptr_t Connection::read(){ return message_t::from_socket(m_fd); }
 
+    /**
+     * @brief Sends a message over the connection.
+     *
+     * This function constructs a message header (and sends optional payload data) using a blocking send mechanism.
+     * It generates or accepts an acknowledgment ID and, when the message type is not an acknowledgment, enqueues an
+     * acknowledgment object to track the server's response. For acknowledgment messages, the acknowledgment ID is cleared
+     * to avoid blocking on a response.
+     *
+     * @param type The type of the message to send.
+     * @param data Pointer to the message payload.
+     * @param size Number of bytes in the payload.
+     * @param __ackid Optional acknowledgment ID; if zero, a new ID is generated.
+     * @return maybe_ackid_ptr_t A pointer to an acknowledgment object for the sent message, or an empty pointer if sending fails.
+     */
     maybe_ackid_ptr_t Connection::send(
         MessageType type,
         data_t data,
@@ -210,6 +234,24 @@ namespace Blight{
         }
     }
 
+    /**
+     * @brief Sends a repaint command for a specified surface.
+     *
+     * This function dispatches a repaint command for the surface identified by @p identifier using the provided
+     * position, dimensions, waveform mode, and marker. If the identifier is invalid (i.e., evaluates to false),
+     * the function sets errno to EINVAL and returns an empty result. Otherwise, it packages the parameters into a
+     * command structure and sends it through the messaging system, returning an optional acknowledgment pointer.
+     *
+     * @param identifier Surface identifier to be repainted.
+     * @param x Horizontal starting coordinate of the repaint region.
+     * @param y Vertical starting coordinate of the repaint region.
+     * @param width Width of the repaint region.
+     * @param height Height of the repaint region.
+     * @param waveform Waveform mode for the repaint operation.
+     * @param marker Marker value associated with the repaint command.
+     *
+     * @return maybe_ackid_ptr_t Optional acknowledgment pointer; empty if the identifier is invalid or if sending fails.
+     */
     maybe_ackid_ptr_t Connection::repaint(
         surface_id_t identifier,
         int x,
@@ -317,6 +359,20 @@ namespace Blight{
         return lower(buf->surface);
     }
 
+    /**
+     * @brief Sends a command to reposition a surface.
+     *
+     * Constructs and dispatches a move command to reposition the surface specified by
+     * the given identifier to the target (x, y) coordinates. If the identifier is invalid,
+     * errno is set to EINVAL and an empty result is returned.
+     *
+     * @param identifier The unique identifier of the surface to move.
+     * @param x The destination x-coordinate.
+     * @param y The destination y-coordinate.
+     *
+     * @return maybe_ackid_ptr_t An acknowledgment pointer for the move command, or an empty result
+     *         if the surface identifier is invalid.
+     */
     maybe_ackid_ptr_t Connection::move(surface_id_t identifier, int x, int y){
         if(!identifier){
             errno = EINVAL;

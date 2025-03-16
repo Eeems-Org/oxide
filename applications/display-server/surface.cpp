@@ -114,6 +114,15 @@ bool Surface::isValid(){
 
 std::shared_ptr<QImage> Surface::image(){ return m_image; }
 
+/**
+ * @brief Triggers a repaint of the surface.
+ *
+ * If the provided rectangle is empty, the function repaints the entire surface area.
+ * In EPAPER mode, it enqueues a repaint request with a high quality grayscale waveform update.
+ * In non-EPAPER mode, it emits an update signal for the specified or computed rectangle.
+ *
+ * @param rect The region of the surface to repaint. If empty, the entire surface area is used.
+ */
 void Surface::repaint(QRect rect){
     if(rect.isEmpty()){
         rect = this->rect();

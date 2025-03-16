@@ -16,7 +16,144 @@
 #include <functional>
 #include <atomic>
 
-namespace Blight {
+/**
+         * @brief Represents an acknowledgment handle used for synchronizing responses from the display server.
+         */
+        
+        /**
+         * @brief Constructs an acknowledgment handle used for synchronizing responses.
+         *
+         * @param ackid Unique identifier for the acknowledgment. Defaults to 0.
+         * @param data_size Size of the response data in bytes. Defaults to 0.
+         * @param data Pointer to the response data. Defaults to nullptr.
+         */
+        
+        /**
+         * @brief Destroys the acknowledgment handle.
+         */
+        
+        /**
+         * @brief Waits for the acknowledgment to be signaled.
+         *
+         * Blocks until the acknowledgment is marked as complete or the specified timeout expires.
+         *
+         * @param timeout Maximum time in milliseconds to wait. If zero, waits indefinitely.
+         * @return true if the acknowledgment was signaled, false if the timeout expired.
+         */
+        
+        /**
+         * @brief Notifies all waiting threads that the acknowledgment is complete.
+         */
+        
+        
+        /**
+         * @brief Initializes a new connection with the given socket descriptor.
+         *
+         * @param fd Socket descriptor for the display server connection.
+         */
+        
+        /**
+         * @brief Cleans up the connection and releases associated resources.
+         */
+        
+        /**
+         * @brief Retrieves the socket descriptor for the connection.
+         *
+         * @return The connection socket descriptor.
+         */
+        
+        /**
+         * @brief Retrieves the socket descriptor for input events.
+         *
+         * @return The input events socket descriptor.
+         */
+        
+        /**
+         * @brief Registers a callback to be executed upon disconnection from the display server.
+         *
+         * @param callback Function to be called when the connection is disconnected.
+         */
+        
+        /**
+         * @brief Reads a message from the display server.
+         *
+         * Blocks until a complete message is received.
+         *
+         * @return A pointer to the received message.
+         */
+        
+        /**
+         * @brief Reads an input event from the display server's input events socket.
+         *
+         * @return An event packet if available; otherwise, an empty optional.
+         */
+        
+        /**
+         * @brief Sends a message to the display server.
+         *
+         * Optionally returns an acknowledgment handle if a response is expected.
+         *
+         * @param type Message type.
+         * @param data Pointer to the data to be sent.
+         * @param size Size of the data in bytes.
+         * @param __ackid Unique identifier for the acknowledgment; if set to 0, one is generated automatically.
+         * @return An acknowledgment pointer if the message was sent successfully.
+         */
+        
+        /**
+         * @brief Pings the display server to measure round-trip time.
+         *
+         * Sends a ping message and returns the round-trip duration if the response is received within the specified timeout.
+         *
+         * @param timeout Maximum time in milliseconds to wait for a ping response. If zero, waits indefinitely.
+         * @return The round-trip duration if successful, or an empty optional if the ping times out.
+         */
+        
+        /**
+         * @brief Waits for the specified marker to signal the completion of repainting.
+         *
+         * @param marker Marker identifier to wait for.
+         */
+        
+        /**
+         * @brief Repaints a rectangular region of a surface.
+         *
+         * @param identifier Unique identifier of the surface.
+         * @param x X offset of the region on the surface.
+         * @param y Y offset of the region on the surface.
+         * @param width Width of the region.
+         * @param height Height of the region.
+         * @param waveform Waveform mode to use for the repaint. Defaults to HighQualityGrayscale.
+         * @param marker Optional marker identifier to track the repaint operation. Defaults to 0.
+         * @return An acknowledgment pointer if the repaint operation was initiated successfully.
+         */
+        
+        /**
+         * @brief Repaints a rectangular region of a surface using the provided buffer.
+         *
+         * Extracts the surface identifier from the buffer and repaints the specified region.
+         *
+         * @param buf Buffer associated with the surface.
+         * @param x X offset of the region on the surface.
+         * @param y Y offset of the region on the surface.
+         * @param width Width of the region.
+         * @param height Height of the region.
+         * @param waveform Waveform mode to use for the repaint. Defaults to HighQualityGrayscale.
+         * @param marker Optional marker identifier to track the repaint operation. Defaults to 0.
+         * @return An acknowledgment pointer if the repaint operation was initiated successfully.
+         */
+        
+        /**
+         * @brief Repaints an entire surface based on the dimensions specified in the buffer.
+         *
+         * Uses the buffer's position and size to repaint the corresponding surface region.
+         *
+         * @param buf Buffer associated with the surface.
+         * @param waveform Waveform mode to use for the repaint. Defaults to HighQualityGrayscale.
+         * @param marker Optional marker identifier to track the repaint operation. Defaults to 0.
+         * @return An acknowledgment pointer if the repaint operation was initiated successfully.
+         */
+        namespace Blight {
     class Connection;
     /*!
      * \brief Handle used for waiting for a response from the display server

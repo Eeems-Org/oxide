@@ -401,6 +401,15 @@ void DbusInterface::enterExclusiveMode(QDBusMessage message){
     evdevHandler->clear_buffers();
 }
 
+/**
+ * @brief Exits exclusive mode for input handling.
+ *
+ * Deactivates the exclusive input mode for the system connection associated with the provided DBus message.
+ * If the connection lacks system privileges, an access denied error is returned. On EPAPER builds, the method
+ * enqueues a high-quality grayscale repaint of the framebuffer before waiting for ongoing repaint operations to finish.
+ *
+ * @param message The DBus message triggering the exit from exclusive mode.
+ */
 void DbusInterface::exitExclusiveMode(QDBusMessage message){
     auto connection = getConnection(message);
     if(!connection->has("system")){
@@ -421,6 +430,15 @@ void DbusInterface::exitExclusiveMode(QDBusMessage message){
     waitForNoRepaints(message);
 }
 
+/**
+ * @brief Triggers an exclusive mode repaint for e-paper displays.
+ *
+ * This function validates that the D-Bus connection issuing the repaint request has system-level permissions.
+ * If the connection does not have these permissions, an access denied error is returned.
+ * When compiled for e-paper devices (with EPAPER defined), it sends an update to the GUI thread using high quality grayscale mode.
+ *
+ * @param message The D-Bus message triggering the repaint request.
+ */
 void DbusInterface::exclusiveModeRepaint(QDBusMessage message){
     auto connection = getConnection(message);
     if(!connection->has("system")){

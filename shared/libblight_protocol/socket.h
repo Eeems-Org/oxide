@@ -8,6 +8,59 @@
 #include <optional>
 
 #ifdef __cplusplus
+/**
+ * @brief Receives data from a socket in a non-blocking manner.
+ *
+ * This function attempts to retrieve the specified number of bytes from the provided socket descriptor.
+ * It performs a series of non-blocking read attempts, each with a defined timeout period.
+ *
+ * @param fd Socket file descriptor.
+ * @param size Number of bytes to receive.
+ * @param attempts Maximum number of non-blocking attempts.
+ * @param timeout Timeout in milliseconds for each attempt.
+ * @return An optional containing the received data if successful; otherwise, an empty optional.
+ */
+
+/**
+ * @brief Receives data from a socket in a blocking manner.
+ *
+ * Performs a blocking read to obtain the specified number of bytes from the given socket.
+ *
+ * @param fd Socket file descriptor.
+ * @param size Number of bytes to receive.
+ * @return An optional containing the received data if successful; otherwise, an empty optional.
+ */
+
+/**
+ * @brief Sends data to a socket in a blocking manner.
+ *
+ * Attempts to send the provided data buffer through the specified socket, blocking until the operation completes.
+ *
+ * @param fd Socket file descriptor.
+ * @param data Data buffer to send.
+ * @param size Number of bytes to send.
+ * @return true if the data was successfully sent; otherwise, false.
+ */
+
+/**
+ * @brief Waits until a socket is ready for sending data.
+ *
+ * Blocks until the socket is ready for writing, or until the specified timeout elapses.
+ *
+ * @param fd Socket file descriptor.
+ * @param timeout Timeout in milliseconds to wait for readiness (a negative value indicates an indefinite wait).
+ * @return true if the socket is ready for sending; otherwise, false.
+ */
+
+/**
+ * @brief Waits until a socket is ready for receiving data.
+ *
+ * Blocks until data is available for reading from the socket, or until the specified timeout elapses.
+ *
+ * @param fd Socket file descriptor.
+ * @param timeout Timeout in milliseconds to wait for readiness (a negative value indicates an indefinite wait).
+ * @return true if the socket is ready for reading; otherwise, false.
+ */
 namespace BlightProtocol{
     /*!
      * \brief Non-blocking recieve data from a socket.

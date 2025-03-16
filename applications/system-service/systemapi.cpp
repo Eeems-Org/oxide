@@ -19,6 +19,15 @@ QDebug operator<<(QDebug debug, Touch* touch){
     return debug.maybeSpace();
 }
 
+/**
+ * @brief Prepares the system for suspend or resume.
+ *
+ * When suspending, the function disables user controls, updates the display with a suspend image to mitigate ghosting, stops Wi-Fi updates, records the current application for later resumption, and releases sleep inhibitors. It also sets up auto-lock timing if enabled.
+ *
+ * When resuming, it clears the suspend display, processes pending events, reactivates necessary timers and services (including Wi-Fi), and attempts to resume the previously active application, falling back to the lockscreen or startup application as needed.
+ *
+ * @param suspending If true, the system is prepared for suspend; if false, it resumes operation.
+ */
 void SystemAPI::PrepareForSleep(bool suspending){
     if(suspending){
         Controller::singleton()->enabled = false;
