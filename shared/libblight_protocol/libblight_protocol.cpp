@@ -33,10 +33,10 @@ inline const char* error_message(const sd_bus_error& err, int return_value){
 }
 
 std::string generate_uuid_v4(){
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<> dis(0, 15);
-    static std::uniform_int_distribution<> dis2(8, 11);
+    thread_local std::random_device rd;
+    thread_local std::mt19937 gen(rd());
+    thread_local std::uniform_int_distribution<> dis(0, 15);
+    thread_local std::uniform_int_distribution<> dis2(8, 11);
     std::stringstream ss;
     int i;
     ss << std::hex;

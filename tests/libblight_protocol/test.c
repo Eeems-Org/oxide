@@ -30,24 +30,30 @@
 
 static int failed_tests = 0;
 static int total_tests = 0;
-#define TEST_EXPR(name, expression) \
+static int skipped_tests = 0;
+#define TEST_EXPR(name, expression, predicate) \
     { \
         total_tests++; \
-        int __success__ = 0; \
-        TRY(expression, __success__ = 1, { \
-            if(__success__ == 0){ \
-                fprintf(stderr, "PASS"); \
-            }else{ \
-                fprintf(stderr, "FAIL"); \
-            } \
-            fprintf(stderr, "   : " #name "()\n"); \
-        }); \
-        failed_tests += __success__; \
+        if(predicate){ \
+            int __success__ = 0; \
+            TRY(expression, __success__ = 1, { \
+                if(__success__ == 0){ \
+                    fprintf(stderr, "PASS"); \
+                }else{ \
+                    fprintf(stderr, "FAIL"); \
+                } \
+                fprintf(stderr, "   : " #name "()\n"); \
+            }); \
+            failed_tests += __success__; \
+        }else{ \
+            skipped_tests++; \
+            fprintf(stderr, "SKIP   : " #name "()\n"); \
+        } \
     }
-#define TEST(method) \
+#define TEST(method, predicate) \
     TEST_EXPR(method, { \
         method(); \
-    })
+    }, predicate)
 
 static blight_bus* bus = NULL;
 
@@ -256,29 +262,42 @@ int test_c(){
     struct timeval start;
     gettimeofday(&start, NULL);
     int fd = 0;
-    TEST(test_blight_header_from_data);
-    TEST(test_blight_message_from_data);
-    TEST(test_blight_bus_connect_system);
-    TEST(test_blight_service_available);
-    TEST_EXPR(test_blight_service_open, fd = test_blight_service_open());
-    TEST(test_blight_service_input_open);
+    TEST(test_blight_header_from_data, true);
+    TEST(test_blight_message_from_data, true);
+    TEST(test_blight_bus_connect_system, true);
+    TEST(test_blight_service_available, bus != NULL);
+    TEST_EXPR(test_blight_service_open, fd = test_blight_service_open(), bus != NULL);
+    TEST(test_blight_service_input_open, bus != NULL);
     int pingid = 0;
-    TEST_EXPR(test_blight_message_from_socket, pingid = test_blight_message_from_socket(fd));
-    TEST_EXPR(test_blight_send_message, pingid = test_blight_send_message(fd, pingid));
+    TEST_EXPR(
+        test_blight_message_from_socket,
+        pingid = test_blight_message_from_socket(fd),
+        fd > 0
+    );
+    TEST_EXPR(
+        test_blight_send_message,
+        pingid = test_blight_send_message(fd, pingid),
+        fd > 0
+    );
     blight_buf_t* buf = NULL;
-    TEST_EXPR(test_blight_create_buffer, buf = test_blight_create_buffer());
-    TEST_EXPR(test_blight_add_surface, test_blight_add_surface(buf));
-    TEST(test_blight_cast_to_repaint_packet);
-    TEST(test_blight_cast_to_move_packet);
-    TEST(test_blight_cast_to_surface_info_packet);
+    TEST_EXPR(test_blight_create_buffer, buf = test_blight_create_buffer(), true);
+    TEST_EXPR(
+        test_blight_add_surface,
+        test_blight_add_surface(buf),
+        bus != NULL && buf != NULL
+    );
+    TEST(test_blight_cast_to_repaint_packet, true);
+    TEST(test_blight_cast_to_move_packet, true);
+    TEST(test_blight_cast_to_surface_info_packet, true);
     struct timeval end;
     gettimeofday(&end, NULL);
     unsigned int elapsed = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_usec - start.tv_usec) / 1000.0;
     fprintf(
         stderr,
-        "Totals: %d passed, %d failed, 0 skipped, 0 blacklisted, %ums\n",
-        total_tests - failed_tests,
+        "Totals: %d passed, %d failed, %d skipped, 0 blacklisted, %ums\n",
+        total_tests - failed_tests - skipped_tests,
         failed_tests,
+        skipped_tests,
         elapsed
     );
     fprintf(stderr, "********* Finished testing of C tests *********\n");
