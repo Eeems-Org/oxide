@@ -108,10 +108,9 @@ namespace BlightProtocol{
         // TODO explore MSG_ZEROCOPY, this will require owning the buffer instead of allowing
         //      the user to pass in one we wont touch. As we'll need to ensure we don't delete
         //      it until the kernel tells us it's done using it.
-        ssize_t res = -1;
         ssize_t total = 0;
         while(total < size){
-            res = ::send(fd, data + total, size - total, MSG_EOR | MSG_NOSIGNAL);
+            ssize_t res = ::send(fd, data + total, size - total, MSG_EOR | MSG_NOSIGNAL);
             // We sent something
             if(res > -1){
                 total += res;
