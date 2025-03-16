@@ -482,4 +482,15 @@ extern "C" {
         errno = 0;
         return (blight_packet_surface_info_t*)message->data;
     }
+    int blight_event_from_socket(int fd, blight_event_packet_t** packet){
+        auto maybe = recv(fd, sizeof(blight_event_packet_t));
+        if(!maybe.has_value()){
+            return -errno;
+        }
+        auto p = new blight_event_packet_t;
+        memcpy(p, maybe.value(), sizeof(blight_event_packet_t));
+        delete[] maybe.value();
+        *packet = p;
+        return 0;
+    }
 }

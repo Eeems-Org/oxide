@@ -289,6 +289,7 @@ namespace BlightProtocol {
 #define blight_packet_repaint_t BlightProtocol::blight_packet_repaint_t
 #define blight_packet_move_t BlightProtocol::blight_packet_move_t
 #define blight_packet_surface_info_t BlightProtocol::blight_packet_surface_info_t
+#define blight_event_packet_t BlightProtocol::blight_event_packet_t
 #define BlightMessageType BlightProtocol::BlightMessageType
 #define BlightImageFormat BlightProtocol::BlightImageFormat
 extern "C" {
@@ -346,7 +347,10 @@ extern "C" {
      * \param fd
      * \return
      */
-    LIBBLIGHT_PROTOCOL_EXPORT int blight_message_from_socket(int fd, blight_message_t** message);
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_message_from_socket(
+        int fd,
+        blight_message_t** message
+    );
     /*!
      * \brief blight_message_deref
      * \param message
@@ -424,6 +428,16 @@ extern "C" {
     LIBBLIGHT_PROTOCOL_EXPORT blight_packet_surface_info_t* blight_cast_to_surface_info_packet(
         blight_message_t* message
     );
+    /*!
+     * \brief blight_event_from_socket
+     * \param fd
+     * \param packet
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_event_from_socket(
+        int fd,
+        blight_event_packet_t** packet
+    );
 
 #ifdef __cplusplus
 }
@@ -435,6 +449,7 @@ extern "C" {
 #undef blight_packet_repaint_t
 #undef blight_packet_move_t
 #undef blight_packet_surface_info_t
+#undef blight_event_packet_t
 #undef BlightMessageType
 #undef BlightImageFormat
 #endif

@@ -7,6 +7,8 @@
 #include <string.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/time.h>
 
 #define UNUSED(x) (void)(x)
@@ -51,9 +53,7 @@ static int skipped_tests = 0;
         } \
     }
 #define TEST(method, predicate) \
-    TEST_EXPR(method, { \
-        method(); \
-    }, predicate)
+    TEST_EXPR(method, method(), predicate)
 
 static blight_bus* bus = NULL;
 
@@ -254,6 +254,28 @@ void test_blight_cast_to_surface_info_packet(){
     assert(packet->stride == 0);
     assert(packet->format == 0);
 }
+void test_blight_event_from_socket(){
+    int fds[2];
+    assert(
+        socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) != -1
+        && "Failed to create socket pair"
+    );
+    int clientFd = fds[0];
+    int serverFd = fds[1];
+    blight_event_packet_t data = {0};
+    assert(send(serverFd, &data, sizeof(blight_event_packet_t), MSG_EOR | MSG_NOSIGNAL) > 0);
+    blight_event_packet_t* packet = NULL;
+    int res = blight_event_from_socket(clientFd, &packet);
+    assert(res >= 0);
+    assert(packet != NULL);
+    assert(packet->device == 0);
+    assert(packet->event.type == 0);
+    assert(packet->event.code == 0);
+    assert(packet->event.value == 0);
+    free(packet);
+    close(clientFd);
+    close(serverFd);
+}
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclobbered"
@@ -261,11 +283,11 @@ int test_c(){
     fprintf(stderr, "********* Start testing of C tests *********\n");
     struct timeval start;
     gettimeofday(&start, NULL);
-    int fd = 0;
     TEST(test_blight_header_from_data, true);
     TEST(test_blight_message_from_data, true);
     TEST(test_blight_bus_connect_system, true);
     TEST(test_blight_service_available, bus != NULL);
+    int fd = 0;
     TEST_EXPR(test_blight_service_open, fd = test_blight_service_open(), bus != NULL);
     TEST(test_blight_service_input_open, bus != NULL);
     int pingid = 0;
@@ -289,6 +311,15 @@ int test_c(){
     TEST(test_blight_cast_to_repaint_packet, true);
     TEST(test_blight_cast_to_move_packet, true);
     TEST(test_blight_cast_to_surface_info_packet, true);
+    TEST(test_blight_event_from_socket, true);
+
+    if(fd > 0){
+        close(fd);
+    }
+    if(bus != NULL){
+        blight_bus_deref(bus);
+    }
+
     struct timeval end;
     gettimeofday(&end, NULL);
     unsigned int elapsed = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_usec - start.tv_usec) / 1000.0;
