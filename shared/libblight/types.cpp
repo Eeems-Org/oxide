@@ -99,6 +99,14 @@ Blight::header_t Blight::header_t::from_data(void* data){
     return from_data(reinterpret_cast<data_t>(data));
 }
 
+/**
+ * @brief Creates an invalid message header.
+ *
+ * Constructs and returns a header_t instance with its type set to MessageType::Invalid
+ * and both acknowledgment ID and size initialized to 0.
+ *
+ * @return A header_t instance representing an invalid message header.
+ */
 Blight::header_t Blight::header_t::new_invalid(){
     return header_t{
         {
@@ -129,6 +137,18 @@ Blight::header_t Blight::message_t::create_ack(message_t* message, size_t size){
     return create_ack(*message, size);
 }
 
+/**
+ * @brief Creates an acknowledgment header for the given message.
+ *
+ * Constructs and returns a header with the type set to Ack. The acknowledgment identifier
+ * is copied from the provided message's header, and the specified size is assigned.
+ *
+ * @param message The original message whose acknowledgment identifier is used.
+ * @param size The size value to include in the acknowledgment header.
+ *
+ * @return Blight::header_t An acknowledgment header initialized with the corresponding
+ *         values from the original message and the provided size.
+ */
 Blight::header_t Blight::message_t::create_ack(const message_t& message, size_t size){
     return header_t{
         {

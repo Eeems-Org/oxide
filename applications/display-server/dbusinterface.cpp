@@ -401,6 +401,17 @@ void DbusInterface::enterExclusiveMode(QDBusMessage message){
     evdevHandler->clear_buffers();
 }
 
+/**
+ * @brief Exits exclusive mode for a system connection.
+ *
+ * This method validates that the incoming D-Bus request originates from a system connection.
+ * If the connection is not a system connection, it replies with an AccessDenied error.
+ * Upon successful validation, the exclusive mode flag is disabled and, in e-paper builds,
+ * a high-quality grayscale framebuffer update is enqueued. Finally, the method waits until
+ * any pending repaints have completed.
+ *
+ * @param message The D-Bus message triggering the request.
+ */
 void DbusInterface::exitExclusiveMode(QDBusMessage message){
     auto connection = getConnection(message);
     if(!connection->has("system")){
@@ -421,6 +432,15 @@ void DbusInterface::exitExclusiveMode(QDBusMessage message){
     waitForNoRepaints(message);
 }
 
+/**
+ * @brief Requests a repaint update in exclusive mode.
+ *
+ * Validates that the D-Bus connection from the provided message is a system connection. If the connection is not of the correct type,
+ * an error reply is sent. When EPAPER support is enabled, the function commands the GUI thread to update the EPaper framebuffer using
+ * a high-quality grayscale waveform mode.
+ *
+ * @param message The D-Bus message initiating the repaint request.
+ */
 void DbusInterface::exclusiveModeRepaint(QDBusMessage message){
     auto connection = getConnection(message);
     if(!connection->has("system")){

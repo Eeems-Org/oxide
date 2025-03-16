@@ -74,6 +74,13 @@ void test_blight_header_from_data(){
     assert(header2.ackid == 0);
     assert(header2.size == 0);
 }
+/**
+ * @brief Tests the conversion of raw data into a blight message.
+ *
+ * This function creates a buffer containing a blight header with preset values and a single
+ * character payload. It then calls blight_message_from_data() to construct a blight message and
+ * verifies that the header fields and the data content are correctly populated.
+ */
 void test_blight_message_from_data(){
     blight_header_t header;
     header.type = 1;
@@ -93,10 +100,22 @@ void test_blight_message_from_data(){
     blight_message_deref(message);
     free(data);
 }
+/**
+ * @brief Tests that the blight bus system is successfully connected.
+ *
+ * This function invokes blight_bus_connect_system() using the address of the global bus variable,
+ * then asserts that the connection returns a positive value and that the bus pointer is set to a non-NULL value.
+ */
 void test_blight_bus_connect_system(){
     assert(blight_bus_connect_system(&bus) > 0);
     assert(bus != NULL);
 }
+/**
+ * @brief Tests if the blight service is available.
+ *
+ * Uses the global bus to verify that the blight service is active by asserting the result
+ * of the blight_service_available function.
+ */
 void test_blight_service_available(){
     assert(blight_service_available(bus));
 }
@@ -105,11 +124,30 @@ int test_blight_service_open(){
     assert(res > 0);
     return res;
 }
+/**
+ * @brief Validates that the service input is opened successfully.
+ *
+ * This test calls `blight_service_input_open` using the global bus and asserts that the
+ * returned file descriptor is positive. It then closes the file descriptor to release
+ * allocated resources.
+ */
 void test_blight_service_input_open(){
     int res = blight_service_input_open(bus);
     assert(res > 0);
     close(res);
 }
+/**
+ * @brief Retrieves a ping message from a socket and returns its acknowledgment ID.
+ *
+ * This function continuously attempts to receive a message from the specified socket file descriptor,
+ * retrying if the operation is interrupted (EINTR) or if the data is temporarily unavailable (EAGAIN).
+ * Upon a successful read, it asserts that the message is valid and of type Ping, extracts the acknowledgment
+ * identifier from the message header, dereferences the message to release resources, and returns the ping ID.
+ *
+ * @param fd Socket file descriptor used to read the ping message.
+ *
+ * @return int The acknowledgment ID from the received ping message.
+ */
 int test_blight_message_from_socket(int fd){
     int res = -EAGAIN;
     blight_message_t* message = NULL;
@@ -123,6 +161,20 @@ int test_blight_message_from_socket(int fd){
     blight_message_deref(message);
     return pingid;
 }
+/**
+ * @brief Tests the bidirectional exchange of Ack and Ping messages over a socket.
+ *
+ * This function verifies the blight protocol's messaging operations by performing a two-step exchange.
+ * It first sends an Ack message with the provided ping identifier and waits to receive a Ping message,
+ * from which it updates the ping identifier. It then sends a Ping message and confirms that an Ack message
+ * with the expected identifier is received. The function employs assertions to ensure that the messaging
+ * behavior conforms to the protocol.
+ *
+ * @param fd The socket file descriptor used for communication.
+ * @param pingid The initial ping identifier, which is updated based on the received Ping message.
+ *
+ * @return int The updated ping identifier extracted from the first exchange.
+ */
 int test_blight_send_message(int fd, int pingid){
     int res = blight_send_message(fd, Ack, pingid, 0, NULL);
     assert(res == 0);
@@ -161,11 +213,31 @@ blight_buf_t* test_blight_create_buffer(){
     assert(buf->data != NULL);
     return buf;
 }
+/**
+ * @brief Tests adding a surface to the global bus.
+ *
+ * This function adds a surface using the provided buffer by invoking
+ * blight_add_surface on the global bus. It asserts that the returned
+ * surface identifier is positive, indicating a successful addition,
+ * and then cleans up by dereferencing the buffer.
+ *
+ * @param buf Pointer to a blight buffer containing the surface data.
+ */
 void test_blight_add_surface(blight_buf_t* buf){
     blight_surface_id_t identifier = blight_add_surface(bus, buf);
     assert(identifier > 0);
     blight_buffer_deref(buf);
 }
+/**
+ * @brief Tests the conversion of a blight message into a repaint packet.
+ *
+ * This function verifies that blight_cast_to_repaint_packet handles various error conditions
+ * and successfully casts a valid message. It checks that:
+ * - Passing a NULL pointer sets errno to EINVAL.
+ * - A message with an invalid header type or missing data sets errno appropriately (EINVAL or ENODATA).
+ * - A message with a data size that does not match a repaint packet sets errno to EMSGSIZE.
+ * - A valid repaint message returns a properly initialized repaint packet.
+ */
 void test_blight_cast_to_repaint_packet(){
     assert(blight_cast_to_repaint_packet(NULL) == NULL);
     assert(errno == EINVAL);
@@ -197,6 +269,15 @@ void test_blight_cast_to_repaint_packet(){
     assert(packet->marker == 0);
     assert(packet->identifier == 0);
 }
+/**
+ * @brief Tests the conversion of a message to a move packet.
+ *
+ * This function validates that the blight_cast_to_move_packet function handles various conditions correctly:
+ * - Passing a NULL pointer returns NULL and sets errno to EINVAL.
+ * - A message with an invalid header type returns NULL and sets errno to EINVAL.
+ * - When the header type is Move but the data is NULL or the message size is incorrect, it returns NULL and sets errno to ENODATA or EMSGSIZE respectively.
+ * - A properly configured message with a Move header and corresponding data size successfully casts to a move packet with default field values.
+ */
 void test_blight_cast_to_move_packet(){
     assert(blight_cast_to_move_packet(NULL) == NULL);
     assert(errno == EINVAL);
@@ -254,6 +335,15 @@ void test_blight_cast_to_surface_info_packet(){
     assert(packet->stride == 0);
     assert(packet->format == 0);
 }
+/**
+ * @brief Tests the retrieval of a zero-initialized event packet from a non-blocking socket.
+ *
+ * This function creates a pair of connected Unix domain sockets, sends a zero-initialized
+ * `blight_event_packet_t` from the server socket, and then reads the packet using
+ * `blight_event_from_socket` from the client socket. It verifies that the packet is received
+ * successfully and that its fields (`device`, `event.type`, `event.code`, and `event.value`)
+ * are all zero. Allocated memory is freed and the sockets are closed after the test.
+ */
 void test_blight_event_from_socket(){
     int fds[2];
     assert(
@@ -279,6 +369,16 @@ void test_blight_event_from_socket(){
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclobbered"
+/**
+ * @brief Executes the complete test suite for the libblight_protocol.
+ *
+ * This function orchestrates a series of tests using predefined macros to validate various
+ * components of the blight protocol library. It measures the total execution time, prints a summary 
+ * of passed, failed, and skipped tests to stderr, and handles resource cleanup by closing open file 
+ * descriptors and dereferencing global resources.
+ *
+ * @return int The number of tests that failed.
+ */
 int test_c(){
     fprintf(stderr, "********* Start testing of C tests *********\n");
     struct timeval start;

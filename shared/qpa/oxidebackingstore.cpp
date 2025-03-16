@@ -29,6 +29,19 @@ OxideBackingStore::~OxideBackingStore(){
 
 QPaintDevice* OxideBackingStore::paintDevice(){ return &image; }
 
+/**
+ * @brief Flushes a specified region of the backing store to the window.
+ *
+ * This method repaints the designated area of the backing store by iterating over each
+ * rectangle in the provided region and issuing repaint requests via Blight's connection.
+ * It retrieves the waveform mode from the QWindow's "WA_WAVEFORM" property, defaulting to
+ * Blight::WaveformMode::HighQualityGrayscale if the property is missing or invalid.
+ * No action is taken if the internal buffer is null or the region is empty.
+ *
+ * @param window Pointer to the QWindow used to extract the waveform mode.
+ * @param region The region of the backing store to repaint.
+ * @param offset Positional offset for repainting (unused in this implementation).
+ */
 void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoint& offset){
     Q_UNUSED(offset);
     Q_UNUSED(window);

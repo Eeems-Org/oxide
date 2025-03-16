@@ -18,6 +18,17 @@ using namespace std::chrono_literals;
 namespace Blight{
     static std::atomic<unsigned int> ackid;
     static moodycamel::ConcurrentQueue<ackid_ptr_t> acks;
+    /**
+     * @brief Constructs an acknowledgment object.
+     *
+     * This constructor initializes an acknowledgment instance with a unique identifier,
+     * the size of the associated data, and the data itself. The acknowledgment is initially
+     * marked as incomplete. In debug mode, a message is logged indicating the creation of the acknowledgment.
+     *
+     * @param ackid Unique identifier for the acknowledgment.
+     * @param data_size Size of the associated data in bytes.
+     * @param data The data associated with the acknowledgment.
+     */
     ackid_t::ackid_t(
         unsigned int ackid,
         unsigned int data_size,
@@ -138,6 +149,22 @@ namespace Blight{
 
     message_ptr_t Connection::read(){ return message_t::from_socket(m_fd); }
 
+    /**
+     * @brief Sends a message over the connection and returns its acknowledgment.
+     *
+     * This method sends a message with the specified type and data over the connection's file descriptor.
+     * It uses the provided acknowledgment identifier (__ackid) if non-zero; otherwise, it generates a new one.
+     * For message types other than Ack, it enqueues an acknowledgment object for later synchronization.
+     * The function first sends a header containing the message type, acknowledgment ID, and data size, and
+     * then sends the message data if provided. If sending the header or data fails, it logs a warning and
+     * returns an empty pointer.
+     *
+     * @param type The type of the message to be sent.
+     * @param data Pointer to the message data.
+     * @param size Size of the message data in bytes; if zero, only the header is sent.
+     * @param __ackid Optional acknowledgment identifier; a non-zero value is used directly, otherwise, a new one is generated.
+     * @return maybe_ackid_ptr_t Pointer to the acknowledgment object if the message was sent successfully, or an empty pointer if a send operation failed.
+     */
     maybe_ackid_ptr_t Connection::send(
         MessageType type,
         data_t data,
@@ -210,6 +237,22 @@ namespace Blight{
         }
     }
 
+    /**
+     * @brief Sends a repaint command to update a region of a surface.
+     *
+     * Constructs a repaint message with the specified coordinates, dimensions, waveform mode, and marker for the target surface.
+     * Validates the surface identifier, and if valid, dispatches the command and returns an acknowledgment identifier.
+     * Returns an empty optional if the identifier is invalid or if sending the command fails.
+     *
+     * @param identifier The unique identifier of the surface to repaint.
+     * @param x The x-coordinate of the top-left corner of the repaint region.
+     * @param y The y-coordinate of the top-left corner of the repaint region.
+     * @param width The width of the repaint region.
+     * @param height The height of the repaint region.
+     * @param waveform The waveform mode for repainting.
+     * @param marker A marker value associated with the repaint command.
+     * @return maybe_ackid_ptr_t Optional acknowledgment identifier pointer on success; empty if the command could not be sent.
+     */
     maybe_ackid_ptr_t Connection::repaint(
         surface_id_t identifier,
         int x,
@@ -317,6 +360,19 @@ namespace Blight{
         return lower(buf->surface);
     }
 
+    /**
+     * @brief Sends a move request to reposition a surface.
+     *
+     * This function validates the provided surface identifier and, if valid, constructs and sends a move
+     * message with the new (x, y) coordinates. If the identifier is invalid, it sets errno to EINVAL and returns
+     * an empty pointer.
+     *
+     * @param identifier The identifier of the surface to move.
+     * @param x The target x-coordinate.
+     * @param y The target y-coordinate.
+     * @return maybe_ackid_ptr_t A pointer to an acknowledgment object if the request is sent successfully;
+     *                           otherwise, an empty pointer if the identifier is invalid.
+     */
     maybe_ackid_ptr_t Connection::move(surface_id_t identifier, int x, int y){
         if(!identifier){
             errno = EINVAL;

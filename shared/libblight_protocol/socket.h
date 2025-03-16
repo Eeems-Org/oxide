@@ -8,6 +8,64 @@
 #include <optional>
 
 #ifdef __cplusplus
+/**
+ * @brief Attempts to receive data from a socket in a non-blocking manner.
+ *
+ * This function makes several attempts to receive the requested number of bytes from the specified socket,
+ * waiting for a defined timeout between each try. If data is successfully received during any attempt, it is returned;
+ * otherwise, an empty optional is returned.
+ *
+ * @param fd The file descriptor of the socket.
+ * @param size The number of bytes to receive.
+ * @param attempts The maximum number of attempts to receive data.
+ * @param timeout The timeout in milliseconds for each attempt.
+ * @return An optional containing the received data, or empty if the operation failed.
+ */
+
+/**
+ * @brief Receives data from a socket in a blocking manner.
+ *
+ * This function performs a blocking read to retrieve the specified number of bytes from the given socket.
+ * If the operation completes successfully, the received data is returned; otherwise, an empty optional is returned.
+ *
+ * @param fd The file descriptor of the socket.
+ * @param size The number of bytes to receive.
+ * @return An optional containing the received data, or empty if an error occurred.
+ */
+
+/**
+ * @brief Sends data to a socket using a blocking operation.
+ *
+ * This function performs a blocking send to transmit the specified number of bytes to the given socket.
+ * It returns a boolean value indicating whether the data was sent successfully.
+ *
+ * @param fd The file descriptor of the socket.
+ * @param data The data to be sent.
+ * @param size The number of bytes to send.
+ * @return True if the data was sent successfully; false otherwise.
+ */
+
+/**
+ * @brief Waits until the socket is ready to send data.
+ *
+ * This function blocks until the socket is ready for sending data or until the specified timeout expires.
+ * A negative timeout value indicates that the function should wait indefinitely.
+ *
+ * @param fd The file descriptor of the socket.
+ * @param timeout The timeout in milliseconds (negative for an indefinite wait).
+ * @return True if the socket is ready to send data; false if the timeout expires first.
+ */
+
+/**
+ * @brief Waits until the socket is ready to receive data.
+ *
+ * This function blocks until the socket is ready for receiving data or until the specified timeout expires.
+ * A negative timeout value indicates that the function should wait indefinitely.
+ *
+ * @param fd The file descriptor of the socket.
+ * @param timeout The timeout in milliseconds (negative for an indefinite wait).
+ * @return True if the socket is ready to receive data; false if the timeout expires first.
+ */
 namespace BlightProtocol{
     /*!
      * \brief Non-blocking recieve data from a socket.

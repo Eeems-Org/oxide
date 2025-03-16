@@ -102,6 +102,12 @@ void test_Types::test_move_t(){
     QCOMPARE(header2.y, header->y);
 }
 
+/**
+ * @brief Tests the conversion of a surface information header from raw data.
+ *
+ * Constructs a predefined Blight::surface_info_t instance, extracts a new instance using the from_data method,
+ * and verifies that both the size and each property (x, y, width, height, stride, and format) match.
+ */
 void test_Types::test_surface_info_t(){
     Blight::surface_info_t header{
        {
