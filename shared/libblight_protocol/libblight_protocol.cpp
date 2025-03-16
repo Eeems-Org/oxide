@@ -279,6 +279,7 @@ extern "C" {
                 m->header.type,
                 (long int)m->header.size
             );
+            delete m;
             return -errno;
         }
         m->data = maybe.value();
