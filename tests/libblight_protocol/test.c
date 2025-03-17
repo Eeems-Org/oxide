@@ -287,6 +287,7 @@ void test_blight_recv(){
     int clientFd = fds[0];
     int serverFd = fds[1];
     blight_data_t data = malloc(10);
+    assert(data != NULL && "Malloc failed");
     int res = blight_recv(clientFd, &data, 10);
     assert(-res == EAGAIN);
     write(serverFd, data, 10);
@@ -318,6 +319,7 @@ void test_blight_recv_blocking(){
     int clientFd = fds[0];
     int serverFd = fds[1];
     blight_data_t data = malloc(10);
+    assert(data != NULL && "Malloc failed");
     struct _test_blight_recv_blocking_thread_args args;
     args.fd = serverFd;
     args.data = data;
@@ -345,6 +347,7 @@ void test_blight_send_blocking(){
     int clientFd = fds[0];
     int serverFd = fds[1];
     blight_data_t data = malloc(10);
+    assert(data != NULL && "Malloc failed");
     assert(blight_send_blocking(serverFd, data, 10) == 0);
     blight_data_t data2 = NULL;
     assert(blight_recv(clientFd, &data2, 10) == 0);
@@ -352,6 +355,8 @@ void test_blight_send_blocking(){
     assert(memcmp(data, data2, 10) == 0);
     free(data);
     free(data2);
+    close(clientFd);
+    close(serverFd);
 }
 
 #pragma GCC diagnostic push
