@@ -1,4 +1,5 @@
 #include <libblight_protocol.h>
+#include <libblight_protocol/socket.h>
 #include <assert.h>
 #include <stdio.h>
 #include <errno.h>
@@ -10,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #define UNUSED(x) (void)(x)
 #define TRY(expression, c_expression, f_expression) \
@@ -276,6 +278,79 @@ void test_blight_event_from_socket(){
     close(clientFd);
     close(serverFd);
 }
+void test_blight_recv(){
+    int fds[2];
+    assert(
+      socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) != -1
+      && "Failed to create socket pair"
+      );
+    int clientFd = fds[0];
+    int serverFd = fds[1];
+    blight_data_t data = malloc(10);
+    int res = blight_recv(clientFd, &data, 10);
+    assert(-res == EAGAIN);
+    write(serverFd, data, 10);
+    blight_data_t data2 = NULL;
+    res = blight_recv(clientFd, &data2, 10);
+    assert(res == 0);
+    assert(data2 != NULL);
+    assert(memcmp(data, data2, 10) == 0);
+    free(data);
+    free(data2);
+    close(clientFd);
+    close(serverFd);
+}
+struct _test_blight_recv_blocking_thread_args{
+    int fd;
+    blight_data_t data;
+};
+void* _test_blight_recv_blocking_thread(void* vargs){
+    struct _test_blight_recv_blocking_thread_args* args = vargs;
+    write(args->fd, args->data, 10);
+    return NULL;
+}
+void test_blight_recv_blocking(){
+    int fds[2];
+    assert(
+        socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) != -1
+        && "Failed to create socket pair"
+    );
+    int clientFd = fds[0];
+    int serverFd = fds[1];
+    blight_data_t data = malloc(10);
+    struct _test_blight_recv_blocking_thread_args args;
+    args.fd = serverFd;
+    args.data = data;
+    pthread_t tid;
+    assert(
+        pthread_create(&tid, NULL, _test_blight_recv_blocking_thread, (void*)&args) == 0
+        && "Failed to start background thread"
+    );
+    blight_data_t data2 = NULL;
+    assert(blight_recv(clientFd, &data2, 10) == 0);
+    assert(data2 != NULL);
+    assert(memcmp(data, data2, 10) == 0);
+    pthread_join(tid, NULL);
+    free(data);
+    free(data2);
+    close(clientFd);
+    close(serverFd);
+}
+void test_blight_send_blocking(){
+    int fds[2];
+    assert(
+        socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) != -1
+        && "Failed to create socket pair"
+    );
+    int clientFd = fds[0];
+    int serverFd = fds[1];
+    blight_data_t data = malloc(10);
+    assert(blight_send_blocking(serverFd, data, 10) == 0);
+    blight_data_t data2 = NULL;
+    assert(blight_recv(clientFd, &data2, 10) == 0);
+    assert(data2 != NULL);
+    assert(memcmp(data, data2, 10) == 0);
+}
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclobbered"
@@ -312,6 +387,9 @@ int test_c(){
     TEST(test_blight_cast_to_move_packet, true);
     TEST(test_blight_cast_to_surface_info_packet, true);
     TEST(test_blight_event_from_socket, true);
+    TEST(test_blight_recv, true);
+    TEST(test_blight_recv_blocking, true);
+    TEST(test_blight_send_blocking, true);
 
     if(fd > 0){
         close(fd);

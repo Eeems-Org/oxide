@@ -178,3 +178,46 @@ namespace BlightProtocol{
 
     bool wait_for_read(int fd, int timeout){ return wait_for(fd, timeout, POLLIN); }
 }
+
+extern "C" {
+    int blight_recv(
+        int fd,
+        BlightProtocol::blight_data_t* data,
+        ssize_t size
+    ){
+        auto maybe = BlightProtocol::recv(fd, size);
+        if(!maybe.has_value()){
+            return -errno;
+        }
+        *data = maybe.value();
+        return 0;
+    }
+    int blight_recv_blocking(
+        int fd,
+        BlightProtocol::blight_data_t* data,
+        ssize_t size
+    ){
+        auto maybe = BlightProtocol::recv_blocking(fd, size);
+        if(!maybe.has_value()){
+            return -errno;
+        }
+        *data = maybe.value();
+        return 0;
+    }
+    int blight_send_blocking(
+        int fd,
+        const BlightProtocol::blight_data_t data,
+        ssize_t size
+    ){
+        if(!BlightProtocol::send_blocking(fd, data, size)){
+            return -errno;
+        }
+        return 0;
+    }
+    int blight_wait_for_send(int fd, int timeout){
+        return BlightProtocol::wait_for_send(fd, timeout);
+    }
+    int blight_wait_for_read(int fd, int timeout){
+        return BlightProtocol::wait_for_read(fd, timeout);
+    }
+}

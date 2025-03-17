@@ -488,10 +488,7 @@ extern "C" {
         if(!maybe.has_value()){
             return -errno;
         }
-        auto p = new blight_event_packet_t;
-        memcpy(p, maybe.value(), sizeof(blight_event_packet_t));
-        delete[] maybe.value();
-        *packet = p;
+        *packet = (blight_event_packet_t*)maybe.value();
         return 0;
     }
 }
