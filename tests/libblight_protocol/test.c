@@ -350,6 +350,8 @@ void test_blight_send_blocking(){
     assert(blight_recv(clientFd, &data2, 10) == 0);
     assert(data2 != NULL);
     assert(memcmp(data, data2, 10) == 0);
+    free(data);
+    free(data2);
 }
 
 #pragma GCC diagnostic push
