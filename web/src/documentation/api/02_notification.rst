@@ -2,65 +2,66 @@
 Notification API
 ================
 
-+----------------------+----------------------+----------------------+
-| Name                 | Specification        | Description          |
-+======================+======================+======================+
-| allNotifications     | `                    | List of all current  |
-|                      | `ARRAY OBJECT_PATH`` | applications.        |
-|                      | property (read)      |                      |
-+----------------------+----------------------+----------------------+
-| unownedNotifications | `                    | List of all          |
-|                      | `ARRAY OBJECT_PATH`` | applications where   |
-|                      | property (read)      | the owning           |
-|                      |                      | application is no    |
-|                      |                      | longer running.      |
-+----------------------+----------------------+----------------------+
-| notificationAdded    | signal               | Signal sent when a   |
-|                      |                      | notification has     |
-|                      | - (out)              | been added.          |
-|                      | ``OBJECT_PATH``      |                      |
-+----------------------+----------------------+----------------------+
-| notificationRemoved  | signal               | Signal sent when a   |
-|                      |                      | notification has     |
-|                      | - (out)              | been removed.        |
-|                      | ``OBJECT_PATH``      |                      |
-+----------------------+----------------------+----------------------+
-| notificationChanged  | signal               | Signal sent when a   |
-|                      |                      | notification has     |
-|                      | - (out)              | been modified.       |
-|                      | ``OBJECT_PATH``      |                      |
-+----------------------+----------------------+----------------------+
-| add                  | method               | Add a new            |
-|                      | - (in) identifier    | notification.        |
-|                      | ``STRING``           | If the application   |
-|                      | - (in) application   | doesn't have         |
-|                      | ``STRING``           | permission to add    |
-|                      | - (in) text          | the notification, or |
-|                      | ``STRING``           | it fails to be added |
-|                      | - (in) icon          | it will return       |
-|                      | ``STRING``           | ``/``.               |
-|                      | - (out)              |                      |
-|                      | ``OBJECT_PATH``      |                      |
-+----------------------+----------------------+----------------------+
-| take                 | method               | Take ownership of a  |
-|                      |                      | notification.        |
-|                      | - (in) identifier    |                      |
-|                      | ``STRING``           |                      |
-|                      | - (out) ``BOOLEAN``  |                      |
-+----------------------+----------------------+----------------------+
-| notifications        | method               | List of all          |
-|                      | - (out)              | notifications owned  |
-|                      | - (out)              | by the current       |
-|                      | `                    | application.         |
-|                      | `ARRAY OBJECT_PATH`` |                      |
-+----------------------+----------------------+----------------------+
-| get                  | method               | Get the object path  |
-|                      |                      | for a notification   |
-|                      | - (in) identifier    | based on it's        |
-|                      | ``STRING``           | identifier.          |
-|                      | - (out)              |                      |
-|                      | ``OBJECT_PATH``      |                      |
-+----------------------+----------------------+----------------------+
++----------------------+-------------------------+----------------------+
+| Name                 | Specification           | Description          |
++======================+=========================+======================+
+| allNotifications     | ``ARRAY OBJECT_PATH``   | List of all current  |
+|                      |                         | applications.        |
+|                      | property (read)         |                      |
++----------------------+-------------------------+----------------------+
+| unownedNotifications | ``ARRAY OBJECT_PATH``   | List of all          |
+|                      |                         | applications where   |
+|                      | property (read)         | the owning           |
+|                      |                         | application is no    |
+|                      |                         | longer running.      |
++----------------------+-------------------------+----------------------+
+| notificationAdded    | signal                  | Signal sent when a   |
+|                      |                         | notification has     |
+|                      | - (out)                 | been added.          |
+|                      |   ``OBJECT_PATH``       |                      |
++----------------------+-------------------------+----------------------+
+| notificationRemoved  | signal                  | Signal sent when a   |
+|                      |                         | notification has     |
+|                      | - (out)                 | been removed.        |
+|                      |   ``OBJECT_PATH``       |                      |
++----------------------+-------------------------+----------------------+
+| notificationChanged  | signal                  | Signal sent when a   |
+|                      |                         | notification has     |
+|                      | - (out)                 | been modified.       |
+|                      |   ``OBJECT_PATH``       |                      |
++----------------------+-------------------------+----------------------+
+| add                  | method                  | Add a new            |
+|                      |                         | notification.        |
+|                      | - (in) identifier       |                      |
+|                      |   ``STRING``            | If the application   |
+|                      | - (in) application      | doesn't have         |
+|                      |   ``STRING``            | permission to add    |
+|                      | - (in) text             | the notification, or |
+|                      |   ``STRING``            | it fails to be added |
+|                      | - (in) icon             | it will return       |
+|                      |   ``STRING``            | ``/``.               |
+|                      | - (out)                 |                      |
+|                      |   ``OBJECT_PATH``       |                      |
++----------------------+-------------------------+----------------------+
+| take                 | method                  | Take ownership of a  |
+|                      |                         | notification.        |
+|                      | - (in) identifier       |                      |
+|                      |   ``STRING``            |                      |
+|                      | - (out) ``BOOLEAN``     |                      |
++----------------------+-------------------------+----------------------+
+| notifications        | method                  | List of all          |
+|                      |                         |                      |
+|                      | - (out)                 | notifications owned  |
+|                      | - (out)                 | by the current       |
+|                      |   ``ARRAY OBJECT_PATH`` | application.         |
++----------------------+-------------------------+----------------------+
+| get                  | method                  | Get the object path  |
+|                      |                         | for a notification   |
+|                      | - (in) identifier       | based on it's        |
+|                      |   ``STRING``            | identifier.          |
+|                      | - (out)                 |                      |
+|                      |   ``OBJECT_PATH``       |                      |
++----------------------+-------------------------+----------------------+
 
 .. _example-usage-4:
 
@@ -120,8 +121,8 @@ Notification Object
 | changed     | signal                   | Signal sent when         |
 |             |                          | something on the         |
 |             | - (out)                  | notification has         |
-|             | `                        | changed.                 |
-|             | `ARRAY{STRING VARIANT}`` | The first output         |
+|             |   ``ARRAY{STRING         | changed.                 |
+|             |   VARIANT}``             | The first output         |
 |             |                          | property contains a map  |
 |             |                          | of changed properties    |
 |             |                          | and their values.        |
