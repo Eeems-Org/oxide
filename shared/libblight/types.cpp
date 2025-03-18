@@ -101,9 +101,11 @@ Blight::header_t Blight::header_t::from_data(void* data){
 
 Blight::header_t Blight::header_t::new_invalid(){
     return header_t{
-        .type = MessageType::Invalid,
-        .ackid = 0,
-        .size = 0,
+        {
+            .type = MessageType::Invalid,
+            .ackid = 0,
+            .size = 0,
+        }
     };
 }
 
@@ -129,9 +131,11 @@ Blight::header_t Blight::message_t::create_ack(message_t* message, size_t size){
 
 Blight::header_t Blight::message_t::create_ack(const message_t& message, size_t size){
     return header_t{
-        .type = MessageType::Ack,
-        .ackid = message.header.ackid,
-        .size = size
+        {
+            .type = MessageType::Ack,
+            .ackid = message.header.ackid,
+            .size = size
+        }
     };
 }
 

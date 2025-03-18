@@ -41,7 +41,7 @@ void OxideBackingStore::flush(QWindow* window, const QRegion& region, const QPoi
     bool ok;
     auto waveform = (Blight::WaveformMode)window->property("WA_WAVEFORM").toInt(&ok);
     if(!ok || !waveform){
-        waveform = Blight::HighQualityGrayscale;
+        waveform = Blight::WaveformMode::HighQualityGrayscale;
     }
     for(auto rect : region){
         Blight::connection()->repaint(
