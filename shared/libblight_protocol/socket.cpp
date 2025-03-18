@@ -215,9 +215,17 @@ extern "C" {
         return 0;
     }
     int blight_wait_for_send(int fd, int timeout){
-        return BlightProtocol::wait_for_send(fd, timeout);
+        int res = BlightProtocol::wait_for_send(fd, timeout);
+        if(res){
+            return 0;
+        }
+        return -errno;
     }
     int blight_wait_for_read(int fd, int timeout){
-        return BlightProtocol::wait_for_read(fd, timeout);
+        int res = BlightProtocol::wait_for_read(fd, timeout);
+        if(res){
+            return 0;
+        }
+        return -errno;
     }
 }

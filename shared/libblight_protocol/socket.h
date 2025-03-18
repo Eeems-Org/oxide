@@ -105,14 +105,14 @@ extern "C" {
      * \brief Wait until a socket is ready to send data.
      * \param fd The socket
      * \param timeout Timeout. -1 will wait forever
-     * \return If the socket is ready for us to send data.
+     * \return If the socket is ready for us to send data it returns 0.
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_wait_for_send(int fd, int timeout);
     /*!
      * \brief Wait until a socket is ready for us to recieve data.
      * \param fd The socket
      * \param timeout Timeout. -1 will wait forever
-     * \return If the socket is ready for us to recieve data.
+     * \return If the socket is ready for us to recieve data it returns 0.
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_wait_for_read(int fd, int timeout);
 

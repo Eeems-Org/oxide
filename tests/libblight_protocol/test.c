@@ -278,6 +278,40 @@ void test_blight_event_from_socket(){
     close(clientFd);
     close(serverFd);
 }
+struct _test_blight_wait_for_read_thread_args{
+    int fd;
+    blight_data_t data;
+};
+void* _test_blight_wait_for_read_thread(void* vargs){
+    struct _test_blight_wait_for_read_thread_args* args = vargs;
+    write(args->fd, args->data, 10);
+    return NULL;
+}
+void test_blight_wait_for_read(){
+    int fds[2];
+    assert(
+      socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) != -1
+      && "Failed to create socket pair"
+      );
+    int clientFd = fds[0];
+    int serverFd = fds[1];
+    blight_data_t data = malloc(10);
+    assert(data != NULL && "Malloc failed");
+    struct _test_blight_wait_for_read_thread_args args;
+    args.fd = serverFd;
+    args.data = data;
+    pthread_t tid;
+    assert(
+      pthread_create(&tid, NULL, _test_blight_wait_for_read_thread, (void*)&args) == 0
+      && "Failed to start background thread"
+      );
+    int res = blight_wait_for_read(clientFd, 1000);
+    assert(res == 0);
+    pthread_join(tid, NULL);
+    free(data);
+    close(clientFd);
+    close(serverFd);
+}
 void test_blight_recv(){
     int fds[2];
     assert(
@@ -395,6 +429,7 @@ int test_c(){
     TEST(test_blight_cast_to_surface_info_packet, true);
     TEST(test_blight_event_from_socket, true);
     TEST(test_blight_recv, true);
+    TEST(test_blight_wait_for_read, true);
     TEST(test_blight_recv_blocking, true);
     TEST(test_blight_send_blocking, true);
 
