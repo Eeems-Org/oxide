@@ -11,12 +11,13 @@
 
 namespace BlightProtocol{
     /*!
-     * \brief Non-blocking recieve data from a socket.
+     * \brief Non-blocking receive data from a socket.
      * \param fd The socket.
-     * \param size Size of the data to recieve.
-     * \param attempts Number of attempts to recieve data.
+     * \param size Size of the data to receive.
+     * \param attempts Number of attempts to receive data.
      * \param timeout Timeout to wait for data per attempt.
-     * \return The data if it was recieved.
+     * \return The data if it was received.
+     * \note The caller is responsible for deallocating the returned data with \c delete[]
      */
     LIBBLIGHT_PROTOCOL_EXPORT std::optional<blight_data_t> recv(
         int fd,
@@ -25,10 +26,11 @@ namespace BlightProtocol{
         unsigned int timeout = 50
     );
     /*!
-     * \brief Recieve data from a socket
+     * \brief receive data from a socket
      * \param fd The socket.
-     * \param size Size of the data to recieve
-     * \return The data if it was recieved without error.
+     * \param size Size of the data to receive
+     * \return The data if it was received without error.
+     * \note The caller is responsible for deallocating the returned data with \c delete[]
      */
     LIBBLIGHT_PROTOCOL_EXPORT std::optional<blight_data_t> recv_blocking(
         int fd,
@@ -54,10 +56,10 @@ namespace BlightProtocol{
      */
     LIBBLIGHT_PROTOCOL_EXPORT bool wait_for_send(int fd, int timeout = -1);
     /*!
-     * \brief Wait until a socket is ready for us to recieve data.
+     * \brief Wait until a socket is ready for us to receive data.
      * \param fd The socket
      * \param timeout Timeout
-     * \return If the socket is ready for us to recieve data.
+     * \return If the socket is ready for us to receive data.
      */
     LIBBLIGHT_PROTOCOL_EXPORT bool wait_for_read(int fd, int timeout = -1);
 }
@@ -66,11 +68,12 @@ extern "C" {
 #endif
 
     /*!
-     * \brief Recieve data from a socket
+     * \brief Receive data from a socket
      * \param fd The socket.
-     * \param size Size of the data to recieve
-     * \param data The data if it was recieved without error.
-     * \return 0 if data was recieved without error
+     * \param size Size of the data to receive
+     * \param data The data if it was received without error.
+     * \return 0 if data was received without error
+     * \note The caller is responsible for deallocating the returned data with \c free
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_recv(
         int fd,
@@ -78,11 +81,12 @@ extern "C" {
         ssize_t size
     );
     /*!
-     * \brief Recieve data from a socket, blocking until data is recieved.
+     * \brief Receive data from a socket, blocking until data is received.
      * \param fd The socket.
-     * \param size Size of the data to recieve
-     * \param data The data if it was recieved without error.
-     * \return 0 if data was recieved without error
+     * \param size Size of the data to receive
+     * \param data The data if it was received without error.
+     * \return 0 if data was received without error
+     * \note The caller is responsible for deallocating the returned data with \c free
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_recv_blocking(
         int fd,
@@ -109,10 +113,10 @@ extern "C" {
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_wait_for_send(int fd, int timeout);
     /*!
-     * \brief Wait until a socket is ready for us to recieve data.
+     * \brief Wait until a socket is ready for us to receive data.
      * \param fd The socket
      * \param timeout Timeout. -1 will wait forever
-     * \return If the socket is ready for us to recieve data it returns 0.
+     * \return If the socket is ready for us to receive data it returns 0.
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_wait_for_read(int fd, int timeout);
 
