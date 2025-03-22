@@ -454,7 +454,8 @@ extern "C" {
      * \return
      */
     LIBBLIGHT_PROTOCOL_EXPORT struct _fbg* blight_surface_to_fbg(
-      blight_surface_id_t identifier,
+        int fd,
+        blight_surface_id_t identifier,
         blight_buf_t* buf
     );
 

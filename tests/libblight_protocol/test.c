@@ -13,6 +13,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+#define __RIGHT_HERE__ fprintf(stderr, "<============================ %s:%d\n", __FILE__, __LINE__)
 #define UNUSED(x) (void)(x)
 #define TRY(expression, c_expression, f_expression) \
     { \
@@ -152,7 +153,7 @@ int test_blight_send_message(int fd, int pingid){
     return pingid;
 }
 blight_buf_t* test_blight_create_buffer(){
-    blight_buf_t* buf = blight_create_buffer(10, 10, 100, 100, 200, Format_RGB16);
+    blight_buf_t* buf = blight_create_buffer(10, 10, 100, 100, 100 * 2, Format_RGB16);
     assert(buf != NULL);
     assert(buf->x == 10);
     assert(buf->y == 10);
@@ -163,10 +164,10 @@ blight_buf_t* test_blight_create_buffer(){
     assert(buf->data != NULL);
     return buf;
 }
-void test_blight_add_surface(blight_buf_t* buf){
+blight_surface_id_t test_blight_add_surface(blight_buf_t* buf){
     blight_surface_id_t identifier = blight_add_surface(bus, buf);
     assert(identifier > 0);
-    blight_buffer_deref(buf);
+    return identifier;
 }
 void test_blight_cast_to_repaint_packet(){
     assert(blight_cast_to_repaint_packet(NULL) == NULL);
@@ -392,6 +393,23 @@ void test_blight_send_blocking(){
     close(clientFd);
     close(serverFd);
 }
+void test_blight_surface_to_fbg(int fd, blight_surface_id_t _identifier, blight_buf_t* _buf){
+    struct _fbg* fbg = blight_surface_to_fbg(fd, _identifier, _buf);
+    assert(fbg == NULL);
+    assert(errno == EINVAL);
+    blight_buf_t* buf = blight_create_buffer(10, 10, 100, 100, 100 * 3, Format_RGB32);
+    assert(buf != NULL);
+    blight_surface_id_t identifier = blight_add_surface(bus, buf);
+    assert(identifier > 0);
+    fbg = blight_surface_to_fbg(fd, identifier, buf);
+    assert(fbg != NULL);
+    assert(fbg->size == buf->height * buf->stride);
+    fbg_clear(fbg, 0);
+    fbg_rect(fbg, fbg->width / 2 - 32, fbg->height / 2 - 32, 16, 16, 0, 255, 0);
+    fbg_draw(fbg);
+    fbg_flip(fbg);
+    fbg_close(fbg);
+}
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclobbered"
@@ -419,9 +437,10 @@ int test_c(){
     );
     blight_buf_t* buf = NULL;
     TEST_EXPR(test_blight_create_buffer, buf = test_blight_create_buffer(), true);
+    blight_surface_id_t identifier = 0;
     TEST_EXPR(
         test_blight_add_surface,
-        test_blight_add_surface(buf),
+        identifier = test_blight_add_surface(buf),
         bus != NULL && buf != NULL
     );
     TEST(test_blight_cast_to_repaint_packet, true);
@@ -432,9 +451,17 @@ int test_c(){
     TEST(test_blight_wait_for_read, true);
     TEST(test_blight_recv_blocking, true);
     TEST(test_blight_send_blocking, true);
+    TEST_EXPR(
+        test_blight_surface_to_fbg,
+        test_blight_surface_to_fbg(fd, identifier, buf),
+        bus != NULL && fd > 0 && buf != NULL && identifier > 0
+    );
 
     if(fd > 0){
         close(fd);
+    }
+    if(buf != NULL){
+        blight_buffer_deref(buf);
     }
     if(bus != NULL){
         blight_bus_deref(bus);

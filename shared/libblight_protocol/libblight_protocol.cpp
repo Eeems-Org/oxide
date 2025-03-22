@@ -498,6 +498,7 @@ extern "C" {
     }
 }
 struct surface_t{
+    int fd;
     blight_surface_id_t identifier;
     blight_buf_t* buf;
 };
@@ -508,11 +509,49 @@ void draw(struct _fbg* fbg){
 }
 void flip(struct _fbg* fbg){
     auto surface = static_cast<surface_t*>(fbg->user_context);
-    // TODO - Use blight_send_message to send Repaint with blight_packet_repaint_t packet
+    static unsigned int marker = 0;
+    blight_packet_repaint_t repaint{
+        .x = 0,
+        .y = 0,
+        .width = surface->buf->width,
+        .height = surface->buf->height,
+        .waveform = BlightWaveformMode::HighQualityGrayscale,
+        .marker = ++marker,
+        .identifier = surface->identifier
+    };
+    int res = blight_send_message(
+        surface->fd,
+        BlightMessageType::Repaint,
+        0,
+        sizeof(blight_surface_id_t),
+        (blight_data_t)&repaint
+    );
+    // TODO - wait for response
+    //        will require seperate message handling thread to be implemented.
+    if(res < 0){
+        _WARN(
+            "[blight_surface_to_fbg::flip(...)] Error: %s",
+            std::strerror(errno)
+        );
+    }
 }
 void deref(struct _fbg* fbg){
     auto surface = static_cast<surface_t*>(fbg->user_context);
-    // TODO - Use blight_send_message to send Delete message
+    int res = blight_send_message(
+        surface->fd,
+        BlightMessageType::Delete,
+        0,
+        sizeof(blight_surface_id_t),
+        (blight_data_t)&surface->identifier
+    );
+    // TODO - wait for response
+    //        will require seperate message handling thread to be implemented.
+    if(res < 0){
+        _WARN(
+            "[blight_surface_to_fbg::deref(...)] Error: %s",
+            std::strerror(errno)
+        );
+    }
     blight_buffer_deref(surface->buf);
 }
 void resize(struct _fbg* fbg, unsigned int width, unsigned int height){
@@ -526,6 +565,7 @@ void resize(struct _fbg* fbg, unsigned int width, unsigned int height){
     //        deref old surface->buf
 }
 extern "C" struct _fbg* blight_surface_to_fbg(
+    int fd,
     blight_surface_id_t identifier,
     blight_buf_t* buf
 ){
@@ -534,6 +574,7 @@ extern "C" struct _fbg* blight_surface_to_fbg(
         return nullptr;
     }
     surface_t* surface = new surface_t{
+        .fd = fd,
         .identifier = identifier,
         .buf = buf
     };
