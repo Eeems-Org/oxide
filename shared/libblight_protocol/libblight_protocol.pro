@@ -23,9 +23,15 @@ HEADERS += \
     socket.h \
     vendor/fbg/src/fbgraphics.h \
     vendor/fbg/src/lodepng/lodepng.h \
+    vendor/fbg/src/nanojpeg/nanojpeg.h \
     vendor/fbg/src/stb/stb_image.h
 
-INCLUDEPATH += vendor/fbg/src
+INCLUDEPATH += \
+    vendor/fbg/src \
+    vendor/fbg/src/nanojpeg \
+    vendor/fbg/src/lodepng \
+    vendor/fbg/src/stb
+
 LIBS += -lsystemd
 
 include(../../qmake/common.pri)

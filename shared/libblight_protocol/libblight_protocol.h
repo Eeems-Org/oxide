@@ -11,10 +11,14 @@
 #include <systemd/sd-bus.h>
 #ifndef __cplusplus
 #include <stdbool.h>
+#else
 extern "C" {
 #endif
+#ifndef WITHOUT_JPEG
+#include "nanojpeg.h"
+#endif
 #include "fbgraphics.h"
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

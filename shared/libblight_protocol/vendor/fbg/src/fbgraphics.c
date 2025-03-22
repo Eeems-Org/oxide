@@ -35,8 +35,7 @@
 #endif
 
 #ifndef WITHOUT_JPEG
-#define _NJ_INCLUDE_HEADER_ONLY
-#include "nanojpeg/nanojpeg.c"
+#include "nanojpeg/nanojpeg.h"
 #endif
 
 #ifndef WITHOUT_STB_IMAGE
