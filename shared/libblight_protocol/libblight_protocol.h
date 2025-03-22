@@ -13,6 +13,8 @@
 #include <stdbool.h>
 #endif
 
+#include "fbgraphics.h"
+
 #ifdef __cplusplus
 namespace BlightProtocol {
 #endif
@@ -437,6 +439,16 @@ extern "C" {
     LIBBLIGHT_PROTOCOL_EXPORT int blight_event_from_socket(
         int fd,
         blight_event_packet_t** packet
+    );
+    /*!
+     * \brief blight_surface_to_fbg
+     * \param identifier
+     * \param buf
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT struct _fbg* blight_surface_to_fbg(
+      blight_surface_id_t identifier,
+        blight_buf_t* buf
     );
 
 #ifdef __cplusplus

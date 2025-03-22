@@ -492,3 +492,57 @@ extern "C" {
         return 0;
     }
 }
+struct surface_t{
+    blight_surface_id_t identifier;
+    blight_buf_t* buf;
+};
+
+void draw(struct _fbg* fbg){
+    auto surface = static_cast<surface_t*>(fbg->user_context);
+    memcpy(surface->buf->data, fbg->disp_buffer, fbg->size);
+}
+void flip(struct _fbg* fbg){
+    auto surface = static_cast<surface_t*>(fbg->user_context);
+    // TODO - Use blight_send_message to send Repaint with blight_packet_repaint_t packet
+}
+void deref(struct _fbg* fbg){
+    auto surface = static_cast<surface_t*>(fbg->user_context);
+    // TODO - Use blight_send_message to send Delete message
+    blight_buffer_deref(surface->buf);
+}
+void resize(struct _fbg* fbg, unsigned int width, unsigned int height){
+    auto surface = static_cast<surface_t*>(fbg->user_context);
+    // TODO - Create new buffer at new size
+    //        Copy accross buffer and scale to the new size
+    //        Create new surface with new buffer
+    //        Remove old surface
+    //        Update surface->buf with new buffer
+    //        Update surface->identifier with new surface identifier
+    //        deref old surface->buf
+}
+extern "C" struct _fbg* blight_surface_to_fbg(
+    blight_surface_id_t identifier,
+    blight_buf_t* buf
+){
+    if(buf->format != Format_RGB32){
+        errno = EINVAL;
+        return nullptr;
+    }
+    surface_t* surface = new surface_t{
+        .identifier = identifier,
+        .buf = buf
+    };
+    _fbg* fbg = fbg_customSetup(
+        buf->width * buf->stride,
+        buf->height,
+        3,
+        true,
+        true,
+        (void*)surface,
+        draw,
+        flip,
+        resize,
+        deref
+    );
+    return fbg;
+}
