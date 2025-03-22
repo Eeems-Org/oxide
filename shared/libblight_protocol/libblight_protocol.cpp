@@ -523,7 +523,7 @@ void flip(struct _fbg* fbg){
         surface->fd,
         BlightMessageType::Repaint,
         0,
-        sizeof(blight_surface_id_t),
+        sizeof(blight_packet_repaint_t),
         (blight_data_t)&repaint
     );
     // TODO - wait for response
