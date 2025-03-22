@@ -374,6 +374,11 @@ extern "C" {
             if (munmap(buf->data, size) != 0) {
                 _WARN("Failed to unmap buffer: %s", std::strerror(errno));
             }
+            buf->data = nullptr;
+        }
+        if(buf->fd > 0){
+            close(buf->fd);
+            buf->fd = -1;
         }
         delete buf;
     }
@@ -533,7 +538,7 @@ extern "C" struct _fbg* blight_surface_to_fbg(
         .buf = buf
     };
     _fbg* fbg = fbg_customSetup(
-        buf->width * buf->stride,
+        buf->width,
         buf->height,
         3,
         true,

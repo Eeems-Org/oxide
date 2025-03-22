@@ -11,9 +11,12 @@
 #include <systemd/sd-bus.h>
 #ifndef __cplusplus
 #include <stdbool.h>
+extern "C" {
 #endif
-
 #include "fbgraphics.h"
+#ifndef __cplusplus
+}
+#endif
 
 #ifdef __cplusplus
 namespace BlightProtocol {
