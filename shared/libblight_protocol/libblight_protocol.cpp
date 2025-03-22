@@ -324,11 +324,15 @@ extern "C" {
     blight_buf_t* blight_create_buffer(
         int x,
         int y,
-        int width,
-        int height,
-        int stride,
+        unsigned int width,
+        unsigned int height,
+        unsigned int stride,
         BlightImageFormat format
     ){
+        if(stride == 0 || width == 0 || height == 0){
+            errno = EOVERFLOW;
+            return nullptr;
+        }
         int fd = memfd_create(generate_uuid_v4().c_str(), MFD_ALLOW_SEALING);
         if(fd < 0){
             return nullptr;

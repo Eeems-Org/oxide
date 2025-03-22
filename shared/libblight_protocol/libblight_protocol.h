@@ -173,9 +173,9 @@ namespace BlightProtocol {
         int fd;
         int x;
         int y;
-        int width;
-        int height;
-        int stride;
+        unsigned int width;
+        unsigned int height;
+        unsigned int stride;
         BlightImageFormat format;
         blight_data_t data;
     } blight_buf_t;
@@ -224,11 +224,11 @@ namespace BlightProtocol {
         /*!
          * \brief width Width
          */
-        int width;
+        unsigned int width;
         /*!
          * \brief height Height
          */
-        int height;
+        unsigned int height;
         /*!
          * \brief waveform Waveform to use
          */
@@ -393,9 +393,9 @@ extern "C" {
     LIBBLIGHT_PROTOCOL_EXPORT blight_buf_t* blight_create_buffer(
         int x,
         int y,
-        int width,
-        int height,
-        int stride,
+        unsigned int width,
+        unsigned int height,
+        unsigned int stride,
         BlightImageFormat format
     );
     /*!

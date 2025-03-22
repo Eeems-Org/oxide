@@ -214,8 +214,8 @@ namespace Blight{
         surface_id_t identifier,
         int x,
         int y,
-        int width,
-        int height,
+        unsigned int width,
+        unsigned int height,
         WaveformMode waveform,
         unsigned int marker
     ){
