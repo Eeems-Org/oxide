@@ -557,6 +557,7 @@ void deref(struct _fbg* fbg){
         );
     }
     blight_buffer_deref(surface->buf);
+    delete surface;
 }
 extern "C" struct _fbg* blight_surface_to_fbg(
     int fd,
