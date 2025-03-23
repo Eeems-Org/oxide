@@ -496,6 +496,7 @@ extern "C" {
      * \sa blight_add_surface
      * \sa blight_create_buffer
      * \sa blight_service_open
+     * \note Currently only supports Format_RGB32 buffers
      */
     LIBBLIGHT_PROTOCOL_EXPORT struct _fbg* blight_surface_to_fbg(
         int fd,

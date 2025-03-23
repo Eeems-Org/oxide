@@ -51,10 +51,10 @@ Oxide provides a C++ shared library for interacting with the display server.
 Libblight_protocol Shared Library
 =================================
 
-Oxide provides a C shared library for interacting with the display server. It is more primative than libblight,
+Oxide provides a C shared library for interacting with the display server. It is more primitive than libblight,
 but provides a C foreign function interface that more languages can take advantage of.
 
-`You can find the documentation here <../../libbight_protocol/index.html>`__
+`You can find the documentation here <../../libblight_protocol/index.html>`__
 
 Oxide Qt Platform Abstraction (QPA)
 ===================================
