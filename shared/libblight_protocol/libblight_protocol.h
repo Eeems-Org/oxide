@@ -270,7 +270,7 @@ namespace BlightProtocol {
          */
         int x;
         /*!
-         * \brief y Y coordiante
+         * \brief y Y coordinate
          */
         int y;
         /*!
@@ -308,7 +308,7 @@ extern "C" {
     typedef sd_bus blight_bus;
     /*!
      * \brief blight_dbus_connect_system Connect to the system dbus
-     * \param bus Will populuate with a pointer to a bight_bus instance on success
+     * \param bus Will populate with a pointer to a bight_bus instance on success
      * \return If the connection was successful
      * \sa blight_bus_deref
      * \sa blight_service_available
@@ -319,7 +319,7 @@ extern "C" {
     LIBBLIGHT_PROTOCOL_EXPORT int blight_bus_connect_system(blight_bus** bus);
     /*!
      * \brief blight_dbus_connect_user Connect to the user dbus
-     * \param bus Will populuate with a pointer to a bight_bus instance on success
+     * \param bus Will populate with a pointer to a bight_bus instance on success
      * \return If the connection was successful
      * \sa blight_bus_deref
      * \sa blight_service_available
@@ -395,7 +395,7 @@ extern "C" {
      * \brief blight_send_message Send a message to the display server
      * \param fd File descriptor for the socket
      * \param type Message type
-     * \param ackid Unique identifier to be passed back when the server acknowlodges when this call has been processed.
+     * \param ackid Unique identifier to be passed back when the server acknowledges when this call has been processed.
      * \param size Size of data
      * \param data Pointer to data buffer
      * \return Size of the data sent not including the size of the header, negative number if there was an error
