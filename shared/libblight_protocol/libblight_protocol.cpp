@@ -558,16 +558,6 @@ void deref(struct _fbg* fbg){
     }
     blight_buffer_deref(surface->buf);
 }
-void resize(struct _fbg* fbg, unsigned int width, unsigned int height){
-    auto surface = static_cast<surface_t*>(fbg->user_context);
-    // TODO - Create new buffer at new size
-    //        Copy accross buffer and scale to the new size
-    //        Create new surface with new buffer
-    //        Remove old surface
-    //        Update surface->buf with new buffer
-    //        Update surface->identifier with new surface identifier
-    //        deref old surface->buf
-}
 extern "C" struct _fbg* blight_surface_to_fbg(
     int fd,
     blight_surface_id_t identifier,
@@ -591,7 +581,7 @@ extern "C" struct _fbg* blight_surface_to_fbg(
         (void*)surface,
         draw,
         flip,
-        resize,
+        nullptr,
         deref
     );
     return fbg;
