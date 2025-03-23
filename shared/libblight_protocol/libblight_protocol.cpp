@@ -304,6 +304,7 @@ extern "C" {
     ){
         if(size && data == nullptr){
             _WARN("Data missing when size is not zero");
+            errno = EINVAL;
             return -EINVAL;
         }
         blight_header_t header{

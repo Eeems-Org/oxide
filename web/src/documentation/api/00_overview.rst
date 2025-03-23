@@ -41,13 +41,20 @@ not yet fully encompass the full API provide through D-Bus, but will slowly work
 
 `You can find the documentation here <../../liboxide/index.html>`__
 
-
 Libblight Shared Library
 ========================
 
-Oxide provides a shared library for interacting with the display server.
+Oxide provides a C++ shared library for interacting with the display server.
 
 `You can find the documentation here <../../libblight/index.html>`__
+
+Libblight_protocol Shared Library
+=================================
+
+Oxide provides a C shared library for interacting with the display server. It is more primative than libblight,
+but provides a C foreign function interface that more languages can take advantage of.
+
+`You can find the documentation here <../../libbight_protocol/index.html>`__
 
 Oxide Qt Platform Abstraction (QPA)
 ===================================

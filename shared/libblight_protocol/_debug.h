@@ -1,5 +1,4 @@
 #pragma once
-
 #include <mutex>
 #include <systemd/sd-journal.h>
 

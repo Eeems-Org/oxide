@@ -78,4 +78,5 @@ QMAKE_PKGCONFIG_INCDIR = /opt/include
 QMAKE_PKGCONFIG_DESTDIR = pkgconfig
 
 DISTFILES += \
-    Doxyfile
+    Doxyfile \
+    Makefile

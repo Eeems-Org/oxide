@@ -147,6 +147,8 @@ namespace BlightProtocol {
     } blight_event_packet_t;
     /*!
      * \brief Message type
+     * \sa blight_header_t
+     * \sa blight_message_t
      */
     typedef enum {
         Invalid,
@@ -305,73 +307,99 @@ extern "C" {
 #endif
     typedef sd_bus blight_bus;
     /*!
-     * \brief blight_dbus_connect_system
-     * \param bus
-     * \return
+     * \brief blight_dbus_connect_system Connect to the system dbus
+     * \param bus Will populuate with a pointer to a bight_bus instance on success
+     * \return If the connection was successful
+     * \sa blight_bus_deref
+     * \sa blight_service_available
+     * \sa blight_service_open
+     * \sa blight_bus_connect_user
+     * \sa blight_service_input_open
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_bus_connect_system(blight_bus** bus);
     /*!
-     * \brief blight_dbus_connect_user
-     * \param bus
-     * \return
+     * \brief blight_dbus_connect_user Connect to the user dbus
+     * \param bus Will populuate with a pointer to a bight_bus instance on success
+     * \return If the connection was successful
+     * \sa blight_bus_deref
+     * \sa blight_service_available
+     * \sa blight_service_open
+     * \sa blight_bus_connect_system
+     * \sa blight_service_input_open
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_bus_connect_user(blight_bus** bus);
     /*!
-     * \brief blight_bus_deref
-     * \param bus
+     * \brief blight_bus_deref Disconnect from dbus
+     * \param bus dbus connection to disconnect
+     * \sa blight_bus_connect_system
+     * \sa blight_bus_connect_user
      */
     LIBBLIGHT_PROTOCOL_EXPORT void blight_bus_deref(blight_bus* bus);
     /*!
-     * \brief blight_service_available
-     * \param bus
-     * \return
+     * \brief blight_service_available Check to see if the blight service is on dbus
+     * \param bus The dbus connection
+     * \return If the blight service is available
+     * \sa blight_bus_connect_system
+     * \sa blight_bus_connect_user
      */
     LIBBLIGHT_PROTOCOL_EXPORT bool blight_service_available(blight_bus* bus);
     /*!
-     * \brief blight_service_open
-     * \param bus
-     * \return
+     * \brief blight_service_open Open a socket connection to the blight service
+     * \param bus The dbus connection
+     * \return The file descriptor for the socket connection
+     * \sa blight_bus_connect_system
+     * \sa blight_bus_connect_user
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_service_open(blight_bus* bus);
     /*!
-     * \brief blight_service_input_open
-     * \param bus
-     * \return
+     * \brief blight_service_input_open Open a socket connection for input events from the blight service
+     * \param bus The dbus connection
+     * \return The file descriptor for the socket connection
+     * \sa blight_bus_connect_system
+     * \sa blight_bus_connect_user
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_service_input_open(blight_bus* bus);
     /*!
-     * \brief blight_header_from_data
-     * \param data
-     * \return
+     * \brief blight_header_from_data Parse a buffer and return the blight_header_t from it
+     * \param data Buffer to parse
+     * \return Parsed header
      */
     LIBBLIGHT_PROTOCOL_EXPORT blight_header_t blight_header_from_data(blight_data_t data);
     /*!
-     * \brief blight_message_from_data
-     * \param data
-     * \return
+     * \brief blight_message_from_data Parse a buffer and return the blight_message_t from it
+     * \param data Buffer to parse
+     * \return Parsed message
+     * \sa blight_message_deref
      */
     LIBBLIGHT_PROTOCOL_EXPORT blight_message_t* blight_message_from_data(blight_data_t data);
     /*!
-     * \brief blight_message_from_socket
-     * \param fd
-     * \return
+     * \brief blight_message_from_socket Read a blight_message_t from a socket
+     * \param fd File descriptor for the socket
+     * \param message Will be populated with a pointer to the blight_message_t on successful parse
+     * \return Returns the size of the data, not including the size of the header. Will be a negative number if the read fails
+     * \sa blight_service_open
+     * \sa blight_message_deref
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_message_from_socket(
         int fd,
         blight_message_t** message
     );
     /*!
-     * \brief blight_message_deref
-     * \param message
+     * \brief blight_message_deref Release the memory for a blight_message_t
+     * \param message Pointer to the blight_message_t to free
+     * \sa blight_message_from_data
+     * \sa blight_message_from_socket
      */
     LIBBLIGHT_PROTOCOL_EXPORT void blight_message_deref(blight_message_t* message);
     /*!
-     * \brief blight_send_message
-     * \param fd
-     * \param type
-     * \param size
-     * \param data
-     * \return
+     * \brief blight_send_message Send a message to the display server
+     * \param fd File descriptor for the socket
+     * \param type Message type
+     * \param ackid Unique identifier to be passed back when the server acknowlodges when this call has been processed.
+     * \param size Size of data
+     * \param data Pointer to data buffer
+     * \return Size of the data sent not including the size of the header, negative number if there was an error
+     * \sa blight_service_open
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_send_message(
         int fd,
@@ -381,14 +409,16 @@ extern "C" {
         blight_data_t data
     );
     /*!
-     * \brief blight_create_buffer
-     * \param x
-     * \param y
-     * \param width
-     * \param height
-     * \param stride
-     * \param format
-     * \return
+     * \brief blight_create_buffer Create an image buffer for a display surface
+     * \param x X coordinate on the screen
+     * \param y Y coordinate on the screen
+     * \param width Width of the buffer
+     * \param height Height of the buffer
+     * \param stride Count of bytes for a single row
+     * \param format Image format of the buffer
+     * \return Pointer to buffer on success
+     * \sa blight_add_surface
+     * \sa blight_surface_to_fbg
      */
     LIBBLIGHT_PROTOCOL_EXPORT blight_buf_t* blight_create_buffer(
         int x,
@@ -399,59 +429,73 @@ extern "C" {
         BlightImageFormat format
     );
     /*!
-     * \brief blight_buffer_deref
-     * \param buf
+     * \brief blight_buffer_deref Release memory for a image buffer
+     * \param buf Buffer to release
+     * \sa blight_create_buffer
      */
     LIBBLIGHT_PROTOCOL_EXPORT void blight_buffer_deref(blight_buf_t* buf);
     /*!
-     * \brief blight_add_surface
-     * \param bus
-     * \param buf
-     * \return
+     * \brief blight_add_surface Add an image buffer as a surface on the screen
+     * \param bus The dbus connection
+     * \param buf The image buffer to add as a surface
+     * \return 0 on failure, otherwise the surface identifier
+     * \sa blight_create_buffer
+     * \sa blight_surface_to_fbg
      */
     LIBBLIGHT_PROTOCOL_EXPORT blight_surface_id_t blight_add_surface(
         blight_bus* bus,
         blight_buf_t* buf
     );
     /*!
-     * \brief blight_cast_to_repaint_packet
-     * \param message
-     * \return
+     * \brief blight_cast_to_repaint_packet Cast a blight_message_t to a blight_packet_repaint_t
+     * \param message Message to cast
+     * \return blight_packet_repaint_t on success
+     * \sa blight_message_from_socket
+     * \sa blight_message_from_data
      */
     LIBBLIGHT_PROTOCOL_EXPORT blight_packet_repaint_t* blight_cast_to_repaint_packet(
         blight_message_t* message
     );
     /*!
-     * \brief blight_cast_to_move_packet
-     * \param message
-     * \return
+     * \brief blight_cast_to_move_packet Cast a blight_message_t to a blight_packet_move_t
+     * \param message Message to cast
+     * \return blight_move_t instance on success
+     * \sa blight_message_from_socket
+     * \sa blight_message_from_data
      */
     LIBBLIGHT_PROTOCOL_EXPORT blight_packet_move_t* blight_cast_to_move_packet(
         blight_message_t* message
     );
     /*!
-     * \brief blight_cast_to_surface_info_packet
-     * \param message
-     * \return
+     * \brief blight_cast_to_surface_info_packet Cast a blight_message_t to a blight_packet_surface_info_t
+     * \param message Message to cast
+     * \return blight_packet_surface_info_t instance on success
+     * \sa blight_message_from_socket
+     * \sa blight_message_from_data
      */
     LIBBLIGHT_PROTOCOL_EXPORT blight_packet_surface_info_t* blight_cast_to_surface_info_packet(
         blight_message_t* message
     );
     /*!
-     * \brief blight_event_from_socket
-     * \param fd
-     * \param packet
-     * \return
+     * \brief blight_event_from_socket Read an input event from the input socket
+     * \param fd File descriptor of the socket
+     * \param packet blight_event_packet_t pointer on success
+     * \return 0 on success
+     * \sa blight_service_input_open
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_event_from_socket(
         int fd,
         blight_event_packet_t** packet
     );
     /*!
-     * \brief blight_surface_to_fbg
-     * \param identifier
-     * \param buf
-     * \return
+     * \brief blight_surface_to_fbg Create a fbgraphics instance for a surface
+     * \param fd File descriptor for the socket
+     * \param identifier Surface identifier
+     * \param buf Image buffer for the surface
+     * \return fbgraphics instance on success
+     * \sa blight_add_surface
+     * \sa blight_create_buffer
+     * \sa blight_service_open
      */
     LIBBLIGHT_PROTOCOL_EXPORT struct _fbg* blight_surface_to_fbg(
         int fd,

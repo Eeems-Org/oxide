@@ -1,8 +1,8 @@
-PROJECT_NAME = libblight
+PROJECT_NAME = libblight_protocol
 GENERATE_QHP = YES
 GENERATE_LATEX = NO
-QCH_FILE = libblight.qch
-QHP_NAMESPACE = libblight
+QCH_FILE = libblight_protocol.qch
+QHP_NAMESPACE = libblight_protocol
 QHP_VIRTUAL_FOLDER = doc
 QHG_LOCATION = qhelpgenerator
 GENERATE_TREEVIEW = YES
@@ -15,11 +15,18 @@ HTML_EXTRA_FILES = ../doxygen-awesome-css/doxygen-awesome-darkmode-toggle.js \
 HTML_HEADER = ../doxygen-header.html
 PREDEFINED += DOXYGEN_SHOULD_SKIP_THIS
 PREDEFINED += IN_DOXYGEN
+EXCLUDE += _debug.h
+INPUT += .
+INPUT += vendor/fbg/src
+INPUT += vendor/fbg/src/lodepng
+INPUT += vendor/fbg/src/nanojpeg
+FULL_PATH_NAMES = NO
+STRIP_FROM_PATH += vendor/fbg/src
+STRIP_FROM_PATH += vendor/fbg/src/lodepng
+STRIP_FROM_PATH += vendor/fbg/src/nanojpeg
 HIDE_UNDOC_MEMBERS = YES
 HIDE_UNDOC_CLASSES = YES
 MACRO_EXPANSION = YES
 EXAMPLE_PATH = examples
-GENERATE_TAGFILE = html/libblight.tag
+GENERATE_TAGFILE = html/libblight_protocol.tag
 ALLEXTERNALS = Yes
-ALIASES = "accessors=\par Accessors:^^"
-ALIASES += "notifier=\par Notifier signal:^^"
