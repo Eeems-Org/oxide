@@ -410,6 +410,27 @@ void test_blight_surface_to_fbg(int fd, blight_surface_id_t _identifier, blight_
     fbg_flip(fbg);
     fbg_close(fbg);
 }
+void test_blight_move_surface(int fd){
+    blight_buf_t* buf = blight_create_buffer(10, 10, 100, 100, 100 * 3, Format_RGB32);
+    assert(buf != NULL);
+    blight_surface_id_t identifier = blight_add_surface(bus, buf);
+    assert(identifier > 0);
+    struct _fbg* fbg = blight_surface_to_fbg(fd, identifier, buf);
+    assert(fbg != NULL);
+    assert(fbg->size == buf->height * buf->stride);
+    fbg_clear(fbg, 0);
+    fbg_rect(fbg, fbg->width / 2 - 32, fbg->height / 2 - 32, 16, 16, 0, 255, 0);
+    fbg_draw(fbg);
+    fbg_flip(fbg);
+    int res = blight_move_surface(fd, identifier, buf, 200, 200);
+    assert(res >= 0);
+    assert(buf->x == 200);
+    assert(buf->y == 200);
+    fbg_draw(fbg);
+    fbg_flip(fbg);
+    // TODO - Figure out why box doesn't move, even though move event happened in display server logs
+    fbg_close(fbg);
+}
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclobbered"
@@ -456,6 +477,7 @@ int test_c(){
         test_blight_surface_to_fbg(fd, identifier, buf),
         bus != NULL && fd > 0 && buf != NULL && identifier > 0
     );
+    TEST_EXPR(test_blight_move_surface, test_blight_move_surface(fd), fd > 0);
 
     if(fd > 0){
         close(fd);

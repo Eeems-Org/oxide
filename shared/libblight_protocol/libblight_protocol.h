@@ -497,11 +497,28 @@ extern "C" {
      * \sa blight_create_buffer
      * \sa blight_service_open
      * \note Currently only supports Format_RGB32 buffers
+     * \note calling fbg_close will remove the surface and call blight_buf_dref on the buffer
      */
     LIBBLIGHT_PROTOCOL_EXPORT struct _fbg* blight_surface_to_fbg(
         int fd,
         blight_surface_id_t identifier,
         blight_buf_t* buf
+    );
+    /*!
+     * \brief blight_move_surface Move a surface to a new location on the screen
+     * \param fd File descriptor for the socket
+     * \param identifier Surface identifier
+     * \param buf Image buffer for the surface
+     * \param x New X coordinate
+     * \param y New Y coordinate
+     * \return negative number if failed
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_move_surface(
+        int fd,
+        blight_surface_id_t identifier,
+        blight_buf_t* buf,
+        int x,
+        int y
     );
 
 #ifdef __cplusplus

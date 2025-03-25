@@ -339,6 +339,11 @@ extern "C" {
             return nullptr;
         }
         ssize_t size = stride * height;
+        if(stride != 0 && size / stride != (size_t)height){
+            errno = EOVERFLOW;
+            close(fd);
+            return nullptr;
+        }
         if(ftruncate(fd, size)){
             int e = errno;
             close(fd);
@@ -560,31 +565,61 @@ void deref(struct _fbg* fbg){
     blight_buffer_deref(surface->buf);
     delete surface;
 }
-extern "C" struct _fbg* blight_surface_to_fbg(
-    int fd,
-    blight_surface_id_t identifier,
-    blight_buf_t* buf
-){
-    if(buf->format != Format_RGB32){
-        errno = EINVAL;
-        return nullptr;
+extern "C" {
+    struct _fbg* blight_surface_to_fbg(
+        int fd,
+        blight_surface_id_t identifier,
+        blight_buf_t* buf
+    ){
+        if(buf->format != Format_RGB32){
+            errno = EINVAL;
+            return nullptr;
+        }
+        surface_t* surface = new surface_t{
+            .fd = fd,
+            .identifier = identifier,
+            .buf = buf
+        };
+        _fbg* fbg = fbg_customSetup(
+            buf->width,
+            buf->height,
+            3,
+            true,
+            true,
+            (void*)surface,
+            draw,
+            flip,
+            nullptr,
+            deref
+        );
+        return fbg;
     }
-    surface_t* surface = new surface_t{
-        .fd = fd,
-        .identifier = identifier,
-        .buf = buf
-    };
-    _fbg* fbg = fbg_customSetup(
-        buf->width,
-        buf->height,
-        3,
-        true,
-        true,
-        (void*)surface,
-        draw,
-        flip,
-        nullptr,
-        deref
-    );
-    return fbg;
+
+    int blight_move_surface(
+        int fd,
+        blight_surface_id_t identifier,
+        blight_buf_t* buf,
+        int x,
+        int y
+    ){
+        blight_packet_move_t packet{
+            .identifier = identifier,
+            .x = x,
+            .y = y
+        };
+        int res = blight_send_message(
+            fd,
+            BlightMessageType::Move,
+            0,
+            sizeof(blight_packet_move_t),
+            (blight_data_t)&packet
+        );
+        // TODO - wait for response
+        //        will require seperate message handling thread to be implemented.
+        if(res >= 0){
+            buf->x = x;
+            buf->y = y;
+        }
+        return res;
+    }
 }

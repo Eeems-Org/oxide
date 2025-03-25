@@ -86,9 +86,9 @@ Blight::shared_buf_t Blight::buf_t::new_ptr(){
 std::string Blight::buf_t::new_uuid(){ return generate_uuid_v4(); }
 
 Blight::header_t Blight::header_t::from_data(data_t data){
-    header_t header;
-    memcpy(&header, data, sizeof(header_t));
-    return header;
+    return header_t{
+        blight_header_from_data(data)
+    };
 }
 
 Blight::header_t Blight::header_t::from_data(char* data){
