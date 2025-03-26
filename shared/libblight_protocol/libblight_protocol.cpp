@@ -657,9 +657,15 @@ extern "C" {
     }
     int blight_connection_thread_deref(blight_thread_t* thread){
         if(thread == nullptr){
-            return 0;
+            errno = EINVAL;
+            return -errno;
+        }
+        if(!thread->handle.joinable()){
+            errno = EBADFD;
+            return -errno;
         }
         thread->handle.join();
         delete thread;
+        return 0;
     }
 }
