@@ -520,6 +520,31 @@ extern "C" {
         int x,
         int y
     );
+    struct blight_thread_t;
+    /*!
+     * \brief blight_start_connection_thread
+     * \param fd
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT blight_thread_t* blight_start_connection_thread(int fd);
+    /*!
+     * \brief blight_join_connection_thread
+     * \param thread
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_join_connection_thread(blight_thread_t* thread);
+    /*!
+     * \brief blight_detach_connection_thread
+     * \param thread
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_detach_connection_thread(blight_thread_t* thread);
+    /*!
+     * \brief blight_connection_thread_deref
+     * \param thread
+     * \return
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_connection_thread_deref(blight_thread_t* thread);
 
 #ifdef __cplusplus
 }

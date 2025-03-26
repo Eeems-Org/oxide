@@ -10,6 +10,7 @@
 #include <random>
 #include <sstream>
 #include <ios>
+#include <thread>
 
 #define XCONCATENATE(x, y) x ## y
 #define CONCATENATE(x, y) XCONCATENATE(x, y)
@@ -621,5 +622,44 @@ extern "C" {
             buf->y = y;
         }
         return res;
+    }
+}
+
+void connection_thread(int fd){
+    // TODO - implement thread based on Blight::Connection::run(Connection*)
+}
+
+extern "C" {
+    struct blight_thread_t{
+        std::thread handle;
+    };
+
+    blight_thread_t* blight_start_connection_thread(int fd){
+        return new blight_thread_t{
+            .handle = std::thread(connection_thread, fd)
+        };
+    }
+    int blight_join_connection_thread(blight_thread_t* thread){
+        if(thread == nullptr){
+            errno = EINVAL;
+            return -errno;
+        }
+        thread->handle.join();
+        return 0;
+    }
+    int blight_detach_connection_thread(blight_thread_t* thread){
+        if(thread == nullptr){
+            errno = EINVAL;
+            return -errno;
+        }
+        thread->handle.detach();
+        return 0;
+    }
+    int blight_connection_thread_deref(blight_thread_t* thread){
+        if(thread == nullptr){
+            return 0;
+        }
+        thread->handle.join();
+        delete thread;
     }
 }
