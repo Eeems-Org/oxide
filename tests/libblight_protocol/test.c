@@ -403,7 +403,7 @@ void test_blight_surface_to_fbg(int fd, blight_surface_id_t _identifier, blight_
     assert(identifier > 0);
     fbg = blight_surface_to_fbg(fd, identifier, buf);
     assert(fbg != NULL);
-    assert(fbg->size == buf->height * buf->stride);
+    assert(fbg->size == (int)(buf->height * buf->stride));
     fbg_clear(fbg, 0);
     fbg_rect(fbg, fbg->width / 2 - 32, fbg->height / 2 - 32, 16, 16, 0, 255, 0);
     fbg_draw(fbg);
@@ -417,7 +417,7 @@ void test_blight_move_surface(int fd){
     assert(identifier > 0);
     struct _fbg* fbg = blight_surface_to_fbg(fd, identifier, buf);
     assert(fbg != NULL);
-    assert(fbg->size == buf->height * buf->stride);
+    assert(fbg->size == (int)(buf->height * buf->stride));
     fbg_clear(fbg, 0);
     fbg_rect(fbg, fbg->width / 2 - 32, fbg->height / 2 - 32, 16, 16, 0, 255, 0);
     fbg_draw(fbg);

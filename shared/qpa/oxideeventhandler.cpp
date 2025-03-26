@@ -908,9 +908,12 @@ void OxideEventHandler::processPointerEvent(
     DeviceData* data,
     Blight::partial_input_event_t* event
 ){
+    Q_UNUSED(event);
     Q_ASSERT(data->type == QInputDeviceManager::DeviceTypePointer);
     auto device = data->device;
+    Q_UNUSED(device);
     auto pointerData = data->get<PointerData>();
+    Q_UNUSED(pointerData);
 }
 
 Qt::KeyboardModifiers OxideEventHandler::toQtModifiers(quint16 mod){
