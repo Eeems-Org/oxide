@@ -16,6 +16,7 @@ HTML_HEADER = ../doxygen-header.html
 PREDEFINED += DOXYGEN_SHOULD_SKIP_THIS
 PREDEFINED += IN_DOXYGEN
 EXCLUDE += _debug.h
+EXCLUDE += _concurrentqueue.h
 INPUT += .
 INPUT += vendor/fbg/src
 INPUT += vendor/fbg/src/lodepng

@@ -127,8 +127,10 @@ int test_blight_message_from_socket(int fd){
     return pingid;
 }
 int test_blight_send_message(int fd, int pingid){
-    int res = blight_send_message(fd, Ack, pingid, 0, NULL);
+    blight_data_t response = NULL;
+    int res = blight_send_message(fd, Ack, pingid, 0, NULL, 0, &response);
     assert(res == 0);
+    assert(response == NULL);
     res = -EAGAIN;
     blight_message_t* message = NULL;
     while(-res == EAGAIN || -res == EINTR){
@@ -139,8 +141,9 @@ int test_blight_send_message(int fd, int pingid){
     assert(message->header.type == Ping);
     pingid = message->header.ackid;
     blight_message_deref(message);
-    res = blight_send_message(fd, Ping, 1, 0, NULL);
+    res = blight_send_message(fd, Ping, 1, 0, NULL, 9, &response);
     assert(res == 0);
+    assert(response == NULL);
     res = -EAGAIN;
     while(-res == EAGAIN || -res == EINTR){
         res = blight_message_from_socket(fd, &message);

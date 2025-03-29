@@ -398,7 +398,9 @@ extern "C" {
      * \param ackid Unique identifier to be passed back when the server acknowledges when this call has been processed.
      * \param size Size of data
      * \param data Pointer to data buffer
-     * \return Size of the data sent not including the size of the header, negative number if there was an error
+     * \param timeout How many milliseconds to wait for a response. Set to a negative number to disable waiting. Set to 0 to wait forever.
+     * \param response Response from server
+     * \return Size of the data recieved on success, negative on error. Will always be 0 if no thread has been started
      * \sa blight_service_open
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_send_message(
@@ -406,7 +408,9 @@ extern "C" {
         BlightMessageType type,
         unsigned int ackid,
         uint32_t size,
-        blight_data_t data
+        blight_data_t data,
+        int timeout,
+        blight_data_t* response
     );
     /*!
      * \brief blight_create_buffer Create an image buffer for a display surface
@@ -523,8 +527,8 @@ extern "C" {
     struct blight_thread_t;
     /*!
      * \brief blight_start_connection_thread
-     * \param fd
-     * \return
+     * \param fd File descriptor for the socket
+     * \return Pointer to thread, nullptr if failed
      */
     LIBBLIGHT_PROTOCOL_EXPORT struct blight_thread_t* blight_start_connection_thread(int fd);
     /*!

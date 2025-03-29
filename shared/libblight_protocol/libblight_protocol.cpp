@@ -1,6 +1,7 @@
 #include "libblight_protocol.h"
 #include "socket.h"
 #include "_debug.h"
+#include "_concurrentqueue.h"
 
 #include <fcntl.h>
 #include <cstring>
@@ -11,6 +12,12 @@
 #include <sstream>
 #include <ios>
 #include <thread>
+#include <map>
+#include <condition_variable>
+#include <chrono>
+#include <sys/prctl.h>
+
+using namespace std::chrono_literals;
 
 #define XCONCATENATE(x, y) x ## y
 #define CONCATENATE(x, y) XCONCATENATE(x, y)
@@ -296,13 +303,57 @@ extern "C" {
         }
         delete message;
     }
+}
+
+struct ack_t{
+    int fd;
+    bool done;
+    unsigned int ackid;
+    uint32_t size = 0;
+    blight_data_t data = nullptr;
+    std::condition_variable condition;
+    std::mutex mutex;
+    ack_t(int fd, unsigned int ackid) : fd{fd}, ackid{ackid} { }
+    ~ack_t(){
+        if(data != nullptr && size > 9){
+            delete data;
+        }
+    }
+    bool wait(int timeout){
+        std::unique_lock lock(mutex);
+        if(timeout <= 0){
+            condition.wait(lock, [this]{ return done; });
+            lock.unlock();
+            return true;
+        }
+        bool res = condition.wait_for(
+          lock,
+          timeout * 1ms,
+          [this]{ return done; }
+          );
+        lock.unlock();
+        return res;
+    }
+    void notify_all(){ condition.notify_all(); }
+};
+
+static std::map<int, moodycamel::ConcurrentQueue<std::shared_ptr<ack_t>>*> ackQueues;
+
+extern "C" {
     int blight_send_message(
         int fd,
         BlightMessageType type,
         unsigned int ackid,
         uint32_t size,
-        blight_data_t data
+        blight_data_t data,
+        int timeout,
+        blight_data_t* response
     ){
+        bool do_ack = ackQueues.contains(fd);
+        auto ack = std::shared_ptr<ack_t>(new ack_t(fd, ackid));
+        if(do_ack && type != BlightMessageType::Ack){
+            ackQueues[fd]->enqueue(ack);
+        }
         if(size && data == nullptr){
             _WARN("Data missing when size is not zero");
             errno = EINVAL;
@@ -321,7 +372,16 @@ extern "C" {
             _WARN("Failed to write connection message data: %s", std::strerror(errno));
             return -errno;
         }
-        return size;
+        if(timeout < 0 || !do_ack){
+            return 0;
+        }
+        if(!ack->wait(timeout)){
+            errno = ETIMEDOUT;
+            return -errno;
+        }
+        *response = ack->data;
+        ack->data = nullptr;
+        return ack->size;
     }
     blight_buf_t* blight_create_buffer(
         int x,
@@ -530,38 +590,46 @@ void flip(struct _fbg* fbg){
         .marker = ++marker,
         .identifier = surface->identifier
     };
+    blight_data_t response = nullptr;
     int res = blight_send_message(
         surface->fd,
         BlightMessageType::Repaint,
         0,
         sizeof(blight_packet_repaint_t),
-        (blight_data_t)&repaint
+        (blight_data_t)&repaint,
+        0,
+        &response
     );
-    // TODO - wait for response
-    //        will require seperate message handling thread to be implemented.
     if(res < 0){
         _WARN(
             "[blight_surface_to_fbg::flip(...)] Error: %s",
             std::strerror(errno)
         );
     }
+    if(response != nullptr){
+        delete response;
+    }
 }
 void deref(struct _fbg* fbg){
     auto surface = static_cast<surface_t*>(fbg->user_context);
+    blight_data_t response = nullptr;
     int res = blight_send_message(
         surface->fd,
         BlightMessageType::Delete,
         0,
         sizeof(blight_surface_id_t),
-        (blight_data_t)&surface->identifier
+        (blight_data_t)&surface->identifier,
+        0,
+        &response
     );
-    // TODO - wait for response
-    //        will require seperate message handling thread to be implemented.
     if(res < 0){
         _WARN(
             "[blight_surface_to_fbg::deref(...)] Error: %s",
             std::strerror(errno)
         );
+    }
+    if(response != nullptr){
+        delete response;
     }
     blight_buffer_deref(surface->buf);
     delete surface;
@@ -608,25 +676,100 @@ extern "C" {
             .x = x,
             .y = y
         };
+        blight_data_t response = nullptr;
         int res = blight_send_message(
             fd,
             BlightMessageType::Move,
             0,
             sizeof(blight_packet_move_t),
-            (blight_data_t)&packet
+            (blight_data_t)&packet,
+            0,
+            &response
         );
-        // TODO - wait for response
-        //        will require seperate message handling thread to be implemented.
         if(res >= 0){
             buf->x = x;
             buf->y = y;
+        }
+        if(response != nullptr){
+            delete response;
         }
         return res;
     }
 }
 
 void connection_thread(int fd){
-    // TODO - implement thread based on Blight::Connection::run(Connection*)
+    prctl(PR_SET_NAME, "BlightWorker\0", 0, 0, 0);
+    std::vector<blight_message_t*> completed;
+    std::map<unsigned int, std::shared_ptr<ack_t>> waiting;
+    moodycamel::ConcurrentQueue<std::shared_ptr<ack_t>> queue;
+    ackQueues[fd] = &queue;
+    while(true){
+        std::shared_ptr<ack_t> ptr;
+        while(queue.try_dequeue(ptr)){
+            waiting[ptr->ackid] = ptr;
+        }
+        if(!completed.empty()){
+            auto iter = completed.begin();
+            while(iter != completed.end()){
+                auto message = *iter;
+                auto ackid = message->header.ackid;
+                if(!waiting.contains(ackid)){
+                    ++iter;
+                    continue;
+                }
+                auto& ack = waiting[ackid];
+                if(message->header.size){
+                    ack->size = message->header.size;
+                    ack->data = message->data;
+                }
+                ack->notify_all();
+                iter = completed.erase(iter);
+                waiting.erase(ackid);
+            }
+        }
+        blight_message_t* message;
+        int res = blight_message_from_socket(fd, &message);
+        if(res < 0){
+            if(errno == EAGAIN){
+                continue;
+            }
+            _WARN(
+                "[blight_start_connection_thread::connection_thread(...)] Error: %s",
+                std::strerror(errno)
+            )
+            break;
+        }
+        switch(message->header.type){
+            case BlightMessageType::Ping:{
+                blight_data_t response = nullptr;
+                int res = blight_send_message(
+                    fd,
+                    BlightMessageType::Ack,
+                    message->header.ackid,
+                    0,
+                    nullptr,
+                    0,
+                    &response
+                );
+                if(response != nullptr){
+                    delete response;
+                }
+                if(res < 0){
+                    _WARN("Failed to ack ping: %s", std::strerror(errno));
+                }
+                blight_message_deref(message);
+                break;
+            }
+            case BlightMessageType::Ack:{
+                completed.push_back(message);
+                break;
+            }
+            default:
+                _WARN("Unexpected message type: %d", message->header.type);
+                blight_message_deref(message);
+        }
+    }
+    ackQueues.erase(fd);
 }
 
 extern "C" {
@@ -635,6 +778,10 @@ extern "C" {
     };
 
     blight_thread_t* blight_start_connection_thread(int fd){
+        if(ackQueues.contains(fd)){
+            errno = EINVAL;
+            return nullptr;
+        }
         return new blight_thread_t{
             .handle = std::thread(connection_thread, fd)
         };
