@@ -708,14 +708,23 @@ extern "C" {
     }
 }
 
-void connection_thread(int fd, std::atomic_bool& stop){
+void connection_thread(
+    int fd,
+    std::atomic_bool& stop,
+    std::mutex& mutex,
+    std::condition_variable& condition
+){
     prctl(PR_SET_NAME, "BlightWorker\0", 0, 0, 0);
     std::vector<blight_message_t*> completed;
     std::map<unsigned int, std::shared_ptr<ack_t>> waiting;
     moodycamel::ConcurrentQueue<std::shared_ptr<ack_t>> queue;
     {
-        std::unique_lock lock(ackQueuesMutex);
+        std::lock_guard lock(ackQueuesMutex);
         ackQueues[fd] = &queue;
+    }
+    {
+        std::lock_guard lock(mutex);
+        condition.notify_all();
     }
     while(!stop){
         std::shared_ptr<ack_t> ptr;
@@ -801,10 +810,24 @@ extern "C" {
             return nullptr;
         }
         auto stop = new std::atomic_bool{false};
-        auto thread = new blight_thread_t{
-            .stop = std::ref(*stop),
-            .handle = std::thread(connection_thread, fd, std::ref(*stop))
-        };
+        blight_thread_t* thread;
+        {
+            std::mutex mutex;
+            std::unique_lock ulock(mutex);
+            std::condition_variable condition;
+            thread = new blight_thread_t{
+                .stop = std::ref(*stop),
+                .handle = std::thread(
+                    connection_thread,
+                    fd,
+                    std::ref(*stop),
+                    std::ref(mutex),
+                    std::ref(condition)
+                )
+            };
+            lock.unlock();
+            condition.wait(ulock);
+        }
         return thread;
     }
     int blight_join_connection_thread(blight_thread_t* thread){

@@ -437,7 +437,6 @@ void test_blight_move_surface(int fd){
 }
 void test_blight_thread(int fd){
     struct blight_thread_t* thread = blight_start_connection_thread(fd);
-    sleep(1); // Wait for event loop to start
     blight_data_t response = NULL;
     int res = blight_send_message(fd, Ping, 1, 0, NULL, 0, &response);
     assert(res == 0);
