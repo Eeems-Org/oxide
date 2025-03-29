@@ -16,6 +16,7 @@
 #include <condition_variable>
 #include <chrono>
 #include <sys/prctl.h>
+#include <shared_mutex>
 
 using namespace std::chrono_literals;
 
@@ -337,6 +338,7 @@ struct ack_t{
     void notify_all(){ condition.notify_all(); }
 };
 
+static std::shared_mutex ackQueuesMutex;
 static std::map<int, moodycamel::ConcurrentQueue<std::shared_ptr<ack_t>>*> ackQueues;
 
 extern "C" {
@@ -349,10 +351,15 @@ extern "C" {
         int timeout,
         blight_data_t* response
     ){
-        bool do_ack = ackQueues.contains(fd);
-        auto ack = std::shared_ptr<ack_t>(new ack_t(fd, ackid));
-        if(do_ack && type != BlightMessageType::Ack){
-            ackQueues[fd]->enqueue(ack);
+        bool do_ack;
+        std::shared_ptr<ack_t> ack;
+        {
+            std::shared_lock lock(ackQueuesMutex);
+            do_ack = ackQueues.contains(fd);
+            ack = std::shared_ptr<ack_t>(new ack_t(fd, ackid));
+            if(do_ack && type != BlightMessageType::Ack){
+                ackQueues.at(fd)->enqueue(ack);
+            }
         }
         if(size && data == nullptr){
             _WARN("Data missing when size is not zero");
@@ -702,7 +709,10 @@ void connection_thread(int fd){
     std::vector<blight_message_t*> completed;
     std::map<unsigned int, std::shared_ptr<ack_t>> waiting;
     moodycamel::ConcurrentQueue<std::shared_ptr<ack_t>> queue;
-    ackQueues[fd] = &queue;
+    {
+        std::unique_lock lock(ackQueuesMutex);
+        ackQueues[fd] = &queue;
+    }
     while(true){
         std::shared_ptr<ack_t> ptr;
         while(queue.try_dequeue(ptr)){
@@ -769,7 +779,10 @@ void connection_thread(int fd){
                 blight_message_deref(message);
         }
     }
-    ackQueues.erase(fd);
+    {
+        std::unique_lock lock(ackQueuesMutex);
+        ackQueues.erase(fd);
+    }
 }
 
 extern "C" {
@@ -778,6 +791,7 @@ extern "C" {
     };
 
     blight_thread_t* blight_start_connection_thread(int fd){
+        std::shared_lock lock(ackQueuesMutex);
         if(ackQueues.contains(fd)){
             errno = EINVAL;
             return nullptr;
