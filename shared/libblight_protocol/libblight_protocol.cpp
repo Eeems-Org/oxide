@@ -725,6 +725,7 @@ void connection_thread(
     {
         std::lock_guard lock(mutex);
         condition.notify_all();
+        // mutex and condition are no longer safe to access after this
     }
     while(!stop){
         std::shared_ptr<ack_t> ptr;
