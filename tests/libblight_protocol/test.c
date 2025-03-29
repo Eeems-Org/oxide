@@ -467,7 +467,7 @@ int test_c(){
     TEST_EXPR(
         test_blight_send_message,
         pingid = test_blight_send_message(fd, pingid),
-        fd > 0
+        fd > 0 && pingid >= 0
     );
     blight_buf_t* buf = NULL;
     TEST_EXPR(test_blight_create_buffer, buf = test_blight_create_buffer(), true);

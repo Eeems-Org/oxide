@@ -702,7 +702,7 @@ extern "C" {
             buf->y = y;
         }
         if(response != nullptr){
-            delete response;
+            delete[] response;
         }
         return res;
     }
