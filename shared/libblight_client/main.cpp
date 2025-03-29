@@ -926,7 +926,7 @@ extern "C" {
         static const auto qImageCtorWithBuffer = (
             void(*)(void*, uint8_t*, int32_t, int32_t, int32_t, int, void(*)(void*), void*)
         )dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
-        if(width == blightBuffer->width && height == blightBuffer->height && FIRST_ALLOC) {
+        if((unsigned int)width == blightBuffer->width && (unsigned int)height == blightBuffer->height && FIRST_ALLOC) {
             _INFO("Replacing image with buffer");
             FIRST_ALLOC = false;
             qImageCtorWithBuffer(

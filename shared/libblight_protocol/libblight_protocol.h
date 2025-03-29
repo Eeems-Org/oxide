@@ -276,11 +276,11 @@ namespace BlightProtocol {
         /*!
          * \brief width Width
          */
-        int width;
+        unsigned int width;
         /*!
          * \brief height Height
          */
-        int height;
+        unsigned int height;
         /*!
          * \brief stride Bytes per line
          */

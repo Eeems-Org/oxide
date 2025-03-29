@@ -148,11 +148,11 @@ namespace Blight{
         /*!
          * \brief Width of the buffer
          */
-        int width;
+        unsigned int width;
         /*!
          * \brief Height of the buffer
          */
-        int height;
+        unsigned int height;
         /*!
          * \brief Bytes per line in the buffer
          */

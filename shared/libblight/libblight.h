@@ -93,8 +93,8 @@ namespace Blight{
     LIBBLIGHT_EXPORT std::optional<shared_buf_t> createBuffer(
         int x,
         int y,
-        int width,
-        int height,
+        unsigned int width,
+        unsigned int height,
         int stride,
         Format format
     );
@@ -113,8 +113,8 @@ namespace Blight{
         int fd,
         int x,
         int y,
-        int width,
-        int height,
+        unsigned int width,
+        unsigned int height,
         int stride,
         Format format
     );

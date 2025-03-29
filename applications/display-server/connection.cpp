@@ -424,8 +424,8 @@ void Connection::readSocket(){
                     {
                       .x = geometry.x(),
                       .y = geometry.y(),
-                      .width = geometry.width(),
-                      .height = geometry.height(),
+                      .width = (unsigned int)geometry.width(),
+                      .height = (unsigned int)geometry.height(),
                       .stride = surface->stride(),
                       .format = (Blight::Format)surface->format(),
                     }
