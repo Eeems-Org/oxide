@@ -548,9 +548,18 @@ extern "C" {
         struct blight_thread_t* thread
     );
     /*!
-     * \brief blight_connection_thread_deref
-     * \param thread
-     * \return
+     * \brief blight_stop_connection_thread Request that a connection thread stops
+     * \param thread Thread to stop
+     * \return If the stop request was successful
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_stop_connection_thread(
+        struct blight_thread_t* thread
+    );
+    /*!
+     * \brief blight_connection_thread_deref Clean up a thread, will stop it if it's running
+     * \param thread Thread to deref
+     * \return If the thread was dereferenced properly
+     * \note This will join the thread waiting for it to stop
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_connection_thread_deref(
         struct blight_thread_t* thread

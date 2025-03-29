@@ -17,6 +17,7 @@
 #include <chrono>
 #include <sys/prctl.h>
 #include <shared_mutex>
+#include <atomic>
 
 using namespace std::chrono_literals;
 
@@ -704,7 +705,7 @@ extern "C" {
     }
 }
 
-void connection_thread(int fd){
+void connection_thread(int fd, std::atomic_bool& stop){
     prctl(PR_SET_NAME, "BlightWorker\0", 0, 0, 0);
     std::vector<blight_message_t*> completed;
     std::map<unsigned int, std::shared_ptr<ack_t>> waiting;
@@ -713,7 +714,7 @@ void connection_thread(int fd){
         std::unique_lock lock(ackQueuesMutex);
         ackQueues[fd] = &queue;
     }
-    while(true){
+    while(!stop){
         std::shared_ptr<ack_t> ptr;
         while(queue.try_dequeue(ptr)){
             waiting[ptr->ackid] = ptr;
@@ -753,19 +754,15 @@ void connection_thread(int fd){
         }
         switch(message->header.type){
             case BlightMessageType::Ping:{
-                blight_data_t response = nullptr;
                 int res = blight_send_message(
                     fd,
                     BlightMessageType::Ack,
                     message->header.ackid,
                     0,
                     nullptr,
-                    0,
-                    &response
+                    -1,
+                    nullptr
                 );
-                if(response != nullptr){
-                    delete response;
-                }
                 if(res < 0){
                     _WARN("Failed to ack ping: %s", std::strerror(errno));
                 }
@@ -789,6 +786,7 @@ void connection_thread(int fd){
 
 extern "C" {
     struct blight_thread_t{
+        std::reference_wrapper<std::atomic_bool> stop;
         std::thread handle;
     };
 
@@ -798,13 +796,20 @@ extern "C" {
             errno = EINVAL;
             return nullptr;
         }
-        return new blight_thread_t{
-            .handle = std::thread(connection_thread, fd)
+        std::atomic_bool stop{false};
+        auto thread = new blight_thread_t{
+            .stop = std::ref(stop),
+            .handle = std::thread(connection_thread, fd, std::ref(stop))
         };
+        return thread;
     }
     int blight_join_connection_thread(blight_thread_t* thread){
         if(thread == nullptr){
             errno = EINVAL;
+            return -errno;
+        }
+        if(!thread->handle.joinable()){
+            errno = EBADFD;
             return -errno;
         }
         thread->handle.join();
@@ -818,16 +823,23 @@ extern "C" {
         thread->handle.detach();
         return 0;
     }
-    int blight_connection_thread_deref(blight_thread_t* thread){
+    int blight_stop_connection_thread(struct blight_thread_t* thread){
         if(thread == nullptr){
             errno = EINVAL;
             return -errno;
         }
-        if(!thread->handle.joinable()){
-            errno = EBADFD;
-            return -errno;
+        thread->stop.get() = true;
+        return 0;
+    }
+    int blight_connection_thread_deref(blight_thread_t* thread){
+        int res = blight_stop_connection_thread(thread);
+        if(res != 0){
+            return res;
         }
-        thread->handle.join();
+        res = blight_join_connection_thread(thread);
+        if(res != 0){
+            return res;
+        }
         delete thread;
         return 0;
     }

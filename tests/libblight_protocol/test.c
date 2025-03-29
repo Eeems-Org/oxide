@@ -434,6 +434,11 @@ void test_blight_move_surface(int fd){
     // TODO - Figure out why box doesn't move, even though move event happened in display server logs
     fbg_close(fbg);
 }
+void test_blight_thread(int fd){
+    struct blight_thread_t* thread = blight_start_connection_thread(fd);
+    sleep(1); // Wait for thread to start event loop
+    blight_connection_thread_deref(thread);
+}
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclobbered"
@@ -481,6 +486,7 @@ int test_c(){
         bus != NULL && fd > 0 && buf != NULL && identifier > 0
     );
     TEST_EXPR(test_blight_move_surface, test_blight_move_surface(fd), fd > 0);
+    TEST_EXPR(test_blight_thread, test_blight_thread(fd), fd > 0);
 
     if(fd > 0){
         close(fd);
