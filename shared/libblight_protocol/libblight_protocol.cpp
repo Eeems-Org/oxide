@@ -317,7 +317,7 @@ struct ack_t{
     ack_t(int fd, unsigned int ackid) : fd{fd}, ackid{ackid} { }
     ~ack_t(){
         if(data != nullptr && size > 9){
-            delete data;
+            delete[] data;
         }
     }
     bool wait(int timeout){
@@ -746,7 +746,7 @@ void connection_thread(int fd){
             _WARN(
                 "[blight_start_connection_thread::connection_thread(...)] Error: %s",
                 std::strerror(errno)
-            )
+            );
             break;
         }
         switch(message->header.type){
