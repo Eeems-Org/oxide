@@ -614,7 +614,7 @@ void flip(struct _fbg* fbg){
         );
     }
     if(response != nullptr){
-        delete response;
+        delete[] response;
     }
 }
 void deref(struct _fbg* fbg){
@@ -636,7 +636,7 @@ void deref(struct _fbg* fbg){
         );
     }
     if(response != nullptr){
-        delete response;
+        delete[] response;
     }
     blight_buffer_deref(surface->buf);
     delete surface;
@@ -731,9 +731,11 @@ void connection_thread(int fd){
                 if(message->header.size){
                     ack->size = message->header.size;
                     ack->data = message->data;
+                    message->data = nullptr; // Prevent double-free when message is dereferenced
                 }
                 ack->notify_all();
                 iter = completed.erase(iter);
+                blight_message_deref(message); // Free the message after use
                 waiting.erase(ackid);
             }
         }
