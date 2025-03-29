@@ -321,18 +321,21 @@ struct ack_t{
             delete[] data;
         }
     }
-    bool wait(int timeout){
+    bool wait(unsigned int timeout){
         std::unique_lock lock(mutex);
-        if(timeout <= 0){
+        if(done){
+            return true;
+        }
+        if(timeout == 0){
             condition.wait(lock, [this]{ return done; });
             lock.unlock();
             return true;
         }
         bool res = condition.wait_for(
-          lock,
-          timeout * 1ms,
-          [this]{ return done; }
-          );
+            lock,
+            timeout * 1ms,
+            [this]{ return done; }
+        );
         lock.unlock();
         return res;
     }
@@ -734,6 +737,7 @@ void connection_thread(int fd, std::atomic_bool& stop){
                     ack->data = message->data;
                     message->data = nullptr; // Prevent double-free when message is dereferenced
                 }
+                ack->done = true;
                 ack->notify_all();
                 iter = completed.erase(iter);
                 blight_message_deref(message); // Free the message after use
@@ -796,10 +800,10 @@ extern "C" {
             errno = EINVAL;
             return nullptr;
         }
-        std::atomic_bool stop{false};
+        auto stop = new std::atomic_bool{false};
         auto thread = new blight_thread_t{
-            .stop = std::ref(stop),
-            .handle = std::thread(connection_thread, fd, std::ref(stop))
+            .stop = std::ref(*stop),
+            .handle = std::thread(connection_thread, fd, std::ref(*stop))
         };
         return thread;
     }

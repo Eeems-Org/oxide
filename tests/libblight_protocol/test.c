@@ -433,10 +433,15 @@ void test_blight_move_surface(int fd){
     fbg_flip(fbg);
     // TODO - Figure out why box doesn't move, even though move event happened in display server logs
     fbg_close(fbg);
+    // TODO - remove surface when method added
 }
 void test_blight_thread(int fd){
     struct blight_thread_t* thread = blight_start_connection_thread(fd);
-    sleep(1); // Wait for thread to start event loop
+    sleep(1); // Wait for event loop to start
+    blight_data_t response = NULL;
+    int res = blight_send_message(fd, Ping, 1, 0, NULL, 0, &response);
+    assert(res == 0);
+    assert(response == NULL);
     blight_connection_thread_deref(thread);
 }
 
