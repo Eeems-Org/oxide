@@ -38,7 +38,6 @@ namespace Blight {
         std::mutex mutex;
         std::condition_variable condition;
         ackid_t(
-            Connection* connection,
             unsigned int ackid = 0,
             unsigned int data_size = 0,
             data_t data = nullptr
@@ -130,8 +129,8 @@ namespace Blight {
             surface_id_t identifier,
             int x,
             int y,
-            int width,
-            int height,
+            unsigned int width,
+            unsigned int height,
             WaveformMode waveform = WaveformMode::HighQualityGrayscale,
             unsigned int marker = 0
         );

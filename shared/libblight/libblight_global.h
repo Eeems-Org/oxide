@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-#  if defined(LIBOXIDE_LIBRARY)
+#  if defined(LIBBLIGHT_LIBRARY)
 #    define LIBBLIGHT_EXPORT __attribute__((visibility("default")))
 #  else
 #    define LIBBLIGHT_EXPORT

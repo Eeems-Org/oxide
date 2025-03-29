@@ -15,9 +15,9 @@ namespace Oxide {
     }
 
     event_device::event_device(const event_device& other)
-    : device(other.device),
-      flags(other.flags),
-      fd(::dup(other.fd))
+    : fd(::dup(other.fd)),
+      device(other.device),
+      flags(other.flags)
     {}
     event_device::~event_device(){
         this->close();

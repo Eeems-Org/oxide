@@ -99,7 +99,7 @@ namespace Blight{
         int dfd = fcntl(fd.value(), F_DUPFD_CLOEXEC, 3);
         if(dfd < 0){
             _WARN("[Blight::open()::dup(%d)] Error: %s", fd.value(), reply->error_message().c_str());
-            errno = -dfd;
+            return -errno;
         }
         return dfd;
     }
@@ -122,7 +122,7 @@ namespace Blight{
         int dfd = fcntl(fd.value(), F_DUPFD_CLOEXEC, 3);
         if(dfd < 0){
             _WARN("[Blight::open_input()::dup(%d)] Error: %s", fd.value(), reply->error_message().c_str());
-            errno = -dfd;
+            return -errno;
         }
         return dfd;
     }
