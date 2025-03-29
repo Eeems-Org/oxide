@@ -407,6 +407,15 @@ extern "C" {
             return nullptr;
         }
         int fd = memfd_create(generate_uuid_v4().c_str(), MFD_ALLOW_SEALING);
+        if(fd > 0 && fd < 3){
+            // Someone is doing something funky with with stdin/stdout/stderr
+            // Lets force the fd to be 3 or higher
+            int oldfd = fd;
+            fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+            int e = errno;
+            close(oldfd);
+            errno = e;
+        }
         if(fd < 0){
             return nullptr;
         }
