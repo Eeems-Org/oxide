@@ -317,7 +317,7 @@ struct ack_t{
     std::mutex mutex;
     ack_t(int fd, unsigned int ackid) : fd{fd}, ackid{ackid} { }
     ~ack_t(){
-        if(data != nullptr && size > 9){
+        if(data != nullptr && size > 0){
             delete[] data;
         }
     }
@@ -719,7 +719,7 @@ extern "C" {
 
 void connection_thread(
     int fd,
-    std::atomic_bool& stop,
+    std::atomic_bool* stop,
     std::mutex& mutex,
     std::condition_variable& condition
 ){
@@ -736,7 +736,7 @@ void connection_thread(
         condition.notify_all();
         // mutex and condition are no longer safe to access after this
     }
-    while(!stop){
+    while(!*stop){
         std::shared_ptr<ack_t> ptr;
         while(queue.try_dequeue(ptr)){
             waiting[ptr->ackid] = ptr;
@@ -809,7 +809,7 @@ void connection_thread(
 
 extern "C" {
     struct blight_thread_t{
-        std::reference_wrapper<std::atomic_bool> stop;
+        std::atomic_bool* stop;
         std::thread handle;
     };
 
@@ -826,11 +826,11 @@ extern "C" {
             std::unique_lock ulock(mutex);
             std::condition_variable condition;
             thread = new blight_thread_t{
-                .stop = std::ref(*stop),
+                .stop = stop,
                 .handle = std::thread(
                     connection_thread,
                     fd,
-                    std::ref(*stop),
+                    stop,
                     std::ref(mutex),
                     std::ref(condition)
                 )
@@ -865,7 +865,7 @@ extern "C" {
             errno = EINVAL;
             return -errno;
         }
-        thread->stop.get() = true;
+        *thread->stop = true;
         return 0;
     }
     int blight_connection_thread_deref(blight_thread_t* thread){
@@ -877,6 +877,7 @@ extern "C" {
         if(res != 0){
             return res;
         }
+        delete thread->stop;
         delete thread;
         return 0;
     }
