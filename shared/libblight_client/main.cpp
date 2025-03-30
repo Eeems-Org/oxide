@@ -86,24 +86,51 @@ namespace {
             };
         }
         auto fd = inputFds[device][0];
-        // if(!Blight::send_blocking(
-        //     fd,
-        //     reinterpret_cast<Blight::data_t>(data.data()),
-        //     sizeof(input_event) * data.size()
-        // )){
-        //     _CRIT("%d input events failed to send: %s", data.size(), std::strerror(errno));
-        // }else{
-        //     _DEBUG("Sent %d input events", data.size());
-        // }
-        auto res = func_write(fd, data.data(), sizeof(input_event) * data.size());
-        if(res >= 0){
-            _DEBUG("Sent %d input events", data.size());
-        }else if(errno == EAGAIN || errno == EINTR){
-            // Return early so we try again.
-            return;
-        }else{
-            _CRIT("%d input events failed to send: %s", data.size(), std::strerror(errno));
+        size_t total = sizeof(input_event) * data.size();
+        size_t written = 0;
+        while(written < total){
+            auto res = func_write(
+                fd,
+                reinterpret_cast<char*>(data.data()) + written,
+                total - written
+            );
+            if(res < 0){
+                if(errno == EAGAIN || errno == EINTR){
+                    size_t completed = written / sizeof(input_event);
+                    _WARN("Partial input event write: %d of %d bytes", res, total);
+                    if(completed > 0){
+                        _DEBUG("Sent %d input events", completed);
+                        queue.erase(queue.begin(), queue.begin() + completed);
+                    }
+                    size_t remainder = res - completed * sizeof(input_event);
+                    if(remainder > 0){
+                        _WARN("Partial input event, blocking until remainder sent");
+                        if(Blight::send_blocking(
+                            fd,
+                            (Blight::data_t)(data.data() + written),
+                            remainder
+                        )){
+                            queue.erase(queue.begin(), queue.begin() + 1);
+                        }else{
+                            _CRIT(
+                                "%d input events failed to send: %s",
+                                1,
+                                std::strerror(errno)
+                            );
+                        }
+                    }
+                    return;
+                }
+                _CRIT(
+                    "%d input events failed to send: %s",
+                    data.size(),
+                    std::strerror(errno)
+                );
+                return;
+            }
+            written += res;
         }
+        _DEBUG("Sent %d input events", data.size());
         queue.clear();
     }
 
@@ -111,6 +138,10 @@ namespace {
         _INFO("%s", "InputWorker starting");
         prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
         nice(-10);
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(0, &cpuset);
+        pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
         auto fd = blightConnection->input_handle();
         std::map<unsigned int,std::vector<Blight::partial_input_event_t>> events;
         while(fd > 0 && blightConnection != nullptr && getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr){
