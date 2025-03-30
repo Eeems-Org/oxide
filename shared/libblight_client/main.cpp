@@ -144,7 +144,26 @@ namespace {
         pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
         auto fd = blightConnection->input_handle();
         std::map<unsigned int,std::vector<Blight::partial_input_event_t>> events;
+        std::map<unsigned int, std::chrono::steady_clock::time_point> lastEventTime;
+        const auto timeout = std::chrono::milliseconds(50);
         while(fd > 0 && blightConnection != nullptr && getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr){
+            // Force flush any pending events where it's been longer than 50ms since the last flush
+            auto now = std::chrono::steady_clock::now();
+            for(auto& item : events){
+                auto device = item.first;
+                auto& queue = item.second;
+                if(queue.empty()){
+                    continue;
+                }
+                if(
+                    lastEventTime.find(device) == lastEventTime.end()
+                    || now - lastEventTime[device] > timeout
+                ){
+                    _WARN("Force flushing queued events due to timeout waiting for SYN");
+                    lastEventTime[device] = now;
+                    __sendEvents(device, queue);
+                }
+            }
             auto maybe = blightConnection->read_event();
             if(!maybe.has_value()){
                 if(errno != EAGAIN && errno != EINTR){
@@ -152,7 +171,9 @@ namespace {
                     break;
                 }
                 for(auto& item : events){
-                    __sendEvents(item.first, item.second);
+                    auto device = item.first;
+                    auto& queue = item.second;
+                    __sendEvents(device, queue);
                 }
                 _DEBUG("Waiting for next input event");
                 if(!Blight::wait_for_read(fd) && errno != EAGAIN){
@@ -173,18 +194,16 @@ namespace {
             auto& event = maybe.value().event;
             auto& queue = events[device];
             queue.push_back(event);
-            // TODO - input can get stuck if INPUT_BATCH_SIZE is set and not enough events have come through.
-            //        Some sort of timeout should be used to force the queue to flush.
             if(
-               (
-                   INPUT_BATCH_SIZE
-                   && queue.size() >= INPUT_BATCH_SIZE
-               )
-               || (
-                   !INPUT_BATCH_SIZE
-                   && event.type == EV_SYN
-                   && event.code == SYN_REPORT
-               )
+                (
+                    INPUT_BATCH_SIZE
+                    && queue.size() >= INPUT_BATCH_SIZE
+                )
+                || (
+                    !INPUT_BATCH_SIZE
+                    && event.type == EV_SYN
+                    && event.code == SYN_REPORT
+                )
             ){
                 __sendEvents(device, queue);
             }
