@@ -433,14 +433,28 @@ void test_blight_move_surface(int fd){
     fbg_flip(fbg);
     // TODO - Figure out why box doesn't move, even though move event happened in display server logs
     fbg_close(fbg);
-    // TODO - remove surface when method added
+    res = blight_remove_surface(fd, identifier);
+    assert(res == 0);
 }
-void test_blight_thread(int fd){
+void test_blight_thread(int fd, blight_surface_id_t identifier){
     struct blight_thread_t* thread = blight_start_connection_thread(fd);
     blight_data_t response = NULL;
     int res = blight_send_message(fd, Ping, 1, 0, NULL, 0, &response);
     assert(res == 0);
     assert(response == NULL);
+    res = blight_send_message(fd, List, 2, 0, NULL, 0, &response);
+    // We have one surface right now, the one from test_blight_add_surface
+    assert(res == sizeof(blight_surface_id_t));
+    assert(response != NULL);
+    free(response);
+    blight_surface_id_t id = *((blight_surface_id_t*)response);
+    fprintf(stderr, "%d == %d\n", id, identifier);
+    assert(id == identifier);
+    blight_remove_surface(fd, identifier);
+    res = blight_send_message(fd, List, 2, 0, NULL, 0, &response);
+    assert(res == 0);
+    assert(response != NULL);
+    free(response);
     blight_connection_thread_deref(thread);
 }
 
@@ -490,7 +504,11 @@ int test_c(){
         bus != NULL && fd > 0 && buf != NULL && identifier > 0
     );
     TEST_EXPR(test_blight_move_surface, test_blight_move_surface(fd), fd > 0);
-    TEST_EXPR(test_blight_thread, test_blight_thread(fd), fd > 0);
+    TEST_EXPR(
+        test_blight_thread,
+        test_blight_thread(fd, identifier),
+        fd > 0 && identifier > 0
+    );
 
     if(fd > 0){
         close(fd);

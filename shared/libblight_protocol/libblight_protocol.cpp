@@ -632,25 +632,7 @@ void flip(struct _fbg* fbg){
 }
 void deref(struct _fbg* fbg){
     auto surface = static_cast<surface_t*>(fbg->user_context);
-    blight_data_t response = nullptr;
-    int res = blight_send_message(
-        surface->fd,
-        BlightMessageType::Delete,
-        0,
-        sizeof(blight_surface_id_t),
-        (blight_data_t)&surface->identifier,
-        0,
-        &response
-    );
-    if(res < 0){
-        _WARN(
-            "[blight_surface_to_fbg::deref(...)] Error: %s",
-            std::strerror(errno)
-        );
-    }
-    if(response != nullptr){
-        delete[] response;
-    }
+    blight_remove_surface(surface->fd, surface->identifier);
     blight_buffer_deref(surface->buf);
     delete surface;
 }
@@ -885,4 +867,34 @@ extern "C" {
         delete thread;
         return 0;
     }
+    int blight_remove_surface(int fd, BlightProtocol::blight_surface_id_t identifier)
+    {
+        blight_data_t response = nullptr;
+        int res = blight_send_message(
+            fd,
+            BlightMessageType::Delete,
+            0,
+            sizeof(blight_surface_id_t),
+            (blight_data_t)&identifier,
+            0,
+            &response
+        );
+        if(res < 0){
+            _WARN(
+                "[blight_remove_surface(...)] Error: %s",
+                std::strerror(errno)
+            );
+        }
+        if(response != nullptr){
+            _WARN("[blight_remove_surface(...)] Surface delete returned data");
+            delete[] response;
+        }
+        if(res > 0){
+            _WARN("[blight_remove_surface(...)] Invalid response size %d", res);
+            errno = EBADMSG;
+            return -errno;
+        }
+        return 0;
+    }
 }
+

@@ -524,25 +524,28 @@ extern "C" {
         int x,
         int y
     );
+    /*!
+     * \brief blight_thread_t Wrapper for background connection thread
+     */
     struct blight_thread_t;
     /*!
-     * \brief blight_start_connection_thread
+     * \brief blight_start_connection_thread Start a background thread to handle pings and acks from the display server
      * \param fd File descriptor for the socket
      * \return Pointer to thread, nullptr if failed
      */
     LIBBLIGHT_PROTOCOL_EXPORT struct blight_thread_t* blight_start_connection_thread(int fd);
     /*!
-     * \brief blight_join_connection_thread
-     * \param thread
-     * \return
+     * \brief blight_join_connection_thread Join a connection thread and wait for it to stop
+     * \param thread Thread to join
+     * \return 0 on success, negative number on failure
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_join_connection_thread(
         struct blight_thread_t* thread
     );
     /*!
-     * \brief blight_detach_connection_thread
-     * \param thread
-     * \return
+     * \brief blight_detach_connection_thread Detatch a connection thread so it will continue if the parent process exits
+     * \param thread Thread to detatch
+     * \return 0 on success, negative number on failure
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_detach_connection_thread(
         struct blight_thread_t* thread
@@ -563,6 +566,16 @@ extern "C" {
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_connection_thread_deref(
         struct blight_thread_t* thread
+    );
+    /*!
+     * \brief blight_remove_surface Remove a surface from the display server
+     * \param fd File descriptor for the socket
+     * \param identifier Identifier for the surface we want to remove
+     * \return 0 on success, negative number on failure
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_remove_surface(
+        int fd,
+        blight_surface_id_t identifier
     );
 
 #ifdef __cplusplus
