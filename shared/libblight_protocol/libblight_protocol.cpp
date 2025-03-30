@@ -469,7 +469,7 @@ extern "C" {
             }
             buf->data = nullptr;
         }
-        if(buf->fd > 0){
+        if(buf->fd >= 0){
             close(buf->fd);
             buf->fd = -1;
         }
