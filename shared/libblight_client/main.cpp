@@ -96,10 +96,13 @@ namespace {
         //     _DEBUG("Sent %d input events", data.size());
         // }
         auto res = func_write(fd, data.data(), sizeof(input_event) * data.size());
-        if(res < 0){
-            _CRIT("%d input events failed to send: %s", data.size(), std::strerror(errno));
-        }else{
+        if(res >= 0){
             _DEBUG("Sent %d input events", data.size());
+        }else if(errno == EAGAIN || errno == EINTR){
+            // Return early so we try again.
+            return;
+        }else{
+            _CRIT("%d input events failed to send: %s", data.size(), std::strerror(errno));
         }
         queue.clear();
     }
