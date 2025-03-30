@@ -543,8 +543,8 @@ extern "C" {
         struct blight_thread_t* thread
     );
     /*!
-     * \brief blight_detach_connection_thread Detatch a connection thread so it will continue if the parent process exits
-     * \param thread Thread to detatch
+     * \brief blight_detach_connection_thread Detach a connection thread so it will continue if the parent process exits
+     * \param thread Thread to detach
      * \return 0 on success, negative number on failure
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_detach_connection_thread(

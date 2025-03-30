@@ -446,14 +446,13 @@ void test_blight_thread(int fd, blight_surface_id_t identifier){
     // We have one surface right now, the one from test_blight_add_surface
     assert(res == sizeof(blight_surface_id_t));
     assert(response != NULL);
-    free(response);
     blight_surface_id_t id = *((blight_surface_id_t*)response);
-    fprintf(stderr, "%d == %d\n", id, identifier);
     assert(id == identifier);
+    free(response);
     blight_remove_surface(fd, identifier);
     res = blight_send_message(fd, List, 2, 0, NULL, 0, &response);
     assert(res == 0);
-    assert(response != NULL);
+    assert(response == NULL);
     free(response);
     blight_connection_thread_deref(thread);
 }
