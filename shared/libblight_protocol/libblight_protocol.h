@@ -501,7 +501,7 @@ extern "C" {
      * \sa blight_create_buffer
      * \sa blight_service_open
      * \note Currently only supports Format_RGB32 buffers
-     * \note calling fbg_close will remove the surface and call blight_buf_dref on the buffer
+     * \note calling fbg_close will remove the surface and call blight_buffer_deref on the buffer
      */
     LIBBLIGHT_PROTOCOL_EXPORT struct _fbg* blight_surface_to_fbg(
         int fd,
