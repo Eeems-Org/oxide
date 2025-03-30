@@ -73,6 +73,8 @@ std::string generate_uuid_v4(){
     return ss.str();
 }
 
+static std::atomic_uint ackid = 0;
+
 using namespace BlightProtocol;
 extern "C" {
     int blight_bus_connect_system(blight_bus** bus){
@@ -614,7 +616,7 @@ void flip(struct _fbg* fbg){
     int res = blight_send_message(
         surface->fd,
         BlightMessageType::Repaint,
-        0,
+        ackid++,
         sizeof(blight_packet_repaint_t),
         (blight_data_t)&repaint,
         0,
@@ -682,7 +684,7 @@ extern "C" {
         int res = blight_send_message(
             fd,
             BlightMessageType::Move,
-            0,
+            ackid++,
             sizeof(blight_packet_move_t),
             (blight_data_t)&packet,
             0,
@@ -873,7 +875,7 @@ extern "C" {
         int res = blight_send_message(
             fd,
             BlightMessageType::Delete,
-            0,
+            ackid++,
             sizeof(blight_surface_id_t),
             (blight_data_t)&identifier,
             0,
@@ -895,6 +897,49 @@ extern "C" {
             return -errno;
         }
         return 0;
+    }
+    struct blight_surface_id_list_t{
+        unsigned int count;
+        blight_surface_id_t* data;
+    };
+    int blight_list_surfaces(
+        int fd,
+        blight_surface_id_list_t** list
+    ){
+        blight_data_t response;
+        int res = blight_send_message(fd, List, ackid++, 0, NULL, 0, &response);
+        if(res < 0){
+            return res;
+        }
+        // TODO - validate that res can be evenly divided by blight_surface_id_t and error if not
+        *list = new blight_surface_id_list_t{
+            .count = res / sizeof(blight_surface_id_t),
+            .data = (blight_surface_id_t*)response
+        };
+        return 0;
+    }
+    int blight_surface_id_list_deref(blight_surface_id_list_t* list){
+        if(list == nullptr){
+            errno = EINVAL;
+            return -errno;
+        }
+        if(list->data != nullptr){
+            delete[] list->data;
+        }
+        delete list;
+        return 0;
+    }
+    unsigned int blight_surface_id_list_count(blight_surface_id_list_t* list){
+        if(list == nullptr){
+            return 0;
+        }
+        return list->count;
+    }
+    blight_surface_id_t* blight_surface_id_list_data(blight_surface_id_list_t* list){
+        if(list == nullptr){
+            return nullptr;
+        }
+        return list->data;
     }
 }
 

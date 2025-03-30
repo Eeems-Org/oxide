@@ -438,6 +438,7 @@ void test_blight_move_surface(int fd){
 }
 void test_blight_thread(int fd, blight_surface_id_t identifier){
     struct blight_thread_t* thread = blight_start_connection_thread(fd);
+    assert(thread != NULL);
     blight_data_t response = NULL;
     int res = blight_send_message(fd, Ping, 1, 0, NULL, 0, &response);
     assert(res == 0);
@@ -454,6 +455,39 @@ void test_blight_thread(int fd, blight_surface_id_t identifier){
     assert(res == 0);
     assert(response == NULL);
     free(response);
+    blight_connection_thread_deref(thread);
+}
+void test_blight_surface_id_list(int fd){
+    struct blight_thread_t* thread = blight_start_connection_thread(fd);
+    assert(thread != NULL);
+    struct blight_surface_id_list_t* list;
+    int res = blight_list_surfaces(fd, &list);
+    assert(res == 0);
+    assert(list != NULL);
+    assert(blight_surface_id_list_count(list) == 0);
+    res = blight_surface_id_list_deref(list);
+    assert(res == 0);
+    blight_buf_t* buf = blight_create_buffer(10, 10, 100, 100, 100 * 3, Format_RGB32);
+    assert(buf != NULL);
+    blight_surface_id_t identifier = blight_add_surface(bus, buf);
+    assert(identifier > 0);
+    res = blight_list_surfaces(fd, &list);
+    assert(res == 0);
+    assert(list != NULL);
+    assert(blight_surface_id_list_count(list) == 1);
+    blight_surface_id_t* data = blight_surface_id_list_data(list);
+    assert(data != NULL);
+    assert(*data == identifier);
+    res = blight_surface_id_list_deref(list);
+    assert(res == 0);
+    res = blight_remove_surface(fd, identifier);
+    assert(res == 0);
+    res = blight_list_surfaces(fd, &list);
+    assert(res == 0);
+    assert(list != NULL);
+    assert(blight_surface_id_list_count(list) == 0);
+    res = blight_surface_id_list_deref(list);
+    assert(res == 0);
     blight_connection_thread_deref(thread);
 }
 
@@ -507,6 +541,11 @@ int test_c(){
         test_blight_thread,
         test_blight_thread(fd, identifier),
         fd > 0 && identifier > 0
+    );
+    TEST_EXPR(
+        test_blight_surface_id_list,
+        test_blight_surface_id_list(fd),
+        fd > 0
     );
 
     if(fd > 0){

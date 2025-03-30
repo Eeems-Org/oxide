@@ -577,6 +577,50 @@ extern "C" {
         int fd,
         blight_surface_id_t identifier
     );
+    /*!
+     * \brief blight_surface_id_list_t List of surface ids
+     */
+    struct blight_surface_id_list_t;
+    /*!
+     * \brief blight_list_surfaces Get the list of surfaces for a connection
+     * \param fd File descriptor for the connection socket
+     * \param list List of surfaces, will be nullptr if failed
+     * \return Negative number on failure, 0 on success
+     * \sa blight_surface_id_list_deref
+     * \sa blight_surface_id_list_count
+     * \sa blight_surface_id_list_data
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_list_surfaces(
+        int fd,
+        struct blight_surface_id_list_t** list
+    );
+    /*!
+     * \brief blight_surface_id_list_deref Free a surface id list
+     * \param list List to free
+     * \return 0 on success, negative number on failure
+     * \sa blight_list_surfaces
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT int blight_surface_id_list_deref(
+        struct blight_surface_id_list_t* list
+    );
+    /*!
+     * \brief blight_surface_id_list_count Get the count of items in a surface id list
+     * \param list List to get count from
+     * \return Count of items in the list
+     * \sa blight_surface_id_list_data
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT unsigned int blight_surface_id_list_count(
+        struct blight_surface_id_list_t* list
+    );
+    /*!
+     * \brief blight_surface_id_list_data Get the data pointer from a surface id list
+     * \param list List to get count from
+     * \return Data pointer for the list
+     * \sa blight_surface_id_list_count
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT blight_surface_id_t* blight_surface_id_list_data(
+        struct blight_surface_id_list_t* list
+    );
 
 #ifdef __cplusplus
 }
