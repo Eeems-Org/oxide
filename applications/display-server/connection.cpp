@@ -392,7 +392,7 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     surface,
                     surface->rect(),
-                    Blight::HighQualityGrayscale,
+                    Blight::WaveformMode::HighQualityGrayscale,
                     message->header.ackid,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -400,7 +400,7 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     nullptr,
                     rect,
-                    Blight::HighQualityGrayscale,
+                    Blight::WaveformMode::HighQualityGrayscale,
                     message->header.ackid,
                     true,
                     nullptr
@@ -421,12 +421,14 @@ void Connection::readSocket(){
                 auto surface = surfaces[identifier];
                 auto geometry = surface->geometry();
                 ack_data = (Blight::data_t)new Blight::surface_info_t{
-                    .x = geometry.x(),
-                    .y = geometry.y(),
-                    .width = geometry.width(),
-                    .height = geometry.height(),
-                    .stride = surface->stride(),
-                    .format = (Blight::Format)surface->format(),
+                    {
+                      .x = geometry.x(),
+                      .y = geometry.y(),
+                      .width = (unsigned int)geometry.width(),
+                      .height = (unsigned int)geometry.height(),
+                      .stride = surface->stride(),
+                      .format = (Blight::Format)surface->format(),
+                    }
                 };
                 ack_size = sizeof(Blight::surface_info_t);
                 break;
@@ -476,7 +478,7 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     surface,
                     surface->rect(),
-                    Blight::HighQualityGrayscale,
+                    Blight::WaveformMode::HighQualityGrayscale,
                     message->header.ackid,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -499,7 +501,7 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     nullptr,
                     surface->geometry(),
-                    Blight::HighQualityGrayscale,
+                    Blight::WaveformMode::HighQualityGrayscale,
                     message->header.ackid,
                     true,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -596,9 +598,11 @@ void Connection::ping(){
     }
     if(!isStopped()){
         Blight::header_t ping{
-            .type = Blight::MessageType::Ping,
-            .ackid = ++pingId,
-            .size = 0
+           {
+             .type = Blight::MessageType::Ping,
+             .ackid = ++pingId,
+             .size = 0
+           }
         };
         if(!Blight::send_blocking(
             m_serverFd,

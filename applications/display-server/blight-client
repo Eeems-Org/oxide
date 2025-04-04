@@ -1,2 +1,2 @@
 #!/bin/bash
-LD_PRELOAD=/opt/lib/libblight_client.so:$LD_PRELOAD RM2FB_SHIM=1 RM2FB_DISABLE=1 exec -a "$1" "$@"
+LD_PRELOAD=/opt/lib/libblight_client.so:$LD_PRELOAD RM2FB_DISABLE=1 exec -a "$1" "$@"

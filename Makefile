@@ -32,6 +32,8 @@ endif
 	cd $(BUILD)/oxide/shared/liboxide && make qmake
 	# Force libblight makefile to regenerate so that install targets get when being build in toltecmk
 	cd $(BUILD)/oxide/shared/libblight && make qmake
+	# Force libblight_protocol makefile to regenerate so that install targets get when being build in toltecmk
+	cd $(BUILD)/oxide/shared/libblight_protocol && make qmake
 	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/oxide install
 
 build: $(OBJ)

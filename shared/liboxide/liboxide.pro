@@ -139,5 +139,6 @@ RESOURCES += \
 
 DISTFILES += \
     Doxyfile \
+    Makefile \
     OxideMenu.qml \
     OxideWindow.qml

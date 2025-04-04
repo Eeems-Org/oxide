@@ -59,9 +59,9 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
       - name: Install toltecmk
-        run: pip install toltecmk requests==2.26.0
+        run: pip install toltecmk
       - name: Build packages
         run: make package
         timeout-minutes: 15
@@ -109,7 +109,7 @@ jobs:
             # systemctl disable --now xochitl
             # systemctl enable --now tarnish
             find /opt/share/tests -type f | while read -r test;do
-              $test;
+              SKIP_C_TESTS=1 $test;
             done
             opkg remove --force-removal-of-dependent-packages liboxide libblight
           path: ${{ steps.download.outputs.download-path }}

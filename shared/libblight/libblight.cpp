@@ -99,7 +99,7 @@ namespace Blight{
         int dfd = fcntl(fd.value(), F_DUPFD_CLOEXEC, 3);
         if(dfd < 0){
             _WARN("[Blight::open()::dup(%d)] Error: %s", fd.value(), reply->error_message().c_str());
-            errno = -dfd;
+            return -errno;
         }
         return dfd;
     }
@@ -122,12 +122,12 @@ namespace Blight{
         int dfd = fcntl(fd.value(), F_DUPFD_CLOEXEC, 3);
         if(dfd < 0){
             _WARN("[Blight::open_input()::dup(%d)] Error: %s", fd.value(), reply->error_message().c_str());
-            errno = -dfd;
+            return -errno;
         }
         return dfd;
     }
 
-    std::optional<shared_buf_t> createBuffer(int x, int y, int width, int height, int stride, Format format){
+    std::optional<shared_buf_t> createBuffer(int x, int y, unsigned int width, unsigned int height, int stride, Format format){
         auto buf = new buf_t{
             .fd = -1,
             .x = x,
@@ -186,8 +186,8 @@ namespace Blight{
         int fd,
         int x,
         int y,
-        int width,
-        int height,
+        unsigned int width,
+        unsigned int height,
         int stride,
         Format format
     ){
