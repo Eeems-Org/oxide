@@ -197,7 +197,13 @@ void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<S
         ->translated(-surfaceGlobalRect.left(), -surfaceGlobalRect.top())
         .intersected(surface->image()->rect());
     const QRect sourceRect = rect->intersected(surfaceGlobalRect);
-    if(imageRect.isEmpty() || !imageRect.isValid() || sourceRect.isEmpty() || !sourceRect.isValid()){
+    if(
+        imageRect.isEmpty()
+        || !imageRect.isValid()
+        || sourceRect.isEmpty()
+        || !sourceRect.isValid()
+        || surface->isRemoved() // This should already be handled, but just in case it leaks
+    ){
         return;
     }
     O_DEBUG("Repaint surface" << surface->id() << sourceRect << imageRect);

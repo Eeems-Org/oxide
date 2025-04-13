@@ -200,7 +200,10 @@ Blight::surface_id_t DbusInterface::addSurface(
     }
     auto dfd = dup(fd.fileDescriptor());
     if(dfd == -1){
-        sendErrorReply(QDBusError::InternalError, strerror(errno));
+        sendErrorReply(
+            QDBusError::InternalError,
+            QString("Dup failed: %s").arg(strerror(errno))
+        );
         return 0;
     }
     auto surface = connection->addSurface(
@@ -214,7 +217,7 @@ Blight::surface_id_t DbusInterface::addSurface(
         return 0;
     }
     if(!surface->isValid()){
-        sendErrorReply(QDBusError::InternalError, "Unable to create surface");
+        sendErrorReply(QDBusError::InternalError, "Surface buffer is not valid");
         return 0;
     }
     return surface->identifier();
