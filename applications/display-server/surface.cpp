@@ -112,7 +112,12 @@ bool Surface::isValid(){
 #endif
 }
 
-std::shared_ptr<QImage> Surface::image(){ return m_image; }
+std::shared_ptr<QImage> Surface::image(){
+    if(!m_connection->isRunning()){
+        return std::shared_ptr<QImage>();
+    }
+    return m_image;
+}
 
 void Surface::repaint(QRect rect){
     if(rect.isEmpty()){

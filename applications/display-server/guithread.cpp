@@ -191,6 +191,10 @@ void GUIThread::clearFrameBuffer(){
 int GUIThread::framebuffer(){ return m_frameBufferFd; }
 
 void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface){
+     // This should already be handled, but just in case it leaks
+    if(surface->isRemoved() || surface->image()->isNull()){
+        return;
+    }
     const QRect surfaceGeometry = surface->geometry();
     const QRect surfaceGlobalRect = surfaceGeometry.translated(-m_screenGeometry.topLeft());
     const QRect imageRect = rect
