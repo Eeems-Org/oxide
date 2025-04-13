@@ -394,7 +394,7 @@ extern "C" {
             errno = ETIMEDOUT;
             return -errno;
         }
-        if(response != nullptr){
+        if(response == nullptr){
             _WARN("[blight_send_message] Ignoring response data, no response pointer provided")
             delete[] ack->data;
         }else{
