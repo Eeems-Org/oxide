@@ -12,6 +12,8 @@
 #include <liboxide/debug.h>
 #include <liboxide/threading.h>
 #include <libblight/clock.h>
+#include <setjmp.h>
+#include <sys/mman.h>
 
 void GUIThread::run(){
     O_DEBUG("Thread started");
@@ -190,6 +192,26 @@ void GUIThread::clearFrameBuffer(){
 
 int GUIThread::framebuffer(){ return m_frameBufferFd; }
 
+static thread_local sigjmp_buf jumpBuffer;
+static thread_local bool handlerInstalled;
+static std::mutex handlerMutex;
+static struct sigaction oldSigSegv;
+static struct sigaction oldSigBus;
+
+static void memoryAccessSignalHandler(int sig, siginfo_t* info, void* context){
+    if(handlerInstalled){
+        siglongjmp(jumpBuffer, 1);
+        return;
+    }
+    if(sig == SIGSEGV && oldSigSegv.sa_sigaction){
+        oldSigSegv.sa_sigaction(sig, info, context);
+        return;
+    }
+    if(sig == SIGBUS && oldSigBus.sa_sigaction){
+        oldSigBus.sa_sigaction(sig, info, context);
+    }
+}
+
 void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface){
      // This should already be handled, but just in case it leaks
     if(surface->isRemoved() || surface->image()->isNull()){
@@ -211,9 +233,26 @@ void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<S
         return;
     }
     O_DEBUG("Repaint surface" << surface->id() << sourceRect << imageRect);
-    // TODO - See if there is a way to detect if there is just transparency in the region
-    //        and don't mark this as repainted.
-    painter->drawImage(sourceRect, *surface->image().get(), imageRect);
+
+    std::lock_guard<std::mutex> lock(handlerMutex);
+    Q_UNUSED(lock);
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = memoryAccessSignalHandler;
+    sa.sa_flags = SA_SIGINFO;
+    sigaction(SIGSEGV, &sa, &oldSigSegv);
+    sigaction(SIGBUS, &sa, &oldSigBus);
+    handlerInstalled = true;
+    if(sigsetjmp(jumpBuffer, 1) == 0){
+        // TODO - See if there is a way to detect if there is just transparency in the region
+        //        and don't mark this as repainted.
+        painter->drawImage(sourceRect, *surface->image().get(), imageRect);
+    }else{
+        O_WARNING("Failed to access surface buffer due to signal")
+    }
+    sigaction(SIGSEGV, &oldSigSegv, nullptr);
+    sigaction(SIGBUS, &oldSigBus, nullptr);
+    handlerInstalled = false;
 }
 
 void GUIThread::redraw(RepaintRequest& event){
