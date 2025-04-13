@@ -27,6 +27,7 @@ using namespace std::chrono_literals;
 #define UNIQ __COUNTER__
 #define _STRV_FOREACH(s, l, i) for(typeof(*(l)) *s, *i = (l); (s = i) && *i; i++)
 #define STRV_FOREACH(s, l) _STRV_FOREACH(s, l, UNIQ_T(i, UNIQ))
+#define UNUSED(x) do{ (void)x; }while(0)
 
 char** strv_free(char** v) {
     if(!v){
@@ -361,6 +362,7 @@ extern "C" {
         std::shared_ptr<ack_t> ack;
         {
             std::shared_lock lock(ackQueuesMutex);
+            UNUSED(lock);
             do_ack = ackQueues.contains(fd);
             ack = std::shared_ptr<ack_t>(new ack_t(fd, ackid));
             if(do_ack && type != BlightMessageType::Ack){
@@ -368,9 +370,9 @@ extern "C" {
             }
         }
         if(size && data == nullptr){
-            _WARN("Data missing when size is not zero");
+            _WARN("[blight_send_message] Data missing when size is not zero");
             errno = EINVAL;
-            return -EINVAL;
+            return -errno;
         }
         blight_header_t header{
             .type = type,
@@ -378,11 +380,11 @@ extern "C" {
             .size = size
         };
         if(!send_blocking(fd, (blight_data_t)&header, sizeof(blight_header_t))){
-            _WARN("Failed to write connection message header: %s", std::strerror(errno));
+            _WARN("[blight_send_message] Failed to write connection message header: %s", std::strerror(errno));
             return -errno;
         }
         if(size && !send_blocking(fd, data, size)){
-            _WARN("Failed to write connection message data: %s", std::strerror(errno));
+            _WARN("[blight_send_message] Failed to write connection message data: %s", std::strerror(errno));
             return -errno;
         }
         if(timeout < 0 || !do_ack){
@@ -392,8 +394,13 @@ extern "C" {
             errno = ETIMEDOUT;
             return -errno;
         }
-        *response = ack->data;
-        ack->data = nullptr;
+        if(response != nullptr){
+            _WARN("[blight_send_message] Ignoring response data, no response pointer provided")
+            delete[] ack->data;
+        }else{
+            *response = ack->data;
+            ack->data = nullptr;
+        }
         return ack->size;
     }
     blight_buf_t* blight_create_buffer(
@@ -598,7 +605,7 @@ struct surface_t{
 
 void draw(struct _fbg* fbg){
     auto surface = static_cast<surface_t*>(fbg->user_context);
-    assert(fbg->size == surface->buf->stride * surface->buf->height);
+    assert(fbg->size == (ssize_t)(surface->buf->stride * surface->buf->height));
     memcpy(surface->buf->data, fbg->disp_buffer, fbg->size);
 }
 void flip(struct _fbg* fbg){
@@ -712,16 +719,21 @@ void connection_thread(
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(0, &cpuset);
-    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    int res = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if(res != 0){
+        _WARN("[connection_thread] Failed to set thread affinity: %s", std::strerror(res));
+    }
     std::vector<blight_message_t*> completed;
     std::map<unsigned int, std::shared_ptr<ack_t>> waiting;
     moodycamel::ConcurrentQueue<std::shared_ptr<ack_t>> queue;
     {
         std::lock_guard lock(ackQueuesMutex);
+        UNUSED(lock);
         ackQueues[fd] = &queue;
     }
     {
         std::lock_guard lock(mutex);
+        UNUSED(lock);
         condition.notify_all();
         // mutex and condition are no longer safe to access after this
     }
@@ -732,6 +744,7 @@ void connection_thread(
         }
         if(!completed.empty()){
             auto iter = completed.begin();
+            // TODO add timeout to acks
             while(iter != completed.end()){
                 auto message = *iter;
                 auto ackid = message->header.ackid;
@@ -792,6 +805,7 @@ void connection_thread(
     }
     {
         std::unique_lock lock(ackQueuesMutex);
+        UNUSED(lock);
         ackQueues.erase(fd);
     }
 }
