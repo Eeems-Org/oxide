@@ -317,7 +317,7 @@ struct ack_t{
     blight_data_t data = nullptr;
     std::condition_variable condition;
     std::mutex mutex;
-    ack_t(int fd, unsigned int ackid) : fd{fd}, ackid{ackid} { }
+    ack_t(int fd, unsigned int ackid) : fd{fd}, done{false}, ackid{ackid} { }
     ~ack_t(){
         if(data != nullptr && size > 0){
             delete[] data;
