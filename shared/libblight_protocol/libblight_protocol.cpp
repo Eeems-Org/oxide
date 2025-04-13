@@ -598,6 +598,7 @@ struct surface_t{
 
 void draw(struct _fbg* fbg){
     auto surface = static_cast<surface_t*>(fbg->user_context);
+    assert(fbg->size == surface->buf->stride * surface->buf->height);
     memcpy(surface->buf->data, fbg->disp_buffer, fbg->size);
 }
 void flip(struct _fbg* fbg){
@@ -910,6 +911,12 @@ extern "C" {
         int res = blight_send_message(fd, List, ackid++, 0, NULL, 0, &response);
         if(res < 0){
             return res;
+        }
+        if(res % sizeof(blight_surface_id_t) != 0){
+            _WARN("[blight_list_surfaces(...)] Invalid response size %d", res);
+            delete[] response;
+            errno = EBADMSG;
+            return -errno;
         }
         // TODO - validate that res can be evenly divided by blight_surface_id_t and error if not
         *list = new blight_surface_id_list_t{
