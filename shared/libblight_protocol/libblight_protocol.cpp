@@ -396,7 +396,6 @@ extern "C" {
         }
         if(response == nullptr){
             _WARN("[blight_send_message] Ignoring response data, no response pointer provided")
-            delete[] ack->data;
         }else{
             *response = ack->data;
             ack->data = nullptr;
@@ -753,10 +752,14 @@ void connection_thread(
                     continue;
                 }
                 auto& ack = waiting[ackid];
+                assert(ack->data == nullptr);
                 if(message->header.size){
+                    assert(message->data != nullptr);
                     ack->size = message->header.size;
                     ack->data = message->data;
                     message->data = nullptr; // Prevent double-free when message is dereferenced
+                }else{
+                    assert(message->data == nullptr);
                 }
                 ack->done = true;
                 ack->notify_all();
