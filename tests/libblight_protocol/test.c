@@ -445,6 +445,7 @@ void test_blight_thread(int fd, blight_surface_id_t identifier){
     assert(response == NULL);
     res = blight_send_message(fd, List, 2, 0, NULL, 0, &response);
     // We have one surface right now, the one from test_blight_add_surface
+    // TODO - when using system display server instead of launching our own, res is 0
     assert(res == sizeof(blight_surface_id_t));
     assert(response != NULL);
     blight_surface_id_t id = *((blight_surface_id_t*)response);
@@ -458,6 +459,7 @@ void test_blight_thread(int fd, blight_surface_id_t identifier){
     blight_connection_thread_deref(thread);
 }
 void test_blight_surface_id_list(int fd){
+    // TODO - if test_blight_thread fails this call will fail as there is already a thread running
     struct blight_thread_t* thread = blight_start_connection_thread(fd);
     assert(thread != NULL);
     struct blight_surface_id_list_t* list;
