@@ -17,7 +17,14 @@ QML_IMPORT_NAME = codes.eeems.blight
 QML_IMPORT_PATH += .
 QML_IMPORT_MAJOR_VERSION = 1
 
-QMAKE_CFLAGS += -std=c99
+CONFIG(debug, debug|release){
+    LIBS += -lunwind
+    QMAKE_LFLAGS += -rdynamic
+    QMAKE_CFLAGS += -std=gnu99
+    QMAKE_CXXFLAGS += -save-temps
+}else{
+    QMAKE_CFLAGS += -std=c99
+}
 
 SOURCES += \
     connection.cpp \

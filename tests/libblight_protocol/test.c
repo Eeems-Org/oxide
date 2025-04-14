@@ -20,10 +20,10 @@
         jmp_buf __ex_buf__; \
         void __ex_handle__(int s){ \
             UNUSED(s); \
-            assert(signal(SIGABRT, SIG_DFL)  != SIG_ERR); \
+            assert(signal(SIGABRT, SIG_DFL) != SIG_ERR); \
             longjmp(__ex_buf__, 1); \
         } \
-        assert(signal(SIGABRT, __ex_handle__)  != SIG_ERR); \
+        assert(signal(SIGABRT, __ex_handle__) != SIG_ERR); \
         if(setjmp(__ex_buf__) == 0){ \
             expression; \
         }else{ \

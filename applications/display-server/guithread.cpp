@@ -14,10 +14,101 @@
 #include <libblight/clock.h>
 #include <setjmp.h>
 #include <sys/mman.h>
+#include <functional>
+
+#ifdef DEBUG
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+#include <cxxabi.h>
+void print_trace() {
+    unw_cursor_t cursor;
+    unw_context_t context;
+
+           // Initialize cursor to current frame for local unwinding.
+    unw_getcontext(&context);
+    unw_init_local(&cursor, &context);
+
+           // Unwind frames one by one, going up the frame stack.
+    while(unw_step(&cursor) > 0){
+        unw_word_t offset, pc;
+        unw_get_reg(&cursor, UNW_REG_IP, &pc);
+        if(pc == 0){
+            break;
+        }
+        std::printf("0x%lx:", pc);
+
+        char sym[256];
+        if(unw_get_proc_name(&cursor, sym, sizeof(sym), &offset) == 0){
+            char* nameptr = sym;
+            int status;
+            char* demangled = abi::__cxa_demangle(sym, nullptr, nullptr, &status);
+            if (status == 0) {
+                nameptr = demangled;
+            }
+            std::printf(" (%s+0x%lx)\n", nameptr, offset);
+            std::free(demangled);
+        } else {
+            std::printf(" -- error: unable to obtain symbol name for this frame\n");
+        }
+    }
+}
+#endif
+
+static thread_local sigjmp_buf jumpBuffer;
+static thread_local bool catchExceptions;
+static thread_local bool initialized = false;
+static thread_local struct sigaction oldSigSegv;
+static thread_local struct sigaction oldSigBus;
+static void __ex_handle__(int sig, siginfo_t* info, void* context){
+    Q_UNUSED(sig);
+    Q_UNUSED(info);
+    Q_UNUSED(context);
+    __RIGHT_HERE__;
+    if(catchExceptions){
+        siglongjmp(jumpBuffer, 1);
+    }else if(sig == SIGSEGV && oldSigSegv.sa_sigaction){
+#ifdef DEBUG
+        print_trace();
+#endif
+        oldSigSegv.sa_sigaction(sig, info, context);
+    }else if(sig == SIGBUS && oldSigBus.sa_sigaction){
+#ifdef DEBUG
+        print_trace();
+#endif
+        oldSigBus.sa_sigaction(sig, info, context);
+    }
+}
+#define noop
+#define TRY(expression, c_expression) \
+    { \
+        if(!initialized){ \
+            struct sigaction sa; \
+            memset(&sa, 0, sizeof(sa)); \
+            sa.sa_sigaction = __ex_handle__; \
+            sa.sa_flags = SA_SIGINFO; \
+            sigaction(SIGSEGV, &sa, &oldSigSegv); \
+            sigaction(SIGBUS, &sa, &oldSigBus); \
+            initialized = true; \
+        } \
+        catchExceptions = true; \
+        if(setjmp(jumpBuffer) == 0){ \
+            expression; \
+        }else{ \
+            c_expression; \
+        } \
+        catchExceptions = false; \
+    }
 
 void GUIThread::run(){
     O_DEBUG("Thread started");
     clearFrameBuffer();
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = __ex_handle__;
+    sa.sa_flags = SA_SIGINFO;
+    sigaction(SIGSEGV, &sa, &oldSigSegv);
+    sigaction(SIGBUS, &sa, &oldSigBus);
+    initialized = true;
     QTimer::singleShot(0, this, [this]{
         Q_ASSERT(QThread::currentThread() == (QThread*)this);
         QMutexLocker locker(&m_repaintMutex);
@@ -48,6 +139,8 @@ void GUIThread::run(){
     });
     clearFrameBuffer();
     auto res = exec();
+    sigaction(SIGSEGV, &oldSigSegv, nullptr);
+    sigaction(SIGBUS, &oldSigBus, nullptr);
     O_DEBUG("Thread stopped with exit code:" << res);
 }
 
@@ -131,7 +224,12 @@ void GUIThread::enqueue(
             if(surface == _surface){
                 break;
             }
-            if(_surface->image()->hasAlphaChannel()){
+            bool hasAlpha = false;
+            TRY(
+                hasAlpha = _surface->image()->hasAlphaChannel(),
+                noop
+            )
+            if(hasAlpha){
                 continue;
             }
             auto geometry = _surface->geometry();
@@ -183,73 +281,42 @@ void GUIThread::clearFrameBuffer(){
 
 int GUIThread::framebuffer(){ return m_frameBufferFd; }
 
-static thread_local sigjmp_buf jumpBuffer;
-static thread_local bool handlerInstalled;
-static struct sigaction oldSigSegv;
-static struct sigaction oldSigBus;
-
-static void memoryAccessSignalHandler(int sig, siginfo_t* info, void* context){
-    if(handlerInstalled){
-        siglongjmp(jumpBuffer, 1);
-        return;
-    }
-    if(sig == SIGSEGV && oldSigSegv.sa_sigaction){
-        oldSigSegv.sa_sigaction(sig, info, context);
-        return;
-    }
-    if(sig == SIGBUS && oldSigBus.sa_sigaction){
-        oldSigBus.sa_sigaction(sig, info, context);
-    }
-}
 
 void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface){
      // This should already be handled, but just in case it leaks
     if(surface->isRemoved()){
          return;
     }
-    auto image = surface->image();
-    if(image == nullptr || image->isNull()){
-        return;
-    }
     const QRect surfaceGeometry = surface->geometry();
     const QRect surfaceGlobalRect = surfaceGeometry.translated(-m_screenGeometry.topLeft());
     if(!rect->intersects(surfaceGlobalRect)){
         return;
     }
-    const QRect imageRect = rect
-        ->translated(-surfaceGlobalRect.left(), -surfaceGlobalRect.top())
-        .intersected(surface->image()->rect());
-    const QRect sourceRect = rect->intersected(surfaceGlobalRect);
-    if(
-        imageRect.isEmpty()
-        || !imageRect.isValid()
-        || sourceRect.isEmpty()
-        || !sourceRect.isValid()
-    ){
-        return;
-    }
-    O_DEBUG("Repaint surface" << surface->id() << sourceRect << imageRect);
-    static thread_local struct sigaction sa;
-    static thread_local bool initialized = false;
-    if(!initialized){
-        memset(&sa, 0, sizeof(sa));
-        sa.sa_sigaction = memoryAccessSignalHandler;
-        sa.sa_flags = SA_SIGINFO;
-        initialized = true;
-    }
-    sigaction(SIGSEGV, &sa, &oldSigSegv);
-    sigaction(SIGBUS, &sa, &oldSigBus);
-    handlerInstalled = true;
-    if(sigsetjmp(jumpBuffer, 1) == 0){
-        // TODO - See if there is a way to detect if there is just transparency in the region
-        //        and don't mark this as repainted.
-        painter->drawImage(sourceRect, *surface->image().get(), imageRect);
-    }else{
+    TRY(
+        {
+            auto image = surface->image();
+            if(image == nullptr || image->isNull()){
+                return;
+            }
+            const QRect imageRect = rect
+                ->translated(-surfaceGlobalRect.left(), -surfaceGlobalRect.top())
+                .intersected(image->rect());
+            const QRect sourceRect = rect->intersected(surfaceGlobalRect);
+            if(
+                imageRect.isEmpty()
+                || !imageRect.isValid()
+                || sourceRect.isEmpty()
+                || !sourceRect.isValid()
+            ){
+                return;
+            }
+            O_DEBUG("Repaint surface" << surface->id() << sourceRect << imageRect);
+            // TODO - See if there is a way to detect if there is just transparency in the region
+            //        and don't mark this as repainted.
+            painter->drawImage(sourceRect, *image.get(), imageRect);
+        },
         O_WARNING("Failed to access surface buffer due to signal")
-    }
-    sigaction(SIGSEGV, &oldSigSegv, nullptr);
-    sigaction(SIGBUS, &oldSigBus, nullptr);
-    handlerInstalled = false;
+    );
 }
 
 void GUIThread::redraw(RepaintRequest& event){
@@ -286,7 +353,14 @@ void GUIThread::redraw(RepaintRequest& event){
     }
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     for(QRect rect : event.region){
-        if(event.global || event.surface->image()->hasAlphaChannel()){
+        bool hasAlpha = false;
+        TRY(
+            {
+                hasAlpha = event.global || event.surface->image()->hasAlphaChannel();
+            },
+            noop
+        );
+        if(hasAlpha){
             painter.fillRect(rect, colour);
             for(auto& surface : visibleSurfaces()){
                 if(surface != nullptr){
@@ -336,12 +410,15 @@ QList<std::shared_ptr<Surface>> GUIThread::visibleSurfaces(){
             visibleSurfaces.end(),
             [](std::shared_ptr<Surface> surface){
                 auto connection = surface->connection();
+                if(!connection->isRunning()){
+                    return true;
+                }
                 if(!surface->has("system") && getpgid(connection->pgid()) < 0){
                     O_WARNING(surface->id() << "With no running process");
                     return true;
                 }
                 auto image = surface->image();
-                if(image->isNull()){
+                if(image == nullptr || image->isNull()){
                     O_WARNING(surface->id() << "Null framebuffer");
                     return true;
                 }

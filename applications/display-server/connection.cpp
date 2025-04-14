@@ -438,6 +438,7 @@ void Connection::readSocket(){
                 C_DEBUG("Delete requested:" << identifier);
                 if(!surfaces.contains(identifier)){
                     C_WARNING("Could not find surface" << identifier);
+
                     break;
                 }
                 removedMutex.lock();
