@@ -194,7 +194,6 @@ int GUIThread::framebuffer(){ return m_frameBufferFd; }
 
 static thread_local sigjmp_buf jumpBuffer;
 static thread_local bool handlerInstalled;
-static std::mutex handlerMutex;
 static struct sigaction oldSigSegv;
 static struct sigaction oldSigBus;
 
@@ -214,11 +213,18 @@ static void memoryAccessSignalHandler(int sig, siginfo_t* info, void* context){
 
 void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface){
      // This should already be handled, but just in case it leaks
-    if(surface->isRemoved() || surface->image()->isNull()){
+    if(surface->isRemoved()){
+         return;
+    }
+    auto image = surface->image();
+    if(image == nullptr || image->isNull()){
         return;
     }
     const QRect surfaceGeometry = surface->geometry();
     const QRect surfaceGlobalRect = surfaceGeometry.translated(-m_screenGeometry.topLeft());
+    if(!rect->intersects(surfaceGlobalRect)){
+        return;
+    }
     const QRect imageRect = rect
         ->translated(-surfaceGlobalRect.left(), -surfaceGlobalRect.top())
         .intersected(surface->image()->rect());
@@ -228,18 +234,18 @@ void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<S
         || !imageRect.isValid()
         || sourceRect.isEmpty()
         || !sourceRect.isValid()
-        || surface->isRemoved() // This should already be handled, but just in case it leaks
     ){
         return;
     }
     O_DEBUG("Repaint surface" << surface->id() << sourceRect << imageRect);
-
-    std::lock_guard<std::mutex> lock(handlerMutex);
-    Q_UNUSED(lock);
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_sigaction = memoryAccessSignalHandler;
-    sa.sa_flags = SA_SIGINFO;
+    static thread_local struct sigaction sa;
+    static thread_local bool initialized = false;
+    if(!initialized){
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_sigaction = memoryAccessSignalHandler;
+        sa.sa_flags = SA_SIGINFO;
+        initialized = true;
+    }
     sigaction(SIGSEGV, &sa, &oldSigSegv);
     sigaction(SIGBUS, &sa, &oldSigBus);
     handlerInstalled = true;
