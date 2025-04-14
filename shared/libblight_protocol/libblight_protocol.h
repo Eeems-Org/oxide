@@ -303,6 +303,7 @@ namespace BlightProtocol {
 #define blight_event_packet_t BlightProtocol::blight_event_packet_t
 #define BlightMessageType BlightProtocol::BlightMessageType
 #define BlightImageFormat BlightProtocol::BlightImageFormat
+#define BlightWaveformMode BlightProtocol::BlightWaveformMode
 extern "C" {
 #endif
     typedef sd_bus blight_bus;
@@ -621,6 +622,26 @@ extern "C" {
     LIBBLIGHT_PROTOCOL_EXPORT blight_surface_id_t* blight_surface_id_list_data(
         struct blight_surface_id_list_t* list
     );
+    /*!
+     * \brief blight_surface_repaint
+     * \param fd
+     * \param identifier
+     * \param x
+     * \param y
+     * \param width
+     * \param height
+     * \param waveform
+     * \return 0 on error otherwise the marker used for the repaint call
+     */
+    LIBBLIGHT_PROTOCOL_EXPORT unsigned int blight_surface_repaint(
+        int fd,
+        blight_surface_id_t identifier,
+        int x,
+        int y,
+        unsigned int width,
+        unsigned int height,
+        BlightWaveformMode waveform
+    );
 
 #ifdef __cplusplus
 }
@@ -635,5 +656,6 @@ extern "C" {
 #undef blight_event_packet_t
 #undef BlightMessageType
 #undef BlightImageFormat
+#undef BlightWaveformMode
 #endif
 /*! @} */

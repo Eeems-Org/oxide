@@ -75,6 +75,7 @@ std::string generate_uuid_v4(){
 }
 
 static std::atomic_uint ackid = 0;
+static std::atomic_uint _marker = 0;
 
 using namespace BlightProtocol;
 extern "C" {
@@ -609,35 +610,15 @@ void draw(struct _fbg* fbg){
 }
 void flip(struct _fbg* fbg){
     auto surface = static_cast<surface_t*>(fbg->user_context);
-    static unsigned int marker = 0;
-    blight_packet_repaint_t repaint{
-        .x = 0,
-        .y = 0,
-        .width = surface->buf->width,
-        .height = surface->buf->height,
-        .waveform = BlightWaveformMode::HighQualityGrayscale,
-        .marker = ++marker,
-        .identifier = surface->identifier
-    };
-    blight_data_t response = nullptr;
-    int res = blight_send_message(
+    blight_surface_repaint(
         surface->fd,
-        BlightMessageType::Repaint,
-        ackid++,
-        sizeof(blight_packet_repaint_t),
-        (blight_data_t)&repaint,
+        surface->identifier,
         0,
-        &response
+        0,
+        surface->buf->width,
+        surface->buf->height,
+        BlightWaveformMode::HighQualityGrayscale
     );
-    if(res < 0){
-        _WARN(
-            "[blight_surface_to_fbg::flip(...)] Error: %s",
-            std::strerror(errno)
-        );
-    }
-    if(response != nullptr){
-        delete[] response;
-    }
 }
 void deref(struct _fbg* fbg){
     auto surface = static_cast<surface_t*>(fbg->user_context);
@@ -964,6 +945,50 @@ extern "C" {
             return nullptr;
         }
         return list->data;
+    }
+    unsigned int blight_surface_repaint(
+        int fd,
+        blight_surface_id_t identifier,
+        int x,
+        int y,
+        unsigned int width,
+        unsigned int height,
+        BlightWaveformMode waveform
+    ){
+        unsigned int marker = ++_marker;
+        if(marker == 0){
+            marker = _marker = 1;
+        }
+        blight_packet_repaint_t repaint{
+            .x = x,
+            .y = y,
+            .width = width,
+            .height = height,
+            .waveform = waveform,
+            .marker = marker,
+            .identifier = identifier
+        };
+        blight_data_t response = nullptr;
+        int res = blight_send_message(
+            fd,
+            BlightMessageType::Repaint,
+            ackid++,
+            sizeof(blight_packet_repaint_t),
+            (blight_data_t)&repaint,
+            0,
+            &response
+        );
+        if(res < 0){
+            _WARN(
+                "[blight_surface_repaint::flip(...)] Error: %s",
+                std::strerror(errno)
+            );
+            return 0;
+        }
+        if(response != nullptr){
+            delete[] response;
+        }
+        return repaint.marker;
     }
 }
 
