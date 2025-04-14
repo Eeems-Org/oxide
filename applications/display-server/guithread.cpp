@@ -20,40 +20,31 @@ void GUIThread::run(){
     clearFrameBuffer();
     QTimer::singleShot(0, this, [this]{
         Q_ASSERT(QThread::currentThread() == (QThread*)this);
-        m_repaintMutex.lock();
-        forever{
+        QMutexLocker locker(&m_repaintMutex);
+        Q_UNUSED(locker);
+        while(!isInterruptionRequested()){
             // New repaint request each loop as we have a shared pointer we need to clear
             RepaintRequest event;
             if(!m_repaintEvents.try_dequeue(event)){
                 dbusInterface->processRemovedSurfaces();
                 dbusInterface->processClosingConnections();
-                if(!m_repaintEvents.try_dequeue(event)){
-                    emit settled();
-                    // Wait for up to 500ms before trying again
-                    m_repaintWait.wait(&m_repaintMutex, 500);
-                    auto found = m_repaintEvents.try_dequeue(event);
-                    if(!found){
-                        // Woken by something needing to cleanup connections/surfaces
-                        continue;
-                    }
+                emit settled();
+                // Wait for up to 500ms before trying again
+                m_repaintWait.wait(&m_repaintMutex, 500);
+                auto found = m_repaintEvents.try_dequeue(event);
+                if(!found){
+                    // Woken by something needing to cleanup connections/surfaces
+                    continue;
                 }
             }
-            forever{
+            do{
                 redraw(event);
                 if(event.callback != nullptr){
                     event.callback();
                 }
-                if(!m_repaintEvents.try_dequeue(event)){
-                    break;
-                }
-            }
+            }while(m_repaintEvents.try_dequeue(event));
             eventDispatcher()->processEvents(QEventLoop::AllEvents);
-            if(isInterruptionRequested()){
-                O_DEBUG("Interruption requested, leaving loop");
-                break;
-            }
         }
-        m_repaintMutex.unlock();
     });
     clearFrameBuffer();
     auto res = exec();
@@ -288,7 +279,9 @@ void GUIThread::redraw(RepaintRequest& event){
     Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
     QPainter painter(frameBuffer);
     while(!painter.isActive()){
-        eventDispatcher()->processEvents(QEventLoop::AllEvents);
+        if(!eventDispatcher()->processEvents(QEventLoop::AllEvents)){
+            QThread::msleep(1);
+        }
         painter.begin(frameBuffer);
     }
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
