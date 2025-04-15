@@ -45,8 +45,12 @@ void print_trace() {
             if (status == 0) {
                 nameptr = demangled;
             }
-            std::printf(" (%s+0x%lx)\n", nameptr, offset);
+            std::printf(" (%s+0x%lx) ", nameptr, offset);
             std::free(demangled);
+            char cmd[256];
+            snprintf(cmd, sizeof(cmd), "addr2line -e /proc/%d/exe %p", getpid(), (void*)pc);
+            system(cmd);
+            std::printf("\n");
         } else {
             std::printf(" -- error: unable to obtain symbol name for this frame\n");
         }
@@ -56,14 +60,12 @@ void print_trace() {
 
 static thread_local sigjmp_buf jumpBuffer;
 static thread_local bool catchExceptions;
-static thread_local bool initialized = false;
-static thread_local struct sigaction oldSigSegv;
-static thread_local struct sigaction oldSigBus;
+static struct sigaction oldSigSegv;
+static struct sigaction oldSigBus;
 static void __ex_handle__(int sig, siginfo_t* info, void* context){
     Q_UNUSED(sig);
     Q_UNUSED(info);
     Q_UNUSED(context);
-    __RIGHT_HERE__;
     if(catchExceptions){
         siglongjmp(jumpBuffer, 1);
     }else if(sig == SIGSEGV && oldSigSegv.sa_sigaction){
@@ -81,15 +83,6 @@ static void __ex_handle__(int sig, siginfo_t* info, void* context){
 #define noop
 #define TRY(expression, c_expression) \
     { \
-        if(!initialized){ \
-            struct sigaction sa; \
-            memset(&sa, 0, sizeof(sa)); \
-            sa.sa_sigaction = __ex_handle__; \
-            sa.sa_flags = SA_SIGINFO; \
-            sigaction(SIGSEGV, &sa, &oldSigSegv); \
-            sigaction(SIGBUS, &sa, &oldSigBus); \
-            initialized = true; \
-        } \
         catchExceptions = true; \
         if(setjmp(jumpBuffer) == 0){ \
             expression; \
@@ -102,13 +95,6 @@ static void __ex_handle__(int sig, siginfo_t* info, void* context){
 void GUIThread::run(){
     O_DEBUG("Thread started");
     clearFrameBuffer();
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_sigaction = __ex_handle__;
-    sa.sa_flags = SA_SIGINFO;
-    sigaction(SIGSEGV, &sa, &oldSigSegv);
-    sigaction(SIGBUS, &sa, &oldSigBus);
-    initialized = true;
     QTimer::singleShot(0, this, [this]{
         Q_ASSERT(QThread::currentThread() == (QThread*)this);
         QMutexLocker locker(&m_repaintMutex);
@@ -139,14 +125,18 @@ void GUIThread::run(){
     });
     clearFrameBuffer();
     auto res = exec();
-    sigaction(SIGSEGV, &oldSigSegv, nullptr);
-    sigaction(SIGBUS, &oldSigBus, nullptr);
     O_DEBUG("Thread stopped with exit code:" << res);
 }
 
 GUIThread* GUIThread::singleton(){
     static GUIThread* instance = nullptr;
     if(instance == nullptr){
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_sigaction = __ex_handle__;
+        sa.sa_flags = SA_SIGINFO;
+        sigaction(SIGSEGV, &sa, &oldSigSegv);
+        sigaction(SIGBUS, &sa, &oldSigBus);
         instance = new GUIThread(EPFrameBuffer::instance()->framebuffer()->rect());
         Oxide::startThreadWithPriority(instance, QThread::TimeCriticalPriority);
     }
@@ -226,7 +216,8 @@ void GUIThread::enqueue(
             }
             bool hasAlpha = false;
             TRY(
-                hasAlpha = _surface->image()->hasAlphaChannel(),
+                auto image = _surface->image();
+                hasAlpha = image != nullptr && !image->isNull() && image->hasAlphaChannel(),
                 noop
             )
             if(hasAlpha){
@@ -356,7 +347,13 @@ void GUIThread::redraw(RepaintRequest& event){
         bool hasAlpha = false;
         TRY(
             {
-                hasAlpha = event.global || event.surface->image()->hasAlphaChannel();
+                hasAlpha = event.global;
+                if(!hasAlpha){
+                    auto image = event.surface->image();
+                    hasAlpha = image != nullptr
+                        && !image->isNull()
+                        && image->hasAlphaChannel();
+                }
             },
             noop
         );
