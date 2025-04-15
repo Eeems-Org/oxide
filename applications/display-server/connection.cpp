@@ -333,13 +333,14 @@ void Connection::readSocket(){
                 auto repaint = Blight::repaint_t::from_message(message.get());
                 C_DEBUG(
                     "Repaint requested:"
-                    << QString("%6 (%1,%2) %3x%4 %5 %7")
+                    << QString("%1 (%2,%3) %4x%5 %6 %7")
+                        .arg(repaint.identifier)
                         .arg(repaint.x)
                         .arg(repaint.y)
                         .arg(repaint.width)
                         .arg(repaint.height)
                         .arg(repaint.waveform)
-                        .arg(repaint.identifier)
+                        .arg(repaint.mode)
                         .arg(repaint.marker)
                         .toStdString()
                         .c_str()
@@ -360,6 +361,7 @@ void Connection::readSocket(){
                     surface,
                     rect,
                     repaint.waveform,
+                    repaint.mode,
                     repaint.marker,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -393,6 +395,7 @@ void Connection::readSocket(){
                     surface,
                     surface->rect(),
                     Blight::WaveformMode::HighQualityGrayscale,
+                    Blight::UpdateMode::PartialUpdate,
                     message->header.ackid,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -401,6 +404,7 @@ void Connection::readSocket(){
                     nullptr,
                     rect,
                     Blight::WaveformMode::HighQualityGrayscale,
+                    Blight::UpdateMode::PartialUpdate,
                     message->header.ackid,
                     true,
                     nullptr
@@ -480,6 +484,7 @@ void Connection::readSocket(){
                     surface,
                     surface->rect(),
                     Blight::WaveformMode::HighQualityGrayscale,
+                    Blight::UpdateMode::PartialUpdate,
                     message->header.ackid,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -503,6 +508,7 @@ void Connection::readSocket(){
                     nullptr,
                     surface->geometry(),
                     Blight::WaveformMode::HighQualityGrayscale,
+                    Blight::UpdateMode::PartialUpdate,
                     message->header.ackid,
                     true,
                     [message, this]{ ack(message, 0, nullptr); }

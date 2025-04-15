@@ -217,6 +217,7 @@ namespace Blight{
         unsigned int width,
         unsigned int height,
         WaveformMode waveform,
+        UpdateMode mode,
         unsigned int marker
     ){
         if(!identifier){
@@ -230,6 +231,7 @@ namespace Blight{
                 .width = width,
                 .height = height,
                 .waveform = waveform,
+                .mode = mode,
                 .marker = marker,
                 .identifier = identifier,
             }

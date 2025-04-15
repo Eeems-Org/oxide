@@ -132,6 +132,7 @@ namespace Blight {
             unsigned int width,
             unsigned int height,
             WaveformMode waveform = WaveformMode::HighQualityGrayscale,
+            UpdateMode mode = UpdateMode::PartialUpdate,
             unsigned int marker = 0
         );
         /*!
@@ -152,8 +153,9 @@ namespace Blight {
             int width,
             int height,
             WaveformMode waveform = WaveformMode::HighQualityGrayscale,
+            UpdateMode mode = UpdateMode::PartialUpdate,
             unsigned int marker = 0
-        ){ return repaint(buf->surface, x, y, width, height, waveform, marker); }
+        ){ return repaint(buf->surface, x, y, width, height, waveform, mode, marker); }
         /*!
          * \brief Repaint a surface
          * \param buf Buffer representing surface
@@ -164,8 +166,20 @@ namespace Blight {
         inline maybe_ackid_ptr_t repaint(
             shared_buf_t buf,
             WaveformMode waveform = WaveformMode::HighQualityGrayscale,
+            UpdateMode mode = UpdateMode::PartialUpdate,
             unsigned int marker = 0
-        ){ return repaint(buf->surface, buf->x, buf->y, buf->width, buf->height, waveform, marker); }
+        ){
+            return repaint(
+                buf->surface,
+                buf->x,
+                buf->y,
+                buf->width,
+                buf->height,
+                waveform,
+                mode,
+                marker
+            );
+        }
         /*!
          * \brief Move a surface
          * \param buf Buffer representing surface

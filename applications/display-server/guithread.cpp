@@ -84,6 +84,7 @@ void GUIThread::enqueue(
     std::shared_ptr<Surface> surface,
     QRect region,
     Blight::WaveformMode waveform,
+    Blight::UpdateMode mode,
     unsigned int marker,
     bool global,
     std::function<void()> callback
@@ -152,6 +153,7 @@ void GUIThread::enqueue(
         .surface = surface,
         .region = repaintRegion,
         .waveform = waveform,
+        .mode = mode,
         .marker = marker,
         .global = global,
         .callback = callback
@@ -267,16 +269,13 @@ void GUIThread::redraw(RepaintRequest& event){
         }else{
             repaintSurface(&painter, &rect, event.surface);
         }
-        sendUpdate(rect, event.waveform, event.marker);
+        sendUpdate(rect, event.waveform, event.mode, event.marker);
     }
     painter.end();
     O_DEBUG("Repaint" << region.boundingRect() << "done in" << region.rectCount() << "paints, and" << cw.elapsed() << "seconds");
 }
 
-void GUIThread::sendUpdate(const QRect& rect, Blight::WaveformMode waveform, unsigned int marker){
-    auto mode = rect == m_screenRect
-        ? EPFrameBuffer::FullUpdate
-        : EPFrameBuffer::PartialUpdate;
+void GUIThread::sendUpdate(const QRect& rect, Blight::WaveformMode waveform, Blight::UpdateMode mode, unsigned int marker){
     O_DEBUG("Sending screen update" << rect << waveform << mode);
     mxcfb_update_data data{
         .update_region = mxcfb_rect{

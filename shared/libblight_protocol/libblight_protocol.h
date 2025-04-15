@@ -104,6 +104,13 @@ namespace BlightProtocol {
         Highlight = 8
 #endif
     } BlightWaveformMode;
+    /*!
+     * \brief BlightUpdateMode Update mode for a repaint
+     */
+    typedef enum{
+        PartialUpdate = 0x0,
+        FullUpdate = 0x1
+    } BlightUpdateMode;
 
     /*!
      * \brief Size type used by the protocol
@@ -236,6 +243,10 @@ namespace BlightProtocol {
          */
         BlightWaveformMode waveform;
         /*!
+         * \brief mode Update mode to use
+         */
+        BlightUpdateMode mode;
+        /*!
          * \brief marker Marker to use
          */
         unsigned int marker;
@@ -304,6 +315,7 @@ namespace BlightProtocol {
 #define BlightMessageType BlightProtocol::BlightMessageType
 #define BlightImageFormat BlightProtocol::BlightImageFormat
 #define BlightWaveformMode BlightProtocol::BlightWaveformMode
+#define BlightUpdateMode BlightProtocol::BlightUpdateMode
 extern "C" {
 #endif
     typedef sd_bus blight_bus;
@@ -623,14 +635,15 @@ extern "C" {
         struct blight_surface_id_list_t* list
     );
     /*!
-     * \brief blight_surface_repaint
-     * \param fd
-     * \param identifier
-     * \param x
-     * \param y
-     * \param width
-     * \param height
-     * \param waveform
+     * \brief blight_surface_repaint Repaint a surface
+     * \param fd File descriptor for the connection socket
+     * \param identifier Surface identifier to repaint
+     * \param x X cordinate on the surface to repaint
+     * \param y Y coordinate on the surface to repaint
+     * \param width Width of area on the surface to repaint
+     * \param height Height of area on the surface to repaint
+     * \param waveform Waveform to use when repainting
+     * \param mode Update mode to use when repainting
      * \return 0 on error otherwise the marker used for the repaint call
      */
     LIBBLIGHT_PROTOCOL_EXPORT unsigned int blight_surface_repaint(
@@ -640,7 +653,8 @@ extern "C" {
         int y,
         unsigned int width,
         unsigned int height,
-        BlightWaveformMode waveform
+        BlightWaveformMode waveform,
+        BlightUpdateMode mode
     );
 
 #ifdef __cplusplus
@@ -657,5 +671,6 @@ extern "C" {
 #undef BlightMessageType
 #undef BlightImageFormat
 #undef BlightWaveformMode
+#undef BlightUpdateMode
 #endif
 /*! @} */

@@ -223,14 +223,15 @@ namespace {
         }
         auto region = update->update_region;
         auto maybe = blightConnection->repaint(
-          blightBuffer,
-          region.left,
-          region.top,
-          region.width,
-          region.height,
-          (Blight::WaveformMode)update->waveform_mode,
-          update->update_marker
-          );
+            blightBuffer,
+            region.left,
+            region.top,
+            region.width,
+            region.height,
+            (Blight::WaveformMode)update->waveform_mode,
+            (Blight::UpdateMode)update->update_mode,
+            update->update_marker
+        );
         if(maybe.has_value()){
             maybe.value()->wait();
         }

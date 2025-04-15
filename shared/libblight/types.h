@@ -26,6 +26,10 @@ namespace Blight{
      */
     using WaveformMode = BlightProtocol::BlightWaveformMode;
     /*!
+     * \brief Update mode to use for a repaint
+     */
+    using UpdateMode = BlightProtocol::BlightUpdateMode;
+    /*!
      * \brief Size type
      */
     typedef BlightProtocol::blight_size_t size_t;

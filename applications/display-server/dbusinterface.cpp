@@ -417,6 +417,7 @@ void DbusInterface::exitExclusiveMode(QDBusMessage message){
         nullptr,
         EPFrameBuffer::instance()->framebuffer()->rect(),
         Blight::WaveformMode::HighQualityGrayscale,
+        Blight::UpdateMode::FullUpdate,
         0,
         true
     );
@@ -434,6 +435,7 @@ void DbusInterface::exclusiveModeRepaint(QDBusMessage message){
     guiThread->sendUpdate(
         EPFrameBuffer::instance()->framebuffer()->rect(),
         Blight::WaveformMode::HighQualityGrayscale,
+        Blight::UpdateMode::PartialUpdate,
         0
     );
 #endif

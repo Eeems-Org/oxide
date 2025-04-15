@@ -617,7 +617,8 @@ void flip(struct _fbg* fbg){
         0,
         surface->buf->width,
         surface->buf->height,
-        BlightWaveformMode::HighQualityGrayscale
+        BlightWaveformMode::HighQualityGrayscale,
+        BlightUpdateMode::PartialUpdate
     );
 }
 void deref(struct _fbg* fbg){
@@ -953,7 +954,8 @@ extern "C" {
         int y,
         unsigned int width,
         unsigned int height,
-        BlightWaveformMode waveform
+        BlightWaveformMode waveform,
+        BlightUpdateMode mode
     ){
         unsigned int marker = ++_marker;
         if(marker == 0){
@@ -965,6 +967,7 @@ extern "C" {
             .width = width,
             .height = height,
             .waveform = waveform,
+            .mode = mode,
             .marker = marker,
             .identifier = identifier
         };

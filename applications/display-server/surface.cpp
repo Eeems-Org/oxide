@@ -128,6 +128,7 @@ void Surface::repaint(QRect rect){
         nullptr,
         geometry(),
         Blight::WaveformMode::HighQualityGrayscale,
+        Blight::UpdateMode::PartialUpdate,
         0,
         true
     );
