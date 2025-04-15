@@ -12,85 +12,7 @@
 #include <liboxide/debug.h>
 #include <liboxide/threading.h>
 #include <libblight/clock.h>
-#include <setjmp.h>
-#include <sys/mman.h>
-#include <functional>
 
-#ifdef DEBUG
-#define UNW_LOCAL_ONLY
-#include <libunwind.h>
-#include <cxxabi.h>
-void print_trace() {
-    unw_cursor_t cursor;
-    unw_context_t context;
-
-           // Initialize cursor to current frame for local unwinding.
-    unw_getcontext(&context);
-    unw_init_local(&cursor, &context);
-
-           // Unwind frames one by one, going up the frame stack.
-    while(unw_step(&cursor) > 0){
-        unw_word_t offset, pc;
-        unw_get_reg(&cursor, UNW_REG_IP, &pc);
-        if(pc == 0){
-            break;
-        }
-        std::printf("0x%lx:", pc);
-
-        char sym[256];
-        if(unw_get_proc_name(&cursor, sym, sizeof(sym), &offset) == 0){
-            char* nameptr = sym;
-            int status;
-            char* demangled = abi::__cxa_demangle(sym, nullptr, nullptr, &status);
-            if (status == 0) {
-                nameptr = demangled;
-            }
-            std::printf(" (%s+0x%lx) ", nameptr, offset);
-            std::free(demangled);
-            char cmd[256];
-            snprintf(cmd, sizeof(cmd), "addr2line -e /proc/%d/exe %p", getpid(), (void*)pc);
-            system(cmd);
-            std::printf("\n");
-        } else {
-            std::printf(" -- error: unable to obtain symbol name for this frame\n");
-        }
-    }
-}
-#endif
-
-static thread_local sigjmp_buf jumpBuffer;
-static thread_local bool catchExceptions;
-static struct sigaction oldSigSegv;
-static struct sigaction oldSigBus;
-static void __ex_handle__(int sig, siginfo_t* info, void* context){
-    Q_UNUSED(sig);
-    Q_UNUSED(info);
-    Q_UNUSED(context);
-    if(catchExceptions){
-        siglongjmp(jumpBuffer, 1);
-    }else if(sig == SIGSEGV && oldSigSegv.sa_sigaction){
-#ifdef DEBUG
-        print_trace();
-#endif
-        oldSigSegv.sa_sigaction(sig, info, context);
-    }else if(sig == SIGBUS && oldSigBus.sa_sigaction){
-#ifdef DEBUG
-        print_trace();
-#endif
-        oldSigBus.sa_sigaction(sig, info, context);
-    }
-}
-#define noop
-#define TRY(expression, c_expression) \
-    { \
-        catchExceptions = true; \
-        if(setjmp(jumpBuffer) == 0){ \
-            expression; \
-        }else{ \
-            c_expression; \
-        } \
-        catchExceptions = false; \
-    }
 
 void GUIThread::run(){
     O_DEBUG("Thread started");
@@ -131,12 +53,6 @@ void GUIThread::run(){
 GUIThread* GUIThread::singleton(){
     static GUIThread* instance = nullptr;
     if(instance == nullptr){
-        struct sigaction sa;
-        memset(&sa, 0, sizeof(sa));
-        sa.sa_sigaction = __ex_handle__;
-        sa.sa_flags = SA_SIGINFO;
-        sigaction(SIGSEGV, &sa, &oldSigSegv);
-        sigaction(SIGBUS, &sa, &oldSigBus);
         instance = new GUIThread(EPFrameBuffer::instance()->framebuffer()->rect());
         Oxide::startThreadWithPriority(instance, QThread::TimeCriticalPriority);
     }
@@ -214,13 +130,8 @@ void GUIThread::enqueue(
             if(surface == _surface){
                 break;
             }
-            bool hasAlpha = false;
-            TRY(
-                auto image = _surface->image();
-                hasAlpha = image != nullptr && !image->isNull() && image->hasAlphaChannel(),
-                noop
-            )
-            if(hasAlpha){
+            auto image = _surface->image();
+            if(image != nullptr && !image->isNull() && image->hasAlphaChannel()){
                 continue;
             }
             auto geometry = _surface->geometry();
@@ -283,31 +194,26 @@ void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<S
     if(!rect->intersects(surfaceGlobalRect)){
         return;
     }
-    TRY(
-        {
-            auto image = surface->image();
-            if(image == nullptr || image->isNull()){
-                return;
-            }
-            const QRect imageRect = rect
-                ->translated(-surfaceGlobalRect.left(), -surfaceGlobalRect.top())
-                .intersected(image->rect());
-            const QRect sourceRect = rect->intersected(surfaceGlobalRect);
-            if(
-                imageRect.isEmpty()
-                || !imageRect.isValid()
-                || sourceRect.isEmpty()
-                || !sourceRect.isValid()
-            ){
-                return;
-            }
-            O_DEBUG("Repaint surface" << surface->id() << sourceRect << imageRect);
-            // TODO - See if there is a way to detect if there is just transparency in the region
-            //        and don't mark this as repainted.
-            painter->drawImage(sourceRect, *image.get(), imageRect);
-        },
-        O_WARNING("Failed to access surface buffer due to signal")
-    );
+    auto image = surface->image();
+    if(image == nullptr || image->isNull()){
+        return;
+    }
+    const QRect imageRect = rect
+                              ->translated(-surfaceGlobalRect.left(), -surfaceGlobalRect.top())
+                              .intersected(image->rect());
+    const QRect sourceRect = rect->intersected(surfaceGlobalRect);
+    if(
+      imageRect.isEmpty()
+      || !imageRect.isValid()
+      || sourceRect.isEmpty()
+      || !sourceRect.isValid()
+      ){
+        return;
+    }
+    O_DEBUG("Repaint surface" << surface->id() << sourceRect << imageRect);
+    // TODO - See if there is a way to detect if there is just transparency in the region
+    //        and don't mark this as repainted.
+    painter->drawImage(sourceRect, *image.get(), imageRect);
 }
 
 void GUIThread::redraw(RepaintRequest& event){
@@ -344,19 +250,13 @@ void GUIThread::redraw(RepaintRequest& event){
     }
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     for(QRect rect : event.region){
-        bool hasAlpha = false;
-        TRY(
-            {
-                hasAlpha = event.global;
-                if(!hasAlpha){
-                    auto image = event.surface->image();
-                    hasAlpha = image != nullptr
-                        && !image->isNull()
-                        && image->hasAlphaChannel();
-                }
-            },
-            noop
-        );
+        bool hasAlpha = event.global;
+        if(!hasAlpha){
+            auto image = event.surface->image();
+            hasAlpha = image != nullptr
+               && !image->isNull()
+               && image->hasAlphaChannel();
+        }
         if(hasAlpha){
             painter.fillRect(rect, colour);
             for(auto& surface : visibleSurfaces()){
