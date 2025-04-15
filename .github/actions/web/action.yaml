@@ -27,6 +27,10 @@ runs:
     - name: Build website
       shell: bash
       run: cd web && make prod
+    - name: Generate libblight_protocol docs
+      shell: bash
+      run: |
+        cd shared/libblight_protocol && make prod
     - name: Generate libblight docs
       shell: bash
       run: |
