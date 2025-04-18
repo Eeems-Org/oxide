@@ -1,0 +1,6 @@
+---
+exclude_paths:
+ - "shared/sentry/**"
+ - "shared/cpptrace/**"
+ - "applications/launcher/js/**"
+ 
