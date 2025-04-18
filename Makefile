@@ -102,7 +102,7 @@ $(BUILD)/package/oxide.tar.gz: $(BUILD)/package/package $(PKG_OBJ)
 		oxide.pro \
 		Makefile
 
-SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/doxygen-awesome-css)
+SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )
 SRC_FILES += package
 
 lint:

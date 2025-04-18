@@ -8,7 +8,7 @@ pkgnames=(
     liboxide
     liboxide-dev
     libsentry
-#    cpptrace
+    #    cpptrace
     oxide
     oxide-display
     oxide-extra
