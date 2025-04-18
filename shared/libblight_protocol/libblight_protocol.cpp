@@ -612,7 +612,7 @@ extern "C" {
         if(!maybe.has_value()){
             return -errno;
         }
-        *packet = (blight_event_packet_t*)maybe.value();
+        *packet = reinterpret_cast<blight_event_packet_t*>(maybe.value());
         return 0;
     }
 }
@@ -667,7 +667,7 @@ extern "C" {
             3,
             true,
             true,
-            (void*)surface,
+            reinterpret_cast<void*>(surface),
             draw,
             flip,
             nullptr,
@@ -939,7 +939,7 @@ extern "C" {
         // TODO - validate that res can be evenly divided by blight_surface_id_t and error if not
         *list = new blight_surface_id_list_t{
             .count = res / sizeof(blight_surface_id_t),
-            .data = (blight_surface_id_t*)response
+            .data = reinterpret_cast<blight_surface_id_t*>(response)
         };
         return 0;
     }
