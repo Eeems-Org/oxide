@@ -169,7 +169,10 @@ namespace BlightProtocol {
         Raise,
         Lower,
         Wait,
-        Focus
+        Focus,
+#ifdef __cplusplus
+        MAX,
+#endif
     } BlightMessageType;
     /*!
      * \brief Generic data pointer

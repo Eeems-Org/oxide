@@ -511,7 +511,13 @@ QObject* DbusInterface::workspace(){
 
 Connection* DbusInterface::createConnection(int pid){
     pid_t pgid = ::getpgid(pid);
-    auto connection = new Connection(pid, pgid);
+    Connection* connection;
+    try{
+        connection = new Connection(pid, pgid);
+    }catch(const std::bad_alloc&){
+        O_WARNING("Failed to create new connection, out of memory");
+        return nullptr;
+    }
     if(!connection->isValid()){
         connection->deleteLater();
         return nullptr;

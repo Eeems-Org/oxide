@@ -197,12 +197,18 @@ void Connection::close(){
 
 std::shared_ptr<Surface> Connection::addSurface(int fd, QRect geometry, int stride, QImage::Format format){
     // TODO - add validation that id is never 0, and that it doesn't point to an existsing surface
-    auto id = ++m_surfaceId;
-    auto surface = std::shared_ptr<Surface>(new Surface(this, fd, id, geometry, stride, format));
+    auto surfaceId = ++m_surfaceId;
+    std::shared_ptr<Surface> surface{nullptr};
+    try{
+        surface = std::make_shared<Surface>(this, fd, surfaceId, geometry, stride, format);
+    }catch(const std::bad_alloc&){
+        C_WARNING("Unable to add surface, out of memory");
+        return surface;
+    }
     if(!surface->isValid()){
         return surface;
     }
-    surfaces.insert_or_assign(id, surface);
+    surfaces.insert_or_assign(surfaceId, surface);
     dbusInterface->sortZ();
     surface->repaint();
     return surface;
@@ -305,6 +311,10 @@ void Connection::readSocket(){
 #endif
     while(true){
         auto message = Blight::message_t::from_socket(m_serverFd);
+        if(message == nullptr){
+            QThread::msleep(1);
+            continue;
+        }
         if(message->header.type == Blight::MessageType::Invalid){
             break;
         }
@@ -424,17 +434,21 @@ void Connection::readSocket(){
                 }
                 auto surface = surfaces[identifier];
                 auto geometry = surface->geometry();
-                ack_data = (Blight::data_t)new Blight::surface_info_t{
-                    {
-                      .x = geometry.x(),
-                      .y = geometry.y(),
-                      .width = (unsigned int)geometry.width(),
-                      .height = (unsigned int)geometry.height(),
-                      .stride = surface->stride(),
-                      .format = (Blight::Format)surface->format(),
-                    }
-                };
-                ack_size = sizeof(Blight::surface_info_t);
+                try{
+                    ack_data = reinterpret_cast<Blight::data_t>(new Blight::surface_info_t{
+                        {
+                          .x = geometry.x(),
+                          .y = geometry.y(),
+                          .width = (unsigned int)geometry.width(),
+                          .height = (unsigned int)geometry.height(),
+                          .stride = surface->stride(),
+                          .format = (Blight::Format)surface->format(),
+                        }
+                    });
+                    ack_size = sizeof(Blight::surface_info_t);
+                }catch(const std::bad_alloc&){
+                    C_WARNING("Could not allocate ack_data, not enough memory");
+                }
                 break;
             }
             case Blight::MessageType::Delete:{

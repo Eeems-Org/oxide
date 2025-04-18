@@ -274,6 +274,7 @@ namespace Blight {
         std::atomic<bool> stop_requested;
         std::vector<std::function<void(int)>> disconnectCallbacks;
         std::thread thread;
+        std::mutex mutex;
         static void run(Connection* connection);
     };
 }

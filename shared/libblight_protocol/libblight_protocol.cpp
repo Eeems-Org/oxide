@@ -275,6 +275,25 @@ extern "C" {
         };
         memcpy(&m->header, maybe.value(), sizeof(blight_header_t));
         delete[] maybe.value();
+        if(
+            m->header.type == BlightMessageType::Invalid
+            || m->header.type >= BlightMessageType::MAX
+        ){
+            _WARN(
+                "Recieved invalid message from socket"
+                "socket=%d, "
+                "ackid=%u, "
+                "type=%d, "
+                "size=%ld",
+                fd,
+                m->header.ackid,
+                m->header.type,
+                (long int)m->header.size
+            );
+            delete m;
+            errno = EBADMSG;
+            return -errno;
+        }
         if(!m->header.size){
             *message = m;
             return 0;

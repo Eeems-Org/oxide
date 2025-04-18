@@ -141,6 +141,9 @@ Blight::header_t Blight::message_t::create_ack(const message_t& message, size_t 
 
 Blight::message_ptr_t Blight::message_t::from_socket(int fd){
     auto message = Blight::message_t::new_ptr();
+    if(message == nullptr){
+        return message;
+    }
     BlightProtocol::blight_message_t* m;
     int res = blight_message_from_socket(fd, &m);
     if(res < 0){
@@ -153,10 +156,14 @@ Blight::message_ptr_t Blight::message_t::from_socket(int fd){
 }
 
 Blight::message_ptr_t Blight::message_t::new_ptr(){
-    return message_ptr_t(new message_t{
-        .header = header_t::new_invalid(),
-        .data = shared_data_t()
-    });
+    try{
+        return message_ptr_t(new message_t{
+            .header = header_t::new_invalid(),
+            .data = shared_data_t()
+        });
+    }catch(std::bad_alloc&){
+        return message_ptr_t(nullptr);
+    }
 }
 
 Blight::repaint_t Blight::repaint_t::from_message(const message_t* message){

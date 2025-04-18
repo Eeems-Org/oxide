@@ -165,6 +165,8 @@ namespace Blight{
                 .size = size
             }
         };
+        std::lock_guard locker(mutex);
+        (void)locker;
         if(!Blight::send_blocking(
             m_fd,
             reinterpret_cast<data_t>(&header),
@@ -537,7 +539,7 @@ namespace Blight{
                 }
             }
             auto message = connection->read();
-            if(message->header.type == MessageType::Invalid){
+            if(message == nullptr || message->header.type == MessageType::Invalid){
                 if(errno == EAGAIN){
                     continue;
                 }

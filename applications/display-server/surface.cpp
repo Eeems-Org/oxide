@@ -45,13 +45,18 @@ Surface::Surface(
         S_WARNING("Failed to map buffer");
         return;
     }
-    m_image = std::shared_ptr<QImage>(new QImage(
-        data,
-        geometry.width(),
-        geometry.height(),
-        stride,
-        format
-    ));
+    try{
+        m_image = std::shared_ptr<QImage>(new QImage(
+            data,
+            geometry.width(),
+            geometry.height(),
+            stride,
+            format
+        ));
+    }catch(const std::bad_alloc&){
+        S_WARNING("Not enough memory to create QImage");
+        return;
+    }
 #ifndef EPAPER
     component = dynamic_cast<QQuickItem*>(dbusInterface->loadComponent(
         "qrc:/Surface.qml",

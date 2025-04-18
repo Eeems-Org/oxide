@@ -19,7 +19,20 @@ namespace BlightProtocol{
       unsigned int attempts,
       unsigned int timeout
     ){
-        auto data = new unsigned char[size];
+        blight_data_t data;
+        try{
+            data = new unsigned char[size];
+        }catch(std::bad_alloc&){
+            _WARN(
+                "[BlightProtocol::recv(%d, %d, %d, %d)] Not enough memory to recieve",
+                fd,
+                size,
+                attempts,
+                timeout
+            );
+            errno = ENOMEM;
+            return {};
+        }
         ssize_t res = -1;
         unsigned int count = 0;
         while(res < 0 && count < attempts){
@@ -72,7 +85,18 @@ namespace BlightProtocol{
     }
 
     std::optional<blight_data_t> recv_blocking(int fd, ssize_t size){
-        auto data = new unsigned char[size];
+        blight_data_t data;
+        try{
+            data = new unsigned char[size];
+        }catch(std::bad_alloc&){
+            _WARN(
+                "[BlightProtocol::recv_blocking(%d, %d)] Not enough memory to recieve",
+                fd,
+                size
+            );
+            errno = ENOMEM;
+            return {};
+        }
         ssize_t res = -1;
         ssize_t total = 0;
         while(total < size){
