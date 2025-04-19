@@ -11,6 +11,9 @@ OxideWindow {
     visible: true
     title: qsTr("Oxide")
     focus: true
+    headerBackgroundColor: "white"
+    color: "black"
+    backgroundColor: "white"
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     onAfterSynchronizing: {
         if (stateController.state == "loading") {
@@ -83,7 +86,7 @@ OxideWindow {
             }
         },
         OxideStatusIcon {
-            source: "qrc:/img/notifications/white.png"
+            source: "qrc:/img/notifications/black.png"
             text: controller.notificationText
             visible: controller.hasNotification
             clip: true
@@ -102,7 +105,7 @@ OxideWindow {
         Label {
             objectName: "clock"
             Layout.alignment: Qt.AlignCenter
-            color: "white"
+            color: window.color
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
@@ -138,7 +141,7 @@ OxideWindow {
                 }else{
                     icon = "0_bar";
                 }
-                return "qrc:/img/wifi/" + icon + ".png";
+                return "qrc:/codes.eeems.oxide/img/wifi/" + icon + ".png";
             }
             text: controller.showWifiDb ? rssi + "dBm" : ""
             MouseArea {
@@ -185,7 +188,7 @@ OxideWindow {
                         icon += 100;
                     }
                 }
-                return "qrc:/img/battery/" + icon + ".png";
+                return "qrc:/codes.eeems.oxide/img/battery/" + icon + ".png";
             }
             text: (controller.showBatteryPercent ? level + "% " : "") + (controller.showBatteryTemperature ? temperature + "C" : "")
         },
@@ -229,7 +232,7 @@ OxideWindow {
             }
         }
     ]
-    background: Rectangle { color: "white" }
+    background: Rectangle { color: window.backgroundColor }
     initialItem: Item{
         anchors.fill: parent
         GridView {
@@ -249,13 +252,13 @@ OxideWindow {
                 snapMode: ScrollBar.SnapAlways
                 policy: ScrollBar.AlwaysOn
                 contentItem: Rectangle {
-                    color: "white"
+                    color: window.color
                     implicitWidth: 6
                     implicitHeight: 100
                     radius: width / 2
                 }
                 background: Rectangle {
-                    color: "black"
+                    color: window.backgroundColor
                     implicitWidth: 6
                     implicitHeight: 100
                     radius: width / 2

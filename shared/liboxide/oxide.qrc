@@ -4,5 +4,30 @@
         <file>OxideMenu.qml</file>
         <file>OxideStatusIcon.qml</file>
         <file>OxideButton.qml</file>
+        <file>img/battery/100.png</file>
+        <file>img/battery/20.png</file>
+        <file>img/battery/30.png</file>
+        <file>img/battery/50.png</file>
+        <file>img/battery/60.png</file>
+        <file>img/battery/80.png</file>
+        <file>img/battery/90.png</file>
+        <file>img/battery/alert.png</file>
+        <file>img/battery/charging_100.png</file>
+        <file>img/battery/charging_20.png</file>
+        <file>img/battery/charging_30.png</file>
+        <file>img/battery/charging_50.png</file>
+        <file>img/battery/charging_60.png</file>
+        <file>img/battery/charging_80.png</file>
+        <file>img/battery/charging_90.png</file>
+        <file>img/battery/unknown.png</file>
+        <file>img/wifi/0_bar.png</file>
+        <file>img/wifi/1_bar.png</file>
+        <file>img/wifi/2_bar.png</file>
+        <file>img/wifi/3_bar.png</file>
+        <file>img/wifi/4_bar.png</file>
+        <file>img/wifi/disconnected.png</file>
+        <file>img/wifi/down.png</file>
+        <file>img/wifi/unknown.png</file>
+        <file>img/backspace.png</file>
     </qresource>
 </RCC>

@@ -3,7 +3,7 @@ import QtQuick.Controls 2.4
 
 Label {
     property string source
-    color: "white"
+    color: "black"
     leftPadding: icon.width + 5
     Image {
         id: icon

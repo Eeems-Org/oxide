@@ -52,7 +52,7 @@ OxideWindow {
                 }else{
                     icon = "0_bar";
                 }
-                return "qrc:/img/wifi/" + icon + ".png";
+                return "qrc:/codes.eeems.oxide/img/wifi/" + icon + ".png";
             }
         },
         OxideStatusIcon {
@@ -90,7 +90,7 @@ OxideWindow {
                         icon += 100;
                     }
                 }
-                return "qrc:/img/battery/" + icon + ".png";
+                return "qrc:/codes.eeems.oxide/img/battery/" + icon + ".png";
             }
         },
         CustomMenu {
