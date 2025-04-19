@@ -4,7 +4,6 @@
         <file>widgets/MenuButton.qml</file>
         <file>widgets/CustomMenu.qml</file>
         <file>font/icomoon.ttf</file>
-        <file>widgets/BetterButton.qml</file>
         <file>widgets/BetterCheckBox.qml</file>
         <file>widgets/BetterSpinBox.qml</file>
         <file>img/icon.png</file>

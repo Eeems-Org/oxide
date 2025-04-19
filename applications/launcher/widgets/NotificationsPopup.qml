@@ -102,7 +102,7 @@ Item {
                                 }
                             }
                         }
-                        BetterButton {
+                        OxideButton {
                             id: closeButton
                             text: "X"
                             Layout.fillWidth: true
@@ -173,7 +173,7 @@ Item {
                 }
             }
             RowLayout {
-                BetterButton{
+                OxideButton{
                     text: "Clear"
                     Layout.fillWidth: true
                     onClicked: {
@@ -182,7 +182,7 @@ Item {
                         popup.close();
                     }
                 }
-                BetterButton{
+                OxideButton{
                     text: "Close"
                     Layout.fillWidth: true
                     onClicked: {

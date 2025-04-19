@@ -30,6 +30,5 @@
         <file>widgets/PinButton.qml</file>
         <file>img/backspace.png</file>
         <file>widgets/PinPad.qml</file>
-        <file>widgets/BetterButton.qml</file>
     </qresource>
 </RCC>

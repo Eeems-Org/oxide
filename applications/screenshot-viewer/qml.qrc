@@ -6,6 +6,5 @@
         <file>widgets/BetterMenu.qml</file>
         <file>font/icomoon.ttf</file>
         <file>widgets/StatusIcon.qml</file>
-        <file>widgets/BetterButton.qml</file>
     </qresource>
 </RCC>

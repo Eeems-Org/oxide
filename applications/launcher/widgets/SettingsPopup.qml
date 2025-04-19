@@ -347,7 +347,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
             }
-            BetterButton {
+            OxideButton {
                 text: "Reset"
                 Layout.columnSpan: parent.columns
                 Layout.fillWidth: true
@@ -356,7 +356,7 @@ Item {
                     controller.loadSettings();
                 }
             }
-            BetterButton {
+            OxideButton {
                 text: "Close"
                 Layout.columnSpan: parent.columns
                 Layout.fillWidth: true

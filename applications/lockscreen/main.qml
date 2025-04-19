@@ -189,7 +189,7 @@ OxideWindow {
                     Layout.fillHeight: true
                 }
                 RowLayout {
-                    BetterButton {
+                    OxideButton {
                         text: "Cancel"
                         width: height * 2
                         Layout.fillWidth: true
@@ -198,7 +198,7 @@ OxideWindow {
                             stateController.state = "pinPrompt";
                         }
                     }
-                    BetterButton {
+                    OxideButton {
                         text: "Import"
                         width: height * 2
                         Layout.fillWidth: true
@@ -234,7 +234,7 @@ OxideWindow {
                     Layout.fillHeight: true
                 }
                 RowLayout {
-                    BetterButton {
+                    OxideButton {
                         text: "No PIN"
                         width: height * 2
                         Layout.fillWidth: true
@@ -243,7 +243,7 @@ OxideWindow {
                             controller.clearPin();
                         }
                     }
-                    BetterButton {
+                    OxideButton {
                         text: "Create"
                         width: height * 2
                         Layout.fillWidth: true
@@ -283,7 +283,7 @@ OxideWindow {
                     Layout.fillHeight: true
                 }
                 ColumnLayout {
-                    BetterButton {
+                    OxideButton {
                         text: "Full Telemetry"
                         width: height * 2
                         Layout.fillWidth: true
@@ -296,7 +296,7 @@ OxideWindow {
                             stateController.state = "loading";
                         }
                     }
-                    BetterButton {
+                    OxideButton {
                         text: "Basic Telemetry"
                         width: height * 2
                         Layout.fillWidth: true
@@ -309,7 +309,7 @@ OxideWindow {
                             stateController.state = "loading";
                         }
                     }
-                    BetterButton {
+                    OxideButton {
                         text: "Crash Reports Only"
                         width: height * 2
                         Layout.fillWidth: true
@@ -322,7 +322,7 @@ OxideWindow {
                             stateController.state = "loading";
                         }
                     }
-                    BetterButton {
+                    OxideButton {
                         text: "No Telemetry"
                         width: height * 2
                         Layout.fillWidth: true

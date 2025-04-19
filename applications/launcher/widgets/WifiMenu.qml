@@ -40,7 +40,7 @@ Item {
             anchors.fill: parent
             RowLayout {
                 Layout.fillWidth: true
-                BetterButton{
+                OxideButton{
                     text: "Turn wifi " + (controller.wifiOn ? "off" : "on")
                     Layout.fillWidth: true
                     Layout.preferredWidth: wifi.width / 2
@@ -56,7 +56,7 @@ Item {
                         networks.model.sort();
                     }
                 }
-                BetterButton{
+                OxideButton{
                     text: (!!networks.model && networks.model.scanning) ? "Scanning..." : "Scan"
                     enabled: controller.wifiOn && !!networks.model && !networks.model.scanning
                     Layout.fillWidth: true
@@ -96,7 +96,7 @@ Item {
                         RowLayout {
                             id: buttons
                             Layout.preferredWidth: 400
-                            BetterButton {
+                            OxideButton {
                                 enabled: controller.wifiOn
                                 text: "Forget"
                                 visible: !!model.display && model.display.known
@@ -115,7 +115,7 @@ Item {
                                     }
                                 }
                             }
-                            BetterButton {
+                            OxideButton {
                                 enabled: controller.wifiOn
                                 text: model.display && model.display.connected ? "Disconnect" : "Connect"
                                 Layout.fillWidth: true
@@ -189,7 +189,7 @@ Item {
                     }
                 }
             }
-            BetterButton{
+            OxideButton{
                 text: "Close"
                 Layout.fillWidth: true
                 onClicked: {

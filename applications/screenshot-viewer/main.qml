@@ -117,7 +117,7 @@ OxideWindow {
             anchors.fill: parent
             enabled: stateController.state == "loaded"
             visible: enabled
-            BetterButton {
+            OxideButton {
                 text: "▲"
                 visible: !screenshots.atYBeginning
                 Layout.fillWidth: true
@@ -189,7 +189,7 @@ OxideWindow {
                     return Math.floor(pageHeight() * pageWidth());
                 }
             }
-            BetterButton{
+            OxideButton{
                 text: "▼"
                 Layout.fillWidth: true
                 visible: !screenshots.atYEnd

@@ -61,7 +61,7 @@ Item {
                     }
                 }
             }
-            BetterButton{
+            OxideButton{
                 text: "Close"
                 Layout.fillWidth: true
                 onClicked: {

@@ -21,7 +21,7 @@ OxideWindow {
         onTriggered: controller.reload()
     }
     leftMenu: [
-        BetterButton {
+        OxideButton {
             text: "⬅️"
             onClicked: quitTimer.start()
             Timer {
@@ -119,7 +119,7 @@ OxideWindow {
         ColumnLayout {
             anchors.fill: parent
             anchors.topMargin: tasksViewHeaderContent.height
-            BetterButton {
+            OxideButton {
                 text: "▲"
                 visible: !tasksView.atYBeginning
                 Layout.fillWidth: true
@@ -250,7 +250,7 @@ OxideWindow {
                                 text: "Would you like to kill " + model.display.name + " (" + model.display.pid + ")"
                             }
                             RowLayout {
-                                BetterButton {
+                                OxideButton {
                                     backgroundColor: "white"
                                     color: "black"
                                     text: "Force Quit"
@@ -264,7 +264,7 @@ OxideWindow {
                                     }
                                 }
                                 Item { Layout.fillWidth: true }
-                                BetterButton {
+                                OxideButton {
                                     text: "Yes"
                                     MouseArea {
                                         anchors.fill: parent
@@ -275,7 +275,7 @@ OxideWindow {
                                         }
                                     }
                                 }
-                                BetterButton {
+                                OxideButton {
                                     text: "No"
                                     backgroundColor: "white"
                                     color: "black"
@@ -306,7 +306,7 @@ OxideWindow {
                     return Math.floor(pageHeight());
                 }
             }
-            BetterButton{
+            OxideButton{
                 text: "▼"
                 Layout.fillWidth: true
                 visible: !tasksView.atYEnd

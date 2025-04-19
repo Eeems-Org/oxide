@@ -4,4 +4,7 @@
         <file>OxideMenu.qml</file>
         <file>OxideStatusIcon.qml</file>
     </qresource>
+    <qresource prefix="/">
+        <file>OxideButton.qml</file>
+    </qresource>
 </RCC>
