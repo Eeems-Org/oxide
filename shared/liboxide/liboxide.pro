@@ -141,4 +141,5 @@ DISTFILES += \
     Doxyfile \
     Makefile \
     OxideMenu.qml \
+    OxideStatusIcon.qml \
     OxideWindow.qml
