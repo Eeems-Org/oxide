@@ -82,7 +82,7 @@ OxideWindow {
                 }
             }
         },
-        StatusIcon {
+        OxideStatusIcon {
             source: "qrc:/img/notifications/white.png"
             text: controller.notificationText
             visible: controller.hasNotification
@@ -113,7 +113,7 @@ OxideWindow {
         }
     ]
     rightMenu: [
-        StatusIcon {
+        OxideStatusIcon {
             id: wifiState
             objectName: "wifiState"
             property string state: "unknown"
@@ -149,7 +149,7 @@ OxideWindow {
                 }
             }
         },
-        StatusIcon {
+        OxideStatusIcon {
             id: batteryLevel
             objectName: "batteryLevel"
             property bool alert: false

@@ -1,7 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
-        <file>widgets/StatusIcon.qml</file>
         <file>img/battery/unknown.png</file>
         <file>img/battery/charging_100.png</file>
         <file>img/battery/charging_90.png</file>

@@ -13,6 +13,7 @@ ApplicationWindow {
     property alias stack: stack
     property alias initialItem: stack.initialItem
     property alias headerBackgroundColor: header.color
+    property alias backgroundColor: background.color
     property bool landscape: Oxide.landscape
     Component.onCompleted: stack.forceActiveFocus()
     function orientationWidth(){ return landscape ? height : width; }

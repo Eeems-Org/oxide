@@ -3,8 +3,8 @@ import QtQuick.Controls 2.4
 
 MenuBar {
     id: root
-    property color backgroundColor: "black"
-    property color textColor: "white"
+    property color backgroundColor: "white"
+    property color textColor: "black"
     delegate: MenuBarItem {
         id: menuBarItem
         contentItem: Text {
