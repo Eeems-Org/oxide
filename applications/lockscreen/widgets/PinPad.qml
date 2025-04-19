@@ -11,6 +11,12 @@ GridLayout {
     property string message: ""
     property bool showPress: true
     property alias buttonsVisible: buttons.visible
+    property color itemTextColor: "black"
+    property color itemActiveColor: itemTextColor
+    property color itemBackgroundColor: "white"
+    property color itemActiveBackgroundColor: itemBackgroundColor
+    property color itemBorderColor: itemTextColor
+    property int itemBorderWidth: 2
     signal submit(string pin)
 
     anchors.centerIn: parent
@@ -30,10 +36,7 @@ GridLayout {
         }
         submitTimer.start();
     }
-    function keyPress(event){
-        event.accepted = true;
-
-    }
+    function keyPress(event){ event.accepted = true; }
 
     function keyRelease(event){
         switch(event.key){
@@ -91,7 +94,7 @@ GridLayout {
             Item { Layout.fillWidth: true }
             Label {
                 text: root.label
-                color: "white"
+                color: root.itemTextColor
             }
             Item { Layout.fillWidth: true }
         }
@@ -106,33 +109,33 @@ GridLayout {
             Rectangle {
                 width: parent.itemSize
                 height: width
-                color: root.value.length > 0 ? "white" : "black"
-                border.color: "white"
-                border.width: 1
+                color: root.value.length > 0 ? root.itemTextColor : root.itemBackgroundColor
+                border.color: root.itemBorderColor
+                border.width: root.itemBorderWidth
                 radius: width / 2
             }
             Rectangle {
                 width: parent.itemSize
                 height: width
-                color: root.value.length > 1 ? "white" : "black"
-                border.color: "white"
-                border.width: 1
+                color: root.value.length > 1 ? root.itemTextColor : root.itemBackgroundColor
+                border.color: root.itemBorderColor
+                border.width: root.itemBorderWidth
                 radius: width / 2
             }
             Rectangle {
                 width: parent.itemSize
                 height: width
-                color: root.value.length > 2 ? "white" : "black"
-                border.color: "white"
-                border.width: 1
+                color: root.value.length > 2 ? root.itemTextColor : root.itemBackgroundColor
+                border.color: root.itemBorderColor
+                border.width: root.itemBorderWidth
                 radius: width / 2
             }
             Rectangle {
                 width: parent.itemSize
                 height: width
-                color: root.value.length > 3 ? "white" : "black"
-                border.color: "white"
-                border.width: 1
+                color: root.value.length > 3 ? root.itemTextColor : root.itemBackgroundColor
+                border.color: root.itemBorderColor
+                border.width: root.itemBorderWidth
                 radius: width / 2
             }
             Item { Layout.fillWidth: true }
@@ -144,7 +147,7 @@ GridLayout {
         Item { Layout.fillWidth: true }
         Label {
             text: root.message
-            color: "white"
+            color: root.itemTextColor
         }
         Item { Layout.fillWidth: true }
     }
@@ -156,6 +159,14 @@ GridLayout {
         Layout.rowSpan: 4
         columns: 3
         rows: 4
+
+        property alias itemTextColor: root.itemTextColor
+        property alias itemActiveColor: root.itemTextColor
+        property alias itemBackgroundColor: root.itemBackgroundColor
+        property alias itemActiveBackgroundColor: root.itemActiveBackgroundColor
+        property alias itemBorderColor: root.itemBorderColor
+        property alias itemBorderWidth: root.itemBorderWidth
+
         PinButton { id: button1; text: "1"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
         PinButton { id: button2; text: "2"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }
         PinButton { id: button3; text: "3"; onClicked: root.add(text); enabled: root.buttonsEnabled(); showPress: root.showPress }

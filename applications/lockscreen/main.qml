@@ -6,11 +6,13 @@ import "qrc:/codes.eeems.oxide"
 import "widgets"
 
 OxideWindow {
+    headerBackgroundColor: "white"
+    backgroundColor: "white"
+    color: "black"
     id: window
     objectName: "window"
     visible: stateController.state != "loading"
     title: qsTr("Oxide")
-    color: "black"
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted: {
@@ -21,11 +23,11 @@ OxideWindow {
         Label {
             objectName: "clock"
             Layout.alignment: Qt.AlignCenter
-            color: "white"
+            color: window.color
         }
     ]
     rightMenu: [
-        StatusIcon {
+        OxideStatusIcon {
             id: wifiState
             objectName: "wifiState"
             property string state: "unknown"
@@ -53,7 +55,7 @@ OxideWindow {
                 return "qrc:/img/wifi/" + icon + ".png";
             }
         },
-        StatusIcon {
+        OxideStatusIcon {
             id: batteryLevel
             objectName: "batteryLevel"
             property bool alert: false
@@ -97,11 +99,11 @@ OxideWindow {
                 title: qsTr("");
                 font: iconFont.name
                 width: 260
-                color: "white"
-                backgroundColor: "black"
-                activeColor: "black"
-                activeBackgroundColor: "white"
-                borderColor: "white"
+                color: window.color
+                backgroundColor: window.headerBackgroundColor
+                activeColor: window.color
+                activeBackgroundColor: window.backgroundColor
+                borderColor: window.color
                 Action {
                     text: qsTr(" Suspend")
                     enabled: !controller.sleepInhibited
@@ -167,7 +169,7 @@ OxideWindow {
     Component {
         id: importDialog
         Rectangle{
-            color: "white"
+            color: window.color
             anchors.centerIn: parent
             width: 1000
             height: contentItem.implicitHeight
@@ -212,7 +214,7 @@ OxideWindow {
     Component {
         id: pinPrompt
         Rectangle{
-            color: "white"
+            color: window.color
             anchors.centerIn: parent
             width: 1000
             height: contentItem.implicitHeight
@@ -257,7 +259,7 @@ OxideWindow {
     Component {
         id: telemetryDialog
         Rectangle{
-            color: "white"
+            color: window.color
             anchors.centerIn: parent
             height: contentItem.implicitHeight
             width: 1000

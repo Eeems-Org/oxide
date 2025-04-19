@@ -2,5 +2,6 @@
     <qresource prefix="/codes.eeems.oxide">
         <file>OxideWindow.qml</file>
         <file>OxideMenu.qml</file>
+        <file>OxideStatusIcon.qml</file>
     </qresource>
 </RCC>
