@@ -1012,5 +1012,37 @@ extern "C" {
         }
         return repaint.marker;
     }
+    int blight_raise(int fd, blight_surface_id_t identifier){
+        return blight_send_message(
+            fd,
+            BlightMessageType::Raise,
+            ackid++,
+            sizeof(blight_surface_id_t),
+            (blight_data_t)&identifier,
+            0,
+            nullptr
+        );
+    }
+    int blight_lower(int fd, blight_surface_id_t identifier){
+        return blight_send_message(
+            fd,
+            BlightMessageType::Lower,
+            ackid++,
+            sizeof(blight_surface_id_t),
+            (blight_data_t)&identifier,
+            0,
+            nullptr
+        );
+    }
+    int blight_focus(int fd){
+        return blight_send_message(
+            fd,
+            BlightMessageType::Focus,
+            ackid++,
+            0,
+            nullptr,
+            0,
+            nullptr
+        );
+    }
 }
-
