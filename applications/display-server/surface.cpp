@@ -45,13 +45,18 @@ Surface::Surface(
         S_WARNING("Failed to map buffer");
         return;
     }
-    m_image = std::shared_ptr<QImage>(new QImage(
-        data,
-        geometry.width(),
-        geometry.height(),
-        stride,
-        format
-    ));
+    try{
+        m_image = std::shared_ptr<QImage>(new QImage(
+            data,
+            geometry.width(),
+            geometry.height(),
+            stride,
+            format
+        ));
+    }catch(const std::bad_alloc&){
+        S_WARNING("Not enough memory to create QImage");
+        return;
+    }
 #ifndef EPAPER
     component = dynamic_cast<QQuickItem*>(dbusInterface->loadComponent(
         "qrc:/Surface.qml",
@@ -112,7 +117,12 @@ bool Surface::isValid(){
 #endif
 }
 
-std::shared_ptr<QImage> Surface::image(){ return m_image; }
+std::shared_ptr<QImage> Surface::image(){
+    if(!m_connection->isRunning()){
+        return std::shared_ptr<QImage>();
+    }
+    return m_image;
+}
 
 void Surface::repaint(QRect rect){
     if(rect.isEmpty()){
@@ -122,7 +132,8 @@ void Surface::repaint(QRect rect){
     guiThread->enqueue(
         nullptr,
         geometry(),
-        Blight::HighQualityGrayscale,
+        Blight::WaveformMode::HighQualityGrayscale,
+        Blight::UpdateMode::PartialUpdate,
         0,
         true
     );

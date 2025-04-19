@@ -2,40 +2,40 @@
 Screen API
 ==========
 
-+---------------------+----------------------+----------------------+
-| Name                | Specification        | Description          |
-+=====================+======================+======================+
-| screenshots         | `                    | Get the list of      |
-|                     | `ARRAY OBJECT_PATH`` | screenshots on the   |
-|                     | property (read)      | device.              |
-+---------------------+----------------------+----------------------+
-| screenshotAdded     | signal               | Signal sent when a   |
-|                     |                      | screenshot is added. |
-|                     | - (out)              |                      |
-|                     | ``OBJECT_PATH``      |                      |
-+---------------------+----------------------+----------------------+
-| screenshotRemoved   | signal               | Signal sent when a   |
-|                     |                      | screenshot is        |
-|                     | - (out)              | removed.             |
-|                     | ``OBJECT_PATH``      |                      |
-+---------------------+----------------------+----------------------+
-| screenshotModified  | signal               | Signal sent when a   |
-|                     |                      | screenshot is        |
-|                     | - (out)              | modified.            |
-|                     | ``OBJECT_PATH``      |                      |
-+---------------------+----------------------+----------------------+
-| addScreenshot       | method               | Add a screenshot     |
-|                     |                      | taken by an          |
-|                     | - (in) blob          | application.         |
-|                     | ``ARRAY BYTE``       |                      |
-|                     | - (out)              |                      |
-|                     | ``OBJECT_PATH``      |                      |
-+---------------------+----------------------+----------------------+
-| screenshot          | method               | Take a screenshot.   |
-|                     |                      |                      |
-|                     | - (out)              |                      |
-|                     | ``OBJECT_PATH``      |                      |
-+---------------------+----------------------+----------------------+
++---------------------+-----------------------+----------------------+
+| Name                | Specification         | Description          |
++=====================+=======================+======================+
+| screenshots         | ``ARRAY OBJECT_PATH`` | Get the list of      |
+|                     |                       | screenshots on the   |
+|                     | property (read)       | device.              |
++---------------------+-----------------------+----------------------+
+| screenshotAdded     | signal                | Signal sent when a   |
+|                     |                       | screenshot is added. |
+|                     | - (out)               |                      |
+|                     |   ``OBJECT_PATH``     |                      |
++---------------------+-----------------------+----------------------+
+| screenshotRemoved   | signal                | Signal sent when a   |
+|                     |                       | screenshot is        |
+|                     | - (out)               | removed.             |
+|                     |   ``OBJECT_PATH``     |                      |
++---------------------+-----------------------+----------------------+
+| screenshotModified  | signal                | Signal sent when a   |
+|                     |                       | screenshot is        |
+|                     | - (out)               | modified.            |
+|                     |   ``OBJECT_PATH``     |                      |
++---------------------+-----------------------+----------------------+
+| addScreenshot       | method                | Add a screenshot     |
+|                     |                       | taken by an          |
+|                     | - (in) blob           | application.         |
+|                     |   ``ARRAY BYTE``      |                      |
+|                     | - (out)               |                      |
+|                     |   ``OBJECT_PATH``     |                      |
++---------------------+-----------------------+----------------------+
+| screenshot          | method                | Take a screenshot.   |
+|                     |                       |                      |
+|                     | - (out)               |                      |
+|                     |   ``OBJECT_PATH``     |                      |
++---------------------+-----------------------+----------------------+
 
 .. _example-usage-7:
 

@@ -200,7 +200,10 @@ Blight::surface_id_t DbusInterface::addSurface(
     }
     auto dfd = dup(fd.fileDescriptor());
     if(dfd == -1){
-        sendErrorReply(QDBusError::InternalError, strerror(errno));
+        sendErrorReply(
+            QDBusError::InternalError,
+            QString("Dup failed: %s").arg(strerror(errno))
+        );
         return 0;
     }
     auto surface = connection->addSurface(
@@ -214,7 +217,7 @@ Blight::surface_id_t DbusInterface::addSurface(
         return 0;
     }
     if(!surface->isValid()){
-        sendErrorReply(QDBusError::InternalError, "Unable to create surface");
+        sendErrorReply(QDBusError::InternalError, "Surface buffer is not valid");
         return 0;
     }
     return surface->identifier();
@@ -413,7 +416,8 @@ void DbusInterface::exitExclusiveMode(QDBusMessage message){
     guiThread->enqueue(
         nullptr,
         EPFrameBuffer::instance()->framebuffer()->rect(),
-        Blight::HighQualityGrayscale,
+        Blight::WaveformMode::HighQualityGrayscale,
+        Blight::UpdateMode::FullUpdate,
         0,
         true
     );
@@ -430,7 +434,8 @@ void DbusInterface::exclusiveModeRepaint(QDBusMessage message){
 #ifdef EPAPER
     guiThread->sendUpdate(
         EPFrameBuffer::instance()->framebuffer()->rect(),
-        Blight::HighQualityGrayscale,
+        Blight::WaveformMode::HighQualityGrayscale,
+        Blight::UpdateMode::PartialUpdate,
         0
     );
 #endif
@@ -506,7 +511,13 @@ QObject* DbusInterface::workspace(){
 
 Connection* DbusInterface::createConnection(int pid){
     pid_t pgid = ::getpgid(pid);
-    auto connection = new Connection(pid, pgid);
+    Connection* connection;
+    try{
+        connection = new Connection(pid, pgid);
+    }catch(const std::bad_alloc&){
+        O_WARNING("Failed to create new connection, out of memory");
+        return nullptr;
+    }
     if(!connection->isValid()){
         connection->deleteLater();
         return nullptr;

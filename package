@@ -8,6 +8,7 @@ pkgnames=(
     liboxide
     liboxide-dev
     libsentry
+    #    cpptrace
     oxide
     oxide-display
     oxide-extra
@@ -17,6 +18,7 @@ pkgnames=(
 _oxidever=$(grep 'VERSION =' qmake/common.pri | awk '{print $3}')
 pkgver="$_oxidever~VERSION~"
 _sentryver=0.7.9
+#_cpptracever=0.8.3
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
@@ -170,6 +172,8 @@ liboxide() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/liboxide.so*
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libqsgepaper.so*
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight.so*
+        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight_protocol.so*
+
     }
 }
 
@@ -183,6 +187,10 @@ liboxide-dev() {
         install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/epframebuffer.h
         install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/liboxide.h
         cp -ar "$srcdir"/release/opt/include/liboxide/ "$pkgdir"/opt/include/
+        install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/libblight.h
+        cp -ar "$srcdir"/release/opt/include/libblight/ "$pkgdir"/opt/include/
+        install -D -m 755 -t "$pkgdir"/opt/include "$srcdir"/release/opt/include/libblight_protocol.h
+        cp -ar "$srcdir"/release/opt/include/libblight_protocol/ "$pkgdir"/opt/include/
     }
 }
 
@@ -198,6 +206,18 @@ libsentry() {
     }
 }
 
+#cpptrace() {
+#    pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
+#    section="devel"
+#    url=https://github.com/jeremy-rifkin/cpptrace
+#    pkgver="$_cpptracever"
+#    timestamp="2025-04-08T14:34:11Z"
+#
+#    package() {
+#        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libcpptrace.so
+#    }
+#}
+
 oxide-tests() {
     pkgdesc="Automated tests for oxide"
     section="devel"
@@ -205,6 +225,7 @@ oxide-tests() {
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/libblight
+        install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/libblight_protocol
         install -D -m 755 -t "$pkgdir"/opt/share/tests "$srcdir"/release/opt/share/tests/liboxide
     }
 }

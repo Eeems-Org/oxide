@@ -37,6 +37,7 @@ LIBS += -lsystemd
 
 include(../../qmake/common.pri)
 RELATIVE_PWD = $$system(realpath --canonicalize-missing --relative-to $$OUT_PWD $$PWD)
+include(../../qmake/libblight_protocol.pri)
 
 libblight_libblight_h.target = include/libblight/libblight.h
 for(h, HEADERS){
@@ -77,4 +78,5 @@ QMAKE_PKGCONFIG_INCDIR = /opt/include
 QMAKE_PKGCONFIG_DESTDIR = pkgconfig
 
 DISTFILES += \
-    Doxyfile
+    Doxyfile \
+    Makefile

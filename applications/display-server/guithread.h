@@ -15,6 +15,7 @@ struct RepaintRequest{
     std::shared_ptr<Surface> surface;
     QRegion region;
     Blight::WaveformMode waveform;
+    Blight::UpdateMode mode;
     unsigned int marker;
     bool global;
     std::function<void()> callback;
@@ -38,13 +39,19 @@ public slots:
         std::shared_ptr<Surface> surface,
         QRect region,
         Blight::WaveformMode waveform,
+        Blight::UpdateMode mode,
         unsigned int marker,
         bool global = false,
         std::function<void()> callback = nullptr
     );
     void notify();
     int framebuffer();
-    void sendUpdate(const QRect& rect, Blight::WaveformMode waveform, unsigned int marker);
+    void sendUpdate(
+        const QRect& rect,
+        Blight::WaveformMode waveform,
+        Blight::UpdateMode mode,
+        unsigned int marker
+    );
 
 private:
     GUIThread(QRect screenGeometry);

@@ -25,6 +25,12 @@ std::string readFile(const std::string& path){
 }
 
 #include "devicesettings.h"
+#else
+#ifdef DEBUG
+#include <cpptrace/cpptrace.hpp>
+#include <cpptrace/from_current.hpp>
+#include <iostream>
+#endif
 #endif
 
 static void* invalid_mem = (void *)1;
@@ -197,6 +203,9 @@ namespace Oxide::Sentry{
         Q_UNUSED(name);
         Q_UNUSED(argv);
         Q_UNUSED(autoSessionTracking);
+#ifdef DEBUG
+        cpptrace::register_terminate_handler();
+#endif
 #endif
     }
     void sentry_breadcrumb(const char* category, const char* message, const char* type, const char* level){
@@ -299,7 +308,16 @@ namespace Oxide::Sentry{
         Q_UNUSED(transaction);
         Q_UNUSED(operation);
         Q_UNUSED(description);
+#ifdef DEBUG
+        CPPTRACE_TRY{
+            callback();
+        }CPPTRACE_CATCH(const std::exception& e){
+            std::cerr<<"Exception: "<<e.what()<<std::endl;
+            cpptrace::from_current_exception().print();
+        }
+#else
         callback();
+#endif
 #endif
     }
     void sentry_span(Transaction* transaction, const std::string& operation, const std::string& description, std::function<void(Span* span)> callback){
@@ -317,7 +335,16 @@ namespace Oxide::Sentry{
         Q_UNUSED(transaction);
         Q_UNUSED(operation);
         Q_UNUSED(description);
+#ifdef DEBUG
+        CPPTRACE_TRY{
+            callback(nullptr);
+        }CPPTRACE_CATCH(const std::exception& e){
+            std::cerr<<"Exception: "<<e.what()<<std::endl;
+            cpptrace::from_current_exception().print();
+        }
+#else
         callback(nullptr);
+#endif
 #endif
     }
     void sentry_span(Span* parent, const std::string& operation, const std::string& description, std::function<void()> callback){
@@ -330,7 +357,16 @@ namespace Oxide::Sentry{
         Q_UNUSED(parent);
         Q_UNUSED(operation);
         Q_UNUSED(description);
+#ifdef DEBUG
+        CPPTRACE_TRY{
+            callback();
+        }CPPTRACE_CATCH(const std::exception& e){
+            std::cerr<<"Exception: "<<e.what()<<std::endl;
+            cpptrace::from_current_exception().print();
+        }
+#else
         callback();
+#endif
 #endif
     }
 
@@ -349,7 +385,16 @@ namespace Oxide::Sentry{
             Q_UNUSED(parent);
             Q_UNUSED(operation);
             Q_UNUSED(description);
+#ifdef DEBUG
+            CPPTRACE_TRY{
+                callback(nullptr);
+            }CPPTRACE_CATCH(const std::exception& e){
+                std::cerr<<"Exception: "<<e.what()<<std::endl;
+                cpptrace::from_current_exception().print();
+            }
+#else
             callback(nullptr);
+#endif
 #endif
     }
     void trigger_crash(){ memset((char *)invalid_mem, 1, 100); }

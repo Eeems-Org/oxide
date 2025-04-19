@@ -8,3 +8,4 @@ INCLUDEPATH += $$OUT_PWD/../../shared/libblight/include
 linux-oe-g++{
     DEFINES += EPAPER
 }
+include(libblight_protocol.pri)

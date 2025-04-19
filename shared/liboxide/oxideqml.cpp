@@ -162,6 +162,7 @@ namespace Oxide {
                 rect.width(),
                 rect.height(),
                 waveform,
+                Blight::UpdateMode::PartialUpdate,
                 _marker
             );
             if(sync && maybe.has_value()){

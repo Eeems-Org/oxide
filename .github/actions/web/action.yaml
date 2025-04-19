@@ -6,7 +6,7 @@ runs:
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.8'
+        python-version: "3.11"
     - name: Cache Python environment
       uses: actions/cache@v4
       id: cache-python
@@ -18,7 +18,7 @@ runs:
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         execute_install_scripts: true
-        packages: doxygen graphviz libgraphviz-dev librsvg2-bin pdf2svg
+        packages: doxygen graphviz libgraphviz-dev librsvg2-bin pdf2svg qhelpgenerator-qt5
         version: 1.0
     - name: Apt-Cache-Action
       uses: Eeems-Org/apt-cache-action@v1.4
@@ -27,6 +27,10 @@ runs:
     - name: Build website
       shell: bash
       run: cd web && make prod
+    - name: Generate libblight_protocol docs
+      shell: bash
+      run: |
+        cd shared/libblight_protocol && make prod
     - name: Generate libblight docs
       shell: bash
       run: |

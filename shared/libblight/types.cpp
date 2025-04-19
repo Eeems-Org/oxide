@@ -86,9 +86,9 @@ Blight::shared_buf_t Blight::buf_t::new_ptr(){
 std::string Blight::buf_t::new_uuid(){ return generate_uuid_v4(); }
 
 Blight::header_t Blight::header_t::from_data(data_t data){
-    header_t header;
-    memcpy(&header, data, sizeof(header_t));
-    return header;
+    return header_t{
+        blight_header_from_data(data)
+    };
 }
 
 Blight::header_t Blight::header_t::from_data(char* data){
@@ -101,9 +101,11 @@ Blight::header_t Blight::header_t::from_data(void* data){
 
 Blight::header_t Blight::header_t::new_invalid(){
     return header_t{
-        .type = MessageType::Invalid,
-        .ackid = 0,
-        .size = 0,
+        {
+            .type = MessageType::Invalid,
+            .ackid = 0,
+            .size = 0,
+        }
     };
 }
 
@@ -129,56 +131,39 @@ Blight::header_t Blight::message_t::create_ack(message_t* message, size_t size){
 
 Blight::header_t Blight::message_t::create_ack(const message_t& message, size_t size){
     return header_t{
-        .type = MessageType::Ack,
-        .ackid = message.header.ackid,
-        .size = size
+        {
+            .type = MessageType::Ack,
+            .ackid = message.header.ackid,
+            .size = size
+        }
     };
 }
 
 Blight::message_ptr_t Blight::message_t::from_socket(int fd){
-    auto message = message_t::new_ptr();
-    auto maybe = Blight::recv(fd, sizeof(header_t));
-    if(!maybe.has_value()){
-        if(errno != EAGAIN && errno != EINTR){
-            _WARN(
-                "Failed to read connection message header: %s socket=%d",
-                std::strerror(errno),
-                fd
-            );
-        }
+    auto message = Blight::message_t::new_ptr();
+    if(message == nullptr){
         return message;
     }
-    memcpy(&message->header, maybe.value(), sizeof(header_t));
-    delete[] maybe.value();
-    if(!message->header.size){
+    BlightProtocol::blight_message_t* m;
+    int res = blight_message_from_socket(fd, &m);
+    if(res < 0){
         return message;
     }
-    maybe = Blight::recv_blocking(fd, message->header.size);
-    if(!maybe.has_value()){
-        _WARN(
-            "Failed to read connection message data: %s "
-            "socket=%d, "
-            "ackid=%u, "
-            "type=%d, "
-            "size=%ld",
-            std::strerror(errno),
-            fd,
-            message->header.ackid,
-            message->header.type,
-            (long int)message->header.size
-        );
-        message->header.type = MessageType::Invalid;
-        return message;
-    }
-    message->data = shared_data_t(maybe.value());
+    memcpy(&message->header, &m->header, sizeof(BlightProtocol::blight_header_t));
+    message->data = shared_data_t(m->data);
+    delete m;
     return message;
 }
 
 Blight::message_ptr_t Blight::message_t::new_ptr(){
-    return message_ptr_t(new message_t{
-        .header = header_t::new_invalid(),
-        .data = shared_data_t()
-    });
+    try{
+        return message_ptr_t(new message_t{
+            .header = header_t::new_invalid(),
+            .data = shared_data_t()
+        });
+    }catch(std::bad_alloc&){
+        return message_ptr_t(nullptr);
+    }
 }
 
 Blight::repaint_t Blight::repaint_t::from_message(const message_t* message){

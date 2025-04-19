@@ -197,12 +197,18 @@ void Connection::close(){
 
 std::shared_ptr<Surface> Connection::addSurface(int fd, QRect geometry, int stride, QImage::Format format){
     // TODO - add validation that id is never 0, and that it doesn't point to an existsing surface
-    auto id = ++m_surfaceId;
-    auto surface = std::shared_ptr<Surface>(new Surface(this, fd, id, geometry, stride, format));
+    auto surfaceId = ++m_surfaceId;
+    std::shared_ptr<Surface> surface{nullptr};
+    try{
+        surface = std::make_shared<Surface>(this, fd, surfaceId, geometry, stride, format);
+    }catch(const std::bad_alloc&){
+        C_WARNING("Unable to add surface, out of memory");
+        return surface;
+    }
     if(!surface->isValid()){
         return surface;
     }
-    surfaces.insert_or_assign(id, surface);
+    surfaces.insert_or_assign(surfaceId, surface);
     dbusInterface->sortZ();
     surface->repaint();
     return surface;
@@ -305,6 +311,10 @@ void Connection::readSocket(){
 #endif
     while(true){
         auto message = Blight::message_t::from_socket(m_serverFd);
+        if(message == nullptr){
+            QThread::msleep(1);
+            continue;
+        }
         if(message->header.type == Blight::MessageType::Invalid){
             break;
         }
@@ -333,13 +343,14 @@ void Connection::readSocket(){
                 auto repaint = Blight::repaint_t::from_message(message.get());
                 C_DEBUG(
                     "Repaint requested:"
-                    << QString("%6 (%1,%2) %3x%4 %5 %7")
+                    << QString("%1 (%2,%3) %4x%5 %6 %7")
+                        .arg(repaint.identifier)
                         .arg(repaint.x)
                         .arg(repaint.y)
                         .arg(repaint.width)
                         .arg(repaint.height)
                         .arg(repaint.waveform)
-                        .arg(repaint.identifier)
+                        .arg(repaint.mode)
                         .arg(repaint.marker)
                         .toStdString()
                         .c_str()
@@ -360,6 +371,7 @@ void Connection::readSocket(){
                     surface,
                     rect,
                     repaint.waveform,
+                    repaint.mode,
                     repaint.marker,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -392,7 +404,8 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     surface,
                     surface->rect(),
-                    Blight::HighQualityGrayscale,
+                    Blight::WaveformMode::HighQualityGrayscale,
+                    Blight::UpdateMode::PartialUpdate,
                     message->header.ackid,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -400,7 +413,8 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     nullptr,
                     rect,
-                    Blight::HighQualityGrayscale,
+                    Blight::WaveformMode::HighQualityGrayscale,
+                    Blight::UpdateMode::PartialUpdate,
                     message->header.ackid,
                     true,
                     nullptr
@@ -420,15 +434,21 @@ void Connection::readSocket(){
                 }
                 auto surface = surfaces[identifier];
                 auto geometry = surface->geometry();
-                ack_data = (Blight::data_t)new Blight::surface_info_t{
-                    .x = geometry.x(),
-                    .y = geometry.y(),
-                    .width = geometry.width(),
-                    .height = geometry.height(),
-                    .stride = surface->stride(),
-                    .format = (Blight::Format)surface->format(),
-                };
-                ack_size = sizeof(Blight::surface_info_t);
+                try{
+                    ack_data = reinterpret_cast<Blight::data_t>(new Blight::surface_info_t{
+                        {
+                          .x = geometry.x(),
+                          .y = geometry.y(),
+                          .width = (unsigned int)geometry.width(),
+                          .height = (unsigned int)geometry.height(),
+                          .stride = surface->stride(),
+                          .format = (Blight::Format)surface->format(),
+                        }
+                    });
+                    ack_size = sizeof(Blight::surface_info_t);
+                }catch(const std::bad_alloc&){
+                    C_WARNING("Could not allocate ack_data, not enough memory");
+                }
                 break;
             }
             case Blight::MessageType::Delete:{
@@ -436,6 +456,7 @@ void Connection::readSocket(){
                 C_DEBUG("Delete requested:" << identifier);
                 if(!surfaces.contains(identifier)){
                     C_WARNING("Could not find surface" << identifier);
+
                     break;
                 }
                 removedMutex.lock();
@@ -476,7 +497,8 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     surface,
                     surface->rect(),
-                    Blight::HighQualityGrayscale,
+                    Blight::WaveformMode::HighQualityGrayscale,
+                    Blight::UpdateMode::PartialUpdate,
                     message->header.ackid,
                     false,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -499,7 +521,8 @@ void Connection::readSocket(){
                 guiThread->enqueue(
                     nullptr,
                     surface->geometry(),
-                    Blight::HighQualityGrayscale,
+                    Blight::WaveformMode::HighQualityGrayscale,
+                    Blight::UpdateMode::PartialUpdate,
                     message->header.ackid,
                     true,
                     [message, this]{ ack(message, 0, nullptr); }
@@ -596,9 +619,11 @@ void Connection::ping(){
     }
     if(!isStopped()){
         Blight::header_t ping{
-            .type = Blight::MessageType::Ping,
-            .ackid = ++pingId,
-            .size = 0
+           {
+             .type = Blight::MessageType::Ping,
+             .ackid = ++pingId,
+             .size = 0
+           }
         };
         if(!Blight::send_blocking(
             m_serverFd,

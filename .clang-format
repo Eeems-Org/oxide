@@ -1,0 +1,22 @@
+IndentWidth: 4
+BasedOnStyle: Google
+AlignAfterOpenBracket: BlockIndent
+AlignArrayOfStructures: None
+BinPackArguments: false
+BinPackParameters: false
+PointerAlignment: Left
+DerivePointerAlignment: false
+ContinuationIndentWidth: 4
+PackConstructorInitializers: NextLine
+InsertTrailingCommas: Wrapped
+LineEnding: LF
+NamespaceIndentation: All
+AlignConsecutiveAssignments:
+    Enabled: false
+AlignConsecutiveBitFields:
+    Enabled: false
+AlignConsecutiveDeclarations:
+    Enabled: false
+AlignOperands: AlignAfterOperator
+BreakBeforeBinaryOperators: None
+RemoveBracesLLVM: false

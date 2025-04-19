@@ -57,7 +57,13 @@ void EvDevHandler::reloadDevices(){
     O_DEBUG("Reloading devices");
     for(auto& device : deviceSettings.inputDevices()){
         if(!hasDevice(device) && device.fd > 0){
-            auto input = new EvDevDevice(this, device);
+            EvDevDevice* input;
+            try{
+                input = new EvDevDevice(this, device);
+            }catch(const std::bad_alloc&){
+                O_WARNING("Failed to create input device handler, not enough memory");
+                continue;
+            }
             connect(input, &EvDevDevice::inputEvents, this, [this, input](auto events){
                 if(!m_clearing){
                     dbusInterface->inputEvents(input->number(), events);

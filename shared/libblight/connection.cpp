@@ -19,7 +19,6 @@ namespace Blight{
     static std::atomic<unsigned int> ackid;
     static moodycamel::ConcurrentQueue<ackid_ptr_t> acks;
     ackid_t::ackid_t(
-        Connection* connection,
         unsigned int ackid,
         unsigned int data_size,
         data_t data
@@ -146,7 +145,7 @@ namespace Blight{
         unsigned int __ackid
     ){
         auto _ackid = __ackid ? __ackid : ++ackid;
-        auto ack = ackid_ptr_t(new ackid_t(this, _ackid));
+        auto ack = ackid_ptr_t(new ackid_t(_ackid));
         if(type != MessageType::Ack){
             // Adding acks to queue to make sure it's there by the time a response
             // comes back from the server
@@ -160,10 +159,14 @@ namespace Blight{
 #endif
         }
         header_t header{
-            .type = type,
-            .ackid = _ackid,
-            .size = size
+            {
+                .type = type,
+                .ackid = _ackid,
+                .size = size
+            }
         };
+        std::lock_guard locker(mutex);
+        (void)locker;
         if(!Blight::send_blocking(
             m_fd,
             reinterpret_cast<data_t>(&header),
@@ -213,9 +216,10 @@ namespace Blight{
         surface_id_t identifier,
         int x,
         int y,
-        int width,
-        int height,
+        unsigned int width,
+        unsigned int height,
         WaveformMode waveform,
+        UpdateMode mode,
         unsigned int marker
     ){
         if(!identifier){
@@ -223,13 +227,16 @@ namespace Blight{
             return {};
         }
         repaint_t repaint{
-            .x = x,
-            .y = y,
-            .width = width,
-            .height = height,
-            .waveform = waveform,
-            .marker = marker,
-            .identifier = identifier,
+            {
+                .x = x,
+                .y = y,
+                .width = width,
+                .height = height,
+                .waveform = waveform,
+                .mode = mode,
+                .marker = marker,
+                .identifier = identifier,
+            }
         };
         auto ackid = send(MessageType::Repaint, (data_t)&repaint, sizeof(repaint));
         if(!ackid.has_value()){
@@ -320,9 +327,11 @@ namespace Blight{
             return {};
         }
         move_t move{
-            .identifier = identifier,
-            .x = x,
-            .y = y,
+            {
+                .identifier = identifier,
+                .x = x,
+                .y = y,
+            }
         };
         return send(MessageType::Move, (data_t)&move, sizeof(move));
     }
@@ -457,6 +466,10 @@ namespace Blight{
 
     void Connection::run(Connection* connection){
         prctl(PR_SET_NAME, "BlightWorker\0", 0, 0, 0);
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(0, &cpuset);
+        pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
         if(running){
             _WARN("Already running");
             return;
@@ -526,7 +539,7 @@ namespace Blight{
                 }
             }
             auto message = connection->read();
-            if(message->header.type == MessageType::Invalid){
+            if(message == nullptr || message->header.type == MessageType::Invalid){
                 if(errno == EAGAIN){
                     continue;
                 }
