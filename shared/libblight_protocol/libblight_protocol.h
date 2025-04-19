@@ -663,18 +663,23 @@ extern "C" {
      * \brief blight_raise Make a surface visible, and put it on top of the stack
      * \param fd File descriptor for the connection socket
      * \return 0 on success, negative number on failure
+     * \sa blight_add_surface
+     * \sa blight_service_open
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_raise(int fd, blight_surface_id_t identifier);
     /*!
      * \brief blight_lower Hide a surface
      * \param fd File descriptor for the connection socket
      * \return 0 on success, negative number on failure
+     * \sa blight_add_surface
+     * \sa blight_service_open
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_lower(int fd, blight_surface_id_t identifier);
     /*!
      * \brief blight_focus Make this connection have input focus
      * \param fd File descriptor for the connection socket
      * \return 0 on success, negative number on failure
+     * \sa blight_service_open
      */
     LIBBLIGHT_PROTOCOL_EXPORT int blight_focus(int fd);
 #ifdef __cplusplus
