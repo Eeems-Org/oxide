@@ -36,11 +36,17 @@ void sigsegv_handler(int signo, siginfo_t* info, void* context){
     Q_UNUSED(signo);
     Q_UNUSED(info);
     Q_UNUSED(context);
-    const char* message = "Segmentation fault\n";
-    write(STDERR_FILENO, message, strlen(message));
     constexpr std::size_t N = 100;
     cpptrace::frame_ptr buffer[N];
     std::size_t count = cpptrace::safe_generate_raw_trace(buffer, N);
+
+    const char* message = "Segmentation fault\n";
+    write(STDERR_FILENO, message, strlen(message));
+
+    pid_t pid = fork();
+    if(pid != 0){
+        _exit(1);
+    }
     cpptrace::object_trace trace;
     for(std::size_t i = 0; i < count; i++){
         cpptrace::safe_object_frame frame;
@@ -48,7 +54,7 @@ void sigsegv_handler(int signo, siginfo_t* info, void* context){
         trace.frames.push_back(frame.resolve());
     }
     trace.resolve().print();
-    _exit(1);
+    _exit(0);
 }
 #endif
 #endif
@@ -228,6 +234,8 @@ namespace Oxide::Sentry{
         struct sigaction action;
         memset(&action, 0, sizeof(action));
         action.sa_sigaction = &sigsegv_handler;
+        action.sa_flags = SA_SIGINFO;
+        sigfillset(&action.sa_mask);
         if(sigaction(SIGSEGV, &action, NULL) == -1){
             perror("sigaction");
         }
