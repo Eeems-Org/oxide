@@ -1,6 +1,7 @@
 import QtQuick 2.10
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
+import "qrc:/codes.eeems.oxide"
 import "../widgets"
 
 Item {
@@ -42,6 +43,7 @@ Item {
                 Layout.fillWidth: true
                 OxideButton{
                     text: "Turn wifi " + (controller.wifiOn ? "off" : "on")
+                    color: "black"
                     Layout.fillWidth: true
                     Layout.preferredWidth: wifi.width / 2
                     onClicked: {
@@ -58,6 +60,7 @@ Item {
                 }
                 OxideButton{
                     text: (!!networks.model && networks.model.scanning) ? "Scanning..." : "Scan"
+                    color: "black"
                     enabled: controller.wifiOn && !!networks.model && !networks.model.scanning
                     Layout.fillWidth: true
                     Layout.preferredWidth: wifi.width / 2
@@ -99,6 +102,7 @@ Item {
                             OxideButton {
                                 enabled: controller.wifiOn
                                 text: "Forget"
+                                color: "black"
                                 visible: !!model.display && model.display.known
                                 Layout.fillWidth: true
                                 MouseArea {
@@ -118,6 +122,7 @@ Item {
                             OxideButton {
                                 enabled: controller.wifiOn
                                 text: model.display && model.display.connected ? "Disconnect" : "Connect"
+                                color: "black"
                                 Layout.fillWidth: true
                                 MouseArea {
                                     anchors.fill: parent
@@ -191,6 +196,7 @@ Item {
             }
             OxideButton{
                 text: "Close"
+                color: "black"
                 Layout.fillWidth: true
                 onClicked: {
                     controller.breadcrumb("wifi.close", "click", "ui");

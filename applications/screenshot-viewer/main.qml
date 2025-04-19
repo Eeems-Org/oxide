@@ -8,6 +8,9 @@ import "./widgets"
 OxideWindow {
     id: window
     objectName: "window"
+    headerBackgroundColor: "white"
+    backgroundColor: "white"
+    color: "black"
     visible: stateController.state !== "loading"
     title: {
         if(stateController.state !== "viewing" || !viewer.model){
@@ -36,7 +39,7 @@ OxideWindow {
     leftMenu: [
         Label {
             text: "⬅️"
-            color: "white"
+            color: window.color
             topPadding: 5
             bottomPadding: 5
             leftPadding: 10
@@ -58,14 +61,14 @@ OxideWindow {
     ]
     centerMenu: [
         Label {
-            color: "white"
+            color: window.color
             text: window.title
         }
     ]
     rightMenu: [
         Label {
             text: "Delete"
-            color: "white"
+            color: window.color
             visible: stateController.state === "viewing"
             topPadding: 5
             bottomPadding: 5
@@ -87,6 +90,8 @@ OxideWindow {
             OxideMenu {
                 title: qsTr("");
                 font: iconFont.name
+                backgroundColor: window.backgroundColor
+                color: window.color
                 width: 310
                 Action {
                     text: controller.columns === 4 ? "* Small" : "Small"
@@ -119,6 +124,8 @@ OxideWindow {
             visible: enabled
             OxideButton {
                 text: "▲"
+                backgroundColor: window.backgroundColor
+                color: window.color
                 visible: !screenshots.atYBeginning
                 Layout.fillWidth: true
                 onClicked: {
@@ -165,13 +172,15 @@ OxideWindow {
                 ScrollIndicator.vertical: ScrollIndicator {
                     id: scrollbar
                     contentItem: Rectangle {
-                        color: "white"
+                        color: window.color
                         implicitWidth: 6
                         implicitHeight: 100
                         radius: width / 2
                     }
                     background: Rectangle {
-                        color: "black"
+                        color: window.backgroundColor
+                        border.color: window.color
+                        border.width: 1
                         implicitWidth: 6
                         implicitHeight: 100
                         radius: width / 2
@@ -191,6 +200,8 @@ OxideWindow {
             }
             OxideButton{
                 text: "▼"
+                backgroundColor: window.backgroundColor
+                color: window.color
                 Layout.fillWidth: true
                 visible: !screenshots.atYEnd
                 onClicked: {

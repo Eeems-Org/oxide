@@ -30,6 +30,26 @@ std::string readFile(const std::string& path){
 #include <cpptrace/cpptrace.hpp>
 #include <cpptrace/from_current.hpp>
 #include <iostream>
+#include <signal.h>
+
+void sigsegv_handler(int signo, siginfo_t* info, void* context){
+    Q_UNUSED(signo);
+    Q_UNUSED(info);
+    Q_UNUSED(context);
+    const char* message = "Segmentation fault\n";
+    write(STDERR_FILENO, message, strlen(message));
+    constexpr std::size_t N = 100;
+    cpptrace::frame_ptr buffer[N];
+    std::size_t count = cpptrace::safe_generate_raw_trace(buffer, N);
+    cpptrace::object_trace trace;
+    for(std::size_t i = 0; i < count; i++){
+        cpptrace::safe_object_frame frame;
+        cpptrace::get_safe_object_frame(buffer[i], &frame);
+        trace.frames.push_back(frame.resolve());
+    }
+    trace.resolve().print();
+    _exit(1);
+}
 #endif
 #endif
 
@@ -205,6 +225,12 @@ namespace Oxide::Sentry{
         Q_UNUSED(autoSessionTracking);
 #ifdef DEBUG
         cpptrace::register_terminate_handler();
+        struct sigaction action;
+        memset(&action, 0, sizeof(action));
+        action.sa_sigaction = &sigsegv_handler;
+        if(sigaction(SIGSEGV, &action, NULL) == -1){
+            perror("sigaction");
+        }
 #endif
 #endif
     }

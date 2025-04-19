@@ -1,6 +1,7 @@
 import QtQuick 2.10
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
+import "qrc:/codes.eeems.oxide"
 
 Item {
     id: root
@@ -349,6 +350,7 @@ Item {
             }
             OxideButton {
                 text: "Reset"
+                color: "black"
                 Layout.columnSpan: parent.columns
                 Layout.fillWidth: true
                 onClicked: {
@@ -358,6 +360,7 @@ Item {
             }
             OxideButton {
                 text: "Close"
+                color: "black"
                 Layout.columnSpan: parent.columns
                 Layout.fillWidth: true
                 onClicked: {
