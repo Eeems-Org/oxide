@@ -3,5 +3,4 @@ exclude_paths:
  - "COMPATIBILITY.md"
  - "shared/sentry/**"
  - "shared/cpptrace/**"
- - "applications/launcher/js/**"
- 
+ - "applications/launcher/js/**" 
