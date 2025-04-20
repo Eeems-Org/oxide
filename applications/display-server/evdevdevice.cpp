@@ -12,8 +12,10 @@ EvDevDevice::EvDevDevice(QThread* handler, const event_device& device)
   sys("/sys/class/input/" + devName() + "/device/")
 {
     int flags = fcntl(this->device.fd, F_GETFL, 0);
-    flags |= O_NONBLOCK;
-    fcntl(this->device.fd, F_SETFL, flags);
+    if(flags != -1){
+        flags |= O_NONBLOCK;
+        fcntl(this->device.fd, F_SETFL, flags);
+    }
     O_DEBUG(device.device.c_str() << this->device.fd);
     _name = sys.strProperty("name").c_str();
     notifier = new QSocketNotifier(this->device.fd, QSocketNotifier::Read, this);

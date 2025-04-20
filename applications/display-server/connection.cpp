@@ -13,6 +13,7 @@
 #include <cstring>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <assert.h>
 
 #ifdef EPAPER
 #include "guithread.h"
@@ -64,18 +65,21 @@ Connection::Connection(pid_t pid, pid_t pgid)
     m_serverInputFd = fds[1];
 
 
+    m_pingTimer.setParent(this);
     m_pingTimer.setTimerType(Qt::PreciseTimer);
     m_pingTimer.setInterval(1000);
     m_pingTimer.setSingleShot(true);
     connect(&m_pingTimer, &QTimer::timeout, this, &Connection::ping);
     m_pingTimer.start();
 
+    m_notRespondingTimer.setParent(this);
     m_notRespondingTimer.setTimerType(Qt::PreciseTimer);
     m_notRespondingTimer.setInterval(m_pingTimer.interval() * 2);
     m_notRespondingTimer.setSingleShot(true);
     connect(&m_notRespondingTimer, &QTimer::timeout, this, &Connection::notResponding);
     m_notRespondingTimer.start();
 
+    m_inputQueueTimer.setParent(this);
     m_inputQueueTimer.setTimerType(Qt::PreciseTimer);
     m_inputQueueTimer.setInterval(50);
     m_inputQueueTimer.setSingleShot(true);
@@ -92,6 +96,7 @@ Connection::~Connection(){
         m_notifier->deleteLater();
         m_notifier = nullptr;
     }
+    ::close(m_clientInputFd);
     ::close(m_clientFd);
     ::close(m_serverFd);
     ::close(m_pidFd);
@@ -194,6 +199,7 @@ void Connection::close(){
     if(!m_closed.test_and_set()){
         m_pingTimer.stop();
         m_notRespondingTimer.stop();
+        m_inputQueueTimer.stop();
         for(auto& item : surfaces){
             item.second->removed();
         }
@@ -297,12 +303,10 @@ void Connection::processInputEvents(){
             m_inputQueue.pop();
             continue;
         }
-        auto& packet = m_inputQueue.front();
-        auto size = sizeof(Blight::event_packet_t) - m_lastEventOffset;
         int res = send(
             m_serverInputFd,
-            &(&packet)[m_lastEventOffset],
-            size,
+            reinterpret_cast<const char*>(&m_inputQueue.front()) + m_lastEventOffset,
+            sizeof(Blight::event_packet_t) - m_lastEventOffset,
             MSG_EOR | MSG_NOSIGNAL
         );
         if(res >= 0){
