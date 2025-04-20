@@ -17,7 +17,6 @@
     <property name="hidden" type="b" access="read"/>
     <property name="transient" type="b" access="read"/>
     <property name="icon" type="s" access="readwrite"/>
-    <property name="splash" type="s" access="readwrite"/>
     <property name="environment" type="a{sv}" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
     </property>

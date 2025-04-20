@@ -49,7 +49,7 @@ void Application::launchNoSecurityCheck(){
             appsAPI->recordPreviousApplication();
             O_INFO("Launching " << path());
             appsAPI->pauseAll();
-            if(!flags().contains("nosplash")){
+            if(!flags().contains("noannounce")){
                 m_notification = notificationAPI->add(
                     QUuid::createUuid().toString(),
                     "codes.eeems.tarnish",
@@ -468,26 +468,6 @@ void Application::setIcon(QString icon){
     }
     setValue("icon", icon);
     emit iconChanged(this->icon());
-}
-
-QString Application::splash(){
-    auto _splash = value("splash", "").toString();
-    if(_splash.isEmpty() || !_splash.contains("-") || QFile::exists(_splash)){
-        return _splash;
-    }
-    auto path = Oxide::Applications::iconPath(_splash);
-    if(path.isEmpty()){
-        return _splash;
-    }
-    return path;
-}
-
-void Application::setSplash(QString splash){
-    if(!hasPermission("permissions")){
-        return;
-    }
-    setValue("splash", splash);
-    emit splashChanged(splash);
 }
 
 QVariantMap Application::environment() { return value("environment", QVariantMap()).toMap(); }
