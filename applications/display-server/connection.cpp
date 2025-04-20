@@ -81,7 +81,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
 
     m_inputQueueTimer.setParent(this);
     m_inputQueueTimer.setTimerType(Qt::PreciseTimer);
-    m_inputQueueTimer.setInterval(50);
+    m_inputQueueTimer.setInterval(10);
     m_inputQueueTimer.setSingleShot(true);
     connect(&m_inputQueueTimer, &QTimer::timeout, this, &Connection::processInputEvents);
 

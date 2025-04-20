@@ -176,7 +176,7 @@ namespace {
                     __sendEvents(device, queue);
                 }
                 _DEBUG("Waiting for next input event");
-                if(!Blight::wait_for_read(fd) && errno != EAGAIN){
+                if(!Blight::wait_for_read(fd, 25) && errno != EAGAIN){
                     _WARN("[InputWorker] Failed to wait for next input event %s", std::strerror(errno));
                     break;
                 }
