@@ -11,6 +11,9 @@ EvDevDevice::EvDevDevice(QThread* handler, const event_device& device)
   device(device),
   sys("/sys/class/input/" + devName() + "/device/")
 {
+    int flags = fcntl(this->device.fd, F_GETFL, 0);
+    flags |= O_NONBLOCK;
+    fcntl(this->device.fd, F_SETFL, flags);
     O_DEBUG(device.device.c_str() << this->device.fd);
     _name = sys.strProperty("name").c_str();
     notifier = new QSocketNotifier(this->device.fd, QSocketNotifier::Read, this);
@@ -67,20 +70,20 @@ void EvDevDevice::readEvents(){
                 sync ? LIBEVDEV_READ_FLAG_SYNC : LIBEVDEV_READ_FLAG_NORMAL,
                 &event
             );
-            sync = res == LIBEVDEV_READ_STATUS_SYNC;
-            if(res != LIBEVDEV_READ_STATUS_SUCCESS && res != LIBEVDEV_READ_STATUS_SYNC){
-                continue;
+            if(res < 0){
+                break;
             }
+            sync = res == LIBEVDEV_READ_STATUS_SYNC;
             events.push_back(event);
             if(event.type == EV_SYN && event.code == SYN_REPORT){
                 emit inputEvents(events);
                 events.clear();
             }
-        }while(res == LIBEVDEV_READ_STATUS_SUCCESS || res == LIBEVDEV_READ_STATUS_SYNC);
+        }while(libevdev_has_event_pending(dev));
         emitSomeEvents();
         if(res == -ENODEV){
             // Device went away
-            O_WARNING("Device dissapeared while reading events");
+            O_WARNING("Device disapeared while reading events");
             return;
         }
         if(res != -EAGAIN){
