@@ -850,11 +850,11 @@ void AppsAPI::shutdown() {
             QPainter painter(&image);
             qDebug() << "Clearing screen...";
             painter.setPen(Qt::white);
-            painter.fillRect(image.rect(), Qt::black);
+            painter.fillRect(image.rect(), Qt::white);
             painter.end();
             addSystemBuffer(buffer);
         }
-        O_DEBUG("Stopping applicaLtions...");
+        O_DEBUG("Stopping applications...");
         auto notification = notificationAPI->paintNotification("", "");
         for(auto app : applications){
             if (app->stateNoSecurityCheck() != Application::Inactive) {
@@ -876,8 +876,8 @@ void AppsAPI::shutdown() {
             QPainter painter(&image);
             O_INFO("Displaying final quit message...");
             auto rect = image.rect();
-            painter.fillRect(rect, Qt::black);
-            painter.setPen(Qt::white);
+            painter.fillRect(rect, Qt::white);
+            painter.setPen(Qt::black);
             if(systemAPI->landscape()){
                 auto x = rect.width() / 2;
                 auto y = rect.height() / 2;

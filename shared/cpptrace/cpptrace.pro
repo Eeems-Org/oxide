@@ -9,7 +9,8 @@ cpptrace_makefile.commands = \
     cmake -B $$OUT_PWD/src \
         -S $$PWD/src \
         -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_BUILD_TYPE=RelWithDebInfo
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCPPTRACE_UNWIND_WITH_LIBUNWIND=on
 QMAKE_EXTRA_TARGETS += cpptrace_makefile
 
 PRE_TARGETDEPS += $$OUT_PWD/src/libcpptrace.so

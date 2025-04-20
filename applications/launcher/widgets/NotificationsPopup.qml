@@ -2,6 +2,7 @@ import QtQuick 2.10
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.0
 import Qt.labs.calendar 1.0
+import "qrc:/codes.eeems.oxide"
 import "../widgets"
 import "../js/moment.js" as Moment
 
@@ -102,7 +103,7 @@ Item {
                                 }
                             }
                         }
-                        BetterButton {
+                        OxideButton {
                             id: closeButton
                             text: "X"
                             Layout.fillWidth: true
@@ -173,7 +174,7 @@ Item {
                 }
             }
             RowLayout {
-                BetterButton{
+                OxideButton{
                     text: "Clear"
                     Layout.fillWidth: true
                     onClicked: {
@@ -182,7 +183,7 @@ Item {
                         popup.close();
                     }
                 }
-                BetterButton{
+                OxideButton{
                     text: "Close"
                     Layout.fillWidth: true
                     onClicked: {

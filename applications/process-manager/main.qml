@@ -3,11 +3,13 @@ import QtQuick.Window 2.3
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.11
 import "qrc:/codes.eeems.oxide"
-import "widgets"
 
 OxideWindow {
     id: window
     visible: true
+    headerBackgroundColor: "white"
+    backgroundColor: "white"
+    color: "black"
     onAfterSynchronizing: {
         if (stateController.state == "loading") {
             stateController.state = "loaded";
@@ -21,9 +23,12 @@ OxideWindow {
         onTriggered: controller.reload()
     }
     leftMenu: [
-        BetterButton {
+        OxideButton {
             text: "⬅️"
             onClicked: quitTimer.start()
+            color: window.color
+            backgroundColor: window.backgroundColor
+            borderColor: window.backgroundColor
             Timer {
                 id: quitTimer
                 interval: 1000
@@ -37,7 +42,7 @@ OxideWindow {
     centerMenu: [
         Label {
             text: "Process Manager"
-            color: "white"
+            color: window.color
         }
     ]
     initialItem: Item{
@@ -46,7 +51,7 @@ OxideWindow {
             width: parent.width
             Label {
                 text: "Process"
-                color: "black"
+                color: window.color
                 font.pointSize: 8
                 font.bold: controller.sortBy === "name"
                 Layout.alignment: Qt.AlignLeft
@@ -61,7 +66,7 @@ OxideWindow {
             Label {
                 id: pid
                 text: "PID"
-                color: "black"
+                color: window.color
                 font.pointSize: 8
                 font.bold: controller.sortBy === "pid"
                 Layout.alignment: Qt.AlignLeft
@@ -75,7 +80,7 @@ OxideWindow {
             Label {
                 id: ppid
                 text: "Parent PID"
-                color: "black"
+                color: window.color
                 font.pointSize: 8
                 font.bold: controller.sortBy === "ppid"
                 Layout.alignment: Qt.AlignLeft
@@ -89,7 +94,7 @@ OxideWindow {
             Label {
                 id: cpu
                 text: "CPU"
-                color: "black"
+                color: window.color
                 font.pointSize: 8
                 font.bold: controller.sortBy === "cpu"
                 Layout.alignment: Qt.AlignLeft
@@ -103,7 +108,7 @@ OxideWindow {
             Label {
                 id: mem
                 text: "Mem"
-                color: "black"
+                color: window.color
                 font.pointSize: 8
                 font.bold: controller.sortBy === "mem"
                 Layout.alignment: Qt.AlignLeft
@@ -119,13 +124,13 @@ OxideWindow {
         ColumnLayout {
             anchors.fill: parent
             anchors.topMargin: tasksViewHeaderContent.height
-            BetterButton {
+            OxideButton {
                 text: "▲"
                 visible: !tasksView.atYBeginning
                 Layout.fillWidth: true
-                color: "black"
-                backgroundColor: "white"
-                borderColor: "white"
+                color: window.color
+                backgroundColor: window.backgroundColor
+                borderColor: window.backgroundColor
                 onClicked: {
                     controller.breadcrumb("tasksView", "scroll.up", "ui");
                     console.log("Scroll up");
@@ -154,13 +159,13 @@ OxideWindow {
                     id: scrollbar
                     width: 10
                     contentItem: Rectangle {
-                        color: "black"
+                        color: window.color
                         implicitWidth: 6
                         implicitHeight: 100
                     }
                     background: Rectangle {
-                        color: "white"
-                        border.color: "black"
+                        color: window.backgroundColor
+                        border.color: window.color
                         border.width: 1
                         implicitWidth: 6
                         implicitHeight: 100
@@ -171,7 +176,7 @@ OxideWindow {
                     enabled: tasksView.enabled
                     width: tasksView.width - scrollbar.width
                     height: 100
-                    color: "white"
+                    color: window.backgroundColor
                     state: "released"
                     states: [
                         State { name: "released" },
@@ -250,10 +255,10 @@ OxideWindow {
                                 text: "Would you like to kill " + model.display.name + " (" + model.display.pid + ")"
                             }
                             RowLayout {
-                                BetterButton {
-                                    backgroundColor: "white"
-                                    color: "black"
+                                OxideButton {
                                     text: "Force Quit"
+                                    backgroundColor: window.backgroundColor
+                                    color: window.color
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: {
@@ -264,8 +269,10 @@ OxideWindow {
                                     }
                                 }
                                 Item { Layout.fillWidth: true }
-                                BetterButton {
+                                OxideButton {
                                     text: "Yes"
+                                    backgroundColor: window.backgroundColor
+                                    color: window.color
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: {
@@ -275,10 +282,10 @@ OxideWindow {
                                         }
                                     }
                                 }
-                                BetterButton {
+                                OxideButton {
                                     text: "No"
-                                    backgroundColor: "white"
-                                    color: "black"
+                                    backgroundColor: window.backgroundColor
+                                    color: window.color
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: {
@@ -306,13 +313,13 @@ OxideWindow {
                     return Math.floor(pageHeight());
                 }
             }
-            BetterButton{
+            OxideButton{
                 text: "▼"
                 Layout.fillWidth: true
                 visible: !tasksView.atYEnd
-                color: "black"
-                backgroundColor: "white"
-                borderColor: "white"
+                color: window.color
+                backgroundColor: window.backgroundColor
+                borderColor: window.backgroundColor
                 onClicked: {
                     controller.breadcrumb("tasksView", "scroll.down", "ui");
                     console.log("Scroll down");
@@ -328,7 +335,7 @@ OxideWindow {
         }
     }
     page.footer: ToolBar {
-        background: Rectangle { color: "black" }
+        background: Rectangle { color: window.headerBackgroundColor }
     }
     StateGroup {
         id: stateController

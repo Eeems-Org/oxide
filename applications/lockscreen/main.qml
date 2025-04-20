@@ -6,11 +6,13 @@ import "qrc:/codes.eeems.oxide"
 import "widgets"
 
 OxideWindow {
+    headerBackgroundColor: "white"
+    backgroundColor: "white"
+    color: "black"
     id: window
     objectName: "window"
     visible: stateController.state != "loading"
     title: qsTr("Oxide")
-    color: "black"
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     Component.onCompleted: {
@@ -21,11 +23,11 @@ OxideWindow {
         Label {
             objectName: "clock"
             Layout.alignment: Qt.AlignCenter
-            color: "white"
+            color: window.color
         }
     ]
     rightMenu: [
-        StatusIcon {
+        OxideStatusIcon {
             id: wifiState
             objectName: "wifiState"
             property string state: "unknown"
@@ -50,10 +52,10 @@ OxideWindow {
                 }else{
                     icon = "0_bar";
                 }
-                return "qrc:/img/wifi/" + icon + ".png";
+                return "qrc:/codes.eeems.oxide/img/wifi/" + icon + ".png";
             }
         },
-        StatusIcon {
+        OxideStatusIcon {
             id: batteryLevel
             objectName: "batteryLevel"
             property bool alert: false
@@ -88,7 +90,7 @@ OxideWindow {
                         icon += 100;
                     }
                 }
-                return "qrc:/img/battery/" + icon + ".png";
+                return "qrc:/codes.eeems.oxide/img/battery/" + icon + ".png";
             }
         },
         CustomMenu {
@@ -97,11 +99,11 @@ OxideWindow {
                 title: qsTr("");
                 font: iconFont.name
                 width: 260
-                color: "white"
-                backgroundColor: "black"
-                activeColor: "black"
-                activeBackgroundColor: "white"
-                borderColor: "white"
+                color: window.color
+                backgroundColor: window.headerBackgroundColor
+                activeColor: window.color
+                activeBackgroundColor: window.backgroundColor
+                borderColor: window.color
                 Action {
                     text: qsTr(" Suspend")
                     enabled: !controller.sleepInhibited
@@ -167,7 +169,7 @@ OxideWindow {
     Component {
         id: importDialog
         Rectangle{
-            color: "white"
+            color: window.color
             anchors.centerIn: parent
             width: 1000
             height: contentItem.implicitHeight
@@ -187,7 +189,7 @@ OxideWindow {
                     Layout.fillHeight: true
                 }
                 RowLayout {
-                    BetterButton {
+                    OxideButton {
                         text: "Cancel"
                         width: height * 2
                         Layout.fillWidth: true
@@ -196,7 +198,7 @@ OxideWindow {
                             stateController.state = "pinPrompt";
                         }
                     }
-                    BetterButton {
+                    OxideButton {
                         text: "Import"
                         width: height * 2
                         Layout.fillWidth: true
@@ -212,7 +214,7 @@ OxideWindow {
     Component {
         id: pinPrompt
         Rectangle{
-            color: "white"
+            color: window.color
             anchors.centerIn: parent
             width: 1000
             height: contentItem.implicitHeight
@@ -232,7 +234,7 @@ OxideWindow {
                     Layout.fillHeight: true
                 }
                 RowLayout {
-                    BetterButton {
+                    OxideButton {
                         text: "No PIN"
                         width: height * 2
                         Layout.fillWidth: true
@@ -241,7 +243,7 @@ OxideWindow {
                             controller.clearPin();
                         }
                     }
-                    BetterButton {
+                    OxideButton {
                         text: "Create"
                         width: height * 2
                         Layout.fillWidth: true
@@ -257,7 +259,7 @@ OxideWindow {
     Component {
         id: telemetryDialog
         Rectangle{
-            color: "white"
+            color: window.color
             anchors.centerIn: parent
             height: contentItem.implicitHeight
             width: 1000
@@ -281,7 +283,7 @@ OxideWindow {
                     Layout.fillHeight: true
                 }
                 ColumnLayout {
-                    BetterButton {
+                    OxideButton {
                         text: "Full Telemetry"
                         width: height * 2
                         Layout.fillWidth: true
@@ -294,7 +296,7 @@ OxideWindow {
                             stateController.state = "loading";
                         }
                     }
-                    BetterButton {
+                    OxideButton {
                         text: "Basic Telemetry"
                         width: height * 2
                         Layout.fillWidth: true
@@ -307,7 +309,7 @@ OxideWindow {
                             stateController.state = "loading";
                         }
                     }
-                    BetterButton {
+                    OxideButton {
                         text: "Crash Reports Only"
                         width: height * 2
                         Layout.fillWidth: true
@@ -320,7 +322,7 @@ OxideWindow {
                             stateController.state = "loading";
                         }
                     }
-                    BetterButton {
+                    OxideButton {
                         text: "No Telemetry"
                         width: height * 2
                         Layout.fillWidth: true
