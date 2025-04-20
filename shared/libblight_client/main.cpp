@@ -145,7 +145,8 @@ namespace {
         auto fd = blightConnection->input_handle();
         std::map<unsigned int,std::vector<Blight::partial_input_event_t>> events;
         std::map<unsigned int, std::chrono::steady_clock::time_point> lastEventTime;
-        const auto timeout = std::chrono::milliseconds(50);
+        constexpr int timeoutMs = 25;
+        const auto timeout = std::chrono::milliseconds(timeoutMs);
         while(fd > 0 && blightConnection != nullptr && getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr){
             // Force flush any pending events where it's been longer than 50ms since the last flush
             auto now = std::chrono::steady_clock::now();
@@ -176,7 +177,7 @@ namespace {
                     __sendEvents(device, queue);
                 }
                 _DEBUG("Waiting for next input event");
-                if(!Blight::wait_for_read(fd) && errno != EAGAIN){
+                if(!Blight::wait_for_read(fd, timeoutMs) && errno != EAGAIN){
                     _WARN("[InputWorker] Failed to wait for next input event %s", std::strerror(errno));
                     break;
                 }
