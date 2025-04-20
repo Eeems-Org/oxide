@@ -63,6 +63,7 @@ An array of flags for the application.
 - ``"nopreload.compositor"``: Do not automatically add ``libblight_client.so`` to ``LD_PRELOAD`` when running this application.
 - ``"nopreload.sysfs"``: Do not automatically add ``libsysfs_preload.so`` to ``LD_PRELOAD`` when running this application.
 - ``"exclusive"``: Application is to be run in exclusive mode. This means that the compositor will not be sending input to the application, or handling displaying anything to the screen while this application is in the foreground.
+- ``"noannounce"``: Do not announce when this application is being started
 
 displayName
 -----------
