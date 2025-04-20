@@ -188,7 +188,7 @@ GridLayout {
                     anchors.centerIn: parent
                     width: parent.width / 2
                     height: width
-                    source: "qrc:/img/backspace.png"
+                    source: "qrc:/codes.eeems.oxide/img/backspace.png"
                     fillMode: Image.PreserveAspectFit
                 }
             }
