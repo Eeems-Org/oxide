@@ -53,14 +53,6 @@ namespace {
 
     bool __is_fb(int fd){ return DO_HANDLE_FB && blightBuffer->fd > 0 && blightBuffer->fd == fd; }
 
-    int __open_input_socketpair(int flags, int fds[2]){
-        int socketFlags = SOCK_STREAM;
-        if(flags & O_NONBLOCK || flags & O_NDELAY){
-            socketFlags |= SOCK_NONBLOCK;
-        }
-        return ::socketpair(AF_UNIX, socketFlags, 0, fds);
-    }
-
     void __sendEvents(unsigned int device, std::vector<Blight::partial_input_event_t>& queue){
         if(queue.empty()){
             return;
@@ -134,6 +126,16 @@ namespace {
         queue.clear();
     }
 
+    bool __hasAny(std::map<unsigned int,std::vector<Blight::partial_input_event_t>> events){
+        for(auto& item : events) {
+            auto& queue = item.second;
+            if(queue.empty()){
+                return true;
+            }
+        }
+        return false;
+    }
+
     void __readInput(){
         _INFO("%s", "InputWorker starting");
         prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
@@ -144,40 +146,19 @@ namespace {
         pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
         auto fd = blightConnection->input_handle();
         std::map<unsigned int,std::vector<Blight::partial_input_event_t>> events;
-        std::map<unsigned int, std::chrono::steady_clock::time_point> lastEventTime;
         constexpr int timeoutMs = 25;
-        const auto timeout = std::chrono::milliseconds(timeoutMs);
         while(fd > 0 && blightConnection != nullptr && getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr){
-            // Force flush any pending events where it's been longer than 50ms since the last flush
-            auto now = std::chrono::steady_clock::now();
-            for(auto& item : events){
-                auto device = item.first;
-                auto& queue = item.second;
-                if(queue.empty()){
-                    continue;
-                }
-                if(
-                    lastEventTime.find(device) == lastEventTime.end()
-                    || now - lastEventTime[device] > timeout
-                ){
-                    _WARN("Force flushing queued events due to timeout waiting for SYN");
-                    lastEventTime[device] = now;
-                    __sendEvents(device, queue);
-                }
-            }
             auto maybe = blightConnection->read_event();
             if(!maybe.has_value()){
                 if(errno != EAGAIN && errno != EINTR){
                     _WARN("[InputWorker] Failed to read message %s", std::strerror(errno));
                     break;
                 }
-                for(auto& item : events){
-                    auto device = item.first;
-                    auto& queue = item.second;
-                    __sendEvents(device, queue);
-                }
                 _DEBUG("Waiting for next input event");
-                if(!Blight::wait_for_read(fd, timeoutMs) && errno != EAGAIN){
+                if(
+                    !Blight::wait_for_read(fd, __hasAny(events) ? timeoutMs : -1)
+                    && errno != EAGAIN
+                ){
                     _WARN("[InputWorker] Failed to wait for next input event %s", std::strerror(errno));
                     break;
                 }
@@ -567,11 +548,18 @@ namespace {
                     }else{
                         int fds[2];
                         // TODO - what if they open it a second time with different flags?
-                        res = __open_input_socketpair(flags, fds);
+                        int socketFlags = SOCK_STREAM;
+                        if(flags & O_NONBLOCK || flags & O_NDELAY){
+                            socketFlags |= SOCK_NONBLOCK;
+                        }
+                        res = ::socketpair(AF_UNIX, socketFlags, 0, fds);
                         if(res < 0){
                             _WARN("Failed to open event socket stream %s", std::strerror(errno));
                         }else{
-                            inputFds[device][0] = fds[0];
+                            // Force writing side to be non blocking
+                            int fd = inputFds[device][0] = fds[0];
+                            int flags = fcntl(fd, F_GETFD, NULL);
+                            fcntl(fd, F_SETFD, flags | O_NONBLOCK);
                             res = inputFds[device][1] = fds[1];
                             inputDeviceMap[res] = func_open(actualpath.c_str(), O_RDWR, 0);
                         }

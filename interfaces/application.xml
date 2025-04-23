@@ -55,9 +55,6 @@
     <signal name="iconChanged">
       <arg type="s" direction="out"/>
     </signal>
-    <signal name="splashChanged">
-      <arg type="s" direction="out"/>
-    </signal>
     <signal name="environmentChanged">
       <arg type="a{sv}" direction="out"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
