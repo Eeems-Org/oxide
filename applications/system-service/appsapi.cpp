@@ -743,7 +743,6 @@ void AppsAPI::readApplications(){
            {"workingDirectory", settings.value("workingDirectory", "").toString()},
            {"directories", settings.value("directories", QStringList()).toStringList()},
            {"permissions", settings.value("permissions", QStringList()).toStringList()},
-           {"splash", settings.value("splash", "").toString()},
         };
         if(settings.contains("user")){
             properties.insert("user", settings.value("user", "").toString());

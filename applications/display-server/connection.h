@@ -6,6 +6,7 @@
 #include <QLocalSocket>
 #include <QTimer>
 #include <QMutex>
+#include <queue>
 
 #include <libblight/connection.h>
 #include <linux/input.h>
@@ -42,6 +43,7 @@ public:
     QStringList getSurfaceIdentifiers();
     const QList<std::shared_ptr<Surface>> getSurfaces();
     void inputEvents(unsigned int device, const std::vector<input_event>& events);
+    void processInputEvents();
     bool has(const QString& flag);
     void set(const QString& flag);
     void unset(const QString& flag);
@@ -78,6 +80,9 @@ private:
     std::atomic_uint pingId;
     std::atomic_ushort m_surfaceId;
     QStringList flags;
+    std::queue<Blight::event_packet_t> m_inputQueue;
+    unsigned int m_lastEventOffset;
+    QTimer m_inputQueueTimer;
 
     void ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
 };

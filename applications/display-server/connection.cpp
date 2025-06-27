@@ -13,6 +13,7 @@
 #include <cstring>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <assert.h>
 
 #ifdef EPAPER
 #include "guithread.h"
@@ -38,7 +39,8 @@ Connection::Connection(pid_t pid, pid_t pgid)
   m_pgid{pgid},
   m_closed{false},
   pingId{0},
-  m_surfaceId{0}
+  m_surfaceId{0},
+  m_lastEventOffset{0}
 {
     m_pidFd = pidfd_open(m_pid, 0);
     if(m_pidFd < 0){
@@ -63,17 +65,25 @@ Connection::Connection(pid_t pid, pid_t pgid)
     m_serverInputFd = fds[1];
 
 
+    m_pingTimer.setParent(this);
     m_pingTimer.setTimerType(Qt::PreciseTimer);
     m_pingTimer.setInterval(1000);
     m_pingTimer.setSingleShot(true);
     connect(&m_pingTimer, &QTimer::timeout, this, &Connection::ping);
     m_pingTimer.start();
 
+    m_notRespondingTimer.setParent(this);
     m_notRespondingTimer.setTimerType(Qt::PreciseTimer);
     m_notRespondingTimer.setInterval(m_pingTimer.interval() * 2);
     m_notRespondingTimer.setSingleShot(true);
     connect(&m_notRespondingTimer, &QTimer::timeout, this, &Connection::notResponding);
     m_notRespondingTimer.start();
+
+    m_inputQueueTimer.setParent(this);
+    m_inputQueueTimer.setTimerType(Qt::PreciseTimer);
+    m_inputQueueTimer.setInterval(10);
+    m_inputQueueTimer.setSingleShot(true);
+    connect(&m_inputQueueTimer, &QTimer::timeout, this, &Connection::processInputEvents);
 
     C_INFO("Connection created");
 }
@@ -86,6 +96,7 @@ Connection::~Connection(){
         m_notifier->deleteLater();
         m_notifier = nullptr;
     }
+    ::close(m_clientInputFd);
     ::close(m_clientFd);
     ::close(m_serverFd);
     ::close(m_pidFd);
@@ -188,6 +199,7 @@ void Connection::close(){
     if(!m_closed.test_and_set()){
         m_pingTimer.stop();
         m_notRespondingTimer.stop();
+        m_inputQueueTimer.stop();
         for(auto& item : surfaces){
             item.second->removed();
         }
@@ -262,31 +274,56 @@ void Connection::inputEvents(unsigned int device, const std::vector<input_event>
         dbusInterface->sortZ();
         return;
     }
-    // TODO - Allow non-blocking send.
-    //        If the client isn't reading input, the buffer will fill up, and then the entire
-    //        display server will freeze until the client reads it's first event.
-    //        It's probably worth adding some sort of acking mechanism to this to ensure that
-    //        events are being read, as well as don't send anything until the client tells you
-    //        that it's ready to start reading events.
-    C_DEBUG("Writing" << events.size() << "input events");
-    std::vector<Blight::event_packet_t> data(events.size());
+    // TODO - don't allow queue to grow forever
+    //        instead clear and properly send SYN_DROPPED for proper devices
+    //        when it grows too large
+    C_DEBUG("Queuing" << events.size() << "input events");
     for(unsigned int i = 0; i < events.size(); i++){
+        Blight::event_packet_t packet;
         auto& ie = events[i];
-        auto& packet = data[i];
         packet.device = device;
         auto& event = packet.event;
         event.type = ie.type;
         event.code = ie.code;
         event.value = ie.value;
+        m_inputQueue.push(packet);
     }
-    if(!Blight::send_blocking(
-        m_serverInputFd,
-        reinterpret_cast<Blight::data_t>(data.data()),
-        sizeof(Blight::event_packet_t) * data.size()
-    )){
+    processInputEvents();
+}
+void Connection::processInputEvents(){
+    if(m_inputQueue.empty()){
+        return;
+    }
+    while(!m_inputQueue.empty()){
+        if(m_lastEventOffset >= sizeof(Blight::event_packet_t)){
+            // Should never be larger than size, only check in debug builds
+            assert(m_lastEventOffset <= sizeof(Blight::event_packet_t));
+            // Last send sent full packet, move to the next one
+            m_lastEventOffset = 0;
+            m_inputQueue.pop();
+            continue;
+        }
+        int res = send(
+            m_serverInputFd,
+            reinterpret_cast<const char*>(&m_inputQueue.front()) + m_lastEventOffset,
+            sizeof(Blight::event_packet_t) - m_lastEventOffset,
+            MSG_EOR | MSG_NOSIGNAL
+        );
+        if(res >= 0){
+            // Successful write, could be partial, so check again at the top
+            m_lastEventOffset += res;
+            continue;
+        }
+        if(errno == EINTR){
+            // We were interrupted, try again
+            continue;
+        }
+        if(errno == EAGAIN || errno == EWOULDBLOCK){
+            // socket is blocking, try again later
+            m_inputQueueTimer.start();
+            break;
+        }
         C_WARNING("Failed to write input event: " << std::strerror(errno));
-    }else{
-        C_DEBUG("Write finished");
     }
 }
 

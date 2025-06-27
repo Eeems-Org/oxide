@@ -79,7 +79,6 @@ class Application : public QObject{
     Q_PROPERTY(bool hidden READ hidden)
     Q_PROPERTY(bool transient READ transient)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
-    Q_PROPERTY(QString splash READ splash WRITE setSplash NOTIFY splashChanged)
     Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
     Q_PROPERTY(QString workingDirectory READ workingDirectory WRITE setWorkingDirectory NOTIFY workingDirectoryChanged)
     Q_PROPERTY(QString user READ user)
@@ -133,8 +132,6 @@ public:
     int stateNoSecurityCheck();
     QString icon();
     void setIcon(QString icon);
-    QString splash();
-    void setSplash(QString splash);
     QVariantMap environment();
     Q_INVOKABLE void setEnvironment(QVariantMap environment);
     QString workingDirectory();
@@ -167,7 +164,6 @@ signals:
     void onStopChanged(QString);
     void autoStartChanged(bool);
     void iconChanged(QString);
-    void splashChanged(QString);
     void environmentChanged(QVariantMap);
     void workingDirectoryChanged(QString);
     void directoriesChanged(QStringList);

@@ -16,7 +16,7 @@ const QList<QString> SystemFlags {
 const QList<QString> Flags {
     "autoStart",
     "hidden",
-    "nosplash",
+    "noannounce",
     "nosavescreen",
     "system",
     "nopreload",
@@ -25,7 +25,8 @@ const QList<QString> Flags {
     "exclusive"
 };
 const QList<QString> DeprecatedFlags {
-    "chroot"
+    "chroot",
+    "nosplash"
 };
 
 namespace Oxide::Applications{
@@ -254,9 +255,6 @@ namespace Oxide::Applications{
         }
     }else shouldExit
     isIcon("icon", ErrorLevel::Warning, false);
-    if(isIcon("splash", ErrorLevel::Warning, false) && flags.contains("nosplash")){
-        addError(ErrorLevel::Hint, "Key \"splash\" provided while \"flags\" contains \"nosplash\" value");
-    }else shouldExit
     if(app.contains("splash")){
         addError(ErrorLevel::Deprecation, "Key \"splash\" is no longer used");
     }else shouldExit
@@ -406,9 +404,6 @@ namespace Oxide::Applications{
                 envMap.insert(key, environment[key].toString());
             }
             properties.insert("environment", envMap);
-        }
-        if(app.contains("splash")){
-            properties.insert("splash", app["splash"].toString());
         }
         return properties;
     }
