@@ -34,7 +34,9 @@ char** strv_free(char** v) {
         return NULL;
     }
     for(char** i = v; *i; i++){
-        free(*i);
+        if (*i){
+            free(*i);
+        }
     }
     free(v);
     return NULL;
@@ -384,7 +386,7 @@ extern "C" {
             std::shared_lock lock(ackQueuesMutex);
             UNUSED(lock);
             do_ack = ackQueues.contains(fd);
-            ack = std::shared_ptr<ack_t>(new ack_t(fd, ackid));
+            ack = std::make_shared<ack_t>(fd, ackid);
             if(do_ack && type != BlightMessageType::Ack){
                 ackQueues.at(fd)->enqueue(ack);
             }

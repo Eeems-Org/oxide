@@ -19,6 +19,17 @@ namespace BlightProtocol{
       unsigned int attempts,
       unsigned int timeout
     ){
+        if (size <= 0){
+            _WARN(
+                "[BlightProtocol::recv(%d, %d, %d, %d)] Invalid size",
+                fd,
+                size,
+                attempts,
+                timeout
+            );
+            errno = EINVAL;
+            return {};
+        }
         blight_data_t data;
         try{
             data = new unsigned char[size];
