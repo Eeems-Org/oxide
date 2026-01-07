@@ -10,9 +10,9 @@
 
   /* Fonts */
   --font: "-apple-system", "BlinkMacSystemFont", "Helvetica Neue", "Roboto", sans-serif;
-  --font-color: #222;
-  --font-color-dim: #777;
-  --font-color-inv: #fcfaf8;
+  --font-color: #fcfaf8;
+  --font-color-dim: #b5b2af;
+  --font-color-inv: #222;
 
   /* Text sizes */
   --text-size: calc(var(--scaling) * 18px);
@@ -32,28 +32,19 @@
   --sidebar-seam: calc(50% - var(--page-width) / 2 + var(--sidebar-width) + 2 * var(--page-spacing));
 
   /* Colors */
-  --bg-color: #fcfaf8;
-  --bg-color-dim: #f4f2f0;
-  --bg-color-inv: #222;
+  --bg-color: #000000;
+  --bg-color-dim: #212121;
+  --bg-color-inv: #fcfaf8;
   --accent-color: #e09e53;
   --accent-color-dim: #f7af5c;
+  --button-text: var(--font-color-inv);
+  --button-bg: var(--accent-color-dim);
+  --button-text-hover: var(--font-color-inv);
+  --button-bg-hover: var(--accent-color-dim);
 
   /* Other */
   --transition: 0.1s ease-out;
   --border-radius: calc(var(--scaling) * 3px);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-color: #222;
-    --bg-color-dim: #333;
-    --bg-color-inv: #fcfaf8;
-    --accent-color: #b58043;
-    --accent-color-dim: #e09e53;
-    --font-color: #fcfaf8;
-    --font-color-dim: #b5b2af;
-    --font-color-inv: #222;
-  }
 }
 
 /* Generic elements */
@@ -65,13 +56,11 @@ html {
   color: var(--font-color);
   scroll-behavior: smooth;
   background:
-    linear-gradient(
-      to right,
+    linear-gradient(to right,
       var(--bg-color-dim) 0,
       var(--bg-color-dim) var(--sidebar-seam),
       var(--bg-color) var(--sidebar-seam),
-      var(--bg-color) 100%
-    );
+      var(--bg-color) 100%);
   background-attachment: fixed;
 }
 
@@ -83,11 +72,11 @@ html {
 
 pre {
   padding: var(--text-height);
-  background-color: var(--bg-color-inv);
+  background-color: var(--bg-color-dim);
   overflow: auto;
   border-radius: var(--border-radius);
   font-size: 0.888rem;
-  color: var(--font-color-inv);
+  color: var(--font-color);
 }
 
 div.warning {
@@ -134,8 +123,9 @@ h3 {
 
 .button {
   display: inline-block;
-  background-color: var(--accent-color);
-  transition: background-color var(--transition);
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  transition: background-color color var(--transition);
   text-decoration: none;
   padding: 0.5rem 1rem;
   margin-top: 1.5rem;
@@ -169,7 +159,8 @@ h3 {
 }
 
 .button:hover {
-  background-color: var(--accent-color-dim);
+  background-color: var(--button-text-hover);
+  color: var(--button-bg-hover);
 }
 
 dt {
@@ -240,7 +231,7 @@ main {
   margin-bottom: calc(1 * var(--text-size));
 }
 
-.sidebar-header > a {
+.sidebar-header>a {
   display: flex;
   color: inherit;
   text-decoration: none;
@@ -268,7 +259,7 @@ main {
   margin: 0 0 var(--text-height) calc(0.5 * var(--text-height));
 }
 
-.sidebar-nav > ul > li > ul > li a::before {
+.sidebar-nav>ul>li>ul>li a::before {
   content: "";
   display: inline-block;
   vertical-align: 10%;
@@ -288,7 +279,7 @@ main {
 
 /* Content */
 
-main > section:first-of-type > h1:first-of-type {
+main>section:first-of-type>h1:first-of-type {
   margin-top: 0.9rem;
 }
 
@@ -322,25 +313,17 @@ main > section:first-of-type > h1:first-of-type {
     width: 100%;
 
     --side-padding:
-      max(
-        var(--page-spacing),
-        calc((100vw - var(--content-width)) / 2)
-      );
+      max(var(--page-spacing),
+        calc((100vw - var(--content-width)) / 2));
 
     padding:
-      calc(2 * var(--page-spacing))
-      var(--side-padding)
-      var(--page-spacing)
-      var(--side-padding);
+      calc(2 * var(--page-spacing)) var(--side-padding) var(--page-spacing) var(--side-padding);
   }
 
   main {
     margin: 0 auto;
     max-width:
-      calc(
-        var(--content-width)
-        + 2 * var(--page-spacing)
-      );
+      calc(var(--content-width) + 2 * var(--page-spacing));
     width: 100%;
     padding: var(--page-spacing);
   }
@@ -353,35 +336,41 @@ main > section:first-of-type > h1:first-of-type {
     display: flex;
     flex-wrap: wrap;
     margin:
-      calc(-0.5 * var(--page-spacing))
-      calc(-0.5 * var(--page-spacing))
-      0
-      calc(-0.5 * var(--page-spacing));
+      calc(-0.5 * var(--page-spacing)) calc(-0.5 * var(--page-spacing)) 0 calc(-0.5 * var(--page-spacing));
   }
 
-  .columns > div {
+  .columns>div {
     flex: 0 0;
     min-width: 0;
     margin:
-      calc(0.5 * var(--page-spacing))
-      calc(0.5 * var(--page-spacing))
-      0
-      calc(0.5 * var(--page-spacing));
+      calc(0.5 * var(--page-spacing)) calc(0.5 * var(--page-spacing)) 0 calc(0.5 * var(--page-spacing));
   }
 
-  .columns > div:nth-child(2n) {
+  .columns>div:nth-child(2n) {
     flex-basis: calc(60% - var(--page-spacing));
   }
 
-  .columns > div:nth-child(2n + 1) {
+  .columns>div:nth-child(2n + 1) {
     flex-basis: calc(40% - var(--page-spacing));
   }
 }
 
 /* Large screens */
 
-@media (min-width: 1696px) { :root { --scaling: 1.25; } }
+@media (min-width: 1696px) {
+  :root {
+    --scaling: 1.25;
+  }
+}
 
-@media (min-width: 1952px) { :root { --scaling: 1.5; } }
+@media (min-width: 1952px) {
+  :root {
+    --scaling: 1.5;
+  }
+}
 
-@media (min-width: 2208px) { :root { --scaling: 1.75; } }
+@media (min-width: 2208px) {
+  :root {
+    --scaling: 1.75;
+  }
+}

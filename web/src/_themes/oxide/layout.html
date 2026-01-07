@@ -1,49 +1,57 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        {%- if title == "Home" %}
-        <title>{{ docstitle|e }}</title>
-        {%- else %}
-        {%- set titlesuffix = " &#8212; "|safe + docstitle|e %}
-        <title>{{ title|striptags|e }}{{ titlesuffix }}</title>
-        {%- endif %}
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <link rel="stylesheet" href="/_static/oxide.css">
-        <link rel="icon" href="/_static/images/favicon.png" type="image/png">
-        <link rel="icon" href="/_static/images/favicon.svg" sizes="any" type="image/svg+xml">
-        <script src="https://peek.eeems.website/peek.js"></script>
-        <script
-		  src="https://browser.sentry-cdn.com/10.20.0/bundle.tracing.min.js"
-		  integrity="sha384-+9wUXHfFUeGwAnEesSxSFwKwBHDbnc32jfpX3HN0aB9RHa4lbS1rqsSnM6DI9/LM"
-		  crossorigin="anonymous"
-		></script>
-        <script src="/_static/oxide.js"></script>
-    </head>
-    <body>
-        <aside class="sidebar">
-            <header class="sidebar-header">
-                <a href="/">
-                    <span class="sidebar-sitename">{{ project }}</span>
-                </a>
-            </header>
+    {%- if title == "Home" %}
+    <title>{{ docstitle|e }}</title>
+    {%- else %}
+    {%- set titlesuffix = " &#8212; "|safe + docstitle|e %}
+    <title>{{ title|striptags|e }}{{ titlesuffix }}</title>
+    {%- endif %}
+    <link rel="icon" href="/_static/images/favicon.png" type="image/png">
+    <link rel="icon" href="/_static/images/favicon.svg" sizes="any" type="image/svg+xml">
+    {%- block css %}
+    {%- for css in css_files %}
+    {%- if css|attr("filename") %}
+    {{ css_tag(css) }}
+    {%- else %}
+    <link rel="stylesheet" href="{{ pathto(css, 1)|e }}" type="text/css" />
+    {%- endif %}
+    {%- endfor %}
+    {%- endblock %}
+    {%- block scripts %}
+    {%- for js in script_files %}
+    {{ js_tag(js) }}
+    {%- endfor %}
+    {%- endblock %}
+</head>
 
-            {%- for sidebartemplate in sidebars %}
-            {%- include sidebartemplate %}
-            {%- endfor %}
-        </aside>
-        <main>
-            {% block body %} {% endblock %}
-		    <nav>
-		    	{% if prev %}
-				<a href="{{ prev.link|e }}" class="button button-prev" title="{{ prev.title }}">Previous</a>
-				{% endif %}
-			    {% if next %}
-				<a href="{{ next.link|e }}" class="button button-next" title="{{ next.title }}">Next</a>
-				{% endif %}
-			</nav>
-        </main>
-    </body>
+<body>
+    <aside class="sidebar">
+        <header class="sidebar-header">
+            <a href="/">
+                <span class="sidebar-sitename">{{ project }}</span>
+            </a>
+        </header>
+
+        {%- for sidebartemplate in sidebars %}
+        {%- include sidebartemplate %}
+        {%- endfor %}
+    </aside>
+    <main>
+        {% block body %} {% endblock %}
+        <nav>
+            {% if prev %}
+            <a href="{{ prev.link|e }}" class="button button-prev" title="{{ prev.title }}">Previous</a>
+            {% endif %}
+            {% if next %}
+            <a href="{{ next.link|e }}" class="button button-next" title="{{ next.title }}">Next</a>
+            {% endif %}
+        </nav>
+    </main>
+</body>
+
 </html>
