@@ -385,11 +385,3 @@ main > section:first-of-type > h1:first-of-type {
 @media (min-width: 1952px) { :root { --scaling: 1.5; } }
 
 @media (min-width: 2208px) { :root { --scaling: 1.75; } }
-
-@media (min-width: 2464px) { :root { --scaling: 2; } }
-
-@media (min-width: 2720px) { :root { --scaling: 2.25; } }
-
-@media (min-width: 2976px) { :root { --scaling: 2.5; } }
-
-@media (min-width: 3232px) { :root { --scaling: 2.75; } }
