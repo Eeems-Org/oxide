@@ -57,7 +57,6 @@ $(DIST): $(VENV)/bin/activate images
 	rm -rf $(DIST)/.doctrees \
 	    $(DIST)/.buildinfo \
 	    $(DIST)/genindex.html \
-	    $(DIST)/objects.inv \
 	    $(DIST)/search.html \
 	    $(DIST)/searchindex.js \
 	    $(DIST)/_sources \
