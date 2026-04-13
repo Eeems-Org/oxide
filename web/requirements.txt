@@ -1,4 +1,4 @@
 Sphinx==8.2.3
-sphinx-autobuild==2024.10.3
+sphinx-autobuild==2025.8.25
 sphinxcontrib-fulltoc==1.2.0
 breathe==4.36.0
