@@ -1,0 +1,10 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    exclude-paths:
+      - "shared/sentry/**"
+      - "shared/doxygen-awesome-css/**"
+      - "shared/cpptrace/**"
