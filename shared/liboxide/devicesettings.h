@@ -28,6 +28,7 @@ namespace Oxide{
             RM1, /*!< reMarkable 1 >*/
             RM2, /*!< reMarkable 2 >*/
             RMPP, /*!< reMarkable Paper Pro >*/
+            RMPPM, /*!< reMarkable Paper Pro Move >*/
         };
         /*!
          * \brief Get the static instance of this class. You should use the deviceSettings macro instead.

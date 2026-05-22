@@ -103,9 +103,14 @@ namespace Oxide {
             _deviceType = DeviceType::RM2;
             return;
         }
-        if (modelName.contains("reMarkable Ferrari")) {
+        if (modelName.startsWith("reMarkable Ferrari")) {
             O_DEBUG("RMPP detected...");
             _deviceType = DeviceType::RMPP;
+            return;
+        }
+        if (modelName.startsWith("reMarkable Chiappa")) {
+            O_DEBUG("RMPP detected...");
+            _deviceType = DeviceType::RMPPM;
             return;
         }
         O_DEBUG("RM1 detected...");
@@ -127,6 +132,8 @@ namespace Oxide {
                 return "reMarkable 2";
             case DeviceType::RMPP:
                 return "reMarkable Paper Pro";
+            case DeviceType::RMPPM:
+                return "reMarkable Paper Pro Move";
             default:
                 return "Unknown";
         }
@@ -139,6 +146,8 @@ namespace Oxide {
             case DeviceType::RM2:
                 return "rotate=180:invertx";
             case DeviceType::RMPP:
+                return "";
+            case DeviceType::RMPPM:
                 return "";
             default:
                 return "";
@@ -153,6 +162,8 @@ namespace Oxide {
                 return 1403;
             case DeviceType::RMPP:
                 return 2064;
+            case DeviceType::RMPPM:
+                return 1248;
             default:
                 return 0;
         }
@@ -166,6 +177,8 @@ namespace Oxide {
                 return 1871;
             case DeviceType::RMPP:
                 return 2832;
+            case DeviceType::RMPPM:
+                return 2208;
             default:
                 return 0;
         }
@@ -178,6 +191,8 @@ namespace Oxide {
                 return 1404;
             case DeviceType::RMPP:
                 return 1620;
+            case DeviceType::RMPPM:
+                return 954;
             default:
                 return 0;
         }
@@ -190,6 +205,8 @@ namespace Oxide {
                 return 1872;
             case DeviceType::RMPP:
                 return 2160;
+            case DeviceType::RMPPM:
+                return 1696;
             default:
                 return 0;
         }
