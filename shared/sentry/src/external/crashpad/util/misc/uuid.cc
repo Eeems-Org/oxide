@@ -57,18 +57,29 @@ void UUID::InitializeToZero() {
   memset(this, 0, sizeof(*this));
 }
 
+bool UUID::IsZero() const {
+  UUID zero;
+  zero.InitializeToZero();
+  return *this == zero;
+}
+
 void UUID::InitializeFromBytes(const uint8_t* bytes_ptr) {
   // TODO(crbug.com/40284755): This span construction is unsound. The caller
   // should provide a span instead of an unbounded pointer.
   base::span<const uint8_t, sizeof(UUID)> bytes(bytes_ptr, sizeof(UUID));
-  data_1 = base::numerics::U32FromBigEndian(bytes.subspan<0u, 4u>());
-  data_2 = base::numerics::U16FromBigEndian(bytes.subspan<4u, 2u>());
-  data_3 = base::numerics::U16FromBigEndian(bytes.subspan<6u, 2u>());
+  data_1 = base::U32FromBigEndian(bytes.subspan<0u, 4u>());
+  data_2 = base::U16FromBigEndian(bytes.subspan<4u, 2u>());
+  data_3 = base::U16FromBigEndian(bytes.subspan<6u, 2u>());
+#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
   std::ranges::copy(bytes.subspan<8u, 2u>(), data_4);
   std::ranges::copy(bytes.subspan<10u, 6u>(), data_5);
+#else
+  memcpy(data_4, bytes.data() + 8u, 2u);
+  memcpy(data_5, bytes.data() + 10u, 6u);
+#endif
 }
 
-bool UUID::InitializeFromString(const base::StringPiece& string) {
+bool UUID::InitializeFromString(std::string_view string) {
   if (string.length() != 36)
     return false;
 
@@ -98,7 +109,7 @@ bool UUID::InitializeFromString(const base::StringPiece& string) {
 }
 
 #if BUILDFLAG(IS_WIN)
-bool UUID::InitializeFromString(const std::wstring_view& string) {
+bool UUID::InitializeFromString(std::wstring_view string) {
   return InitializeFromString(base::WideToUTF8(string));
 }
 #endif

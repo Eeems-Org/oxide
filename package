@@ -8,7 +8,7 @@ pkgnames=(
     liboxide
     liboxide-dev
     libsentry
-    #    cpptrace
+    # cpptrace
     oxide
     oxide-display
     oxide-extra
@@ -17,23 +17,25 @@ pkgnames=(
 )
 _oxidever=$(grep 'VERSION =' qmake/common.pri | awk '{print $3}')
 pkgver="$_oxidever~VERSION~"
-_sentryver=0.7.9
-#_cpptracever=0.8.3
+_sentryver=0.14.2
+# _cpptracever=0.8.3
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
 license=MIT
 flags=(patch_rm2fb)
-image=qt:v3.1
+image=qt:v4.0
 source=(oxide.tar.gz)
 sha256sums=(SKIP)
 
 build() {
-    find . -name "*.pro" -type f -print0 \
-        | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
-    find . -name "*.pri" -type f -print0 \
-        | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
-    CMAKE_TOOLCHAIN_FILE="/usr/share/cmake/$CHOST.cmake" make FEATURES=sentry release
+    . /opt/x-tools/switch-arm.sh
+    find . -name "*.pro" -type f -print0 |
+        xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
+    find . -name "*.pri" -type f -print0 |
+        xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
+    CMAKE_TOOLCHAIN_FILE="/usr/share/cmake/$CHOST.cmake" \
+        make FEATURES=sentry MAKEFLAGS= release
 }
 
 oxide() {
@@ -206,17 +208,17 @@ libsentry() {
     }
 }
 
-#cpptrace() {
-#    pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
-#    section="devel"
-#    url=https://github.com/jeremy-rifkin/cpptrace
-#    pkgver="$_cpptracever"
-#    timestamp="2025-04-08T14:34:11Z"
-#
-#    package() {
-#        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libcpptrace.so
-#    }
-#}
+# cpptrace() {
+#     pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
+#     section="devel"
+#     url=https://github.com/jeremy-rifkin/cpptrace
+#     pkgver="$_cpptracever"
+#     timestamp="2025-04-08T14:34:11Z"
+
+#     package() {
+#         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libcpptrace.so
+#     }
+# }
 
 oxide-tests() {
     pkgdesc="Automated tests for oxide"

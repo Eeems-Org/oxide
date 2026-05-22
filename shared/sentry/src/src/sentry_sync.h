@@ -7,6 +7,9 @@
 #include <assert.h>
 #include <stdio.h>
 
+// This is a NOP for platforms that support static mutex initialization.
+#define SENTRY__MUTEX_INIT_DYN_ONCE(Mutex) ((void)0)
+
 #ifdef _MSC_VER
 #    define THREAD_FUNCTION_API __stdcall
 #else
@@ -35,10 +38,7 @@
 
 #    if _WIN32_WINNT < 0x0600
 
-#        define INIT_ONCE_STATIC_INIT                                          \
-            {                                                                  \
-                0                                                              \
-            }
+#        define INIT_ONCE_STATIC_INIT { 0 }
 
 typedef union {
     PVOID Ptr;
@@ -165,13 +165,7 @@ sentry__winmutex_lock(struct sentry__winmutex_s *mutex)
 
 typedef HANDLE sentry_threadid_t;
 typedef struct sentry__winmutex_s sentry_mutex_t;
-#    define SENTRY__MUTEX_INIT                                                 \
-        {                                                                      \
-            INIT_ONCE_STATIC_INIT,                                             \
-            {                                                                  \
-                0                                                              \
-            }                                                                  \
-        }
+#    define SENTRY__MUTEX_INIT { INIT_ONCE_STATIC_INIT, { 0 } }
 #    define sentry__mutex_init(Lock) sentry__winmutex_init(Lock)
 #    define sentry__mutex_lock(Lock) sentry__winmutex_lock(Lock)
 #    define sentry__mutex_unlock(Lock)                                         \
@@ -213,6 +207,18 @@ typedef CONDITION_VARIABLE sentry_cond_t;
 #    define sentry__cond_wait(CondVar, Lock)                                   \
         sentry__cond_wait_timeout(CondVar, Lock, INFINITE)
 
+static inline sentry_threadid_t
+sentry__current_thread(void)
+{
+    return GetCurrentThread();
+}
+
+static inline int
+sentry__threadid_equal(sentry_threadid_t a, sentry_threadid_t b)
+{
+    return GetThreadId(a) == GetThreadId(b);
+}
+
 #else
 #    include <errno.h>
 #    include <pthread.h>
@@ -231,12 +237,19 @@ typedef CONDITION_VARIABLE sentry_cond_t;
    us crash under concurrent modifications.  The mutexes we're likely going
    to hit are the options and scope lock. */
 bool sentry__block_for_signal_handler(void);
-void sentry__enter_signal_handler(void);
+/**
+ * Enter signal handler context. Returns the recursion depth:
+ *   1 = first entry, normal processing
+ *   2 = re-entry (crash during handling), skip hooks but try to capture
+ *   3+ = multiple re-entries, bail out to previous handler
+ */
+int sentry__enter_signal_handler(void);
 void sentry__leave_signal_handler(void);
 
 typedef pthread_t sentry_threadid_t;
 typedef pthread_mutex_t sentry_mutex_t;
 typedef pthread_cond_t sentry_cond_t;
+
 #    ifdef SENTRY_PLATFORM_LINUX
 #        ifndef PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
 // In particular musl libc does not define a recursive initializer itself.
@@ -271,14 +284,36 @@ typedef pthread_cond_t sentry_cond_t;
                         PTHREAD_MUTEX_RECURSIVE                                \
                 }                                                              \
             }
+#    elif defined(__FreeBSD__) || defined(SENTRY_PLATFORM_NX)
+// Don't define `SENTRY__MUTEX_INIT` but instead provide a new definition that
+// can be used by platforms requiring dynamic recursive mutex initialization.
+#        define SENTRY__MUTEX_INIT_DYN(Mutex)                                  \
+            static sentry_mutex_t Mutex;                                       \
+            static pthread_once_t Mutex##_init_once = PTHREAD_ONCE_INIT;       \
+            static void init_##Mutex(void) { sentry__mutex_init(&Mutex); }
+#        undef SENTRY__MUTEX_INIT_DYN_ONCE
+// Ensures that our dynamically configured mutex is safely initialized once.
+#        define SENTRY__MUTEX_INIT_DYN_ONCE(Mutex)                             \
+            pthread_once(&Mutex##_init_once, init_##Mutex)
 #    else
 #        define SENTRY__MUTEX_INIT PTHREAD_RECURSIVE_MUTEX_INITIALIZER
 #    endif
-#    define sentry__mutex_init(Mutex)                                          \
-        do {                                                                   \
-            sentry_mutex_t tmp = SENTRY__MUTEX_INIT;                           \
-            *(Mutex) = tmp;                                                    \
-        } while (0)
+#    ifdef SENTRY__MUTEX_INIT_DYN
+#        define sentry__mutex_init(Mutex)                                      \
+            do {                                                               \
+                pthread_mutexattr_t attr;                                      \
+                pthread_mutexattr_init(&attr);                                 \
+                pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);     \
+                pthread_mutex_init(Mutex, &attr);                              \
+                pthread_mutexattr_destroy(&attr);                              \
+            } while (0)
+#    else
+#        define sentry__mutex_init(Mutex)                                      \
+            do {                                                               \
+                sentry_mutex_t tmp = SENTRY__MUTEX_INIT;                       \
+                *(Mutex) = tmp;                                                \
+            } while (0)
+#    endif
 #    define sentry__mutex_lock(Mutex)                                          \
         do {                                                                   \
             if (sentry__block_for_signal_handler()) {                          \
@@ -367,6 +402,34 @@ sentry__atomic_fetch(volatile long *val)
     return sentry__atomic_fetch_and_add(val, 0);
 }
 
+/**
+ * Compare and swap: atomically compare *val with expected, and if equal,
+ * set *val to desired. Returns true if the swap occurred.
+ *
+ * Uses sequential consistency (ATOMIC_SEQ_CST / InterlockedCompareExchange)
+ * to ensure all memory operations are visible across threads. This is
+ * appropriate for thread synchronization and state machine transitions.
+ *
+ * Note: The ABA problem (where a value changes A->B->A between reads) is not
+ * a concern for simple integer-based state machines with monotonic transitions.
+ */
+static inline bool
+sentry__atomic_compare_swap(volatile long *val, long expected, long desired)
+{
+#ifdef SENTRY_PLATFORM_WINDOWS
+#    if SIZEOF_LONG == 8
+    return InterlockedCompareExchange64((LONG64 *)val, desired, expected)
+        == expected;
+#    else
+    return InterlockedCompareExchange((LONG *)val, desired, expected)
+        == expected;
+#    endif
+#else
+    return __atomic_compare_exchange_n(
+        val, &expected, desired, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+#endif
+}
+
 struct sentry_bgworker_s;
 typedef struct sentry_bgworker_s sentry_bgworker_t;
 
@@ -406,8 +469,20 @@ int sentry__bgworker_flush(sentry_bgworker_t *bgw, uint64_t timeout);
 /**
  * This will try to shut down the background worker thread, with a `timeout`.
  * Returns 0 on success.
+ *
+ * The `_cb` variant accepts an `on_timeout` callback that is invoked when
+ * the timeout expires, just before detaching the thread. This gives the
+ * caller a chance to unblock the worker (e.g. by closing transport handles)
+ * so it can finish in-flight work.
  */
-int sentry__bgworker_shutdown(sentry_bgworker_t *bgw, uint64_t timeout);
+int sentry__bgworker_shutdown_cb(sentry_bgworker_t *bgw, uint64_t timeout,
+    void (*on_timeout)(void *), void *on_timeout_data);
+
+static inline int
+sentry__bgworker_shutdown(sentry_bgworker_t *bgw, uint64_t timeout)
+{
+    return sentry__bgworker_shutdown_cb(bgw, timeout, NULL, NULL);
+}
 
 /**
  * This will set a preferable thread name for background worker.
@@ -415,8 +490,21 @@ int sentry__bgworker_shutdown(sentry_bgworker_t *bgw, uint64_t timeout);
  */
 void sentry__bgworker_setname(sentry_bgworker_t *bgw, const char *thread_name);
 
+#ifdef SENTRY_UNITTEST
+/**
+ * Test helper function to get the thread name from a bgworker.
+ * Only available in unit tests.
+ */
+const char *sentry__bgworker_get_thread_name(sentry_bgworker_t *bgw);
+#endif
+
 /**
  * This will submit a new task to the background thread.
+ *
+ * The `_delayed` variant delays execution by the specified delay in
+ * milliseconds, and the `_at` variant executes after the specified monotonic
+ * timestamp. The latter is mostly useful for testing to ensure deterministic
+ * ordering of tasks regardless of OS preemption between submissions.
  *
  * Takes ownership of `data`, freeing it using the provided `cleanup_func`.
  * Returns 0 on success.
@@ -424,6 +512,12 @@ void sentry__bgworker_setname(sentry_bgworker_t *bgw, const char *thread_name);
 int sentry__bgworker_submit(sentry_bgworker_t *bgw,
     sentry_task_exec_func_t exec_func, void (*cleanup_func)(void *task_data),
     void *task_data);
+int sentry__bgworker_submit_delayed(sentry_bgworker_t *bgw,
+    sentry_task_exec_func_t exec_func, void (*cleanup_func)(void *task_data),
+    void *task_data, uint64_t delay_ms);
+int sentry__bgworker_submit_at(sentry_bgworker_t *bgw,
+    sentry_task_exec_func_t exec_func, void (*cleanup_func)(void *task_data),
+    void *task_data, uint64_t execute_after);
 
 /**
  * This function will iterate through all the current tasks of the worker
@@ -435,5 +529,176 @@ int sentry__bgworker_submit(sentry_bgworker_t *bgw,
 size_t sentry__bgworker_foreach_matching(sentry_bgworker_t *bgw,
     sentry_task_exec_func_t exec_func,
     bool (*callback)(void *task_data, void *data), void *data);
+
+/**
+ * A level-triggered waitable atomic flag.
+ *
+ * The flag has two states: 0 (unset) and 1 (set).
+ * - `sentry__waitable_flag_set`: atomically sets the flag to 1 and wakes
+ *   a waiting thread.
+ * - `sentry__waitable_flag_wait`: waits until the flag is set or the timeout
+ *   expires, then atomically clears the flag. Returns true if the flag was
+ *   set, false on timeout.
+ * - On Windows 8+/Xbox uses WaitOnAddress, on Linux and Android a futex to keep
+ *   trigger latency low and pass on wait to the OS. Other POSIX, older Windows
+ *   fall back on a sleepy atomic poll loop.
+ */
+
+#if defined(SENTRY_PLATFORM_WINDOWS) && _WIN32_WINNT >= 0x0602
+
+typedef struct {
+    volatile LONG value;
+} sentry_waitable_flag_t;
+
+static inline void
+sentry__waitable_flag_init(sentry_waitable_flag_t *flag)
+{
+    flag->value = 0;
+}
+
+static inline void
+sentry__waitable_flag_set(sentry_waitable_flag_t *flag)
+{
+    InterlockedExchange(&flag->value, 1);
+    WakeByAddressSingle((PVOID)&flag->value);
+}
+
+static inline bool
+sentry__waitable_flag_wait(sentry_waitable_flag_t *flag, uint64_t timeout_ms)
+{
+    LONG undesired = 0;
+    // Fast path: flag already set
+    if (InterlockedCompareExchange(&flag->value, 0, 1) == 1) {
+        return true;
+    }
+    // WaitOnAddress blocks while *address == undesired
+    WaitOnAddress((volatile VOID *)&flag->value, &undesired, sizeof(LONG),
+        (DWORD)timeout_ms);
+    // Try to consume the flag regardless of wait result
+    return InterlockedCompareExchange(&flag->value, 0, 1) == 1;
+}
+
+#elif defined(SENTRY_PLATFORM_LINUX)
+
+#    include <linux/futex.h>
+#    include <sys/syscall.h>
+#    include <unistd.h>
+
+typedef struct {
+    volatile int value;
+} sentry_waitable_flag_t;
+
+static inline void
+sentry__waitable_flag_init(sentry_waitable_flag_t *flag)
+{
+    flag->value = 0;
+}
+
+static inline void
+sentry__waitable_flag_set(sentry_waitable_flag_t *flag)
+{
+    __atomic_store_n(&flag->value, 1, __ATOMIC_SEQ_CST);
+    syscall(SYS_futex, &flag->value, FUTEX_WAKE_PRIVATE, 1, NULL, NULL, 0);
+}
+
+static inline bool
+sentry__waitable_flag_wait(sentry_waitable_flag_t *flag, uint64_t timeout_ms)
+{
+    // Fast path: flag already set, atomically consume it
+    int expected = 1;
+    if (__atomic_compare_exchange_n(&flag->value, &expected, 0, false,
+            __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+        return true;
+    }
+
+    struct timespec ts;
+    ts.tv_sec = (time_t)(timeout_ms / 1000);
+    ts.tv_nsec = (long)((timeout_ms % 1000) * 1000000);
+    // Block while value == 0
+    syscall(SYS_futex, &flag->value, FUTEX_WAIT_PRIVATE, 0, &ts, NULL, 0);
+    // Try to consume the flag
+    expected = 1;
+    return __atomic_compare_exchange_n(
+        &flag->value, &expected, 0, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+}
+
+#elif defined(SENTRY_PLATFORM_WINDOWS)
+/* Fallback for older Windows: sleep-poll with Sleep(). */
+
+typedef struct {
+    volatile LONG value;
+} sentry_waitable_flag_t;
+
+static inline void
+sentry__waitable_flag_init(sentry_waitable_flag_t *flag)
+{
+    InterlockedExchange(&flag->value, 0);
+}
+
+static inline void
+sentry__waitable_flag_set(sentry_waitable_flag_t *flag)
+{
+    InterlockedExchange(&flag->value, 1);
+}
+
+static inline bool
+sentry__waitable_flag_wait(sentry_waitable_flag_t *flag, uint64_t timeout_ms)
+{
+    ULONGLONG deadline = GetTickCount64() + (ULONGLONG)timeout_ms;
+    while (!InterlockedCompareExchange(&flag->value, 0, 1)) {
+        if (GetTickCount64() >= deadline) {
+            return false;
+        }
+        Sleep(10); // 10ms
+    }
+    return true;
+}
+
+#else
+/* Fallback for other POSIX platforms (Darwin, FreeBSD, AIX, NX, etc.).
+ * Uses a simple sleep-poll loop over an atomic flag. Trades up to 10ms of
+ * wake latency for zero platform-specific dependencies. */
+
+#    include <unistd.h>
+
+typedef struct {
+    volatile int value;
+} sentry_waitable_flag_t;
+
+static inline void
+sentry__waitable_flag_init(sentry_waitable_flag_t *flag)
+{
+    __atomic_store_n(&flag->value, 0, __ATOMIC_SEQ_CST);
+}
+
+static inline void
+sentry__waitable_flag_set(sentry_waitable_flag_t *flag)
+{
+    __atomic_store_n(&flag->value, 1, __ATOMIC_RELEASE);
+}
+
+static inline bool
+sentry__waitable_flag_wait(sentry_waitable_flag_t *flag, uint64_t timeout_ms)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t deadline_ms = (uint64_t)ts.tv_sec * 1000
+        + (uint64_t)ts.tv_nsec / 1000000 + timeout_ms;
+    int expected = 1;
+    while (!__atomic_compare_exchange_n(&flag->value, &expected, 0, false,
+        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {
+        expected = 1;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        uint64_t now_ms
+            = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+        if (now_ms >= deadline_ms) {
+            return false;
+        }
+        usleep(10000); // 10ms
+    }
+    return true;
+}
+
+#endif
 
 #endif

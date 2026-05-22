@@ -2,16 +2,61 @@
 #define SENTRY_UTILS_H_INCLUDED
 
 #include "sentry_boot.h"
+#include "sentry_slice.h"
 
 #ifdef SENTRY_PLATFORM_DARWIN
 #    include <mach/clock.h>
 #    include <mach/mach.h>
 #endif
 #ifdef SENTRY_PLATFORM_WINDOWS
+#    include "sentry_os.h"
 #    include <winnt.h>
 #else
 #    include <sys/time.h>
 #    include <time.h>
+#endif
+
+#ifdef SENTRY_PLATFORM_PS
+#    undef MIN
+#    undef MAX
+#    define getenv(_) NULL
+#endif
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+/**
+ * Byte-swap the first three GUID fields (Data1, Data2, Data3) of a 16-byte
+ * UUID in place.  This converts between RFC 4122 (big-endian) and Windows
+ * mixed-endian GUID layout, which is used by RSDS CodeView records and Sentry
+ * debug-id strings.
+ */
+static inline void
+sentry__uuid_swap_guid_bytes(void *uuid)
+{
+    uint8_t *p = (uint8_t *)uuid;
+    uint8_t t;
+    // Swap Data1 (4 bytes)
+    t = p[0];
+    p[0] = p[3];
+    p[3] = t;
+    t = p[1];
+    p[1] = p[2];
+    p[2] = t;
+    // Swap Data2 (2 bytes)
+    t = p[4];
+    p[4] = p[5];
+    p[5] = t;
+    // Swap Data3 (2 bytes)
+    t = p[6];
+    p[6] = p[7];
+    p[7] = t;
+}
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#    define UNREACHABLE(reason) assert(!reason)
+#else
+#    define UNREACHABLE(reason) assert(!(bool)reason)
 #endif
 
 /**
@@ -31,8 +76,10 @@ typedef struct {
 /**
  * Parse the given `url` into the pre-allocated `url_out` parameter.
  * Returns 0 on success.
+ * `requires_path` flags whether the url needs a / after the host(:port) section
  */
-int sentry__url_parse(sentry_url_t *url_out, const char *url);
+int sentry__url_parse(
+    sentry_url_t *url_out, const char *url, bool requires_path);
 
 /**
  * This will free all the internal members of `url`, but not `url` itself, as
@@ -46,6 +93,9 @@ void sentry__url_cleanup(sentry_url_t *url);
 typedef struct sentry_dsn_s {
     char *raw;
     char *host;
+    // TODO after u64 value type, change to uint64_t
+    //      -> how to handle empty org_id then?
+    char *org_id;
     char *path;
     char *secret_key;
     char *public_key;
@@ -90,6 +140,18 @@ char *sentry__dsn_get_auth_header(
 char *sentry__dsn_get_envelope_url(const sentry_dsn_t *dsn);
 
 /**
+ * Returns the TUS upload endpoint url as a newly allocated string.
+ */
+char *sentry__dsn_get_upload_url(const sentry_dsn_t *dsn);
+
+/**
+ * Resolves a possibly relative URL against the DSN's origin.
+ * If the path starts with '/', the DSN's scheme, host, and port are prepended.
+ * Returns a newly allocated string.
+ */
+char *sentry__dsn_resolve_url(const sentry_dsn_t *dsn, const char *path);
+
+/**
  * Returns the minidump endpoint url used for uploads done by the out-of-process
  * crashpad backend as a newly allocated string.
  */
@@ -106,10 +168,7 @@ sentry__usec_time(void)
     // Contains a 64-bit value representing the number of 100-nanosecond
     // intervals since January 1, 1601 (UTC).
     FILETIME file_time;
-    SYSTEMTIME system_time;
-    GetSystemTime(&system_time);
-    SystemTimeToFileTime(&system_time, &file_time);
-
+    sentry__get_system_time(&file_time);
     uint64_t timestamp = (uint64_t)file_time.dwLowDateTime
         + ((uint64_t)file_time.dwHighDateTime << 32);
     timestamp -= 116444736000000000LL; // convert to unix epoch
@@ -151,7 +210,8 @@ sentry__monotonic_time(void)
 
     LARGE_INTEGER qpc_counter;
     QueryPerformanceCounter(&qpc_counter);
-    return qpc_counter.QuadPart * 1000 / qpc_frequency.QuadPart;
+    return (uint64_t)qpc_counter.QuadPart * 1000
+        / (uint64_t)qpc_frequency.QuadPart;
 #elif defined(SENTRY_PLATFORM_DARWIN)
 
 // try `clock_gettime` first if available,
@@ -197,6 +257,13 @@ uint64_t sentry__iso8601_to_usec(const char *iso);
 double sentry__strtod_c(const char *ptr, char **endptr);
 
 /**
+ * Reads a double from the environment variable `name`.
+ * Returns `fallback` if the variable is unset, empty, or not a finite number.
+ * Leading and trailing whitespace is tolerated.
+ */
+double sentry__getenv_double(const char *name, double fallback);
+
+/**
  * Locale independent (or rather, using "C" locale) `snprintf`.
  */
 int sentry__snprintf_c(char *buf, size_t buf_size, const char *fmt, ...);
@@ -216,5 +283,32 @@ typedef struct {
  */
 bool sentry__check_min_version(
     sentry_version_t actual, sentry_version_t expected);
+
+/**
+ * Generates and sets a sample_rand value on the given context.
+ * The value set will be in range [0.0, 1.0)
+ */
+void sentry__generate_sample_rand(sentry_value_t context);
+
+/**
+ * Yields the next W3C Baggage member from `remaining`, advancing it past the
+ * yielded member. `key` and `value` are borrowed slices into the original
+ * buffer with surrounding whitespace trimmed; any property suffix (`;...`)
+ * after the value is stripped. Values are not percent-decoded; use
+ * `sentry__percent_decode_inplace` on a mutable copy if needed.
+ *
+ * Malformed members (missing `=`, empty key) are skipped silently. Returns
+ * false when `remaining` is exhausted.
+ */
+bool sentry__baggage_iter_next(
+    sentry_slice_t *remaining, sentry_slice_t *key, sentry_slice_t *value);
+
+/**
+ * Decodes `%XX` percent-escapes in the first `len` bytes of `s` in place.
+ * Malformed escapes (non-hex or truncated at the end) are passed through
+ * verbatim. Returns the new length; the caller is responsible for writing a
+ * terminating NUL if one is required.
+ */
+size_t sentry__percent_decode_inplace(char *s, size_t len);
 
 #endif

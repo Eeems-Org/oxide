@@ -134,7 +134,7 @@ std::string RandBytesAsString(size_t length) {
   }
 
   std::string result(length, std::string::value_type());
-  RandBytes(as_writable_byte_span(result));
+  RandBytes(as_writable_bytes(make_span(result)));
   return result;
 }
 

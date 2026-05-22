@@ -1,3 +1,6 @@
+#ifndef SENTRY_TEST_SUPPORT_H_INCLUDED
+#define SENTRY_TEST_SUPPORT_H_INCLUDED
+
 #include "sentry_boot.h"
 #include "sentry_core.h"
 
@@ -7,14 +10,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifndef SENTRY_TEST_DEFINE_MAIN
+#if !defined(SENTRY_TEST_DEFINE_MAIN) && !defined(TEST_NO_MAIN)
 #    define TEST_NO_MAIN
 #endif
 #include "../vendor/acutest.h"
 
 #define CONCAT(A, B) A##B
 #define SENTRY_TEST(Name) void CONCAT(test_sentry_, Name)(void)
-#define SKIP_TEST() (void)0
+#define SKIP_TEST() return
 
 #define TEST_CHECK_STRING_EQUAL(Val, ReferenceVal)                             \
     do {                                                                       \
@@ -33,6 +36,7 @@
 #define TEST_CHECK_JSON_VALUE(Val, ReferenceJson)                              \
     do {                                                                       \
         char *json = sentry_value_to_json(Val);                                \
+        TEST_ASSERT(!!json);                                                   \
         TEST_CHECK_STRING_EQUAL(json, ReferenceJson);                          \
         sentry_free(json);                                                     \
     } while (0)
@@ -42,6 +46,27 @@
         long long _a = (long long)(A);                                         \
         long long _b = (long long)(B);                                         \
         TEST_CHECK_(_a == _b, "%lld == %lld", _a, _b);                         \
+    } while (0)
+
+#define TEST_CHECK_UINT64_EQUAL(A, B)                                          \
+    do {                                                                       \
+        unsigned long long _a = (unsigned long long)(A);                       \
+        unsigned long long _b = (unsigned long long)(B);                       \
+        TEST_CHECK_(_a == _b, "%llu == %llu", _a, _b);                         \
+    } while (0)
+
+#define TEST_CHECK_PTR_EQUAL(A, B)                                             \
+    do {                                                                       \
+        const void *_a = (const void *)(A);                                    \
+        const void *_b = (const void *)(B);                                    \
+        TEST_CHECK_(_a == _b, "%p == %p", _a, _b);                             \
+    } while (0)
+
+#define TEST_ASSERT_INT_EQUAL(A, B)                                            \
+    do {                                                                       \
+        long long _a = (long long)(A);                                         \
+        long long _b = (long long)(B);                                         \
+        TEST_ASSERT_(_a == _b, "%lld == %lld", _a, _b);                        \
     } while (0)
 
 #if __GNUC__ >= 4
@@ -54,7 +79,49 @@
 // NOTE: On Windows, pointers to non-static functions seem to resolve
 // to an indirection table. This causes a mismatch in tests. With static
 // functions, this does not happen.
-#    define TEST_VISIBLE static
+#    define TEST_VISIBLE static __declspec(noinline)
 #else
 #    define TEST_VISIBLE
 #endif
+
+#ifdef SENTRY_TEST_PATH_PREFIX
+#    define SENTRY_TEST_OPTIONS_NEW(Varname)                                   \
+        sentry_options_t *Varname = sentry_options_new();                      \
+        TEST_ASSERT(!!Varname);                                                \
+        sentry_options_set_database_path(                                      \
+            Varname, SENTRY_TEST_PATH_PREFIX ".sentry-native")
+#else
+#    define SENTRY_TEST_PATH_PREFIX ""
+#    define SENTRY_TEST_OPTIONS_NEW(Varname)                                   \
+        sentry_options_t *Varname = sentry_options_new();                      \
+        TEST_ASSERT(!!Varname)
+#endif
+
+#define SENTRY_TEST_DSN_NEW_DEFAULT(Varname)                                   \
+    sentry_dsn_t *Varname = sentry__dsn_new("https://foo@sentry.invalid/42");  \
+    TEST_ASSERT(!!Varname)
+#define SENTRY_TEST_DSN_NEW(Varname, DSN_URL)                                  \
+    sentry_dsn_t *Varname = sentry__dsn_new(DSN_URL);                          \
+    TEST_ASSERT(!!Varname)
+
+#define SENTRY_TEST_DEPRECATED(call)                                           \
+    do {                                                                       \
+        SENTRY_SUPPRESS_DEPRECATED                                             \
+        call;                                                                  \
+        SENTRY_RESTORE_DEPRECATED                                              \
+    } while (0)
+
+#ifdef SENTRY_PLATFORM_WINDOWS
+#    include <windows.h>
+#    define sleep_s(SECONDS) Sleep((SECONDS) * 1000)
+#    define sleep_ms(MILLISECONDS) Sleep(MILLISECONDS)
+#    define sentry__thread_yield() SwitchToThread()
+#else
+#    include <sched.h>
+#    include <unistd.h>
+#    define sleep_s(SECONDS) sleep(SECONDS)
+#    define sleep_ms(MILLISECONDS) usleep((MILLISECONDS) * 1000)
+#    define sentry__thread_yield() sched_yield()
+#endif
+
+#endif // SENTRY_TEST_SUPPORT_H_INCLUDED
