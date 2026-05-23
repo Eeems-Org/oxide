@@ -105,6 +105,10 @@ $(BUILD)/package/oxide.tar.gz: $(BUILD)/package/package $(PKG_OBJ)
 SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )
 SRC_FILES += package
 
+CPP_FILES = $(wildcard applications/**/*.cpp) $(wildcard applications/**/*.h)
+CPP_FILES += $(wildcard shared/**/*.cpp | xargs -rn1 | grep -v sentry/) $(wildcard shared/**/*.h)
+CPP_FILES += $(wildcard tests/**/*.cpp) $(wildcard tests/**/*.h)
+
 lint:
 	shfmt \
 		-d\
@@ -113,10 +117,11 @@ lint:
 		-bn \
 		-sr \
 		$(SRC_FILES)
-
-CPP_FILES = $(wildcard applications/**/*.cpp) $(wildcard applications/**/*.h)
-CPP_FILES += $(wildcard shared/**/*.cpp | xargs -rn1 | grep -v sentry/) $(wildcard shared/**/*.h)
-CPP_FILES += $(wildcard tests/**/*.cpp) $(wildcard tests/**/*.h)
+	clang-format \
+		--dry-run \
+		--fallback-style=mozilla \
+		-i \
+		$(CPP_FILES)
 
 format:
 	shfmt \
