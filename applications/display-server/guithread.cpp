@@ -282,10 +282,14 @@ GUIThread::redraw(RepaintRequest& event)
         frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
     QPainter painter(frameBuffer);
     while (!painter.isActive()) {
-        if (!eventDispatcher()->processEvents(QEventLoop::AllEvents)) {
-            QThread::msleep(1);
+        while (frameBuffer->paintingActive()) {
+            if (!eventDispatcher()->processEvents(QEventLoop::AllEvents)) {
+                QThread::msleep(1);
+            }
         }
-        painter.begin(frameBuffer);
+        if (painter.begin(frameBuffer)) {
+            break;
+        }
     }
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     for (QRect rect : event.region) {
