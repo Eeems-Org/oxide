@@ -25,6 +25,8 @@ on:
       - "oxide.pro"
       - "Makefile"
       - "package"
+permissions:
+  contents: read
 jobs:
   lint:
     name: Lint source

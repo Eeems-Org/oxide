@@ -20,11 +20,7 @@ using namespace std::chrono_literals;
 namespace Blight {
     static std::atomic<unsigned int> ackid;
     static moodycamel::ConcurrentQueue<ackid_ptr_t> acks;
-    ackid_t::ackid_t(
-        unsigned int ackid,
-        unsigned int data_size,
-        data_t data
-    )
+    ackid_t::ackid_t(unsigned int ackid, unsigned int data_size, data_t data)
         : ackid(ackid), done(false), data_size(data_size), data(data) {
 #ifdef ACK_DEBUG
         _DEBUG("Ack created: %u", ackid);
@@ -150,7 +146,7 @@ namespace Blight {
 #endif
         }
         header_t header{{.type = type, .ackid = _ackid, .size = size}};
-        std::lock_guard locker(mutex);
+        [[maybe_unused]] std::lock_guard locker(mutex);
         (void)locker;
         if (!Blight::send_blocking(
                 m_fd, reinterpret_cast<data_t>(&header), sizeof(header_t)

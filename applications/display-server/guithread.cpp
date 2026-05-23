@@ -118,7 +118,8 @@ void GUIThread::enqueue(
     }
     if (intersected.isEmpty()) {
         O_WARNING(
-            "Region does not intersect with screen" << surface->id() << region
+            "Region does not intersect with screen"
+            << (global ? "(global)" : surface->id()) << region
         );
         if (callback != nullptr) {
             callback();
