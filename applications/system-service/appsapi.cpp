@@ -10,7 +10,9 @@
 
 using namespace Oxide;
 
-AppsAPI* AppsAPI::singleton(AppsAPI* self) {
+AppsAPI*
+AppsAPI::singleton(AppsAPI* self)
+{
     static AppsAPI* instance;
     if (self != nullptr) {
         instance = self;
@@ -19,18 +21,19 @@ AppsAPI* AppsAPI::singleton(AppsAPI* self) {
 }
 
 AppsAPI::AppsAPI(QObject* parent)
-    : APIBase(parent),
-      m_stopping(false),
-      m_starting(true),
-      m_enabled(false),
-      applications(),
-      previousApplications(),
-      settings(this),
-      m_startupApplication("/"),
-      m_lockscreenApplication("/"),
-      m_processManagerApplication("/"),
-      m_taskSwitcherApplication("/"),
-      m_sleeping(false) {
+  : APIBase(parent)
+  , m_stopping(false)
+  , m_starting(true)
+  , m_enabled(false)
+  , applications()
+  , previousApplications()
+  , settings(this)
+  , m_startupApplication("/")
+  , m_lockscreenApplication("/")
+  , m_processManagerApplication("/")
+  , m_taskSwitcherApplication("/")
+  , m_sleeping(false)
+{
     Oxide::Sentry::sentry_transaction(
         "Init Apps API", "init", [this](Oxide::Sentry::Transaction* t) {
             Oxide::Sentry::sentry_span(
@@ -162,7 +165,9 @@ AppsAPI::AppsAPI(QObject* parent)
     );
 }
 
-void AppsAPI::startup() {
+void
+AppsAPI::startup()
+{
     Oxide::Sentry::sentry_transaction(
         "Apps API Startup", "startup", [this](Oxide::Sentry::Transaction* t) {
             if (applications.isEmpty()) {
@@ -226,7 +231,9 @@ void AppsAPI::startup() {
     );
 }
 
-void AppsAPI::setEnabled(bool enabled) {
+void
+AppsAPI::setEnabled(bool enabled)
+{
     O_INFO("Apps API" << enabled);
     for (auto app : applications) {
         if (enabled) {
@@ -237,16 +244,18 @@ void AppsAPI::setEnabled(bool enabled) {
     }
 }
 
-QDBusObjectPath AppsAPI::registerApplication(QVariantMap properties) {
+QDBusObjectPath
+AppsAPI::registerApplication(QVariantMap properties)
+{
     if (!hasPermission("apps")) {
         return QDBusObjectPath("/");
     }
     return registerApplicationNoSecurityCheck(properties);
 }
 
-QDBusObjectPath AppsAPI::registerApplicationNoSecurityCheck(
-    QVariantMap properties
-) {
+QDBusObjectPath
+AppsAPI::registerApplicationNoSecurityCheck(QVariantMap properties)
+{
     QString name = properties.value("name", "").toString();
     QString bin = properties.value("bin", "").toString();
     int type = properties.value("type", ApplicationType::Foreground).toInt();
@@ -293,7 +302,9 @@ QDBusObjectPath AppsAPI::registerApplicationNoSecurityCheck(
     return path;
 }
 
-bool AppsAPI::unregisterApplication(QDBusObjectPath path) {
+bool
+AppsAPI::unregisterApplication(QDBusObjectPath path)
+{
     if (!hasPermission("apps")) {
         return false;
     }
@@ -308,7 +319,9 @@ bool AppsAPI::unregisterApplication(QDBusObjectPath path) {
     return true;
 }
 
-void AppsAPI::reload() {
+void
+AppsAPI::reload()
+{
     if (!hasPermission("apps")) {
         return;
     }
@@ -321,14 +334,18 @@ void AppsAPI::reload() {
     );
 }
 
-QDBusObjectPath AppsAPI::startupApplication() {
+QDBusObjectPath
+AppsAPI::startupApplication()
+{
     if (!hasPermission("apps")) {
         return QDBusObjectPath("/");
     }
     return m_startupApplication;
 }
 
-void AppsAPI::setStartupApplication(QDBusObjectPath path) {
+void
+AppsAPI::setStartupApplication(QDBusObjectPath path)
+{
     if (!hasPermission("apps")) {
         return;
     }
@@ -338,14 +355,18 @@ void AppsAPI::setStartupApplication(QDBusObjectPath path) {
     }
 }
 
-QDBusObjectPath AppsAPI::lockscreenApplication() {
+QDBusObjectPath
+AppsAPI::lockscreenApplication()
+{
     if (!hasPermission("apps")) {
         return QDBusObjectPath("/");
     }
     return m_lockscreenApplication;
 }
 
-void AppsAPI::setLockscreenApplication(QDBusObjectPath path) {
+void
+AppsAPI::setLockscreenApplication(QDBusObjectPath path)
+{
     if (!hasPermission("apps")) {
         return;
     }
@@ -355,14 +376,18 @@ void AppsAPI::setLockscreenApplication(QDBusObjectPath path) {
     }
 }
 
-QDBusObjectPath AppsAPI::processManagerApplication() {
+QDBusObjectPath
+AppsAPI::processManagerApplication()
+{
     if (!hasPermission("apps")) {
         return QDBusObjectPath("/");
     }
     return m_processManagerApplication;
 }
 
-void AppsAPI::setProcessManagerApplication(QDBusObjectPath path) {
+void
+AppsAPI::setProcessManagerApplication(QDBusObjectPath path)
+{
     if (!hasPermission("apps")) {
         return;
     }
@@ -372,14 +397,18 @@ void AppsAPI::setProcessManagerApplication(QDBusObjectPath path) {
     }
 }
 
-QDBusObjectPath AppsAPI::taskSwitcherApplication() {
+QDBusObjectPath
+AppsAPI::taskSwitcherApplication()
+{
     if (!hasPermission("apps")) {
         return QDBusObjectPath("/");
     }
     return m_taskSwitcherApplication;
 }
 
-void AppsAPI::setTaskSwitcherApplication(QDBusObjectPath path) {
+void
+AppsAPI::setTaskSwitcherApplication(QDBusObjectPath path)
+{
     if (!hasPermission("apps")) {
         return;
     }
@@ -389,7 +418,9 @@ void AppsAPI::setTaskSwitcherApplication(QDBusObjectPath path) {
     }
 }
 
-QVariantMap AppsAPI::getApplications() {
+QVariantMap
+AppsAPI::getApplications()
+{
     QVariantMap result;
     if (!hasPermission("apps")) {
         return result;
@@ -400,14 +431,18 @@ QVariantMap AppsAPI::getApplications() {
     return result;
 }
 
-QDBusObjectPath AppsAPI::currentApplication() {
+QDBusObjectPath
+AppsAPI::currentApplication()
+{
     if (!hasPermission("apps")) {
         return QDBusObjectPath("/");
     }
     return currentApplicationNoSecurityCheck();
 }
 
-QDBusObjectPath AppsAPI::currentApplicationNoSecurityCheck() {
+QDBusObjectPath
+AppsAPI::currentApplicationNoSecurityCheck()
+{
     for (auto app : applications) {
         if (app->stateNoSecurityCheck() == Application::InForeground) {
             return app->qPath();
@@ -416,14 +451,18 @@ QDBusObjectPath AppsAPI::currentApplicationNoSecurityCheck() {
     return QDBusObjectPath("/");
 }
 
-QVariantMap AppsAPI::runningApplications() {
+QVariantMap
+AppsAPI::runningApplications()
+{
     if (!hasPermission("apps")) {
         return QVariantMap();
     }
     return runningApplicationsNoSecurityCheck();
 }
 
-QVariantMap AppsAPI::runningApplicationsNoSecurityCheck() {
+QVariantMap
+AppsAPI::runningApplicationsNoSecurityCheck()
+{
     QVariantMap result;
     for (auto app : applications) {
         auto state = app->stateNoSecurityCheck();
@@ -435,7 +474,9 @@ QVariantMap AppsAPI::runningApplicationsNoSecurityCheck() {
     return result;
 }
 
-QVariantMap AppsAPI::pausedApplications() {
+QVariantMap
+AppsAPI::pausedApplications()
+{
     QVariantMap result;
     if (!hasPermission("apps")) {
         return result;
@@ -449,7 +490,9 @@ QVariantMap AppsAPI::pausedApplications() {
     return result;
 }
 
-void AppsAPI::unregisterApplication(Application* app) {
+void
+AppsAPI::unregisterApplication(Application* app)
+{
     Oxide::Sentry::sentry_transaction(
         "Unregister Application",
         "unregisterApplication",
@@ -465,13 +508,17 @@ void AppsAPI::unregisterApplication(Application* app) {
     );
 }
 
-void AppsAPI::pauseAll() {
+void
+AppsAPI::pauseAll()
+{
     for (auto app : applications) {
         app->pauseNoSecurityCheck(false);
     }
 }
 
-void AppsAPI::resumeIfNone() {
+void
+AppsAPI::resumeIfNone()
+{
     if (m_stopping || m_starting) {
         return;
     }
@@ -500,7 +547,9 @@ void AppsAPI::resumeIfNone() {
     ensureForegroundApp();
 }
 
-Application* AppsAPI::getApplication(QDBusObjectPath path) {
+Application*
+AppsAPI::getApplication(QDBusObjectPath path)
+{
     for (auto app : applications) {
         if (app->path() == path.path()) {
             return app;
@@ -509,9 +558,15 @@ Application* AppsAPI::getApplication(QDBusObjectPath path) {
     return nullptr;
 }
 
-QStringList AppsAPI::getPreviousApplications() { return previousApplications; }
+QStringList
+AppsAPI::getPreviousApplications()
+{
+    return previousApplications;
+}
 
-QDBusObjectPath AppsAPI::getApplicationPath(const QString& name) {
+QDBusObjectPath
+AppsAPI::getApplicationPath(const QString& name)
+{
     if (!hasPermission("apps")) {
         return QDBusObjectPath("/");
     }
@@ -522,14 +577,18 @@ QDBusObjectPath AppsAPI::getApplicationPath(const QString& name) {
     return app->qPath();
 }
 
-Application* AppsAPI::getApplication(const QString& name) {
+Application*
+AppsAPI::getApplication(const QString& name)
+{
     if (applications.contains(name)) {
         return applications[name];
     }
     return nullptr;
 }
 
-void AppsAPI::connectSignals(Application* app, int signal) {
+void
+AppsAPI::connectSignals(Application* app, int signal)
+{
     switch (signal) {
         case 1:
             connect(
@@ -550,7 +609,9 @@ void AppsAPI::connectSignals(Application* app, int signal) {
     }
 }
 
-void AppsAPI::disconnectSignals(Application* app, int signal) {
+void
+AppsAPI::disconnectSignals(Application* app, int signal)
+{
     switch (signal) {
         case 1:
             disconnect(
@@ -571,14 +632,18 @@ void AppsAPI::disconnectSignals(Application* app, int signal) {
     }
 }
 
-bool AppsAPI::previousApplication() {
+bool
+AppsAPI::previousApplication()
+{
     if (!hasPermission("apps")) {
         return false;
     }
     return previousApplicationNoSecurityCheck();
 }
 
-bool AppsAPI::previousApplicationNoSecurityCheck() {
+bool
+AppsAPI::previousApplicationNoSecurityCheck()
+{
     if (locked()) {
         return false;
     }
@@ -610,7 +675,9 @@ bool AppsAPI::previousApplicationNoSecurityCheck() {
     return found;
 }
 
-void AppsAPI::forceRecordPreviousApplication() {
+void
+AppsAPI::forceRecordPreviousApplication()
+{
     auto currentApplication =
         getApplication(this->currentApplicationNoSecurityCheck());
     if (currentApplication == nullptr) {
@@ -623,7 +690,9 @@ void AppsAPI::forceRecordPreviousApplication() {
     O_DEBUG("Previous Applications" << previousApplications);
 }
 
-void AppsAPI::recordPreviousApplication() {
+void
+AppsAPI::recordPreviousApplication()
+{
     auto currentApplication =
         getApplication(this->currentApplicationNoSecurityCheck());
     if (currentApplication == nullptr) {
@@ -642,13 +711,21 @@ void AppsAPI::recordPreviousApplication() {
     O_DEBUG("Previous Applications" << previousApplications);
 }
 
-void AppsAPI::removeFromPreviousApplications(QString name) {
+void
+AppsAPI::removeFromPreviousApplications(QString name)
+{
     previousApplications.removeAll(name);
 }
 
-void AppsAPI::leftHeld() { openDefaultApplication(); }
+void
+AppsAPI::leftHeld()
+{
+    openDefaultApplication();
+}
 
-void AppsAPI::openDefaultApplication() {
+void
+AppsAPI::openDefaultApplication()
+{
     if (locked() || !hasPermission("apps")) {
         return;
     }
@@ -672,9 +749,15 @@ void AppsAPI::openDefaultApplication() {
     app->launchNoSecurityCheck();
 }
 
-void AppsAPI::homeHeld() { openTaskManager(); }
+void
+AppsAPI::homeHeld()
+{
+    openTaskManager();
+}
 
-void AppsAPI::openTaskManager() {
+void
+AppsAPI::openTaskManager()
+{
     if (locked() || !hasPermission("apps")) {
         return;
     }
@@ -698,7 +781,9 @@ void AppsAPI::openTaskManager() {
     app->launchNoSecurityCheck();
 }
 
-void AppsAPI::openLockScreen() {
+void
+AppsAPI::openLockScreen()
+{
     if (locked() || !hasPermission("apps")) {
         return;
     }
@@ -722,7 +807,9 @@ void AppsAPI::openLockScreen() {
     app->launchNoSecurityCheck();
 }
 
-void AppsAPI::openTaskSwitcher() {
+void
+AppsAPI::openTaskSwitcher()
+{
     if (locked() || !hasPermission("apps")) {
         return;
     }
@@ -756,7 +843,9 @@ void AppsAPI::openTaskSwitcher() {
     app->launchNoSecurityCheck();
 }
 
-void AppsAPI::openTerminal() {
+void
+AppsAPI::openTerminal()
+{
     if (locked() || !hasPermission("apps")) {
         return;
     }
@@ -786,7 +875,9 @@ void AppsAPI::openTerminal() {
     app->launchNoSecurityCheck();
 }
 
-QString AppsAPI::getPath(QString name) {
+QString
+AppsAPI::getPath(QString name)
+{
     static const QUuid NS = QUuid::fromString(
         QLatin1String("{d736a9e1-10a9-4258-9634-4b0fa91189d5}")
     );
@@ -794,7 +885,9 @@ QString AppsAPI::getPath(QString name) {
            QUuid::createUuidV5(NS, name).toString(QUuid::Id128);
 }
 
-void AppsAPI::writeApplications() {
+void
+AppsAPI::writeApplications()
+{
     auto apps = applications.values();
     int size = apps.size();
     settings.beginWriteArray("applications", size);
@@ -816,7 +909,9 @@ void AppsAPI::writeApplications() {
     settings.endArray();
 }
 
-void AppsAPI::readApplications() {
+void
+AppsAPI::readApplications()
+{
     settings.sync();
     if (!applications.empty()) {
         // Unregister any applications that have been removed from the settings
@@ -850,25 +945,25 @@ void AppsAPI::readApplications() {
             continue;
         }
         QVariantMap properties{
-            {"name", name},
-            {"displayName", displayName},
-            {"description",
-             settings.value("description", displayName).toString()},
-            {"bin", bin},
-            {"type", type},
-            {"flags", settings.value("flags", QStringList()).toStringList()},
-            {"icon", settings.value("icon", "").toString()},
-            {"onPause", settings.value("onPause", "").toString()},
-            {"onResume", settings.value("onResume", "").toString()},
-            {"onStop", settings.value("onStop", "").toString()},
-            {"environment",
-             settings.value("environment", QVariantMap()).toMap()},
-            {"workingDirectory",
-             settings.value("workingDirectory", "").toString()},
-            {"directories",
-             settings.value("directories", QStringList()).toStringList()},
-            {"permissions",
-             settings.value("permissions", QStringList()).toStringList()},
+            { "name", name },
+            { "displayName", displayName },
+            { "description",
+              settings.value("description", displayName).toString() },
+            { "bin", bin },
+            { "type", type },
+            { "flags", settings.value("flags", QStringList()).toStringList() },
+            { "icon", settings.value("icon", "").toString() },
+            { "onPause", settings.value("onPause", "").toString() },
+            { "onResume", settings.value("onResume", "").toString() },
+            { "onStop", settings.value("onStop", "").toString() },
+            { "environment",
+              settings.value("environment", QVariantMap()).toMap() },
+            { "workingDirectory",
+              settings.value("workingDirectory", "").toString() },
+            { "directories",
+              settings.value("directories", QStringList()).toStringList() },
+            { "permissions",
+              settings.value("permissions", QStringList()).toStringList() },
         };
         if (settings.contains("user")) {
             properties.insert("user", settings.value("user", "").toString());
@@ -937,7 +1032,9 @@ void AppsAPI::readApplications() {
     }
 }
 
-void AppsAPI::migrate(QSettings* settings, int fromVersion) {
+void
+AppsAPI::migrate(QSettings* settings, int fromVersion)
+{
     if (fromVersion != 0) {
         throw "Unknown settings version";
     }
@@ -946,9 +1043,15 @@ void AppsAPI::migrate(QSettings* settings, int fromVersion) {
     settings->sync();
 }
 
-bool AppsAPI::locked() { return notificationAPI->locked(); }
+bool
+AppsAPI::locked()
+{
+    return notificationAPI->locked();
+}
 
-void AppsAPI::ensureForegroundApp() {
+void
+AppsAPI::ensureForegroundApp()
+{
     QTimer::singleShot(300, [this] {
         m_starting = false;
         auto path = appsAPI->currentApplicationNoSecurityCheck();
@@ -964,7 +1067,9 @@ void AppsAPI::ensureForegroundApp() {
     });
 }
 
-void AppsAPI::shutdown() {
+void
+AppsAPI::shutdown()
+{
     m_stopping = true;
     writeApplications();
     settings.sync();

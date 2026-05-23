@@ -11,9 +11,15 @@
 
 #include "controller.h"
 
-bool AppItem::ok() { return getApp() != nullptr; }
+bool
+AppItem::ok()
+{
+    return getApp() != nullptr;
+}
 
-void AppItem::execute() {
+void
+AppItem::execute()
+{
     if (!getApp() || !app->isValid()) {
         O_WARNING("Application instance is not valid");
         return;
@@ -28,14 +34,18 @@ void AppItem::execute() {
                  << reply.error().message();
     }
 }
-void AppItem::stop() {
+void
+AppItem::stop()
+{
     if (!getApp() || !app->isValid()) {
         O_WARNING("Application instance is not valid");
         return;
     }
     QDBusPendingReply<void> reply = app->stop();
 }
-Application* AppItem::getApp() {
+Application*
+AppItem::getApp()
+{
     if (app != nullptr) {
         return app;
     }

@@ -14,7 +14,8 @@
 
 #define powerAPI PowerAPI::singleton()
 
-class PowerAPI : public APIBase {
+class PowerAPI : public APIBase
+{
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_POWER_INTERFACE)
     Q_PROPERTY(int state READ state WRITE setState NOTIFY stateChanged)
@@ -26,23 +27,33 @@ class PowerAPI : public APIBase {
     )
     Q_PROPERTY(int chargerState READ chargerState NOTIFY chargerStateChanged)
 
-   public:
+  public:
     static PowerAPI* singleton(PowerAPI* self = nullptr);
     PowerAPI(QObject* parent);
     void shutdown();
 
     void setEnabled(bool enabled) override;
 
-    enum State { Normal, PowerSaving };
+    enum State
+    {
+        Normal,
+        PowerSaving
+    };
     Q_ENUM(State)
-    enum BatteryState {
+    enum BatteryState
+    {
         BatteryUnknown,
         BatteryCharging,
         BatteryDischarging,
         BatteryNotPresent
     };
     Q_ENUM(BatteryState)
-    enum ChargerState { ChargerUnknown, ChargerConnected, ChargerNotConnected };
+    enum ChargerState
+    {
+        ChargerUnknown,
+        ChargerConnected,
+        ChargerNotConnected
+    };
     Q_ENUM(ChargerState)
 
     int state();
@@ -60,7 +71,7 @@ class PowerAPI : public APIBase {
     int chargerState();
     void setChargerState(int chargerState);
 
-   signals:
+  signals:
     void stateChanged(int);
     void batteryStateChanged(int);
     void batteryLevelChanged(int);
@@ -70,7 +81,7 @@ class PowerAPI : public APIBase {
     void batteryAlert();
     void chargerWarning();
 
-   private:
+  private:
     QTimer* timer = nullptr;
     int m_state = Normal;
     int m_batteryState = BatteryUnknown;
@@ -84,8 +95,8 @@ class PowerAPI : public APIBase {
     void updateBattery();
     void updateCharger();
 
-   private slots:
+  private slots:
     void update();
 };
 
-#endif  // BATTERYAPI_H
+#endif // BATTERYAPI_H

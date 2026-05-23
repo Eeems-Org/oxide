@@ -18,7 +18,8 @@
 #define DEFAULT_EPFR_RETURN EPFramebufferFusion
 #endif
 
-enum EPScreenMode {
+enum EPScreenMode
+{
     QualityFastest = 0,
     QualityFast = 1,
     Quality3 = 3,
@@ -26,14 +27,17 @@ enum EPScreenMode {
     Quality5 = 5,
 };
 
-enum EPContentType {
+enum EPContentType
+{
     Mono = 0,
     Color = 1,
 };
 
-class EPFramebuffer {
-   public:
-    enum UpdateFlag {
+class EPFramebuffer
+{
+  public:
+    enum UpdateFlag
+    {
         NoRefresh = 0,
         CompleteRefresh = 1,
     };
@@ -47,8 +51,9 @@ class EPFramebuffer {
     static class DEFAULT_EPFR_RETURN* instance();
 };
 
-class EPFramebufferSwtcon : public EPFramebuffer {
-   public:
+class EPFramebufferSwtcon : public EPFramebuffer
+{
+  public:
     void initialize(void);
     void sync(void);
     // unsigned long update(QRect param_1, int color, PixelMode type, int
@@ -56,49 +61,51 @@ class EPFramebufferSwtcon : public EPFramebuffer {
 };
 
 #ifdef __aarch64__
-class EPFramebufferAcep2 : public EPFramebufferSwtcon {
-   public:
+class EPFramebufferAcep2 : public EPFramebufferSwtcon
+{
+  public:
     EPFramebufferAcep2();
     int sendTModeUpdate(void);
 
-   private:
+  private:
     char OPAQUE_A[EPFR_OFFSET_AUXBUFFER];
 
-   public:
+  public:
     QImage auxBuffer;
 
-   private:
+  private:
     char OPAQUE_B
         [EPFR_OFFSET_MAINBUFFER - sizeof(QImage) - EPFR_OFFSET_AUXBUFFER];
 
-   public:
+  public:
     QImage mainBuffer;
 
-   private:
+  private:
     char OPAQUE_C[EPFR_SIZE - EPFR_OFFSET_MAINBUFFER - sizeof(QImage)];
 };
 #endif
 
 #ifdef __arm__
-class EPFramebufferFusion : public EPFramebufferSwtcon {
-   public:
+class EPFramebufferFusion : public EPFramebufferSwtcon
+{
+  public:
     EPFramebufferFusion();
 
-   private:
+  private:
     char OPAQUE_A[EPFR_OFFSET_AUXBUFFER_RM2];
 
-   public:
+  public:
     QImage auxBuffer;
 
-   private:
+  private:
     char OPAQUE_B
         [EPFR_OFFSET_MAINBUFFER_RM2 - sizeof(QImage) -
          EPFR_OFFSET_AUXBUFFER_RM2];
 
-   public:
+  public:
     QImage mainBuffer;
 
-   private:
+  private:
     char OPAQUE_C[EPFR_SIZE_RM2 - EPFR_OFFSET_MAINBUFFER_RM2 - sizeof(QImage)];
 };
 #endif

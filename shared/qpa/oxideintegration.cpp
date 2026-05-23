@@ -30,10 +30,10 @@ class QCoreTextFontEngine;
 
 #define debugQPAEnvironmentVariable "OXIDE_QPA_DEBUG"
 
-static inline OxideIntegration::Options parseOptions(
-    const QStringList& paramList
-) {
-    OxideIntegration::Options options{{}};
+static inline OxideIntegration::Options
+parseOptions(const QStringList& paramList)
+{
+    OxideIntegration::Options options{ {} };
     for (const QString& param : paramList) {
         if (!param.compare(
                 QLatin1String("enable_fonts"), Qt::CaseInsensitive
@@ -60,10 +60,11 @@ static inline OxideIntegration::Options parseOptions(
 }
 
 OxideIntegration::OxideIntegration(const QStringList& parameters)
-    : m_fontDatabase(nullptr),
-      m_options(parseOptions(parameters)),
-      m_debug(false),
-      m_parameters(parameters) {
+  : m_fontDatabase(nullptr)
+  , m_options(parseOptions(parameters))
+  , m_debug(false)
+  , m_parameters(parameters)
+{
     setenv("OXIDE_PRELOAD_DISABLE_INPUT", "1", true);
     m_debug = m_options & DebugQPA;
     if (m_debug) {
@@ -71,15 +72,16 @@ OxideIntegration::OxideIntegration(const QStringList& parameters)
     }
 }
 
-OxideIntegration::~OxideIntegration() {
+OxideIntegration::~OxideIntegration()
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::~OxideIntegration";
     }
 }
 
-bool OxideIntegration::hasCapability(
-    QPlatformIntegration::Capability cap
-) const {
+bool
+OxideIntegration::hasCapability(QPlatformIntegration::Capability cap) const
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::hasCapability";
     }
@@ -93,7 +95,9 @@ bool OxideIntegration::hasCapability(
     }
 }
 
-void OxideIntegration::initialize() {
+void
+OxideIntegration::initialize()
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::initialize";
     }
@@ -161,35 +165,43 @@ void OxideIntegration::initialize() {
 #endif
 }
 
-void OxideIntegration::destroy() {
+void
+OxideIntegration::destroy()
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::destroy";
     }
     QWindowSystemInterface::handleScreenRemoved(m_primaryScreen);
 }
 
-void OxideIntegration::sync() {
+void
+OxideIntegration::sync()
+{
     // TODO - get sync state with display server
 }
 
-void OxideIntegration::beep() const {
+void
+OxideIntegration::beep() const
+{
     // TODO - show notification?
 }
 
 // Dummy font database that does not scan the fonts directory to be
 // used for command line tools like qmlplugindump that do not create windows
 // unless DebugBackingStore is activated.
-class DummyFontDatabase : public QPlatformFontDatabase
+class DummyFontDatabase
+  : public QPlatformFontDatabase
 #ifndef QT_NO_CLIPBOARD
-    ,
-                          public QPlatformClipboard
+  , public QPlatformClipboard
 #endif
 {
-   public:
+  public:
     void populateFontDatabase() override {}
 };
 
-QPlatformFontDatabase* OxideIntegration::fontDatabase() const {
+QPlatformFontDatabase*
+OxideIntegration::fontDatabase() const
+{
     if (!m_fontDatabase) {
         if (m_debug) {
             qDebug() << "OxideIntegration::fontDatabase";
@@ -208,7 +220,9 @@ QPlatformFontDatabase* OxideIntegration::fontDatabase() const {
 }
 
 #ifndef QT_NO_CLIPBOARD
-QPlatformClipboard* OxideIntegration::clipboard() const {
+QPlatformClipboard*
+OxideIntegration::clipboard() const
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::nativeInterface";
     }
@@ -216,14 +230,18 @@ QPlatformClipboard* OxideIntegration::clipboard() const {
 }
 #endif
 
-QPlatformInputContext* OxideIntegration::inputContext() const {
+QPlatformInputContext*
+OxideIntegration::inputContext() const
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::inputContext";
     }
     return m_inputContext;
 }
 
-QPlatformWindow* OxideIntegration::createPlatformWindow(QWindow* window) const {
+QPlatformWindow*
+OxideIntegration::createPlatformWindow(QWindow* window) const
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::createPlatformWindow";
     }
@@ -232,39 +250,45 @@ QPlatformWindow* OxideIntegration::createPlatformWindow(QWindow* window) const {
     return w;
 }
 
-QPlatformBackingStore* OxideIntegration::createPlatformBackingStore(
-    QWindow* window
-) const {
+QPlatformBackingStore*
+OxideIntegration::createPlatformBackingStore(QWindow* window) const
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::createPlatformBackingStore";
     }
     return new OxideBackingStore(window);
 }
 
-QAbstractEventDispatcher* OxideIntegration::createEventDispatcher() const {
+QAbstractEventDispatcher*
+OxideIntegration::createEventDispatcher() const
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::createEventDispatcher";
     }
     return createUnixEventDispatcher();
 }
 
-QPlatformNativeInterface* OxideIntegration::nativeInterface() const {
+QPlatformNativeInterface*
+OxideIntegration::nativeInterface() const
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::nativeInterface";
     }
     return const_cast<OxideIntegration*>(this);
 }
 
-QPlatformServices* OxideIntegration::services() const {
+QPlatformServices*
+OxideIntegration::services() const
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::services";
     }
     return const_cast<OxideIntegration*>(this);
 }
 
-Blight::shared_buf_t OxideIntegration::getSurfaceForWindowStatic(
-    QWindow* qwindow
-) {
+Blight::shared_buf_t
+OxideIntegration::getSurfaceForWindowStatic(QWindow* qwindow)
+{
     auto screen = static_cast<OxideScreen*>(
         OxideScreen::platformScreenForWindow(qwindow)
     );
@@ -272,9 +296,9 @@ Blight::shared_buf_t OxideIntegration::getSurfaceForWindowStatic(
     return window->backingStore()->buffer();
 }
 
-QFunctionPointer OxideIntegration::platformFunction(
-    const QByteArray& function
-) const {
+QFunctionPointer
+OxideIntegration::platformFunction(const QByteArray& function) const
+{
     if (m_debug) {
         qDebug() << "OxideIntegration::platformFunction";
     }
@@ -284,27 +308,41 @@ QFunctionPointer OxideIntegration::platformFunction(
     return nullptr;
 }
 
-OxideScreen* OxideIntegration::primaryScreen() { return m_primaryScreen; }
+OxideScreen*
+OxideIntegration::primaryScreen()
+{
+    return m_primaryScreen;
+}
 
-OxideIntegration::Options OxideIntegration::options() const {
+OxideIntegration::Options
+OxideIntegration::options() const
+{
     return m_options;
 }
 
-QStringList OxideIntegration::themeNames() const {
+QStringList
+OxideIntegration::themeNames() const
+{
     // TODO - implement custom theme
     return QPlatformIntegration::themeNames();
 }
 
-QPlatformTheme* OxideIntegration::createPlatformTheme(
-    const QString& name
-) const {
+QPlatformTheme*
+OxideIntegration::createPlatformTheme(const QString& name) const
+{
     // TODO - implement custom theme
     return QPlatformIntegration::createPlatformTheme(name);
 }
 
-bool OxideIntegration::openUrl(const QUrl& url) { return openDocument(url); }
+bool
+OxideIntegration::openUrl(const QUrl& url)
+{
+    return openDocument(url);
+}
 
-bool OxideIntegration::openDocument(const QUrl& url) {
+bool
+OxideIntegration::openDocument(const QUrl& url)
+{
     QStringList args =
         QProcess::splitCommand("xdg-open " + QLatin1String(url.toEncoded()));
     bool ok = false;
@@ -315,12 +353,16 @@ bool OxideIntegration::openDocument(const QUrl& url) {
     return ok;
 }
 
-QByteArray OxideIntegration::desktopEnvironment() const {
+QByteArray
+OxideIntegration::desktopEnvironment() const
+{
     return qgetenv("XDG_CURRENT_DESKTOP");
 }
 
 #ifndef Q_NO_CLIPBOARD
-QMimeData* OxideIntegration::mimeData(QClipboard::Mode mode) {
+QMimeData*
+OxideIntegration::mimeData(QClipboard::Mode mode)
+{
     switch (mode) {
         case QClipboard::Clipboard:
             return m_clipboard.data();
@@ -331,7 +373,9 @@ QMimeData* OxideIntegration::mimeData(QClipboard::Mode mode) {
     }
 }
 
-void OxideIntegration::setMimeData(QMimeData* data, QClipboard::Mode mode) {
+void
+OxideIntegration::setMimeData(QMimeData* data, QClipboard::Mode mode)
+{
     switch (mode) {
         case QClipboard::Clipboard: {
             m_clipboard = data;
@@ -354,17 +398,23 @@ void OxideIntegration::setMimeData(QMimeData* data, QClipboard::Mode mode) {
     }
 }
 
-bool OxideIntegration::supportsMode(QClipboard::Mode mode) const {
+bool
+OxideIntegration::supportsMode(QClipboard::Mode mode) const
+{
     return mode == QClipboard::Clipboard || mode == QClipboard::Selection;
 }
 
-bool OxideIntegration::ownsMode(QClipboard::Mode mode) const {
+bool
+OxideIntegration::ownsMode(QClipboard::Mode mode) const
+{
     Q_UNUSED(mode)
     return false;
 }
 #endif
 
-OxideIntegration* OxideIntegration::instance() {
+OxideIntegration*
+OxideIntegration::instance()
+{
     auto instance = static_cast<OxideIntegration*>(
         QGuiApplicationPrivate::platformIntegration()
     );
@@ -374,9 +424,14 @@ OxideIntegration* OxideIntegration::instance() {
     return instance;
 }
 
-void OxideIntegration::connectSignal(
-    QObject* sender, QString signal, QObject* reciever, QString slot
-) {
+void
+OxideIntegration::connectSignal(
+    QObject* sender,
+    QString signal,
+    QObject* reciever,
+    QString slot
+)
+{
     auto signalIndex =
         sender->metaObject()->indexOfSignal(signal.toStdString().c_str());
     if (signalIndex == -1) {

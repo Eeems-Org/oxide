@@ -10,12 +10,16 @@ using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
 using namespace Oxide::JSON;
 
-int qExit(int ret) {
+int
+qExit(int ret)
+{
     QTimer::singleShot(0, [ret]() { qApp->exit(ret); });
     return qApp->exec();
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("notify-send", argv);
     app.setOrganizationName("Eeems");
@@ -31,63 +35,63 @@ int main(int argc, char* argv[]) {
     );
     parser.addPositionalArgument("body", "Body of the notification", "[BODY]");
     QCommandLineOption appNameOption(
-        {"a", "app-name"},
+        { "a", "app-name" },
         "Specifies the app name for the notification.",
         "APP_NAME"
     );
     parser.addOption(appNameOption);
     QCommandLineOption iconOption(
-        {"i", "icon"},
+        { "i", "icon" },
         "Specifies an icon filename or stock icon to display.",
         "ICON"
     );
     parser.addOption(iconOption);
     QCommandLineOption expireOption(
-        {"t", "expire-time"},
+        { "t", "expire-time" },
         "The duration, in milliseconds to wait for the notification. Does "
         "nothing without --wait",
         "TIME"
     );
     parser.addOption(expireOption);
     QCommandLineOption printOption(
-        {"p", "print-id"}, "Print the notification identifier."
+        { "p", "print-id" }, "Print the notification identifier."
     );
     parser.addOption(printOption);
     QCommandLineOption replaceOption(
-        {"r", "replace-id"},
+        { "r", "replace-id" },
         "The identifier of the notification to replace.",
         "REPLACE_ID"
     );
     parser.addOption(replaceOption);
     QCommandLineOption waitOption(
-        {"w", "wait"},
+        { "w", "wait" },
         "Wait for the notification to be closed before exiting. If the "
         "expire-time is set, it will be used as the maximum waiting time."
     );
     parser.addOption(waitOption);
     QCommandLineOption transientOption(
-        {"e", "transient"},
+        { "e", "transient" },
         "Show a transient notification. This notification will be removed "
         "immediatly after being shown on the screen"
     );
     parser.addOption(transientOption);
     QCommandLineOption urgencyOption(
-        {"u", "urgency"}, "NOT IMPLEMENTED", "LEVEL"
+        { "u", "urgency" }, "NOT IMPLEMENTED", "LEVEL"
     );
     parser.addOption(urgencyOption);
     QCommandLineOption appOption(
-        {"A", "action"}, "NOT IMPLEMENTED", "[NAME=]TEXT"
+        { "A", "action" }, "NOT IMPLEMENTED", "[NAME=]TEXT"
     );
     parser.addOption(appOption);
     QCommandLineOption categoryOption(
-        {"c", "category"}, "NOT IMPLEMENTED", "TYPE[,TYPE]"
+        { "c", "category" }, "NOT IMPLEMENTED", "TYPE[,TYPE]"
     );
     parser.addOption(categoryOption);
     QCommandLineOption hintOption(
-        {"h", "hint"}, "NOT IMPLEMENTED", "TYPE:NAME:VALUE"
+        { "h", "hint" }, "NOT IMPLEMENTED", "TYPE:NAME:VALUE"
     );
     parser.addOption(hintOption);
-    QCommandLineOption helpOption({"?", "help"}, "Show help and exit");
+    QCommandLineOption helpOption({ "?", "help" }, "Show help and exit");
     parser.addOption(helpOption);
     parser.process(app);
     if (parser.isSet(helpOption)) {

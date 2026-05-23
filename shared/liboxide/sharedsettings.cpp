@@ -6,7 +6,11 @@ namespace Oxide {
     O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, firstLaunch, true)
     O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, telemetry, false)
     O_SETTINGS_PROPERTY_BODY(
-        SharedSettings, bool, General, applicationUsage, false
+        SharedSettings,
+        bool,
+        General,
+        applicationUsage,
+        false
     )
     O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, crashReport, true)
     O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, lockOnSuspend, true)
@@ -15,4 +19,4 @@ namespace Oxide {
     O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, pin)
     O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, onLogin)
     O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, onFailedLogin)
-}  // namespace Oxide
+} // namespace Oxide

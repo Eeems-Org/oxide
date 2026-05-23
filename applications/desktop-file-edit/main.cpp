@@ -12,12 +12,16 @@ using namespace Oxide::Sentry;
 using namespace Oxide::JSON;
 using namespace Oxide::Applications;
 
-QTextStream& qStdOut() {
+QTextStream&
+qStdOut()
+{
     static QTextStream ts(stdout);
     return ts;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("desktop-file-edit", argv);
     app.setOrganizationName("Eeems");

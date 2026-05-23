@@ -18,7 +18,9 @@
 using namespace Oxide::Sentry;
 using namespace Oxide::Applications;
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("gio", argv);
     app.setOrganizationName("Eeems");

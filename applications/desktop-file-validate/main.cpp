@@ -7,16 +7,22 @@
 using namespace Oxide::Sentry;
 using namespace Oxide::Applications;
 
-int qExit(int ret) {
+int
+qExit(int ret)
+{
     QTimer::singleShot(0, [ret]() { qApp->exit(ret); });
     return qApp->exec();
 }
-QTextStream& qStdOut() {
+QTextStream&
+qStdOut()
+{
     static QTextStream ts(stdout);
     return ts;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("desktop-file-validate", argv);
     app.setOrganizationName("Eeems");

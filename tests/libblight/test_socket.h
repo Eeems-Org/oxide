@@ -1,14 +1,15 @@
 #pragma once
 #include "autotest.h"
 
-class test_Socket : public QObject {
+class test_Socket : public QObject
+{
     Q_OBJECT
 
-   public:
+  public:
     test_Socket();
     ~test_Socket();
 
-   private slots:
+  private slots:
     void test_recv();
     void test_recv_blocking();
     void test_send_blocking();

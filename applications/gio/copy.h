@@ -7,14 +7,16 @@
 #include "common.h"
 
 // [OPTION...] SOURCE... DESTINATION
-class CopyCommand : ICommand {
+class CopyCommand : ICommand
+{
     O_COMMAND(
         CopyCommand,
         "copy",
         "Copies one or more files from SOURCE to DESTINATION. If more than one "
         "source is specified, the destination must be a directory. "
     )
-    int arguments() override {
+    int arguments() override
+    {
         parser->addOption(noTargetDirectoryOption);
         parser->addOption(progressOption);
         parser->addOption(interactiveOption);
@@ -32,7 +34,8 @@ class CopyCommand : ICommand {
         );
         return EXIT_SUCCESS;
     }
-    int command(const QStringList& args) override {
+    int command(const QStringList& args) override
+    {
         if (args.length() < 2) {
             parser->showHelp(EXIT_FAILURE);
         }
@@ -128,24 +131,26 @@ class CopyCommand : ICommand {
         return res;
     }
 
-   private:
+  private:
     QCommandLineOption noTargetDirectoryOption = QCommandLineOption(
-        {"T", "no-target-directory"},
+        { "T", "no-target-directory" },
         "Don’t copy into DESTINATION even if it is a directory."
     );
     QCommandLineOption progressOption =
-        QCommandLineOption({"p", "progress"}, "NOT IMPLEMENTED");
+        QCommandLineOption({ "p", "progress" }, "NOT IMPLEMENTED");
     QCommandLineOption interactiveOption = QCommandLineOption(
-        {"i", "interactive"},
+        { "i", "interactive" },
         "Prompt for confirmation before overwriting files."
     );
     QCommandLineOption preserveOption = QCommandLineOption(
-        "preserve", "Preserve all attributes of copied files."
+        "preserve",
+        "Preserve all attributes of copied files."
     );
     QCommandLineOption backupOption =
-        QCommandLineOption({"b", "backup"}, "NOT IMPLEMENTED");
+        QCommandLineOption({ "b", "backup" }, "NOT IMPLEMENTED");
     QCommandLineOption noDereferenceOption = QCommandLineOption(
-        {"P", "no-dereference"}, "Never follow symbolic links."
+        { "P", "no-dereference" },
+        "Never follow symbolic links."
     );
     QCommandLineOption defaultPermissionsOption = QCommandLineOption(
         "default-permissions",

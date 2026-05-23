@@ -9,7 +9,9 @@ using namespace Oxide::Sentry;
 using namespace Oxide::Applications;
 using namespace codes::eeems::oxide1;
 
-int launchOxideApp(const QString& name) {
+int
+launchOxideApp(const QString& name)
+{
     auto bus = QDBusConnection::systemBus();
     General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
     QDBusObjectPath path = api.requestAPI("apps");
@@ -28,7 +30,9 @@ int launchOxideApp(const QString& name) {
     return EXIT_SUCCESS;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("xdg-open", argv);
     app.setOrganizationName("Eeems");

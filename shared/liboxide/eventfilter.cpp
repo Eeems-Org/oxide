@@ -25,9 +25,13 @@
 namespace Oxide {
     EventFilter::EventFilter(QObject* parent) : QObject(parent) {}
 
-    QPointF swap(QPointF pointF) { return QPointF(pointF.y(), pointF.x()); }
+    QPointF swap(QPointF pointF)
+    {
+        return QPointF(pointF.y(), pointF.x());
+    }
 
-    QPointF transpose(QPointF pointF) {
+    QPointF transpose(QPointF pointF)
+    {
         pointF = swap(pointF);
         // Handle scaling from wacom to screensize
         pointF.setX(pointF.x() * WACOM_X_SCALAR);
@@ -35,7 +39,8 @@ namespace Oxide {
         return pointF;
     }
 
-    bool EventFilter::eventFilter(QObject* obj, QEvent* ev) {
+    bool EventFilter::eventFilter(QObject* obj, QEvent* ev)
+    {
         auto type = ev->type();
         if (QObject::eventFilter(obj, ev)) {
             return true;
@@ -91,6 +96,6 @@ namespace Oxide {
 #endif
         return false;
     }
-}  // namespace Oxide
+} // namespace Oxide
 
 #include "moc_eventfilter.cpp"

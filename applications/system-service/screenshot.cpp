@@ -3,14 +3,16 @@
 #include "screenapi.h"
 
 Screenshot::Screenshot(QString path, QString filePath, QObject* parent)
-    : QObject(parent), m_path(path), mutex() {
+  : QObject(parent), m_path(path), mutex()
+{
     m_file = new QFile(filePath);
     if (!m_file->open(QIODevice::ReadWrite)) {
         O_WARNING("Unable to open screenshot file" << m_file->fileName());
     }
 }
 
-Screenshot::~Screenshot() {
+Screenshot::~Screenshot()
+{
     unregisterPath();
     if (m_file->isOpen()) {
         m_file->close();
@@ -18,11 +20,21 @@ Screenshot::~Screenshot() {
     delete m_file;
 }
 
-QString Screenshot::path() { return m_path; }
+QString
+Screenshot::path()
+{
+    return m_path;
+}
 
-QDBusObjectPath Screenshot::qPath() { return QDBusObjectPath(path()); }
+QDBusObjectPath
+Screenshot::qPath()
+{
+    return QDBusObjectPath(path());
+}
 
-void Screenshot::registerPath() {
+void
+Screenshot::registerPath()
+{
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if (bus.registerObject(path(), this, QDBusConnection::ExportAllContents)) {
@@ -32,7 +44,9 @@ void Screenshot::registerPath() {
     }
 }
 
-void Screenshot::unregisterPath() {
+void
+Screenshot::unregisterPath()
+{
     auto bus = QDBusConnection::systemBus();
     if (bus.objectRegisteredAt(path()) != nullptr) {
         O_INFO("Unregistered" << path());
@@ -40,7 +54,9 @@ void Screenshot::unregisterPath() {
     }
 }
 
-QByteArray Screenshot::blob() {
+QByteArray
+Screenshot::blob()
+{
     if (!hasPermission("screen")) {
         return QByteArray();
     }
@@ -60,7 +76,9 @@ QByteArray Screenshot::blob() {
     return data;
 }
 
-void Screenshot::setBlob(QByteArray blob) {
+void
+Screenshot::setBlob(QByteArray blob)
+{
     if (!hasPermission("screen")) {
         return;
     }
@@ -78,7 +96,9 @@ void Screenshot::setBlob(QByteArray blob) {
     emit modified();
 }
 
-QString Screenshot::getPath() {
+QString
+Screenshot::getPath()
+{
     if (!hasPermission("screen")) {
         return "";
     }
@@ -89,7 +109,9 @@ QString Screenshot::getPath() {
     return m_file->fileName();
 }
 
-void Screenshot::remove() {
+void
+Screenshot::remove()
+{
     if (!hasPermission("screen")) {
         return;
     }
@@ -107,7 +129,9 @@ void Screenshot::remove() {
     emit removed();
 }
 
-bool Screenshot::hasPermission(QString permission, const char* sender) {
+bool
+Screenshot::hasPermission(QString permission, const char* sender)
+{
     return screenAPI->hasPermission(permission, sender);
 }
 

@@ -14,7 +14,9 @@
 #include "connection.h"
 #include "dbusinterface.h"
 
-void GUIThread::run() {
+void
+GUIThread::run()
+{
     O_DEBUG("Thread started");
     clearFrameBuffer();
     QTimer::singleShot(0, this, [this] {
@@ -52,7 +54,9 @@ void GUIThread::run() {
     O_DEBUG("Thread stopped with exit code:" << res);
 }
 
-GUIThread* GUIThread::singleton() {
+GUIThread*
+GUIThread::singleton()
+{
     static GUIThread* instance = nullptr;
     if (instance == nullptr) {
         instance = new GUIThread(EPFramebuffer::instance()->auxBuffer.rect());
@@ -62,10 +66,11 @@ GUIThread* GUIThread::singleton() {
 }
 
 GUIThread::GUIThread(QRect screenGeometry)
-    : QThread(),
-      m_screenGeometry{screenGeometry},
-      m_screenOffset{screenGeometry.topLeft()},
-      m_screenRect{m_screenGeometry.translated(-m_screenOffset)} {
+  : QThread()
+  , m_screenGeometry{ screenGeometry }
+  , m_screenOffset{ screenGeometry.topLeft() }
+  , m_screenRect{ m_screenGeometry.translated(-m_screenOffset) }
+{
     // TODO: Create an fd using memfd_create
     // truncate it to the appropriate size, then
     // replace the buffers in libqgsepaper instead.
@@ -76,15 +81,18 @@ GUIThread::GUIThread(QRect screenGeometry)
     moveToThread(this);
 }
 
-GUIThread::~GUIThread() {
+GUIThread::~GUIThread()
+{
     RepaintRequest event;
-    while (m_repaintEvents.try_dequeue(event));
+    while (m_repaintEvents.try_dequeue(event))
+        ;
     requestInterruption();
     quit();
     wait();
 }
 
-void GUIThread::enqueue(
+void
+GUIThread::enqueue(
     std::shared_ptr<Surface> surface,
     QRect region,
     Blight::WaveformMode waveform,
@@ -92,7 +100,8 @@ void GUIThread::enqueue(
     unsigned int marker,
     bool global,
     std::function<void()> callback
-) {
+)
+{
     if (isInterruptionRequested() || dbusInterface->inExclusiveMode()) {
         if (callback != nullptr) {
             callback();
@@ -157,26 +166,28 @@ void GUIThread::enqueue(
         return;
     }
     m_repaintEvents.enqueue(
-        RepaintRequest{
-            .surface = surface,
-            .region = repaintRegion,
-            .waveform = waveform,
-            .mode = mode,
-            .marker = marker,
-            .global = global,
-            .callback = callback
-        }
+        RepaintRequest{ .surface = surface,
+                        .region = repaintRegion,
+                        .waveform = waveform,
+                        .mode = mode,
+                        .marker = marker,
+                        .global = global,
+                        .callback = callback }
     );
     notify();
 }
 
-void GUIThread::notify() {
+void
+GUIThread::notify()
+{
     if (!dbusInterface->inExclusiveMode()) {
         m_repaintWait.notify_one();
     }
 }
 
-void GUIThread::clearFrameBuffer() {
+void
+GUIThread::clearFrameBuffer()
+{
     auto instance = EPFramebuffer::instance();
     instance->auxBuffer.fill(Qt::white);
     instance->swapBuffers(
@@ -187,11 +198,19 @@ void GUIThread::clearFrameBuffer() {
     );
 }
 
-int GUIThread::framebuffer() { return m_frameBufferFd; }
+int
+GUIThread::framebuffer()
+{
+    return m_frameBufferFd;
+}
 
-void GUIThread::repaintSurface(
-    QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface
-) {
+void
+GUIThread::repaintSurface(
+    QPainter* painter,
+    QRect* rect,
+    std::shared_ptr<Surface> surface
+)
+{
     // This should already be handled, but just in case it leaks
     if (surface->isRemoved()) {
         return;
@@ -221,7 +240,9 @@ void GUIThread::repaintSurface(
     painter->drawImage(sourceRect, *image.get(), imageRect);
 }
 
-void GUIThread::redraw(RepaintRequest& event) {
+void
+GUIThread::redraw(RepaintRequest& event)
+{
     Q_ASSERT(QThread::currentThread() == (QThread*)this);
     if (dbusInterface->inExclusiveMode()) {
         O_DEBUG("In exclusive mode, skipping redraw");
@@ -281,12 +302,14 @@ void GUIThread::redraw(RepaintRequest& event) {
     );
 }
 
-void GUIThread::sendUpdate(
+void
+GUIThread::sendUpdate(
     const QRect& rect,
     Blight::WaveformMode waveform,
     Blight::UpdateMode mode,
     unsigned int marker
-) {
+)
+{
     O_DEBUG("Sending screen update" << rect << waveform << mode);
     EPFramebuffer::instance()->swapBuffers(
         rect,
@@ -298,7 +321,9 @@ void GUIThread::sendUpdate(
     );
 }
 
-QList<std::shared_ptr<Surface>> GUIThread::visibleSurfaces() {
+QList<std::shared_ptr<Surface>>
+GUIThread::visibleSurfaces()
+{
     auto visibleSurfaces = dbusInterface->visibleSurfaces();
     visibleSurfaces.erase(
         std::remove_if(

@@ -8,9 +8,10 @@
 #include <QThread>
 
 EvDevDevice::EvDevDevice(QThread* handler, const event_device& device)
-    : QObject(handler),
-      device(device),
-      sys("/sys/class/input/" + devName() + "/device/") {
+  : QObject(handler)
+  , device(device)
+  , sys("/sys/class/input/" + devName() + "/device/")
+{
     int flags = fcntl(this->device.fd, F_GETFL, 0);
     if (flags != -1) {
         flags |= O_NONBLOCK;
@@ -27,45 +28,76 @@ EvDevDevice::EvDevDevice(QThread* handler, const event_device& device)
     libevdev_new_from_fd(this->device.fd, &dev);
 }
 
-EvDevDevice::~EvDevDevice() {
+EvDevDevice::~EvDevDevice()
+{
     notifier->setEnabled(false);
     notifier->deleteLater();
     unlock();
     libevdev_free(dev);
 }
 
-QString EvDevDevice::devName() { return QFileInfo(path()).baseName(); }
+QString
+EvDevDevice::devName()
+{
+    return QFileInfo(path()).baseName();
+}
 
-QString EvDevDevice::name() { return _name; }
+QString
+EvDevDevice::name()
+{
+    return _name;
+}
 
-QString EvDevDevice::path() {
+QString
+EvDevDevice::path()
+{
     return QFileInfo(device.device.c_str()).canonicalFilePath();
 }
 
-QString EvDevDevice::id() {
+QString
+EvDevDevice::id()
+{
     return QString("%1:%2").arg(
         sys.strProperty("id/vendor").c_str(),
         sys.strProperty("id/product").c_str()
     );
 }
 
-unsigned int EvDevDevice::number() {
+unsigned int
+EvDevDevice::number()
+{
     return QStringView(devName()).mid(5).toInt();
 }
 
-bool EvDevDevice::exists() { return QFile::exists(path()); }
+bool
+EvDevDevice::exists()
+{
+    return QFile::exists(path());
+}
 
-void EvDevDevice::lock() { exists() && device.lock(); }
+void
+EvDevDevice::lock()
+{
+    exists() && device.lock();
+}
 
-void EvDevDevice::unlock() { exists() && device.locked&& device.unlock(); }
+void
+EvDevDevice::unlock()
+{
+    exists() && device.locked&& device.unlock();
+}
 
-void EvDevDevice::clear_buffer() {
+void
+EvDevDevice::clear_buffer()
+{
     auto flood = build_flood();
     ::write(device.fd, flood, 512 * 8 * 4 * sizeof(input_event));
     delete flood;
 }
 
-void EvDevDevice::readEvents() {
+void
+EvDevDevice::readEvents()
+{
     Oxide::dispatchToThread(thread(), [this] {
         notifier->setEnabled(false);
         int res;
@@ -100,7 +132,9 @@ void EvDevDevice::readEvents() {
     });
 }
 
-void EvDevDevice::emitSomeEvents() {
+void
+EvDevDevice::emitSomeEvents()
+{
     if (events.empty()) {
         return;
     }
@@ -116,7 +150,9 @@ void EvDevDevice::emitSomeEvents() {
     }
 }
 
-input_event EvDevDevice::createEvent(ushort type, ushort code, int value) {
+input_event
+EvDevDevice::createEvent(ushort type, ushort code, int value)
+{
     struct input_event event;
     event.type = type;
     event.code = code;
@@ -124,7 +160,9 @@ input_event EvDevDevice::createEvent(ushort type, ushort code, int value) {
     return event;
 }
 
-input_event* EvDevDevice::build_flood() {
+input_event*
+EvDevDevice::build_flood()
+{
     auto n = 512 * 8;
     auto num_inst = 4;
     input_event* ev =

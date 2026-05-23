@@ -12,9 +12,15 @@
 #include "controller.h"
 #include "mxcfb.h"
 
-bool AppItem::ok() { return getApp() != nullptr; }
+bool
+AppItem::ok()
+{
+    return getApp() != nullptr;
+}
 
-void AppItem::execute() {
+void
+AppItem::execute()
+{
     if (!getApp() || !app->isValid()) {
         O_WARNING("Application instance is not valid");
         return;
@@ -28,14 +34,18 @@ void AppItem::execute() {
     }
     qDebug() << "Waiting for application to exit...";
 }
-void AppItem::stop() {
+void
+AppItem::stop()
+{
     if (!getApp() || !app->isValid()) {
         O_WARNING("Application instance is not valid");
         return;
     }
     app->stop();
 }
-Application* AppItem::getApp() {
+Application*
+AppItem::getApp()
+{
     if (app != nullptr) {
         return app;
     }

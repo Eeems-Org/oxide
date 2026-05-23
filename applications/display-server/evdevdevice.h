@@ -9,10 +9,11 @@
 
 using namespace Oxide;
 
-class EvDevDevice : public QObject {
+class EvDevDevice : public QObject
+{
     Q_OBJECT
 
-   public:
+  public:
     EvDevDevice(QThread* handler, const event_device& device);
     ~EvDevDevice();
     QString devName();
@@ -25,13 +26,13 @@ class EvDevDevice : public QObject {
     void unlock();
     void clear_buffer();
 
-   signals:
+  signals:
     void inputEvents(const std::vector<input_event> events);
 
-   public slots:
+  public slots:
     void readEvents();
 
-   private:
+  private:
     event_device device;
     SysObject sys;
     QString _name;

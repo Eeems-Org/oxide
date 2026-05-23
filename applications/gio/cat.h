@@ -5,19 +5,22 @@
 
 #include "common.h"
 
-class CatCommand : ICommand {
+class CatCommand : ICommand
+{
     O_COMMAND(
         CatCommand,
         "cat",
         "Concatenates the given files and prints them to the standard output."
     )
-    int arguments() override {
+    int arguments() override
+    {
         parser->addPositionalArgument(
             "location", "Locations to concatenate", "LOCATION..."
         );
         return EXIT_SUCCESS;
     }
-    int command(const QStringList& args) override {
+    int command(const QStringList& args) override
+    {
         for (const auto& path : args) {
             auto url = urlFromPath(path);
             if (!url.isLocalFile()) {

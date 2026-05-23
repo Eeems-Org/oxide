@@ -13,9 +13,9 @@
 #include <QTimer>
 
 namespace Oxide {
-    QString execute(
-        const QString& program, const QStringList& args, bool readStderr
-    ) {
+    QString
+    execute(const QString& program, const QStringList& args, bool readStderr)
+    {
         QString output;
         QProcess p;
         p.setProgram(program);
@@ -31,7 +31,8 @@ namespace Oxide {
         return output;
     }
     // https://stackoverflow.com/a/1643134
-    int tryGetLock(char const* lockName) {
+    int tryGetLock(char const* lockName)
+    {
         mode_t m = umask(0);
         int fd = open(lockName, O_RDWR | O_CREAT, 0666);
         umask(m);
@@ -44,7 +45,8 @@ namespace Oxide {
         close(fd);
         return -1;
     }
-    void releaseLock(int fd, char const* lockName) {
+    void releaseLock(int fd, char const* lockName)
+    {
         if (fd < 0) {
             return;
         }
@@ -53,10 +55,12 @@ namespace Oxide {
         }
         close(fd);
     }
-    bool processExists(pid_t pid) {
+    bool processExists(pid_t pid)
+    {
         return QFile::exists(QString("/proc/%1").arg(pid));
     }
-    QList<pid_t> lsof(const QString& path) {
+    QList<pid_t> lsof(const QString& path)
+    {
         QList<pid_t> pids;
         QDir directory("/proc");
         if (!directory.exists() || directory.isEmpty()) {
@@ -99,7 +103,8 @@ namespace Oxide {
         }
         return pids;
     }
-    uid_t getUID(const QString& name) {
+    uid_t getUID(const QString& name)
+    {
         char buffer[1024];
         struct passwd user;
         struct passwd* result;
@@ -118,7 +123,8 @@ namespace Oxide {
         }
         return result->pw_uid;
     }
-    gid_t getGID(const QString& name) {
+    gid_t getGID(const QString& name)
+    {
         char buffer[1024];
         struct group grp;
         struct group* result;
@@ -137,4 +143,4 @@ namespace Oxide {
         }
         return result->gr_gid;
     }
-}  // namespace Oxide
+} // namespace Oxide

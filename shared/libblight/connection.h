@@ -22,7 +22,8 @@ namespace Blight {
     /*!
      * \brief Handle used for waiting for a response from the display server
      */
-    typedef struct ackid_t {
+    typedef struct ackid_t
+    {
         /*!
          * \brief Identifier
          */
@@ -62,8 +63,9 @@ namespace Blight {
     /*!
      * \brief Display server connection
      */
-    class LIBBLIGHT_EXPORT Connection {
-       public:
+    class LIBBLIGHT_EXPORT Connection
+    {
+      public:
         /*!
          * \brief Create a new connection instance
          * \param fd Connection socket descriptor
@@ -107,7 +109,10 @@ namespace Blight {
          * \return ack_ptr_t if the message was sent
          */
         maybe_ackid_ptr_t send(
-            MessageType type, data_t data, size_t size, unsigned int __ackid = 0
+            MessageType type,
+            data_t data,
+            size_t size,
+            unsigned int __ackid = 0
         );
         /*!
          * \brief Ping the server
@@ -161,7 +166,8 @@ namespace Blight {
             WaveformMode waveform = WaveformMode::HighQualityGrayscale,
             UpdateMode mode = UpdateMode::PartialUpdate,
             unsigned int marker = 0
-        ) {
+        )
+        {
             return repaint(
                 buf->surface, x, y, width, height, waveform, mode, marker
             );
@@ -178,7 +184,8 @@ namespace Blight {
             WaveformMode waveform = WaveformMode::HighQualityGrayscale,
             UpdateMode mode = UpdateMode::PartialUpdate,
             unsigned int marker = 0
-        ) {
+        )
+        {
             return repaint(
                 buf->surface,
                 buf->x,
@@ -215,7 +222,11 @@ namespace Blight {
          * \return New shared_buf_t if there was no error
          */
         std::optional<shared_buf_t> resize(
-            shared_buf_t buf, int width, int height, int stride, data_t new_data
+            shared_buf_t buf,
+            int width,
+            int height,
+            int stride,
+            data_t new_data
         );
         /*!
          * \brief Raise a surface
@@ -275,7 +286,7 @@ namespace Blight {
          */
         void focused();
 
-       private:
+      private:
         int m_fd;
         int m_inputFd;
         std::atomic<bool> stop_requested;
@@ -284,5 +295,5 @@ namespace Blight {
         std::mutex mutex;
         static void run(Connection* connection);
     };
-}  // namespace Blight
+} // namespace Blight
 /*! @} */

@@ -9,20 +9,27 @@
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
 
-enum State { Normal, PowerSaving };
-enum BatteryState {
+enum State
+{
+    Normal,
+    PowerSaving
+};
+enum BatteryState
+{
     BatteryUnknown,
     BatteryCharging,
     BatteryDischarging,
     BatteryNotPresent
 };
-enum ChargerState {
+enum ChargerState
+{
     ChargerUnknown,
     ChargerConnected,
     ChargerNotConnected,
     ChargerNotPresent
 };
-enum WifiState {
+enum WifiState
+{
     WifiUnknown,
     WifiOff,
     WifiDisconnected,
@@ -30,7 +37,8 @@ enum WifiState {
     WifiOnline
 };
 
-class Controller : public QObject {
+class Controller : public QObject
+{
     Q_OBJECT
     Q_PROPERTY(
         bool powerOffInhibited READ powerOffInhibited NOTIFY
@@ -55,8 +63,9 @@ class Controller : public QObject {
             crashReportChanged
     )
 
-   public:
-    Controller(QObject* parent) : QObject(parent), confirmPin() {
+  public:
+    Controller(QObject* parent) : QObject(parent), confirmPin()
+    {
         clockTimer = new QTimer(root);
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
@@ -219,29 +228,35 @@ class Controller : public QObject {
             &Controller::crashReportChanged
         );
     }
-    ~Controller() {
+    ~Controller()
+    {
         if (clockTimer->isActive()) {
             clockTimer->stop();
         }
     }
     bool firstLaunch() { return sharedSettings.firstLaunch(); }
-    void setFirstLaunch(bool firstLaunch) {
+    void setFirstLaunch(bool firstLaunch)
+    {
         sharedSettings.set_firstLaunch(firstLaunch);
     }
     bool telemetry() { return sharedSettings.telemetry(); }
-    void setTelemetry(bool telemetry) {
+    void setTelemetry(bool telemetry)
+    {
         sharedSettings.set_telemetry(telemetry);
     }
     bool applicationUsage() { return sharedSettings.applicationUsage(); }
-    void setApplicationUsage(bool applicationUsage) {
+    void setApplicationUsage(bool applicationUsage)
+    {
         sharedSettings.set_applicationUsage(applicationUsage);
     }
     bool crashReport() { return sharedSettings.crashReport(); }
-    void setCrashReport(bool crashReport) {
+    void setCrashReport(bool crashReport)
+    {
         sharedSettings.set_crashReport(crashReport);
     }
 
-    Q_INVOKABLE void startup() {
+    Q_INVOKABLE void startup()
+    {
         if (!getBatteryUI() || !getWifiUI() || !getClockUI() ||
             !getStateControllerUI()) {
             QTimer::singleShot(100, this, &Controller::startup);
@@ -261,7 +276,7 @@ class Controller : public QObject {
         QTime nextTime = currentTime.addSecs(60 - currentTime.second());
         clockTimer->setInterval(
             currentTime.msecsTo(nextTime)
-        );  // nearest minute
+        ); // nearest minute
         QObject::connect(
             clockTimer, &QTimer::timeout, this, &Controller::updateClock
         );
@@ -299,7 +314,8 @@ class Controller : public QObject {
             QTimer::singleShot(100, [this] { setState("loading"); });
         });
     }
-    void launchStartupApp() {
+    void launchStartupApp()
+    {
         QDBusObjectPath path = appsApi->startupApplication();
         if (path.path() == "/") {
             path = appsApi->getApplicationPath("codes.eeems.oxide");
@@ -314,27 +330,32 @@ class Controller : public QObject {
         app.launch();
     }
     bool hasPin() { return sharedSettings.has_pin() && storedPin().length(); }
-    void previousApplication() {
+    void previousApplication()
+    {
         if (!appsApi->previousApplication()) {
             launchStartupApp();
         }
     }
-    Q_INVOKABLE void suspend() {
+    Q_INVOKABLE void suspend()
+    {
         if (!sleepInhibited()) {
             systemApi->suspend().waitForFinished();
         }
     }
-    Q_INVOKABLE void powerOff() {
+    Q_INVOKABLE void powerOff()
+    {
         if (!powerOffInhibited()) {
             systemApi->powerOff().waitForFinished();
         }
     }
-    Q_INVOKABLE void reboot() {
+    Q_INVOKABLE void reboot()
+    {
         if (!powerOffInhibited()) {
             systemApi->reboot().waitForFinished();
         }
     }
-    Q_INVOKABLE bool submitPin(QString pin) {
+    Q_INVOKABLE bool submitPin(QString pin)
+    {
         if (pin.length() != 4) {
             return false;
         }
@@ -384,7 +405,8 @@ class Controller : public QObject {
         });
         return true;
     }
-    Q_INVOKABLE void importPin() {
+    Q_INVOKABLE void importPin()
+    {
         qDebug() << "Importing PIN from Xochitl";
         setStoredPin(xochitlPin());
         if (!storedPin().isEmpty()) {
@@ -392,14 +414,15 @@ class Controller : public QObject {
         }
         setState("loaded");
     }
-    Q_INVOKABLE void clearPin() {
+    Q_INVOKABLE void clearPin()
+    {
         qDebug() << "Clearing PIN";
         setStoredPin("");
         startup();
     }
-    Q_INVOKABLE void breadcrumb(
-        QString category, QString message, QString type = "default"
-    ) {
+    Q_INVOKABLE void
+    breadcrumb(QString category, QString message, QString type = "default")
+    {
 #ifdef SENTRY
         sentry_breadcrumb(
             category.toStdString().c_str(),
@@ -415,33 +438,37 @@ class Controller : public QObject {
 
     bool sleepInhibited() { return systemApi->sleepInhibited(); }
     bool powerOffInhibited() { return systemApi->powerOffInhibited(); }
-    QString state() {
+    QString state()
+    {
         if (!getStateControllerUI()) {
             return "loading";
         }
         return stateControllerUI->property("state").toString();
     }
-    void setState(QString state) {
+    void setState(QString state)
+    {
         if (!getStateControllerUI()) {
             throw "Unable to find state controller";
         }
         stateControllerUI->setProperty("state", state);
     }
-    QString storedPin() {
+    QString storedPin()
+    {
         if (!sharedSettings.has_pin()) {
             O_DEBUG("Does not have pin and storedPin was called");
             return "";
         }
         return sharedSettings.pin();
     }
-    void setStoredPin(QString pin) {
+    void setStoredPin(QString pin)
+    {
         sharedSettings.set_pin(pin);
         sharedSettings.sync();
     }
 
     void setRoot(QObject* root) { this->root = root; }
 
-   signals:
+  signals:
     void sleepInhibitedChanged(bool);
     void powerOffInhibitedChanged(bool);
     void firstLaunchChanged(bool);
@@ -449,8 +476,9 @@ class Controller : public QObject {
     void applicationUsageChanged(bool);
     void crashReportChanged(bool);
 
-   private slots:
-    void deviceSuspending() {
+  private slots:
+    void deviceSuspending()
+    {
         if (getPinEntryUI()) {
             pinEntryUI->setProperty("message", "");
             pinEntryUI->setProperty("pin", "");
@@ -462,18 +490,20 @@ class Controller : public QObject {
             setState("loading");
         }
     }
-    void updateClock() {
+    void updateClock()
+    {
         if (!getClockUI()) {
             return;
         }
         clockUI->setProperty("text", QTime::currentTime().toString("h:mm a"));
         if (clockTimer->interval() != 60 * 1000) {
-            clockTimer->setInterval(60 * 1000);  // 1 minute
+            clockTimer->setInterval(60 * 1000); // 1 minute
         }
     }
     void disconnected() { wifiStateChanged(wifiApi->state()); }
     void networkConnected() { wifiStateChanged(wifiApi->state()); }
-    void wifiStateChanged(int state) {
+    void wifiStateChanged(int state)
+    {
         if (!getWifiUI()) {
             return;
         }
@@ -499,7 +529,8 @@ class Controller : public QObject {
                 wifiUI->setProperty("state", "unkown");
         }
     }
-    void wifiRssiChanged(int rssi) {
+    void wifiRssiChanged(int rssi)
+    {
         if (!getWifiUI()) {
             return;
         }
@@ -509,13 +540,15 @@ class Controller : public QObject {
         wifiUI->setProperty("rssi", rssi);
     }
 
-    void batteryLevelChanged(int level) {
+    void batteryLevelChanged(int level)
+    {
         if (!getBatteryUI()) {
             return;
         }
         batteryUI->setProperty("level", level);
     }
-    void batteryStateChanged(int state) {
+    void batteryStateChanged(int state)
+    {
         if (!getBatteryUI()) {
             return;
         }
@@ -535,7 +568,8 @@ class Controller : public QObject {
                 batteryUI->setProperty("connected", false);
         }
     }
-    void chargerStateChanged(int state) {
+    void chargerStateChanged(int state)
+    {
         if (!getBatteryUI()) {
             return;
         }
@@ -555,26 +589,31 @@ class Controller : public QObject {
                 batteryUI->setProperty("connected", false);
         }
     }
-    void powerStateChanged(int state) {
+    void powerStateChanged(int state)
+    {
         Q_UNUSED(state);
         // TODO handle requested battery state
     }
-    void batteryAlert() {
+    void batteryAlert()
+    {
         if (!getBatteryUI()) {
             return;
         }
         batteryUI->setProperty("alert", true);
     }
-    void batteryWarning() {
+    void batteryWarning()
+    {
         if (!getBatteryUI()) {
             return;
         }
         batteryUI->setProperty("warning", true);
     }
-    void chargerWarning() {
+    void chargerWarning()
+    {
         // TODO handle charger
     }
-    void onLogin() {
+    void onLogin()
+    {
         if (!sharedSettings.has_onLogin()) {
             return;
         }
@@ -589,7 +628,8 @@ class Controller : public QObject {
         }
         QProcess::execute(path, QStringList());
     }
-    void onFailedLogin() {
+    void onFailedLogin()
+    {
         if (!sharedSettings.has_onFailedLogin()) {
             return;
         }
@@ -605,7 +645,7 @@ class Controller : public QObject {
         QProcess::execute(path, QStringList());
     }
 
-   private:
+  private:
     QString confirmPin;
     General* api;
     System* systemApi;
@@ -621,32 +661,38 @@ class Controller : public QObject {
     QObject* pinEntryUI = nullptr;
 
     int tarnishPid() { return api->tarnishPid(); }
-    QObject* getBatteryUI() {
+    QObject* getBatteryUI()
+    {
         batteryUI = root->findChild<QObject*>("batteryLevel");
         return batteryUI;
     }
-    QObject* getWifiUI() {
+    QObject* getWifiUI()
+    {
         wifiUI = root->findChild<QObject*>("wifiState");
         return wifiUI;
     }
-    QObject* getClockUI() {
+    QObject* getClockUI()
+    {
         clockUI = root->findChild<QObject*>("clock");
         return clockUI;
     }
-    QObject* getStateControllerUI() {
+    QObject* getStateControllerUI()
+    {
         stateControllerUI = root->findChild<QObject*>("stateController");
         return stateControllerUI;
     }
-    QObject* getPinEntryUI() {
+    QObject* getPinEntryUI()
+    {
         pinEntryUI = root->findChild<QObject*>("pinEntry");
         return pinEntryUI;
     }
 
     static QString xochitlPin() { return xochitlSettings.passcode(); }
-    static void removeXochitlPin() {
+    static void removeXochitlPin()
+    {
         xochitlSettings.remove("Passcode");
         xochitlSettings.sync();
     }
 };
 
-#endif  // CONTROLLER_H
+#endif // CONTROLLER_H

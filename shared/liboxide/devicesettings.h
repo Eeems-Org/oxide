@@ -18,12 +18,14 @@ namespace Oxide {
     /*!
      * \brief Device specific values
      */
-    class LIBOXIDE_EXPORT DeviceSettings {
-       public:
+    class LIBOXIDE_EXPORT DeviceSettings
+    {
+      public:
         /*!
          * \brief Known device types
          */
-        enum DeviceType {
+        enum DeviceType
+        {
             Unknown, /*!< Unknown device type >*/
             RM1,     /*!< reMarkable 1 >*/
             RM2,     /*!< reMarkable 2 >*/
@@ -163,7 +165,7 @@ namespace Oxide {
          */
         const QString& version();
 
-       private:
+      private:
         DeviceType _deviceType;
 
         DeviceSettings();
@@ -175,5 +177,5 @@ namespace Oxide {
         std::string touchPath = "";
         std::vector<std::function<void()>> callbacks;
     };
-}  // namespace Oxide
+} // namespace Oxide
 /*! @} */

@@ -18,13 +18,14 @@ Notification::Notification(
     const QString& icon,
     QObject* parent
 )
-    : QObject(parent),
-      m_path(path),
-      m_identifier(identifier),
-      m_owner(owner),
-      m_application(application),
-      m_text(text),
-      m_icon(icon) {
+  : QObject(parent)
+  , m_path(path)
+  , m_identifier(identifier)
+  , m_owner(owner)
+  , m_application(application)
+  , m_text(text)
+  , m_icon(icon)
+{
     m_created = QDateTime::currentSecsSinceEpoch();
     if (icon.isEmpty()) {
         auto app = appsAPI->getApplication(m_application);
@@ -34,13 +35,26 @@ Notification::Notification(
     }
 }
 
-Notification::~Notification() { unregisterPath(); }
+Notification::~Notification()
+{
+    unregisterPath();
+}
 
-QString Notification::path() { return m_path; }
+QString
+Notification::path()
+{
+    return m_path;
+}
 
-QDBusObjectPath Notification::qPath() { return QDBusObjectPath(path()); }
+QDBusObjectPath
+Notification::qPath()
+{
+    return QDBusObjectPath(path());
+}
 
-void Notification::registerPath() {
+void
+Notification::registerPath()
+{
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if (bus.registerObject(path(), this, QDBusConnection::ExportAllContents)) {
@@ -50,7 +64,9 @@ void Notification::registerPath() {
     }
 }
 
-void Notification::unregisterPath() {
+void
+Notification::unregisterPath()
+{
     auto bus = QDBusConnection::systemBus();
     if (bus.objectRegisteredAt(path()) != nullptr) {
         O_INFO("Unregistered" << path());
@@ -58,23 +74,33 @@ void Notification::unregisterPath() {
     }
 }
 
-QString Notification::identifier() {
+QString
+Notification::identifier()
+{
     if (!hasPermission("notification")) {
         return "";
     }
     return m_identifier;
 }
 
-int Notification::created() { return m_created; }
+int
+Notification::created()
+{
+    return m_created;
+}
 
-QString Notification::application() {
+QString
+Notification::application()
+{
     if (!hasPermission("notification")) {
         return "";
     }
     return m_application;
 }
 
-void Notification::setApplication(QString application) {
+void
+Notification::setApplication(QString application)
+{
     if (!hasPermission("notification")) {
         return;
     }
@@ -84,14 +110,18 @@ void Notification::setApplication(QString application) {
     emit changed(result);
 }
 
-QString Notification::text() {
+QString
+Notification::text()
+{
     if (!hasPermission("notification")) {
         return "";
     }
     return m_text;
 }
 
-void Notification::setText(QString text) {
+void
+Notification::setText(QString text)
+{
     if (!hasPermission("notification")) {
         return;
     }
@@ -101,14 +131,18 @@ void Notification::setText(QString text) {
     emit changed(result);
 }
 
-QString Notification::icon() {
+QString
+Notification::icon()
+{
     if (!hasPermission("notification")) {
         return "";
     }
     return m_icon;
 }
 
-void Notification::display() {
+void
+Notification::display()
+{
     if (!hasPermission("notification")) {
         return;
     }
@@ -122,7 +156,9 @@ void Notification::display() {
     paintNotification();
 }
 
-void Notification::remove() {
+void
+Notification::remove()
+{
     if (!hasPermission("notification")) {
         return;
     }
@@ -130,14 +166,18 @@ void Notification::remove() {
     emit removed();
 }
 
-void Notification::click() {
+void
+Notification::click()
+{
     if (!hasPermission("notification")) {
         return;
     }
     emit clicked();
 }
 
-void Notification::setIcon(QString icon) {
+void
+Notification::setIcon(QString icon)
+{
     if (!hasPermission("notification")) {
         return;
     }
@@ -153,14 +193,18 @@ void Notification::setIcon(QString icon) {
     emit changed(result);
 }
 
-QString Notification::owner() {
+QString
+Notification::owner()
+{
     if (!hasPermission("notification")) {
         return "";
     }
     return m_owner;
 }
 
-void Notification::setOwner(QString owner) {
+void
+Notification::setOwner(QString owner)
+{
     if (!hasPermission("notifications")) {
         return;
     }
@@ -170,11 +214,15 @@ void Notification::setOwner(QString owner) {
     emit changed(result);
 }
 
-bool Notification::hasPermission(QString permission, const char* sender) {
+bool
+Notification::hasPermission(QString permission, const char* sender)
+{
     return notificationAPI->hasPermission(permission, sender);
 }
 
-void Notification::paintNotification() {
+void
+Notification::paintNotification()
+{
     O_INFO("Painting notification" << identifier());
     auto notification = notificationAPI->paintNotification(m_text, m_icon);
     O_INFO("Painted notification" << identifier());

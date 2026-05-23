@@ -14,26 +14,23 @@ const QList<QString> SystemFlags{
     "system",
     "transient",
 };
-const QList<QString> Flags{
-    "autoStart",
-    "hidden",
-    "noannounce",
-    "nosavescreen",
-    "system",
-    "nopreload",
-    "nopreload.sysfs",
-    "nopreload.compositor",
-    "exclusive"
-};
-const QList<QString> DeprecatedFlags{"chroot", "nosplash"};
+const QList<QString> Flags{ "autoStart",       "hidden",
+                            "noannounce",      "nosavescreen",
+                            "system",          "nopreload",
+                            "nopreload.sysfs", "nopreload.compositor",
+                            "exclusive" };
+const QList<QString> DeprecatedFlags{ "chroot", "nosplash" };
 
 namespace Oxide::Applications {
     QList<ValidationError> _validateRegistration(
-        const QString& name, const QJsonObject& app, bool exitEarly
-    ) {
+        const QString& name,
+        const QJsonObject& app,
+        bool exitEarly
+    )
+    {
         QList<ValidationError> errors;
-#define addError(_level, _msg) \
-    errors.append(ValidationError{.level = _level, .msg = _msg});
+#define addError(_level, _msg)                                                 \
+    errors.append(ValidationError{ .level = _level, .msg = _msg });
         auto contains = [app, &errors](const QString& name) -> bool {
             if (app.contains(name)) {
                 return true;
@@ -167,22 +164,22 @@ namespace Oxide::Applications {
             );
             return false;
         };
-#define isError(level) \
+#define isError(level)                                                         \
     (level == ErrorLevel::Error || level == ErrorLevel::Critical)
 #undef addError
-#define addError(_level, _msg)                                    \
-    errors.append(ValidationError{.level = _level, .msg = _msg}); \
-    if (exitEarly && isError(_level)) {                           \
-        return errors;                                            \
+#define addError(_level, _msg)                                                 \
+    errors.append(ValidationError{ .level = _level, .msg = _msg });            \
+    if (exitEarly && isError(_level)) {                                        \
+        return errors;                                                         \
     }
-#define shouldExit                                                            \
-    if (exitEarly &&                                                          \
-        std::any_of(                                                          \
-            errors.constBegin(),                                              \
-            errors.constEnd(),                                                \
-            [](const ValidationError& error) { return isError(error.level); } \
-        )) {                                                                  \
-        return errors;                                                        \
+#define shouldExit                                                             \
+    if (exitEarly &&                                                           \
+        std::any_of(                                                           \
+            errors.constBegin(),                                               \
+            errors.constEnd(),                                                 \
+            [](const ValidationError& error) { return isError(error.level); }  \
+        )) {                                                                   \
+        return errors;                                                         \
     }
         QString type =
             app.contains("type") ? app["type"].toString().toLower() : "";
@@ -292,15 +289,15 @@ namespace Oxide::Applications {
                 );
             }
         } else
-            shouldExit if (app.contains("directories")) {
+            shouldExit if (app.contains("directories"))
+            {
                 addError(
                     ErrorLevel::Deprecation,
                     QString("Key \"directories\" is no longer used")
                 );
             }
-        else shouldExit if (
-            isArray("directories", ErrorLevel::Critical, false)
-        ) {
+        else shouldExit if (isArray("directories", ErrorLevel::Critical, false))
+        {
             auto directories = app["directories"].toArray();
             for (int i = 0; i < directories.count(); i++) {
                 QJsonValue entry = directories[i];
@@ -336,7 +333,8 @@ namespace Oxide::Applications {
                 }
             }
         }
-        else shouldExit else if (flags.contains("chroot")) {
+        else shouldExit else if (flags.contains("chroot"))
+        {
             addError(
                 ErrorLevel::Hint,
                 "Key \"flags\" contains \"chroot\" while \"directories\" is "
@@ -366,7 +364,8 @@ namespace Oxide::Applications {
             shouldExit isFile("workingDirectory", ErrorLevel::Error, false);
         shouldExit isString("displayName", false);
         shouldExit isString("description", false);
-        shouldExit if (isString("user", false)) {
+        shouldExit if (isString("user", false))
+        {
             auto user = app["user"].toString();
             try {
                 Oxide::getUID(user);
@@ -381,7 +380,8 @@ namespace Oxide::Applications {
                 );
             }
         }
-        else shouldExit if (isString("group", false)) {
+        else shouldExit if (isString("group", false))
+        {
             auto group = app["group"].toString();
             try {
                 Oxide::getGID(group);
@@ -402,7 +402,8 @@ namespace Oxide::Applications {
                 ErrorLevel::Deprecation, "Key \"splash\" is no longer used"
             );
         } else
-            shouldExit if (registrationToMap(app, name).isEmpty()) {
+            shouldExit if (registrationToMap(app, name).isEmpty())
+            {
                 addError(
                     ErrorLevel::Critical,
                     "Unable to convert registration to QVariantMap"
@@ -413,7 +414,8 @@ namespace Oxide::Applications {
 #undef addError
 #undef shouldExit
     }
-    QTextStream& operator<<(QTextStream& s, const ErrorLevel& l) {
+    QTextStream& operator<<(QTextStream& s, const ErrorLevel& l)
+    {
         switch (l) {
             case ErrorLevel::Hint:
                 s << "hint";
@@ -435,11 +437,13 @@ namespace Oxide::Applications {
         }
         return s;
     }
-    QTextStream& operator<<(QTextStream& s, const ValidationError& e) {
+    QTextStream& operator<<(QTextStream& s, const ValidationError& e)
+    {
         s << e.level << ": " << e.msg;
         return s;
     }
-    QDebug& operator<<(QDebug& s, const ErrorLevel& l) {
+    QDebug& operator<<(QDebug& s, const ErrorLevel& l)
+    {
         switch (l) {
             case ErrorLevel::Hint:
                 s << "hint";
@@ -461,14 +465,17 @@ namespace Oxide::Applications {
         }
         return s;
     }
-    QDebug& operator<<(QDebug& s, const ValidationError& e) {
+    QDebug& operator<<(QDebug& s, const ValidationError& e)
+    {
         s << e.level << ": " << e.msg;
         return s;
     }
-    bool operator==(const ValidationError& v1, const ValidationError& v2) {
+    bool operator==(const ValidationError& v1, const ValidationError& v2)
+    {
         return v1.level == v2.level && v1.msg == v2.msg;
     }
-    QVariantMap registrationToMap(const QJsonObject& app, const QString& name) {
+    QVariantMap registrationToMap(const QJsonObject& app, const QString& name)
+    {
         auto _name = name;
         if (name.isEmpty()) {
             if (!app.contains("name") || !app["name"].isString() ||
@@ -499,10 +506,10 @@ namespace Oxide::Applications {
             }
         }
         QVariantMap properties{
-            {"name", _name},
-            {"bin", app["bin"].toString()},
-            {"type", type},
-            {"flags", flags},
+            { "name", _name },
+            { "bin", app["bin"].toString() },
+            { "type", type },
+            { "flags", flags },
         };
         if (app.contains("displayName")) {
             properties.insert("displayName", app["displayName"].toString());
@@ -560,13 +567,16 @@ namespace Oxide::Applications {
         }
         return properties;
     }
-    QJsonObject getRegistration(const char* path) {
+    QJsonObject getRegistration(const char* path)
+    {
         return getRegistration(QString(path));
     }
-    QJsonObject getRegistration(const std::string& path) {
+    QJsonObject getRegistration(const std::string& path)
+    {
         return getRegistration(QString(path.c_str()));
     }
-    QJsonObject getRegistration(const QString& path) {
+    QJsonObject getRegistration(const QString& path)
+    {
         QFile file(path);
         auto res = getRegistration(&file);
         if (file.isOpen()) {
@@ -574,7 +584,8 @@ namespace Oxide::Applications {
         }
         return res;
     }
-    QJsonObject getRegistration(QFile* file) {
+    QJsonObject getRegistration(QFile* file)
+    {
         if (!file->isOpen() && !file->open(QFile::ReadOnly)) {
             return QJsonObject();
         }
@@ -582,13 +593,16 @@ namespace Oxide::Applications {
         auto app = QJsonDocument::fromJson(data).object();
         return app;
     }
-    QList<ValidationError> validateRegistration(const char* path) {
+    QList<ValidationError> validateRegistration(const char* path)
+    {
         return validateRegistration(QString(path));
     }
-    QList<ValidationError> validateRegistration(const std::string& path) {
+    QList<ValidationError> validateRegistration(const std::string& path)
+    {
         return validateRegistration(QString(path.c_str()));
     }
-    QList<ValidationError> validateRegistration(const QString& path) {
+    QList<ValidationError> validateRegistration(const QString& path)
+    {
         QFile file(path);
         auto res = validateRegistration(&file);
         if (file.isOpen()) {
@@ -596,13 +610,13 @@ namespace Oxide::Applications {
         }
         return res;
     }
-    QList<ValidationError> validateRegistration(QFile* file) {
+    QList<ValidationError> validateRegistration(QFile* file)
+    {
         if (!file->isOpen() && !file->open(QFile::ReadOnly)) {
             QList<ValidationError> errors;
             errors.append(
-                ValidationError{
-                    .level = ErrorLevel::Critical, .msg = "Could not open file"
-                }
+                ValidationError{ .level = ErrorLevel::Critical,
+                                 .msg = "Could not open file" }
             );
             return errors;
         }
@@ -615,25 +629,26 @@ namespace Oxide::Applications {
         }
         QList<ValidationError> errors;
         errors.append(
-            ValidationError{
-                .level = ErrorLevel::Critical,
-                .msg = "File is not valid JSON or is empty"
-            }
+            ValidationError{ .level = ErrorLevel::Critical,
+                             .msg = "File is not valid JSON or is empty" }
         );
         return errors;
     }
-    QList<ValidationError> validateRegistration(
-        const QString& name, const QJsonObject& app
-    ) {
+    QList<ValidationError>
+    validateRegistration(const QString& name, const QJsonObject& app)
+    {
         return _validateRegistration(name, app, false);
     }
-    bool addToTarnishCache(const char* path) {
+    bool addToTarnishCache(const char* path)
+    {
         return addToTarnishCache(QString(path));
     }
-    bool addToTarnishCache(const std::string& path) {
+    bool addToTarnishCache(const std::string& path)
+    {
         return addToTarnishCache(QString(path.c_str()));
     }
-    bool addToTarnishCache(const QString& path) {
+    bool addToTarnishCache(const QString& path)
+    {
         QFile file(path);
         auto res = addToTarnishCache(&file);
         if (file.isOpen()) {
@@ -641,12 +656,14 @@ namespace Oxide::Applications {
         }
         return res;
     }
-    bool addToTarnishCache(QFile* file) {
+    bool addToTarnishCache(QFile* file)
+    {
         auto app = getRegistration(file);
         auto name = QFileInfo(file->fileName()).completeBaseName();
         return addToTarnishCache(name, app);
     }
-    bool addToTarnishCache(const QString& name, const QJsonObject& app) {
+    bool addToTarnishCache(const QString& name, const QJsonObject& app)
+    {
         if (app.isEmpty()) {
             return false;
         }
@@ -667,9 +684,8 @@ namespace Oxide::Applications {
         path = apps.registerApplication(properties);
         return path.path() != "/";
     }
-    QString iconDirPath(
-        int size, const QString& theme, const QString& context
-    ) {
+    QString iconDirPath(int size, const QString& theme, const QString& context)
+    {
         return QString(OXIDE_ICONS_DIRECTORY "/%1/%2x%2/%3")
             .arg(theme, QString::number(size), context);
     }
@@ -678,11 +694,13 @@ namespace Oxide::Applications {
         int size,
         const QString& theme,
         const QString& context
-    ) {
+    )
+    {
         return QString(OXIDE_ICONS_DIRECTORY "/%1/%2x%2/%3/%4.png")
             .arg(theme, QString::number(size), context, name);
     }
-    QString iconPath(const QString& spec) {
+    QString iconPath(const QString& spec)
+    {
         if (spec.isEmpty() || !spec.contains("-")) {
             return "";
         }
@@ -706,4 +724,4 @@ namespace Oxide::Applications {
         }
         return iconPath(parts.last(), size, parts.first(), parts.at(1));
     }
-}  // namespace Oxide::Applications
+} // namespace Oxide::Applications

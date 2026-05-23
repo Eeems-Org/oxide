@@ -21,7 +21,9 @@ const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/blight.pid";
 const char* lockPath = "/run/oxide/blight.lock";
 
-bool stopProcess(pid_t pid) {
+bool
+stopProcess(pid_t pid)
+{
     if (pid <= 1) {
         return false;
     }
@@ -41,7 +43,9 @@ bool stopProcess(pid_t pid) {
     return true;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
 #ifdef __arm__
     if (deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM2) {
         // TODO - also detect if rm2fb-server is running and start it if it
@@ -79,7 +83,7 @@ int main(int argc, char* argv[]) {
     parser.applicationDescription();
     parser.addVersionOption();
     QCommandLineOption breakLockOption(
-        {"f", "break-lock"},
+        { "f", "break-lock" },
         "Break existing locks and force startup if another version of blight "
         "is already running"
     );
@@ -97,9 +101,8 @@ int main(int argc, char* argv[]) {
     )
                       .trimmed();
     if (pid != "0" &&
-        pid !=
-            "QML debugging is enabled. Only use this in a safe "
-            "environment.\n0" &&
+        pid != "QML debugging is enabled. Only use this in a safe "
+               "environment.\n0" &&
         pid != actualPid) {
         if (!parser.isSet(breakLockOption)) {
             qDebug() << "blight.service is already running" << pid;

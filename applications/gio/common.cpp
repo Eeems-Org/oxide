@@ -3,7 +3,9 @@
 #include <QDir>
 #include <QUrl>
 
-QTextStream& qStdOut() {
+QTextStream&
+qStdOut()
+{
     static QTextStream ts(stdout);
     return ts;
 }
@@ -11,16 +13,20 @@ QTextStream& qStdOut() {
 QMap<QString, Command>* ICommand::commands = new QMap<QString, Command>;
 QCommandLineParser* ICommand::parser = nullptr;
 
-QCommandLineOption ICommand::versionOption() {
+QCommandLineOption
+ICommand::versionOption()
+{
     static QCommandLineOption value(
-        {"v", "version"}, "Displays version information."
+        { "v", "version" }, "Displays version information."
     );
     return value;
 }
 
 #define FULL_SIZE 66
 
-QString ICommand::commandsHelp() {
+QString
+ICommand::commandsHelp()
+{
     QString value;
     const QList<QString>& keys = commands->keys();
     int leftSize = (*std::max_element(
@@ -74,7 +80,9 @@ QString ICommand::commandsHelp() {
     }
     return value;
 }
-int ICommand::exec(QCommandLineParser& _parser) {
+int
+ICommand::exec(QCommandLineParser& _parser)
+{
     parser = &_parser;
     QStringList args = _parser.positionalArguments();
     if (args.isEmpty()) {
@@ -107,7 +115,9 @@ int ICommand::exec(QCommandLineParser& _parser) {
 }
 
 ICommand::ICommand(bool allowEmpty) : allowEmpty(allowEmpty) {}
-QUrl ICommand::urlFromPath(const QString& path) {
+QUrl
+ICommand::urlFromPath(const QString& path)
+{
     auto url =
         QUrl::fromUserInput(path, QDir::currentPath(), QUrl::AssumeLocalFile);
     if (url.scheme().isEmpty()) {

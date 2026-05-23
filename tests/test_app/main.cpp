@@ -23,7 +23,9 @@ using namespace Oxide::Sentry;
 
 #define DEBUG_EVENTS
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     qputenv("QMLSCENE_DEVICE", "software");
     qputenv("QT_QUICK_BACKEND", "software");
     qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");

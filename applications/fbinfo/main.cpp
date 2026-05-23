@@ -10,7 +10,9 @@
 
 #include "../../shared/liboxide/meta.h"
 
-QDebug operator<<(QDebug debug, const fb_bitfield& bitfield) {
+QDebug
+operator<<(QDebug debug, const fb_bitfield& bitfield)
+{
     QDebugStateSaver saver(debug);
     Q_UNUSED(saver);
     return debug.nospace() << "offset=" << bitfield.offset
@@ -18,7 +20,9 @@ QDebug operator<<(QDebug debug, const fb_bitfield& bitfield) {
                            << " msb_right=" << bitfield.msb_right;
 }
 
-QDebug operator<<(QDebug debug, const fb_var_screeninfo& vinfo) {
+QDebug
+operator<<(QDebug debug, const fb_var_screeninfo& vinfo)
+{
     QDebugStateSaver saver(debug);
     Q_UNUSED(saver);
     return debug.nospace() << "xres: " << vinfo.xres << Qt::endl
@@ -56,11 +60,15 @@ QDebug operator<<(QDebug debug, const fb_var_screeninfo& vinfo) {
                            << "reserved 3: " << vinfo.reserved[3] << Qt::endl;
 }
 
-QString to_hex(unsigned long x) {
+QString
+to_hex(unsigned long x)
+{
     return "0x" + QString::number(x, 16).toUpper();
 }
 
-QDebug operator<<(QDebug debug, const fb_fix_screeninfo& finfo) {
+QDebug
+operator<<(QDebug debug, const fb_fix_screeninfo& finfo)
+{
     QDebugStateSaver saver(debug);
     Q_UNUSED(saver);
     return debug.nospace().noquote()
@@ -82,7 +90,9 @@ QDebug operator<<(QDebug debug, const fb_fix_screeninfo& finfo) {
         << "reserved 1: " << finfo.reserved[1] << Qt::endl;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);

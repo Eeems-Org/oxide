@@ -11,7 +11,8 @@
 // Must be included so that generate_xml.sh will work
 #include "../../shared/liboxide/meta.h"
 
-class BSS : public QObject {
+class BSS : public QObject
+{
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_BSS_INTERFACE)
@@ -23,10 +24,12 @@ class BSS : public QObject {
     Q_PROPERTY(QDBusObjectPath network READ network)
     Q_PROPERTY(QStringList key_mgmt READ key_mgmt)
 
-   public:
+  public:
     BSS(QString path, QString bssid, QString ssid, QObject* parent);
     BSS(QString path, IBSS* bss, QObject* parent)
-        : BSS(path, bss->bSSID(), bss->sSID(), parent) {}
+      : BSS(path, bss->bSSID(), bss->sSID(), parent)
+    {
+    }
 
     ~BSS();
     QString path();
@@ -46,22 +49,23 @@ class BSS : public QObject {
     QStringList key_mgmt();
     Q_INVOKABLE QDBusObjectPath connect();
 
-   signals:
+  signals:
     void removed();
     void propertiesChanged(QVariantMap);
 
-   private slots:
+  private slots:
     void PropertiesChanged(const QVariantMap& properties);
 
-   private:
+  private:
     QString m_path;
     QList<IBSS*> bsss;
     QString m_bssid;
     QString m_ssid;
 
     bool hasPermission(
-        QString permission, const char* sender = __builtin_FUNCTION()
+        QString permission,
+        const char* sender = __builtin_FUNCTION()
     );
 };
 
-#endif  // BSS_H
+#endif // BSS_H

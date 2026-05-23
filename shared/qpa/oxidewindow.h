@@ -9,8 +9,9 @@
 
 class OxideScreen;
 
-class OxideWindow : public QPlatformWindow {
-   public:
+class OxideWindow : public QPlatformWindow
+{
+  public:
     OxideWindow(QWindow* window);
     ~OxideWindow();
 
@@ -23,6 +24,6 @@ class OxideWindow : public QPlatformWindow {
     void lower() override;
     bool close() override;
 
-   protected:
+  protected:
     OxideBackingStore* mBackingStore;
 };

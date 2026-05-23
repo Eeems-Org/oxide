@@ -51,5 +51,5 @@ namespace Oxide::JSON {
      * \return The converted QVaraint
      */
     LIBOXIDE_EXPORT QVariant fromJson(QFile* file);
-}  // namespace Oxide::JSON
+} // namespace Oxide::JSON
 /*! @} */

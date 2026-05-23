@@ -39,40 +39,47 @@
 #define FB_ACCEL_TRIPLE_FLAG 0x00000000
 #define FB_ACCEL_DOUBLE_FLAG 0x00000001
 
-struct mxcfb_gbl_alpha {
+struct mxcfb_gbl_alpha
+{
     int enable;
     int alpha;
 };
 
-struct mxcfb_loc_alpha {
+struct mxcfb_loc_alpha
+{
     int enable;
     int alpha_in_pixel;
     unsigned long alpha_phy_addr0;
     unsigned long alpha_phy_addr1;
 };
 
-struct mxcfb_color_key {
+struct mxcfb_color_key
+{
     int enable;
     __u32 color_key;
 };
 
-struct mxcfb_pos {
+struct mxcfb_pos
+{
     __u16 x;
     __u16 y;
 };
 
-struct mxcfb_gamma {
+struct mxcfb_gamma
+{
     int enable;
     int constk[16];
     int slopek[16];
 };
 
-struct mxcfb_gpu_split_fmt {
+struct mxcfb_gpu_split_fmt
+{
     struct fb_var_screeninfo var;
     unsigned long offset;
 };
 
-struct mxcfb_rect {
+struct mxcfb_rect
+{
     __u32 top;
     __u32 left;
     __u32 width;
@@ -110,7 +117,8 @@ struct mxcfb_rect {
 #define EPDC_FLAG_USE_DITHERING_Y4 0x4000
 #define EPDC_FLAG_USE_REGAL 0x8000
 
-enum mxcfb_dithering_mode {
+enum mxcfb_dithering_mode
+{
     EPDC_FLAG_USE_DITHERING_PASSTHROUGH = 0x0,
     EPDC_FLAG_USE_DITHERING_FLOYD_STEINBERG,
     EPDC_FLAG_USE_DITHERING_ATKINSON,
@@ -122,14 +130,16 @@ enum mxcfb_dithering_mode {
 #define FB_POWERDOWN_DISABLE -1
 #define FB_TEMP_AUTO_UPDATE_DISABLE -1
 
-struct mxcfb_alt_buffer_data {
+struct mxcfb_alt_buffer_data
+{
     __u32 phys_addr;
     __u32 width;                         /* width of entire buffer */
     __u32 height;                        /* height of entire buffer */
     struct mxcfb_rect alt_update_region; /* region within buffer to update */
 };
 
-struct mxcfb_update_data {
+struct mxcfb_update_data
+{
     struct mxcfb_rect update_region;
     __u32 waveform_mode;
     __u32 update_mode;
@@ -141,7 +151,8 @@ struct mxcfb_update_data {
     struct mxcfb_alt_buffer_data alt_buffer_data;
 };
 
-struct mxcfb_update_marker_data {
+struct mxcfb_update_marker_data
+{
     __u32 update_marker;
     __u32 collision_test;
 };
@@ -150,7 +161,8 @@ struct mxcfb_update_marker_data {
  * Structure used to define waveform modes for driver
  * Needed for driver to perform auto-waveform selection
  */
-struct mxcfb_waveform_modes {
+struct mxcfb_waveform_modes
+{
     int mode_init;
     int mode_du;
     int mode_gc4;
@@ -163,7 +175,8 @@ struct mxcfb_waveform_modes {
  * Structure used to define a 5*3 matrix of parameters for
  * setting IPU DP CSC module related to this framebuffer.
  */
-struct mxcfb_csc_matrix {
+struct mxcfb_csc_matrix
+{
     int param[5][3];
 };
 
@@ -189,7 +202,7 @@ struct mxcfb_csc_matrix {
 #define MXCFB_SET_TEMPERATURE _IOW('F', 0x2C, int32_t)
 #define MXCFB_SET_AUTO_UPDATE_MODE _IOW('F', 0x2D, __u32)
 #define MXCFB_SEND_UPDATE _IOW('F', 0x2E, struct mxcfb_update_data)
-#define MXCFB_WAIT_FOR_UPDATE_COMPLETE \
+#define MXCFB_WAIT_FOR_UPDATE_COMPLETE                                         \
     _IOWR('F', 0x2F, struct mxcfb_update_marker_data)
 #define MXCFB_SET_PWRDOWN_DELAY _IOW('F', 0x30, int32_t)
 #define MXCFB_GET_PWRDOWN_DELAY _IOR('F', 0x31, int32_t)

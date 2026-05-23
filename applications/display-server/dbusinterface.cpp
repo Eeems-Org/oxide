@@ -22,7 +22,8 @@
 #endif
 
 DbusInterface::DbusInterface(QObject* parent)
-    : QObject(parent), m_focused(nullptr), m_exlusiveMode{false} {
+  : QObject(parent), m_focused(nullptr), m_exlusiveMode{ false }
+{
 #ifdef EPAPER
     guiThread;
 #else
@@ -74,7 +75,9 @@ DbusInterface::DbusInterface(QObject* parent)
     O_DEBUG("Connected service to bus");
 }
 
-DbusInterface* DbusInterface::singleton() {
+DbusInterface*
+DbusInterface::singleton()
+{
     static DbusInterface* instance = nullptr;
     if (instance == nullptr) {
         instance = Oxide::dispatchToMainThread<DbusInterface*>([] {
@@ -85,12 +88,20 @@ DbusInterface* DbusInterface::singleton() {
     return instance;
 }
 
-int DbusInterface::pid() { return qApp->applicationPid(); }
+int
+DbusInterface::pid()
+{
+    return qApp->applicationPid();
+}
 
 #ifndef EPAPER
-QObject* DbusInterface::loadComponent(
-    QString url, QString identifier, QVariantMap properties
-) {
+QObject*
+DbusInterface::loadComponent(
+    QString url,
+    QString identifier,
+    QVariantMap properties
+)
+{
     auto object = engine.findChild<QObject*>(identifier);
     if (object != nullptr) {
         for (auto i = properties.cbegin(), end = properties.cend(); i != end;
@@ -129,7 +140,9 @@ QObject* DbusInterface::loadComponent(
 }
 #endif
 
-void DbusInterface::processClosingConnections() {
+void
+DbusInterface::processClosingConnections()
+{
     closingMutex.lock();
     if (!closingConnections.isEmpty()) {
         O_DEBUG("Cleaning up old connections");
@@ -140,13 +153,17 @@ void DbusInterface::processClosingConnections() {
     closingMutex.unlock();
 }
 
-void DbusInterface::processRemovedSurfaces() {
+void
+DbusInterface::processRemovedSurfaces()
+{
     for (auto connection : qAsConst(connections)) {
         connection->processRemovedSurfaces();
     }
 }
 
-std::shared_ptr<Surface> DbusInterface::getSurface(QString identifier) {
+std::shared_ptr<Surface>
+DbusInterface::getSurface(QString identifier)
+{
     for (auto connection : qAsConst(connections)) {
         if (!connection->isRunning()) {
             continue;
@@ -159,7 +176,9 @@ std::shared_ptr<Surface> DbusInterface::getSurface(QString identifier) {
     return nullptr;
 }
 
-QDBusUnixFileDescriptor DbusInterface::open(QDBusMessage message) {
+QDBusUnixFileDescriptor
+DbusInterface::open(QDBusMessage message)
+{
     pid_t pid = connection().interface()->servicePid(message.service());
     pid_t pgid = ::getpgid(pid);
     O_INFO("Open connection for: " << pid << pgid);
@@ -179,7 +198,9 @@ QDBusUnixFileDescriptor DbusInterface::open(QDBusMessage message) {
     return QDBusUnixFileDescriptor(connection->socketDescriptor());
 }
 
-QDBusUnixFileDescriptor DbusInterface::openInput(QDBusMessage message) {
+QDBusUnixFileDescriptor
+DbusInterface::openInput(QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (connection == nullptr) {
         sendErrorReply(
@@ -191,7 +212,8 @@ QDBusUnixFileDescriptor DbusInterface::openInput(QDBusMessage message) {
     return QDBusUnixFileDescriptor(connection->inputSocketDescriptor());
 }
 
-Blight::surface_id_t DbusInterface::addSurface(
+Blight::surface_id_t
+DbusInterface::addSurface(
     QDBusUnixFileDescriptor fd,
     int x,
     int y,
@@ -200,7 +222,8 @@ Blight::surface_id_t DbusInterface::addSurface(
     int stride,
     int format,
     QDBusMessage message
-) {
+)
+{
     if (!fd.isValid()) {
         sendErrorReply(QDBusError::InvalidArgs, "Invalid file descriptor");
         return 0;
@@ -236,7 +259,9 @@ Blight::surface_id_t DbusInterface::addSurface(
     return surface->identifier();
 }
 
-void DbusInterface::repaint(QString identifier, QDBusMessage message) {
+void
+DbusInterface::repaint(QString identifier, QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
@@ -250,9 +275,9 @@ void DbusInterface::repaint(QString identifier, QDBusMessage message) {
     surface->repaint();
 }
 
-QDBusUnixFileDescriptor DbusInterface::getSurface(
-    Blight::surface_id_t identifier, QDBusMessage message
-) {
+QDBusUnixFileDescriptor
+DbusInterface::getSurface(Blight::surface_id_t identifier, QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (connection == nullptr) {
         sendErrorReply(
@@ -268,9 +293,13 @@ QDBusUnixFileDescriptor DbusInterface::getSurface(
     return QDBusUnixFileDescriptor(surface->fd());
 }
 
-void DbusInterface::setFlags(
-    QString identifier, const QStringList& flags, QDBusMessage message
-) {
+void
+DbusInterface::setFlags(
+    QString identifier,
+    const QStringList& flags,
+    QDBusMessage message
+)
+{
     if (connections.count() > 1) {
         // Only validate system flag if there is more than one connection
         // TODO - also validate that executable is allowed to make this call
@@ -304,7 +333,9 @@ void DbusInterface::setFlags(
     sortZ();
 }
 
-QStringList DbusInterface::getSurfaces(QDBusMessage message) {
+QStringList
+DbusInterface::getSurfaces(QDBusMessage message)
+{
     auto connection = getConnection(message);
     QStringList surfaces;
     if (!connection->has("system")) {
@@ -324,7 +355,9 @@ QStringList DbusInterface::getSurfaces(QDBusMessage message) {
     return surfaces;
 }
 
-QDBusUnixFileDescriptor DbusInterface::frameBuffer(QDBusMessage message) {
+QDBusUnixFileDescriptor
+DbusInterface::frameBuffer(QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
@@ -333,7 +366,9 @@ QDBusUnixFileDescriptor DbusInterface::frameBuffer(QDBusMessage message) {
     return QDBusUnixFileDescriptor(guiThread->framebuffer());
 }
 
-void DbusInterface::lower(QString identifier, QDBusMessage message) {
+void
+DbusInterface::lower(QString identifier, QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
@@ -363,7 +398,9 @@ void DbusInterface::lower(QString identifier, QDBusMessage message) {
     sortZ();
 }
 
-void DbusInterface::raise(QString identifier, QDBusMessage message) {
+void
+DbusInterface::raise(QString identifier, QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
@@ -392,7 +429,9 @@ void DbusInterface::raise(QString identifier, QDBusMessage message) {
     sortZ();
 }
 
-void DbusInterface::focus(QString identifier, QDBusMessage message) {
+void
+DbusInterface::focus(QString identifier, QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
@@ -406,7 +445,9 @@ void DbusInterface::focus(QString identifier, QDBusMessage message) {
     setFocus(childConnection);
 }
 
-void DbusInterface::waitForNoRepaints(QDBusMessage message) {
+void
+DbusInterface::waitForNoRepaints(QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
@@ -419,7 +460,9 @@ void DbusInterface::waitForNoRepaints(QDBusMessage message) {
 #endif
 }
 
-void DbusInterface::enterExclusiveMode(QDBusMessage message) {
+void
+DbusInterface::enterExclusiveMode(QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
@@ -431,7 +474,9 @@ void DbusInterface::enterExclusiveMode(QDBusMessage message) {
     evdevHandler->clear_buffers();
 }
 
-void DbusInterface::exitExclusiveMode(QDBusMessage message) {
+void
+DbusInterface::exitExclusiveMode(QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
@@ -452,7 +497,9 @@ void DbusInterface::exitExclusiveMode(QDBusMessage message) {
     waitForNoRepaints(message);
 }
 
-void DbusInterface::exclusiveModeRepaint(QDBusMessage message) {
+void
+DbusInterface::exclusiveModeRepaint(QDBusMessage message)
+{
     auto connection = getConnection(message);
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
@@ -468,9 +515,15 @@ void DbusInterface::exclusiveModeRepaint(QDBusMessage message) {
 #endif
 }
 
-Connection* DbusInterface::focused() { return m_focused; }
+Connection*
+DbusInterface::focused()
+{
+    return m_focused;
+}
 
-void DbusInterface::setFocus(Connection* connection) {
+void
+DbusInterface::setFocus(Connection* connection)
+{
     m_focused = connection;
     if (m_focused != nullptr) {
         O_INFO(m_focused->id() << "has focus");
@@ -479,9 +532,13 @@ void DbusInterface::setFocus(Connection* connection) {
     }
 }
 
-void DbusInterface::serviceOwnerChanged(
-    const QString& name, const QString& oldOwner, const QString& newOwner
-) {
+void
+DbusInterface::serviceOwnerChanged(
+    const QString& name,
+    const QString& oldOwner,
+    const QString& newOwner
+)
+{
     Q_UNUSED(oldOwner);
     if (!newOwner.isEmpty()) {
         return;
@@ -490,9 +547,12 @@ void DbusInterface::serviceOwnerChanged(
     // TODO - keep track of things this name owns and remove them
 }
 
-void DbusInterface::inputEvents(
-    unsigned int device, const std::vector<input_event>& events
-) {
+void
+DbusInterface::inputEvents(
+    unsigned int device,
+    const std::vector<input_event>& events
+)
+{
     if (m_focused != nullptr) {
         m_focused->inputEvents(device, events);
     }
@@ -503,9 +563,15 @@ void DbusInterface::inputEvents(
     }
 }
 
-bool DbusInterface::inExclusiveMode() { return m_exlusiveMode; }
+bool
+DbusInterface::inExclusiveMode()
+{
+    return m_exlusiveMode;
+}
 
-Connection* DbusInterface::getConnection(QDBusMessage message) {
+Connection*
+DbusInterface::getConnection(QDBusMessage message)
+{
     pid_t pid = connection().interface()->servicePid(message.service());
     ;
     for (auto connection : qAsConst(connections)) {
@@ -519,7 +585,9 @@ Connection* DbusInterface::getConnection(QDBusMessage message) {
     return nullptr;
 }
 
-Connection* DbusInterface::getConnection(QString identifier) {
+Connection*
+DbusInterface::getConnection(QString identifier)
+{
     for (auto connection : qAsConst(connections)) {
         if (connection->id() == identifier) {
             return connection;
@@ -528,7 +596,9 @@ Connection* DbusInterface::getConnection(QString identifier) {
     return nullptr;
 }
 
-QObject* DbusInterface::workspace() {
+QObject*
+DbusInterface::workspace()
+{
     QListIterator<QObject*> i(engine.rootObjects());
     while (i.hasNext()) {
         auto item = i.next();
@@ -541,7 +611,9 @@ QObject* DbusInterface::workspace() {
     return nullptr;
 }
 
-Connection* DbusInterface::createConnection(int pid) {
+Connection*
+DbusInterface::createConnection(int pid)
+{
     pid_t pgid = ::getpgid(pid);
     Connection* connection;
     try {
@@ -588,7 +660,9 @@ Connection* DbusInterface::createConnection(int pid) {
     return connection;
 }
 
-QList<std::shared_ptr<Surface>> DbusInterface::surfaces() {
+QList<std::shared_ptr<Surface>>
+DbusInterface::surfaces()
+{
     QList<std::shared_ptr<Surface>> surfaces;
     for (auto& connection : connections) {
         for (auto& surface : connection->getSurfaces()) {
@@ -598,7 +672,9 @@ QList<std::shared_ptr<Surface>> DbusInterface::surfaces() {
     return surfaces;
 }
 
-QList<std::shared_ptr<Surface>> DbusInterface::sortedSurfaces() {
+QList<std::shared_ptr<Surface>>
+DbusInterface::sortedSurfaces()
+{
     auto sorted = surfaces().toVector();
     std::sort(
         sorted.begin(),
@@ -623,7 +699,9 @@ QList<std::shared_ptr<Surface>> DbusInterface::sortedSurfaces() {
     return QList<std::shared_ptr<Surface>>::fromVector(sorted);
 }
 
-QList<std::shared_ptr<Surface>> DbusInterface::visibleSurfaces() {
+QList<std::shared_ptr<Surface>>
+DbusInterface::visibleSurfaces()
+{
     QList<std::shared_ptr<Surface>> surfaces;
     for (auto& surface : sortedSurfaces()) {
         auto connection = surface->connection();
@@ -634,28 +712,48 @@ QList<std::shared_ptr<Surface>> DbusInterface::visibleSurfaces() {
     return surfaces;
 }
 
-const QByteArray& DbusInterface::clipboard() { return clipboards.clipboard; }
+const QByteArray&
+DbusInterface::clipboard()
+{
+    return clipboards.clipboard;
+}
 
-void DbusInterface::setClipboard(const QByteArray& data) {
+void
+DbusInterface::setClipboard(const QByteArray& data)
+{
     clipboards.clipboard = data;
     emit clipboardChanged(clipboard());
 }
 
-const QByteArray& DbusInterface::selection() { return clipboards.selection; }
+const QByteArray&
+DbusInterface::selection()
+{
+    return clipboards.selection;
+}
 
-void DbusInterface::setSelection(const QByteArray& data) {
+void
+DbusInterface::setSelection(const QByteArray& data)
+{
     clipboards.selection = data;
     emit selectionChanged(selection());
 }
 
-const QByteArray& DbusInterface::secondary() { return clipboards.secondary; }
+const QByteArray&
+DbusInterface::secondary()
+{
+    return clipboards.secondary;
+}
 
-void DbusInterface::setSecondary(const QByteArray& data) {
+void
+DbusInterface::setSecondary(const QByteArray& data)
+{
     clipboards.secondary = data;
     emit clipboardChanged(secondary());
 }
 
-void DbusInterface::sortZ() {
+void
+DbusInterface::sortZ()
+{
     auto sorted = sortedSurfaces();
     int z = 0;
     for (auto surface : sorted) {

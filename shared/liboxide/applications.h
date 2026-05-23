@@ -28,7 +28,8 @@ namespace Oxide::Applications {
      * \typedef ApplicationType
      * \brief Application registration type
      */
-    typedef enum {
+    typedef enum
+    {
         Foreground,    /*!< Only runs in the foreground */
         Background,    /*!< Only runs in the background */
         Backgroundable /*!< Runs in either the foreground or background */
@@ -37,7 +38,8 @@ namespace Oxide::Applications {
      * \typedef ErrorLevel
      * \brief ValidationError error levels
      */
-    typedef enum {
+    typedef enum
+    {
         Hint,        /*!< A hint */
         Deprecation, /*!< A deprecation warning */
         Warning,     /*!< A warning */
@@ -48,7 +50,8 @@ namespace Oxide::Applications {
      * \struct ValidationError
      * \brief Errors returned by validateRegistration
      */
-    typedef struct {
+    typedef struct
+    {
         ErrorLevel level; /*!< Error level */
         QString msg;      /*!< Error message */
     } ValidationError;
@@ -68,9 +71,8 @@ namespace Oxide::Applications {
      * \return Resulting text stream
      * \sa ErrorLevel
      */
-    LIBOXIDE_EXPORT QTextStream& operator<<(
-        QTextStream& s, const ErrorLevel& l
-    );
+    LIBOXIDE_EXPORT QTextStream&
+    operator<<(QTextStream& s, const ErrorLevel& l);
     /*!
      * \brief Convert an ValidationError to a human readable string when piping
      * to a text stream
@@ -79,9 +81,8 @@ namespace Oxide::Applications {
      * \return Resulting text stream
      * \sa ValidationError
      */
-    LIBOXIDE_EXPORT QTextStream& operator<<(
-        QTextStream& s, const ValidationError& t
-    );
+    LIBOXIDE_EXPORT QTextStream&
+    operator<<(QTextStream& s, const ValidationError& t);
     /*!
      * \brief Convert an ErrorLevel to a human readable string when piping to a
      * text stream
@@ -107,9 +108,8 @@ namespace Oxide::Applications {
      * \return If they are the same
      * \sa ValidationError
      */
-    LIBOXIDE_EXPORT bool operator==(
-        const ValidationError& v1, const ValidationError& v2
-    );
+    LIBOXIDE_EXPORT bool
+    operator==(const ValidationError& v1, const ValidationError& v2);
     /*!
      * \brief Get an application registration.
      * \param path Path to application registration
@@ -175,9 +175,8 @@ namespace Oxide::Applications {
      * \param app Application registration file
      * \return List of validation errors
      */
-    LIBOXIDE_EXPORT QList<ValidationError> validateRegistration(
-        const QString& name, const QJsonObject& app
-    );
+    LIBOXIDE_EXPORT QList<ValidationError>
+    validateRegistration(const QString& name, const QJsonObject& app);
     /*!
      * \brief Add an application to the tarnish application cache
      * \param path Path to the application registration file
@@ -208,9 +207,8 @@ namespace Oxide::Applications {
      * \param app The application registration file
      * \return If the application was successfully added
      */
-    LIBOXIDE_EXPORT bool addToTarnishCache(
-        const QString& name, const QJsonObject& app
-    );
+    LIBOXIDE_EXPORT bool
+    addToTarnishCache(const QString& name, const QJsonObject& app);
     /*!
      * \brief Get the path to the directory that an icon would be stored in.
      * \param size Size of the icon.
@@ -245,5 +243,5 @@ namespace Oxide::Applications {
      * \retval "" Failed to parse the spec
      */
     LIBOXIDE_EXPORT QString iconPath(const QString& spec);
-}  // namespace Oxide::Applications
+} // namespace Oxide::Applications
 /*! @} */

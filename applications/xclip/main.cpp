@@ -7,12 +7,16 @@
 
 using namespace Oxide::Sentry;
 
-QTextStream& qStdOut() {
+QTextStream&
+qStdOut()
+{
     static QTextStream ts(stdout);
     return ts;
 }
 
-void readClipboard(Blight::clipboard_t& clipboard, bool rmlastnlOption) {
+void
+readClipboard(Blight::clipboard_t& clipboard, bool rmlastnlOption)
+{
     QByteArray data;
     data.setRawData(
         reinterpret_cast<char*>(clipboard.data.get()), clipboard.size
@@ -22,12 +26,14 @@ void readClipboard(Blight::clipboard_t& clipboard, bool rmlastnlOption) {
     }
     qStdOut() << data;
 }
-int setClipboard(
+int
+setClipboard(
     const QString& selection,
     QByteArray& data,
     bool verbose,
     bool rmlastnlOption
-) {
+)
+{
     if (verbose) {
         qDebug() << "Setting selection:" << selection;
     }
@@ -48,7 +54,9 @@ int setClipboard(
     return EXIT_FAILURE;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("xclip", argv);
     app.setOrganizationName("Eeems");
@@ -64,35 +72,37 @@ int main(int argc, char* argv[]) {
     parser.addHelpOption();
     parser.addVersionOption();
     QCommandLineOption inOption(
-        {"i", "in"},
+        { "i", "in" },
         "Read text into the clipboard from standard input or files (default)"
     );
     parser.addOption(inOption);
     QCommandLineOption outOption(
-        {"o", "out"},
+        { "o", "out" },
         "Prints the selection to standard out (generally for piping to a file "
         "or program)"
     );
     parser.addOption(outOption);
-    QCommandLineOption filterOption({"f", "filter"}, "NOT IMPLEMENTED");
+    QCommandLineOption filterOption({ "f", "filter" }, "NOT IMPLEMENTED");
     parser.addOption(filterOption);
     QCommandLineOption rmlastnlOption(
-        {"r", "rmlastnl"},
+        { "r", "rmlastnl" },
         "When the last character is a newline character, remove it."
     );
     parser.addOption(rmlastnlOption);
-    QCommandLineOption loopsOption({"l", "loops"}, "NOT IMPLEMENTED", "loops");
+    QCommandLineOption loopsOption(
+        { "l", "loops" }, "NOT IMPLEMENTED", "loops"
+    );
     parser.addOption(loopsOption);
     QCommandLineOption targetOption(
-        {"t", "target"}, "NOT IMPLEMENTED", "target"
+        { "t", "target" }, "NOT IMPLEMENTED", "target"
     );
     parser.addOption(targetOption);
     QCommandLineOption displayOption(
-        {"d", "display"}, "NOT IMPLEMENTED", "display"
+        { "d", "display" }, "NOT IMPLEMENTED", "display"
     );
     parser.addOption(displayOption);
     QCommandLineOption selectionOption(
-        {"sel", "selection"},
+        { "sel", "selection" },
         "Specify which selection to use. Options are \"primary\" (default), "
         "\"secondary\", and \"clipboard\".",
         "selection",

@@ -26,13 +26,14 @@
 
 #define screenAPI ScreenAPI::singleton()
 
-class ScreenAPI : public APIBase {
+class ScreenAPI : public APIBase
+{
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_SCREEN_INTERFACE)
     Q_PROPERTY(bool enabled READ enabled)
     Q_PROPERTY(QList<QDBusObjectPath> screenshots READ screenshots)
 
-   public:
+  public:
     static ScreenAPI* singleton(ScreenAPI* self = nullptr);
     ScreenAPI(QObject* parent);
     void setEnabled(bool enabled);
@@ -40,15 +41,15 @@ class ScreenAPI : public APIBase {
     QList<QDBusObjectPath> screenshots();
     Q_INVOKABLE QDBusObjectPath screenshot();
 
-   public slots:
+  public slots:
     QDBusObjectPath addScreenshot(QByteArray blob);
 
-   signals:
+  signals:
     void screenshotAdded(QDBusObjectPath);
     void screenshotRemoved(QDBusObjectPath);
     void screenshotModified(QDBusObjectPath);
 
-   private:
+  private:
     QList<Screenshot*> m_screenshots;
     bool m_enabled;
     QMutex mutex;
@@ -59,4 +60,4 @@ class ScreenAPI : public APIBase {
     QString getNextPath();
 };
 
-#endif  // SCREENSHOTAPI_H
+#endif // SCREENSHOTAPI_H

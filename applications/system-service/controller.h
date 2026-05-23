@@ -8,7 +8,8 @@
 #include "screenapi.h"
 #include "systemapi.h"
 
-class Controller : public QObject {
+class Controller : public QObject
+{
     Q_OBJECT
     Q_PROPERTY(QString deviceName READ deviceName)
     Q_PROPERTY(
@@ -38,16 +39,18 @@ class Controller : public QObject {
         int downSwipeLength READ downSwipeLength NOTIFY downSwipeLengthChanged
     )
 
-   public:
-    static Controller* singleton() {
+  public:
+    static Controller* singleton()
+    {
         static Controller* instance = new Controller(qApp);
         return instance;
     }
-    bool enabled = true;  // Used to disable sending input when suspending
+    bool enabled = true; // Used to disable sending input when suspending
     Q_INVOKABLE void screenshot() { screenAPI->screenshot(); }
     Q_INVOKABLE void taskSwitcher() { appsAPI->openTaskSwitcher(); }
     Q_INVOKABLE void processManager() { appsAPI->openTaskManager(); }
-    Q_INVOKABLE void back() {
+    Q_INVOKABLE void back()
+    {
         auto currentApplication = appsAPI->getApplication(
             appsAPI->currentApplicationNoSecurityCheck()
         );
@@ -63,7 +66,8 @@ class Controller : public QObject {
     }
     Q_INVOKABLE void lock() { appsAPI->openLockScreen(); }
     Q_INVOKABLE void terminal() { appsAPI->openTerminal(); }
-    Q_INVOKABLE void close() {
+    Q_INVOKABLE void close()
+    {
         auto path = appsAPI->currentApplicationNoSecurityCheck();
         if (path.path() == "/") {
             return;
@@ -89,24 +93,28 @@ class Controller : public QObject {
     Q_INVOKABLE void suspend() { systemAPI->suspend(); }
 
     QString deviceName() { return deviceSettings.getDeviceName(); }
-    bool leftSwipeEnabled() {
+    bool leftSwipeEnabled()
+    {
         return systemAPI->getSwipeEnabled(SystemAPI::Left);
     }
-    bool rightSwipeEnabled() {
+    bool rightSwipeEnabled()
+    {
         return systemAPI->getSwipeEnabled(SystemAPI::Right);
     }
     bool upSwipeEnabled() { return systemAPI->getSwipeEnabled(SystemAPI::Up); }
-    bool downSwipeEnabled() {
+    bool downSwipeEnabled()
+    {
         return systemAPI->getSwipeEnabled(SystemAPI::Down);
     }
     int leftSwipeLength() { return systemAPI->getSwipeLength(SystemAPI::Left); }
-    int rightSwipeLength() {
+    int rightSwipeLength()
+    {
         return systemAPI->getSwipeLength(SystemAPI::Right);
     }
     int upSwipeLength() { return systemAPI->getSwipeLength(SystemAPI::Up); }
     int downSwipeLength() { return systemAPI->getSwipeLength(SystemAPI::Down); }
 
-   signals:
+  signals:
     void keyPressed(int, int, const QString&);
     void keyReleased(int, int, const QString&);
     void leftSwipeEnabledChanged(bool);
@@ -118,8 +126,9 @@ class Controller : public QObject {
     void upSwipeLengthChanged(int);
     void downSwipeLengthChanged(int);
 
-   private:
-    explicit Controller(QObject* parent = nullptr) : QObject(parent) {
+  private:
+    explicit Controller(QObject* parent = nullptr) : QObject(parent)
+    {
         connect(
             systemAPI,
             &SystemAPI::swipeLengthChanged,

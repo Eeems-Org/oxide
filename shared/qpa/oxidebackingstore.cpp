@@ -15,7 +15,8 @@
 QT_BEGIN_NAMESPACE
 
 OxideBackingStore::OxideBackingStore(QWindow* window)
-    : QPlatformBackingStore(window) {
+  : QPlatformBackingStore(window)
+{
     if (OxideIntegration::instance()->options().testFlag(
             OxideIntegration::DebugQPA
         )) {
@@ -26,15 +27,24 @@ OxideBackingStore::OxideBackingStore(QWindow* window)
     }
 }
 
-OxideBackingStore::~OxideBackingStore() {
+OxideBackingStore::~OxideBackingStore()
+{
     Blight::connection()->remove(mBuffer);
 }
 
-QPaintDevice* OxideBackingStore::paintDevice() { return &image; }
+QPaintDevice*
+OxideBackingStore::paintDevice()
+{
+    return &image;
+}
 
-void OxideBackingStore::flush(
-    QWindow* window, const QRegion& region, const QPoint& offset
-) {
+void
+OxideBackingStore::flush(
+    QWindow* window,
+    const QRegion& region,
+    const QPoint& offset
+)
+{
     Q_UNUSED(offset);
     Q_UNUSED(window);
     if (mBuffer == nullptr || region.isEmpty()) {
@@ -59,7 +69,9 @@ void OxideBackingStore::flush(
     }
 }
 
-void OxideBackingStore::resize(const QSize& size, const QRegion& region) {
+void
+OxideBackingStore::resize(const QSize& size, const QRegion& region)
+{
     Q_UNUSED(region)
     if (image.size() == size) {
         return;
@@ -135,7 +147,9 @@ void OxideBackingStore::resize(const QSize& size, const QRegion& region) {
     }
 }
 
-bool OxideBackingStore::scroll(const QRegion& area, int dx, int dy) {
+bool
+OxideBackingStore::scroll(const QRegion& area, int dx, int dy)
+{
     Q_UNUSED(area)
     Q_UNUSED(dx)
     Q_UNUSED(dy)
@@ -147,14 +161,28 @@ bool OxideBackingStore::scroll(const QRegion& area, int dx, int dy) {
     return false;
 }
 
-QImage OxideBackingStore::toImage() const { return image; }
+QImage
+OxideBackingStore::toImage() const
+{
+    return image;
+}
 
-const QImage& OxideBackingStore::getImageRef() const { return image; }
+const QImage&
+OxideBackingStore::getImageRef() const
+{
+    return image;
+}
 
-QPlatformGraphicsBuffer* OxideBackingStore::graphicsBuffer() const {
+QPlatformGraphicsBuffer*
+OxideBackingStore::graphicsBuffer() const
+{
     return nullptr;
 }
 
-Blight::shared_buf_t OxideBackingStore::buffer() { return mBuffer; }
+Blight::shared_buf_t
+OxideBackingStore::buffer()
+{
+    return mBuffer;
+}
 
 QT_END_NAMESPACE

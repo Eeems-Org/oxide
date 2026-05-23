@@ -12,12 +12,16 @@ using namespace Oxide::Sentry;
 using namespace Oxide::JSON;
 using namespace Oxide::Applications;
 
-QTextStream& qStdOut() {
+QTextStream&
+qStdOut()
+{
     static QTextStream ts(stdout);
     return ts;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("desktop-file-install", argv);
     app.setOrganizationName("Eeems");
@@ -36,7 +40,7 @@ int main(int argc, char* argv[]) {
         OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY
     );
     parser.addOption(dirOption);
-    QCommandLineOption modeOption({"m", "mode"}, "NOT IMPLEMENTED", "MODE");
+    QCommandLineOption modeOption({ "m", "mode" }, "NOT IMPLEMENTED", "MODE");
     parser.addOption(modeOption);
     QCommandLineOption vendorOption("vendor", "NOT IMPLEMENTED", "VENDOR");
     parser.addOption(vendorOption);

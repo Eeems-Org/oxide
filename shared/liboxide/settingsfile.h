@@ -18,96 +18,108 @@
 
 #define O_SETTINGS_DEBUG(msg) O_DEBUG(msg)
 
-#define O_SETTINGS_PROPERTY_0(_type, member, _group)                      \
-    Q_PROPERTY(                                                           \
-        QString __META_GROUP_##member READ __META_GROUP_##member CONSTANT \
-            FINAL                                                         \
-    )                                                                     \
-   public:                                                                \
-    void set_##member(_type _arg_##member);                               \
-    _type member() const;                                                 \
-    bool has_##member();                                                  \
-    void reload_##member();                                               \
-   Q_SIGNALS:                                                             \
-    void member##Changed(const _type&);                                   \
-                                                                          \
-   protected:                                                             \
-    QString __META_GROUP_##member() const;                                \
-                                                                          \
-   private:                                                               \
+#define O_SETTINGS_PROPERTY_0(_type, member, _group)                           \
+    Q_PROPERTY(                                                                \
+        QString __META_GROUP_##member READ __META_GROUP_##member CONSTANT      \
+            FINAL                                                              \
+    )                                                                          \
+  public:                                                                      \
+    void set_##member(_type _arg_##member);                                    \
+    _type member() const;                                                      \
+    bool has_##member();                                                       \
+    void reload_##member();                                                    \
+  Q_SIGNALS:                                                                   \
+    void member##Changed(const _type&);                                        \
+                                                                               \
+  protected:                                                                   \
+    QString __META_GROUP_##member() const;                                     \
+                                                                               \
+  private:                                                                     \
     _type m_##member;
 
-#define O_SETTINGS_PROPERTY_1(_type, group, member)                          \
-    Q_PROPERTY(                                                              \
-        _type member MEMBER m_##member READ member WRITE set_##member NOTIFY \
-            member##Changed FINAL                                            \
-    )                                                                        \
+#define O_SETTINGS_PROPERTY_1(_type, group, member)                            \
+    Q_PROPERTY(                                                                \
+        _type member MEMBER m_##member READ member WRITE set_##member NOTIFY   \
+            member##Changed FINAL                                              \
+    )                                                                          \
     O_SETTINGS_PROPERTY_0(_type, member, group)
-#define O_SETTINGS_PROPERTY_2(_type, group, member, _default)                \
-    Q_PROPERTY(                                                              \
-        _type member MEMBER m_##member READ member WRITE set_##member NOTIFY \
-            member##Changed RESET reset_##member                             \
-    )                                                                        \
-    O_SETTINGS_PROPERTY_0(_type, member, group)                              \
-   public:                                                                   \
+#define O_SETTINGS_PROPERTY_2(_type, group, member, _default)                  \
+    Q_PROPERTY(                                                                \
+        _type member MEMBER m_##member READ member WRITE set_##member NOTIFY   \
+            member##Changed RESET reset_##member                               \
+    )                                                                          \
+    O_SETTINGS_PROPERTY_0(_type, member, group)                                \
+  public:                                                                      \
     void reset_##member();
-#define O_SETTINGS_PROPERTY_BODY_0(_class, _type, member, _group)            \
-    void _class::set_##member(_type _arg_##member) {                         \
-        if (m_##member == _arg_##member) {                                   \
-            O_SETTINGS_DEBUG(                                                \
-                fileName() + " No Change " + #_group + "." + #member         \
-            )                                                                \
-            return;                                                          \
-        }                                                                    \
-        O_SETTINGS_DEBUG(fileName() + " Setting " + #_group + "." + #member) \
-        m_##member = _arg_##member;                                          \
-        if (reloadSemaphore.tryAcquire()) {                                  \
-            beginGroup(std::strcmp("General", #_group) != 0 ? #_group : ""); \
-            setValue(#member, QVariant::fromValue<_type>(_arg_##member));    \
-            endGroup();                                                      \
-            O_SETTINGS_DEBUG(                                                \
-                fileName() + " Saving " + #_group + "." + #member            \
-            )                                                                \
-            sync();                                                          \
-            reloadSemaphore.release();                                       \
-        } else {                                                             \
-            O_SETTINGS_DEBUG(                                                \
-                fileName() + " Not Saving " + #_group + "." + #member        \
-            )                                                                \
-        }                                                                    \
-        emit member##Changed(m_##member);                                    \
-    }                                                                        \
-    _type _class::member() const { return m_##member; }                      \
-    bool _class::has_##member() {                                            \
-        beginGroup(std::strcmp("General", #_group) != 0 ? #_group : "");     \
-        bool res = contains(#member);                                        \
-        endGroup();                                                          \
-        return res;                                                          \
-    }                                                                        \
-    void _class::reload_##member() { reloadProperty(#member); }              \
-    QString _class::__META_GROUP_##member() const { return #_group; }
-#define O_SETTINGS_PROPERTY_BODY_1(_class, _type, group, member) \
+#define O_SETTINGS_PROPERTY_BODY_0(_class, _type, member, _group)              \
+    void _class::set_##member(_type _arg_##member)                             \
+    {                                                                          \
+        if (m_##member == _arg_##member) {                                     \
+            O_SETTINGS_DEBUG(                                                  \
+                fileName() + " No Change " + #_group + "." + #member           \
+            )                                                                  \
+            return;                                                            \
+        }                                                                      \
+        O_SETTINGS_DEBUG(fileName() + " Setting " + #_group + "." + #member)   \
+        m_##member = _arg_##member;                                            \
+        if (reloadSemaphore.tryAcquire()) {                                    \
+            beginGroup(std::strcmp("General", #_group) != 0 ? #_group : "");   \
+            setValue(#member, QVariant::fromValue<_type>(_arg_##member));      \
+            endGroup();                                                        \
+            O_SETTINGS_DEBUG(                                                  \
+                fileName() + " Saving " + #_group + "." + #member              \
+            )                                                                  \
+            sync();                                                            \
+            reloadSemaphore.release();                                         \
+        } else {                                                               \
+            O_SETTINGS_DEBUG(                                                  \
+                fileName() + " Not Saving " + #_group + "." + #member          \
+            )                                                                  \
+        }                                                                      \
+        emit member##Changed(m_##member);                                      \
+    }                                                                          \
+    _type _class::member() const                                               \
+    {                                                                          \
+        return m_##member;                                                     \
+    }                                                                          \
+    bool _class::has_##member()                                                \
+    {                                                                          \
+        beginGroup(std::strcmp("General", #_group) != 0 ? #_group : "");       \
+        bool res = contains(#member);                                          \
+        endGroup();                                                            \
+        return res;                                                            \
+    }                                                                          \
+    void _class::reload_##member()                                             \
+    {                                                                          \
+        reloadProperty(#member);                                               \
+    }                                                                          \
+    QString _class::__META_GROUP_##member() const                              \
+    {                                                                          \
+        return #_group;                                                        \
+    }
+#define O_SETTINGS_PROPERTY_BODY_1(_class, _type, group, member)               \
     O_SETTINGS_PROPERTY_BODY_0(_class, _type, member, group)
-#define O_SETTINGS_PROPERTY_BODY_2(_class, _type, group, member, _default)    \
-    O_SETTINGS_PROPERTY_BODY_0(_class, _type, member, group)                  \
-    void _class::reset_##member() {                                           \
-        O_SETTINGS_DEBUG(fileName() + " Resetting " + #group + "." + #member) \
-        O_SETTINGS_DEBUG(_default)                                            \
-        setProperty(#member, _default);                                       \
-        O_SETTINGS_DEBUG("  Done")                                            \
+#define O_SETTINGS_PROPERTY_BODY_2(_class, _type, group, member, _default)     \
+    O_SETTINGS_PROPERTY_BODY_0(_class, _type, member, group)                   \
+    void _class::reset_##member()                                              \
+    {                                                                          \
+        O_SETTINGS_DEBUG(fileName() + " Resetting " + #group + "." + #member)  \
+        O_SETTINGS_DEBUG(_default)                                             \
+        setProperty(#member, _default);                                        \
+        O_SETTINGS_DEBUG("  Done")                                             \
     }
 #define O_SETTINGS_PROPERTY_X_get_func(arg1, arg2, arg3, arg4, arg5, ...) arg5
-#define O_SETTINGS_PROPERTY_X(...)                                 \
-    O_SETTINGS_PROPERTY_X_get_func(                                \
-        __VA_ARGS__, O_SETTINGS_PROPERTY_2, O_SETTINGS_PROPERTY_1, \
+#define O_SETTINGS_PROPERTY_X(...)                                             \
+    O_SETTINGS_PROPERTY_X_get_func(                                            \
+        __VA_ARGS__, O_SETTINGS_PROPERTY_2, O_SETTINGS_PROPERTY_1,             \
     )
-#define O_SETTINGS_PROPERTY_BODY_X_get_func( \
-    arg1, arg2, arg3, arg4, arg5, arg6, ...  \
-)                                            \
+#define O_SETTINGS_PROPERTY_BODY_X_get_func(                                   \
+    arg1, arg2, arg3, arg4, arg5, arg6, ...                                    \
+)                                                                              \
     arg6
-#define O_SETTINGS_PROPERTY_BODY_X(...)                                      \
-    O_SETTINGS_PROPERTY_BODY_X_get_func(                                     \
-        __VA_ARGS__, O_SETTINGS_PROPERTY_BODY_2, O_SETTINGS_PROPERTY_BODY_1, \
+#define O_SETTINGS_PROPERTY_BODY_X(...)                                        \
+    O_SETTINGS_PROPERTY_BODY_X_get_func(                                       \
+        __VA_ARGS__, O_SETTINGS_PROPERTY_BODY_2, O_SETTINGS_PROPERTY_BODY_1,   \
     )
 #ifdef IN_DOXYGEN
 /*!
@@ -118,9 +130,9 @@
  * \param default Optional default value
  * \sa  O_SETTINGS, O_SETTINGS_PROPERTY_BODY, Oxide::SettingsFile
  */
-#define O_SETTINGS_PROPERTY(type, group, member, ...)        \
-    O_SETTINGS_PROPERTY_X(type, group, member, __VA_ARGS__)( \
-        type, group, member, __VA_ARGS__                     \
+#define O_SETTINGS_PROPERTY(type, group, member, ...)                          \
+    O_SETTINGS_PROPERTY_X(type, group, member, __VA_ARGS__)(                   \
+        type, group, member, __VA_ARGS__                                       \
     )
 /*!
  * \brief Add the body for a property on a SettingsFile derived class
@@ -131,13 +143,13 @@
  * \param default Optional default value
  * \sa  O_SETTINGS, O_SETTINGS_PROPERTY, Oxide::SettingsFile
  */
-#define O_SETTINGS_PROPERTY_BODY(class, type, group, member, ...)        \
-    O_SETTINGS_PROPERTY_BODY_X(class, type, group, member, __VA_ARGS__)( \
-        class, type, group, member, __VA_ARGS__                          \
+#define O_SETTINGS_PROPERTY_BODY(class, type, group, member, ...)              \
+    O_SETTINGS_PROPERTY_BODY_X(class, type, group, member, __VA_ARGS__)(       \
+        class, type, group, member, __VA_ARGS__                                \
     )
 #else
 #define O_SETTINGS_PROPERTY(...) O_SETTINGS_PROPERTY_X(__VA_ARGS__)(__VA_ARGS__)
-#define O_SETTINGS_PROPERTY_BODY(...) \
+#define O_SETTINGS_PROPERTY_BODY(...)                                          \
     O_SETTINGS_PROPERTY_BODY_X(__VA_ARGS__)(__VA_ARGS__)
 #endif
 /*!
@@ -147,15 +159,16 @@
  * \param path Path to file on disk that stores the settings
  * \sa  O_SETTINGS_PROPERTY, O_SETTINGS_PROPERTY_BODY, Oxide::SettingsFile
  */
-#define O_SETTINGS(_type, path)      \
-   public:                           \
-    static _type& instance() {       \
-        static _type INSTANCE(path); \
-        INSTANCE.init();             \
-        return INSTANCE;             \
-    }                                \
-                                     \
-   private:                          \
+#define O_SETTINGS(_type, path)                                                \
+  public:                                                                      \
+    static _type& instance()                                                   \
+    {                                                                          \
+        static _type INSTANCE(path);                                           \
+        INSTANCE.init();                                                       \
+        return INSTANCE;                                                       \
+    }                                                                          \
+                                                                               \
+  private:                                                                     \
     explicit _type(const QString& _path) : SettingsFile(_path) {}
 
 namespace Oxide {
@@ -170,19 +183,20 @@ namespace Oxide {
      * \sa sharedSettings, xochitlSettings, O_SETTINGS, O_SETTINGS_PROPERTY,
      * O_SETTINGS_PROPERTY_BODY
      */
-    class LIBOXIDE_EXPORT SettingsFile : public QSettings {
+    class LIBOXIDE_EXPORT SettingsFile : public QSettings
+    {
         Q_OBJECT
 
-       signals:
+      signals:
         /*!
          * \brief The settings file has changed
          */
         void changed();
 
-       private slots:
+      private slots:
         void fileChanged();
 
-       protected:
+      protected:
         SettingsFile(QString path);
         ~SettingsFile();
         void reloadProperty(const QString& name);
@@ -193,9 +207,9 @@ namespace Oxide {
         QString groupName(const QString& name);
         QSemaphore reloadSemaphore;
 
-       private:
+      private:
         QFileSystemWatcher fileWatcher;
         bool initalized = false;
     };
-}  // namespace Oxide
+} // namespace Oxide
 /*! @} */

@@ -30,18 +30,21 @@
 #define SYS_pidfd_open 434
 #endif
 
-static int pidfd_open(pid_t pid, unsigned int flags) {
+static int
+pidfd_open(pid_t pid, unsigned int flags)
+{
     return syscall(SYS_pidfd_open, pid, flags);
 }
 
 Connection::Connection(pid_t pid, pid_t pgid)
-    : QObject(),
-      m_pid{pid},
-      m_pgid{pgid},
-      m_closed{false},
-      pingId{0},
-      m_surfaceId{0},
-      m_lastEventOffset{0} {
+  : QObject()
+  , m_pid{ pid }
+  , m_pgid{ pgid }
+  , m_closed{ false }
+  , pingId{ 0 }
+  , m_surfaceId{ 0 }
+  , m_lastEventOffset{ 0 }
+{
     m_pidFd = pidfd_open(m_pid, 0);
     if (m_pidFd < 0) {
         O_WARNING(std::strerror(errno));
@@ -106,7 +109,8 @@ Connection::Connection(pid_t pid, pid_t pgid)
     C_INFO("Connection created");
 }
 
-Connection::~Connection() {
+Connection::~Connection()
+{
     close();
     surfaces.clear();
     processRemovedSurfaces();
@@ -121,7 +125,9 @@ Connection::~Connection() {
     C_INFO("Connection destroyed");
 }
 
-void Connection::processRemovedSurfaces() {
+void
+Connection::processRemovedSurfaces()
+{
     removedMutex.lock();
     if (!removedSurfaces.empty()) {
         C_DEBUG("Cleaning up old surfaces");
@@ -130,23 +136,51 @@ void Connection::processRemovedSurfaces() {
     removedMutex.unlock();
 }
 
-QString Connection::id() { return QString("connection/%1").arg(m_pid); }
+QString
+Connection::id()
+{
+    return QString("connection/%1").arg(m_pid);
+}
 
-pid_t Connection::pid() const { return m_pid; }
+pid_t
+Connection::pid() const
+{
+    return m_pid;
+}
 
-pid_t Connection::pgid() const { return m_pgid; }
+pid_t
+Connection::pgid() const
+{
+    return m_pgid;
+}
 
-int Connection::socketDescriptor() { return m_clientFd; }
+int
+Connection::socketDescriptor()
+{
+    return m_clientFd;
+}
 
-int Connection::inputSocketDescriptor() { return m_clientInputFd; }
+int
+Connection::inputSocketDescriptor()
+{
+    return m_clientInputFd;
+}
 
-bool Connection::isValid() {
+bool
+Connection::isValid()
+{
     return m_clientFd > 0 && m_serverFd > 0 && isRunning();
 }
 
-bool Connection::isRunning() { return getpgid(m_pid) != -1; }
+bool
+Connection::isRunning()
+{
+    return getpgid(m_pid) != -1;
+}
 
-bool Connection::isStopped() {
+bool
+Connection::isStopped()
+{
     QFile file(QString("/proc/%1/stat").arg(m_pid));
     if (!file.open(QFile::ReadOnly)) {
         O_WARNING("Failed checking process status" << file.errorString());
@@ -155,7 +189,9 @@ bool Connection::isStopped() {
     return file.readAll().split(' ')[2] == "T";
 }
 
-bool Connection::signal(int signal) {
+bool
+Connection::signal(int signal)
+{
     if (!isRunning()) {
         errno = ESRCH;
         return false;
@@ -163,7 +199,9 @@ bool Connection::signal(int signal) {
     return ::kill(m_pid, signal) != -1;
 }
 
-bool Connection::signalGroup(int signal) {
+bool
+Connection::signalGroup(int signal)
+{
     if (!isRunning()) {
         errno = ESRCH;
         return false;
@@ -171,7 +209,9 @@ bool Connection::signalGroup(int signal) {
     return ::kill(-m_pid, signal) != -1;
 }
 
-void Connection::pause() {
+void
+Connection::pause()
+{
     // TODO - Send pause request over socket instead
     QElapsedTimer timer;
     bool replied = false;
@@ -195,7 +235,9 @@ void Connection::pause() {
     waitid(P_PID, m_pid, &info, WSTOPPED);
 }
 
-void Connection::resume() {
+void
+Connection::resume()
+{
     // TODO - Send resume request over socket instead
     QElapsedTimer timer;
     bool replied = false;
@@ -219,7 +261,9 @@ void Connection::resume() {
     waitid(P_PID, m_pid, &info, WCONTINUED);
 }
 
-void Connection::close() {
+void
+Connection::close()
+{
     if (!m_closed.test_and_set()) {
         m_pingTimer.stop();
         m_notRespondingTimer.stop();
@@ -231,13 +275,18 @@ void Connection::close() {
     }
 }
 
-std::shared_ptr<Surface> Connection::addSurface(
-    int fd, QRect geometry, int stride, QImage::Format format
-) {
+std::shared_ptr<Surface>
+Connection::addSurface(
+    int fd,
+    QRect geometry,
+    int stride,
+    QImage::Format format
+)
+{
     // TODO - add validation that id is never 0, and that it doesn't point to an
     // existsing surface
     auto surfaceId = ++m_surfaceId;
-    std::shared_ptr<Surface> surface{nullptr};
+    std::shared_ptr<Surface> surface{ nullptr };
     try {
         surface = std::make_shared<Surface>(
             this, fd, surfaceId, geometry, stride, format
@@ -255,7 +304,9 @@ std::shared_ptr<Surface> Connection::addSurface(
     return surface;
 }
 
-std::shared_ptr<Surface> Connection::getSurface(QString identifier) {
+std::shared_ptr<Surface>
+Connection::getSurface(QString identifier)
+{
     for (auto& item : surfaces) {
         auto& surface = item.second;
         if (surface == nullptr) {
@@ -268,14 +319,18 @@ std::shared_ptr<Surface> Connection::getSurface(QString identifier) {
     return nullptr;
 }
 
-std::shared_ptr<Surface> Connection::getSurface(Blight::surface_id_t id) {
+std::shared_ptr<Surface>
+Connection::getSurface(Blight::surface_id_t id)
+{
     if (!surfaces.contains(id)) {
         return nullptr;
     }
     return surfaces[id];
 }
 
-QStringList Connection::getSurfaceIdentifiers() {
+QStringList
+Connection::getSurfaceIdentifiers()
+{
     QStringList identifiers;
     for (auto& item : surfaces) {
         auto& surface = item.second;
@@ -287,7 +342,9 @@ QStringList Connection::getSurfaceIdentifiers() {
     return identifiers;
 }
 
-const QList<std::shared_ptr<Surface>> Connection::getSurfaces() {
+const QList<std::shared_ptr<Surface>>
+Connection::getSurfaces()
+{
     QList<std::shared_ptr<Surface>> values;
     for (auto& item : surfaces) {
         auto& surface = item.second;
@@ -298,9 +355,12 @@ const QList<std::shared_ptr<Surface>> Connection::getSurfaces() {
     return values;
 }
 
-void Connection::inputEvents(
-    unsigned int device, const std::vector<input_event>& events
-) {
+void
+Connection::inputEvents(
+    unsigned int device,
+    const std::vector<input_event>& events
+)
+{
     if (!isRunning() || isStopped()) {
         dbusInterface->sortZ();
         return;
@@ -321,7 +381,9 @@ void Connection::inputEvents(
     }
     processInputEvents();
 }
-void Connection::processInputEvents() {
+void
+Connection::processInputEvents()
+{
     if (m_inputQueue.empty()) {
         return;
     }
@@ -359,17 +421,29 @@ void Connection::processInputEvents() {
     }
 }
 
-bool Connection::has(const QString& flag) { return flags.contains(flag); }
+bool
+Connection::has(const QString& flag)
+{
+    return flags.contains(flag);
+}
 
-void Connection::set(const QString& flag) {
+void
+Connection::set(const QString& flag)
+{
     if (!has(flag)) {
         flags.append(flag);
     }
 }
 
-void Connection::unset(const QString& flag) { flags.removeAll(flag); }
+void
+Connection::unset(const QString& flag)
+{
+    flags.removeAll(flag);
+}
 
-void Connection::readSocket() {
+void
+Connection::readSocket()
+{
     if (m_notifier == nullptr) {
         C_DEBUG("Connection already closed, discarding data");
         return;
@@ -495,14 +569,14 @@ void Connection::readSocket() {
                 auto geometry = surface->geometry();
                 try {
                     ack_data = reinterpret_cast<Blight::data_t>(
-                        new Blight::surface_info_t{{
+                        new Blight::surface_info_t{ {
                             .x = geometry.x(),
                             .y = geometry.y(),
                             .width = (unsigned int)geometry.width(),
                             .height = (unsigned int)geometry.height(),
                             .stride = surface->stride(),
                             .format = (Blight::Format)surface->format(),
-                        }}
+                        } }
                     );
                     ack_size = sizeof(Blight::surface_info_t);
                 } catch (const std::bad_alloc&) {
@@ -594,7 +668,7 @@ void Connection::readSocket() {
 #ifdef EPAPER
                 auto marker = (unsigned int)*message->data.get();
                 C_DEBUG("Wait requested:" << marker);
-                mxcfb_update_marker_data data{marker, 0};
+                mxcfb_update_marker_data data{ marker, 0 };
                 ioctl(
                     guiThread->framebuffer(),
                     MXCFB_WAIT_FOR_UPDATE_COMPLETE,
@@ -649,7 +723,9 @@ void Connection::readSocket() {
     m_notifier->setEnabled(true);
 }
 
-void Connection::notResponding() {
+void
+Connection::notResponding()
+{
     if (!isRunning()) {
         close();
         m_pingTimer.stop();
@@ -663,9 +739,13 @@ void Connection::notResponding() {
     m_notRespondingTimer.start();
 }
 
-void Connection::ack(
-    Blight::message_ptr_t message, unsigned int size, Blight::data_t data
-) {
+void
+Connection::ack(
+    Blight::message_ptr_t message,
+    unsigned int size,
+    Blight::data_t data
+)
+{
     auto ack = Blight::message_t::create_ack(message.get(), size);
     if (!Blight::send_blocking(
             m_serverFd,
@@ -680,13 +760,15 @@ void Connection::ack(
     }
 }
 
-void Connection::ping() {
+void
+Connection::ping()
+{
     if (!isRunning()) {
         return;
     }
     if (!isStopped()) {
         Blight::header_t ping{
-            {.type = Blight::MessageType::Ping, .ackid = ++pingId, .size = 0}
+            { .type = Blight::MessageType::Ping, .ackid = ++pingId, .size = 0 }
         };
         if (!Blight::send_blocking(
                 m_serverFd,

@@ -7,25 +7,29 @@ using namespace Oxide::Sentry;
 using namespace Oxide::JSON;
 using namespace Oxide::Applications;
 
-#define LOG_VERBOSE(msg)                                             \
-    if (!parser.isSet(quietOption) && parser.isSet(verboseOption)) { \
-        qDebug() << msg;                                             \
+#define LOG_VERBOSE(msg)                                                       \
+    if (!parser.isSet(quietOption) && parser.isSet(verboseOption)) {           \
+        qDebug() << msg;                                                       \
     }
-#define LOG(msg)                      \
-    if (!parser.isSet(quietOption)) { \
-        qDebug() << msg;              \
+#define LOG(msg)                                                               \
+    if (!parser.isSet(quietOption)) {                                          \
+        qDebug() << msg;                                                       \
     }
 
-int qExit(int ret) {
+int
+qExit(int ret)
+{
     QTimer::singleShot(0, [ret]() { qApp->exit(ret); });
     return qApp->exec();
 }
 
-QList<QString> configDirectoryPaths = {
-    "/opt/etc/draft", "/etc/draft", "/home/root/.config/draft"
-};
+QList<QString> configDirectoryPaths = { "/opt/etc/draft",
+                                        "/etc/draft",
+                                        "/home/root/.config/draft" };
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("update-desktop-database", argv);
     app.setOrganizationName("Eeems");
@@ -45,12 +49,12 @@ int main(int argc, char* argv[]) {
     QCommandLineOption versionOption("version", "Display the version and exit");
     parser.addOption(versionOption);
     QCommandLineOption quietOption(
-        {"q", "quiet"},
+        { "q", "quiet" },
         "Do not display any information about processing and updating progress."
     );
     parser.addOption(quietOption);
     QCommandLineOption verboseOption(
-        {"v", "verbose"},
+        { "v", "verbose" },
         "Display more information about processing and upating progress"
     );
     parser.addOption(verboseOption);

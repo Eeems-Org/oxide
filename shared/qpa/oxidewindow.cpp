@@ -7,17 +7,27 @@
 #include "oxideintegration.h"
 
 OxideWindow::OxideWindow(QWindow* window)
-    : QPlatformWindow(window), mBackingStore(nullptr) {}
+  : QPlatformWindow(window), mBackingStore(nullptr)
+{
+}
 
 OxideWindow::~OxideWindow() {}
 
-void OxideWindow::setBackingStore(OxideBackingStore* store) {
+void
+OxideWindow::setBackingStore(OxideBackingStore* store)
+{
     mBackingStore = store;
 }
 
-OxideBackingStore* OxideWindow::backingStore() const { return mBackingStore; }
+OxideBackingStore*
+OxideWindow::backingStore() const
+{
+    return mBackingStore;
+}
 
-OxideScreen* OxideWindow::platformScreen() const {
+OxideScreen*
+OxideWindow::platformScreen() const
+{
     auto window = this->window();
     if (window == nullptr) {
         return nullptr;
@@ -33,7 +43,9 @@ OxideScreen* OxideWindow::platformScreen() const {
     return static_cast<OxideScreen*>(handle);
 }
 
-void OxideWindow::setGeometry(const QRect& rect) {
+void
+OxideWindow::setGeometry(const QRect& rect)
+{
     auto buffer = mBackingStore->buffer();
     if (OxideIntegration::instance()->options().testFlag(
             OxideIntegration::DebugQPA
@@ -45,7 +57,9 @@ void OxideWindow::setGeometry(const QRect& rect) {
     Blight::connection()->move(buffer, rect.x(), rect.y());
 }
 
-void OxideWindow::setVisible(bool visible) {
+void
+OxideWindow::setVisible(bool visible)
+{
     QPlatformWindow::setVisible(visible);
     auto screen = platformScreen();
     if (screen != nullptr) {
@@ -59,7 +73,9 @@ void OxideWindow::setVisible(bool visible) {
     }
 }
 
-void OxideWindow::raise() {
+void
+OxideWindow::raise()
+{
     if (mBackingStore == nullptr) {
         return;
     }
@@ -75,7 +91,9 @@ void OxideWindow::raise() {
     }
 }
 
-void OxideWindow::lower() {
+void
+OxideWindow::lower()
+{
     if (mBackingStore == nullptr) {
         return;
     }
@@ -91,7 +109,9 @@ void OxideWindow::lower() {
     }
 }
 
-bool OxideWindow::close() {
+bool
+OxideWindow::close()
+{
     if (QPlatformWindow::close()) {
         Blight::connection()->remove(mBackingStore->buffer());
         return true;

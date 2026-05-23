@@ -15,10 +15,10 @@ using namespace Oxide::Sentry;
 
 event_device* device = nullptr;
 
-#define check(eventType, name, eventCode)           \
-    if (code == name) {                             \
-        device->write(eventType, eventCode, value); \
-        return true;                                \
+#define check(eventType, name, eventCode)                                      \
+    if (code == name) {                                                        \
+        device->write(eventType, eventCode, value);                            \
+        return true;                                                           \
     }
 #define syn(eventCode) check(EV_SYN, #eventCode, eventCode)
 #define abs(eventCode) check(EV_ABS, #eventCode, eventCode)
@@ -35,7 +35,9 @@ event_device* device = nullptr;
 // I've left EV_FF, EV_PWR, and EV_FF_STATUS out since they don't seem to really
 // apply to the reMarkable
 
-bool process_EV_SYN(const QStringList& args) {
+bool
+process_EV_SYN(const QStringList& args)
+{
     auto code = args.at(1).toStdString();
     int value = 0;
     syn(SYN_REPORT);
@@ -46,7 +48,9 @@ bool process_EV_SYN(const QStringList& args) {
     return false;
 }
 
-bool process_EV_ABS(const QStringList& args) {
+bool
+process_EV_ABS(const QStringList& args)
+{
     auto code = args.at(1).toStdString();
     int value = 0;
     if (args.count() > 2) {
@@ -107,7 +111,9 @@ bool process_EV_ABS(const QStringList& args) {
     return false;
 }
 
-bool process_EV_REL(const QStringList& args) {
+bool
+process_EV_REL(const QStringList& args)
+{
     auto code = args.at(1).toStdString();
     int value = 0;
     if (args.count() > 2) {
@@ -138,7 +144,9 @@ bool process_EV_REL(const QStringList& args) {
     return false;
 }
 
-bool process_EV_KEY(const QStringList& args) {
+bool
+process_EV_KEY(const QStringList& args)
+{
     auto code = args.at(1).toStdString();
     int value = 0;
     if (args.count() > 2) {
@@ -787,7 +795,9 @@ bool process_EV_KEY(const QStringList& args) {
     return false;
 }
 
-bool process_EV_MSC(const QStringList& args) {
+bool
+process_EV_MSC(const QStringList& args)
+{
     auto code = args.at(1).toStdString();
     int value = 0;
     if (args.count() > 2) {
@@ -811,7 +821,9 @@ bool process_EV_MSC(const QStringList& args) {
     return false;
 }
 
-bool process_EV_SW(const QStringList& args) {
+bool
+process_EV_SW(const QStringList& args)
+{
     auto code = args.at(1).toStdString();
     int value = 0;
     if (args.count() > 2) {
@@ -847,7 +859,9 @@ bool process_EV_SW(const QStringList& args) {
     return false;
 }
 
-bool process_EV_LED(const QStringList& args) {
+bool
+process_EV_LED(const QStringList& args)
+{
     auto code = args.at(1).toStdString();
     int value = 0;
     if (args.count() > 2) {
@@ -876,7 +890,9 @@ bool process_EV_LED(const QStringList& args) {
     return false;
 }
 
-bool process_EV_SND(const QStringList& args) {
+bool
+process_EV_SND(const QStringList& args)
+{
     auto code = args.at(1).toStdString();
     int value = 0;
     if (args.count() > 2) {
@@ -897,7 +913,9 @@ bool process_EV_SND(const QStringList& args) {
     return false;
 }
 
-bool process_EV_REP(const QStringList& args) {
+bool
+process_EV_REP(const QStringList& args)
+{
     auto code = args.at(1).toStdString();
     int value = 0;
     if (args.count() > 2) {
@@ -917,12 +935,14 @@ bool process_EV_REP(const QStringList& args) {
     return false;
 }
 
-#define process_type(eventType)           \
-    if (type == #eventType) {             \
-        return process_##eventType(args); \
+#define process_type(eventType)                                                \
+    if (type == #eventType) {                                                  \
+        return process_##eventType(args);                                      \
     }
 
-bool process(const QStringList& args) {
+bool
+process(const QStringList& args)
+{
     if (args.count() < 2 || args.count() > 3) {
         qDebug() << "Incorrect number of arguments.";
         if (debugEnabled()) {
@@ -944,7 +964,9 @@ bool process(const QStringList& args) {
     return false;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("inject_evdev", argv);
     app.setOrganizationName("Eeems");

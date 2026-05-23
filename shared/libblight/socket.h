@@ -36,9 +36,8 @@ namespace Blight {
      * \param size The size of the data to send.
      * \return If the data was sent without error.
      */
-    LIBBLIGHT_EXPORT bool send_blocking(
-        int fd, const data_t data, ssize_t size
-    );
+    LIBBLIGHT_EXPORT bool
+    send_blocking(int fd, const data_t data, ssize_t size);
     /*!
      * \brief Wait until a socket is ready to send data.
      * \param fd The socket
@@ -53,5 +52,5 @@ namespace Blight {
      * \return If the socket is ready for us to recieve data.
      */
     LIBBLIGHT_EXPORT bool wait_for_read(int fd, int timeout = -1);
-}  // namespace Blight
+} // namespace Blight
 /*! @} */

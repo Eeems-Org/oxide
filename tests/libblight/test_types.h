@@ -1,14 +1,15 @@
 #pragma once
 #include "autotest.h"
 
-class test_Types : public QObject {
+class test_Types : public QObject
+{
     Q_OBJECT
 
-   public:
+  public:
     test_Types();
     ~test_Types();
 
-   private slots:
+  private slots:
     void test_clipboard_t();
     void test_buf_t();
     void test_header_t();

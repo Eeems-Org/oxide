@@ -3,7 +3,8 @@
 using namespace Oxide;
 
 namespace Oxide {
-    WifiNetworks XochitlSettings::wifinetworks() {
+    WifiNetworks XochitlSettings::wifinetworks()
+    {
         beginGroup("wifinetworks");
         QMap<QString, QVariantMap> wifinetworks;
         for (const QString& key : allKeys()) {
@@ -13,7 +14,8 @@ namespace Oxide {
         endGroup();
         return wifinetworks;
     }
-    void XochitlSettings::setWifinetworks(const WifiNetworks& wifinetworks) {
+    void XochitlSettings::setWifinetworks(const WifiNetworks& wifinetworks)
+    {
         beginGroup("wifinetworks");
         for (const QString& key : wifinetworks.keys()) {
             setValue(key, wifinetworks.value(key));
@@ -21,15 +23,16 @@ namespace Oxide {
         endGroup();
         sync();
     }
-    QVariantMap XochitlSettings::getWifiNetwork(const QString& name) {
+    QVariantMap XochitlSettings::getWifiNetwork(const QString& name)
+    {
         beginGroup("wifinetworks");
         QVariantMap network = value(name).toMap();
         endGroup();
         return network;
     }
-    void XochitlSettings::setWifiNetwork(
-        const QString& name, QVariantMap properties
-    ) {
+    void
+    XochitlSettings::setWifiNetwork(const QString& name, QVariantMap properties)
+    {
         beginGroup("wifinetworks");
         setValue(name, properties);
         endGroup();
@@ -39,5 +42,5 @@ namespace Oxide {
     XochitlSettings::~XochitlSettings() {}
     O_SETTINGS_PROPERTY_BODY(XochitlSettings, QString, General, passcode)
     O_SETTINGS_PROPERTY_BODY(XochitlSettings, bool, General, wifion)
-}  // namespace Oxide
+} // namespace Oxide
 #include "moc_xochitlsettings.cpp"

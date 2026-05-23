@@ -24,14 +24,15 @@ Surface::Surface(
     int stride,
     QImage::Format format
 )
-    : QObject(),
-      m_connection(connection),
-      m_identifier{identifier},
-      m_geometry(geometry),
-      m_stride(stride),
-      m_format(format),
-      m_fd{fd},
-      m_removed{false} {
+  : QObject()
+  , m_connection(connection)
+  , m_identifier{ identifier }
+  , m_geometry(geometry)
+  , m_stride(stride)
+  , m_format(format)
+  , m_fd{ fd }
+  , m_removed{ false }
+{
     m_id = QString("%1/surface/%2").arg(connection->id()).arg(identifier);
     data = reinterpret_cast<uchar*>(mmap(
         NULL,
@@ -58,11 +59,11 @@ Surface::Surface(
         "qrc:/Surface.qml",
         id(),
         QVariantMap{
-            {"x", geometry.x()},
-            {"y", geometry.y()},
-            {"width", geometry.width()},
-            {"height", geometry.height()},
-            {"visible", true},
+            { "x", geometry.x() },
+            { "y", geometry.y() },
+            { "width", geometry.width() },
+            { "height", geometry.height() },
+            { "visible", true },
         }
     ));
     if (component == nullptr) {
@@ -91,7 +92,8 @@ Surface::Surface(
     S_INFO("Surface created");
 }
 
-Surface::~Surface() {
+Surface::~Surface()
+{
     S_INFO("Surface destroyed");
     if (data != MAP_FAILED) {
         ::munmap(data, m_stride * m_geometry.height());
@@ -108,9 +110,15 @@ Surface::~Surface() {
 #endif
 }
 
-QString Surface::id() { return m_id; }
+QString
+Surface::id()
+{
+    return m_id;
+}
 
-bool Surface::isValid() {
+bool
+Surface::isValid()
+{
 #ifdef EPAPER
     return data != MAP_FAILED;
 #else
@@ -118,14 +126,18 @@ bool Surface::isValid() {
 #endif
 }
 
-std::shared_ptr<QImage> Surface::image() {
+std::shared_ptr<QImage>
+Surface::image()
+{
     if (!m_connection->isRunning()) {
         return std::shared_ptr<QImage>();
     }
     return m_image;
 }
 
-void Surface::repaint(QRect rect) {
+void
+Surface::repaint(QRect rect)
+{
     if (rect.isEmpty()) {
         rect = this->rect();
     }
@@ -143,19 +155,45 @@ void Surface::repaint(QRect rect) {
 #endif
 }
 
-int Surface::fd() { return m_fd; }
+int
+Surface::fd()
+{
+    return m_fd;
+}
 
-const QRect& Surface::geometry() { return m_geometry; }
+const QRect&
+Surface::geometry()
+{
+    return m_geometry;
+}
 
-const QSize Surface::size() { return m_geometry.size(); }
+const QSize
+Surface::size()
+{
+    return m_geometry.size();
+}
 
-const QRect Surface::rect() { return QRect(QPoint(0, 0), size()); }
+const QRect
+Surface::rect()
+{
+    return QRect(QPoint(0, 0), size());
+}
 
-int Surface::stride() { return m_stride; }
+int
+Surface::stride()
+{
+    return m_stride;
+}
 
-QImage::Format Surface::format() { return m_format; }
+QImage::Format
+Surface::format()
+{
+    return m_format;
+}
 
-void Surface::move(int x, int y) {
+void
+Surface::move(int x, int y)
+{
     m_geometry.moveTopLeft(QPoint(x, y));
 #ifndef EPAPER
     component->setX(x);
@@ -163,7 +201,9 @@ void Surface::move(int x, int y) {
 #endif
 }
 
-void Surface::setVisible(bool visible) {
+void
+Surface::setVisible(bool visible)
+{
 #ifdef EPAPER
     setProperty("visible", visible);
 #else
@@ -173,7 +213,9 @@ void Surface::setVisible(bool visible) {
 #endif
 }
 
-bool Surface::visible() {
+bool
+Surface::visible()
+{
 #ifdef EPAPER
     return property("visible").toBool();
 #else
@@ -184,7 +226,9 @@ bool Surface::visible() {
 #endif
 }
 
-int Surface::z() {
+int
+Surface::z()
+{
 #ifdef EPAPER
     return property("z").toInt();
 #else
@@ -195,7 +239,9 @@ int Surface::z() {
 #endif
 }
 
-void Surface::setZ(int z) {
+void
+Surface::setZ(int z)
+{
 #ifdef EPAPER
     setProperty("z", z);
 #else
@@ -205,24 +251,48 @@ void Surface::setZ(int z) {
 #endif
 }
 
-bool Surface::has(const QString& flag) { return flags.contains(flag); }
+bool
+Surface::has(const QString& flag)
+{
+    return flags.contains(flag);
+}
 
-void Surface::set(const QString& flag) {
+void
+Surface::set(const QString& flag)
+{
     if (!has(flag)) {
         flags.append(flag);
     }
 }
 
-void Surface::unset(const QString& flag) { flags.removeAll(flag); }
+void
+Surface::unset(const QString& flag)
+{
+    flags.removeAll(flag);
+}
 
-Connection* Surface::connection() { return m_connection; }
+Connection*
+Surface::connection()
+{
+    return m_connection;
+}
 
-bool Surface::isRemoved() { return m_removed; }
+bool
+Surface::isRemoved()
+{
+    return m_removed;
+}
 
-void Surface::removed() { m_removed = true; }
+void
+Surface::removed()
+{
+    m_removed = true;
+}
 
 #ifndef EPAPER
-void Surface::activeFocusChanged(bool focus) {
+void
+Surface::activeFocusChanged(bool focus)
+{
     if (focus) {
         emit m_connection->focused();
     }

@@ -13,7 +13,8 @@
 #include <QTextStream>
 #include <string>
 
-class TaskItem : public QObject {
+class TaskItem : public QObject
+{
     Q_OBJECT
     Q_PROPERTY(
         QString name MEMBER _name READ name WRITE setName NOTIFY nameChanged
@@ -29,23 +30,25 @@ class TaskItem : public QObject {
     Q_PROPERTY(uint cpu MEMBER _cpu READ cpu WRITE setCpu NOTIFY cpuChanged);
     Q_PROPERTY(QString mem MEMBER _mem READ mem WRITE setMem NOTIFY memChanged);
 
-   public:
+  public:
     TaskItem(int pid, QObject* parent)
-        : QObject(parent),
-          _name(""),
-          _pid(pid),
-          _ppid(0),
-          _killable(true),
-          _cpu(0),
-          _mem("0b"),
-          _totalCpuUsage(0),
-          _procUsage(0) {
+      : QObject(parent)
+      , _name("")
+      , _pid(pid)
+      , _ppid(0)
+      , _killable(true)
+      , _cpu(0)
+      , _mem("0b")
+      , _totalCpuUsage(0)
+      , _procUsage(0)
+    {
         reload();
     }
     int protectPid;
     Q_INVOKABLE bool signal(int signal) { return kill(_pid, signal); }
     bool exists() { return _pid > 0 && QFile::exists(folder()); }
-    void reload() {
+    void reload()
+    {
         if (!exists()) {
             return;
         }
@@ -119,23 +122,28 @@ class TaskItem : public QObject {
     uint cpu() { return _cpu; }
     QString mem() { return _mem; }
 
-    void setName(QString name) {
+    void setName(QString name)
+    {
         _name = name;
         emit nameChanged(_name);
     }
-    void setPid(int pid) {
+    void setPid(int pid)
+    {
         _pid = pid;
         emit pidChanged(_pid);
     }
-    void setPpid(int ppid) {
+    void setPpid(int ppid)
+    {
         _ppid = ppid;
         emit ppidChanged(_ppid);
     }
-    void setKillable(bool killable) {
+    void setKillable(bool killable)
+    {
         _killable = _ppid && killable;
         emit killableChanged(_killable);
     }
-    void setCpu(int cpu) {
+    void setCpu(int cpu)
+    {
         if (cpu < 0) {
             _cpu = 0;
         } else if (cpu > 100) {
@@ -145,12 +153,13 @@ class TaskItem : public QObject {
         }
         emit cpuChanged(_cpu);
     }
-    void setMem(QString mem) {
+    void setMem(QString mem)
+    {
         _mem = mem;
         emit memChanged(_mem);
     }
 
-   signals:
+  signals:
     void nameChanged(QString);
     void pidChanged(int);
     void killableChanged(bool);
@@ -158,7 +167,7 @@ class TaskItem : public QObject {
     void cpuChanged(uint);
     void memChanged(QString);
 
-   private:
+  private:
     QString _name;
     QString _path;
     int _pid;
@@ -168,7 +177,8 @@ class TaskItem : public QObject {
     QString _mem;
     ulong _totalCpuUsage;
     ulong _procUsage;
-    QString readFile(const QString& path) {
+    QString readFile(const QString& path)
+    {
         QFile file(path);
         if (!file.open(QIODevice::ReadOnly)) {
             qDebug() << "Error reading file: " + path;
@@ -178,7 +188,8 @@ class TaskItem : public QObject {
         file.close();
         return data;
     }
-    QString parseRegex(QString& file_content, const QRegularExpression& reg) {
+    QString parseRegex(QString& file_content, const QRegularExpression& reg)
+    {
         QRegularExpressionMatchIterator i = reg.globalMatch(file_content);
         if (!i.isValid()) {
             return "";
@@ -190,9 +201,10 @@ class TaskItem : public QObject {
         }
         return result;
     }
-    QString folder() {
+    QString folder()
+    {
         return QString::fromStdString("/proc/" + std::to_string(_pid));
     }
 };
 
-#endif  // TASKITEM_H
+#endif // TASKITEM_H

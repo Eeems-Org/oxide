@@ -5,13 +5,16 @@
 
 #include "common.h"
 
-class HelpCommand : ICommand {
+class HelpCommand : ICommand
+{
     O_COMMAND(HelpCommand, "help", "Print help", true)
-    int arguments() override {
+    int arguments() override
+    {
         parser->addPositionalArgument("Commands:", commandsHelp(), "[COMMAND]");
         return EXIT_SUCCESS;
     }
-    int command(const QStringList& args) override {
+    int command(const QStringList& args) override
+    {
         if (args.isEmpty()) {
             parser->showHelp(EXIT_SUCCESS);
         }

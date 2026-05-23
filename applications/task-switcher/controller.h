@@ -18,20 +18,27 @@ using namespace Oxide;
 
 #define CORRUPT_SETTINGS_VERSION 1
 
-enum State { Normal, PowerSaving };
-enum BatteryState {
+enum State
+{
+    Normal,
+    PowerSaving
+};
+enum BatteryState
+{
     BatteryUnknown,
     BatteryCharging,
     BatteryDischarging,
     BatteryNotPresent
 };
-enum ChargerState {
+enum ChargerState
+{
     ChargerUnknown,
     ChargerConnected,
     ChargerNotConnected,
     ChargerNotPresent
 };
-enum WifiState {
+enum WifiState
+{
     WifiUnknown,
     WifiOff,
     WifiDisconnected,
@@ -39,11 +46,13 @@ enum WifiState {
     WifiOnline
 };
 
-class Controller : public QObject {
+class Controller : public QObject
+{
     Q_OBJECT
 
-   public:
-    Controller(QObject* parent) : QObject(parent), applications() {
+  public:
+    Controller(QObject* parent) : QObject(parent), applications()
+    {
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
         while (!bus.interface()->registeredServiceNames().value().contains(
@@ -90,12 +99,14 @@ class Controller : public QObject {
     }
     ~Controller() {}
 
-    Q_INVOKABLE void startup() {
+    Q_INVOKABLE void startup()
+    {
         qDebug() << "Running controller startup";
         emit reload();
         QTimer::singleShot(10, [this] { setState("loaded"); });
     }
-    Q_INVOKABLE void previousApplication() {
+    Q_INVOKABLE void previousApplication()
+    {
         auto reply = appsApi->previousApplication();
         while (!reply.isFinished()) {
             qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
@@ -104,19 +115,22 @@ class Controller : public QObject {
             launchStartupApp();
         }
     }
-    Q_INVOKABLE void launchStartupApp() {
+    Q_INVOKABLE void launchStartupApp()
+    {
         auto reply = appsApi->openDefaultApplication();
         while (!reply.isFinished()) {
             qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
         }
     }
-    Q_INVOKABLE void launchTaskManager() {
+    Q_INVOKABLE void launchTaskManager()
+    {
         auto reply = appsApi->openTaskManager();
         while (!reply.isFinished()) {
             qApp->processEvents(QEventLoop::ExcludeUserInputEvents, 100);
         }
     }
-    Q_INVOKABLE QList<QObject*> getApps() {
+    Q_INVOKABLE QList<QObject*> getApps()
+    {
         auto bus = QDBusConnection::systemBus();
         auto running = appsApi->runningApplications();
         auto paused = appsApi->pausedApplications();
@@ -183,9 +197,9 @@ class Controller : public QObject {
         );
         return applications;
     }
-    Q_INVOKABLE void breadcrumb(
-        QString category, QString message, QString type = "default"
-    ) {
+    Q_INVOKABLE void
+    breadcrumb(QString category, QString message, QString type = "default")
+    {
 #ifdef SENTRY
         sentry_breadcrumb(
             category.toStdString().c_str(),
@@ -198,7 +212,8 @@ class Controller : public QObject {
         Q_UNUSED(type);
 #endif
     }
-    AppItem* getApplication(QString name) {
+    AppItem* getApplication(QString name)
+    {
         for (auto app : applications) {
             if (app->property("name").toString() == name) {
                 return reinterpret_cast<AppItem*>(app);
@@ -206,13 +221,15 @@ class Controller : public QObject {
         }
         return nullptr;
     }
-    QString state() {
+    QString state()
+    {
         if (!getStateControllerUI()) {
             return "loading";
         }
         return stateControllerUI->property("state").toString();
     }
-    void setState(QString state) {
+    void setState(QString state)
+    {
         if (!getStateControllerUI()) {
             throw "Unable to find state controller";
         }
@@ -222,21 +239,24 @@ class Controller : public QObject {
     void setRoot(QObject* root) { this->root = root; }
     Apps* getAppsApi() { return appsApi; }
 
-   signals:
+  signals:
     void reload();
 
-   private slots:
-    void sigUsr1() {
+  private slots:
+    void sigUsr1()
+    {
         ::kill(tarnishPid(), SIGUSR1);
         qDebug() << "Sent to the foreground...";
         setState("loading");
     }
-    void sigUsr2() {
+    void sigUsr2()
+    {
         qDebug() << "Sent to the background...";
         setState("hidden");
         QTimer::singleShot(0, [this] { ::kill(tarnishPid(), SIGUSR2); });
     }
-    void unregisterApplication(QDBusObjectPath path) {
+    void unregisterApplication(QDBusObjectPath path)
+    {
         auto pathString = path.path();
         for (auto app : applications) {
             if (app->property("path") == pathString) {
@@ -249,12 +269,13 @@ class Controller : public QObject {
         }
         qDebug() << "Unable to find application " << pathString << "to remove";
     }
-    void registerApplication(QDBusObjectPath path) {
+    void registerApplication(QDBusObjectPath path)
+    {
         qDebug() << "New application detected" << path.path();
         emit reload();
     }
 
-   private:
+  private:
     General* api;
     Apps* appsApi;
     QObject* root = nullptr;
@@ -262,10 +283,11 @@ class Controller : public QObject {
     QList<QObject*> applications;
 
     int tarnishPid() { return api->tarnishPid(); }
-    QObject* getStateControllerUI() {
+    QObject* getStateControllerUI()
+    {
         stateControllerUI = root->findChild<QObject*>("stateController");
         return stateControllerUI;
     }
 };
 
-#endif  // CONTROLLER_H
+#endif // CONTROLLER_H

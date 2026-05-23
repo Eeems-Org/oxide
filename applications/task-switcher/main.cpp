@@ -14,12 +14,16 @@ using namespace Oxide;
 using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
-void sigHandler(int signal) {
+void
+sigHandler(int signal)
+{
     ::signal(signal, SIG_DFL);
     qApp->exit(signal);
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     deviceSettings.setupQtEnvironment();
     QGuiApplication app(argc, argv);
     sentry_init("corrupt", argv);

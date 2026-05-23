@@ -14,14 +14,16 @@
 
 // String: 5aa5ca39ee0b4f48927529ca17519524
 // UUID: 5aa5ca39-ee0b-4f48-9275-29ca17519524
-#define OXIDE_UID                                                      \
-    SD_ID128_MAKE(                                                     \
-        5a, a5, ca, 39, ee, 0b, 4f, 48, 92, 75, 29, ca, 17, 51, 95, 24 \
+#define OXIDE_UID                                                              \
+    SD_ID128_MAKE(                                                             \
+        5a, a5, ca, 39, ee, 0b, 4f, 48, 92, 75, 29, ca, 17, 51, 95, 24         \
     )
 
 #ifdef SENTRY
 #define SAMPLE_RATE 1.0
-std::string readFile(const std::string& path) {
+std::string
+readFile(const std::string& path)
+{
     std::ifstream t(path);
     std::stringstream buffer;
     buffer << t.rdbuf();
@@ -37,7 +39,9 @@ std::string readFile(const std::string& path) {
 #include <cpptrace/from_current.hpp>
 #include <iostream>
 
-void sigsegv_handler(int signo, siginfo_t* info, void* context) {
+void
+sigsegv_handler(int signo, siginfo_t* info, void* context)
+{
     Q_UNUSED(signo);
     Q_UNUSED(info);
     Q_UNUSED(context);
@@ -66,7 +70,9 @@ void sigsegv_handler(int signo, siginfo_t* info, void* context) {
 
 static void* invalid_mem = (void*)1;
 
-void logMachineIdError(int error, QString name, QString path) {
+void
+logMachineIdError(int error, QString name, QString path)
+{
     if (error == -ENOENT) {
         O_WARNING("/etc/machine-id is missing");
     } else if (error == -ENOMEDIUM) {
@@ -87,7 +93,9 @@ void logMachineIdError(int error, QString name, QString path) {
         );
     }
 }
-std::string getAppSpecific(sd_id128_t base) {
+std::string
+getAppSpecific(sd_id128_t base)
+{
     QCryptographicHash hash(QCryptographicHash::Sha256);
     char buf[SD_ID128_STRING_MAX];
     hash.addData(sd_id128_to_string(base, buf));
@@ -114,19 +122,28 @@ std::string getAppSpecific(sd_id128_t base) {
 namespace Oxide::Sentry {
 #ifdef SENTRY
     static bool initialized = false;
-    Transaction::Transaction(sentry_transaction_t* t) { inner = t; }
-    Span::Span(sentry_span_t* s) { inner = s; }
+    Transaction::Transaction(sentry_transaction_t* t)
+    {
+        inner = t;
+    }
+    Span::Span(sentry_span_t* s)
+    {
+        inner = s;
+    }
 #else
-    Transaction::Transaction(void* t) {
+    Transaction::Transaction(void* t)
+    {
         Q_UNUSED(t);
         inner = nullptr;
     }
-    Span::Span(void* s) {
+    Span::Span(void* s)
+    {
         Q_UNUSED(s);
         inner = nullptr;
     }
 #endif
-    const char* bootId() {
+    const char* bootId()
+    {
         static std::string bootId("");
         if (!bootId.empty()) {
             return bootId.c_str();
@@ -148,7 +165,8 @@ namespace Oxide::Sentry {
         logMachineIdError(ret, "boot_id", "/proc/sys/kernel/random/boot_id");
         return "";
     }
-    const char* machineId() {
+    const char* machineId()
+    {
         static std::string machineId("");
         if (!machineId.empty()) {
             return machineId.c_str();
@@ -170,13 +188,15 @@ namespace Oxide::Sentry {
         logMachineIdError(ret, "machine-id", "/etc/machine-id");
         return "";
     }
-    bool enabled() {
+    bool enabled()
+    {
         return sharedSettings.crashReport() || sharedSettings.telemetry();
     }
 #ifdef SENTRY
     sentry_options_t* options = sentry_options_new();
 #endif
-    void sentry_init(const char* name, char* argv[], bool autoSessionTracking) {
+    void sentry_init(const char* name, char* argv[], bool autoSessionTracking)
+    {
 #ifdef SENTRY
         if (sharedSettings.crashReport()) {
             sentry_options_set_sample_rate(options, SAMPLE_RATE);
@@ -291,7 +311,8 @@ namespace Oxide::Sentry {
         const char* message,
         const char* type,
         const char* level
-    ) {
+    )
+    {
 #ifdef SENTRY
         if (!sharedSettings.telemetry()) {
             return;
@@ -309,9 +330,9 @@ namespace Oxide::Sentry {
         Q_UNUSED(level);
 #endif
     }
-    Transaction* start_transaction(
-        const std::string& name, const std::string& action
-    ) {
+    Transaction*
+    start_transaction(const std::string& name, const std::string& action)
+    {
 #ifdef SENTRY
         sentry_transaction_context_t* context =
             sentry_transaction_context_new(name.c_str(), action.c_str());
@@ -327,7 +348,8 @@ namespace Oxide::Sentry {
         return nullptr;
 #endif
     }
-    void stop_transaction(Transaction* transaction) {
+    void stop_transaction(Transaction* transaction)
+    {
 #ifdef SENTRY
         if (transaction != nullptr && transaction->inner != nullptr) {
             sentry_transaction_finish(transaction->inner);
@@ -340,7 +362,8 @@ namespace Oxide::Sentry {
         const std::string& name,
         const std::string& action,
         std::function<void(Transaction* transaction)> callback
-    ) {
+    )
+    {
 #ifdef SENTRY
         if (!sharedSettings.telemetry()) {
             callback(nullptr);
@@ -360,7 +383,8 @@ namespace Oxide::Sentry {
         Transaction* transaction,
         const std::string& operation,
         const std::string& description
-    ) {
+    )
+    {
 #ifdef SENTRY
         if (transaction == nullptr) {
             return nullptr;
@@ -381,7 +405,8 @@ namespace Oxide::Sentry {
         Span* parent,
         const std::string& operation,
         const std::string& description
-    ) {
+    )
+    {
 #ifdef SENTRY
         if (parent == nullptr) {
             return nullptr;
@@ -396,7 +421,8 @@ namespace Oxide::Sentry {
         return nullptr;
 #endif
     }
-    void stop_span(Span* span) {
+    void stop_span(Span* span)
+    {
 #ifdef SENTRY
         if (span != nullptr && span->inner != nullptr) {
             sentry_span_finish(span->inner);
@@ -410,7 +436,8 @@ namespace Oxide::Sentry {
         const std::string& operation,
         const std::string& description,
         std::function<void()> callback
-    ) {
+    )
+    {
 #ifdef SENTRY
         sentry_span(transaction, operation, description, [callback](Span* s) {
             Q_UNUSED(s);
@@ -421,8 +448,12 @@ namespace Oxide::Sentry {
         Q_UNUSED(operation);
         Q_UNUSED(description);
 #ifdef DEBUG
-        CPPTRACE_TRY { callback(); }
-        CPPTRACE_CATCH(const std::exception& e) {
+        CPPTRACE_TRY
+        {
+            callback();
+        }
+        CPPTRACE_CATCH(const std::exception& e)
+        {
             std::cerr << "Exception: " << e.what() << std::endl;
             cpptrace::from_current_exception().print();
         }
@@ -436,7 +467,8 @@ namespace Oxide::Sentry {
         const std::string& operation,
         const std::string& description,
         std::function<void(Span* span)> callback
-    ) {
+    )
+    {
 #ifdef SENTRY
         if (!sharedSettings.telemetry() || transaction == nullptr ||
             transaction->inner == nullptr) {
@@ -451,8 +483,12 @@ namespace Oxide::Sentry {
         Q_UNUSED(operation);
         Q_UNUSED(description);
 #ifdef DEBUG
-        CPPTRACE_TRY { callback(nullptr); }
-        CPPTRACE_CATCH(const std::exception& e) {
+        CPPTRACE_TRY
+        {
+            callback(nullptr);
+        }
+        CPPTRACE_CATCH(const std::exception& e)
+        {
             std::cerr << "Exception: " << e.what() << std::endl;
             cpptrace::from_current_exception().print();
         }
@@ -466,7 +502,8 @@ namespace Oxide::Sentry {
         const std::string& operation,
         const std::string& description,
         std::function<void()> callback
-    ) {
+    )
+    {
 #ifdef SENTRY
         sentry_span(parent, operation, description, [callback](Span* s) {
             Q_UNUSED(s);
@@ -477,8 +514,12 @@ namespace Oxide::Sentry {
         Q_UNUSED(operation);
         Q_UNUSED(description);
 #ifdef DEBUG
-        CPPTRACE_TRY { callback(); }
-        CPPTRACE_CATCH(const std::exception& e) {
+        CPPTRACE_TRY
+        {
+            callback();
+        }
+        CPPTRACE_CATCH(const std::exception& e)
+        {
             std::cerr << "Exception: " << e.what() << std::endl;
             cpptrace::from_current_exception().print();
         }
@@ -493,7 +534,8 @@ namespace Oxide::Sentry {
         const std::string& operation,
         const std::string& description,
         std::function<void(Span* span)> callback
-    ) {
+    )
+    {
 #ifdef SENTRY
         if (!sharedSettings.telemetry() || parent == nullptr ||
             parent->inner == nullptr) {
@@ -508,8 +550,12 @@ namespace Oxide::Sentry {
         Q_UNUSED(operation);
         Q_UNUSED(description);
 #ifdef DEBUG
-        CPPTRACE_TRY { callback(nullptr); }
-        CPPTRACE_CATCH(const std::exception& e) {
+        CPPTRACE_TRY
+        {
+            callback(nullptr);
+        }
+        CPPTRACE_CATCH(const std::exception& e)
+        {
             std::cerr << "Exception: " << e.what() << std::endl;
             cpptrace::from_current_exception().print();
         }
@@ -518,5 +564,8 @@ namespace Oxide::Sentry {
 #endif
 #endif
     }
-    void trigger_crash() { memset((char*)invalid_mem, 1, 100); }
-}  // namespace Oxide::Sentry
+    void trigger_crash()
+    {
+        memset((char*)invalid_mem, 1, 100);
+    }
+} // namespace Oxide::Sentry

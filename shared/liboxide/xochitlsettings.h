@@ -23,7 +23,8 @@ namespace Oxide {
     /*!
      * \brief Manage Xochitl settings
      */
-    class LIBOXIDE_EXPORT XochitlSettings : public SettingsFile {
+    class LIBOXIDE_EXPORT XochitlSettings : public SettingsFile
+    {
         Q_OBJECT
         /*!
          * \fn instance
@@ -35,7 +36,8 @@ namespace Oxide {
         // cppcheck-suppress uninitMemberVarPrivate
         // cppcheck-suppress unusedFunction
         O_SETTINGS(
-            XochitlSettings, "/home/root/.config/remarkable/xochitl.conf"
+            XochitlSettings,
+            "/home/root/.config/remarkable/xochitl.conf"
         )
         /*!
          * \property passcode
@@ -78,7 +80,7 @@ namespace Oxide {
                     wifinetworksChanged
         )
 
-       public:
+      public:
         WifiNetworks wifinetworks();
         /*!
          * \brief Set the list of wifi networks
@@ -99,15 +101,15 @@ namespace Oxide {
         void setWifiNetwork(const QString& name, QVariantMap properties);
         void resetWifinetworks();
 
-       signals:
+      signals:
         /*!
          * \brief The contents of the wifi network list has changed
          */
         void wifinetworksChanged(WifiNetworks);
 
-       private:
+      private:
         ~XochitlSettings();
         WifiNetworks m_wifinetworks;
     };
-}  // namespace Oxide
+} // namespace Oxide
 /*! @} */

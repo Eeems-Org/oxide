@@ -3,7 +3,8 @@
 #include "debug.h"
 
 namespace Oxide {
-    void startThreadWithPriority(QThread* thread, QThread::Priority priority) {
+    void startThreadWithPriority(QThread* thread, QThread::Priority priority)
+    {
         O_DEBUG(thread << "Starting thread");
 #ifndef QT_HAS_THREAD_PRIORITY_SCHEDULING
         QObject::connect(
@@ -13,7 +14,7 @@ namespace Oxide {
             [priority] {
                 switch (priority) {
                     case QThread::IdlePriority:
-                        nice(19);  // 19 is the max
+                        nice(19); // 19 is the max
                         break;
                     case QThread::LowestPriority:
                         nice(10);
@@ -42,14 +43,16 @@ namespace Oxide {
         thread->start(priority);
     }
 
-    void dispatchToMainThread(std::function<void()> callback) {
+    void dispatchToMainThread(std::function<void()> callback)
+    {
         dispatchToMainThread<int>([callback] {
             callback();
             return 0;
         });
     }
 
-    void dispatchToThread(QThread* thread, std::function<void()> callback) {
+    void dispatchToThread(QThread* thread, std::function<void()> callback)
+    {
         if (QThread::currentThread() == thread) {
             // Already on the correct thread
             return callback();
@@ -80,7 +83,8 @@ namespace Oxide {
         O_DEBUG("Thread dispatch finished" << thread);
     }
 
-    void runLater(QThread* thread, std::function<void()> callback) {
+    void runLater(QThread* thread, std::function<void()> callback)
+    {
         O_DEBUG("Run later on thread" << thread);
         QTimer* timer = new QTimer();
         timer->moveToThread(thread);
@@ -97,11 +101,13 @@ namespace Oxide {
         );
     }
 
-    void runLaterInMainThread(std::function<void()> callback) {
+    void runLaterInMainThread(std::function<void()> callback)
+    {
         runLater(qApp->thread(), callback);
     }
 
-    void runInEventLoop(std::function<void(std::function<void()>)> callback) {
+    void runInEventLoop(std::function<void(std::function<void()>)> callback)
+    {
         QEventLoop loop;
         QTimer timer;
         O_DEBUG("Running in event loop");
@@ -120,4 +126,4 @@ namespace Oxide {
         timer.start(0);
         loop.exec();
     }
-}  // namespace Oxide
+} // namespace Oxide

@@ -3,7 +3,8 @@
 #include "wifiapi.h"
 
 BSS::BSS(QString path, QString bssid, QString ssid, QObject* parent)
-    : QObject(parent), m_path(path), bsss(), m_bssid(bssid), m_ssid(ssid) {
+  : QObject(parent), m_path(path), bsss(), m_bssid(bssid), m_ssid(ssid)
+{
     for (auto bss : bsss) {
         QObject::connect(
             bss,
@@ -15,11 +16,20 @@ BSS::BSS(QString path, QString bssid, QString ssid, QObject* parent)
     }
 }
 
-BSS::~BSS() { unregisterPath(); }
+BSS::~BSS()
+{
+    unregisterPath();
+}
 
-QString BSS::path() { return m_path; }
+QString
+BSS::path()
+{
+    return m_path;
+}
 
-void BSS::registerPath() {
+void
+BSS::registerPath()
+{
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if (bus.registerObject(path(), this, QDBusConnection::ExportAllContents)) {
@@ -29,7 +39,9 @@ void BSS::registerPath() {
     }
 }
 
-void BSS::unregisterPath() {
+void
+BSS::unregisterPath()
+{
     auto bus = QDBusConnection::systemBus();
     if (bus.objectRegisteredAt(path()) != nullptr) {
         O_DEBUG("Unregistered" << path());
@@ -37,21 +49,27 @@ void BSS::unregisterPath() {
     }
 }
 
-QString BSS::bssid() {
+QString
+BSS::bssid()
+{
     if (!hasPermission("wifi")) {
         return "";
     }
     return m_bssid;
 }
 
-QString BSS::ssid() {
+QString
+BSS::ssid()
+{
     if (!hasPermission("wifi")) {
         return "";
     }
     return m_ssid;
 }
 
-QList<QString> BSS::paths() {
+QList<QString>
+BSS::paths()
+{
     QList<QString> result;
     if (!hasPermission("wifi")) {
         return result;
@@ -62,7 +80,9 @@ QList<QString> BSS::paths() {
     return result;
 }
 
-void BSS::addBSS(const QString& path) {
+void
+BSS::addBSS(const QString& path)
+{
     if (paths().contains(path)) {
         return;
     }
@@ -78,7 +98,9 @@ void BSS::addBSS(const QString& path) {
     );
 }
 
-void BSS::removeBSS(const QString& path) {
+void
+BSS::removeBSS(const QString& path)
+{
     QMutableListIterator<IBSS*> i(bsss);
     while (i.hasNext()) {
         auto bss = i.next();
@@ -89,7 +111,9 @@ void BSS::removeBSS(const QString& path) {
     }
 }
 
-bool BSS::privacy() {
+bool
+BSS::privacy()
+{
     if (!hasPermission("wifi")) {
         return false;
     }
@@ -101,7 +125,9 @@ bool BSS::privacy() {
     return false;
 }
 
-ushort BSS::frequency() {
+ushort
+BSS::frequency()
+{
     if (!hasPermission("wifi")) {
         return 0;
     }
@@ -111,7 +137,9 @@ ushort BSS::frequency() {
     return bsss.first()->frequency();
 }
 
-short BSS::signal() {
+short
+BSS::signal()
+{
     if (!hasPermission("wifi")) {
         return 0;
     }
@@ -128,7 +156,9 @@ short BSS::signal() {
     return signal;
 }
 
-QDBusObjectPath BSS::connect() {
+QDBusObjectPath
+BSS::connect()
+{
     if (!hasPermission("wifi")) {
         return QDBusObjectPath("/");
     }
@@ -139,10 +169,14 @@ QDBusObjectPath BSS::connect() {
     return wifiAPI->addNetwork(ssid(), QVariantMap());
 }
 
-void BSS::PropertiesChanged(const QVariantMap& properties) {
+void
+BSS::PropertiesChanged(const QVariantMap& properties)
+{
     emit propertiesChanged(properties);
 }
-QDBusObjectPath BSS::network() {
+QDBusObjectPath
+BSS::network()
+{
     if (!hasPermission("wifi")) {
         return QDBusObjectPath("/");
     }
@@ -155,7 +189,9 @@ QDBusObjectPath BSS::network() {
     return networks.first();
 }
 
-QStringList BSS::key_mgmt() {
+QStringList
+BSS::key_mgmt()
+{
     QStringList result;
     if (!hasPermission("wifi")) {
         return result;
@@ -169,7 +205,9 @@ QStringList BSS::key_mgmt() {
     return result;
 }
 
-bool BSS::hasPermission(QString permission, const char* sender) {
+bool
+BSS::hasPermission(QString permission, const char* sender)
+{
     return wifiAPI->hasPermission(permission, sender);
 }
 

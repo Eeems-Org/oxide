@@ -11,7 +11,9 @@
 
 using namespace std::chrono;
 
-DBusService* DBusService::singleton() {
+DBusService*
+DBusService::singleton()
+{
     static DBusService* instance;
     if (instance == nullptr) {
         qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
@@ -68,7 +70,8 @@ DBusService* DBusService::singleton() {
 }
 
 DBusService::DBusService(QObject* parent)
-    : APIBase(parent), apis(), m_exiting{false} {
+  : APIBase(parent), apis(), m_exiting{ false }
+{
     uint64_t time;
     int res = sd_watchdog_enabled(0, &time);
     if (res > 0) {
@@ -224,20 +227,36 @@ DBusService::DBusService(QObject* parent)
 
 DBusService::~DBusService() {}
 
-void DBusService::setEnabled(bool enabled) { Q_UNUSED(enabled); }
+void
+DBusService::setEnabled(bool enabled)
+{
+    Q_UNUSED(enabled);
+}
 
-QObject* DBusService::getAPI(QString name) {
+QObject*
+DBusService::getAPI(QString name)
+{
     if (!apis.contains(name)) {
         return nullptr;
     }
     return apis[name].instance;
 }
 
-QQmlApplicationEngine* DBusService::engine() { return m_engine; }
+QQmlApplicationEngine*
+DBusService::engine()
+{
+    return m_engine;
+}
 
-int DBusService::tarnishPid() { return qApp->applicationPid(); }
+int
+DBusService::tarnishPid()
+{
+    return qApp->applicationPid();
+}
 
-QDBusObjectPath DBusService::requestAPI(QString name, QDBusMessage message) {
+QDBusObjectPath
+DBusService::requestAPI(QString name, QDBusMessage message)
+{
 #ifdef SENTRY
     sentry_breadcrumb(
         "dbusservice", ("requestAPI() " + name).toStdString().c_str(), "query"
@@ -265,7 +284,9 @@ QDBusObjectPath DBusService::requestAPI(QString name, QDBusMessage message) {
     return QDBusObjectPath(api.path);
 }
 
-void DBusService::releaseAPI(QString name, QDBusMessage message) {
+void
+DBusService::releaseAPI(QString name, QDBusMessage message)
+{
 #ifdef SENTRY
     sentry_breadcrumb(
         "dbusservice", ("releaseAPI() " + name).toStdString().c_str(), "query"
@@ -287,7 +308,9 @@ void DBusService::releaseAPI(QString name, QDBusMessage message) {
     }
 }
 
-QVariantMap DBusService::APIs() {
+QVariantMap
+DBusService::APIs()
+{
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "APIs()", "query");
 #endif
@@ -301,7 +324,9 @@ QVariantMap DBusService::APIs() {
     return result;
 }
 
-void DBusService::startup(QQmlApplicationEngine* engine) {
+void
+DBusService::startup(QQmlApplicationEngine* engine)
+{
 #ifdef SENTRY
     sentry_breadcrumb("dbusservice", "startup", "navigation");
 #endif
@@ -313,7 +338,9 @@ void DBusService::startup(QQmlApplicationEngine* engine) {
     sd_notify(0, "READY=1");
 }
 
-void DBusService::exit(int exitCode) {
+void
+DBusService::exit(int exitCode)
+{
     if (calledFromDBus()) {
         return;
     }
@@ -350,16 +377,22 @@ void DBusService::exit(int exitCode) {
     std::exit(exitCode);
 }
 
-void DBusService::timerEvent(QTimerEvent* event) {
+void
+DBusService::timerEvent(QTimerEvent* event)
+{
     if (event->timerId() == m_watchdogTimer) {
         O_DEBUG("Watchdog keepalive sent");
         sd_notify(0, "WATCHDOG=1");
     }
 }
 
-void DBusService::serviceOwnerChanged(
-    const QString& name, const QString& oldOwner, const QString& newOwner
-) {
+void
+DBusService::serviceOwnerChanged(
+    const QString& name,
+    const QString& oldOwner,
+    const QString& newOwner
+)
+{
     Q_UNUSED(oldOwner);
     if (newOwner.isEmpty()) {
         auto bus = QDBusConnection::systemBus();

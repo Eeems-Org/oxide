@@ -126,7 +126,8 @@ namespace Blight {
      * \brief Add a new surface to the display server
      * \param buf Buffer to use for the surface
      */
-    LIBBLIGHT_EXPORT inline void addSurface(shared_buf_t buf) {
+    LIBBLIGHT_EXPORT inline void addSurface(shared_buf_t buf)
+    {
         buf->surface = addSurface(
                            buf->fd,
                            buf->x,
@@ -151,5 +152,5 @@ namespace Blight {
      * descriptor of the buffer for the surface
      */
     LIBBLIGHT_EXPORT int getSurface(surface_id_t identifier);
-}  // namespace Blight
+} // namespace Blight
 /*! @} */

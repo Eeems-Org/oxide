@@ -23,12 +23,13 @@
 using namespace Oxide;
 using namespace Oxide::Applications;
 
-class AppsAPI : public APIBase {
+class AppsAPI : public APIBase
+{
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_APPS_INTERFACE)
     Q_PROPERTY(
         int state READ state
-    )  // This needs to be here for the XML to generate the other properties :(
+    ) // This needs to be here for the XML to generate the other properties :(
     Q_PROPERTY(
         QDBusObjectPath startupApplication READ startupApplication WRITE
             setStartupApplication
@@ -51,14 +52,15 @@ class AppsAPI : public APIBase {
     Q_PROPERTY(QVariantMap runningApplications READ runningApplications)
     Q_PROPERTY(QVariantMap pausedApplications READ pausedApplications)
 
-   public:
+  public:
     static AppsAPI* singleton(AppsAPI* self = nullptr);
     AppsAPI(QObject* parent);
     void shutdown();
     void startup();
-    int state() {
+    int state()
+    {
         return 0;
-    }  // Ignore this, it's a kludge to get the xml to generate
+    } // Ignore this, it's a kludge to get the xml to generate
 
     void setEnabled(bool enabled);
 
@@ -100,7 +102,7 @@ class AppsAPI : public APIBase {
     void recordPreviousApplication();
     void removeFromPreviousApplications(QString name);
 
-   signals:
+  signals:
     void applicationRegistered(QDBusObjectPath);
     void applicationLaunched(QDBusObjectPath);
     void applicationUnregistered(QDBusObjectPath);
@@ -109,7 +111,7 @@ class AppsAPI : public APIBase {
     void applicationSignaled(QDBusObjectPath);
     void applicationExited(QDBusObjectPath, int);
 
-   public slots:
+  public slots:
     QT_DEPRECATED void leftHeld();
     void openDefaultApplication();
     QT_DEPRECATED void homeHeld();
@@ -118,7 +120,7 @@ class AppsAPI : public APIBase {
     void openTaskSwitcher();
     void openTerminal();
 
-   private:
+  private:
     bool m_stopping;
     bool m_starting;
     bool m_enabled;
@@ -148,4 +150,4 @@ class AppsAPI : public APIBase {
     bool locked();
     void ensureForegroundApp();
 };
-#endif  // APPSAPI_H
+#endif // APPSAPI_H

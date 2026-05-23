@@ -14,20 +14,27 @@ using namespace Oxide::Sentry;
 
 #define CORRUPT_SETTINGS_VERSION 1
 
-enum State { Normal, PowerSaving };
-enum BatteryState {
+enum State
+{
+    Normal,
+    PowerSaving
+};
+enum BatteryState
+{
     BatteryUnknown,
     BatteryCharging,
     BatteryDischarging,
     BatteryNotPresent
 };
-enum ChargerState {
+enum ChargerState
+{
     ChargerUnknown,
     ChargerConnected,
     ChargerNotConnected,
     ChargerNotPresent
 };
-enum WifiState {
+enum WifiState
+{
     WifiUnknown,
     WifiOff,
     WifiDisconnected,
@@ -35,7 +42,8 @@ enum WifiState {
     WifiOnline
 };
 
-class Controller : public QObject {
+class Controller : public QObject
+{
     Q_OBJECT
     Q_PROPERTY(
         ScreenshotList* screenshots MEMBER screenshots READ getScreenshots
@@ -43,9 +51,10 @@ class Controller : public QObject {
     )
     Q_PROPERTY(int columns READ columns WRITE setColumns NOTIFY columnsChanged)
 
-   public:
+  public:
     Controller(QObject* parent)
-        : QObject(parent), settings(this), applications() {
+      : QObject(parent), settings(this), applications()
+    {
         screenshots = new ScreenshotList();
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
@@ -101,13 +110,14 @@ class Controller : public QObject {
     }
     ~Controller() {}
 
-    Q_INVOKABLE void startup() {
+    Q_INVOKABLE void startup()
+    {
         qDebug() << "Running controller startup";
         QTimer::singleShot(10, [this] { setState("loaded"); });
     }
-    Q_INVOKABLE void breadcrumb(
-        QString category, QString message, QString type = "default"
-    ) {
+    Q_INVOKABLE void
+    breadcrumb(QString category, QString message, QString type = "default")
+    {
 #ifdef SENTRY
         sentry_breadcrumb(
             category.toStdString().c_str(),
@@ -120,20 +130,23 @@ class Controller : public QObject {
         Q_UNUSED(type);
 #endif
     }
-    QString state() {
+    QString state()
+    {
         if (!getStateControllerUI()) {
             return "loading";
         }
         return stateControllerUI->property("state").toString();
     }
-    void setState(QString state) {
+    void setState(QString state)
+    {
         if (!getStateControllerUI()) {
             throw "Unable to find state controller";
         }
         stateControllerUI->setProperty("state", state);
     }
     int columns() { return settings.value("columns", 3).toInt(); }
-    void setColumns(int columns) {
+    void setColumns(int columns)
+    {
         settings.setValue("columns", columns);
         emit columnsChanged(columns);
     }
@@ -141,27 +154,30 @@ class Controller : public QObject {
 
     void setRoot(QObject* root) { this->root = root; }
 
-   signals:
+  signals:
     void screenshotsChanged(ScreenshotList*);
     void columnsChanged(int);
 
-   private slots:
-    void screenshotAdded(const QDBusObjectPath& path) {
+  private slots:
+    void screenshotAdded(const QDBusObjectPath& path)
+    {
         screenshots->append(new Screenshot(
             OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
         ));
         emit screenshotsChanged(screenshots);
     }
-    void screenshotModified(const QDBusObjectPath& path) {
+    void screenshotModified(const QDBusObjectPath& path)
+    {
         Q_UNUSED(path);
         emit screenshotsChanged(screenshots);
     }
-    void screenshotRemoved(const QDBusObjectPath& path) {
+    void screenshotRemoved(const QDBusObjectPath& path)
+    {
         screenshots->remove(path);
         emit screenshotsChanged(screenshots);
     }
 
-   private:
+  private:
     QSettings settings;
     ScreenshotList* screenshots;
     General* api;
@@ -170,11 +186,13 @@ class Controller : public QObject {
     QObject* stateControllerUI = nullptr;
     QList<QObject*> applications;
 
-    QObject* getStateControllerUI() {
+    QObject* getStateControllerUI()
+    {
         stateControllerUI = root->findChild<QObject*>("stateController");
         return stateControllerUI;
     }
-    static void migrate(QSettings* settings, int fromVersion) {
+    static void migrate(QSettings* settings, int fromVersion)
+    {
         if (fromVersion != 0) {
             throw "Unknown settings version";
         }
@@ -184,4 +202,4 @@ class Controller : public QObject {
     }
 };
 
-#endif  // CONTROLLER_H
+#endif // CONTROLLER_H

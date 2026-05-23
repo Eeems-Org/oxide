@@ -58,7 +58,9 @@ namespace Oxide {
      * \retval NULL Program was not able to execute
      */
     LIBOXIDE_EXPORT QString execute(
-        const QString& program, const QStringList& args, bool readStderr = true
+        const QString& program,
+        const QStringList& args,
+        bool readStderr = true
     );
     /*!
      * \brief Try to get a lock
@@ -100,5 +102,5 @@ namespace Oxide {
      * \snippet examples/oxide.cpp getGID
      */
     LIBOXIDE_EXPORT gid_t getGID(const QString& name);
-}  // namespace Oxide
+} // namespace Oxide
 /*! @} */

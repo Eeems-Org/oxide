@@ -1,6 +1,8 @@
 #include "wifiapi.h"
 
-WifiAPI* WifiAPI::singleton(WifiAPI* self) {
+WifiAPI*
+WifiAPI::singleton(WifiAPI* self)
+{
     static WifiAPI* instance;
     if (self != nullptr) {
         instance = self;
@@ -9,14 +11,15 @@ WifiAPI* WifiAPI::singleton(WifiAPI* self) {
 }
 
 WifiAPI::WifiAPI(QObject* parent)
-    : APIBase(parent),
-      m_enabled(false),
-      wlans(),
-      networks(),
-      m_state(Unknown),
-      m_currentNetwork("/"),
-      m_link(0),
-      m_scanning(false) {
+  : APIBase(parent)
+  , m_enabled(false)
+  , wlans()
+  , networks()
+  , m_state(Unknown)
+  , m_currentNetwork("/")
+  , m_link(0)
+  , m_scanning(false)
+{
     Oxide::Sentry::sentry_transaction(
         "Wifi API Init", "init", [this](Oxide::Sentry::Transaction* t) {
             Oxide::Sentry::sentry_span(
@@ -264,7 +267,7 @@ WifiAPI::WifiAPI(QObject* parent)
                         s, "timer", "Setup timer", [this] {
                             timer = new QTimer(this);
                             timer->setSingleShot(false);
-                            timer->setInterval(3 * 1000);  // 3 seconds
+                            timer->setInterval(3 * 1000); // 3 seconds
                             timer->moveToThread(qApp->thread());
                             connect(
                                 timer,
@@ -308,7 +311,9 @@ WifiAPI::WifiAPI(QObject* parent)
     );
 }
 
-void WifiAPI::shutdown() {
+void
+WifiAPI::shutdown()
+{
     O_DEBUG("Unregistering all networks");
     while (!networks.isEmpty()) {
         networks.takeFirst()->deleteLater();
@@ -322,7 +327,9 @@ void WifiAPI::shutdown() {
     timer->deleteLater();
 }
 
-void WifiAPI::setEnabled(bool enabled) {
+void
+WifiAPI::setEnabled(bool enabled)
+{
     O_INFO("Wifi API" << enabled);
     m_enabled = enabled;
     if (enabled) {
@@ -342,20 +349,36 @@ void WifiAPI::setEnabled(bool enabled) {
     }
 }
 
-bool WifiAPI::getEnabled() { return m_enabled; }
+bool
+WifiAPI::getEnabled()
+{
+    return m_enabled;
+}
 
-QList<Wlan*> WifiAPI::getWlans() { return wlans; }
+QList<Wlan*>
+WifiAPI::getWlans()
+{
+    return wlans;
+}
 
-QList<Interface*> WifiAPI::getInterfaces() { return interfaces(); }
+QList<Interface*>
+WifiAPI::getInterfaces()
+{
+    return interfaces();
+}
 
-int WifiAPI::state() {
+int
+WifiAPI::state()
+{
     if (!hasPermission("wifi")) {
         return Unknown;
     }
     return m_state;
 }
 
-void WifiAPI::setState(int state) {
+void
+WifiAPI::setState(int state)
+{
     if (!hasPermission("wifi")) {
         return;
     }
@@ -366,7 +389,9 @@ void WifiAPI::setState(int state) {
     emit stateChanged(state);
 }
 
-bool WifiAPI::enable() {
+bool
+WifiAPI::enable()
+{
     if (!hasPermission("wifi")) {
         return false;
     }
@@ -399,7 +424,9 @@ bool WifiAPI::enable() {
     return true;
 }
 
-void WifiAPI::disable() {
+void
+WifiAPI::disable()
+{
     if (!hasPermission("wifi")) {
         return;
     }
@@ -421,7 +448,9 @@ void WifiAPI::disable() {
     xochitlSettings.set_wifion(false);
 }
 
-QDBusObjectPath WifiAPI::addNetwork(QString ssid, QVariantMap properties) {
+QDBusObjectPath
+WifiAPI::addNetwork(QString ssid, QVariantMap properties)
+{
     if (!hasPermission("wifi")) {
         return QDBusObjectPath("/");
     }
@@ -444,7 +473,9 @@ QDBusObjectPath WifiAPI::addNetwork(QString ssid, QVariantMap properties) {
     return path;
 }
 
-QList<QDBusObjectPath> WifiAPI::getNetwork(QVariantMap properties) {
+QList<QDBusObjectPath>
+WifiAPI::getNetwork(QVariantMap properties)
+{
     QList<QDBusObjectPath> result;
     if (!hasPermission("wifi")) {
         return result;
@@ -469,7 +500,9 @@ QList<QDBusObjectPath> WifiAPI::getNetwork(QVariantMap properties) {
     return result;
 }
 
-QList<QDBusObjectPath> WifiAPI::getBSS(QVariantMap properties) {
+QList<QDBusObjectPath>
+WifiAPI::getBSS(QVariantMap properties)
+{
     QList<QDBusObjectPath> result;
     if (!hasPermission("wifi")) {
         return result;
@@ -490,7 +523,9 @@ QList<QDBusObjectPath> WifiAPI::getBSS(QVariantMap properties) {
     return result;
 }
 
-void WifiAPI::scan(bool active) {
+void
+WifiAPI::scan(bool active)
+{
     if (!hasPermission("wifi")) {
         return;
     }
@@ -509,7 +544,9 @@ void WifiAPI::scan(bool active) {
     }
 }
 
-void WifiAPI::reconnect() {
+void
+WifiAPI::reconnect()
+{
     if (!hasPermission("wifi")) {
         return;
     }
@@ -523,7 +560,9 @@ void WifiAPI::reconnect() {
     }
 }
 
-void WifiAPI::reassosiate() {
+void
+WifiAPI::reassosiate()
+{
     if (!hasPermission("wifi")) {
         return;
     }
@@ -536,7 +575,9 @@ void WifiAPI::reassosiate() {
     }
 }
 
-void WifiAPI::disconnect() {
+void
+WifiAPI::disconnect()
+{
     if (!hasPermission("wifi")) {
         return;
     }
@@ -549,7 +590,9 @@ void WifiAPI::disconnect() {
     }
 }
 
-void WifiAPI::flushBSSCache(uint age) {
+void
+WifiAPI::flushBSSCache(uint age)
+{
     if (!hasPermission("wifi")) {
         return;
     }
@@ -562,7 +605,9 @@ void WifiAPI::flushBSSCache(uint age) {
     }
 }
 
-void WifiAPI::addBlob(QString name, QByteArray blob) {
+void
+WifiAPI::addBlob(QString name, QByteArray blob)
+{
     if (!hasPermission("wifi")) {
         return;
     }
@@ -575,7 +620,9 @@ void WifiAPI::addBlob(QString name, QByteArray blob) {
     }
 }
 
-void WifiAPI::removeBlob(QString name) {
+void
+WifiAPI::removeBlob(QString name)
+{
     if (!hasPermission("wifi")) {
         return;
     }
@@ -588,7 +635,9 @@ void WifiAPI::removeBlob(QString name) {
     }
 }
 
-QByteArray WifiAPI::getBlob(QString name, QByteArray blob) {
+QByteArray
+WifiAPI::getBlob(QString name, QByteArray blob)
+{
     if (!hasPermission("wifi")) {
         return QByteArray();
     }
@@ -601,7 +650,9 @@ QByteArray WifiAPI::getBlob(QString name, QByteArray blob) {
     return QByteArray();
 }
 
-QStringList WifiAPI::blobs() {
+QStringList
+WifiAPI::blobs()
+{
     QSet<QString> result;
     if (!hasPermission("wifi")) {
         return result.values();
@@ -612,7 +663,9 @@ QStringList WifiAPI::blobs() {
     return result.values();
 }
 
-QList<QDBusObjectPath> WifiAPI::bSSs() {
+QList<QDBusObjectPath>
+WifiAPI::bSSs()
+{
     QList<QDBusObjectPath> result;
     if (!hasPermission("wifi")) {
         return result;
@@ -623,7 +676,9 @@ QList<QDBusObjectPath> WifiAPI::bSSs() {
     return result;
 }
 
-int WifiAPI::link() {
+int
+WifiAPI::link()
+{
     if (!hasPermission("wifi")) {
         return 0;
     }
@@ -637,7 +692,9 @@ int WifiAPI::link() {
     return result;
 }
 
-int WifiAPI::rssi() {
+int
+WifiAPI::rssi()
+{
     if (!hasPermission("wifi")) {
         return -100;
     }
@@ -654,7 +711,9 @@ int WifiAPI::rssi() {
     return result;
 }
 
-QDBusObjectPath WifiAPI::network() {
+QDBusObjectPath
+WifiAPI::network()
+{
     if (!hasPermission("wifi")) {
         return QDBusObjectPath("/");
     }
@@ -672,7 +731,9 @@ QDBusObjectPath WifiAPI::network() {
     return QDBusObjectPath("/");
 }
 
-QList<QDBusObjectPath> WifiAPI::getNetworkPaths() {
+QList<QDBusObjectPath>
+WifiAPI::getNetworkPaths()
+{
     QList<QDBusObjectPath> result;
     for (auto network : networks) {
         result.append(QDBusObjectPath(network->path()));
@@ -680,7 +741,9 @@ QList<QDBusObjectPath> WifiAPI::getNetworkPaths() {
     return result;
 }
 
-bool WifiAPI::scanning() {
+bool
+WifiAPI::scanning()
+{
     if (!hasPermission("wifi")) {
         return false;
     }
@@ -696,9 +759,13 @@ bool WifiAPI::scanning() {
     return false;
 }
 
-void WifiAPI::BSSAdded(
-    Wlan* wlan, const QDBusObjectPath& path, const QVariantMap& properties
-) {
+void
+WifiAPI::BSSAdded(
+    Wlan* wlan,
+    const QDBusObjectPath& path,
+    const QVariantMap& properties
+)
+{
     Q_UNUSED(wlan);
     auto sPath = path.path();
     auto bssid = properties["BSSID"].toString();
@@ -726,7 +793,9 @@ void WifiAPI::BSSAdded(
     emit bssFound(QDBusObjectPath(bss->path()));
 }
 
-void WifiAPI::BSSRemoved(Wlan* wlan, const QDBusObjectPath& path) {
+void
+WifiAPI::BSSRemoved(Wlan* wlan, const QDBusObjectPath& path)
+{
     Q_UNUSED(wlan);
     auto sPath = path.path();
     QMutableListIterator<BSS*> i(bsss);
@@ -742,19 +811,27 @@ void WifiAPI::BSSRemoved(Wlan* wlan, const QDBusObjectPath& path) {
     }
 }
 
-void WifiAPI::BlobAdded(Wlan* wlan, const QString& name) {
+void
+WifiAPI::BlobAdded(Wlan* wlan, const QString& name)
+{
     Q_UNUSED(wlan);
     Q_UNUSED(name);
 }
 
-void WifiAPI::BlobRemoved(Wlan* wlan, const QString& name) {
+void
+WifiAPI::BlobRemoved(Wlan* wlan, const QString& name)
+{
     Q_UNUSED(wlan);
     Q_UNUSED(name);
 }
 
-void WifiAPI::NetworkAdded(
-    Wlan* wlan, const QDBusObjectPath& path, const QVariantMap& properties
-) {
+void
+WifiAPI::NetworkAdded(
+    Wlan* wlan,
+    const QDBusObjectPath& path,
+    const QVariantMap& properties
+)
+{
     auto sPath = path.path();
     auto ssid = properties["ssid"].toString();
     if (ssid.isEmpty()) {
@@ -782,7 +859,9 @@ void WifiAPI::NetworkAdded(
     emit networkAdded(path);
 }
 
-void WifiAPI::NetworkRemoved(Wlan* wlan, const QDBusObjectPath& path) {
+void
+WifiAPI::NetworkRemoved(Wlan* wlan, const QDBusObjectPath& path)
+{
     Q_UNUSED(wlan);
     auto sPath = path.path();
     QMutableListIterator<Network*> i(networks);
@@ -799,7 +878,9 @@ void WifiAPI::NetworkRemoved(Wlan* wlan, const QDBusObjectPath& path) {
     }
 }
 
-void WifiAPI::NetworkSelected(Wlan* wlan, const QDBusObjectPath& path) {
+void
+WifiAPI::NetworkSelected(Wlan* wlan, const QDBusObjectPath& path)
+{
     Q_UNUSED(wlan);
     for (auto network : networks) {
         if (network->paths().contains(path.path())) {
@@ -809,31 +890,46 @@ void WifiAPI::NetworkSelected(Wlan* wlan, const QDBusObjectPath& path) {
     }
 }
 
-void WifiAPI::InterfacePropertiesChanged(
-    Wlan* wlan, const QVariantMap& properties
-) {
+void
+WifiAPI::InterfacePropertiesChanged(Wlan* wlan, const QVariantMap& properties)
+{
     Q_UNUSED(wlan);
     Q_UNUSED(properties);
 }
 
-void WifiAPI::ScanDone(Wlan* wlan, bool success) {
+void
+WifiAPI::ScanDone(Wlan* wlan, bool success)
+{
     Q_UNUSED(wlan)
     Q_UNUSED(success)
     m_scanning = false;
     emit scanningChanged(false);
 }
 
-void WifiAPI::BSSPropertiesChanged(const QVariantMap& properties) {
+void
+WifiAPI::BSSPropertiesChanged(const QVariantMap& properties)
+{
     Q_UNUSED(properties);
 }
 
-void WifiAPI::stopUpdating() { timer->stop(); }
+void
+WifiAPI::stopUpdating()
+{
+    timer->stop();
+}
 
-void WifiAPI::resumeUpdating() { timer->start(); }
+void
+WifiAPI::resumeUpdating()
+{
+    timer->start();
+}
 
-void WifiAPI::InterfaceAdded(
-    const QDBusObjectPath& path, const QVariantMap& properties
-) {
+void
+WifiAPI::InterfaceAdded(
+    const QDBusObjectPath& path,
+    const QVariantMap& properties
+)
+{
     for (auto wlan : wlans) {
         if (properties["Ifname"].toString() == wlan->iface()) {
             wlan->setInterface(path.path());
@@ -842,7 +938,9 @@ void WifiAPI::InterfaceAdded(
     }
 }
 
-void WifiAPI::InterfaceRemoved(const QDBusObjectPath& path) {
+void
+WifiAPI::InterfaceRemoved(const QDBusObjectPath& path)
+{
     for (auto wlan : wlans) {
         if (wlan->interface() != nullptr &&
             wlan->interface()->path() == path.path()) {
@@ -860,11 +958,15 @@ void WifiAPI::InterfaceRemoved(const QDBusObjectPath& path) {
     }
 }
 
-void WifiAPI::PropertiesChanged(const QVariantMap& properties) {
+void
+WifiAPI::PropertiesChanged(const QVariantMap& properties)
+{
     Q_UNUSED(properties);
 }
 
-QList<Interface*> WifiAPI::interfaces() {
+QList<Interface*>
+WifiAPI::interfaces()
+{
     QList<Interface*> result;
     for (auto wlan : wlans) {
         if (wlan->interface() != nullptr) {
@@ -874,7 +976,9 @@ QList<Interface*> WifiAPI::interfaces() {
     return result;
 }
 
-void WifiAPI::validateSupplicant() {
+void
+WifiAPI::validateSupplicant()
+{
     QDBusConnection bus = QDBusConnection::systemBus();
     QStringList serviceNames = bus.interface()->registeredServiceNames();
     if (!serviceNames.contains(WPA_SUPPLICANT_SERVICE)) {
@@ -898,7 +1002,9 @@ void WifiAPI::validateSupplicant() {
     }
 }
 
-void WifiAPI::loadNetworks() {
+void
+WifiAPI::loadNetworks()
+{
     O_INFO("Loading networks from settings...");
     QList<QMap<QString, QVariant>> registeredNetworks =
         xochitlSettings.wifinetworks().values();
@@ -943,7 +1049,9 @@ void WifiAPI::loadNetworks() {
     O_INFO("Loaded networks.");
 }
 
-void WifiAPI::update() {
+void
+WifiAPI::update()
+{
     auto state = getCurrentState();
     bool enabled = xochitlSettings.wifion();
     if (enabled && state == Off) {
@@ -982,7 +1090,9 @@ void WifiAPI::update() {
     }
 }
 
-WifiAPI::State WifiAPI::getCurrentState() {
+WifiAPI::State
+WifiAPI::getCurrentState()
+{
     State state = Off;
     for (auto wlan : wlans) {
         if (!wlan->isUp()) {
@@ -1002,7 +1112,9 @@ WifiAPI::State WifiAPI::getCurrentState() {
     return state;
 }
 
-QString WifiAPI::getPath(QString type, QString id) {
+QString
+WifiAPI::getPath(QString type, QString id)
+{
     static const QUuid NS = QUuid::fromString(
         QLatin1String("{78c28d66-f558-11ea-adc1-0242ac120002}")
     );

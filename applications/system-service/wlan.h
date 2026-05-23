@@ -12,10 +12,13 @@
 
 using Oxide::SysObject;
 
-class Wlan : public QObject, public SysObject {
+class Wlan
+  : public QObject
+  , public SysObject
+{
     Q_OBJECT
 
-   public:
+  public:
     Wlan(QString path, QObject* parent);
     void setInterface(QString path);
     void removeInterface();
@@ -30,7 +33,7 @@ class Wlan : public QObject, public SysObject {
     bool isConnected();
     int link();
     signed int rssi();
-   signals:
+  signals:
     void BSSAdded(Wlan*, QDBusObjectPath, QVariantMap);
     void BSSRemoved(Wlan*, QDBusObjectPath);
     void BlobAdded(Wlan*, QString);
@@ -40,20 +43,19 @@ class Wlan : public QObject, public SysObject {
     void NetworkSelected(Wlan*, QDBusObjectPath);
     void PropertiesChanged(Wlan*, QVariantMap);
     void ScanDone(Wlan*, bool);
-   private slots:
+  private slots:
     void onBSSAdded(const QDBusObjectPath& path, const QVariantMap& properties);
     void onBSSRemoved(const QDBusObjectPath& path);
     void onBlobAdded(const QString& name);
     void onBlobRemoved(const QString& name);
-    void onNetworkAdded(
-        const QDBusObjectPath& path, const QVariantMap& properties
-    );
+    void
+    onNetworkAdded(const QDBusObjectPath& path, const QVariantMap& properties);
     void onNetworkRemoved(const QDBusObjectPath& path);
     void onNetworkSelected(const QDBusObjectPath& path);
     void onPropertiesChanged(const QVariantMap& properties);
     void onScanDone(bool success);
 
-   private:
+  private:
     Interface* m_interface;
     QSet<QString> m_blobs;
     QString m_iface;
@@ -61,4 +63,4 @@ class Wlan : public QObject, public SysObject {
     std::string exec(QString cmd);
 };
 
-#endif  // WLAN_H
+#endif // WLAN_H

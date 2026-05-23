@@ -10,9 +10,8 @@ using namespace Oxide::Applications;
 
 #define ICON_DIR OXIDE_ICONS_DIRECTORY
 
-QCommandLineOption versionOption(
-    {"v", "version"}, "Displays version information."
-);
+QCommandLineOption
+    versionOption({ "v", "version" }, "Displays version information.");
 
 QCommandLineOption themeOption(
     "theme",
@@ -25,9 +24,8 @@ QCommandLineOption themeOption(
 );
 
 QCommandLineOption modeOption("mode", "NOT IMPLEMENETED", "mode");
-QCommandLineOption noupdateOption(
-    "noupdate", "Do not update the application cache."
-);
+QCommandLineOption
+    noupdateOption("noupdate", "Do not update the application cache.");
 QCommandLineOption sizeOption(
     "size",
     "Specifies the size of the icon. All icons must be square. Common sizes "
@@ -47,9 +45,9 @@ QCommandLineOption contextOption(
 );
 QCommandLineOption novendorOption("novendor", "NOT IMPLEMENETED");
 
-QStringList positionArguments(
-    QCommandLineParser& parser, bool allowEmpty = false
-) {
+QStringList
+positionArguments(QCommandLineParser& parser, bool allowEmpty = false)
+{
     parser.process(*qApp);
     if (parser.isSet(versionOption)) {
         parser.showHelp(EXIT_FAILURE);
@@ -61,14 +59,18 @@ QStringList positionArguments(
     }
     return args;
 }
-QString iconDir(QCommandLineParser& parser) {
+QString
+iconDir(QCommandLineParser& parser)
+{
     return Oxide::Applications::iconDirPath(
         parser.value(sizeOption).toUInt(),
         parser.value(themeOption),
         parser.value(contextOption)
     );
 }
-QString iconFile(QCommandLineParser& parser, const QString& name) {
+QString
+iconFile(QCommandLineParser& parser, const QString& name)
+{
     return Oxide::Applications::iconPath(
         name,
         parser.value(sizeOption).toUInt(),
@@ -77,7 +79,9 @@ QString iconFile(QCommandLineParser& parser, const QString& name) {
     );
 }
 
-int install(QCommandLineParser& parser) {
+int
+install(QCommandLineParser& parser)
+{
     parser.addPositionalArgument("", "", "install [options]");
     parser.addOption(noupdateOption);
     parser.addOption(novendorOption);
@@ -121,7 +125,9 @@ int install(QCommandLineParser& parser) {
     }
     return QProcess::execute("update-desktop-database", QStringList("--quiet"));
 }
-int uninstall(QCommandLineParser& parser) {
+int
+uninstall(QCommandLineParser& parser)
+{
     parser.addPositionalArgument("", "", "uninstall [options]");
     parser.addOption(noupdateOption);
     parser.addOption(themeOption);
@@ -149,7 +155,9 @@ int uninstall(QCommandLineParser& parser) {
     return QProcess::execute("update-desktop-database", QStringList("--quiet"));
 }
 
-int forceupdate(QCommandLineParser& parser) {
+int
+forceupdate(QCommandLineParser& parser)
+{
     parser.addPositionalArgument("", "", "forceupdate [options]");
     parser.addOption(themeOption);
     parser.addOption(modeOption);
@@ -160,7 +168,9 @@ int forceupdate(QCommandLineParser& parser) {
     return QProcess::execute("update-desktop-database", QStringList());
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("xdg-icon-resource", argv);
     app.setOrganizationName("Eeems");

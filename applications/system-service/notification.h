@@ -13,7 +13,8 @@
 // Must be included so that generate_xml.sh will work
 #include "../../shared/liboxide/meta.h"
 
-class Notification : public QObject {
+class Notification : public QObject
+{
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_NOTIFICATION_INTERFACE)
@@ -23,7 +24,7 @@ class Notification : public QObject {
     Q_PROPERTY(QString text READ text WRITE setText)
     Q_PROPERTY(QString icon READ icon WRITE setIcon)
 
-   public:
+  public:
     Notification(
         const QString& path,
         const QString& identifier,
@@ -56,13 +57,13 @@ class Notification : public QObject {
     Q_INVOKABLE void click();
     void paintNotification();
 
-   signals:
+  signals:
     void changed(QVariantMap);
     void removed();
     void displayed();
     void clicked();
 
-   private:
+  private:
     QString m_path;
     QString m_identifier;
     int m_created;
@@ -72,8 +73,9 @@ class Notification : public QObject {
     QString m_icon;
 
     bool hasPermission(
-        QString permission, const char* sender = __builtin_FUNCTION()
+        QString permission,
+        const char* sender = __builtin_FUNCTION()
     );
 };
 
-#endif  // NOTIFICATION_H
+#endif // NOTIFICATION_H

@@ -7,7 +7,8 @@
 #include <sys/prctl.h>
 
 namespace Oxide {
-    bool debugEnabled() {
+    bool debugEnabled()
+    {
         if (getenv("DEBUG") == NULL) {
             return false;
         }
@@ -16,7 +17,8 @@ namespace Oxide {
                     .contains(env.toLower());
     }
 
-    std::string getAppName(bool ignoreQApp) {
+    std::string getAppName(bool ignoreQApp)
+    {
         if (!ignoreQApp && !QCoreApplication::startingUp()) {
             return qApp->applicationName().toStdString().c_str();
         }
@@ -41,7 +43,8 @@ namespace Oxide {
         return name.c_str();
     }
 
-    std::string getDebugApplicationInfo() {
+    std::string getDebugApplicationInfo()
+    {
         return QString("[%1:%2:%3 %4 - %5]")
             .arg(::getpgrp())
             .arg(::getpid())
@@ -51,9 +54,9 @@ namespace Oxide {
             .toStdString();
     }
 
-    std::string getDebugLocation(
-        const char* file, unsigned int line, const char* function
-    ) {
+    std::string
+    getDebugLocation(const char* file, unsigned int line, const char* function)
+    {
         return QString("(%1:%2, %3)")
             .arg(file)
             .arg(line)
@@ -61,7 +64,8 @@ namespace Oxide {
             .toStdString();
     }
 
-    std::vector<std::string> backtrace(unsigned short depth) {
+    std::vector<std::string> backtrace(unsigned short depth)
+    {
         void* array[depth];
         size_t size = ::backtrace(array, depth);
         char** messages = ::backtrace_symbols(array, size);
@@ -73,9 +77,10 @@ namespace Oxide {
         return stack;
     }
 
-    std::string getThreadName() {
+    std::string getThreadName()
+    {
         char name[16];
         prctl(PR_GET_NAME, name);
         return std::string(name);
     }
-}  // namespace Oxide
+} // namespace Oxide

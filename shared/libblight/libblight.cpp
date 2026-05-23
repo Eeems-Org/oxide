@@ -15,7 +15,8 @@
 namespace Blight {
     static DBus* dbus = nullptr;
 
-    std::optional<clipboard_t> getClipboard(const std::string& name) {
+    std::optional<clipboard_t> getClipboard(const std::string& name)
+    {
         if (!exists()) {
             errno = EAGAIN;
             return {};
@@ -48,7 +49,8 @@ namespace Blight {
         return clipboard_t(name, data, static_cast<size_t>(size));
     }
 
-    bool connect(bool use_system) {
+    bool connect(bool use_system)
+    {
         if (dbus != nullptr) {
             return true;
         }
@@ -61,9 +63,13 @@ namespace Blight {
         }
     }
 
-    bool exists() { return connect() && dbus->has_service(BLIGHT_SERVICE); }
+    bool exists()
+    {
+        return connect() && dbus->has_service(BLIGHT_SERVICE);
+    }
 
-    Connection* connection() {
+    Connection* connection()
+    {
         static Connection* instance = nullptr;
         if (instance == nullptr) {
             int fd = open();
@@ -75,7 +81,8 @@ namespace Blight {
         return instance;
     }
 
-    int open() {
+    int open()
+    {
         if (!exists()) {
             errno = EAGAIN;
             return -EAGAIN;
@@ -109,7 +116,8 @@ namespace Blight {
         return dfd;
     }
 
-    int open_input() {
+    int open_input()
+    {
         if (!exists()) {
             errno = EAGAIN;
             return -EAGAIN;
@@ -151,19 +159,18 @@ namespace Blight {
         unsigned int height,
         int stride,
         Format format
-    ) {
-        auto buf = new buf_t{
-            .fd = -1,
-            .x = x,
-            .y = y,
-            .width = width,
-            .height = height,
-            .stride = stride,
-            .format = format,
-            .data = nullptr,
-            .uuid = buf_t::new_uuid(),
-            .surface = 0
-        };
+    )
+    {
+        auto buf = new buf_t{ .fd = -1,
+                              .x = x,
+                              .y = y,
+                              .width = width,
+                              .height = height,
+                              .stride = stride,
+                              .format = format,
+                              .data = nullptr,
+                              .uuid = buf_t::new_uuid(),
+                              .surface = 0 };
         buf->fd = memfd_create(buf->uuid.c_str(), MFD_ALLOW_SEALING);
         if (buf->fd == -1) {
             _WARN(
@@ -217,7 +224,8 @@ namespace Blight {
         unsigned int height,
         int stride,
         Format format
-    ) {
+    )
+    {
         if (!exists()) {
             errno = EAGAIN;
             return {};
@@ -254,7 +262,8 @@ namespace Blight {
         return identifier.value();
     }
 
-    int repaint(const std::string& identifier) {
+    int repaint(const std::string& identifier)
+    {
         if (!exists()) {
             errno = EAGAIN;
             return -errno;
@@ -276,7 +285,8 @@ namespace Blight {
         return reply->return_value;
     }
 
-    int getSurface(surface_id_t identifier) {
+    int getSurface(surface_id_t identifier)
+    {
         if (!exists()) {
             errno = EAGAIN;
             return -1;
@@ -318,13 +328,23 @@ namespace Blight {
         return dfd;
     }
 
-    std::optional<clipboard_t> clipboard() { return getClipboard("clipboard"); }
+    std::optional<clipboard_t> clipboard()
+    {
+        return getClipboard("clipboard");
+    }
 
-    std::optional<clipboard_t> selection() { return getClipboard("selection"); }
+    std::optional<clipboard_t> selection()
+    {
+        return getClipboard("selection");
+    }
 
-    std::optional<clipboard_t> secondary() { return getClipboard("secondary"); }
+    std::optional<clipboard_t> secondary()
+    {
+        return getClipboard("secondary");
+    }
 
-    bool setClipboard(clipboard_t& clipboard) {
+    bool setClipboard(clipboard_t& clipboard)
+    {
         if (clipboard.name != "clipboard" && clipboard.name != "selection" &&
             clipboard.name != "secondary") {
             _WARN(
@@ -444,7 +464,8 @@ namespace Blight {
         return true;
     }
 
-    bool updateClipboard(clipboard_t& clipboard) {
+    bool updateClipboard(clipboard_t& clipboard)
+    {
         if (clipboard.name != "clipboard" && clipboard.name != "selection" &&
             clipboard.name != "secondary") {
             _WARN(
@@ -461,4 +482,4 @@ namespace Blight {
         clipboard.data = newClipboard->data;
         return true;
     }
-}  // namespace Blight
+} // namespace Blight

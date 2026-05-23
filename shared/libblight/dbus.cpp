@@ -7,11 +7,13 @@
 #define CONCATENATE(x, y) XCONCATENATE(x, y)
 #define UNIQ_T(x, uniq) CONCATENATE(__unique_prefix_, CONCATENATE(x, uniq))
 #define UNIQ __COUNTER__
-#define _STRV_FOREACH(s, l, i) \
+#define _STRV_FOREACH(s, l, i)                                                 \
     for (typeof(*(l))*s, *i = (l); (s = i) && *i; i++)
 #define STRV_FOREACH(s, l) _STRV_FOREACH(s, l, UNIQ_T(i, UNIQ))
 
-char** strv_free(char** v) {
+char**
+strv_free(char** v)
+{
     if (!v) {
         return NULL;
     }
@@ -23,28 +25,36 @@ char** strv_free(char** v) {
 }
 
 namespace Blight {
-    DBusReply::DBusReply() : error(SD_BUS_ERROR_NULL), return_value{0} {}
+    DBusReply::DBusReply() : error(SD_BUS_ERROR_NULL), return_value{ 0 } {}
 
-    Blight::DBusReply::~DBusReply() {
+    Blight::DBusReply::~DBusReply()
+    {
         if (message != nullptr) {
             sd_bus_message_unref(message);
         }
         sd_bus_error_free(&error);
     }
 
-    std::string Blight::DBusReply::error_message() {
+    std::string Blight::DBusReply::error_message()
+    {
         if (error.message != NULL) {
             return error.message;
         }
         return std::strerror(-return_value);
     }
 
-    bool Blight::DBusReply::isError() { return return_value < 0; }
+    bool Blight::DBusReply::isError()
+    {
+        return return_value < 0;
+    }
 
     DBusException::DBusException(const std::string& message)
-        : std::runtime_error(message.c_str()) {}
+      : std::runtime_error(message.c_str())
+    {
+    }
 
-    DBus::DBus(bool use_system) : m_bus(nullptr) {
+    DBus::DBus(bool use_system) : m_bus(nullptr)
+    {
         int res;
         if (use_system) {
             res = sd_bus_default_system(&m_bus);
@@ -56,11 +66,18 @@ namespace Blight {
         }
     }
 
-    DBus::~DBus() { sd_bus_unref(m_bus); }
+    DBus::~DBus()
+    {
+        sd_bus_unref(m_bus);
+    }
 
-    sd_bus* DBus::bus() { return m_bus; }
+    sd_bus* DBus::bus()
+    {
+        return m_bus;
+    }
 
-    std::vector<std::string> DBus::services() {
+    std::vector<std::string> DBus::services()
+    {
         char** names = NULL;
         char** activatable = NULL;
         std::vector<std::string> services;
@@ -69,8 +86,12 @@ namespace Blight {
             strv_free(activatable);
             return services;
         }
-        STRV_FOREACH(i, names) { services.push_back(std::string(*i)); }
-        STRV_FOREACH(i, activatable) {
+        STRV_FOREACH(i, names)
+        {
+            services.push_back(std::string(*i));
+        }
+        STRV_FOREACH(i, activatable)
+        {
             auto name = std::string(*i);
             if (std::find(services.begin(), services.end(), name) !=
                 services.end()) {
@@ -82,7 +103,8 @@ namespace Blight {
         return services;
     }
 
-    bool DBus::has_service(std::string service) {
+    bool DBus::has_service(std::string service)
+    {
         auto services = this->services();
         return std::find(services.begin(), services.end(), service) !=
                services.end();
@@ -94,7 +116,8 @@ namespace Blight {
         const std::string& interface,
         const std::string& member,
         const std::string& property_type
-    ) {
+    )
+    {
         auto res = dbus_reply_t(new DBusReply());
         res->return_value = sd_bus_get_property(
             m_bus,
@@ -111,4 +134,4 @@ namespace Blight {
         }
         return res;
     }
-}  // namespace Blight
+} // namespace Blight

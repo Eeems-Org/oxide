@@ -5,7 +5,9 @@
 test_Event_Device::test_Event_Device() {}
 test_Event_Device::~test_Event_Device() {}
 
-void test_Event_Device::test_create_device() {
+void
+test_Event_Device::test_create_device()
+{
     auto ev = Oxide::event_device::create_event(0, 0, 0);
     QCOMPARE(ev.type, 0);
     QCOMPARE(ev.code, 0);
@@ -16,7 +18,9 @@ void test_Event_Device::test_create_device() {
     QCOMPARE(ev.value, 1);
 }
 
-void test_Event_Device::test_event_device() {
+void
+test_Event_Device::test_event_device()
+{
     if (!QFileInfo::exists("/dev/input/event0")) {
         QSKIP("Missing event0");
     }

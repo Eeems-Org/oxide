@@ -63,7 +63,8 @@ namespace Blight {
     /*!
      * \brief Clipboard instance
      */
-    typedef struct clipboard_t {
+    typedef struct clipboard_t
+    {
         /*!
          * \brief Data
          */
@@ -83,7 +84,9 @@ namespace Blight {
          * \param size Data size
          */
         clipboard_t(
-            const std::string name, data_t data = nullptr, size_t size = 0
+            const std::string name,
+            data_t data = nullptr,
+            size_t size = 0
         );
         /*!
          * \brief Convert the data to a string
@@ -114,7 +117,8 @@ namespace Blight {
          * \retval true The clipboard data was set
          * \retval false An error occurred
          */
-        inline bool set(const char* data, size_t size) {
+        inline bool set(const char* data, size_t size)
+        {
             auto buf = new unsigned char[size];
             memcpy(buf, data, size);
             return set(shared_data_t(buf), size);
@@ -127,7 +131,8 @@ namespace Blight {
          * \retval true The clipboard data was set
          * \retval false An error occurred
          */
-        inline bool set(const data_t data, size_t size) {
+        inline bool set(const data_t data, size_t size)
+        {
             return set((char*)data, size);
         }
         /*!
@@ -137,14 +142,16 @@ namespace Blight {
          * \retval true The clipboard data was set
          * \retval false An error occurred
          */
-        inline bool set(const std::string& data) {
+        inline bool set(const std::string& data)
+        {
             return set(data.data(), data.size());
         }
     } clipboard_t;
     /*!
      * \brief A buffer used to represent a surface
      */
-    typedef struct buf_t {
+    typedef struct buf_t
+    {
         /*!
          * \brief File descriptor for the buffer
          */
@@ -212,7 +219,8 @@ namespace Blight {
     /*!
      * \brief Message header
      */
-    typedef struct header_t : public BlightProtocol::blight_header_t {
+    typedef struct header_t : public BlightProtocol::blight_header_t
+    {
         /*!
          * \brief Get a header from data
          * \param data Data
@@ -245,7 +253,8 @@ namespace Blight {
     /*!
      * \brief Message object
      */
-    typedef struct message_t {
+    typedef struct message_t
+    {
         /*!
          * \brief Message header
          */
@@ -301,7 +310,8 @@ namespace Blight {
     /*!
      * \brief Repaint message data
      */
-    typedef struct repaint_t : public BlightProtocol::blight_packet_repaint_t {
+    typedef struct repaint_t : public BlightProtocol::blight_packet_repaint_t
+    {
         /*!
          * \brief Get the repaint message data from a message
          * \param message Message
@@ -312,7 +322,8 @@ namespace Blight {
     /*!
      * \brief Move message data
      */
-    typedef struct move_t : public BlightProtocol::blight_packet_move_t {
+    typedef struct move_t : public BlightProtocol::blight_packet_move_t
+    {
         /*!
          * \brief Get the move message data from a message
          * \param message Message
@@ -324,7 +335,8 @@ namespace Blight {
      * \brief Surface information message data
      */
     typedef struct surface_info_t
-        : public BlightProtocol::blight_packet_surface_info_t {
+      : public BlightProtocol::blight_packet_surface_info_t
+    {
         /*!
          * \brief Get the surface information message data from data
          * \param data Data
@@ -332,5 +344,5 @@ namespace Blight {
          */
         static surface_info_t from_data(data_t data);
     } surface_info_t;
-}  // namespace Blight
+} // namespace Blight
 /*! @} */

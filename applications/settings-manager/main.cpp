@@ -10,12 +10,16 @@ using namespace codes::eeems::blight1;
 using namespace Oxide::Sentry;
 using namespace Oxide::JSON;
 
-int qExit(int ret) {
+int
+qExit(int ret)
+{
     QTimer::singleShot(0, [ret]() { qApp->exit(ret); });
     return qApp->exec();
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("rot", argv);
     app.setOrganizationName("Eeems");
@@ -33,7 +37,7 @@ int main(int argc, char* argv[]) {
     );
     parser.addPositionalArgument("action", "get\nset\nlisten\ncall");
     QCommandLineOption objectOption(
-        {"o", "object"},
+        { "o", "object" },
         "Object to act on, e.g. "
         "Network:network/94d5caa2d4345ab7be5254dfb9678cd7",
         "object"
@@ -54,16 +58,14 @@ int main(int argc, char* argv[]) {
         parser.showHelp(EXIT_FAILURE);
     }
     auto apiName = args.at(0);
-    if (!(QSet<QString>{
-              "settings",
-              "power",
-              "wifi",
-              "apps",
-              "system",
-              "screen",
-              "notification",
-              "compositor"
-          })
+    if (!(QSet<QString>{ "settings",
+                         "power",
+                         "wifi",
+                         "apps",
+                         "system",
+                         "screen",
+                         "notification",
+                         "compositor" })
              .contains(apiName)) {
         qDebug() << "Unknown API" << apiName;
 #ifdef SENTRY

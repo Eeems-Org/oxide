@@ -82,5 +82,5 @@ namespace Oxide::Power {
      * \return If a charger is connected
      */
     LIBOXIDE_EXPORT bool chargerConnected();
-}  // namespace Oxide::Power
+} // namespace Oxide::Power
 /*! @} */

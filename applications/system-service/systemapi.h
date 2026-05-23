@@ -19,7 +19,8 @@
 
 typedef org::freedesktop::login1::Manager Manager;
 
-struct Inhibitor {
+struct Inhibitor
+{
     int fd;
     QString who;
     QString what;
@@ -38,7 +39,8 @@ struct Inhibitor {
 
 #define NULL_TOUCH_COORD -1
 
-struct Touch {
+struct Touch
+{
     int slot = 0;
     int id = -1;
     int x = NULL_TOUCH_COORD;
@@ -50,17 +52,21 @@ struct Touch {
     int major = 0;
     int minor = 0;
     int orientation = 0;
-    inline string debugString() const {
+    inline string debugString() const
+    {
         return "<Touch " + to_string(id) + " (" + to_string(x) + ", " +
                to_string(y) + ") " + (active ? "pressed" : "released") + ">";
     }
 };
-QDebug operator<<(QDebug debug, const Touch& touch);
-QDebug operator<<(QDebug debug, Touch* touch);
+QDebug
+operator<<(QDebug debug, const Touch& touch);
+QDebug
+operator<<(QDebug debug, Touch* touch);
 Q_DECLARE_METATYPE(Touch)
 Q_DECLARE_METATYPE(input_event)
 
-class SystemAPI : public APIBase {
+class SystemAPI : public APIBase
+{
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_SYSTEM_INTERFACE)
     Q_PROPERTY(
@@ -82,8 +88,15 @@ class SystemAPI : public APIBase {
     )
     Q_PROPERTY(bool landscape READ landscape NOTIFY landscapeChanged)
 
-   public:
-    enum SwipeDirection { None, Right, Left, Up, Down };
+  public:
+    enum SwipeDirection
+    {
+        None,
+        Right,
+        Left,
+        Up,
+        Down
+    };
     Q_ENUM(SwipeDirection)
     static SystemAPI* singleton(SystemAPI* self = nullptr);
     SystemAPI(QObject* parent);
@@ -116,7 +129,7 @@ class SystemAPI : public APIBase {
     Q_INVOKABLE int getSwipeLength(int direction);
     int getSwipeLength(SwipeDirection direction);
 
-   public slots:
+  public slots:
     void suspend();
     void powerOff();
     void reboot();
@@ -127,7 +140,7 @@ class SystemAPI : public APIBase {
     void uninhibitPowerOff(QDBusMessage message);
     void toggleSwipes();
 
-   signals:
+  signals:
     void leftAction();
     void homeAction();
     void rightAction();
@@ -145,12 +158,12 @@ class SystemAPI : public APIBase {
     void deviceSuspending();
     void deviceResuming();
 
-   private slots:
+  private slots:
     void PrepareForSleep(bool suspending);
     void suspendTimeout();
     void lockTimeout();
 
-   private:
+  private:
     Manager* systemd;
     QList<Inhibitor> inhibitors;
     Application* resumeApp;
@@ -172,4 +185,4 @@ class SystemAPI : public APIBase {
     void releasePowerOffInhibitors(bool block = false);
     void rguard(bool install);
 };
-#endif  // SYSTEMAPI_H
+#endif // SYSTEMAPI_H

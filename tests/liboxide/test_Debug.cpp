@@ -5,7 +5,9 @@
 test_Debug::test_Debug() {}
 test_Debug::~test_Debug() {}
 
-void test_Debug::test_getDebugApplicationInfo() {
+void
+test_Debug::test_getDebugApplicationInfo()
+{
     QCOMPARE(
         QString::fromStdString(Oxide::getDebugApplicationInfo()),
         QString("[%1:%2:%3 liboxide - liboxide]")
@@ -15,7 +17,9 @@ void test_Debug::test_getDebugApplicationInfo() {
     );
 }
 
-void test_Debug::test_getDebugLocation() {
+void
+test_Debug::test_getDebugLocation()
+{
     QCOMPARE(
         QString::fromStdString(Oxide::getDebugLocation("file", 0, "function")),
         "(file:0, function)"
@@ -26,7 +30,9 @@ void test_Debug::test_getDebugLocation() {
     );
 }
 
-void test_Debug::test_debugEnabled() {
+void
+test_Debug::test_debugEnabled()
+{
     unsetenv("DEBUG");
     QVERIFY(!Oxide::debugEnabled());
     ::setenv("DEBUG", "0", true);
@@ -41,7 +47,9 @@ void test_Debug::test_debugEnabled() {
     QVERIFY(Oxide::debugEnabled());
 }
 
-void test_Debug::test_getAppName() {
+void
+test_Debug::test_getAppName()
+{
     QCOMPARE(
         QString::fromStdString(Oxide::getAppName(false)), QString("liboxide")
     );
@@ -62,7 +70,9 @@ void test_Debug::test_getAppName() {
     // TODO - test /proc/self/{comm,exe} both being null
 }
 
-void test_Debug::test_backtrace() {
+void
+test_Debug::test_backtrace()
+{
     auto trace = Oxide::backtrace(2);
     QCOMPARE(trace.size(), 1);
     QCOMPARE(

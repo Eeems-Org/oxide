@@ -3,16 +3,17 @@
 #include <QObject>
 #include <QPointF>
 
-class OxideEventFilter : public QObject {
+class OxideEventFilter : public QObject
+{
     Q_OBJECT
 
-   public:
+  public:
     OxideEventFilter(QObject* parent);
 
-   protected:
+  protected:
     bool eventFilter(QObject* obj, QEvent* ev) override;
 
-   private:
+  private:
     static QPointF transpose(QPointF pointF);
     static QPointF swap(QPointF pointF);
     bool isEnabled();

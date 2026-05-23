@@ -8,4 +8,4 @@ typedef FiW1Wpa_supplicant1BSSInterface IBSS;
 typedef FiW1Wpa_supplicant1InterfaceInterface Interface;
 typedef FiW1Wpa_supplicant1NetworkInterface INetwork;
 
-#endif  // SUPPLICANT_H
+#endif // SUPPLICANT_H

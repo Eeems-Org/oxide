@@ -14,7 +14,8 @@ namespace Oxide {
         const QString& slotName,
         std::function<void(QVariantList)> onMessage,
         const bool& once = false
-    ) {
+    )
+    {
         return DBusConnect(interface, slotName, onMessage, [] {}, once);
     }
     bool DBusConnect(
@@ -23,7 +24,8 @@ namespace Oxide {
         std::function<void(QVariantList)> onMessage,
         std::function<void()> callback,
         const bool& once
-    ) {
+    )
+    {
         auto metaObject = interface->metaObject();
         for (int methodId = 0; methodId < metaObject->methodCount();
              methodId++) {
@@ -58,13 +60,14 @@ namespace Oxide {
         std::function<void(QVariantList)> onMessage,
         std::function<void()> callback
     )
-        : QObject(0),
-          serviceName(serviceName),
-          parameters(parameters),
-          once(once),
-          m_disconnected(false),
-          onMessage(onMessage),
-          callback(callback) {
+      : QObject(0)
+      , serviceName(serviceName)
+      , parameters(parameters)
+      , once(once)
+      , m_disconnected(false)
+      , onMessage(onMessage)
+      , callback(callback)
+    {
         watcher = new QDBusServiceWatcher(
             serviceName,
             QDBusConnection::systemBus(),
@@ -89,9 +92,9 @@ namespace Oxide {
         );
     }
     SlotHandler::~SlotHandler() {}
-    int SlotHandler::qt_metacall(
-        QMetaObject::Call call, int id, void** arguments
-    ) {
+    int
+    SlotHandler::qt_metacall(QMetaObject::Call call, int id, void** arguments)
+    {
         id = QObject::qt_metacall(call, id, arguments);
         if (id < 0 || call != QMetaObject::InvokeMetaMethod) {
             return id;
@@ -102,12 +105,14 @@ namespace Oxide {
         }
         return -1;
     }
-    bool SlotHandler::connect(QObject* sender, int methodId) {
+    bool SlotHandler::connect(QObject* sender, int methodId)
+    {
         return QMetaObject::connect(
             sender, methodId, this, this->metaObject()->methodCount()
         );
     }
-    void SlotHandler::handleSlot(QObject* api, void** arguments) {
+    void SlotHandler::handleSlot(QObject* api, void** arguments)
+    {
         Q_UNUSED(api);
         QVariantList args;
         for (int i = 0; i < parameters.length(); i++) {
@@ -122,4 +127,4 @@ namespace Oxide {
             callback();
         }
     }
-}  // namespace Oxide
+} // namespace Oxide

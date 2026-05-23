@@ -10,21 +10,19 @@ using namespace Oxide::Sentry;
 using namespace Oxide::JSON;
 
 const QSet<QString> ApiNames = QSet<QString>{
-    "general",
-    "power",
-    "wifi",
-    "apps",
-    "system",
-    "screen",
-    "notification",
+    "general", "power", "wifi", "apps", "system", "screen", "notification",
 };
 
-QTextStream& qStdOut() {
+QTextStream&
+qStdOut()
+{
     static QTextStream ts(stdout);
     return ts;
 }
 
-QObject* getApi(const QString& name) {
+QObject*
+getApi(const QString& name)
+{
     if (!ApiNames.contains(name)) {
         return nullptr;
     }
@@ -70,7 +68,9 @@ QObject* getApi(const QString& name) {
     return nullptr;
 }
 
-bool isValidProperty(QObject* obj, const QString& name) {
+bool
+isValidProperty(QObject* obj, const QString& name)
+{
     auto meta = obj->metaObject();
     for (int i = meta->propertyOffset(); i < meta->propertyCount(); ++i) {
         auto property = meta->property(i);
@@ -81,7 +81,9 @@ bool isValidProperty(QObject* obj, const QString& name) {
     return false;
 }
 
-QList<QString> getProperties(QObject* obj) {
+QList<QString>
+getProperties(QObject* obj)
+{
     QList<QString> res;
     auto meta = obj->metaObject();
     for (int i = meta->propertyOffset(); i < meta->propertyCount(); ++i) {
@@ -95,9 +97,9 @@ QList<QString> getProperties(QObject* obj) {
     return res;
 }
 
-QStringList positionArguments(
-    QCommandLineParser& parser, int mandatoryCount, int maxCount
-) {
+QStringList
+positionArguments(QCommandLineParser& parser, int mandatoryCount, int maxCount)
+{
     parser.process(*qApp);
     auto args = parser.positionalArguments();
     args.removeFirst();
@@ -109,7 +111,9 @@ QStringList positionArguments(
     return args;
 }
 
-QObject* getObj(QStringList* args, int isGet = false) {
+QObject*
+getObj(QStringList* args, int isGet = false)
+{
     switch (args->length()) {
         case 2:
             if (!isGet) {
@@ -128,7 +132,9 @@ QObject* getObj(QStringList* args, int isGet = false) {
     return obj;
 }
 
-int get_command(QCommandLineParser& parser) {
+int
+get_command(QCommandLineParser& parser)
+{
     parser.clearPositionalArguments();
     parser.addPositionalArgument("", "", "get");
     parser.addPositionalArgument("property", "Property to get", "{property}");
@@ -156,7 +162,9 @@ int get_command(QCommandLineParser& parser) {
     return EXIT_SUCCESS;
 }
 
-int check_command(QCommandLineParser& parser) {
+int
+check_command(QCommandLineParser& parser)
+{
     parser.clearPositionalArguments();
     parser.addPositionalArgument("", "", "check");
     parser.addPositionalArgument("property", "Property to check", "{property}");
@@ -186,7 +194,9 @@ int check_command(QCommandLineParser& parser) {
     return EXIT_SUCCESS;
 }
 
-int set_command(QCommandLineParser& parser) {
+int
+set_command(QCommandLineParser& parser)
+{
     parser.clearPositionalArguments();
     parser.addPositionalArgument("", "", "set");
     parser.addPositionalArgument("property", "Property to set", "{property}");
@@ -224,7 +234,9 @@ int set_command(QCommandLineParser& parser) {
     return EXIT_FAILURE;
 }
 
-int list_command(QCommandLineParser& parser) {
+int
+list_command(QCommandLineParser& parser)
+{
     if (!parser.positionalArguments().isEmpty()) {
         parser.showHelp(EXIT_FAILURE);
     }
@@ -249,7 +261,9 @@ int list_command(QCommandLineParser& parser) {
     return EXIT_SUCCESS;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("xdg-settings", argv);
     app.setOrganizationName("Eeems");

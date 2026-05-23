@@ -6,28 +6,33 @@
 
 #include "taskitem.h"
 
-class TaskList : public QAbstractListModel {
+class TaskList : public QAbstractListModel
+{
     Q_OBJECT
-   public:
+  public:
     TaskList() : QAbstractListModel(nullptr) { reload(); }
     QVariant headerData(
-        int section, Qt::Orientation orientation, int role = Qt::DisplayRole
-    ) const override {
+        int section,
+        Qt::Orientation orientation,
+        int role = Qt::DisplayRole
+    ) const override
+    {
         Q_UNUSED(section)
         Q_UNUSED(orientation)
         Q_UNUSED(role)
         return QVariant();
     }
     QString sortBy() { return _sortBy; }
-    int rowCount(const QModelIndex& parent = QModelIndex()) const override {
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override
+    {
         if (parent.isValid()) {
             return 0;
         }
         return taskItems.length();
     }
-    QVariant data(
-        const QModelIndex& index, int role = Qt::DisplayRole
-    ) const override {
+    QVariant
+    data(const QModelIndex& index, int role = Qt::DisplayRole) const override
+    {
         if (!index.isValid()) {
             return QVariant();
         }
@@ -42,7 +47,8 @@ class TaskList : public QAbstractListModel {
         }
         return QVariant::fromValue(taskItems[index.row()]);
     }
-    void append(TaskItem* taskItem) {
+    void append(TaskItem* taskItem)
+    {
         if (get(taskItem->pid()) != nullptr) {
             return;
         }
@@ -51,7 +57,8 @@ class TaskList : public QAbstractListModel {
         endInsertRows();
         emit updated();
     }
-    void append(int pid) {
+    void append(int pid)
+    {
         if (get(pid) != nullptr) {
             return;
         }
@@ -60,7 +67,8 @@ class TaskList : public QAbstractListModel {
         endInsertRows();
         emit updated();
     }
-    TaskItem* get(int pid) {
+    TaskItem* get(int pid)
+    {
         for (auto taskItem : taskItems) {
             if (pid == taskItem->pid()) {
                 return taskItem;
@@ -68,7 +76,8 @@ class TaskList : public QAbstractListModel {
         }
         return nullptr;
     }
-    void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override {
+    void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override
+    {
         Q_UNUSED(column)
         emit layoutAboutToBeChanged();
         std::sort(
@@ -109,7 +118,8 @@ class TaskList : public QAbstractListModel {
         );
         emit layoutChanged();
     }
-    Q_INVOKABLE void sort(QString sortBy) {
+    Q_INVOKABLE void sort(QString sortBy)
+    {
         if (_sortBy != sortBy) {
             _sortOrder = Qt::AscendingOrder;
             _lastSortBy = _sortBy;
@@ -125,7 +135,8 @@ class TaskList : public QAbstractListModel {
             emit taskItem->nameChanged(taskItem->name());
         }
     }
-    Q_INVOKABLE void clear() {
+    Q_INVOKABLE void clear()
+    {
         beginRemoveRows(QModelIndex(), 0, taskItems.length());
         for (auto taskItem : taskItems) {
             if (taskItem != nullptr) {
@@ -136,7 +147,8 @@ class TaskList : public QAbstractListModel {
         endRemoveRows();
         emit updated();
     }
-    Q_INVOKABLE void remove(int pid) {
+    Q_INVOKABLE void remove(int pid)
+    {
         QMutableListIterator<TaskItem*> i(taskItems);
         while (i.hasNext()) {
             auto taskItem = i.next();
@@ -153,7 +165,8 @@ class TaskList : public QAbstractListModel {
         }
         emit updated();
     }
-    int removeAll(TaskItem* taskItem) {
+    int removeAll(TaskItem* taskItem)
+    {
         QMutableListIterator<TaskItem*> i(taskItems);
         int count = 0;
         while (i.hasNext()) {
@@ -175,7 +188,8 @@ class TaskList : public QAbstractListModel {
     }
     int length() { return taskItems.length(); }
     bool empty() { return taskItems.empty(); }
-    void reload() {
+    void reload()
+    {
         QMutableListIterator<TaskItem*> i(taskItems);
         while (i.hasNext()) {
             auto taskItem = i.next();
@@ -225,13 +239,14 @@ class TaskList : public QAbstractListModel {
         }
         sort(0, _sortOrder);
     }
-   signals:
+  signals:
     void updated();
     void sortByChanged(QString);
 
-   private:
+  private:
     QList<TaskItem*> taskItems;
-    int is_uint(std::string input) {
+    int is_uint(std::string input)
+    {
         unsigned int i;
         for (i = 0; i < input.length(); i++) {
             if (!isdigit(input.at(i))) {
@@ -245,4 +260,4 @@ class TaskList : public QAbstractListModel {
     Qt::SortOrder _sortOrder = Qt::AscendingOrder;
 };
 
-#endif  // TASKLIST_H
+#endif // TASKLIST_H

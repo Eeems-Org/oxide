@@ -8,7 +8,9 @@
 #include "dbusservice.h"
 #include "systemapi.h"
 
-NotificationAPI* NotificationAPI::singleton(NotificationAPI* self) {
+NotificationAPI*
+NotificationAPI::singleton(NotificationAPI* self)
+{
     static NotificationAPI* instance;
     if (self != nullptr) {
         instance = self;
@@ -17,11 +19,12 @@ NotificationAPI* NotificationAPI::singleton(NotificationAPI* self) {
 }
 
 NotificationAPI::NotificationAPI(QObject* parent)
-    : APIBase(parent),
-      notificationDisplayQueue(),
-      m_enabled(false),
-      m_notifications(),
-      m_lock() {
+  : APIBase(parent)
+  , notificationDisplayQueue()
+  , m_enabled(false)
+  , m_notifications()
+  , m_lock()
+{
     Oxide::Sentry::sentry_transaction(
         "Notification API init", "init", [this](Oxide::Sentry::Transaction* t) {
             Oxide::Sentry::sentry_span(
@@ -31,15 +34,23 @@ NotificationAPI::NotificationAPI(QObject* parent)
     );
 }
 
-void NotificationAPI::shutdown() {
+void
+NotificationAPI::shutdown()
+{
     m_window->close();
     delete m_window;
     m_window = nullptr;
 }
 
-bool NotificationAPI::enabled() { return m_enabled; }
+bool
+NotificationAPI::enabled()
+{
+    return m_enabled;
+}
 
-void NotificationAPI::setEnabled(bool enabled) {
+void
+NotificationAPI::setEnabled(bool enabled)
+{
     m_enabled = enabled;
     O_INFO("Notification API" << enabled);
     for (auto notification : m_notifications.values()) {
@@ -51,7 +62,9 @@ void NotificationAPI::setEnabled(bool enabled) {
     }
 }
 
-void NotificationAPI::startup() {
+void
+NotificationAPI::startup()
+{
     auto engine = dbusService->engine();
     engine->load("qrc:/notification.qml");
     m_window = static_cast<QQuickWindow*>(engine->rootObjects().last());
@@ -65,7 +78,9 @@ void NotificationAPI::startup() {
     m_window->lower();
 }
 
-QDBusObjectPath NotificationAPI::get(QString identifier) {
+QDBusObjectPath
+NotificationAPI::get(QString identifier)
+{
     if (!hasPermission("notification")) {
         return QDBusObjectPath("/");
     }
@@ -76,7 +91,9 @@ QDBusObjectPath NotificationAPI::get(QString identifier) {
     return notification->qPath();
 }
 
-QList<QDBusObjectPath> NotificationAPI::getAllNotifications() {
+QList<QDBusObjectPath>
+NotificationAPI::getAllNotifications()
+{
     QList<QDBusObjectPath> result;
     if (!hasPermission("notification")) {
         return result;
@@ -87,7 +104,9 @@ QList<QDBusObjectPath> NotificationAPI::getAllNotifications() {
     return result;
 }
 
-QList<QDBusObjectPath> NotificationAPI::getUnownedNotifications() {
+QList<QDBusObjectPath>
+NotificationAPI::getUnownedNotifications()
+{
     QList<QDBusObjectPath> result;
     if (!hasPermission("notification")) {
         return result;
@@ -102,13 +121,15 @@ QList<QDBusObjectPath> NotificationAPI::getUnownedNotifications() {
     return result;
 }
 
-Notification* NotificationAPI::add(
+Notification*
+NotificationAPI::add(
     const QString& identifier,
     const QString& owner,
     const QString& application,
     const QString& text,
     const QString& icon
-) {
+)
+{
     if (m_notifications.contains(identifier)) {
         return nullptr;
     }
@@ -127,16 +148,18 @@ Notification* NotificationAPI::add(
     return notification;
 }
 
-Notification* NotificationAPI::getByIdentifier(const QString& identifier) {
+Notification*
+NotificationAPI::getByIdentifier(const QString& identifier)
+{
     if (!m_notifications.contains(identifier)) {
         return nullptr;
     }
     return m_notifications.value(identifier);
 }
 
-QQuickWindow* NotificationAPI::paintNotification(
-    const QString& text, const QString& iconPath
-) {
+QQuickWindow*
+NotificationAPI::paintNotification(const QString& text, const QString& iconPath)
+{
     m_window->setProperty("text", text);
     if (!iconPath.isEmpty() && QFileInfo(iconPath).exists()) {
         m_window->setProperty("image", QUrl::fromLocalFile(iconPath));
@@ -149,18 +172,22 @@ QQuickWindow* NotificationAPI::paintNotification(
     return m_window;
 }
 
-void NotificationAPI::errorNotification(const QString& text) {
+void
+NotificationAPI::errorNotification(const QString& text)
+{
     O_DEBUG("Displaying error text");
     notificationAPI->paintNotification(text, "");
 }
 
-QDBusObjectPath NotificationAPI::add(
+QDBusObjectPath
+NotificationAPI::add(
     const QString& identifier,
     const QString& application,
     const QString& text,
     const QString& icon,
     QDBusMessage message
-) {
+)
+{
     if (!hasPermission("notification")) {
         return QDBusObjectPath("/");
     }
@@ -172,7 +199,9 @@ QDBusObjectPath NotificationAPI::add(
     return notification->qPath();
 }
 
-bool NotificationAPI::take(QString identifier, QDBusMessage message) {
+bool
+NotificationAPI::take(QString identifier, QDBusMessage message)
+{
     if (!hasPermission("notification")) {
         return false;
     }
@@ -183,7 +212,9 @@ bool NotificationAPI::take(QString identifier, QDBusMessage message) {
     return true;
 }
 
-QList<QDBusObjectPath> NotificationAPI::notifications(QDBusMessage message) {
+QList<QDBusObjectPath>
+NotificationAPI::notifications(QDBusMessage message)
+{
     QList<QDBusObjectPath> result;
     if (!hasPermission("notification")) {
         return result;
@@ -196,7 +227,9 @@ QList<QDBusObjectPath> NotificationAPI::notifications(QDBusMessage message) {
     return result;
 }
 
-void NotificationAPI::remove(Notification* notification) {
+void
+NotificationAPI::remove(Notification* notification)
+{
     if (!hasPermission("notification")) {
         return;
     }
@@ -207,7 +240,9 @@ void NotificationAPI::remove(Notification* notification) {
     emit notificationRemoved(notification->qPath());
 }
 
-bool NotificationAPI::locked() {
+bool
+NotificationAPI::locked()
+{
     if (!m_lock.tryLock(1)) {
         return true;
     }
@@ -215,11 +250,21 @@ bool NotificationAPI::locked() {
     return false;
 }
 
-void NotificationAPI::lock() { m_lock.tryLock(1); }
+void
+NotificationAPI::lock()
+{
+    m_lock.tryLock(1);
+}
 
-void NotificationAPI::unlock() { m_lock.unlock(); }
+void
+NotificationAPI::unlock()
+{
+    m_lock.unlock();
+}
 
-QString NotificationAPI::getPath(QString id) {
+QString
+NotificationAPI::getPath(QString id)
+{
     static const QUuid NS = QUuid::fromString(
         QLatin1String("{66acfa80-020f-11eb-adc1-0242ac120002}")
     );

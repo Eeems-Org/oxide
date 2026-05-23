@@ -12,21 +12,25 @@
 #include "default_keymap.h"
 #include "oxideeventmanager.h"
 
-typedef struct KeyboardData {
+typedef struct KeyboardData
+{
     quint16 m_modifiers;
     quint8 m_locks[3];
     int m_composing;
     quint16 m_dead_unicode;
 } KeyboardData;
 
-typedef struct rect_t {
+typedef struct rect_t
+{
     int x, y, p, d;
 } rect_t;
 
-typedef struct TabletData {
+typedef struct TabletData
+{
     rect_t minValues;
     rect_t maxValues;
-    struct {
+    struct
+    {
         int x, y, p, d;
         bool down, lastReportDown;
         int tool, lastReportTool;
@@ -34,7 +38,8 @@ typedef struct TabletData {
     } state;
     int lastEventType;
 
-    TabletData() : lastEventType{0} {
+    TabletData() : lastEventType{ 0 }
+    {
         memset(&minValues, 0, sizeof(minValues));
         memset(&maxValues, 0, sizeof(maxValues));
         memset(&maxValues, 0, sizeof(maxValues));
@@ -42,7 +47,8 @@ typedef struct TabletData {
     }
 } TabletData;
 
-typedef struct Contact {
+typedef struct Contact
+{
     int trackingId = -1;
     int x = 0;
     int y = 0;
@@ -51,7 +57,8 @@ typedef struct Contact {
     QEventPoint::State state = QEventPoint::State::Pressed;
 } Contact;
 
-typedef struct TouchData {
+typedef struct TouchData
+{
     int lastEventType;
     Contact currentData;
     int currentSlot;
@@ -71,23 +78,26 @@ typedef struct TouchData {
     QHash<int, Contact> lastContacts;
     QPointingDevice* device = nullptr;
     TouchData()
-        : lastEventType{-1},
-          currentSlot{0},
-          timeStamp{0},
-          lastTimeStamp{0},
-          minX{0},
-          maxX{0},
-          minY{0},
-          maxY{0},
-          minPressure{0},
-          maxPressure{0},
-          isTypeB{false},
-          singleTouch{false},
-          touchPoints{},
-          lastTouchPoints{},
-          contacts{},
-          lastContacts{} {}
-    ~TouchData() {
+      : lastEventType{ -1 }
+      , currentSlot{ 0 }
+      , timeStamp{ 0 }
+      , lastTimeStamp{ 0 }
+      , minX{ 0 }
+      , maxX{ 0 }
+      , minY{ 0 }
+      , maxY{ 0 }
+      , minPressure{ 0 }
+      , maxPressure{ 0 }
+      , isTypeB{ false }
+      , singleTouch{ false }
+      , touchPoints{}
+      , lastTouchPoints{}
+      , contacts{}
+      , lastContacts{}
+    {
+    }
+    ~TouchData()
+    {
         if (device != nullptr) {
             device->moveToThread(qApp->thread());
             device->deleteLater();
@@ -95,23 +105,29 @@ typedef struct TouchData {
     }
 } TouchData;
 
-typedef struct PointerData {
+typedef struct PointerData
+{
     // TODO - populate
 } PointerData;
 
-DeviceData::DeviceData()
-    : DeviceData(0, QInputDeviceManager::DeviceTypeUnknown) {}
+DeviceData::DeviceData() : DeviceData(0, QInputDeviceManager::DeviceTypeUnknown)
+{
+}
 
 #define LONG_BITS (sizeof(long) << 3)
 #define NUM_LONGS(bits) (((bits) + LONG_BITS - 1) / LONG_BITS)
-static inline bool testBit(long bit, const long* array) {
+static inline bool
+testBit(long bit, const long* array)
+{
     return (array[bit / LONG_BITS] >> bit % LONG_BITS) & 1;
 }
 
 DeviceData::DeviceData(
-    unsigned int device, QInputDeviceManager::DeviceType type
+    unsigned int device,
+    QInputDeviceManager::DeviceType type
 )
-    : device(device), type(type) {
+  : device(device), type(type)
+{
     auto path = QString("/dev/input/event%1").arg(device);
     auto fd = ::open(path.toStdString().c_str(), O_RDWR);
     char name[1024];
@@ -215,7 +231,8 @@ DeviceData::DeviceData(
     ::close(fd);
 }
 
-DeviceData::~DeviceData() {
+DeviceData::~DeviceData()
+{
     switch (type) {
         case QInputDeviceManager::DeviceTypeKeyboard:
             delete get<KeyboardData>();
@@ -235,15 +252,17 @@ DeviceData::~DeviceData() {
 }
 
 OxideEventHandler::OxideEventHandler(
-    OxideEventManager* manager, const QStringList& parameters
+    OxideEventManager* manager,
+    const QStringList& parameters
 )
-    : QObject(),
-      m_manager(manager),
-      m_fd(Blight::connection()->input_handle()),
-      m_keymap{0},
-      m_keymap_size{0},
-      m_keycompose{0},
-      m_keycompose_size{0} {
+  : QObject()
+  , m_manager(manager)
+  , m_fd(Blight::connection()->input_handle())
+  , m_keymap{ 0 }
+  , m_keymap_size{ 0 }
+  , m_keycompose{ 0 }
+  , m_keycompose_size{ 0 }
+{
     setObjectName("OxideInput");
     parseKeyParams(parameters);
     parseTouchParams(
@@ -261,17 +280,23 @@ OxideEventHandler::OxideEventHandler(
 
 OxideEventHandler::~OxideEventHandler() {}
 
-void OxideEventHandler::add(
-    unsigned int number, QInputDeviceManager::DeviceType type
-) {
+void
+OxideEventHandler::add(
+    unsigned int number,
+    QInputDeviceManager::DeviceType type
+)
+{
     if (!m_devices.contains(number)) {
         m_devices.insert(number, new DeviceData(number, type));
     }
 }
 
-void OxideEventHandler::remove(
-    unsigned int number, QInputDeviceManager::DeviceType type
-) {
+void
+OxideEventHandler::remove(
+    unsigned int number,
+    QInputDeviceManager::DeviceType type
+)
+{
     if (m_devices.contains(number) && m_devices[number]->type == type) {
         auto device = m_devices[number];
         m_devices.remove(number);
@@ -279,7 +304,9 @@ void OxideEventHandler::remove(
     }
 }
 
-void OxideEventHandler::readyRead() {
+void
+OxideEventHandler::readyRead()
+{
     Q_ASSERT(thread() == QThread::currentThread());
     m_notifier->setEnabled(false);
     auto connection = Blight::connection();
@@ -318,9 +345,12 @@ void OxideEventHandler::readyRead() {
     m_notifier->setEnabled(true);
 }
 
-void OxideEventHandler::processKeyboardEvent(
-    DeviceData* data, Blight::partial_input_event_t* event
-) {
+void
+OxideEventHandler::processKeyboardEvent(
+    DeviceData* data,
+    Blight::partial_input_event_t* event
+)
+{
     Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeKeyboard);
     // Ignore EV_SYN etc
     if (event->type != EV_KEY) {
@@ -482,37 +512,37 @@ void OxideEventHandler::processKeyboardEvent(
         keycode >= 71 && keycode <= 83 && keycode != 74 && keycode != 78) {
         unicode = 0xffff;
         switch (keycode) {
-            case 71:  // 7 --> Home
+            case 71: // 7 --> Home
                 qtcode = Qt::Key_Home;
                 break;
-            case 72:  // 8 --> Up
+            case 72: // 8 --> Up
                 qtcode = Qt::Key_Up;
                 break;
-            case 73:  // 9 --> PgUp
+            case 73: // 9 --> PgUp
                 qtcode = Qt::Key_PageUp;
                 break;
-            case 75:  // 4 --> Left
+            case 75: // 4 --> Left
                 qtcode = Qt::Key_Left;
                 break;
-            case 76:  // 5 --> Clear
+            case 76: // 5 --> Clear
                 qtcode = Qt::Key_Clear;
                 break;
-            case 77:  // 6 --> right
+            case 77: // 6 --> right
                 qtcode = Qt::Key_Right;
                 break;
-            case 79:  // 1 --> End
+            case 79: // 1 --> End
                 qtcode = Qt::Key_End;
                 break;
-            case 80:  // 2 --> Down
+            case 80: // 2 --> Down
                 qtcode = Qt::Key_Down;
                 break;
-            case 81:  // 3 --> PgDn
+            case 81: // 3 --> PgDn
                 qtcode = Qt::Key_PageDown;
                 break;
-            case 82:  // 0 --> Ins
+            case 82: // 0 --> Ins
                 qtcode = Qt::Key_Insert;
                 break;
-            case 83:  //, --> Del
+            case 83: //, --> Del
                 qtcode = Qt::Key_Delete;
                 break;
         }
@@ -544,9 +574,12 @@ void OxideEventHandler::processKeyboardEvent(
     );
 }
 
-void OxideEventHandler::processTabletEvent(
-    DeviceData* data, Blight::partial_input_event_t* event
-) {
+void
+OxideEventHandler::processTabletEvent(
+    DeviceData* data,
+    Blight::partial_input_event_t* event
+)
+{
     Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeTablet);
     auto device = data->device;
     auto tabletData = data->get<TabletData>();
@@ -653,12 +686,14 @@ void OxideEventHandler::processTabletEvent(
     tabletData->lastEventType = event->type;
 }
 
-void addTouchPoint(
+void
+addTouchPoint(
     QTransform rotate,
     TouchData* touchData,
     const Contact& contact,
     QEventPoint::States* combinedStates
-) {
+)
+{
     QWindowSystemInterface::TouchPoint tp;
     tp.id = contact.trackingId;
     tp.state = contact.state;
@@ -682,9 +717,9 @@ void addTouchPoint(
     touchData->touchPoints.append(tp);
 }
 
-int findClosestContact(
-    const QHash<int, Contact>& contacts, int x, int y, int* dist
-) {
+int
+findClosestContact(const QHash<int, Contact>& contacts, int x, int y, int* dist)
+{
     int minDist = -1, id = -1;
     for (QHash<int, Contact>::const_iterator it = contacts.constBegin(),
                                              ite = contacts.constEnd();
@@ -705,9 +740,12 @@ int findClosestContact(
     return id;
 }
 
-void OxideEventHandler::processTouchEvent(
-    DeviceData* data, Blight::partial_input_event_t* event
-) {
+void
+OxideEventHandler::processTouchEvent(
+    DeviceData* data,
+    Blight::partial_input_event_t* event
+)
+{
     Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeTouch);
     auto touchData = data->get<TouchData>();
     if (event->type == EV_ABS) {
@@ -988,9 +1026,12 @@ void OxideEventHandler::processTouchEvent(
     touchData->lastEventType = event->type;
 }
 
-void OxideEventHandler::processPointerEvent(
-    DeviceData* data, Blight::partial_input_event_t* event
-) {
+void
+OxideEventHandler::processPointerEvent(
+    DeviceData* data,
+    Blight::partial_input_event_t* event
+)
+{
     Q_UNUSED(event);
     Q_ASSERT(data->type == QInputDeviceManager::DeviceTypePointer);
     auto device = data->device;
@@ -999,7 +1040,9 @@ void OxideEventHandler::processPointerEvent(
     Q_UNUSED(pointerData);
 }
 
-Qt::KeyboardModifiers OxideEventHandler::toQtModifiers(quint16 mod) {
+Qt::KeyboardModifiers
+OxideEventHandler::toQtModifiers(quint16 mod)
+{
     Qt::KeyboardModifiers qtmod = Qt::NoModifier;
     if (mod &
         (Modifiers::ModShift | Modifiers::ModShiftL | Modifiers::ModShiftR)) {
@@ -1018,7 +1061,9 @@ Qt::KeyboardModifiers OxideEventHandler::toQtModifiers(quint16 mod) {
     return qtmod;
 }
 
-void OxideEventHandler::unloadKeymap() {
+void
+OxideEventHandler::unloadKeymap()
+{
     if (m_keymap && m_keymap != s_keymap_default) {
         delete[] m_keymap;
     }
@@ -1032,7 +1077,9 @@ void OxideEventHandler::unloadKeymap() {
         sizeof(s_keycompose_default) / sizeof(s_keycompose_default[0]);
 }
 
-bool OxideEventHandler::loadKeymap(const QString& file) {
+bool
+OxideEventHandler::loadKeymap(const QString& file)
+{
     QFile f(file);
     if (!f.open(QIODevice::ReadOnly)) {
         O_WARNING("Could not open keymap file" << qUtf16Printable(file));
@@ -1079,7 +1126,9 @@ bool OxideEventHandler::loadKeymap(const QString& file) {
     return true;
 }
 
-void OxideEventHandler::parseKeyParams(const QStringList& parameters) {
+void
+OxideEventHandler::parseKeyParams(const QStringList& parameters)
+{
     QString keymap;
     for (const QString& param : parameters) {
         if (param.startsWith(QLatin1String("keymap="), Qt::CaseInsensitive)) {
@@ -1091,7 +1140,9 @@ void OxideEventHandler::parseKeyParams(const QStringList& parameters) {
     }
 }
 
-void OxideEventHandler::parseTouchParams(const QStringList& parameters) {
+void
+OxideEventHandler::parseTouchParams(const QStringList& parameters)
+{
     int rotationAngle = 0;
     bool invertx = false;
     bool inverty = false;

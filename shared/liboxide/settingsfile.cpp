@@ -6,11 +6,14 @@
 
 namespace Oxide {
     SettingsFile::SettingsFile(QString path)
-        : QSettings(path, QSettings::IniFormat),
-          reloadSemaphore(1),
-          fileWatcher(QStringList() << path) {}
+      : QSettings(path, QSettings::IniFormat)
+      , reloadSemaphore(1)
+      , fileWatcher(QStringList() << path)
+    {
+    }
     SettingsFile::~SettingsFile() {}
-    void SettingsFile::fileChanged() {
+    void SettingsFile::fileChanged()
+    {
         if (!fileWatcher.files().contains(fileName()) &&
             !fileWatcher.addPath(fileName())) {
             O_WARNING("Unable to watch " << fileName());
@@ -60,7 +63,8 @@ namespace Oxide {
         O_DEBUG("Settings file" << fileName() << "changes loaded");
         emit changed();
     }
-    void SettingsFile::reloadProperty(const QString& name) {
+    void SettingsFile::reloadProperty(const QString& name)
+    {
         auto groupName = this->groupName(name);
         if (groupName.isNull()) {
             return;
@@ -95,7 +99,8 @@ namespace Oxide {
         reloadSemaphore.release();
         O_SETTINGS_DEBUG("  Done")
     }
-    void SettingsFile::resetProperty(const QString& name) {
+    void SettingsFile::resetProperty(const QString& name)
+    {
         auto metaObj = metaObject();
         auto idx = metaObj->indexOfProperty(name.toStdString().c_str());
         if (idx == -1) {
@@ -109,7 +114,8 @@ namespace Oxide {
             reloadProperty(property.name());
         }
     }
-    void SettingsFile::init() {
+    void SettingsFile::init()
+    {
         if (initalized) {
             return;
         }
@@ -130,7 +136,8 @@ namespace Oxide {
             &SettingsFile::fileChanged
         );
     }
-    void SettingsFile::reloadProperties() {
+    void SettingsFile::reloadProperties()
+    {
         auto metaObj = metaObject();
         for (int i = metaObj->propertyOffset(); i < metaObj->propertyCount();
              ++i) {
@@ -141,7 +148,8 @@ namespace Oxide {
             reloadProperty(property.name());
         }
     }
-    void SettingsFile::resetProperties() {
+    void SettingsFile::resetProperties()
+    {
         auto metaObj = metaObject();
         for (int i = metaObj->propertyOffset(); i < metaObj->propertyCount();
              ++i) {
@@ -152,7 +160,8 @@ namespace Oxide {
             resetProperty(property.name());
         }
     }
-    QString SettingsFile::groupName(const QString& name) {
+    QString SettingsFile::groupName(const QString& name)
+    {
         auto metaObj = metaObject();
         auto propertyName = "__META_GROUP_" + name;
         auto idx = metaObj->indexOfProperty(propertyName.toStdString().c_str());
@@ -162,6 +171,6 @@ namespace Oxide {
         }
         return property(propertyName.toStdString().c_str()).toString();
     }
-}  // namespace Oxide
+} // namespace Oxide
 
 #include "moc_settingsfile.cpp"

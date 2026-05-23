@@ -18,7 +18,9 @@ using namespace Oxide;
 using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     deviceSettings.setupQtEnvironment();
     QGuiApplication app(argc, argv);
     sentry_init("erode", argv);

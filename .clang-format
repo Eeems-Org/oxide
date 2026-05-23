@@ -1,5 +1,5 @@
 IndentWidth: 4
-BasedOnStyle: Google
+BasedOnStyle: Mozilla
 AlignAfterOpenBracket: BlockIndent
 AlignArrayOfStructures: None
 BinPackArguments: false

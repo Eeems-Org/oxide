@@ -19,26 +19,33 @@
 
 using namespace codes::eeems::blight1;
 
-class APIBase : public QObject, protected QDBusContext {
+class APIBase
+  : public QObject
+  , protected QDBusContext
+{
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
-   public:
+  public:
     APIBase(QObject* parent) : QObject(parent) {}
     virtual void setEnabled(bool enabled) = 0;
     int hasPermission(
-        QString permission, const char* sender = __builtin_FUNCTION()
+        QString permission,
+        const char* sender = __builtin_FUNCTION()
     );
 
-   protected:
+  protected:
     int getSenderPid();
     int getSenderPgid();
 };
-QImage* getFrameBuffer();
-Compositor* getCompositorDBus();
-Blight::shared_buf_t createBuffer(
-    const QRect& rect, unsigned int stride, Blight::Format format
-);
-Blight::shared_buf_t createBuffer();
-void addSystemBuffer(Blight::shared_buf_t buffer);
+QImage*
+getFrameBuffer();
+Compositor*
+getCompositorDBus();
+Blight::shared_buf_t
+createBuffer(const QRect& rect, unsigned int stride, Blight::Format format);
+Blight::shared_buf_t
+createBuffer();
+void
+addSystemBuffer(Blight::shared_buf_t buffer);
 
-#endif  // APIBASE_H
+#endif // APIBASE_H

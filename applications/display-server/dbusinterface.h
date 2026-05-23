@@ -18,7 +18,10 @@
 
 #define dbusInterface DbusInterface::singleton()
 
-class DbusInterface : public QObject, public QDBusContext {
+class DbusInterface
+  : public QObject
+  , public QDBusContext
+{
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", BLIGHT_INTERFACE)
@@ -36,13 +39,15 @@ class DbusInterface : public QObject, public QDBusContext {
             secondaryChanged
     )
 
-   public:
+  public:
     static DbusInterface* singleton();
 
     int pid();
 #ifndef EPAPER
     QObject* loadComponent(
-        QString url, QString identifier, QVariantMap properties = QVariantMap()
+        QString url,
+        QString identifier,
+        QVariantMap properties = QVariantMap()
     );
 #endif
     void processClosingConnections();
@@ -54,9 +59,8 @@ class DbusInterface : public QObject, public QDBusContext {
     void sortZ();
     Connection* focused();
     void setFocus(Connection* connection);
-    void inputEvents(
-        unsigned int device, const std::vector<input_event>& events
-    );
+    void
+    inputEvents(unsigned int device, const std::vector<input_event>& events);
     bool inExclusiveMode();
 
     // Property getter/setters
@@ -67,7 +71,7 @@ class DbusInterface : public QObject, public QDBusContext {
     const QByteArray& secondary();
     void setSecondary(const QByteArray& data);
 
-   public slots:
+  public slots:
     QDBusUnixFileDescriptor open(QDBusMessage message);
     QDBusUnixFileDescriptor openInput(QDBusMessage message);
     ushort addSurface(
@@ -83,7 +87,9 @@ class DbusInterface : public QObject, public QDBusContext {
     void repaint(QString identifier, QDBusMessage message);
     QDBusUnixFileDescriptor getSurface(ushort identifier, QDBusMessage message);
     void setFlags(
-        QString identifier, const QStringList& flags, QDBusMessage message
+        QString identifier,
+        const QStringList& flags,
+        QDBusMessage message
     );
     QStringList getSurfaces(QDBusMessage message);
     QDBusUnixFileDescriptor frameBuffer(QDBusMessage message);
@@ -95,24 +101,27 @@ class DbusInterface : public QObject, public QDBusContext {
     void exitExclusiveMode(QDBusMessage message);
     void exclusiveModeRepaint(QDBusMessage message);
 
-   signals:
+  signals:
     void clipboardChanged(const QByteArray& data);
     void selectionChanged(const QByteArray& data);
     void secondaryChanged(const QByteArray& data);
 
-   private slots:
+  private slots:
     void serviceOwnerChanged(
-        const QString& name, const QString& oldOwner, const QString& newOwner
+        const QString& name,
+        const QString& oldOwner,
+        const QString& newOwner
     );
 
-   private:
+  private:
     DbusInterface(QObject* parent);
     QQmlApplicationEngine engine;
     QList<Connection*> connections;
     QMutex closingMutex;
     QList<Connection*> closingConnections;
     Connection* m_focused;
-    struct {
+    struct
+    {
         QByteArray clipboard;
         QByteArray selection;
         QByteArray secondary;

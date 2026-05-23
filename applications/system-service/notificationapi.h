@@ -13,7 +13,8 @@
 
 #define notificationAPI NotificationAPI::singleton()
 
-class NotificationAPI : public APIBase {
+class NotificationAPI : public APIBase
+{
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_NOTIFICATIONS_INTERFACE)
     Q_PROPERTY(bool enabled READ enabled)
@@ -22,7 +23,7 @@ class NotificationAPI : public APIBase {
         QList<QDBusObjectPath> unownedNotifications READ getUnownedNotifications
     )
 
-   public:
+  public:
     static NotificationAPI* singleton(NotificationAPI* self = nullptr);
     NotificationAPI(QObject* parent);
     void shutdown();
@@ -44,12 +45,11 @@ class NotificationAPI : public APIBase {
         const QString& icon
     );
     Notification* getByIdentifier(const QString& identifier);
-    QQuickWindow* paintNotification(
-        const QString& text, const QString& iconPath
-    );
+    QQuickWindow*
+    paintNotification(const QString& text, const QString& iconPath);
     void errorNotification(const QString& text);
 
-   public slots:
+  public slots:
     QDBusObjectPath add(
         const QString& identifier,
         const QString& application,
@@ -64,12 +64,12 @@ class NotificationAPI : public APIBase {
     void lock();
     void unlock();
 
-   signals:
+  signals:
     void notificationAdded(QDBusObjectPath);
     void notificationRemoved(QDBusObjectPath);
     void notificationChanged(QDBusObjectPath);
 
-   private:
+  private:
     bool m_enabled;
     QMap<QString, Notification*> m_notifications;
     QMutex m_lock;
@@ -78,4 +78,4 @@ class NotificationAPI : public APIBase {
     QString getPath(QString id);
 };
 
-#endif  // NOTIFICATIONAPI_H
+#endif // NOTIFICATIONAPI_H

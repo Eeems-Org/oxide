@@ -7,15 +7,21 @@
 test_Json::test_Json() {}
 test_Json::~test_Json() {}
 
-void test_Json::test_decodeDBusArgument() {
+void
+test_Json::test_decodeDBusArgument()
+{
     // TODO - Oxide::JSON::decodeDBusArgument();
 }
 
-void test_Json::test_sanitizeForJson() {
+void
+test_Json::test_sanitizeForJson()
+{
     // TODO - Oxide::JSON::sanitizeForJson();
 }
 
-void test_Json::test_toJson() {
+void
+test_Json::test_toJson()
+{
     QCOMPARE(Oxide::JSON::toJson(QVariant()), "null");
     QCOMPARE(Oxide::JSON::toJson(true), "true");
     QCOMPARE(Oxide::JSON::toJson(false), "false");
@@ -39,7 +45,9 @@ void test_Json::test_toJson() {
     );
 }
 
-void test_Json::test_fromJson() {
+void
+test_Json::test_fromJson()
+{
     QVariant variant = Oxide::JSON::fromJson("null");
     QVERIFY(variant.isNull());
     variant = Oxide::JSON::fromJson("true");

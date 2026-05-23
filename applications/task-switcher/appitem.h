@@ -6,13 +6,15 @@
 
 using namespace codes::eeems::oxide1;
 
-class AppItem : public QObject {
+class AppItem : public QObject
+{
     Q_OBJECT
 
-   public:
+  public:
     AppItem(QObject* parent) : QObject(parent) {}
 
-    ~AppItem() {
+    ~AppItem()
+    {
         if (app != nullptr) {
             delete app;
         }
@@ -33,7 +35,7 @@ class AppItem : public QObject {
     Q_INVOKABLE void execute();
     Q_INVOKABLE void stop();
 
-   signals:
+  signals:
     void nameChanged(QString);
     void displayNameChanged(QString);
     void descChanged(QString);
@@ -41,26 +43,30 @@ class AppItem : public QObject {
     void imgFileChanged(QString);
     void runningChanged(bool);
 
-   private slots:
-    void exited(int exitCode) {
+  private slots:
+    void exited(int exitCode)
+    {
         qDebug() << "Application exited" << exitCode;
         _running = false;
         emit runningChanged(false);
     }
-    void launched() {
+    void launched()
+    {
         _running = true;
         emit runningChanged(true);
     }
-    void onDisplayNameChanged(QString displayName) {
+    void onDisplayNameChanged(QString displayName)
+    {
         _displayName = displayName;
         emit displayNameChanged(displayName);
     }
-    void onIconChanged(QString path) {
+    void onIconChanged(QString path)
+    {
         _imgFile = path;
         emit imgFileChanged(path);
     }
 
-   private:
+  private:
     Application* app = nullptr;
     QString _path;
     QString _name;
@@ -74,4 +80,4 @@ class AppItem : public QObject {
 
     Application* getApp();
 };
-#endif  // APP_H
+#endif // APP_H

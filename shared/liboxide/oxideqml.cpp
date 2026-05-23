@@ -15,28 +15,36 @@ static std::atomic<unsigned int> marker = 0;
 
 namespace Oxide {
     namespace QML {
-        OxideQml::OxideQml(QObject* parent) : QObject{parent} {
+        OxideQml::OxideQml(QObject* parent) : QObject{ parent }
+        {
             deviceSettings.onKeyboardAttachedChanged([this] {
                 emit landscapeChanged(deviceSettings.keyboardAttached());
             });
         }
 
-        bool OxideQml::landscape() { return deviceSettings.keyboardAttached(); }
+        bool OxideQml::landscape()
+        {
+            return deviceSettings.keyboardAttached();
+        }
 
-        QString OxideQml::deviceName() {
+        QString OxideQml::deviceName()
+        {
             return deviceSettings.getDeviceName();
         }
 
-        QBrush OxideQml::brushFromColor(const QColor& color) {
+        QBrush OxideQml::brushFromColor(const QColor& color)
+        {
             return QBrush(color, Qt::SolidPattern);
         }
 
-        OxideQml* getSingleton() {
+        OxideQml* getSingleton()
+        {
             static OxideQml* instance = new OxideQml(qApp);
             return instance;
         }
 
-        void registerQML(QQmlApplicationEngine* engine) {
+        void registerQML(QQmlApplicationEngine* engine)
+        {
             QQmlContext* context = engine->rootContext();
             context->setContextProperty("Oxide", getSingleton());
             engine->addImportPath("qrc:/codes.eeems.oxide");
@@ -44,36 +52,51 @@ namespace Oxide {
         }
 
         Canvas::Canvas(QQuickItem* parent)
-            : QQuickPaintedItem(parent), m_brush{Qt::black}, m_penWidth{6} {
+          : QQuickPaintedItem(parent), m_brush{ Qt::black }, m_penWidth{ 6 }
+        {
             setAcceptedMouseButtons(Qt::AllButtons);
             m_drawn =
                 QImage(width(), height(), QImage::Format_ARGB32_Premultiplied);
             m_drawn.fill(Qt::transparent);
         }
 
-        void Canvas::paint(QPainter* painter) {
+        void Canvas::paint(QPainter* painter)
+        {
             painter->drawImage(boundingRect(), m_drawn);
         }
 
-        QBrush Canvas::brush() { return m_brush; }
+        QBrush Canvas::brush()
+        {
+            return m_brush;
+        }
 
-        void Canvas::setBrush(QBrush brush) {
+        void Canvas::setBrush(QBrush brush)
+        {
             m_brush = brush;
             emit brushChanged(brush);
         }
 
-        qreal Canvas::penWidth() { return m_penWidth; }
+        qreal Canvas::penWidth()
+        {
+            return m_penWidth;
+        }
 
-        void Canvas::setPenWidth(qreal penWidth) {
+        void Canvas::setPenWidth(qreal penWidth)
+        {
             m_penWidth = penWidth;
             emit penWidthChanged(penWidth);
         }
 
-        QImage* Canvas::image() { return &m_drawn; }
+        QImage* Canvas::image()
+        {
+            return &m_drawn;
+        }
 
         void Canvas::geometryChange(
-            const QRectF& newGeometry, const QRectF& oldGeometry
-        ) {
+            const QRectF& newGeometry,
+            const QRectF& oldGeometry
+        )
+        {
             Q_UNUSED(oldGeometry);
             auto size = newGeometry.size().toSize();
             if (size.isEmpty()) {
@@ -87,7 +110,8 @@ namespace Oxide {
             m_drawn = image;
         }
 
-        void Canvas::mousePressEvent(QMouseEvent* event) {
+        void Canvas::mousePressEvent(QMouseEvent* event)
+        {
             if (!isEnabled()) {
                 return;
             }
@@ -95,7 +119,8 @@ namespace Oxide {
             emit drawStart();
         }
 
-        void Canvas::mouseMoveEvent(QMouseEvent* event) {
+        void Canvas::mouseMoveEvent(QMouseEvent* event)
+        {
             if (!isEnabled() || !contains(event->position())) {
                 return;
             }
@@ -120,7 +145,8 @@ namespace Oxide {
             m_lastPoint = event->position();
         }
 
-        void Canvas::mouseReleaseEvent(QMouseEvent* event) {
+        void Canvas::mouseReleaseEvent(QMouseEvent* event)
+        {
             Q_UNUSED(event);
             auto color = m_brush.color();
             if (!m_brush.isOpaque() &&
@@ -130,7 +156,8 @@ namespace Oxide {
             emit drawDone();
         }
 
-        Blight::shared_buf_t getSurfaceForWindow(QWindow* window) {
+        Blight::shared_buf_t getSurfaceForWindow(QWindow* window)
+        {
             static auto fn =
                 (Blight::shared_buf_t (*)(QWindow*))qGuiApp->platformFunction(
                     "getSurfaceForWindow"
@@ -141,7 +168,8 @@ namespace Oxide {
             return fn(window);
         }
 
-        QImage getImageForWindow(QWindow* window) {
+        QImage getImageForWindow(QWindow* window)
+        {
             return getImageForSurface(getSurfaceForWindow(window));
         }
 
@@ -150,7 +178,8 @@ namespace Oxide {
             QRectF rect,
             Blight::WaveformMode waveform,
             bool sync
-        ) {
+        )
+        {
             auto buf = getSurfaceForWindow(window);
             unsigned int _marker = 0;
             if (sync) {
@@ -171,7 +200,8 @@ namespace Oxide {
             }
         }
 
-        QImage getImageForSurface(Blight::shared_buf_t buffer) {
+        QImage getImageForSurface(Blight::shared_buf_t buffer)
+        {
             return QImage(
                 buffer->data,
                 buffer->width,
@@ -180,5 +210,5 @@ namespace Oxide {
                 (QImage::Format)buffer->format
             );
         }
-    }  // namespace QML
-}  // namespace Oxide
+    } // namespace QML
+} // namespace Oxide

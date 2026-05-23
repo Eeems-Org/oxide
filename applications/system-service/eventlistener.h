@@ -4,9 +4,10 @@
 
 #define eventListener EventListener::instance()
 
-class EventListener : QObject {
+class EventListener : QObject
+{
     Q_OBJECT
-   public:
+  public:
     static EventListener* instance();
     EventListener();
 
@@ -14,7 +15,7 @@ class EventListener : QObject {
     void append(std::function<bool(QObject*, QEvent*)> hook);
     void clear();
 
-   private:
+  private:
     QMutex m_mutex;
     QList<std::function<bool(QObject*, QEvent*)>> m_hooks;
 };

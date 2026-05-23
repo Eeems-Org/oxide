@@ -12,10 +12,11 @@ namespace Oxide {
     /*!
      * \brief A socket pair used for two way communication
      */
-    class LIBOXIDE_EXPORT SocketPair : public QObject {
+    class LIBOXIDE_EXPORT SocketPair : public QObject
+    {
         Q_OBJECT
 
-       public:
+      public:
         /*!
          * \brief Create a new socket pair
          * \param allowWriteSocketRead Allow reading from the write socket, this
@@ -108,7 +109,7 @@ namespace Oxide {
          */
         QString errorString();
 
-       signals:
+      signals:
         /*!
          * \brief The read socket has data available to read
          */
@@ -123,20 +124,20 @@ namespace Oxide {
          */
         void disconnected();
 
-       public slots:
+      public slots:
         /*!
          * \brief Close both the read and write sockets
          */
         void close();
 
-       private slots:
+      private slots:
         void _readyRead();
 
-       private:
+      private:
         QLocalSocket m_readSocket;
         QLocalSocket m_writeSocket;
         bool m_enabled;
         bool m_allowWriteSocketRead;
     };
-}  // namespace Oxide
+} // namespace Oxide
 /*! @} */

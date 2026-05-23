@@ -7,7 +7,8 @@
 
 using namespace codes::eeems::oxide1;
 
-class WifiNetwork : public QObject {
+class WifiNetwork : public QObject
+{
     Q_OBJECT
     Q_PROPERTY(QString ssid MEMBER m_ssid NOTIFY fakeStringSignal)
     Q_PROPERTY(QString protocol MEMBER m_protocol NOTIFY fakeStringSignal)
@@ -15,23 +16,28 @@ class WifiNetwork : public QObject {
     Q_PROPERTY(bool available READ available NOTIFY availableChanged)
     Q_PROPERTY(bool known READ known NOTIFY knownChanged)
 
-   public:
+  public:
     WifiNetwork(Network* network, Wifi* api, QObject* parent)
-        : QObject(parent),
-          api(api),
-          network(network),
-          m_ssid(network->ssid()),
-          m_protocol(network->protocol()),
-          m_connected(false),
-          bsss() {}
+      : QObject(parent)
+      , api(api)
+      , network(network)
+      , m_ssid(network->ssid())
+      , m_protocol(network->protocol())
+      , m_connected(false)
+      , bsss()
+    {
+    }
     WifiNetwork(QString ssid, Wifi* api, QObject* parent)
-        : QObject(parent),
-          api(api),
-          network(nullptr),
-          m_ssid(ssid),
-          m_connected(false),
-          bsss() {}
-    ~WifiNetwork() {
+      : QObject(parent)
+      , api(api)
+      , network(nullptr)
+      , m_ssid(ssid)
+      , m_connected(false)
+      , bsss()
+    {
+    }
+    ~WifiNetwork()
+    {
         if (network != nullptr) {
             delete network;
         }
@@ -44,7 +50,8 @@ class WifiNetwork : public QObject {
     }
     QString ssid() { return m_ssid; }
     QString protocol() { return m_protocol; }
-    QStringList paths() {
+    QStringList paths()
+    {
         QStringList result;
         if (network != nullptr) {
             result << network->path();
@@ -54,41 +61,47 @@ class WifiNetwork : public QObject {
         }
         return result;
     }
-    Q_INVOKABLE void connect() {
+    Q_INVOKABLE void connect()
+    {
         if (network != nullptr) {
             network->connect();
         } else if (bsss.length()) {
             bsss.first()->connect();
         }
     }
-    Q_INVOKABLE void disconnect() {
+    Q_INVOKABLE void disconnect()
+    {
         if (api != nullptr) {
             api->disconnect().waitForFinished();
             setConnected(false);
             api->scan(true);
         }
     }
-    Q_INVOKABLE void remove() {
+    Q_INVOKABLE void remove()
+    {
         if (network != nullptr) {
             network->remove().waitForFinished();
         }
     }
     bool connected() { return m_connected; }
-    void setConnected(bool connected) {
+    void setConnected(bool connected)
+    {
         if (m_connected != connected) {
             m_connected = connected;
             emit connectedChanged(connected);
         }
         emit availableChanged(available());
     }
-    bool available() {
+    bool available()
+    {
         return m_connected || bsss.length() ||
                (network != nullptr && network->bSSs().length() > 0);
     }
     bool known() { return network != nullptr; }
     void setAPI(Wifi* api) { this->api = api; }
     void appendBSS(BSS* bss) { bsss.append(bss); }
-    void remove(const QDBusObjectPath& path) {
+    void remove(const QDBusObjectPath& path)
+    {
         if (network != nullptr && network->path() == path.path()) {
             delete network;
             network = nullptr;
@@ -103,20 +116,21 @@ class WifiNetwork : public QObject {
             }
         }
     }
-    void setNetwork(Network* network) {
+    void setNetwork(Network* network)
+    {
         if (this->network) {
             delete this->network;
         }
         this->network = network;
     }
 
-   signals:
+  signals:
     void connectedChanged(bool);
     void fakeStringSignal(QString);
     void availableChanged(bool);
     void knownChanged(bool);
 
-   private:
+  private:
     Wifi* api;
     Network* network;
     QString m_ssid;
@@ -125,30 +139,35 @@ class WifiNetwork : public QObject {
     QList<BSS*> bsss;
 };
 
-class WifiNetworkList : public QAbstractListModel {
+class WifiNetworkList : public QAbstractListModel
+{
     Q_OBJECT
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged);
 
-   public:
+  public:
     explicit WifiNetworkList() : QAbstractListModel(nullptr), networks() {}
 
     QVariant headerData(
-        int section, Qt::Orientation orientation, int role = Qt::DisplayRole
-    ) const override {
+        int section,
+        Qt::Orientation orientation,
+        int role = Qt::DisplayRole
+    ) const override
+    {
         Q_UNUSED(section)
         Q_UNUSED(orientation)
         Q_UNUSED(role)
         return QVariant();
     }
-    int rowCount(const QModelIndex& parent = QModelIndex()) const override {
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override
+    {
         if (parent.isValid()) {
             return 0;
         }
         return networks.length();
     }
-    QVariant data(
-        const QModelIndex& index, int role = Qt::DisplayRole
-    ) const override {
+    QVariant
+    data(const QModelIndex& index, int role = Qt::DisplayRole) const override
+    {
         if (!index.isValid()) {
             return QVariant();
         }
@@ -163,7 +182,8 @@ class WifiNetworkList : public QAbstractListModel {
         }
         return QVariant::fromValue(networks[index.row()]);
     }
-    void append(Network* network) {
+    void append(Network* network)
+    {
         auto ssid = network->ssid();
         for (auto item : networks) {
             if (item->ssid() == ssid) {
@@ -177,7 +197,8 @@ class WifiNetworkList : public QAbstractListModel {
         endInsertRows();
         sort();
     }
-    void append(BSS* bss) {
+    void append(BSS* bss)
+    {
         auto ssid = bss->ssid();
         for (auto network : networks) {
             if (network->ssid() == ssid) {
@@ -192,7 +213,8 @@ class WifiNetworkList : public QAbstractListModel {
         endInsertRows();
         sort();
     }
-    void append(QList<Network*> networks) {
+    void append(QList<Network*> networks)
+    {
         for (auto network : networks) {
             auto ssid = network->ssid();
             for (auto item : this->networks) {
@@ -215,7 +237,8 @@ class WifiNetworkList : public QAbstractListModel {
         endInsertRows();
         sort();
     }
-    void append(QList<BSS*> bsss) {
+    void append(QList<BSS*> bsss)
+    {
         QMutableListIterator<BSS*> i(bsss);
         while (i.hasNext()) {
             auto bss = i.next();
@@ -245,7 +268,8 @@ class WifiNetworkList : public QAbstractListModel {
         endInsertRows();
         sort();
     }
-    void clear() {
+    void clear()
+    {
         beginRemoveRows(QModelIndex(), 0, networks.length());
         for (auto network : networks) {
             if (network != nullptr) {
@@ -255,7 +279,8 @@ class WifiNetworkList : public QAbstractListModel {
         networks.clear();
         endRemoveRows();
     }
-    void removeUnknown() {
+    void removeUnknown()
+    {
         QList<WifiNetwork*> toRemove;
         for (auto network : networks) {
             if (!network->known()) {
@@ -277,7 +302,8 @@ class WifiNetworkList : public QAbstractListModel {
             }
         }
     }
-    void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override {
+    void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override
+    {
         Q_UNUSED(column)
         Q_UNUSED(order)
         emit layoutAboutToBeChanged();
@@ -309,13 +335,15 @@ class WifiNetworkList : public QAbstractListModel {
         );
         emit layoutChanged();
     }
-    Q_INVOKABLE void sort() {
+    Q_INVOKABLE void sort()
+    {
         sort(0);
         for (auto network : networks) {
             emit network->availableChanged(network->available());
         }
     }
-    void remove(const QDBusObjectPath& path) {
+    void remove(const QDBusObjectPath& path)
+    {
         QMutableListIterator<WifiNetwork*> i(networks);
         while (i.hasNext()) {
             auto network = i.next();
@@ -328,7 +356,8 @@ class WifiNetworkList : public QAbstractListModel {
         }
         sort();
     }
-    void setConnected(const QDBusObjectPath& path) {
+    void setConnected(const QDBusObjectPath& path)
+    {
         for (auto network : networks) {
             network->setConnected(
                 path.path() != "/" && network->paths().contains(path.path())
@@ -336,7 +365,8 @@ class WifiNetworkList : public QAbstractListModel {
         }
         sort();
     }
-    void setAPI(Wifi* api) {
+    void setAPI(Wifi* api)
+    {
         this->api = api;
         for (auto network : networks) {
             network->setAPI(api);
@@ -347,7 +377,8 @@ class WifiNetworkList : public QAbstractListModel {
     }
     bool scanning() { return api->scanning(); }
     Q_INVOKABLE void scan(bool active) { api->scan(active).waitForFinished(); }
-    Q_INVOKABLE void remove(QString ssid) {
+    Q_INVOKABLE void remove(QString ssid)
+    {
         QMutableListIterator<WifiNetwork*> i(networks);
         while (i.hasNext()) {
             auto network = i.next();
@@ -364,12 +395,12 @@ class WifiNetworkList : public QAbstractListModel {
         }
     }
 
-   signals:
+  signals:
     void scanningChanged(bool);
 
-   private:
+  private:
     Wifi* api = nullptr;
     QList<WifiNetwork*> networks;
 };
 
-#endif  // WIFINETWORK_H
+#endif // WIFINETWORK_H

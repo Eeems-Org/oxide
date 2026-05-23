@@ -21,29 +21,44 @@ using codes::eeems::oxide1::Power;
 using Oxide::SysObject;
 using namespace Oxide::Sentry;
 
-enum State { Normal, PowerSaving };
-enum BatteryState {
+enum State
+{
+    Normal,
+    PowerSaving
+};
+enum BatteryState
+{
     BatteryUnknown,
     BatteryCharging,
     BatteryDischarging,
     BatteryNotPresent
 };
-enum ChargerState {
+enum ChargerState
+{
     ChargerUnknown,
     ChargerConnected,
     ChargerNotConnected,
     ChargerNotPresent
 };
-enum WifiState {
+enum WifiState
+{
     WifiUnknown,
     WifiOff,
     WifiDisconnected,
     WifiOffline,
     WifiOnline
 };
-enum SwipeDirection { None, Right, Left, Up, Down };
+enum SwipeDirection
+{
+    None,
+    Right,
+    Left,
+    Up,
+    Down
+};
 
-class Controller : public QObject {
+class Controller : public QObject
+{
     Q_OBJECT
     Q_PROPERTY(
         bool automaticSleep MEMBER m_automaticSleep WRITE setAutomaticSleep
@@ -135,14 +150,15 @@ class Controller : public QObject {
     )
     Q_PROPERTY(int maxTouchWidth READ maxTouchWidth)
     Q_PROPERTY(int maxTouchHeight READ maxTouchHeight)
-   public:
+  public:
     QObject* stateController;
     QObject* root = nullptr;
     explicit Controller(QObject* parent = 0)
-        : QObject(parent),
-          m_wifion(false),
-          wifi("/sys/class/net/wlan0"),
-          applications() {
+      : QObject(parent)
+      , m_wifion(false)
+      , wifi("/sys/class/net/wlan0")
+      , applications()
+    {
         networks = new WifiNetworkList();
         notifications = new NotificationList();
 
@@ -367,7 +383,7 @@ class Controller : public QObject {
 
         uiTimer = new QTimer(this);
         uiTimer->setSingleShot(false);
-        uiTimer->setInterval(3 * 1000);  // 3 seconds
+        uiTimer->setInterval(3 * 1000); // 3 seconds
         connect(
             uiTimer,
             &QTimer::timeout,
@@ -376,7 +392,8 @@ class Controller : public QObject {
         );
         uiTimer->start();
     }
-    Q_INVOKABLE void startup() {
+    Q_INVOKABLE void startup()
+    {
         loadSettings();
         if (m_autoStartApplication.isEmpty()) {
             qDebug() << "No auto start application";
@@ -389,7 +406,8 @@ class Controller : public QObject {
         }
         app->execute();
     }
-    Q_INVOKABLE bool turnOnWifi() {
+    Q_INVOKABLE bool turnOnWifi()
+    {
         if (!wifiApi->enable()) {
             return false;
         }
@@ -398,7 +416,8 @@ class Controller : public QObject {
         connect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
         return true;
     };
-    Q_INVOKABLE void turnOffWifi() {
+    Q_INVOKABLE void turnOffWifi()
+    {
         wifiApi->disable();
         m_wifion = false;
         emit wifiOnChanged(false);
@@ -415,9 +434,9 @@ class Controller : public QObject {
     Q_INVOKABLE void reboot();
     Q_INVOKABLE void suspend();
     Q_INVOKABLE void lock();
-    Q_INVOKABLE void breadcrumb(
-        QString category, QString message, QString type = "default"
-    ) {
+    Q_INVOKABLE void
+    breadcrumb(QString category, QString message, QString type = "default")
+    {
 #ifdef SENTRY
         sentry_breadcrumb(
             category.toStdString().c_str(),
@@ -458,7 +477,8 @@ class Controller : public QObject {
     void setSleepAfter(int);
     int lockAfter() const { return systemApi->autoLock(); }
     void setLockAfter(int);
-    void setShowDate(bool showDate) {
+    void setShowDate(bool showDate)
+    {
         m_showDate = showDate;
         emit showDateChanged(showDate);
         if (root == nullptr) {
@@ -477,7 +497,8 @@ class Controller : public QObject {
         );
     }
     bool showDate() { return m_showDate; }
-    void setNotification(QString notificationText) {
+    void setNotification(QString notificationText)
+    {
         if (m_notificationText == notificationText) {
             return;
         }
@@ -488,7 +509,8 @@ class Controller : public QObject {
             emit hasNotificationChanged(true);
         }
     }
-    void clearNotification() {
+    void clearNotification()
+    {
         m_notificationText = "";
         emit notificationTextChanged(m_notificationText);
         m_hasNotification = false;
@@ -501,13 +523,15 @@ class Controller : public QObject {
     NotificationList* getNotifications() { return notifications; }
     QStringList locales() { return deviceSettings.getLocales(); }
     QString locale() { return deviceSettings.getLocale(); }
-    void setLocale(const QString& locale) {
+    void setLocale(const QString& locale)
+    {
         deviceSettings.setLocale(locale);
         emit localeChanged(locale);
     }
     QStringList timezones() { return deviceSettings.getTimezones(); }
     QString timezone() { return deviceSettings.getTimezone(); }
-    void setTimezone(const QString& timezone) {
+    void setTimezone(const QString& timezone)
+    {
         deviceSettings.setTimezone(timezone);
         emit timezoneChanged(timezone);
     }
@@ -516,7 +540,8 @@ class Controller : public QObject {
     int maxTouchWidth() { return deviceSettings.getTouchWidth() * 0.9; }
     int maxTouchHeight() { return deviceSettings.getTouchHeight() * 0.9; }
 
-    Q_INVOKABLE void disconnectWifiSignals() {
+    Q_INVOKABLE void disconnectWifiSignals()
+    {
         disconnect(wifiApi, &Wifi::bssFound, this, &Controller::bssFound);
         disconnect(wifiApi, &Wifi::bssRemoved, this, &Controller::bssRemoved);
         disconnect(
@@ -526,7 +551,8 @@ class Controller : public QObject {
             wifiApi, &Wifi::networkRemoved, this, &Controller::networkRemoved
         );
     }
-    Q_INVOKABLE void connectWifiSignals() {
+    Q_INVOKABLE void connectWifiSignals()
+    {
         networks->clear();
         QList<Network*> networksToAdd;
         for (auto path : wifiApi->networks()) {
@@ -564,7 +590,7 @@ class Controller : public QObject {
         );
     }
     Apps* getAppsApi() { return appsApi; }
-   signals:
+  signals:
     void reload();
     void automaticSleepChanged(bool);
     void lockOnSuspendChanged(bool);
@@ -592,11 +618,12 @@ class Controller : public QObject {
     void notificationTextChanged(QString);
     void notificationsChanged(NotificationList*);
 
-   public slots:
+  public slots:
     void updateUIElements();
 
-   private slots:
-    void notificationsUpdated() {
+  private slots:
+    void notificationsUpdated()
+    {
         if (notifications->length() > 1) {
             setNotification(
                 QStringLiteral("%1 notifications").arg(notifications->length())
@@ -609,14 +636,16 @@ class Controller : public QObject {
         }
         emit notificationsChanged(notifications);
     }
-    void notificationAdded(const QDBusObjectPath& path) {
+    void notificationAdded(const QDBusObjectPath& path)
+    {
         auto notification = new Notification(
             OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
         );
         notifications->append(notification);
         // Notification UI updates will be handled by notificationsUpdated
     }
-    void notificationRemoved(const QDBusObjectPath& path) {
+    void notificationRemoved(const QDBusObjectPath& path)
+    {
         auto notification = notifications->get(path);
         if (notification == nullptr) {
             return;
@@ -625,11 +654,13 @@ class Controller : public QObject {
         notification->deleteLater();
         // Notification UI updates will be handled by notificationsUpdated
     }
-    void notificationChanged(const QDBusObjectPath& path) {
+    void notificationChanged(const QDBusObjectPath& path)
+    {
         Q_UNUSED(path);
         emit notificationsChanged(notifications);
     }
-    void unregisterApplication(QDBusObjectPath path) {
+    void unregisterApplication(QDBusObjectPath path)
+    {
         auto pathString = path.path();
         for (auto app : applications) {
             if (app->property("path") == pathString) {
@@ -642,24 +673,28 @@ class Controller : public QObject {
         }
         qDebug() << "Unable to find application " << pathString << "to remove";
     }
-    void registerApplication(QDBusObjectPath path) {
+    void registerApplication(QDBusObjectPath path)
+    {
         qDebug() << "New application detected" << path.path();
         emit reload();
     }
-    void batteryAlert() {
+    void batteryAlert()
+    {
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
             ui->setProperty("alert", true);
         }
     }
-    void batteryLevelChanged(int level) {
+    void batteryLevelChanged(int level)
+    {
         qDebug() << "Battery level: " << level;
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
             ui->setProperty("level", level);
         }
     }
-    void batteryStateChanged(int state) {
+    void batteryStateChanged(int state)
+    {
         switch (state) {
             case BatteryCharging:
                 qDebug() << "Battery state: Charging";
@@ -696,21 +731,24 @@ class Controller : public QObject {
             }
         }
     }
-    void batteryTemperatureChanged(int temperature) {
+    void batteryTemperatureChanged(int temperature)
+    {
         qDebug() << "Battery temperature: " << temperature;
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
             ui->setProperty("temperature", temperature);
         }
     }
-    void batteryWarning() {
+    void batteryWarning()
+    {
         qDebug() << "Battery Warning!";
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
             ui->setProperty("warning", true);
         }
     }
-    void chargerStateChanged(int state) {
+    void chargerStateChanged(int state)
+    {
         switch (state) {
             case ChargerConnected:
                 qDebug() << "Charger state: Connected";
@@ -746,14 +784,17 @@ class Controller : public QObject {
             }
         }
     }
-    void chargerWarning() {
+    void chargerWarning()
+    {
         // TODO handle charger
     }
-    void powerStateChanged(int state) {
+    void powerStateChanged(int state)
+    {
         Q_UNUSED(state);
         // TODO handle requested battery state
     }
-    void bssFound(const QDBusObjectPath& path) {
+    void bssFound(const QDBusObjectPath& path)
+    {
         auto bss = new BSS(
             OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
         );
@@ -765,11 +806,13 @@ class Controller : public QObject {
         networks->append(bss);
     }
     void bssRemoved(const QDBusObjectPath& path) { networks->remove(path); }
-    void disconnected() {
+    void disconnected()
+    {
         wifiStateChanged(wifiApi->state());
         networks->setConnected(QDBusObjectPath("/"));
     }
-    void networkAdded(const QDBusObjectPath& path) {
+    void networkAdded(const QDBusObjectPath& path)
+    {
         auto network = new Network(
             OXIDE_SERVICE, path.path(), QDBusConnection::systemBus(), this
         );
@@ -780,11 +823,13 @@ class Controller : public QObject {
         }
         networks->append(network);
     }
-    void networkConnected(const QDBusObjectPath& path) {
+    void networkConnected(const QDBusObjectPath& path)
+    {
         networks->setConnected(path);
     }
     void networkRemoved(const QDBusObjectPath& path) { networks->remove(path); }
-    void wifiStateChanged(int state) {
+    void wifiStateChanged(int state)
+    {
         if (state == wifiState) {
             return;
         }
@@ -831,7 +876,8 @@ class Controller : public QObject {
             }
         }
     }
-    void wifiRssiChanged(int rssi) {
+    void wifiRssiChanged(int rssi)
+    {
         QObject* ui = root->findChild<QObject*>("wifiState");
         if (ui) {
             if (wifiState != WifiOnline) {
@@ -841,7 +887,7 @@ class Controller : public QObject {
         }
     }
 
-   private:
+  private:
     void checkUITimer();
     bool m_automaticSleep = true;
     bool m_lockOnSuspend = true;

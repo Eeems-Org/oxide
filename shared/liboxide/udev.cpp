@@ -11,7 +11,8 @@
 
 namespace Oxide {
 
-    UDev* UDev::singleton() {
+    UDev* UDev::singleton()
+    {
         static UDev* instance = nullptr;
         static std::once_flag initFlag;
         std::call_once(initFlag, []() {
@@ -21,7 +22,8 @@ namespace Oxide {
         return instance;
     }
 
-    UDev::UDev() : QObject(), _thread(this) {
+    UDev::UDev() : QObject(), _thread(this)
+    {
         qRegisterMetaType<Device>("UDev::Device");
         udevLib = udev_new();
         connect(&_thread, &QThread::started, [this] {
@@ -34,7 +36,8 @@ namespace Oxide {
         moveToThread(&_thread);
     }
 
-    UDev::~UDev() {
+    UDev::~UDev()
+    {
         if (udevLib != nullptr) {
             udev_unref(udevLib);
             udevLib = nullptr;
@@ -42,14 +45,16 @@ namespace Oxide {
     }
 
     void UDev::subsystem(
-        const QString& subsystem, std::function<void(const Device&)> callback
-    ) {
+        const QString& subsystem,
+        std::function<void(const Device&)> callback
+    )
+    {
         deviceType(subsystem, "", callback);
     }
 
-    void UDev::subsystem(
-        const QString& subsystem, std::function<void()> callback
-    ) {
+    void
+    UDev::subsystem(const QString& subsystem, std::function<void()> callback)
+    {
         deviceType(subsystem, "", callback);
     }
 
@@ -57,7 +62,8 @@ namespace Oxide {
         const QString& subsystem,
         const QString& deviceType,
         std::function<void(const Device&)> callback
-    ) {
+    )
+    {
         connect(
             singleton(),
             &UDev::event,
@@ -76,7 +82,8 @@ namespace Oxide {
         const QString& subsystem,
         const QString& deviceType,
         std::function<void()> callback
-    ) {
+    )
+    {
         UDev::deviceType(
             subsystem, deviceType, [callback](const Device& device) {
                 Q_UNUSED(device);
@@ -85,7 +92,8 @@ namespace Oxide {
         );
     }
 
-    void UDev::start() {
+    void UDev::start()
+    {
         statelock.lock();
         O_DEBUG("UDev::Starting...");
         exitRequested = false;
@@ -101,7 +109,8 @@ namespace Oxide {
         });
     }
 
-    void UDev::stop() {
+    void UDev::stop()
+    {
         statelock.lock();
         O_DEBUG("UDev::Stopping...");
         if (running) {
@@ -110,9 +119,13 @@ namespace Oxide {
         statelock.unlock();
     }
 
-    bool UDev::isRunning() { return running; }
+    bool UDev::isRunning()
+    {
+        return running;
+    }
 
-    void UDev::wait() {
+    void UDev::wait()
+    {
         if (isRunning()) {
             O_DEBUG("UDev::Waiting to stop...");
             QEventLoop loop;
@@ -121,7 +134,8 @@ namespace Oxide {
         }
     }
 
-    void UDev::addMonitor(QString subsystem, QString deviceType) {
+    void UDev::addMonitor(QString subsystem, QString deviceType)
+    {
         O_DEBUG("UDev::Adding" << subsystem << deviceType);
         QStringList& list = monitors[subsystem];
         if (!list.contains(deviceType)) {
@@ -129,7 +143,8 @@ namespace Oxide {
             update = true;
         }
     }
-    void UDev::removeMonitor(QString subsystem, QString deviceType) {
+    void UDev::removeMonitor(QString subsystem, QString deviceType)
+    {
         O_DEBUG("UDev::Removing" << subsystem << deviceType);
         if (!monitors.contains(subsystem)) {
             return;
@@ -141,7 +156,8 @@ namespace Oxide {
         update = true;
     }
 
-    QList<UDev::Device> UDev::getDeviceList(const QString& subsystem) {
+    QList<UDev::Device> UDev::getDeviceList(const QString& subsystem)
+    {
         QList<Device> deviceList;
         struct udev_enumerate* udevEnumeration = udev_enumerate_new(udevLib);
         if (udevEnumeration == nullptr) {
@@ -167,7 +183,8 @@ namespace Oxide {
             udev_enumerate_get_list_entry(udevEnumeration);
         if (udevDeviceList != nullptr) {
             struct udev_list_entry* entry = nullptr;
-            udev_list_entry_foreach(entry, udevDeviceList) {
+            udev_list_entry_foreach(entry, udevDeviceList)
+            {
                 if (entry == nullptr) {
                     continue;
                 }
@@ -195,7 +212,8 @@ namespace Oxide {
         return deviceList;
     }
 
-    UDev::ActionType UDev::getActionType(udev_device* udevDevice) {
+    UDev::ActionType UDev::getActionType(udev_device* udevDevice)
+    {
         if (udevDevice == nullptr) {
             return Unknown;
         }
@@ -205,7 +223,8 @@ namespace Oxide {
         );
     }
 
-    UDev::ActionType UDev::getActionType(const QString& actionType) {
+    UDev::ActionType UDev::getActionType(const QString& actionType)
+    {
         if (actionType == "ADD") {
             return Add;
         }
@@ -224,7 +243,8 @@ namespace Oxide {
         return Unknown;
     }
 
-    void UDev::monitor() {
+    void UDev::monitor()
+    {
         running = true;
         O_DEBUG("UDev::Monitor starting...");
         udev_monitor* mon = udev_monitor_new_from_netlink(udevLib, "udev");
@@ -309,10 +329,11 @@ namespace Oxide {
         O_DEBUG("UDev::Monitor event loop started");
     }
 
-    QDebug operator<<(QDebug debug, const UDev::Device& device) {
+    QDebug operator<<(QDebug debug, const UDev::Device& device)
+    {
         QDebugStateSaver saver(debug);
         Q_UNUSED(saver)
         debug.nospace() << device.debugString().c_str();
         return debug.maybeSpace();
     }
-}  // namespace Oxide
+} // namespace Oxide

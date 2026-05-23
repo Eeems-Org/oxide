@@ -19,8 +19,9 @@ namespace Oxide {
     /*!
      * \brief A class to simplify managing a /dev/event* file
      */
-    class LIBOXIDE_EXPORT event_device {
-       public:
+    class LIBOXIDE_EXPORT event_device
+    {
+      public:
         /*!
          * \brief Create an input_event
          * \param type Input event type
@@ -109,8 +110,8 @@ namespace Oxide {
          */
         bool locked = false;
 
-       private:
+      private:
         int flags;
     };
-}  // namespace Oxide
+} // namespace Oxide
 /*! @} */

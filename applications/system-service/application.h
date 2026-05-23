@@ -41,23 +41,25 @@ class Notification;
     "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/" \
     "sbin:/usr/sbin:/sbin"
 
-class ApplicationProcess : public QProcess {
+class ApplicationProcess : public QProcess
+{
     Q_OBJECT
 
-   public:
+  public:
     ApplicationProcess(QObject* parent = nullptr);
 
     bool setUser(const QString& name);
     bool setGroup(const QString& name);
     void setMask(mode_t mask);
 
-   private:
+  private:
     gid_t m_gid;
     uid_t m_uid;
     mode_t m_mask;
 };
 
-class Application : public QObject {
+class Application : public QObject
+{
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_APPLICATION_INTERFACE)
@@ -99,9 +101,11 @@ class Application : public QObject {
     Q_PROPERTY(QString user READ user)
     Q_PROPERTY(QString group READ group)
 
-   public:
+  public:
     Application(QDBusObjectPath path, QObject* parent)
-        : Application(path.path(), parent) {}
+      : Application(path.path(), parent)
+    {
+    }
     Application(QString path, QObject* parent);
     ~Application();
 
@@ -109,7 +113,13 @@ class Application : public QObject {
     QDBusObjectPath qPath();
     void registerPath();
     void unregisterPath();
-    enum ApplicationState { Inactive, InForeground, InBackground, Paused };
+    enum ApplicationState
+    {
+        Inactive,
+        InForeground,
+        InBackground,
+        Paused
+    };
     Q_ENUM(ApplicationState)
 
     Q_INVOKABLE void launch();
@@ -167,7 +177,7 @@ class Application : public QObject {
     void waitForResume();
     QString id();
 
-   signals:
+  signals:
     void launched();
     void paused();
     void resumed();
@@ -184,11 +194,11 @@ class Application : public QObject {
     void workingDirectoryChanged(QString);
     void directoriesChanged(QStringList);
 
-   public slots:
+  public slots:
     void sigUsr1();
     void sigUsr2();
 
-   private slots:
+  private slots:
     void started();
     void finished(int exitCode);
     void readyReadStandardError();
@@ -196,7 +206,7 @@ class Application : public QObject {
     void stateChanged(QProcess::ProcessState state);
     void errorOccurred(QProcess::ProcessError error);
 
-   private:
+  private:
     QVariantMap m_config;
     QString m_path;
     ApplicationProcess* m_process;
@@ -213,11 +223,12 @@ class Application : public QObject {
     QImage* m_backup = nullptr;
 
     bool hasPermission(
-        QString permission, const char* sender = __builtin_FUNCTION()
+        QString permission,
+        const char* sender = __builtin_FUNCTION()
     );
     void delayUpTo(int milliseconds);
     void updateEnvironment();
     void startSpan(std::string operation, std::string description);
 };
 
-#endif  // APPLICATION_H
+#endif // APPLICATION_H

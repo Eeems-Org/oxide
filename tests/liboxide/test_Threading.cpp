@@ -9,7 +9,9 @@ using namespace Oxide;
 test_Threading::test_Threading() {}
 test_Threading::~test_Threading() {}
 
-void test_Threading::test_startThreadWithPriority() {
+void
+test_Threading::test_startThreadWithPriority()
+{
 #ifndef QT_HAS_THREAD_PRIORITY_SCHEDULING
     auto thread = new QThread();
     thread->setObjectName("TimeCriticalPriority");
@@ -85,7 +87,9 @@ void test_Threading::test_startThreadWithPriority() {
 #endif
 }
 
-void test_Threading::test_dispatchToThread() {
+void
+test_Threading::test_dispatchToThread()
+{
     auto thread = new QThread();
     thread->setObjectName("dispatchToThread");
     thread->start();
@@ -135,7 +139,9 @@ void test_Threading::test_dispatchToThread() {
     thread->deleteLater();
 }
 
-void test_Threading::test_runLater() {
+void
+test_Threading::test_runLater()
+{
     auto thread = new QThread();
     thread->setObjectName("runLater");
     thread->start();
@@ -164,7 +170,9 @@ void test_Threading::test_runLater() {
     thread->deleteLater();
 }
 
-void test_Threading::test_runInEventLoop() {
+void
+test_Threading::test_runInEventLoop()
+{
     bool ok = false;
     runInEventLoop([&ok](std::function<void()> quit) {
         QTimer::singleShot(0, [&ok, quit] {
@@ -176,6 +184,10 @@ void test_Threading::test_runInEventLoop() {
     QVERIFY(ok);
 }
 
-int test_Threading::getNice() { return getpriority(PRIO_PROCESS, gettid()); }
+int
+test_Threading::getNice()
+{
+    return getpriority(PRIO_PROCESS, gettid());
+}
 
 DECLARE_TEST(test_Threading)

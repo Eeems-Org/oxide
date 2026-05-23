@@ -13,13 +13,15 @@
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Applications;
 
-class LaunchCommand : ICommand {
+class LaunchCommand : ICommand
+{
     O_COMMAND(
         LaunchCommand,
         "launch",
         "Launch an application from an application registration file"
     )
-    int arguments() override {
+    int arguments() override
+    {
         parser->addPositionalArgument(
             "DESKTOP-FILE", "Application registration to launch"
         );
@@ -28,7 +30,8 @@ class LaunchCommand : ICommand {
         );
         return EXIT_SUCCESS;
     }
-    int command(const QStringList& args) override {
+    int command(const QStringList& args) override
+    {
         const auto& path = args.first();
         auto url = urlFromPath(path);
         if (!url.isLocalFile()) {

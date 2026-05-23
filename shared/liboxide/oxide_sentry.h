@@ -24,7 +24,8 @@ namespace Oxide::Sentry {
     /*!
      * \brief A sentry_transaction_t wrapper
      */
-    struct Transaction {
+    struct Transaction
+    {
 #ifdef SENTRY
         /*!
          * \brief The sentry_transaction_t instance
@@ -43,7 +44,8 @@ namespace Oxide::Sentry {
     /*!
      * \brief A sentry_span_t wrapper
      */
-    struct Span {
+    struct Span
+    {
 #ifdef SENTRY
         /*!
          * \brief The sentry_span_t instance
@@ -78,7 +80,9 @@ namespace Oxide::Sentry {
      * enabled
      */
     LIBOXIDE_EXPORT void sentry_init(
-        const char* name, char* argv[], bool autoSessionTracking = true
+        const char* name,
+        char* argv[],
+        bool autoSessionTracking = true
     );
     /*!
      * \brief Create a breadcrumb in the current sentry transaction
@@ -99,9 +103,8 @@ namespace Oxide::Sentry {
      * \param action Action being performed
      * \return The transaction wrapper
      */
-    LIBOXIDE_EXPORT Transaction* start_transaction(
-        const std::string& name, const std::string& action
-    );
+    LIBOXIDE_EXPORT Transaction*
+    start_transaction(const std::string& name, const std::string& action);
     /*!
      * \brief Stop a sentry transaction
      * \param transaction The transaction wrapper to stop
@@ -203,5 +206,5 @@ namespace Oxide::Sentry {
      * \brief Trigger a crash. Useful to test that sentry integration is working
      */
     LIBOXIDE_EXPORT void trigger_crash();
-}  // namespace Oxide::Sentry
+} // namespace Oxide::Sentry
 /*! @} */

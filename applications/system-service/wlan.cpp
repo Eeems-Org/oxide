@@ -4,12 +4,15 @@
 #include "wifiapi.h"
 
 Wlan::Wlan(QString path, QObject* parent)
-    : QObject(parent), SysObject(path), m_blobs(), m_iface() {
+  : QObject(parent), SysObject(path), m_blobs(), m_iface()
+{
     m_iface = QFileInfo(path).fileName();
     m_interface = nullptr;
 }
 
-void Wlan::setInterface(QString path) {
+void
+Wlan::setInterface(QString path)
+{
     if (m_interface != nullptr && m_interface->path() == path) {
         return;
     }
@@ -83,44 +86,68 @@ void Wlan::setInterface(QString path) {
     );
 }
 
-void Wlan::removeInterface() {
+void
+Wlan::removeInterface()
+{
     if (m_interface != nullptr) {
         m_interface->deleteLater();
         m_interface = nullptr;
     }
 }
 
-QString Wlan::iface() { return m_iface; }
+QString
+Wlan::iface()
+{
+    return m_iface;
+}
 
-bool Wlan::up() {
+bool
+Wlan::up()
+{
     return !system(("/sbin/ifconfig " + iface() + " up").toStdString().c_str());
 }
 
-bool Wlan::down() {
+bool
+Wlan::down()
+{
     return !system(
         ("/sbin/ifconfig " + iface() + " down").toStdString().c_str()
     );
 }
 
-bool Wlan::isUp() {
+bool
+Wlan::isUp()
+{
     return !system(("/sbin/ip addr show " + iface() +
                     " 2>&1 | /bin/grep UP > /dev/null")
                        .toStdString()
                        .c_str());
 }
 
-Interface* Wlan::interface() { return m_interface; }
+Interface*
+Wlan::interface()
+{
+    return m_interface;
+}
 
-QSet<QString> Wlan::blobs() { return m_blobs; }
+QSet<QString>
+Wlan::blobs()
+{
+    return m_blobs;
+}
 
-QString Wlan::operstate() {
+QString
+Wlan::operstate()
+{
     if (hasProperty("operstate")) {
         return QString(strProperty("operstate").c_str());
     }
     return "";
 }
 
-bool Wlan::pingIP(std::string ip, const char* port) {
+bool
+Wlan::pingIP(std::string ip, const char* port)
+{
     auto process = new QProcess();
     process->setProgram("/bin/bash");
     std::string cmd(
@@ -137,7 +164,9 @@ bool Wlan::pingIP(std::string ip, const char* port) {
     return !process->exitCode();
 }
 
-bool Wlan::isConnected() {
+bool
+Wlan::isConnected()
+{
     try {
         auto ip = exec(
             "/sbin/ip r | /bin/grep " + iface() +
@@ -149,7 +178,9 @@ bool Wlan::isConnected() {
     }
 }
 
-int Wlan::link() {
+int
+Wlan::link()
+{
     QDBusPendingReply<QVariant> res = m_interface->SignalPoll();
     res.waitForFinished();
     if (!res.isError()) {
@@ -181,7 +212,9 @@ int Wlan::link() {
     return -100;
 }
 
-signed int Wlan::rssi() {
+signed int
+Wlan::rssi()
+{
     QDBusPendingReply<QVariant> res = m_interface->SignalPoll();
     res.waitForFinished();
     if (!res.isError()) {
@@ -214,40 +247,58 @@ signed int Wlan::rssi() {
     return -100;
 }
 
-void Wlan::onBSSAdded(
-    const QDBusObjectPath& path, const QVariantMap& properties
-) {
+void
+Wlan::onBSSAdded(const QDBusObjectPath& path, const QVariantMap& properties)
+{
     emit BSSAdded(this, path, properties);
 }
-void Wlan::onBSSRemoved(const QDBusObjectPath& path) {
+void
+Wlan::onBSSRemoved(const QDBusObjectPath& path)
+{
     emit BSSRemoved(this, path);
 }
-void Wlan::onBlobAdded(const QString& name) {
+void
+Wlan::onBlobAdded(const QString& name)
+{
     if (!m_blobs.contains(name)) {
         m_blobs.insert(name);
     }
     emit BlobAdded(this, name);
 }
-void Wlan::onBlobRemoved(const QString& name) {
+void
+Wlan::onBlobRemoved(const QString& name)
+{
     m_blobs.remove(name);
     emit BlobRemoved(this, name);
 }
-void Wlan::onNetworkAdded(
-    const QDBusObjectPath& path, const QVariantMap& properties
-) {
+void
+Wlan::onNetworkAdded(const QDBusObjectPath& path, const QVariantMap& properties)
+{
     emit NetworkAdded(this, path, properties);
 }
-void Wlan::onNetworkRemoved(const QDBusObjectPath& path) {
+void
+Wlan::onNetworkRemoved(const QDBusObjectPath& path)
+{
     emit NetworkRemoved(this, path);
 }
-void Wlan::onNetworkSelected(const QDBusObjectPath& path) {
+void
+Wlan::onNetworkSelected(const QDBusObjectPath& path)
+{
     emit NetworkSelected(this, path);
 }
-void Wlan::onPropertiesChanged(const QVariantMap& properties) {
+void
+Wlan::onPropertiesChanged(const QVariantMap& properties)
+{
     emit PropertiesChanged(this, properties);
 }
-void Wlan::onScanDone(bool success) { emit ScanDone(this, success); }
-std::string Wlan::exec(QString cmd) {
+void
+Wlan::onScanDone(bool success)
+{
+    emit ScanDone(this, success);
+}
+std::string
+Wlan::exec(QString cmd)
+{
     std::array<char, 128> buffer;
     std::string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(

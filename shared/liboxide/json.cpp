@@ -4,7 +4,9 @@
 
 #include "debug.h"
 
-static bool qIsNumericType(uint tp) {
+static bool
+qIsNumericType(uint tp)
+{
     static const qulonglong numericTypeBits =
         Q_UINT64_C(1) << QMetaType::Bool | Q_UINT64_C(1) << QMetaType::Double |
         Q_UINT64_C(1) << QMetaType::Float | Q_UINT64_C(1) << QMetaType::Char |
@@ -19,14 +21,18 @@ static bool qIsNumericType(uint tp) {
              : false;
 }
 
-int compareAsString(const QVariant* v1, const QVariant* v2) {
+int
+compareAsString(const QVariant* v1, const QVariant* v2)
+{
     int r = v1->toString().compare(v2->toString(), Qt::CaseInsensitive);
     if (r == 0) {
         return (v1->typeId() < v2->typeId()) ? -1 : 1;
     }
     return r;
 }
-int compare(const QVariant* v1, const QVariant* v2) {
+int
+compare(const QVariant* v1, const QVariant* v2)
+{
     if (qIsNumericType(v1->typeId()) && qIsNumericType(v2->typeId())) {
         if (v1 == v2) {
             return 0;
@@ -63,7 +69,9 @@ int compare(const QVariant* v1, const QVariant* v2) {
     }
 }
 
-bool operator<(const QVariant& lhs, const QVariant& rhs) {
+bool
+operator<(const QVariant& lhs, const QVariant& rhs)
+{
     const QVariant* v1 = &lhs;
     const QVariant* v2 = &rhs;
     if (lhs.typeId() != rhs.typeId()) {
@@ -87,7 +95,8 @@ bool operator<(const QVariant& lhs, const QVariant& rhs) {
 }
 
 namespace Oxide::JSON {
-    QVariant decodeDBusArgument(const QDBusArgument& arg) {
+    QVariant decodeDBusArgument(const QDBusArgument& arg)
+    {
         auto type = arg.currentType();
         if (type == QDBusArgument::BasicType ||
             type == QDBusArgument::VariantType) {
@@ -118,7 +127,8 @@ namespace Oxide::JSON {
         O_WARNING("Unable to decode QDBusArgument as it is an unknown type");
         return QVariant();
     }
-    QVariant sanitizeForJson(QVariant value) {
+    QVariant sanitizeForJson(QVariant value)
+    {
         auto userType = value.userType();
         if (userType == QMetaType::fromName("QDBusObjectPath").id()) {
             return value.value<QDBusObjectPath>().path();
@@ -179,7 +189,8 @@ namespace Oxide::JSON {
         }
         return value;
     }
-    QString toJson(QVariant value, QJsonDocument::JsonFormat format) {
+    QString toJson(QVariant value, QJsonDocument::JsonFormat format)
+    {
         if (value.isNull()) {
             return "null";
         }
@@ -208,7 +219,8 @@ namespace Oxide::JSON {
         auto json = doc.toJson(QJsonDocument::Compact);
         return json.mid(1, json.length() - 2);
     }
-    QVariant fromJson(QByteArray json) {
+    QVariant fromJson(QByteArray json)
+    {
         QJsonParseError error;
         QJsonDocument doc = QJsonDocument::fromJson("[" + json + "]", &error);
         if (error.error != QJsonParseError::NoError) {
@@ -217,5 +229,8 @@ namespace Oxide::JSON {
         }
         return doc.array().first().toVariant();
     }
-    QVariant fromJson(QFile* file) { return fromJson(file->readAll()); }
-}  // namespace Oxide::JSON
+    QVariant fromJson(QFile* file)
+    {
+        return fromJson(file->readAll());
+    }
+} // namespace Oxide::JSON

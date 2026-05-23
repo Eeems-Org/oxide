@@ -5,16 +5,18 @@
 
 #include "_debug.h"
 
-void short_pause() {
+void
+short_pause()
+{
     timespec remaining;
-    timespec requested{.tv_sec = 0, .tv_nsec = 5000};
+    timespec requested{ .tv_sec = 0, .tv_nsec = 5000 };
     nanosleep(&requested, &remaining);
 }
 
 namespace BlightProtocol {
-    std::optional<blight_data_t> recv(
-        int fd, ssize_t size, unsigned int attempts, unsigned int timeout
-    ) {
+    std::optional<blight_data_t>
+    recv(int fd, ssize_t size, unsigned int attempts, unsigned int timeout)
+    {
         if (size <= 0) {
             _WARN(
                 "[BlightProtocol::recv(%d, %d, %d, %d)] Invalid size",
@@ -97,7 +99,8 @@ namespace BlightProtocol {
         return data;
     }
 
-    std::optional<blight_data_t> recv_blocking(int fd, ssize_t size) {
+    std::optional<blight_data_t> recv_blocking(int fd, ssize_t size)
+    {
         blight_data_t data;
         try {
             data = new unsigned char[size];
@@ -142,7 +145,8 @@ namespace BlightProtocol {
         return data;
     }
 
-    bool send_blocking(int fd, const blight_data_t data, ssize_t size) {
+    bool send_blocking(int fd, const blight_data_t data, ssize_t size)
+    {
         // TODO explore MSG_ZEROCOPY, this will require owning the buffer
         // instead of allowing
         //      the user to pass in one we wont touch. As we'll need to ensure
@@ -171,8 +175,10 @@ namespace BlightProtocol {
         }
         return true;
     }
-}  // namespace BlightProtocol
-bool wait_for(int fd, int timeout, int event) {
+} // namespace BlightProtocol
+bool
+wait_for(int fd, int timeout, int event)
+{
     int remaining = timeout;
     auto start = std::chrono::steady_clock::now();
     while (true) {
@@ -217,54 +223,66 @@ bool wait_for(int fd, int timeout, int event) {
     }
 }
 namespace BlightProtocol {
-    bool wait_for_send(int fd, int timeout) {
+    bool wait_for_send(int fd, int timeout)
+    {
         return wait_for(fd, timeout, POLLOUT);
     }
 
-    bool wait_for_read(int fd, int timeout) {
+    bool wait_for_read(int fd, int timeout)
+    {
         return wait_for(fd, timeout, POLLIN);
     }
-}  // namespace BlightProtocol
+} // namespace BlightProtocol
 
-extern "C" {
-int blight_recv(int fd, BlightProtocol::blight_data_t* data, ssize_t size) {
-    auto maybe = BlightProtocol::recv(fd, size);
-    if (!maybe.has_value()) {
-        return -errno;
-    }
-    *data = maybe.value();
-    return 0;
-}
-int blight_recv_blocking(
-    int fd, BlightProtocol::blight_data_t* data, ssize_t size
-) {
-    auto maybe = BlightProtocol::recv_blocking(fd, size);
-    if (!maybe.has_value()) {
-        return -errno;
-    }
-    *data = maybe.value();
-    return 0;
-}
-int blight_send_blocking(
-    int fd, const BlightProtocol::blight_data_t data, ssize_t size
-) {
-    if (!BlightProtocol::send_blocking(fd, data, size)) {
-        return -errno;
-    }
-    return 0;
-}
-int blight_wait_for_send(int fd, int timeout) {
-    int res = BlightProtocol::wait_for_send(fd, timeout);
-    if (res) {
+extern "C"
+{
+    int blight_recv(int fd, BlightProtocol::blight_data_t* data, ssize_t size)
+    {
+        auto maybe = BlightProtocol::recv(fd, size);
+        if (!maybe.has_value()) {
+            return -errno;
+        }
+        *data = maybe.value();
         return 0;
     }
-    return -errno;
-}
-int blight_wait_for_read(int fd, int timeout) {
-    int res = BlightProtocol::wait_for_read(fd, timeout);
-    if (res) {
+    int blight_recv_blocking(
+        int fd,
+        BlightProtocol::blight_data_t* data,
+        ssize_t size
+    )
+    {
+        auto maybe = BlightProtocol::recv_blocking(fd, size);
+        if (!maybe.has_value()) {
+            return -errno;
+        }
+        *data = maybe.value();
         return 0;
     }
-    return -errno;
-}
+    int blight_send_blocking(
+        int fd,
+        const BlightProtocol::blight_data_t data,
+        ssize_t size
+    )
+    {
+        if (!BlightProtocol::send_blocking(fd, data, size)) {
+            return -errno;
+        }
+        return 0;
+    }
+    int blight_wait_for_send(int fd, int timeout)
+    {
+        int res = BlightProtocol::wait_for_send(fd, timeout);
+        if (res) {
+            return 0;
+        }
+        return -errno;
+    }
+    int blight_wait_for_read(int fd, int timeout)
+    {
+        int res = BlightProtocol::wait_for_read(fd, timeout);
+        if (res) {
+            return 0;
+        }
+        return -errno;
+    }
 }

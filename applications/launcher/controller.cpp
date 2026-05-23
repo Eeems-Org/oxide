@@ -14,18 +14,21 @@
 #include <memory>
 #include <sstream>
 
-QSet<QString> settings = {"columns", "autoStartApplication"};
-QSet<QString> booleanSettings{
-    "showWifiDb", "showBatteryPercent", "showBatteryTemperature", "showDate"
-};
-QList<QString> configDirectoryPaths = {
-    "/opt/etc/draft", "/etc/draft", "/home/root/.config/draft"
-};
-QList<QString> configFileDirectoryPaths = {
-    "/opt/etc", "/etc", "/home/root/.config"
-};
+QSet<QString> settings = { "columns", "autoStartApplication" };
+QSet<QString> booleanSettings{ "showWifiDb",
+                               "showBatteryPercent",
+                               "showBatteryTemperature",
+                               "showDate" };
+QList<QString> configDirectoryPaths = { "/opt/etc/draft",
+                                        "/etc/draft",
+                                        "/home/root/.config/draft" };
+QList<QString> configFileDirectoryPaths = { "/opt/etc",
+                                            "/etc",
+                                            "/home/root/.config" };
 
-QFile* getConfigFile() {
+QFile*
+getConfigFile()
+{
     for (auto path : configFileDirectoryPaths) {
         QDir dir(path);
         if (dir.exists() && !dir.isEmpty()) {
@@ -37,11 +40,15 @@ QFile* getConfigFile() {
     }
     return nullptr;
 }
-bool configFileExists() {
+bool
+configFileExists()
+{
     auto configFile = getConfigFile();
     return configFile != nullptr && configFile->exists();
 }
-void Controller::loadSettings() {
+void
+Controller::loadSettings()
+{
     // If the config directory doesn't exist,
     // then print an error and stop.
     qDebug() << "parsing config file...";
@@ -140,7 +147,9 @@ void Controller::loadSettings() {
     }
     qDebug() << "Finished updating UI.";
 }
-void Controller::saveSettings() {
+void
+Controller::saveSettings()
+{
     qDebug() << "Saving configuration...";
     QSet<QString> items = settings;
     items.detach();
@@ -228,7 +237,9 @@ void Controller::saveSettings() {
     }
     qDebug() << "Done saving configuration.";
 }
-QList<QObject*> Controller::getApps() {
+QList<QObject*>
+Controller::getApps()
+{
     auto bus = QDBusConnection::systemBus();
     auto running = appsApi->runningApplications();
     auto paused = appsApi->pausedApplications();
@@ -282,11 +293,15 @@ QList<QObject*> Controller::getApps() {
     );
     return applications;
 }
-void Controller::setAutoStartApplication(QString autoStartApplication) {
+void
+Controller::setAutoStartApplication(QString autoStartApplication)
+{
     m_autoStartApplication = autoStartApplication;
     emit autoStartApplicationChanged(autoStartApplication);
 }
-AppItem* Controller::getApplication(QString name) {
+AppItem*
+Controller::getApplication(QString name)
+{
     for (auto app : applications) {
         if (app->property("name").toString() == name) {
             return reinterpret_cast<AppItem*>(app);
@@ -295,33 +310,50 @@ AppItem* Controller::getApplication(QString name) {
     return nullptr;
 }
 
-void Controller::importDraftApps() {
+void
+Controller::importDraftApps()
+{
     QProcess::execute("update-desktop-database", QStringList() << "--verbose");
 }
-void Controller::powerOff() {
+void
+Controller::powerOff()
+{
     qDebug() << "Powering off...";
     systemApi->powerOff();
 }
-void Controller::reboot() {
+void
+Controller::reboot()
+{
     qDebug() << "Rebooting...";
     systemApi->reboot();
 }
-void Controller::suspend() {
+void
+Controller::suspend()
+{
     qDebug() << "Suspending...";
     systemApi->suspend();
 }
 
-void Controller::lock() {
+void
+Controller::lock()
+{
     qDebug() << "Locking...";
     appsApi->openLockScreen();
 }
-inline void updateUI(QObject* ui, const char* name, const QVariant& value) {
+inline void
+updateUI(QObject* ui, const char* name, const QVariant& value)
+{
     if (ui) {
         ui->setProperty(name, value);
     }
 }
-void Controller::updateUIElements() {}
-void Controller::setAutomaticSleep(bool state) {
+void
+Controller::updateUIElements()
+{
+}
+void
+Controller::setAutomaticSleep(bool state)
+{
     m_automaticSleep = state;
     if (state) {
         qDebug() << "Enabling automatic sleep";
@@ -330,7 +362,9 @@ void Controller::setAutomaticSleep(bool state) {
     }
     emit automaticSleepChanged(state);
 }
-void Controller::setLockOnSuspend(bool state) {
+void
+Controller::setLockOnSuspend(bool state)
+{
     m_lockOnSuspend = state;
     if (state) {
         qDebug() << "Enabling lock on suspend";
@@ -339,7 +373,9 @@ void Controller::setLockOnSuspend(bool state) {
     }
     emit lockOnSuspendChanged(state);
 }
-void Controller::setAutomaticLock(bool state) {
+void
+Controller::setAutomaticLock(bool state)
+{
     m_automaticLock = state;
     if (state) {
         qDebug() << "Enabling automatic lock";
@@ -348,14 +384,18 @@ void Controller::setAutomaticLock(bool state) {
     }
     emit automaticLockChanged(state);
 }
-void Controller::setColumns(int columns) {
+void
+Controller::setColumns(int columns)
+{
     m_columns = columns;
     if (root != nullptr) {
         qDebug() << "Columns: " << columns;
         emit columnsChanged(columns);
     }
 }
-void Controller::setSwipeLength(int direction, int length) {
+void
+Controller::setSwipeLength(int direction, int length)
+{
     switch (direction) {
         case SwipeDirection::Right:
             m_swipeLengthRight = length;
@@ -378,7 +418,9 @@ void Controller::setSwipeLength(int direction, int length) {
             break;
     }
 }
-int Controller::getSwipeLength(int direction) {
+int
+Controller::getSwipeLength(int direction)
+{
     switch (direction) {
         case SwipeDirection::Right:
             return swipeLengthRight();
@@ -393,7 +435,9 @@ int Controller::getSwipeLength(int direction) {
             return -1;
     }
 }
-void Controller::setShowWifiDb(bool state) {
+void
+Controller::setShowWifiDb(bool state)
+{
     m_showWifiDb = state;
     if (root != nullptr) {
         qDebug() << "Show Wifi DB: " << state;
@@ -403,26 +447,34 @@ void Controller::setShowWifiDb(bool state) {
         updateUIElements();
     }
 }
-void Controller::setShowBatteryPercent(bool state) {
+void
+Controller::setShowBatteryPercent(bool state)
+{
     m_showBatteryPercent = state;
     if (root != nullptr) {
         qDebug() << "Show Battery Percentage: " << state;
         emit showBatteryPercentChanged(state);
     }
 }
-void Controller::setShowBatteryTemperature(bool state) {
+void
+Controller::setShowBatteryTemperature(bool state)
+{
     m_showBatteryTemperature = state;
     if (root != nullptr) {
         qDebug() << "Show Battery Temperature: " << state;
         emit showBatteryTemperatureChanged(state);
     }
 }
-void Controller::setSleepAfter(int sleepAfter) {
+void
+Controller::setSleepAfter(int sleepAfter)
+{
     m_sleepAfter = sleepAfter;
     qDebug() << "Sleep After: " << sleepAfter << " minutes";
     emit sleepAfterChanged(m_sleepAfter);
 }
-void Controller::setLockAfter(int lockAfter) {
+void
+Controller::setLockAfter(int lockAfter)
+{
     m_lockAfter = lockAfter;
     qDebug() << "Lock After: " << lockAfter << " minutes";
     emit lockAfterChanged(m_lockAfter);

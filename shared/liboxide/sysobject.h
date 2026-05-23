@@ -19,8 +19,9 @@ namespace Oxide {
      *
      * \snippet examples/oxide.cpp SysObject
      */
-    class LIBOXIDE_EXPORT SysObject {
-       public:
+    class LIBOXIDE_EXPORT SysObject
+    {
+      public:
         explicit SysObject(QString path) : m_path(path.toStdString()) {}
         /*!
          * \brief The path to the sysfs interface
@@ -70,9 +71,9 @@ namespace Oxide {
          */
         QMap<QString, QString> uevent();
 
-       private:
+      private:
         std::string m_path;
     };
-}  // namespace Oxide
-#endif  // LIBOXIDE_SYSOBJECT_H
+} // namespace Oxide
+#endif // LIBOXIDE_SYSOBJECT_H
 /*! @} */

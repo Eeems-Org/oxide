@@ -11,17 +11,14 @@
 
 OxideEventFilter::OxideEventFilter(QObject* parent) : QObject(parent) {}
 
-QVector<QEvent::Type> ignoreTypes{
-    QEvent::MetaCall,
-    QEvent::ThreadChange,
-    QEvent::SockAct,
-    QEvent::Timer,
-    QEvent::ChildAdded,
-    QEvent::ChildRemoved,
-    QEvent::DeferredDelete
-};
+QVector<QEvent::Type> ignoreTypes{ QEvent::MetaCall,      QEvent::ThreadChange,
+                                   QEvent::SockAct,       QEvent::Timer,
+                                   QEvent::ChildAdded,    QEvent::ChildRemoved,
+                                   QEvent::DeferredDelete };
 
-bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev) {
+bool
+OxideEventFilter::eventFilter(QObject* obj, QEvent* ev)
+{
     if (qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_ALL_EVENTS") ||
         (qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS") &&
          !ignoreTypes.contains(ev->type()))) {
@@ -88,7 +85,9 @@ bool OxideEventFilter::eventFilter(QObject* obj, QEvent* ev) {
 #define WACOM_X_SCALAR (float(DISPLAYWIDTH) / float(DISPLAYHEIGHT))
 #define WACOM_Y_SCALAR (float(DISPLAYHEIGHT) / float(DISPLAYWIDTH))
 
-QPointF OxideEventFilter::transpose(QPointF pointF) {
+QPointF
+OxideEventFilter::transpose(QPointF pointF)
+{
     pointF = swap(pointF);
     // Handle scaling from wacom to screensize
     pointF.setX(pointF.x() * WACOM_X_SCALAR);
@@ -96,11 +95,15 @@ QPointF OxideEventFilter::transpose(QPointF pointF) {
     return pointF;
 }
 
-QPointF OxideEventFilter::swap(QPointF pointF) {
+QPointF
+OxideEventFilter::swap(QPointF pointF)
+{
     return QPointF(pointF.y(), pointF.x());
 }
 
-bool OxideEventFilter::isEnabled() {
+bool
+OxideEventFilter::isEnabled()
+{
     return !qEnvironmentVariableIsSet("OXIDE_QPA_DISBLE_TABLET_SYNTHESIZE") &&
            qApp->testAttribute(Qt::AA_SynthesizeMouseForUnhandledTabletEvents);
 }

@@ -6,11 +6,13 @@
 
 namespace AutoTest {
     typedef QList<QObject*> TestList;
-    inline TestList& testList() {
+    inline TestList& testList()
+    {
         static TestList list;
         return list;
     }
-    inline bool findObject(QObject* object) {
+    inline bool findObject(QObject* object)
+    {
         TestList& list = testList();
         if (list.contains(object)) {
             return true;
@@ -22,27 +24,31 @@ namespace AutoTest {
         }
         return false;
     }
-    inline void addTest(QObject* object) {
+    inline void addTest(QObject* object)
+    {
         TestList& list = testList();
         if (!findObject(object)) {
             list.append(object);
         }
     }
-    inline int run(int argc, char* argv[]) {
+    inline int run(int argc, char* argv[])
+    {
         int ret = 0;
         foreach (QObject* test, testList()) {
             ret += QTest::qExec(test, argc, argv);
         }
         return ret;
     }
-}  // namespace AutoTest
+} // namespace AutoTest
 
-template <class T>
-class Test {
-   public:
+template<class T>
+class Test
+{
+  public:
     QSharedPointer<T> child;
 
-    Test(const QString& name) : child(new T) {
+    Test(const QString& name) : child(new T)
+    {
         child->setObjectName(name);
         AutoTest::addTest(child.data());
     }

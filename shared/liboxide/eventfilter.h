@@ -23,17 +23,18 @@ namespace Oxide {
      * The following is an example of adding it to an application:
      * \snippet examples/oxide.cpp EventFilter
      */
-    class LIBOXIDE_EXPORT EventFilter : public QObject {
+    class LIBOXIDE_EXPORT EventFilter : public QObject
+    {
         Q_OBJECT
-       public:
+      public:
         /*!
          * \brief Create a new EventFilter instance
          * \param parent The parent object. Usually should be qApp
          */
         explicit EventFilter(QObject* parent = nullptr);
 
-       protected:
+      protected:
         bool eventFilter(QObject* obj, QEvent* ev);
     };
-}  // namespace Oxide
+} // namespace Oxide
 /*! @} */

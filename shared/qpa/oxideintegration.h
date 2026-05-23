@@ -14,17 +14,18 @@
 
 QT_BEGIN_NAMESPACE
 
-class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration,
-                                       public QPlatformNativeInterface,
-                                       public QPlatformServices
+class Q_DECL_EXPORT OxideIntegration
+  : public QPlatformIntegration
+  , public QPlatformNativeInterface
+  , public QPlatformServices
 #ifndef QT_NO_CLIPBOARD
-    ,
-                                       public QPlatformClipboard
+  , public QPlatformClipboard
 #endif
 {
-   public:
-    enum Option {  // Options to be passed on command line or determined from
-                   // environment
+  public:
+    enum Option
+    { // Options to be passed on command line or determined from
+      // environment
         DebugQPA = 1,
         EnableFonts = 2,
         FreeTypeFontDatabase = 4,
@@ -65,7 +66,8 @@ class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration,
 #ifndef QT_NO_CLIPBOARD
     QMimeData* mimeData(QClipboard::Mode mode = QClipboard::Clipboard) override;
     void setMimeData(
-        QMimeData* data, QClipboard::Mode mode = QClipboard::Clipboard
+        QMimeData* data,
+        QClipboard::Mode mode = QClipboard::Clipboard
     ) override;
     bool supportsMode(QClipboard::Mode mode) const override;
     bool ownsMode(QClipboard::Mode mode) const override;
@@ -74,7 +76,7 @@ class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration,
     static Blight::shared_buf_t getSurfaceForWindowStatic(QWindow* qwindow);
     static QImage getImageForWindowStatic(QWindow* qwindow);
 
-   private:
+  private:
     mutable QPlatformFontDatabase* m_fontDatabase = nullptr;
     QPlatformInputContext* m_inputContext = nullptr;
     QPointer<OxideScreen> m_primaryScreen;
@@ -87,7 +89,10 @@ class Q_DECL_EXPORT OxideIntegration : public QPlatformIntegration,
     QMutex m_mutex;
     QStringList m_parameters;
     static void connectSignal(
-        QObject* sender, QString signal, QObject* reciever, QString slot
+        QObject* sender,
+        QString signal,
+        QObject* reciever,
+        QString slot
     );
 };
 

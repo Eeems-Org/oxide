@@ -9,23 +9,28 @@
 #include "debug.h"
 
 namespace Oxide {
-    std::string SysObject::propertyPath(const std::string& name) {
+    std::string SysObject::propertyPath(const std::string& name)
+    {
         return m_path + "/" + name;
     }
 
-    bool SysObject::exists() {
+    bool SysObject::exists()
+    {
         QDir dir(m_path.c_str());
         return dir.exists();
     }
-    bool SysObject::hasProperty(const std::string& name) {
+    bool SysObject::hasProperty(const std::string& name)
+    {
         QFile file(propertyPath(name).c_str());
         return file.exists();
     }
-    bool SysObject::hasDirectory(const std::string& name) {
+    bool SysObject::hasDirectory(const std::string& name)
+    {
         QDir dir(propertyPath(name).c_str());
         return dir.exists();
     }
-    int SysObject::intProperty(const std::string& name) {
+    int SysObject::intProperty(const std::string& name)
+    {
         if (!hasProperty(name)) {
             return 0;
         }
@@ -36,7 +41,8 @@ namespace Oxide {
             return 0;
         }
     }
-    std::string SysObject::strProperty(const std::string& name) {
+    std::string SysObject::strProperty(const std::string& name)
+    {
         auto path = propertyPath(name);
         QFile file(path.c_str());
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -56,7 +62,8 @@ namespace Oxide {
         );
         return text;
     }
-    QMap<QString, QString> SysObject::uevent() {
+    QMap<QString, QString> SysObject::uevent()
+    {
         auto path = propertyPath("uevent");
         QFile file(path.c_str());
         QMap<QString, QString> props;
@@ -80,4 +87,4 @@ namespace Oxide {
         } while (!in.atEnd());
         return props;
     }
-}  // namespace Oxide
+} // namespace Oxide

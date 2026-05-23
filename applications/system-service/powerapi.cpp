@@ -2,7 +2,9 @@
 
 #include <liboxide/udev.h>
 
-PowerAPI* PowerAPI::singleton(PowerAPI* self) {
+PowerAPI*
+PowerAPI::singleton(PowerAPI* self)
+{
     static PowerAPI* instance;
     if (self != nullptr) {
         instance = self;
@@ -11,7 +13,8 @@ PowerAPI* PowerAPI::singleton(PowerAPI* self) {
 }
 
 PowerAPI::PowerAPI(QObject* parent)
-    : APIBase(parent), m_chargerState(ChargerUnknown) {
+  : APIBase(parent), m_chargerState(ChargerUnknown)
+{
     Oxide::Sentry::sentry_transaction(
         "Power API Init", "init", [this](Oxide::Sentry::Transaction* t) {
             Oxide::Sentry::sentry_span(
@@ -38,7 +41,7 @@ PowerAPI::PowerAPI(QObject* parent)
                 } else {
                     timer = new QTimer(this);
                     timer->setSingleShot(false);
-                    timer->setInterval(3 * 1000);  // 3 seconds
+                    timer->setInterval(3 * 1000); // 3 seconds
                     timer->moveToThread(qApp->thread());
                     connect(
                         timer,
@@ -53,7 +56,9 @@ PowerAPI::PowerAPI(QObject* parent)
     );
 }
 
-void PowerAPI::shutdown() {
+void
+PowerAPI::shutdown()
+{
     if (timer != nullptr) {
         qDebug() << "Killing timer";
         timer->stop();
@@ -64,7 +69,9 @@ void PowerAPI::shutdown() {
     }
 }
 
-void PowerAPI::setEnabled(bool enabled) {
+void
+PowerAPI::setEnabled(bool enabled)
+{
     if (deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1) {
         if (enabled) {
             Oxide::UDev::singleton()->start();
@@ -80,14 +87,18 @@ void PowerAPI::setEnabled(bool enabled) {
     }
 }
 
-int PowerAPI::state() {
+int
+PowerAPI::state()
+{
     if (!hasPermission("power")) {
         return 0;
     }
     return m_state;
 }
 
-void PowerAPI::setState(int state) {
+void
+PowerAPI::setState(int state)
+{
     if (!hasPermission("power")) {
         return;
     }
@@ -98,14 +109,18 @@ void PowerAPI::setState(int state) {
     emit stateChanged(state);
 }
 
-int PowerAPI::batteryState() {
+int
+PowerAPI::batteryState()
+{
     if (!hasPermission("power")) {
         return BatteryUnknown;
     }
     return m_batteryState;
 }
 
-void PowerAPI::setBatteryState(int batteryState) {
+void
+PowerAPI::setBatteryState(int batteryState)
+{
     if (!hasPermission("power")) {
         return;
     }
@@ -113,43 +128,57 @@ void PowerAPI::setBatteryState(int batteryState) {
     emit batteryStateChanged(batteryState);
 }
 
-int PowerAPI::batteryLevel() {
+int
+PowerAPI::batteryLevel()
+{
     if (!hasPermission("power")) {
         return 0;
     }
     return m_batteryLevel;
 }
 
-void PowerAPI::setBatteryLevel(int batteryLevel) {
+void
+PowerAPI::setBatteryLevel(int batteryLevel)
+{
     m_batteryLevel = batteryLevel;
     emit batteryLevelChanged(batteryLevel);
 }
 
-int PowerAPI::batteryTemperature() {
+int
+PowerAPI::batteryTemperature()
+{
     if (!hasPermission("power")) {
         return 0;
     }
     return m_batteryTemperature;
 }
 
-void PowerAPI::setBatteryTemperature(int batteryTemperature) {
+void
+PowerAPI::setBatteryTemperature(int batteryTemperature)
+{
     m_batteryTemperature = batteryTemperature;
     emit batteryTemperatureChanged(batteryTemperature);
 }
 
-int PowerAPI::chargerState() {
+int
+PowerAPI::chargerState()
+{
     if (!hasPermission("power")) {
         return ChargerUnknown;
     }
     return m_chargerState;
 }
 
-void PowerAPI::setChargerState(int chargerState) {
+void
+PowerAPI::setChargerState(int chargerState)
+{
     m_chargerState = chargerState;
     emit chargerStateChanged(chargerState);
 }
 
-void PowerAPI::updateBattery() {
+void
+PowerAPI::updateBattery()
+{
     if (!Oxide::Power::batteries()->length()) {
         if (m_batteryState != BatteryUnknown) {
             setBatteryState(BatteryUnknown);
@@ -203,7 +232,9 @@ void PowerAPI::updateBattery() {
     }
 }
 
-void PowerAPI::updateCharger() {
+void
+PowerAPI::updateCharger()
+{
     if (!Oxide::Power::chargers()->length()) {
         if (m_chargerState != ChargerUnknown) {
             setChargerState(ChargerUnknown);
@@ -223,7 +254,9 @@ void PowerAPI::updateCharger() {
     }
 }
 
-void PowerAPI::update() {
+void
+PowerAPI::update()
+{
     updateBattery();
     updateCharger();
 }

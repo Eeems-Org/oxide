@@ -33,7 +33,8 @@ namespace Oxide {
          * }
          * ```
          */
-        class OxideQml : public QObject {
+        class OxideQml : public QObject
+        {
             Q_OBJECT
             /*!
              * \brief If the device should be in landscape or not
@@ -49,7 +50,7 @@ namespace Oxide {
             QML_NAMED_ELEMENT(Oxide)
             QML_SINGLETON
 
-           public:
+          public:
             explicit OxideQml(QObject* parent = nullptr);
             /*!
              * \brief Check if the device should be in landscape mode or not
@@ -73,7 +74,7 @@ namespace Oxide {
              */
             Q_INVOKABLE QBrush brushFromColor(const QColor& color);
 
-           signals:
+          signals:
             /*!
              * \brief The value of landscape changed
              * \sa landscape, landscape()
@@ -97,7 +98,8 @@ namespace Oxide {
          * }
          * ```
          */
-        class Canvas : public QQuickPaintedItem {
+        class Canvas : public QQuickPaintedItem
+        {
             Q_OBJECT
             /*!
              * \property brush
@@ -120,7 +122,7 @@ namespace Oxide {
             )
             QML_ELEMENT
 
-           public:
+          public:
             /*!
              * \brief Create a new canvas instance
              * \param parent Parent widget
@@ -157,7 +159,7 @@ namespace Oxide {
              */
             QImage* image();
 
-           signals:
+          signals:
             /*!
              * \brief The user has started drawing on the canvas
              */
@@ -179,15 +181,16 @@ namespace Oxide {
              */
             void penWidthChanged(qreal pendWidth);
 
-           protected:
+          protected:
             void geometryChange(
-                const QRectF& newGeometry, const QRectF& oldGeometry
+                const QRectF& newGeometry,
+                const QRectF& oldGeometry
             ) override;
             void mousePressEvent(QMouseEvent* event) override;
             void mouseMoveEvent(QMouseEvent* event) override;
             void mouseReleaseEvent(QMouseEvent* event) override;
 
-           private:
+          private:
             QPointF m_lastPoint;
             QImage m_drawn;
             QBrush m_brush;
@@ -250,6 +253,6 @@ namespace Oxide {
          * with `import codes.eeems.oxide 3.0`
          */
         void registerQML(QQmlApplicationEngine* engine);
-    }  // namespace QML
-}  // namespace Oxide
+    } // namespace QML
+} // namespace Oxide
 /*! @} */

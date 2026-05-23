@@ -10,11 +10,12 @@ using namespace Oxide::Applications;
 
 #define APPS_DIR OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY
 
-QCommandLineOption versionOption(
-    {"v", "version"}, "Displays version information."
-);
+QCommandLineOption
+    versionOption({ "v", "version" }, "Displays version information.");
 
-QStringList positionArguments(QCommandLineParser& parser) {
+QStringList
+positionArguments(QCommandLineParser& parser)
+{
     parser.process(*qApp);
     if (parser.isSet(versionOption)) {
         parser.showHelp(EXIT_FAILURE);
@@ -27,7 +28,9 @@ QStringList positionArguments(QCommandLineParser& parser) {
     return args;
 }
 
-int install(QCommandLineParser& parser) {
+int
+install(QCommandLineParser& parser)
+{
     parser.addPositionalArgument(
         "install",
         "Install one or more application registration.",
@@ -80,7 +83,9 @@ int install(QCommandLineParser& parser) {
     qDebug() << "success: Installed" << path.toStdString().c_str();
     return QProcess::execute("update-desktop-database", QStringList("--quiet"));
 }
-int uninstall(QCommandLineParser& parser) {
+int
+uninstall(QCommandLineParser& parser)
+{
     parser.addPositionalArgument(
         "uninstall",
         "Uninstall one or more application registration.",
@@ -108,7 +113,9 @@ int uninstall(QCommandLineParser& parser) {
     return QProcess::execute("update-desktop-database", QStringList("--quiet"));
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("xdg-desktop-icon", argv);
     app.setOrganizationName("Eeems");

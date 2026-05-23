@@ -10,7 +10,9 @@
 #include "autotest.h"
 #include "test.h"
 
-int wait_for_service(QProcess* blight, QCoreApplication* app) {
+int
+wait_for_service(QProcess* blight, QCoreApplication* app)
+{
     qDebug() << "Checking to see if blight is running...";
     std::unique_ptr<Blight::DBus> dbus = std::make_unique<Blight::DBus>(
 #ifdef EPAPER
@@ -38,7 +40,9 @@ int wait_for_service(QProcess* blight, QCoreApplication* app) {
     return 0;
 }
 
-int run_c_tests(QCoreApplication* app) {
+int
+run_c_tests(QCoreApplication* app)
+{
     QProcess blight;
     int res = wait_for_service(&blight, app);
     if (res) {
@@ -53,7 +57,9 @@ int run_c_tests(QCoreApplication* app) {
     return res;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QThread::currentThread()->setObjectName("main");
     QCoreApplication app(argc, argv);
     app.setAttribute(Qt::AA_Use96Dpi, true);

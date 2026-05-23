@@ -12,7 +12,8 @@
 
 #define guiThread GUIThread::singleton()
 
-struct RepaintRequest {
+struct RepaintRequest
+{
     std::shared_ptr<Surface> surface;
     QRegion region;
     Blight::WaveformMode waveform;
@@ -22,20 +23,21 @@ struct RepaintRequest {
     std::function<void()> callback;
 };
 
-class GUIThread : public QThread {
+class GUIThread : public QThread
+{
     Q_OBJECT
 
-   protected:
+  protected:
     void run() override;
 
-   public:
+  public:
     static GUIThread* singleton();
     ~GUIThread();
 
-   signals:
+  signals:
     void settled();
 
-   public slots:
+  public slots:
     void enqueue(
         std::shared_ptr<Surface> surface,
         QRect region,
@@ -54,7 +56,7 @@ class GUIThread : public QThread {
         unsigned int marker
     );
 
-   private:
+  private:
     GUIThread(QRect screenGeometry);
     moodycamel::ConcurrentQueue<RepaintRequest> m_repaintEvents;
     int m_frameBufferFd;
@@ -67,7 +69,9 @@ class GUIThread : public QThread {
 
     void clearFrameBuffer();
     void repaintSurface(
-        QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface
+        QPainter* painter,
+        QRect* rect,
+        std::shared_ptr<Surface> surface
     );
     void redraw(RepaintRequest& event);
     QList<std::shared_ptr<Surface>> visibleSurfaces();

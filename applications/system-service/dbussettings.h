@@ -3,4 +3,4 @@
 
 #include <liboxide.h>
 
-#endif  // DBUSSETTINGS_H
+#endif // DBUSSETTINGS_H

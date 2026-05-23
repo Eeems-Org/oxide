@@ -9,18 +9,24 @@
 #include "powerapi.h"
 #include "wifiapi.h"
 
-QDebug operator<<(QDebug debug, const Touch& touch) {
+QDebug
+operator<<(QDebug debug, const Touch& touch)
+{
     QDebugStateSaver saver(debug);
     debug.nospace() << touch.debugString().c_str();
     return debug.maybeSpace();
 }
-QDebug operator<<(QDebug debug, Touch* touch) {
+QDebug
+operator<<(QDebug debug, Touch* touch)
+{
     QDebugStateSaver saver(debug);
     debug.nospace() << touch->debugString().c_str();
     return debug.maybeSpace();
 }
 
-void SystemAPI::PrepareForSleep(bool suspending) {
+void
+SystemAPI::PrepareForSleep(bool suspending)
+{
     if (suspending) {
         Controller::singleton()->enabled = false;
         Oxide::Sentry::sentry_transaction(
@@ -201,7 +207,9 @@ void SystemAPI::PrepareForSleep(bool suspending) {
         Controller::singleton()->enabled = true;
     }
 }
-SystemAPI* SystemAPI::singleton(SystemAPI* self) {
+SystemAPI*
+SystemAPI::singleton(SystemAPI* self)
+{
     static SystemAPI* instance;
     if (self != nullptr) {
         instance = self;
@@ -210,15 +218,16 @@ SystemAPI* SystemAPI::singleton(SystemAPI* self) {
 }
 
 SystemAPI::SystemAPI(QObject* parent)
-    : APIBase(parent),
-      suspendTimer(this),
-      lockTimer(this),
-      settings(this),
-      sleepInhibitors(),
-      powerOffInhibitors(),
-      mutex(),
-      swipeStates(),
-      swipeLengths() {
+  : APIBase(parent)
+  , suspendTimer(this)
+  , lockTimer(this)
+  , settings(this)
+  , sleepInhibitors()
+  , powerOffInhibitors()
+  , mutex()
+  , swipeStates()
+  , swipeLengths()
+{
     Oxide::Sentry::sentry_transaction(
         "System API Init", "init", [this](Oxide::Sentry::Transaction* t) {
             Oxide::Sentry::sentry_span(
@@ -453,7 +462,9 @@ SystemAPI::SystemAPI(QObject* parent)
     );
 }
 
-void SystemAPI::shutdown() {
+void
+SystemAPI::shutdown()
+{
     O_INFO("Removing all inhibitors");
     rguard(false);
     QMutableListIterator<Inhibitor> i(inhibitors);
@@ -465,11 +476,21 @@ void SystemAPI::shutdown() {
     delete systemd;
 }
 
-void SystemAPI::setEnabled(bool enabled) { O_INFO("System API" << enabled); }
+void
+SystemAPI::setEnabled(bool enabled)
+{
+    O_INFO("System API" << enabled);
+}
 
-int SystemAPI::autoSleep() { return sharedSettings.autoSleep(); }
+int
+SystemAPI::autoSleep()
+{
+    return sharedSettings.autoSleep();
+}
 
-void SystemAPI::setAutoSleep(int _autoSleep) {
+void
+SystemAPI::setAutoSleep(int _autoSleep)
+{
     if (_autoSleep < 0 || _autoSleep > 360) {
         return;
     }
@@ -484,8 +505,14 @@ void SystemAPI::setAutoSleep(int _autoSleep) {
     emit autoSleepChanged(_autoSleep);
 }
 
-int SystemAPI::autoLock() { return sharedSettings.autoLock(); }
-void SystemAPI::setAutoLock(int _autoLock) {
+int
+SystemAPI::autoLock()
+{
+    return sharedSettings.autoLock();
+}
+void
+SystemAPI::setAutoLock(int _autoLock)
+{
     if (_autoLock < 0 || _autoLock > 360) {
         return;
     }
@@ -496,20 +523,40 @@ void SystemAPI::setAutoLock(int _autoLock) {
     emit autoLockChanged(_autoLock);
 }
 
-bool SystemAPI::lockOnSuspend() { return sharedSettings.lockOnSuspend(); }
-void SystemAPI::setLockOnSuspend(bool _lockOnSuspend) {
+bool
+SystemAPI::lockOnSuspend()
+{
+    return sharedSettings.lockOnSuspend();
+}
+void
+SystemAPI::setLockOnSuspend(bool _lockOnSuspend)
+{
     sharedSettings.set_lockOnSuspend(_lockOnSuspend);
     O_INFO("Lock on Suspend" << _lockOnSuspend);
     sharedSettings.sync();
     emit lockOnSuspendChanged(_lockOnSuspend);
 }
 
-bool SystemAPI::sleepInhibited() { return sleepInhibitors.length(); }
+bool
+SystemAPI::sleepInhibited()
+{
+    return sleepInhibitors.length();
+}
 
-bool SystemAPI::powerOffInhibited() { return powerOffInhibitors.length(); }
+bool
+SystemAPI::powerOffInhibited()
+{
+    return powerOffInhibitors.length();
+}
 
-bool SystemAPI::landscape() { return deviceSettings.keyboardAttached(); }
-void SystemAPI::uninhibitAll(QString name) {
+bool
+SystemAPI::landscape()
+{
+    return deviceSettings.keyboardAttached();
+}
+void
+SystemAPI::uninhibitAll(QString name)
+{
     if (powerOffInhibited()) {
         powerOffInhibitors.removeAll(name);
         if (!powerOffInhibited()) {
@@ -530,34 +577,52 @@ void SystemAPI::uninhibitAll(QString name) {
     }
 }
 
-void SystemAPI::stopSuspendTimer() {
+void
+SystemAPI::stopSuspendTimer()
+{
     O_DEBUG("Suspend timer disabled");
     suspendTimer.stop();
 }
 
-void SystemAPI::stopLockTimer() {
+void
+SystemAPI::stopLockTimer()
+{
     O_DEBUG("Lock timer disabled");
     lockTimer.stop();
 }
-void SystemAPI::startSuspendTimer() {
+void
+SystemAPI::startSuspendTimer()
+{
     if (autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected &&
         !suspendTimer.isActive()) {
         O_DEBUG("Suspend timer re-enabled due to start Suspend timer");
         suspendTimer.start(autoSleep() * 60 * 1000);
     }
 }
-void SystemAPI::startLockTimer() {
+void
+SystemAPI::startLockTimer()
+{
     if (autoLock() && !lockTimer.isActive()) {
         O_DEBUG("Lock timer re-enabled due to start lock timer");
         lockTimer.start(autoSleep() * 60 * 1000);
     }
 }
 
-void SystemAPI::lock() { mutex.lock(); }
+void
+SystemAPI::lock()
+{
+    mutex.lock();
+}
 
-void SystemAPI::unlock() { mutex.unlock(); }
+void
+SystemAPI::unlock()
+{
+    mutex.unlock();
+}
 
-void SystemAPI::setSwipeEnabled(int direction, bool enabled) {
+void
+SystemAPI::setSwipeEnabled(int direction, bool enabled)
+{
     if (!hasPermission("system")) {
         return;
     }
@@ -568,7 +633,9 @@ void SystemAPI::setSwipeEnabled(int direction, bool enabled) {
     setSwipeEnabled((SwipeDirection)direction, enabled);
 }
 
-void SystemAPI::setSwipeEnabled(SwipeDirection direction, bool enabled) {
+void
+SystemAPI::setSwipeEnabled(SwipeDirection direction, bool enabled)
+{
     if (direction == None) {
         return;
     }
@@ -600,7 +667,9 @@ void SystemAPI::setSwipeEnabled(SwipeDirection direction, bool enabled) {
     emit swipeEnabledChanged(direction, enabled);
 }
 
-bool SystemAPI::getSwipeEnabled(int direction) {
+bool
+SystemAPI::getSwipeEnabled(int direction)
+{
     if (!hasPermission("system")) {
         return false;
     }
@@ -611,11 +680,15 @@ bool SystemAPI::getSwipeEnabled(int direction) {
     return getSwipeEnabled(direction);
 }
 
-bool SystemAPI::getSwipeEnabled(SwipeDirection direction) {
+bool
+SystemAPI::getSwipeEnabled(SwipeDirection direction)
+{
     return swipeStates[direction];
 }
 
-void SystemAPI::toggleSwipeEnabled(int direction) {
+void
+SystemAPI::toggleSwipeEnabled(int direction)
+{
     if (!hasPermission("system")) {
         return;
     }
@@ -626,11 +699,15 @@ void SystemAPI::toggleSwipeEnabled(int direction) {
     toggleSwipeEnabled((SwipeDirection)direction);
 }
 
-void SystemAPI::toggleSwipeEnabled(SwipeDirection direction) {
+void
+SystemAPI::toggleSwipeEnabled(SwipeDirection direction)
+{
     setSwipeEnabled(direction, !getSwipeEnabled(direction));
 }
 
-void SystemAPI::setSwipeLength(int direction, int length) {
+void
+SystemAPI::setSwipeLength(int direction, int length)
+{
     int maxLength;
     if (!hasPermission("system")) {
         return;
@@ -651,7 +728,9 @@ void SystemAPI::setSwipeLength(int direction, int length) {
     setSwipeLength((SwipeDirection)direction, length);
 }
 
-void SystemAPI::setSwipeLength(SwipeDirection direction, int length) {
+void
+SystemAPI::setSwipeLength(SwipeDirection direction, int length)
+{
     if (direction == None) {
         return;
     }
@@ -683,7 +762,9 @@ void SystemAPI::setSwipeLength(SwipeDirection direction, int length) {
     emit swipeLengthChanged(direction, length);
 }
 
-int SystemAPI::getSwipeLength(int direction) {
+int
+SystemAPI::getSwipeLength(int direction)
+{
     if (!hasPermission("system")) {
         return -1;
     }
@@ -694,11 +775,15 @@ int SystemAPI::getSwipeLength(int direction) {
     return getSwipeLength((SwipeDirection)direction);
 }
 
-int SystemAPI::getSwipeLength(SwipeDirection direction) {
+int
+SystemAPI::getSwipeLength(SwipeDirection direction)
+{
     return swipeLengths[direction];
 }
 
-void SystemAPI::suspend() {
+void
+SystemAPI::suspend()
+{
     if (sleepInhibited()) {
         O_INFO("Unable to suspend. Action is currently inhibited.");
         return;
@@ -708,7 +793,9 @@ void SystemAPI::suspend() {
     O_INFO("Suspend requested.");
 }
 
-void SystemAPI::powerOff() {
+void
+SystemAPI::powerOff()
+{
     if (powerOffInhibited()) {
         O_INFO("Unable to power off. Action is currently inhibited.");
         return;
@@ -720,7 +807,9 @@ void SystemAPI::powerOff() {
     O_INFO("Power off requested");
 }
 
-void SystemAPI::reboot() {
+void
+SystemAPI::reboot()
+{
     if (powerOffInhibited()) {
         O_INFO("Unable to reboot. Action is currently inhibited.");
         return;
@@ -731,7 +820,9 @@ void SystemAPI::reboot() {
     systemd->Reboot(false).waitForFinished();
     O_INFO("Reboot requested");
 }
-void SystemAPI::activity() {
+void
+SystemAPI::activity()
+{
     auto active = suspendTimer.isActive();
     suspendTimer.stop();
     if (autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected) {
@@ -753,7 +844,9 @@ void SystemAPI::activity() {
     }
 }
 
-void SystemAPI::inhibitSleep(QDBusMessage message) {
+void
+SystemAPI::inhibitSleep(QDBusMessage message)
+{
     if (!sleepInhibited()) {
         emit sleepInhibitedChanged(true);
     }
@@ -768,7 +861,9 @@ void SystemAPI::inhibitSleep(QDBusMessage message) {
     ));
 }
 
-void SystemAPI::uninhibitSleep(QDBusMessage message) {
+void
+SystemAPI::uninhibitSleep(QDBusMessage message)
+{
     if (!sleepInhibited()) {
         return;
     }
@@ -789,7 +884,9 @@ void SystemAPI::uninhibitSleep(QDBusMessage message) {
     }
 }
 
-void SystemAPI::inhibitPowerOff(QDBusMessage message) {
+void
+SystemAPI::inhibitPowerOff(QDBusMessage message)
+{
     if (!powerOffInhibited()) {
         emit powerOffInhibitedChanged(true);
     }
@@ -803,7 +900,9 @@ void SystemAPI::inhibitPowerOff(QDBusMessage message) {
     ));
 }
 
-void SystemAPI::uninhibitPowerOff(QDBusMessage message) {
+void
+SystemAPI::uninhibitPowerOff(QDBusMessage message)
+{
     if (!powerOffInhibited()) {
         return;
     }
@@ -812,13 +911,17 @@ void SystemAPI::uninhibitPowerOff(QDBusMessage message) {
         emit powerOffInhibitedChanged(false);
     }
 }
-void SystemAPI::suspendTimeout() {
+void
+SystemAPI::suspendTimeout()
+{
     if (autoSleep() && powerAPI->chargerState() != PowerAPI::ChargerConnected) {
         O_INFO("Automatic suspend due to inactivity...");
         suspend();
     }
 }
-void SystemAPI::lockTimeout() {
+void
+SystemAPI::lockTimeout()
+{
     if (autoLock()) {
         auto lockscreenApp =
             appsAPI->getApplication(appsAPI->lockscreenApplication());
@@ -829,13 +932,17 @@ void SystemAPI::lockTimeout() {
     }
 }
 
-void SystemAPI::inhibitSleep() {
+void
+SystemAPI::inhibitSleep()
+{
     inhibitors.append(Inhibitor(
         systemd, "sleep", qApp->applicationName(), "Handle sleep screen"
     ));
 }
 
-void SystemAPI::inhibitPowerOff() {
+void
+SystemAPI::inhibitPowerOff()
+{
     inhibitors.append(Inhibitor(
         systemd,
         "shutdown",
@@ -846,7 +953,9 @@ void SystemAPI::inhibitPowerOff() {
     rguard(true);
 }
 
-void SystemAPI::releaseSleepInhibitors(bool block) {
+void
+SystemAPI::releaseSleepInhibitors(bool block)
+{
     QMutableListIterator<Inhibitor> i(inhibitors);
     while (i.hasNext()) {
         auto inhibitor = i.next();
@@ -859,7 +968,9 @@ void SystemAPI::releaseSleepInhibitors(bool block) {
     }
 }
 
-void SystemAPI::releasePowerOffInhibitors(bool block) {
+void
+SystemAPI::releasePowerOffInhibitors(bool block)
+{
     QMutableListIterator<Inhibitor> i(inhibitors);
     while (i.hasNext()) {
         auto inhibitor = i.next();
@@ -872,13 +983,17 @@ void SystemAPI::releasePowerOffInhibitors(bool block) {
     }
 }
 
-void SystemAPI::rguard(bool install) {
+void
+SystemAPI::rguard(bool install)
+{
     QProcess::execute(
         "/opt/bin/rguard", QStringList() << (install ? "-1" : "-0")
     );
 }
 
-void SystemAPI::toggleSwipes() {
+void
+SystemAPI::toggleSwipes()
+{
     bool state = !swipeStates[Up];
     setSwipeEnabled(Left, state);
     setSwipeEnabled(Right, state);
@@ -903,15 +1018,22 @@ void SystemAPI::toggleSwipes() {
 }
 
 Inhibitor::Inhibitor(
-    Manager* systemd, QString what, QString who, QString why, bool block
+    Manager* systemd,
+    QString what,
+    QString who,
+    QString why,
+    bool block
 )
-    : who(who), what(what), why(why), block(block) {
+  : who(who), what(what), why(why), block(block)
+{
     QDBusUnixFileDescriptor reply =
         systemd->Inhibit(what, who, why, block ? "block" : "delay");
     fd = reply.takeFileDescriptor();
 }
 
-void Inhibitor::release() {
+void
+Inhibitor::release()
+{
     if (released()) {
         return;
     }
@@ -919,5 +1041,9 @@ void Inhibitor::release() {
     fd = -1;
 }
 
-bool Inhibitor::released() { return fd == -1; }
+bool
+Inhibitor::released()
+{
+    return fd == -1;
+}
 #include "moc_systemapi.cpp"

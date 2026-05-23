@@ -10,13 +10,12 @@ using namespace Oxide::Applications;
 
 #define APPS_DIR OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY
 
-QCommandLineOption versionOption(
-    {"v", "version"}, "Displays version information."
-);
+QCommandLineOption
+    versionOption({ "v", "version" }, "Displays version information.");
 
-QStringList positionArguments(
-    QCommandLineParser& parser, bool allowEmpty = false
-) {
+QStringList
+positionArguments(QCommandLineParser& parser, bool allowEmpty = false)
+{
     parser.process(*qApp);
     if (parser.isSet(versionOption)) {
         parser.showHelp(EXIT_FAILURE);
@@ -29,7 +28,9 @@ QStringList positionArguments(
     return args;
 }
 
-int install(QCommandLineParser& parser) {
+int
+install(QCommandLineParser& parser)
+{
     parser.addPositionalArgument(
         "install",
         "Install one or more application registration.",
@@ -110,7 +111,9 @@ int install(QCommandLineParser& parser) {
         QProcess::execute("update-desktop-database", QStringList("--quiet"));
     return failure ? EXIT_FAILURE : res;
 }
-int uninstall(QCommandLineParser& parser) {
+int
+uninstall(QCommandLineParser& parser)
+{
     parser.addPositionalArgument(
         "uninstall",
         "Uninstall one or more application registration.",
@@ -161,7 +164,9 @@ int uninstall(QCommandLineParser& parser) {
     return failure ? EXIT_FAILURE : res;
 }
 
-int forceupdate(QCommandLineParser& parser) {
+int
+forceupdate(QCommandLineParser& parser)
+{
     parser.addPositionalArgument(
         "forceupdate",
         "Force an update of the application registration cache.",
@@ -176,7 +181,9 @@ int forceupdate(QCommandLineParser& parser) {
     return QProcess::execute("update-desktop-database", QStringList());
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     QCoreApplication app(argc, argv);
     sentry_init("xdg-desktop-menu", argv);
     app.setOrganizationName("Eeems");

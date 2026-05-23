@@ -51,13 +51,16 @@ namespace {
     static void* (*func_mmap)(void*, size_t, int, int, int, __off_t);
     static int msgq = -1;
 
-    bool __is_fb(int fd) {
+    bool __is_fb(int fd)
+    {
         return DO_HANDLE_FB && blightBuffer->fd > 0 && blightBuffer->fd == fd;
     }
 
     void __sendEvents(
-        unsigned int device, std::vector<Blight::partial_input_event_t>& queue
-    ) {
+        unsigned int device,
+        std::vector<Blight::partial_input_event_t>& queue
+    )
+    {
         if (queue.empty()) {
             return;
         }
@@ -72,11 +75,10 @@ namespace {
                 event.code == KEY_POWER) {
                 event.value = 0;
             }
-            data[i] = input_event{
-                // .time = time,
-                .type = event.type,
-                .code = event.code,
-                .value = event.value
+            data[i] = input_event{ // .time = time,
+                                   .type = event.type,
+                                   .code = event.code,
+                                   .value = event.value
             };
         }
         auto fd = inputFds[device][0];
@@ -135,7 +137,8 @@ namespace {
     bool __hasAny(
         std::map<unsigned int, std::vector<Blight::partial_input_event_t>>
             events
-    ) {
+    )
+    {
         for (auto& item : events) {
             auto& queue = item.second;
             if (queue.empty()) {
@@ -145,7 +148,8 @@ namespace {
         return false;
     }
 
-    void __readInput() {
+    void __readInput()
+    {
         _INFO("%s", "InputWorker starting");
         prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
         nice(-10);
@@ -202,7 +206,8 @@ namespace {
         _INFO("%s", "InputWorker quitting");
     }
 
-    int __fb_send_update(mxcfb_update_data* update) {
+    int __fb_send_update(mxcfb_update_data* update)
+    {
         _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SEND_UPDATE")
         Blight::ClockWatch cw;
         if (!blightBuffer->surface) {
@@ -231,7 +236,8 @@ namespace {
         return 0;
     }
 
-    int __fb_wait(mxcfb_update_marker_data* update) {
+    int __fb_wait(mxcfb_update_marker_data* update)
+    {
         _DEBUG("%s", "ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE");
         Blight::ClockWatch cw;
         blightConnection->waitForMarker(update->update_marker);
@@ -242,7 +248,8 @@ namespace {
         return 0;
     }
 
-    int __fb_get_vscreeninfo(fb_var_screeninfo* screenInfo) {
+    int __fb_get_vscreeninfo(fb_var_screeninfo* screenInfo)
+    {
         _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_VSCREENINFO");
         screenInfo->xres = blightBuffer->width;
         screenInfo->yres = blightBuffer->height;
@@ -289,7 +296,8 @@ namespace {
         return 0;
     }
 
-    int __fb_get_fscreeninfo(fb_fix_screeninfo* screenInfo) {
+    int __fb_get_fscreeninfo(fb_fix_screeninfo* screenInfo)
+    {
         _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_FSCREENINFO");
         constexpr char fb_id[] = "mxcfb";
         memcpy(screenInfo->id, fb_id, sizeof(fb_id));
@@ -311,7 +319,8 @@ namespace {
         return 0;
     }
 
-    int __fb_put_vscreeninfo(fb_var_screeninfo* screenInfo) {
+    int __fb_put_vscreeninfo(fb_var_screeninfo* screenInfo)
+    {
         _DEBUG("%s", "ioctl /dev/fb0 FBIOPUT_VSCREENINFO");
         // TODO - Explore allowing some screen info updating
         _DEBUG(
@@ -383,7 +392,8 @@ namespace {
         return 0;
     }
 
-    int __fb_ioctl(unsigned long request, char* ptr) {
+    int __fb_ioctl(unsigned long request, char* ptr)
+    {
         switch (request) {
             // Look at linux/fb.h and mxcfb.h for more possible request types
             // https://www.kernel.org/doc/html/latest/fb/api.html
@@ -451,7 +461,8 @@ namespace {
         }
     }
 
-    int __input_ioctlv(int fd, unsigned long request, char* ptr) {
+    int __input_ioctlv(int fd, unsigned long request, char* ptr)
+    {
         switch (request) {
             case EVIOCGRAB:
                 return 0;
@@ -462,13 +473,15 @@ namespace {
         }
     }
 
-    void __realpath(const char* pathname, std::string& path) {
+    void __realpath(const char* pathname, std::string& path)
+    {
         auto absolutepath = realpath(pathname, NULL);
         path = absolutepath;
         free(absolutepath);
     }
 
-    int __open(const char* pathname, int flags) {
+    int __open(const char* pathname, int flags)
+    {
         if (!IS_INITIALIZED) {
             return -2;
         }
@@ -612,9 +625,10 @@ namespace {
         }
         return res;
     }
-}  // namespace
+} // namespace
 namespace swtfb {
-    struct xochitl_data {
+    struct xochitl_data
+    {
         int x1;
         int y1;
         int x2;
@@ -623,539 +637,571 @@ namespace swtfb {
         int waveform;
         int flags;
     };
-    struct wait_sem_data {
+    struct wait_sem_data
+    {
         char sem_name[512];
     };
-    struct swtfb_update {
+    struct swtfb_update
+    {
         long mtype;
-        struct {
-            union {
+        struct
+        {
+            union
+            {
                 xochitl_data xochitl_update;
                 struct mxcfb_update_data update;
                 wait_sem_data wait_update;
             };
         } mdata;
     };
-}  // namespace swtfb
-extern "C" {
-__attribute__((visibility("default"))) int msgget(key_t key, int msgflg) {
-    static const auto func_msgget =
-        (int (*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
-    if (!IS_INITIALIZED || !DO_HANDLE_FB) {
+} // namespace swtfb
+extern "C"
+{
+    __attribute__((visibility("default"))) int msgget(key_t key, int msgflg)
+    {
+        static const auto func_msgget =
+            (int (*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
+        if (!IS_INITIALIZED || !DO_HANDLE_FB) {
+            return func_msgget(key, msgflg);
+        }
+        // Catch rm2fb ipc
+        if (key == 0x2257c) {
+            // inject our own ipc here
+            if (msgq == -1) {
+                msgq = func_msgget(0x2257d, msgflg);
+            }
+            return msgq;
+        }
         return func_msgget(key, msgflg);
     }
-    // Catch rm2fb ipc
-    if (key == 0x2257c) {
-        // inject our own ipc here
-        if (msgq == -1) {
-            msgq = func_msgget(0x2257d, msgflg);
-        }
-        return msgq;
-    }
-    return func_msgget(key, msgflg);
-}
 
-__attribute__((visibility("default"))) int msgsnd(
-    int msqid, const void* msgp, size_t msgsz, int msgflg
-) {
-    static const auto func_msgsnd =
-        (int (*)(int, const void*, size_t, int))dlsym(RTLD_NEXT, "msgsnd");
-    if (!IS_INITIALIZED || !DO_HANDLE_FB) {
+    __attribute__((visibility("default"))) int
+    msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg)
+    {
+        static const auto func_msgsnd =
+            (int (*)(int, const void*, size_t, int))dlsym(RTLD_NEXT, "msgsnd");
+        if (!IS_INITIALIZED || !DO_HANDLE_FB) {
+            return func_msgsnd(msqid, msgp, msgsz, msgflg);
+        }
+        if (msqid == msgq) {
+            if (!blightBuffer->surface) {
+                Blight::addSurface(blightBuffer);
+            }
+            if (!blightBuffer->surface) {
+                _CRIT("Failed to create surface: %s", std::strerror(errno));
+                std::exit(errno);
+                return -1;
+            }
+            _DEBUG("%s", "rm2fb ipc repaint");
+            auto buf = (swtfb::swtfb_update*)msgp;
+            auto region = buf->mdata.update.update_region;
+            blightConnection->repaint(
+                blightBuffer,
+                region.left,
+                region.top,
+                region.width,
+                region.height
+            );
+            return 0;
+        }
         return func_msgsnd(msqid, msgp, msgsz, msgflg);
     }
-    if (msqid == msgq) {
-        if (!blightBuffer->surface) {
-            Blight::addSurface(blightBuffer);
-        }
-        if (!blightBuffer->surface) {
-            _CRIT("Failed to create surface: %s", std::strerror(errno));
-            std::exit(errno);
-            return -1;
-        }
-        _DEBUG("%s", "rm2fb ipc repaint");
-        auto buf = (swtfb::swtfb_update*)msgp;
-        auto region = buf->mdata.update.update_region;
-        blightConnection->repaint(
-            blightBuffer, region.left, region.top, region.width, region.height
-        );
-        return 0;
-    }
-    return func_msgsnd(msqid, msgp, msgsz, msgflg);
-}
 
-__attribute__((visibility("default"))) int _open64(
-    const char* pathname, int flags, ...
-) {
-    static const auto func_open64 =
-        (int (*)(const char*, int, ...))dlsym(RTLD_NEXT, "open64");
-    if (!IS_INITIALIZED) {
-        va_list args;
-        va_start(args, flags);
-        int fd = func_open64(pathname, flags, args);
-        va_end(args);
-        return fd;
-    }
-    _DEBUG("open64 %s", pathname);
-    int fd = __open(pathname, flags);
-    if (fd == -2) {
-        va_list args;
-        va_start(args, flags);
-        fd = func_open64(pathname, flags, args);
-        va_end(args);
-    }
-    _DEBUG("opened %s with fd %d", pathname, fd);
-    return fd;
-}
-__asm__(".symver _open64, open64@GLIBC_2.4");
-
-__attribute__((visibility("default"))) int openat(
-    int dirfd, const char* pathname, int flags, ...
-) {
-    static const auto func_openat =
-        (int (*)(int, const char*, int, ...))dlsym(RTLD_NEXT, "openat");
-    if (!IS_INITIALIZED) {
-        va_list args;
-        va_start(args, flags);
-        int fd = func_openat(dirfd, pathname, flags, args);
-        va_end(args);
-        return fd;
-    }
-    _DEBUG("openat %s", pathname);
-    int fd = __open(pathname, flags);
-    if (fd == -2) {
-        DIR* save = opendir(".");
-        fchdir(dirfd);
-        char path[PATH_MAX + 1];
-        getcwd(path, PATH_MAX);
-        fchdir(::dirfd(save));
-        closedir(save);
-        std::string fullpath(path);
-        fullpath += "/";
-        fullpath += pathname;
-        fd = __open(fullpath.c_str(), flags);
-    }
-    if (fd == -2) {
-        va_list args;
-        va_start(args, flags);
-        fd = func_openat(dirfd, pathname, flags, args);
-        va_end(args);
-    }
-    _DEBUG("opened %s with fd %d", pathname, fd);
-    return fd;
-}
-
-__attribute__((visibility("default"))) int open(
-    const char* pathname, int flags, ...
-) {
-    if (!IS_INITIALIZED) {
-        va_list args;
-        va_start(args, flags);
-        int fd = func_open(pathname, flags, args);
-        ;
-        va_end(args);
-        return fd;
-    }
-    _DEBUG("open %s", pathname);
-    int fd = __open(pathname, flags);
-    if (fd == -2) {
-        va_list args;
-        va_start(args, flags);
-        fd = func_open(pathname, flags, args);
-        va_end(args);
-    }
-    _DEBUG("opened %s with fd %d", pathname, fd);
-    return fd;
-}
-
-__attribute__((visibility("default"))) int close(int fd) {
-    if (IS_INITIALIZED) {
-        _DEBUG("close %d", fd);
-        if (__is_fb(fd)) {
-            // Maybe actually close it?
-            return 0;
-        }
-        if (inputDeviceMap.contains(fd)) {
-            // Maybe actually close it?
-            return 0;
-        }
-    }
-    static const auto func_close = (int (*)(int))dlsym(RTLD_NEXT, "close");
-    return func_close(fd);
-}
-
-__attribute__((visibility("default"))) int ioctl(
-    int fd, unsigned long request, ...
-) {
-    va_list args;
-    va_start(args, request);
-    char* ptr = va_arg(args, char*);
-    if (IS_INITIALIZED) {
-        if (__is_fb(fd)) {
-            int res = __fb_ioctl(request, ptr);
+    __attribute__((visibility("default"))) int
+    _open64(const char* pathname, int flags, ...)
+    {
+        static const auto func_open64 =
+            (int (*)(const char*, int, ...))dlsym(RTLD_NEXT, "open64");
+        if (!IS_INITIALIZED) {
+            va_list args;
+            va_start(args, flags);
+            int fd = func_open64(pathname, flags, args);
             va_end(args);
-            return res;
+            return fd;
         }
-        if (inputDeviceMap.contains(fd)) {
-            int res = __input_ioctlv(inputDeviceMap[fd], request, ptr);
+        _DEBUG("open64 %s", pathname);
+        int fd = __open(pathname, flags);
+        if (fd == -2) {
+            va_list args;
+            va_start(args, flags);
+            fd = func_open64(pathname, flags, args);
             va_end(args);
-            return res;
         }
+        _DEBUG("opened %s with fd %d", pathname, fd);
+        return fd;
     }
-    int res = func_ioctl(fd, request, ptr);
-    va_end(args);
-    return res;
-}
+    __asm__(".symver _open64, open64@GLIBC_2.4");
 
-// __attribute__((visibility("default"))) void* mmap(
-//     void* addr, size_t len, int prot, int flags, int fd, __off_t offset
-// ) {
-//     _DEBUG(
-//         "mmap 0x%u %lld 0x%02x 0x%02x %d %d",
-//         static_cast<int>(reinterpret_cast<std::uintptr_t>(addr)),
-//         len,
-//         prot,
-//         flags,
-//         fd,
-//         offset
-//     );
-//     // if(IS_INITIALIZED && __is_fb(fd)){
-//     //     unsigned long size = len + offset;
-//     //     if(size > blightBuffer->size()){
-//     //         _CRIT(
-//     //             "Requested size + offset is larger than the buffer: %d <%
-//     d +
-//     //             %d", blightBuffer->size(), size, offset
-//     //         );
-//     //         errno = EINVAL;
-//     //         return MAP_FAILED;
-//     //     }
-//     //     return &blightBuffer->data[offset];
-//     // }
-//     return func_mmap(addr, len, prot, flags, fd, offset);
-// }
+    __attribute__((visibility("default"))) int
+    openat(int dirfd, const char* pathname, int flags, ...)
+    {
+        static const auto func_openat =
+            (int (*)(int, const char*, int, ...))dlsym(RTLD_NEXT, "openat");
+        if (!IS_INITIALIZED) {
+            va_list args;
+            va_start(args, flags);
+            int fd = func_openat(dirfd, pathname, flags, args);
+            va_end(args);
+            return fd;
+        }
+        _DEBUG("openat %s", pathname);
+        int fd = __open(pathname, flags);
+        if (fd == -2) {
+            DIR* save = opendir(".");
+            fchdir(dirfd);
+            char path[PATH_MAX + 1];
+            getcwd(path, PATH_MAX);
+            fchdir(::dirfd(save));
+            closedir(save);
+            std::string fullpath(path);
+            fullpath += "/";
+            fullpath += pathname;
+            fd = __open(fullpath.c_str(), flags);
+        }
+        if (fd == -2) {
+            va_list args;
+            va_start(args, flags);
+            fd = func_openat(dirfd, pathname, flags, args);
+            va_end(args);
+        }
+        _DEBUG("opened %s with fd %d", pathname, fd);
+        return fd;
+    }
 
-// __attribute__((visibility("default"))) int munmap(void* addr, size_t len) {
-//     _DEBUG("munmap 0x%u %s", (unsigned)addr, len);
-//     // if(IS_INITIALIZED){
-//     //    // TODO - handle when pointer + len are inside the data
-//     //    if(DO_HANDLE_FB && addr == blightBuffer->data){
-//     //        // Maybe actually close it?
-//     //        return 0;
-//     //    }
-//     // }
-//     static const auto func_munmap =
-//         (int (*)(void*, size_t))dlsym(RTLD_NEXT, "munmap");
-//     return func_munmap(addr, len);
-// }
+    __attribute__((visibility("default"))) int
+    open(const char* pathname, int flags, ...)
+    {
+        if (!IS_INITIALIZED) {
+            va_list args;
+            va_start(args, flags);
+            int fd = func_open(pathname, flags, args);
+            ;
+            va_end(args);
+            return fd;
+        }
+        _DEBUG("open %s", pathname);
+        int fd = __open(pathname, flags);
+        if (fd == -2) {
+            va_list args;
+            va_start(args, flags);
+            fd = func_open(pathname, flags, args);
+            va_end(args);
+        }
+        _DEBUG("opened %s with fd %d", pathname, fd);
+        return fd;
+    }
 
-__attribute__((visibility("default"))) ssize_t
-_write(int fd, const void* buf, size_t n) {
-    if (fd < 3) {
-        // No need to handle stdout/stderr writes
+    __attribute__((visibility("default"))) int close(int fd)
+    {
+        if (IS_INITIALIZED) {
+            _DEBUG("close %d", fd);
+            if (__is_fb(fd)) {
+                // Maybe actually close it?
+                return 0;
+            }
+            if (inputDeviceMap.contains(fd)) {
+                // Maybe actually close it?
+                return 0;
+            }
+        }
+        static const auto func_close = (int (*)(int))dlsym(RTLD_NEXT, "close");
+        return func_close(fd);
+    }
+
+    __attribute__((visibility("default"))) int
+    ioctl(int fd, unsigned long request, ...)
+    {
+        va_list args;
+        va_start(args, request);
+        char* ptr = va_arg(args, char*);
+        if (IS_INITIALIZED) {
+            if (__is_fb(fd)) {
+                int res = __fb_ioctl(request, ptr);
+                va_end(args);
+                return res;
+            }
+            if (inputDeviceMap.contains(fd)) {
+                int res = __input_ioctlv(inputDeviceMap[fd], request, ptr);
+                va_end(args);
+                return res;
+            }
+        }
+        int res = func_ioctl(fd, request, ptr);
+        va_end(args);
+        return res;
+    }
+
+    // __attribute__((visibility("default"))) void* mmap(
+    //     void* addr, size_t len, int prot, int flags, int fd, __off_t offset
+    // ) {
+    //     _DEBUG(
+    //         "mmap 0x%u %lld 0x%02x 0x%02x %d %d",
+    //         static_cast<int>(reinterpret_cast<std::uintptr_t>(addr)),
+    //         len,
+    //         prot,
+    //         flags,
+    //         fd,
+    //         offset
+    //     );
+    //     // if(IS_INITIALIZED && __is_fb(fd)){
+    //     //     unsigned long size = len + offset;
+    //     //     if(size > blightBuffer->size()){
+    //     //         _CRIT(
+    //     //             "Requested size + offset is larger than the buffer: %d
+    //     <% d +
+    //     //             %d", blightBuffer->size(), size, offset
+    //     //         );
+    //     //         errno = EINVAL;
+    //     //         return MAP_FAILED;
+    //     //     }
+    //     //     return &blightBuffer->data[offset];
+    //     // }
+    //     return func_mmap(addr, len, prot, flags, fd, offset);
+    // }
+
+    // __attribute__((visibility("default"))) int munmap(void* addr, size_t len)
+    // {
+    //     _DEBUG("munmap 0x%u %s", (unsigned)addr, len);
+    //     // if(IS_INITIALIZED){
+    //     //    // TODO - handle when pointer + len are inside the data
+    //     //    if(DO_HANDLE_FB && addr == blightBuffer->data){
+    //     //        // Maybe actually close it?
+    //     //        return 0;
+    //     //    }
+    //     // }
+    //     static const auto func_munmap =
+    //         (int (*)(void*, size_t))dlsym(RTLD_NEXT, "munmap");
+    //     return func_munmap(addr, len);
+    // }
+
+    __attribute__((visibility("default"))) ssize_t
+    _write(int fd, const void* buf, size_t n)
+    {
+        if (fd < 3) {
+            // No need to handle stdout/stderr writes
+            return func_write(fd, buf, n);
+        }
+        if (IS_INITIALIZED) {
+            _DEBUG("write %d %zu", fd, n);
+            if (__is_fb(fd)) {
+                auto res = func_write(fd, buf, n);
+                return res;
+            }
+        }
         return func_write(fd, buf, n);
     }
-    if (IS_INITIALIZED) {
-        _DEBUG("write %d %zu", fd, n);
-        if (__is_fb(fd)) {
-            auto res = func_write(fd, buf, n);
-            return res;
-        }
-    }
-    return func_write(fd, buf, n);
-}
-__asm__(".symver _write, write@GLIBC_2.4");
+    __asm__(".symver _write, write@GLIBC_2.4");
 
-__attribute__((visibility("default"))) ssize_t
-_writev(int fd, const iovec* iov, int iovcnt) {
-    if (fd < 3) {
-        // No need to handle stdout/stderr writes
+    __attribute__((visibility("default"))) ssize_t
+    _writev(int fd, const iovec* iov, int iovcnt)
+    {
+        if (fd < 3) {
+            // No need to handle stdout/stderr writes
+            return func_writev(fd, iov, iovcnt);
+        }
+        if (IS_INITIALIZED) {
+            _DEBUG("writev %d %d", fd, iovcnt);
+            if (__is_fb(fd)) {
+                auto res = func_writev(fd, iov, iovcnt);
+                return res;
+            }
+        }
         return func_writev(fd, iov, iovcnt);
     }
-    if (IS_INITIALIZED) {
-        _DEBUG("writev %d %d", fd, iovcnt);
-        if (__is_fb(fd)) {
-            auto res = func_writev(fd, iov, iovcnt);
-            return res;
-        }
-    }
-    return func_writev(fd, iov, iovcnt);
-}
-__asm__(".symver _writev, writev@GLIBC_2.4");
+    __asm__(".symver _writev, writev@GLIBC_2.4");
 
-__attribute__((visibility("default"))) ssize_t
-_writev64(int fd, const iovec* iov, int iovcnt) {
-    if (fd < 3) {
-        // No need to handle stdout/stderr writes
+    __attribute__((visibility("default"))) ssize_t
+    _writev64(int fd, const iovec* iov, int iovcnt)
+    {
+        if (fd < 3) {
+            // No need to handle stdout/stderr writes
+            return func_writev64(fd, iov, iovcnt);
+        }
+        if (IS_INITIALIZED) {
+            _DEBUG("writv64 %d %d", fd, iovcnt);
+            if (__is_fb(fd)) {
+                auto res = func_writev64(fd, iov, iovcnt);
+                return res;
+            }
+        }
         return func_writev64(fd, iov, iovcnt);
     }
-    if (IS_INITIALIZED) {
-        _DEBUG("writv64 %d %d", fd, iovcnt);
-        if (__is_fb(fd)) {
-            auto res = func_writev64(fd, iov, iovcnt);
-            return res;
-        }
-    }
-    return func_writev64(fd, iov, iovcnt);
-}
-__asm__(".symver _writev64, writev64@GLIBC_2.4");
+    __asm__(".symver _writev64, writev64@GLIBC_2.4");
 
-__attribute__((visibility("default"))) ssize_t
-_pwrite(int fd, const void* buf, size_t n, int offset) {
-    if (fd < 3) {
-        // No need to handle stdout/stderr writes
+    __attribute__((visibility("default"))) ssize_t
+    _pwrite(int fd, const void* buf, size_t n, int offset)
+    {
+        if (fd < 3) {
+            // No need to handle stdout/stderr writes
+            return func_pwrite(fd, buf, n, offset);
+        }
+        if (IS_INITIALIZED) {
+            _DEBUG("pwrite %d %zu %d", fd, n, offset);
+            if (__is_fb(fd)) {
+                auto res = func_pwrite(fd, buf, n, offset);
+                return res;
+            }
+        }
         return func_pwrite(fd, buf, n, offset);
     }
-    if (IS_INITIALIZED) {
-        _DEBUG("pwrite %d %zu %d", fd, n, offset);
-        if (__is_fb(fd)) {
-            auto res = func_pwrite(fd, buf, n, offset);
-            return res;
-        }
-    }
-    return func_pwrite(fd, buf, n, offset);
-}
-__asm__(".symver _pwrite, pwrite@GLIBC_2.4");
+    __asm__(".symver _pwrite, pwrite@GLIBC_2.4");
 
-__attribute__((visibility("default"))) ssize_t
-_pwrite64(int fd, const void* buf, size_t n, int offset) {
-    if (fd < 3) {
-        // No need to handle stdout/stderr writes
+    __attribute__((visibility("default"))) ssize_t
+    _pwrite64(int fd, const void* buf, size_t n, int offset)
+    {
+        if (fd < 3) {
+            // No need to handle stdout/stderr writes
+            return func_pwrite64(fd, buf, n, offset);
+        }
+        if (IS_INITIALIZED) {
+            _DEBUG("pwrite64 %d %zu %d", fd, n, offset);
+            if (__is_fb(fd)) {
+                auto res = func_pwrite64(fd, buf, n, offset);
+                return res;
+            }
+        }
         return func_pwrite64(fd, buf, n, offset);
     }
-    if (IS_INITIALIZED) {
-        _DEBUG("pwrite64 %d %zu %d", fd, n, offset);
-        if (__is_fb(fd)) {
-            auto res = func_pwrite64(fd, buf, n, offset);
-            return res;
-        }
-    }
-    return func_pwrite64(fd, buf, n, offset);
-}
-__asm__(".symver _pwrite64, pwrite64@GLIBC_2.4");
+    __asm__(".symver _pwrite64, pwrite64@GLIBC_2.4");
 
-__attribute__((visibility("default"))) ssize_t
-_pwritev(int fd, const iovec* iov, int iovcnt, int offset) {
-    if (fd < 3) {
-        // No need to handle stdout/stderr writes
+    __attribute__((visibility("default"))) ssize_t
+    _pwritev(int fd, const iovec* iov, int iovcnt, int offset)
+    {
+        if (fd < 3) {
+            // No need to handle stdout/stderr writes
+            return func_pwritev(fd, iov, iovcnt, offset);
+        }
+        if (IS_INITIALIZED) {
+            _DEBUG("pwritev %d %d %d", fd, iovcnt, offset);
+            if (__is_fb(fd)) {
+                auto res = func_pwritev(fd, iov, iovcnt, offset);
+                return res;
+            }
+        }
         return func_pwritev(fd, iov, iovcnt, offset);
     }
-    if (IS_INITIALIZED) {
-        _DEBUG("pwritev %d %d %d", fd, iovcnt, offset);
-        if (__is_fb(fd)) {
-            auto res = func_pwritev(fd, iov, iovcnt, offset);
-            return res;
-        }
-    }
-    return func_pwritev(fd, iov, iovcnt, offset);
-}
-__asm__(".symver _pwritev, pwritev@GLIBC_2.4");
+    __asm__(".symver _pwritev, pwritev@GLIBC_2.4");
 
-__attribute__((visibility("default"))) ssize_t
-_pwritev64(int fd, const iovec* iov, int iovcnt, int offset) {
-    if (fd < 3) {
-        // No need to handle stdout/stderr writes
+    __attribute__((visibility("default"))) ssize_t
+    _pwritev64(int fd, const iovec* iov, int iovcnt, int offset)
+    {
+        if (fd < 3) {
+            // No need to handle stdout/stderr writes
+            return func_pwritev64(fd, iov, iovcnt, offset);
+        }
+        if (IS_INITIALIZED) {
+            _DEBUG("pwritev64 %d %d %d", fd, iovcnt, offset);
+            if (__is_fb(fd)) {
+                auto res = func_pwritev64(fd, iov, iovcnt, offset);
+                return res;
+            }
+        }
         return func_pwritev64(fd, iov, iovcnt, offset);
     }
-    if (IS_INITIALIZED) {
-        _DEBUG("pwritev64 %d %d %d", fd, iovcnt, offset);
-        if (__is_fb(fd)) {
-            auto res = func_pwritev64(fd, iov, iovcnt, offset);
-            return res;
-        }
-    }
-    return func_pwritev64(fd, iov, iovcnt, offset);
-}
-__asm__(".symver _pwritev64, pwritev64@GLIBC_2.4");
+    __asm__(".symver _pwritev64, pwritev64@GLIBC_2.4");
 
-__attribute__((visibility("default"))) int setenv(
-    const char* name, const char* value, int overwrite
-) {
-    static const auto orig_setenv =
-        (bool (*)(const char*, const char*, int))dlsym(RTLD_NEXT, "setenv");
-    if (IS_INITIALIZED && getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr) {
-        if (strcmp(name, "QMLSCENE_DEVICE") == 0 ||
-            strcmp(name, "QT_QUICK_BACKEND") == 0 ||
-            strcmp(name, "QT_QPA_PLATFORM") == 0 ||
-            strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0 ||
-            strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0 ||
-            strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0 ||
-            strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0 ||
-            strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0 ||
-            strcmp(name, "QT_PLUGIN_PATH") == 0) {
-            _DEBUG("IGNORED setenv", name, value);
-            return 0;
+    __attribute__((visibility("default"))) int
+    setenv(const char* name, const char* value, int overwrite)
+    {
+        static const auto orig_setenv =
+            (bool (*)(const char*, const char*, int))dlsym(RTLD_NEXT, "setenv");
+        if (IS_INITIALIZED && getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr) {
+            if (strcmp(name, "QMLSCENE_DEVICE") == 0 ||
+                strcmp(name, "QT_QUICK_BACKEND") == 0 ||
+                strcmp(name, "QT_QPA_PLATFORM") == 0 ||
+                strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0 ||
+                strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0 ||
+                strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0 ||
+                strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0 ||
+                strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0 ||
+                strcmp(name, "QT_PLUGIN_PATH") == 0) {
+                _DEBUG("IGNORED setenv", name, value);
+                return 0;
+            }
         }
+        _DEBUG("setenv", name, value);
+        return orig_setenv(name, value, overwrite);
     }
-    _DEBUG("setenv", name, value);
-    return orig_setenv(name, value, overwrite);
-}
 
-__attribute__((visibility("default"))) void _ZN6QImageC1EiiNS_6FormatE(
-    void* data, int width, int height, int format
-) {
-    static bool FIRST_ALLOC = true;
-    static const auto qImageCtor = (void (*)(void*, int, int, int))dlsym(
-        RTLD_NEXT, "_ZN6QImageC1EiiNS_6FormatE"
-    );
-    static const auto qImageCtorWithBuffer = (void (*)(
-        void*, uint8_t*, int32_t, int32_t, int32_t, int, void (*)(void*), void*
-    ))dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
-    if ((unsigned int)width == blightBuffer->width &&
-        (unsigned int)height == blightBuffer->height && FIRST_ALLOC) {
-        _INFO("Replacing image with buffer");
-        FIRST_ALLOC = false;
-        qImageCtorWithBuffer(
-            data,
-            (uint8_t*)blightBuffer->data,
-            blightBuffer->width,
-            blightBuffer->height,
-            blightBuffer->stride,
-            format,
-            nullptr,
-            nullptr
+    __attribute__((visibility("default"))) void
+    _ZN6QImageC1EiiNS_6FormatE(void* data, int width, int height, int format)
+    {
+        static bool FIRST_ALLOC = true;
+        static const auto qImageCtor = (void (*)(void*, int, int, int))dlsym(
+            RTLD_NEXT, "_ZN6QImageC1EiiNS_6FormatE"
         );
-        return;
-    }
-    qImageCtor(data, width, height, format);
-}
-
-void __attribute__((constructor)) init(void);
-void init(void) {
-    func_write = (ssize_t (*)(int, const void*, size_t))dlvsym(
-        RTLD_NEXT, "write", "GLIBC_2.4"
-    );
-    func_writev = (ssize_t (*)(int, const iovec*, int))dlvsym(
-        RTLD_NEXT, "writev", "GLIBC_2.4"
-    );
-    func_writev64 = (ssize_t (*)(int, const iovec*, int))dlvsym(
-        RTLD_NEXT, "writev64", "GLIBC_2.4"
-    );
-    func_pwrite = (ssize_t (*)(int, const void*, size_t, int))dlvsym(
-        RTLD_NEXT, "pwrite", "GLIBC_2.4"
-    );
-    func_pwrite64 = (ssize_t (*)(int, const void*, size_t, int))dlvsym(
-        RTLD_NEXT, "pwrite64", "GLIBC_2.4"
-    );
-    func_pwritev = (ssize_t (*)(int, const iovec*, int, int))dlvsym(
-        RTLD_NEXT, "pwritev", "GLIBC_2.4"
-    );
-    func_pwritev64 = (ssize_t (*)(int, const iovec*, int, int))dlvsym(
-        RTLD_NEXT, "pwritev64", "GLIBC_2.4"
-    );
-    func_open = (int (*)(const char*, int, ...))dlsym(RTLD_NEXT, "open");
-    func_ioctl = (int (*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
-    func_close = (int (*)(int))dlsym(RTLD_NEXT, "close");
-    func_msgget = (int (*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
-    func_mmap = (void* (*)(void*, size_t, int, int, int, __off_t))dlsym(
-        RTLD_NEXT, "mmap"
-    );
-}
-
-static void _libhook_init() __attribute__((constructor));
-static void _libhook_init() {
-    auto debugLevel = getenv("OXIDE_PRELOAD_DEBUG");
-    if (debugLevel != nullptr) {
-        try {
-            BLIGHT_DEBUG_LOGGING = std::stoi(debugLevel);
-        } catch (std::invalid_argument&) {
-        } catch (std::out_of_range&) {
+        static const auto qImageCtorWithBuffer = (void (*)(
+            void*,
+            uint8_t*,
+            int32_t,
+            int32_t,
+            int32_t,
+            int,
+            void (*)(void*),
+            void*
+        ))dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
+        if ((unsigned int)width == blightBuffer->width &&
+            (unsigned int)height == blightBuffer->height && FIRST_ALLOC) {
+            _INFO("Replacing image with buffer");
+            FIRST_ALLOC = false;
+            qImageCtorWithBuffer(
+                data,
+                (uint8_t*)blightBuffer->data,
+                blightBuffer->width,
+                blightBuffer->height,
+                blightBuffer->stride,
+                format,
+                nullptr,
+                nullptr
+            );
+            return;
         }
+        qImageCtor(data, width, height, format);
     }
-    auto batch_size = getenv("OXIDE_INPUT_BATCH_SIZE");
-    if (batch_size != nullptr) {
-        try {
-            INPUT_BATCH_SIZE = std::stoi(batch_size);
-        } catch (std::invalid_argument&) {
-        } catch (std::out_of_range&) {
-        }
-    }
-    std::string path;
-    __realpath("/proc/self/exe", path);
-    if (path != "/usr/bin/xochitl" &&
-        (!path.starts_with("/opt") || path.starts_with("/opt/sbin")) &&
-        (!path.starts_with("/home") ||
-         path.starts_with("/home/root/.entware/sbin"))) {
-        // We ignore this executable
-        BLIGHT_DEBUG_LOGGING = 0;
-        FAILED_INIT = false;
-        return;
-    }
-    if (getenv("OXIDE_PRELOAD_FORCE_RM1") != nullptr) {
-        FAKE_RM1 = true;
-    }
-    DO_HANDLE_FB = getenv("OXIDE_PRELOAD_EXPOSE_FB") == nullptr;
-    _DEBUG("Handle framebuffer: %d", DO_HANDLE_FB);
-    auto pid = getpid();
-    _DEBUG("Connecting %d to blight", pid);
-#ifdef __arm__
-    bool connected = Blight::connect(true);
-#else
-    bool connected = Blight::connect(false);
-#endif
-    if (!connected) {
-        _CRIT(
-            "%s",
-            "Could not connect to display server: %s",
-            std::strerror(errno)
+
+    void __attribute__((constructor)) init(void);
+    void init(void)
+    {
+        func_write = (ssize_t (*)(int, const void*, size_t))dlvsym(
+            RTLD_NEXT, "write", "GLIBC_2.4"
         );
-        std::quick_exit(EXIT_FAILURE);
+        func_writev = (ssize_t (*)(int, const iovec*, int))dlvsym(
+            RTLD_NEXT, "writev", "GLIBC_2.4"
+        );
+        func_writev64 = (ssize_t (*)(int, const iovec*, int))dlvsym(
+            RTLD_NEXT, "writev64", "GLIBC_2.4"
+        );
+        func_pwrite = (ssize_t (*)(int, const void*, size_t, int))dlvsym(
+            RTLD_NEXT, "pwrite", "GLIBC_2.4"
+        );
+        func_pwrite64 = (ssize_t (*)(int, const void*, size_t, int))dlvsym(
+            RTLD_NEXT, "pwrite64", "GLIBC_2.4"
+        );
+        func_pwritev = (ssize_t (*)(int, const iovec*, int, int))dlvsym(
+            RTLD_NEXT, "pwritev", "GLIBC_2.4"
+        );
+        func_pwritev64 = (ssize_t (*)(int, const iovec*, int, int))dlvsym(
+            RTLD_NEXT, "pwritev64", "GLIBC_2.4"
+        );
+        func_open = (int (*)(const char*, int, ...))dlsym(RTLD_NEXT, "open");
+        func_ioctl =
+            (int (*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
+        func_close = (int (*)(int))dlsym(RTLD_NEXT, "close");
+        func_msgget = (int (*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
+        func_mmap = (void* (*)(void*, size_t, int, int, int, __off_t))dlsym(
+            RTLD_NEXT, "mmap"
+        );
     }
-    blightConnection = Blight::connection();
-    if (blightConnection == nullptr) {
-        _WARN("Failed to connect to display server: %s", std::strerror(errno));
-        std::exit(errno);
-    }
-    blightConnection->onDisconnect([](int res) {
-        _WARN("Disconnected from display server: %s", std::strerror(res));
-        // TODO - handle reconnect
-        std::exit(res);
-    });
-    _DEBUG("Connected %d to blight on %d", pid, blightConnection->handle());
-    setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
 
-    std::ios_base::Init i;
-    std::ifstream device_id_file{"/sys/devices/soc0/machine"};
-    std::string device_id;
-    std::getline(device_id_file, device_id);
-    if (device_id == "reMarkable 2.0") {
-        setenv("RM2FB_ACTIVE", "1", true);
-        setenv("RM2FB_SHIM", "1", true);
+    static void _libhook_init() __attribute__((constructor));
+    static void _libhook_init()
+    {
+        auto debugLevel = getenv("OXIDE_PRELOAD_DEBUG");
+        if (debugLevel != nullptr) {
+            try {
+                BLIGHT_DEBUG_LOGGING = std::stoi(debugLevel);
+            } catch (std::invalid_argument&) {
+            } catch (std::out_of_range&) {
+            }
+        }
+        auto batch_size = getenv("OXIDE_INPUT_BATCH_SIZE");
+        if (batch_size != nullptr) {
+            try {
+                INPUT_BATCH_SIZE = std::stoi(batch_size);
+            } catch (std::invalid_argument&) {
+            } catch (std::out_of_range&) {
+            }
+        }
+        std::string path;
+        __realpath("/proc/self/exe", path);
         if (path != "/usr/bin/xochitl" &&
-            getenv("OXIDE_PRELOAD_ALLOW_RM2FB") == nullptr) {
-            setenv("RM2FB_DISABLE", "1", true);
-        } else {
-            unsetenv("RM2FB_DISABLE");
+            (!path.starts_with("/opt") || path.starts_with("/opt/sbin")) &&
+            (!path.starts_with("/home") ||
+             path.starts_with("/home/root/.entware/sbin"))) {
+            // We ignore this executable
+            BLIGHT_DEBUG_LOGGING = 0;
+            FAILED_INIT = false;
+            return;
         }
-    }
-    if (getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr) {
-        setenv("QMLSCENE_DEVICE", "software", 1);
-        setenv("QT_QUICK_BACKEND", "software", 1);
-        setenv("QT_QPA_PLATFORM", "oxide:enable_fonts", 1);
-        setenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", "", 1);
-        setenv("QT_QPA_EVDEV_MOUSE_PARAMETERS", "", 1);
-        setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
-        setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
-    }
-    FAILED_INIT = false;
-    IS_INITIALIZED = true;
-    blightConnection->focused();
-}
+        if (getenv("OXIDE_PRELOAD_FORCE_RM1") != nullptr) {
+            FAKE_RM1 = true;
+        }
+        DO_HANDLE_FB = getenv("OXIDE_PRELOAD_EXPOSE_FB") == nullptr;
+        _DEBUG("Handle framebuffer: %d", DO_HANDLE_FB);
+        auto pid = getpid();
+        _DEBUG("Connecting %d to blight", pid);
+#ifdef __arm__
+        bool connected = Blight::connect(true);
+#else
+        bool connected = Blight::connect(false);
+#endif
+        if (!connected) {
+            _CRIT(
+                "%s",
+                "Could not connect to display server: %s",
+                std::strerror(errno)
+            );
+            std::quick_exit(EXIT_FAILURE);
+        }
+        blightConnection = Blight::connection();
+        if (blightConnection == nullptr) {
+            _WARN(
+                "Failed to connect to display server: %s", std::strerror(errno)
+            );
+            std::exit(errno);
+        }
+        blightConnection->onDisconnect([](int res) {
+            _WARN("Disconnected from display server: %s", std::strerror(res));
+            // TODO - handle reconnect
+            std::exit(res);
+        });
+        _DEBUG("Connected %d to blight on %d", pid, blightConnection->handle());
+        setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
 
-__attribute__((visibility("default"))) int __libc_start_main(
-    int (*_main)(int, char**, char**),
-    int argc,
-    char** argv,
-    int (*init)(int, char**, char**),
-    void (*fini)(void),
-    void (*rtld_fini)(void),
-    void* stack_end
-) {
-    if (FAILED_INIT) {
-        return EXIT_FAILURE;
+        std::ios_base::Init i;
+        std::ifstream device_id_file{ "/sys/devices/soc0/machine" };
+        std::string device_id;
+        std::getline(device_id_file, device_id);
+        if (device_id == "reMarkable 2.0") {
+            setenv("RM2FB_ACTIVE", "1", true);
+            setenv("RM2FB_SHIM", "1", true);
+            if (path != "/usr/bin/xochitl" &&
+                getenv("OXIDE_PRELOAD_ALLOW_RM2FB") == nullptr) {
+                setenv("RM2FB_DISABLE", "1", true);
+            } else {
+                unsetenv("RM2FB_DISABLE");
+            }
+        }
+        if (getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr) {
+            setenv("QMLSCENE_DEVICE", "software", 1);
+            setenv("QT_QUICK_BACKEND", "software", 1);
+            setenv("QT_QPA_PLATFORM", "oxide:enable_fonts", 1);
+            setenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", "", 1);
+            setenv("QT_QPA_EVDEV_MOUSE_PARAMETERS", "", 1);
+            setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
+            setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
+        }
+        FAILED_INIT = false;
+        IS_INITIALIZED = true;
+        blightConnection->focused();
     }
-    auto func_main =
-        (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
-    _DEBUG("Starting main(%d, ...)", argc);
-    return func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
-}
+
+    __attribute__((visibility("default"))) int __libc_start_main(
+        int (*_main)(int, char**, char**),
+        int argc,
+        char** argv,
+        int (*init)(int, char**, char**),
+        void (*fini)(void),
+        void (*rtld_fini)(void),
+        void* stack_end
+    )
+    {
+        if (FAILED_INIT) {
+            return EXIT_FAILURE;
+        }
+        auto func_main =
+            (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
+        _DEBUG("Starting main(%d, ...)", argc);
+        return func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
+    }
 }

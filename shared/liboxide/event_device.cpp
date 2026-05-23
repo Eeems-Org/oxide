@@ -3,9 +3,8 @@
 #include "debug.h"
 
 namespace Oxide {
-    input_event event_device::create_event(
-        ushort type, ushort code, int value
-    ) {
+    input_event event_device::create_event(ushort type, ushort code, int value)
+    {
         struct input_event event;
         event.type = type;
         event.code = code;
@@ -14,28 +13,37 @@ namespace Oxide {
     }
 
     event_device::event_device(const string& path, int flags)
-        : device(path), flags(flags) {
+      : device(path), flags(flags)
+    {
         this->open();
     }
 
     event_device::event_device(const event_device& other)
-        : fd(::dup(other.fd)), device(other.device), flags(other.flags) {}
-    event_device::~event_device() { this->close(); }
+      : fd(::dup(other.fd)), device(other.device), flags(other.flags)
+    {
+    }
+    event_device::~event_device()
+    {
+        this->close();
+    }
 
-    void event_device::open() {
+    void event_device::open()
+    {
         this->close();
         fd = ::open(device.c_str(), flags);
         error = fd < 0 ? errno : 0;
     }
 
-    void event_device::close() {
+    void event_device::close()
+    {
         if (fd > 0) {
             ::close(fd);
         }
         fd = 0;
     }
 
-    int event_device::lock() {
+    int event_device::lock()
+    {
         O_DEBUG("locking " << device.c_str());
         if (ioctl(fd, EVIOCGRAB, 1) == 0) {
             locked = true;
@@ -51,7 +59,8 @@ namespace Oxide {
         return result;
     }
 
-    int event_device::unlock() {
+    int event_device::unlock()
+    {
         int result = ioctl(fd, EVIOCGRAB, 0);
         if (result) {
             O_WARNING("Failed to unlock " << device.c_str() << ": " << result);
@@ -62,7 +71,8 @@ namespace Oxide {
         return result;
     }
 
-    void event_device::write(input_event ie) {
+    void event_device::write(input_event ie)
+    {
         if (fd <= 0) {
             O_WARNING(
                 "Failed to write event to " << device.c_str()
@@ -82,13 +92,16 @@ namespace Oxide {
         }
     }
 
-    void event_device::write(ushort type, ushort code, int value) {
+    void event_device::write(ushort type, ushort code, int value)
+    {
         this->write(create_event(type, code, value));
     }
-    void event_device::ev_syn() {
+    void event_device::ev_syn()
+    {
         this->write(create_event(EV_SYN, SYN_REPORT, 0));
     }
-    void event_device::ev_dropped() {
+    void event_device::ev_dropped()
+    {
         this->write(create_event(EV_SYN, SYN_DROPPED, 0));
     }
-}  // namespace Oxide
+} // namespace Oxide

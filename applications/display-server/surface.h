@@ -11,11 +11,12 @@ class Connection;
 
 #include "../../shared/liboxide/meta.h"
 
-class Surface : public QObject {
+class Surface : public QObject
+{
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
 
-   public:
+  public:
     Surface(
         Connection* connection,
         int fd,
@@ -48,15 +49,15 @@ class Surface : public QObject {
     bool isRemoved();
     void removed();
 
-   signals:
+  signals:
     void update(const QRect& geometry);
 
-   private slots:
+  private slots:
 #ifndef EPAPER
     void activeFocusChanged(bool focus);
 #endif
 
-   private:
+  private:
     Connection* m_connection;
     Blight::surface_id_t m_identifier;
     QRect m_geometry;

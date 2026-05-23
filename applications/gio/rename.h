@@ -7,14 +7,17 @@
 #include "common.h"
 
 // [OPTION...] SOURCE... DESTINATION
-class RenameCommand : ICommand {
+class RenameCommand : ICommand
+{
     O_COMMAND(RenameCommand, "rename", "Renames a file.")
-    int arguments() override {
+    int arguments() override
+    {
         parser->addPositionalArgument("LOCATION", "The location to rename.");
         parser->addPositionalArgument("NAME", "The new name.");
         return EXIT_SUCCESS;
     }
-    int command(const QStringList& args) override {
+    int command(const QStringList& args) override
+    {
         if (args.length() < 2) {
             parser->showHelp(EXIT_FAILURE);
         }

@@ -3,14 +3,15 @@
 #pragma once
 #include "autotest.h"
 
-class test_Json : public QObject {
+class test_Json : public QObject
+{
     Q_OBJECT
 
-   public:
+  public:
     test_Json();
     ~test_Json();
 
-   private slots:
+  private slots:
     void test_decodeDBusArgument();
     void test_sanitizeForJson();
     void test_toJson();

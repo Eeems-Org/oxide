@@ -30,7 +30,7 @@
 #undef __RIGHT_HERE__
 #endif
 #ifdef DEBUG
-#define __RIGHT_HERE__ \
+#define __RIGHT_HERE__                                                         \
     qDebug() << "<============================" << __FILE__ << ":" << __LINE__;
 #else
 #define __RIGHT_HERE__
@@ -41,7 +41,7 @@
  * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and
  * O_EVENT
  */
-#define __DEBUG_LOCATION__ \
+#define __DEBUG_LOCATION__                                                     \
     Oxide::getDebugLocation(__FILE__, __LINE__, __PRETTY_FUNCTION__).c_str()
 /*!
  * \def __DEBUG_APPLICATION_INFO__
@@ -57,10 +57,10 @@
  * \param msg Debug message to log
  */
 #ifdef DEBUG
-#define O_DEBUG(msg)                                              \
-    if (Oxide::debugEnabled()) {                                  \
-        qDebug() << __DEBUG_APPLICATION_INFO__ << "Debug:" << msg \
-                 << __DEBUG_LOCATION__;                           \
+#define O_DEBUG(msg)                                                           \
+    if (Oxide::debugEnabled()) {                                               \
+        qDebug() << __DEBUG_APPLICATION_INFO__ << "Debug:" << msg              \
+                 << __DEBUG_LOCATION__;                                        \
     }
 #else
 #define O_DEBUG(msg)
@@ -70,10 +70,10 @@
  * \brief Log a warning message if debugging is enabled
  * \param msg Warning message to log
  */
-#define O_WARNING(msg)                                                \
-    if (Oxide::debugEnabled()) {                                      \
-        qWarning() << __DEBUG_APPLICATION_INFO__ << "Warning:" << msg \
-                   << __DEBUG_LOCATION__;                             \
+#define O_WARNING(msg)                                                         \
+    if (Oxide::debugEnabled()) {                                               \
+        qWarning() << __DEBUG_APPLICATION_INFO__ << "Warning:" << msg          \
+                   << __DEBUG_LOCATION__;                                      \
     }
 
 /*!
@@ -88,11 +88,11 @@
 #ifdef input_event_usec
 #define input_event_usec time.tv_usec
 #endif
-#define O_EVENT(event)                                                   \
-    O_DEBUG(                                                             \
-        __DEBUG_APPLICATION_INFO__                                       \
-        << event.input_event_sec << event.input_event_usec << event.type \
-        << event.code << event.value << __DEBUG_LOCATION__               \
+#define O_EVENT(event)                                                         \
+    O_DEBUG(                                                                   \
+        __DEBUG_APPLICATION_INFO__                                             \
+        << event.input_event_sec << event.input_event_usec << event.type       \
+        << event.code << event.value << __DEBUG_LOCATION__                     \
     );
 #else
 #define O_EVENT(event)
@@ -102,8 +102,8 @@
  * \brief Log an informational message
  * \param msg Informational message to log
  */
-#define O_INFO(msg)                                         \
-    qInfo() << __DEBUG_APPLICATION_INFO__ << "Info:" << msg \
+#define O_INFO(msg)                                                            \
+    qInfo() << __DEBUG_APPLICATION_INFO__ << "Info:" << msg                    \
             << __DEBUG_LOCATION__;
 
 namespace Oxide {
@@ -124,9 +124,8 @@ namespace Oxide {
      * \param function Function information
      * \return Formatted debug location string
      */
-    LIBOXIDE_EXPORT std::string getDebugLocation(
-        const char* file, unsigned int line, const char* function
-    );
+    LIBOXIDE_EXPORT std::string
+    getDebugLocation(const char* file, unsigned int line, const char* function);
     /*!
      * \brief Return the state of debugging
      * \return Debugging state
@@ -150,5 +149,5 @@ namespace Oxide {
      * \return The current thread name
      */
     LIBOXIDE_EXPORT std::string getThreadName();
-}  // namespace Oxide
+} // namespace Oxide
 /*! @} */

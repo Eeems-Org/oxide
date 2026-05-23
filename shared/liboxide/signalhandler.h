@@ -22,9 +22,10 @@ namespace Oxide {
      * \brief A class that allows handling various signals
      * \snippet examples/oxide.cpp SignalHandler
      */
-    class LIBOXIDE_EXPORT SignalHandler : public QObject {
+    class LIBOXIDE_EXPORT SignalHandler : public QObject
+    {
         Q_OBJECT
-       public:
+      public:
         /*!
          * \brief Setup the unix signal handlers to listen to supported signals
          * \retval SIGTERM Failed to setup SIGTERM
@@ -62,7 +63,7 @@ namespace Oxide {
         ~SignalHandler();
         static void handleSignal(int signal);
 
-       signals:
+      signals:
         /*!
          * \brief The process has recieved a SIGINT
          */
@@ -96,13 +97,14 @@ namespace Oxide {
          */
         void sigBus();
 
-       private:
+      private:
         void addNotifier(int signal, const char* name);
-        struct NotifierItem {
+        struct NotifierItem
+        {
             QLocalSocket* notifier;
             int fd;
         };
         static QMap<int, NotifierItem> notifiers;
     };
-}  // namespace Oxide
+} // namespace Oxide
 /*! @} */

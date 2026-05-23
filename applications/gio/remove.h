@@ -7,16 +7,19 @@
 #include "common.h"
 
 // [OPTION...] SOURCE... DESTINATION
-class RemoveCommand : ICommand {
+class RemoveCommand : ICommand
+{
     O_COMMAND(RemoveCommand, "remove", "Deletes each given file.")
-    int arguments() override {
+    int arguments() override
+    {
         parser->addOption(forceOption);
         parser->addPositionalArgument(
             "LOCATION", "The locations to remove", "LOCATION..."
         );
         return EXIT_SUCCESS;
     }
-    int command(const QStringList& args) override {
+    int command(const QStringList& args) override
+    {
         auto* p = new QProcess();
         p->setInputChannelMode(QProcess::ForwardedInputChannel);
         p->setProcessChannelMode(QProcess::ForwardedChannels);
@@ -62,8 +65,9 @@ class RemoveCommand : ICommand {
         return failed ? EXIT_FAILURE : EXIT_SUCCESS;
     }
 
-   private:
+  private:
     QCommandLineOption forceOption = QCommandLineOption(
-        {"f", "force"}, "Ignore non-existent and non-deletable files."
+        { "f", "force" },
+        "Ignore non-existent and non-deletable files."
     );
 };

@@ -5,7 +5,9 @@
 #include "notificationapi.h"
 #include "systemapi.h"
 
-QDBusObjectPath ScreenAPI::screenshot() {
+QDBusObjectPath
+ScreenAPI::screenshot()
+{
     if (!hasPermission("screen")) {
         return QDBusObjectPath("/");
     }
@@ -51,7 +53,9 @@ QDBusObjectPath ScreenAPI::screenshot() {
     return path;
 }
 
-QDBusObjectPath ScreenAPI::addScreenshot(QByteArray blob) {
+QDBusObjectPath
+ScreenAPI::addScreenshot(QByteArray blob)
+{
     if (!hasPermission("screen")) {
         return QDBusObjectPath("/");
     }
@@ -70,7 +74,9 @@ QDBusObjectPath ScreenAPI::addScreenshot(QByteArray blob) {
     return addScreenshot(filePath)->qPath();
 }
 
-Screenshot* ScreenAPI::addScreenshot(QString filePath) {
+Screenshot*
+ScreenAPI::addScreenshot(QString filePath)
+{
     Screenshot* instance;
     Oxide::Sentry::sentry_transaction(
         "Add Screenshot",
@@ -115,7 +121,9 @@ Screenshot* ScreenAPI::addScreenshot(QString filePath) {
     return instance;
 }
 
-void ScreenAPI::mkdirs(const QString& path, mode_t mode) {
+void
+ScreenAPI::mkdirs(const QString& path, mode_t mode)
+{
     QDir dir(path);
     if (!dir.exists()) {
         QString subpath = "";
@@ -129,11 +137,15 @@ void ScreenAPI::mkdirs(const QString& path, mode_t mode) {
     }
 }
 
-QString ScreenAPI::getTimestamp() {
+QString
+ScreenAPI::getTimestamp()
+{
     return QDateTime::currentDateTime().toString("yyyy-MM-ddThhmmss.zzz");
 }
 
-QString ScreenAPI::getNextPath() {
+QString
+ScreenAPI::getNextPath()
+{
     QString filePath;
     do {
         filePath = "/home/root/screenshots/" + getTimestamp() + ".png";
@@ -141,7 +153,9 @@ QString ScreenAPI::getNextPath() {
     return filePath;
 }
 
-ScreenAPI* ScreenAPI::singleton(ScreenAPI* self) {
+ScreenAPI*
+ScreenAPI::singleton(ScreenAPI* self)
+{
     static ScreenAPI* instance;
     if (self != nullptr) {
         instance = self;
@@ -150,7 +164,8 @@ ScreenAPI* ScreenAPI::singleton(ScreenAPI* self) {
 }
 
 ScreenAPI::ScreenAPI(QObject* parent)
-    : APIBase(parent), m_screenshots(), m_enabled(false) {
+  : APIBase(parent), m_screenshots(), m_enabled(false)
+{
     Oxide::Sentry::sentry_transaction(
         "Screen API Init", "init", [this](Oxide::Sentry::Transaction* t) {
             qDBusRegisterMetaType<QList<double>>();
@@ -175,7 +190,9 @@ ScreenAPI::ScreenAPI(QObject* parent)
     );
 }
 
-void ScreenAPI::setEnabled(bool enabled) {
+void
+ScreenAPI::setEnabled(bool enabled)
+{
     m_enabled = enabled;
     O_INFO("Screen API" << enabled);
     for (auto screenshot : m_screenshots) {
@@ -187,14 +204,18 @@ void ScreenAPI::setEnabled(bool enabled) {
     }
 }
 
-bool ScreenAPI::enabled() {
+bool
+ScreenAPI::enabled()
+{
     if (!hasPermission("screen")) {
         return false;
     }
     return m_enabled;
 }
 
-QList<QDBusObjectPath> ScreenAPI::screenshots() {
+QList<QDBusObjectPath>
+ScreenAPI::screenshots()
+{
     QList<QDBusObjectPath> list;
     if (!hasPermission("screen")) {
         return list;

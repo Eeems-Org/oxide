@@ -16,11 +16,13 @@
 using namespace Oxide;
 
 namespace Oxide {
-    DeviceSettings& DeviceSettings::instance() {
+    DeviceSettings& DeviceSettings::instance()
+    {
         static DeviceSettings INSTANCE;
         return INSTANCE;
     }
-    DeviceSettings::DeviceSettings() : _deviceType(DeviceType::RM1) {
+    DeviceSettings::DeviceSettings() : _deviceType(DeviceType::RM1)
+    {
         readDeviceType();
 
         O_DEBUG("Looking for input devices...");
@@ -86,13 +88,15 @@ namespace Oxide {
         }
     }
     DeviceSettings::~DeviceSettings() {}
-    bool DeviceSettings::checkBitSet(int fd, int type, int i) {
+    bool DeviceSettings::checkBitSet(int fd, int type, int i)
+    {
         unsigned long bit[NBITS(KEY_MAX)];
         ioctl(fd, EVIOCGBIT(type, KEY_MAX), bit);
         return test_bit(i, bit);
     }
 
-    void DeviceSettings::readDeviceType() {
+    void DeviceSettings::readDeviceType()
+    {
         QFile file("/sys/devices/soc0/machine");
         if (!file.exists() ||
             !file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -121,22 +125,27 @@ namespace Oxide {
         _deviceType = DeviceType::RM1;
     }
 
-    DeviceSettings::DeviceType DeviceSettings::getDeviceType() const {
+    DeviceSettings::DeviceType DeviceSettings::getDeviceType() const
+    {
         return _deviceType;
     }
 
-    const char* DeviceSettings::getButtonsDevicePath() const {
+    const char* DeviceSettings::getButtonsDevicePath() const
+    {
         return buttonsPath.c_str();
     }
 
-    const char* DeviceSettings::getWacomDevicePath() const {
+    const char* DeviceSettings::getWacomDevicePath() const
+    {
         return wacomPath.c_str();
     }
 
-    const char* DeviceSettings::getTouchDevicePath() const {
+    const char* DeviceSettings::getTouchDevicePath() const
+    {
         return touchPath.c_str();
     }
-    const char* DeviceSettings::getDeviceName() const {
+    const char* DeviceSettings::getDeviceName() const
+    {
         switch (getDeviceType()) {
             case DeviceType::RM1:
                 return "reMarkable 1";
@@ -151,7 +160,8 @@ namespace Oxide {
         }
     }
 
-    const char* DeviceSettings::getTouchEnvSetting() const {
+    const char* DeviceSettings::getTouchEnvSetting() const
+    {
         switch (getDeviceType()) {
             case DeviceType::RM1:
                 return "rotate=180";
@@ -166,7 +176,8 @@ namespace Oxide {
         }
     }
 
-    int DeviceSettings::getTouchWidth() const {
+    int DeviceSettings::getTouchWidth() const
+    {
         switch (getDeviceType()) {
             case DeviceType::RM1:
                 return 767;
@@ -181,7 +192,8 @@ namespace Oxide {
         }
     }
 
-    int DeviceSettings::getTouchHeight() const {
+    int DeviceSettings::getTouchHeight() const
+    {
         switch (getDeviceType()) {
             case DeviceType::RM1:
                 return 1023;
@@ -196,7 +208,8 @@ namespace Oxide {
         }
     }
 
-    int DeviceSettings::getScreenWidth() const {
+    int DeviceSettings::getScreenWidth() const
+    {
         switch (getDeviceType()) {
             case DeviceType::RM1:
             case DeviceType::RM2:
@@ -210,7 +223,8 @@ namespace Oxide {
         }
     }
 
-    int DeviceSettings::getScreenHeight() const {
+    int DeviceSettings::getScreenHeight() const
+    {
         switch (getDeviceType()) {
             case DeviceType::RM1:
             case DeviceType::RM2:
@@ -224,14 +238,16 @@ namespace Oxide {
         }
     }
 
-    const QStringList DeviceSettings::getLocales() {
+    const QStringList DeviceSettings::getLocales()
+    {
         return execute(
                    "localectl", QStringList() << "list-locales" << "--no-pager"
         )
             .split("\n");
     }
 
-    QString DeviceSettings::getLocale() {
+    QString DeviceSettings::getLocale()
+    {
         QFile file("/etc/locale.conf");
         if (file.open(QFile::ReadOnly)) {
             while (!file.atEnd()) {
@@ -245,19 +261,22 @@ namespace Oxide {
         }
         return qEnvironmentVariable("LANG", "C");
     }
-    void DeviceSettings::setLocale(const QString& locale) {
+    void DeviceSettings::setLocale(const QString& locale)
+    {
         O_DEBUG("Setting locale:" << locale);
         qputenv("LANG", locale.toUtf8());
         QProcess::execute("localectl", QStringList() << "set-locale" << locale);
     }
-    const QStringList DeviceSettings::getTimezones() {
+    const QStringList DeviceSettings::getTimezones()
+    {
         return execute(
                    "timedatectl",
                    QStringList() << "list-timezones" << "--no-pager"
         )
             .split("\n");
     }
-    QString DeviceSettings::getTimezone() {
+    QString DeviceSettings::getTimezone()
+    {
         auto lines =
             execute("timedatectl", QStringList() << "show").split("\n");
         for (auto line : lines) {
@@ -269,13 +288,15 @@ namespace Oxide {
         }
         return "UTC";
     }
-    void DeviceSettings::setTimezone(const QString& timezone) {
+    void DeviceSettings::setTimezone(const QString& timezone)
+    {
         O_DEBUG("Setting timezone:" << timezone);
         QProcess::execute(
             "timedatectl", QStringList() << "set-timezone" << timezone
         );
     }
-    void DeviceSettings::setupQtEnvironment(bool touch) {
+    void DeviceSettings::setupQtEnvironment(bool touch)
+    {
         auto qt_version = qVersion();
         if (strcmp(qt_version, QT_VERSION_STR) != 0) {
             qDebug() << "Version mismatch, Runtime: " << qt_version
@@ -298,13 +319,15 @@ namespace Oxide {
         }
     }
 
-    bool DeviceSettings::keyboardAttached() {
+    bool DeviceSettings::keyboardAttached()
+    {
         return !physicalKeyboards().empty();
     }
 
     void DeviceSettings::onKeyboardAttachedChanged(
         std::function<void()> callback
-    ) {
+    )
+    {
         bool initialValue = keyboardAttached();
         onInputDevicesChanged([this, callback, initialValue] {
             static bool attached = initialValue;
@@ -316,7 +339,8 @@ namespace Oxide {
         });
     }
 
-    QList<event_device> DeviceSettings::inputDevices() {
+    QList<event_device> DeviceSettings::inputDevices()
+    {
         QList<event_device> devices;
         QDir dir("/dev/input");
         for (auto path :
@@ -336,7 +360,8 @@ namespace Oxide {
         return devices;
     }
 
-    void DeviceSettings::onInputDevicesChanged(std::function<void()> callback) {
+    void DeviceSettings::onInputDevicesChanged(std::function<void()> callback)
+    {
         callbacks.push_back(callback);
         auto manager = QGuiApplicationPrivate::inputDeviceManager();
         QObject::connect(
@@ -350,7 +375,8 @@ namespace Oxide {
         );
     }
 
-    QList<event_device> DeviceSettings::keyboards() {
+    QList<event_device> DeviceSettings::keyboards()
+    {
         QList<event_device> keyboards;
         for (auto device : inputDevices()) {
             if (device.device == buttonsPath || device.device == wacomPath ||
@@ -383,7 +409,8 @@ namespace Oxide {
     static QStringList VIRTUAL_KEYBOARD_IDS(
         QStringList() << "0fac:0ade" << "0fac:1ade" << "0000:ffff"
     );
-    QList<event_device> DeviceSettings::physicalKeyboards() {
+    QList<event_device> DeviceSettings::physicalKeyboards()
+    {
         QList<event_device> physicalKeyboards;
         for (auto device : keyboards()) {
             auto name = QFileInfo(device.device.c_str()).baseName();
@@ -397,7 +424,8 @@ namespace Oxide {
         }
         return physicalKeyboards;
     }
-    QList<event_device> DeviceSettings::virtualKeyboards() {
+    QList<event_device> DeviceSettings::virtualKeyboards()
+    {
         QList<event_device> physicalKeyboards;
         for (auto device : keyboards()) {
             auto name = QFileInfo(device.device.c_str()).baseName();
@@ -412,7 +440,8 @@ namespace Oxide {
         return physicalKeyboards;
     }
 
-    const QString& DeviceSettings::version() {
+    const QString& DeviceSettings::version()
+    {
         static QString version;
         static std::once_flag flag;
         std::call_once(flag, [] {
@@ -426,4 +455,4 @@ namespace Oxide {
         });
         return version;
     }
-}  // namespace Oxide
+} // namespace Oxide

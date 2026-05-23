@@ -13,7 +13,9 @@
 
 #include "dbusinterface.h"
 
-EvDevHandler* EvDevHandler::init() {
+EvDevHandler*
+EvDevHandler::init()
+{
     static EvDevHandler* instance;
     if (instance != nullptr) {
         return instance;
@@ -24,7 +26,8 @@ EvDevHandler* EvDevHandler::init() {
     return instance;
 }
 
-EvDevHandler::EvDevHandler() : QThread(), m_clearing{false} {
+EvDevHandler::EvDevHandler() : QThread(), m_clearing{ false }
+{
     setObjectName("EvDevHandler");
     reloadDevices();
     auto deviceDiscovery =
@@ -45,7 +48,9 @@ EvDevHandler::EvDevHandler() : QThread(), m_clearing{false} {
 
 EvDevHandler::~EvDevHandler() {}
 
-void EvDevHandler::clear_buffers() {
+void
+EvDevHandler::clear_buffers()
+{
     m_clearing = true;
     for (auto input : qAsConst(devices)) {
         input->clear_buffer();
@@ -53,7 +58,9 @@ void EvDevHandler::clear_buffers() {
     m_clearing = false;
 }
 
-bool EvDevHandler::hasDevice(event_device device) {
+bool
+EvDevHandler::hasDevice(event_device device)
+{
     for (auto input : qAsConst(devices)) {
         if (device.device.c_str() == input->path()) {
             return true;
@@ -62,7 +69,9 @@ bool EvDevHandler::hasDevice(event_device device) {
     return false;
 }
 
-void EvDevHandler::reloadDevices() {
+void
+EvDevHandler::reloadDevices()
+{
     O_DEBUG("Reloading devices");
     for (auto& device : deviceSettings.inputDevices()) {
         if (!hasDevice(device) && device.fd > 0) {

@@ -21,13 +21,15 @@ namespace Blight {
     static std::atomic<unsigned int> ackid;
     static moodycamel::ConcurrentQueue<ackid_ptr_t> acks;
     ackid_t::ackid_t(unsigned int ackid, unsigned int data_size, data_t data)
-        : ackid(ackid), done(false), data_size(data_size), data(data) {
+      : ackid(ackid), done(false), data_size(data_size), data(data)
+    {
 #ifdef ACK_DEBUG
         _DEBUG("Ack created: %u", ackid);
 #endif
     }
 
-    ackid_t::~ackid_t() {
+    ackid_t::~ackid_t()
+    {
         if (!ackid) {
             return;
         }
@@ -37,7 +39,8 @@ namespace Blight {
         notify_all();
     }
 
-    bool ackid_t::wait(int timeout) {
+    bool ackid_t::wait(int timeout)
+    {
         if (!ackid) {
 #ifdef ACK_DEBUG
             _DEBUG("Can't wait for invalid ack");
@@ -65,7 +68,8 @@ namespace Blight {
         return res;
     }
 
-    void ackid_t::notify_all() {
+    void ackid_t::notify_all()
+    {
 #ifdef ACK_DEBUG
         _DEBUG("Ack notified: %u", ackid);
 #endif
@@ -74,15 +78,17 @@ namespace Blight {
     }
 
     Connection::Connection(int fd)
-        : m_fd(fcntl(fd, F_DUPFD_CLOEXEC, 3)),
-          m_inputFd{-1},
-          stop_requested(false),
-          thread(run, this) {
+      : m_fd(fcntl(fd, F_DUPFD_CLOEXEC, 3))
+      , m_inputFd{ -1 }
+      , stop_requested(false)
+      , thread(run, this)
+    {
         int flags = fcntl(fd, F_GETFD, NULL);
         fcntl(fd, F_SETFD, flags | O_NONBLOCK);
     }
 
-    Connection::~Connection() {
+    Connection::~Connection()
+    {
         stop_requested = true;
         if (thread.joinable()) {
             thread.join();
@@ -90,9 +96,13 @@ namespace Blight {
         ::close(m_fd);
     }
 
-    int Connection::handle() { return m_fd; }
+    int Connection::handle()
+    {
+        return m_fd;
+    }
 
-    int Connection::input_handle() {
+    int Connection::input_handle()
+    {
         if (m_inputFd < 0) {
             m_inputFd = Blight::open_input();
             if (m_inputFd < 0) {
@@ -102,11 +112,13 @@ namespace Blight {
         return m_inputFd;
     }
 
-    void Connection::onDisconnect(std::function<void(int)> callback) {
+    void Connection::onDisconnect(std::function<void(int)> callback)
+    {
         disconnectCallbacks.push_back(callback);
     }
 
-    std::optional<event_packet_t> Connection::read_event() {
+    std::optional<event_packet_t> Connection::read_event()
+    {
         // Use input_handle() since we don't know if it's open yet
         auto fd = input_handle();
         if (fd < 0) {
@@ -126,11 +138,18 @@ namespace Blight {
         return data;
     }
 
-    message_ptr_t Connection::read() { return message_t::from_socket(m_fd); }
+    message_ptr_t Connection::read()
+    {
+        return message_t::from_socket(m_fd);
+    }
 
     maybe_ackid_ptr_t Connection::send(
-        MessageType type, data_t data, size_t size, unsigned int __ackid
-    ) {
+        MessageType type,
+        data_t data,
+        size_t size,
+        unsigned int __ackid
+    )
+    {
         auto _ackid = __ackid ? __ackid : ++ackid;
         auto ack = ackid_ptr_t(new ackid_t(_ackid));
         if (type != MessageType::Ack) {
@@ -145,7 +164,7 @@ namespace Blight {
             _DEBUG("No ack enqueue needed: %u", _ackid);
 #endif
         }
-        header_t header{{.type = type, .ackid = _ackid, .size = size}};
+        header_t header{ { .type = type, .ackid = _ackid, .size = size } };
         [[maybe_unused]] std::lock_guard locker(mutex);
         (void)locker;
         if (!Blight::send_blocking(
@@ -174,7 +193,8 @@ namespace Blight {
         return ack;
     }
 
-    std::optional<std::chrono::duration<double>> Connection::ping(int timeout) {
+    std::optional<std::chrono::duration<double>> Connection::ping(int timeout)
+    {
         ClockWatch cw;
         auto ack = send(MessageType::Ping, nullptr, 0);
         if (!ack.has_value()) {
@@ -190,7 +210,8 @@ namespace Blight {
         return duration;
     }
 
-    void Connection::waitForMarker(unsigned int marker) {
+    void Connection::waitForMarker(unsigned int marker)
+    {
         auto maybe = send(
             MessageType::Wait, reinterpret_cast<data_t>(&marker), sizeof(marker)
         );
@@ -208,12 +229,13 @@ namespace Blight {
         WaveformMode waveform,
         UpdateMode mode,
         unsigned int marker
-    ) {
+    )
+    {
         if (!identifier) {
             errno = EINVAL;
             return {};
         }
-        repaint_t repaint{{
+        repaint_t repaint{ {
             .x = x,
             .y = y,
             .width = width,
@@ -222,7 +244,7 @@ namespace Blight {
             .mode = mode,
             .marker = marker,
             .identifier = identifier,
-        }};
+        } };
         auto ackid =
             send(MessageType::Repaint, (data_t)&repaint, sizeof(repaint));
         if (!ackid.has_value()) {
@@ -231,7 +253,8 @@ namespace Blight {
         return ackid;
     }
 
-    void Connection::move(shared_buf_t buf, int x, int y) {
+    void Connection::move(shared_buf_t buf, int x, int y)
+    {
         auto ack = move(buf->surface, x, y);
         if (ack.has_value()) {
             ack.value()->wait();
@@ -241,8 +264,13 @@ namespace Blight {
     }
 
     std::optional<shared_buf_t> Connection::resize(
-        shared_buf_t buf, int width, int height, int stride, data_t new_data
-    ) {
+        shared_buf_t buf,
+        int width,
+        int height,
+        int stride,
+        data_t new_data
+    )
+    {
         if (!buf->surface) {
             errno = EINVAL;
             return {};
@@ -266,7 +294,8 @@ namespace Blight {
         return buf2;
     }
 
-    maybe_ackid_ptr_t Connection::raise(surface_id_t identifier) {
+    maybe_ackid_ptr_t Connection::raise(surface_id_t identifier)
+    {
         if (!identifier) {
             errno = EINVAL;
             return {};
@@ -276,7 +305,8 @@ namespace Blight {
         );
     }
 
-    maybe_ackid_ptr_t Connection::raise(shared_buf_t buf) {
+    maybe_ackid_ptr_t Connection::raise(shared_buf_t buf)
+    {
         if (buf == nullptr) {
             errno = EINVAL;
             return {};
@@ -284,7 +314,8 @@ namespace Blight {
         return raise(buf->surface);
     }
 
-    maybe_ackid_ptr_t Connection::lower(surface_id_t identifier) {
+    maybe_ackid_ptr_t Connection::lower(surface_id_t identifier)
+    {
         if (!identifier) {
             errno = EINVAL;
             return {};
@@ -294,7 +325,8 @@ namespace Blight {
         );
     }
 
-    maybe_ackid_ptr_t Connection::lower(shared_buf_t buf) {
+    maybe_ackid_ptr_t Connection::lower(shared_buf_t buf)
+    {
         if (buf == nullptr) {
             errno = EINVAL;
             return {};
@@ -302,20 +334,22 @@ namespace Blight {
         return lower(buf->surface);
     }
 
-    maybe_ackid_ptr_t Connection::move(surface_id_t identifier, int x, int y) {
+    maybe_ackid_ptr_t Connection::move(surface_id_t identifier, int x, int y)
+    {
         if (!identifier) {
             errno = EINVAL;
             return {};
         }
-        move_t move{{
+        move_t move{ {
             .identifier = identifier,
             .x = x,
             .y = y,
-        }};
+        } };
         return send(MessageType::Move, (data_t)&move, sizeof(move));
     }
 
-    std::optional<shared_buf_t> Connection::getBuffer(surface_id_t identifier) {
+    std::optional<shared_buf_t> Connection::getBuffer(surface_id_t identifier)
+    {
         if (!identifier) {
             _WARN(
                 "Failed to get buffer for surface %hu: Invalid identifier",
@@ -364,18 +398,16 @@ namespace Blight {
             return {};
         }
         auto info = reinterpret_cast<surface_info_t*>(ack->data.get());
-        auto buf = new buf_t{
-            .fd = fd,
-            .x = info->x,
-            .y = info->y,
-            .width = info->width,
-            .height = info->height,
-            .stride = info->stride,
-            .format = info->format,
-            .data = nullptr,
-            .uuid = "",
-            .surface = identifier
-        };
+        auto buf = new buf_t{ .fd = fd,
+                              .x = info->x,
+                              .y = info->y,
+                              .width = info->width,
+                              .height = info->height,
+                              .stride = info->stride,
+                              .format = info->format,
+                              .data = nullptr,
+                              .uuid = "",
+                              .surface = identifier };
         buf->data = new unsigned char[buf->size()];
         auto res =
             mmap(NULL, buf->size(), PROT_READ, MAP_SHARED_VALIDATE, fd, 0);
@@ -394,7 +426,8 @@ namespace Blight {
         return shared_buf_t(buf);
     }
 
-    std::vector<shared_buf_t> Connection::buffers() {
+    std::vector<shared_buf_t> Connection::buffers()
+    {
         std::vector<shared_buf_t> buffers;
         for (const auto& identifier : surfaces()) {
             auto maybe = getBuffer(identifier);
@@ -409,7 +442,8 @@ namespace Blight {
         return buffers;
     }
 
-    maybe_ackid_ptr_t Connection::remove(shared_buf_t buf) {
+    maybe_ackid_ptr_t Connection::remove(shared_buf_t buf)
+    {
         if (buf == nullptr) {
             return {};
         }
@@ -421,7 +455,8 @@ namespace Blight {
         return ack;
     }
 
-    maybe_ackid_ptr_t Connection::remove(surface_id_t identifier) {
+    maybe_ackid_ptr_t Connection::remove(surface_id_t identifier)
+    {
         if (!identifier) {
             errno = EINVAL;
             return {};
@@ -431,7 +466,8 @@ namespace Blight {
         );
     }
 
-    std::vector<surface_id_t> Connection::surfaces() {
+    std::vector<surface_id_t> Connection::surfaces()
+    {
         auto maybe = send(MessageType::List, nullptr, 0);
         if (!maybe.has_value()) {
             return std::vector<surface_id_t>();
@@ -451,7 +487,8 @@ namespace Blight {
         );
     }
 
-    void Connection::focused() {
+    void Connection::focused()
+    {
         auto maybe = send(MessageType::Focus, nullptr, 0);
         if (!maybe.has_value()) {
             return;
@@ -463,7 +500,8 @@ namespace Blight {
 
     static std::atomic<bool> running = false;
 
-    void Connection::run(Connection* connection) {
+    void Connection::run(Connection* connection)
+    {
         prctl(PR_SET_NAME, "BlightWorker\0", 0, 0, 0);
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
@@ -588,4 +626,4 @@ namespace Blight {
         }
         running = false;
     }
-}  // namespace Blight
+} // namespace Blight

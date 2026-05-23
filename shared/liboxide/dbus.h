@@ -19,52 +19,64 @@ namespace codes::eeems::oxide1 {
     /*!
      * \brief General API interface
      */
-    class General : public QDBusAbstractInterface {};
+    class General : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The Power class
      */
-    class Power : public QDBusAbstractInterface {};
+    class Power : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The Wifi class
      */
-    class Wifi : public QDBusAbstractInterface {};
+    class Wifi : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The Network class
      */
-    class Network : public QDBusAbstractInterface {};
+    class Network : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The BSS class
      */
-    class BSS : public QDBusAbstractInterface {};
+    class BSS : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The Apps class
      */
-    class Apps : public QDBusAbstractInterface {};
+    class Apps : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The Application class
      */
-    class Application : public QDBusAbstractInterface {};
+    class Application : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The System class
      */
-    class System : public QDBusAbstractInterface {};
+    class System : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The Screen class
      */
-    class Screen : public QDBusAbstractInterface {};
+    class Screen : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The Screenshot class
      */
-    class Screenshot : public QDBusAbstractInterface {};
+    class Screenshot : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The Notifications class
      */
-    class Notifications : public QDBusAbstractInterface {};
+    class Notifications : public QDBusAbstractInterface
+    {};
     /*!
      * \brief The Notification class
      */
-    class Notification : public QDBusAbstractInterface {};
-}  // namespace codes::eeems::oxide1
+    class Notification : public QDBusAbstractInterface
+    {};
+} // namespace codes::eeems::oxide1
 #endif
 #include "application_interface.h"
 #include "appsapi_interface.h"
@@ -86,9 +98,10 @@ namespace codes::eeems::blight1 {
     /*!
      * \brief Display server compositor API
      */
-    class Compositor : public QDBusAbstractInterface {};
-}  // namespace codes::eeems::blight1
+    class Compositor : public QDBusAbstractInterface
+    {};
+} // namespace codes::eeems::blight1
 #endif
 #include "blight_interface.h"
-#endif  // LIBOXIDE_DBUS_H
+#endif // LIBOXIDE_DBUS_H
 /*! @} */

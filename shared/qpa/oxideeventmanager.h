@@ -8,21 +8,20 @@
 #include "oxideeventhandler.h"
 #include "private/qdevicediscovery_p.h"
 
-class OxideEventManager : public QObject {
+class OxideEventManager : public QObject
+{
     Q_OBJECT
-   public:
+  public:
     OxideEventManager(const QStringList& parameters);
 
-   private slots:
-    void deviceDetected(
-        QInputDeviceManager::DeviceType type, const QString& device
-    );
-    void deviceRemoved(
-        QInputDeviceManager::DeviceType type, const QString& device
-    );
+  private slots:
+    void
+    deviceDetected(QInputDeviceManager::DeviceType type, const QString& device);
+    void
+    deviceRemoved(QInputDeviceManager::DeviceType type, const QString& device);
     void deviceListChanged(QInputDeviceManager::DeviceType type);
 
-   private:
+  private:
     void setup(
         QDeviceDiscovery::QDeviceTypes privateTypes,
         QInputDeviceManager::DeviceType publicType

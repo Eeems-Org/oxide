@@ -12,7 +12,9 @@ QList<SysObject>* _batteries = nullptr;
 QList<SysObject>* _chargers = nullptr;
 QList<SysObject>* _usbs = nullptr;
 
-void _setup() {
+void
+_setup()
+{
     if (_batteries != nullptr && _chargers != nullptr) {
         return;
     }
@@ -89,14 +91,18 @@ void _setup() {
         O_WARNING("Unable to detect usbs due to unknown device type");
     }
 }
-int _batteryInt(const QString& property) {
+int
+_batteryInt(const QString& property)
+{
     int result = 0;
     for (SysObject battery : *Oxide::Power::batteries()) {
         result += battery.intProperty(property.toStdString());
     }
     return result;
 }
-int _batteryIntMax(const QString& property) {
+int
+_batteryIntMax(const QString& property)
+{
     int result = 0;
     for (SysObject battery : *Oxide::Power::batteries()) {
         int value = battery.intProperty(property.toStdString());
@@ -106,14 +112,18 @@ int _batteryIntMax(const QString& property) {
     }
     return result;
 }
-int _chargerInt(const QString& property) {
+int
+_chargerInt(const QString& property)
+{
     int result = 0;
     for (SysObject charger : *Oxide::Power::chargers()) {
         result += charger.intProperty(property.toStdString());
     }
     return result;
 }
-bool _usbPropIs(const QString& property, const QString& value) {
+bool
+_usbPropIs(const QString& property, const QString& value)
+{
     for (SysObject usb : *Oxide::Power::usbs()) {
         if (usb.uevent().value(property, "") == value) {
             return true;
@@ -121,36 +131,45 @@ bool _usbPropIs(const QString& property, const QString& value) {
     }
     return false;
 }
-static const QSet<QString> _batteryAlertState{
-    "Overheat",
-    "Dead",
-    "Over voltage",
-    "Unspecified failure",
-    "Cold",
-    "Watchdog timer expire",
-    "Safety timer expire",
-    "Over current"
-};
-static const QSet<QString> _batteryWarnState{"Unknown", "Warm", "Cool", "Hot"};
+static const QSet<QString> _batteryAlertState{ "Overheat",
+                                               "Dead",
+                                               "Over voltage",
+                                               "Unspecified failure",
+                                               "Cold",
+                                               "Watchdog timer expire",
+                                               "Safety timer expire",
+                                               "Over current" };
+static const QSet<QString> _batteryWarnState{ "Unknown",
+                                              "Warm",
+                                              "Cool",
+                                              "Hot" };
 
 namespace Oxide::Power {
-    const QList<SysObject>* batteries() {
+    const QList<SysObject>* batteries()
+    {
         _setup();
         return _batteries;
     }
-    const QList<SysObject>* chargers() {
+    const QList<SysObject>* chargers()
+    {
         _setup();
         return _chargers;
     }
-    const QList<SysObject>* usbs() {
+    const QList<SysObject>* usbs()
+    {
         _setup();
         return _usbs;
     }
-    int batteryLevel() {
+    int batteryLevel()
+    {
         return _batteryInt("capacity") / _batteries->length();
     }
-    int batteryTemperature() { return _batteryIntMax("temp") / 10; }
-    bool batteryCharging() {
+    int batteryTemperature()
+    {
+        return _batteryIntMax("temp") / 10;
+    }
+    bool batteryCharging()
+    {
         for (SysObject battery : *Oxide::Power::batteries()) {
             if (battery.strProperty("status") == "Charging") {
                 return true;
@@ -158,8 +177,12 @@ namespace Oxide::Power {
         }
         return false;
     }
-    bool batteryPresent() { return _batteryInt("present"); }
-    QList<QString> batteryWarning() {
+    bool batteryPresent()
+    {
+        return _batteryInt("present");
+    }
+    QList<QString> batteryWarning()
+    {
         QList<QString> warnings;
         for (SysObject battery : *Oxide::Power::batteries()) {
             auto status = battery.strProperty("status");
@@ -176,7 +199,8 @@ namespace Oxide::Power {
         }
         return warnings;
     }
-    QList<QString> batteryAlert() {
+    QList<QString> batteryAlert()
+    {
         QList<QString> alerts;
         for (SysObject battery : *Oxide::Power::batteries()) {
             if (battery.hasProperty("health")) {
@@ -200,9 +224,16 @@ namespace Oxide::Power {
         }
         return alerts;
     }
-    bool batteryHasWarning() { return batteryWarning().length(); }
-    bool batteryHasAlert() { return batteryAlert().length(); }
-    bool chargerConnected() {
+    bool batteryHasWarning()
+    {
+        return batteryWarning().length();
+    }
+    bool batteryHasAlert()
+    {
+        return batteryAlert().length();
+    }
+    bool chargerConnected()
+    {
         if (batteryCharging() || _chargerInt("online")) {
             return true;
         }
@@ -212,4 +243,4 @@ namespace Oxide::Power {
         }
         return _usbPropIs("USB_CHARGER_STATE", "USB_CHARGER_PRESENT");
     }
-}  // namespace Oxide::Power
+} // namespace Oxide::Power

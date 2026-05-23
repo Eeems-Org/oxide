@@ -8,7 +8,9 @@
 
 #include "appsapi.h"
 
-int APIBase::hasPermission(QString permission, const char* sender) {
+int
+APIBase::hasPermission(QString permission, const char* sender)
+{
     if (getpgid(getpid()) == getSenderPgid()) {
         return true;
     }
@@ -28,15 +30,23 @@ int APIBase::hasPermission(QString permission, const char* sender) {
     return true;
 }
 
-int APIBase::getSenderPid() {
+int
+APIBase::getSenderPid()
+{
     if (!calledFromDBus()) {
         return getpid();
     }
     return connection().interface()->servicePid(message().service());
 }
-int APIBase::getSenderPgid() { return getpgid(getSenderPid()); }
+int
+APIBase::getSenderPgid()
+{
+    return getpgid(getSenderPid());
+}
 
-QImage* getFrameBuffer() {
+QImage*
+getFrameBuffer()
+{
     static QImage* image = nullptr;
     static QFile* file = nullptr;
     if (image == nullptr) {
@@ -106,7 +116,9 @@ QImage* getFrameBuffer() {
     return image;
 }
 
-Compositor* getCompositorDBus() {
+Compositor*
+getCompositorDBus()
+{
     static auto compositor = new Compositor(
         BLIGHT_SERVICE,
         "/",
@@ -120,16 +132,18 @@ Compositor* getCompositorDBus() {
     return compositor;
 }
 
-Blight::shared_buf_t createBuffer(
-    const QRect& rect, unsigned int stride, Blight::Format format
-) {
+Blight::shared_buf_t
+createBuffer(const QRect& rect, unsigned int stride, Blight::Format format)
+{
     return Blight::createBuffer(
                rect.x(), rect.y(), rect.width(), rect.height(), stride, format
     )
         .value_or(nullptr);
 }
 
-Blight::shared_buf_t createBuffer() {
+Blight::shared_buf_t
+createBuffer()
+{
     auto frameBuffer = getFrameBuffer();
     return createBuffer(
         frameBuffer->rect(),
@@ -140,7 +154,9 @@ Blight::shared_buf_t createBuffer() {
 
 #include "moc_apibase.cpp"
 
-void addSystemBuffer(Blight::shared_buf_t buffer) {
+void
+addSystemBuffer(Blight::shared_buf_t buffer)
+{
     if (buffer != nullptr) {
         Blight::addSurface(buffer);
         auto compositor = getCompositorDBus();

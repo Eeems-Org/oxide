@@ -24,7 +24,9 @@ const std::string runPath = "/run/oxide";
 const char* pidPath = "/run/oxide/oxide.pid";
 const char* lockPath = "/run/oxide/oxide.lock";
 
-bool stopProcess(pid_t pid) {
+bool
+stopProcess(pid_t pid)
+{
     if (pid <= 1) {
         return false;
     }
@@ -44,7 +46,9 @@ bool stopProcess(pid_t pid) {
     return true;
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
 #ifdef EPAPER
     auto connected = Blight::connect(true);
 #else
@@ -83,7 +87,7 @@ int main(int argc, char* argv[]) {
     parser.applicationDescription();
     parser.addVersionOption();
     QCommandLineOption breakLockOption(
-        {"f", "break-lock"},
+        { "f", "break-lock" },
         "Break existing locks and force startup if another version of tarnish "
         "is already running"
     );

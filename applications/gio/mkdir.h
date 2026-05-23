@@ -7,16 +7,19 @@
 #include "common.h"
 
 // [OPTION...] SOURCE... DESTINATION
-class MkdirCommand : ICommand {
+class MkdirCommand : ICommand
+{
     O_COMMAND(MkdirCommand, "mkdir", "Creates directories.")
-    int arguments() override {
+    int arguments() override
+    {
         parser->addOption(parentOption);
         parser->addPositionalArgument(
             "LOCATION", "The directories to create", "LOCATION..."
         );
         return EXIT_SUCCESS;
     }
-    int command(const QStringList& args) override {
+    int command(const QStringList& args) override
+    {
         auto mkdirArgs = QStringList();
         if (parser->isSet(parentOption)) {
             mkdirArgs.append("-p");
@@ -55,8 +58,9 @@ class MkdirCommand : ICommand {
         return failed ? EXIT_FAILURE : EXIT_SUCCESS;
     }
 
-   private:
+  private:
     QCommandLineOption parentOption = QCommandLineOption(
-        {"p", "parent"}, "Create parent directories when necessary."
+        { "p", "parent" },
+        "Create parent directories when necessary."
     );
 };

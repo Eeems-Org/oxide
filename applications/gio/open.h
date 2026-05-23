@@ -5,15 +5,18 @@
 
 #include "common.h"
 
-class OpenCommand : ICommand {
+class OpenCommand : ICommand
+{
     O_COMMAND(OpenCommand, "open", "Open file(s) with xdg-open")
-    int arguments() override {
+    int arguments() override
+    {
         parser->addPositionalArgument(
             "location", "Locations to open", "LOCATION..."
         );
         return EXIT_SUCCESS;
     }
-    int command(const QStringList& args) override {
+    int command(const QStringList& args) override
+    {
         for (const auto& path : args) {
             auto url = QUrl::fromUserInput(
                 path, QDir::currentPath(), QUrl::AssumeLocalFile

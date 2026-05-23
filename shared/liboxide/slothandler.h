@@ -57,8 +57,9 @@ namespace Oxide {
     /*!
      * \brief A class for handling DBus slots
      */
-    class LIBOXIDE_EXPORT SlotHandler : public QObject {
-       public:
+    class LIBOXIDE_EXPORT SlotHandler : public QObject
+    {
+      public:
         SlotHandler(
             const QString& serviceName,
             QStringList parameters,
@@ -70,7 +71,7 @@ namespace Oxide {
         int qt_metacall(QMetaObject::Call call, int id, void** arguments);
         bool connect(QObject* sender, int methodId);
 
-       private:
+      private:
         QString serviceName;
         QStringList parameters;
         bool once;
@@ -80,5 +81,5 @@ namespace Oxide {
         std::function<void()> callback;
         void handleSlot(QObject* api, void** arguments);
     };
-}  // namespace Oxide
+} // namespace Oxide
 /*! @} */

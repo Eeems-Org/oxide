@@ -27,9 +27,15 @@ using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
 function<void(int)> shutdown_handler;
-void signalHandler2(int signal) { shutdown_handler(signal); }
+void
+signalHandler2(int signal)
+{
+    shutdown_handler(signal);
+}
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     deviceSettings.setupQtEnvironment();
     QGuiApplication app(argc, argv);
     sentry_init("oxide", argv);
@@ -73,7 +79,7 @@ int main(int argc, char* argv[]) {
     QTimer* clockTimer = new QTimer(root);
     auto currentTime = QTime::currentTime();
     QTime nextTime = currentTime.addSecs(60 - currentTime.second());
-    clockTimer->setInterval(currentTime.msecsTo(nextTime));  // nearest minute
+    clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
     QObject::connect(
         clockTimer, &QTimer::timeout, [clock, &clockTimer, controller]() {
             QString text = "";
@@ -84,7 +90,7 @@ int main(int argc, char* argv[]) {
                 "text", text + QTime::currentTime().toString("h:mm a")
             );
             if (clockTimer->interval() != 60 * 1000) {
-                clockTimer->setInterval(60 * 1000);  // 1 minute
+                clockTimer->setInterval(60 * 1000); // 1 minute
             }
         }
     );

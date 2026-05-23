@@ -20,13 +20,17 @@ using namespace Oxide::Applications;
 
 const event_device touchScreen(deviceSettings.getTouchDevicePath(), O_WRONLY);
 
-void Application::launch() {
+void
+Application::launch()
+{
     if (!hasPermission("apps")) {
         return;
     }
     launchNoSecurityCheck();
 }
-void Application::launchNoSecurityCheck() {
+void
+Application::launchNoSecurityCheck()
+{
     if (m_process->processId()) {
         resumeNoSecurityCheck();
     } else {
@@ -138,13 +142,17 @@ void Application::launchNoSecurityCheck() {
         );
     }
 }
-void Application::pause(bool startIfNone) {
+void
+Application::pause(bool startIfNone)
+{
     if (!hasPermission("apps")) {
         return;
     }
     pauseNoSecurityCheck(startIfNone);
 }
-void Application::pauseNoSecurityCheck(bool startIfNone) {
+void
+Application::pauseNoSecurityCheck(bool startIfNone)
+{
     if (!m_process->processId() || stateNoSecurityCheck() == Paused ||
         type() == Background) {
         return;
@@ -173,7 +181,9 @@ void Application::pauseNoSecurityCheck(bool startIfNone) {
     );
     O_INFO("Paused " << path());
 }
-void Application::interruptApplication() {
+void
+Application::interruptApplication()
+{
     if (!m_process->processId() || stateNoSecurityCheck() == Paused ||
         type() == Background) {
         return;
@@ -250,14 +260,18 @@ void Application::interruptApplication() {
         }
     );
 }
-void Application::waitForPause() {
+void
+Application::waitForPause()
+{
     if (stateNoSecurityCheck() == Paused) {
         return;
     }
     siginfo_t info;
     waitid(P_PID, m_process->processId(), &info, WSTOPPED);
 }
-void Application::waitForResume() {
+void
+Application::waitForResume()
+{
     if (stateNoSecurityCheck() != Paused) {
         return;
     }
@@ -265,20 +279,34 @@ void Application::waitForResume() {
     waitid(P_PID, m_process->processId(), &info, WCONTINUED);
 }
 
-QString Application::id() {
+QString
+Application::id()
+{
     return QString("connection/%1").arg(m_process->processId());
 }
 
-void Application::sigUsr1() { timer.invalidate(); }
+void
+Application::sigUsr1()
+{
+    timer.invalidate();
+}
 
-void Application::sigUsr2() { timer.invalidate(); }
-void Application::resume() {
+void
+Application::sigUsr2()
+{
+    timer.invalidate();
+}
+void
+Application::resume()
+{
     if (!hasPermission("apps")) {
         return;
     }
     resumeNoSecurityCheck();
 }
-void Application::resumeNoSecurityCheck() {
+void
+Application::resumeNoSecurityCheck()
+{
     if (!m_process->processId() || stateNoSecurityCheck() == InForeground ||
         (type() == Background && stateNoSecurityCheck() == InBackground)) {
         O_DEBUG("Can't Resume" << path() << "Already running!");
@@ -306,7 +334,9 @@ void Application::resumeNoSecurityCheck() {
     );
     O_INFO("Resumed " << path());
 }
-void Application::uninterruptApplication() {
+void
+Application::uninterruptApplication()
+{
     if (!m_process->processId() || stateNoSecurityCheck() == InForeground ||
         (type() == Background && stateNoSecurityCheck() == InBackground)) {
         return;
@@ -392,13 +422,17 @@ void Application::uninterruptApplication() {
     compositor->raise(id());
     compositor->focus(id());
 }
-void Application::stop() {
+void
+Application::stop()
+{
     if (!hasPermission("apps")) {
         return;
     }
     stopNoSecurityCheck();
 }
-void Application::stopNoSecurityCheck() {
+void
+Application::stopNoSecurityCheck()
+{
     auto state = this->stateNoSecurityCheck();
     if (state == Inactive) {
         return;
@@ -482,31 +516,43 @@ void Application::stopNoSecurityCheck() {
         }
     );
 }
-void Application::signal(int signal) {
+void
+Application::signal(int signal)
+{
     if (m_process->processId()) {
         kill(-m_process->processId(), signal);
     }
 }
 
-QVariant Application::value(QString name, QVariant defaultValue) {
+QVariant
+Application::value(QString name, QVariant defaultValue)
+{
     return m_config.value(name, defaultValue);
 }
 
-void Application::setValue(QString name, QVariant value) {
+void
+Application::setValue(QString name, QVariant value)
+{
     m_config[name] = value;
 }
-void Application::unregister() {
+void
+Application::unregister()
+{
     if (!hasPermission("apps")) {
         return;
     }
     unregisterNoSecurityCheck();
 }
-void Application::unregisterNoSecurityCheck() {
+void
+Application::unregisterNoSecurityCheck()
+{
     emit unregistered();
     appsAPI->unregisterApplication(this);
 }
 
-int Application::stateNoSecurityCheck() {
+int
+Application::stateNoSecurityCheck()
+{
     switch (m_process->state()) {
         case QProcess::Starting:
         case QProcess::Running: {
@@ -532,7 +578,9 @@ int Application::stateNoSecurityCheck() {
     }
 }
 
-QString Application::icon() {
+QString
+Application::icon()
+{
     auto _icon = value("icon", "").toString();
     if (_icon.isEmpty() || !_icon.contains("-") || QFile::exists(_icon)) {
         return _icon;
@@ -544,7 +592,9 @@ QString Application::icon() {
     return path;
 }
 
-void Application::setIcon(QString icon) {
+void
+Application::setIcon(QString icon)
+{
     if (!hasPermission("permissions")) {
         return;
     }
@@ -552,11 +602,15 @@ void Application::setIcon(QString icon) {
     emit iconChanged(this->icon());
 }
 
-QVariantMap Application::environment() {
+QVariantMap
+Application::environment()
+{
     return value("environment", QVariantMap()).toMap();
 }
 
-void Application::setEnvironment(QVariantMap environment) {
+void
+Application::setEnvironment(QVariantMap environment)
+{
     if (!hasPermission("permissions")) {
         return;
     }
@@ -572,11 +626,15 @@ void Application::setEnvironment(QVariantMap environment) {
     emit environmentChanged(environment);
 }
 
-QString Application::workingDirectory() {
+QString
+Application::workingDirectory()
+{
     return value("workingDirectory", "/").toString();
 }
 
-void Application::setWorkingDirectory(const QString& workingDirectory) {
+void
+Application::setWorkingDirectory(const QString& workingDirectory)
+{
     if (!hasPermission("permissions")) {
         return;
     }
@@ -588,12 +646,26 @@ void Application::setWorkingDirectory(const QString& workingDirectory) {
     emit workingDirectoryChanged(workingDirectory);
 }
 
-QString Application::user() { return value("user", getuid()).toString(); }
+QString
+Application::user()
+{
+    return value("user", getuid()).toString();
+}
 
-QString Application::group() { return value("group", getgid()).toString(); }
+QString
+Application::group()
+{
+    return value("group", getgid()).toString();
+}
 
-const QVariantMap& Application::getConfig() { return m_config; }
-void Application::setConfig(const QVariantMap& config) {
+const QVariantMap&
+Application::getConfig()
+{
+    return m_config;
+}
+void
+Application::setConfig(const QVariantMap& config)
+{
     auto oldBin = bin();
     m_config = config;
     if (type() == Foreground) {
@@ -606,7 +678,9 @@ void Application::setConfig(const QVariantMap& config) {
         setValue("bin", oldBin);
     }
 }
-void Application::started() {
+void
+Application::started()
+{
     if (m_notification != nullptr) {
         m_notification->remove();
         m_notification = nullptr;
@@ -614,7 +688,9 @@ void Application::started() {
     emit launched();
     emit appsAPI->applicationLaunched(qPath());
 }
-void Application::finished(int exitCode) {
+void
+Application::finished(int exitCode)
+{
     O_INFO("Application" << name() << "exit code" << exitCode);
     getCompositorDBus()->lower(
         QString("connection/%1").arg(m_process->processId())
@@ -647,7 +723,9 @@ void Application::finished(int exitCode) {
     }
 }
 
-void Application::readyReadStandardError() {
+void
+Application::readyReadStandardError()
+{
     QString error = m_process->readAllStandardError();
     if (p_stderr != nullptr) {
         *p_stderr << error.toStdString().c_str();
@@ -667,7 +745,9 @@ void Application::readyReadStandardError() {
     }
 }
 
-void Application::readyReadStandardOutput() {
+void
+Application::readyReadStandardOutput()
+{
     QString output = m_process->readAllStandardOutput();
     if (p_stdout != nullptr) {
         *p_stdout << output.toStdString().c_str();
@@ -687,7 +767,9 @@ void Application::readyReadStandardOutput() {
     }
 }
 
-void Application::stateChanged(QProcess::ProcessState state) {
+void
+Application::stateChanged(QProcess::ProcessState state)
+{
     switch (state) {
         case QProcess::Starting:
             O_INFO("Application" << name() << "is starting.");
@@ -714,7 +796,9 @@ void Application::stateChanged(QProcess::ProcessState state) {
             O_WARNING("Application" << name() << "unknown state" << state);
     }
 }
-void Application::errorOccurred(QProcess::ProcessError error) {
+void
+Application::errorOccurred(QProcess::ProcessError error)
+{
     switch (error) {
         case QProcess::FailedToStart: {
             O_INFO("Application" << name() << "failed to start.");
@@ -734,7 +818,7 @@ void Application::errorOccurred(QProcess::ProcessError error) {
             }
             break;
         }
-        case QProcess::Crashed:  // Let the finished slot handle this
+        case QProcess::Crashed: // Let the finished slot handle this
             O_INFO("Application" << name() << "crashed.");
             break;
         case QProcess::Timedout:
@@ -754,11 +838,15 @@ void Application::errorOccurred(QProcess::ProcessError error) {
             O_WARNING("Application" << name() << "unknown error.");
     }
 }
-bool Application::hasPermission(QString permission, const char* sender) {
+bool
+Application::hasPermission(QString permission, const char* sender)
+{
     return appsAPI->hasPermission(permission, sender);
 }
 
-void Application::delayUpTo(int milliseconds) {
+void
+Application::delayUpTo(int milliseconds)
+{
     timer.invalidate();
     timer.start();
     while (timer.isValid() && !timer.hasExpired(milliseconds)) {
@@ -766,7 +854,9 @@ void Application::delayUpTo(int milliseconds) {
     }
 }
 
-void Application::updateEnvironment() {
+void
+Application::updateEnvironment()
+{
     auto env = QProcessEnvironment::systemEnvironment();
     auto envPath = env.value("PATH", DEFAULT_PATH).split(":");
     auto defaults = QString(DEFAULT_PATH).split(":");
@@ -806,7 +896,9 @@ void Application::updateEnvironment() {
     m_process->setEnvironment(env.toStringList());
 }
 
-void Application::startSpan(std::string operation, std::string description) {
+void
+Application::startSpan(std::string operation, std::string description)
+{
     if (!sharedSettings.applicationUsage()) {
         return;
     }
@@ -821,13 +913,16 @@ void Application::startSpan(std::string operation, std::string description) {
     span = Oxide::Sentry::start_span(transaction, operation, description);
 }
 
-void Application::waitForFinished() {
+void
+Application::waitForFinished()
+{
     if (m_process->processId()) {
         m_process->waitForFinished();
     }
 }
 Application::Application(QString path, QObject* parent)
-    : QObject(parent), m_path(path), m_backgrounded(false) {
+  : QObject(parent), m_path(path), m_backgrounded(false)
+{
     m_process = new ApplicationProcess(this);
     connect(
         m_process, &ApplicationProcess::started, this, &Application::started
@@ -865,7 +960,8 @@ Application::Application(QString path, QObject* parent)
         &Application::errorOccurred
     );
 }
-Application::~Application() {
+Application::~Application()
+{
     stopNoSecurityCheck();
     unregisterPath();
     if (m_screenCapture != nullptr) {
@@ -888,7 +984,9 @@ Application::~Application() {
         p_stderr_fd = -1;
     }
 }
-void Application::registerPath() {
+void
+Application::registerPath()
+{
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
     if (bus.registerObject(path(), this, QDBusConnection::ExportAllContents)) {
@@ -897,60 +995,110 @@ void Application::registerPath() {
         O_WARNING("Failed to register" << path());
     }
 }
-void Application::unregisterPath() {
+void
+Application::unregisterPath()
+{
     auto bus = QDBusConnection::systemBus();
     if (bus.objectRegisteredAt(path()) != nullptr) {
         O_INFO("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }
-QDBusObjectPath Application::qPath() { return QDBusObjectPath(path()); }
-QString Application::path() { return m_path; }
-QString Application::name() { return value("name").toString(); }
-int Application::processId() { return m_process->processId(); }
-QStringList Application::permissions() {
+QDBusObjectPath
+Application::qPath()
+{
+    return QDBusObjectPath(path());
+}
+QString
+Application::path()
+{
+    return m_path;
+}
+QString
+Application::name()
+{
+    return value("name").toString();
+}
+int
+Application::processId()
+{
+    return m_process->processId();
+}
+QStringList
+Application::permissions()
+{
     return value("permissions", QStringList()).toStringList();
 }
-void Application::setPermissions(QStringList permissions) {
+void
+Application::setPermissions(QStringList permissions)
+{
     if (!hasPermission("permissions")) {
         return;
     }
     setValue("permissions", permissions);
     emit permissionsChanged(permissions);
 }
-QString Application::displayName() {
+QString
+Application::displayName()
+{
     return value("displayName", name()).toString();
 }
-void Application::setDisplayName(QString displayName) {
+void
+Application::setDisplayName(QString displayName)
+{
     if (!hasPermission("permissions")) {
         return;
     }
     setValue("displayName", displayName);
     emit displayNameChanged(displayName);
 }
-QString Application::description() {
+QString
+Application::description()
+{
     return value("description", displayName()).toString();
 }
 
-QString Application::bin() { return value("bin").toString(); }
-QString Application::onPause() { return value("onPause", "").toString(); }
-void Application::setOnPause(QString onPause) {
+QString
+Application::bin()
+{
+    return value("bin").toString();
+}
+QString
+Application::onPause()
+{
+    return value("onPause", "").toString();
+}
+void
+Application::setOnPause(QString onPause)
+{
     if (!hasPermission("permissions")) {
         return;
     }
     setValue("onPause", onPause);
     emit onPauseChanged(onPause);
 }
-QString Application::onResume() { return value("onResume", "").toString(); }
-void Application::setOnResume(QString onResume) {
+QString
+Application::onResume()
+{
+    return value("onResume", "").toString();
+}
+void
+Application::setOnResume(QString onResume)
+{
     if (!hasPermission("permissions")) {
         return;
     }
     setValue("onResume", onResume);
     emit onResumeChanged(onResume);
 }
-QString Application::onStop() { return value("onStop", "").toString(); }
-void Application::setOnStop(QString onStop) {
+QString
+Application::onStop()
+{
+    return value("onStop", "").toString();
+}
+void
+Application::setOnStop(QString onStop)
+{
     if (!hasPermission("permissions")) {
         return;
     }
@@ -958,13 +1106,21 @@ void Application::setOnStop(QString onStop) {
     emit onStopChanged(onStop);
 }
 
-QStringList Application::flags() {
+QStringList
+Application::flags()
+{
     return value("flags", QStringList()).toStringList();
 }
 
-bool Application::autoStart() { return flags().contains("autoStart"); }
+bool
+Application::autoStart()
+{
+    return flags().contains("autoStart");
+}
 
-void Application::setAutoStart(bool autoStart) {
+void
+Application::setAutoStart(bool autoStart)
+{
     if (!hasPermission("permissions")) {
         return;
     }
@@ -977,15 +1133,33 @@ void Application::setAutoStart(bool autoStart) {
     }
 }
 
-bool Application::systemApp() { return flags().contains("system"); }
+bool
+Application::systemApp()
+{
+    return flags().contains("system");
+}
 
-bool Application::transient() { return flags().contains("transient"); }
+bool
+Application::transient()
+{
+    return flags().contains("transient");
+}
 
-bool Application::hidden() { return flags().contains("hidden"); }
+bool
+Application::hidden()
+{
+    return flags().contains("hidden");
+}
 
-int Application::type() { return (int)value("type", 0).toInt(); }
+int
+Application::type()
+{
+    return (int)value("type", 0).toInt();
+}
 
-int Application::state() {
+int
+Application::state()
+{
     if (!hasPermission("apps")) {
         return Inactive;
     }
@@ -993,7 +1167,8 @@ int Application::state() {
 }
 
 ApplicationProcess::ApplicationProcess(QObject* parent)
-    : QProcess(parent), m_gid(0), m_uid(0), m_mask(0) {
+  : QProcess(parent), m_gid(0), m_uid(0), m_mask(0)
+{
     setChildProcessModifier([this] {
         // Drop all privileges in the child process
         setgroups(0, 0);
@@ -1006,7 +1181,9 @@ ApplicationProcess::ApplicationProcess(QObject* parent)
     });
 }
 
-bool ApplicationProcess::setUser(const QString& name) {
+bool
+ApplicationProcess::setUser(const QString& name)
+{
     try {
         m_uid = Oxide::getUID(name);
         return true;
@@ -1015,7 +1192,9 @@ bool ApplicationProcess::setUser(const QString& name) {
     }
 }
 
-bool ApplicationProcess::setGroup(const QString& name) {
+bool
+ApplicationProcess::setGroup(const QString& name)
+{
     try {
         m_gid = Oxide::getGID(name);
         return true;
@@ -1024,6 +1203,10 @@ bool ApplicationProcess::setGroup(const QString& name) {
     }
 }
 
-void ApplicationProcess::setMask(mode_t mask) { m_mask = mask; }
+void
+ApplicationProcess::setMask(mode_t mask)
+{
+    m_mask = mask;
+}
 
 #include "moc_application.cpp"

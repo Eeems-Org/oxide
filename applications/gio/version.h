@@ -5,7 +5,8 @@
 
 #include "common.h"
 
-class VersionCommand : ICommand {
+class VersionCommand : ICommand
+{
     O_COMMAND(
         VersionCommand,
         "version",
@@ -13,7 +14,8 @@ class VersionCommand : ICommand {
         true
     )
     int arguments() override { return EXIT_SUCCESS; }
-    int command(const QStringList& args) override {
+    int command(const QStringList& args) override
+    {
         if (!args.isEmpty()) {
             parser->showHelp(EXIT_FAILURE);
         }

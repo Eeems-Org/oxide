@@ -26,41 +26,37 @@ QCommandLineOption setGenericNameOption(
     "name will be removed.",
     "GENERIC-NAME"
 );
-QCommandLineOption copyGenericNameToNameOption(
-    "copy-generic-name-to-name", "NOT IMPLEMENTED"
-);
-QCommandLineOption setCommentOption(
-    "set-comment", "NOT IMPLEMENTED", "COMMENT"
-);
+QCommandLineOption
+    copyGenericNameToNameOption("copy-generic-name-to-name", "NOT IMPLEMENTED");
+QCommandLineOption
+    setCommentOption("set-comment", "NOT IMPLEMENTED", "COMMENT");
 QCommandLineOption setIconOption(
     "set-icon",
     "Set the icon (key Icon) to ICON. If an icon was already set, it will be "
     "overridden. Localizations of the old icon will be removed.",
     "ICON"
 );
-QCommandLineOption addCategoryOption(
-    "add-category", "NOT IMPLEMENTED", "CATEGORY"
-);
-QCommandLineOption removeCategoryOption(
-    "remove-category", "NOT IMPLEMENTED", "CATEGORY"
-);
-QCommandLineOption addMimeTypeOption(
-    "add-mime-type", "NOT IMPLEMENTED", "MIME-TYPE"
-);
-QCommandLineOption removeMimeTypeOption(
-    "remove-mime-type", "NOT IMPLEMENTED", "MIME-TYPE"
-);
-QCommandLineOption addOnlyShowInOption(
-    "add-only-show-in", "NOT IMPLEMENTED", "ENVIRONMENT"
-);
+QCommandLineOption
+    addCategoryOption("add-category", "NOT IMPLEMENTED", "CATEGORY");
+QCommandLineOption
+    removeCategoryOption("remove-category", "NOT IMPLEMENTED", "CATEGORY");
+QCommandLineOption
+    addMimeTypeOption("add-mime-type", "NOT IMPLEMENTED", "MIME-TYPE");
+QCommandLineOption
+    removeMimeTypeOption("remove-mime-type", "NOT IMPLEMENTED", "MIME-TYPE");
+QCommandLineOption
+    addOnlyShowInOption("add-only-show-in", "NOT IMPLEMENTED", "ENVIRONMENT");
 QCommandLineOption removeOnlyShowInOption(
-    "remove-only-show-in", "NOT IMPLEMENTED", "ENVIRONMENT"
+    "remove-only-show-in",
+    "NOT IMPLEMENTED",
+    "ENVIRONMENT"
 );
-QCommandLineOption addNotShowInOption(
-    "add-not-show-in", "NOT IMPLEMENTED", "ENVIRONMENT"
-);
+QCommandLineOption
+    addNotShowInOption("add-not-show-in", "NOT IMPLEMENTED", "ENVIRONMENT");
 QCommandLineOption removeNotShowInOption(
-    "remove-not-show-in", "NOT IMPLEMENTED", "ENVIRONMENT"
+    "remove-not-show-in",
+    "NOT IMPLEMENTED",
+    "ENVIRONMENT"
 );
 QCommandLineOption removeKeyOption(
     "remove-key",
@@ -68,7 +64,9 @@ QCommandLineOption removeKeyOption(
     "KEY"
 );
 
-void addEditOptions(QCommandLineParser& parser) {
+void
+addEditOptions(QCommandLineParser& parser)
+{
     parser.addOption(setKeyOption);
     parser.addOption(setValueOption);
     parser.addOption(setNameOption);
@@ -88,7 +86,9 @@ void addEditOptions(QCommandLineParser& parser) {
     parser.addOption(removeKeyOption);
 }
 
-bool validateSetKeyValueOptions(QCommandLineParser& parser) {
+bool
+validateSetKeyValueOptions(QCommandLineParser& parser)
+{
     auto options = parser.optionNames();
     if (parser.isSet(setKeyOption) || parser.isSet(setValueOption)) {
         for (int i = 0; i < options.length(); i++) {
@@ -115,9 +115,9 @@ bool validateSetKeyValueOptions(QCommandLineParser& parser) {
     return true;
 }
 
-void applyChanges(
-    QCommandLineParser& parser, QJsonObject& reg, const QString& name
-) {
+void
+applyChanges(QCommandLineParser& parser, QJsonObject& reg, const QString& name)
+{
     int removeIndex = 0;
     int keyIndex = 0;
     int genericNameIndex = 0;

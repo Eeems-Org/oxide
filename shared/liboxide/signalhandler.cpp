@@ -12,15 +12,16 @@
 static bool initialized = false;
 
 namespace Oxide {
-    int SignalHandler::setup_unix_signal_handlers() {
+    int SignalHandler::setup_unix_signal_handlers()
+    {
         struct sigaction action;
         action.sa_handler = SignalHandler::handleSignal;
         sigemptyset(&action.sa_mask);
         action.sa_flags = 0;
         action.sa_flags |= SA_RESTART;
-#define _sigaction(signal)               \
-    if (sigaction(signal, &action, 0)) { \
-        return signal;                   \
+#define _sigaction(signal)                                                     \
+    if (sigaction(signal, &action, 0)) {                                       \
+        return signal;                                                         \
     }
         _sigaction(SIGTERM);
         _sigaction(SIGINT);
@@ -34,7 +35,8 @@ namespace Oxide {
         initialized = true;
         return 0;
     }
-    SignalHandler* SignalHandler::__singleton() {
+    SignalHandler* SignalHandler::__singleton()
+    {
         static SignalHandler* instance;
         if (instance == nullptr) {
             instance = new SignalHandler(qApp);
@@ -50,7 +52,8 @@ namespace Oxide {
         }
         return instance;
     }
-    SignalHandler::SignalHandler(QObject* parent) : QObject(parent) {
+    SignalHandler::SignalHandler(QObject* parent) : QObject(parent)
+    {
         addNotifier(SIGTERM, "sigTerm");
         addNotifier(SIGINT, "sigInt");
         addNotifier(SIGUSR1, "sigUsr1");
@@ -60,13 +63,15 @@ namespace Oxide {
         addNotifier(SIGSEGV, "sigSegv");
         addNotifier(SIGBUS, "sigBus");
     }
-    SignalHandler::~SignalHandler() {
+    SignalHandler::~SignalHandler()
+    {
         while (!notifiers.isEmpty()) {
             auto notifier = notifiers.take(notifiers.firstKey());
             delete notifier.notifier;
         }
     }
-    void SignalHandler::handleSignal(int signal) {
+    void SignalHandler::handleSignal(int signal)
+    {
         if (!notifiers.contains(signal)) {
             ::signal(signal, SIG_DFL);
             return;
@@ -76,7 +81,8 @@ namespace Oxide {
         char a = 1;
         ::write(item.fd, &a, sizeof(a));
     }
-    void SignalHandler::addNotifier(int signal, const char* name) {
+    void SignalHandler::addNotifier(int signal, const char* name)
+    {
         if (!notifiers.contains(signal)) {
             int fds[2];
             if (::socketpair(AF_UNIX, SOCK_STREAM, 0, fds)) {
@@ -91,7 +97,7 @@ namespace Oxide {
                 qFatal("Couldn't connect QLocalSocket to socket descriptor");
             }
             notifiers.insert(
-                signal, NotifierItem{.notifier = socket, .fd = fds[0]}
+                signal, NotifierItem{ .notifier = socket, .fd = fds[0] }
             );
         }
         auto notifier = notifiers.value(signal).notifier;
@@ -115,6 +121,6 @@ namespace Oxide {
     }
     QMap<int, SignalHandler::NotifierItem> SignalHandler::notifiers =
         QMap<int, SignalHandler::NotifierItem>();
-}  // namespace Oxide
+} // namespace Oxide
 
 #include "moc_signalhandler.cpp"

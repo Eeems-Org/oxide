@@ -18,7 +18,8 @@ namespace Oxide {
     /*!
      * \brief Shared settings for Oxide
      */
-    class LIBOXIDE_EXPORT SharedSettings : public SettingsFile {
+    class LIBOXIDE_EXPORT SharedSettings : public SettingsFile
+    {
         Q_OBJECT
         /*!
          * \fn instance
@@ -205,9 +206,9 @@ namespace Oxide {
          */
         O_SETTINGS_PROPERTY(QString, Lockscreen, onFailedLogin)
 
-       private:
+      private:
         ~SharedSettings();
     };
-}  // namespace Oxide
+} // namespace Oxide
 
 /*! @} */

@@ -5,13 +5,17 @@
 test_Types::test_Types() {}
 test_Types::~test_Types() {}
 
-void test_Types::test_clipboard_t() {
+void
+test_Types::test_clipboard_t()
+{
     // TODO - test to_string()
     // TODO - test update()
     // TODO - test set()
 }
 
-void test_Types::test_buf_t() {
+void
+test_Types::test_buf_t()
+{
     // TODO - test use of buffer with QImage
     // TODO - test size()
     // TODO - test close()
@@ -20,12 +24,16 @@ void test_Types::test_buf_t() {
     // TODO - test new_uuid()
 }
 
-void test_Types::test_header_t() {
+void
+test_Types::test_header_t()
+{
     // TODO - test from_data()
     // TODO - test new_invalid()
 }
 
-void test_Types::test_message_t() {
+void
+test_Types::test_message_t()
+{
     auto message = Blight::message_t::new_ptr();
     QVERIFY(message != nullptr);
     QCOMPARE(sizeof(*message.get()), sizeof(Blight::message_t));
@@ -42,8 +50,10 @@ void test_Types::test_message_t() {
     // TODO - test from_data()
 }
 
-void test_Types::test_repaint_t() {
-    auto header = new Blight::repaint_t{{
+void
+test_Types::test_repaint_t()
+{
+    auto header = new Blight::repaint_t{ {
         .x = 10,
         .y = 10,
         .width = 10,
@@ -51,13 +61,12 @@ void test_Types::test_repaint_t() {
         .waveform = Blight::WaveformMode::Mono,
         .marker = 1,
         .identifier = 1,
-    }};
+    } };
     Blight::shared_data_t data(reinterpret_cast<Blight::data_t>(header));
     Blight::message_t message{
-        .header =
-            {{.type = Blight::MessageType::Repaint,
-              .ackid = 10,
-              .size = sizeof(Blight::repaint_t)}},
+        .header = { { .type = Blight::MessageType::Repaint,
+                      .ackid = 10,
+                      .size = sizeof(Blight::repaint_t) } },
         .data = data
     };
     auto header2 = Blight::repaint_t::from_message(&message);
@@ -71,16 +80,15 @@ void test_Types::test_repaint_t() {
     QCOMPARE(header2.identifier, header->identifier);
 }
 
-void test_Types::test_move_t() {
-    auto header = new Blight::move_t{{.identifier = 1, .x = 10, .y = 10}};
+void
+test_Types::test_move_t()
+{
+    auto header = new Blight::move_t{ { .identifier = 1, .x = 10, .y = 10 } };
     Blight::shared_data_t data(reinterpret_cast<Blight::data_t>(header));
-    Blight::message_t message{
-        .header =
-            {{.type = Blight::MessageType::Move,
-              .ackid = 10,
-              .size = sizeof(Blight::move_t)}},
-        .data = data
-    };
+    Blight::message_t message{ .header = { { .type = Blight::MessageType::Move,
+                                             .ackid = 10,
+                                             .size = sizeof(Blight::move_t) } },
+                               .data = data };
     auto header2 = Blight::move_t::from_message(&message);
     QCOMPARE(sizeof(header2), message.header.size);
     QCOMPARE(header2.identifier, header->identifier);
@@ -88,15 +96,15 @@ void test_Types::test_move_t() {
     QCOMPARE(header2.y, header->y);
 }
 
-void test_Types::test_surface_info_t() {
-    Blight::surface_info_t header{
-        {.x = 10,
-         .y = 10,
-         .width = 10,
-         .height = 10,
-         .stride = 20,
-         .format = Blight::Format::Format_RGB16}
-    };
+void
+test_Types::test_surface_info_t()
+{
+    Blight::surface_info_t header{ { .x = 10,
+                                     .y = 10,
+                                     .width = 10,
+                                     .height = 10,
+                                     .stride = 20,
+                                     .format = Blight::Format::Format_RGB16 } };
     auto header2 = Blight::surface_info_t::from_data(
         reinterpret_cast<Blight::data_t>(&header)
     );
