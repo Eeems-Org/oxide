@@ -119,6 +119,7 @@ lint:
 		$(SRC_FILES)
 	clang-format \
 		--dry-run \
+		--Werror \
 		--fallback-style=mozilla \
 		-i \
 		$(CPP_FILES)
