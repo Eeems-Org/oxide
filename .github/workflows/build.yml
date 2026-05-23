@@ -5,26 +5,26 @@ on:
     branches:
       - master
     paths:
-      - '.github/workflows/build.yml'
-      - 'applications/**'
-      - 'shared/**'
-      - 'assets/**'
-      - 'interfaces/**'
-      - 'qmake/**'
-      - 'oxide.pro'
-      - 'Makefile'
-      - 'package'
+      - ".github/workflows/build.yml"
+      - "applications/**"
+      - "shared/**"
+      - "assets/**"
+      - "interfaces/**"
+      - "qmake/**"
+      - "oxide.pro"
+      - "Makefile"
+      - "package"
   pull_request:
     paths:
-      - '.github/workflows/build.yml'
-      - 'applications/**'
-      - 'shared/**'
-      - 'assets/**'
-      - 'interfaces/**'
-      - 'qmake/**'
-      - 'oxide.pro'
-      - 'Makefile'
-      - 'package'
+      - ".github/workflows/build.yml"
+      - "applications/**"
+      - "shared/**"
+      - "assets/**"
+      - "interfaces/**"
+      - "qmake/**"
+      - "oxide.pro"
+      - "Makefile"
+      - "package"
 jobs:
   lint:
     name: Lint source
@@ -59,7 +59,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - name: Install toltecmk
         run: pip install toltecmk
       - name: Build packages
@@ -73,13 +73,23 @@ jobs:
       - name: Save packages
         uses: actions/upload-artifact@v4
         with:
-          name: build
-          path: .build/package/build/rmall/src/release
+          name: build-rm1
+          path: .build/package/build/rm1/src/release
+      - name: Save packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-rm2
+          path: .build/package/build/rm2/src/release
       - name: Save repo
         uses: actions/upload-artifact@v4
         with:
-          name: repo
-          path: .build/package/dist/rmall
+          name: repo-rm1
+          path: .build/package/dist/rm1
+      - name: Save repo
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-rm2
+          path: .build/package/dist/rm2
   test:
     name: Test packages
     runs-on: ubuntu-latest
@@ -88,7 +98,7 @@ jobs:
       - uses: actions/download-artifact@v4
         id: download
         with:
-          name: repo
+          name: repo-rm2
       - uses: Eeems-Org/run-in-remarkable-action@v1
         with:
           setup: |
@@ -114,7 +124,7 @@ jobs:
             opkg remove --force-removal-of-dependent-packages liboxide libblight
           path: ${{ steps.download.outputs.download-path }}
   release:
-    needs: [build,test,lint]
+    needs: [build, test, lint]
     if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     steps:
@@ -123,8 +133,12 @@ jobs:
           fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
-          name: build
-          path: .build
+          name: build-rm1
+          path: .build/package/build/rm1/src/release
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-rm2
+          path: .build/package/build/rm2/src/release
       - name: Create Sentry release
         uses: getsentry/action-release@v1
         env:
