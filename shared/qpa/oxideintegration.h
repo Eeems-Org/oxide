@@ -72,6 +72,9 @@ class Q_DECL_EXPORT OxideIntegration
     bool supportsMode(QClipboard::Mode mode) const override;
     bool ownsMode(QClipboard::Mode mode) const override;
 #endif
+#if !defined(QT_NO_ACCESSIBILITY)
+    QPlatformAccessibility* accessibility() const override;
+#endif
     static OxideIntegration* instance();
     static Blight::shared_buf_t getSurfaceForWindowStatic(QWindow* qwindow);
     static QImage getImageForWindowStatic(QWindow* qwindow);

@@ -412,6 +412,14 @@ OxideIntegration::ownsMode(QClipboard::Mode mode) const
 }
 #endif
 
+#if !defined(QT_NO_ACCESSIBILITY)
+QPlatformAccessibility*
+accessibility() const
+{
+    return nullptr;
+}
+#endif
+
 OxideIntegration*
 OxideIntegration::instance()
 {
