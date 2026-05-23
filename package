@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
-
+archs=(rm1 rm2)
 pkgnames=(
     fbinfo
     inject_evdev
@@ -25,17 +25,36 @@ url=https://oxide.eeems.codes
 license=MIT
 flags=(patch_rm2fb)
 image=qt:v4.0
-source=(oxide.tar.gz)
-sha256sums=(SKIP)
+source=(
+    https://toltec-dev.org/thirdparty/lib/libqsgepaper-rm1.so
+    https://toltec-dev.org/thirdparty/lib/libqsgepaper-rm2.so
+    oxide.tar.gz
+)
+sha256sums=(
+    SKIP
+    SKIP
+    SKIP
+)
+makedepends=(build:libdbus-1-3)
 
 build() {
-    set -x
-    . /opt/x-tools/switch-arm.sh
-    find . -name "*.pro" -type f -print0 |
-        xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
-    find . -name "*.pri" -type f -print0 |
-        xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
-    export QMAKESPEC=/usr/mkspecs/devices/linux-arm-remarkable-g++
+    case "$arch" in
+    rm1 | rm2)
+        . /opt/x-tools/switch-arm.sh
+        find . -name "*.pro" -type f -print0 |
+            xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
+        find . -name "*.pri" -type f -print0 |
+            xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
+        export QMAKESPEC="$SYSROOT"/usr/mkspecs/devices/linux-arm-remarkable-g++
+        echo "QMAKE_CFLAGS=\"-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64\"" >>$QMAKESPEC/qmake.conf
+        echo "QMAKE_CXXFLAGS=\"-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64\"" >>$QMAKESPEC/qmake.conf
+        echo "QMAKE_LFLAGS=\"-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64 -Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed\"" >>$QMAKESPEC/qmake.conf
+        ;;
+    *)
+        echo "Unexpected arch: $arch"
+        exit 1
+        ;;
+    esac
     echo "QMAKE_CC=\"${CROSS_COMPILE}gcc\"" >>$QMAKESPEC/qmake.conf
     echo "QMAKE_CXX=\"${CROSS_COMPILE}g++\"" >>$QMAKESPEC/qmake.conf
     echo "QMAKE_LINK=\"${CROSS_COMPILE}g++\"" >>$QMAKESPEC/qmake.conf
@@ -44,9 +63,12 @@ build() {
     echo "QMAKE_OBJCOPY=\"${CROSS_COMPILE}objcopy\"" >>$QMAKESPEC/qmake.conf
     echo "QMAKE_NM=\"${CROSS_COMPILE}nm -P\"" >>$QMAKESPEC/qmake.conf
     echo "QMAKE_STRIP=\"${CROSS_COMPILE}strip\"" >>$QMAKESPEC/qmake.conf
-    echo "QMAKE_CFLAGS=\"-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64 --sysroot=$$[SYSROOT]\"" >>$QMAKESPEC/qmake.conf
-    echo "QMAKE_CXXFLAGS=\"-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64 --sysroot=$$[SYSROOT]\"" >>$QMAKESPEC/qmake.conf
-    echo "QMAKE_LFLAGS=\"-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64 -Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed --sysroot=$$[SYSROOT]\"" >>$QMAKESPEC/qmake.conf
+    if [ ! -f "${SYSROOT:?}"/usr/plugins/scenegraph/libqsgepaper.so ]; then
+        mkdir -p "$SYSROOT"/usr/plugins/scenegraph/
+        cp "$srcdir"/libqsgepaper-"$arch".so \
+            "$SYSROOT"/usr/plugins/scenegraph/libqsgepaper.so
+    fi
+    export PATH=$SYSROOT/usr/bin:$PATH
     CMAKE_TOOLCHAIN_FILE="/usr/share/cmake/$CHOST.cmake" \
         make FEATURES=sentry release
 }
@@ -185,10 +207,8 @@ liboxide() {
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/liboxide.so*
-        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libqsgepaper.so*
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight.so*
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight_protocol.so*
-
     }
 }
 

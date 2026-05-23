@@ -1,47 +1,49 @@
 #include "guithread.h"
 #ifdef EPAPER
+#include <epframebuffer.h>
+#include <fcntl.h>
+#include <libblight/clock.h>
+#include <liboxide/debug.h>
+#include <liboxide/threading.h>
+#include <mxcfb.h>
+
+#include <QAbstractEventDispatcher>
+#include <QPainter>
+#include <QTimer>
+
 #include "connection.h"
 #include "dbusinterface.h"
 
-#include <epframebuffer.h>
-#include <QAbstractEventDispatcher>
-#include <QTimer>
-#include <QPainter>
-#include <fcntl.h>
-#include <mxcfb.h>
-#include <liboxide/debug.h>
-#include <liboxide/threading.h>
-#include <libblight/clock.h>
-
-
-void GUIThread::run(){
+void GUIThread::run() {
     O_DEBUG("Thread started");
     clearFrameBuffer();
-    QTimer::singleShot(0, this, [this]{
+    QTimer::singleShot(0, this, [this] {
         Q_ASSERT(QThread::currentThread() == (QThread*)this);
         QMutexLocker locker(&m_repaintMutex);
         Q_UNUSED(locker);
-        while(!isInterruptionRequested()){
-            // New repaint request each loop as we have a shared pointer we need to clear
+        while (!isInterruptionRequested()) {
+            // New repaint request each loop as we have a shared pointer we need
+            // to clear
             RepaintRequest event;
-            if(!m_repaintEvents.try_dequeue(event)){
+            if (!m_repaintEvents.try_dequeue(event)) {
                 dbusInterface->processRemovedSurfaces();
                 dbusInterface->processClosingConnections();
                 emit settled();
                 // Wait for up to 500ms before trying again
                 m_repaintWait.wait(&m_repaintMutex, 500);
                 auto found = m_repaintEvents.try_dequeue(event);
-                if(!found){
-                    // Woken by something needing to cleanup connections/surfaces
+                if (!found) {
+                    // Woken by something needing to cleanup
+                    // connections/surfaces
                     continue;
                 }
             }
-            do{
+            do {
                 redraw(event);
-                if(event.callback != nullptr){
+                if (event.callback != nullptr) {
                     event.callback();
                 }
-            }while(m_repaintEvents.try_dequeue(event));
+            } while (m_repaintEvents.try_dequeue(event));
             eventDispatcher()->processEvents(QEventLoop::AllEvents);
         }
     });
@@ -50,9 +52,9 @@ void GUIThread::run(){
     O_DEBUG("Thread stopped with exit code:" << res);
 }
 
-GUIThread* GUIThread::singleton(){
+GUIThread* GUIThread::singleton() {
     static GUIThread* instance = nullptr;
-    if(instance == nullptr){
+    if (instance == nullptr) {
         instance = new GUIThread(EPFramebuffer::instance()->auxBuffer.rect());
         Oxide::startThreadWithPriority(instance, QThread::TimeCriticalPriority);
     }
@@ -60,24 +62,23 @@ GUIThread* GUIThread::singleton(){
 }
 
 GUIThread::GUIThread(QRect screenGeometry)
-: QThread(),
-  m_screenGeometry{screenGeometry},
-  m_screenOffset{screenGeometry.topLeft()},
-  m_screenRect{m_screenGeometry.translated(-m_screenOffset)}
-{
+    : QThread(),
+      m_screenGeometry{screenGeometry},
+      m_screenOffset{screenGeometry.topLeft()},
+      m_screenRect{m_screenGeometry.translated(-m_screenOffset)} {
     // TODO: Create an fd using memfd_create
     // truncate it to the appropriate size, then
     // replace the buffers in libqgsepaper instead.
     m_frameBufferFd = open("/dev/null", O_RDWR);
-    if(m_frameBufferFd == -1){
+    if (m_frameBufferFd == -1) {
         qFatal("Failed to open framebuffer");
     }
     moveToThread(this);
 }
 
-GUIThread::~GUIThread(){
+GUIThread::~GUIThread() {
     RepaintRequest event;
-    while(m_repaintEvents.try_dequeue(event));
+    while (m_repaintEvents.try_dequeue(event));
     requestInterruption();
     quit();
     wait();
@@ -91,86 +92,90 @@ void GUIThread::enqueue(
     unsigned int marker,
     bool global,
     std::function<void()> callback
-){
-    if(isInterruptionRequested() || dbusInterface->inExclusiveMode()){
-        if(callback != nullptr){
+) {
+    if (isInterruptionRequested() || dbusInterface->inExclusiveMode()) {
+        if (callback != nullptr) {
             callback();
         }
         return;
     }
     Q_ASSERT(global || surface != nullptr);
     QRect intersected;
-    if(global){
+    if (global) {
         intersected = region;
-    }else{
-        if(!surface->visible()){
+    } else {
+        if (!surface->visible()) {
             O_WARNING("Surface is not currently visible" << surface->id());
-            if(callback != nullptr){
+            if (callback != nullptr) {
                 callback();
             }
             return;
         }
         auto surfaceGeometry = surface->geometry();
-        intersected = region
-            .translated(surfaceGeometry.topLeft())
-            .intersected(surfaceGeometry)
-            .intersected(m_screenRect);
+        intersected = region.translated(surfaceGeometry.topLeft())
+                          .intersected(surfaceGeometry)
+                          .intersected(m_screenRect);
     }
-    if(intersected.isEmpty()){
-        O_WARNING("Region does not intersect with screen" << surface->id() << region);
-        if(callback != nullptr){
+    if (intersected.isEmpty()) {
+        O_WARNING(
+            "Region does not intersect with screen" << surface->id() << region
+        );
+        if (callback != nullptr) {
             callback();
         }
         return;
     }
     auto visibleSurfaces = this->visibleSurfaces();
     QRegion repaintRegion(intersected);
-    if(!global){
-        // Don't repaint portions covered by another surface that doesn't have alpha channel
+    if (!global) {
+        // Don't repaint portions covered by another surface that doesn't have
+        // alpha channel
         auto i = visibleSurfaces.constEnd();
-        while(i != visibleSurfaces.constBegin()){
+        while (i != visibleSurfaces.constBegin()) {
             --i;
             auto _surface = *i;
-            if(surface == _surface){
+            if (surface == _surface) {
                 break;
             }
             auto image = _surface->image();
-            if(image != nullptr && !image->isNull() && image->hasAlphaChannel()){
+            if (image != nullptr && !image->isNull() &&
+                image->hasAlphaChannel()) {
                 continue;
             }
             auto geometry = _surface->geometry();
-            repaintRegion -= region
-                .intersected(geometry)
-                .translated(-geometry.topLeft())
-                .intersected(m_screenRect);
+            repaintRegion -= region.intersected(geometry)
+                                 .translated(-geometry.topLeft())
+                                 .intersected(m_screenRect);
         }
     }
-    if(repaintRegion.isEmpty()){
+    if (repaintRegion.isEmpty()) {
         O_WARNING("Region is currently covered" << surface->id() << region);
-        if(callback != nullptr){
+        if (callback != nullptr) {
             callback();
         }
         return;
     }
-    m_repaintEvents.enqueue(RepaintRequest{
-        .surface = surface,
-        .region = repaintRegion,
-        .waveform = waveform,
-        .mode = mode,
-        .marker = marker,
-        .global = global,
-        .callback = callback
-    });
+    m_repaintEvents.enqueue(
+        RepaintRequest{
+            .surface = surface,
+            .region = repaintRegion,
+            .waveform = waveform,
+            .mode = mode,
+            .marker = marker,
+            .global = global,
+            .callback = callback
+        }
+    );
     notify();
 }
 
-void GUIThread::notify(){
-    if(!dbusInterface->inExclusiveMode()){
+void GUIThread::notify() {
+    if (!dbusInterface->inExclusiveMode()) {
         m_repaintWait.notify_one();
     }
 }
 
-void GUIThread::clearFrameBuffer(){
+void GUIThread::clearFrameBuffer() {
     auto instance = EPFramebuffer::instance();
     instance->auxBuffer.fill(Qt::white);
     instance->swapBuffers(
@@ -181,58 +186,57 @@ void GUIThread::clearFrameBuffer(){
     );
 }
 
-int GUIThread::framebuffer(){ return m_frameBufferFd; }
+int GUIThread::framebuffer() { return m_frameBufferFd; }
 
-
-void GUIThread::repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface){
-     // This should already be handled, but just in case it leaks
-    if(surface->isRemoved()){
-         return;
+void GUIThread::repaintSurface(
+    QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface
+) {
+    // This should already be handled, but just in case it leaks
+    if (surface->isRemoved()) {
+        return;
     }
     const QRect surfaceGeometry = surface->geometry();
-    const QRect surfaceGlobalRect = surfaceGeometry.translated(-m_screenGeometry.topLeft());
-    if(!rect->intersects(surfaceGlobalRect)){
+    const QRect surfaceGlobalRect =
+        surfaceGeometry.translated(-m_screenGeometry.topLeft());
+    if (!rect->intersects(surfaceGlobalRect)) {
         return;
     }
     auto image = surface->image();
-    if(image == nullptr || image->isNull()){
+    if (image == nullptr || image->isNull()) {
         return;
     }
-    const QRect imageRect = rect
-                              ->translated(-surfaceGlobalRect.left(), -surfaceGlobalRect.top())
-                              .intersected(image->rect());
+    const QRect imageRect =
+        rect->translated(-surfaceGlobalRect.left(), -surfaceGlobalRect.top())
+            .intersected(image->rect());
     const QRect sourceRect = rect->intersected(surfaceGlobalRect);
-    if(
-      imageRect.isEmpty()
-      || !imageRect.isValid()
-      || sourceRect.isEmpty()
-      || !sourceRect.isValid()
-      ){
+    if (imageRect.isEmpty() || !imageRect.isValid() || sourceRect.isEmpty() ||
+        !sourceRect.isValid()) {
         return;
     }
     O_DEBUG("Repaint surface" << surface->id() << sourceRect << imageRect);
-    // TODO - See if there is a way to detect if there is just transparency in the region
+    // TODO - See if there is a way to detect if there is just transparency in
+    // the region
     //        and don't mark this as repainted.
     painter->drawImage(sourceRect, *image.get(), imageRect);
 }
 
-void GUIThread::redraw(RepaintRequest& event){
+void GUIThread::redraw(RepaintRequest& event) {
     Q_ASSERT(QThread::currentThread() == (QThread*)this);
-    if(dbusInterface->inExclusiveMode()){
+    if (dbusInterface->inExclusiveMode()) {
         O_DEBUG("In exclusive mode, skipping redraw");
         return;
     }
-    if(!event.global){
-        if(event.surface == nullptr){
+    if (!event.global) {
+        if (event.surface == nullptr) {
             O_WARNING("surface missing");
             return;
         }
-        if(event.surface->isRemoved()){
+        if (event.surface->isRemoved()) {
             return;
         }
     }
     auto& region = event.region;
-    if(region.isEmpty()){
+    if (region.isEmpty()) {
         O_WARNING("Empty repaint region" << region);
         return;
     }
@@ -240,70 +244,77 @@ void GUIThread::redraw(RepaintRequest& event){
     // Get visible region on the screen to repaint
     O_DEBUG("Repainting" << region.boundingRect());
     QImage* frameBuffer = &EPFramebuffer::instance()->auxBuffer;
-    Qt::GlobalColor colour = frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
+    Qt::GlobalColor colour =
+        frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
     QPainter painter(frameBuffer);
-    while(!painter.isActive()){
-        if(!eventDispatcher()->processEvents(QEventLoop::AllEvents)){
+    while (!painter.isActive()) {
+        if (!eventDispatcher()->processEvents(QEventLoop::AllEvents)) {
             QThread::msleep(1);
         }
         painter.begin(frameBuffer);
     }
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-    for(QRect rect : event.region){
+    for (QRect rect : event.region) {
         bool hasAlpha = event.global;
-        if(!hasAlpha){
+        if (!hasAlpha) {
             auto image = event.surface->image();
-            hasAlpha = image != nullptr
-               && !image->isNull()
-               && image->hasAlphaChannel();
+            hasAlpha = image != nullptr && !image->isNull() &&
+                       image->hasAlphaChannel();
         }
-        if(hasAlpha){
+        if (hasAlpha) {
             painter.fillRect(rect, colour);
-            for(auto& surface : visibleSurfaces()){
-                if(surface != nullptr){
+            for (auto& surface : visibleSurfaces()) {
+                if (surface != nullptr) {
                     repaintSurface(&painter, &rect, surface);
                 }
             }
-        }else{
+        } else {
             repaintSurface(&painter, &rect, event.surface);
         }
         sendUpdate(rect, event.waveform, event.mode, event.marker);
     }
     painter.end();
-    O_DEBUG("Repaint" << region.boundingRect() << "done in" << region.rectCount() << "paints, and" << cw.elapsed() << "seconds");
+    O_DEBUG(
+        "Repaint" << region.boundingRect() << "done in" << region.rectCount()
+                  << "paints, and" << cw.elapsed() << "seconds"
+    );
 }
 
-void GUIThread::sendUpdate(const QRect& rect, Blight::WaveformMode waveform, Blight::UpdateMode mode, unsigned int marker){
+void GUIThread::sendUpdate(
+    const QRect& rect,
+    Blight::WaveformMode waveform,
+    Blight::UpdateMode mode,
+    unsigned int marker
+) {
     O_DEBUG("Sending screen update" << rect << waveform << mode);
     EPFramebuffer::instance()->swapBuffers(
         m_screenGeometry,
         EPContentType::Mono,
-        mode == Blight::BlightUpdateMode::FullUpdate
-            ? EPScreenMode::QualityFull
-            : EPScreenMode::QualityFast,
-        rect == m_screenRect
-            ? EPFramebuffer::UpdateFlag::CompleteRefresh
-            : EPFramebuffer::UpdateFlag::NoRefresh
+        mode == Blight::UpdateMode::FullUpdate ? EPScreenMode::QualityFull
+                                               : EPScreenMode::QualityFast,
+        rect == m_screenRect ? EPFramebuffer::UpdateFlag::CompleteRefresh
+                             : EPFramebuffer::UpdateFlag::NoRefresh
     );
 }
 
-QList<std::shared_ptr<Surface>> GUIThread::visibleSurfaces(){
+QList<std::shared_ptr<Surface>> GUIThread::visibleSurfaces() {
     auto visibleSurfaces = dbusInterface->visibleSurfaces();
     visibleSurfaces.erase(
         std::remove_if(
             visibleSurfaces.begin(),
             visibleSurfaces.end(),
-            [](std::shared_ptr<Surface> surface){
+            [](std::shared_ptr<Surface> surface) {
                 auto connection = surface->connection();
-                if(!connection->isRunning()){
+                if (!connection->isRunning()) {
                     return true;
                 }
-                if(!surface->has("system") && getpgid(connection->pgid()) < 0){
+                if (!surface->has("system") &&
+                    getpgid(connection->pgid()) < 0) {
                     O_WARNING(surface->id() << "With no running process");
                     return true;
                 }
                 auto image = surface->image();
-                if(image == nullptr || image->isNull()){
+                if (image == nullptr || image->isNull()) {
                     O_WARNING(surface->id() << "Null framebuffer");
                     return true;
                 }

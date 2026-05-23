@@ -46,7 +46,7 @@ package: version.txt $(DIST) $(BUILD)/package/oxide.tar.gz
 		-w $(BUILD)/package/build \
 		-d $(BUILD)/package/dist \
 		$(BUILD)/package
-	cp -a $(BUILD)/package/dist/rmall/*.ipk $(DIST)
+	cp -a $(BUILD)/package/dist/rm{1,2}/*.ipk $(DIST)
 
 version.txt:
 	if [ -d .git ];then \
