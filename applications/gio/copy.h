@@ -2,6 +2,7 @@
 
 #include <QCommandLineOption>
 #include <QDir>
+#include <QProcess>
 #include <QUrl>
 
 #include "common.h"
