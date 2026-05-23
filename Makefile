@@ -106,7 +106,7 @@ SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/c
 SRC_FILES += package
 
 CPP_FILES = $(wildcard applications/**/*.cpp) $(wildcard applications/**/*.h)
-CPP_FILES += $(wildcard shared/**/*.cpp | xargs -rn1 | grep -v sentry/) $(wildcard shared/**/*.h)
+CPP_FILES += $(wildcard shared/**/*.cpp) $(wildcard shared/**/*.h)
 CPP_FILES += $(wildcard tests/**/*.cpp) $(wildcard tests/**/*.h)
 
 lint:

@@ -84,11 +84,6 @@ main(int argc, char* argv[])
                 ".oxide"
             )
         );
-        if (!toFile.open(QFile::WriteOnly | QFile::Truncate)) {
-            qDebug() << "Error on file" << path << ": Cannot write to file";
-            success = false;
-            continue;
-        }
         if (info.suffix() != "oxide") {
             qDebug() << path.toStdString().c_str()
                      << ": error: filename does not have a .oxide extension";
@@ -116,6 +111,11 @@ main(int argc, char* argv[])
             continue;
         }
         auto json = toJson(reg, QJsonDocument::Indented);
+        if (!toFile.open(QFile::WriteOnly | QFile::Truncate)) {
+            qDebug() << "Error on file" << path << ": Cannot write to file";
+            success = false;
+            continue;
+        }
         toFile.write(json.toUtf8());
         toFile.close();
         if (parser.isSet(deleteOriginalOption)) {

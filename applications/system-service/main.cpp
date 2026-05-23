@@ -168,11 +168,10 @@ main(int argc, char* argv[])
     });
 
     QFile pidFile(pidPath);
-    if (!pidFile.open(QFile::ReadWrite)) {
+    if (!pidFile.open(QFile::ReadWrite | QFile::Truncate)) {
         qWarning() << "Unable to create " << pidPath;
         return EXIT_FAILURE;
     }
-    pidFile.seek(0);
     pidFile.write(actualPid.toUtf8());
     pidFile.close();
     QObject::connect(&app, &QGuiApplication::aboutToQuit, [] {

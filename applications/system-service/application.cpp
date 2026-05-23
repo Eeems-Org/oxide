@@ -1127,10 +1127,14 @@ Application::setAutoStart(bool autoStart)
         return;
     }
     if (!autoStart) {
-        flags().removeAll("autoStart");
+        QStringList _flags = flags();
+        _flags.removeAll("autoStart");
+        setValue("flags", _flags);
         autoStartChanged(autoStart);
     } else if (!this->autoStart()) {
-        flags().append("autoStart");
+        QStringList _flags = flags();
+        _flags.append("autoStart");
+        setValue("flags", _flags);
         autoStartChanged(autoStart);
     }
 }

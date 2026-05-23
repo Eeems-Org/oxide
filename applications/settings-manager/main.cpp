@@ -448,7 +448,7 @@ main(int argc, char* argv[])
             sentry_breadcrumb("error", "Cannot handle calls for non-dbus APIs");
 #endif
             qDebug() << "Cannot handle calls for non-dbus APIs";
-            return qExit(EXIT_SUCCESS);
+            return qExit(EXIT_FAILURE);
         }
         QDBusMessage reply =
             iapi->callWithArgumentList(QDBus::Block, method, arguments);
@@ -464,7 +464,7 @@ main(int argc, char* argv[])
                 "error", reply.errorMessage().toStdString().c_str()
             );
 #endif
-            return qExit(EXIT_SUCCESS);
+            return qExit(EXIT_FAILURE);
         }
         if (apiName == "system" &&
             (method == "inhibitSleep" || method == "inhibitPowerOff")) {

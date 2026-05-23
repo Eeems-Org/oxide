@@ -3,6 +3,7 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QDebug>
+#include <QFileInfo>
 #include <QMap>
 #include <QString>
 #include <QTextStream>

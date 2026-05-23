@@ -242,6 +242,7 @@ AppsAPI::setEnabled(bool enabled)
             app->unregisterPath();
         }
     }
+    m_enabled = enabled;
 }
 
 QDBusObjectPath
