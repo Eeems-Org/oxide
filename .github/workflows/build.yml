@@ -50,6 +50,15 @@ jobs:
               sha256sum -c <(echo "$shfmt_checksum $install_dir/shfmt") > /dev/null 2>&1
               sudo chmod a+x "$install_dir"/shfmt
           fi
+      - name: Install clang-format
+        shell: bash
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22 clang-format-22
+          sudo apt-get install -y clang-format-22
+          sudo ln -sf clang-format-22 /usr/bin/clang-format
+          clang-format --version
       - uses: actions/checkout@v6
       - name: Lint
         run: make lint

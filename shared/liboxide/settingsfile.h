@@ -16,6 +16,7 @@
 #include "debug.h"
 #include "liboxide_global.h"
 
+// clang-format off
 #define O_SETTINGS_DEBUG(msg) O_DEBUG(msg)
 
 #define O_SETTINGS_PROPERTY_0(_type, member, _group)                           \
@@ -134,6 +135,7 @@
     O_SETTINGS_PROPERTY_X(type, group, member, __VA_ARGS__)(                   \
         type, group, member, __VA_ARGS__                                       \
     )
+// clang-format on
 /*!
  * \brief Add the body for a property on a SettingsFile derived class
  * \param class Class name
@@ -170,6 +172,7 @@
                                                                                \
   private:                                                                     \
     explicit _type(const QString& _path) : SettingsFile(_path) {}
+// clang-format on
 
 namespace Oxide {
     /*!
