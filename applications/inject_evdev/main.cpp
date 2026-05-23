@@ -1,40 +1,41 @@
+#include <liboxide.h>
+#include <liboxide/event_device.h>
+#include <linux/input.h>
+#include <stdio.h>
+
 #include <QCommandLineParser>
+#include <QDebug>
 #include <QFile>
 #include <QList>
 #include <QSocketNotifier>
-#include <QDebug>
-
-#include <stdio.h>
 #include <iostream>
-#include <linux/input.h>
-
-#include <liboxide.h>
-#include <liboxide/event_device.h>
 
 using namespace Oxide;
 using namespace Oxide::Sentry;
 
 event_device* device = nullptr;
 
-#define check(eventType, name, eventCode) \
-    if(code == name){ \
+#define check(eventType, name, eventCode)           \
+    if (code == name) {                             \
         device->write(eventType, eventCode, value); \
-        return true; \
+        return true;                                \
     }
 #define syn(eventCode) check(EV_SYN, #eventCode, eventCode)
 #define abs(eventCode) check(EV_ABS, #eventCode, eventCode)
 #define rel(eventCode) check(EV_REL, #eventCode, eventCode)
 #define key(eventCode) check(EV_KEY, #eventCode, eventCode)
 #define msc(eventCode) check(EV_MSC, #eventCode, eventCode)
-#define sw(eventCode)  check(EV_SW,  #eventCode, eventCode)
+#define sw(eventCode) check(EV_SW, #eventCode, eventCode)
 #define led(eventCode) check(EV_LED, #eventCode, eventCode)
 #define snd(eventCode) check(EV_SND, #eventCode, eventCode)
 #define rep(eventCode) check(EV_REP, #eventCode, eventCode)
 
-// I pulled most of the codes from https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h
-// I've left EV_FF, EV_PWR, and EV_FF_STATUS out since they don't seem to really apply to the reMarkable
+// I pulled most of the codes from
+// https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h
+// I've left EV_FF, EV_PWR, and EV_FF_STATUS out since they don't seem to really
+// apply to the reMarkable
 
-bool process_EV_SYN(const QStringList& args){
+bool process_EV_SYN(const QStringList& args) {
     auto code = args.at(1).toStdString();
     int value = 0;
     syn(SYN_REPORT);
@@ -45,14 +46,14 @@ bool process_EV_SYN(const QStringList& args){
     return false;
 }
 
-bool process_EV_ABS(const QStringList& args){
+bool process_EV_ABS(const QStringList& args) {
     auto code = args.at(1).toStdString();
     int value = 0;
-    if(args.count() > 2){
+    if (args.count() > 2) {
         bool ok;
         QString arg = args.at(2);
         value = arg.toInt(&ok);
-        if(!ok){
+        if (!ok) {
             qDebug() << "Third argument must be a valid integer:" << args;
             return false;
         }
@@ -106,14 +107,14 @@ bool process_EV_ABS(const QStringList& args){
     return false;
 }
 
-bool process_EV_REL(const QStringList& args){
+bool process_EV_REL(const QStringList& args) {
     auto code = args.at(1).toStdString();
     int value = 0;
-    if(args.count() > 2){
+    if (args.count() > 2) {
         bool ok;
         QString arg = args.at(2);
         value = arg.toInt(&ok);
-        if(!ok){
+        if (!ok) {
             qDebug() << "Third argument must be a valid integer:" << args;
             return false;
         }
@@ -137,14 +138,14 @@ bool process_EV_REL(const QStringList& args){
     return false;
 }
 
-bool process_EV_KEY(const QStringList& args){
+bool process_EV_KEY(const QStringList& args) {
     auto code = args.at(1).toStdString();
     int value = 0;
-    if(args.count() > 2){
+    if (args.count() > 2) {
         bool ok;
         QString arg = args.at(2);
         value = arg.toInt(&ok);
-        if(!ok){
+        if (!ok) {
             qDebug() << "Third argument must be a valid integer:" << args;
             return false;
         }
@@ -786,14 +787,14 @@ bool process_EV_KEY(const QStringList& args){
     return false;
 }
 
-bool process_EV_MSC(const QStringList& args){
+bool process_EV_MSC(const QStringList& args) {
     auto code = args.at(1).toStdString();
     int value = 0;
-    if(args.count() > 2){
+    if (args.count() > 2) {
         bool ok;
         QString arg = args.at(2);
         value = arg.toInt(&ok);
-        if(!ok){
+        if (!ok) {
             qDebug() << "Third argument must be a valid integer:" << args;
             return false;
         }
@@ -810,14 +811,14 @@ bool process_EV_MSC(const QStringList& args){
     return false;
 }
 
-bool process_EV_SW(const QStringList& args){
+bool process_EV_SW(const QStringList& args) {
     auto code = args.at(1).toStdString();
     int value = 0;
-    if(args.count() > 2){
+    if (args.count() > 2) {
         bool ok;
         QString arg = args.at(2);
         value = arg.toInt(&ok);
-        if(!ok){
+        if (!ok) {
             qDebug() << "Third argument must be a valid integer:" << args;
             return false;
         }
@@ -839,21 +840,21 @@ bool process_EV_SW(const QStringList& args){
     sw(SW_LINEIN_INSERT);
     sw(SW_MUTE_DEVICE);
     sw(SW_PEN_INSERTED);
-    //sw(SW_MACHINE_COVER);
+    // sw(SW_MACHINE_COVER);
     sw(SW_MAX);
     sw(SW_CNT);
     qDebug() << "Unknown EV_SW event code:" << code.c_str();
     return false;
 }
 
-bool process_EV_LED(const QStringList& args){
+bool process_EV_LED(const QStringList& args) {
     auto code = args.at(1).toStdString();
     int value = 0;
-    if(args.count() > 2){
+    if (args.count() > 2) {
         bool ok;
         QString arg = args.at(2);
         value = arg.toInt(&ok);
-        if(!ok){
+        if (!ok) {
             qDebug() << "Third argument must be a valid integer:" << args;
             return false;
         }
@@ -875,14 +876,14 @@ bool process_EV_LED(const QStringList& args){
     return false;
 }
 
-bool process_EV_SND(const QStringList& args){
+bool process_EV_SND(const QStringList& args) {
     auto code = args.at(1).toStdString();
     int value = 0;
-    if(args.count() > 2){
+    if (args.count() > 2) {
         bool ok;
         QString arg = args.at(2);
         value = arg.toInt(&ok);
-        if(!ok){
+        if (!ok) {
             qDebug() << "Third argument must be a valid integer:" << args;
             return false;
         }
@@ -896,14 +897,14 @@ bool process_EV_SND(const QStringList& args){
     return false;
 }
 
-bool process_EV_REP(const QStringList& args){
+bool process_EV_REP(const QStringList& args) {
     auto code = args.at(1).toStdString();
     int value = 0;
-    if(args.count() > 2){
+    if (args.count() > 2) {
         bool ok;
         QString arg = args.at(2);
         value = arg.toInt(&ok);
-        if(!ok){
+        if (!ok) {
             qDebug() << "Third argument must be a valid integer:" << args;
             return false;
         }
@@ -916,12 +917,15 @@ bool process_EV_REP(const QStringList& args){
     return false;
 }
 
-#define process_type(eventType) if(type == #eventType){ return process_##eventType(args); }
+#define process_type(eventType)           \
+    if (type == #eventType) {             \
+        return process_##eventType(args); \
+    }
 
-bool process(const QStringList& args){
-    if(args.count() < 2 || args.count() > 3){
+bool process(const QStringList& args) {
+    if (args.count() < 2 || args.count() > 3) {
         qDebug() << "Incorrect number of arguments.";
-        if(debugEnabled()){
+        if (debugEnabled()) {
             qDebug() << "Arguments: " << args.count();
         }
         return false;
@@ -940,7 +944,7 @@ bool process(const QStringList& args){
     return false;
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
     sentry_init("inject_evdev", argv);
     app.setOrganizationName("Eeems");
@@ -952,7 +956,10 @@ int main(int argc, char *argv[]){
     parser.applicationDescription();
     parser.addHelpOption();
     parser.addVersionOption();
-    parser.addPositionalArgument("device", "Device to emit events to. See /dev/input for possible values.");
+    parser.addPositionalArgument(
+        "device",
+        "Device to emit events to. See /dev/input for possible values."
+    );
     parser.process(app);
     QStringList args = parser.positionalArguments();
     if (args.isEmpty() || args.count() > 1) {
@@ -960,12 +967,12 @@ int main(int argc, char *argv[]){
     }
     auto name = args.first();
     QString path = QString("/dev/input/%1").arg(name);
-    if(!QFile::exists(path)){
+    if (!QFile::exists(path)) {
         qDebug() << "Device does not exist:" << name.toStdString().c_str();
         return EXIT_FAILURE;
     }
     device = new event_device(path.toStdString(), O_RDWR);
-    if(device->error > 0){
+    if (device->error > 0) {
         qDebug() << "Failed to open device:" << name.toStdString().c_str();
         qDebug() << strerror(device->error);
         return EXIT_FAILURE;
@@ -973,32 +980,35 @@ int main(int argc, char *argv[]){
     int fd = fileno(stdin);
     bool isStream = !isatty(fd);
     QSocketNotifier notifier(fd, QSocketNotifier::Read);
-    QObject::connect(&notifier, &QSocketNotifier::activated, [&app, &isStream](){
-        std::string input;
-        std::getline(std::cin, input);
-        auto args = QString(input.c_str())
-            .simplified()
-            .split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-        auto count = args.count();
-        if(count && debugEnabled()){
-            qDebug() << args;
+    QObject::connect(
+        &notifier, &QSocketNotifier::activated, [&app, &isStream]() {
+            std::string input;
+            std::getline(std::cin, input);
+            auto args =
+                QString(input.c_str())
+                    .simplified()
+                    .split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+            auto count = args.count();
+            if (count && debugEnabled()) {
+                qDebug() << args;
+            }
+            if (!isStream && count == 1 && args.first().toLower() == "exit") {
+                app.exit(EXIT_SUCCESS);
+                return;
+            }
+            if (count && !process(args) && isStream) {
+                app.exit(EXIT_FAILURE);
+                return;
+            }
+            if (!isStream) {
+                std::cout << "> " << std::flush;
+            } else if (std::cin.eof()) {
+                app.exit(EXIT_SUCCESS);
+                return;
+            }
         }
-        if(!isStream && count == 1 && args.first().toLower() == "exit"){
-            app.exit(EXIT_SUCCESS);
-            return;
-        }
-        if(count && !process(args) && isStream){
-            app.exit(EXIT_FAILURE);
-            return;
-        }
-        if(!isStream){
-            std::cout << "> " << std::flush;
-        }else if(std::cin.eof()){
-            app.exit(EXIT_SUCCESS);
-            return;
-        }
-    });
-    if(!isStream){
+    );
+    if (!isStream) {
         qDebug() << "Input is expected in the following format:";
         qDebug() << "  TYPE CODE [VALUE]";
         qDebug() << "";

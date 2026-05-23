@@ -3,12 +3,12 @@
 
 #include <liboxide.h>
 
-#include <QObject>
-#include <QDebug>
-#include <QTimer>
-#include <QException>
 #include <QCoreApplication>
+#include <QDebug>
 #include <QDir>
+#include <QException>
+#include <QObject>
+#include <QTimer>
 
 #include "apibase.h"
 
@@ -20,10 +20,13 @@ class PowerAPI : public APIBase {
     Q_PROPERTY(int state READ state WRITE setState NOTIFY stateChanged)
     Q_PROPERTY(int batteryState READ batteryState NOTIFY batteryStateChanged)
     Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged)
-    Q_PROPERTY(int batteryTemperature READ batteryTemperature NOTIFY batteryTemperatureChanged)
+    Q_PROPERTY(
+        int batteryTemperature READ batteryTemperature NOTIFY
+            batteryTemperatureChanged
+    )
     Q_PROPERTY(int chargerState READ chargerState NOTIFY chargerStateChanged)
 
-public:
+   public:
     static PowerAPI* singleton(PowerAPI* self = nullptr);
     PowerAPI(QObject* parent);
     void shutdown();
@@ -32,7 +35,12 @@ public:
 
     enum State { Normal, PowerSaving };
     Q_ENUM(State)
-    enum BatteryState { BatteryUnknown, BatteryCharging, BatteryDischarging, BatteryNotPresent };
+    enum BatteryState {
+        BatteryUnknown,
+        BatteryCharging,
+        BatteryDischarging,
+        BatteryNotPresent
+    };
     Q_ENUM(BatteryState)
     enum ChargerState { ChargerUnknown, ChargerConnected, ChargerNotConnected };
     Q_ENUM(ChargerState)
@@ -52,7 +60,7 @@ public:
     int chargerState();
     void setChargerState(int chargerState);
 
-signals:
+   signals:
     void stateChanged(int);
     void batteryStateChanged(int);
     void batteryLevelChanged(int);
@@ -62,7 +70,7 @@ signals:
     void batteryAlert();
     void chargerWarning();
 
-private:
+   private:
     QTimer* timer = nullptr;
     int m_state = Normal;
     int m_batteryState = BatteryUnknown;
@@ -76,8 +84,8 @@ private:
     void updateBattery();
     void updateCharger();
 
-private slots:
+   private slots:
     void update();
 };
 
-#endif // BATTERYAPI_H
+#endif  // BATTERYAPI_H

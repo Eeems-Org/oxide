@@ -1,64 +1,66 @@
-#include <QCommandLineParser>
-#include <QTextStream>
-#include <QDebug>
-#include <QFile>
+#include <fcntl.h>
 #include <mxcfb.h>
 #include <sys/ioctl.h>
-#include <fcntl.h>
 #include <unistd.h>
+
+#include <QCommandLineParser>
+#include <QDebug>
+#include <QFile>
+#include <QTextStream>
 
 #include "../../shared/liboxide/meta.h"
 
-QDebug operator<<(QDebug debug, const fb_bitfield& bitfield){
+QDebug operator<<(QDebug debug, const fb_bitfield& bitfield) {
     QDebugStateSaver saver(debug);
     Q_UNUSED(saver);
-    return debug.nospace()
-        << "offset=" << bitfield.offset
-        << " length=" << bitfield.length
-        << " msb_right=" << bitfield.msb_right;
+    return debug.nospace() << "offset=" << bitfield.offset
+                           << " length=" << bitfield.length
+                           << " msb_right=" << bitfield.msb_right;
 }
 
-QDebug operator<<(QDebug debug, const fb_var_screeninfo& vinfo){
+QDebug operator<<(QDebug debug, const fb_var_screeninfo& vinfo) {
     QDebugStateSaver saver(debug);
     Q_UNUSED(saver);
-    return debug.nospace()
-        << "xres: " << vinfo.xres << Qt::endl
-        << "yres: " << vinfo.yres << Qt::endl
-        << "xres_virtual: " << vinfo.xres_virtual << Qt::endl
-        << "yres_virtual: " << vinfo.yres_virtual << Qt::endl
-        << "xoffset: " << vinfo.xoffset << Qt::endl
-        << "yoffset: " << vinfo.yoffset << Qt::endl
-        << "bits_per_pixel: " << vinfo.bits_per_pixel << Qt::endl
-        << "grayscale: " << vinfo.grayscale << Qt::endl
-        << "red: " << vinfo.red << Qt::endl
-        << "green: " << vinfo.green << Qt::endl
-        << "blue: " << vinfo.blue << Qt::endl
-        << "transp: " << vinfo.transp << Qt::endl
-        << "nonstd: " << vinfo.nonstd << Qt::endl
-        << "activate: " << vinfo.activate << Qt::endl
-        << "width: " << vinfo.width << Qt::endl
-        << "height: " << vinfo.height << Qt::endl
-        << "accel_flags: " << vinfo.accel_flags << Qt::endl
-        << "pixclock: " << vinfo.pixclock << Qt::endl
-        << "left_margin: " << vinfo.left_margin << Qt::endl
-        << "right_margin: " << vinfo.right_margin << Qt::endl
-        << "upper_margin: " << vinfo.upper_margin << Qt::endl
-        << "lower_margin: " << vinfo.lower_margin << Qt::endl
-        << "hsync_len: " << vinfo.hsync_len << Qt::endl
-        << "vsync_len: " << vinfo.vsync_len << Qt::endl
-        << "sync: " << vinfo.sync << Qt::endl
-        << "vmode: " << vinfo.vmode << Qt::endl
-        << "rotate: " << vinfo.rotate << Qt::endl
-        << "colorspace: " << vinfo.colorspace << Qt::endl
-        << "reserved 0: " << vinfo.reserved[0] << Qt::endl
-        << "reserved 1: " << vinfo.reserved[1] << Qt::endl
-        << "reserved 2: " << vinfo.reserved[2] << Qt::endl
-        << "reserved 3: " << vinfo.reserved[3] << Qt::endl;
+    return debug.nospace() << "xres: " << vinfo.xres << Qt::endl
+                           << "yres: " << vinfo.yres << Qt::endl
+                           << "xres_virtual: " << vinfo.xres_virtual << Qt::endl
+                           << "yres_virtual: " << vinfo.yres_virtual << Qt::endl
+                           << "xoffset: " << vinfo.xoffset << Qt::endl
+                           << "yoffset: " << vinfo.yoffset << Qt::endl
+                           << "bits_per_pixel: " << vinfo.bits_per_pixel
+                           << Qt::endl
+                           << "grayscale: " << vinfo.grayscale << Qt::endl
+                           << "red: " << vinfo.red << Qt::endl
+                           << "green: " << vinfo.green << Qt::endl
+                           << "blue: " << vinfo.blue << Qt::endl
+                           << "transp: " << vinfo.transp << Qt::endl
+                           << "nonstd: " << vinfo.nonstd << Qt::endl
+                           << "activate: " << vinfo.activate << Qt::endl
+                           << "width: " << vinfo.width << Qt::endl
+                           << "height: " << vinfo.height << Qt::endl
+                           << "accel_flags: " << vinfo.accel_flags << Qt::endl
+                           << "pixclock: " << vinfo.pixclock << Qt::endl
+                           << "left_margin: " << vinfo.left_margin << Qt::endl
+                           << "right_margin: " << vinfo.right_margin << Qt::endl
+                           << "upper_margin: " << vinfo.upper_margin << Qt::endl
+                           << "lower_margin: " << vinfo.lower_margin << Qt::endl
+                           << "hsync_len: " << vinfo.hsync_len << Qt::endl
+                           << "vsync_len: " << vinfo.vsync_len << Qt::endl
+                           << "sync: " << vinfo.sync << Qt::endl
+                           << "vmode: " << vinfo.vmode << Qt::endl
+                           << "rotate: " << vinfo.rotate << Qt::endl
+                           << "colorspace: " << vinfo.colorspace << Qt::endl
+                           << "reserved 0: " << vinfo.reserved[0] << Qt::endl
+                           << "reserved 1: " << vinfo.reserved[1] << Qt::endl
+                           << "reserved 2: " << vinfo.reserved[2] << Qt::endl
+                           << "reserved 3: " << vinfo.reserved[3] << Qt::endl;
 }
 
-QString to_hex(unsigned long x){ return "0x" + QString::number(x, 16).toUpper(); }
+QString to_hex(unsigned long x) {
+    return "0x" + QString::number(x, 16).toUpper();
+}
 
-QDebug operator<<(QDebug debug, const fb_fix_screeninfo& finfo){
+QDebug operator<<(QDebug debug, const fb_fix_screeninfo& finfo) {
     QDebugStateSaver saver(debug);
     Q_UNUSED(saver);
     return debug.nospace().noquote()
@@ -80,7 +82,7 @@ QDebug operator<<(QDebug debug, const fb_fix_screeninfo& finfo){
         << "reserved 1: " << finfo.reserved[1] << Qt::endl;
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
     app.setOrganizationName("Eeems");
     app.setOrganizationDomain(OXIDE_SERVICE);
@@ -90,19 +92,19 @@ int main(int argc, char *argv[]){
     parser.setApplicationDescription("a tool to get framebuffer information");
     parser.addVersionOption();
     auto path = "/dev/fb0";
-    if(QString::fromLatin1(path).isEmpty()){
+    if (QString::fromLatin1(path).isEmpty()) {
         qDebug() << "Unable to find framebuffer";
         return EXIT_FAILURE;
     }
     auto fd = open(path, O_RDONLY);
-    if(fd == -1){
+    if (fd == -1) {
         qDebug() << "Failed to open framebuffer:" << strerror(errno);
         return errno;
     }
     fb_var_screeninfo vinfo;
     auto res = ioctl(fd, FBIOGET_VSCREENINFO, &vinfo);
     auto err = errno;
-    if(res == -1){
+    if (res == -1) {
         qDebug() << "Failed to get variable screen info:" << strerror(err);
         return err;
     }
@@ -110,20 +112,18 @@ int main(int argc, char *argv[]){
     res = ioctl(fd, FBIOGET_FSCREENINFO, &finfo);
     err = errno;
     close(fd);
-    if(res == -1){
+    if (res == -1) {
         qDebug() << "Failed to get fixed screen info:" << strerror(err);
         return err;
     }
     QFile file;
     file.open(stdout, QIODevice::WriteOnly);
-    QDebug(&file).nospace()
-        << "[framebuffer]" << Qt::endl
-        << "path: " << path << Qt::endl
-        << Qt::endl
-        << "[fb_var_screeninfo]" << Qt::endl
-        << vinfo
-        << Qt::endl
-        << "[fb_fix_screeninfo]" << Qt::endl
-        << finfo;
+    QDebug(&file).nospace() << "[framebuffer]" << Qt::endl
+                            << "path: " << path << Qt::endl
+                            << Qt::endl
+                            << "[fb_var_screeninfo]" << Qt::endl
+                            << vinfo << Qt::endl
+                            << "[fb_fix_screeninfo]" << Qt::endl
+                            << finfo;
     return EXIT_SUCCESS;
 }

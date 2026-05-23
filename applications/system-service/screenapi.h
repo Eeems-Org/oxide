@@ -1,23 +1,22 @@
 #ifndef SCREENSHOTAPI_H
 #define SCREENSHOTAPI_H
 
-#include <QObject>
+#include <fcntl.h>
+#include <liboxide.h>
+#include <liboxide/devicesettings.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+#include <QDBusObjectPath>
 #include <QDebug>
 #include <QFile>
-#include <QPainter>
-#include <QDBusObjectPath>
 #include <QMutex>
-
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/ioctl.h>
-#include <liboxide.h>
+#include <QObject>
+#include <QPainter>
 
 #include "apibase.h"
 #include "screenshot.h"
-
-#include <liboxide/devicesettings.h>
 
 #define DISPLAYWIDTH (deviceSettings.getScreenWidth())
 #define DISPLAYHEIGHT (deviceSettings.getScreenHeight())
@@ -33,7 +32,7 @@ class ScreenAPI : public APIBase {
     Q_PROPERTY(bool enabled READ enabled)
     Q_PROPERTY(QList<QDBusObjectPath> screenshots READ screenshots)
 
-public:
+   public:
     static ScreenAPI* singleton(ScreenAPI* self = nullptr);
     ScreenAPI(QObject* parent);
     void setEnabled(bool enabled);
@@ -41,15 +40,15 @@ public:
     QList<QDBusObjectPath> screenshots();
     Q_INVOKABLE QDBusObjectPath screenshot();
 
-public slots:
+   public slots:
     QDBusObjectPath addScreenshot(QByteArray blob);
 
-signals:
+   signals:
     void screenshotAdded(QDBusObjectPath);
     void screenshotRemoved(QDBusObjectPath);
     void screenshotModified(QDBusObjectPath);
 
-private:
+   private:
     QList<Screenshot*> m_screenshots;
     bool m_enabled;
     QMutex mutex;
@@ -60,4 +59,4 @@ private:
     QString getNextPath();
 };
 
-#endif // SCREENSHOTAPI_H
+#endif  // SCREENSHOTAPI_H

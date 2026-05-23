@@ -1,33 +1,35 @@
-#include "autotest.h"
-#include <QCoreApplication>
-#include <QTimer>
-#include <QThread>
-#include <QProcess>
-#include <QDebug>
 #include <libblight.h>
 #include <libblight/dbus.h>
+
+#include <QCoreApplication>
+#include <QDebug>
+#include <QProcess>
+#include <QThread>
+#include <QTimer>
+
+#include "autotest.h"
 #include "test.h"
 
-int wait_for_service(QProcess* blight, QCoreApplication* app){
+int wait_for_service(QProcess* blight, QCoreApplication* app) {
     qDebug() << "Checking to see if blight is running...";
     std::unique_ptr<Blight::DBus> dbus = std::make_unique<Blight::DBus>(
 #ifdef EPAPER
-      true
+        true
 #else
-      false
+        false
 #endif
     );
-    if(!dbus->has_service(BLIGHT_SERVICE)){
+    if (!dbus->has_service(BLIGHT_SERVICE)) {
         blight->start("/opt/bin/blight", QStringList());
         qDebug() << "Waiting for blight to start...";
-        if(!blight->waitForStarted()){
+        if (!blight->waitForStarted()) {
             qDebug() << "Failed to start: " << blight->exitCode();
             return 1;
         }
         qDebug() << "Waiting for blight dbus service...";
-        while(!dbus->has_service(BLIGHT_SERVICE)){
+        while (!dbus->has_service(BLIGHT_SERVICE)) {
             app->processEvents(QEventLoop::AllEvents, 1000);
-            if(blight->state() == QProcess::NotRunning){
+            if (blight->state() == QProcess::NotRunning) {
                 qDebug() << "Blight failed to start:" << blight->exitCode();
                 return blight->exitCode() || 1;
             }
@@ -36,14 +38,14 @@ int wait_for_service(QProcess* blight, QCoreApplication* app){
     return 0;
 }
 
-int run_c_tests(QCoreApplication* app){
+int run_c_tests(QCoreApplication* app) {
     QProcess blight;
     int res = wait_for_service(&blight, app);
-    if(res){
+    if (res) {
         return res;
     }
     res = test_c();
-    if(blight.state() != QProcess::NotRunning){
+    if (blight.state() != QProcess::NotRunning) {
         qDebug() << "Waiting for blight to stop...";
         blight.kill();
         blight.waitForFinished();
@@ -51,13 +53,13 @@ int run_c_tests(QCoreApplication* app){
     return res;
 }
 
-int main(int argc, char* argv[]){
+int main(int argc, char* argv[]) {
     QThread::currentThread()->setObjectName("main");
     QCoreApplication app(argc, argv);
     app.setAttribute(Qt::AA_Use96Dpi, true);
-    QTimer::singleShot(0, [&app, &argc, &argv]{
+    QTimer::singleShot(0, [&app, &argc, &argv] {
         int res = 0;
-        if(getenv("SKIP_C_TESTS") == nullptr){
+        if (getenv("SKIP_C_TESTS") == nullptr) {
             res = run_c_tests(&app);
         }
         res += AutoTest::run(argc, argv);

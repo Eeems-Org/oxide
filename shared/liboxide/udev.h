@@ -5,60 +5,68 @@
  */
 #pragma once
 
-#include "liboxide_global.h"
-
 #include <libudev.h>
 
-#include <QObject>
 #include <QMutex>
+#include <QObject>
+
+#include "liboxide_global.h"
 
 namespace Oxide {
     class UDev : public QObject {
         Q_OBJECT
 
-    public:
+       public:
         static UDev* singleton();
         explicit UDev();
         ~UDev();
 
-        enum ActionType {
-            Add,
-            Remove,
-            Change,
-            Online,
-            Offline,
-            Unknown
-        };
+        enum ActionType { Add, Remove, Change, Online, Offline, Unknown };
         struct Device {
             QString subsystem;
             QString deviceType;
             QString path;
             ActionType action = Unknown;
             QString actionString() const {
-                switch(action){
-                case Add:
-                    return "ADD";
-                case Remove:
-                    return "REMOVE";
-                case Change:
-                    return "CHANGE";
-                case Online:
-                    return "ONLINE";
-                case Offline:
-                    return "OFFLINE";
-                case Unknown:
-                default:
-                    return "UNKNOWN";
+                switch (action) {
+                    case Add:
+                        return "ADD";
+                    case Remove:
+                        return "REMOVE";
+                    case Change:
+                        return "CHANGE";
+                    case Online:
+                        return "ONLINE";
+                    case Offline:
+                        return "OFFLINE";
+                    case Unknown:
+                    default:
+                        return "UNKNOWN";
                 }
             }
             std::string debugString() const {
-                return QString("<Device %1/%2 %3>").arg(subsystem, deviceType, actionString()).toStdString();
+                return QString("<Device %1/%2 %3>")
+                    .arg(subsystem, deviceType, actionString())
+                    .toStdString();
             }
         };
-        static void subsystem(const QString& subsystem, std::function<void(const Device&)> callback);
-        static void subsystem(const QString& subsystem, std::function<void()> callback);
-        static void deviceType(const QString& subsystem, const QString& deviceType, std::function<void(const Device&)> callback);
-        static void deviceType(const QString& subsystem, const QString& deviceType, std::function<void()> callback);
+        static void subsystem(
+            const QString& subsystem,
+            std::function<void(const Device&)> callback
+        );
+        static void subsystem(
+            const QString& subsystem, std::function<void()> callback
+        );
+        static void deviceType(
+            const QString& subsystem,
+            const QString& deviceType,
+            std::function<void(const Device&)> callback
+        );
+        static void deviceType(
+            const QString& subsystem,
+            const QString& deviceType,
+            std::function<void()> callback
+        );
         void start();
         void stop();
         bool isRunning();
@@ -69,11 +77,11 @@ namespace Oxide {
         ActionType getActionType(udev_device* udevDevice);
         ActionType getActionType(const QString& actionType);
 
-    signals:
+       signals:
         void event(const Device& device);
         void stopped();
 
-    private:
+       private:
         struct udev* udevLib = nullptr;
         bool running = false;
         bool exitRequested = false;
@@ -82,9 +90,9 @@ namespace Oxide {
         QThread _thread;
         QMutex statelock;
 
-    protected:
+       protected:
         void monitor();
     };
     QDebug operator<<(QDebug debug, const UDev::Device& device);
-}
+}  // namespace Oxide
 Q_DECLARE_METATYPE(Oxide::UDev::Device)

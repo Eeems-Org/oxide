@@ -1,10 +1,10 @@
+#include <liboxide.h>
+#include <liboxide/applications.h>
+
 #include <QCommandLineParser>
 #include <QFile>
 #include <QFileInfo>
-
 #include <string>
-#include <liboxide.h>
-#include <liboxide/applications.h>
 
 #include "edit.h"
 
@@ -12,12 +12,12 @@ using namespace Oxide::Sentry;
 using namespace Oxide::JSON;
 using namespace Oxide::Applications;
 
-QTextStream& qStdOut(){
-    static QTextStream ts( stdout );
+QTextStream& qStdOut() {
+    static QTextStream ts(stdout);
     return ts;
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
     sentry_init("desktop-file-edit", argv);
     app.setOrganizationName("Eeems");
@@ -33,25 +33,25 @@ int main(int argc, char *argv[]){
     parser.addPositionalArgument("FILE", "Application registration to edit");
     parser.process(app);
     auto args = parser.positionalArguments();
-    if(args.empty() || args.length() > 1){
+    if (args.empty() || args.length() > 1) {
         parser.showHelp(EXIT_FAILURE);
     }
-    if(!validateSetKeyValueOptions(parser)){
+    if (!validateSetKeyValueOptions(parser)) {
         return EXIT_FAILURE;
     }
     auto path = args.first();
     QFile file(path);
-    if(!file.exists()){
+    if (!file.exists()) {
         qDebug() << "Error on file" << path << ": No such file or directory";
         return EXIT_FAILURE;
     }
     auto reg = getRegistration(&file);
     file.close();
-    if(!file.open(QFile::WriteOnly | QFile::Truncate)){
+    if (!file.open(QFile::WriteOnly | QFile::Truncate)) {
         qDebug() << "Error on file" << path << ": Cannot write to file";
         return EXIT_FAILURE;
     }
-    if(reg.isEmpty()){
+    if (reg.isEmpty()) {
         qDebug() << "Error on file" << path << ": is not valid";
         return EXIT_FAILURE;
     }
@@ -63,15 +63,16 @@ int main(int argc, char *argv[]){
     file.write(json.toUtf8());
     file.close();
     bool success = true;
-    for(auto error : validateRegistration(name, reg)){
+    for (auto error : validateRegistration(name, reg)) {
         qStdOut() << path << ": " << error << Qt::endl;
         auto level = error.level;
-        if(level == ErrorLevel::Error || level == ErrorLevel::Critical){
+        if (level == ErrorLevel::Error || level == ErrorLevel::Critical) {
             success = false;
         }
     }
-    if(info.suffix() != "oxide"){
-        qDebug() << path.toStdString().c_str() << ": error: filename does not have a .oxide extension";
+    if (info.suffix() != "oxide") {
+        qDebug() << path.toStdString().c_str()
+                 << ": error: filename does not have a .oxide extension";
         success = false;
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;

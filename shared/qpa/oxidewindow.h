@@ -1,15 +1,16 @@
 #pragma once
-#include "oxidebackingstore.h"
-#include "oxidescreen.h"
+#include <libblight/types.h>
+#include <qpa/qplatformwindow.h>
 
 #include <QScreen>
-#include <qpa/qplatformwindow.h>
-#include <libblight/types.h>
+
+#include "oxidebackingstore.h"
+#include "oxidescreen.h"
 
 class OxideScreen;
 
 class OxideWindow : public QPlatformWindow {
-public:
+   public:
     OxideWindow(QWindow* window);
     ~OxideWindow();
 
@@ -22,6 +23,6 @@ public:
     void lower() override;
     bool close() override;
 
-protected:
+   protected:
     OxideBackingStore* mBackingStore;
 };

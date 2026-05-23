@@ -14,7 +14,7 @@
  */
 #define sharedSettings Oxide::SharedSettings::instance()
 
-namespace Oxide{
+namespace Oxide {
     /*!
      * \brief Shared settings for Oxide
      */
@@ -22,7 +22,8 @@ namespace Oxide{
         Q_OBJECT
         /*!
          * \fn instance
-         * \brief Get the static instance of this class. You should use the sharedSettings macro instead.
+         * \brief Get the static instance of this class. You should use the
+         * sharedSettings macro instead.
          * \return The static instance
          * \sa sharedSettings
          */
@@ -204,9 +205,9 @@ namespace Oxide{
          */
         O_SETTINGS_PROPERTY(QString, Lockscreen, onFailedLogin)
 
-    private:
+       private:
         ~SharedSettings();
     };
-}
+}  // namespace Oxide
 
 /*! @} */

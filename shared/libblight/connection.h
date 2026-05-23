@@ -4,24 +4,25 @@
  * \file
  */
 #pragma once
-#include "libblight_global.h"
-#include "types.h"
-
 #include <linux/input.h>
 #include <sys/socket.h>
-#include <vector>
-#include <thread>
-#include <map>
+
+#include <atomic>
 #include <condition_variable>
 #include <functional>
-#include <atomic>
+#include <map>
+#include <thread>
+#include <vector>
+
+#include "libblight_global.h"
+#include "types.h"
 
 namespace Blight {
     class Connection;
     /*!
      * \brief Handle used for waiting for a response from the display server
      */
-    typedef struct ackid_t{
+    typedef struct ackid_t {
         /*!
          * \brief Identifier
          */
@@ -62,7 +63,7 @@ namespace Blight {
      * \brief Display server connection
      */
     class LIBBLIGHT_EXPORT Connection {
-    public:
+       public:
         /*!
          * \brief Create a new connection instance
          * \param fd Connection socket descriptor
@@ -80,7 +81,8 @@ namespace Blight {
          */
         int input_handle();
         /*!
-         * \brief Run a callback when the socket disconnects from the display server
+         * \brief Run a callback when the socket disconnects from the display
+         * server
          * \param callback Callback to run.
          */
         void onDisconnect(std::function<void(int)> callback);
@@ -90,7 +92,8 @@ namespace Blight {
          */
         message_ptr_t read();
         /*!
-         * \brief Read an input event from the display server input events socket
+         * \brief Read an input event from the display server input events
+         * socket
          * \return Input event packet
          */
         std::optional<event_packet_t> read_event();
@@ -99,10 +102,13 @@ namespace Blight {
          * \param type Type of message
          * \param data Data to send
          * \param size Size of data
-         * \param __ackid Unique identifier to use, will automatically generate if set to 0
+         * \param __ackid Unique identifier to use, will automatically generate
+         * if set to 0
          * \return ack_ptr_t if the message was sent
          */
-        maybe_ackid_ptr_t send(MessageType type, data_t data, size_t size, unsigned int __ackid = 0);
+        maybe_ackid_ptr_t send(
+            MessageType type, data_t data, size_t size, unsigned int __ackid = 0
+        );
         /*!
          * \brief Ping the server
          * \param timeout Timeout
@@ -155,7 +161,11 @@ namespace Blight {
             WaveformMode waveform = WaveformMode::HighQualityGrayscale,
             UpdateMode mode = UpdateMode::PartialUpdate,
             unsigned int marker = 0
-        ){ return repaint(buf->surface, x, y, width, height, waveform, mode, marker); }
+        ) {
+            return repaint(
+                buf->surface, x, y, width, height, waveform, mode, marker
+            );
+        }
         /*!
          * \brief Repaint a surface
          * \param buf Buffer representing surface
@@ -168,7 +178,7 @@ namespace Blight {
             WaveformMode waveform = WaveformMode::HighQualityGrayscale,
             UpdateMode mode = UpdateMode::PartialUpdate,
             unsigned int marker = 0
-        ){
+        ) {
             return repaint(
                 buf->surface,
                 buf->x,
@@ -205,11 +215,7 @@ namespace Blight {
          * \return New shared_buf_t if there was no error
          */
         std::optional<shared_buf_t> resize(
-            shared_buf_t buf,
-            int width,
-            int height,
-            int stride,
-            data_t new_data
+            shared_buf_t buf, int width, int height, int stride, data_t new_data
         );
         /*!
          * \brief Raise a surface
@@ -264,11 +270,12 @@ namespace Blight {
          */
         std::vector<surface_id_t> surfaces();
         /*!
-         * \brief Make the current connection the focused connection, which recieves input events
+         * \brief Make the current connection the focused connection, which
+         * recieves input events
          */
         void focused();
 
-    private:
+       private:
         int m_fd;
         int m_inputFd;
         std::atomic<bool> stop_requested;
@@ -277,5 +284,5 @@ namespace Blight {
         std::mutex mutex;
         static void run(Connection* connection);
     };
-}
+}  // namespace Blight
 /*! @} */

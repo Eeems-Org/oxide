@@ -4,18 +4,19 @@
  * \file
  */
 #pragma once
-#include "libblight_global.h"
-
 #include <systemd/sd-bus.h>
-#include <vector>
+
 #include <tuple>
+#include <vector>
+
+#include "libblight_global.h"
 
 namespace Blight {
     /*!
      * \brief The DBusReply class
      */
-    class LIBBLIGHT_EXPORT DBusReply{
-    public:
+    class LIBBLIGHT_EXPORT DBusReply {
+       public:
         DBusReply();
         ~DBusReply();
 
@@ -47,11 +48,12 @@ namespace Blight {
          * \param argument_type Type of data to read from the reply message
          * \return
          */
-        template<typename T>
-        std::optional<T> read_value(const char* argument_type){
+        template <typename T>
+        std::optional<T> read_value(const char* argument_type) {
             T argument;
-            return_value = sd_bus_message_read(message, argument_type, &argument);
-            if(isError()){
+            return_value =
+                sd_bus_message_read(message, argument_type, &argument);
+            if (isError()) {
                 errno = -return_value;
                 return {};
             }
@@ -66,15 +68,15 @@ namespace Blight {
      * \brief An exception raised by DBus
      * \sa Blight::DBus::DBus(bool)
      */
-    class LIBBLIGHT_EXPORT DBusException : public std::runtime_error{
-    public:
+    class LIBBLIGHT_EXPORT DBusException : public std::runtime_error {
+       public:
         DBusException(const std::string& message);
     };
     /*!
      * \brief A helper class for dealing with sd-bus
      */
     class LIBBLIGHT_EXPORT DBus {
-    public:
+       public:
         /*!
          * \brief Create a new DBus connection
          * \param use_system Use the system bus instead of the session bus
@@ -110,7 +112,7 @@ namespace Blight {
          * \param args Arguments
          * \return DBusReply
          */
-        template <typename ... Args>
+        template <typename... Args>
         dbus_reply_t call_method(
             const std::string& service,
             const std::string& path,
@@ -118,9 +120,9 @@ namespace Blight {
             const std::string& member,
             const std::string& argument_types,
             Args... args
-        ){
+        ) {
             auto res = dbus_reply_t(new DBusReply());
-            if(argument_types.size() != sizeof...(args)){
+            if (argument_types.size() != sizeof...(args)) {
                 res->return_value = EINVAL;
                 return res;
             }
@@ -135,7 +137,7 @@ namespace Blight {
                 argument_types.c_str(),
                 args...
             );
-            if(res->isError()){
+            if (res->isError()) {
                 errno = -res->return_value;
             }
             return res;
@@ -153,7 +155,9 @@ namespace Blight {
             const std::string& path,
             const std::string& interface,
             const std::string& member
-        ){ return call_method(service, path, interface, member, ""); }
+        ) {
+            return call_method(service, path, interface, member, "");
+        }
         /*!
          * \brief Get a property from DBus
          * \param service Service name
@@ -171,8 +175,8 @@ namespace Blight {
             const std::string& property_type
         );
 
-    private:
+       private:
         sd_bus* m_bus;
     };
-}
+}  // namespace Blight
 /*! @} */

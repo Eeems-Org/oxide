@@ -1,18 +1,13 @@
-#include <QSet>
-
 #include "network.h"
-#include "wifiapi.h"
+
 #include <liboxide/debug.h>
 
-QSet<QString> none{
-    "NONE",
-    "WPA-NONE"
-};
-QSet<QString> psk{
-    "WPA-PSK",
-    "FT-PSK",
-    "WPA-PSK-SHA256"
-};
+#include <QSet>
+
+#include "wifiapi.h"
+
+QSet<QString> none{"NONE", "WPA-NONE"};
+QSet<QString> psk{"WPA-PSK", "FT-PSK", "WPA-PSK-SHA256"};
 QSet<QString> eap{
     "WPA-EAP",
     "FT-EAP",
@@ -21,138 +16,157 @@ QSet<QString> eap{
     "WPA-EAP-SUITE-B",
     "WPA-EAP-SUITE-B-192"
 };
-QSet<QString> sae{
-    "SAE"
-};
+QSet<QString> sae{"SAE"};
 
-Network::Network(QString path, QString ssid, QVariantMap properties, QObject* parent)
-: QObject(parent), m_path(path), networks(), m_properties(properties), m_ssid(ssid),
-  m_enabled(false){
+Network::Network(
+    QString path, QString ssid, QVariantMap properties, QObject* parent
+)
+    : QObject(parent),
+      m_path(path),
+      networks(),
+      m_properties(properties),
+      m_ssid(ssid),
+      m_enabled(false) {
     auto proto = properties["key_mgmt"].toString();
-    if(psk.contains(proto)){
+    if (psk.contains(proto)) {
         m_protocol = "psk";
-    }else if(eap.contains(proto)){
+    } else if (eap.contains(proto)) {
         m_protocol = "eap";
-    }else if(none.contains(proto)){
+    } else if (none.contains(proto)) {
         m_protocol = "open";
-    }else if(sae.contains(proto)){
+    } else if (sae.contains(proto)) {
         m_protocol = "sae";
-    }else{
+    } else {
         m_protocol = "psk";
     }
 }
 
 Network::Network(QString path, QVariantMap properties, QObject* parent)
-    : Network(path, properties["ssid"].toString().mid(1, properties["ssid"].toString().length() - 2), properties, parent){}
+    : Network(
+          path,
+          properties["ssid"].toString().mid(
+              1, properties["ssid"].toString().length() - 2
+          ),
+          properties,
+          parent
+      ) {}
 
-Network::~Network(){ unregisterPath(); }
+Network::~Network() { unregisterPath(); }
 
 QString Network::path() { return m_path; }
 
-void Network::registerPath(){
+void Network::registerPath() {
     auto bus = QDBusConnection::systemBus();
     bus.unregisterObject(path(), QDBusConnection::UnregisterTree);
-    if(bus.registerObject(path(), this, QDBusConnection::ExportAllContents)){
+    if (bus.registerObject(path(), this, QDBusConnection::ExportAllContents)) {
         O_INFO("Registered" << path() << OXIDE_NETWORK_INTERFACE);
-    }else{
+    } else {
         O_WARNING("Failed to register" << path());
     }
 }
 
-void Network::unregisterPath(){
+void Network::unregisterPath() {
     auto bus = QDBusConnection::systemBus();
-    if(bus.objectRegisteredAt(path()) != nullptr){
+    if (bus.objectRegisteredAt(path()) != nullptr) {
         O_DEBUG("Unregistered" << path());
         bus.unregisterObject(path());
     }
 }
 
-bool Network::enabled(){ return m_enabled; }
+bool Network::enabled() { return m_enabled; }
 
-void Network::setEnabled(bool enabled){
+void Network::setEnabled(bool enabled) {
     m_enabled = enabled;
-    for(auto network : networks){
-        if(network->enabled() != enabled){
+    for (auto network : networks) {
+        if (network->enabled() != enabled) {
             network->setEnabled(enabled);
         }
     }
     emit stateChanged(enabled);
 }
 
-QString Network::ssid(){
-    if(!hasPermission("wifi")){
+QString Network::ssid() {
+    if (!hasPermission("wifi")) {
         return "";
     }
     return m_ssid;
 }
-void Network::registerNetwork(){
-    for(auto interface : wifiAPI->getInterfaces()){
+void Network::registerNetwork() {
+    for (auto interface : wifiAPI->getInterfaces()) {
         bool found = false;
-        for(auto network : networks){
-            if(interface->path() == (reinterpret_cast<Interface*>(network->parent()))->path()){
+        for (auto network : networks) {
+            if (interface->path() ==
+                (reinterpret_cast<Interface*>(network->parent()))->path()) {
                 found = true;
                 break;
             }
         }
-        if(!found){
+        if (!found) {
             O_DEBUG(realProps());
             QDBusObjectPath path = interface->AddNetwork(realProps());
-            auto network = new INetwork(WPA_SUPPLICANT_SERVICE, path.path(), QDBusConnection::systemBus(), interface);
+            auto network = new INetwork(
+                WPA_SUPPLICANT_SERVICE,
+                path.path(),
+                QDBusConnection::systemBus(),
+                interface
+            );
             networks.append(network);
             network->setEnabled(m_enabled);
         }
     }
 }
 
-void Network::connect(){
-    if(!hasPermission("wifi")){
+void Network::connect() {
+    if (!hasPermission("wifi")) {
         return;
     }
     QList<QDBusPendingReply<void>> replies;
-    for(auto network : networks){
+    for (auto network : networks) {
         auto interface = (Interface*)network->parent();
-        replies.append(interface->SelectNetwork(QDBusObjectPath(network->path())));
+        replies.append(
+            interface->SelectNetwork(QDBusObjectPath(network->path()))
+        );
     }
-    for(auto reply : replies){
+    for (auto reply : replies) {
         reply.waitForFinished();
     }
 }
 
-void Network::remove(){
-    if(!hasPermission("wifi")){
+void Network::remove() {
+    if (!hasPermission("wifi")) {
         return;
     }
     QList<QDBusPendingReply<void>> replies;
-    QMap<QString,Interface*> todo;
-    for(auto network : networks){
+    QMap<QString, Interface*> todo;
+    for (auto network : networks) {
         todo.insert(network->path(), (Interface*)network->parent());
     }
-    for(auto path : todo.keys()){
+    for (auto path : todo.keys()) {
         auto interface = todo[path];
         replies.append(interface->RemoveNetwork(QDBusObjectPath(path)));
     }
-    for(auto reply : replies){
+    for (auto reply : replies) {
         reply.waitForFinished();
     }
 }
 
-void Network::PropertiesChanged(const QVariantMap& properties){
-    if(properties.contains("Enabled")){
+void Network::PropertiesChanged(const QVariantMap& properties) {
+    if (properties.contains("Enabled")) {
         bool enabled = false;
-        for(auto network : networks){
-            if(network->enabled()){
+        for (auto network : networks) {
+            if (network->enabled()) {
                 enabled = true;
                 break;
             }
         }
-        if(enabled != m_enabled){
+        if (enabled != m_enabled) {
             setEnabled(enabled);
         }
     }
 }
 
-QList<QDBusObjectPath> Network::bSSs(){
-    if(!hasPermission("wifi")){
+QList<QDBusObjectPath> Network::bSSs() {
+    if (!hasPermission("wifi")) {
         return QList<QDBusObjectPath>();
     }
     QVariantMap args;
@@ -160,22 +174,22 @@ QList<QDBusObjectPath> Network::bSSs(){
     return wifiAPI->getBSS(args);
 }
 
-QString Network::getNull(){ return ""; }
+QString Network::getNull() { return ""; }
 
 QString Network::password() {
-    if(!hasPermission("wifi")){
+    if (!hasPermission("wifi")) {
         return "";
     }
-    if(passwordField() == ""){
+    if (passwordField() == "") {
         return "";
     }
     auto password = m_properties[passwordField()].toString();
-    if(password != ""){
+    if (password != "") {
         return password;
     }
-    for(auto network : networks){
+    for (auto network : networks) {
         password = network->properties()[passwordField()].toString();
-        if(password != ""){
+        if (password != "") {
             return password;
         }
     }
@@ -183,119 +197,129 @@ QString Network::password() {
 }
 
 void Network::setPassword(QString password) {
-    if(!hasPermission("wifi")){
+    if (!hasPermission("wifi")) {
         return;
     }
-    if(passwordField() != ""){
+    if (passwordField() != "") {
         m_properties[passwordField()] = password;
         emit propertiesChanged(m_properties);
     }
 }
 
 QString Network::protocol() {
-    if(!hasPermission("wifi")){
+    if (!hasPermission("wifi")) {
         return "";
     }
     return m_protocol;
 }
 
 void Network::setProtocol(QString protocol) {
-    if(!hasPermission("wifi")){
+    if (!hasPermission("wifi")) {
         return;
     }
     auto oldPassword = password();
     m_properties.remove(passwordField());
     m_protocol = protocol;
-    if(passwordField() != ""){
+    if (passwordField() != "") {
         m_properties[passwordField()] = oldPassword;
     }
-    if(protocol == "open"){
+    if (protocol == "open") {
         m_properties["key_mgmt"] = "NONE";
-    }else{
+    } else {
         m_properties.remove("key_mgmt");
     }
     setProperties(m_properties);
 }
 
 QVariantMap Network::properties() {
-    if(!hasPermission("wifi")){
+    if (!hasPermission("wifi")) {
         return QVariantMap();
     }
     return m_properties;
 }
 
-void Network::setProperties(QVariantMap properties){
-    if(!hasPermission("wifi")){
+void Network::setProperties(QVariantMap properties) {
+    if (!hasPermission("wifi")) {
         return;
     }
     m_properties = properties;
     auto props = realProps();
-    for(auto network : networks){
+    for (auto network : networks) {
         network->setProperties(props);
     }
     emit propertiesChanged(properties);
 }
 
-QList<QString> Network::paths(){
+QList<QString> Network::paths() {
     QList<QString> result;
-    if(!hasPermission("wifi")){
+    if (!hasPermission("wifi")) {
         return result;
     }
-    for(auto network : networks){
+    for (auto network : networks) {
         result.append(network->path());
     }
 
     return result;
 }
 
-void Network::addNetwork(const QString& path, Interface* interface){
-    if(paths().contains(path)){
+void Network::addNetwork(const QString& path, Interface* interface) {
+    if (paths().contains(path)) {
         return;
     }
-    auto network = new INetwork(WPA_SUPPLICANT_SERVICE, path, QDBusConnection::systemBus(), interface);
+    auto network = new INetwork(
+        WPA_SUPPLICANT_SERVICE, path, QDBusConnection::systemBus(), interface
+    );
     networks.append(network);
-    if(network->enabled() != m_enabled){
+    if (network->enabled() != m_enabled) {
         network->setEnabled(m_enabled);
     }
-    QObject::connect(network, &INetwork::PropertiesChanged, this, &Network::PropertiesChanged, Qt::QueuedConnection);
+    QObject::connect(
+        network,
+        &INetwork::PropertiesChanged,
+        this,
+        &Network::PropertiesChanged,
+        Qt::QueuedConnection
+    );
 }
 
-void Network::removeNetwork(const QString& path){
+void Network::removeNetwork(const QString& path) {
     QMutableListIterator<INetwork*> i(networks);
-    while(i.hasNext()){
+    while (i.hasNext()) {
         auto network = i.next();
-        if(!network->isValid() || network->path() == path){
+        if (!network->isValid() || network->path() == path) {
             i.remove();
             network->deleteLater();
         }
     }
 }
 
-void Network::removeInterface(Interface* interface){
+void Network::removeInterface(Interface* interface) {
     QMutableListIterator<INetwork*> i(networks);
-    while(i.hasNext()){
+    while (i.hasNext()) {
         auto network = i.next();
-        if(!network->isValid() || (Interface*)network->parent() == interface){
+        if (!network->isValid() || (Interface*)network->parent() == interface) {
             i.remove();
             network->deleteLater();
         }
     }
 }
 
-bool Network::hasPermission(QString permission, const char* sender){ return wifiAPI->hasPermission(permission, sender); }
+bool Network::hasPermission(QString permission, const char* sender) {
+    return wifiAPI->hasPermission(permission, sender);
+}
 
-QVariantMap Network::realProps(){
+QVariantMap Network::realProps() {
     QVariantMap props(m_properties);
     props["ssid"] = m_ssid;
     return props;
 }
 
-QString Network::passwordField(){
-    if(protocol() == "psk"){
+QString Network::passwordField() {
+    if (protocol() == "psk") {
         return "psk";
-    }else if(protocol() == "eap"){
+    } else if (protocol() == "eap") {
         return "password";
-    }else if(protocol() == "sae"){
+    } else if (protocol() == "sae") {
         return "sae_password";
     }
     return "";

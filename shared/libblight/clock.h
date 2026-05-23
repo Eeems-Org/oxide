@@ -4,17 +4,18 @@
  * \file
  */
 #pragma once
-#include "libblight_global.h"
 #include <chrono>
 
-namespace Blight{
+#include "libblight_global.h"
+
+namespace Blight {
     /*!
      * \brief The ClockWatch class
      *
      * A simple timer class for determening how long code takes.
      */
     class LIBBLIGHT_EXPORT ClockWatch {
-    public:
+       public:
         /*!
          * \brief Create a new instance and start the timer.
          */
@@ -30,8 +31,8 @@ namespace Blight{
          */
         double elapsed();
 
-    private:
+       private:
         std::chrono::high_resolution_clock::time_point t1;
     };
-}
+}  // namespace Blight
 /*! @} */

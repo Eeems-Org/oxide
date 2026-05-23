@@ -1,8 +1,9 @@
 #ifndef SCREENSHOTLIST_H
 #define SCREENSHOTLIST_H
 
-#include <QAbstractListModel>
 #include <liboxide/dbus.h>
+
+#include <QAbstractListModel>
 
 using namespace codes::eeems::oxide1;
 
@@ -11,18 +12,20 @@ class ScreenshotItem : public QObject {
     Q_PROPERTY(QString path READ path NOTIFY pathChanged)
     Q_PROPERTY(QString name READ name NOTIFY nameChanged)
 
-public:
+   public:
     ScreenshotItem(Screenshot* screenshot, QObject* parent) : QObject(parent) {
         m_screenshot = screenshot;
-        connect(screenshot, &Screenshot::modified, this, &ScreenshotItem::modified);
+        connect(
+            screenshot, &Screenshot::modified, this, &ScreenshotItem::modified
+        );
     }
     ~ScreenshotItem() {
-        if(m_screenshot != nullptr){
+        if (m_screenshot != nullptr) {
             delete m_screenshot;
         }
     }
     QString path() {
-        if(m_screenshot == nullptr){
+        if (m_screenshot == nullptr) {
             return "";
         }
         return m_screenshot->path();
@@ -33,7 +36,7 @@ public:
     bool remove() {
         auto reply = m_screenshot->remove();
         reply.waitForFinished();
-        if(reply.isError() || !reply.isValid()){
+        if (reply.isError() || !reply.isValid()) {
             qDebug() << reply.error();
             return false;
         }
@@ -41,73 +44,77 @@ public:
     }
     QString qPath() { return m_screenshot->QDBusAbstractInterface::path(); }
 
-signals:
+   signals:
     void pathChanged(QString);
     void nameChanged(QString);
 
-public slots:
-    void modified(){
+   public slots:
+    void modified() {
         emit pathChanged(path());
         emit nameChanged(name());
     }
 
-private:
+   private:
     Screenshot* m_screenshot;
 };
 
-
-class ScreenshotList : public QAbstractListModel
-{
+class ScreenshotList : public QAbstractListModel {
     Q_OBJECT
 
-public:
+   public:
     ScreenshotList() : QAbstractListModel(nullptr) {}
 
-    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override {
+    QVariant headerData(
+        int section, Qt::Orientation orientation, int role = Qt::DisplayRole
+    ) const override {
         Q_UNUSED(section)
         Q_UNUSED(orientation)
         Q_UNUSED(role)
         return QVariant();
     }
-    int rowCount(const QModelIndex& parent = QModelIndex()) const override{
-        if(parent.isValid()){
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override {
+        if (parent.isValid()) {
             return 0;
         }
         return screenshots.length();
     }
-    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override{
-        if(!index.isValid()){
+    QVariant data(
+        const QModelIndex& index, int role = Qt::DisplayRole
+    ) const override {
+        if (!index.isValid()) {
             return QVariant();
         }
-        if(index.column() > 0){
+        if (index.column() > 0) {
             return QVariant();
         }
-        if(index.row() >= screenshots.length()){
+        if (index.row() >= screenshots.length()) {
             return QVariant();
         }
-        if(role != Qt::DisplayRole){
+        if (role != Qt::DisplayRole) {
             return QVariant();
         }
         return QVariant::fromValue(screenshots[index.row()]);
     }
-    void append(Screenshot* screenshot){
-        beginInsertRows(QModelIndex(), screenshots.length(), screenshots.length());
+    void append(Screenshot* screenshot) {
+        beginInsertRows(
+            QModelIndex(), screenshots.length(), screenshots.length()
+        );
         screenshots.append(new ScreenshotItem(screenshot, this));
         endInsertRows();
         emit updated();
     }
-    ScreenshotItem* get(const QDBusObjectPath& path){
+    ScreenshotItem* get(const QDBusObjectPath& path) {
         auto pathString = path.path();
-        for(auto screenshot : screenshots){
-            if(pathString == screenshot->qPath()){
+        for (auto screenshot : screenshots) {
+            if (pathString == screenshot->qPath()) {
                 return screenshot;
             }
         }
         return nullptr;
     }
-    Q_INVOKABLE void clear(){
+    Q_INVOKABLE void clear() {
         beginRemoveRows(QModelIndex(), 0, screenshots.length());
-        for(auto screenshot : screenshots){
+        for (auto screenshot : screenshots) {
             screenshot->remove();
             delete screenshot;
         }
@@ -115,12 +122,16 @@ public:
         endRemoveRows();
         emit updated();
     }
-    Q_INVOKABLE void remove(QString path){
+    Q_INVOKABLE void remove(QString path) {
         QMutableListIterator<ScreenshotItem*> i(screenshots);
-        while(i.hasNext()){
+        while (i.hasNext()) {
             auto screenshot = i.next();
-            if(screenshot->path() == path){
-                beginRemoveRows(QModelIndex(), screenshots.indexOf(screenshot), screenshots.indexOf(screenshot));
+            if (screenshot->path() == path) {
+                beginRemoveRows(
+                    QModelIndex(),
+                    screenshots.indexOf(screenshot),
+                    screenshots.indexOf(screenshot)
+                );
                 i.remove();
                 screenshot->remove();
                 delete screenshot;
@@ -129,19 +140,23 @@ public:
         }
         emit updated();
     }
-    void remove(const QDBusObjectPath& path){
+    void remove(const QDBusObjectPath& path) {
         auto screenshot = get(path);
-        if(screenshot != nullptr){
+        if (screenshot != nullptr) {
             remove(screenshot->path());
         }
     }
     int removeAll(Screenshot* screenshot) {
         QMutableListIterator<ScreenshotItem*> i(screenshots);
         int count = 0;
-        while(i.hasNext()){
+        while (i.hasNext()) {
             auto item = i.next();
-            if(item->is(screenshot) && item->remove()){
-                beginRemoveRows(QModelIndex(), screenshots.indexOf(item), screenshots.indexOf(item));
+            if (item->is(screenshot) && item->remove()) {
+                beginRemoveRows(
+                    QModelIndex(),
+                    screenshots.indexOf(item),
+                    screenshots.indexOf(item)
+                );
                 i.remove();
                 delete item;
                 endRemoveRows();
@@ -154,11 +169,11 @@ public:
     int length() { return screenshots.length(); }
     bool empty() { return screenshots.empty(); }
 
-signals:
+   signals:
     void updated();
 
-private:
+   private:
     QList<ScreenshotItem*> screenshots;
 };
 
-#endif // SCREENSHOTLIST_H
+#endif  // SCREENSHOTLIST_H

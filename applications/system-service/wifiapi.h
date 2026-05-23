@@ -1,19 +1,19 @@
 #ifndef WIFIAPI_H
 #define WIFIAPI_H
 
-#include <QObject>
+#include <liboxide.h>
+#include <unistd.h>
+
 #include <QDebug>
 #include <QDir>
 #include <QException>
+#include <QObject>
 #include <QUuid>
 
-#include <unistd.h>
-#include <liboxide.h>
-
 #include "apibase.h"
-#include "wlan.h"
-#include "network.h"
 #include "bss.h"
+#include "network.h"
+#include "wlan.h"
 
 #define wifiAPI WifiAPI::singleton()
 
@@ -29,7 +29,7 @@ class WifiAPI : public APIBase {
     Q_PROPERTY(QList<QDBusObjectPath> networks READ getNetworkPaths)
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
 
-public:
+   public:
     static WifiAPI* singleton(WifiAPI* self = nullptr);
     WifiAPI(QObject* parent);
     void shutdown();
@@ -37,7 +37,7 @@ public:
     bool getEnabled();
     QList<Wlan*> getWlans();
     QList<Interface*> getInterfaces();
-    enum State { Unknown, Off, Disconnected, Offline, Online};
+    enum State { Unknown, Off, Disconnected, Offline, Online };
     Q_ENUM(State)
 
     int state();
@@ -45,7 +45,8 @@ public:
 
     Q_INVOKABLE bool enable();
     Q_INVOKABLE void disable();
-    Q_INVOKABLE QDBusObjectPath addNetwork(QString ssid, QVariantMap properties);
+    Q_INVOKABLE QDBusObjectPath
+    addNetwork(QString ssid, QVariantMap properties);
     Q_INVOKABLE QList<QDBusObjectPath> getNetwork(QVariantMap properties);
     Q_INVOKABLE QList<QDBusObjectPath> getBSS(QVariantMap properties);
     Q_INVOKABLE void scan(bool active = false);
@@ -65,11 +66,15 @@ public:
     bool scanning();
 
     // Interface signals
-    void BSSAdded(Wlan* wlan, const QDBusObjectPath& path, const QVariantMap& properties);
+    void BSSAdded(
+        Wlan* wlan, const QDBusObjectPath& path, const QVariantMap& properties
+    );
     void BSSRemoved(Wlan* wlan, const QDBusObjectPath& path);
     void BlobAdded(Wlan* wlan, const QString& name);
     void BlobRemoved(Wlan* wlan, const QString& name);
-    void NetworkAdded(Wlan* wlan, const QDBusObjectPath& path, const QVariantMap& properties);
+    void NetworkAdded(
+        Wlan* wlan, const QDBusObjectPath& path, const QVariantMap& properties
+    );
     void NetworkRemoved(Wlan* wlan, const QDBusObjectPath& path);
     void NetworkSelected(Wlan* wlan, const QDBusObjectPath& path);
     void InterfacePropertiesChanged(Wlan* wlan, const QVariantMap& properties);
@@ -79,7 +84,7 @@ public:
     void stopUpdating();
     void resumeUpdating();
 
-signals:
+   signals:
     void stateChanged(int);
     void linkChanged(int);
     void rssiChanged(int);
@@ -91,13 +96,15 @@ signals:
     void bssRemoved(QDBusObjectPath);
     void scanningChanged(bool);
 
-private slots:
+   private slots:
     // wpa_supplicant signals
-    void InterfaceAdded(const QDBusObjectPath &path, const QVariantMap &properties);
-    void InterfaceRemoved(const QDBusObjectPath &path);
-    void PropertiesChanged(const QVariantMap &properties);
+    void InterfaceAdded(
+        const QDBusObjectPath& path, const QVariantMap& properties
+    );
+    void InterfaceRemoved(const QDBusObjectPath& path);
+    void PropertiesChanged(const QVariantMap& properties);
 
-private:
+   private:
     bool m_enabled;
     QTimer* timer;
     QList<Wlan*> wlans;
@@ -121,4 +128,4 @@ private:
     QString getPath(QString type, QString id);
 };
 
-#endif // WIFIAPI_H
+#endif  // WIFIAPI_H

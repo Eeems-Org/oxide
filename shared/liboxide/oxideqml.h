@@ -6,23 +6,24 @@
  */
 #pragma once
 
-#include <QObject>
+#include <libblight/types.h>
+
+#include <QBrush>
 #include <QImage>
-#include <QQmlEngine>
+#include <QObject>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQmlEngine>
 #include <QQuickPaintedItem>
-#include <QBrush>
-
-#include <libblight/types.h>
 
 namespace Oxide {
     /*!
      * \brief The Oxide::QML namespace
      */
-    namespace QML{
+    namespace QML {
         /*!
-         * \brief An object available as Oxide in qml that provides useful properties and methods
+         * \brief An object available as Oxide in qml that provides useful
+         * properties and methods
          *
          * Example:
          *
@@ -32,7 +33,7 @@ namespace Oxide {
          * }
          * ```
          */
-        class OxideQml : public QObject{
+        class OxideQml : public QObject {
             Q_OBJECT
             /*!
              * \brief If the device should be in landscape or not
@@ -48,8 +49,8 @@ namespace Oxide {
             QML_NAMED_ELEMENT(Oxide)
             QML_SINGLETON
 
-        public:
-            explicit OxideQml(QObject *parent = nullptr);
+           public:
+            explicit OxideQml(QObject* parent = nullptr);
             /*!
              * \brief Check if the device should be in landscape mode or not
              * \return If the device should be in landscape or not
@@ -72,7 +73,7 @@ namespace Oxide {
              */
             Q_INVOKABLE QBrush brushFromColor(const QColor& color);
 
-        signals:
+           signals:
             /*!
              * \brief The value of landscape changed
              * \sa landscape, landscape()
@@ -104,17 +105,22 @@ namespace Oxide {
              * \accessors brush(), setBrush(QBrush)
              * \notifier brushChanged(const QBrush&)
              */
-            Q_PROPERTY(QBrush brush READ brush WRITE setBrush NOTIFY brushChanged)
+            Q_PROPERTY(
+                QBrush brush READ brush WRITE setBrush NOTIFY brushChanged
+            )
             /*!
              * \property penWidth
              * \brief Current pen width used when drawing
              * \accessors penWidth(), setPenWidth(qreal)
              * \notifier penWidthChanged(qreal)
              */
-            Q_PROPERTY(qreal penWidth READ penWidth WRITE setPenWidth NOTIFY penWidthChanged)
+            Q_PROPERTY(
+                qreal penWidth READ penWidth WRITE setPenWidth NOTIFY
+                    penWidthChanged
+            )
             QML_ELEMENT
 
-        public:
+           public:
             /*!
              * \brief Create a new canvas instance
              * \param parent Parent widget
@@ -151,7 +157,7 @@ namespace Oxide {
              */
             QImage* image();
 
-        signals:
+           signals:
             /*!
              * \brief The user has started drawing on the canvas
              */
@@ -173,34 +179,41 @@ namespace Oxide {
              */
             void penWidthChanged(qreal pendWidth);
 
-        protected:
-            void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
-            void mousePressEvent(QMouseEvent *event) override;
-            void mouseMoveEvent(QMouseEvent *event) override;
-            void mouseReleaseEvent(QMouseEvent *event) override;
+           protected:
+            void geometryChange(
+                const QRectF& newGeometry, const QRectF& oldGeometry
+            ) override;
+            void mousePressEvent(QMouseEvent* event) override;
+            void mouseMoveEvent(QMouseEvent* event) override;
+            void mouseReleaseEvent(QMouseEvent* event) override;
 
-        private:
+           private:
             QPointF m_lastPoint;
             QImage m_drawn;
             QBrush m_brush;
             qreal m_penWidth;
         };
         /*!
-         * \brief Get the display server buffer that represents a surface for a QWindow
+         * \brief Get the display server buffer that represents a surface for a
+         * QWindow
          * \param window The Window to get the surface buffer for
          * \return The buffer that represents the display server surface
          */
         Blight::shared_buf_t getSurfaceForWindow(QWindow* window);
         /*!
-         * \brief Get the a QImage that can be used to manipulate a display server buffer
+         * \brief Get the a QImage that can be used to manipulate a display
+         * server buffer
          * \param buffer The buffer to create the QImage instance for
-         * \return A QImage instance that can be used to manipulate a display server buffer
+         * \return A QImage instance that can be used to manipulate a display
+         * server buffer
          */
         QImage getImageForSurface(Blight::shared_buf_t buffer);
         /*!
-         * \brief Get a QImage instance that can be used to manipulate a display server buffer for a QWindow
+         * \brief Get a QImage instance that can be used to manipulate a display
+         * server buffer for a QWindow
          * \param window The QWindow instance
-         * \return A QImage instance that can be used to manipulate a display server buffer for the QWindow
+         * \return A QImage instance that can be used to manipulate a display
+         * server buffer for the QWindow
          */
         QImage getImageForWindow(QWindow* window);
         /*!
@@ -208,12 +221,14 @@ namespace Oxide {
          * \param window The QWindow instance to repaint
          * \param rect The area of the QWindow to repaint
          * \param waveform The waveform to use for repainting
-         * \param sync If the method should wait for the repaint to finish before continuing
+         * \param sync If the method should wait for the repaint to finish
+         * before continuing
          */
         void repaint(
             QWindow* window,
             QRectF rect,
-            Blight::WaveformMode waveform = Blight::WaveformMode::HighQualityGrayscale,
+            Blight::WaveformMode waveform =
+                Blight::WaveformMode::HighQualityGrayscale,
             bool sync = false
         );
         /*!
@@ -224,14 +239,17 @@ namespace Oxide {
         OxideQml* getSingleton();
         /*!
          * \brief Register the %QML extensions that liboxide provides
-         * \param engine The QQmlApplicationEngine instance that this application is using
+         * \param engine The QQmlApplicationEngine instance that this
+         * application is using
          * \sa OxideQml, Canvas
          *
-         * This registers the OxideQML singleton so that it can be accessed via Oxide in QML.
-         * It also registers the built in QML classes that liboxide provides so that they can be imported with `import "qrc://codes.eeems.oxide"`.
-         * Other classes are available for import with `import codes.eeems.oxide 3.0`
+         * This registers the OxideQML singleton so that it can be accessed via
+         * Oxide in QML. It also registers the built in QML classes that
+         * liboxide provides so that they can be imported with `import
+         * "qrc://codes.eeems.oxide"`. Other classes are available for import
+         * with `import codes.eeems.oxide 3.0`
          */
         void registerQML(QQmlApplicationEngine* engine);
-    }
-}
+    }  // namespace QML
+}  // namespace Oxide
 /*! @} */

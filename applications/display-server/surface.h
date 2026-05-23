@@ -1,10 +1,10 @@
 #pragma once
 
+#include <QImage>
 #include <QObject>
-#include <QRect>
 #include <QQuickItem>
 #include <QQuickPaintedItem>
-#include <QImage>
+#include <QRect>
 
 #include "connection.h"
 class Connection;
@@ -15,7 +15,7 @@ class Surface : public QObject {
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
 
-public:
+   public:
     Surface(
         Connection* connection,
         int fd,
@@ -26,7 +26,7 @@ public:
     );
     ~Surface();
     QString id();
-    Blight::surface_id_t identifier(){ return m_identifier; }
+    Blight::surface_id_t identifier() { return m_identifier; }
     bool isValid();
     std::shared_ptr<QImage> image();
     void repaint(QRect rect = QRect());
@@ -48,15 +48,15 @@ public:
     bool isRemoved();
     void removed();
 
-signals:
+   signals:
     void update(const QRect& geometry);
 
-private slots:
+   private slots:
 #ifndef EPAPER
     void activeFocusChanged(bool focus);
 #endif
 
-private:
+   private:
     Connection* m_connection;
     Blight::surface_id_t m_identifier;
     QRect m_geometry;

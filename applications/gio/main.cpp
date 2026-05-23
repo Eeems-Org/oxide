@@ -1,25 +1,24 @@
-#include <QCommandLineParser>
-
-#include <string>
-#include <sys/stat.h>
+#include <cat.h>
+#include <common.h>
+#include <copy.h>
+#include <help.h>
+#include <launch.h>
 #include <liboxide.h>
 #include <liboxide/applications.h>
-
-#include <common.h>
-#include <cat.h>
-#include <copy.h>
 #include <mkdir.h>
-#include <help.h>
-#include <version.h>
 #include <open.h>
-#include <launch.h>
 #include <remove.h>
 #include <rename.h>
+#include <sys/stat.h>
+#include <version.h>
+
+#include <QCommandLineParser>
+#include <string>
 
 using namespace Oxide::Sentry;
 using namespace Oxide::Applications;
 
-int main(int argc, char *argv[]){
+int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
     sentry_init("gio", argv);
     app.setOrganizationName("Eeems");
@@ -52,9 +51,15 @@ int main(int argc, char *argv[]){
     parser.applicationDescription();
     parser.addHelpOption();
     parser.addOption(ICommand::versionOption());
-    parser.addPositionalArgument("Commands:", ICommand::commandsHelp(), "COMMAND");
-    parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsPositionalArguments);
+    parser.addPositionalArgument(
+        "Commands:", ICommand::commandsHelp(), "COMMAND"
+    );
+    parser.setOptionsAfterPositionalArgumentsMode(
+        QCommandLineParser::ParseAsPositionalArguments
+    );
     parser.parse(app.arguments());
-    parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsOptions);
+    parser.setOptionsAfterPositionalArgumentsMode(
+        QCommandLineParser::ParseAsOptions
+    );
     return ICommand::exec(parser);
 }

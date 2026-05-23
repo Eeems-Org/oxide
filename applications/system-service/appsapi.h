@@ -2,16 +2,16 @@
 #define APPSAPI_H
 
 #include <QDBusMetaType>
-#include <QDebug>
 #include <QDBusObjectPath>
-#include <QSettings>
-#include <QUuid>
-#include <QFile>
+#include <QDebug>
 #include <QDir>
-#include <QTimer>
+#include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonArray>
+#include <QSettings>
+#include <QTimer>
+#include <QUuid>
 
 #include "apibase.h"
 #include "application.h"
@@ -26,23 +26,39 @@ using namespace Oxide::Applications;
 class AppsAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_APPS_INTERFACE)
-    Q_PROPERTY(int state READ state) // This needs to be here for the XML to generate the other properties :(
-    Q_PROPERTY(QDBusObjectPath startupApplication READ startupApplication WRITE setStartupApplication)
-    Q_PROPERTY(QDBusObjectPath lockscreenApplication READ lockscreenApplication WRITE setLockscreenApplication)
-    Q_PROPERTY(QDBusObjectPath processManagerApplication READ processManagerApplication WRITE setProcessManagerApplication)
-    Q_PROPERTY(QDBusObjectPath taskSwitcherApplication READ taskSwitcherApplication WRITE setTaskSwitcherApplication)
+    Q_PROPERTY(
+        int state READ state
+    )  // This needs to be here for the XML to generate the other properties :(
+    Q_PROPERTY(
+        QDBusObjectPath startupApplication READ startupApplication WRITE
+            setStartupApplication
+    )
+    Q_PROPERTY(
+        QDBusObjectPath lockscreenApplication READ lockscreenApplication WRITE
+            setLockscreenApplication
+    )
+    Q_PROPERTY(
+        QDBusObjectPath processManagerApplication READ processManagerApplication
+            WRITE setProcessManagerApplication
+    )
+    Q_PROPERTY(
+        QDBusObjectPath taskSwitcherApplication READ taskSwitcherApplication
+            WRITE setTaskSwitcherApplication
+    )
     Q_PROPERTY(QVariantMap applications READ getApplications)
     Q_PROPERTY(QStringList previousApplications READ getPreviousApplications)
     Q_PROPERTY(QDBusObjectPath currentApplication READ currentApplication)
     Q_PROPERTY(QVariantMap runningApplications READ runningApplications)
     Q_PROPERTY(QVariantMap pausedApplications READ pausedApplications)
 
-public:
+   public:
     static AppsAPI* singleton(AppsAPI* self = nullptr);
     AppsAPI(QObject* parent);
     void shutdown();
     void startup();
-    int state(){ return 0; } // Ignore this, it's a kludge to get the xml to generate
+    int state() {
+        return 0;
+    }  // Ignore this, it's a kludge to get the xml to generate
 
     void setEnabled(bool enabled);
 
@@ -84,7 +100,7 @@ public:
     void recordPreviousApplication();
     void removeFromPreviousApplications(QString name);
 
-signals:
+   signals:
     void applicationRegistered(QDBusObjectPath);
     void applicationLaunched(QDBusObjectPath);
     void applicationUnregistered(QDBusObjectPath);
@@ -93,7 +109,7 @@ signals:
     void applicationSignaled(QDBusObjectPath);
     void applicationExited(QDBusObjectPath, int);
 
-public slots:
+   public slots:
     QT_DEPRECATED void leftHeld();
     void openDefaultApplication();
     QT_DEPRECATED void homeHeld();
@@ -102,7 +118,7 @@ public slots:
     void openTaskSwitcher();
     void openTerminal();
 
-private:
+   private:
     bool m_stopping;
     bool m_starting;
     bool m_enabled;
@@ -116,8 +132,15 @@ private:
     bool m_sleeping;
     Application* resumeApp = nullptr;
     QString getPath(QString name);
-    QString _noApplicationsMessage = "No applications have been found. This is the result of invalid configuration. Open an issue on\nhttps://github.com/Eeems-Org/oxide\nto get support resolving this.";
-    QString _noForegroundAppMessage = "No foreground application currently running. Open an issue on\nhttps://github.com/Eeems-Org/oxide\nto get support resolving this.";
+    QString _noApplicationsMessage =
+        "No applications have been found. This is the result of invalid "
+        "configuration. Open an issue "
+        "on\nhttps://github.com/Eeems-Org/oxide\nto get support resolving "
+        "this.";
+    QString _noForegroundAppMessage =
+        "No foreground application currently running. Open an issue "
+        "on\nhttps://github.com/Eeems-Org/oxide\nto get support resolving "
+        "this.";
 
     void writeApplications();
     void readApplications();
@@ -125,4 +148,4 @@ private:
     bool locked();
     void ensureForegroundApp();
 };
-#endif // APPSAPI_H
+#endif  // APPSAPI_H

@@ -1,14 +1,14 @@
 #pragma once
 #include "autotest.h"
 
-class test_Clock : public QObject{
+class test_Clock : public QObject {
     Q_OBJECT
 
-public:
-   test_Clock();
+   public:
+    test_Clock();
     ~test_Clock();
 
-private slots:
+   private slots:
     void test_diff();
     void test_elapsed();
 };

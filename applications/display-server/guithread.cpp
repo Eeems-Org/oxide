@@ -289,7 +289,7 @@ void GUIThread::sendUpdate(
 ) {
     O_DEBUG("Sending screen update" << rect << waveform << mode);
     EPFramebuffer::instance()->swapBuffers(
-        m_screenGeometry,
+        rect,
         EPContentType::Mono,
         mode == Blight::UpdateMode::FullUpdate ? EPScreenMode::QualityFull
                                                : EPScreenMode::QualityFast,

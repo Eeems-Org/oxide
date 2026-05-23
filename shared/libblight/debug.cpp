@@ -1,8 +1,8 @@
 #include "debug.h"
 
-void __printf_header(int priority){
+void __printf_header(int priority) {
     std::string level;
-    switch(priority){
+    switch (priority) {
         case LOG_INFO:
             level = "Info";
             break;
@@ -31,12 +31,6 @@ void __printf_header(int priority){
     free(selfpath);
 }
 
-void __printf_footer(const char* file, unsigned int line, const char* func){
-    fprintf(
-        stderr,
-        " (%s:%u, %s)\n",
-        file,
-        line,
-        func
-    );
+void __printf_footer(const char* file, unsigned int line, const char* func) {
+    fprintf(stderr, " (%s:%u, %s)\n", file, line, func);
 }

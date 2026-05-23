@@ -1,19 +1,19 @@
 #pragma once
 #include "autotest.h"
 
-class test_Threading : public QObject{
+class test_Threading : public QObject {
     Q_OBJECT
 
-public:
+   public:
     test_Threading();
     ~test_Threading();
 
-private slots:
+   private slots:
     void test_startThreadWithPriority();
     void test_dispatchToThread();
     void test_runLater();
     void test_runInEventLoop();
 
-private:
+   private:
     static int getNice();
 };

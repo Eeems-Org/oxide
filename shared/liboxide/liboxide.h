@@ -6,35 +6,34 @@
  */
 #pragma once
 
-#include "liboxide_global.h"
-
-#include "meta.h"
-#include "dbus.h"
 #include "applications.h"
-#include "settingsfile.h"
-#include "power.h"
+#include "dbus.h"
+#include "debug.h"
+#include "devicesettings.h"
 #include "json.h"
+#include "liboxide_global.h"
+#include "meta.h"
+#include "power.h"
+#include "settingsfile.h"
+#include "sharedsettings.h"
 #include "signalhandler.h"
 #include "slothandler.h"
 #include "sysobject.h"
-#include "debug.h"
-#include "devicesettings.h"
-#include "xochitlsettings.h"
-#include "sharedsettings.h"
 #include "threading.h"
+#include "xochitlsettings.h"
 #if defined(LIBOXIDE_LIBRARY)
 #include "oxide_sentry.h"
 #else
 #include "sentry.h"
 #endif
 
+#include <sys/types.h>
+
 #include <QDebug>
+#include <QFileSystemWatcher>
 #include <QScopeGuard>
 #include <QSettings>
-#include <QFileSystemWatcher>
 #include <QThread>
-
-#include <sys/types.h>
 #ifndef VERSION
 #ifdef APP_VERSION
 #define VERSION APP_VERSION
@@ -59,9 +58,7 @@ namespace Oxide {
      * \retval NULL Program was not able to execute
      */
     LIBOXIDE_EXPORT QString execute(
-        const QString& program,
-        const QStringList& args,
-        bool readStderr = true
+        const QString& program, const QStringList& args, bool readStderr = true
     );
     /*!
      * \brief Try to get a lock
@@ -69,7 +66,7 @@ namespace Oxide {
      * \return File descriptor of the lock file
      * \retval -1 Unable to get lock
      */
-    LIBOXIDE_EXPORT int tryGetLock(char const *lockName);
+    LIBOXIDE_EXPORT int tryGetLock(char const* lockName);
     /*!
      * \brief Release a lock file
      * \param fd File descriptor of the lock file
@@ -103,5 +100,5 @@ namespace Oxide {
      * \snippet examples/oxide.cpp getGID
      */
     LIBOXIDE_EXPORT gid_t getGID(const QString& name);
-}
+}  // namespace Oxide
 /*! @} */

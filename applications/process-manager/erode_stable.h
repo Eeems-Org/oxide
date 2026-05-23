@@ -3,7 +3,9 @@
 #include <liboxide.h>
 #include <linux/input.h>
 #include <math.h>
-#include <ostream>
+#include <signal.h>
+#include <unistd.h>
+
 #include <QAbstractListModel>
 #include <QDebug>
 #include <QDir>
@@ -17,9 +19,8 @@
 #include <QTextStream>
 #include <QtPlugin>
 #include <QtQuick>
-#include <signal.h>
+#include <ostream>
 #include <string>
-#include <unistd.h>
 
 #include "controller.h"
 #endif

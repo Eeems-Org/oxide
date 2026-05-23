@@ -1,9 +1,9 @@
-#include <QCommandLineParser>
-
-#include <string>
-#include <sys/stat.h>
 #include <liboxide.h>
 #include <liboxide/applications.h>
+#include <sys/stat.h>
+
+#include <QCommandLineParser>
+#include <string>
 
 using namespace codes::eeems::oxide1;
 using namespace Oxide::Sentry;
@@ -19,97 +19,100 @@ const QSet<QString> ApiNames = QSet<QString>{
     "notification",
 };
 
-QTextStream& qStdOut(){
-    static QTextStream ts( stdout );
+QTextStream& qStdOut() {
+    static QTextStream ts(stdout);
     return ts;
 }
 
-QObject* getApi(const QString& name){
-    if(!ApiNames.contains(name)){
+QObject* getApi(const QString& name) {
+    if (!ApiNames.contains(name)) {
         return nullptr;
     }
     auto bus = QDBusConnection::systemBus();
-    if(!bus.isConnected()){
+    if (!bus.isConnected()) {
         qDebug() << "xdg-settings: Failed to connect to DBus";
         return nullptr;
     }
-    if(name == "general"){
+    if (name == "general") {
         return new General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
     }
     General generalApi(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
     auto reply = generalApi.requestAPI(name);
     reply.waitForFinished();
-    if(reply.isError()){
+    if (reply.isError()) {
         qDebug() << "xdg-settings: Failed to connect to general API";
         return nullptr;
     }
     auto path = ((QDBusObjectPath)reply).path();
-    if(path == "/"){
+    if (path == "/") {
         qDebug() << "xdg-settings: Failed to get API path from tarnish";
         return nullptr;
     }
-    if(name == "power"){
+    if (name == "power") {
         return new Power(OXIDE_SERVICE, path, bus);
     }
-    if(name == "wifi"){
+    if (name == "wifi") {
         return new Wifi(OXIDE_SERVICE, path, bus);
     }
-    if(name == "apps"){
+    if (name == "apps") {
         return new Apps(OXIDE_SERVICE, path, bus);
     }
-    if(name == "system"){
+    if (name == "system") {
         return new System(OXIDE_SERVICE, path, bus);
     }
-    if(name == "screen"){
+    if (name == "screen") {
         return new Screen(OXIDE_SERVICE, path, bus);
     }
-    if(name == "notification"){
+    if (name == "notification") {
         return new Notifications(OXIDE_SERVICE, path, bus);
     }
     qDebug() << "xdg-settings: Unknown API" << name;
     return nullptr;
 }
 
-bool isValidProperty(QObject* obj, const QString& name){
+bool isValidProperty(QObject* obj, const QString& name) {
     auto meta = obj->metaObject();
-    for(int i = meta->propertyOffset(); i < meta->propertyCount(); ++i){
+    for (int i = meta->propertyOffset(); i < meta->propertyCount(); ++i) {
         auto property = meta->property(i);
-        if(property.name() == name){
+        if (property.name() == name) {
             return property.isReadable() && property.isWritable();
         }
     }
     return false;
 }
 
-QList<QString> getProperties(QObject* obj){
+QList<QString> getProperties(QObject* obj) {
     QList<QString> res;
     auto meta = obj->metaObject();
-    for(int i = meta->propertyOffset(); i < meta->propertyCount(); ++i){
+    for (int i = meta->propertyOffset(); i < meta->propertyCount(); ++i) {
         auto property = meta->property(i);
         auto name = property.name();
-        if(!QString(name).startsWith("__META_GROUP_") && property.isReadable() && property.isWritable()){
+        if (!QString(name).startsWith("__META_GROUP_") &&
+            property.isReadable() && property.isWritable()) {
             res.append(name);
         }
     }
     return res;
 }
 
-QStringList positionArguments(QCommandLineParser& parser, int mandatoryCount, int maxCount){
+QStringList positionArguments(
+    QCommandLineParser& parser, int mandatoryCount, int maxCount
+) {
     parser.process(*qApp);
     auto args = parser.positionalArguments();
     args.removeFirst();
     auto len = args.length();
     parser.parse(args);
-    if(len < mandatoryCount || len > maxCount){
+    if (len < mandatoryCount || len > maxCount) {
         parser.showHelp(EXIT_FAILURE);
     }
     return args;
 }
 
-QObject* getObj(QStringList* args, int isGet = false){
-    switch(args->length()){
+QObject* getObj(QStringList* args, int isGet = false) {
+    switch (args->length()) {
         case 2:
-            if(!isGet){
+            if (!isGet) {
                 return &sharedSettings;
             }
             break;
@@ -125,25 +128,27 @@ QObject* getObj(QStringList* args, int isGet = false){
     return obj;
 }
 
-int get_command(QCommandLineParser& parser){
+int get_command(QCommandLineParser& parser) {
     parser.clearPositionalArguments();
     parser.addPositionalArgument("", "", "get");
     parser.addPositionalArgument("property", "Property to get", "{property}");
-    parser.addPositionalArgument("subproperty", "Subproperty to get", "[subproperty]");
+    parser.addPositionalArgument(
+        "subproperty", "Subproperty to get", "[subproperty]"
+    );
     auto args = positionArguments(parser, 1, 2);
 
     QObject* obj = getObj(&args, true);
-    if(obj == nullptr){
+    if (obj == nullptr) {
         parser.showHelp(EXIT_FAILURE);
     }
     auto name = args.first();
-    if(!isValidProperty(obj, name)){
+    if (!isValidProperty(obj, name)) {
         qDebug() << "xdg-settings: Unknown property" << name;
         qDebug() << args;
         parser.showHelp(EXIT_FAILURE);
     }
     QVariant value = obj->property(name.toStdString().c_str());
-    if(!value.isValid()){
+    if (!value.isValid()) {
         qDebug() << "xdg-settings: Failed to get property";
         parser.showHelp(EXIT_FAILURE);
     }
@@ -151,25 +156,29 @@ int get_command(QCommandLineParser& parser){
     return EXIT_SUCCESS;
 }
 
-int check_command(QCommandLineParser& parser){
+int check_command(QCommandLineParser& parser) {
     parser.clearPositionalArguments();
     parser.addPositionalArgument("", "", "check");
     parser.addPositionalArgument("property", "Property to check", "{property}");
-    parser.addPositionalArgument("subproperty", "Subproperty to check", "[subproperty]");
-    parser.addPositionalArgument("value", "Value to check if the property/subproperty is", "value");
+    parser.addPositionalArgument(
+        "subproperty", "Subproperty to check", "[subproperty]"
+    );
+    parser.addPositionalArgument(
+        "value", "Value to check if the property/subproperty is", "value"
+    );
     auto args = positionArguments(parser, 2, 3);
 
     QObject* obj = getObj(&args);
-    if(obj == nullptr){
+    if (obj == nullptr) {
         parser.showHelp(EXIT_FAILURE);
     }
     auto name = args.first();
-    if(!isValidProperty(obj, name)){
+    if (!isValidProperty(obj, name)) {
         qDebug() << "xdg-settings: Unknown property" << name;
         parser.showHelp(EXIT_FAILURE);
     }
     QVariant value = obj->property(name.toStdString().c_str());
-    if(!value.isValid()){
+    if (!value.isValid()) {
         qDebug() << "xdg-settings: Failed to get property";
         parser.showHelp(EXIT_FAILURE);
     }
@@ -177,57 +186,61 @@ int check_command(QCommandLineParser& parser){
     return EXIT_SUCCESS;
 }
 
-int set_command(QCommandLineParser& parser){
+int set_command(QCommandLineParser& parser) {
     parser.clearPositionalArguments();
     parser.addPositionalArgument("", "", "set");
     parser.addPositionalArgument("property", "Property to set", "{property}");
-    parser.addPositionalArgument("subproperty", "Subproperty to set", "[subproperty]");
-    parser.addPositionalArgument("value", "Value to set the property/subproperty to", "value");
+    parser.addPositionalArgument(
+        "subproperty", "Subproperty to set", "[subproperty]"
+    );
+    parser.addPositionalArgument(
+        "value", "Value to set the property/subproperty to", "value"
+    );
     auto args = positionArguments(parser, 2, 3);
 
     QObject* obj = getObj(&args);
-    if(obj == nullptr){
+    if (obj == nullptr) {
         parser.showHelp(EXIT_FAILURE);
     }
     auto name = args.first();
-    if(!isValidProperty(obj, name)){
+    if (!isValidProperty(obj, name)) {
         qDebug() << "xdg-settings: Unknown property" << name;
         parser.showHelp(EXIT_FAILURE);
     }
     QVariant value = obj->property(name.toStdString().c_str());
-    if(!value.isValid()){
+    if (!value.isValid()) {
         qDebug() << "xdg-settings: Failed to get property";
         parser.showHelp(EXIT_FAILURE);
     }
-    if(obj->setProperty(name.toStdString().c_str(), args.last())){
+    if (obj->setProperty(name.toStdString().c_str(), args.last())) {
         return EXIT_SUCCESS;
     }
     QDBusAbstractInterface* api = qobject_cast<QDBusAbstractInterface*>(obj);
-    if(api == nullptr){
+    if (api == nullptr) {
         qDebug() << "xdg-settings: failed to set property";
-    }else{
+    } else {
         qDebug() << "xdg-settings:" << api->lastError();
     }
     return EXIT_FAILURE;
 }
 
-int list_command(QCommandLineParser& parser){
-    if(!parser.positionalArguments().isEmpty()){
+int list_command(QCommandLineParser& parser) {
+    if (!parser.positionalArguments().isEmpty()) {
         parser.showHelp(EXIT_FAILURE);
     }
     qStdOut() << "Known properties:" << Qt::endl;
-    for(auto name : getProperties(&sharedSettings)){
+    for (auto name : getProperties(&sharedSettings)) {
         qStdOut() << "  " << name << Qt::endl;
     }
-    for(auto name : ApiNames){
+    for (auto name : ApiNames) {
         auto api = getApi(name);
-        if(api == nullptr){
+        if (api == nullptr) {
             return EXIT_FAILURE;
         }
         auto props = getProperties(api);
-        if(!props.isEmpty()){
+        if (!props.isEmpty()) {
             qStdOut() << "  " << name << Qt::endl;
-            for(auto prop : props){
+            for (auto prop : props) {
                 qStdOut() << "    " << prop << Qt::endl;
             }
         }
@@ -236,7 +249,7 @@ int list_command(QCommandLineParser& parser){
     return EXIT_SUCCESS;
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
     sentry_init("xdg-settings", argv);
     app.setOrganizationName("Eeems");
@@ -244,40 +257,48 @@ int main(int argc, char *argv[]){
     app.setApplicationName("xdg-settings");
     app.setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
-    parser.setApplicationDescription("Get various settings from the desktop environment");
+    parser.setApplicationDescription(
+        "Get various settings from the desktop environment"
+    );
     parser.applicationDescription();
     parser.addHelpOption();
     parser.addVersionOption();
-    QCommandLineOption listOption("list", "List all properties xdg-settings knows about.");
+    QCommandLineOption listOption(
+        "list", "List all properties xdg-settings knows about."
+    );
     parser.addOption(listOption);
-    parser.addPositionalArgument("Commands:",
+    parser.addPositionalArgument(
+        "Commands:",
         "get   Get the value of a setting.\n"
         "check Check to see if a setting is a specific value.\n"
         "set   Set the value of a setting.\n"
     );
 
-    parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsPositionalArguments);
+    parser.setOptionsAfterPositionalArgumentsMode(
+        QCommandLineParser::ParseAsPositionalArguments
+    );
     parser.parse(app.arguments());
-    parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsOptions);
+    parser.setOptionsAfterPositionalArgumentsMode(
+        QCommandLineParser::ParseAsOptions
+    );
     QStringList args = parser.positionalArguments();
-    if(parser.isSet(listOption)){
+    if (parser.isSet(listOption)) {
         return list_command(parser);
     }
     if (args.isEmpty()) {
         parser.showHelp(EXIT_FAILURE);
     }
 
-
     auto command = args.first();
-    if(command == "get"){
+    if (command == "get") {
         parser.clearPositionalArguments();
         return get_command(parser);
     }
-    if(command == "check"){
+    if (command == "check") {
         parser.clearPositionalArguments();
         return check_command(parser);
     }
-    if(command == "set"){
+    if (command == "set") {
         parser.clearPositionalArguments();
         return set_command(parser);
     }

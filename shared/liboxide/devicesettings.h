@@ -5,8 +5,8 @@
  * \file
  */
 #pragma once
-#include "liboxide_global.h"
 #include "event_device.h"
+#include "liboxide_global.h"
 
 /*!
  * \def deviceSettings()
@@ -14,24 +14,25 @@
  */
 #define deviceSettings Oxide::DeviceSettings::instance()
 
-namespace Oxide{
+namespace Oxide {
     /*!
      * \brief Device specific values
      */
-    class LIBOXIDE_EXPORT DeviceSettings{
-    public:
+    class LIBOXIDE_EXPORT DeviceSettings {
+       public:
         /*!
          * \brief Known device types
          */
         enum DeviceType {
             Unknown, /*!< Unknown device type >*/
-            RM1, /*!< reMarkable 1 >*/
-            RM2, /*!< reMarkable 2 >*/
-            RMPP, /*!< reMarkable Paper Pro >*/
-            RMPPM, /*!< reMarkable Paper Pro Move >*/
+            RM1,     /*!< reMarkable 1 >*/
+            RM2,     /*!< reMarkable 2 >*/
+            RMPP,    /*!< reMarkable Paper Pro >*/
+            RMPPM,   /*!< reMarkable Paper Pro Move >*/
         };
         /*!
-         * \brief Get the static instance of this class. You should use the deviceSettings macro instead.
+         * \brief Get the static instance of this class. You should use the
+         * deviceSettings macro instead.
          * \return The static instance
          * \sa deviceSettings
          */
@@ -162,7 +163,7 @@ namespace Oxide{
          */
         const QString& version();
 
-    private:
+       private:
         DeviceType _deviceType;
 
         DeviceSettings();
@@ -174,5 +175,5 @@ namespace Oxide{
         std::string touchPath = "";
         std::vector<std::function<void()>> callbacks;
     };
-}
+}  // namespace Oxide
 /*! @} */

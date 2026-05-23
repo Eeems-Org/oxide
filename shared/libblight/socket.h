@@ -5,10 +5,9 @@
  */
 #pragma once
 #include "libblight_global.h"
-
 #include "types.h"
 
-namespace Blight{
+namespace Blight {
     /*!
      * \brief Non-blocking recieve data from a socket.
      * \param fd The socket.
@@ -29,10 +28,7 @@ namespace Blight{
      * \param size Size of the data to recieve
      * \return The data if it was recieved without error.
      */
-    LIBBLIGHT_EXPORT std::optional<data_t> recv_blocking(
-        int fd,
-        ssize_t size
-    );
+    LIBBLIGHT_EXPORT std::optional<data_t> recv_blocking(int fd, ssize_t size);
     /*!
      * \brief Send data to a socket.
      * \param fd The socket
@@ -41,9 +37,7 @@ namespace Blight{
      * \return If the data was sent without error.
      */
     LIBBLIGHT_EXPORT bool send_blocking(
-        int fd,
-        const data_t data,
-        ssize_t size
+        int fd, const data_t data, ssize_t size
     );
     /*!
      * \brief Wait until a socket is ready to send data.
@@ -59,5 +53,5 @@ namespace Blight{
      * \return If the socket is ready for us to recieve data.
      */
     LIBBLIGHT_EXPORT bool wait_for_read(int fd, int timeout = -1);
-}
+}  // namespace Blight
 /*! @} */

@@ -8,10 +8,10 @@
 #ifndef LIBOXIDE_SYSOBJECT_H
 #define LIBOXIDE_SYSOBJECT_H
 
-#include "liboxide_global.h"
-
-#include <string>
 #include <QString>
+#include <string>
+
+#include "liboxide_global.h"
 
 namespace Oxide {
     /*!
@@ -20,8 +20,8 @@ namespace Oxide {
      * \snippet examples/oxide.cpp SysObject
      */
     class LIBOXIDE_EXPORT SysObject {
-    public:
-        explicit SysObject(QString path) : m_path(path.toStdString()){}
+       public:
+        explicit SysObject(QString path) : m_path(path.toStdString()) {}
         /*!
          * \brief The path to the sysfs interface
          * \return The path to the sysfs interface
@@ -48,7 +48,8 @@ namespace Oxide {
          * \brief Get a named property value as a string
          * \param name The property name
          * \return The string value of the named property
-         * \retval "0" Unable to open file. This is to ensure that intProperty will not crash
+         * \retval "0" Unable to open file. This is to ensure that intProperty
+         * will not crash
          */
         std::string strProperty(const std::string& name);
         /*!
@@ -69,9 +70,9 @@ namespace Oxide {
          */
         QMap<QString, QString> uevent();
 
-    private:
+       private:
         std::string m_path;
     };
-}
-#endif // LIBOXIDE_SYSOBJECT_H
+}  // namespace Oxide
+#endif  // LIBOXIDE_SYSOBJECT_H
 /*! @} */

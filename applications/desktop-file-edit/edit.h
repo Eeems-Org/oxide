@@ -7,6 +7,8 @@
 
 void addEditOptions(QCommandLineParser& parser);
 bool validateSetKeyValueOptions(QCommandLineParser& parser);
-void applyChanges(QCommandLineParser& parser, QJsonObject& reg, const QString& name);
+void applyChanges(
+    QCommandLineParser& parser, QJsonObject& reg, const QString& name
+);
 
-#endif // EDIT_H
+#endif  // EDIT_H

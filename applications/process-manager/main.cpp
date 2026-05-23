@@ -1,15 +1,15 @@
-#include <QGuiApplication>
-#include <QQmlApplicationEngine>
-#include <QtQuick>
-#include <QtPlugin>
-
-#include <linux/input.h>
-#include <signal.h>
-#include <ostream>
 #include <fcntl.h>
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
 #include <liboxide/oxideqml.h>
+#include <linux/input.h>
+#include <signal.h>
+
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QtPlugin>
+#include <QtQuick>
+#include <ostream>
 
 #include "controller.h"
 
@@ -18,7 +18,7 @@ using namespace Oxide;
 using namespace Oxide::QML;
 using namespace Oxide::Sentry;
 
-int main(int argc, char *argv[]){
+int main(int argc, char* argv[]) {
     deviceSettings.setupQtEnvironment();
     QGuiApplication app(argc, argv);
     sentry_init("erode", argv);
@@ -33,14 +33,14 @@ int main(int argc, char *argv[]){
     Controller controller(&engine);
     context->setContextProperty("controller", &controller);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-    if (engine.rootObjects().isEmpty()){
+    if (engine.rootObjects().isEmpty()) {
         qDebug() << "Nothing to display";
         return -1;
     }
     QObject* root = engine.rootObjects().first();
     root->installEventFilter(new EventFilter(&app));
     QQuickItem* tasksView = root->findChild<QQuickItem*>("tasksView");
-    if(!tasksView){
+    if (!tasksView) {
         qDebug() << "Can't find tasksView";
         return -1;
     }

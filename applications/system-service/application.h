@@ -1,36 +1,35 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 
-#include <QObject>
-#include <QDebug>
-#include <QDBusConnection>
-#include <QDBusObjectPath>
-#include <QProcess>
-#include <QProcessEnvironment>
-#include <QElapsedTimer>
-#include <QTime>
-#include <QDir>
-#include <QCoreApplication>
-
-#include <zlib.h>
-#include <systemd/sd-journal.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/mman.h>
-#include <linux/fb.h>
-#include <sys/ioctl.h>
-#include <cstdlib>
-#include <stdio.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
+#include <libblight/types.h>
+#include <liboxide.h>
+#include <linux/fb.h>
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
-#include <stdexcept>
+#include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <systemd/sd-journal.h>
+#include <unistd.h>
+#include <zlib.h>
+
+#include <QCoreApplication>
+#include <QDBusConnection>
+#include <QDBusObjectPath>
+#include <QDebug>
+#include <QDir>
+#include <QElapsedTimer>
+#include <QObject>
+#include <QProcess>
+#include <QProcessEnvironment>
+#include <QTime>
 #include <algorithm>
-#include <liboxide.h>
-#include <libblight/types.h>
+#include <cstdlib>
+#include <stdexcept>
 
 class Notification;
 #include "notification.h"
@@ -38,52 +37,72 @@ class Notification;
 // Must be included so that generate_xml.sh will work
 #include "../../shared/liboxide/meta.h"
 
-#define DEFAULT_PATH "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+#define DEFAULT_PATH                                                           \
+    "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/" \
+    "sbin:/usr/sbin:/sbin"
 
-class ApplicationProcess : public QProcess{
+class ApplicationProcess : public QProcess {
     Q_OBJECT
 
-public:
+   public:
     ApplicationProcess(QObject* parent = nullptr);
 
     bool setUser(const QString& name);
     bool setGroup(const QString& name);
     void setMask(mode_t mask);
 
-private:
+   private:
     gid_t m_gid;
     uid_t m_uid;
     mode_t m_mask;
 };
 
-class Application : public QObject{
+class Application : public QObject {
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
     Q_CLASSINFO("D-Bus Interface", OXIDE_APPLICATION_INTERFACE)
     Q_PROPERTY(QString name READ name)
     Q_PROPERTY(int processId READ processId)
-    Q_PROPERTY(QStringList permissions READ permissions WRITE setPermissions NOTIFY permissionsChanged)
-    Q_PROPERTY(QString displayName READ displayName WRITE setDisplayName NOTIFY displayNameChanged)
+    Q_PROPERTY(
+        QStringList permissions READ permissions WRITE setPermissions NOTIFY
+            permissionsChanged
+    )
+    Q_PROPERTY(
+        QString displayName READ displayName WRITE setDisplayName NOTIFY
+            displayNameChanged
+    )
     Q_PROPERTY(QString description READ description)
     Q_PROPERTY(QString bin READ bin)
-    Q_PROPERTY(QString onPause READ onPause WRITE setOnPause NOTIFY onPauseChanged)
-    Q_PROPERTY(QString onResume READ onResume WRITE setOnResume NOTIFY onResumeChanged)
+    Q_PROPERTY(
+        QString onPause READ onPause WRITE setOnPause NOTIFY onPauseChanged
+    )
+    Q_PROPERTY(
+        QString onResume READ onResume WRITE setOnResume NOTIFY onResumeChanged
+    )
     Q_PROPERTY(QString onStop READ onStop WRITE setOnStop NOTIFY onStopChanged)
-    Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart NOTIFY autoStartChanged)
+    Q_PROPERTY(
+        bool autoStart READ autoStart WRITE setAutoStart NOTIFY autoStartChanged
+    )
     Q_PROPERTY(int type READ type)
     Q_PROPERTY(int state READ state)
     Q_PROPERTY(bool systemApp READ systemApp)
     Q_PROPERTY(bool hidden READ hidden)
     Q_PROPERTY(bool transient READ transient)
     Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
-    Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
-    Q_PROPERTY(QString workingDirectory READ workingDirectory WRITE setWorkingDirectory NOTIFY workingDirectoryChanged)
+    Q_PROPERTY(
+        QVariantMap environment READ environment NOTIFY environmentChanged
+    )
+    Q_PROPERTY(
+        QString workingDirectory READ workingDirectory WRITE setWorkingDirectory
+            NOTIFY workingDirectoryChanged
+    )
     Q_PROPERTY(QString user READ user)
     Q_PROPERTY(QString group READ group)
 
-public:
-    Application(QDBusObjectPath path, QObject* parent) : Application(path.path(), parent) {}
-    Application(QString path, QObject *parent);
+   public:
+    Application(QDBusObjectPath path, QObject* parent)
+        : Application(path.path(), parent) {}
+    Application(QString path, QObject* parent);
     ~Application();
 
     QString path();
@@ -148,7 +167,7 @@ public:
     void waitForResume();
     QString id();
 
-signals:
+   signals:
     void launched();
     void paused();
     void resumed();
@@ -165,11 +184,11 @@ signals:
     void workingDirectoryChanged(QString);
     void directoriesChanged(QStringList);
 
-public slots:
+   public slots:
     void sigUsr1();
     void sigUsr2();
 
-private slots:
+   private slots:
     void started();
     void finished(int exitCode);
     void readyReadStandardError();
@@ -177,7 +196,7 @@ private slots:
     void stateChanged(QProcess::ProcessState state);
     void errorOccurred(QProcess::ProcessError error);
 
-private:
+   private:
     QVariantMap m_config;
     QString m_path;
     ApplicationProcess* m_process;
@@ -193,10 +212,12 @@ private:
     Notification* m_notification = nullptr;
     QImage* m_backup = nullptr;
 
-    bool hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
+    bool hasPermission(
+        QString permission, const char* sender = __builtin_FUNCTION()
+    );
     void delayUpTo(int milliseconds);
     void updateEnvironment();
     void startSpan(std::string operation, std::string description);
 };
 
-#endif // APPLICATION_H
+#endif  // APPLICATION_H

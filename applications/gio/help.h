@@ -1,23 +1,23 @@
 #pragma once
 
-#include "common.h"
-
 #include <QDir>
 #include <QUrl>
 
-class HelpCommand : ICommand{
+#include "common.h"
+
+class HelpCommand : ICommand {
     O_COMMAND(HelpCommand, "help", "Print help", true)
-    int arguments() override{
+    int arguments() override {
         parser->addPositionalArgument("Commands:", commandsHelp(), "[COMMAND]");
         return EXIT_SUCCESS;
     }
-    int command(const QStringList& args) override{
-        if(args.isEmpty()){
+    int command(const QStringList& args) override {
+        if (args.isEmpty()) {
             parser->showHelp(EXIT_SUCCESS);
         }
         auto command = args.first();
         auto tempArgs = QStringList() << command;
-        if(!commands->contains(command)){
+        if (!commands->contains(command)) {
             parser->showHelp(EXIT_FAILURE);
         }
         parser->clearPositionalArguments();

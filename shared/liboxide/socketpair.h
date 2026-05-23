@@ -4,20 +4,22 @@
  * \file
  */
 #pragma once
-#include "liboxide_global.h"
 #include <QLocalSocket>
 
-namespace Oxide{
+#include "liboxide_global.h"
+
+namespace Oxide {
     /*!
      * \brief A socket pair used for two way communication
      */
-    class LIBOXIDE_EXPORT SocketPair : public QObject{
+    class LIBOXIDE_EXPORT SocketPair : public QObject {
         Q_OBJECT
 
-    public:
+       public:
         /*!
          * \brief Create a new socket pair
-         * \param allowWriteSocketRead Allow reading from the write socket, this allows messages to be sent by the other end of the socket
+         * \param allowWriteSocketRead Allow reading from the write socket, this
+         * allows messages to be sent by the other end of the socket
          */
         SocketPair(bool allowWriteSocketRead = false);
         ~SocketPair();
@@ -80,7 +82,8 @@ namespace Oxide{
         QByteArray read(qint64 maxlen = 0);
         /*!
          * \brief How many bytes are available to read from the read socket
-         * \return How many bytes that are available to read from the read socket
+         * \return How many bytes that are available to read from the read
+         * socket
          */
         qint64 bytesAvailable();
         qint64 _write(const char* data, qint64 size);
@@ -100,11 +103,12 @@ namespace Oxide{
         qint64 write(QByteArray data);
         /*!
          * \brief Error string if the last operation on the write socket errored
-         * \return Error string if the last operation on the write socket errored
+         * \return Error string if the last operation on the write socket
+         * errored
          */
         QString errorString();
 
-    signals:
+       signals:
         /*!
          * \brief The read socket has data available to read
          */
@@ -119,20 +123,20 @@ namespace Oxide{
          */
         void disconnected();
 
-    public slots:
+       public slots:
         /*!
          * \brief Close both the read and write sockets
          */
         void close();
 
-    private slots:
+       private slots:
         void _readyRead();
 
-    private:
+       private:
         QLocalSocket m_readSocket;
         QLocalSocket m_writeSocket;
         bool m_enabled;
         bool m_allowWriteSocketRead;
     };
-}
+}  // namespace Oxide
 /*! @} */

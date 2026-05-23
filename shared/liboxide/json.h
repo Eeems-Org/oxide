@@ -6,12 +6,12 @@
  */
 #pragma once
 
-#include "liboxide_global.h"
-
-#include <QVariant>
-#include <QJsonArray>
 #include <QDBusArgument>
+#include <QJsonArray>
 #include <QJsonDocument>
+#include <QVariant>
+
+#include "liboxide_global.h"
 /*!
  * \brief The JSON namespace
  */
@@ -35,7 +35,10 @@ namespace Oxide::JSON {
      * \param format Format to use
      * \return JSON string
      */
-    LIBOXIDE_EXPORT QString toJson(QVariant value, QJsonDocument::JsonFormat format = QJsonDocument::Compact);
+    LIBOXIDE_EXPORT QString toJson(
+        QVariant value,
+        QJsonDocument::JsonFormat format = QJsonDocument::Compact
+    );
     /*!
      * \brief Convert a JSON string into a QVariant
      * \param json JSON string to convert
@@ -48,5 +51,5 @@ namespace Oxide::JSON {
      * \return The converted QVaraint
      */
     LIBOXIDE_EXPORT QVariant fromJson(QFile* file);
-}
+}  // namespace Oxide::JSON
 /*! @} */

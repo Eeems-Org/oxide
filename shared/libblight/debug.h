@@ -5,12 +5,13 @@
  */
 #pragma once
 
-#include <systemd/sd-journal.h>
-#include <unistd.h>
 #include <linux/prctl.h>
 #include <stdio.h>
-#include <mutex>
 #include <sys/prctl.h>
+#include <systemd/sd-journal.h>
+#include <unistd.h>
+
+#include <mutex>
 
 static std::mutex __log_mutex;
 /*!
@@ -25,13 +26,13 @@ void __printf_footer(char const* file, unsigned int line, char const* func);
 /*!
  * \brief Log a message to stderr
  */
-#define _PRINTF(priority, ...) \
-    if(priority <= BLIGHT_DEBUG_LOGGING){ \
-        __log_mutex.lock(); \
-        __printf_header(priority); \
-        fprintf(stderr, __VA_ARGS__); \
+#define _PRINTF(priority, ...)                                    \
+    if (priority <= BLIGHT_DEBUG_LOGGING) {                       \
+        __log_mutex.lock();                                       \
+        __printf_header(priority);                                \
+        fprintf(stderr, __VA_ARGS__);                             \
         __printf_footer(__FILE__, __LINE__, __PRETTY_FUNCTION__); \
-        __log_mutex.unlock(); \
+        __log_mutex.unlock();                                     \
     }
 
 /*!
@@ -51,9 +52,11 @@ void __printf_footer(char const* file, unsigned int line, char const* func);
  */
 #define _CRIT(...) _PRINTF(LOG_CRIT, __VA_ARGS__)
 /*!
- * \brief Log a debug line indicating that a certain line of code has been reached
+ * \brief Log a debug line indicating that a certain line of code has been
+ * reached
  */
 #ifndef __RIGHT_HERE__
-#define __RIGHT_HERE__ fprintf(stderr, "<============================ %s:%d\n", __FILE__, __LINE__)
+#define __RIGHT_HERE__ \
+    fprintf(stderr, "<============================ %s:%d\n", __FILE__, __LINE__)
 #endif
 /*! @} */

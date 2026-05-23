@@ -1,17 +1,18 @@
 #pragma once
 #ifdef EPAPER
+#include <libblight/concurrentqueue.h>
+#include <liboxide/threading.h>
+
+#include <QQueue>
+#include <QSemaphore>
 #include <QThread>
 #include <QWaitCondition>
-#include <QSemaphore>
-#include <QQueue>
-#include <liboxide/threading.h>
-#include <libblight/concurrentqueue.h>
 
 #include "surface.h"
 
 #define guiThread GUIThread::singleton()
 
-struct RepaintRequest{
+struct RepaintRequest {
     std::shared_ptr<Surface> surface;
     QRegion region;
     Blight::WaveformMode waveform;
@@ -21,20 +22,20 @@ struct RepaintRequest{
     std::function<void()> callback;
 };
 
-class GUIThread : public QThread{
+class GUIThread : public QThread {
     Q_OBJECT
 
-protected:
+   protected:
     void run() override;
 
-public:
+   public:
     static GUIThread* singleton();
     ~GUIThread();
 
-signals:
+   signals:
     void settled();
 
-public slots:
+   public slots:
     void enqueue(
         std::shared_ptr<Surface> surface,
         QRect region,
@@ -53,7 +54,7 @@ public slots:
         unsigned int marker
     );
 
-private:
+   private:
     GUIThread(QRect screenGeometry);
     moodycamel::ConcurrentQueue<RepaintRequest> m_repaintEvents;
     int m_frameBufferFd;
@@ -65,7 +66,9 @@ private:
     QRect m_screenRect;
 
     void clearFrameBuffer();
-    void repaintSurface(QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface);
+    void repaintSurface(
+        QPainter* painter, QRect* rect, std::shared_ptr<Surface> surface
+    );
     void redraw(RepaintRequest& event);
     QList<std::shared_ptr<Surface>> visibleSurfaces();
 };

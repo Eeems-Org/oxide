@@ -1,12 +1,12 @@
 #ifndef NOTIFICATIONAPI_H
 #define NOTIFICATIONAPI_H
 
+#include <liboxide.h>
+
 #include <QDebug>
-#include <QtDBus>
 #include <QMutex>
 #include <QQuickWindow>
-
-#include <liboxide.h>
+#include <QtDBus>
 
 #include "apibase.h"
 #include "notification.h"
@@ -18,9 +18,11 @@ class NotificationAPI : public APIBase {
     Q_CLASSINFO("D-Bus Interface", OXIDE_NOTIFICATIONS_INTERFACE)
     Q_PROPERTY(bool enabled READ enabled)
     Q_PROPERTY(QList<QDBusObjectPath> allNotifications READ getAllNotifications)
-    Q_PROPERTY(QList<QDBusObjectPath> unownedNotifications READ getUnownedNotifications)
+    Q_PROPERTY(
+        QList<QDBusObjectPath> unownedNotifications READ getUnownedNotifications
+    )
 
-public:
+   public:
     static NotificationAPI* singleton(NotificationAPI* self = nullptr);
     NotificationAPI(QObject* parent);
     void shutdown();
@@ -34,13 +36,27 @@ public:
     QList<QDBusObjectPath> getUnownedNotifications();
     QList<Notification*> notificationDisplayQueue;
 
-    Notification* add(const QString& identifier, const QString& owner, const QString& application, const QString& text, const QString& icon);
+    Notification* add(
+        const QString& identifier,
+        const QString& owner,
+        const QString& application,
+        const QString& text,
+        const QString& icon
+    );
     Notification* getByIdentifier(const QString& identifier);
-    QQuickWindow* paintNotification(const QString& text, const QString& iconPath);
+    QQuickWindow* paintNotification(
+        const QString& text, const QString& iconPath
+    );
     void errorNotification(const QString& text);
 
-public slots:
-    QDBusObjectPath add(const QString& identifier, const QString& application, const QString& text, const QString& icon, QDBusMessage message);
+   public slots:
+    QDBusObjectPath add(
+        const QString& identifier,
+        const QString& application,
+        const QString& text,
+        const QString& icon,
+        QDBusMessage message
+    );
     bool take(QString identifier, QDBusMessage message);
     QList<QDBusObjectPath> notifications(QDBusMessage message);
     void remove(Notification* notification);
@@ -48,13 +64,12 @@ public slots:
     void lock();
     void unlock();
 
-signals:
+   signals:
     void notificationAdded(QDBusObjectPath);
     void notificationRemoved(QDBusObjectPath);
     void notificationChanged(QDBusObjectPath);
 
-
-private:
+   private:
     bool m_enabled;
     QMap<QString, Notification*> m_notifications;
     QMutex m_lock;
@@ -63,5 +78,4 @@ private:
     QString getPath(QString id);
 };
 
-
-#endif // NOTIFICATIONAPI_H
+#endif  // NOTIFICATIONAPI_H

@@ -1,21 +1,21 @@
+#include <errno.h>
+#include <libblight.h>
+#include <libblight/connection.h>
+#include <libblight/debug.h>
+#include <liboxide/debug.h>
+#include <liboxide/eventfilter.h>
+#include <liboxide/meta.h>
+#include <liboxide/oxideqml.h>
+#include <liboxide/sentry.h>
+#include <sys/file.h>
+#include <sys/mman.h>
+
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QtPlugin>
 #include <QtQuick>
-
 #include <cstdlib>
-#include <liboxide/eventfilter.h>
-#include <liboxide/meta.h>
-#include <liboxide/debug.h>
-#include <liboxide/sentry.h>
-#include <liboxide/oxideqml.h>
-#include <sys/file.h>
-#include <sys/mman.h>
-#include <errno.h>
 #include <cstring>
-#include <libblight.h>
-#include <libblight/connection.h>
-#include <libblight/debug.h>
 
 using namespace Oxide;
 using namespace Oxide::QML;
@@ -23,9 +23,9 @@ using namespace Oxide::Sentry;
 
 #define DEBUG_EVENTS
 
-int main(int argc, char *argv[]){
+int main(int argc, char* argv[]) {
     qputenv("QMLSCENE_DEVICE", "software");
-    qputenv("QT_QUICK_BACKEND","software");
+    qputenv("QT_QUICK_BACKEND", "software");
     qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
     QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
     QGuiApplication app(argc, argv);
@@ -34,42 +34,48 @@ int main(int argc, char *argv[]){
     app.setOrganizationDomain(OXIDE_SERVICE);
     app.setApplicationName("test_app");
     app.setApplicationVersion(APP_VERSION);
-    if(Oxide::debugEnabled()){
+    if (Oxide::debugEnabled()) {
         BLIGHT_DEBUG_LOGGING = 7;
     }
-    if(!qEnvironmentVariableIsSet("SKIP_TEST")){
+    if (!qEnvironmentVariableIsSet("SKIP_TEST")) {
 #ifdef EPAPER
         Blight::connect(true);
 #else
         Blight::connect(false);
 #endif
-        if(!Blight::exists()){
+        if (!Blight::exists()) {
             O_WARNING("Service not found!");
             return EXIT_FAILURE;
         }
         {
             auto maybe = Blight::clipboard();
-            if(!maybe.has_value()){
+            if (!maybe.has_value()) {
                 O_WARNING("Could not read clipboard!");
                 return EXIT_FAILURE;
             }
             auto clipboard = maybe.value();
-            O_DEBUG(clipboard.name.c_str() << QString::fromStdString(clipboard.to_string()));
+            O_DEBUG(
+                clipboard.name.c_str()
+                << QString::fromStdString(clipboard.to_string())
+            );
             O_DEBUG("Updating clipboard");
-            if(!clipboard.set("Test")){
+            if (!clipboard.set("Test")) {
                 O_WARNING("Could not update clipboard!");
                 return EXIT_FAILURE;
             }
-            O_DEBUG(clipboard.name.c_str() << QString::fromStdString(clipboard.to_string()));
+            O_DEBUG(
+                clipboard.name.c_str()
+                << QString::fromStdString(clipboard.to_string())
+            );
         }
         auto connection = Blight::connection();
-        if(connection == nullptr){
+        if (connection == nullptr) {
             O_WARNING(std::strerror(errno));
             return EXIT_FAILURE;
         }
-        connection->onDisconnect([](int res){
+        connection->onDisconnect([](int res) {
             O_DEBUG("Connection closed:" << res);
-            if(res){
+            if (res) {
                 std::exit(res);
             }
         });
@@ -86,12 +92,12 @@ int main(int argc, char *argv[]){
             blankImage.bytesPerLine(),
             Blight::Format::Format_RGB16
         );
-        if(!maybe.has_value()){
+        if (!maybe.has_value()) {
             O_WARNING("Failed to create buffer:" << strerror(errno));
             return EXIT_FAILURE;
         }
         auto buffer = maybe.value();
-        if(buffer->fd == -1 || buffer->data == nullptr){
+        if (buffer->fd == -1 || buffer->data == nullptr) {
             O_WARNING("Failed to create buffer:" << strerror(errno));
             return EXIT_FAILURE;
         }
@@ -103,14 +109,14 @@ int main(int argc, char *argv[]){
             blankImage.bytesPerLine(),
             blankImage.format()
         );
-        if(image.isNull()){
+        if (image.isNull()) {
             O_WARNING("Null image");
         }
-        if(image.size() != geometry.size()){
+        if (image.size() != geometry.size()) {
             O_WARNING("Invalid size" << image.size());
         }
         Blight::addSurface(buffer);
-        if(!buffer->surface){
+        if (!buffer->surface) {
             O_WARNING("No identifier provided");
             return EXIT_FAILURE;
         }
@@ -121,13 +127,9 @@ int main(int argc, char *argv[]){
         O_DEBUG("Repainting" << buffer->surface);
         {
             auto ack = connection->repaint(
-                buffer,
-                0,
-                0,
-                geometry.width(),
-                geometry.height()
-                );
-            if(!ack.has_value()){
+                buffer, 0, 0, geometry.width(), geometry.height()
+            );
+            if (!ack.has_value()) {
                 O_WARNING("Failed to repaint");
                 return EXIT_FAILURE;
             }
@@ -145,13 +147,9 @@ int main(int argc, char *argv[]){
         O_DEBUG("Repainting" << buffer->surface);
         {
             auto ack = connection->repaint(
-                buffer,
-                0,
-                0,
-                geometry.width(),
-                geometry.height()
-                );
-            if(!ack.has_value()){
+                buffer, 0, 0, geometry.width(), geometry.height()
+            );
+            if (!ack.has_value()) {
                 O_WARNING("Failed to repaint");
                 return EXIT_FAILURE;
             }
@@ -169,7 +167,7 @@ int main(int argc, char *argv[]){
             resizedImage.bytesPerLine(),
             (Blight::data_t)resizedImage.constBits()
         );
-        if(res.has_value()){
+        if (res.has_value()) {
             buffer = res.value();
         }
         O_DEBUG("Resize done" << buffer->surface);
@@ -177,7 +175,7 @@ int main(int argc, char *argv[]){
         O_DEBUG("Lowering" << buffer->surface);
         {
             auto ack = connection->lower(buffer);
-            if(!ack.has_value()){
+            if (!ack.has_value()) {
                 O_WARNING("Could not lower surface!");
                 return EXIT_FAILURE;
             }
@@ -188,7 +186,7 @@ int main(int argc, char *argv[]){
         O_DEBUG("Raising" << buffer->surface);
         {
             auto ack = connection->raise(buffer);
-            if(!ack.has_value()){
+            if (!ack.has_value()) {
                 O_WARNING("Could not raise surface!");
                 return EXIT_FAILURE;
             }
@@ -210,13 +208,9 @@ int main(int argc, char *argv[]){
         O_DEBUG("Repainting" << buffer->surface);
         {
             auto ack = connection->repaint(
-                buffer,
-                0,
-                0,
-                geometry.width(),
-                geometry.height()
+                buffer, 0, 0, geometry.width(), geometry.height()
             );
-            if(!ack.has_value()){
+            if (!ack.has_value()) {
                 O_WARNING("Failed to repaint");
                 return EXIT_FAILURE;
             }
@@ -226,34 +220,37 @@ int main(int argc, char *argv[]){
         sleep(1);
         O_DEBUG("Validating surface count");
         auto surfaces = connection->surfaces();
-        if(surfaces.size() != 1){
+        if (surfaces.size() != 1) {
             O_WARNING("There should only be one surface!" << surfaces.size());
             return EXIT_FAILURE;
         }
-        if(surfaces.front() != buffer->surface){
+        if (surfaces.front() != buffer->surface) {
             O_WARNING("Surface identifier does not match!" << surfaces.front());
             return EXIT_FAILURE;
         }
         auto buffers = connection->buffers();
-        if(buffers.size() != 1){
+        if (buffers.size() != 1) {
             O_WARNING("There should only be one buffer!" << buffers.size());
             return EXIT_FAILURE;
         }
-        if(buffers.front()->surface != buffer->surface){
-            O_WARNING("Buffer surface identifier does not match!" << buffers.front()->surface);
+        if (buffers.front()->surface != buffer->surface) {
+            O_WARNING(
+                "Buffer surface identifier does not match!"
+                << buffers.front()->surface
+            );
             return EXIT_FAILURE;
         }
         O_DEBUG("Removing surface");
         {
             auto ack = connection->remove(buffer);
-            if(!ack.has_value()){
+            if (!ack.has_value()) {
                 O_WARNING("Failed to remove buffer:" << std::strerror(errno));
                 return EXIT_FAILURE;
             }
             ack.value()->wait();
         }
         O_DEBUG("Surface removed");
-        if(!connection->surfaces().empty()){
+        if (!connection->surfaces().empty()) {
             O_WARNING("There are still surfaces even though it was removed!");
             return EXIT_FAILURE;
         }
@@ -262,7 +259,7 @@ int main(int argc, char *argv[]){
     QQmlApplicationEngine engine;
     registerQML(&engine);
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-    if(engine.rootObjects().isEmpty()){
+    if (engine.rootObjects().isEmpty()) {
         O_WARNING("Nothing to display");
         return EXIT_FAILURE;
     }
@@ -270,7 +267,12 @@ int main(int argc, char *argv[]){
     auto notification = static_cast<QQuickWindow*>(engine.rootObjects().last());
     notification->setProperty("WA_WAVEFORM", Blight::WaveformMode::Mono);
     notification->setProperty("text", "Testing");
-    notification->setProperty("image", QUrl::fromLocalFile("/opt/usr/share/icons/oxide/702x702/splash/oxide.png"));
+    notification->setProperty(
+        "image",
+        QUrl::fromLocalFile(
+            "/opt/usr/share/icons/oxide/702x702/splash/oxide.png"
+        )
+    );
     notification->setProperty("notificationVisible", true);
     notification->raise();
     return app.exec();

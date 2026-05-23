@@ -5,14 +5,14 @@
  */
 #pragma once
 
-#include "liboxide_global.h"
-
-#include <QDebug>
-
-#include <string>
 #include <fcntl.h>
 #include <linux/input.h>
 #include <unistd.h>
+
+#include <QDebug>
+#include <string>
+
+#include "liboxide_global.h"
 
 using namespace std;
 namespace Oxide {
@@ -20,7 +20,7 @@ namespace Oxide {
      * \brief A class to simplify managing a /dev/event* file
      */
     class LIBOXIDE_EXPORT event_device {
-    public:
+       public:
         /*!
          * \brief Create an input_event
          * \param type Input event type
@@ -109,8 +109,8 @@ namespace Oxide {
          */
         bool locked = false;
 
-    private:
+       private:
         int flags;
     };
-}
+}  // namespace Oxide
 /*! @} */

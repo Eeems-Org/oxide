@@ -1,17 +1,18 @@
 #pragma once
 
-#include <QMutex>
-#include <QEventLoop>
 #include <qpa/qplatformscreen.h>
+
+#include <QEventLoop>
+#include <QMutex>
 
 #include "oxidewindow.h"
 
 class OxideWindow;
 
-class Q_DECL_EXPORT OxideScreen : public QObject, public QPlatformScreen{
+class Q_DECL_EXPORT OxideScreen : public QObject, public QPlatformScreen {
     Q_OBJECT
 
-public:
+   public:
     OxideScreen();
     QRect geometry() const override;
     void setGeometry(QRect geometry);
@@ -25,7 +26,7 @@ public:
     void removeWindow(OxideWindow* window);
     OxideWindow* getWindow(const WId& winId);
 
-private:
+   private:
     QRect m_geometry;
     QList<OxideWindow*> m_windows;
 };

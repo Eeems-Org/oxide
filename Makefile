@@ -114,6 +114,10 @@ lint:
 		-sr \
 		$(SRC_FILES)
 
+CPP_FILES = $(wildcard applications/**/*.cpp) $(wildcard applications/**/*.h)
+CPP_FILES += $(wildcard shared/**/*.cpp | xargs -rn1 | grep -v sentry/) $(wildcard shared/**/*.h)
+CPP_FILES += $(wildcard tests/**/*.cpp) $(wildcard tests/**/*.h)
+
 format:
 	shfmt \
 		-l \
@@ -123,3 +127,7 @@ format:
 		-bn \
 		-sr \
 		$(SRC_FILES)
+	clang-format \
+		--fallback-style=mozilla \
+		-i \
+		$(CPP_FILES)

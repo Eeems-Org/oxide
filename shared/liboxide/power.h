@@ -6,11 +6,10 @@
  */
 #pragma once
 
-#include "liboxide_global.h"
-
 #include <QList>
 #include <QString>
 
+#include "liboxide_global.h"
 #include "sysobject.h"
 
 /*!
@@ -33,13 +32,15 @@ namespace Oxide::Power {
      */
     LIBOXIDE_EXPORT const QList<Oxide::SysObject>* usbs();
     /*!
-     * \brief Get the current battery level. This is averaged across the number of batteries connected to the device.
+     * \brief Get the current battery level. This is averaged across the number
+     * of batteries connected to the device.
      * \return The current battery level
      */
     LIBOXIDE_EXPORT int batteryLevel();
     /*!
      * \brief Get the current battery temperature
-     * \return The current battery temperature. This returns the maximum battery temperature of the batteries connected to the device.
+     * \return The current battery temperature. This returns the maximum battery
+     * temperature of the batteries connected to the device.
      */
     LIBOXIDE_EXPORT int batteryTemperature();
     /*!
@@ -53,22 +54,26 @@ namespace Oxide::Power {
      */
     LIBOXIDE_EXPORT bool batteryPresent();
     /*!
-     * \brief Get the list of current warnings being emitted for the batteries connected to the device.
+     * \brief Get the list of current warnings being emitted for the batteries
+     * connected to the device.
      * \return List of warnings
      */
     LIBOXIDE_EXPORT QList<QString> batteryWarning();
     /*!
-     * \brief Get the list of current alerts being emitted for the batteries connected to the device.
+     * \brief Get the list of current alerts being emitted for the batteries
+     * connected to the device.
      * \return List of alerts
      */
     LIBOXIDE_EXPORT QList<QString> batteryAlert();
     /*!
-     * \brief Check to see if there are any battery warnings for any of the batteries connected to the device.
+     * \brief Check to see if there are any battery warnings for any of the
+     * batteries connected to the device.
      * \return If there are any current battery warnings
      */
     LIBOXIDE_EXPORT bool batteryHasWarning();
     /*!
-     * \brief Check to see if there are any battery alerts for any of the batteries connected to the device.
+     * \brief Check to see if there are any battery alerts for any of the
+     * batteries connected to the device.
      * \return If there are any current battery alerts
      */
     LIBOXIDE_EXPORT bool batteryHasAlert();
@@ -77,5 +82,5 @@ namespace Oxide::Power {
      * \return If a charger is connected
      */
     LIBOXIDE_EXPORT bool chargerConnected();
-}
+}  // namespace Oxide::Power
 /*! @} */

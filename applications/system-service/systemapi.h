@@ -1,18 +1,19 @@
 #ifndef SYSTEMAPI_H
 #define SYSTEMAPI_H
 
-#include <QObject>
+#include <liboxide.h>
+
 #include <QMetaType>
 #include <QMutableListIterator>
-#include <QTimer>
 #include <QMutex>
-#include <liboxide.h>
+#include <QObject>
+#include <QTimer>
 
 #include "apibase.h"
 #include "application.h"
-#include "screenapi.h"
 #include "eventlistener.h"
 #include "login1_interface.h"
+#include "screenapi.h"
 
 #define systemAPI SystemAPI::singleton()
 
@@ -24,7 +25,13 @@ struct Inhibitor {
     QString what;
     QString why;
     bool block;
-    Inhibitor(Manager* systemd, QString what, QString who, QString why, bool block = false);
+    Inhibitor(
+        Manager* systemd,
+        QString what,
+        QString who,
+        QString why,
+        bool block = false
+    );
     void release();
     bool released();
 };
@@ -43,8 +50,9 @@ struct Touch {
     int major = 0;
     int minor = 0;
     int orientation = 0;
-    inline string debugString() const{
-        return "<Touch " + to_string(id) + " (" + to_string(x) + ", " + to_string(y) + ") " + (active ? "pressed" : "released") + ">";
+    inline string debugString() const {
+        return "<Touch " + to_string(id) + " (" + to_string(x) + ", " +
+               to_string(y) + ") " + (active ? "pressed" : "released") + ">";
     }
 };
 QDebug operator<<(QDebug debug, const Touch& touch);
@@ -55,14 +63,26 @@ Q_DECLARE_METATYPE(input_event)
 class SystemAPI : public APIBase {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", OXIDE_SYSTEM_INTERFACE)
-    Q_PROPERTY(int autoSleep READ autoSleep WRITE setAutoSleep NOTIFY autoSleepChanged)
-    Q_PROPERTY(int autoLock READ autoLock WRITE setAutoLock NOTIFY autoLockChanged)
-    Q_PROPERTY(bool lockOnSuspend READ lockOnSuspend WRITE setLockOnSuspend NOTIFY lockOnSuspendChanged)
-    Q_PROPERTY(bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged)
-    Q_PROPERTY(bool powerOffInhibited READ powerOffInhibited NOTIFY powerOffInhibitedChanged)
+    Q_PROPERTY(
+        int autoSleep READ autoSleep WRITE setAutoSleep NOTIFY autoSleepChanged
+    )
+    Q_PROPERTY(
+        int autoLock READ autoLock WRITE setAutoLock NOTIFY autoLockChanged
+    )
+    Q_PROPERTY(
+        bool lockOnSuspend READ lockOnSuspend WRITE setLockOnSuspend NOTIFY
+            lockOnSuspendChanged
+    )
+    Q_PROPERTY(
+        bool sleepInhibited READ sleepInhibited NOTIFY sleepInhibitedChanged
+    )
+    Q_PROPERTY(
+        bool powerOffInhibited READ powerOffInhibited NOTIFY
+            powerOffInhibitedChanged
+    )
     Q_PROPERTY(bool landscape READ landscape NOTIFY landscapeChanged)
 
-public:
+   public:
     enum SwipeDirection { None, Right, Left, Up, Down };
     Q_ENUM(SwipeDirection)
     static SystemAPI* singleton(SystemAPI* self = nullptr);
@@ -96,7 +116,7 @@ public:
     Q_INVOKABLE int getSwipeLength(int direction);
     int getSwipeLength(SwipeDirection direction);
 
-public slots:
+   public slots:
     void suspend();
     void powerOff();
     void reboot();
@@ -107,7 +127,7 @@ public slots:
     void uninhibitPowerOff(QDBusMessage message);
     void toggleSwipes();
 
-signals:
+   signals:
     void leftAction();
     void homeAction();
     void rightAction();
@@ -125,12 +145,12 @@ signals:
     void deviceSuspending();
     void deviceResuming();
 
-private slots:
+   private slots:
     void PrepareForSleep(bool suspending);
     void suspendTimeout();
     void lockTimeout();
 
-private:
+   private:
     Manager* systemd;
     QList<Inhibitor> inhibitors;
     Application* resumeApp;
@@ -152,4 +172,4 @@ private:
     void releasePowerOffInhibitors(bool block = false);
     void rguard(bool install);
 };
-#endif // SYSTEMAPI_H
+#endif  // SYSTEMAPI_H

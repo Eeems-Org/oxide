@@ -4,15 +4,16 @@
  * @{
  * \file
  */
+#include <optional>
+
+#include "connection.h"
 #include "libblight_global.h"
 #include "types.h"
-#include "connection.h"
-#include <optional>
 
 /*!
  * \brief Blight namespace
  */
-namespace Blight{
+namespace Blight {
     /*!
      * \brief Connect to DBus
      * \param use_system Use the system bus instead of the session bus.
@@ -36,15 +37,18 @@ namespace Blight{
     LIBBLIGHT_EXPORT Connection* connection();
     /*!
      * \brief Open a connection to the display server
-     * \return File descriptor for socket to communicate with the display server.
-     * \retval -EAGAIN Failed to connect to DBus, or the display server service does not exist.
+     * \return File descriptor for socket to communicate with the display
+     * server.
+     * \retval -EAGAIN Failed to connect to DBus, or the display server service
+     * does not exist.
      * \sa Blight::Connection::Connection(int)
      * \sa Blight::Connection::handle()
      */
     LIBBLIGHT_EXPORT int open();
     /*!
      * \brief Open a connection to the display server to recieve input events.
-     * \return File descriptor for socket that the display server will use to send input events
+     * \return File descriptor for socket that the display server will use to
+     * send input events
      * \sa Blight::Connection::input_handle()
      * \sa Blight::Connection::read_event()
      */
@@ -122,16 +126,17 @@ namespace Blight{
      * \brief Add a new surface to the display server
      * \param buf Buffer to use for the surface
      */
-    LIBBLIGHT_EXPORT inline void addSurface(shared_buf_t buf){
+    LIBBLIGHT_EXPORT inline void addSurface(shared_buf_t buf) {
         buf->surface = addSurface(
-            buf->fd,
-            buf->x,
-            buf->y,
-            buf->width,
-            buf->height,
-            buf->stride,
-            buf->format
-        ).value_or(0);
+                           buf->fd,
+                           buf->x,
+                           buf->y,
+                           buf->width,
+                           buf->height,
+                           buf->stride,
+                           buf->format
+        )
+                           .value_or(0);
     }
     /*!
      * \brief Repaint a surface, or all surfaces for a connection
@@ -142,8 +147,9 @@ namespace Blight{
     /*!
      * \brief Get the file descriptor of the buffer for a surface
      * \param identifier Surface idnetifier
-     * \return Negative number if there was an error. Otherwise the file descriptor of the buffer for the surface
+     * \return Negative number if there was an error. Otherwise the file
+     * descriptor of the buffer for the surface
      */
     LIBBLIGHT_EXPORT int getSurface(surface_id_t identifier);
-}
+}  // namespace Blight
 /*! @} */

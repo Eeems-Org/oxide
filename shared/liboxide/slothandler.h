@@ -5,13 +5,13 @@
  */
 #pragma once
 
+#include <QDBusAbstractInterface>
+#include <QDBusServiceWatcher>
+#include <QObject>
+
 #include "liboxide_global.h"
 
-#include <QObject>
-#include <QDBusServiceWatcher>
-#include <QDBusAbstractInterface>
-
-namespace Oxide{
+namespace Oxide {
     /*!
      * \brief Connect to a slot on a DBus interface
      * \param interface Interface to connect to
@@ -19,7 +19,11 @@ namespace Oxide{
      * \param onMessage Method to run when an event is recieved on the slot
      * \return If the connect succeeded
      */
-    LIBOXIDE_EXPORT bool DBusConnect(QDBusAbstractInterface* interface, const QString& slotName, std::function<void(QVariantList)> onMessage);
+    LIBOXIDE_EXPORT bool DBusConnect(
+        QDBusAbstractInterface* interface,
+        const QString& slotName,
+        std::function<void(QVariantList)> onMessage
+    );
     /*!
      * \brief Connect to a slot on a DBus interface
      * \param interface Interface to connect to
@@ -28,7 +32,12 @@ namespace Oxide{
      * \param once If this should disconnect after the first event
      * \return If the connect succeeded
      */
-    LIBOXIDE_EXPORT bool DBusConnect(QDBusAbstractInterface* interface, const QString& slotName, std::function<void(QVariantList)> onMessage, const bool& once);
+    LIBOXIDE_EXPORT bool DBusConnect(
+        QDBusAbstractInterface* interface,
+        const QString& slotName,
+        std::function<void(QVariantList)> onMessage,
+        const bool& once
+    );
     /*!
      * \brief Connect to a slot on a DBus interface
      * \param interface Interface to connect to
@@ -38,18 +47,30 @@ namespace Oxide{
      * \param once If this should disconnect after the first event
      * \return If the connect succeeded
      */
-    LIBOXIDE_EXPORT bool DBusConnect(QDBusAbstractInterface* interface, const QString& slotName, std::function<void(QVariantList)> onMessage, std::function<void()> callback, const bool& once=false);
+    LIBOXIDE_EXPORT bool DBusConnect(
+        QDBusAbstractInterface* interface,
+        const QString& slotName,
+        std::function<void(QVariantList)> onMessage,
+        std::function<void()> callback,
+        const bool& once = false
+    );
     /*!
      * \brief A class for handling DBus slots
      */
     class LIBOXIDE_EXPORT SlotHandler : public QObject {
-    public:
-        SlotHandler(const QString& serviceName, QStringList parameters, bool once, std::function<void(QVariantList)> onMessage, std::function<void()> callback);
+       public:
+        SlotHandler(
+            const QString& serviceName,
+            QStringList parameters,
+            bool once,
+            std::function<void(QVariantList)> onMessage,
+            std::function<void()> callback
+        );
         ~SlotHandler();
-        int qt_metacall(QMetaObject::Call call, int id, void **arguments);
+        int qt_metacall(QMetaObject::Call call, int id, void** arguments);
         bool connect(QObject* sender, int methodId);
 
-    private:
+       private:
         QString serviceName;
         QStringList parameters;
         bool once;
@@ -59,5 +80,5 @@ namespace Oxide{
         std::function<void()> callback;
         void handleSlot(QObject* api, void** arguments);
     };
-}
+}  // namespace Oxide
 /*! @} */

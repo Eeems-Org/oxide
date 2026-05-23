@@ -1,15 +1,15 @@
 #pragma once
 
-#include <QObject>
-#include <QFile>
-#include <QSocketNotifier>
-#include <QLocalSocket>
-#include <QTimer>
-#include <QMutex>
-#include <queue>
-
 #include <libblight/connection.h>
 #include <linux/input.h>
+
+#include <QFile>
+#include <QLocalSocket>
+#include <QMutex>
+#include <QObject>
+#include <QSocketNotifier>
+#include <QTimer>
+#include <queue>
 
 #include "surface.h"
 class Surface;
@@ -20,7 +20,7 @@ class Connection : public QObject {
     Q_OBJECT
     Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
 
-public:
+   public:
     Connection(pid_t pid, pid_t pgid);
     ~Connection();
 
@@ -37,30 +37,34 @@ public:
     bool signalGroup(int signal);
     void pause();
     void resume();
-    std::shared_ptr<Surface> addSurface(int fd, QRect geometry, int stride, QImage::Format format);
+    std::shared_ptr<Surface> addSurface(
+        int fd, QRect geometry, int stride, QImage::Format format
+    );
     std::shared_ptr<Surface> getSurface(QString identifier);
     std::shared_ptr<Surface> getSurface(Blight::surface_id_t id);
     QStringList getSurfaceIdentifiers();
     const QList<std::shared_ptr<Surface>> getSurfaces();
-    void inputEvents(unsigned int device, const std::vector<input_event>& events);
+    void inputEvents(
+        unsigned int device, const std::vector<input_event>& events
+    );
     void processInputEvents();
     bool has(const QString& flag);
     void set(const QString& flag);
     void unset(const QString& flag);
 
-signals:
+   signals:
     void finished();
     void focused();
 
-public slots:
+   public slots:
     void close();
 
-private slots:
+   private slots:
     void readSocket();
     void notResponding();
     void ping();
 
-private:
+   private:
     pid_t m_pid;
     pid_t m_pgid;
     int m_pidFd;
@@ -84,5 +88,7 @@ private:
     unsigned int m_lastEventOffset;
     QTimer m_inputQueueTimer;
 
-    void ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
+    void ack(
+        Blight::message_ptr_t message, unsigned int size, Blight::data_t data
+    );
 };

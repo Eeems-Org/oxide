@@ -1,20 +1,21 @@
 #include "test_Threading.h"
+
 #include <liboxide/threading.h>
-#include <unistd.h>
 #include <sys/resource.h>
+#include <unistd.h>
 
 using namespace Oxide;
 
-test_Threading::test_Threading(){}
-test_Threading::~test_Threading(){}
+test_Threading::test_Threading() {}
+test_Threading::~test_Threading() {}
 
-void test_Threading::test_startThreadWithPriority(){
+void test_Threading::test_startThreadWithPriority() {
 #ifndef QT_HAS_THREAD_PRIORITY_SCHEDULING
     auto thread = new QThread();
     thread->setObjectName("TimeCriticalPriority");
     startThreadWithPriority(thread, QThread::TimeCriticalPriority);
     thread->moveToThread(thread);
-    dispatchToThread(thread, [this]{ QCOMPARE(getNice(), -20); });
+    dispatchToThread(thread, [this] { QCOMPARE(getNice(), -20); });
     thread->quit();
     thread->wait();
     thread->deleteLater();
@@ -23,7 +24,7 @@ void test_Threading::test_startThreadWithPriority(){
     thread->setObjectName("HighestPriority");
     startThreadWithPriority(thread, QThread::HighestPriority);
     thread->moveToThread(thread);
-    dispatchToThread(thread, [this]{ QCOMPARE(getNice(), -10); });
+    dispatchToThread(thread, [this] { QCOMPARE(getNice(), -10); });
     thread->quit();
     thread->wait();
     thread->deleteLater();
@@ -32,7 +33,7 @@ void test_Threading::test_startThreadWithPriority(){
     thread->setObjectName("HighPriority");
     startThreadWithPriority(thread, QThread::HighPriority);
     thread->moveToThread(thread);
-    dispatchToThread(thread, [this]{ QCOMPARE(getNice(), -5); });
+    dispatchToThread(thread, [this] { QCOMPARE(getNice(), -5); });
     thread->quit();
     thread->wait();
     thread->deleteLater();
@@ -41,7 +42,7 @@ void test_Threading::test_startThreadWithPriority(){
     thread->setObjectName("NormalPriority");
     startThreadWithPriority(thread, QThread::NormalPriority);
     thread->moveToThread(thread);
-    dispatchToThread(thread, [this]{ QCOMPARE(getNice(), 0); });
+    dispatchToThread(thread, [this] { QCOMPARE(getNice(), 0); });
     thread->quit();
     thread->wait();
     thread->deleteLater();
@@ -50,7 +51,7 @@ void test_Threading::test_startThreadWithPriority(){
     thread->setObjectName("InheritPriority");
     startThreadWithPriority(thread, QThread::InheritPriority);
     thread->moveToThread(thread);
-    dispatchToThread(thread, [this]{ QCOMPARE(getNice(), 0); });
+    dispatchToThread(thread, [this] { QCOMPARE(getNice(), 0); });
     thread->quit();
     thread->wait();
     thread->deleteLater();
@@ -59,7 +60,7 @@ void test_Threading::test_startThreadWithPriority(){
     thread->setObjectName("LowPriority");
     startThreadWithPriority(thread, QThread::LowPriority);
     thread->moveToThread(thread);
-    dispatchToThread(thread, [this]{ QCOMPARE(getNice(), 5); });
+    dispatchToThread(thread, [this] { QCOMPARE(getNice(), 5); });
     thread->quit();
     thread->wait();
     thread->deleteLater();
@@ -68,7 +69,7 @@ void test_Threading::test_startThreadWithPriority(){
     thread->setObjectName("LowestPriority");
     startThreadWithPriority(thread, QThread::LowestPriority);
     thread->moveToThread(thread);
-    dispatchToThread(thread, [this]{ QCOMPARE(getNice(), 10); });
+    dispatchToThread(thread, [this] { QCOMPARE(getNice(), 10); });
     thread->quit();
     thread->wait();
     thread->deleteLater();
@@ -77,14 +78,14 @@ void test_Threading::test_startThreadWithPriority(){
     thread->setObjectName("IdlePriority");
     startThreadWithPriority(thread, QThread::IdlePriority);
     thread->moveToThread(thread);
-    dispatchToThread(thread, [this]{ QCOMPARE(getNice(), 19); });
+    dispatchToThread(thread, [this] { QCOMPARE(getNice(), 19); });
     thread->quit();
     thread->wait();
     thread->deleteLater();
 #endif
 }
 
-void test_Threading::test_dispatchToThread(){
+void test_Threading::test_dispatchToThread() {
     auto thread = new QThread();
     thread->setObjectName("dispatchToThread");
     thread->start();
@@ -92,23 +93,41 @@ void test_Threading::test_dispatchToThread(){
     QVERIFY(thread->isRunning());
     QVERIFY(QThread::currentThread() != thread);
 
-    dispatchToThread(thread, [thread]{
+    dispatchToThread(thread, [thread] {
         QCOMPARE(QThread::currentThread(), thread);
-        dispatchToMainThread([thread]{
+        dispatchToMainThread([thread] {
             QVERIFY(QThread::currentThread() != thread);
             QCOMPARE(QThread::currentThread(), qApp->thread());
         });
-        QVERIFY(dispatchToMainThread<bool>([]{ return true; }));
-        QVERIFY(!dispatchToMainThread<bool>([]{ return false; }));
-        QCOMPARE(dispatchToMainThread<const char*>([]{ return "Hello World!"; }), "Hello World!");
-        QCOMPARE(dispatchToMainThread<std::string>([]{ return "Hello World!"; }), "Hello World!");
-        QCOMPARE(dispatchToMainThread<QString>([]{ return "Hello World!"; }), QString("Hello World!"));
+        QVERIFY(dispatchToMainThread<bool>([] { return true; }));
+        QVERIFY(!dispatchToMainThread<bool>([] { return false; }));
+        QCOMPARE(
+            dispatchToMainThread<const char*>([] { return "Hello World!"; }),
+            "Hello World!"
+        );
+        QCOMPARE(
+            dispatchToMainThread<std::string>([] { return "Hello World!"; }),
+            "Hello World!"
+        );
+        QCOMPARE(
+            dispatchToMainThread<QString>([] { return "Hello World!"; }),
+            QString("Hello World!")
+        );
     });
-    QVERIFY(dispatchToThread<bool>(thread, []{ return true; }));
-    QVERIFY(!dispatchToThread<bool>(thread, []{ return false; }));
-    QCOMPARE(dispatchToThread<const char*>(thread, []{ return "Hello World!"; }), "Hello World!");
-    QCOMPARE(dispatchToThread<std::string>(thread, []{ return "Hello World!"; }), "Hello World!");
-    QCOMPARE(dispatchToThread<QString>(thread, []{ return "Hello World!"; }), QString("Hello World!"));
+    QVERIFY(dispatchToThread<bool>(thread, [] { return true; }));
+    QVERIFY(!dispatchToThread<bool>(thread, [] { return false; }));
+    QCOMPARE(
+        dispatchToThread<const char*>(thread, [] { return "Hello World!"; }),
+        "Hello World!"
+    );
+    QCOMPARE(
+        dispatchToThread<std::string>(thread, [] { return "Hello World!"; }),
+        "Hello World!"
+    );
+    QCOMPARE(
+        dispatchToThread<QString>(thread, [] { return "Hello World!"; }),
+        QString("Hello World!")
+    );
 
     thread->quit();
     thread->wait();
@@ -116,7 +135,7 @@ void test_Threading::test_dispatchToThread(){
     thread->deleteLater();
 }
 
-void test_Threading::test_runLater(){
+void test_Threading::test_runLater() {
     auto thread = new QThread();
     thread->setObjectName("runLater");
     thread->start();
@@ -126,10 +145,10 @@ void test_Threading::test_runLater(){
 
     bool ok = false;
     QEventLoop loop;
-    runLater(thread, [&ok, &loop, thread]{
+    runLater(thread, [&ok, &loop, thread] {
         QCOMPARE(QThread::currentThread(), thread);
         ok = true;
-        runLaterInMainThread([ok]{
+        runLaterInMainThread([ok] {
             QCOMPARE(QThread::currentThread(), qApp->thread());
             QVERIFY(ok);
         });
@@ -145,10 +164,10 @@ void test_Threading::test_runLater(){
     thread->deleteLater();
 }
 
-void test_Threading::test_runInEventLoop(){
+void test_Threading::test_runInEventLoop() {
     bool ok = false;
-    runInEventLoop([&ok](std::function<void()> quit){
-        QTimer::singleShot(0, [&ok, quit]{
+    runInEventLoop([&ok](std::function<void()> quit) {
+        QTimer::singleShot(0, [&ok, quit] {
             ok = true;
             quit();
         });
@@ -157,6 +176,6 @@ void test_Threading::test_runInEventLoop(){
     QVERIFY(ok);
 }
 
-int test_Threading::getNice(){ return getpriority(PRIO_PROCESS, gettid()); }
+int test_Threading::getNice() { return getpriority(PRIO_PROCESS, gettid()); }
 
 DECLARE_TEST(test_Threading)

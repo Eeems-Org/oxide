@@ -1,20 +1,21 @@
 #include "test_Json.h"
 
 #include <liboxide/json.h>
+
 #include <QJsonObject>
 
-test_Json::test_Json(){ }
-test_Json::~test_Json(){ }
+test_Json::test_Json() {}
+test_Json::~test_Json() {}
 
-void test_Json::test_decodeDBusArgument(){
+void test_Json::test_decodeDBusArgument() {
     // TODO - Oxide::JSON::decodeDBusArgument();
 }
 
-void test_Json::test_sanitizeForJson(){
+void test_Json::test_sanitizeForJson() {
     // TODO - Oxide::JSON::sanitizeForJson();
 }
 
-void test_Json::test_toJson(){
+void test_Json::test_toJson() {
     QCOMPARE(Oxide::JSON::toJson(QVariant()), "null");
     QCOMPARE(Oxide::JSON::toJson(true), "true");
     QCOMPARE(Oxide::JSON::toJson(false), "false");
@@ -24,15 +25,21 @@ void test_Json::test_toJson(){
     QJsonObject obj;
     obj.insert("value", 10);
     QCOMPARE(Oxide::JSON::toJson(obj), "{\"value\":10}");
-    QCOMPARE(Oxide::JSON::toJson(obj, QJsonDocument::Indented), "{\n    \"value\": 10\n}\n");
+    QCOMPARE(
+        Oxide::JSON::toJson(obj, QJsonDocument::Indented),
+        "{\n    \"value\": 10\n}\n"
+    );
     QJsonArray arr;
     arr.append(10);
     arr.append("10");
     QCOMPARE(Oxide::JSON::toJson(arr), "[10,\"10\"]");
-    QCOMPARE(Oxide::JSON::toJson(arr, QJsonDocument::Indented), "[\n    10,\n    \"10\"\n]\n");
+    QCOMPARE(
+        Oxide::JSON::toJson(arr, QJsonDocument::Indented),
+        "[\n    10,\n    \"10\"\n]\n"
+    );
 }
 
-void test_Json::test_fromJson(){
+void test_Json::test_fromJson() {
     QVariant variant = Oxide::JSON::fromJson("null");
     QVERIFY(variant.isNull());
     variant = Oxide::JSON::fromJson("true");

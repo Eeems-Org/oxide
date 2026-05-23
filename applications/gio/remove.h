@@ -1,46 +1,55 @@
 #pragma once
 
-#include "common.h"
-
+#include <QCommandLineOption>
 #include <QDir>
 #include <QUrl>
-#include <QCommandLineOption>
+
+#include "common.h"
 
 // [OPTION...] SOURCE... DESTINATION
-class RemoveCommand : ICommand{
-    O_COMMAND(
-        RemoveCommand, "remove",
-        "Deletes each given file."
-    )
-    int arguments() override{
+class RemoveCommand : ICommand {
+    O_COMMAND(RemoveCommand, "remove", "Deletes each given file.")
+    int arguments() override {
         parser->addOption(forceOption);
-        parser->addPositionalArgument("LOCATION", "The locations to remove", "LOCATION...");
+        parser->addPositionalArgument(
+            "LOCATION", "The locations to remove", "LOCATION..."
+        );
         return EXIT_SUCCESS;
     }
-    int command(const QStringList& args) override{
+    int command(const QStringList& args) override {
         auto* p = new QProcess();
         p->setInputChannelMode(QProcess::ForwardedInputChannel);
         p->setProcessChannelMode(QProcess::ForwardedChannels);
         bool failed = false;
-        for(const auto& path : args){
+        for (const auto& path : args) {
             auto url = urlFromPath(path);
-            if(!url.isLocalFile()){
-                GIO_ERROR(url, path, "Error while parsing path", "Path is not a local file");
+            if (!url.isLocalFile()) {
+                GIO_ERROR(
+                    url,
+                    path,
+                    "Error while parsing path",
+                    "Path is not a local file"
+                );
                 failed = true;
                 continue;
             }
             QFileInfo info(path);
-            if(!info.exists()){
-                if(!parser->isSet(forceOption)){
-                    GIO_ERROR(url, path, "Error removing file", "No such file or directory");
+            if (!info.exists()) {
+                if (!parser->isSet(forceOption)) {
+                    GIO_ERROR(
+                        url,
+                        path,
+                        "Error removing file",
+                        "No such file or directory"
+                    );
                     failed = true;
                 }
                 continue;
             }
             QStringList rmArgs;
-            if(info.isDir()){
+            if (info.isDir()) {
                 rmArgs.append("rmdir");
-            }else{
+            } else {
                 rmArgs.append("rm");
                 rmArgs.append("-f");
             }
@@ -53,9 +62,8 @@ class RemoveCommand : ICommand{
         return failed ? EXIT_FAILURE : EXIT_SUCCESS;
     }
 
-private:
+   private:
     QCommandLineOption forceOption = QCommandLineOption(
-        {"f", "force"},
-        "Ignore non-existent and non-deletable files."
+        {"f", "force"}, "Ignore non-existent and non-deletable files."
     );
 };

@@ -1,17 +1,18 @@
 #pragma once
 
-#include <QObject>
-#include <QSocketNotifier>
+#include <libevdev/libevdev.h>
 #include <liboxide/event_device.h>
 #include <liboxide/sysobject.h>
-#include <libevdev/libevdev.h>
+
+#include <QObject>
+#include <QSocketNotifier>
 
 using namespace Oxide;
 
-class EvDevDevice : public QObject{
+class EvDevDevice : public QObject {
     Q_OBJECT
 
-public:
+   public:
     EvDevDevice(QThread* handler, const event_device& device);
     ~EvDevDevice();
     QString devName();
@@ -24,13 +25,13 @@ public:
     void unlock();
     void clear_buffer();
 
-signals:
+   signals:
     void inputEvents(const std::vector<input_event> events);
 
-public slots:
+   public slots:
     void readEvents();
 
-private:
+   private:
     event_device device;
     SysObject sys;
     QString _name;
