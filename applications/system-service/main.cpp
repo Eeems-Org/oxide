@@ -185,7 +185,11 @@ main(int argc, char* argv[])
     );
     Blight::shared_buf_t buffer = createBuffer();
     if (buffer != nullptr) {
-        auto size = getFrameBuffer()->size();
+        QImage* framebuffer = getFrameBuffer();
+        if (framebuffer == nullptr) {
+            return EXIT_FAILURE;
+        }
+        auto size = framebuffer->size();
         int splashWidth = size.width() / 2;
         QSize splashSize(splashWidth, splashWidth);
         QRect splashRect(

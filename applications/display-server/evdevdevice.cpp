@@ -125,8 +125,10 @@ EvDevDevice::readEvents()
             O_WARNING("Device disapeared while reading events");
             return;
         }
-        if (res != -EAGAIN) {
-            O_WARNING("Failed to read input:" << strerror(errno));
+        if (res && res != -EAGAIN) {
+            O_WARNING(
+                "Failed to read input for " << name() << ":" << strerror(-res)
+            );
         }
         notifier->setEnabled(true);
     });

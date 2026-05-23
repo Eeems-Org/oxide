@@ -3,7 +3,9 @@
 #include <epframebuffer.h>
 #include <fcntl.h>
 #include <libblight/clock.h>
+#include <libblight/libblight.h>
 #include <liboxide/debug.h>
+#include <liboxide/devicesettings.h>
 #include <liboxide/threading.h>
 #include <mxcfb.h>
 
@@ -71,10 +73,20 @@ GUIThread::GUIThread(QRect screenGeometry)
   , m_screenOffset{ screenGeometry.topLeft() }
   , m_screenRect{ m_screenGeometry.translated(-m_screenOffset) }
 {
-    // TODO: Create an fd using memfd_create
-    // truncate it to the appropriate size, then
-    // replace the buffers in libqgsepaper instead.
-    m_frameBufferFd = open("/dev/null", O_RDWR);
+    auto width = deviceSettings.getScreenWidth();
+    std::optional<Blight::shared_buf_t> maybe_buffer = Blight::createBuffer(
+        0,
+        0,
+        width,
+        deviceSettings.getScreenHeight(),
+        width * 2,
+        Blight::Format::Format_RGB16
+    );
+    if (!maybe_buffer.has_value()) {
+        qFatal("Failed to create buffer");
+    }
+    Blight::shared_buf_t buffer = maybe_buffer.value();
+    m_frameBufferFd = buffer->fd;
     if (m_frameBufferFd == -1) {
         qFatal("Failed to open framebuffer");
     }

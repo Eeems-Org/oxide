@@ -20,4 +20,5 @@ linux-oe-g++{
     LIBS += -lqsgepaper
     INCLUDEPATH += $$OUT_PWD/../../shared/epaper
     DEFINES += EPAPER
+    QMAKE_RPATHDIR += /usr/lib/plugins/scenegraph
 }
