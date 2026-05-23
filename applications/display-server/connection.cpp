@@ -62,6 +62,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
     int fds[2];
     if (::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) == -1) {
         C_WARNING("Unable to open socket pair:" << strerror(errno));
+        fds[0] = fds[1] = -1;
     }
     m_clientFd = fds[0];
     m_serverFd = fds[1];
@@ -72,6 +73,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
 
     if (::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) == -1) {
         C_WARNING("Unable to open input socket pair:" << strerror(errno));
+        fds[0] = fds[1] = -1;
     }
     m_clientInputFd = fds[0];
     m_serverInputFd = fds[1];

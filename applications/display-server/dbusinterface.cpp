@@ -263,6 +263,12 @@ void
 DbusInterface::repaint(QString identifier, QDBusMessage message)
 {
     auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return;
+    }
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return;
@@ -338,6 +344,12 @@ DbusInterface::getSurfaces(QDBusMessage message)
 {
     auto connection = getConnection(message);
     QStringList surfaces;
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return surfaces;
+    }
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return surfaces;
@@ -359,6 +371,12 @@ QDBusUnixFileDescriptor
 DbusInterface::frameBuffer(QDBusMessage message)
 {
     auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return QDBusUnixFileDescriptor();
+    }
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return QDBusUnixFileDescriptor();
@@ -370,6 +388,12 @@ void
 DbusInterface::lower(QString identifier, QDBusMessage message)
 {
     auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return;
+    }
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return;
@@ -402,6 +426,12 @@ void
 DbusInterface::raise(QString identifier, QDBusMessage message)
 {
     auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return;
+    }
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return;
@@ -433,6 +463,12 @@ void
 DbusInterface::focus(QString identifier, QDBusMessage message)
 {
     auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return;
+    }
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return;
@@ -449,6 +485,12 @@ void
 DbusInterface::waitForNoRepaints(QDBusMessage message)
 {
     auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return;
+    }
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return;
@@ -464,6 +506,12 @@ void
 DbusInterface::enterExclusiveMode(QDBusMessage message)
 {
     auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return;
+    }
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return;
@@ -478,6 +526,12 @@ void
 DbusInterface::exitExclusiveMode(QDBusMessage message)
 {
     auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return;
+    }
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return;
@@ -501,6 +555,12 @@ void
 DbusInterface::exclusiveModeRepaint(QDBusMessage message)
 {
     auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return;
+    }
     if (!connection->has("system")) {
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return;

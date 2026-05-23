@@ -731,14 +731,16 @@ Application::readyReadStandardError()
         *p_stderr << error.toStdString().c_str();
         p_stderr->flush();
     } else {
-        const char* prefix =
-            ("[" + name() + " " + QString::number(m_process->processId()) + "]")
-                .toUtf8();
+        QString prefix =
+            "[" + name() + " " + QString::number(m_process->processId()) + "]";
         for (QString line :
              error.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)) {
             if (!line.isEmpty()) {
                 sd_journal_print(
-                    LOG_ERR, "%s %s", prefix, (const char*)line.toUtf8()
+                    LOG_ERR,
+                    "%s %s",
+                    (const char*)prefix.toUtf8(),
+                    (const char*)line.toUtf8()
                 );
             }
         }

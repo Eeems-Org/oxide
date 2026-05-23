@@ -92,7 +92,7 @@ EvDevDevice::clear_buffer()
 {
     auto flood = build_flood();
     ::write(device.fd, flood, 512 * 8 * 4 * sizeof(input_event));
-    delete flood;
+    free(flood);
 }
 
 void

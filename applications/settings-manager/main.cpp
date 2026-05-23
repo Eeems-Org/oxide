@@ -455,7 +455,7 @@ main(int argc, char* argv[])
         auto result = reply.arguments();
         if (result.size() > 1) {
             qStdOut << toJson(result).toStdString().c_str() << Qt::endl;
-        } else if (!result.first().isNull()) {
+        } else if (result.size() == 1 && !result.first().isNull()) {
             qStdOut << toJson(result.first()).toStdString().c_str() << Qt::endl;
         }
         if (!reply.errorName().isEmpty()) {

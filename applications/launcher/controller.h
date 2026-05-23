@@ -151,7 +151,7 @@ class Controller : public QObject
     Q_PROPERTY(int maxTouchWidth READ maxTouchWidth)
     Q_PROPERTY(int maxTouchHeight READ maxTouchHeight)
   public:
-    QObject* stateController;
+    QObject* stateController = nullptr;
     QObject* root = nullptr;
     explicit Controller(QObject* parent = 0)
       : QObject(parent)
@@ -266,7 +266,8 @@ class Controller : public QObject
             wifiStateChanged(wifiApi->state());
             wifiRssiChanged(wifiApi->rssi());
             emit wifiOnChanged(m_wifion);
-            if (stateController->property("state") == "wifi") {
+            if (stateController != nullptr &&
+                stateController->property("state") == "wifi") {
                 connectWifiSignals();
             }
             auto network = wifiApi->network();
