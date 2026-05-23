@@ -41,28 +41,28 @@ build() {
     case "$arch" in
     rm1 | rm2)
         . /opt/x-tools/switch-arm.sh
-        find . -name "*.pro" -type f -print0 |
-            xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
-        find . -name "*.pri" -type f -print0 |
-            xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
+        find . -name "*.pro" -type f -print0 \
+            | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
+        find . -name "*.pri" -type f -print0 \
+            | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
         export QMAKESPEC="$SYSROOT"/usr/mkspecs/devices/linux-arm-remarkable-g++
-        echo "QMAKE_CFLAGS=\"-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64\"" >>$QMAKESPEC/qmake.conf
-        echo "QMAKE_CXXFLAGS=\"-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64\"" >>$QMAKESPEC/qmake.conf
-        echo "QMAKE_LFLAGS=\"-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64 -Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed\"" >>$QMAKESPEC/qmake.conf
+        echo 'QMAKE_CFLAGS="-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64"' >> $QMAKESPEC/qmake.conf
+        echo 'QMAKE_CXXFLAGS="-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64"' >> $QMAKESPEC/qmake.conf
+        echo 'QMAKE_LFLAGS="-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64 -Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed"' >> $QMAKESPEC/qmake.conf
         ;;
     *)
         echo "Unexpected arch: $arch"
         exit 1
         ;;
     esac
-    echo "QMAKE_CC=\"${CROSS_COMPILE}gcc\"" >>$QMAKESPEC/qmake.conf
-    echo "QMAKE_CXX=\"${CROSS_COMPILE}g++\"" >>$QMAKESPEC/qmake.conf
-    echo "QMAKE_LINK=\"${CROSS_COMPILE}g++\"" >>$QMAKESPEC/qmake.conf
-    echo "QMAKE_LINK_SHLIB=\"${CROSS_COMPILE}g++\"" >>$QMAKESPEC/qmake.conf
-    echo "QMAKE_AR=\"${CROSS_COMPILE}ar\"" >>$QMAKESPEC/qmake.conf
-    echo "QMAKE_OBJCOPY=\"${CROSS_COMPILE}objcopy\"" >>$QMAKESPEC/qmake.conf
-    echo "QMAKE_NM=\"${CROSS_COMPILE}nm -P\"" >>$QMAKESPEC/qmake.conf
-    echo "QMAKE_STRIP=\"${CROSS_COMPILE}strip\"" >>$QMAKESPEC/qmake.conf
+    echo "QMAKE_CC=\"${CROSS_COMPILE}gcc\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_CXX=\"${CROSS_COMPILE}g++\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_LINK=\"${CROSS_COMPILE}g++\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_LINK_SHLIB=\"${CROSS_COMPILE}g++\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_AR=\"${CROSS_COMPILE}ar\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_OBJCOPY=\"${CROSS_COMPILE}objcopy\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_NM=\"${CROSS_COMPILE}nm -P\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_STRIP=\"${CROSS_COMPILE}strip\"" >> $QMAKESPEC/qmake.conf
     if [ ! -f "${SYSROOT:?}"/usr/plugins/scenegraph/libqsgepaper.so ]; then
         mkdir -p "$SYSROOT"/usr/plugins/scenegraph/
         cp "$srcdir"/libqsgepaper-"$arch".so \
