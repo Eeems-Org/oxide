@@ -30,6 +30,5 @@ HEADERS += \
 PRECOMPILED_HEADER = \
     erode_stable.h
 
-LIBS += -lsystemd
-
 include(../../qmake/liboxide.pri)
+PKGCONFIG += libsystemd

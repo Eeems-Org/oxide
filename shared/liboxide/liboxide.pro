@@ -81,9 +81,9 @@ DBUS_INTERFACES += \
     ../../interfaces/notification.xml \
     ../../interfaces/blight.xml
 
-LIBS += -lsystemd -ludev
-
 include(../../qmake/common.pri)
+PKGCONFIG += libsystemd
+PKGCONFIG += libudev
 RELATIVE_PWD = $$system(realpath --canonicalize-missing --relative-to  $$OUT_PWD $$PWD)
 
 liboxide_liboxide_h.target = include/liboxide/liboxide.h

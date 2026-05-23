@@ -32,11 +32,19 @@ linux-oe-g++{
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
-CONFIG += ltcg
 CONFIG += c++17
 CONFIG += c++20
 CONFIG += c++latest
 
-QMAKE_LFLAGS += -flto
-QMAKE_CFLAGS += -fPIC
-QMAKE_CXXFLAGS += -fPIC
+!contains(DEFINES, DISABLE_LTO){
+    CONFIG += ltcg
+    QMAKE_LFLAGS += -flto
+}
+
+!contains(DEFINES, DISABLE_PIC){
+    QMAKE_CFLAGS += -fPIC
+    QMAKE_CXXFLAGS += -fPIC
+}
+
+QT_CONFIG -= no-pkg-config
+CONFIG += link_pkgconfig

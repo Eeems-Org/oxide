@@ -84,9 +84,9 @@ HEADERS += \
 PRECOMPILED_HEADER = \
     tarnish_stable.h
 
-LIBS += -lpng16
-LIBS += -lsystemd
-LIBS += -lz
+PKGCONFIG += libsystemd
+PKGCONFIG += libpng16
+PKGCONFIG += zlib
 
 DISTFILES += \
     fi.w1.wpa_supplicant1.xml \

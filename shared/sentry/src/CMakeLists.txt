@@ -106,8 +106,8 @@ option(SENTRY_PIC "Build sentry (and dependent) libraries as position independen
 option(SENTRY_TRANSPORT_COMPRESSION "Enable transport gzip compression" OFF)
 
 option(SENTRY_BUILD_TESTS "Build sentry-native tests" "${SENTRY_MAIN_PROJECT}")
-option(SENTRY_BUILD_EXAMPLES "Build sentry-native example(s)" "${SENTRY_MAIN_PROJECT}")
-option(SENTRY_BUILD_BENCHMARKS "Build sentry-native benchmarks" OFF)
+# option(SENTRY_BUILD_EXAMPLES "Build sentry-native example(s)" "${SENTRY_MAIN_PROJECT}")
+# option(SENTRY_BUILD_BENCHMARKS "Build sentry-native benchmarks" OFF)
 
 # Platform version embedding options
 option(SENTRY_EMBED_INFO "Embed version information in binary" OFF)
@@ -966,52 +966,52 @@ endif()
 
 # ===== example, also used as integration test =====
 
-if(SENTRY_BUILD_EXAMPLES)
-	add_executable(sentry_example examples/example.c)
-	if(XBOX)
-		set_target_properties(sentry_example PROPERTIES VS_USER_PROPS gdk_build.props)
-	endif()
-	target_link_libraries(sentry_example PRIVATE sentry)
+# if(SENTRY_BUILD_EXAMPLES)
+# 	add_executable(sentry_example examples/example.c)
+# 	if(XBOX)
+# 		set_target_properties(sentry_example PROPERTIES VS_USER_PROPS gdk_build.props)
+# 	endif()
+# 	target_link_libraries(sentry_example PRIVATE sentry)
 
-	if(MSVC)
-		target_compile_options(sentry_example PRIVATE $<BUILD_INTERFACE:/wd5105 /wd4717>)
-		if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl
-			# ignore the warning for the intentionally infinite recursion
-			target_compile_options(sentry_example PRIVATE $<BUILD_INTERFACE:-Wno-infinite-recursion>)
-			# ensure that clang-cl builds an unoptimized `sentry_example` in all build types
-			target_compile_options(sentry_example PRIVATE $<BUILD_INTERFACE:/Od>)
-		endif()
+# 	if(MSVC)
+# 		target_compile_options(sentry_example PRIVATE $<BUILD_INTERFACE:/wd5105 /wd4717>)
+# 		if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl
+# 			# ignore the warning for the intentionally infinite recursion
+# 			target_compile_options(sentry_example PRIVATE $<BUILD_INTERFACE:-Wno-infinite-recursion>)
+# 			# ensure that clang-cl builds an unoptimized `sentry_example` in all build types
+# 			target_compile_options(sentry_example PRIVATE $<BUILD_INTERFACE:/Od>)
+# 		endif()
 
-		# to test handling SEH by-passing exceptions we need to enable the control flow guard
-		target_compile_options(sentry_example PRIVATE $<BUILD_INTERFACE:/guard:cf>)
-		target_link_options(sentry_example PRIVATE $<BUILD_INTERFACE:/GUARD:CF>)
-	else()
-		# Disable all optimizations for the `sentry_example` in gcc/clang. This allows us to keep crash triggers simple.
-		# The effects besides reproducible code-gen across compiler versions, will be negligible for build- and runtime.
-		target_compile_options(sentry_example PRIVATE $<BUILD_INTERFACE:-O0>)
-	endif()
+# 		# to test handling SEH by-passing exceptions we need to enable the control flow guard
+# 		target_compile_options(sentry_example PRIVATE $<BUILD_INTERFACE:/guard:cf>)
+# 		target_link_options(sentry_example PRIVATE $<BUILD_INTERFACE:/GUARD:CF>)
+# 	else()
+# 		# Disable all optimizations for the `sentry_example` in gcc/clang. This allows us to keep crash triggers simple.
+# 		# The effects besides reproducible code-gen across compiler versions, will be negligible for build- and runtime.
+# 		target_compile_options(sentry_example PRIVATE $<BUILD_INTERFACE:-O0>)
+# 	endif()
 
-	# set static runtime if enabled
-	if(SENTRY_BUILD_RUNTIMESTATIC AND MSVC)
-		set_property(TARGET sentry_example PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-	endif()
+# 	# set static runtime if enabled
+# 	if(SENTRY_BUILD_RUNTIMESTATIC AND MSVC)
+# 		set_property(TARGET sentry_example PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+# 	endif()
 
-	if(DEFINED SENTRY_FOLDER)
-		set_target_properties(sentry_example PROPERTIES FOLDER ${SENTRY_FOLDER})
-	endif()
+# 	if(DEFINED SENTRY_FOLDER)
+# 		set_target_properties(sentry_example PROPERTIES FOLDER ${SENTRY_FOLDER})
+# 	endif()
 
-	if(CMAKE_GENERATOR STREQUAL "Xcode")
-		set(SENTRY_FIXTURE_OUTPUT_DIR "$<TARGET_BUNDLE_DIR:sentry_example>/..")
-	else()
-		set(SENTRY_FIXTURE_OUTPUT_DIR "$<TARGET_FILE_DIR:sentry_example>")
-	endif()
+# 	if(CMAKE_GENERATOR STREQUAL "Xcode")
+# 		set(SENTRY_FIXTURE_OUTPUT_DIR "$<TARGET_BUNDLE_DIR:sentry_example>/..")
+# 	else()
+# 		set(SENTRY_FIXTURE_OUTPUT_DIR "$<TARGET_FILE_DIR:sentry_example>")
+# 	endif()
 
-	add_custom_command(TARGET sentry_example POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/minidump.dmp" "${SENTRY_FIXTURE_OUTPUT_DIR}/minidump.dmp")
+# 	add_custom_command(TARGET sentry_example POST_BUILD
+# 		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/minidump.dmp" "${SENTRY_FIXTURE_OUTPUT_DIR}/minidump.dmp")
 
-	add_custom_command(TARGET sentry_example POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/view-hierarchy.json" "${SENTRY_FIXTURE_OUTPUT_DIR}/view-hierarchy.json")
-endif()
+# 	add_custom_command(TARGET sentry_example POST_BUILD
+# 		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/view-hierarchy.json" "${SENTRY_FIXTURE_OUTPUT_DIR}/view-hierarchy.json")
+# endif()
 
 # Limit the exported symbols when sentry is built as a shared library to those with a "sentry_" prefix:
 # - we do this at the end of the file as to not affect subdirectories reading target_link_libraries from the parent.

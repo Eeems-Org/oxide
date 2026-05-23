@@ -32,10 +32,8 @@ HEADERS += \
 
 PRECOMPILED_HEADER = \
     libblight_stable.h
-
-LIBS += -lsystemd
-
 include(../../qmake/common.pri)
+PKGCONFIG += libsystemd
 RELATIVE_PWD = $$system(realpath --canonicalize-missing --relative-to $$OUT_PWD $$PWD)
 include(../../qmake/libblight_protocol.pri)
 
