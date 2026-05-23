@@ -110,14 +110,14 @@ CPP_FILES += $(wildcard shared/**/*.cpp | xargs -rn1 | grep -v sentry/) $(wildca
 CPP_FILES += $(wildcard tests/**/*.cpp) $(wildcard tests/**/*.h)
 
 lint:
-	shfmt \
+	@shfmt \
 		-d\
 		-s \
 		-i 4 \
 		-bn \
 		-sr \
 		$(SRC_FILES)
-	clang-format \
+	@clang-format \
 		--dry-run \
 		--Werror \
 		--fallback-style=mozilla \
@@ -125,7 +125,7 @@ lint:
 		$(CPP_FILES)
 
 format:
-	shfmt \
+	@shfmt \
 		-l \
 		-w \
 		-s \
@@ -133,7 +133,7 @@ format:
 		-bn \
 		-sr \
 		$(SRC_FILES)
-	clang-format \
+	@clang-format \
 		--fallback-style=mozilla \
 		-i \
 		$(CPP_FILES)
