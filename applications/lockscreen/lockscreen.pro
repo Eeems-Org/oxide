@@ -4,7 +4,9 @@ QT += dbus
 
 CONFIG += c++11
 CONFIG += qml_debug
-CONFIG += qtquickcompiler
+CONFIG(release, debug|release){
+    CONFIG += qtquickcompiler
+}
 
 SOURCES += \
         main.cpp

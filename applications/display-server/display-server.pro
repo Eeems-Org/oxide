@@ -6,8 +6,10 @@ QT += input_support-private
 CONFIG += c++17
 CONFIG -= app_bundle
 CONFIG += qml_debug
-CONFIG += qtquickcompiler
 CONFIG += qmltypes
+CONFIG(release, debug|release){
+    CONFIG += qtquickcompiler
+}
 
 QML_IMPORT_NAME = codes.eeems.blight
 QML_IMPORT_PATH += .

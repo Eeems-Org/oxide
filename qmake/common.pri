@@ -40,9 +40,11 @@ CONFIG += c++17
 CONFIG += c++20
 CONFIG += c++latest
 
-!contains(DEFINES, DISABLE_LTO){
-    CONFIG += ltcg
-    QMAKE_LFLAGS += -flto
+CONFIG(release, debug|release){
+    !contains(DEFINES, DISABLE_LTO){
+        CONFIG += ltcg
+        QMAKE_LFLAGS += -flto
+    }
 }
 
 !contains(DEFINES, DISABLE_PIC){
