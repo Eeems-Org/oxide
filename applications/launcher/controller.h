@@ -316,6 +316,9 @@ class Controller : public QObject
         auto autoSleep = systemApi->autoSleep();
         setAutomaticSleep(autoSleep);
         setSleepAfter(autoSleep);
+        auto autoLock = systemApi->autoLock();
+        setAutomaticLock(autoLock);
+        setLockAfter(autoLock);
         for (short i = 1; i <= 4; ++i) {
             setSwipeLength(i, systemApi->getSwipeLength(i));
         }

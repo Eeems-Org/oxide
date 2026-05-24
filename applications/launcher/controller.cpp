@@ -104,6 +104,10 @@ Controller::loadSettings()
         setSwipeLength(i, systemApi->getSwipeLength(i));
     }
     qDebug() << "Updating UI with settings from config file...";
+    if (root == nullptr) {
+        qWarning() << "root not populated!";
+        return;
+    }
     // Populate settings in UI
     QObject* columnsSpinBox = root->findChild<QObject*>("columnsSpinBox");
     if (!columnsSpinBox) {
