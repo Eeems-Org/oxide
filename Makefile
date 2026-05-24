@@ -11,6 +11,9 @@ MAKEFLAGS := --jobs=$(shell nproc)
 DIST=$(CURDIR)/release
 BUILD=$(CURDIR)/.build
 
+ifneq ($(filter debug,$(FEATURES)),)
+DEFINES += CONFIG+="debug"
+endif
 ifneq ($(filter sentry,$(FEATURES)),)
 DEFINES += DEFINES+="SENTRY"
 endif
@@ -18,7 +21,7 @@ endif
 OBJ += $(BUILD)/oxide/Makefile
 
 clean-base:
-	rm -rf $(DIST) $(BUILD)/oxide
+	rm -rf $(DIST) $(BUILD)/oxide/Makefile
 
 clean: clean-base
 	rm -rf $(BUILD)

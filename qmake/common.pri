@@ -8,10 +8,14 @@ isEmpty(QT_DISABLE_DEPRECATED_BEFORE){
 }else{
     message("Using override deprecation value")
 }
+
+QT_CONFIG -= no-pkg-config
+CONFIG += link_pkgconfig
+
 DEFINES ~= s/QT_DISABLE_DEPRECATED_BEFORE=.+/
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=$${QT_DISABLE_DEPRECATED_BEFORE}
 CONFIG(debug, debug|release){
-    LIBS += -lunwind
+    PKGCONFIG += libunwind
     contains(DEFINES, SANITIZER){
         QMAKE_LFLAGS += -fno-omit-frame-pointer
         QMAKE_LFLAGS += -fsanitize-recover=address
@@ -45,6 +49,3 @@ CONFIG += c++latest
     QMAKE_CFLAGS += -fPIC
     QMAKE_CXXFLAGS += -fPIC
 }
-
-QT_CONFIG -= no-pkg-config
-CONFIG += link_pkgconfig

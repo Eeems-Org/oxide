@@ -280,17 +280,10 @@ GUIThread::redraw(RepaintRequest& event)
     QImage* frameBuffer = &EPFramebuffer::instance()->auxBuffer;
     Qt::GlobalColor colour =
         frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
+    // "QPainter::begin: A paint device can only be painted by one painter at a
+    // time." Ignore this warning, Nothing is displayed if the painter is not
+    // active when calling sendUpdate currently
     QPainter painter(frameBuffer);
-    while (!painter.isActive()) {
-        while (frameBuffer->paintingActive()) {
-            if (!eventDispatcher()->processEvents(QEventLoop::AllEvents)) {
-                QThread::msleep(1);
-            }
-        }
-        if (painter.begin(frameBuffer)) {
-            break;
-        }
-    }
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     for (QRect rect : event.region) {
         bool hasAlpha = event.global;
