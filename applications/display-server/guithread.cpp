@@ -72,14 +72,14 @@ GUIThread::GUIThread(QRect screenGeometry)
   , m_screenOffset{ screenGeometry.topLeft() }
   , m_screenRect{ m_screenGeometry.translated(-m_screenOffset) }
 {
-    auto width = deviceSettings.getScreenWidth();
+    auto auxBuffer = EPFramebuffer::instance()->auxBuffer;
     std::optional<Blight::shared_buf_t> maybe_buffer = Blight::createBuffer(
         0,
         0,
-        width,
-        deviceSettings.getScreenHeight(),
-        width * 2,
-        Blight::Format::Format_RGB16
+        auxBuffer.width(),
+        auxBuffer.height(),
+        auxBuffer.bytesPerLine(),
+        (Blight::Format)auxBuffer.format()
     );
     if (!maybe_buffer.has_value()) {
         qFatal("Failed to create buffer");
@@ -333,18 +333,19 @@ void
 GUIThread::swap()
 {
     if (m_frameBuffer == nullptr || m_frameBuffer->fd < 0) {
-        QImage image(
-            m_frameBuffer->data,
-            m_frameBuffer->width,
-            m_frameBuffer->height,
-            m_frameBuffer->stride,
-            (QImage::Format)m_frameBuffer->format
-        );
-        auto* fb = EPFramebuffer::instance();
-        QPainter painter(&fb->auxBuffer);
-        painter.drawImage(fb->auxBuffer.rect(), image, image.rect());
-        painter.end();
+        return;
     }
+    QImage image(
+        m_frameBuffer->data,
+        m_frameBuffer->width,
+        m_frameBuffer->height,
+        m_frameBuffer->stride,
+        (QImage::Format)m_frameBuffer->format
+    );
+    auto* fb = EPFramebuffer::instance();
+    QPainter painter(&fb->auxBuffer);
+    painter.drawImage(fb->auxBuffer.rect(), image, image.rect());
+    painter.end();
 }
 
 QList<std::shared_ptr<Surface>>

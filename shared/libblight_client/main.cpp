@@ -33,7 +33,7 @@ namespace {
     static bool DO_HANDLE_FB = true;
     static bool FAKE_RM1 = false;
     static unsigned int INPUT_BATCH_SIZE = 0;
-    static Blight::shared_buf_t blightBuffer = Blight::buf_t::new_ptr();
+    static Blight::shared_buf_t blightBuffer = nullptr;
     static Blight::Connection* blightConnection = nullptr;
     static std::map<int, int[2]> inputFds;
     static std::map<int, int> inputDeviceMap;
@@ -1091,11 +1091,6 @@ extern "C"
         func_mmap = (void* (*)(void*, size_t, int, int, int, __off_t))dlsym(
             RTLD_NEXT, "mmap"
         );
-    }
-
-    static void _libhook_init() __attribute__((constructor));
-    static void _libhook_init()
-    {
         auto debugLevel = getenv("OXIDE_PRELOAD_DEBUG");
         if (debugLevel != nullptr) {
             try {
@@ -1181,6 +1176,7 @@ extern "C"
             setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
             setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
         }
+        blightBuffer = Blight::buf_t::new_ptr();
         FAILED_INIT = false;
         IS_INITIALIZED = true;
         blightConnection->focused();
