@@ -21,7 +21,11 @@ endif
 OBJ += $(BUILD)/oxide/Makefile
 
 clean-base:
-	rm -rf $(DIST) $(BUILD)/oxide/Makefile
+	rm -rf \
+		$(DIST) \
+		$(BUILD)/oxide/Makefile \
+		$(BUILD)/oxide/shared/sentry/src \
+		$(BUILD)/oxide/shared/cpptrace/src
 
 clean: clean-base
 	rm -rf $(BUILD)
@@ -50,6 +54,51 @@ package: version.txt $(DIST) $(BUILD)/package/oxide.tar.gz
 		-d $(BUILD)/package/dist \
 		$(BUILD)/package
 	cp -a $(BUILD)/package/dist/rm*/*.ipk $(DIST)
+
+build-rm1: clean-base $(DIST)
+	podman run \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		--env FEATURES \
+		eeems/remarkable-toolchain:5.7.119-rm1 \
+		bash -exc 'source /opt/codex/rm1/5.7.119/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi; make release'
+
+build-rm2: clean-base $(DIST)
+	podman run \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		--env FEATURES \
+		eeems/remarkable-toolchain:5.7.119-rm2 \
+		bash -exc 'source /opt/codex/rm2/5.7.119/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi; make release'
+
+build-rmpp: clean-base $(DIST)
+	podman run \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		--env FEATURES \
+		eeems/remarkable-toolchain:5.7.119-rmpp \
+		bash -exc 'source /opt/codex/ferrari/5.7.119/environment-setup-cortexa53-remarkable-linux; make release'
+
+build-rmppm: clean-base $(DIST)
+	podman run \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		--env FEATURES \
+		eeems/remarkable-toolchain:5.7.119-rmppm \
+		bash -exc 'source /opt/codex/chiappa/5.7.119/environment-setup-cortexa55-remarkable-linux; make release'
+
+build-rmppure: clean-base $(DIST)
+	podman run \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		--env FEATURES \
+		eeems/remarkable-toolchain:5.7.119-rmppure \
+		bash -exc 'source /opt/codex/tatsu/5.7.119/environment-setup-cortexa55-remarkable-linux; make release'
 
 version.txt:
 	if [ -d .git ];then \
