@@ -56,6 +56,7 @@ class GUIThread : public QThread
         Blight::UpdateMode mode,
         unsigned int marker
     );
+    void swap();
 
   private:
     GUIThread(QRect screenGeometry);

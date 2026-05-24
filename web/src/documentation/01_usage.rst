@@ -333,3 +333,4 @@ When running an application from the command line, you can force it to use the d
 - ``OXIDE_INPUT_BATCH_SIZE`` Number of input events without a EV_SYN SYN_REPORT to queue before flushing them through to the application. Defaults to 16
 - ``OXIDE_PRELOAD_DEBUG`` Debug level. Defaults to 4.
 - ``OXIDE_PRELOAD_DISABLE_INPUT`` Disable input handling.
+- ``OXIDE_PRELOAD_ALLOW_RM2FB`` Do not disable the rm2fb client shim.

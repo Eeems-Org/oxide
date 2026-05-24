@@ -84,6 +84,7 @@ GUIThread::GUIThread(QRect screenGeometry)
     if (!maybe_buffer.has_value()) {
         qFatal("Failed to create buffer");
     }
+    // TODO how to make this buffer be the auxbuffer but still be a memfd
     m_frameBuffer = maybe_buffer.value();
     if (m_frameBuffer->fd == -1) {
         qFatal("Failed to open framebuffer");
@@ -326,6 +327,24 @@ GUIThread::sendUpdate(
         rect == m_screenRect ? EPFramebuffer::UpdateFlag::CompleteRefresh
                              : EPFramebuffer::UpdateFlag::NoRefresh
     );
+}
+
+void
+GUIThread::swap()
+{
+    if (m_frameBuffer == nullptr || m_frameBuffer->fd < 0) {
+        QImage image(
+            m_frameBuffer->data,
+            m_frameBuffer->width,
+            m_frameBuffer->height,
+            m_frameBuffer->stride,
+            (QImage::Format)m_frameBuffer->format
+        );
+        auto* fb = EPFramebuffer::instance();
+        QPainter painter(&fb->auxBuffer);
+        painter.drawImage(fb->auxBuffer.rect(), image, image.rect());
+        painter.end();
+    }
 }
 
 QList<std::shared_ptr<Surface>>
