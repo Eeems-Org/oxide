@@ -1,6 +1,7 @@
 #pragma once
 #ifdef EPAPER
 #include <libblight/concurrentqueue.h>
+#include <libblight/libblight.h>
 #include <liboxide/threading.h>
 
 #include <QQueue>
@@ -59,7 +60,7 @@ class GUIThread : public QThread
   private:
     GUIThread(QRect screenGeometry);
     moodycamel::ConcurrentQueue<RepaintRequest> m_repaintEvents;
-    int m_frameBufferFd;
+    Blight::shared_buf_t m_frameBuffer = nullptr;
     QAtomicInteger<unsigned int> m_currentMarker;
     QMutex m_repaintMutex;
     QWaitCondition m_repaintWait;

@@ -3,7 +3,6 @@
 #include <epframebuffer.h>
 #include <fcntl.h>
 #include <libblight/clock.h>
-#include <libblight/libblight.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
 #include <liboxide/threading.h>
@@ -85,9 +84,8 @@ GUIThread::GUIThread(QRect screenGeometry)
     if (!maybe_buffer.has_value()) {
         qFatal("Failed to create buffer");
     }
-    Blight::shared_buf_t buffer = maybe_buffer.value();
-    m_frameBufferFd = buffer->fd;
-    if (m_frameBufferFd == -1) {
+    m_frameBuffer = maybe_buffer.value();
+    if (m_frameBuffer->fd == -1) {
         qFatal("Failed to open framebuffer");
     }
     moveToThread(this);
@@ -213,7 +211,7 @@ GUIThread::clearFrameBuffer()
 int
 GUIThread::framebuffer()
 {
-    return m_frameBufferFd;
+    return m_frameBuffer == nullptr ? -1 : m_frameBuffer->fd;
 }
 
 void

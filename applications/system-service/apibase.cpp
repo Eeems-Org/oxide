@@ -73,7 +73,7 @@ getFrameBuffer()
             O_WARNING("Failed to get framebuffer fd" << std::strerror(errno));
             return nullptr;
         }
-        O_DEBUG("Framebuffer fd: " << std::to_string(fd).c_str())
+        O_DEBUG("Framebuffer fd:" << std::to_string(fd).c_str())
         if (!file->open(fd, QFile::ReadWrite)) {
             O_WARNING("Failed to open framebuffer " << file->errorString());
             ::close(fd);
