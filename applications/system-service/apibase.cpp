@@ -4,6 +4,9 @@
 #include <libblight/types.h>
 #include <liboxide/oxideqml.h>
 
+#include <QDBusUnixFileDescriptor>
+#include <QFile>
+#include <QString>
 #include <QWindow>
 
 #include "appsapi.h"
@@ -70,16 +73,26 @@ getFrameBuffer()
             O_WARNING("Failed to get framebuffer fd" << std::strerror(errno));
             return nullptr;
         }
+        O_DEBUG("Framebuffer fd: " << std::to_string(fd).c_str())
         if (!file->open(fd, QFile::ReadWrite)) {
-            O_WARNING("Failed to open framebuffer" << file->errorString());
+            O_WARNING("Failed to open framebuffer " << file->errorString());
             ::close(fd);
             delete file;
             file = nullptr;
             return nullptr;
         }
-        auto stride =
-            deviceSettings.getDeviceType() == Oxide::DeviceSettings::RM1 ? 2816
-                                                                         : 2808;
+        int stride;
+        switch (deviceSettings.getDeviceType()) {
+            case Oxide::DeviceSettings::RM1:
+                stride = 2816;
+                break;
+            case Oxide::DeviceSettings::RM2:
+            case Oxide::DeviceSettings::RMPP:
+            case Oxide::DeviceSettings::RMPPM:
+            case Oxide::DeviceSettings::RMPPURE:
+                stride = 2808;
+                break;
+        }
         uchar* data = file->map(0, stride * 1872);
         if (data == nullptr) {
             O_WARNING("Failed to map framebuffer" << file->errorString());

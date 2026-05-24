@@ -121,6 +121,11 @@ namespace Oxide {
             _deviceType = DeviceType::RMPPM;
             return;
         }
+        if (modelName.startsWith("reMarkable Tatsu")) {
+            O_DEBUG("RMPPure detected...");
+            _deviceType = DeviceType::RMPPURE;
+            return;
+        }
         O_DEBUG("RM1 detected...");
         _deviceType = DeviceType::RM1;
     }
@@ -155,6 +160,8 @@ namespace Oxide {
                 return "reMarkable Paper Pro";
             case DeviceType::RMPPM:
                 return "reMarkable Paper Pro Move";
+            case DeviceType::RMPPURE:
+                return "reMarkable Paper Pure";
             default:
                 return "Unknown";
         }
@@ -170,6 +177,8 @@ namespace Oxide {
             case DeviceType::RMPP:
                 return "";
             case DeviceType::RMPPM:
+                return "";
+            case DeviceType::RMPPURE:
                 return "";
             default:
                 return "";
@@ -187,6 +196,8 @@ namespace Oxide {
                 return 2064;
             case DeviceType::RMPPM:
                 return 1248;
+            case DeviceType::RMPPURE:
+                return 1403;
             default:
                 return 0;
         }
@@ -203,6 +214,8 @@ namespace Oxide {
                 return 2832;
             case DeviceType::RMPPM:
                 return 2208;
+            case DeviceType::RMPPURE:
+                return 1871;
             default:
                 return 0;
         }
@@ -213,6 +226,7 @@ namespace Oxide {
         switch (getDeviceType()) {
             case DeviceType::RM1:
             case DeviceType::RM2:
+            case DeviceType::RMPPURE:
                 return 1404;
             case DeviceType::RMPP:
                 return 1620;
@@ -228,6 +242,7 @@ namespace Oxide {
         switch (getDeviceType()) {
             case DeviceType::RM1:
             case DeviceType::RM2:
+            case DeviceType::RMPPURE:
                 return 1872;
             case DeviceType::RMPP:
                 return 2160;

@@ -31,6 +31,7 @@ namespace Oxide {
             RM2,     /*!< reMarkable 2 >*/
             RMPP,    /*!< reMarkable Paper Pro >*/
             RMPPM,   /*!< reMarkable Paper Pro Move >*/
+            RMPPURE, /*!< reMarkable Paper Pure >*/
         };
         /*!
          * \brief Get the static instance of this class. You should use the
