@@ -567,12 +567,6 @@ DbusInterface::exclusiveModeRepaint(QDBusMessage message)
     }
 #ifdef EPAPER
     guiThread->swap();
-    guiThread->sendUpdate(
-        EPFramebuffer::instance()->auxBuffer.rect(),
-        Blight::WaveformMode::HighQualityGrayscale,
-        Blight::UpdateMode::PartialUpdate,
-        0
-    );
 #endif
 }
 

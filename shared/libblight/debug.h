@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include "libblight_global.h"
 #include <linux/prctl.h>
 #include <stdio.h>
 #include <sys/prctl.h>
@@ -14,22 +15,29 @@
 #include <mutex>
 
 static std::mutex __log_mutex;
-/*!
- * \brief BLIGHT_DEBUG_LOGGING
- *
- * Used to filter debug messages based on the priority.
- */
-static int BLIGHT_DEBUG_LOGGING = 4;
 void
 __printf_header(int priority);
 void
 __printf_footer(char const* file, unsigned int line, char const* func);
 
 /*!
+ * \brief Get current debug level
+ * \return Current debug level
+ */
+LIBBLIGHT_EXPORT int
+get_blight_debug_level();
+/*!
+ * \brief Set current debug level
+ * \param level Debug level to use
+ */
+LIBBLIGHT_EXPORT void
+set_blight_debug_level(int level);
+
+/*!
  * \brief Log a message to stderr
  */
 #define _PRINTF(priority, ...)                                                 \
-    if (priority <= BLIGHT_DEBUG_LOGGING) {                                    \
+    if (priority <= get_blight_debug_level()) {                                \
         __log_mutex.lock();                                                    \
         __printf_header(priority);                                             \
         fprintf(stderr, __VA_ARGS__);                                          \

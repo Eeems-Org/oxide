@@ -891,10 +891,10 @@ Application::updateEnvironment()
         env.insert("OXIDE_PRELOAD_ALLOW_RM2FB", "1");
     }
     env.insert("LD_PRELOAD", preload.join(":"));
+    env.remove("OXIDE_PRELOAD_DISABLE_INPUT");
     for (auto key : environment().keys()) {
         env.insert(key, environment().value(key, "").toString());
     }
-    env.remove("OXIDE_PRELOAD_DISABLE_INPUT");
     m_process->setEnvironment(env.toStringList());
 }
 

@@ -37,7 +37,7 @@ main(int argc, char* argv[])
     app.setApplicationName("test_app");
     app.setApplicationVersion(APP_VERSION);
     if (Oxide::debugEnabled()) {
-        BLIGHT_DEBUG_LOGGING = 7;
+        set_blight_debug_level(7);
     }
     if (!qEnvironmentVariableIsSet("SKIP_TEST")) {
 #ifdef EPAPER

@@ -1,5 +1,7 @@
 #include "debug.h"
 
+static int BLIGHT_DEBUG_LOGGING = LOG_WARNING;
+
 void
 __printf_header(int priority)
 {
@@ -37,4 +39,16 @@ void
 __printf_footer(const char* file, unsigned int line, const char* func)
 {
     fprintf(stderr, " (%s:%u, %s)\n", file, line, func);
+}
+
+int
+get_blight_debug_level()
+{
+    return BLIGHT_DEBUG_LOGGING;
+}
+
+void
+set_blight_debug_level(int level)
+{
+    BLIGHT_DEBUG_LOGGING = level;
 }

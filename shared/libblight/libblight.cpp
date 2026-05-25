@@ -19,6 +19,7 @@ namespace Blight {
             errno = EAGAIN;
             return {};
         }
+        _DEBUG("[Blight::%s()]", name.c_str());
         auto reply = dbus->get_property(
             BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, name, "ay"
         );
@@ -52,6 +53,7 @@ namespace Blight {
         if (dbus != nullptr) {
             return true;
         }
+        _DEBUG("[Blight::connect(%s)]", use_system ? "true" : "false");
         try {
             dbus = new DBus(use_system);
             return true;
@@ -85,6 +87,7 @@ namespace Blight {
             errno = EAGAIN;
             return -EAGAIN;
         }
+        _DEBUG("[Blight::open()]");
         auto reply =
             dbus->call_method(BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "open");
         if (reply->isError()) {
@@ -120,6 +123,7 @@ namespace Blight {
             errno = EAGAIN;
             return -EAGAIN;
         }
+        _DEBUG("[Blight::open_input()]");
         auto reply = dbus->call_method(
             BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "openInput"
         );
@@ -159,6 +163,15 @@ namespace Blight {
         Format format
     )
     {
+        _DEBUG(
+            "[Blight::createBuffer(%d, %d, %u, %u, %d, %d)]",
+            x,
+            y,
+            width,
+            height,
+            stride,
+            format
+        );
         auto buf = new buf_t{ .fd = -1,
                               .x = x,
                               .y = y,
@@ -228,6 +241,15 @@ namespace Blight {
             errno = EAGAIN;
             return {};
         }
+        _DEBUG(
+            "[Blight::addSurface(%d, %d, %u, %u, %d, %d)]",
+            x,
+            y,
+            width,
+            height,
+            stride,
+            format
+        );
         auto reply = dbus->call_method(
             BLIGHT_SERVICE,
             "/",
@@ -270,6 +292,7 @@ namespace Blight {
             errno = EINVAL;
             return -errno;
         }
+        _DEBUG("[Blight::repaint(%s)]", identifier.c_str());
         auto reply = dbus->call_method(
             BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "repaint", "s", identifier
         );
@@ -293,6 +316,7 @@ namespace Blight {
             errno = EINVAL;
             return -1;
         }
+        _DEBUG("[Blight::repaint(%d)]", identifier);
         auto reply = dbus->call_method(
             BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "getSurface", "q", identifier
         );
@@ -343,6 +367,7 @@ namespace Blight {
 
     bool setClipboard(clipboard_t& clipboard)
     {
+        _DEBUG("[Blight::setClipboard(%s)]", clipboard.name);
         if (clipboard.name != "clipboard" && clipboard.name != "selection" &&
             clipboard.name != "secondary") {
             _WARN(
@@ -464,6 +489,7 @@ namespace Blight {
 
     bool updateClipboard(clipboard_t& clipboard)
     {
+        _DEBUG("[Blight::updateClipboard(%s)]", clipboard.name);
         if (clipboard.name != "clipboard" && clipboard.name != "selection" &&
             clipboard.name != "secondary") {
             _WARN(

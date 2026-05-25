@@ -4,6 +4,7 @@
  * @{
  * \file
  */
+#pragma once
 #include <optional>
 
 #include "dbus.h"
@@ -15,7 +16,7 @@
  */
 namespace Blight {
 #if defined(LIBBLIGHT_LIBRARY)
-    [[maybe_unused]] static DBus* dbus = nullptr;
+    [[maybe_unused]] extern DBus* dbus;
 #endif
     /*!
      * \brief Get the file descriptor of the primary framebuffer
@@ -43,5 +44,14 @@ namespace Blight {
      * \retval false call failed
      */
     LIBBLIGHT_EXPORT bool exclusiveModeRepaint();
+    /*!
+     * \brief Set flags for a surface or connection
+     * \param identifier surface or connection identifier
+     * \param flags New flags to set to
+     * \return If the call succeeded or not
+     * \retval false call failed
+     */
+    LIBBLIGHT_EXPORT bool
+    setFlags(std::string identifier, std::vector<std::string> flags);
 } // namespace Blight
 /*! @} */

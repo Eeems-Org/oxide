@@ -333,6 +333,7 @@ void
 GUIThread::swap()
 {
     if (m_frameBuffer == nullptr || m_frameBuffer->fd < 0) {
+        O_WARNING("swap called when m_frameBuffer not initialized");
         return;
     }
     QImage image(
@@ -342,9 +343,15 @@ GUIThread::swap()
         m_frameBuffer->stride,
         (QImage::Format)m_frameBuffer->format
     );
-    auto* fb = EPFramebuffer::instance();
-    QPainter painter(&fb->auxBuffer);
-    painter.drawImage(fb->auxBuffer.rect(), image, image.rect());
+    auto* auxBuffer = &EPFramebuffer::instance()->auxBuffer;
+    QPainter painter(auxBuffer);
+    painter.drawImage(auxBuffer->rect(), image, image.rect());
+    guiThread->sendUpdate(
+        EPFramebuffer::instance()->auxBuffer.rect(),
+        Blight::WaveformMode::HighQualityGrayscale,
+        Blight::UpdateMode::FullUpdate,
+        0
+    );
     painter.end();
 }
 

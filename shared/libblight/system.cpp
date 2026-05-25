@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <systemd/sd-bus.h>
 #include <unistd.h>
 
 #include "debug.h"
@@ -10,12 +11,15 @@
 #include "meta.h"
 
 namespace Blight {
+    DBus* dbus = nullptr;
+
     int frameBuffer()
     {
         if (!exists()) {
             errno = EAGAIN;
             return -1;
         }
+        _DEBUG("[Blight::frameBuffer()]");
         auto reply = dbus->call_method(
             BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "frameBuffer"
         );
@@ -51,6 +55,7 @@ namespace Blight {
             errno = EAGAIN;
             return false;
         }
+        _DEBUG("[Blight::enterExclusiveMode()]");
         auto reply = dbus->call_method(
             BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "enterExclusiveMode"
         );
@@ -69,6 +74,7 @@ namespace Blight {
             errno = EAGAIN;
             return false;
         }
+        _DEBUG("[Blight::exitExclusiveMode()]");
         auto reply = dbus->call_method(
             BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "exitExclusiveMode"
         );
@@ -87,6 +93,7 @@ namespace Blight {
             errno = EAGAIN;
             return false;
         }
+        _DEBUG("[Blight::exclusiveModeRepaint()]");
         auto reply = dbus->call_method(
             BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "exclusiveModeRepaint"
         );
@@ -97,6 +104,86 @@ namespace Blight {
             );
             return false;
         }
+        return true;
+    }
+    bool setFlags(std::string identifier, std::vector<std::string> flags)
+    {
+        if (!exists()) {
+            errno = EAGAIN;
+            return false;
+        }
+        if (identifier.empty()) {
+            errno = EINVAL;
+            return false;
+        }
+        _DEBUG("[Blight::setFlags(%s, ...)]", identifier.c_str());
+        sd_bus_message* message = nullptr;
+        auto res = sd_bus_message_new_method_call(
+            dbus->bus(), // <-- fix 1: bus() accessor
+            &message,
+            BLIGHT_SERVICE,
+            "/",
+            BLIGHT_INTERFACE,
+            "setFlags"
+        );
+        if (res < 0) {
+            _WARN(
+                "[Blight::setFlags()::new_method_call()] Error: %s",
+                std::strerror(-res)
+            );
+            return false;
+        }
+        // Append string: identifier
+        res = sd_bus_message_append(message, "s", identifier.c_str());
+        if (res < 0) {
+            _WARN(
+                "[Blight::setFlags()::append(s)] Error: %s", std::strerror(-res)
+            );
+            sd_bus_message_unref(message);
+            return false;
+        }
+        // Open container for array of strings
+        res = sd_bus_message_open_container(message, 'a', "s");
+        if (res < 0) {
+            _WARN(
+                "[Blight::setFlags()::open_container()] Error: %s",
+                std::strerror(-res)
+            );
+            sd_bus_message_unref(message);
+            return false;
+        }
+        for (auto& flag : flags) {
+            res = sd_bus_message_append(message, "s", flag.c_str());
+            if (res < 0) {
+                _WARN(
+                    "[Blight::setFlags()::append(s)] Error: %s",
+                    std::strerror(-res)
+                );
+                sd_bus_message_unref(message);
+                return false;
+            }
+        }
+        res = sd_bus_message_close_container(message);
+        if (res < 0) {
+            _WARN(
+                "[Blight::setFlags()::close_container()] Error: %s",
+                std::strerror(-res)
+            );
+            sd_bus_message_unref(message);
+            return false;
+        }
+        sd_bus_error error = SD_BUS_ERROR_NULL;
+        res = sd_bus_call(dbus->bus(), message, 0, &error, NULL);
+        sd_bus_message_unref(message);
+        if (res < 0) {
+            _WARN(
+                "[Blight::setFlags()::call()] Error: %s",
+                error.message ? error.message : std::strerror(-res)
+            );
+            sd_bus_error_free(&error);
+            return false;
+        }
+        sd_bus_error_free(&error);
         return true;
     }
 } // namespace Blight

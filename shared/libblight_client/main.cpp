@@ -12,6 +12,7 @@
 #include <linux/input.h>
 #include <mxcfb.h>
 #include <stdio.h>
+#include <string>
 #include <sys/mman.h>
 #include <sys/poll.h>
 #include <sys/prctl.h>
@@ -38,6 +39,7 @@ namespace {
     static Blight::Connection* blightConnection = nullptr;
     static std::map<int, int[2]> inputFds;
     static std::map<int, int> inputDeviceMap;
+    static int frameBuffer = -1;
     static ssize_t (*func_write)(int, const void*, size_t);
     static ssize_t (*func_writev)(int, const iovec*, int);
     static ssize_t (*func_writev64)(int, const iovec*, int);
@@ -49,7 +51,6 @@ namespace {
     static int (*func_ioctl)(int, unsigned long, ...);
     static int (*func_close)(int);
     static int (*func_msgget)(key_t, int);
-    static void* (*func_mmap)(void*, size_t, int, int, int, __off_t);
     static int msgq = -1;
 
     bool __is_fb(int fd)
@@ -409,6 +410,7 @@ namespace {
                 );
             }
             case FBIOGET_VSCREENINFO: {
+                // TODO - handle getting information on rMPP/rMPPM
                 int fd = func_open("/dev/fb0", O_RDONLY, 0);
                 if (fd == -1) {
                     return -1;
@@ -416,11 +418,13 @@ namespace {
                 if (func_ioctl(fd, request, ptr) == -1) {
                     return -1;
                 }
+                func_close(fd);
                 return __fb_get_vscreeninfo(
                     reinterpret_cast<fb_var_screeninfo*>(ptr)
                 );
             }
             case FBIOGET_FSCREENINFO: {
+                // TODO - handle getting information on rMPP/rMPPM
                 int fd = func_open("/dev/fb0", O_RDONLY, 0);
                 if (fd == -1) {
                     return -1;
@@ -428,9 +432,82 @@ namespace {
                 if (func_ioctl(fd, request, ptr) == -1) {
                     return -1;
                 }
+                func_close(fd);
                 return __fb_get_fscreeninfo(
                     reinterpret_cast<fb_fix_screeninfo*>(ptr)
                 );
+            }
+            case FBIOPUT_VSCREENINFO: {
+                return __fb_put_vscreeninfo(
+                    reinterpret_cast<fb_var_screeninfo*>(ptr)
+                );
+            }
+            case MXCFB_SET_AUTO_UPDATE_MODE:
+                _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SET_AUTO_UPDATE_MODE");
+                return 0;
+            case MXCFB_SET_UPDATE_SCHEME:
+                _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SET_UPDATE_SCHEME");
+                return 0;
+            case MXCFB_ENABLE_EPDC_ACCESS:
+                _DEBUG("%s", "ioctl /dev/fb0 MXCFB_ENABLE_EPDC_ACCESS");
+                return 0;
+            case MXCFB_DISABLE_EPDC_ACCESS:
+                _DEBUG("%s", "ioctl /dev/fb0 MXCFB_DISABLE_EPDC_ACCESS");
+                return 0;
+            default:
+                _WARN(
+                    "UNHANDLED Fb IOCTL %lu %c %lu %lu %lu",
+                    _IOC_DIR(request),
+                    (char)_IOC_TYPE(request),
+                    _IOC_NR(request),
+                    _IOC_SIZE(request),
+                    request
+                );
+                return 0;
+        }
+    }
+
+    int __exclusive_fb_ioctl(unsigned long request, char* ptr)
+    {
+        switch (request) {
+            // Look at linux/fb.h and mxcfb.h for more possible request types
+            // https://www.kernel.org/doc/html/latest/fb/api.html
+            case MXCFB_SEND_UPDATE: {
+                // TODO handle region updates
+                _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SEND_UPDATE")
+                Blight::ClockWatch cw;
+                Blight::exclusiveModeRepaint();
+                _DEBUG(
+                    "ioctl /dev/fb0 MXCFB_SEND_UPDATE done: %f", cw.elapsed()
+                )
+                return 0;
+            }
+            case MXCFB_WAIT_FOR_UPDATE_COMPLETE: {
+                _DEBUG("%s", "ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE");
+                // TODO handle waiting
+                return 0;
+            }
+            case FBIOGET_FSCREENINFO: {
+                _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_FSCREENINFO");
+                // TODO - handle getting information on rMPP/rMPPM
+                int fd = func_open("/dev/fb0", O_RDONLY, 0);
+                if (fd == -1) {
+                    return -1;
+                }
+                int res = func_ioctl(fd, request, ptr);
+                func_close(fd);
+                return res;
+            }
+            case FBIOGET_VSCREENINFO: {
+                _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_VSCREENINFO");
+                // TODO - handle getting information on rMPP/rMPPM
+                int fd = func_open("/dev/fb0", O_RDONLY, 0);
+                if (fd == -1) {
+                    return -1;
+                }
+                int res = func_ioctl(fd, request, ptr);
+                func_close(fd);
+                return res;
             }
             case FBIOPUT_VSCREENINFO: {
                 return __fb_put_vscreeninfo(
@@ -508,7 +585,10 @@ namespace {
             actualpath == "/dev/fb0" || actualpath == "/dev/shm/swtfb.01"
         ) {
             if (!DO_HANDLE_FB) {
-                return Blight::frameBuffer();
+                if (frameBuffer < 0) {
+                    frameBuffer = Blight::frameBuffer();
+                }
+                return frameBuffer;
             }
             if (blightBuffer->format != Blight::Format::Format_Invalid) {
                 return blightBuffer->fd;
@@ -823,6 +903,11 @@ extern "C"
                 va_end(args);
                 return res;
             }
+            if (!DO_HANDLE_FB && fd == frameBuffer) {
+                int res = __exclusive_fb_ioctl(request, ptr);
+                va_end(args);
+                return res;
+            }
             if (inputDeviceMap.contains(fd)) {
                 int res = __input_ioctlv(inputDeviceMap[fd], request, ptr);
                 va_end(args);
@@ -833,49 +918,6 @@ extern "C"
         va_end(args);
         return res;
     }
-
-    // __attribute__((visibility("default"))) void* mmap(
-    //     void* addr, size_t len, int prot, int flags, int fd, __off_t offset
-    // ) {
-    //     _DEBUG(
-    //         "mmap 0x%u %lld 0x%02x 0x%02x %d %d",
-    //         static_cast<int>(reinterpret_cast<std::uintptr_t>(addr)),
-    //         len,
-    //         prot,
-    //         flags,
-    //         fd,
-    //         offset
-    //     );
-    //     // if(IS_INITIALIZED && __is_fb(fd)){
-    //     //     unsigned long size = len + offset;
-    //     //     if(size > blightBuffer->size()){
-    //     //         _CRIT(
-    //     //             "Requested size + offset is larger than the buffer: %d
-    //     <% d +
-    //     //             %d", blightBuffer->size(), size, offset
-    //     //         );
-    //     //         errno = EINVAL;
-    //     //         return MAP_FAILED;
-    //     //     }
-    //     //     return &blightBuffer->data[offset];
-    //     // }
-    //     return func_mmap(addr, len, prot, flags, fd, offset);
-    // }
-
-    // __attribute__((visibility("default"))) int munmap(void* addr, size_t len)
-    // {
-    //     _DEBUG("munmap 0x%u %s", (unsigned)addr, len);
-    //     // if(IS_INITIALIZED){
-    //     //    // TODO - handle when pointer + len are inside the data
-    //     //    if(DO_HANDLE_FB && addr == blightBuffer->data){
-    //     //        // Maybe actually close it?
-    //     //        return 0;
-    //     //    }
-    //     // }
-    //     static const auto func_munmap =
-    //         (int (*)(void*, size_t))dlsym(RTLD_NEXT, "munmap");
-    //     return func_munmap(addr, len);
-    // }
 
     __attribute__((visibility("default"))) ssize_t
     _write(int fd, const void* buf, size_t n)
@@ -1043,7 +1085,7 @@ extern "C"
             void (*)(void*),
             void*
         ))dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
-        if ((unsigned int)width == blightBuffer->width &&
+        if (DO_HANDLE_FB && (unsigned int)width == blightBuffer->width &&
             (unsigned int)height == blightBuffer->height && FIRST_ALLOC) {
             _INFO("Replacing image with buffer");
             FIRST_ALLOC = false;
@@ -1091,15 +1133,13 @@ extern "C"
             (int (*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
         func_close = (int (*)(int))dlsym(RTLD_NEXT, "close");
         func_msgget = (int (*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
-        func_mmap = (void* (*)(void*, size_t, int, int, int, __off_t))dlsym(
-            RTLD_NEXT, "mmap"
-        );
         auto debugLevel = getenv("OXIDE_PRELOAD_DEBUG");
         if (debugLevel != nullptr) {
             try {
-                BLIGHT_DEBUG_LOGGING = std::stoi(debugLevel);
+                set_blight_debug_level(std::stoi(debugLevel));
             } catch (std::invalid_argument&) {
             } catch (std::out_of_range&) {
+                _WARN("OXIDE_PRELOAD_DEBUG invalid value");
             }
         }
         auto batch_size = getenv("OXIDE_INPUT_BATCH_SIZE");
@@ -1117,7 +1157,7 @@ extern "C"
             (!path.starts_with("/home") ||
              path.starts_with("/home/root/.entware/sbin"))) {
             // We ignore this executable
-            BLIGHT_DEBUG_LOGGING = 0;
+            set_blight_debug_level(0);
             FAILED_INIT = false;
             return;
         }
@@ -1179,10 +1219,19 @@ extern "C"
             setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
             setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
         }
-        blightBuffer = Blight::buf_t::new_ptr();
+        if (DO_HANDLE_FB) {
+            blightBuffer = Blight::buf_t::new_ptr();
+        } else {
+            Blight::setFlags(
+                std::string("connection/") + std::to_string(getpid()),
+                std::vector<std::string>{ "system" }
+            );
+            Blight::enterExclusiveMode();
+        }
         FAILED_INIT = false;
         IS_INITIALIZED = true;
         blightConnection->focused();
+        _DEBUG("blight_client initialized")
     }
 
     __attribute__((visibility("default"))) int __libc_start_main(
@@ -1201,6 +1250,12 @@ extern "C"
         auto func_main =
             (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
         _DEBUG("Starting main(%d, ...)", argc);
-        return func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
+        auto res =
+            func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
+        _DEBUG("Main exit code: %d", res);
+        if (!DO_HANDLE_FB) {
+            Blight::exitExclusiveMode();
+        }
+        return res;
     }
 }

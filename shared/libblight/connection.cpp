@@ -150,6 +150,7 @@ namespace Blight {
         unsigned int __ackid
     )
     {
+        _DEBUG("[Blight::Connection::send(%d, [data], %d)", type, size);
         auto _ackid = __ackid ? __ackid : ++ackid;
         auto ack = ackid_ptr_t(new ackid_t(_ackid));
         if (type != MessageType::Ack) {
