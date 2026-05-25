@@ -16,6 +16,7 @@ SOURCES += \
     debug.cpp \
     libblight.cpp \
     socket.cpp \
+    system.cpp \
     types.cpp
 
 HEADERS += \
@@ -28,10 +29,12 @@ HEADERS += \
     libblight.h \
     meta.h \
     socket.h \
+    system.h \
     types.h
 
 PRECOMPILED_HEADER = \
     libblight_stable.h
+
 include(../../qmake/common.pri)
 PKGCONFIG += libsystemd
 RELATIVE_PWD = $$system(realpath --canonicalize-missing --relative-to $$OUT_PWD $$PWD)

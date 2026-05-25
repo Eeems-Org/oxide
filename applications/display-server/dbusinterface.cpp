@@ -615,11 +615,17 @@ DbusInterface::inputEvents(
 )
 {
     if (m_focused != nullptr) {
-        m_focused->inputEvents(device, events);
+        Oxide::dispatchToThread(m_focused->thread(), [this, device, events] {
+            m_focused->inputEvents(device, events);
+        });
     }
     for (auto connection : qAsConst(connections)) {
         if (connection->has("system")) {
-            connection->inputEvents(device, events);
+            Oxide::dispatchToThread(
+                connection->thread(), [connection, device, events] {
+                    connection->inputEvents(device, events);
+                }
+            );
         }
     }
 }

@@ -7,14 +7,12 @@
 
 #include <cstring>
 
-#include "dbus.h"
 #include "debug.h"
 #include "meta.h"
+#include "system.h"
 #include "types.h"
 
 namespace Blight {
-    static DBus* dbus = nullptr;
-
     std::optional<clipboard_t> getClipboard(const std::string& name)
     {
         if (!exists()) {

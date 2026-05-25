@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "connection.h"
+#include "dbus.h"
 #include "libblight_global.h"
 #include "types.h"
 

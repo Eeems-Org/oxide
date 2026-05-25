@@ -4,6 +4,10 @@
  * \file
  */
 #pragma once
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
 #include <systemd/sd-bus.h>
 
 #include <tuple>

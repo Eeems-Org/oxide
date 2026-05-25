@@ -7,6 +7,7 @@
 #include <libblight/connection.h>
 #include <libblight/debug.h>
 #include <libblight/socket.h>
+#include <libblight/system.h>
 #include <linux/fb.h>
 #include <linux/input.h>
 #include <mxcfb.h>
@@ -504,9 +505,11 @@ namespace {
             lseek(fd, 0, SEEK_SET);
             return fd;
         } else if (
-            DO_HANDLE_FB &&
-            (actualpath == "/dev/fb0" || actualpath == "/dev/shm/swtfb.01")
+            actualpath == "/dev/fb0" || actualpath == "/dev/shm/swtfb.01"
         ) {
+            if (!DO_HANDLE_FB) {
+                return Blight::frameBuffer();
+            }
             if (blightBuffer->format != Blight::Format::Format_Invalid) {
                 return blightBuffer->fd;
             }
