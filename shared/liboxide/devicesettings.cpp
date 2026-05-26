@@ -253,6 +253,19 @@ namespace Oxide {
         }
     }
 
+    int DeviceSettings::getScreenStride() const
+    {
+        int width = deviceSettings.getScreenWidth();
+        switch (deviceSettings.getDeviceType()) {
+            case Oxide::DeviceSettings::RM1:
+                // The rM1 has extra unused space on the right of the buffer
+                return (width + 4) * 2;
+            default:
+                // rgb565 is 2 bytes per pixel
+                return width * 2;
+        }
+    }
+
     const QStringList DeviceSettings::getLocales()
     {
         return execute(

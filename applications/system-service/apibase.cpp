@@ -81,19 +81,8 @@ getFrameBuffer()
             file = nullptr;
             return nullptr;
         }
-        int stride;
-        switch (deviceSettings.getDeviceType()) {
-            case Oxide::DeviceSettings::RM1:
-                stride = 2816;
-                break;
-            case Oxide::DeviceSettings::RM2:
-            case Oxide::DeviceSettings::RMPP:
-            case Oxide::DeviceSettings::RMPPM:
-            case Oxide::DeviceSettings::RMPPURE:
-                stride = 2808;
-                break;
-        }
-        uchar* data = file->map(0, stride * 1872);
+        int stride = deviceSettings.getScreenStride();
+        uchar* data = file->map(0, stride * deviceSettings.getScreenHeight());
         if (data == nullptr) {
             O_WARNING("Failed to map framebuffer" << file->errorString());
             file->close();
@@ -158,6 +147,9 @@ Blight::shared_buf_t
 createBuffer()
 {
     auto frameBuffer = getFrameBuffer();
+    if (frameBuffer == nullptr) {
+        return nullptr;
+    }
     return createBuffer(
         frameBuffer->rect(),
         frameBuffer->bytesPerLine(),

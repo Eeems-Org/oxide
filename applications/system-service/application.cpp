@@ -88,6 +88,7 @@ Application::launchNoSecurityCheck()
                 }
                 updateEnvironment();
                 m_process->setWorkingDirectory(workingDirectory());
+                m_process->setUser(user());
                 m_process->setGroup(group());
                 if (p_stdout == nullptr) {
                     p_stdout_fd = sd_journal_stream_fd(
@@ -769,14 +770,17 @@ Application::readyReadStandardOutput()
         *p_stdout << output.toStdString().c_str();
         p_stdout->flush();
     } else {
-        const char* prefix =
-            ("[" + name() + " " + QString::number(m_process->processId()) + "]")
-                .toUtf8();
+        QString prefix =
+            ("[" + name() + " " + QString::number(m_process->processId()) +
+             "]");
         for (QString line :
              output.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts)) {
             if (!line.isEmpty()) {
                 sd_journal_print(
-                    LOG_INFO, "%s %s", prefix, (const char*)line.toUtf8()
+                    LOG_INFO,
+                    "%s %s",
+                    (const char*)prefix.toUtf8(),
+                    (const char*)line.toUtf8()
                 );
             }
         }

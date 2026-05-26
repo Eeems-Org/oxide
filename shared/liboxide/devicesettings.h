@@ -91,6 +91,11 @@ namespace Oxide {
          */
         int getScreenHeight() const;
         /*!
+         * \brief Get the bytes per line for the device screen
+         * \return bytes per line for the device screen
+         */
+        int getScreenStride() const;
+        /*!
          * \brief Get the list of possible locales on the device
          * \return The list of possible locales on the device
          */

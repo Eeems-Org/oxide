@@ -256,6 +256,9 @@ class Controller : public QObject
         m_wifion =
             state != WifiState::WifiOff && state != WifiState::WifiUnknown;
         QTimer::singleShot(1000, [this]() {
+            while (this->root == nullptr) {
+                qApp->processEvents(QEventLoop::AllEvents, 100);
+            }
             // Get initial values when UI is ready
             batteryLevelChanged(powerApi->batteryLevel());
             batteryStateChanged(powerApi->batteryState());

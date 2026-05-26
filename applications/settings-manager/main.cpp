@@ -365,7 +365,7 @@ main(int argc, char* argv[])
         }
     } else if (action == "listen") {
         if (Oxide::DBusConnect(
-                (QDBusAbstractInterface*)api,
+                qobject_cast<QDBusAbstractInterface*>(api),
                 QString(args.at(2).toStdString().c_str()),
                 [](QVariantList args) {
                     QTextStream qStdOut(stdout, QIODevice::WriteOnly);
