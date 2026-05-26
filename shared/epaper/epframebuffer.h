@@ -22,6 +22,7 @@ enum EPScreenMode
 {
     QualityFastest = 0,
     QualityFast = 1,
+    Animate = 2,
     Quality3 = 3,
     QualityFull = 4,
     Quality5 = 5,

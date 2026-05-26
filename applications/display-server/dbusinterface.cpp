@@ -493,8 +493,10 @@ DbusInterface::waitForNoRepaints(QDBusMessage message)
         );
         return;
     }
-    if (!connection->has("system")) {
-        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+    if (!connection->has("system") && !connection->has("exclusive")) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "Must be system or exclusive connection"
+        );
         return;
     }
 #ifdef EPAPER

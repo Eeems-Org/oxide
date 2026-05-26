@@ -99,12 +99,14 @@ namespace BlightProtocol {
         Mono = BlightWaveform::DU,
         Grayscale = BlightWaveform::GL16,
         HighQualityGrayscale = BlightWaveform::GC16,
+        Animate = BlightWaveform::A2,
         Highlight = BlightWaveform::UNKNOWN
 #else
         Initialize = 0,
         Mono = 1,
         Grayscale = 3,
         HighQualityGrayscale = 2,
+        Animate = 6,
         Highlight = 8
 #endif
     } BlightWaveformMode;

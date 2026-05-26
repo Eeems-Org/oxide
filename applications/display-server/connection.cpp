@@ -124,6 +124,7 @@ Connection::~Connection()
     ::close(m_clientFd);
     ::close(m_serverFd);
     ::close(m_pidFd);
+    ::close(m_serverInputFd);
     C_INFO("Connection destroyed");
 }
 
@@ -208,7 +209,7 @@ Connection::signalGroup(int signal)
         errno = ESRCH;
         return false;
     }
-    return ::kill(-m_pid, signal) != -1;
+    return ::kill(-m_pgid, signal) != -1;
 }
 
 void

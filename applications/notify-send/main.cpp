@@ -169,10 +169,15 @@ main(int argc, char* argv[])
             return qExit(EXIT_FAILURE);
         }
         if (parser.isSet(expireOption)) {
-            auto timeout = parser.value(expireOption);
+            bool ok = false;
+            auto timeout = parser.value(expireOption).toInt(&ok);
+            if (!ok) {
+                qDebug() << "Invalid --expire-time value";
+                return qExit(EXIT_FAILURE);
+            }
             qDebug()
-                << ("Timeout set to " + timeout + "ms").toStdString().c_str();
-            QTimer::singleShot(timeout.toInt(), [&notification] {
+                << ("Timeout set to " + std::to_string(timeout) + "ms").c_str();
+            QTimer::singleShot(timeout, [&notification] {
                 qDebug() << "Notification wait timed out";
                 notification.remove().waitForFinished();
                 qApp->exit(EXIT_FAILURE);

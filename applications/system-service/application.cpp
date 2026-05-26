@@ -104,6 +104,7 @@ Application::launchNoSecurityCheck()
                         if (!log) {
                             O_WARNING("Failed to create stdout FILE:" << errno);
                             close(p_stdout_fd);
+                            p_stdout_fd = -1;
                         } else {
                             p_stdout = new QTextStream(log);
                             O_DEBUG("Opened stdout for " << name());
@@ -122,6 +123,7 @@ Application::launchNoSecurityCheck()
                         if (!log) {
                             O_WARNING("Failed to create stderr FILE:" << errno);
                             close(p_stderr_fd);
+                            p_stderr_fd = -1;
                         } else {
                             p_stderr = new QTextStream(log);
                             O_DEBUG("Opened stderr for " << name());

@@ -192,6 +192,7 @@ Controller::saveSettings()
                     rhs = "no";
                 }
                 items.remove(lhs);
+                booleanItems.remove(lhs);
             } else if (items.contains(lhs)) {
                 rhs = property(propertyName.c_str()).toString();
                 items.remove(lhs);
@@ -212,7 +213,16 @@ Controller::saveSettings()
         qDebug() << " " << (propertyName + ":").c_str() << value.c_str();
         buffer << propertyName << "=" << value << std::endl;
     }
+    for (QString item : booleanItems) {
+        auto propertyName = item.toStdString();
+        auto value =
+            property(item.toStdString().c_str()).toBool() ? "yes" : "no";
+        qDebug() << " " << (propertyName + ":").c_str() << value;
+        buffer << propertyName << "=" << value << std::endl;
+    }
     configFile->resize(0);
+    configFile->seek(0);
+    stream.seek(0);
     stream << QString::fromStdString(buffer.str());
     configFile->close();
     if (!m_automaticSleep) {
@@ -279,6 +289,8 @@ Controller::getApps()
         auto icon = app.icon();
         if (!icon.isEmpty() && QFile(icon).exists()) {
             appItem->setProperty("imgFile", "file:" + icon);
+        } else {
+            appItem->setProperty("imgFile", "");
         }
         if (!appItem->ok()) {
             qDebug() << "Invalid item" << appItem->property("name").toString();

@@ -85,7 +85,7 @@ build-rmppm: clean-base $(DIST)
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
 		eeems/remarkable-toolchain:5.7.119-rmppm \
-		bash -exc 'source /opt/codex/chiappa/5.7.119/environment-setup-cortexa55-remarkable-linux; make release'
+		bash -exc 'source /opt/codex/chiappa/5.7.119/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
 build-rmppure: clean-base $(DIST)
 	podman run \

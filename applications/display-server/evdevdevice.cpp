@@ -6,6 +6,7 @@
 
 #include <QFileInfo>
 #include <QThread>
+#include <cstring>
 
 EvDevDevice::EvDevDevice(QThread* handler, const event_device& device)
   : QObject(handler)
@@ -26,6 +27,15 @@ EvDevDevice::EvDevDevice(QThread* handler, const event_device& device)
     );
     notifier->setEnabled(true);
     libevdev_new_from_fd(this->device.fd, &dev);
+    int rc = libevdev_new_from_fd(this->device.fd, &dev);
+    if (rc < 0) {
+        O_WARNING(
+            "Failed to initialize libevdev for " << name() << ": "
+                                                 << std::strerror(-rc)
+        );
+        dev = nullptr;
+        notifier->setEnabled(false);
+    }
 }
 
 EvDevDevice::~EvDevDevice()

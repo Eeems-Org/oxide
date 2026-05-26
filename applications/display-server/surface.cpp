@@ -196,8 +196,10 @@ Surface::move(int x, int y)
 {
     m_geometry.moveTopLeft(QPoint(x, y));
 #ifndef EPAPER
-    component->setX(x);
-    component->setY(y);
+    if (component != nullptr) {
+        component->setX(x);
+        component->setY(y);
+    }
 #endif
 }
 

@@ -278,7 +278,11 @@ class Controller : public QObject
             currentTime.msecsTo(nextTime)
         ); // nearest minute
         QObject::connect(
-            clockTimer, &QTimer::timeout, this, &Controller::updateClock
+            clockTimer,
+            &QTimer::timeout,
+            this,
+            &Controller::updateClock,
+            Qt::UniqueConnection
         );
         clockTimer->start();
 
@@ -526,7 +530,7 @@ class Controller : public QObject
                 break;
             case WifiUnknown:
             default:
-                wifiUI->setProperty("state", "unkown");
+                wifiUI->setProperty("state", "unknown");
         }
     }
     void wifiRssiChanged(int rssi)

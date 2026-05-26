@@ -857,7 +857,7 @@ AppsAPI::openTerminal()
             currentApplication->stateNoSecurityCheck() !=
                 Application::Inactive) {
             if (path == m_lockscreenApplication) {
-                O_WARNING("Can't open task switcher, on the lockscreen");
+                O_WARNING("Can't open terminal, on the lockscreen");
                 return;
             }
         }
