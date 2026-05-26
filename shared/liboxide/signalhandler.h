@@ -99,12 +99,9 @@ namespace Oxide {
 
       private:
         void addNotifier(int signal, const char* name);
-        struct NotifierItem
-        {
-            QLocalSocket* notifier;
-            int fd;
-        };
-        static QMap<int, NotifierItem> notifiers;
+        static int signalIndex(int signal);
+        static int indexSignal(int idx);
+        static bool hasNotifier(int signal);
     };
 } // namespace Oxide
 /*! @} */

@@ -26,7 +26,6 @@ EvDevDevice::EvDevDevice(QThread* handler, const event_device& device)
         notifier, &QSocketNotifier::activated, this, &EvDevDevice::readEvents
     );
     notifier->setEnabled(true);
-    libevdev_new_from_fd(this->device.fd, &dev);
     int rc = libevdev_new_from_fd(this->device.fd, &dev);
     if (rc < 0) {
         O_WARNING(
@@ -100,6 +99,9 @@ EvDevDevice::unlock()
 void
 EvDevDevice::clear_buffer()
 {
+    if (device.fd <= 0) {
+        return;
+    }
     auto flood = build_flood();
     ::write(device.fd, flood, 512 * 8 * 4 * sizeof(input_event));
     free(flood);

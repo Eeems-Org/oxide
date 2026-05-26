@@ -197,7 +197,7 @@ namespace Oxide {
             case DeviceType::RMPPM:
                 return 1248;
             case DeviceType::RMPPURE:
-                return 1403;
+                return 1776;
             default:
                 return 0;
         }
@@ -215,7 +215,7 @@ namespace Oxide {
             case DeviceType::RMPPM:
                 return 2208;
             case DeviceType::RMPPURE:
-                return 1871;
+                return 2400;
             default:
                 return 0;
         }

@@ -10,8 +10,16 @@
 #include "debug.h"
 
 static bool initialized = false;
+struct NotifierItem
+{
+    int signal;
+    QLocalSocket* notifier;
+    int fd;
+};
+static NotifierItem notifiers[8] = {};
 
 namespace Oxide {
+
     int SignalHandler::setup_unix_signal_handlers()
     {
         struct sigaction action;
@@ -54,6 +62,12 @@ namespace Oxide {
     }
     SignalHandler::SignalHandler(QObject* parent) : QObject(parent)
     {
+        for (int idx = 0; idx < 8; idx++) {
+            auto& entry = notifiers[idx];
+            entry.signal = indexSignal(idx);
+            entry.notifier = nullptr;
+            entry.fd = -1;
+        }
         addNotifier(SIGTERM, "sigTerm");
         addNotifier(SIGINT, "sigInt");
         addNotifier(SIGUSR1, "sigUsr1");
@@ -65,25 +79,44 @@ namespace Oxide {
     }
     SignalHandler::~SignalHandler()
     {
-        while (!notifiers.isEmpty()) {
-            auto notifier = notifiers.take(notifiers.firstKey());
-            delete notifier.notifier;
+        for (int idx = 0; idx < 8; idx++) {
+            auto& entry = notifiers[idx];
+            if (entry.notifier != nullptr) {
+                delete entry.notifier;
+                entry.notifier = nullptr;
+            }
+            if (entry.fd > 0) {
+                ::close(entry.fd);
+                entry.fd = -1;
+            }
         }
     }
     void SignalHandler::handleSignal(int signal)
     {
-        if (!notifiers.contains(signal)) {
+        if (!hasNotifier(signal)) {
             ::signal(signal, SIG_DFL);
+            ::raise(signal);
             return;
         }
-        O_DEBUG("Signal recieved:" << strsignal(signal));
-        auto item = notifiers.value(signal);
+        static const char msg_prefix[] = "Signal received: ";
+        ::write(STDERR_FILENO, msg_prefix, sizeof(msg_prefix) - 1);
+        const char* name = strsignal(signal);
+        if (name) {
+            ::write(STDERR_FILENO, name, strlen(name));
+        }
+        ::write(STDERR_FILENO, "\n", 1);
+        int idx = signalIndex(signal);
+        if (idx < 0) {
+            return;
+        }
+        auto item = notifiers[idx];
         char a = 1;
         ::write(item.fd, &a, sizeof(a));
     }
     void SignalHandler::addNotifier(int signal, const char* name)
     {
-        if (!notifiers.contains(signal)) {
+        int idx = signalIndex(signal);
+        if (!hasNotifier(signal)) {
             int fds[2];
             if (::socketpair(AF_UNIX, SOCK_STREAM, 0, fds)) {
                 qFatal("Couldn't create socketpair");
@@ -96,11 +129,10 @@ namespace Oxide {
                 )) {
                 qFatal("Couldn't connect QLocalSocket to socket descriptor");
             }
-            notifiers.insert(
-                signal, NotifierItem{ .notifier = socket, .fd = fds[0] }
-            );
+            notifiers[idx].notifier = socket;
+            notifiers[idx].fd = fds[0];
         }
-        auto notifier = notifiers.value(signal).notifier;
+        auto notifier = notifiers[idx].notifier;
         connect(
             notifier,
             &QLocalSocket::readyRead,
@@ -119,8 +151,61 @@ namespace Oxide {
             Qt::QueuedConnection
         );
     }
-    QMap<int, SignalHandler::NotifierItem> SignalHandler::notifiers =
-        QMap<int, SignalHandler::NotifierItem>();
+    int SignalHandler::signalIndex(int signal)
+    {
+        switch (signal) {
+            case SIGTERM:
+                return 0;
+            case SIGINT:
+                return 1;
+            case SIGUSR1:
+                return 2;
+            case SIGUSR2:
+                return 3;
+            case SIGCONT:
+                return 4;
+            case SIGPIPE:
+                return 5;
+            case SIGSEGV:
+                return 6;
+            case SIGBUS:
+                return 7;
+            default:
+                return -1;
+        }
+    }
+    int SignalHandler::indexSignal(int idx)
+    {
+        switch (idx) {
+            case 0:
+                return SIGTERM;
+            case 1:
+                return SIGINT;
+            case 2:
+                return SIGUSR1;
+            case 3:
+                return SIGUSR2;
+            case 4:
+                return SIGCONT;
+            case 5:
+                return SIGPIPE;
+            case 6:
+                return SIGSEGV;
+            case 7:
+                return SIGBUS;
+            default:
+                return -1;
+        }
+    }
+    bool SignalHandler::hasNotifier(int signal)
+    {
+        int idx = signalIndex(signal);
+        if (idx < 0 || idx > 7) {
+            return false;
+        }
+        auto& entry = notifiers[idx];
+        return entry.notifier != nullptr && entry.fd > 0;
+    }
 } // namespace Oxide
 
 #include "moc_signalhandler.cpp"
