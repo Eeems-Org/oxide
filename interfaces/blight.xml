@@ -64,5 +64,9 @@
     </method>
     <method name="exclusiveModeRepaint">
     </method>
+    <method name="connectionExists">
+      <arg type="b" direction="out"/>
+      <arg name="identifier" type="s" direction="in"/>
+    </method>
   </interface>
 </node>

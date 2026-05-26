@@ -330,7 +330,11 @@ GUIThread::sendUpdate(
 }
 
 void
-GUIThread::swap()
+GUIThread::swap(
+    const QRect& rect,
+    Blight::WaveformMode waveform,
+    Blight::UpdateMode mode
+)
 {
     if (m_frameBuffer == nullptr || m_frameBuffer->fd < 0) {
         O_WARNING("swap called when m_frameBuffer not initialized");
@@ -346,12 +350,7 @@ GUIThread::swap()
     auto* auxBuffer = &EPFramebuffer::instance()->auxBuffer;
     QPainter painter(auxBuffer);
     painter.drawImage(auxBuffer->rect(), image, image.rect());
-    guiThread->sendUpdate(
-        EPFramebuffer::instance()->auxBuffer.rect(),
-        Blight::WaveformMode::HighQualityGrayscale,
-        Blight::UpdateMode::FullUpdate,
-        0
-    );
+    guiThread->sendUpdate(rect, waveform, mode, 0);
     painter.end();
 }
 

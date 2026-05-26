@@ -377,8 +377,10 @@ DbusInterface::frameBuffer(QDBusMessage message)
         );
         return QDBusUnixFileDescriptor();
     }
-    if (!connection->has("system")) {
-        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+    if (!connection->has("system") && !connection->has("exclusive")) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "Must be system or exclusive connection"
+        );
         return QDBusUnixFileDescriptor();
     }
     return QDBusUnixFileDescriptor(guiThread->framebuffer());
@@ -512,8 +514,10 @@ DbusInterface::enterExclusiveMode(QDBusMessage message)
         );
         return;
     }
-    if (!connection->has("system")) {
-        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+    if (!connection->has("system") && !connection->has("exclusive")) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "Must be system or exclusive connection"
+        );
         return;
     }
     O_INFO("Entering exclusive mode");
@@ -532,8 +536,10 @@ DbusInterface::exitExclusiveMode(QDBusMessage message)
         );
         return;
     }
-    if (!connection->has("system")) {
-        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+    if (!connection->has("system") && !connection->has("exclusive")) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "Must be system or exclusive connection"
+        );
         return;
     }
     O_INFO("Exiting exclusive mode");
@@ -561,13 +567,36 @@ DbusInterface::exclusiveModeRepaint(QDBusMessage message)
         );
         return;
     }
-    if (!connection->has("system")) {
-        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+    if (!connection->has("system") && !connection->has("exclusive")) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "Must be system or exclusive connection"
+        );
         return;
     }
 #ifdef EPAPER
-    guiThread->swap();
+    guiThread->swap(
+        EPFramebuffer::instance()->auxBuffer.rect(),
+        Blight::WaveformMode::HighQualityGrayscale,
+        Blight::UpdateMode::FullUpdate
+    );
 #endif
+}
+
+bool
+DbusInterface::connectionExists(QString identifier, QDBusMessage message)
+{
+    auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return false;
+    }
+    if (!connection->has("system")) {
+        sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
+        return false;
+    }
+    return getConnection(identifier) != nullptr;
 }
 
 Connection*

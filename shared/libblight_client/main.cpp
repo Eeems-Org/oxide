@@ -10,6 +10,7 @@
 #include <libblight/system.h>
 #include <linux/fb.h>
 #include <linux/input.h>
+#include <mutex>
 #include <mxcfb.h>
 #include <stdio.h>
 #include <string>
@@ -52,6 +53,7 @@ namespace {
     static int (*func_close)(int);
     static int (*func_msgget)(key_t, int);
     static int msgq = -1;
+    static std::mutex input_mutex;
 
     bool __is_fb(int fd)
     {
@@ -188,14 +190,18 @@ namespace {
                 continue;
             }
             const auto& device = maybe.value().device;
+            input_mutex.lock();
             if (!inputFds.contains(device)) {
                 _INFO("Ignoring event for unopened device: %d", device);
+                input_mutex.unlock();
                 continue;
             }
             if (inputFds[device][0] < 0) {
                 _INFO("Ignoring event for invalid device: %d", device);
+                input_mutex.unlock();
                 continue;
             }
+            input_mutex.unlock();
             auto& event = maybe.value().event;
             auto& queue = events[device];
             queue.push_back(event);
@@ -541,6 +547,7 @@ namespace {
 
     int __input_ioctlv(int fd, unsigned long request, char* ptr)
     {
+        _DEBUG("input ioctl %d %lu", fd, request);
         switch (request) {
             case EVIOCGRAB:
                 return 0;
@@ -653,6 +660,7 @@ namespace {
         } else if (actualpath.starts_with("/dev/input/event")) {
             _INFO("Opening event device: %s", actualpath.c_str());
             if (blightConnection->input_handle() > 0) {
+                input_mutex.lock();
                 if (inputFds.empty() &&
                     getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr) {
                     new std::thread(__readInput);
@@ -684,6 +692,11 @@ namespace {
                             res = inputFds[device][1] = fds[1];
                             inputDeviceMap[res] =
                                 func_open(actualpath.c_str(), O_RDWR, 0);
+                            _DEBUG(
+                                "inputDeviceMap[%d] = %d;",
+                                res,
+                                inputDeviceMap[res]
+                            )
                         }
                     }
                 } catch (std::invalid_argument&) {
@@ -698,6 +711,7 @@ namespace {
                     );
                     res = -1;
                 }
+                input_mutex.unlock();
             } else {
                 _WARN("Could not open connection input stream", "");
                 res = -1;
@@ -914,10 +928,14 @@ extern "C"
                 return res;
             }
         }
+        _DEBUG("unhandled ioctl %d %lu", fd, request);
         int res = func_ioctl(fd, request, ptr);
         va_end(args);
         return res;
     }
+    __asm__(".globl  ioctl\n"
+            ".type   ioctl, %function\n"
+            "ioctl   = __ioctl_time64\n");
 
     __attribute__((visibility("default"))) ssize_t
     _write(int fd, const void* buf, size_t n)

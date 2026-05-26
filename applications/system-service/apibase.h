@@ -39,12 +39,16 @@ class APIBase
 };
 QImage*
 getFrameBuffer();
+
 Compositor*
 getCompositorDBus();
+
 Blight::shared_buf_t
 createBuffer(const QRect& rect, unsigned int stride, Blight::Format format);
+
 Blight::shared_buf_t
 createBuffer();
+
 void
 addSystemBuffer(Blight::shared_buf_t buffer);
 

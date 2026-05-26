@@ -100,6 +100,7 @@ class DbusInterface
     void enterExclusiveMode(QDBusMessage message);
     void exitExclusiveMode(QDBusMessage message);
     void exclusiveModeRepaint(QDBusMessage message);
+    bool connectionExists(QString identifier, QDBusMessage message);
 
   signals:
     void clipboardChanged(const QByteArray& data);

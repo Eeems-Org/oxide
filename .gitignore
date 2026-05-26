@@ -11,3 +11,4 @@ build/
 dist/
 version.txt
 *.pro.user.*
+*.log

@@ -681,6 +681,20 @@ Application::setConfig(const QVariantMap& config)
 void
 Application::started()
 {
+    if (flags().contains("exclusive")) {
+        O_DEBUG("Setting exclusive flag for " << name());
+        auto compositor = getCompositorDBus();
+        auto identifier = QString("connection/%1").arg(m_process->processId());
+        while (true) {
+            QDBusReply<bool> reply = compositor->connectionExists(identifier);
+            if (!reply.isValid() || reply.value() ||
+                stateNoSecurityCheck() == Inactive) {
+                break;
+            }
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        }
+        compositor->setFlags(identifier, QStringList() << "exclusive");
+    }
     if (m_notification != nullptr) {
         m_notification->remove();
         m_notification = nullptr;
@@ -968,10 +982,12 @@ Application::~Application()
     unregisterPath();
     if (m_screenCapture != nullptr) {
         delete m_screenCapture;
+        m_screenCapture = nullptr;
     }
     if (p_stdout != nullptr) {
         p_stdout->flush();
         delete p_stdout;
+        p_stdout = nullptr;
     }
     if (p_stdout_fd > 0) {
         close(p_stdout_fd);
@@ -980,6 +996,7 @@ Application::~Application()
     if (p_stderr != nullptr) {
         p_stderr->flush();
         delete p_stderr;
+        p_stderr = nullptr;
     }
     if (p_stderr_fd > 0) {
         close(p_stderr_fd);

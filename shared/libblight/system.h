@@ -6,6 +6,7 @@
  */
 #pragma once
 #include <optional>
+#include <vector>
 
 #include "dbus.h"
 #include "libblight_global.h"
@@ -53,5 +54,11 @@ namespace Blight {
      */
     LIBBLIGHT_EXPORT bool
     setFlags(std::string identifier, std::vector<std::string> flags);
+    /*!
+     * \brief Check if a connection identifier exists
+     * \param identifier Connection identifier
+     * \return If the connection exists or not
+     */
+    LIBBLIGHT_EXPORT bool connectionExists(std::string identifier);
 } // namespace Blight
 /*! @} */

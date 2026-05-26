@@ -186,4 +186,39 @@ namespace Blight {
         sd_bus_error_free(&error);
         return true;
     }
+
+    bool connectionExists(std::string identifier)
+    {
+        if (!exists()) {
+            errno = EAGAIN;
+            return -1;
+        }
+        _DEBUG("[Blight::connectionExists(%s)]", identifier.c_str());
+        auto reply = dbus->call_method(
+            BLIGHT_SERVICE,
+            "/",
+            BLIGHT_INTERFACE,
+            "connectionExists",
+            "s",
+            identifier.c_str()
+        );
+        if (reply->isError()) {
+            _WARN(
+                "[Blight::connectionExists(%s)::call_method(...)] Error: %s",
+                identifier.c_str(),
+                reply->error_message().c_str()
+            );
+            return reply->return_value;
+        }
+        auto res = reply->read_value<int>("b");
+        if (!res.has_value()) {
+            _WARN(
+                "[Blight::connectionExists(%s)::read_value(\"h\")] Error: %s",
+                identifier.c_str(),
+                reply->error_message().c_str()
+            );
+            return false;
+        }
+        return res.value();
+    }
 } // namespace Blight
