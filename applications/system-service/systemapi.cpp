@@ -465,8 +465,8 @@ SystemAPI::SystemAPI(QObject* parent)
 void
 SystemAPI::shutdown()
 {
-    O_INFO("Removing all inhibitors");
     rguard(false);
+    O_INFO("Removing all inhibitors");
     QMutableListIterator<Inhibitor> i(inhibitors);
     while (i.hasNext()) {
         auto inhibitor = i.next();
@@ -986,6 +986,7 @@ SystemAPI::releasePowerOffInhibitors(bool block)
 void
 SystemAPI::rguard(bool install)
 {
+    O_DEBUG("rguard" << (install ? "install" : "uninstall"));
     QProcess::execute(
         "/opt/bin/rguard", QStringList() << (install ? "-1" : "-0")
     );
