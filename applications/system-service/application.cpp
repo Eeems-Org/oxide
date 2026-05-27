@@ -89,7 +89,7 @@ Application::launchNoSecurityCheck()
                 updateEnvironment();
                 m_process->setWorkingDirectory(workingDirectory());
                 if (!m_process->setUser(user()) ||
-                    m_process->setGroup(group())) {
+                    !m_process->setGroup(group())) {
                     O_WARNING(("Failed to set user/group for the process"));
                 }
                 if (p_stdout == nullptr) {

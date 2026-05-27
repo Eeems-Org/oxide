@@ -635,7 +635,6 @@ class Controller : public QObject
             setNotification(
                 QStringLiteral("%1 notifications").arg(notifications->length())
             );
-            return;
         } else if (!notifications->empty()) {
             setNotification("1 notification");
         } else {
@@ -772,7 +771,7 @@ class Controller : public QObject
         }
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
-            if (state != BatteryNotPresent) {
+            if (state != ChargerNotPresent) {
                 ui->setProperty("present", true);
             }
             switch (state) {
@@ -879,7 +878,7 @@ class Controller : public QObject
                     break;
                 case WifiUnknown:
                 default:
-                    ui->setProperty("state", "unkown");
+                    ui->setProperty("state", "unknown");
             }
         }
     }

@@ -675,8 +675,9 @@ DbusInterface::inputEvents(
 )
 {
     if (m_focused != nullptr) {
-        Oxide::dispatchToThread(m_focused->thread(), [this, device, events] {
-            m_focused->inputEvents(device, events);
+        auto focused = m_focused;
+        Oxide::dispatchToThread(focused->thread(), [focused, device, events] {
+            focused->inputEvents(device, events);
         });
     }
     QList<std::shared_ptr<Connection>> systemConnections;
@@ -777,21 +778,14 @@ DbusInterface::createConnection(int pid)
     connect(connection.get(), &Connection::finished, this, [this, connection] {
         O_INFO("Connection" << connection->pid() << "closed");
         auto found = false;
-        connectionsLock.lockForRead();
-        for (auto& ptr : qAsConst(connections)) {
-            if (ptr == connection) {
-                found = true;
-                connectionsLock.unlock();
-                connectionsLock.lockForWrite();
-                connections.removeAll(ptr);
-                connectionsLock.unlock();
+        {
+            QWriteLocker _locker(&connectionsLock);
+            found = connections.contains(connection);
+            if (found) {
+                connections.removeAll(connection);
                 guiThread->notify();
-                // to keep next unlock from failing
-                connectionsLock.lockForRead();
-                break;
             }
         }
-        connectionsLock.unlock();
         if (!found) {
             O_WARNING("Could not find connection to remove!");
         }

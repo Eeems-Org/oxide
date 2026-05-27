@@ -67,14 +67,19 @@ Connection::Connection(pid_t pid, pid_t pgid)
     }
     m_clientFd = fds[0];
     m_serverFd = fds[1];
-    m_notifier = new QSocketNotifier(m_serverFd, QSocketNotifier::Read, this);
-    connect(
-        m_notifier, &QSocketNotifier::activated, this, &Connection::readSocket
-    );
-
-    if (::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) == -1) {
-        C_WARNING("Unable to open input socket pair:" << strerror(errno));
-        fds[0] = fds[1] = -1;
+    if (m_serverFd > 0) {
+        m_notifier =
+            new QSocketNotifier(m_serverFd, QSocketNotifier::Read, this);
+        connect(
+            m_notifier,
+            &QSocketNotifier::activated,
+            this,
+            &Connection::readSocket
+        );
+        if (::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) == -1) {
+            C_WARNING("Unable to open input socket pair:" << strerror(errno));
+            fds[0] = fds[1] = -1;
+        }
     }
     m_clientInputFd = fds[0];
     m_serverInputFd = fds[1];
