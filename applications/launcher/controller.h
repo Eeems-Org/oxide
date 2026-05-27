@@ -686,6 +686,9 @@ class Controller : public QObject
     }
     void batteryAlert()
     {
+        if (root == nullptr) {
+            return;
+        }
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
             ui->setProperty("alert", true);
@@ -694,6 +697,9 @@ class Controller : public QObject
     void batteryLevelChanged(int level)
     {
         qDebug() << "Battery level: " << level;
+        if (root == nullptr) {
+            return;
+        }
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
             ui->setProperty("level", level);
@@ -714,6 +720,9 @@ class Controller : public QObject
             case BatteryUnknown:
             default:
                 qDebug() << "Battery state: Unknown";
+        }
+        if (root == nullptr) {
+            return;
         }
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
@@ -740,6 +749,9 @@ class Controller : public QObject
     void batteryTemperatureChanged(int temperature)
     {
         qDebug() << "Battery temperature: " << temperature;
+        if (root == nullptr) {
+            return;
+        }
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
             ui->setProperty("temperature", temperature);
@@ -748,6 +760,9 @@ class Controller : public QObject
     void batteryWarning()
     {
         qDebug() << "Battery Warning!";
+        if (root == nullptr) {
+            return;
+        }
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
             ui->setProperty("warning", true);
@@ -768,6 +783,9 @@ class Controller : public QObject
             case ChargerUnknown:
             default:
                 qDebug() << "Charger state: Unknown";
+        }
+        if (root == nullptr) {
+            return;
         }
         QObject* ui = root->findChild<QObject*>("batteryLevel");
         if (ui) {
@@ -857,6 +875,9 @@ class Controller : public QObject
             default:
                 qDebug() << "Wifi state: Unknown";
         }
+        if (root == nullptr) {
+            return;
+        }
         QObject* ui = root->findChild<QObject*>("wifiState");
         if (ui) {
             switch (state) {
@@ -884,6 +905,9 @@ class Controller : public QObject
     }
     void wifiRssiChanged(int rssi)
     {
+        if (root == nullptr) {
+            return;
+        }
         QObject* ui = root->findChild<QObject*>("wifiState");
         if (ui) {
             if (wifiState != WifiOnline) {

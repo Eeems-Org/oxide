@@ -66,7 +66,7 @@ class Controller : public QObject
   public:
     Controller(QObject* parent) : QObject(parent), confirmPin()
     {
-        clockTimer = new QTimer(root);
+        clockTimer = new QTimer(this);
         auto bus = QDBusConnection::systemBus();
         qDebug() << "Waiting for tarnish to start up...";
         while (!bus.interface()->registeredServiceNames().value().contains(
@@ -470,7 +470,11 @@ class Controller : public QObject
         sharedSettings.sync();
     }
 
-    void setRoot(QObject* root) { this->root = root; }
+    void setRoot(QObject* root)
+    {
+        this->root = root;
+        clockTimer->setParent(root);
+    }
 
   signals:
     void sleepInhibitedChanged(bool);
@@ -667,26 +671,41 @@ class Controller : public QObject
     int tarnishPid() { return api->tarnishPid(); }
     QObject* getBatteryUI()
     {
+        if (root == nullptr) {
+            return nullptr;
+        }
         batteryUI = root->findChild<QObject*>("batteryLevel");
         return batteryUI;
     }
     QObject* getWifiUI()
     {
+        if (root == nullptr) {
+            return nullptr;
+        }
         wifiUI = root->findChild<QObject*>("wifiState");
         return wifiUI;
     }
     QObject* getClockUI()
     {
+        if (root == nullptr) {
+            return nullptr;
+        }
         clockUI = root->findChild<QObject*>("clock");
         return clockUI;
     }
     QObject* getStateControllerUI()
     {
+        if (root == nullptr) {
+            return nullptr;
+        }
         stateControllerUI = root->findChild<QObject*>("stateController");
         return stateControllerUI;
     }
     QObject* getPinEntryUI()
     {
+        if (root == nullptr) {
+            return nullptr;
+        }
         pinEntryUI = root->findChild<QObject*>("pinEntry");
         return pinEntryUI;
     }
