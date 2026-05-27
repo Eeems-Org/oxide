@@ -522,10 +522,12 @@ DbusInterface::enterExclusiveMode(QDBusMessage message)
         );
         return;
     }
-    O_INFO("Entering exclusive mode");
-    m_exlusiveMode = true;
-    waitForNoRepaints(message);
-    evdevHandler->clear_buffers();
+    if (!m_exlusiveMode) {
+        O_INFO("Entering exclusive mode");
+        m_exlusiveMode = true;
+        waitForNoRepaints(message);
+        evdevHandler->clear_buffers();
+    }
 }
 
 void
@@ -544,19 +546,21 @@ DbusInterface::exitExclusiveMode(QDBusMessage message)
         );
         return;
     }
-    O_INFO("Exiting exclusive mode");
-    m_exlusiveMode = false;
+    if (m_exlusiveMode) {
+        O_INFO("Exiting exclusive mode");
+        m_exlusiveMode = false;
 #ifdef EPAPER
-    guiThread->enqueue(
-        nullptr,
-        EPFramebuffer::instance()->auxBuffer.rect(),
-        Blight::WaveformMode::HighQualityGrayscale,
-        Blight::UpdateMode::FullUpdate,
-        0,
-        true
-    );
+        guiThread->enqueue(
+            nullptr,
+            EPFramebuffer::instance()->auxBuffer.rect(),
+            Blight::WaveformMode::HighQualityGrayscale,
+            Blight::UpdateMode::FullUpdate,
+            0,
+            true
+        );
 #endif
-    waitForNoRepaints(message);
+        waitForNoRepaints(message);
+    }
 }
 void
 DbusInterface::exclusiveModeRepaint(
@@ -788,7 +792,7 @@ QList<std::shared_ptr<Surface>>
 DbusInterface::surfaces()
 {
     QList<std::shared_ptr<Surface>> surfaces;
-    for (auto& connection : connections) {
+    for (auto& connection : qAsConst(connections)) {
         for (auto& surface : connection->getSurfaces()) {
             surfaces.append(surface);
         }
@@ -902,7 +906,7 @@ DbusInterface::sortZ()
             connection->has("system")) {
             continue;
         }
-        for (auto& ptr : connections) {
+        for (auto& ptr : qAsConst(connections)) {
             if (ptr == connection) {
                 setFocus(ptr);
                 break;

@@ -35,7 +35,6 @@ namespace {
     static bool FAILED_INIT = true;
     static bool DO_HANDLE_FB = true;
     static bool FAKE_RM1 = false;
-    static bool DO_DIRECT_FB = false;
     static unsigned int INPUT_BATCH_SIZE = 0;
     static Blight::shared_buf_t blightBuffer = nullptr;
     static Blight::Connection* blightConnection = nullptr;
@@ -483,27 +482,17 @@ namespace {
                 // TODO handle region updates
                 _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SEND_UPDATE");
                 Blight::ClockWatch cw;
-                int res = 0;
-                if (DO_DIRECT_FB) {
-                    int fd = func_open("/dev/fb0", O_RDONLY, 0);
-                    if (fd == -1) {
-                        return -1;
-                    }
-                    res = func_ioctl(fd, request, ptr);
-                    func_close(fd);
-                } else {
-                    mxcfb_update_data* update =
-                        reinterpret_cast<mxcfb_update_data*>(ptr);
-                    auto region = update->update_region;
-                    Blight::exclusiveModeRepaint(
-                        region.left,
-                        region.top,
-                        region.width,
-                        region.height,
-                        (Blight::WaveformMode)update->waveform_mode,
-                        (Blight::UpdateMode)update->update_mode
-                    );
-                }
+                mxcfb_update_data* update =
+                    reinterpret_cast<mxcfb_update_data*>(ptr);
+                auto region = update->update_region;
+                Blight::exclusiveModeRepaint(
+                    region.left,
+                    region.top,
+                    region.width,
+                    region.height,
+                    (Blight::WaveformMode)update->waveform_mode,
+                    (Blight::UpdateMode)update->update_mode
+                );
                 _DEBUG(
                     "ioctl /dev/fb0 MXCFB_SEND_UPDATE done: %f", cw.elapsed()
                 )
@@ -1248,11 +1237,6 @@ extern "C"
             } else {
                 unsetenv("RM2FB_DISABLE");
             }
-        } else if (
-            device_id == "reMarkable 1.0" ||
-            device_id == "reMarkable Prototype 1"
-        ) {
-            DO_DIRECT_FB = true;
         }
         if (getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr) {
             setenv("QMLSCENE_DEVICE", "software", 1);

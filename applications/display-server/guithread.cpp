@@ -72,7 +72,7 @@ GUIThread::GUIThread(QRect screenGeometry)
   , m_screenOffset{ screenGeometry.topLeft() }
   , m_screenRect{ m_screenGeometry.translated(-m_screenOffset) }
 {
-    auto auxBuffer = EPFramebuffer::instance()->auxBuffer;
+    auto& auxBuffer = EPFramebuffer::instance()->auxBuffer;
     std::optional<Blight::shared_buf_t> maybe_buffer = Blight::createBuffer(
         0,
         0,
@@ -338,11 +338,7 @@ GUIThread::sendUpdate(
     }
     O_DEBUG("Sending screen update" << rect << waveform << mode);
     EPFramebuffer::instance()->swapBuffers(
-        rect,
-        EPContentType::Mono,
-        type,
-        rect == m_screenRect ? EPFramebuffer::UpdateFlag::CompleteRefresh
-                             : EPFramebuffer::UpdateFlag::NoRefresh
+        rect, EPContentType::Mono, type, (EPFramebuffer::UpdateFlag)mode
     );
 }
 
@@ -366,7 +362,7 @@ GUIThread::swap(
     );
     auto* auxBuffer = &EPFramebuffer::instance()->auxBuffer;
     QPainter painter(auxBuffer);
-    painter.drawImage(auxBuffer->rect(), image, image.rect());
+    painter.drawImage(rect, image, rect);
     guiThread->sendUpdate(rect, waveform, mode, 0);
     painter.end();
 }
