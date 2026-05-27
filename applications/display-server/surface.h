@@ -5,6 +5,7 @@
 #include <QQuickItem>
 #include <QQuickPaintedItem>
 #include <QRect>
+#include <memory>
 
 #include "connection.h"
 class Connection;
@@ -45,7 +46,7 @@ class Surface : public QObject
     bool has(const QString& flag);
     void set(const QString& flag);
     void unset(const QString& flag);
-    Connection* connection();
+    std::shared_ptr<Connection> connection();
     bool isRemoved();
     void removed();
 
@@ -58,6 +59,7 @@ class Surface : public QObject
 #endif
 
   private:
+    // Surface is owned by Connection, so a non-shared pointer is safe
     Connection* m_connection;
     Blight::surface_id_t m_identifier;
     QRect m_geometry;

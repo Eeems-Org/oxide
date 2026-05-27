@@ -9,6 +9,7 @@
 #include <QObject>
 #include <QQmlApplicationEngine>
 #include <QTimer>
+#include <memory>
 
 #include "connection.h"
 
@@ -50,15 +51,14 @@ class DbusInterface
         QVariantMap properties = QVariantMap()
     );
 #endif
-    void processClosingConnections();
-    void processRemovedSurfaces();
     std::shared_ptr<Surface> getSurface(QString identifier);
+    std::shared_ptr<Connection> getConnection(Connection* ptr);
     QList<std::shared_ptr<Surface>> surfaces();
     QList<std::shared_ptr<Surface>> sortedSurfaces();
     QList<std::shared_ptr<Surface>> visibleSurfaces();
     void sortZ();
-    Connection* focused();
-    void setFocus(Connection* connection);
+    std::shared_ptr<Connection> focused();
+    void setFocus(std::shared_ptr<Connection> connection);
     void
     inputEvents(unsigned int device, const std::vector<input_event>& events);
     bool inExclusiveMode();
@@ -126,10 +126,8 @@ class DbusInterface
   private:
     DbusInterface(QObject* parent);
     QQmlApplicationEngine engine;
-    QList<Connection*> connections;
-    QMutex closingMutex;
-    QList<Connection*> closingConnections;
-    Connection* m_focused;
+    QList<std::shared_ptr<Connection>> connections;
+    std::shared_ptr<Connection> m_focused;
     struct
     {
         QByteArray clipboard;
@@ -138,8 +136,8 @@ class DbusInterface
     } clipboards;
     bool m_exlusiveMode;
 
-    Connection* getConnection(QDBusMessage message);
-    Connection* getConnection(QString identifier);
+    std::shared_ptr<Connection> getConnection(QDBusMessage message);
+    std::shared_ptr<Connection> getConnection(QString identifier);
     QObject* workspace();
-    Connection* createConnection(int pid);
+    std::shared_ptr<Connection> createConnection(int pid);
 };

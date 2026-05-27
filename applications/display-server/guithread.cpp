@@ -29,8 +29,6 @@ GUIThread::run()
             // to clear
             RepaintRequest event;
             if (!m_repaintEvents.try_dequeue(event)) {
-                dbusInterface->processRemovedSurfaces();
-                dbusInterface->processClosingConnections();
                 emit settled();
                 // Wait for up to 500ms before trying again
                 m_repaintWait.wait(&m_repaintMutex, 500);

@@ -4,11 +4,16 @@
 #include <linux/input.h>
 
 #include <QFile>
+#include <QImage>
+#include <QList>
 #include <QLocalSocket>
 #include <QMutex>
 #include <QObject>
+#include <QRect>
 #include <QSocketNotifier>
+#include <QString>
 #include <QTimer>
+#include <memory>
 #include <queue>
 
 #include "surface.h"
@@ -25,7 +30,6 @@ class Connection : public QObject
     Connection(pid_t pid, pid_t pgid);
     ~Connection();
 
-    void processRemovedSurfaces();
     QString id();
     pid_t pid() const;
     pid_t pgid() const;
@@ -75,8 +79,6 @@ class Connection : public QObject
     QSocketNotifier* m_notifier;
     QLocalSocket m_pidNotifier;
     std::map<Blight::surface_id_t, std::shared_ptr<Surface>> surfaces;
-    QMutex removedMutex;
-    std::vector<std::shared_ptr<Surface>> removedSurfaces;
     std::atomic_flag m_closed;
     QTimer m_notRespondingTimer;
     QTimer m_pingTimer;

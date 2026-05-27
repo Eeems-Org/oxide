@@ -273,10 +273,10 @@ Surface::unset(const QString& flag)
     flags.removeAll(flag);
 }
 
-Connection*
+std::shared_ptr<Connection>
 Surface::connection()
 {
-    return m_connection;
+    return dbusInterface->getConnection(m_connection);
 }
 
 bool

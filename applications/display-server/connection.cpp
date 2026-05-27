@@ -4,6 +4,7 @@
 #include <libblight/socket.h>
 #include <liboxide/debug.h>
 #include <liboxide/signalhandler.h>
+#include <memory>
 #include <signal.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
@@ -115,7 +116,6 @@ Connection::~Connection()
 {
     close();
     surfaces.clear();
-    processRemovedSurfaces();
     if (m_notifier != nullptr) {
         m_notifier->deleteLater();
         m_notifier = nullptr;
@@ -126,17 +126,6 @@ Connection::~Connection()
     ::close(m_pidFd);
     ::close(m_serverInputFd);
     C_INFO("Connection destroyed");
-}
-
-void
-Connection::processRemovedSurfaces()
-{
-    removedMutex.lock();
-    if (!removedSurfaces.empty()) {
-        C_DEBUG("Cleaning up old surfaces");
-        removedSurfaces.clear();
-    }
-    removedMutex.unlock();
 }
 
 QString
@@ -289,10 +278,11 @@ Connection::addSurface(
     // TODO - add validation that id is never 0, and that it doesn't point to an
     // existsing surface
     auto surfaceId = ++m_surfaceId;
-    std::shared_ptr<Surface> surface{ nullptr };
+    std::shared_ptr<Surface> surface;
     try {
-        surface = std::make_shared<Surface>(
-            this, fd, surfaceId, geometry, stride, format
+        surface = std::shared_ptr<Surface>(
+            new Surface(this, fd, surfaceId, geometry, stride, format),
+            [](Surface* s) { s->deleteLater(); }
         );
     } catch (const std::bad_alloc&) {
         C_WARNING("Unable to add surface, out of memory");
@@ -595,11 +585,8 @@ Connection::readSocket()
 
                     break;
                 }
-                removedMutex.lock();
                 auto surface = surfaces[identifier];
                 surface->removed();
-                removedSurfaces.push_back(surface);
-                removedMutex.unlock();
                 surfaces.erase(identifier);
                 guiThread->notify();
                 break;
@@ -682,7 +669,7 @@ Connection::readSocket()
             }
             case Blight::MessageType::Focus: {
                 C_DEBUG("Focus requested");
-                dbusInterface->setFocus(this);
+                dbusInterface->setFocus(dbusInterface->getConnection(this));
                 break;
             }
             case Blight::MessageType::Ping: {
@@ -736,7 +723,7 @@ Connection::notResponding()
     }
     if (!isStopped()) {
         C_WARNING("Connection failed to respond to ping in time:" << id());
-    } else if (this == dbusInterface->focused()) {
+    } else if (this == dbusInterface->focused().get()) {
         dbusInterface->sortZ();
     }
     m_notRespondingTimer.start();

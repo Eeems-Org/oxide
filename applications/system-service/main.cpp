@@ -137,6 +137,7 @@ main(int argc, char* argv[])
         O_INFO("Attempting to stop all other instances of tarnish" << lockPath);
         for (auto lockingPid : Oxide::lsof(lockPath)) {
             if (Oxide::processExists(lockingPid)) {
+                // TODO ensure that process is tarnish
                 stopProcess(lockingPid);
             }
         }

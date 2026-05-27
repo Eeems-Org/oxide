@@ -140,27 +140,6 @@ DbusInterface::loadComponent(
 }
 #endif
 
-void
-DbusInterface::processClosingConnections()
-{
-    closingMutex.lock();
-    if (!closingConnections.isEmpty()) {
-        O_DEBUG("Cleaning up old connections");
-        while (!closingConnections.isEmpty()) {
-            closingConnections.takeFirst()->deleteLater();
-        }
-    }
-    closingMutex.unlock();
-}
-
-void
-DbusInterface::processRemovedSurfaces()
-{
-    for (auto connection : qAsConst(connections)) {
-        connection->processRemovedSurfaces();
-    }
-}
-
 std::shared_ptr<Surface>
 DbusInterface::getSurface(QString identifier)
 {
@@ -643,14 +622,14 @@ DbusInterface::connectionExists(QString identifier, QDBusMessage message)
     return getConnection(identifier) != nullptr;
 }
 
-Connection*
+std::shared_ptr<Connection>
 DbusInterface::focused()
 {
     return m_focused;
 }
 
 void
-DbusInterface::setFocus(Connection* connection)
+DbusInterface::setFocus(std::shared_ptr<Connection> connection)
 {
     m_focused = connection;
     if (m_focused != nullptr) {
@@ -687,13 +666,14 @@ DbusInterface::inputEvents(
         });
     }
     for (auto connection : qAsConst(connections)) {
-        if (connection->has("system")) {
-            Oxide::dispatchToThread(
-                connection->thread(), [connection, device, events] {
-                    connection->inputEvents(device, events);
-                }
-            );
+        if (!connection->has("system")) {
+            continue;
         }
+        Oxide::dispatchToThread(
+            connection->thread(), [connection, device, events] {
+                connection->inputEvents(device, events);
+            }
+        );
     }
 }
 
@@ -703,7 +683,7 @@ DbusInterface::inExclusiveMode()
     return m_exlusiveMode;
 }
 
-Connection*
+std::shared_ptr<Connection>
 DbusInterface::getConnection(QDBusMessage message)
 {
     pid_t pid = connection().interface()->servicePid(message.service());
@@ -719,11 +699,21 @@ DbusInterface::getConnection(QDBusMessage message)
     return nullptr;
 }
 
-Connection*
+std::shared_ptr<Connection>
 DbusInterface::getConnection(QString identifier)
 {
     for (auto connection : qAsConst(connections)) {
         if (connection->id() == identifier) {
+            return connection;
+        }
+    }
+    return nullptr;
+}
+std::shared_ptr<Connection>
+DbusInterface::getConnection(Connection* ptr)
+{
+    for (auto connection : qAsConst(connections)) {
+        if (connection.get() == ptr) {
             return connection;
         }
     }
@@ -745,13 +735,15 @@ DbusInterface::workspace()
     return nullptr;
 }
 
-Connection*
+std::shared_ptr<Connection>
 DbusInterface::createConnection(int pid)
 {
     pid_t pgid = ::getpgid(pid);
-    Connection* connection;
+    std::shared_ptr<Connection> connection;
     try {
-        connection = new Connection(pid, pgid);
+        connection = std::shared_ptr<Connection>(
+            new Connection(pid, pgid), [](Connection* c) { c->deleteLater(); }
+        );
     } catch (const std::bad_alloc&) {
         O_WARNING("Failed to create new connection, out of memory");
         return nullptr;
@@ -760,16 +752,13 @@ DbusInterface::createConnection(int pid)
         connection->deleteLater();
         return nullptr;
     }
-    connect(connection, &Connection::finished, this, [this, connection] {
+    connect(connection.get(), &Connection::finished, this, [this, connection] {
         O_INFO("Connection" << connection->pid() << "closed");
         auto found = false;
         for (auto& ptr : qAsConst(connections)) {
             if (ptr == connection) {
                 found = true;
                 connections.removeAll(ptr);
-                closingMutex.lock();
-                closingConnections.append(ptr);
-                closingMutex.unlock();
                 guiThread->notify();
                 break;
             }
@@ -782,7 +771,7 @@ DbusInterface::createConnection(int pid)
         }
         sortZ();
     });
-    connect(connection, &Connection::focused, this, [this, connection] {
+    connect(connection.get(), &Connection::focused, this, [this, connection] {
         for (auto& ptr : qAsConst(connections)) {
             if (ptr == connection && !ptr->has("system")) {
                 setFocus(ptr);
