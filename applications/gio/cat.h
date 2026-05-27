@@ -32,7 +32,7 @@ class CatCommand : ICommand
                 );
                 continue;
             }
-            QFile file(path);
+            QFile file(url.toLocalFile());
             if (!file.exists()) {
                 GIO_ERROR(
                     url,

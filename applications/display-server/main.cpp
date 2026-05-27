@@ -133,6 +133,7 @@ main(int argc, char* argv[])
                  << lockPath;
         for (auto lockingPid : Oxide::lsof(lockPath)) {
             if (Oxide::processExists(lockingPid)) {
+                // TODO verify that this process is blight
                 stopProcess(lockingPid);
             }
         }

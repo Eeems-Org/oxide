@@ -310,6 +310,12 @@ DbusInterface::setFlags(
         // Only validate system flag if there is more than one connection
         // TODO - also validate that executable is allowed to make this call
         auto connection = getConnection(message);
+        if (connection == nullptr) {
+            sendErrorReply(
+                QDBusError::AccessDenied, "You must first open a connection"
+            );
+            return;
+        }
         if (!connection->has("system")) {
             sendErrorReply(
                 QDBusError::AccessDenied, "Must be system connection"

@@ -167,7 +167,7 @@ EvDevDevice::emitSomeEvents()
 input_event
 EvDevDevice::createEvent(ushort type, ushort code, int value)
 {
-    struct input_event event;
+    struct input_event event = {};
     event.type = type;
     event.code = code;
     event.value = value;

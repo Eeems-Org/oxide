@@ -171,7 +171,7 @@ main(int argc, char* argv[])
         if (parser.isSet(expireOption)) {
             bool ok = false;
             auto timeout = parser.value(expireOption).toInt(&ok);
-            if (!ok) {
+            if (!ok || timeout < 0) {
                 qDebug() << "Invalid --expire-time value";
                 return qExit(EXIT_FAILURE);
             }

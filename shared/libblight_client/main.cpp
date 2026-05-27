@@ -1154,6 +1154,9 @@ extern "C"
         }
         return func_flock(fd, op);
     }
+    __asm__(".globl  flock\n"
+            ".type   flock, %function\n"
+            "flock   = __flock\n");
 
     __attribute__((visibility("default"))) void
     _ZN6QImageC1EiiNS_6FormatE(void* data, int width, int height, int format)

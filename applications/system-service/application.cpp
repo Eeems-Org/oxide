@@ -88,8 +88,10 @@ Application::launchNoSecurityCheck()
                 }
                 updateEnvironment();
                 m_process->setWorkingDirectory(workingDirectory());
-                m_process->setUser(user());
-                m_process->setGroup(group());
+                if (!m_process->setUser(user()) ||
+                    m_process->setGroup(group())) {
+                    O_WARNING(("Failed to set user/group for the process"));
+                }
                 if (p_stdout == nullptr) {
                     p_stdout_fd = sd_journal_stream_fd(
                         name().toStdString().c_str(), LOG_INFO, 1
@@ -686,12 +688,20 @@ Application::started()
 {
     if (flags().contains("exclusive")) {
         O_DEBUG("Setting exclusive flag for " << name());
+        QElapsedTimer waitTimer;
+        waitTimer.start();
         auto compositor = getCompositorDBus();
         auto identifier = QString("connection/%1").arg(m_process->processId());
         while (true) {
             QDBusReply<bool> reply = compositor->connectionExists(identifier);
             if (!reply.isValid() || reply.value() ||
                 stateNoSecurityCheck() == Inactive) {
+                break;
+            }
+            if (waitTimer.elapsed() > 5000) {
+                O_WARNING(
+                    "Timed out waiting for compositor connection" << identifier
+                );
                 break;
             }
             QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
@@ -824,6 +834,13 @@ Application::errorOccurred(QProcess::ProcessError error)
     switch (error) {
         case QProcess::FailedToStart: {
             O_INFO("Application" << name() << "failed to start.");
+            if (m_notification != nullptr) {
+                m_notification->remove();
+                m_notification = nullptr;
+            }
+            if (flags().contains("exclusive")) {
+                getCompositorDBus()->exitExclusiveMode().waitForFinished();
+            }
             emit exited(-1);
             emit appsAPI->applicationExited(qPath(), -1);
             notificationAPI

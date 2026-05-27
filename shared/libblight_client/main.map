@@ -9,4 +9,5 @@ GLIBC_2.4 {
    open64;
    openat;
    open;
+   flock;
 };

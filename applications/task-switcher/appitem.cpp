@@ -62,7 +62,8 @@ AppItem::getApp()
     auto instance = new Application(OXIDE_SERVICE, appPath.path(), bus, this);
     if (!instance->isValid()) {
         delete instance;
-        qDebug() << "Application API instance is invalid" << app->lastError();
+        qDebug() << "Application API instance is invalid"
+                 << instance->lastError();
         return nullptr;
     }
     connect(instance, &Application::exited, this, &AppItem::exited);
