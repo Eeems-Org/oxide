@@ -41,6 +41,8 @@ namespace {
     static std::map<int, int[2]> inputFds;
     static std::map<int, int> inputDeviceMap;
     static int frameBuffer = -1;
+    static int epframebufferLockFd = -1;
+    static int epdLockFd = -1;
     static ssize_t (*func_write)(int, const void*, size_t);
     static ssize_t (*func_writev)(int, const iovec*, int);
     static ssize_t (*func_writev64)(int, const iovec*, int);
@@ -52,6 +54,7 @@ namespace {
     static int (*func_ioctl)(int, unsigned long, ...);
     static int (*func_close)(int);
     static int (*func_msgget)(key_t, int);
+    static int (*func_flock)(int, int);
     static int msgq = -1;
     static std::mutex input_mutex;
 
@@ -598,6 +601,23 @@ namespace {
             );
             lseek(fd, 0, SEEK_SET);
             return fd;
+        } else if (actualpath == "/tmp/epframebuffer.lock") {
+            if (epframebufferLockFd > 0) {
+                return epframebufferLockFd;
+            }
+            res = epframebufferLockFd = func_open(
+                ("/tmp/epframebuffer." + std::to_string(getpid()) + ".lock")
+                    .c_str(),
+                flags
+            );
+        } else if (actualpath == "/tmp/epd.lock") {
+            if (epdLockFd > 0) {
+                return epdLockFd;
+            }
+            res = epdLockFd = func_open(
+                ("/tmp/epd." + std::to_string(getpid()) + ".lock").c_str(),
+                flags
+            );
         } else if (
             actualpath == "/dev/fb0" || actualpath == "/dev/shm/swtfb.01"
         ) {
@@ -910,6 +930,25 @@ extern "C"
                 // Maybe actually close it?
                 return 0;
             }
+            if (fd == epframebufferLockFd) {
+                int res = func_close(epframebufferLockFd);
+                if (res == 0) {
+                    epframebufferLockFd = -1;
+                    unlink(("/tmp/epframebuffer." + std::to_string(getpid()) +
+                            ".lock")
+                               .c_str());
+                }
+                return res;
+            }
+            if (fd == epdLockFd) {
+                int res = func_close(epdLockFd);
+                if (res == 0) {
+                    epdLockFd = -1;
+                    unlink(("/tmp/epd." + std::to_string(getpid()) + ".lock")
+                               .c_str());
+                }
+                return res;
+            }
         }
         static const auto func_close = (int (*)(int))dlsym(RTLD_NEXT, "close");
         return func_close(fd);
@@ -1094,6 +1133,26 @@ extern "C"
         }
         _DEBUG("setenv", name, value);
         return orig_setenv(name, value, overwrite);
+    }
+
+    __attribute__((visibility("default"))) int flock(int fd, int op)
+    {
+        static const auto func_flock =
+            (int (*)(int, int))dlsym(RTLD_NEXT, "flock");
+        if (!IS_INITIALIZED) {
+            return func_flock(fd, op);
+        }
+        if (fd == epframebufferLockFd) {
+            switch (op) {
+                case LOCK_SH:
+                case LOCK_EX:
+                case LOCK_UN:
+                    return 0;
+                default:
+                    break;
+            }
+        }
+        return func_flock(fd, op);
     }
 
     __attribute__((visibility("default"))) void
