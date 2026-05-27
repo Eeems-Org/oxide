@@ -8,9 +8,11 @@ CONFIG += hide_symbols
 
 QT =
 
-HEADERS +=
+HEADERS += libc.h
 
-SOURCES += main.cpp
+SOURCES += \
+    libc.cpp \
+    main.cpp
 
 LIBS += -lrt -ldl -Wl,--exclude-libs,ALL
 PKGCONFIG += libsystemd

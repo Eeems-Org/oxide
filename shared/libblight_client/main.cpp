@@ -1,3 +1,5 @@
+#include "libc.h"
+
 #include <asm/ioctl.h>
 #include <dirent.h>
 #include <dlfcn.h>
@@ -31,7 +33,6 @@
 #include <vector>
 
 namespace {
-    static bool IS_INITIALIZED = false;
     static bool FAILED_INIT = true;
     static bool DO_HANDLE_FB = true;
     static bool FAKE_RM1 = false;
@@ -43,18 +44,6 @@ namespace {
     static int frameBuffer = -1;
     static int epframebufferLockFd = -1;
     static int epdLockFd = -1;
-    static ssize_t (*func_write)(int, const void*, size_t);
-    static ssize_t (*func_writev)(int, const iovec*, int);
-    static ssize_t (*func_writev64)(int, const iovec*, int);
-    static ssize_t (*func_pwrite)(int, const void*, size_t, int);
-    static ssize_t (*func_pwrite64)(int, const void*, size_t, int);
-    static ssize_t (*func_pwritev)(int, const iovec*, int, int);
-    static ssize_t (*func_pwritev64)(int, const iovec*, int, int);
-    static int (*func_open)(const char*, int, ...);
-    static int (*func_ioctl)(int, unsigned long, ...);
-    static int (*func_close)(int);
-    static int (*func_msgget)(key_t, int);
-    static int (*func_flock)(int, int);
     static int msgq = -1;
     static std::mutex input_mutex;
 
@@ -92,7 +81,7 @@ namespace {
         size_t total = sizeof(input_event) * data.size();
         size_t written = 0;
         while (written < total) {
-            auto res = func_write(
+            auto res = Libc::write(
                 fd,
                 reinterpret_cast<char*>(data.data()) + written,
                 total - written
@@ -420,28 +409,28 @@ namespace {
             }
             case FBIOGET_VSCREENINFO: {
                 // TODO - handle getting information on rMPP/rMPPM
-                int fd = func_open("/dev/fb0", O_RDONLY, 0);
+                int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
                 if (fd == -1) {
                     return -1;
                 }
-                if (func_ioctl(fd, request, ptr) == -1) {
+                if (Libc::ioctl(fd, request, ptr) == -1) {
                     return -1;
                 }
-                func_close(fd);
+                Libc::close(fd);
                 return __fb_get_vscreeninfo(
                     reinterpret_cast<fb_var_screeninfo*>(ptr)
                 );
             }
             case FBIOGET_FSCREENINFO: {
                 // TODO - handle getting information on rMPP/rMPPM
-                int fd = func_open("/dev/fb0", O_RDONLY, 0);
+                int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
                 if (fd == -1) {
                     return -1;
                 }
-                if (func_ioctl(fd, request, ptr) == -1) {
+                if (Libc::ioctl(fd, request, ptr) == -1) {
                     return -1;
                 }
-                func_close(fd);
+                Libc::close(fd);
                 return __fb_get_fscreeninfo(
                     reinterpret_cast<fb_fix_screeninfo*>(ptr)
                 );
@@ -509,23 +498,23 @@ namespace {
             case FBIOGET_FSCREENINFO: {
                 _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_FSCREENINFO");
                 // TODO - handle getting information on rMPP/rMPPM
-                int fd = func_open("/dev/fb0", O_RDONLY, 0);
+                int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
                 if (fd == -1) {
                     return -1;
                 }
-                int res = func_ioctl(fd, request, ptr);
-                func_close(fd);
+                int res = Libc::ioctl(fd, request, ptr);
+                Libc::close(fd);
                 return res;
             }
             case FBIOGET_VSCREENINFO: {
                 _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_VSCREENINFO");
                 // TODO - handle getting information on rMPP/rMPPM
-                int fd = func_open("/dev/fb0", O_RDONLY, 0);
+                int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
                 if (fd == -1) {
                     return -1;
                 }
-                int res = func_ioctl(fd, request, ptr);
-                func_close(fd);
+                int res = Libc::ioctl(fd, request, ptr);
+                Libc::close(fd);
                 return res;
             }
             case FBIOPUT_VSCREENINFO: {
@@ -567,7 +556,7 @@ namespace {
             case EVIOCREVOKE:
                 return 0;
             default:
-                return func_ioctl(fd, request, ptr);
+                return Libc::ioctl(fd, request, ptr);
         }
     }
 
@@ -580,7 +569,7 @@ namespace {
 
     int __open(const char* pathname, int flags)
     {
-        if (!IS_INITIALIZED) {
+        if (!Libc::IS_INITIALIZED) {
             return -2;
         }
         std::string actualpath(pathname);
@@ -592,7 +581,7 @@ namespace {
             int fd = memfd_create("machine", MFD_ALLOW_SEALING);
             std::string data("reMarkable 1.0");
             // Don't include trailing null
-            func_write(fd, data.data(), data.size());
+            Libc::write(fd, data.data(), data.size());
             fcntl(
                 fd,
                 F_ADD_SEALS,
@@ -605,7 +594,7 @@ namespace {
             if (epframebufferLockFd > 0) {
                 return epframebufferLockFd;
             }
-            res = epframebufferLockFd = func_open(
+            res = epframebufferLockFd = Libc::open(
                 ("/tmp/epframebuffer." + std::to_string(getpid()) + ".lock")
                     .c_str(),
                 flags
@@ -614,7 +603,7 @@ namespace {
             if (epdLockFd > 0) {
                 return epdLockFd;
             }
-            res = epdLockFd = func_open(
+            res = epdLockFd = Libc::open(
                 ("/tmp/epd." + std::to_string(getpid()) + ".lock").c_str(),
                 flags
             );
@@ -721,7 +710,7 @@ namespace {
                             fcntl(fd, F_SETFD, flags | O_NONBLOCK);
                             res = inputFds[device][1] = fds[1];
                             inputDeviceMap[res] =
-                                func_open(actualpath.c_str(), O_RDWR, 0);
+                                Libc::open(actualpath.c_str(), O_RDWR, 0);
                             _DEBUG(
                                 "inputDeviceMap[%d] = %d;",
                                 res,
@@ -784,31 +773,35 @@ namespace swtfb {
 } // namespace swtfb
 extern "C"
 {
+#define alias(name)                                                            \
+    __asm__(".globl  " #name "\n.type   " #name ", %function\n" #name          \
+            "  = _" #name "\n")
+
+#define symver(name) __asm__(".symver " #name " , " #name "@GLIBC_2.4")
+#define _symver(name) __asm__(".symver _" #name ", " #name "@GLIBC_2.4")
+
     __attribute__((visibility("default"))) int msgget(key_t key, int msgflg)
     {
-        static const auto func_msgget =
-            (int (*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
-        if (!IS_INITIALIZED || !DO_HANDLE_FB) {
-            return func_msgget(key, msgflg);
+        if (!Libc::IS_INITIALIZED || !DO_HANDLE_FB) {
+            return Libc::msgget(key, msgflg);
         }
         // Catch rm2fb ipc
         if (key == 0x2257c) {
             // inject our own ipc here
             if (msgq == -1) {
-                msgq = func_msgget(0x2257d, msgflg);
+                msgq = Libc::msgget(0x2257d, msgflg);
             }
             return msgq;
         }
-        return func_msgget(key, msgflg);
+        return Libc::msgget(key, msgflg);
     }
+    symver(msgget);
 
     __attribute__((visibility("default"))) int
     msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg)
     {
-        static const auto func_msgsnd =
-            (int (*)(int, const void*, size_t, int))dlsym(RTLD_NEXT, "msgsnd");
-        if (!IS_INITIALIZED || !DO_HANDLE_FB) {
-            return func_msgsnd(msqid, msgp, msgsz, msgflg);
+        if (!Libc::IS_INITIALIZED || !DO_HANDLE_FB) {
+            return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
         }
         if (msqid == msgq) {
             if (!blightBuffer->surface) {
@@ -831,18 +824,17 @@ extern "C"
             );
             return 0;
         }
-        return func_msgsnd(msqid, msgp, msgsz, msgflg);
+        return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
     }
+    symver(msgsnd);
 
     __attribute__((visibility("default"))) int
     _open64(const char* pathname, int flags, ...)
     {
-        static const auto func_open64 =
-            (int (*)(const char*, int, ...))dlsym(RTLD_NEXT, "open64");
-        if (!IS_INITIALIZED) {
+        if (!Libc::IS_INITIALIZED) {
             va_list args;
             va_start(args, flags);
-            int fd = func_open64(pathname, flags, args);
+            int fd = Libc::open64(pathname, flags, args);
             va_end(args);
             return fd;
         }
@@ -851,23 +843,22 @@ extern "C"
         if (fd == -2) {
             va_list args;
             va_start(args, flags);
-            fd = func_open64(pathname, flags, args);
+            fd = Libc::open64(pathname, flags, args);
             va_end(args);
         }
         _DEBUG("opened %s with fd %d", pathname, fd);
         return fd;
     }
-    __asm__(".symver _open64, open64@GLIBC_2.4");
+    _symver(open64);
+    alias(open64);
 
     __attribute__((visibility("default"))) int
-    openat(int dirfd, const char* pathname, int flags, ...)
+    _openat(int dirfd, const char* pathname, int flags, ...)
     {
-        static const auto func_openat =
-            (int (*)(int, const char*, int, ...))dlsym(RTLD_NEXT, "openat");
-        if (!IS_INITIALIZED) {
+        if (!Libc::IS_INITIALIZED) {
             va_list args;
             va_start(args, flags);
-            int fd = func_openat(dirfd, pathname, flags, args);
+            int fd = Libc::openat(dirfd, pathname, flags, args);
             va_end(args);
             return fd;
         }
@@ -888,20 +879,58 @@ extern "C"
         if (fd == -2) {
             va_list args;
             va_start(args, flags);
-            fd = func_openat(dirfd, pathname, flags, args);
+            fd = Libc::openat(dirfd, pathname, flags, args);
             va_end(args);
         }
         _DEBUG("opened %s with fd %d", pathname, fd);
         return fd;
     }
+    _symver(openat);
+    alias(openat);
 
     __attribute__((visibility("default"))) int
-    open(const char* pathname, int flags, ...)
+    _openat64(int dirfd, const char* pathname, int flags, ...)
     {
-        if (!IS_INITIALIZED) {
+        if (!Libc::IS_INITIALIZED) {
             va_list args;
             va_start(args, flags);
-            int fd = func_open(pathname, flags, args);
+            int fd = Libc::openat(dirfd, pathname, flags, args);
+            va_end(args);
+            return fd;
+        }
+        _DEBUG("openat64 %s", pathname);
+        int fd = __open(pathname, flags);
+        if (fd == -2) {
+            DIR* save = opendir(".");
+            fchdir(dirfd);
+            char path[PATH_MAX + 1];
+            getcwd(path, PATH_MAX);
+            fchdir(::dirfd(save));
+            closedir(save);
+            std::string fullpath(path);
+            fullpath += "/";
+            fullpath += pathname;
+            fd = __open(fullpath.c_str(), flags);
+        }
+        if (fd == -2) {
+            va_list args;
+            va_start(args, flags);
+            fd = Libc::openat64(dirfd, pathname, flags, args);
+            va_end(args);
+        }
+        _DEBUG("opened %s with fd %d", pathname, fd);
+        return fd;
+    }
+    _symver(openat64);
+    alias(openat64);
+
+    __attribute__((visibility("default"))) int
+    _open(const char* pathname, int flags, ...)
+    {
+        if (!Libc::IS_INITIALIZED) {
+            va_list args;
+            va_start(args, flags);
+            int fd = Libc::open(pathname, flags, args);
             ;
             va_end(args);
             return fd;
@@ -911,16 +940,18 @@ extern "C"
         if (fd == -2) {
             va_list args;
             va_start(args, flags);
-            fd = func_open(pathname, flags, args);
+            fd = Libc::open(pathname, flags, args);
             va_end(args);
         }
         _DEBUG("opened %s with fd %d", pathname, fd);
         return fd;
     }
+    _symver(open);
+    alias(open);
 
     __attribute__((visibility("default"))) int close(int fd)
     {
-        if (IS_INITIALIZED) {
+        if (Libc::IS_INITIALIZED) {
             _DEBUG("close %d", fd);
             if (__is_fb(fd)) {
                 // Maybe actually close it?
@@ -931,7 +962,7 @@ extern "C"
                 return 0;
             }
             if (fd == epframebufferLockFd) {
-                int res = func_close(epframebufferLockFd);
+                int res = Libc::close(epframebufferLockFd);
                 if (res == 0) {
                     epframebufferLockFd = -1;
                     unlink(("/tmp/epframebuffer." + std::to_string(getpid()) +
@@ -941,7 +972,7 @@ extern "C"
                 return res;
             }
             if (fd == epdLockFd) {
-                int res = func_close(epdLockFd);
+                int res = Libc::close(epdLockFd);
                 if (res == 0) {
                     epdLockFd = -1;
                     unlink(("/tmp/epd." + std::to_string(getpid()) + ".lock")
@@ -950,9 +981,9 @@ extern "C"
                 return res;
             }
         }
-        static const auto func_close = (int (*)(int))dlsym(RTLD_NEXT, "close");
-        return func_close(fd);
+        return Libc::close(fd);
     }
+    symver(close);
 
     __attribute__((visibility("default"))) int
     ioctl(int fd, unsigned long request, ...)
@@ -960,7 +991,7 @@ extern "C"
         va_list args;
         va_start(args, request);
         char* ptr = va_arg(args, char*);
-        if (IS_INITIALIZED) {
+        if (Libc::IS_INITIALIZED) {
             if (__is_fb(fd)) {
                 int res = __fb_ioctl(request, ptr);
                 va_end(args);
@@ -978,10 +1009,11 @@ extern "C"
             }
         }
         _DEBUG("unhandled ioctl %d %lu", fd, request);
-        int res = func_ioctl(fd, request, ptr);
+        int res = Libc::ioctl(fd, request, ptr);
         va_end(args);
         return res;
     }
+    symver(ioctl);
     __asm__(".globl  ioctl\n"
             ".type   ioctl, %function\n"
             "ioctl   = __ioctl_time64\n");
@@ -991,133 +1023,139 @@ extern "C"
     {
         if (fd < 3) {
             // No need to handle stdout/stderr writes
-            return func_write(fd, buf, n);
+            return Libc::write(fd, buf, n);
         }
-        if (IS_INITIALIZED) {
+        if (Libc::IS_INITIALIZED) {
             _DEBUG("write %d %zu", fd, n);
             if (__is_fb(fd)) {
-                auto res = func_write(fd, buf, n);
+                auto res = Libc::write(fd, buf, n);
                 return res;
             }
         }
-        return func_write(fd, buf, n);
+        return Libc::write(fd, buf, n);
     }
-    __asm__(".symver _write, write@GLIBC_2.4");
+    _symver(write);
+    alias(write);
 
     __attribute__((visibility("default"))) ssize_t
     _writev(int fd, const iovec* iov, int iovcnt)
     {
         if (fd < 3) {
             // No need to handle stdout/stderr writes
-            return func_writev(fd, iov, iovcnt);
+            return Libc::writev(fd, iov, iovcnt);
         }
-        if (IS_INITIALIZED) {
+        if (Libc::IS_INITIALIZED) {
             _DEBUG("writev %d %d", fd, iovcnt);
             if (__is_fb(fd)) {
-                auto res = func_writev(fd, iov, iovcnt);
+                auto res = Libc::writev(fd, iov, iovcnt);
                 return res;
             }
         }
-        return func_writev(fd, iov, iovcnt);
+        return Libc::writev(fd, iov, iovcnt);
     }
-    __asm__(".symver _writev, writev@GLIBC_2.4");
+    _symver(writev);
+    alias(writev);
 
     __attribute__((visibility("default"))) ssize_t
     _writev64(int fd, const iovec* iov, int iovcnt)
     {
         if (fd < 3) {
             // No need to handle stdout/stderr writes
-            return func_writev64(fd, iov, iovcnt);
+            return Libc::writev64(fd, iov, iovcnt);
         }
-        if (IS_INITIALIZED) {
+        if (Libc::IS_INITIALIZED) {
             _DEBUG("writv64 %d %d", fd, iovcnt);
             if (__is_fb(fd)) {
-                auto res = func_writev64(fd, iov, iovcnt);
+                auto res = Libc::writev64(fd, iov, iovcnt);
                 return res;
             }
         }
-        return func_writev64(fd, iov, iovcnt);
+        return Libc::writev64(fd, iov, iovcnt);
     }
-    __asm__(".symver _writev64, writev64@GLIBC_2.4");
+    _symver(writev64);
+    alias(writev64);
 
     __attribute__((visibility("default"))) ssize_t
     _pwrite(int fd, const void* buf, size_t n, int offset)
     {
         if (fd < 3) {
             // No need to handle stdout/stderr writes
-            return func_pwrite(fd, buf, n, offset);
+            return Libc::pwrite(fd, buf, n, offset);
         }
-        if (IS_INITIALIZED) {
+        if (Libc::IS_INITIALIZED) {
             _DEBUG("pwrite %d %zu %d", fd, n, offset);
             if (__is_fb(fd)) {
-                auto res = func_pwrite(fd, buf, n, offset);
+                auto res = Libc::pwrite(fd, buf, n, offset);
                 return res;
             }
         }
-        return func_pwrite(fd, buf, n, offset);
+        return Libc::pwrite(fd, buf, n, offset);
     }
-    __asm__(".symver _pwrite, pwrite@GLIBC_2.4");
+    _symver(pwrite);
+    alias(pwrite);
 
     __attribute__((visibility("default"))) ssize_t
     _pwrite64(int fd, const void* buf, size_t n, int offset)
     {
         if (fd < 3) {
             // No need to handle stdout/stderr writes
-            return func_pwrite64(fd, buf, n, offset);
+            return Libc::pwrite64(fd, buf, n, offset);
         }
-        if (IS_INITIALIZED) {
+        if (Libc::IS_INITIALIZED) {
             _DEBUG("pwrite64 %d %zu %d", fd, n, offset);
             if (__is_fb(fd)) {
-                auto res = func_pwrite64(fd, buf, n, offset);
+                auto res = Libc::pwrite64(fd, buf, n, offset);
                 return res;
             }
         }
-        return func_pwrite64(fd, buf, n, offset);
+        return Libc::pwrite64(fd, buf, n, offset);
     }
-    __asm__(".symver _pwrite64, pwrite64@GLIBC_2.4");
+    _symver(pwrite64);
+    alias(pwrite64);
 
     __attribute__((visibility("default"))) ssize_t
     _pwritev(int fd, const iovec* iov, int iovcnt, int offset)
     {
         if (fd < 3) {
             // No need to handle stdout/stderr writes
-            return func_pwritev(fd, iov, iovcnt, offset);
+            return Libc::pwritev(fd, iov, iovcnt, offset);
         }
-        if (IS_INITIALIZED) {
+        if (Libc::IS_INITIALIZED) {
             _DEBUG("pwritev %d %d %d", fd, iovcnt, offset);
             if (__is_fb(fd)) {
-                auto res = func_pwritev(fd, iov, iovcnt, offset);
+                auto res = Libc::pwritev(fd, iov, iovcnt, offset);
                 return res;
             }
         }
-        return func_pwritev(fd, iov, iovcnt, offset);
+        return Libc::pwritev(fd, iov, iovcnt, offset);
     }
-    __asm__(".symver _pwritev, pwritev@GLIBC_2.4");
+    _symver(pwritev);
+    alias(pwritev);
 
     __attribute__((visibility("default"))) ssize_t
     _pwritev64(int fd, const iovec* iov, int iovcnt, int offset)
     {
         if (fd < 3) {
             // No need to handle stdout/stderr writes
-            return func_pwritev64(fd, iov, iovcnt, offset);
+            return Libc::pwritev64(fd, iov, iovcnt, offset);
         }
-        if (IS_INITIALIZED) {
+        if (Libc::IS_INITIALIZED) {
             _DEBUG("pwritev64 %d %d %d", fd, iovcnt, offset);
             if (__is_fb(fd)) {
-                auto res = func_pwritev64(fd, iov, iovcnt, offset);
+                auto res = Libc::pwritev64(fd, iov, iovcnt, offset);
                 return res;
             }
         }
-        return func_pwritev64(fd, iov, iovcnt, offset);
+        return Libc::pwritev64(fd, iov, iovcnt, offset);
     }
-    __asm__(".symver _pwritev64, pwritev64@GLIBC_2.4");
+    _symver(pwritev64);
+    alias(pwritev64);
 
     __attribute__((visibility("default"))) int
     setenv(const char* name, const char* value, int overwrite)
     {
-        static const auto orig_setenv =
-            (bool (*)(const char*, const char*, int))dlsym(RTLD_NEXT, "setenv");
-        if (IS_INITIALIZED && getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr) {
+        if (Libc::IS_INITIALIZED &&
+            getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr) {
             if (strcmp(name, "QMLSCENE_DEVICE") == 0 ||
                 strcmp(name, "QT_QUICK_BACKEND") == 0 ||
                 strcmp(name, "QT_QPA_PLATFORM") == 0 ||
@@ -1132,16 +1170,16 @@ extern "C"
             }
         }
         _DEBUG("setenv", name, value);
-        return orig_setenv(name, value, overwrite);
+        return Libc::setenv(name, value, overwrite);
     }
+    symver(setenv);
 
     __attribute__((visibility("default"))) int flock(int fd, int op)
     {
-        static const auto func_flock =
-            (int (*)(int, int))dlsym(RTLD_NEXT, "flock");
-        if (!IS_INITIALIZED) {
-            return func_flock(fd, op);
+        if (!Libc::IS_INITIALIZED) {
+            return Libc::flock(fd, op);
         }
+        _DEBUG("flock %d %d", fd, op);
         if (fd == epframebufferLockFd) {
             switch (op) {
                 case LOCK_SH:
@@ -1152,34 +1190,19 @@ extern "C"
                     break;
             }
         }
-        return func_flock(fd, op);
+        return Libc::flock(fd, op);
     }
-    __asm__(".globl  flock\n"
-            ".type   flock, %function\n"
-            "flock   = __flock\n");
+    symver(flock);
 
     __attribute__((visibility("default"))) void
     _ZN6QImageC1EiiNS_6FormatE(void* data, int width, int height, int format)
     {
         static bool FIRST_ALLOC = true;
-        static const auto qImageCtor = (void (*)(void*, int, int, int))dlsym(
-            RTLD_NEXT, "_ZN6QImageC1EiiNS_6FormatE"
-        );
-        static const auto qImageCtorWithBuffer = (void (*)(
-            void*,
-            uint8_t*,
-            int32_t,
-            int32_t,
-            int32_t,
-            int,
-            void (*)(void*),
-            void*
-        ))dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
         if (DO_HANDLE_FB && (unsigned int)width == blightBuffer->width &&
             (unsigned int)height == blightBuffer->height && FIRST_ALLOC) {
             _INFO("Replacing image with buffer");
             FIRST_ALLOC = false;
-            qImageCtorWithBuffer(
+            Libc::_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_(
                 data,
                 (uint8_t*)blightBuffer->data,
                 blightBuffer->width,
@@ -1191,38 +1214,12 @@ extern "C"
             );
             return;
         }
-        qImageCtor(data, width, height, format);
+        Libc::_ZN6QImageC1EiiNS_6FormatE(data, width, height, format);
     }
 
     void __attribute__((constructor)) init(void);
     void init(void)
     {
-        func_write = (ssize_t (*)(int, const void*, size_t))dlvsym(
-            RTLD_NEXT, "write", "GLIBC_2.4"
-        );
-        func_writev = (ssize_t (*)(int, const iovec*, int))dlvsym(
-            RTLD_NEXT, "writev", "GLIBC_2.4"
-        );
-        func_writev64 = (ssize_t (*)(int, const iovec*, int))dlvsym(
-            RTLD_NEXT, "writev64", "GLIBC_2.4"
-        );
-        func_pwrite = (ssize_t (*)(int, const void*, size_t, int))dlvsym(
-            RTLD_NEXT, "pwrite", "GLIBC_2.4"
-        );
-        func_pwrite64 = (ssize_t (*)(int, const void*, size_t, int))dlvsym(
-            RTLD_NEXT, "pwrite64", "GLIBC_2.4"
-        );
-        func_pwritev = (ssize_t (*)(int, const iovec*, int, int))dlvsym(
-            RTLD_NEXT, "pwritev", "GLIBC_2.4"
-        );
-        func_pwritev64 = (ssize_t (*)(int, const iovec*, int, int))dlvsym(
-            RTLD_NEXT, "pwritev64", "GLIBC_2.4"
-        );
-        func_open = (int (*)(const char*, int, ...))dlsym(RTLD_NEXT, "open");
-        func_ioctl =
-            (int (*)(int, unsigned long, ...))dlsym(RTLD_NEXT, "ioctl");
-        func_close = (int (*)(int))dlsym(RTLD_NEXT, "close");
-        func_msgget = (int (*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
         auto debugLevel = getenv("OXIDE_PRELOAD_DEBUG");
         if (debugLevel != nullptr) {
             try {
@@ -1319,7 +1316,7 @@ extern "C"
             Blight::enterExclusiveMode();
         }
         FAILED_INIT = false;
-        IS_INITIALIZED = true;
+        Libc::IS_INITIALIZED = true;
         blightConnection->focused();
         _DEBUG("blight_client initialized")
     }
