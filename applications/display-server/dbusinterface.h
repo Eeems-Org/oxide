@@ -5,9 +5,9 @@
 #include <QDBusContext>
 #include <QDBusMessage>
 #include <QDBusUnixFileDescriptor>
-#include <QMutex>
 #include <QObject>
 #include <QQmlApplicationEngine>
+#include <QReadWriteLock>
 #include <QTimer>
 #include <memory>
 
@@ -126,6 +126,7 @@ class DbusInterface
   private:
     DbusInterface(QObject* parent);
     QQmlApplicationEngine engine;
+    QReadWriteLock connectionsLock;
     QList<std::shared_ptr<Connection>> connections;
     std::shared_ptr<Connection> m_focused;
     struct
@@ -134,7 +135,7 @@ class DbusInterface
         QByteArray selection;
         QByteArray secondary;
     } clipboards;
-    bool m_exlusiveMode;
+    std::atomic<bool> m_exlusiveMode;
 
     std::shared_ptr<Connection> getConnection(QDBusMessage message);
     std::shared_ptr<Connection> getConnection(QString identifier);

@@ -375,7 +375,7 @@ GUIThread::visibleSurfaces()
             visibleSurfaces.end(),
             [](std::shared_ptr<Surface> surface) {
                 auto connection = surface->connection();
-                if (!connection->isRunning()) {
+                if (connection == nullptr || !connection->isRunning()) {
                     return true;
                 }
                 if (!surface->has("system") &&

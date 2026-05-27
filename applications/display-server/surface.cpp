@@ -25,7 +25,6 @@ Surface::Surface(
     QImage::Format format
 )
   : QObject()
-  , m_connection(connection)
   , m_identifier{ identifier }
   , m_geometry(geometry)
   , m_stride(stride)
@@ -33,6 +32,11 @@ Surface::Surface(
   , m_fd{ fd }
   , m_removed{ false }
 {
+    m_connection = dbusInterface->getConnection(connection);
+    if (m_connection == nullptr) {
+        S_WARNING("Failed to get shared pointer to connection");
+        return;
+    }
     m_id = QString("%1/surface/%2").arg(connection->id()).arg(identifier);
     data = reinterpret_cast<uchar*>(mmap(
         NULL,
@@ -129,7 +133,7 @@ Surface::isValid()
 std::shared_ptr<QImage>
 Surface::image()
 {
-    if (!m_connection->isRunning()) {
+    if (m_connection == nullptr || !m_connection->isRunning()) {
         return std::shared_ptr<QImage>();
     }
     return m_image;
@@ -276,7 +280,10 @@ Surface::unset(const QString& flag)
 std::shared_ptr<Connection>
 Surface::connection()
 {
-    return dbusInterface->getConnection(m_connection);
+    if (m_connection == nullptr) {
+        return nullptr;
+    }
+    return dbusInterface->getConnection(m_connection.get());
 }
 
 bool
@@ -295,9 +302,10 @@ Surface::removed()
 void
 Surface::activeFocusChanged(bool focus)
 {
-    if (focus) {
-        emit m_connection->focused();
+    if (!focus || m_connection == nullptr) {
+        return;
     }
+    emit m_connection->focused();
 }
 #endif
 

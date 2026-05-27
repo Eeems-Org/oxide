@@ -4,6 +4,7 @@
 #include <libblight/types.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
+#include <memory>
 #include <sys/poll.h>
 #include <unistd.h>
 
@@ -143,6 +144,7 @@ DbusInterface::loadComponent(
 std::shared_ptr<Surface>
 DbusInterface::getSurface(QString identifier)
 {
+    QReadLocker _locker(&connectionsLock);
     for (auto connection : qAsConst(connections)) {
         if (!connection->isRunning()) {
             continue;
@@ -285,7 +287,12 @@ DbusInterface::setFlags(
     QDBusMessage message
 )
 {
-    if (connections.count() > 1) {
+    int count;
+    {
+        QReadLocker _locker(&connectionsLock);
+        count = connections.count();
+    }
+    if (count > 1) {
         // Only validate system flag if there is more than one connection
         // TODO - also validate that executable is allowed to make this call
         auto connection = getConnection(message);
@@ -339,6 +346,7 @@ DbusInterface::getSurfaces(QDBusMessage message)
         sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
         return surfaces;
     }
+    QReadLocker _locker(&connectionsLock);
     for (auto connection : qAsConst(connections)) {
         if (!connection->isRunning()) {
             continue;
@@ -571,6 +579,9 @@ DbusInterface::exclusiveModeRepaint(
         );
         return;
     }
+    if (!m_exlusiveMode) {
+        return;
+    }
 #ifdef EPAPER
     guiThread->swap(
         QRect(x, y, width, height),
@@ -594,6 +605,9 @@ DbusInterface::exclusiveModeRepaintFull(QDBusMessage message)
         sendErrorReply(
             QDBusError::AccessDenied, "Must be system or exclusive connection"
         );
+        return;
+    }
+    if (!m_exlusiveMode) {
         return;
     }
 #ifdef EPAPER
@@ -665,10 +679,16 @@ DbusInterface::inputEvents(
             m_focused->inputEvents(device, events);
         });
     }
-    for (auto connection : qAsConst(connections)) {
-        if (!connection->has("system")) {
-            continue;
+    QList<std::shared_ptr<Connection>> systemConnections;
+    {
+        QReadLocker _locker(&connectionsLock);
+        for (auto connection : qAsConst(connections)) {
+            if (connection->has("system")) {
+                systemConnections.append(connection);
+            }
         }
+    }
+    for (auto connection : qAsConst(systemConnections)) {
         Oxide::dispatchToThread(
             connection->thread(), [connection, device, events] {
                 connection->inputEvents(device, events);
@@ -687,7 +707,7 @@ std::shared_ptr<Connection>
 DbusInterface::getConnection(QDBusMessage message)
 {
     pid_t pid = connection().interface()->servicePid(message.service());
-    ;
+    QReadLocker _locker(&connectionsLock);
     for (auto connection : qAsConst(connections)) {
         if (!connection->isRunning()) {
             continue;
@@ -702,6 +722,7 @@ DbusInterface::getConnection(QDBusMessage message)
 std::shared_ptr<Connection>
 DbusInterface::getConnection(QString identifier)
 {
+    QReadLocker _locker(&connectionsLock);
     for (auto connection : qAsConst(connections)) {
         if (connection->id() == identifier) {
             return connection;
@@ -712,6 +733,7 @@ DbusInterface::getConnection(QString identifier)
 std::shared_ptr<Connection>
 DbusInterface::getConnection(Connection* ptr)
 {
+    QReadLocker _locker(&connectionsLock);
     for (auto connection : qAsConst(connections)) {
         if (connection.get() == ptr) {
             return connection;
@@ -755,14 +777,21 @@ DbusInterface::createConnection(int pid)
     connect(connection.get(), &Connection::finished, this, [this, connection] {
         O_INFO("Connection" << connection->pid() << "closed");
         auto found = false;
+        connectionsLock.lockForRead();
         for (auto& ptr : qAsConst(connections)) {
             if (ptr == connection) {
                 found = true;
+                connectionsLock.unlock();
+                connectionsLock.lockForWrite();
                 connections.removeAll(ptr);
+                connectionsLock.unlock();
                 guiThread->notify();
+                // to keep next unlock from failing
+                connectionsLock.lockForRead();
                 break;
             }
         }
+        connectionsLock.unlock();
         if (!found) {
             O_WARNING("Could not find connection to remove!");
         }
@@ -772,6 +801,7 @@ DbusInterface::createConnection(int pid)
         sortZ();
     });
     connect(connection.get(), &Connection::focused, this, [this, connection] {
+        QReadLocker _locker(&connectionsLock);
         for (auto& ptr : qAsConst(connections)) {
             if (ptr == connection && !ptr->has("system")) {
                 setFocus(ptr);
@@ -779,6 +809,7 @@ DbusInterface::createConnection(int pid)
             }
         }
     });
+    QWriteLocker _locker(&connectionsLock);
     connections.append(connection);
     return connection;
 }
@@ -787,6 +818,7 @@ QList<std::shared_ptr<Surface>>
 DbusInterface::surfaces()
 {
     QList<std::shared_ptr<Surface>> surfaces;
+    QReadLocker _locker(&connectionsLock);
     for (auto& connection : qAsConst(connections)) {
         for (auto& surface : connection->getSurfaces()) {
             surfaces.append(surface);
@@ -828,7 +860,8 @@ DbusInterface::visibleSurfaces()
     QList<std::shared_ptr<Surface>> surfaces;
     for (auto& surface : sortedSurfaces()) {
         auto connection = surface->connection();
-        if (surface->visible() && connection->isRunning()) {
+        if (connection != nullptr && surface->visible() &&
+            connection->isRunning()) {
             surfaces.append(surface);
         }
     }
@@ -897,16 +930,17 @@ DbusInterface::sortZ()
             continue;
         }
         auto connection = surface->connection();
-        if (!connection->isRunning() || connection->isStopped() ||
-            connection->has("system")) {
+        if (connection == nullptr || !connection->isRunning() ||
+            connection->isStopped() || connection->has("system")) {
             continue;
         }
-        for (auto& ptr : qAsConst(connections)) {
-            if (ptr == connection) {
-                setFocus(ptr);
-                break;
+        {
+            QReadLocker _locker(&connectionsLock);
+            if (!connections.contains(connection)) {
+                continue;
             }
         }
+        setFocus(connection);
         break;
     }
 }

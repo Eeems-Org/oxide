@@ -59,8 +59,7 @@ class Surface : public QObject
 #endif
 
   private:
-    // Surface is owned by Connection, so a non-shared pointer is safe
-    Connection* m_connection;
+    std::shared_ptr<Connection> m_connection;
     Blight::surface_id_t m_identifier;
     QRect m_geometry;
     int m_stride;

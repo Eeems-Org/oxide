@@ -9,6 +9,7 @@
 #include <QLocalSocket>
 #include <QMutex>
 #include <QObject>
+#include <QReadWriteLock>
 #include <QRect>
 #include <QSocketNotifier>
 #include <QString>
@@ -78,6 +79,7 @@ class Connection : public QObject
     int m_serverInputFd;
     QSocketNotifier* m_notifier;
     QLocalSocket m_pidNotifier;
+    QReadWriteLock surfacesLock;
     std::map<Blight::surface_id_t, std::shared_ptr<Surface>> surfaces;
     std::atomic_flag m_closed;
     QTimer m_notRespondingTimer;
