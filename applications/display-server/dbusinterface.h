@@ -99,7 +99,16 @@ class DbusInterface
     void waitForNoRepaints(QDBusMessage message);
     void enterExclusiveMode(QDBusMessage message);
     void exitExclusiveMode(QDBusMessage message);
-    void exclusiveModeRepaint(QDBusMessage message);
+    void exclusiveModeRepaint(
+        int x,
+        int y,
+        int width,
+        int height,
+        int waveform,
+        int updateMode,
+        QDBusMessage message
+    );
+    void exclusiveModeRepaintFull(QDBusMessage message);
     bool connectionExists(QString identifier, QDBusMessage message);
 
   signals:

@@ -87,7 +87,7 @@ namespace Blight {
         }
         return true;
     }
-    bool exclusiveModeRepaint()
+    bool exclusiveModeRepaintFull()
     {
         if (!exists()) {
             errno = EAGAIN;
@@ -96,6 +96,42 @@ namespace Blight {
         _DEBUG("[Blight::exclusiveModeRepaint()]");
         auto reply = dbus->call_method(
             BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "exclusiveModeRepaint"
+        );
+        if (reply->isError()) {
+            _WARN(
+                "[Blight::exclusiveModeRepaint()::call_method(...)] Error: %s",
+                reply->error_message().c_str()
+            );
+            return false;
+        }
+        return true;
+    }
+    bool exclusiveModeRepaint(
+        int x,
+        int y,
+        int width,
+        int height,
+        WaveformMode waveform,
+        UpdateMode updateMode
+    )
+    {
+        if (!exists()) {
+            errno = EAGAIN;
+            return false;
+        }
+        _DEBUG("[Blight::exclusiveModeRepaint()]");
+        auto reply = dbus->call_method(
+            BLIGHT_SERVICE,
+            "/",
+            BLIGHT_INTERFACE,
+            "exclusiveModeRepaint",
+            "iiiiii",
+            x,
+            y,
+            width,
+            height,
+            waveform,
+            updateMode
         );
         if (reply->isError()) {
             _WARN(

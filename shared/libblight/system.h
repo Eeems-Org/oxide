@@ -44,7 +44,21 @@ namespace Blight {
      * \return If the call succeeded or not
      * \retval false call failed
      */
-    LIBBLIGHT_EXPORT bool exclusiveModeRepaint();
+    LIBBLIGHT_EXPORT bool exclusiveModeRepaintFull();
+    /*!
+     * \brief While in exclusive mode, repaint the entire screen from the
+     * famebuffer
+     * \return If the call succeeded or not
+     * \retval false call failed
+     */
+    LIBBLIGHT_EXPORT bool exclusiveModeRepaint(
+        int x,
+        int y,
+        int width,
+        int height,
+        WaveformMode waveform,
+        UpdateMode updateMode
+    );
     /*!
      * \brief Set flags for a surface or connection
      * \param identifier surface or connection identifier

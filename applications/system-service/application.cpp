@@ -81,7 +81,7 @@ Application::launchNoSecurityCheck()
                     QPainter p(frameBuffer);
                     p.fillRect(frameBuffer->rect(), Qt::white);
                     p.end();
-                    compositor->exclusiveModeRepaint().waitForFinished();
+                    compositor->exclusiveModeRepaintFull().waitForFinished();
                 }
                 if (m_process->program() != bin()) {
                     m_process->setProgram(bin());
@@ -363,7 +363,7 @@ Application::uninterruptApplication()
                     m_backup = nullptr;
                 }
                 p.end();
-                compositor->exclusiveModeRepaint().waitForFinished();
+                compositor->exclusiveModeRepaintFull().waitForFinished();
             }
 #ifdef SENTRY
             if (t != nullptr) {

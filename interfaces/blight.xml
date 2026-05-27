@@ -63,6 +63,14 @@
     <method name="exitExclusiveMode">
     </method>
     <method name="exclusiveModeRepaint">
+      <arg name="x" type="i" direction="in"/>
+      <arg name="y" type="i" direction="in"/>
+      <arg name="width" type="i" direction="in"/>
+      <arg name="height" type="i" direction="in"/>
+      <arg name="waveform" type="i" direction="in"/>
+      <arg name="updateMode" type="i" direction="in"/>
+    </method>
+    <method name="exclusiveModeRepaintFull">
     </method>
     <method name="connectionExists">
       <arg type="b" direction="out"/>

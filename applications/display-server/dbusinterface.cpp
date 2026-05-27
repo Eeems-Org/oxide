@@ -558,9 +558,41 @@ DbusInterface::exitExclusiveMode(QDBusMessage message)
 #endif
     waitForNoRepaints(message);
 }
+void
+DbusInterface::exclusiveModeRepaint(
+    int x,
+    int y,
+    int width,
+    int height,
+    int waveform,
+    int updateMode,
+    QDBusMessage message
+)
+{
+    auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return;
+    }
+    if (!connection->has("system") && !connection->has("exclusive")) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "Must be system or exclusive connection"
+        );
+        return;
+    }
+#ifdef EPAPER
+    guiThread->swap(
+        QRect(x, y, width, height),
+        (Blight::WaveformMode)waveform,
+        (Blight::UpdateMode)updateMode
+    );
+#endif
+}
 
 void
-DbusInterface::exclusiveModeRepaint(QDBusMessage message)
+DbusInterface::exclusiveModeRepaintFull(QDBusMessage message)
 {
     auto connection = getConnection(message);
     if (connection == nullptr) {
