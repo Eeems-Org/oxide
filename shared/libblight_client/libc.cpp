@@ -2,7 +2,6 @@
 #include <dlfcn.h>
 
 namespace Libc {
-    bool IS_INITIALIZED = false;
     ssize_t (*write)(int, const void*, size_t) = (ssize_t (*)(
         int,
         const void*,
@@ -75,31 +74,4 @@ namespace Libc {
 
     bool (*setenv)(const char*, const char*, int) =
         (bool (*)(const char*, const char*, int))dlsym(RTLD_NEXT, "setenv");
-
-    void (*_ZN6QImageC1EiiNS_6FormatE)(void*, int, int, int) =
-        (void (*)(void*, int, int, int))dlsym(
-            RTLD_NEXT,
-            "_ZN6QImageC1EiiNS_6FormatE"
-        );
-
-    void (*_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_)(
-        void*,
-        uint8_t*,
-        int32_t,
-        int32_t,
-        int32_t,
-        int,
-        void (*)(void*),
-        void*
-    ) =
-        (void (*)(
-            void*,
-            uint8_t*,
-            int32_t,
-            int32_t,
-            int32_t,
-            int,
-            void (*)(void*),
-            void*
-        ))dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
 }

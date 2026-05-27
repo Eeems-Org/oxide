@@ -8,10 +8,17 @@ CONFIG += hide_symbols
 
 QT =
 
-HEADERS += libc.h
+HEADERS += \
+    libc.h \
+    state.h \
+    fb.h \
+    input.h
 
 SOURCES += \
     libc.cpp \
+    state.cpp \
+    fb.cpp \
+    input.cpp \
     main.cpp
 
 LIBS += -lrt -ldl -Wl,--exclude-libs,ALL

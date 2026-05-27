@@ -21,16 +21,4 @@ namespace Libc {
     extern int (*msgsnd)(int, const void*, size_t, int);
     extern int (*flock)(int, int);
     extern bool (*setenv)(const char*, const char*, int);
-    extern void (*_ZN6QImageC1EiiNS_6FormatE)(void*, int, int, int);
-    extern void (*_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_)(
-        void*,
-        uint8_t*,
-        int32_t,
-        int32_t,
-        int32_t,
-        int,
-        void (*)(void*),
-        void*
-    );
-    extern bool IS_INITIALIZED;
 }
