@@ -53,7 +53,6 @@ getFrameBuffer()
     static QImage* image = nullptr;
     static QFile* file = nullptr;
     if (image == nullptr) {
-        file = new QFile();
         auto compositor = getCompositorDBus();
         auto reply = compositor->frameBuffer();
         reply.waitForFinished();
@@ -74,6 +73,7 @@ getFrameBuffer()
             return nullptr;
         }
         O_DEBUG("Framebuffer fd:" << std::to_string(fd).c_str())
+        file = new QFile();
         if (!file->open(fd, QFile::ReadWrite)) {
             O_WARNING("Failed to open framebuffer " << file->errorString());
             ::close(fd);
