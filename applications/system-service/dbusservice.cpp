@@ -374,7 +374,7 @@ DBusService::exit(int exitCode)
     sentry_breadcrumb("dbusservice", "APIs disconnected", "info");
 #endif
     O_DEBUG("Exiting");
-    std::exit(exitCode);
+    qApp->exit(exitCode);
 }
 
 void
