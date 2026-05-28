@@ -13,9 +13,13 @@
 #define EPFR_OFFSET_AUXBUFFER_RM2 0x60
 
 #ifdef __aarch64__
+// rMPP / rMPPM
 #define DEFAULT_EPFR_RETURN EPFramebufferAcep2
 #else
+// rM2 / rMPPure
 #define DEFAULT_EPFR_RETURN EPFramebufferFusion
+// rM1
+// #define DEFAULT_EPFR_RETURN EPFramebufferTcon
 #endif
 
 enum EPScreenMode
@@ -57,8 +61,8 @@ class EPFramebufferSwtcon : public EPFramebuffer
   public:
     void initialize(void);
     void sync(void);
-    // unsigned long update(QRect param_1, int color, PixelMode type, int
-    // fullRefresh);
+    // unsigned long update(QRect param_1, int waveform_mode, PixelMode
+    // update_mode, int update_marker);
 };
 
 #ifdef __aarch64__

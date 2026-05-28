@@ -5,6 +5,7 @@
 #include <mxcfb.h>
 
 namespace FB {
+    void init();
     extern Blight::shared_buf_t buffer;
     extern Blight::Connection* connection;
     extern int frameBuffer;
@@ -16,9 +17,13 @@ namespace FB {
     int wait(mxcfb_update_marker_data* update);
     int get_vscreeninfo(fb_var_screeninfo* screenInfo);
     int get_fscreeninfo(fb_fix_screeninfo* screenInfo);
-    int put_vscreeninfo(fb_var_screeninfo* screenInfo);
     int ioctl(unsigned long request, char* ptr);
     int exclusive_ioctl(unsigned long request, char* ptr);
+    Blight::Format deviceFormat();
+    int deviceXres();
+    int deviceYres();
+    int deviceStride();
+    int deviceBitsPerPixel();
 }
 namespace swtfb {
     struct xochitl_data

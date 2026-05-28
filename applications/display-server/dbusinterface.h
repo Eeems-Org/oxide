@@ -10,11 +10,13 @@
 #include <QReadWriteLock>
 #include <QTimer>
 #include <memory>
+#include <tuple>
 
 #include "connection.h"
 
 // Use direct values to make sure that cpp2xml works
 #include "../../shared/libblight/meta.h"
+#include "../../shared/liboxide/dbus_types.h"
 #include "../../shared/liboxide/meta.h"
 
 #define dbusInterface DbusInterface::singleton()
@@ -93,6 +95,7 @@ class DbusInterface
     );
     QStringList getSurfaces(QDBusMessage message);
     QDBusUnixFileDescriptor frameBuffer(QDBusMessage message);
+    FrameBufferInfo frameBufferInfo(QDBusMessage message);
     void lower(QString identifier, QDBusMessage message);
     void raise(QString identifier, QDBusMessage message);
     void focus(QString identifier, QDBusMessage message);

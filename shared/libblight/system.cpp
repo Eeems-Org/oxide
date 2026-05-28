@@ -49,6 +49,38 @@ namespace Blight {
         }
         return dfd;
     }
+    std::tuple<int, int, int> frameBufferInfo()
+    {
+        if (!exists()) {
+            errno = EAGAIN;
+            return { -1, -1, -1 };
+        }
+        _DEBUG("[Blight::frameBufferInfo()]");
+        auto reply = dbus->call_method(
+            BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "frameBufferInfo"
+        );
+        if (reply->isError()) {
+            _WARN(
+                "[Blight::frameBufferInfo()::call_method(...)] Error: %s",
+                reply->error_message().c_str()
+            );
+            errno = reply->return_value;
+            return { -1, -1, -1 };
+        }
+        int width, height, stride;
+        reply->return_value = sd_bus_message_read(
+            reply->message, "(iii)", &width, &height, &stride
+        );
+        if (reply->isError()) {
+            _WARN(
+                "[Blight::frameBufferInfo()::read_value(\"(iii)\")] Error: %s",
+                reply->error_message().c_str()
+            );
+            errno = reply->return_value;
+            return { -1, -1, -1 };
+        }
+        return { width, height, stride };
+    }
     bool enterExclusiveMode()
     {
         if (!exists()) {

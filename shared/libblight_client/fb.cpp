@@ -7,6 +7,9 @@
 #include <cstring>
 #include <errno.h>
 #include <fcntl.h>
+#include <fstream>
+#include <iostream>
+#include <string>
 
 #include <libblight.h>
 #include <libblight/clock.h>
@@ -21,6 +24,27 @@ namespace FB {
     int epframebufferLockFd = -1;
     int epdLockFd = -1;
     int msgq = -1;
+    void init()
+    {
+        std::ios_base::Init i;
+        std::ifstream device_id_file{ "/sys/devices/soc0/machine" };
+        std::string device_id;
+        std::getline(device_id_file, device_id);
+        if (device_id == "reMarkable 1.0" ||
+            device_id == "reMarkable Prototype 1") {
+            Client::deviceType = Client::DeviceType::RM1;
+        } else if (device_id == "reMarkable 2.0") {
+            Client::deviceType = Client::DeviceType::RM2;
+        } else if (device_id == "reMarkable Ferrari") {
+            Client::deviceType = Client::DeviceType::RMPP;
+        } else if (device_id == "reMarkable Chiapa") {
+            Client::deviceType = Client::DeviceType::RMPPM;
+        } else if (device_id == "reMarkable Tatsu") {
+            Client::deviceType = Client::DeviceType::RMPPURE;
+        } else {
+            Client::deviceType = Client::DeviceType::UNKNOWN;
+        }
+    }
     bool is_fb(int fd)
     {
         return Client::HANDLE_FB && buffer->fd > 0 && buffer->fd == fd;
@@ -65,28 +89,55 @@ namespace FB {
         );
         return 0;
     }
-    int get_vscreeninfo(fb_var_screeninfo* screenInfo)
+    int get_vscreeninfo(
+        fb_var_screeninfo* screenInfo,
+        int width,
+        int height,
+        int stride
+    )
     {
-        _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_VSCREENINFO");
-        screenInfo->xres = buffer->width;
-        screenInfo->yres = buffer->height;
+        screenInfo->xres = width;
+        screenInfo->yres = height;
         screenInfo->xoffset = 0;
         screenInfo->yoffset = 0;
-        screenInfo->xres_virtual = buffer->width;
-        screenInfo->yres_virtual = buffer->height;
-        screenInfo->bits_per_pixel = buffer->stride / buffer->width * 8;
+        screenInfo->xres_virtual = width;
+        screenInfo->yres_virtual = height;
+        screenInfo->bits_per_pixel = stride / width * 8;
         // TODO - determine the following from the buffer format
-        // Format_RGB16 / RGB565
-        screenInfo->grayscale = 0;
-        screenInfo->red.offset = 11;
-        screenInfo->red.length = 5;
-        screenInfo->red.msb_right = 0;
-        screenInfo->green.offset = 5;
-        screenInfo->green.length = 6;
-        screenInfo->green.msb_right = 0;
-        screenInfo->blue.offset = 0;
-        screenInfo->blue.length = 5;
-        screenInfo->blue.msb_right = 0;
+        switch (Client::deviceType) {
+            case Client::DeviceType::RM1:
+                // Format_RGB16 / RGB565
+                screenInfo->grayscale = 0;
+                screenInfo->red.offset = 11;
+                screenInfo->red.length = 5;
+                screenInfo->red.msb_right = 0;
+                screenInfo->green.offset = 5;
+                screenInfo->green.length = 6;
+                screenInfo->green.msb_right = 0;
+                screenInfo->blue.offset = 0;
+                screenInfo->blue.length = 5;
+                screenInfo->blue.msb_right = 0;
+                screenInfo->transp.offset = 0;
+                screenInfo->transp.length = 0;
+                screenInfo->transp.msb_right = 0;
+                break;
+            default:
+                // Format_RGB888 / RGB888
+                screenInfo->grayscale = 0;
+                screenInfo->red.offset = 16;
+                screenInfo->red.length = 8;
+                screenInfo->red.msb_right = 0;
+                screenInfo->green.offset = 8;
+                screenInfo->green.length = 8;
+                screenInfo->green.msb_right = 0;
+                screenInfo->blue.offset = 0;
+                screenInfo->blue.length = 8;
+                screenInfo->blue.msb_right = 0;
+                screenInfo->transp.offset = 0;
+                screenInfo->transp.length = 0;
+                screenInfo->transp.msb_right = 0;
+                break;
+        }
         // TODO what should this even be?
         screenInfo->nonstd = 0;
         screenInfo->activate = FB_ACTIVATE_FORCE;
@@ -113,7 +164,6 @@ namespace FB {
     }
     int get_fscreeninfo(fb_fix_screeninfo* screenInfo)
     {
-        _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_FSCREENINFO");
         constexpr char fb_id[] = "mxcfb";
         memcpy(screenInfo->id, fb_id, sizeof(fb_id));
         // TODO determine all the values dynamically
@@ -133,10 +183,8 @@ namespace FB {
         screenInfo->reserved[1] = 0;
         return 0;
     }
-    int put_vscreeninfo(fb_var_screeninfo* screenInfo)
+    void print_vscreeninfo(fb_var_screeninfo* screenInfo)
     {
-        _DEBUG("%s", "ioctl /dev/fb0 FBIOPUT_VSCREENINFO");
-        // TODO - Explore allowing some screen info updating
         _DEBUG(
             "\n"
             "res: %dx%d\n"
@@ -202,8 +250,6 @@ namespace FB {
             screenInfo->reserved[2],
             screenInfo->reserved[3]
         );
-        // TODO allow resizing?
-        return 0;
     }
     int ioctl(unsigned long request, char* ptr)
     {
@@ -217,6 +263,7 @@ namespace FB {
                 return wait(reinterpret_cast<mxcfb_update_marker_data*>(ptr));
             }
             case FBIOGET_VSCREENINFO: {
+                _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_FSCREENINFO");
                 // TODO - handle getting information on rMPP/rMPPM
                 int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
                 if (fd == -1) {
@@ -227,10 +274,14 @@ namespace FB {
                 }
                 Libc::close(fd);
                 return get_vscreeninfo(
-                    reinterpret_cast<fb_var_screeninfo*>(ptr)
+                    reinterpret_cast<fb_var_screeninfo*>(ptr),
+                    buffer->width,
+                    buffer->height,
+                    buffer->stride
                 );
             }
             case FBIOGET_FSCREENINFO: {
+                _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_VSCREENINFO");
                 // TODO - handle getting information on rMPP/rMPPM
                 int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
                 if (fd == -1) {
@@ -245,9 +296,12 @@ namespace FB {
                 );
             }
             case FBIOPUT_VSCREENINFO: {
-                return put_vscreeninfo(
-                    reinterpret_cast<fb_var_screeninfo*>(ptr)
-                );
+                _DEBUG("%s", "ioctl /dev/fb0 FBIOPUT_VSCREENINFO");
+                // TODO - handle updating fb
+                // TODO - Explore allowing some screen info updating
+                // TODO allow resizing?
+                print_vscreeninfo(reinterpret_cast<fb_var_screeninfo*>(ptr));
+                return 0;
             }
             case MXCFB_SET_AUTO_UPDATE_MODE:
                 _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SET_AUTO_UPDATE_MODE");
@@ -261,6 +315,11 @@ namespace FB {
             case MXCFB_DISABLE_EPDC_ACCESS:
                 _DEBUG("%s", "ioctl /dev/fb0 MXCFB_DISABLE_EPDC_ACCESS");
                 return 0;
+            case FBIOPAN_DISPLAY: {
+                _DEBUG("%s", "ioctl /dev/fb0 FBIOPAN_DISPLAY");
+                print_vscreeninfo(reinterpret_cast<fb_var_screeninfo*>(ptr));
+                return 0;
+            }
             default:
                 _WARN(
                     "UNHANDLED Fb IOCTL %lu %c %lu %lu %lu",
@@ -321,14 +380,28 @@ namespace FB {
                 if (fd == -1) {
                     return -1;
                 }
-                int res = Libc::ioctl(fd, request, ptr);
+                if (Libc::ioctl(fd, request, ptr) == -1) {
+                    return -1;
+                }
                 Libc::close(fd);
-                return res;
+                std::tuple<int, int, int> info = Blight::frameBufferInfo();
+                if (std::get<0>(info) == -1) {
+                    return -1;
+                }
+                return get_vscreeninfo(
+                    reinterpret_cast<fb_var_screeninfo*>(ptr),
+                    std::get<0>(info),
+                    std::get<1>(info),
+                    std::get<2>(info)
+                );
             }
             case FBIOPUT_VSCREENINFO: {
-                return put_vscreeninfo(
-                    reinterpret_cast<fb_var_screeninfo*>(ptr)
-                );
+                _DEBUG("%s", "ioctl /dev/fb0 FBIOPUT_VSCREENINFO");
+                // TODO - handle updating fb
+                // TODO - Explore allowing some screen info updating
+                // TODO allow resizing?
+                print_vscreeninfo(reinterpret_cast<fb_var_screeninfo*>(ptr));
+                return 0;
             }
             case MXCFB_SET_AUTO_UPDATE_MODE:
                 _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SET_AUTO_UPDATE_MODE");
@@ -342,6 +415,18 @@ namespace FB {
             case MXCFB_DISABLE_EPDC_ACCESS:
                 _DEBUG("%s", "ioctl /dev/fb0 MXCFB_DISABLE_EPDC_ACCESS");
                 return 0;
+            case FBIOPAN_DISPLAY: {
+                _DEBUG("%s", "ioctl /dev/fb0 FBIOPAN_DISPLAY");
+                print_vscreeninfo(reinterpret_cast<fb_var_screeninfo*>(ptr));
+                if (Client::deviceType == Client::DeviceType::RM2) {
+                    Blight::exclusiveModeRepaintFull();
+                }
+                return 0;
+            }
+            case FBIOBLANK: {
+                _DEBUG("%s", "ioctl /dev/fb0 FBIOBLANK");
+                return 0;
+            }
             default:
                 _WARN(
                     "UNHANDLED Fb IOCTL %lu %c %lu %lu %lu",
@@ -352,6 +437,58 @@ namespace FB {
                     request
                 );
                 return 0;
+        }
+    }
+    Blight::Format deviceFormat()
+    {
+        switch (Client::deviceType) {
+            case Client::DeviceType::RM1:
+                return Blight::Format::Format_RGB16;
+            default:
+                return Blight::Format::Format_RGB888;
+        }
+    }
+    int deviceXres()
+    {
+        switch (Client::deviceType) {
+            case Client::DeviceType::RM1:
+            case Client::DeviceType::RM2:
+            case Client::DeviceType::RMPPURE:
+                return 1404;
+            case Client::DeviceType::RMPP:
+                return 1620;
+            case Client::DeviceType::RMPPM:
+                return 954;
+            default:
+                return 0;
+        }
+    }
+    int deviceYres()
+    {
+        switch (Client::deviceType) {
+            case Client::DeviceType::RM1:
+            case Client::DeviceType::RM2:
+            case Client::DeviceType::RMPPURE:
+                return 1872;
+            case Client::DeviceType::RMPP:
+                return 2160;
+            case Client::DeviceType::RMPPM:
+                return 1696;
+            default:
+                return 0;
+        }
+    }
+    int deviceStride()
+    {
+        return deviceYres() * deviceBitsPerPixel() / 8;
+    }
+    int deviceBitsPerPixel()
+    {
+        switch (Client::deviceType) {
+            case Client::DeviceType::RM1:
+                return 16;
+            default:
+                return 32;
         }
     }
 }

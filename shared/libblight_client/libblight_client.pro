@@ -12,13 +12,15 @@ HEADERS += \
     libc.h \
     state.h \
     fb.h \
-    input.h
+    input.h \
+    qt.h
 
 SOURCES += \
     libc.cpp \
     state.cpp \
     fb.cpp \
     input.cpp \
+    qt.cpp \
     main.cpp
 
 LIBS += -lrt -ldl -Wl,--exclude-libs,ALL

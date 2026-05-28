@@ -12,3 +12,5 @@ dist/
 version.txt
 *.pro.user.*
 *.log
+*.so
+xochitl

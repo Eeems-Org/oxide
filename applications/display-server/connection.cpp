@@ -703,11 +703,12 @@ Connection::readSocket()
                 auto marker = (unsigned int)*message->data.get();
                 C_DEBUG("Wait requested:" << marker);
                 mxcfb_update_marker_data data{ marker, 0 };
-                ioctl(
-                    guiThread->framebuffer(),
-                    MXCFB_WAIT_FOR_UPDATE_COMPLETE,
-                    &data
-                );
+                auto framebuffer = guiThread->framebuffer();
+                if (framebuffer != nullptr) {
+                    ioctl(
+                        framebuffer->fd, MXCFB_WAIT_FOR_UPDATE_COMPLETE, &data
+                    );
+                }
 #endif
                 break;
             }

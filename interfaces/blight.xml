@@ -47,6 +47,10 @@
     <method name="frameBuffer">
       <arg type="h" direction="out"/>
     </method>
+    <method name="frameBufferInfo">
+      <arg type="(iii)" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="FrameBufferInfo"/>
+    </method>
     <method name="lower">
       <arg name="identifier" type="s" direction="in"/>
     </method>

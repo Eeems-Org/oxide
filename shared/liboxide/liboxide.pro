@@ -37,7 +37,8 @@ SOURCES += \
     signalhandler.cpp \
     threading.cpp \
     udev.cpp \
-    xochitlsettings.cpp
+    xochitlsettings.cpp \
+    dbus_types.cpp
 
 HEADERS += \
     applications.h \
@@ -61,7 +62,8 @@ HEADERS += \
     signalhandler.h \
     threading.h \
     udev.h \
-    xochitlsettings.h
+    xochitlsettings.h \
+    dbus_types.h
 
 PRECOMPILED_HEADER = \
     liboxide_stable.h
@@ -78,8 +80,11 @@ DBUS_INTERFACES += \
     ../../interfaces/screenapi.xml \
     ../../interfaces/screenshot.xml \
     ../../interfaces/notificationapi.xml \
-    ../../interfaces/notification.xml \
-    ../../interfaces/blight.xml
+    ../../interfaces/notification.xml
+
+blight.files = ../../interfaces/blight.xml
+blight.header_flags = -i dbus_types.h
+DBUS_INTERFACES += blight
 
 include(../../qmake/common.pri)
 PKGCONFIG += libsystemd

@@ -1,6 +1,7 @@
 #include "fb.h"
 #include "input.h"
 #include "libc.h"
+#include "qt.h"
 #include "state.h"
 
 #include <asm/ioctl.h>
@@ -94,6 +95,7 @@ namespace {
                 return FB::buffer->fd;
             }
             auto surfaceIds = FB::connection->surfaces();
+            auto deviceFormat = FB::deviceFormat();
             if (!surfaceIds.empty()) {
                 for (auto& identifier : surfaceIds) {
                     auto maybe = FB::connection->getBuffer(identifier);
@@ -105,9 +107,10 @@ namespace {
                         continue;
                     }
                     if (buffer->x != 0 || buffer->y != 0 ||
-                        buffer->width != 1404 || buffer->height != 1872 ||
-                        buffer->stride != 2808 ||
-                        buffer->format != Blight::Format::Format_RGB16) {
+                        buffer->width != FB::deviceXres() ||
+                        buffer->height != FB::deviceYres() ||
+                        buffer->stride != FB::deviceStride() ||
+                        buffer->format != deviceFormat) {
                         continue;
                     }
                     _INFO("Reusing existing surface: %s", identifier);
@@ -118,7 +121,12 @@ namespace {
             if (FB::buffer->format == Blight::Format::Format_Invalid) {
                 /// Emulate rM1 screen
                 auto maybe = Blight::createBuffer(
-                    0, 0, 1404, 1872, 2808, Blight::Format::Format_RGB16
+                    0,
+                    0,
+                    FB::deviceXres(),
+                    FB::deviceYres(),
+                    FB::deviceStride(),
+                    deviceFormat
                 );
                 if (!maybe.has_value()) {
                     return -1;
@@ -635,35 +643,91 @@ extern "C"
     }
     symver(flock);
 
-    // __attribute__((visibility("default"))) void
-    // _ZN6QImageC1EiiNS_6FormatE(void* data, int width, int height, int format)
-    // {
-    //     static bool FIRST_ALLOC = true;
-    //     static const auto qImageCtor = (
-    //         void(*)(void*, int, int, int)
-    //     )dlsym(RTLD_NEXT, "_ZN6QImageC1EiiNS_6FormatE");
-    //     static const auto qImageCtorWithBuffer = (
-    //         void(*)(void*, uint8_t*, int32_t, int32_t, int32_t, int,
-    //         void(*)(void*), void*)
-    //     )dlsym(RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_");
-    //     if (Client::HANDLE_FB && (unsigned int)width == FB::buffer->width &&
-    //         (unsigned int)height == FB::buffer->height && FIRST_ALLOC) {
-    //         _INFO("Replacing image with buffer");
-    //         FIRST_ALLOC = false;
-    //         qImageCtorWithBuffer(
-    //             data,
-    //             (uint8_t*)FB::buffer->data,
-    //             FB::buffer->width,
-    //             FB::buffer->height,
-    //             FB::buffer->stride,
-    //             format,
-    //             nullptr,
-    //             nullptr
-    //         );
-    //         return;
-    //     }
-    //     qImageCtor(data, width, height, format);
-    // }
+    __attribute__((visibility("default"))) unsigned long
+    _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
+        void* this_ptr,
+        Qt::QRectLayout rect,
+        int waveform,
+        int update_mode,
+        int marker
+    )
+    {
+        _DEBUG(
+            "EPFramebufferSwtcon::update({%i, %i, %i, %i}, %i, %i, %i)",
+            rect.left,
+            rect.top,
+            rect.right,
+            rect.bottom,
+            waveform,
+            update_mode,
+            marker
+        );
+        Blight::exclusiveModeRepaint(
+            rect.left,
+            rect.top,
+            rect.left + rect.right,
+            rect.top + rect.bottom,
+            (Blight::WaveformMode)waveform,
+            (Blight::UpdateMode)update_mode
+        );
+        return 0;
+    }
+    __attribute__((visibility("default"))) unsigned long
+    _ZN19EPFramebufferFusion16swapBuffers_implERK7QRegionRK12EPContentMapRK15EPScreenModeMap6QFlagsIN13EPFramebuffer10UpdateFlagEE(
+        void* this_ptr,
+        const void* region,
+        const void* contentMap,
+        const void* screenModeMap,
+        int flags
+    )
+    {
+        _DEBUG("%s", "EPFramebufferFusion::swapBuffers_impl()");
+        static Qt::qregion_begin_t qregion_begin = Qt::qregion_begin();
+        static Qt::qregion_end_t qregion_end = Qt::qregion_end();
+        static auto epsm_region = (void* (*)(const void*, int))dlsym(
+            RTLD_DEFAULT, "_ZNK15EPScreenModeMap6regionE12EPScreenMode"
+        );
+        const Qt::QRectLayout* it = qregion_begin(region);
+        const Qt::QRectLayout* end = qregion_end(region);
+        static const int mode_params[6][3] = {
+            { 2, 7, 1 }, // 0 = QualityFastest
+            { 1, 7, 2 }, // 1 = QualityFast
+            { 2, 7, 1 }, // 2 = Animate
+            { 2, 7, 1 }, // 3 = Quality3
+            { 6, 7, 0 }, // 4 = QualityFull
+            { 1, 7, 0 }, // 5 = Quality5
+        };
+        for (; it != end; it++) {
+            int waveform = 2, pixel = 7, marker = 1;
+            bool found = false;
+            for (int m = 0; m < 6 && !found; m++) {
+                void* mr = epsm_region(screenModeMap, m);
+                if (!mr) {
+                    continue;
+                }
+                const Qt::QRectLayout* mi = qregion_begin(mr);
+                const Qt::QRectLayout* me = qregion_end(mr);
+                for (; mi != me; mi++) {
+                    if (Qt::rects_overlap(it, mi)) {
+                        waveform = mode_params[m][0];
+                        pixel = mode_params[m][1];
+                        marker = mode_params[m][2];
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            Blight::exclusiveModeRepaint(
+                it->left,
+                it->top,
+                it->right - it->left,
+                it->bottom - it->top,
+                (Blight::WaveformMode)waveform,
+                (Blight::UpdateMode)pixel
+            );
+        }
+        return 0;
+    }
 
     void __attribute__((constructor)) init(void);
     void init(void)
@@ -730,12 +794,8 @@ extern "C"
         });
         _DEBUG("Connected %d to blight on %d", pid, FB::connection->handle());
         setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
-
-        std::ios_base::Init i;
-        std::ifstream device_id_file{ "/sys/devices/soc0/machine" };
-        std::string device_id;
-        std::getline(device_id_file, device_id);
-        if (device_id == "reMarkable 2.0") {
+        FB::init();
+        if (Client::deviceType == Client::DeviceType::RM2) {
             setenv("RM2FB_ACTIVE", "1", true);
             setenv("RM2FB_SHIM", "1", true);
             if (path != "/usr/bin/xochitl" &&

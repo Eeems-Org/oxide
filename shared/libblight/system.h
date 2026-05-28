@@ -26,6 +26,12 @@ namespace Blight {
      */
     LIBBLIGHT_EXPORT int frameBuffer();
     /*!
+     * \brief Get the width, height, and stride of the primary framebuffer
+     * \return tuple of with width, height, and stride of the primary buffer
+     * \retval {-1, -1, -1 } there was an error
+     */
+    LIBBLIGHT_EXPORT std::tuple<int, int, int> frameBufferInfo();
+    /*!
      * \brief Enter exclusive mode, this disables compositing and expects that
      * all framebuffer interactions happens directly against frameBuffer()
      * \return If the call succeeded or not

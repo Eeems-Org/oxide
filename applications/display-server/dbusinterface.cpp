@@ -2,6 +2,7 @@
 
 #include <libblight/socket.h>
 #include <libblight/types.h>
+#include <liboxide/dbus_types.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
 #include <memory>
@@ -9,6 +10,7 @@
 #include <unistd.h>
 
 #include <QCoreApplication>
+#include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusMetaType>
 #include <QDBusUnixFileDescriptor>
@@ -25,6 +27,10 @@
 DbusInterface::DbusInterface(QObject* parent)
   : QObject(parent), m_focused(nullptr), m_exlusiveMode{ false }
 {
+    auto type = qDBusRegisterMetaType<FrameBufferInfo>();
+    if (!type.isValid()) {
+        qFatal("Failed to register FrameBufferInfo with dbus");
+    }
 #ifdef EPAPER
     guiThread;
 #else
@@ -376,7 +382,36 @@ DbusInterface::frameBuffer(QDBusMessage message)
         );
         return QDBusUnixFileDescriptor();
     }
-    return QDBusUnixFileDescriptor(guiThread->framebuffer());
+    auto frameBuffer = guiThread->framebuffer();
+    if (frameBuffer == nullptr) {
+        sendErrorReply(QDBusError::InternalError, "Framebuffer is missing");
+        return QDBusUnixFileDescriptor();
+    }
+    return QDBusUnixFileDescriptor(frameBuffer->fd);
+}
+
+FrameBufferInfo
+DbusInterface::frameBufferInfo(QDBusMessage message)
+{
+    auto connection = getConnection(message);
+    if (connection == nullptr) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "You must first open a connection"
+        );
+        return { -1, -1, -1 };
+    }
+    if (!connection->has("system") && !connection->has("exclusive")) {
+        sendErrorReply(
+            QDBusError::AccessDenied, "Must be system or exclusive connection"
+        );
+        return { -1, -1, -1 };
+    }
+    auto frameBuffer = guiThread->framebuffer();
+    if (frameBuffer == nullptr) {
+        sendErrorReply(QDBusError::InternalError, "Framebuffer is missing");
+        return { -1, -1, -1 };
+    }
+    return { frameBuffer->width, frameBuffer->height, frameBuffer->stride };
 }
 
 void

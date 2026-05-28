@@ -4,6 +4,7 @@
 #include <libblight/libblight.h>
 #include <liboxide/threading.h>
 
+#include <QMetaType>
 #include <QQueue>
 #include <QSemaphore>
 #include <QThread>
@@ -49,7 +50,7 @@ class GUIThread : public QThread
         std::function<void()> callback = nullptr
     );
     void notify();
-    int framebuffer();
+    Blight::shared_buf_t framebuffer();
     void sendUpdate(
         const QRect& rect,
         Blight::WaveformMode waveform,
