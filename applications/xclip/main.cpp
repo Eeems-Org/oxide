@@ -44,9 +44,8 @@ setClipboard(
     if (name != "secondary" && name != "clipboard") {
         name = "selection";
     }
-    Blight::clipboard_t clipboard(
-        name, (Blight::data_t)data.data(), data.size()
-    );
+    Blight::clipboard_t clipboard(name);
+    clipboard.set(data.constData(), data.size());
     if (Blight::setClipboard(clipboard)) {
         return EXIT_SUCCESS;
     }

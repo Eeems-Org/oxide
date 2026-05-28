@@ -377,13 +377,6 @@ namespace Blight {
             errno = EINVAL;
             return false;
         }
-        char buf[sizeof(clipboard.size) + clipboard.size];
-        memcpy(buf, &clipboard.size, sizeof(clipboard.size));
-        memcpy(
-            &buf[sizeof(clipboard.size)],
-            clipboard.data.get(),
-            sizeof(clipboard.size)
-        );
         sd_bus_message* message;
         auto res = sd_bus_message_new_method_call(
             dbus->bus(),
