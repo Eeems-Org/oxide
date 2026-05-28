@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <libblight/types.h>
 
 namespace Qt {
     typedef struct
@@ -13,5 +14,10 @@ namespace Qt {
     typedef const QRectLayout* (*qregion_end_t)(const void* self);
     qregion_begin_t qregion_begin();
     qregion_end_t qregion_end();
-    static bool rects_overlap(const QRectLayout* a, const QRectLayout* b);
+    bool rects_overlap(const QRectLayout* a, const QRectLayout* b);
+    typedef void* (*epsm_region_t)(const void* map, int mode);
+    epsm_region_t epsm_region();
+    Blight::WaveformMode epsm_to_waveform(int screenMode);
+    Blight::UpdateMode flags_to_update_mode(int flags);
+    void hook(void* lib);
 }
