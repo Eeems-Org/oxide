@@ -77,52 +77,6 @@ static constexpr int kEpfMainBufferOffset = 0x00;
 static std::atomic<bool> hook_installed = false;
 static std::atomic<void*> g_epf_candidate{ nullptr };
 
-static void*
-compute_epf_address(void* qimage_addr, int qimage_format)
-{
-    int offset = 0;
-    if (qimage_format == 4 || qimage_format == 7) {
-        offset = kEpfAuxBufferOffset;
-    } else if (qimage_format == 0x18) {
-        offset = kEpfMainBufferOffset;
-    } else {
-        return nullptr;
-    }
-    return (char*)qimage_addr - offset;
-}
-
-void
-write_abs_jump(void* tramp, void* hook)
-{
-#if defined(__arm__)
-    // 8 bytes: ldr pc,[pc,#-4] + addr
-    *(uint32_t*)tramp = 0xe51ff004;
-    *(uint32_t*)((char*)tramp + 4) = (uintptr_t)hook;
-#elif defined(__aarch64__)
-    // 12 bytes: ldr x16,[pc,#8] + br x16 + addr
-    *(uint32_t*)tramp = 0x58000050;              // ldr x16, #8
-    *(uint32_t*)((char*)tramp + 4) = 0xd61f0200; // br x16
-    *(uint64_t*)((char*)tramp + 8) = (uintptr_t)hook;
-#else
-    _CRIT("%s", "Unsupported architecture");
-    std::exit(EXIT_FAILURE);
-#endif
-}
-void
-write_branch(void* target, void* dest)
-{
-#if defined(__arm__)
-    int32_t offset = (intptr_t)dest - (intptr_t)target - 8;
-    *(uint32_t*)target = 0xEA000000 | ((offset >> 2) & 0x00FFFFFF);
-#elif defined(__aarch64__)
-    int64_t offset = (intptr_t)dest - (intptr_t)target;
-    *(uint32_t*)target = 0x14000000 | ((offset >> 2) & 0x03FFFFFF);
-#else
-    _CRIT("%s", "Unsupported architecture");
-    std::exit(EXIT_FAILURE);
-#endif
-    __builtin___clear_cache(target, (char*)target + 4);
-}
 void
 install_hook(void* target, void* hook)
 {
@@ -150,10 +104,27 @@ install_hook(void* target, void* hook)
     }
     if (tramp == MAP_FAILED) {
         _CRIT("%s", "Failed to mmap trampoline for hook!");
-        return;
+        std::exit(EXIT_FAILURE);
     }
-    write_abs_jump(tramp, hook); // trampoline -> hook
-    write_branch(target, tramp); // original -> trampoline
+#if defined(__arm__)
+    // 8 bytes: ldr pc,[pc,#-4] + addr
+    *(uint32_t*)tramp = 0xe51ff004;
+    *(uint32_t*)((char*)tramp + 4) = (uintptr_t)hook;
+    int32_t offset = (intptr_t)tramp - (intptr_t)target - 8;
+    *(uint32_t*)target = 0xEA000000 | ((offset >> 2) & 0x00FFFFFF);
+    __builtin___clear_cache(target, (char*)target + 4);
+#elif defined(__aarch64__)
+    // 12 bytes: ldr x16,[pc,#8] + br x16 + addr
+    *(uint32_t*)tramp = 0x58000050;              // ldr x16, #8
+    *(uint32_t*)((char*)tramp + 4) = 0xd61f0200; // br x16
+    *(uint64_t*)((char*)tramp + 8) = (uintptr_t)hook;
+    int64_t offset = (intptr_t)tramp - (intptr_t)target;
+    *(uint32_t*)target = 0x14000000 | ((offset >> 2) & 0x03FFFFFF);
+    __builtin___clear_cache(target, (char*)target + 4);
+#else
+    _CRIT("%s", "Unsupported architecture");
+    std::exit(EXIT_FAILURE);
+#endif
 }
 
 int
@@ -417,7 +388,6 @@ _ZN7QObjectC2EP7QObject(void* self, void* parent)
         std::exit(EXIT_FAILURE);
     }
     ctor(self, parent);
-    // Already hooked? Skip all tracking
     if (hook_installed) {
         return;
     }
