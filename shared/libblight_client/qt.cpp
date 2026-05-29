@@ -184,6 +184,10 @@ namespace Qt {
                 0
             );
         }
+        if (tramp == MAP_FAILED) {
+            _CRIT("%s", "Failed to mmap trampoline for hook!");
+            return;
+        }
         write_abs_jump(tramp, hook); // trampoline -> hook
         write_branch(target, tramp); // original -> trampoline
     }
