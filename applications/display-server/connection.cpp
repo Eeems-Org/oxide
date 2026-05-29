@@ -186,7 +186,12 @@ Connection::isStopped()
         O_WARNING("Failed checking process status" << file.errorString());
         return false;
     }
-    return file.readAll().split(' ')[2] == "T";
+    auto data = file.readAll();
+    int idx = data.lastIndexOf(')');
+    if (idx < 0 || idx + 2 >= data.size()) {
+        return false;
+    }
+    return data.at(idx + 2) == 'T';
 }
 
 bool

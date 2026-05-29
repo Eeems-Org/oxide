@@ -19,5 +19,63 @@ namespace Qt {
     epsm_region_t epsm_region();
     Blight::WaveformMode epsm_to_waveform(int screenMode);
     Blight::UpdateMode flags_to_update_mode(int flags);
-    void hook(void* lib);
+}
+
+extern "C"
+{
+    __attribute__((visibility("default"))) void hook_swapBuffers_QRect(
+        void* this_ptr,
+        Qt::QRectLayout rect,
+        int contentType,
+        int screenMode,
+        int flags
+    );
+    __attribute__((visibility("default"))) void hook_swapBuffers_QRegion(
+        void* this_ptr,
+        const void* region,
+        const void* contentMap,
+        const void* screenModeMap,
+        int flags
+    );
+
+    __attribute__((visibility("default"))) void
+    _ZN7QObjectC2EP7QObject(void* self, void* parent);
+    __asm__(".symver _ZN7QObjectC2EP7QObject , "
+            "_ZN7QObjectC2EP7QObject@Qt_6");
+
+#if defined(__arm__)
+    __attribute__((visibility("default"))) void
+    _ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_(
+        void* this_ptr,
+        char* data,
+        int width,
+        int height,
+        int bytesPerLine,
+        int format,
+        void* cleanupFunction,
+        void* cleanupInfo
+    );
+    __asm__(".symver _ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_ , "
+            "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_@Qt_6");
+
+    __attribute__((visibility("default"))) void _ZN6QImageC1Ev(void* this_ptr);
+    __asm__(".symver _ZN6QImageC1Ev, _ZN6QImageC1Ev@Qt_6");
+#elif defined(__aarch64__)
+    __attribute__((visibility("default"))) void
+    _ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_(
+        void* this_ptr,
+        char* data,
+        int width,
+        int height,
+        long long bytesPerLine,
+        int format,
+        void* cleanupFunction,
+        void* cleanupInfo
+    );
+    __asm__(".symver _ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_ , "
+            "_ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_@Qt_6");
+
+    __attribute__((visibility("default"))) void _ZN6QImageC1Ev(void* this_ptr);
+    __asm__(".symver _ZN6QImageC1Ev, _ZN6QImageC1Ev@Qt_6");
+#endif
 }

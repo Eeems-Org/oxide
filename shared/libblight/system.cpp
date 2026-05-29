@@ -125,13 +125,14 @@ namespace Blight {
             errno = EAGAIN;
             return false;
         }
-        _DEBUG("[Blight::exclusiveModeRepaint()]");
+        _DEBUG("[Blight::exclusiveModeRepaintFull()]");
         auto reply = dbus->call_method(
-            BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "exclusiveModeRepaint"
+            BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "exclusiveModeRepaintFull"
         );
         if (reply->isError()) {
             _WARN(
-                "[Blight::exclusiveModeRepaint()::call_method(...)] Error: %s",
+                "[Blight::exclusiveModeRepaintFull()::call_method(...)] Error: "
+                "%s",
                 reply->error_message().c_str()
             );
             return false;

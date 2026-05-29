@@ -1,7 +1,6 @@
 #include "fb.h"
 #include "input.h"
 #include "libc.h"
-#include "qt.h"
 #include "state.h"
 
 #include <asm/ioctl.h>
@@ -229,7 +228,6 @@ namespace {
             "  = _" #name "\n")
 
 #define symver(name) __asm__(".symver " #name " , " #name "@GLIBC_2.4")
-#define symver34(name) __asm__(".symver " #name " , " #name "@GLIBC_2.34")
 #define _symver(name) __asm__(".symver _" #name ", " #name "@GLIBC_2.4")
 
 extern "C"
@@ -615,11 +613,11 @@ extern "C"
                 strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0 ||
                 strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0 ||
                 strcmp(name, "QT_PLUGIN_PATH") == 0) {
-                _DEBUG("IGNORED setenv", name, value);
+                _DEBUG("IGNORED setenv %s=%s", name, value);
                 return 0;
             }
         }
-        _DEBUG("setenv", name, value);
+        _DEBUG("setenv %s=%s", name, value);
         return Libc::setenv(name, value, overwrite);
     }
     symver(setenv);
@@ -643,19 +641,6 @@ extern "C"
         return Libc::flock(fd, op);
     }
     symver(flock);
-
-    __attribute__((visibility("default"))) void*
-    dlopen(const char* filename, int flags)
-    {
-        static auto func_dlopen = (decltype(&dlopen))dlsym(RTLD_NEXT, "dlopen");
-        _DEBUG("dlopen %s", filename);
-        void* handle = func_dlopen(filename, flags);
-        if (handle && filename && strstr(filename, "libqsgepaper.so")) {
-            Qt::hook(handle);
-        }
-        return handle;
-    }
-    symver34(dlopen);
 
     void __attribute__((constructor)) init(void);
     void init(void)

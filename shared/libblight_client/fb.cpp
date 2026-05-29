@@ -251,6 +251,15 @@ namespace FB {
             screenInfo->reserved[3]
         );
     }
+    void print_offset(fb_var_screeninfo* screenInfo)
+    {
+        _DEBUG(
+            "\n"
+            "offset: %d, %d\n",
+            screenInfo->xoffset,
+            screenInfo->yoffset
+        );
+    }
     int ioctl(unsigned long request, char* ptr)
     {
         switch (request) {
@@ -317,7 +326,7 @@ namespace FB {
                 return 0;
             case FBIOPAN_DISPLAY: {
                 _DEBUG("%s", "ioctl /dev/fb0 FBIOPAN_DISPLAY");
-                print_vscreeninfo(reinterpret_cast<fb_var_screeninfo*>(ptr));
+                print_offset(reinterpret_cast<fb_var_screeninfo*>(ptr));
                 return 0;
             }
             default:
@@ -417,10 +426,10 @@ namespace FB {
                 return 0;
             case FBIOPAN_DISPLAY: {
                 _DEBUG("%s", "ioctl /dev/fb0 FBIOPAN_DISPLAY");
-                print_vscreeninfo(reinterpret_cast<fb_var_screeninfo*>(ptr));
-                if (Client::deviceType == Client::DeviceType::RM2) {
-                    Blight::exclusiveModeRepaintFull();
-                }
+                print_offset(reinterpret_cast<fb_var_screeninfo*>(ptr));
+                // if (Client::deviceType == Client::DeviceType::RM2) {
+                //     Blight::exclusiveModeRepaintFull();
+                // }
                 return 0;
             }
             case FBIOBLANK: {

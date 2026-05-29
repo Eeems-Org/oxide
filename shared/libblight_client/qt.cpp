@@ -1,89 +1,17 @@
 #include "qt.h"
 
+#include <cstdlib>
 #include <dlfcn.h>
 #include <libblight/debug.h>
 #include <libblight/system.h>
-#include <pthread.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
-extern "C"
-{
-    __attribute__((visibility("default"))) void hook_swapBuffers_QRect(
-        void* this_ptr,
-        Qt::QRectLayout rect,
-        int contentType,
-        int screenMode,
-        int flags
-    )
-    {
-        _DEBUG(
-            "EPFramebuffer::swapBuffers({%i, %i, %i, %i}, contentType=%i, "
-            "screenMode=%i, flags=%i)",
-            rect.left,
-            rect.top,
-            rect.right,
-            rect.bottom,
-            contentType,
-            screenMode,
-            flags
-        );
-        Blight::exclusiveModeRepaint(
-            rect.left,
-            rect.top,
-            rect.right - rect.left,
-            rect.bottom - rect.top,
-            Qt::epsm_to_waveform(screenMode),
-            Qt::flags_to_update_mode(flags)
-        );
-    }
-    __attribute__((visibility("default"))) void hook_swapBuffers_QRegion(
-        void* this_ptr,
-        const void* region,
-        const void* contentMap,
-        const void* screenModeMap,
-        int flags
-    )
-    {
-        _DEBUG("%s", "EPFramebuffer::swapBuffers(QRegion...)");
-        const Qt::QRectLayout* it = Qt::qregion_begin()(region);
-        const Qt::QRectLayout* end = Qt::qregion_end()(region);
-        for (; it != end; it++) {
-            // Use EPScreenModeMap to determine waveform per rect
-            int waveform = 2, pixel = 7; // defaults matching swapBuffers_impl
-            bool found = false;
-            for (int m = 0; m < 6 && !found; m++) {
-                void* mr = Qt::epsm_region()(screenModeMap, m);
-                if (!mr)
-                    continue;
-                const Qt::QRectLayout* mi = Qt::qregion_begin()(mr);
-                const Qt::QRectLayout* me = Qt::qregion_end()(mr);
-                for (; mi != me; mi++) {
-                    if (Qt::rects_overlap(it, mi)) {
-                        // Hardcoded from swapBuffers_impl disassembly:
-                        // {waveform, pixel} per mode
-                        static const int mode_params[6][2] = {
-                            { 2, 7 }, { 1, 7 }, { 2, 7 },
-                            { 2, 7 }, { 6, 7 }, { 1, 7 }
-                        };
-                        waveform = mode_params[m][0];
-                        pixel = mode_params[m][1];
-                        found = true;
-                        break;
-                    }
-                }
-            }
-            Blight::exclusiveModeRepaint(
-                it->left,
-                it->top,
-                it->right - it->left,
-                it->bottom - it->top,
-                (Blight::WaveformMode)waveform,
-                Qt::flags_to_update_mode(flags)
-            );
-        }
-    }
-}
+#include <atomic>
+#include <cerrno>
+#include <cstring>
+#include <string>
+
 namespace Qt {
     qregion_begin_t qregion_begin()
     {
@@ -133,92 +61,407 @@ namespace Qt {
         return (flags & 1) ? Blight::UpdateMode::FullUpdate
                            : Blight::UpdateMode::PartialUpdate;
     }
-#ifdef __arm__
-    void write_abs_jump(void* tramp, void* hook)
-    {
-        // 8 bytes: ldr pc,[pc,#-4] + addr
-        *(uint32_t*)tramp = 0xe51ff004;
-        *(uint32_t*)((char*)tramp + 4) = (uintptr_t)hook;
-    }
-#else // aarch64
-    void write_abs_jump(void* tramp, void* hook)
-    {
-        // 12 bytes: ldr x16,[pc,#8] + br x16 + addr
-        *(uint32_t*)tramp = 0x58000050;              // ldr x16, #8
-        *(uint32_t*)((char*)tramp + 4) = 0xd61f0200; // br x16
-        *(uint64_t*)((char*)tramp + 8) = (uintptr_t)hook;
-    }
-#endif
-    void write_branch(void* target, void* dest)
-    {
-#ifdef __arm__
-        int32_t offset = (intptr_t)dest - (intptr_t)target - 8;
-        *(uint32_t*)target = 0xEA000000 | ((offset >> 2) & 0x00FFFFFF);
+}
+
+#if defined(__arm__)
+static constexpr int kEpfAuxBufferOffset = 0x60;
+static constexpr int kEpfMainBufferOffset = 0x50;
+#elif defined(__aarch64__)
+static constexpr int kEpfAuxBufferOffset = 0xa8;
+static constexpr int kEpfMainBufferOffset = 0xc8;
 #else
-        int64_t offset = (intptr_t)dest - (intptr_t)target;
-        *(uint32_t*)target = 0x14000000 | ((offset >> 2) & 0x03FFFFFF);
+static constexpr int kEpfAuxBufferOffset = 0x00;
+static constexpr int kEpfMainBufferOffset = 0x00;
 #endif
-        __builtin___clear_cache(target, (char*)target + 4);
+
+static std::atomic<bool> hook_installed = false;
+static std::atomic<void*> g_epf_candidate{ nullptr };
+
+static void*
+compute_epf_address(void* qimage_addr, int qimage_format)
+{
+    int offset = 0;
+    if (qimage_format == 4 || qimage_format == 7) {
+        offset = kEpfAuxBufferOffset;
+    } else if (qimage_format == 0x18) {
+        offset = kEpfMainBufferOffset;
+    } else {
+        return nullptr;
     }
-    void install_hook(void* target, void* hook)
-    {
-        long ps = sysconf(_SC_PAGESIZE);
-        void* page = (void*)((uintptr_t)target & ~(ps - 1));
-        mprotect(page, ps, PROT_READ | PROT_WRITE | PROT_EXEC);
-        // Allocate trampoline near target
-        void* tramp = mmap(
-            (void*)((uintptr_t)target + 0x20000),
+    return (char*)qimage_addr - offset;
+}
+
+void
+write_abs_jump(void* tramp, void* hook)
+{
+#if defined(__arm__)
+    // 8 bytes: ldr pc,[pc,#-4] + addr
+    *(uint32_t*)tramp = 0xe51ff004;
+    *(uint32_t*)((char*)tramp + 4) = (uintptr_t)hook;
+#elif defined(__aarch64__)
+    // 12 bytes: ldr x16,[pc,#8] + br x16 + addr
+    *(uint32_t*)tramp = 0x58000050;              // ldr x16, #8
+    *(uint32_t*)((char*)tramp + 4) = 0xd61f0200; // br x16
+    *(uint64_t*)((char*)tramp + 8) = (uintptr_t)hook;
+#else
+    _CRIT("%s", "Unsupported architecture");
+    std::exit(EXIT_FAILURE);
+#endif
+}
+void
+write_branch(void* target, void* dest)
+{
+#if defined(__arm__)
+    int32_t offset = (intptr_t)dest - (intptr_t)target - 8;
+    *(uint32_t*)target = 0xEA000000 | ((offset >> 2) & 0x00FFFFFF);
+#elif defined(__aarch64__)
+    int64_t offset = (intptr_t)dest - (intptr_t)target;
+    *(uint32_t*)target = 0x14000000 | ((offset >> 2) & 0x03FFFFFF);
+#else
+    _CRIT("%s", "Unsupported architecture");
+    std::exit(EXIT_FAILURE);
+#endif
+    __builtin___clear_cache(target, (char*)target + 4);
+}
+void
+install_hook(void* target, void* hook)
+{
+    long ps = sysconf(_SC_PAGESIZE);
+    void* page = (void*)((uintptr_t)target & ~(ps - 1));
+    mprotect(page, ps, PROT_READ | PROT_WRITE | PROT_EXEC);
+    // Allocate trampoline near target
+    void* tramp = mmap(
+        (void*)((uintptr_t)target + 0x20000),
+        4096,
+        PROT_READ | PROT_WRITE | PROT_EXEC,
+        MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE,
+        -1,
+        0
+    );
+    if (tramp == MAP_FAILED) {
+        tramp = mmap(
+            NULL,
             4096,
             PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE,
+            MAP_PRIVATE | MAP_ANONYMOUS,
             -1,
             0
         );
-        if (tramp == MAP_FAILED) {
-            tramp = mmap(
-                NULL,
-                4096,
-                PROT_READ | PROT_WRITE | PROT_EXEC,
-                MAP_PRIVATE | MAP_ANONYMOUS,
-                -1,
-                0
-            );
-        }
-        if (tramp == MAP_FAILED) {
-            _CRIT("%s", "Failed to mmap trampoline for hook!");
-            return;
-        }
-        write_abs_jump(tramp, hook); // trampoline -> hook
-        write_branch(target, tramp); // original -> trampoline
     }
-    static pthread_once_t lib_patched = PTHREAD_ONCE_INIT;
-    static void* gsgepaper_lib = nullptr;
-    void _hook()
-    {
-        void* qrect_sb = dlsym(
-            gsgepaper_lib,
-            "_ZN13EPFramebuffer11swapBuffersE5QRect13EPContentType12EPScree"
-            "nMod"
-            "e6QFlagsINS_10UpdateFlagEE"
+    if (tramp == MAP_FAILED) {
+        _CRIT("%s", "Failed to mmap trampoline for hook!");
+        return;
+    }
+    write_abs_jump(tramp, hook); // trampoline -> hook
+    write_branch(target, tramp); // original -> trampoline
+}
+
+int
+get_vtable_offset()
+{
+    const char* env = getenv("OXIDE_EPF_VTABLE_OFFSET");
+    if (env) {
+        return std::stoi(env, nullptr, 0); // handles hex with 0x prefix
+    }
+    return 0x5c; // default for ARM32 (vtable entry 23)
+}
+
+bool
+validate_swapbuffers(void* func)
+{
+    if (!func) {
+        return false;
+    }
+    Dl_info info;
+    if (!dladdr(func, &info)) {
+        return false;
+    }
+    if (!info.dli_fname) {
+        return false;
+    }
+    std::string fname(info.dli_fname);
+    if (fname.find("xochitl") == std::string::npos &&
+        fname.find("libqsgepaper") == std::string::npos) {
+        return false;
+    }
+#if defined(__arm__)
+    // ARM32 prologue for EPFramebuffer_swapBuffers_QRegion:
+    // F0 5F 2D E9   push {r4-r11,lr}
+    // 44 D0 4D E2   sub sp, sp, #0x44
+    static const uint8_t expected[8] = { 0xF0, 0x5F, 0x2D, 0xE9,
+                                         0x44, 0xD0, 0x4D, 0xE2 };
+    if (memcmp(func, expected, 8) != 0) {
+        _WARN(
+            "swapBuffers prologue mismatch at %p (offset 0x%x) -- "
+            "vtable offset may be wrong; set OXIDE_EPF_VTABLE_OFFSET",
+            func,
+            get_vtable_offset()
         );
-        if (qrect_sb) {
-            _DEBUG("Hooking %s", "hook_swapBuffers_QRect");
-            install_hook(qrect_sb, (void*)&hook_swapBuffers_QRect);
-        }
-        void* qregion_sb = dlsym(
-            gsgepaper_lib,
-            "_ZN13EPFramebuffer11swapBuffersERK7QRegionRK12EPContentMapRK15"
-            "EPSc"
-            "reenModeMap6QFlagsINS_10UpdateFlagEE"
+        return false;
+    }
+#elif defined(__aarch64__)
+    // TODO handle aarch64 version
+#else
+    _CRIT("%s", "Unsupported architecture");
+    std::exit(EXIT_FAILURE);
+#endif
+    return true;
+}
+
+#if defined(__arm__)
+void
+_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_(
+    void* this_ptr,
+    char* data,
+    int width,
+    int height,
+    int bytesPerLine,
+    int format,
+    void* cleanupFunction,
+    void* cleanupInfo
+)
+#elif defined(__aarch64__)
+void
+_ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_(
+    void* this_ptr,
+    char* data,
+    int width,
+    int height,
+    long long bytesPerLine,
+    int format,
+    void* cleanupFunction,
+    void* cleanupInfo
+)
+#endif
+#if defined(__arm__) || defined(__aarch64__)
+{
+    static auto func =
+#if defined(__arm__)
+        (void (*)(void*, char*, int, int, int, int, void*, void*))dlsym(
+            RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_"
         );
-        if (qregion_sb) {
-            _DEBUG("Hooking %s", "hook_swapBuffers_QRegion");
-            install_hook(qregion_sb, (void*)&hook_swapBuffers_QRegion);
+#elif defined(__aarch64__)
+        (void (*)(void*, char*, int, int, long long, int, void*, void*))dlsym(
+            RTLD_NEXT, "_ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_"
+        );
+#endif
+    if (!func) {
+        _CRIT(
+            "%s",
+            "Failed to resolve real QImage::QImage(unsigned char*, int, "
+            "int, "
+#if defined(__arm__)
+            "long long"
+#elif defined(__aarch64__)
+            "int"
+#endif
+            ", QImage::Format, void (*)(void*), void*) via "
+            "RTLD_NEXT"
+        );
+        std::exit(EXIT_FAILURE);
+    }
+    func(
+        this_ptr,
+        data,
+        width,
+        height,
+        bytesPerLine,
+        format,
+        cleanupFunction,
+        cleanupInfo
+    );
+}
+#endif
+
+void
+_ZN6QImageC1Ev(void* this_ptr)
+{
+    static auto func = (void (*)(void*))dlsym(RTLD_NEXT, "_ZN6QImageC1Ev");
+    if (!func) {
+        _CRIT("%s", "Failed to resolve QImage::QImage() via RTLD_NEXT");
+        std::exit(EXIT_FAILURE);
+    }
+    func(this_ptr);
+    if (hook_installed) {
+        return;
+    }
+    _DEBUG("QImage::QImage() default");
+    // Default ctor: format not yet set. Try both known EPF offsets.
+    // The vtable at (this - offset) is checked to confirm it belongs
+    // to a xochitl QObject (fully dynamic via dladdr).
+    for (int off : { kEpfMainBufferOffset, kEpfAuxBufferOffset }) {
+        if (off == 0) {
+            continue; // skip unsupported arch placeholder
         }
+        void* candidate = (char*)this_ptr - off;
+        void* vtable = *(void**)candidate;
+        // Quick pre-filter: aligned, non-null, reasonable address
+        if (!vtable || (uintptr_t)vtable & 3 ||
+            (uintptr_t)vtable < 0x00010000) {
+            continue;
+        }
+        Dl_info info;
+        if (!dladdr(vtable, &info)) {
+            continue;
+        }
+        if (!info.dli_fname) {
+            continue;
+        }
+        std::string fname(info.dli_fname);
+        if (fname.find("xochitl") == std::string::npos &&
+            fname.find("libqsgepaper") == std::string::npos) {
+            continue;
+        }
+        _DEBUG(
+            "Default ctor at %p -> EPF candidate at %p "
+            "(vtable=%p in %s)",
+            this_ptr,
+            candidate,
+            vtable,
+            info.dli_fname
+        );
+        g_epf_candidate.store(candidate, std::memory_order_release);
+        break;
     }
-    void hook(void* lib)
-    {
-        gsgepaper_lib = lib;
-        pthread_once(&lib_patched, _hook);
+}
+
+void
+hook_swapBuffers_QRect(
+    void* this_ptr,
+    Qt::QRectLayout rect,
+    int contentType,
+    int screenMode,
+    int flags
+)
+{
+    _DEBUG(
+        "EPFramebuffer::swapBuffers({%i, %i, %i, %i}, contentType=%i, "
+        "screenMode=%i, flags=%i)",
+        rect.left,
+        rect.top,
+        rect.right,
+        rect.bottom,
+        contentType,
+        screenMode,
+        flags
+    );
+    Blight::exclusiveModeRepaint(
+        rect.left,
+        rect.top,
+        rect.right - rect.left,
+        rect.bottom - rect.top,
+        Qt::epsm_to_waveform(screenMode),
+        Qt::flags_to_update_mode(flags)
+    );
+}
+
+void
+hook_swapBuffers_QRegion(
+    void* this_ptr,
+    const void* region,
+    const void* contentMap,
+    const void* screenModeMap,
+    int flags
+)
+{
+    _DEBUG("%s", "EPFramebuffer::swapBuffers(QRegion, ...)");
+    const Qt::QRectLayout* it = Qt::qregion_begin()(region);
+    const Qt::QRectLayout* end = Qt::qregion_end()(region);
+    for (; it != end; it++) {
+        // Use EPScreenModeMap to determine waveform per rect
+        int waveform = 2, pixel = 7; // defaults matching swapBuffers_impl
+        bool found = false;
+        for (int m = 0; m < 6 && !found; m++) {
+            void* mr = Qt::epsm_region()(screenModeMap, m);
+            if (!mr)
+                continue;
+            const Qt::QRectLayout* mi = Qt::qregion_begin()(mr);
+            const Qt::QRectLayout* me = Qt::qregion_end()(mr);
+            for (; mi != me; mi++) {
+                if (Qt::rects_overlap(it, mi)) {
+                    // Hardcoded from swapBuffers_impl disassembly:
+                    // {waveform, pixel} per mode
+                    static const int mode_params[6][2] = { { 2, 7 }, { 1, 7 },
+                                                           { 2, 7 }, { 2, 7 },
+                                                           { 6, 7 }, { 1, 7 } };
+                    waveform = mode_params[m][0];
+                    pixel = mode_params[m][1];
+                    found = true;
+                    break;
+                }
+            }
+        }
+        Blight::exclusiveModeRepaint(
+            it->left,
+            it->top,
+            it->right - it->left,
+            it->bottom - it->top,
+            (Blight::WaveformMode)waveform,
+            Qt::flags_to_update_mode(flags)
+        );
     }
+}
+void
+_ZN7QObjectC2EP7QObject(void* self, void* parent)
+{
+    // Resolve the real QObject constructor (skip this library via
+    // RTLD_NEXT)
+    static auto ctor =
+        (void (*)(void*, void*))dlsym(RTLD_NEXT, "_ZN7QObjectC2EP7QObject");
+    if (!ctor) {
+        _CRIT(
+            "%s",
+            "Failed to resolve real QObject::QObject(QObject*) via "
+            "RTLD_NEXT"
+        );
+        std::exit(EXIT_FAILURE);
+    }
+    ctor(self, parent);
+    // Already hooked? Skip all tracking
+    if (hook_installed) {
+        return;
+    }
+    _DEBUG("%s", "QObject::QObject(QObject*)");
+    // Re-check the EPFramebuffer candidate (discovered via QImage hook).
+    // Its vtable may have been updated from a temporary to the final
+    // class vtable since the last time we checked.
+    void* candidate = g_epf_candidate.load(std::memory_order_acquire);
+    if (!candidate) {
+        return; // QImage hook hasn't fired yet
+    }
+    int offset = get_vtable_offset();
+    void* vtable = *(void**)candidate;
+    _DEBUG("EPF candidate at %p, vtable=%p", candidate, vtable);
+    if (!vtable) {
+        _DEBUG("%s", "vtable is null, skipping");
+        return;
+    }
+    void* func = *(void**)((char*)vtable + offset);
+    _DEBUG("swapBuffers candidate function at %p", func);
+    if (!validate_swapbuffers(func)) {
+        _DEBUG(
+            "validate_swapbuffers(%p) FAILED for candidate %p, vtable=%p",
+            func,
+            candidate,
+            vtable
+        );
+        return; // vtable not yet final, try again later
+    }
+    _DEBUG(
+        "Found EPFramebuffer at %p, vtable=%p, swapBuffers_QRegion=%p",
+        candidate,
+        vtable,
+        func
+    );
+    install_hook(func, (void*)&hook_swapBuffers_QRegion);
+    _DEBUG("Hooked swapBuffers(QRegion,...)");
+    // Also try to hook the QRect overload (one vtable slot before
+    // on ARM32)
+    void* qrect_func = *(void**)((char*)vtable + offset - sizeof(void*));
+    if (validate_swapbuffers(qrect_func)) {
+        install_hook(qrect_func, (void*)&hook_swapBuffers_QRect);
+        _DEBUG("Hooked swapBuffers(QRect, ...)");
+    }
+    hook_installed = true;
+    g_epf_candidate.store(nullptr, std::memory_order_release);
 }
