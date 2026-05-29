@@ -15,6 +15,7 @@
 #include <QMetaMethod>
 #include <QMimeData>
 #include <QProcess>
+#include <QQuickWindow>
 #include <cstring>
 
 #include "oxidebackingstore.h"
@@ -101,6 +102,7 @@ OxideIntegration::initialize()
     if (m_debug) {
         qDebug() << "OxideIntegration::initialize";
     }
+    QQuickWindow::setSceneGraphBackend("software");
 #ifdef EPAPER
     Blight::connect(true);
 #else
