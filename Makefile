@@ -61,7 +61,7 @@ build-rm1: clean-base $(DIST)
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
 		eeems/remarkable-toolchain:5.7.119-rm1 \
-		bash -exc 'source /opt/codex/rm1/5.7.119/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm1/5.7.119/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
 
 build-rm2: clean-base $(DIST)
 	podman run \
@@ -69,7 +69,7 @@ build-rm2: clean-base $(DIST)
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
 		eeems/remarkable-toolchain:5.7.119-rm2 \
-		bash -exc 'source /opt/codex/rm2/5.7.119/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm2/5.7.119/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
 
 build-rmpp: clean-base $(DIST)
 	podman run \
@@ -77,7 +77,7 @@ build-rmpp: clean-base $(DIST)
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
 		eeems/remarkable-toolchain:5.7.119-rmpp \
-		bash -exc 'source /opt/codex/ferrari/5.7.119/environment-setup-cortexa53-remarkable-linux; make FEATURES=$(FEATURES) release'
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/ferrari/5.7.119/environment-setup-cortexa53-remarkable-linux; make FEATURES=$(FEATURES) release'
 
 build-rmppm: clean-base $(DIST)
 	podman run \
@@ -85,7 +85,7 @@ build-rmppm: clean-base $(DIST)
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
 		eeems/remarkable-toolchain:5.7.119-rmppm \
-		bash -exc 'source /opt/codex/chiappa/5.7.119/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/chiappa/5.7.119/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
 build-rmppure: clean-base $(DIST)
 	podman run \
@@ -93,7 +93,7 @@ build-rmppure: clean-base $(DIST)
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
 		eeems/remarkable-toolchain:5.7.119-rmppure \
-		bash -exc 'source /opt/codex/tatsu/5.7.119/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/tatsu/5.7.119/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
 version.txt:
 	if [ -d .git ];then \

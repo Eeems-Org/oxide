@@ -602,20 +602,18 @@ extern "C"
     __attribute__((visibility("default"))) int
     setenv(const char* name, const char* value, int overwrite)
     {
-        if (Client::INITIALIZED &&
-            getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr) {
-            if (strcmp(name, "QMLSCENE_DEVICE") == 0 ||
-                strcmp(name, "QT_QUICK_BACKEND") == 0 ||
-                strcmp(name, "QT_QPA_PLATFORM") == 0 ||
-                strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0 ||
-                strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0 ||
-                strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0 ||
-                strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0 ||
-                strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0 ||
-                strcmp(name, "QT_PLUGIN_PATH") == 0) {
-                _DEBUG("IGNORED setenv %s=%s", name, value);
-                return 0;
-            }
+        if (getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr &&
+            (strcmp(name, "QMLSCENE_DEVICE") == 0 ||
+             strcmp(name, "QT_QUICK_BACKEND") == 0 ||
+             strcmp(name, "QT_QPA_PLATFORM") == 0 ||
+             strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0 ||
+             strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0 ||
+             strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0 ||
+             strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0 ||
+             strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0 ||
+             strcmp(name, "QT_PLUGIN_PATH") == 0)) {
+            _DEBUG("IGNORED setenv %s=%s", name, value);
+            return 0;
         }
         _DEBUG("setenv %s=%s", name, value);
         return Libc::setenv(name, value, overwrite);
@@ -706,26 +704,26 @@ extern "C"
             std::exit(res);
         });
         _DEBUG("Connected %d to blight on %d", pid, FB::connection->handle());
-        setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
+        Libc::setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
         FB::init();
         if (Client::deviceType == Client::DeviceType::RM2) {
-            setenv("RM2FB_ACTIVE", "1", true);
-            setenv("RM2FB_SHIM", "1", true);
+            Libc::setenv("RM2FB_ACTIVE", "1", true);
+            Libc::setenv("RM2FB_SHIM", "1", true);
             if (path != "/usr/bin/xochitl" &&
                 getenv("OXIDE_PRELOAD_ALLOW_RM2FB") == nullptr) {
-                setenv("RM2FB_DISABLE", "1", true);
+                Libc::setenv("RM2FB_DISABLE", "1", true);
             } else {
                 unsetenv("RM2FB_DISABLE");
             }
         }
         if (getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr) {
-            setenv("QMLSCENE_DEVICE", "software", 1);
-            setenv("QT_QUICK_BACKEND", "software", 1);
-            setenv("QT_QPA_PLATFORM", "oxide:enable_fonts", 1);
-            setenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", "", 1);
-            setenv("QT_QPA_EVDEV_MOUSE_PARAMETERS", "", 1);
-            setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
-            setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
+            Libc::setenv("QMLSCENE_DEVICE", "software", 1);
+            Libc::setenv("QT_QUICK_BACKEND", "software", 1);
+            Libc::setenv("QT_QPA_PLATFORM", "oxide:enable_fonts", 1);
+            Libc::setenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", "", 1);
+            Libc::setenv("QT_QPA_EVDEV_MOUSE_PARAMETERS", "", 1);
+            Libc::setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
+            Libc::setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
         }
         if (Client::HANDLE_FB) {
             FB::buffer = Blight::buf_t::new_ptr();
