@@ -8,7 +8,6 @@
 #include <unistd.h>
 
 #include <atomic>
-#include <cerrno>
 #include <cstring>
 #include <string>
 
@@ -77,6 +76,11 @@ static constexpr int kEpfMainBufferOffset = 0x00;
 static std::atomic<bool> hook_installed = false;
 static std::atomic<void*> g_epf_candidate{ nullptr };
 
+// Tracks persistently bad EPF candidates so we can clear them and
+// let the default-ctor hook store a fresh (hopefully correct) one.
+static std::atomic<void*> g_last_bad_candidate{ nullptr };
+static std::atomic<int> g_bad_candidate_count{ 0 };
+
 void
 install_hook(void* target, void* hook)
 {
@@ -134,7 +138,8 @@ get_vtable_offset()
     if (env) {
         return std::stoi(env, nullptr, 0); // handles hex with 0x prefix
     }
-    return 0x5c; // default for ARM32 (vtable entry 23)
+    // TODO handle aarch64
+    return 0x5c; // default for arm32 (vtable entry 23)
 }
 
 bool
@@ -156,7 +161,7 @@ validate_swapbuffers(void* func)
         return false;
     }
 #if defined(__arm__)
-    // ARM32 prologue for EPFramebuffer_swapBuffers_QRegion:
+    // arm32 prologue for EPFramebuffer_swapBuffers_QRegion:
     // F0 5F 2D E9   push {r4-r11,lr}
     // 44 D0 4D E2   sub sp, sp, #0x44
     static const uint8_t expected[8] = { 0xF0, 0x5F, 0x2D, 0xE9,
@@ -415,7 +420,31 @@ _ZN7QObjectC2EP7QObject(void* self, void* parent)
             candidate,
             vtable
         );
-        return; // vtable not yet final, try again later
+        // Give the vtable time to become final.  If the same candidate
+        // keeps failing many times it is almost certainly wrong (e.g. a
+        // different xochitl QObject that happens to have a QImage at
+        // offset +0x50 / +0x60).  Clear it so the default-ctor hook
+        // can store a fresh candidate.
+        void* expected = g_last_bad_candidate.load(std::memory_order_relaxed);
+        if (candidate != expected) {
+            g_last_bad_candidate.store(candidate, std::memory_order_relaxed);
+            g_bad_candidate_count.store(1, std::memory_order_relaxed);
+            return;
+        }
+        int n =
+            g_bad_candidate_count.fetch_add(1, std::memory_order_relaxed) + 1;
+        if (n >= 10) {
+            _WARN(
+                "EPF candidate %p failed %d times -- clearing "
+                "(likely wrong object)",
+                candidate,
+                n
+            );
+            g_epf_candidate.store(nullptr, std::memory_order_release);
+            g_last_bad_candidate.store(nullptr, std::memory_order_relaxed);
+            g_bad_candidate_count.store(0, std::memory_order_relaxed);
+        }
+        return; // try again next QObject
     }
     _DEBUG(
         "Found EPFramebuffer at %p, vtable=%p, swapBuffers_QRegion=%p",
