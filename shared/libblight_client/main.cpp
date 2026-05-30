@@ -95,6 +95,9 @@ namespace {
             }
             auto surfaceIds = FB::connection->surfaces();
             auto deviceFormat = FB::deviceFormat();
+            auto deviceXres = FB::deviceXres();
+            auto deviceYres = FB::deviceYres();
+            auto deviceStride = FB::deviceStride();
             if (!surfaceIds.empty()) {
                 for (auto& identifier : surfaceIds) {
                     auto maybe = FB::connection->getBuffer(identifier);
@@ -106,9 +109,9 @@ namespace {
                         continue;
                     }
                     if (buffer->x != 0 || buffer->y != 0 ||
-                        buffer->width != FB::deviceXres() ||
-                        buffer->height != FB::deviceYres() ||
-                        buffer->stride != FB::deviceStride() ||
+                        buffer->width != deviceXres ||
+                        buffer->height != deviceYres ||
+                        buffer->stride != deviceStride ||
                         buffer->format != deviceFormat) {
                         continue;
                     }
@@ -118,34 +121,12 @@ namespace {
                 }
             }
             if (FB::buffer->format == Blight::Format::Format_Invalid) {
-                /// Emulate rM1 screen
-                auto maybe = Blight::createBuffer(
-                    0,
-                    0,
-                    FB::deviceXres(),
-                    FB::deviceYres(),
-                    FB::deviceStride(),
-                    deviceFormat
-                );
-                if (!maybe.has_value()) {
-                    return -1;
-                }
-                FB::buffer = maybe.value();
-                // We don't ever plan on resizing, and we shouldn't let anything
-                // try
-                int flags = fcntl(FB::buffer->fd, F_GET_SEALS);
-                fcntl(
-                    FB::buffer->fd,
-                    F_ADD_SEALS,
-                    flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW
-                );
+                FB::createBuffer();
                 res = FB::buffer->fd;
                 if (res < 0) {
                     _CRIT("Failed to create buffer: %s", std::strerror(errno));
                     std::exit(errno);
                 }
-                // Initialize the buffer with white (all bytes = 0xFF)
-                memset(FB::buffer->data, 0xFF, FB::buffer->size());
                 _INFO(
                     "Created buffer %s on fd %d",
                     FB::buffer->uuid.c_str(),

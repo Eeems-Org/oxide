@@ -24,6 +24,7 @@ namespace FB {
     int deviceYres();
     int deviceStride();
     int deviceBitsPerPixel();
+    void createBuffer();
 }
 namespace swtfb {
     struct xochitl_data

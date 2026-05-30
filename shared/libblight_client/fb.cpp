@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <sys/mman.h>
 
 #include <libblight.h>
 #include <libblight/clock.h>
@@ -511,5 +512,60 @@ namespace FB {
             default:
                 return 32;
         }
+    }
+    void createBuffer()
+    {
+        if (Client::deviceType == Client::DeviceType::RM2) {
+            // rM2 requires a much larger buffer than is actually used
+            auto buf = new Blight::buf_t{ .fd = -1,
+                                          .x = 0,
+                                          .y = 0,
+                                          .width = deviceXres(),
+                                          .height = deviceYres(),
+                                          .stride = deviceStride(),
+                                          .format = deviceFormat(),
+                                          .data = nullptr,
+                                          .uuid = Blight::buf_t::new_uuid(),
+                                          .surface = 0 };
+            buf->fd = memfd_create(buf->uuid.c_str(), MFD_ALLOW_SEALING);
+            if (buf->fd == -1) {
+                return;
+            }
+            // Magic larger number that rM2 uses based on virtual sizes
+            if (ftruncate(buf->fd, 26359808)) {
+                return;
+            }
+            void* data = mmap(
+                NULL,
+                buf->size(),
+                PROT_READ | PROT_WRITE,
+                MAP_SHARED_VALIDATE,
+                buf->fd,
+                0
+            );
+            if (data == MAP_FAILED || data == nullptr) {
+                return;
+            }
+            buf->data = reinterpret_cast<Blight::data_t>(data);
+            buffer = Blight::shared_buf_t(buf);
+        } else {
+            auto maybe = Blight::createBuffer(
+                0, 0, deviceXres(), deviceYres(), deviceStride(), deviceFormat()
+            );
+            if (!maybe.has_value()) {
+                return;
+            }
+            buffer = maybe.value();
+        }
+        // We don't ever plan on resizing, and we shouldn't let anything
+        // try
+        int flags = fcntl(buffer->fd, F_GET_SEALS);
+        fcntl(
+            buffer->fd,
+            F_ADD_SEALS,
+            flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW
+        );
+        // Initialize the buffer with white (all bytes = 0xFF)
+        memset(FB::buffer->data, 0xFF, FB::buffer->size());
     }
 }
