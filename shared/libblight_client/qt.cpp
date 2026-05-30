@@ -68,6 +68,9 @@ struct QFuncs
 
 static QFuncs qImageFuncs;
 
+/*!
+ * \brief Get various QImage function pointers
+ */
 static void
 resolve_qimage_funcs()
 {
@@ -104,9 +107,9 @@ resolve_qimage_funcs()
     }
 }
 
-static std::atomic<bool> qImageRedirected{ false };
-static std::atomic<void*> epframeBufferAddresses{ nullptr };
-
+/*!
+ * \brief mmap the exclusive mode framebuffer
+ */
 static std::pair<void*, size_t>
 mmap_framebuffer()
 {
@@ -156,6 +159,9 @@ static constexpr int d_ptrOffset = 8;
 static constexpr int d_ptrOffset = 0;
 #endif
 
+/*!
+ * \brief Swap the buffer for a QImage
+ */
 bool
 swap_qimage_buffer(void* qimage, Blight::Format format, void* data, size_t size)
 {
@@ -197,6 +203,11 @@ swap_qimage_buffer(void* qimage, Blight::Format format, void* data, size_t size)
     return true;
 }
 
+static std::atomic<bool> qImageRedirected{ false };
+
+/*!
+ * \brief Swap the QImage buffers for auxBuffer and mainBuffer to blight buffers
+ */
 static void
 redirect_epframebuffer_qimages(void* epframebuffer)
 {
@@ -373,6 +384,9 @@ static std::atomic<void*> epframebufferCandidate{ nullptr };
 static std::atomic<void*> lastBadCandidate{ nullptr };
 static std::atomic<int> badCandidateCount{ 0 };
 
+/*!
+ * \brief Install a trampoline into a function to run our hook instead
+ */
 void
 install_hook(void* target, void* hook)
 {
@@ -412,17 +426,10 @@ install_hook(void* target, void* hook)
 #endif
 }
 
-int
-get_vtable_offset()
-{
-    const char* offset = getenv("OXIDE_EPFRAMEBUFFER_VTABLE_OFFSET");
-    if (offset) {
-        return std::stoi(offset, nullptr, 0);
-    }
-    // TODO handle aarch64 default
-    return 0x5c; // default for arm32 (vtable entry 23)
-}
-
+/*!
+ * \brief Ensure that a pointer references a EPFramebuffer::swapBuffers(...)
+ * method
+ */
 bool
 validate_swapbuffers(void* func)
 {
@@ -472,6 +479,9 @@ validate_swapbuffers(void* func)
     return true;
 }
 
+/*!
+ * \brief Hook to run on EPFramebuffer::swapBuffers(QRect, ...) call
+ */
 void
 hook_swapBuffers_QRect(
     void* this_ptr,
@@ -502,6 +512,9 @@ hook_swapBuffers_QRect(
     );
 }
 
+/*!
+ * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
+ */
 void
 hook_swapBuffers_QRegion(
     void* this_ptr,
@@ -537,6 +550,10 @@ hook_swapBuffers_QRegion(
         );
     }
 }
+
+/*!
+ * \brief Hook to run on QObject::QObject(QObject*) call
+ */
 static void
 hook_qobject_constructor(void* self, void* parent)
 {
@@ -548,10 +565,23 @@ hook_qobject_constructor(void* self, void* parent)
     // Its vtable may have been updated from a temporary to the final
     // class vtable since the last time we checked.
     void* candidate = epframebufferCandidate.load(std::memory_order_acquire);
-    if (!candidate) {
+    if (candidate == nullptr) {
         return; // QImage hook hasn't fired yet
     }
-    int offset = get_vtable_offset();
+    int offset;
+    const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_VTABLE_OFFSET");
+    if (offsetenv) {
+        offset = std::stoi(offsetenv, nullptr, 0);
+    } else {
+#if defined(__arm__)
+        offset = 0x5c; //(vtable entry 23)
+#elif defined(__aarch64__)
+// TODO add aarch64 offset
+#else
+        _CRIT("Unsupported architecture");
+        std::exit(EXIT_FAILURE);
+#endif
+    }
     void* vtable = *(void**)candidate;
     _DEBUG("EPF candidate at %p, vtable=%p", candidate, vtable);
     if (!vtable) {
@@ -614,6 +644,9 @@ hook_qobject_constructor(void* self, void* parent)
     epframebufferCandidate.store(nullptr, std::memory_order_release);
 }
 
+/*!
+ * \brief QObject::QObject(QObject*) constructor
+ */
 void
 _ZN7QObjectC2EPS_(void* self, void* parent)
 {
@@ -631,6 +664,9 @@ _ZN7QObjectC2EPS_(void* self, void* parent)
     hook_qobject_constructor(self, parent);
 }
 
+/*!
+ * \brief QObject::QObject(QObject*) constructor
+ */
 void
 _ZN7QObjectC1EPS_(void* self, void* parent)
 {
@@ -648,6 +684,9 @@ _ZN7QObjectC1EPS_(void* self, void* parent)
     hook_qobject_constructor(self, parent);
 }
 
+/*!
+ * \brief Alternative QImage::QImage() constructor
+ */
 void
 _ZN6QImageC1Ev(void* this_ptr)
 {
@@ -703,7 +742,6 @@ _ZN6QImageC1Ev(void* this_ptr)
             info.dli_fname
         );
         epframebufferCandidate.store(candidate, std::memory_order_release);
-        epframeBufferAddresses.store(candidate, std::memory_order_release);
         break;
     }
 }
