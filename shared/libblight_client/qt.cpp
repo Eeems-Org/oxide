@@ -53,25 +53,6 @@ namespace Qt {
     }
 }
 
-static bool
-should_handle_epframebuffer(const char* path)
-{
-    if (!path || !*path) {
-        return false;
-    }
-    if (Client::IS_XOCHITL) {
-        return true;
-    }
-    char* resolved = realpath(path, nullptr);
-    if (!resolved) {
-        return false;
-    }
-    bool match =
-        strcmp(resolved, "/usr/lib/plugins/scenegraph/libqsgepaper.so") == 0;
-    free(resolved);
-    return match;
-}
-
 // Runtime pointers to real QImage methods (resolved once via dlsym).
 struct QFuncs
 {
@@ -445,17 +426,7 @@ get_vtable_offset()
 bool
 validate_swapbuffers(void* func)
 {
-    if (!func) {
-        return false;
-    }
-    Dl_info info;
-    if (!dladdr(func, &info)) {
-        return false;
-    }
-    if (!info.dli_fname) {
-        return false;
-    }
-    if (!should_handle_epframebuffer(info.dli_fname)) {
+    if (func == nullptr) {
         return false;
     }
 #if defined(__arm__)
@@ -587,12 +558,13 @@ hook_qobject_constructor(void* self, void* parent)
         _DEBUG("%s", "vtable is null, skipping");
         return;
     }
-    void* func = *(void**)((char*)vtable + offset);
-    _DEBUG("swapBuffers candidate function at %p", func);
-    if (!validate_swapbuffers(func)) {
+    void* func_swapBuffers_qregion = *(void**)((char*)vtable + offset);
+    _DEBUG("swapBuffers candidate function at %p", func_swapBuffers_qregion);
+    if (!validate_swapbuffers(func_swapBuffers_qregion)) {
         _DEBUG(
-            "validate_swapbuffers(%p) FAILED for candidate %p, vtable=%p",
-            func,
+            "validate_swapbuffers(%p) FAILED for QRegion candidate %p, "
+            "vtable=%p",
+            func_swapBuffers_qregion,
             candidate,
             vtable
         );
@@ -620,15 +592,23 @@ hook_qobject_constructor(void* self, void* parent)
         "Found EPFramebuffer at %p, vtable=%p, swapBuffers_QRegion=%p",
         candidate,
         vtable,
-        func
+        func_swapBuffers_qregion
     );
     redirect_epframebuffer_qimages(candidate);
-    install_hook(func, (void*)&hook_swapBuffers_QRegion);
+    install_hook(func_swapBuffers_qregion, (void*)&hook_swapBuffers_QRegion);
     _DEBUG("Hooked swapBuffers(QRegion,...)");
-    void* qrect_func = *(void**)((char*)vtable + offset - sizeof(void*));
-    if (validate_swapbuffers(qrect_func)) {
-        install_hook(qrect_func, (void*)&hook_swapBuffers_QRect);
+    void* func_swapBuffers_qrect =
+        *(void**)((char*)vtable + offset - sizeof(void*));
+    if (validate_swapbuffers(func_swapBuffers_qrect)) {
+        install_hook(func_swapBuffers_qrect, (void*)&hook_swapBuffers_QRect);
         _DEBUG("Hooked swapBuffers(QRect, ...)");
+    } else {
+        _DEBUG(
+            "validate_swapbuffers(%p) FAILED for QRect candidate %p, vtable=%p",
+            func_swapBuffers_qregion,
+            candidate,
+            vtable
+        );
     }
     hook_installed = true;
     epframebufferCandidate.store(nullptr, std::memory_order_release);
@@ -684,11 +664,11 @@ _ZN6QImageC1Ev(void* this_ptr)
     // Default ctor: format not yet set. Try both known EPF offsets.
     // The vtable at (this - offset) is checked to confirm it belongs
     // to a xochitl QObject (fully dynamic via dladdr).
-    for (int off : { mainBufferOffset, auxBufferOffset }) {
-        if (off == 0) {
+    for (int offset : { mainBufferOffset, auxBufferOffset }) {
+        if (offset == 0) {
             continue; // skip unsupported arch placeholder
         }
-        void* candidate = (char*)this_ptr - off;
+        void* candidate = (char*)this_ptr - offset;
         void* vtable = *(void**)candidate;
         // Quick pre-filter: aligned, non-null, reasonable address
         if (!vtable || (uintptr_t)vtable & 3 ||
@@ -696,14 +676,23 @@ _ZN6QImageC1Ev(void* this_ptr)
             continue;
         }
         Dl_info info;
-        if (!dladdr(vtable, &info)) {
+        if (!dladdr(vtable, &info) || info.dli_fname == nullptr ||
+            !*info.dli_fname) {
             continue;
         }
-        if (!info.dli_fname) {
-            continue;
-        }
-        if (!should_handle_epframebuffer(info.dli_fname)) {
-            continue;
+        if (!Client::IS_XOCHITL) {
+            char* resolved = realpath(info.dli_fname, nullptr);
+            if (resolved == nullptr) {
+                continue;
+            }
+            bool match =
+                strcmp(
+                    resolved, "/usr/lib/plugins/scenegraph/libqsgepaper.so"
+                ) == 0;
+            free(resolved);
+            if (!match) {
+                continue;
+            }
         }
         _DEBUG(
             "Default ctor at %p -> EPF candidate at %p "
