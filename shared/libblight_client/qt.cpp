@@ -27,18 +27,6 @@ namespace Qt {
             (qregion_end_t)dlsym(RTLD_DEFAULT, "_ZNK7QRegion3endEv");
         return fn;
     }
-    bool rects_overlap(const QRectLayout* a, const QRectLayout* b)
-    {
-        return a->left < b->right && a->right > b->left && a->top < b->bottom &&
-               a->bottom > b->top;
-    }
-    epsm_region_t epsm_region()
-    {
-        static epsm_region_t fn = (epsm_region_t)dlsym(
-            RTLD_DEFAULT, "_ZNK15EPScreenModeMap6regionE12EPScreenMode"
-        );
-        return fn;
-    }
     Blight::WaveformMode epsm_to_waveform(int screenMode)
     {
         switch (screenMode) {
