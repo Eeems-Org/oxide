@@ -6,4 +6,5 @@ namespace Client {
     bool HANDLE_FB = true;
     bool FAKE_RM1 = false;
     DeviceType deviceType = DeviceType::UNKNOWN;
+    bool IS_XOCHITL = false;
 }

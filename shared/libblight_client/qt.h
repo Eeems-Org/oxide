@@ -45,39 +45,6 @@ extern "C"
     _ZN7QObjectC1EPS_(void* self, void* parent);
     __asm__(".symver _ZN7QObjectC1EPS_, _ZN7QObjectC1EPS_@Qt_6");
 
-#if defined(__arm__)
-    __attribute__((visibility("default"))) void
-    _ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_(
-        void* this_ptr,
-        char* data,
-        int width,
-        int height,
-        int bytesPerLine,
-        int format,
-        void* cleanupFunction,
-        void* cleanupInfo
-    );
-    __asm__(".symver _ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_ , "
-            "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_@Qt_6");
-
     __attribute__((visibility("default"))) void _ZN6QImageC1Ev(void* this_ptr);
     __asm__(".symver _ZN6QImageC1Ev, _ZN6QImageC1Ev@Qt_6");
-#elif defined(__aarch64__)
-    __attribute__((visibility("default"))) void
-    _ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_(
-        void* this_ptr,
-        char* data,
-        int width,
-        int height,
-        long long bytesPerLine,
-        int format,
-        void* cleanupFunction,
-        void* cleanupInfo
-    );
-    __asm__(".symver _ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_ , "
-            "_ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_@Qt_6");
-
-    __attribute__((visibility("default"))) void _ZN6QImageC1Ev(void* this_ptr);
-    __asm__(".symver _ZN6QImageC1Ev, _ZN6QImageC1Ev@Qt_6");
-#endif
 }

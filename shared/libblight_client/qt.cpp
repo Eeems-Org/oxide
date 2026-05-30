@@ -1,10 +1,13 @@
 #include "qt.h"
+#include "fb.h"
+#include "state.h"
 
 #include <cstdlib>
 #include <dlfcn.h>
 #include <libblight/debug.h>
 #include <libblight/system.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <atomic>
@@ -62,24 +65,287 @@ namespace Qt {
     }
 }
 
+static bool
+should_handle_epframebuffer(const char* path)
+{
+    if (!path || !*path) {
+        return false;
+    }
+    if (Client::IS_XOCHITL) {
+        return true;
+    }
+    char* resolved = realpath(path, nullptr);
+    if (!resolved) {
+        return false;
+    }
+    bool match =
+        strcmp(resolved, "/usr/lib/plugins/scenegraph/libqsgepaper.so") == 0;
+    free(resolved);
+    return match;
+}
+
+// Runtime pointers to real QImage methods (resolved once via dlsym).
+struct QFuncs
+{
+    void (*ctor)(void*, char*, int, int, int, int, void*, void*);
+    void (*dtor)(void*);
+    unsigned char* (*bits)(void*);
+    int (*width)(void*);
+    int (*height)(void*);
+    int (*bytesPerLine)(void*);
+    int (*format)(void*);
+    bool ok;
+};
+
+static QFuncs qImageFuncs;
+
+static void
+resolve_qimage_funcs()
+{
+    if (qImageFuncs.ok) {
+        return;
+    }
+    qImageFuncs.ctor = (decltype(qImageFuncs.ctor))dlsym(
+        RTLD_DEFAULT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_"
+    );
+    qImageFuncs.dtor =
+        (decltype(qImageFuncs.dtor))dlsym(RTLD_DEFAULT, "_ZN6QImageD1Ev");
+    qImageFuncs.bits =
+        (decltype(qImageFuncs.bits))dlsym(RTLD_DEFAULT, "_ZNK6QImage4bitsEv");
+    qImageFuncs.width =
+        (decltype(qImageFuncs.width))dlsym(RTLD_DEFAULT, "_ZNK6QImage5widthEv");
+    qImageFuncs.height = (decltype(qImageFuncs.height))dlsym(
+        RTLD_DEFAULT, "_ZNK6QImage6heightEv"
+    );
+    qImageFuncs.bytesPerLine = (decltype(qImageFuncs.bytesPerLine))dlsym(
+        RTLD_DEFAULT, "_ZNK6QImage12bytesPerLineEv"
+    );
+    qImageFuncs.format = (decltype(qImageFuncs.format))dlsym(
+        RTLD_DEFAULT, "_ZNK6QImage6formatEv"
+    );
+    qImageFuncs.ok = qImageFuncs.ctor && qImageFuncs.dtor && qImageFuncs.bits;
+    if (!qImageFuncs.ok) {
+        _WARN(
+            "Failed to resolve QImage runtime functions: "
+            "ctor=%p dtor=%p bits=%p",
+            (void*)qImageFuncs.ctor,
+            (void*)qImageFuncs.dtor,
+            (void*)qImageFuncs.bits
+        );
+    }
+}
+
+static std::atomic<bool> qImageRedirected{ false };
+static std::atomic<void*> epframeBufferAddresses{ nullptr };
+
+static std::pair<void*, size_t>
+mmap_framebuffer()
+{
+    if (FB::frameBuffer < 0) {
+        FB::frameBuffer = Blight::frameBuffer();
+    }
+    if (FB::frameBuffer < 0) {
+        _WARN("%s", "redirect: Blight::frameBuffer() failed");
+        return { nullptr, 0 };
+    }
+    struct stat st;
+    if (fstat(FB::frameBuffer, &st) < 0) {
+        _WARN("%s", "redirect: fstat(FB::frameBuffer) failed");
+        close(FB::frameBuffer);
+        return { nullptr, 0 };
+    }
+    size_t len = (size_t)st.st_size;
+    void* p = mmap(
+        nullptr, len, PROT_READ | PROT_WRITE, MAP_SHARED, FB::frameBuffer, 0
+    );
+    close(FB::frameBuffer);
+    if (p == MAP_FAILED) {
+        _WARN("%s", "redirect: mmap(FB::frameBuffer) failed");
+        return { nullptr, 0 };
+    }
+    _DEBUG("redirect: mmap'd server framebuffer (%zu bytes)", len);
+    return { p, len };
+}
+
 #if defined(__arm__)
-static constexpr int kEpfAuxBufferOffset = 0x60;
-static constexpr int kEpfMainBufferOffset = 0x50;
+static constexpr int auxBufferOffset = 0x60;
+static constexpr int mainBufferOffset = 0x50;
 #elif defined(__aarch64__)
-static constexpr int kEpfAuxBufferOffset = 0xa8;
-static constexpr int kEpfMainBufferOffset = 0xc8;
+static constexpr int auxBufferOffset = 0xa8;
+static constexpr int mainBufferOffset = 0xc8;
 #else
-static constexpr int kEpfAuxBufferOffset = 0x00;
-static constexpr int kEpfMainBufferOffset = 0x00;
+static constexpr int auxBufferOffset = 0x00;
+static constexpr int mainBufferOffset = 0x00;
+#endif
+// QImage layout: vtable pointer followed by QImageData* d_ptr.
+// Offset of d_ptr depends on pointer size.
+#if defined(__arm__)
+static constexpr int d_ptrOffset = 4;
+#elif defined(__aarch64__)
+static constexpr int d_ptrOffset = 8;
+#else
+static constexpr int d_ptrOffset = 0;
 #endif
 
-static std::atomic<bool> hook_installed = false;
-static std::atomic<void*> g_epf_candidate{ nullptr };
+static void
+redirect_epf_qimage(void* epf)
+{
+    if (mainBufferOffset == 0x00) {
+        return;
+    }
+    if (qImageRedirected.load(std::memory_order_acquire)) {
+        return;
+    }
+    resolve_qimage_funcs();
+    if (!qImageFuncs.ok) {
+        return;
+    }
 
-// Tracks persistently bad EPF candidates so we can clear them and
-// let the default-ctor hook store a fresh (hopefully correct) one.
-static std::atomic<void*> g_last_bad_candidate{ nullptr };
-static std::atomic<int> g_bad_candidate_count{ 0 };
+    // if (!Client::HANDLE_FB) {
+    //     // Exclusive-mode: redirect the 8-bit auxBuffer so that after
+    //     // xochitl's swapBuffers converts mainBuffer->auxBuffer, the 8-bit
+    //     // data lands directly in the shared memfd where the server reads it.
+    //     void* qimage = (char*)epf + auxBufferOffset;
+    //     int fmt = qImageFuncs.format(qimage);
+    //     if (fmt != 24 /*Format_Grayscale8*/) {
+    //         _DEBUG(
+    //             "redirect: auxBuffer format %d, expected Grayscale8 – "
+    //             "skipping redirect",
+    //             fmt
+    //         );
+    //         qImageRedirected.store(true, std::memory_order_release);
+    //         return;
+    //     }
+    //     int w = qImageFuncs.width(qimage);
+    //     int h = qImageFuncs.height(qimage);
+    //     int stride = qImageFuncs.bytesPerLine(qimage);
+    //     unsigned char* old_data = qImageFuncs.bits(qimage);
+    //     if (!old_data || w <= 0 || h <= 0) {
+    //         _DEBUG("%s", "redirect: invalid auxBuffer dimensions");
+    //         qImageRedirected.store(true, std::memory_order_release);
+    //         return;
+    //     }
+    //     size_t needed = (size_t)stride * (size_t)h;
+    //     static std::pair<void*, size_t> s_mmap{ nullptr, 0 };
+    //     if (!s_mmap.first) {
+    //         s_mmap = mmap_framebuffer();
+    //         if (!s_mmap.first) {
+    //             _WARN(
+    //                 "%s", "redirect: falling back (display may show stale
+    //                 data)"
+    //             );
+    //             qImageRedirected.store(true, std::memory_order_release);
+    //             return;
+    //         }
+    //     }
+    //     void* fb_data = s_mmap.first;
+    //     size_t fb_capacity = s_mmap.second;
+    //     if (needed > fb_capacity) {
+    //         _WARN(
+    //             "redirect: framebuffer too small (%zu bytes) for auxBuffer "
+    //             "(%dx%d stride=%d = %zu bytes)",
+    //             fb_capacity,
+    //             w,
+    //             h,
+    //             stride,
+    //             needed
+    //         );
+    //         qImageRedirected.store(true, std::memory_order_release);
+    //         return;
+    //     }
+    //     memcpy(fb_data, old_data, needed);
+    //     _DEBUG("redirect: copied first auxBuffer frame (%zu bytes)", needed);
+    //     char tmp_buf[32];
+    //     memset(tmp_buf, 0, sizeof(tmp_buf));
+    //     qImageFuncs.ctor(tmp_buf, (char*)fb_data, w, h, stride, fmt, nullptr,
+    //     nullptr); void** dptr_a = (void**)((char*)qimage + d_ptrOffset);
+    //     void** dptr_b = (void**)((char*)tmp_buf + d_ptrOffset);
+    //     void* tmp = *dptr_a;
+    //     *dptr_a = *dptr_b;
+    //     *dptr_b = tmp;
+    //     qImageFuncs.dtor(tmp_buf);
+    //     _INFO(
+    //         "redirect: auxBuffer now points at shared framebuffer "
+    //         "(%dx%d stride=%d)",
+    //         w,
+    //         h,
+    //         stride
+    //     );
+    //     qImageRedirected.store(true, std::memory_order_release);
+    //     return;
+    // }
+
+    // Composited path (HANDLE_FB=true): redirect the RGB32 mainBuffer to
+    // FB::buffer (which is created with the same RGB32 format).
+    void* qimage = (char*)epf + mainBufferOffset;
+    int fmt = qImageFuncs.format(qimage);
+    int expected = (int)FB::deviceFormat();
+    if (fmt != expected) {
+        _DEBUG(
+            "redirect: mainBuffer format %d, expected deviceFormat %d – "
+            "skipping redirect",
+            fmt,
+            expected
+        );
+        qImageRedirected.store(true, std::memory_order_release);
+        return;
+    }
+    int w = qImageFuncs.width(qimage);
+    int h = qImageFuncs.height(qimage);
+    int stride = qImageFuncs.bytesPerLine(qimage);
+    unsigned char* old_data = qImageFuncs.bits(qimage);
+    if (!old_data || w <= 0 || h <= 0) {
+        _DEBUG("%s", "redirect: invalid QImage dimensions");
+        qImageRedirected.store(true, std::memory_order_release);
+        return;
+    }
+    size_t needed = (size_t)stride * (size_t)h;
+    if (FB::buffer == nullptr || FB::buffer->data == nullptr) {
+        _DEBUG("%s", "redirect: FB::buffer not ready yet, will retry");
+        return;
+    }
+    void* fb_data = FB::buffer->data;
+    size_t fb_capacity = FB::buffer->size();
+    if (needed > fb_capacity) {
+        _WARN(
+            "redirect: framebuffer too small (%zu bytes) for QImage "
+            "(%dx%d stride=%d = %zu bytes)",
+            fb_capacity,
+            w,
+            h,
+            stride,
+            needed
+        );
+        qImageRedirected.store(true, std::memory_order_release);
+        return;
+    }
+    memcpy(fb_data, old_data, needed);
+    _DEBUG("redirect: copied first frame (%zu bytes)", needed);
+    char tmp_buf[32];
+    memset(tmp_buf, 0, sizeof(tmp_buf));
+    qImageFuncs.ctor(
+        tmp_buf, (char*)fb_data, w, h, stride, fmt, nullptr, nullptr
+    );
+    void** dptr_a = (void**)((char*)qimage + d_ptrOffset);
+    void** dptr_b = (void**)((char*)tmp_buf + d_ptrOffset);
+    void* tmp = *dptr_a;
+    *dptr_a = *dptr_b;
+    *dptr_b = tmp;
+    qImageFuncs.dtor(tmp_buf);
+    _INFO(
+        "redirect: mainBuffer now points at shared framebuffer "
+        "(%dx%d stride=%d)",
+        w,
+        h,
+        stride
+    );
+    qImageRedirected.store(true, std::memory_order_release);
+}
+
+static std::atomic<bool> hook_installed = false;
+static std::atomic<void*> epframebufferCandidate{ nullptr };
+static std::atomic<void*> lastBadCandidate{ nullptr };
+static std::atomic<int> badCandidateCount{ 0 };
 
 void
 install_hook(void* target, void* hook)
@@ -87,8 +353,13 @@ install_hook(void* target, void* hook)
     long ps = sysconf(_SC_PAGESIZE);
     void* page = (void*)((uintptr_t)target & ~(ps - 1));
     size_t len = 8;
-#if defined(__aarch64__)
+#if defined(__arm__)
+    len = 8;
+#elif defined(__aarch64__)
     len = 16;
+#else
+    _CRIT("%s", "Unsupported architecture");
+    std::exit(EXIT_FAILURE);
 #endif
     // Make sure all the bytes we overwrite are in writable pages
     while ((uintptr_t)page + ps < (uintptr_t)target + len) {
@@ -112,20 +383,17 @@ install_hook(void* target, void* hook)
     *(uint32_t*)((char*)target + 4) = 0xd61f0200;
     *(uint64_t*)((char*)target + 8) = (uintptr_t)hook;
     __builtin___clear_cache(target, (char*)target + 16);
-#else
-    _CRIT("%s", "Unsupported architecture");
-    std::exit(EXIT_FAILURE);
 #endif
 }
 
 int
 get_vtable_offset()
 {
-    const char* env = getenv("OXIDE_EPFRAMEBUFFER_VTABLE_OFFSET");
-    if (env) {
-        return std::stoi(env, nullptr, 0); // handles hex with 0x prefix
+    const char* offset = getenv("OXIDE_EPFRAMEBUFFER_VTABLE_OFFSET");
+    if (offset) {
+        return std::stoi(offset, nullptr, 0);
     }
-    // TODO handle aarch64
+    // TODO handle aarch64 default
     return 0x5c; // default for arm32 (vtable entry 23)
 }
 
@@ -142,9 +410,7 @@ validate_swapbuffers(void* func)
     if (!info.dli_fname) {
         return false;
     }
-    std::string fname(info.dli_fname);
-    if (fname.find("xochitl") == std::string::npos &&
-        fname.find("libqsgepaper") == std::string::npos) {
+    if (!should_handle_epframebuffer(info.dli_fname)) {
         return false;
     }
 #if defined(__arm__)
@@ -190,71 +456,6 @@ validate_swapbuffers(void* func)
     return true;
 }
 
-#if defined(__arm__)
-void
-_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_(
-    void* this_ptr,
-    char* data,
-    int width,
-    int height,
-    int bytesPerLine,
-    int format,
-    void* cleanupFunction,
-    void* cleanupInfo
-)
-#elif defined(__aarch64__)
-void
-_ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_(
-    void* this_ptr,
-    char* data,
-    int width,
-    int height,
-    long long bytesPerLine,
-    int format,
-    void* cleanupFunction,
-    void* cleanupInfo
-)
-#endif
-#if defined(__arm__) || defined(__aarch64__)
-{
-    static auto func =
-#if defined(__arm__)
-        (void (*)(void*, char*, int, int, int, int, void*, void*))dlsym(
-            RTLD_NEXT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_"
-        );
-#elif defined(__aarch64__)
-        (void (*)(void*, char*, int, int, long long, int, void*, void*))dlsym(
-            RTLD_NEXT, "_ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_"
-        );
-#endif
-    if (!func) {
-        _CRIT(
-            "%s",
-            "Failed to resolve real QImage::QImage(unsigned char*, int, "
-            "int, "
-#if defined(__arm__)
-            "long long"
-#elif defined(__aarch64__)
-            "int"
-#endif
-            ", QImage::Format, void (*)(void*), void*) via "
-            "RTLD_NEXT"
-        );
-        std::exit(EXIT_FAILURE);
-    }
-    func(
-        this_ptr,
-        data,
-        width,
-        height,
-        bytesPerLine,
-        format,
-        cleanupFunction,
-        cleanupInfo
-    );
-}
-#endif
-
 void
 _ZN6QImageC1Ev(void* this_ptr)
 {
@@ -271,7 +472,7 @@ _ZN6QImageC1Ev(void* this_ptr)
     // Default ctor: format not yet set. Try both known EPF offsets.
     // The vtable at (this - offset) is checked to confirm it belongs
     // to a xochitl QObject (fully dynamic via dladdr).
-    for (int off : { kEpfMainBufferOffset, kEpfAuxBufferOffset }) {
+    for (int off : { mainBufferOffset, auxBufferOffset }) {
         if (off == 0) {
             continue; // skip unsupported arch placeholder
         }
@@ -289,9 +490,7 @@ _ZN6QImageC1Ev(void* this_ptr)
         if (!info.dli_fname) {
             continue;
         }
-        std::string fname(info.dli_fname);
-        if (fname.find("xochitl") == std::string::npos &&
-            fname.find("libqsgepaper") == std::string::npos) {
+        if (!should_handle_epframebuffer(info.dli_fname)) {
             continue;
         }
         _DEBUG(
@@ -302,7 +501,8 @@ _ZN6QImageC1Ev(void* this_ptr)
             vtable,
             info.dli_fname
         );
-        g_epf_candidate.store(candidate, std::memory_order_release);
+        epframebufferCandidate.store(candidate, std::memory_order_release);
+        epframeBufferAddresses.store(candidate, std::memory_order_release);
         break;
     }
 }
@@ -361,13 +561,13 @@ hook_swapBuffers_QRegion(
     }
 
     for (; it != end; it++) {
-        int waveform = 2;
+        // TODO get and convert screen mode to waveform
         Blight::exclusiveModeRepaint(
             it->left,
             it->top,
             it->right - it->left,
             it->bottom - it->top,
-            (Blight::WaveformMode)waveform,
+            Blight::WaveformMode::HighQualityGrayscale,
             Qt::flags_to_update_mode(flags)
         );
     }
@@ -382,7 +582,7 @@ qobject_ctor_post_hook(void* self, void* parent)
     // Re-check the EPFramebuffer candidate (discovered via QImage hook).
     // Its vtable may have been updated from a temporary to the final
     // class vtable since the last time we checked.
-    void* candidate = g_epf_candidate.load(std::memory_order_acquire);
+    void* candidate = epframebufferCandidate.load(std::memory_order_acquire);
     if (!candidate) {
         return; // QImage hook hasn't fired yet
     }
@@ -402,19 +602,13 @@ qobject_ctor_post_hook(void* self, void* parent)
             candidate,
             vtable
         );
-        // Give the vtable time to become final.  If the same candidate
-        // keeps failing many times it is almost certainly wrong (e.g. a
-        // different xochitl QObject that happens to have a QImage at
-        // offset +0x50 / +0x60).  Clear it so the default-ctor hook
-        // can store a fresh candidate.
-        void* expected = g_last_bad_candidate.load(std::memory_order_relaxed);
+        void* expected = lastBadCandidate.load(std::memory_order_relaxed);
         if (candidate != expected) {
-            g_last_bad_candidate.store(candidate, std::memory_order_relaxed);
-            g_bad_candidate_count.store(1, std::memory_order_relaxed);
+            lastBadCandidate.store(candidate, std::memory_order_relaxed);
+            badCandidateCount.store(1, std::memory_order_relaxed);
             return;
         }
-        int n =
-            g_bad_candidate_count.fetch_add(1, std::memory_order_relaxed) + 1;
+        int n = badCandidateCount.fetch_add(1, std::memory_order_relaxed) + 1;
         if (n >= 10) {
             _WARN(
                 "EPF candidate %p failed %d times -- clearing "
@@ -422,9 +616,9 @@ qobject_ctor_post_hook(void* self, void* parent)
                 candidate,
                 n
             );
-            g_epf_candidate.store(nullptr, std::memory_order_release);
-            g_last_bad_candidate.store(nullptr, std::memory_order_relaxed);
-            g_bad_candidate_count.store(0, std::memory_order_relaxed);
+            epframebufferCandidate.store(nullptr, std::memory_order_release);
+            lastBadCandidate.store(nullptr, std::memory_order_relaxed);
+            badCandidateCount.store(0, std::memory_order_relaxed);
         }
         return; // try again next QObject
     }
@@ -434,17 +628,16 @@ qobject_ctor_post_hook(void* self, void* parent)
         vtable,
         func
     );
+    redirect_epf_qimage(candidate);
     install_hook(func, (void*)&hook_swapBuffers_QRegion);
     _DEBUG("Hooked swapBuffers(QRegion,...)");
-    // Also try to hook the QRect overload (one vtable slot before
-    // on ARM32)
     void* qrect_func = *(void**)((char*)vtable + offset - sizeof(void*));
     if (validate_swapbuffers(qrect_func)) {
         install_hook(qrect_func, (void*)&hook_swapBuffers_QRect);
         _DEBUG("Hooked swapBuffers(QRect, ...)");
     }
     hook_installed = true;
-    g_epf_candidate.store(nullptr, std::memory_order_release);
+    epframebufferCandidate.store(nullptr, std::memory_order_release);
 }
 
 void

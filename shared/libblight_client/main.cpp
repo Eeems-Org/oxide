@@ -144,12 +144,8 @@ namespace {
                     _CRIT("Failed to create buffer: %s", std::strerror(errno));
                     std::exit(errno);
                 }
-                // Initialize the buffer with white
-                memset(
-                    (std::uint16_t*)FB::buffer->data,
-                    std::uint16_t(0xFFFFFFFF),
-                    2808 * 1872
-                );
+                // Initialize the buffer with white (all bytes = 0xFF)
+                memset(FB::buffer->data, 0xFF, FB::buffer->size());
                 _INFO(
                     "Created buffer %s on fd %d",
                     FB::buffer->uuid.c_str(),
@@ -662,7 +658,10 @@ extern "C"
         }
         std::string path;
         __realpath("/proc/self/exe", path);
-        if (path != "/usr/bin/xochitl" &&
+        if (path == "/usr/bin/xochitl") {
+            Client::IS_XOCHITL = true;
+        }
+        if (!Client::IS_XOCHITL &&
             (!path.starts_with("/opt") || path.starts_with("/opt/sbin")) &&
             (!path.starts_with("/home") ||
              path.starts_with("/home/root/.entware/sbin"))) {
@@ -709,7 +708,7 @@ extern "C"
         if (Client::deviceType == Client::DeviceType::RM2) {
             Libc::setenv("RM2FB_ACTIVE", "1", true);
             Libc::setenv("RM2FB_SHIM", "1", true);
-            if (path != "/usr/bin/xochitl" &&
+            if (!Client::IS_XOCHITL &&
                 getenv("OXIDE_PRELOAD_ALLOW_RM2FB") == nullptr) {
                 Libc::setenv("RM2FB_DISABLE", "1", true);
             } else {

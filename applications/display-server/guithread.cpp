@@ -394,16 +394,8 @@ GUIThread::swap(
         O_WARNING("swap called when m_frameBuffer not initialized");
         return;
     }
-    auto data = m_frameBuffer->data;
-    if (deviceSettings.getDeviceType() ==
-        Oxide::DeviceSettings::DeviceType::RM2) {
-        // line_length = 1040
-        // xoffset = 0
-        // yoffset = 22528
-        data = &data[22528 * 1040];
-    }
     QImage image(
-        data,
+        m_frameBuffer->data,
         m_frameBuffer->width,
         m_frameBuffer->height,
         m_frameBuffer->stride,
