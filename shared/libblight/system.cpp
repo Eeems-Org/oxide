@@ -152,7 +152,15 @@ namespace Blight {
             errno = EAGAIN;
             return false;
         }
-        _DEBUG("[Blight::exclusiveModeRepaint()]");
+        _DEBUG(
+            "[Blight::exclusiveModeRepaint(%d, %d, %d, %d, %d, %d)]",
+            x,
+            y,
+            width,
+            height,
+            waveform,
+            updateMode
+        );
         auto reply = dbus->call_method(
             BLIGHT_SERVICE,
             "/",

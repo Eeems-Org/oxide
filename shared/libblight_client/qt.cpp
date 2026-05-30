@@ -86,45 +86,32 @@ install_hook(void* target, void* hook)
 {
     long ps = sysconf(_SC_PAGESIZE);
     void* page = (void*)((uintptr_t)target & ~(ps - 1));
+    size_t len = 8;
+#if defined(__aarch64__)
+    len = 16;
+#endif
+    // Make sure all the bytes we overwrite are in writable pages
+    while ((uintptr_t)page + ps < (uintptr_t)target + len) {
+        ps += sysconf(_SC_PAGESIZE);
+    }
     mprotect(page, ps, PROT_READ | PROT_WRITE | PROT_EXEC);
-    // Allocate trampoline near target
-    void* tramp = mmap(
-        (void*)((uintptr_t)target + 0x20000),
-        4096,
-        PROT_READ | PROT_WRITE | PROT_EXEC,
-        MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE,
-        -1,
-        0
-    );
-    if (tramp == MAP_FAILED) {
-        tramp = mmap(
-            NULL,
-            4096,
-            PROT_READ | PROT_WRITE | PROT_EXEC,
-            MAP_PRIVATE | MAP_ANONYMOUS,
-            -1,
-            0
-        );
-    }
-    if (tramp == MAP_FAILED) {
-        _CRIT("%s", "Failed to mmap trampoline for hook!");
-        std::exit(EXIT_FAILURE);
-    }
 #if defined(__arm__)
-    // 8 bytes: ldr pc,[pc,#-4] + addr
-    *(uint32_t*)tramp = 0xe51ff004;
-    *(uint32_t*)((char*)tramp + 4) = (uintptr_t)hook;
-    int32_t offset = (intptr_t)tramp - (intptr_t)target - 8;
-    *(uint32_t*)target = 0xEA000000 | ((offset >> 2) & 0x00FFFFFF);
-    __builtin___clear_cache(target, (char*)target + 4);
+    // Overwrite the first 8 bytes of target with:
+    //   LDR PC, [PC, #-4]   (loads from target+4 into PC)
+    //   <hook address>
+    // No separate trampoline needed -- LDR PC can reach any 32-bit address.
+    *(uint32_t*)target = 0xe51ff004;
+    *(uint32_t*)((char*)target + 4) = (uintptr_t)hook;
+    __builtin___clear_cache(target, (char*)target + 8);
 #elif defined(__aarch64__)
-    // 12 bytes: ldr x16,[pc,#8] + br x16 + addr
-    *(uint32_t*)tramp = 0x58000050;              // ldr x16, #8
-    *(uint32_t*)((char*)tramp + 4) = 0xd61f0200; // br x16
-    *(uint64_t*)((char*)tramp + 8) = (uintptr_t)hook;
-    int64_t offset = (intptr_t)tramp - (intptr_t)target;
-    *(uint32_t*)target = 0x14000000 | ((offset >> 2) & 0x03FFFFFF);
-    __builtin___clear_cache(target, (char*)target + 4);
+    // Overwrite the first 16 bytes of target with:
+    //   LDR X16, #8          (load 8 bytes from PC+8 into X16)
+    //   BR X16               (branch to X16)
+    //   <hook address, 8 bytes>
+    *(uint32_t*)target = 0x58000050;
+    *(uint32_t*)((char*)target + 4) = 0xd61f0200;
+    *(uint64_t*)((char*)target + 8) = (uintptr_t)hook;
+    __builtin___clear_cache(target, (char*)target + 16);
 #else
     _CRIT("%s", "Unsupported architecture");
     std::exit(EXIT_FAILURE);
@@ -134,7 +121,7 @@ install_hook(void* target, void* hook)
 int
 get_vtable_offset()
 {
-    const char* env = getenv("OXIDE_EPF_VTABLE_OFFSET");
+    const char* env = getenv("OXIDE_EPFRAMEBUFFER_VTABLE_OFFSET");
     if (env) {
         return std::stoi(env, nullptr, 0); // handles hex with 0x prefix
     }
@@ -161,17 +148,36 @@ validate_swapbuffers(void* func)
         return false;
     }
 #if defined(__arm__)
-    // arm32 prologue for EPFramebuffer_swapBuffers_QRegion:
-    // F0 5F 2D E9   push {r4-r11,lr}
-    // 44 D0 4D E2   sub sp, sp, #0x44
-    static const uint8_t expected[8] = { 0xF0, 0x5F, 0x2D, 0xE9,
-                                         0x44, 0xD0, 0x4D, 0xE2 };
-    if (memcmp(func, expected, 8) != 0) {
+    // Check arm32 prologue: STMDB SP!, {reglist} + sub sp, sp, #0x44
+    //
+    // First instruction: STMDB SP!, {reglist} = 0xE92Dxxxx
+    //   - bits 31-28: cond (AL=1110) -> 0xE
+    //   - bits 27-23: 10010 -> STMDB
+    //   - bit 21: 1 -> write-back (!)
+    //   - bits 19-16: 1101 -> SP (R13)
+    //   - lower 16 bits: register mask (bit N = register N)
+    //
+    // We only verify that LR (bit 14) is in the list; the specific
+    // set of caller-saves (R4-R12) varies by compiler version.
+    uint32_t first = *(uint32_t*)func;
+    if ((first & 0xFFFF0000) != 0xE92D0000) {
         _WARN(
-            "swapBuffers prologue mismatch at %p (offset 0x%x) -- "
-            "vtable offset may be wrong; set OXIDE_EPF_VTABLE_OFFSET",
-            func,
-            get_vtable_offset()
+            "swapBuffers: first instruction not STMDB SP!, got 0x%08x", first
+        );
+        return false;
+    }
+    if (!(first & 0x4000)) {
+        _WARN(
+            "swapBuffers: LR (bit 14) not in push mask 0x%04x", first & 0xFFFF
+        );
+        return false;
+    }
+    // Second instruction: sub sp, sp, #0x44 = 0xE24DD044
+    uint32_t second = *(uint32_t*)((char*)func + 4);
+    if (second != 0xE24DD044) {
+        _WARN(
+            "swapBuffers: second instruction not sub sp,#0x44, got 0x%08x",
+            second
         );
         return false;
     }
@@ -335,38 +341,27 @@ void
 hook_swapBuffers_QRegion(
     void* this_ptr,
     const void* region,
-    const void* contentMap,
-    const void* screenModeMap,
+    const void* /*contentMap_screenModeMap*/,
     int flags
 )
 {
     _DEBUG("%s", "EPFramebuffer::swapBuffers(QRegion, ...)");
-    const Qt::QRectLayout* it = Qt::qregion_begin()(region);
-    const Qt::QRectLayout* end = Qt::qregion_end()(region);
+    auto begin_fn = Qt::qregion_begin();
+    auto end_fn = Qt::qregion_end();
+    if (!begin_fn || !end_fn) {
+        _DEBUG("hook: qregion_begin/end is NULL");
+        return;
+    }
+
+    const Qt::QRectLayout* it = begin_fn(region);
+    const Qt::QRectLayout* end = end_fn(region);
+    if (!it || !end) {
+        _DEBUG("hook: iterator or end is NULL");
+        return;
+    }
+
     for (; it != end; it++) {
-        // Use EPScreenModeMap to determine waveform per rect
-        int waveform = 2, pixel = 7; // defaults matching swapBuffers_impl
-        bool found = false;
-        for (int m = 0; m < 6 && !found; m++) {
-            void* mr = Qt::epsm_region()(screenModeMap, m);
-            if (!mr)
-                continue;
-            const Qt::QRectLayout* mi = Qt::qregion_begin()(mr);
-            const Qt::QRectLayout* me = Qt::qregion_end()(mr);
-            for (; mi != me; mi++) {
-                if (Qt::rects_overlap(it, mi)) {
-                    // Hardcoded from swapBuffers_impl disassembly:
-                    // {waveform, pixel} per mode
-                    static const int mode_params[6][2] = { { 2, 7 }, { 1, 7 },
-                                                           { 2, 7 }, { 2, 7 },
-                                                           { 6, 7 }, { 1, 7 } };
-                    waveform = mode_params[m][0];
-                    pixel = mode_params[m][1];
-                    found = true;
-                    break;
-                }
-            }
-        }
+        int waveform = 2;
         Blight::exclusiveModeRepaint(
             it->left,
             it->top,
@@ -377,22 +372,9 @@ hook_swapBuffers_QRegion(
         );
     }
 }
-void
-_ZN7QObjectC2EP7QObject(void* self, void* parent)
+static void
+qobject_ctor_post_hook(void* self, void* parent)
 {
-    // Resolve the real QObject constructor (skip this library via
-    // RTLD_NEXT)
-    static auto ctor =
-        (void (*)(void*, void*))dlsym(RTLD_NEXT, "_ZN7QObjectC2EP7QObject");
-    if (!ctor) {
-        _CRIT(
-            "%s",
-            "Failed to resolve real QObject::QObject(QObject*) via "
-            "RTLD_NEXT"
-        );
-        std::exit(EXIT_FAILURE);
-    }
-    ctor(self, parent);
     if (hook_installed) {
         return;
     }
@@ -463,4 +445,38 @@ _ZN7QObjectC2EP7QObject(void* self, void* parent)
     }
     hook_installed = true;
     g_epf_candidate.store(nullptr, std::memory_order_release);
+}
+
+void
+_ZN7QObjectC2EPS_(void* self, void* parent)
+{
+    static auto ctor =
+        (void (*)(void*, void*))dlsym(RTLD_NEXT, "_ZN7QObjectC2EPS_");
+    if (!ctor) {
+        _CRIT(
+            "%s",
+            "Failed to resolve real QObject::QObject(QObject*) [C2] via "
+            "RTLD_NEXT"
+        );
+        std::exit(EXIT_FAILURE);
+    }
+    ctor(self, parent);
+    qobject_ctor_post_hook(self, parent);
+}
+
+void
+_ZN7QObjectC1EPS_(void* self, void* parent)
+{
+    static auto ctor =
+        (void (*)(void*, void*))dlsym(RTLD_NEXT, "_ZN7QObjectC1EPS_");
+    if (!ctor) {
+        _CRIT(
+            "%s",
+            "Failed to resolve real QObject::QObject(QObject*) [C1] via "
+            "RTLD_NEXT"
+        );
+        std::exit(EXIT_FAILURE);
+    }
+    ctor(self, parent);
+    qobject_ctor_post_hook(self, parent);
 }

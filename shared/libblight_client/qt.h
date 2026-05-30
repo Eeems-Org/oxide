@@ -33,15 +33,17 @@ extern "C"
     __attribute__((visibility("default"))) void hook_swapBuffers_QRegion(
         void* this_ptr,
         const void* region,
-        const void* contentMap,
-        const void* screenModeMap,
+        const void* screenModeStruct,
         int flags
     );
 
     __attribute__((visibility("default"))) void
-    _ZN7QObjectC2EP7QObject(void* self, void* parent);
-    __asm__(".symver _ZN7QObjectC2EP7QObject , "
-            "_ZN7QObjectC2EP7QObject@Qt_6");
+    _ZN7QObjectC2EPS_(void* self, void* parent);
+    __asm__(".symver _ZN7QObjectC2EPS_, _ZN7QObjectC2EPS_@Qt_6");
+
+    __attribute__((visibility("default"))) void
+    _ZN7QObjectC1EPS_(void* self, void* parent);
+    __asm__(".symver _ZN7QObjectC1EPS_, _ZN7QObjectC1EPS_@Qt_6");
 
 #if defined(__arm__)
     __attribute__((visibility("default"))) void
