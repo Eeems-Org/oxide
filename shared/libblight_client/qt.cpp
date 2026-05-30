@@ -502,14 +502,30 @@ hook_swapBuffers_QRect(
         screenMode,
         flags
     );
-    Blight::exclusiveModeRepaint(
-        rect.left,
-        rect.top,
-        rect.right - rect.left,
-        rect.bottom - rect.top,
-        Qt::epsm_to_waveform(screenMode),
-        Qt::flags_to_update_mode(flags)
-    );
+    if (Client::HANDLE_FB) {
+        auto maybe = FB::connection->repaint(
+            FB::buffer,
+            rect.left,
+            rect.top,
+            rect.right - rect.left,
+            rect.bottom - rect.top,
+            Qt::epsm_to_waveform(screenMode),
+            Qt::flags_to_update_mode(flags),
+            0
+        );
+        if (maybe.has_value()) {
+            maybe.value()->wait();
+        }
+    } else {
+        Blight::exclusiveModeRepaint(
+            rect.left,
+            rect.top,
+            rect.right - rect.left,
+            rect.bottom - rect.top,
+            Qt::epsm_to_waveform(screenMode),
+            Qt::flags_to_update_mode(flags)
+        );
+    }
 }
 
 /*!
@@ -540,14 +556,30 @@ hook_swapBuffers_QRegion(
 
     for (; it != end; it++) {
         // TODO get and convert screen mode to waveform
-        Blight::exclusiveModeRepaint(
-            it->left,
-            it->top,
-            it->right - it->left,
-            it->bottom - it->top,
-            Blight::WaveformMode::HighQualityGrayscale,
-            Qt::flags_to_update_mode(flags)
-        );
+        if (Client::HANDLE_FB) {
+            auto maybe = FB::connection->repaint(
+                FB::buffer,
+                it->left,
+                it->top,
+                it->right - it->left,
+                it->bottom - it->top,
+                Blight::WaveformMode::HighQualityGrayscale,
+                Qt::flags_to_update_mode(flags),
+                0
+            );
+            if (maybe.has_value()) {
+                maybe.value()->wait();
+            }
+        } else {
+            Blight::exclusiveModeRepaint(
+                it->left,
+                it->top,
+                it->right - it->left,
+                it->bottom - it->top,
+                Blight::WaveformMode::HighQualityGrayscale,
+                Qt::flags_to_update_mode(flags)
+            );
+        }
     }
 }
 
