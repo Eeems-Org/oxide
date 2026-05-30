@@ -184,6 +184,7 @@ main(int argc, char* argv[])
     compositor->setFlags(
         QString("connection/%1").arg(::getpid()), QStringList() << "system"
     );
+    compositor->exitExclusiveMode().waitForFinished();
     Blight::shared_buf_t buffer = createBuffer();
     if (buffer != nullptr) {
         QImage* framebuffer = getFrameBuffer();

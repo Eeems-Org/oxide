@@ -25,7 +25,7 @@
 #endif
 
 DbusInterface::DbusInterface(QObject* parent)
-  : QObject(parent), m_focused(nullptr), m_exlusiveMode{ false }
+  : QObject(parent), m_focused(nullptr), m_exclusiveMode{ false }
 {
     auto type = qDBusRegisterMetaType<FrameBufferInfo>();
     if (!type.isValid()) {
@@ -550,9 +550,9 @@ DbusInterface::enterExclusiveMode(QDBusMessage message)
         );
         return;
     }
-    if (!m_exlusiveMode) {
+    if (!m_exclusiveMode) {
         O_INFO("Entering exclusive mode");
-        m_exlusiveMode = true;
+        m_exclusiveMode = true;
         waitForNoRepaints(message);
         evdevHandler->clear_buffers();
     }
@@ -574,9 +574,9 @@ DbusInterface::exitExclusiveMode(QDBusMessage message)
         );
         return;
     }
-    if (m_exlusiveMode) {
+    if (m_exclusiveMode) {
         O_INFO("Exiting exclusive mode");
-        m_exlusiveMode = false;
+        m_exclusiveMode = false;
 #ifdef EPAPER
         guiThread->enqueue(
             nullptr,
@@ -614,7 +614,7 @@ DbusInterface::exclusiveModeRepaint(
         );
         return;
     }
-    if (!m_exlusiveMode) {
+    if (!m_exclusiveMode) {
         return;
     }
 #ifdef EPAPER
@@ -642,7 +642,7 @@ DbusInterface::exclusiveModeRepaintFull(QDBusMessage message)
         );
         return;
     }
-    if (!m_exlusiveMode) {
+    if (!m_exclusiveMode) {
         return;
     }
 #ifdef EPAPER
@@ -736,7 +736,7 @@ DbusInterface::inputEvents(
 bool
 DbusInterface::inExclusiveMode()
 {
-    return m_exlusiveMode;
+    return m_exclusiveMode;
 }
 
 std::shared_ptr<Connection>
@@ -933,7 +933,7 @@ void
 DbusInterface::setSecondary(const QByteArray& data)
 {
     clipboards.secondary = data;
-    emit clipboardChanged(secondary());
+    emit secondaryChanged(secondary());
 }
 
 void

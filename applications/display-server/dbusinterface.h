@@ -138,7 +138,7 @@ class DbusInterface
         QByteArray selection;
         QByteArray secondary;
     } clipboards;
-    std::atomic<bool> m_exlusiveMode;
+    std::atomic<bool> m_exclusiveMode;
 
     std::shared_ptr<Connection> getConnection(QDBusMessage message);
     std::shared_ptr<Connection> getConnection(QString identifier);

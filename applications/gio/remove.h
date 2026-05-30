@@ -36,7 +36,8 @@ class RemoveCommand : ICommand
                 failed = true;
                 continue;
             }
-            QFileInfo info(path);
+            auto localPath = url.toLocalFile();
+            QFileInfo info(localPath);
             if (!info.exists()) {
                 if (!parser->isSet(forceOption)) {
                     GIO_ERROR(
@@ -56,7 +57,7 @@ class RemoveCommand : ICommand
                 rmArgs.append("rm");
                 rmArgs.append("-f");
             }
-            p->start("busybox", QStringList() << rmArgs << path);
+            p->start("busybox", QStringList() << rmArgs << localPath);
             qApp->processEvents();
             p->waitForFinished();
             failed = failed || p->exitCode();

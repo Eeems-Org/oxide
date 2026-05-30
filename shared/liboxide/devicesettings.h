@@ -8,6 +8,8 @@
 #include "event_device.h"
 #include "liboxide_global.h"
 
+#include <libblight/types.h>
+
 /*!
  * \def deviceSettings()
  * \brief Get the Oxide::DeviceSettings instance
@@ -95,6 +97,11 @@ namespace Oxide {
          * \return bytes per line for the device screen
          */
         int getScreenStride() const;
+        /*!
+         * \brief Get the screen image format used by the device
+         * \return screen image format
+         */
+        Blight::Format getScreenFormat() const;
         /*!
          * \brief Get the list of possible locales on the device
          * \return The list of possible locales on the device

@@ -266,6 +266,16 @@ namespace Oxide {
         }
     }
 
+    Blight::Format DeviceSettings::getScreenFormat() const
+    {
+        switch (deviceSettings.getDeviceType()) {
+            case Oxide::DeviceSettings::RM1:
+                return Blight::Format::Format_RGB16;
+            default:
+                return Blight::Format::Format_RGB32;
+        }
+    }
+
     const QStringList DeviceSettings::getLocales()
     {
         return execute(

@@ -431,8 +431,7 @@ main(int argc, char* argv[])
 #endif
                     return qExit(EXIT_FAILURE);
                 }
-                variant.convert(type);
-                if (!variant.isValid()) {
+                if (!variant.convert(type) || !variant.isValid()) {
                     qDebug() << "Failed converting to " << typeName;
                     qDebug() << "Value" << variant;
 #ifdef SENTRY

@@ -557,7 +557,7 @@ hook_swapBuffers_QRegion(
 static void
 hook_qobject_constructor(void* self, void* parent)
 {
-    if (hook_installed) {
+    if (hook_installed || Client::deviceType == Client::DeviceType::RM1) {
         return;
     }
     _DEBUG("%s", "QObject::QObject(QObject*)");
@@ -696,7 +696,7 @@ _ZN6QImageC1Ev(void* this_ptr)
         std::exit(EXIT_FAILURE);
     }
     func(this_ptr);
-    if (hook_installed) {
+    if (hook_installed || Client::deviceType == Client::DeviceType::RM1) {
         return;
     }
     _DEBUG("QImage::QImage() default");

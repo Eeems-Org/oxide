@@ -72,7 +72,7 @@ main(int argc, char* argv[])
     QCommandLineOption transientOption(
         { "e", "transient" },
         "Show a transient notification. This notification will be removed "
-        "immediatly after being shown on the screen"
+        "immediately after being shown on the screen"
     );
     parser.addOption(transientOption);
     QCommandLineOption urgencyOption(

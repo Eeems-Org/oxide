@@ -38,6 +38,7 @@ SurfaceWidget::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
     if (!oldNode) {
         oldNode = window()->createImageNode();
+        oldNode->setOwnsTexture(true);
     }
     QRectF rect = boundingRect();
     if (rect.isEmpty()) {

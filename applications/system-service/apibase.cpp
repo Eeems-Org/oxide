@@ -95,7 +95,7 @@ getFrameBuffer()
             deviceSettings.getScreenWidth(),
             deviceSettings.getScreenHeight(),
             stride,
-            QImage::Format_RGB888
+            (QImage::Format)deviceSettings.getScreenFormat()
         );
         if (image->isNull()) {
             O_WARNING("Framebuffer is null" << image->size());

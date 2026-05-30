@@ -24,6 +24,7 @@ jobs:
       - name: Checkout the Git repository
         uses: actions/checkout@v6
         with:
+          persist-credentials: false
           submodules: true
       - name: Build web
         uses: ./.github/actions/web
