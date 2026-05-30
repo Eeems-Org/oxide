@@ -14,3 +14,4 @@ version.txt
 *.log
 *.so
 xochitl
+*.raw

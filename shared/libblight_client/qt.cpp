@@ -4,6 +4,7 @@
 
 #include <cstdlib>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <libblight/debug.h>
 #include <libblight/system.h>
 #include <sys/mman.h>
@@ -107,12 +108,19 @@ resolve_qimage_funcs()
     }
 }
 
+static std::atomic<void*> framebufferMmap{ nullptr };
+static std::atomic<size_t> framebufferMmapSize{ 0 };
+
 /*!
  * \brief mmap the exclusive mode framebuffer
  */
 static std::pair<void*, size_t>
 mmap_framebuffer()
 {
+    void* ptr = framebufferMmap.load(std::memory_order_acquire);
+    if (ptr != nullptr) {
+        return { ptr, framebufferMmapSize.load(std::memory_order_acquire) };
+    }
     if (FB::frameBuffer < 0) {
         FB::frameBuffer = Blight::frameBuffer();
     }
@@ -127,16 +135,19 @@ mmap_framebuffer()
         return { nullptr, 0 };
     }
     size_t len = (size_t)st.st_size;
-    void* p = mmap(
+    ptr = mmap(
         nullptr, len, PROT_READ | PROT_WRITE, MAP_SHARED, FB::frameBuffer, 0
     );
+    auto err = errno;
     close(FB::frameBuffer);
-    if (p == MAP_FAILED) {
-        _WARN("%s", "redirect: mmap(FB::frameBuffer) failed");
+    if (ptr == MAP_FAILED) {
+        _WARN("redirect: mmap(FB::frameBuffer) failed: %s", std::strerror(err));
         return { nullptr, 0 };
     }
     _DEBUG("redirect: mmap'd server framebuffer (%zu bytes)", len);
-    return { p, len };
+    framebufferMmap.store(ptr, std::memory_order_relaxed);
+    framebufferMmapSize.store(len, std::memory_order_relaxed);
+    return { ptr, len };
 }
 
 #if defined(__arm__)
@@ -159,228 +170,28 @@ static constexpr int d_ptrOffset = 8;
 static constexpr int d_ptrOffset = 0;
 #endif
 
-/*!
- * \brief Swap the buffer for a QImage
- */
 bool
-swap_qimage_buffer(void* qimage, Blight::Format format, void* data, size_t size)
+dump_qimage_buffer(void* qimage, std::string path)
 {
     resolve_qimage_funcs();
     if (!qImageFuncs.ok) {
         errno = EBADFD;
         return false;
     }
-    int imageFormat = qImageFuncs.format(qimage);
-    if (imageFormat != format) {
-        errno = EINVAL;
-        return false;
-    }
-    int width = qImageFuncs.width(qimage);
     int height = qImageFuncs.height(qimage);
     int stride = qImageFuncs.bytesPerLine(qimage);
-    unsigned char* old_data = qImageFuncs.bits(qimage);
-    if (old_data == nullptr || width <= 0 || height <= 0 || stride <= 0) {
-        errno = EBADF;
+    size_t size = (size_t)stride * (size_t)height;
+
+    int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd <= 0) {
         return false;
     }
-    size_t needed = (size_t)stride * (size_t)height;
-    if (needed > size) {
-        errno = EOVERFLOW;
-        return false;
-    }
-    memcpy(data, old_data, needed);
-    char tmp_buf[32];
-    memset(tmp_buf, 0, sizeof(tmp_buf));
-    qImageFuncs.ctor(
-        tmp_buf, (char*)data, width, height, stride, format, nullptr, nullptr
-    );
-    void** dptr_a = (void**)((char*)qimage + d_ptrOffset);
-    void** dptr_b = (void**)((char*)tmp_buf + d_ptrOffset);
-    void* tmp = *dptr_a;
-    *dptr_a = *dptr_b;
-    *dptr_b = tmp;
-    qImageFuncs.dtor(tmp_buf);
-    return true;
-}
-
-static std::atomic<bool> qImageRedirected{ false };
-
-/*!
- * \brief Swap the QImage buffers for auxBuffer and mainBuffer to blight buffers
- */
-static void
-redirect_epframebuffer_qimages(void* epframebuffer)
-{
-    if (mainBufferOffset == 0x00) {
-        return;
-    }
-    if (qImageRedirected.load(std::memory_order_acquire)) {
-        return;
-    }
-    resolve_qimage_funcs();
-    if (!qImageFuncs.ok) {
-        return;
-    }
-
-    void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
-    if (!Client::HANDLE_FB) {
-        static std::pair<void*, size_t> s_mmap{ nullptr, 0 };
-        if (!s_mmap.first) {
-            s_mmap = mmap_framebuffer();
-        }
-        if (!s_mmap.first) {
-            _WARN("%s", "redirect: falling back (display may show stale data)");
-            qImageRedirected.store(true, std::memory_order_release);
-            return;
-        }
-        void* fb_data = s_mmap.first;
-        size_t fb_capacity = s_mmap.second;
-        // Exclusive-mode: redirect the 8-bit auxBuffer so that after
-        // xochitl's swapBuffers converts mainBuffer->auxBuffer, the 8-bit
-        // data lands directly in the shared memfd where the server reads it.
-        void* auxBuffer = (char*)epframebuffer + auxBufferOffset;
-        bool success = swap_qimage_buffer(
-            auxBuffer, Blight::Format::Format_Grayscale8, fb_data, fb_capacity
-        );
-        int height = qImageFuncs.height(auxBuffer);
-        int stride = qImageFuncs.bytesPerLine(auxBuffer);
-        size_t size = (size_t)stride * (size_t)height;
-        if (!success) {
-            switch (errno) {
-                case EBADFD:
-                    _DEBUG("%s", "redirect: Unable to get QImage functions");
-                    break;
-                case EINVAL:
-                    _DEBUG(
-                        "redirect: format %d, expected Format_Grayscale8 – "
-                        "skipping redirect",
-                        qImageFuncs.format(auxBuffer)
-                    );
-                    break;
-                case EBADF:
-                    _DEBUG("%s", "redirect: invalid auxBuffer dimensions");
-                    break;
-                case EOVERFLOW: {
-                    _WARN(
-                        "redirect: framebuffer too small (%zu bytes) for "
-                        "auxBuffer "
-                        "(%dx%d stride=%d = %zu bytes)",
-                        fb_capacity,
-                        qImageFuncs.width(auxBuffer),
-                        height,
-                        stride,
-                        size
-                    );
-                    break;
-                }
-            }
-        }
-        _INFO(
-            "redirect: auxBuffer now points at shared framebuffer "
-            "(%dx%d stride=%d)",
-            qImageFuncs.width(auxBuffer),
-            qImageFuncs.height(auxBuffer),
-            qImageFuncs.bytesPerLine(auxBuffer)
-        );
-        auto format = FB::deviceFormat();
-        if (!swap_qimage_buffer(
-                mainBuffer,
-                format,
-                &static_cast<char*>(fb_data)[size],
-                fb_capacity - size
-            )) {
-            switch (errno) {
-                case EBADFD:
-                    _DEBUG("%s", "redirect: Unable to get QImage functions");
-                    break;
-                case EINVAL:
-                    _DEBUG(
-                        "redirect: format %d, expected %d – "
-                        "skipping redirect",
-                        qImageFuncs.format(mainBuffer),
-                        format
-                    );
-                    break;
-                case EBADF:
-                    _DEBUG("%s", "redirect: invalid mainBuffer dimensions");
-                    break;
-                case EOVERFLOW: {
-                    int height = qImageFuncs.height(mainBuffer);
-                    int stride = qImageFuncs.bytesPerLine(mainBuffer);
-                    _WARN(
-                        "redirect: framebuffer too small (%zu bytes) for "
-                        "mainBuffer "
-                        "(%dx%d stride=%d = %zu bytes)",
-                        fb_capacity,
-                        qImageFuncs.width(mainBuffer),
-                        height,
-                        stride,
-                        (size_t)stride * (size_t)height
-                    );
-                    break;
-                }
-            }
-        }
-        qImageRedirected.store(true, std::memory_order_release);
-        return;
-    }
-    if (FB::buffer == nullptr || FB::buffer->data == nullptr) {
-        _DEBUG("%s", "redirect: FB::buffer not ready yet, will retry");
-        return;
-    }
-    void* fb_data = FB::buffer->data;
-    size_t fb_capacity = FB::buffer->size();
-    auto format = qImageFuncs.format(mainBuffer);
-    if (!swap_qimage_buffer(
-            mainBuffer,
-            static_cast<Blight::Format>(format),
-            fb_data,
-            fb_capacity
-        )) {
-        switch (errno) {
-            case EBADFD:
-                _DEBUG("%s", "redirect: Unable to get QImage functions");
-                break;
-            case EINVAL:
-                _DEBUG(
-                    "redirect: format %d, expected %d – "
-                    "skipping redirect",
-                    qImageFuncs.format(mainBuffer),
-                    format
-                );
-                break;
-            case EBADF:
-                _DEBUG("%s", "redirect: invalid mainBuffer dimensions");
-                break;
-            case EOVERFLOW: {
-                int height = qImageFuncs.height(mainBuffer);
-                int stride = qImageFuncs.bytesPerLine(mainBuffer);
-                _WARN(
-                    "redirect: framebuffer too small (%zu bytes) for "
-                    "mainBuffer "
-                    "(%dx%d stride=%d = %zu bytes)",
-                    fb_capacity,
-                    qImageFuncs.width(mainBuffer),
-                    height,
-                    stride,
-                    (size_t)stride * (size_t)height
-                );
-                break;
-            }
-        }
-    }
-    _INFO(
-        "redirect: mainBuffer now points at blight buffer"
-        "(%dx%d stride=%d)",
-        qImageFuncs.width(mainBuffer),
-        qImageFuncs.height(mainBuffer),
-        qImageFuncs.bytesPerLine(mainBuffer)
-    );
-    qImageRedirected.store(true, std::memory_order_release);
+    return ::write(fd, qImageFuncs.bits(qimage), size) == size;
 }
 
 static std::atomic<bool> hook_installed = false;
 static std::atomic<void*> epframebufferCandidate{ nullptr };
+static std::atomic<void*> epframebufferInstance{ nullptr };
 static std::atomic<void*> lastBadCandidate{ nullptr };
 static std::atomic<int> badCandidateCount{ 0 };
 
@@ -479,6 +290,22 @@ validate_swapbuffers(void* func)
     return true;
 }
 
+bool
+copy_qimage_to_buffer(void* qimage, void* buffer, size_t size)
+{
+    resolve_qimage_funcs();
+    if (!qImageFuncs.ok) {
+        errno = EBADFD;
+        return false;
+    }
+    if (size <= 0) {
+        size = (size_t)qImageFuncs.bytesPerLine(qimage) *
+               (size_t)qImageFuncs.height(qimage);
+    }
+    memcpy(buffer, qImageFuncs.bits(qimage), size);
+    return true;
+}
+
 /*!
  * \brief Hook to run on EPFramebuffer::swapBuffers(QRect, ...) call
  */
@@ -502,6 +329,14 @@ hook_swapBuffers_QRect(
         rect.bottom,
         waveform,
         updateMode
+    );
+    void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
+    void* auxBuffer = (char*)epframebuffer + auxBufferOffset;
+    void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
+    copy_qimage_to_buffer(
+        mainBuffer,
+        Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
+        0
     );
     if (Client::HANDLE_FB) {
         auto maybe = FB::connection->repaint(
@@ -527,6 +362,24 @@ hook_swapBuffers_QRect(
             updateMode
         );
     }
+    if (Client::DUMP_FB) {
+        int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd <= 0) {
+            _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
+            return;
+        }
+        ::write(
+            fd,
+            Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
+            Client::HANDLE_FB ? (Client::deviceType == Client::DeviceType::RM2
+                                     ? 26359808
+                                     : FB::buffer->size())
+                              : mmap_framebuffer().second
+        );
+        ::close(fd);
+        dump_qimage_buffer(auxBuffer, "/tmp/auxBuffer.raw");
+        dump_qimage_buffer(mainBuffer, "/tmp/mainBuffer.raw");
+    }
 }
 
 /*!
@@ -547,14 +400,15 @@ hook_swapBuffers_QRegion(
         _DEBUG("hook: qregion_begin/end is NULL");
         return;
     }
-
     const Qt::QRectLayout* it = begin_fn(region);
     const Qt::QRectLayout* end = end_fn(region);
     if (!it || !end) {
         _DEBUG("hook: iterator or end is NULL");
         return;
     }
-
+    void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
+    void* auxBuffer = (char*)epframebuffer + auxBufferOffset;
+    void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
     for (; it != end; it++) {
         // TODO get and convert screen mode to waveform
         Blight::WaveformMode waveform =
@@ -593,6 +447,30 @@ hook_swapBuffers_QRegion(
                 updateMode
             );
         }
+    }
+    copy_qimage_to_buffer(
+        mainBuffer,
+        Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
+        0
+    );
+    if (Client::DUMP_FB) {
+        int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd <= 0) {
+            _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
+            return;
+        }
+        ::write(
+            fd,
+            Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
+            Client::HANDLE_FB ? (Client::deviceType == Client::DeviceType::RM2
+                                     ? 26359808
+                                     : FB::buffer->size())
+                              : mmap_framebuffer().second
+        );
+        ::close(fd);
+        dump_qimage_buffer(auxBuffer, "/tmp/auxBuffer.raw");
+        void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
+        dump_qimage_buffer(mainBuffer, "/tmp/mainBuffer.raw");
     }
 }
 
@@ -669,7 +547,6 @@ hook_qobject_constructor(void* self, void* parent)
         vtable,
         func_swapBuffers_qregion
     );
-    redirect_epframebuffer_qimages(candidate);
     install_hook(func_swapBuffers_qregion, (void*)&hook_swapBuffers_QRegion);
     _DEBUG("Hooked swapBuffers(QRegion,...)");
     void* func_swapBuffers_qrect =
@@ -685,6 +562,7 @@ hook_qobject_constructor(void* self, void* parent)
             vtable
         );
     }
+    epframebufferInstance.store(candidate, std::memory_order_release);
     hook_installed = true;
     epframebufferCandidate.store(nullptr, std::memory_order_release);
 }

@@ -394,8 +394,23 @@ GUIThread::swap(
         O_WARNING("swap called when m_frameBuffer not initialized");
         return;
     }
+    auto& data = m_frameBuffer->data;
+    // if (deviceSettings.getDeviceType() ==
+    //     Oxide::DeviceSettings::DeviceType::RM2) {
+    //     fb_var_screeninfo vinfo;
+    //     auto fd = open("/dev/fb0", O_RDONLY);
+    //     if (fd < 0) {
+    //         O_WARNING("Failed to open /dev/fb0" << strerror(errno));
+    //         return;
+    //     }
+    //     if (ioctl(fd, FBIOGET_VSCREENINFO, &vinfo) < 0) {
+    //         O_WARNING("Failed to get fb_var_screeninfo" << strerror(errno));
+    //         return;
+    //     }
+    //     data = &data[vinfo.yoffset * vinfo.xres * vinfo.bits_per_pixel];
+    // }
     QImage image(
-        m_frameBuffer->data,
+        data,
         m_frameBuffer->width,
         m_frameBuffer->height,
         m_frameBuffer->stride,

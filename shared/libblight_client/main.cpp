@@ -705,6 +705,9 @@ extern "C"
             Libc::setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
             Libc::setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
         }
+        if (getenv("OXIDE_PRELOAD_DUMP_FB") != nullptr) {
+            Client::DUMP_FB = true;
+        }
         if (Client::HANDLE_FB) {
             FB::buffer = Blight::buf_t::new_ptr();
         } else {
