@@ -491,16 +491,17 @@ hook_swapBuffers_QRect(
     int flags
 )
 {
+    _DEBUG("%S", "EPFramebuffer::swapBuffers(QRect, ...)");
+    auto waveform = Qt::epsm_to_waveform(screenMode);
+    auto updateMode = Qt::flags_to_update_mode(flags);
     _DEBUG(
-        "EPFramebuffer::swapBuffers({%i, %i, %i, %i}, contentType=%i, "
-        "screenMode=%i, flags=%i)",
+        "repaint: (%d, %d) (%d, %d) %d",
         rect.left,
         rect.top,
         rect.right,
         rect.bottom,
-        contentType,
-        screenMode,
-        flags
+        waveform,
+        updateMode
     );
     if (Client::HANDLE_FB) {
         auto maybe = FB::connection->repaint(
@@ -509,8 +510,8 @@ hook_swapBuffers_QRect(
             rect.top,
             rect.right - rect.left,
             rect.bottom - rect.top,
-            Qt::epsm_to_waveform(screenMode),
-            Qt::flags_to_update_mode(flags),
+            waveform,
+            updateMode,
             0
         );
         if (maybe.has_value()) {
@@ -522,8 +523,8 @@ hook_swapBuffers_QRect(
             rect.top,
             rect.right - rect.left,
             rect.bottom - rect.top,
-            Qt::epsm_to_waveform(screenMode),
-            Qt::flags_to_update_mode(flags)
+            waveform,
+            updateMode
         );
     }
 }
@@ -556,6 +557,18 @@ hook_swapBuffers_QRegion(
 
     for (; it != end; it++) {
         // TODO get and convert screen mode to waveform
+        Blight::WaveformMode waveform =
+            Blight::WaveformMode::HighQualityGrayscale;
+        auto updateMode = Qt::flags_to_update_mode(flags);
+        _DEBUG(
+            "repaint: (%d, %d) (%d, %d) %d",
+            it->left,
+            it->top,
+            it->right,
+            it->bottom,
+            waveform,
+            updateMode
+        );
         if (Client::HANDLE_FB) {
             auto maybe = FB::connection->repaint(
                 FB::buffer,
@@ -563,8 +576,8 @@ hook_swapBuffers_QRegion(
                 it->top,
                 it->right - it->left,
                 it->bottom - it->top,
-                Blight::WaveformMode::HighQualityGrayscale,
-                Qt::flags_to_update_mode(flags),
+                waveform,
+                updateMode,
                 0
             );
             if (maybe.has_value()) {
@@ -576,8 +589,8 @@ hook_swapBuffers_QRegion(
                 it->top,
                 it->right - it->left,
                 it->bottom - it->top,
-                Blight::WaveformMode::HighQualityGrayscale,
-                Qt::flags_to_update_mode(flags)
+                waveform,
+                updateMode
             );
         }
     }
