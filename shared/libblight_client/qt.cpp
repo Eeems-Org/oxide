@@ -514,57 +514,6 @@ validate_swapbuffers(void* func)
 }
 
 void
-_ZN6QImageC1Ev(void* this_ptr)
-{
-    static auto func = (void (*)(void*))dlsym(RTLD_NEXT, "_ZN6QImageC1Ev");
-    if (!func) {
-        _CRIT("%s", "Failed to resolve QImage::QImage() via RTLD_NEXT");
-        std::exit(EXIT_FAILURE);
-    }
-    func(this_ptr);
-    if (hook_installed) {
-        return;
-    }
-    _DEBUG("QImage::QImage() default");
-    // Default ctor: format not yet set. Try both known EPF offsets.
-    // The vtable at (this - offset) is checked to confirm it belongs
-    // to a xochitl QObject (fully dynamic via dladdr).
-    for (int off : { mainBufferOffset, auxBufferOffset }) {
-        if (off == 0) {
-            continue; // skip unsupported arch placeholder
-        }
-        void* candidate = (char*)this_ptr - off;
-        void* vtable = *(void**)candidate;
-        // Quick pre-filter: aligned, non-null, reasonable address
-        if (!vtable || (uintptr_t)vtable & 3 ||
-            (uintptr_t)vtable < 0x00010000) {
-            continue;
-        }
-        Dl_info info;
-        if (!dladdr(vtable, &info)) {
-            continue;
-        }
-        if (!info.dli_fname) {
-            continue;
-        }
-        if (!should_handle_epframebuffer(info.dli_fname)) {
-            continue;
-        }
-        _DEBUG(
-            "Default ctor at %p -> EPF candidate at %p "
-            "(vtable=%p in %s)",
-            this_ptr,
-            candidate,
-            vtable,
-            info.dli_fname
-        );
-        epframebufferCandidate.store(candidate, std::memory_order_release);
-        epframeBufferAddresses.store(candidate, std::memory_order_release);
-        break;
-    }
-}
-
-void
 hook_swapBuffers_QRect(
     void* this_ptr,
     Qt::QRectLayout rect,
@@ -630,7 +579,7 @@ hook_swapBuffers_QRegion(
     }
 }
 static void
-qobject_ctor_post_hook(void* self, void* parent)
+hook_qobject_constructor(void* self, void* parent)
 {
     if (hook_installed) {
         return;
@@ -700,9 +649,9 @@ qobject_ctor_post_hook(void* self, void* parent)
 void
 _ZN7QObjectC2EPS_(void* self, void* parent)
 {
-    static auto ctor =
+    static auto func =
         (void (*)(void*, void*))dlsym(RTLD_NEXT, "_ZN7QObjectC2EPS_");
-    if (!ctor) {
+    if (!func) {
         _CRIT(
             "%s",
             "Failed to resolve real QObject::QObject(QObject*) [C2] via "
@@ -710,16 +659,16 @@ _ZN7QObjectC2EPS_(void* self, void* parent)
         );
         std::exit(EXIT_FAILURE);
     }
-    ctor(self, parent);
-    qobject_ctor_post_hook(self, parent);
+    func(self, parent);
+    hook_qobject_constructor(self, parent);
 }
 
 void
 _ZN7QObjectC1EPS_(void* self, void* parent)
 {
-    static auto ctor =
+    static auto func =
         (void (*)(void*, void*))dlsym(RTLD_NEXT, "_ZN7QObjectC1EPS_");
-    if (!ctor) {
+    if (!func) {
         _CRIT(
             "%s",
             "Failed to resolve real QObject::QObject(QObject*) [C1] via "
@@ -727,6 +676,57 @@ _ZN7QObjectC1EPS_(void* self, void* parent)
         );
         std::exit(EXIT_FAILURE);
     }
-    ctor(self, parent);
-    qobject_ctor_post_hook(self, parent);
+    func(self, parent);
+    hook_qobject_constructor(self, parent);
+}
+
+void
+_ZN6QImageC1Ev(void* this_ptr)
+{
+    static auto func = (void (*)(void*))dlsym(RTLD_NEXT, "_ZN6QImageC1Ev");
+    if (!func) {
+        _CRIT("%s", "Failed to resolve QImage::QImage() via RTLD_NEXT");
+        std::exit(EXIT_FAILURE);
+    }
+    func(this_ptr);
+    if (hook_installed) {
+        return;
+    }
+    _DEBUG("QImage::QImage() default");
+    // Default ctor: format not yet set. Try both known EPF offsets.
+    // The vtable at (this - offset) is checked to confirm it belongs
+    // to a xochitl QObject (fully dynamic via dladdr).
+    for (int off : { mainBufferOffset, auxBufferOffset }) {
+        if (off == 0) {
+            continue; // skip unsupported arch placeholder
+        }
+        void* candidate = (char*)this_ptr - off;
+        void* vtable = *(void**)candidate;
+        // Quick pre-filter: aligned, non-null, reasonable address
+        if (!vtable || (uintptr_t)vtable & 3 ||
+            (uintptr_t)vtable < 0x00010000) {
+            continue;
+        }
+        Dl_info info;
+        if (!dladdr(vtable, &info)) {
+            continue;
+        }
+        if (!info.dli_fname) {
+            continue;
+        }
+        if (!should_handle_epframebuffer(info.dli_fname)) {
+            continue;
+        }
+        _DEBUG(
+            "Default ctor at %p -> EPF candidate at %p "
+            "(vtable=%p in %s)",
+            this_ptr,
+            candidate,
+            vtable,
+            info.dli_fname
+        );
+        epframebufferCandidate.store(candidate, std::memory_order_release);
+        epframeBufferAddresses.store(candidate, std::memory_order_release);
+        break;
+    }
 }
