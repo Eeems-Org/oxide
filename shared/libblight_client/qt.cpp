@@ -248,39 +248,67 @@ validate_swapbuffers(void* func)
         return false;
     }
 #if defined(__arm__)
-    // Check arm32 prologue: STMDB SP!, {reglist} + sub sp, sp, #0x44
+    // Check arm32 prologue for both swapBuffers variants:
     //
-    // First instruction: STMDB SP!, {reglist} = 0xE92Dxxxx
-    //   - bits 31-28: cond (AL=1110) -> 0xE
-    //   - bits 27-23: 10010 -> STMDB
-    //   - bit 21: 1 -> write-back (!)
-    //   - bits 19-16: 1101 -> SP (R13)
-    //   - lower 16 bits: register mask (bit N = register N)
+    // QRegion variant:
+    //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
+    //   sub sp, sp, #0x44       (0xE24DD044)
     //
-    // We only verify that LR (bit 14) is in the list; the specific
-    // set of caller-saves (R4-R12) varies by compiler version.
-    uint32_t first = *(uint32_t*)func;
-    if ((first & 0xFFFF0000) != 0xE92D0000) {
+    // QRect variant:
+    //   cmp r1, #1              (0xE3510001)
+    //   stmdb sp!,{r4-r8,lr}    (0xE92D41F0)
+    //   mov r4, r1
+    //   sub sp, sp, #0x30       (0xE24DD030)
+    //
+    // For QRegion: STMDB at instruction 0, SUB #0x44 at instruction 1.
+    // For QRect:   CMP at instruction 0, STMDB at instruction 1,
+    //              SUB #0x30 somewhere within the next 6 instructions.
+    uint32_t* data = (uint32_t*)func;
+
+    // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
+    if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
+        if (data[1] == 0xE24DD044) {
+            return true;
+        }
         _WARN(
-            "swapBuffers: first instruction not STMDB SP!, got 0x%08x", first
+            "swapBuffers: STMDB at pos 0 but second not sub sp,#0x44, "
+            "got 0x%08x",
+            data[1]
         );
         return false;
     }
-    if (!(first & 0x4000)) {
+
+    // Try the QRect pattern: CMP Rn,#imm / STMDB SP!,{...,LR} / ... / SUB
+    // SP,#0x30 CMP with immediate encoding: bits 27-20 = 00110101 = 0x35 This
+    // matches CMP (any register, any condition, any immediate).
+    if ((data[0] & 0x0FF00000) == 0x03500000) {
+        if ((data[1] & 0xFFFF0000) == 0xE92D0000 && (data[1] & 0x4000)) {
+            // Find SUB SP, SP, #0x30 within the next 6 instructions
+            for (int i = 2; i < 8; i++) {
+                if (data[i] == 0xE24DD030) {
+                    return true;
+                }
+            }
+            _WARN(
+                "swapBuffers: CMP+STMDB pattern but no sub sp,#0x30 found "
+                "within 8 instructions"
+            );
+            return false;
+        }
         _WARN(
-            "swapBuffers: LR (bit 14) not in push mask 0x%04x", first & 0xFFFF
+            "swapBuffers: CMP at pos 0 but second not STMDB SP!,{...,LR}, "
+            "got 0x%08x",
+            data[1]
         );
         return false;
     }
-    // Second instruction: sub sp, sp, #0x44 = 0xE24DD044
-    uint32_t second = *(uint32_t*)((char*)func + 4);
-    if (second != 0xE24DD044) {
-        _WARN(
-            "swapBuffers: second instruction not sub sp,#0x44, got 0x%08x",
-            second
-        );
-        return false;
-    }
+
+    _WARN(
+        "swapBuffers: first instruction 0x%08x doesn't match any known "
+        "swapBuffers pattern",
+        data[0]
+    );
+    return false;
 #elif defined(__aarch64__)
     // TODO handle aarch64 version
 #else
@@ -304,6 +332,28 @@ copy_qimage_to_buffer(void* qimage, void* buffer, size_t size)
     }
     memcpy(buffer, qImageFuncs.bits(qimage), size);
     return true;
+}
+
+void
+repaint(
+    int x,
+    int y,
+    int width,
+    int height,
+    Blight::WaveformMode waveform,
+    Blight::UpdateMode updateMode
+)
+{
+    if (Client::HANDLE_FB) {
+        auto maybe = FB::connection->repaint(
+            FB::buffer, x, y, width, height, waveform, updateMode, 0
+        );
+        if (maybe.has_value()) {
+            maybe.value()->wait();
+        }
+    } else {
+        Blight::exclusiveModeRepaint(x, y, width, height, waveform, updateMode);
+    }
 }
 
 /*!
@@ -338,30 +388,14 @@ hook_swapBuffers_QRect(
         Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
         0
     );
-    if (Client::HANDLE_FB) {
-        auto maybe = FB::connection->repaint(
-            FB::buffer,
-            rect.left,
-            rect.top,
-            rect.right - rect.left,
-            rect.bottom - rect.top,
-            waveform,
-            updateMode,
-            0
-        );
-        if (maybe.has_value()) {
-            maybe.value()->wait();
-        }
-    } else {
-        Blight::exclusiveModeRepaint(
-            rect.left,
-            rect.top,
-            rect.right - rect.left,
-            rect.bottom - rect.top,
-            waveform,
-            updateMode
-        );
-    }
+    repaint(
+        rect.left,
+        rect.top,
+        rect.right - rect.left,
+        rect.bottom - rect.top,
+        waveform,
+        updateMode
+    );
     if (Client::DUMP_FB) {
         int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd <= 0) {
@@ -389,7 +423,7 @@ void
 hook_swapBuffers_QRegion(
     void* this_ptr,
     const void* region,
-    const void* /*contentMap_screenModeMap*/,
+    const void* contentMap_screenModeMap,
     int flags
 )
 {
@@ -409,50 +443,73 @@ hook_swapBuffers_QRegion(
     void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
     void* auxBuffer = (char*)epframebuffer + auxBufferOffset;
     void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
-    for (; it != end; it++) {
-        // TODO get and convert screen mode to waveform
-        Blight::WaveformMode waveform =
-            Blight::WaveformMode::HighQualityGrayscale;
-        auto updateMode = Qt::flags_to_update_mode(flags);
-        _DEBUG(
-            "repaint: (%d, %d) (%d, %d) %d",
-            it->left,
-            it->top,
-            it->right,
-            it->bottom,
-            waveform,
-            updateMode
-        );
-        if (Client::HANDLE_FB) {
-            auto maybe = FB::connection->repaint(
-                FB::buffer,
-                it->left,
-                it->top,
-                it->right - it->left,
-                it->bottom - it->top,
-                waveform,
-                updateMode,
-                0
-            );
-            if (maybe.has_value()) {
-                maybe.value()->wait();
-            }
-        } else {
-            Blight::exclusiveModeRepaint(
-                it->left,
-                it->top,
-                it->right - it->left,
-                it->bottom - it->top,
-                waveform,
-                updateMode
-            );
-        }
-    }
     copy_qimage_to_buffer(
         mainBuffer,
         Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
         0
     );
+    // The third parameter (contentMap_screenModeMap) is a struct with 6
+    // QRegions (offsets 0x00-0x14) and 6 corresponding screenMode ints (offsets
+    // 0x18-0x2c). The original function uses indices [0] (pen-eligible), [1]
+    // (mono), [2] (animation), each processed with its own screenMode-derived
+    // waveform.  We iterate each non-empty sub-region directly using its
+    // screenMode.
+    bool hasContentMap = false;
+    auto updateMode = Qt::flags_to_update_mode(flags);
+    if (contentMap_screenModeMap) {
+        auto* regions = (void* const*)contentMap_screenModeMap;
+        auto* screenModes =
+            (int const*)((char const*)contentMap_screenModeMap + 0x18);
+        for (int i = 0; i < 3; i++) {
+            if (regions[i] != nullptr) {
+                hasContentMap = true;
+                Blight::WaveformMode wf = Qt::epsm_to_waveform(screenModes[i]);
+                auto rit = begin_fn(&regions[i]);
+                auto rend = end_fn(&regions[i]);
+                for (; rit != rend; rit++) {
+                    _DEBUG(
+                        "content-map[%d] repaint: (%d, %d) (%d, %d) "
+                        "waveform=%d",
+                        i,
+                        rit->left,
+                        rit->top,
+                        rit->right,
+                        rit->bottom,
+                        (int)wf
+                    );
+                    repaint(
+                        rit->left,
+                        rit->top,
+                        rit->right - rit->left,
+                        rit->bottom - rit->top,
+                        wf,
+                        updateMode
+                    );
+                }
+            }
+        }
+    }
+    // If there was no content map, fall back to the raw update region
+    // with a default waveform.
+    if (!hasContentMap) {
+        for (; it != end; it++) {
+            _DEBUG(
+                "raw repaint: (%d, %d) (%d, %d)",
+                it->left,
+                it->top,
+                it->right,
+                it->bottom
+            );
+            repaint(
+                it->left,
+                it->top,
+                it->right - it->left,
+                it->bottom - it->top,
+                Blight::WaveformMode::HighQualityGrayscale,
+                updateMode
+            );
+        }
+    }
     if (Client::DUMP_FB) {
         int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd <= 0) {
@@ -478,7 +535,7 @@ hook_swapBuffers_QRegion(
  * \brief Hook to run on QObject::QObject(QObject*) call
  */
 static void
-hook_qobject_constructor(void* self, void* parent)
+hook_check_candidate()
 {
     if (hook_installed || Client::deviceType == Client::DeviceType::RM1) {
         return;
@@ -506,8 +563,8 @@ hook_qobject_constructor(void* self, void* parent)
 #endif
     }
     void* vtable = *(void**)candidate;
-    _DEBUG("EPF candidate at %p, vtable=%p", candidate, vtable);
-    if (!vtable) {
+    _DEBUG("EPFramebuffer candidate at %p, vtable=%p", candidate, vtable);
+    if (vtable == 0) {
         _DEBUG("%s", "vtable is null, skipping");
         return;
     }
@@ -530,7 +587,7 @@ hook_qobject_constructor(void* self, void* parent)
         int n = badCandidateCount.fetch_add(1, std::memory_order_relaxed) + 1;
         if (n >= 10) {
             _WARN(
-                "EPF candidate %p failed %d times -- clearing "
+                "EPFramebuffer candidate %p failed %d times -- clearing "
                 "(likely wrong object)",
                 candidate,
                 n
@@ -557,7 +614,7 @@ hook_qobject_constructor(void* self, void* parent)
     } else {
         _DEBUG(
             "validate_swapbuffers(%p) FAILED for QRect candidate %p, vtable=%p",
-            func_swapBuffers_qregion,
+            func_swapBuffers_qrect,
             candidate,
             vtable
         );
@@ -584,7 +641,7 @@ _ZN7QObjectC2EPS_(void* self, void* parent)
         std::exit(EXIT_FAILURE);
     }
     func(self, parent);
-    hook_qobject_constructor(self, parent);
+    hook_check_candidate();
 }
 
 /*!
@@ -604,7 +661,7 @@ _ZN7QObjectC1EPS_(void* self, void* parent)
         std::exit(EXIT_FAILURE);
     }
     func(self, parent);
-    hook_qobject_constructor(self, parent);
+    hook_check_candidate();
 }
 
 /*!
@@ -623,7 +680,7 @@ _ZN6QImageC1Ev(void* this_ptr)
         return;
     }
     _DEBUG("QImage::QImage() default");
-    // Default ctor: format not yet set. Try both known EPF offsets.
+    // Default ctor: format not yet set. Try both known EPFramebuffer offsets.
     // The vtable at (this - offset) is checked to confirm it belongs
     // to a xochitl QObject (fully dynamic via dladdr).
     for (int offset : { mainBufferOffset, auxBufferOffset }) {
@@ -633,7 +690,7 @@ _ZN6QImageC1Ev(void* this_ptr)
         void* candidate = (char*)this_ptr - offset;
         void* vtable = *(void**)candidate;
         // Quick pre-filter: aligned, non-null, reasonable address
-        if (!vtable || (uintptr_t)vtable & 3 ||
+        if (vtable == nullptr || (uintptr_t)vtable & 3 ||
             (uintptr_t)vtable < 0x00010000) {
             continue;
         }
@@ -657,7 +714,7 @@ _ZN6QImageC1Ev(void* this_ptr)
             }
         }
         _DEBUG(
-            "Default ctor at %p -> EPF candidate at %p "
+            "Default ctor at %p -> EPFramebuffer candidate at %p "
             "(vtable=%p in %s)",
             this_ptr,
             candidate,
