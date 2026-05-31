@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <libblight.h>
 #include <libblight/debug.h>
 #include <libblight/system.h>
 #include <sys/mman.h>
@@ -336,23 +337,44 @@ copy_qimage_to_buffer(void* qimage, void* buffer, size_t size)
 
 void
 repaint(
-    int x,
-    int y,
-    int width,
-    int height,
+    const Qt::QRectLayout* rect,
     Blight::WaveformMode waveform,
     Blight::UpdateMode updateMode
 )
 {
-    if (Client::HANDLE_FB) {
-        auto maybe = FB::connection->repaint(
-            FB::buffer, x, y, width, height, waveform, updateMode, 0
+    _DEBUG(
+        "repaint: (%d, %d) (%d, %d) %d %d",
+        rect->left,
+        rect->top,
+        rect->right,
+        rect->bottom,
+        waveform,
+        updateMode
+    );
+    if (!Client::HANDLE_FB) {
+        Blight::exclusiveModeRepaint(
+            rect->left,
+            rect->top,
+            rect->right - rect->left,
+            rect->bottom - rect->top,
+            waveform,
+            updateMode
         );
-        if (maybe.has_value()) {
-            maybe.value()->wait();
-        }
-    } else {
-        Blight::exclusiveModeRepaint(x, y, width, height, waveform, updateMode);
+        return;
+    }
+    FB::ensure_surface();
+    auto maybe = FB::connection->repaint(
+        FB::buffer,
+        rect->left,
+        rect->top,
+        rect->right - rect->left,
+        rect->bottom - rect->top,
+        waveform,
+        updateMode,
+        0
+    );
+    if (maybe.has_value()) {
+        maybe.value()->wait();
     }
 }
 
@@ -388,14 +410,7 @@ hook_swapBuffers_QRect(
         Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
         0
     );
-    repaint(
-        rect.left,
-        rect.top,
-        rect.right - rect.left,
-        rect.bottom - rect.top,
-        waveform,
-        updateMode
-    );
+    repaint(&rect, waveform, updateMode);
     if (Client::DUMP_FB) {
         int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd <= 0) {
@@ -463,51 +478,18 @@ hook_swapBuffers_QRegion(
         for (int i = 0; i < 3; i++) {
             if (regions[i] != nullptr) {
                 hasContentMap = true;
-                Blight::WaveformMode wf = Qt::epsm_to_waveform(screenModes[i]);
+                auto waveform = Qt::epsm_to_waveform(screenModes[i]);
                 auto rit = begin_fn(&regions[i]);
                 auto rend = end_fn(&regions[i]);
                 for (; rit != rend; rit++) {
-                    _DEBUG(
-                        "content-map[%d] repaint: (%d, %d) (%d, %d) "
-                        "waveform=%d",
-                        i,
-                        rit->left,
-                        rit->top,
-                        rit->right,
-                        rit->bottom,
-                        (int)wf
-                    );
-                    repaint(
-                        rit->left,
-                        rit->top,
-                        rit->right - rit->left,
-                        rit->bottom - rit->top,
-                        wf,
-                        updateMode
-                    );
+                    repaint(rit, waveform, updateMode);
                 }
             }
         }
     }
-    // If there was no content map, fall back to the raw update region
-    // with a default waveform.
     if (!hasContentMap) {
         for (; it != end; it++) {
-            _DEBUG(
-                "raw repaint: (%d, %d) (%d, %d)",
-                it->left,
-                it->top,
-                it->right,
-                it->bottom
-            );
-            repaint(
-                it->left,
-                it->top,
-                it->right - it->left,
-                it->bottom - it->top,
-                Blight::WaveformMode::HighQualityGrayscale,
-                updateMode
-            );
+            repaint(it, Blight::WaveformMode::HighQualityGrayscale, updateMode);
         }
     }
     if (Client::DUMP_FB) {

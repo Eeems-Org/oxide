@@ -50,10 +50,8 @@ namespace FB {
     {
         return Client::HANDLE_FB && buffer->fd > 0 && buffer->fd == fd;
     }
-    int send_update(mxcfb_update_data* update)
+    void ensure_surface()
     {
-        _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SEND_UPDATE")
-        Blight::ClockWatch cw;
         if (!buffer->surface) {
             Blight::addSurface(buffer);
         }
@@ -61,6 +59,12 @@ namespace FB {
             _CRIT("Failed to create surface: %s", std::strerror(errno));
             std::exit(errno);
         }
+    }
+    int send_update(mxcfb_update_data* update)
+    {
+        _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SEND_UPDATE")
+        Blight::ClockWatch cw;
+        ensure_surface();
         auto region = update->update_region;
         auto maybe = connection->repaint(
             buffer,

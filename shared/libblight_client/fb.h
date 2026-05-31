@@ -13,6 +13,7 @@ namespace FB {
     extern int epdLockFd;
     extern int msgq;
     bool is_fb(int fd);
+    void ensure_surface();
     int send_update(mxcfb_update_data* update);
     int wait(mxcfb_update_marker_data* update);
     int get_vscreeninfo(fb_var_screeninfo* screenInfo);

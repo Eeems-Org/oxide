@@ -233,14 +233,7 @@ extern "C"
             return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
         }
         if (msqid == FB::msgq) {
-            if (!FB::buffer->surface) {
-                Blight::addSurface(FB::buffer);
-            }
-            if (!FB::buffer->surface) {
-                _CRIT("Failed to create surface: %s", std::strerror(errno));
-                std::exit(errno);
-                return -1;
-            }
+            FB::ensure_surface();
             _DEBUG("%s", "rm2fb ipc repaint");
             auto buf = (swtfb::swtfb_update*)msgp;
             auto region = buf->mdata.update.update_region;
