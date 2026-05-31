@@ -44,7 +44,10 @@ bool
 configFileExists()
 {
     auto configFile = getConfigFile();
-    return configFile != nullptr && configFile->exists();
+    bool exists = configFile != nullptr && configFile->exists();
+    configFile->close();
+    delete configFile;
+    return exists;
 }
 void
 Controller::loadSettings()
@@ -87,6 +90,7 @@ Controller::loadSettings()
             }
         }
         configFile->close();
+        delete configFile;
     }
     qDebug() << "Finished parsing config file.";
     auto sleepAfter = systemApi->autoSleep();
@@ -225,6 +229,7 @@ Controller::saveSettings()
     stream.seek(0);
     stream << QString::fromStdString(buffer.str());
     configFile->close();
+    delete configFile;
     if (!m_automaticSleep) {
         systemApi->setAutoSleep(0);
     } else {

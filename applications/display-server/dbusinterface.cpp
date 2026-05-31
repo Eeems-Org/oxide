@@ -18,6 +18,7 @@
 #include <QQmlComponent>
 #include <cstring>
 
+#include "connection.h"
 #include "evdevhandler.h"
 #include "guithread.h"
 #ifdef EPAPER
@@ -810,51 +811,64 @@ DbusInterface::createConnection(int pid)
         connection->deleteLater();
         return nullptr;
     }
-    connect(connection.get(), &Connection::finished, this, [this, connection] {
-        O_INFO("Connection" << connection->pid() << "closed");
-        auto found = false;
-        {
-            QWriteLocker _locker(&connectionsLock);
-            found = connections.contains(connection);
-            if (found) {
-                connections.removeAll(connection);
-                guiThread->notify();
+    std::weak_ptr<Connection> weakConnection = connection;
+    connect(
+        connection.get(), &Connection::finished, this, [this, weakConnection] {
+            auto connection = weakConnection.lock();
+            if (connection == nullptr) {
+                return;
             }
-        }
-        {
-            QReadLocker _locker(&connectionsLock);
-            if (connections.isEmpty() && m_exclusiveMode) {
-                O_INFO("Exiting exclusive mode");
-                m_exclusiveMode = false;
+            O_INFO("Connection" << connection->pid() << "closed");
+            auto found = false;
+            {
+                QWriteLocker _locker(&connectionsLock);
+                found = connections.contains(connection);
+                if (found) {
+                    connections.removeAll(connection);
+                    guiThread->notify();
+                }
+            }
+            {
+                QReadLocker _locker(&connectionsLock);
+                if (connections.isEmpty() && m_exclusiveMode) {
+                    O_INFO("Exiting exclusive mode");
+                    m_exclusiveMode = false;
 #ifdef EPAPER
-                guiThread->enqueue(
-                    nullptr,
-                    EPFramebuffer::instance()->auxBuffer.rect(),
-                    Blight::WaveformMode::HighQualityGrayscale,
-                    Blight::UpdateMode::FullUpdate,
-                    0,
-                    true
-                );
+                    guiThread->enqueue(
+                        nullptr,
+                        EPFramebuffer::instance()->auxBuffer.rect(),
+                        Blight::WaveformMode::HighQualityGrayscale,
+                        Blight::UpdateMode::FullUpdate,
+                        0,
+                        true
+                    );
 #endif
+                }
+            }
+            if (!found) {
+                O_WARNING("Could not find connection to remove!");
+            }
+            if (m_focused != nullptr && m_focused == connection) {
+                setFocus(nullptr);
+            }
+            sortZ();
+        }
+    );
+    connect(
+        connection.get(), &Connection::focused, this, [this, weakConnection] {
+            auto connection = weakConnection.lock();
+            if (connection == nullptr) {
+                return;
+            }
+            QReadLocker _locker(&connectionsLock);
+            for (auto& ptr : qAsConst(connections)) {
+                if (ptr == connection && !ptr->has("system")) {
+                    setFocus(ptr);
+                    break;
+                }
             }
         }
-        if (!found) {
-            O_WARNING("Could not find connection to remove!");
-        }
-        if (m_focused != nullptr && m_focused == connection) {
-            setFocus(nullptr);
-        }
-        sortZ();
-    });
-    connect(connection.get(), &Connection::focused, this, [this, connection] {
-        QReadLocker _locker(&connectionsLock);
-        for (auto& ptr : qAsConst(connections)) {
-            if (ptr == connection && !ptr->has("system")) {
-                setFocus(ptr);
-                break;
-            }
-        }
-    });
+    );
     QWriteLocker _locker(&connectionsLock);
     connections.append(connection);
     return connection;

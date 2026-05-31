@@ -16,6 +16,12 @@ BSS::BSS(QString path, QString bssid, QString ssid, QObject* parent)
     }
 }
 
+BSS::BSS(QString path, IBSS* bss, QObject* parent)
+  : BSS(path, bss->bSSID(), bss->sSID(), parent)
+{
+    bsss.append(bss);
+}
+
 BSS::~BSS()
 {
     unregisterPath();

@@ -5,7 +5,9 @@
 #include <QQuickItem>
 #include <QQuickPaintedItem>
 #include <QRect>
+
 #include <memory>
+#include <sys/mman.h>
 
 #include "connection.h"
 class Connection;
@@ -65,10 +67,10 @@ class Surface : public QObject
     int m_stride;
     QImage::Format m_format;
     int m_fd;
-    uchar* data;
+    uchar* data = reinterpret_cast<uchar*>(MAP_FAILED);
     std::shared_ptr<QImage> m_image;
 #ifndef EPAPER
-    QQuickItem* component;
+    QQuickItem* component = nullptr;
 #endif
     QString m_id;
     QStringList flags;

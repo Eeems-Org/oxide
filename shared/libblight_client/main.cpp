@@ -647,6 +647,9 @@ extern "C"
         if (getenv("OXIDE_PRELOAD_FORCE_RM1") != nullptr) {
             Client::FAKE_RM1 = true;
         }
+        if (getenv("OXIDE_PRELOAD_FORCE_RM1_FB") != nullptr) {
+            Client::RM1_FB = true;
+        }
         Client::HANDLE_FB = getenv("OXIDE_PRELOAD_EXPOSE_FB") == nullptr;
         _DEBUG("Handle framebuffer: %d", Client::HANDLE_FB);
         auto pid = getpid();

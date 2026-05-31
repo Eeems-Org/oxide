@@ -107,9 +107,18 @@ EvDevDevice::clear_buffer()
     free(flood);
 }
 
+bool
+EvDevDevice::isValid() const
+{
+    return dev != nullptr;
+}
+
 void
 EvDevDevice::readEvents()
 {
+    if (!isValid()) {
+        return;
+    }
     Oxide::dispatchToThread(thread(), [this] {
         notifier->setEnabled(false);
         int res;

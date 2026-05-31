@@ -15,6 +15,7 @@ namespace Client {
     extern bool HANDLE_FB;
     extern bool DUMP_FB;
     extern bool FAKE_RM1;
+    extern bool RM1_FB;
     extern DeviceType deviceType;
     extern bool IS_XOCHITL;
 }

@@ -9,6 +9,8 @@
 #include <QQmlApplicationEngine>
 #include <QReadWriteLock>
 #include <QTimer>
+
+#include <atomic>
 #include <memory>
 #include <tuple>
 

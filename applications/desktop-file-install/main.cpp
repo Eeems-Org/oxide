@@ -118,8 +118,9 @@ main(int argc, char* argv[])
         }
         toFile.write(json.toUtf8());
         toFile.close();
-        if (parser.isSet(deleteOriginalOption)) {
-            file.remove();
+        if (parser.isSet(deleteOriginalOption) && !file.remove()) {
+            qDebug() << "Error on file" << path << ": Cannot remove file";
+            success = false;
         }
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -26,10 +26,7 @@ class BSS : public QObject
 
   public:
     BSS(QString path, QString bssid, QString ssid, QObject* parent);
-    BSS(QString path, IBSS* bss, QObject* parent)
-      : BSS(path, bss->bSSID(), bss->sSID(), parent)
-    {
-    }
+    BSS(QString path, IBSS* bss, QObject* parent);
 
     ~BSS();
     QString path();

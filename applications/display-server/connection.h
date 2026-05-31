@@ -77,7 +77,7 @@ class Connection : public QObject
     int m_serverFd;
     int m_clientInputFd;
     int m_serverInputFd;
-    QSocketNotifier* m_notifier;
+    QSocketNotifier* m_notifier = nullptr;
     QLocalSocket m_pidNotifier;
     QReadWriteLock surfacesLock;
     std::map<Blight::surface_id_t, std::shared_ptr<Surface>> surfaces;

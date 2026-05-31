@@ -451,12 +451,6 @@ main(int argc, char* argv[])
         }
         QDBusMessage reply =
             iapi->callWithArgumentList(QDBus::Block, method, arguments);
-        auto result = reply.arguments();
-        if (result.size() > 1) {
-            qStdOut << toJson(result).toStdString().c_str() << Qt::endl;
-        } else if (result.size() == 1 && !result.first().isNull()) {
-            qStdOut << toJson(result.first()).toStdString().c_str() << Qt::endl;
-        }
         if (!reply.errorName().isEmpty()) {
 #ifdef SENTRY
             sentry_breadcrumb(
@@ -464,6 +458,12 @@ main(int argc, char* argv[])
             );
 #endif
             return qExit(EXIT_FAILURE);
+        }
+        auto result = reply.arguments();
+        if (result.size() > 1) {
+            qStdOut << toJson(result).toStdString().c_str() << Qt::endl;
+        } else if (result.size() == 1 && !result.first().isNull()) {
+            qStdOut << toJson(result.first()).toStdString().c_str() << Qt::endl;
         }
         if (apiName == "system" &&
             (method == "inhibitSleep" || method == "inhibitPowerOff")) {

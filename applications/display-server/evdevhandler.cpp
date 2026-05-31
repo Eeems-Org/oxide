@@ -84,6 +84,14 @@ EvDevHandler::reloadDevices()
                 );
                 continue;
             }
+            if (!input->isValid()) {
+                O_WARNING(
+                    "Failed to create input device handler, handler was not "
+                    "valid"
+                );
+                input->deleteLater();
+                continue;
+            }
             connect(
                 input,
                 &EvDevDevice::inputEvents,

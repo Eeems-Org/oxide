@@ -175,9 +175,9 @@ class Controller : public QObject
             nanosleep(&args, &res);
         }
         qDebug() << "Requesting APIs";
-        General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
-        connect(&api, &General::aboutToQuit, qApp, &QGuiApplication::quit);
-        auto reply = api.requestAPI("power");
+        api = new General(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
+        connect(api, &General::aboutToQuit, qApp, &QGuiApplication::quit);
+        auto reply = api->requestAPI("power");
         reply.waitForFinished();
         if (reply.isError()) {
             qDebug() << reply.error();
@@ -226,7 +226,7 @@ class Controller : public QObject
         connect(
             powerApi, &Power::chargerWarning, this, &Controller::chargerWarning
         );
-        reply = api.requestAPI("wifi");
+        reply = api->requestAPI("wifi");
         reply.waitForFinished();
         if (reply.isError()) {
             qDebug() << reply.error();
@@ -278,7 +278,7 @@ class Controller : public QObject
                 networkConnected(network);
             }
         });
-        reply = api.requestAPI("system");
+        reply = api->requestAPI("system");
         reply.waitForFinished();
         if (reply.isError()) {
             qDebug() << reply.error();
@@ -327,7 +327,7 @@ class Controller : public QObject
         }
         emit powerOffInhibitedChanged(powerOffInhibited());
         emit sleepInhibitedChanged(sleepInhibited());
-        reply = api.requestAPI("apps");
+        reply = api->requestAPI("apps");
         reply.waitForFinished();
         if (reply.isError()) {
             qDebug() << reply.error();
@@ -351,7 +351,7 @@ class Controller : public QObject
             this,
             &Controller::registerApplication
         );
-        reply = api.requestAPI("notification");
+        reply = api->requestAPI("notification");
         reply.waitForFinished();
         if (reply.isError()) {
             qDebug() << reply.error();
@@ -900,6 +900,8 @@ class Controller : public QObject
                 case WifiUnknown:
                 default:
                     ui->setProperty("state", "unknown");
+                    ui->setProperty("connected", false);
+                    ui->setProperty("rssi", -100);
             }
         }
     }
@@ -944,6 +946,7 @@ class Controller : public QObject
     bool m_wifion;
     SysObject wifi;
     QTimer* uiTimer;
+    General* api = nullptr;
     Power* powerApi = nullptr;
     Wifi* wifiApi = nullptr;
     System* systemApi = nullptr;

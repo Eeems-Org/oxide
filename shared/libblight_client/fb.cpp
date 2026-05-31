@@ -467,7 +467,7 @@ namespace FB {
     }
     Blight::Format deviceFormat()
     {
-        if (Client::FAKE_RM1) {
+        if (Client::FAKE_RM1 || Client::RM1_FB) {
             return Blight::Format::Format_RGB16;
         }
         switch (Client::deviceType) {
@@ -479,7 +479,7 @@ namespace FB {
     }
     int deviceXres()
     {
-        if (Client::FAKE_RM1) {
+        if (Client::FAKE_RM1 || Client::RM1_FB) {
             return 1404;
         }
         switch (Client::deviceType) {
@@ -497,7 +497,7 @@ namespace FB {
     }
     int deviceYres()
     {
-        if (Client::FAKE_RM1) {
+        if (Client::FAKE_RM1 || Client::RM1_FB) {
             return 1872;
         }
         switch (Client::deviceType) {
@@ -519,7 +519,7 @@ namespace FB {
     }
     int deviceBitsPerPixel()
     {
-        if (Client::FAKE_RM1) {
+        if (Client::FAKE_RM1 || Client::RM1_FB) {
             return 16;
         }
         switch (Client::deviceType) {

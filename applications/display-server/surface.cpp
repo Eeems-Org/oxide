@@ -9,7 +9,6 @@
 #endif
 
 #include <liboxide/debug.h>
-#include <sys/mman.h>
 #include <unistd.h>
 
 #define S_DEBUG(msg) O_DEBUG("[" << id() << "]" << msg)

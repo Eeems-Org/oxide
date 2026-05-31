@@ -643,6 +643,10 @@ Connection::readSocket()
                 ack_size = list.size() * sizeof(decltype(list)::value_type);
                 ack_data = (Blight::data_t)malloc(ack_size);
                 memcpy(ack_data, list.data(), ack_size);
+                if (ack_size != 0 && ack_data == nullptr) {
+                    C_WARNING("Could not allocate ack_data, not enough memory");
+                    break;
+                }
                 ack_free = [&ack_data] { free(ack_data); };
                 break;
             }

@@ -25,6 +25,7 @@ class EvDevDevice : public QObject
     void lock();
     void unlock();
     void clear_buffer();
+    bool isValid() const;
 
   signals:
     void inputEvents(const std::vector<input_event> events);

@@ -518,6 +518,14 @@ Application::stopNoSecurityCheck()
                 delete p_stderr;
                 p_stderr = nullptr;
             }
+            if (p_stdout_fd > 0) {
+                ::close(p_stdout_fd);
+                p_stdout_fd = -1;
+            }
+            if (p_stderr_fd > 0) {
+                ::close(p_stderr_fd);
+                p_stderr_fd = -1;
+            }
         }
     );
 }
@@ -843,6 +851,7 @@ Application::errorOccurred(QProcess::ProcessError error)
             }
             emit exited(-1);
             emit appsAPI->applicationExited(qPath(), -1);
+            appsAPI->resumeIfNone();
             notificationAPI
                 ->add(
                     QUuid::createUuid().toString(),
