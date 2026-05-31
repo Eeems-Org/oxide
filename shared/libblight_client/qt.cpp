@@ -114,15 +114,12 @@ resolve_qimage_funcs()
     qImageFuncs.format = (decltype(qImageFuncs.format))dlsym(
         RTLD_DEFAULT, "_ZNK6QImage6formatEv"
     );
-    qImageFuncs.ok = qImageFuncs.ctor && qImageFuncs.dtor && qImageFuncs.bits;
+    qImageFuncs.ok = qImageFuncs.ctor && qImageFuncs.dtor && qImageFuncs.bits &&
+                     qImageFuncs.constScanLine && qImageFuncs.width &&
+                     qImageFuncs.height && qImageFuncs.bytesPerLine &&
+                     qImageFuncs.format;
     if (!qImageFuncs.ok) {
-        _WARN(
-            "Failed to resolve QImage runtime functions: "
-            "ctor=%p dtor=%p bits=%p",
-            (void*)qImageFuncs.ctor,
-            (void*)qImageFuncs.dtor,
-            (void*)qImageFuncs.bits
-        );
+        _WARN("%s", "Failed to resolve QImage runtime functions");
     }
 }
 
