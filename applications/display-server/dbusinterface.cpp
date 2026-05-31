@@ -821,6 +821,23 @@ DbusInterface::createConnection(int pid)
                 guiThread->notify();
             }
         }
+        {
+            QReadLocker _locker(&connectionsLock);
+            if (connections.isEmpty() && m_exclusiveMode) {
+                O_INFO("Exiting exclusive mode");
+                m_exclusiveMode = false;
+#ifdef EPAPER
+                guiThread->enqueue(
+                    nullptr,
+                    EPFramebuffer::instance()->auxBuffer.rect(),
+                    Blight::WaveformMode::HighQualityGrayscale,
+                    Blight::UpdateMode::FullUpdate,
+                    0,
+                    true
+                );
+#endif
+            }
+        }
         if (!found) {
             O_WARNING("Could not find connection to remove!");
         }

@@ -392,7 +392,20 @@ validate_swapbuffers(void* func)
     );
     return false;
 #elif defined(__aarch64__)
-    // TODO handle aarch64 version
+    // Check for common aarch64 function prologue.
+    // Most non-leaf functions start with:
+    //   stp x29, x30, [sp, #-imm]!
+    // Encoding: bits 31-24 = 0xA9, bits 23-22 = 10 (pre-index writeback).
+    // The QRect variant may start with a CMP before the STP,
+    // so also check data[1].
+    uint32_t* data = (uint32_t*)func;
+    if ((data[0] & 0xFFC00000) == 0xA9800000) {
+        return true;
+    }
+    if ((data[1] & 0xFFC00000) == 0xA9800000) {
+        return true;
+    }
+    return false;
 #else
     _CRIT("%s", "Unsupported architecture");
     std::exit(EXIT_FAILURE);
@@ -747,7 +760,10 @@ hook_check_candidate()
 #if defined(__arm__)
         offset = 0x5c; //(vtable entry 23)
 #elif defined(__aarch64__)
-// TODO add aarch64 offset
+        // vtable entry 21 (22nd virtual function), accounting for Itanium
+        // C++ ABI which has no header entries at positive indices vs ARM
+        // C++ ABI which has 2 headers (entries 0-1).
+        offset = 0xa8;
 #else
         _CRIT("Unsupported architecture");
         std::exit(EXIT_FAILURE);
