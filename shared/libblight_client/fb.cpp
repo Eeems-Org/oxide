@@ -330,6 +330,14 @@ namespace FB {
                 print_offset(reinterpret_cast<fb_var_screeninfo*>(ptr));
                 return 0;
             }
+            case FBIOBLANK: {
+                _DEBUG("%s", "ioctl /dev/fb0 FBIOBLANK");
+                int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
+                if (fd == -1) {
+                    return -1;
+                }
+                return Libc::ioctl(fd, request, ptr);
+            }
             default:
                 _WARN(
                     "UNHANDLED Fb IOCTL %lu %c %lu %lu %lu",
@@ -435,7 +443,11 @@ namespace FB {
             }
             case FBIOBLANK: {
                 _DEBUG("%s", "ioctl /dev/fb0 FBIOBLANK");
-                return 0;
+                int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
+                if (fd == -1) {
+                    return -1;
+                }
+                return Libc::ioctl(fd, request, ptr);
             }
             default:
                 _WARN(
