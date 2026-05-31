@@ -17,6 +17,19 @@
 #include <string>
 
 namespace Qt {
+    qregion_constructor_t qregion_constructor()
+    {
+        static qregion_constructor_t fn = (qregion_constructor_t)dlsym(
+            RTLD_DEFAULT, "_ZN7QRegionC1ERK5QRect"
+        );
+        return fn;
+    }
+    qregion_destructor_t qregion_destructor()
+    {
+        static qregion_destructor_t fn =
+            (qregion_destructor_t)dlsym(RTLD_DEFAULT, "_ZN7QRegionD1Ev");
+        return fn;
+    }
     qregion_begin_t qregion_begin()
     {
         static qregion_begin_t fn =
@@ -61,6 +74,7 @@ struct QFuncs
     void (*ctor)(void*, char*, int, int, int, int, void*, void*);
     void (*dtor)(void*);
     unsigned char* (*bits)(void*);
+    const unsigned char* (*constScanLine)(void*, int);
     int (*width)(void*);
     int (*height)(void*);
     int (*bytesPerLine)(void*);
@@ -86,6 +100,9 @@ resolve_qimage_funcs()
         (decltype(qImageFuncs.dtor))dlsym(RTLD_DEFAULT, "_ZN6QImageD1Ev");
     qImageFuncs.bits =
         (decltype(qImageFuncs.bits))dlsym(RTLD_DEFAULT, "_ZNK6QImage4bitsEv");
+    qImageFuncs.constScanLine = (decltype(qImageFuncs.constScanLine))dlsym(
+        RTLD_DEFAULT, "_ZNK6QImage13constScanLineEi"
+    );
     qImageFuncs.width =
         (decltype(qImageFuncs.width))dlsym(RTLD_DEFAULT, "_ZNK6QImage5widthEv");
     qImageFuncs.height = (decltype(qImageFuncs.height))dlsym(
@@ -190,6 +207,70 @@ dump_qimage_buffer(void* qimage, std::string path)
     return ::write(fd, qImageFuncs.bits(qimage), size) == size;
 }
 
+/*!
+ * \brief Check if a QImage rectangle contains any non-white, non-transparent
+ *        pixels (pen/ink content).
+ * Handles Format_RGB32 (4, 32-bit) and Format_RGB16 (7, 16-bit 565).
+ */
+static bool
+has_pen_content(void* qimage, const Qt::QRectLayout* rect)
+{
+    resolve_qimage_funcs();
+    if (!qImageFuncs.ok) {
+        return false;
+    }
+    auto x = rect->left;
+    auto y = rect->top;
+    auto width = rect->right - x;
+    auto height = rect->bottom - y;
+    int imageWidth = qImageFuncs.width(qimage);
+    int imageHeight = qImageFuncs.height(qimage);
+    int imageStride = qImageFuncs.bytesPerLine(qimage);
+    // Bounds check
+    if (x < 0 || y < 0 || width <= 0 || height <= 0 ||
+        rect->right > imageWidth || rect->bottom > imageHeight) {
+        return false;
+    }
+    int format = qImageFuncs.format(qimage);
+    int y_end = y + height;
+    for (int row = y; row < y_end; row++) {
+        const unsigned char* scanline =
+            qImageFuncs.constScanLine
+                ? qImageFuncs.constScanLine(qimage, row)
+                : qImageFuncs.bits(qimage) + row * imageStride;
+        switch (format) {
+            case Blight::Format::Format_RGB32: {
+                const uint32_t* pixels = (const uint32_t*)(scanline + x * 4);
+                int count = width;
+                while (count--) {
+                    uint32_t p = *pixels++;
+                    // Skip white (0xFFFFFFFF) and pure black (0xFF000000)
+                    if (p != 0xFFFFFFFF && p != 0xFF000000) {
+                        return true;
+                    }
+                }
+                break;
+            }
+            case Blight::Format::Format_RGB16: {
+                const uint16_t* pixels = (const uint16_t*)(scanline + x * 2);
+                int count = width;
+                while (count--) {
+                    uint16_t p = *pixels++;
+                    // (p - 1) < 0xFFFE  => p in [1, 0xFFFD] => pen content.
+                    // p = 0 (black) => 0xFFFF,  p = 0xFFFF (white) => 0xFFFE
+                    if ((uint16_t)(p - 1) < 0xFFFE) {
+                        return true;
+                    }
+                }
+                break;
+            }
+            default:
+                return true;
+        }
+        return false;
+    }
+}
+
 static std::atomic<bool> hook_installed = false;
 static std::atomic<void*> epframebufferCandidate{ nullptr };
 static std::atomic<void*> epframebufferInstance{ nullptr };
@@ -280,8 +361,8 @@ validate_swapbuffers(void* func)
     }
 
     // Try the QRect pattern: CMP Rn,#imm / STMDB SP!,{...,LR} / ... / SUB
-    // SP,#0x30 CMP with immediate encoding: bits 27-20 = 00110101 = 0x35 This
-    // matches CMP (any register, any condition, any immediate).
+    // SP,#0x30 CMP with immediate encoding: bits 27-20 = 00110101 = 0x35
+    // This matches CMP (any register, any condition, any immediate).
     if ((data[0] & 0x0FF00000) == 0x03500000) {
         if ((data[1] & 0xFFFF0000) == 0xE92D0000 && (data[1] & 0x4000)) {
             // Find SUB SP, SP, #0x30 within the next 6 instructions
@@ -319,6 +400,13 @@ validate_swapbuffers(void* func)
     return true;
 }
 
+/*!
+ * \brief Copy the contents of a QImage to a buffer.
+ * \param qimage pointer to the qimage instance
+ * \param buffer The buffer to copy into
+ * \param size if this is 0 or lower it will be calculated from the qimage
+ * \return If the copy was successful
+ */
 bool
 copy_qimage_to_buffer(void* qimage, void* buffer, size_t size)
 {
@@ -335,6 +423,12 @@ copy_qimage_to_buffer(void* qimage, void* buffer, size_t size)
     return true;
 }
 
+/*!
+ * \brief Repaint a region of the screen
+ * \param rect Region to repaint
+ * \param waveform Waveform to use for repainting
+ * \param updateMode Update mode to use for repainting
+ */
 void
 repaint(
     const Qt::QRectLayout* rect,
@@ -379,30 +473,129 @@ repaint(
 }
 
 /*!
+ * \brief Emit EPFramebuffer::framebufferUpdated() signal
+ * \param this_ptr EPFramebuffer instance
+ */
+static void
+emit_framebuffer_updated(void* this_ptr)
+{
+    void** vtable = *(void***)this_ptr;
+    void* (*func_metaObject)(void*) = (void* (*)(void*))vtable[2];
+    if (func_metaObject == nullptr) {
+        _WARN(
+            "%s", "emit_framebuffer_updated: metaObject() at vtable[2] is null"
+        );
+        return;
+    }
+    void* metaObject = func_metaObject(this_ptr);
+    if (metaObject == nullptr) {
+        _WARN("%s", "emit_framebuffer_updated: metaObject() returned null");
+        return;
+    }
+    static int (*func_indexOfSignal)(void*, const char*) =
+        (int (*)(void*, const char*))dlsym(
+            RTLD_DEFAULT, "_ZNK11QMetaObject14indexOfSignalEPKc"
+        );
+    if (func_indexOfSignal == nullptr) {
+        _WARN(
+            "%s",
+            "emit_framebuffer_updated: QMetaObject::indexOfSignal not available"
+        );
+        return;
+    }
+    int signalIndex = func_indexOfSignal(metaObject, "framebufferUpdated");
+    if (signalIndex < 0) {
+        _WARN(
+            "%s",
+            "emit_framebuffer_updated: framebufferUpdated signal not found in "
+            "QMetaObject"
+        );
+        return;
+    }
+    // Try 5-param QMetaObject::activate (with int* stack_slot), then
+    // 4-param.
+    static void (*func_5_args)(void*, void*, int, int*, void**) =
+        (void (*)(void*, void*, int, int*, void**))dlsym(
+            RTLD_DEFAULT,
+            "_ZN16QMetaObject8activateEP7QObjectPK11QMetaObjectiPiPPv"
+        );
+    if (func_5_args != nullptr) {
+        func_5_args(this_ptr, metaObject, signalIndex, nullptr, nullptr);
+        return;
+    }
+    static void (*func_4_args)(void*, void*, int, void**) =
+        (void (*)(void*, void*, int, void**))dlsym(
+            RTLD_DEFAULT,
+            "_ZN16QMetaObject8activateEP7QObjectPK11QMetaObjectiPPv"
+        );
+    if (func_4_args == nullptr) {
+        _WARN(
+            "%s", "emit_framebuffer_updated: QMetaObject::activate not found"
+        );
+        return;
+    }
+    func_4_args(this_ptr, metaObject, signalIndex, nullptr);
+}
+
+/*!
+ * \brief Dump the framebuffer, auxBuffer, and mainBuffer to /tmp/*.raw
+ */
+void
+dump_buffers()
+{
+    if (!Client::DUMP_FB) {
+        return;
+    }
+    void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
+    if (!epframebuffer) {
+        _DEBUG("dump_buffers: epframebufferInstance not set yet, skipping");
+        return;
+    }
+    void* auxBuffer = (char*)epframebuffer + auxBufferOffset;
+    void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
+    int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd <= 0) {
+        _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
+        return;
+    }
+    ::write(
+        fd,
+        Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
+        Client::HANDLE_FB ? (Client::deviceType == Client::DeviceType::RM2
+                                 ? 26359808
+                                 : FB::buffer->size())
+                          : mmap_framebuffer().second
+    );
+    ::close(fd);
+    dump_qimage_buffer(auxBuffer, "/tmp/auxBuffer.raw");
+    dump_qimage_buffer(mainBuffer, "/tmp/mainBuffer.raw");
+}
+
+/*!
  * \brief Hook to run on EPFramebuffer::swapBuffers(QRect, ...) call
+ * \param this_ptr EPFramebuffer instance
+ * \param rect Area to swap
+ * \param contentMap mapping used to define what portions need to be what
+ * waveforms
+ * \param flags Update flags
  */
 void
 hook_swapBuffers_QRect(
     void* this_ptr,
     Qt::QRectLayout rect,
-    int contentType,
-    int screenMode,
+    const void* contentMap,
     int flags
 )
 {
-    _DEBUG("%S", "EPFramebuffer::swapBuffers(QRect, ...)");
-    auto waveform = Qt::epsm_to_waveform(screenMode);
-    auto updateMode = Qt::flags_to_update_mode(flags);
-    _DEBUG(
-        "repaint: (%d, %d) (%d, %d) %d",
-        rect.left,
-        rect.top,
-        rect.right,
-        rect.bottom,
-        waveform,
-        updateMode
-    );
+    _DEBUG("EPFramebuffer::swapBuffers(QRect, ...)");
     void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
+    if (!epframebuffer) {
+        _DEBUG(
+            "hook_swapBuffers_QRect: epframebufferInstance not set yet,"
+            " skipping"
+        );
+        return;
+    }
     void* auxBuffer = (char*)epframebuffer + auxBufferOffset;
     void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
     copy_qimage_to_buffer(
@@ -410,29 +603,35 @@ hook_swapBuffers_QRect(
         Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
         0
     );
-    repaint(&rect, waveform, updateMode);
-    if (Client::DUMP_FB) {
-        int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (fd <= 0) {
-            _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
-            return;
+    if (contentMap != nullptr) {
+        auto qregion_constructor = Qt::qregion_constructor();
+        auto qregion_destructor = Qt::qregion_destructor();
+        if (qregion_constructor == nullptr || qregion_destructor == nullptr) {
+            _CRIT("%s", "hook_swapBuffers_QRect: QRegion ctors not found");
         }
-        ::write(
-            fd,
-            Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
-            Client::HANDLE_FB ? (Client::deviceType == Client::DeviceType::RM2
-                                     ? 26359808
-                                     : FB::buffer->size())
-                              : mmap_framebuffer().second
-        );
-        ::close(fd);
-        dump_qimage_buffer(auxBuffer, "/tmp/auxBuffer.raw");
-        dump_qimage_buffer(mainBuffer, "/tmp/mainBuffer.raw");
+        void* qregion = nullptr;
+        qregion_constructor(&qregion, &rect);
+        hook_swapBuffers_QRegion(this_ptr, &qregion, contentMap, flags);
+        qregion_destructor(&qregion);
+        return;
     }
+    _DEBUG("hook_swapBuffers_QRect: no contentMap, direct repaint");
+    repaint(
+        &rect,
+        (flags & 2) ? Blight::WaveformMode::Animate
+                    : Blight::WaveformMode::HighQualityGrayscale,
+        Qt::flags_to_update_mode(flags)
+    );
+    emit_framebuffer_updated(this_ptr);
+    dump_buffers();
 }
 
 /*!
  * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
+ * \param this_ptr EPFramebuffer instance
+ * \param region QRegion instance defining what is being swapped
+ * \param contentMap_screenModeMap information on what waveforms to use
+ * \param flags Update flags
  */
 void
 hook_swapBuffers_QRegion(
@@ -442,75 +641,85 @@ hook_swapBuffers_QRegion(
     int flags
 )
 {
-    _DEBUG("%s", "EPFramebuffer::swapBuffers(QRegion, ...)");
+    _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
     auto begin_fn = Qt::qregion_begin();
     auto end_fn = Qt::qregion_end();
     if (!begin_fn || !end_fn) {
         _DEBUG("hook: qregion_begin/end is NULL");
         return;
     }
-    const Qt::QRectLayout* it = begin_fn(region);
-    const Qt::QRectLayout* end = end_fn(region);
-    if (!it || !end) {
-        _DEBUG("hook: iterator or end is NULL");
+    void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
+    if (!epframebuffer) {
+        _DEBUG(
+            "hook_swapBuffers_QRegion: epframebufferInstance not set yet,"
+            " skipping"
+        );
         return;
     }
-    void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
-    void* auxBuffer = (char*)epframebuffer + auxBufferOffset;
     void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
     copy_qimage_to_buffer(
         mainBuffer,
         Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
         0
     );
-    // The third parameter (contentMap_screenModeMap) is a struct with 6
-    // QRegions (offsets 0x00-0x14) and 6 corresponding screenMode ints (offsets
-    // 0x18-0x2c). The original function uses indices [0] (pen-eligible), [1]
-    // (mono), [2] (animation), each processed with its own screenMode-derived
-    // waveform.  We iterate each non-empty sub-region directly using its
-    // screenMode.
-    bool hasContentMap = false;
     auto updateMode = Qt::flags_to_update_mode(flags);
+    bool any_repainted = false;
     if (contentMap_screenModeMap) {
         auto* regions = (void* const*)contentMap_screenModeMap;
-        auto* screenModes =
-            (int const*)((char const*)contentMap_screenModeMap + 0x18);
-        for (int i = 0; i < 3; i++) {
-            if (regions[i] != nullptr) {
-                hasContentMap = true;
-                auto waveform = Qt::epsm_to_waveform(screenModes[i]);
-                auto rit = begin_fn(&regions[i]);
-                auto rend = end_fn(&regions[i]);
+        bool animationOverride = (flags & 2) != 0;
+        // Index 0: pen-eligible content
+        if (regions[0] != nullptr) {
+            auto rit = begin_fn(&regions[0]);
+            auto rend = end_fn(&regions[0]);
+            if (rit && rend) {
                 for (; rit != rend; rit++) {
-                    repaint(rit, waveform, updateMode);
+                    if (animationOverride || has_pen_content(mainBuffer, rit)) {
+                        repaint(
+                            rit,
+                            animationOverride
+                                ? Blight::WaveformMode::Animate
+                                : Blight::WaveformMode::HighQualityGrayscale,
+                            updateMode
+                        );
+                        any_repainted = true;
+                    }
                 }
             }
         }
-    }
-    if (!hasContentMap) {
-        for (; it != end; it++) {
-            repaint(it, Blight::WaveformMode::HighQualityGrayscale, updateMode);
+        // Index 1: mono / GUI region
+        if (regions[1] != nullptr) {
+            auto rit = begin_fn(&regions[1]);
+            auto rend = end_fn(&regions[1]);
+            for (; rit != rend; rit++) {
+                repaint(
+                    rit, Blight::WaveformMode::HighQualityGrayscale, updateMode
+                );
+                any_repainted = true;
+            }
+        }
+        // Index 2: animation region
+        if (regions[2] != nullptr) {
+            auto rit = begin_fn(&regions[2]);
+            auto rend = end_fn(&regions[2]);
+            for (; rit != rend; rit++) {
+                repaint(rit, Blight::WaveformMode::Animate, updateMode);
+                any_repainted = true;
+            }
         }
     }
-    if (Client::DUMP_FB) {
-        int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (fd <= 0) {
-            _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
-            return;
+    if (!any_repainted) {
+        // Fallback: no content map, repaint the whole region
+        const Qt::QRectLayout* it = begin_fn(region);
+        const Qt::QRectLayout* end = end_fn(region);
+        if (it && end) {
+            for (; it != end; it++) {
+                repaint(
+                    it, Blight::WaveformMode::HighQualityGrayscale, updateMode
+                );
+            }
         }
-        ::write(
-            fd,
-            Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
-            Client::HANDLE_FB ? (Client::deviceType == Client::DeviceType::RM2
-                                     ? 26359808
-                                     : FB::buffer->size())
-                              : mmap_framebuffer().second
-        );
-        ::close(fd);
-        dump_qimage_buffer(auxBuffer, "/tmp/auxBuffer.raw");
-        void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
-        dump_qimage_buffer(mainBuffer, "/tmp/mainBuffer.raw");
     }
+    dump_buffers();
 }
 
 /*!
@@ -595,7 +804,8 @@ hook_check_candidate()
         _DEBUG("Hooked swapBuffers(QRect, ...)");
     } else {
         _DEBUG(
-            "validate_swapbuffers(%p) FAILED for QRect candidate %p, vtable=%p",
+            "validate_swapbuffers(%p) FAILED for QRect candidate %p, "
+            "vtable=%p",
             func_swapBuffers_qrect,
             candidate,
             vtable
@@ -608,9 +818,11 @@ hook_check_candidate()
 
 /*!
  * \brief QObject::QObject(QObject*) constructor
+ * \param this_ptr QObject instance being constructed
+ * \param parent parent QObject instance
  */
 void
-_ZN7QObjectC2EPS_(void* self, void* parent)
+_ZN7QObjectC2EPS_(void* this_ptr, void* parent)
 {
     static auto func =
         (void (*)(void*, void*))dlsym(RTLD_NEXT, "_ZN7QObjectC2EPS_");
@@ -622,15 +834,17 @@ _ZN7QObjectC2EPS_(void* self, void* parent)
         );
         std::exit(EXIT_FAILURE);
     }
-    func(self, parent);
+    func(this_ptr, parent);
     hook_check_candidate();
 }
 
 /*!
  * \brief QObject::QObject(QObject*) constructor
+ * \param this_ptr QObject instance being constructed
+ * \param parent parent QObject instance
  */
 void
-_ZN7QObjectC1EPS_(void* self, void* parent)
+_ZN7QObjectC1EPS_(void* this_ptr, void* parent)
 {
     static auto func =
         (void (*)(void*, void*))dlsym(RTLD_NEXT, "_ZN7QObjectC1EPS_");
@@ -642,12 +856,13 @@ _ZN7QObjectC1EPS_(void* self, void* parent)
         );
         std::exit(EXIT_FAILURE);
     }
-    func(self, parent);
+    func(this_ptr, parent);
     hook_check_candidate();
 }
 
 /*!
  * \brief Alternative QImage::QImage() constructor
+ * \param this_ptr QImage instance being constructed
  */
 void
 _ZN6QImageC1Ev(void* this_ptr)
@@ -662,9 +877,9 @@ _ZN6QImageC1Ev(void* this_ptr)
         return;
     }
     _DEBUG("QImage::QImage() default");
-    // Default ctor: format not yet set. Try both known EPFramebuffer offsets.
-    // The vtable at (this - offset) is checked to confirm it belongs
-    // to a xochitl QObject (fully dynamic via dladdr).
+    // Default ctor: format not yet set. Try both known EPFramebuffer
+    // offsets. The vtable at (this - offset) is checked to confirm it
+    // belongs to a xochitl QObject (fully dynamic via dladdr).
     for (int offset : { mainBufferOffset, auxBufferOffset }) {
         if (offset == 0) {
             continue; // skip unsupported arch placeholder

@@ -10,8 +10,12 @@ namespace Qt {
         int32_t right;
         int32_t bottom;
     } QRectLayout;
-    typedef const QRectLayout* (*qregion_begin_t)(const void* self);
-    typedef const QRectLayout* (*qregion_end_t)(const void* self);
+    typedef void (*qregion_constructor_t)(void* this_ptr, const void* rect);
+    typedef void (*qregion_destructor_t)(void* this_ptr);
+    typedef const QRectLayout* (*qregion_begin_t)(const void* this_ptr);
+    typedef const QRectLayout* (*qregion_end_t)(const void* this_ptr);
+    qregion_constructor_t qregion_constructor();
+    qregion_destructor_t qregion_destructor();
     qregion_begin_t qregion_begin();
     qregion_end_t qregion_end();
     Blight::WaveformMode epsm_to_waveform(int screenMode);
@@ -23,8 +27,7 @@ extern "C"
     __attribute__((visibility("default"))) void hook_swapBuffers_QRect(
         void* this_ptr,
         Qt::QRectLayout rect,
-        int contentType,
-        int screenMode,
+        const void* contentMap,
         int flags
     );
     __attribute__((visibility("default"))) void hook_swapBuffers_QRegion(
@@ -35,11 +38,11 @@ extern "C"
     );
 
     __attribute__((visibility("default"))) void
-    _ZN7QObjectC2EPS_(void* self, void* parent);
+    _ZN7QObjectC2EPS_(void* this_ptr, void* parent);
     __asm__(".symver _ZN7QObjectC2EPS_, _ZN7QObjectC2EPS_@Qt_6");
 
     __attribute__((visibility("default"))) void
-    _ZN7QObjectC1EPS_(void* self, void* parent);
+    _ZN7QObjectC1EPS_(void* this_ptr, void* parent);
     __asm__(".symver _ZN7QObjectC1EPS_, _ZN7QObjectC1EPS_@Qt_6");
 
     __attribute__((visibility("default"))) void _ZN6QImageC1Ev(void* this_ptr);
