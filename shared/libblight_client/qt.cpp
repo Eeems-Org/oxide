@@ -694,7 +694,7 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
     0
   );
   repaint(
-    &rect, Qt::flags_to_update_mode(flags), Qt::epsm_to_waveform(waveform)
+    &rect, Qt::epsm_to_waveform(waveform), Qt::flags_to_update_mode(flags)
   );
   dump_buffers();
 }
