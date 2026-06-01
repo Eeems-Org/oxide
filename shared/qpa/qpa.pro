@@ -8,6 +8,7 @@ CONFIG += qpa/genericunixfontdatabase
 
 QT += core-private
 QT += core
+QT += quick
 QT += gui-private
 QT += input_support-private
 

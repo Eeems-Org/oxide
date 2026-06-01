@@ -1,18 +1,30 @@
 TARGET = blight_client
 TEMPLATE = lib
 
+DEFINES += DISABLE_LTO
 include(../../qmake/common.pri)
 
 CONFIG += hide_symbols
 
 QT =
 
-HEADERS +=
+HEADERS += \
+    libc.h \
+    state.h \
+    fb.h \
+    input.h \
+    qt.h
 
-SOURCES += main.cpp
+SOURCES += \
+    libc.cpp \
+    state.cpp \
+    fb.cpp \
+    input.cpp \
+    qt.cpp \
+    main.cpp
 
 LIBS += -lrt -ldl -Wl,--exclude-libs,ALL
-LIBS += -lsystemd
+PKGCONFIG += libsystemd
 
 QMAKE_LFLAGS += -Wl,--as-needed
 QMAKE_LFLAGS +=  -Wl,--version-script $$_PRO_FILE_PWD_/main.map

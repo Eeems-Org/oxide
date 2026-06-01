@@ -4,11 +4,11 @@
 TEMPLATE = aux
 
 epframebuffer_h.target = raw_copy
-epframebuffer_h.commands = cp $$PWD/epframebuffer.h $$PWD/libqsgepaper.so $$OUT_PWD
+epframebuffer_h.commands = cp $$PWD/epframebuffer.h $$OUT_PWD
 QMAKE_EXTRA_TARGETS += epframebuffer_h
 
 linux-oe-g++{
-    epframebuffer_h_install.files = epframebuffer.h libqsgepaper.so
+    epframebuffer_h_install.files = epframebuffer.h
     epframebuffer_h_install.path = /opt/include
     INSTALLS += epframebuffer_h_install
 }

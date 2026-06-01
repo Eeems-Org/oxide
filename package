@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Copyright (c) 2020 The Toltec Contributors
 # SPDX-License-Identifier: MIT
-
+archs=(rm1 rm2)
 pkgnames=(
     fbinfo
     inject_evdev
     liboxide
     liboxide-dev
     libsentry
-    #    cpptrace
+    # cpptrace
     oxide
     oxide-display
     oxide-extra
@@ -17,23 +17,60 @@ pkgnames=(
 )
 _oxidever=$(grep 'VERSION =' qmake/common.pri | awk '{print $3}')
 pkgver="$_oxidever~VERSION~"
-_sentryver=0.7.9
-#_cpptracever=0.8.3
+_sentryver=0.14.2
+# _cpptracever=0.8.3
 timestamp="$(date -u +%Y-%m-%dT%H:%MZ)"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
 license=MIT
 flags=(patch_rm2fb)
-image=qt:v3.1
-source=(oxide.tar.gz)
-sha256sums=(SKIP)
+image=qt:v4.0
+source=(
+    https://toltec-dev.org/thirdparty/lib/libqsgepaper-rm1.so
+    https://toltec-dev.org/thirdparty/lib/libqsgepaper-rm2.so
+    oxide.tar.gz
+)
+sha256sums=(
+    SKIP
+    SKIP
+    SKIP
+)
+makedepends=(build:libdbus-1-3)
 
 build() {
-    find . -name "*.pro" -type f -print0 \
-        | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
-    find . -name "*.pri" -type f -print0 \
-        | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
-    CMAKE_TOOLCHAIN_FILE="/usr/share/cmake/$CHOST.cmake" make FEATURES=sentry release
+    case "$arch" in
+    rm1 | rm2)
+        . /opt/x-tools/switch-arm.sh
+        find . -name "*.pro" -type f -print0 \
+            | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
+        find . -name "*.pri" -type f -print0 \
+            | xargs -r -0 sed -i 's/linux-oe-g++/linux-arm-remarkable-g++/g'
+        export QMAKESPEC="$SYSROOT"/usr/mkspecs/devices/linux-arm-remarkable-g++
+        echo 'QMAKE_CFLAGS="-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64"' >> $QMAKESPEC/qmake.conf
+        echo 'QMAKE_CXXFLAGS="-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64"' >> $QMAKESPEC/qmake.conf
+        echo 'QMAKE_LFLAGS="-mfpu=neon -mfloat-abi=hard -mcpu=cortex-a9 -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64 -Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed"' >> $QMAKESPEC/qmake.conf
+        ;;
+    *)
+        echo "Unexpected arch: $arch"
+        exit 1
+        ;;
+    esac
+    echo "QMAKE_CC=\"${CROSS_COMPILE}gcc\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_CXX=\"${CROSS_COMPILE}g++\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_LINK=\"${CROSS_COMPILE}g++\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_LINK_SHLIB=\"${CROSS_COMPILE}g++\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_AR=\"${CROSS_COMPILE}ar\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_OBJCOPY=\"${CROSS_COMPILE}objcopy\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_NM=\"${CROSS_COMPILE}nm -P\"" >> $QMAKESPEC/qmake.conf
+    echo "QMAKE_STRIP=\"${CROSS_COMPILE}strip\"" >> $QMAKESPEC/qmake.conf
+    if [ ! -f "${SYSROOT:?}"/usr/plugins/scenegraph/libqsgepaper.so ]; then
+        mkdir -p "$SYSROOT"/usr/plugins/scenegraph/
+        cp "$srcdir"/libqsgepaper-"$arch".so \
+            "$SYSROOT"/usr/plugins/scenegraph/libqsgepaper.so
+    fi
+    export PATH=$SYSROOT/usr/bin:$PATH
+    CMAKE_TOOLCHAIN_FILE="/usr/share/cmake/$CHOST.cmake" \
+        make FEATURES=sentry release
 }
 
 oxide() {
@@ -170,10 +207,8 @@ liboxide() {
 
     package() {
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/liboxide.so*
-        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libqsgepaper.so*
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight.so*
         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libblight_protocol.so*
-
     }
 }
 
@@ -206,17 +241,17 @@ libsentry() {
     }
 }
 
-#cpptrace() {
-#    pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
-#    section="devel"
-#    url=https://github.com/jeremy-rifkin/cpptrace
-#    pkgver="$_cpptracever"
-#    timestamp="2025-04-08T14:34:11Z"
-#
-#    package() {
-#        install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libcpptrace.so
-#    }
-#}
+# cpptrace() {
+#     pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
+#     section="devel"
+#     url=https://github.com/jeremy-rifkin/cpptrace
+#     pkgver="$_cpptracever"
+#     timestamp="2025-04-08T14:34:11Z"
+
+#     package() {
+#         install -D -m 755 -t "$pkgdir"/opt/lib "$srcdir"/release/opt/lib/libcpptrace.so
+#     }
+# }
 
 oxide-tests() {
     pkgdesc="Automated tests for oxide"

@@ -4,8 +4,10 @@ QT += dbus
 
 CONFIG += c++11
 CONFIG += qml_debug
-CONFIG += qtquickcompiler
 CONFIG += precompile_header
+CONFIG(release, debug|release){
+    CONFIG += qtquickcompiler
+}
 
 SOURCES += \
         appitem.cpp \

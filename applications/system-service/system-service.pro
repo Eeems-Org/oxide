@@ -57,6 +57,7 @@ icons.path = /opt/usr/share/icons/oxide/48x48/apps
 INSTALLS += icons
 
 system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)
+system(bash -c 'cd ../../; clang-format --fallback-style=mozilla -i applications/system-service/wpa_supplicant.h:wpa_supplicant.cpp applications/system-service/wpa_supplicant.h:wpa_supplicant.h')
 
 DBUS_INTERFACES += org.freedesktop.login1.xml
 
@@ -84,9 +85,9 @@ HEADERS += \
 PRECOMPILED_HEADER = \
     tarnish_stable.h
 
-LIBS += -lpng16
-LIBS += -lsystemd
-LIBS += -lz
+PKGCONFIG += libsystemd
+PKGCONFIG += libpng16
+PKGCONFIG += zlib
 
 DISTFILES += \
     fi.w1.wpa_supplicant1.xml \

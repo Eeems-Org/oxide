@@ -32,7 +32,9 @@ INCLUDEPATH += \
     vendor/fbg/src/lodepng \
     vendor/fbg/src/stb
 
-LIBS += -lsystemd
+QT_CONFIG -= no-pkg-config
+CONFIG += link_pkgconfig
+PKGCONFIG += libsystemd
 
 include(../../qmake/common.pri)
 RELATIVE_PWD = $$system(realpath --canonicalize-missing --relative-to $$OUT_PWD $$PWD)

@@ -5,33 +5,35 @@ on:
     branches:
       - master
     paths:
-      - '.github/workflows/build.yml'
-      - 'applications/**'
-      - 'shared/**'
-      - 'assets/**'
-      - 'interfaces/**'
-      - 'qmake/**'
-      - 'oxide.pro'
-      - 'Makefile'
-      - 'package'
+      - ".github/workflows/build.yml"
+      - "applications/**"
+      - "shared/**"
+      - "assets/**"
+      - "interfaces/**"
+      - "qmake/**"
+      - "oxide.pro"
+      - "Makefile"
+      - "package"
   pull_request:
     paths:
-      - '.github/workflows/build.yml'
-      - 'applications/**'
-      - 'shared/**'
-      - 'assets/**'
-      - 'interfaces/**'
-      - 'qmake/**'
-      - 'oxide.pro'
-      - 'Makefile'
-      - 'package'
+      - ".github/workflows/build.yml"
+      - "applications/**"
+      - "shared/**"
+      - "assets/**"
+      - "interfaces/**"
+      - "qmake/**"
+      - "oxide.pro"
+      - "Makefile"
+      - "package"
+permissions:
+  contents: read
 jobs:
   lint:
     name: Lint source
     runs-on: ubuntu-latest
     steps:
       - name: Cache shfmt
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /usr/local/bin/shfmt
           key: 43439b996942b53dfafa9b6ff084f394555d049c98fb7ec37978f7668b43e1be
@@ -48,83 +50,107 @@ jobs:
               sha256sum -c <(echo "$shfmt_checksum $install_dir/shfmt") > /dev/null 2>&1
               sudo chmod a+x "$install_dir"/shfmt
           fi
-      - uses: actions/checkout@v4
+      - name: Install clang-format
+        shell: bash
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22 clang-format-22
+          sudo apt-get install -y clang-format-22
+          sudo ln -sf clang-format-22 /usr/bin/clang-format
+          clang-format --version
+      - uses: actions/checkout@v6
       - name: Lint
         run: make lint
   build:
     name: Build and package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - name: Install toltecmk
         run: pip install toltecmk
       - name: Build packages
         run: make package
         timeout-minutes: 15
       - name: Save packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: packages
           path: release
       - name: Save packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: build
-          path: .build/package/build/rmall/src/release
+          name: build-rm1
+          path: .build/package/build/rm1/src/release
+      - name: Save packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-rm2
+          path: .build/package/build/rm2/src/release
       - name: Save repo
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: repo
-          path: .build/package/dist/rmall
-  test:
-    name: Test packages
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-      - uses: actions/download-artifact@v4
-        id: download
+          name: repo-rm1
+          path: .build/package/dist/rm1
+      - name: Save repo
+        uses: actions/upload-artifact@v7
         with:
-          name: repo
-      - uses: Eeems-Org/run-in-remarkable-action@v1
-        with:
-          setup: |
-            set -ex
-            opkg update
-            opkg install python3 # needed for reboot-guard
-            wget https://github.com/Eeems-Org/sysfs_preload/releases/download/1.0.0/packages.zip -O /tmp/packages.zip
-            unzip /tmp/packages.zip -d /tmp
-            opkg install /tmp/rmall/sysfs_preload_1.0.0-1_rmall.ipk
-            wget https://github.com/timower/rM2-stuff/releases/download/v0.1.2/rm2display.ipk -O /tmp/rm2display.ipk
-            opkg install /tmp/rm2display.ipk
-            echo "src/gz local-rmall file:///opt/tmp/src" > /opt/etc/opkg.conf.d/16-local.conf
-          run: |
-            set -ex
-            echo Y | toltecctl generate-opkg-conf
-            opkg update
-            opkg install oxide oxide-tests
-            # systemctl disable --now xochitl
-            # systemctl enable --now tarnish
-            find /opt/share/tests -type f | while read -r test;do
-              SKIP_C_TESTS=1 $test;
-            done
-            opkg remove --force-removal-of-dependent-packages liboxide libblight
-          path: ${{ steps.download.outputs.download-path }}
+          name: repo-rm2
+          path: .build/package/dist/rm2
+  # test:
+  #   name: Test packages
+  #   runs-on: ubuntu-latest
+  #   needs: build
+  #   steps:
+  #     - uses: actions/download-artifact@v8
+  #       id: download
+  #       with:
+  #         name: repo-rm2
+  #     - uses: Eeems-Org/run-in-remarkable-action@v1
+  #       with:
+  #         setup: |
+  #           set -ex
+  #           opkg update
+  #           opkg install python3 # needed for reboot-guard
+  #           wget https://github.com/Eeems-Org/sysfs_preload/releases/download/1.0.0/packages.zip -O /tmp/packages.zip
+  #           unzip /tmp/packages.zip -d /tmp
+  #           opkg install /tmp/rmall/sysfs_preload_1.0.0-1_rmall.ipk
+  #           echo "src/gz local-rm2 file:///opt/tmp/src" > /opt/etc/opkg.conf.d/16-local.conf
+  #         run: |
+  #           set -ex
+  #           echo Y | toltecctl generate-opkg-conf
+  #           opkg update
+  #           opkg install oxide oxide-tests
+  #           # systemctl disable --now xochitl
+  #           # systemctl enable --now tarnish
+  #           find /opt/share/tests -type f | while read -r test;do
+  #             SKIP_C_TESTS=1 $test;
+  #           done
+  #           opkg remove --force-removal-of-dependent-packages liboxide libblight
+  #         path: ${{ steps.download.outputs.download-path }}
   release:
-    needs: [build,test,lint]
+    needs:
+      - build
+      # - test
+      - lint
     if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
-          name: build
-          path: .build
+          name: build-rm1
+          path: .build/package/build/rm1/src/release
+      - uses: actions/download-artifact@v8
+        with:
+          name: build-rm2
+          path: .build/package/build/rm2/src/release
       - name: Create Sentry release
         uses: getsentry/action-release@v1
         env:

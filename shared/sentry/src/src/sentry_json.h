@@ -3,8 +3,8 @@
 
 #include "sentry_boot.h"
 #include "sentry_path.h"
+#include "sentry_string.h"
 
-typedef struct sentry_stringbuilder_s sentry_stringbuilder_t;
 typedef struct sentry_jsonwriter_s sentry_jsonwriter_t;
 
 /**
@@ -52,6 +52,16 @@ void sentry__jsonwriter_write_bool(sentry_jsonwriter_t *jw, bool val);
  * Write a 32-bit number, which will be encoded in a JSON number.
  */
 void sentry__jsonwriter_write_int32(sentry_jsonwriter_t *jw, int32_t val);
+
+/**
+ * Write a 64-bit signed integer, encoded as JSON number.
+ */
+void sentry__jsonwriter_write_int64(sentry_jsonwriter_t *jw, int64_t val);
+
+/**
+ * Write a 64-bit unsigned integer, encoded as JSON number.
+ */
+void sentry__jsonwriter_write_uint64(sentry_jsonwriter_t *jw, uint64_t val);
 
 /**
  * Write a 64-bit float, encoded as JSON number.

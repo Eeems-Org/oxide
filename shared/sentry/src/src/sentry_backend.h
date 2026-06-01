@@ -11,7 +11,6 @@
  * can ensure that any captured crash contains the sentry scope and other
  * information.
  */
-typedef struct sentry_backend_s sentry_backend_t;
 struct sentry_backend_s {
     int (*startup_func)(sentry_backend_t *, const sentry_options_t *options);
     void (*shutdown_func)(sentry_backend_t *);
@@ -26,9 +25,34 @@ struct sentry_backend_s {
     void (*user_consent_changed_func)(sentry_backend_t *);
     uint64_t (*get_last_crash_func)(sentry_backend_t *);
     void (*prune_database_func)(sentry_backend_t *);
+    void (*add_attachment_func)(sentry_backend_t *, sentry_attachment_t *);
+    void (*remove_attachment_func)(sentry_backend_t *, sentry_attachment_t *);
     void *data;
+    // Whether this backend still runs after shutdown_func was called.
     bool can_capture_after_shutdown;
 };
+
+/**
+ * Backend-specific pre-initialization that can be called before sentry_init().
+ *
+ * Currently used by downstream SDKs on Android to preload the inproc backend
+ * before the .NET runtime installs its own signal handlers. This is the
+ * preload alternative to CHAIN_AT_START for runtimes where the handler order
+ * can be established at process startup (e.g., CoreCLR on Android).
+ *
+ * Preload only establishes signal-chain order. Full crash processing becomes
+ * active once sentry_init() starts the handler thread.
+ *
+ * If a crash/signal occurs before sentry_init() is called, or after a
+ * subsequent sentry_close() while the preload chain position is still kept,
+ * the preloaded handler will fall through to the previously installed handler.
+ *
+ * This API is intended for downstream SDK/runtime integrations, not as a
+ * general app-level initialization entry point. Callers are expected to gate
+ * this to supported runtime configurations (e.g., no preload together with
+ * CHAIN_AT_START).
+ */
+SENTRY_API void sentry__backend_preload(void);
 
 /**
  * This will free a previously allocated backend.

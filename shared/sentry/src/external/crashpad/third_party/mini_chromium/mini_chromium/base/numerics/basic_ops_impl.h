@@ -5,33 +5,45 @@
 #ifndef MINI_CHROMIUM_BASE_NUMERICS_BASIC_OPS_IMPL_H_
 #define MINI_CHROMIUM_BASE_NUMERICS_BASIC_OPS_IMPL_H_
 
-#include <bit>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <span>
 #include <type_traits>
 
-namespace base::numerics::internal {
+namespace base::internal {
+
+#if defined(__GNUC__) || defined(__clang__)
+inline constexpr bool cxx17_is_constant_evaluated() noexcept {
+  return __builtin_is_constant_evaluated();
+}
+#elif defined(_MSC_VER)
+inline constexpr bool cxx17_is_constant_evaluated() noexcept {
+  return false;
+}
+#else
+inline constexpr bool cxx17_is_constant_evaluated() noexcept {
+  return false;
+}
+#endif
 
 // The correct type to perform math operations on given values of type `T`. This
 // may be a larger type than `T` to avoid promotion to `int` which involves sign
 // conversion!
-template <class T>
-  requires(std::is_integral_v<T>)
+template <class T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
 using MathType = std::conditional_t<
     sizeof(T) >= sizeof(int),
     T,
     std::conditional_t<std::is_signed_v<T>, int, unsigned int>>;
 
 // Reverses the byte order of the integer.
-template <class T>
-  requires(std::is_unsigned_v<T> && std::is_integral_v<T>)
+template <
+    class T,
+    std::enable_if_t<std::is_unsigned_v<T> && std::is_integral_v<T>, int> = 0>
 inline constexpr T SwapBytes(T value) {
   // MSVC intrinsics are not constexpr, so we provide our own constexpr
   // implementation. We provide it unconditionally so we can test it on all
   // platforms for correctness.
-  if (std::is_constant_evaluated()) {
+  if (cxx17_is_constant_evaluated()) {
     if constexpr (sizeof(T) == 1u) {
       return value;
     } else if constexpr (sizeof(T) == 2u) {
@@ -87,18 +99,20 @@ inline constexpr T SwapBytes(T value) {
 }
 
 // Signed values are byte-swapped as unsigned values.
-template <class T>
-  requires(std::is_signed_v<T> && std::is_integral_v<T>)
+template <
+    class T,
+    std::enable_if_t<std::is_signed_v<T> && std::is_integral_v<T>, int> = 0>
 inline constexpr T SwapBytes(T value) {
   return static_cast<T>(SwapBytes(static_cast<std::make_unsigned_t<T>>(value)));
 }
 
 // Converts from a byte array to an integer.
-template <class T>
-  requires(std::is_unsigned_v<T> && std::is_integral_v<T>)
-inline constexpr T FromLittleEndian(std::span<const uint8_t, sizeof(T)> bytes) {
+template <
+    class T,
+    std::enable_if_t<std::is_unsigned_v<T> && std::is_integral_v<T>, int> = 0>
+inline constexpr T FromLittleEndian(span<const uint8_t, sizeof(T)> bytes) {
   T val;
-  if (std::is_constant_evaluated()) {
+  if (cxx17_is_constant_evaluated()) {
     val = T{0};
     for (size_t i = 0u; i < sizeof(T); i += 1u) {
       // SAFETY: `i < sizeof(T)` (the number of bytes in T), so `(8 * i)` is
@@ -114,11 +128,12 @@ inline constexpr T FromLittleEndian(std::span<const uint8_t, sizeof(T)> bytes) {
 }
 
 // Converts to a byte array from an integer.
-template <class T>
-  requires(std::is_unsigned_v<T> && std::is_integral_v<T>)
+template <
+    class T,
+    std::enable_if_t<std::is_unsigned_v<T> && std::is_integral_v<T>, int> = 0>
 inline constexpr std::array<uint8_t, sizeof(T)> ToLittleEndian(T val) {
   auto bytes = std::array<uint8_t, sizeof(T)>();
-  if (std::is_constant_evaluated()) {
+  if (cxx17_is_constant_evaluated()) {
     for (size_t i = 0u; i < sizeof(T); i += 1u) {
       const auto last_byte = static_cast<uint8_t>(val & 0xff);
       // The low bytes go to the front of the array in little endian.
@@ -137,6 +152,6 @@ inline constexpr std::array<uint8_t, sizeof(T)> ToLittleEndian(T val) {
   return bytes;
 }
 
-}  // namespace base::numerics::internal
+}  // namespace base::internal
 
 #endif  //  MINI_CHROMIUM_BASE_NUMERICS_BASIC_OPS_IMPL_H_

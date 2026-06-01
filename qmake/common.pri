@@ -8,10 +8,14 @@ isEmpty(QT_DISABLE_DEPRECATED_BEFORE){
 }else{
     message("Using override deprecation value")
 }
+
+QT_CONFIG -= no-pkg-config
+CONFIG += link_pkgconfig
+
 DEFINES ~= s/QT_DISABLE_DEPRECATED_BEFORE=.+/
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=$${QT_DISABLE_DEPRECATED_BEFORE}
 CONFIG(debug, debug|release){
-    LIBS += -lunwind
+    PKGCONFIG += libunwind
     contains(DEFINES, SANITIZER){
         QMAKE_LFLAGS += -fno-omit-frame-pointer
         QMAKE_LFLAGS += -fsanitize-recover=address
@@ -32,11 +36,18 @@ linux-oe-g++{
 QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
-CONFIG += ltcg
 CONFIG += c++17
 CONFIG += c++20
 CONFIG += c++latest
 
-QMAKE_LFLAGS += -flto
-QMAKE_CFLAGS += -fPIC
-QMAKE_CXXFLAGS += -fPIC
+CONFIG(release, debug|release){
+    !contains(DEFINES, DISABLE_LTO){
+        CONFIG += ltcg
+        QMAKE_LFLAGS += -flto
+    }
+}
+
+!contains(DEFINES, DISABLE_PIC){
+    QMAKE_CFLAGS += -fPIC
+    QMAKE_CXXFLAGS += -fPIC
+}

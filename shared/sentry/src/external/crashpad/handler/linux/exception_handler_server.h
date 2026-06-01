@@ -111,6 +111,16 @@ class ExceptionHandlerServer {
         int broker_sock,
         UUID* local_report_id = nullptr) = 0;
 
+    //! \brief Called to add an attachment to the crash report.
+    virtual void AddAttachment(const base::FilePath& attachment) = 0;
+
+    //! \brief Called to remove an attachment from the crash report.
+    virtual void RemoveAttachment(const base::FilePath& attachment) = 0;
+
+    //! \brief Called when the server has received a request to retry pending
+    //!     report uploads.
+    virtual void RequestRetry() = 0;
+
     virtual ~Delegate() {}
   };
 

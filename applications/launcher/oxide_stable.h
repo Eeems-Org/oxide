@@ -1,11 +1,11 @@
 #if defined __cplusplus
-#include <cstdlib>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
 #include <liboxide.h>
 #include <linux/fb.h>
-#include <memory>
+#include <signal.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
 #include <QAbstractListModel>
 #include <QDebug>
 #include <QDir>
@@ -22,16 +22,17 @@
 #include <QSet>
 #include <QStandardPaths>
 #include <QStringList>
-#include <QtDBus>
 #include <QTextStream>
 #include <QTimer>
+#include <QtDBus>
 #include <QtPlugin>
 #include <QtQuick>
-#include <signal.h>
+#include <cstdlib>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <memory>
 #include <sstream>
-#include <stdlib.h>
-#include <sys/mman.h>
-#include <unistd.h>
 
 #include "controller.h"
 #include "mxcfb.h"

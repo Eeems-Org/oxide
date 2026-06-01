@@ -34,6 +34,10 @@ static inline int
 sentry__stringbuilder_append_buf(
     sentry_stringbuilder_t *sb, const char *s, size_t len)
 {
+    if (sb->len == SIZE_MAX || len > SIZE_MAX - sb->len - 1) {
+        return 1;
+    }
+
     size_t needed = sb->len + len + 1;
     char *buf = sb->buf;
     if (!sb->buf || needed > sb->allocated) {
@@ -183,6 +187,15 @@ sentry__guarded_strlen(const char *s)
 }
 
 /**
+ * Checks whether a string is NULL or zero-length.
+ */
+static inline bool
+sentry__string_empty(const char *s)
+{
+    return !s || s[0] == '\0';
+}
+
+/**
  * Converts an int64_t into a string.
  */
 static inline char *
@@ -193,15 +206,45 @@ sentry__int64_to_string(int64_t val)
     return sentry__string_clone(buf);
 }
 
+/**
+ * Converts an uint64_t into a string.
+ */
+static inline char *
+sentry__uint64_to_string(uint64_t val)
+{
+    char buf[24];
+    snprintf(buf, sizeof(buf), "%" PRIu64, val);
+    return sentry__string_clone(buf);
+}
+
+/**
+ * Formats an address as "0x" + lowercase hex into a caller-provided buffer.
+ * This is a replacement for `snprintf` in signal handlers:
+ *   - signal-safe: uses no stdio, malloc, locks, or thread-local state.
+ *   - reentrant: only stack locals; no writable globals.
+ */
+void sentry__addr_to_string(char *buf, size_t buf_len, uint64_t addr);
+
 #ifdef SENTRY_PLATFORM_WINDOWS
 /**
  * Create a utf-8 string from a Wide String.
  */
 char *sentry__string_from_wstr(const wchar_t *s);
+
+/**
+ * Create a utf-8 string from a Wide String with length.
+ * We cannot assume that string to be null-terminated.
+ */
+char *sentry__string_from_wstr_n(const wchar_t *s, size_t s_len);
 /**
  * Convert a normal string to a Wide String.
  */
 wchar_t *sentry__string_to_wstr(const char *s);
+
+/**
+ * Implements a wide string clone/dup using our allocator.
+ */
+wchar_t *sentry__string_clone_wstr(const wchar_t *s);
 #endif
 
 /**
@@ -213,6 +256,6 @@ size_t sentry__unichar_to_utf8(uint32_t c, char *buf);
 #define sentry__is_lead_surrogate(c) ((c) >= 0xd800 && (c) < 0xdc00)
 #define sentry__is_trail_surrogate(c) ((c) >= 0xdc00 && (c) < 0xe000)
 #define sentry__surrogate_value(lead, trail)                                   \
-    (((((lead)-0xd800) << 10) | ((trail)-0xdc00)) + 0x10000)
+    (((((lead) - 0xd800) << 10) | ((trail) - 0xdc00)) + 0x10000)
 
 #endif

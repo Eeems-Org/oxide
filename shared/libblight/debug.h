@@ -5,34 +5,45 @@
  */
 #pragma once
 
-#include <systemd/sd-journal.h>
-#include <unistd.h>
+#include "libblight_global.h"
 #include <linux/prctl.h>
 #include <stdio.h>
-#include <mutex>
 #include <sys/prctl.h>
+#include <systemd/sd-journal.h>
+#include <unistd.h>
+
+#include <mutex>
 
 static std::mutex __log_mutex;
+void
+__printf_header(int priority);
+void
+__printf_footer(char const* file, unsigned int line, char const* func);
+
 /*!
- * \brief BLIGHT_DEBUG_LOGGING
- *
- * Used to filter debug messages based on the priority.
+ * \brief Get current debug level
+ * \return Current debug level
  */
-static int BLIGHT_DEBUG_LOGGING = 4;
-void __printf_header(int priority);
-void __printf_footer(char const* file, unsigned int line, char const* func);
+LIBBLIGHT_EXPORT int
+get_blight_debug_level();
+/*!
+ * \brief Set current debug level
+ * \param level Debug level to use
+ */
+LIBBLIGHT_EXPORT void
+set_blight_debug_level(int level);
 
 /*!
  * \brief Log a message to stderr
  */
-#define _PRINTF(priority, ...) \
-    if(priority <= BLIGHT_DEBUG_LOGGING){ \
-        __log_mutex.lock(); \
-        __printf_header(priority); \
-        fprintf(stderr, __VA_ARGS__); \
-        __printf_footer(__FILE__, __LINE__, __PRETTY_FUNCTION__); \
-        __log_mutex.unlock(); \
-    }
+#define _PRINTF(priority, ...)                                                 \
+  if (priority <= get_blight_debug_level()) {                                  \
+    __log_mutex.lock();                                                        \
+    __printf_header(priority);                                                 \
+    fprintf(stderr, __VA_ARGS__);                                              \
+    __printf_footer(__FILE__, __LINE__, __PRETTY_FUNCTION__);                  \
+    __log_mutex.unlock();                                                      \
+  }
 
 /*!
  * \brief Log a debug statement to stderrr
@@ -51,9 +62,11 @@ void __printf_footer(char const* file, unsigned int line, char const* func);
  */
 #define _CRIT(...) _PRINTF(LOG_CRIT, __VA_ARGS__)
 /*!
- * \brief Log a debug line indicating that a certain line of code has been reached
+ * \brief Log a debug line indicating that a certain line of code has been
+ * reached
  */
 #ifndef __RIGHT_HERE__
-#define __RIGHT_HERE__ fprintf(stderr, "<============================ %s:%d\n", __FILE__, __LINE__)
+#define __RIGHT_HERE__                                                         \
+  fprintf(stderr, "<============================ %s:%d\n", __FILE__, __LINE__)
 #endif
 /*! @} */

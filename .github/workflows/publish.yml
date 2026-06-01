@@ -4,19 +4,21 @@ on:
     branches:
       - master
     paths:
-      - 'web/**'
-      - 'shared/liboxide/**'
-      - '.github/workflows/publish.yml'
-      - '.github/actions/web/**'
-      - '.github/actions/sync-repository/**'
+      - "web/**"
+      - "shared/liboxide/**"
+      - ".github/workflows/publish.yml"
+      - ".github/actions/web/**"
+      - ".github/actions/sync-repository/**"
   workflow_dispatch:
 jobs:
   build:
     name: Build and publish the website
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout the Git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Build web
@@ -24,7 +26,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'web/dist/'
+          path: "web/dist/"
   deploy:
     needs: build
     if: ${{ github.ref == 'refs/heads/master' }}

@@ -11,6 +11,9 @@ MAKEFLAGS := --jobs=$(shell nproc)
 DIST=$(CURDIR)/release
 BUILD=$(CURDIR)/.build
 
+ifneq ($(filter debug,$(FEATURES)),)
+DEFINES += CONFIG+="debug"
+endif
 ifneq ($(filter sentry,$(FEATURES)),)
 DEFINES += DEFINES+="SENTRY"
 endif
@@ -18,7 +21,11 @@ endif
 OBJ += $(BUILD)/oxide/Makefile
 
 clean-base:
-	rm -rf $(DIST) $(BUILD)/oxide
+	rm -rf \
+		$(DIST) \
+		$(BUILD)/oxide/Makefile \
+		$(BUILD)/oxide/shared/sentry/src \
+		$(BUILD)/oxide/shared/cpptrace/src
 
 clean: clean-base
 	rm -rf $(BUILD)
@@ -46,7 +53,47 @@ package: version.txt $(DIST) $(BUILD)/package/oxide.tar.gz
 		-w $(BUILD)/package/build \
 		-d $(BUILD)/package/dist \
 		$(BUILD)/package
-	cp -a $(BUILD)/package/dist/rmall/*.ipk $(DIST)
+	cp -a $(BUILD)/package/dist/rm*/*.ipk $(DIST)
+
+build-rm1: clean-base $(DIST)
+	podman run \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		eeems/remarkable-toolchain:5.7.119-rm1 \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm1/5.7.119/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
+
+build-rm2: clean-base $(DIST)
+	podman run \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		eeems/remarkable-toolchain:5.7.119-rm2 \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm2/5.7.119/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
+
+build-rmpp: clean-base $(DIST)
+	podman run \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		eeems/remarkable-toolchain:5.7.119-rmpp \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/ferrari/5.7.119/environment-setup-cortexa53-remarkable-linux; make FEATURES=$(FEATURES) release'
+
+build-rmppm: clean-base $(DIST)
+	podman run \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		eeems/remarkable-toolchain:5.7.119-rmppm \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/chiappa/5.7.119/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
+
+build-rmppure: clean-base $(DIST)
+	podman run \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		eeems/remarkable-toolchain:5.7.119-rmppure \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/tatsu/5.7.119/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
 version.txt:
 	if [ -d .git ];then \
@@ -105,17 +152,26 @@ $(BUILD)/package/oxide.tar.gz: $(BUILD)/package/package $(PKG_OBJ)
 SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )
 SRC_FILES += package
 
+CPP_FILES = $(wildcard applications/**/*.cpp) $(wildcard applications/**/*.h)
+CPP_FILES += $(wildcard shared/**/*.cpp) $(wildcard shared/**/*.h)
+CPP_FILES += $(wildcard tests/**/*.cpp) $(wildcard tests/**/*.h)
+
 lint:
-	shfmt \
+	@shfmt \
 		-d\
 		-s \
 		-i 4 \
 		-bn \
 		-sr \
 		$(SRC_FILES)
+	@clang-format \
+		--dry-run \
+		--Werror \
+		--fallback-style=mozilla \
+		$(CPP_FILES)
 
 format:
-	shfmt \
+	@shfmt \
 		-l \
 		-w \
 		-s \
@@ -123,3 +179,7 @@ format:
 		-bn \
 		-sr \
 		$(SRC_FILES)
+	@clang-format \
+		--fallback-style=mozilla \
+		-i \
+		$(CPP_FILES)

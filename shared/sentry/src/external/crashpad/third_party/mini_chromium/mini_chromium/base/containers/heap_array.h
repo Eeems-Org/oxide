@@ -45,9 +45,10 @@ class TRIVIAL_ABI GSL_OWNER HeapArray {
 
   // Allocates initialized memory capable of holding `size` elements. No memory
   // is allocated for zero-sized arrays.
-  static HeapArray WithSize(size_t size)
-    requires(std::constructible_from<T>)
-  {
+  template <
+      std::enable_if_t<std::is_constructible_v<T> && std::is_destructible_v<T>,
+                       int> = 0>
+  static HeapArray WithSize(size_t size) {
     if (!size) {
       return HeapArray();
     }
@@ -57,10 +58,10 @@ class TRIVIAL_ABI GSL_OWNER HeapArray {
   // Allocates uninitialized memory capable of holding `size` elements. T must
   // be trivially constructible and destructible. No memory is allocated for
   // zero-sized arrays.
-  static HeapArray Uninit(size_t size)
-    requires(std::is_trivially_constructible_v<T> &&
-             std::is_trivially_destructible_v<T>)
-  {
+  template <std::enable_if_t<std::is_trivially_constructible_v<T> &&
+                                 std::is_trivially_destructible_v<T>,
+                             int> = 0>
+  static HeapArray Uninit(size_t size) {
     if (!size) {
       return HeapArray();
     }
@@ -93,9 +94,10 @@ class TRIVIAL_ABI GSL_OWNER HeapArray {
   }
 
   // Constructs an empty array and does not allocate any memory.
-  HeapArray()
-    requires(std::constructible_from<T>)
-  = default;
+  template <std::enable_if_t<std::is_default_constructible_v<T> &&
+                                 std::is_destructible_v<T>,
+                             int> = 0>
+  HeapArray() {}
 
   // Move-only type since the memory is owned.
   HeapArray(const HeapArray&) = delete;
