@@ -18,23 +18,27 @@
 
 namespace Qt {
   qregion_constructor_t qregion_constructor() {
-    static qregion_constructor_t fn =
-      (qregion_constructor_t)dlsym(RTLD_DEFAULT, "_ZN7QRegionC1ERK5QRect");
+    static auto fn = reinterpret_cast<qregion_constructor_t>(
+      dlsym(RTLD_DEFAULT, "_ZN7QRegionC1ERK5QRect")
+    );
     return fn;
   }
   qregion_destructor_t qregion_destructor() {
-    static qregion_destructor_t fn =
-      (qregion_destructor_t)dlsym(RTLD_DEFAULT, "_ZN7QRegionD1Ev");
+    static auto fn = reinterpret_cast<qregion_destructor_t>(
+      dlsym(RTLD_DEFAULT, "_ZN7QRegionD1Ev")
+    );
     return fn;
   }
   qregion_begin_t qregion_begin() {
-    static qregion_begin_t fn =
-      (qregion_begin_t)dlsym(RTLD_DEFAULT, "_ZNK7QRegion5beginEv");
+    static auto fn = reinterpret_cast<qregion_begin_t>(
+      dlsym(RTLD_DEFAULT, "_ZNK7QRegion5beginEv")
+    );
     return fn;
   }
   qregion_end_t qregion_end() {
-    static qregion_end_t fn =
-      (qregion_end_t)dlsym(RTLD_DEFAULT, "_ZNK7QRegion3endEv");
+    static auto fn = reinterpret_cast<qregion_end_t>(
+      dlsym(RTLD_DEFAULT, "_ZNK7QRegion3endEv")
+    );
     return fn;
   }
   Blight::WaveformMode epsm_to_waveform(int screenMode) {
@@ -84,25 +88,32 @@ resolve_qimage_funcs() {
   if (qImageFuncs.ok) {
     return;
   }
-  qImageFuncs.ctor = (decltype(qImageFuncs.ctor))dlsym(
-    RTLD_DEFAULT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_"
+  qImageFuncs.ctor = reinterpret_cast<decltype(qImageFuncs.ctor)>(
+    dlsym(RTLD_DEFAULT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_")
   );
-  qImageFuncs.dtor =
-    (decltype(qImageFuncs.dtor))dlsym(RTLD_DEFAULT, "_ZN6QImageD1Ev");
-  qImageFuncs.bits =
-    (decltype(qImageFuncs.bits))dlsym(RTLD_DEFAULT, "_ZNK6QImage4bitsEv");
-  qImageFuncs.constScanLine = (decltype(qImageFuncs.constScanLine))dlsym(
-    RTLD_DEFAULT, "_ZNK6QImage13constScanLineEi"
+  qImageFuncs.dtor = reinterpret_cast<decltype(qImageFuncs.dtor)>(
+    dlsym(RTLD_DEFAULT, "_ZN6QImageD1Ev")
   );
-  qImageFuncs.width =
-    (decltype(qImageFuncs.width))dlsym(RTLD_DEFAULT, "_ZNK6QImage5widthEv");
-  qImageFuncs.height =
-    (decltype(qImageFuncs.height))dlsym(RTLD_DEFAULT, "_ZNK6QImage6heightEv");
-  qImageFuncs.bytesPerLine = (decltype(qImageFuncs.bytesPerLine))dlsym(
-    RTLD_DEFAULT, "_ZNK6QImage12bytesPerLineEv"
+  qImageFuncs.bits = reinterpret_cast<decltype(qImageFuncs.bits)>(
+    dlsym(RTLD_DEFAULT, "_ZNK6QImage4bitsEv")
   );
-  qImageFuncs.format =
-    (decltype(qImageFuncs.format))dlsym(RTLD_DEFAULT, "_ZNK6QImage6formatEv");
+  qImageFuncs.constScanLine =
+    reinterpret_cast<decltype(qImageFuncs.constScanLine)>(
+      dlsym(RTLD_DEFAULT, "_ZNK6QImage13constScanLineEi")
+    );
+  qImageFuncs.width = reinterpret_cast<decltype(qImageFuncs.width)>(
+    dlsym(RTLD_DEFAULT, "_ZNK6QImage5widthEv")
+  );
+  qImageFuncs.height = reinterpret_cast<decltype(qImageFuncs.height)>(
+    dlsym(RTLD_DEFAULT, "_ZNK6QImage6heightEv")
+  );
+  qImageFuncs.bytesPerLine =
+    reinterpret_cast<decltype(qImageFuncs.bytesPerLine)>(
+      dlsym(RTLD_DEFAULT, "_ZNK6QImage12bytesPerLineEv")
+    );
+  qImageFuncs.format = reinterpret_cast<decltype(qImageFuncs.format)>(
+    dlsym(RTLD_DEFAULT, "_ZNK6QImage6formatEv")
+  );
   qImageFuncs.ok = qImageFuncs.ctor && qImageFuncs.dtor && qImageFuncs.bits &&
                    qImageFuncs.constScanLine && qImageFuncs.width &&
                    qImageFuncs.height && qImageFuncs.bytesPerLine &&
@@ -137,7 +148,7 @@ mmap_framebuffer() {
     close(FB::frameBuffer);
     return {nullptr, 0};
   }
-  size_t len = (size_t)st.st_size;
+  auto len = static_cast<size_t>(st.st_size);
   ptr =
     mmap(nullptr, len, PROT_READ | PROT_WRITE, MAP_SHARED, FB::frameBuffer, 0);
   auto err = errno;
@@ -215,7 +226,7 @@ vtableOffset() {
 }
 
 bool
-dump_qimage_buffer(void* qimage, std::string path) {
+dump_qimage_buffer(void* qimage, const std::string path) {
   resolve_qimage_funcs();
   if (!qImageFuncs.ok) {
     errno = EBADFD;
@@ -223,7 +234,7 @@ dump_qimage_buffer(void* qimage, std::string path) {
   }
   int height = qImageFuncs.height(qimage);
   int stride = qImageFuncs.bytesPerLine(qimage);
-  size_t size = (size_t)stride * (size_t)height;
+  auto size = static_cast<size_t>(stride) * static_cast<size_t>(height);
 
   int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (fd <= 0) {
@@ -265,7 +276,7 @@ has_pen_content(void* qimage, const Qt::QRectLayout* rect) {
                                 : qImageFuncs.bits(qimage) + row * imageStride;
     switch (format) {
       case Blight::Format::Format_RGB32: {
-        const uint32_t* pixels = (const uint32_t*)(scanline + x * 4);
+        auto pixels = reinterpret_cast<const uint32_t*>(scanline + x * 4);
         int count = width;
         while (count--) {
           uint32_t p = *pixels++;
@@ -277,13 +288,13 @@ has_pen_content(void* qimage, const Qt::QRectLayout* rect) {
         break;
       }
       case Blight::Format::Format_RGB16: {
-        const uint16_t* pixels = (const uint16_t*)(scanline + x * 2);
+        auto pixels = reinterpret_cast<const uint16_t*>(scanline + x * 2);
         int count = width;
         while (count--) {
           uint16_t p = *pixels++;
           // (p - 1) < 0xFFFE  => p in [1, 0xFFFD] => pen content.
           // p = 0 (black) => 0xFFFF,  p = 0xFFFF (white) => 0xFFFE
-          if ((uint16_t)(p - 1) < 0xFFFE) {
+          if (static_cast<uint16_t>(p - 1) < 0xFFFE) {
             return true;
           }
         }
@@ -307,8 +318,10 @@ static std::atomic<int> badCandidateCount{0};
  */
 void
 install_hook(void* target, void* hook) {
-  long ps = sysconf(_SC_PAGESIZE);
-  void* page = (void*)((uintptr_t)target & ~(ps - 1));
+  auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
+  auto page = reinterpret_cast<void*>(
+    reinterpret_cast<uintptr_t>(target) & ~(static_cast<uintptr_t>(ps) - 1)
+  );
   size_t len = 8;
 #if defined(__arm__)
   len = 8;
@@ -319,7 +332,8 @@ install_hook(void* target, void* hook) {
   std::exit(EXIT_FAILURE);
 #endif
   // Make sure all the bytes we overwrite are in writable pages
-  while ((uintptr_t)page + ps < (uintptr_t)target + len) {
+  while (reinterpret_cast<uintptr_t>(page) + ps <
+         reinterpret_cast<uintptr_t>(target) + len) {
     ps += sysconf(_SC_PAGESIZE);
   }
   mprotect(page, ps, PROT_READ | PROT_WRITE | PROT_EXEC);
@@ -328,18 +342,20 @@ install_hook(void* target, void* hook) {
   //   LDR PC, [PC, #-4]   (loads from target+4 into PC)
   //   <hook address>
   // No separate trampoline needed -- LDR PC can reach any 32-bit address.
-  *(uint32_t*)target = 0xe51ff004;
-  *(uint32_t*)((char*)target + 4) = (uintptr_t)hook;
-  __builtin___clear_cache(target, (char*)target + 8);
+  *reinterpret_cast<uint32_t*>(target) = 0xe51ff004;
+  *reinterpret_cast<uint32_t*>(static_cast<char*>(target) + 4) =
+    reinterpret_cast<uintptr_t>(hook);
+  __builtin___clear_cache(target, static_cast<char*>(target) + 8);
 #elif defined(__aarch64__)
   // Overwrite the first 16 bytes of target with:
   //   LDR X16, #8          (load 8 bytes from PC+8 into X16)
   //   BR X16               (branch to X16)
   //   <hook address, 8 bytes>
-  *(uint32_t*)target = 0x58000050;
-  *(uint32_t*)((char*)target + 4) = 0xd61f0200;
-  *(uint64_t*)((char*)target + 8) = (uintptr_t)hook;
-  __builtin___clear_cache(target, (char*)target + 16);
+  *reinterpret_cast<uint32_t*>(target) = 0x58000050;
+  *reinterpret_cast<uint32_t*>(static_cast<char*>(target) + 4) = 0xd61f0200;
+  *reinterpret_cast<uint64_t*>(static_cast<char*>(target) + 8) =
+    reinterpret_cast<uintptr_t>(hook);
+  __builtin___clear_cache(target, static_cast<char*>(target) + 16);
 #endif
 }
 
@@ -356,7 +372,7 @@ validate_swapbuffers(void* func) {
   // Check arm32 prologue for the swapBuffers(QRegion) variant:
   //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
   //   sub sp, sp, #0x44       (0xE24DD044)
-  uint32_t* data = (uint32_t*)func;
+  auto data = reinterpret_cast<uint32_t*>(func);
   // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
   if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
     if (data[1] == 0xE24DD044) {
@@ -387,7 +403,7 @@ validate_swapbuffers(void* func) {
   // followed by either:
   //   stp x29, x30, [sp, #-imm]!  (frame pointer)
   //   sub sp, sp, #imm             (no frame pointer)
-  uint32_t* data = (uint32_t*)func;
+  auto data = reinterpret_cast<uint32_t*>(func);
   if ((data[0] & 0xFFC00000) == 0xA9800000) {
     return true;
   }
@@ -423,8 +439,8 @@ copy_qimage_to_buffer(void* qimage, void* buffer, size_t size) {
     return false;
   }
   if (size <= 0) {
-    size = (size_t)qImageFuncs.bytesPerLine(qimage) *
-           (size_t)qImageFuncs.height(qimage);
+    size = static_cast<size_t>(qImageFuncs.bytesPerLine(qimage)) *
+           static_cast<size_t>(qImageFuncs.height(qimage));
   }
   memcpy(buffer, qImageFuncs.bits(qimage), size);
   return true;
@@ -481,8 +497,8 @@ repaint(
  */
 static void
 emit_framebuffer_updated(void* this_ptr) {
-  void** vtable = *(void***)this_ptr;
-  void* (*func_metaObject)(void*) = (void* (*)(void*))vtable[2];
+  auto vtable = *static_cast<void***>(this_ptr);
+  auto func_metaObject = reinterpret_cast<void* (*)(void*)>(vtable[2]);
   if (func_metaObject == nullptr) {
     _WARN("%s", "emit_framebuffer_updated: metaObject() at vtable[2] is null");
     return;
@@ -492,9 +508,9 @@ emit_framebuffer_updated(void* this_ptr) {
     _WARN("%s", "emit_framebuffer_updated: metaObject() returned null");
     return;
   }
-  static int (*func_indexOfSignal)(void*, const char*) =
-    (int (*)(void*, const char*))dlsym(
-      RTLD_DEFAULT, "_ZNK11QMetaObject14indexOfSignalEPKc"
+  static auto func_indexOfSignal =
+    reinterpret_cast<int (*)(void*, const char*)>(
+      dlsym(RTLD_DEFAULT, "_ZNK11QMetaObject14indexOfSignalEPKc")
     );
   if (func_indexOfSignal == nullptr) {
     _WARN(
@@ -513,18 +529,18 @@ emit_framebuffer_updated(void* this_ptr) {
   }
   // Try 5-param QMetaObject::activate (with int* stack_slot), then
   // 4-param.
-  static void (*func_5_args)(void*, void*, int, int*, void**) =
-    (void (*)(void*, void*, int, int*, void**))dlsym(
+  static auto func_5_args =
+    reinterpret_cast<void (*)(void*, void*, int, int*, void**)>(dlsym(
       RTLD_DEFAULT, "_ZN16QMetaObject8activateEP7QObjectPK11QMetaObjectiPiPPv"
-    );
+    ));
   if (func_5_args != nullptr) {
     func_5_args(this_ptr, metaObject, signalIndex, nullptr, nullptr);
     return;
   }
-  static void (*func_4_args)(void*, void*, int, void**) =
-    (void (*)(void*, void*, int, void**))dlsym(
+  static auto func_4_args =
+    reinterpret_cast<void (*)(void*, void*, int, void**)>(dlsym(
       RTLD_DEFAULT, "_ZN16QMetaObject8activateEP7QObjectPK11QMetaObjectiPPv"
-    );
+    ));
   if (func_4_args == nullptr) {
     _WARN("%s", "emit_framebuffer_updated: QMetaObject::activate not found");
     return;
@@ -545,8 +561,8 @@ dump_buffers() {
     _DEBUG("dump_buffers: epframebufferInstance not set yet, skipping");
     return;
   }
-  void* auxBuffer = (char*)epframebuffer + auxBufferOffset();
-  void* mainBuffer = (char*)epframebuffer + mainBufferOffset();
+  auto auxBuffer = static_cast<char*>(epframebuffer) + auxBufferOffset();
+  auto mainBuffer = static_cast<char*>(epframebuffer) + mainBufferOffset();
   int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (fd <= 0) {
     _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
@@ -594,7 +610,7 @@ hook_swapBuffers_QRegion(
     );
     return;
   }
-  void* mainBuffer = (char*)epframebuffer + mainBufferOffset();
+  void* mainBuffer = static_cast<char*>(epframebuffer) + mainBufferOffset();
   copy_qimage_to_buffer(
     mainBuffer,
     Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
@@ -603,7 +619,7 @@ hook_swapBuffers_QRegion(
   auto updateMode = Qt::flags_to_update_mode(flags);
   bool any_repainted = false;
   if (contentMap_screenModeMap) {
-    auto* regions = (void* const*)contentMap_screenModeMap;
+    auto regions = static_cast<void* const*>(contentMap_screenModeMap);
     bool animationOverride = (flags & 2) != 0;
     // Index 0: pen-eligible content
     if (regions[0] != nullptr) {
@@ -687,7 +703,7 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
     );
   }
   _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
-  void* mainBuffer = (char*)this_ptr + mainBufferOffset();
+  void* mainBuffer = static_cast<char*>(this_ptr) + mainBufferOffset();
   copy_qimage_to_buffer(
     mainBuffer,
     Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
@@ -715,13 +731,14 @@ hook_check_candidate() {
   if (candidate == nullptr) {
     return; // QImage hook hasn't fired yet
   }
-  void* vtable = *(void**)candidate;
+  auto vtable = *static_cast<void**>(candidate);
   _DEBUG("EPFramebuffer candidate at %p, vtable=%p", candidate, vtable);
   if (vtable == 0) {
     _DEBUG("%s", "vtable is null, skipping");
     return;
   }
-  void* func_swapBuffers_qregion = *(void**)((char*)vtable + vtableOffset());
+  auto func_swapBuffers_qregion =
+    *reinterpret_cast<void**>(static_cast<char*>(vtable) + vtableOffset());
   _DEBUG("swapBuffers candidate function at %p", func_swapBuffers_qregion);
   if (!validate_swapbuffers(func_swapBuffers_qregion)) {
     _DEBUG(
@@ -758,7 +775,10 @@ hook_check_candidate() {
     func_swapBuffers_qregion
   );
   if (Client::IS_XOCHITL) {
-    install_hook(func_swapBuffers_qregion, (void*)&hook_swapBuffers_QRegion);
+    install_hook(
+      func_swapBuffers_qregion,
+      reinterpret_cast<void*>(&hook_swapBuffers_QRegion)
+    );
     _DEBUG("Hooked swapBuffers(QRegion,...)");
   }
   void* empty = nullptr;
@@ -778,8 +798,9 @@ hook_check_candidate() {
  */
 void
 _ZN7QObjectC2EPS_(void* this_ptr, void* parent) {
-  static auto func =
-    (void (*)(void*, void*))dlsym(RTLD_NEXT, "_ZN7QObjectC2EPS_");
+  static auto func = reinterpret_cast<void (*)(void*, void*)>(
+    dlsym(RTLD_NEXT, "_ZN7QObjectC2EPS_")
+  );
   if (!func) {
     _CRIT(
       "%s",
@@ -799,8 +820,9 @@ _ZN7QObjectC2EPS_(void* this_ptr, void* parent) {
  */
 void
 _ZN7QObjectC1EPS_(void* this_ptr, void* parent) {
-  static auto func =
-    (void (*)(void*, void*))dlsym(RTLD_NEXT, "_ZN7QObjectC1EPS_");
+  static auto func = reinterpret_cast<void (*)(void*, void*)>(
+    dlsym(RTLD_NEXT, "_ZN7QObjectC1EPS_")
+  );
   if (!func) {
     _CRIT(
       "%s",
@@ -819,7 +841,8 @@ _ZN7QObjectC1EPS_(void* this_ptr, void* parent) {
  */
 void
 _ZN6QImageC1Ev(void* this_ptr) {
-  static auto func = (void (*)(void*))dlsym(RTLD_NEXT, "_ZN6QImageC1Ev");
+  static auto func =
+    reinterpret_cast<void (*)(void*)>(dlsym(RTLD_NEXT, "_ZN6QImageC1Ev"));
   if (!func) {
     _CRIT("%s", "Failed to resolve QImage::QImage() via RTLD_NEXT");
     std::exit(EXIT_FAILURE);
@@ -833,12 +856,12 @@ _ZN6QImageC1Ev(void* this_ptr) {
     if (offset == 0) {
       continue; // skip unsupported arch placeholder
     }
-    void* candidate = (char*)this_ptr - offset;
-    void* vtable = *(void**)candidate;
+    void* candidate = static_cast<char*>(this_ptr) - offset;
+    auto vtable = *static_cast<void**>(candidate);
     // Quick pre-filter: aligned, non-null, reasonable address
     if (
-      vtable == nullptr || (uintptr_t)vtable & 3 ||
-      (uintptr_t)vtable < 0x00010000
+      vtable == nullptr || reinterpret_cast<uintptr_t>(vtable) & 3 ||
+      reinterpret_cast<uintptr_t>(vtable) < 0x00010000
     ) {
       continue;
     }

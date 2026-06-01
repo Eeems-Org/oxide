@@ -348,7 +348,7 @@ namespace Blight {
   }
 
   bool setClipboard(clipboard_t& clipboard) {
-    _DEBUG("[Blight::setClipboard(%s)]", clipboard.name);
+    _DEBUG("[Blight::setClipboard(%s)]", clipboard.name.c_str());
     if (
       clipboard.name != "clipboard" && clipboard.name != "selection" &&
       clipboard.name != "secondary"
@@ -464,7 +464,7 @@ namespace Blight {
   }
 
   bool updateClipboard(clipboard_t& clipboard) {
-    _DEBUG("[Blight::updateClipboard(%s)]", clipboard.name);
+    _DEBUG("[Blight::updateClipboard(%s)]", clipboard.name.c_str());
     if (
       clipboard.name != "clipboard" && clipboard.name != "selection" &&
       clipboard.name != "secondary"

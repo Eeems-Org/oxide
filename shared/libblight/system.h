@@ -79,12 +79,12 @@ namespace Blight {
    * \retval false call failed
    */
   LIBBLIGHT_EXPORT bool
-  setFlags(std::string identifier, std::vector<std::string> flags);
+  setFlags(const std::string identifier, std::vector<std::string> flags);
   /*!
    * \brief Check if a connection identifier exists
    * \param identifier Connection identifier
    * \return If the connection exists or not
    */
-  LIBBLIGHT_EXPORT bool connectionExists(std::string identifier);
+  LIBBLIGHT_EXPORT bool connectionExists(const std::string identifier);
 } // namespace Blight
 /*! @} */

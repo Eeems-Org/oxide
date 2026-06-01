@@ -103,7 +103,12 @@ public:
   /*! Open /dev/fb0 and set up the framebuffer controller. */
   void initialize(void);
 
-  /*! Wait for pending updates to complete. */
+  /*!
+   * \brief Wait for pending updates to complete.
+   *
+   * Exists in libqsgepaper on all but the rM1, which instead has
+   * EPFramebufferTcon::sync()
+   */
   void sync(void);
 
 protected:

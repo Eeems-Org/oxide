@@ -194,7 +194,7 @@ namespace Blight {
     }
     return true;
   }
-  bool setFlags(std::string identifier, std::vector<std::string> flags) {
+  bool setFlags(const std::string identifier, std::vector<std::string> flags) {
     if (!exists()) {
       errno = EAGAIN;
       return false;
@@ -266,7 +266,7 @@ namespace Blight {
     return true;
   }
 
-  bool connectionExists(std::string identifier) {
+  bool connectionExists(const std::string identifier) {
     if (!exists()) {
       errno = EAGAIN;
       return -1;
