@@ -35,9 +35,9 @@
 
 namespace {
   void __realpath(const char* pathname, std::string& path) {
-    auto absolutepath = realpath(pathname, NULL);
+    char absolutepath[4096];
+    realpath(pathname, absolutepath);
     path = absolutepath;
-    free(absolutepath);
   }
 
   int __open(const char* pathname, int flags) {

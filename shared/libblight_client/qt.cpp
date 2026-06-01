@@ -849,13 +849,12 @@ _ZN6QImageC1Ev(void* this_ptr) {
       continue;
     }
     if (!Client::IS_XOCHITL) {
-      char* resolved = realpath(info.dli_fname, nullptr);
-      if (resolved == nullptr) {
+      char resolved[4096];
+      if (realpath(info.dli_fname, resolved) == nullptr) {
         continue;
       }
       bool match =
         strcmp(resolved, "/usr/lib/plugins/scenegraph/libqsgepaper.so") == 0;
-      free(resolved);
       if (!match) {
         continue;
       }
