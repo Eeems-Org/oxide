@@ -31,7 +31,7 @@
 #endif
 #ifdef DEBUG
 #define __RIGHT_HERE__                                                         \
-    qDebug() << "<============================" << __FILE__ << ":" << __LINE__;
+  qDebug() << "<============================" << __FILE__ << ":" << __LINE__;
 #else
 #define __RIGHT_HERE__
 #endif
@@ -42,7 +42,7 @@
  * O_EVENT
  */
 #define __DEBUG_LOCATION__                                                     \
-    Oxide::getDebugLocation(__FILE__, __LINE__, __PRETTY_FUNCTION__).c_str()
+  Oxide::getDebugLocation(__FILE__, __LINE__, __PRETTY_FUNCTION__).c_str()
 /*!
  * \def __DEBUG_APPLICATION_INFO__
  * \brief Get the current application information string
@@ -58,10 +58,10 @@
  */
 #ifdef DEBUG
 #define O_DEBUG(msg)                                                           \
-    if (Oxide::debugEnabled()) {                                               \
-        qDebug() << __DEBUG_APPLICATION_INFO__ << "Debug:" << msg              \
-                 << __DEBUG_LOCATION__;                                        \
-    }
+  if (Oxide::debugEnabled()) {                                                 \
+    qDebug() << __DEBUG_APPLICATION_INFO__ << "Debug:" << msg                  \
+             << __DEBUG_LOCATION__;                                            \
+  }
 #else
 #define O_DEBUG(msg)
 #endif
@@ -71,10 +71,10 @@
  * \param msg Warning message to log
  */
 #define O_WARNING(msg)                                                         \
-    if (Oxide::debugEnabled()) {                                               \
-        qWarning() << __DEBUG_APPLICATION_INFO__ << "Warning:" << msg          \
-                   << __DEBUG_LOCATION__;                                      \
-    }
+  if (Oxide::debugEnabled()) {                                                 \
+    qWarning() << __DEBUG_APPLICATION_INFO__ << "Warning:" << msg              \
+               << __DEBUG_LOCATION__;                                          \
+  }
 
 /*!
  * \def O_EVENT(msg)
@@ -89,11 +89,11 @@
 #define input_event_usec time.tv_usec
 #endif
 #define O_EVENT(event)                                                         \
-    O_DEBUG(                                                                   \
-        __DEBUG_APPLICATION_INFO__                                             \
-        << event.input_event_sec << event.input_event_usec << event.type       \
-        << event.code << event.value << __DEBUG_LOCATION__                     \
-    );
+  O_DEBUG(                                                                     \
+    __DEBUG_APPLICATION_INFO__                                                 \
+    << event.input_event_sec << event.input_event_usec << event.type           \
+    << event.code << event.value << __DEBUG_LOCATION__                         \
+  );
 #else
 #define O_EVENT(event)
 #endif
@@ -103,51 +103,50 @@
  * \param msg Informational message to log
  */
 #define O_INFO(msg)                                                            \
-    qInfo() << __DEBUG_APPLICATION_INFO__ << "Info:" << msg                    \
-            << __DEBUG_LOCATION__;
+  qInfo() << __DEBUG_APPLICATION_INFO__ << "Info:" << msg << __DEBUG_LOCATION__;
 
 namespace Oxide {
-    /*!
-     * \brief Get a formatted application information string
-     * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and
-     * O_EVENT
-     * \return Formatted string containing information about the application and
-     * current thread
-     */
-    LIBOXIDE_EXPORT std::string getDebugApplicationInfo();
-    /*!
-     * \brief Get a formatted debug information string
-     * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and
-     * O_EVENT
-     * \param file Name of file
-     * \param line Line number in file
-     * \param function Function information
-     * \return Formatted debug location string
-     */
-    LIBOXIDE_EXPORT std::string
-    getDebugLocation(const char* file, unsigned int line, const char* function);
-    /*!
-     * \brief Return the state of debugging
-     * \return Debugging state
-     * \snippet examples/oxide.cpp debugEnabled
-     */
-    LIBOXIDE_EXPORT bool debugEnabled();
-    /*!
-     * \brief Get the name of the application
-     * \param ignoreQApp Don't use qApp's application name
-     * \return The name of the application
-     */
-    LIBOXIDE_EXPORT std::string getAppName(bool ignoreQApp);
-    /*!
-     * \brief Get the current backtrace
-     * \param depth Maximum number of items to return
-     * \return The current stack trace
-     */
-    LIBOXIDE_EXPORT std::vector<std::string> backtrace(unsigned short depth);
-    /*!
-     * \brief Get the current thread name
-     * \return The current thread name
-     */
-    LIBOXIDE_EXPORT std::string getThreadName();
+  /*!
+   * \brief Get a formatted application information string
+   * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and
+   * O_EVENT
+   * \return Formatted string containing information about the application and
+   * current thread
+   */
+  LIBOXIDE_EXPORT std::string getDebugApplicationInfo();
+  /*!
+   * \brief Get a formatted debug information string
+   * \note this is automatically included in O_DEBUG, O_WARNING, O_INFO, and
+   * O_EVENT
+   * \param file Name of file
+   * \param line Line number in file
+   * \param function Function information
+   * \return Formatted debug location string
+   */
+  LIBOXIDE_EXPORT std::string
+  getDebugLocation(const char* file, unsigned int line, const char* function);
+  /*!
+   * \brief Return the state of debugging
+   * \return Debugging state
+   * \snippet examples/oxide.cpp debugEnabled
+   */
+  LIBOXIDE_EXPORT bool debugEnabled();
+  /*!
+   * \brief Get the name of the application
+   * \param ignoreQApp Don't use qApp's application name
+   * \return The name of the application
+   */
+  LIBOXIDE_EXPORT std::string getAppName(bool ignoreQApp);
+  /*!
+   * \brief Get the current backtrace
+   * \param depth Maximum number of items to return
+   * \return The current stack trace
+   */
+  LIBOXIDE_EXPORT std::vector<std::string> backtrace(unsigned short depth);
+  /*!
+   * \brief Get the current thread name
+   * \return The current thread name
+   */
+  LIBOXIDE_EXPORT std::string getThreadName();
 } // namespace Oxide
 /*! @} */

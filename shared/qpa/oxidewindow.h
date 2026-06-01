@@ -9,21 +9,20 @@
 
 class OxideScreen;
 
-class OxideWindow : public QPlatformWindow
-{
-  public:
-    OxideWindow(QWindow* window);
-    ~OxideWindow();
+class OxideWindow : public QPlatformWindow {
+public:
+  OxideWindow(QWindow* window);
+  ~OxideWindow();
 
-    void setBackingStore(OxideBackingStore* store);
-    OxideBackingStore* backingStore() const;
-    OxideScreen* platformScreen() const;
-    void setGeometry(const QRect& rect) override;
-    void setVisible(bool visible) override;
-    void raise() override;
-    void lower() override;
-    bool close() override;
+  void setBackingStore(OxideBackingStore* store);
+  OxideBackingStore* backingStore() const;
+  OxideScreen* platformScreen() const;
+  void setGeometry(const QRect& rect) override;
+  void setVisible(bool visible) override;
+  void raise() override;
+  void lower() override;
+  bool close() override;
 
-  protected:
-    OxideBackingStore* mBackingStore;
+protected:
+  OxideBackingStore* mBackingStore;
 };

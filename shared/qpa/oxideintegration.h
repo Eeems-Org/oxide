@@ -22,81 +22,78 @@ class Q_DECL_EXPORT OxideIntegration
   , public QPlatformClipboard
 #endif
 {
-  public:
-    enum Option
-    { // Options to be passed on command line or determined from
-      // environment
-        DebugQPA = 1,
-        EnableFonts = 2,
-        FreeTypeFontDatabase = 4,
-        FontconfigDatabase = 8
-    };
-    Q_DECLARE_FLAGS(Options, Option)
+public:
+  enum Option { // Options to be passed on command line or determined from
+                // environment
+    DebugQPA = 1,
+    EnableFonts = 2,
+    FreeTypeFontDatabase = 4,
+    FontconfigDatabase = 8
+  };
+  Q_DECLARE_FLAGS(Options, Option)
 
-    explicit OxideIntegration(const QStringList& parameters);
-    ~OxideIntegration();
+  explicit OxideIntegration(const QStringList& parameters);
+  ~OxideIntegration();
 
-    bool hasCapability(QPlatformIntegration::Capability cap) const override;
-    void initialize() override;
-    void destroy() override;
-    void sync() override;
-    void beep() const override;
-    QPlatformFontDatabase* fontDatabase() const override;
+  bool hasCapability(QPlatformIntegration::Capability cap) const override;
+  void initialize() override;
+  void destroy() override;
+  void sync() override;
+  void beep() const override;
+  QPlatformFontDatabase* fontDatabase() const override;
 #ifndef QT_NO_CLIPBOARD
-    QPlatformClipboard* clipboard() const override;
+  QPlatformClipboard* clipboard() const override;
 #endif
-    QPlatformInputContext* inputContext() const override;
-    QPlatformWindow* createPlatformWindow(QWindow* window) const override;
-    QPlatformBackingStore* createPlatformBackingStore(
-        QWindow* window
-    ) const override;
-    QAbstractEventDispatcher* createEventDispatcher() const override;
-    QPlatformNativeInterface* nativeInterface() const override;
-    QPlatformServices* services() const override;
-    QFunctionPointer platformFunction(
-        const QByteArray& function
-    ) const override;
-    OxideScreen* primaryScreen();
-    OxideIntegration::Options options() const;
-    QStringList themeNames() const override;
-    QPlatformTheme* createPlatformTheme(const QString& name) const override;
-    bool openUrl(const QUrl& url) override;
-    bool openDocument(const QUrl& url) override;
-    QByteArray desktopEnvironment() const override;
+  QPlatformInputContext* inputContext() const override;
+  QPlatformWindow* createPlatformWindow(QWindow* window) const override;
+  QPlatformBackingStore* createPlatformBackingStore(
+    QWindow* window
+  ) const override;
+  QAbstractEventDispatcher* createEventDispatcher() const override;
+  QPlatformNativeInterface* nativeInterface() const override;
+  QPlatformServices* services() const override;
+  QFunctionPointer platformFunction(const QByteArray& function) const override;
+  OxideScreen* primaryScreen();
+  OxideIntegration::Options options() const;
+  QStringList themeNames() const override;
+  QPlatformTheme* createPlatformTheme(const QString& name) const override;
+  bool openUrl(const QUrl& url) override;
+  bool openDocument(const QUrl& url) override;
+  QByteArray desktopEnvironment() const override;
 #ifndef QT_NO_CLIPBOARD
-    QMimeData* mimeData(QClipboard::Mode mode = QClipboard::Clipboard) override;
-    void setMimeData(
-        QMimeData* data,
-        QClipboard::Mode mode = QClipboard::Clipboard
-    ) override;
-    bool supportsMode(QClipboard::Mode mode) const override;
-    bool ownsMode(QClipboard::Mode mode) const override;
+  QMimeData* mimeData(QClipboard::Mode mode = QClipboard::Clipboard) override;
+  void setMimeData(
+    QMimeData* data,
+    QClipboard::Mode mode = QClipboard::Clipboard
+  ) override;
+  bool supportsMode(QClipboard::Mode mode) const override;
+  bool ownsMode(QClipboard::Mode mode) const override;
 #endif
 #if !defined(QT_NO_ACCESSIBILITY)
-    QPlatformAccessibility* accessibility() const override;
+  QPlatformAccessibility* accessibility() const override;
 #endif
-    static OxideIntegration* instance();
-    static Blight::shared_buf_t getSurfaceForWindowStatic(QWindow* qwindow);
-    static QImage getImageForWindowStatic(QWindow* qwindow);
+  static OxideIntegration* instance();
+  static Blight::shared_buf_t getSurfaceForWindowStatic(QWindow* qwindow);
+  static QImage getImageForWindowStatic(QWindow* qwindow);
 
-  private:
-    mutable QPlatformFontDatabase* m_fontDatabase = nullptr;
-    QPlatformInputContext* m_inputContext = nullptr;
-    QPointer<OxideScreen> m_primaryScreen;
+private:
+  mutable QPlatformFontDatabase* m_fontDatabase = nullptr;
+  QPlatformInputContext* m_inputContext = nullptr;
+  QPointer<OxideScreen> m_primaryScreen;
 #ifndef QT_NO_CLIPBOARD
-    QPointer<QMimeData> m_clipboard;
-    QPointer<QMimeData> m_selection;
+  QPointer<QMimeData> m_clipboard;
+  QPointer<QMimeData> m_selection;
 #endif
-    Options m_options;
-    bool m_debug;
-    QMutex m_mutex;
-    QStringList m_parameters;
-    static void connectSignal(
-        QObject* sender,
-        QString signal,
-        QObject* reciever,
-        QString slot
-    );
+  Options m_options;
+  bool m_debug;
+  QMutex m_mutex;
+  QStringList m_parameters;
+  static void connectSignal(
+    QObject* sender,
+    QString signal,
+    QObject* reciever,
+    QString slot
+  );
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(OxideIntegration::Options)

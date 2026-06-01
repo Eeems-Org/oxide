@@ -21,21 +21,19 @@ using namespace codes::eeems::blight1;
 
 class APIBase
   : public QObject
-  , protected QDBusContext
-{
-    Q_OBJECT
-    Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
-  public:
-    APIBase(QObject* parent) : QObject(parent) {}
-    virtual void setEnabled(bool enabled) = 0;
-    int hasPermission(
-        QString permission,
-        const char* sender = __builtin_FUNCTION()
-    );
+  , protected QDBusContext {
+  Q_OBJECT
+  Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
+public:
+  APIBase(QObject* parent)
+    : QObject(parent) {}
+  virtual void setEnabled(bool enabled) = 0;
+  int
+  hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
 
-  protected:
-    int getSenderPid();
-    int getSenderPgid();
+protected:
+  int getSenderPid();
+  int getSenderPgid();
 };
 QImage*
 getFrameBuffer();

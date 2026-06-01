@@ -1,6 +1,6 @@
 #pragma once
 
-extern "C"
-{
-    int test_c();
+extern "C" {
+int
+test_c();
 }

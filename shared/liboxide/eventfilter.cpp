@@ -23,79 +23,79 @@
 #endif
 
 namespace Oxide {
-    EventFilter::EventFilter(QObject* parent) : QObject(parent) {}
+  EventFilter::EventFilter(QObject* parent)
+    : QObject(parent) {}
 
-    QPointF swap(QPointF pointF)
-    {
-        return QPointF(pointF.y(), pointF.x());
+  QPointF swap(QPointF pointF) {
+    return QPointF(pointF.y(), pointF.x());
+  }
+
+  QPointF transpose(QPointF pointF) {
+    pointF = swap(pointF);
+    // Handle scaling from wacom to screensize
+    pointF.setX(pointF.x() * WACOM_X_SCALAR);
+    pointF.setY((DISPLAYWIDTH - pointF.y()) * WACOM_Y_SCALAR);
+    return pointF;
+  }
+
+  bool EventFilter::eventFilter(QObject* obj, QEvent* ev) {
+    auto type = ev->type();
+    if (QObject::eventFilter(obj, ev)) {
+      return true;
     }
-
-    QPointF transpose(QPointF pointF)
-    {
-        pointF = swap(pointF);
-        // Handle scaling from wacom to screensize
-        pointF.setX(pointF.x() * WACOM_X_SCALAR);
-        pointF.setY((DISPLAYWIDTH - pointF.y()) * WACOM_Y_SCALAR);
-        return pointF;
+    if (type == QEvent::TabletPress) {
+      O_DEBUG_EVENT(ev);
+      auto tabletEvent = (QTabletEvent*)ev;
+      QWindowSystemInterface::handleMouseEvent(
+        nullptr,
+        transpose(tabletEvent->position()),
+        transpose(tabletEvent->globalPosition()),
+        tabletEvent->buttons(),
+        tabletEvent->button(),
+        QEvent::MouseButtonPress
+      );
+      tabletEvent->accept();
+      return true;
     }
-
-    bool EventFilter::eventFilter(QObject* obj, QEvent* ev)
-    {
-        auto type = ev->type();
-        if (QObject::eventFilter(obj, ev)) {
-            return true;
-        }
-        if (type == QEvent::TabletPress) {
-            O_DEBUG_EVENT(ev);
-            auto tabletEvent = (QTabletEvent*)ev;
-            QWindowSystemInterface::handleMouseEvent(
-                nullptr,
-                transpose(tabletEvent->position()),
-                transpose(tabletEvent->globalPosition()),
-                tabletEvent->buttons(),
-                tabletEvent->button(),
-                QEvent::MouseButtonPress
-            );
-            tabletEvent->accept();
-            return true;
-        }
-        if (type == QEvent::TabletRelease) {
-            O_DEBUG_EVENT(ev);
-            auto tabletEvent = (QTabletEvent*)ev;
-            QWindowSystemInterface::handleMouseEvent(
-                nullptr,
-                transpose(tabletEvent->position()),
-                transpose(tabletEvent->globalPosition()),
-                tabletEvent->buttons(),
-                tabletEvent->button(),
-                QEvent::MouseButtonRelease
-            );
-            tabletEvent->accept();
-            return true;
-        }
-        if (type == QEvent::TabletMove) {
-            O_DEBUG_EVENT(ev);
-            auto tabletEvent = (QTabletEvent*)ev;
-            QWindowSystemInterface::handleMouseEvent(
-                nullptr,
-                transpose(tabletEvent->position()),
-                transpose(tabletEvent->globalPosition()),
-                tabletEvent->buttons(),
-                tabletEvent->button(),
-                QEvent::MouseMove
-            );
-            tabletEvent->accept();
-            return true;
-        }
+    if (type == QEvent::TabletRelease) {
+      O_DEBUG_EVENT(ev);
+      auto tabletEvent = (QTabletEvent*)ev;
+      QWindowSystemInterface::handleMouseEvent(
+        nullptr,
+        transpose(tabletEvent->position()),
+        transpose(tabletEvent->globalPosition()),
+        tabletEvent->buttons(),
+        tabletEvent->button(),
+        QEvent::MouseButtonRelease
+      );
+      tabletEvent->accept();
+      return true;
+    }
+    if (type == QEvent::TabletMove) {
+      O_DEBUG_EVENT(ev);
+      auto tabletEvent = (QTabletEvent*)ev;
+      QWindowSystemInterface::handleMouseEvent(
+        nullptr,
+        transpose(tabletEvent->position()),
+        transpose(tabletEvent->globalPosition()),
+        tabletEvent->buttons(),
+        tabletEvent->button(),
+        QEvent::MouseMove
+      );
+      tabletEvent->accept();
+      return true;
+    }
 #ifdef DEBUG_EVENTS
-        if (type == QEvent::MouseMove || type == QEvent::MouseButtonPress ||
-            type == QEvent::MouseButtonRelease) {
-            O_DEBUG(obj);
-            O_DEBUG(ev);
-        }
-#endif
-        return false;
+    if (
+      type == QEvent::MouseMove || type == QEvent::MouseButtonPress ||
+      type == QEvent::MouseButtonRelease
+    ) {
+      O_DEBUG(obj);
+      O_DEBUG(ev);
     }
+#endif
+    return false;
+  }
 } // namespace Oxide
 
 #include "moc_eventfilter.cpp"

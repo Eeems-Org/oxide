@@ -37,13 +37,13 @@ set_blight_debug_level(int level);
  * \brief Log a message to stderr
  */
 #define _PRINTF(priority, ...)                                                 \
-    if (priority <= get_blight_debug_level()) {                                \
-        __log_mutex.lock();                                                    \
-        __printf_header(priority);                                             \
-        fprintf(stderr, __VA_ARGS__);                                          \
-        __printf_footer(__FILE__, __LINE__, __PRETTY_FUNCTION__);              \
-        __log_mutex.unlock();                                                  \
-    }
+  if (priority <= get_blight_debug_level()) {                                  \
+    __log_mutex.lock();                                                        \
+    __printf_header(priority);                                                 \
+    fprintf(stderr, __VA_ARGS__);                                              \
+    __printf_footer(__FILE__, __LINE__, __PRETTY_FUNCTION__);                  \
+    __log_mutex.unlock();                                                      \
+  }
 
 /*!
  * \brief Log a debug statement to stderrr
@@ -67,6 +67,6 @@ set_blight_debug_level(int level);
  */
 #ifndef __RIGHT_HERE__
 #define __RIGHT_HERE__                                                         \
-    fprintf(stderr, "<============================ %s:%d\n", __FILE__, __LINE__)
+  fprintf(stderr, "<============================ %s:%d\n", __FILE__, __LINE__)
 #endif
 /*! @} */

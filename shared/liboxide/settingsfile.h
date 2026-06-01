@@ -146,13 +146,13 @@
  * \sa  O_SETTINGS, O_SETTINGS_PROPERTY, Oxide::SettingsFile
  */
 #define O_SETTINGS_PROPERTY_BODY(class, type, group, member, ...)              \
-    O_SETTINGS_PROPERTY_BODY_X(class, type, group, member, __VA_ARGS__)(       \
-        class, type, group, member, __VA_ARGS__                                \
-    )
+  O_SETTINGS_PROPERTY_BODY_X(class, type, group, member, __VA_ARGS__)(         \
+    class, type, group, member, __VA_ARGS__                                    \
+  )
 #else
 #define O_SETTINGS_PROPERTY(...) O_SETTINGS_PROPERTY_X(__VA_ARGS__)(__VA_ARGS__)
 #define O_SETTINGS_PROPERTY_BODY(...)                                          \
-    O_SETTINGS_PROPERTY_BODY_X(__VA_ARGS__)(__VA_ARGS__)
+  O_SETTINGS_PROPERTY_BODY_X(__VA_ARGS__)(__VA_ARGS__)
 #endif
 /*!
  * \brief Define the instance() and constructor methods for a SettingsFile
@@ -162,57 +162,56 @@
  * \sa  O_SETTINGS_PROPERTY, O_SETTINGS_PROPERTY_BODY, Oxide::SettingsFile
  */
 #define O_SETTINGS(_type, path)                                                \
-  public:                                                                      \
-    static _type& instance()                                                   \
-    {                                                                          \
-        static _type INSTANCE(path);                                           \
-        INSTANCE.init();                                                       \
-        return INSTANCE;                                                       \
-    }                                                                          \
+public:                                                                        \
+  static _type& instance() {                                                   \
+    static _type INSTANCE(path);                                               \
+    INSTANCE.init();                                                           \
+    return INSTANCE;                                                           \
+  }                                                                            \
                                                                                \
-  private:                                                                     \
-    explicit _type(const QString& _path) : SettingsFile(_path) {}
+private:                                                                       \
+  explicit _type(const QString& _path)                                         \
+    : SettingsFile(_path) {}
 // clang-format on
 
 namespace Oxide {
+  /*!
+   * \brief A better version of
+   * [QSettings](https://doc.qt.io/qt-5/qsettings.html)
+   *
+   * This base class adds dynamic updates of changes to a settings file from
+   * disk. It also implements a static instance method that will return the
+   * singleton for this class.
+   *
+   * \sa sharedSettings, xochitlSettings, O_SETTINGS, O_SETTINGS_PROPERTY,
+   * O_SETTINGS_PROPERTY_BODY
+   */
+  class LIBOXIDE_EXPORT SettingsFile : public QSettings {
+    Q_OBJECT
+
+  signals:
     /*!
-     * \brief A better version of
-     * [QSettings](https://doc.qt.io/qt-5/qsettings.html)
-     *
-     * This base class adds dynamic updates of changes to a settings file from
-     * disk. It also implements a static instance method that will return the
-     * singleton for this class.
-     *
-     * \sa sharedSettings, xochitlSettings, O_SETTINGS, O_SETTINGS_PROPERTY,
-     * O_SETTINGS_PROPERTY_BODY
+     * \brief The settings file has changed
      */
-    class LIBOXIDE_EXPORT SettingsFile : public QSettings
-    {
-        Q_OBJECT
+    void changed();
 
-      signals:
-        /*!
-         * \brief The settings file has changed
-         */
-        void changed();
+  private slots:
+    void fileChanged();
 
-      private slots:
-        void fileChanged();
+  protected:
+    SettingsFile(QString path);
+    ~SettingsFile();
+    void reloadProperty(const QString& name);
+    void resetProperty(const QString& name);
+    void init();
+    void reloadProperties();
+    void resetProperties();
+    QString groupName(const QString& name);
+    QSemaphore reloadSemaphore;
 
-      protected:
-        SettingsFile(QString path);
-        ~SettingsFile();
-        void reloadProperty(const QString& name);
-        void resetProperty(const QString& name);
-        void init();
-        void reloadProperties();
-        void resetProperties();
-        QString groupName(const QString& name);
-        QSemaphore reloadSemaphore;
-
-      private:
-        QFileSystemWatcher fileWatcher;
-        bool initalized = false;
-    };
+  private:
+    QFileSystemWatcher fileWatcher;
+    bool initalized = false;
+  };
 } // namespace Oxide
 /*! @} */

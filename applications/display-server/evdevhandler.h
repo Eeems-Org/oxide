@@ -11,19 +11,18 @@ using namespace Oxide;
 
 #define evdevHandler EvDevHandler::init()
 
-class EvDevHandler : public QThread
-{
-    Q_OBJECT
+class EvDevHandler : public QThread {
+  Q_OBJECT
 
-  public:
-    static EvDevHandler* init();
-    EvDevHandler();
-    ~EvDevHandler();
-    void clear_buffers();
+public:
+  static EvDevHandler* init();
+  EvDevHandler();
+  ~EvDevHandler();
+  void clear_buffers();
 
-  private:
-    QList<EvDevDevice*> devices;
-    bool m_clearing;
-    bool hasDevice(event_device device);
-    void reloadDevices();
+private:
+  QList<EvDevDevice*> devices;
+  bool m_clearing;
+  bool hasDevice(event_device device);
+  void reloadDevices();
 };

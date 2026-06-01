@@ -14,73 +14,71 @@
 
 #define guiThread GUIThread::singleton()
 
-struct RepaintRequest
-{
-    std::shared_ptr<Surface> surface;
-    QRegion region;
-    Blight::WaveformMode waveform;
-    Blight::UpdateMode mode;
-    unsigned int marker;
-    bool global;
-    std::function<void()> callback;
+struct RepaintRequest {
+  std::shared_ptr<Surface> surface;
+  QRegion region;
+  Blight::WaveformMode waveform;
+  Blight::UpdateMode mode;
+  unsigned int marker;
+  bool global;
+  std::function<void()> callback;
 };
 
-class GUIThread : public QThread
-{
-    Q_OBJECT
+class GUIThread : public QThread {
+  Q_OBJECT
 
-  protected:
-    void run() override;
+protected:
+  void run() override;
 
-  public:
-    static GUIThread* singleton();
-    ~GUIThread();
+public:
+  static GUIThread* singleton();
+  ~GUIThread();
 
-  signals:
-    void settled();
+signals:
+  void settled();
 
-  public slots:
-    void enqueue(
-        std::shared_ptr<Surface> surface,
-        QRect region,
-        Blight::WaveformMode waveform,
-        Blight::UpdateMode mode,
-        unsigned int marker,
-        bool global = false,
-        std::function<void()> callback = nullptr
-    );
-    void notify();
-    Blight::shared_buf_t framebuffer();
-    void sendUpdate(
-        const QRect& rect,
-        Blight::WaveformMode waveform,
-        Blight::UpdateMode mode,
-        unsigned int marker
-    );
-    void swap(
-        const QRect& rect,
-        Blight::WaveformMode waveform,
-        Blight::UpdateMode mode
-    );
+public slots:
+  void enqueue(
+    std::shared_ptr<Surface> surface,
+    QRect region,
+    Blight::WaveformMode waveform,
+    Blight::UpdateMode mode,
+    unsigned int marker,
+    bool global = false,
+    std::function<void()> callback = nullptr
+  );
+  void notify();
+  Blight::shared_buf_t framebuffer();
+  void sendUpdate(
+    const QRect& rect,
+    Blight::WaveformMode waveform,
+    Blight::UpdateMode mode,
+    unsigned int marker
+  );
+  void swap(
+    const QRect& rect,
+    Blight::WaveformMode waveform,
+    Blight::UpdateMode mode
+  );
 
-  private:
-    GUIThread(QRect screenGeometry);
-    moodycamel::ConcurrentQueue<RepaintRequest> m_repaintEvents;
-    Blight::shared_buf_t m_frameBuffer = nullptr;
-    QAtomicInteger<unsigned int> m_currentMarker;
-    QMutex m_repaintMutex;
-    QWaitCondition m_repaintWait;
-    QRect m_screenGeometry;
-    QPoint m_screenOffset;
-    QRect m_screenRect;
+private:
+  GUIThread(QRect screenGeometry);
+  moodycamel::ConcurrentQueue<RepaintRequest> m_repaintEvents;
+  Blight::shared_buf_t m_frameBuffer = nullptr;
+  QAtomicInteger<unsigned int> m_currentMarker;
+  QMutex m_repaintMutex;
+  QWaitCondition m_repaintWait;
+  QRect m_screenGeometry;
+  QPoint m_screenOffset;
+  QRect m_screenRect;
 
-    void clearFrameBuffer();
-    void repaintSurface(
-        QPainter* painter,
-        QRect* rect,
-        std::shared_ptr<Surface> surface
-    );
-    void redraw(RepaintRequest& event);
-    QList<std::shared_ptr<Surface>> visibleSurfaces();
+  void clearFrameBuffer();
+  void repaintSurface(
+    QPainter* painter,
+    QRect* rect,
+    std::shared_ptr<Surface> surface
+  );
+  void redraw(RepaintRequest& event);
+  QList<std::shared_ptr<Surface>> visibleSurfaces();
 };
 #endif
