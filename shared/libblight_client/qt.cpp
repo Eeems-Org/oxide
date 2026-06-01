@@ -153,34 +153,65 @@ mmap_framebuffer() {
 }
 
 /*!
- * \brief Get the auxBuffer offset
+ * \brief Get the auxBuffer offset (used for EPFramebuffer detection)
+ *
+ * Both xochitl Tcon and libqsgepaper Tcon have a default-constructed QImage
+ * at +0x60, so this offset works for detection on all platforms.
  */
 int
 auxBufferOffset() {
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
   return 0x60;
-#elif defined(__aarch64__)
-  return 0xa8;
 #else
   return 0x00;
 #endif
 }
 
 /*!
- * \brief Get the mainBuffer offset
+ * \brief Get the mainBuffer offset (used to read composed screen content)
+ *
+ * xochitl Tcon: main QImage at +0x50
+ * libqsgepaper Tcon: main QImage at +0x70
+ *
+ * Both default-construct the main QImage, so detection via {0x50,0x60}
+ * works for xochitl and {0x60,0x70} works for libqsgepaper.
  */
 int
 mainBufferOffset() {
 #if defined(__arm__)
+  // xochitl Tcon: main QImage at +0x50 (libqsgepaper Tcon also has +0x70
+  // but on arm the hook runs in xochitl, so 0x50 is the right read offset)
   return 0x50;
 #elif defined(__aarch64__)
-  if (Client::deviceType == Client::DeviceType::RMPPURE) {
-    return 0x88;
+  if (Client::IS_XOCHITL) {
+    return 0x50;
   }
-  return 0xc8;
+  // non-xochitl apps use libqsgepaper Tcon which has main QImage at +0x70
+  return 0x70;
 #else
   return 0x00;
 #endif
+}
+
+/*!
+ * \brief Get the vtable offset for EPFramebuffer
+ */
+int
+vtableOffset() {
+  int offset;
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_VTABLE_OFFSET");
+  if (offsetenv) {
+    return std::stoi(offsetenv, nullptr, 0);
+  } else {
+#if defined(__arm__)
+    return 0x5c; // vtable entry 23
+#elif defined(__aarch64__)
+    return 0xb8; // vtable entry 23
+#else
+    _CRIT("Unsupported architecture");
+    std::exit(EXIT_FAILURE);
+#endif
+  }
 }
 
 bool
@@ -625,6 +656,50 @@ hook_swapBuffers_QRegion(
 }
 
 /*!
+ * \brief Hook to run on  EPFramebufferSwtcon::update(QRect, int, PixelMode,
+ * int) call
+ *
+ * All models but the rM1 use this function for triggering repaints with
+ * libqsgepaper. Xochitl uses it's own internal method, which requires us to
+ * hook swapBuffers instead.
+ *
+ * \param this_ptr   EPFramebufferSwtcon instance
+ * \param rect       Rectangle to update
+ * \param waveform   EPScreenMode value (maps through epsm_to_waveform)
+ * \param pixelMode  PixelMode
+ * \param flags      Update flags
+ */
+void
+_ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
+  void* this_ptr,
+  Qt::QRectLayout rect,
+  int waveform,
+  int pixelMode,
+  int flags
+) {
+  void* empty = nullptr;
+  epframebufferInstance.compare_exchange_strong(
+    empty, this_ptr, std::memory_order_relaxed
+  );
+  if (empty != this_ptr) {
+    _WARN(
+      "epframebufferInstance does not match this_ptr: %p != %p", empty, this_ptr
+    );
+  }
+  _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
+  void* mainBuffer = (char*)this_ptr + mainBufferOffset();
+  copy_qimage_to_buffer(
+    mainBuffer,
+    Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
+    0
+  );
+  repaint(
+    &rect, Qt::flags_to_update_mode(flags), Qt::epsm_to_waveform(waveform)
+  );
+  dump_buffers();
+}
+
+/*!
  * \brief Hook to run on QObject::QObject(QObject*) call
  */
 static void
@@ -640,27 +715,13 @@ hook_check_candidate() {
   if (candidate == nullptr) {
     return; // QImage hook hasn't fired yet
   }
-  int offset;
-  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_VTABLE_OFFSET");
-  if (offsetenv) {
-    offset = std::stoi(offsetenv, nullptr, 0);
-  } else {
-#if defined(__arm__)
-    offset = 0x5c; // vtable entry 23
-#elif defined(__aarch64__)
-    offset = 0xb8; // vtable entry 23
-#else
-    _CRIT("Unsupported architecture");
-    std::exit(EXIT_FAILURE);
-#endif
-  }
   void* vtable = *(void**)candidate;
   _DEBUG("EPFramebuffer candidate at %p, vtable=%p", candidate, vtable);
   if (vtable == 0) {
     _DEBUG("%s", "vtable is null, skipping");
     return;
   }
-  void* func_swapBuffers_qregion = *(void**)((char*)vtable + offset);
+  void* func_swapBuffers_qregion = *(void**)((char*)vtable + vtableOffset());
   _DEBUG("swapBuffers candidate function at %p", func_swapBuffers_qregion);
   if (!validate_swapbuffers(func_swapBuffers_qregion)) {
     _DEBUG(
@@ -696,11 +757,18 @@ hook_check_candidate() {
     vtable,
     func_swapBuffers_qregion
   );
-  install_hook(func_swapBuffers_qregion, (void*)&hook_swapBuffers_QRegion);
-  _DEBUG("Hooked swapBuffers(QRegion,...)");
-  epframebufferInstance.store(candidate, std::memory_order_release);
+  if (Client::IS_XOCHITL) {
+    install_hook(func_swapBuffers_qregion, (void*)&hook_swapBuffers_QRegion);
+    _DEBUG("Hooked swapBuffers(QRegion,...)");
+  }
+  void* empty = nullptr;
+  epframebufferInstance.compare_exchange_strong(
+    empty, candidate, std::memory_order_relaxed
+  );
   hook_installed = true;
   epframebufferCandidate.store(nullptr, std::memory_order_release);
+  lastBadCandidate.store(nullptr, std::memory_order_relaxed);
+  badCandidateCount.store(0, std::memory_order_relaxed);
 }
 
 /*!
@@ -761,9 +829,6 @@ _ZN6QImageC1Ev(void* this_ptr) {
     return;
   }
   _DEBUG("QImage::QImage() default");
-  // Default ctor: format not yet set. Try both known EPFramebuffer
-  // offsets. The vtable at (this - offset) is checked to confirm it
-  // belongs to a xochitl QObject (fully dynamic via dladdr).
   for (int offset : {mainBufferOffset(), auxBufferOffset()}) {
     if (offset == 0) {
       continue; // skip unsupported arch placeholder

@@ -31,6 +31,15 @@ hook_swapBuffers_QRegion(
 );
 
 __attribute__((visibility("default"))) void
+_ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
+  void* this_ptr,
+  Qt::QRectLayout rect,
+  int waveform,
+  int pixelMode,
+  int flags
+);
+
+__attribute__((visibility("default"))) void
 _ZN7QObjectC2EPS_(void* this_ptr, void* parent);
 __asm__(".symver _ZN7QObjectC2EPS_, _ZN7QObjectC2EPS_@Qt_6");
 

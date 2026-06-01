@@ -77,6 +77,25 @@ namespace Blight {
     }
     return {width, height, stride};
   }
+  bool waitForNoRepaints() {
+    if (!exists()) {
+      errno = EAGAIN;
+      return false;
+    }
+    _DEBUG("[Blight::waitForNoRepaints()]");
+    auto reply = dbus->call_method(
+      BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "waitForNoRepaints"
+    );
+    if (reply->isError()) {
+      _WARN(
+        "[Blight::waitForNoRepaints()::call_method(...)] Error: %s",
+        reply->error_message().c_str()
+      );
+      errno = reply->return_value;
+      return false;
+    }
+    return true;
+  }
   bool enterExclusiveMode() {
     if (!exists()) {
       errno = EAGAIN;

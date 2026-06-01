@@ -365,7 +365,11 @@ namespace FB {
       }
       case MXCFB_WAIT_FOR_UPDATE_COMPLETE: {
         _DEBUG("%s", "ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE");
-        // TODO handle waiting
+        Blight::ClockWatch cw;
+        Blight::waitForNoRepaints();
+        _DEBUG(
+          "ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE done: %f", cw.elapsed()
+        )
         return 0;
       }
       case FBIOGET_FSCREENINFO: {

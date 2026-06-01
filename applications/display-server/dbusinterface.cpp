@@ -501,9 +501,13 @@ DbusInterface::waitForNoRepaints(QDBusMessage message) {
     return;
   }
 #ifdef EPAPER
-  QEventLoop loop;
-  connect(guiThread, &GUIThread::settled, &loop, &QEventLoop::quit);
-  loop.exec();
+  if (m_exclusiveMode) {
+    EPFramebuffer::instance()->sync();
+  } else {
+    QEventLoop loop;
+    connect(guiThread, &GUIThread::settled, &loop, &QEventLoop::quit);
+    loop.exec();
+  }
 #endif
 }
 
@@ -524,8 +528,8 @@ DbusInterface::enterExclusiveMode(QDBusMessage message) {
   }
   if (!m_exclusiveMode) {
     O_INFO("Entering exclusive mode");
-    m_exclusiveMode = true;
     waitForNoRepaints(message);
+    m_exclusiveMode = true;
     evdevHandler->clear_buffers();
   }
 }
@@ -547,6 +551,7 @@ DbusInterface::exitExclusiveMode(QDBusMessage message) {
   }
   if (m_exclusiveMode) {
     O_INFO("Exiting exclusive mode");
+    waitForNoRepaints(message);
     m_exclusiveMode = false;
 #ifdef EPAPER
     guiThread->enqueue(

@@ -32,6 +32,12 @@ namespace Blight {
    */
   LIBBLIGHT_EXPORT std::tuple<int, int, int> frameBufferInfo();
   /*!
+   * \brief Wait for all repaint requests to be flushed
+   * \return If the call succeeded or not
+   * \retval false call failed
+   */
+  LIBBLIGHT_EXPORT bool waitForNoRepaints();
+  /*!
    * \brief Enter exclusive mode, this disables compositing and expects that
    * all framebuffer interactions happens directly against frameBuffer()
    * \return If the call succeeded or not
