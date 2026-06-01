@@ -17,4 +17,5 @@ namespace Client {
   extern bool RM1_FB;
   extern DeviceType deviceType;
   extern bool IS_XOCHITL;
+  extern bool HANDLE_INPUT;
 }

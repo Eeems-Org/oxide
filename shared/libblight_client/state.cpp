@@ -9,4 +9,5 @@ namespace Client {
   bool RM1_FB = false;
   DeviceType deviceType = DeviceType::UNKNOWN;
   bool IS_XOCHITL = false;
+  bool HANDLE_INPUT = true;
 }

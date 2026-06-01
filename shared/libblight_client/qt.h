@@ -23,13 +23,6 @@ namespace Qt {
 
 extern "C" {
 __attribute__((visibility("default"))) void
-hook_swapBuffers_QRect(
-  void* this_ptr,
-  Qt::QRectLayout rect,
-  const void* contentMap,
-  int flags
-);
-__attribute__((visibility("default"))) void
 hook_swapBuffers_QRegion(
   void* this_ptr,
   const void* region,

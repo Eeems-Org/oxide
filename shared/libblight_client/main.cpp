@@ -127,12 +127,13 @@ namespace {
         return res;
       }
     } else if (actualpath.starts_with("/dev/input/event")) {
+      if (!Client::HANDLE_INPUT) {
+        return -2;
+      }
       _INFO("Opening event device: %s", actualpath.c_str());
       if (FB::connection->input_handle() > 0) {
         Input::mutex.lock();
-        if (
-          Input::fds.empty() && getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr
-        ) {
+        if (Input::fds.empty() && Client::HANDLE_INPUT) {
           new std::thread(Input::read);
         }
         std::string path(basename(actualpath.c_str()));
@@ -668,6 +669,9 @@ init(void) {
   }
   if (getenv("OXIDE_PRELOAD_DUMP_FB") != nullptr) {
     Client::DUMP_FB = true;
+  }
+  if (getenv("OXIDE_PRELOAD_EXPOSE_INPUT") != nullptr) {
+    Client::HANDLE_INPUT = false;
   }
   if (Client::HANDLE_FB) {
     FB::buffer = Blight::buf_t::new_ptr();

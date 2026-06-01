@@ -311,23 +311,10 @@ validate_swapbuffers(void* func) {
     return false;
   }
 #if defined(__arm__)
-  // Check arm32 prologue for both swapBuffers variants:
-  //
-  // QRegion variant:
+  // Check arm32 prologue for the swapBuffers(QRegion) variant:
   //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
   //   sub sp, sp, #0x44       (0xE24DD044)
-  //
-  // QRect variant:
-  //   cmp r1, #1              (0xE3510001)
-  //   stmdb sp!,{r4-r8,lr}    (0xE92D41F0)
-  //   mov r4, r1
-  //   sub sp, sp, #0x30       (0xE24DD030)
-  //
-  // For QRegion: STMDB at instruction 0, SUB #0x44 at instruction 1.
-  // For QRect:   CMP at instruction 0, STMDB at instruction 1,
-  //              SUB #0x30 somewhere within the next 6 instructions.
   uint32_t* data = (uint32_t*)func;
-
   // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
   if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
     if (data[1] == 0xE24DD044) {
@@ -335,31 +322,6 @@ validate_swapbuffers(void* func) {
     }
     _WARN(
       "swapBuffers: STMDB at pos 0 but second not sub sp,#0x44, "
-      "got 0x%08x",
-      data[1]
-    );
-    return false;
-  }
-
-  // Try the QRect pattern: CMP Rn,#imm / STMDB SP!,{...,LR} / ... / SUB
-  // SP,#0x30 CMP with immediate encoding: bits 27-20 = 00110101 = 0x35
-  // This matches CMP (any register, any condition, any immediate).
-  if ((data[0] & 0x0FF00000) == 0x03500000) {
-    if ((data[1] & 0xFFFF0000) == 0xE92D0000 && (data[1] & 0x4000)) {
-      // Find SUB SP, SP, #0x30 within the next 6 instructions
-      for (int i = 2; i < 8; i++) {
-        if (data[i] == 0xE24DD030) {
-          return true;
-        }
-      }
-      _WARN(
-        "swapBuffers: CMP+STMDB pattern but no sub sp,#0x30 found "
-        "within 8 instructions"
-      );
-      return false;
-    }
-    _WARN(
-      "swapBuffers: CMP at pos 0 but second not STMDB SP!,{...,LR}, "
       "got 0x%08x",
       data[1]
     );
@@ -377,14 +339,24 @@ validate_swapbuffers(void* func) {
   // Most non-leaf functions start with:
   //   stp x29, x30, [sp, #-imm]!
   // Encoding: bits 31-24 = 0xA9, bits 23-22 = 10 (pre-index writeback).
-  // The QRect variant may start with a CMP before the STP,
-  // so also check data[1].
+  //
+  // Some functions use Pointer Authentication (PAC), starting with:
+  //   paciasp (0xD503233F)
+  // followed by either:
+  //   stp x29, x30, [sp, #-imm]!  (frame pointer)
+  //   sub sp, sp, #imm             (no frame pointer)
   uint32_t* data = (uint32_t*)func;
   if ((data[0] & 0xFFC00000) == 0xA9800000) {
     return true;
   }
-  if ((data[1] & 0xFFC00000) == 0xA9800000) {
-    return true;
+  // PAC prologue: paciasp + stp or sub sp
+  if (data[0] == 0xD503233F) {
+    if ((data[1] & 0xFFC00000) == 0xA9800000) { // stp x29, x30,...
+      return true;
+    }
+    if ((data[1] & 0xFF0003FF) == 0xD10003FF) { // sub sp, sp, #imm
+      return true;
+    }
   }
   return false;
 #else
@@ -449,7 +421,7 @@ repaint(
     return;
   }
   FB::ensure_surface();
-  auto maybe = FB::connection->repaint(
+  FB::connection->repaint(
     FB::buffer,
     rect->left,
     rect->top,
@@ -459,9 +431,6 @@ repaint(
     updateMode,
     0
   );
-  if (maybe.has_value()) {
-    maybe.value()->wait();
-  }
 }
 
 /*!
@@ -552,60 +521,6 @@ dump_buffers() {
   ::close(fd);
   dump_qimage_buffer(auxBuffer, "/tmp/auxBuffer.raw");
   dump_qimage_buffer(mainBuffer, "/tmp/mainBuffer.raw");
-}
-
-/*!
- * \brief Hook to run on EPFramebuffer::swapBuffers(QRect, ...) call
- * \param this_ptr EPFramebuffer instance
- * \param rect Area to swap
- * \param contentMap mapping used to define what portions need to be what
- * waveforms
- * \param flags Update flags
- */
-void
-hook_swapBuffers_QRect(
-  void* this_ptr,
-  Qt::QRectLayout rect,
-  const void* contentMap,
-  int flags
-) {
-  _DEBUG("EPFramebuffer::swapBuffers(QRect, ...)");
-  void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
-  if (!epframebuffer) {
-    _DEBUG(
-      "hook_swapBuffers_QRect: epframebufferInstance not set yet,"
-      " skipping"
-    );
-    return;
-  }
-  void* auxBuffer = (char*)epframebuffer + auxBufferOffset;
-  void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
-  copy_qimage_to_buffer(
-    mainBuffer,
-    Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
-    0
-  );
-  if (contentMap != nullptr) {
-    auto qregion_constructor = Qt::qregion_constructor();
-    auto qregion_destructor = Qt::qregion_destructor();
-    if (qregion_constructor == nullptr || qregion_destructor == nullptr) {
-      _CRIT("%s", "hook_swapBuffers_QRect: QRegion ctors not found");
-    }
-    void* qregion = nullptr;
-    qregion_constructor(&qregion, &rect);
-    hook_swapBuffers_QRegion(this_ptr, &qregion, contentMap, flags);
-    qregion_destructor(&qregion);
-    return;
-  }
-  _DEBUG("hook_swapBuffers_QRect: no contentMap, direct repaint");
-  repaint(
-    &rect,
-    (flags & 2) ? Blight::WaveformMode::Animate
-                : Blight::WaveformMode::HighQualityGrayscale,
-    Qt::flags_to_update_mode(flags)
-  );
-  emit_framebuffer_updated(this_ptr);
-  dump_buffers();
 }
 
 /*!
@@ -720,12 +635,9 @@ hook_check_candidate() {
     offset = std::stoi(offsetenv, nullptr, 0);
   } else {
 #if defined(__arm__)
-    offset = 0x5c; //(vtable entry 23)
+    offset = 0x5c; // vtable entry 23
 #elif defined(__aarch64__)
-    // vtable entry 21 (22nd virtual function), accounting for Itanium
-    // C++ ABI which has no header entries at positive indices vs ARM
-    // C++ ABI which has 2 headers (entries 0-1).
-    offset = 0xa8;
+    offset = 0xb8; // vtable entry 23
 #else
     _CRIT("Unsupported architecture");
     std::exit(EXIT_FAILURE);
@@ -775,20 +687,6 @@ hook_check_candidate() {
   );
   install_hook(func_swapBuffers_qregion, (void*)&hook_swapBuffers_QRegion);
   _DEBUG("Hooked swapBuffers(QRegion,...)");
-  void* func_swapBuffers_qrect =
-    *(void**)((char*)vtable + offset - sizeof(void*));
-  if (validate_swapbuffers(func_swapBuffers_qrect)) {
-    install_hook(func_swapBuffers_qrect, (void*)&hook_swapBuffers_QRect);
-    _DEBUG("Hooked swapBuffers(QRect, ...)");
-  } else {
-    _DEBUG(
-      "validate_swapbuffers(%p) FAILED for QRect candidate %p, "
-      "vtable=%p",
-      func_swapBuffers_qrect,
-      candidate,
-      vtable
-    );
-  }
   epframebufferInstance.store(candidate, std::memory_order_release);
   hook_installed = true;
   epframebufferCandidate.store(nullptr, std::memory_order_release);
