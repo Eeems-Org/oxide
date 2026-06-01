@@ -4,6 +4,7 @@
 #include <QFlags>
 #include <QImage>
 #include <QRect>
+#include <dlfcn.h>
 #include <tuple>
 
 // libqsgepaper EPFramebufferTcon layout (returned by instance()):
@@ -88,28 +89,43 @@ public:
    * libqsgepaper EPFramebufferTcon layout.
    */
   static class EPFramebufferFusion* instance();
+
+  /*!
+   * \brief Wait for pending updates to complete.
+   *
+   * Dispatches to the platform-specific sync at runtime:
+   * - EPFramebufferSwtcon::sync() on rM2/rmPP
+   * - EPFramebufferTcon::sync() on rM1
+   *
+   * Using dlsym avoids a link-time dependency on a particular class
+   * name, letting the same binary work across device generations.
+   */
+  inline void sync() {
+    static auto* fn = []() -> void (*)(void*) {
+      void* s = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferSwtcon4syncEv");
+      if (!s) {
+        s = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferTcon4syncEv");
+      }
+      return reinterpret_cast<void (*)(void*)>(s);
+    }();
+    if (fn) {
+      fn(this);
+    }
+  }
 };
 
 /*!
  * \brief Intermediate subclass (stand-in for the library's internal
  *        EPFramebufferSwtcon).
  *
- * Swtcon functions like initialize() and sync() are called during
- * startup but are not needed by consumers after instance() has
- * returned.
+ * Swtcon functions like initialize() are called during startup but
+ * are not needed by consumers after instance() has returned.
+ * sync() lives on the base EPFramebuffer class with runtime dispatch.
  */
 class EPFramebufferSwtcon : public EPFramebuffer {
 public:
   /*! Open /dev/fb0 and set up the framebuffer controller. */
   void initialize(void);
-
-  /*!
-   * \brief Wait for pending updates to complete.
-   *
-   * Exists in libqsgepaper on all but the rM1, which instead has
-   * EPFramebufferTcon::sync()
-   */
-  void sync(void);
 
 protected:
   /*!
