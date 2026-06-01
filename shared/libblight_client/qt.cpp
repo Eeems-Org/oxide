@@ -152,25 +152,36 @@ mmap_framebuffer() {
   return {ptr, len};
 }
 
+/*!
+ * \brief Get the auxBuffer offset
+ */
+int
+auxBufferOffset() {
 #if defined(__arm__)
-static constexpr int auxBufferOffset = 0x60;
-static constexpr int mainBufferOffset = 0x50;
+  return 0x60;
 #elif defined(__aarch64__)
-static constexpr int auxBufferOffset = 0xa8;
-static constexpr int mainBufferOffset = 0xc8;
+  return 0xa8;
 #else
-static constexpr int auxBufferOffset = 0x00;
-static constexpr int mainBufferOffset = 0x00;
+  return 0x00;
 #endif
-// QImage layout: vtable pointer followed by QImageData* d_ptr.
-// Offset of d_ptr depends on pointer size.
+}
+
+/*!
+ * \brief Get the mainBuffer offset
+ */
+int
+mainBufferOffset() {
 #if defined(__arm__)
-static constexpr int d_ptrOffset = 4;
+  return 0x50;
 #elif defined(__aarch64__)
-static constexpr int d_ptrOffset = 8;
+  if (Client::deviceType == Client::DeviceType::RMPPURE) {
+    return 0x88;
+  }
+  return 0xc8;
 #else
-static constexpr int d_ptrOffset = 0;
+  return 0x00;
 #endif
+}
 
 bool
 dump_qimage_buffer(void* qimage, std::string path) {
@@ -503,8 +514,8 @@ dump_buffers() {
     _DEBUG("dump_buffers: epframebufferInstance not set yet, skipping");
     return;
   }
-  void* auxBuffer = (char*)epframebuffer + auxBufferOffset;
-  void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
+  void* auxBuffer = (char*)epframebuffer + auxBufferOffset();
+  void* mainBuffer = (char*)epframebuffer + mainBufferOffset();
   int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (fd <= 0) {
     _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
@@ -552,7 +563,7 @@ hook_swapBuffers_QRegion(
     );
     return;
   }
-  void* mainBuffer = (char*)epframebuffer + mainBufferOffset;
+  void* mainBuffer = (char*)epframebuffer + mainBufferOffset();
   copy_qimage_to_buffer(
     mainBuffer,
     Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
@@ -753,7 +764,7 @@ _ZN6QImageC1Ev(void* this_ptr) {
   // Default ctor: format not yet set. Try both known EPFramebuffer
   // offsets. The vtable at (this - offset) is checked to confirm it
   // belongs to a xochitl QObject (fully dynamic via dladdr).
-  for (int offset : {mainBufferOffset, auxBufferOffset}) {
+  for (int offset : {mainBufferOffset(), auxBufferOffset()}) {
     if (offset == 0) {
       continue; // skip unsupported arch placeholder
     }
