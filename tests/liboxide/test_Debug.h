@@ -16,4 +16,8 @@ private slots:
   void test_debugEnabled();
   void test_getAppName();
   void test_backtrace();
+
+private:
+  std::string debug;
+  bool envWasSet;
 };

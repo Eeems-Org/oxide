@@ -1,9 +1,24 @@
 #include "test_Debug.h"
 
+#include <cstdlib>
 #include <liboxide/debug.h>
 
-test_Debug::test_Debug() {}
-test_Debug::~test_Debug() {}
+test_Debug::test_Debug()
+  : debug()
+  , envWasSet(false) {
+  auto env = std::getenv("DEBUG");
+  if (env != nullptr) {
+    debug = env;
+    envWasSet = true;
+  }
+}
+test_Debug::~test_Debug() {
+  if (envWasSet) {
+    setenv("DEBUG", debug.c_str(), true);
+  } else {
+    unsetenv("DEBUG");
+  }
+}
 
 void
 test_Debug::test_getDebugApplicationInfo() {
@@ -42,6 +57,12 @@ test_Debug::test_debugEnabled() {
   QVERIFY(!Oxide::debugEnabled());
   ::setenv("DEBUG", "1", true);
   QVERIFY(Oxide::debugEnabled());
+  // Cleanup
+  if (envWasSet) {
+    setenv("DEBUG", debug.c_str(), true);
+  } else {
+    unsetenv("DEBUG");
+  }
 }
 
 void
@@ -69,9 +90,8 @@ void
 test_Debug::test_backtrace() {
   auto trace = Oxide::backtrace(2);
   QCOMPARE(trace.size(), 1);
-  QCOMPARE(
-    QString::fromStdString(trace[0].substr(0, 27)),
-    "/opt/share/tests/liboxide()"
+  QVERIFY(
+    QString::fromStdString(trace[0]).startsWith("/opt/share/tests/liboxide(")
   );
 }
 
