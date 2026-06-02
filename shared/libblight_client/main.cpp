@@ -131,51 +131,7 @@ namespace {
         return -2;
       }
       _INFO("Opening event device: %s", actualpath.c_str());
-      if (FB::connection->input_handle() > 0) {
-        Input::mutex.lock();
-        if (Input::fds.empty() && Client::HANDLE_INPUT) {
-          new std::thread(Input::read);
-        }
-        std::string path(basename(actualpath.c_str()));
-        try {
-          unsigned int device = stol(path.substr(5));
-          if (Input::fds.contains(device)) {
-            res = Input::fds[device][1];
-          } else {
-            int fds[2];
-            // TODO - what if they open it a second time with
-            // different flags?
-            int socketFlags = SOCK_STREAM;
-            if (flags & O_NONBLOCK || flags & O_NDELAY) {
-              socketFlags |= SOCK_NONBLOCK;
-            }
-            res = ::socketpair(AF_UNIX, socketFlags, 0, fds);
-            if (res < 0) {
-              _WARN(
-                "Failed to open event socket stream %s", std::strerror(errno)
-              );
-            } else {
-              // Force writing side to be non blocking
-              int fd = Input::fds[device][0] = fds[0];
-              int flags = fcntl(fd, F_GETFL, NULL);
-              fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-              res = Input::fds[device][1] = fds[1];
-              Input::deviceMap[res] = Libc::open(actualpath.c_str(), O_RDWR, 0);
-              _DEBUG("Input::deviceMap[%d] = %d;", res, Input::deviceMap[res])
-            }
-          }
-        } catch (std::invalid_argument&) {
-          _WARN("Resolved event device name invalid: %s", path.c_str());
-          res = -1;
-        } catch (std::out_of_range&) {
-          _WARN("Resolved event device number out of range: %s", path.c_str());
-          res = -1;
-        }
-        Input::mutex.unlock();
-      } else {
-        _WARN("Could not open connection input stream", "");
-        res = -1;
-      }
+      return Input::open(actualpath, flags);
     }
     if (res == -1) {
       errno = EIO;
@@ -352,9 +308,8 @@ close(int fd) {
       // Maybe actually close it?
       return 0;
     }
-    if (Input::deviceMap.contains(fd)) {
-      // Maybe actually close it?
-      return 0;
+    if (Input::deviceDescriptors.contains(fd)) {
+      return Input::close(fd);
     }
     if (fd == FB::epframebufferLockFd) {
       int res = Libc::close(FB::epframebufferLockFd);
@@ -380,6 +335,31 @@ close(int fd) {
 symver(close);
 
 __attribute__((visibility("default"))) int
+fcntl(int fd, int cmd, ...) {
+  va_list args;
+  va_start(args, cmd);
+  void* ptr = va_arg(args, void*);
+  int res;
+  if (Client::INITIALIZED && Input::deviceDescriptors.contains(fd)) {
+    res = Input::fcntl(fd, cmd, ptr);
+  } else {
+    res = Libc::fcntl(fd, cmd, ptr);
+  }
+  va_end(args);
+  return res;
+}
+symver(fcntl);
+
+__attribute__((visibility("default"))) ssize_t
+read(int fd, void* buf, size_t count) {
+  if (Client::INITIALIZED && Input::deviceDescriptors.contains(fd)) {
+    return Input::read(fd, buf, count);
+  }
+  return Libc::read(fd, buf, count);
+}
+symver(read);
+
+__attribute__((visibility("default"))) int
 ioctl(int fd, unsigned long request, ...) {
   va_list args;
   va_start(args, request);
@@ -395,8 +375,8 @@ ioctl(int fd, unsigned long request, ...) {
       va_end(args);
       return res;
     }
-    if (Input::deviceMap.contains(fd)) {
-      int res = Input::ioctlv(Input::deviceMap[fd], request, ptr);
+    if (Input::deviceDescriptors.contains(fd)) {
+      int res = Input::ioctlv(fd, request, ptr);
       va_end(args);
       return res;
     }
@@ -590,14 +570,6 @@ init(void) {
     } catch (std::invalid_argument&) {
     } catch (std::out_of_range&) {
       _WARN("OXIDE_PRELOAD_DEBUG invalid value");
-    }
-  }
-  auto batch_size = getenv("OXIDE_INPUT_BATCH_SIZE");
-  if (batch_size != nullptr) {
-    try {
-      Input::BATCH_SIZE = std::stoi(batch_size);
-    } catch (std::invalid_argument&) {
-    } catch (std::out_of_range&) {
     }
   }
   std::string path;

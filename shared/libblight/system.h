@@ -78,8 +78,10 @@ namespace Blight {
    * \return If the call succeeded or not
    * \retval false call failed
    */
-  LIBBLIGHT_EXPORT bool
-  setFlags(const std::string& identifier, std::vector<std::string> flags);
+  LIBBLIGHT_EXPORT bool setFlags(
+    const std::string& identifier,
+    const std::vector<std::string>& flags
+  );
   /*!
    * \brief Check if a connection identifier exists
    * \param identifier Connection identifier

@@ -1,105 +1,68 @@
 #include "input.h"
 #include "fb.h"
 #include "libc.h"
+#include "state.h"
 
 #include <cerrno>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <libblight/debug.h>
 #include <libblight/socket.h>
 #include <linux/input.h>
+#include <stdexcept>
 #include <sys/select.h>
+#include <thread>
 
 namespace Input {
-  unsigned int BATCH_SIZE = 0;
-  std::map<int, int[2]> fds = std::map<int, int[2]>{};
-  std::map<int, int> deviceMap = std::map<int, int>{};
-  std::mutex mutex = std::mutex();
+  std::map<int, RingBuffer<input_event, RING_BUFFER_SIZE>> ringBuffers{};
+  std::map<int, std::pair<int, int>> deviceDescriptors{};
+  std::mutex mutex{};
 
-  void sendEvents(
-    unsigned int device,
-    std::vector<Blight::partial_input_event_t>& queue
-  ) {
-    if (queue.empty()) {
-      return;
+  int open(const std::string& path, int flags) {
+    if (FB::connection->input_handle() < 0) {
+      _WARN("%s", "Could not open connection input stream");
+      errno = EIO;
+      return -1;
     }
-    timeval time;
-    ::gettimeofday(&time, NULL);
-    std::vector<input_event> data(queue.size());
-    bool allow_power_button =
-      getenv("OXIDE_PRELOAD_ALLOW_POWER_BUTTON") != nullptr;
-    for (unsigned int i = 0; i < queue.size(); i++) {
-      auto& event = queue[i];
-      if (
-        !allow_power_button && event.type == EV_KEY && event.code == KEY_POWER
-      ) {
-        event.value = 0;
+    std::scoped_lock lock{mutex};
+    if (ringBuffers.empty() && Client::HANDLE_INPUT) {
+      new std::thread(readEvents);
+    }
+    std::string basePath(basename(path.c_str()));
+    try {
+      unsigned int device = stol(basePath.substr(5));
+      // If device already opened, return existing fd
+      if (ringBuffers.contains(device)) {
+        int fd = Libc::open(path.c_str(), flags, 0);
+        if (fd > 0) {
+          deviceDescriptors[fd] = {device, flags};
+        }
+        return fd;
       }
-      data[i] = input_event{
-        // .time = time,
-        .type = event.type,
-        .code = event.code,
-        .value = event.value
-      };
-    }
-    auto fd = fds[device][0];
-    size_t total = sizeof(input_event) * data.size();
-    size_t written = 0;
-    while (written < total) {
-      auto res = Libc::write(
-        fd, reinterpret_cast<char*>(data.data()) + written, total - written
-      );
-      if (res < 0) {
-        if (errno != EAGAIN && errno != EINTR) {
-          _CRIT(
-            "%d input events failed to send: %s",
-            data.size(),
-            std::strerror(errno)
-          );
-          return;
-        }
-        size_t completed = written / sizeof(input_event);
-        size_t partial = written % sizeof(input_event);
-        if (completed > 0) {
-          _DEBUG("Sent %d input events", completed);
-          queue.erase(queue.begin(), queue.begin() + completed);
-        }
-        if (partial <= 0) {
-          return;
-        }
-        _WARN("Blocking until remainder of partial event sent");
-        size_t remainingPart = sizeof(input_event) - partial;
-        if (!Blight::send_blocking(
-              fd,
-              reinterpret_cast<Blight::data_t>(data.data() + written),
-              remainingPart
-            )) {
-          _CRIT("Partial input event failed to send: %s", std::strerror(errno));
-          return;
-        }
-        queue.erase(queue.begin(), queue.begin() + 1);
-        return;
+      // Create ring buffer for this device
+      ringBuffers.try_emplace(device);
+      int fd = Libc::open(path.c_str(), flags, 0);
+      if (fd < 0) {
+        ringBuffers.erase(device);
+        return -1;
       }
-      written += res;
+      deviceDescriptors[fd] = {device, flags};
+      _DEBUG("Opened input device %d on fd %d", device, fd);
+      return fd;
+    } catch (std::invalid_argument&) {
+      _WARN("Resolved event device name invalid: %s", basePath.c_str());
+      errno = EIO;
+      return -1;
+    } catch (std::out_of_range&) {
+      _WARN("Resolved event device number out of range: %s", basePath.c_str());
+      errno = EIO;
+      return -1;
     }
-    _DEBUG("Sent %d input events", data.size());
-    queue.clear();
   }
 
-  bool hasAny(
-    const std::map<unsigned int, std::vector<Blight::partial_input_event_t>>&
-      events
-  ) {
-    for (auto& item : events) {
-      auto& queue = item.second;
-      if (!queue.empty()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  void read() {
+  void readEvents() {
     _INFO("%s", "InputWorker starting");
     prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
     nice(-10);
@@ -108,10 +71,13 @@ namespace Input {
     CPU_SET(0, &cpuset);
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
     auto fd = FB::connection->input_handle();
-    std::map<unsigned int, std::vector<Blight::partial_input_event_t>> events;
-    constexpr int timeoutMs = 25;
-    while (fd > 0 && FB::connection != nullptr &&
-           getenv("OXIDE_PRELOAD_DISABLE_INPUT") == nullptr) {
+    bool allow_power_button =
+      getenv("OXIDE_PRELOAD_ALLOW_POWER_BUTTON") != nullptr;
+    while (fd > 0 && FB::connection != nullptr) {
+      if (getenv("OXIDE_PRELOAD_EXPOSE_INPUT") != nullptr) {
+        _INFO("Input handling disabled");
+        break;
+      }
       auto maybe = FB::connection->read_event();
       if (!maybe.has_value()) {
         if (errno != EAGAIN && errno != EINTR) {
@@ -120,11 +86,7 @@ namespace Input {
           );
           break;
         }
-        _DEBUG("Waiting for next input event");
-        if (
-          !Blight::wait_for_read(fd, hasAny(events) ? timeoutMs : -1) &&
-          errno != EAGAIN
-        ) {
+        if (!Blight::wait_for_read(fd, -1) && errno != EAGAIN) {
           _WARN(
             "[InputWorker] Failed to wait for next input event %s",
             std::strerror(errno)
@@ -133,30 +95,35 @@ namespace Input {
         }
         continue;
       }
-      const auto& device = maybe.value().device;
+      unsigned int device = maybe.value().device;
+      auto& partial = maybe.value().event;
+      input_event ev = {
+        .type = partial.type,
+        .code = partial.code,
+        .value = (!allow_power_button && partial.type == EV_KEY &&
+                  partial.code == KEY_POWER)
+                   ? 0
+                   : partial.value
+      };
       mutex.lock();
-      if (!fds.contains(device)) {
+      auto it = ringBuffers.find(device);
+      if (it == ringBuffers.end()) {
         _INFO("Ignoring event for unopened device: %d", device);
         mutex.unlock();
         continue;
       }
-      if (fds[device][0] < 0) {
-        _INFO("Ignoring event for invalid device: %d", device);
-        mutex.unlock();
-        continue;
-      }
+      it->second.insert(ev);
       mutex.unlock();
-      auto& event = maybe.value().event;
-      auto& queue = events[device];
-      queue.push_back(event);
-      if (
-        (BATCH_SIZE && queue.size() >= BATCH_SIZE) ||
-        (!BATCH_SIZE && event.type == EV_SYN && event.code == SYN_REPORT)
-      ) {
-        sendEvents(device, queue);
-      }
     }
     _INFO("%s", "InputWorker quitting");
+  }
+
+  int close(int fd) {
+    _DEBUG("Closing input fd %d", fd);
+    int device = deviceDescriptors[fd].first;
+    ringBuffers.erase(device);
+    deviceDescriptors.erase(fd);
+    return Libc::close(fd);
   }
 
   int ioctlv(int fd, unsigned long request, char* ptr) {
@@ -168,6 +135,77 @@ namespace Input {
         return 0;
       default:
         return Libc::ioctl(fd, request, ptr);
+    }
+  }
+
+  ssize_t read(int fd, void* buf, size_t size) {
+    auto& entry = deviceDescriptors[fd];
+    auto& ringBuf = ringBuffers[entry.first];
+    auto* events = static_cast<input_event*>(buf);
+    size_t max_events = size / sizeof(input_event);
+    size_t count = 0;
+    bool nonblocking = entry.second & O_NONBLOCK;
+    if (ringBuf.overflowed()) {
+      if (nonblocking) {
+        auto maybe = ringBuf.take();
+        if (!maybe.has_value()) {
+          errno = EAGAIN;
+          return -1;
+        }
+      } else {
+        ringBuf.wait();
+      }
+      if (count < max_events) {
+        events[count] = {.type = EV_SYN, .code = SYN_DROPPED, .value = 1};
+        count++;
+      }
+    }
+    if (nonblocking) {
+      while (count < max_events) {
+        auto maybe = ringBuf.take();
+        if (!maybe.has_value()) {
+          break;
+        }
+        events[count] = *maybe;
+        count++;
+      }
+      if (count == 0) {
+        errno = EAGAIN;
+        return -1;
+      }
+      return count * sizeof(input_event);
+    }
+    if (count == 0) {
+      events[count] = ringBuf.wait();
+      count++;
+    }
+    while (count < max_events) {
+      auto maybe = ringBuf.take();
+      if (!maybe.has_value()) {
+        break;
+      }
+      events[count] = *maybe;
+      count++;
+    }
+    return count * sizeof(input_event);
+  }
+
+  int fcntl(int fd, int cmd, void* ptr) {
+    switch (cmd) {
+      case F_GETFD:
+        return 0;
+      case F_SETFD:
+        return 0;
+      case F_GETFL:
+        return deviceDescriptors[fd].second;
+      case F_SETFL: {
+        deviceDescriptors[fd].second =
+          static_cast<int>(reinterpret_cast<intptr_t>(ptr));
+        return 0;
+      }
+      default:
+        errno = EINVAL;
+        return -1;
     }
   }
 }

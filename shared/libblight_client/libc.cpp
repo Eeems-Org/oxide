@@ -65,6 +65,9 @@ namespace Libc {
 
   int (*close)(int) = (int (*)(int))dlsym(RTLD_NEXT, "close");
 
+  int (*fcntl)(int, int, ...) =
+    (int (*)(int, int, ...))dlsym(RTLD_NEXT, "fcntl");
+
   int (*msgget)(key_t, int) = (int (*)(key_t, int))dlsym(RTLD_NEXT, "msgget");
 
   int (*msgsnd)(int, const void*, size_t, int) =
@@ -74,4 +77,7 @@ namespace Libc {
 
   bool (*setenv)(const char*, const char*, int) =
     (bool (*)(const char*, const char*, int))dlsym(RTLD_NEXT, "setenv");
+
+  int (*read)(int, void*, size_t) =
+    (int (*)(int, void*, size_t))dlsym(RTLD_NEXT, "read");
 }

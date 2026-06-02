@@ -17,8 +17,10 @@ namespace Libc {
   extern int (*openat64)(int, const char*, int, ...);
   extern int (*ioctl)(int, unsigned long, ...);
   extern int (*close)(int);
+  extern int (*fcntl)(int, int, ...);
   extern int (*msgget)(key_t, int);
   extern int (*msgsnd)(int, const void*, size_t, int);
   extern int (*flock)(int, int);
   extern bool (*setenv)(const char*, const char*, int);
+  extern int (*read)(int, void*, size_t);
 }

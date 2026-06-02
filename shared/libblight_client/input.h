@@ -1,18 +1,24 @@
 #pragma once
+#include "ringbuffer.h"
+
 #include <libblight.h>
+#include <linux/input.h>
 #include <map>
 #include <mutex>
+#include <string>
 #include <vector>
 
+#define RING_BUFFER_SIZE 64
+
 namespace Input {
-  extern unsigned int BATCH_SIZE;
-  extern std::map<int, int[2]> fds;
-  extern std::map<int, int> deviceMap;
+  extern std::map<int, RingBuffer<input_event, RING_BUFFER_SIZE>> ringBuffers;
+  extern std::map<int, std::pair<int, int>> deviceDescriptors;
   extern std::mutex mutex;
-  void sendEvents(
-    unsigned int device,
-    std::vector<Blight::partial_input_event_t>& queue
-  );
-  void read();
+
+  int open(const std::string& path, int flags);
+  void readEvents();
+  int close(int fd);
   int ioctlv(int fd, unsigned long request, char* ptr);
+  ssize_t read(int fd, void* buf, size_t size);
+  int fcntl(int fd, int cmd, void* ptr);
 }

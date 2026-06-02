@@ -194,7 +194,10 @@ namespace Blight {
     }
     return true;
   }
-  bool setFlags(const std::string& identifier, std::vector<std::string> flags) {
+  bool setFlags(
+    const std::string& identifier,
+    const std::vector<std::string>& flags
+  ) {
     if (!exists()) {
       errno = EAGAIN;
       return false;
