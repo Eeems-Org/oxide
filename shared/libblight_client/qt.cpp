@@ -538,7 +538,6 @@ hook_swapBuffers_QRegion(
     }
   }
   dump_buffers();
-  Blight::waitForNoRepaints();
 }
 
 /*!

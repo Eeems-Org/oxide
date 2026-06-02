@@ -87,12 +87,13 @@ namespace Input {
     queue.clear();
   }
 
-  bool __hasAny(
-    std::map<unsigned int, std::vector<Blight::partial_input_event_t>> events
+  bool hasAny(
+    const std::map<unsigned int, std::vector<Blight::partial_input_event_t>>&
+      events
   ) {
     for (auto& item : events) {
       auto& queue = item.second;
-      if (queue.empty()) {
+      if (!queue.empty()) {
         return true;
       }
     }
@@ -122,7 +123,7 @@ namespace Input {
         }
         _DEBUG("Waiting for next input event");
         if (
-          !Blight::wait_for_read(fd, __hasAny(events) ? timeoutMs : -1) &&
+          !Blight::wait_for_read(fd, hasAny(events) ? timeoutMs : -1) &&
           errno != EAGAIN
         ) {
           _WARN(

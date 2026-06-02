@@ -60,7 +60,7 @@ OxideIntegration::OxideIntegration(const QStringList& parameters)
   , m_options(parseOptions(parameters))
   , m_debug(false)
   , m_parameters(parameters) {
-  setenv("OXIDE_PRELOAD_DISABLE_INPUT", "1", true);
+  setenv("OXIDE_PRELOAD_EXPOSE_INPUT", "1", true);
   m_debug = m_options & DebugQPA;
   if (m_debug) {
     qDebug() << "OxideIntegration::OxideIntegration";
