@@ -753,7 +753,7 @@ Connection::ack(
   } else if (size && !Blight::send_blocking(m_serverFd, data, size)) {
     C_WARNING("Failed to write ack data to socket:" << strerror(errno));
   } else {
-    C_DEBUG("Acked:" << ack.ackid);
+    C_DEBUG("Acked:" << ack.ackid << size);
   }
 }
 

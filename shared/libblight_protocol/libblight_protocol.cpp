@@ -436,14 +436,13 @@ blight_send_message(
   }
   if (response == nullptr) {
     _WARN(
-      "[blight_send_message] Ignoring response data, no response "
-      "pointer "
+      "[blight_send_message] Ignoring response data, no response pointer "
       "provided"
     )
-  } else {
-    *response = ack->data;
-    ack->data = nullptr;
+    return 0;
   }
+  *response = ack->data;
+  ack->data = nullptr;
   return ack->size;
 }
 blight_buf_t*
@@ -779,12 +778,16 @@ connection_thread(
           assert(message->data != nullptr);
           ack->size = message->header.size;
           ack->data = message->data;
-          message->data = nullptr; // Prevent double-free when
-                                   // message is dereferenced
+          // prevent double-free when message is dereferenced
+          message->data = nullptr;
         } else {
           assert(message->data == nullptr);
         }
-        ack->done = true;
+        {
+          std::lock_guard<std::mutex> lock(ack->mutex);
+          UNUSED(lock);
+          ack->done = true;
+        }
         ack->notify_all();
         iter = completed.erase(iter);
         blight_message_deref(message); // Free the message after use
@@ -831,7 +834,7 @@ connection_thread(
     }
   }
   {
-    std::unique_lock lock(ackQueuesMutex);
+    std::lock_guard lock(ackQueuesMutex);
     UNUSED(lock);
     ackQueues.erase(fd);
   }
