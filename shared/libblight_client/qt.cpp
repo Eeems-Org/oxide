@@ -41,6 +41,28 @@ namespace Qt {
     );
     return fn;
   }
+  bool region_rect_overlaps(const QRectLayout* rect, const void* region) {
+    auto begin_fn = qregion_begin();
+    auto end_fn = qregion_end();
+    if (begin_fn == nullptr || end_fn == nullptr) {
+      return false;
+    }
+    auto rit = begin_fn(region);
+    auto rend = end_fn(region);
+    if (!rit || !rend) {
+      _DEBUG("region_rect_overlaps: qregion_begin/end is NULL");
+      return false;
+    }
+    for (; rit != rend; rit++) {
+      if (
+        rect->left < rit->right && rect->right > rit->left &&
+        rect->top < rit->bottom && rect->bottom > rit->top
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
   Blight::WaveformMode epsm_to_waveform(int screenMode) {
     switch (screenMode) {
       case 0:
@@ -209,7 +231,6 @@ mainBufferOffset() {
  */
 int
 vtableOffset() {
-  int offset;
   const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_VTABLE_OFFSET");
   if (offsetenv) {
     return std::stoi(offsetenv, nullptr, 0);
@@ -226,7 +247,7 @@ vtableOffset() {
 }
 
 bool
-dump_qimage_buffer(void* qimage, const std::string path) {
+dump_qimage_buffer(void* qimage, const std::string& path) {
   resolve_qimage_funcs();
   if (!qImageFuncs.ok) {
     errno = EBADFD;
@@ -241,70 +262,6 @@ dump_qimage_buffer(void* qimage, const std::string path) {
     return false;
   }
   return ::write(fd, qImageFuncs.bits(qimage), size) == size;
-}
-
-/*!
- * \brief Check if a QImage rectangle contains any non-white, non-transparent
- *        pixels (pen/ink content).
- * Handles Format_RGB32 (4, 32-bit) and Format_RGB16 (7, 16-bit 565).
- */
-static bool
-has_pen_content(void* qimage, const Qt::QRectLayout* rect) {
-  resolve_qimage_funcs();
-  if (!qImageFuncs.ok) {
-    return false;
-  }
-  auto x = rect->left;
-  auto y = rect->top;
-  auto width = rect->right - x;
-  auto height = rect->bottom - y;
-  int imageWidth = qImageFuncs.width(qimage);
-  int imageHeight = qImageFuncs.height(qimage);
-  int imageStride = qImageFuncs.bytesPerLine(qimage);
-  // Bounds check
-  if (
-    x < 0 || y < 0 || width <= 0 || height <= 0 || rect->right > imageWidth ||
-    rect->bottom > imageHeight
-  ) {
-    return false;
-  }
-  int format = qImageFuncs.format(qimage);
-  int y_end = y + height;
-  for (int row = y; row < y_end; row++) {
-    const unsigned char* scanline =
-      qImageFuncs.constScanLine ? qImageFuncs.constScanLine(qimage, row)
-                                : qImageFuncs.bits(qimage) + row * imageStride;
-    switch (format) {
-      case Blight::Format::Format_RGB32: {
-        auto pixels = reinterpret_cast<const uint32_t*>(scanline + x * 4);
-        int count = width;
-        while (count--) {
-          uint32_t p = *pixels++;
-          // Skip white (0xFFFFFFFF) and pure black (0xFF000000)
-          if (p != 0xFFFFFFFF && p != 0xFF000000) {
-            return true;
-          }
-        }
-        break;
-      }
-      case Blight::Format::Format_RGB16: {
-        auto pixels = reinterpret_cast<const uint16_t*>(scanline + x * 2);
-        int count = width;
-        while (count--) {
-          uint16_t p = *pixels++;
-          // (p - 1) < 0xFFFE  => p in [1, 0xFFFD] => pen content.
-          // p = 0 (black) => 0xFFFF,  p = 0xFFFF (white) => 0xFFFE
-          if (static_cast<uint16_t>(p - 1) < 0xFFFE) {
-            return true;
-          }
-        }
-        break;
-      }
-      default:
-        return true;
-    }
-    return false;
-  }
 }
 
 static std::atomic<bool> hook_installed = false;
@@ -492,63 +449,6 @@ repaint(
 }
 
 /*!
- * \brief Emit EPFramebuffer::framebufferUpdated() signal
- * \param this_ptr EPFramebuffer instance
- */
-static void
-emit_framebuffer_updated(void* this_ptr) {
-  auto vtable = *static_cast<void***>(this_ptr);
-  auto func_metaObject = reinterpret_cast<void* (*)(void*)>(vtable[2]);
-  if (func_metaObject == nullptr) {
-    _WARN("%s", "emit_framebuffer_updated: metaObject() at vtable[2] is null");
-    return;
-  }
-  void* metaObject = func_metaObject(this_ptr);
-  if (metaObject == nullptr) {
-    _WARN("%s", "emit_framebuffer_updated: metaObject() returned null");
-    return;
-  }
-  static auto func_indexOfSignal =
-    reinterpret_cast<int (*)(void*, const char*)>(
-      dlsym(RTLD_DEFAULT, "_ZNK11QMetaObject14indexOfSignalEPKc")
-    );
-  if (func_indexOfSignal == nullptr) {
-    _WARN(
-      "%s", "emit_framebuffer_updated: QMetaObject::indexOfSignal not available"
-    );
-    return;
-  }
-  int signalIndex = func_indexOfSignal(metaObject, "framebufferUpdated");
-  if (signalIndex < 0) {
-    _WARN(
-      "%s",
-      "emit_framebuffer_updated: framebufferUpdated signal not found in "
-      "QMetaObject"
-    );
-    return;
-  }
-  // Try 5-param QMetaObject::activate (with int* stack_slot), then
-  // 4-param.
-  static auto func_5_args =
-    reinterpret_cast<void (*)(void*, void*, int, int*, void**)>(dlsym(
-      RTLD_DEFAULT, "_ZN16QMetaObject8activateEP7QObjectPK11QMetaObjectiPiPPv"
-    ));
-  if (func_5_args != nullptr) {
-    func_5_args(this_ptr, metaObject, signalIndex, nullptr, nullptr);
-    return;
-  }
-  static auto func_4_args =
-    reinterpret_cast<void (*)(void*, void*, int, void**)>(dlsym(
-      RTLD_DEFAULT, "_ZN16QMetaObject8activateEP7QObjectPK11QMetaObjectiPPv"
-    ));
-  if (func_4_args == nullptr) {
-    _WARN("%s", "emit_framebuffer_updated: QMetaObject::activate not found");
-    return;
-  }
-  func_4_args(this_ptr, metaObject, signalIndex, nullptr);
-}
-
-/*!
  * \brief Dump the framebuffer, auxBuffer, and mainBuffer to /tmp/*.raw
  */
 void
@@ -616,59 +516,29 @@ hook_swapBuffers_QRegion(
     Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
     0
   );
-  auto updateMode = Qt::flags_to_update_mode(flags);
-  bool any_repainted = false;
-  if (contentMap_screenModeMap) {
-    auto regions = static_cast<void* const*>(contentMap_screenModeMap);
-    bool animationOverride = (flags & 2) != 0;
-    // Index 0: pen-eligible content
-    if (regions[0] != nullptr) {
-      auto rit = begin_fn(&regions[0]);
-      auto rend = end_fn(&regions[0]);
-      if (rit && rend) {
-        for (; rit != rend; rit++) {
-          if (animationOverride || has_pen_content(mainBuffer, rit)) {
-            repaint(
-              rit,
-              animationOverride ? Blight::WaveformMode::Animate
-                                : Blight::WaveformMode::HighQualityGrayscale,
-              updateMode
-            );
-            any_repainted = true;
-          }
+  auto dit = begin_fn(region);
+  auto dend = end_fn(region);
+  if (dit && dend) {
+    auto updateMode = Qt::flags_to_update_mode(flags);
+    for (; dit != dend; dit++) {
+      auto waveform = Blight::WaveformMode::HighQualityGrayscale;
+      if (contentMap_screenModeMap) {
+        auto regions = static_cast<void* const*>(contentMap_screenModeMap);
+        if (
+          regions[0] != nullptr && Qt::region_rect_overlaps(dit, &regions[0])
+        ) {
+          waveform = Blight::WaveformMode::Mono;
+        } else if (
+          regions[2] != nullptr && Qt::region_rect_overlaps(dit, &regions[2])
+        ) {
+          waveform = Blight::WaveformMode::Animate;
         }
       }
-    }
-    // Index 1: mono / GUI region
-    if (regions[1] != nullptr) {
-      auto rit = begin_fn(&regions[1]);
-      auto rend = end_fn(&regions[1]);
-      for (; rit != rend; rit++) {
-        repaint(rit, Blight::WaveformMode::HighQualityGrayscale, updateMode);
-        any_repainted = true;
-      }
-    }
-    // Index 2: animation region
-    if (regions[2] != nullptr) {
-      auto rit = begin_fn(&regions[2]);
-      auto rend = end_fn(&regions[2]);
-      for (; rit != rend; rit++) {
-        repaint(rit, Blight::WaveformMode::Animate, updateMode);
-        any_repainted = true;
-      }
-    }
-  }
-  if (!any_repainted) {
-    // Fallback: no content map, repaint the whole region
-    const Qt::QRectLayout* it = begin_fn(region);
-    const Qt::QRectLayout* end = end_fn(region);
-    if (it && end) {
-      for (; it != end; it++) {
-        repaint(it, Blight::WaveformMode::HighQualityGrayscale, updateMode);
-      }
+      repaint(dit, waveform, updateMode);
     }
   }
   dump_buffers();
+  Blight::waitForNoRepaints();
 }
 
 /*!

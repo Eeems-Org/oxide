@@ -216,7 +216,7 @@ msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
   if (msqid == FB::msgq) {
     FB::ensure_surface();
     _DEBUG("%s", "rm2fb ipc repaint");
-    auto buf = (swtfb::swtfb_update*)msgp;
+    auto buf = static_cast<const swtfb::swtfb_update*>(msgp);
     auto region = buf->mdata.update.update_region;
     FB::connection->repaint(
       FB::buffer, region.left, region.top, region.width, region.height
