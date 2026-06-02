@@ -157,8 +157,8 @@ namespace {
             } else {
               // Force writing side to be non blocking
               int fd = Input::fds[device][0] = fds[0];
-              int flags = fcntl(fd, F_GETFD, NULL);
-              fcntl(fd, F_SETFD, flags | O_NONBLOCK);
+              int flags = fcntl(fd, F_GETFL, NULL);
+              fcntl(fd, F_SETFL, flags | O_NONBLOCK);
               res = Input::fds[device][1] = fds[1];
               Input::deviceMap[res] = Libc::open(actualpath.c_str(), O_RDWR, 0);
               _DEBUG("Input::deviceMap[%d] = %d;", res, Input::deviceMap[res])

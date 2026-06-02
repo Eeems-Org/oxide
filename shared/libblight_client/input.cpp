@@ -50,35 +50,34 @@ namespace Input {
         fd, reinterpret_cast<char*>(data.data()) + written, total - written
       );
       if (res < 0) {
-        if (errno == EAGAIN || errno == EINTR) {
-          size_t completed = written / sizeof(input_event);
-          _WARN("Partial input event write: %d of %d bytes", res, total);
-          if (completed > 0) {
-            _DEBUG("Sent %d input events", completed);
-            queue.erase(queue.begin(), queue.begin() + completed);
-          }
-          size_t remainder = res - completed * sizeof(input_event);
-          if (remainder > 0) {
-            _WARN("Partial input event, blocking until remainder sent");
-            if (
-              Blight::send_blocking(
-                fd, (Blight::data_t)(data.data() + written), remainder
-              )
-            ) {
-              queue.erase(queue.begin(), queue.begin() + 1);
-            } else {
-              _CRIT(
-                "%d input events failed to send: %s", 1, std::strerror(errno)
-              );
-            }
-          }
+        if (errno != EAGAIN && errno != EINTR) {
+          _CRIT(
+            "%d input events failed to send: %s",
+            data.size(),
+            std::strerror(errno)
+          );
           return;
         }
-        _CRIT(
-          "%d input events failed to send: %s",
-          data.size(),
-          std::strerror(errno)
-        );
+        size_t completed = written / sizeof(input_event);
+        size_t partial = written % sizeof(input_event);
+        if (completed > 0) {
+          _DEBUG("Sent %d input events", completed);
+          queue.erase(queue.begin(), queue.begin() + completed);
+        }
+        if (partial <= 0) {
+          return;
+        }
+        _WARN("Blocking until remainder of partial event sent");
+        size_t remainingPart = sizeof(input_event) - partial;
+        if (!Blight::send_blocking(
+              fd,
+              reinterpret_cast<Blight::data_t>(data.data() + written),
+              remainingPart
+            )) {
+          _CRIT("Partial input event failed to send: %s", std::strerror(errno));
+          return;
+        }
+        queue.erase(queue.begin(), queue.begin() + 1);
         return;
       }
       written += res;
