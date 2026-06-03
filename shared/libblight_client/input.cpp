@@ -11,7 +11,6 @@
 #include <libblight/debug.h>
 #include <libblight/socket.h>
 #include <linux/input.h>
-#include <mutex>
 #include <stdexcept>
 #include <sys/eventfd.h>
 #include <sys/poll.h>
@@ -24,7 +23,8 @@
 namespace Input {
   std::map<int, Blight::EvdevRingBuffer> ringBuffers{};
   std::map<int, DeviceInfo> deviceDescriptors{};
-  std::map<int, std::map<int, EpollTrackEntry>> epollMap{};
+  std::map<int, int> deviceEventFds{};
+  std::map<int, std::map<int, struct epoll_event>> epollMap{};
   std::mutex mutex{};
 
   void readEvents() {
@@ -70,25 +70,23 @@ namespace Input {
                    ? 0
                    : partial.value
       };
-      std::map<int, Blight::EvdevRingBuffer>::iterator it;
+      Blight::EvdevRingBuffer* ringBuf = nullptr;
       {
         std::lock_guard lock{mutex};
-        it = ringBuffers.find(device);
+        auto it = ringBuffers.find(device);
         if (it == ringBuffers.end()) {
           _INFO("Ignoring event for unopened device: %d", device);
           continue;
         }
+        ringBuf = &it->second;
       }
-      it->second.insert(ev);
+      ringBuf->insert(ev);
       {
         std::lock_guard lock{mutex};
-        // Signal all eventfds for this device
-        for (auto& [inputFd, info] : deviceDescriptors) {
-          if (info.device == static_cast<int>(device)) {
-            uint64_t val = 1;
-            // Non-blocking write; ignore EAGAIN (eventfd already signaled)
-            Libc::write(info.event_fd, &val, sizeof(val));
-          }
+        auto it = deviceEventFds.find(static_cast<int>(device));
+        if (it != deviceEventFds.end()) {
+          uint64_t val = 1;
+          Libc::write(it->second, &val, sizeof(val));
         }
       }
     }
@@ -108,34 +106,26 @@ namespace Input {
     std::string basePath(basename(path.c_str()));
     try {
       unsigned int device = stol(basePath.substr(5));
-      // Create eventfd for signaling data availability
-      int event_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-      if (event_fd < 0) {
-        _WARN("Failed to create eventfd: %s", std::strerror(errno));
-        return -1;
-      }
-      // If device already opened, return existing fd
-      if (ringBuffers.contains(device)) {
-        int fd = Libc::open(path.c_str(), flags, 0);
-        if (fd > 0) {
-          deviceDescriptors[fd] = {device, flags, event_fd};
-        } else {
-          Libc::close(event_fd);
+      bool newDevice = !deviceEventFds.contains(device);
+      if (newDevice) {
+        int eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+        if (eventFd < 0) {
+          _WARN("Failed to create eventfd: %s", std::strerror(errno));
+          return -1;
         }
-        return fd;
+        deviceEventFds[device] = eventFd;
+        ringBuffers.try_emplace(device, true);
       }
-      // Create ring buffer for this device
-      ringBuffers.try_emplace(device);
       int fd = Libc::open(path.c_str(), flags, 0);
       if (fd < 0) {
-        ringBuffers.erase(device);
-        Libc::close(event_fd);
+        if (newDevice) {
+          ringBuffers.erase(device);
+          Libc::close(deviceEventFds[device]);
+          deviceEventFds.erase(device);
+        }
         return -1;
       }
-      deviceDescriptors[fd] = {device, flags, event_fd};
-      _DEBUG(
-        "Opened input device %d on fd %d (event_fd %d)", device, fd, event_fd
-      );
+      deviceDescriptors[fd] = {device, flags};
       return fd;
     } catch (std::invalid_argument&) {
       _WARN("Resolved event device name invalid: %s", basePath.c_str());
@@ -151,20 +141,31 @@ namespace Input {
   int close(int fd) {
     _DEBUG("Closing input fd %d", fd);
     auto& info = deviceDescriptors[fd];
-    int event_fd = info.event_fd;
     int device = info.device;
     {
       std::scoped_lock lock(mutex);
-      // Clean up epoll tracking for this fd's eventfd
-      for (auto& [epfd, track] : epollMap) {
-        track.erase(event_fd);
+      auto devIt = deviceEventFds.find(device);
+      if (devIt != deviceEventFds.end()) {
+        for (auto& [epfd, track] : epollMap) {
+          track.erase(devIt->second);
+        }
       }
-      // Remove from shared maps BEFORE closing fds, so InputWorker can't
-      // race on these entries while we're tearing down.
       deviceDescriptors.erase(fd);
-      ringBuffers.erase(device);
+      bool lastFd = true;
+      for (auto& [otherFd, otherInfo] : deviceDescriptors) {
+        if (otherInfo.device == device) {
+          lastFd = false;
+          break;
+        }
+      }
+      if (lastFd) {
+        auto it = deviceEventFds.find(device);
+        if (it != deviceEventFds.end()) {
+          Libc::close(it->second);
+          deviceEventFds.erase(it);
+        }
+      }
     }
-    Libc::close(event_fd);
     return Libc::close(fd);
   }
 
@@ -183,64 +184,42 @@ namespace Input {
   // Drain eventfd after reading from ringbuffer to prevent spurious wakeups
   // on the next epoll_wait/poll/select.  Safe to call even if eventfd has
   // no pending data (returns EAGAIN which is ignored).
-  static void drainEventFd(int event_fd) {
+  static void drainEventFd(int eventFd) {
     uint64_t val;
-    Libc::read(event_fd, &val, sizeof(val));
+    Libc::read(eventFd, &val, sizeof(val));
   }
 
   ssize_t read(int fd, void* buf, size_t size) {
     auto& info = deviceDescriptors[fd];
-    auto& ringBuf = ringBuffers[info.device];
     auto* events = static_cast<input_event*>(buf);
-    size_t max_events = size / sizeof(input_event);
     size_t count = 0;
-    bool nonblocking = info.flags & O_NONBLOCK;
-    if (ringBuf.overflowed()) {
-      if (nonblocking) {
-        auto maybe = ringBuf.take();
-        if (!maybe.has_value()) {
-          drainEventFd(info.event_fd);
-          errno = EAGAIN;
-          return -1;
-        }
-      } else {
-        ringBuf.wait_for_values();
-      }
-      if (count < max_events) {
-        events[count] = {.type = EV_SYN, .code = SYN_DROPPED, .value = 1};
-        count++;
-      }
+    if (ringBuffers[info.device].overflowed()) {
+      events[count] = {.type = EV_SYN, .code = SYN_DROPPED, .value = 1};
+      count++;
     }
-    if (nonblocking) {
-      while (count < max_events) {
-        auto maybe = ringBuf.take();
+    while (count < size / sizeof(input_event)) {
+      if (info.flags & O_NONBLOCK) {
+        auto maybe = ringBuffers[info.device].take();
         if (!maybe.has_value()) {
           break;
         }
         events[count] = *maybe;
-        count++;
+      } else {
+        events[count] = ringBuffers[info.device].wait_for_values();
       }
-      if (count == 0) {
-        drainEventFd(info.event_fd);
-        errno = EAGAIN;
-        return -1;
-      }
-      drainEventFd(info.event_fd);
-      return count * sizeof(input_event);
+      count++;
     }
     if (count == 0) {
-      events[count] = ringBuf.wait_for_values();
-      count++;
+      errno = EAGAIN;
+      return -1;
     }
-    while (count < max_events) {
-      auto maybe = ringBuf.take();
-      if (!maybe.has_value()) {
-        break;
+    {
+      std::lock_guard lock{mutex};
+      auto it = deviceEventFds.find(info.device);
+      if (it != deviceEventFds.end()) {
+        drainEventFd(it->second);
       }
-      events[count] = *maybe;
-      count++;
     }
-    drainEventFd(info.event_fd);
     return count * sizeof(input_event);
   }
 
@@ -268,21 +247,35 @@ namespace Input {
     if (it == deviceDescriptors.end()) {
       return -1;
     }
-    return it->second.event_fd;
+    auto evIt = deviceEventFds.find(it->second.device);
+    if (evIt == deviceEventFds.end()) {
+      return -1;
+    }
+    return evIt->second;
   }
 
   bool isEventFd(int fd) {
-    for (auto& [inputFd, info] : deviceDescriptors) {
-      if (info.event_fd == fd) {
+    for (auto& [device, eventFd] : deviceEventFds) {
+      if (eventFd == fd) {
         return true;
       }
     }
     return false;
   }
 
-  int getInputFdByEventFd(int event_fd) {
+  int getInputFdByEventFd(int eventFd) {
+    int device = -1;
+    for (auto& [dev, ev_fd] : deviceEventFds) {
+      if (ev_fd == eventFd) {
+        device = dev;
+        break;
+      }
+    }
+    if (device < 0) {
+      return -1;
+    }
     for (auto& [inputFd, info] : deviceDescriptors) {
-      if (info.event_fd == event_fd) {
+      if (info.device == device) {
         return inputFd;
       }
     }
@@ -315,28 +308,31 @@ namespace Input {
     for (int fd = 0; fd < orig_nfds; fd++) {
       if (readfds && FD_ISSET(fd, readfds) && deviceDescriptors.contains(fd)) {
         FD_CLR(fd, readfds);
-        int event_fd = getEventFd(fd);
-        FD_SET(event_fd, readfds);
-        if (event_fd >= nfds)
-          nfds = event_fd + 1;
+        int eventFd = getEventFd(fd);
+        FD_SET(eventFd, readfds);
+        if (eventFd >= nfds) {
+          nfds = eventFd + 1;
+        }
       }
       if (
         writefds && FD_ISSET(fd, writefds) && deviceDescriptors.contains(fd)
       ) {
         FD_CLR(fd, writefds);
-        int event_fd = getEventFd(fd);
-        FD_SET(event_fd, writefds);
-        if (event_fd >= nfds)
-          nfds = event_fd + 1;
+        int eventFd = getEventFd(fd);
+        FD_SET(eventFd, writefds);
+        if (eventFd >= nfds) {
+          nfds = eventFd + 1;
+        }
       }
       if (
         exceptfds && FD_ISSET(fd, exceptfds) && deviceDescriptors.contains(fd)
       ) {
         FD_CLR(fd, exceptfds);
-        int event_fd = getEventFd(fd);
-        FD_SET(event_fd, exceptfds);
-        if (event_fd >= nfds)
-          nfds = event_fd + 1;
+        int eventFd = getEventFd(fd);
+        FD_SET(eventFd, exceptfds);
+        if (eventFd >= nfds) {
+          nfds = eventFd + 1;
+        }
       }
     }
     return orig_nfds;
@@ -366,12 +362,15 @@ namespace Input {
     }
     // Clear noise bits from the expanded nfds range
     for (int fd = orig_nfds; fd < mod_nfds; fd++) {
-      if (readfds)
+      if (readfds) {
         FD_CLR(fd, readfds);
-      if (writefds)
+      }
+      if (writefds) {
         FD_CLR(fd, writefds);
-      if (exceptfds)
+      }
+      if (exceptfds) {
         FD_CLR(fd, exceptfds);
+      }
     }
   }
 
@@ -379,8 +378,8 @@ namespace Input {
     if (!deviceDescriptors.contains(fd)) {
       return Libc::epoll_ctl(epfd, op, fd, ev);
     }
-    int event_fd = getEventFd(fd);
-    if (event_fd < 0) {
+    int eventFd = getEventFd(fd);
+    if (eventFd < 0) {
       errno = EBADF;
       return -1;
     }
@@ -388,45 +387,39 @@ namespace Input {
       struct epoll_event modified_ev;
       memset(&modified_ev, 0, sizeof(modified_ev));
       modified_ev.events = ev->events;
-      modified_ev.data.fd = event_fd;
+      modified_ev.data.fd = eventFd;
       {
         std::scoped_lock lock(mutex);
-        epollMap[epfd][event_fd] = {fd, *ev};
+        epollMap[epfd][eventFd] = *ev;
       }
-      return Libc::epoll_ctl(epfd, op, event_fd, &modified_ev);
+      int res = Libc::epoll_ctl(epfd, op, eventFd, &modified_ev);
+      if (res < 0 && op == EPOLL_CTL_ADD && errno == EEXIST) {
+        errno = 0;
+        return 0;
+      }
+      return res;
     } else if (op == EPOLL_CTL_DEL) {
       std::scoped_lock lock(mutex);
-      auto epIt = epollMap.find(epfd);
-      if (epIt != epollMap.end()) {
-        epIt->second.erase(event_fd);
-      }
-      return Libc::epoll_ctl(epfd, op, event_fd, nullptr);
+      epollMap[epfd].erase(eventFd);
+      return Libc::epoll_ctl(epfd, op, eventFd, nullptr);
     }
     return Libc::epoll_ctl(epfd, op, fd, ev);
   }
 
-  int
-  epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout) {
-    int ret = Libc::epoll_wait(epfd, events, maxevents, timeout);
-    if (ret <= 0)
-      return ret;
+  int restoreEpollfds(int epfd, struct epoll_event* events, int res) {
     std::scoped_lock lock(mutex);
     auto epIt = epollMap.find(epfd);
-    if (epIt == epollMap.end())
-      return ret;
+    if (epIt == epollMap.end()) {
+      return res;
+    }
     auto& trackByEventFd = epIt->second;
-    for (int i = 0; i < ret; i++) {
-      auto it = trackByEventFd.find(events[i].data.fd);
+    for (int i = 0; i < res; i++) {
+      int eventFd = events[i].data.fd;
+      auto it = trackByEventFd.find(eventFd);
       if (it != trackByEventFd.end()) {
-        events[i].data = it->second.orig_ev.data;
+        events[i].data = it->second.data;
       }
     }
-    return ret;
-  }
-
-  bool hasEpollInterest(int epfd) {
-    std::scoped_lock lock(mutex);
-    auto epIt = epollMap.find(epfd);
-    return epIt != epollMap.end() && !epIt->second.empty();
+    return res;
   }
 }

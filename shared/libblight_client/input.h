@@ -15,16 +15,12 @@ namespace Input {
   struct DeviceInfo {
     int device;
     int flags;
-    int event_fd; // eventfd signaled when ringbuffer has data
-  };
-  struct EpollTrackEntry {
-    int input_fd;
-    struct epoll_event orig_ev;
   };
 
   extern std::map<int, Blight::EvdevRingBuffer> ringBuffers;
   extern std::map<int, DeviceInfo> deviceDescriptors;
-  extern std::map<int, std::map<int, EpollTrackEntry>> epollMap;
+  extern std::map<int, int> deviceEventFds;
+  extern std::map<int, std::map<int, struct epoll_event>> epollMap;
   extern std::mutex mutex;
 
   void readEvents();
@@ -49,7 +45,5 @@ namespace Input {
     fd_set* exceptfds
   );
   int epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev);
-  int
-  epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout);
-  bool hasEpollInterest(int epfd);
+  int restoreEpollfds(int epfd, struct epoll_event* events, int res);
 }

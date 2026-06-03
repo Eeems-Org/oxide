@@ -622,10 +622,14 @@ symver(epoll_ctl);
 
 __attribute__((visibility("default"))) int
 epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout) {
-  if (Client::INITIALIZED && Input::hasEpollInterest(epfd)) {
-    return Input::epoll_wait(epfd, events, maxevents, timeout);
+  int res = Libc::epoll_wait(epfd, events, maxevents, timeout);
+  if (res <= 0) {
+    return res;
   }
-  return Libc::epoll_wait(epfd, events, maxevents, timeout);
+  if (Client::INITIALIZED) {
+    return Input::restoreEpollfds(epfd, events, res);
+  }
+  return res;
 }
 symver(epoll_wait);
 
