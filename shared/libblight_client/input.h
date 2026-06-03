@@ -8,10 +8,8 @@
 #include <string>
 #include <vector>
 
-#define RING_BUFFER_SIZE 64
-
 namespace Input {
-  extern std::map<int, RingBuffer<input_event, RING_BUFFER_SIZE>> ringBuffers;
+  extern std::map<int, Blight::EvdevRingBuffer> ringBuffers;
   extern std::map<int, std::pair<int, int>> deviceDescriptors;
   extern std::mutex mutex;
 

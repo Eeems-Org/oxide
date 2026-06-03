@@ -16,7 +16,7 @@
 #include <thread>
 
 namespace Input {
-  std::map<int, RingBuffer<input_event, RING_BUFFER_SIZE>> ringBuffers{};
+  std::map<int, Blight::EvdevRingBuffer> ringBuffers{};
   std::map<int, std::pair<int, int>> deviceDescriptors{};
   std::mutex mutex{};
 

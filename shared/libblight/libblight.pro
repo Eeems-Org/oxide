@@ -17,7 +17,8 @@ SOURCES += \
     libblight.cpp \
     socket.cpp \
     system.cpp \
-    types.cpp
+    types.cpp \
+    ringbuffer.cpp
 
 HEADERS += \
     clock.h \

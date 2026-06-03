@@ -1,101 +1,125 @@
+#pragma once
 #include <array>
-#include <condition_variable>
-#include <mutex>
+#include <atomic>
+#include <cstdint>
 #include <optional>
 
-template<typename T, size_t Size>
-class RingBuffer {
-public:
-  RingBuffer(bool allow_overflow = false)
-    : head{0}
-    , tail{0}
-    , count{0}
-    , overflow{false}
-    , values{}
-    , allow_overflow{allow_overflow} {}
+#include "libblight_global.h"
 
-  inline void insert(const T& event) {
-    {
-      std::unique_lock lock(mutex);
-      if (count >= Size && !allow_overflow) {
-        notFullCondition.wait(lock, [this]() { return count < Size; });
+#include <linux/input.h>
+
+namespace Blight {
+  class RingBufferBase {
+  protected:
+    using AtomicWord = std::atomic<uint32_t>;
+
+    alignas(64) AtomicWord head;
+    alignas(64) AtomicWord tail;
+    alignas(64) AtomicWord overflow;
+    bool allow_overflow;
+
+    RingBufferBase(bool allow_overflow) noexcept
+      : head{0}
+      , tail{0}
+      , overflow{0}
+      , allow_overflow{allow_overflow} {}
+
+    static void futex_wait(AtomicWord& word, uint32_t expected) noexcept;
+    static void futex_wake(AtomicWord& word) noexcept;
+
+  public:
+    bool empty();
+    bool overflowed();
+    size_t size();
+  };
+
+  template<typename T, size_t Size>
+  class RingBuffer : private RingBufferBase {
+    static_assert(
+      (Size & (Size - 1)) == 0,
+      "RingBuffer size must be a power of 2 for lock-free operation"
+    );
+    static constexpr size_t MASK = Size - 1;
+
+  public:
+    using RingBufferBase::empty;
+    using RingBufferBase::overflowed;
+    using RingBufferBase::size;
+
+    RingBuffer(bool allow_overflow = false) noexcept
+      : RingBufferBase{allow_overflow}
+      , values{} {}
+
+    void insert(const T& event) {
+      uint32_t h = head.load(std::memory_order_relaxed);
+      uint32_t t = tail.load(std::memory_order_acquire);
+      while (h - t >= static_cast<uint32_t>(Size)) {
+        if (allow_overflow) {
+          overflow.store(1, std::memory_order_release);
+          break;
+        }
+        futex_wait(tail, t);
+        t = tail.load(std::memory_order_acquire);
       }
-      values[tail] = event;
-      tail = (tail + 1) % Size;
-      if (count < Size) {
-        count++;
-      } else if (allow_overflow) {
-        head = (head + 1) % Size;
-        overflow = true;
+      values[h & MASK] = event;
+      head.store(h + 1, std::memory_order_release);
+      futex_wake(head);
+    }
+
+    std::optional<T> take() {
+      uint32_t t = tail.load(std::memory_order_relaxed);
+      uint32_t h = head.load(std::memory_order_acquire);
+      if (h == t) {
+        overflow.exchange(0, std::memory_order_acq_rel);
+        return {};
+      }
+      T event = values[t & MASK];
+      overflow.exchange(0, std::memory_order_acq_rel);
+      tail.store(t + 1, std::memory_order_release);
+      futex_wake(tail);
+      return {event};
+    }
+
+    T wait_for_values() {
+      uint32_t t = tail.load(std::memory_order_relaxed);
+      uint32_t h = head.load(std::memory_order_acquire);
+      while (h == t) {
+        futex_wait(head, h);
+        h = head.load(std::memory_order_acquire);
+      }
+      T event = values[t & MASK];
+      overflow.exchange(0, std::memory_order_acq_rel);
+      tail.store(t + 1, std::memory_order_release);
+      futex_wake(tail);
+      return event;
+    }
+
+    void wait_for_space() {
+      uint32_t h = head.load(std::memory_order_relaxed);
+      uint32_t t = tail.load(std::memory_order_acquire);
+      while (h - t >= static_cast<uint32_t>(Size)) {
+        futex_wait(tail, t);
+        t = tail.load(std::memory_order_acquire);
       }
     }
-    notEmptyCondition.notify_one();
-  }
 
-  inline std::optional<T> take() {
-    std::lock_guard lock(mutex);
-    if (!count) {
-      return {};
+    bool full() {
+      uint32_t h = head.load(std::memory_order_relaxed);
+      uint32_t t = tail.load(std::memory_order_acquire);
+      return h - t >= static_cast<uint32_t>(Size);
     }
-    overflow = false;
-    T event = values[head];
-    head = (head + 1) % Size;
-    count--;
-    notFullCondition.notify_one();
-    return {event};
-  }
 
-  inline T wait_for_values() {
-    std::unique_lock lock(mutex);
-    notEmptyCondition.wait(lock, [this]() { return count > 0; });
-    overflow = false;
-    T event = values[head];
-    head = (head + 1) % Size;
-    count--;
-    notFullCondition.notify_one();
-    return event;
-  }
-
-  inline void wait_for_space() {
-    std::unique_lock lock(mutex);
-    if (count >= Size) {
-      notFullCondition.wait(lock, [this]() { return count < Size; });
+    T next() {
+      uint32_t t = tail.load(std::memory_order_relaxed);
+      return values[t & MASK];
     }
-  }
 
-  inline bool empty() {
-    std::lock_guard lock(mutex);
-    return !count;
-  }
+  private:
+    std::array<T, Size> values;
+  };
 
-  inline bool full() {
-    std::lock_guard lock(mutex);
-    return count >= Size;
-  }
-
-  inline bool overflowed() {
-    std::lock_guard lock(mutex);
-    return overflow;
-  }
-
-  inline size_t size() {
-    std::lock_guard lock(mutex);
-    return count;
-  }
-
-  inline T next() {
-    std::lock_guard lock(mutex);
-    return values[head];
-  }
-
-private:
-  std::array<T, Size> values;
-  size_t head;
-  size_t tail;
-  size_t count;
-  bool overflow;
-  bool allow_overflow;
-  std::mutex mutex;
-  std::condition_variable notEmptyCondition;
-  std::condition_variable notFullCondition;
-};
+  constexpr size_t EVDEV_RING_BUFFER_SIZE = 64;
+  using EvdevRingBuffer = RingBuffer<input_event, EVDEV_RING_BUFFER_SIZE>;
+  extern template class LIBBLIGHT_EXPORT
+    RingBuffer<input_event, EVDEV_RING_BUFFER_SIZE>;
+}
