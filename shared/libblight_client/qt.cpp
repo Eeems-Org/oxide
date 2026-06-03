@@ -2,6 +2,7 @@
 #include "fb.h"
 #include "state.h"
 
+#include <cstdint>
 #include <cstdlib>
 #include <dlfcn.h>
 #include <fcntl.h>
@@ -88,9 +89,9 @@ namespace Qt {
 }
 
 // Runtime pointers to real QImage methods (resolved once via dlsym).
-struct QFuncs {
-  void (*ctor)(void*, char*, int, int, int, int, void*, void*);
-  void (*dtor)(void*);
+struct QImageFuncs {
+  void (*constructor)(void*, char*, int, int, int, int, void*, void*);
+  void (*destructor)(void*);
   unsigned char* (*bits)(void*);
   const unsigned char* (*constScanLine)(void*, int);
   int (*width)(void*);
@@ -100,7 +101,7 @@ struct QFuncs {
   bool ok;
 };
 
-static QFuncs qImageFuncs;
+static QImageFuncs qImageFuncs;
 
 /*!
  * \brief Get various QImage function pointers
@@ -110,10 +111,10 @@ resolve_qimage_funcs() {
   if (qImageFuncs.ok) {
     return;
   }
-  qImageFuncs.ctor = reinterpret_cast<decltype(qImageFuncs.ctor)>(
+  qImageFuncs.constructor = reinterpret_cast<decltype(qImageFuncs.constructor)>(
     dlsym(RTLD_DEFAULT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_")
   );
-  qImageFuncs.dtor = reinterpret_cast<decltype(qImageFuncs.dtor)>(
+  qImageFuncs.destructor = reinterpret_cast<decltype(qImageFuncs.destructor)>(
     dlsym(RTLD_DEFAULT, "_ZN6QImageD1Ev")
   );
   qImageFuncs.bits = reinterpret_cast<decltype(qImageFuncs.bits)>(
@@ -136,10 +137,10 @@ resolve_qimage_funcs() {
   qImageFuncs.format = reinterpret_cast<decltype(qImageFuncs.format)>(
     dlsym(RTLD_DEFAULT, "_ZNK6QImage6formatEv")
   );
-  qImageFuncs.ok = qImageFuncs.ctor && qImageFuncs.dtor && qImageFuncs.bits &&
-                   qImageFuncs.constScanLine && qImageFuncs.width &&
-                   qImageFuncs.height && qImageFuncs.bytesPerLine &&
-                   qImageFuncs.format;
+  qImageFuncs.ok = qImageFuncs.constructor && qImageFuncs.destructor &&
+                   qImageFuncs.bits && qImageFuncs.constScanLine &&
+                   qImageFuncs.width && qImageFuncs.height &&
+                   qImageFuncs.bytesPerLine && qImageFuncs.format;
   if (!qImageFuncs.ok) {
     _WARN("%s", "Failed to resolve QImage runtime functions");
   }
@@ -379,17 +380,73 @@ validate_swapbuffers(void* func) {
   return true;
 }
 
+// Runtime pointers to real QPainter methods (resolved once via dlsym).
+struct QPainterFuncs {
+  void (*constructor)(void*, void*);
+  void (*destructor)(void*);
+  void (*drawImage)(void*, const void*, const void*, const void*, int);
+  bool ok;
+};
+
+static QPainterFuncs qPainterFuncs;
+
 /*!
- * \brief Copy the contents of a QImage to a buffer.
- * \param qimage pointer to the qimage instance
- * \param buffer The buffer to copy into
- * \param size if this is 0 or lower it will be calculated from the qimage
- * \return If the copy was successful
+ * \brief Resolve QPainter function pointers via dlsym
  */
-bool
-copy_qimage_to_buffer(void* qimage, void* buffer, size_t size) {
-  if (buffer == nullptr) {
-    _WARN("%s", "copy_qimage_to_buffer: buffer is null");
+static void
+resolve_qpainter_funcs() {
+  if (qPainterFuncs.ok) {
+    return;
+  }
+  qPainterFuncs.constructor =
+    reinterpret_cast<decltype(qPainterFuncs.constructor)>(
+      dlsym(RTLD_DEFAULT, "_ZN8QPainterC1EP12QPaintDevice")
+    );
+  qPainterFuncs.destructor =
+    reinterpret_cast<decltype(qPainterFuncs.destructor)>(
+      dlsym(RTLD_DEFAULT, "_ZN8QPainterD1Ev")
+    );
+  qPainterFuncs.drawImage =
+    reinterpret_cast<decltype(qPainterFuncs.drawImage)>(dlsym(
+      RTLD_DEFAULT,
+      "_ZN8QPainter9drawImageERK6QRectFRK6QImageS2_"
+      "6QFlagsIN2Qt19ImageConversionFlagEE"
+    ));
+  qPainterFuncs.ok = qPainterFuncs.constructor && qPainterFuncs.destructor &&
+                     qPainterFuncs.drawImage;
+  if (!qPainterFuncs.ok) {
+    _WARN(
+      "Failed to resolve QPainter runtime functions (ctor=%p dtor=%p "
+      "drawImage=%p)",
+      reinterpret_cast<void*>(qPainterFuncs.constructor),
+      reinterpret_cast<void*>(qPainterFuncs.destructor),
+      reinterpret_cast<void*>(qPainterFuncs.drawImage)
+    );
+  }
+}
+
+/*!
+ * \brief Copy a QImage's pixel data into a destination buffer,
+ *        converting pixel format via QPainter if needed.
+ *
+ * \param src       Pointer to the source QImage object
+ * \param dst_data  Pointer to the destination raw pixel buffer
+ * \param dst_fmt   BlightImageFormat of the destination
+ * \param dst_w     Width of the destination in pixels
+ * \param dst_h     Height of the destination in pixels
+ * \param dst_stride Bytes per line of the destination
+ * \return true on success, false on error (sets errno)
+ */
+static bool
+copy_qimage_with_format_conversion(
+  void* src,
+  void* dst_data,
+  int dst_fmt,
+  int dst_w,
+  int dst_h,
+  int dst_stride
+) {
+  if (src == nullptr || dst_data == nullptr) {
     errno = EFAULT;
     return false;
   }
@@ -398,11 +455,72 @@ copy_qimage_to_buffer(void* qimage, void* buffer, size_t size) {
     errno = EBADFD;
     return false;
   }
-  if (size <= 0) {
-    size = static_cast<size_t>(qImageFuncs.bytesPerLine(qimage)) *
-           static_cast<size_t>(qImageFuncs.height(qimage));
+  int src_fmt = qImageFuncs.format(src);
+  int src_w = qImageFuncs.width(src);
+  int src_h = qImageFuncs.height(src);
+  int src_stride = qImageFuncs.bytesPerLine(src);
+  auto* src_bits = qImageFuncs.bits(src);
+  if (
+    src_fmt == dst_fmt && src_w == dst_w && src_h == dst_h &&
+    src_stride == dst_stride
+  ) {
+    memcpy(
+      dst_data,
+      src_bits,
+      static_cast<size_t>(dst_stride) * static_cast<size_t>(dst_h)
+    );
+    return true;
   }
-  memcpy(buffer, qImageFuncs.bits(qimage), size);
+  if (src_fmt == dst_fmt && src_w == dst_w && src_h == dst_h) {
+    auto row_bytes =
+      static_cast<size_t>(dst_stride) < static_cast<size_t>(src_stride)
+        ? static_cast<size_t>(dst_stride)
+        : static_cast<size_t>(src_stride);
+    for (int y = 0; y < dst_h; ++y) {
+      memcpy(
+        static_cast<char*>(dst_data) + y * dst_stride,
+        src_bits + y * src_stride,
+        row_bytes
+      );
+    }
+    return true;
+  }
+  resolve_qpainter_funcs();
+  if (!qPainterFuncs.ok) {
+    _WARN("%s", "copy_qimage_with_format_conversion: QPainter not available");
+    errno = ENOSYS;
+    return false;
+  }
+#if defined(__aarch64__)
+  alignas(16) char dst_qimage_buf[128] = {};
+  alignas(16) char painter_buf[128] = {};
+#elif defined(__arm__)
+  alignas(8) char dst_qimage_buf[128] = {};
+  alignas(8) char painter_buf[128] = {};
+#else
+  char dst_qimage_buf[128] = {};
+  char painter_buf[128] = {};
+#endif
+  qImageFuncs.constructor(
+    dst_qimage_buf,
+    static_cast<char*>(dst_data),
+    dst_w,
+    dst_h,
+    dst_stride,
+    dst_fmt,
+    nullptr,
+    nullptr
+  );
+  qPainterFuncs.constructor(painter_buf, dst_qimage_buf);
+  Qt::QRectFLayout dst_rect = {
+    0.0, 0.0, static_cast<double>(dst_w), static_cast<double>(dst_h)
+  };
+  Qt::QRectFLayout src_rect = {
+    0.0, 0.0, static_cast<double>(src_w), static_cast<double>(src_h)
+  };
+  qPainterFuncs.drawImage(painter_buf, &dst_rect, src, &src_rect, 0);
+  qPainterFuncs.destructor(painter_buf);
+  qImageFuncs.destructor(dst_qimage_buf);
   return true;
 }
 
@@ -516,12 +634,16 @@ hook_swapBuffers_QRegion(
     );
     return;
   }
-  void* mainBuffer = static_cast<char*>(epframebuffer) + mainBufferOffset();
-  copy_qimage_to_buffer(
-    mainBuffer,
-    Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
-    0
-  );
+  if (!copy_qimage_with_format_conversion(
+        static_cast<char*>(epframebuffer) + mainBufferOffset(),
+        Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
+        Client::HANDLE_FB ? FB::buffer->format : FB::deviceFormat(),
+        Client::HANDLE_FB ? FB::buffer->width : FB::deviceXres(),
+        Client::HANDLE_FB ? FB::buffer->height : FB::deviceYres(),
+        Client::HANDLE_FB ? FB::buffer->stride : FB::deviceStride()
+      )) {
+    _WARN("Failed to convert image: %s", std::strerror(errno));
+  }
   auto dit = begin_fn(region);
   auto dend = end_fn(region);
   if (dit && dend) {
@@ -580,12 +702,16 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
     );
   }
   _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
-  void* mainBuffer = static_cast<char*>(this_ptr) + mainBufferOffset();
-  copy_qimage_to_buffer(
-    mainBuffer,
-    Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
-    0
-  );
+  if (!copy_qimage_with_format_conversion(
+        static_cast<char*>(epframebuffer) + mainBufferOffset(),
+        Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
+        Client::HANDLE_FB ? FB::buffer->format : FB::deviceFormat(),
+        Client::HANDLE_FB ? FB::buffer->width : FB::deviceXres(),
+        Client::HANDLE_FB ? FB::buffer->height : FB::deviceYres(),
+        Client::HANDLE_FB ? FB::buffer->stride : FB::deviceStride()
+      )) {
+    _WARN("Failed to convert image: %s", std::strerror(errno));
+  }
   repaint(
     &rect, Qt::epsm_to_waveform(waveform), Qt::flags_to_update_mode(flags)
   );

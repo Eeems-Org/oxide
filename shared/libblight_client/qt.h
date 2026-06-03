@@ -9,6 +9,12 @@ namespace Qt {
     int32_t right;
     int32_t bottom;
   } QRectLayout;
+  typedef struct {
+    double x;
+    double y;
+    double width;
+    double height;
+  } QRectFLayout;
   typedef void (*qregion_constructor_t)(void* this_ptr, const void* rect);
   typedef void (*qregion_destructor_t)(void* this_ptr);
   typedef const QRectLayout* (*qregion_begin_t)(const void* this_ptr);
