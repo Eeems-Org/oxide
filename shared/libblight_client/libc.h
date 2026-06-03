@@ -27,9 +27,13 @@ namespace Libc {
   extern bool (*setenv)(const char*, const char*, int);
   extern int (*read)(int, void*, size_t);
   extern int (*poll)(struct pollfd*, nfds_t, int);
-  extern int (*ppoll)(struct pollfd*, nfds_t, const struct timespec*, const sigset_t*);
+  extern int (*ppoll)(
+    struct pollfd*,
+    nfds_t,
+    const struct timespec*,
+    const sigset_t*
+  );
   extern int (*select)(int, fd_set*, fd_set*, fd_set*, struct timeval*);
-  extern int (*epoll_create1)(int);
   extern int (*epoll_ctl)(int, int, int, struct epoll_event*);
   extern int (*epoll_wait)(int, struct epoll_event*, int, int);
 }

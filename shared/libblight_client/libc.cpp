@@ -81,17 +81,31 @@ namespace Libc {
   int (*read)(int, void*, size_t) =
     (int (*)(int, void*, size_t))dlsym(RTLD_NEXT, "read");
 
-  int (*poll)(struct pollfd*, nfds_t, int) =
-    (int (*)(struct pollfd*, nfds_t, int))dlvsym(RTLD_NEXT, "poll", "GLIBC_2.4");
+  int (*poll)(struct pollfd*, nfds_t, int) = (int (*)(
+    struct pollfd*,
+    nfds_t,
+    int
+  ))dlvsym(RTLD_NEXT, "poll", "GLIBC_2.4");
 
-  int (*ppoll)(struct pollfd*, nfds_t, const struct timespec*, const sigset_t*) =
-    (int (*)(struct pollfd*, nfds_t, const struct timespec*, const sigset_t*))dlvsym(RTLD_NEXT, "ppoll", "GLIBC_2.4");
+  int (*ppoll)(
+    struct pollfd*,
+    nfds_t,
+    const struct timespec*,
+    const sigset_t*
+  ) =
+    (int (*)(
+      struct pollfd*,
+      nfds_t,
+      const struct timespec*,
+      const sigset_t*
+    ))dlvsym(RTLD_NEXT, "ppoll", "GLIBC_2.4");
 
   int (*select)(int, fd_set*, fd_set*, fd_set*, struct timeval*) =
-    (int (*)(int, fd_set*, fd_set*, fd_set*, struct timeval*))dlvsym(RTLD_NEXT, "select", "GLIBC_2.4");
-
-  int (*epoll_create1)(int) =
-    (int (*)(int))dlsym(RTLD_NEXT, "epoll_create1");
+    (int (*)(int, fd_set*, fd_set*, fd_set*, struct timeval*))dlvsym(
+      RTLD_NEXT,
+      "select",
+      "GLIBC_2.4"
+    );
 
   int (*epoll_ctl)(int, int, int, struct epoll_event*) =
     (int (*)(int, int, int, struct epoll_event*))dlsym(RTLD_NEXT, "epoll_ctl");

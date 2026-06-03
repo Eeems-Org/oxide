@@ -167,14 +167,12 @@ mmap_framebuffer() {
   struct stat st;
   if (fstat(FB::frameBuffer, &st) < 0) {
     _WARN("%s", "redirect: fstat(FB::frameBuffer) failed");
-    close(FB::frameBuffer);
     return {nullptr, 0};
   }
   auto len = static_cast<size_t>(st.st_size);
   ptr =
     mmap(nullptr, len, PROT_READ | PROT_WRITE, MAP_SHARED, FB::frameBuffer, 0);
   auto err = errno;
-  close(FB::frameBuffer);
   if (ptr == MAP_FAILED) {
     _WARN("redirect: mmap(FB::frameBuffer) failed: %s", std::strerror(err));
     return {nullptr, 0};
@@ -390,6 +388,11 @@ validate_swapbuffers(void* func) {
  */
 bool
 copy_qimage_to_buffer(void* qimage, void* buffer, size_t size) {
+  if (buffer == nullptr) {
+    _WARN("%s", "copy_qimage_to_buffer: buffer is null");
+    errno = EFAULT;
+    return false;
+  }
   resolve_qimage_funcs();
   if (!qImageFuncs.ok) {
     errno = EBADFD;
@@ -461,22 +464,25 @@ dump_buffers() {
     _DEBUG("dump_buffers: epframebufferInstance not set yet, skipping");
     return;
   }
+  void* data = Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first;
+  if (data != nullptr) {
+    int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd <= 0) {
+      _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
+      return;
+    }
+    ::write(
+      fd,
+      data,
+      Client::HANDLE_FB
+        ? (Client::deviceType == Client::DeviceType::RM2 ? 26359808
+                                                         : FB::buffer->size())
+        : mmap_framebuffer().second
+    );
+    ::close(fd);
+  }
   auto auxBuffer = static_cast<char*>(epframebuffer) + auxBufferOffset();
   auto mainBuffer = static_cast<char*>(epframebuffer) + mainBufferOffset();
-  int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (fd <= 0) {
-    _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
-    return;
-  }
-  ::write(
-    fd,
-    Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
-    Client::HANDLE_FB
-      ? (Client::deviceType == Client::DeviceType::RM2 ? 26359808
-                                                       : FB::buffer->size())
-      : mmap_framebuffer().second
-  );
-  ::close(fd);
   dump_qimage_buffer(auxBuffer, "/tmp/auxBuffer.raw");
   dump_qimage_buffer(mainBuffer, "/tmp/mainBuffer.raw");
 }
@@ -562,13 +568,15 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   int pixelMode,
   int flags
 ) {
-  void* empty = nullptr;
+  void* epframebuffer = nullptr;
   epframebufferInstance.compare_exchange_strong(
-    empty, this_ptr, std::memory_order_relaxed
+    epframebuffer, this_ptr, std::memory_order_relaxed
   );
-  if (empty != this_ptr) {
+  if (epframebuffer != this_ptr) {
     _WARN(
-      "epframebufferInstance does not match this_ptr: %p != %p", empty, this_ptr
+      "epframebufferInstance does not match this_ptr: %p != %p",
+      epframebuffer,
+      this_ptr
     );
   }
   _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
