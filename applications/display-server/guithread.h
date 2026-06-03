@@ -5,6 +5,7 @@
 #include <liboxide/threading.h>
 
 #include <QMetaType>
+#include <QMutex>
 #include <QQueue>
 #include <QSemaphore>
 #include <QThread>

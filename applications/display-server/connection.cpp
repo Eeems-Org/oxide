@@ -5,6 +5,7 @@
 #include <liboxide/debug.h>
 #include <liboxide/signalhandler.h>
 #include <memory>
+#include <mutex>
 #include <signal.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
@@ -43,7 +44,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
   , m_closed{false}
   , pingId{0}
   , m_surfaceId{0}
-  , m_lastEventOffset{0} {
+  , m_lastEventOffset{sizeof(Blight::event_packet_t)} {
   m_pidFd = pidfd_open(m_pid, 0);
   if (m_pidFd < 0) {
     O_WARNING(std::strerror(errno));
@@ -90,15 +91,6 @@ Connection::Connection(pid_t pid, pid_t pgid)
     &m_notRespondingTimer, &QTimer::timeout, this, &Connection::notResponding
   );
   m_notRespondingTimer.start();
-
-  m_inputQueueTimer.setParent(this);
-  m_inputQueueTimer.setTimerType(Qt::PreciseTimer);
-  m_inputQueueTimer.setInterval(10);
-  m_inputQueueTimer.setSingleShot(true);
-  connect(
-    &m_inputQueueTimer, &QTimer::timeout, this, &Connection::processInputEvents
-  );
-
   C_INFO("Connection created");
 }
 
@@ -241,7 +233,6 @@ Connection::close() {
   if (!m_closed.test_and_set()) {
     m_pingTimer.stop();
     m_notRespondingTimer.stop();
-    m_inputQueueTimer.stop();
     {
       QReadLocker _locker(&surfacesLock);
       for (auto& item : surfaces) {
@@ -348,6 +339,9 @@ Connection::inputEvents(
     dbusInterface->sortZ();
     return;
   }
+  if (!events.size()) {
+    return;
+  }
   // TODO - don't allow queue to grow forever
   //        instead clear and properly send SYN_DROPPED for proper devices
   //        when it grows too large
@@ -360,27 +354,24 @@ Connection::inputEvents(
     event.type = ie.type;
     event.code = ie.code;
     event.value = ie.value;
-    m_inputQueue.push(packet);
+    m_inputQueue.enqueue(packet);
   }
   processInputEvents();
 }
 void
 Connection::processInputEvents() {
-  if (m_inputQueue.empty()) {
-    return;
-  }
-  while (!m_inputQueue.empty()) {
+  std::lock_guard lock(processQueueMutex);
+  for (;;) {
     if (m_lastEventOffset >= sizeof(Blight::event_packet_t)) {
-      // Should never be larger than size, only check in debug builds
-      assert(m_lastEventOffset <= sizeof(Blight::event_packet_t));
       // Last send sent full packet, move to the next one
+      if (!m_inputQueue.try_dequeue(m_lastEvent)) {
+        break;
+      }
       m_lastEventOffset = 0;
-      m_inputQueue.pop();
-      continue;
     }
     int res = send(
       m_serverInputFd,
-      reinterpret_cast<const char*>(&m_inputQueue.front()) + m_lastEventOffset,
+      reinterpret_cast<const char*>(&m_lastEvent) + m_lastEventOffset,
       sizeof(Blight::event_packet_t) - m_lastEventOffset,
       MSG_EOR | MSG_NOSIGNAL
     );
@@ -395,7 +386,7 @@ Connection::processInputEvents() {
     }
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       // socket is blocking, try again later
-      m_inputQueueTimer.start();
+      Oxide::runLater(thread(), [this] { processInputEvents(); });
       break;
     }
     C_WARNING("Failed to write input event: " << std::strerror(errno));

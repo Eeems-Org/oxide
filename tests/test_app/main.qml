@@ -25,7 +25,7 @@ OxideWindow{
     centerMenu: [
         Label{
             color: "white"
-            text: "Hello World!"
+            text: "Ctrl-Q, Ctrl-W, Backspace, or Escape to quit"
         }
 
     ]
@@ -104,20 +104,25 @@ OxideWindow{
                 onClicked: canvas.penWidth = 24
             }
         }
-        Label{
-            id: message
-            text: "Ctrl-Q, Ctrl-W, Backspace, or Escape to quit"
-            color: "black"
-            anchors.centerIn: parent
-        }
         Canvas{
             id: canvas
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: buttons.bottom
             anchors.bottom: parent.bottom
-            onDrawStart: message.visible = false
-            onDrawDone: message.visible = true
+        }
+        MultiPointTouchArea {
+            anchors.fill: canvas
+            touchPoints: [ TouchPoint { id: tp } ]
+            onPressed: {
+                canvas.startStroke(Qt.point(tp.x, tp.y))
+            }
+            onUpdated: {
+                canvas.drawLine(Qt.point(tp.x, tp.y))
+            }
+            onReleased: {
+                canvas.endStroke()
+            }
         }
     }
 }

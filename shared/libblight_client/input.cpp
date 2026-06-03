@@ -153,7 +153,7 @@ namespace Input {
           return -1;
         }
       } else {
-        ringBuf.wait();
+        ringBuf.wait_for_values();
       }
       if (count < max_events) {
         events[count] = {.type = EV_SYN, .code = SYN_DROPPED, .value = 1};
@@ -176,7 +176,7 @@ namespace Input {
       return count * sizeof(input_event);
     }
     if (count == 0) {
-      events[count] = ringBuf.wait();
+      events[count] = ringBuf.wait_for_values();
       count++;
     }
     while (count < max_events) {

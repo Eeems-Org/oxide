@@ -30,7 +30,8 @@ HEADERS += \
     meta.h \
     socket.h \
     system.h \
-    types.h
+    types.h \
+    ringbuffer.h
 
 PRECOMPILED_HEADER = \
     libblight_stable.h

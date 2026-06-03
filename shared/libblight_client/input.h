@@ -1,7 +1,7 @@
 #pragma once
-#include "ringbuffer.h"
-
 #include <libblight.h>
+#include <libblight/ringbuffer.h>
+
 #include <linux/input.h>
 #include <map>
 #include <mutex>

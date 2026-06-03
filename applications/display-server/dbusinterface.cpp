@@ -147,7 +147,7 @@ DbusInterface::loadComponent(
 std::shared_ptr<Surface>
 DbusInterface::getSurface(QString identifier) {
   QReadLocker _locker(&connectionsLock);
-  for (auto connection : qAsConst(connections)) {
+  for (auto connection : std::as_const(connections)) {
     if (!connection->isRunning()) {
       continue;
     }
@@ -336,7 +336,7 @@ DbusInterface::getSurfaces(QDBusMessage message) {
     return surfaces;
   }
   QReadLocker _locker(&connectionsLock);
-  for (auto connection : qAsConst(connections)) {
+  for (auto connection : std::as_const(connections)) {
     if (!connection->isRunning()) {
       continue;
     }
@@ -679,24 +679,19 @@ DbusInterface::inputEvents(
   const std::vector<input_event>& events
 ) {
   if (m_focused != nullptr) {
-    auto focused = m_focused;
-    Oxide::dispatchToThread(focused->thread(), [focused, device, events] {
-      focused->inputEvents(device, events);
-    });
+    m_focused->inputEvents(device, events);
   }
   QList<std::shared_ptr<Connection>> systemConnections;
   {
     QReadLocker _locker(&connectionsLock);
-    for (auto connection : qAsConst(connections)) {
+    for (auto connection : std::as_const(connections)) {
       if (connection->has("system")) {
         systemConnections.append(connection);
       }
     }
   }
-  for (auto connection : qAsConst(systemConnections)) {
-    Oxide::dispatchToThread(connection->thread(), [connection, device, events] {
-      connection->inputEvents(device, events);
-    });
+  for (auto connection : std::as_const(systemConnections)) {
+    connection->inputEvents(device, events);
   }
 }
 
@@ -709,7 +704,7 @@ std::shared_ptr<Connection>
 DbusInterface::getConnection(QDBusMessage message) {
   pid_t pid = connection().interface()->servicePid(message.service());
   QReadLocker _locker(&connectionsLock);
-  for (auto connection : qAsConst(connections)) {
+  for (auto connection : std::as_const(connections)) {
     if (!connection->isRunning()) {
       continue;
     }
@@ -723,7 +718,7 @@ DbusInterface::getConnection(QDBusMessage message) {
 std::shared_ptr<Connection>
 DbusInterface::getConnection(QString identifier) {
   QReadLocker _locker(&connectionsLock);
-  for (auto connection : qAsConst(connections)) {
+  for (auto connection : std::as_const(connections)) {
     if (connection->id() == identifier) {
       return connection;
     }
@@ -733,7 +728,7 @@ DbusInterface::getConnection(QString identifier) {
 std::shared_ptr<Connection>
 DbusInterface::getConnection(Connection* ptr) {
   QReadLocker _locker(&connectionsLock);
-  for (auto connection : qAsConst(connections)) {
+  for (auto connection : std::as_const(connections)) {
     if (connection.get() == ptr) {
       return connection;
     }
@@ -821,7 +816,7 @@ DbusInterface::createConnection(int pid) {
       return;
     }
     QReadLocker _locker(&connectionsLock);
-    for (auto& ptr : qAsConst(connections)) {
+    for (auto& ptr : std::as_const(connections)) {
       if (ptr == connection && !ptr->has("system")) {
         setFocus(ptr);
         break;
@@ -837,7 +832,7 @@ QList<std::shared_ptr<Surface>>
 DbusInterface::surfaces() {
   QList<std::shared_ptr<Surface>> surfaces;
   QReadLocker _locker(&connectionsLock);
-  for (auto& connection : qAsConst(connections)) {
+  for (auto& connection : std::as_const(connections)) {
     for (auto& surface : connection->getSurfaces()) {
       surfaces.append(surface);
     }

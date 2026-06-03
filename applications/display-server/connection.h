@@ -1,5 +1,6 @@
 #pragma once
 
+#include <libblight/concurrentqueue.h>
 #include <libblight/connection.h>
 #include <linux/input.h>
 
@@ -7,14 +8,15 @@
 #include <QImage>
 #include <QList>
 #include <QLocalSocket>
-#include <QMutex>
 #include <QObject>
 #include <QReadWriteLock>
 #include <QRect>
 #include <QSocketNotifier>
 #include <QString>
 #include <QTimer>
+
 #include <memory>
+#include <mutex>
 #include <queue>
 
 #include "surface.h"
@@ -85,9 +87,10 @@ private:
   std::atomic_uint pingId;
   std::atomic_ushort m_surfaceId;
   QStringList flags;
-  std::queue<Blight::event_packet_t> m_inputQueue;
+  moodycamel::ConcurrentQueue<Blight::event_packet_t> m_inputQueue;
+  Blight::event_packet_t m_lastEvent;
   unsigned int m_lastEventOffset;
-  QTimer m_inputQueueTimer;
+  std::mutex processQueueMutex;
 
   void
   ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);

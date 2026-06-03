@@ -10,6 +10,7 @@
 #include <QFileInfo>
 #include <QKeyEvent>
 #include <cstring>
+#include <utility>
 
 #include "dbusinterface.h"
 
@@ -51,7 +52,7 @@ EvDevHandler::~EvDevHandler() {}
 void
 EvDevHandler::clear_buffers() {
   m_clearing = true;
-  for (auto input : qAsConst(devices)) {
+  for (auto input : std::as_const(devices)) {
     input->clear_buffer();
   }
   m_clearing = false;
@@ -59,7 +60,7 @@ EvDevHandler::clear_buffers() {
 
 bool
 EvDevHandler::hasDevice(event_device device) {
-  for (auto input : qAsConst(devices)) {
+  for (auto input : std::as_const(devices)) {
     if (device.device.c_str() == input->path()) {
       return true;
     }

@@ -5,6 +5,7 @@
 
 #include <QDebug>
 #include <QFileInfo>
+#include <utility>
 
 OxideEventManager::OxideEventManager(const QStringList& parameters)
   : QObject()
@@ -30,7 +31,7 @@ OxideEventManager::setup(
 ) {
   if (auto deviceDiscovery = QDeviceDiscovery::create(privateTypes, this)) {
     auto devices = deviceDiscovery->scanConnectedDevices();
-    for (const QString& device : qAsConst(devices)) {
+    for (const QString& device : std::as_const(devices)) {
       deviceDetected(publicType, device);
     }
     connect(

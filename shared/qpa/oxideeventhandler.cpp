@@ -323,6 +323,7 @@ OxideEventHandler::readyRead() {
       default:
         continue;
     }
+    QWindowSystemInterface::flushWindowSystemEvents();
   }
   m_notifier->setEnabled(true);
 }
