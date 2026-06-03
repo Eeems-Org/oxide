@@ -360,7 +360,9 @@ Connection::inputEvents(
 }
 void
 Connection::processInputEvents() {
-  std::lock_guard lock(processQueueMutex);
+  if (!processQueueMutex.try_lock()) {
+    return;
+  }
   for (;;) {
     if (m_lastEventOffset >= sizeof(Blight::event_packet_t)) {
       // Last send sent full packet, move to the next one
@@ -380,17 +382,20 @@ Connection::processInputEvents() {
       m_lastEventOffset += res;
       continue;
     }
-    if (errno == EINTR) {
-      // We were interrupted, try again
-      continue;
-    }
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       // socket is blocking, try again later
       Oxide::runLater(thread(), [this] { processInputEvents(); });
       break;
     }
-    C_WARNING("Failed to write input event: " << std::strerror(errno));
+    if (errno == EBADF) {
+      break;
+    }
+    if (errno != EINTR) {
+      C_WARNING("Failed to write input event: " << std::strerror(errno));
+      break;
+    }
   }
+  processQueueMutex.unlock();
 }
 
 bool
@@ -422,12 +427,9 @@ Connection::readSocket() {
 #endif
   while (true) {
     auto message = Blight::message_t::from_socket(m_serverFd);
-    if (message == nullptr) {
-      QThread::msleep(1);
-      continue;
-    }
-    if (message->header.type == Blight::MessageType::Invalid) {
-      C_WARNING("Invalid message");
+    if (
+      message == nullptr || message->header.type == Blight::MessageType::Invalid
+    ) {
       break;
     }
 #ifndef ACK_DEBUG

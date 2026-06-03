@@ -159,12 +159,12 @@ Blight::message_ptr_t
 Blight::message_t::from_socket(int fd) {
   auto message = Blight::message_t::new_ptr();
   if (message == nullptr) {
-    return message;
+    return nullptr;
   }
   BlightProtocol::blight_message_t* m;
   int res = blight_message_from_socket(fd, &m);
   if (res < 0) {
-    return message;
+    return nullptr;
   }
   memcpy(&message->header, &m->header, sizeof(BlightProtocol::blight_header_t));
   message->data = shared_data_t(m->data);

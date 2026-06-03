@@ -81,7 +81,9 @@ namespace Oxide {
   }
 
   void runLater(QThread* thread, std::function<void()> callback) {
+#ifdef DEBUG_RUN_LATER
     O_DEBUG("Run later on thread" << thread);
+#endif
     QTimer* timer = new QTimer();
     timer->moveToThread(thread);
     timer->setSingleShot(true);
@@ -89,7 +91,9 @@ namespace Oxide {
       timer, &QTimer::timeout, thread, [timer, callback, thread] {
         callback();
         timer->deleteLater();
+#ifdef DEBUG_RUN_LATER
         O_DEBUG("Ran on thread" << thread);
+#endif
       }
     );
     QMetaObject::invokeMethod(
