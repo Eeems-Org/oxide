@@ -427,6 +427,7 @@ Connection::readSocket() {
       continue;
     }
     if (message->header.type == Blight::MessageType::Invalid) {
+      C_WARNING("Invalid message");
       break;
     }
 #ifndef ACK_DEBUG
