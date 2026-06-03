@@ -32,6 +32,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 namespace {
   void __realpath(const char* pathname, std::string& path) {
@@ -558,6 +559,75 @@ flock(int fd, int op) {
   return Libc::flock(fd, op);
 }
 symver(flock);
+
+__attribute__((visibility("default"))) int
+poll(struct pollfd* fds, nfds_t nfds, int timeout) {
+  if (Client::INITIALIZED) {
+    Input::translatePollfds(fds, nfds);
+  }
+  int res = Libc::poll(fds, nfds, timeout);
+  if (Client::INITIALIZED) {
+    Input::restorePollfds(fds, nfds);
+  }
+  return res;
+}
+symver(poll);
+
+__attribute__((visibility("default"))) int
+ppoll(
+  struct pollfd* fds,
+  nfds_t nfds,
+  const struct timespec* tmo,
+  const sigset_t* sigmask
+) {
+  if (Client::INITIALIZED) {
+    Input::translatePollfds(fds, nfds);
+  }
+  int res = Libc::ppoll(fds, nfds, tmo, sigmask);
+  if (Client::INITIALIZED) {
+    Input::restorePollfds(fds, nfds);
+  }
+  return res;
+}
+symver(ppoll);
+
+__attribute__((visibility("default"))) int
+select(
+  int nfds,
+  fd_set* readfds,
+  fd_set* writefds,
+  fd_set* exceptfds,
+  struct timeval* timeout
+) {
+  int origNfds = nfds;
+  if (Client::INITIALIZED) {
+    origNfds = Input::translateSelectFds(nfds, readfds, writefds, exceptfds);
+  }
+  int res = Libc::select(nfds, readfds, writefds, exceptfds, timeout);
+  if (Client::INITIALIZED) {
+    Input::restoreSelectFds(origNfds, nfds, readfds, writefds, exceptfds);
+  }
+  return res;
+}
+symver(select);
+
+__attribute__((visibility("default"))) int
+epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
+  if (Client::INITIALIZED && Input::deviceDescriptors.contains(fd)) {
+    return Input::epoll_ctl(epfd, op, fd, ev);
+  }
+  return Libc::epoll_ctl(epfd, op, fd, ev);
+}
+symver(epoll_ctl);
+
+__attribute__((visibility("default"))) int
+epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout) {
+  if (Client::INITIALIZED && Input::hasEpollInterest(epfd)) {
+    return Input::epoll_wait(epfd, events, maxevents, timeout);
+  }
+  return Libc::epoll_wait(epfd, events, maxevents, timeout);
+}
+symver(epoll_wait);
 
 void __attribute__((constructor))
 init(void);
