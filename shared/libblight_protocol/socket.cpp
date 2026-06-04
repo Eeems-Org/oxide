@@ -1,5 +1,6 @@
 #include "socket.h"
 
+#include <cerrno>
 #include <sys/poll.h>
 #include <sys/socket.h>
 
@@ -209,11 +210,21 @@ wait_for(int fd, int timeout, int event) {
       errno = ECONNRESET;
       return false;
     }
+    // Invalid request
+    if (pfd.revents & POLLNVAL) {
+      errno = EINVAL;
+      return false;
+    }
     // Event triggered
     if (pfd.revents & event) {
       return true;
     }
-    // This should never happen, but just in case try again
+    // This should never happen
+    int error = 0;
+    socklen_t errorsize = sizeof(error);
+    getsockopt(fd, SOL_SOCKET, SO_ERROR, (void*)&error, &errorsize);
+    errno = error;
+    return false;
   }
 }
 namespace BlightProtocol {
