@@ -13,13 +13,13 @@
 
 namespace Input {
   struct DeviceInfo {
-    int device;
+    unsigned int device;
     int flags;
   };
 
   extern std::map<int, Blight::EvdevRingBuffer> ringBuffers;
   extern std::map<int, DeviceInfo> deviceDescriptors;
-  extern std::map<int, int> deviceEventFds;
+  extern std::map<unsigned int, int> deviceEventFds;
   extern std::map<int, std::map<int, struct epoll_event>> epollMap;
   extern std::mutex mutex;
 
@@ -30,8 +30,8 @@ namespace Input {
   int ioctlv(int fd, unsigned long request, char* ptr);
   ssize_t read(int fd, void* buf, size_t size);
   int fcntl(int fd, int cmd, void* ptr);
-  void translatePollfds(struct pollfd* fds, nfds_t nfds);
-  void restorePollfds(struct pollfd* fds, nfds_t nfds);
+  struct pollfd* translatePollfds(struct pollfd* fds, nfds_t nfds);
+  void restorePollfds(struct pollfd* fds, nfds_t nfds, struct pollfd* backup);
   int translateSelectFds(
     int& nfds,
     fd_set* readfds,
@@ -39,11 +39,11 @@ namespace Input {
     fd_set* exceptfds
   );
   void restoreSelectFds(
-    int orig_nfds,
-    int mod_nfds,
+    int nfds,
     fd_set* readfds,
     fd_set* writefds,
-    fd_set* exceptfds
+    fd_set* exceptfds,
+    int backup
   );
   int epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev);
   int restoreEpollfds(int epfd, struct epoll_event* events, int res);

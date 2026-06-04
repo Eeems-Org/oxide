@@ -24,7 +24,7 @@
 namespace Input {
   std::map<int, Blight::EvdevRingBuffer> ringBuffers{};
   std::map<int, DeviceInfo> deviceDescriptors{};
-  std::map<int, int> deviceEventFds{};
+  std::map<unsigned int, int> deviceEventFds{};
   std::map<int, std::map<int, struct epoll_event>> epollMap{};
   std::mutex mutex{};
 
@@ -34,31 +34,25 @@ namespace Input {
   }
 
   int getEventFd(int fd) {
-    auto it = deviceDescriptors.find(fd);
-    if (it == deviceDescriptors.end()) {
+    if (!deviceDescriptors.contains(fd)) {
       return -1;
     }
-    auto evIt = deviceEventFds.find(it->second.device);
-    if (evIt == deviceEventFds.end()) {
+    auto info = deviceDescriptors[fd];
+    if (!deviceEventFds.contains(info.device)) {
       return -1;
     }
-    return evIt->second;
+    return deviceEventFds[info.device];
   }
 
   int getInputFdByEventFd(int eventFd) {
-    int device = -1;
-    for (auto& [dev, ev_fd] : deviceEventFds) {
-      if (ev_fd == eventFd) {
-        device = dev;
-        break;
+    for (auto& [device, _eventFd] : deviceEventFds) {
+      if (_eventFd != eventFd) {
+        continue;
       }
-    }
-    if (device < 0) {
-      return -1;
-    }
-    for (auto& [inputFd, info] : deviceDescriptors) {
-      if (info.device == device) {
-        return inputFd;
+      for (auto& [inputFd, info] : deviceDescriptors) {
+        if (info.device == device) {
+          return inputFd;
+        }
       }
     }
     return -1;
@@ -110,12 +104,11 @@ namespace Input {
       Blight::EvdevRingBuffer* ringBuf = nullptr;
       {
         std::lock_guard lock{mutex};
-        auto it = ringBuffers.find(device);
-        if (it == ringBuffers.end()) {
+        if (!ringBuffers.contains(device)) {
           _INFO("Ignoring event for unopened device: %d", device);
           continue;
         }
-        ringBuf = &it->second;
+        ringBuf = &ringBuffers[device];
       }
       ringBuf->insert(ev);
       {
@@ -143,6 +136,7 @@ namespace Input {
     }
     std::scoped_lock lock{mutex};
     if (ringBuffers.empty() && Client::HANDLE_INPUT) {
+      _DEBUG("Starting readEvents thread");
       std::thread(readEvents).detach();
     }
     std::string basePath(basename(path.c_str()));
@@ -178,11 +172,12 @@ namespace Input {
     _DEBUG("Closing input fd %d", fd);
     {
       std::scoped_lock lock(mutex);
-      auto devIt = deviceEventFds.find(deviceDescriptors[fd].device);
-      if (devIt != deviceEventFds.end()) {
+      unsigned int device = deviceDescriptors[fd].device;
+      if (deviceEventFds.contains(device)) {
+        int eventFd = deviceEventFds[device];
         for (auto& [epfd, track] : epollMap) {
-          Libc::epoll_ctl(epfd, EPOLL_CTL_DEL, devIt->second, nullptr);
-          track.erase(devIt->second);
+          Libc::epoll_ctl(epfd, EPOLL_CTL_DEL, eventFd, nullptr);
+          track.erase(eventFd);
         }
       }
       deviceDescriptors.erase(fd);
@@ -269,24 +264,26 @@ namespace Input {
     }
   }
 
-  void translatePollfds(struct pollfd* fds, nfds_t nfds) {
+  struct pollfd* translatePollfds(struct pollfd* fds, nfds_t nfds) {
     std::scoped_lock lock(mutex);
+    auto size = sizeof(pollfd) * nfds;
+    auto* backup = (pollfd*)malloc(size);
+    memcpy(backup, fds, size);
     for (nfds_t i = 0; i < nfds; i++) {
       int fd = getEventFd(fds[i].fd);
       if (fd > 0) {
         fds[i].fd = fd;
       }
     }
+    return backup;
   }
 
-  void restorePollfds(struct pollfd* fds, nfds_t nfds) {
+  void restorePollfds(struct pollfd* fds, nfds_t nfds, struct pollfd* backup) {
     std::scoped_lock lock(mutex);
     for (nfds_t i = 0; i < nfds; i++) {
-      int fd = getInputFdByEventFd(fds[i].fd);
-      if (fd > 0) {
-        fds[i].fd = fd;
-      }
+      fds[i].fd = backup[i].fd;
     }
+    free(backup);
   }
 
   int translateSelectFds(
@@ -331,14 +328,14 @@ namespace Input {
   }
 
   void restoreSelectFds(
-    int orig_nfds,
-    int mod_nfds,
+    int nfds,
     fd_set* readfds,
     fd_set* writefds,
-    fd_set* exceptfds
+    fd_set* exceptfds,
+    int backup
   ) {
     std::scoped_lock lock(mutex);
-    for (int fd = 0; fd < mod_nfds; fd++) {
+    for (int fd = 0; fd < nfds; fd++) {
       if (readfds && FD_ISSET(fd, readfds)) {
         int _fd = getInputFdByEventFd(fd);
         if (_fd > 0) {
@@ -361,7 +358,7 @@ namespace Input {
         }
       }
     }
-    for (int fd = orig_nfds; fd < mod_nfds; fd++) {
+    for (int fd = backup; fd < nfds; fd++) {
       if (readfds) {
         FD_CLR(fd, readfds);
       }

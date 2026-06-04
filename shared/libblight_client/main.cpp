@@ -35,6 +35,23 @@
 #endif
 
 namespace {
+#ifdef DEBUG
+  void __sigsegv_handler(int nSignum, siginfo_t* si, void* vcontext) {
+    constexpr int depth = 10;
+    auto uc = (ucontext_t*)vcontext;
+    auto caller_address = (void*)uc->uc_mcontext.arm_pc;
+    void* array[depth];
+    size_t size = ::backtrace(array, depth);
+    array[1] = caller_address;
+    char** messages = ::backtrace_symbols(array, size);
+    std::cerr << "Segmentation fault:" << std::endl;
+    for (size_t i = 1; i < size && messages != NULL; ++i) {
+      std::cerr << "  " << messages[i] << std::endl;
+    }
+    std::_Exit(139);
+  }
+#endif
+
   void __realpath(const char* pathname, std::string& path) {
     char absolutepath[4096];
     if (realpath(pathname, absolutepath) != nullptr) {
@@ -347,6 +364,7 @@ fcntl(int fd, int cmd, ...) {
   va_list args;
   va_start(args, cmd);
   void* ptr = va_arg(args, void*);
+  _DEBUG("fcntl %d %d %p", fd, cmd, ptr);
   int res;
   if (Client::INITIALIZED && Input::isInputFd(fd)) {
     res = Input::fcntl(fd, cmd, ptr);
@@ -569,12 +587,13 @@ symver(flock);
 
 __attribute__((visibility("default"))) int
 poll(struct pollfd* fds, nfds_t nfds, int timeout) {
+  struct pollfd* backup = nullptr;
   if (Client::INITIALIZED) {
-    Input::translatePollfds(fds, nfds);
+    backup = Input::translatePollfds(fds, nfds);
   }
   int res = Libc::poll(fds, nfds, timeout);
-  if (Client::INITIALIZED) {
-    Input::restorePollfds(fds, nfds);
+  if (backup != nullptr) {
+    Input::restorePollfds(fds, nfds, backup);
   }
   return res;
 }
@@ -587,12 +606,13 @@ ppoll(
   const struct timespec* tmo,
   const sigset_t* sigmask
 ) {
+  struct pollfd* backup = nullptr;
   if (Client::INITIALIZED) {
-    Input::translatePollfds(fds, nfds);
+    backup = Input::translatePollfds(fds, nfds);
   }
   int res = Libc::ppoll(fds, nfds, tmo, sigmask);
-  if (Client::INITIALIZED) {
-    Input::restorePollfds(fds, nfds);
+  if (backup != nullptr) {
+    Input::restorePollfds(fds, nfds, backup);
   }
   return res;
 }
@@ -606,13 +626,13 @@ select(
   fd_set* exceptfds,
   struct timeval* timeout
 ) {
-  int origNfds = nfds;
+  int backup;
   if (Client::INITIALIZED) {
-    origNfds = Input::translateSelectFds(nfds, readfds, writefds, exceptfds);
+    backup = Input::translateSelectFds(nfds, readfds, writefds, exceptfds);
   }
   int res = Libc::select(nfds, readfds, writefds, exceptfds, timeout);
   if (Client::INITIALIZED) {
-    Input::restoreSelectFds(origNfds, nfds, readfds, writefds, exceptfds);
+    Input::restoreSelectFds(nfds, readfds, writefds, exceptfds, backup);
   }
   return res;
 }
@@ -644,6 +664,13 @@ void __attribute__((constructor))
 init(void);
 void
 init(void) {
+#ifdef DEBUG
+  struct sigaction action{0};
+  action.sa_flags = SA_SIGINFO;
+  action.sa_sigaction = __sigsegv_handler;
+  sigaction(SIGSEGV, &action, NULL);
+#endif
+
   auto debugLevel = getenv("OXIDE_PRELOAD_DEBUG");
   if (debugLevel != nullptr) {
     try {
@@ -741,24 +768,6 @@ init(void) {
   _DEBUG("blight_client initialized")
 }
 
-#ifdef DEBUG
-void
-__sigsegv_handler(int nSignum, siginfo_t* si, void* vcontext) {
-  constexpr int depth = 10;
-  auto uc = (ucontext_t*)vcontext;
-  auto caller_address = (void*)uc->uc_mcontext.arm_pc;
-  void* array[depth];
-  size_t size = ::backtrace(array, depth);
-  array[1] = caller_address;
-  char** messages = ::backtrace_symbols(array, size);
-  std::cerr << "Segmentation fault:" << std::endl;
-  for (size_t i = 1; i < size && messages != NULL; ++i) {
-    std::cerr << messages[i] << std::endl;
-  }
-  std::_Exit(139);
-}
-#endif
-
 __attribute__((visibility("default"))) int
 __libc_start_main(
   int (*_main)(int, char**, char**),
@@ -772,13 +781,6 @@ __libc_start_main(
   if (Client::FAILED_INIT) {
     return EXIT_FAILURE;
   }
-#ifdef DEBUG
-  struct sigaction action{0};
-  action.sa_flags = SA_SIGINFO;
-  action.sa_sigaction = __sigsegv_handler;
-  sigaction(SIGSEGV, &action, NULL);
-#endif
-
   auto func_main =
     (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
   _DEBUG("Starting main(%d, ...)", argc);
