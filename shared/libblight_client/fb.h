@@ -26,6 +26,15 @@ namespace FB {
   int deviceStride();
   int deviceBitsPerPixel();
   void createBuffer();
+  Blight::maybe_ackid_ptr_t repaint(
+    int x,
+    int y,
+    int width,
+    int height,
+    Blight::WaveformMode waveform,
+    Blight::UpdateMode updateMode,
+    unsigned int marker
+  );
 }
 namespace swtfb {
   struct xochitl_data {

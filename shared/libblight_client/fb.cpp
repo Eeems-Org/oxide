@@ -63,8 +63,7 @@ namespace FB {
     Blight::ClockWatch cw;
     ensure_surface();
     auto region = update->update_region;
-    auto maybe = connection->repaint(
-      buffer,
+    auto maybe = repaint(
       region.left,
       region.top,
       region.width,
@@ -352,13 +351,14 @@ namespace FB {
         Blight::ClockWatch cw;
         mxcfb_update_data* update = reinterpret_cast<mxcfb_update_data*>(ptr);
         auto region = update->update_region;
-        Blight::exclusiveModeRepaint(
+        repaint(
           region.left,
           region.top,
           region.width,
           region.height,
           (Blight::WaveformMode)update->waveform_mode,
-          (Blight::UpdateMode)update->update_mode
+          (Blight::UpdateMode)update->update_mode,
+          0
         );
         _DEBUG("ioctl /dev/fb0 MXCFB_SEND_UPDATE done: %f", cw.elapsed())
         return 0;
@@ -428,9 +428,6 @@ namespace FB {
       case FBIOPAN_DISPLAY: {
         _DEBUG("%s", "ioctl /dev/fb0 FBIOPAN_DISPLAY");
         print_offset(reinterpret_cast<fb_var_screeninfo*>(ptr));
-        // if (Client::deviceType == Client::DeviceType::RM2) {
-        //     Blight::exclusiveModeRepaintFull();
-        // }
         return 0;
       }
       case FBIOBLANK: {
@@ -565,5 +562,23 @@ namespace FB {
     );
     // Initialize the buffer with white (all bytes = 0xFF)
     memset(FB::buffer->data, 0xFF, FB::buffer->size());
+  }
+  Blight::maybe_ackid_ptr_t repaint(
+    int x,
+    int y,
+    int width,
+    int height,
+    Blight::WaveformMode waveform,
+    Blight::UpdateMode updateMode,
+    unsigned int marker
+  ) {
+    if (!Client::HANDLE_FB) {
+      Blight::exclusiveModeRepaint(x, y, width, height, waveform, updateMode);
+      return {};
+    }
+    ensure_surface();
+    return connection->repaint(
+      buffer, x, y, width, height, waveform, updateMode, marker
+    );
   }
 }

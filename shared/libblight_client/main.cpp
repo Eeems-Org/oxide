@@ -37,8 +37,9 @@
 namespace {
   void __realpath(const char* pathname, std::string& path) {
     char absolutepath[4096];
-    realpath(pathname, absolutepath);
-    path = absolutepath;
+    if (realpath(pathname, absolutepath) != nullptr) {
+      path = absolutepath;
+    }
   }
 
   int __open(const char* pathname, int flags) {
@@ -175,8 +176,14 @@ msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
     _DEBUG("%s", "rm2fb ipc repaint");
     auto buf = static_cast<const swtfb::swtfb_update*>(msgp);
     auto region = buf->mdata.update.update_region;
-    FB::connection->repaint(
-      FB::buffer, region.left, region.top, region.width, region.height
+    FB::repaint(
+      region.left,
+      region.top,
+      region.width,
+      region.height,
+      Blight::WaveformMode::HighQualityGrayscale,
+      Blight::UpdateMode::PartialUpdate,
+      0
     );
     return 0;
   }

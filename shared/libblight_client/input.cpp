@@ -101,7 +101,7 @@ namespace Input {
     }
     std::scoped_lock lock{mutex};
     if (ringBuffers.empty() && Client::HANDLE_INPUT) {
-      new std::thread(readEvents);
+      std::thread(readEvents).detach();
     }
     std::string basePath(basename(path.c_str()));
     try {
@@ -190,6 +190,11 @@ namespace Input {
   }
 
   ssize_t read(int fd, void* buf, size_t size) {
+    if (size < sizeof(input_event)) {
+      _WARN("Trying to read too small of an amount from an input fd: %d", size)
+      errno = EINVAL;
+      return -1;
+    }
     auto& info = deviceDescriptors[fd];
     auto* events = static_cast<input_event*>(buf);
     size_t count = 0;

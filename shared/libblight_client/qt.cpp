@@ -545,20 +545,7 @@ repaint(
     waveform,
     updateMode
   );
-  if (!Client::HANDLE_FB) {
-    Blight::exclusiveModeRepaint(
-      rect->left,
-      rect->top,
-      rect->right - rect->left,
-      rect->bottom - rect->top,
-      waveform,
-      updateMode
-    );
-    return;
-  }
-  FB::ensure_surface();
-  FB::connection->repaint(
-    FB::buffer,
+  FB::repaint(
     rect->left,
     rect->top,
     rect->right - rect->left,
@@ -691,10 +678,12 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   int flags
 ) {
   void* epframebuffer = nullptr;
-  epframebufferInstance.compare_exchange_strong(
-    epframebuffer, this_ptr, std::memory_order_relaxed
-  );
-  if (epframebuffer != this_ptr) {
+  if (
+    !epframebufferInstance.compare_exchange_strong(
+      epframebuffer, this_ptr, std::memory_order_relaxed
+    ) &&
+    epframebuffer != this_ptr
+  ) {
     _WARN(
       "epframebufferInstance does not match this_ptr: %p != %p",
       epframebuffer,
@@ -703,7 +692,7 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   }
   _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
   if (!copy_qimage_with_format_conversion(
-        static_cast<char*>(epframebuffer) + mainBufferOffset(),
+        static_cast<char*>(this_ptr) + mainBufferOffset(),
         Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
         Client::HANDLE_FB ? FB::buffer->format : FB::deviceFormat(),
         Client::HANDLE_FB ? FB::buffer->width : FB::deviceXres(),
