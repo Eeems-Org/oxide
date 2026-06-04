@@ -316,7 +316,7 @@ close(int fd) {
       // Maybe actually close it?
       return 0;
     }
-    if (Input::deviceDescriptors.contains(fd)) {
+    if (Input::isInputFd(fd)) {
       return Input::close(fd);
     }
     if (fd == FB::epframebufferLockFd) {
@@ -348,7 +348,7 @@ fcntl(int fd, int cmd, ...) {
   va_start(args, cmd);
   void* ptr = va_arg(args, void*);
   int res;
-  if (Client::INITIALIZED && Input::deviceDescriptors.contains(fd)) {
+  if (Client::INITIALIZED && Input::isInputFd(fd)) {
     res = Input::fcntl(fd, cmd, ptr);
   } else {
     res = Libc::fcntl(fd, cmd, ptr);
@@ -360,7 +360,7 @@ symver(fcntl);
 
 __attribute__((visibility("default"))) ssize_t
 read(int fd, void* buf, size_t count) {
-  if (Client::INITIALIZED && Input::deviceDescriptors.contains(fd)) {
+  if (Client::INITIALIZED && Input::isInputFd(fd)) {
     return Input::read(fd, buf, count);
   }
   return Libc::read(fd, buf, count);
@@ -383,7 +383,7 @@ ioctl(int fd, unsigned long request, ...) {
       va_end(args);
       return res;
     }
-    if (Input::deviceDescriptors.contains(fd)) {
+    if (Input::isInputFd(fd)) {
       int res = Input::ioctlv(fd, request, ptr);
       va_end(args);
       return res;
@@ -620,7 +620,7 @@ symver(select);
 
 __attribute__((visibility("default"))) int
 epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
-  if (Client::INITIALIZED && Input::deviceDescriptors.contains(fd)) {
+  if (Client::INITIALIZED && Input::isInputFd(fd)) {
     return Input::epoll_ctl(epfd, op, fd, ev);
   }
   return Libc::epoll_ctl(epfd, op, fd, ev);

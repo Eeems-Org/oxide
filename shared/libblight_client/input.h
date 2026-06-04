@@ -24,6 +24,7 @@ namespace Input {
   extern std::mutex mutex;
 
   void readEvents();
+  bool isInputFd(int fd);
   int open(const std::string& path, int flags);
   int close(int fd);
   int ioctlv(int fd, unsigned long request, char* ptr);

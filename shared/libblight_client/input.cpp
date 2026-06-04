@@ -11,6 +11,7 @@
 #include <libblight/debug.h>
 #include <libblight/socket.h>
 #include <linux/input.h>
+#include <mutex>
 #include <stdexcept>
 #include <sys/eventfd.h>
 #include <sys/poll.h>
@@ -26,6 +27,42 @@ namespace Input {
   std::map<int, int> deviceEventFds{};
   std::map<int, std::map<int, struct epoll_event>> epollMap{};
   std::mutex mutex{};
+
+  static void drainEventFd(int eventFd) {
+    uint64_t val;
+    Libc::read(eventFd, &val, sizeof(val));
+  }
+
+  int getEventFd(int fd) {
+    auto it = deviceDescriptors.find(fd);
+    if (it == deviceDescriptors.end()) {
+      return -1;
+    }
+    auto evIt = deviceEventFds.find(it->second.device);
+    if (evIt == deviceEventFds.end()) {
+      return -1;
+    }
+    return evIt->second;
+  }
+
+  int getInputFdByEventFd(int eventFd) {
+    int device = -1;
+    for (auto& [dev, ev_fd] : deviceEventFds) {
+      if (ev_fd == eventFd) {
+        device = dev;
+        break;
+      }
+    }
+    if (device < 0) {
+      return -1;
+    }
+    for (auto& [inputFd, info] : deviceDescriptors) {
+      if (info.device == device) {
+        return inputFd;
+      }
+    }
+    return -1;
+  }
 
   void readEvents() {
     _INFO("%s", "InputWorker starting");
@@ -93,6 +130,11 @@ namespace Input {
     _INFO("%s", "InputWorker quitting");
   }
 
+  bool isInputFd(int fd) {
+    std::scoped_lock lock(mutex);
+    return deviceDescriptors.contains(fd);
+  }
+
   int open(const std::string& path, int flags) {
     if (FB::connection->input_handle() < 0) {
       _WARN("%s", "Could not open connection input stream");
@@ -140,31 +182,15 @@ namespace Input {
 
   int close(int fd) {
     _DEBUG("Closing input fd %d", fd);
-    auto& info = deviceDescriptors[fd];
-    int device = info.device;
     {
       std::scoped_lock lock(mutex);
-      auto devIt = deviceEventFds.find(device);
+      auto devIt = deviceEventFds.find(deviceDescriptors[fd].device);
       if (devIt != deviceEventFds.end()) {
         for (auto& [epfd, track] : epollMap) {
           track.erase(devIt->second);
         }
       }
       deviceDescriptors.erase(fd);
-      bool lastFd = true;
-      for (auto& [otherFd, otherInfo] : deviceDescriptors) {
-        if (otherInfo.device == device) {
-          lastFd = false;
-          break;
-        }
-      }
-      if (lastFd) {
-        auto it = deviceEventFds.find(device);
-        if (it != deviceEventFds.end()) {
-          Libc::close(it->second);
-          deviceEventFds.erase(it);
-        }
-      }
     }
     return Libc::close(fd);
   }
@@ -181,36 +207,35 @@ namespace Input {
     }
   }
 
-  // Drain eventfd after reading from ringbuffer to prevent spurious wakeups
-  // on the next epoll_wait/poll/select.  Safe to call even if eventfd has
-  // no pending data (returns EAGAIN which is ignored).
-  static void drainEventFd(int eventFd) {
-    uint64_t val;
-    Libc::read(eventFd, &val, sizeof(val));
-  }
-
   ssize_t read(int fd, void* buf, size_t size) {
     if (size < sizeof(input_event)) {
       _WARN("Trying to read too small of an amount from an input fd: %d", size)
       errno = EINVAL;
       return -1;
     }
-    auto& info = deviceDescriptors[fd];
+    int device;
+    int flags;
+    {
+      std::scoped_lock lock(mutex);
+      auto& info = deviceDescriptors[fd];
+      device = info.device;
+      flags = info.flags;
+    }
     auto* events = static_cast<input_event*>(buf);
     size_t count = 0;
-    if (ringBuffers[info.device].overflowed()) {
+    if (ringBuffers[device].overflowed()) {
       events[count] = {.type = EV_SYN, .code = SYN_DROPPED, .value = 1};
       count++;
     }
     while (count < size / sizeof(input_event)) {
-      if (info.flags & O_NONBLOCK) {
-        auto maybe = ringBuffers[info.device].take();
+      if (flags & O_NONBLOCK) {
+        auto maybe = ringBuffers[device].take();
         if (!maybe.has_value()) {
           break;
         }
         events[count] = *maybe;
       } else {
-        events[count] = ringBuffers[info.device].wait_for_values();
+        events[count] = ringBuffers[device].wait_for_values();
       }
       count++;
     }
@@ -218,17 +243,15 @@ namespace Input {
       errno = EAGAIN;
       return -1;
     }
-    {
-      std::lock_guard lock{mutex};
-      auto it = deviceEventFds.find(info.device);
-      if (it != deviceEventFds.end()) {
-        drainEventFd(it->second);
-      }
+    auto it = deviceEventFds.find(device);
+    if (it != deviceEventFds.end()) {
+      drainEventFd(it->second);
     }
     return count * sizeof(input_event);
   }
 
   int fcntl(int fd, int cmd, void* ptr) {
+    std::scoped_lock lock(mutex);
     auto& info = deviceDescriptors[fd];
     switch (cmd) {
       case F_GETFD:
@@ -247,58 +270,22 @@ namespace Input {
     }
   }
 
-  int getEventFd(int fd) {
-    auto it = deviceDescriptors.find(fd);
-    if (it == deviceDescriptors.end()) {
-      return -1;
-    }
-    auto evIt = deviceEventFds.find(it->second.device);
-    if (evIt == deviceEventFds.end()) {
-      return -1;
-    }
-    return evIt->second;
-  }
-
-  bool isEventFd(int fd) {
-    for (auto& [device, eventFd] : deviceEventFds) {
-      if (eventFd == fd) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  int getInputFdByEventFd(int eventFd) {
-    int device = -1;
-    for (auto& [dev, ev_fd] : deviceEventFds) {
-      if (ev_fd == eventFd) {
-        device = dev;
-        break;
-      }
-    }
-    if (device < 0) {
-      return -1;
-    }
-    for (auto& [inputFd, info] : deviceDescriptors) {
-      if (info.device == device) {
-        return inputFd;
-      }
-    }
-    return -1;
-  }
-
   void translatePollfds(struct pollfd* fds, nfds_t nfds) {
+    std::scoped_lock lock(mutex);
     for (nfds_t i = 0; i < nfds; i++) {
-      if (deviceDescriptors.contains(fds[i].fd)) {
-        fds[i].fd = getEventFd(fds[i].fd);
+      int fd = getEventFd(fds[i].fd);
+      if (fd > 0) {
+        fds[i].fd = fd;
       }
     }
   }
 
   void restorePollfds(struct pollfd* fds, nfds_t nfds) {
+    std::scoped_lock lock(mutex);
     for (nfds_t i = 0; i < nfds; i++) {
-      if (isEventFd(fds[i].fd)) {
-        fds[i].fd = getInputFdByEventFd(fds[i].fd);
+      int fd = getInputFdByEventFd(fds[i].fd);
+      if (fd > 0) {
+        fds[i].fd = fd;
       }
     }
   }
@@ -309,6 +296,7 @@ namespace Input {
     fd_set* writefds,
     fd_set* exceptfds
   ) {
+    std::scoped_lock lock(mutex);
     int orig_nfds = nfds;
     for (int fd = 0; fd < orig_nfds; fd++) {
       if (readfds && FD_ISSET(fd, readfds) && deviceDescriptors.contains(fd)) {
@@ -350,22 +338,30 @@ namespace Input {
     fd_set* writefds,
     fd_set* exceptfds
   ) {
-    // Map eventfd results back to input fds
+    std::scoped_lock lock(mutex);
     for (int fd = 0; fd < mod_nfds; fd++) {
-      if (readfds && FD_ISSET(fd, readfds) && isEventFd(fd)) {
-        FD_CLR(fd, readfds);
-        FD_SET(getInputFdByEventFd(fd), readfds);
+      if (readfds && FD_ISSET(fd, readfds)) {
+        int _fd = getInputFdByEventFd(fd);
+        if (_fd > 0) {
+          FD_CLR(fd, readfds);
+          FD_SET(_fd, readfds);
+        }
       }
-      if (writefds && FD_ISSET(fd, writefds) && isEventFd(fd)) {
-        FD_CLR(fd, writefds);
-        FD_SET(getInputFdByEventFd(fd), writefds);
+      if (writefds && FD_ISSET(fd, writefds)) {
+        int _fd = getInputFdByEventFd(fd);
+        if (_fd > 0) {
+          FD_CLR(fd, writefds);
+          FD_SET(_fd, writefds);
+        }
       }
-      if (exceptfds && FD_ISSET(fd, exceptfds) && isEventFd(fd)) {
-        FD_CLR(fd, exceptfds);
-        FD_SET(getInputFdByEventFd(fd), exceptfds);
+      if (exceptfds && FD_ISSET(fd, exceptfds)) {
+        int _fd = getInputFdByEventFd(fd);
+        if (_fd > 0) {
+          FD_CLR(fd, exceptfds);
+          FD_SET(_fd, exceptfds);
+        }
       }
     }
-    // Clear noise bits from the expanded nfds range
     for (int fd = orig_nfds; fd < mod_nfds; fd++) {
       if (readfds) {
         FD_CLR(fd, readfds);
@@ -380,13 +376,17 @@ namespace Input {
   }
 
   int epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
-    if (!deviceDescriptors.contains(fd)) {
-      return Libc::epoll_ctl(epfd, op, fd, ev);
-    }
-    int eventFd = getEventFd(fd);
-    if (eventFd < 0) {
-      errno = EBADF;
-      return -1;
+    int eventFd;
+    {
+      std::scoped_lock lock(mutex);
+      if (!deviceDescriptors.contains(fd)) {
+        return Libc::epoll_ctl(epfd, op, fd, ev);
+      }
+      eventFd = getEventFd(fd);
+      if (eventFd < 0) {
+        errno = EBADF;
+        return -1;
+      }
     }
     if (op == EPOLL_CTL_ADD || op == EPOLL_CTL_MOD) {
       struct epoll_event modified_ev;
