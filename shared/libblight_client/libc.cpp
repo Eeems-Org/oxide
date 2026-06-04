@@ -78,6 +78,9 @@ namespace Libc {
   bool (*setenv)(const char*, const char*, int) =
     (bool (*)(const char*, const char*, int))dlsym(RTLD_NEXT, "setenv");
 
+  bool (*unsetenv)(const char*) =
+    (bool (*)(const char*))dlsym(RTLD_NEXT, "unsetenv");
+
   int (*read)(int, void*, size_t) =
     (int (*)(int, void*, size_t))dlsym(RTLD_NEXT, "read");
 

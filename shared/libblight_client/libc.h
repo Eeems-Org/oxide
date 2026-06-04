@@ -25,6 +25,7 @@ namespace Libc {
   extern int (*msgsnd)(int, const void*, size_t, int);
   extern int (*flock)(int, int);
   extern bool (*setenv)(const char*, const char*, int);
+  extern bool (*unsetenv)(const char*);
   extern int (*read)(int, void*, size_t);
   extern int (*poll)(struct pollfd*, nfds_t, int);
   extern int (*ppoll)(

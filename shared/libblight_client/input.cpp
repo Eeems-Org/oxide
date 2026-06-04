@@ -67,10 +67,9 @@ namespace Input {
     CPU_SET(0, &cpuset);
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
     auto fd = FB::connection->input_handle();
-    bool allow_power_button =
-      getenv("OXIDE_PRELOAD_ALLOW_POWER_BUTTON") != nullptr;
+    bool allow_power_button = Client::isPowerButtonEnabled();
     while (fd > 0 && FB::connection != nullptr) {
-      if (getenv("OXIDE_PRELOAD_EXPOSE_INPUT") != nullptr) {
+      if (!Client::isInputEnabled()) {
         _INFO("Input handling disabled");
         break;
       }
@@ -135,7 +134,7 @@ namespace Input {
       return -1;
     }
     std::scoped_lock lock{mutex};
-    if (ringBuffers.empty() && Client::HANDLE_INPUT) {
+    if (ringBuffers.empty() && Client::isInputEnabled()) {
       _DEBUG("Starting readEvents thread");
       std::thread(readEvents).detach();
     }

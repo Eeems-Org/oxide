@@ -11,11 +11,15 @@ namespace Client {
   };
   extern bool INITIALIZED;
   extern bool FAILED_INIT;
-  extern bool HANDLE_FB;
-  extern bool DUMP_FB;
-  extern bool FAKE_RM1;
-  extern bool RM1_FB;
-  extern DeviceType deviceType;
   extern bool IS_XOCHITL;
-  extern bool HANDLE_INPUT;
+  extern DeviceType deviceType;
+  bool isInputEnabled();
+  bool isFbEnabled();
+  bool isPowerButtonEnabled();
+  bool isDumpFb();
+  bool isFakeRM1();
+  bool isFakeRM1Fb();
+  bool isRM2FBAllowed();
+  bool isFakeRM2FB();
+  bool isForceQt();
 }

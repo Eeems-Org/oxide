@@ -47,7 +47,7 @@ namespace FB {
     }
   }
   bool is_fb(int fd) {
-    return Client::HANDLE_FB && buffer->fd > 0 && buffer->fd == fd;
+    return Client::isFbEnabled() && buffer->fd > 0 && buffer->fd == fd;
   }
   void ensure_surface() {
     if (!buffer->surface) {
@@ -451,7 +451,7 @@ namespace FB {
     }
   }
   Blight::Format deviceFormat() {
-    if (Client::FAKE_RM1 || Client::RM1_FB) {
+    if (Client::isFakeRM1Fb()) {
       return Blight::Format::Format_RGB16;
     }
     switch (Client::deviceType) {
@@ -462,7 +462,7 @@ namespace FB {
     }
   }
   int deviceXres() {
-    if (Client::FAKE_RM1 || Client::RM1_FB) {
+    if (Client::isFakeRM1Fb()) {
       return 1404;
     }
     switch (Client::deviceType) {
@@ -479,7 +479,7 @@ namespace FB {
     }
   }
   int deviceYres() {
-    if (Client::FAKE_RM1 || Client::RM1_FB) {
+    if (Client::isFakeRM1Fb()) {
       return 1872;
     }
     switch (Client::deviceType) {
@@ -499,7 +499,7 @@ namespace FB {
     return deviceXres() * deviceBitsPerPixel() / 8;
   }
   int deviceBitsPerPixel() {
-    if (Client::FAKE_RM1 || Client::RM1_FB) {
+    if (Client::isFakeRM1Fb()) {
       return 16;
     }
     switch (Client::deviceType) {
@@ -572,7 +572,7 @@ namespace FB {
     Blight::UpdateMode updateMode,
     unsigned int marker
   ) {
-    if (!Client::HANDLE_FB) {
+    if (!Client::isFbEnabled()) {
       Blight::exclusiveModeRepaint(x, y, width, height, waveform, updateMode);
       return {};
     }

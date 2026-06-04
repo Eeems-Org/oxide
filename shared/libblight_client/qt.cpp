@@ -561,7 +561,7 @@ repaint(
  */
 void
 dump_buffers() {
-  if (!Client::DUMP_FB) {
+  if (!Client::isDumpFb()) {
     return;
   }
   void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
@@ -569,7 +569,7 @@ dump_buffers() {
     _DEBUG("dump_buffers: epframebufferInstance not set yet, skipping");
     return;
   }
-  void* data = Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first;
+  void* data = Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first;
   if (data != nullptr) {
     int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd <= 0) {
@@ -579,7 +579,7 @@ dump_buffers() {
     ::write(
       fd,
       data,
-      Client::HANDLE_FB
+      Client::isFbEnabled()
         ? (Client::deviceType == Client::DeviceType::RM2 ? 26359808
                                                          : FB::buffer->size())
         : mmap_framebuffer().second
@@ -623,11 +623,11 @@ hook_swapBuffers_QRegion(
   }
   if (!copy_qimage_with_format_conversion(
         static_cast<char*>(epframebuffer) + mainBufferOffset(),
-        Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
-        Client::HANDLE_FB ? FB::buffer->format : FB::deviceFormat(),
-        Client::HANDLE_FB ? FB::buffer->width : FB::deviceXres(),
-        Client::HANDLE_FB ? FB::buffer->height : FB::deviceYres(),
-        Client::HANDLE_FB ? FB::buffer->stride : FB::deviceStride()
+        Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first,
+        Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
+        Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
+        Client::isFbEnabled() ? FB::buffer->height : FB::deviceYres(),
+        Client::isFbEnabled() ? FB::buffer->stride : FB::deviceStride()
       )) {
     _WARN("Failed to convert image: %s", std::strerror(errno));
   }
@@ -693,11 +693,11 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
   if (!copy_qimage_with_format_conversion(
         static_cast<char*>(this_ptr) + mainBufferOffset(),
-        Client::HANDLE_FB ? FB::buffer->data : mmap_framebuffer().first,
-        Client::HANDLE_FB ? FB::buffer->format : FB::deviceFormat(),
-        Client::HANDLE_FB ? FB::buffer->width : FB::deviceXres(),
-        Client::HANDLE_FB ? FB::buffer->height : FB::deviceYres(),
-        Client::HANDLE_FB ? FB::buffer->stride : FB::deviceStride()
+        Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first,
+        Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
+        Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
+        Client::isFbEnabled() ? FB::buffer->height : FB::deviceYres(),
+        Client::isFbEnabled() ? FB::buffer->stride : FB::deviceStride()
       )) {
     _WARN("Failed to convert image: %s", std::strerror(errno));
   }

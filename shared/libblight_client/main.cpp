@@ -68,7 +68,7 @@ namespace {
       __realpath(pathname, actualpath);
     }
     int res = -2;
-    if (Client::FAKE_RM1 && actualpath == "/sys/devices/soc0/machine") {
+    if (Client::isFakeRM1() && actualpath == "/sys/devices/soc0/machine") {
       int fd = memfd_create("machine", MFD_ALLOW_SEALING);
       std::string data("reMarkable 1.0");
       // Don't include trailing null
@@ -97,7 +97,7 @@ namespace {
         ("/tmp/epd." + std::to_string(getpid()) + ".lock").c_str(), flags
       );
     } else if (actualpath == "/dev/fb0" || actualpath == "/dev/shm/swtfb.01") {
-      if (!Client::HANDLE_FB) {
+      if (!Client::isFbEnabled()) {
         if (FB::frameBuffer < 0) {
           FB::frameBuffer = Blight::frameBuffer();
         }
@@ -145,10 +145,9 @@ namespace {
         );
         return res;
       }
-    } else if (actualpath.starts_with("/dev/input/event")) {
-      if (!Client::HANDLE_INPUT) {
-        return -2;
-      }
+    } else if (
+      Client::isInputEnabled() && actualpath.starts_with("/dev/input/event")
+    ) {
       _INFO("Opening event device: %s", actualpath.c_str());
       return Input::open(actualpath, flags);
     }
@@ -168,7 +167,7 @@ namespace {
 extern "C" {
 __attribute__((visibility("default"))) int
 msgget(key_t key, int msgflg) {
-  if (!Client::INITIALIZED || !Client::HANDLE_FB) {
+  if (!Client::INITIALIZED || !Client::isFbEnabled()) {
     return Libc::msgget(key, msgflg);
   }
   // Catch rm2fb ipc
@@ -185,7 +184,7 @@ symver(msgget);
 
 __attribute__((visibility("default"))) int
 msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
-  if (!Client::INITIALIZED || !Client::HANDLE_FB) {
+  if (!Client::INITIALIZED || !Client::isFbEnabled()) {
     return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
   }
   if (msqid == FB::msgq) {
@@ -333,7 +332,7 @@ close(int fd) {
       // Maybe actually close it?
       return 0;
     }
-    if (Input::isInputFd(fd)) {
+    if (Client::isInputEnabled() && Input::isInputFd(fd)) {
       return Input::close(fd);
     }
     if (fd == FB::epframebufferLockFd) {
@@ -366,7 +365,7 @@ fcntl(int fd, int cmd, ...) {
   void* ptr = va_arg(args, void*);
   _DEBUG("fcntl %d %d %p", fd, cmd, ptr);
   int res;
-  if (Client::INITIALIZED && Input::isInputFd(fd)) {
+  if (Client::INITIALIZED && Client::isInputEnabled() && Input::isInputFd(fd)) {
     res = Input::fcntl(fd, cmd, ptr);
   } else {
     res = Libc::fcntl(fd, cmd, ptr);
@@ -378,7 +377,7 @@ symver(fcntl);
 
 __attribute__((visibility("default"))) ssize_t
 read(int fd, void* buf, size_t count) {
-  if (Client::INITIALIZED && Input::isInputFd(fd)) {
+  if (Client::INITIALIZED && Client::isInputEnabled() && Input::isInputFd(fd)) {
     return Input::read(fd, buf, count);
   }
   return Libc::read(fd, buf, count);
@@ -396,12 +395,12 @@ ioctl(int fd, unsigned long request, ...) {
       va_end(args);
       return res;
     }
-    if (!Client::HANDLE_FB && fd == FB::frameBuffer) {
+    if (!Client::isFbEnabled() && fd == FB::frameBuffer) {
       int res = FB::exclusive_ioctl(request, ptr);
       va_end(args);
       return res;
     }
-    if (Input::isInputFd(fd)) {
+    if (Client::isInputEnabled() && Input::isInputFd(fd)) {
       int res = Input::ioctlv(fd, request, ptr);
       va_end(args);
       return res;
@@ -560,10 +559,42 @@ setenv(const char* name, const char* value, int overwrite) {
     _DEBUG("IGNORED setenv %s=%s", name, value);
     return 0;
   }
+  if (strcmp(name, "OXIDE_PRELOAD_DEBUG") == 0) {
+    try {
+      set_blight_debug_level(std::stoi(value));
+    } catch (std::invalid_argument&) {
+    } catch (std::out_of_range&) {
+      _WARN("OXIDE_PRELOAD_DEBUG invalid value");
+      return 1;
+    }
+  }
   _DEBUG("setenv %s=%s", name, value);
   return Libc::setenv(name, value, overwrite);
 }
 symver(setenv);
+
+__attribute__((visibility("default"))) int
+unsetenv(const char* name) {
+  if (
+    strcmp(name, "OXIDE_PRELOAD_DEBUG") == 0 ||
+    (getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr &&
+     (strcmp(name, "QMLSCENE_DEVICE") == 0 ||
+      strcmp(name, "QT_QUICK_BACKEND") == 0 ||
+      strcmp(name, "QT_QPA_PLATFORM") == 0 ||
+      strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0 ||
+      strcmp(name, "QT_QPA_GENERIC_PLUGINS") == 0 ||
+      strcmp(name, "QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS") == 0 ||
+      strcmp(name, "QT_QPA_EVDEV_MOUSE_PARAMETERS") == 0 ||
+      strcmp(name, "QT_QPA_EVDEV_KEYBOARD_PARAMETERS") == 0 ||
+      strcmp(name, "QT_PLUGIN_PATH") == 0))
+  ) {
+    _DEBUG("IGNORED unsetenv %s", name);
+    return 0;
+  }
+  _DEBUG("unsetenv %s", name);
+  return Libc::unsetenv(name);
+}
+symver(unsetenv);
 
 __attribute__((visibility("default"))) int
 flock(int fd, int op) {
@@ -588,7 +619,7 @@ symver(flock);
 __attribute__((visibility("default"))) int
 poll(struct pollfd* fds, nfds_t nfds, int timeout) {
   struct pollfd* backup = nullptr;
-  if (Client::INITIALIZED) {
+  if (Client::INITIALIZED && Client::isInputEnabled()) {
     backup = Input::translatePollfds(fds, nfds);
   }
   int res = Libc::poll(fds, nfds, timeout);
@@ -607,7 +638,7 @@ ppoll(
   const sigset_t* sigmask
 ) {
   struct pollfd* backup = nullptr;
-  if (Client::INITIALIZED) {
+  if (Client::INITIALIZED && Client::isInputEnabled()) {
     backup = Input::translatePollfds(fds, nfds);
   }
   int res = Libc::ppoll(fds, nfds, tmo, sigmask);
@@ -627,11 +658,11 @@ select(
   struct timeval* timeout
 ) {
   int backup;
-  if (Client::INITIALIZED) {
+  if (Client::INITIALIZED && Client::isInputEnabled()) {
     backup = Input::translateSelectFds(nfds, readfds, writefds, exceptfds);
   }
   int res = Libc::select(nfds, readfds, writefds, exceptfds, timeout);
-  if (Client::INITIALIZED) {
+  if (Client::INITIALIZED && Client::isInputEnabled()) {
     Input::restoreSelectFds(nfds, readfds, writefds, exceptfds, backup);
   }
   return res;
@@ -640,7 +671,7 @@ symver(select);
 
 __attribute__((visibility("default"))) int
 epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
-  if (Client::INITIALIZED && Input::isInputFd(fd)) {
+  if (Client::INITIALIZED && Client::isInputEnabled() && Input::isInputFd(fd)) {
     return Input::epoll_ctl(epfd, op, fd, ev);
   }
   return Libc::epoll_ctl(epfd, op, fd, ev);
@@ -653,7 +684,7 @@ epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout) {
   if (res <= 0) {
     return res;
   }
-  if (Client::INITIALIZED) {
+  if (Client::INITIALIZED && Client::isInputEnabled()) {
     return Input::restoreEpollfds(epfd, events, res);
   }
   return res;
@@ -695,14 +726,7 @@ init(void) {
     Client::FAILED_INIT = false;
     return;
   }
-  if (getenv("OXIDE_PRELOAD_FORCE_RM1") != nullptr) {
-    Client::FAKE_RM1 = true;
-  }
-  if (getenv("OXIDE_PRELOAD_FORCE_RM1_FB") != nullptr) {
-    Client::RM1_FB = true;
-  }
-  Client::HANDLE_FB = getenv("OXIDE_PRELOAD_EXPOSE_FB") == nullptr;
-  _DEBUG("Handle framebuffer: %d", Client::HANDLE_FB);
+  _DEBUG("Handle framebuffer: %d", Client::isFbEnabled());
   auto pid = getpid();
   _DEBUG("Connecting %d to blight", pid);
 #ifdef __arm__
@@ -729,16 +753,18 @@ init(void) {
   _DEBUG("Connected %d to blight on %d", pid, FB::connection->handle());
   Libc::setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
   FB::init();
-  if (Client::deviceType == Client::DeviceType::RM2) {
-    Libc::setenv("RM2FB_ACTIVE", "1", true);
-    Libc::setenv("RM2FB_SHIM", "1", true);
-    if (!Client::IS_XOCHITL && getenv("OXIDE_PRELOAD_ALLOW_RM2FB") == nullptr) {
+  if (Client::deviceType != Client::DeviceType::RM1) {
+    if (Client::isFakeRM2FB()) {
+      Libc::setenv("RM2FB_ACTIVE", "1", true);
+      Libc::setenv("RM2FB_SHIM", "1", true);
+    }
+    if (!Client::isRM2FBAllowed()) {
       Libc::setenv("RM2FB_DISABLE", "1", true);
     } else {
-      unsetenv("RM2FB_DISABLE");
+      Libc::unsetenv("RM2FB_DISABLE");
     }
   }
-  if (getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr) {
+  if (Client::isForceQt()) {
     Libc::setenv("QMLSCENE_DEVICE", "software", 1);
     Libc::setenv("QT_QUICK_BACKEND", "software", 1);
     Libc::setenv("QT_QPA_PLATFORM", "oxide:enable_fonts", 1);
@@ -747,13 +773,7 @@ init(void) {
     Libc::setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
     Libc::setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
   }
-  if (getenv("OXIDE_PRELOAD_DUMP_FB") != nullptr) {
-    Client::DUMP_FB = true;
-  }
-  if (getenv("OXIDE_PRELOAD_EXPOSE_INPUT") != nullptr) {
-    Client::HANDLE_INPUT = false;
-  }
-  if (Client::HANDLE_FB) {
+  if (Client::isFbEnabled()) {
     FB::buffer = Blight::buf_t::new_ptr();
   } else {
     Blight::setFlags(
@@ -786,7 +806,7 @@ __libc_start_main(
   _DEBUG("Starting main(%d, ...)", argc);
   auto res = func_main(_main, argc, argv, init, fini, rtld_fini, stack_end);
   _DEBUG("Main exit code: %d", res);
-  if (!Client::HANDLE_FB) {
+  if (!Client::isFbEnabled()) {
     Blight::exitExclusiveMode();
   }
   return res;
