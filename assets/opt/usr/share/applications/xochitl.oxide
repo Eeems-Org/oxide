@@ -3,5 +3,5 @@
     "description": "Read documents and take notes",
     "bin": "/usr/bin/xochitl",
     "icon": "oxide:xochitl-48",
-    "flags": ["noannounce", "exclusive"]
+    "flags": ["noannounce"]
 }
