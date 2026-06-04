@@ -17,15 +17,9 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=$${QT_DISABLE_DEPRECATED_BEFORE}
 CONFIG(debug, debug|release){
     PKGCONFIG += libunwind
     contains(DEFINES, SANITIZER){
-        QMAKE_LFLAGS += -fno-omit-frame-pointer
-        QMAKE_LFLAGS += -fsanitize-recover=address
-
-        QMAKE_LFLAGS += -fsanitize=address
-        QMAKE_LFLAGS += -fsanitize=leak
-        # QMAKE_LFLAGS += -fsanitize=thread # Incompatible with address and leak
-        QMAKE_LFLAGS += -fsanitize=undefined
-        QMAKE_LFLAGS += -fsanitize=pointer-compare
-        QMAKE_LFLAGS += -fsanitize=pointer-subtract
+        CONFIG += sanitizer
+        CONFIG += sanitize_address
+        CONFIG += sanitize_undefined
     }
 }
 

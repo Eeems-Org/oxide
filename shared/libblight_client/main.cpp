@@ -4,9 +4,11 @@
 #include "state.h"
 
 #include <asm/ioctl.h>
+#include <cstring>
 #include <dirent.h>
 #include <dlfcn.h>
 #include <fcntl.h>
+#include <filesystem>
 #include <libblight.h>
 #include <libblight/clock.h>
 #include <libblight/connection.h>
@@ -15,7 +17,6 @@
 #include <libblight/system.h>
 #include <linux/fb.h>
 #include <linux/input.h>
-#include <mutex>
 #include <mxcfb.h>
 #include <stdio.h>
 #include <string>
@@ -27,12 +28,11 @@
 #include <systemd/sd-journal.h>
 #include <unistd.h>
 
-#include <cstdint>
-#include <cstring>
-#include <filesystem>
-#include <fstream>
+#ifdef DEBUG
+#include <execinfo.h>
 #include <iostream>
-#include <vector>
+#include <ucontext.h>
+#endif
 
 namespace {
   void __realpath(const char* pathname, std::string& path) {
@@ -741,6 +741,24 @@ init(void) {
   _DEBUG("blight_client initialized")
 }
 
+#ifdef DEBUG
+void
+__sigsegv_handler(int nSignum, siginfo_t* si, void* vcontext) {
+  constexpr int depth = 10;
+  auto uc = (ucontext_t*)vcontext;
+  auto caller_address = (void*)uc->uc_mcontext.arm_pc;
+  void* array[depth];
+  size_t size = ::backtrace(array, depth);
+  array[1] = caller_address;
+  char** messages = ::backtrace_symbols(array, size);
+  std::cerr << "Segmentation fault:" << std::endl;
+  for (size_t i = 1; i < size && messages != NULL; ++i) {
+    std::cerr << messages[i] << std::endl;
+  }
+  std::_Exit(139);
+}
+#endif
+
 __attribute__((visibility("default"))) int
 __libc_start_main(
   int (*_main)(int, char**, char**),
@@ -754,6 +772,13 @@ __libc_start_main(
   if (Client::FAILED_INIT) {
     return EXIT_FAILURE;
   }
+#ifdef DEBUG
+  struct sigaction action{0};
+  action.sa_flags = SA_SIGINFO;
+  action.sa_sigaction = __sigsegv_handler;
+  sigaction(SIGSEGV, &action, NULL);
+#endif
+
   auto func_main =
     (decltype(&__libc_start_main))dlsym(RTLD_NEXT, "__libc_start_main");
   _DEBUG("Starting main(%d, ...)", argc);

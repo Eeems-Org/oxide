@@ -148,8 +148,7 @@ namespace Input {
     std::string basePath(basename(path.c_str()));
     try {
       unsigned int device = stol(basePath.substr(5));
-      bool newDevice = !deviceEventFds.contains(device);
-      if (newDevice) {
+      if (!deviceEventFds.contains(device)) {
         int eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
         if (eventFd < 0) {
           _WARN("Failed to create eventfd: %s", std::strerror(errno));
@@ -160,11 +159,6 @@ namespace Input {
       }
       int fd = Libc::open(path.c_str(), flags, 0);
       if (fd < 0) {
-        if (newDevice) {
-          ringBuffers.erase(device);
-          Libc::close(deviceEventFds[device]);
-          deviceEventFds.erase(device);
-        }
         return -1;
       }
       deviceDescriptors[fd] = {device, flags};
@@ -187,6 +181,7 @@ namespace Input {
       auto devIt = deviceEventFds.find(deviceDescriptors[fd].device);
       if (devIt != deviceEventFds.end()) {
         for (auto& [epfd, track] : epollMap) {
+          Libc::epoll_ctl(epfd, EPOLL_CTL_DEL, devIt->second, nullptr);
           track.erase(devIt->second);
         }
       }
@@ -223,19 +218,20 @@ namespace Input {
     }
     auto* events = static_cast<input_event*>(buf);
     size_t count = 0;
-    if (ringBuffers[device].overflowed()) {
+    auto& ringBuffer = ringBuffers[device];
+    if (ringBuffer.overflowed()) {
       events[count] = {.type = EV_SYN, .code = SYN_DROPPED, .value = 1};
       count++;
     }
     while (count < size / sizeof(input_event)) {
       if (flags & O_NONBLOCK) {
-        auto maybe = ringBuffers[device].take();
+        auto maybe = ringBuffer.take();
         if (!maybe.has_value()) {
           break;
         }
         events[count] = *maybe;
       } else {
-        events[count] = ringBuffers[device].wait_for_values();
+        events[count] = ringBuffer.wait_for_values();
       }
       count++;
     }
@@ -243,9 +239,12 @@ namespace Input {
       errno = EAGAIN;
       return -1;
     }
-    auto it = deviceEventFds.find(device);
-    if (it != deviceEventFds.end()) {
-      drainEventFd(it->second);
+    {
+      std::scoped_lock lock(mutex);
+      auto it = deviceEventFds.find(device);
+      if (it != deviceEventFds.end()) {
+        drainEventFd(it->second);
+      }
     }
     return count * sizeof(input_event);
   }
