@@ -92,11 +92,12 @@ public:
    */
   static class EPFramebufferFusion* instance();
 
+#ifdef __arm__
   /*!
    * \brief Wait for pending updates to complete.
    *
    * Dispatches to the platform-specific sync at runtime:
-   * - EPFramebufferSwtcon::sync() on rM2/rmPP
+   * - EPFramebufferSwtcon::sync() on rM2
    * - EPFramebufferTcon::sync() on rM1
    *
    * Using dlsym avoids a link-time dependency on a particular class
@@ -105,15 +106,22 @@ public:
   inline void sync() {
     static auto* fn = []() -> void (*)(void*) {
       void* s = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferSwtcon4syncEv");
-      if (!s) {
+      if (s == nullptr) {
         s = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferTcon4syncEv");
       }
       return reinterpret_cast<void (*)(void*)>(s);
     }();
-    if (fn) {
-      fn(this);
+    if (fn == nullptr) {
+      QFatal("Unable to find EPFramebuffer::sync()");
     }
+    fn(this);
   }
+#else
+  /*!
+   * \brief Wait for pending updates to complete.
+   */
+  void sync();
+#endif
 };
 
 /*!
@@ -129,41 +137,69 @@ public:
   /*! Open /dev/fb0 and set up the framebuffer controller. */
   void initialize(void);
 
-protected:
+#if defined(__arm__)
   /*!
-   * \brief Send a TCon update via the swtcon abstraction.
-   *
-   * Exists in libqsgepaper on rM2, rMPP, rMPPM, and rMPPure but NOT on rM1.
-   * rM2 uses the swtcon abstraction directly; rMPP+ backs it with DRM/KMS.
+   * \brief Send screen update
    *
    * \param rect      Rectangle to update in pixels.
-   * \param waveform  Waveform mode (e.g. 0x18 for GC16).
-   * \param pixelMode Pixel mode.
-   * \param flags     Update flags.
-   *
-   * \note rM1 uses sendTConUpdate() instead (MXCFB_SEND_UPDATE ioctl).
+   * \param waveform  Waveform mode (0x18 for GC16, 0x1000 for DU).
+   * \param pixelMode PixelMode
+   * \param flags     Update flags (CompleteRefresh forces full update).
    */
   void update(
     QRect rect,
     int waveform,
     int pixelMode,
     QFlags<EPFramebuffer::UpdateFlag> flags
-  );
-
-#ifdef __arm__
+  ) {
+    static auto dispatch = []() {
+      struct {
+        bool swtcon;
+        void (*fn)(void*, QRect, int, int, int);
+      } d = {};
+      d.fn = reinterpret_cast<decltype(d.fn)>(dlsym(
+        RTLD_DEFAULT, "_ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei"
+      ));
+      if (d.fn != nullptr) {
+        d.swtcon = true;
+      } else {
+        d.fn = reinterpret_cast<decltype(d.fn)>(dlsym(
+          RTLD_DEFAULT,
+          "_ZN17EPFramebufferTcon14sendTConUpdateERK5QRecti6QFlagsIN13EP"
+          "Framebuffer10UpdateFlagEE"
+        ));
+        d.swtcon = false;
+      }
+      return d;
+    }();
+    if (dispatch.fn == nullptr) {
+      qFatal(
+        "Unable to find EPFramebuffer::update() or "
+        "EPFramebuffer::sendTConUpdate()"
+      );
+    }
+    if (dispatch.swtcon) {
+      dispatch.fn(this, rect, waveform, pixelMode, static_cast<int>(flags));
+    } else {
+      /* sendTConUpdate takes const QRect& and QFlags (not int for pixelMode) */
+      reinterpret_cast<void (*)(
+        void*, const QRect&, int, QFlags<EPFramebuffer::UpdateFlag>
+      )>(dispatch.fn)(this, rect, waveform, flags);
+    }
+  }
+#else
   /*!
-   * \brief Send an update to the TCon hardware.
-   *
-   * rM1 only. Uses the imx-epdc (mxcfb) framebuffer interface:
-   * fills an mxcfb_update_data struct and issues MXCFB_SEND_UPDATE ioctl.
+   * \brief Send screen update
    *
    * \param rect      Rectangle to update in pixels.
    * \param waveform  Waveform mode (0x18 for GC16, 0x1000 for DU).
+   * \param pixelMode PixelMode
    * \param flags     Update flags (CompleteRefresh forces full update).
    */
-  void sendTConUpdate(
-    const QRect& rect,
+  void update(
+    QRect rect,
     int waveform,
+    int pixelMode,
     QFlags<EPFramebuffer::UpdateFlag> flags
   );
 #endif
