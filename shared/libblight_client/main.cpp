@@ -164,6 +164,7 @@ namespace {
           "  = _" #name "\n")
 
 #define symver(name) __asm__(".symver " #name " , " #name "@GLIBC_2.4")
+#define symver34(name) __asm__(".symver " #name " , " #name "@GLIBC_2.34")
 #define _symver(name) __asm__(".symver _" #name ", " #name "@GLIBC_2.4")
 
 extern "C" {
@@ -625,6 +626,9 @@ poll(struct pollfd* fds, nfds_t nfds, int timeout) {
     backup = Input::translatePollfds(fds, nfds);
   }
   int res = Libc::poll(fds, nfds, timeout);
+  if (res == 0 && nfds > 0 && timeout == 0) {
+    _WARN("poll exited early with no revents");
+  }
   if (backup != nullptr) {
     Input::restorePollfds(fds, nfds, backup);
   }
@@ -633,7 +637,7 @@ poll(struct pollfd* fds, nfds_t nfds, int timeout) {
 symver(poll);
 
 __attribute__((visibility("default"))) int
-ppoll(
+__ppoll64(
   struct pollfd* fds,
   nfds_t nfds,
   const struct timespec* tmo,
@@ -643,13 +647,16 @@ ppoll(
   if (Client::INITIALIZED && Client::isInputEnabled()) {
     backup = Input::translatePollfds(fds, nfds);
   }
-  int res = Libc::ppoll(fds, nfds, tmo, sigmask);
+  int res = Libc::__ppoll64(fds, nfds, tmo, sigmask);
+  if (res == 0 && nfds > 0 && tmo == nullptr) {
+    _WARN("__ppoll64 exited early with no revents");
+  }
   if (backup != nullptr) {
     Input::restorePollfds(fds, nfds, backup);
   }
   return res;
 }
-symver(ppoll);
+symver34(__ppoll64);
 
 __attribute__((visibility("default"))) int
 select(

@@ -34,6 +34,12 @@ namespace Libc {
     const struct timespec*,
     const sigset_t*
   );
+  extern int (*__ppoll64)(
+    struct pollfd*,
+    nfds_t,
+    const struct timespec*,
+    const sigset_t*
+  );
   extern int (*select)(int, fd_set*, fd_set*, fd_set*, struct timeval*);
   extern int (*pselect)(
     int,

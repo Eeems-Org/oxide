@@ -103,6 +103,19 @@ namespace Libc {
       const sigset_t*
     ))dlvsym(RTLD_NEXT, "ppoll", "GLIBC_2.4");
 
+  int (*__ppoll64)(
+    struct pollfd*,
+    nfds_t,
+    const struct timespec*,
+    const sigset_t*
+  ) =
+    (int (*)(
+      struct pollfd*,
+      nfds_t,
+      const struct timespec*,
+      const sigset_t*
+    ))dlvsym(RTLD_NEXT, "__ppoll64", "GLIBC_2.34");
+
   int (*select)(int, fd_set*, fd_set*, fd_set*, struct timeval*) =
     (int (*)(int, fd_set*, fd_set*, fd_set*, struct timeval*))dlvsym(
       RTLD_NEXT,
