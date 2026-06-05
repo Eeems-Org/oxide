@@ -5,6 +5,7 @@
 #include <QImage>
 #include <QRect>
 #include <dlfcn.h>
+#include <functional>
 #include <tuple>
 
 // libqsgepaper EPFramebufferTcon layout (returned by instance()):
@@ -38,6 +39,14 @@ enum EPScreenMode {
 enum EPContentType {
   Mono = 0,  //!< Monochrome content
   Color = 1, //!< Color (16-level grayscale) content
+};
+/*! Pixel update mode for EPFramebufferSwtcon::update.
+    Values observed from disassembly of the reMarkable libraries. */
+enum PixelMode {
+  DefaultMode = 7, //!< Default pixel update mode (used for most content)
+  GrayMode = 12,   //!< Grayscale pixel update (0xc, second pass in fusion)
+  MonoMode = 15,   //!< Monochrome pixel update (0xf, used in Acep2 STD regions)
+  InitMode = 17,   //!< Full initialization update (0x11, waveform init)
 };
 
 /*!
@@ -112,7 +121,7 @@ public:
       return reinterpret_cast<void (*)(void*)>(s);
     }();
     if (fn == nullptr) {
-      QFatal("Unable to find EPFramebuffer::sync()");
+      qFatal("Unable to find EPFramebuffer::sync()");
     }
     fn(this);
   }
@@ -143,49 +152,49 @@ public:
    *
    * \param rect      Rectangle to update in pixels.
    * \param waveform  Waveform mode (0x18 for GC16, 0x1000 for DU).
-   * \param pixelMode PixelMode
-   * \param flags     Update flags (CompleteRefresh forces full update).
+   * \param pixelMode  Pixel update mode.
    */
-  void update(
+  inline void update(
     QRect rect,
     int waveform,
-    int pixelMode,
+    PixelMode pixelMode,
     QFlags<EPFramebuffer::UpdateFlag> flags
   ) {
-    static auto dispatch = []() {
-      struct {
-        bool swtcon;
-        void (*fn)(void*, QRect, int, int, int);
-      } d = {};
-      d.fn = reinterpret_cast<decltype(d.fn)>(dlsym(
-        RTLD_DEFAULT, "_ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei"
-      ));
-      if (d.fn != nullptr) {
-        d.swtcon = true;
-      } else {
-        d.fn = reinterpret_cast<decltype(d.fn)>(dlsym(
+    static const auto fn = []()
+      -> std::function<
+        void(void*, QRect, int, PixelMode, QFlags<EPFramebuffer::UpdateFlag>)> {
+      auto sendTConUpdate = reinterpret_cast<
+        void (*)(void*, const QRect&, int, QFlags<EPFramebuffer::UpdateFlag>)>(
+        dlsym(
           RTLD_DEFAULT,
-          "_ZN17EPFramebufferTcon14sendTConUpdateERK5QRecti6QFlagsIN13EP"
-          "Framebuffer10UpdateFlagEE"
-        ));
-        d.swtcon = false;
+          "_ZN17EPFramebufferTcon14sendTConUpdateERK5QRecti6QFlagsIN13EPFramebu"
+          "ffer10UpdateFlagEE"
+        )
+      );
+      if (sendTConUpdate != nullptr) {
+        return [sendTConUpdate](
+                 void* this_ptr,
+                 QRect rect,
+                 int waveform,
+                 PixelMode pixelMode,
+                 QFlags<EPFramebuffer::UpdateFlag> flags
+               ) { sendTConUpdate(this_ptr, rect, waveform, flags); };
       }
-      return d;
+      return reinterpret_cast<void (*)(
+        void*, QRect, int, PixelMode, QFlags<EPFramebuffer::UpdateFlag>
+      )>(
+        dlsym(
+          RTLD_DEFAULT, "_ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei"
+        )
+      );
     }();
-    if (dispatch.fn == nullptr) {
+    if (fn == nullptr) {
       qFatal(
         "Unable to find EPFramebuffer::update() or "
         "EPFramebuffer::sendTConUpdate()"
       );
     }
-    if (dispatch.swtcon) {
-      dispatch.fn(this, rect, waveform, pixelMode, static_cast<int>(flags));
-    } else {
-      /* sendTConUpdate takes const QRect& and QFlags (not int for pixelMode) */
-      reinterpret_cast<void (*)(
-        void*, const QRect&, int, QFlags<EPFramebuffer::UpdateFlag>
-      )>(dispatch.fn)(this, rect, waveform, flags);
-    }
+    fn(this, rect, waveform, pixelMode, flags);
   }
 #else
   /*!
@@ -193,13 +202,12 @@ public:
    *
    * \param rect      Rectangle to update in pixels.
    * \param waveform  Waveform mode (0x18 for GC16, 0x1000 for DU).
-   * \param pixelMode PixelMode
-   * \param flags     Update flags (CompleteRefresh forces full update).
+   * \param pixelMode  Pixel update mode.
    */
   void update(
     QRect rect,
     int waveform,
-    int pixelMode,
+    PixelMode pixelMode,
     QFlags<EPFramebuffer::UpdateFlag> flags
   );
 #endif

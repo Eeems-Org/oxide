@@ -118,7 +118,7 @@ GUIThread::GUIThread(QRect screenGeometry)
     if (!maybe_buffer.has_value()) {
       qFatal("Failed to create buffer");
     }
-    // TODO how to make this buffer be the auxbuffer but still be a memfd
+    // TODO how to make this buffer be the frameBuffer but still be a memfd
     m_frameBuffer = maybe_buffer.value();
   }
   if (m_frameBuffer->fd == -1) {
@@ -232,7 +232,7 @@ GUIThread::notify() {
 void
 GUIThread::clearFrameBuffer() {
   auto instance = EPFramebuffer::instance();
-  instance->auxBuffer.fill(Qt::white);
+  instance->frameBuffer->fill(Qt::white);
   instance->swapBuffers(
     m_screenGeometry,
     EPContentType::Color,
