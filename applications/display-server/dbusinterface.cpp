@@ -556,7 +556,7 @@ DbusInterface::exitExclusiveMode(QDBusMessage message) {
 #ifdef EPAPER
     guiThread->enqueue(
       nullptr,
-      EPFramebuffer::instance()->auxBuffer.rect(),
+      EPFramebuffer::instance()->oldBuffer->rect(),
       Blight::WaveformMode::HighQualityGrayscale,
       Blight::UpdateMode::FullUpdate,
       0,
@@ -621,7 +621,7 @@ DbusInterface::exclusiveModeRepaintFull(QDBusMessage message) {
   }
 #ifdef EPAPER
   guiThread->swap(
-    EPFramebuffer::instance()->auxBuffer.rect(),
+    EPFramebuffer::instance()->oldBuffer->rect(),
     Blight::WaveformMode::HighQualityGrayscale,
     Blight::UpdateMode::FullUpdate
   );
@@ -792,7 +792,7 @@ DbusInterface::createConnection(int pid) {
 #ifdef EPAPER
           guiThread->enqueue(
             nullptr,
-            EPFramebuffer::instance()->auxBuffer.rect(),
+            EPFramebuffer::instance()->oldBuffer->rect(),
             Blight::WaveformMode::HighQualityGrayscale,
             Blight::UpdateMode::FullUpdate,
             0,

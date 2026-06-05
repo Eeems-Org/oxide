@@ -8,15 +8,18 @@
 #include <tuple>
 
 // libqsgepaper EPFramebufferTcon layout (returned by instance()):
-//   auxBuffer at +0x60, mainBuffer at +0x70, total size 0xb8
+//   auxBuffer at +0x60, oldBuffer pointer at +0x6c, mainBuffer at +0x70,
+//   total size 0xb8
 #if defined(__arm__)
 #define EPFR_SIZE 0xb8
 #define EPFR_OFFSET_MAINBUFFER 0x70
 #define EPFR_OFFSET_AUXBUFFER 0x60
+#define EPFR_OFFSET_OLDBUFFER 0x6c
 #elif defined(__aarch64__)
 #define EPFR_SIZE 0xb8
 #define EPFR_OFFSET_MAINBUFFER 0x70
 #define EPFR_OFFSET_AUXBUFFER 0x60
+#define EPFR_OFFSET_OLDBUFFER 0x6c
 #else
 #error "Unsupported architecture"
 #endif
@@ -174,13 +177,16 @@ protected:
  *   +0x00  QObject / vtable
  *   +0x20  EPContentMap
  *   +0x30  EPScreenModeMap
- *   +0x60  QImage auxBuffer   (back-buffer copy)
- *   +0x70  QImage mainBuffer  (front-buffer copy)
+ *   +0x60  QImage auxBuffer       (compositing target)
+ *   +0x6c  QImage* oldBuffer      (default = &auxBuffer)
+ *   +0x70  QImage mainBuffer      (front-buffer copy)
+ *   +0x7c  pending-full-update flag
+ *   +0x80  reserved
  *   +0x84  update-marker counter
- *   +0x88  constants
- *   +0x90  QRegion
- *   +0x98  QFile  (/dev/fb0)
- *   +0xa8  QImage "old" buffer
+ *   +0x88  swtcon-field / constants
+ *   +0x98  QRegion  (pending region)
+ *   +0xa0  QFile    (/dev/fb0)
+ *   +0xa8  QImage (TCon old-buffer copy)
  *   +0xb8  end
  * \endcode
  */
@@ -196,13 +202,20 @@ public:
   QImage auxBuffer;
 
 private:
+  char OPAQUE_B[EPFR_OFFSET_OLDBUFFER - EPFR_OFFSET_AUXBUFFER - sizeof(QImage)];
+
+public:
+  /*! Pointer to the "previous frame" QImage. */
+  QImage* oldBuffer;
+
+private:
   char
-    OPAQUE_B[EPFR_OFFSET_MAINBUFFER - sizeof(QImage) - EPFR_OFFSET_AUXBUFFER];
+    OPAQUE_C[EPFR_OFFSET_MAINBUFFER - EPFR_OFFSET_OLDBUFFER - sizeof(QImage*)];
 
 public:
   /*! Main (front) buffer - the composed screen content. */
   QImage mainBuffer;
 
 private:
-  char OPAQUE_C[EPFR_SIZE - EPFR_OFFSET_MAINBUFFER - sizeof(QImage)];
+  char OPAQUE_D[EPFR_SIZE - EPFR_OFFSET_MAINBUFFER - sizeof(QImage)];
 };

@@ -57,7 +57,7 @@ GUIThread*
 GUIThread::singleton() {
   static GUIThread* instance = nullptr;
   if (instance == nullptr) {
-    instance = new GUIThread(EPFramebuffer::instance()->auxBuffer.rect());
+    instance = new GUIThread(EPFramebuffer::instance()->oldBuffer->rect());
     Oxide::startThreadWithPriority(instance, QThread::TimeCriticalPriority);
   }
   return instance;
@@ -68,11 +68,11 @@ GUIThread::GUIThread(QRect screenGeometry)
   , m_screenGeometry{screenGeometry}
   , m_screenOffset{screenGeometry.topLeft()}
   , m_screenRect{m_screenGeometry.translated(-m_screenOffset)} {
-  auto& auxBuffer = EPFramebuffer::instance()->auxBuffer;
+  auto oldBuffer = EPFramebuffer::instance()->oldBuffer;
   O_INFO(
-    "Framebuffer:" << auxBuffer.width() << "x" << auxBuffer.height() << " "
-                   << auxBuffer.bytesPerLine() << "bytes/line"
-                   << auxBuffer.format()
+    "Framebuffer:" << oldBuffer->width() << "x" << oldBuffer->height() << " "
+                   << oldBuffer->bytesPerLine() << "bytes/line"
+                   << oldBuffer->format()
   );
   if (
     deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM2
@@ -82,10 +82,10 @@ GUIThread::GUIThread(QRect screenGeometry)
       .fd = -1,
       .x = 0,
       .y = 0,
-      .width = auxBuffer.width(),
-      .height = auxBuffer.height(),
-      .stride = auxBuffer.bytesPerLine(),
-      .format = (Blight::Format)auxBuffer.format(),
+      .width = oldBuffer->width(),
+      .height = oldBuffer->height(),
+      .stride = oldBuffer->bytesPerLine(),
+      .format = (Blight::Format)oldBuffer->format(),
       .data = nullptr,
       .uuid = Blight::buf_t::new_uuid(),
       .surface = 0
@@ -110,10 +110,10 @@ GUIThread::GUIThread(QRect screenGeometry)
     std::optional<Blight::shared_buf_t> maybe_buffer = Blight::createBuffer(
       0,
       0,
-      auxBuffer.width(),
-      auxBuffer.height(),
-      auxBuffer.bytesPerLine(),
-      (Blight::Format)auxBuffer.format()
+      oldBuffer->width(),
+      oldBuffer->height(),
+      oldBuffer->bytesPerLine(),
+      (Blight::Format)oldBuffer->format()
     );
     if (!maybe_buffer.has_value()) {
       qFatal("Failed to create buffer");
@@ -307,14 +307,12 @@ GUIThread::redraw(RepaintRequest& event) {
   Blight::ClockWatch cw;
   // Get visible region on the screen to repaint
   O_DEBUG("Repainting" << region.boundingRect());
-  QImage* frameBuffer = &EPFramebuffer::instance()->auxBuffer;
+  QImage* frameBuffer = EPFramebuffer::instance()->oldBuffer;
   Qt::GlobalColor colour =
     frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
   // "QPainter::begin: A paint device can only be painted by one painter at a
   // time." Ignore this warning, Nothing is displayed if the painter is not
   // active when calling sendUpdate currently
-  QPainter painter(frameBuffer);
-  painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
   for (QRect rect : event.region) {
     bool hasAlpha = event.global;
     if (!hasAlpha) {
@@ -322,6 +320,8 @@ GUIThread::redraw(RepaintRequest& event) {
       hasAlpha =
         image != nullptr && !image->isNull() && image->hasAlphaChannel();
     }
+    QPainter painter(frameBuffer);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     if (hasAlpha) {
       painter.fillRect(rect, colour);
       for (auto& surface : visibleSurfaces()) {
@@ -332,9 +332,9 @@ GUIThread::redraw(RepaintRequest& event) {
     } else {
       repaintSurface(&painter, &rect, event.surface);
     }
+    painter.end();
     sendUpdate(rect, event.waveform, event.mode, event.marker);
   }
-  painter.end();
   O_DEBUG(
     "Repaint" << region.boundingRect() << "done in" << region.rectCount()
               << "paints, and" << cw.elapsed() << "seconds"
@@ -390,11 +390,10 @@ GUIThread::swap(
     m_frameBuffer->stride,
     (QImage::Format)m_frameBuffer->format
   );
-  auto* auxBuffer = &EPFramebuffer::instance()->auxBuffer;
-  QPainter painter(auxBuffer);
+  QPainter painter(EPFramebuffer::instance()->oldBuffer);
   painter.drawImage(rect, image, rect);
-  guiThread->sendUpdate(rect, waveform, mode, 0);
   painter.end();
+  guiThread->sendUpdate(rect, waveform, mode, 0);
 }
 
 QList<std::shared_ptr<Surface>>
