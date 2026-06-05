@@ -16,10 +16,10 @@
 #define EPFR_OFFSET_AUXBUFFER 0x60
 #define EPFR_OFFSET_FRAMEBUFFER 0x6c
 #elif defined(__aarch64__)
-#define EPFR_SIZE 0xb8
-#define EPFR_OFFSET_SHADOWBUFFER 0x70
-#define EPFR_OFFSET_AUXBUFFER 0x60
-#define EPFR_OFFSET_FRAMEBUFFER 0x6c
+#define EPFR_SIZE 0x110
+#define EPFR_OFFSET_SHADOWBUFFER 0xc8
+#define EPFR_OFFSET_AUXBUFFER 0xa8
+#define EPFR_OFFSET_FRAMEBUFFER 0xc0
 #else
 #error "Unsupported architecture"
 #endif
@@ -43,10 +43,10 @@ enum EPContentType {
 /*!
  * \brief Base class for the reMarkable framebuffer abstraction.
  *
- * EPFramebuffer manages a triple of QImages (auxiliary screen buffer,
- * frame-buffer render target, and shadow copy) and provides
- * swapBuffers() to submit display updates. The library's instance()
- * returns the platform-specific subclass (EPFramebufferFusion).
+ * EPFramebuffer manages a triple of QImages (auxiliary,
+ * render target, and shadow copy) and provides swapBuffers() to submit display
+ * updates. The library's instance() returns the platform-specific subclass
+ * (EPFramebufferFusion).
  */
 class EPFramebuffer {
 public:
@@ -150,6 +150,7 @@ protected:
     QFlags<EPFramebuffer::UpdateFlag> flags
   );
 
+#ifdef __arm__
   /*!
    * \brief Send an update to the TCon hardware.
    *
@@ -165,6 +166,7 @@ protected:
     int waveform,
     QFlags<EPFramebuffer::UpdateFlag> flags
   );
+#endif
 };
 
 /*!
