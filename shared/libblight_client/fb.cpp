@@ -17,6 +17,7 @@
 #include <libblight/debug.h>
 #include <libblight/system.h>
 #include <libblight/types.h>
+#include <unistd.h>
 
 namespace FB {
   Blight::shared_buf_t buffer = nullptr;
@@ -461,7 +462,7 @@ namespace FB {
         return Blight::Format::Format_RGB32;
     }
   }
-  int deviceXres() {
+  unsigned int deviceXres() {
     if (Client::isFakeRM1Fb()) {
       return 1404;
     }
@@ -478,7 +479,7 @@ namespace FB {
         return 0;
     }
   }
-  int deviceYres() {
+  unsigned int deviceYres() {
     if (Client::isFakeRM1Fb()) {
       return 1872;
     }
@@ -495,10 +496,10 @@ namespace FB {
         return 0;
     }
   }
-  int deviceStride() {
+  unsigned int deviceStride() {
     return deviceXres() * deviceBitsPerPixel() / 8;
   }
-  int deviceBitsPerPixel() {
+  unsigned int deviceBitsPerPixel() {
     if (Client::isFakeRM1Fb()) {
       return 16;
     }
@@ -518,7 +519,7 @@ namespace FB {
         .y = 0,
         .width = deviceXres(),
         .height = deviceYres(),
-        .stride = deviceStride(),
+        .stride = static_cast<int>(deviceStride()),
         .format = deviceFormat(),
         .data = nullptr,
         .uuid = Blight::buf_t::new_uuid(),
@@ -570,15 +571,23 @@ namespace FB {
     int height,
     Blight::WaveformMode waveform,
     Blight::UpdateMode updateMode,
-    unsigned int marker
+    unsigned int marker,
+    bool wait
   ) {
     if (!Client::isFbEnabled()) {
       Blight::exclusiveModeRepaint(x, y, width, height, waveform, updateMode);
+      if (wait) {
+        Blight::waitForNoRepaints();
+      }
       return {};
     }
     ensure_surface();
-    return connection->repaint(
+    auto maybe = connection->repaint(
       buffer, x, y, width, height, waveform, updateMode, marker
     );
+    if (wait && maybe.has_value()) {
+      maybe.value()->wait();
+    }
+    return maybe;
   }
 }

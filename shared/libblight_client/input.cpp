@@ -197,6 +197,7 @@ namespace Input {
   }
 
   ssize_t read(int fd, void* buf, size_t size) {
+    _DEBUG("read %d %d", fd, size);
     if (size < sizeof(input_event)) {
       _WARN("Trying to read too small of an amount from an input fd: %d", size)
       errno = EINVAL;
@@ -229,16 +230,15 @@ namespace Input {
       }
       count++;
     }
+    if (ringBuffer.empty()) {
+      std::scoped_lock lock(mutex);
+      if (deviceEventFds.contains(device)) {
+        drainEventFd(deviceEventFds[device]);
+      }
+    }
     if (count == 0) {
       errno = EAGAIN;
       return -1;
-    }
-    {
-      std::scoped_lock lock(mutex);
-      auto it = deviceEventFds.find(device);
-      if (it != deviceEventFds.end()) {
-        drainEventFd(it->second);
-      }
     }
     return count * sizeof(input_event);
   }

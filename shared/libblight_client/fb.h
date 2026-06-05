@@ -21,10 +21,10 @@ namespace FB {
   int ioctl(unsigned long request, char* ptr);
   int exclusive_ioctl(unsigned long request, char* ptr);
   Blight::Format deviceFormat();
-  int deviceXres();
-  int deviceYres();
-  int deviceStride();
-  int deviceBitsPerPixel();
+  unsigned int deviceXres();
+  unsigned int deviceYres();
+  unsigned int deviceStride();
+  unsigned int deviceBitsPerPixel();
   void createBuffer();
   Blight::maybe_ackid_ptr_t repaint(
     int x,
@@ -33,7 +33,8 @@ namespace FB {
     int height,
     Blight::WaveformMode waveform,
     Blight::UpdateMode updateMode,
-    unsigned int marker
+    unsigned int marker,
+    bool wait = false
   );
 }
 namespace swtfb {

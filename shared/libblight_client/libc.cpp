@@ -110,6 +110,23 @@ namespace Libc {
       "GLIBC_2.4"
     );
 
+  int (*pselect)(
+    int,
+    fd_set*,
+    fd_set*,
+    fd_set*,
+    const struct timespec*,
+    const sigset_t*
+  ) =
+    (int (*)(
+      int,
+      fd_set*,
+      fd_set*,
+      fd_set*,
+      const struct timespec*,
+      const sigset_t*
+    ))dlvsym(RTLD_NEXT, "pselect", "GLIBC_2.4");
+
   int (*epoll_ctl)(int, int, int, struct epoll_event*) =
     (int (*)(int, int, int, struct epoll_event*))dlsym(RTLD_NEXT, "epoll_ctl");
 

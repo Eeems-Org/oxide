@@ -35,6 +35,14 @@ namespace Libc {
     const sigset_t*
   );
   extern int (*select)(int, fd_set*, fd_set*, fd_set*, struct timeval*);
+  extern int (*pselect)(
+    int,
+    fd_set*,
+    fd_set*,
+    fd_set*,
+    const struct timespec*,
+    const sigset_t*
+  );
   extern int (*epoll_ctl)(int, int, int, struct epoll_event*);
   extern int (*epoll_wait)(int, struct epoll_event*, int, int);
 }

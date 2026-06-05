@@ -254,7 +254,7 @@ dump_qimage_buffer(void* qimage, const std::string& path) {
   }
   int height = qImageFuncs.height(qimage);
   int stride = qImageFuncs.bytesPerLine(qimage);
-  auto size = static_cast<size_t>(stride) * static_cast<size_t>(height);
+  ssize_t size = static_cast<ssize_t>(stride) * static_cast<ssize_t>(height);
 
   int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (fd <= 0) {
@@ -534,7 +534,8 @@ void
 repaint(
   const Qt::QRectLayout* rect,
   Blight::WaveformMode waveform,
-  Blight::UpdateMode updateMode
+  Blight::UpdateMode updateMode,
+  bool wait = false
 ) {
   _DEBUG(
     "repaint: (%d, %d) (%d, %d) %d %d",
@@ -552,7 +553,8 @@ repaint(
     rect->bottom - rect->top,
     waveform,
     updateMode,
-    0
+    0,
+    wait
   );
 }
 
@@ -569,7 +571,8 @@ dump_buffers() {
     _DEBUG("dump_buffers: epframebufferInstance not set yet, skipping");
     return;
   }
-  void* data = Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first;
+  void* data =
+    Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first;
   if (data != nullptr) {
     int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd <= 0) {

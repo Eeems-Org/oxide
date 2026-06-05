@@ -17,6 +17,7 @@
 #include <libblight/system.h>
 #include <linux/fb.h>
 #include <linux/input.h>
+#include <mutex>
 #include <mxcfb.h>
 #include <stdio.h>
 #include <string>
@@ -123,7 +124,8 @@ namespace {
           }
           if (
             buffer->x != 0 || buffer->y != 0 || buffer->width != deviceXres ||
-            buffer->height != deviceYres || buffer->stride != deviceStride ||
+            buffer->height != deviceYres ||
+            static_cast<unsigned int>(buffer->stride) != deviceStride ||
             buffer->format != deviceFormat
           ) {
             continue;
@@ -670,6 +672,28 @@ select(
 symver(select);
 
 __attribute__((visibility("default"))) int
+pselect(
+  int nfds,
+  fd_set* readfds,
+  fd_set* writefds,
+  fd_set* exceptfds,
+  const struct timespec* ntimeout,
+  const sigset_t* sigmask
+) {
+  int backup;
+  if (Client::INITIALIZED && Client::isInputEnabled()) {
+    backup = Input::translateSelectFds(nfds, readfds, writefds, exceptfds);
+  }
+  int res =
+    Libc::pselect(nfds, readfds, writefds, exceptfds, ntimeout, sigmask);
+  if (Client::INITIALIZED && Client::isInputEnabled()) {
+    Input::restoreSelectFds(nfds, readfds, writefds, exceptfds, backup);
+  }
+  return res;
+}
+symver(pselect);
+
+__attribute__((visibility("default"))) int
 epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
   if (Client::INITIALIZED && Client::isInputEnabled() && Input::isInputFd(fd)) {
     return Input::epoll_ctl(epfd, op, fd, ev);
@@ -692,8 +716,6 @@ epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout) {
 symver(epoll_wait);
 
 void __attribute__((constructor))
-init(void);
-void
 init(void) {
 #ifdef DEBUG
   struct sigaction action{0};
