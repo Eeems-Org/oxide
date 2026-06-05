@@ -626,7 +626,7 @@ poll(struct pollfd* fds, nfds_t nfds, int timeout) {
     backup = Input::translatePollfds(fds, nfds);
   }
   int res = Libc::poll(fds, nfds, timeout);
-  if (res == 0 && nfds > 0 && timeout == 0) {
+  if (res == 0 && nfds > 0 && timeout < 0) {
     _WARN("poll exited early with no revents");
   }
   if (backup != nullptr) {
