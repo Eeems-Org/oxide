@@ -8,18 +8,18 @@
 #include <tuple>
 
 // libqsgepaper EPFramebufferTcon layout (returned by instance()):
-//   auxBuffer at +0x60, oldBuffer pointer at +0x6c, mainBuffer at +0x70,
+//   auxBuffer at +0x60, frameBuffer pointer at +0x6c, shadowBuffer at +0x70,
 //   total size 0xb8
 #if defined(__arm__)
 #define EPFR_SIZE 0xb8
-#define EPFR_OFFSET_MAINBUFFER 0x70
+#define EPFR_OFFSET_SHADOWBUFFER 0x70
 #define EPFR_OFFSET_AUXBUFFER 0x60
-#define EPFR_OFFSET_OLDBUFFER 0x6c
+#define EPFR_OFFSET_FRAMEBUFFER 0x6c
 #elif defined(__aarch64__)
 #define EPFR_SIZE 0xb8
-#define EPFR_OFFSET_MAINBUFFER 0x70
+#define EPFR_OFFSET_SHADOWBUFFER 0x70
 #define EPFR_OFFSET_AUXBUFFER 0x60
-#define EPFR_OFFSET_OLDBUFFER 0x6c
+#define EPFR_OFFSET_FRAMEBUFFER 0x6c
 #else
 #error "Unsupported architecture"
 #endif
@@ -43,10 +43,10 @@ enum EPContentType {
 /*!
  * \brief Base class for the reMarkable framebuffer abstraction.
  *
- * EPFramebuffer manages a pair of QImages (front/main buffer and
- * back/auxiliary buffer) and provides swapBuffers() to submit
- * display updates. The library's instance() returns the platform-
- * specific subclass (EPFramebufferFusion).
+ * EPFramebuffer manages a triple of QImages (auxiliary screen buffer,
+ * frame-buffer render target, and shadow copy) and provides
+ * swapBuffers() to submit display updates. The library's instance()
+ * returns the platform-specific subclass (EPFramebufferFusion).
  */
 class EPFramebuffer {
 public:
@@ -60,11 +60,10 @@ public:
    * \brief Store the front and back buffer QImages.
    *
    * Called once during initialization. `param_1` is a tuple of
-   * (mainBuffer, auxBuffer); `old` is an optional pointer to a
-   * third QImage used as the "previous frame" buffer for delta
-   * computation.
+   * (shadowBuffer, auxBuffer); `frameBuffer` is an optional pointer to a
+   * third QImage used as the render-target buffer for display output.
    */
-  void setBuffers(std::tuple<QImage, QImage>, QImage* old = nullptr);
+  void setBuffers(std::tuple<QImage, QImage>, QImage* frameBuffer = nullptr);
 
   /*!
    * \brief Submit a display update for a region.
@@ -177,16 +176,16 @@ protected:
  *   +0x00  QObject / vtable
  *   +0x20  EPContentMap
  *   +0x30  EPScreenModeMap
- *   +0x60  QImage auxBuffer       (compositing target)
- *   +0x6c  QImage* oldBuffer      (default = &auxBuffer)
- *   +0x70  QImage mainBuffer      (front-buffer copy)
+ *   +0x60  QImage auxBuffer          (compositing/screen target)
+ *   +0x6c  QImage* frameBuffer       (render target, default = &auxBuffer)
+ *   +0x70  QImage shadowBuffer       (shadow copy used by swap path)
  *   +0x7c  pending-full-update flag
  *   +0x80  reserved
  *   +0x84  update-marker counter
  *   +0x88  swtcon-field / constants
  *   +0x98  QRegion  (pending region)
  *   +0xa0  QFile    (/dev/fb0)
- *   +0xa8  QImage (TCon old-buffer copy)
+ *   +0xa8  QImage (TCon frame-buffer copy)
  *   +0xb8  end
  * \endcode
  */
@@ -202,20 +201,21 @@ public:
   QImage auxBuffer;
 
 private:
-  char OPAQUE_B[EPFR_OFFSET_OLDBUFFER - EPFR_OFFSET_AUXBUFFER - sizeof(QImage)];
-
-public:
-  /*! Pointer to the "previous frame" QImage. */
-  QImage* oldBuffer;
-
-private:
   char
-    OPAQUE_C[EPFR_OFFSET_MAINBUFFER - EPFR_OFFSET_OLDBUFFER - sizeof(QImage*)];
+    OPAQUE_B[EPFR_OFFSET_FRAMEBUFFER - EPFR_OFFSET_AUXBUFFER - sizeof(QImage)];
 
 public:
-  /*! Main (front) buffer - the composed screen content. */
-  QImage mainBuffer;
+  /*! Pointer to the QImage that serves as the render target. */
+  QImage* frameBuffer;
 
 private:
-  char OPAQUE_D[EPFR_SIZE - EPFR_OFFSET_MAINBUFFER - sizeof(QImage)];
+  char OPAQUE_C
+    [EPFR_OFFSET_SHADOWBUFFER - EPFR_OFFSET_FRAMEBUFFER - sizeof(QImage*)];
+
+public:
+  /*! Shadow copy used by the internal swap path for mono conversions. */
+  QImage shadowBuffer;
+
+private:
+  char OPAQUE_D[EPFR_SIZE - EPFR_OFFSET_SHADOWBUFFER - sizeof(QImage)];
 };

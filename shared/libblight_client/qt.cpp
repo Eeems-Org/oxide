@@ -200,25 +200,25 @@ auxBufferOffset() {
 }
 
 /*!
- * \brief Get the mainBuffer offset (used to read composed screen content)
+ * \brief Get the shadowBuffer offset (used to read composed screen content)
  *
- * xochitl Tcon: main QImage at +0x50
- * libqsgepaper Tcon: main QImage at +0x70
+ * xochitl Tcon: shadow QImage at +0x50
+ * libqsgepaper Tcon: shadow QImage at +0x70 (named shadowBuffer in header)
  *
- * Both default-construct the main QImage, so detection via {0x50,0x60}
+ * Both default-construct the shadow QImage, so detection via {0x50,0x60}
  * works for xochitl and {0x60,0x70} works for libqsgepaper.
  */
 int
-mainBufferOffset() {
+shadowBufferOffset() {
 #if defined(__arm__)
-  // xochitl Tcon: main QImage at +0x50 (libqsgepaper Tcon also has +0x70
+  // xochitl Tcon: shadow QImage at +0x50 (libqsgepaper Tcon also has +0x70
   // but on arm the hook runs in xochitl, so 0x50 is the right read offset)
   return 0x50;
 #elif defined(__aarch64__)
   if (Client::IS_XOCHITL) {
     return 0x50;
   }
-  // non-xochitl apps use libqsgepaper Tcon which has main QImage at +0x70
+  // non-xochitl apps use libqsgepaper Tcon which has shadow QImage at +0x70
   return 0x70;
 #else
   return 0x00;
@@ -559,7 +559,7 @@ repaint(
 }
 
 /*!
- * \brief Dump the framebuffer, auxBuffer, and mainBuffer to /tmp/*.raw
+ * \brief Dump the framebuffer, auxBuffer, and shadowBuffer to /tmp/*.raw
  */
 void
 dump_buffers() {
@@ -590,9 +590,9 @@ dump_buffers() {
     ::close(fd);
   }
   auto auxBuffer = static_cast<char*>(epframebuffer) + auxBufferOffset();
-  auto mainBuffer = static_cast<char*>(epframebuffer) + mainBufferOffset();
+  auto shadowBuffer = static_cast<char*>(epframebuffer) + shadowBufferOffset();
   dump_qimage_buffer(auxBuffer, "/tmp/auxBuffer.raw");
-  dump_qimage_buffer(mainBuffer, "/tmp/mainBuffer.raw");
+  dump_qimage_buffer(shadowBuffer, "/tmp/shadowBuffer.raw");
 }
 
 /*!
@@ -625,7 +625,7 @@ hook_swapBuffers_QRegion(
     return;
   }
   if (!copy_qimage_with_format_conversion(
-        static_cast<char*>(epframebuffer) + mainBufferOffset(),
+        static_cast<char*>(epframebuffer) + shadowBufferOffset(),
         Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first,
         Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
         Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
@@ -695,7 +695,7 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   }
   _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
   if (!copy_qimage_with_format_conversion(
-        static_cast<char*>(this_ptr) + mainBufferOffset(),
+        static_cast<char*>(this_ptr) + shadowBufferOffset(),
         Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first,
         Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
         Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
@@ -847,7 +847,7 @@ _ZN6QImageC1Ev(void* this_ptr) {
     return;
   }
   _DEBUG("QImage::QImage() default");
-  for (int offset : {mainBufferOffset(), auxBufferOffset()}) {
+  for (int offset : {shadowBufferOffset(), auxBufferOffset()}) {
     if (offset == 0) {
       continue; // skip unsupported arch placeholder
     }

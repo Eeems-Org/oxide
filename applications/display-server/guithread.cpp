@@ -57,7 +57,7 @@ GUIThread*
 GUIThread::singleton() {
   static GUIThread* instance = nullptr;
   if (instance == nullptr) {
-    instance = new GUIThread(EPFramebuffer::instance()->oldBuffer->rect());
+    instance = new GUIThread(EPFramebuffer::instance()->frameBuffer->rect());
     Oxide::startThreadWithPriority(instance, QThread::TimeCriticalPriority);
   }
   return instance;
@@ -68,11 +68,11 @@ GUIThread::GUIThread(QRect screenGeometry)
   , m_screenGeometry{screenGeometry}
   , m_screenOffset{screenGeometry.topLeft()}
   , m_screenRect{m_screenGeometry.translated(-m_screenOffset)} {
-  auto oldBuffer = EPFramebuffer::instance()->oldBuffer;
+  auto frameBuffer = EPFramebuffer::instance()->frameBuffer;
   O_INFO(
-    "Framebuffer:" << oldBuffer->width() << "x" << oldBuffer->height() << " "
-                   << oldBuffer->bytesPerLine() << "bytes/line"
-                   << oldBuffer->format()
+    "Framebuffer:" << frameBuffer->width() << "x" << frameBuffer->height()
+                   << " " << frameBuffer->bytesPerLine() << "bytes/line"
+                   << frameBuffer->format()
   );
   if (
     deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM2
@@ -82,10 +82,10 @@ GUIThread::GUIThread(QRect screenGeometry)
       .fd = -1,
       .x = 0,
       .y = 0,
-      .width = oldBuffer->width(),
-      .height = oldBuffer->height(),
-      .stride = oldBuffer->bytesPerLine(),
-      .format = (Blight::Format)oldBuffer->format(),
+      .width = frameBuffer->width(),
+      .height = frameBuffer->height(),
+      .stride = frameBuffer->bytesPerLine(),
+      .format = (Blight::Format)frameBuffer->format(),
       .data = nullptr,
       .uuid = Blight::buf_t::new_uuid(),
       .surface = 0
@@ -110,10 +110,10 @@ GUIThread::GUIThread(QRect screenGeometry)
     std::optional<Blight::shared_buf_t> maybe_buffer = Blight::createBuffer(
       0,
       0,
-      oldBuffer->width(),
-      oldBuffer->height(),
-      oldBuffer->bytesPerLine(),
-      (Blight::Format)oldBuffer->format()
+      frameBuffer->width(),
+      frameBuffer->height(),
+      frameBuffer->bytesPerLine(),
+      (Blight::Format)frameBuffer->format()
     );
     if (!maybe_buffer.has_value()) {
       qFatal("Failed to create buffer");
@@ -307,7 +307,7 @@ GUIThread::redraw(RepaintRequest& event) {
   Blight::ClockWatch cw;
   // Get visible region on the screen to repaint
   O_DEBUG("Repainting" << region.boundingRect());
-  QImage* frameBuffer = EPFramebuffer::instance()->oldBuffer;
+  QImage* frameBuffer = EPFramebuffer::instance()->frameBuffer;
   Qt::GlobalColor colour =
     frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
   // "QPainter::begin: A paint device can only be painted by one painter at a
@@ -390,7 +390,7 @@ GUIThread::swap(
     m_frameBuffer->stride,
     (QImage::Format)m_frameBuffer->format
   );
-  QPainter painter(EPFramebuffer::instance()->oldBuffer);
+  QPainter painter(EPFramebuffer::instance()->frameBuffer);
   painter.drawImage(rect, image, rect);
   painter.end();
   guiThread->sendUpdate(rect, waveform, mode, 0);
