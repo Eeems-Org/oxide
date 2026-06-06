@@ -32,7 +32,7 @@ DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 CONFIG += c++17
 CONFIG += c++20
-CONFIG += c++latest
+# CONFIG += c++latest
 
 CONFIG(release, debug|release){
     !contains(DEFINES, DISABLE_LTO){

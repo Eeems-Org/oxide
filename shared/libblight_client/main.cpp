@@ -40,7 +40,14 @@ namespace {
   void __sigsegv_handler(int nSignum, siginfo_t* si, void* vcontext) {
     constexpr int depth = 10;
     auto uc = (ucontext_t*)vcontext;
-    auto caller_address = (void*)uc->uc_mcontext.arm_pc;
+    auto caller_address =
+#if defined(__arm__)
+      (void*)uc->uc_mcontext.arm_pc;
+#elif defined(__aarch64__)
+      (void*)uc->uc_mcontext.pc;
+#else
+#error "Unsupported architecture"
+#endif
     void* array[depth];
     size_t size = ::backtrace(array, depth);
     array[1] = caller_address;
@@ -758,15 +765,13 @@ init(void) {
   _DEBUG("Handle framebuffer: %d", Client::isFbEnabled());
   auto pid = getpid();
   _DEBUG("Connecting %d to blight", pid);
-#ifdef __arm__
+#if defined(__arm__) || defined(__aarch64__)
   bool connected = Blight::connect(true);
 #else
   bool connected = Blight::connect(false);
 #endif
   if (!connected) {
-    _CRIT(
-      "%s", "Could not connect to display server: %s", std::strerror(errno)
-    );
+    _CRIT("Could not connect to display server: %s", std::strerror(errno));
     std::quick_exit(EXIT_FAILURE);
   }
   FB::connection = Blight::connection();

@@ -77,8 +77,8 @@ public:
   /*!
    * \brief Submit a display update for a region.
    *
-   * Triggers the framebuffer controller to redraw `region` on the
-   * e-ink display using the given waveform and content type.
+   * This writes the content of frameBuffer to auxBuffer before calling update()
+   * or sendTConUpdate()
    *
    * \param region  Rectangle to update (in pixels).
    * \param epct    Content type hint (mono or color).
@@ -101,36 +101,32 @@ public:
    */
   static class EPFramebufferFusion* instance();
 
-#ifdef __arm__
   /*!
    * \brief Wait for pending updates to complete.
    *
-   * Dispatches to the platform-specific sync at runtime:
-   * - EPFramebufferSwtcon::sync() on rM2
-   * - EPFramebufferTcon::sync() on rM1
+   * Dispatches to the platform-specific sync at runtime using dlsym
+   * to avoid a link-time dependency on the library class name.
    *
-   * Using dlsym avoids a link-time dependency on a particular class
-   * name, letting the same binary work across device generations.
+   * - ARM32 (rM1/rM2): tries EPFramebufferSwtcon::sync() first,
+   *   then falls back to EPFramebufferTcon::sync() for older units.
+   * - aarch64 (rM3+):   only EPFramebufferSwtcon::sync() exists.
    */
   inline void sync() {
     static auto* fn = []() -> void (*)(void*) {
-      void* s = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferSwtcon4syncEv");
-      if (s == nullptr) {
-        s = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferTcon4syncEv");
+      void* sync = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferSwtcon4syncEv");
+      if (sync == nullptr) {
+        sync = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferTcon4syncEv");
       }
-      return reinterpret_cast<void (*)(void*)>(s);
+      if (sync == nullptr) {
+        sync = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferSwtcon4syncEv");
+      }
+      return reinterpret_cast<void (*)(void*)>(sync);
     }();
     if (fn == nullptr) {
       qFatal("Unable to find EPFramebuffer::sync()");
     }
     fn(this);
   }
-#else
-  /*!
-   * \brief Wait for pending updates to complete.
-   */
-  void sync();
-#endif
 };
 
 /*!
@@ -146,9 +142,12 @@ public:
   /*! Open /dev/fb0 and set up the framebuffer controller. */
   void initialize(void);
 
-#if defined(__arm__)
   /*!
    * \brief Send screen update
+   *
+   * This assumes that framebuffer content has been written to auxBuffer.
+   * This also requires beginUpdateQueue() calls before and endUpdateQueue()
+   * calls after all updates are ready
    *
    * \param rect      Rectangle to update in pixels.
    * \param waveform  Waveform mode (0x18 for GC16, 0x1000 for DU).
@@ -196,21 +195,6 @@ public:
     }
     fn(this, rect, waveform, pixelMode, flags);
   }
-#else
-  /*!
-   * \brief Send screen update
-   *
-   * \param rect      Rectangle to update in pixels.
-   * \param waveform  Waveform mode (0x18 for GC16, 0x1000 for DU).
-   * \param pixelMode  Pixel update mode.
-   */
-  void update(
-    QRect rect,
-    int waveform,
-    PixelMode pixelMode,
-    QFlags<EPFramebuffer::UpdateFlag> flags
-  );
-#endif
 };
 
 /*!

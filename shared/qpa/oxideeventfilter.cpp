@@ -94,10 +94,17 @@ OxideEventFilter::eventFilter(QObject* obj, QEvent* ev) {
 
 QPointF
 OxideEventFilter::transpose(QPointF pointF) {
-  pointF = swap(pointF);
-  // Handle scaling from wacom to screensize
-  pointF.setX(pointF.x() * WACOM_X_SCALAR);
-  pointF.setY((DISPLAYWIDTH - pointF.y()) * WACOM_Y_SCALAR);
+  switch (deviceSettings.getDeviceType()) {
+    case Oxide::DeviceSettings::DeviceType::RM1:
+    case Oxide::DeviceSettings::DeviceType::RM2:
+      pointF = swap(pointF);
+      // Handle scaling from wacom to screensize
+      pointF.setX(pointF.x() * WACOM_X_SCALAR);
+      pointF.setY((DISPLAYWIDTH - pointF.y()) * WACOM_Y_SCALAR);
+      break;
+    default:
+      break;
+  }
   return pointF;
 }
 
