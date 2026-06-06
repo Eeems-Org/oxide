@@ -1,4 +1,5 @@
 #include "drm.h"
+#include "libc.h"
 #include "state.h"
 
 #include <drm/drm.h>
@@ -15,16 +16,16 @@ namespace DRM {
     switch (request) {
       case DRM_IOCTL_MODE_ATOMIC:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_ATOMIC");
-        return -1;
+        return Libc::ioctl(card0, request, ptr);
       case DRM_IOCTL_MODE_CREATE_DUMB:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_CREATE_DUMB");
-        return -1;
+        return Libc::ioctl(card0, request, ptr);
       case DRM_IOCTL_MODE_MAP_DUMB:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_MAP_DUMB");
-        return -1;
+        return Libc::ioctl(card0, request, ptr);
       case DRM_IOCTL_MODE_DESTROY_DUMB:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_DESTROY_DUMB");
-        return -1;
+        return Libc::ioctl(card0, request, ptr);
       default:
         _WARN(
           "UNHANDLED DRM IOCTL %lu %c %lu %lu %lu",
@@ -34,7 +35,7 @@ namespace DRM {
           _IOC_SIZE(request),
           request
         );
-        return 0;
+        return Libc::ioctl(card0, request, ptr);
     }
   }
 }
