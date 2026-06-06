@@ -1,7 +1,9 @@
 #pragma once
+#include <string>
 
 namespace Client {
   enum DeviceType {
+    INVALID,
     UNKNOWN,
     RM1,
     RM2,
@@ -13,6 +15,8 @@ namespace Client {
   extern bool FAILED_INIT;
   extern bool IS_XOCHITL;
   extern DeviceType deviceType;
+  bool init();
+  void realpath(const char* pathname, std::string& path);
   bool isInputEnabled();
   bool isFbEnabled();
   bool isPowerButtonEnabled();
@@ -22,4 +26,5 @@ namespace Client {
   bool isRM2FBAllowed();
   bool isFakeRM2FB();
   bool isForceQt();
+  const std::string deviceTypeName();
 }

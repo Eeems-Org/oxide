@@ -7,10 +7,9 @@
 #include <cstring>
 #include <errno.h>
 #include <fcntl.h>
-#include <fstream>
-#include <iostream>
 #include <string>
 #include <sys/mman.h>
+#include <vector>
 
 #include <libblight.h>
 #include <libblight/clock.h>
@@ -26,26 +25,61 @@ namespace FB {
   int epframebufferLockFd = -1;
   int epdLockFd = -1;
   int msgq = -1;
-  void init() {
-    std::ios_base::Init i;
-    std::ifstream device_id_file{"/sys/devices/soc0/machine"};
-    std::string device_id;
-    std::getline(device_id_file, device_id);
-    if (
-      device_id == "reMarkable 1.0" || device_id == "reMarkable Prototype 1"
-    ) {
-      Client::deviceType = Client::DeviceType::RM1;
-    } else if (device_id == "reMarkable 2.0") {
-      Client::deviceType = Client::DeviceType::RM2;
-    } else if (device_id == "reMarkable Ferrari") {
-      Client::deviceType = Client::DeviceType::RMPP;
-    } else if (device_id == "reMarkable Chiapa") {
-      Client::deviceType = Client::DeviceType::RMPPM;
-    } else if (device_id == "reMarkable Tatsu") {
-      Client::deviceType = Client::DeviceType::RMPPURE;
-    } else {
-      Client::deviceType = Client::DeviceType::UNKNOWN;
+  bool init() {
+    _DEBUG("Handle framebuffer: %d", Client::isFbEnabled());
+    auto pid = getpid();
+    _DEBUG("Connecting %d to blight", pid);
+#if defined(__arm__) || defined(__aarch64__)
+    bool connected = Blight::connect(true);
+#else
+    bool connected = Blight::connect(false);
+#endif
+    if (!connected) {
+      _CRIT("Could not connect to display server: %s", std::strerror(errno));
+      std::quick_exit(EXIT_FAILURE);
     }
+    FB::connection = Blight::connection();
+    if (FB::connection == nullptr) {
+      _WARN("Failed to connect to display server: %s", std::strerror(errno));
+      std::exit(errno);
+    }
+    FB::connection->onDisconnect([](int res) {
+      _WARN("Disconnected from display server: %s", std::strerror(res));
+      // TODO - handle reconnect
+      std::exit(res);
+    });
+    _DEBUG("Connected %d to blight on %d", pid, FB::connection->handle());
+    Libc::setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
+    if (Client::deviceType != Client::DeviceType::RM1) {
+      if (Client::isFakeRM2FB()) {
+        Libc::setenv("RM2FB_ACTIVE", "1", true);
+        Libc::setenv("RM2FB_SHIM", "1", true);
+      }
+      if (!Client::isRM2FBAllowed()) {
+        Libc::setenv("RM2FB_DISABLE", "1", true);
+      } else {
+        Libc::unsetenv("RM2FB_DISABLE");
+      }
+    }
+    if (Client::isForceQt()) {
+      Libc::setenv("QMLSCENE_DEVICE", "software", 1);
+      Libc::setenv("QT_QUICK_BACKEND", "software", 1);
+      Libc::setenv("QT_QPA_PLATFORM", "oxide:enable_fonts", 1);
+      Libc::setenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", "", 1);
+      Libc::setenv("QT_QPA_EVDEV_MOUSE_PARAMETERS", "", 1);
+      Libc::setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
+      Libc::setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
+    }
+    if (Client::isFbEnabled()) {
+      FB::buffer = Blight::buf_t::new_ptr();
+    } else {
+      Blight::setFlags(
+        std::string("connection/") + std::to_string(getpid()),
+        std::vector<std::string>{"system"}
+      );
+      Blight::enterExclusiveMode();
+    }
+    return true;
   }
   bool is_fb(int fd) {
     return Client::isFbEnabled() && buffer->fd > 0 && buffer->fd == fd;
@@ -510,28 +544,101 @@ namespace FB {
         return 32;
     }
   }
-  void createBuffer() {
+  int createBuffer() {
+    if (!Client::isFbEnabled()) {
+      if (frameBuffer < 0) {
+        frameBuffer = Blight::frameBuffer();
+        if (frameBuffer < 0) {
+          _CRIT("Failed to create buffer: %s", std::strerror(errno));
+          std::exit(errno);
+        }
+        _INFO("Opened frameBuffer on fd %d", frameBuffer);
+      }
+      return frameBuffer;
+    }
+    if (buffer->format != Blight::Format::Format_Invalid) {
+      return buffer->fd;
+    }
+    _INFO("Creating buffer for %s", Client::deviceTypeName().c_str());
+    auto surfaceIds = connection->surfaces();
+    Blight::Format format = deviceFormat();
+    if (format == Blight::Format::Format_Invalid) {
+      _CRIT("FB::deviceFormat() returned Format_Invalid");
+      std::_Exit(EXIT_FAILURE);
+    }
+    unsigned int width = deviceXres();
+    if (width == 0) {
+      _CRIT("FB::deviceXres() returned 0");
+      std::_Exit(EXIT_FAILURE);
+    }
+    unsigned int height = deviceYres();
+    if (height == 0) {
+      _CRIT("FB::deviceYres() returned 0");
+      std::_Exit(EXIT_FAILURE);
+    }
+    unsigned int stride = deviceStride();
+    if (stride == 0) {
+      _CRIT("FB::deviceStride() returned 0");
+      std::_Exit(EXIT_FAILURE);
+    }
+    if (!surfaceIds.empty()) {
+      for (auto& identifier : surfaceIds) {
+        auto maybe = connection->getBuffer(identifier);
+        if (!maybe.has_value()) {
+          continue;
+        }
+        auto buffer = maybe.value();
+        if (buffer->data == nullptr) {
+          continue;
+        }
+        if (
+          buffer->x != 0 || buffer->y != 0 || buffer->width != width ||
+          buffer->height != height ||
+          static_cast<unsigned int>(buffer->stride) != stride ||
+          buffer->format != format
+        ) {
+          continue;
+        }
+        _INFO("Reusing existing surface: %s", identifier);
+        buffer = buffer;
+        break;
+      }
+    }
+    if (buffer->format != Blight::Format::Format_Invalid) {
+      _INFO("Created buffer %s on fd %d", buffer->uuid.c_str(), buffer->fd);
+      return buffer->fd;
+    }
     if (Client::deviceType == Client::DeviceType::RM2) {
       // rM2 requires a much larger buffer than is actually used
       auto buf = new Blight::buf_t{
         .fd = -1,
         .x = 0,
         .y = 0,
-        .width = deviceXres(),
-        .height = deviceYres(),
-        .stride = static_cast<int>(deviceStride()),
-        .format = deviceFormat(),
+        .width = width,
+        .height = height,
+        .stride = static_cast<int>(stride),
+        .format = format,
         .data = nullptr,
         .uuid = Blight::buf_t::new_uuid(),
         .surface = 0
       };
       buf->fd = memfd_create(buf->uuid.c_str(), MFD_ALLOW_SEALING);
       if (buf->fd == -1) {
-        return;
+        _CRIT(
+          "FB::createBuffer::memfd_create(%s, MFD_ALLOW_SEALING) failed: %s",
+          buf->uuid.c_str(),
+          std::strerror(errno)
+        );
+        std::_Exit(errno);
       }
       // Magic larger number that rM2 uses based on virtual sizes
       if (ftruncate(buf->fd, 26359808)) {
-        return;
+        _CRIT(
+          "FB::createBuffer::ftruncate(%d, 26359808) failed: %s",
+          buf->fd,
+          std::strerror(errno)
+        );
+        std::_Exit(errno);
       }
       void* data = mmap(
         NULL,
@@ -542,27 +649,41 @@ namespace FB {
         0
       );
       if (data == MAP_FAILED || data == nullptr) {
-        return;
+        _CRIT(
+          "FB::createBuffer::mmap(NULL, %d, PROT_READ | PROT_WRITE, "
+          "MAP_SHARED_VALIDATE, %d, 0) failed: %s",
+          buf->size(),
+          buf->fd,
+          std::strerror(errno)
+        );
+        std::_Exit(errno);
       }
       buf->data = reinterpret_cast<Blight::data_t>(data);
       buffer = Blight::shared_buf_t(buf);
     } else {
-      auto maybe = Blight::createBuffer(
-        0, 0, deviceXres(), deviceYres(), deviceStride(), deviceFormat()
-      );
+      auto maybe = Blight::createBuffer(0, 0, width, height, stride, format);
       if (!maybe.has_value()) {
-        return;
+        _CRIT(
+          "Blight::createBuffer(0, 0, %d, %d, %d, %d) failed: %s",
+          width,
+          height,
+          stride,
+          format,
+          std::strerror(errno)
+        );
+        std::_Exit(errno);
       }
       buffer = maybe.value();
     }
-    // We don't ever plan on resizing, and we shouldn't let anything
-    // try
+    // We don't ever plan on resizing, and we shouldn't let anything try
     int flags = fcntl(buffer->fd, F_GET_SEALS);
     fcntl(
       buffer->fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW
     );
     // Initialize the buffer with white (all bytes = 0xFF)
-    memset(FB::buffer->data, 0xFF, FB::buffer->size());
+    memset(buffer->data, 0xFF, buffer->size());
+    _INFO("Created buffer %s on fd %d", buffer->uuid.c_str(), buffer->fd);
+    return buffer->fd;
   }
   Blight::maybe_ackid_ptr_t repaint(
     int x,

@@ -16,7 +16,7 @@ namespace DRM {
     switch (request) {
       case DRM_IOCTL_MODE_ATOMIC:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_ATOMIC");
-        return Libc::ioctl(card0, request, ptr);
+        return 0;
       case DRM_IOCTL_MODE_CREATE_DUMB:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_CREATE_DUMB");
         return Libc::ioctl(card0, request, ptr);
@@ -26,6 +26,9 @@ namespace DRM {
       case DRM_IOCTL_MODE_DESTROY_DUMB:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_DESTROY_DUMB");
         return Libc::ioctl(card0, request, ptr);
+      case DRM_IOCTL_MODE_SETCRTC:
+        _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_SETCRTC");
+        return 0;
       default:
         _WARN(
           "UNHANDLED DRM IOCTL %lu %c %lu %lu %lu",

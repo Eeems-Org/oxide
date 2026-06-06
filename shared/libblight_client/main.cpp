@@ -86,20 +86,13 @@ namespace {
   }
 #endif
 
-  void __realpath(const char* pathname, std::string& path) {
-    char absolutepath[4096];
-    if (realpath(pathname, absolutepath) != nullptr) {
-      path = absolutepath;
-    }
-  }
-
   int __open(const char* pathname, int flags) {
     if (!Client::INITIALIZED) {
       return -2;
     }
     std::string actualpath(pathname);
     if (std::filesystem::exists(actualpath)) {
-      __realpath(pathname, actualpath);
+      Client::realpath(pathname, actualpath);
     }
     int res = -2;
     if (Client::isFakeRM1() && actualpath == "/sys/devices/soc0/machine") {
@@ -131,57 +124,10 @@ namespace {
         ("/tmp/epd." + std::to_string(getpid()) + ".lock").c_str(), flags
       );
     } else if (actualpath == "/dev/fb0" || actualpath == "/dev/shm/swtfb.01") {
-      if (!Client::isFbEnabled()) {
-        if (FB::frameBuffer < 0) {
-          FB::frameBuffer = Blight::frameBuffer();
-        }
-        return FB::frameBuffer;
-      }
-      if (FB::buffer->format != Blight::Format::Format_Invalid) {
-        return FB::buffer->fd;
-      }
-      auto surfaceIds = FB::connection->surfaces();
-      auto deviceFormat = FB::deviceFormat();
-      auto deviceXres = FB::deviceXres();
-      auto deviceYres = FB::deviceYres();
-      auto deviceStride = FB::deviceStride();
-      if (!surfaceIds.empty()) {
-        for (auto& identifier : surfaceIds) {
-          auto maybe = FB::connection->getBuffer(identifier);
-          if (!maybe.has_value()) {
-            continue;
-          }
-          auto buffer = maybe.value();
-          if (buffer->data == nullptr) {
-            continue;
-          }
-          if (
-            buffer->x != 0 || buffer->y != 0 || buffer->width != deviceXres ||
-            buffer->height != deviceYres ||
-            static_cast<unsigned int>(buffer->stride) != deviceStride ||
-            buffer->format != deviceFormat
-          ) {
-            continue;
-          }
-          _INFO("Reusing existing surface: %s", identifier);
-          FB::buffer = buffer;
-          break;
-        }
-      }
-      if (FB::buffer->format == Blight::Format::Format_Invalid) {
-        FB::createBuffer();
-        res = FB::buffer->fd;
-        if (res < 0) {
-          _CRIT("Failed to create buffer: %s", std::strerror(errno));
-          std::exit(errno);
-        }
-        _INFO(
-          "Created buffer %s on fd %d", FB::buffer->uuid.c_str(), FB::buffer->fd
-        );
-        return res;
-      }
+      return FB::createBuffer();
 #ifdef __aarch64__
     } else if (actualpath == "/dev/dri/card0") {
+      FB::createBuffer();
       if (DRM::card0 <= 0) {
         DRM::card0 = Libc::open(actualpath.c_str(), flags);
       }
@@ -732,89 +678,12 @@ init(void) {
   action.sa_sigaction = __sigabrt_handler;
   sigaction(SIGABRT, &action, NULL);
 #endif
-
-  auto debugLevel = getenv("OXIDE_PRELOAD_DEBUG");
-  if (debugLevel != nullptr) {
-    try {
-      set_blight_debug_level(std::stoi(debugLevel));
-    } catch (std::invalid_argument&) {
-    } catch (std::out_of_range&) {
-      _WARN("OXIDE_PRELOAD_DEBUG invalid value");
-    }
-  }
-  std::string path;
-  __realpath("/proc/self/exe", path);
-  if (path == "/usr/bin/xochitl") {
-    Client::IS_XOCHITL = true;
-  }
-  if (
-    !Client::IS_XOCHITL &&
-    (!path.starts_with("/opt") || path.starts_with("/opt/sbin")) &&
-    (!path.starts_with("/home") || path.starts_with("/home/root/.entware/sbin"))
-  ) {
-    // We ignore this executable
-    set_blight_debug_level(0);
+  if (Client::init() && FB::init()) {
     Client::FAILED_INIT = false;
-    return;
+    Client::INITIALIZED = true;
+    FB::connection->focused();
+    _DEBUG("blight_client initialized")
   }
-  _DEBUG("Handle framebuffer: %d", Client::isFbEnabled());
-  auto pid = getpid();
-  _DEBUG("Connecting %d to blight", pid);
-#if defined(__arm__) || defined(__aarch64__)
-  bool connected = Blight::connect(true);
-#else
-  bool connected = Blight::connect(false);
-#endif
-  if (!connected) {
-    _CRIT("Could not connect to display server: %s", std::strerror(errno));
-    std::quick_exit(EXIT_FAILURE);
-  }
-  FB::connection = Blight::connection();
-  if (FB::connection == nullptr) {
-    _WARN("Failed to connect to display server: %s", std::strerror(errno));
-    std::exit(errno);
-  }
-  FB::connection->onDisconnect([](int res) {
-    _WARN("Disconnected from display server: %s", std::strerror(res));
-    // TODO - handle reconnect
-    std::exit(res);
-  });
-  _DEBUG("Connected %d to blight on %d", pid, FB::connection->handle());
-  Libc::setenv("OXIDE_PRELOAD", std::to_string(getpgrp()).c_str(), true);
-  FB::init();
-  if (Client::deviceType != Client::DeviceType::RM1) {
-    if (Client::isFakeRM2FB()) {
-      Libc::setenv("RM2FB_ACTIVE", "1", true);
-      Libc::setenv("RM2FB_SHIM", "1", true);
-    }
-    if (!Client::isRM2FBAllowed()) {
-      Libc::setenv("RM2FB_DISABLE", "1", true);
-    } else {
-      Libc::unsetenv("RM2FB_DISABLE");
-    }
-  }
-  if (Client::isForceQt()) {
-    Libc::setenv("QMLSCENE_DEVICE", "software", 1);
-    Libc::setenv("QT_QUICK_BACKEND", "software", 1);
-    Libc::setenv("QT_QPA_PLATFORM", "oxide:enable_fonts", 1);
-    Libc::setenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", "", 1);
-    Libc::setenv("QT_QPA_EVDEV_MOUSE_PARAMETERS", "", 1);
-    Libc::setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
-    Libc::setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
-  }
-  if (Client::isFbEnabled()) {
-    FB::buffer = Blight::buf_t::new_ptr();
-  } else {
-    Blight::setFlags(
-      std::string("connection/") + std::to_string(getpid()),
-      std::vector<std::string>{"system"}
-    );
-    Blight::enterExclusiveMode();
-  }
-  Client::FAILED_INIT = false;
-  Client::INITIALIZED = true;
-  FB::connection->focused();
-  _DEBUG("blight_client initialized")
 }
 
 __attribute__((visibility("default"))) int

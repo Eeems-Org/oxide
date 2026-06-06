@@ -5,13 +5,13 @@
 #include <mxcfb.h>
 
 namespace FB {
-  void init();
   extern Blight::shared_buf_t buffer;
   extern Blight::Connection* connection;
   extern int frameBuffer;
   extern int epframebufferLockFd;
   extern int epdLockFd;
   extern int msgq;
+  bool init();
   bool is_fb(int fd);
   void ensure_surface();
   int send_update(mxcfb_update_data* update);
@@ -25,7 +25,7 @@ namespace FB {
   unsigned int deviceYres();
   unsigned int deviceStride();
   unsigned int deviceBitsPerPixel();
-  void createBuffer();
+  int createBuffer();
   Blight::maybe_ackid_ptr_t repaint(
     int x,
     int y,
