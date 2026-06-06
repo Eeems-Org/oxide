@@ -1,3 +1,6 @@
+#ifdef __aarch64__
+#include "drm.h"
+#endif
 #include "fb.h"
 #include "input.h"
 #include "libc.h"
@@ -17,7 +20,6 @@
 #include <libblight/system.h>
 #include <linux/fb.h>
 #include <linux/input.h>
-#include <mutex>
 #include <mxcfb.h>
 #include <stdio.h>
 #include <string>
@@ -38,6 +40,8 @@
 namespace {
 #ifdef DEBUG
   void __sigsegv_handler(int nSignum, siginfo_t* si, void* vcontext) {
+    (void)nSignum;
+    (void)si;
     constexpr int depth = 10;
     auto uc = (ucontext_t*)vcontext;
     auto caller_address =
@@ -57,6 +61,28 @@ namespace {
       std::cerr << "  " << messages[i] << std::endl;
     }
     std::_Exit(139);
+  }
+
+  void __sigabrt_handler(int nSignum, siginfo_t* si, void* vcontext) {
+    (void)nSignum;
+    (void)si;
+    constexpr int depth = 10;
+    auto uc = (ucontext_t*)vcontext;
+    auto caller_address =
+#if defined(__arm__)
+      (void*)uc->uc_mcontext.arm_pc;
+#elif defined(__aarch64__)
+      (void*)uc->uc_mcontext.pc;
+#else
+#error "Unsupported architecture"
+#endif
+    void* array[depth];
+    size_t size = ::backtrace(array, depth);
+    array[1] = caller_address;
+    const char* msg = "Abort (heap corruption suspected):\n";
+    Libc::write(STDERR_FILENO, msg, std::strlen(msg));
+    ::backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
+    std::_Exit(134);
   }
 #endif
 
@@ -154,6 +180,13 @@ namespace {
         );
         return res;
       }
+#ifdef __aarch64__
+    } else if (actualpath == "/dev/dri/card0") {
+      if (DRM::card0 <= 0) {
+        DRM::card0 = Libc::open(actualpath.c_str(), flags);
+      }
+      return DRM::card0;
+#endif
     } else if (
       Client::isInputEnabled() && actualpath.starts_with("/dev/input/event")
     ) {
@@ -385,6 +418,13 @@ ioctl(int fd, unsigned long request, ...) {
       va_end(args);
       return res;
     }
+#ifdef __aarch64__
+    if (DRM::is_drm(fd)) {
+      int res = DRM::ioctl(request, ptr);
+      va_end(args);
+      return res;
+    }
+#endif
     if (!Client::isFbEnabled() && fd == FB::frameBuffer) {
       int res = FB::exclusive_ioctl(request, ptr);
       va_end(args);
@@ -689,6 +729,8 @@ init(void) {
   action.sa_flags = SA_SIGINFO;
   action.sa_sigaction = __sigsegv_handler;
   sigaction(SIGSEGV, &action, NULL);
+  action.sa_sigaction = __sigabrt_handler;
+  sigaction(SIGABRT, &action, NULL);
 #endif
 
   auto debugLevel = getenv("OXIDE_PRELOAD_DEBUG");

@@ -10,19 +10,21 @@ CONFIG += hide_symbols
 QT =
 
 HEADERS += \
-    libc.h \
-    state.h \
+    drm.h \
     fb.h \
     input.h \
-    qt.h
+    libc.h \
+    qt.h \
+    state.h
 
 SOURCES += \
-    libc.cpp \
-    state.cpp \
+    drm.cpp \
     fb.cpp \
     input.cpp \
+    libc.cpp \
+    main.cpp \
     qt.cpp \
-    main.cpp
+    state.cpp
 
 LIBS += -lrt -ldl -Wl,--exclude-libs,ALL
 PKGCONFIG += libsystemd
