@@ -43,15 +43,16 @@ namespace Qt {
     return fn;
   }
   bool region_rect_overlaps(const QRectLayout* rect, const void* region) {
-    auto begin_fn = qregion_begin();
-    auto end_fn = qregion_end();
-    if (begin_fn == nullptr || end_fn == nullptr) {
-      return false;
+    auto begin = qregion_begin();
+    auto end = qregion_end();
+    if (begin == nullptr || end == nullptr) {
+      _CRIT("QRegion::begin or QRegion::end could not be resolved");
+      std::_Exit(EXIT_FAILURE);
     }
-    auto rit = begin_fn(region);
-    auto rend = end_fn(region);
-    if (!rit || !rend) {
-      _DEBUG("region_rect_overlaps: qregion_begin/end is NULL");
+    auto rit = begin(region);
+    auto rend = end(region);
+    if (rit == nullptr || rend == nullptr) {
+      _DEBUG("region_rect_overlaps: qregion_begin/end is nullptr");
       return false;
     }
     for (; rit != rend; rit++) {
@@ -90,13 +91,19 @@ namespace Qt {
 
 // Runtime pointers to real QImage methods (resolved once via dlsym).
 struct QImageFuncs {
+#ifdef __arm__
   void (*constructor)(void*, char*, int, int, int, int, void*, void*);
+  const unsigned char* (*constScanLine)(void*, int);
+  int (*bytesPerLine)(void*);
+#else
+  void (*constructor)(void*, char*, int, int, long long, int, void*, void*);
+  const unsigned char* (*constScanLine)(void*, int);
+  long long (*bytesPerLine)(void*);
+#endif
   void (*destructor)(void*);
   unsigned char* (*bits)(void*);
-  const unsigned char* (*constScanLine)(void*, int);
   int (*width)(void*);
   int (*height)(void*);
-  int (*bytesPerLine)(void*);
   int (*format)(void*);
   bool ok;
 };
@@ -111,39 +118,81 @@ resolve_qimage_funcs() {
   if (qImageFuncs.ok) {
     return;
   }
-  qImageFuncs.constructor = reinterpret_cast<decltype(qImageFuncs.constructor)>(
-    dlsym(RTLD_DEFAULT, "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_")
-  );
+#if !defined(__arm__) && !defined(__aarch64__)
+  _CRIT("%s", "Unsupported architecture");
+  std::exit(EXIT_FAILURE);
+#endif
+  bool ok = true;
+  qImageFuncs.constructor =
+    reinterpret_cast<decltype(qImageFuncs.constructor)>(dlsym(
+      RTLD_DEFAULT,
+#ifdef __arm__
+      "_ZN6QImageC1EPhiiiNS_6FormatEPFvPvES2_"
+#else
+      "_ZN6QImageC1EPhiixNS_6FormatEPFvPvES2_"
+#endif
+    ));
+  if (qImageFuncs.constructor == nullptr) {
+    _WARN("%s", "Failed to resolve QImage::QImage");
+    ok = false;
+  }
   qImageFuncs.destructor = reinterpret_cast<decltype(qImageFuncs.destructor)>(
     dlsym(RTLD_DEFAULT, "_ZN6QImageD1Ev")
   );
+  if (qImageFuncs.destructor == nullptr) {
+    _WARN("%s", "Failed to resolve QImage::~QImage");
+    ok = false;
+  }
   qImageFuncs.bits = reinterpret_cast<decltype(qImageFuncs.bits)>(
     dlsym(RTLD_DEFAULT, "_ZNK6QImage4bitsEv")
   );
+  if (qImageFuncs.bits == nullptr) {
+    _WARN("%s", "Failed to resolve QImage::bits");
+    ok = false;
+  }
   qImageFuncs.constScanLine =
-    reinterpret_cast<decltype(qImageFuncs.constScanLine)>(
-      dlsym(RTLD_DEFAULT, "_ZNK6QImage13constScanLineEi")
-    );
+    reinterpret_cast<decltype(qImageFuncs.constScanLine)>(dlsym(
+      RTLD_DEFAULT,
+#ifdef __arm__
+      "_ZNK6QImage13constScanLineEi"
+#else
+      "_ZNK6QImage8scanLineEi"
+#endif
+    ));
+  if (qImageFuncs.constScanLine == nullptr) {
+    _WARN("%s", "Failed to resolve QImage::constScanLine");
+    ok = false;
+  }
   qImageFuncs.width = reinterpret_cast<decltype(qImageFuncs.width)>(
     dlsym(RTLD_DEFAULT, "_ZNK6QImage5widthEv")
   );
+  if (qImageFuncs.width == nullptr) {
+    _WARN("%s", "Failed to resolve QImage::width");
+    ok = false;
+  }
   qImageFuncs.height = reinterpret_cast<decltype(qImageFuncs.height)>(
     dlsym(RTLD_DEFAULT, "_ZNK6QImage6heightEv")
   );
+  if (qImageFuncs.height == nullptr) {
+    _WARN("%s", "Failed to resolve QImage::height");
+    ok = false;
+  }
   qImageFuncs.bytesPerLine =
     reinterpret_cast<decltype(qImageFuncs.bytesPerLine)>(
       dlsym(RTLD_DEFAULT, "_ZNK6QImage12bytesPerLineEv")
     );
+  if (qImageFuncs.bytesPerLine == nullptr) {
+    _WARN("%s", "Failed to resolve QImage::bytesPerLine");
+    ok = false;
+  }
   qImageFuncs.format = reinterpret_cast<decltype(qImageFuncs.format)>(
     dlsym(RTLD_DEFAULT, "_ZNK6QImage6formatEv")
   );
-  qImageFuncs.ok = qImageFuncs.constructor && qImageFuncs.destructor &&
-                   qImageFuncs.bits && qImageFuncs.constScanLine &&
-                   qImageFuncs.width && qImageFuncs.height &&
-                   qImageFuncs.bytesPerLine && qImageFuncs.format;
-  if (!qImageFuncs.ok) {
-    _WARN("%s", "Failed to resolve QImage runtime functions");
+  if (qImageFuncs.format == nullptr) {
+    _WARN("%s", "Failed to resolve QImage::format");
+    ok = false;
   }
+  qImageFuncs.ok = ok;
 }
 
 static std::atomic<void*> framebufferMmap{nullptr};
@@ -396,31 +445,34 @@ resolve_qpainter_funcs() {
   if (qPainterFuncs.ok) {
     return;
   }
+  bool ok = true;
   qPainterFuncs.constructor =
     reinterpret_cast<decltype(qPainterFuncs.constructor)>(
       dlsym(RTLD_DEFAULT, "_ZN8QPainterC1EP12QPaintDevice")
     );
+  if (qPainterFuncs.constructor == nullptr) {
+    _WARN("%s", "Failed to resolve QPainter::QPainter");
+    ok = false;
+  }
   qPainterFuncs.destructor =
     reinterpret_cast<decltype(qPainterFuncs.destructor)>(
       dlsym(RTLD_DEFAULT, "_ZN8QPainterD1Ev")
     );
+  if (qPainterFuncs.destructor == nullptr) {
+    _WARN("%s", "Failed to resolve QPainter::~QPainter");
+    ok = false;
+  }
   qPainterFuncs.drawImage =
     reinterpret_cast<decltype(qPainterFuncs.drawImage)>(dlsym(
       RTLD_DEFAULT,
       "_ZN8QPainter9drawImageERK6QRectFRK6QImageS2_"
       "6QFlagsIN2Qt19ImageConversionFlagEE"
     ));
-  qPainterFuncs.ok = qPainterFuncs.constructor && qPainterFuncs.destructor &&
-                     qPainterFuncs.drawImage;
-  if (!qPainterFuncs.ok) {
-    _WARN(
-      "Failed to resolve QPainter runtime functions (ctor=%p dtor=%p "
-      "drawImage=%p)",
-      reinterpret_cast<void*>(qPainterFuncs.constructor),
-      reinterpret_cast<void*>(qPainterFuncs.destructor),
-      reinterpret_cast<void*>(qPainterFuncs.drawImage)
-    );
+  if (qPainterFuncs.drawImage == nullptr) {
+    _WARN("%s", "Failed to resolve QPainter::drawImage");
+    ok = false;
   }
+  qPainterFuncs.ok = ok;
 }
 
 /*!
