@@ -192,8 +192,10 @@ mmap_framebuffer() {
  */
 int
 auxBufferOffset() {
-#if defined(__arm__) || defined(__aarch64__)
+#if defined(__arm__)
   return 0x60;
+#elif defined(__aarch64__)
+  return 0xa8;
 #else
   return 0x00;
 #endif
@@ -211,15 +213,9 @@ auxBufferOffset() {
 int
 shadowBufferOffset() {
 #if defined(__arm__)
-  // xochitl Tcon: shadow QImage at +0x50 (libqsgepaper Tcon also has +0x70
-  // but on arm the hook runs in xochitl, so 0x50 is the right read offset)
   return 0x50;
 #elif defined(__aarch64__)
-  if (Client::IS_XOCHITL) {
-    return 0x50;
-  }
-  // non-xochitl apps use libqsgepaper Tcon which has shadow QImage at +0x70
-  return 0x70;
+  return 0xc8;
 #else
   return 0x00;
 #endif
@@ -267,6 +263,7 @@ static std::atomic<bool> hook_installed = false;
 static std::atomic<void*> epframebufferCandidate{nullptr};
 static std::atomic<void*> epframebufferInstance{nullptr};
 static std::atomic<void*> lastBadCandidate{nullptr};
+static std::atomic<void*> lastBadVtable{nullptr};
 static std::atomic<int> badCandidateCount{0};
 
 /*!
@@ -322,6 +319,7 @@ install_hook(void* target, void* hook) {
 bool
 validate_swapbuffers(void* func) {
   if (func == nullptr) {
+    _WARN("swapBuffers: nullptr")
     return false;
   }
 #if defined(__arm__)
@@ -341,7 +339,6 @@ validate_swapbuffers(void* func) {
     );
     return false;
   }
-
   _WARN(
     "swapBuffers: first instruction 0x%08x doesn't match any known "
     "swapBuffers pattern",
@@ -372,12 +369,13 @@ validate_swapbuffers(void* func) {
       return true;
     }
   }
+  _WARN("swapBuffers: PAC prologue not found")
   return false;
 #else
   _CRIT("%s", "Unsupported architecture");
   std::exit(EXIT_FAILURE);
+  return false;
 #endif
-  return true;
 }
 
 // Runtime pointers to real QPainter methods (resolved once via dlsym).
@@ -743,22 +741,33 @@ hook_check_candidate() {
       candidate,
       vtable
     );
-    void* expected = lastBadCandidate.load(std::memory_order_relaxed);
-    if (candidate != expected) {
+    // When the candidate address or its vtable changes, reset the
+    // failure count. This handles multi-stage vtable initialization
+    // (e.g. intermediate -> base -> Acep2) where early stages have
+    // __cxa_pure_virtual at the swapBuffers slot.
+    void* lastCandidate = lastBadCandidate.load(std::memory_order_relaxed);
+    void* lastVtable = lastBadVtable.load(std::memory_order_relaxed);
+    if (candidate != lastCandidate || vtable != lastVtable) {
+      _WARN(
+        "EPFramebuffer candidate %p or vtable %p changed", candidate, vtable
+      );
       lastBadCandidate.store(candidate, std::memory_order_relaxed);
+      lastBadVtable.store(vtable, std::memory_order_relaxed);
       badCandidateCount.store(1, std::memory_order_relaxed);
       return;
     }
     int n = badCandidateCount.fetch_add(1, std::memory_order_relaxed) + 1;
+    _WARN("EPFramebuffer candidate check count %d", n);
     if (n >= 10) {
       _WARN(
-        "EPFramebuffer candidate %p failed %d times -- clearing "
-        "(likely wrong object)",
+        "EPFramebuffer candidate %p failed %d times with same vtable "
+        "-- clearing (likely wrong object)",
         candidate,
         n
       );
       epframebufferCandidate.store(nullptr, std::memory_order_release);
       lastBadCandidate.store(nullptr, std::memory_order_relaxed);
+      lastBadVtable.store(nullptr, std::memory_order_relaxed);
       badCandidateCount.store(0, std::memory_order_relaxed);
     }
     return; // try again next QObject
@@ -783,6 +792,7 @@ hook_check_candidate() {
   hook_installed = true;
   epframebufferCandidate.store(nullptr, std::memory_order_release);
   lastBadCandidate.store(nullptr, std::memory_order_relaxed);
+  lastBadVtable.store(nullptr, std::memory_order_relaxed);
   badCandidateCount.store(0, std::memory_order_relaxed);
 }
 

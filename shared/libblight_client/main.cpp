@@ -165,14 +165,7 @@ namespace {
     }
     return res;
   }
-} // namespace
-#define alias(name)                                                            \
-  __asm__(".globl  " #name "\n.type   " #name ", %function\n" #name            \
-          "  = _" #name "\n")
-
-#define symver_2_4(name) __asm__(".symver " #name " , " #name "@GLIBC_2.4")
-#define symver_2_34(name) __asm__(".symver " #name " , " #name "@GLIBC_2.34")
-#define _symver_2_4(name) __asm__(".symver _" #name ", " #name "@GLIBC_2.4")
+}
 
 extern "C" {
 __attribute__((visibility("default"))) int
@@ -190,7 +183,6 @@ msgget(key_t key, int msgflg) {
   }
   return Libc::msgget(key, msgflg);
 }
-symver_2_4(msgget);
 
 __attribute__((visibility("default"))) int
 msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
@@ -215,10 +207,9 @@ msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
   }
   return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
 }
-symver_2_4(msgsnd);
 
 __attribute__((visibility("default"))) int
-_open64(const char* pathname, int flags, ...) {
+open64(const char* pathname, int flags, ...) {
   if (!Client::INITIALIZED) {
     va_list args;
     va_start(args, flags);
@@ -237,11 +228,9 @@ _open64(const char* pathname, int flags, ...) {
   _DEBUG("opened %s with fd %d", pathname, fd);
   return fd;
 }
-_symver_2_4(open64);
-alias(open64);
 
 __attribute__((visibility("default"))) int
-_openat(int dirfd, const char* pathname, int flags, ...) {
+openat(int dirfd, const char* pathname, int flags, ...) {
   if (!Client::INITIALIZED) {
     va_list args;
     va_start(args, flags);
@@ -272,11 +261,9 @@ _openat(int dirfd, const char* pathname, int flags, ...) {
   _DEBUG("opened %s with fd %d", pathname, fd);
   return fd;
 }
-_symver_2_4(openat);
-alias(openat);
 
 __attribute__((visibility("default"))) int
-_openat64(int dirfd, const char* pathname, int flags, ...) {
+openat64(int dirfd, const char* pathname, int flags, ...) {
   if (!Client::INITIALIZED) {
     va_list args;
     va_start(args, flags);
@@ -307,11 +294,9 @@ _openat64(int dirfd, const char* pathname, int flags, ...) {
   _DEBUG("opened %s with fd %d", pathname, fd);
   return fd;
 }
-_symver_2_4(openat64);
-alias(openat64);
 
 __attribute__((visibility("default"))) int
-_open(const char* pathname, int flags, ...) {
+open(const char* pathname, int flags, ...) {
   if (!Client::INITIALIZED) {
     va_list args;
     va_start(args, flags);
@@ -331,8 +316,6 @@ _open(const char* pathname, int flags, ...) {
   _DEBUG("opened %s with fd %d", pathname, fd);
   return fd;
 }
-_symver_2_4(open);
-alias(open);
 
 __attribute__((visibility("default"))) int
 close(int fd) {
@@ -366,7 +349,6 @@ close(int fd) {
   }
   return Libc::close(fd);
 }
-symver_2_4(close);
 
 __attribute__((visibility("default"))) int
 fcntl(int fd, int cmd, ...) {
@@ -383,7 +365,6 @@ fcntl(int fd, int cmd, ...) {
   va_end(args);
   return res;
 }
-symver_2_4(fcntl);
 
 __attribute__((visibility("default"))) ssize_t
 read(int fd, void* buf, size_t count) {
@@ -392,7 +373,6 @@ read(int fd, void* buf, size_t count) {
   }
   return Libc::read(fd, buf, count);
 }
-symver_2_4(read);
 
 __attribute__((visibility("default"))) int
 ioctl(int fd, unsigned long request, ...) {
@@ -421,13 +401,9 @@ ioctl(int fd, unsigned long request, ...) {
   va_end(args);
   return res;
 }
-symver_2_4(ioctl);
-__asm__(".globl  ioctl\n"
-        ".type   ioctl, %function\n"
-        "ioctl   = __ioctl_time64\n");
 
 __attribute__((visibility("default"))) ssize_t
-_write(int fd, const void* buf, size_t n) {
+write(int fd, const void* buf, size_t n) {
   if (fd < 3) {
     // No need to handle stdout/stderr writes
     return Libc::write(fd, buf, n);
@@ -441,11 +417,9 @@ _write(int fd, const void* buf, size_t n) {
   }
   return Libc::write(fd, buf, n);
 }
-_symver_2_4(write);
-alias(write);
 
 __attribute__((visibility("default"))) ssize_t
-_writev(int fd, const iovec* iov, int iovcnt) {
+writev(int fd, const iovec* iov, int iovcnt) {
   if (fd < 3) {
     // No need to handle stdout/stderr writes
     return Libc::writev(fd, iov, iovcnt);
@@ -459,11 +433,9 @@ _writev(int fd, const iovec* iov, int iovcnt) {
   }
   return Libc::writev(fd, iov, iovcnt);
 }
-_symver_2_4(writev);
-alias(writev);
 
 __attribute__((visibility("default"))) ssize_t
-_writev64(int fd, const iovec* iov, int iovcnt) {
+writev64(int fd, const iovec* iov, int iovcnt) {
   if (fd < 3) {
     // No need to handle stdout/stderr writes
     return Libc::writev64(fd, iov, iovcnt);
@@ -477,17 +449,15 @@ _writev64(int fd, const iovec* iov, int iovcnt) {
   }
   return Libc::writev64(fd, iov, iovcnt);
 }
-_symver_2_4(writev64);
-alias(writev64);
 
 __attribute__((visibility("default"))) ssize_t
-_pwrite(int fd, const void* buf, size_t n, int offset) {
+pwrite(int fd, const void* buf, size_t n, off_t offset) {
   if (fd < 3) {
     // No need to handle stdout/stderr writes
     return Libc::pwrite(fd, buf, n, offset);
   }
   if (Client::INITIALIZED) {
-    _DEBUG("pwrite %d %zu %d", fd, n, offset);
+    _DEBUG("pwrite %d %zu %lld", fd, n, static_cast<long long>(offset));
     if (FB::is_fb(fd)) {
       auto res = Libc::pwrite(fd, buf, n, offset);
       return res;
@@ -495,17 +465,15 @@ _pwrite(int fd, const void* buf, size_t n, int offset) {
   }
   return Libc::pwrite(fd, buf, n, offset);
 }
-_symver_2_4(pwrite);
-alias(pwrite);
 
 __attribute__((visibility("default"))) ssize_t
-_pwrite64(int fd, const void* buf, size_t n, int offset) {
+pwrite64(int fd, const void* buf, size_t n, off64_t offset) {
   if (fd < 3) {
     // No need to handle stdout/stderr writes
     return Libc::pwrite64(fd, buf, n, offset);
   }
   if (Client::INITIALIZED) {
-    _DEBUG("pwrite64 %d %zu %d", fd, n, offset);
+    _DEBUG("pwrite64 %d %zu %lld", fd, n, static_cast<long long>(offset));
     if (FB::is_fb(fd)) {
       auto res = Libc::pwrite64(fd, buf, n, offset);
       return res;
@@ -513,17 +481,15 @@ _pwrite64(int fd, const void* buf, size_t n, int offset) {
   }
   return Libc::pwrite64(fd, buf, n, offset);
 }
-_symver_2_4(pwrite64);
-alias(pwrite64);
 
 __attribute__((visibility("default"))) ssize_t
-_pwritev(int fd, const iovec* iov, int iovcnt, int offset) {
+pwritev(int fd, const iovec* iov, int iovcnt, off_t offset) {
   if (fd < 3) {
     // No need to handle stdout/stderr writes
     return Libc::pwritev(fd, iov, iovcnt, offset);
   }
   if (Client::INITIALIZED) {
-    _DEBUG("pwritev %d %d %d", fd, iovcnt, offset);
+    _DEBUG("pwritev %d %d %lld", fd, iovcnt, static_cast<long long>(offset));
     if (FB::is_fb(fd)) {
       auto res = Libc::pwritev(fd, iov, iovcnt, offset);
       return res;
@@ -531,17 +497,15 @@ _pwritev(int fd, const iovec* iov, int iovcnt, int offset) {
   }
   return Libc::pwritev(fd, iov, iovcnt, offset);
 }
-_symver_2_4(pwritev);
-alias(pwritev);
 
 __attribute__((visibility("default"))) ssize_t
-_pwritev64(int fd, const iovec* iov, int iovcnt, int offset) {
+pwritev64(int fd, const iovec* iov, int iovcnt, off64_t offset) {
   if (fd < 3) {
     // No need to handle stdout/stderr writes
     return Libc::pwritev64(fd, iov, iovcnt, offset);
   }
   if (Client::INITIALIZED) {
-    _DEBUG("pwritev64 %d %d %d", fd, iovcnt, offset);
+    _DEBUG("pwritev64 %d %d %lld", fd, iovcnt, static_cast<long long>(offset));
     if (FB::is_fb(fd)) {
       auto res = Libc::pwritev64(fd, iov, iovcnt, offset);
       return res;
@@ -549,8 +513,6 @@ _pwritev64(int fd, const iovec* iov, int iovcnt, int offset) {
   }
   return Libc::pwritev64(fd, iov, iovcnt, offset);
 }
-_symver_2_4(pwritev64);
-alias(pwritev64);
 
 __attribute__((visibility("default"))) int
 setenv(const char* name, const char* value, int overwrite) {
@@ -581,7 +543,6 @@ setenv(const char* name, const char* value, int overwrite) {
   _DEBUG("setenv %s=%s", name, value);
   return Libc::setenv(name, value, overwrite);
 }
-symver_2_4(setenv);
 
 __attribute__((visibility("default"))) int
 unsetenv(const char* name) {
@@ -604,7 +565,6 @@ unsetenv(const char* name) {
   _DEBUG("unsetenv %s", name);
   return Libc::unsetenv(name);
 }
-symver_2_4(unsetenv);
 
 __attribute__((visibility("default"))) int
 flock(int fd, int op) {
@@ -624,7 +584,6 @@ flock(int fd, int op) {
   }
   return Libc::flock(fd, op);
 }
-symver_2_4(flock);
 
 __attribute__((visibility("default"))) int
 poll(struct pollfd* fds, nfds_t nfds, int timeout) {
@@ -641,7 +600,6 @@ poll(struct pollfd* fds, nfds_t nfds, int timeout) {
   }
   return res;
 }
-symver_2_4(poll);
 
 __attribute__((visibility("default"))) int
 __ppoll64(
@@ -663,7 +621,6 @@ __ppoll64(
   }
   return res;
 }
-symver_2_34(__ppoll64);
 
 __attribute__((visibility("default"))) int
 select(
@@ -683,7 +640,6 @@ select(
   }
   return res;
 }
-symver_2_4(select);
 
 __attribute__((visibility("default"))) int
 pselect(
@@ -705,7 +661,6 @@ pselect(
   }
   return res;
 }
-symver_2_4(pselect);
 
 __attribute__((visibility("default"))) int
 epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
@@ -714,7 +669,6 @@ epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
   }
   return Libc::epoll_ctl(epfd, op, fd, ev);
 }
-symver_2_4(epoll_ctl);
 
 __attribute__((visibility("default"))) int
 epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout) {
@@ -727,7 +681,6 @@ epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout) {
   }
   return res;
 }
-symver_2_4(epoll_wait);
 
 void __attribute__((constructor))
 init(void) {
