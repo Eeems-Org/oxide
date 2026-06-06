@@ -5,6 +5,7 @@
 #include <libblight/debug.h>
 #include <sys/ioctl.h>
 
+#ifdef __aarch64__
 namespace DRM {
   int card0 = -1;
   bool is_drm(int fd) {
@@ -12,7 +13,6 @@ namespace DRM {
   }
   int ioctl(unsigned long request, char* ptr) {
     switch (request) {
-#ifdef __aarch64__
       case DRM_IOCTL_MODE_ATOMIC:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_ATOMIC");
         return -1;
@@ -25,7 +25,6 @@ namespace DRM {
       case DRM_IOCTL_MODE_DESTROY_DUMB:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_DESTROY_DUMB");
         return -1;
-#endif
       default:
         _WARN(
           "UNHANDLED DRM IOCTL %lu %c %lu %lu %lu",
@@ -39,3 +38,4 @@ namespace DRM {
     }
   }
 }
+#endif
