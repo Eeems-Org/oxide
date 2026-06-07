@@ -30,6 +30,7 @@ typedef struct TabletData {
     int x, y, p, d;
     bool down, lastReportDown;
     int tool, lastReportTool;
+    int lastReportPressure;
     QPointF lastReportPos;
   } state;
   int lastEventType;
@@ -39,7 +40,9 @@ typedef struct TabletData {
     memset(&minValues, 0, sizeof(minValues));
     memset(&maxValues, 0, sizeof(maxValues));
     memset(&maxValues, 0, sizeof(maxValues));
-    memset((void*)&state, 0, (sizeof(int) * 6) + (sizeof(bool) * 2));
+    memset(
+      (void*)&state, 0, (sizeof(int) * 7) + (sizeof(bool) * 2) + sizeof(QPointF)
+    );
   }
 } TabletData;
 
@@ -578,20 +581,21 @@ OxideEventHandler::processTabletEvent(
   Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeTablet);
   auto device = data->device;
   auto tabletData = data->get<TabletData>();
+  auto& state = tabletData->state;
   // TODO handle tilt
   if (event->type == EV_ABS) {
     switch (event->code) {
       case ABS_X:
-        tabletData->state.x = event->value;
+        state.x = event->value;
         break;
       case ABS_Y:
-        tabletData->state.y = event->value;
+        state.y = event->value;
         break;
       case ABS_PRESSURE:
-        tabletData->state.p = event->value;
+        state.p = event->value;
         break;
       case ABS_DISTANCE:
-        tabletData->state.d = event->value;
+        state.d = event->value;
         break;
       default:
         break;
@@ -603,14 +607,13 @@ OxideEventHandler::processTabletEvent(
     // code BTN_TOUCH value 0 -> no contact
     switch (event->code) {
       case BTN_TOUCH:
-        tabletData->state.down = event->value != 0;
+        state.down = event->value != 0;
         break;
       case BTN_TOOL_PEN:
-        tabletData->state.tool =
-          event->value ? (int)QPointingDevice::PointerType::Pen : 0;
+        state.tool = event->value ? (int)QPointingDevice::PointerType::Pen : 0;
         break;
       case BTN_TOOL_RUBBER:
-        tabletData->state.tool =
+        state.tool =
           event->value ? (int)QPointingDevice::PointerType::Eraser : 0;
         break;
       default:
@@ -620,39 +623,41 @@ OxideEventHandler::processTabletEvent(
     event->type == EV_SYN && event->code == SYN_REPORT &&
     tabletData->lastEventType != event->type
   ) {
-    if (!tabletData->state.lastReportTool && tabletData->state.tool) {
-      QWindowSystemInterface::handleTabletEnterProximityEvent(
-        (int)QPointingDevice::PointerType::Pen, tabletData->state.tool, device
-      );
-    }
-    qreal nx = (tabletData->state.x - tabletData->minValues.x) /
-               qreal(tabletData->maxValues.x - tabletData->minValues.x);
-    qreal ny = (tabletData->state.y - tabletData->minValues.y) /
-               qreal(tabletData->maxValues.y - tabletData->minValues.y);
     static auto screen = QGuiApplication::primaryScreen();
     QRect winRect = screen->geometry();
+    qreal nx = (state.x - tabletData->minValues.x) /
+               qreal(tabletData->maxValues.x - tabletData->minValues.x);
+    qreal ny = (state.y - tabletData->minValues.y) /
+               qreal(tabletData->maxValues.y - tabletData->minValues.y);
     QPointF globalPos(nx * winRect.width(), ny * winRect.height());
-    int pointer = tabletData->state.tool;
+    int pointer = state.tool;
     // Prevent sending confusing values of 0 when moving the pen outside the
     // active area.
-    if (!tabletData->state.down && tabletData->state.lastReportDown) {
-      globalPos = tabletData->state.lastReportPos;
-      pointer = tabletData->state.lastReportTool;
+    if (!state.down && state.lastReportDown) {
+      globalPos = state.lastReportPos;
+      pointer = state.lastReportTool;
     }
-    int pressureRange = tabletData->maxValues.p - tabletData->minValues.p;
-    qreal pressure =
-      pressureRange
-        ? (tabletData->state.p - tabletData->minValues.p) / qreal(pressureRange)
-        : qreal(1);
-    if (tabletData->state.down || tabletData->state.lastReportDown) {
-      auto button = tabletData->state.down ? Qt::LeftButton : Qt::NoButton;
+    if (!state.lastReportTool && state.tool) {
+      QWindowSystemInterface::handleTabletEnterProximityEvent(
+        (int)QPointingDevice::PointerType::Pen, state.tool, device
+      );
+    }
+    if (
+      state.tool != state.lastReportTool ||
+      state.down != state.lastReportDown || globalPos != state.lastReportPos ||
+      state.p != state.lastReportPressure
+    ) {
+      int pressureRange = tabletData->maxValues.p - tabletData->minValues.p;
+      qreal pressure = pressureRange ? (state.p - tabletData->minValues.p) /
+                                         qreal(pressureRange)
+                                     : qreal(1);
       QWindowSystemInterface::handleTabletEvent(
         nullptr,
         QPointF(),
         globalPos,
         (int)QPointingDevice::PointerType::Pen,
         pointer,
-        button,
+        state.down ? Qt::LeftButton : Qt::NoButton,
         pressure,
         0,
         0,
@@ -662,16 +667,17 @@ OxideEventHandler::processTabletEvent(
         device,
         qGuiApp->keyboardModifiers()
       );
+      state.lastReportPos = globalPos;
+      state.lastReportPressure = state.p;
+      state.lastReportDown = state.down;
     }
-    if (tabletData->state.lastReportTool && !tabletData->state.tool) {
+    if (state.lastReportTool && !state.tool) {
       QWindowSystemInterface::handleTabletLeaveProximityEvent(
-        (int)QPointingDevice::PointerType::Pen, tabletData->state.tool, device
+        (int)QPointingDevice::PointerType::Pen, state.tool, device
       );
     }
+    state.lastReportTool = state.tool;
     QWindowSystemInterface::flushWindowSystemEvents();
-    tabletData->state.lastReportDown = tabletData->state.down;
-    tabletData->state.lastReportTool = tabletData->state.tool;
-    tabletData->state.lastReportPos = globalPos;
   }
   tabletData->lastEventType = event->type;
 }
