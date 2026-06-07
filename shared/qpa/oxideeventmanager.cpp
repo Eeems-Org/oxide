@@ -6,21 +6,41 @@
 #include <QDebug>
 #include <QFileInfo>
 
+#define THREADED_INPUT
+#ifdef THREADED_INPUT
+#include <QThread>
+#include <liboxide/threading.h>
+#endif
+
 OxideEventManager::OxideEventManager(const QStringList& parameters)
   : QObject()
   , m_devices()
   , m_handler(this, parameters) {
-  setup(QDeviceDiscovery::Device_Tablet, QInputDeviceManager::DeviceTypeTablet);
-  setup(
-    QDeviceDiscovery::Device_Touchscreen, QInputDeviceManager::DeviceTypeTouch
-  );
-  setup(
-    QDeviceDiscovery::Device_Mouse | QDeviceDiscovery::Device_Touchpad,
-    QInputDeviceManager::DeviceTypePointer
-  );
-  setup(
-    QDeviceDiscovery::Device_Keyboard, QInputDeviceManager::DeviceTypeKeyboard
-  );
+#ifdef THREADED_INPUT
+  auto thread = new QThread();
+  thread->setObjectName("OxideInput");
+  thread->moveToThread(thread);
+  Oxide::startThreadWithPriority(thread, QThread::HighestPriority);
+  moveToThread(thread);
+  m_handler.moveToThread(thread);
+  Oxide::runLater(thread, [this]() {
+#endif
+    setup(
+      QDeviceDiscovery::Device_Tablet, QInputDeviceManager::DeviceTypeTablet
+    );
+    setup(
+      QDeviceDiscovery::Device_Touchscreen, QInputDeviceManager::DeviceTypeTouch
+    );
+    setup(
+      QDeviceDiscovery::Device_Mouse | QDeviceDiscovery::Device_Touchpad,
+      QInputDeviceManager::DeviceTypePointer
+    );
+    setup(
+      QDeviceDiscovery::Device_Keyboard, QInputDeviceManager::DeviceTypeKeyboard
+    );
+#ifdef THREADED_INPUT
+  });
+#endif
 }
 
 void

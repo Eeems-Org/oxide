@@ -20,20 +20,24 @@ typedef struct KeyboardData {
 } KeyboardData;
 
 typedef struct rect_t {
-  int x, y, p, d;
+  int x, y, p, d, tx, ty;
 } rect_t;
 
 typedef struct TabletData {
   rect_t minValues;
   rect_t maxValues;
   struct {
-    int x, y, p, d;
+    int x, y, p, d, tx, ty;
     bool down, lastReportDown;
     int tool, lastReportTool;
     int lastReportPressure;
+    int lastReportZ;
+    int lastReportTiltX;
+    int lastReportTiltY;
     QPointF lastReportPos;
   } state;
   int lastEventType;
+  QPointingDevice* device = nullptr;
 
   TabletData()
     : lastEventType{0} {
@@ -41,7 +45,9 @@ typedef struct TabletData {
     memset(&maxValues, 0, sizeof(maxValues));
     memset(&maxValues, 0, sizeof(maxValues));
     memset(
-      (void*)&state, 0, (sizeof(int) * 7) + (sizeof(bool) * 2) + sizeof(QPointF)
+      (void*)&state,
+      0,
+      (sizeof(int) * 12) + (sizeof(bool) * 2) + sizeof(QPointF)
     );
   }
 } TabletData;
@@ -126,6 +132,8 @@ DeviceData::DeviceData(
   if (ioctl(fd, EVIOCGNAME(sizeof(name) - 1), name) >= 0) {
     hw_name = QString::fromLocal8Bit(name);
   }
+  // TODO get this from evdev device number instead
+  static qint64 id = 0;
   switch (type) {
     case QInputDeviceManager::DeviceTypeKeyboard: {
       auto keyboardData = set<KeyboardData>();
@@ -153,6 +161,30 @@ DeviceData::DeviceData(
         tabletData->minValues.d = absInfo.minimum;
         tabletData->maxValues.d = absInfo.maximum;
       }
+      auto tabletDevice = new QPointingDevice(
+        hw_name,
+        id++,
+        QInputDevice::DeviceType::Stylus,
+        static_cast<QPointingDevice::PointerType>(
+          (QPointingDevice::PointerType::Pen |
+           QPointingDevice::PointerType::Eraser)
+            .toInt()
+        ),
+        static_cast<QInputDevice::Capability>(
+          (QInputDevice::Capability::Position |
+           (tabletData->maxValues.p > tabletData->minValues.p
+              ? QInputDevice::Capability::Pressure
+              : QInputDevice::Capability::None) |
+           (tabletData->maxValues.d > tabletData->minValues.d
+              ? QInputDevice::Capability::Hover
+              : QInputDevice::Capability::None))
+            .toInt()
+        ),
+        1,
+        1
+      );
+      tabletData->device = tabletDevice;
+      QWindowSystemInterface::registerInputDevice(tabletDevice);
       break;
     }
     case QInputDeviceManager::DeviceTypeTouch: {
@@ -196,9 +228,6 @@ DeviceData::DeviceData(
       if (ioctl(fd, EVIOCGABS(ABS_MT_SLOT), &absInfo)) {
         maxPoints = absInfo.maximum;
       }
-      static int id = 1;
-      // TODO get evdev ID instead of incrementing number
-      // TODO get button count
       auto touchDevice = new QPointingDevice(
         hw_name,
         id++,
@@ -578,7 +607,6 @@ OxideEventHandler::processTabletEvent(
   Blight::partial_input_event_t* event
 ) {
   Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeTablet);
-  auto device = data->device;
   auto tabletData = data->get<TabletData>();
   auto& state = tabletData->state;
   // TODO handle tilt
@@ -595,6 +623,14 @@ OxideEventHandler::processTabletEvent(
         break;
       case ABS_DISTANCE:
         state.d = event->value;
+        break;
+        break;
+      case ABS_TILT_X:
+        state.tx = event->value;
+        break;
+        break;
+      case ABS_TILT_Y:
+        state.ty = event->value;
         break;
       default:
         break;
@@ -636,46 +672,85 @@ OxideEventHandler::processTabletEvent(
       globalPos = state.lastReportPos;
       pointer = state.lastReportTool;
     }
-    if (!state.lastReportTool && state.tool) {
-      QWindowSystemInterface::handleTabletEnterProximityEvent(
-        (int)QPointingDevice::PointerType::Pen, state.tool, device
+    int pressureRange = tabletData->maxValues.p - tabletData->minValues.p;
+    qreal pressure =
+      pressureRange ? (state.p - tabletData->minValues.p) / qreal(pressureRange)
+                    : qreal(1);
+    int distanceRange = tabletData->maxValues.ty - tabletData->minValues.ty;
+    qreal z = distanceRange
+                ? (state.d - tabletData->minValues.d) / qreal(distanceRange)
+                : qreal(1);
+    int tiltXRange = tabletData->maxValues.tx - tabletData->minValues.tx;
+    qreal tiltX = tiltXRange
+                    ? (state.tx - tabletData->minValues.tx) / qreal(tiltXRange)
+                    : qreal(1);
+    int tiltYRange = tabletData->maxValues.ty - tabletData->minValues.ty;
+    qreal tiltY = tiltYRange
+                    ? (state.ty - tabletData->minValues.ty) / qreal(tiltYRange)
+                    : qreal(1);
+    auto modifiers = qGuiApp->keyboardModifiers();
+    auto button = state.down ? Qt::LeftButton : Qt::NoButton;
+    if (!state.lastReportTool && pointer) {
+      QWindowSystemInterface::handleTabletEnterLeaveProximityEvent(
+        nullptr,
+        tabletData->device,
+        true,
+        QPointF(),
+        globalPos,
+        button,
+        tiltX,
+        tiltY,
+        0,
+        0,
+        z,
+        modifiers
       );
     }
     if (
       state.tool != state.lastReportTool ||
       state.down != state.lastReportDown || globalPos != state.lastReportPos ||
-      state.p != state.lastReportPressure
+      state.p != state.lastReportPressure ||
+      state.tx != state.lastReportTiltX || state.ty != state.lastReportTiltY ||
+      state.d != state.lastReportZ
     ) {
-      int pressureRange = tabletData->maxValues.p - tabletData->minValues.p;
-      qreal pressure = pressureRange ? (state.p - tabletData->minValues.p) /
-                                         qreal(pressureRange)
-                                     : qreal(1);
       QWindowSystemInterface::handleTabletEvent(
         nullptr,
+        tabletData->device,
         QPointF(),
         globalPos,
-        (int)QPointingDevice::PointerType::Pen,
-        pointer,
-        state.down ? Qt::LeftButton : Qt::NoButton,
+        button,
         pressure,
+        tiltX,
+        tiltY,
         0,
         0,
-        0,
-        0,
-        0,
-        device,
-        qGuiApp->keyboardModifiers()
+        z,
+        modifiers
       );
       state.lastReportPos = globalPos;
       state.lastReportPressure = state.p;
       state.lastReportDown = state.down;
+      state.lastReportTiltX = state.tx;
+      state.lastReportTiltY = state.ty;
+      state.lastReportZ = state.d;
     }
-    if (state.lastReportTool && !state.tool) {
-      QWindowSystemInterface::handleTabletLeaveProximityEvent(
-        (int)QPointingDevice::PointerType::Pen, state.tool, device
+    if (state.lastReportTool && !pointer) {
+      QWindowSystemInterface::handleTabletEnterLeaveProximityEvent(
+        nullptr,
+        tabletData->device,
+        false,
+        QPointF(),
+        globalPos,
+        button,
+        tiltX,
+        tiltY,
+        0,
+        0,
+        z,
+        modifiers
       );
     }
-    state.lastReportTool = state.tool;
+    state.lastReportTool = pointer;
     QWindowSystemInterface::flushWindowSystemEvents();
   }
   tabletData->lastEventType = event->type;
