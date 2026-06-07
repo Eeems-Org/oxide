@@ -86,6 +86,13 @@ namespace Client {
     static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RM1_FB") != nullptr;
     return enabled;
   }
+  bool forceRGB16() {
+    if (isFakeRM1Fb()) {
+      return true;
+    }
+    static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RGB16") != nullptr;
+    return enabled;
+  }
   bool isRM2FBAllowed() {
     if (IS_XOCHITL) {
       return true;

@@ -38,6 +38,9 @@ hook_swapBuffers_QRegion(
 );
 
 __attribute__((visibility("default"))) void
+hook_syncAfterUpdate(void* this_ptr);
+
+__attribute__((visibility("default"))) void
 _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   void* this_ptr,
   Qt::QRectLayout rect,
@@ -45,6 +48,9 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   int pixelMode,
   int flags
 );
+
+__attribute__((visibility("default"))) void
+_ZN19EPFramebufferSwtcon4syncEv(void* this_ptr);
 
 __attribute__((visibility("default"))) void
 _ZN7QObjectC2EPS_(void* this_ptr, void* parent);

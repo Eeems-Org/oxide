@@ -271,11 +271,13 @@ shadowBufferOffset() {
 }
 
 /*!
- * \brief Get the vtable offset for EPFramebuffer
+ * \brief Get the vtable offset for EPFramebuffer::swapBuffers
+ *
+ * This is backendUpdate on aarch64
  */
 int
-vtableOffset() {
-  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_VTABLE_OFFSET");
+swapBuffersOffset() {
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_SWAPBUFFERS_OFFSET");
   if (offsetenv) {
     return std::stoi(offsetenv, nullptr, 0);
   } else {
@@ -283,6 +285,26 @@ vtableOffset() {
     return 0x5c; // vtable entry 23
 #elif defined(__aarch64__)
     return 0xb8; // vtable entry 23
+#else
+    _CRIT("Unsupported architecture");
+    std::exit(EXIT_FAILURE);
+#endif
+  }
+}
+
+/*!
+ * \brief Get the vtable offset for EPFramebuffer::syncAfterUpdate
+ */
+int
+syncAfterUpdateOffset() {
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_SYNCAFTERUPDATE_OFFSET");
+  if (offsetenv) {
+    return std::stoi(offsetenv, nullptr, 0);
+  } else {
+#if defined(__arm__)
+    return 0x60; // vtable entry 24
+#elif defined(__aarch64__)
+    return 0xc0; // vtable entry 24
 #else
     _CRIT("Unsupported architecture");
     std::exit(EXIT_FAILURE);
@@ -647,6 +669,10 @@ dump_buffers() {
 
 /*!
  * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
+ *
+ * on aarch64 this actually hooks EPFramebuffer::backendUpdate(QRegion, ...)
+ * which is what swapBuffers calls to handle the screen.
+ *
  * \param this_ptr EPFramebuffer instance
  * \param region QRegion instance defining what is being swapped
  * \param contentMap_screenModeMap information on what waveforms to use
@@ -709,6 +735,14 @@ hook_swapBuffers_QRegion(
 }
 
 /*!
+ * \brief No-op hook for EPFramebuffer::syncAfterUpdate()
+ */
+void
+hook_syncAfterUpdate(void* this_ptr) {
+  _ZN19EPFramebufferSwtcon4syncEv(this_ptr);
+}
+
+/*!
  * \brief Hook to run on  EPFramebufferSwtcon::update(QRect, int, PixelMode,
  * int) call
  *
@@ -760,6 +794,27 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   dump_buffers();
 }
 
+void
+_ZN19EPFramebufferSwtcon4syncEv(void* this_ptr) {
+  void* epframebuffer = nullptr;
+  if (
+    !epframebufferInstance.compare_exchange_strong(
+      epframebuffer, this_ptr, std::memory_order_relaxed
+    ) &&
+    epframebuffer != this_ptr
+  ) {
+    _WARN(
+      "epframebufferInstance does not match this_ptr: %p != %p",
+      epframebuffer,
+      this_ptr
+    );
+  }
+  _DEBUG("EPFramebufferSwtcon::sync()");
+  if (!Client::isFbEnabled()) {
+    Blight::waitForNoRepaints();
+  }
+}
+
 /*!
  * \brief Hook to run on QObject::QObject(QObject*) call
  */
@@ -783,7 +838,7 @@ hook_check_candidate() {
     return;
   }
   auto func_swapBuffers_qregion =
-    *reinterpret_cast<void**>(static_cast<char*>(vtable) + vtableOffset());
+    *reinterpret_cast<void**>(static_cast<char*>(vtable) + swapBuffersOffset());
   _DEBUG("swapBuffers candidate function at %p", func_swapBuffers_qregion);
   if (!validate_swapbuffers(func_swapBuffers_qregion)) {
     _DEBUG(
@@ -836,6 +891,17 @@ hook_check_candidate() {
       reinterpret_cast<void*>(&hook_swapBuffers_QRegion)
     );
     _DEBUG("Hooked swapBuffers(QRegion,...)");
+    auto func_syncAfterUpdate = *reinterpret_cast<void**>(
+      static_cast<char*>(vtable) + syncAfterUpdateOffset()
+    );
+    if (func_syncAfterUpdate != nullptr) {
+      install_hook(
+        func_syncAfterUpdate, reinterpret_cast<void*>(&hook_syncAfterUpdate)
+      );
+      _DEBUG("Hooked syncAfterUpdate at %p", func_syncAfterUpdate);
+    } else {
+      _WARN("syncAfterUpdate vtable entry is null, cannot hook");
+    }
   }
   void* empty = nullptr;
   epframebufferInstance.compare_exchange_strong(

@@ -454,7 +454,7 @@ Connection::readSocket() {
       case Blight::MessageType::Repaint: {
         auto repaint = Blight::repaint_t::from_message(message.get());
         C_DEBUG(
-          "Repaint requested:" << QString("%1 (%2,%3) %4x%5 %6 %7")
+          "Repaint requested:" << QString("%1 (%2,%3) %4x%5 %6 %7 %8")
                                     .arg(repaint.identifier)
                                     .arg(repaint.x)
                                     .arg(repaint.y)

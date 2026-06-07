@@ -23,6 +23,7 @@ namespace Client {
   bool isDumpFb();
   bool isFakeRM1();
   bool isFakeRM1Fb();
+  bool forceRGB16();
   bool isRM2FBAllowed();
   bool isFakeRM2FB();
   bool isForceQt();

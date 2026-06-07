@@ -196,7 +196,7 @@ open64(const char* pathname, int flags, ...) {
     va_end(args);
     return fd;
   }
-  _DEBUG("open64 %s", pathname);
+  _DEBUG("open64 %s %d", pathname, flags);
   int fd = __open(pathname, flags);
   if (fd == -2) {
     va_list args;
@@ -217,7 +217,7 @@ openat(int dirfd, const char* pathname, int flags, ...) {
     va_end(args);
     return fd;
   }
-  _DEBUG("openat %s", pathname);
+  _DEBUG("openat %s %d", pathname, flags);
   int fd = __open(pathname, flags);
   if (fd == -2) {
     DIR* save = opendir(".");
@@ -250,7 +250,7 @@ openat64(int dirfd, const char* pathname, int flags, ...) {
     va_end(args);
     return fd;
   }
-  _DEBUG("openat64 %s", pathname);
+  _DEBUG("openat64 %s %d", pathname, flags);
   int fd = __open(pathname, flags);
   if (fd == -2) {
     DIR* save = opendir(".");
@@ -284,7 +284,7 @@ open(const char* pathname, int flags, ...) {
     va_end(args);
     return fd;
   }
-  _DEBUG("open %s", pathname);
+  _DEBUG("open %s %d", pathname, flags);
   int fd = __open(pathname, flags);
   if (fd == -2) {
     va_list args;

@@ -61,6 +61,9 @@ namespace FB {
         Libc::unsetenv("RM2FB_DISABLE");
       }
     }
+    if (Client::IS_XOCHITL) {
+      Libc::setenv("XOCHITL_DISABLE_EPRENDERLOOP", "1", 1);
+    }
     if (Client::isForceQt()) {
       Libc::setenv("QMLSCENE_DEVICE", "software", 1);
       Libc::setenv("QT_QUICK_BACKEND", "software", 1);
@@ -290,6 +293,19 @@ namespace FB {
       screenInfo->yoffset
     );
   }
+  bool _ioctl(unsigned long request, char* ptr) {
+#ifdef __arm__
+    int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
+    if (fd == -1) {
+      return false;
+    }
+    if (Libc::ioctl(fd, request, ptr) == -1) {
+      return false;
+    }
+    Libc::close(fd);
+#endif
+    return true;
+  }
   int ioctl(unsigned long request, char* ptr) {
     switch (request) {
       // Look at linux/fb.h and mxcfb.h for more possible request types
@@ -303,14 +319,9 @@ namespace FB {
       case FBIOGET_VSCREENINFO: {
         _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_FSCREENINFO");
         // TODO - handle getting information on rMPP/rMPPM
-        int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
-        if (fd == -1) {
+        if (!_ioctl(request, ptr)) {
           return -1;
         }
-        if (Libc::ioctl(fd, request, ptr) == -1) {
-          return -1;
-        }
-        Libc::close(fd);
         return get_vscreeninfo(
           reinterpret_cast<fb_var_screeninfo*>(ptr),
           buffer->width,
@@ -321,14 +332,9 @@ namespace FB {
       case FBIOGET_FSCREENINFO: {
         _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_VSCREENINFO");
         // TODO - handle getting information on rMPP/rMPPM
-        int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
-        if (fd == -1) {
+        if (!_ioctl(request, ptr)) {
           return -1;
         }
-        if (Libc::ioctl(fd, request, ptr) == -1) {
-          return -1;
-        }
-        Libc::close(fd);
         return get_fscreeninfo(reinterpret_cast<fb_fix_screeninfo*>(ptr));
       }
       case FBIOPUT_VSCREENINFO: {
@@ -421,14 +427,9 @@ namespace FB {
       case FBIOGET_VSCREENINFO: {
         _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_VSCREENINFO");
         // TODO - handle getting information on rMPP/rMPPM
-        int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
-        if (fd == -1) {
+        if (!_ioctl(request, ptr)) {
           return -1;
         }
-        if (Libc::ioctl(fd, request, ptr) == -1) {
-          return -1;
-        }
-        Libc::close(fd);
         std::tuple<int, int, int> info = Blight::frameBufferInfo();
         if (std::get<0>(info) == -1) {
           return -1;
@@ -486,7 +487,7 @@ namespace FB {
     }
   }
   Blight::Format deviceFormat() {
-    if (Client::isFakeRM1Fb()) {
+    if (Client::forceRGB16()) {
       return Blight::Format::Format_RGB16;
     }
     switch (Client::deviceType) {
@@ -534,7 +535,7 @@ namespace FB {
     return deviceXres() * deviceBitsPerPixel() / 8;
   }
   unsigned int deviceBitsPerPixel() {
-    if (Client::isFakeRM1Fb()) {
+    if (Client::forceRGB16()) {
       return 16;
     }
     switch (Client::deviceType) {
