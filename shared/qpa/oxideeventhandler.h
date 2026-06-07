@@ -1,12 +1,12 @@
 #pragma once
 
-#include <QtCore/private/qthread_p.h>
 #include <libblight/types.h>
 #include <liboxide/event_device.h>
 #include <private/qevdevkeyboardhandler_p.h>
 #include <private/qguiapplication_p.h>
 #include <private/qinputdevicemanager_p.h>
 
+#include <QObject>
 #include <QSocketNotifier>
 #include <QString>
 

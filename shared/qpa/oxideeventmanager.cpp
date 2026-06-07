@@ -5,7 +5,6 @@
 
 #include <QDebug>
 #include <QFileInfo>
-#include <utility>
 
 OxideEventManager::OxideEventManager(const QStringList& parameters)
   : QObject()
