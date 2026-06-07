@@ -10,7 +10,6 @@
 #include <cstring>
 #include <dirent.h>
 #include <dlfcn.h>
-#include <fcntl.h>
 #include <filesystem>
 #include <libblight.h>
 #include <libblight/clock.h>
@@ -19,6 +18,7 @@
 #include <libblight/socket.h>
 #include <libblight/system.h>
 #include <linux/fb.h>
+#include <linux/fcntl.h>
 #include <linux/input.h>
 #include <mxcfb.h>
 #include <stdio.h>
@@ -100,7 +100,7 @@ namespace {
       std::string data("reMarkable 1.0");
       // Don't include trailing null
       Libc::write(fd, data.data(), data.size());
-      fcntl(
+      Libc::fcntl(
         fd,
         F_ADD_SEALS,
         F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE |
