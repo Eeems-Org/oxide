@@ -10,7 +10,12 @@
 #include <QTabletEvent>
 
 OxideEventFilter::OxideEventFilter(QObject* parent)
-  : QObject(parent) {}
+  : QObject(parent)
+  , debugEvents(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS"))
+  , debugAllEvents(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_ALL_EVENTS"))
+  , disableTabletSynth(
+      qEnvironmentVariableIsSet("OXIDE_QPA_DISBLE_TABLET_SYNTHESIZE")
+    ) {}
 
 QVector<QEvent::Type> ignoreTypes{
   QEvent::MetaCall,
@@ -24,11 +29,7 @@ QVector<QEvent::Type> ignoreTypes{
 
 bool
 OxideEventFilter::eventFilter(QObject* obj, QEvent* ev) {
-  if (
-    qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_ALL_EVENTS") ||
-    (qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS") &&
-     !ignoreTypes.contains(ev->type()))
-  ) {
+  if (debugAllEvents || (debugEvents && !ignoreTypes.contains(ev->type()))) {
     qDebug() << obj << ev;
   }
   bool filtered = QObject::eventFilter(obj, ev);
@@ -115,6 +116,6 @@ OxideEventFilter::swap(QPointF pointF) {
 
 bool
 OxideEventFilter::isEnabled() {
-  return !qEnvironmentVariableIsSet("OXIDE_QPA_DISBLE_TABLET_SYNTHESIZE") &&
+  return !disableTabletSynth &&
          qApp->testAttribute(Qt::AA_SynthesizeMouseForUnhandledTabletEvents);
 }

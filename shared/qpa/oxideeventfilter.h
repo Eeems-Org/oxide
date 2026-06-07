@@ -16,4 +16,7 @@ private:
   static QPointF transpose(QPointF pointF);
   static QPointF swap(QPointF pointF);
   bool isEnabled();
+  bool debugEvents;
+  bool debugAllEvents;
+  bool disableTabletSynth;
 };

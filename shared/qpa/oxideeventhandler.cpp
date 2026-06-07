@@ -49,7 +49,7 @@ typedef struct Contact {
   int y = 0;
   int maj = -1;
   int pressure = 0;
-  QEventPoint::State state = QEventPoint::State::Pressed;
+  QEventPoint::State state = QEventPoint::State::Unknown;
 } Contact;
 
 typedef struct TouchData {
@@ -323,7 +323,6 @@ OxideEventHandler::readyRead() {
       default:
         continue;
     }
-    QWindowSystemInterface::flushWindowSystemEvents();
   }
   m_notifier->setEnabled(true);
 }
@@ -568,6 +567,7 @@ OxideEventHandler::processKeyboardEvent(
     text,
     autorepeat
   );
+  QWindowSystemInterface::flushWindowSystemEvents();
 }
 
 void
@@ -629,8 +629,8 @@ OxideEventHandler::processTabletEvent(
                qreal(tabletData->maxValues.x - tabletData->minValues.x);
     qreal ny = (tabletData->state.y - tabletData->minValues.y) /
                qreal(tabletData->maxValues.y - tabletData->minValues.y);
-
-    QRect winRect = QGuiApplication::primaryScreen()->geometry();
+    static auto screen = QGuiApplication::primaryScreen();
+    QRect winRect = screen->geometry();
     QPointF globalPos(nx * winRect.width(), ny * winRect.height());
     int pointer = tabletData->state.tool;
     // Prevent sending confusing values of 0 when moving the pen outside the
@@ -668,6 +668,7 @@ OxideEventHandler::processTabletEvent(
         (int)QPointingDevice::PointerType::Pen, tabletData->state.tool, device
       );
     }
+    QWindowSystemInterface::flushWindowSystemEvents();
     tabletData->state.lastReportDown = tabletData->state.down;
     tabletData->state.lastReportTool = tabletData->state.tool;
     tabletData->state.lastReportPos = globalPos;
@@ -814,9 +815,10 @@ OxideEventHandler::processTouchEvent(
       touchData->currentSlot = event->value;
     }
   } else if (event->type == EV_KEY && !touchData->isTypeB) {
-    if (event->code == BTN_TOUCH && event->value == 0) {
+    if (event->code == BTN_TOUCH) {
       touchData->contacts[touchData->currentSlot].state =
-        QEventPoint::State::Released;
+        event->value == 0 ? QEventPoint::State::Pressed
+                          : QEventPoint::State::Released;
     }
   } else if (
     event->type == EV_SYN && event->code == SYN_MT_REPORT &&
@@ -834,7 +836,7 @@ OxideEventHandler::processTouchEvent(
     // Ensure valid IDs even when the driver does not report
     // ABS_MT_TRACKING_ID.
     if (
-      !touchData->contacts.isEmpty() &&
+      !touchData->isTypeB && !touchData->contacts.isEmpty() &&
       touchData->contacts.constBegin().value().trackingId == -1
     ) {
       QHash<int, Contact> candidates = touchData->lastContacts,
@@ -872,11 +874,10 @@ OxideEventHandler::processTouchEvent(
     }
     // update timestamps
     touchData->lastTimeStamp = touchData->timeStamp;
-    touchData->timeStamp =
-      std::chrono::duration<double>(
-        std::chrono::high_resolution_clock::now().time_since_epoch()
-      )
-        .count();
+    touchData->timeStamp = std::chrono::duration<double>(
+                             std::chrono::steady_clock::now().time_since_epoch()
+    )
+                             .count();
 
     touchData->lastTouchPoints = touchData->touchPoints;
     touchData->touchPoints.clear();
@@ -963,7 +964,7 @@ OxideEventHandler::processTouchEvent(
       !touchData->touchPoints.isEmpty() &&
       (hasPressure || combinedStates != QEventPoint::State::Stationary)
     ) {
-      auto screen = QGuiApplication::primaryScreen();
+      static auto screen = QGuiApplication::primaryScreen();
       QRect winRect = QHighDpi::toNativePixels(screen->geometry(), screen);
       if (winRect.isNull()) {
         return;
@@ -1007,6 +1008,7 @@ OxideEventHandler::processTouchEvent(
         nullptr, touchData->device, touchData->touchPoints
       );
     }
+    QWindowSystemInterface::flushWindowSystemEvents();
   }
   touchData->lastEventType = event->type;
 }
