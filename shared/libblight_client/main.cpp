@@ -387,6 +387,11 @@ ioctl(int fd, unsigned long request, ...) {
   va_end(args);
   return res;
 }
+#ifdef __arm__
+__asm__(".globl  ioctl\n"
+        ".type   ioctl, %function\n"
+        "ioctl   = __ioctl_time64\n");
+#endif
 
 __attribute__((visibility("default"))) int
 setenv(const char* name, const char* value, int overwrite) {
