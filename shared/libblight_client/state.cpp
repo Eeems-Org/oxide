@@ -63,9 +63,15 @@ namespace Client {
     }
   }
   bool isInputEnabled() {
+    if (isForceQt()) {
+      return true;
+    }
     return getenv("OXIDE_PRELOAD_EXPOSE_INPUT") == nullptr;
   }
   bool isFbEnabled() {
+    if (isForceQt()) {
+      return true;
+    }
     static bool enabled = getenv("OXIDE_PRELOAD_EXPOSE_FB") == nullptr;
     return enabled;
   }
