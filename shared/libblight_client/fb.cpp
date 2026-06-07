@@ -61,10 +61,10 @@ namespace FB {
         Libc::unsetenv("RM2FB_DISABLE");
       }
     }
-    if (Client::IS_XOCHITL) {
-      Libc::setenv("XOCHITL_DISABLE_EPRENDERLOOP", "1", 1);
-    }
     if (Client::isForceQt()) {
+      if (Client::IS_XOCHITL) {
+        Libc::setenv("XOCHITL_DISABLE_EPRENDERLOOP", "1", 1);
+      }
       Libc::setenv("QMLSCENE_DEVICE", "software", 1);
       Libc::setenv("QT_QUICK_BACKEND", "software", 1);
       Libc::setenv("QT_QPA_PLATFORM", "oxide:enable_fonts", 1);
@@ -677,8 +677,8 @@ namespace FB {
       buffer = maybe.value();
     }
     // We don't ever plan on resizing, and we shouldn't let anything try
-    int flags = fcntl(buffer->fd, F_GET_SEALS);
-    fcntl(
+    int flags = Libc::fcntl(buffer->fd, F_GET_SEALS);
+    Libc::fcntl(
       buffer->fd, F_ADD_SEALS, flags | F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW
     );
     // Initialize the buffer with white (all bytes = 0xFF)

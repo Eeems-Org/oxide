@@ -387,6 +387,7 @@ ioctl(int fd, unsigned long request, ...) {
   va_end(args);
   return res;
 }
+
 __attribute__((visibility("default"))) int
 setenv(const char* name, const char* value, int overwrite) {
   if (
