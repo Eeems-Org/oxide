@@ -26,7 +26,12 @@ class APIBase
   Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
 public:
   APIBase(QObject* parent)
-    : QObject(parent) {}
+    : QObject(parent) {
+    auto type = qDBusRegisterMetaType<FrameBufferInfo>();
+    if (!type.isValid()) {
+      qFatal("Failed to register FrameBufferInfo with dbus");
+    }
+  }
   virtual void setEnabled(bool enabled) = 0;
   int
   hasPermission(QString permission, const char* sender = __builtin_FUNCTION());

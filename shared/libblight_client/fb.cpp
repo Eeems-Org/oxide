@@ -64,6 +64,7 @@ namespace FB {
     if (Client::isForceQt()) {
       if (Client::IS_XOCHITL) {
         Libc::setenv("XOCHITL_DISABLE_EPRENDERLOOP", "1", 1);
+        Libc::setenv("OXIDE_QPA_SHARE_BACKINGSTORE", "1", 1);
       }
       Libc::setenv("QMLSCENE_DEVICE", "software", 1);
       Libc::setenv("QT_QUICK_BACKEND", "software", 1);
@@ -561,7 +562,6 @@ namespace FB {
       return buffer->fd;
     }
     _INFO("Creating buffer for %s", Client::deviceTypeName().c_str());
-    auto surfaceIds = connection->surfaces();
     Blight::Format format = deviceFormat();
     if (format == Blight::Format::Format_Invalid) {
       _CRIT("FB::deviceFormat() returned Format_Invalid");
@@ -582,28 +582,39 @@ namespace FB {
       _CRIT("FB::deviceStride() returned 0");
       std::_Exit(EXIT_FAILURE);
     }
-    if (!surfaceIds.empty()) {
-      for (auto& identifier : surfaceIds) {
-        auto maybe = connection->getBuffer(identifier);
-        if (!maybe.has_value()) {
-          continue;
-        }
-        auto buffer = maybe.value();
-        if (buffer->data == nullptr) {
-          continue;
-        }
-        if (
-          buffer->x != 0 || buffer->y != 0 || buffer->width != width ||
-          buffer->height != height ||
-          static_cast<unsigned int>(buffer->stride) != stride ||
-          buffer->format != format
-        ) {
-          continue;
-        }
-        _INFO("Reusing existing surface: %s", identifier);
-        buffer = buffer;
-        break;
+    _DEBUG("Checking existing surfaces for buffer");
+    for (auto& identifier : connection->surfaces()) {
+      _DEBUG("Checking buffer for surface %s", identifier);
+      auto maybe = connection->getBuffer(identifier);
+      if (!maybe.has_value()) {
+        continue;
       }
+      auto buffer = maybe.value();
+      if (buffer->data == nullptr) {
+        _DEBUG("Buffer for surface %s missing", identifier);
+        continue;
+      }
+      if (
+        buffer->x != 0 || buffer->y != 0 || buffer->width != width ||
+        buffer->height != height ||
+        static_cast<unsigned int>(buffer->stride) != stride ||
+        buffer->format != format
+      ) {
+        _DEBUG(
+          "Buffer for surface %s does not match: (%d,%d) %dx%d %dbytes %d",
+          identifier,
+          buffer->x,
+          buffer->y,
+          buffer->width,
+          buffer->height,
+          buffer->stride,
+          buffer->format
+        );
+        continue;
+      }
+      _INFO("Reusing existing surface: %s", identifier);
+      buffer = buffer;
+      break;
     }
     if (buffer->format != Blight::Format::Format_Invalid) {
       _INFO("Created buffer %s on fd %d", buffer->uuid.c_str(), buffer->fd);
@@ -712,4 +723,8 @@ namespace FB {
     }
     return maybe;
   }
+}
+Blight::shared_buf_t
+__BLIGHT_BUFFER() {
+  return FB::buffer;
 }

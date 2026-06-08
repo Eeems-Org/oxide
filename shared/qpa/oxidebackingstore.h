@@ -26,6 +26,8 @@ public:
 private:
   QImage image;
   Blight::shared_buf_t mBuffer = nullptr;
+  bool debug();
+  bool shareBackingStore();
 };
 
 QT_END_NAMESPACE

@@ -83,7 +83,12 @@ namespace BlightProtocol {
     A2 = 6,
     DU4 = 7,
     UNKNOWN = 8,
-    INIT2 = 9
+    INIT2 = 9,
+#ifdef __aarch64__
+    PEN = 13,
+    PEN_FLASH = 14,
+    HIGH_TEMP = -2
+#endif
   } BlightWaveform;
 
   /*!

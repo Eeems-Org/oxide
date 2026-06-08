@@ -1,7 +1,9 @@
 #include "oxidebackingstore.h"
 
 #include <QtCore/qdebug.h>
+#include <dlfcn.h>
 #include <libblight.h>
+#include <libblight/types.h>
 #include <liboxide/debug.h>
 #include <liboxide/meta.h>
 #include <private/qguiapplication_p.h>
@@ -16,9 +18,7 @@ QT_BEGIN_NAMESPACE
 
 OxideBackingStore::OxideBackingStore(QWindow* window)
   : QPlatformBackingStore(window) {
-  if (
-    OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)
-  ) {
+  if (debug()) {
     qDebug() << "OxideBackingStore::OxideBackingStore:" << (quintptr)this;
   }
   if (window != nullptr && window->handle()) {
@@ -46,11 +46,14 @@ OxideBackingStore::flush(
   if (mBuffer == nullptr || region.isEmpty()) {
     return;
   }
-  if (
-    OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)
-  ) {
+  if (debug()) {
     qDebug() << "OxideBackingStore::repaint:" << mBuffer->surface << offset
              << region;
+  }
+  static QImage* (*shadowBuffer)() =
+    (QImage * (*)()) dlsym(RTLD_DEFAULT, "__SHADOW_BUFFER");
+  if (shadowBuffer != nullptr && shadowBuffer() != nullptr) {
+    QPainter(shadowBuffer()).drawImage(image.rect(), image);
   }
   bool ok;
   auto waveform =
@@ -71,11 +74,57 @@ OxideBackingStore::resize(const QSize& size, const QRegion& region) {
   if (image.size() == size) {
     return;
   }
-  if (
-    OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)
-  ) {
+  if (debug()) {
     qDebug() << "OxideBackingStore::resize:"
              << (mBuffer == nullptr ? 0 : mBuffer->surface) << size << region;
+  }
+  auto connection = Blight::connection();
+  if (shareBackingStore()) {
+    static Blight::shared_buf_t (*blightBuffer)() =
+      (Blight::shared_buf_t (*)())dlsym(RTLD_DEFAULT, "__BLIGHT_BUFFER");
+    if (blightBuffer != nullptr) {
+      mBuffer = blightBuffer();
+      image = QImage(
+        mBuffer->data,
+        mBuffer->width,
+        mBuffer->height,
+        (QImage::Format)mBuffer->format
+      );
+      if (!mBuffer->surface) {
+        Blight::addSurface(mBuffer);
+      }
+    }
+    if (mBuffer->format == Blight::Format::Format_Invalid) {
+      if (debug()) {
+        qDebug() << "OxideBackingStore::rezize looking for existing surface";
+      }
+      for (auto& identifier : connection->surfaces()) {
+        auto maybe = connection->getBuffer(identifier);
+        if (!maybe.has_value()) {
+          continue;
+        }
+        mBuffer = maybe.value();
+        image = QImage(
+          mBuffer->data,
+          mBuffer->width,
+          mBuffer->height,
+          (QImage::Format)mBuffer->format
+        );
+        if (debug()) {
+          qDebug() << "OxideBackingStore::resized" << mBuffer->surface;
+        }
+        return;
+      }
+    }
+  }
+  if (mBuffer != nullptr && mBuffer->format != Blight::Format::Format_Invalid) {
+    if (debug()) {
+      qDebug() << "OxideBackingStore::resized" << mBuffer->surface;
+    }
+    return;
+  }
+  if (debug()) {
+    qDebug() << "OxideBackingStore::rezize creating new buffer";
   }
   bool ok;
   auto format = (QImage::Format)window()->property("WA_FORMAT").toInt(&ok);
@@ -115,7 +164,7 @@ OxideBackingStore::resize(const QSize& size, const QRegion& region) {
     QPainter p(&blankImage);
     p.drawImage(blankImage.rect(), image, image.rect());
     p.end();
-    auto maybe = Blight::connection()->resize(
+    auto maybe = connection->resize(
       mBuffer,
       blankImage.width(),
       blankImage.height(),
@@ -134,9 +183,7 @@ OxideBackingStore::resize(const QSize& size, const QRegion& region) {
     mBuffer->height,
     (QImage::Format)mBuffer->format
   );
-  if (
-    OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)
-  ) {
+  if (debug()) {
     qDebug() << "OxideBackingStore::resized" << mBuffer->surface;
   }
 }
@@ -146,9 +193,7 @@ OxideBackingStore::scroll(const QRegion& area, int dx, int dy) {
   Q_UNUSED(area)
   Q_UNUSED(dx)
   Q_UNUSED(dy)
-  if (
-    OxideIntegration::instance()->options().testFlag(OxideIntegration::DebugQPA)
-  ) {
+  if (debug()) {
     qDebug() << "OxideBackingStore::scroll";
   }
   return false;
@@ -172,6 +217,20 @@ OxideBackingStore::graphicsBuffer() const {
 Blight::shared_buf_t
 OxideBackingStore::buffer() {
   return mBuffer;
+}
+
+bool
+OxideBackingStore::debug() {
+  return OxideIntegration::instance()->options().testFlag(
+    OxideIntegration::DebugQPA
+  );
+}
+
+bool
+OxideBackingStore::shareBackingStore() {
+  return OxideIntegration::instance()->options().testFlag(
+    OxideIntegration::ShareBackingStore
+  );
 }
 
 QT_END_NAMESPACE

@@ -5,7 +5,9 @@
  */
 #pragma once
 
+#include <execinfo.h>
 #include <sys/types.h>
+#include <ucontext.h>
 
 #include <QLocalSocket>
 #include <QObject>
@@ -60,7 +62,7 @@ namespace Oxide {
      */
     SignalHandler(QObject* parent = 0);
     ~SignalHandler();
-    static void handleSignal(int signal);
+    static void handleSignal(int signal, siginfo_t* si, void* vcontext);
 
   signals:
     /*!

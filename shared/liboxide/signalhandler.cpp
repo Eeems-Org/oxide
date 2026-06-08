@@ -21,7 +21,7 @@ namespace Oxide {
 
   int SignalHandler::setup_unix_signal_handlers() {
     struct sigaction action;
-    action.sa_handler = SignalHandler::handleSignal;
+    action.sa_sigaction = SignalHandler::handleSignal;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
     action.sa_flags |= SA_RESTART;
@@ -87,7 +87,27 @@ namespace Oxide {
       }
     }
   }
-  void SignalHandler::handleSignal(int signal) {
+  void SignalHandler::handleSignal(int signal, siginfo_t* si, void* vcontext) {
+    Q_UNUSED(si);
+    if (signal == SIGPIPE || signal == SIGSEGV || signal == SIGBUS) {
+      constexpr int depth = 10;
+      auto uc = (ucontext_t*)vcontext;
+      auto caller_address =
+#if defined(__arm__)
+        (void*)uc->uc_mcontext.arm_pc;
+#elif defined(__aarch64__)
+        (void*)uc->uc_mcontext.pc;
+#else
+#error "Unsupported architecture"
+#endif
+      void* array[depth];
+      size_t size = ::backtrace(array, depth);
+      array[1] = caller_address;
+      const char* msg = strsignal(signal);
+      ::write(STDERR_FILENO, msg, std::strlen(msg));
+      ::write(STDERR_FILENO, "\n", std::strlen("\n"));
+      ::backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
+    }
     if (!hasNotifier(signal)) {
       ::signal(signal, SIG_DFL);
       ::raise(signal);

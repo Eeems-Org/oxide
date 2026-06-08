@@ -60,4 +60,6 @@ namespace swtfb {
       };
     } mdata;
   };
-} // namespace swtfb
+}
+extern "C" __attribute__((visibility("default"))) Blight::shared_buf_t
+__BLIGHT_BUFFER();

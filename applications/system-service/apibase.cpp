@@ -2,6 +2,7 @@
 
 #include <libblight/meta.h>
 #include <libblight/types.h>
+#include <liboxide/dbus_types.h>
 #include <liboxide/oxideqml.h>
 
 #include <QDBusUnixFileDescriptor>
@@ -75,7 +76,16 @@ getFrameBuffer() {
       file = nullptr;
       return nullptr;
     }
-    int stride = deviceSettings.getScreenStride();
+    auto reply2 = compositor->frameBufferInfo();
+    reply2.waitForFinished();
+    if (reply2.isError()) {
+      O_WARNING("Failed to get frameBufferInfo" << reply2.error().message());
+      return nullptr;
+    }
+    FrameBufferInfo info = reply2.value();
+    int width = std::get<0>(info);
+    int height = std::get<1>(info);
+    int stride = std::get<2>(info);
     uchar* data = file->map(0, stride * deviceSettings.getScreenHeight());
     if (data == nullptr) {
       O_WARNING("Failed to map framebuffer" << file->errorString());
@@ -86,8 +96,8 @@ getFrameBuffer() {
     }
     image = new QImage(
       data,
-      deviceSettings.getScreenWidth(),
-      deviceSettings.getScreenHeight(),
+      width,
+      height,
       stride,
       (QImage::Format)deviceSettings.getScreenFormat()
     );

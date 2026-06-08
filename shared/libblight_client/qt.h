@@ -63,4 +63,7 @@ __asm__(".symver _ZN7QObjectC1EPS_, _ZN7QObjectC1EPS_@Qt_6");
 __attribute__((visibility("default"))) void
 _ZN6QImageC1Ev(void* this_ptr);
 __asm__(".symver _ZN6QImageC1Ev, _ZN6QImageC1Ev@Qt_6");
+
+__attribute__((visibility("default"))) void*
+__SHADOW_BUFFER();
 }

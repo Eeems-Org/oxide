@@ -264,6 +264,9 @@ shadowBufferOffset() {
 #if defined(__arm__)
   return 0x50;
 #elif defined(__aarch64__)
+  if (Client::IS_XOCHITL) {
+    return 0x88;
+  }
   return 0xc8;
 #else
   return 0x00;
@@ -723,9 +726,21 @@ hook_swapBuffers_QRegion(
         ) {
           waveform = Blight::WaveformMode::Mono;
         } else if (
+          regions[1] != nullptr && Qt::region_rect_overlaps(dit, &regions[1])
+        ) {
+          waveform = Blight::WaveformMode::Grayscale;
+        } else if (
           regions[2] != nullptr && Qt::region_rect_overlaps(dit, &regions[2])
         ) {
           waveform = Blight::WaveformMode::Animate;
+        } else if (
+          regions[4] != nullptr && Qt::region_rect_overlaps(dit, &regions[4])
+        ) {
+          waveform = Blight::WaveformMode::HighQualityGrayscale;
+        } else if (
+          regions[5] != nullptr && Qt::region_rect_overlaps(dit, &regions[5])
+        ) {
+          waveform = Blight::WaveformMode::Grayscale;
         }
       }
       repaint(dit, waveform, updateMode);
@@ -1016,4 +1031,12 @@ _ZN6QImageC1Ev(void* this_ptr) {
     epframebufferCandidate.store(candidate, std::memory_order_release);
     break;
   }
+}
+void*
+__SHADOW_BUFFER() {
+  void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
+  if (epframebuffer == nullptr) {
+    return nullptr;
+  }
+  return static_cast<char*>(epframebuffer) + shadowBufferOffset();
 }

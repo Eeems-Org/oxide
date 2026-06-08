@@ -11,7 +11,6 @@
 #include <QScreen>
 #include <QWindow>
 #include <cstdlib>
-#include <filesystem>
 
 #include "controller.h"
 #include "dbusservice.h"

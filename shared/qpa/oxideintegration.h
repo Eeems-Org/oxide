@@ -28,7 +28,8 @@ public:
     DebugQPA = 1,
     EnableFonts = 2,
     FreeTypeFontDatabase = 4,
-    FontconfigDatabase = 8
+    FontconfigDatabase = 8,
+    ShareBackingStore = 16
   };
   Q_DECLARE_FLAGS(Options, Option)
 

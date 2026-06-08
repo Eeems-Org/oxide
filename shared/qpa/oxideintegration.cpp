@@ -29,8 +29,6 @@ QT_BEGIN_NAMESPACE
 
 class QCoreTextFontEngine;
 
-#define debugQPAEnvironmentVariable "OXIDE_QPA_DEBUG"
-
 static inline OxideIntegration::Options
 parseOptions(const QStringList& paramList) {
   OxideIntegration::Options options{{}};
@@ -46,12 +44,17 @@ parseOptions(const QStringList& paramList) {
     }
   }
   if (
-    qEnvironmentVariableIsSet(debugQPAEnvironmentVariable) &&
-    qEnvironmentVariableIntValue(debugQPAEnvironmentVariable) > 0
+    qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG") &&
+    qEnvironmentVariableIntValue("OXIDE_QPA_DEBUG") > 0
   ) {
     options |= OxideIntegration::DebugQPA | OxideIntegration::EnableFonts;
   }
-  QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
+  if (
+    qEnvironmentVariableIsSet("OXIDE_QPA_SHARE_BACKINGSTORE") &&
+    qEnvironmentVariableIntValue("OXIDE_QPA_SHARE_BACKINGSTORE") > 0
+  ) {
+    options |= OxideIntegration::ShareBackingStore;
+  }
   return options;
 }
 

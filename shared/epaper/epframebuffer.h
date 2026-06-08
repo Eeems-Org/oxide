@@ -3,7 +3,11 @@
 // It's a recreation based on the disassembly of the library.
 #include <QFlags>
 #include <QImage>
+#include <QMetaObject>
 #include <QRect>
+#include <QRegion>
+#include <QSize>
+
 #include <dlfcn.h>
 #include <functional>
 #include <tuple>
@@ -50,6 +54,115 @@ enum PixelMode {
 };
 
 /*!
+ * \brief Maps content type hints to screen regions.
+ *
+ * Tracks which areas of the screen contain each content type . Regions are
+ * built up by calling setTypeForRect() for each rectangle; the map
+ * automatically subtracts overlapping areas from the other type, so every pixel
+ * belongs to exactly one content type. Used together with EPScreenModeMap to
+ * submit a classified display update via EPFramebuffer::swapBuffers().
+ */
+class EPContentMap {
+public:
+  /*!
+   * \brief Construct a content map covering the full screen.
+   * \param size  Pixel dimensions of the display.
+   *
+   * All pixels are initially assigned to EPContentType::Mono.
+   */
+  EPContentMap(QSize size);
+
+  /*!
+   * \brief Mark a rectangle as containing a specific content type.
+   * \param rect  Rectangle on screen.
+   * \param type  Content type.
+   *
+   * The rect is added to the region for \a type and subtracted from the region
+   * for the opposite type. This is the only way to populate the map; there is
+   * no remove/clear.
+   */
+  void setTypeForRect(QRect rect, EPContentType type);
+
+  /*! \brief Write debug dump to qDebug(). */
+  void dump() const;
+
+  static QMetaObject staticMetaObject;
+};
+
+/*!
+ * \brief Maps EPScreenMode values to screen regions.
+ *
+ * Associates display modes with the regions of the screen that should be
+ * updated using each mode. A translation table remaps EPScreenMode values into
+ * internal slots, allowing the system integrator to reassign which mode
+ * controls which hardware waveform path.
+ *
+ * Internally stores six QRegions indexed 0-5, one per EPScreenMode value, plus
+ * a six-entry int translation table at a fixed offset. The translation table is
+ * populated from the constructor's vector parameter.
+ */
+class EPScreenModeMap {
+public:
+  /*!
+   * \brief A single mode-to-slot remapping.
+   */
+  struct Translation {
+    int mode;  //!< EPScreenMode value to remap.
+    int value; //!< Target slot index.
+  };
+
+  /*!
+   * \brief Construct a screen-mode map.
+   * \param size          Pixel dimensions of the display.
+   * \param translations  Zero or more Translation entries that
+   *                      override default mode-to-slot mappings.
+   *
+   * The default mapping is identity (each EPScreenMode maps to its own slot).
+   * After building the translation table the entire screen is assigned to a
+   * uiScreenMode.
+   *
+   * The liquid-crystal platform string (e.g. "EPFB_UI_SCREEN_MODE") controls
+   * which mode is used for the default UI region at construction time.
+   */
+  EPScreenModeMap(QSize size, std::vector<Translation>&& translations);
+
+  /*!
+   * \brief Assign a region to a screen mode.
+   * \param region  Screen area to classify.
+   * \param mode    Display mode for this area.
+   *
+   * The region is added to the (possibly translated) slot for a mode and
+   * subtracted from all other slots.
+   */
+  void setModeForRegion(const QRegion& region, EPScreenMode mode);
+
+  /*!
+   * \brief Return the region currently assigned to a mode.
+   * \param mode  EPScreenMode to query.
+   * \return      Region of the screen using this mode (may be empty).
+   *
+   * The returned QRegion is a handle into the map and becomes invalid if the
+   * map is modified.
+   */
+  QRegion region(EPScreenMode mode) const;
+
+  /*!
+   * \brief Check whether only one mode covers the full screen.
+   * \param mode  EPScreenMode to test for.
+   * \return      true if the entire screen uses a mode and no other mode has
+   *              any region assigned.
+   */
+  bool isOnly(EPScreenMode mode) const;
+
+  /*! \brief Write debug dump to qDebug(). */
+  void dump() const;
+
+  /*! \brief Default screen mode used for unclassified UI regions. */
+  static const EPScreenMode uiScreenMode;
+  static QMetaObject staticMetaObject;
+};
+
+/*!
  * \brief Base class for the reMarkable framebuffer abstraction.
  *
  * EPFramebuffer manages a triple of QImages (auxiliary,
@@ -59,11 +172,32 @@ enum PixelMode {
  */
 class EPFramebuffer {
 public:
+  static QMetaObject staticMetaObject;
   /*! Flags that modify update behaviour. */
   enum UpdateFlag {
     NoRefresh = 0,       //!< Partial update
     CompleteRefresh = 1, //!< Full refresh
   };
+
+  /*!
+   * \brief Ghost control modes for the display.
+   *
+   * These modes control how the framebuffer handles ghost-cleanup and
+   * deferred-update behaviour.
+   */
+  enum GhostControlMode {
+    BlinkNow = 0,     //!< Show pending content immediately.
+    BlinkLater = 1,   //!< Hide content and defer ghost removal.
+    BleachNow = 2,    //!< Acep2-only: run a bleach/animation pass.
+    FactoryReset = 3, //!< Flash/clear to white (factory-reset blink on Acep2).
+  };
+
+  /*!
+   * \brief Show, hide or clear ghosted content on the display.
+   *
+   * \param mode  The ghost-control action to perform.
+   */
+  void ghostControl(GhostControlMode mode);
 
   /*!
    * \brief Store the front and back buffer QImages.
@@ -80,10 +214,10 @@ public:
    * This writes the content of frameBuffer to auxBuffer before calling update()
    * or sendTConUpdate()
    *
-   * \param region  Rectangle to update (in pixels).
-   * \param epct    Content type hint (mono or color).
-   * \param type    Waveform mode (quality vs speed trade-off).
-   * \param flags   Update flags (partial vs full refresh).
+   * \param region  Rectangle to update
+   * \param epct    Content type hint
+   * \param type    Waveform mode.
+   * \param flags   Update flags.
    */
   void swapBuffers(
     QRect region,
@@ -91,6 +225,43 @@ public:
     EPScreenMode type,
     QFlags<EPFramebuffer::UpdateFlag> flags
   );
+
+  /*!
+   * \brief Submit a classified display update using content and mode maps.
+   *
+   * Unlike the simpler swapBuffers(QRect, EPContentType, EPScreenMode, ...)
+   * overload, this variant accepts per-pixel classification so the
+   * backend can apply different waveforms to different regions of the
+   * screen in a single update transaction.
+   *
+   * The implementation copies frameBuffer to auxBuffer, then builds
+   * an internal TCon command from the content and mode maps, and
+   * finally submits the update to the display hardware.
+   *
+   * \param region         Bounding rectangle of the dirty area
+   * \param contentMap     Per-rectangle content classification. Dictates which
+   *                       hardware waveform slots are used for different
+   *                       content types within the update region.
+   * \param screenModeMap  Per-region screen mode assignment. Controls the
+   *                       quality-vs-speed trade-off for each part of the
+   *                       display.
+   * \param flags          Update flags.
+   */
+  void swapBuffers(
+    const QRegion& region,
+    const EPContentMap& contentMap,
+    const EPScreenModeMap& screenModeMap,
+    QFlags<UpdateFlag> flags
+  );
+
+  /*!
+   * \brief Try to acquire the framebuffer singleton lock.
+   * \return  If the lock was acquired.
+   *
+   * Creates (or replaces) a QLockFile at /tmp/epframebuffer.lock and
+   * attempts to lock it. On failure a critical message is logged.
+   */
+  bool checkLockFile();
 
   /*!
    * \brief Return the global EPFramebuffer singleton.
@@ -127,20 +298,6 @@ public:
     }
     fn(this);
   }
-};
-
-/*!
- * \brief Intermediate subclass (stand-in for the library's internal
- *        EPFramebufferSwtcon).
- *
- * Swtcon functions like initialize() are called during startup but
- * are not needed by consumers after instance() has returned.
- * sync() lives on the base EPFramebuffer class with runtime dispatch.
- */
-class EPFramebufferSwtcon : public EPFramebuffer {
-public:
-  /*! Open /dev/fb0 and set up the framebuffer controller. */
-  void initialize(void);
 
   /*!
    * \brief Send screen update
@@ -195,6 +352,35 @@ public:
     }
     fn(this, rect, waveform, pixelMode, flags);
   }
+
+  /*!
+   * \brief Perform crash-recovery cleanup.
+   *
+   * Calls a platform-specific handler that may, for example, reset the
+   * display controller or release the lock file.
+   */
+  void handleCrash();
+
+signals:
+  /*!
+   * \brief Signal emitted when a framebuffer update has been submitted.
+   *
+   * \param rect  Bounding rectangle that was updated, in pixel coordinates.
+   */
+  void framebufferUpdated(const QRect& rect);
+};
+
+/*!
+ * \brief Intermediate subclass (stand-in for the library's internal
+ *        EPFramebufferSwtcon).
+ *
+ * Swtcon functions like initialize() are called during startup but
+ * are not needed by consumers after instance() has returned.
+ */
+class EPFramebufferSwtcon : public EPFramebuffer {
+public:
+  /*! Open /dev/fb0 and set up the framebuffer controller. */
+  void initialize(void);
 };
 
 /*!

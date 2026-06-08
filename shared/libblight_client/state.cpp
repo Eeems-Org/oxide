@@ -64,7 +64,7 @@ namespace Client {
   }
   bool isInputEnabled() {
     if (isForceQt()) {
-      return true;
+      return false;
     }
     return getenv("OXIDE_PRELOAD_EXPOSE_INPUT") == nullptr;
   }
