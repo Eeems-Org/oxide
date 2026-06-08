@@ -29,38 +29,55 @@
 #error "Unsupported architecture"
 #endif
 
-/*! Waveform modes used by the framebuffer controller. */
+/*! Display modes for the framebuffer controller.
+    Each value maps to a hardware waveform slot that controls the
+    speed-vs-quality trade-off for a region of the screen. */
 enum EPScreenMode {
-  QualityFastest = 0, //!< Monochrome, no dithering
-  QualityFast = 1,    //!< Fast grayscale update
-  Animate = 2,        //!< Animated content
-  Quality3 = 3,       //!< Medium quality
-  QualityFull = 4,    //!< Full quality grayscale
-  Quality5 = 5,       //!< Alternative full quality
+  Pen = 0,       //!< Pen/handwriting overlay (fast, low-artifact)
+  Mono = 1,      //!< Fast monochrome text update
+  Animate = 2,   //!< Animation-optimized update (no ghost accumulation)
+  Grayscale = 3, //!< High quality grayscale update
+  Content = 4,   //!< General content (text, images, line art)
+  Full = 5,      //!< Full-screen refresh / persistent UI
 };
 
 /*! Content type hint for the framebuffer controller. */
 enum EPContentType {
-  Mono = 0,  //!< Monochrome content
-  Color = 1, //!< Color (16-level grayscale) content
+  Monochrome = 0, //!< Monochrome content
+  Color = 1,      //!< Color content
 };
-/*! Pixel update mode for EPFramebufferSwtcon::update.
-    Values observed from disassembly of the reMarkable libraries. */
+
+/*! Pixel update mode for EPFramebufferSwtcon::update.*/
 enum PixelMode {
-  DefaultMode = 7, //!< Default pixel update mode (used for most content)
-  GrayMode = 12,   //!< Grayscale pixel update (0xc, second pass in fusion)
-  MonoMode = 15,   //!< Monochrome pixel update (0xf, used in Acep2 STD regions)
-  InitMode = 17,   //!< Full initialization update (0x11, waveform init)
+  DefaultMode = 7, //!< Default pixel update mode
+#if defined(__arm__)
+  ClearMode = 6, //!< Residual/cleanup pass for post-animation rest areas
+  PenMode = 8,   //!< Pen/handwriting overlay update
+  GrayMode = 12, //!< Grayscale pixel update
+#elif defined(__aarch64__)
+  Acep2PenMode = 13,     //!< Pen/handwriting update
+  Acep2PenModeFast = 14, //!< Alternative pen update
+#endif
+  MonoMode = 15, //!< Monochrome pixel update
+  InitMode = 17, //!< Full initialization update
 };
 
 /*!
  * \brief Maps content type hints to screen regions.
  *
- * Tracks which areas of the screen contain each content type . Regions are
- * built up by calling setTypeForRect() for each rectangle; the map
- * automatically subtracts overlapping areas from the other type, so every pixel
- * belongs to exactly one content type. Used together with EPScreenModeMap to
- * submit a classified display update via EPFramebuffer::swapBuffers().
+ * Tracks which areas of the screen contain each content type. The map
+ * stores four internal QRegion slots:
+ *   0 = Monochrome content (EPContentType::Monochrome)
+ *   1 = Color content (EPContentType::Color)
+ *   2 = Reserved (unused)
+ *   3 = Unclassified (full screen at construction)
+ *
+ * When setTypeForRect() is called, the rect is added to the slot
+ * corresponding to the content type and subtracted from all other slots,
+ * so every pixel belongs to exactly one slot at all times.
+ *
+ * Used together with EPScreenModeMap to submit a classified display
+ * update via EPFramebuffer::swapBuffers().
  */
 class EPContentMap {
 public:
@@ -68,7 +85,8 @@ public:
    * \brief Construct a content map covering the full screen.
    * \param size  Pixel dimensions of the display.
    *
-   * All pixels are initially assigned to EPContentType::Mono.
+   * All pixels are initially assigned to the unclassified slot.
+   * Call setTypeForRect() to classify regions as Monochrome or Color.
    */
   EPContentMap(QSize size);
 
@@ -77,9 +95,9 @@ public:
    * \param rect  Rectangle on screen.
    * \param type  Content type.
    *
-   * The rect is added to the region for \a type and subtracted from the region
-   * for the opposite type. This is the only way to populate the map; there is
-   * no remove/clear.
+   * The rect is added to the slot for a type and subtracted from the
+   * other three slots. This is the only way to populate the map; there
+   * is no remove/clear.
    */
   void setTypeForRect(QRect rect, EPContentType type);
 
@@ -97,9 +115,9 @@ public:
  * internal slots, allowing the system integrator to reassign which mode
  * controls which hardware waveform path.
  *
- * Internally stores six QRegions indexed 0-5, one per EPScreenMode value, plus
- * a six-entry int translation table at a fixed offset. The translation table is
- * populated from the constructor's vector parameter.
+ * The constructor takes an optional vector of Translation entries that
+ * override the default identity mapping (mode N -> slot N).  After building
+ * the table the full screen is assigned to the slot indicated by uiScreenMode.
  */
 class EPScreenModeMap {
 public:
@@ -107,8 +125,8 @@ public:
    * \brief A single mode-to-slot remapping.
    */
   struct Translation {
-    int mode;  //!< EPScreenMode value to remap.
-    int value; //!< Target slot index.
+    EPScreenMode mode; //!< Screen mode to remap (lookup key into translation table).
+    int slot;          //!< Target slot index (0-5) that receives the region.
   };
 
   /*!
@@ -304,7 +322,8 @@ public:
    * calls after all updates are ready
    *
    * \param rect      Rectangle to update in pixels.
-   * \param waveform  Waveform mode (0x18 for GC16, 0x1000 for DU).
+   * \param waveform  EPScreenMode value.  sendTConUpdate uses raw codes: 0x18
+   *                  for GC16 0x1000 for DU.
    * \param pixelMode  Pixel update mode.
    */
   inline void update(

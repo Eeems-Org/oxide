@@ -46,6 +46,5 @@ namespace Blight {
     return static_cast<size_t>(h - t);
   }
 
-  template class LIBBLIGHT_EXPORT
-    RingBuffer<input_event, EVDEV_RING_BUFFER_SIZE>;
+  template class RingBuffer<input_event, EVDEV_RING_BUFFER_SIZE>;
 }

@@ -236,7 +236,7 @@ GUIThread::clearFrameBuffer() {
   instance->swapBuffers(
     m_screenGeometry,
     EPContentType::Color,
-    EPScreenMode::QualityFull,
+    EPScreenMode::Content,
     EPFramebuffer::UpdateFlag::CompleteRefresh
   );
 }
@@ -351,24 +351,24 @@ GUIThread::sendUpdate(
   EPScreenMode type;
   switch (waveform) {
     case Blight::WaveformMode::Mono:
-      type = EPScreenMode::QualityFast;
+      type = EPScreenMode::Mono;
       break;
     case Blight::WaveformMode::Animate:
       type = EPScreenMode::Animate;
       break;
     case Blight::WaveformMode::HighQualityGrayscale:
-      type = EPScreenMode::Quality3;
+      type = EPScreenMode::Grayscale;
       break;
     case Blight::WaveformMode::Initialize: // TODO get proper mode for this
     case Blight::WaveformMode::Grayscale:
     case Blight::WaveformMode::Highlight:
     default:
-      type = EPScreenMode::QualityFull;
+      type = EPScreenMode::Content;
       break;
   }
   O_DEBUG("Sending screen update" << rect << waveform << mode);
   EPFramebuffer::instance()->swapBuffers(
-    rect, EPContentType::Mono, type, (EPFramebuffer::UpdateFlag)mode
+    rect, EPContentType::Monochrome, type, (EPFramebuffer::UpdateFlag)mode
   );
 }
 
