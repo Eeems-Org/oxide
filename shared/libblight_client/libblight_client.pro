@@ -2,7 +2,6 @@ TARGET = blight_client
 TEMPLATE = lib
 
 DEFINES += DISABLE_LTO
-DEFINES += DEBUG
 include(../../qmake/common.pri)
 
 CONFIG += hide_symbols

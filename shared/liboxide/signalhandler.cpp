@@ -1,5 +1,6 @@
 #include "signalhandler.h"
 
+#include <csignal>
 #include <signal.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -24,7 +25,7 @@ namespace Oxide {
     action.sa_sigaction = SignalHandler::handleSignal;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
-    action.sa_flags |= SA_RESTART;
+    action.sa_flags |= SA_RESTART | SA_SIGINFO;
 #define _sigaction(signal)                                                     \
   if (sigaction(signal, &action, 0)) {                                         \
     return signal;                                                             \

@@ -300,12 +300,12 @@ namespace FB {
     if (fd == -1) {
       return false;
     }
-    if (Libc::ioctl(fd, request, ptr) == -1) {
-      return false;
-    }
+    int res = Libc::ioctl(fd, request, ptr) == -1;
     Libc::close(fd);
-#endif
+    return res == 0;
+#else
     return true;
+#endif
   }
   int ioctl(unsigned long request, char* ptr) {
     switch (request) {
@@ -589,31 +589,31 @@ namespace FB {
       if (!maybe.has_value()) {
         continue;
       }
-      auto buffer = maybe.value();
-      if (buffer->data == nullptr) {
+      auto surfaceBuffer = maybe.value();
+      if (surfaceBuffer->data == nullptr) {
         _DEBUG("Buffer for surface %s missing", identifier);
         continue;
       }
       if (
-        buffer->x != 0 || buffer->y != 0 || buffer->width != width ||
-        buffer->height != height ||
-        static_cast<unsigned int>(buffer->stride) != stride ||
-        buffer->format != format
+        surfaceBuffer->x != 0 || surfaceBuffer->y != 0 ||
+        surfaceBuffer->width != width || surfaceBuffer->height != height ||
+        static_cast<unsigned int>(surfaceBuffer->stride) != stride ||
+        surfaceBuffer->format != format
       ) {
         _DEBUG(
           "Buffer for surface %s does not match: (%d,%d) %dx%d %dbytes %d",
           identifier,
-          buffer->x,
-          buffer->y,
-          buffer->width,
-          buffer->height,
-          buffer->stride,
-          buffer->format
+          surfaceBuffer->x,
+          surfaceBuffer->y,
+          surfaceBuffer->width,
+          surfaceBuffer->height,
+          surfaceBuffer->stride,
+          surfaceBuffer->format
         );
         continue;
       }
       _INFO("Reusing existing surface: %s", identifier);
-      buffer = buffer;
+      buffer = surfaceBuffer;
       break;
     }
     if (buffer->format != Blight::Format::Format_Invalid) {

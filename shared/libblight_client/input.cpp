@@ -171,6 +171,9 @@ namespace Input {
     _DEBUG("Closing input fd %d", fd);
     {
       std::scoped_lock lock(mutex);
+      if (!deviceDescriptors.contains(fd)) {
+        return Libc::close(fd);
+      }
       unsigned int device = deviceDescriptors[fd].device;
       if (deviceEventFds.contains(device)) {
         int eventFd = deviceEventFds[device];

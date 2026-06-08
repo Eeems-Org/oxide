@@ -94,7 +94,9 @@ OxideBackingStore::resize(const QSize& size, const QRegion& region) {
         Blight::addSurface(mBuffer);
       }
     }
-    if (mBuffer->format == Blight::Format::Format_Invalid) {
+    if (
+      mBuffer == nullptr || mBuffer->format == Blight::Format::Format_Invalid
+    ) {
       if (debug()) {
         qDebug() << "OxideBackingStore::rezize looking for existing surface";
       }

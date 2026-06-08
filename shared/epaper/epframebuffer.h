@@ -288,9 +288,6 @@ public:
       if (sync == nullptr) {
         sync = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferTcon4syncEv");
       }
-      if (sync == nullptr) {
-        sync = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferSwtcon4syncEv");
-      }
       return reinterpret_cast<void (*)(void*)>(sync);
     }();
     if (fn == nullptr) {

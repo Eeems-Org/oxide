@@ -14,7 +14,7 @@ OxideEventFilter::OxideEventFilter(QObject* parent)
   , debugEvents(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_EVENTS"))
   , debugAllEvents(qEnvironmentVariableIsSet("OXIDE_QPA_DEBUG_ALL_EVENTS"))
   , disableTabletSynth(
-      qEnvironmentVariableIsSet("OXIDE_QPA_DISBLE_TABLET_SYNTHESIZE")
+      qEnvironmentVariableIsSet("OXIDE_QPA_DISABLE_TABLET_SYNTHESIZE")
     ) {}
 
 QVector<QEvent::Type> ignoreTypes{

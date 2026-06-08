@@ -109,8 +109,12 @@ namespace Blight {
       return h - t >= static_cast<uint32_t>(Size);
     }
 
-    T next() {
+    std::optional<T> next() {
+      uint32_t h = head.load(std::memory_order_acquire);
       uint32_t t = tail.load(std::memory_order_relaxed);
+      if (h == t) {
+        return {};
+      }
       return values[t & MASK];
     }
 

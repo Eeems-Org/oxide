@@ -43,12 +43,7 @@ typedef struct TabletData {
     : lastEventType{0} {
     memset(&minValues, 0, sizeof(minValues));
     memset(&maxValues, 0, sizeof(maxValues));
-    memset(&maxValues, 0, sizeof(maxValues));
-    memset(
-      (void*)&state,
-      0,
-      (sizeof(int) * 12) + (sizeof(bool) * 2) + sizeof(QPointF)
-    );
+    memset((void*)&state, 0, sizeof(state));
   }
 } TabletData;
 
@@ -624,10 +619,8 @@ OxideEventHandler::processTabletEvent(
       case ABS_DISTANCE:
         state.d = event->value;
         break;
-        break;
       case ABS_TILT_X:
         state.tx = event->value;
-        break;
         break;
       case ABS_TILT_Y:
         state.ty = event->value;
@@ -676,7 +669,7 @@ OxideEventHandler::processTabletEvent(
     qreal pressure =
       pressureRange ? (state.p - tabletData->minValues.p) / qreal(pressureRange)
                     : qreal(1);
-    int distanceRange = tabletData->maxValues.ty - tabletData->minValues.ty;
+    int distanceRange = tabletData->maxValues.d - tabletData->minValues.d;
     qreal z = distanceRange
                 ? (state.d - tabletData->minValues.d) / qreal(distanceRange)
                 : qreal(1);
