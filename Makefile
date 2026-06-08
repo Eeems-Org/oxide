@@ -10,6 +10,8 @@ MAKEFLAGS := --jobs=$(shell nproc)
 
 DIST=$(CURDIR)/release
 BUILD=$(CURDIR)/.build
+BUILDNAME?=oxide
+TOOLCHAIN?=5.7.119
 
 ifneq ($(filter debug,$(FEATURES)),)
 DEFINES += CONFIG+="debug"
@@ -18,14 +20,14 @@ ifneq ($(filter sentry,$(FEATURES)),)
 DEFINES += DEFINES+="SENTRY"
 endif
 
-OBJ += $(BUILD)/oxide/Makefile
+OBJ += $(BUILD)/$(BUILDNAME)/Makefile
 
 clean-base:
 	rm -rf \
 		$(DIST) \
-		$(BUILD)/oxide/Makefile \
-		$(BUILD)/oxide/shared/sentry/src \
-		$(BUILD)/oxide/shared/cpptrace/src
+		$(BUILD)/$(BUILDNAME)/Makefile \
+		$(BUILD)/$(BUILDNAME)/shared/sentry/src \
+		$(BUILD)/$(BUILDNAME)/shared/cpptrace/src
 
 clean: clean-base
 	rm -rf $(BUILD)
@@ -33,18 +35,18 @@ clean: clean-base
 release: clean-base build $(DIST)
 ifneq ($(filter sentry,$(FEATURES)),)
 	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
-	cd $(BUILD)/oxide/shared/sentry && make qmake
+	cd $(BUILD)/$(BUILDNAME)/shared/sentry && make qmake
 endif
 	# Force liboxide makefile to regenerate so that install targets get when being build in toltecmk
-	cd $(BUILD)/oxide/shared/liboxide && make qmake
+	cd $(BUILD)/$(BUILDNAME)/shared/liboxide && make qmake
 	# Force libblight makefile to regenerate so that install targets get when being build in toltecmk
-	cd $(BUILD)/oxide/shared/libblight && make qmake
+	cd $(BUILD)/$(BUILDNAME)/shared/libblight && make qmake
 	# Force libblight_protocol makefile to regenerate so that install targets get when being build in toltecmk
-	cd $(BUILD)/oxide/shared/libblight_protocol && make qmake
-	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/oxide install
+	cd $(BUILD)/$(BUILDNAME)/shared/libblight_protocol && make qmake
+	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) install
 
 build: $(OBJ)
-	$(MAKE) --output-sync=target -C $(BUILD)/oxide all
+	$(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) all
 
 package: REV="~r$(shell git rev-list --count HEAD).$(shell git rev-parse --short HEAD)"
 package: version.txt $(DIST) $(BUILD)/package/oxide.tar.gz
@@ -57,43 +59,48 @@ package: version.txt $(DIST) $(BUILD)/package/oxide.tar.gz
 
 build-rm1: clean-base $(DIST)
 	podman run \
+		--env BUILDNAME=oxide-rm1 \
 		--rm \
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
-		eeems/remarkable-toolchain:5.7.119-rm1 \
-		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm1/5.7.119/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
+		eeems/remarkable-toolchain:$(TOOLCHAIN)-rm1 \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm1/$(TOOLCHAIN)/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
 
 build-rm2: clean-base $(DIST)
 	podman run \
+		--env BUILDNAME=oxide-rm2 \
 		--rm \
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
-		eeems/remarkable-toolchain:5.7.119-rm2 \
-		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm2/5.7.119/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
+		eeems/remarkable-toolchain:$(TOOLCHAIN)-rm2 \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm2/$(TOOLCHAIN)/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
 
 build-rmpp: clean-base $(DIST)
 	podman run \
+		--env BUILDNAME=oxide-rmpp \
 		--rm \
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
-		eeems/remarkable-toolchain:5.7.119-rmpp \
-		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/ferrari/5.7.119/environment-setup-cortexa53-remarkable-linux; make FEATURES=$(FEATURES) release'
+		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmpp \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/ferrari/$(TOOLCHAIN)/environment-setup-cortexa53-crypto-remarkable-linux; make FEATURES=$(FEATURES) release'
 
 build-rmppm: clean-base $(DIST)
 	podman run \
+		--env BUILDNAME=oxide-rmppm \
 		--rm \
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
-		eeems/remarkable-toolchain:5.7.119-rmppm \
-		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/chiappa/5.7.119/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
+		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmppm \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/chiappa/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
 build-rmppure: clean-base $(DIST)
 	podman run \
+		--env BUILDNAME=oxide-rmppure \
 		--rm \
 		--volume=$(CURDIR):/src \
 		--workdir=/src \
-		eeems/remarkable-toolchain:5.7.119-rmppure \
-		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/tatsu/5.7.119/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
+		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmppure \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/tatsu/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
 version.txt:
 	if [ -d .git ];then \
@@ -111,11 +118,11 @@ $(BUILD):
 $(BUILD)/.nobackup: $(BUILD)
 	touch $(BUILD)/.nobackup
 
-$(BUILD)/oxide: $(BUILD)/.nobackup
-	mkdir -p $(BUILD)/oxide
+$(BUILD)/$(BUILDNAME): $(BUILD)/.nobackup
+	mkdir -p $(BUILD)/$(BUILDNAME)
 
-$(BUILD)/oxide/Makefile: $(BUILD)/oxide
-	cd $(BUILD)/oxide && qmake -r $(DEFINES) $(CURDIR)
+$(BUILD)/$(BUILDNAME)/Makefile: $(BUILD)/$(BUILDNAME)
+	cd $(BUILD)/$(BUILDNAME) && qmake -r $(DEFINES) $(CURDIR)
 
 $(BUILD)/package:
 	mkdir -p $(BUILD)/package
