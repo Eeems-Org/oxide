@@ -111,6 +111,15 @@ namespace BlightProtocol {
   Highlight = 8
 #endif
   } BlightWaveformMode;
+
+  /*!
+   * \brief Waveform to use for a repaint
+   */
+  typedef enum {
+    Monochrome = 0,
+    Color = 1,
+  } BlightContentType;
+
   /*!
    * \brief BlightUpdateMode Update mode for a repaint
    */
@@ -252,6 +261,10 @@ namespace BlightProtocol {
      */
     BlightWaveformMode waveform;
     /*!
+     * \brief contenttype Content type hint
+     */
+    BlightContentType contenttype;
+    /*!
      * \brief mode Update mode to use
      */
     BlightUpdateMode mode;
@@ -325,6 +338,7 @@ namespace BlightProtocol {
 #define BlightMessageType BlightProtocol::BlightMessageType
 #define BlightImageFormat BlightProtocol::BlightImageFormat
 #define BlightWaveformMode BlightProtocol::BlightWaveformMode
+#define BlightContentType BlightProtocol::BlightContentType
 #define BlightUpdateMode BlightProtocol::BlightUpdateMode
 extern "C" {
 #endif
@@ -682,6 +696,7 @@ blight_surface_repaint(
   unsigned int width,
   unsigned int height,
   BlightWaveformMode waveform,
+  BlightContentType contenttype,
   BlightUpdateMode mode
 );
 /*!
@@ -725,6 +740,7 @@ blight_focus(int fd);
 #undef BlightMessageType
 #undef BlightImageFormat
 #undef BlightWaveformMode
+#undef BlightContentType
 #undef BlightUpdateMode
 #endif
 /*! @} */

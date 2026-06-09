@@ -171,6 +171,7 @@ namespace Oxide {
         rect.width(),
         rect.height(),
         waveform,
+        Blight::ContentType::Color,
         Blight::UpdateMode::PartialUpdate,
         _marker
       );

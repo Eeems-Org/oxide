@@ -32,6 +32,7 @@ namespace FB {
     int width,
     int height,
     Blight::WaveformMode waveform,
+    Blight::ContentType contentType,
     Blight::UpdateMode updateMode,
     unsigned int marker,
     bool wait = false

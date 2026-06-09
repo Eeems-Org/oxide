@@ -454,13 +454,14 @@ Connection::readSocket() {
       case Blight::MessageType::Repaint: {
         auto repaint = Blight::repaint_t::from_message(message.get());
         C_DEBUG(
-          "Repaint requested:" << QString("%1 (%2,%3) %4x%5 %6 %7 %8")
+          "Repaint requested:" << QString("%1 (%2,%3) %4x%5 %6 %7 %8 %9")
                                     .arg(repaint.identifier)
                                     .arg(repaint.x)
                                     .arg(repaint.y)
                                     .arg(repaint.width)
                                     .arg(repaint.height)
                                     .arg(repaint.waveform)
+                                    .arg(repaint.contenttype)
                                     .arg(repaint.mode)
                                     .arg(repaint.marker)
                                     .toStdString()
@@ -477,6 +478,7 @@ Connection::readSocket() {
           surface,
           rect,
           repaint.waveform,
+          repaint.contenttype,
           repaint.mode,
           repaint.marker,
           false,
@@ -510,6 +512,7 @@ Connection::readSocket() {
           surface,
           surface->rect(),
           Blight::WaveformMode::HighQualityGrayscale,
+          Blight::ContentType::Color,
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
           false,
@@ -519,6 +522,7 @@ Connection::readSocket() {
           nullptr,
           rect,
           Blight::WaveformMode::HighQualityGrayscale,
+          Blight::ContentType::Color,
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
           true,
@@ -623,6 +627,7 @@ Connection::readSocket() {
           surface,
           surface->rect(),
           Blight::WaveformMode::HighQualityGrayscale,
+          Blight::ContentType::Color,
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
           false,
@@ -651,6 +656,7 @@ Connection::readSocket() {
           nullptr,
           surface->geometry(),
           Blight::WaveformMode::HighQualityGrayscale,
+          Blight::ContentType::Color,
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
           true,

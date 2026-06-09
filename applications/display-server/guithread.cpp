@@ -57,7 +57,7 @@ GUIThread*
 GUIThread::singleton() {
   static GUIThread* instance = nullptr;
   if (instance == nullptr) {
-    instance = new GUIThread(EPFramebuffer::instance()->frameBuffer->rect());
+    instance = new GUIThread(getFrameBuffer()->rect());
     Oxide::startThreadWithPriority(instance, QThread::TimeCriticalPriority);
   }
   return instance;
@@ -68,7 +68,7 @@ GUIThread::GUIThread(QRect screenGeometry)
   , m_screenGeometry{screenGeometry}
   , m_screenOffset{screenGeometry.topLeft()}
   , m_screenRect{m_screenGeometry.translated(-m_screenOffset)} {
-  auto frameBuffer = EPFramebuffer::instance()->frameBuffer;
+  auto frameBuffer = getFrameBuffer();
   O_INFO(
     "Framebuffer:" << frameBuffer->width() << "x" << frameBuffer->height()
                    << " " << frameBuffer->bytesPerLine() << "bytes/line"
@@ -141,6 +141,7 @@ GUIThread::enqueue(
   std::shared_ptr<Surface> surface,
   QRect region,
   Blight::WaveformMode waveform,
+  Blight::ContentType contentType,
   Blight::UpdateMode mode,
   unsigned int marker,
   bool global,
@@ -213,6 +214,7 @@ GUIThread::enqueue(
       .surface = surface,
       .region = repaintRegion,
       .waveform = waveform,
+      .contentType = contentType,
       .mode = mode,
       .marker = marker,
       .global = global,
@@ -231,9 +233,8 @@ GUIThread::notify() {
 
 void
 GUIThread::clearFrameBuffer() {
-  auto instance = EPFramebuffer::instance();
-  instance->frameBuffer->fill(Qt::white);
-  instance->swapBuffers(
+  getFrameBuffer()->fill(Qt::white);
+  EPFramebuffer::instance()->swapBuffers(
     m_screenGeometry,
     EPContentType::Color,
     EPScreenMode::Content,
@@ -307,7 +308,7 @@ GUIThread::redraw(RepaintRequest& event) {
   Blight::ClockWatch cw;
   // Get visible region on the screen to repaint
   O_DEBUG("Repainting" << region.boundingRect());
-  QImage* frameBuffer = EPFramebuffer::instance()->frameBuffer;
+  QImage* frameBuffer = getFrameBuffer();
   Qt::GlobalColor colour =
     frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
   // "QPainter::begin: A paint device can only be painted by one painter at a
@@ -333,7 +334,9 @@ GUIThread::redraw(RepaintRequest& event) {
       repaintSurface(&painter, &rect, event.surface);
     }
     painter.end();
-    sendUpdate(rect, event.waveform, event.mode, event.marker);
+    sendUpdate(
+      rect, event.waveform, event.contentType, event.mode, event.marker
+    );
   }
   O_DEBUG(
     "Repaint" << region.boundingRect() << "done in" << region.rectCount()
@@ -345,30 +348,35 @@ void
 GUIThread::sendUpdate(
   const QRect& rect,
   Blight::WaveformMode waveform,
+  Blight::ContentType contentType,
   Blight::UpdateMode mode,
   unsigned int marker
 ) {
-  EPScreenMode type;
+  Q_UNUSED(marker);
+  EPScreenMode screenMode;
   switch (waveform) {
     case Blight::WaveformMode::Mono:
-      type = EPScreenMode::Mono;
+      screenMode = EPScreenMode::Mono;
       break;
     case Blight::WaveformMode::Animate:
-      type = EPScreenMode::Animate;
+      screenMode = EPScreenMode::Animate;
       break;
     case Blight::WaveformMode::HighQualityGrayscale:
-      type = EPScreenMode::Grayscale;
+      screenMode = EPScreenMode::Grayscale;
       break;
     case Blight::WaveformMode::Initialize: // TODO get proper mode for this
     case Blight::WaveformMode::Grayscale:
     case Blight::WaveformMode::Highlight:
     default:
-      type = EPScreenMode::Content;
+      screenMode = EPScreenMode::Content;
       break;
   }
-  O_DEBUG("Sending screen update" << rect << waveform << mode);
+  O_DEBUG("Sending screen update" << rect << waveform << contentType << mode);
   EPFramebuffer::instance()->swapBuffers(
-    rect, EPContentType::Monochrome, type, (EPFramebuffer::UpdateFlag)mode
+    rect,
+    (EPContentType)contentType,
+    screenMode,
+    (EPFramebuffer::UpdateFlag)mode
   );
 }
 
@@ -376,6 +384,7 @@ void
 GUIThread::swap(
   const QRect& rect,
   Blight::WaveformMode waveform,
+  Blight::ContentType contentType,
   Blight::UpdateMode mode
 ) {
   if (m_frameBuffer == nullptr || m_frameBuffer->fd < 0) {
@@ -390,10 +399,10 @@ GUIThread::swap(
     m_frameBuffer->stride,
     (QImage::Format)m_frameBuffer->format
   );
-  QPainter painter(EPFramebuffer::instance()->frameBuffer);
+  QPainter painter(getFrameBuffer());
   painter.drawImage(rect, image, rect);
   painter.end();
-  guiThread->sendUpdate(rect, waveform, mode, 0);
+  guiThread->sendUpdate(rect, waveform, contentType, mode, 0);
 }
 
 QList<std::shared_ptr<Surface>>
@@ -423,5 +432,10 @@ GUIThread::visibleSurfaces() {
     visibleSurfaces.end()
   );
   return visibleSurfaces;
+}
+QImage*
+GUIThread::getFrameBuffer() {
+  return &EPFramebuffer::instance()->auxBuffer;
+  // return EPFramebuffer::instance()->frameBuffer;
 }
 #endif

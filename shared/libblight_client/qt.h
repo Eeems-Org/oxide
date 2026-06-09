@@ -24,7 +24,6 @@ namespace Qt {
   qregion_begin_t qregion_begin();
   qregion_end_t qregion_end();
   bool region_rect_overlaps(const QRectLayout* rect, const void* region);
-  Blight::WaveformMode epsm_to_waveform(int screenMode);
   Blight::UpdateMode flags_to_update_mode(int flags);
 }
 

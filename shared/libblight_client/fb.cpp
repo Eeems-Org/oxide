@@ -108,6 +108,7 @@ namespace FB {
       region.width,
       region.height,
       (Blight::WaveformMode)update->waveform_mode,
+      Blight::ContentType::Color,
       (Blight::UpdateMode)update->update_mode,
       update->update_marker
     );
@@ -399,6 +400,7 @@ namespace FB {
           region.width,
           region.height,
           (Blight::WaveformMode)update->waveform_mode,
+          Blight::ContentType::Color,
           (Blight::UpdateMode)update->update_mode,
           0
         );
@@ -703,6 +705,7 @@ namespace FB {
     int width,
     int height,
     Blight::WaveformMode waveform,
+    Blight::ContentType contentType,
     Blight::UpdateMode updateMode,
     unsigned int marker,
     bool wait
@@ -716,7 +719,7 @@ namespace FB {
     }
     ensure_surface();
     auto maybe = connection->repaint(
-      buffer, x, y, width, height, waveform, updateMode, marker
+      buffer, x, y, width, height, waveform, contentType, updateMode, marker
     );
     if (wait && maybe.has_value()) {
       maybe.value()->wait();

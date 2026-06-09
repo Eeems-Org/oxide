@@ -55,8 +55,8 @@ enum PixelMode {
   PenMode = 8,   //!< Pen/handwriting overlay update
   GrayMode = 12, //!< Grayscale pixel update
 #elif defined(__aarch64__)
-  Acep2PenMode = 13,     //!< Pen/handwriting update
-  Acep2PenModeFast = 14, //!< Alternative pen update
+  PenMode = 13,     //!< Pen/handwriting update
+  FastPenMode = 14, //!< Alternative pen update
 #endif
   MonoMode = 15, //!< Monochrome pixel update
   InitMode = 17, //!< Full initialization update
@@ -125,8 +125,9 @@ public:
    * \brief A single mode-to-slot remapping.
    */
   struct Translation {
-    EPScreenMode mode; //!< Screen mode to remap (lookup key into translation table).
-    int slot;          //!< Target slot index (0-5) that receives the region.
+    EPScreenMode
+      mode;   //!< Screen mode to remap (lookup key into translation table).
+    int slot; //!< Target slot index (0-5) that receives the region.
   };
 
   /*!
@@ -264,6 +265,16 @@ public:
    *                       quality-vs-speed trade-off for each part of the
    *                       display.
    * \param flags          Update flags.
+   *
+   * Example usage:
+   * auto size = instance->auxBuffer.size();
+   * EPContentMap contentMap(size);
+   * contentMap.setTypeForRect(rect, EPContentType::Monochrome);
+   * EPScreenModeMap screenModeMap(size, {});
+   * screenModeMap.setModeForRegion(QRegion(rect), screenMode);
+   * EPFramebuffer::instance()->swapBuffers(
+   *   QRegion(rect), contentMap, screenModeMap, (EPFramebuffer::UpdateFlag)mode
+   * );
    */
   void swapBuffers(
     const QRegion& region,
@@ -303,9 +314,11 @@ public:
   inline void sync() {
     static auto* fn = []() -> void (*)(void*) {
       void* sync = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferSwtcon4syncEv");
+#ifdef __arm__
       if (sync == nullptr) {
         sync = dlsym(RTLD_DEFAULT, "_ZN19EPFramebufferTcon4syncEv");
       }
+#endif
       return reinterpret_cast<void (*)(void*)>(sync);
     }();
     if (fn == nullptr) {
@@ -315,14 +328,13 @@ public:
   }
 
   /*!
-   * \brief Send screen update
+   * \brief Queue a screen update
    *
-   * This assumes that framebuffer content has been written to auxBuffer.
-   * This also requires beginUpdateQueue() calls before and endUpdateQueue()
-   * calls after all updates are ready
+   * This will not actually cause the scren to be updated, but it will queue a
+   * change. swapBuffers uses this, and then flushes the queue to the screen.
    *
    * \param rect      Rectangle to update in pixels.
-   * \param waveform  EPScreenMode value.  sendTConUpdate uses raw codes: 0x18
+   * \param waveform  EPScreenMode value. sendTConUpdate uses raw codes: 0x18
    *                  for GC16 0x1000 for DU.
    * \param pixelMode  Pixel update mode.
    */
@@ -335,6 +347,7 @@ public:
     static const auto fn = []()
       -> std::function<
         void(void*, QRect, int, PixelMode, QFlags<EPFramebuffer::UpdateFlag>)> {
+#ifdef __arm__
       auto sendTConUpdate = reinterpret_cast<
         void (*)(void*, const QRect&, int, QFlags<EPFramebuffer::UpdateFlag>)>(
         dlsym(
@@ -350,8 +363,12 @@ public:
                  int waveform,
                  PixelMode pixelMode,
                  QFlags<EPFramebuffer::UpdateFlag> flags
-               ) { sendTConUpdate(this_ptr, rect, waveform, flags); };
+               ) {
+          (void*)pixelMode;
+          sendTConUpdate(this_ptr, rect, waveform, flags);
+        };
       }
+#endif
       return reinterpret_cast<void (*)(
         void*, QRect, int, PixelMode, QFlags<EPFramebuffer::UpdateFlag>
       )>(
@@ -362,8 +379,10 @@ public:
     }();
     if (fn == nullptr) {
       qFatal(
-        "Unable to find EPFramebuffer::update() or "
-        "EPFramebuffer::sendTConUpdate()"
+        "Unable to find EPFramebuffer::update()"
+#ifdef __arm__
+        " or EPFramebuffer::sendTConUpdate()"
+#endif
       );
     }
     fn(this, rect, waveform, pixelMode, flags);

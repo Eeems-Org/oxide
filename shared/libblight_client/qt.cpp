@@ -65,24 +65,6 @@ namespace Qt {
     }
     return false;
   }
-  Blight::WaveformMode epsm_to_waveform(int screenMode) {
-    switch (screenMode) {
-      case 0:
-        return Blight::WaveformMode::Mono;
-      case 1:
-        return Blight::WaveformMode::Mono;
-      case 2:
-        return Blight::WaveformMode::Animate;
-      case 3:
-        return Blight::WaveformMode::HighQualityGrayscale;
-      case 4:
-        return Blight::WaveformMode::Grayscale;
-      case 5:
-        return Blight::WaveformMode::Grayscale;
-      default:
-        return Blight::WaveformMode::Mono;
-    }
-  }
   Blight::UpdateMode flags_to_update_mode(int flags) {
     return (flags & 1) ? Blight::UpdateMode::FullUpdate
                        : Blight::UpdateMode::PartialUpdate;
@@ -609,6 +591,7 @@ void
 repaint(
   const Qt::QRectLayout* rect,
   Blight::WaveformMode waveform,
+  Blight::ContentType contentType,
   Blight::UpdateMode updateMode,
   bool wait = false
 ) {
@@ -627,6 +610,7 @@ repaint(
     rect->right - rect->left,
     rect->bottom - rect->top,
     waveform,
+    contentType,
     updateMode,
     0,
     wait
@@ -717,6 +701,7 @@ hook_swapBuffers_QRegion(
   auto dend = end_fn(region);
   if (dit && dend) {
     auto updateMode = Qt::flags_to_update_mode(flags);
+    auto contentType = Blight::ContentType::Monochrome;
     for (; dit != dend; dit++) {
       auto waveform = Blight::WaveformMode::HighQualityGrayscale;
       if (contentMap_screenModeMap) {
@@ -729,6 +714,7 @@ hook_swapBuffers_QRegion(
           regions[1] != nullptr && Qt::region_rect_overlaps(dit, &regions[1])
         ) {
           waveform = Blight::WaveformMode::Grayscale;
+          contentType = Blight::ContentType::Color;
         } else if (
           regions[2] != nullptr && Qt::region_rect_overlaps(dit, &regions[2])
         ) {
@@ -743,7 +729,7 @@ hook_swapBuffers_QRegion(
           waveform = Blight::WaveformMode::Grayscale;
         }
       }
-      repaint(dit, waveform, updateMode);
+      repaint(dit, waveform, Blight::ContentType::Monochrome, updateMode);
     }
   }
   dump_buffers();
@@ -776,7 +762,7 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   void* this_ptr,
   Qt::QRectLayout rect,
   int waveform,
-  int pixelMode,
+  Blight::ContentType contentType,
   int flags
 ) {
   void* epframebuffer = nullptr;
@@ -804,7 +790,10 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
     _WARN("Failed to convert image: %s", std::strerror(errno));
   }
   repaint(
-    &rect, Qt::epsm_to_waveform(waveform), Qt::flags_to_update_mode(flags)
+    &rect,
+    (Blight::WaveformMode)waveform,
+    contentType,
+    Qt::flags_to_update_mode(flags)
   );
   dump_buffers();
 }

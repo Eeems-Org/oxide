@@ -143,6 +143,7 @@ Surface::repaint(QRect rect) {
     nullptr,
     geometry(),
     Blight::WaveformMode::HighQualityGrayscale,
+    Blight::ContentType::Color,
     Blight::UpdateMode::PartialUpdate,
     0,
     true

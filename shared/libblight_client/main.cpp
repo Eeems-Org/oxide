@@ -179,6 +179,7 @@ msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
       region.width,
       region.height,
       Blight::WaveformMode::HighQualityGrayscale,
+      Blight::ContentType::Color,
       Blight::UpdateMode::PartialUpdate,
       0
     );

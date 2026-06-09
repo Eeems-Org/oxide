@@ -127,6 +127,7 @@ namespace Blight {
      * \param width Width to repaint
      * \param height Height to repaint
      * \param waveform Waveform to use
+     * \param contentType Content type hint
      * \param marker Marker
      * \return ack_ptr_t if there was no error
      */
@@ -137,6 +138,7 @@ namespace Blight {
       unsigned int width,
       unsigned int height,
       WaveformMode waveform = WaveformMode::HighQualityGrayscale,
+      ContentType contentType = ContentType::Color,
       UpdateMode mode = UpdateMode::PartialUpdate,
       unsigned int marker = 0
     );
@@ -148,6 +150,7 @@ namespace Blight {
      * \param width Width to repaint
      * \param height Height to repaint
      * \param waveform Waveform to use
+     * \param contentType Content type hint
      * \param marker Marker
      * \return ack_ptr_t if there was no error
      */
@@ -158,21 +161,26 @@ namespace Blight {
       int width,
       int height,
       WaveformMode waveform = WaveformMode::HighQualityGrayscale,
+      ContentType contentType = ContentType::Color,
       UpdateMode mode = UpdateMode::PartialUpdate,
       unsigned int marker = 0
     ) {
-      return repaint(buf->surface, x, y, width, height, waveform, mode, marker);
+      return repaint(
+        buf->surface, x, y, width, height, waveform, contentType, mode, marker
+      );
     }
     /*!
      * \brief Repaint a surface
      * \param buf Buffer representing surface
      * \param waveform Waveform to use
+     * \param contentType Content type hint
      * \param marker Marker
      * \return ack_ptr_t if there was no error
      */
     inline maybe_ackid_ptr_t repaint(
       shared_buf_t buf,
       WaveformMode waveform = WaveformMode::HighQualityGrayscale,
+      ContentType contentType = ContentType::Color,
       UpdateMode mode = UpdateMode::PartialUpdate,
       unsigned int marker = 0
     ) {
@@ -183,6 +191,7 @@ namespace Blight {
         buf->width,
         buf->height,
         waveform,
+        contentType,
         mode,
         marker
       );

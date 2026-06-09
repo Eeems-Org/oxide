@@ -19,6 +19,7 @@ struct RepaintRequest {
   std::shared_ptr<Surface> surface;
   QRegion region;
   Blight::WaveformMode waveform;
+  Blight::ContentType contentType;
   Blight::UpdateMode mode;
   unsigned int marker;
   bool global;
@@ -43,6 +44,7 @@ public slots:
     std::shared_ptr<Surface> surface,
     QRect region,
     Blight::WaveformMode waveform,
+    Blight::ContentType contentType,
     Blight::UpdateMode mode,
     unsigned int marker,
     bool global = false,
@@ -53,12 +55,14 @@ public slots:
   void sendUpdate(
     const QRect& rect,
     Blight::WaveformMode waveform,
+    Blight::ContentType contentType,
     Blight::UpdateMode mode,
     unsigned int marker
   );
   void swap(
     const QRect& rect,
     Blight::WaveformMode waveform,
+    Blight::ContentType contentType,
     Blight::UpdateMode mode
   );
 
@@ -81,5 +85,6 @@ private:
   );
   void redraw(RepaintRequest& event);
   QList<std::shared_ptr<Surface>> visibleSurfaces();
+  static QImage* getFrameBuffer();
 };
 #endif

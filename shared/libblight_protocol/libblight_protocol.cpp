@@ -657,6 +657,7 @@ flip(struct _fbg* fbg) {
     surface->buf->width,
     surface->buf->height,
     BlightWaveformMode::HighQualityGrayscale,
+    BlightContentType::Color,
     BlightUpdateMode::PartialUpdate
   );
 }
@@ -1001,6 +1002,7 @@ blight_surface_repaint(
   unsigned int width,
   unsigned int height,
   BlightWaveformMode waveform,
+  BlightContentType contenttype,
   BlightUpdateMode mode
 ) {
   unsigned int marker = ++_marker;
@@ -1013,6 +1015,7 @@ blight_surface_repaint(
     .width = width,
     .height = height,
     .waveform = waveform,
+    .contenttype = contenttype,
     .mode = mode,
     .marker = marker,
     .identifier = identifier

@@ -558,6 +558,7 @@ DbusInterface::exitExclusiveMode(QDBusMessage message) {
       nullptr,
       EPFramebuffer::instance()->frameBuffer->rect(),
       Blight::WaveformMode::HighQualityGrayscale,
+      Blight::ContentType::Color,
       Blight::UpdateMode::FullUpdate,
       0,
       true
@@ -596,6 +597,7 @@ DbusInterface::exclusiveModeRepaint(
   guiThread->swap(
     QRect(x, y, width, height),
     (Blight::WaveformMode)waveform,
+    Blight::ContentType::Color,
     (Blight::UpdateMode)updateMode
   );
 #endif
@@ -623,6 +625,7 @@ DbusInterface::exclusiveModeRepaintFull(QDBusMessage message) {
   guiThread->swap(
     EPFramebuffer::instance()->frameBuffer->rect(),
     Blight::WaveformMode::HighQualityGrayscale,
+    Blight::ContentType::Color,
     Blight::UpdateMode::FullUpdate
   );
 #endif
@@ -794,6 +797,7 @@ DbusInterface::createConnection(int pid) {
             nullptr,
             EPFramebuffer::instance()->frameBuffer->rect(),
             Blight::WaveformMode::HighQualityGrayscale,
+            Blight::ContentType::Color,
             Blight::UpdateMode::FullUpdate,
             0,
             true

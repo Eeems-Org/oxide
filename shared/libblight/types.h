@@ -28,6 +28,10 @@ namespace Blight {
    */
   using WaveformMode = BlightProtocol::BlightWaveformMode;
   /*!
+   * \brief Content type hint for a repaint
+   */
+  using ContentType = BlightProtocol::BlightContentType;
+  /*!
    * \brief Update mode to use for a repaint
    */
   using UpdateMode = BlightProtocol::BlightUpdateMode;
