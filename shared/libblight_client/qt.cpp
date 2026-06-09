@@ -596,12 +596,13 @@ repaint(
   bool wait = false
 ) {
   _DEBUG(
-    "repaint: (%d, %d) (%d, %d) %d %d",
+    "repaint: (%d, %d) %dx%d %d %d %d",
     rect->left,
     rect->top,
-    rect->right,
-    rect->bottom,
+    rect->right - rect->left,
+    rect->bottom - rect->top,
     waveform,
+    contentType,
     updateMode
   );
   FB::repaint(
@@ -814,9 +815,7 @@ _ZN19EPFramebufferSwtcon4syncEv(void* this_ptr) {
     );
   }
   _DEBUG("EPFramebufferSwtcon::sync()");
-  if (!Client::isFbEnabled()) {
-    Blight::waitForNoRepaints();
-  }
+  Blight::waitForNoRepaints();
 }
 
 /*!

@@ -152,5 +152,11 @@ namespace Blight {
    * descriptor of the buffer for the surface
    */
   LIBBLIGHT_EXPORT int getSurface(surface_id_t identifier);
+  /*!
+   * \brief Wait for all repaint requests to be flushed
+   * \return If the call succeeded or not
+   * \retval false call failed
+   */
+  LIBBLIGHT_EXPORT bool waitForNoRepaints();
 } // namespace Blight
 /*! @} */
