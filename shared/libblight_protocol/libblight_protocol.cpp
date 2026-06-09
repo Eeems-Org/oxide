@@ -656,7 +656,7 @@ flip(struct _fbg* fbg) {
     0,
     surface->buf->width,
     surface->buf->height,
-    BlightWaveformMode::HighQualityGrayscale,
+    BlightWaveformMode::UI,
     BlightContentType::Color,
     BlightUpdateMode::PartialUpdate
   );

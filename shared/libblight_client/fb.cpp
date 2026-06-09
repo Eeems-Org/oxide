@@ -107,7 +107,7 @@ namespace FB {
       region.top,
       region.width,
       region.height,
-      (Blight::WaveformMode)update->waveform_mode,
+      FB::mxcfb_to_blight_waveform(update->waveform_mode),
       Blight::ContentType::Color,
       (Blight::UpdateMode)update->update_mode,
       update->update_marker
@@ -725,6 +725,28 @@ namespace FB {
       maybe.value()->wait();
     }
     return maybe;
+  }
+  Blight::WaveformMode mxcfb_to_blight_waveform(int waveform) {
+    switch (waveform) {
+      case 0: // INIT
+      case 9: // INIT2
+        return Blight::WaveformMode::Full;
+      case 1: // DU
+      case 7: // DU4
+        return Blight::WaveformMode::UltraFast;
+      case 2: // GC16
+        return Blight::WaveformMode::Fast;
+      case 3: // GL16
+      case 8: // UNKNOWN / HIGHLIGHT
+        return Blight::WaveformMode::Content;
+      case 4: // GLR16
+      case 5: // GLD16
+        return Blight::WaveformMode::UI;
+      case 6: // A2
+        return Blight::WaveformMode::Animate;
+      default:
+        return Blight::WaveformMode::Content;
+    }
   }
 }
 Blight::shared_buf_t

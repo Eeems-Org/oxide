@@ -702,35 +702,35 @@ hook_swapBuffers_QRegion(
   auto dend = end_fn(region);
   if (dit && dend) {
     auto updateMode = Qt::flags_to_update_mode(flags);
-    auto contentType = Blight::ContentType::Monochrome;
     for (; dit != dend; dit++) {
-      auto waveform = Blight::WaveformMode::HighQualityGrayscale;
       if (contentMap_screenModeMap) {
         auto regions = static_cast<void* const*>(contentMap_screenModeMap);
-        if (
-          regions[0] != nullptr && Qt::region_rect_overlaps(dit, &regions[0])
-        ) {
-          waveform = Blight::WaveformMode::Mono;
-        } else if (
-          regions[1] != nullptr && Qt::region_rect_overlaps(dit, &regions[1])
-        ) {
-          waveform = Blight::WaveformMode::Grayscale;
-          contentType = Blight::ContentType::Color;
-        } else if (
-          regions[2] != nullptr && Qt::region_rect_overlaps(dit, &regions[2])
-        ) {
-          waveform = Blight::WaveformMode::Animate;
-        } else if (
-          regions[4] != nullptr && Qt::region_rect_overlaps(dit, &regions[4])
-        ) {
-          waveform = Blight::WaveformMode::HighQualityGrayscale;
-        } else if (
-          regions[5] != nullptr && Qt::region_rect_overlaps(dit, &regions[5])
-        ) {
-          waveform = Blight::WaveformMode::Grayscale;
+        auto slot_remap = reinterpret_cast<const int32_t*>(regions + 6);
+        for (int modeId = Blight::WaveformMode::UltraFast;
+             modeId <= Blight::WaveformMode::Full;
+             modeId++) {
+          int slot = slot_remap[modeId];
+          auto region = regions[slot];
+          if (region == nullptr || !Qt::region_rect_overlaps(dit, &region)) {
+            continue;
+          }
+          Blight::ContentType contentType;
+          auto waveform = (Blight::WaveformMode)modeId;
+          switch (waveform) {
+            case Blight::WaveformMode::UltraFast:
+            case Blight::WaveformMode::Fast:
+            case Blight::WaveformMode::UI:
+              contentType = Blight::ContentType::Monochrome;
+              break;
+            case Blight::WaveformMode::Animate:
+            case Blight::WaveformMode::Content:
+            case Blight::WaveformMode::Full:
+              contentType = Blight::ContentType::Color;
+              break;
+          }
+          repaint(dit, waveform, contentType, updateMode);
         }
       }
-      repaint(dit, waveform, Blight::ContentType::Monochrome, updateMode);
     }
   }
   dump_buffers();

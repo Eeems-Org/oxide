@@ -142,7 +142,7 @@ Surface::repaint(QRect rect) {
   guiThread->enqueue(
     nullptr,
     geometry(),
-    Blight::WaveformMode::HighQualityGrayscale,
+    Blight::WaveformMode::UI,
     Blight::ContentType::Color,
     Blight::UpdateMode::PartialUpdate,
     0,

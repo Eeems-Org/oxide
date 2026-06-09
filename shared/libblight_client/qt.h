@@ -32,7 +32,7 @@ __attribute__((visibility("default"))) void
 hook_swapBuffers_QRegion(
   void* this_ptr,
   const void* region,
-  const void* screenModeStruct,
+  const void* contentMap_screenModeMap,
   int flags
 );
 

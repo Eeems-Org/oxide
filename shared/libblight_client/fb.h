@@ -37,8 +37,11 @@ namespace FB {
     unsigned int marker,
     bool wait = false
   );
+  Blight::WaveformMode mxcfb_to_blight_waveform(int waveform);
 }
 namespace swtfb {
+  enum MSG_TYPE { INIT_t = 1, UPDATE_t, XO_t, WAIT_t };
+
   struct xochitl_data {
     int x1;
     int y1;

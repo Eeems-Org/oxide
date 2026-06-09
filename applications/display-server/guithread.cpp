@@ -353,29 +353,11 @@ GUIThread::sendUpdate(
   unsigned int marker
 ) {
   Q_UNUSED(marker);
-  EPScreenMode screenMode;
-  switch (waveform) {
-    case Blight::WaveformMode::Mono:
-      screenMode = EPScreenMode::Mono;
-      break;
-    case Blight::WaveformMode::Animate:
-      screenMode = EPScreenMode::Animate;
-      break;
-    case Blight::WaveformMode::HighQualityGrayscale:
-      screenMode = EPScreenMode::Grayscale;
-      break;
-    case Blight::WaveformMode::Initialize: // TODO get proper mode for this
-    case Blight::WaveformMode::Grayscale:
-    case Blight::WaveformMode::Highlight:
-    default:
-      screenMode = EPScreenMode::Content;
-      break;
-  }
   O_DEBUG("Sending screen update" << rect << waveform << contentType << mode);
   EPFramebuffer::instance()->swapBuffers(
     rect,
     (EPContentType)contentType,
-    screenMode,
+    (EPScreenMode)waveform,
     (EPFramebuffer::UpdateFlag)mode
   );
 }

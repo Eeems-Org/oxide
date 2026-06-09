@@ -59,7 +59,7 @@ OxideBackingStore::flush(
   auto waveform =
     (Blight::WaveformMode)window->property("WA_WAVEFORM").toInt(&ok);
   if (!ok || !waveform) {
-    waveform = Blight::WaveformMode::HighQualityGrayscale;
+    waveform = Blight::WaveformMode::UI;
   }
   for (auto rect : region) {
     Blight::connection()->repaint(

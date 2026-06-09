@@ -20,10 +20,6 @@ namespace Blight {
    */
   using Format = BlightProtocol::BlightImageFormat;
   /*!
-   * \brief Possible waveforms
-   */
-  using Waveform = BlightProtocol::BlightWaveform;
-  /*!
    * \brief Waveform to use for a repaint
    */
   using WaveformMode = BlightProtocol::BlightWaveformMode;

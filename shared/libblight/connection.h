@@ -137,7 +137,7 @@ namespace Blight {
       int y,
       unsigned int width,
       unsigned int height,
-      WaveformMode waveform = WaveformMode::HighQualityGrayscale,
+      WaveformMode waveform = WaveformMode::UI,
       ContentType contentType = ContentType::Color,
       UpdateMode mode = UpdateMode::PartialUpdate,
       unsigned int marker = 0
@@ -160,7 +160,7 @@ namespace Blight {
       int y,
       int width,
       int height,
-      WaveformMode waveform = WaveformMode::HighQualityGrayscale,
+      WaveformMode waveform = WaveformMode::UI,
       ContentType contentType = ContentType::Color,
       UpdateMode mode = UpdateMode::PartialUpdate,
       unsigned int marker = 0
@@ -179,7 +179,7 @@ namespace Blight {
      */
     inline maybe_ackid_ptr_t repaint(
       shared_buf_t buf,
-      WaveformMode waveform = WaveformMode::HighQualityGrayscale,
+      WaveformMode waveform = WaveformMode::UI,
       ContentType contentType = ContentType::Color,
       UpdateMode mode = UpdateMode::PartialUpdate,
       unsigned int marker = 0

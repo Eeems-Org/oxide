@@ -225,8 +225,7 @@ namespace Oxide {
     void repaint(
       QWindow* window,
       QRectF rect,
-      Blight::WaveformMode waveform =
-        Blight::WaveformMode::HighQualityGrayscale,
+      Blight::WaveformMode waveform = Blight::WaveformMode::UI,
       bool sync = false
     );
     /*!

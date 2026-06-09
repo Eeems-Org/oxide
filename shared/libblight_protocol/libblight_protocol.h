@@ -70,46 +70,29 @@ namespace BlightProtocol {
     Format_BGR888,
   } BlightImageFormat;
 
-  /*!
-   * \brief Possible waveforms
-   */
-  typedef enum {
-    INIT = 0,
-    DU = 1,
-    GC16 = 2,
-    GL16 = 3,
-    GLR16 = 4,
-    GLD16 = 5,
-    A2 = 6,
-    DU4 = 7,
-    UNKNOWN = 8,
-    INIT2 = 9,
-#ifdef __aarch64__
-    PEN = 13,
-    PEN_FLASH = 14,
-    HIGH_TEMP = -2
-#endif
-  } BlightWaveform;
+  // typedef enum {
+  //   INIT = 0,
+  //   DU = 1,
+  //   GC16 = 2,
+  //   GL16 = 3,
+  //   GLR16 = 4,
+  //   GLD16 = 5,
+  //   A2 = 6,
+  //   DU4 = 7,
+  //   UNKNOWN = 8,
+  //   INIT2 = 9,
+  // } BlightWaveform;
 
   /*!
    * \brief Waveform to use for a repaint
    */
   typedef enum {
-#ifdef __cplusplus
-    Initialize = BlightWaveform::INIT,
-    Mono = BlightWaveform::DU,
-    Grayscale = BlightWaveform::GL16,
-    HighQualityGrayscale = BlightWaveform::GC16,
-    Animate = BlightWaveform::A2,
-    Highlight = BlightWaveform::UNKNOWN
-#else
-  Initialize = 0,
-  Mono = 1,
-  Grayscale = 3,
-  HighQualityGrayscale = 2,
-  Animate = 6,
-  Highlight = 8
-#endif
+    UltraFast = 0,
+    Fast = 1,
+    Animate = 2,
+    Content = 3,
+    UI = 4,
+    Full = 5,
   } BlightWaveformMode;
 
   /*!

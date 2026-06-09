@@ -126,7 +126,7 @@ namespace Oxide {
         p.setClipRect(mapRectToScene(boundingRect()));
         p.setPen(pen);
         p.drawLine(globalStart, globalEnd);
-        repaint(window(), rect, Blight::WaveformMode::Mono);
+        repaint(window(), rect, Blight::WaveformMode::Fast);
       }
       m_lastPoint = event->position();
     }

@@ -168,24 +168,56 @@ msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
   if (!Client::INITIALIZED || !Client::isFbEnabled()) {
     return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
   }
-  if (msqid == FB::msgq) {
-    FB::ensure_surface();
-    _DEBUG("%s", "rm2fb ipc repaint");
-    auto buf = static_cast<const swtfb::swtfb_update*>(msgp);
-    auto region = buf->mdata.update.update_region;
-    FB::repaint(
-      region.left,
-      region.top,
-      region.width,
-      region.height,
-      Blight::WaveformMode::HighQualityGrayscale,
-      Blight::ContentType::Color,
-      Blight::UpdateMode::PartialUpdate,
-      0
-    );
-    return 0;
+  if (msqid != FB::msgq) {
+    return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
   }
-  return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
+  auto buf = static_cast<const swtfb::swtfb_update*>(msgp);
+  int waveform, top, left, width, height;
+  switch (buf->mtype) {
+    case swtfb::MSG_TYPE::INIT_t:
+      return 0;
+    case swtfb::MSG_TYPE::UPDATE_t: {
+      auto& update = buf->mdata.update;
+      auto& region = update.update_region;
+      waveform = update.waveform_mode;
+      left = region.left;
+      top = region.top;
+      width = region.width;
+      height = region.height;
+      break;
+    }
+    case swtfb::MSG_TYPE::XO_t: {
+      auto& update = buf->mdata.xochitl_update;
+      waveform = update.waveform;
+      left = update.x1;
+      top = update.y1;
+      width = update.x2 - left;
+      height = update.y2 - top;
+      break;
+    }
+    case swtfb::MSG_TYPE::WAIT_t: {
+      Blight::waitForNoRepaints();
+      sem_t* sem = sem_open(buf->mdata.wait_update.sem_name, O_CREAT, 0644, 0);
+      if (sem != NULL) {
+        sem_post(sem);
+        sem_close(sem);
+      }
+      return 0;
+    }
+  }
+  FB::ensure_surface();
+  _DEBUG("%s", "rm2fb ipc repaint");
+  FB::repaint(
+    left,
+    top,
+    width,
+    height,
+    FB::mxcfb_to_blight_waveform(waveform),
+    Blight::ContentType::Color,
+    (Blight::UpdateMode)buf->mdata.update.flags,
+    0
+  );
+  return 0;
 }
 
 __attribute__((visibility("default"))) int

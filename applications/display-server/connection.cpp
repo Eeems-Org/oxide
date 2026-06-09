@@ -511,7 +511,7 @@ Connection::readSocket() {
         guiThread->enqueue(
           surface,
           surface->rect(),
-          Blight::WaveformMode::HighQualityGrayscale,
+          Blight::WaveformMode::UI,
           Blight::ContentType::Color,
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
@@ -521,7 +521,7 @@ Connection::readSocket() {
         guiThread->enqueue(
           nullptr,
           rect,
-          Blight::WaveformMode::HighQualityGrayscale,
+          Blight::WaveformMode::UI,
           Blight::ContentType::Color,
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
@@ -626,7 +626,7 @@ Connection::readSocket() {
         guiThread->enqueue(
           surface,
           surface->rect(),
-          Blight::WaveformMode::HighQualityGrayscale,
+          Blight::WaveformMode::UI,
           Blight::ContentType::Color,
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
@@ -655,7 +655,7 @@ Connection::readSocket() {
         guiThread->enqueue(
           nullptr,
           surface->geometry(),
-          Blight::WaveformMode::HighQualityGrayscale,
+          Blight::WaveformMode::UI,
           Blight::ContentType::Color,
           Blight::UpdateMode::PartialUpdate,
           message->header.ackid,
