@@ -218,6 +218,7 @@ namespace Input {
     size_t count = 0;
     auto& ringBuffer = ringBuffers[device];
     if (ringBuffer.overflowed()) {
+      ringBuffer.take();
       events[count] = {.type = EV_SYN, .code = SYN_DROPPED, .value = 1};
       count++;
     }
