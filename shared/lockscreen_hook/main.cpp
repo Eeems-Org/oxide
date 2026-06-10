@@ -13,6 +13,7 @@
 #include <QMetaObject>
 #include <QObject>
 #include <QPointer>
+#include <QProcess>
 
 #include "receiver.h"
 
@@ -110,10 +111,26 @@ hook_PasscodeHandler(QObject* this_ptr) {
   ) << "Hooked xofm::libs::pincode::PasscodeHandler::unlocked()";
   std::thread([receiver]() {
     receiver->waitForUnlock();
-    qCDebug(loggingCategory) << "Unlock complete, exiting xochitl";
-    if (auto* app = QCoreApplication::instance()) {
-      app->exit(EXIT_SUCCESS);
+    qCDebug(loggingCategory) << "Unlock complete, running script";
+    int res =
+      QProcess::execute("/home/root/.local/share/lockscreen_hook.d/unlock");
+    switch (res) {
+      case -2:
+        qCWarning(loggingCategory) << "Unlock hook failed to start, continuing";
+        break;
+      case -1:
+        qCWarning(loggingCategory) << "Unlock hook crashed, continuing";
+        break;
+      case 0:
+        qCDebug(loggingCategory) << "exiting xochitl";
+        qApp->exit(EXIT_SUCCESS);
+        return;
+      default:
+        qCWarning(loggingCategory)
+          << "Unlock hook had non-zero exit code (" << res << "), continuing";
+        break;
     }
+    disablePoweroffScreen = false;
   }).detach();
 }
 
@@ -173,7 +190,9 @@ _ZN6QImageC1ERK7QStringPKc(
     reinterpret_cast<void (*)(QImage*, const QString&, const char*)>(
       dlsym(RTLD_NEXT, "_ZN6QImageC1ERK7QStringPKc")
     );
-  if (!fileName.contains(QStringLiteral("poweroff.png"))) {
+  if (
+    !disablePoweroffScreen || !fileName.contains(QStringLiteral("poweroff.png"))
+  ) {
     constructor(this_ptr, fileName, format);
     return;
   }
@@ -191,7 +210,9 @@ _ZN6QImageC2ERK7QStringPKc(
     reinterpret_cast<void (*)(QImage*, const QString&, const char*)>(
       dlsym(RTLD_NEXT, "_ZN6QImageC2ERK7QStringPKc")
     );
-  if (!fileName.contains(QStringLiteral("poweroff.png"))) {
+  if (
+    !disablePoweroffScreen || !fileName.contains(QStringLiteral("poweroff.png"))
+  ) {
     constructor(this_ptr, fileName, format);
     return;
   }

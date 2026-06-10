@@ -9,6 +9,7 @@
 Q_DECLARE_LOGGING_CATEGORY(loggingCategory);
 
 static std::atomic<bool> passcodeHandlerHooked = false;
+static std::atomic<bool> disablePoweroffScreen = true;
 
 class LockscreenHookReceiver : public QObject {
   Q_OBJECT

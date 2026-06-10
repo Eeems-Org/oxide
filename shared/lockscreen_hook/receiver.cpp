@@ -64,9 +64,5 @@ LockscreenHookReceiver::setPasscodeHandler(QObject* passcodeHandler) {
 
 bool
 LockscreenHookReceiver::waitForHome() {
-  QProcess process;
-  process.setProgram("/usr/sbin/wait-for-home");
-  process.start();
-  return process.waitForStarted() && process.waitForFinished() &&
-         process.exitStatus() != QProcess::CrashExit && process.exitCode() == 0;
+  return QProcess::execute("/usr/sbin/wait-for-home") == 0;
 }
