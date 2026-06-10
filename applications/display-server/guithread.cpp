@@ -353,13 +353,16 @@ GUIThread::sendUpdate(
   unsigned int marker
 ) {
   Q_UNUSED(marker);
+  auto instance = EPFramebuffer::instance();
   O_DEBUG("Sending screen update" << rect << waveform << contentType << mode);
-  EPFramebuffer::instance()->swapBuffers(
+  instance->swapBuffers(
     rect,
     (EPContentType)contentType,
     (EPScreenMode)waveform,
     (EPFramebuffer::UpdateFlag)mode
   );
+  QPainter(&instance->previousBuffer)
+    .drawImage(rect, instance->frameBuffer, rect);
 }
 
 void
@@ -417,7 +420,6 @@ GUIThread::visibleSurfaces() {
 }
 QImage*
 GUIThread::getFrameBuffer() {
-  return &EPFramebuffer::instance()->auxBuffer;
-  // return EPFramebuffer::instance()->frameBuffer;
+  return &EPFramebuffer::instance()->frameBuffer;
 }
 #endif

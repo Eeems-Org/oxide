@@ -212,13 +212,13 @@ mmap_framebuffer() {
 }
 
 /*!
- * \brief Get the auxBuffer offset (used for EPFramebuffer detection)
+ * \brief Get the frameBuffer offset (used for EPFramebuffer detection)
  *
  * Both xochitl Tcon and libqsgepaper Tcon have a default-constructed QImage
  * at +0x60, so this offset works for detection on all platforms.
  */
 int
-auxBufferOffset() {
+frameBufferOffset() {
 #if defined(__arm__)
   return 0x60;
 #elif defined(__aarch64__)
@@ -229,16 +229,16 @@ auxBufferOffset() {
 }
 
 /*!
- * \brief Get the shadowBuffer offset (used to read composed screen content)
+ * \brief Get the previousBuffer offset (used to read composed screen content)
  *
  * xochitl Tcon: shadow QImage at +0x50
- * libqsgepaper Tcon: shadow QImage at +0x70 (named shadowBuffer in header)
+ * libqsgepaper Tcon: shadow QImage at +0x70 (named previousBuffer in header)
  *
  * Both default-construct the shadow QImage, so detection via {0x50,0x60}
  * works for xochitl and {0x60,0x70} works for libqsgepaper.
  */
 int
-shadowBufferOffset() {
+previousBufferOffset() {
 #if defined(__arm__)
   return 0x50;
 #elif defined(__aarch64__)
@@ -615,7 +615,7 @@ repaint(
 }
 
 /*!
- * \brief Dump the framebuffer, auxBuffer, and shadowBuffer to /tmp/*.raw
+ * \brief Dump the framebuffer, frameBuffer, and previousBuffer to /tmp/*.raw
  */
 void
 dump_buffers() {
@@ -645,21 +645,24 @@ dump_buffers() {
     );
     ::close(fd);
   }
-  auto auxBuffer = static_cast<char*>(epframebuffer) + auxBufferOffset();
-  auto shadowBuffer = static_cast<char*>(epframebuffer) + shadowBufferOffset();
-  dump_qimage_buffer(auxBuffer, "/tmp/auxBuffer.raw");
-  dump_qimage_buffer(shadowBuffer, "/tmp/shadowBuffer.raw");
+  auto frameBuffer = static_cast<char*>(epframebuffer) + frameBufferOffset();
+  auto previousBuffer =
+    static_cast<char*>(epframebuffer) + previousBufferOffset();
+  dump_qimage_buffer(frameBuffer, "/tmp/frameBuffer.raw");
+  dump_qimage_buffer(previousBuffer, "/tmp/previousBuffer.raw");
 }
 
 void
-update_buffers(int flags) {
+update_previousBuffer(int flags) {
   void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
   if (!epframebuffer) {
-    _DEBUG("update_buffers: epframebufferInstance not set yet, skipping");
+    _DEBUG(
+      "update_previousBuffer: epframebufferInstance not set yet, skipping"
+    );
     return;
   }
   if (!copy_qimage_with_format_conversion(
-        static_cast<char*>(epframebuffer) + shadowBufferOffset(),
+        static_cast<char*>(epframebuffer) + previousBufferOffset(),
         Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first,
         Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
         Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
@@ -668,19 +671,6 @@ update_buffers(int flags) {
       )) {
     _WARN("Failed to convert image: %s", std::strerror(errno));
   }
-  // if (
-  //   flags & Blight::UpdateMode::PenUpdate &&
-  //   !copy_qimage_with_format_conversion(
-  //     static_cast<char*>(epframebuffer) + auxBufferOffset(),
-  //     Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first,
-  //     Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
-  //     Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
-  //     Client::isFbEnabled() ? FB::buffer->height : FB::deviceYres(),
-  //     Client::isFbEnabled() ? FB::buffer->stride : FB::deviceStride()
-  //   )
-  // ) {
-  //   _WARN("Failed to convert image: %s", std::strerror(errno));
-  // }
 }
 
 /*!
@@ -708,7 +698,7 @@ hook_swapBuffers_QRegion(
     _DEBUG("hook: qregion_begin/end is NULL");
     return;
   }
-  update_buffers(flags);
+  update_previousBuffer(flags);
   auto dit = begin_fn(region);
   auto dend = end_fn(region);
   if (dit && dend) {
@@ -778,7 +768,7 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   int flags
 ) {
   _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
-  update_buffers(flags);
+  update_previousBuffer(flags);
   repaint(
     &rect,
     (Blight::WaveformMode)waveform,
@@ -967,7 +957,7 @@ _ZN6QImageC1Ev(void* this_ptr) {
     return;
   }
   _DEBUG("QImage::QImage() default");
-  for (int offset : {shadowBufferOffset(), auxBufferOffset()}) {
+  for (int offset : {previousBufferOffset(), frameBufferOffset()}) {
     if (offset == 0) {
       continue; // skip unsupported arch placeholder
     }
@@ -1010,10 +1000,10 @@ _ZN6QImageC1Ev(void* this_ptr) {
   }
 }
 void*
-__SHADOW_BUFFER() {
+__PREVIOUS_BUFFER() {
   void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
   if (epframebuffer == nullptr) {
     return nullptr;
   }
-  return static_cast<char*>(epframebuffer) + shadowBufferOffset();
+  return static_cast<char*>(epframebuffer) + previousBufferOffset();
 }

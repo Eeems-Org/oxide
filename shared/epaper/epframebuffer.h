@@ -13,18 +13,18 @@
 #include <tuple>
 
 // libqsgepaper EPFramebufferTcon layout (returned by instance()):
-//   auxBuffer at +0x60, frameBuffer pointer at +0x6c, shadowBuffer at +0x70,
-//   total size 0xb8
+//   frameBuffer at +0x60, frameBuffer pointer at +0x6c, previousBuffer at
+//   +0x70, total size 0xb8
 #if defined(__arm__)
 #define EPFR_SIZE 0xb8
-#define EPFR_OFFSET_SHADOWBUFFER 0x70
-#define EPFR_OFFSET_AUXBUFFER 0x60
-#define EPFR_OFFSET_FRAMEBUFFER 0x6c
+#define EPFR_OFFSET_PREVIOUSBUFFER 0x70
+#define EPFR_OFFSET_FRAMEBUFFER 0x60
+#define EPFR_OFFSET_RENDERTARGET 0x6c
 #elif defined(__aarch64__)
 #define EPFR_SIZE 0x110
-#define EPFR_OFFSET_SHADOWBUFFER 0xc8
-#define EPFR_OFFSET_AUXBUFFER 0xa8
-#define EPFR_OFFSET_FRAMEBUFFER 0xc0
+#define EPFR_OFFSET_PREVIOUSBUFFER 0xc8
+#define EPFR_OFFSET_FRAMEBUFFER 0xa8
+#define EPFR_OFFSET_RENDERTARGET 0xc0
 #else
 #error "Unsupported architecture"
 #endif
@@ -225,7 +225,7 @@ public:
    * \brief Store the front and back buffer QImages.
    *
    * Called once during initialization. `param_1` is a tuple of
-   * (shadowBuffer, auxBuffer); `frameBuffer` is an optional pointer to a
+   * (previousBuffer, frameBuffer); `frameBuffer` is an optional pointer to a
    * third QImage used as the render-target buffer for display output.
    */
   void setBuffers(std::tuple<QImage, QImage>, QImage* frameBuffer = nullptr);
@@ -233,8 +233,8 @@ public:
   /*!
    * \brief Submit a display update for a region.
    *
-   * This writes the content of frameBuffer to auxBuffer before calling update()
-   * or sendTConUpdate()
+   * This writes the content of frameBuffer to frameBuffer before calling
+   * update() or sendTConUpdate()
    *
    * \param region  Rectangle to update
    * \param epct    Content type hint
@@ -256,7 +256,7 @@ public:
    * backend can apply different waveforms to different regions of the
    * screen in a single update transaction.
    *
-   * The implementation copies frameBuffer to auxBuffer, then builds
+   * The implementation copies frameBuffer to frameBuffer, then builds
    * an internal TCon command from the content and mode maps, and
    * finally submits the update to the display hardware.
    *
@@ -270,7 +270,7 @@ public:
    * \param flags          Update flags.
    *
    * Example usage:
-   * auto size = instance->auxBuffer.size();
+   * auto size = instance->frameBuffer.size();
    * EPContentMap contentMap(size);
    * contentMap.setTypeForRect(rect, EPContentType::Monochrome);
    * EPScreenModeMap screenModeMap(size, {});
@@ -430,9 +430,9 @@ public:
  *   +0x00  QObject / vtable
  *   +0x20  EPContentMap
  *   +0x30  EPScreenModeMap
- *   +0x60  QImage auxBuffer          (compositing/screen target)
- *   +0x6c  QImage* frameBuffer       (render target, default = &auxBuffer)
- *   +0x70  QImage shadowBuffer       (shadow copy used by swap path)
+ *   +0x60  QImage frameBuffer
+ *   +0x6c  QImage* frameBuffer
+ *   +0x70  QImage previousBuffer
  *   +0x7c  pending-full-update flag
  *   +0x80  reserved
  *   +0x84  update-marker counter
@@ -448,28 +448,28 @@ public:
   EPFramebufferFusion();
 
 private:
-  char OPAQUE_A[EPFR_OFFSET_AUXBUFFER];
+  char OPAQUE_A[EPFR_OFFSET_FRAMEBUFFER];
 
 public:
-  /*! Auxiliary (back) buffer - the compositing target. */
-  QImage auxBuffer;
+  /*! Buffer containing the next frame */
+  QImage frameBuffer;
 
 private:
-  char
-    OPAQUE_B[EPFR_OFFSET_FRAMEBUFFER - EPFR_OFFSET_AUXBUFFER - sizeof(QImage)];
+  char OPAQUE_B
+    [EPFR_OFFSET_RENDERTARGET - EPFR_OFFSET_FRAMEBUFFER - sizeof(QImage)];
 
 public:
   /*! Pointer to the QImage that serves as the render target. */
-  QImage* frameBuffer;
+  QImage* renderTarget;
 
 private:
   char OPAQUE_C
-    [EPFR_OFFSET_SHADOWBUFFER - EPFR_OFFSET_FRAMEBUFFER - sizeof(QImage*)];
+    [EPFR_OFFSET_PREVIOUSBUFFER - EPFR_OFFSET_RENDERTARGET - sizeof(QImage*)];
 
 public:
-  /*! Shadow copy used by the internal swap path for mono conversions. */
-  QImage shadowBuffer;
+  /*! Buffer containing the previous frame */
+  QImage previousBuffer;
 
 private:
-  char OPAQUE_D[EPFR_SIZE - EPFR_OFFSET_SHADOWBUFFER - sizeof(QImage)];
+  char OPAQUE_D[EPFR_SIZE - EPFR_OFFSET_PREVIOUSBUFFER - sizeof(QImage)];
 };

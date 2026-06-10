@@ -50,11 +50,6 @@ OxideBackingStore::flush(
     qDebug() << "OxideBackingStore::repaint:" << mBuffer->surface << offset
              << region;
   }
-  static QImage* (*shadowBuffer)() =
-    (QImage * (*)()) dlsym(RTLD_DEFAULT, "__SHADOW_BUFFER");
-  if (shadowBuffer != nullptr && shadowBuffer() != nullptr) {
-    QPainter(shadowBuffer()).drawImage(image.rect(), image);
-  }
   bool ok;
   auto waveform =
     (Blight::WaveformMode)window->property("WA_WAVEFORM").toInt(&ok);
@@ -65,6 +60,11 @@ OxideBackingStore::flush(
     Blight::connection()->repaint(
       mBuffer, rect.x(), rect.y(), rect.width(), rect.height(), waveform
     );
+  }
+  static QImage* (*previousBuffer)() =
+    (QImage * (*)()) dlsym(RTLD_DEFAULT, "__PREVIOUS_BUFFER");
+  if (previousBuffer != nullptr && previousBuffer() != nullptr) {
+    QPainter(previousBuffer()).drawImage(image.rect(), image);
   }
 }
 
