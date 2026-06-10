@@ -17,7 +17,10 @@ static std::atomic<unsigned int> marker = 0;
 namespace Oxide {
   namespace QML {
     OxideQml::OxideQml(QObject* parent)
-      : QObject{parent} {
+      : QObject{parent}
+      , m_waveform{Blight::WaveformMode::Content}
+      , m_contentType{Blight::ContentType::Color}
+      , m_updateMode{Blight::UpdateMode::PartialUpdate} {
       deviceSettings.onKeyboardAttachedChanged([this] {
         emit landscapeChanged(deviceSettings.keyboardAttached());
       });
