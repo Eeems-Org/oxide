@@ -65,10 +65,6 @@ namespace Qt {
     }
     return false;
   }
-  Blight::UpdateMode flags_to_update_mode(int flags) {
-    return (flags & 1) ? Blight::UpdateMode::FullUpdate
-                       : Blight::UpdateMode::PartialUpdate;
-  }
 }
 
 // Runtime pointers to real QImage methods (resolved once via dlsym).
@@ -655,6 +651,38 @@ dump_buffers() {
   dump_qimage_buffer(shadowBuffer, "/tmp/shadowBuffer.raw");
 }
 
+void
+update_buffers(int flags) {
+  void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
+  if (!epframebuffer) {
+    _DEBUG("update_buffers: epframebufferInstance not set yet, skipping");
+    return;
+  }
+  if (!copy_qimage_with_format_conversion(
+        static_cast<char*>(epframebuffer) + shadowBufferOffset(),
+        Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first,
+        Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
+        Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
+        Client::isFbEnabled() ? FB::buffer->height : FB::deviceYres(),
+        Client::isFbEnabled() ? FB::buffer->stride : FB::deviceStride()
+      )) {
+    _WARN("Failed to convert image: %s", std::strerror(errno));
+  }
+  // if (
+  //   flags & Blight::UpdateMode::PenUpdate &&
+  //   !copy_qimage_with_format_conversion(
+  //     static_cast<char*>(epframebuffer) + auxBufferOffset(),
+  //     Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first,
+  //     Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
+  //     Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
+  //     Client::isFbEnabled() ? FB::buffer->height : FB::deviceYres(),
+  //     Client::isFbEnabled() ? FB::buffer->stride : FB::deviceStride()
+  //   )
+  // ) {
+  //   _WARN("Failed to convert image: %s", std::strerror(errno));
+  // }
+}
+
 /*!
  * \brief Hook to run on EPFramebuffer::swapBuffers(QRegion, ...) call
  *
@@ -680,28 +708,11 @@ hook_swapBuffers_QRegion(
     _DEBUG("hook: qregion_begin/end is NULL");
     return;
   }
-  void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
-  if (!epframebuffer) {
-    _DEBUG(
-      "hook_swapBuffers_QRegion: epframebufferInstance not set yet,"
-      " skipping"
-    );
-    return;
-  }
-  if (!copy_qimage_with_format_conversion(
-        static_cast<char*>(epframebuffer) + shadowBufferOffset(),
-        Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first,
-        Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
-        Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
-        Client::isFbEnabled() ? FB::buffer->height : FB::deviceYres(),
-        Client::isFbEnabled() ? FB::buffer->stride : FB::deviceStride()
-      )) {
-    _WARN("Failed to convert image: %s", std::strerror(errno));
-  }
+  update_buffers(flags);
   auto dit = begin_fn(region);
   auto dend = end_fn(region);
   if (dit && dend) {
-    auto updateMode = Qt::flags_to_update_mode(flags);
+    auto updateMode = (Blight::UpdateMode)flags;
     for (; dit != dend; dit++) {
       if (contentMap_screenModeMap) {
         auto regions = static_cast<void* const*>(contentMap_screenModeMap);
@@ -766,35 +777,13 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   Blight::ContentType contentType,
   int flags
 ) {
-  void* epframebuffer = nullptr;
-  if (
-    !epframebufferInstance.compare_exchange_strong(
-      epframebuffer, this_ptr, std::memory_order_relaxed
-    ) &&
-    epframebuffer != this_ptr
-  ) {
-    _WARN(
-      "epframebufferInstance does not match this_ptr: %p != %p",
-      epframebuffer,
-      this_ptr
-    );
-  }
   _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
-  if (!copy_qimage_with_format_conversion(
-        static_cast<char*>(this_ptr) + shadowBufferOffset(),
-        Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first,
-        Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
-        Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
-        Client::isFbEnabled() ? FB::buffer->height : FB::deviceYres(),
-        Client::isFbEnabled() ? FB::buffer->stride : FB::deviceStride()
-      )) {
-    _WARN("Failed to convert image: %s", std::strerror(errno));
-  }
+  update_buffers(flags);
   repaint(
     &rect,
     (Blight::WaveformMode)waveform,
     contentType,
-    Qt::flags_to_update_mode(flags)
+    (Blight::UpdateMode)flags
   );
   dump_buffers();
 }

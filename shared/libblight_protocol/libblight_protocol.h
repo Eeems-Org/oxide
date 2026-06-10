@@ -106,7 +106,13 @@ namespace BlightProtocol {
   /*!
    * \brief BlightUpdateMode Update mode for a repaint
    */
-  typedef enum { PartialUpdate = 0x0, FullUpdate = 0x1 } BlightUpdateMode;
+  typedef enum {
+    PartialUpdate = 0x00,   //!< Partial update
+    FullUpdate = 0x01,      //!< Full refresh
+    PenUpdate = 0x02,       //!< Pen update
+    AnimationUpdate = 0x04, //!< Animation layer
+    UIUpdate = 0x08,        //!< Static content
+  } BlightUpdateMode;
 
   /*!
    * \brief Size type used by the protocol

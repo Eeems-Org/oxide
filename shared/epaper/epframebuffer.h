@@ -194,8 +194,11 @@ public:
   static QMetaObject staticMetaObject;
   /*! Flags that modify update behaviour. */
   enum UpdateFlag {
-    NoRefresh = 0,       //!< Partial update
-    CompleteRefresh = 1, //!< Full refresh
+    PartialUpdate = 0x00,   //!< Partial update
+    FullUpdate = 0x01,      //!< Full refresh
+    PenUpdate = 0x02,       //!< Pen update
+    AnimationUpdate = 0x04, //!< Animation layer
+    UIUpdate = 0x08,        //!< Static content
   };
 
   /*!
