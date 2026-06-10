@@ -17,7 +17,8 @@ public:
   explicit LockscreenHookReceiver(QObject* parent = nullptr);
   ~LockscreenHookReceiver() override = default;
 
-  void waitForUnlock();
+  bool waitForUnlock();
+  bool waitForHome();
   bool setPasscodeHandler(QObject* passcodeHandler);
   inline QObject* passcodeHandler() { return m_passcodeHandler; }
 

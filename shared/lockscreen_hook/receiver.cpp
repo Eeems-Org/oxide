@@ -1,6 +1,7 @@
 #include "receiver.h"
 
 #include <QDebug>
+#include <QProcess>
 #include <QVariant>
 #include <unistd.h>
 
@@ -28,19 +29,20 @@ LockscreenHookReceiver::onUnlocked() {
   m_mutex.unlock();
 }
 
-void
+bool
 LockscreenHookReceiver::waitForUnlock() {
   while (m_passcodeHandler == nullptr) {
     usleep(1000);
   }
   if (!m_passcodeHandler->property("hasPasscode").toBool()) {
-    return;
+    return waitForHome();
   }
   m_mutex.lock();
   while (!m_unlockNotified) {
     m_cond.wait(&m_mutex);
   }
   m_mutex.unlock();
+  return waitForHome();
 }
 
 bool
@@ -51,10 +53,6 @@ LockscreenHookReceiver::setPasscodeHandler(QObject* passcodeHandler) {
     return false;
   }
   m_passcodeHandler = passcodeHandler;
-  if (!m_passcodeHandler->property("hasPasscode").toBool()) {
-    qCDebug(loggingCategory)
-      << "xofm::libs::pincode::PasscodeHandler::hasPasscode is false";
-  }
   return QObject::connect(
     passcodeHandler,
     SIGNAL(unlocked()),
@@ -62,4 +60,13 @@ LockscreenHookReceiver::setPasscodeHandler(QObject* passcodeHandler) {
     SLOT(onUnlocked()),
     Qt::DirectConnection
   );
+}
+
+bool
+LockscreenHookReceiver::waitForHome() {
+  QProcess process;
+  process.setProgram("/usr/sbin/wait-for-home");
+  process.start();
+  return process.waitForStarted() && process.waitForFinished() &&
+         process.exitStatus() != QProcess::CrashExit && process.exitCode() == 0;
 }
