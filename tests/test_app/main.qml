@@ -80,6 +80,11 @@ OxideWindow{
                 enabled: canvas.brush !== Oxide.brushFromColor("white")
                 onClicked: canvas.brush = Oxide.brushFromColor("white")
             }
+            MyButton{
+                text: "Red Pen"
+                enabled: canvas.brush !== Oxide.brushFromColor("red")
+                onClicked: canvas.brush = Oxide.brushFromColor("red")
+            }
             Item{
                 Layout.fillWidth: true
             }
@@ -110,19 +115,6 @@ OxideWindow{
             anchors.right: parent.right
             anchors.top: buttons.bottom
             anchors.bottom: parent.bottom
-        }
-        MultiPointTouchArea {
-            anchors.fill: canvas
-            touchPoints: [ TouchPoint { id: tp } ]
-            onPressed: {
-                canvas.startStroke(Qt.point(tp.x, tp.y))
-            }
-            onUpdated: {
-                canvas.drawLine(Qt.point(tp.x, tp.y))
-            }
-            onReleased: {
-                canvas.endStroke()
-            }
         }
     }
 }

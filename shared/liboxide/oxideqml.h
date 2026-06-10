@@ -6,7 +6,11 @@
  */
 #pragma once
 
+#include "liboxide_global.h"
+
+#include <libblight/clock.h>
 #include <libblight/types.h>
+#include <mutex>
 
 #include <QBrush>
 #include <QImage>
@@ -15,6 +19,7 @@
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickPaintedItem>
+#include <QTimer>
 
 namespace Oxide {
   /*!
@@ -33,7 +38,7 @@ namespace Oxide {
      * }
      * ```
      */
-    class OxideQml : public QObject {
+    class LIBOXIDE_EXPORT OxideQml : public QObject {
       Q_OBJECT
       /*!
        * \brief If the device should be in landscape or not
@@ -41,6 +46,18 @@ namespace Oxide {
        * \notifier landscapeChanged(bool)
        */
       Q_PROPERTY(bool landscape READ landscape NOTIFY landscapeChanged)
+      Q_PROPERTY(
+        Blight::WaveformMode waveform READ waveform WRITE setWaveform MEMBER
+          m_waveform NOTIFY waveformChanged
+      )
+      Q_PROPERTY(
+        Blight::ContentType contentType READ contentType WRITE setContentType
+          MEMBER m_contentType NOTIFY contentTypeChanged
+      )
+      Q_PROPERTY(
+        Blight::UpdateMode updateMode READ updateMode WRITE setUpdateMode MEMBER
+          m_updateMode NOTIFY updateModeChanged
+      )
       /*!
        * \brief The name of the device
        * \accessors deviceName()
@@ -57,6 +74,45 @@ namespace Oxide {
        * \sa landscape, landscapeChanged(bool)
        */
       bool landscape();
+      /*!
+       * \brief Get the current waveform mode
+       * \return The current waveform mode
+       * \sa waveform, setWaveform(Blight::WaveformMode waveform)
+       * \sa waveformChanged(Blight::WaveformMode)
+       */
+      Blight::WaveformMode waveform();
+      /*!
+       * \brief Change the waveform mode
+       * \param waveform The waveform to change it to
+       * \sa waveform, waveformChanged(Blight::WaveformMode)
+       */
+      void setWaveform(Blight::WaveformMode waveform);
+      /*!
+       * \brief Get the current waveform mode
+       * \return The current waveform mode
+       * \sa waveform, setWaveform(Blight::WaveformMode waveform)
+       * \sa waveformChanged(Blight::WaveformMode)
+       */
+      Blight::ContentType contentType();
+      /*!
+       * \brief Change the contentType mode
+       * \param contentType The contentType to change it to
+       * \sa contentType, contentTypeChanged(Blight::ContentType)
+       */
+      void setContentType(Blight::ContentType contentType);
+      /*!
+       * \brief Get the current updateMode mode
+       * \return The current updateMode mode
+       * \sa updateMode, setWaveform(Blight::UpdateMode updateMode)
+       * \sa updateModeChanged(Blight::UpdateMode)
+       */
+      Blight::UpdateMode updateMode();
+      /*!
+       * \brief Change the updateMode mode
+       * \param updateMode The updateMode to change it to
+       * \sa updateMode, updateModeChanged(Blight::UpdateMode)
+       */
+      void setUpdateMode(Blight::UpdateMode updateMode);
       /*!
        * \brief Get the name of the device
        * \return The name of the device
@@ -79,6 +135,28 @@ namespace Oxide {
        * \sa landscape, landscape()
        */
       void landscapeChanged(bool);
+      /*!
+       * \brief The value of waveform changed
+       * \sa waveform, waveform(), setWaveform(Blight::WaveformMode waveform)
+       */
+      void waveformChanged(Blight::WaveformMode);
+      /*!
+       * \brief The value of contentType changed
+       * \sa contentType, contentType(), setContentType(Blight::ContentType
+       * contentType)
+       */
+      void contentTypeChanged(Blight::ContentType);
+      /*!
+       * \brief The value of updateMode changed
+       * \sa updateMode, updateMode(), setUpdateMode(Blight::UpdateMode
+       * updateMode)
+       */
+      void updateModeChanged(Blight::UpdateMode);
+
+    private:
+      Blight::WaveformMode m_waveform;
+      Blight::ContentType m_contentType;
+      Blight::UpdateMode m_updateMode;
     };
     /*!
      * \brief A canvas widget
@@ -97,7 +175,7 @@ namespace Oxide {
      * }
      * ```
      */
-    class Canvas : public QQuickPaintedItem {
+    class LIBOXIDE_EXPORT Canvas : public QQuickPaintedItem {
       Q_OBJECT
       /*!
        * \property brush
@@ -190,6 +268,12 @@ namespace Oxide {
       QImage m_drawn;
       QBrush m_brush;
       qreal m_penWidth;
+      QRegion m_repainted;
+      QRegion m_pending;
+      QTimer m_finalizeTimer;
+      Blight::ClockWatch m_LastPaint;
+      std::mutex m_timerMutex;
+      void applyPending();
     };
     /*!
      * \brief Get the display server buffer that represents a surface for a
@@ -197,7 +281,7 @@ namespace Oxide {
      * \param window The Window to get the surface buffer for
      * \return The buffer that represents the display server surface
      */
-    Blight::shared_buf_t getSurfaceForWindow(QWindow* window);
+    LIBOXIDE_EXPORT Blight::shared_buf_t getSurfaceForWindow(QWindow* window);
     /*!
      * \brief Get the a QImage that can be used to manipulate a display
      * server buffer
@@ -205,7 +289,7 @@ namespace Oxide {
      * \return A QImage instance that can be used to manipulate a display
      * server buffer
      */
-    QImage getImageForSurface(Blight::shared_buf_t buffer);
+    LIBOXIDE_EXPORT QImage getImageForSurface(Blight::shared_buf_t buffer);
     /*!
      * \brief Get a QImage instance that can be used to manipulate a display
      * server buffer for a QWindow
@@ -213,7 +297,7 @@ namespace Oxide {
      * \return A QImage instance that can be used to manipulate a display
      * server buffer for the QWindow
      */
-    QImage getImageForWindow(QWindow* window);
+    LIBOXIDE_EXPORT QImage getImageForWindow(QWindow* window);
     /*!
      * \brief Repaint a surface for a QWindow on the display server
      * \param window The QWindow instance to repaint
@@ -222,10 +306,12 @@ namespace Oxide {
      * \param sync If the method should wait for the repaint to finish
      * before continuing
      */
-    void repaint(
+    LIBOXIDE_EXPORT void repaint(
       QWindow* window,
       QRectF rect,
       Blight::WaveformMode waveform = Blight::WaveformMode::UI,
+      Blight::ContentType contentType = Blight::ContentType::Color,
+      Blight::UpdateMode updateMode = Blight::UpdateMode::PartialUpdate,
       bool sync = false
     );
     /*!
@@ -233,7 +319,7 @@ namespace Oxide {
      * \return The OxideQML singleton instance
      * \sa OxideQML
      */
-    OxideQml* getSingleton();
+    LIBOXIDE_EXPORT OxideQml* getSingleton();
     /*!
      * \brief Register the %QML extensions that liboxide provides
      * \param engine The QQmlApplicationEngine instance that this
@@ -246,7 +332,7 @@ namespace Oxide {
      * "qrc://codes.eeems.oxide"`. Other classes are available for import
      * with `import codes.eeems.oxide 3.0`
      */
-    void registerQML(QQmlApplicationEngine* engine);
+    LIBOXIDE_EXPORT void registerQML(QQmlApplicationEngine* engine);
   } // namespace QML
 } // namespace Oxide
 /*! @} */

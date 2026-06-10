@@ -238,7 +238,7 @@ GUIThread::clearFrameBuffer() {
     m_screenGeometry,
     EPContentType::Color,
     EPScreenMode::Content,
-    EPFramebuffer::UpdateFlag::CompleteRefresh
+    EPFramebuffer::UpdateFlag::FullUpdate
   );
 }
 

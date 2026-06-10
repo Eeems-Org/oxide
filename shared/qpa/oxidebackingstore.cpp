@@ -6,6 +6,7 @@
 #include <libblight/types.h>
 #include <liboxide/debug.h>
 #include <liboxide/meta.h>
+#include <liboxide/oxideqml.h>
 #include <private/qguiapplication_p.h>
 #include <qpa/qplatformscreen.h>
 
@@ -42,7 +43,6 @@ OxideBackingStore::flush(
   const QPoint& offset
 ) {
   Q_UNUSED(offset);
-  Q_UNUSED(window);
   if (mBuffer == nullptr || region.isEmpty()) {
     return;
   }
@@ -50,15 +50,16 @@ OxideBackingStore::flush(
     qDebug() << "OxideBackingStore::repaint:" << mBuffer->surface << offset
              << region;
   }
-  bool ok;
-  auto waveform =
-    (Blight::WaveformMode)window->property("WA_WAVEFORM").toInt(&ok);
-  if (!ok || !waveform) {
-    waveform = Blight::WaveformMode::UI;
-  }
   for (auto rect : region) {
     Blight::connection()->repaint(
-      mBuffer, rect.x(), rect.y(), rect.width(), rect.height(), waveform
+      mBuffer,
+      rect.x(),
+      rect.y(),
+      rect.width(),
+      rect.height(),
+      Oxide::QML::getSingleton()->waveform(),
+      Oxide::QML::getSingleton()->contentType(),
+      Oxide::QML::getSingleton()->updateMode()
     );
   }
   static QImage* (*previousBuffer)() =

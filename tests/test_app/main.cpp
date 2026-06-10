@@ -260,7 +260,6 @@ main(int argc, char* argv[]) {
   }
   engine.load(QUrl(QStringLiteral("qrc:/notification.qml")));
   auto notification = static_cast<QQuickWindow*>(engine.rootObjects().last());
-  notification->setProperty("WA_WAVEFORM", Blight::WaveformMode::Mono);
   notification->setProperty("text", "Testing");
   notification->setProperty(
     "image",

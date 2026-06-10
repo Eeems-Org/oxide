@@ -62,7 +62,6 @@ NotificationAPI::startup() {
   auto engine = dbusService->engine();
   engine->load("qrc:/notification.qml");
   m_window = static_cast<QQuickWindow*>(engine->rootObjects().last());
-  m_window->setProperty("WA_WAVEFORM", Blight::WaveformMode::Fast);
   auto buffer = Oxide::QML::getSurfaceForWindow(m_window);
   getCompositorDBus()->setFlags(
     QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),

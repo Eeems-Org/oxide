@@ -30,6 +30,10 @@ namespace Blight {
      * \return The elapsed seconds since the ClockWatch was created.
      */
     double elapsed();
+    /*!
+     * \brief Reset the timer
+     */
+    void reset();
 
   private:
     std::chrono::high_resolution_clock::time_point t1;
