@@ -1,0 +1,28 @@
+TARGET = lockscreen_hook
+TEMPLATE = lib
+
+DEFINES += DISABLE_LTO
+include(../../qmake/common.pri)
+
+CONFIG += hide_symbols
+
+QT += core
+
+HEADERS += \
+    receiver.h
+
+SOURCES += \
+    main.cpp \
+    receiver.cpp
+
+LIBS += -lrt -ldl -Wl,--exclude-libs,ALL
+
+QMAKE_LFLAGS += -Wl,--as-needed
+QMAKE_CFLAGS += -fno-builtin
+QMAKE_CXXFLAGS += -fno-builtin
+
+target.path += /opt/lib
+INSTALLS += target
+
+DISTFILES += \
+    main.map

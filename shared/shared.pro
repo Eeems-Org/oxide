@@ -5,7 +5,8 @@ SUBDIRS = \
     libblight_protocol \
     libblight \
     libblight_client \
-    qpa
+    qpa \
+    lockscreen_hook
 
 liboxide.depends = libblight
 libblight.depends = libblight_protocol
