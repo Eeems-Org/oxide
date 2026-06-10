@@ -54,7 +54,7 @@ test_Types::test_repaint_t() {
      .y = 10,
      .width = 10,
      .height = 10,
-     .waveform = Blight::WaveformMode::Mono,
+     .waveform = Blight::WaveformMode::Fast,
      .marker = 1,
      .identifier = 1,
      }
