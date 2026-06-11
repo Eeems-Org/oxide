@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
+        <file alias="font/icomoon.ttf">../screenshot-viewer/font/icomoon.ttf</file>
     </qresource>
 </RCC>

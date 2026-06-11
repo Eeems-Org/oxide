@@ -8,51 +8,90 @@ Item {
     x: (parent.width / 2) - (settings.width / 2)
     y: (parent.height / 2) - (settings.height / 2)
     signal closed
-    Popup {
-        id: settings
-        width: 1000
-        height: 1400
-        closePolicy: Popup.NoAutoClose
-        onClosed: parent.closed()
-        visible: parent.visible
-        GridLayout {
+        Popup {
+            id: settings
+            font.pixelSize: 32
+            width: Math.min(1000, root.parent.width * 0.9)
+            height: Math.min(1400, root.parent.height * 0.9)
+            closePolicy: Popup.NoAutoClose
+            onClosed: parent.closed()
+            visible: parent.visible
+            background: Rectangle {
+                color: "white"
+                border.color: "black"
+                border.width: 2
+                radius: 10
+            }
+            GridLayout {
             columns: 3
             rows: 20
             anchors.fill: parent
-            RowLayout {
-                Layout.columnSpan: parent.columns
-                Label {
-                    text: "Locale"
-                    Layout.columnSpan: 1
-                    Layout.fillWidth: true
-                }
-                ComboBox {
-                    Layout.columnSpan: parent.columns - 1
-                    Layout.fillWidth: true
-                    flat: true
+                RowLayout {
+                    Layout.columnSpan: parent.columns
+                    Label {
+                        text: "Locale"
+                        Layout.fillWidth: true
+                    }
+                    ComboBox {
+                        id: localeCombo
+                        Layout.preferredWidth: timezoneCombo.width
+                        Layout.preferredHeight: 48
+                        flat: true
+                        font.pixelSize: 32
 
-                    model: controller.locales
-                    onActivated: controller.locale = textAt(currentIndex)
-                    Component.onCompleted: currentIndex = indexOfValue(controller.locale)
-                }
-            }
-            RowLayout {
-                Layout.columnSpan: parent.columns
-                Label {
-                    text: "Timezone"
-                    Layout.columnSpan: 1
-                    Layout.fillWidth: true
-                }
-                ComboBox {
-                    Layout.columnSpan: parent.columns - 1
-                    Layout.fillWidth: true
-                    flat: true
+                        delegate: ItemDelegate {
+                            width: parent.width
+                            text: modelData
+                            font.pixelSize: 32
+                        }
+                        indicator: Label {
+                            text: "▼"
+                            font.pixelSize: 24
+                            color: "black"
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
+                            anchors.rightMargin: 8
+                            verticalAlignment: Text.AlignVCenter
+                        }
 
-                    model: controller.timezones
-                    onActivated: controller.timezone = textAt(currentIndex)
-                    Component.onCompleted: currentIndex = indexOfValue(controller.timezone)
+                        model: controller.locales
+                        onActivated: controller.locale = textAt(currentIndex)
+                        Component.onCompleted: currentIndex = indexOfValue(controller.locale)
+                    }
                 }
-            }
+                RowLayout {
+                    Layout.columnSpan: parent.columns
+                    Label {
+                        text: "Timezone"
+                        Layout.fillWidth: true
+                    }
+                    ComboBox {
+                        id: timezoneCombo
+                        Layout.preferredWidth: 400
+                        Layout.preferredHeight: 48
+                        flat: true
+                        font.pixelSize: 32
+
+                        delegate: ItemDelegate {
+                            width: parent.width
+                            text: modelData
+                            font.pixelSize: 32
+                        }
+                        indicator: Label {
+                            text: "▼"
+                            font.pixelSize: 24
+                            color: "black"
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
+                            anchors.rightMargin: 8
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        model: controller.timezones
+                        onActivated: controller.timezone = textAt(currentIndex)
+                        Component.onCompleted: currentIndex = indexOfValue(controller.timezone)
+                    }
+                }
             RowLayout {
                 Layout.columnSpan: parent.columns
                 Label {

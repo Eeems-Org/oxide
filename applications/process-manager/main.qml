@@ -10,6 +10,7 @@ OxideWindow {
     headerBackgroundColor: "white"
     backgroundColor: "white"
     color: "black"
+    FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
     onAfterSynchronizing: {
         if (stateController.state == "loading") {
             stateController.state = "loaded";
@@ -43,6 +44,8 @@ OxideWindow {
         Label {
             text: "Process Manager"
             color: window.color
+            elide: Text.ElideRight
+            Layout.fillWidth: true
         }
     ]
     initialItem: Item{
@@ -52,7 +55,7 @@ OxideWindow {
             Label {
                 text: "Process"
                 color: window.color
-                font.pointSize: 8
+                font.pixelSize: 24
                 font.bold: controller.sortBy === "name"
                 Layout.alignment: Qt.AlignLeft
                 rightPadding: 10
@@ -67,11 +70,11 @@ OxideWindow {
                 id: pid
                 text: "PID"
                 color: window.color
-                font.pointSize: 8
+                font.pixelSize: 24
                 font.bold: controller.sortBy === "pid"
                 Layout.alignment: Qt.AlignLeft
-                leftPadding: 20
-                Layout.preferredWidth: 180
+                leftPadding: 10
+                Layout.preferredWidth: 120
                 MouseArea { anchors.fill: parent; onClicked: {
                     controller.breadcrumb("tasksView.pid", "sortBy", "ui");
                     controller.sortBy = "pid";
@@ -81,11 +84,11 @@ OxideWindow {
                 id: ppid
                 text: "Parent PID"
                 color: window.color
-                font.pointSize: 8
+                font.pixelSize: 24
                 font.bold: controller.sortBy === "ppid"
                 Layout.alignment: Qt.AlignLeft
-                leftPadding: 20
-                Layout.preferredWidth: 180
+                leftPadding: 10
+                Layout.preferredWidth: 120
                 MouseArea { anchors.fill: parent; onClicked: {
                     controller.breadcrumb("tasksView.ppid", "sortBy", "ui");
                     controller.sortBy = "ppid";
@@ -95,11 +98,11 @@ OxideWindow {
                 id: cpu
                 text: "CPU"
                 color: window.color
-                font.pointSize: 8
+                font.pixelSize: 24
                 font.bold: controller.sortBy === "cpu"
                 Layout.alignment: Qt.AlignLeft
-                leftPadding: 20
-                Layout.preferredWidth: 100
+                leftPadding: 10
+                Layout.preferredWidth: 80
                 MouseArea { anchors.fill: parent; onClicked: {
                     controller.breadcrumb("tasksView.cpu", "sortBy", "ui");
                     controller.sortBy = "cpu";
@@ -109,11 +112,11 @@ OxideWindow {
                 id: mem
                 text: "Mem"
                 color: window.color
-                font.pointSize: 8
+                font.pixelSize: 24
                 font.bold: controller.sortBy === "mem"
                 Layout.alignment: Qt.AlignLeft
-                leftPadding: 20
-                Layout.preferredWidth: 200
+                leftPadding: 10
+                Layout.preferredWidth: 160
                 MouseArea { anchors.fill: parent; onClicked: {
                     controller.breadcrumb("tasksView.mem", "sortBy", "ui");
                     controller.sortBy = "mem";
@@ -193,6 +196,7 @@ OxideWindow {
                             rightPadding: 10
                             topPadding: 5
                             bottomPadding: 5
+                            elide: Text.ElideRight
                         }
                         Label {
                             text: model.display.pid

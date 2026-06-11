@@ -3,6 +3,7 @@ import QtQuick.Controls 2.4
 
 Menu {
     id: menu
+    font.pixelSize: 32
     property color color: "black"
     property alias backgroundColor: background.color
     property color borderColor: background.border.color

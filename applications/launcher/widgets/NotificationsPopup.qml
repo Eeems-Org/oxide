@@ -12,9 +12,16 @@ Item {
     x: (parent.width / 2) - (popup.width / 2)
     y: (parent.height / 2) - (popup.height / 2)
     width: 1000
-    Popup {
-        id: popup
-        visible: root.visible
+        Popup {
+            id: popup
+            font.pixelSize: 32
+            visible: root.visible
+            background: Rectangle {
+                color: "white"
+                border.color: "black"
+                border.width: 2
+                radius: 10
+            }
         closePolicy: Popup.NoAutoClose
         onClosed: {
             parent.closed()

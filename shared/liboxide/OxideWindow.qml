@@ -25,6 +25,7 @@ ApplicationWindow {
     contentOrientation: landscape ? Qt.LandscapeOrientation : Qt.PortraitOrientation
     Page {
         id: page
+        font.pixelSize: 32
         focus: true
         title: window.title
         visible: window.visible
@@ -35,6 +36,7 @@ ApplicationWindow {
         height: window.orientationHeight()
         header: Rectangle {
             id: header
+            clip: true
             color: "black"
             height: Math.max(leftMenu.height, centerMenu.height, rightMenu.height)
             RowLayout {
@@ -51,6 +53,8 @@ ApplicationWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
+                width: Math.min(implicitWidth, 2 * Math.min(parent.width / 2 - leftMenu.width, parent.width / 2 - rightMenu.width))
+                clip: true
             }
         }
         background: Rectangle {

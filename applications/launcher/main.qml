@@ -58,7 +58,7 @@ OxideWindow {
             OxideMenu {
                 id: optionsMenu
                 title: qsTr("");
-                font: iconFont.name
+                font.family: iconFont.name
                 width: 310
                 Action {
                     text: qsTr(" Reload")
@@ -196,7 +196,7 @@ OxideWindow {
             OxideMenu {
                 id: powerMenu
                 title: qsTr("");
-                font: iconFont.name
+                font.family: iconFont.name
                 width: 260
                 Action {
                     text: qsTr(" Suspend")

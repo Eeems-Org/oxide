@@ -97,7 +97,7 @@ OxideWindow {
             OxideMenu {
                 id: powerMenu
                 title: qsTr("");
-                font: iconFont.name
+                font.family: iconFont.name
                 width: 260
                 color: window.color
                 backgroundColor: window.headerBackgroundColor
