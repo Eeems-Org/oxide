@@ -74,56 +74,53 @@ GUIThread::GUIThread(QRect screenGeometry)
                    << " " << frameBuffer->bytesPerLine() << "bytes/line"
                    << frameBuffer->format()
   );
+  auto buf = new Blight::buf_t{
+    .fd = -1,
+    .x = 0,
+    .y = 0,
+    .width = frameBuffer->width(),
+    .height = frameBuffer->height(),
+    .stride = frameBuffer->bytesPerLine(),
+    .format = (Blight::Format)frameBuffer->format(),
+    .data = nullptr,
+    .uuid = Blight::buf_t::new_uuid(),
+    .surface = 0
+  };
+  buf->fd = memfd_create(buf->uuid.c_str(), MFD_ALLOW_SEALING);
+  if (buf->fd == -1) {
+    qFatal(std::strerror(errno));
+  }
   if (
     deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM2
   ) {
     // rM2 requires a much larger buffer than is actually used
-    auto buf = new Blight::buf_t{
-      .fd = -1,
-      .x = 0,
-      .y = 0,
-      .width = frameBuffer->width(),
-      .height = frameBuffer->height(),
-      .stride = frameBuffer->bytesPerLine(),
-      .format = (Blight::Format)frameBuffer->format(),
-      .data = nullptr,
-      .uuid = Blight::buf_t::new_uuid(),
-      .surface = 0
-    };
-    buf->fd = memfd_create(buf->uuid.c_str(), MFD_ALLOW_SEALING);
-    if (buf->fd == -1) {
-      qFatal(std::strerror(errno));
-    }
     // Magic larger number that rM2 uses based on virtual sizes
     if (ftruncate(buf->fd, 26359808)) {
       qFatal(std::strerror(errno));
     }
-    void* data = mmap(
-      NULL, buf->size(), PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, buf->fd, 0
-    );
-    if (data == MAP_FAILED || data == nullptr) {
+  } else {
+    if (ftruncate(buf->fd, buf->size())) {
       qFatal(std::strerror(errno));
     }
-    buf->data = reinterpret_cast<Blight::data_t>(data);
-    m_frameBuffer = Blight::shared_buf_t(buf);
-  } else {
-    std::optional<Blight::shared_buf_t> maybe_buffer = Blight::createBuffer(
-      0,
-      0,
-      frameBuffer->width(),
-      frameBuffer->height(),
-      frameBuffer->bytesPerLine(),
-      (Blight::Format)frameBuffer->format()
-    );
-    if (!maybe_buffer.has_value()) {
-      qFatal("Failed to create buffer");
-    }
-    // TODO how to make this buffer be the frameBuffer but still be a memfd
-    m_frameBuffer = maybe_buffer.value();
   }
+  void* data = mmap(
+    NULL, buf->size(), PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE, buf->fd, 0
+  );
+  if (data == MAP_FAILED || data == nullptr) {
+    qFatal(std::strerror(errno));
+  }
+  buf->data = reinterpret_cast<Blight::data_t>(data);
+  m_frameBuffer = Blight::shared_buf_t(buf);
   if (m_frameBuffer->fd == -1) {
     qFatal("Failed to open framebuffer");
   }
+  m_frameBufferImage = QImage(
+    m_frameBuffer->data,
+    m_frameBuffer->width,
+    m_frameBuffer->height,
+    m_frameBuffer->stride,
+    (QImage::Format)m_frameBuffer->format
+  );
   moveToThread(this);
 }
 
@@ -363,6 +360,7 @@ GUIThread::sendUpdate(
   );
   QPainter(&instance->previousBuffer)
     .drawImage(rect, instance->frameBuffer, rect);
+  QPainter(&m_frameBufferImage).drawImage(rect, instance->frameBuffer, rect);
 }
 
 void
@@ -376,16 +374,8 @@ GUIThread::swap(
     O_WARNING("swap called when m_frameBuffer not initialized");
     return;
   }
-  auto& data = m_frameBuffer->data;
-  QImage image(
-    data,
-    m_frameBuffer->width,
-    m_frameBuffer->height,
-    m_frameBuffer->stride,
-    (QImage::Format)m_frameBuffer->format
-  );
   QPainter painter(getFrameBuffer());
-  painter.drawImage(rect, image, rect);
+  painter.drawImage(rect, m_frameBufferImage, rect);
   painter.end();
   guiThread->sendUpdate(rect, waveform, contentType, mode, 0);
 }

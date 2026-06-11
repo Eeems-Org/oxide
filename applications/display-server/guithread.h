@@ -76,6 +76,7 @@ private:
   QRect m_screenGeometry;
   QPoint m_screenOffset;
   QRect m_screenRect;
+  QImage m_frameBufferImage;
 
   void clearFrameBuffer();
   void repaintSurface(

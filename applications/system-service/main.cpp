@@ -54,6 +54,9 @@ main(int argc, char* argv[]) {
 #else
     connected = Blight::connect(false);
 #endif
+    if (connected) {
+      break;
+    }
     if (++tries < 10) {
       QProcess::execute("systemctl", QStringList() << "start" << "blight");
       continue;
