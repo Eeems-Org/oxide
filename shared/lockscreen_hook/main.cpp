@@ -82,8 +82,10 @@ handle_unlock() {
   qCDebug(loggingCategory) << "Device unlocked, exiting xochitl";
   disablePoweroffScreen = true;
   pendingExit = true;
-  // Normally this is not safe to do because of screen updates etc, but at this
-  // point in time nothing is updating on the screen, so exiting quickly is safe
+  // Normally this is not safe to do because of screen updates etc. It's safe in
+  // this scenario because:
+  // No-pin: display never updates
+  // Pin: display stops updating after last key pressed
   _Exit(0);
 }
 

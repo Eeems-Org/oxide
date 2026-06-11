@@ -46,12 +46,18 @@ stopProcess(pid_t pid) {
 
 int
 main(int argc, char* argv[]) {
+  bool connected = false;
+  int tries = 0;
+  while (!connected || Blight::connection() == nullptr) {
 #ifdef EPAPER
-  auto connected = Blight::connect(true);
+    connected = Blight::connect(true);
 #else
-  auto connected = Blight::connect(false);
+    connected = Blight::connect(false);
 #endif
-  if (!connected) {
+    if (++tries < 10) {
+      QProcess::execute("systemctl", QStringList() << "start" << "blight");
+      continue;
+    }
     // TODO - attempt to start display server instance
     bool enabled = Oxide::debugEnabled();
     if (!enabled) {

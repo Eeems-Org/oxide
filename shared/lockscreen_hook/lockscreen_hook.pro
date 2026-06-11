@@ -22,8 +22,8 @@ QMAKE_LFLAGS += -Wl,--as-needed
 QMAKE_CFLAGS += -fno-builtin
 QMAKE_CXXFLAGS += -fno-builtin
 
-target.path += /opt/lib
+target.path += /usr/lib
 INSTALLS += target
 
 DISTFILES += \
-    main.map
+    ../../assets/usr/lib/systemd/system/xochitl.service.d/lockscreen_hook.conf
