@@ -168,43 +168,50 @@ OxideWindow {
     }
     Component {
         id: importDialog
-        Rectangle{
-            color: window.color
-            anchors.centerIn: parent
-            width: 1000
-            height: contentItem.implicitHeight
-            clip: true
-            ColumnLayout {
+        Item {
+            Rectangle{
+                color: window.backgroundColor
+                width: Math.min(1000, parent.width * 0.9)
+                height: importColumn.implicitHeight
                 anchors.centerIn: parent
-                RowLayout {
-                    Item { Layout.fillWidth: true }
-                    Label {
-                        text: "Import PIN from Xochitl?\nThis will remove your pin from Xochitl."
+                clip: true
+                ColumnLayout {
+                    id: importColumn
+                    anchors.fill: parent
+                    RowLayout {
+                        Item { Layout.fillWidth: true }
+                        Label {
+                            text: "Import PIN from Xochitl?\nThis will remove your pin from Xochitl."
+                            color: window.color
+                            Layout.fillHeight: true
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+                    Item {
                         Layout.fillHeight: true
                     }
-                    Item { Layout.fillWidth: true }
-                }
-                Item {
-                    Layout.rowSpan: 2
-                    Layout.fillHeight: true
-                }
-                RowLayout {
-                    OxideButton {
-                        text: "Cancel"
-                        width: height * 2
-                        Layout.fillWidth: true
-                        onClicked: {
-                            controller.breadcrumb("cancel", "clicked", "ui");
-                            stateController.state = "pinPrompt";
+                    RowLayout {
+                        OxideButton {
+                            text: "Cancel"
+                            width: height * 2
+                            Layout.fillWidth: true
+                            color: window.color
+                            backgroundColor: window.backgroundColor
+                            onClicked: {
+                                controller.breadcrumb("cancel", "clicked", "ui");
+                                stateController.state = "pinPrompt";
+                            }
                         }
-                    }
-                    OxideButton {
-                        text: "Import"
-                        width: height * 2
-                        Layout.fillWidth: true
-                        onClicked: {
-                            controller.breadcrumb("import", "clicked", "ui");
-                            controller.importPin();
+                        OxideButton {
+                            text: "Import"
+                            width: height * 2
+                            Layout.fillWidth: true
+                            color: window.color
+                            backgroundColor: window.backgroundColor
+                            onClicked: {
+                                controller.breadcrumb("import", "clicked", "ui");
+                                controller.importPin();
+                            }
                         }
                     }
                 }
@@ -213,43 +220,50 @@ OxideWindow {
     }
     Component {
         id: pinPrompt
-        Rectangle{
-            color: window.color
-            anchors.centerIn: parent
-            width: 1000
-            height: contentItem.implicitHeight
-            clip: true
-            ColumnLayout {
+        Item {
+            Rectangle{
+                color: window.backgroundColor
+                width: Math.min(1000, parent.width * 0.9)
+                height: pinColumn.implicitHeight
                 anchors.centerIn: parent
-                RowLayout {
-                    Item { Layout.fillWidth: true }
-                    Label {
-                        text: "Create a PIN?"
+                clip: true
+                ColumnLayout {
+                    id: pinColumn
+                    anchors.fill: parent
+                    RowLayout {
+                        Item { Layout.fillWidth: true }
+                        Label {
+                            text: "Create a PIN?"
+                            color: window.color
+                            Layout.fillHeight: true
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+                    Item {
                         Layout.fillHeight: true
                     }
-                    Item { Layout.fillWidth: true }
-                }
-                Item {
-                    Layout.rowSpan: 2
-                    Layout.fillHeight: true
-                }
-                RowLayout {
-                    OxideButton {
-                        text: "No PIN"
-                        width: height * 2
-                        Layout.fillWidth: true
-                        onClicked: {
-                            controller.breadcrumb("nopin", "clicked", "ui");
-                            controller.clearPin();
+                    RowLayout {
+                        OxideButton {
+                            text: "No PIN"
+                            width: height * 2
+                            Layout.fillWidth: true
+                            color: window.color
+                            backgroundColor: window.backgroundColor
+                            onClicked: {
+                                controller.breadcrumb("nopin", "clicked", "ui");
+                                controller.clearPin();
+                            }
                         }
-                    }
-                    OxideButton {
-                        text: "Create"
-                        width: height * 2
-                        Layout.fillWidth: true
-                        onClicked: {
-                            controller.breadcrumb("create", "clicked", "ui");
-                            stateController.state = "prompt";
+                        OxideButton {
+                            text: "Create"
+                            width: height * 2
+                            Layout.fillWidth: true
+                            color: window.color
+                            backgroundColor: window.backgroundColor
+                            onClicked: {
+                                controller.breadcrumb("create", "clicked", "ui");
+                                stateController.state = "prompt";
+                            }
                         }
                     }
                 }
@@ -258,85 +272,97 @@ OxideWindow {
     }
     Component {
         id: telemetryDialog
-        Rectangle{
-            color: window.color
-            anchors.centerIn: parent
-            height: contentItem.implicitHeight
-            width: 1000
-            clip: true
-            ColumnLayout {
+        Item {
+            Rectangle{
+                color: window.backgroundColor
+                width: Math.min(1000, parent.width * 0.9)
+                height: telemetryColumn.implicitHeight
                 anchors.centerIn: parent
-                RowLayout {
-                    Item { Layout.fillWidth: true }
+                clip: true
+                ColumnLayout {
+                    id: telemetryColumn
+                    anchors.fill: parent
+                    RowLayout {
+                        Item { Layout.fillWidth: true }
+                        Label {
+                            text: "Opt-in to telemetry?"
+                            color: window.color
+                            Layout.fillHeight: true
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
                     Label {
-                        text: "Opt-in to telemetry?"
+                        text: "Oxide has basic telemetry and crash reporting.\nWould you like to enable it?\nSee https://oxide.eeems.codes/faq.html for more\ninformation."
+                        color: window.color
+                        Layout.fillWidth: true
+                    }
+                    Item {
                         Layout.fillHeight: true
                     }
-                    Item { Layout.fillWidth: true }
-                }
-                Label {
-                    text: "Oxide has basic telemetry and crash reporting.\nWould you like to enable it?\nSee https://oxide.eeems.codes/faq.html for more\ninformation."
-                    Layout.fillWidth: true
-                }
-                Item {
-                    Layout.rowSpan: 2
-                    Layout.fillHeight: true
-                }
-                ColumnLayout {
-                    OxideButton {
-                        text: "Full Telemetry"
-                        width: height * 2
-                        Layout.fillWidth: true
-                        onClicked: {
-                            controller.breadcrumb("full-telemetry", "clicked", "ui");
-                            controller.telemetry = true;
-                            controller.applicationUsage = true;
-                            controller.crashReport = true;
-                            controller.firstLaunch = false;
-                            stateController.state = "loading";
+                    ColumnLayout {
+                        OxideButton {
+                            text: "Full Telemetry"
+                            width: height * 2
+                            Layout.fillWidth: true
+                            color: window.color
+                            backgroundColor: window.backgroundColor
+                            onClicked: {
+                                controller.breadcrumb("full-telemetry", "clicked", "ui");
+                                controller.telemetry = true;
+                                controller.applicationUsage = true;
+                                controller.crashReport = true;
+                                controller.firstLaunch = false;
+                                stateController.state = "loading";
+                            }
+                        }
+                        OxideButton {
+                            text: "Basic Telemetry"
+                            width: height * 2
+                            Layout.fillWidth: true
+                            color: window.color
+                            backgroundColor: window.backgroundColor
+                            onClicked: {
+                                controller.breadcrumb("basic-telemetry", "clicked", "ui");
+                                controller.telemetry = true;
+                                controller.applicationUsage = false;
+                                controller.crashReport = true;
+                                controller.firstLaunch = false;
+                                stateController.state = "loading";
+                            }
+                        }
+                        OxideButton {
+                            text: "Crash Reports Only"
+                            width: height * 2
+                            Layout.fillWidth: true
+                            color: window.color
+                            backgroundColor: window.backgroundColor
+                            onClicked: {
+                                controller.breadcrumb("crash-report-only", "clicked", "ui");
+                                controller.telemetry = false;
+                                controller.applicationUsage = false;
+                                controller.crashReport = true;
+                                controller.firstLaunch = false;
+                                stateController.state = "loading";
+                            }
+                        }
+                        OxideButton {
+                            text: "No Telemetry"
+                            width: height * 2
+                            Layout.fillWidth: true
+                            color: window.color
+                            backgroundColor: window.backgroundColor
+                            onClicked: {
+                                controller.breadcrumb("no-telemetry", "clicked", "ui");
+                                controller.telemetry = false;
+                                controller.applicationUsage = false;
+                                controller.crashReport = false;
+                                controller.firstLaunch = false;
+                                stateController.state = "loading";
+                            }
                         }
                     }
-                    OxideButton {
-                        text: "Basic Telemetry"
-                        width: height * 2
-                        Layout.fillWidth: true
-                        onClicked: {
-                            controller.breadcrumb("basic-telemetry", "clicked", "ui");
-                            controller.telemetry = true;
-                            controller.applicationUsage = false;
-                            controller.crashReport = true;
-                            controller.firstLaunch = false;
-                            stateController.state = "loading";
-                        }
-                    }
-                    OxideButton {
-                        text: "Crash Reports Only"
-                        width: height * 2
-                        Layout.fillWidth: true
-                        onClicked: {
-                            controller.breadcrumb("crash-report-only", "clicked", "ui");
-                            controller.telemetry = false;
-                            controller.applicationUsage = false;
-                            controller.crashReport = true;
-                            controller.firstLaunch = false;
-                            stateController.state = "loading";
-                        }
-                    }
-                    OxideButton {
-                        text: "No Telemetry"
-                        width: height * 2
-                        Layout.fillWidth: true
-                        onClicked: {
-                            controller.breadcrumb("no-telemetry", "clicked", "ui");
-                            controller.telemetry = false;
-                            controller.applicationUsage = false;
-                            controller.crashReport = false;
-                            controller.firstLaunch = false;
-                            stateController.state = "loading";
-                        }
-                    }
                 }
-        }
+            }
         }
     }
     StateGroup {
