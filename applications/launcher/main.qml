@@ -288,6 +288,13 @@ OxideWindow {
             x: (parent.width / 2) - (width / 2)
             y: (parent.height / 2) - (height / 2)
             closePolicy: Popup.CloseOnPressOutside
+            font.pixelSize: 32
+            background: Rectangle {
+                color: "white"
+                border.color: "black"
+                border.width: 2
+                radius: 10
+            }
             onClosed: stateController.state = "loaded"
             property var model;
             property int textPadding: 10
@@ -311,9 +318,10 @@ OxideWindow {
 
                 return calculatedWidth;
             }
-            height: itemContent.height + itemAutoStartButton.height
+            height: itemContent.height + itemAutoStartButton.height + 10
             contentItem: Item {
                 anchors.fill: parent
+                anchors.margins: 5
                 Item {
                     id: itemImage
                     width: itemContent.height
@@ -322,7 +330,7 @@ OxideWindow {
                         fillMode: Image.PreserveAspectFit
                         source: itemInfo.model ? itemInfo.model.imgFile : ""
                         anchors.centerIn: parent
-                        width: parent.with - itemInfo.textPadding
+                        width: parent.width - itemInfo.textPadding
                         height: parent.height - itemInfo.textPadding
                     }
                     anchors.left: parent.left
@@ -331,12 +339,15 @@ OxideWindow {
                 ColumnLayout {
                     id: itemContent
                     anchors.left: itemImage.right
+                    anchors.right: parent.right
                     Label {
                         text: (itemInfo.model ? itemInfo.model.displayName : "")
                         topPadding: 0
                         leftPadding: itemInfo.textPadding
                         rightPadding: itemInfo.textPadding
                         bottomPadding: 0
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
                     Label {
                         text: (itemInfo.model ? itemInfo.model.desc : "")
@@ -344,6 +355,8 @@ OxideWindow {
                         leftPadding: itemInfo.textPadding
                         rightPadding: itemInfo.textPadding
                         bottomPadding: 0
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
                     }
                 }
                 Label {
