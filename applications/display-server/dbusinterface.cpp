@@ -379,20 +379,25 @@ DbusInterface::frameBufferInfo(QDBusMessage message) {
     sendErrorReply(
       QDBusError::AccessDenied, "You must first open a connection"
     );
-    return {-1, -1, -1};
+    return {-1, -1, -1, Blight::Format::Format_Invalid};
   }
   if (!connection->has("system") && !connection->has("exclusive")) {
     sendErrorReply(
       QDBusError::AccessDenied, "Must be system or exclusive connection"
     );
-    return {-1, -1, -1};
+    return {-1, -1, -1, Blight::Format::Format_Invalid};
   }
   auto frameBuffer = guiThread->framebuffer();
   if (frameBuffer == nullptr) {
     sendErrorReply(QDBusError::InternalError, "Framebuffer is missing");
-    return {-1, -1, -1};
+    return {-1, -1, -1, Blight::Format::Format_Invalid};
   }
-  return {frameBuffer->width, frameBuffer->height, frameBuffer->stride};
+  return {
+    frameBuffer->width,
+    frameBuffer->height,
+    frameBuffer->stride,
+    frameBuffer->format
+  };
 }
 
 void

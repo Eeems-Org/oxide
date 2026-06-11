@@ -86,6 +86,7 @@ getFrameBuffer() {
     int width = std::get<0>(info);
     int height = std::get<1>(info);
     int stride = std::get<2>(info);
+    Blight::Format format = (Blight::Format)std::get<3>(info);
     uchar* data = file->map(0, stride * deviceSettings.getScreenHeight());
     if (data == nullptr) {
       O_WARNING("Failed to map framebuffer" << file->errorString());
@@ -94,13 +95,7 @@ getFrameBuffer() {
       file = nullptr;
       return nullptr;
     }
-    image = new QImage(
-      data,
-      width,
-      height,
-      stride,
-      (QImage::Format)deviceSettings.getScreenFormat()
-    );
+    image = new QImage(data, width, height, stride, (QImage::Format)format);
     if (image->isNull()) {
       O_WARNING("Framebuffer is null" << image->size());
       delete image;

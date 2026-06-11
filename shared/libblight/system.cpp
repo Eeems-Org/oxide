@@ -47,10 +47,10 @@ namespace Blight {
     }
     return dfd;
   }
-  std::tuple<int, int, int> frameBufferInfo() {
+  std::tuple<int, int, int, Blight::Format> frameBufferInfo() {
     if (!exists()) {
       errno = EAGAIN;
-      return {-1, -1, -1};
+      return {-1, -1, -1, Blight::Format::Format_Invalid};
     }
     _DEBUG("[Blight::frameBufferInfo()]");
     auto reply = dbus->call_method(
@@ -62,20 +62,22 @@ namespace Blight {
         reply->error_message().c_str()
       );
       errno = reply->return_value;
-      return {-1, -1, -1};
+      return {-1, -1, -1, Blight::Format::Format_Invalid};
     }
     int width, height, stride;
-    reply->return_value =
-      sd_bus_message_read(reply->message, "(iii)", &width, &height, &stride);
+    Blight::Format format;
+    reply->return_value = sd_bus_message_read(
+      reply->message, "(iiii)", &width, &height, &stride, (int*)&format
+    );
     if (reply->isError()) {
       _WARN(
-        "[Blight::frameBufferInfo()::read_value(\"(iii)\")] Error: %s",
+        "[Blight::frameBufferInfo()::read_value(\"(iiii)\")] Error: %s",
         reply->error_message().c_str()
       );
       errno = reply->return_value;
-      return {-1, -1, -1};
+      return {-1, -1, -1, Blight::Format::Format_Invalid};
     }
-    return {width, height, stride};
+    return {width, height, stride, format};
   }
   bool enterExclusiveMode() {
     if (!exists()) {

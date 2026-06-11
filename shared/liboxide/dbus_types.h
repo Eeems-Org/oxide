@@ -6,7 +6,7 @@
 
 #include <tuple>
 
-using FrameBufferInfo = std::tuple<int, int, int>;
+using FrameBufferInfo = std::tuple<int, int, int, int>;
 Q_DECLARE_METATYPE(FrameBufferInfo);
 
 QDBusArgument&

@@ -433,7 +433,8 @@ namespace FB {
         if (!_ioctl(request, ptr)) {
           return -1;
         }
-        std::tuple<int, int, int> info = Blight::frameBufferInfo();
+        std::tuple<int, int, int, Blight::Format> info =
+          Blight::frameBufferInfo();
         if (std::get<0>(info) == -1) {
           return -1;
         }
