@@ -318,7 +318,7 @@ DBusService::exit(int exitCode) {
   }
   if (m_exiting) {
     O_WARNING("Already shutting down, forcing stop");
-    kill(getpid(), SIGKILL);
+    _Exit(exitCode);
     return;
   }
   m_exiting = true;

@@ -26,6 +26,8 @@ BSS::BSS(QString path, IBSS* bss, QObject* parent)
 
 BSS::~BSS() {
   unregisterPath();
+  qDeleteAll(bsss);
+  bsss.clear();
 }
 
 QString
@@ -76,7 +78,9 @@ BSS::paths() {
     return result;
   }
   for (auto bss : bsss) {
-    result.append(bss->path());
+    if (bss->isValid()) {
+      result.append(bss->path());
+    }
   }
   return result;
 }

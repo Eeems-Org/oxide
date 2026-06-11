@@ -51,4 +51,5 @@ namespace Libc {
   );
   extern int (*epoll_ctl)(int, int, int, struct epoll_event*);
   extern int (*epoll_wait)(int, struct epoll_event*, int, int);
+  extern int (*system)(const char*);
 }

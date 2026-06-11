@@ -204,6 +204,8 @@ msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
       }
       return 0;
     }
+    default:
+      return 0;
   }
   FB::ensure_surface();
   _DEBUG("%s", "rm2fb ipc repaint");
@@ -592,6 +594,23 @@ epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout) {
     return Input::restoreEpollfds(epfd, events, res);
   }
   return res;
+}
+
+__attribute__((visibility("default"))) int
+system(const char* command) {
+  if (strcmp(command, "systemctl start suspend-then-hibernate.target") == 0) {
+    return Libc::system("systemctl suspend-then-hibernate");
+  }
+  if (strcmp(command, "systemctl start hybrid-sleep.target") == 0) {
+    return Libc::system("systemctl hybrid-sleep");
+  }
+  if (strcmp(command, "systemctl start hibernate.target") == 0) {
+    return Libc::system("systemctl hibernate");
+  }
+  if (strcmp(command, "systemctl start suspend.target") == 0) {
+    return Libc::system("systemctl suspend");
+  }
+  return Libc::system(command);
 }
 
 void __attribute__((constructor))

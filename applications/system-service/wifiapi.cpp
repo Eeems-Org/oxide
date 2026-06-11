@@ -199,8 +199,7 @@ WifiAPI::WifiAPI(QObject* parent)
                         auto ibss = new IBSS(
                           WPA_SUPPLICANT_SERVICE,
                           path.path(),
-                          bus,
-                          wlan->interface()
+                          bus
                         );
                         bool found = false;
                         auto bssid = ibss->bSSID();

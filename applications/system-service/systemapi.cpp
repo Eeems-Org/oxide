@@ -3,6 +3,10 @@
 #include <liboxide.h>
 #include <liboxide/oxideqml.h>
 
+#include <QDir>
+#include <QDirIterator>
+#include <QString>
+
 #include "appsapi.h"
 #include "controller.h"
 #include "notificationapi.h"
@@ -20,6 +24,28 @@ operator<<(QDebug debug, Touch* touch) {
   QDebugStateSaver saver(debug);
   debug.nospace() << touch->debugString().c_str();
   return debug.maybeSpace();
+}
+void
+disableVPDD() {
+  QDirIterator driverDir(
+    "/sys/bus/i2c/drivers", QDir::Dirs | QDir::NoDotAndDotDot
+  );
+  while (driverDir.hasNext()) {
+    QDirIterator deviceDir(driverDir.next(), QDir::Dirs | QDir::NoDotAndDotDot);
+    while (deviceDir.hasNext()) {
+      QString vpddPath = deviceDir.next() + "/vpdd_length";
+      if (!QFile::exists(vpddPath)) {
+        continue;
+      }
+      QFile vpddLength(vpddPath);
+      if (vpddLength.open(QIODevice::WriteOnly)) {
+        vpddLength.write("0\n");
+        vpddLength.close();
+        O_DEBUG("Cancelled VPDD timer at" << vpddPath);
+      }
+      return;
+    }
+  }
 }
 
 void
@@ -75,12 +101,15 @@ SystemAPI::PrepareForSleep(bool suspending) {
               painter.end();
             }
             addSystemBuffer(m_buffer);
-            auto maybe = Blight::connection()->raise(m_buffer);
+            Blight::connection()->raise(m_buffer);
             // Repaint to attempt to reduce ghosting
-            Blight::connection()->repaint(m_buffer);
-            if (maybe.has_value()) {
-              maybe.value()->wait();
-            }
+            Blight::connection()->repaint(
+              m_buffer,
+              Blight::WaveformMode::UI,
+              Blight::ContentType::Color,
+              Blight::UpdateMode::FullUpdate
+            );
+            Blight::waitForNoRepaints();
           }
         );
         Oxide::Sentry::sentry_span(t, "prepare", "Prepare for suspend", [this] {
@@ -101,12 +130,17 @@ SystemAPI::PrepareForSleep(bool suspending) {
           t, "disable", "Disable various services", [this] {
             if (wifiAPI->state() != WifiAPI::State::Off) {
               wifiWasOn = true;
+#ifdef __arm__
               wifiAPI->disable();
+#endif
             }
             getCompositorDBus()->waitForNoRepaints().waitForFinished();
             if (m_buffer != nullptr) {
               Blight::connection()->waitForMarker(m_buffer->surface);
             }
+#ifdef __aarch64__
+            disableVPDD();
+#endif
             releaseSleepInhibitors();
           }
         );
@@ -184,6 +218,7 @@ SystemAPI::PrepareForSleep(bool suspending) {
             wifiAPI->resumeUpdating();
           }
         );
+        QProcess::execute("csl", QStringList() << "power" << "-s" << "run");
       }
     );
     Controller::singleton()->enabled = true;
@@ -415,7 +450,6 @@ SystemAPI::SystemAPI(QObject* parent)
 
 void
 SystemAPI::shutdown() {
-  rguard(false);
   O_INFO("Removing all inhibitors");
   QMutableListIterator<Inhibitor> i(inhibitors);
   while (i.hasNext()) {
@@ -715,6 +749,7 @@ SystemAPI::suspend() {
     return;
   }
   O_INFO("Requesting Suspend...");
+  QProcess::execute("csl", QStringList() << "power" << "-s" << "run");
   systemd->Suspend(false).waitForFinished();
   O_INFO("Suspend requested.");
 }
@@ -727,7 +762,6 @@ SystemAPI::powerOff() {
   }
   O_INFO("Requesting Power off...");
   releasePowerOffInhibitors(true);
-  rguard(false);
   systemd->PowerOff(false).waitForFinished();
   O_INFO("Power off requested");
 }
@@ -740,7 +774,6 @@ SystemAPI::reboot() {
   }
   O_INFO("Requesting Reboot...");
   releasePowerOffInhibitors(true);
-  rguard(false);
   systemd->Reboot(false).waitForFinished();
   O_INFO("Reboot requested");
 }
@@ -866,7 +899,6 @@ SystemAPI::inhibitPowerOff() {
     "Block power off from any other method",
     true
   ));
-  rguard(true);
 }
 
 void
@@ -895,14 +927,6 @@ SystemAPI::releasePowerOffInhibitors(bool block) {
       i.remove();
     }
   }
-}
-
-void
-SystemAPI::rguard(bool install) {
-  O_DEBUG("rguard" << (install ? "install" : "uninstall"));
-  QProcess::execute(
-    "/opt/bin/rguard", QStringList() << (install ? "-1" : "-0")
-  );
 }
 
 void

@@ -119,4 +119,6 @@ namespace Libc {
 
   int (*epoll_wait)(int, struct epoll_event*, int, int) =
     (int (*)(int, struct epoll_event*, int, int))dlsym(RTLD_NEXT, "epoll_wait");
+
+  int (*system)(const char*) = (int (*)(const char*))dlsym(RTLD_NEXT, "system");
 }

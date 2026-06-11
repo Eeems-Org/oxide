@@ -169,6 +169,9 @@ Wlan::isConnected() {
 
 int
 Wlan::link() {
+  if (m_interface == nullptr) {
+    return -100;
+  }
   QDBusPendingReply<QVariant> res = m_interface->SignalPoll();
   res.waitForFinished();
   if (!res.isError()) {
@@ -201,6 +204,9 @@ Wlan::link() {
 
 signed int
 Wlan::rssi() {
+  if (m_interface == nullptr) {
+    return -100;
+  }
   QDBusPendingReply<QVariant> res = m_interface->SignalPoll();
   res.waitForFinished();
   if (!res.isError()) {
