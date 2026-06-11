@@ -417,7 +417,7 @@ DbusInterface::lower(QString identifier, QDBusMessage message) {
   if (surface != nullptr) {
     surface->setVisible(false);
     sortZ();
-    surface->repaint();
+    surface->repaint(QRect(), true);
     return;
   }
   auto childConnection = getConnection(identifier);
@@ -453,7 +453,7 @@ DbusInterface::raise(QString identifier, QDBusMessage message) {
     surface->setVisible(true);
     surface->setZ(std::numeric_limits<int>::max());
     sortZ();
-    surface->repaint();
+    surface->repaint(QRect(), true);
     return;
   }
   auto childConnection = getConnection(identifier);

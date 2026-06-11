@@ -134,7 +134,7 @@ Surface::image() {
 }
 
 void
-Surface::repaint(QRect rect) {
+Surface::repaint(QRect rect, bool flash) {
   if (rect.isEmpty()) {
     rect = this->rect();
   }
@@ -144,7 +144,7 @@ Surface::repaint(QRect rect) {
     geometry(),
     Blight::WaveformMode::UI,
     Blight::ContentType::Color,
-    Blight::UpdateMode::PartialUpdate,
+    flash ? Blight::UpdateMode::FullUpdate : Blight::UpdateMode::PartialUpdate,
     0,
     true
   );

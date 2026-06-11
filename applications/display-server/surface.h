@@ -32,7 +32,7 @@ public:
   Blight::surface_id_t identifier() { return m_identifier; }
   bool isValid();
   std::shared_ptr<QImage> image();
-  void repaint(QRect rect = QRect());
+  void repaint(QRect rect = QRect(), bool flash = false);
   int fd();
   const QRect& geometry();
   const QSize size();
