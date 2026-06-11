@@ -21,28 +21,7 @@ LockscreenHookReceiver::onUnlocked() {
   qCDebug(
     loggingCategory
   ) << "xofm::libs::pincode::PasscodeHandler::unlocked() triggered";
-  m_mutex.lock();
-  if (!m_unlockNotified) {
-    m_unlockNotified = true;
-    m_cond.wakeAll();
-  }
-  m_mutex.unlock();
-}
-
-bool
-LockscreenHookReceiver::waitForUnlock() {
-  while (m_passcodeHandler == nullptr) {
-    usleep(1000);
-  }
-  if (!m_passcodeHandler->property("hasPasscode").toBool()) {
-    return waitForHome();
-  }
-  m_mutex.lock();
-  while (!m_unlockNotified) {
-    m_cond.wait(&m_mutex);
-  }
-  m_mutex.unlock();
-  return waitForHome();
+  emit unlocked();
 }
 
 bool
@@ -63,6 +42,69 @@ LockscreenHookReceiver::setPasscodeHandler(QObject* passcodeHandler) {
 }
 
 bool
+LockscreenHookReceiver::hasPasscode() {
+  while (m_passcodeHandler == nullptr) {
+    usleep(1000);
+  }
+  return m_passcodeHandler->property("hasPasscode").toBool();
+}
+
+bool
 LockscreenHookReceiver::waitForHome() {
-  return QProcess::execute("/usr/sbin/wait-for-home") == 0;
+  int res = execute("/usr/sbin/wait-for-home");
+  if (res == 0) {
+    return true;
+  }
+  switch (res) {
+    case -2:
+      qCWarning(loggingCategory) << "wait-for-home failed to start, continuing";
+      break;
+    case -1:
+      qCWarning(loggingCategory) << "wait-for-home crashed, continuing";
+      break;
+    default:
+      qCWarning(loggingCategory)
+        << "wait-for-home had non-zero exit code (" << res << "), continuing";
+      break;
+  }
+  return false;
+}
+
+bool
+LockscreenHookReceiver::waitForHook() {
+  int res = execute("/home/root/.local/share/lockscreen_hook.d/unlock");
+  if (res == 0) {
+    return true;
+  }
+  switch (res) {
+    case -2:
+      qCWarning(loggingCategory) << "Unlock hook failed to start, continuing";
+      break;
+    case -1:
+      qCWarning(loggingCategory) << "Unlock hook crashed, continuing";
+      break;
+    default:
+      qCWarning(loggingCategory)
+        << "Unlock hook had non-zero exit code (" << res << "), continuing";
+      break;
+  }
+  return false;
+}
+
+int
+LockscreenHookReceiver::execute(const QString& executable) {
+  qCDebug(loggingCategory) << "Executing" << executable;
+  QProcess process;
+  process.setProcessChannelMode(QProcess::ForwardedChannels);
+  process.start(executable);
+  if (!process.waitForStarted()) {
+    return -2;
+  }
+  if (!process.waitForFinished()) {
+    return -1;
+  }
+  if (process.exitStatus() == QProcess::CrashExit) {
+    return -1;
+  }
+  return process.exitCode();
 }

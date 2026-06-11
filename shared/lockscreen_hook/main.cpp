@@ -1,9 +1,11 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#include <atomic>
+#include <csignal>
+#include <cstdlib>
 #endif
 #include <cstring>
 #include <dlfcn.h>
-#include <thread>
 #include <unistd.h>
 
 #include <QCoreApplication>
@@ -14,6 +16,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QProcess>
+#include <QTimer>
 
 #include "receiver.h"
 
@@ -22,44 +25,14 @@
 #ifdef DEBUG
 #include <execinfo.h>
 #include <signal.h>
+#include <string.h>
 #include <ucontext.h>
 #endif
 
 #ifdef DEBUG
-void
-__sigsegv_handler(int nSignum, siginfo_t* si, void* vcontext) {
-  Q_UNUSED(nSignum);
-  Q_UNUSED(si);
-  constexpr int depth = 10;
-  auto uc = static_cast<ucontext_t*>(vcontext);
-  void* caller_address =
-#if defined(__arm__)
-    reinterpret_cast<void*>(uc->uc_mcontext.arm_pc);
-#elif defined(__aarch64__)
-    reinterpret_cast<void*>(uc->uc_mcontext.pc);
-#endif
-  void* array[depth];
-  size_t size = backtrace(array, depth);
-  array[1] = caller_address;
-  char** messages = backtrace_symbols(array, size);
-  if (messages != nullptr) {
-    write(STDERR_FILENO, "Segmentation fault:\n", 20);
-    for (size_t i = 1; i < size && messages[i] != nullptr; ++i) {
-      write(STDERR_FILENO, "  ", 2);
-      size_t len = 0;
-      while (messages[i][len])
-        ++len;
-      write(STDERR_FILENO, messages[i], len);
-      write(STDERR_FILENO, "\n", 1);
-    }
-    free(messages);
-  }
-  _Exit(139);
-}
 
 void
-__sigabrt_handler(int nSignum, siginfo_t* si, void* vcontext) {
-  Q_UNUSED(nSignum);
+__signal_handler(int signal, siginfo_t* si, void* vcontext) {
   Q_UNUSED(si);
   constexpr int depth = 10;
   auto uc = static_cast<ucontext_t*>(vcontext);
@@ -72,13 +45,47 @@ __sigabrt_handler(int nSignum, siginfo_t* si, void* vcontext) {
   void* array[depth];
   size_t size = backtrace(array, depth);
   array[1] = caller_address;
-  const char* msg = "Abort (heap corruption suspected):\n";
-  write(STDERR_FILENO, msg, 31);
+  const char* msg = strsignal(signal);
+  ::write(STDERR_FILENO, msg, std::strlen(msg));
+  ::write(STDERR_FILENO, "\n", std::strlen("\n"));
   backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
-  _Exit(134);
+  switch (signal) {
+    case SIGSEGV:
+      _Exit(139);
+    case SIGABRT:
+      _Exit(134);
+    case SIGBUS:
+      _Exit(138);
+    default:
+      _Exit(1);
+  }
 }
 
 #endif
+
+static std::atomic<bool> pendingExit = false;
+static std::atomic<bool> passcodeHandlerHooked = false;
+static std::atomic<bool> disablePoweroffScreen = false;
+
+void
+handle_unlock() {
+  auto* receiver = LockscreenHookReceiver::singleton();
+  if (receiver == nullptr) {
+    return;
+  }
+  if (!receiver->waitForHome()) {
+    return;
+  }
+  if (!receiver->waitForHook()) {
+    return;
+  }
+  qCDebug(loggingCategory) << "Device unlocked, exiting xochitl";
+  disablePoweroffScreen = true;
+  pendingExit = true;
+  // Normally this is not safe to do because of screen updates etc, but at this
+  // point in time nothing is updating on the screen, so exiting quickly is safe
+  _Exit(0);
+}
 
 static void
 hook_PasscodeHandler(QObject* this_ptr) {
@@ -109,29 +116,13 @@ hook_PasscodeHandler(QObject* this_ptr) {
   qCDebug(
     loggingCategory
   ) << "Hooked xofm::libs::pincode::PasscodeHandler::unlocked()";
-  std::thread([receiver]() {
-    receiver->waitForUnlock();
-    qCDebug(loggingCategory) << "Unlock complete, running script";
-    int res =
-      QProcess::execute("/home/root/.local/share/lockscreen_hook.d/unlock");
-    switch (res) {
-      case -2:
-        qCWarning(loggingCategory) << "Unlock hook failed to start, continuing";
-        break;
-      case -1:
-        qCWarning(loggingCategory) << "Unlock hook crashed, continuing";
-        break;
-      case 0:
-        qCDebug(loggingCategory) << "exiting xochitl";
-        qApp->exit(EXIT_SUCCESS);
-        return;
-      default:
-        qCWarning(loggingCategory)
-          << "Unlock hook had non-zero exit code (" << res << "), continuing";
-        break;
-    }
-    disablePoweroffScreen = false;
-  }).detach();
+  if (receiver->hasPasscode()) {
+    QObject::connect(receiver, &LockscreenHookReceiver::unlocked, [] {
+      handle_unlock();
+    });
+    return;
+  }
+  handle_unlock();
 }
 
 extern "C" {
@@ -143,7 +134,7 @@ _ZN7QObjectC2EPS_(QObject* this_ptr, QObject* parent) {
       dlsym(RTLD_NEXT, "_ZN7QObjectC2EPS_")
     );
   constructor(this_ptr, parent);
-  if (passcodeHandlerHooked) {
+  if (passcodeHandlerHooked || pendingExit) {
     return;
   }
   QPointer<QObject> safe(this_ptr);
@@ -165,7 +156,7 @@ _ZN7QObjectC1EPS_(QObject* this_ptr, QObject* parent) {
       dlsym(RTLD_NEXT, "_ZN7QObjectC1EPS_")
     );
   constructor(this_ptr, parent);
-  if (passcodeHandlerHooked) {
+  if (passcodeHandlerHooked || pendingExit) {
     return;
   }
   QPointer<QObject> safe(this_ptr);
@@ -226,10 +217,12 @@ init(void) {
   QLoggingCategory::setFilterRules("lockscreen_hook=true");
   struct sigaction action{};
   action.sa_flags = SA_SIGINFO;
-  action.sa_sigaction = __sigsegv_handler;
+  action.sa_sigaction = __signal_handler;
   sigaction(SIGSEGV, &action, nullptr);
-  action.sa_sigaction = __sigabrt_handler;
+  action.sa_sigaction = __signal_handler;
   sigaction(SIGABRT, &action, nullptr);
+  action.sa_sigaction = __signal_handler;
+  sigaction(SIGBUS, &action, nullptr);
 #endif
 }
 }

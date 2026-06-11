@@ -1,15 +1,10 @@
 #pragma once
-#include <atomic>
 
 #include <QLoggingCategory>
-#include <QMutex>
 #include <QObject>
-#include <QWaitCondition>
+#include <QString>
 
 Q_DECLARE_LOGGING_CATEGORY(loggingCategory);
-
-static std::atomic<bool> passcodeHandlerHooked = false;
-static std::atomic<bool> disablePoweroffScreen = true;
 
 class LockscreenHookReceiver : public QObject {
   Q_OBJECT
@@ -18,17 +13,20 @@ public:
   explicit LockscreenHookReceiver(QObject* parent = nullptr);
   ~LockscreenHookReceiver() override = default;
 
-  bool waitForUnlock();
   bool waitForHome();
+  bool waitForHook();
   bool setPasscodeHandler(QObject* passcodeHandler);
   inline QObject* passcodeHandler() { return m_passcodeHandler; }
+  bool hasPasscode();
 
 public slots:
   void onUnlocked();
 
+signals:
+  void unlocked();
+
 private:
-  QMutex m_mutex;
-  QWaitCondition m_cond;
-  bool m_unlockNotified = false;
   QObject* m_passcodeHandler = nullptr;
+
+  int execute(const QString& executable);
 };
