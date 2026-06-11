@@ -12,6 +12,7 @@ SUBDIRS = \
     process-manager \
     screenshot-viewer \
     settings-manager \
+    sketchpad \
     system-service \
     task-switcher \
     update-desktop-database \
@@ -30,6 +31,7 @@ notify-send.depends = system-service
 process-manager.depends =
 screenshot-viewer.depends = system-service
 settings-manager.depends = system-service
+sketchpad.depends = system-service
 system-service.depends =
 task-switcher.depends = system-service
 update-desktop-database.depends = system-service

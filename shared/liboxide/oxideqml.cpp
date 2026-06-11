@@ -95,14 +95,12 @@ namespace Oxide {
         }
         auto region = m_repainted;
         m_repainted = QRegion();
-        for (QRect rect : region) {
-          repaint(
-            window(),
-            rect,
-            Blight::WaveformMode::Content,
-            Blight::ContentType::Color
-          );
-        }
+        repaint(
+          window(),
+          region.boundingRect(),
+          Blight::WaveformMode::Content,
+          Blight::ContentType::Color
+        );
         emit drawDone();
         m_timerMutex.unlock();
       });

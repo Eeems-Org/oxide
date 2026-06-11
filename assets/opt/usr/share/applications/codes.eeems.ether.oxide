@@ -1,0 +1,9 @@
+{
+    "displayName": "Sketchpad",
+    "description": "A simple drawing application",
+    "icon": "oxide:ether-48",
+    "bin": "/opt/bin/ether",
+    "flags": ["nopreload"],
+    "type": "foreground",
+    "permissions": []
+}

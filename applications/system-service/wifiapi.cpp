@@ -196,11 +196,8 @@ WifiAPI::WifiAPI(QObject* parent)
                         }
                       }
                       for (auto path : wlan->interface()->bSSs()) {
-                        auto ibss = new IBSS(
-                          WPA_SUPPLICANT_SERVICE,
-                          path.path(),
-                          bus
-                        );
+                        auto ibss =
+                          new IBSS(WPA_SUPPLICANT_SERVICE, path.path(), bus);
                         bool found = false;
                         auto bssid = ibss->bSSID();
                         for (auto bss : bsss) {
