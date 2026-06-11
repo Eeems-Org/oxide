@@ -5,6 +5,7 @@
 #include <libblight/clock.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
+#include <liboxide/oxideqml.h>
 #include <liboxide/threading.h>
 #include <mxcfb.h>
 #include <sys/mman.h>
@@ -114,13 +115,7 @@ GUIThread::GUIThread(QRect screenGeometry)
   if (m_frameBuffer->fd == -1) {
     qFatal("Failed to open framebuffer");
   }
-  m_frameBufferImage = QImage(
-    m_frameBuffer->data,
-    m_frameBuffer->width,
-    m_frameBuffer->height,
-    m_frameBuffer->stride,
-    (QImage::Format)m_frameBuffer->format
-  );
+  m_frameBufferImage = Oxide::QML::getImageForSurface(m_frameBuffer);
   moveToThread(this);
 }
 

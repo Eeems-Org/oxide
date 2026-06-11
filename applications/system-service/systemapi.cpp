@@ -92,12 +92,13 @@ SystemAPI::PrepareForSleep(bool suspending) {
             } else {
               QPoint center(rect.width() / 2, rect.height() / 2);
               painter.translate(center);
-              painter.scale(
-                1 * (rect.width() / qreal(img.height())),
-                1 * (rect.width() / qreal(img.height()))
+              qreal scale = qMin(
+                rect.width() / qreal(img.width()),
+                rect.height() / qreal(img.height())
               );
-              painter.translate(0 - img.width() / 2, 0 - img.height() / 2);
-              painter.drawPixmap(img.rect(), QPixmap::fromImage(img));
+              painter.scale(scale, scale);
+              painter.translate(-img.width() / 2, -img.height() / 2);
+              painter.drawImage(QPoint(0, 0), img);
               painter.end();
             }
             addSystemBuffer(m_buffer);
@@ -109,7 +110,6 @@ SystemAPI::PrepareForSleep(bool suspending) {
               Blight::ContentType::Color,
               Blight::UpdateMode::FullUpdate
             );
-            Blight::waitForNoRepaints();
           }
         );
         Oxide::Sentry::sentry_span(t, "prepare", "Prepare for suspend", [this] {
@@ -749,7 +749,6 @@ SystemAPI::suspend() {
     return;
   }
   O_INFO("Requesting Suspend...");
-  QProcess::execute("csl", QStringList() << "power" << "-s" << "run");
   systemd->Suspend(false).waitForFinished();
   O_INFO("Suspend requested.");
 }
