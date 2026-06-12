@@ -804,6 +804,7 @@ SystemAPI::inhibitSleep(QDBusMessage message) {
   if (!sleepInhibited()) {
     emit sleepInhibitedChanged(true);
   }
+  O_DEBUG("Inhibiting sleep");
   suspendTimer.stop();
   sleepInhibitors.append(message.service());
   inhibitors.append(Inhibitor(
@@ -820,6 +821,7 @@ SystemAPI::uninhibitSleep(QDBusMessage message) {
   if (!sleepInhibited()) {
     return;
   }
+  O_DEBUG("Uninhibiting sleep");
   sleepInhibitors.removeAll(message.service());
   if (
     !sleepInhibited() && autoSleep() &&
@@ -843,6 +845,7 @@ SystemAPI::inhibitPowerOff(QDBusMessage message) {
   if (!powerOffInhibited()) {
     emit powerOffInhibitedChanged(true);
   }
+  O_DEBUG("Inhibiting poweroff");
   powerOffInhibitors.append(message.service());
   inhibitors.append(Inhibitor(
     systemd,
@@ -858,6 +861,7 @@ SystemAPI::uninhibitPowerOff(QDBusMessage message) {
   if (!powerOffInhibited()) {
     return;
   }
+  O_DEBUG("Uninhibiting poweroff");
   powerOffInhibitors.removeAll(message.service());
   if (!powerOffInhibited()) {
     emit powerOffInhibitedChanged(false);
@@ -964,9 +968,21 @@ Inhibitor::Inhibitor(
   , what(what)
   , why(why)
   , block(block) {
+  O_DEBUG("Inhibiting" << what);
   QDBusUnixFileDescriptor reply =
     systemd->Inhibit(what, who, why, block ? "block" : "delay");
-  fd = reply.takeFileDescriptor();
+  if (reply.isValid()) {
+    fd = reply.takeFileDescriptor();
+    return;
+  }
+  QDBusError error = systemd->lastError();
+  if (error.isValid()) {
+    O_WARNING(
+      "Failed to inhibit" << what << ":" << error.name() << error.message()
+    );
+  } else {
+    O_WARNING("Failed to inhibit" << what << ": invalid reply");
+  }
 }
 
 void
@@ -974,6 +990,7 @@ Inhibitor::release() {
   if (released()) {
     return;
   }
+  O_DEBUG("Uninhibiting" << what);
   close(fd);
   fd = -1;
 }
