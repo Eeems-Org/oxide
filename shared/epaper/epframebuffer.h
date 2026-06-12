@@ -208,16 +208,24 @@ public:
    * deferred-update behaviour.
    */
   enum GhostControlMode {
-    BlinkNow = 0,     //!< Show pending content immediately.
-    BlinkLater = 1,   //!< Hide content and defer ghost removal.
-    BleachNow = 2,    //!< Acep2-only: run a bleach/animation pass.
-    FactoryReset = 3, //!< Flash/clear to white (factory-reset blink on Acep2).
+    BlinkNow = 0,   //!< Show pending content immediately.
+    BlinkLater = 1, //!< Hide content and defer ghost removal.
+#if defined(__aarch64__)
+    BleachNow = 2, //!< Run a bleach/animation pass.
+#endif
+    FactoryReset = 3, //!< Full-screen clear / factory reset blink
   };
 
   /*!
    * \brief Show, hide or clear ghosted content on the display.
    *
    * \param mode  The ghost-control action to perform.
+   *
+   * Behaviour per mode on each platform:
+   *   BlinkNow    – full-screen swapBuffers (both ARM32 and Acep2).
+   *   BlinkLater  – defer the pending update flag (both platforms).
+   *   BleachNow   – run a bleach/animation pass (Acep2 only, no-op on ARM32).
+   *   FactoryReset– full-screen swap on ARM32; factory-reset blink on Acep2.
    */
   void ghostControl(GhostControlMode mode);
 

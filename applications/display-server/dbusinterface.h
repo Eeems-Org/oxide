@@ -14,6 +14,10 @@
 #include <memory>
 #include <tuple>
 
+#ifdef EPAPER
+#include <epframebuffer.h>
+#endif
+
 #include "connection.h"
 
 // Use direct values to make sure that cpp2xml works
@@ -97,6 +101,7 @@ public slots:
   void raise(QString identifier, QDBusMessage message);
   void focus(QString identifier, QDBusMessage message);
   void waitForNoRepaints(QDBusMessage message);
+  void ghostControl(int mode, QDBusMessage message);
   void enterExclusiveMode(QDBusMessage message);
   void exitExclusiveMode(QDBusMessage message);
   void exclusiveModeRepaint(

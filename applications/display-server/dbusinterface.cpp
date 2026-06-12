@@ -21,9 +21,6 @@
 #include "connection.h"
 #include "evdevhandler.h"
 #include "guithread.h"
-#ifdef EPAPER
-#include <epframebuffer.h>
-#endif
 
 DbusInterface::DbusInterface(QObject* parent)
   : QObject(parent)
@@ -507,6 +504,22 @@ DbusInterface::waitForNoRepaints(QDBusMessage message) {
     connect(guiThread, &GUIThread::settled, &loop, &QEventLoop::quit);
     loop.exec();
   }
+#endif
+}
+
+void
+DbusInterface::ghostControl(int mode, QDBusMessage message) {
+  auto connection = getConnection(message);
+  if (connection == nullptr) {
+    sendErrorReply(
+      QDBusError::AccessDenied, "You must first open a connection"
+    );
+    return;
+  }
+#ifdef EPAPER
+  EPFramebuffer::instance()->ghostControl(
+    (EPFramebuffer::GhostControlMode)mode
+  );
 #endif
 }
 

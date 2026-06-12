@@ -62,6 +62,9 @@
     </method>
     <method name="waitForNoRepaints">
     </method>
+    <method name="ghostControl">
+      <arg name="mode" type="i" direction="in"/>
+    </method>
     <method name="enterExclusiveMode">
     </method>
     <method name="exitExclusiveMode">

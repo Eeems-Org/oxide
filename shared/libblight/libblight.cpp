@@ -503,4 +503,25 @@ namespace Blight {
     }
     return true;
   }
+
+  bool ghostControl(GhostControlMode mode) {
+    if (!exists()) {
+      errno = EAGAIN;
+      return false;
+    }
+    _DEBUG("[Blight::ghostControl(%d)]", mode);
+    auto reply = dbus->call_method(
+      BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "ghostControl", "i", mode
+    );
+    if (reply->isError()) {
+      _WARN(
+        "[Blight::ghostControl(%d)::call_method(...)] Error: %s",
+        mode,
+        reply->error_message().c_str()
+      );
+      errno = reply->return_value;
+      return false;
+    }
+    return true;
+  }
 } // namespace Blight

@@ -115,6 +115,18 @@ namespace BlightProtocol {
   } BlightUpdateMode;
 
   /*!
+   * \brief Waveform to use for a repaint
+   */
+  typedef enum {
+    BlinkNow = 0,   //!< Show pending content immediately.
+    BlinkLater = 1, //!< Hide content and defer ghost removal.
+#ifdef __aarch64__
+    BleachNow = 2, //!< Run a bleach/animation pass.
+#endif
+    FactoryReset = 3, //!< Full-screen clear / factory reset blink
+  } BlightGhostControlMode;
+
+  /*!
    * \brief Size type used by the protocol
    */
   typedef uint32_t blight_size_t;
@@ -329,6 +341,7 @@ namespace BlightProtocol {
 #define BlightWaveformMode BlightProtocol::BlightWaveformMode
 #define BlightContentType BlightProtocol::BlightContentType
 #define BlightUpdateMode BlightProtocol::BlightUpdateMode
+#define BlightGhostControlMode BlightProtocol::BlightGhostControlMode
 extern "C" {
 #endif
 typedef sd_bus blight_bus;
@@ -731,5 +744,6 @@ blight_focus(int fd);
 #undef BlightWaveformMode
 #undef BlightContentType
 #undef BlightUpdateMode
+#undef BlightGhostControlMode
 #endif
 /*! @} */

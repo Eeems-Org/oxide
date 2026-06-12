@@ -39,6 +39,20 @@ __attribute__((visibility("default"))) void
 hook_syncAfterUpdate(void* this_ptr);
 
 __attribute__((visibility("default"))) void
+_ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
+  void* this_ptr,
+  int mode
+);
+
+#if defined(__aarch64__)
+__attribute__((visibility("default"))) void
+_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
+  void* this_ptr,
+  int mode
+);
+#endif
+
+__attribute__((visibility("default"))) void
 _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   void* this_ptr,
   Qt::QRectLayout rect,

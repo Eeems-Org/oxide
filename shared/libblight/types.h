@@ -32,6 +32,10 @@ namespace Blight {
    */
   using UpdateMode = BlightProtocol::BlightUpdateMode;
   /*!
+   * \brief Ghost control mode
+   */
+  using GhostControlMode = BlightProtocol::BlightGhostControlMode;
+  /*!
    * \brief Size type
    */
   typedef BlightProtocol::blight_size_t size_t;

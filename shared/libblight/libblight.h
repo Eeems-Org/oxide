@@ -158,5 +158,11 @@ namespace Blight {
    * \retval false call failed
    */
   LIBBLIGHT_EXPORT bool waitForNoRepaints();
+  /*!
+   * \brief Do ghost control
+   * \return If the call succeeded or not
+   * \retval false call failed
+   */
+  LIBBLIGHT_EXPORT bool ghostControl(GhostControlMode mode);
 } // namespace Blight
 /*! @} */
