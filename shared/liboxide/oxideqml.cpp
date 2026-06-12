@@ -85,7 +85,8 @@ namespace Oxide {
       , m_brush{Qt::black}
       , m_penWidth{6}
       , m_repainted{}
-      , m_finalizeTimer(this) {
+      , m_finalizeTimer(this)
+      , m_ghostControlTimer(this) {
       setAcceptedMouseButtons(Qt::AllButtons);
       m_drawn = QImage(width(), height(), QImage::Format_ARGB32_Premultiplied);
       m_drawn.fill(Qt::transparent);
@@ -99,12 +100,31 @@ namespace Oxide {
           window(),
           region.boundingRect(),
           Blight::WaveformMode::Content,
-          Blight::ContentType::Color
+          Blight::ContentType::Color,
+          Blight::UpdateMode::PartialUpdate,
+          true
+        );
+        emit drawDone();
+        m_ghostControlTimer.start(5000);
+        m_timerMutex.unlock();
+      });
+      m_finalizeTimer.setSingleShot(true);
+      m_ghostControlTimer.callOnTimeout(this, [this] {
+        if (!m_timerMutex.try_lock()) {
+          return;
+        }
+        repaint(
+          window(),
+          boundingRect(),
+          Blight::WaveformMode::Content,
+          Blight::ContentType::Color,
+          Blight::UpdateMode::FullUpdate,
+          true
         );
         emit drawDone();
         m_timerMutex.unlock();
       });
-      m_finalizeTimer.setSingleShot(true);
+      m_ghostControlTimer.setSingleShot(true);
     }
 
     void Canvas::paint(QPainter* painter) {

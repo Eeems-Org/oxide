@@ -271,6 +271,7 @@ namespace Oxide {
       QRegion m_repainted;
       QRegion m_pending;
       QTimer m_finalizeTimer;
+      QTimer m_ghostControlTimer;
       Blight::ClockWatch m_LastPaint;
       std::mutex m_timerMutex;
       void applyPending();
