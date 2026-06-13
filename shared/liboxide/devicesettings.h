@@ -81,6 +81,46 @@ namespace Oxide {
      */
     int getTouchHeight() const;
     /*!
+     * \brief Get the max pressure for pen input on the device
+     * \return Max pressure for pen input
+     */
+    int getPenPressure() const;
+    /*!
+     * \brief Get the max width for pen input on the device
+     * \return Max width for pen input
+     */
+    int getPenWidth() const;
+    /*!
+     * \brief Get the max height for pen input on the device
+     * \return Max height for pen input
+     */
+    int getPenHeight() const;
+    /*!
+     * \brief Get the max distance from the screen for pen input on the device
+     * \return Max distance from the screen for pen input
+     */
+    int getPenDistance() const;
+    /*!
+     * \brief Get the min x tilt for pen input on the device
+     * \return Min x tilt for pen input
+     */
+    int getPenMinTiltX() const;
+    /*!
+     * \brief Get the max x tilt for pen input on the device
+     * \return Max x tilt for pen input
+     */
+    int getPenMaxTiltX() const;
+    /*!
+     * \brief Get the min y tilt for pen input on the device
+     * \return Min y tilt for pen input
+     */
+    int getPenMinTiltY() const;
+    /*!
+     * \brief Get the max y tilt for pen input on the device
+     * \return Max y tilt for pen input
+     */
+    int getPenMaxTiltY() const;
+    /*!
      * \brief Get the device screen's resolution's width
      * \return Screen resolution's width
      */

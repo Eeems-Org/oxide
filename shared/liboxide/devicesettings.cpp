@@ -207,6 +207,116 @@ namespace Oxide {
     }
   }
 
+  int DeviceSettings::getPenPressure() const {
+    switch (getDeviceType()) {
+      case DeviceType::RM1:
+      case DeviceType::RM2:
+        return 4095;
+      case DeviceType::RMPP:
+      case DeviceType::RMPPM:
+      case DeviceType::RMPPURE:
+        return 4096;
+      default:
+        return 0;
+    }
+  }
+  int DeviceSettings::getPenWidth() const {
+    switch (getDeviceType()) {
+      case DeviceType::RM1:
+      case DeviceType::RM2:
+        return 20967;
+      case DeviceType::RMPP:
+        return 11180;
+      case DeviceType::RMPPM:
+        return 6760;
+      case DeviceType::RMPPURE:
+        return 13000;
+      default:
+        return 0;
+    }
+  }
+  int DeviceSettings::getPenHeight() const {
+    switch (getDeviceType()) {
+      case DeviceType::RM1:
+      case DeviceType::RM2:
+        return 15725;
+      case DeviceType::RMPP:
+        return 15340;
+      case DeviceType::RMPPM:
+        return 11960;
+      case DeviceType::RMPPURE:
+        return 2400;
+      default:
+        return 0;
+    }
+  }
+
+  int DeviceSettings::getPenDistance() const {
+    switch (getDeviceType()) {
+      case DeviceType::RM1:
+      case DeviceType::RM2:
+        return 255;
+      case DeviceType::RMPP:
+      case DeviceType::RMPPM:
+      case DeviceType::RMPPURE:
+        return 65535;
+      default:
+        return 0;
+    }
+  }
+
+  int DeviceSettings::getPenMinTiltX() const {
+    switch (getDeviceType()) {
+      case DeviceType::RM1:
+      case DeviceType::RM2:
+      case DeviceType::RMPP:
+      case DeviceType::RMPPM:
+      case DeviceType::RMPPURE:
+        return -9000;
+      default:
+        return 0;
+    }
+  }
+
+  int DeviceSettings::getPenMaxTiltX() const {
+    switch (getDeviceType()) {
+      case DeviceType::RM2:
+      case DeviceType::RM1:
+      case DeviceType::RMPP:
+      case DeviceType::RMPPM:
+      case DeviceType::RMPPURE:
+        return 9000;
+      default:
+        return 0;
+    }
+  }
+
+  int DeviceSettings::getPenMinTiltY() const {
+    switch (getDeviceType()) {
+      case DeviceType::RM1:
+      case DeviceType::RM2:
+      case DeviceType::RMPP:
+      case DeviceType::RMPPM:
+      case DeviceType::RMPPURE:
+        return -9000;
+      default:
+        return 0;
+    }
+  }
+
+  int DeviceSettings::getPenMaxTiltY() const {
+    switch (getDeviceType()) {
+      case DeviceType::RM1:
+      case DeviceType::RM2:
+      case DeviceType::RMPP:
+      case DeviceType::RMPPM:
+      case DeviceType::RMPPURE:
+        return 9000;
+      default:
+        return 0;
+    }
+  }
+
   int DeviceSettings::getScreenWidth() const {
     switch (getDeviceType()) {
       case DeviceType::RM1:
