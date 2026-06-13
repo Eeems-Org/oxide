@@ -8,10 +8,16 @@
 #include "oxideeventhandler.h"
 #include "private/qdevicediscovery_p.h"
 
+#define THREADED_INPUT
+#ifdef THREADED_INPUT
+#include <QThread>
+#endif
+
 class OxideEventManager : public QObject {
   Q_OBJECT
 public:
   OxideEventManager(const QStringList& parameters);
+  ~OxideEventManager();
 
 private slots:
   void
@@ -26,5 +32,8 @@ private:
     QInputDeviceManager::DeviceType publicType
   );
   QMap<QInputDeviceManager::DeviceType, QStringList> m_devices;
-  OxideEventHandler m_handler;
+  OxideEventHandler* m_handler = nullptr;
+#ifdef THREADED_INPUT
+  QThread* m_thread = nullptr;
+#endif
 };

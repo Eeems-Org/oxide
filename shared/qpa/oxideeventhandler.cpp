@@ -289,7 +289,14 @@ OxideEventHandler::OxideEventHandler(
   );
 }
 
-OxideEventHandler::~OxideEventHandler() {}
+OxideEventHandler::~OxideEventHandler() {
+    if (m_fd < 0) {
+        return;
+    }
+    m_notifier->setEnabled(false);
+    ::close(m_fd);
+    m_fd = -1;
+}
 
 void
 OxideEventHandler::add(
@@ -317,8 +324,11 @@ void
 OxideEventHandler::readyRead() {
   Q_ASSERT(thread() == QThread::currentThread());
   m_notifier->setEnabled(false);
+  if (m_fd < 0) {
+    return;
+  }
   auto connection = Blight::connection();
-  while (true) {
+  while (!thread()->isInterruptionRequested()) {
     auto maybe = connection->read_event();
     if (!maybe.has_value()) {
       if (errno != EAGAIN && errno != EINTR) {
@@ -349,8 +359,9 @@ OxideEventHandler::readyRead() {
       default:
         continue;
     }
+    QWindowSystemInterface::flushWindowSystemEvents();
   }
-  m_notifier->setEnabled(true);
+  m_notifier->setEnabled(!thread()->isInterruptionRequested());
 }
 
 void

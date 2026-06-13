@@ -127,6 +127,10 @@ namespace Oxide {
       m_ghostControlTimer.setSingleShot(true);
     }
 
+    Canvas::~Canvas() {
+      m_ghostControlTimer.stop();
+    }
+
     void Canvas::paint(QPainter* painter) {
       painter->drawImage(boundingRect(), m_drawn);
     }

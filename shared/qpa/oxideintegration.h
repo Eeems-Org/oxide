@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <QPointer>
 
+#include "oxideeventhandler.h"
 #include "oxidescreen.h"
 
 QT_BEGIN_NAMESPACE
@@ -85,6 +86,7 @@ private:
   QPointer<QMimeData> m_clipboard;
   QPointer<QMimeData> m_selection;
 #endif
+  OxideEventManager* m_eventManager = nullptr;
   Options m_options;
   bool m_debug;
   QMutex m_mutex;

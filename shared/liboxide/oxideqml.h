@@ -201,6 +201,7 @@ namespace Oxide {
        * \param parent Parent widget
        */
       Canvas(QQuickItem* parent = nullptr);
+      ~Canvas();
       void paint(QPainter* painter) override;
       /*!
        * \brief Current brush used when drawing

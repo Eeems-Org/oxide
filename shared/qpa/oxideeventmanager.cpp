@@ -6,24 +6,22 @@
 #include <QDebug>
 #include <QFileInfo>
 
-#define THREADED_INPUT
 #ifdef THREADED_INPUT
-#include <QThread>
 #include <liboxide/threading.h>
 #endif
 
 OxideEventManager::OxideEventManager(const QStringList& parameters)
   : QObject()
   , m_devices()
-  , m_handler(this, parameters) {
+  , m_handler(new OxideEventHandler(this, parameters)) {
 #ifdef THREADED_INPUT
-  auto thread = new QThread();
-  thread->setObjectName("OxideInput");
-  thread->moveToThread(thread);
-  Oxide::startThreadWithPriority(thread, QThread::HighestPriority);
-  moveToThread(thread);
-  m_handler.moveToThread(thread);
-  Oxide::runLater(thread, [this]() {
+  m_thread = new QThread();
+  m_thread->setObjectName("OxideInput");
+  m_thread->moveToThread(m_thread);
+  Oxide::startThreadWithPriority(m_thread, QThread::HighestPriority);
+  moveToThread(m_thread);
+  m_handler->moveToThread(m_thread);
+  Oxide::runLater(m_thread, [this]() {
 #endif
     setup(
       QDeviceDiscovery::Device_Tablet, QInputDeviceManager::DeviceTypeTablet
@@ -40,6 +38,16 @@ OxideEventManager::OxideEventManager(const QStringList& parameters)
     );
 #ifdef THREADED_INPUT
   });
+#endif
+}
+
+OxideEventManager::~OxideEventManager() {
+#ifdef THREADED_INPUT
+  if (m_thread && m_thread->isRunning()) {
+    m_thread->requestInterruption();
+    m_handler->deleteLater();
+    m_thread->quit();
+  }
 #endif
 }
 
@@ -83,7 +91,7 @@ OxideEventManager::deviceDetected(
     type, m_devices[type].count()
   );
   auto number = QStringView(QFileInfo(device).baseName()).mid(5).toInt();
-  m_handler.add(number, type);
+  m_handler->add(number, type);
 }
 
 void
@@ -97,5 +105,5 @@ OxideEventManager::deviceRemoved(
     type, m_devices[type].count()
   );
   auto number = QStringView(QFileInfo(device).baseName()).mid(5).toInt();
-  m_handler.remove(number, type);
+  m_handler->remove(number, type);
 }

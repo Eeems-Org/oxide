@@ -268,5 +268,7 @@ main(int argc, char* argv[]) {
   notification->setProperty("notificationVisible", true);
   notification->raise();
   app.setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents, false);
-  return app.exec();
+  int res = app.exec();
+  O_INFO("Exit:" << res);
+  return res;
 }

@@ -127,7 +127,14 @@ OxideIntegration::initialize() {
   QWindowSystemInterface::handleScreenAdded(m_primaryScreen, true);
   qApp->installEventFilter(new OxideEventFilter(qApp));
   m_inputContext = QPlatformInputContextFactory::create();
-  new OxideEventManager(m_parameters);
+  m_eventManager = new OxideEventManager(m_parameters);
+  connect(qApp, &QGuiApplication::aboutToQuit, [this] {
+    if (m_eventManager == nullptr) {
+      return;
+    }
+    delete m_eventManager;
+    m_eventManager = nullptr;
+  });
 #ifndef QT_NO_CLIPBOARD
   auto compositor = new Compositor(
     BLIGHT_SERVICE,
@@ -165,6 +172,10 @@ OxideIntegration::destroy() {
     qDebug() << "OxideIntegration::destroy";
   }
   QWindowSystemInterface::handleScreenRemoved(m_primaryScreen);
+  if (m_eventManager != nullptr) {
+    m_eventManager->deleteLater();
+    m_eventManager = nullptr;
+  }
 }
 
 void
