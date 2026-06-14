@@ -85,6 +85,13 @@ namespace Client {
     static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RM1") != nullptr;
     return enabled;
   }
+  bool isFakeRM1Name() {
+    if (isFakeRM1()) {
+      return true;
+    }
+    static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RM1_NAME") != nullptr;
+    return enabled;
+  }
   bool isFakeRM1Fb() {
     if (isFakeRM1()) {
       return true;

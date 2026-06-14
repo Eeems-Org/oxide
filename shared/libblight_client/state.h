@@ -22,6 +22,7 @@ namespace Client {
   bool isPowerButtonEnabled();
   bool isDumpFb();
   bool isFakeRM1();
+  bool isFakeRM1Name();
   bool isFakeRM1Fb();
   bool forceRGB16();
   bool isRM2FBAllowed();

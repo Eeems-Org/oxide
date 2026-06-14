@@ -95,7 +95,7 @@ namespace {
       Client::realpath(pathname, actualpath);
     }
     int res = -2;
-    if (Client::isFakeRM1() && actualpath == "/sys/devices/soc0/machine") {
+    if (Client::isFakeRM1Name() && actualpath == "/sys/devices/soc0/machine") {
       int fd = memfd_create("machine", MFD_ALLOW_SEALING);
       std::string data("reMarkable 1.0");
       // Don't include trailing null
