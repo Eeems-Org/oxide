@@ -7,6 +7,7 @@
 #include <cstring>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <string>
 #include <sys/mman.h>
 #include <vector>
@@ -549,6 +550,23 @@ namespace FB {
         return 32;
     }
   }
+  double deviceScale() {
+    if (Client::isFakeRM1Fb()) {
+      switch (Client::deviceType) {
+        case Client::DeviceType::RM1:
+        case Client::DeviceType::RM2:
+        case Client::DeviceType::RMPPURE:
+          return 1.0;
+        case Client::DeviceType::RMPP:
+          return 1.153846;
+        case Client::DeviceType::RMPPM:
+          return 0.6795;
+        default:
+          _WARN("Unknown device type, unable to scale rM1 screen to fit");
+          return 1.0;
+      }
+    }
+  }
   int createBuffer() {
     if (!Client::isFbEnabled()) {
       if (frameBuffer < 0) {
@@ -585,6 +603,11 @@ namespace FB {
       _CRIT("FB::deviceStride() returned 0");
       std::_Exit(EXIT_FAILURE);
     }
+    double scale = deviceScale();
+    if (scale == 0) {
+      _CRIT("FB::deviceScale() returned 0");
+      std::_Exit(EXIT_FAILURE);
+    }
     _DEBUG("Checking existing surfaces for buffer");
     for (auto& identifier : connection->surfaces()) {
       _DEBUG("Checking buffer for surface %s", identifier);
@@ -601,17 +624,18 @@ namespace FB {
         surfaceBuffer->x != 0 || surfaceBuffer->y != 0 ||
         surfaceBuffer->width != width || surfaceBuffer->height != height ||
         static_cast<unsigned int>(surfaceBuffer->stride) != stride ||
-        surfaceBuffer->format != format
+        surfaceBuffer->format != format || surfaceBuffer->scale != scale
       ) {
         _DEBUG(
-          "Buffer for surface %s does not match: (%d,%d) %dx%d %dbytes %d",
+          "Buffer for surface %s does not match: (%d,%d) %dx%d %dbytes %d %f",
           identifier,
           surfaceBuffer->x,
           surfaceBuffer->y,
           surfaceBuffer->width,
           surfaceBuffer->height,
           surfaceBuffer->stride,
-          surfaceBuffer->format
+          surfaceBuffer->format,
+          surfaceBuffer->scale
         );
         continue;
       }
@@ -633,6 +657,7 @@ namespace FB {
         .height = height,
         .stride = static_cast<int>(stride),
         .format = format,
+        .scale = 1.0,
         .data = nullptr,
         .uuid = Blight::buf_t::new_uuid(),
         .surface = 0
@@ -676,7 +701,8 @@ namespace FB {
       buf->data = reinterpret_cast<Blight::data_t>(data);
       buffer = Blight::shared_buf_t(buf);
     } else {
-      auto maybe = Blight::createBuffer(0, 0, width, height, stride, format);
+      auto maybe =
+        Blight::createBuffer(0, 0, width, height, stride, format, scale);
       if (!maybe.has_value()) {
         _CRIT(
           "Blight::createBuffer(0, 0, %d, %d, %d, %d) failed: %s",
@@ -684,6 +710,7 @@ namespace FB {
           height,
           stride,
           format,
+          scale,
           std::strerror(errno)
         );
         std::_Exit(errno);
@@ -712,6 +739,13 @@ namespace FB {
     bool wait
   ) {
     if (!Client::isFbEnabled()) {
+      if (Client::isFakeRM1Fb()) {
+        double scale = deviceScale();
+        x *= scale;
+        y *= scale;
+        width *= scale;
+        height *= scale;
+      }
       Blight::exclusiveModeRepaint(x, y, width, height, waveform, updateMode);
       if (wait) {
         Blight::waitForNoRepaints();

@@ -152,16 +152,18 @@ namespace Blight {
     unsigned int width,
     unsigned int height,
     int stride,
-    Format format
+    Format format,
+    double scale
   ) {
     _DEBUG(
-      "[Blight::createBuffer(%d, %d, %u, %u, %d, %d)]",
+      "[Blight::createBuffer(%d, %d, %u, %u, %d, %d, %f)]",
       x,
       y,
       width,
       height,
       stride,
-      format
+      format,
+      scale
     );
     auto buf = new buf_t{
       .fd = -1,
@@ -171,6 +173,7 @@ namespace Blight {
       .height = height,
       .stride = stride,
       .format = format,
+      .scale = scale,
       .data = nullptr,
       .uuid = buf_t::new_uuid(),
       .surface = 0
@@ -222,7 +225,8 @@ namespace Blight {
     unsigned int width,
     unsigned int height,
     int stride,
-    Format format
+    Format format,
+    double scale
   ) {
     if (!exists()) {
       errno = EAGAIN;
@@ -242,14 +246,15 @@ namespace Blight {
       "/",
       BLIGHT_INTERFACE,
       "addSurface",
-      "hiiiiii",
+      "hiiiiiid",
       fd,
       x,
       y,
       width,
       height,
       stride,
-      format
+      format,
+      scale
     );
     if (reply->isError()) {
       _WARN(

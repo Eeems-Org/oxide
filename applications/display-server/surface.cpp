@@ -21,15 +21,18 @@ Surface::Surface(
   Blight::surface_id_t identifier,
   QRect geometry,
   int stride,
-  QImage::Format format
+  QImage::Format format,
+  double scale
 )
   : QObject()
   , m_identifier{identifier}
   , m_geometry(geometry)
+  , m_geometryScaled(QRect(geometry.topLeft(), geometry.size() * 2))
   , m_stride(stride)
   , m_format(format)
   , m_fd{fd}
-  , m_removed{false} {
+  , m_removed{false}
+  , m_scale{scale} {
   m_connection = dbusInterface->getConnection(connection);
   if (m_connection == nullptr) {
     S_WARNING("Failed to get shared pointer to connection");
@@ -160,17 +163,37 @@ Surface::fd() {
 
 const QRect&
 Surface::geometry() {
+  return m_geometryScaled;
+}
+
+const QRect&
+Surface::rawGeometry() {
   return m_geometry;
 }
 
 const QSize
 Surface::size() {
+  return m_geometryScaled.size();
+}
+
+const QSize
+Surface::rawSize() {
   return m_geometry.size();
 }
 
 const QRect
 Surface::rect() {
   return QRect(QPoint(0, 0), size());
+}
+
+const QRect
+Surface::rawRect() {
+  return QRect(QPoint(0, 0), rawSize());
+}
+
+double
+Surface::scale() {
+  return m_scale;
 }
 
 int

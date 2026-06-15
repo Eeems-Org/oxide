@@ -25,7 +25,8 @@ public:
     Blight::surface_id_t identifier,
     QRect geometry,
     int stride,
-    QImage::Format format
+    QImage::Format format,
+    double scale
   );
   ~Surface();
   QString id();
@@ -35,8 +36,12 @@ public:
   void repaint(QRect rect = QRect(), bool flash = false);
   int fd();
   const QRect& geometry();
+  const QRect& rawGeometry();
   const QSize size();
+  const QSize rawSize();
   const QRect rect();
+  const QRect rawRect();
+  double scale();
   int stride();
   QImage::Format format();
   void move(int x, int y);
@@ -63,6 +68,7 @@ private:
   std::shared_ptr<Connection> m_connection;
   Blight::surface_id_t m_identifier;
   QRect m_geometry;
+  QRect m_geometryScaled;
   int m_stride;
   QImage::Format m_format;
   int m_fd;
@@ -74,4 +80,5 @@ private:
   QString m_id;
   QStringList flags;
   bool m_removed;
+  double m_scale;
 };

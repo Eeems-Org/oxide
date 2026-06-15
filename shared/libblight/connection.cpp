@@ -264,8 +264,9 @@ namespace Blight {
       errno = EINVAL;
       return {};
     }
-    auto res =
-      Blight::createBuffer(buf->x, buf->y, width, height, stride, buf->format);
+    auto res = Blight::createBuffer(
+      buf->x, buf->y, width, height, stride, buf->format, buf->scale
+    );
     if (!res.has_value()) {
       return {};
     }

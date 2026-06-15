@@ -452,7 +452,8 @@ blight_create_buffer(
   unsigned int width,
   unsigned int height,
   unsigned int stride,
-  BlightImageFormat format
+  BlightImageFormat format,
+  double scale
 ) {
   if (stride == 0 || width == 0 || height == 0) {
     errno = EOVERFLOW;
@@ -499,6 +500,7 @@ blight_create_buffer(
     .height = height,
     .stride = stride,
     .format = format,
+    .scale = scale,
     .data = (blight_data_t)data
   };
 }
@@ -536,14 +538,15 @@ blight_add_surface(blight_bus* bus, blight_buf_t* buf) {
     "addSurface",
     &error,
     &message,
-    "hiiiiii",
+    "hiiiiiid",
     buf->fd,
     buf->x,
     buf->y,
     buf->width,
     buf->height,
     buf->stride,
-    buf->format
+    buf->format,
+    buf->scale
   );
   if (res < 0) {
     _WARN(

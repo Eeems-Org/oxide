@@ -93,6 +93,8 @@ namespace Blight {
    * \param height Height of the buffer
    * \param stride Bytes per line in the buffer
    * \param format Format of the buffer
+   * \param scale Scale for a surface created from this buffer. This only
+   *              affects width/height of the surface, not the x/y.
    * \return The new buffer
    */
   LIBBLIGHT_EXPORT std::optional<shared_buf_t> createBuffer(
@@ -101,7 +103,8 @@ namespace Blight {
     unsigned int width,
     unsigned int height,
     int stride,
-    Format format
+    Format format,
+    double scale
   );
   /*!
    * \brief Add a new surface to the display server
@@ -121,7 +124,8 @@ namespace Blight {
     unsigned int width,
     unsigned int height,
     int stride,
-    Format format
+    Format format,
+    double scale = 1.0
   );
   /*!
    * \brief Add a new surface to the display server
@@ -135,7 +139,8 @@ namespace Blight {
                      buf->width,
                      buf->height,
                      buf->stride,
-                     buf->format
+                     buf->format,
+                     buf->scale
     )
                      .value_or(0);
   }

@@ -197,6 +197,7 @@ DbusInterface::addSurface(
   int height,
   int stride,
   int format,
+  double scale,
   QDBusMessage message
 ) {
   if (!fd.isValid()) {
@@ -218,7 +219,7 @@ DbusInterface::addSurface(
     return 0;
   }
   auto surface = connection->addSurface(
-    dfd, QRect(x, y, width, height), stride, (QImage::Format)format
+    dfd, QRect(x, y, width, height), stride, (QImage::Format)format, scale
   );
   if (surface == nullptr) {
     sendErrorReply(QDBusError::InternalError, "Unable to create surface");

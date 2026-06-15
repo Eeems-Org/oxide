@@ -89,7 +89,8 @@ main(int argc, char* argv[]) {
       geometry.width(),
       geometry.height(),
       blankImage.bytesPerLine(),
-      Blight::Format::Format_RGB16
+      Blight::Format::Format_RGB16,
+      1.0
     );
     if (!maybe.has_value()) {
       O_WARNING("Failed to create buffer:" << strerror(errno));

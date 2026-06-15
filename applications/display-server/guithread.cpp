@@ -158,6 +158,15 @@ GUIThread::enqueue(
       return;
     }
     auto surfaceGeometry = surface->geometry();
+    double scale = surface->scale();
+    if (scale != 1.0) {
+      region = QRect(
+        region.x() * scale,
+        region.y() * scale,
+        region.width() * scale,
+        region.height() * scale
+      );
+    }
     intersected = region.translated(surfaceGeometry.topLeft())
                     .intersected(surfaceGeometry)
                     .intersected(m_screenRect);
@@ -242,7 +251,7 @@ GUIThread::framebuffer() {
 void
 GUIThread::repaintSurface(
   QPainter* painter,
-  QRect* rect,
+  const QRect* rect,
   std::shared_ptr<Surface> surface
 ) {
   // This should already be handled, but just in case it leaks
@@ -261,7 +270,7 @@ GUIThread::repaintSurface(
   }
   const QRect imageRect =
     rect->translated(-surfaceGlobalRect.left(), -surfaceGlobalRect.top())
-      .intersected(image->rect());
+      .intersected(surface->rect());
   const QRect sourceRect = rect->intersected(surfaceGlobalRect);
   if (
     imageRect.isEmpty() || !imageRect.isValid() || sourceRect.isEmpty() ||
@@ -271,8 +280,16 @@ GUIThread::repaintSurface(
   }
   O_DEBUG("Repaint surface" << surface->id() << sourceRect << imageRect);
   // TODO - See if there is a way to detect if there is just transparency in
-  // the region
-  //        and don't mark this as repainted.
+  // the region and don't mark this as repainted.
+  double scale = surface->scale();
+  if (scale != 1.0) {
+    imageRect = QRect(
+      imageRect.x() / scale,
+      imageRect.y() / scale,
+      imageRect.width() / scale,
+      imageRect.height() / scale
+    );
+  }
   painter->drawImage(sourceRect, *image.get(), imageRect);
 }
 

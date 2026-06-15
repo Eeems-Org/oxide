@@ -66,7 +66,7 @@ Blight::buf_t::~buf_t() {
 
 std::optional<Blight::shared_buf_t>
 Blight::buf_t::clone() {
-  auto res = Blight::createBuffer(x, y, width, height, stride, format);
+  auto res = Blight::createBuffer(x, y, width, height, stride, format, scale);
   if (!res.has_value()) {
     return {};
   }

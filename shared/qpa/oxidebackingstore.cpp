@@ -142,7 +142,8 @@ OxideBackingStore::resize(const QSize& size, const QRegion& region) {
       blankImage.width(),
       blankImage.height(),
       blankImage.bytesPerLine(),
-      (Blight::Format)blankImage.format()
+      (Blight::Format)blankImage.format(),
+      1.0
     );
     if (!maybe.has_value()) {
       qWarning() << "Failed to create buffer:" << strerror(errno);

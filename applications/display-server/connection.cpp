@@ -252,7 +252,8 @@ Connection::addSurface(
   int fd,
   QRect geometry,
   int stride,
-  QImage::Format format
+  QImage::Format format,
+  double scale
 ) {
   // TODO - add validation that id is never 0, and that it doesn't point to an
   // existsing surface
@@ -260,7 +261,7 @@ Connection::addSurface(
   std::shared_ptr<Surface> surface;
   try {
     surface = std::shared_ptr<Surface>(
-      new Surface(this, fd, surfaceId, geometry, stride, format),
+      new Surface(this, fd, surfaceId, geometry, stride, format, scale),
       [](Surface* s) { s->deleteLater(); }
     );
   } catch (const std::bad_alloc&) {
@@ -510,7 +511,7 @@ Connection::readSocket() {
         surface->move(move.x, move.y);
         guiThread->enqueue(
           surface,
-          surface->rect(),
+          surface->rawRect(),
           Blight::WaveformMode::UI,
           Blight::ContentType::Color,
           Blight::UpdateMode::PartialUpdate,
@@ -546,18 +547,17 @@ Connection::readSocket() {
           }
           surface = surfaces[identifier];
         }
-        auto geometry = surface->geometry();
+        auto geometry = surface->rawGeometry();
         try {
           ack_data =
             reinterpret_cast<Blight::data_t>(new Blight::surface_info_t{
-              {
-               .x = geometry.x(),
+              {.x = geometry.x(),
                .y = geometry.y(),
                .width = (unsigned int)geometry.width(),
                .height = (unsigned int)geometry.height(),
                .stride = surface->stride(),
                .format = (Blight::Format)surface->format(),
-               }
+               .scale = surface->scale()}
           });
           ack_size = sizeof(Blight::surface_info_t);
         } catch (const std::bad_alloc&) {
@@ -625,7 +625,7 @@ Connection::readSocket() {
 #ifdef EPAPER
         guiThread->enqueue(
           surface,
-          surface->rect(),
+          surface->rawRect(),
           Blight::WaveformMode::UI,
           Blight::ContentType::Color,
           Blight::UpdateMode::PartialUpdate,

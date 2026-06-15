@@ -44,8 +44,13 @@ public:
   bool signalGroup(int signal);
   void pause();
   void resume();
-  std::shared_ptr<Surface>
-  addSurface(int fd, QRect geometry, int stride, QImage::Format format);
+  std::shared_ptr<Surface> addSurface(
+    int fd,
+    QRect geometry,
+    int stride,
+    QImage::Format format,
+    double scale
+  );
   std::shared_ptr<Surface> getSurface(QString identifier);
   std::shared_ptr<Surface> getSurface(Blight::surface_id_t id);
   QStringList getSurfaceIdentifiers();

@@ -2,27 +2,51 @@
 #include <libblight.h>
 #include <libblight/ringbuffer.h>
 
-#include <linux/input.h>
-#include <map>
-#include <mutex>
 #include <poll.h>
 #include <string>
 #include <sys/epoll.h>
 #include <sys/select.h>
-#include <vector>
 
 namespace Input {
+  enum InputType : uint8_t { Unknown = 0, Wacom, Touch, Buttons, Invalid };
+  struct MinMax {
+    int min;
+    int max;
+  };
+  struct Transform {
+    bool invertX;
+    bool invertY;
+    float rotation;
+  };
+  struct DeviceState {
+    int x;
+    int y;
+    int pressure;
+    int distance;
+    int tiltX;
+    int tiltY;
+    int orientation;
+    int major;
+    int minor;
+  };
   struct DeviceInfo {
-    unsigned int device;
+    unsigned short device;
+    int fd;
+    int eventFd;
+    InputType type;
+    DeviceState state;
+    DeviceState minimums;
+    DeviceState maximums;
+    std::shared_ptr<Blight::EvdevRingBuffer> ringBuffer;
+    std::shared_ptr<Blight::EvdevRingBuffer> remapBuffer;
+    std::shared_ptr<std::thread> thread;
+    ~DeviceInfo();
+  };
+  struct DeviceMap {
+    unsigned short device;
     int flags;
   };
-
-  extern std::map<int, Blight::EvdevRingBuffer> ringBuffers;
-  extern std::map<int, DeviceInfo> deviceDescriptors;
-  extern std::map<unsigned int, int> deviceEventFds;
-  extern std::map<int, std::map<int, struct epoll_event>> epollMap;
-  extern std::mutex mutex;
-
+  bool init();
   void readEvents();
   bool isInputFd(int fd);
   int open(const std::string& path, int flags);

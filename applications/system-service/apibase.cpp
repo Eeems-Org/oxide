@@ -135,7 +135,7 @@ getCompositorDBus() {
 Blight::shared_buf_t
 createBuffer(const QRect& rect, unsigned int stride, Blight::Format format) {
   return Blight::createBuffer(
-           rect.x(), rect.y(), rect.width(), rect.height(), stride, format
+           rect.x(), rect.y(), rect.width(), rect.height(), stride, format, 1.0
   )
     .value_or(nullptr);
 }

@@ -4,16 +4,21 @@
 #include "state.h"
 
 #include <cerrno>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <dirent.h>
 #include <fcntl.h>
 #include <libblight/debug.h>
 #include <libblight/socket.h>
+#include <linux/input-event-codes.h>
 #include <linux/input.h>
+#include <map>
 #include <mutex>
 #include <stdexcept>
 #include <sys/eventfd.h>
+#include <sys/ioctl.h>
 #include <sys/poll.h>
 #include <sys/select.h>
 #include <thread>
@@ -21,16 +26,45 @@
 #include <cstddef>
 #include <cstdio>
 
-namespace Input {
-  std::map<int, Blight::EvdevRingBuffer> ringBuffers{};
-  std::map<int, DeviceInfo> deviceDescriptors{};
-  std::map<unsigned int, int> deviceEventFds{};
-  std::map<int, std::map<int, struct epoll_event>> epollMap{};
-  std::mutex mutex{};
+static constexpr int RM1_PEN_WIDTH = 20967;
+static constexpr int RM1_PEN_HEIGHT = 15725;
+static constexpr int RM1_PEN_PRESSURE = 4095;
+static constexpr int RM1_PEN_DISTANCE = 255;
+static constexpr int RM1_MIN_TILT_X = -9000;
+static constexpr int RM1_MAX_TILT_X = 9000;
+static constexpr int RM1_MIN_TILT_Y = -9000;
+static constexpr int RM1_MAX_TILT_Y = 9000;
 
-  static void drainEventFd(int eventFd) {
-    uint64_t val;
-    Libc::read(eventFd, &val, sizeof(val));
+static constexpr int RM1_TOUCH_WIDTH = 767;
+static constexpr int RM1_TOUCH_HEIGHT = 1023;
+static constexpr int RM1_TOUCH_PRESSURE = 255;
+static constexpr int RM1_TOUCH_DISTANCE = 255;
+static constexpr int RM1_MIN_ORIENTATION = -127;
+static constexpr int RM1_MAX_ORIENTATION = 127;
+static constexpr int RM1_TOUCH_MAJOR = 255;
+static constexpr int RM1_TOUCH_MINOR = 255;
+
+static constexpr float PI = 3.14159265358979323846f;
+
+#define BITS_PER_LONG (sizeof(long) * 8)
+#define NBITS(x) ((((x) - 1) / BITS_PER_LONG) + 1)
+#define OFF(x) ((x) % BITS_PER_LONG)
+#define LONG(x) ((x) / BITS_PER_LONG)
+#define test_bit(bit, array) ((array[LONG(bit)] >> OFF(bit)) & 1)
+
+namespace Input {
+  std::map<int, DeviceMap> deviceDescriptors{};
+  std::map<unsigned short, DeviceInfo> devices{};
+  std::map<int, std::map<int, struct epoll_event>> epollMap{};
+  std::map<unsigned short, unsigned short> deviceMap{};
+  std::mutex mutex{};
+  Transform penTransform;
+  Transform touchTransform;
+
+  DeviceInfo::~DeviceInfo() {
+    if (thread != nullptr && thread->joinable()) {
+      thread->detach();
+    }
   }
 
   int getEventFd(int fd) {
@@ -38,15 +72,15 @@ namespace Input {
       return -1;
     }
     auto info = deviceDescriptors[fd];
-    if (!deviceEventFds.contains(info.device)) {
+    if (!devices.contains(info.device)) {
       return -1;
     }
-    return deviceEventFds[info.device];
+    return devices[info.device].eventFd;
   }
 
   int getInputFdByEventFd(int eventFd) {
-    for (auto& [device, _eventFd] : deviceEventFds) {
-      if (_eventFd != eventFd) {
+    for (auto& [device, devInfo] : devices) {
+      if (devInfo.eventFd != eventFd) {
         continue;
       }
       for (auto& [inputFd, info] : deviceDescriptors) {
@@ -56,6 +90,309 @@ namespace Input {
       }
     }
     return -1;
+  }
+
+  inline bool checkBitSet(int fd, int type, int i) {
+    unsigned long bit[NBITS(KEY_MAX)] = {0};
+    Libc::ioctl(fd, EVIOCGBIT(type, KEY_MAX), bit);
+    return test_bit(i, bit);
+  }
+
+  InputType classify(int fd) {
+    int version;
+    if (Libc::ioctl(fd, EVIOCGVERSION, &version)) {
+      _WARN("Failed to classify fd %d: %s", fd, std::strerror(errno));
+      return Invalid;
+    }
+    unsigned long bit[EV_MAX / sizeof(unsigned long) + 1] = {0};
+    Libc::ioctl(fd, EVIOCGBIT(0, EV_MAX), bit);
+    if (test_bit(EV_KEY, bit)) {
+      if (checkBitSet(fd, EV_KEY, BTN_STYLUS) && test_bit(EV_ABS, bit)) {
+        return Wacom;
+      }
+      if (checkBitSet(fd, EV_KEY, KEY_POWER)) {
+        return Buttons;
+      }
+    }
+    if (checkBitSet(fd, EV_ABS, ABS_MT_SLOT)) {
+      return Touch;
+    }
+    return Unknown;
+  }
+
+  void getAbsInfo(int fd, DeviceInfo& info) {
+    switch (info.type) {
+      case Wacom: {
+        input_absinfo absInfo = {0};
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_X), &absInfo) >= 0) {
+          info.minimums.x = absInfo.minimum;
+          info.maximums.x = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_X range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_Y), &absInfo) >= 0) {
+          info.minimums.y = absInfo.minimum;
+          info.maximums.y = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_Y range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_PRESSURE), &absInfo) >= 0) {
+          info.minimums.pressure = absInfo.minimum;
+          info.maximums.pressure = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_PRESSURE range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_DISTANCE), &absInfo) >= 0) {
+          info.minimums.distance = absInfo.minimum;
+          info.maximums.distance = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_DISTANCE range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_TILT_X), &absInfo) >= 0) {
+          info.minimums.tiltX = absInfo.minimum;
+          info.maximums.tiltX = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_DISTANCE range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_TILT_Y), &absInfo) >= 0) {
+          info.minimums.tiltY = absInfo.minimum;
+          info.maximums.tiltY = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_DISTANCE range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        break;
+      }
+      case Touch: {
+        input_absinfo absInfo = {0};
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_MT_POSITION_X), &absInfo) >= 0) {
+          info.minimums.x = absInfo.minimum;
+          info.maximums.x = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_MT_POSITION_X range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_MT_POSITION_Y), &absInfo) >= 0) {
+          info.minimums.y = absInfo.minimum;
+          info.maximums.y = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_MT_POSITION_Y range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_MT_ORIENTATION), &absInfo) >= 0) {
+          info.minimums.orientation = absInfo.minimum;
+          info.maximums.orientation = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_MT_POSITION_Y range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_MT_TOUCH_MAJOR), &absInfo) >= 0) {
+          info.minimums.major = absInfo.minimum;
+          info.maximums.major = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_MT_POSITION_Y range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        if (Libc::ioctl(fd, EVIOCGABS(ABS_MT_TOUCH_MINOR), &absInfo) >= 0) {
+          info.minimums.minor = absInfo.minimum;
+          info.maximums.minor = absInfo.maximum;
+        } else {
+          _WARN(
+            "Unable to get ABS_MT_POSITION_Y range for event%d: %s",
+            info.device,
+            std::strerror(errno)
+          );
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  const std::string typeName(InputType type) {
+    switch (type) {
+      case Unknown:
+        return "Unknown";
+      case Touch:
+        return "Touch";
+      case Wacom:
+        return "Wacom";
+      case Buttons:
+        return "Buttons";
+      default:
+        return "Invalid";
+    }
+  }
+
+  bool init() {
+    _DEBUG("Initializing input");
+    if (!Client::isFakeRM1Input()) {
+      _DEBUG("Not faking rM1 input, continuing");
+      return true;
+    }
+    penTransform = {.invertX = false, .invertY = false, .rotation = 0.0f};
+    switch (Client::deviceType) {
+      case Client::DeviceType::RM1:
+        touchTransform = {.invertX = false, .invertY = false, .rotation = 0.0f};
+        break;
+      case Client::DeviceType::RM2:
+        touchTransform = {.invertX = true, .invertY = false, .rotation = 0.0f};
+        break;
+      case Client::DeviceType::RMPP:
+        touchTransform = {
+          .invertX = false, .invertY = false, .rotation = 180.0f
+        };
+        break;
+      case Client::DeviceType::RMPPM:
+        touchTransform = {
+          .invertX = false, .invertY = false, .rotation = 180.0f
+        };
+        break;
+      case Client::DeviceType::RMPPURE:
+        touchTransform = {
+          .invertX = false, .invertY = false, .rotation = 180.0f
+        };
+        break;
+      default:
+        _WARN("Unknown device type, unable to force rM1 input")
+        return false;
+    }
+    _DEBUG(
+      "pen: invertX=%s, invertY=%s, rotation=%f",
+      penTransform.invertX ? "true" : "false",
+      penTransform.invertY ? "true" : "false",
+      penTransform.rotation
+    );
+    _DEBUG(
+      "touch: invertX=%s, invertY=%s, rotation=%f",
+      touchTransform.invertX ? "true" : "false",
+      touchTransform.invertY ? "true" : "false",
+      touchTransform.rotation
+    );
+    _DEBUG("Remapping input devices");
+    DIR* dir = opendir("/dev/input");
+    if (dir == nullptr) {
+      _WARN("Unable to open /dev/input: %s", std::strerror(errno));
+      return false;
+    }
+    dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+      std::string name(entry->d_name);
+      if (name.rfind("event", 0) != 0) {
+        continue;
+      }
+      std::string path = "/dev/input/" + name;
+      int fd = Libc::open(path.c_str(), O_RDONLY);
+      if (fd < 0) {
+        _WARN("Failed to open %s: %s", name.c_str(), std::strerror(errno));
+        continue;
+      }
+      InputType type = classify(fd);
+      unsigned short device;
+      switch (type) {
+        case Wacom:
+          device = 0;
+          break;
+        case Buttons:
+          device = 1;
+          break;
+        case Touch:
+          device = 2;
+          break;
+        default:
+          _WARN(
+            "Incorrect type for %s: %s", name.c_str(), typeName(type).c_str()
+          );
+          Libc::close(fd);
+          continue;
+      }
+      if (devices.contains(device)) {
+        Libc::close(fd);
+        _WARN("Already mapped: %s", name.c_str());
+        continue;
+      }
+      unsigned short actualDevice;
+      try {
+        actualDevice = static_cast<unsigned short>(std::stoi(name.substr(5)));
+      } catch (std::invalid_argument&) {
+        _WARN("Resolved event device name invalid: %s", name.c_str());
+        continue;
+      } catch (std::out_of_range&) {
+        _WARN("Resolved event device number out of range: %s", name.c_str());
+        continue;
+      }
+      deviceMap[actualDevice] = device;
+      _DEBUG(
+        "event%d -> event%d: %s", actualDevice, device, typeName(type).c_str()
+      );
+      devices[device] = {
+        .device = device,
+        .fd = fd,
+        .eventFd = -1,
+        .type = type,
+        .state = {},
+        .minimums = {},
+        .maximums = {},
+        .ringBuffer = nullptr,
+        .remapBuffer = nullptr,
+        .thread = nullptr
+      };
+      auto& info = devices[device];
+      getAbsInfo(fd, info);
+      if (info.type == Wacom || info.type == Touch) {
+        _DEBUG("x:  min=%d, max=%d", info.minimums.x, info.maximums.x);
+        _DEBUG("y:  min=%d, max=%d", info.minimums.y, info.maximums.y);
+        _DEBUG(
+          "pressure:  min=%d, max=%d",
+          info.minimums.pressure,
+          info.maximums.pressure
+        );
+      }
+      if (info.type == Wacom) {
+        _DEBUG(
+          "distance:  min=%d, max=%d",
+          info.minimums.distance,
+          info.maximums.distance
+        );
+      }
+    }
+    closedir(dir);
+    return true;
   }
 
   void readEvents() {
@@ -90,36 +427,333 @@ namespace Input {
         }
         continue;
       }
-      unsigned int device = maybe.value().device;
+      unsigned int rawDevice = maybe.value().device;
+      unsigned int device = rawDevice;
       auto& partial = maybe.value().event;
-      input_event ev = {
-        .type = partial.type,
-        .code = partial.code,
-        .value = (!allow_power_button && partial.type == EV_KEY &&
+      input_event ev{};
+      ev.type = partial.type;
+      ev.code = partial.code;
+      ev.value = (!allow_power_button && partial.type == EV_KEY &&
                   partial.code == KEY_POWER)
                    ? 0
-                   : partial.value
-      };
-      Blight::EvdevRingBuffer* ringBuf = nullptr;
+                   : partial.value;
+      std::shared_ptr<Blight::EvdevRingBuffer> ringBuffer;
       {
         std::lock_guard lock{mutex};
-        if (!ringBuffers.contains(device)) {
-          _INFO("Ignoring event for unopened device: %d", device);
+        if (Client::isFakeRM1Input()) {
+          auto it = deviceMap.find(static_cast<unsigned short>(rawDevice));
+          if (it != deviceMap.end()) {
+            device = it->second;
+          }
+        }
+        if (!devices.contains(device)) {
+          _INFO(
+            "Ignoring event for unopened device: raw=%d mapped=%d",
+            rawDevice,
+            device
+          );
           continue;
         }
-        ringBuf = &ringBuffers[device];
+        ringBuffer = Client::isFakeRM1Input() ? devices[device].remapBuffer
+                                              : devices[device].ringBuffer;
       }
-      ringBuf->insert(ev);
+      ringBuffer->insert(ev);
+      if (Client::isFakeRM1Input()) {
+        continue;
+      }
       {
         std::lock_guard lock{mutex};
-        auto it = deviceEventFds.find(static_cast<int>(device));
-        if (it != deviceEventFds.end()) {
+        auto it = devices.find(device);
+        if (it != devices.end()) {
           uint64_t val = 1;
-          Libc::write(it->second, &val, sizeof(val));
+          Libc::write(it->second.eventFd, &val, sizeof(val));
         }
       }
     }
     _INFO("%s", "InputWorker quitting");
+  }
+
+  inline int range(int max, int min) {
+    int range = max - min;
+    if (range <= 0) {
+      return 1;
+    }
+    return range;
+  }
+
+  void applyTransform(const DeviceInfo& info, int& outX, int& outY) {
+    int targetWidth;
+    int targetHeight;
+    Transform transform;
+    switch (info.type) {
+      case Wacom:
+        targetWidth = RM1_PEN_WIDTH;
+        targetHeight = RM1_PEN_HEIGHT;
+        transform = penTransform;
+        break;
+      case Touch:
+        targetWidth = RM1_TOUCH_WIDTH;
+        targetHeight = RM1_TOUCH_HEIGHT;
+        transform = touchTransform;
+        break;
+      default:
+        return;
+    }
+    int widthRange = range(info.maximums.x, info.minimums.x);
+    int heightRange = range(info.maximums.y, info.minimums.y);
+    float xNorm = static_cast<float>(info.state.x - info.minimums.x) /
+                  static_cast<float>(widthRange);
+    float yNorm = static_cast<float>(info.state.y - info.minimums.y) /
+                  static_cast<float>(heightRange);
+    switch (static_cast<int>(transform.rotation + 0.5f) % 360) {
+      case 0:
+        if (transform.invertX) {
+          xNorm = 1.0f - xNorm;
+        }
+        if (transform.invertY) {
+          yNorm = 1.0f - yNorm;
+        }
+        outX = static_cast<int>(xNorm * targetWidth + 0.5f);
+        outY = static_cast<int>(yNorm * targetHeight + 0.5f);
+        break;
+      case 90: {
+        float origX = xNorm;
+        xNorm = 1.0f - yNorm;
+        yNorm = origX;
+        if (transform.invertX) {
+          xNorm = 1.0f - xNorm;
+        }
+        if (transform.invertY) {
+          yNorm = 1.0f - yNorm;
+        }
+        outX = static_cast<int>(xNorm * targetWidth + 0.5f);
+        outY = static_cast<int>(yNorm * targetHeight + 0.5f);
+        break;
+      }
+      case 180:
+        xNorm = 1.0f - xNorm;
+        yNorm = 1.0f - yNorm;
+        if (transform.invertX) {
+          xNorm = 1.0f - xNorm;
+        }
+        if (transform.invertY) {
+          yNorm = 1.0f - yNorm;
+        }
+        outX = static_cast<int>(xNorm * targetWidth + 0.5f);
+        outY = static_cast<int>(yNorm * targetHeight + 0.5f);
+        break;
+      case 270: {
+        float origX = xNorm;
+        xNorm = yNorm;
+        yNorm = 1.0f - origX;
+        if (transform.invertX) {
+          xNorm = 1.0f - xNorm;
+        }
+        if (transform.invertY) {
+          yNorm = 1.0f - yNorm;
+        }
+        outX = static_cast<int>(xNorm * targetWidth + 0.5f);
+        outY = static_cast<int>(yNorm * targetHeight + 0.5f);
+        break;
+      }
+      default: {
+        float angleRadius = transform.rotation * PI / 180.0f;
+        float xScaled = xNorm * static_cast<float>(targetWidth);
+        float yScaled = yNorm * static_cast<float>(targetHeight);
+        outX = static_cast<int>(
+          xScaled * cosf(angleRadius) - yScaled * sinf(angleRadius) + 0.5f
+        );
+        outY = static_cast<int>(
+          xScaled * sinf(angleRadius) + yScaled * cosf(angleRadius) + 0.5f
+        );
+        if (transform.invertX) {
+          outX = targetWidth - outX;
+        }
+        if (transform.invertY) {
+          outY = targetHeight - outY;
+        }
+        break;
+      }
+    }
+  }
+  inline int scaleValue(int value, int minimum, int maximum) {
+    return (value - minimum) * maximum / range(maximum, minimum);
+  }
+
+  void remapEvents(unsigned short device) {
+    char name[16];
+    snprintf(name, sizeof(name), "Remap[%u]", device);
+    _INFO("%s starting", name);
+    prctl(PR_SET_NAME, name, 0, 0, 0);
+    auto& info = devices[device];
+    std::vector<input_event> pending;
+    while (FB::connection != nullptr) {
+      if (info.remapBuffer->overflowed()) {
+        info.remapBuffer->take();
+        input_event syn{};
+        syn.type = EV_SYN;
+        syn.code = SYN_DROPPED;
+        syn.value = 1;
+        info.ringBuffer->insert(syn);
+        uint64_t val = 1;
+        Libc::write(info.eventFd, &val, sizeof(val));
+        pending.clear();
+      }
+      input_event event = info.remapBuffer->wait_for_values();
+      if (info.type != Wacom && info.type != Touch) {
+        info.ringBuffer->insert(event);
+        uint64_t val = 1;
+        Libc::write(info.eventFd, &val, sizeof(val));
+        continue;
+      }
+      if (event.type == EV_SYN && event.code == SYN_DROPPED) {
+        pending.push_back(event);
+        pending.clear();
+        continue;
+      }
+      pending.push_back(event);
+      if (!(event.type == EV_SYN && event.code == SYN_REPORT)) {
+        continue;
+      }
+      switch (info.type) {
+        case Wacom: {
+          input_event* xEvent = nullptr;
+          input_event* yEvent = nullptr;
+          for (auto& previousEvent : pending) {
+            if (previousEvent.type == EV_ABS) {
+              switch (previousEvent.code) {
+                case ABS_PRESSURE:
+                  info.state.pressure = previousEvent.value;
+                  previousEvent.value = scaleValue(
+                    previousEvent.value,
+                    info.minimums.pressure,
+                    info.maximums.pressure
+                  );
+                  break;
+                case ABS_DISTANCE:
+                  info.state.distance = previousEvent.value;
+                  previousEvent.value = scaleValue(
+                    previousEvent.value,
+                    info.minimums.distance,
+                    info.maximums.distance
+                  );
+                  break;
+                case ABS_TILT_X:
+                  info.state.tiltX = previousEvent.value;
+                  previousEvent.value = scaleValue(
+                    previousEvent.value,
+                    info.minimums.tiltX,
+                    info.maximums.tiltX
+                  );
+                  break;
+                case ABS_TILT_Y:
+                  info.state.tiltY = previousEvent.value;
+                  previousEvent.value = scaleValue(
+                    previousEvent.value,
+                    info.minimums.tiltY,
+                    info.maximums.tiltY
+                  );
+                  break;
+                case ABS_X:
+                  info.state.x = previousEvent.value;
+                  xEvent = &previousEvent;
+                  break;
+                case ABS_Y:
+                  info.state.y = previousEvent.value;
+                  yEvent = &previousEvent;
+                  break;
+                default:
+                  break;
+              }
+            }
+          }
+          if (xEvent == nullptr || yEvent == nullptr) {
+            break;
+          }
+          applyTransform(info, xEvent->value, yEvent->value);
+          info.state.x = xEvent->value;
+          info.state.y = yEvent->value;
+          break;
+        }
+        case Touch: {
+          input_event* xEvent = nullptr;
+          input_event* yEvent = nullptr;
+          for (auto& previousEvent : pending) {
+            if (previousEvent.type != EV_ABS) {
+              continue;
+            }
+            switch (previousEvent.code) {
+              case ABS_MT_PRESSURE:
+                info.state.pressure = previousEvent.value;
+                previousEvent.value = scaleValue(
+                  previousEvent.value,
+                  info.minimums.pressure,
+                  info.maximums.pressure
+                );
+                break;
+              case ABS_MT_DISTANCE:
+                info.state.distance = previousEvent.value;
+                previousEvent.value = scaleValue(
+                  previousEvent.value,
+                  info.minimums.distance,
+                  info.maximums.distance
+                );
+                break;
+              case ABS_MT_ORIENTATION:
+                info.state.orientation = previousEvent.value;
+                previousEvent.value = scaleValue(
+                  previousEvent.value,
+                  info.minimums.orientation,
+                  info.maximums.orientation
+                );
+                break;
+              case ABS_MT_TOUCH_MAJOR:
+                info.state.major = previousEvent.value;
+                previousEvent.value = scaleValue(
+                  previousEvent.value, info.minimums.major, info.maximums.major
+                );
+                break;
+              case ABS_MT_TOUCH_MINOR:
+                info.state.minor = previousEvent.value;
+                previousEvent.value = scaleValue(
+                  previousEvent.value, info.minimums.minor, info.maximums.minor
+                );
+                break;
+              case ABS_MT_POSITION_X:
+                info.state.x = previousEvent.value;
+                xEvent = &previousEvent;
+                break;
+              case ABS_MT_POSITION_Y:
+                info.state.y = previousEvent.value;
+                yEvent = &previousEvent;
+                break;
+            }
+          }
+          if (xEvent == nullptr || yEvent == nullptr) {
+            break;
+          }
+          applyTransform(info, xEvent->value, yEvent->value);
+          _DEBUG(
+            "(%d,  %d) -> (%d, %d)",
+            info.state.x,
+            info.state.y,
+            xEvent->value,
+            yEvent->value
+          );
+          info.state.x = xEvent->value;
+          info.state.y = yEvent->value;
+          break;
+        }
+        default:
+          break;
+      }
+      uint64_t val = 1;
+      for (auto& pendingEvent : pending) {
+        info.ringBuffer->insert(pendingEvent);
+        Libc::write(info.eventFd, &val, sizeof(val));
+      }
+      pending.clear();
+    }
   }
 
   bool isInputFd(int fd) {
@@ -128,34 +762,30 @@ namespace Input {
   }
 
   int open(const std::string& path, int flags) {
+    static std::atomic<bool> started = false;
+    if (!started) {
+      static std::mutex mutex{};
+      if (mutex.try_lock()) {
+        FB::connection->input_handle();
+        _DEBUG("Starting readEvents thread");
+        std::thread(readEvents).detach();
+        started = true;
+        mutex.unlock();
+      } else {
+        mutex.lock();
+        mutex.unlock();
+      }
+    }
     if (FB::connection->input_handle() < 0) {
       _WARN("%s", "Could not open connection input stream");
       errno = EIO;
       return -1;
     }
     std::scoped_lock lock{mutex};
-    if (ringBuffers.empty() && Client::isInputEnabled()) {
-      _DEBUG("Starting readEvents thread");
-      std::thread(readEvents).detach();
-    }
     std::string basePath(basename(path.c_str()));
+    unsigned short device;
     try {
-      unsigned int device = stol(basePath.substr(5));
-      if (!deviceEventFds.contains(device)) {
-        int eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-        if (eventFd < 0) {
-          _WARN("Failed to create eventfd: %s", std::strerror(errno));
-          return -1;
-        }
-        deviceEventFds[device] = eventFd;
-        ringBuffers.try_emplace(device, true);
-      }
-      int fd = Libc::open(path.c_str(), flags, 0);
-      if (fd < 0) {
-        return -1;
-      }
-      deviceDescriptors[fd] = {device, flags};
-      return fd;
+      device = static_cast<unsigned short>(stoi(basePath.substr(5)));
     } catch (std::invalid_argument&) {
       _WARN("Resolved event device name invalid: %s", basePath.c_str());
       errno = EIO;
@@ -165,6 +795,62 @@ namespace Input {
       errno = EIO;
       return -1;
     }
+    int fd = Libc::open(path.c_str(), O_RDONLY);
+    if (fd < 0) {
+      return -1;
+    }
+    if (!devices.contains(device)) {
+      InputType type = classify(fd);
+      devices[device] = {
+        .device = device,
+        .fd = fd,
+        .eventFd = -1,
+        .type = type,
+        .state = {},
+        .minimums = {},
+        .maximums = {},
+        .ringBuffer = nullptr,
+        .remapBuffer = nullptr,
+        .thread = nullptr
+      };
+      auto& info = devices[device];
+      getAbsInfo(fd, info);
+      _DEBUG("event%d: %s", device, typeName(info.type).c_str());
+      _DEBUG("x:  min=%d, max=%d", info.minimums.x, info.maximums.x);
+      _DEBUG("y:  min=%d, max=%d", info.minimums.y, info.maximums.y);
+      _DEBUG(
+        "pressure:  min=%d, max=%d",
+        info.minimums.pressure,
+        info.maximums.pressure
+      );
+      _DEBUG(
+        "distance:  min=%d, max=%d",
+        info.minimums.distance,
+        info.maximums.distance
+      );
+    }
+    if (devices[device].ringBuffer == nullptr) {
+      devices[device].ringBuffer =
+        std::make_shared<Blight::EvdevRingBuffer>(true);
+    }
+    if (Client::isFakeRM1Input() && devices[device].remapBuffer == nullptr) {
+      devices[device].remapBuffer =
+        std::make_shared<Blight::EvdevRingBuffer>(true);
+    }
+    if (Client::isFakeRM1Input() && devices[device].thread == nullptr) {
+      devices[device].thread =
+        std::make_shared<std::thread>(remapEvents, device);
+    }
+    if (devices[device].eventFd == -1) {
+      int eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+      if (eventFd < 0) {
+        _WARN("Failed to create eventfd: %s", std::strerror(errno));
+        return -1;
+      }
+      devices[device].eventFd = eventFd;
+    }
+    deviceDescriptors[fd] = {device, flags};
+    return fd;
   }
 
   int close(int fd) {
@@ -175,8 +861,8 @@ namespace Input {
         return Libc::close(fd);
       }
       unsigned int device = deviceDescriptors[fd].device;
-      if (deviceEventFds.contains(device)) {
-        int eventFd = deviceEventFds[device];
+      if (devices.contains(device)) {
+        int eventFd = devices[device].eventFd;
         for (auto& [epfd, track] : epollMap) {
           Libc::epoll_ctl(epfd, EPOLL_CTL_DEL, eventFd, nullptr);
           track.erase(eventFd);
@@ -187,16 +873,194 @@ namespace Input {
     return Libc::close(fd);
   }
 
+  inline int
+  rm1AbsInfo(int fd, unsigned long request, char* ptr, int min, int max) {
+    auto abs = reinterpret_cast<struct input_absinfo*>(ptr);
+    memset(abs, 0, sizeof(*abs));
+    Libc::ioctl(fd, request, ptr);
+    abs->minimum = min;
+    abs->maximum = max;
+    abs->value = scaleValue(abs->value, min, max);
+    return 0;
+  }
+
   int ioctlv(int fd, unsigned long request, char* ptr) {
     _DEBUG("input ioctl %d %lu", fd, request);
-    switch (request) {
-      case EVIOCGRAB:
-        return 0;
-      case EVIOCREVOKE:
-        return 0;
-      default:
-        return Libc::ioctl(fd, request, ptr);
+    if (request == EVIOCGRAB || request == EVIOCREVOKE) {
+      return 0;
     }
+    if (!Client::isFakeRM1Input()) {
+      return Libc::ioctl(fd, request, ptr);
+    }
+    InputType type = Unknown;
+    unsigned short device;
+    {
+      std::scoped_lock lock{mutex};
+      if (!deviceDescriptors.contains(fd)) {
+        errno = EBADF;
+        return -1;
+      }
+      device = deviceDescriptors[fd].device;
+      if (!devices.contains(device)) {
+        errno = EBADF;
+        return -1;
+      }
+      type = devices[device].type;
+      fd = devices[device].fd;
+    }
+    if (EVIOCGNAME(0) == (request & ~(0x3FFFUL << 16))) {
+      size_t bufSize = (request >> 16) & 0x3FFF;
+      const char* name = nullptr;
+      switch (device) {
+        case 0:
+          name = "Wacom I2C Digitizer";
+          break;
+        case 1:
+          name = "gpio-keys";
+          break;
+        case 2:
+          name = "cyttsp5_mt";
+          break;
+        default:
+          return Libc::ioctl(fd, request, ptr);
+      }
+      size_t nameLen = strlen(name);
+      size_t copyLen = nameLen;
+      if (bufSize > 0 && copyLen >= bufSize) {
+        copyLen = bufSize - 1;
+      }
+      memcpy(ptr, name, copyLen);
+      ptr[copyLen] = '\0';
+      return 0;
+    }
+    switch (device) {
+      case 0:
+        if (EVIOCGBIT(0, 0) == (request & ~(0x3FFFUL << 16))) {
+          size_t len = (request >> 16) & 0x3FFF;
+          memset(ptr, 0, len);
+          auto bits = reinterpret_cast<unsigned long*>(ptr);
+          bits[LONG(EV_ABS)] |= (1UL << OFF(EV_ABS));
+          bits[LONG(EV_KEY)] |= (1UL << OFF(EV_KEY));
+          bits[LONG(EV_SYN)] |= (1UL << OFF(EV_SYN));
+          return 0;
+        }
+        if (EVIOCGBIT(EV_ABS, 0) == (request & ~(0x3FFFUL << 16))) {
+          size_t len = (request >> 16) & 0x3FFF;
+          memset(ptr, 0, len);
+          auto bits = reinterpret_cast<unsigned long*>(ptr);
+          bits[LONG(ABS_X)] |= (1UL << OFF(ABS_X));
+          bits[LONG(ABS_Y)] |= (1UL << OFF(ABS_Y));
+          bits[LONG(ABS_PRESSURE)] |= (1UL << OFF(ABS_PRESSURE));
+          bits[LONG(ABS_DISTANCE)] |= (1UL << OFF(ABS_DISTANCE));
+          bits[LONG(ABS_TILT_X)] |= (1UL << OFF(ABS_TILT_X));
+          bits[LONG(ABS_TILT_Y)] |= (1UL << OFF(ABS_TILT_Y));
+          return 0;
+        }
+        if (EVIOCGBIT(EV_KEY, 0) == (request & ~(0x3FFFUL << 16))) {
+          size_t len = (request >> 16) & 0x3FFF;
+          memset(ptr, 0, len);
+          auto bits = reinterpret_cast<unsigned long*>(ptr);
+          bits[LONG(BTN_TOOL_PEN)] |= (1UL << OFF(BTN_TOOL_PEN));
+          bits[LONG(BTN_TOOL_RUBBER)] |= (1UL << OFF(BTN_TOOL_RUBBER));
+          bits[LONG(BTN_TOUCH)] |= (1UL << OFF(BTN_TOUCH));
+          bits[LONG(BTN_STYLUS)] |= (1UL << OFF(BTN_STYLUS));
+          bits[LONG(BTN_STYLUS2)] |= (1UL << OFF(BTN_STYLUS2));
+          return 0;
+        }
+        switch (request) {
+          case EVIOCGABS(ABS_X):
+            return rm1AbsInfo(fd, request, ptr, 0, RM1_PEN_WIDTH);
+          case EVIOCGABS(ABS_Y):
+            return rm1AbsInfo(fd, request, ptr, 0, RM1_PEN_HEIGHT);
+          case EVIOCGABS(ABS_PRESSURE):
+            return rm1AbsInfo(fd, request, ptr, 0, RM1_PEN_PRESSURE);
+          case EVIOCGABS(ABS_DISTANCE):
+            return rm1AbsInfo(fd, request, ptr, 0, RM1_PEN_DISTANCE);
+          case EVIOCGABS(ABS_TILT_X):
+            return rm1AbsInfo(fd, request, ptr, RM1_MIN_TILT_X, RM1_MAX_TILT_X);
+          case EVIOCGABS(ABS_TILT_Y):
+            return rm1AbsInfo(fd, request, ptr, RM1_MIN_TILT_Y, RM1_MAX_TILT_Y);
+          default:
+            break;
+        }
+        break;
+      case 1:
+        if (EVIOCGBIT(0, 0) == (request & ~(0x3FFFUL << 16))) {
+          size_t len = (request >> 16) & 0x3FFF;
+          memset(ptr, 0, len);
+          auto bits = reinterpret_cast<unsigned long*>(ptr);
+          bits[LONG(EV_KEY)] |= (1UL << OFF(EV_KEY));
+          bits[LONG(EV_SYN)] |= (1UL << OFF(EV_SYN));
+          return 0;
+        }
+        if (EVIOCGBIT(EV_KEY, 0) == (request & ~(0x3FFFUL << 16))) {
+          size_t len = (request >> 16) & 0x3FFF;
+          memset(ptr, 0, len);
+          auto bits = reinterpret_cast<unsigned long*>(ptr);
+          bits[LONG(KEY_POWER)] |= (1UL << OFF(KEY_POWER));
+          bits[LONG(KEY_LEFT)] |= (1UL << OFF(KEY_LEFT));
+          bits[LONG(KEY_RIGHT)] |= (1UL << OFF(KEY_RIGHT));
+          bits[LONG(KEY_HOME)] |= (1UL << OFF(KEY_HOME));
+          bits[LONG(KEY_WAKEUP)] |= (1UL << OFF(KEY_WAKEUP));
+          return 0;
+        }
+        break;
+      case 2:
+        if (EVIOCGBIT(0, 0) == (request & ~(0x3FFFUL << 16))) {
+          size_t len = (request >> 16) & 0x3FFF;
+          memset(ptr, 0, len);
+          auto bits = reinterpret_cast<unsigned long*>(ptr);
+          bits[LONG(EV_ABS)] |= (1UL << OFF(EV_ABS));
+          bits[LONG(EV_REL)] |= (1UL << OFF(EV_REL));
+          bits[LONG(EV_KEY)] |= (1UL << OFF(EV_KEY));
+          bits[LONG(EV_SYN)] |= (1UL << OFF(EV_SYN));
+          return 0;
+        }
+        if (EVIOCGBIT(EV_ABS, 0) == (request & ~(0x3FFFUL << 16))) {
+          size_t len = (request >> 16) & 0x3FFF;
+          memset(ptr, 0, len);
+          auto bits = reinterpret_cast<unsigned long*>(ptr);
+          bits[LONG(ABS_MT_DISTANCE)] |= (1UL << OFF(ABS_MT_DISTANCE));
+          bits[LONG(ABS_MT_SLOT)] |= (1UL << OFF(ABS_MT_SLOT));
+          bits[LONG(ABS_MT_TOUCH_MAJOR)] |= (1UL << OFF(ABS_MT_TOUCH_MAJOR));
+          bits[LONG(ABS_MT_TOUCH_MINOR)] |= (1UL << OFF(ABS_MT_TOUCH_MINOR));
+          bits[LONG(ABS_MT_ORIENTATION)] |= (1UL << OFF(ABS_MT_ORIENTATION));
+          bits[LONG(ABS_MT_POSITION_X)] |= (1UL << OFF(ABS_MT_POSITION_X));
+          bits[LONG(ABS_MT_POSITION_Y)] |= (1UL << OFF(ABS_MT_POSITION_Y));
+          bits[LONG(ABS_MT_TOOL_TYPE)] |= (1UL << OFF(ABS_MT_TOOL_TYPE));
+          bits[LONG(ABS_MT_TRACKING_ID)] |= (1UL << OFF(ABS_MT_TRACKING_ID));
+          bits[LONG(ABS_MT_PRESSURE)] |= (1UL << OFF(ABS_MT_PRESSURE));
+          return 0;
+        }
+        if (
+          EVIOCGBIT(EV_KEY, 0) == (request & ~(0x3FFFUL << 16)) ||
+          EVIOCGBIT(EV_REL, 0) == (request & ~(0x3FFFUL << 16)) ||
+          EVIOCGBIT(EV_SYN, 0) == (request & ~(0x3FFFUL << 16))
+        ) {
+          size_t len = (request >> 16) & 0x3FFF;
+          memset(ptr, 0, len);
+          auto bits = reinterpret_cast<unsigned long*>(ptr);
+          return 0;
+        }
+        switch (request) {
+          case EVIOCGABS(ABS_MT_POSITION_X):
+            return rm1AbsInfo(fd, request, ptr, 0, RM1_TOUCH_WIDTH);
+          case EVIOCGABS(ABS_MT_POSITION_Y):
+            return rm1AbsInfo(fd, request, ptr, 0, RM1_TOUCH_HEIGHT);
+          case EVIOCGABS(ABS_MT_PRESSURE):
+            return rm1AbsInfo(fd, request, ptr, 0, RM1_TOUCH_PRESSURE);
+          case EVIOCGABS(ABS_MT_DISTANCE):
+            return rm1AbsInfo(fd, request, ptr, 0, RM1_TOUCH_DISTANCE);
+          case EVIOCGABS(ABS_MT_ORIENTATION):
+            return rm1AbsInfo(
+              fd, request, ptr, RM1_MIN_ORIENTATION, RM1_MAX_ORIENTATION
+            );
+          default:
+            break;
+        }
+        break;
+    }
+    return Libc::ioctl(fd, request, ptr);
   }
 
   ssize_t read(int fd, void* buf, size_t size) {
@@ -216,28 +1080,30 @@ namespace Input {
     }
     auto* events = static_cast<input_event*>(buf);
     size_t count = 0;
-    auto& ringBuffer = ringBuffers[device];
-    if (ringBuffer.overflowed()) {
-      ringBuffer.take();
-      events[count] = {.type = EV_SYN, .code = SYN_DROPPED, .value = 1};
+    auto& ringBuffer = devices[device].ringBuffer;
+    if (ringBuffer->overflowed()) {
+      ringBuffer->take();
+      events[count] = {};
+      events[count].type = EV_SYN;
+      events[count].code = SYN_DROPPED;
+      events[count].value = 1;
       count++;
     }
     while (count < size / sizeof(input_event)) {
       if (flags & O_NONBLOCK) {
-        auto maybe = ringBuffer.take();
+        auto maybe = ringBuffer->take();
         if (!maybe.has_value()) {
           break;
         }
         events[count] = *maybe;
       } else {
-        events[count] = ringBuffer.wait_for_values();
+        events[count] = ringBuffer->wait_for_values();
       }
+      uint64_t val;
+      Libc::read(devices[device].eventFd, &val, sizeof(val));
       count++;
-    }
-    if (ringBuffer.empty()) {
-      std::scoped_lock lock(mutex);
-      if (deviceEventFds.contains(device)) {
-        drainEventFd(deviceEventFds[device]);
+      if (ringBuffer->empty()) {
+        break;
       }
     }
     if (count == 0) {

@@ -88,6 +88,7 @@ public slots:
     int height,
     int stride,
     int format,
+    double scale,
     QDBusMessage message
   );
   void repaint(QString identifier, QDBusMessage message);

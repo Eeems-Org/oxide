@@ -46,7 +46,7 @@ namespace Client {
       Client::IS_XOCHITL = true;
     }
     if (
-      !Client::IS_XOCHITL &&
+      !Client::IS_XOCHITL && path != "/usr/bin/evtest" &&
       (!path.starts_with("/opt") || path.starts_with("/opt/sbin")) &&
       (!path.starts_with("/home") ||
        path.starts_with("/home/root/.entware/sbin"))
@@ -97,6 +97,13 @@ namespace Client {
       return true;
     }
     static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RM1_FB") != nullptr;
+    return enabled;
+  }
+  bool isFakeRM1Input() {
+    if (isFakeRM1()) {
+      return true;
+    }
+    static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RM1_INPUT") != nullptr;
     return enabled;
   }
   bool forceRGB16() {

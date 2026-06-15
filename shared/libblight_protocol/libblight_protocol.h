@@ -205,6 +205,7 @@ namespace BlightProtocol {
     unsigned int height;
     unsigned int stride;
     BlightImageFormat format;
+    double scale;
     blight_data_t data;
   } blight_buf_t;
   /*!
@@ -323,6 +324,11 @@ namespace BlightProtocol {
      * \brief format Image format
      */
     BlightImageFormat format;
+    /*!
+     * \brief scale Scale to apply to the surface, this affects the width/height
+     *              of what is displayed, but not the x/y
+     */
+    double scale;
   } blight_packet_surface_info_t;
 #ifdef __cplusplus
 }
@@ -450,11 +456,11 @@ blight_message_deref(blight_message_t* message);
  * \param fd File descriptor for the socket
  * \param type Message type
  * \param ackid Unique identifier to be passed back when the server
- * acknowledges when this call has been processed.
+ *              acknowledges when this call has been processed.
  * \param size Size of data
  * \param data Pointer to data buffer
  * \param timeout How many milliseconds to wait for a response. Set to a
- * negative number to disable waiting. Set to 0 to wait forever.
+ *                negative number to disable waiting. Set to 0 to wait forever.
  * \param response Response from server
  * \return Size of the data recieved on success, negative on error. Will
  * always be 0 if no thread has been started
@@ -478,6 +484,8 @@ blight_send_message(
  * \param height Height of the buffer
  * \param stride Count of bytes for a single row
  * \param format Image format of the buffer
+ * \param scale Scale of the surface for this buffer. This affects width/height,
+ *              but not x/y
  * \return Pointer to buffer on success
  * \sa blight_add_surface
  * \sa blight_surface_to_fbg
@@ -489,7 +497,8 @@ blight_create_buffer(
   unsigned int width,
   unsigned int height,
   unsigned int stride,
-  BlightImageFormat format
+  BlightImageFormat format,
+  double scale
 );
 /*!
  * \brief blight_buffer_deref Release memory for a image buffer

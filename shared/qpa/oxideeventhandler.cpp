@@ -290,12 +290,12 @@ OxideEventHandler::OxideEventHandler(
 }
 
 OxideEventHandler::~OxideEventHandler() {
-    if (m_fd < 0) {
-        return;
-    }
-    m_notifier->setEnabled(false);
-    ::close(m_fd);
-    m_fd = -1;
+  if (m_fd < 0) {
+    return;
+  }
+  m_notifier->setEnabled(false);
+  ::close(m_fd);
+  m_fd = -1;
 }
 
 void

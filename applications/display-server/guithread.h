@@ -81,7 +81,7 @@ private:
   void clearFrameBuffer();
   void repaintSurface(
     QPainter* painter,
-    QRect* rect,
+    const QRect* rect,
     std::shared_ptr<Surface> surface
   );
   void redraw(RepaintRequest& event);

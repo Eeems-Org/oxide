@@ -166,7 +166,7 @@ test_blight_send_message(int fd, int pingid) {
 blight_buf_t*
 test_blight_create_buffer() {
   blight_buf_t* buf =
-    blight_create_buffer(10, 10, 100, 100, 100 * 2, Format_RGB16);
+    blight_create_buffer(10, 10, 100, 100, 100 * 2, Format_RGB16, 1.0);
   assert(buf != NULL);
   assert(buf->x == 10);
   assert(buf->y == 10);
@@ -436,7 +436,7 @@ test_blight_surface_to_fbg(
   assert(fbg == NULL);
   assert(errno == EINVAL);
   blight_buf_t* buf =
-    blight_create_buffer(10, 10, 100, 100, 100 * 3, Format_RGB32);
+    blight_create_buffer(10, 10, 100, 100, 100 * 3, Format_RGB32, 1.0);
   assert(buf != NULL);
   blight_surface_id_t identifier = blight_add_surface(bus, buf);
   assert(identifier > 0);
@@ -452,7 +452,7 @@ test_blight_surface_to_fbg(
 void
 test_blight_move_surface(int fd) {
   blight_buf_t* buf =
-    blight_create_buffer(10, 10, 100, 100, 100 * 3, Format_RGB32);
+    blight_create_buffer(10, 10, 100, 100, 100 * 3, Format_RGB32, 1.0);
   assert(buf != NULL);
   blight_surface_id_t identifier = blight_add_surface(bus, buf);
   assert(identifier > 0);
@@ -518,7 +518,7 @@ test_blight_surface_id_list(int fd) {
   res = blight_surface_id_list_deref(list);
   assert(res == 0);
   blight_buf_t* buf =
-    blight_create_buffer(10, 10, 100, 100, 100 * 3, Format_RGB32);
+    blight_create_buffer(10, 10, 100, 100, 100 * 3, Format_RGB32, 1.0);
   assert(buf != NULL);
   blight_surface_id_t identifier = blight_add_surface(bus, buf);
   assert(identifier > 0);

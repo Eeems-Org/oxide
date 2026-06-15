@@ -1,8 +1,8 @@
 #include "receiver.h"
 
 #include <QDebug>
-#include <QProcess>
 #include <QFile>
+#include <QProcess>
 #include <QVariant>
 #include <unistd.h>
 
@@ -52,8 +52,9 @@ LockscreenHookReceiver::hasPasscode() {
 
 bool
 LockscreenHookReceiver::waitForHome() {
-  if(!QFile::exists("/usr/sbin/wait-for-home")){
-    qCDebug(loggingCategory) << "wait-for-home missing, assuming safe to continue";
+  if (!QFile::exists("/usr/sbin/wait-for-home")) {
+    qCDebug(loggingCategory)
+      << "wait-for-home missing, assuming safe to continue";
     return true;
   }
   int res = execute("/usr/sbin/wait-for-home");
@@ -78,7 +79,7 @@ LockscreenHookReceiver::waitForHome() {
 
 bool
 LockscreenHookReceiver::waitForHook() {
-  if(!QFile::exists("/home/root/.local/share/lockscreen_hook.d/unlock")){
+  if (!QFile::exists("/home/root/.local/share/lockscreen_hook.d/unlock")) {
     qCWarning(loggingCategory) << "Unlock hook missing, continuing";
     return false;
   }

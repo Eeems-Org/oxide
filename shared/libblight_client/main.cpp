@@ -623,7 +623,7 @@ init(void) {
   action.sa_sigaction = __sigabrt_handler;
   sigaction(SIGABRT, &action, NULL);
 #endif
-  if (Client::init() && FB::init()) {
+  if (Client::init() && FB::init() && Input::init()) {
     Client::FAILED_INIT = false;
     Client::INITIALIZED = true;
     FB::connection->focused();

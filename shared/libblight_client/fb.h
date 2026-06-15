@@ -25,6 +25,7 @@ namespace FB {
   unsigned int deviceYres();
   unsigned int deviceStride();
   unsigned int deviceBitsPerPixel();
+  double deviceScale();
   int createBuffer();
   Blight::maybe_ackid_ptr_t repaint(
     int x,

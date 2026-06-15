@@ -24,6 +24,7 @@ namespace Client {
   bool isFakeRM1();
   bool isFakeRM1Name();
   bool isFakeRM1Fb();
+  bool isFakeRM1Input();
   bool forceRGB16();
   bool isRM2FBAllowed();
   bool isFakeRM2FB();

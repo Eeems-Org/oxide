@@ -176,6 +176,10 @@ namespace Blight {
      */
     Format format;
     /*!
+     * \brief Scale of the buffer, this affects width/height, but not x/y
+     */
+    double scale;
+    /*!
      * \brief Memory mapped data of the buffer
      */
     data_t data;
@@ -188,7 +192,7 @@ namespace Blight {
      */
     surface_id_t surface;
     /*!
-     * \brief Size of the buffer
+     * \brief Size of the buffer in bytes
      * \return
      */
     size_t size();
