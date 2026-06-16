@@ -375,7 +375,7 @@ public:
                  PixelMode pixelMode,
                  QFlags<EPFramebuffer::UpdateFlag> flags
                ) {
-          (void*)pixelMode;
+          Q_UNUSED(pixelMode);
           sendTConUpdate(this_ptr, rect, waveform, flags);
         };
       }

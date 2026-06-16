@@ -422,6 +422,12 @@ GUIThread::visibleSurfaces() {
 }
 QImage*
 GUIThread::getFrameBuffer() {
-  return &EPFramebuffer::instance()->frameBuffer;
+  auto* instance = EPFramebuffer::instance();
+  if (
+    deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM1
+  ) {
+    return instance->renderTarget;
+  }
+  return &instance->frameBuffer;
 }
 #endif

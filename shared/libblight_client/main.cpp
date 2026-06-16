@@ -338,24 +338,6 @@ open(const char* pathname, int flags, ...) {
   return fd;
 }
 
-__attribute__((visibility("default"))) FILE*
-fopen(const char* path, const char* mode) {
-  int fd = open(path, O_RDONLY);
-  if (fd < 0) {
-    return nullptr;
-  }
-  return fdopen(fd, mode);
-}
-
-__attribute__((visibility("default"))) FILE*
-fopen64(const char* path, const char* mode) {
-  int fd = open(path, O_RDONLY);
-  if (fd < 0) {
-    return nullptr;
-  }
-  return fdopen(fd, mode);
-}
-
 __attribute__((visibility("default"))) int
 close(int fd) {
   if (Client::INITIALIZED) {

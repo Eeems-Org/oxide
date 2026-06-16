@@ -14,7 +14,8 @@ HEADERS += \
     input.h \
     libc.h \
     qt.h \
-    state.h
+    state.h \
+    fopen.h
 
 SOURCES += \
     drm.cpp \
@@ -23,7 +24,8 @@ SOURCES += \
     libc.cpp \
     main.cpp \
     qt.cpp \
-    state.cpp
+    state.cpp \
+    fopen.cpp
 
 LIBS += -lrt -ldl -Wl,--exclude-libs,ALL
 PKGCONFIG += libsystemd
