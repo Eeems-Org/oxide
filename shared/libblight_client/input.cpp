@@ -507,6 +507,22 @@ namespace Input {
                   static_cast<float>(widthRange);
     float yNorm = static_cast<float>(info.state.y - info.minimums.y) /
                   static_cast<float>(heightRange);
+    if (FB::visibleYRatio < 1.0f) {
+      if (yNorm > FB::visibleYRatio) {
+        outX = -1;
+        outY = -1;
+        return;
+      }
+      yNorm /= FB::visibleYRatio;
+    }
+    if (FB::visibleXRatio < 1.0f) {
+      if (xNorm > FB::visibleXRatio) {
+        outX = -1;
+        outY = -1;
+        return;
+      }
+      xNorm /= FB::visibleXRatio;
+    }
     switch (static_cast<int>(transform.rotation + 0.5f) % 360) {
       case 0:
         if (transform.invertX) {
@@ -669,10 +685,18 @@ namespace Input {
               }
             }
           }
+          // TODO stop discarding only x or y events
           if (xEvent == nullptr || yEvent == nullptr) {
             break;
           }
           applyTransform(info, xEvent->value, yEvent->value);
+          _DEBUG(
+            "pen (%d,  %d) -> (%d, %d)",
+            info.state.x,
+            info.state.y,
+            xEvent->value,
+            yEvent->value
+          );
           info.state.x = xEvent->value;
           info.state.y = yEvent->value;
           break;
@@ -731,12 +755,13 @@ namespace Input {
                 break;
             }
           }
+          // TODO stop discarding only x or y events
           if (xEvent == nullptr || yEvent == nullptr) {
             break;
           }
           applyTransform(info, xEvent->value, yEvent->value);
           _DEBUG(
-            "(%d,  %d) -> (%d, %d)",
+            "touch (%d,  %d) -> (%d, %d)",
             info.state.x,
             info.state.y,
             xEvent->value,
@@ -751,6 +776,15 @@ namespace Input {
       }
       uint64_t val = 1;
       for (auto& pendingEvent : pending) {
+        if (
+          pendingEvent.type == EV_ABS &&
+          (pendingEvent.code == ABS_X || pendingEvent.code == ABS_Y ||
+           pendingEvent.code == ABS_MT_POSITION_X ||
+           pendingEvent.code == ABS_MT_POSITION_Y) &&
+          pendingEvent.value == -1
+        ) {
+          continue;
+        }
         info.ringBuffer->insert(pendingEvent);
         Libc::write(info.eventFd, &val, sizeof(val));
       }

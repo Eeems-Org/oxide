@@ -26,6 +26,8 @@ namespace FB {
   int epframebufferLockFd = -1;
   int epdLockFd = -1;
   int msgq = -1;
+  float visibleYRatio = 1.0f;
+  float visibleXRatio = 1.0f;
   bool init() {
     _DEBUG("Handle framebuffer: %d", Client::isFbEnabled());
     auto pid = getpid();
@@ -83,6 +85,10 @@ namespace FB {
         std::vector<std::string>{"system"}
       );
       Blight::enterExclusiveMode();
+    }
+    if (Client::isFakeRM1Input()) {
+      visibleYRatio = (deviceYres() * deviceScale()) / deviceActualHeight();
+      visibleXRatio = (deviceXres() * deviceScale()) / deviceActualWidth();
     }
     return true;
   }
@@ -506,6 +512,15 @@ namespace FB {
     if (Client::isFakeRM1Fb()) {
       return 1404;
     }
+    return deviceActualWidth();
+  }
+  unsigned int deviceYres() {
+    if (Client::isFakeRM1Fb()) {
+      return 1872;
+    }
+    return deviceActualHeight();
+  }
+  unsigned int deviceActualWidth() {
     switch (Client::deviceType) {
       case Client::DeviceType::RM1:
       case Client::DeviceType::RM2:
@@ -519,10 +534,7 @@ namespace FB {
         return 0;
     }
   }
-  unsigned int deviceYres() {
-    if (Client::isFakeRM1Fb()) {
-      return 1872;
-    }
+  unsigned int deviceActualHeight() {
     switch (Client::deviceType) {
       case Client::DeviceType::RM1:
       case Client::DeviceType::RM2:

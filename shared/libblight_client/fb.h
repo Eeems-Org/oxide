@@ -11,6 +11,8 @@ namespace FB {
   extern int epframebufferLockFd;
   extern int epdLockFd;
   extern int msgq;
+  extern float visibleYRatio;
+  extern float visibleXRatio;
   bool init();
   bool is_fb(int fd);
   void ensure_surface();
@@ -23,6 +25,8 @@ namespace FB {
   Blight::Format deviceFormat();
   unsigned int deviceXres();
   unsigned int deviceYres();
+  unsigned int deviceActualWidth();
+  unsigned int deviceActualHeight();
   unsigned int deviceStride();
   unsigned int deviceBitsPerPixel();
   double deviceScale();
