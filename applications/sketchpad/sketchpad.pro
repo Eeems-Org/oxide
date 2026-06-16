@@ -20,6 +20,10 @@ applications.files = ../../assets/opt/usr/share/applications/codes.eeems.ether.o
 applications.path = /opt/usr/share/applications/
 INSTALLS += applications
 
+icons.path = /opt/usr/share/icons/oxide/48x48/apps/
+icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/ether.png
+INSTALLS += icons
+
 RESOURCES += \
     qml.qrc
 
