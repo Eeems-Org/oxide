@@ -90,6 +90,7 @@ namespace FB {
       visibleYRatio = (deviceYres() * deviceScale()) / deviceActualHeight();
       visibleXRatio = (deviceXres() * deviceScale()) / deviceActualWidth();
     }
+    _INFO("Scale: %f", deviceScale());
     return true;
   }
   bool is_fb(int fd) {
@@ -563,20 +564,21 @@ namespace FB {
     }
   }
   double deviceScale() {
-    if (Client::isFakeRM1Fb()) {
-      switch (Client::deviceType) {
-        case Client::DeviceType::RM1:
-        case Client::DeviceType::RM2:
-        case Client::DeviceType::RMPPURE:
-          return 1.0;
-        case Client::DeviceType::RMPP:
-          return 1.153846;
-        case Client::DeviceType::RMPPM:
-          return 0.6795;
-        default:
-          _WARN("Unknown device type, unable to scale rM1 screen to fit");
-          return 1.0;
-      }
+    if (!Client::isFakeRM1Fb()) {
+      return 1.0;
+    }
+    switch (Client::deviceType) {
+      case Client::DeviceType::RM1:
+      case Client::DeviceType::RM2:
+      case Client::DeviceType::RMPPURE:
+        return 1.0;
+      case Client::DeviceType::RMPP:
+        return 1.153846;
+      case Client::DeviceType::RMPPM:
+        return 0.6795;
+      default:
+        _WARN("Unknown device type, unable to scale rM1 screen to fit");
+        return 1.0;
     }
   }
   int createBuffer() {

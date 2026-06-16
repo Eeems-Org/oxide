@@ -130,4 +130,11 @@ namespace Libc {
   ))dlsym(RTLD_NEXT, "sigaction");
 
   int (*system)(const char*) = (int (*)(const char*))dlsym(RTLD_NEXT, "system");
+
+  FILE* (*fopen)(const char* path, const char* mode) =
+    (FILE * (*)(const char* path, const char* mode)) dlsym(RTLD_NEXT, "fopen");
+
+  FILE* (*fopen64)(const char* path, const char* mode) =
+    (FILE *
+     (*)(const char* path, const char* mode)) dlsym(RTLD_NEXT, "fopen64");
 }

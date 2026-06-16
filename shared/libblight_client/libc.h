@@ -7,6 +7,9 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
+struct _IO_FILE;
+typedef struct _IO_FILE FILE;
+
 namespace Libc {
   extern sighandler_t (*signal)(int, sighandler_t);
   extern int (*sigaction)(int, const struct sigaction*, struct sigaction*);
@@ -56,4 +59,6 @@ namespace Libc {
   extern int (*epoll_ctl)(int, int, int, struct epoll_event*);
   extern int (*epoll_wait)(int, struct epoll_event*, int, int);
   extern int (*system)(const char*);
+  extern FILE* (*fopen)(const char* path, const char* mode);
+  extern FILE* (*fopen64)(const char* path, const char* mode);
 }

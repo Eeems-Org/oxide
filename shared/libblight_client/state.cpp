@@ -6,12 +6,30 @@
 #include <iostream>
 #include <libblight/debug.h>
 #include <string>
+#include <sys/syslog.h>
+
+const std::string
+debugLevelString() {
+  switch (get_blight_debug_level()) {
+    case LOG_DEBUG:
+      return "debug";
+    case LOG_WARNING:
+      return "warning";
+    case LOG_INFO:
+      return "info";
+    case LOG_CRIT:
+      return "critical";
+    default:
+      return "unknown";
+  }
+}
 
 namespace Client {
   bool INITIALIZED = false;
   bool FAILED_INIT = true;
   bool IS_XOCHITL = false;
   DeviceType deviceType = DeviceType::UNKNOWN;
+#define bool_str(value) value ? "true" : "false"
   bool init() {
     auto debugLevel = getenv("OXIDE_PRELOAD_DEBUG");
     if (debugLevel != nullptr) {
@@ -54,8 +72,23 @@ namespace Client {
       // We ignore this executable
       set_blight_debug_level(0);
     }
+    _INFO("Debug Level: %s", debugLevelString().c_str());
+    _INFO("Device: %s", deviceTypeName().c_str());
+    _INFO("FB: %s", bool_str(isFbEnabled()));
+    _INFO("Input: %s", bool_str(isInputEnabled()));
+    _INFO("Power Button: %s", bool_str(isPowerButtonEnabled()));
+    _INFO("Dump FB: %s", bool_str(isDumpFb()));
+    _INFO("Fake rM1: %s", bool_str(isFakeRM1()));
+    _INFO("Fake rM1 Name: %s", bool_str(isFakeRM1Name()));
+    _INFO("Fake rM1 FB: %s", bool_str(isFakeRM1Fb()));
+    _INFO("Fake rM1 Input: %s", bool_str(isFakeRM1Input()));
+    _INFO("Force RGB16: %s", bool_str(forceRGB16()));
+    _INFO("RM2FB Allowed: %s", bool_str(isRM2FBAllowed()));
+    _INFO("Fake RM2FB: %s", bool_str(isFakeRM2FB()));
+    _INFO("Force Qt: %s", bool_str(isForceQt()));
     return true;
   }
+#undef bool_str
   void realpath(const char* pathname, std::string& path) {
     char absolutepath[4096];
     if (::realpath(pathname, absolutepath) != nullptr) {
