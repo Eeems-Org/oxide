@@ -321,29 +321,36 @@ ghostControlOffset() {
 static std::atomic<bool> blinkLater = false;
 static void* originalGhostControl = nullptr;
 
+void
+ghostControl(void* this_ptr, int mode, void (*func)(void*, int)) {
+  if (mode == Blight::GhostControlMode::BlinkLater) {
+    blinkLater = true;
+    return;
+  }
+#ifdef __aarch64__
+  else if (
+    mode == Blight::GhostControlMode::BleachNow ||
+    mode == Blight::GhostControlMode::FactoryReset
+  ) {
+    Blight::ghostControl((Blight::GhostControlMode)mode);
+  }
+#endif
+  func(this_ptr, mode);
+}
+
 /*!
  * \brief Replacement for EPFramebuffer::ghostControl(GhostControlMode)
  * \param mode GhostControlMode to use
  */
 void
 hook_ghostControl(void* this_ptr, int mode) {
-  _DEBUG("EPFramebuffer::ghostControl(%p, mode=%d)", this_ptr, mode);
-  if (mode == 1) { // BlinkLater
-    blinkLater = true;
-    return;
-  }
-#ifdef __aarch64__
-  else if (mode == 2 || mode == 3) {
-    // BleachNow or FactoryReset
-    Blight::ghostControl((Blight::GhostControlMode)mode);
-  }
-#endif
   auto func = reinterpret_cast<void (*)(void*, int)>(originalGhostControl);
+  _DEBUG("EPFramebuffer::ghostControl(%p, mode=%d)", this_ptr, mode);
   if (func == nullptr) {
-    _WARN("Original ghostControl missing");
+    _WARN("Original ghostControl is nullptr");
     return;
   }
-  func(this_ptr, mode);
+  ghostControl(this_ptr, mode, func);
 }
 
 bool
@@ -794,17 +801,7 @@ _ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
     std::_Exit(EXIT_FAILURE);
   }
   _DEBUG("EPFramebuffer::ghostControl(mode=%d)", mode);
-  if (mode == 1) { // BlinkLater
-    blinkLater = true;
-    return;
-  }
-#ifdef __aarch64__
-  else if (mode == 2 || mode == 3) {
-    // BleachNow or FactoryReset
-    Blight::ghostControl((Blight::GhostControlMode)mode);
-  }
-#endif
-  func(this_ptr, mode);
+  ghostControl(this_ptr, mode, func);
 }
 
 #if defined(__aarch64__)
@@ -824,17 +821,7 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
     std::_Exit(EXIT_FAILURE);
   }
   _DEBUG("EPFramebufferAcep2::ghostControl(mode=%d)", mode);
-  if (mode == 1) { // BlinkLater
-    blinkLater = true;
-    return;
-  }
-#ifdef __aarch64__
-  else if (mode == 2 || mode == 3) {
-    // BleachNow or FactoryReset
-    Blight::ghostControl((Blight::GhostControlMode)mode);
-  }
-#endif
-  func(this_ptr, mode);
+  ghostControl(this_ptr, mode, func);
 }
 #endif
 

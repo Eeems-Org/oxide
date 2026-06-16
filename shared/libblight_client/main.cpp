@@ -342,13 +342,15 @@ __attribute__((visibility("default"))) int
 close(int fd) {
   if (Client::INITIALIZED) {
     _DEBUG("close %d", fd);
+#ifdef __aarch64__
     if (DRM::is_drm(fd)) {
       int res = Libc::close(DRM::card0);
       if (res == 0) {
-        Libc::card0 = -1;
+        DRM::card0 = -1;
       }
       return res;
     }
+#endif
     if (FB::is_fb(fd)) {
       // Maybe actually close it?
       return 0;
