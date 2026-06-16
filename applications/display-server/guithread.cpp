@@ -268,7 +268,7 @@ GUIThread::repaintSurface(
   if (image == nullptr || image->isNull()) {
     return;
   }
-  const QRect imageRect =
+  QRect imageRect =
     rect->translated(-surfaceGlobalRect.left(), -surfaceGlobalRect.top())
       .intersected(surface->rect());
   const QRect sourceRect = rect->intersected(surfaceGlobalRect);

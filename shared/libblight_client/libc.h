@@ -1,12 +1,16 @@
 #pragma once
 #include <cstdint>
 #include <poll.h>
+#include <signal.h>
 #include <sys/epoll.h>
 #include <sys/select.h>
 #include <sys/uio.h>
 #include <unistd.h>
 
 namespace Libc {
+  extern sighandler_t (*signal)(int, sighandler_t);
+  extern int (*sigaction)(int, const struct sigaction*, struct sigaction*);
+
   extern ssize_t (*write)(int, const void*, size_t);
   extern ssize_t (*writev)(int, const iovec*, int);
   extern ssize_t (*writev64)(int, const iovec*, int);

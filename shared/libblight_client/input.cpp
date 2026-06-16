@@ -457,7 +457,9 @@ namespace Input {
         ringBuffer = Client::isFakeRM1Input() ? devices[device].remapBuffer
                                               : devices[device].ringBuffer;
       }
-      ringBuffer->insert(ev);
+      if (ringBuffer != nullptr) {
+        ringBuffer->insert(ev);
+      }
       if (Client::isFakeRM1Input()) {
         continue;
       }

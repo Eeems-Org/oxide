@@ -1,3 +1,4 @@
+#include <asm-generic/fcntl.h>
 #ifdef __aarch64__
 #include "drm.h"
 #endif
@@ -31,6 +32,7 @@
 #include <systemd/sd-journal.h>
 #include <unistd.h>
 
+#define DEBUG
 #ifdef DEBUG
 #include <execinfo.h>
 #include <iostream>
@@ -39,50 +41,54 @@
 
 namespace {
 #ifdef DEBUG
-  void __sigsegv_handler(int nSignum, siginfo_t* si, void* vcontext) {
-    (void)nSignum;
-    (void)si;
-    constexpr int depth = 10;
-    auto uc = (ucontext_t*)vcontext;
-    auto caller_address =
-#if defined(__arm__)
-      (void*)uc->uc_mcontext.arm_pc;
-#elif defined(__aarch64__)
-      (void*)uc->uc_mcontext.pc;
-#else
-#error "Unsupported architecture"
-#endif
-    void* array[depth];
-    size_t size = ::backtrace(array, depth);
-    array[1] = caller_address;
-    char** messages = ::backtrace_symbols(array, size);
-    std::cerr << "Segmentation fault:" << std::endl;
-    for (size_t i = 1; i < size && messages != NULL; ++i) {
-      std::cerr << "  " << messages[i] << std::endl;
+  struct sigaction originalSigsegv{};
+  struct sigaction originalSigabrt{};
+
+  static void
+  chain_to_original_handler(int signum, siginfo_t* siginfo, void* context) {
+    auto* action = signum == SIGSEGV ? &originalSigsegv : &originalSigabrt;
+    if ((action->sa_flags & SA_SIGINFO) && action->sa_sigaction) {
+      action->sa_sigaction(signum, siginfo, context);
+    } else if (
+      action->sa_handler && action->sa_handler != SIG_DFL &&
+      action->sa_handler != SIG_IGN
+    ) {
+      action->sa_handler(signum);
     }
-    std::_Exit(139);
   }
 
-  void __sigabrt_handler(int nSignum, siginfo_t* si, void* vcontext) {
-    (void)nSignum;
-    (void)si;
-    constexpr int depth = 10;
-    auto uc = (ucontext_t*)vcontext;
-    auto caller_address =
+  void __signal_handler(int signal, siginfo_t* siginfo, void* context) {
+    const char* msg = strsignal(signal);
+    ::write(STDERR_FILENO, msg, std::strlen(msg));
+    ::write(STDERR_FILENO, "\n", std::strlen("\n"));
+    ::write(STDERR_FILENO, "thread=", 7);
+    char thread_name[16] = {0};
+    prctl(PR_GET_NAME, thread_name);
+    ::write(STDERR_FILENO, thread_name, strlen(thread_name));
+    ::write(STDERR_FILENO, "\n", std::strlen("\n"));
+    auto uc = static_cast<ucontext_t*>(context);
+    void* caller_address =
 #if defined(__arm__)
-      (void*)uc->uc_mcontext.arm_pc;
+      reinterpret_cast<void*>(uc->uc_mcontext.arm_pc);
 #elif defined(__aarch64__)
-      (void*)uc->uc_mcontext.pc;
-#else
-#error "Unsupported architecture"
+      reinterpret_cast<void*>(uc->uc_mcontext.pc);
 #endif
+    constexpr int depth = 10;
     void* array[depth];
-    size_t size = ::backtrace(array, depth);
+    size_t size = backtrace(array, depth);
     array[1] = caller_address;
-    const char* msg = "Abort (heap corruption suspected):\n";
-    Libc::write(STDERR_FILENO, msg, std::strlen(msg));
-    ::backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
-    std::_Exit(134);
+    backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
+    chain_to_original_handler(signal, siginfo, context);
+    switch (signal) {
+      case SIGSEGV:
+        _Exit(139);
+      case SIGABRT:
+        _Exit(134);
+      case SIGBUS:
+        _Exit(138);
+      default:
+        _Exit(1);
+    }
   }
 #endif
 
@@ -96,6 +102,7 @@ namespace {
     }
     int res = -2;
     if (Client::isFakeRM1Name() && actualpath == "/sys/devices/soc0/machine") {
+      _DEBUG("Forcing rM1 machine name");
       int fd = memfd_create("machine", MFD_ALLOW_SEALING);
       std::string data("reMarkable 1.0");
       // Don't include trailing null
@@ -329,6 +336,24 @@ open(const char* pathname, int flags, ...) {
   }
   _DEBUG("opened %s with fd %d", pathname, fd);
   return fd;
+}
+
+__attribute__((visibility("default"))) FILE*
+fopen(const char* path, const char* mode) {
+  int fd = open(path, O_RDONLY);
+  if (fd < 0) {
+    return nullptr;
+  }
+  return fdopen(fd, mode);
+}
+
+__attribute__((visibility("default"))) FILE*
+fopen64(const char* path, const char* mode) {
+  int fd = open(path, O_RDONLY);
+  if (fd < 0) {
+    return nullptr;
+  }
+  return fdopen(fd, mode);
 }
 
 __attribute__((visibility("default"))) int
@@ -613,15 +638,67 @@ system(const char* command) {
   return Libc::system(command);
 }
 
-void __attribute__((constructor))
-init(void) {
 #ifdef DEBUG
-  struct sigaction action{0};
+__attribute__((visibility("default"))) sighandler_t
+signal(int signum, sighandler_t handler) {
+  if (signum != SIGSEGV && signum != SIGABRT) {
+    return Libc::signal(signum, handler);
+  }
+  auto* originalAction =
+    signum == SIGSEGV ? &originalSigsegv : &originalSigabrt;
+  struct sigaction newAction{};
+  newAction.sa_handler = handler;
+  auto previousHandler = originalAction->sa_flags & SA_SIGINFO
+                           ? SIG_DFL
+                           : originalAction->sa_handler;
+  *originalAction = newAction;
+  struct sigaction action{};
+  action.sa_sigaction = __signal_handler;
   action.sa_flags = SA_SIGINFO;
-  action.sa_sigaction = __sigsegv_handler;
-  sigaction(SIGSEGV, &action, NULL);
-  action.sa_sigaction = __sigabrt_handler;
-  sigaction(SIGABRT, &action, NULL);
+  sigemptyset(&action.sa_mask);
+  if (Libc::sigaction(signum, &action, nullptr)) {
+    return SIG_ERR;
+  }
+  return previousHandler;
+}
+
+__attribute__((visibility("default"))) int
+sigaction(
+  int signum,
+  const struct sigaction* newAction,
+  struct sigaction* oldAction
+) {
+  if (signum != SIGSEGV && signum != SIGABRT) {
+    return Libc::sigaction(signum, newAction, oldAction);
+  }
+  if (oldAction != nullptr) {
+    int result = Libc::sigaction(signum, nullptr, oldAction);
+    if (result) {
+      return result;
+    }
+  }
+  if (newAction == nullptr) {
+    return 0;
+  }
+  *(signum == SIGSEGV ? &originalSigsegv : &originalSigabrt) = *newAction;
+  struct sigaction action{};
+  action.sa_sigaction = __signal_handler;
+  action.sa_flags = SA_SIGINFO;
+  sigemptyset(&action.sa_mask);
+  return Libc::sigaction(signum, &action, nullptr);
+}
+#endif
+
+void __attribute__((constructor)) static init(void) {
+#ifdef DEBUG
+  struct sigaction intercept_sigaction{};
+  intercept_sigaction.sa_flags = SA_SIGINFO;
+  intercept_sigaction.sa_sigaction = __signal_handler;
+  Libc::sigaction(SIGSEGV, &intercept_sigaction, NULL);
+  intercept_sigaction.sa_sigaction = __signal_handler;
+  Libc::sigaction(SIGABRT, &intercept_sigaction, NULL);
+  intercept_sigaction.sa_sigaction = __signal_handler;
+  Libc::sigaction(SIGBUS, &intercept_sigaction, NULL);
 #endif
   if (Client::init() && FB::init() && Input::init()) {
     Client::FAILED_INIT = false;

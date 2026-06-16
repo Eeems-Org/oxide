@@ -120,5 +120,14 @@ namespace Libc {
   int (*epoll_wait)(int, struct epoll_event*, int, int) =
     (int (*)(int, struct epoll_event*, int, int))dlsym(RTLD_NEXT, "epoll_wait");
 
+  sighandler_t (*signal)(int, sighandler_t) =
+    (sighandler_t (*)(int, sighandler_t))dlsym(RTLD_NEXT, "signal");
+
+  int (*sigaction)(int, const struct sigaction*, struct sigaction*) = (int (*)(
+    int,
+    const struct sigaction*,
+    struct sigaction*
+  ))dlsym(RTLD_NEXT, "sigaction");
+
   int (*system)(const char*) = (int (*)(const char*))dlsym(RTLD_NEXT, "system");
 }
