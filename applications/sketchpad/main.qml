@@ -216,7 +216,7 @@ OxideWindow {
                                         id: sizeLabel
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         anchors.bottom: parent.bottom
-                                        text: modelData
+                                        text: modelData + "px"
                                         font.pixelSize: 24
                                         horizontalAlignment: Text.AlignHCenter
                                     }
