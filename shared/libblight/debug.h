@@ -6,8 +6,8 @@
 #pragma once
 
 #include "libblight_global.h"
+#include <cstdio>
 #include <linux/prctl.h>
-#include <stdio.h>
 #include <sys/prctl.h>
 #include <systemd/sd-journal.h>
 #include <unistd.h>
