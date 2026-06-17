@@ -68,6 +68,16 @@ namespace Oxide {
       return QBrush(color, Qt::SolidPattern);
     }
 
+    QPen OxideQml::createPen(
+      const QBrush& brush,
+      qreal width,
+      Qt::PenStyle style,
+      Qt::PenCapStyle cap,
+      Qt::PenJoinStyle join
+    ) {
+      return QPen(brush, width, style, cap, join);
+    }
+
     OxideQml* getSingleton() {
       static OxideQml* instance = new OxideQml(qApp);
       return instance;
@@ -82,16 +92,16 @@ namespace Oxide {
 
     Canvas::Canvas(QQuickItem* parent)
       : QQuickPaintedItem(parent)
-      , m_brush{Qt::black}
-      , m_penWidth{6}
+      , m_pen{Qt::black, 6}
       , m_repainted{}
       , m_finalizeTimer(this)
-      , m_ghostControlTimer(this) {
+      , m_ghostControlTimer(this)
+      , m_drawing{false} {
       setAcceptedMouseButtons(Qt::AllButtons);
       m_drawn = QImage(width(), height(), QImage::Format_ARGB32_Premultiplied);
       m_drawn.fill(Qt::transparent);
       m_finalizeTimer.callOnTimeout(this, [this] {
-        if (!m_timerMutex.try_lock()) {
+        if (m_drawing || !m_timerMutex.try_lock()) {
           return;
         }
         auto region = m_repainted;
@@ -110,7 +120,7 @@ namespace Oxide {
       });
       m_finalizeTimer.setSingleShot(true);
       m_ghostControlTimer.callOnTimeout(this, [this] {
-        if (!m_timerMutex.try_lock()) {
+        if (m_drawing || !m_timerMutex.try_lock()) {
           return;
         }
         repaint(
@@ -135,22 +145,14 @@ namespace Oxide {
       painter->drawImage(boundingRect(), m_drawn);
     }
 
-    QBrush Canvas::brush() {
-      return m_brush;
+    QPen Canvas::pen() {
+      return m_pen;
     }
 
-    void Canvas::setBrush(QBrush brush) {
-      m_brush = brush;
-      emit brushChanged(brush);
-    }
-
-    qreal Canvas::penWidth() {
-      return m_penWidth;
-    }
-
-    void Canvas::setPenWidth(qreal penWidth) {
-      m_penWidth = penWidth;
-      emit penWidthChanged(penWidth);
+    void Canvas::setPen(QPen pen) {
+      qDebug() << "pen:" << pen;
+      m_pen = pen;
+      emit penChanged(pen);
     }
 
     QImage* Canvas::image() {
@@ -178,7 +180,26 @@ namespace Oxide {
       if (!isEnabled()) {
         return;
       }
+      m_drawing = true;
       m_lastPoint = event->position();
+      {
+        QPainter painter(&m_drawn);
+        painter.setPen(m_pen);
+        painter.drawPoint(m_lastPoint);
+      }
+      const QPoint globalPoint = mapToScene(m_lastPoint).toPoint();
+      auto image = getImageForWindow(window());
+      {
+        QPainter painter(&image);
+        painter.setClipRect(mapRectToScene(boundingRect()));
+        painter.setPen(m_pen);
+        painter.drawPoint(globalPoint);
+      }
+      m_pending +=
+        QRect(globalPoint, globalPoint)
+          .marginsAdded(
+            QMargins(m_pen.width(), m_pen.width(), m_pen.width(), m_pen.width())
+          );
       m_LastPaint.reset();
       emit drawStart();
     }
@@ -189,22 +210,22 @@ namespace Oxide {
       }
       std::lock_guard locker(m_timerMutex);
       Q_UNUSED(locker);
-      QPen pen(m_brush, m_penWidth);
       {
         QPainter painter(&m_drawn);
-        painter.setPen(pen);
+        painter.setPen(m_pen);
         painter.drawLine(m_lastPoint, event->position());
       }
       const QPoint globalStart = mapToScene(m_lastPoint).toPoint();
       const QPoint globalEnd = event->globalPosition().toPoint();
+      int margin = qMax(24, (int)qCeil(m_pen.widthF() / 2.0) + 4);
       auto rect = QRect(globalStart, globalEnd)
                     .normalized()
-                    .marginsAdded(QMargins(24, 24, 24, 24));
+                    .marginsAdded(QMargins(margin, margin, margin, margin));
       auto image = getImageForWindow(window());
       {
         QPainter painter(&image);
         painter.setClipRect(mapRectToScene(boundingRect()));
-        painter.setPen(pen);
+        painter.setPen(m_pen);
         painter.drawLine(globalStart, globalEnd);
       }
       m_pending += rect;
@@ -221,6 +242,7 @@ namespace Oxide {
       Q_UNUSED(locker);
       applyPending();
       m_finalizeTimer.start(500);
+      m_drawing = false;
     }
 
     void Canvas::applyPending() {

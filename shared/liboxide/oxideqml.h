@@ -15,6 +15,7 @@
 #include <QBrush>
 #include <QImage>
 #include <QObject>
+#include <QPen>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -128,6 +129,22 @@ namespace Oxide {
        * \return QBrush for a colour
        */
       Q_INVOKABLE QBrush brushFromColor(const QColor& color);
+      /*!
+       * \brief Create a QPen
+       * \param brush QBrush instance to use
+       * \param width Width of the pen
+       * \param style Style of the pen
+       * \param cap Cap style of the pen
+       * \param join Join style of the pen
+       * \return QPen
+       */
+      Q_INVOKABLE QPen createPen(
+        const QBrush& brush,
+        qreal width,
+        Qt::PenStyle style = Qt::SolidLine,
+        Qt::PenCapStyle cap = Qt::SquareCap,
+        Qt::PenJoinStyle join = Qt::BevelJoin
+      );
 
     signals:
       /*!
@@ -169,8 +186,6 @@ namespace Oxide {
      * OxideWindow{
      *  initialItem: Canvas{
      *    anchors.fill: parent
-     *    brush: Oxide.brushFromColor(Qt.black)
-     *    penWidth: 12
      *  }
      * }
      * ```
@@ -178,21 +193,12 @@ namespace Oxide {
     class LIBOXIDE_EXPORT Canvas : public QQuickPaintedItem {
       Q_OBJECT
       /*!
-       * \property brush
-       * \brief Current brush used when drawing
-       * \accessors brush(), setBrush(QBrush)
-       * \notifier brushChanged(const QBrush&)
+       * \property pen
+       * \brief Current pen used when drawing
+       * \accessors pen(), setPen(QPen)
+       * \notifier penChanged(const QPen&)
        */
-      Q_PROPERTY(QBrush brush READ brush WRITE setBrush NOTIFY brushChanged)
-      /*!
-       * \property penWidth
-       * \brief Current pen width used when drawing
-       * \accessors penWidth(), setPenWidth(qreal)
-       * \notifier penWidthChanged(qreal)
-       */
-      Q_PROPERTY(
-        qreal penWidth READ penWidth WRITE setPenWidth NOTIFY penWidthChanged
-      )
+      Q_PROPERTY(QPen pen READ pen NOTIFY penChanged)
       QML_ELEMENT
 
     public:
@@ -204,29 +210,17 @@ namespace Oxide {
       ~Canvas();
       void paint(QPainter* painter) override;
       /*!
-       * \brief Current brush used when drawing
-       * \return The current brush
-       * \sa brush, setBrush(QBrush), brushChanged(const QBrush&)
+       * \brief Current pen used when drawing
+       * \return The current pen
+       * \sa pen, setBrush(QPen), penChanged(const QPen&)
        */
-      QBrush brush();
+      QPen pen();
       /*!
-       * \brief Set the current brush that is used for drawing
-       * \param brush Brush to use
-       * \sa brush, brush(), brushChanged(const QBrush&)
+       * \brief Set the current pen that is used for drawing
+       * \param pen Pen to use
+       * \sa pen, pen(), penChanged(const QPen&)
        */
-      void setBrush(QBrush brush);
-      /*!
-       * \brief Current pen width used when drawing
-       * \return The current pen with
-       * \sa penWidth, setPenWidth(QBrush), penWidthChanged(const QBrush&)
-       */
-      qreal penWidth();
-      /*!
-       * \brief Set the current pen width used for drawing
-       * \param penWidth Pen width to use
-       * \sa penWidth, penWidth(), penWidthChanged(qreal)
-       */
-      void setPenWidth(qreal penWidth);
+      Q_INVOKABLE void setPen(QPen pen);
       /*!
        * \brief QImage instance of the current canvas
        * \return QImage instanceof the current canvas
@@ -243,17 +237,11 @@ namespace Oxide {
        */
       void drawDone();
       /*!
-       * \brief The current brush used for drawing has been changed
-       * \param brush New brush
-       * \sa brush, brush(), setBrush(QBrush)
+       * \brief The current pen used for drawing has been changed
+       * \param pen New pen
+       * \sa pen, pen(), setPen(QPen)
        */
-      void brushChanged(const QBrush& brush);
-      /*!
-       * \brief The current pen width used for drawing has been changed
-       * \param pendWidth New pen width
-       * \sa penWidth, penWidth(), setPenWidth(qreal)
-       */
-      void penWidthChanged(qreal pendWidth);
+      void penChanged(const QPen& pen);
 
     protected:
       void geometryChange(
@@ -267,13 +255,13 @@ namespace Oxide {
     private:
       QPointF m_lastPoint;
       QImage m_drawn;
-      QBrush m_brush;
-      qreal m_penWidth;
+      QPen m_pen;
       QRegion m_repainted;
       QRegion m_pending;
       QTimer m_finalizeTimer;
       QTimer m_ghostControlTimer;
       Blight::ClockWatch m_LastPaint;
+      std::atomic<bool> m_drawing;
       std::mutex m_timerMutex;
       void applyPending();
     };

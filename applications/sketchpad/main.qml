@@ -13,7 +13,7 @@ OxideWindow {
 
     property string activeColor: "black"
     property int activeWidth: 4
-    property var colors: [
+    property list<string> colors: [
         "black", "white", "gray", "silver",
         "maroon", "red", "brown", "orange",
         "olive", "yellow", "lime", "green",
@@ -23,7 +23,7 @@ OxideWindow {
         "plum", "violet", "indigo", "slategray",
         "dodgerblue", "crimson", "salmon", "turquoise"
     ]
-    property var widths: [1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64]
+    property list<int> widths: [1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64]
 
     Shortcut {
         sequences: [StandardKey.Quit, StandardKey.Cancel, "Backspace", "Ctrl+Q", "Ctrl+W"]
@@ -69,8 +69,9 @@ OxideWindow {
             anchors.right: parent.right
             anchors.top: toolbar.bottom
             anchors.bottom: parent.bottom
-            brush: Oxide.brushFromColor("black")
-            penWidth: 4
+            Component.onCompleted: {
+                canvas.setPen(Oxide.createPen(Oxide.brushFromColor("black"), 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin));
+            }
         }
 
         Popup {
@@ -170,7 +171,15 @@ OxideWindow {
                             }
 
                             onClicked: {
-                                canvas.brush = Oxide.brushFromColor(modelData);
+                                canvas.setPen(
+                                    Oxide.createPen(
+                                        Oxide.brushFromColor(modelData),
+                                        window.activeWidth,
+                                        Qt.SolidLine,
+                                        Qt.RoundCap,
+                                        Qt.RoundJoin
+                                    )
+                                );
                                 window.activeColor = modelData;
                                 console.log("Pen colour: " + modelData);
                             }
@@ -232,7 +241,15 @@ OxideWindow {
                                 }
 
                                 onClicked: {
-                                    canvas.penWidth = modelData;
+                                    canvas.setPen(
+                                        Oxide.createPen(
+                                            Oxide.brushFromColor(window.activeColor),
+                                            modelData,
+                                            Qt.SolidLine,
+                                            Qt.RoundCap,
+                                            Qt.RoundJoin
+                                        )
+                                    );
                                     window.activeWidth = modelData;
                                     console.log("Pen width: " + modelData);
                                 }
