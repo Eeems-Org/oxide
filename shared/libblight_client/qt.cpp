@@ -18,18 +18,6 @@
 #include <string>
 
 namespace Qt {
-  qregion_constructor_t qregion_constructor() {
-    static auto fn = reinterpret_cast<qregion_constructor_t>(
-      dlsym(RTLD_DEFAULT, "_ZN7QRegionC1ERK5QRect")
-    );
-    return fn;
-  }
-  qregion_destructor_t qregion_destructor() {
-    static auto fn = reinterpret_cast<qregion_destructor_t>(
-      dlsym(RTLD_DEFAULT, "_ZN7QRegionD1Ev")
-    );
-    return fn;
-  }
   qregion_begin_t qregion_begin() {
     static auto fn = reinterpret_cast<qregion_begin_t>(
       dlsym(RTLD_DEFAULT, "_ZNK7QRegion5beginEv")
@@ -300,16 +288,16 @@ syncAfterUpdateOffset() {
 }
 
 /*!
- * \brief Get the vtable offset for EPFramebuffer::ghostControl
+ * \brief Get the vtable offset for EPFramebuffer::qt_metacall
  */
 int
-ghostControlOffset() {
-  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_GHOSTCONTROL_OFFSET");
+qtMetacallOffset() {
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_METACALLL_OFFSET");
   if (offsetenv) {
     return std::stoi(offsetenv, nullptr, 0);
   }
 #if defined(__arm__)
-  return 0x14; // vtable entry 2
+  return 0x08; // vtable entry 2
 #elif defined(__aarch64__)
   return 0x10; // vtable entry 2
 #else
@@ -318,39 +306,29 @@ ghostControlOffset() {
 #endif
 }
 
-static std::atomic<bool> blinkLater = false;
-static void* originalGhostControl = nullptr;
-
-void
-ghostControl(void* this_ptr, int mode, void (*func)(void*, int)) {
-  if (mode == Blight::GhostControlMode::BlinkLater) {
-    blinkLater = true;
-    return;
+/*!
+ * \brief Get the vtable offset for EPFramebufferAcep2::ghostControl
+ */
+int
+ghostControlOffset() {
+  const char* offsetenv = getenv("OXIDE_EPFRAMEBUFFER_GHOSTCONTROL_OFFSET");
+  if (offsetenv) {
+    return std::stoi(offsetenv, nullptr, 0);
   }
-#ifdef __aarch64__
-  else if (
-    mode == Blight::GhostControlMode::BleachNow ||
-    mode == Blight::GhostControlMode::FactoryReset
-  ) {
-    Blight::ghostControl((Blight::GhostControlMode)mode);
-  }
+#if defined(__arm__)
+  return 0x58; // vtable entry 22
+#elif defined(__aarch64__)
+  return 0xb0; // vtable entry
+#else
+  _CRIT("Unsupported architecture");
+  std::exit(EXIT_FAILURE);
 #endif
-  func(this_ptr, mode);
 }
 
-/*!
- * \brief Replacement for EPFramebuffer::ghostControl(GhostControlMode)
- * \param mode GhostControlMode to use
- */
 void
 hook_ghostControl(void* this_ptr, int mode) {
-  auto func = reinterpret_cast<void (*)(void*, int)>(originalGhostControl);
-  _DEBUG("EPFramebuffer::ghostControl(%p, mode=%d)", this_ptr, mode);
-  if (func == nullptr) {
-    _WARN("Original ghostControl is nullptr");
-    return;
-  }
-  ghostControl(this_ptr, mode, func);
+  _DEBUG("EPFramebuffer::ghostControl(%d)", mode);
+  // Blight::ghostControl((Blight::GhostControlMode)mode);
 }
 
 bool
@@ -377,6 +355,150 @@ static std::atomic<void*> epframebufferInstance{nullptr};
 static std::atomic<void*> lastBadCandidate{nullptr};
 static std::atomic<void*> lastBadVtable{nullptr};
 static std::atomic<int> badCandidateCount{0};
+
+static void* originalQtMetacall = nullptr;
+
+template<typename T>
+T
+cast_function(const char* name) {
+  T func = reinterpret_cast<T>(dlsym(RTLD_NEXT, name));
+  if (func == nullptr) {
+    _CRIT("Failed to resolve %s via RTLD_NEXT", name);
+    std::_Exit(EXIT_FAILURE);
+  }
+  return func;
+}
+
+struct QMetaMethod {
+  const void* mobj; // const QMetaObject*
+  const uint* data; // Data::d
+};
+struct alignas(8) QByteArray {
+  void* d;
+  const char* ptr;
+  long long size;
+};
+
+void
+printMetaMethodsAndExit(void* metaObject) {
+  static auto QMetaObject_className =
+    cast_function<const char* (*)(void*)>("_ZNK11QMetaObject9classNameEv");
+  static auto QMetaObject_method =
+    cast_function<QMetaMethod (*)(void*, int)>("_ZNK11QMetaObject6methodEi");
+  static auto QMetaObject_methodOffset =
+    cast_function<int (*)(void*)>("_ZNK11QMetaObject12methodOffsetEv");
+  static auto QMetaObject_methodCount =
+    cast_function<int (*)(void*)>("_ZNK11QMetaObject11methodCountEv");
+  static auto QMetaMethod_methodSignature =
+    cast_function<QByteArray (*)(QMetaMethod*)>(
+      "_ZNK11QMetaMethod15methodSignatureEv"
+    );
+  static auto QByteArray_toStdString =
+    cast_function<std::string (*)(QByteArray*)>(
+      "_ZNK10QByteArray11toStdStringB5cxx11Ev"
+    );
+  _DEBUG(
+    "Available metacall functions for %s:", QMetaObject_className(metaObject)
+  );
+  for (int i = QMetaObject_methodOffset(metaObject);
+       i < QMetaObject_methodCount(metaObject);
+       ++i) {
+    QMetaMethod method = QMetaObject_method(metaObject, i);
+    QByteArray signature = QMetaMethod_methodSignature(&method);
+    _DEBUG("%d: %s", i, QByteArray_toStdString(&signature).c_str());
+  }
+  std::_Exit(EXIT_FAILURE);
+}
+
+void*
+epframebufferMetaObject() {
+  static void* metaObject = nullptr;
+  if (metaObject != nullptr) {
+    return metaObject;
+  }
+  void* epframebuffer = epframebufferInstance.load(std::memory_order_acquire);
+  if (!epframebuffer) {
+    _DEBUG("epframebuffer missing");
+    std::_Exit(EXIT_FAILURE);
+  }
+  auto vtable = *reinterpret_cast<void***>(epframebuffer);
+  if (vtable == nullptr) {
+    _CRIT("%s", "Failed to get vtable");
+    std::_Exit(EXIT_FAILURE);
+  }
+  metaObject = reinterpret_cast<void* (*)(void*)>(vtable[0])(epframebuffer);
+  if (metaObject == nullptr) {
+    _CRIT("%s", "Failed to get QMetaObject");
+    std::_Exit(EXIT_FAILURE);
+  }
+  return metaObject;
+}
+
+/*!
+ * \brief Replacement for EPFramebuffer::qt_metacall()
+ */
+int
+hook_qt_metacall(void* this_ptr, int type, int index, void** argv) {
+  _DEBUG("EPFramebuffer::qt_metacall(%d, %d, ...)", type, index);
+  auto func =
+    reinterpret_cast<int (*)(void*, int, int, void**)>(originalQtMetacall);
+  if (func == nullptr) {
+    _CRIT("Original qt_metacall is nullptr");
+    std::_Exit(EXIT_FAILURE);
+  }
+  if (type == 0) { // InvokeMetaMethod
+    static int scheduleGhostRemovalIndex = -2;
+    void* metaObject = epframebufferMetaObject();
+    if (scheduleGhostRemovalIndex == -2) {
+      static auto QMetaObject_indexOfMethod =
+        cast_function<int (*)(void*, const char*)>(
+          "_ZNK11QMetaObject13indexOfMethodEPKc"
+        );
+      scheduleGhostRemovalIndex =
+        QMetaObject_indexOfMethod(metaObject, "scheduleGhostRemoval()");
+    }
+    if (scheduleGhostRemovalIndex == -1) {
+      auto QMetaObject_className =
+        cast_function<const char* (*)(void*)>("_ZNK11QMetaObject9classNameEv");
+      _CRIT(
+        "Failed to get %s::scheduleGhostRemoval() index",
+        QMetaObject_className(metaObject)
+      );
+      printMetaMethodsAndExit(metaObject);
+    }
+    static int clearGhostingIndex = -2;
+    if (clearGhostingIndex == -2) {
+      static auto QMetaObject_indexOfMethod =
+        cast_function<int (*)(void*, const char*)>(
+          "_ZNK11QMetaObject13indexOfMethodEPKc"
+        );
+      clearGhostingIndex =
+        QMetaObject_indexOfMethod(metaObject, "clearGhosting()");
+    }
+    if (clearGhostingIndex == -1) {
+      auto QMetaObject_className =
+        cast_function<const char* (*)(void*)>("_ZNK11QMetaObject9classNameEv");
+      _CRIT(
+        "Failed to get %s::clearGhosting() index",
+        QMetaObject_className(metaObject)
+      );
+      printMetaMethodsAndExit(metaObject);
+    }
+    if (index == scheduleGhostRemovalIndex) {
+      int mode = *reinterpret_cast<int*>(argv[1]);
+      _DEBUG("EPFramebuffer::scheduleGhostRemoval()");
+      // Blight::ghostControl(Blight::GhostControlMode::BlinkLater);
+      return -1;
+    }
+    if (index == clearGhostingIndex) {
+      int mode = *reinterpret_cast<int*>(argv[1]);
+      _DEBUG("EPFramebuffer::clearGhosting()");
+      // Blight::ghostControl(Blight::GhostControlMode::BlinkNow);
+      return -1;
+    }
+  }
+  return func(this_ptr, type, index, argv);
+}
 
 /*!
  * \brief Install a trampoline into a function to run our hook instead
@@ -704,19 +826,9 @@ hook_swapBuffers_QRegion(
   _DEBUG("EPFramebuffer::swapBuffers(QRegion, ...)");
   auto begin_fn = Qt::qregion_begin();
   auto end_fn = Qt::qregion_end();
-  if (!begin_fn || !end_fn) {
-    _DEBUG("hook: qregion_begin/end is NULL");
+  if (begin_fn == nullptr || end_fn == nullptr) {
+    _DEBUG("swapBuffers: qregion_begin/end is NULL");
     return;
-  }
-  void* fullRegion = nullptr;
-  if (blinkLater) {
-    blinkLater = false;
-    flags |= 0x01; // FullUpdate
-    Qt::QRectLayout fullRect{
-      FB::buffer->x, FB::buffer->y, FB::buffer->width, FB::buffer->height
-    };
-    Qt::qregion_constructor()(&fullRegion, &fullRect);
-    region = &fullRegion;
   }
   auto dit = begin_fn(region);
   auto dend = end_fn(region);
@@ -755,9 +867,6 @@ hook_swapBuffers_QRegion(
     }
   }
   dump_buffers();
-  if (fullRegion != nullptr) {
-    Qt::qregion_destructor()(fullRegion);
-  }
 }
 
 /*!
@@ -793,15 +902,8 @@ _ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
   void* this_ptr,
   int mode
 ) {
-  static auto func = reinterpret_cast<void (*)(void*, int)>(
-    dlsym(RTLD_NEXT, "_ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE")
-  );
-  if (!func) {
-    _CRIT("%s", "Failed to resolve EPFramebuffer::ghostControl via RTLD_NEXT");
-    std::_Exit(EXIT_FAILURE);
-  }
   _DEBUG("EPFramebuffer::ghostControl(mode=%d)", mode);
-  ghostControl(this_ptr, mode, func);
+  // Blight::ghostControl((Blight::GhostControlMode)mode);
 }
 
 #if defined(__aarch64__)
@@ -810,18 +912,8 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
   void* this_ptr,
   int mode
 ) {
-  static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
-    RTLD_NEXT,
-    "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE"
-  ));
-  if (!func) {
-    _CRIT(
-      "%s", "Failed to resolve EPFramebufferAcep2::ghostControl via RTLD_NEXT"
-    );
-    std::_Exit(EXIT_FAILURE);
-  }
   _DEBUG("EPFramebufferAcep2::ghostControl(mode=%d)", mode);
-  ghostControl(this_ptr, mode, func);
+  // Blight::ghostControl((Blight::GhostControlMode)mode);
 }
 #endif
 
@@ -936,7 +1028,11 @@ hook_check_candidate() {
       func_swapBuffers_qregion,
       reinterpret_cast<void*>(&hook_swapBuffers_QRegion)
     );
-    _DEBUG("Hooked swapBuffers(QRegion,...)");
+    _DEBUG(
+      "Hooked swapBuffers(QRegion,...) at %p with offset=0x%x",
+      func_swapBuffers_qregion,
+      swapBuffersOffset()
+    );
     auto func_syncAfterUpdate = *reinterpret_cast<void**>(
       static_cast<char*>(vtable) + syncAfterUpdateOffset()
     );
@@ -944,7 +1040,11 @@ hook_check_candidate() {
       install_hook(
         func_syncAfterUpdate, reinterpret_cast<void*>(&hook_syncAfterUpdate)
       );
-      _DEBUG("Hooked syncAfterUpdate at %p", func_syncAfterUpdate);
+      _DEBUG(
+        "Hooked syncAfterUpdate at %p with offset=0x%x",
+        func_syncAfterUpdate,
+        syncAfterUpdateOffset()
+      );
     } else {
       _WARN("syncAfterUpdate vtable entry is null, cannot hook");
     }
@@ -952,7 +1052,6 @@ hook_check_candidate() {
       static_cast<char*>(vtable) + ghostControlOffset()
     );
     if (*func_ghostControl != nullptr) {
-      originalGhostControl = *func_ghostControl;
       auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
       auto page = reinterpret_cast<void*>(
         reinterpret_cast<uintptr_t>(func_ghostControl) &
@@ -965,11 +1064,36 @@ hook_check_candidate() {
       mprotect(page, ps, PROT_READ | PROT_WRITE);
       *func_ghostControl = reinterpret_cast<void*>(&hook_ghostControl);
       _DEBUG(
-        "Hooked ghostControl via vtable override (original=%p)",
-        originalGhostControl
+        "Hooked ghostControl at %p with offset=0x%x",
+        func_ghostControl,
+        ghostControlOffset()
       );
     } else {
       _WARN("ghostControl vtable entry is null, skipping hook");
+    }
+    void** func_metacall =
+      reinterpret_cast<void**>(static_cast<char*>(vtable) + qtMetacallOffset());
+    if (*func_metacall != nullptr) {
+      originalQtMetacall = *func_metacall;
+      auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
+      auto page = reinterpret_cast<void*>(
+        reinterpret_cast<uintptr_t>(func_metacall) &
+        ~(static_cast<uintptr_t>(ps) - 1)
+      );
+      while (reinterpret_cast<uintptr_t>(page) + ps <
+             reinterpret_cast<uintptr_t>(func_metacall) + sizeof(void*)) {
+        ps += sysconf(_SC_PAGESIZE);
+      }
+      mprotect(page, ps, PROT_READ | PROT_WRITE);
+      *func_metacall = reinterpret_cast<void*>(&hook_qt_metacall);
+      _DEBUG(
+        "Hooked qt_metacall at %p with offset=0x%x and original=%p",
+        func_metacall,
+        qtMetacallOffset(),
+        originalQtMetacall
+      );
+    } else {
+      _WARN("qt_metacall vtable entry is null, skipping hook");
     }
   }
   void* empty = nullptr;

@@ -86,6 +86,7 @@ namespace Client {
     _INFO("RM2FB Allowed: %s", bool_str(isRM2FBAllowed()));
     _INFO("Fake RM2FB: %s", bool_str(isFakeRM2FB()));
     _INFO("Force Qt: %s", bool_str(isForceQt()));
+    _INFO("Ghost Control: %s", bool_str(isGhostControlEnabled()));
     return true;
   }
 #undef bool_str
@@ -162,6 +163,10 @@ namespace Client {
   }
   bool isForceQt() {
     static bool enabled = getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr;
+    return enabled;
+  }
+  bool isGhostControlEnabled() {
+    static bool enabled = getenv("OXIDE_PRELOAD_GHOST_CONTROL") != nullptr;
     return enabled;
   }
   const std::string deviceTypeName() {

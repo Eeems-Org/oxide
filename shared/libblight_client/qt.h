@@ -15,12 +15,8 @@ namespace Qt {
     double width;
     double height;
   } QRectFLayout;
-  typedef void (*qregion_constructor_t)(void* this_ptr, const void* rect);
-  typedef void (*qregion_destructor_t)(void* this_ptr);
   typedef const QRectLayout* (*qregion_begin_t)(const void* this_ptr);
   typedef const QRectLayout* (*qregion_end_t)(const void* this_ptr);
-  qregion_constructor_t qregion_constructor();
-  qregion_destructor_t qregion_destructor();
   qregion_begin_t qregion_begin();
   qregion_end_t qregion_end();
   bool region_rect_overlaps(const QRectLayout* rect, const void* region);

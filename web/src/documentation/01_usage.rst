@@ -333,3 +333,11 @@ When running an application from the command line, you can force it to use the d
 - ``OXIDE_PRELOAD_DEBUG`` Debug level. Defaults to 4.
 - ``OXIDE_PRELOAD_EXPOSE_INPUT`` Disable input handling.
 - ``OXIDE_PRELOAD_ALLOW_RM2FB`` Do not disable the rm2fb client shim.
+- ``OXIDE_PRELOAD_ALLOW_POWER_BUTTON`` Allow the application to recieve power button input events.
+- ``OXIDE_PRELOAD_DUMP_FB`` Dump the various framebuffers to ``/tmp/*.raw``.
+- ``OXIDE_PRELOAD_FORCE_RM1_NAME`` Return ``reMarkable 1.0`` for any reads to ``/sys/devices/soc0/machine``.
+- ``OXIDE_PRELOAD_FORCE_RM1_FB`` Force the framebuffer size to be the reMarkable 1 framebuffer size, scaled to the current screen.
+- ``OXIDE_PRELOAD_FORCE_RM1_INPUT`` Force all input events to use reMarkable 1 coordinates and scale, and force reMarkable 1 event device paths.
+- ``OXIDE_PRELOAD_FORCE_RGB16`` Force the buffer to use RGB16 pixel format.
+- ``OXIDE_PRELOAD_NO_FAKE_RM2FB`` Disable rm2fb handlng.
+- ``OXIDE_PRELOAD_GHOST_CONTROL`` Enable xochitl and libqsgepaper ghost control handling. This will slow down applications.

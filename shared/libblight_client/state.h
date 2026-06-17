@@ -29,5 +29,6 @@ namespace Client {
   bool isRM2FBAllowed();
   bool isFakeRM2FB();
   bool isForceQt();
+  bool isGhostControlEnabled();
   const std::string deviceTypeName();
 }
