@@ -13,6 +13,17 @@ OxideWindow {
 
     property string activeColor: "black"
     property int activeWidth: 4
+    property var colors: [
+        "black", "white", "gray", "silver",
+        "maroon", "red", "brown", "orange",
+        "olive", "yellow", "lime", "green",
+        "aqua", "teal", "cyan", "blue",
+        "navy", "purple", "fuchsia", "magenta",
+        "pink", "coral", "tomato", "gold",
+        "plum", "violet", "indigo", "slategray",
+        "dodgerblue", "crimson", "salmon", "turquoise"
+    ]
+    property var widths: [1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64]
 
     Shortcut {
         sequences: [StandardKey.Quit, StandardKey.Cancel, "Backspace", "Ctrl+Q", "Ctrl+W"]
@@ -40,26 +51,15 @@ OxideWindow {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 4
-                spacing: 6
+                anchors.topMargin: 4
+                anchors.bottomMargin: 4
+                anchors.leftMargin: 20
+                anchors.rightMargin: 4
+                spacing: 12
 
-                ColorCircle { penColor: "black"; }
-                ColorCircle { penColor: "white"; }
-                ColorCircle { penColor: "gray"; }
-                ColorCircle { penColor: "red"; }
-                ColorCircle { penColor: "blue"; }
-                ColorCircle { penColor: "green"; }
-                ColorCircle { penColor: "yellow"; }
-                ColorCircle { penColor: "orange"; }
-                ColorCircle { penColor: "brown"; }
-
+                ColorSelector { }
+                WidthSelector { }
                 Item { Layout.fillWidth: true; }
-
-                WidthCircle { penWidth: 2; }
-                WidthCircle { penWidth: 4; }
-                WidthCircle { penWidth: 8; }
-                WidthCircle { penWidth: 16; }
-                WidthCircle { penWidth: 24; }
             }
         }
 
@@ -72,19 +72,184 @@ OxideWindow {
             brush: Oxide.brushFromColor("black")
             penWidth: 4
         }
+
+        Popup {
+            id: mergedPopup
+            y: toolbar.y + toolbar.height - toolbar.border.width
+            x: 0
+            width: 690
+            height: Math.max(colorGrid.implicitHeight, sizeGridContainer.height) + 34
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+            background: Item {
+                Rectangle {
+                    anchors.fill: parent
+                    color: "white"
+                }
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 3
+                    color: "black"
+                }
+                Rectangle {
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 3
+                    color: "black"
+                }
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 3
+                    color: "black"
+                }
+            }
+
+            Row {
+                id: mergedRow
+                anchors.fill: parent
+                anchors.leftMargin: 10
+                anchors.topMargin: 10
+                anchors.rightMargin: 24
+                anchors.bottomMargin: 24
+                spacing: 20
+
+                Grid {
+                    id: colorGrid
+                    columns: 3
+                    columnSpacing: 4
+                    rowSpacing: 4
+
+                    Repeater {
+                        model: window.colors
+                        delegate: Button {
+                            width: 140
+                            height: 114
+
+                            background: Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: 2
+                                radius: 8
+                                color: "white"
+                                border.color: "black"
+                                border.width: window.activeColor === modelData ? 5 : 1
+                            }
+
+                            contentItem: Item {
+                                anchors.fill: parent
+                                anchors.topMargin: 12
+                                anchors.bottomMargin: 8
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+
+                                Text {
+                                    id: colorLabel
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.bottom: parent.bottom
+                                    text: modelData
+                                    font.pixelSize: 24
+                                    horizontalAlignment: Text.AlignHCenter
+                                    elide: Text.ElideRight
+                                    width: 110
+                                }
+
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    y: (colorLabel.y - height) / 2
+                                    width: 40
+                                    height: 40
+                                    radius: 20
+                                    color: modelData
+                                    border.color: "black"
+                                    border.width: modelData === "white" ? 1 : 0
+                                }
+                            }
+
+                            onClicked: {
+                                canvas.brush = Oxide.brushFromColor(modelData);
+                                window.activeColor = modelData;
+                                console.log("Pen colour: " + modelData);
+                            }
+                        }
+                    }
+                }
+
+                Item {
+                    id: sizeGridContainer
+                    width: sizeGrid.implicitWidth
+                    height: colorGrid.implicitHeight
+
+                    Grid {
+                        id: sizeGrid
+                        anchors.top: parent.top
+                        columns: 2
+                        columnSpacing: 4
+                        rowSpacing: 4
+
+                        Repeater {
+                            model: window.widths
+                            delegate: Button {
+                                width: 100
+                                height: 114
+
+                                background: Rectangle {
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    radius: 8
+                                    color: "white"
+                                    border.color: "black"
+                                    border.width: window.activeWidth === modelData ? 5 : 1
+                                }
+
+                                contentItem: Item {
+                                    anchors.fill: parent
+                                    anchors.topMargin: 12
+                                    anchors.bottomMargin: 8
+                                    anchors.leftMargin: 8
+                                    anchors.rightMargin: 8
+
+                                    Text {
+                                        id: sizeLabel
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.bottom: parent.bottom
+                                        text: modelData
+                                        font.pixelSize: 24
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+
+                                    Rectangle {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        y: (sizeLabel.y - height) / 2
+                                        width: 60
+                                        height: modelData
+                                        radius: Math.min(30, modelData / 2)
+                                        color: "black"
+                                    }
+                                }
+
+                                onClicked: {
+                                    canvas.penWidth = modelData;
+                                    window.activeWidth = modelData;
+                                    console.log("Pen width: " + modelData);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    component ColorCircle: Button {
-        id: widget
-        property string penColor: "black"
+    component ColorSelector: Button {
+        id: colorSelector
         implicitWidth: 40
         implicitHeight: 40
 
-        onClicked: {
-            canvas.brush = Oxide.brushFromColor(penColor);
-            window.activeColor = penColor;
-            console.log("Pen colour: " + penColor);
-        }
+        onClicked: mergedPopup.opened ? mergedPopup.close() : mergedPopup.open()
 
         background: Rectangle {
             anchors.centerIn: parent
@@ -93,48 +258,35 @@ OxideWindow {
             radius: 18
             color: "white"
             border.color: "black"
-            border.width: window.activeColor === penColor ? 5 : 1
+            border.width: 3
 
             Rectangle {
                 anchors.centerIn: parent
-                width: 24
-                height: 24
-                radius: 24 / 2
-                color: widget.penColor
+                width: 28
+                height: 28
+                radius: 14
+                color: window.activeColor
                 border.color: "black"
-                border.width: widget.penColor == "white" ? 1 : 0
+                border.width: window.activeColor == "white" ? 1 : 0
             }
         }
     }
 
-    component WidthCircle: Button {
-        id: widget
-        property int penWidth: 3
+    component WidthSelector: Button {
+        id: widthSelector
         implicitWidth: 40
         implicitHeight: 40
 
-        onClicked: {
-            canvas.penWidth = penWidth;
-            window.activeWidth = penWidth;
-            console.log("Pen width: " + penWidth);
+        onClicked: mergedPopup.opened ? mergedPopup.close() : mergedPopup.open()
+
+        contentItem: Text {
+            text: window.activeWidth + "px"
+            font.pixelSize: 24
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            color: "black"
         }
 
-        background: Rectangle {
-            anchors.centerIn: parent
-            width: 36
-            height: 36
-            radius: 18
-            color: "white"
-            border.color: "black"
-            border.width: window.activeWidth === penWidth ? 5 : 1
-
-            Rectangle {
-                anchors.centerIn: parent
-                width: widget.penWidth
-                height: widget.penWidth
-                radius: widget.penWidth / 2
-                color: "black"
-            }
-        }
+        background: null
     }
 }
