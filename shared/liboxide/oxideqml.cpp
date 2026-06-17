@@ -150,7 +150,6 @@ namespace Oxide {
     }
 
     void Canvas::setPen(QPen pen) {
-      qDebug() << "pen:" << pen;
       m_pen = pen;
       emit penChanged(pen);
     }
