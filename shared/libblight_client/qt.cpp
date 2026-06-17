@@ -328,7 +328,9 @@ ghostControlOffset() {
 void
 hook_ghostControl(void* this_ptr, int mode) {
   _DEBUG("EPFramebuffer::ghostControl(%d)", mode);
-  // Blight::ghostControl((Blight::GhostControlMode)mode);
+  if (Client::isGhostControlEnabled()) {
+    Blight::ghostControl((Blight::GhostControlMode)mode);
+  }
 }
 
 bool
@@ -903,7 +905,9 @@ _ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
   int mode
 ) {
   _DEBUG("EPFramebuffer::ghostControl(mode=%d)", mode);
-  // Blight::ghostControl((Blight::GhostControlMode)mode);
+  if (Client::isGhostControlEnabled()) {
+    Blight::ghostControl((Blight::GhostControlMode)mode);
+  }
 }
 
 #if defined(__aarch64__)
@@ -913,7 +917,9 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
   int mode
 ) {
   _DEBUG("EPFramebufferAcep2::ghostControl(mode=%d)", mode);
-  // Blight::ghostControl((Blight::GhostControlMode)mode);
+  if (Client::isGhostControlEnabled()) {
+    Blight::ghostControl((Blight::GhostControlMode)mode);
+  }
 }
 #endif
 
