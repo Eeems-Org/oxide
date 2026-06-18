@@ -150,7 +150,13 @@ namespace Oxide::Power {
     return _usbs;
   }
   int batteryLevel() {
-    return _batteryInt("capacity") / _batteries->length();
+    int count = 0;
+    for (SysObject battery : *_batteries) {
+      if (battery.hasProperty("capacity")) {
+        count++;
+      }
+    }
+    return _batteryInt("capacity") / count;
   }
   int batteryTemperature() {
     return _batteryIntMax("temp") / 10;
