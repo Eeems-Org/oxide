@@ -736,7 +736,7 @@ update_buffers(const Qt::QRectLayout& rect) {
 #endif
   qImageFuncs.constructor(
     qimage,
-    static_cast<char*>(FB::buffer->data),
+    reinterpret_cast<char*>(FB::buffer->data),
     FB::buffer->width,
     FB::buffer->height,
     FB::buffer->stride,

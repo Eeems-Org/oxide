@@ -483,7 +483,8 @@ namespace Input {
     return range;
   }
 
-  void applyTransform(const DeviceInfo& info, int& outX, int& outY) {
+  void
+  applyTransform(const DeviceInfo& info, input_event* outX, input_event* outY) {
     int targetWidth;
     int targetHeight;
     Transform transform;
@@ -509,16 +510,24 @@ namespace Input {
                   static_cast<float>(heightRange);
     if (FB::visibleYRatio < 1.0f) {
       if (yNorm > FB::visibleYRatio) {
-        outX = -1;
-        outY = -1;
+        if (outX != nullptr) {
+          outX->value = -1;
+        }
+        if (outY != nullptr) {
+          outY->value = -1;
+        }
         return;
       }
       yNorm /= FB::visibleYRatio;
     }
     if (FB::visibleXRatio < 1.0f) {
       if (xNorm > FB::visibleXRatio) {
-        outX = -1;
-        outY = -1;
+        if (outX != nullptr) {
+          outX->value = -1;
+        }
+        if (outY != nullptr) {
+          outY->value = -1;
+        }
         return;
       }
       xNorm /= FB::visibleXRatio;
@@ -531,8 +540,12 @@ namespace Input {
         if (transform.invertY) {
           yNorm = 1.0f - yNorm;
         }
-        outX = static_cast<int>(xNorm * targetWidth + 0.5f);
-        outY = static_cast<int>(yNorm * targetHeight + 0.5f);
+        if (outX != nullptr) {
+          outX->value = static_cast<int>(xNorm * targetWidth + 0.5f);
+        }
+        if (outY != nullptr) {
+          outY->value = static_cast<int>(yNorm * targetHeight + 0.5f);
+        }
         break;
       case 90: {
         float origX = xNorm;
@@ -544,8 +557,12 @@ namespace Input {
         if (transform.invertY) {
           yNorm = 1.0f - yNorm;
         }
-        outX = static_cast<int>(xNorm * targetWidth + 0.5f);
-        outY = static_cast<int>(yNorm * targetHeight + 0.5f);
+        if (outX != nullptr) {
+          outX->value = static_cast<int>(xNorm * targetWidth + 0.5f);
+        }
+        if (outY != nullptr) {
+          outY->value = static_cast<int>(yNorm * targetHeight + 0.5f);
+        }
         break;
       }
       case 180:
@@ -557,8 +574,12 @@ namespace Input {
         if (transform.invertY) {
           yNorm = 1.0f - yNorm;
         }
-        outX = static_cast<int>(xNorm * targetWidth + 0.5f);
-        outY = static_cast<int>(yNorm * targetHeight + 0.5f);
+        if (outX != nullptr) {
+          outX->value = static_cast<int>(xNorm * targetWidth + 0.5f);
+        }
+        if (outY != nullptr) {
+          outY->value = static_cast<int>(yNorm * targetHeight + 0.5f);
+        }
         break;
       case 270: {
         float origX = xNorm;
@@ -570,25 +591,33 @@ namespace Input {
         if (transform.invertY) {
           yNorm = 1.0f - yNorm;
         }
-        outX = static_cast<int>(xNorm * targetWidth + 0.5f);
-        outY = static_cast<int>(yNorm * targetHeight + 0.5f);
+        if (outX != nullptr) {
+          outX->value = static_cast<int>(xNorm * targetWidth + 0.5f);
+        }
+        if (outY != nullptr) {
+          outY->value = static_cast<int>(yNorm * targetHeight + 0.5f);
+        }
         break;
       }
       default: {
         float angleRadius = transform.rotation * PI / 180.0f;
         float xScaled = xNorm * static_cast<float>(targetWidth);
         float yScaled = yNorm * static_cast<float>(targetHeight);
-        outX = static_cast<int>(
-          xScaled * cosf(angleRadius) - yScaled * sinf(angleRadius) + 0.5f
-        );
-        outY = static_cast<int>(
-          xScaled * sinf(angleRadius) + yScaled * cosf(angleRadius) + 0.5f
-        );
-        if (transform.invertX) {
-          outX = targetWidth - outX;
+        if (outX != nullptr) {
+          outX->value = static_cast<int>(
+            xScaled * cosf(angleRadius) - yScaled * sinf(angleRadius) + 0.5f
+          );
+          if (transform.invertX) {
+            outX->value = targetWidth - outX->value;
+          }
         }
-        if (transform.invertY) {
-          outY = targetHeight - outY;
+        if (outY != nullptr) {
+          outY->value = static_cast<int>(
+            xScaled * sinf(angleRadius) + yScaled * cosf(angleRadius) + 0.5f
+          );
+          if (transform.invertY) {
+            outY->value = targetHeight - outY->value;
+          }
         }
         break;
       }
@@ -625,7 +654,6 @@ namespace Input {
         continue;
       }
       if (event.type == EV_SYN && event.code == SYN_DROPPED) {
-        pending.push_back(event);
         pending.clear();
         continue;
       }
@@ -685,20 +713,23 @@ namespace Input {
               }
             }
           }
-          // TODO stop discarding only x or y events
-          if (xEvent == nullptr || yEvent == nullptr) {
+          if (xEvent == nullptr && yEvent == nullptr) {
             break;
           }
-          applyTransform(info, xEvent->value, yEvent->value);
+          applyTransform(info, xEvent, yEvent);
           _DEBUG(
             "pen (%d,  %d) -> (%d, %d)",
             info.state.x,
             info.state.y,
-            xEvent->value,
-            yEvent->value
+            xEvent == nullptr ? info.state.x : xEvent->value,
+            yEvent == nullptr ? info.state.y : yEvent->value
           );
-          info.state.x = xEvent->value;
-          info.state.y = yEvent->value;
+          if (xEvent != nullptr) {
+            info.state.x = xEvent->value;
+          }
+          if (yEvent != nullptr) {
+            info.state.y = yEvent->value;
+          }
           break;
         }
         case Touch: {
@@ -755,20 +786,23 @@ namespace Input {
                 break;
             }
           }
-          // TODO stop discarding only x or y events
-          if (xEvent == nullptr || yEvent == nullptr) {
+          if (xEvent == nullptr && yEvent == nullptr) {
             break;
           }
-          applyTransform(info, xEvent->value, yEvent->value);
+          applyTransform(info, xEvent, yEvent);
           _DEBUG(
             "touch (%d,  %d) -> (%d, %d)",
             info.state.x,
             info.state.y,
-            xEvent->value,
-            yEvent->value
+            xEvent == nullptr ? info.state.x : xEvent->value,
+            yEvent == nullptr ? info.state.y : yEvent->value
           );
-          info.state.x = xEvent->value;
-          info.state.y = yEvent->value;
+          if (xEvent != nullptr) {
+            info.state.x = xEvent->value;
+          }
+          if (yEvent != nullptr) {
+            info.state.y = yEvent->value;
+          }
           break;
         }
         default:
