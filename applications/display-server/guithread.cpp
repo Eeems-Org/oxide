@@ -318,8 +318,6 @@ GUIThread::redraw(RepaintRequest& event) {
   // Get visible region on the screen to repaint
   O_DEBUG("Repainting" << region.boundingRect());
   QImage* frameBuffer = getFrameBuffer();
-  Qt::GlobalColor colour =
-    frameBuffer->hasAlphaChannel() ? Qt::transparent : Qt::white;
   // "QPainter::begin: A paint device can only be painted by one painter at a
   // time." Ignore this warning, Nothing is displayed if the painter is not
   // active when calling sendUpdate currently
@@ -333,7 +331,7 @@ GUIThread::redraw(RepaintRequest& event) {
     QPainter painter(frameBuffer);
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     if (hasAlpha) {
-      painter.fillRect(rect, colour);
+      painter.fillRect(rect, Qt::white);
       for (auto& surface : visibleSurfaces()) {
         if (surface != nullptr) {
           repaintSurface(&painter, &rect, surface);
@@ -423,11 +421,10 @@ GUIThread::visibleSurfaces() {
 QImage*
 GUIThread::getFrameBuffer() {
   auto* instance = EPFramebuffer::instance();
-  if (
-    deviceSettings.getDeviceType() == Oxide::DeviceSettings::DeviceType::RM1
-  ) {
-    return instance->renderTarget;
-  }
+#ifdef __arm__
+  return instance->renderTarget;
+#else
   return &instance->frameBuffer;
+#endif
 }
 #endif
