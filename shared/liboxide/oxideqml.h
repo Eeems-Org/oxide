@@ -128,9 +128,13 @@ namespace Oxide {
       /*!
        * \brief Get a QBrush for a colour
        * \param color Colour
+       * \param style Style
        * \return QBrush for a colour
        */
-      Q_INVOKABLE QBrush brushFromColor(const QColor& color);
+      Q_INVOKABLE QBrush brushFromColor(
+        const QColor& color,
+        Qt::BrushStyle style = Qt::SolidPattern
+      );
       /*!
        * \brief Create a QPen
        * \param brush QBrush instance to use

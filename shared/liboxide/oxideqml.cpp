@@ -64,8 +64,8 @@ namespace Oxide {
       return deviceSettings.getDeviceName();
     }
 
-    QBrush OxideQml::brushFromColor(const QColor& color) {
-      return QBrush(color, Qt::SolidPattern);
+    QBrush OxideQml::brushFromColor(const QColor& color, Qt::BrushStyle style) {
+      return QBrush(color, style);
     }
 
     QPen OxideQml::createPen(
