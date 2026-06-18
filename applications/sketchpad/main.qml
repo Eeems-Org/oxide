@@ -57,8 +57,39 @@ OxideWindow {
                 anchors.rightMargin: 4
                 spacing: 12
 
-                ColorSelector { }
-                WidthSelector { }
+                Button {
+                    implicitHeight: 40
+                    onClicked: penSettings.opened ? penSettings.close() : penSettings.open()
+                    contentItem: Row {
+                        spacing: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 36
+                            height: 36
+                            radius: 18
+                            color: "white"
+                            border.color: "black"
+                            border.width: 3
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 28
+                                height: 28
+                                radius: 14
+                                color: window.activeColor
+                                border.color: "black"
+                                border.width: window.activeColor == "white" ? 1 : 0
+                            }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: window.activeWidth + "px"
+                            font.pixelSize: 24
+                            color: "black"
+                        }
+                    }
+                    background: null
+                }
                 Item { Layout.fillWidth: true; }
             }
         }
@@ -70,12 +101,20 @@ OxideWindow {
             anchors.top: toolbar.bottom
             anchors.bottom: parent.bottom
             Component.onCompleted: {
-                canvas.setPen(Oxide.createPen(Oxide.brushFromColor("black"), 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin));
+                canvas.setPen(
+                    Oxide.createPen(
+                        Oxide.brushFromColor(window.activeColor),
+                        window.activeWidth,
+                        Qt.SolidLine,
+                        Qt.RoundCap,
+                        Qt.RoundJoin
+                    )
+                );
             }
         }
 
         Popup {
-            id: mergedPopup
+            id: penSettings
             y: toolbar.y + toolbar.height - toolbar.border.width
             x: 0
             width: 690
@@ -111,7 +150,6 @@ OxideWindow {
             }
 
             Row {
-                id: mergedRow
                 anchors.fill: parent
                 anchors.leftMargin: 10
                 anchors.topMargin: 10
@@ -261,49 +299,5 @@ OxideWindow {
         }
     }
 
-    component ColorSelector: Button {
-        id: colorSelector
-        implicitWidth: 40
-        implicitHeight: 40
 
-        onClicked: mergedPopup.opened ? mergedPopup.close() : mergedPopup.open()
-
-        background: Rectangle {
-            anchors.centerIn: parent
-            width: 36
-            height: 36
-            radius: 18
-            color: "white"
-            border.color: "black"
-            border.width: 3
-
-            Rectangle {
-                anchors.centerIn: parent
-                width: 28
-                height: 28
-                radius: 14
-                color: window.activeColor
-                border.color: "black"
-                border.width: window.activeColor == "white" ? 1 : 0
-            }
-        }
-    }
-
-    component WidthSelector: Button {
-        id: widthSelector
-        implicitWidth: 40
-        implicitHeight: 40
-
-        onClicked: mergedPopup.opened ? mergedPopup.close() : mergedPopup.open()
-
-        contentItem: Text {
-            text: window.activeWidth + "px"
-            font.pixelSize: 24
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            color: "black"
-        }
-
-        background: null
-    }
 }
