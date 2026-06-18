@@ -23,7 +23,6 @@ OxideWindow {
         "plum", "violet", "indigo", "slategray",
         "dodgerblue", "crimson", "salmon", "turquoise"
     ]
-    property list<int> widths: [1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64]
 
     Shortcut {
         sequences: [StandardKey.Quit, StandardKey.Cancel, "Backspace", "Ctrl+Q", "Ctrl+W"]
@@ -118,7 +117,7 @@ OxideWindow {
             y: toolbar.y + toolbar.height - toolbar.border.width
             x: 0
             width: 690
-            height: Math.max(colorGrid.implicitHeight, sizeGridContainer.height) + 34
+            height: Math.max(colorGrid.implicitHeight, sizeSettings.height) + 34
             closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
             background: Item {
@@ -226,70 +225,80 @@ OxideWindow {
                 }
 
                 Item {
-                    id: sizeGridContainer
-                    width: sizeGrid.implicitWidth
+                    id: sizeSettings
+                    width: 200
                     height: colorGrid.implicitHeight
 
-                    Grid {
-                        id: sizeGrid
+                    ColumnLayout {
                         anchors.top: parent.top
-                        columns: 2
-                        columnSpacing: 4
-                        rowSpacing: 4
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.margins: 10
+                        spacing: 4
 
-                        Repeater {
-                            model: window.widths
-                            delegate: Button {
-                                width: 100
-                                height: 114
+                        Item {
+                            Layout.alignment: Qt.AlignHCenter
+                            width: 100
+                            height: 64
 
-                                background: Rectangle {
-                                    anchors.fill: parent
-                                    anchors.margins: 2
-                                    radius: 8
-                                    color: "white"
-                                    border.color: "black"
-                                    border.width: window.activeWidth === modelData ? 5 : 1
-                                }
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: parent.width
+                                height: window.activeWidth
+                                radius: Math.min(parent.width / 2, window.activeWidth / 2)
+                                color: window.activeColor
+                                border.color: "black"
+                                border.width: window.activeColor === "white" ? 1 : 0
+                            }
+                        }
 
-                                contentItem: Item {
-                                    anchors.fill: parent
-                                    anchors.topMargin: 12
-                                    anchors.bottomMargin: 8
-                                    anchors.leftMargin: 8
-                                    anchors.rightMargin: 8
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: window.activeWidth + "px"
+                            font.pixelSize: 24
+                            color: "black"
+                        }
 
-                                    Text {
-                                        id: sizeLabel
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                        anchors.bottom: parent.bottom
-                                        text: modelData + "px"
-                                        font.pixelSize: 24
-                                        horizontalAlignment: Text.AlignHCenter
-                                    }
+                        Slider {
+                            id: widthSlider
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 56
+                            from: 1
+                            to: 64
+                            stepSize: 1
+                            value: window.activeWidth
 
-                                    Rectangle {
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                        y: (sizeLabel.y - height) / 2
-                                        width: 60
-                                        height: modelData
-                                        radius: Math.min(30, modelData / 2)
-                                        color: "black"
-                                    }
-                                }
+                            background: Rectangle {
+                                x: widthSlider.leftPadding
+                                y: widthSlider.topPadding + widthSlider.availableHeight / 2 - height / 2
+                                width: widthSlider.availableWidth
+                                height: 8
+                                color: "black"
+                            }
 
-                                onClicked: {
+                            handle: Rectangle {
+                                x: widthSlider.leftPadding + widthSlider.visualPosition * (widthSlider.availableWidth - width)
+                                y: widthSlider.topPadding + widthSlider.availableHeight / 2 - height / 2
+                                width: 30
+                                height: 30
+                                radius: 15
+                                color: "white"
+                                border.color: "black"
+                                border.width: 2
+                            }
+
+                            onValueChanged: {
+                                if (window.activeWidth !== value) {
                                     canvas.setPen(
                                         Oxide.createPen(
                                             Oxide.brushFromColor(window.activeColor),
-                                            modelData,
+                                            value,
                                             Qt.SolidLine,
                                             Qt.RoundCap,
                                             Qt.RoundJoin
                                         )
                                     );
-                                    window.activeWidth = modelData;
-                                    console.log("Pen width: " + modelData);
+                                    window.activeWidth = value;
                                 }
                             }
                         }
@@ -298,6 +307,4 @@ OxideWindow {
             }
         }
     }
-
-
 }

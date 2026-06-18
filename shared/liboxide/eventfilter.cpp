@@ -55,7 +55,7 @@ namespace Oxide {
         QEvent::MouseButtonPress
       );
       tabletEvent->accept();
-      return true;
+      return false;
     }
     if (type == QEvent::TabletRelease) {
       O_DEBUG_EVENT(ev);
@@ -69,7 +69,7 @@ namespace Oxide {
         QEvent::MouseButtonRelease
       );
       tabletEvent->accept();
-      return true;
+      return false;
     }
     if (type == QEvent::TabletMove) {
       O_DEBUG_EVENT(ev);
@@ -83,7 +83,7 @@ namespace Oxide {
         QEvent::MouseMove
       );
       tabletEvent->accept();
-      return true;
+      return false;
     }
 #ifdef DEBUG_EVENTS
     if (

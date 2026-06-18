@@ -20,6 +20,8 @@
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickPaintedItem>
+#include <QQuickWindow>
+#include <QTabletEvent>
 #include <QTimer>
 
 namespace Oxide {
@@ -203,6 +205,12 @@ namespace Oxide {
 
     public:
       /*!
+       * \brief Pen state enum
+       */
+      enum State { Inactive, Hovering, Drawing };
+      Q_ENUM(State)
+
+      /*!
        * \brief Create a new canvas instance
        * \param parent Parent widget
        */
@@ -262,6 +270,7 @@ namespace Oxide {
       QTimer m_ghostControlTimer;
       Blight::ClockWatch m_LastPaint;
       std::atomic<bool> m_drawing;
+      std::atomic<bool> m_hovering;
       std::mutex m_timerMutex;
       void applyPending();
     };

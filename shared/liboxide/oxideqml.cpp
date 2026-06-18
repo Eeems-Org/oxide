@@ -96,7 +96,8 @@ namespace Oxide {
       , m_repainted{}
       , m_finalizeTimer(this)
       , m_ghostControlTimer(this)
-      , m_drawing{false} {
+      , m_drawing{false}
+      , m_hovering{false} {
       setAcceptedMouseButtons(Qt::AllButtons);
       m_drawn = QImage(width(), height(), QImage::Format_ARGB32_Premultiplied);
       m_drawn.fill(Qt::transparent);
@@ -179,8 +180,8 @@ namespace Oxide {
       if (!isEnabled()) {
         return;
       }
-      m_drawing = true;
       m_lastPoint = event->position();
+      m_drawing = true;
       {
         QPainter painter(&m_drawn);
         painter.setPen(m_pen);
@@ -239,9 +240,9 @@ namespace Oxide {
       Q_UNUSED(event);
       std::lock_guard locker(m_timerMutex);
       Q_UNUSED(locker);
+      m_drawing = false;
       applyPending();
       m_finalizeTimer.start(500);
-      m_drawing = false;
     }
 
     void Canvas::applyPending() {
