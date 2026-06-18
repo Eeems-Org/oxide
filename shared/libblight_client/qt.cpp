@@ -161,44 +161,6 @@ resolve_qimage_funcs() {
   qImageFuncs.ok = ok;
 }
 
-static std::atomic<void*> framebufferMmap{nullptr};
-static std::atomic<size_t> framebufferMmapSize{0};
-
-/*!
- * \brief mmap the exclusive mode framebuffer
- */
-static std::pair<void*, size_t>
-mmap_framebuffer() {
-  void* ptr = framebufferMmap.load(std::memory_order_acquire);
-  if (ptr != nullptr) {
-    return {ptr, framebufferMmapSize.load(std::memory_order_acquire)};
-  }
-  if (FB::frameBuffer < 0) {
-    FB::frameBuffer = Blight::frameBuffer();
-  }
-  if (FB::frameBuffer < 0) {
-    _WARN("%s", "redirect: Blight::frameBuffer() failed");
-    return {nullptr, 0};
-  }
-  struct stat st;
-  if (fstat(FB::frameBuffer, &st) < 0) {
-    _WARN("%s", "redirect: fstat(FB::frameBuffer) failed");
-    return {nullptr, 0};
-  }
-  auto len = static_cast<size_t>(st.st_size);
-  ptr =
-    mmap(nullptr, len, PROT_READ | PROT_WRITE, MAP_SHARED, FB::frameBuffer, 0);
-  auto err = errno;
-  if (ptr == MAP_FAILED) {
-    _WARN("redirect: mmap(FB::frameBuffer) failed: %s", std::strerror(err));
-    return {nullptr, 0};
-  }
-  _DEBUG("redirect: mmap'd server framebuffer (%zu bytes)", len);
-  framebufferMmap.store(ptr, std::memory_order_relaxed);
-  framebufferMmapSize.store(len, std::memory_order_relaxed);
-  return {ptr, len};
-}
-
 /*!
  * \brief Get the frameBuffer offset (used for EPFramebuffer detection)
  */
@@ -714,9 +676,7 @@ dump_buffers() {
     _DEBUG("dump_buffers: epframebufferInstance not set yet, skipping");
     return;
   }
-  void* data =
-    Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first;
-  if (data != nullptr) {
+  if (FB::buffer->data != nullptr) {
     int fd = open("/tmp/fb.raw", O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd <= 0) {
       _WARN("Failed to open /tmp/fb.raw: %s", std::strerror(errno));
@@ -724,11 +684,9 @@ dump_buffers() {
     }
     ::write(
       fd,
-      data,
-      Client::isFbEnabled()
-        ? (Client::deviceType == Client::DeviceType::RM2 ? 26359808
-                                                         : FB::buffer->size())
-        : mmap_framebuffer().second
+      FB::buffer->data,
+      Client::deviceType == Client::DeviceType::RM2 ? 26359808
+                                                    : FB::buffer->size()
     );
     ::close(fd);
   }
@@ -778,13 +736,11 @@ update_buffers(const Qt::QRectLayout& rect) {
 #endif
   qImageFuncs.constructor(
     qimage,
-    static_cast<char*>(
-      Client::isFbEnabled() ? FB::buffer->data : mmap_framebuffer().first
-    ),
-    Client::isFbEnabled() ? FB::buffer->width : FB::deviceXres(),
-    Client::isFbEnabled() ? FB::buffer->height : FB::deviceYres(),
-    Client::isFbEnabled() ? FB::buffer->stride : FB::deviceStride(),
-    Client::isFbEnabled() ? FB::buffer->format : FB::deviceFormat(),
+    static_cast<char*>(FB::buffer->data),
+    FB::buffer->width,
+    FB::buffer->height,
+    FB::buffer->stride,
+    FB::buffer->format,
     nullptr,
     nullptr
   );
@@ -904,6 +860,19 @@ _ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE(
   void* this_ptr,
   int mode
 ) {
+  if (!Client::isFbEnabled()) {
+    static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
+      RTLD_NEXT, "_ZN13EPFramebuffer12ghostControlENS_16GhostControlModeE"
+    ));
+    if (!func) {
+      _CRIT(
+        "%s", "Failed to resolve real EPFramebuffer::ghostControl via RTLD_NEXT"
+      );
+      std::exit(EXIT_FAILURE);
+    }
+    func(this_ptr, mode);
+    return;
+  }
   _DEBUG("EPFramebuffer::ghostControl(mode=%d)", mode);
   if (Client::isGhostControlEnabled()) {
     Blight::ghostControl((Blight::GhostControlMode)mode);
@@ -916,6 +885,22 @@ _ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlModeE(
   void* this_ptr,
   int mode
 ) {
+  if (!Client::isFbEnabled()) {
+    static auto func = reinterpret_cast<void (*)(void*, int)>(dlsym(
+      RTLD_NEXT,
+      "_ZN18EPFramebufferAcep212ghostControlEN13EPFramebuffer16GhostControlMode"
+      "E"
+    ));
+    if (!func) {
+      _CRIT(
+        "%s",
+        "Failed to resolve real EPFramebufferAcep2::ghostControl via RTLD_NEXT"
+      );
+      std::exit(EXIT_FAILURE);
+    }
+    func(this_ptr, mode);
+    return;
+  }
   _DEBUG("EPFramebufferAcep2::ghostControl(mode=%d)", mode);
   if (Client::isGhostControlEnabled()) {
     Blight::ghostControl((Blight::GhostControlMode)mode);
@@ -931,6 +916,20 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
   Blight::ContentType contentType,
   int flags
 ) {
+  if (!Client::isFbEnabled()) {
+    static auto func = reinterpret_cast<
+      void (*)(void*, Qt::QRectLayout, int, Blight::ContentType, int)>(
+      dlsym(RTLD_NEXT, "_ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei")
+    );
+    if (!func) {
+      _CRIT(
+        "%s", "Failed to resolve real EPFramebufferSwtcon::update via RTLD_NEXT"
+      );
+      std::exit(EXIT_FAILURE);
+    }
+    func(this_ptr, rect, waveform, contentType, flags);
+    return;
+  }
   _DEBUG("EPFramebufferSwtcon::update(QRect, ...)");
   update_buffers(rect);
   repaint(
@@ -944,6 +943,19 @@ _ZN19EPFramebufferSwtcon6updateE5QRecti9PixelModei(
 
 void
 _ZN19EPFramebufferSwtcon4syncEv(void* this_ptr) {
+  if (!Client::isFbEnabled()) {
+    static auto func = reinterpret_cast<void (*)(void*)>(
+      dlsym(RTLD_NEXT, "_ZN19EPFramebufferSwtcon4syncEv")
+    );
+    if (!func) {
+      _CRIT(
+        "%s", "Failed to resolve real EPFramebufferSwtcon::sync via RTLD_NEXT"
+      );
+      std::exit(EXIT_FAILURE);
+    }
+    func(this_ptr);
+    return;
+  }
   void* epframebuffer = nullptr;
   if (
     !epframebufferInstance.compare_exchange_strong(
@@ -966,7 +978,10 @@ _ZN19EPFramebufferSwtcon4syncEv(void* this_ptr) {
  */
 static void
 hook_check_candidate() {
-  if (hook_installed || Client::deviceType == Client::DeviceType::RM1) {
+  if (
+    !Client::isFbEnabled() || hook_installed ||
+    Client::deviceType == Client::DeviceType::RM1
+  ) {
     return;
   }
   _DEBUG("%s", "QObject::QObject(QObject*)");
@@ -1170,7 +1185,10 @@ _ZN6QImageC1Ev(void* this_ptr) {
     std::exit(EXIT_FAILURE);
   }
   func(this_ptr);
-  if (hook_installed || Client::deviceType == Client::DeviceType::RM1) {
+  if (
+    !Client::isFbEnabled() || hook_installed ||
+    Client::deviceType == Client::DeviceType::RM1
+  ) {
     return;
   }
   _DEBUG("QImage::QImage() default");

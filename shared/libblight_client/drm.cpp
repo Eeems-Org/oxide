@@ -13,6 +13,9 @@ namespace DRM {
     return card0 > 0 && card0 == fd;
   }
   int ioctl(unsigned long request, char* ptr) {
+    if (!Client::isFbEnabled()) {
+      return Libc::ioctl(card0, request, ptr);
+    }
     switch (request) {
       case DRM_IOCTL_MODE_ATOMIC:
         _DEBUG("%s", "ioctl /dev/dri/card0 DRM_IOCTL_MODE_ATOMIC");

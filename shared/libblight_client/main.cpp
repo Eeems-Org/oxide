@@ -130,10 +130,13 @@ namespace {
       res = FB::epdLockFd = Libc::open(
         ("/tmp/epd." + std::to_string(getpid()) + ".lock").c_str(), flags
       );
-    } else if (actualpath == "/dev/fb0" || actualpath == "/dev/shm/swtfb.01") {
+    } else if (
+      Client::isFbEnabled() &&
+      (actualpath == "/dev/fb0" || actualpath == "/dev/shm/swtfb.01")
+    ) {
       return FB::createBuffer();
 #ifdef __aarch64__
-    } else if (actualpath == "/dev/dri/card0") {
+    } else if (Client::isFbEnabled() && actualpath == "/dev/dri/card0") {
       FB::createBuffer();
       if (DRM::card0 <= 0) {
         DRM::card0 = Libc::open(actualpath.c_str(), flags);
@@ -172,10 +175,7 @@ msgget(key_t key, int msgflg) {
 
 __attribute__((visibility("default"))) int
 msgsnd(int msqid, const void* msgp, size_t msgsz, int msgflg) {
-  if (!Client::INITIALIZED || !Client::isFbEnabled()) {
-    return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
-  }
-  if (msqid != FB::msgq) {
+  if (!Client::INITIALIZED || !Client::isFbEnabled() || msqid != FB::msgq) {
     return Libc::msgsnd(msqid, msgp, msgsz, msgflg);
   }
   auto buf = static_cast<const swtfb::swtfb_update*>(msgp);
@@ -410,23 +410,18 @@ ioctl(int fd, unsigned long request, ...) {
   va_start(args, request);
   char* ptr = va_arg(args, char*);
   if (Client::INITIALIZED) {
-    if (FB::is_fb(fd)) {
+    if (FB::is_fb(fd) && Client::isFbEnabled()) {
       int res = FB::ioctl(request, ptr);
       va_end(args);
       return res;
     }
 #ifdef __aarch64__
-    if (DRM::is_drm(fd)) {
+    if (DRM::is_drm(fd) && Client::isFbEnabled()) {
       int res = DRM::ioctl(request, ptr);
       va_end(args);
       return res;
     }
 #endif
-    if (!Client::isFbEnabled() && fd == FB::frameBuffer) {
-      int res = FB::exclusive_ioctl(request, ptr);
-      va_end(args);
-      return res;
-    }
     if (Client::isInputEnabled() && Input::isInputFd(fd)) {
       int res = Input::ioctlv(fd, request, ptr);
       va_end(args);

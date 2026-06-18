@@ -21,7 +21,6 @@ namespace FB {
   int get_vscreeninfo(fb_var_screeninfo* screenInfo);
   int get_fscreeninfo(fb_fix_screeninfo* screenInfo);
   int ioctl(unsigned long request, char* ptr);
-  int exclusive_ioctl(unsigned long request, char* ptr);
   Blight::Format deviceFormat();
   unsigned int deviceXres();
   unsigned int deviceYres();

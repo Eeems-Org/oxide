@@ -392,112 +392,6 @@ namespace FB {
         return 0;
     }
   }
-  int exclusive_ioctl(unsigned long request, char* ptr) {
-    switch (request) {
-      // Look at linux/fb.h and mxcfb.h for more possible request types
-      // https://www.kernel.org/doc/html/latest/fb/api.html
-      case MXCFB_SEND_UPDATE: {
-        // TODO handle region updates
-        _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SEND_UPDATE");
-        Blight::ClockWatch cw;
-        mxcfb_update_data* update = reinterpret_cast<mxcfb_update_data*>(ptr);
-        auto region = update->update_region;
-        repaint(
-          region.left,
-          region.top,
-          region.width,
-          region.height,
-          (Blight::WaveformMode)update->waveform_mode,
-          Blight::ContentType::Color,
-          (Blight::UpdateMode)update->update_mode,
-          0
-        );
-        _DEBUG("ioctl /dev/fb0 MXCFB_SEND_UPDATE done: %f", cw.elapsed())
-        return 0;
-      }
-      case MXCFB_WAIT_FOR_UPDATE_COMPLETE: {
-        _DEBUG("%s", "ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE");
-        Blight::ClockWatch cw;
-        Blight::waitForNoRepaints();
-        _DEBUG(
-          "ioctl /dev/fb0 MXCFB_WAIT_FOR_UPDATE_COMPLETE done: %f", cw.elapsed()
-        )
-        return 0;
-      }
-      case FBIOGET_FSCREENINFO: {
-        _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_FSCREENINFO");
-        // TODO - handle getting information on rMPP/rMPPM
-        int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
-        if (fd == -1) {
-          return -1;
-        }
-        int res = Libc::ioctl(fd, request, ptr);
-        Libc::close(fd);
-        return res;
-      }
-      case FBIOGET_VSCREENINFO: {
-        _DEBUG("%s", "ioctl /dev/fb0 FBIOGET_VSCREENINFO");
-        // TODO - handle getting information on rMPP/rMPPM
-        if (!_ioctl(request, ptr)) {
-          return -1;
-        }
-        std::tuple<int, int, int, Blight::Format> info =
-          Blight::frameBufferInfo();
-        if (std::get<0>(info) == -1) {
-          return -1;
-        }
-        return get_vscreeninfo(
-          reinterpret_cast<fb_var_screeninfo*>(ptr),
-          std::get<0>(info),
-          std::get<1>(info),
-          std::get<2>(info)
-        );
-      }
-      case FBIOPUT_VSCREENINFO: {
-        _DEBUG("%s", "ioctl /dev/fb0 FBIOPUT_VSCREENINFO");
-        // TODO - handle updating fb
-        // TODO - Explore allowing some screen info updating
-        // TODO allow resizing?
-        print_vscreeninfo(reinterpret_cast<fb_var_screeninfo*>(ptr));
-        return 0;
-      }
-      case MXCFB_SET_AUTO_UPDATE_MODE:
-        _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SET_AUTO_UPDATE_MODE");
-        return 0;
-      case MXCFB_SET_UPDATE_SCHEME:
-        _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SET_UPDATE_SCHEME");
-        return 0;
-      case MXCFB_ENABLE_EPDC_ACCESS:
-        _DEBUG("%s", "ioctl /dev/fb0 MXCFB_ENABLE_EPDC_ACCESS");
-        return 0;
-      case MXCFB_DISABLE_EPDC_ACCESS:
-        _DEBUG("%s", "ioctl /dev/fb0 MXCFB_DISABLE_EPDC_ACCESS");
-        return 0;
-      case FBIOPAN_DISPLAY: {
-        _DEBUG("%s", "ioctl /dev/fb0 FBIOPAN_DISPLAY");
-        print_offset(reinterpret_cast<fb_var_screeninfo*>(ptr));
-        return 0;
-      }
-      case FBIOBLANK: {
-        _DEBUG("%s", "ioctl /dev/fb0 FBIOBLANK");
-        int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
-        if (fd == -1) {
-          return -1;
-        }
-        return Libc::ioctl(fd, request, ptr);
-      }
-      default:
-        _WARN(
-          "UNHANDLED Fb IOCTL %lu %c %lu %lu %lu",
-          _IOC_DIR(request),
-          (char)_IOC_TYPE(request),
-          _IOC_NR(request),
-          _IOC_SIZE(request),
-          request
-        );
-        return 0;
-    }
-  }
   Blight::Format deviceFormat() {
     if (Client::forceRGB16()) {
       return Blight::Format::Format_RGB16;
@@ -582,17 +476,6 @@ namespace FB {
     }
   }
   int createBuffer() {
-    if (!Client::isFbEnabled()) {
-      if (frameBuffer < 0) {
-        frameBuffer = Blight::frameBuffer();
-        if (frameBuffer < 0) {
-          _CRIT("Failed to create buffer: %s", std::strerror(errno));
-          std::exit(errno);
-        }
-        _INFO("Opened frameBuffer on fd %d", frameBuffer);
-      }
-      return frameBuffer;
-    }
     if (buffer->format != Blight::Format::Format_Invalid) {
       return buffer->fd;
     }
@@ -752,20 +635,6 @@ namespace FB {
     unsigned int marker,
     bool wait
   ) {
-    if (!Client::isFbEnabled()) {
-      if (Client::isFakeRM1Fb()) {
-        double scale = deviceScale();
-        x *= scale;
-        y *= scale;
-        width *= scale;
-        height *= scale;
-      }
-      Blight::exclusiveModeRepaint(x, y, width, height, waveform, updateMode);
-      if (wait) {
-        Blight::waitForNoRepaints();
-      }
-      return {};
-    }
     ensure_surface();
     auto maybe = connection->repaint(
       buffer, x, y, width, height, waveform, contentType, updateMode, marker
