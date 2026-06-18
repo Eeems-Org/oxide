@@ -96,6 +96,7 @@ private:
   Blight::event_packet_t m_lastEvent;
   unsigned int m_lastEventOffset;
   std::mutex processQueueMutex;
+  std::atomic<bool> m_inputOpened;
 
   void
   ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);

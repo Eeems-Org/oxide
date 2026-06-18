@@ -44,7 +44,8 @@ Connection::Connection(pid_t pid, pid_t pgid)
   , m_closed{false}
   , pingId{0}
   , m_surfaceId{0}
-  , m_lastEventOffset{sizeof(Blight::event_packet_t)} {
+  , m_lastEventOffset{sizeof(Blight::event_packet_t)}
+  , m_inputOpened{false} {
   m_pidFd = pidfd_open(m_pid, 0);
   if (m_pidFd < 0) {
     O_WARNING(std::strerror(errno));
@@ -134,6 +135,7 @@ Connection::socketDescriptor() {
 
 int
 Connection::inputSocketDescriptor() {
+  m_inputOpened = true;
   return m_clientInputFd;
 }
 
@@ -340,7 +342,7 @@ Connection::inputEvents(
     dbusInterface->sortZ();
     return;
   }
-  if (!events.size()) {
+  if (!events.size() || !m_inputOpened) {
     return;
   }
   // TODO - don't allow queue to grow forever
@@ -385,6 +387,8 @@ Connection::processInputEvents() {
     }
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       // socket is blocking, try again later
+      // This will cause CPU spin if the application is no longer reading the
+      // socket
       Oxide::runLater(thread(), [this] { processInputEvents(); });
       break;
     }
