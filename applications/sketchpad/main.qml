@@ -14,6 +14,23 @@ OxideWindow {
     property string activeColor: "black"
     property int activeWidth: 4
     property int activeCap: Qt.RoundCap
+    property int activeBrushStyle: Qt.SolidPattern
+    property list<int> brushStyles: [
+        Qt.SolidPattern ,
+        Qt.Dense1Pattern ,
+        Qt.Dense2Pattern ,
+        Qt.Dense3Pattern ,
+        Qt.Dense4Pattern ,
+        Qt.Dense5Pattern ,
+        Qt.Dense6Pattern ,
+        Qt.Dense7Pattern ,
+        Qt.HorPattern ,
+        Qt.VerPattern ,
+        Qt.CrossPattern ,
+        Qt.BDiagPattern ,
+        Qt.FDiagPattern ,
+        Qt.DiagCrossPattern,
+    ]
     property list<string> colors: [
         "black", "white", "gray", "silver",
         "maroon", "red", "brown", "orange",
@@ -59,7 +76,10 @@ OxideWindow {
 
                 Button {
                     implicitHeight: 40
-                    onClicked: penSettings.opened ? penSettings.close() : penSettings.open()
+                    onClicked: {
+                        brushPatterns.close()
+                        penSettings.opened ? penSettings.close() : penSettings.open()
+                    }
                     contentItem: Row {
                         spacing: 8
                         anchors.verticalCenter: parent.verticalCenter
@@ -67,7 +87,7 @@ OxideWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             width: 36
                             height: 36
-                            radius: 18
+                            radius: window.activeCap === Qt.RoundCap ? 18 : 4
                             color: "white"
                             border.color: "black"
                             border.width: 3
@@ -75,7 +95,7 @@ OxideWindow {
                                 anchors.centerIn: parent
                                 width: 28
                                 height: 28
-                                radius: 14
+                                radius: window.activeCap === Qt.RoundCap ? 14 : 3
                                 color: window.activeColor
                                 border.color: "black"
                                 border.width: window.activeColor == "white" ? 1 : 0
@@ -90,20 +110,61 @@ OxideWindow {
                     }
                     background: null
                 }
+                Button {
+                    implicitHeight: 40
+                    onClicked: {
+                        penSettings.close()
+                        brushPatterns.opened ? brushPatterns.close() : brushPatterns.open()
+                    }
+                    contentItem: Row {
+                        spacing: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        Canvas {
+                            id: patternButton
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 36
+                            height: 36
+                            onPaint: {
+                                var ctx = getContext("2d");
+                                ctx.fillStyle = "white";
+                                ctx.fillRect(0, 0, width, height);
+                                ctx.strokeStyle = "black";
+                                ctx.lineWidth = 1;
+                                ctx.strokeRect(0.5, 0.5, width-1, height-1);
+                                    ctx.fillStyle = ctx.createPattern(window.activeColor, window.activeBrushStyle);
+                                ctx.fillRect(1, 1, width-2, height-2);
+                            }
+                            Connections {
+                                target: window
+                                function onActiveBrushStyleChanged(){
+                                    patternButton.requestPaint();
+                                }
+                                function onActiveColorChanged(){
+                                    patternButton.requestPaint();
+                                }
+                            }
+                        }
+                    }
+                    background: null
+                }
                 Item { Layout.fillWidth: true; }
             }
         }
 
-        Canvas {
+        OxideCanvas {
             id: canvas
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: toolbar.bottom
             anchors.bottom: parent.bottom
+            onDrawStart: {
+                penSettings.close()
+                brushPatterns.close()
+            }
             Component.onCompleted: {
                 canvas.setPen(
                     Oxide.createPen(
-                        Oxide.brushFromColor(window.activeColor),
+                        Oxide.brushFromColor(window.activeColor, window.activeBrushStyle),
                         window.activeWidth,
                         Qt.SolidLine,
                         window.activeCap,
@@ -117,9 +178,9 @@ OxideWindow {
             id: penSettings
             y: toolbar.y + toolbar.height - toolbar.border.width
             x: 0
-            width: 690
+            width: 755
             height: Math.max(colorGrid.implicitHeight, sizeSettings.height) + 34
-            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+            closePolicy: Popup.CloseOnEscape
 
             background: Item {
                 Rectangle {
@@ -214,7 +275,7 @@ OxideWindow {
                                 onClicked: {
                                     canvas.setPen(
                                         Oxide.createPen(
-                                            Oxide.brushFromColor(modelData),
+                                            Oxide.brushFromColor(modelData, window.activeBrushStyle),
                                             window.activeWidth,
                                             Qt.SolidLine,
                                             window.activeCap,
@@ -250,9 +311,7 @@ OxideWindow {
                                     width: parent.width
                                     height: window.activeWidth
                                     radius: Math.min(parent.width / 2, window.activeWidth / 2)
-                                    color: window.activeColor
-                                    border.color: "black"
-                                    border.width: window.activeColor === "white" ? 1 : 0
+                                    color: "black"
                                 }
                             }
 
@@ -295,7 +354,7 @@ OxideWindow {
                                     if (window.activeWidth !== value) {
                                         canvas.setPen(
                                             Oxide.createPen(
-                                                Oxide.brushFromColor(window.activeColor),
+                                                Oxide.brushFromColor(window.activeColor, window.activeBrushStyle),
                                                 value,
                                                 Qt.SolidLine,
                                                 window.activeCap,
@@ -307,15 +366,14 @@ OxideWindow {
                                 }
                             }
 
-                            Column {
+                            Row {
                                 Layout.alignment: Qt.AlignHCenter
                                 spacing: 4
 
                                 Repeater {
                                     model: [
                                         { label: "Round", value: Qt.RoundCap },
-                                        { label: "Square", value: Qt.SquareCap },
-                                        { label: "Flat", value: Qt.FlatCap }
+                                        { label: "Square", value: Qt.SquareCap }
                                     ]
                                     delegate: Button {
                                         width: 130
@@ -324,7 +382,7 @@ OxideWindow {
                                             window.activeCap = modelData.value;
                                             canvas.setPen(
                                                 Oxide.createPen(
-                                                    Oxide.brushFromColor(window.activeColor),
+                                                    Oxide.brushFromColor(window.activeColor, window.activeBrushStyle),
                                                     window.activeWidth,
                                                     Qt.SolidLine,
                                                     window.activeCap,
@@ -364,6 +422,104 @@ OxideWindow {
                                                 }
                                             }
                                         }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Popup {
+            id: brushPatterns
+            y: toolbar.y + toolbar.height - toolbar.border.width
+            x: 0
+            width: 400
+            height: brushGrid.implicitHeight + 34
+            closePolicy: Popup.CloseOnEscape
+
+            background: Item {
+                Rectangle {
+                    anchors.fill: parent
+                    color: "white"
+                }
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 3
+                    color: "black"
+                }
+                Rectangle {
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 3
+                    color: "black"
+                }
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 3
+                    color: "black"
+                }
+            }
+
+            Grid {
+                id: brushGrid
+                anchors.fill: parent
+                anchors.leftMargin: 10
+                anchors.topMargin: 10
+                anchors.rightMargin: 24
+                anchors.bottomMargin: 24
+                columns: 3
+                columnSpacing: 4
+                rowSpacing: 4
+
+                Repeater {
+                    model: window.brushStyles
+                    delegate: Button {
+                        width: 120
+                        height: 120
+                        onClicked: {
+                            window.activeBrushStyle = modelData;
+                            canvas.setPen(
+                                Oxide.createPen(
+                                    Oxide.brushFromColor(window.activeColor, window.activeBrushStyle),
+                                    window.activeWidth,
+                                    Qt.SolidLine,
+                                    window.activeCap,
+                                    Qt.BevelJoin
+                                )
+                            );
+                        }
+                        background: Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            radius: 8
+                            color: "white"
+                            border.color: "black"
+                            border.width: window.activeBrushStyle === modelData ? 5 : 1
+                        }
+                        contentItem: Item {
+                            anchors.fill: parent
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 4
+                                Canvas {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: 100
+                                    height: 100
+                                    onPaint: {
+                                        var ctx = getContext("2d");
+                                        ctx.fillStyle = "white";
+                                        ctx.fillRect(0, 0, width, height);
+                                        ctx.strokeStyle = "black";
+                                        ctx.lineWidth = 1;
+                                        ctx.strokeRect(0.5, 0.5, width-1, height-1);
+                                            ctx.fillStyle = ctx.createPattern("black", modelData);
+                                        ctx.fillRect(1, 1, width-2, height-2);
                                     }
                                 }
                             }

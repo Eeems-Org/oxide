@@ -87,13 +87,12 @@ namespace Oxide {
       QQmlContext* context = engine->rootContext();
       context->setContextProperty("Oxide", getSingleton());
       engine->addImportPath("qrc:/codes.eeems.oxide");
-      qmlRegisterType<Canvas>("codes.eeems.oxide", 3, 0, "Canvas");
+      qmlRegisterType<OxideCanvas>("codes.eeems.oxide", 3, 0, "OxideCanvas");
     }
 
-    Canvas::Canvas(QQuickItem* parent)
+    OxideCanvas::OxideCanvas(QQuickItem* parent)
       : QQuickPaintedItem(parent)
       , m_pen{Qt::black, 6}
-      , m_repainted{}
       , m_finalizeTimer(this)
       , m_ghostControlTimer(this)
       , m_drawing{false}
@@ -105,16 +104,7 @@ namespace Oxide {
         if (m_drawing || !m_timerMutex.try_lock()) {
           return;
         }
-        auto region = m_repainted;
-        m_repainted = QRegion();
-        repaint(
-          window(),
-          region.boundingRect(),
-          Blight::WaveformMode::Content,
-          Blight::ContentType::Color,
-          Blight::UpdateMode::PartialUpdate,
-          true
-        );
+        update();
         emit drawDone();
         m_ghostControlTimer.start(5000);
         m_timerMutex.unlock();
@@ -138,28 +128,28 @@ namespace Oxide {
       m_ghostControlTimer.setSingleShot(true);
     }
 
-    Canvas::~Canvas() {
+    OxideCanvas::~OxideCanvas() {
       m_ghostControlTimer.stop();
     }
 
-    void Canvas::paint(QPainter* painter) {
+    void OxideCanvas::paint(QPainter* painter) {
       painter->drawImage(boundingRect(), m_drawn);
     }
 
-    QPen Canvas::pen() {
+    QPen OxideCanvas::pen() {
       return m_pen;
     }
 
-    void Canvas::setPen(QPen pen) {
+    void OxideCanvas::setPen(QPen pen) {
       m_pen = pen;
       emit penChanged(pen);
     }
 
-    QImage* Canvas::image() {
+    QImage* OxideCanvas::image() {
       return &m_drawn;
     }
 
-    void Canvas::geometryChange(
+    void OxideCanvas::geometryChange(
       const QRectF& newGeometry,
       const QRectF& oldGeometry
     ) {
@@ -176,7 +166,7 @@ namespace Oxide {
       m_drawn = image;
     }
 
-    void Canvas::mousePressEvent(QMouseEvent* event) {
+    void OxideCanvas::mousePressEvent(QMouseEvent* event) {
       if (!isEnabled()) {
         return;
       }
@@ -204,7 +194,7 @@ namespace Oxide {
       emit drawStart();
     }
 
-    void Canvas::mouseMoveEvent(QMouseEvent* event) {
+    void OxideCanvas::mouseMoveEvent(QMouseEvent* event) {
       if (!isEnabled() || !contains(event->position())) {
         return;
       }
@@ -236,7 +226,7 @@ namespace Oxide {
       m_lastPoint = event->position();
     }
 
-    void Canvas::mouseReleaseEvent(QMouseEvent* event) {
+    void OxideCanvas::mouseReleaseEvent(QMouseEvent* event) {
       Q_UNUSED(event);
       std::lock_guard locker(m_timerMutex);
       Q_UNUSED(locker);
@@ -245,9 +235,8 @@ namespace Oxide {
       m_finalizeTimer.start(500);
     }
 
-    void Canvas::applyPending() {
+    void OxideCanvas::applyPending() {
       auto rect = m_pending.boundingRect();
-      m_repainted += rect;
       repaint(
         window(),
         rect,

@@ -190,13 +190,13 @@ namespace Oxide {
      * import codes.eeems.oxide 3.0
      *
      * OxideWindow{
-     *  initialItem: Canvas{
+     *  initialItem: OxideCanvas{
      *    anchors.fill: parent
      *  }
      * }
      * ```
      */
-    class LIBOXIDE_EXPORT Canvas : public QQuickPaintedItem {
+    class LIBOXIDE_EXPORT OxideCanvas : public QQuickPaintedItem {
       Q_OBJECT
       /*!
        * \property pen
@@ -218,8 +218,8 @@ namespace Oxide {
        * \brief Create a new canvas instance
        * \param parent Parent widget
        */
-      Canvas(QQuickItem* parent = nullptr);
-      ~Canvas();
+      OxideCanvas(QQuickItem* parent = nullptr);
+      ~OxideCanvas();
       void paint(QPainter* painter) override;
       /*!
        * \brief Current pen used when drawing
@@ -268,7 +268,6 @@ namespace Oxide {
       QPointF m_lastPoint;
       QImage m_drawn;
       QPen m_pen;
-      QRegion m_repainted;
       QRegion m_pending;
       QTimer m_finalizeTimer;
       QTimer m_ghostControlTimer;
@@ -327,7 +326,7 @@ namespace Oxide {
      * \brief Register the %QML extensions that liboxide provides
      * \param engine The QQmlApplicationEngine instance that this
      * application is using
-     * \sa OxideQml, Canvas
+     * \sa OxideQml, OxideCanvas
      *
      * This registers the OxideQML singleton so that it can be accessed via
      * Oxide in QML. It also registers the built in QML classes that

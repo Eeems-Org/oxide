@@ -10,6 +10,18 @@ OxideWindow{
     objectName: "window"
     visible: true
     focus: true
+    property string currentColor: "black"
+    property int currentWidth: 6
+    Component.onCompleted: updatePen()
+    function updatePen() {
+        canvas.setPen(Oxide.createPen(
+            Oxide.brushFromColor(currentColor, Qt.SolidPattern),
+            currentWidth,
+            Qt.SolidLine,
+            Qt.RoundCap,
+            Qt.BevelJoin
+        ));
+    }
     Shortcut{
         sequences: [StandardKey.Quit, StandardKey.Cancel, "Backspace", "Ctrl+Q", "Ctrl+W"]
         context: Qt.ApplicationShortcut
@@ -72,44 +84,65 @@ OxideWindow{
 
             MyButton{
                 text: "Black Pen"
-                enabled: canvas.brush !== Oxide.brushFromColor("black")
-                onClicked: canvas.brush = Oxide.brushFromColor("black")
+                enabled: window.currentColor !== "black"
+                onClicked: {
+                    window.currentColor = "black"
+                    window.updatePen()
+                }
             }
             MyButton{
                 text: "White Pen"
-                enabled: canvas.brush !== Oxide.brushFromColor("white")
-                onClicked: canvas.brush = Oxide.brushFromColor("white")
+                enabled: window.currentColor !== "white"
+                onClicked: {
+                    window.currentColor = "white"
+                    window.updatePen()
+                }
             }
             MyButton{
                 text: "Red Pen"
-                enabled: canvas.brush !== Oxide.brushFromColor("red")
-                onClicked: canvas.brush = Oxide.brushFromColor("red")
+                enabled: window.currentColor !== "red"
+                onClicked: {
+                    window.currentColor = "red"
+                    window.updatePen()
+                }
             }
             Item{
                 Layout.fillWidth: true
             }
             MyButton{
                 text: "3px"
-                enabled: canvas.penWidth !== 3
-                onClicked: canvas.penWidth = 3
+                enabled: window.currentWidth !== 3
+                onClicked: {
+                    window.currentWidth = 3
+                    window.updatePen()
+                }
             }
             MyButton{
                 text: "6px"
-                enabled: canvas.penWidth !== 6
-                onClicked: canvas.penWidth = 6
+                enabled: window.currentWidth !== 6
+                onClicked: {
+                    window.currentWidth = 6
+                    window.updatePen()
+                }
             }
             MyButton{
                 text: "12px"
-                enabled: canvas.penWidth !== 12
-                onClicked: canvas.penWidth = 12
+                enabled: window.currentWidth !== 12
+                onClicked: {
+                    window.currentWidth = 12
+                    window.updatePen()
+                }
             }
             MyButton{
                 text: "24px"
-                enabled: canvas.penWidth !== 24
-                onClicked: canvas.penWidth = 24
+                enabled: window.currentWidth !== 24
+                onClicked: {
+                    window.currentWidth = 24
+                    window.updatePen()
+                }
             }
         }
-        Canvas{
+        OxideCanvas{
             id: canvas
             anchors.left: parent.left
             anchors.right: parent.right
