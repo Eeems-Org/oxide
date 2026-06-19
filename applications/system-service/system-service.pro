@@ -29,7 +29,7 @@ SOURCES += \
 
 TARGET = tarnish
 include(../../qmake/common.pri)
-target.path = /opt/bin
+target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
 configFile.files = ../../assets/etc/dbus-1/system.d/codes.eeems.oxide.conf
@@ -41,7 +41,7 @@ service.path = /etc/systemd/system/
 INSTALLS += service
 
 keyd.files = ../../assets/opt/etc/keyd/oxide.conf
-keyd.path = /opt/etc/keyd/
+keyd.path = $$CONFIG_INSTALL_PATH/keyd/
 INSTALLS += keyd
 
 launcherctl.files = ../../assets/opt/share/launcherctl/oxide
@@ -51,11 +51,11 @@ INSTALLS += launcherctl
 applications.files = \
     ../../assets/opt/usr/share/applications/xochitl.oxide \
     ../../assets/opt/usr/share/applications/xovi.oxide
-applications.path = /opt/usr/share/applications/
+applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 
 icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/xochitl.png
-icons.path = /opt/usr/share/icons/oxide/48x48/apps
+icons.path = $$ICONS_INSTALL_PATH
 INSTALLS += icons
 
 system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)

@@ -31,17 +31,19 @@ configFile.files = ../../assets/etc/dbus-1/system.d/codes.eeems.blight.conf
 configFile.path = /etc/dbus-1/system.d/
 INSTALLS += configFile
 
+
 service.files = ../../assets/etc/systemd/system/blight.service
 service.path = /etc/systemd/system/
 INSTALLS += service
 
+include(../../qmake/common.pri)
+
 client.files = blight-client
-client.path = /opt/bin/
+client.path = $$BIN_INSTALL_PATH
 INSTALLS += client
 
 TARGET = blight
-include(../../qmake/common.pri)
-target.path = /opt/bin
+target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
 !system("pkg-config --exists libevdev"): error("Could not find libevdev package via pkg-config")

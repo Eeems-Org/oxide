@@ -13,11 +13,11 @@ SOURCES += \
 
 TARGET = decay
 include(../../qmake/common.pri)
-target.path = /opt/bin
+target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
 applications.files = ../../assets/opt/usr/share/applications/codes.eeems.decay.oxide
-applications.path = /opt/usr/share/applications/
+applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 
 HEADERS += \

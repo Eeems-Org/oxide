@@ -1,7 +1,6 @@
-contains(DEFINES, SENTRY){
-    error("Configured to build sentry instead of cpptrace")
-}
 TEMPLATE = aux
+
+include(../../qmake/common.pri)
 
 PRE_TARGETDEPS += $$OUT_PWD/src/Makefile
 cpptrace_makefile.target = $$OUT_PWD/src/Makefile
@@ -37,5 +36,5 @@ target.files = \
     $$OUT_PWD/lib/libcpptrace.so \
     $$OUT_PWD/lib/libcpptrace.so.*
 target.depends = cpptrace_install
-target.path = /opt/lib/
+target.path = $$LIB_INSTALL_PATH/
 INSTALLS += target

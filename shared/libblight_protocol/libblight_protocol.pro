@@ -58,7 +58,7 @@ libblight_protocol_h_install.files = \
     include/libblight_protocol.h \
     include/libblight_protocol
 libblight_protocol_h_install.depends = libblight_protocol_h
-libblight_protocol_h_install.path = /opt/include/
+libblight_protocol_h_install.path = $$INCLUDE_INSTALL_PATH
 INSTALLS += libblight_protocol_h_install
 
 QMAKE_EXTRA_TARGETS += libblight_libblight_protocol_h libblight_protocol_h libblight_protocol_h_install
@@ -66,15 +66,15 @@ POST_TARGETDEPS += $$libblight_libblight_protocol_h.target $$libblight_protocol_
 QMAKE_CLEAN += $$libblight_protocol_h.target include/libblight_protocol/*.h
 
 TARGET = blight_protocol
-target.path = /opt/lib
+target.path = $$LIB_INSTALL_PATH
 INSTALLS += target
 
 QMAKE_PKGCONFIG_NAME = libblight_protocol
 QMAKE_PKGCONFIG_DESCRIPTION = Shared library the Oxide\'s screen compositor protocol
 QMAKE_PKGCONFIG_VERSION = $$VERSION
-QMAKE_PKGCONFIG_PREFIX = /opt
-QMAKE_PKGCONFIG_LIBDIR = /opt/lib
-QMAKE_PKGCONFIG_INCDIR = /opt/include
+QMAKE_PKGCONFIG_PREFIX = $$ROOT_INSTALL_PATH
+QMAKE_PKGCONFIG_LIBDIR = $$LIB_INSTALL_PATH
+QMAKE_PKGCONFIG_INCDIR = $$INCLUDE_INSTALL_PATH
 QMAKE_PKGCONFIG_DESTDIR = pkgconfig
 
 DISTFILES += \

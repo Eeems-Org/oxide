@@ -25,8 +25,19 @@ CONFIG(debug, debug|release){
 linux-oe-g++{
     DEFINES += EPAPER
 }
+ROOT_INSTALL_PATH = /home/root/.vellum
+LIB_INSTALL_PATH = $$ROOT_INSTALL_PATH/lib
+USRLIB_INSTALL_PATH = $$ROOT_INSTALL_PATH/usr/lib
+INCLUDE_INSTALL_PATH = $$ROOT_INSTALL_PATH/include
+BIN_INSTALL_PATH = $$ROOT_INSTALL_PATH/bin
+SHARE_INSTALL_PATH = $$ROOT_INSTALL_PATH/share
+CONFIG_INSTALL_PATH = /home/root/.config
+APPLICATIONS_INSTALL_PATH = /home/root/.local/share/applications
+ICONS_INSTALL_PATH = /home/root/.local/share/icons/oxide/48x48/apps
+SPLASH_INSTALL_PATH = /home/root/.local/share/icons/oxide/702x702/splash
+TESTS_INSTALL_PATH = /home/root/.local/share/tests
 
-QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
+QMAKE_RPATHDIR += /lib /usr/lib $$LIB_INSTALL_PATH $$USRLIB_INSTALL_PATH
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 CONFIG += c++17
@@ -44,3 +55,4 @@ CONFIG(release, debug|release){
     QMAKE_CFLAGS += -fPIC
     QMAKE_CXXFLAGS += -fPIC
 }
+

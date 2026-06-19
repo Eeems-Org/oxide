@@ -38,9 +38,6 @@ HEADERS = oxidebackingstore.h \
 
 OTHER_FILES += oxide.json
 
-target.path += /opt/usr/lib/plugins/platforms
-INSTALLS += target
-
 DISTFILES += \
     oxide.json
 
@@ -48,3 +45,6 @@ DEFINES += LIBOXIDE_PRIVATE
 include(../../qmake/liboxide.pri)
 DEFINES += LIBBLIGHT_PRIVATE
 include(../../qmake/libblight.pri)
+
+target.path += $$USRLIB_INSTALL_PATH/plugins/platforms
+INSTALLS += target

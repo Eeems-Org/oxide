@@ -35,7 +35,7 @@ QMAKE_LFLAGS +=  -Wl,--version-script $$_PRO_FILE_PWD_/main.map
 QMAKE_CFLAGS += -fno-builtin
 QMAKE_CXXFLAGS += -fno-builtin
 
-target.path += /opt/lib
+target.path += $$LIB_INSTALL_PATH
 INSTALLS += target
 
 INCLUDEPATH += ../../shared/mxcfb

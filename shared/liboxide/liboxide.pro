@@ -112,7 +112,7 @@ liboxide_h_install.files = \
     include/liboxide.h \
     include/liboxide
 liboxide_h_install.depends = liboxide_h
-liboxide_h_install.path = /opt/include/
+liboxide_h_install.path = $$INCLUDE_INSTALL_PATH
 INSTALLS += liboxide_h_install
 
 QMAKE_EXTRA_TARGETS += liboxide_liboxide_h liboxide_h liboxide_h_install
@@ -120,7 +120,7 @@ POST_TARGETDEPS += $$liboxide_liboxide_h.target $$liboxide_h.target
 QMAKE_CLEAN += $$liboxide_h.target include/liboxide/*.h
 
 TARGET = oxide
-target.path = /opt/lib
+target.path = $$LIB_INSTALL_PATH
 INSTALLS += target
 
 linux-oe-g++{
@@ -134,9 +134,9 @@ include(../../qmake/libblight.pri)
 QMAKE_PKGCONFIG_NAME = liboxide
 QMAKE_PKGCONFIG_DESCRIPTION = Shared library for Oxide application development
 QMAKE_PKGCONFIG_VERSION = $$VERSION
-QMAKE_PKGCONFIG_PREFIX = /opt
-QMAKE_PKGCONFIG_LIBDIR = /opt/lib
-QMAKE_PKGCONFIG_INCDIR = /opt/include
+QMAKE_PKGCONFIG_PREFIX = $$ROOT_INSTALL_PATH
+QMAKE_PKGCONFIG_LIBDIR = $$LIB_INSTALL_PATH
+QMAKE_PKGCONFIG_INCDIR = $$INCLUDE_INSTALL_PATH
 QMAKE_PKGCONFIG_DESTDIR = pkgconfig
 
 RESOURCES += \

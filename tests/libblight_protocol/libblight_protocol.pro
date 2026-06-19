@@ -1,9 +1,6 @@
 QT += testlib
 QT -= gui
 
-target.path = /opt/share/tests
-INSTALLS += target
-
 CONFIG += qt
 CONFIG += console
 CONFIG += warn_on
@@ -27,3 +24,6 @@ QMAKE_CFLAGS_DEBUG += -save-temps
 include(../../qmake/common.pri)
 include(../../qmake/libblight.pri)
 include(../../qmake/libblight_protocol.pri)
+
+target.path = $$TESTS_INSTALL_PATH
+INSTALLS += target
