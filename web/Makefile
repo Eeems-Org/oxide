@@ -52,7 +52,7 @@ images: $(svgFiles) $(pngFiles) $(SRC)/_static/images/favicon.png
 
 $(DIST): $(VENV)/bin/activate images
 	. $(VENV)/bin/activate; \
-	sphinx-build -a -n -E -b html $(SRC) $(DIST)
+	python -m sphinx.cmd.build -a -n -E -b html $(SRC) $(DIST)
 	# Clean unused files inherited from default theme
 	rm -rf $(DIST)/.doctrees \
 	    $(DIST)/.buildinfo \
@@ -75,7 +75,7 @@ prod: $(DIST)
 
 dev: $(VENV)/bin/activate
 	. $(VENV)/bin/activate; \
-	sphinx-autobuild -a $(SRC) $(DIST) --port=0 --open-browser
+	python -m sphinx_autobuild -a $(SRC) $(DIST) --port=0 --open-browser
 
 dev-images:
 	while inotifywait -e close_write,create $(IMAGES) $(IMAGES)/*.tex;do \
