@@ -2,7 +2,6 @@ TARGET = lockscreen_hook
 TEMPLATE = lib
 
 DEFINES += DISABLE_LTO
-DEFINES += DISABLE_UNWIND
 include(../../qmake/common.pri)
 
 CONFIG += hide_symbols

@@ -1,0 +1,249 @@
+subpackages='
+fbinfo
+inject_evdev
+liboxide
+liboxide-dev:liboxide_dev
+cpptrace
+oxide-display:oxide_display
+oxide-extra:oxide_extra
+oxide-utils:oxide_utils
+oxide-tests:oxide_tests
+'
+pkgname=oxide
+pkgver="~VERSION~"
+pkgrel=0
+_cpptracever=0.8.3
+upstream_author="Eeems-org"
+maintainer="Eeems <eeems@eeems.email>"
+url=https://oxide.eeems.codes
+license=MIT
+depends='
+remarkable-os>=3.27.1.0
+'
+source='
+oxide.tar.gz
+'
+pkgdesc="Launcher application"
+category="launchers"
+options="!check !fhs !strip !tracedeps"
+
+_toolchain=5.7.119
+image() {
+    case "$CARCH" in
+    aarch64) echo "eeems/remarkable-toolchain:$_toolchain-rmpp" ;;
+    armv7) echo "eeems/remarkable-toolchain:$_toolchain-rm1" ;;
+    *)
+        echo "Invalid CARCH: $CARCH"
+        exit 1
+        ;;
+    esac
+}
+
+build() {
+    _toolchain=5.7.119 # Is not currently passed into build()
+    set -e
+    cd "$srcdir"
+    case "$CARCH" in
+    aarch64)
+        . /opt/codex/ferrari/$_toolchain/environment-setup-cortexa53-crypto-remarkable-linux
+        ;;
+    armv7)
+        . /opt/codex/rm1/$_toolchain/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi
+        ;;
+    *)
+        echo "Invalid CARCH: $CARCH"
+        exit 1
+        ;;
+    esac
+    make release
+}
+
+package() {
+    cd "$srcdir"/release
+    # System service
+    install -Dm644 -t "$pkgdir"/etc/dbus-1/system.d etc/dbus-1/system.d/codes.eeems.oxide.conf
+    install -Dm644 -t "$pkgdir"/lib/systemd/system etc/systemd/system/tarnish.service
+    install -Dm755 -t "$pkgdir"/opt/bin opt/bin/tarnish
+    # Task manager
+    install -Dm755 -t "$pkgdir"/opt/bin opt/bin/erode
+    install -Dm644 -t "$pkgdir"/opt/usr/share/icons/oxide/48x48/apps opt/usr/share/icons/oxide/48x48/apps/erode.png
+    install -Dm644 -t "$pkgdir"/opt/usr/share/applications opt/usr/share/applications/codes.eeems.erode.oxide
+    # Launcher
+    install -Dm755 -t "$pkgdir"/opt/bin opt/bin/oxide
+    install -Dm644 -t "$pkgdir"/opt/etc opt/etc/oxide.conf
+    install -Dm644 -t "$pkgdir"/opt/usr/share/applications opt/usr/share/applications/codes.eeems.oxide.oxide
+    install -Dm644 -t "$pkgdir"/opt/usr/share/icons/oxide/702x702/splash opt/usr/share/icons/oxide/702x702/splash/oxide.png
+    # Lockscreen
+    install -Dm755 -t "$pkgdir"/opt/bin opt/bin/decay
+    install -Dm644 -t "$pkgdir"/opt/usr/share/applications opt/usr/share/applications/codes.eeems.decay.oxide
+    # Task switcher
+    install -Dm755 -t "$pkgdir"/opt/bin opt/bin/corrupt
+    install -Dm644 -t "$pkgdir"/opt/usr/share/applications opt/usr/share/applications/codes.eeems.corrupt.oxide
+    # Keyd configuration
+    install -Dm644 -t "$pkgdir"/opt/etc/keyd opt/etc/keyd/oxide.conf
+    # launcherctl registration
+    install -Dm755 opt/share/launcherctl/oxide "$pkgdir"/opt/share/launcherctl/oxide
+}
+
+postinstall() {
+    systemctl daemon-reload
+    # TODO install lockscreen_hook
+}
+
+postupgrade() {
+    postinstall
+}
+
+postosupgrade() {
+    postinstall
+}
+
+predeinstall() {
+    # TODO remove lockscreen_hook
+    systemctl daemon-reload
+}
+
+oxide_display() {
+    pkgdesc="Oxide display server"
+    category="devel"
+    depends="
+    liboxide=$pkgver
+    cpptrace=$_cpptracever
+    "
+
+    package() {
+        cd "$srcdir"/release
+        # Display server
+        install -Dm644 -t "$subpkgdir"/etc/dbus-1/system.d etc/dbus-1/system.d/codes.eeems.blight.conf
+        install -Dm644 -t "$subpkgdir"/lib/systemd/system etc/systemd/system/blight.service
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/blight
+        # Client
+        install -Dm755 -t "$subpkgdir"/opt/lib opt/lib/libblight_client.so*
+        # QPA
+        install -Dm755 -t "$subpkgdir"/opt/usr/lib/plugins/platforms opt/usr/lib/plugins/platforms/liboxide.so*
+    }
+}
+
+oxide_extra() {
+    pkgdesc="Extra applications for oxide"
+    category="utils"
+    depends="
+    oxide=$pkgver
+    oxide-utils=$pkgver
+    liboxide=$pkgver
+    cpptrace=$_cpptracever
+    "
+
+    package() {
+        cd "$srcdir"/release
+        # Screenshot viewer
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/anxiety
+        install -Dm644 -t "$subpkgdir"/opt/usr/share/applications opt/usr/share/applications/codes.eeems.anxiety.oxide
+        install -Dm644 -t "$subpkgdir"/opt/usr/share/icons/oxide/48x48/apps opt/usr/share/icons/oxide/48x48/apps/image.png
+    }
+}
+
+oxide_utils() {
+    pkgdesc="Command line tools for Oxide"
+    category="admin"
+    depends="
+    oxide=$pkgver
+    liboxide=$pkgver
+    cpptrace=$_cpptracever
+    "
+
+    package() {
+        cd "$srcdir"/release
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/desktop-file-validate
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/gio
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/notify-send
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/rot
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/update-desktop-database
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/xclip
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/xdg-desktop-icon
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/xdg-desktop-menu
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/xdg-open
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/xdg-settings
+    }
+}
+
+inject_evdev() {
+    pkgdesc="Inject input events"
+    category="utils"
+    depends="
+    liboxide=$pkgver
+    cpptrace=$_cpptracever
+    "
+
+    package() {
+        cd "$srcdir"/release
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/inject_evdev
+    }
+}
+
+fbinfo() {
+    pkgdesc="Print out framebuffer info"
+    category="utils"
+
+    package() {
+        cd "$srcdir"/release
+        install -Dm755 -t "$subpkgdir"/opt/bin opt/bin/fbinfo
+    }
+}
+
+liboxide() {
+    pkgdesc="Shared library for oxide applications"
+    category="devel"
+
+    package() {
+        cd "$srcdir"/release
+        install -Dm755 -t "$subpkgdir"/opt/lib opt/lib/liboxide.so*
+        install -Dm755 -t "$subpkgdir"/opt/lib opt/lib/libblight.so*
+        install -Dm755 -t "$subpkgdir"/opt/lib opt/lib/libblight_protocol.so*
+    }
+}
+
+liboxide_dev() {
+    pkgdesc="Shared library for oxide applications"
+    category="devel"
+    depends="liboxide=$pkgver"
+
+    package() {
+        cd "$srcdir"/release
+        install -Dm755 -t "$subpkgdir"/opt/lib/pkgconfig opt/lib/pkgconfig/oxide.pc
+        install -Dm755 -t "$subpkgdir"/opt/include opt/include/epframebuffer.h
+        install -Dm755 -t "$subpkgdir"/opt/include opt/include/liboxide.h
+        cp -ar opt/include/liboxide/ "$subpkgdir"/opt/include/
+        install -Dm755 -t "$subpkgdir"/opt/include opt/include/libblight.h
+        cp -ar opt/include/libblight/ "$subpkgdir"/opt/include/
+        install -Dm755 -t "$subpkgdir"/opt/include opt/include/libblight_protocol.h
+        cp -ar opt/include/libblight_protocol/ "$subpkgdir"/opt/include/
+    }
+}
+
+cpptrace() {
+    pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
+    category="devel"
+    url=https://github.com/jeremy-rifkin/cpptrace
+    pkgver="$_cpptracever"
+
+    package() {
+        cd "$srcdir"/release
+        install -Dm755 -t "$subpkgdir"/opt/lib opt/lib/libcpptrace.so
+    }
+}
+
+oxide_tests() {
+    pkgdesc="Automated tests for oxide"
+    category="devel"
+    depends="
+    oxide-display=$pkgver
+    "
+
+    package() {
+        cd "$srcdir"/release
+        install -Dm755 -t "$subpkgdir"/opt/share/tests opt/share/tests/libblight
+        install -Dm755 -t "$subpkgdir"/opt/share/tests opt/share/tests/libblight_protocol
+        install -Dm755 -t "$subpkgdir"/opt/share/tests opt/share/tests/liboxide
+    }
+}

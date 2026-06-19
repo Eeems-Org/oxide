@@ -127,7 +127,7 @@ linux-oe-g++{
     INCLUDEPATH += ../../shared/mxcfb
     include(../../qmake/epaper.pri)
 }
-include(../../qmake/sentry.pri)
+include(../../qmake/cpptrace.pri)
 DEFINES += LIBBLIGHT_PRIVATE
 include(../../qmake/libblight.pri)
 

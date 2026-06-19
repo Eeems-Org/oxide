@@ -10,7 +10,9 @@ cpptrace_makefile.commands = \
         -S $$PWD/src \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DCPPTRACE_UNWIND_WITH_LIBUNWIND=on
+        -DCPPTRACE_UNWIND_WITH_EXECINFO=on \
+        -DCPPTRACE_GET_SYMBOLS_WITH_LIBDL=on \
+        -DCPPTRACE_BUILD_SHARED=on
 QMAKE_EXTRA_TARGETS += cpptrace_makefile
 
 PRE_TARGETDEPS += $$OUT_PWD/src/libcpptrace.so

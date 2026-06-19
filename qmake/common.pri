@@ -15,9 +15,6 @@ CONFIG += link_pkgconfig
 DEFINES ~= s/QT_DISABLE_DEPRECATED_BEFORE=.+/
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=$${QT_DISABLE_DEPRECATED_BEFORE}
 CONFIG(debug, debug|release){
-    !contains(DEFINES, DISABLE_UNWIND){
-        PKGCONFIG += libunwind
-    }
     contains(DEFINES, SANITIZER){
         CONFIG += sanitizer
         CONFIG += sanitize_address

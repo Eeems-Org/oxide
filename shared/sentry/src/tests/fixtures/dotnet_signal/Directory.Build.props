@@ -1,2 +1,0 @@
-<!-- Prevent MSBuild from using parent Directory.Build.props -->
-<Project />

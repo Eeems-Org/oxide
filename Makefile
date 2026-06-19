@@ -34,28 +34,31 @@ clean: clean-base
 
 release: clean-base build $(DIST)
 ifneq ($(filter sentry,$(FEATURES)),)
-	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
+	# Force sentry makefile to regenerate so that install targets get when being build in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/sentry && make qmake $(DEFINES)
 endif
-	# Force liboxide makefile to regenerate so that install targets get when being build in toltecmk
+	# Force liboxide makefile to regenerate so that install targets get when being build in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/liboxide && make qmake $(DEFINES)
-	# Force libblight makefile to regenerate so that install targets get when being build in toltecmk
+	# Force libblight makefile to regenerate so that install targets get when being build in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/libblight && make qmake $(DEFINES)
-	# Force libblight_protocol makefile to regenerate so that install targets get when being build in toltecmk
+	# Force libblight_protocol makefile to regenerate so that install targets get when being build in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/libblight_protocol && make qmake $(DEFINES)
 	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) install
 
 build: $(OBJ)
 	$(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) all
 
-package: REV="~r$(shell git rev-list --count HEAD).$(shell git rev-parse --short HEAD)"
+package: REV="$(shell git rev-list --count HEAD)"
+package: VERSION="$(shell bash -c "grep 'VERSION =' qmake/common.pri | awk '{print \$$3}'")"
 package: version.txt $(DIST) $(BUILD)/package/oxide.tar.gz
-	toltecmk \
-		--verbose \
-		-w $(BUILD)/package/build \
-		-d $(BUILD)/package/dist \
-		$(BUILD)/package
-	cp -a $(BUILD)/package/dist/rm*/*.ipk $(DIST)
+	sed "s/~VERSION~/`cat version.txt`/" ./VELBUILD > $(BUILD)/package/VELBUILD
+	vbuild -C $(BUILD)/package checksum
+	CARCH=armv7 vbuild -C $(BUILD)/package
+	CARCH=aarch64 vbuild -C $(BUILD)/package
+	cp -a \
+		$(BUILD)/package/dist/armv7/* \
+		$(BUILD)/package/dist/armv7/* \
+		$(DIST)
 
 build-rm1: clean-base $(DIST)
 	podman run \
@@ -104,9 +107,9 @@ build-rmppure: clean-base $(DIST)
 
 version.txt:
 	if [ -d .git ];then \
-		echo $(REV) > version.txt; \
+		echo "$(VERSION)_git$(REV)" > version.txt; \
 	else \
-		echo "~manual" > version.txt; \
+		echo "$(VERSION)_pre" > version.txt; \
 	fi;
 
 $(DIST):
@@ -128,9 +131,6 @@ $(BUILD)/package:
 	mkdir -p $(BUILD)/package
 	rm -rf $(BUILD)/package/build
 
-$(BUILD)/package/package: $(BUILD)/package
-	sed "s/~VERSION~/`cat version.txt`/" ./package > $(BUILD)/package/package
-
 PKG_OBJ = oxide.pro Makefile
 PKG_OBJ += $(wildcard applications/**)
 PKG_OBJ += $(wildcard assets/**)
@@ -139,7 +139,7 @@ PKG_OBJ += $(wildcard qmake/**)
 PKG_OBJ += $(wildcard shared/**)
 PKG_OBJ += $(wildcard tests/**)
 
-$(BUILD)/package/oxide.tar.gz: $(BUILD)/package/package $(PKG_OBJ)
+$(BUILD)/package/oxide.tar.gz: $(PKG_OBJ) $(BUILD)/package
 	rm -f $(BUILD)/package/oxide.tar.gz
 	tar \
 		--exclude='$(CURDIR)/.git' \
