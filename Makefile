@@ -103,7 +103,7 @@ build-rmppure: clean-base $(DIST)
 		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmppure \
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/tatsu/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
-version.txt:
+version.txt: qmake/common.pri
 	if [ -d .git ];then \
 		echo "$(VERSION)_git$(REV)" > version.txt; \
 	else \
@@ -157,7 +157,7 @@ $(BUILD)/package/oxide.tar.gz: $(PKG_OBJ) $(BUILD)/package
 .PHONY: $(BUILD)/package/VELBUILD
 $(BUILD)/package/VELBUILD: REV="$(shell git rev-list --count HEAD)"
 $(BUILD)/package/VELBUILD: VERSION="$(shell bash -c "grep 'VERSION =' qmake/common.pri | awk '{print \$$3}'")"
-$(BUILD)/package/VELBUILD: $(BUILD)/package
+$(BUILD)/package/VELBUILD: version.txt $(BUILD)/package
 	sed "s/~VERSION~/`cat version.txt`/" ./VELBUILD > $(BUILD)/package/VELBUILD
 	vbuild -C $(BUILD)/package checksum
 
