@@ -33,15 +33,13 @@ clean: clean-base
 	rm -rf $(BUILD)
 
 release: clean-base build $(DIST)
-ifneq ($(filter sentry,$(FEATURES)),)
-	# Force sentry makefile to regenerate so that install targets get when being build in vbuild
-	cd $(BUILD)/$(BUILDNAME)/shared/sentry && make qmake $(DEFINES)
-endif
-	# Force liboxide makefile to regenerate so that install targets get when being build in vbuild
+	# Force cpptrace makefile to regenerate so that install targets get when being built in vbuild
+	cd $(BUILD)/$(BUILDNAME)/shared/cpptrace && make qmake $(DEFINES)
+	# Force liboxide makefile to regenerate so that install targets get when being built in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/liboxide && make qmake $(DEFINES)
-	# Force libblight makefile to regenerate so that install targets get when being build in vbuild
+	# Force libblight makefile to regenerate so that install targets get when being built in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/libblight && make qmake $(DEFINES)
-	# Force libblight_protocol makefile to regenerate so that install targets get when being build in vbuild
+	# Force libblight_protocol makefile to regenerate so that install targets get when being built in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/libblight_protocol && make qmake $(DEFINES)
 	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) install
 
