@@ -48,7 +48,9 @@ launcherctl.files = ../../assets/opt/share/launcherctl/oxide
 launcherctl.path = /opt/share/launcherctl/
 INSTALLS += launcherctl
 
-applications.files = ../../assets/opt/usr/share/applications/xochitl.oxide
+applications.files = \
+    ../../assets/opt/usr/share/applications/xochitl.oxide \
+    ../../assets/opt/usr/share/applications/xovi.oxide
 applications.path = /opt/usr/share/applications/
 INSTALLS += applications
 

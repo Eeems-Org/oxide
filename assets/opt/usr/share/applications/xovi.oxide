@@ -1,0 +1,10 @@
+{
+    "displayName": "xovi",
+    "description": "Launch xochitl with xovi modifications",
+    "bin": "/usr/bin/xochitl",
+    "icon": "oxide:xochitl-48",
+    "environment": {
+        "LD_PRELOAD": "/home/root/xovi/xovi.so",
+        "XOVI_ROOT": "/home/root/xovi/services/xochitl.service"
+    }
+}
