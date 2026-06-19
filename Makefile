@@ -46,17 +46,17 @@ release: clean-base build $(DIST)
 build: $(OBJ)
 	$(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) all
 
-package: REV="$(shell git rev-list --count HEAD)"
-package: VERSION="$(shell bash -c "grep 'VERSION =' qmake/common.pri | awk '{print \$$3}'")"
-package: version.txt $(DIST) $(BUILD)/package/oxide.tar.gz
-	sed "s/~VERSION~/`cat version.txt`/" ./VELBUILD > $(BUILD)/package/VELBUILD
-	vbuild -C $(BUILD)/package checksum
+package: package-armv7 package-aarch64
+
+package-armv7: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
 	CARCH=armv7 vbuild -C $(BUILD)/package
+	mkdir -p $(DIST)/armv7
+	cp -a $(BUILD)/package/dist/armv7/. $(DIST)/armv7
+
+package-aarch64: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
 	CARCH=aarch64 vbuild -C $(BUILD)/package
-	cp -a \
-		$(BUILD)/package/dist/armv7/* \
-		$(BUILD)/package/dist/aarch64/* \
-		$(DIST)
+	mkdir -p $(DIST)/aarch64
+	cp -a $(BUILD)/package/dist/aarch64/. $(DIST)/aarch64
 
 build-rm1: clean-base $(DIST)
 	podman run \
@@ -153,6 +153,13 @@ $(BUILD)/package/oxide.tar.gz: $(PKG_OBJ) $(BUILD)/package
 		tests \
 		oxide.pro \
 		Makefile
+
+.PHONY: $(BUILD)/package/VELBUILD
+$(BUILD)/package/VELBUILD: REV="$(shell git rev-list --count HEAD)"
+$(BUILD)/package/VELBUILD: VERSION="$(shell bash -c "grep 'VERSION =' qmake/common.pri | awk '{print \$$3}'")"
+$(BUILD)/package/VELBUILD: $(BUILD)/package
+	sed "s/~VERSION~/`cat version.txt`/" ./VELBUILD > $(BUILD)/package/VELBUILD
+	vbuild -C $(BUILD)/package checksum
 
 SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )
 SRC_FILES += package
