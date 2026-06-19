@@ -55,7 +55,7 @@ package: version.txt $(DIST) $(BUILD)/package/oxide.tar.gz
 	CARCH=aarch64 vbuild -C $(BUILD)/package
 	cp -a \
 		$(BUILD)/package/dist/armv7/* \
-		$(BUILD)/package/dist/armv7/* \
+		$(BUILD)/package/dist/aarch64/* \
 		$(DIST)
 
 build-rm1: clean-base $(DIST)
