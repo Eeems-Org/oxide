@@ -373,12 +373,12 @@ namespace FB {
         return 0;
       }
       case FBIOBLANK: {
-        _DEBUG("%s", "ioctl /dev/fb0 FBIOBLANK");
-        int fd = Libc::open("/dev/fb0", O_RDONLY, 0);
-        if (fd == -1) {
-          return -1;
-        }
-        return Libc::ioctl(fd, request, ptr);
+        _DEBUG(
+          "%s",
+          "ioctl /dev/fb0 FBIOBLANK %d",
+          static_cast<int>(reinterpret_cast<intptr_t>(ptr))
+        );
+        return 0;
       }
       default:
         _WARN(

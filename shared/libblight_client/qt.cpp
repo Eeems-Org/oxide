@@ -167,7 +167,7 @@ resolve_qimage_funcs() {
 int
 frameBufferOffset() {
 #if defined(__arm__)
-  return 0x60;
+  return Client::IS_XOCHITL ? 0x50 : 0x60;
 #elif defined(__aarch64__)
   return 0xa8;
 #else
@@ -181,12 +181,9 @@ frameBufferOffset() {
 int
 previousBufferOffset() {
 #if defined(__arm__)
-  return 0x50;
+  return Client::IS_XOCHITL ? 0x60 : 0x70;
 #elif defined(__aarch64__)
-  if (Client::IS_XOCHITL) {
-    return 0x88;
-  }
-  return 0xc8;
+  return Client::IS_XOCHITL ? 0x88 : 0xc8;
 #else
   return 0x00;
 #endif
@@ -198,12 +195,9 @@ previousBufferOffset() {
 int
 renderTargetOffset() {
 #if defined(__arm__)
-  return 0x6c;
+  return Client::IS_XOCHITL ? 0x5c : 0x6c;
 #elif defined(__aarch64__)
-  if (Client::IS_XOCHITL) {
-    return 0xa0;
-  }
-  return 0xc0;
+  return Client::IS_XOCHITL ? 0xa0 : 0xc0;
 #else
   return 0x00;
 #endif
