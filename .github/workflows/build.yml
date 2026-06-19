@@ -97,4 +97,4 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: build-${{ matrix.arch }}
-          path: .build/package/release
+          path: .build/package/src/release

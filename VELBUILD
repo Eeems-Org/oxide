@@ -8,6 +8,7 @@ oxide-display:oxide_display
 oxide-extra:oxide_extra
 oxide-utils:oxide_utils
 oxide-tests:oxide_tests
+lockscreen_hook
 '
 pkgname=oxide
 pkgver="~VERSION~"
@@ -45,10 +46,10 @@ build() {
     cd "$srcdir"
     case "$CARCH" in
     aarch64)
-        . /opt/codex/ferrari/$_toolchain/environment-setup-cortexa53-crypto-remarkable-linux
+        . /opt/codex/ferrari/"$_toolchain"/environment-setup-cortexa53-crypto-remarkable-linux
         ;;
     armv7)
-        . /opt/codex/rm1/$_toolchain/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi
+        . /opt/codex/rm1/"$_toolchain"/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi
         ;;
     *)
         echo "Invalid CARCH: $CARCH"
@@ -83,24 +84,6 @@ package() {
     install -Dm644 -t "$pkgdir"/opt/etc/keyd opt/etc/keyd/oxide.conf
     # launcherctl registration
     install -Dm755 opt/share/launcherctl/oxide "$pkgdir"/opt/share/launcherctl/oxide
-}
-
-postinstall() {
-    systemctl daemon-reload
-    # TODO install lockscreen_hook
-}
-
-postupgrade() {
-    postinstall
-}
-
-postosupgrade() {
-    postinstall
-}
-
-predeinstall() {
-    # TODO remove lockscreen_hook
-    systemctl daemon-reload
 }
 
 oxide_display() {
@@ -245,5 +228,32 @@ oxide_tests() {
         install -Dm755 -t "$subpkgdir"/opt/share/tests opt/share/tests/libblight
         install -Dm755 -t "$subpkgdir"/opt/share/tests opt/share/tests/libblight_protocol
         install -Dm755 -t "$subpkgdir"/opt/share/tests opt/share/tests/liboxide
+    }
+}
+
+lockscreen_hook() {
+    pkgdesc="Run scripts after unlock"
+    category="devel"
+    package() {
+        cd "$srcdir"/release
+        install -Dm755 -t "$subpkgdir"/usr/lib usr/lib/lockscreen_hook.so*
+    }
+
+    postinstall() {
+        systemctl daemon-reload
+        # TODO install lockscreen_hook
+    }
+
+    postupgrade() {
+        postinstall
+    }
+
+    postosupgrade() {
+        postinstall
+    }
+
+    predeinstall() {
+        # TODO remove lockscreen_hook
+        systemctl daemon-reload
     }
 }
