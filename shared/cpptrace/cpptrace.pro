@@ -33,7 +33,9 @@ QMAKE_EXTRA_TARGETS += cpptrace_install
 
 QMAKE_CLEAN += -r $$OUT_PWD/src/
 
-target.files = $$OUT_PWD/lib/libcpptrace.so
-target.depends = cpptrace_build
+target.files = \
+    $$OUT_PWD/lib/libcpptrace.so \
+    $$OUT_PWD/lib/libcpptrace.so.*
+target.depends = cpptrace_install
 target.path = /opt/lib/
 INSTALLS += target
