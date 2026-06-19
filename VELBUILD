@@ -367,11 +367,17 @@ lockscreen_hook() {
         mkdir -p /etc/systemd/system/xochitl.service.d/
         cp -a /home/root/.vellum/share/lockscreen_hook/lockscreen_hook.conf \
             etc/systemd/system/xochitl.service.d/
+        rm -f /usr/lib/liblockscreen_hook.so*
+        cp -a /home/root/.vellum/usr/lib/liblockscreen_hook.so* \
+            /usr/lib/
         systemctl daemon-reload
     }
 
     predeinstall() {
+        mount-rw
         rm -f /etc/systemd/system/xochitl.service.d/lockscreen_hook.conf
+        rm -f /usr/lib/liblockscreen_hook.so*
+        mount-restore
         systemctl daemon-reload
     }
 }
