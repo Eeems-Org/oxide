@@ -45,7 +45,7 @@ keyd.path = $$CONFIG_INSTALL_PATH/keyd/
 INSTALLS += keyd
 
 launcherctl.files = ../../assets/opt/share/launcherctl/oxide
-launcherctl.path = /opt/share/launcherctl/
+launcherctl.path = $$SHARE_INSTALL_PATH/launcherctl/
 INSTALLS += launcherctl
 
 applications.files = \
