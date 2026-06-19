@@ -155,7 +155,7 @@ $(BUILD)/package/oxide.tar.gz: $(PKG_OBJ) $(BUILD)/package
 		Makefile
 
 .PHONY: $(BUILD)/package/VELBUILD
-$(BUILD)/package/VELBUILD: REV="$(shell git rev-list --count HEAD)"
+$(BUILD)/package/VELBUILD: REV="$(shell git show -s --date=format:'%Y%m%d' --format=%cd HEAD)"
 $(BUILD)/package/VELBUILD: VERSION="$(shell bash -c "grep 'VERSION =' qmake/common.pri | awk '{print \$$3}'")"
 $(BUILD)/package/VELBUILD: version.txt $(BUILD)/package
 	sed "s/~VERSION~/`cat version.txt`/" ./VELBUILD > $(BUILD)/package/VELBUILD
