@@ -1,13 +1,6 @@
 name: Build website
 
 on:
-  push:
-    branches-ignore:
-      - "master" # excludes master
-    paths:
-      - "web/**"
-      - "shared/liboxide/**"
-      - ".github/actions/web/**"
   pull_request:
     paths:
       - "web/**"
