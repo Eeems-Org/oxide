@@ -71,8 +71,14 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Install toltecmk
-        run: pip install toltecmk
+      - name: Install vbuild
+        run: |
+          curl \
+            --location \
+            "https://github.com/Eeems/vbuild/releases/latest/download/vbuild-x86_64-glibc" \
+            --output /usr/local/bin/vbuild
+          chmod +x /usr/local/bin/vbuild
+          file /usr/local/bin/vbuild
       - name: Build packages
         run: make package
         timeout-minutes: 15
