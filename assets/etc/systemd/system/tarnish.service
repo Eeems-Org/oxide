@@ -15,12 +15,12 @@ Wants=systemd-logind.service
 [Service]
 Type=dbus
 BusName=codes.eeems.oxide1
-ExecStart=/opt/bin/tarnish --break-lock
+ExecStart=/home/root/.vellum/bin/tarnish --break-lock
 Restart=on-failure
 RestartSec=5
 WatchdogSec=1min
 Environment="HOME=/home/root"
-Environment="PATH=/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+Environment="PATH=/home/root/.vellum/bin:/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
 [Install]
 Alias=launcher.service

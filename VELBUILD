@@ -342,6 +342,7 @@ oxide_tests() {
     pkgdesc="Automated tests for oxide"
     category="framework"
     depends="
+    liboxide=$pkgver-r$pkgrel
     oxide-display=$pkgver-r$pkgrel
     "
 
