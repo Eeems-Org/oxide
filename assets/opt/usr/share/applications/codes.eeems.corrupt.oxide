@@ -1,7 +1,7 @@
 {
     "displayName": "Task Switcher",
     "description": "Handles switching applications",
-    "bin": "/opt/bin/corrupt",
+    "bin": "/home/root/.vellum/bin/corrupt",
     "flags": ["hidden", "nosavescreen", "noannounce", "nopreload"],
     "type": "backgroundable",
     "permissions": ["apps"]

@@ -7,7 +7,7 @@ system service (tarnish) that an application is installed on the system.
 It's meant to facilitate package managers adding applications and having
 them show up in the launcher while tarnish is not running. These files
 must have a file extension of ``oxide`` and must be located in
-``/opt/usr/share/applications``. The file format is currently JSON.
+``/home/root/.local/share/applications``. The file format is currently JSON.
 Below is an example file:
 
 .. code:: json

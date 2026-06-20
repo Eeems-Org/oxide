@@ -17,8 +17,9 @@
  * \def OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY
  * \brief Application directory location
  */
-#define OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY "/opt/usr/share/applications"
-#define OXIDE_ICONS_DIRECTORY "/opt/usr/share/icons"
+#define OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY                              \
+  "/home/root/.local/share/applications"
+#define OXIDE_ICONS_DIRECTORY "/home/root/.local/share/icons"
 
 /*!
  * \brief The applications namespace

@@ -117,6 +117,7 @@ postosupgrade() {
 }
 
 predeinstall() {
+    systemctl disable --now tarnish.service
     rm -f /etc/dbus-1/system.d/codes.eeems.oxide.conf
     rm -f /etc/systemd/system/tarnish.service
     systemctl daemon-reload
@@ -169,6 +170,7 @@ oxide_display() {
     }
 
     predeinstall() {
+        systemctl disable --now blight.service
         rm -f /etc/dbus-1/system.d/codes.eeems.blight.conf
         rm -f /etc/systemd/system/blight.service
         systemctl daemon-reload
