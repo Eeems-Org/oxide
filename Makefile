@@ -1,12 +1,9 @@
-.PHONY: all clean release build sentry package
-
+.PHONY: all
 all: release
 
 .NOTPARALLEL:
 
 MAKEFLAGS := --jobs=$(shell nproc)
-
-# FEATURES += sentry
 
 DIST=$(CURDIR)/release
 BUILD=$(CURDIR)/.build
@@ -16,22 +13,21 @@ TOOLCHAIN?=5.7.119
 ifneq ($(filter debug,$(FEATURES)),)
 DEFINES += CONFIG+="debug"
 endif
-ifneq ($(filter sentry,$(FEATURES)),)
-DEFINES += DEFINES+="SENTRY"
-endif
 
 OBJ += $(BUILD)/$(BUILDNAME)/Makefile
 
+.PHONY: clean-base
 clean-base:
 	rm -rf \
 		$(DIST) \
 		$(BUILD)/$(BUILDNAME)/Makefile \
-		$(BUILD)/$(BUILDNAME)/shared/sentry/src \
 		$(BUILD)/$(BUILDNAME)/shared/cpptrace/src
 
+.PHONY: clean
 clean: clean-base
 	rm -rf $(BUILD)
 
+.PHONY: release
 release: clean-base build $(DIST)
 	# Force cpptrace makefile to regenerate so that install targets get when being built in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/cpptrace && make qmake $(DEFINES)
@@ -43,21 +39,26 @@ release: clean-base build $(DIST)
 	cd $(BUILD)/$(BUILDNAME)/shared/libblight_protocol && make qmake $(DEFINES)
 	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) install
 
+.PHONY: build
 build: $(OBJ)
 	$(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) all
 
+.PHONY: package
 package: package-armv7 package-aarch64
 
+.PHONY: package-armv7
 package-armv7: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
 	CARCH=armv7 vbuild -C $(BUILD)/package
 	mkdir -p $(DIST)/armv7
 	cp -a $(BUILD)/package/dist/armv7/. $(DIST)/armv7
 
+.PHONY: package-aarch64
 package-aarch64: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
 	CARCH=aarch64 vbuild -C $(BUILD)/package
 	mkdir -p $(DIST)/aarch64
 	cp -a $(BUILD)/package/dist/aarch64/. $(DIST)/aarch64
 
+.PHONY: build-rm1
 build-rm1: clean-base $(DIST)
 	podman run \
 		--env BUILDNAME=oxide-rm1 \
@@ -67,6 +68,7 @@ build-rm1: clean-base $(DIST)
 		eeems/remarkable-toolchain:$(TOOLCHAIN)-rm1 \
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm1/$(TOOLCHAIN)/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
 
+.PHONY: build-rm2
 build-rm2: clean-base $(DIST)
 	podman run \
 		--env BUILDNAME=oxide-rm2 \
@@ -76,6 +78,7 @@ build-rm2: clean-base $(DIST)
 		eeems/remarkable-toolchain:$(TOOLCHAIN)-rm2 \
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm2/$(TOOLCHAIN)/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
 
+.PHONY: build-rmpp
 build-rmpp: clean-base $(DIST)
 	podman run \
 		--env BUILDNAME=oxide-rmpp \
@@ -85,6 +88,7 @@ build-rmpp: clean-base $(DIST)
 		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmpp \
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/ferrari/$(TOOLCHAIN)/environment-setup-cortexa53-crypto-remarkable-linux; make FEATURES=$(FEATURES) release'
 
+.PHONY: build-rmppm
 build-rmppm: clean-base $(DIST)
 	podman run \
 		--env BUILDNAME=oxide-rmppm \
@@ -94,6 +98,7 @@ build-rmppm: clean-base $(DIST)
 		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmppm \
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/chiappa/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
+.PHONY: build-rmppure
 build-rmppure: clean-base $(DIST)
 	podman run \
 		--env BUILDNAME=oxide-rmppure \
@@ -162,12 +167,13 @@ $(BUILD)/package/VELBUILD: version.txt $(BUILD)/package
 	vbuild -C $(BUILD)/package checksum
 
 SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )
-SRC_FILES += package
+SRC_FILES += VELBUILD
 
 CPP_FILES = $(wildcard applications/**/*.cpp) $(wildcard applications/**/*.h)
 CPP_FILES += $(wildcard shared/**/*.cpp) $(wildcard shared/**/*.h)
 CPP_FILES += $(wildcard tests/**/*.cpp) $(wildcard tests/**/*.h)
 
+.PHONY: lint
 lint:
 	@shfmt \
 		-d\
@@ -182,6 +188,7 @@ lint:
 		--fallback-style=mozilla \
 		$(CPP_FILES)
 
+.PHONY: format
 format:
 	@shfmt \
 		-l \
