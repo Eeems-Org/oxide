@@ -421,7 +421,7 @@ namespace Oxide {
       qDebug() << "Version mismatch, Runtime: " << qt_version
                << ", Build: " << QT_VERSION_STR;
     }
-    QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
+    QCoreApplication::addLibraryPath("/home/root/.vellum/usr/lib/plugins");
     qputenv("QMLSCENE_DEVICE", "software");
     qputenv("QT_QUICK_BACKEND", "software");
     QString platform("oxide:enable_fonts:freetype:freetype");
