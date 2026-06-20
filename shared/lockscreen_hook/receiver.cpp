@@ -2,6 +2,7 @@
 
 #include <QDebug>
 #include <QFile>
+#include <QFileInfo>
 #include <QProcess>
 #include <QVariant>
 #include <unistd.h>
@@ -77,29 +78,39 @@ LockscreenHookReceiver::waitForHome() {
   return false;
 }
 
-bool
-LockscreenHookReceiver::waitForHook() {
-  if (!QFile::exists("/home/root/.local/share/lockscreen_hook.d/unlock")) {
-    qCWarning(loggingCategory) << "Unlock hook missing, continuing";
-    return false;
+HookState
+LockscreenHookReceiver::waitForHook(const QString& name) {
+  auto path = QString("/home/root/.local/share/lockscreen_hook.d/%1").arg(name);
+  auto info = QFileInfo(path);
+  if (!info.exists()) {
+    qCWarning(loggingCategory) << name << "hook missing";
+    return HookState::Missing;
   }
-  int res = execute("/home/root/.local/share/lockscreen_hook.d/unlock");
+  if (!info.isFile()) {
+    qCWarning(loggingCategory) << name << "hook is not a file";
+    return HookState::NotFile;
+  }
+  if (!info.isExecutable()) {
+    qCWarning(loggingCategory) << name << "hook is not executable";
+    return HookState::NoPermission;
+  }
+  int res = execute(path);
   if (res == 0) {
-    return true;
+    qCDebug(loggingCategory) << name << "hook successfully ran";
+    return HookState::Success;
   }
   switch (res) {
     case -2:
-      qCWarning(loggingCategory) << "Unlock hook failed to start, continuing";
-      break;
+      qCWarning(loggingCategory) << name << "hook failed to start";
+      return HookState::NoStart;
     case -1:
-      qCWarning(loggingCategory) << "Unlock hook crashed, continuing";
-      break;
+      qCWarning(loggingCategory) << name << "hook crashed";
+      return HookState::Crash;
     default:
       qCWarning(loggingCategory)
-        << "Unlock hook had non-zero exit code (" << res << "), continuing";
-      break;
+        << name << "hook had non-zero exit code (" << res << ")";
+      return HookState::Fail;
   }
-  return false;
 }
 
 int

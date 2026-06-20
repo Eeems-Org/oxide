@@ -63,12 +63,16 @@ __signal_handler(int signal, siginfo_t* si, void* vcontext) {
 
 #endif
 
+static std::atomic<bool> enabled = false;
 static std::atomic<bool> pendingExit = false;
 static std::atomic<bool> passcodeHandlerHooked = false;
 static std::atomic<bool> disablePoweroffScreen = false;
 
 void
 handle_unlock() {
+  if (!enabled) {
+    return;
+  }
   auto* receiver = LockscreenHookReceiver::singleton();
   if (receiver == nullptr) {
     return;
@@ -76,7 +80,8 @@ handle_unlock() {
   if (!receiver->waitForHome()) {
     return;
   }
-  if (!receiver->waitForHook()) {
+  if (receiver->waitForHook("unlock") != HookState::Success) {
+    qCDebug(loggingCategory) << "Device unlocked, continuing into xochitl";
     return;
   }
   qCDebug(loggingCategory) << "Device unlocked, exiting xochitl";
@@ -91,7 +96,7 @@ handle_unlock() {
 
 static void
 hook_PasscodeHandler(QObject* this_ptr) {
-  if (passcodeHandlerHooked) {
+  if (!enabled || passcodeHandlerHooked) {
     return;
   }
   auto* receiver = LockscreenHookReceiver::singleton();
@@ -113,6 +118,19 @@ hook_PasscodeHandler(QObject* this_ptr) {
     qCWarning(loggingCategory)
       << "Failed to connect PasscodeHandler::unlocked signal";
     return;
+  }
+  switch (receiver->waitForHook("hook")) {
+    case HookState::Missing:
+    case HookState::NotFile:
+    case HookState::Success:
+      break;
+    case HookState::NoStart:
+    case HookState::Crash:
+    case HookState::Fail:
+    default:
+      qCWarning(loggingCategory) << "Disabling hook";
+      enabled = false;
+      return;
   }
   passcodeHandlerHooked = true;
   qCDebug(
@@ -136,7 +154,7 @@ _ZN7QObjectC2EPS_(QObject* this_ptr, QObject* parent) {
       dlsym(RTLD_NEXT, "_ZN7QObjectC2EPS_")
     );
   constructor(this_ptr, parent);
-  if (passcodeHandlerHooked || pendingExit) {
+  if (!enabled || passcodeHandlerHooked || pendingExit) {
     return;
   }
   QPointer<QObject> safe(this_ptr);
@@ -158,7 +176,7 @@ _ZN7QObjectC1EPS_(QObject* this_ptr, QObject* parent) {
       dlsym(RTLD_NEXT, "_ZN7QObjectC1EPS_")
     );
   constructor(this_ptr, parent);
-  if (passcodeHandlerHooked || pendingExit) {
+  if (!enabled || passcodeHandlerHooked || pendingExit) {
     return;
   }
   QPointer<QObject> safe(this_ptr);
@@ -184,7 +202,8 @@ _ZN6QImageC1ERK7QStringPKc(
       dlsym(RTLD_NEXT, "_ZN6QImageC1ERK7QStringPKc")
     );
   if (
-    !disablePoweroffScreen || !fileName.contains(QStringLiteral("poweroff.png"))
+    !enabled || !disablePoweroffScreen ||
+    !fileName.contains(QStringLiteral("poweroff.png"))
   ) {
     constructor(this_ptr, fileName, format);
     return;
@@ -204,7 +223,8 @@ _ZN6QImageC2ERK7QStringPKc(
       dlsym(RTLD_NEXT, "_ZN6QImageC2ERK7QStringPKc")
     );
   if (
-    !disablePoweroffScreen || !fileName.contains(QStringLiteral("poweroff.png"))
+    !enabled || !disablePoweroffScreen ||
+    !fileName.contains(QStringLiteral("poweroff.png"))
   ) {
     constructor(this_ptr, fileName, format);
     return;
@@ -226,5 +246,6 @@ init(void) {
   action.sa_sigaction = __signal_handler;
   sigaction(SIGBUS, &action, nullptr);
 #endif
+  enabled = true;
 }
 }

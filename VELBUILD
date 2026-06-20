@@ -98,16 +98,19 @@ package() {
 }
 
 postinstall() {
+    set -e
     /home/root/.vellum/bin/mount-rw
     postosupgrade
     /home/root/.vellum/bin/mount-restore
 }
 
 postupgrade() {
+    set -e
     postinstall
 }
 
 postosupgrade() {
+    set -e
     mkdir -p /etc/dbus-1/system.d
     cp -a /home/root/.vellum/share/oxide/dbus-1/system.d/codes.eeems.oxide.conf \
         /etc/dbus-1/system.d/
@@ -117,6 +120,7 @@ postosupgrade() {
 }
 
 predeinstall() {
+    set -e
     systemctl disable --now tarnish.service
     rm -f /etc/dbus-1/system.d/codes.eeems.oxide.conf
     rm -f /etc/systemd/system/tarnish.service
@@ -151,16 +155,19 @@ oxide_display() {
     }
 
     postinstall() {
+        set -e
         /home/root/.vellum/bin/mount-rw
         postosupgrade
         /home/root/.vellum/bin/mount-restore
     }
 
     postupgrade() {
+        set -e
         postinstall
     }
 
     postosupgrade() {
+        set -e
         mkdir -p /etc/dbus-1/system.d
         cp -a /home/root/.vellum/share/oxide/dbus-1/system.d/codes.eeems.blight.conf \
             /etc/dbus-1/system.d/
@@ -170,6 +177,7 @@ oxide_display() {
     }
 
     predeinstall() {
+        set -e
         systemctl disable --now blight.service
         rm -f /etc/dbus-1/system.d/codes.eeems.blight.conf
         rm -f /etc/systemd/system/blight.service
@@ -373,32 +381,42 @@ lockscreen_hook() {
             usr/lib/liblockscreen_hook.so*
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/lockscreen_hook/ \
             etc/systemd/system/xochitl.service.d/lockscreen_hook.conf
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/lockscreen_hook/ \
+            usr/libexec/lockscreen-hook
     }
 
     postinstall() {
+        set -e
         /home/root/.vellum/bin/mount-rw
         postosupgrade
         /home/root/.vellum/bin/mount-restore
     }
 
     postupgrade() {
+        set -e
         postinstall
     }
 
     postosupgrade() {
+        set -e
         mkdir -p /etc/systemd/system/xochitl.service.d/
         cp -a /home/root/.vellum/share/lockscreen_hook/lockscreen_hook.conf \
             /etc/systemd/system/xochitl.service.d/
         rm -f /usr/lib/liblockscreen_hook.so*
         cp -a /home/root/.vellum/usr/lib/liblockscreen_hook.so* \
             /usr/lib/
+        cp -a /home/root/.vellum/share/lockscreen_hook/lockscreen-hook \
+            /usr/libexec/
         systemctl daemon-reload
     }
 
     predeinstall() {
+        set -e
         /home/root/.vellum/bin/mount-rw
-        rm -f /etc/systemd/system/xochitl.service.d/lockscreen_hook.conf
-        rm -f /usr/lib/liblockscreen_hook.so*
+        rm -f \
+            /etc/systemd/system/xochitl.service.d/lockscreen_hook.conf \
+            /usr/lib/liblockscreen_hook.so* \
+            /usr/libexec/lockscreen-hook
         /home/root/.vellum/bin/mount-restore
         systemctl daemon-reload
     }

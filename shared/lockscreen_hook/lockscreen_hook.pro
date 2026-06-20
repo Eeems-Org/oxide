@@ -15,7 +15,7 @@ SOURCES += \
     main.cpp \
     receiver.cpp
 
-service.files = ../../assets/etc/systemd/system/xochitl.service.d/lockscreen_hook.conf
+service.files = lockscreen_hook.conf
 service.path = /etc/systemd/system/xochitl.service.d/
 INSTALLS += service
 
@@ -28,5 +28,10 @@ QMAKE_CXXFLAGS += -fno-builtin
 target.path += /usr/lib
 INSTALLS += target
 
+client.files = lockscreen-hook
+client.path = /usr/libexec/
+INSTALLS += client
+
 DISTFILES += \
-    ../../assets/etc/systemd/system/xochitl.service.d/lockscreen_hook.conf
+    lockscreen_hook.conf \
+    lockscreen-hook
