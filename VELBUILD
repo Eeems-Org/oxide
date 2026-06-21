@@ -10,6 +10,7 @@ oxide-extra:oxide_extra
 oxide-utils:oxide_utils
 oxide-tests:oxide_tests
 lockscreen_hook
+launcherctl
 '
 pkgname=oxide
 pkgver="~VERSION~"
@@ -95,6 +96,9 @@ package() {
     # Keyd configuration
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/keyd \
         home/root/.config/keyd/oxide.conf
+    # launcherctl configuration
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/share/launcherctl \
+        home/root/.vellum/share/launcherctl/oxide
 }
 
 postinstall() {
@@ -111,7 +115,12 @@ postupgrade() {
 
 postosupgrade() {
     set -e
-    mkdir -p /etc/dbus-1/system.d
+    mkdir -p \
+        /etc/dbus-1/system.d \
+        /etc/systemd/system
+    rm -f \
+        /var/volatile/etc/systemd/system/tarnish.service \
+        /var/volatile/etc/systemd/system/tarnish.service
     cp -a /home/root/.vellum/share/oxide/dbus-1/system.d/codes.eeems.oxide.conf \
         /etc/dbus-1/system.d/
     cp -a /home/root/.vellum/share/oxide/systemd/system/tarnish.service \
@@ -121,10 +130,26 @@ postosupgrade() {
 
 predeinstall() {
     set -e
-    systemctl disable --now tarnish.service
-    rm -f /etc/dbus-1/system.d/codes.eeems.oxide.conf
-    rm -f /etc/systemd/system/tarnish.service
+    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2>/dev/null)" -eq 1 ]; then
+        if systemctl --quiet is-active tarnish.service 2>/dev/null; then
+            echo "Stopping tarnish.service"
+            systemctl stop tarnish.service
+        fi
+        if systemctl --quiet is-enabled tarnish.service 2>/dev/null; then
+            echo "Disabling tarnish.service"
+            systemctl disable tarnish.service
+        fi
+    fi
+    rm -f \
+        /etc/dbus-1/system.d/codes.eeems.oxide.conf \
+        /etc/systemd/system/tarnish.service
     systemctl daemon-reload
+}
+postdeinstall() {
+    set -e
+    rm -f \
+        /var/volatile/etc/systemd/system/tarnish.service \
+        /var/volatile/etc/systemd/system/tarnish.service
 }
 
 oxide_display() {
@@ -168,7 +193,12 @@ oxide_display() {
 
     postosupgrade() {
         set -e
-        mkdir -p /etc/dbus-1/system.d
+        mkdir -p \
+            /etc/dbus-1/system.d \
+            /etc/systemd/system
+        rm -f \
+            /var/volatile/etc/systemd/system/blight.service \
+            /var/volatile/etc/dbus-1/system.d/codes.eeems.blight.conf
         cp -a /home/root/.vellum/share/oxide/dbus-1/system.d/codes.eeems.blight.conf \
             /etc/dbus-1/system.d/
         cp -a /home/root/.vellum/share/oxide/systemd/system/blight.service \
@@ -178,10 +208,26 @@ oxide_display() {
 
     predeinstall() {
         set -e
-        systemctl disable --now blight.service
-        rm -f /etc/dbus-1/system.d/codes.eeems.blight.conf
-        rm -f /etc/systemd/system/blight.service
+        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2>/dev/null)" -eq 1 ]; then
+            if systemctl --quiet is-active blight.service 2>/dev/null; then
+                echo "Stopping blight.service"
+                systemctl stop blight.service
+            fi
+            if systemctl --quiet is-enabled blight.service 2>/dev/null; then
+                echo "Disabling blight.service"
+                systemctl disable blight.service
+            fi
+        fi
+        rm -f \
+            /etc/dbus-1/system.d/codes.eeems.blight.conf \
+            /etc/systemd/system/blight.service
         systemctl daemon-reload
+    }
+    postdeinstall() {
+        set -e
+        rm -f \
+            /var/volatile/etc/systemd/system/blight.service \
+            /var/volatile/etc/dbus-1/system.d/codes.eeems.blight.conf
     }
 }
 
@@ -221,6 +267,7 @@ oxide_utils() {
     oxide=$pkgver-r$pkgrel
     liboxide=$pkgver-r$pkgrel
     cpptrace=$_cpptracever-r$pkgrel
+    jq
     "
 
     package() {
@@ -400,9 +447,11 @@ lockscreen_hook() {
     postosupgrade() {
         set -e
         mkdir -p /etc/systemd/system/xochitl.service.d/
+        rm -f \
+            /usr/lib/liblockscreen_hook.so* \
+            /var/volatile/etc/systemd/xochitl.service.d/lockscreen_hook.conf
         cp -a /home/root/.vellum/share/lockscreen_hook/lockscreen_hook.conf \
             /etc/systemd/system/xochitl.service.d/
-        rm -f /usr/lib/liblockscreen_hook.so*
         cp -a /home/root/.vellum/usr/lib/liblockscreen_hook.so* \
             /usr/lib/
         cp -a /home/root/.vellum/share/lockscreen_hook/lockscreen-hook \
@@ -419,5 +468,48 @@ lockscreen_hook() {
             /usr/libexec/lockscreen-hook
         /home/root/.vellum/bin/mount-restore
         systemctl daemon-reload
+    }
+    postdeinstall() {
+        set -e
+        rm -f /var/volatile/etc/systemd/xochitl.service.d/lockscreen_hook.conf
+    }
+}
+
+launcherctl() {
+    pkgver=0.0.1
+    pkgrel=0
+    pkgdesc="Manage your installed launcher"
+    category="utilities"
+    depends="
+    lockscreen_hook
+    "
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/launcherctl
+        install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/share/launcherctl \
+            home/root/.vellum/share/launcherctl/none
+        install -o root -g root -Dm755 -t "$pkgdir"/home/root/.local/share/lockscreen_hook.d \
+            home/root/.local/share/lockscreen_hook.d/unlock
+        install -o root -g root -Dm755 -t "$pkgdir"/home/root/.local/share/lockscreen_hook.d \
+            home/root/.local/share/lockscreen_hook.d/success
+    }
+    postinstall() {
+        set -e
+        postosupgrade
+    }
+    postupgrade() {
+        set -e
+        postinstall
+    }
+    postosupgrade() {
+        set -e
+        /home/root/.vellum/bin/launcherctl status
+    }
+    predeinstall() {
+        /home/root/.vellum/bin/launcherctl switch-launcher --start none
+        if [ "$VELLUM_PURGE" = "1" ]; then
+            rm -f /home/root/.vellum/share/launcherctl/current
+        fi
     }
 }

@@ -23,7 +23,8 @@ SUBDIRS = \
     xdg-settings \
     display-server \
     fbinfo \
-    xclip
+    xclip \
+    launcherctl
 
 launcher.depends = system-service update-desktop-database
 lockscreen.depends = system-service

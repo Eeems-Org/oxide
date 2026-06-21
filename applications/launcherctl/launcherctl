@@ -1,0 +1,277 @@
+#!/bin/bash
+set -e
+help() {
+  echo "Usage: launcherctl [--help] <command>"
+  echo "  --help: Display this message and exit"
+  echo "  commands:"
+  echo "    status: Current launcher status"
+  echo "    current-launcher: Get the name of the current launcher"
+  echo "    logs [-f|--follow]: View current launcher logs"
+  echo "    list-launchers: List installed launchers"
+  echo "    switch-launcher [--start] <launcher>: Switch which launcher is active"
+  echo "    start-launcher [--no-stop]: Start the current launcher"
+  echo "    list-apps: List all applications for the current launcher"
+  echo "    list-running-apps: List all running applications for the current launcher"
+  echo "    list-paused-apps: List all paused applications for the current launcher"
+  echo "    start-app <application>: Start an application with the current launcher"
+  echo "    stop-app <application>: Stop an application with the current launcher"
+  echo "    pause-app <application>: Pause an application with the current launcher"
+  echo "    resume-app <application>: Resume an application with the current launcher"
+  echo "    is-current-launcher [--quiet] <launcher>: Check if the launcher is the current launcher"
+  echo "    is-enabled-launcher [--quiet] <launcher>: Check if the launcher is enabled"
+  echo "    is-active-launcher [--quiet] <launcher>: Check if the launcher is active"
+}
+share="/home/root/.vellum/share/launcherctl"
+error() {
+  printf "Error: %s\n" "$1" 1>&2
+  shift
+  for arg in "$@"; do
+    printf "%s\n" "$arg" 1>&2
+  done
+}
+query() {
+  launcher="$1"
+  shift
+  if [ ! -f "$share"/"$launcher" ]; then
+    error "Launcher $launcher does not exist"
+    return 1
+  fi
+  "$share"/"$launcher" "$@"
+}
+query-active() {
+  launchers_active | while read -r launcher; do
+    query "$launcher" "$@"
+  done
+}
+launchers() {
+  /usr/bin/find "$share" \
+    -type f \
+    -perm '-u+x' \
+    -print |
+    /usr/bin/xargs -rn1 /usr/bin/basename |
+    /usr/bin/grep -vE '^current$'
+}
+launchers_active() {
+  launchers | while read -r launcher; do
+    if query "$launcher" is-active; then
+      echo "$launcher"
+    fi
+  done
+}
+launchers_enabled() {
+  launchers | while read -r launcher; do
+    if query "$launcher" is-enabled || [[ "$launcher" == "$(current_launcher)" ]]; then
+      echo "$launcher"
+    fi
+  done
+}
+check_active_launchers() {
+  active="$(launchers_active | wc -l)"
+  if [ "$active" -gt 1 ]; then
+    error "More than one launcher is currently active!" \
+      "Active launchers: $(launchers_active)"
+    exit 1
+  elif [ "$active" == 0 ]; then
+    error "No launcher is currently active!"
+    exit 1
+  fi
+}
+check_launcher_has_app() {
+  if ! query-active apps | /usr/bin/grep -q "$1"; then
+    error "Unknown application: $1"
+    exit 1
+  fi
+}
+current_launcher() {
+  if [ ! -f "$share"/current ]; then
+    ln -s none "$share"/current
+  fi
+  readlink "$share"/current | /usr/bin/xargs -r /usr/bin/basename
+}
+case "$1" in
+--help)
+  help
+  ;;
+logs)
+  if [ $# -gt 2 ]; then
+    error "Too many arguments"
+    exit 1
+  elif [ $# -eq 2 ] && [[ "$2" != "-f" ]] && [[ "$2" != "--follow" ]]; then
+    error "Invalid arguments"
+    exit 1
+  fi
+  check_active_launchers
+  query "$(launchers_active)" "$@"
+  ;;
+status)
+  if [ $# -gt 1 ]; then
+    echo "Too many arguments"
+    exit 1
+  fi
+  launcher=$(current_launcher)
+  if [[ "$launcher" == "" ]]; then
+    error "No launcher currently set"
+    exit 1
+  fi
+  echo -e "Launcher: \033[1m${launcher}\e[0m"
+  echo -ne "Status: \033[1m"
+  if query current is-active; then
+    echo -ne "\e[32mrunning"
+  else
+    echo -ne "\e[31minactive"
+  fi
+  echo -e "\e[0m"
+  echo -n "Apps: $(query-active running | wc -l) running "
+  echo "$(query-active apps | wc -l) installed"
+  ;;
+current-launcher)
+  current_launcher
+  ;;
+list-launchers)
+  launchers
+  ;;
+switch-launcher)
+  if [ $# -lt 2 ]; then
+    echo "Too few arguments"
+    exit 1
+  elif [ $# -gt 3 ]; then
+    echo "Too many arguments"
+    exit 1
+  elif [ $# -eq 3 ] && [[ "$2" != "--start" ]]; then
+    echo "Invalid arguments"
+    exit 1
+  fi
+  if [ $# -eq 3 ]; then
+    start=true
+    shift
+  else
+    start=false
+  fi
+  if ! [ -f "${share}/${2}" ]; then
+    echo "${2} is not installed"
+    exit 1
+  fi
+  launchers | while read -r launcher; do
+    if [[ "$launcher" != "$2" ]]; then
+      query "$launcher" disable
+    fi
+  done
+  if ! query "$2" is-enabled; then
+    if ! query "$2" enable; then
+      exit 1
+    fi
+  fi
+  ln -sf "$2" "$share"/current
+  if $start; then
+    "$0" start-launcher
+  fi
+  ;;
+start-launcher)
+  if [ $# -gt 2 ]; then
+    echo "Too many arguments"
+    exit 1
+  elif [ $# == 2 ] && [[ "$2" != "--no-stop" ]]; then
+    echo "Invalid arguments"
+    exit 1
+  fi
+  if [ $# -lt 2 ]; then
+    selected_launcher="$(current_launcher)"
+    launchers_active | while read -r launcher; do
+      if [[ "$launcher" != "$selected_launcher" ]]; then
+        query "$launcher" stop
+      fi
+    done
+  fi
+  if query current is-active; then
+    echo "Already started!"
+    exit
+  fi
+  query current start
+  ;;
+stop-launcher)
+  query-active stop
+  ;;
+list-apps)
+  query-active apps
+  ;;
+list-running-apps)
+  query-active running
+  ;;
+list-paused-apps)
+  query-active paused
+  ;;
+start-app)
+  check_launcher_has_app "$2"
+  query-active launch "$2"
+  ;;
+stop-app)
+  check_launcher_has_app "$2"
+  query-active close "$2"
+  ;;
+pause-app)
+  check_launcher_has_app "$2"
+  query-active pause "$2"
+  ;;
+resume-app)
+  check_launcher_has_app "$2"
+  query-active resume "$2"
+  ;;
+is-current-launcher)
+  if [ $# -gt 3 ]; then
+    error "Too many arguments"
+    exit 1
+  elif [ $# -eq 3 ] && [[ "$2" != "--quiet" ]]; then
+    error "Invalid arguments"
+    exit 1
+  fi
+  launcher=$(current_launcher)
+  if [ $# -eq 1 ]; then
+    if [[ "$launcher" != "$2" ]]; then
+      exit 1
+    fi
+  elif [[ "$launcher" == "$2" ]]; then
+    echo "$2 is the current launcher"
+  else
+    echo "$2 is not the current launcher"
+    exit 1
+  fi
+  ;;
+is-enabled-launcher)
+  if [ $# -gt 3 ]; then
+    error "Too many arguments"
+    exit 1
+  elif [ $# -eq 3 ] && [[ "$2" != "--quiet" ]]; then
+    error "Invalid arguments"
+    exit 1
+  fi
+  if [ $# -eq 1 ]; then
+    query "$2" is-enabled
+  elif query "$2" is-enabled; then
+    echo enabled
+  else
+    echo disabled
+    exit 1
+  fi
+  ;;
+is-active-launcher)
+  if [ $# -gt 3 ]; then
+    error "Too many arguments"
+    exit 1
+  elif [ $# -eq 3 ] && [[ "$2" != "--quiet" ]]; then
+    error "Invalid arguments"
+    exit 1
+  fi
+  if [ $# -eq 1 ]; then
+    query "$2" is-active
+  elif query "$2" is-active; then
+    echo active
+  else
+    echo inactive
+    exit 1
+  fi
+  ;;
+*)
+  help
+  exit 1
+  ;;
+esac

@@ -17,6 +17,7 @@ hook() {
     log "$1 hook is not executable"
     return 0
   fi
+  log "Running hook $1"
   set +e
   "$path"
   res=$?

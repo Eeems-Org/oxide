@@ -1,67 +1,60 @@
 #!/bin/bash
 set -e
 case "$1" in
-    is-active)
-        systemctl is-active --quiet tarnish.service
-        ;;
-    is-enabled)
-        systemctl is-enabled --quiet tarnish.service
-        ;;
-    logs)
-        if [ $# -eq 2 ] && [[ "$2" == "-f" ]] || [[ "$2" == "--follow" ]]; then
-            journalctl --follow --all --unit tarnish.service
-        else
-            journalctl --no-pager --all --unit tarnish.service
-        fi
-        ;;
-    start)
-        systemctl start tarnish.service
-        ;;
-    stop)
-        systemctl stop tarnish.service
-        ;;
-    enable)
-        systemctl enable tarnish.service
-        ;;
-    disable)
-        systemctl disable tarnish.service
-        ;;
-    apps)
-        if ! "$0" is-active; then
-            \ls /opt/usr/share/applications/*.oxide | xargs basename -s .oxide
-            exit
-        fi
-        rot apps get applications 2>/dev/null | jq -r 'keys | .[]'
-        ;;
-    running)
-        if ! "$0" is-active; then
-            exit
-        fi
-        rot apps get runningApplications 2>/dev/null | jq -r 'keys | .[]'
-        ;;
-    paused)
-        if ! "$0" is-active; then
-            exit
-        fi
-        rot apps get pausedApplications 2>/dev/null | jq -r 'keys | .[]'
-        ;;
-    launch | resume)
-        rot apps get applications \
-            | jq -cr ".$2" | sed 's|/codes/eeems/oxide1/||' \
-            | xargs -I {} rot --object Application:{} apps call launch
-        ;;
-    close)
-        rot apps get applications \
-            | jq -cr ".$2" | sed 's|/codes/eeems/oxide1/||' \
-            | xargs -I {} rot --object Application:{} apps call stop
-        ;;
-    pause)
-        rot apps get applications \
-            | jq -cr ".$2" | sed 's|/codes/eeems/oxide1/||' \
-            | xargs -I {} rot --object Application:{} apps call pause
-        ;;
-    *)
-        echo "Oxide does not support this method"
-        exit 1
-        ;;
+is-active)
+    systemctl is-active --quiet tarnish.service
+    ;;
+is-enabled | enable | disable)
+    ;;
+logs)
+    if [ $# -eq 2 ] && [[ "$2" == "-f" ]] || [[ "$2" == "--follow" ]]; then
+        journalctl --follow --all --unit tarnish.service
+    else
+        journalctl --no-pager --all --unit tarnish.service
+    fi
+    ;;
+start)
+    systemctl start tarnish.service
+    ;;
+stop)
+    systemctl stop tarnish.service
+    systemctl stop blight.service
+    ;;
+apps)
+    if ! "$0" is-active; then
+        find /home/root/.local/share/applications -maxdepth 1 -name '*.oxide' -print |
+            /usr/bin/xargs -n1 /usr/bin/basename -s .oxide
+        exit
+    fi
+    rot apps get applications 2>/dev/null | jq -r 'keys | .[]'
+    ;;
+running)
+    if ! "$0" is-active; then
+        exit
+    fi
+    rot apps get runningApplications 2>/dev/null | jq -r 'keys | .[]'
+    ;;
+paused)
+    if ! "$0" is-active; then
+        exit
+    fi
+    rot apps get pausedApplications 2>/dev/null | jq -r 'keys | .[]'
+    ;;
+launch | resume)
+    xdg-open oxide:"$2"
+    ;;
+close)
+    rot apps get applications |
+        jq -cr ".[\"$2\"]" | sed 's|/codes/eeems/oxide1/||' |
+        /usr/bin/xargs -I {} rot --object Application:{} apps call stop
+    ;;
+pause)
+    rot apps get applications |
+        jq -cr ".[\"$2\"]" | sed 's|/codes/eeems/oxide1/||' |
+        /usr/bin/xargs -I {} rot --object Application:{} apps call pause
+    ;;
+*)
+    echo "Oxide does not support this method"
+    exit 1
+    ;;
 esac

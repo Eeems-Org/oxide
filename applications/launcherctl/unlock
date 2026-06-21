@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+log() {
+  printf "%s lockscreen_hook\t%s\n" "$(date --utc '+%H:%M:%S')" "$1" 1>&2
+}
+launcher="$(/home/root/.vellum/bin/launcherctl current-launcher)"
+log "Current launcher is $launcher"
+if [[ "$launcher" == "none" ]] || [[ "$launcher" == "" ]]; then
+  log "No launcher currently selected"
+  exit 1
+fi
