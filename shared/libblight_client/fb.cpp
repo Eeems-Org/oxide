@@ -64,7 +64,7 @@ namespace FB {
         Libc::unsetenv("RM2FB_DISABLE");
       }
     }
-    if (Client::isForceQt()) {
+    if (Client::forceQt()) {
       if (Client::IS_XOCHITL) {
         Libc::setenv("XOCHITL_DISABLE_EPRENDERLOOP", "1", 1);
         Libc::setenv("OXIDE_QPA_SHARE_BACKINGSTORE", "1", 1);
@@ -228,6 +228,26 @@ namespace FB {
     screenInfo->reserved[1] = 0;
     return 0;
   }
+  int get_fscreeninfo_32(fb_fix_screeninfo_32* screenInfo) {
+    constexpr char fb_id[] = "mxcfb";
+    memcpy(screenInfo->id, fb_id, sizeof(fb_id));
+    // TODO determine all the values dynamically
+    screenInfo->smem_len = buffer->size();
+    screenInfo->smem_start = (unsigned long)buffer->data;
+    screenInfo->type = 0;
+    screenInfo->type_aux = 0;
+    screenInfo->visual = FB_VISUAL_TRUECOLOR;
+    screenInfo->xpanstep = 8;
+    screenInfo->ypanstep = 0;
+    screenInfo->ywrapstep = 5772;
+    screenInfo->line_length = buffer->stride;
+    screenInfo->mmio_start = 0;
+    screenInfo->mmio_len = 0;
+    screenInfo->accel = 0;
+    screenInfo->reserved[0] = 0;
+    screenInfo->reserved[1] = 0;
+    return 0;
+  }
   void print_vscreeninfo(fb_var_screeninfo* screenInfo) {
     _DEBUG(
       "\n"
@@ -344,6 +364,11 @@ namespace FB {
         // TODO - handle getting information on rMPP/rMPPM
         if (!_ioctl(request, ptr)) {
           return -1;
+        }
+        if (Client::force32bitFscreenInfo()) {
+          return get_fscreeninfo_32(
+            reinterpret_cast<fb_fix_screeninfo_32*>(ptr)
+          );
         }
         return get_fscreeninfo(reinterpret_cast<fb_fix_screeninfo*>(ptr));
       }

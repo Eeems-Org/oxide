@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <libblight/connection.h>
 #include <libblight/types.h>
 #include <linux/fb.h>
@@ -69,5 +70,22 @@ namespace swtfb {
     } mdata;
   };
 }
+struct fb_fix_screeninfo_32 {
+  uint8_t id[16];
+  uint32_t smem_start;
+  uint32_t smem_len;
+  uint32_t type;
+  uint32_t type_aux;
+  uint32_t visual;
+  uint16_t xpanstep;
+  uint16_t ypanstep;
+  uint16_t ywrapstep;
+  uint32_t line_length;
+  uint32_t mmio_start;
+  uint32_t mmio_len;
+  uint32_t accel;
+  uint16_t capabilities;
+  uint16_t reserved[2];
+};
 extern "C" __attribute__((visibility("default"))) Blight::shared_buf_t
 __BLIGHT_BUFFER();

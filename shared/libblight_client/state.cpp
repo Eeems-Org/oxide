@@ -85,7 +85,7 @@ namespace Client {
     _INFO("Force RGB16: %s", bool_str(forceRGB16()));
     _INFO("RM2FB Allowed: %s", bool_str(isRM2FBAllowed()));
     _INFO("Fake RM2FB: %s", bool_str(isFakeRM2FB()));
-    _INFO("Force Qt: %s", bool_str(isForceQt()));
+    _INFO("Force Qt: %s", bool_str(forceQt()));
     _INFO("Ghost Control: %s", bool_str(isGhostControlEnabled()));
     return true;
   }
@@ -97,13 +97,13 @@ namespace Client {
     }
   }
   bool isInputEnabled() {
-    if (isForceQt()) {
+    if (forceQt()) {
       return false;
     }
     return getenv("OXIDE_PRELOAD_EXPOSE_INPUT") == nullptr;
   }
   bool isFbEnabled() {
-    if (isForceQt()) {
+    if (forceQt()) {
       return true;
     }
     static bool enabled = getenv("OXIDE_PRELOAD_EXPOSE_FB") == nullptr;
@@ -147,6 +147,11 @@ namespace Client {
     static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RGB16") != nullptr;
     return enabled;
   }
+  bool force32bitFscreenInfo() {
+    static bool enabled =
+      getenv("OXIDE_PRELOAD_FORCE_32BIT_FSCREENINFO") != nullptr;
+    return enabled;
+  }
   bool isRM2FBAllowed() {
     if (IS_XOCHITL) {
       return true;
@@ -161,7 +166,7 @@ namespace Client {
     static bool enabled = getenv("OXIDE_PRELOAD_NO_FAKE_RM2FB") == nullptr;
     return enabled;
   }
-  bool isForceQt() {
+  bool forceQt() {
     static bool enabled = getenv("OXIDE_PRELOAD_FORCE_QT") != nullptr;
     return enabled;
   }

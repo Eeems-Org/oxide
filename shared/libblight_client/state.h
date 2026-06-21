@@ -26,9 +26,10 @@ namespace Client {
   bool isFakeRM1Fb();
   bool isFakeRM1Input();
   bool forceRGB16();
+  bool force32bitFscreenInfo();
   bool isRM2FBAllowed();
   bool isFakeRM2FB();
-  bool isForceQt();
+  bool forceQt();
   bool isGhostControlEnabled();
   const std::string deviceTypeName();
 }
