@@ -91,10 +91,9 @@ jobs:
           cd $HOME/.config/vbuild
           echo '$privkey' > oxide.rsa
           chmod 600 oxide.rsa
-          echo '$pubkey' > oxide.rsa.pub
+          openssl rsa -in oxide.rsa -pubout -out oxide.rsa.pub
         env:
           privkey: ${{ secrets.VBUILD_PRIVKEY }}
-          pubkey: ${{ vars.VBUILD_PUBKEY }}
       - name: Build packages
         run: make package-${{ matrix.arch }}
         env:
