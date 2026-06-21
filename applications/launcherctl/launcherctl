@@ -218,7 +218,10 @@ resume-app)
   query-active resume "$2"
   ;;
 is-current-launcher)
-  if [ $# -gt 3 ]; then
+  if [ $# -lt 2 ]; then
+    error "Too few arguments"
+    exit 1
+  elif [ $# -gt 3 ]; then
     error "Too many arguments"
     exit 1
   elif [ $# -eq 3 ] && [[ "$2" != "--quiet" ]]; then
@@ -226,28 +229,31 @@ is-current-launcher)
     exit 1
   fi
   launcher=$(current_launcher)
-  if [ $# -eq 1 ]; then
+  if [ $# -eq 2 ]; then
     if [[ "$launcher" != "$2" ]]; then
       exit 1
     fi
-  elif [[ "$launcher" == "$2" ]]; then
-    echo "$2 is the current launcher"
+  elif [[ "$launcher" == "$3" ]]; then
+    echo "$3 is the current launcher"
   else
-    echo "$2 is not the current launcher"
+    echo "$3 is not the current launcher"
     exit 1
   fi
   ;;
 is-enabled-launcher)
-  if [ $# -gt 3 ]; then
+  if [ $# -lt 2 ]; then
+    error "Too few arguments"
+    exit 1
+  elif [ $# -gt 3 ]; then
     error "Too many arguments"
     exit 1
   elif [ $# -eq 3 ] && [[ "$2" != "--quiet" ]]; then
     error "Invalid arguments"
     exit 1
   fi
-  if [ $# -eq 1 ]; then
+  if [ $# -eq 2 ]; then
     query "$2" is-enabled
-  elif query "$2" is-enabled; then
+  elif query "$3" is-enabled; then
     echo enabled
   else
     echo disabled
@@ -255,16 +261,19 @@ is-enabled-launcher)
   fi
   ;;
 is-active-launcher)
-  if [ $# -gt 3 ]; then
+  if [ $# -lt 2 ]; then
+    error "Too few arguments"
+    exit 1
+  elif [ $# -gt 3 ]; then
     error "Too many arguments"
     exit 1
   elif [ $# -eq 3 ] && [[ "$2" != "--quiet" ]]; then
     error "Invalid arguments"
     exit 1
   fi
-  if [ $# -eq 1 ]; then
+  if [ $# -eq 2 ]; then
     query "$2" is-active
-  elif query "$2" is-active; then
+  elif query "$3" is-active; then
     echo active
   else
     echo inactive
