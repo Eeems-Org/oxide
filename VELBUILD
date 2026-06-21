@@ -481,7 +481,6 @@ lockscreen_hook() {
 
 launcherctl() {
     pkgver=0.0.1
-    pkgrel=0
     pkgdesc="Manage your installed launcher"
     category="utilities"
     depends="
