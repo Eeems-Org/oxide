@@ -89,7 +89,7 @@ jobs:
         run: |
           mkdir -p $HOME/.config/vbuild
           cd $HOME/.config/vbuild
-          echo '$privkey' > oxide.rsa
+          echo "$privkey" > oxide.rsa
           chmod 600 oxide.rsa
           openssl rsa -in oxide.rsa -pubout -out oxide.rsa.pub
         env:
