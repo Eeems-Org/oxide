@@ -22,6 +22,7 @@ help() {
   echo "    is-active-launcher [--quiet] <launcher>: Check if the launcher is active"
 }
 share="/home/root/.vellum/share/launcherctl"
+mkdir -p "$share"
 error() {
   printf "Error: %s\n" "$1" 1>&2
   shift
