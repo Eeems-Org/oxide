@@ -736,54 +736,78 @@ namespace Input {
           input_event* xEvent = nullptr;
           input_event* yEvent = nullptr;
           for (auto& previousEvent : pending) {
-            if (previousEvent.type != EV_ABS) {
-              continue;
-            }
-            switch (previousEvent.code) {
-              case ABS_MT_PRESSURE:
-                info.state.pressure = previousEvent.value;
-                previousEvent.value = scaleValue(
-                  previousEvent.value,
-                  info.minimums.pressure,
-                  info.maximums.pressure
-                );
+            switch (previousEvent.type) {
+#ifdef __aarch64__
+              case EV_KEY:
+                switch (previousEvent.code) {
+                  case BTN_TOUCH:
+                    info.state.pressure = previousEvent.value
+                                            ? info.maximums.pressure
+                                            : info.minimums.pressure;
+                    previousEvent.value =
+                      previousEvent.value ? RM1_TOUCH_PRESSURE : 0;
+                    previousEvent.type = EV_ABS;
+                    previousEvent.code = ABS_MT_PRESSURE;
+                    continue;
+                  default:
+                    continue;
+                }
                 break;
-              case ABS_MT_DISTANCE:
-                info.state.distance = previousEvent.value;
-                previousEvent.value = scaleValue(
-                  previousEvent.value,
-                  info.minimums.distance,
-                  info.maximums.distance
-                );
+#endif
+              case EV_ABS:
+                switch (previousEvent.code) {
+                  case ABS_MT_PRESSURE:
+                    info.state.pressure = previousEvent.value;
+                    previousEvent.value = scaleValue(
+                      previousEvent.value,
+                      info.minimums.pressure,
+                      info.maximums.pressure
+                    );
+                    break;
+                  case ABS_MT_DISTANCE:
+                    info.state.distance = previousEvent.value;
+                    previousEvent.value = scaleValue(
+                      previousEvent.value,
+                      info.minimums.distance,
+                      info.maximums.distance
+                    );
+                    break;
+                  case ABS_MT_ORIENTATION:
+                    info.state.orientation = previousEvent.value;
+                    previousEvent.value = scaleValue(
+                      previousEvent.value,
+                      info.minimums.orientation,
+                      info.maximums.orientation
+                    );
+                    break;
+                  case ABS_MT_TOUCH_MAJOR:
+                    info.state.major = previousEvent.value;
+                    previousEvent.value = scaleValue(
+                      previousEvent.value,
+                      info.minimums.major,
+                      info.maximums.major
+                    );
+                    break;
+                  case ABS_MT_TOUCH_MINOR:
+                    info.state.minor = previousEvent.value;
+                    previousEvent.value = scaleValue(
+                      previousEvent.value,
+                      info.minimums.minor,
+                      info.maximums.minor
+                    );
+                    break;
+                  case ABS_MT_POSITION_X:
+                    info.state.x = previousEvent.value;
+                    xEvent = &previousEvent;
+                    break;
+                  case ABS_MT_POSITION_Y:
+                    info.state.y = previousEvent.value;
+                    yEvent = &previousEvent;
+                    break;
+                }
                 break;
-              case ABS_MT_ORIENTATION:
-                info.state.orientation = previousEvent.value;
-                previousEvent.value = scaleValue(
-                  previousEvent.value,
-                  info.minimums.orientation,
-                  info.maximums.orientation
-                );
-                break;
-              case ABS_MT_TOUCH_MAJOR:
-                info.state.major = previousEvent.value;
-                previousEvent.value = scaleValue(
-                  previousEvent.value, info.minimums.major, info.maximums.major
-                );
-                break;
-              case ABS_MT_TOUCH_MINOR:
-                info.state.minor = previousEvent.value;
-                previousEvent.value = scaleValue(
-                  previousEvent.value, info.minimums.minor, info.maximums.minor
-                );
-                break;
-              case ABS_MT_POSITION_X:
-                info.state.x = previousEvent.value;
-                xEvent = &previousEvent;
-                break;
-              case ABS_MT_POSITION_Y:
-                info.state.y = previousEvent.value;
-                yEvent = &previousEvent;
-                break;
+              default:
+                continue;
             }
           }
           if (xEvent == nullptr && yEvent == nullptr) {
