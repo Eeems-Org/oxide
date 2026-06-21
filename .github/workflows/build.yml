@@ -92,8 +92,13 @@ jobs:
           echo "$privkey" > oxide.rsa
           chmod 600 oxide.rsa
           openssl rsa -in oxide.rsa -pubout -out oxide.rsa.pub
+          if ! diff -w <(cat oxide.rsa.pub) <(echo "$pubkey");then
+            echo "::error::Public and Private keys don't match!"
+            exit 1
+          fi
         env:
           privkey: ${{ secrets.VBUILD_PRIVKEY }}
+          pubkey: ${{ vars.VBUILD_PUBKEY }}
       - name: Build packages
         run: make package-${{ matrix.arch }}
         env:
