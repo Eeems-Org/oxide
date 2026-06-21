@@ -85,8 +85,20 @@ jobs:
             --output /usr/local/bin/vbuild
           chmod +x /usr/local/bin/vbuild
           file /usr/local/bin/vbuild
+      - name: Install vbuild key
+        run: |
+          mkdir -p $HOME/.config/vbuild
+          cd $HOME/.config/vbuild
+          echo '$privkey' > oxide.rsa
+          chmod 600 oxide.rsa
+          echo '$pubkey' > oxide.rsa.pub
+        env:
+          privkey: ${{ secrets.VBUILD_PRIVKEY }}
+          pubkey: ${{ vars.VBUILD_PUBKEY }}
       - name: Build packages
         run: make package-${{ matrix.arch }}
+        env:
+          VBUILD_KEY_NAME: oxide
         timeout-minutes: 15
       - name: Save packages
         uses: actions/upload-artifact@v7
