@@ -52,7 +52,7 @@ images: $(svgFiles) $(pngFiles) $(SRC)/_static/images/favicon.png
 
 $(DIST): $(VENV)/bin/activate images
 	. $(VENV)/bin/activate; \
-	sphinx.cmd.build -a -n -E -b html $(SRC) $(DIST)
+	sphinx-build -a -n -E -b html $(SRC) $(DIST)
 	# Clean unused files inherited from default theme
 	rm -rf $(DIST)/.doctrees \
 	    $(DIST)/.buildinfo \
