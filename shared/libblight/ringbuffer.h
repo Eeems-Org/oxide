@@ -2,16 +2,35 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <cstdio>
+#include <linux/input.h>
+#include <new>
 #include <optional>
+#include <type_traits>
+#include <utility>
 
 #include "libblight_global.h"
-
-#include <linux/input.h>
 
 namespace Blight {
   class RingBufferBase {
   protected:
     using AtomicWord = std::atomic<uint32_t>;
+    static_assert(
+      AtomicWord::is_always_lock_free,
+      "RingBuffer requires lock-free atomic for shared memory safety"
+    );
+    static_assert(
+      sizeof(AtomicWord) == sizeof(uint32_t),
+      "AtomicWord layout must match uint32_t for futex"
+    );
+    static_assert(
+      alignof(AtomicWord) == alignof(uint32_t),
+      "AtomicWord alignment must match uint32_t for futex"
+    );
+    static_assert(
+      std::is_standard_layout_v<AtomicWord>,
+      "AtomicWord must be standard layout for direct memory access"
+    );
 
     alignas(64) AtomicWord head;
     alignas(64) AtomicWord tail;
@@ -26,6 +45,23 @@ namespace Blight {
 
     static void futex_wait(AtomicWord& word, uint32_t expected) noexcept;
     static void futex_wake(AtomicWord& word) noexcept;
+
+    static int createSharedMemoryInstance(
+      size_t size,
+      const char* name,
+      void** instancePtr
+    );
+    static void* mapSharedMemoryInstance(int fd, size_t size);
+    static void unmapSharedMemoryInstance(void* mem, size_t size);
+
+    bool full(uint32_t size);
+    void wait_for_space(uint32_t size);
+    uint32_t reserveHead(uint32_t size);
+    void commitHead(uint32_t headIndex);
+    std::optional<uint32_t> tryConsume();
+    uint32_t waitForTail();
+    std::optional<uint32_t> peekTail();
+    void releaseTail(uint32_t tailIndex);
 
   public:
     bool empty();
@@ -51,71 +87,56 @@ namespace Blight {
       , values{} {}
 
     void insert(const T& event) {
-      uint32_t h = head.load(std::memory_order_relaxed);
-      uint32_t t = tail.load(std::memory_order_acquire);
-      while (h - t >= static_cast<uint32_t>(Size)) {
-        if (allow_overflow) {
-          overflow.store(1, std::memory_order_release);
-          break;
-        }
-        futex_wait(tail, t);
-        t = tail.load(std::memory_order_acquire);
-      }
+      uint32_t h = reserveHead(Size);
       values[h & MASK] = event;
-      head.store(h + 1, std::memory_order_release);
-      futex_wake(head);
+      commitHead(h);
     }
 
     std::optional<T> take() {
-      uint32_t t = tail.load(std::memory_order_relaxed);
-      uint32_t h = head.load(std::memory_order_acquire);
-      if (h == t) {
-        overflow.exchange(0, std::memory_order_acq_rel);
+      std::optional<uint32_t> t = tryConsume();
+      if (!t.has_value()) {
         return {};
       }
-      T event = values[t & MASK];
-      overflow.exchange(0, std::memory_order_acq_rel);
-      tail.store(t + 1, std::memory_order_release);
-      futex_wake(tail);
+      T event = values[t.value() & MASK];
+      releaseTail(t.value());
       return {event};
     }
 
     T wait_for_values() {
-      uint32_t t = tail.load(std::memory_order_relaxed);
-      uint32_t h = head.load(std::memory_order_acquire);
-      while (h == t) {
-        futex_wait(head, h);
-        h = head.load(std::memory_order_acquire);
-      }
+      uint32_t t = waitForTail();
       T event = values[t & MASK];
-      overflow.exchange(0, std::memory_order_acq_rel);
-      tail.store(t + 1, std::memory_order_release);
-      futex_wake(tail);
+      releaseTail(t);
       return event;
     }
 
-    void wait_for_space() {
-      uint32_t h = head.load(std::memory_order_relaxed);
-      uint32_t t = tail.load(std::memory_order_acquire);
-      while (h - t >= static_cast<uint32_t>(Size)) {
-        futex_wait(tail, t);
-        t = tail.load(std::memory_order_acquire);
-      }
-    }
+    void wait_for_space() { RingBufferBase::wait_for_space(Size); }
 
-    bool full() {
-      uint32_t h = head.load(std::memory_order_relaxed);
-      uint32_t t = tail.load(std::memory_order_acquire);
-      return h - t >= static_cast<uint32_t>(Size);
-    }
+    bool full() { return RingBufferBase::full(Size); }
 
     std::optional<T> next() {
-      uint32_t h = head.load(std::memory_order_acquire);
-      uint32_t t = tail.load(std::memory_order_relaxed);
-      if (h == t) {
-        return {};
+      auto t = peekTail();
+      return t.has_value() ? std::optional<T>(values[t.value() & MASK])
+                           : std::nullopt;
+    }
+
+    static std::pair<int, RingBuffer<T, Size>*> createSharedMemory(
+      bool allow_overflow = false
+    ) {
+      char name[64];
+      std::snprintf(name, sizeof(name), "RingBuffer<%zu,%zu>", sizeof(T), Size);
+      void* mem;
+      int fd =
+        createSharedMemoryInstance(sizeof(RingBuffer<T, Size>), name, &mem);
+      if (fd < 0) {
+        return {-1, nullptr};
       }
-      return values[t & MASK];
+      return {fd, new (mem) RingBuffer<T, Size>(allow_overflow)};
+    }
+
+    static RingBuffer<T, Size>* fromSharedMemory(int fd) {
+      return static_cast<RingBuffer<T, Size>*>(
+        mapSharedMemoryInstance(fd, sizeof(RingBuffer<T, Size>))
+      );
     }
 
   private:
