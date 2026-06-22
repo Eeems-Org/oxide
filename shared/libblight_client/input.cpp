@@ -590,7 +590,6 @@ namespace Input {
         event.value = 0;
       }
       if (!fakeRM1) {
-        _DEBUG("%d %d %d", event.type, event.code, event.value);
         info.ringBuffer->insert(event);
         uint64_t val = 1;
         Libc::write(info.eventFd, &val, sizeof(val));
@@ -649,10 +648,10 @@ namespace Input {
                     yEvent = &previousEvent;
                     break;
                   default:
-                    continue;
+                    break;
                 }
               default:
-                continue;
+                break;
             }
           }
           if (xEvent != nullptr || yEvent != nullptr) {
@@ -671,7 +670,7 @@ namespace Input {
               info.state.y = yEvent->value;
             }
           }
-          continue;
+          break;
         }
         case Touch: {
           input_event* xEvent = nullptr;
@@ -689,9 +688,9 @@ namespace Input {
                       previousEvent.value ? RM1_TOUCH_PRESSURE : 0;
                     previousEvent.type = EV_ABS;
                     previousEvent.code = ABS_MT_PRESSURE;
-                    continue;
+                    break;
                   default:
-                    continue;
+                    break;
                 }
                 break;
 #endif
@@ -704,7 +703,7 @@ namespace Input {
                       info.minimums.pressure,
                       info.maximums.pressure
                     );
-                    continue;
+                    break;
                   case ABS_MT_DISTANCE:
                     info.state.distance = previousEvent.value;
                     previousEvent.value = scaleValue(
@@ -712,7 +711,7 @@ namespace Input {
                       info.minimums.distance,
                       info.maximums.distance
                     );
-                    continue;
+                    break;
                   case ABS_MT_ORIENTATION:
                     info.state.orientation = previousEvent.value;
                     previousEvent.value = scaleValue(
@@ -720,7 +719,7 @@ namespace Input {
                       info.minimums.orientation,
                       info.maximums.orientation
                     );
-                    continue;
+                    break;
                   case ABS_MT_TOUCH_MAJOR:
                     info.state.major = previousEvent.value;
                     previousEvent.value = scaleValue(
@@ -728,7 +727,7 @@ namespace Input {
                       info.minimums.major,
                       info.maximums.major
                     );
-                    continue;
+                    break;
                   case ABS_MT_TOUCH_MINOR:
                     info.state.minor = previousEvent.value;
                     previousEvent.value = scaleValue(
@@ -736,21 +735,21 @@ namespace Input {
                       info.minimums.minor,
                       info.maximums.minor
                     );
-                    continue;
+                    break;
                   case ABS_MT_POSITION_X:
                     info.state.x = previousEvent.value;
                     xEvent = &previousEvent;
-                    continue;
+                    break;
                   case ABS_MT_POSITION_Y:
                     info.state.y = previousEvent.value;
                     yEvent = &previousEvent;
-                    continue;
+                    break;
                   default:
-                    continue;
+                    break;
                 }
-                continue;
+                break;
               default:
-                continue;
+                break;
             }
           }
           if (xEvent != nullptr || yEvent != nullptr) {
@@ -769,10 +768,10 @@ namespace Input {
               info.state.y = yEvent->value;
             }
           }
-          continue;
+          break;
         }
         default:
-          continue;
+          break;
       }
       for (auto& pendingEvent : pending) {
         if (
