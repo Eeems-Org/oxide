@@ -1,14 +1,42 @@
-TEMPLATE = aux
+QT -= gui
+QT += dbus
 
+CONFIG += c++17 console
+CONFIG -= app_bundle
+
+SOURCES += \
+    common.cpp \
+    icommand.cpp \
+    main.cpp
+
+HEADERS += \
+    active-launcher.h \
+    common.h \
+    icommand.h \
+    status.h \
+    current-launcher.h \
+    list-launchers.h \
+    switch-launcher.h \
+    start-launcher.h \
+    stop-launcher.h \
+    list-apps.h \
+    list-running-apps.h \
+    list-paused-apps.h \
+    start-app.h \
+    stop-app.h \
+    pause-app.h \
+    resume-app.h \
+    is-current-launcher.h \
+    is-enabled-launcher.h \
+    is-active-launcher.h \
+    logs.h
+
+TARGET = launcherctl
 include(../../qmake/common.pri)
+target.path = $$BIN_INSTALL_PATH
+INSTALLS += target
 
-launcherctl.target = raw_copy
-launcherctl.commands = cp $$PWD/launcherctl $$PWD/none $$OUT_PWD
-QMAKE_EXTRA_TARGETS += launcherctl
-
-launcherctl_install.files = launcherctl
-launcherctl_install.path = $$BIN_INSTALL_PATH
-INSTALLS += launcherctl_install
+include(../../qmake/liboxide.pri)
 
 none_install.files = none
 none_install.path = $$SHARE_INSTALL_PATH/launcherctl
@@ -20,9 +48,7 @@ hooks_install.files = \
 hooks_install.path = /home/root/.local/share/lockscreen_hook.d
 INSTALLS += hooks_install
 
-PRE_TARGETDEPS += $$launcherctl.target
-QMAKE_CLEAN += $$launcherctl.target
-
 DISTFILES += \
-    launcherctl \
-    none
+    none \
+    unlock \
+    success

@@ -22,7 +22,7 @@ stop)
     ;;
 apps)
     if ! "$0" is-active; then
-        find /home/root/.local/share/applications -maxdepth 1 -name '*.oxide' -print |
+        find /home/root/.local/share/applications -maxdepth 1 -name '*.oxide' |
             /usr/bin/xargs -n1 /usr/bin/basename -s .oxide
         exit
     fi
