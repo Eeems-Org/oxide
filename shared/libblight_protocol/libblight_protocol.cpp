@@ -7,7 +7,6 @@
 #include <unistd.h>
 
 #include <atomic>
-#include <chrono>
 #include <condition_variable>
 #include <cstring>
 #include <ios>
@@ -19,6 +18,7 @@
 
 #include "_concurrentqueue.h"
 #include "_debug.h"
+#include "ringbuffer.h"
 #include "socket.h"
 
 using namespace std::chrono_literals;
@@ -184,11 +184,11 @@ blight_service_open(blight_bus* bus) {
   }
   return dfd;
 }
-int
-blight_service_input_open(blight_bus* bus) {
+blight_input_buffer_t*
+blight_service_input_open(blight_bus* bus, unsigned short device) {
   if (!blight_service_available(bus)) {
     errno = EAGAIN;
-    return -EAGAIN;
+    return nullptr;
   }
   sd_bus_error error{SD_BUS_ERROR_NULL};
   sd_bus_message* message = nullptr;
@@ -200,7 +200,8 @@ blight_service_input_open(blight_bus* bus) {
     "openInput",
     &error,
     &message,
-    ""
+    "q",
+    device
   );
   if (res < 0) {
     _WARN(
@@ -213,7 +214,7 @@ blight_service_input_open(blight_bus* bus) {
     }
     sd_bus_error_free(&error);
     errno = -res;
-    return res;
+    return nullptr;
   }
   int fd;
   res = sd_bus_message_read(message, "h", &fd);
@@ -228,22 +229,38 @@ blight_service_input_open(blight_bus* bus) {
     }
     sd_bus_error_free(&error);
     errno = -res;
-    return res;
+    return nullptr;
   }
   int dfd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
-  int e = errno;
   if (message != nullptr) {
     sd_bus_message_unref(message);
   }
   sd_bus_error_free(&error);
   if (dfd < 0) {
+    int e = errno;
     _WARN(
       "[blight_service_input_open::fcntl(...)] Error: %s", std::strerror(e)
     );
     errno = e;
-    return -errno;
+    return nullptr;
   }
-  return dfd;
+  void* buffer = mmap(
+    nullptr,
+    sizeof(EvdevRingBuffer),
+    PROT_READ | PROT_WRITE,
+    MAP_SHARED_VALIDATE,
+    dfd,
+    0
+  );
+  if (buffer == MAP_FAILED) {
+    int e = errno;
+    close(dfd);
+    errno = e;
+    return nullptr;
+  }
+  return new blight_input_buffer_t{
+    .device = device, .fd = dfd, .ringBuffer = buffer
+  };
 }
 blight_header_t
 blight_header_from_data(blight_data_t data) {
@@ -628,13 +645,40 @@ blight_cast_to_surface_info_packet(blight_message_t* message) {
   return (blight_packet_surface_info_t*)message->data;
 }
 int
-blight_event_from_socket(int fd, blight_event_packet_t** packet) {
-  auto maybe = recv(fd, sizeof(blight_event_packet_t));
-  if (!maybe.has_value()) {
-    return -errno;
+blight_event_from_buffer(
+  blight_input_buffer_t* buf,
+  struct input_event** event
+) {
+  if (buf == nullptr || buf->ringBuffer == nullptr) {
+    return -EINVAL;
   }
-  *packet = reinterpret_cast<blight_event_packet_t*>(maybe.value());
+  auto rb = static_cast<EvdevRingBuffer*>(buf->ringBuffer);
+  auto maybe = rb->take();
+  if (!maybe.has_value()) {
+    return -EAGAIN;
+  }
+  *event = new input_event(maybe.value());
   return 0;
+}
+void
+blight_event_free(struct input_event* event) {
+  delete event;
+}
+
+void
+blight_input_buffer_deref(blight_input_buffer_t* buf) {
+  if (buf == nullptr) {
+    return;
+  }
+  if (buf->ringBuffer != nullptr) {
+    munmap(buf->ringBuffer, sizeof(EvdevRingBuffer));
+    buf->ringBuffer = nullptr;
+  }
+  if (buf->fd >= 0) {
+    close(buf->fd);
+    buf->fd = -1;
+  }
+  delete buf;
 }
 }
 struct surface_t {

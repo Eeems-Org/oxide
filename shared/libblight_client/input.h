@@ -1,6 +1,6 @@
 #pragma once
 #include <libblight.h>
-#include <libblight/ringbuffer.h>
+#include <libblight_protocol/ringbuffer.h>
 
 #include <poll.h>
 #include <string>
@@ -31,6 +31,7 @@ namespace Input {
   };
   struct DeviceInfo {
     unsigned short device;
+    unsigned short physicalDevice;
     int fd;
     int eventFd;
     InputType type;
@@ -40,6 +41,9 @@ namespace Input {
     std::shared_ptr<Blight::EvdevRingBuffer> ringBuffer;
     std::shared_ptr<Blight::EvdevRingBuffer> remapBuffer;
     std::shared_ptr<std::thread> thread;
+    std::shared_ptr<std::thread> readerThread;
+    std::shared_ptr<std::atomic<bool>> readerStop;
+    std::shared_ptr<Blight::input_buffer_t> serverBuffer;
     ~DeviceInfo();
   };
   struct DeviceMap {

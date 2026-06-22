@@ -11,7 +11,6 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <libblight/debug.h>
-#include <libblight/socket.h>
 #include <linux/input-event-codes.h>
 #include <linux/input.h>
 #include <map>
@@ -22,6 +21,7 @@
 #include <sys/poll.h>
 #include <sys/select.h>
 #include <thread>
+#include <vector>
 
 #include <cstddef>
 #include <cstdio>
@@ -62,6 +62,16 @@ namespace Input {
   Transform touchTransform;
 
   DeviceInfo::~DeviceInfo() {
+    if (readerStop != nullptr) {
+      readerStop->store(true);
+    }
+    if (serverBuffer != nullptr && readerThread != nullptr) {
+      auto* rb = serverBuffer->ringBuffer;
+      rb->interrupt();
+    }
+    if (readerThread != nullptr && readerThread->joinable()) {
+      readerThread->join();
+    }
     if (thread != nullptr && thread->joinable()) {
       thread->detach();
     }
@@ -362,6 +372,7 @@ namespace Input {
       );
       devices[device] = {
         .device = device,
+        .physicalDevice = actualDevice,
         .fd = fd,
         .eventFd = -1,
         .type = type,
@@ -370,7 +381,9 @@ namespace Input {
         .maximums = {},
         .ringBuffer = nullptr,
         .remapBuffer = nullptr,
-        .thread = nullptr
+        .thread = nullptr,
+        .readerThread = nullptr,
+        .readerStop = nullptr
       };
       auto& info = devices[device];
       getAbsInfo(fd, info);
@@ -396,83 +409,7 @@ namespace Input {
   }
 
   void readEvents() {
-    _INFO("%s", "InputWorker starting");
-    prctl(PR_SET_NAME, "InputWorker\0", 0, 0, 0);
-    nice(-10);
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(0, &cpuset);
-    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-    auto fd = FB::connection->input_handle();
-    bool allow_power_button = Client::isPowerButtonEnabled();
-    while (fd > 0 && FB::connection != nullptr) {
-      if (!Client::isInputEnabled()) {
-        _INFO("Input handling disabled");
-        break;
-      }
-      auto maybe = FB::connection->read_event();
-      if (!maybe.has_value()) {
-        if (errno != EAGAIN && errno != EINTR) {
-          _WARN(
-            "[InputWorker] Failed to read message %s", std::strerror(errno)
-          );
-          break;
-        }
-        if (!Blight::wait_for_read(fd, -1) && errno != EAGAIN) {
-          _WARN(
-            "[InputWorker] Failed to wait for next input event %s",
-            std::strerror(errno)
-          );
-          break;
-        }
-        continue;
-      }
-      unsigned int rawDevice = maybe.value().device;
-      unsigned int device = rawDevice;
-      auto& partial = maybe.value().event;
-      input_event ev{};
-      ev.type = partial.type;
-      ev.code = partial.code;
-      ev.value = (!allow_power_button && partial.type == EV_KEY &&
-                  partial.code == KEY_POWER)
-                   ? 0
-                   : partial.value;
-      std::shared_ptr<Blight::EvdevRingBuffer> ringBuffer;
-      {
-        std::lock_guard lock{mutex};
-        if (Client::isFakeRM1Input()) {
-          auto it = deviceMap.find(static_cast<unsigned short>(rawDevice));
-          if (it != deviceMap.end()) {
-            device = it->second;
-          }
-        }
-        if (!devices.contains(device)) {
-          _INFO(
-            "Ignoring event for unopened device: raw=%d mapped=%d",
-            rawDevice,
-            device
-          );
-          continue;
-        }
-        ringBuffer = Client::isFakeRM1Input() ? devices[device].remapBuffer
-                                              : devices[device].ringBuffer;
-      }
-      if (ringBuffer != nullptr) {
-        ringBuffer->insert(ev);
-      }
-      if (Client::isFakeRM1Input()) {
-        continue;
-      }
-      {
-        std::lock_guard lock{mutex};
-        auto it = devices.find(device);
-        if (it != devices.end()) {
-          uint64_t val = 1;
-          Libc::write(it->second.eventFd, &val, sizeof(val));
-        }
-      }
-    }
-    _INFO("%s", "InputWorker quitting");
+    // Replaced by per-device reader threads (deviceReader)
   }
 
   inline int range(int max, int min) {
@@ -627,6 +564,106 @@ namespace Input {
     return (value - minimum) * maximum / range(maximum, minimum);
   }
 
+  void deviceReader(
+    unsigned short device,
+    BlightProtocol::EvdevRingBuffer* rb,
+    std::shared_ptr<std::atomic<bool>> stop
+  ) {
+    char name[16];
+    snprintf(name, sizeof(name), "Input[%u]", device);
+    _INFO("%s starting", name);
+    prctl(PR_SET_NAME, name, 0, 0, 0);
+    nice(-10);
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(0, &cpuset);
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    bool allow_power_button = Client::isPowerButtonEnabled();
+
+    while (FB::connection != nullptr && !stop->load()) {
+      auto maybe = rb->wait_for_values();
+      if (!maybe.has_value()) {
+        continue; // Interrupted, check stop flag
+      }
+
+      input_event ev = *maybe;
+
+      if (!allow_power_button && ev.type == EV_KEY && ev.code == KEY_POWER) {
+        ev.value = 0;
+      }
+
+      if (ev.type == EV_SYN && ev.code == SYN_DROPPED) {
+        continue;
+      }
+
+      std::shared_ptr<Blight::EvdevRingBuffer> outBuffer;
+      {
+        std::lock_guard lock{mutex};
+        if (!devices.contains(device)) {
+          continue;
+        }
+        outBuffer = Client::isFakeRM1Input() ? devices[device].remapBuffer
+                                             : devices[device].ringBuffer;
+      }
+
+      if (outBuffer != nullptr) {
+        outBuffer->insert(ev);
+      }
+
+      if (!Client::isFakeRM1Input()) {
+        std::lock_guard lock{mutex};
+        if (devices.contains(device)) {
+          uint64_t val = 1;
+          Libc::write(devices[device].eventFd, &val, sizeof(val));
+        }
+      }
+
+      // Drain remaining events
+      while (true) {
+        std::optional<input_event> next;
+        {
+          std::lock_guard lock{mutex};
+          if (!devices.contains(device)) {
+            break;
+          }
+          next = rb->take();
+        }
+        if (!next.has_value()) {
+          break;
+        }
+        input_event nextEv = *next;
+
+        if (
+          !allow_power_button && nextEv.type == EV_KEY &&
+          nextEv.code == KEY_POWER
+        ) {
+          nextEv.value = 0;
+        }
+
+        if (nextEv.type == EV_SYN && nextEv.code == SYN_DROPPED) {
+          continue;
+        }
+
+        {
+          std::lock_guard lock{mutex};
+          if (!devices.contains(device)) {
+            break;
+          }
+          auto outBuf = Client::isFakeRM1Input() ? devices[device].remapBuffer
+                                                 : devices[device].ringBuffer;
+          if (outBuf != nullptr) {
+            outBuf->insert(nextEv);
+          }
+          if (!Client::isFakeRM1Input()) {
+            uint64_t val = 1;
+            Libc::write(devices[device].eventFd, &val, sizeof(val));
+          }
+        }
+      }
+    }
+    _INFO("%s quitting", name);
+  }
+
   void remapEvents(unsigned short device) {
     char name[16];
     snprintf(name, sizeof(name), "Remap[%u]", device);
@@ -646,7 +683,11 @@ namespace Input {
         Libc::write(info.eventFd, &val, sizeof(val));
         pending.clear();
       }
-      input_event event = info.remapBuffer->wait_for_values();
+      auto maybe = info.remapBuffer->wait_for_values();
+      if (!maybe.has_value()) {
+        continue;
+      }
+      input_event event = *maybe;
       if (info.type != Wacom && info.type != Touch) {
         info.ringBuffer->insert(event);
         uint64_t val = 1;
@@ -856,25 +897,6 @@ namespace Input {
   }
 
   int open(const std::string& path, int flags) {
-    static std::atomic<bool> started = false;
-    if (!started) {
-      static std::mutex mutex{};
-      if (mutex.try_lock()) {
-        FB::connection->input_handle();
-        _DEBUG("Starting readEvents thread");
-        std::thread(readEvents).detach();
-        started = true;
-        mutex.unlock();
-      } else {
-        mutex.lock();
-        mutex.unlock();
-      }
-    }
-    if (FB::connection->input_handle() < 0) {
-      _WARN("%s", "Could not open connection input stream");
-      errno = EIO;
-      return -1;
-    }
     std::scoped_lock lock{mutex};
     std::string basePath(basename(path.c_str()));
     unsigned short device;
@@ -897,6 +919,7 @@ namespace Input {
       InputType type = classify(fd);
       devices[device] = {
         .device = device,
+        .physicalDevice = device,
         .fd = fd,
         .eventFd = -1,
         .type = type,
@@ -905,7 +928,9 @@ namespace Input {
         .maximums = {},
         .ringBuffer = nullptr,
         .remapBuffer = nullptr,
-        .thread = nullptr
+        .thread = nullptr,
+        .readerThread = nullptr,
+        .readerStop = nullptr
       };
       auto& info = devices[device];
       getAbsInfo(fd, info);
@@ -943,12 +968,44 @@ namespace Input {
       }
       devices[device].eventFd = eventFd;
     }
+    if (devices[device].serverBuffer == nullptr) {
+      unsigned short serverDev = devices[device].physicalDevice;
+      auto buf = Blight::open_input(serverDev);
+      if (buf != nullptr) {
+        devices[device].serverBuffer = buf;
+        _DEBUG(
+          "Opened server buffer for device %d (physical device %d)",
+          device,
+          serverDev
+        );
+      } else {
+        _WARN(
+          "Failed to open server buffer for device %d: %s",
+          serverDev,
+          std::strerror(errno)
+        );
+      }
+    }
+    // Start per-device reader thread if not already running
+    if (
+      devices[device].serverBuffer != nullptr &&
+      devices[device].readerThread == nullptr
+    ) {
+      auto stop = std::make_shared<std::atomic<bool>>(false);
+      auto* rb = devices[device].serverBuffer->ringBuffer;
+      devices[device].readerStop = stop;
+      devices[device].readerThread =
+        std::make_shared<std::thread>(deviceReader, device, rb, stop);
+    }
     deviceDescriptors[fd] = {device, flags};
     return fd;
   }
 
   int close(int fd) {
     _DEBUG("Closing input fd %d", fd);
+    std::shared_ptr<std::thread> threadToJoin;
+    std::shared_ptr<std::atomic<bool>> stopFlag;
+    std::shared_ptr<Blight::input_buffer_t> serverBuf;
     {
       std::scoped_lock lock(mutex);
       if (!deviceDescriptors.contains(fd)) {
@@ -963,6 +1020,30 @@ namespace Input {
         }
       }
       deviceDescriptors.erase(fd);
+      // Check if this was the last fd for this device
+      bool lastFd = std::none_of(
+        deviceDescriptors.begin(),
+        deviceDescriptors.end(),
+        [device](auto& pair) { return pair.second.device == device; }
+      );
+      if (lastFd && devices.contains(device)) {
+        threadToJoin = devices[device].readerThread;
+        stopFlag = devices[device].readerStop;
+        serverBuf = devices[device].serverBuffer;
+        devices[device].readerThread = nullptr;
+        devices[device].readerStop = nullptr;
+      }
+    }
+    // Stop reader thread outside lock to avoid deadlock on join
+    if (stopFlag != nullptr) {
+      stopFlag->store(true);
+    }
+    if (serverBuf != nullptr && threadToJoin != nullptr) {
+      auto* rb = serverBuf->ringBuffer;
+      rb->interrupt();
+    }
+    if (threadToJoin != nullptr && threadToJoin->joinable()) {
+      threadToJoin->join();
     }
     return Libc::close(fd);
   }
@@ -1191,7 +1272,11 @@ namespace Input {
         }
         events[count] = *maybe;
       } else {
-        events[count] = ringBuffer->wait_for_values();
+        auto maybe = ringBuffer->wait_for_values();
+        if (!maybe.has_value()) {
+          break;
+        }
+        events[count] = *maybe;
       }
       uint64_t val;
       Libc::read(devices[device].eventFd, &val, sizeof(val));

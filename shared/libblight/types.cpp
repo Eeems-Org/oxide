@@ -1,5 +1,6 @@
 #include "types.h"
 
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include <random>
@@ -62,6 +63,25 @@ Blight::buf_t::close() {
 
 Blight::buf_t::~buf_t() {
   close();
+}
+
+Blight::input_buffer_t::~input_buffer_t() {
+  if (ringBuffer != nullptr) {
+    munmap(ringBuffer, sizeof(BlightProtocol::EvdevRingBuffer));
+    ringBuffer = nullptr;
+  }
+  if (fd >= 0) {
+    ::close(fd);
+    fd = -1;
+  }
+}
+
+std::optional<struct input_event>
+Blight::input_buffer_t::read() {
+  if (ringBuffer == nullptr) {
+    return {};
+  }
+  return ringBuffer->take();
 }
 
 std::optional<Blight::shared_buf_t>

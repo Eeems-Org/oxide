@@ -1,13 +1,14 @@
 #include "oxideeventhandler.h"
 
 #include <libblight.h>
-#include <libblight/socket.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
 #include <private/qevdevtouchfilter_p.h>
 #include <private/qhighdpiscaling_p.h>
 
 #include <QFile>
+
+#include <unistd.h>
 
 #include "default_keymap.h"
 #include "oxideeventmanager.h"
@@ -104,9 +105,6 @@ typedef struct PointerData {
   // TODO - populate
 } PointerData;
 
-DeviceData::DeviceData()
-  : DeviceData(0, QInputDeviceManager::DeviceTypeUnknown) {}
-
 #define LONG_BITS (sizeof(long) << 3)
 #define NUM_LONGS(bits) (((bits) + LONG_BITS - 1) / LONG_BITS)
 static inline bool
@@ -116,10 +114,12 @@ testBit(long bit, const long* array) {
 
 DeviceData::DeviceData(
   unsigned int device,
-  QInputDeviceManager::DeviceType type
+  QInputDeviceManager::DeviceType type,
+  QObject* handler
 )
   : device(device)
-  , type(type) {
+  , type(type)
+  , stopFlag(false) {
   auto path = QString("/dev/input/event%1").arg(device);
   auto fd = ::open(path.toStdString().c_str(), O_RDWR);
   char name[1024];
@@ -246,9 +246,39 @@ DeviceData::DeviceData(
       break;
   }
   ::close(fd);
+  thread = std::make_unique<std::thread>([this, handler, device]() {
+    buffer = Blight::open_input(device);
+    if (buffer == nullptr) {
+      O_WARNING("Failed to open blight input buffer for device" << device);
+      return;
+    }
+    auto* eventHandler = static_cast<OxideEventHandler*>(handler);
+    while (!stopFlag.load()) {
+      auto maybe = this->buffer->ringBuffer->wait_for_values();
+      if (!maybe.has_value()) {
+        continue;
+      }
+      auto event = maybe.value();
+      auto self = shared_from_this();
+      QMetaObject::invokeMethod(
+        eventHandler,
+        [self, event, eventHandler]() {
+          eventHandler->handleInputEvent(self, event);
+        },
+        Qt::QueuedConnection
+      );
+    }
+  });
 }
 
 DeviceData::~DeviceData() {
+  stopFlag = true;
+  if (buffer != nullptr) {
+    buffer->ringBuffer->interrupt();
+  }
+  if (thread != nullptr && thread->joinable()) {
+    thread->join();
+  }
   switch (type) {
     case QInputDeviceManager::DeviceTypeKeyboard:
       delete get<KeyboardData>();
@@ -273,7 +303,6 @@ OxideEventHandler::OxideEventHandler(
 )
   : QObject()
   , m_manager(manager)
-  , m_fd(Blight::connection()->input_handle())
   , m_keymap{0}
   , m_keymap_size{0}
   , m_keycompose{0}
@@ -283,19 +312,10 @@ OxideEventHandler::OxideEventHandler(
     QString(deviceSettings.getTouchEnvSetting()).split(QLatin1Char(':'))
   );
   parseTouchParams(parameters);
-  m_notifier = new QSocketNotifier(m_fd, QSocketNotifier::Read, this);
-  connect(
-    m_notifier, &QSocketNotifier::activated, this, &OxideEventHandler::readyRead
-  );
 }
 
 OxideEventHandler::~OxideEventHandler() {
-  if (m_fd < 0) {
-    return;
-  }
-  m_notifier->setEnabled(false);
-  ::close(m_fd);
-  m_fd = -1;
+  m_devices.clear();
 }
 
 void
@@ -303,9 +323,13 @@ OxideEventHandler::add(
   unsigned int number,
   QInputDeviceManager::DeviceType type
 ) {
-  if (!m_devices.contains(number)) {
-    m_devices.insert(number, new DeviceData(number, type));
+  if (m_devices.contains(number) && m_devices[number]->type == type) {
+    return;
   }
+  if (m_devices.contains(number) && m_devices[number]->type != type) {
+    m_devices.remove(number);
+  }
+  m_devices.insert(number, std::make_shared<DeviceData>(number, type, this));
 }
 
 void
@@ -314,63 +338,40 @@ OxideEventHandler::remove(
   QInputDeviceManager::DeviceType type
 ) {
   if (m_devices.contains(number) && m_devices[number]->type == type) {
-    auto device = m_devices[number];
     m_devices.remove(number);
-    delete device;
   }
 }
 
 void
-OxideEventHandler::readyRead() {
-  Q_ASSERT(thread() == QThread::currentThread());
-  m_notifier->setEnabled(false);
-  if (m_fd < 0) {
-    return;
-  }
-  auto connection = Blight::connection();
-  while (!thread()->isInterruptionRequested()) {
-    auto maybe = connection->read_event();
-    if (!maybe.has_value()) {
-      if (errno != EAGAIN && errno != EINTR) {
-        O_WARNING("Failed reading input stream" << strerror(errno));
-        return;
-      }
+OxideEventHandler::handleInputEvent(
+  std::shared_ptr<DeviceData> data,
+  struct input_event event
+) {
+  switch (data->type) {
+    case QInputDeviceManager::DeviceTypeKeyboard:
+      processKeyboardEvent(data, &event);
       break;
-    }
-    const auto& device = maybe.value().device;
-    if (!m_devices.contains(device)) {
-      continue;
-    }
-    auto& event = maybe.value().event;
-    auto data = m_devices[device];
-    switch (data->type) {
-      case QInputDeviceManager::DeviceTypeKeyboard:
-        processKeyboardEvent(data, &event);
-        break;
-      case QInputDeviceManager::DeviceTypeTablet:
-        processTabletEvent(data, &event);
-        break;
-      case QInputDeviceManager::DeviceTypeTouch:
-        processTouchEvent(data, &event);
-        break;
-      case QInputDeviceManager::DeviceTypePointer:
-        processPointerEvent(data, &event);
-        break;
-      default:
-        continue;
-    }
-    QWindowSystemInterface::flushWindowSystemEvents();
+    case QInputDeviceManager::DeviceTypeTablet:
+      processTabletEvent(data, &event);
+      break;
+    case QInputDeviceManager::DeviceTypeTouch:
+      processTouchEvent(data, &event);
+      break;
+    case QInputDeviceManager::DeviceTypePointer:
+      processPointerEvent(data, &event);
+      break;
+    default:
+      return;
   }
-  m_notifier->setEnabled(!thread()->isInterruptionRequested());
+  QWindowSystemInterface::flushWindowSystemEvents();
 }
 
 void
 OxideEventHandler::processKeyboardEvent(
-  DeviceData* data,
-  Blight::partial_input_event_t* event
+  const std::shared_ptr<DeviceData>& data,
+  struct input_event* event
 ) {
   Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeKeyboard);
-  // Ignore EV_SYN etc
   if (event->type != EV_KEY) {
     return;
   }
@@ -378,7 +379,6 @@ OxideEventHandler::processKeyboardEvent(
   auto& keycode = event->code;
   bool pressed = event->value;
   bool autorepeat = event->value == 2;
-
   bool first_press = pressed && !autorepeat;
   const QEvdevKeyboardMap::Mapping* map_plain = 0;
   const QEvdevKeyboardMap::Mapping* map_withmod = 0;
@@ -467,9 +467,9 @@ OxideEventHandler::processKeyboardEvent(
   // a normal key was pressed
   const int modmask = Qt::ShiftModifier | Qt::ControlModifier |
                       Qt::AltModifier | Qt::MetaModifier | Qt::KeypadModifier;
-  // we couldn't find a specific mapping for the current modifiers,
-  // or that mapping didn't have special modifiers:
-  // so just report the plain mapping with additional modifiers.
+  // we couldn't find a specific mapping for the current modifiers, or that
+  // mapping didn't have special modifiers: so just report the plain mapping
+  // with additional modifiers.
   if (
     (it == map_plain && it != map_withmod) ||
     (map_withmod && !(map_withmod->qtcode & modmask))
@@ -609,8 +609,8 @@ OxideEventHandler::processKeyboardEvent(
 
 void
 OxideEventHandler::processTabletEvent(
-  DeviceData* data,
-  Blight::partial_input_event_t* event
+  const std::shared_ptr<DeviceData>& data,
+  struct input_event* event
 ) {
   Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeTablet);
   auto tabletData = data->get<TabletData>();
@@ -818,8 +818,8 @@ findClosestContact(
 
 void
 OxideEventHandler::processTouchEvent(
-  DeviceData* data,
-  Blight::partial_input_event_t* event
+  const std::shared_ptr<DeviceData>& data,
+  struct input_event* event
 ) {
   Q_ASSERT(data->type == QInputDeviceManager::DeviceTypeTouch);
   auto touchData = data->get<TouchData>();
@@ -1099,8 +1099,8 @@ OxideEventHandler::processTouchEvent(
 
 void
 OxideEventHandler::processPointerEvent(
-  DeviceData* data,
-  Blight::partial_input_event_t* event
+  const std::shared_ptr<DeviceData>& data,
+  struct input_event* event
 ) {
   Q_UNUSED(event);
   Q_ASSERT(data->type == QInputDeviceManager::DeviceTypePointer);

@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <libblight_protocol.h>
 #include <libblight_protocol/socket.h>
+#include <linux/input.h>
 #include <pthread.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -115,9 +116,12 @@ test_blight_service_open() {
 }
 void
 test_blight_service_input_open() {
-  int res = blight_service_input_open(bus);
-  assert(res > 0);
-  close(res);
+  blight_input_buffer_t* buf = blight_service_input_open(bus, 0);
+  assert(buf != NULL);
+  assert(buf->device == 0);
+  assert(buf->fd >= 0);
+  assert(buf->ringBuffer != NULL);
+  blight_input_buffer_deref(buf);
 }
 int
 test_blight_message_from_socket(int fd) {
@@ -275,33 +279,7 @@ test_blight_cast_to_surface_info_packet() {
   assert(packet->stride == 0);
   assert(packet->format == 0);
 }
-void
-test_blight_event_from_socket() {
-  int fds[2];
-  assert(
-    socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) != -1 &&
-    "Failed to create socket pair"
-  );
-  int clientFd = fds[0];
-  int serverFd = fds[1];
-  blight_event_packet_t data = {0};
-  assert(
-    send(
-      serverFd, &data, sizeof(blight_event_packet_t), MSG_EOR | MSG_NOSIGNAL
-    ) > 0
-  );
-  blight_event_packet_t* packet = NULL;
-  int res = blight_event_from_socket(clientFd, &packet);
-  assert(res >= 0);
-  assert(packet != NULL);
-  assert(packet->device == 0);
-  assert(packet->event.type == 0);
-  assert(packet->event.code == 0);
-  assert(packet->event.value == 0);
-  free(packet);
-  close(clientFd);
-  close(serverFd);
-}
+
 struct _test_blight_wait_for_read_thread_args {
   int fd;
   blight_data_t data;
@@ -425,6 +403,22 @@ test_blight_send_blocking() {
   free(data2);
   close(clientFd);
   close(serverFd);
+}
+void
+test_blight_event_from_buffer() {
+  blight_input_buffer_t* buf = create_test_input_buffer();
+  assert(buf != NULL);
+  struct input_event* event = NULL;
+  int res = blight_event_from_buffer(buf, &event);
+  assert(res == 0);
+  assert(event != NULL);
+  assert(event->type == EV_KEY);
+  assert(event->code == 42);
+  assert(event->value == 1);
+  res = blight_event_from_buffer(buf, &event);
+  assert(res == -EAGAIN);
+  blight_event_free(event);
+  blight_input_buffer_deref(buf);
 }
 void
 test_blight_surface_to_fbg(
@@ -580,11 +574,11 @@ test_c() {
   TEST(test_blight_cast_to_repaint_packet, true);
   TEST(test_blight_cast_to_move_packet, true);
   TEST(test_blight_cast_to_surface_info_packet, true);
-  TEST(test_blight_event_from_socket, true);
   TEST(test_blight_recv, true);
   TEST(test_blight_wait_for_read, true);
   TEST(test_blight_recv_blocking, true);
   TEST(test_blight_send_blocking, true);
+  TEST(test_blight_event_from_buffer, true);
   TEST_EXPR(
     test_blight_surface_to_fbg,
     test_blight_surface_to_fbg(fd, identifier, buf),

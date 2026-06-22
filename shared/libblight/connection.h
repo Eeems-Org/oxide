@@ -4,8 +4,8 @@
  * \file
  */
 #pragma once
+#include <libblight_protocol.h>
 #include <linux/input.h>
-#include <sys/socket.h>
 
 #include <atomic>
 #include <condition_variable>
@@ -76,13 +76,14 @@ namespace Blight {
      */
     int handle();
     /*!
-     * \brief input_handle input event socket descriptor
-     * \return input event socket descriptor
+     * \brief Open a buffer for an input event devcie
+     * \param device Input device number
+     * \return Input device buffer
      */
-    int input_handle();
+    std::shared_ptr<input_buffer_t> open_input(unsigned short device);
     /*!
      * \brief Run a callback when the socket disconnects from the display
-     * server
+     *        server
      * \param callback Callback to run.
      */
     void onDisconnect(std::function<void(int)> callback);
@@ -92,11 +93,11 @@ namespace Blight {
      */
     message_ptr_t read();
     /*!
-     * \brief Read an input event from the display server input events
-     * socket
-     * \return Input event packet
+     * \brief Read an input event from an input event device buffer
+     * \param device Input event device number
+     * \return The input event
      */
-    std::optional<event_packet_t> read_event();
+    std::optional<input_event> read_event(unsigned short device);
     /*!
      * \brief Send a message to the display server
      * \param type Type of message
@@ -287,7 +288,7 @@ namespace Blight {
 
   private:
     int m_fd;
-    int m_inputFd;
+    std::map<unsigned short, std::shared_ptr<input_buffer_t>> m_inputBuffers;
     std::atomic<bool> stop_requested;
     std::vector<std::function<void(int)>> disconnectCallbacks;
     std::thread thread;

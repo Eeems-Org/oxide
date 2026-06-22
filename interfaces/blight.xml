@@ -19,6 +19,7 @@
     </method>
     <method name="openInput">
       <arg type="h" direction="out"/>
+      <arg name="device" type="q" direction="in"/>
     </method>
     <method name="addSurface">
       <arg type="q" direction="out"/>

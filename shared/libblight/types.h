@@ -5,6 +5,7 @@
  */
 #pragma once
 #include <libblight_protocol.h>
+#include <libblight_protocol/ringbuffer.h>
 #include <linux/input.h>
 
 #include <memory>
@@ -44,13 +45,32 @@ namespace Blight {
    */
   typedef BlightProtocol::blight_surface_id_t surface_id_t;
   /*!
-   * \brief Partial input event
+   * \brief Shared memory ring buffer for evdev input events
    */
-  typedef BlightProtocol::blight_partial_input_event_t partial_input_event_t;
+  typedef BlightProtocol::EvdevRingBuffer EvdevRingBuffer;
   /*!
-   * \brief Input event packet
+   * \brief Input event device buffer
    */
-  typedef BlightProtocol::blight_event_packet_t event_packet_t;
+  typedef struct input_buffer_t {
+    /*!
+     * \brief Input event device number
+     */
+    unsigned short device;
+    /*!
+     * \brief Shared memory file
+     */
+    int fd;
+    /*!
+     * \brief Ring buffer for the events
+     */
+    EvdevRingBuffer* ringBuffer;
+    /*!
+     * \brief Read an input event from the ring buffer
+     * \return The input event
+     */
+    std::optional<struct input_event> read();
+    ~input_buffer_t();
+  } input_buffer_t;
   /*!
    * \brief Generic data pointer
    */

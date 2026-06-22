@@ -176,7 +176,7 @@ DbusInterface::open(QDBusMessage message) {
 }
 
 QDBusUnixFileDescriptor
-DbusInterface::openInput(QDBusMessage message) {
+DbusInterface::openInput(unsigned short device, QDBusMessage message) {
   auto connection = getConnection(message);
   if (connection == nullptr) {
     sendErrorReply(
@@ -184,8 +184,13 @@ DbusInterface::openInput(QDBusMessage message) {
     );
     return QDBusUnixFileDescriptor();
   }
-  O_INFO("Open input for: " << connection->pid());
-  return QDBusUnixFileDescriptor(connection->inputSocketDescriptor());
+  O_INFO("Open input for: " << connection->pid() << " device: " << device);
+  int fd = connection->inputFd(device);
+  if (fd < 0) {
+    sendErrorReply(QDBusError::InvalidArgs, "Device not available");
+    return QDBusUnixFileDescriptor();
+  }
+  return QDBusUnixFileDescriptor(fd);
 }
 
 Blight::surface_id_t

@@ -77,7 +77,6 @@ namespace Blight {
 
   Connection::Connection(int fd)
     : m_fd(fcntl(fd, F_DUPFD_CLOEXEC, 3))
-    , m_inputFd{-1}
     , stop_requested(false)
     , thread(run, this) {
     int flags = fcntl(fd, F_GETFD, NULL);
@@ -89,6 +88,7 @@ namespace Blight {
     if (thread.joinable()) {
       thread.join();
     }
+    m_inputBuffers.clear();
     ::close(m_fd);
   }
 
@@ -96,38 +96,34 @@ namespace Blight {
     return m_fd;
   }
 
-  int Connection::input_handle() {
-    if (m_inputFd < 0) {
-      m_inputFd = Blight::open_input();
-      if (m_inputFd < 0) {
-        _CRIT("Failed to open input stream: %s", std::strerror(errno));
-      }
+  std::shared_ptr<input_buffer_t> Connection::open_input(
+    unsigned short device
+  ) {
+    if (m_inputBuffers.contains(device)) {
+      return m_inputBuffers[device];
     }
-    return m_inputFd;
+    auto buf = Blight::open_input(device);
+    if (buf == nullptr) {
+      _WARN(
+        "Failed to open input buffer for device %d: %s",
+        device,
+        std::strerror(errno)
+      );
+      return {nullptr};
+    }
+    return m_inputBuffers[device] = buf;
   }
 
   void Connection::onDisconnect(std::function<void(int)> callback) {
     disconnectCallbacks.push_back(callback);
   }
 
-  std::optional<event_packet_t> Connection::read_event() {
-    // Use input_handle() since we don't know if it's open yet
-    auto fd = input_handle();
-    if (fd < 0) {
-      _WARN("Failed to read event: %s", "Input stream not open");
+  std::optional<input_event> Connection::read_event(unsigned short device) {
+    auto buf = open_input(device);
+    if (buf == nullptr) {
       return {};
     }
-    auto maybe = Blight::recv(fd, sizeof(event_packet_t));
-    if (!maybe.has_value()) {
-      if (errno != EAGAIN && errno != EINTR) {
-        _WARN("Failed to read event: %s", std::strerror(errno));
-      }
-      return {};
-    }
-    event_packet_t data;
-    memcpy(&data, maybe.value(), sizeof(event_packet_t));
-    delete[] maybe.value();
-    return data;
+    return buf->read();
   }
 
   message_ptr_t Connection::read() {

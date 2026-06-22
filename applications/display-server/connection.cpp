@@ -7,6 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <signal.h>
+#include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -43,9 +44,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
   , m_pgid{pgid}
   , m_closed{false}
   , pingId{0}
-  , m_surfaceId{0}
-  , m_lastEventOffset{sizeof(Blight::event_packet_t)}
-  , m_inputOpened{false} {
+  , m_surfaceId{0} {
   m_pidFd = pidfd_open(m_pid, 0);
   if (m_pidFd < 0) {
     O_WARNING(std::strerror(errno));
@@ -69,13 +68,7 @@ Connection::Connection(pid_t pid, pid_t pgid)
     connect(
       m_notifier, &QSocketNotifier::activated, this, &Connection::readSocket
     );
-    if (::socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fds) == -1) {
-      C_WARNING("Unable to open input socket pair:" << strerror(errno));
-      fds[0] = fds[1] = -1;
-    }
   }
-  m_clientInputFd = fds[0];
-  m_serverInputFd = fds[1];
 
   m_pingTimer.setParent(this);
   m_pingTimer.setTimerType(Qt::PreciseTimer);
@@ -105,11 +98,18 @@ Connection::~Connection() {
     m_notifier->deleteLater();
     m_notifier = nullptr;
   }
-  ::close(m_clientInputFd);
+  for (auto& [device, buf] : m_inputBuffers) {
+    if (buf.buffer != nullptr) {
+      munmap(buf.buffer, sizeof(Blight::EvdevRingBuffer));
+    }
+    if (buf.fd >= 0) {
+      ::close(buf.fd);
+    }
+  }
+  m_inputBuffers.clear();
   ::close(m_clientFd);
   ::close(m_serverFd);
   ::close(m_pidFd);
-  ::close(m_serverInputFd);
   C_INFO("Connection destroyed");
 }
 
@@ -134,9 +134,21 @@ Connection::socketDescriptor() {
 }
 
 int
-Connection::inputSocketDescriptor() {
-  m_inputOpened = true;
-  return m_clientInputFd;
+Connection::inputFd(unsigned short device) {
+  if (m_inputBuffers.contains(device)) {
+    return m_inputBuffers[device].fd;
+  }
+  if (!QFile::exists(QStringLiteral("/dev/input/event%1").arg(device))) {
+    return -1;
+  }
+  auto [fd, buffer] = Blight::EvdevRingBuffer::createSharedMemory();
+  if (fd < 0 || buffer == nullptr) {
+    return -1;
+  }
+  m_inputBuffers[device] = {fd, buffer};
+  buffer->insert({.type = EV_SYN, .code = SYN_DROPPED});
+  C_DEBUG("Created input buffer for device " << device << " (fd=" << fd << ")");
+  return fd;
 }
 
 bool
@@ -342,65 +354,21 @@ Connection::inputEvents(
     dbusInterface->sortZ();
     return;
   }
-  if (!events.size() || !m_inputOpened) {
+  if (!events.size()) {
     return;
   }
-  // TODO - don't allow queue to grow forever
-  //        instead clear and properly send SYN_DROPPED for proper devices
-  //        when it grows too large
-  C_DEBUG("Queuing" << events.size() << "input events");
-  for (unsigned int i = 0; i < events.size(); i++) {
-    Blight::event_packet_t packet;
-    auto& ie = events[i];
-    packet.device = device;
-    auto& event = packet.event;
-    event.type = ie.type;
-    event.code = ie.code;
-    event.value = ie.value;
-    m_inputQueue.enqueue(packet);
-  }
-  processInputEvents();
-}
-void
-Connection::processInputEvents() {
-  if (!processQueueMutex.try_lock()) {
+  if (!m_inputBuffers.contains(device)) {
+    // No consumer has opened input for this device yet
     return;
   }
-  for (;;) {
-    if (m_lastEventOffset >= sizeof(Blight::event_packet_t)) {
-      // Last send sent full packet, move to the next one
-      if (!m_inputQueue.try_dequeue(m_lastEvent)) {
-        break;
-      }
-      m_lastEventOffset = 0;
-    }
-    int res = send(
-      m_serverInputFd,
-      reinterpret_cast<const char*>(&m_lastEvent) + m_lastEventOffset,
-      sizeof(Blight::event_packet_t) - m_lastEventOffset,
-      MSG_EOR | MSG_NOSIGNAL
-    );
-    if (res >= 0) {
-      // Successful write, could be partial, so check again at the top
-      m_lastEventOffset += res;
-      continue;
-    }
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      // socket is blocking, try again later
-      // This will cause CPU spin if the application is no longer reading the
-      // socket
-      Oxide::runLater(thread(), [this] { processInputEvents(); });
-      break;
-    }
-    if (errno == EBADF) {
-      break;
-    }
-    if (errno != EINTR) {
-      C_WARNING("Failed to write input event: " << std::strerror(errno));
-      break;
-    }
+  auto* buffer = m_inputBuffers[device].buffer;
+  if (buffer == nullptr) {
+    return;
   }
-  processQueueMutex.unlock();
+  C_DEBUG("Writing" << events.size() << "input events to device" << device);
+  for (const auto& ev : events) {
+    buffer->insert(ev);
+  }
 }
 
 bool

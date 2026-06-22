@@ -8,18 +8,35 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-namespace Blight {
-  void
-  RingBufferBase::futex_wait(AtomicWord& word, uint32_t expected) noexcept {
-    syscall(
+namespace BlightProtocol {
+  bool RingBufferBase::futex_wait(
+    AtomicWord& word,
+    uint32_t expected,
+    int timeout
+  ) noexcept {
+    struct timespec ts;
+    struct timespec* tsPtr = nullptr;
+    if (timeout > 0) {
+      ts.tv_sec = timeout / 1000;
+      ts.tv_nsec = (timeout % 1000) * 1000000LL;
+      tsPtr = &ts;
+    }
+    int ret = syscall(
       SYS_futex,
       reinterpret_cast<uint32_t*>(&word),
       FUTEX_WAIT,
       static_cast<int>(expected),
-      nullptr,
+      tsPtr,
       nullptr,
       0
     );
+    if (ret == 0) {
+      return true; // Woken by futex_wake
+    }
+    if (errno == EAGAIN) {
+      return true; // Value changed before we blocked
+    }
+    return false; // ETIMEDOUT or EINTR
   }
 
   void RingBufferBase::futex_wake(AtomicWord& word) noexcept {
@@ -40,13 +57,21 @@ namespace Blight {
     return h - t >= size;
   }
 
-  void RingBufferBase::wait_for_space(uint32_t size) {
+  bool RingBufferBase::wait_for_space(uint32_t size, int timeout) {
     uint32_t h = head.load(std::memory_order_relaxed);
     uint32_t t = tail.load(std::memory_order_acquire);
     while (h - t >= size) {
-      futex_wait(tail, t);
+      if (interrupted.exchange(false)) {
+        return false; // One-shot interrupt consumed, flag auto-cleared
+      }
+      if (!futex_wait(tail, t, timeout)) {
+        if (timeout > 0) {
+          return false; // Timed out waiting for space
+        }
+      }
       t = tail.load(std::memory_order_acquire);
     }
+    return true;
   }
 
   uint32_t RingBufferBase::reserveHead(uint32_t size) {
@@ -57,7 +82,7 @@ namespace Blight {
         overflow.store(1, std::memory_order_release);
         break;
       }
-      futex_wait(tail, t);
+      futex_wait(tail, t, 0); // Wait forever
       t = tail.load(std::memory_order_acquire);
     }
     return h;
@@ -78,11 +103,16 @@ namespace Blight {
     return t;
   }
 
-  uint32_t RingBufferBase::waitForTail() {
+  std::optional<uint32_t> RingBufferBase::waitForTail(int timeout) {
     uint32_t t = tail.load(std::memory_order_relaxed);
     uint32_t h = head.load(std::memory_order_acquire);
     while (h == t) {
-      futex_wait(head, h);
+      if (interrupted.exchange(false)) {
+        return {}; // One-shot interrupt consumed, flag auto-cleared
+      }
+      if (!futex_wait(head, h, timeout)) {
+        return {}; // Timed out or EINTR
+      }
       h = head.load(std::memory_order_acquire);
     }
     return t;
@@ -160,5 +190,12 @@ namespace Blight {
     munmap(mem, size);
   }
 
-  template class RingBuffer<input_event, EVDEV_RING_BUFFER_SIZE>;
+  void RingBufferBase::interrupt() noexcept {
+    interrupted.store(true, std::memory_order_release);
+    futex_wake(head);
+    futex_wake(tail);
+  }
+
+  template class LIBBLIGHT_PROTOCOL_EXPORT
+    RingBuffer<input_event, EVDEV_RING_BUFFER_SIZE>;
 }

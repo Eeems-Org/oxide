@@ -11,6 +11,7 @@ CONFIG += no_install_prl
 SOURCES += \
     _debug.cpp \
     libblight_protocol.cpp \
+    ringbuffer.cpp \
     socket.cpp \
     vendor/fbg/src/fbgraphics.c \
     vendor/fbg/src/lodepng/lodepng.c \
@@ -20,6 +21,7 @@ HEADERS += \
     _debug.h \
     libblight_protocol.h \
     libblight_protocol_global.h \
+    ringbuffer.h \
     socket.h \
     vendor/fbg/src/fbgraphics.h \
     vendor/fbg/src/lodepng/lodepng.h \

@@ -9,9 +9,9 @@
 #include <type_traits>
 #include <utility>
 
-#include "libblight_global.h"
+#include "libblight_protocol_global.h"
 
-namespace Blight {
+namespace BlightProtocol {
   class RingBufferBase {
   protected:
     using AtomicWord = std::atomic<uint32_t>;
@@ -35,15 +35,18 @@ namespace Blight {
     alignas(64) AtomicWord head;
     alignas(64) AtomicWord tail;
     alignas(64) AtomicWord overflow;
+    std::atomic<bool> interrupted;
     bool allow_overflow;
 
     RingBufferBase(bool allow_overflow) noexcept
       : head{0}
       , tail{0}
       , overflow{0}
+      , interrupted{false}
       , allow_overflow{allow_overflow} {}
 
-    static void futex_wait(AtomicWord& word, uint32_t expected) noexcept;
+    static bool
+    futex_wait(AtomicWord& word, uint32_t expected, int timeout = 0) noexcept;
     static void futex_wake(AtomicWord& word) noexcept;
 
     static int createSharedMemoryInstance(
@@ -55,11 +58,11 @@ namespace Blight {
     static void unmapSharedMemoryInstance(void* mem, size_t size);
 
     bool full(uint32_t size);
-    void wait_for_space(uint32_t size);
+    bool wait_for_space(uint32_t size, int timeout = 0);
     uint32_t reserveHead(uint32_t size);
     void commitHead(uint32_t headIndex);
     std::optional<uint32_t> tryConsume();
-    uint32_t waitForTail();
+    std::optional<uint32_t> waitForTail(int timeout = 0);
     std::optional<uint32_t> peekTail();
     void releaseTail(uint32_t tailIndex);
 
@@ -67,10 +70,11 @@ namespace Blight {
     bool empty();
     bool overflowed();
     size_t size();
+    void interrupt() noexcept;
   };
 
   template<typename T, size_t Size>
-  class RingBuffer : private RingBufferBase {
+  class RingBuffer : public RingBufferBase {
     static_assert(
       (Size & (Size - 1)) == 0,
       "RingBuffer size must be a power of 2 for lock-free operation"
@@ -78,10 +82,6 @@ namespace Blight {
     static constexpr size_t MASK = Size - 1;
 
   public:
-    using RingBufferBase::empty;
-    using RingBufferBase::overflowed;
-    using RingBufferBase::size;
-
     RingBuffer(bool allow_overflow = false) noexcept
       : RingBufferBase{allow_overflow}
       , values{} {}
@@ -102,14 +102,19 @@ namespace Blight {
       return {event};
     }
 
-    T wait_for_values() {
-      uint32_t t = waitForTail();
-      T event = values[t & MASK];
-      releaseTail(t);
-      return event;
+    std::optional<T> wait_for_values(int timeout = 0) {
+      auto t = waitForTail(timeout);
+      if (!t.has_value()) {
+        return {};
+      }
+      T event = values[t.value() & MASK];
+      releaseTail(t.value());
+      return {event};
     }
 
-    void wait_for_space() { RingBufferBase::wait_for_space(Size); }
+    bool wait_for_space(int timeout = 0) {
+      return RingBufferBase::wait_for_space(Size, timeout);
+    }
 
     bool full() { return RingBufferBase::full(Size); }
 
@@ -145,6 +150,6 @@ namespace Blight {
 
   constexpr size_t EVDEV_RING_BUFFER_SIZE = 64;
   using EvdevRingBuffer = RingBuffer<input_event, EVDEV_RING_BUFFER_SIZE>;
-  extern template class LIBBLIGHT_EXPORT
+  extern template class LIBBLIGHT_PROTOCOL_EXPORT
     RingBuffer<input_event, EVDEV_RING_BUFFER_SIZE>;
 }

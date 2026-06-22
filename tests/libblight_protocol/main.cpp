@@ -7,8 +7,34 @@
 #include <QThread>
 #include <QTimer>
 
+#include <cstring>
+#include <sys/mman.h>
+
 #include "autotest.h"
 #include "test.h"
+
+extern "C" BlightProtocol::blight_input_buffer_t*
+create_test_input_buffer() {
+  size_t ringSize = sizeof(BlightProtocol::EvdevRingBuffer);
+  void* mem = mmap(
+    NULL, ringSize, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0
+  );
+  if (mem == MAP_FAILED) {
+    return NULL;
+  }
+  auto rb = new (mem) BlightProtocol::EvdevRingBuffer(false);
+  struct input_event ev;
+  std::memset(&ev, 0, sizeof(ev));
+  ev.type = EV_KEY;
+  ev.code = 42;
+  ev.value = 1;
+  rb->insert(ev);
+  auto buf = new BlightProtocol::blight_input_buffer_t();
+  buf->device = 0;
+  buf->fd = -1;
+  buf->ringBuffer = rb;
+  return buf;
+}
 
 int
 wait_for_service(QProcess* blight, QCoreApplication* app) {
@@ -21,7 +47,7 @@ wait_for_service(QProcess* blight, QCoreApplication* app) {
 #endif
   );
   if (!dbus->has_service(BLIGHT_SERVICE)) {
-    blight->start("/opt/bin/blight", QStringList());
+    blight->start("blight", QStringList());
     qDebug() << "Waiting for blight to start...";
     if (!blight->waitForStarted()) {
       qDebug() << "Failed to start: " << blight->exitCode();

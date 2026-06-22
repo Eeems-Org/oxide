@@ -1,7 +1,8 @@
 #include "test_Debug.h"
 
-#include <cstdlib>
 #include <liboxide/debug.h>
+
+#include <QFileInfo>
 
 test_Debug::test_Debug()
   : debug()
@@ -90,8 +91,28 @@ void
 test_Debug::test_backtrace() {
   auto trace = Oxide::backtrace(2);
   QCOMPARE(trace.size(), 1);
-  QVERIFY(
-    QString::fromStdString(trace[0]).startsWith("/opt/share/tests/liboxide(")
+  auto traceLine = QString::fromStdString(trace[0]);
+  auto parenIndex = traceLine.indexOf('(');
+  QVERIFY2(
+    parenIndex != -1, qPrintable("Backtrace line missing '(' : " + traceLine)
+  );
+  auto path = QFileInfo(traceLine.left(parenIndex));
+  auto expectedPrefix =
+    QString(TESTS_INSTALL_PATH) + QStringLiteral("/liboxide");
+  QVERIFY2(
+    path.exists(),
+    qPrintable(
+      QStringLiteral("Backtrace file does not exist: %1").arg(path.filePath())
+    )
+  );
+  QVERIFY2(
+    path.canonicalFilePath().startsWith(expectedPrefix),
+    qPrintable(QStringLiteral(
+                 "Backtrace does not start with expected prefix.\n"
+                 "  Resolved: %1\n"
+                 "  Expected prefix: %2"
+    )
+                 .arg(path.canonicalFilePath(), expectedPrefix))
   );
 }
 

@@ -11,6 +11,7 @@ oxide-utils:oxide_utils
 oxide-tests:oxide_tests
 lockscreen_hook
 launcherctl
+launcherctl-oxide:launcherctl_oxide
 '
 pkgname=oxide
 pkgver="~VERSION~"
@@ -26,6 +27,10 @@ oxide.tar.gz
 pkgdesc="Launcher application"
 category="apps"
 options="!check !fhs !strip !tracedeps"
+depends="
+oxide-display=$pkgver-r$pkgrel
+liboxide=$pkgver-r$pkgrel
+"
 
 _toolchain=5.7.119
 image() {
@@ -100,9 +105,6 @@ package() {
     # Keyd configuration
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/keyd \
         home/root/.config/keyd/oxide.conf
-    # launcherctl configuration
-    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/share/launcherctl \
-        home/root/.vellum/share/launcherctl/oxide
 }
 
 postinstall() {
@@ -134,12 +136,12 @@ postosupgrade() {
 
 predeinstall() {
     set -e
-    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2> /dev/null)" -eq 1 ]; then
-        if systemctl --quiet is-active tarnish.service 2> /dev/null; then
+    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2>/dev/null)" -eq 1 ]; then
+        if systemctl --quiet is-active tarnish.service 2>/dev/null; then
             echo "Stopping tarnish.service"
             systemctl stop tarnish.service
         fi
-        if systemctl --quiet is-enabled tarnish.service 2> /dev/null; then
+        if systemctl --quiet is-enabled tarnish.service 2>/dev/null; then
             echo "Disabling tarnish.service"
             systemctl disable tarnish.service
         fi
@@ -149,6 +151,7 @@ predeinstall() {
         /etc/systemd/system/tarnish.service
     systemctl daemon-reload
 }
+
 postdeinstall() {
     set -e
     rm -f \
@@ -161,7 +164,6 @@ oxide_display() {
     category="framework"
     depends="
     liboxide=$pkgver-r$pkgrel
-    cpptrace=$_cpptracever-r$pkgrel
     "
 
     package() {
@@ -212,12 +214,12 @@ oxide_display() {
 
     predeinstall() {
         set -e
-        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2> /dev/null)" -eq 1 ]; then
-            if systemctl --quiet is-active blight.service 2> /dev/null; then
+        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2>/dev/null)" -eq 1 ]; then
+            if systemctl --quiet is-active blight.service 2>/dev/null; then
                 echo "Stopping blight.service"
                 systemctl stop blight.service
             fi
-            if systemctl --quiet is-enabled blight.service 2> /dev/null; then
+            if systemctl --quiet is-enabled blight.service 2>/dev/null; then
                 echo "Disabling blight.service"
                 systemctl disable blight.service
             fi
@@ -242,7 +244,6 @@ oxide_extra() {
     oxide=$pkgver-r$pkgrel
     oxide-utils=$pkgver-r$pkgrel
     liboxide=$pkgver-r$pkgrel
-    cpptrace=$_cpptracever-r$pkgrel
     "
 
     package() {
@@ -270,7 +271,6 @@ oxide_utils() {
     depends="
     oxide=$pkgver-r$pkgrel
     liboxide=$pkgver-r$pkgrel
-    cpptrace=$_cpptracever-r$pkgrel
     jq
     "
 
@@ -310,7 +310,6 @@ inject_evdev() {
     category="utilities"
     depends="
     liboxide=$pkgver-r$pkgrel
-    cpptrace=$_cpptracever-r$pkgrel
     "
 
     package() {
@@ -334,6 +333,9 @@ fbinfo() {
 liboxide() {
     pkgdesc="Shared library for oxide applications"
     category="framework"
+    depends="
+    cpptrace=$_cpptracever-r$pkgrel
+    "
 
     package() {
         cd "$srcdir"/release
@@ -386,11 +388,15 @@ cpptrace() {
             home/root/.vellum/lib/libcpptrace.so
     }
 }
+
 cpptrace_dev() {
     pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
     category="framework"
     url=https://github.com/jeremy-rifkin/cpptrace
     pkgver="$_cpptracever"
+    depends="
+    cpptrace=$_cpptracever-r$pkgrel
+    "
 
     package() {
         cd "$srcdir"/release
@@ -403,8 +409,8 @@ oxide_tests() {
     pkgdesc="Automated tests for oxide"
     category="framework"
     depends="
-    liboxide=$pkgver-r$pkgrel
     oxide-display=$pkgver-r$pkgrel
+    liboxide=$pkgver-r$pkgrel
     "
 
     package() {
@@ -490,11 +496,11 @@ launcherctl() {
         cd "$srcdir"/release
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/launcherctl
-        install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/share/launcherctl \
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/launcherctl \
             home/root/.vellum/share/launcherctl/none
-        install -o root -g root -Dm755 -t "$pkgdir"/home/root/.local/share/lockscreen_hook.d \
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.local/share/lockscreen_hook.d \
             home/root/.local/share/lockscreen_hook.d/unlock
-        install -o root -g root -Dm755 -t "$pkgdir"/home/root/.local/share/lockscreen_hook.d \
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.local/share/lockscreen_hook.d \
             home/root/.local/share/lockscreen_hook.d/success
     }
     postinstall() {
@@ -519,8 +525,22 @@ launcherctl() {
         fi
     }
     postdeinstall() {
-        if [ "$(systemctl --quiet list-unit-files xochitl.service | /bin/grep -c xochitl.service 2> /dev/null)" -ne 1 ]; then
+        if [ "$(systemctl --quiet list-unit-files xochitl.service | /bin/grep -c xochitl.service 2>/dev/null)" -ne 1 ]; then
             systemctl enable --now xochitl
         fi
+    }
+}
+
+launcherctl_oxide() {
+    pkgdesc="Launcherctl configuration for oxide"
+    category="utilities"
+    depends="
+    oxide=$pkgver-r$pkgrel
+    oxide-utils=$pkgver-r$pkgrel
+    "
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/launcherctl \
+            home/root/.vellum/share/launcherctl/oxide
     }
 }

@@ -111,39 +111,65 @@ namespace Blight {
     return dfd;
   }
 
-  int open_input() {
+  std::shared_ptr<input_buffer_t> open_input(unsigned short device) {
     if (!exists()) {
       errno = EAGAIN;
-      return -EAGAIN;
+      return nullptr;
     }
-    _DEBUG("[Blight::open_input()]");
-    auto reply =
-      dbus->call_method(BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "openInput");
+    _DEBUG("[Blight::open_input(%d)]", device);
+    auto reply = dbus->call_method(
+      BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "openInput", "q", device
+    );
     if (reply->isError()) {
       _WARN(
-        "[Blight::open_input()::call_method(...)] Error: %s",
+        "[Blight::open_input(%d)::call_method(...)] Error: %s",
+        device,
         reply->error_message().c_str()
       );
-      return reply->return_value;
+      return nullptr;
     }
     auto fd = reply->read_value<int>("h");
     if (!fd.has_value()) {
       _WARN(
-        "[Blight::open_input()::read_value(\"h\")] Error: %s",
+        "[Blight::open_input(%d)::read_value(\"h\")] Error: %s",
+        device,
         reply->error_message().c_str()
       );
-      return reply->return_value;
+      return nullptr;
     }
     int dfd = fcntl(fd.value(), F_DUPFD_CLOEXEC, 3);
     if (dfd < 0) {
       _WARN(
-        "[Blight::open_input()::dup(%d)] Error: %s",
+        "[Blight::open_input(%d)::dup(%d)] Error: %s",
+        device,
         fd.value(),
-        reply->error_message().c_str()
+        std::strerror(errno)
       );
-      return -errno;
+      return nullptr;
     }
-    return dfd;
+    auto* map = mmap(
+      nullptr,
+      sizeof(EvdevRingBuffer),
+      PROT_READ | PROT_WRITE,
+      MAP_SHARED_VALIDATE,
+      dfd,
+      0
+    );
+    if (map == MAP_FAILED) {
+      int e = errno;
+      _WARN(
+        "[Blight::open_input(%d)::mmap(%d)] Error: %s",
+        device,
+        dfd,
+        std::strerror(e)
+      );
+      close(dfd);
+      errno = e;
+      return nullptr;
+    }
+    return std::shared_ptr<input_buffer_t>(
+      new input_buffer_t{device, dfd, static_cast<EvdevRingBuffer*>(map)}
+    );
   }
 
   std::optional<shared_buf_t> createBuffer(

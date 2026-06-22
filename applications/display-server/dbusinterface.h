@@ -79,7 +79,8 @@ public:
 
 public slots:
   QDBusUnixFileDescriptor open(QDBusMessage message);
-  QDBusUnixFileDescriptor openInput(QDBusMessage message);
+  QDBusUnixFileDescriptor
+  openInput(unsigned short device, QDBusMessage message);
   ushort addSurface(
     QDBusUnixFileDescriptor fd,
     int x,

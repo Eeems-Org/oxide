@@ -17,8 +17,7 @@ SOURCES += \
     libblight.cpp \
     socket.cpp \
     system.cpp \
-    types.cpp \
-    ringbuffer.cpp
+    types.cpp
 
 HEADERS += \
     clock.h \
@@ -31,8 +30,7 @@ HEADERS += \
     meta.h \
     socket.h \
     system.h \
-    types.h \
-    ringbuffer.h
+    types.h
 
 PRECOMPILED_HEADER = \
     libblight_stable.h

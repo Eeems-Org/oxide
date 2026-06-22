@@ -4,6 +4,7 @@
  * @{
  * \file
  */
+#include <memory>
 #include <optional>
 
 #include "connection.h"
@@ -47,13 +48,14 @@ namespace Blight {
    */
   LIBBLIGHT_EXPORT int open();
   /*!
-   * \brief Open a connection to the display server to recieve input events.
-   * \return File descriptor for socket that the display server will use to
-   * send input events
-   * \sa Blight::Connection::input_handle()
+   * \brief Open an input event device buffer
+   * \param device Input event device number
+   * \return Input event device buffer
    * \sa Blight::Connection::read_event()
    */
-  LIBBLIGHT_EXPORT int open_input();
+  LIBBLIGHT_EXPORT std::shared_ptr<input_buffer_t> open_input(
+    unsigned short device
+  );
   /*!
    * \brief Get the clipboard
    * \return Clipboard instance

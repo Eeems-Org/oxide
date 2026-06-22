@@ -9,6 +9,7 @@
 #include <systemd/sd-bus.h>
 
 #include "libblight_protocol_global.h"
+
 #ifndef __cplusplus
 #include <stdbool.h>
 #else
@@ -136,39 +137,6 @@ namespace BlightProtocol {
   typedef unsigned short blight_surface_id_t;
 
   /*!
-   * \brief Partial input event
-   */
-  typedef struct {
-    /*!
-     * \brief Input event type
-     */
-    __u16 type;
-    /*!
-     * \brief Input event code
-     */
-    __u16 code;
-    /*!
-     * \brief Input event value
-     */
-    __s32 value;
-  } blight_partial_input_event_t;
-
-  /*!
-   * \brief Input event packet
-   */
-  typedef struct {
-    /*!
-     * \brief Device that this packet is for
-     */
-    unsigned int device;
-    /*!
-     * \brief Partial input event
-     */
-    union {
-      blight_partial_input_event_t event;
-    };
-  } blight_event_packet_t;
-  /*!
    * \brief Message type
    * \sa blight_header_t
    * \sa blight_message_t
@@ -208,6 +176,14 @@ namespace BlightProtocol {
     double scale;
     blight_data_t data;
   } blight_buf_t;
+  /*!
+   * \brief Shared memory input buffer for input events
+   */
+  typedef struct {
+    unsigned short device;
+    int fd;
+    void* ringBuffer;
+  } blight_input_buffer_t;
   /*!
    * \brief Message header
    */
@@ -337,11 +313,11 @@ namespace BlightProtocol {
 #define blight_header_t BlightProtocol::blight_header_t
 #define blight_surface_id_t BlightProtocol::blight_surface_id_t
 #define blight_buf_t BlightProtocol::blight_buf_t
+#define blight_input_buffer_t BlightProtocol::blight_input_buffer_t
 #define blight_packet_repaint_t BlightProtocol::blight_packet_repaint_t
 #define blight_packet_move_t BlightProtocol::blight_packet_move_t
 #define blight_packet_surface_info_t                                           \
   BlightProtocol::blight_packet_surface_info_t
-#define blight_event_packet_t BlightProtocol::blight_event_packet_t
 #define BlightMessageType BlightProtocol::BlightMessageType
 #define BlightImageFormat BlightProtocol::BlightImageFormat
 #define BlightWaveformMode BlightProtocol::BlightWaveformMode
@@ -405,15 +381,16 @@ blight_service_available(blight_bus* bus);
 LIBBLIGHT_PROTOCOL_EXPORT int
 blight_service_open(blight_bus* bus);
 /*!
- * \brief blight_service_input_open Open a socket connection for input
- * events from the blight service
+ * \brief blight_service_input_open Open a shared memory input buffer
+ * for a specific input device
  * \param bus The dbus connection
- * \return The file descriptor for the socket connection
- * \sa blight_bus_connect_system
- * \sa blight_bus_connect_user
+ * \param device Input event device number
+ * \return Input buffer
+ * \sa blight_event_from_buffer
+ * \sa blight_input_buffer_deref
  */
-LIBBLIGHT_PROTOCOL_EXPORT int
-blight_service_input_open(blight_bus* bus);
+LIBBLIGHT_PROTOCOL_EXPORT blight_input_buffer_t*
+blight_service_input_open(blight_bus* bus, unsigned short device);
 /*!
  * \brief blight_header_from_data Parse a buffer and return the
  * blight_header_t from it
@@ -548,14 +525,32 @@ blight_cast_to_move_packet(blight_message_t* message);
 LIBBLIGHT_PROTOCOL_EXPORT blight_packet_surface_info_t*
 blight_cast_to_surface_info_packet(blight_message_t* message);
 /*!
- * \brief blight_event_from_socket Read an input event from the input socket
- * \param fd File descriptor of the socket
- * \param packet blight_event_packet_t pointer on success
+ * \brief blight_event_from_buffer Read an input event from a shared memory
+ *        input buffer
+ * \param buf Input buffer to read from
+ * \param event input_event pointer on success
  * \return 0 on success
  * \sa blight_service_input_open
  */
 LIBBLIGHT_PROTOCOL_EXPORT int
-blight_event_from_socket(int fd, blight_event_packet_t** packet);
+blight_event_from_buffer(
+  blight_input_buffer_t* buf,
+  struct input_event** event
+);
+/*!
+ * \brief Free an input_event allocated by blight_event_from_buffer
+ * \param event Event to free
+ */
+LIBBLIGHT_PROTOCOL_EXPORT void
+blight_event_free(struct input_event* event);
+/*!
+ * \brief blight_input_buffer_deref Release the memory for a
+ *        blight_input_buffer_t
+ * \param buf Input buffer to release
+ * \sa blight_service_input_open
+ */
+LIBBLIGHT_PROTOCOL_EXPORT void
+blight_input_buffer_deref(blight_input_buffer_t* buf);
 /*!
  * \brief blight_surface_to_fbg Create a fbgraphics instance for a surface
  * \param fd File descriptor for the socket
@@ -744,10 +739,10 @@ blight_focus(int fd);
 #undef blight_header_t
 #undef blight_surface_id_t
 #undef blight_buf_t
+#undef blight_input_buffer_t
 #undef blight_packet_repaint_t
 #undef blight_packet_move_t
 #undef blight_packet_surface_info_t
-#undef blight_event_packet_t
 #undef BlightMessageType
 #undef BlightImageFormat
 #undef BlightWaveformMode
