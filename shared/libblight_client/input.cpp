@@ -62,18 +62,10 @@ namespace Input {
   Transform touchTransform;
 
   DeviceInfo::~DeviceInfo() {
-    if (readerStop != nullptr) {
-      readerStop->store(true);
-    }
-    if (serverBuffer != nullptr && readerThread != nullptr) {
-      auto* rb = serverBuffer->ringBuffer;
-      rb->interrupt();
-    }
-    if (readerThread != nullptr && readerThread->joinable()) {
-      readerThread->join();
-    }
+    _DEBUG("event%d device info destructor", device);
+    *stop = true;
     if (thread != nullptr && thread->joinable()) {
-      thread->detach();
+      thread->join();
     }
   }
 
@@ -372,7 +364,6 @@ namespace Input {
       );
       devices[device] = {
         .device = device,
-        .physicalDevice = actualDevice,
         .fd = fd,
         .eventFd = -1,
         .type = type,
@@ -380,10 +371,8 @@ namespace Input {
         .minimums = {},
         .maximums = {},
         .ringBuffer = nullptr,
-        .remapBuffer = nullptr,
         .thread = nullptr,
-        .readerThread = nullptr,
-        .readerStop = nullptr
+        .stop = new std::atomic<bool>{false}
       };
       auto& info = devices[device];
       getAbsInfo(fd, info);
@@ -408,16 +397,16 @@ namespace Input {
     return true;
   }
 
-  void readEvents() {
-    // Replaced by per-device reader threads (deviceReader)
-  }
-
   inline int range(int max, int min) {
     int range = max - min;
     if (range <= 0) {
       return 1;
     }
     return range;
+  }
+
+  inline int scaleValue(int value, int minimum, int maximum) {
+    return (value - minimum) * maximum / range(maximum, minimum);
   }
 
   void
@@ -560,14 +549,10 @@ namespace Input {
       }
     }
   }
-  inline int scaleValue(int value, int minimum, int maximum) {
-    return (value - minimum) * maximum / range(maximum, minimum);
-  }
 
-  void deviceReader(
+  void readEvents(
     unsigned short device,
-    BlightProtocol::EvdevRingBuffer* rb,
-    std::shared_ptr<std::atomic<bool>> stop
+    std::shared_ptr<Blight::input_buffer_t> inputBuffer
   ) {
     char name[16];
     snprintf(name, sizeof(name), "Input[%u]", device);
@@ -579,101 +564,12 @@ namespace Input {
     CPU_SET(0, &cpuset);
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
     bool allow_power_button = Client::isPowerButtonEnabled();
-
-    while (FB::connection != nullptr && !stop->load()) {
-      auto maybe = rb->wait_for_values();
-      if (!maybe.has_value()) {
-        continue; // Interrupted, check stop flag
-      }
-
-      input_event ev = *maybe;
-
-      if (!allow_power_button && ev.type == EV_KEY && ev.code == KEY_POWER) {
-        ev.value = 0;
-      }
-
-      if (ev.type == EV_SYN && ev.code == SYN_DROPPED) {
-        continue;
-      }
-
-      std::shared_ptr<Blight::EvdevRingBuffer> outBuffer;
-      {
-        std::lock_guard lock{mutex};
-        if (!devices.contains(device)) {
-          continue;
-        }
-        outBuffer = Client::isFakeRM1Input() ? devices[device].remapBuffer
-                                             : devices[device].ringBuffer;
-      }
-
-      if (outBuffer != nullptr) {
-        outBuffer->insert(ev);
-      }
-
-      if (!Client::isFakeRM1Input()) {
-        std::lock_guard lock{mutex};
-        if (devices.contains(device)) {
-          uint64_t val = 1;
-          Libc::write(devices[device].eventFd, &val, sizeof(val));
-        }
-      }
-
-      // Drain remaining events
-      while (true) {
-        std::optional<input_event> next;
-        {
-          std::lock_guard lock{mutex};
-          if (!devices.contains(device)) {
-            break;
-          }
-          next = rb->take();
-        }
-        if (!next.has_value()) {
-          break;
-        }
-        input_event nextEv = *next;
-
-        if (
-          !allow_power_button && nextEv.type == EV_KEY &&
-          nextEv.code == KEY_POWER
-        ) {
-          nextEv.value = 0;
-        }
-
-        if (nextEv.type == EV_SYN && nextEv.code == SYN_DROPPED) {
-          continue;
-        }
-
-        {
-          std::lock_guard lock{mutex};
-          if (!devices.contains(device)) {
-            break;
-          }
-          auto outBuf = Client::isFakeRM1Input() ? devices[device].remapBuffer
-                                                 : devices[device].ringBuffer;
-          if (outBuf != nullptr) {
-            outBuf->insert(nextEv);
-          }
-          if (!Client::isFakeRM1Input()) {
-            uint64_t val = 1;
-            Libc::write(devices[device].eventFd, &val, sizeof(val));
-          }
-        }
-      }
-    }
-    _INFO("%s quitting", name);
-  }
-
-  void remapEvents(unsigned short device) {
-    char name[16];
-    snprintf(name, sizeof(name), "Remap[%u]", device);
-    _INFO("%s starting", name);
-    prctl(PR_SET_NAME, name, 0, 0, 0);
-    auto& info = devices[device];
+    bool fakeRM1 = Client::isFakeRM1Input();
     std::vector<input_event> pending;
-    while (FB::connection != nullptr) {
-      if (info.remapBuffer->overflowed()) {
-        info.remapBuffer->take();
+    auto& info = devices[device];
+    while (!*info.stop) {
+      if (inputBuffer->ringBuffer->overflowed()) {
+        inputBuffer->ringBuffer->take();
         input_event syn{};
         syn.type = EV_SYN;
         syn.code = SYN_DROPPED;
@@ -683,23 +579,25 @@ namespace Input {
         Libc::write(info.eventFd, &val, sizeof(val));
         pending.clear();
       }
-      auto maybe = info.remapBuffer->wait_for_values();
+      auto maybe = inputBuffer->ringBuffer->wait_for_values();
       if (!maybe.has_value()) {
         continue;
       }
-      input_event event = *maybe;
-      if (info.type != Wacom && info.type != Touch) {
+      input_event event = maybe.value();
+      if (
+        !allow_power_button && event.type == EV_KEY && event.code == KEY_POWER
+      ) {
+        event.value = 0;
+      }
+      if (!fakeRM1) {
+        _DEBUG("%d %d %d", event.type, event.code, event.value);
         info.ringBuffer->insert(event);
         uint64_t val = 1;
         Libc::write(info.eventFd, &val, sizeof(val));
         continue;
       }
-      if (event.type == EV_SYN && event.code == SYN_DROPPED) {
-        pending.clear();
-        continue;
-      }
       pending.push_back(event);
-      if (!(event.type == EV_SYN && event.code == SYN_REPORT)) {
+      if (event.type != EV_SYN || event.code != SYN_REPORT) {
         continue;
       }
       switch (info.type) {
@@ -707,71 +605,73 @@ namespace Input {
           input_event* xEvent = nullptr;
           input_event* yEvent = nullptr;
           for (auto& previousEvent : pending) {
-            if (previousEvent.type == EV_ABS) {
-              switch (previousEvent.code) {
-                case ABS_PRESSURE:
-                  info.state.pressure = previousEvent.value;
-                  previousEvent.value = scaleValue(
-                    previousEvent.value,
-                    info.minimums.pressure,
-                    info.maximums.pressure
-                  );
-                  break;
-                case ABS_DISTANCE:
-                  info.state.distance = previousEvent.value;
-                  previousEvent.value = scaleValue(
-                    previousEvent.value,
-                    info.minimums.distance,
-                    info.maximums.distance
-                  );
-                  break;
-                case ABS_TILT_X:
-                  info.state.tiltX = previousEvent.value;
-                  previousEvent.value = scaleValue(
-                    previousEvent.value,
-                    info.minimums.tiltX,
-                    info.maximums.tiltX
-                  );
-                  break;
-                case ABS_TILT_Y:
-                  info.state.tiltY = previousEvent.value;
-                  previousEvent.value = scaleValue(
-                    previousEvent.value,
-                    info.minimums.tiltY,
-                    info.maximums.tiltY
-                  );
-                  break;
-                case ABS_X:
-                  info.state.x = previousEvent.value;
-                  xEvent = &previousEvent;
-                  break;
-                case ABS_Y:
-                  info.state.y = previousEvent.value;
-                  yEvent = &previousEvent;
-                  break;
-                default:
-                  break;
-              }
+            switch (previousEvent.type) {
+              case EV_ABS:
+                switch (previousEvent.code) {
+                  case ABS_PRESSURE:
+                    info.state.pressure = previousEvent.value;
+                    previousEvent.value = scaleValue(
+                      previousEvent.value,
+                      info.minimums.pressure,
+                      info.maximums.pressure
+                    );
+                    break;
+                  case ABS_DISTANCE:
+                    info.state.distance = previousEvent.value;
+                    previousEvent.value = scaleValue(
+                      previousEvent.value,
+                      info.minimums.distance,
+                      info.maximums.distance
+                    );
+                    break;
+                  case ABS_TILT_X:
+                    info.state.tiltX = previousEvent.value;
+                    previousEvent.value = scaleValue(
+                      previousEvent.value,
+                      info.minimums.tiltX,
+                      info.maximums.tiltX
+                    );
+                    break;
+                  case ABS_TILT_Y:
+                    info.state.tiltY = previousEvent.value;
+                    previousEvent.value = scaleValue(
+                      previousEvent.value,
+                      info.minimums.tiltY,
+                      info.maximums.tiltY
+                    );
+                    break;
+                  case ABS_X:
+                    info.state.x = previousEvent.value;
+                    xEvent = &previousEvent;
+                    break;
+                  case ABS_Y:
+                    info.state.y = previousEvent.value;
+                    yEvent = &previousEvent;
+                    break;
+                  default:
+                    continue;
+                }
+              default:
+                continue;
             }
           }
-          if (xEvent == nullptr && yEvent == nullptr) {
-            break;
+          if (xEvent != nullptr || yEvent != nullptr) {
+            applyTransform(info, xEvent, yEvent);
+            _DEBUG(
+              "pen (%d,  %d) -> (%d, %d)",
+              info.state.x,
+              info.state.y,
+              xEvent == nullptr ? info.state.x : xEvent->value,
+              yEvent == nullptr ? info.state.y : yEvent->value
+            );
+            if (xEvent != nullptr) {
+              info.state.x = xEvent->value;
+            }
+            if (yEvent != nullptr) {
+              info.state.y = yEvent->value;
+            }
           }
-          applyTransform(info, xEvent, yEvent);
-          _DEBUG(
-            "pen (%d,  %d) -> (%d, %d)",
-            info.state.x,
-            info.state.y,
-            xEvent == nullptr ? info.state.x : xEvent->value,
-            yEvent == nullptr ? info.state.y : yEvent->value
-          );
-          if (xEvent != nullptr) {
-            info.state.x = xEvent->value;
-          }
-          if (yEvent != nullptr) {
-            info.state.y = yEvent->value;
-          }
-          break;
+          continue;
         }
         case Touch: {
           input_event* xEvent = nullptr;
@@ -804,7 +704,7 @@ namespace Input {
                       info.minimums.pressure,
                       info.maximums.pressure
                     );
-                    break;
+                    continue;
                   case ABS_MT_DISTANCE:
                     info.state.distance = previousEvent.value;
                     previousEvent.value = scaleValue(
@@ -812,7 +712,7 @@ namespace Input {
                       info.minimums.distance,
                       info.maximums.distance
                     );
-                    break;
+                    continue;
                   case ABS_MT_ORIENTATION:
                     info.state.orientation = previousEvent.value;
                     previousEvent.value = scaleValue(
@@ -820,7 +720,7 @@ namespace Input {
                       info.minimums.orientation,
                       info.maximums.orientation
                     );
-                    break;
+                    continue;
                   case ABS_MT_TOUCH_MAJOR:
                     info.state.major = previousEvent.value;
                     previousEvent.value = scaleValue(
@@ -828,7 +728,7 @@ namespace Input {
                       info.minimums.major,
                       info.maximums.major
                     );
-                    break;
+                    continue;
                   case ABS_MT_TOUCH_MINOR:
                     info.state.minor = previousEvent.value;
                     previousEvent.value = scaleValue(
@@ -836,44 +736,44 @@ namespace Input {
                       info.minimums.minor,
                       info.maximums.minor
                     );
-                    break;
+                    continue;
                   case ABS_MT_POSITION_X:
                     info.state.x = previousEvent.value;
                     xEvent = &previousEvent;
-                    break;
+                    continue;
                   case ABS_MT_POSITION_Y:
                     info.state.y = previousEvent.value;
                     yEvent = &previousEvent;
-                    break;
+                    continue;
+                  default:
+                    continue;
                 }
-                break;
+                continue;
               default:
                 continue;
             }
           }
-          if (xEvent == nullptr && yEvent == nullptr) {
-            break;
+          if (xEvent != nullptr || yEvent != nullptr) {
+            applyTransform(info, xEvent, yEvent);
+            _DEBUG(
+              "touch (%d,  %d) -> (%d, %d)",
+              info.state.x,
+              info.state.y,
+              xEvent == nullptr ? info.state.x : xEvent->value,
+              yEvent == nullptr ? info.state.y : yEvent->value
+            );
+            if (xEvent != nullptr) {
+              info.state.x = xEvent->value;
+            }
+            if (yEvent != nullptr) {
+              info.state.y = yEvent->value;
+            }
           }
-          applyTransform(info, xEvent, yEvent);
-          _DEBUG(
-            "touch (%d,  %d) -> (%d, %d)",
-            info.state.x,
-            info.state.y,
-            xEvent == nullptr ? info.state.x : xEvent->value,
-            yEvent == nullptr ? info.state.y : yEvent->value
-          );
-          if (xEvent != nullptr) {
-            info.state.x = xEvent->value;
-          }
-          if (yEvent != nullptr) {
-            info.state.y = yEvent->value;
-          }
-          break;
+          continue;
         }
         default:
-          break;
+          continue;
       }
-      uint64_t val = 1;
       for (auto& pendingEvent : pending) {
         if (
           pendingEvent.type == EV_ABS &&
@@ -885,10 +785,12 @@ namespace Input {
           continue;
         }
         info.ringBuffer->insert(pendingEvent);
+        uint64_t val = 1;
         Libc::write(info.eventFd, &val, sizeof(val));
       }
       pending.clear();
     }
+    _INFO("%s quitting", name);
   }
 
   bool isInputFd(int fd) {
@@ -897,7 +799,6 @@ namespace Input {
   }
 
   int open(const std::string& path, int flags) {
-    std::scoped_lock lock{mutex};
     std::string basePath(basename(path.c_str()));
     unsigned short device;
     try {
@@ -915,50 +816,42 @@ namespace Input {
     if (fd < 0) {
       return -1;
     }
-    if (!devices.contains(device)) {
-      InputType type = classify(fd);
-      devices[device] = {
-        .device = device,
-        .physicalDevice = device,
-        .fd = fd,
-        .eventFd = -1,
-        .type = type,
-        .state = {},
-        .minimums = {},
-        .maximums = {},
-        .ringBuffer = nullptr,
-        .remapBuffer = nullptr,
-        .thread = nullptr,
-        .readerThread = nullptr,
-        .readerStop = nullptr
-      };
-      auto& info = devices[device];
-      getAbsInfo(fd, info);
-      _DEBUG("event%d: %s", device, typeName(info.type).c_str());
-      _DEBUG("x:  min=%d, max=%d", info.minimums.x, info.maximums.x);
-      _DEBUG("y:  min=%d, max=%d", info.minimums.y, info.maximums.y);
-      _DEBUG(
-        "pressure:  min=%d, max=%d",
-        info.minimums.pressure,
-        info.maximums.pressure
-      );
-      _DEBUG(
-        "distance:  min=%d, max=%d",
-        info.minimums.distance,
-        info.maximums.distance
-      );
+    {
+      std::scoped_lock lock{mutex};
+      if (!devices.contains(device)) {
+        InputType type = classify(fd);
+        devices[device] = {
+          .device = device,
+          .fd = fd,
+          .eventFd = -1,
+          .type = type,
+          .state = {},
+          .minimums = {},
+          .maximums = {},
+          .ringBuffer = nullptr,
+          .thread = nullptr,
+          .stop = new std::atomic<bool>{false}
+        };
+        auto& info = devices[device];
+        getAbsInfo(fd, info);
+        _DEBUG("event%d: %s", device, typeName(info.type).c_str());
+        _DEBUG("x:  min=%d, max=%d", info.minimums.x, info.maximums.x);
+        _DEBUG("y:  min=%d, max=%d", info.minimums.y, info.maximums.y);
+        _DEBUG(
+          "pressure:  min=%d, max=%d",
+          info.minimums.pressure,
+          info.maximums.pressure
+        );
+        _DEBUG(
+          "distance:  min=%d, max=%d",
+          info.minimums.distance,
+          info.maximums.distance
+        );
+      }
     }
     if (devices[device].ringBuffer == nullptr) {
       devices[device].ringBuffer =
         std::make_shared<Blight::EvdevRingBuffer>(true);
-    }
-    if (Client::isFakeRM1Input() && devices[device].remapBuffer == nullptr) {
-      devices[device].remapBuffer =
-        std::make_shared<Blight::EvdevRingBuffer>(true);
-    }
-    if (Client::isFakeRM1Input() && devices[device].thread == nullptr) {
-      devices[device].thread =
-        std::make_shared<std::thread>(remapEvents, device);
     }
     if (devices[device].eventFd == -1) {
       int eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -968,44 +861,30 @@ namespace Input {
       }
       devices[device].eventFd = eventFd;
     }
-    if (devices[device].serverBuffer == nullptr) {
-      unsigned short serverDev = devices[device].physicalDevice;
-      auto buf = Blight::open_input(serverDev);
-      if (buf != nullptr) {
-        devices[device].serverBuffer = buf;
-        _DEBUG(
-          "Opened server buffer for device %d (physical device %d)",
-          device,
-          serverDev
-        );
-      } else {
+    if (devices[device].thread == nullptr) {
+      auto inputBuffer = Blight::open_input(device);
+      if (inputBuffer == nullptr) {
         _WARN(
           "Failed to open server buffer for device %d: %s",
-          serverDev,
+          device,
           std::strerror(errno)
         );
+        return -1;
       }
+      _DEBUG("Opened server buffer for device %d", device);
+      *devices[device].stop = false;
+      devices[device].thread =
+        std::make_shared<std::thread>(readEvents, device, inputBuffer);
     }
-    // Start per-device reader thread if not already running
-    if (
-      devices[device].serverBuffer != nullptr &&
-      devices[device].readerThread == nullptr
-    ) {
-      auto stop = std::make_shared<std::atomic<bool>>(false);
-      auto* rb = devices[device].serverBuffer->ringBuffer;
-      devices[device].readerStop = stop;
-      devices[device].readerThread =
-        std::make_shared<std::thread>(deviceReader, device, rb, stop);
+    {
+      std::scoped_lock lock{mutex};
+      deviceDescriptors[fd] = {device, flags};
     }
-    deviceDescriptors[fd] = {device, flags};
     return fd;
   }
 
   int close(int fd) {
     _DEBUG("Closing input fd %d", fd);
-    std::shared_ptr<std::thread> threadToJoin;
-    std::shared_ptr<std::atomic<bool>> stopFlag;
-    std::shared_ptr<Blight::input_buffer_t> serverBuf;
     {
       std::scoped_lock lock(mutex);
       if (!deviceDescriptors.contains(fd)) {
@@ -1020,31 +899,8 @@ namespace Input {
         }
       }
       deviceDescriptors.erase(fd);
-      // Check if this was the last fd for this device
-      bool lastFd = std::none_of(
-        deviceDescriptors.begin(),
-        deviceDescriptors.end(),
-        [device](auto& pair) { return pair.second.device == device; }
-      );
-      if (lastFd && devices.contains(device)) {
-        threadToJoin = devices[device].readerThread;
-        stopFlag = devices[device].readerStop;
-        serverBuf = devices[device].serverBuffer;
-        devices[device].readerThread = nullptr;
-        devices[device].readerStop = nullptr;
-      }
     }
-    // Stop reader thread outside lock to avoid deadlock on join
-    if (stopFlag != nullptr) {
-      stopFlag->store(true);
-    }
-    if (serverBuf != nullptr && threadToJoin != nullptr) {
-      auto* rb = serverBuf->ringBuffer;
-      rb->interrupt();
-    }
-    if (threadToJoin != nullptr && threadToJoin->joinable()) {
-      threadToJoin->join();
-    }
+    // TODO ask thread to stop if there are no more open handles
     return Libc::close(fd);
   }
 
@@ -1327,7 +1183,6 @@ namespace Input {
   }
 
   void restorePollfds(struct pollfd* fds, nfds_t nfds, struct pollfd* backup) {
-    std::scoped_lock lock(mutex);
     for (nfds_t i = 0; i < nfds; i++) {
       fds[i].fd = backup[i].fd;
     }
@@ -1457,11 +1312,10 @@ namespace Input {
 
   int restoreEpollfds(int epfd, struct epoll_event* events, int res) {
     std::scoped_lock lock(mutex);
-    auto epIt = epollMap.find(epfd);
-    if (epIt == epollMap.end()) {
+    if (!epollMap.contains(epfd)) {
       return res;
     }
-    auto& trackByEventFd = epIt->second;
+    auto& trackByEventFd = epollMap[epfd];
     for (int i = 0; i < res; i++) {
       int eventFd = events[i].data.fd;
       auto it = trackByEventFd.find(eventFd);

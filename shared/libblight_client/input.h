@@ -31,7 +31,6 @@ namespace Input {
   };
   struct DeviceInfo {
     unsigned short device;
-    unsigned short physicalDevice;
     int fd;
     int eventFd;
     InputType type;
@@ -39,11 +38,8 @@ namespace Input {
     DeviceState minimums;
     DeviceState maximums;
     std::shared_ptr<Blight::EvdevRingBuffer> ringBuffer;
-    std::shared_ptr<Blight::EvdevRingBuffer> remapBuffer;
     std::shared_ptr<std::thread> thread;
-    std::shared_ptr<std::thread> readerThread;
-    std::shared_ptr<std::atomic<bool>> readerStop;
-    std::shared_ptr<Blight::input_buffer_t> serverBuffer;
+    std::atomic<bool>* stop;
     ~DeviceInfo();
   };
   struct DeviceMap {
@@ -51,7 +47,10 @@ namespace Input {
     int flags;
   };
   bool init();
-  void readEvents();
+  void readEvents(
+    unsigned short device,
+    std::shared_ptr<Blight::input_buffer_t> serverBuffer
+  );
   bool isInputFd(int fd);
   int open(const std::string& path, int flags);
   int close(int fd);

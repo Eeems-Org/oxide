@@ -101,9 +101,11 @@ Connection::~Connection() {
   for (auto& [device, buf] : m_inputBuffers) {
     if (buf.buffer != nullptr) {
       munmap(buf.buffer, sizeof(Blight::EvdevRingBuffer));
+      buf.buffer = nullptr;
     }
     if (buf.fd >= 0) {
       ::close(buf.fd);
+      buf.fd = -1;
     }
   }
   m_inputBuffers.clear();
@@ -143,11 +145,12 @@ Connection::inputFd(unsigned short device) {
   }
   auto [fd, buffer] = Blight::EvdevRingBuffer::createSharedMemory();
   if (fd < 0 || buffer == nullptr) {
+    C_WARNING("Failed to create input buffer for event" << device)
     return -1;
   }
   m_inputBuffers[device] = {fd, buffer};
   buffer->insert({.type = EV_SYN, .code = SYN_DROPPED});
-  C_DEBUG("Created input buffer for device " << device << " (fd=" << fd << ")");
+  C_DEBUG("Created input buffer for event" << device << " (fd=" << fd << ")");
   return fd;
 }
 
@@ -358,11 +361,11 @@ Connection::inputEvents(
     return;
   }
   if (!m_inputBuffers.contains(device)) {
-    // No consumer has opened input for this device yet
     return;
   }
   auto* buffer = m_inputBuffers[device].buffer;
   if (buffer == nullptr) {
+    C_WARNING("event" << device << " buffer is nullptr");
     return;
   }
   C_DEBUG("Writing" << events.size() << "input events to device" << device);
