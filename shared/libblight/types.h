@@ -66,9 +66,10 @@ namespace Blight {
     EvdevRingBuffer* ringBuffer;
     /*!
      * \brief Read an input event from the ring buffer
+     * \param blocking If this call should block until an event is available
      * \return The input event
      */
-    std::optional<struct input_event> read();
+    std::optional<struct input_event> read(bool blocking = false);
     ~input_buffer_t();
   } input_buffer_t;
   /*!

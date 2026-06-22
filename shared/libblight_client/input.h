@@ -2,10 +2,13 @@
 #include <libblight.h>
 #include <libblight_protocol/ringbuffer.h>
 
+#include <atomic>
+#include <memory>
 #include <poll.h>
 #include <string>
 #include <sys/epoll.h>
 #include <sys/select.h>
+#include <thread>
 
 namespace Input {
   enum InputType : uint8_t { Unknown = 0, Wacom, Touch, Buttons, Invalid };
@@ -37,20 +40,25 @@ namespace Input {
     DeviceState state;
     DeviceState minimums;
     DeviceState maximums;
+    std::shared_ptr<Blight::input_buffer_t> inputBuffer;
     std::shared_ptr<Blight::EvdevRingBuffer> ringBuffer;
     std::shared_ptr<std::thread> thread;
-    std::atomic<bool>* stop;
+    std::atomic<bool> stopRequested;
+    DeviceInfo();
+    DeviceInfo(
+      unsigned short device,
+      int fd,
+      InputType type,
+      std::shared_ptr<Blight::input_buffer_t> inputBuffer
+    );
     ~DeviceInfo();
+    void stop();
   };
   struct DeviceMap {
     unsigned short device;
     int flags;
   };
   bool init();
-  void readEvents(
-    unsigned short device,
-    std::shared_ptr<Blight::input_buffer_t> serverBuffer
-  );
   bool isInputFd(int fd);
   int open(const std::string& path, int flags);
   int close(int fd);

@@ -118,12 +118,13 @@ namespace Blight {
     disconnectCallbacks.push_back(callback);
   }
 
-  std::optional<input_event> Connection::read_event(unsigned short device) {
+  std::optional<input_event>
+  Connection::read_event(unsigned short device, bool blocking) {
     auto buf = open_input(device);
     if (buf == nullptr) {
       return {};
     }
-    return buf->read();
+    return buf->read(blocking);
   }
 
   message_ptr_t Connection::read() {

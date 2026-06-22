@@ -67,6 +67,7 @@ Blight::buf_t::~buf_t() {
 
 Blight::input_buffer_t::~input_buffer_t() {
   if (ringBuffer != nullptr) {
+    ringBuffer->interrupt();
     munmap(ringBuffer, sizeof(BlightProtocol::EvdevRingBuffer));
     ringBuffer = nullptr;
   }
@@ -77,11 +78,11 @@ Blight::input_buffer_t::~input_buffer_t() {
 }
 
 std::optional<struct input_event>
-Blight::input_buffer_t::read() {
+Blight::input_buffer_t::read(bool blocking) {
   if (ringBuffer == nullptr) {
     return {};
   }
-  return ringBuffer->take();
+  return blocking ? ringBuffer->wait_for_values() : ringBuffer->take();
 }
 
 std::optional<Blight::shared_buf_t>

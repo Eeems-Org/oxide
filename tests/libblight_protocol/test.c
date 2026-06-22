@@ -409,13 +409,13 @@ test_blight_event_from_buffer() {
   blight_input_buffer_t* buf = create_test_input_buffer();
   assert(buf != NULL);
   struct input_event* event = NULL;
-  int res = blight_event_from_buffer(buf, &event);
+  int res = blight_event_from_buffer(buf, &event, false);
   assert(res == 0);
   assert(event != NULL);
   assert(event->type == EV_KEY);
   assert(event->code == 42);
   assert(event->value == 1);
-  res = blight_event_from_buffer(buf, &event);
+  res = blight_event_from_buffer(buf, &event, false);
   assert(res == -EAGAIN);
   blight_event_free(event);
   blight_input_buffer_deref(buf);

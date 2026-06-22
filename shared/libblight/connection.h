@@ -95,9 +95,11 @@ namespace Blight {
     /*!
      * \brief Read an input event from an input event device buffer
      * \param device Input event device number
+     * \param blocking If this call should block until an event is available
      * \return The input event
      */
-    std::optional<input_event> read_event(unsigned short device);
+    std::optional<input_event>
+    read_event(unsigned short device, bool blocking = false);
     /*!
      * \brief Send a message to the display server
      * \param type Type of message

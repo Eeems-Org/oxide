@@ -61,8 +61,8 @@ namespace BlightProtocol {
     uint32_t h = head.load(std::memory_order_relaxed);
     uint32_t t = tail.load(std::memory_order_acquire);
     while (h - t >= size) {
-      if (interrupted.exchange(false)) {
-        return false; // One-shot interrupt consumed, flag auto-cleared
+      if (tail_interrupted.exchange(false)) {
+        return false;
       }
       if (!futex_wait(tail, t, timeout)) {
         if (timeout > 0) {
@@ -82,7 +82,9 @@ namespace BlightProtocol {
         overflow.store(1, std::memory_order_release);
         break;
       }
-      futex_wait(tail, t, 0); // Wait forever
+      // Do not handle interrupts, the producer is responsible for draining if
+      // allow_overflow==false
+      futex_wait(tail, t, 0);
       t = tail.load(std::memory_order_acquire);
     }
     return h;
@@ -107,8 +109,8 @@ namespace BlightProtocol {
     uint32_t t = tail.load(std::memory_order_relaxed);
     uint32_t h = head.load(std::memory_order_acquire);
     while (h == t) {
-      if (interrupted.exchange(false)) {
-        return {}; // One-shot interrupt consumed, flag auto-cleared
+      if (head_interrupted.exchange(false)) {
+        return {};
       }
       if (!futex_wait(head, h, timeout)) {
         return {}; // Timed out or EINTR
@@ -191,7 +193,8 @@ namespace BlightProtocol {
   }
 
   void RingBufferBase::interrupt() noexcept {
-    interrupted.store(true, std::memory_order_release);
+    head_interrupted.store(true, std::memory_order_release);
+    tail_interrupted.store(true, std::memory_order_release);
     futex_wake(head);
     futex_wake(tail);
   }

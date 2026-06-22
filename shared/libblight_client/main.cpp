@@ -73,7 +73,7 @@ namespace {
 #elif defined(__aarch64__)
       reinterpret_cast<void*>(uc->uc_mcontext.pc);
 #endif
-    constexpr int depth = 10;
+    constexpr int depth = 50;
     void* array[depth];
     size_t size = backtrace(array, depth);
     array[1] = caller_address;

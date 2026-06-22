@@ -100,6 +100,8 @@ Connection::~Connection() {
   }
   for (auto& [device, buf] : m_inputBuffers) {
     if (buf.buffer != nullptr) {
+      buf.buffer->interrupt();
+      buf.buffer->interrupt();
       munmap(buf.buffer, sizeof(Blight::EvdevRingBuffer));
       buf.buffer = nullptr;
     }
@@ -143,7 +145,7 @@ Connection::inputFd(unsigned short device) {
   if (!QFile::exists(QStringLiteral("/dev/input/event%1").arg(device))) {
     return -1;
   }
-  auto [fd, buffer] = Blight::EvdevRingBuffer::createSharedMemory();
+  auto [fd, buffer] = Blight::EvdevRingBuffer::createSharedMemory(true);
   if (fd < 0 || buffer == nullptr) {
     C_WARNING("Failed to create input buffer for event" << device)
     return -1;

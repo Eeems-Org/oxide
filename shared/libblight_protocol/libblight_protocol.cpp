@@ -647,13 +647,14 @@ blight_cast_to_surface_info_packet(blight_message_t* message) {
 int
 blight_event_from_buffer(
   blight_input_buffer_t* buf,
-  struct input_event** event
+  struct input_event** event,
+  bool blocking
 ) {
   if (buf == nullptr || buf->ringBuffer == nullptr) {
     return -EINVAL;
   }
-  auto rb = static_cast<EvdevRingBuffer*>(buf->ringBuffer);
-  auto maybe = rb->take();
+  auto ringBuffer = static_cast<EvdevRingBuffer*>(buf->ringBuffer);
+  auto maybe = blocking ? ringBuffer->wait_for_values() : ringBuffer->take();
   if (!maybe.has_value()) {
     return -EAGAIN;
   }
@@ -671,6 +672,7 @@ blight_input_buffer_deref(blight_input_buffer_t* buf) {
     return;
   }
   if (buf->ringBuffer != nullptr) {
+    static_cast<EvdevRingBuffer*>(buf->ringBuffer)->interrupt();
     munmap(buf->ringBuffer, sizeof(EvdevRingBuffer));
     buf->ringBuffer = nullptr;
   }

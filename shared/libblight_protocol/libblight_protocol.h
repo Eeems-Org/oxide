@@ -529,13 +529,15 @@ blight_cast_to_surface_info_packet(blight_message_t* message);
  *        input buffer
  * \param buf Input buffer to read from
  * \param event input_event pointer on success
+ * \param blocking If this call should block until an event is available
  * \return 0 on success
  * \sa blight_service_input_open
  */
 LIBBLIGHT_PROTOCOL_EXPORT int
 blight_event_from_buffer(
   blight_input_buffer_t* buf,
-  struct input_event** event
+  struct input_event** event,
+  bool blocking
 );
 /*!
  * \brief Free an input_event allocated by blight_event_from_buffer

@@ -35,14 +35,16 @@ namespace BlightProtocol {
     alignas(64) AtomicWord head;
     alignas(64) AtomicWord tail;
     alignas(64) AtomicWord overflow;
-    std::atomic<bool> interrupted;
+    std::atomic<bool> head_interrupted;
+    std::atomic<bool> tail_interrupted;
     bool allow_overflow;
 
     RingBufferBase(bool allow_overflow) noexcept
       : head{0}
       , tail{0}
       , overflow{0}
-      , interrupted{false}
+      , head_interrupted{false}
+      , tail_interrupted{false}
       , allow_overflow{allow_overflow} {}
 
     static bool
