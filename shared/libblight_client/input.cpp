@@ -564,9 +564,13 @@ namespace Input {
     CPU_SET(0, &cpuset);
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
     bool allow_power_button = Client::isPowerButtonEnabled();
-    bool fakeRM1 = Client::isFakeRM1Input();
     std::vector<input_event> pending;
+    device = Client::isFakeRM1Input() && deviceMap.contains(device)
+               ? deviceMap[device]
+               : device;
     auto& info = devices[device];
+    auto& ringBuffer = devices[device].ringBuffer;
+    auto& eventFd = devices[device].eventFd;
     while (!*info.stop) {
       if (inputBuffer->ringBuffer->overflowed()) {
         inputBuffer->ringBuffer->take();
@@ -574,9 +578,9 @@ namespace Input {
         syn.type = EV_SYN;
         syn.code = SYN_DROPPED;
         syn.value = 1;
-        info.ringBuffer->insert(syn);
+        ringBuffer->insert(syn);
         uint64_t val = 1;
-        Libc::write(info.eventFd, &val, sizeof(val));
+        Libc::write(eventFd, &val, sizeof(val));
         pending.clear();
       }
       auto maybe = inputBuffer->ringBuffer->wait_for_values();
@@ -589,14 +593,14 @@ namespace Input {
       ) {
         event.value = 0;
       }
-      if (!fakeRM1) {
-        info.ringBuffer->insert(event);
+      if (!Client::isFakeRM1Input()) {
+        ringBuffer->insert(event);
         uint64_t val = 1;
-        Libc::write(info.eventFd, &val, sizeof(val));
+        Libc::write(eventFd, &val, sizeof(val));
         continue;
       }
       pending.push_back(event);
-      if (event.type != EV_SYN || event.code != SYN_REPORT) {
+      if (!(event.type == EV_SYN && event.code == SYN_REPORT)) {
         continue;
       }
       switch (info.type) {
@@ -654,21 +658,22 @@ namespace Input {
                 break;
             }
           }
-          if (xEvent != nullptr || yEvent != nullptr) {
-            applyTransform(info, xEvent, yEvent);
-            _DEBUG(
-              "pen (%d,  %d) -> (%d, %d)",
-              info.state.x,
-              info.state.y,
-              xEvent == nullptr ? info.state.x : xEvent->value,
-              yEvent == nullptr ? info.state.y : yEvent->value
-            );
-            if (xEvent != nullptr) {
-              info.state.x = xEvent->value;
-            }
-            if (yEvent != nullptr) {
-              info.state.y = yEvent->value;
-            }
+          if (xEvent == nullptr && yEvent == nullptr) {
+            break;
+          }
+          applyTransform(info, xEvent, yEvent);
+          _DEBUG(
+            "pen (%d,  %d) -> (%d, %d)",
+            info.state.x,
+            info.state.y,
+            xEvent == nullptr ? info.state.x : xEvent->value,
+            yEvent == nullptr ? info.state.y : yEvent->value
+          );
+          if (xEvent != nullptr) {
+            info.state.x = xEvent->value;
+          }
+          if (yEvent != nullptr) {
+            info.state.y = yEvent->value;
           }
           break;
         }
@@ -752,27 +757,29 @@ namespace Input {
                 break;
             }
           }
-          if (xEvent != nullptr || yEvent != nullptr) {
-            applyTransform(info, xEvent, yEvent);
-            _DEBUG(
-              "touch (%d,  %d) -> (%d, %d)",
-              info.state.x,
-              info.state.y,
-              xEvent == nullptr ? info.state.x : xEvent->value,
-              yEvent == nullptr ? info.state.y : yEvent->value
-            );
-            if (xEvent != nullptr) {
-              info.state.x = xEvent->value;
-            }
-            if (yEvent != nullptr) {
-              info.state.y = yEvent->value;
-            }
+          if (xEvent == nullptr && yEvent == nullptr) {
+            break;
+          }
+          applyTransform(info, xEvent, yEvent);
+          _DEBUG(
+            "touch (%d,  %d) -> (%d, %d)",
+            info.state.x,
+            info.state.y,
+            xEvent == nullptr ? info.state.x : xEvent->value,
+            yEvent == nullptr ? info.state.y : yEvent->value
+          );
+          if (xEvent != nullptr) {
+            info.state.x = xEvent->value;
+          }
+          if (yEvent != nullptr) {
+            info.state.y = yEvent->value;
           }
           break;
         }
         default:
           break;
       }
+      uint64_t val = 1;
       for (auto& pendingEvent : pending) {
         if (
           pendingEvent.type == EV_ABS &&
@@ -783,9 +790,8 @@ namespace Input {
         ) {
           continue;
         }
-        info.ringBuffer->insert(pendingEvent);
-        uint64_t val = 1;
-        Libc::write(info.eventFd, &val, sizeof(val));
+        ringBuffer->insert(pendingEvent);
+        Libc::write(eventFd, &val, sizeof(val));
       }
       pending.clear();
     }
