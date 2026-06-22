@@ -571,16 +571,12 @@ namespace Input {
     auto& info = devices[device];
     auto& ringBuffer = devices[device].ringBuffer;
     auto& eventFd = devices[device].eventFd;
+    uint64_t eventFdVal = 1;
     while (!*info.stop) {
       if (inputBuffer->ringBuffer->overflowed()) {
         inputBuffer->ringBuffer->take();
-        input_event syn{};
-        syn.type = EV_SYN;
-        syn.code = SYN_DROPPED;
-        syn.value = 1;
-        ringBuffer->insert(syn);
-        uint64_t val = 1;
-        Libc::write(eventFd, &val, sizeof(val));
+        ringBuffer->insert({.type = EV_SYN, .code = SYN_DROPPED, value = 1});
+        Libc::write(eventFd, &eventFdVal, sizeof(eventFdVal));
         pending.clear();
       }
       auto maybe = inputBuffer->ringBuffer->wait_for_values();
@@ -595,8 +591,7 @@ namespace Input {
       }
       if (!Client::isFakeRM1Input()) {
         ringBuffer->insert(event);
-        uint64_t val = 1;
-        Libc::write(eventFd, &val, sizeof(val));
+        Libc::write(eventFd, &eventFdVal, sizeof(eventFdVal));
         continue;
       }
       pending.push_back(event);
@@ -779,7 +774,6 @@ namespace Input {
         default:
           break;
       }
-      uint64_t val = 1;
       for (auto& pendingEvent : pending) {
         if (
           pendingEvent.type == EV_ABS &&
@@ -791,7 +785,7 @@ namespace Input {
           continue;
         }
         ringBuffer->insert(pendingEvent);
-        Libc::write(eventFd, &val, sizeof(val));
+        Libc::write(eventFd, &eventFdVal, sizeof(eventFdVal));
       }
       pending.clear();
     }
