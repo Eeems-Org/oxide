@@ -12,18 +12,18 @@ struct _IO_FILE;
 typedef struct _IO_FILE FILE;
 
 struct linux_dirent {
-  unsigned long  d_ino;
-  unsigned long  d_off;
+  unsigned long d_ino;
+  unsigned long d_off;
   unsigned short d_reclen;
-  char           d_name[];
+  char d_name[];
 };
 
 struct linux_dirent64 {
-  uint64_t       d_ino;
-  int64_t        d_off;
+  uint64_t d_ino;
+  int64_t d_off;
   unsigned short d_reclen;
-  unsigned char  d_type;
-  char           d_name[];
+  unsigned char d_type;
+  char d_name[];
 };
 
 namespace Libc {

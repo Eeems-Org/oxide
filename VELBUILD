@@ -486,10 +486,10 @@ lockscreen_hook() {
 }
 
 launcherctl() {
-    pkgver=0.0.1
     pkgdesc="Manage your installed launcher"
     category="utilities"
     depends="
+    liboxide=$pkgver-r$pkgrel
     lockscreen_hook
     "
     package() {

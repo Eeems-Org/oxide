@@ -90,8 +90,7 @@ namespace Input {
   int restoreEpollfds(int epfd, struct epoll_event* events, int res);
   bool isDevInputDir(unsigned int fd);
   bool shouldHideEvent(const char* entryName);
-  int
-  compactDirents(void* inBuffer, int size, void* outBuffer, int offset);
+  int compactDirents(void* inBuffer, int size, void* outBuffer, int offset);
   template<typename DirEnt, typename F>
   int getdents(unsigned int fd, DirEnt* outBuffer, unsigned int count, F func) {
     if (!isDevInputDir(fd)) {
@@ -107,7 +106,8 @@ namespace Input {
       free(inBuffer);
       return size;
     }
-    int dstLength = compactDirents(inBuffer, size, outBuffer, offsetof(DirEnt, d_name));
+    int dstLength =
+      compactDirents(inBuffer, size, outBuffer, offsetof(DirEnt, d_name));
     free(inBuffer);
     return dstLength;
   }
