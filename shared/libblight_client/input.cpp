@@ -317,13 +317,13 @@ namespace Input {
         touchTransform = {
           .invertX = false, .invertY = false, .rotation = 180.0f
         };
-        penTransform = {.invertX = false, .invertY = false, .rotation = 0.0f};
+        penTransform = {.invertX = false, .invertY = false, .rotation = 90.0f};
         break;
       case Client::DeviceType::RMPPURE:
         touchTransform = {
           .invertX = false, .invertY = false, .rotation = 180.0f
         };
-        penTransform = {.invertX = false, .invertY = false, .rotation = 0.0f};
+        penTransform = {.invertX = false, .invertY = false, .rotation = 90.0f};
         break;
       default:
         _WARN("Unknown device type, unable to force rM1 input")
