@@ -91,7 +91,7 @@ namespace Input {
     stopRequested = true;
     if (ringBuffer != nullptr) {
       _DEBUG("Input[%d] Interrupting buffer", device);
-      ringBuffer->interrupt();
+      inputBuffer->ringBuffer->interrupt();
     }
     if (thread != nullptr && thread->joinable()) {
       _DEBUG("Input[%d] Waiting for thread", device);
