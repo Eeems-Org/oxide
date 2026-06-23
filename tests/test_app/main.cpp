@@ -28,7 +28,7 @@ main(int argc, char* argv[]) {
   qputenv("QMLSCENE_DEVICE", "software");
   qputenv("QT_QUICK_BACKEND", "software");
   qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
-  QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
+  QCoreApplication::addLibraryPath("/home/root/.vellum/usr/lib/plugins");
   QGuiApplication app(argc, argv);
   sentry_init("test_app", argv);
   app.setOrganizationName("Eeems");
@@ -263,8 +263,7 @@ main(int argc, char* argv[]) {
   auto notification = static_cast<QQuickWindow*>(engine.rootObjects().last());
   notification->setProperty("text", "Testing");
   notification->setProperty(
-    "image",
-    QUrl::fromLocalFile("/opt/usr/share/icons/oxide/702x702/splash/oxide.png")
+    "image", QUrl::fromLocalFile(SPLASH_INSTALL_PATH "/oxide.png")
   );
   notification->setProperty("notificationVisible", true);
   notification->raise();

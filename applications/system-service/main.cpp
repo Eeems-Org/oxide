@@ -209,7 +209,7 @@ main(int argc, char* argv[]) {
     QPainter painter(&image);
     painter.setPen(Qt::white);
     painter.fillRect(image.rect(), Qt::white);
-    QString path("/opt/usr/share/icons/oxide/702x702/splash/oxide.png");
+    QString path(SPLASH_INSTALL_PATH "/oxide.png");
     if (QFileInfo(path).exists()) {
       auto splash = QImage(path).scaled(
         splashSize, Qt::KeepAspectRatio, Qt::SmoothTransformation

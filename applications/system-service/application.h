@@ -38,8 +38,8 @@ class Notification;
 #include "../../shared/liboxide/meta.h"
 
 #define DEFAULT_PATH                                                           \
-  "/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/"   \
-  "sbin:/usr/sbin:/sbin"
+  "/home/root/.vellum/bin:/opt/bin:/opt/sbin:/opt/usr/bin:/usr/local/bin:"     \
+  "/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
 
 class ApplicationProcess : public QProcess {
   Q_OBJECT

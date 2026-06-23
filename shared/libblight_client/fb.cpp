@@ -75,7 +75,7 @@ namespace FB {
       Libc::setenv("QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS", "", 1);
       Libc::setenv("QT_QPA_EVDEV_MOUSE_PARAMETERS", "", 1);
       Libc::setenv("QT_QPA_EVDEV_KEYBOARD_PARAMETERS", "", 1);
-      Libc::setenv("QT_PLUGIN_PATH", "/opt/usr/lib/plugins", 1);
+      Libc::setenv("QT_PLUGIN_PATH", "/home/root/.vellum/usr/lib/plugins", 1);
     }
     if (Client::isFbEnabled()) {
       FB::buffer = Blight::buf_t::new_ptr();

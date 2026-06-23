@@ -24,7 +24,7 @@ QSet<QString> booleanSettings{
 QList<QString> configDirectoryPaths =
   {"/opt/etc/draft", "/etc/draft", "/home/root/.config/draft"};
 QList<QString> configFileDirectoryPaths =
-  {"/opt/etc", "/etc", "/home/root/.config"};
+  {"/opt/etc", "/etc", "/home/root/.config", "/home/root/.vellum/etc"};
 
 QFile*
 getConfigFile() {
