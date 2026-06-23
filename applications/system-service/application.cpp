@@ -849,7 +849,7 @@ Application::updateEnvironment() {
   env.insert("PATH", envPath.join(":"));
   auto preload = env.value("LD_PRELOAD", "").split(":");
   if (!flags().contains("nopreload") && !flags().contains("nopreload.sysfs")) {
-    QString sysfs_preload("/opt/lib/libsysfs_preload.so");
+    QString sysfs_preload("/home/root/.vellum/lib/libsysfs_preload.so");
     if (!preload.contains(sysfs_preload)) {
       preload.append(sysfs_preload);
     }
@@ -857,7 +857,7 @@ Application::updateEnvironment() {
   if (
     !flags().contains("nopreload") && !flags().contains("nopreload.compositor")
   ) {
-    QString blight_client("/opt/lib/libblight_client.so");
+    QString blight_client("/home/root/.vellum/lib/libblight_client.so");
     if (!preload.contains(blight_client)) {
       preload.append(blight_client);
     }
