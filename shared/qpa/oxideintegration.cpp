@@ -97,11 +97,16 @@ OxideIntegration::initialize() {
     qDebug() << "OxideIntegration::initialize";
   }
   QQuickWindow::setSceneGraphBackend("software");
+  if (
+    !
 #ifdef EPAPER
-  Blight::connect(true);
+    Blight::connect(true)
 #else
-  Blight::connect(false);
+    Blight::connect(false)
 #endif
+  ) {
+    qFatal("Could not connect to dbus: %s", std::strerror(errno));
+  }
   auto connection = Blight::connection();
   if (connection == nullptr) {
     qFatal("Could not connect to display server: %s", std::strerror(errno));

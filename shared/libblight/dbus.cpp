@@ -58,6 +58,7 @@ namespace Blight {
       res = sd_bus_default_user(&m_bus);
     }
     if (res < 0) {
+      errno = -res;
       throw DBusException("Could not connect to bus");
     }
   }

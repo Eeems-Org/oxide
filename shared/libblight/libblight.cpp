@@ -1,5 +1,6 @@
 #include "libblight.h"
 
+#include <cerrno>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
