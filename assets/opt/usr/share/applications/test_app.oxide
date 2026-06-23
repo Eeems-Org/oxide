@@ -2,7 +2,7 @@
     "displayName": "Test application",
     "description": "Oxide Test Application",
     "bin": "/home/root/.vellum/bin/test_app",
-    "flags": ["hidden", "nopreload"],
+    "flags": ["nopreload"],
     "type": "foreground",
     "permissions": ["apps", "power", "system", "wifi"]
 }
