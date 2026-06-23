@@ -14,12 +14,14 @@
 #include <libblight/debug.h>
 #include <linux/input-event-codes.h>
 #include <linux/input.h>
+#include <linux/prctl.h>
 #include <map>
 #include <mutex>
 #include <stdexcept>
 #include <sys/eventfd.h>
 #include <sys/ioctl.h>
 #include <sys/poll.h>
+#include <sys/prctl.h>
 #include <sys/select.h>
 #include <vector>
 

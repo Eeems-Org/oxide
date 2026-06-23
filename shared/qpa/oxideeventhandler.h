@@ -11,9 +11,11 @@
 #include <QString>
 
 #include <atomic>
+#include <linux/prctl.h>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <sys/prctl.h>
 #include <thread>
 #include <vector>
 

@@ -247,6 +247,9 @@ DeviceData::DeviceData(
   }
   ::close(fd);
   thread = std::make_unique<std::thread>([this, handler, device]() {
+    char name[16];
+    snprintf(name, sizeof(name), "Input[%u]", device);
+    prctl(PR_SET_NAME, name, 0, 0, 0);
     buffer = Blight::open_input(device);
     if (buffer == nullptr) {
       O_WARNING("Failed to open blight input buffer for device" << device);
