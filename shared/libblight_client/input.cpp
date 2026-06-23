@@ -56,7 +56,6 @@ namespace Input {
   std::map<int, DeviceMap> deviceDescriptors{};
   std::map<unsigned short, DeviceInfo*> devices{};
   std::map<int, std::map<int, struct epoll_event>> epollMap{};
-  std::map<unsigned short, unsigned short> deviceMap{};
   std::mutex mutex{};
   Transform penTransform;
   Transform touchTransform;
@@ -89,7 +88,7 @@ namespace Input {
   void DeviceInfo::stop() {
     _DEBUG("Input[%d] Stopping", device);
     stopRequested = true;
-    if (ringBuffer != nullptr) {
+    if (inputBuffer != nullptr) {
       _DEBUG("Input[%d] Interrupting buffer", device);
       inputBuffer->ringBuffer->interrupt();
     }
@@ -299,28 +298,32 @@ namespace Input {
       _DEBUG("Not faking rM1 input, continuing");
       return true;
     }
-    penTransform = {.invertX = false, .invertY = false, .rotation = 0.0f};
     switch (Client::deviceType) {
       case Client::DeviceType::RM1:
         touchTransform = {.invertX = false, .invertY = false, .rotation = 0.0f};
+        penTransform = {.invertX = false, .invertY = false, .rotation = 0.0f};
         break;
       case Client::DeviceType::RM2:
         touchTransform = {.invertX = true, .invertY = false, .rotation = 0.0f};
+        penTransform = {.invertX = false, .invertY = false, .rotation = 0.0f};
         break;
       case Client::DeviceType::RMPP:
         touchTransform = {
           .invertX = false, .invertY = false, .rotation = 180.0f
         };
+        penTransform = {.invertX = false, .invertY = false, .rotation = 90.0f};
         break;
       case Client::DeviceType::RMPPM:
         touchTransform = {
           .invertX = false, .invertY = false, .rotation = 180.0f
         };
+        penTransform = {.invertX = false, .invertY = false, .rotation = 0.0f};
         break;
       case Client::DeviceType::RMPPURE:
         touchTransform = {
           .invertX = false, .invertY = false, .rotation = 180.0f
         };
+        penTransform = {.invertX = false, .invertY = false, .rotation = 0.0f};
         break;
       default:
         _WARN("Unknown device type, unable to force rM1 input")
@@ -390,7 +393,6 @@ namespace Input {
         _WARN("Resolved event device number out of range: %s", name.c_str());
         continue;
       }
-      deviceMap[actualDevice] = device;
       _DEBUG(
         "event%d -> event%d: %s", actualDevice, device, typeName(type).c_str()
       );
@@ -695,12 +697,6 @@ namespace Input {
             xEvent == nullptr ? state.x : xEvent->value,
             yEvent == nullptr ? state.y : yEvent->value
           );
-          if (xEvent != nullptr) {
-            state.x = xEvent->value;
-          }
-          if (yEvent != nullptr) {
-            state.y = yEvent->value;
-          }
           break;
         }
         case Touch: {
@@ -794,12 +790,6 @@ namespace Input {
             xEvent == nullptr ? state.x : xEvent->value,
             yEvent == nullptr ? state.y : yEvent->value
           );
-          if (xEvent != nullptr) {
-            state.x = xEvent->value;
-          }
-          if (yEvent != nullptr) {
-            state.y = yEvent->value;
-          }
           break;
         }
         default:
@@ -842,6 +832,10 @@ namespace Input {
       errno = EIO;
       return -1;
     }
+    if (Client::isFakeRM1Input() && device > 2) {
+      errno = ENOENT;
+      return -1;
+    }
     int fd = Libc::open(path.c_str(), O_RDONLY);
     if (fd < 0) {
       return -1;
@@ -859,25 +853,23 @@ namespace Input {
         return -1;
       }
       devices[device] = &info;
-      if (!Client::isFakeRM1Input()) {
-        getAbsInfo(fd, info);
-        _DEBUG("event%d: %s", device, typeName(info.type).c_str());
-        _DEBUG("x:  min=%d, max=%d", info.minimums.x, info.maximums.x);
-        _DEBUG("y:  min=%d, max=%d", info.minimums.y, info.maximums.y);
-        _DEBUG(
-          "pressure:  min=%d, max=%d",
-          info.minimums.pressure,
-          info.maximums.pressure
-        );
-        _DEBUG(
-          "distance:  min=%d, max=%d",
-          info.minimums.distance,
-          info.maximums.distance
-        );
-      }
+      getAbsInfo(fd, info);
+      _DEBUG("event%d: %s", device, typeName(info.type).c_str());
+      _DEBUG("x:  min=%d, max=%d", info.minimums.x, info.maximums.x);
+      _DEBUG("y:  min=%d, max=%d", info.minimums.y, info.maximums.y);
+      _DEBUG(
+        "pressure:  min=%d, max=%d",
+        info.minimums.pressure,
+        info.maximums.pressure
+      );
+      _DEBUG(
+        "distance:  min=%d, max=%d",
+        info.minimums.distance,
+        info.maximums.distance
+      );
     }
     auto& info = *devices.at(device);
-    if (!Client::isFakeRM1Input() && info.ringBuffer == nullptr) {
+    if (info.ringBuffer == nullptr) {
       info.ringBuffer = std::make_shared<Blight::EvdevRingBuffer>(true);
     }
     if (info.eventFd == -1) {
@@ -888,7 +880,7 @@ namespace Input {
       }
       info.eventFd = eventFd;
     }
-    if (!Client::isFakeRM1Input() && info.thread == nullptr) {
+    if (info.thread == nullptr) {
       info.stopRequested = false;
       info.thread = std::make_shared<std::thread>(readEvents, device);
     }
@@ -944,6 +936,8 @@ namespace Input {
     return 0;
   }
 
+#define IS_IOCTL(expected) expected == (request & ~(0x3FFFUL << 16))
+
   int ioctlv(int fd, unsigned long request, char* ptr) {
     switch (request) {
       case EVIOCGRAB:
@@ -973,7 +967,7 @@ namespace Input {
       }
       fd = devices.at(device)->fd;
     }
-    if (EVIOCGNAME(0) == (request & ~(0x3FFFUL << 16))) {
+    if (IS_IOCTL(EVIOCGNAME(0))) {
       _DEBUG("input ioctl %d EVIOCGNAME", fd);
       size_t bufSize = (request >> 16) & 0x3FFF;
       const char* name = nullptr;
@@ -1002,20 +996,18 @@ namespace Input {
     }
     switch (device) {
       case 0:
-        if (EVIOCGBIT(0, 0) == (request & ~(0x3FFFUL << 16))) {
+        if (IS_IOCTL(EVIOCGBIT(0, 0))) {
           _DEBUG("input ioctl /dev/input/event0 EVIOCGBIT");
-          size_t len = (request >> 16) & 0x3FFF;
-          memset(ptr, 0, len);
+          memset(ptr, 0, NBITS(EV_MAX));
           auto bits = reinterpret_cast<unsigned long*>(ptr);
           bits[LONG(EV_ABS)] |= (1UL << OFF(EV_ABS));
           bits[LONG(EV_KEY)] |= (1UL << OFF(EV_KEY));
           bits[LONG(EV_SYN)] |= (1UL << OFF(EV_SYN));
           return 0;
         }
-        if (EVIOCGBIT(EV_ABS, 0) == (request & ~(0x3FFFUL << 16))) {
+        if (IS_IOCTL(EVIOCGBIT(EV_ABS, 0))) {
           _DEBUG("input ioctl /dev/input/event0 EVIOCGBIT(EV_ABS)");
-          size_t len = (request >> 16) & 0x3FFF;
-          memset(ptr, 0, len);
+          memset(ptr, 0, NBITS(ABS_MAX));
           auto bits = reinterpret_cast<unsigned long*>(ptr);
           bits[LONG(ABS_X)] |= (1UL << OFF(ABS_X));
           bits[LONG(ABS_Y)] |= (1UL << OFF(ABS_Y));
@@ -1025,10 +1017,9 @@ namespace Input {
           bits[LONG(ABS_TILT_Y)] |= (1UL << OFF(ABS_TILT_Y));
           return 0;
         }
-        if (EVIOCGBIT(EV_KEY, 0) == (request & ~(0x3FFFUL << 16))) {
+        if (IS_IOCTL(EVIOCGBIT(EV_KEY, 0))) {
           _DEBUG("input ioctl /dev/input/event0 EVIOCGBIT(EV_KEY)");
-          size_t len = (request >> 16) & 0x3FFF;
-          memset(ptr, 0, len);
+          memset(ptr, 0, NBITS(KEY_MAX));
           auto bits = reinterpret_cast<unsigned long*>(ptr);
           bits[LONG(BTN_TOOL_PEN)] |= (1UL << OFF(BTN_TOOL_PEN));
           bits[LONG(BTN_TOOL_RUBBER)] |= (1UL << OFF(BTN_TOOL_RUBBER));
@@ -1062,19 +1053,17 @@ namespace Input {
         }
         break;
       case 1:
-        if (EVIOCGBIT(0, 0) == (request & ~(0x3FFFUL << 16))) {
-          _DEBUG("input ioctl /dev/input/event1 EVIOCGBIT");
-          size_t len = (request >> 16) & 0x3FFF;
-          memset(ptr, 0, len);
+        if (IS_IOCTL(EVIOCGBIT(0, 0))) {
+          _DEBUG("input ioctl /dev/input/event1 EVIOCGBIT(0)");
+          memset(ptr, 0, NBITS(EV_MAX));
           auto bits = reinterpret_cast<unsigned long*>(ptr);
           bits[LONG(EV_KEY)] |= (1UL << OFF(EV_KEY));
           bits[LONG(EV_SYN)] |= (1UL << OFF(EV_SYN));
           return 0;
         }
-        if (EVIOCGBIT(EV_KEY, 0) == (request & ~(0x3FFFUL << 16))) {
+        if (IS_IOCTL(EVIOCGBIT(EV_KEY, 0))) {
           _DEBUG("input ioctl /dev/input/event1 EVIOCGBIT(EV_KEY)");
-          size_t len = (request >> 16) & 0x3FFF;
-          memset(ptr, 0, len);
+          memset(ptr, 0, NBITS(KEY_MAX));
           auto bits = reinterpret_cast<unsigned long*>(ptr);
           bits[LONG(KEY_POWER)] |= (1UL << OFF(KEY_POWER));
           bits[LONG(KEY_LEFT)] |= (1UL << OFF(KEY_LEFT));
@@ -1086,10 +1075,9 @@ namespace Input {
         _DEBUG("input ioctl /dev/input/event1 %lu", request);
         return Libc::ioctl(fd, request, ptr);
       case 2:
-        if (EVIOCGBIT(0, 0) == (request & ~(0x3FFFUL << 16))) {
+        if (IS_IOCTL(EVIOCGBIT(0, 0))) {
           _DEBUG("input ioctl /dev/input/event2 EVIOCGBIT");
-          size_t len = (request >> 16) & 0x3FFF;
-          memset(ptr, 0, len);
+          memset(ptr, 0, NBITS(EV_MAX));
           auto bits = reinterpret_cast<unsigned long*>(ptr);
           bits[LONG(EV_ABS)] |= (1UL << OFF(EV_ABS));
           bits[LONG(EV_REL)] |= (1UL << OFF(EV_REL));
@@ -1097,12 +1085,11 @@ namespace Input {
           bits[LONG(EV_SYN)] |= (1UL << OFF(EV_SYN));
           return 0;
         }
-        if (EVIOCGBIT(EV_ABS, 0) == (request & ~(0x3FFFUL << 16))) {
+        if (IS_IOCTL(EVIOCGBIT(EV_ABS, 0))) {
           _DEBUG("input ioctl /dev/input/event2 EVIOCGBIT(EV_ABS)");
-          size_t len = (request >> 16) & 0x3FFF;
-          memset(ptr, 0, len);
+          memset(ptr, 0, NBITS(ABS_MAX));
           auto bits = reinterpret_cast<unsigned long*>(ptr);
-          bits[LONG(ABS_MT_DISTANCE)] |= (1UL << OFF(ABS_MT_DISTANCE));
+          bits[LONG(ABS_DISTANCE)] |= (1UL << OFF(ABS_DISTANCE));
           bits[LONG(ABS_MT_SLOT)] |= (1UL << OFF(ABS_MT_SLOT));
           bits[LONG(ABS_MT_TOUCH_MAJOR)] |= (1UL << OFF(ABS_MT_TOUCH_MAJOR));
           bits[LONG(ABS_MT_TOUCH_MINOR)] |= (1UL << OFF(ABS_MT_TOUCH_MINOR));
@@ -1114,16 +1101,19 @@ namespace Input {
           bits[LONG(ABS_MT_PRESSURE)] |= (1UL << OFF(ABS_MT_PRESSURE));
           return 0;
         }
-        if (
-          EVIOCGBIT(EV_KEY, 0) == (request & ~(0x3FFFUL << 16)) ||
-          EVIOCGBIT(EV_REL, 0) == (request & ~(0x3FFFUL << 16)) ||
-          EVIOCGBIT(EV_SYN, 0) == (request & ~(0x3FFFUL << 16))
-        ) {
-          _DEBUG(
-            "input ioctl /dev/input/event2 EVIOCGBIT(EV_KEY|EV_REL|EV_SYN)"
-          );
-          size_t len = (request >> 16) & 0x3FFF;
-          memset(ptr, 0, len);
+        if (IS_IOCTL(EVIOCGBIT(EV_KEY, 0))) {
+          _DEBUG("input ioctl /dev/input/event2 EVIOCGBIT(EV_KEY)");
+          memset(ptr, 0, NBITS(KEY_MAX));
+          return 0;
+        }
+        if (IS_IOCTL(EVIOCGBIT(EV_REL, 0))) {
+          _DEBUG("input ioctl /dev/input/event2 EVIOCGBIT(EV_REL)");
+          memset(ptr, 0, NBITS(REL_MAX));
+          return 0;
+        }
+        if (IS_IOCTL(EVIOCGBIT(EV_SYN, 0))) {
+          _DEBUG("input ioctl /dev/input/event2 EVIOCGBIT(EV_SYN)");
+          memset(ptr, 0, NBITS(SYN_MAX));
           return 0;
         }
         switch (request) {
@@ -1140,8 +1130,8 @@ namespace Input {
           case EVIOCGABS(ABS_MT_PRESSURE):
             _DEBUG("input ioctl /dev/input/event2 EVIOCGABS(ABS_MT_PRESSURE)");
             return rm1AbsInfo(fd, request, ptr, 0, RM1_TOUCH_PRESSURE);
-          case EVIOCGABS(ABS_MT_DISTANCE):
-            _DEBUG("input ioctl /dev/input/event2 EVIOCGABS(ABS_MT_DISTANCE)");
+          case EVIOCGABS(ABS_DISTANCE):
+            _DEBUG("input ioctl /dev/input/event2 EVIOCGABS(ABS_DISTANCE)");
             return rm1AbsInfo(fd, request, ptr, 0, RM1_TOUCH_DISTANCE);
           case EVIOCGABS(ABS_MT_ORIENTATION):
             _DEBUG(
@@ -1156,8 +1146,57 @@ namespace Input {
         }
         break;
       default:
-        _DEBUG("input ioctl /dev/input/event%d %lu", device, request);
-        return 0;
+        if (IS_IOCTL(EVIOCGBIT(0, 0))) {
+          _DEBUG(
+            "input ioctl /dev/input/event%d "
+            "EVIOCGBIT(0)",
+            device
+          );
+          memset(ptr, 0, NBITS(EV_MAX));
+          return 0;
+        }
+        if (IS_IOCTL(EVIOCGBIT(EV_ABS, 0))) {
+          _DEBUG(
+            "input ioctl /dev/input/event%d "
+            "EVIOCGBIT(EV_ABS)",
+            device
+          );
+          memset(ptr, 0, NBITS(ABS_MAX));
+          return 0;
+        }
+        if (IS_IOCTL(EVIOCGBIT(EV_KEY, 0))) {
+          _DEBUG(
+            "input ioctl /dev/input/event%d "
+            "EVIOCGBIT(EV_KEY)",
+            device
+          );
+          memset(ptr, 0, NBITS(KEY_MAX));
+          return 0;
+        }
+        if (IS_IOCTL(EVIOCGBIT(EV_REL, 0))) {
+          _DEBUG(
+            "input ioctl /dev/input/event%d "
+            "EVIOCGBIT(EV_REL)",
+            device
+          );
+          memset(ptr, 0, NBITS(REL_MAX));
+          return 0;
+        }
+        if (IS_IOCTL(EVIOCGBIT(EV_SYN, 0))) {
+          _DEBUG(
+            "input ioctl /dev/input/event%d "
+            "EVIOCGBIT(EV_SYN)",
+            device
+          );
+          memset(ptr, 0, NBITS(SYN_MAX));
+          return 0;
+        }
+        if (IS_IOCTL(EVIOCGPROP(0))) {
+          _DEBUG("input ioctl /dev/input/event%d EVIOCGPROP", device);
+          memset(ptr, 0, NBITS(INPUT_PROP_MAX));
+          return 0;
+        }
+        break;
     }
     _DEBUG("input ioctl /dev/input/event%d %lu", device, request);
     return Libc::ioctl(fd, request, ptr);
@@ -1178,6 +1217,11 @@ namespace Input {
       device = info.device;
       flags = info.flags;
     }
+    // TODO only implement after blocking getdents and getdents64 reults
+    // if (Client::isFakeRM1Input() && device > 2 && flags & O_NONBLOCK) {
+    //   errno = EAGAIN;
+    //   return -1;
+    // }
     auto* events = static_cast<input_event*>(buf);
     size_t count = 0;
     auto& info = *devices.at(device);
