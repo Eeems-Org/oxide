@@ -138,19 +138,23 @@ namespace Libc {
     (FILE *
      (*)(const char* path, const char* mode)) dlsym(RTLD_NEXT, "fopen64");
 
+  int (*getdents)(unsigned int, struct dirent*, unsigned int) = (int (*)(
+    unsigned int,
+    struct dirent*,
+    unsigned int
+  ))dlsym(RTLD_NEXT, "getdents");
+
   ssize_t (*getdents64)(int, void*, size_t) =
     (ssize_t (*)(int, void*, size_t))dlsym(RTLD_NEXT, "getdents64");
 
-  int (*getdents)(unsigned int, struct linux_dirent*, unsigned int) = (int (*)(
-    unsigned int,
-    struct linux_dirent*,
-    unsigned int
-  ))dlsym(RTLD_NEXT, "getdents");
   DIR* (*opendir)(const char*) =
     (DIR * (*)(const char*)) dlsym(RTLD_NEXT, "opendir");
+
   struct dirent* (*readdir)(DIR*) =
     (struct dirent * (*)(DIR*)) dlsym(RTLD_NEXT, "readdir");
+
   struct dirent64* (*readdir64)(DIR*) =
     (struct dirent64 * (*)(DIR*)) dlsym(RTLD_NEXT, "readdir64");
+
   int (*closedir)(DIR*) = (int (*)(DIR*))dlsym(RTLD_NEXT, "closedir");
 }

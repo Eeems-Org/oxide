@@ -13,9 +13,6 @@
 #include <sys/select.h>
 #include <thread>
 
-struct linux_dirent;
-struct linux_dirent64;
-
 namespace Input {
   enum InputType : uint8_t { Unknown = 0, Wacom, Touch, Buttons, Invalid };
   struct MinMax {

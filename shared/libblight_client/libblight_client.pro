@@ -15,7 +15,8 @@ HEADERS += \
     libc.h \
     qt.h \
     state.h \
-    fopen.h
+    fopen.h \
+    getdents.h
 
 SOURCES += \
     drm.cpp \
@@ -25,7 +26,8 @@ SOURCES += \
     main.cpp \
     qt.cpp \
     state.cpp \
-    fopen.cpp
+    fopen.cpp \
+    getdents.cpp
 
 LIBS += -lrt -ldl -Wl,--exclude-libs,ALL
 PKGCONFIG += libsystemd

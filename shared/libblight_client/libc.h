@@ -11,21 +11,6 @@
 struct _IO_FILE;
 typedef struct _IO_FILE FILE;
 
-struct linux_dirent {
-  unsigned long d_ino;
-  unsigned long d_off;
-  unsigned short d_reclen;
-  char d_name[];
-};
-
-struct linux_dirent64 {
-  uint64_t d_ino;
-  int64_t d_off;
-  unsigned short d_reclen;
-  unsigned char d_type;
-  char d_name[];
-};
-
 namespace Libc {
   extern sighandler_t (*signal)(int, sighandler_t);
   extern int (*sigaction)(int, const struct sigaction*, struct sigaction*);
@@ -77,8 +62,8 @@ namespace Libc {
   extern int (*system)(const char*);
   extern FILE* (*fopen)(const char* path, const char* mode);
   extern FILE* (*fopen64)(const char* path, const char* mode);
+  extern int (*getdents)(unsigned int, struct dirent*, unsigned int);
   extern ssize_t (*getdents64)(int, void*, size_t);
-  extern int (*getdents)(unsigned int, struct linux_dirent*, unsigned int);
   extern DIR* (*opendir)(const char*);
   extern struct dirent* (*readdir)(DIR*);
   extern struct dirent64* (*readdir64)(DIR*);

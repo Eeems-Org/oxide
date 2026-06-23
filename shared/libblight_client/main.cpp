@@ -629,56 +629,6 @@ system(const char* command) {
   return Libc::system(command);
 }
 
-__attribute__((visibility("default"))) ssize_t
-getdents64(int fd, void* dirp, size_t count) {
-  if (!Client::INITIALIZED || !Client::isFakeRM1Input()) {
-    return Libc::getdents64(fd, dirp, count);
-  }
-  return Input::getdents<struct linux_dirent64>(
-    fd, static_cast<struct linux_dirent64*>(dirp), count, Libc::getdents64
-  );
-}
-
-__attribute__((visibility("default"))) int
-getdents(unsigned int fd, struct linux_dirent* dirp, unsigned int count) {
-  if (!Client::INITIALIZED || !Client::isFakeRM1Input()) {
-    return Libc::getdents(fd, dirp, count);
-  }
-  return Input::getdents(fd, dirp, count, Libc::getdents);
-}
-
-__attribute__((visibility("default"))) struct dirent*
-readdir(DIR* dirp) {
-  if (!Client::INITIALIZED || !Client::isFakeRM1Input()) {
-    return Libc::readdir(dirp);
-  }
-  while (true) {
-    struct dirent* entry = Libc::readdir(dirp);
-    if (entry == nullptr) {
-      return nullptr;
-    }
-    if (!Input::shouldHideEvent(entry->d_name)) {
-      return entry;
-    }
-  }
-}
-
-__attribute__((visibility("default"))) struct dirent64*
-readdir64(DIR* dirp) {
-  if (!Client::INITIALIZED || !Client::isFakeRM1Input()) {
-    return Libc::readdir64(dirp);
-  }
-  while (true) {
-    struct dirent64* entry = Libc::readdir64(dirp);
-    if (entry == nullptr) {
-      return nullptr;
-    }
-    if (!Input::shouldHideEvent(entry->d_name)) {
-      return entry;
-    }
-  }
-}
-
 #ifdef DEBUG
 __attribute__((visibility("default"))) sighandler_t
 signal(int signum, sighandler_t handler) {
