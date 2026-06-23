@@ -179,6 +179,7 @@ namespace Blight {
     );
 
   private:
+    bool use_system;
     sd_bus* m_bus;
   };
 } // namespace Blight

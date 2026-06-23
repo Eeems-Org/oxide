@@ -11,7 +11,7 @@
 #include "meta.h"
 
 namespace Blight {
-  DBus* dbus = nullptr;
+  thread_local DBus* dbus = nullptr;
 
   int frameBuffer() {
     if (!exists()) {

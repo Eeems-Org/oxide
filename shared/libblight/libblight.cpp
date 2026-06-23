@@ -13,6 +13,8 @@
 #include "system.h"
 #include "types.h"
 
+static bool connect_use_sytem = true;
+
 namespace Blight {
   std::optional<clipboard_t> getClipboard(const std::string& name) {
     if (!exists()) {
@@ -51,6 +53,7 @@ namespace Blight {
     if (dbus != nullptr) {
       return true;
     }
+    connect_use_sytem = use_system;
     _DEBUG("[Blight::connect(%s)]", use_system ? "true" : "false");
     try {
       dbus = new DBus(use_system);
@@ -62,7 +65,7 @@ namespace Blight {
   }
 
   bool exists() {
-    return connect() && dbus->has_service(BLIGHT_SERVICE);
+    return connect(connect_use_sytem) && dbus->has_service(BLIGHT_SERVICE);
   }
 
   Connection* connection() {

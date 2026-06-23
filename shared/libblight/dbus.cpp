@@ -50,12 +50,13 @@ namespace Blight {
     : std::runtime_error(message.c_str()) {}
 
   DBus::DBus(bool use_system)
-    : m_bus(nullptr) {
+    : use_system{use_system}
+    , m_bus(nullptr) {
     int res;
     if (use_system) {
-      res = sd_bus_default_system(&m_bus);
+      res = sd_bus_open_system(&m_bus);
     } else {
-      res = sd_bus_default_user(&m_bus);
+      res = sd_bus_open_user(&m_bus);
     }
     if (res < 0) {
       errno = -res;

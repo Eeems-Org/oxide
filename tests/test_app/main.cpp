@@ -79,7 +79,6 @@ main(int argc, char* argv[]) {
       }
     });
     O_DEBUG("Connection socket descriptor:" << connection->handle());
-    O_DEBUG("Input socket descriptor:" << connection->input_handle());
     QRect geometry(0, 0, 100, 100);
     QImage blankImage(geometry.size(), QImage::Format_RGB16);
     blankImage.fill(Qt::black);

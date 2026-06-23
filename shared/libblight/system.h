@@ -17,7 +17,7 @@
  */
 namespace Blight {
 #if defined(LIBBLIGHT_LIBRARY)
-  [[maybe_unused]] extern DBus* dbus;
+  [[maybe_unused]] extern thread_local DBus* dbus;
 #endif
   /*!
    * \brief Get the file descriptor of the primary framebuffer
