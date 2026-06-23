@@ -106,10 +106,18 @@ namespace FB {
     }
   }
   int send_update(mxcfb_update_data* update) {
-    _DEBUG("%s", "ioctl /dev/fb0 MXCFB_SEND_UPDATE")
     Blight::ClockWatch cw;
     ensure_surface();
     auto region = update->update_region;
+    _DEBUG(
+      "ioctl /dev/fb0 MXCFB_SEND_UPDATE (%d,%d) %dx%d %d %d",
+      region.left,
+      region.top,
+      region.width,
+      region.height,
+      update->waveform_mode,
+      update->update_mode
+    );
     auto maybe = repaint(
       region.left,
       region.top,
@@ -661,8 +669,18 @@ namespace FB {
     bool wait
   ) {
     ensure_surface();
+    static Blight::WaveformMode forcedWaveform =
+      static_cast<Blight::WaveformMode>(Client::forcedWaveform());
     auto maybe = connection->repaint(
-      buffer, x, y, width, height, waveform, contentType, updateMode, marker
+      buffer,
+      x,
+      y,
+      width,
+      height,
+      forcedWaveform == -1 ? waveform : forcedWaveform,
+      contentType,
+      updateMode,
+      marker
     );
     if (wait && maybe.has_value()) {
       maybe.value()->wait();

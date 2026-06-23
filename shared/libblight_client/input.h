@@ -3,12 +3,18 @@
 #include <libblight_protocol/ringbuffer.h>
 
 #include <atomic>
+#include <cstddef>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <poll.h>
 #include <string>
 #include <sys/epoll.h>
 #include <sys/select.h>
 #include <thread>
+
+struct linux_dirent;
+struct linux_dirent64;
 
 namespace Input {
   enum InputType : uint8_t { Unknown = 0, Wacom, Touch, Buttons, Invalid };
@@ -80,6 +86,29 @@ namespace Input {
     fd_set* exceptfds,
     int backup
   );
-  int epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev);
+  int epollCtl(int epfd, int op, int fd, struct epoll_event* ev);
   int restoreEpollfds(int epfd, struct epoll_event* events, int res);
+  bool isDevInputDir(unsigned int fd);
+  bool shouldHideEvent(const char* entryName);
+  int
+  compactDirents(void* inBuffer, int size, void* outBuffer, int offset);
+  template<typename DirEnt, typename F>
+  int getdents(unsigned int fd, DirEnt* outBuffer, unsigned int count, F func) {
+    if (!isDevInputDir(fd)) {
+      return func(fd, outBuffer, count);
+    }
+    void* inBuffer = malloc(count);
+    if (inBuffer == nullptr) {
+      errno = ENOMEM;
+      return -1;
+    }
+    auto size = func(fd, static_cast<DirEnt*>(inBuffer), count);
+    if (size <= 0) {
+      free(inBuffer);
+      return size;
+    }
+    int dstLength = compactDirents(inBuffer, size, outBuffer, offsetof(DirEnt, d_name));
+    free(inBuffer);
+    return dstLength;
+  }
 }

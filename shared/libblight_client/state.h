@@ -23,6 +23,7 @@ namespace Client {
   bool isDumpFb();
   bool isFakeRM1();
   bool isFakeRM1Name();
+  bool isFakeRM2Name();
   bool isFakeRM1Fb();
   bool isFakeRM1Input();
   bool forceRGB16();
@@ -32,4 +33,5 @@ namespace Client {
   bool forceQt();
   bool isGhostControlEnabled();
   const std::string deviceTypeName();
+  int forcedWaveform();
 }

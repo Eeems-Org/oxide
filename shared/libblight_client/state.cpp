@@ -5,7 +5,9 @@
 #include <ios>
 #include <iostream>
 #include <libblight/debug.h>
+#include <libblight/types.h>
 #include <string>
+#include <strings.h>
 #include <sys/syslog.h>
 
 const std::string
@@ -126,6 +128,13 @@ namespace Client {
     static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RM1_NAME") != nullptr;
     return enabled;
   }
+  bool isFakeRM2Name() {
+    if (isFakeRM1()) {
+      return false;
+    }
+    static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RM2_NAME") != nullptr;
+    return enabled;
+  }
   bool isFakeRM1Fb() {
     if (isFakeRM1()) {
       return true;
@@ -189,5 +198,30 @@ namespace Client {
       default:
         return "Unknown Device";
     }
+  }
+  int forcedWaveform() {
+    static char* waveform = getenv("OXIDE_PRELOAD_FORCE_WAVEFORM");
+    if (waveform == nullptr) {
+      return -1;
+    }
+    if (strcasecmp(waveform, "UltraFast") == 0) {
+      return Blight::WaveformMode::UltraFast;
+    }
+    if (strcasecmp(waveform, "Fast") == 0) {
+      return Blight::WaveformMode::Fast;
+    }
+    if (strcasecmp(waveform, "Animate") == 0) {
+      return Blight::WaveformMode::Animate;
+    }
+    if (strcasecmp(waveform, "Content") == 0) {
+      return Blight::WaveformMode::Content;
+    }
+    if (strcasecmp(waveform, "UI") == 0) {
+      return Blight::WaveformMode::UI;
+    }
+    if (strcasecmp(waveform, "Full") == 0) {
+      return Blight::WaveformMode::Full;
+    }
+    return -1;
   }
 }

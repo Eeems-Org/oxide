@@ -114,7 +114,7 @@ namespace Libc {
       const sigset_t*
     ))dlsym(RTLD_NEXT, "pselect");
 
-  int (*epoll_ctl)(int, int, int, struct epoll_event*) =
+  int (*epollCtl)(int, int, int, struct epoll_event*) =
     (int (*)(int, int, int, struct epoll_event*))dlsym(RTLD_NEXT, "epoll_ctl");
 
   int (*epoll_wait)(int, struct epoll_event*, int, int) =
@@ -137,4 +137,24 @@ namespace Libc {
   FILE* (*fopen64)(const char* path, const char* mode) =
     (FILE *
      (*)(const char* path, const char* mode)) dlsym(RTLD_NEXT, "fopen64");
+
+  ssize_t (*getdents64)(int, void*, size_t) =
+    (ssize_t (*)(int, void*, size_t))dlsym(
+      RTLD_NEXT,
+      "getdents64"
+    );
+
+  int (*getdents)(unsigned int, struct linux_dirent*, unsigned int) =
+    (int (*)(unsigned int, struct linux_dirent*, unsigned int))dlsym(
+      RTLD_NEXT,
+      "getdents"
+    );
+  DIR* (*opendir)(const char*) =
+    (DIR* (*)(const char*))dlsym(RTLD_NEXT, "opendir");
+  struct dirent* (*readdir)(DIR*) =
+    (struct dirent* (*)(DIR*))dlsym(RTLD_NEXT, "readdir");
+  struct dirent64* (*readdir64)(DIR*) =
+    (struct dirent64* (*)(DIR*))dlsym(RTLD_NEXT, "readdir64");
+  int (*closedir)(DIR*) =
+    (int (*)(DIR*))dlsym(RTLD_NEXT, "closedir");
 }

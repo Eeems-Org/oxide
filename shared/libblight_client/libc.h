@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <dirent.h>
 #include <poll.h>
 #include <signal.h>
 #include <sys/epoll.h>
@@ -9,6 +10,21 @@
 
 struct _IO_FILE;
 typedef struct _IO_FILE FILE;
+
+struct linux_dirent {
+  unsigned long  d_ino;
+  unsigned long  d_off;
+  unsigned short d_reclen;
+  char           d_name[];
+};
+
+struct linux_dirent64 {
+  uint64_t       d_ino;
+  int64_t        d_off;
+  unsigned short d_reclen;
+  unsigned char  d_type;
+  char           d_name[];
+};
 
 namespace Libc {
   extern sighandler_t (*signal)(int, sighandler_t);
@@ -56,9 +72,15 @@ namespace Libc {
     const struct timespec*,
     const sigset_t*
   );
-  extern int (*epoll_ctl)(int, int, int, struct epoll_event*);
+  extern int (*epollCtl)(int, int, int, struct epoll_event*);
   extern int (*epoll_wait)(int, struct epoll_event*, int, int);
   extern int (*system)(const char*);
   extern FILE* (*fopen)(const char* path, const char* mode);
   extern FILE* (*fopen64)(const char* path, const char* mode);
+  extern ssize_t (*getdents64)(int, void*, size_t);
+  extern int (*getdents)(unsigned int, struct linux_dirent*, unsigned int);
+  extern DIR* (*opendir)(const char*);
+  extern struct dirent* (*readdir)(DIR*);
+  extern struct dirent64* (*readdir64)(DIR*);
+  extern int (*closedir)(DIR*);
 }

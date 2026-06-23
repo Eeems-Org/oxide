@@ -784,7 +784,7 @@ namespace Input {
           }
           applyTransform(info, xEvent, yEvent);
           _DEBUG(
-            "touch (%d,  %d) -> (%d, %d)",
+            "touch (%d, %d) -> (%d, %d)",
             state.x,
             state.y,
             xEvent == nullptr ? state.x : xEvent->value,
@@ -904,7 +904,7 @@ namespace Input {
       if (devices.contains(device)) {
         int eventFd = devices.at(device)->eventFd;
         for (auto& [epfd, track] : epollMap) {
-          Libc::epoll_ctl(epfd, EPOLL_CTL_DEL, eventFd, nullptr);
+          Libc::epollCtl(epfd, EPOLL_CTL_DEL, eventFd, nullptr);
           track.erase(eventFd);
         }
       }
@@ -1388,12 +1388,12 @@ namespace Input {
     }
   }
 
-  int epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
+  int epollCtl(int epfd, int op, int fd, struct epoll_event* ev) {
     int eventFd;
     {
       std::scoped_lock lock(mutex);
       if (!deviceDescriptors.contains(fd)) {
-        return Libc::epoll_ctl(epfd, op, fd, ev);
+        return Libc::epollCtl(epfd, op, fd, ev);
       }
       eventFd = getEventFd(fd);
       if (eventFd < 0) {
@@ -1410,7 +1410,7 @@ namespace Input {
         std::scoped_lock lock(mutex);
         epollMap[epfd][eventFd] = *ev;
       }
-      int res = Libc::epoll_ctl(epfd, op, eventFd, &modified_ev);
+      int res = Libc::epollCtl(epfd, op, eventFd, &modified_ev);
       if (res < 0 && op == EPOLL_CTL_ADD && errno == EEXIST) {
         errno = 0;
         return 0;
@@ -1419,9 +1419,9 @@ namespace Input {
     } else if (op == EPOLL_CTL_DEL) {
       std::scoped_lock lock(mutex);
       epollMap[epfd].erase(eventFd);
-      return Libc::epoll_ctl(epfd, op, eventFd, nullptr);
+      return Libc::epollCtl(epfd, op, eventFd, nullptr);
     }
-    return Libc::epoll_ctl(epfd, op, fd, ev);
+    return Libc::epollCtl(epfd, op, fd, ev);
   }
 
   int restoreEpollfds(int epfd, struct epoll_event* events, int res) {
@@ -1439,4 +1439,50 @@ namespace Input {
     }
     return res;
   }
+
+  bool isDevInputDir(unsigned int fd) {
+    char procFdPath[64];
+    char resolvedPath[512];
+    snprintf(procFdPath, sizeof(procFdPath), "/proc/self/fd/%u", fd);
+    ssize_t linkLength =
+      readlink(procFdPath, resolvedPath, sizeof(resolvedPath) - 1);
+    if (linkLength <= 0) {
+      return false;
+    }
+    resolvedPath[linkLength] = '\0';
+    return strcmp(resolvedPath, "/dev/input") == 0;
+  }
+
+  bool shouldHideEvent(const char* entryName) {
+    if (strncmp(entryName, "event", 5) != 0) {
+      return false;
+    }
+    char* end;
+    long num = strtol(entryName + 5, &end, 10);
+    return *end == '\0' && num > 2;
+  }
+
+  int compactDirents(void* inBuffer, int size, void* outBuffer, int offset) {
+    int dstLength = 0;
+    void* lastDirentDOff = nullptr;
+    auto* srcPos = static_cast<char*>(inBuffer);
+    auto* srcEnd = srcPos + size;
+    while (srcPos < srcEnd) {
+      auto entryLength = *reinterpret_cast<uint16_t*>(srcPos + 16);
+      if (!shouldHideEvent(srcPos + offset)) {
+        memcpy(static_cast<char*>(outBuffer) + dstLength, srcPos, entryLength);
+        lastDirentDOff = static_cast<char*>(outBuffer) + dstLength + 8;
+        dstLength += entryLength;
+      } else if (lastDirentDOff) {
+        memcpy(lastDirentDOff, srcPos + 8, 8);
+      }
+      srcPos += entryLength;
+    }
+    if (lastDirentDOff) {
+      uint64_t zero = 0;
+      memcpy(lastDirentDOff, &zero, 8);
+    }
+    return dstLength;
+  }
+
 }

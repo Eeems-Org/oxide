@@ -101,10 +101,15 @@ namespace {
       Client::realpath(pathname, actualpath);
     }
     int res = -2;
-    if (Client::isFakeRM1Name() && actualpath == "/sys/devices/soc0/machine") {
-      _DEBUG("Forcing rM1 machine name");
+    if (
+      (Client::isFakeRM1Name() || Client::isFakeRM2Name()) &&
+      actualpath == "/sys/devices/soc0/machine"
+    ) {
+      _DEBUG("Forcing rM%d machine name", Client::isFakeRM1Name() ? 1 : 2);
       int fd = memfd_create("machine", MFD_ALLOW_SEALING);
-      std::string data("reMarkable 1.0");
+      std::string data(
+        Client::isFakeRM1Name() ? "reMarkable 1.0" : "reMarkable 2.0"
+      );
       // Don't include trailing null
       Libc::write(fd, data.data(), data.size());
       Libc::fcntl(
@@ -590,9 +595,9 @@ pselect(
 __attribute__((visibility("default"))) int
 epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
   if (Client::INITIALIZED && Client::isInputEnabled() && Input::isInputFd(fd)) {
-    return Input::epoll_ctl(epfd, op, fd, ev);
+    return Input::epollCtl(epfd, op, fd, ev);
   }
-  return Libc::epoll_ctl(epfd, op, fd, ev);
+  return Libc::epollCtl(epfd, op, fd, ev);
 }
 
 __attribute__((visibility("default"))) int
@@ -622,6 +627,56 @@ system(const char* command) {
     return Libc::system("systemctl suspend");
   }
   return Libc::system(command);
+}
+
+__attribute__((visibility("default"))) ssize_t
+getdents64(int fd, void* dirp, size_t count) {
+  if (!Client::INITIALIZED || !Client::isFakeRM1Input()) {
+    return Libc::getdents64(fd, dirp, count);
+  }
+  return Input::getdents<struct linux_dirent64>(
+    fd, static_cast<struct linux_dirent64*>(dirp), count, Libc::getdents64
+  );
+}
+
+__attribute__((visibility("default"))) int
+getdents(unsigned int fd, struct linux_dirent* dirp, unsigned int count) {
+  if (!Client::INITIALIZED || !Client::isFakeRM1Input()) {
+    return Libc::getdents(fd, dirp, count);
+  }
+  return Input::getdents(fd, dirp, count, Libc::getdents);
+}
+
+__attribute__((visibility("default"))) struct dirent*
+readdir(DIR* dirp) {
+  if (!Client::INITIALIZED || !Client::isFakeRM1Input()) {
+    return Libc::readdir(dirp);
+  }
+  while (true) {
+    struct dirent* entry = Libc::readdir(dirp);
+    if (entry == nullptr) {
+      return nullptr;
+    }
+    if (!Input::shouldHideEvent(entry->d_name)) {
+      return entry;
+    }
+  }
+}
+
+__attribute__((visibility("default"))) struct dirent64*
+readdir64(DIR* dirp) {
+  if (!Client::INITIALIZED || !Client::isFakeRM1Input()) {
+    return Libc::readdir64(dirp);
+  }
+  while (true) {
+    struct dirent64* entry = Libc::readdir64(dirp);
+    if (entry == nullptr) {
+      return nullptr;
+    }
+    if (!Input::shouldHideEvent(entry->d_name)) {
+      return entry;
+    }
+  }
 }
 
 #ifdef DEBUG
