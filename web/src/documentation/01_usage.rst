@@ -330,6 +330,21 @@ When running an application from the command line, you can force it to use the d
 - ``OXIDE_PRELOAD_FORCE_QT`` Force a Qt application to use the Oxide QPA.
 - ``OXIDE_PRELOAD_FORCE_RM1`` Force an application to believe it is running on a reMarkable 1 tablet.
 - ``OXIDE_PRELOAD_EXPOSE_FB`` If set, the framebuffer will be directly exposed to the application. It is not recommended to use this, as the display server is not expecting applications to have direct access outside of exclusive mode.
-- ``OXIDE_INPUT_BATCH_SIZE`` Number of input events without a EV_SYN SYN_REPORT to queue before flushing them through to the application. Defaults to 16
 - ``OXIDE_PRELOAD_DEBUG`` Debug level. Defaults to 4.
-- ``OXIDE_PRELOAD_DISABLE_INPUT`` Disable input handling.
+- ``OXIDE_PRELOAD_EXPOSE_INPUT`` Disable input handling.
+- ``OXIDE_PRELOAD_ALLOW_RM2FB`` Do not disable the rm2fb client shim.
+- ``OXIDE_PRELOAD_ALLOW_POWER_BUTTON`` Allow the application to recieve power button input events.
+- ``OXIDE_PRELOAD_DUMP_FB`` Dump the various framebuffers to ``/tmp/*.raw``.
+- ``OXIDE_PRELOAD_FORCE_RM1_NAME`` Return ``reMarkable 1.0`` for any reads to ``/sys/devices/soc0/machine``.
+- ``OXIDE_PRELOAD_FORCE_RM2_NAME`` Return ``reMarkable 2.0`` for any reads to ``/sys/devices/soc0/machine``.
+- ``OXIDE_PRELOAD_FORCE_RM1_FB`` Force the framebuffer size to be the reMarkable 1 framebuffer size, scaled to the current screen.
+- ``OXIDE_PRELOAD_FORCE_RM1_INPUT`` Force all input events to use reMarkable 1 coordinates and scale, and force reMarkable 1 event device paths.
+- ``OXIDE_PRELOAD_FORCE_RGB16`` Force the buffer to use RGB16 pixel format.
+- ``OXIDE_PRELOAD_NO_FAKE_RM2FB`` Disable rm2fb handlng.
+- ``OXIDE_PRELOAD_GHOST_CONTROL`` Enable xochitl and libqsgepaper ghost control handling. This will slow down applications.
+- ``OXIDE_PRELOAD_FORCE_32BIT_FSCREENINFO`` Enable returning 32bit responses to fscreeninfo, this is only required by libremarkable applications.
+- ``OXIDE_PRELOAD_FORCE_WAVEFORM`` Force the waveform used to be a specific waveform. See ``Blight::WaveformMode`` for possible values. Must be the initcap names.
+- ``OXIDE_EPFRAMEBUFFER_SWAPBUFFERS_OFFSET`` For developers only when using with xochitl on new OS versions.
+- ``OXIDE_EPFRAMEBUFFER_SYNCAFTERUPDATE_OFFSET`` For developers only when using with xochitl on new OS versions.
+- ``OXIDE_EPFRAMEBUFFER_METACALLL_OFFSET`` For developers only when using with xochitl on new OS versions.
+- ``OXIDE_EPFRAMEBUFFER_GHOSTCONTROL_OFFSET`` For developers only when using with xochitl on new OS versions.

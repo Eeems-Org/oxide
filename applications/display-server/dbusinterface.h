@@ -1,109 +1,150 @@
 #pragma once
 
-#include <QObject>
-#include <QMutex>
-#include <QTimer>
-#include <QDBusContext>
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
+#include <QDBusContext>
 #include <QDBusMessage>
-#include <QQmlApplicationEngine>
 #include <QDBusUnixFileDescriptor>
+#include <QObject>
+#include <QQmlApplicationEngine>
+#include <QReadWriteLock>
+#include <QTimer>
+
+#include <atomic>
+#include <memory>
+#include <tuple>
+
+#ifdef EPAPER
+#include <epframebuffer.h>
+#endif
 
 #include "connection.h"
 
 // Use direct values to make sure that cpp2xml works
-#include "../../shared/liboxide/meta.h"
 #include "../../shared/libblight/meta.h"
+#include "../../shared/liboxide/dbus_types.h"
+#include "../../shared/liboxide/meta.h"
 
 #define dbusInterface DbusInterface::singleton()
 
-class DbusInterface : public QObject, public QDBusContext {
-    Q_OBJECT
-    Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
-    Q_CLASSINFO("D-Bus Interface", BLIGHT_INTERFACE)
-    Q_PROPERTY(int pid READ pid CONSTANT)
-    Q_PROPERTY(QByteArray clipboard READ clipboard WRITE setClipboard NOTIFY clipboardChanged)
-    Q_PROPERTY(QByteArray selection READ selection WRITE setSelection NOTIFY selectionChanged)
-    Q_PROPERTY(QByteArray secondary READ secondary WRITE setSecondary NOTIFY secondaryChanged)
+class DbusInterface
+  : public QObject
+  , public QDBusContext {
+  Q_OBJECT
+  Q_CLASSINFO("Version", OXIDE_INTERFACE_VERSION)
+  Q_CLASSINFO("D-Bus Interface", BLIGHT_INTERFACE)
+  Q_PROPERTY(int pid READ pid CONSTANT)
+  Q_PROPERTY(
+    QByteArray clipboard READ clipboard WRITE setClipboard NOTIFY
+      clipboardChanged
+  )
+  Q_PROPERTY(
+    QByteArray selection READ selection WRITE setSelection NOTIFY
+      selectionChanged
+  )
+  Q_PROPERTY(
+    QByteArray secondary READ secondary WRITE setSecondary NOTIFY
+      secondaryChanged
+  )
 
 public:
-    static DbusInterface* singleton();
+  static DbusInterface* singleton();
 
-    int pid();
+  int pid();
 #ifndef EPAPER
-    QObject* loadComponent(QString url, QString identifier, QVariantMap properties = QVariantMap());
+  QObject* loadComponent(
+    QString url,
+    QString identifier,
+    QVariantMap properties = QVariantMap()
+  );
 #endif
-    void processClosingConnections();
-    void processRemovedSurfaces();
-    std::shared_ptr<Surface> getSurface(QString identifier);
-    QList<std::shared_ptr<Surface>> surfaces();
-    QList<std::shared_ptr<Surface>> sortedSurfaces();
-    QList<std::shared_ptr<Surface>> visibleSurfaces();
-    void sortZ();
-    Connection* focused();
-    void setFocus(Connection* connection);
-    void inputEvents(unsigned int device, const std::vector<input_event>& events);
-    bool inExclusiveMode();
+  std::shared_ptr<Surface> getSurface(QString identifier);
+  std::shared_ptr<Connection> getConnection(Connection* ptr);
+  QList<std::shared_ptr<Surface>> surfaces();
+  QList<std::shared_ptr<Surface>> sortedSurfaces();
+  QList<std::shared_ptr<Surface>> visibleSurfaces();
+  void sortZ();
+  std::shared_ptr<Connection> focused();
+  void setFocus(std::shared_ptr<Connection> connection);
+  void inputEvents(unsigned int device, const std::vector<input_event>& events);
+  bool inExclusiveMode();
 
-    // Property getter/setters
-    const QByteArray& clipboard();
-    void setClipboard(const QByteArray& data);
-    const QByteArray& selection();
-    void setSelection(const QByteArray& data);
-    const QByteArray& secondary();
-    void setSecondary(const QByteArray& data);
+  // Property getter/setters
+  const QByteArray& clipboard();
+  void setClipboard(const QByteArray& data);
+  const QByteArray& selection();
+  void setSelection(const QByteArray& data);
+  const QByteArray& secondary();
+  void setSecondary(const QByteArray& data);
 
 public slots:
-    QDBusUnixFileDescriptor open(QDBusMessage message);
-    QDBusUnixFileDescriptor openInput(QDBusMessage message);
-    ushort addSurface(
-        QDBusUnixFileDescriptor fd,
-        int x,
-        int y,
-        int width,
-        int height,
-        int stride,
-        int format,
-        QDBusMessage message
-    );
-    void repaint(QString identifier, QDBusMessage message);
-    QDBusUnixFileDescriptor getSurface(ushort identifier, QDBusMessage message);
-    void setFlags(QString identifier, const QStringList& flags, QDBusMessage message);
-    QStringList getSurfaces(QDBusMessage message);
-    QDBusUnixFileDescriptor frameBuffer(QDBusMessage message);
-    void lower(QString identifier, QDBusMessage message);
-    void raise(QString identifier, QDBusMessage message);
-    void focus(QString identifier, QDBusMessage message);
-    void waitForNoRepaints(QDBusMessage message);
-    void enterExclusiveMode(QDBusMessage message);
-    void exitExclusiveMode(QDBusMessage message);
-    void exclusiveModeRepaint(QDBusMessage message);
+  QDBusUnixFileDescriptor open(QDBusMessage message);
+  QDBusUnixFileDescriptor
+  openInput(unsigned short device, QDBusMessage message);
+  ushort addSurface(
+    QDBusUnixFileDescriptor fd,
+    int x,
+    int y,
+    int width,
+    int height,
+    int stride,
+    int format,
+    double scale,
+    QDBusMessage message
+  );
+  void repaint(QString identifier, QDBusMessage message);
+  QDBusUnixFileDescriptor getSurface(ushort identifier, QDBusMessage message);
+  void
+  setFlags(QString identifier, const QStringList& flags, QDBusMessage message);
+  QStringList getSurfaces(QDBusMessage message);
+  QDBusUnixFileDescriptor frameBuffer(QDBusMessage message);
+  FrameBufferInfo frameBufferInfo(QDBusMessage message);
+  void lower(QString identifier, QDBusMessage message);
+  void raise(QString identifier, QDBusMessage message);
+  void focus(QString identifier, QDBusMessage message);
+  void waitForNoRepaints(QDBusMessage message);
+  void ghostControl(int mode, QDBusMessage message);
+  void enterExclusiveMode(QDBusMessage message);
+  void exitExclusiveMode(QDBusMessage message);
+  void exclusiveModeRepaint(
+    int x,
+    int y,
+    int width,
+    int height,
+    int waveform,
+    int updateMode,
+    QDBusMessage message
+  );
+  void exclusiveModeRepaintFull(QDBusMessage message);
+  bool connectionExists(QString identifier, QDBusMessage message);
 
 signals:
-    void clipboardChanged(const QByteArray& data);
-    void selectionChanged(const QByteArray& data);
-    void secondaryChanged(const QByteArray& data);
+  void clipboardChanged(const QByteArray& data);
+  void selectionChanged(const QByteArray& data);
+  void secondaryChanged(const QByteArray& data);
 
 private slots:
-    void serviceOwnerChanged(const QString& name, const QString& oldOwner, const QString& newOwner);
+  void serviceOwnerChanged(
+    const QString& name,
+    const QString& oldOwner,
+    const QString& newOwner
+  );
 
 private:
-    DbusInterface(QObject* parent);
-    QQmlApplicationEngine engine;
-    QList<Connection*> connections;
-    QMutex closingMutex;
-    QList<Connection*> closingConnections;
-    Connection* m_focused;
-    struct {
-        QByteArray clipboard;
-        QByteArray selection;
-        QByteArray secondary;
-    } clipboards;
-    bool m_exlusiveMode;
+  DbusInterface(QObject* parent);
+  QQmlApplicationEngine engine;
+  QReadWriteLock connectionsLock;
+  QList<std::shared_ptr<Connection>> connections;
+  std::shared_ptr<Connection> m_focused;
+  struct {
+    QByteArray clipboard;
+    QByteArray selection;
+    QByteArray secondary;
+  } clipboards;
+  std::atomic<bool> m_exclusiveMode;
 
-    Connection* getConnection(QDBusMessage message);
-    Connection* getConnection(QString identifier);
-    QObject* workspace();
-    Connection* createConnection(int pid);
+  std::shared_ptr<Connection> getConnection(QDBusMessage message);
+  std::shared_ptr<Connection> getConnection(QString identifier);
+  QObject* workspace();
+  std::shared_ptr<Connection> createConnection(int pid);
 };

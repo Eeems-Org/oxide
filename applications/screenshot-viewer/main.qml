@@ -63,6 +63,8 @@ OxideWindow {
         Label {
             color: window.color
             text: window.title
+            elide: Text.ElideRight
+            Layout.fillWidth: true
         }
     ]
     rightMenu: [
@@ -89,7 +91,7 @@ OxideWindow {
             visible: stateController.state === "loaded"
             OxideMenu {
                 title: qsTr("");
-                font: iconFont.name
+                font.family: iconFont.name
                 backgroundColor: window.backgroundColor
                 color: window.color
                 width: 310

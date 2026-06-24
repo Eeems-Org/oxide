@@ -1,10 +1,16 @@
 #if defined __cplusplus
-#include <cstring>
-#include <fstream>
-#include <functional>
 #include <grp.h>
 #include <linux/input.h>
 #include <pwd.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <systemd/sd-id128.h>
+#include <unistd.h>
+
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDBusAbstractInterface>
@@ -35,33 +41,27 @@
 #include <QString>
 #include <QTabletEvent>
 #include <QTextStream>
-#include <QtGlobal>
 #include <QThread>
 #include <QTimer>
 #include <QUuid>
 #include <QVariant>
-#include <signal.h>
+#include <QtGlobal>
+#include <cstring>
+#include <fstream>
+#include <functional>
 #include <sstream>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <systemd/sd-id128.h>
-#include <unistd.h>
 
 #include "application_interface.h"
 #include "appsapi_interface.h"
 #include "bss_interface.h"
 #include "dbusservice_interface.h"
+#include "liboxide_global.h"
+#include "meta.h"
 #include "network_interface.h"
 #include "notification_interface.h"
 #include "notificationapi_interface.h"
 #include "powerapi_interface.h"
 #include "systemapi_interface.h"
 #include "wifiapi_interface.h"
-
-#include "liboxide_global.h"
-#include "meta.h"
 #endif

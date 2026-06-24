@@ -1,7 +1,6 @@
 import QtQuick 2.10
-import QtQuick.Controls 2.4
+import QtQuick.Controls
 import QtQuick.Layouts 1.0
-import Qt.labs.calendar 1.0
 import "qrc:/codes.eeems.oxide"
 import "../widgets"
 
@@ -12,10 +11,17 @@ Item {
     x: (parent.width / 2) - (calendar.width / 2)
     y: (parent.height / 2) - (calendar.height / 2)
     width: 800
-    Popup {
-        id: calendar
-        visible: root.visible
-        closePolicy: Popup.NoAutoClose
+        Popup {
+            id: calendar
+            font.pixelSize: 32
+            visible: root.visible
+            closePolicy: Popup.NoAutoClose
+            background: Rectangle {
+                color: "white"
+                border.color: "black"
+                border.width: 2
+                radius: 10
+            }
         onClosed: {
             parent.closed()
         }

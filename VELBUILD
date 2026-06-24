@@ -1,0 +1,548 @@
+subpackages='
+fbinfo
+inject_evdev
+liboxide
+liboxide-dev:liboxide_dev
+cpptrace
+cpptrace-dev:cpptrace_dev
+oxide-display:oxide_display
+oxide-extra:oxide_extra
+oxide-utils:oxide_utils
+oxide-tests:oxide_tests
+lockscreen_hook
+launcherctl
+launcherctl-oxide:launcherctl_oxide
+'
+pkgname=oxide
+pkgver="~VERSION~"
+pkgrel=0
+_cpptracever=0.8.3
+upstream_author="Eeems-org"
+maintainer="Eeems <eeems@eeems.email>"
+url=https://oxide.eeems.codes
+license=MIT
+source='
+oxide.tar.gz
+'
+pkgdesc="Launcher application"
+category="apps"
+options="!check !fhs !strip !tracedeps"
+depends="
+oxide-display=$pkgver-r$pkgrel
+liboxide=$pkgver-r$pkgrel
+"
+
+_toolchain=5.7.119
+image() {
+    case "$CARCH" in
+    aarch64) echo "eeems/remarkable-toolchain:$_toolchain-rmpp" ;;
+    armv7) echo "eeems/remarkable-toolchain:$_toolchain-rm1" ;;
+    *)
+        echo "Invalid CARCH: $CARCH"
+        exit 1
+        ;;
+    esac
+}
+
+build() {
+    _toolchain=5.7.119 # Is not currently passed into build()
+    set -e
+    cd "$srcdir"
+    case "$CARCH" in
+    aarch64)
+        . /opt/codex/ferrari/"$_toolchain"/environment-setup-cortexa53-crypto-remarkable-linux
+        ;;
+    armv7)
+        . /opt/codex/rm1/"$_toolchain"/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi
+        ;;
+    *)
+        echo "Invalid CARCH: $CARCH"
+        exit 1
+        ;;
+    esac
+    make release
+}
+
+package() {
+    cd "$srcdir"/release
+    # System service
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.vellum/share/oxide/dbus-1/system.d \
+        etc/dbus-1/system.d/codes.eeems.oxide.conf
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.vellum/share/oxide/systemd/system \
+        etc/systemd/system/tarnish.service
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/bin \
+        home/root/.vellum/bin/tarnish
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        home/root/.local/share/applications/xochitl.oxide
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
+        home/root/.local/share/icons/oxide/48x48/apps/xochitl.png
+    # Task manager
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/bin \
+        home/root/.vellum/bin/erode
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
+        home/root/.local/share/icons/oxide/48x48/apps/erode.png
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        home/root/.local/share/applications/codes.eeems.erode.oxide
+    # Launcher
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/bin \
+        home/root/.vellum/bin/oxide
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/ \
+        home/root/.config/oxide.conf
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        home/root/.local/share/applications/codes.eeems.oxide.oxide
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/icons/oxide/702x702/splash \
+        home/root/.local/share/icons/oxide/702x702/splash/oxide.png
+    # Lockscreen
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/bin \
+        home/root/.vellum/bin/decay
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        home/root/.local/share/applications/codes.eeems.decay.oxide
+    # Task switcher
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/bin \
+        home/root/.vellum/bin/corrupt
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        home/root/.local/share/applications/codes.eeems.corrupt.oxide
+    # Keyd configuration
+    install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/keyd \
+        home/root/.config/keyd/oxide.conf
+}
+
+postinstall() {
+    set -e
+    /home/root/.vellum/bin/mount-rw
+    postosupgrade
+    /home/root/.vellum/bin/mount-restore
+}
+
+postupgrade() {
+    set -e
+    postinstall
+}
+
+postosupgrade() {
+    set -e
+    mkdir -p \
+        /etc/dbus-1/system.d \
+        /etc/systemd/system
+    rm -f \
+        /var/volatile/etc/systemd/system/tarnish.service \
+        /var/volatile/etc/systemd/system/tarnish.service
+    cp -a /home/root/.vellum/share/oxide/dbus-1/system.d/codes.eeems.oxide.conf \
+        /etc/dbus-1/system.d/
+    cp -a /home/root/.vellum/share/oxide/systemd/system/tarnish.service \
+        /etc/systemd/system/
+    systemctl daemon-reload
+}
+
+predeinstall() {
+    set -e
+    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2> /dev/null)" -eq 1 ]; then
+        if systemctl --quiet is-active tarnish.service 2> /dev/null; then
+            echo "Stopping tarnish.service"
+            systemctl stop tarnish.service
+        fi
+        if systemctl --quiet is-enabled tarnish.service 2> /dev/null; then
+            echo "Disabling tarnish.service"
+            systemctl disable tarnish.service
+        fi
+    fi
+    rm -f \
+        /etc/dbus-1/system.d/codes.eeems.oxide.conf \
+        /etc/systemd/system/tarnish.service
+    systemctl daemon-reload
+}
+
+postdeinstall() {
+    set -e
+    rm -f \
+        /var/volatile/etc/systemd/system/tarnish.service \
+        /var/volatile/etc/systemd/system/tarnish.service
+}
+
+oxide_display() {
+    pkgdesc="Oxide display server"
+    category="framework"
+    depends="
+    liboxide=$pkgver-r$pkgrel
+    "
+
+    package() {
+        cd "$srcdir"/release
+        # Display server
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/share/oxide/dbus-1/system.d \
+            etc/dbus-1/system.d/codes.eeems.blight.conf
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/share/oxide/systemd/system \
+            etc/systemd/system/blight.service
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/blight
+        # Client
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
+            home/root/.vellum/lib/libblight_client.so*
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/blight-client
+        # QPA
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/usr/lib/plugins/platforms \
+            home/root/.vellum/usr/lib/plugins/platforms/liboxide.so*
+    }
+
+    postinstall() {
+        set -e
+        /home/root/.vellum/bin/mount-rw
+        postosupgrade
+        /home/root/.vellum/bin/mount-restore
+    }
+
+    postupgrade() {
+        set -e
+        postinstall
+    }
+
+    postosupgrade() {
+        set -e
+        mkdir -p \
+            /etc/dbus-1/system.d \
+            /etc/systemd/system
+        rm -f \
+            /var/volatile/etc/systemd/system/blight.service \
+            /var/volatile/etc/dbus-1/system.d/codes.eeems.blight.conf
+        cp -a /home/root/.vellum/share/oxide/dbus-1/system.d/codes.eeems.blight.conf \
+            /etc/dbus-1/system.d/
+        cp -a /home/root/.vellum/share/oxide/systemd/system/blight.service \
+            /etc/systemd/system/
+        systemctl daemon-reload
+    }
+
+    predeinstall() {
+        set -e
+        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2> /dev/null)" -eq 1 ]; then
+            if systemctl --quiet is-active blight.service 2> /dev/null; then
+                echo "Stopping blight.service"
+                systemctl stop blight.service
+            fi
+            if systemctl --quiet is-enabled blight.service 2> /dev/null; then
+                echo "Disabling blight.service"
+                systemctl disable blight.service
+            fi
+        fi
+        rm -f \
+            /etc/dbus-1/system.d/codes.eeems.blight.conf \
+            /etc/systemd/system/blight.service
+        systemctl daemon-reload
+    }
+    postdeinstall() {
+        set -e
+        rm -f \
+            /var/volatile/etc/systemd/system/blight.service \
+            /var/volatile/etc/dbus-1/system.d/codes.eeems.blight.conf
+    }
+}
+
+oxide_extra() {
+    pkgdesc="Extra applications for oxide"
+    category="apps"
+    depends="
+    oxide=$pkgver-r$pkgrel
+    oxide-utils=$pkgver-r$pkgrel
+    liboxide=$pkgver-r$pkgrel
+    "
+
+    package() {
+        cd "$srcdir"/release
+        # Screenshot viewer
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/anxiety
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
+            home/root/.local/share/applications/codes.eeems.anxiety.oxide
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
+            home/root/.local/share/icons/oxide/48x48/apps/image.png
+        # Sketchpad
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/ether
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
+            home/root/.local/share/applications/codes.eeems.ether.oxide
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
+            home/root/.local/share/icons/oxide/48x48/apps/ether.png
+    }
+}
+
+oxide_utils() {
+    pkgdesc="Command line tools for Oxide"
+    category="utilities"
+    depends="
+    oxide=$pkgver-r$pkgrel
+    liboxide=$pkgver-r$pkgrel
+    jq
+    "
+
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/desktop-file-validate
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/desktop-file-edit
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/desktop-file-install
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/gio
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/notify-send
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/rot
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/update-desktop-database
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/xclip
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/xdg-desktop-icon
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/xdg-desktop-menu
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/xdg-open
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/xdg-settings
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/xdg-icon-resource
+    }
+}
+
+inject_evdev() {
+    pkgdesc="Inject input events"
+    category="utilities"
+    depends="
+    liboxide=$pkgver-r$pkgrel
+    "
+
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/inject_evdev
+    }
+}
+
+fbinfo() {
+    pkgdesc="Print out framebuffer info"
+    category="utilities"
+
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/fbinfo
+    }
+}
+
+liboxide() {
+    pkgdesc="Shared library for oxide applications"
+    category="framework"
+    depends="
+    cpptrace=$_cpptracever-r$pkgrel
+    "
+
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
+            home/root/.vellum/lib/liboxide.so*
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
+            home/root/.vellum/lib/libblight.so*
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
+            home/root/.vellum/lib/libblight_protocol.so*
+    }
+}
+
+liboxide_dev() {
+    pkgdesc="Shared library for oxide applications"
+    category="framework"
+    depends="
+    liboxide=$pkgver-r$pkgrel
+    "
+
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib/pkgconfig \
+            home/root/.vellum/lib/pkgconfig/oxide.pc
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/include \
+            home/root/.vellum/include/epframebuffer.h
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/include \
+            home/root/.vellum/include/liboxide.h
+        cp -ar home/root/.vellum/include/liboxide/ \
+            "$subpkgdir"/home/root/.vellum/include/
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/include \
+            home/root/.vellum/include/libblight.h
+        cp -ar home/root/.vellum/include/libblight/ \
+            "$subpkgdir"/home/root/.vellum/include/
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/include \
+            home/root/.vellum/include/libblight_protocol.h
+        cp -ar home/root/.vellum/include/libblight_protocol/ \
+            "$subpkgdir"/home/root/.vellum/include/
+    }
+}
+
+cpptrace() {
+    pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
+    category="framework"
+    url=https://github.com/jeremy-rifkin/cpptrace
+    pkgver="$_cpptracever"
+
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
+            home/root/.vellum/lib/libcpptrace.so
+    }
+}
+
+cpptrace_dev() {
+    pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
+    category="framework"
+    url=https://github.com/jeremy-rifkin/cpptrace
+    pkgver="$_cpptracever"
+    depends="
+    cpptrace=$_cpptracever-r$pkgrel
+    "
+
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
+            home/root/.vellum/lib/libcpptrace.so
+    }
+}
+
+oxide_tests() {
+    pkgdesc="Automated tests for oxide"
+    category="framework"
+    depends="
+    oxide-display=$pkgver-r$pkgrel
+    liboxide=$pkgver-r$pkgrel
+    "
+
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.local/share/tests \
+            home/root/.local/share/tests/libblight
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.local/share/tests \
+            home/root/.local/share/tests/libblight_protocol
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.local/share/tests \
+            home/root/.local/share/tests/liboxide
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/test_app
+        install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+            home/root/.local/share/applications/test_app.oxide
+    }
+}
+
+lockscreen_hook() {
+    pkgdesc="Run scripts after unlock"
+    category="framework"
+    depends='
+    remarkable-os>=3.27.1.0
+    '
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/usr/lib \
+            usr/lib/liblockscreen_hook.so*
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/lockscreen_hook/ \
+            etc/systemd/system/xochitl.service.d/lockscreen_hook.conf
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/lockscreen_hook/ \
+            usr/libexec/lockscreen-hook
+    }
+
+    postinstall() {
+        set -e
+        /home/root/.vellum/bin/mount-rw
+        postosupgrade
+        /home/root/.vellum/bin/mount-restore
+    }
+
+    postupgrade() {
+        set -e
+        postinstall
+    }
+
+    postosupgrade() {
+        set -e
+        mkdir -p /etc/systemd/system/xochitl.service.d/
+        rm -f \
+            /usr/lib/liblockscreen_hook.so* \
+            /var/volatile/etc/systemd/xochitl.service.d/lockscreen_hook.conf
+        cp -a /home/root/.vellum/share/lockscreen_hook/lockscreen_hook.conf \
+            /etc/systemd/system/xochitl.service.d/
+        cp -a /home/root/.vellum/usr/lib/liblockscreen_hook.so* \
+            /usr/lib/
+        cp -a /home/root/.vellum/share/lockscreen_hook/lockscreen-hook \
+            /usr/libexec/
+        systemctl daemon-reload
+    }
+
+    predeinstall() {
+        set -e
+        /home/root/.vellum/bin/mount-rw
+        rm -f \
+            /etc/systemd/system/xochitl.service.d/lockscreen_hook.conf \
+            /usr/lib/liblockscreen_hook.so* \
+            /usr/libexec/lockscreen-hook
+        /home/root/.vellum/bin/mount-restore
+        systemctl daemon-reload
+    }
+    postdeinstall() {
+        set -e
+        rm -f /var/volatile/etc/systemd/xochitl.service.d/lockscreen_hook.conf
+    }
+}
+
+launcherctl() {
+    pkgdesc="Manage your installed launcher"
+    category="utilities"
+    depends="
+    liboxide=$pkgver-r$pkgrel
+    lockscreen_hook
+    "
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
+            home/root/.vellum/bin/launcherctl
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/launcherctl \
+            home/root/.vellum/share/launcherctl/none
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.local/share/lockscreen_hook.d \
+            home/root/.local/share/lockscreen_hook.d/unlock
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.local/share/lockscreen_hook.d \
+            home/root/.local/share/lockscreen_hook.d/success
+    }
+    postinstall() {
+        set -e
+        postosupgrade
+    }
+    postupgrade() {
+        set -e
+        postinstall
+    }
+    postosupgrade() {
+        set -e
+        /home/root/.vellum/bin/launcherctl status
+    }
+    predeinstall() {
+        if [[ "$(/home/root/.vellum/bin/launcherctl current-launcher)" != "none" ]]; then
+            /home/root/.vellum/bin/launcherctl stop-launcher
+        fi
+        /home/root/.vellum/bin/launcherctl switch-launcher none
+        if [ "$VELLUM_PURGE" = "1" ]; then
+            rm -f /home/root/.vellum/share/launcherctl/current
+        fi
+    }
+    postdeinstall() {
+        if [ "$(systemctl --quiet list-unit-files xochitl.service | /bin/grep -c xochitl.service 2> /dev/null)" -ne 1 ]; then
+            systemctl enable --now xochitl
+        fi
+    }
+}
+
+launcherctl_oxide() {
+    pkgdesc="Launcherctl configuration for oxide"
+    category="utilities"
+    depends="
+    oxide=$pkgver-r$pkgrel
+    oxide-utils=$pkgver-r$pkgrel
+    "
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/launcherctl \
+            home/root/.vellum/share/launcherctl/oxide
+    }
+}

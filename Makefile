@@ -1,58 +1,118 @@
-.PHONY: all clean release build sentry package
-
+.PHONY: all
 all: release
 
 .NOTPARALLEL:
 
 MAKEFLAGS := --jobs=$(shell nproc)
 
-# FEATURES += sentry
-
 DIST=$(CURDIR)/release
 BUILD=$(CURDIR)/.build
+BUILDNAME?=oxide
+TOOLCHAIN?=5.7.119
 
-ifneq ($(filter sentry,$(FEATURES)),)
-DEFINES += DEFINES+="SENTRY"
+ifneq ($(filter debug,$(FEATURES)),)
+DEFINES += CONFIG+="debug"
 endif
 
-OBJ += $(BUILD)/oxide/Makefile
+OBJ += $(BUILD)/$(BUILDNAME)/Makefile
 
+.PHONY: clean-base
 clean-base:
-	rm -rf $(DIST) $(BUILD)/oxide
+	rm -rf \
+		$(DIST) \
+		$(BUILD)/$(BUILDNAME)/Makefile \
+		$(BUILD)/$(BUILDNAME)/shared/cpptrace/src
 
+.PHONY: clean
 clean: clean-base
 	rm -rf $(BUILD)
 
+.PHONY: release
 release: clean-base build $(DIST)
-ifneq ($(filter sentry,$(FEATURES)),)
-	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
-	cd $(BUILD)/oxide/shared/sentry && make qmake
-endif
-	# Force liboxide makefile to regenerate so that install targets get when being build in toltecmk
-	cd $(BUILD)/oxide/shared/liboxide && make qmake
-	# Force libblight makefile to regenerate so that install targets get when being build in toltecmk
-	cd $(BUILD)/oxide/shared/libblight && make qmake
-	# Force libblight_protocol makefile to regenerate so that install targets get when being build in toltecmk
-	cd $(BUILD)/oxide/shared/libblight_protocol && make qmake
-	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/oxide install
+	# Force cpptrace makefile to regenerate so that install targets get when being built in vbuild
+	cd $(BUILD)/$(BUILDNAME)/shared/cpptrace && make qmake $(DEFINES)
+	# Force liboxide makefile to regenerate so that install targets get when being built in vbuild
+	cd $(BUILD)/$(BUILDNAME)/shared/liboxide && make qmake $(DEFINES)
+	# Force libblight makefile to regenerate so that install targets get when being built in vbuild
+	cd $(BUILD)/$(BUILDNAME)/shared/libblight && make qmake $(DEFINES)
+	# Force libblight_protocol makefile to regenerate so that install targets get when being built in vbuild
+	cd $(BUILD)/$(BUILDNAME)/shared/libblight_protocol && make qmake $(DEFINES)
+	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) install
 
+.PHONY: build
 build: $(OBJ)
-	$(MAKE) --output-sync=target -C $(BUILD)/oxide all
+	$(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) all
 
-package: REV="~r$(shell git rev-list --count HEAD).$(shell git rev-parse --short HEAD)"
-package: version.txt $(DIST) $(BUILD)/package/oxide.tar.gz
-	toltecmk \
-		--verbose \
-		-w $(BUILD)/package/build \
-		-d $(BUILD)/package/dist \
-		$(BUILD)/package
-	cp -a $(BUILD)/package/dist/rmall/*.ipk $(DIST)
+.PHONY: package
+package: package-armv7 package-aarch64
 
-version.txt:
+.PHONY: package-armv7
+package-armv7: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
+	CARCH=armv7 vbuild -C $(BUILD)/package
+	mkdir -p $(DIST)/armv7
+	cp -a $(BUILD)/package/dist/armv7/. $(DIST)/armv7
+
+.PHONY: package-aarch64
+package-aarch64: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
+	CARCH=aarch64 vbuild -C $(BUILD)/package
+	mkdir -p $(DIST)/aarch64
+	cp -a $(BUILD)/package/dist/aarch64/. $(DIST)/aarch64
+
+.PHONY: build-rm1
+build-rm1: clean-base $(DIST)
+	podman run \
+		--env BUILDNAME=oxide-rm1 \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		eeems/remarkable-toolchain:$(TOOLCHAIN)-rm1 \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm1/$(TOOLCHAIN)/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
+
+.PHONY: build-rm2
+build-rm2: clean-base $(DIST)
+	podman run \
+		--env BUILDNAME=oxide-rm2 \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		eeems/remarkable-toolchain:$(TOOLCHAIN)-rm2 \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm2/$(TOOLCHAIN)/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
+
+.PHONY: build-rmpp
+build-rmpp: clean-base $(DIST)
+	podman run \
+		--env BUILDNAME=oxide-rmpp \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmpp \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/ferrari/$(TOOLCHAIN)/environment-setup-cortexa53-crypto-remarkable-linux; make FEATURES=$(FEATURES) release'
+
+.PHONY: build-rmppm
+build-rmppm: clean-base $(DIST)
+	podman run \
+		--env BUILDNAME=oxide-rmppm \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmppm \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/chiappa/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
+
+.PHONY: build-rmppure
+build-rmppure: clean-base $(DIST)
+	podman run \
+		--env BUILDNAME=oxide-rmppure \
+		--rm \
+		--volume=$(CURDIR):/src \
+		--workdir=/src \
+		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmppure \
+		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/tatsu/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
+
+version.txt: qmake/common.pri
 	if [ -d .git ];then \
-		echo $(REV) > version.txt; \
+		echo "$(VERSION)_git$(REV)" > version.txt; \
 	else \
-		echo "~manual" > version.txt; \
+		echo "$(VERSION)_pre" > version.txt; \
 	fi;
 
 $(DIST):
@@ -64,18 +124,15 @@ $(BUILD):
 $(BUILD)/.nobackup: $(BUILD)
 	touch $(BUILD)/.nobackup
 
-$(BUILD)/oxide: $(BUILD)/.nobackup
-	mkdir -p $(BUILD)/oxide
+$(BUILD)/$(BUILDNAME): $(BUILD)/.nobackup
+	mkdir -p $(BUILD)/$(BUILDNAME)
 
-$(BUILD)/oxide/Makefile: $(BUILD)/oxide
-	cd $(BUILD)/oxide && qmake -r $(DEFINES) $(CURDIR)
+$(BUILD)/$(BUILDNAME)/Makefile: $(BUILD)/$(BUILDNAME)
+	cd $(BUILD)/$(BUILDNAME) && qmake -r $(DEFINES) $(CURDIR)
 
 $(BUILD)/package:
 	mkdir -p $(BUILD)/package
 	rm -rf $(BUILD)/package/build
-
-$(BUILD)/package/package: $(BUILD)/package
-	sed "s/~VERSION~/`cat version.txt`/" ./package > $(BUILD)/package/package
 
 PKG_OBJ = oxide.pro Makefile
 PKG_OBJ += $(wildcard applications/**)
@@ -85,7 +142,7 @@ PKG_OBJ += $(wildcard qmake/**)
 PKG_OBJ += $(wildcard shared/**)
 PKG_OBJ += $(wildcard tests/**)
 
-$(BUILD)/package/oxide.tar.gz: $(BUILD)/package/package $(PKG_OBJ)
+$(BUILD)/package/oxide.tar.gz: $(PKG_OBJ) $(BUILD)/package
 	rm -f $(BUILD)/package/oxide.tar.gz
 	tar \
 		--exclude='$(CURDIR)/.git' \
@@ -102,20 +159,38 @@ $(BUILD)/package/oxide.tar.gz: $(BUILD)/package/package $(PKG_OBJ)
 		oxide.pro \
 		Makefile
 
-SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )
-SRC_FILES += package
+.PHONY: $(BUILD)/package/VELBUILD
+$(BUILD)/package/VELBUILD: REV="$(shell git show -s --date=format:'%Y%m%d' --format=%cd HEAD)"
+$(BUILD)/package/VELBUILD: VERSION="$(shell bash -c "grep 'VERSION =' qmake/common.pri | awk '{print \$$3}'")"
+$(BUILD)/package/VELBUILD: version.txt $(BUILD)/package
+	sed "s/~VERSION~/`cat version.txt`/" ./VELBUILD > $(BUILD)/package/VELBUILD
+	vbuild -C $(BUILD)/package checksum
 
+SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )
+SRC_FILES += VELBUILD
+
+CPP_FILES = $(wildcard applications/**/*.cpp) $(wildcard applications/**/*.h)
+CPP_FILES += $(wildcard shared/**/*.cpp) $(wildcard shared/**/*.h)
+CPP_FILES += $(wildcard tests/**/*.cpp) $(wildcard tests/**/*.h)
+
+.PHONY: lint
 lint:
-	shfmt \
+	@shfmt \
 		-d\
 		-s \
 		-i 4 \
 		-bn \
 		-sr \
 		$(SRC_FILES)
+	@clang-format \
+		--dry-run \
+		--Werror \
+		--fallback-style=mozilla \
+		$(CPP_FILES)
 
+.PHONY: format
 format:
-	shfmt \
+	@shfmt \
 		-l \
 		-w \
 		-s \
@@ -123,3 +198,7 @@ format:
 		-bn \
 		-sr \
 		$(SRC_FILES)
+	@clang-format \
+		--fallback-style=mozilla \
+		-i \
+		$(CPP_FILES)

@@ -1,7 +1,6 @@
 {
     "displayName": "Xochitl",
     "description": "Read documents and take notes",
-    "bin": "/opt/bin/xochitl",
-    "icon": "oxide:xochitl-48",
-    "flags": ["noannounce", "exclusive"]
+    "bin": "/usr/bin/xochitl",
+    "icon": "oxide:xochitl-48"
 }

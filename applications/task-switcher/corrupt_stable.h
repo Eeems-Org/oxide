@@ -1,9 +1,11 @@
 #if defined __cplusplus
-#include <cstdlib>
-#include <fstream>
-#include <iostream>
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
 #include <QDebug>
 #include <QGuiApplication>
 #include <QImage>
@@ -14,8 +16,7 @@
 #include <QScreen>
 #include <QtPlugin>
 #include <QtQuick>
-#include <signal.h>
-#include <stdlib.h>
-#include <sys/mman.h>
-#include <unistd.h>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
 #endif

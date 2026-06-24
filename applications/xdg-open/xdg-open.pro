@@ -11,7 +11,7 @@ HEADERS +=
 
 TARGET = xdg-open
 include(../../qmake/common.pri)
-target.path = /opt/bin
+target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
 include(../../qmake/liboxide.pri)

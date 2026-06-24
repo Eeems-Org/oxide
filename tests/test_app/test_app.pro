@@ -4,18 +4,20 @@ QT += dbus
 
 CONFIG += c++11
 CONFIG += qml_debug
-CONFIG += qtquickcompiler
+CONFIG(release, debug|release){
+    CONFIG += qtquickcompiler
+}
 
 SOURCES += \
         main.cpp
 
 TARGET = test_app
 include(../../qmake/common.pri)
-target.path = /opt/bin
+target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
 applications.files = ../../assets/opt/usr/share/applications/test_app.oxide
-applications.path = /opt/usr/share/applications/
+applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 
 RESOURCES += \

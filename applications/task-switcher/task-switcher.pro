@@ -4,8 +4,10 @@ QT += dbus
 
 CONFIG += c++11
 CONFIG += qml_debug
-CONFIG += qtquickcompiler
 CONFIG += precompile_header
+CONFIG(release, debug|release){
+    CONFIG += qtquickcompiler
+}
 
 SOURCES += \
         appitem.cpp \
@@ -13,11 +15,11 @@ SOURCES += \
 
 TARGET = corrupt
 include(../../qmake/common.pri)
-target.path = /opt/bin
+target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
 applications.files = ../../assets/opt/usr/share/applications/codes.eeems.corrupt.oxide
-applications.path = /opt/usr/share/applications/
+applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 
 INCLUDEPATH += ../../shared

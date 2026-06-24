@@ -16,6 +16,7 @@ SOURCES += \
     debug.cpp \
     libblight.cpp \
     socket.cpp \
+    system.cpp \
     types.cpp
 
 HEADERS += \
@@ -28,14 +29,14 @@ HEADERS += \
     libblight.h \
     meta.h \
     socket.h \
+    system.h \
     types.h
 
 PRECOMPILED_HEADER = \
     libblight_stable.h
 
-LIBS += -lsystemd
-
 include(../../qmake/common.pri)
+PKGCONFIG += libsystemd
 RELATIVE_PWD = $$system(realpath --canonicalize-missing --relative-to $$OUT_PWD $$PWD)
 include(../../qmake/libblight_protocol.pri)
 
@@ -58,7 +59,7 @@ libblight_h_install.files = \
     include/libblight.h \
     include/libblight
 libblight_h_install.depends = libblight_h
-libblight_h_install.path = /opt/include/
+libblight_h_install.path = $$INCLUDE_INSTALL_PATH
 INSTALLS += libblight_h_install
 
 QMAKE_EXTRA_TARGETS += libblight_libblight_h libblight_h libblight_h_install
@@ -66,15 +67,15 @@ POST_TARGETDEPS += $$libblight_libblight_h.target $$libblight_h.target
 QMAKE_CLEAN += $$libblight_h.target include/libblight/*.h
 
 TARGET = blight
-target.path = /opt/lib
+target.path = $$LIB_INSTALL_PATH
 INSTALLS += target
 
 QMAKE_PKGCONFIG_NAME = libblight
 QMAKE_PKGCONFIG_DESCRIPTION = Shared library for using Oxide\'s screen compositor
 QMAKE_PKGCONFIG_VERSION = $$VERSION
-QMAKE_PKGCONFIG_PREFIX = /opt
-QMAKE_PKGCONFIG_LIBDIR = /opt/lib
-QMAKE_PKGCONFIG_INCDIR = /opt/include
+QMAKE_PKGCONFIG_PREFIX = $$ROOT_INSTALL_PATH
+QMAKE_PKGCONFIG_LIBDIR = $$LIB_INSTALL_PATH
+QMAKE_PKGCONFIG_INCDIR = $$INCLUDE_INSTALL_PATH
 QMAKE_PKGCONFIG_DESTDIR = pkgconfig
 
 DISTFILES += \

@@ -17,8 +17,15 @@ Item {
         repeat: true
         onTriggered: networks.model.sort()
     }
-    Popup {
-        onVisibleChanged: {
+        Popup {
+            font.pixelSize: 32
+            background: Rectangle {
+                color: "white"
+                border.color: "black"
+                border.width: 2
+                radius: 10
+            }
+            onVisibleChanged: {
             if(visible){
                 controller.connectWifiSignals();
                 if(controller.wifiOn){
@@ -35,7 +42,7 @@ Item {
         id: wifi
         visible: root.visible
         closePolicy: Popup.NoAutoClose
-        width: 1000
+        width: Math.min(1000, root.parent.width * 0.9)
         clip: true
         ColumnLayout {
             anchors.fill: parent

@@ -5,19 +5,15 @@ SUBDIRS = \
     libblight_protocol \
     libblight \
     libblight_client \
-    qpa
+    qpa \
+    lockscreen_hook
 
 liboxide.depends = libblight
 libblight.depends = libblight_protocol
 libblight_client.depends = libblight
 qpa.depends = libblight liboxide
-contains(DEFINES, SENTRY){
-    SUBDIRS += sentry
-    liboxide.depends += sentry
-}else{
-    SUBDIRS += cpptrace
-    liboxide.depends += cpptrace
-}
+SUBDIRS += cpptrace
+liboxide.depends += cpptrace
 linux-oe-g++{
     SUBDIRS += epaper
     liboxide.depends += epaper

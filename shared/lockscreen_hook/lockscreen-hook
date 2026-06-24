@@ -1,0 +1,62 @@
+#!/bin/bash
+set -e
+log() {
+  printf "%s lockscreen_hook\t%s\n" "$(date --utc '+%H:%M:%S')" "$1" 1>&2
+}
+hook() {
+  path=/home/root/.local/share/lockscreen_hook.d/"$1"
+  if [ ! -e "$path" ]; then
+    log "$1 hook missing"
+    return 0
+  fi
+  if [ ! -f "$path" ]; then
+    log "$1 hook is not a file"
+    return 0
+  fi
+  if [ ! -x "$path" ]; then
+    log "$1 hook is not executable"
+    return 0
+  fi
+  log "Running hook $1"
+  set +e
+  "$path"
+  res=$?
+  set -e
+  case $res in
+  0)
+    log "$1 hook successfully ran"
+    return 0
+    ;;
+  126)
+    log "$1 hook failed to start"
+    return $res
+    ;;
+  *)
+    if [ $res -ge 129 ] && [ $res -le 192 ] && [ $res != 130 ] && [ $res != 137 ] && [ $res != 143 ] && [ $res != 148 ]; then
+      log "$1 hook crashed"
+      return $res
+    fi
+    log "$1 hook had non-zero exit code ($res)"
+    return $res
+    ;;
+  esac
+}
+if ! hook setup; then
+  log "Running without hooks"
+  exec /usr/bin/xochitl "$@"
+fi
+log "Running with hooks"
+set +e
+LD_PRELOAD=/usr/lib/liblockscreen_hook.so /usr/bin/xochitl "$@"
+res=$?
+set -e
+log "xochitl exit code: $res"
+if [ $res == 0 ]; then
+  hook success
+elif [ $res -lt 129 ] || [ $res -gt 192 ]; then
+  hook fail
+elif [ $res == 130 ] || [ $res == 137 ] || [ $res == 143 ]; then
+  hook stop
+else
+  hook crash
+fi

@@ -6,12 +6,10 @@ QT += input_support-private
 CONFIG += c++17
 CONFIG -= app_bundle
 CONFIG += qml_debug
-CONFIG += qtquickcompiler
 CONFIG += qmltypes
-
-QT_CONFIG -= no-pkg-config
-CONFIG += link_pkgconfig
-PKGCONFIG += libevdev
+CONFIG(release, debug|release){
+    CONFIG += qtquickcompiler
+}
 
 QML_IMPORT_NAME = codes.eeems.blight
 QML_IMPORT_PATH += .
@@ -33,18 +31,24 @@ configFile.files = ../../assets/etc/dbus-1/system.d/codes.eeems.blight.conf
 configFile.path = /etc/dbus-1/system.d/
 INSTALLS += configFile
 
+
 service.files = ../../assets/etc/systemd/system/blight.service
 service.path = /etc/systemd/system/
 INSTALLS += service
 
+include(../../qmake/common.pri)
+
 client.files = blight-client
-client.path = /opt/bin/
+client.path = $$BIN_INSTALL_PATH
 INSTALLS += client
 
 TARGET = blight
-include(../../qmake/common.pri)
-target.path = /opt/bin
+target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
+
+!system("pkg-config --exists libevdev"): error("Could not find libevdev package via pkg-config")
+LIBS += -Wl,-Bstatic $$system("pkg-config --static --libs libevdev") -Wl,-Bdynamic
+QMAKE_CXXFLAGS += $$system("pkg-config --cflags libevdev")
 
 HEADERS += \
     connection.h \

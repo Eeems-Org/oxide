@@ -1,7 +1,6 @@
 import QtQuick 2.10
-import QtQuick.Controls 2.4
+import QtQuick.Controls
 import QtQuick.Layouts 1.0
-import Qt.labs.calendar 1.0
 import "qrc:/codes.eeems.oxide"
 import "../widgets"
 import "../js/moment.js" as Moment
@@ -13,9 +12,16 @@ Item {
     x: (parent.width / 2) - (popup.width / 2)
     y: (parent.height / 2) - (popup.height / 2)
     width: 1000
-    Popup {
-        id: popup
-        visible: root.visible
+        Popup {
+            id: popup
+            font.pixelSize: 32
+            visible: root.visible
+            background: Rectangle {
+                color: "white"
+                border.color: "black"
+                border.width: 2
+                radius: 10
+            }
         closePolicy: Popup.NoAutoClose
         onClosed: {
             parent.closed()

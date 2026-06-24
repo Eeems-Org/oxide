@@ -1,7 +1,6 @@
-contains(DEFINES, SENTRY){
-    error("Configured to build sentry instead of cpptrace")
-}
 TEMPLATE = aux
+
+include(../../qmake/common.pri)
 
 PRE_TARGETDEPS += $$OUT_PWD/src/Makefile
 cpptrace_makefile.target = $$OUT_PWD/src/Makefile
@@ -10,7 +9,9 @@ cpptrace_makefile.commands = \
         -S $$PWD/src \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DCPPTRACE_UNWIND_WITH_LIBUNWIND=on
+        -DCPPTRACE_UNWIND_WITH_EXECINFO=on \
+        -DCPPTRACE_GET_SYMBOLS_WITH_LIBDL=on \
+        -DCPPTRACE_BUILD_SHARED=on
 QMAKE_EXTRA_TARGETS += cpptrace_makefile
 
 PRE_TARGETDEPS += $$OUT_PWD/src/libcpptrace.so
@@ -31,7 +32,9 @@ QMAKE_EXTRA_TARGETS += cpptrace_install
 
 QMAKE_CLEAN += -r $$OUT_PWD/src/
 
-target.files = $$OUT_PWD/lib/libcpptrace.so
-target.depends = cpptrace_build
-target.path = /opt/lib/
+target.files = \
+    $$OUT_PWD/lib/libcpptrace.so \
+    $$OUT_PWD/lib/libcpptrace.so.*
+target.depends = cpptrace_install
+target.path = $$LIB_INSTALL_PATH/
 INSTALLS += target

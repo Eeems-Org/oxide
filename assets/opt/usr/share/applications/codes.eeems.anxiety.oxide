@@ -1,7 +1,7 @@
 {
     "displayName": "Screenshots",
     "description": "View and manage screenshots",
-    "bin": "/opt/bin/anxiety",
+    "bin": "/home/root/.vellum/bin/anxiety",
     "icon": "oxide:image-48",
     "type": "foreground",
     "permissions": ["screen"],

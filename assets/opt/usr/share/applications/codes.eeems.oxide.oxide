@@ -1,7 +1,7 @@
 {
     "displayName": "Launcher",
     "description": "Application launcher",
-    "bin": "/opt/bin/oxide",
+    "bin": "/home/root/.vellum/bin/oxide",
     "type": "foreground",
     "flags": ["hidden", "nopreload"],
     "permissions": ["apps", "wifi", "power", "system", "notification"]

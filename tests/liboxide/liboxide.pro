@@ -1,9 +1,6 @@
 QT += testlib
 QT += gui
 
-target.path = /opt/share/tests
-INSTALLS += target
-
 CONFIG += qt
 CONFIG += console
 CONFIG += warn_on
@@ -23,6 +20,11 @@ SOURCES += \
 
 include(../../qmake/common.pri)
 include(../../qmake/liboxide.pri)
+
+target.path = $$TESTS_INSTALL_PATH
+INSTALLS += target
+
+DEFINES += TESTS_INSTALL_PATH=\\\"$$TESTS_INSTALL_PATH\\\"
 
 HEADERS += \
     autotest.h \

@@ -12,6 +12,7 @@ SUBDIRS = \
     process-manager \
     screenshot-viewer \
     settings-manager \
+    sketchpad \
     system-service \
     task-switcher \
     update-desktop-database \
@@ -22,7 +23,8 @@ SUBDIRS = \
     xdg-settings \
     display-server \
     fbinfo \
-    xclip
+    xclip \
+    launcherctl
 
 launcher.depends = system-service update-desktop-database
 lockscreen.depends = system-service
@@ -30,6 +32,7 @@ notify-send.depends = system-service
 process-manager.depends =
 screenshot-viewer.depends = system-service
 settings-manager.depends = system-service
+sketchpad.depends = system-service
 system-service.depends =
 task-switcher.depends = system-service
 update-desktop-database.depends = system-service
@@ -39,6 +42,7 @@ xdg-open.depends = system-service
 gio.depends = system-service
 xdg-settings.depends = system-service
 xdg-icon-resource.depends = system-service
+launcherctl.depends = system-service
 desktop-file-edit.depends =
 desktop-file-install.depends =
 inject_evdev.depends =

@@ -29,7 +29,7 @@ SOURCES += \
 
 TARGET = tarnish
 include(../../qmake/common.pri)
-target.path = /opt/bin
+target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
 configFile.files = ../../assets/etc/dbus-1/system.d/codes.eeems.oxide.conf
@@ -41,22 +41,25 @@ service.path = /etc/systemd/system/
 INSTALLS += service
 
 keyd.files = ../../assets/opt/etc/keyd/oxide.conf
-keyd.path = /opt/etc/keyd/
+keyd.path = $$CONFIG_INSTALL_PATH/keyd/
 INSTALLS += keyd
 
 launcherctl.files = ../../assets/opt/share/launcherctl/oxide
-launcherctl.path = /opt/share/launcherctl/
+launcherctl.path = $$SHARE_INSTALL_PATH/launcherctl/
 INSTALLS += launcherctl
 
-applications.files = ../../assets/opt/usr/share/applications/xochitl.oxide
-applications.path = /opt/usr/share/applications/
+applications.files = \
+    ../../assets/opt/usr/share/applications/xochitl.oxide \
+    ../../assets/opt/usr/share/applications/xovi.oxide
+applications.path = $$APPLICATIONS_INSTALL_PATH
 INSTALLS += applications
 
 icons.files += ../../assets/opt/usr/share/icons/oxide/48x48/apps/xochitl.png
-icons.path = /opt/usr/share/icons/oxide/48x48/apps
+icons.path = $$ICONS_INSTALL_PATH
 INSTALLS += icons
 
 system(qdbusxml2cpp -N -p wpa_supplicant.h:wpa_supplicant.cpp fi.w1.wpa_supplicant1.xml)
+system(bash -c 'cd ../../; clang-format --fallback-style=mozilla -i applications/system-service/wpa_supplicant.h:wpa_supplicant.cpp applications/system-service/wpa_supplicant.h:wpa_supplicant.h')
 
 DBUS_INTERFACES += org.freedesktop.login1.xml
 
@@ -84,9 +87,9 @@ HEADERS += \
 PRECOMPILED_HEADER = \
     tarnish_stable.h
 
-LIBS += -lpng16
-LIBS += -lsystemd
-LIBS += -lz
+PKGCONFIG += libsystemd
+PKGCONFIG += libpng16
+PKGCONFIG += zlib
 
 DISTFILES += \
     fi.w1.wpa_supplicant1.xml \

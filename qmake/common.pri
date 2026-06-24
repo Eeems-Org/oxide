@@ -8,35 +8,53 @@ isEmpty(QT_DISABLE_DEPRECATED_BEFORE){
 }else{
     message("Using override deprecation value")
 }
+
+QT_CONFIG -= no-pkg-config
+CONFIG += link_pkgconfig
+
 DEFINES ~= s/QT_DISABLE_DEPRECATED_BEFORE=.+/
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=$${QT_DISABLE_DEPRECATED_BEFORE}
 CONFIG(debug, debug|release){
-    LIBS += -lunwind
     contains(DEFINES, SANITIZER){
-        QMAKE_LFLAGS += -fno-omit-frame-pointer
-        QMAKE_LFLAGS += -fsanitize-recover=address
-
-        QMAKE_LFLAGS += -fsanitize=address
-        QMAKE_LFLAGS += -fsanitize=leak
-        # QMAKE_LFLAGS += -fsanitize=thread # Incompatible with address and leak
-        QMAKE_LFLAGS += -fsanitize=undefined
-        QMAKE_LFLAGS += -fsanitize=pointer-compare
-        QMAKE_LFLAGS += -fsanitize=pointer-subtract
+        CONFIG += sanitizer
+        CONFIG += sanitize_address
+        CONFIG += sanitize_undefined
     }
 }
 
 linux-oe-g++{
     DEFINES += EPAPER
 }
+ROOT_INSTALL_PATH = /home/root/.vellum
+LIB_INSTALL_PATH = $$ROOT_INSTALL_PATH/lib
+USRLIB_INSTALL_PATH = $$ROOT_INSTALL_PATH/usr/lib
+INCLUDE_INSTALL_PATH = $$ROOT_INSTALL_PATH/include
+BIN_INSTALL_PATH = $$ROOT_INSTALL_PATH/bin
+SHARE_INSTALL_PATH = $$ROOT_INSTALL_PATH/share
+CONFIG_INSTALL_PATH = /home/root/.config
+APPLICATIONS_INSTALL_PATH = /home/root/.local/share/applications
+ICONS_INSTALL_PATH = /home/root/.local/share/icons/oxide/48x48/apps
+SPLASH_INSTALL_PATH = /home/root/.local/share/icons/oxide/702x702/splash
+TESTS_INSTALL_PATH = /home/root/.local/share/tests
 
-QMAKE_RPATHDIR += /lib /usr/lib /opt/lib /opt/usr/lib
+QMAKE_RPATHDIR += /lib /usr/lib $$LIB_INSTALL_PATH $$USRLIB_INSTALL_PATH
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+DEFINES += SPLASH_INSTALL_PATH=\\\"$$SPLASH_INSTALL_PATH\\\"
+DEFINES += ICONS_INSTALL_PATH=\\\"$$ICONS_INSTALL_PATH\\\"
 
-CONFIG += ltcg
 CONFIG += c++17
 CONFIG += c++20
-CONFIG += c++latest
+# CONFIG += c++latest
 
-QMAKE_LFLAGS += -flto
-QMAKE_CFLAGS += -fPIC
-QMAKE_CXXFLAGS += -fPIC
+CONFIG(release, debug|release){
+    !contains(DEFINES, DISABLE_LTO){
+        CONFIG += ltcg
+        QMAKE_LFLAGS += -flto
+    }
+}
+
+!contains(DEFINES, DISABLE_PIC){
+    QMAKE_CFLAGS += -fPIC
+    QMAKE_CXXFLAGS += -fPIC
+}
+

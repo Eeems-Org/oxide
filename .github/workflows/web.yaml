@@ -1,36 +1,28 @@
 name: Build website
 
 on:
-  push:
-    branches:
-      - '*'         # matches every branch that doesn't contain a '/'
-      - '*/*'       # matches every branch containing a single '/'
-      - '**'        # matches every branch
-      - '!master'   # excludes master
-    paths:
-      - 'web/**'
-      - 'shared/liboxide/**'
-      - '.github/actions/web/**'
   pull_request:
     paths:
-      - 'web/**'
-      - 'shared/liboxide/**'
-      - 'shared/libblight/**'
-      - '.github/actions/web/**'
+      - "web/**"
+      - "shared/liboxide/**"
+      - "shared/libblight/**"
+      - ".github/actions/web/**"
+permissions:
+  contents: read
 jobs:
   web:
     name: Build web
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the Git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
+          persist-credentials: false
           submodules: true
       - name: Build web
         uses: ./.github/actions/web
       - name: Save web
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web
           path: web/dist
-

@@ -1,12 +1,4 @@
-GLIBC_2.4 {
-   write;
-   writev;
-   writev64;
-   pwrite;
-   pwrite64;
-   pwritev;
-   pwritev64;
-   open64;
-   openat;
-   open;
-};
+GLIBC_2.34 {};
+GLIBC_2.4 {};
+GLIBC_2.17 {};
+Qt_6 {};

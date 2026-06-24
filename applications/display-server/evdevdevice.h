@@ -1,44 +1,46 @@
 #pragma once
 
-#include <QObject>
-#include <QSocketNotifier>
+#include <libevdev/libevdev.h>
 #include <liboxide/event_device.h>
 #include <liboxide/sysobject.h>
-#include <libevdev/libevdev.h>
+
+#include <QObject>
+#include <QSocketNotifier>
 
 using namespace Oxide;
 
-class EvDevDevice : public QObject{
-    Q_OBJECT
+class EvDevDevice : public QObject {
+  Q_OBJECT
 
 public:
-    EvDevDevice(QThread* handler, const event_device& device);
-    ~EvDevDevice();
-    QString devName();
-    QString name();
-    QString path();
-    QString id();
-    unsigned int number();
-    bool exists();
-    void lock();
-    void unlock();
-    void clear_buffer();
+  EvDevDevice(QThread* handler, const event_device& device);
+  ~EvDevDevice();
+  QString devName();
+  QString name();
+  QString path();
+  QString id();
+  unsigned int number();
+  bool exists();
+  void lock();
+  void unlock();
+  void clear_buffer();
+  bool isValid() const;
 
 signals:
-    void inputEvents(const std::vector<input_event> events);
+  void inputEvents(const std::vector<input_event> events);
 
 public slots:
-    void readEvents();
+  void readEvents();
 
 private:
-    event_device device;
-    SysObject sys;
-    QString _name;
-    QSocketNotifier* notifier;
-    std::vector<input_event> events;
-    libevdev* dev;
+  event_device device;
+  SysObject sys;
+  QString _name;
+  QSocketNotifier* notifier;
+  std::vector<input_event> events;
+  libevdev* dev;
 
-    void emitSomeEvents();
-    input_event createEvent(ushort type, ushort code, int value);
-    input_event* build_flood();
+  void emitSomeEvents();
+  input_event createEvent(ushort type, ushort code, int value);
+  input_event* build_flood();
 };

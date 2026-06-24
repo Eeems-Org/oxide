@@ -1,25 +1,43 @@
 TARGET = blight_client
 TEMPLATE = lib
 
+DEFINES += DISABLE_LTO
 include(../../qmake/common.pri)
 
 CONFIG += hide_symbols
 
 QT =
 
-HEADERS +=
+HEADERS += \
+    drm.h \
+    fb.h \
+    input.h \
+    libc.h \
+    qt.h \
+    state.h \
+    fopen.h \
+    getdents.h
 
-SOURCES += main.cpp
+SOURCES += \
+    drm.cpp \
+    fb.cpp \
+    input.cpp \
+    libc.cpp \
+    main.cpp \
+    qt.cpp \
+    state.cpp \
+    fopen.cpp \
+    getdents.cpp
 
 LIBS += -lrt -ldl -Wl,--exclude-libs,ALL
-LIBS += -lsystemd
+PKGCONFIG += libsystemd
 
 QMAKE_LFLAGS += -Wl,--as-needed
 QMAKE_LFLAGS +=  -Wl,--version-script $$_PRO_FILE_PWD_/main.map
 QMAKE_CFLAGS += -fno-builtin
 QMAKE_CXXFLAGS += -fno-builtin
 
-target.path += /opt/lib
+target.path += $$LIB_INSTALL_PATH
 INSTALLS += target
 
 INCLUDEPATH += ../../shared/mxcfb

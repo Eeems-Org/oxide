@@ -5,7 +5,7 @@ Button {
     property color activeColor: "gray"
     property color backgroundColor: "white"
     property color borderColor: "black"
-    property color color: "white"
+    property color color: "black"
     id: control
     flat: true
     contentItem: Text {

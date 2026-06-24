@@ -59,6 +59,7 @@ Window{
                 id: text
                 visible: this.text.length
                 color: "black"
+                font.pixelSize: 32
                 wrapMode: Text.WordWrap
                 Layout.margins: 10
                 Layout.alignment: Qt.AlignCenter

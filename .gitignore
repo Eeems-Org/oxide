@@ -11,3 +11,9 @@ build/
 dist/
 version.txt
 *.pro.user.*
+*.log
+*.so
+xochitl
+*.raw
+xochitl64
+.opencode/
