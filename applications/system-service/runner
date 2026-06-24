@@ -1,3 +1,4 @@
 #!/bin/sh
 set -e
-eval "exec blight-client \"$EXECUTABLE\" $ARGUMENTS"
+eval "set -- $ARGUMENTS"
+exec blight-client "$EXECUTABLE" "$@"
