@@ -46,6 +46,12 @@ build: $(OBJ)
 .PHONY: package
 package: package-armv7 package-aarch64
 
+.PHONY: build-armv7
+build-armv7: build-rm1
+
+.PHONY: build-aarch64
+build-aarch64: build-rm1
+
 .PHONY: package-armv7
 package-armv7: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
 	CARCH=armv7 vbuild -C $(BUILD)/package
@@ -57,6 +63,23 @@ package-aarch64: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
 	CARCH=aarch64 vbuild -C $(BUILD)/package
 	mkdir -p $(DIST)/aarch64
 	cp -a $(BUILD)/package/dist/aarch64/. $(DIST)/aarch64
+
+.PHONY: deploy-armv7
+deploy-armv7: package-armv7
+	rsync -aP release/armv7/*.apk remarkable:/home/root/packages
+
+.PHONY: deploy-aarch64
+deploy-aarch64: package-aarch64
+	rsync -aP release/aarch64/*.apk remarkable:/home/root/packages
+
+
+.PHONY: install-armv7
+install-armv7: deploy-armv7
+	echo "vellum add packages/*.apk" | ssh remarkable bash -le
+
+.PHONY: install-aarch64
+install-aarch64: deploy-aarch64
+	echo "vellum add packages/*.apk" | ssh remarkable bash -le
 
 .PHONY: build-rm1
 build-rm1: clean-base $(DIST)

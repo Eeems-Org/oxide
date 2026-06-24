@@ -16,6 +16,8 @@
     <property name="systemApp" type="b" access="read"/>
     <property name="hidden" type="b" access="read"/>
     <property name="transient" type="b" access="read"/>
+    <property name="forking" type="b" access="read"/>
+    <property name="flags" type="as" access="read"/>
     <property name="icon" type="s" access="readwrite"/>
     <property name="environment" type="a{sv}" access="read">
       <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
@@ -23,6 +25,7 @@
     <property name="workingDirectory" type="s" access="readwrite"/>
     <property name="user" type="s" access="read"/>
     <property name="group" type="s" access="read"/>
+    <property name="directories" type="as" access="read"/>
     <signal name="launched">
     </signal>
     <signal name="paused">

@@ -88,6 +88,8 @@ class Application : public QObject {
   Q_PROPERTY(bool systemApp READ systemApp)
   Q_PROPERTY(bool hidden READ hidden)
   Q_PROPERTY(bool transient READ transient)
+  Q_PROPERTY(bool forking READ forking)
+  Q_PROPERTY(QStringList flags READ flags)
   Q_PROPERTY(QString icon READ icon WRITE setIcon NOTIFY iconChanged)
   Q_PROPERTY(QVariantMap environment READ environment NOTIFY environmentChanged)
   Q_PROPERTY(
@@ -96,6 +98,7 @@ class Application : public QObject {
   )
   Q_PROPERTY(QString user READ user)
   Q_PROPERTY(QString group READ group)
+  Q_PROPERTY(QStringList directories READ directories)
 
 public:
   Application(QDBusObjectPath path, QObject* parent)
@@ -140,6 +143,7 @@ public:
   void setAutoStart(bool autoStart);
   bool systemApp();
   bool transient();
+  bool forking();
   bool hidden();
   int type();
   int state();
@@ -152,6 +156,7 @@ public:
   void setWorkingDirectory(const QString& workingDirectory);
   QString user();
   QString group();
+  QStringList directories();
 
   const QVariantMap& getConfig();
   void setConfig(const QVariantMap& config);
