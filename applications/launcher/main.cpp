@@ -44,6 +44,7 @@ main(int argc, char* argv[]) {
   QQmlApplicationEngine engine;
   QQmlContext* context = engine.rootContext();
   Controller* controller = new Controller();
+  controller->loadSettings();
   qmlRegisterAnonymousType<AppItem>("codes.eeems.oxide", 2);
   qmlRegisterAnonymousType<Controller>("codes.eeems.oxide", 2);
   registerQML(&engine);
