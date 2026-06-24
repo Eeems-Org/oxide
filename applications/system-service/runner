@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+case "$(basename "$EXECUTABLE")" in
+puzzles)
+  export OXIDE_PRELOAD_FORCE_RM1=1
+  ;;
+esac
+eval "exec blight-client \"$EXECUTABLE\" $ARGUMENTS"

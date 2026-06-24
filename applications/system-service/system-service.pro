@@ -48,6 +48,10 @@ launcherctl.files = ../../assets/opt/share/launcherctl/oxide
 launcherctl.path = $$SHARE_INSTALL_PATH/launcherctl/
 INSTALLS += launcherctl
 
+runner.files = runner
+runner.path = $$ROOT_INSTALL_PATH/share/oxide/libexec/
+INSTALLS += runner
+
 applications.files = \
     ../../assets/opt/usr/share/applications/xochitl.oxide \
     ../../assets/opt/usr/share/applications/xovi.oxide
@@ -95,6 +99,7 @@ DISTFILES += \
     fi.w1.wpa_supplicant1.xml \
     generate_xml.sh \
     org.freedesktop.login1.xml \
+    runner \
     ../../assets/etc/dbus-1/system.d/codes.eeems.oxide.conf \
     ../../assets/etc/systemd/system/tarnish.service \
     ../../assets/opt/usr/share/applications/xochitl.oxide \
