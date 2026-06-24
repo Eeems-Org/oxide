@@ -98,6 +98,7 @@ class Application : public QObject {
   )
   Q_PROPERTY(QString user READ user)
   Q_PROPERTY(QString group READ group)
+  Q_PROPERTY(QStringList directories READ directories)
 
 public:
   Application(QDBusObjectPath path, QObject* parent)
@@ -155,6 +156,7 @@ public:
   void setWorkingDirectory(const QString& workingDirectory);
   QString user();
   QString group();
+  QStringList directories();
 
   const QVariantMap& getConfig();
   void setConfig(const QVariantMap& config);

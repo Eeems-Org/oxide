@@ -75,11 +75,11 @@ deploy-aarch64: package-aarch64
 
 .PHONY: install-armv7
 install-armv7: deploy-armv7
-	ssh remarkable bash -ec 'vellum add packages/*.apk'
+	echo "vellum add packages/*.apk" | ssh remarkable bash -le
 
 .PHONY: install-aarch64
 install-aarch64: deploy-aarch64
-	ssh remarkable bash -ec 'vellum add packages/*.apk'
+	echo "vellum add packages/*.apk" | ssh remarkable bash -le
 
 .PHONY: build-rm1
 build-rm1: clean-base $(DIST)

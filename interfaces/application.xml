@@ -25,6 +25,7 @@
     <property name="workingDirectory" type="s" access="readwrite"/>
     <property name="user" type="s" access="read"/>
     <property name="group" type="s" access="read"/>
+    <property name="directories" type="as" access="read"/>
     <signal name="launched">
     </signal>
     <signal name="paused">

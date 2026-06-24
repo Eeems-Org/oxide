@@ -45,6 +45,7 @@ AppItem::execute() {
   properties["group"] = app->group();
   properties["environment"] = app->environment();
   properties["permissions"] = app->permissions();
+  properties["directories"] = app->directories();
   properties["onPause"] = app->onPause();
   properties["onResume"] = app->onResume();
   properties["onStop"] = app->onStop();

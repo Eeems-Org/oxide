@@ -50,6 +50,8 @@ The type of application this is.
 - ``"foreground"``: This application runs in the foreground and must be paused when it's not the active application.
 - ``"backgroundable"``: This application runs in both the foreground and the background and supports being notified with ``SIGUSR1`` and ``SIGUSR2`` when being swapped between the two states by the user.
 
+.. _registration-flags:
+
 flags
 -----
 Optional string array
@@ -64,7 +66,7 @@ An array of flags for the application.
 - ``"nopreload.sysfs"``: Do not automatically add ``libsysfs_preload.so`` to ``LD_PRELOAD`` when running this application.
 - ``"exclusive"``: Application is to be run in exclusive mode. This means that the compositor will not be sending input to the application, or handling displaying anything to the screen while this application is in the foreground.
 - ``"noannounce"``: Do not announce when this application is being started
-- ``"forking"``: Allow this application to be launched multiple times. Each launch creates a new independent instance. The task switcher will show all running instances.
+- ``"forking"``: Allow this application to be launched multiple times from the launcher. Each launch from the launcher creates a fresh independent instance. The task switcher will show all running instances.
 
 displayName
 -----------

@@ -616,6 +616,11 @@ Application::group() {
   return value("group", getgid()).toString();
 }
 
+QStringList
+Application::directories() {
+  return value("directories", QStringList()).toStringList();
+}
+
 const QVariantMap&
 Application::getConfig() {
   return m_config;

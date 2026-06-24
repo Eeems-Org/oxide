@@ -240,6 +240,29 @@ Application Object
 |                      |                             | from the user on any |
 |                      |                             | UI.                  |
 +----------------------+-----------------------------+----------------------+
+| transient            | ``BOOLEAN`` property        | If this application  |
+|                      | (read)                      | is a transient       |
+|                      |                             | instance created at  |
+|                      |                             | runtime rather than  |
+|                      |                             | from a file          |
+|                      |                             | registration.        |
++----------------------+-----------------------------+----------------------+
+| forking              | ``BOOLEAN`` property        | If this application  |
+|                      | (read)                      | can be launched      |
+|                      |                             | multiple times from  |
+|                      |                             | the launcher as      |
+|                      |                             | independent          |
+|                      |                             | transient instances. |
++----------------------+-----------------------------+----------------------+
+| flags                | ``ARRAY STRING`` property   | A list of flags for  |
+|                      | (read)                      | this application.    |
+|                      |                             | See the              |
+|                      |                             | :ref:`registration   |
+|                      |                             | format               |
+|                      |                             | <registration-       |
+|                      |                             | flags>` for          |
+|                      |                             | possible values.     |
++----------------------+-----------------------------+----------------------+
 | icon                 | ``STRING`` property         | Path to the icon     |
 |                      | (read/write)                | used to represent    |
 |                      |                             | this application.    |
@@ -259,6 +282,10 @@ Application Object
 | group                | ``STRING`` property         | Group the            |
 |                      | (read)                      | application will be  |
 |                      |                             | run as.              |
++----------------------+-----------------------------+----------------------+
+| directories          | ``ARRAY STRING`` property   | List of directories  |
+|                      | (read)                      | to mount for the     |
+|                      |                             | application.         |
 +----------------------+-----------------------------+----------------------+
 | launched             | signal                      | Signal sent when the |
 |                      |                             | application starts.  |
