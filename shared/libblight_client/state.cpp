@@ -170,7 +170,7 @@ namespace Client {
   }
   bool isFakeRM2FB() {
     if (Client::deviceType != Client::DeviceType::RM1) {
-      return false;
+      return true;
     }
     static bool enabled = getenv("OXIDE_PRELOAD_NO_FAKE_RM2FB") == nullptr;
     return enabled;

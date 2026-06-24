@@ -76,6 +76,8 @@ package() {
         home/root/.local/share/applications/xochitl.oxide
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
         home/root/.local/share/icons/oxide/48x48/apps/xochitl.png
+    install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/share/oxide/libexec \
+        home/root/.vellum/share/oxide/libexec/runner
     # Task manager
     install -o root -g root -Dm755 -t "$pkgdir"/home/root/.vellum/bin \
         home/root/.vellum/bin/erode

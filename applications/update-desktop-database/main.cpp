@@ -176,6 +176,159 @@ main(int argc, char* argv[]) {
     }
   }
   LOG_VERBOSE("Finished Importing Draft Applications");
+  LOG("Importing AppLoad External Applications");
+  QList<QString> apploadPaths = {"/home/root/xovi/exthome/appload"};
+  for (auto apploadPath : apploadPaths) {
+    QDir apploadDir(apploadPath);
+    if (!apploadDir.exists()) {
+      LOG_VERBOSE("AppLoad directory not found: " << apploadPath);
+      continue;
+    }
+    for (auto appDirInfo : apploadDir.entryInfoList(
+           QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name
+         )) {
+      auto appDir = appDirInfo.absoluteFilePath();
+      auto manifestPath = appDir + "/external.manifest.json";
+      if (!QFile::exists(manifestPath)) {
+        if (QFile::exists(appDir + "/manifest.json")) {
+          LOG_VERBOSE(
+            "Skipping QML AppLoad app (needs AppLoad runtime): "
+            << appDirInfo.fileName()
+          );
+        }
+        continue;
+      }
+      LOG_VERBOSE("Processing " << manifestPath);
+      QFile manifestFile(manifestPath);
+      if (!manifestFile.open(QIODevice::ReadOnly)) {
+        LOG("Failed to open manifest: " << manifestPath);
+        continue;
+      }
+      auto variant = Oxide::JSON::fromJson(&manifestFile);
+      manifestFile.close();
+      auto manifest = variant.toMap();
+      auto displayName = manifest["name"].toString();
+      auto application = manifest["application"].toString();
+      if (displayName.isEmpty() || application.isEmpty()) {
+        LOG("Skipping " << manifestPath << ": missing name or application");
+        continue;
+      }
+      QFileInfo appFileInfo(application);
+      if (appFileInfo.isRelative()) {
+        application = appDir + "/" + application;
+      }
+      QVariantMap properties;
+      properties.insert("name", displayName);
+      properties.insert("displayName", displayName);
+      properties.insert("workingDirectory", appDir);
+      properties.insert("flags", QStringList() << "nopreload");
+      auto iconPath = appDir + "/icon.png";
+      if (QFile::exists(iconPath)) {
+        properties.insert("icon", iconPath);
+      }
+      QVariantMap env;
+      auto args = manifest.value("args");
+      properties.insert("bin", "/home/root/.vellum/share/oxide/libexec/runner");
+      env.insert("EXECUTABLE", application);
+      if (
+        args.isValid() && args.canConvert<QVariantList>() &&
+        !args.toList().isEmpty()
+      ) {
+        QStringList quotedArgs;
+        for (auto arg : args.toList()) {
+          auto a = arg.toString();
+          a.replace("\\", "\\\\");
+          a.replace("\"", "\\\"");
+          a.replace("`", "\\`");
+          a.replace("$", "\\$");
+          quotedArgs << "\"" + a + "\"";
+        }
+        env.insert("ARGUMENTS", quotedArgs.join(" "));
+      }
+      auto environment = manifest.value("environment");
+      if (environment.isValid() && environment.canConvert<QVariantMap>()) {
+        auto environmentMap = environment.toMap();
+        for (auto key : environmentMap.keys()) {
+          auto value = environmentMap[key].toString();
+          if (key == "LD_PRELOAD") {
+            QStringList entries = value.split(":", Qt::SkipEmptyParts);
+            QStringList kept;
+            for (auto entry : entries) {
+              auto filename = QFileInfo(entry).fileName();
+              if (filename == "qtfb-shim-32bit.so") {
+                env.insert("OXIDE_PRELOAD_FORCE_32BIT_FSCREENINFO", "1");
+                continue;
+              }
+              if (filename != "qtfb-shim.so") {
+                kept << entry;
+              }
+            }
+            if (!kept.isEmpty()) {
+              env.insert("LD_PRELOAD", kept.join(":"));
+            }
+            continue;
+          }
+          if (key == "QTFB_SHIM_MODEL") {
+            if (value == "1" || value == "RM1") {
+              env.insert("OXIDE_PRELOAD_FORCE_RM1", "1");
+              continue;
+            } else if (value == "RM2") {
+              env.insert("OXIDE_PRELOAD_FORCE_RM2_NAME", "1");
+              continue;
+            }
+          }
+          if (key == "QTFB_SHIM_INPUT" && value == "0") {
+            env.insert("OXIDE_PRELOAD_EXPOSE_INPUT", "1");
+            continue;
+          }
+          if (key == "QTFB_SHIM_FB" && value == "0") {
+            env.insert("OXIDE_PRELOAD_EXPOSE_FB", "1");
+            continue;
+          }
+          if (key == "QTFB_SHIM_MODE" && value.toLower() == "rgb565") {
+            env.insert("OXIDE_PRELOAD_FORCE_RGB16", "1");
+            continue;
+          }
+          if (key == "QTFB_SHIM_INPUT_MODE" && value == "RM1") {
+            env.insert("OXIDE_PRELOAD_FORCE_RM1_INPUT", "1");
+            continue;
+          }
+          if (key == "QTFB_SHIM_INITIAL_DISPLAY_MODE") {
+            env.insert("OXIDE_PRELOAD_FORCE_WAVEFORM", value);
+            continue;
+          }
+          if (key.startsWith("QTFB_")) {
+            LOG_VERBOSE(
+              "Unhandled AppLoad environment variable: " << key << "=" << value
+            );
+            continue;
+          }
+          env.insert(key, value);
+        }
+      }
+      if (!env.isEmpty()) {
+        properties.insert("environment", env);
+      }
+      auto registrationPath =
+        QString(OXIDE_APPLICATION_REGISTRATIONS_DIRECTORY) + "/" + displayName +
+        ".oxide";
+      if (QFile::exists(registrationPath)) {
+        LOG_VERBOSE("Already registered: " << displayName);
+        continue;
+      }
+      LOG_VERBOSE("Not found, creating...");
+      QFile registrationFile(registrationPath);
+      if (!registrationFile.open(QIODevice::WriteOnly)) {
+        LOG("Failed to create registration: " << registrationPath);
+        continue;
+      }
+      registrationFile.write(
+        QJsonDocument(QJsonObject::fromVariantMap(properties)).toJson()
+      );
+      LOG_VERBOSE("Imported AppLoad app: " << displayName);
+    }
+  }
+  LOG_VERBOSE("Finished Importing AppLoad External Applications");
   apps.reload().waitForFinished();
   return qExit(EXIT_SUCCESS);
 }
