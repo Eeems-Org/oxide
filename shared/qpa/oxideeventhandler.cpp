@@ -246,9 +246,9 @@ DeviceData::DeviceData(
       break;
   }
   ::close(fd);
-  thread = std::make_unique<std::thread>([this, handler, device]() {
+  thread = std::make_unique<std::thread>([this, type, handler, device]() {
     char name[16];
-    snprintf(name, sizeof(name), "Input[%u]", device);
+    snprintf(name, sizeof(name), "Input<%d>[%u]", type, device);
     prctl(PR_SET_NAME, name, 0, 0, 0);
     buffer = Blight::open_input(device);
     if (buffer == nullptr) {
@@ -330,7 +330,8 @@ OxideEventHandler::add(
     return;
   }
   if (m_devices.contains(number) && m_devices[number]->type != type) {
-    m_devices.remove(number);
+    O_WARNING("Device" << number << "is already registered");
+    return;
   }
   m_devices.insert(number, std::make_shared<DeviceData>(number, type, this));
 }
