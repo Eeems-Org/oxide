@@ -144,10 +144,6 @@ namespace BlightProtocol {
   }
 
   bool send_blocking(int fd, const blight_data_t data, ssize_t size) {
-    // TODO explore MSG_ZEROCOPY, this will require owning the buffer
-    // instead of allowing
-    //      the user to pass in one we wont touch. As we'll need to ensure
-    //      we don't delete it until the kernel tells us it's done using it.
     ssize_t total = 0;
     while (total < size) {
       ssize_t res =
@@ -172,62 +168,61 @@ namespace BlightProtocol {
     }
     return true;
   }
-} // namespace BlightProtocol
-bool
-wait_for(int fd, int timeout, int event) {
-  int remaining = timeout;
-  auto start = std::chrono::steady_clock::now();
-  while (true) {
-    pollfd pfd;
-    pfd.fd = fd;
-    pfd.events = event;
-    auto res = poll(&pfd, 1, remaining);
-    // We timed out
-    if (res == 0) {
-      errno = EAGAIN;
-      return false;
-    }
-    if (res < 0) {
-      // Temporary error, try again
-      if (errno != EAGAIN && errno != EINTR) {
-        return false;
-      }
-      if (timeout > 0) {
-        remaining =
-          timeout - std::chrono::duration_cast<std::chrono::milliseconds>(
-                      std::chrono::steady_clock::now() - start
-                    )
-                      .count();
+  namespace {
+    bool wait_for(int fd, int timeout, int event) {
+      int remaining = timeout;
+      auto start = std::chrono::steady_clock::now();
+      while (true) {
+        pollfd pfd;
+        pfd.fd = fd;
+        pfd.events = event;
+        auto res = poll(&pfd, 1, remaining);
         // We timed out
-        if (remaining <= 0) {
+        if (res == 0) {
+          errno = EAGAIN;
           return false;
         }
+        if (res < 0) {
+          // Temporary error, try again
+          if (errno != EAGAIN && errno != EINTR) {
+            return false;
+          }
+          if (timeout > 0) {
+            remaining =
+              timeout - std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::steady_clock::now() - start
+                        )
+                          .count();
+            // We timed out
+            if (remaining <= 0) {
+              return false;
+            }
+          }
+          continue;
+        }
+        // Socket disconnected
+        if (pfd.revents & POLLHUP) {
+          errno = ECONNRESET;
+          return false;
+        }
+        // Invalid request
+        if (pfd.revents & POLLNVAL) {
+          errno = EINVAL;
+          return false;
+        }
+        // Event triggered
+        if (pfd.revents & event) {
+          return true;
+        }
+        // This should never happen
+        int error = 0;
+        socklen_t errorsize = sizeof(error);
+        getsockopt(fd, SOL_SOCKET, SO_ERROR, (void*)&error, &errorsize);
+        errno = error;
+        return false;
       }
-      continue;
     }
-    // Socket disconnected
-    if (pfd.revents & POLLHUP) {
-      errno = ECONNRESET;
-      return false;
-    }
-    // Invalid request
-    if (pfd.revents & POLLNVAL) {
-      errno = EINVAL;
-      return false;
-    }
-    // Event triggered
-    if (pfd.revents & event) {
-      return true;
-    }
-    // This should never happen
-    int error = 0;
-    socklen_t errorsize = sizeof(error);
-    getsockopt(fd, SOL_SOCKET, SO_ERROR, (void*)&error, &errorsize);
-    errno = error;
-    return false;
   }
-}
-namespace BlightProtocol {
   bool wait_for_send(int fd, int timeout) {
     return wait_for(fd, timeout, POLLOUT);
   }
