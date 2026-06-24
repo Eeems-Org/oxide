@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <QDebug>
+#include <QUuid>
 #include <fstream>
 #include <iostream>
 
@@ -23,13 +24,53 @@ AppItem::execute() {
     O_WARNING("Application instance is not valid");
     return;
   }
-  qDebug() << "Running application " << app->path();
-  try {
+  if (!app->forking()) {
+    qDebug() << "Running application " << app->path();
     app->launch().waitForFinished();
-  } catch (const std::exception& e) {
-    qDebug() << "Failed to launch" << property("name").toString() << e.what();
+    return;
   }
-  qDebug() << "Waiting for application to exit...";
+  qDebug() << "Forking new instance of" << property("name").toString();
+  auto controller = reinterpret_cast<Controller*>(parent());
+  auto apps = controller->getAppsApi();
+  auto bus = QDBusConnection::systemBus();
+  QVariantMap properties;
+  properties["name"] = QUuid::createUuid().toString();
+  properties["bin"] = app->bin();
+  properties["displayName"] = app->displayName();
+  properties["description"] = app->description();
+  properties["type"] = (int)app->type();
+  properties["icon"] = app->icon();
+  properties["workingDirectory"] = app->workingDirectory();
+  properties["user"] = app->user();
+  properties["group"] = app->group();
+  properties["environment"] = app->environment();
+  properties["permissions"] = app->permissions();
+  properties["onPause"] = app->onPause();
+  properties["onResume"] = app->onResume();
+  properties["onStop"] = app->onStop();
+  QStringList cloneFlags = app->flags();
+  if (!cloneFlags.contains("transient")) {
+    cloneFlags.prepend("transient");
+  }
+  cloneFlags.removeAll("forking");
+  properties["flags"] = cloneFlags;
+  QDBusObjectPath path = apps->registerApplication(properties);
+  if (path.path() == "/") {
+    O_WARNING(
+      "Failed to register transient instance of " << property("name").toString()
+    );
+    auto notifications = controller->getNotificationApi();
+    notifications->add(
+      QUuid::createUuid().toString(),
+      "oxide",
+      QStringLiteral("Failed to launch %1")
+        .arg(property("displayName").toString()),
+      ""
+    );
+    return;
+  }
+  Application instance(OXIDE_SERVICE, path.path(), bus);
+  instance.launch().waitForFinished();
 }
 void
 AppItem::stop() {

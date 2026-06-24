@@ -17,6 +17,7 @@ const QList<QString> SystemFlags{
 const QList<QString> Flags{
   "autoStart",
   "hidden",
+  "forking",
   "noannounce",
   "nosavescreen",
   "system",

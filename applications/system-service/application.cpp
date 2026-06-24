@@ -1107,6 +1107,11 @@ Application::transient() {
 }
 
 bool
+Application::forking() {
+  return flags().contains("forking");
+}
+
+bool
 Application::hidden() {
   return flags().contains("hidden");
 }
