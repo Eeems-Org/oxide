@@ -658,10 +658,10 @@ Connection::readSocket() {
           Oxide::DeviceSettings::DeviceType::RM1
         ) {
           auto marker = Blight::scalar_cast<unsigned int>(message);
-          if (maker.has_value()) {
+          if (marker.has_value()) {
             int fb = open("/dev/fb0", O_RDWR);
             if (fb >= 0) {
-              mxcfb_update_marker_data data{marker, 0};
+              mxcfb_update_marker_data data{marker.value(), 0};
               if (::ioctl(fb, MXCFB_WAIT_FOR_UPDATE_COMPLETE, &data) == 0) {
                 ::close(fb);
                 break;
