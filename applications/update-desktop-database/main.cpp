@@ -285,7 +285,10 @@ main(int argc, char* argv[]) {
             env.insert("OXIDE_PRELOAD_EXPOSE_FB", "1");
             continue;
           }
-          if (key == "QTFB_SHIM_MODE" && value.toLower() == "rgb565") {
+          if (
+            key == "QTFB_SHIM_MODE" &&
+            (value == "N_RGB565" || value == "RGB565")
+          ) {
             env.insert("OXIDE_PRELOAD_FORCE_RGB16", "1");
             continue;
           }
@@ -294,8 +297,34 @@ main(int argc, char* argv[]) {
             continue;
           }
           if (key == "QTFB_SHIM_INITIAL_DISPLAY_MODE") {
-            env.insert("OXIDE_PRELOAD_FORCE_WAVEFORM", value);
-            continue;
+            if (value == "FAST") {
+              env.insert(
+                "OXIDE_PRELOAD_FORCE_WAVEFORM", QStringLiteral("Fast")
+              );
+              continue;
+            }
+            if (value == "ANIMATE") {
+              env.insert(
+                "OXIDE_PRELOAD_FORCE_WAVEFORM", QStringLiteral("Animate")
+              );
+              continue;
+            }
+            if (value == "CONTENT") {
+              env.insert(
+                "OXIDE_PRELOAD_FORCE_WAVEFORM", QStringLiteral("Content")
+              );
+              continue;
+            }
+            if (value == "UI") {
+              env.insert("OXIDE_PRELOAD_FORCE_WAVEFORM", QStringLiteral("UI"));
+              continue;
+            }
+            if (value == "UFAST") {
+              env.insert(
+                "OXIDE_PRELOAD_FORCE_WAVEFORM", QStringLiteral("UltraFast")
+              );
+              continue;
+            }
           }
           if (key.startsWith("QTFB_")) {
             LOG_VERBOSE(
