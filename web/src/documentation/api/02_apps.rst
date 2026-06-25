@@ -357,6 +357,13 @@ Application Object
 | launch               | method                      | Launch or resume the |
 |                      |                             | application.         |
 +----------------------+-----------------------------+----------------------+
+| launchWithArgs       | method                      | Launch the          |
+|                      |                             | application with the |
+|                      | - (in) args                 | given arguments. If  |
+|                      |   ``ARRAY STRING``          | the application is   |
+|                      |                             | already running it   |
+|                      |                             | will be resumed.     |
++----------------------+-----------------------------+----------------------+
 | pause                | method                      | Pause the            |
 |                      |                             | application.         |
 |                      |                             | If the application   |

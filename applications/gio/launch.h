@@ -24,7 +24,7 @@ class LaunchCommand : ICommand {
       "DESKTOP-FILE", "Application registration to launch"
     );
     parser->addPositionalArgument(
-      "FILE-ARG", "NOT IMPLEMENTED", "[FILE-ARG...]"
+      "FILE-ARG", "File arguments to pass to the application", "[FILE-ARG...]"
     );
     return EXIT_SUCCESS;
   }
@@ -124,7 +124,7 @@ class LaunchCommand : ICommand {
       return EXIT_FAILURE;
     }
     Application app(OXIDE_SERVICE, qpath.path(), bus);
-    app.launch().waitForFinished();
+    app.launchWithArgs(args.mid(1)).waitForFinished();
     return EXIT_SUCCESS;
   }
 };

@@ -114,12 +114,13 @@ public:
   Q_ENUM(ApplicationState)
 
   Q_INVOKABLE void launch();
+  Q_INVOKABLE void launchWithArgs(const QStringList& args);
   Q_INVOKABLE void pause(bool startIfNone = true);
   Q_INVOKABLE void resume();
   Q_INVOKABLE void stop();
   Q_INVOKABLE void unregister();
 
-  void launchNoSecurityCheck();
+  void launchNoSecurityCheck(const QStringList& args = {});
   void resumeNoSecurityCheck();
   void stopNoSecurityCheck();
   void pauseNoSecurityCheck(bool startIfNone = true);
