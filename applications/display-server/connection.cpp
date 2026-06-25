@@ -657,9 +657,10 @@ Connection::readSocket() {
           int fb = open("/dev/fb0", O_RDWR);
           if (fb >= 0) {
             mxcfb_update_marker_data data{marker, 0};
-            ::ioctl(fb, MXCFB_WAIT_FOR_UPDATE_COMPLETE, &data);
-            ::close(fb);
-            break;
+            if (::ioctl(fb, MXCFB_WAIT_FOR_UPDATE_COMPLETE, &data) >= 0) {
+              ::close(fb);
+              break;
+            }
           }
         }
 #endif
