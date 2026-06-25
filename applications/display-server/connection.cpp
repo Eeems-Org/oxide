@@ -515,7 +515,8 @@ Connection::readSocket() {
         break;
       }
       case Blight::MessageType::Info: {
-        auto identifier = (Blight::surface_id_t)*message->data.get();
+        auto identifier =
+          Blight::scalar_cast<Blight::surface_id_t>(message).value();
         C_DEBUG("Info requested:" << identifier);
         std::shared_ptr<Surface> surface;
         {
@@ -545,7 +546,8 @@ Connection::readSocket() {
         break;
       }
       case Blight::MessageType::Delete: {
-        auto identifier = (Blight::surface_id_t)*message->data.get();
+        auto identifier =
+          Blight::scalar_cast<Blight::surface_id_t>(message).value();
         C_DEBUG("Delete requested:" << identifier);
         std::shared_ptr<Surface> surface;
         {
@@ -587,7 +589,8 @@ Connection::readSocket() {
         break;
       }
       case Blight::MessageType::Raise: {
-        auto identifier = (Blight::surface_id_t)*message->data.get();
+        auto identifier =
+          Blight::scalar_cast<Blight::surface_id_t>(message).value();
         C_DEBUG("Raise requested:" << identifier);
         std::shared_ptr<Surface> surface;
         {
@@ -617,7 +620,8 @@ Connection::readSocket() {
         break;
       }
       case Blight::MessageType::Lower: {
-        auto identifier = (Blight::surface_id_t)*message->data.get();
+        auto identifier =
+          Blight::scalar_cast<Blight::surface_id_t>(message).value();
         C_DEBUG("Lower requested:" << identifier);
         std::shared_ptr<Surface> surface;
         {
@@ -653,13 +657,15 @@ Connection::readSocket() {
           deviceSettings.getDeviceType() ==
           Oxide::DeviceSettings::DeviceType::RM1
         ) {
-          auto marker = (unsigned int)*message->data.get();
-          int fb = open("/dev/fb0", O_RDWR);
-          if (fb >= 0) {
-            mxcfb_update_marker_data data{marker, 0};
-            if (::ioctl(fb, MXCFB_WAIT_FOR_UPDATE_COMPLETE, &data) >= 0) {
-              ::close(fb);
-              break;
+          auto marker = Blight::scalar_cast<unsigned int>(message);
+          if (maker.has_value()) {
+            int fb = open("/dev/fb0", O_RDWR);
+            if (fb >= 0) {
+              mxcfb_update_marker_data data{marker, 0};
+              if (::ioctl(fb, MXCFB_WAIT_FOR_UPDATE_COMPLETE, &data) == 0) {
+                ::close(fb);
+                break;
+              }
             }
           }
         }
