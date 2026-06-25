@@ -102,5 +102,17 @@ namespace Oxide {
    * \snippet examples/oxide.cpp getGID
    */
   LIBOXIDE_EXPORT gid_t getGID(const QString& name);
+  /*!
+   * \brief Get the username for the UID
+   * \param name Username to search for
+   * \return The username for the UID or an empty string
+   */
+  LIBOXIDE_EXPORT std::string getUser(uid_t uid);
+  /*!
+   * \brief Get the groupname for the GID
+   * \param name Groupname to search for
+   * \return The groupname for the GID or an empty string
+   */
+  LIBOXIDE_EXPORT std::string getGroup(gid_t gid);
 } // namespace Oxide
 /*! @} */

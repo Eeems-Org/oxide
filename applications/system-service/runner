@@ -1,4 +1,4 @@
 #!/bin/sh
 set -e
 eval "set -- $ARGUMENTS"
-exec blight-client "$EXECUTABLE" "$@"
+exec /home/root/.vellum/bin/blight-client "${EXECUTABLE:?EXECUTABLE missing}" "$@"

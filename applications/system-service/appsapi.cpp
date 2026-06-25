@@ -233,6 +233,10 @@ AppsAPI::registerApplication(QVariantMap properties) {
   if (!hasPermission("apps")) {
     return QDBusObjectPath("/");
   }
+  if (properties.contains("environment")) {
+    properties["environment"] =
+      QVariant(qdbus_cast<QVariantMap>(properties.value("environment")));
+  }
   return registerApplicationNoSecurityCheck(properties);
 }
 

@@ -131,4 +131,24 @@ namespace Oxide {
     }
     return result->gr_gid;
   }
+  std::string getUser(uid_t uid) {
+    char buffer[1024];
+    struct passwd user;
+    struct passwd* result;
+    auto status = getpwuid_r(uid, &user, buffer, sizeof(buffer), &result);
+    if (status != 0 || result == nullptr) {
+      return {};
+    }
+    return result->pw_name;
+  }
+  std::string getGroup(gid_t gid) {
+    char buffer[1024];
+    struct group grp;
+    struct group* result;
+    auto status = getgrgid_r(gid, &grp, buffer, sizeof(buffer), &result);
+    if (status != 0 || result == nullptr) {
+      return {};
+    }
+    return result->gr_name;
+  }
 } // namespace Oxide

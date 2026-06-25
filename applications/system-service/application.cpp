@@ -81,8 +81,15 @@ Application::launchNoSecurityCheck() {
         }
         updateEnvironment();
         m_process->setWorkingDirectory(workingDirectory());
-        if (!m_process->setUser(user()) || !m_process->setGroup(group())) {
-          O_WARNING(("Failed to set user/group for the process"));
+        if (!m_process->setUser(user())) {
+          O_WARNING(
+            ("Failed to set user for the process to " + user().toStdString())
+          );
+        }
+        if (!m_process->setGroup(group())) {
+          O_WARNING(
+            ("Failed to set group for the process to " + group().toStdString())
+          );
         }
         if (p_stdout == nullptr) {
           p_stdout_fd =
@@ -608,12 +615,14 @@ Application::setWorkingDirectory(const QString& workingDirectory) {
 
 QString
 Application::user() {
-  return value("user", getuid()).toString();
+  static std::string user = Oxide::getUser(getuid());
+  return value("user", user.c_str()).toString();
 }
 
 QString
 Application::group() {
-  return value("group", getgid()).toString();
+  static std::string group = Oxide::getGroup(getgid());
+  return value("group", group.c_str()).toString();
 }
 
 QStringList
@@ -844,6 +853,14 @@ Application::delayUpTo(int milliseconds) {
 void
 Application::updateEnvironment() {
   auto env = QProcessEnvironment::systemEnvironment();
+  for (const auto& key : env.keys()) {
+    if (
+      key.startsWith("OXIDE_PRELOAD_") || key == "QMLSCENE_DEVICE" ||
+      key.startsWith("QT_") || key == "RESCUE" || key == "WATCHDOG_USEC"
+    ) {
+      env.remove(key);
+    }
+  }
   auto envPath = env.value("PATH", DEFAULT_PATH).split(":");
   auto defaults = QString(DEFAULT_PATH).split(":");
   for (auto item : defaults) {
@@ -870,12 +887,7 @@ Application::updateEnvironment() {
       env.insert("RM2FB_DISABLE", "1");
     }
   }
-  if (flags().contains("exclusive")) {
-    env.insert("OXIDE_PRELOAD_EXPOSE_FB", "1");
-    env.insert("OXIDE_PRELOAD_ALLOW_RM2FB", "1");
-  }
   env.insert("LD_PRELOAD", preload.join(":"));
-  env.remove("OXIDE_PRELOAD_DISABLE_INPUT");
   for (auto key : environment().keys()) {
     env.insert(key, environment().value(key, "").toString());
   }

@@ -359,5 +359,49 @@ namespace Blight {
      */
     static surface_info_t from_data(data_t data);
   } surface_info_t;
+  /*!
+   * \brief Get a scalar value from a pointer
+   * \param data Pointer to cast
+   * \return The scalar value
+   */
+  template<typename T>
+  T scalar_cast(const data_t data) {
+    T value{};
+    ::memcpy(&value, data, sizeof(T));
+    return value;
+  }
+  /*!
+   * \brief Get a scalar value from a shared pointer
+   * \param data Shared pointer to cast
+   * \return The scalar value
+   */
+  template<typename T>
+  T scalar_cast(const shared_data_t data) {
+    return scalar_cast<T>(data.get());
+  }
+  /*!
+   * \brief Get a scalar value from message data
+   * \param message Message to cast
+   * \return The scalar value
+   */
+  template<typename T>
+  std::optional<T> scalar_cast(const Blight::message_t* message) {
+    if (
+      message == nullptr || message->header.size < sizeof(T) ||
+      message->data == nullptr
+    ) {
+      return {};
+    }
+    return scalar_cast<T>(message->data);
+  }
+  /*!
+   * \brief Get a scalar value from message data
+   * \param message Message to cast
+   * \return The scalar value
+   */
+  template<typename T>
+  std::optional<T> scalar_cast(const message_ptr_t message) {
+    return scalar_cast<T>(message.get());
+  }
 } // namespace Blight
 /*! @} */
