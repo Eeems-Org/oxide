@@ -317,7 +317,7 @@ namespace Input {
         break;
       case Client::DeviceType::RMPPM:
         touchTransform = {
-          .invertX = false, .invertY = false, .rotation = 180.0f
+          .invertX = true, .invertY = false, .rotation = 180.0f
         };
         penTransform = {.invertX = false, .invertY = false, .rotation = 90.0f};
         break;
