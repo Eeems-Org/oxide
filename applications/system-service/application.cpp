@@ -51,7 +51,9 @@ Application::launchNoSecurityCheck(const QStringList& args) {
       startSpan("starting", "Application is starting");
     }
     Oxide::Sentry::sentry_transaction(
-      "Launch Application", "launch", [this, args](Oxide::Sentry::Transaction* t) {
+      "Launch Application",
+      "launch",
+      [this, args](Oxide::Sentry::Transaction* t) {
 #ifdef SENTRY
         if (t != nullptr) {
           sentry_transaction_set_tag(
@@ -59,7 +61,7 @@ Application::launchNoSecurityCheck(const QStringList& args) {
           );
         }
 #else
-                Q_UNUSED(t);
+        Q_UNUSED(t);
 #endif
         appsAPI->recordPreviousApplication();
         O_INFO("Launching " << path());
