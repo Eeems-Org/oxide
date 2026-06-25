@@ -1,4 +1,9 @@
 #!/bin/sh
 set -e
+case "$(basename "${EXECUTABLE:?EXECUTABLE missing}")" in
+puzzles)
+  export OXIDE_PRELOAD_FORCE_INVERT_TOUCH_X=1
+  ;;
+esac
 eval "set -- $ARGUMENTS"
-exec /home/root/.vellum/bin/blight-client "${EXECUTABLE:?EXECUTABLE missing}" "$@"
+exec /home/root/.vellum/bin/blight-client "$EXECUTABLE" "$@"

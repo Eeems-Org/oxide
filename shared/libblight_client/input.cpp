@@ -317,7 +317,7 @@ namespace Input {
         break;
       case Client::DeviceType::RMPPM:
         touchTransform = {
-          .invertX = true, .invertY = false, .rotation = 180.0f
+          .invertX = false, .invertY = false, .rotation = 180.0f
         };
         penTransform = {.invertX = false, .invertY = false, .rotation = 90.0f};
         break;
@@ -330,6 +330,9 @@ namespace Input {
       default:
         _WARN("Unknown device type, unable to force rM1 input")
         return false;
+    }
+    if (Client::forceInvertTouchX()) {
+      touchTransform.invertX = true;
     }
     _DEBUG(
       "pen: invertX=%s, invertY=%s, rotation=%f",

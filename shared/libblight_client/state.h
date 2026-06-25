@@ -26,6 +26,7 @@ namespace Client {
   bool isFakeRM2Name();
   bool isFakeRM1Fb();
   bool isFakeRM1Input();
+  bool forceInvertTouchX();
   bool forceRGB16();
   bool force32bitFscreenInfo();
   bool isRM2FBAllowed();

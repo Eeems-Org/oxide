@@ -149,6 +149,11 @@ namespace Client {
     static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RM1_INPUT") != nullptr;
     return enabled;
   }
+  bool forceInvertTouchX() {
+    static bool enabled =
+      getenv("OXIDE_PRELOAD_FORCE_INVERT_TOUCH_X") != nullptr;
+    return enabled;
+  }
   bool forceRGB16() {
     if (isFakeRM1Fb()) {
       return true;
