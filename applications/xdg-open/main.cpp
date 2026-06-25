@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 
 #include <QCommandLineParser>
+#include <QUrlQuery>
 #include <string>
 
 using namespace Oxide::Sentry;
@@ -10,7 +11,7 @@ using namespace Oxide::Applications;
 using namespace codes::eeems::oxide1;
 
 int
-launchOxideApp(const QString& name) {
+launchOxideApp(const QString& name, const QStringList& launchArgs = {}) {
   auto bus = QDBusConnection::systemBus();
   General api(OXIDE_SERVICE, OXIDE_SERVICE_PATH, bus);
   QDBusObjectPath path = api.requestAPI("apps");
@@ -25,7 +26,11 @@ launchOxideApp(const QString& name) {
     return EXIT_FAILURE;
   }
   Application app(OXIDE_SERVICE, path.path(), bus);
-  app.launch().waitForFinished();
+  if (launchArgs.isEmpty()) {
+    app.launch().waitForFinished();
+  } else {
+    app.launchWithArgs(launchArgs).waitForFinished();
+  }
   return EXIT_SUCCESS;
 }
 
@@ -73,15 +78,20 @@ main(int argc, char* argv[]) {
     return launchOxideApp(name);
   } else if (url.scheme() == "oxide") {
     if (
-      url.hasFragment() || url.hasQuery() || !url.userInfo().isEmpty() ||
+      url.hasFragment() || !url.userInfo().isEmpty() ||
       !url.authority().isEmpty()
     ) {
-      qDebug() << "Url must bein the format oxide://{appname} :"
+      qDebug() << "Url must be in the format oxide:{appname}[?arg=...] :"
                << path.toStdString().c_str();
       return EXIT_FAILURE;
     }
     auto name = url.path();
-    return launchOxideApp(name);
+    QStringList launchArgs;
+    if (url.hasQuery()) {
+      QUrlQuery query(url);
+      launchArgs = query.allQueryItemValues("arg");
+    }
+    return launchOxideApp(name, launchArgs);
   }
   qDebug() << "Operation not supported:" << path.toStdString().c_str();
   return EXIT_FAILURE;

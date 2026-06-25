@@ -36,6 +36,31 @@ xdg-open
 
 https://man.archlinux.org/man/xdg-open.1
 
+Supports the following formats:
+
+- Local ``.oxide`` files in the application registrations directory launch the corresponding application.
+- ``oxide:`` URLs launch an application by name, optionally passing arguments.
+
+``oxide:`` URL format:
+
+.. code:: text
+
+  oxide:{appname}[?arg={value}&arg={value}...]
+
+Examples:
+
+.. code:: shell
+
+  # Launch xochitl
+  xdg-open oxide:xochitl
+
+  # Launch reader with a document
+  xdg-open 'oxide:reader?arg=/home/root/document.pdf'
+
+  # Launch editor with multiple files
+  xdg-open 'oxide:editor?arg=file1.txt&arg=file2.txt'
+
+
 xdg-settings
 ============
 

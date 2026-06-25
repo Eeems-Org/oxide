@@ -25,10 +25,17 @@ Application::launch() {
   if (!hasPermission("apps")) {
     return;
   }
-  launchNoSecurityCheck();
+  launchNoSecurityCheck({});
 }
 void
-Application::launchNoSecurityCheck() {
+Application::launchWithArgs(const QStringList& args) {
+  if (!hasPermission("apps")) {
+    return;
+  }
+  launchNoSecurityCheck(args);
+}
+void
+Application::launchNoSecurityCheck(const QStringList& args) {
   if (m_process->processId()) {
     resumeNoSecurityCheck();
   } else {
@@ -44,7 +51,9 @@ Application::launchNoSecurityCheck() {
       startSpan("starting", "Application is starting");
     }
     Oxide::Sentry::sentry_transaction(
-      "Launch Application", "launch", [this](Oxide::Sentry::Transaction* t) {
+      "Launch Application",
+      "launch",
+      [this, args](Oxide::Sentry::Transaction* t) {
 #ifdef SENTRY
         if (t != nullptr) {
           sentry_transaction_set_tag(
@@ -52,7 +61,7 @@ Application::launchNoSecurityCheck() {
           );
         }
 #else
-                Q_UNUSED(t);
+        Q_UNUSED(t);
 #endif
         appsAPI->recordPreviousApplication();
         O_INFO("Launching " << path());
@@ -127,7 +136,7 @@ Application::launchNoSecurityCheck() {
             }
           }
         }
-        m_process->start();
+        m_process->start(bin(), args);
         m_process->waitForStarted();
         if (type() == Background) {
           startSpan("background", "Application is in the background");
