@@ -156,8 +156,10 @@ jobs:
               abuild-sign -k /keys/oxide.rsa APKINDEX.tar.gz
               chown $(id -u):$(id -g) APKINDEX.tar.gz
             "
+          echo "$pubkey" > release/${{ matrix.arch }}/oxide.rsa.pub
         env:
           privkey: ${{ secrets.VBUILD_PRIVKEY }}
+          pubkey: ${{ vars.VBUILD_PUBKEY }}
       - name: Rsync
         run: |
           set -e
@@ -167,11 +169,11 @@ jobs:
           echo "$ssh_key" > tmp/server_key
           ssh="ssh $ssh_args -oStrictHostKeyChecking=no -i tmp/server_key"
           rsync -Pcuav --delete -e "$ssh" \
-            release/${{ matrix.arch }}/ \
-            "$ssh_user@$ssh_server:$ssh_path/staging/${{ matrix.arch }}"
+            release/$arch/ \
+            "$ssh_user@$ssh_server:$ssh_path/staging/$arch"
           $ssh \
             "$ssh_user@$ssh_server" \
-            "rsync -a --delete --link-dest='$ssh_path/staging' '$ssh_path/staging/.' '$ssh_path/live'"
+            "rsync -a --delete --link-dest='$ssh_path/staging/$arch' '$ssh_path/staging/$arch/.' '$ssh_path/live/$arch'"
           rm tmp/server_key
         env:
           ssh_user: ${{ vars.SSH_USER }}
@@ -179,3 +181,4 @@ jobs:
           ssh_path: ${{ vars.SSH_PATH }}
           ssh_key: ${{ secrets.SSH_KEY }}
           ssh_args: ${{ vars.SSH_ARGS }}
+          arch: ${{ matrix.arch }}
