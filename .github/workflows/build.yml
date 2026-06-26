@@ -115,3 +115,71 @@ jobs:
           name: build-${{ matrix.arch }}
           path: .build/package/src/release/
           include-hidden-files: true
+
+  repo:
+    name: Update repo
+    runs-on: ubuntu-latest
+    needs: build
+    environment: apk.eeems.codes
+    if: github.repository == 'Eeems-org/oxide' && github.ref == 'refs/heads/master'
+    strategy:
+      matrix:
+        arch:
+          - armv7
+          - aarch64
+      fail-fast: false
+    steps:
+      - name: Checkout the Git repository
+        uses: actions/checkout@v6
+      - name: Download executables
+        id: download
+        uses: actions/download-artifact@v8
+        with:
+          pattern: vellum-${{ matrix.arch }}
+          merge-multiple: true
+          path: release/${{ matrix.arch }}/
+      - name: Generate index
+        run: |
+          set -e
+          mkdir -p keys
+          touch keys/oxide.rsa
+          chmod 600 keys/oxide.rsa
+          echo "$privkey" > keys/oxide.rsa
+          openssl rsa -in keys/oxide.rsa -pubout -out keys/oxide.rsa.pub
+          docker run --rm \
+            -v "$PWD/release/$arch:/packages:Z" \
+            -v "$PWD/keys:/keys:ro" \
+            -w /packages \
+            ghcr.io/eeems/vbuild-builder:main \
+            sh -ec "
+              cp /keys/oxide.rsa* /etc/apk/keys/
+              apk index --output=APKINDEX.tar.gz *.apk
+              abuild-sign -k /keys/oxide.rsa APKINDEX.tar.gz
+              chown $(id -u):$(id -g) APKINDEX.tar.gz
+            "
+            cp keys/oxide.rsa.pub release/$arch/
+        env:
+          privkey: ${{ secrets.VBUILD_PRIVKEY }}
+          arch: ${{ matrix.arch }}
+      - name: Rsync
+        run: |
+          set -e
+          mkdir -p tmp
+          touch tmp/server_key
+          chmod 600 tmp/server_key
+          echo "$ssh_key" > tmp/server_key
+          ssh="ssh $ssh_args -oStrictHostKeyChecking=no -i tmp/server_key"
+          rsync -Pcuav --delete -e "$ssh" \
+            release/$arch/ \
+            "$ssh_user@$ssh_server:$ssh_path/staging/$arch"
+          $ssh \
+            "$ssh_user@$ssh_server" \
+            "rsync -a --delete --link-dest='$ssh_path/staging/$arch' '$ssh_path/staging/$arch/.' '$ssh_path/live/$arch'"
+          rm tmp/server_key
+        env:
+          ssh_user: ${{ vars.SSH_USER }}
+          ssh_server: ${{ vars.SSH_SERVER }}
+          ssh_path: ${{ vars.SSH_PATH }}
+          ssh_key: ${{ secrets.SSH_KEY }}
+          ssh_args: ${{ vars.SSH_ARGS }}
+          arch: ${{ matrix.arch }}
