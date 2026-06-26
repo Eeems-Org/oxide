@@ -14,7 +14,7 @@ on:
       - "qmake/**"
       - "oxide.pro"
       - "Makefile"
-      - "package"
+      - "VELBUILD"
   pull_request:
     paths:
       - ".github/workflows/build.yml"
