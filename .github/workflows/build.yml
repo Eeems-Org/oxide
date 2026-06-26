@@ -1,6 +1,7 @@
 name: Build oxide
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
