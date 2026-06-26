@@ -121,7 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     environment: apk.eeems.codes
-    if: github.repository == 'Eeems-org/oxide' #&& github.ref == 'refs/heads/master'
+    if: github.repository == 'Eeems-org/oxide' && github.ref == 'refs/heads/master'
     strategy:
       matrix:
         arch:
