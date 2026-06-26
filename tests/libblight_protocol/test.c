@@ -100,6 +100,51 @@ test_blight_message_from_data() {
   free(data);
 }
 void
+test_blight_message_from_socket_rejects_zero_data() {
+  int sv[2];
+  assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
+
+  for (int type = Repaint; type <= Wait; type++) {
+    if (type == Ack || type == Ping || type == List || type == Focus) {
+      continue;
+    }
+
+    blight_header_t hdr;
+    hdr.type = type;
+    hdr.ackid = 1;
+    hdr.size = 0;
+    assert(send(sv[0], &hdr, sizeof(hdr), 0) == sizeof(hdr));
+
+    blight_message_t* msg = NULL;
+    int res = blight_message_from_socket(sv[1], &msg);
+    assert(res < 0);
+    assert(errno == EBADMSG);
+    assert(msg == NULL);
+  }
+
+  close(sv[0]);
+  close(sv[1]);
+}
+void
+test_blight_message_from_data_rejects_zero_data() {
+  for (int type = Repaint; type <= Wait; type++) {
+    if (type == Ack || type == Ping || type == List || type == Focus) {
+      continue;
+    }
+
+    blight_header_t hdr;
+    hdr.type = type;
+    hdr.ackid = 1;
+    hdr.size = 0;
+    blight_data_t buf = malloc(sizeof(hdr));
+    assert(buf != NULL);
+    memcpy(buf, &hdr, sizeof(hdr));
+    blight_message_t* msg = blight_message_from_data(buf);
+    assert(msg == NULL);
+    free(buf);
+  }
+}
+void
 test_blight_bus_connect_system() {
   assert(blight_bus_connect_system(&bus) > 0);
   assert(bus != NULL);
@@ -545,6 +590,8 @@ test_c() {
   gettimeofday(&start, NULL);
   TEST(test_blight_header_from_data, true);
   TEST(test_blight_message_from_data, true);
+  TEST(test_blight_message_from_socket_rejects_zero_data, true);
+  TEST(test_blight_message_from_data_rejects_zero_data, true);
   TEST(test_blight_bus_connect_system, true);
   TEST(test_blight_service_available, bus != NULL);
   int fd = 0;

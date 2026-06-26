@@ -89,6 +89,28 @@ static std::atomic_uint ackid = 0;
 static std::atomic_uint _marker = 0;
 
 using namespace BlightProtocol;
+bool
+is_valid_header(const blight_header_t& header) {
+  if (
+    header.type <= BlightMessageType::Invalid ||
+    header.type >= BlightMessageType::MAX
+  ) {
+    return false;
+  }
+  switch (header.type) {
+    case BlightMessageType::Move:
+    case BlightMessageType::Repaint:
+    case BlightMessageType::Info:
+    case BlightMessageType::Delete:
+    case BlightMessageType::Raise:
+    case BlightMessageType::Lower:
+    case BlightMessageType::Wait:
+      return header.size > 0;
+    default:
+      return true;
+  }
+}
+
 extern "C" {
 int
 blight_bus_connect_system(blight_bus** bus) {
@@ -272,6 +294,15 @@ blight_message_t*
 blight_message_from_data(blight_data_t data) {
   auto message = new blight_message_t;
   message->header = blight_header_from_data(data);
+  if (!is_valid_header(message->header)) {
+    _WARN(
+      "Invalid message type=%d, size=%ld",
+      message->header.type,
+      (long int)message->header.size
+    );
+    delete message;
+    return nullptr;
+  }
   if (message->header.size) {
     message->data = new unsigned char[message->header.size];
     memcpy(message->data, &data[sizeof(message->header)], message->header.size);
@@ -302,12 +333,9 @@ blight_message_from_socket(int fd, blight_message_t** message) {
   };
   memcpy(&m->header, maybe.value(), sizeof(blight_header_t));
   delete[] maybe.value();
-  if (
-    m->header.type == BlightMessageType::Invalid ||
-    m->header.type >= BlightMessageType::MAX
-  ) {
+  if (!is_valid_header(m->header)) {
     _WARN(
-      "Recieved invalid message from socket"
+      "Recieved invalid message from socket "
       "socket=%d, "
       "ackid=%u, "
       "type=%d, "
