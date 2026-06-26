@@ -518,14 +518,10 @@ Connection::readSocket() {
         auto identifier =
           Blight::scalar_cast<Blight::surface_id_t>(message).value();
         C_DEBUG("Info requested:" << identifier);
-        std::shared_ptr<Surface> surface;
-        {
-          QReadLocker _locker(&surfacesLock);
-          if (!surfaces.contains(identifier)) {
-            C_WARNING("Could not find surface" << identifier);
-            break;
-          }
-          surface = surfaces[identifier];
+        auto surface = getSurface(identifier);
+        if (surface == nullptr) {
+          C_WARNING("Could not find surface" << identifier);
+          break;
         }
         auto geometry = surface->rawGeometry();
         try {
@@ -549,15 +545,10 @@ Connection::readSocket() {
         auto identifier =
           Blight::scalar_cast<Blight::surface_id_t>(message).value();
         C_DEBUG("Delete requested:" << identifier);
-        std::shared_ptr<Surface> surface;
-        {
-          QReadLocker _locker(&surfacesLock);
-          if (!surfaces.contains(identifier)) {
-            C_WARNING("Could not find surface" << identifier);
-
-            break;
-          }
-          surface = surfaces[identifier];
+        auto surface = getSurface(identifier);
+        if (surface == nullptr) {
+          C_WARNING("Could not find surface" << identifier);
+          break;
         }
         surface->removed();
         {
@@ -592,14 +583,10 @@ Connection::readSocket() {
         auto identifier =
           Blight::scalar_cast<Blight::surface_id_t>(message).value();
         C_DEBUG("Raise requested:" << identifier);
-        std::shared_ptr<Surface> surface;
-        {
-          QReadLocker _locker(&surfacesLock);
-          if (!surfaces.contains(identifier)) {
-            C_WARNING("Could not find surface" << identifier);
-            break;
-          }
-          surface = surfaces[identifier];
+        auto surface = getSurface(identifier);
+        if (surface == nullptr) {
+          C_WARNING("Could not find surface" << identifier);
+          break;
         }
         surface->setVisible(true);
         surface->setZ(std::numeric_limits<int>::max());
@@ -623,14 +610,10 @@ Connection::readSocket() {
         auto identifier =
           Blight::scalar_cast<Blight::surface_id_t>(message).value();
         C_DEBUG("Lower requested:" << identifier);
-        std::shared_ptr<Surface> surface;
-        {
-          QReadLocker _locker(&surfacesLock);
-          if (!surfaces.contains(identifier)) {
-            C_WARNING("Could not find surface" << identifier);
-            break;
-          }
-          surface = surfaces[identifier];
+        auto surface = getSurface(identifier);
+        if (surface == nullptr) {
+          C_WARNING("Could not find surface" << identifier);
+          break;
         }
         surface->setVisible(false);
         dbusInterface->sortZ();
