@@ -142,6 +142,9 @@ jobs:
         run: |
           set -e
           mkdir -p keys
+          touch keys/oxide.rsa
+          chmod 600 keys/oxide.rsa
+          echo "$privkey" > keys/oxide.rsa
           echo "$pubkey" > keys/oxide.rsa.pub
           docker run --rm \
             -v "$PWD/release/$arch:/packages:Z" \
@@ -149,7 +152,9 @@ jobs:
             -w /packages \
             ghcr.io/eeems/vbuild-builder:main \
             sh -ec "
-              cp /keys/oxide.rsa.pub /etc/apk/keys/
+              cp /keys/oxide.rsa \
+                /keys/oxide.rsa.pub \
+                /etc/apk/keys/
               apk index --rewrite-arch $arch -o APKINDEX.tar.gz *.apk
               abuild-sign -k /keys/oxide.rsa APKINDEX.tar.gz
               chown $(id -u):$(id -g) APKINDEX.tar.gz
