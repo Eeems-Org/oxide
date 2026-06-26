@@ -145,23 +145,21 @@ jobs:
           touch keys/oxide.rsa
           chmod 600 keys/oxide.rsa
           echo "$privkey" > keys/oxide.rsa
-          echo "$pubkey" > keys/oxide.rsa.pub
+          openssl rsa -in keys/oxide.rsa -pubout -out keys/oxide.rsa.pub
           docker run --rm \
             -v "$PWD/release/$arch:/packages:Z" \
             -v "$PWD/keys:/keys:ro" \
             -w /packages \
             ghcr.io/eeems/vbuild-builder:main \
             sh -ec "
-              cp /keys/oxide.rsa \
-                /keys/oxide.rsa.pub \
-                /etc/apk/keys/
-              apk index --rewrite-arch $arch -o APKINDEX.tar.gz *.apk
+              cp /keys/oxide.rsa* /etc/apk/keys/
+              apk index --output=APKINDEX.tar.gz *.apk
               abuild-sign -k /keys/oxide.rsa APKINDEX.tar.gz
               chown $(id -u):$(id -g) APKINDEX.tar.gz
             "
             cp keys/oxide.rsa.pub release/$arch/
         env:
-          pubkey: ${{ vars.VBUILD_PUBKEY }}
+          privkey: ${{ vars.VBUILD_PRIVKEY }}
           arch: ${{ matrix.arch }}
       - name: Rsync
         run: |
