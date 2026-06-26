@@ -131,13 +131,6 @@ build-rmppure: clean-base $(DIST)
 		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmppure \
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/tatsu/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
-version.txt: qmake/common.pri
-	if [ -d .git ];then \
-		echo "$(VERSION)_git$(REV)" > version.txt; \
-	else \
-		echo "$(VERSION)_pre" > version.txt; \
-	fi;
-
 $(DIST):
 	mkdir -p $(DIST)
 
@@ -183,10 +176,17 @@ $(BUILD)/package/oxide.tar.gz: $(PKG_OBJ) $(BUILD)/package
 		Makefile
 
 .PHONY: $(BUILD)/package/VELBUILD
-$(BUILD)/package/VELBUILD: REV="$(shell git show -s --date=format:'%Y%m%d' --format=%cd HEAD)"
+$(BUILD)/package/VELBUILD: REV="$(shell TZ=UTC git show -s --date=format:'%Y%m%d' --format=%cd HEAD)"
 $(BUILD)/package/VELBUILD: VERSION="$(shell bash -c "grep 'VERSION =' qmake/common.pri | awk '{print \$$3}'")"
-$(BUILD)/package/VELBUILD: version.txt $(BUILD)/package
-	sed "s/~VERSION~/`cat version.txt`/" ./VELBUILD > $(BUILD)/package/VELBUILD
+$(BUILD)/package/VELBUILD: $(BUILD)/package
+	sed "s/~VERSION~/$(VERSION)_git$(REV)/" ./VELBUILD > $(BUILD)/package/VELBUILD
+	if git diff --quiet HEAD 2>/dev/null; then \
+		TIMESTAMP=$$(git show -s --format=%ct HEAD); \
+	else \
+		TIMESTAMP=$$(date +%s); \
+	fi; \
+	MIDNIGHT=$$(TZ=UTC date -d "$(REV)" +%s); \
+	sed -i "s/~TIMESTAMP~/$$((TIMESTAMP - MIDNIGHT))/" $(BUILD)/package/VELBUILD
 	vbuild -C $(BUILD)/package checksum
 
 SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )

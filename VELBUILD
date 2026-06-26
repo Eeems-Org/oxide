@@ -16,7 +16,7 @@ launcherctl-oxide:launcherctl_oxide
 '
 pkgname=oxide
 pkgver="~VERSION~"
-pkgrel=0
+pkgrel=~TIMESTAMP~
 _cpptracever=0.8.3
 upstream_author="Eeems-org"
 maintainer="Eeems <eeems@eeems.email>"
