@@ -6,6 +6,7 @@ liboxide-dev:liboxide_dev
 cpptrace
 cpptrace-dev:cpptrace_dev
 oxide-display:oxide_display
+oxide-display-dev:oxide_display_dev
 oxide-extra:oxide_extra
 oxide-utils:oxide_utils
 oxide-tests:oxide_tests
@@ -138,12 +139,12 @@ postosupgrade() {
 
 predeinstall() {
     set -e
-    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2> /dev/null)" -eq 1 ]; then
-        if systemctl --quiet is-active tarnish.service 2> /dev/null; then
+    if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2>/dev/null)" -eq 1 ]; then
+        if systemctl --quiet is-active tarnish.service 2>/dev/null; then
             echo "Stopping tarnish.service"
             systemctl stop tarnish.service
         fi
-        if systemctl --quiet is-enabled tarnish.service 2> /dev/null; then
+        if systemctl --quiet is-enabled tarnish.service 2>/dev/null; then
             echo "Disabling tarnish.service"
             systemctl disable tarnish.service
         fi
@@ -216,12 +217,12 @@ oxide_display() {
 
     predeinstall() {
         set -e
-        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2> /dev/null)" -eq 1 ]; then
-            if systemctl --quiet is-active blight.service 2> /dev/null; then
+        if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2>/dev/null)" -eq 1 ]; then
+            if systemctl --quiet is-active blight.service 2>/dev/null; then
                 echo "Stopping blight.service"
                 systemctl stop blight.service
             fi
-            if systemctl --quiet is-enabled blight.service 2> /dev/null; then
+            if systemctl --quiet is-enabled blight.service 2>/dev/null; then
                 echo "Disabling blight.service"
                 systemctl disable blight.service
             fi
@@ -236,6 +237,30 @@ oxide_display() {
         rm -f \
             /var/volatile/etc/systemd/system/blight.service \
             /var/volatile/etc/dbus-1/system.d/codes.eeems.blight.conf
+    }
+}
+
+oxide_display_dev() {
+    pkgdesc="Oxide display server"
+    category="framework"
+    depends="
+    oxide-display=$pkgver-r$pkgrel
+    "
+
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib/pkgconfig \
+            home/root/.vellum/lib/pkgconfig/blight.pc
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib/pkgconfig \
+            home/root/.vellum/lib/pkgconfig/blight_protocol.pc
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/include \
+            home/root/.vellum/include/libblight.h
+        cp -ar home/root/.vellum/include/libblight/ \
+            "$subpkgdir"/home/root/.vellum/include/
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/include \
+            home/root/.vellum/include/libblight_protocol.h
+        cp -ar home/root/.vellum/include/libblight_protocol/ \
+            "$subpkgdir"/home/root/.vellum/include/
     }
 }
 
@@ -366,14 +391,6 @@ liboxide_dev() {
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/include \
             home/root/.vellum/include/liboxide.h
         cp -ar home/root/.vellum/include/liboxide/ \
-            "$subpkgdir"/home/root/.vellum/include/
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/include \
-            home/root/.vellum/include/libblight.h
-        cp -ar home/root/.vellum/include/libblight/ \
-            "$subpkgdir"/home/root/.vellum/include/
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/include \
-            home/root/.vellum/include/libblight_protocol.h
-        cp -ar home/root/.vellum/include/libblight_protocol/ \
             "$subpkgdir"/home/root/.vellum/include/
     }
 }
@@ -529,7 +546,7 @@ launcherctl() {
         fi
     }
     postdeinstall() {
-        if [ "$(systemctl --quiet list-unit-files xochitl.service | /bin/grep -c xochitl.service 2> /dev/null)" -ne 1 ]; then
+        if [ "$(systemctl --quiet list-unit-files xochitl.service | /bin/grep -c xochitl.service 2>/dev/null)" -ne 1 ]; then
             systemctl enable --now xochitl
         fi
     }
