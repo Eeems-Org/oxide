@@ -159,7 +159,7 @@ jobs:
             "
             cp keys/oxide.rsa.pub release/$arch/
         env:
-          privkey: ${{ vars.VBUILD_PRIVKEY }}
+          privkey: ${{ secrets.VBUILD_PRIVKEY }}
           arch: ${{ matrix.arch }}
       - name: Rsync
         run: |
