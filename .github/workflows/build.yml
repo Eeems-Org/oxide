@@ -142,24 +142,22 @@ jobs:
         run: |
           set -e
           mkdir -p keys
-          touch keys/oxide.rsa
-          chmod 600 keys/oxide.rsa
-          echo "$privkey" > keys/oxide.rsa
+          echo "$pubkey" > keys/oxide.rsa.pub
           docker run --rm \
-            -v "$PWD/release/${{ matrix.arch }}:/packages:Z" \
+            -v "$PWD/release/$arch:/packages:Z" \
             -v "$PWD/keys:/keys:ro" \
             -w /packages \
             ghcr.io/eeems/vbuild-builder:main \
-            sh -c "
+            sh -ec "
               cp /keys/oxide.rsa.pub /etc/apk/keys/
-              apk index --rewrite-arch ${{ matrix.arch }} -o APKINDEX.tar.gz *.apk
+              apk index --rewrite-arch $arch -o APKINDEX.tar.gz *.apk
               abuild-sign -k /keys/oxide.rsa APKINDEX.tar.gz
               chown $(id -u):$(id -g) APKINDEX.tar.gz
             "
-          echo "$pubkey" > release/${{ matrix.arch }}/oxide.rsa.pub
+            cp keys/oxide.rsa.pub release/$arch/
         env:
-          privkey: ${{ secrets.VBUILD_PRIVKEY }}
           pubkey: ${{ vars.VBUILD_PUBKEY }}
+          arch: ${{ matrix.arch }}
       - name: Rsync
         run: |
           set -e
