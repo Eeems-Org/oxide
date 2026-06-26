@@ -157,6 +157,7 @@ jobs:
             sh -ec "
               cp /keys/oxide.rsa* /etc/apk/keys/
               apk index --no-warnings --output=APKINDEX.tar.gz *.apk
+              tar xOf APKINDEX.tar.gz APKINDEX
               abuild-sign -k /keys/oxide.rsa APKINDEX.tar.gz
               chown $(id -u):$(id -g) APKINDEX.tar.gz
             "
