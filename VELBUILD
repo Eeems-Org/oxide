@@ -112,9 +112,18 @@ package() {
 
 postinstall() {
     set -e
-    if [ "$SKIP_MOUNT" != "1" ]; then
-        /home/root/.vellum/bin/mount-rw
-    fi
+    /home/root/.vellum/bin/mount-rw
+    postosupgrade
+    /home/root/.vellum/bin/mount-restore
+}
+
+postupgrade() {
+    set -e
+    postinstall
+}
+
+postosupgrade() {
+    set -e
     mkdir -p \
         /etc/dbus-1/system.d \
         /etc/systemd/system
@@ -126,19 +135,6 @@ postinstall() {
     cp -a /home/root/.vellum/share/oxide/systemd/system/tarnish.service \
         /etc/systemd/system/
     systemctl daemon-reload
-    if [ "$SKIP_MOUNT" != "1" ]; then
-        /home/root/.vellum/bin/mount-restore
-    fi
-}
-
-postupgrade() {
-    set -e
-    postinstall
-}
-
-postosupgrade() {
-    set -e
-    SKIP_MOUNT=1 postupgrade
 }
 
 predeinstall() {
@@ -194,9 +190,21 @@ oxide_display() {
 
     postinstall() {
         set -e
-        if [ "$SKIP_MOUNT" != "1" ]; then
-            /home/root/.vellum/bin/mount-rw
+        /home/root/.vellum/bin/mount-rw
+        postosupgrade
+        /home/root/.vellum/bin/mount-restore
+    }
+
+    postupgrade() {
+        set -e
+        postinstall
+        if systemctl is-active --quiet tarnish; then
+            echo "Oxide is currently running and will need to be restarted"
         fi
+    }
+
+    postosupgrade() {
+        set -e
         mkdir -p \
             /etc/dbus-1/system.d \
             /etc/systemd/system
@@ -208,19 +216,6 @@ oxide_display() {
         cp -a /home/root/.vellum/share/oxide/systemd/system/blight.service \
             /etc/systemd/system/
         systemctl daemon-reload
-        if [ "$SKIP_MOUNT" != "1" ]; then
-            /home/root/.vellum/bin/mount-restore
-        fi
-    }
-
-    postupgrade() {
-        set -e
-        postinstall
-    }
-
-    postosupgrade() {
-        set -e
-        SKIP_MOUNT=1 postupgrade
     }
 
     predeinstall() {
@@ -473,9 +468,18 @@ lockscreen_hook() {
 
     postinstall() {
         set -e
-        if [ "$SKIP_MOUNT" != "1" ]; then
-            /home/root/.vellum/bin/mount-rw
-        fi
+        /home/root/.vellum/bin/mount-rw
+        postosupgrade
+        /home/root/.vellum/bin/mount-restore
+    }
+
+    postupgrade() {
+        set -e
+        postinstall
+    }
+
+    postosupgrade() {
+        set -e
         mkdir -p /etc/systemd/system/xochitl.service.d/
         rm -f \
             /usr/lib/liblockscreen_hook.so* \
@@ -487,19 +491,6 @@ lockscreen_hook() {
         cp -a /home/root/.vellum/share/lockscreen_hook/lockscreen-hook \
             /usr/libexec/
         systemctl daemon-reload
-        if [ "$SKIP_MOUNT" != "1" ]; then
-            /home/root/.vellum/bin/mount-restore
-        fi
-    }
-
-    postupgrade() {
-        set -e
-        postinstall
-    }
-
-    postosupgrade() {
-        set -e
-        SKIP_MOUNT=1 postupgrade
     }
 
     predeinstall() {
@@ -538,7 +529,7 @@ launcherctl() {
     }
     postinstall() {
         set -e
-        /home/root/.vellum/bin/launcherctl status
+        postosupgrade
     }
     postupgrade() {
         set -e
@@ -546,7 +537,7 @@ launcherctl() {
     }
     postosupgrade() {
         set -e
-        SKIP_MOUNT=1 postupgrade
+        /home/root/.vellum/bin/launcherctl status
     }
     predeinstall() {
         if [[ "$(/home/root/.vellum/bin/launcherctl current-launcher)" != "none" ]]; then
