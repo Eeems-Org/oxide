@@ -12,24 +12,25 @@ SOURCES += \
 HEADERS += \
     active-launcher.h \
     common.h \
-    icommand.h \
-    status.h \
     current-launcher.h \
-    list-launchers.h \
-    switch-launcher.h \
-    start-launcher.h \
-    stop-launcher.h \
-    list-apps.h \
-    list-running-apps.h \
-    list-paused-apps.h \
-    start-app.h \
-    stop-app.h \
-    pause-app.h \
-    resume-app.h \
+    icommand.h \
+    is-active-launcher.h \
     is-current-launcher.h \
     is-enabled-launcher.h \
-    is-active-launcher.h \
-    logs.h
+    list-apps.h \
+    list-launchers.h \
+    list-paused-apps.h \
+    list-running-apps.h \
+    logs.h \
+    pause-app.h \
+    restart-launcher.h \
+    resume-app.h \
+    start-app.h \
+    start-launcher.h \
+    status.h \
+    stop-app.h \
+    stop-launcher.h \
+    switch-launcher.h
 
 TARGET = launcherctl
 include(../../qmake/common.pri)

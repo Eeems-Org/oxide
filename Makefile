@@ -121,6 +121,9 @@ _install-%:
 		vellum update
 		vellum add launcherctl-oxide@oxide
 		vellum upgrade
+		if [[ "$(launcherctl active-launcher)" == "oxide" ]];then
+			launcherctl restart-launcher
+		fi
 	EOT
 
 .PHONY: build-rm1

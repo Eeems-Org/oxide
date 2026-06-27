@@ -1,5 +1,6 @@
-#include "active-launcher.h"
 #include "common.h"
+
+#include "active-launcher.h"
 #include "current-launcher.h"
 #include "is-active-launcher.h"
 #include "is-current-launcher.h"
@@ -10,6 +11,7 @@
 #include "list-running-apps.h"
 #include "logs.h"
 #include "pause-app.h"
+#include "restart-launcher.h"
 #include "resume-app.h"
 #include "start-app.h"
 #include "start-launcher.h"
@@ -47,23 +49,24 @@ main(int argc, char* argv[]) {
   QDir().mkpath(SHARE_DIR);
 
   STATIC_INSTANCE(ActiveLauncherCommand);
-  STATIC_INSTANCE(StatusCommand);
   STATIC_INSTANCE(CurrentLauncherCommand);
-  STATIC_INSTANCE(ListLaunchersCommand);
-  STATIC_INSTANCE(SwitchLauncherCommand);
-  STATIC_INSTANCE(StartLauncherCommand);
-  STATIC_INSTANCE(StopLauncherCommand);
-  STATIC_INSTANCE(ListAppsCommand);
-  STATIC_INSTANCE(ListRunningAppsCommand);
-  STATIC_INSTANCE(ListPausedAppsCommand);
-  STATIC_INSTANCE(StartAppCommand);
-  STATIC_INSTANCE(StopAppCommand);
-  STATIC_INSTANCE(PauseAppCommand);
-  STATIC_INSTANCE(ResumeAppCommand);
+  STATIC_INSTANCE(IsActiveLauncherCommand);
   STATIC_INSTANCE(IsCurrentLauncherCommand);
   STATIC_INSTANCE(IsEnabledLauncherCommand);
-  STATIC_INSTANCE(IsActiveLauncherCommand);
+  STATIC_INSTANCE(ListAppsCommand);
+  STATIC_INSTANCE(ListLaunchersCommand);
+  STATIC_INSTANCE(ListPausedAppsCommand);
+  STATIC_INSTANCE(ListRunningAppsCommand);
   STATIC_INSTANCE(LogsCommand);
+  STATIC_INSTANCE(PauseAppCommand);
+  STATIC_INSTANCE(RestartLauncherCommand);
+  STATIC_INSTANCE(ResumeAppCommand);
+  STATIC_INSTANCE(StartAppCommand);
+  STATIC_INSTANCE(StartLauncherCommand);
+  STATIC_INSTANCE(StatusCommand);
+  STATIC_INSTANCE(StopAppCommand);
+  STATIC_INSTANCE(StopLauncherCommand);
+  STATIC_INSTANCE(SwitchLauncherCommand);
   STATIC_INSTANCE(VersionCommand);
 
   QCommandLineParser parser;
