@@ -121,8 +121,11 @@ _install-%:
 		vellum update
 		vellum add launcherctl-oxide@oxide
 		vellum upgrade
-		if [[ "$(launcherctl active-launcher)" == "oxide" ]];then
+		echo "Starting oxide"
+		if [[ "$(launcherctl current-launcher)" == "oxide" ]];then
 			launcherctl restart-launcher
+		else
+			launcherctl switch-launcher --start oxide
 		fi
 	EOT
 
