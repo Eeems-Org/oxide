@@ -63,9 +63,7 @@ namespace Oxide {
       return false;
     }
     auto data = value + "\n";
-    file.write(data.c_str());
-    file.close();
-    return true;
+    return file.write(data.c_str()) != static_cast<qint64>(data.size());
   }
   QMap<QString, QString> SysObject::uevent() {
     auto path = propertyPath("uevent");

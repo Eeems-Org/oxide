@@ -70,6 +70,9 @@ restoreBacklight(const char* backlight, const char* cslSource, int savedValue) {
   }
   QString sysPath = QStringLiteral("/sys/class/backlight/") + backlight;
   int maxBrightness = Oxide::SysObject(sysPath).intProperty("max_brightness");
+  if (!maxBrightness) {
+    return;
+  }
   int brightness = (savedValue * 100) / maxBrightness;
   QProcess::execute(
     "csl",
