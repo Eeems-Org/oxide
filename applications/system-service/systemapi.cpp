@@ -65,20 +65,13 @@ saveBacklight(const char* backlight, const char* cslSource, int& savedValue) {
 
 static void
 restoreBacklight(const char* backlight, const char* cslSource, int savedValue) {
-  if (savedValue <= 0) {
-    return;
-  }
   QString sysPath = QStringLiteral("/sys/class/backlight/") + backlight;
-  int maxBrightness = Oxide::SysObject(sysPath).intProperty("max_brightness");
-  if (!maxBrightness) {
+  if (savedValue <= 0 || !QFile::exists(sysPath)) {
     return;
   }
-  int brightness = (savedValue * 100) / maxBrightness;
-  QProcess::execute(
-    "csl",
-    QStringList() << "light" << "--source" << cslSource << "--brightness"
-                  << QString::number(brightness) << "--extra-bright" << "true"
-  );
+  SysObject sysObject(sysPath);
+  sysObject.setProperty("brightness", std::to_string(savedValue));
+  sysObject.setProperty("bl_power", "0");
   O_DEBUG("Restored" << cslSource << "brightness:" << savedValue);
 }
 #endif
