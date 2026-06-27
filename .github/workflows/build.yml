@@ -131,7 +131,7 @@ jobs:
       - build
       - lint
     environment: apk.eeems.codes
-    if: github.repository == 'Eeems-org/oxide' && github.ref == 'refs/heads/master'
+    if: github.repository == 'Eeems-org/oxide' && (github.ref == 'refs/heads/master' || github.event_name == 'release')
     strategy:
       matrix:
         arch:
