@@ -120,6 +120,9 @@ postinstall() {
 postupgrade() {
     set -e
     postinstall
+    if systemctl is-active --quiet tarnish; then
+        echo "Oxide is currently running and will need to be restarted"
+    fi
 }
 
 postosupgrade() {
@@ -141,11 +144,9 @@ predeinstall() {
     set -e
     if [ "$(systemctl --quiet list-unit-files tarnish.service | /bin/grep -c tarnish.service 2> /dev/null)" -eq 1 ]; then
         if systemctl --quiet is-active tarnish.service 2> /dev/null; then
-            echo "Stopping tarnish.service"
             systemctl stop tarnish.service
         fi
         if systemctl --quiet is-enabled tarnish.service 2> /dev/null; then
-            echo "Disabling tarnish.service"
             systemctl disable tarnish.service
         fi
     fi
@@ -198,9 +199,6 @@ oxide_display() {
     postupgrade() {
         set -e
         postinstall
-        if systemctl is-active --quiet tarnish; then
-            echo "Oxide is currently running and will need to be restarted"
-        fi
     }
 
     postosupgrade() {
@@ -222,11 +220,9 @@ oxide_display() {
         set -e
         if [ "$(systemctl --quiet list-unit-files blight.service | /bin/grep -c blight.service 2> /dev/null)" -eq 1 ]; then
             if systemctl --quiet is-active blight.service 2> /dev/null; then
-                echo "Stopping blight.service"
                 systemctl stop blight.service
             fi
             if systemctl --quiet is-enabled blight.service 2> /dev/null; then
-                echo "Disabling blight.service"
                 systemctl disable blight.service
             fi
         fi

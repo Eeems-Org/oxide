@@ -66,6 +66,13 @@ namespace Oxide {
      */
     std::string propertyPath(const std::string& name);
     /*!
+     * \brief Set a named property value
+     * \param name The property name
+     * \param value The value to set
+     * \return If the value was written successfully
+     */
+    bool setProperty(const std::string& name, const std::string& value);
+    /*!
      * \brief Get the contents of uevent for this sysobject
      * \return uevent properties
      */

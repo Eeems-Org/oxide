@@ -164,6 +164,10 @@ private:
   QStringList powerOffInhibitors;
   QMutex mutex;
   bool wifiWasOn = false;
+#ifdef __aarch64__
+  int m_savedFrontlightBrightness = 0;
+  int m_savedKeyboardBrightness = 0;
+#endif
   QMap<SwipeDirection, bool> swipeStates;
   QMap<SwipeDirection, int> swipeLengths;
   Blight::shared_buf_t m_buffer = nullptr;
