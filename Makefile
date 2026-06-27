@@ -209,17 +209,31 @@ $(BUILD)/package/oxide.tar.gz: $(OBJ) $(BUILD)/package
 		oxide.pro \
 		Makefile
 
-$(BUILD)/package/VELBUILD: REV="$(shell TZ=UTC git show -s --date=format:'%Y%m%d' --format=%cd HEAD)"
-$(BUILD)/package/VELBUILD: VERSION="$(shell bash -c "grep 'VERSION =' qmake/common.pri | awk '{print \$$3}'")"
 $(BUILD)/package/VELBUILD: $(BUILD)/package $(OBJ) VELBUILD
-	sed "s/~VERSION~/$(VERSION)_git$(REV)/" ./VELBUILD > $(BUILD)/package/VELBUILD
-	if git diff --quiet HEAD 2>/dev/null; then \
-		TIMESTAMP=$$(git show -s --format=%ct HEAD); \
-	else \
-		TIMESTAMP=$$(date +%s); \
-	fi; \
-	MIDNIGHT=$$(TZ=UTC date -d "$(REV)" +%s); \
-	sed -i "s/~TIMESTAMP~/$$((TIMESTAMP - MIDNIGHT))/" $(BUILD)/package/VELBUILD
+	VERSION="$${VERSION:-$$(grep 'VERSION =' qmake/common.pri | awk '{print $$3}')}"
+	CODE_VERSION="$$(grep '^VERSION =' qmake/common.pri | awk '{print $$3}')"
+	version="$$(echo "$$VERSION" | sed 's/_.*//')"
+	if [ -n "$$CODE_VERSION" ] && [ "$$version" != "$$CODE_VERSION" ]; then
+		if [ "$$(printf '%s\n%s' "$$version" "$$CODE_VERSION" | sort -V -u | wc -l)" -ne 1 ]; then
+			echo "Error: VERSION '$$version' does not match VERSION '$$CODE_VERSION' in qmake/common.pri"
+			exit 1
+		fi
+	fi
+	REV="$${REV-$$(TZ=UTC git show -s --date=format:'%Y%m%d' --format=%cd HEAD)}"
+	if [ -n "$$REV" ]; then
+		sed "s/~VERSION~/$${VERSION}_git$${REV}/" ./VELBUILD > $(BUILD)/package/VELBUILD
+		if git diff --quiet HEAD 2>/dev/null; then
+			TIMESTAMP=$$(git show -s --format=%ct HEAD)
+		else
+			TIMESTAMP=$$(date +%s)
+		fi
+		MIDNIGHT=$$(TZ=UTC date -d "$$REV" +%s)
+		PKGREL=$$((TIMESTAMP - MIDNIGHT))
+	else
+		sed "s/~VERSION~/$${VERSION}/" ./VELBUILD > $(BUILD)/package/VELBUILD
+		PKGREL=0
+	fi
+	sed -i "s/~TIMESTAMP~/$${PKGREL}/" $(BUILD)/package/VELBUILD
 	vbuild -C $(BUILD)/package checksum
 
 SRC_FILES = $(shell find -name '*.sh' | grep -v shared/sentry | grep -v shared/cpptrace | grep -v shared/doxygen-awesome-css )

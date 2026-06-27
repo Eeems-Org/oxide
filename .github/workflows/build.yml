@@ -25,7 +25,9 @@ on:
       - "qmake/**"
       - "oxide.pro"
       - "Makefile"
-      - "package"
+      - "VELBUILD"
+  release:
+    types: [published]
 permissions:
   contents: read
 jobs:
@@ -100,6 +102,11 @@ jobs:
         env:
           privkey: ${{ secrets.VBUILD_PRIVKEY }}
           pubkey: ${{ vars.VBUILD_PUBKEY }}
+      - name: Set version
+        if: github.event_name == 'release'
+        run: |
+          echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+          echo "REV=" >> $GITHUB_ENV
       - name: Build packages
         run: make package-${{ matrix.arch }}
         env:
