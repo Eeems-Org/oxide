@@ -3,6 +3,14 @@ set -e
 case "$(basename "${EXECUTABLE:?EXECUTABLE missing}")" in
 puzzles)
   export OXIDE_PRELOAD_FORCE_INVERT_TOUCH_X=1
+  export OXIDE_PRELOAD_FORCE_32BIT_FSCREEN=1
+  ;;
+tilem | yaft)
+  export OXIDE_PRELOAD_FORCE_RM1=1
+  ;;
+chessmarkable | doommarkable)
+  export OXIDE_PRELOAD_FORCE_RM1=1
+  export OXIDE_PRELOAD_FORCE_32BIT_FSCREEN=1
   ;;
 esac
 eval "set -- $ARGUMENTS"
