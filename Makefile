@@ -1,7 +1,7 @@
 .PHONY: all
 all: release
 
-.NOTPARALLEL:
+.ONESHELL:
 
 MAKEFLAGS := --jobs=$(shell nproc)
 
@@ -14,7 +14,13 @@ ifneq ($(filter debug,$(FEATURES)),)
 DEFINES += CONFIG+="debug"
 endif
 
-OBJ += $(BUILD)/$(BUILDNAME)/Makefile
+OBJ = oxide.pro
+OBJ += $(wildcard applications/**)
+OBJ += $(wildcard assets/**)
+OBJ += $(wildcard interfaces/**)
+OBJ += $(wildcard qmake/**)
+OBJ += $(wildcard shared/**)
+OBJ += $(wildcard tests/**)
 
 .PHONY: clean-base
 clean-base:
@@ -40,7 +46,7 @@ release: clean-base build $(DIST)
 	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) install
 
 .PHONY: build
-build: $(OBJ)
+build: $(BUILD)/$(BUILDNAME)/Makefile
 	$(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) all
 
 .PHONY: package
@@ -53,33 +59,64 @@ build-armv7: build-rm1
 build-aarch64: build-rm1
 
 .PHONY: package-armv7
-package-armv7: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
-	CARCH=armv7 vbuild -C $(BUILD)/package
-	mkdir -p $(DIST)/armv7
-	cp -a $(BUILD)/package/dist/armv7/. $(DIST)/armv7
+package-armv7: $(DIST)/armv7/APKINDEX.tar.gz
 
 .PHONY: package-aarch64
-package-aarch64: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
-	CARCH=aarch64 vbuild -C $(BUILD)/package
-	mkdir -p $(DIST)/aarch64
-	cp -a $(BUILD)/package/dist/aarch64/. $(DIST)/aarch64
+package-aarch64: $(DIST)/aarch64/APKINDEX.tar.gz
+
+$(DIST)/%/APKINDEX.tar.gz: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
+	rm -f \
+		$(DIST)/$*/*.apk \
+		$(BUILD)/package/dist/$*/*.apk
+	CARCH=$* vbuild -C $(BUILD)/package
+	@echo "Creating APKINDEX.tar.gz"
+	podman run \
+		--rm \
+		--interactive \
+		--volume="$(BUILD)/package/dist/$*:/packages" \
+		--volume="$$HOME/.config/vbuild:/keys:ro" \
+		--workdir=/packages \
+		--env=key=$${VBUILD_KEY_NAME:-vbuild} \
+		ghcr.io/eeems/vbuild-builder:main \
+		sh -e <<-'EOT'
+			cp /keys/$$key.rsa* /etc/apk/keys/
+			apk index --no-warnings --output=APKINDEX.tar.gz *.apk
+			tar xOf APKINDEX.tar.gz APKINDEX
+			abuild-sign -k /keys/$$key.rsa APKINDEX.tar.gz
+			cp /keys/$$key.rsa.pub .
+		EOT
+	mkdir -p $(DIST)/$*
+	cp -a $(BUILD)/package/dist/$*/. $(DIST)/$*
+	[ -f $(DIST)/$*/APKINDEX.tar.gz ]
 
 .PHONY: deploy-armv7
-deploy-armv7: package-armv7
-	rsync -aP release/armv7/*.apk remarkable:/home/root/packages
+deploy-armv7: _deploy-armv7
 
 .PHONY: deploy-aarch64
-deploy-aarch64: package-aarch64
-	rsync -aP release/aarch64/*.apk remarkable:/home/root/packages
+deploy-aarch64: _deploy-aarch64
 
+_deploy-%: package-%
+	rsync -aP --delete $(DIST)/$* remarkable:/home/root/packages
 
+.NOTPARALLEL: install-armv7
 .PHONY: install-armv7
-install-armv7: deploy-armv7
-	echo "vellum add packages/*.apk" | ssh remarkable bash -le
+install-armv7: deploy-armv7 _install
 
+.NOTPARALLEL: install-aarch64
 .PHONY: install-aarch64
-install-aarch64: deploy-aarch64
-	echo "vellum add packages/*.apk" | ssh remarkable bash -le
+install-aarch64: deploy-aarch64 _install
+
+.PHONY: _install
+_install:
+	ssh remarkable bash -le <<-'EOT'
+		repo='@oxide /home/root/packages'
+		if ! grep -qF "$$repo" /home/root/.vellum/etc/apk/repositories 2>/dev/null; then
+			echo "$$repo" >> /home/root/.vellum/etc/apk/repositories
+		fi
+		vellum update
+		vellum add launcherctl-oxide@oxide
+		vellum update
+	EOT
 
 .PHONY: build-rm1
 build-rm1: clean-base $(DIST)
@@ -150,15 +187,7 @@ $(BUILD)/package:
 	mkdir -p $(BUILD)/package
 	rm -rf $(BUILD)/package/build
 
-PKG_OBJ = oxide.pro Makefile
-PKG_OBJ += $(wildcard applications/**)
-PKG_OBJ += $(wildcard assets/**)
-PKG_OBJ += $(wildcard interfaces/**)
-PKG_OBJ += $(wildcard qmake/**)
-PKG_OBJ += $(wildcard shared/**)
-PKG_OBJ += $(wildcard tests/**)
-
-$(BUILD)/package/oxide.tar.gz: $(PKG_OBJ) $(BUILD)/package
+$(BUILD)/package/oxide.tar.gz: $(OBJ) $(BUILD)/package
 	rm -f $(BUILD)/package/oxide.tar.gz
 	tar \
 		--exclude='$(CURDIR)/.git' \
@@ -175,10 +204,9 @@ $(BUILD)/package/oxide.tar.gz: $(PKG_OBJ) $(BUILD)/package
 		oxide.pro \
 		Makefile
 
-.PHONY: $(BUILD)/package/VELBUILD
 $(BUILD)/package/VELBUILD: REV="$(shell TZ=UTC git show -s --date=format:'%Y%m%d' --format=%cd HEAD)"
 $(BUILD)/package/VELBUILD: VERSION="$(shell bash -c "grep 'VERSION =' qmake/common.pri | awk '{print \$$3}'")"
-$(BUILD)/package/VELBUILD: $(BUILD)/package
+$(BUILD)/package/VELBUILD: $(BUILD)/package $(OBJ) VELBUILD
 	sed "s/~VERSION~/$(VERSION)_git$(REV)/" ./VELBUILD > $(BUILD)/package/VELBUILD
 	if git diff --quiet HEAD 2>/dev/null; then \
 		TIMESTAMP=$$(git show -s --format=%ct HEAD); \

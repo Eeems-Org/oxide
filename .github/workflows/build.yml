@@ -141,30 +141,6 @@ jobs:
           pattern: vellum-${{ matrix.arch }}
           merge-multiple: true
           path: release/${{ matrix.arch }}/
-      - name: Generate index
-        run: |
-          set -e
-          mkdir -p keys
-          touch keys/oxide.rsa
-          chmod 600 keys/oxide.rsa
-          echo "$privkey" > keys/oxide.rsa
-          openssl rsa -in keys/oxide.rsa -pubout -out keys/oxide.rsa.pub
-          docker run --rm \
-            -v "$PWD/release/$arch:/packages:Z" \
-            -v "$PWD/keys:/keys:ro" \
-            -w /packages \
-            ghcr.io/eeems/vbuild-builder:main \
-            sh -ec "
-              cp /keys/oxide.rsa* /etc/apk/keys/
-              apk index --no-warnings --output=APKINDEX.tar.gz *.apk
-              tar xOf APKINDEX.tar.gz APKINDEX
-              abuild-sign -k /keys/oxide.rsa APKINDEX.tar.gz
-              chown $(id -u):$(id -g) APKINDEX.tar.gz
-            "
-            cp keys/oxide.rsa.pub release/$arch/
-        env:
-          privkey: ${{ secrets.VBUILD_PRIVKEY }}
-          arch: ${{ matrix.arch }}
       - name: Rsync
         run: |
           set -e
