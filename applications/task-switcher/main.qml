@@ -91,7 +91,7 @@ OxideWindow {
                         visible: model.modelData.running
                         enabled: visible && appsView.enabled
                         height: visible ? appsView.height : 0
-                        source: model.modelData.imgFile
+                        imgFile: model.modelData.imgFile
                         text: model.modelData.displayName
                         onClicked: {
                             controller.breadcrumb("appsView.app", "click", "ui");

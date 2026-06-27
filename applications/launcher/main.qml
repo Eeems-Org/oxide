@@ -266,7 +266,7 @@ OxideWindow {
             }
             delegate: AppItem {
                 enabled: appsView.enabled
-                source: model.modelData.imgFile
+                imgFile: model.modelData.imgFile
                 text: (model.modelData.running ? "* " : "") + model.modelData.displayName
                 bold: model.modelData.running
                 width: appsView.cellWidth
