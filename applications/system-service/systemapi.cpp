@@ -3,8 +3,6 @@
 #include <liboxide.h>
 #include <liboxide/oxideqml.h>
 
-#include <QDir>
-#include <QDirIterator>
 #include <QString>
 
 #include "appsapi.h"
@@ -25,28 +23,62 @@ operator<<(QDebug debug, Touch* touch) {
   debug.nospace() << touch->debugString().c_str();
   return debug.maybeSpace();
 }
+#ifdef __aarch64__
 void
 disableVPDD() {
-  QDirIterator driverDir(
-    "/sys/bus/i2c/drivers", QDir::Dirs | QDir::NoDotAndDotDot
-  );
-  while (driverDir.hasNext()) {
-    QDirIterator deviceDir(driverDir.next(), QDir::Dirs | QDir::NoDotAndDotDot);
-    while (deviceDir.hasNext()) {
-      QString vpddPath = deviceDir.next() + "/vpdd_length";
-      if (!QFile::exists(vpddPath)) {
-        continue;
-      }
-      QFile vpddLength(vpddPath);
-      if (vpddLength.open(QIODevice::WriteOnly)) {
-        vpddLength.write("0\n");
-        vpddLength.close();
-        O_DEBUG("Cancelled VPDD timer at" << vpddPath);
-      }
+  QString basePath;
+  switch (deviceSettings.getDeviceType()) {
+    case Oxide::DeviceSettings::RMPP:
+      basePath = "/sys/bus/i2c/devices/1-0048";
+      break;
+    case Oxide::DeviceSettings::RMPPM:
+      basePath = "/sys/bus/i2c/devices/0-0048";
+      break;
+    default:
       return;
-    }
+  }
+  Oxide::SysObject device(basePath);
+  if (device.hasProperty("vpdd_length")) {
+    device.setProperty("vpdd_length", "0");
+    O_DEBUG(
+      "Cancelled VPDD timer at" << device.propertyPath("vpdd_length").c_str()
+    );
   }
 }
+#endif
+
+#ifdef __aarch64__
+static void
+saveBacklight(const char* backlight, const char* cslSource, int& savedValue) {
+  QString sysPath = QStringLiteral("/sys/class/backlight/") + backlight;
+  if (!QFile::exists(sysPath)) {
+    return;
+  }
+  savedValue = Oxide::SysObject(sysPath).intProperty("brightness");
+  O_DEBUG("Saved" << cslSource << "brightness:" << savedValue);
+  QProcess::execute(
+    "csl",
+    QStringList() << "light" << "--source" << cslSource << "--brightness" << "0"
+  );
+  O_DEBUG("Turned off" << cslSource << "backlight for suspend");
+}
+
+static void
+restoreBacklight(const char* backlight, const char* cslSource, int savedValue) {
+  if (savedValue <= 0) {
+    return;
+  }
+  QString sysPath = QStringLiteral("/sys/class/backlight/") + backlight;
+  int maxBrightness = Oxide::SysObject(sysPath).intProperty("max_brightness");
+  int brightness = (savedValue * 100) / maxBrightness;
+  QProcess::execute(
+    "csl",
+    QStringList() << "light" << "--source" << cslSource << "--brightness"
+                  << QString::number(brightness) << "--extra-bright" << "true"
+  );
+  O_DEBUG("Restored" << cslSource << "brightness:" << savedValue);
+}
+#endif
 
 void
 SystemAPI::PrepareForSleep(bool suspending) {
@@ -140,6 +172,12 @@ SystemAPI::PrepareForSleep(bool suspending) {
             }
 #ifdef __aarch64__
             disableVPDD();
+            saveBacklight(
+              "rm_frontlight", "frontlight", m_savedFrontlightBrightness
+            );
+            saveBacklight(
+              "rm_keyboard_backlight", "keyboard", m_savedKeyboardBrightness
+            );
 #endif
             releaseSleepInhibitors();
           }
@@ -154,6 +192,14 @@ SystemAPI::PrepareForSleep(bool suspending) {
         Oxide::Sentry::sentry_span(t, "inhibit", "Inhibit sleep", [this] {
           inhibitSleep();
         });
+#ifdef __aarch64__
+        restoreBacklight(
+          "rm_frontlight", "frontlight", m_savedFrontlightBrightness
+        );
+        restoreBacklight(
+          "rm_keyboard_backlight", "keyboard", m_savedKeyboardBrightness
+        );
+#endif
         if (m_buffer != nullptr) {
           Blight::connection()->remove(m_buffer);
           m_buffer = nullptr;

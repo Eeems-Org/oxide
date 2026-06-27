@@ -65,6 +65,7 @@ package-armv7: $(DIST)/armv7/APKINDEX.tar.gz
 package-aarch64: $(DIST)/aarch64/APKINDEX.tar.gz
 
 $(DIST)/%/APKINDEX.tar.gz: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/package/VELBUILD
+	set -e
 	rm -f \
 		$(DIST)/$*/*.apk \
 		$(BUILD)/package/dist/$*/*.apk
@@ -86,7 +87,7 @@ $(DIST)/%/APKINDEX.tar.gz: $(DIST) $(BUILD)/package/oxide.tar.gz $(BUILD)/packag
 			cp /keys/$$key.rsa.pub .
 		EOT
 	mkdir -p $(DIST)/$*
-	cp -a $(BUILD)/package/dist/$*/. $(DIST)/$*
+	cp -af $(BUILD)/package/dist/$*/. $(DIST)/$*
 	[ -f $(DIST)/$*/APKINDEX.tar.gz ]
 
 .PHONY: deploy-armv7
@@ -100,22 +101,26 @@ _deploy-%: package-%
 
 .NOTPARALLEL: install-armv7
 .PHONY: install-armv7
-install-armv7: deploy-armv7 _install
+install-armv7: deploy-armv7 _install-armv7
 
 .NOTPARALLEL: install-aarch64
 .PHONY: install-aarch64
-install-aarch64: deploy-aarch64 _install
+install-aarch64: deploy-aarch64 _install-aarch64
 
 .PHONY: _install
-_install:
+_install-%:
 	ssh remarkable bash -le <<-'EOT'
 		repo='@oxide /home/root/packages'
 		if ! grep -qF "$$repo" /home/root/.vellum/etc/apk/repositories 2>/dev/null; then
 			echo "$$repo" >> /home/root/.vellum/etc/apk/repositories
 		fi
+		key="$${VBUILD_KEY_NAME:-vbuild}.rsa.pub"
+		if [ ! -f "/home/root/.vellum/etc/apk/keys/$$key" ];then
+			cp "/home/root/packages/$*/$$key" "/home/root/.vellum/etc/apk/keys/$$key"
+		fi
 		vellum update
 		vellum add launcherctl-oxide@oxide
-		vellum update
+		vellum upgrade
 	EOT
 
 .PHONY: build-rm1

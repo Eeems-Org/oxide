@@ -54,6 +54,19 @@ namespace Oxide {
     );
     return text;
   }
+  bool
+  SysObject::setProperty(const std::string& name, const std::string& value) {
+    auto path = propertyPath(name);
+    QFile file(path.c_str());
+    if (!file.open(QIODevice::WriteOnly)) {
+      O_DEBUG("Couldn't open file for writing:" << path.c_str());
+      return false;
+    }
+    auto data = value + "\n";
+    file.write(data.c_str());
+    file.close();
+    return true;
+  }
   QMap<QString, QString> SysObject::uevent() {
     auto path = propertyPath("uevent");
     QFile file(path.c_str());
