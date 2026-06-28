@@ -10,6 +10,17 @@ using namespace codes::eeems::blight1;
 using namespace Oxide::Sentry;
 using namespace Oxide::JSON;
 
+static QVariant
+convertDbusVariant(const QString& typeName, const QVariant& value) {
+  if (typeName == "QDBusObjectPath") {
+    return QVariant::fromValue(QDBusObjectPath(value.toString()));
+  }
+  if (typeName == "QDBusSignature") {
+    return QVariant::fromValue(QDBusSignature(value.toString()));
+  }
+  return value;
+}
+
 int
 qExit(int ret) {
   QTimer::singleShot(0, [ret]() { qApp->exit(ret); });
@@ -351,13 +362,23 @@ main(int argc, char* argv[]) {
     qStdOut << toJson(value).toStdString().c_str() << Qt::endl;
   } else if (action == "set") {
     auto property = args.at(2).toStdString();
-    if (!api->setProperty(property.c_str(), args.at(3).toStdString().c_str())) {
+    QVariant value = args.at(3);
+    if (iapi != nullptr) {
+      auto meta = iapi->metaObject();
+      auto propIndex = meta->indexOfProperty(property.c_str());
+      if (propIndex >= 0) {
+        value = convertDbusVariant(
+          QString(meta->property(propIndex).typeName()), value
+        );
+      }
+    }
+    if (!api->setProperty(property.c_str(), value)) {
       qDebug() << "Failed to set value";
       if (iapi != nullptr) {
         qDebug() << iapi->lastError();
       }
 #ifdef SENTRY
-      sentry_breadcrumb("error", "Failed to get value");
+      sentry_breadcrumb("error", "Failed to set value");
 #endif
       return qExit(EXIT_FAILURE);
     }
@@ -412,12 +433,8 @@ main(int argc, char* argv[]) {
 #endif
           return qExit(EXIT_FAILURE);
         }
-        QVariant variant = fromJson(value.toUtf8());
-        if (typeName == "QDBusObjectPath") {
-          variant = QVariant::fromValue(QDBusObjectPath(variant.toString()));
-        } else if (typeName == "QDBusSignature") {
-          variant = QVariant::fromValue(QDBusSignature(variant.toString()));
-        }
+        QVariant variant =
+          convertDbusVariant(typeName, fromJson(value.toUtf8()));
         if (!variant.canConvert(type)) {
           qDebug() << "Unable to convert to type" << typeName;
           qDebug() << "Value" << variant;

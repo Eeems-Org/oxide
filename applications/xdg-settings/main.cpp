@@ -194,7 +194,7 @@ check_command(QCommandLineParser& parser) {
     qDebug() << "xdg-settings: Failed to get property";
     parser.showHelp(EXIT_FAILURE);
   }
-  qStdOut() << (args.last() == value ? "yes" : "no") << Qt::endl;
+  qStdOut() << (args.last() == value.toString() ? "yes" : "no") << Qt::endl;
   return EXIT_SUCCESS;
 }
 
@@ -220,15 +220,26 @@ set_command(QCommandLineParser& parser) {
     qDebug() << "xdg-settings: Unknown property" << name;
     parser.showHelp(EXIT_FAILURE);
   }
-  QVariant value = obj->property(name.toStdString().c_str());
-  if (!value.isValid()) {
+  QVariant current = obj->property(name.toStdString().c_str());
+  if (!current.isValid()) {
     qDebug() << "xdg-settings: Failed to get property";
     parser.showHelp(EXIT_FAILURE);
   }
-  if (obj->setProperty(name.toStdString().c_str(), args.last())) {
+  QVariant value = args.last();
+  QDBusAbstractInterface* api = qobject_cast<QDBusAbstractInterface*>(obj);
+  if (api != nullptr) {
+    auto meta = api->metaObject();
+    auto propIndex = meta->indexOfProperty(name.toStdString().c_str());
+    if (propIndex >= 0) {
+      auto typeName = QString(meta->property(propIndex).typeName());
+      if (typeName == "QDBusObjectPath") {
+        value = QVariant::fromValue(QDBusObjectPath(value.toString()));
+      }
+    }
+  }
+  if (obj->setProperty(name.toStdString().c_str(), value)) {
     return EXIT_SUCCESS;
   }
-  QDBusAbstractInterface* api = qobject_cast<QDBusAbstractInterface*>(obj);
   if (api == nullptr) {
     qDebug() << "xdg-settings: failed to set property";
   } else {
