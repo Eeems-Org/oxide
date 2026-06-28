@@ -10,6 +10,7 @@ oxide-display-dev:oxide_display_dev
 oxide-extra:oxide_extra
 oxide-utils:oxide_utils
 oxide-tests:oxide_tests
+oxide-xovi:oxide_xovi
 lockscreen_hook
 launcherctl
 launcherctl-oxide:launcherctl_oxide
@@ -120,6 +121,7 @@ postinstall() {
 postupgrade() {
     set -e
     postinstall
+    update-desktop-database
     if systemctl is-active --quiet tarnish; then
         echo "Oxide is currently running and will need to be restarted"
     fi
@@ -289,6 +291,14 @@ oxide_extra() {
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
             home/root/.local/share/icons/oxide/48x48/apps/ether.png
     }
+
+    postinstall() {
+        update-desktop-database
+    }
+
+    postupgrade() {
+        postinstall
+    }
 }
 
 oxide_utils() {
@@ -443,6 +453,36 @@ oxide_tests() {
             home/root/.vellum/bin/test_app
         install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
             home/root/.local/share/applications/test_app.oxide
+    }
+
+    postinstall() {
+        update-desktop-database
+    }
+
+    postupgrade() {
+        postinstall
+    }
+}
+
+oxide_xovi() {
+    pkgdesc="Xovi application registration for oxide"
+    category="framework"
+    depends="
+    oxide-display=$pkgver-r$pkgrel
+    xovi
+    "
+    package() {
+        cd "$srcdir"/release
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
+            home/root/.local/share/applications/xovi.oxide
+    }
+
+    postinstall() {
+        update-desktop-database
+    }
+
+    postupgrade() {
+        postinstall
     }
 }
 

@@ -4,7 +4,10 @@
     "bin": "/usr/bin/xochitl",
     "icon": "oxide:xochitl-48",
     "environment": {
-        "LD_PRELOAD": "/home/root/xovi/xovi.so",
-        "XOVI_ROOT": "/home/root/xovi/services/xochitl.service"
-    }
+        "LD_PRELOAD": "/home/root/xovi/xovi.so:/home/root/.vellum/lib/libblight_client.so.3",
+        "XOVI_ROOT": "/home/root/xovi/services/xochitl.service",
+        "QML_DISABLE_DISK_CACHE": "1",
+        "MALLOC_ARENA_MAX": "8"
+    },
+    "flags": ["nopreload"]
 }

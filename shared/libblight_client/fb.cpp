@@ -90,7 +90,6 @@ namespace FB {
       visibleYRatio = (deviceYres() * deviceScale()) / deviceActualHeight();
       visibleXRatio = (deviceXres() * deviceScale()) / deviceActualWidth();
     }
-    _INFO("Scale: %f", deviceScale());
     return true;
   }
   bool is_fb(int fd) {
