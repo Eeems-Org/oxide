@@ -9,6 +9,7 @@ Window{
     property alias image: image.source
     property alias notificationVisible: notification.visible
     property bool landscape: Oxide.landscape
+    signal clicked
 
     id: window
     objectName: "window"
@@ -66,6 +67,10 @@ Window{
                 Layout.fillWidth: true
                 Layout.fillHeight: true
             }
+        }
+        MouseArea{
+            anchors.fill: rowLayout
+            onClicked: window.clicked()
         }
     }
 }

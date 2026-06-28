@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <liboxide.h>
 
 #include <QCommandLineParser>
@@ -81,6 +82,16 @@ main(int argc, char* argv[]) {
     {"A", "action"}, "NOT IMPLEMENTED", "[NAME=]TEXT"
   );
   parser.addOption(appOption);
+  QCommandLineOption selectedActionFdOption(
+    "selected-action-fd", "NOT IMPLEMENTED", "FILE_DESCRIPTOR"
+  );
+  parser.addOption(selectedActionFdOption);
+  QCommandLineOption activationTokenFdOption(
+    "activation-token-fd", "NOT IMPLEMENTED", "FILE_DESCRIPTOR"
+  );
+  parser.addOption(activationTokenFdOption);
+  QCommandLineOption idFdOption("id-fd", "NOT IMPLEMENTED", "FILE_DESCRIPTOR");
+  parser.addOption(idFdOption);
   QCommandLineOption categoryOption(
     {"c", "category"}, "NOT IMPLEMENTED", "TYPE[,TYPE]"
   );
@@ -150,39 +161,63 @@ main(int argc, char* argv[]) {
     QTextStream qStdOut(stdout, QIODevice::WriteOnly);
     qStdOut << guid << Qt::endl;
   }
+  if (!parser.isSet(waitOption)) {
+    qDebug() << "Displaying notification" << guid;
+    notification.display().waitForFinished();
+    if (parser.isSet(transientOption)) {
+      notification.remove();
+    }
+    return qExit(EXIT_SUCCESS);
+  }
+  if (!Oxide::DBusConnect(
+        &notification,
+        "displayed",
+        [&notification, &parser, &expireOption](QVariantList args) {
+          Q_UNUSED(args);
+          qDebug() << "Waiting for notification to be closed";
+          if (!Oxide::DBusConnect(
+                &notification,
+                "removed",
+                [](QVariantList args) {
+                  Q_UNUSED(args);
+                  qApp->exit(EXIT_SUCCESS);
+                },
+                true
+              )) {
+            qDebug() << "Failed to wait for notification to exit";
+            qExit(EXIT_FAILURE);
+          }
+          if (!Oxide::DBusConnect(
+                &notification, "clicked", [](QVariantList args) {
+                  Q_UNUSED(args);
+                  qDebug() << "Clicked";
+                }
+              )) {
+            qDebug() << "Failed to connect Notification::clicked";
+            qExit(EXIT_FAILURE);
+          }
+          if (parser.isSet(expireOption)) {
+            bool ok = false;
+            auto timeout = parser.value(expireOption).toInt(&ok);
+            if (!ok || timeout < 0) {
+              qDebug() << "Invalid --expire-time value";
+              qExit(EXIT_FAILURE);
+            }
+            qDebug()
+              << ("Timeout set to " + std::to_string(timeout) + "ms").c_str();
+            QTimer::singleShot(timeout, [&notification] {
+              qDebug() << "Notification wait timed out";
+              notification.remove().waitForFinished();
+              qApp->exit(EXIT_FAILURE);
+            });
+          }
+        }
+      )) {
+    qDebug() << "Failed to connect Notification::displayed";
+    return qExit(EXIT_FAILURE);
+  }
   qDebug() << "Displaying notification" << guid;
   notification.display().waitForFinished();
-  if (parser.isSet(waitOption)) {
-    qDebug() << "Waiting for notification to be closed";
-    if (!Oxide::DBusConnect(
-          &notification,
-          "removed",
-          [](QVariantList args) {
-            Q_UNUSED(args);
-            qApp->exit(EXIT_SUCCESS);
-          },
-          true
-        )) {
-      qDebug() << "Failed to wait for notification to exit";
-      return qExit(EXIT_FAILURE);
-    }
-    if (parser.isSet(expireOption)) {
-      bool ok = false;
-      auto timeout = parser.value(expireOption).toInt(&ok);
-      if (!ok || timeout < 0) {
-        qDebug() << "Invalid --expire-time value";
-        return qExit(EXIT_FAILURE);
-      }
-      qDebug() << ("Timeout set to " + std::to_string(timeout) + "ms").c_str();
-      QTimer::singleShot(timeout, [&notification] {
-        qDebug() << "Notification wait timed out";
-        notification.remove().waitForFinished();
-        qApp->exit(EXIT_FAILURE);
-      });
-    }
-    return app.exec();
-  } else if (parser.isSet(transientOption)) {
-    notification.remove();
-  }
-  return qExit(EXIT_SUCCESS);
+  qDebug() << "Waiting for notification to be be displayed";
+  return app.exec();
 }

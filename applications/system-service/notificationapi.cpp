@@ -6,6 +6,7 @@
 #include <QPainterPath>
 
 #include "dbusservice.h"
+#include "notification.h"
 #include "systemapi.h"
 
 NotificationAPI*
@@ -127,7 +128,7 @@ NotificationAPI::add(
   );
   m_notifications.insert(identifier, notification);
   auto path = notification->qPath();
-  connect(notification, &Notification::changed, this, [this, path] {
+  QObject::connect(notification, &Notification::changed, this, [this, path] {
     emit notificationChanged(path);
   });
   if (m_enabled) {
@@ -150,6 +151,7 @@ NotificationAPI::paintNotification(
   const QString& text,
   const QString& iconPath
 ) {
+  disconnect(m_window, SIGNAL(clicked()), nullptr, nullptr);
   m_window->setProperty("text", text);
   if (!iconPath.isEmpty() && QFileInfo(iconPath).exists()) {
     m_window->setProperty("image", QUrl::fromLocalFile(iconPath));

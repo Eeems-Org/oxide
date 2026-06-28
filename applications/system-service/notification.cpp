@@ -203,21 +203,21 @@ Notification::hasPermission(QString permission, const char* sender) {
 void
 Notification::paintNotification() {
   O_INFO("Painting notification" << identifier());
-  auto notification = notificationAPI->paintNotification(m_text, m_icon);
+  auto window = notificationAPI->paintNotification(m_text, m_icon);
+  QObject::connect(window, SIGNAL(clicked()), this, SIGNAL(clicked()));
   O_INFO("Painted notification" << identifier());
   emit displayed();
-  QTimer::singleShot(
-    notificationAPI->displayTime() * 1000, [this, notification] {
-      O_INFO("Finished displaying notification" << identifier());
-      if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
-        notificationAPI->notificationDisplayQueue.takeFirst()
-          ->paintNotification();
-        return;
-      } else {
-        notification->setProperty("notificationVisible", false);
-      }
-      notificationAPI->unlock();
+  QTimer::singleShot(notificationAPI->displayTime() * 1000, [this, window] {
+    O_INFO("Finished displaying notification" << identifier());
+    if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
+      notificationAPI->notificationDisplayQueue.takeFirst()
+        ->paintNotification();
+      return;
+    } else {
+      window->setProperty("notificationVisible", false);
+      disconnect(window, SIGNAL(clicked()), nullptr, nullptr);
     }
-  );
+    notificationAPI->unlock();
+  });
 }
 #include "moc_notification.cpp"

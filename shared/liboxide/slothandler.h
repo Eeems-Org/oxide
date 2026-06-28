@@ -17,18 +17,6 @@ namespace Oxide {
    * \param interface Interface to connect to
    * \param slotName Slot to connect to
    * \param onMessage Method to run when an event is recieved on the slot
-   * \return If the connect succeeded
-   */
-  LIBOXIDE_EXPORT bool DBusConnect(
-    QDBusAbstractInterface* interface,
-    const QString& slotName,
-    std::function<void(QVariantList)> onMessage
-  );
-  /*!
-   * \brief Connect to a slot on a DBus interface
-   * \param interface Interface to connect to
-   * \param slotName Slot to connect to
-   * \param onMessage Method to run when an event is recieved on the slot
    * \param once If this should disconnect after the first event
    * \return If the connect succeeded
    */
@@ -36,7 +24,7 @@ namespace Oxide {
     QDBusAbstractInterface* interface,
     const QString& slotName,
     std::function<void(QVariantList)> onMessage,
-    const bool& once
+    const bool& once = false
   );
   /*!
    * \brief Connect to a slot on a DBus interface
