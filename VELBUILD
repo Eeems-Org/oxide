@@ -121,7 +121,9 @@ postinstall() {
 postupgrade() {
     set -e
     postinstall
-    update-desktop-database
+    if [ -f /home/root/.vellum/bin/update-desktop-database ]; then
+        /home/root/.vellum/bin/update-desktop-database
+    fi
     if systemctl is-active --quiet tarnish; then
         echo "Oxide is currently running and will need to be restarted"
     fi
@@ -293,7 +295,7 @@ oxide_extra() {
     }
 
     postinstall() {
-        update-desktop-database
+        /home/root/.vellum/bin/update-desktop-database
     }
 
     postupgrade() {
@@ -456,7 +458,9 @@ oxide_tests() {
     }
 
     postinstall() {
-        update-desktop-database
+        if [ -f /home/root/.vellum/bin/update-desktop-database ]; then
+            /home/root/.vellum/bin/update-desktop-database
+        fi
     }
 
     postupgrade() {
@@ -468,7 +472,7 @@ oxide_xovi() {
     pkgdesc="Xovi application registration for oxide"
     category="framework"
     depends="
-    oxide-display=$pkgver-r$pkgrel
+    oxide=$pkgver-r$pkgrel
     xovi
     "
     package() {
@@ -478,7 +482,9 @@ oxide_xovi() {
     }
 
     postinstall() {
-        update-desktop-database
+        if [ -f /home/root/.vellum/bin/update-desktop-database ]; then
+            /home/root/.vellum/bin/update-desktop-database
+        fi
     }
 
     postupgrade() {
