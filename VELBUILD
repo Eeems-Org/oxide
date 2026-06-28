@@ -341,6 +341,18 @@ oxide_utils() {
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/xdg-icon-resource
     }
+
+    postinstall() {
+        /home/root/.vellum/bin/update-desktop-database
+    }
+
+    postupgrade() {
+        postinstall
+    }
+
+    postosupgrade() {
+        postinstall
+    }
 }
 
 inject_evdev() {
