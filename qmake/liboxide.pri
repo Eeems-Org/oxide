@@ -9,5 +9,5 @@ QT += dbus
 QT += gui
 
 QML_IMPORT_PATH += qrc:/codes.eeems.oxide
-include(cpptrace.pri)
+include(cpptrace-sentry.pri)
 include(libblight.pri)

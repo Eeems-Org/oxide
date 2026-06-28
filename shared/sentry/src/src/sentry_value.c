@@ -1,0 +1,1901 @@
+#include "sentry_boot.h"
+
+#include <assert.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
+#if defined(_MSC_VER)
+#    pragma warning(push)
+#    pragma warning(disable : 4127) // conditional expression is constant
+#    if defined(__clang__) // clang-cl
+#        pragma clang diagnostic push
+#        pragma clang diagnostic ignored "-Wdocumentation"
+#        pragma clang diagnostic ignored "-Wpre-c11-compat"
+#    endif
+#elif defined(__clang__)
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wstatic-in-inline"
+#endif
+
+#include "../vendor/mpack.h"
+
+#if defined(_MSC_VER)
+#    pragma warning(pop)
+#    ifdef __clang__ // clang-cl
+#        pragma clang diagnostic pop
+#    endif
+#elif defined(__clang__)
+#    pragma clang diagnostic pop
+#endif
+
+#include "sentry_alloc.h"
+#include "sentry_core.h"
+#include "sentry_json.h"
+#include "sentry_slice.h"
+#include "sentry_string.h"
+#include "sentry_sync.h"
+#include "sentry_utils.h"
+#include "sentry_uuid.h"
+#include "sentry_value.h"
+
+/**
+ * Pointer Tagging of `sentry_value_t`
+ *
+ * We expect all of the pointers we deal with to be at least 4-byte aligned,
+ * which means we can use the least significant 2 bits for tagging.
+ * We only ever save pointers to `thing_t`, which has an `alignof >= 4`, and
+ * also both our own allocator, and the system allocator should give us
+ * properly aligned pointers.
+ *
+ * xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx xxxxxx00
+ *                                                                      ||
+ *               Pointer to a `thing_t`, a refcounted heap allocation - 00
+ * xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx -   A `int32_t` shifted by 32  - 01
+ *                                                     CONST as below - 10
+ *                                                            false - 0010
+ *                                                             true - 0110
+ *                                                             null - 1010
+ */
+
+#define TAG_MASK 0x3
+#define TAG_INT32 0x1
+#define TAG_CONST 0x2
+
+#define CONST_FALSE 0x2
+#define CONST_TRUE 0x6
+#define CONST_NULL 0xa
+
+#define THING_TYPE_MASK 0x7f
+#define THING_TYPE_FROZEN 0x80
+#define THING_TYPE_LIST 0
+#define THING_TYPE_OBJECT 1
+#define THING_TYPE_STRING 2
+#define THING_TYPE_DOUBLE 3
+#define THING_TYPE_INT64 4
+#define THING_TYPE_UINT64 5
+
+/* internal value helpers */
+
+typedef struct {
+    union {
+        void *_ptr;
+        double _double;
+        int64_t _i64;
+        uint64_t _u64;
+    } payload;
+    long refcount;
+    uint8_t type;
+} thing_t;
+
+typedef struct {
+    sentry_value_t *items;
+    size_t len;
+    size_t allocated;
+} list_t;
+
+typedef struct {
+    char *k;
+    sentry_value_t v;
+} obj_pair_t;
+
+typedef struct {
+    obj_pair_t *pairs;
+    size_t len;
+    size_t allocated;
+} obj_t;
+
+static const char *
+level_as_string(sentry_level_t level)
+{
+    switch (level) {
+    case SENTRY_LEVEL_TRACE:
+        return "trace";
+    case SENTRY_LEVEL_DEBUG:
+        return "debug";
+    case SENTRY_LEVEL_WARNING:
+        return "warning";
+    case SENTRY_LEVEL_ERROR:
+        return "error";
+    case SENTRY_LEVEL_FATAL:
+        return "fatal";
+    case SENTRY_LEVEL_INFO:
+    default:
+        return "info";
+    }
+}
+
+static bool
+reserve(void **buf, size_t item_size, size_t *allocated, size_t min_len)
+{
+    if (*allocated >= min_len) {
+        return true;
+    }
+    size_t new_allocated = *allocated;
+    if (new_allocated == 0) {
+        new_allocated = 16;
+    }
+    while (new_allocated < min_len) {
+        new_allocated *= 2;
+    }
+
+    void *new_buf = sentry_malloc(new_allocated * item_size);
+    if (!new_buf) {
+        return false;
+    }
+
+    if (*buf) {
+        memcpy(new_buf, *buf, *allocated * item_size);
+        sentry_free(*buf);
+    }
+    *buf = new_buf;
+    *allocated = new_allocated;
+    return true;
+}
+
+static int
+thing_get_type(const thing_t *thing)
+{
+    return thing->type & (uint8_t)THING_TYPE_MASK;
+}
+
+static void
+thing_free(thing_t *thing)
+{
+    switch (thing_get_type(thing)) {
+    case THING_TYPE_LIST: {
+        list_t *list = thing->payload._ptr;
+        for (size_t i = 0; i < list->len; i++) {
+            sentry_value_decref(list->items[i]);
+        }
+        sentry_free(list->items);
+        sentry_free(list);
+        break;
+    }
+    case THING_TYPE_OBJECT: {
+        obj_t *obj = thing->payload._ptr;
+        for (size_t i = 0; i < obj->len; i++) {
+            sentry_free(obj->pairs[i].k);
+            sentry_value_decref(obj->pairs[i].v);
+        }
+        sentry_free(obj->pairs);
+        sentry_free(obj);
+        break;
+    }
+    case THING_TYPE_STRING: {
+        sentry_free(thing->payload._ptr);
+        break;
+    }
+    }
+    sentry_free(thing);
+}
+
+static int
+thing_is_frozen(const thing_t *thing)
+{
+    return (thing->type >> 7) != 0;
+}
+
+static void
+thing_freeze(thing_t *thing)
+{
+    if (thing_is_frozen(thing)) {
+        return;
+    }
+    thing->type |= 0x80;
+    switch (thing_get_type(thing)) {
+    case THING_TYPE_LIST: {
+        const list_t *l = thing->payload._ptr;
+        for (size_t i = 0; i < l->len; i++) {
+            sentry_value_freeze(l->items[i]);
+        }
+        break;
+    }
+    case THING_TYPE_OBJECT: {
+        const obj_t *o = thing->payload._ptr;
+        for (size_t i = 0; i < o->len; i++) {
+            sentry_value_freeze(o->pairs[i].v);
+        }
+        break;
+    }
+    default:;
+    }
+}
+
+static sentry_value_t
+new_thing_value(void *ptr, uint8_t thing_type)
+{
+    thing_t *thing = sentry_malloc(sizeof(thing_t));
+    if (!thing) {
+        return sentry_value_new_null();
+    }
+    thing->payload._ptr = ptr;
+    thing->refcount = 1;
+    thing->type = thing_type;
+
+    sentry_value_t rv;
+    rv._bits = (uint64_t)(size_t)thing;
+    return rv;
+}
+
+static thing_t *
+value_as_thing(sentry_value_t value)
+{
+    if (value._bits & TAG_MASK) {
+        return NULL;
+    }
+    return (thing_t *)(size_t)value._bits;
+}
+
+static thing_t *
+value_as_unfrozen_thing(sentry_value_t value)
+{
+    thing_t *thing = value_as_thing(value);
+    return thing && !thing_is_frozen(thing) ? thing : NULL;
+}
+
+/* public api implementations */
+
+sentry_value_t
+sentry_value_incref(sentry_value_t value)
+{
+    thing_t *thing = value_as_thing(value);
+    if (thing) {
+        sentry__atomic_fetch_and_add(&thing->refcount, 1);
+    }
+    return value;
+}
+
+int
+sentry_value_decref(sentry_value_t value)
+{
+    thing_t *thing = value_as_thing(value);
+    if (thing && sentry__atomic_fetch_and_add(&thing->refcount, -1) == 1) {
+        thing_free(thing);
+        return 0;
+    }
+    return thing ? 1 : 0;
+}
+
+size_t
+sentry_value_refcount(sentry_value_t value)
+{
+    thing_t *thing = value_as_thing(value);
+    return thing ? (size_t)sentry__atomic_fetch(&thing->refcount) : 1;
+}
+
+void
+sentry_value_freeze(sentry_value_t value)
+{
+    thing_t *thing = value_as_thing(value);
+    if (thing) {
+        thing_freeze(thing);
+    }
+}
+
+int
+sentry_value_is_frozen(sentry_value_t value)
+{
+    const thing_t *thing = value_as_thing(value);
+    return thing ? thing_is_frozen(thing) : true;
+}
+
+sentry_value_t
+sentry_value_new_null(void)
+{
+    sentry_value_t rv;
+    rv._bits = (uint64_t)CONST_NULL;
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_int32(int32_t value)
+{
+    sentry_value_t rv;
+    rv._bits = ((uint64_t)(uint32_t)value) << 32 | TAG_INT32;
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_double(double value)
+{
+    thing_t *thing = SENTRY_MAKE(thing_t);
+    if (!thing) {
+        return sentry_value_new_null();
+    }
+    thing->payload._double = value;
+    thing->refcount = 1;
+    thing->type = (uint8_t)(THING_TYPE_DOUBLE | THING_TYPE_FROZEN);
+
+    sentry_value_t rv;
+    rv._bits = (uint64_t)(size_t)thing;
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_int64(int64_t value)
+{
+    thing_t *thing = SENTRY_MAKE(thing_t);
+    if (!thing) {
+        return sentry_value_new_null();
+    }
+    thing->payload._i64 = value;
+    thing->refcount = 1;
+    thing->type = (uint8_t)(THING_TYPE_INT64 | THING_TYPE_FROZEN);
+
+    sentry_value_t rv;
+    rv._bits = (uint64_t)(size_t)thing;
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_uint64(uint64_t value)
+{
+    thing_t *thing = SENTRY_MAKE(thing_t);
+    if (!thing) {
+        return sentry_value_new_null();
+    }
+    thing->payload._u64 = value;
+    thing->refcount = 1;
+    thing->type = (uint8_t)(THING_TYPE_UINT64 | THING_TYPE_FROZEN);
+
+    sentry_value_t rv;
+    rv._bits = (uint64_t)(size_t)thing;
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_bool(int value)
+{
+    sentry_value_t rv;
+    rv._bits = (uint64_t)(value ? CONST_TRUE : CONST_FALSE);
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_string_n(const char *value, size_t value_len)
+{
+    char *s = sentry__string_clone_n(value, value_len);
+    if (!s) {
+        return sentry_value_new_null();
+    }
+    return sentry__value_new_string_owned(s);
+}
+
+sentry_value_t
+sentry_value_new_string(const char *value)
+{
+    return value ? sentry_value_new_string_n(value, strlen(value))
+                 : sentry_value_new_null();
+}
+
+sentry_value_t
+sentry_value_new_list(void)
+{
+    list_t *l = SENTRY_MAKE(list_t);
+    if (l) {
+        sentry_value_t rv = new_thing_value(l, THING_TYPE_LIST);
+        if (sentry_value_is_null(rv)) {
+            sentry_free(l);
+        }
+        return rv;
+    } else {
+        return sentry_value_new_null();
+    }
+}
+
+sentry_value_t
+sentry__value_new_list_with_size(size_t size)
+{
+    list_t *l = SENTRY_MAKE(list_t);
+    if (l) {
+        l->allocated = size;
+        if (size) {
+            l->items = sentry_malloc(sizeof(sentry_value_t) * size);
+            if (!l->items) {
+                sentry_free(l);
+                return sentry_value_new_null();
+            }
+        }
+        sentry_value_t rv = new_thing_value(l, THING_TYPE_LIST);
+        if (sentry_value_is_null(rv)) {
+            sentry_free(l->items);
+            sentry_free(l);
+        }
+        return rv;
+    } else {
+        return sentry_value_new_null();
+    }
+}
+
+sentry_value_t
+sentry_value_new_object(void)
+{
+    obj_t *o = SENTRY_MAKE(obj_t);
+    if (o) {
+        sentry_value_t rv = new_thing_value(o, THING_TYPE_OBJECT);
+        if (sentry_value_is_null(rv)) {
+            sentry_free(o);
+        }
+        return rv;
+    } else {
+        return sentry_value_new_null();
+    }
+}
+
+sentry_value_t
+sentry__value_new_object_with_size(size_t size)
+{
+    obj_t *o = SENTRY_MAKE(obj_t);
+    if (o) {
+        o->allocated = size;
+        if (size) {
+            o->pairs = sentry_malloc(sizeof(obj_pair_t) * size);
+            if (!o->pairs) {
+                sentry_free(o);
+                return sentry_value_new_null();
+            }
+        }
+        sentry_value_t rv = new_thing_value(o, THING_TYPE_OBJECT);
+        if (sentry_value_is_null(rv)) {
+            sentry_free(o->pairs);
+            sentry_free(o);
+        }
+        return rv;
+    } else {
+        return sentry_value_new_null();
+    }
+}
+
+sentry_value_t
+sentry_value_new_user_n(const char *id, size_t id_len, const char *username,
+    size_t username_len, const char *email, size_t email_len,
+    const char *ip_address, size_t ip_address_len)
+{
+    sentry_value_t rv = sentry_value_new_object();
+    if (id) {
+        sentry_value_set_by_key(
+            rv, "id", sentry_value_new_string_n(id, id_len));
+    }
+    if (username && username_len) {
+        sentry_value_set_by_key(
+            rv, "username", sentry_value_new_string_n(username, username_len));
+    }
+    if (email && email_len) {
+        sentry_value_set_by_key(
+            rv, "email", sentry_value_new_string_n(email, email_len));
+    }
+    if (ip_address && ip_address_len) {
+        sentry_value_set_by_key(rv, "ip_address",
+            sentry_value_new_string_n(ip_address, ip_address_len));
+    }
+    if (!sentry_value_is_true(rv)) {
+        SENTRY_WARN(
+            "sentry_value_new_user needs at least one non-null argument");
+        sentry_value_decref(rv);
+        return sentry_value_new_null();
+    }
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_user(const char *id, const char *username, const char *email,
+    const char *ip_address)
+{
+    return sentry_value_new_user_n(id, id ? strlen(id) : 0, username,
+        username ? strlen(username) : 0, email, email ? strlen(email) : 0,
+        ip_address, ip_address ? strlen(ip_address) : 0);
+}
+
+/**
+ * Converts a sentry_value_t attribute to its type string representation.
+ * For lists, checks the first element to determine if it is a scalar array.
+ * Returns NULL for unsupported types (NULL, OBJECT).
+ * https://develop.sentry.dev/sdk/telemetry/attributes/
+ */
+static const char *
+attribute_value_type_to_str(sentry_value_t value)
+{
+    switch (sentry_value_get_type(value)) {
+    case SENTRY_VALUE_TYPE_BOOL:
+        return "boolean";
+    case SENTRY_VALUE_TYPE_INT32:
+    case SENTRY_VALUE_TYPE_INT64:
+    case SENTRY_VALUE_TYPE_UINT64:
+        return "integer";
+    case SENTRY_VALUE_TYPE_DOUBLE:
+        return "double";
+    case SENTRY_VALUE_TYPE_STRING:
+        return "string";
+    case SENTRY_VALUE_TYPE_LIST: {
+        sentry_value_t first_item = sentry_value_get_by_index(value, 0);
+        if (sentry_value_is_null(first_item)) {
+            return NULL;
+        }
+        // Determine type based on first element
+        switch (sentry_value_get_type(first_item)) {
+        case SENTRY_VALUE_TYPE_BOOL:
+        case SENTRY_VALUE_TYPE_INT32:
+        case SENTRY_VALUE_TYPE_INT64:
+        case SENTRY_VALUE_TYPE_DOUBLE:
+        case SENTRY_VALUE_TYPE_STRING:
+            return "array";
+        case SENTRY_VALUE_TYPE_UINT64: // TODO update when we support this
+        case SENTRY_VALUE_TYPE_NULL:
+        case SENTRY_VALUE_TYPE_OBJECT:
+        case SENTRY_VALUE_TYPE_LIST:
+        default:
+            return NULL;
+        }
+    }
+    case SENTRY_VALUE_TYPE_NULL:
+    case SENTRY_VALUE_TYPE_OBJECT:
+    default:
+        return NULL;
+    }
+}
+
+sentry_value_t
+sentry_value_new_attribute_n(
+    sentry_value_t value, const char *unit, size_t unit_len)
+{
+    const char *type = attribute_value_type_to_str(value);
+    if (!type) {
+        sentry_value_decref(value);
+        return sentry_value_new_null();
+    }
+
+    sentry_value_t attribute = sentry_value_new_object();
+
+    sentry_value_set_by_key(
+        attribute, "type", sentry_value_new_string_n(type, strlen(type)));
+    sentry_value_set_by_key(attribute, "value", value);
+    if (unit && unit_len) {
+        sentry_value_set_by_key(
+            attribute, "unit", sentry_value_new_string_n(unit, unit_len));
+    }
+    return attribute;
+}
+
+sentry_value_t
+sentry_value_new_attribute(sentry_value_t value, const char *unit)
+{
+    return sentry_value_new_attribute_n(value, unit, unit ? strlen(unit) : 0);
+}
+
+void
+sentry__value_add_attribute(sentry_value_t attributes, sentry_value_t value,
+    const char *type, const char *name)
+{
+    if (!sentry_value_is_null(sentry_value_get_by_key(attributes, name))) {
+        sentry_value_decref(value);
+        return;
+    }
+    sentry_value_t param_obj = sentry_value_new_object();
+    sentry_value_set_by_key(param_obj, "value", value);
+    sentry_value_set_by_key(param_obj, "type", sentry_value_new_string(type));
+    sentry_value_set_by_key(attributes, name, param_obj);
+}
+
+sentry_value_type_t
+sentry_value_get_type(sentry_value_t value)
+{
+    if (sentry_value_is_null(value)) {
+        return SENTRY_VALUE_TYPE_NULL;
+    }
+    const thing_t *thing = value_as_thing(value);
+    if (thing) {
+        switch (thing_get_type(thing)) {
+        case THING_TYPE_STRING:
+            return SENTRY_VALUE_TYPE_STRING;
+        case THING_TYPE_LIST:
+            return SENTRY_VALUE_TYPE_LIST;
+        case THING_TYPE_OBJECT:
+            return SENTRY_VALUE_TYPE_OBJECT;
+        case THING_TYPE_DOUBLE:
+            return SENTRY_VALUE_TYPE_DOUBLE;
+        case THING_TYPE_INT64:
+            return SENTRY_VALUE_TYPE_INT64;
+        case THING_TYPE_UINT64:
+            return SENTRY_VALUE_TYPE_UINT64;
+        }
+        UNREACHABLE("invalid thing type");
+    } else if ((value._bits & TAG_MASK) == TAG_CONST) {
+        return SENTRY_VALUE_TYPE_BOOL;
+    } else if ((value._bits & TAG_MASK) == TAG_INT32) {
+        return SENTRY_VALUE_TYPE_INT32;
+    }
+    UNREACHABLE("invalid value type");
+    return SENTRY_VALUE_TYPE_NULL;
+}
+
+int
+sentry_value_set_by_key_n(
+    sentry_value_t value, const char *k, size_t k_len, sentry_value_t v)
+{
+    if (!k) {
+        goto fail;
+    }
+    sentry_slice_t k_slice = { k, k_len };
+    thing_t *thing = value_as_unfrozen_thing(value);
+    if (!thing || thing_get_type(thing) != THING_TYPE_OBJECT) {
+        goto fail;
+    }
+    obj_t *o = thing->payload._ptr;
+    for (size_t i = 0; i < o->len; i++) {
+        obj_pair_t *pair = &o->pairs[i];
+        if (sentry__slice_eqs(k_slice, pair->k)) {
+            sentry_value_decref(pair->v);
+            pair->v = v;
+            return 0;
+        }
+    }
+
+    if (!reserve((void **)&o->pairs, sizeof(o->pairs[0]), &o->allocated,
+            o->len + 1)) {
+        goto fail;
+    }
+
+    obj_pair_t pair;
+    pair.k = sentry__slice_to_owned(k_slice);
+    if (!pair.k) {
+        goto fail;
+    }
+    pair.v = v;
+    o->pairs[o->len++] = pair;
+    return 0;
+
+fail:
+    sentry_value_decref(v);
+    return 1;
+}
+
+int
+sentry_value_set_by_key(sentry_value_t value, const char *k, sentry_value_t v)
+{
+    if (k) {
+        return sentry_value_set_by_key_n(value, k, strlen(k), v);
+    }
+
+    sentry_value_decref(v);
+    return 1;
+}
+
+int
+sentry_value_remove_by_key_n(sentry_value_t value, const char *k, size_t k_len)
+{
+    if (!k) {
+        return 1;
+    }
+    sentry_slice_t k_slice = { k, k_len };
+    thing_t *thing = value_as_unfrozen_thing(value);
+    if (!thing || thing_get_type(thing) != THING_TYPE_OBJECT) {
+        return 1;
+    }
+    obj_t *o = thing->payload._ptr;
+    for (size_t i = 0; i < o->len; i++) {
+        obj_pair_t *pair = &o->pairs[i];
+        if (sentry__slice_eqs(k_slice, pair->k)) {
+            sentry_free(pair->k);
+            sentry_value_decref(pair->v);
+            memmove(o->pairs + i, o->pairs + i + 1,
+                (o->len - i - 1) * sizeof(o->pairs[0]));
+            o->len--;
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int
+sentry_value_remove_by_key(sentry_value_t value, const char *k)
+{
+    if (k) {
+        return sentry_value_remove_by_key_n(value, k, strlen(k));
+    }
+
+    return 1;
+}
+
+int
+sentry_value_append(sentry_value_t value, sentry_value_t v)
+{
+    thing_t *thing = value_as_unfrozen_thing(value);
+    if (!thing || thing_get_type(thing) != THING_TYPE_LIST) {
+        goto fail;
+    }
+
+    list_t *l = thing->payload._ptr;
+
+    if (!reserve((void **)&l->items, sizeof(l->items[0]), &l->allocated,
+            l->len + 1)) {
+        goto fail;
+    }
+
+    l->items[l->len++] = v;
+    return 0;
+
+fail:
+    sentry_value_decref(v);
+    return 1;
+}
+
+sentry_uuid_t
+sentry__value_as_uuid(sentry_value_t value)
+{
+    const char *val = sentry_value_as_string(value);
+    if (val) {
+        return sentry_uuid_from_string(val);
+    } else {
+        return sentry_uuid_nil();
+    }
+}
+
+char *
+sentry__value_stringify(sentry_value_t value)
+{
+#define STRINGIFY_NUMERIC(fmt, value_fn)                                       \
+    do {                                                                       \
+        char buf[24];                                                          \
+        size_t written                                                         \
+            = (size_t)sentry__snprintf_c(buf, sizeof(buf), fmt, value_fn);     \
+        if (written >= sizeof(buf)) {                                          \
+            return sentry__string_clone("");                                   \
+        }                                                                      \
+        buf[written] = '\0';                                                   \
+        return sentry__string_clone(buf);                                      \
+    } while (0)
+
+    switch (sentry_value_get_type(value)) {
+    case SENTRY_VALUE_TYPE_LIST:
+    case SENTRY_VALUE_TYPE_OBJECT:
+    case SENTRY_VALUE_TYPE_NULL:
+        return sentry__string_clone("");
+    case SENTRY_VALUE_TYPE_BOOL:
+        return sentry__string_clone(
+            sentry_value_is_true(value) ? "true" : "false");
+    case SENTRY_VALUE_TYPE_STRING:
+        return sentry__string_clone(sentry_value_as_string(value));
+    case SENTRY_VALUE_TYPE_INT64:
+        STRINGIFY_NUMERIC("%" PRIi64, sentry_value_as_int64(value));
+    case SENTRY_VALUE_TYPE_UINT64:
+        STRINGIFY_NUMERIC("%" PRIu64, sentry_value_as_uint64(value));
+    case SENTRY_VALUE_TYPE_INT32:
+        STRINGIFY_NUMERIC("%d", sentry_value_as_int32(value));
+    case SENTRY_VALUE_TYPE_DOUBLE:
+    default:
+        STRINGIFY_NUMERIC("%g", sentry_value_as_double(value));
+    }
+
+#undef STRINGIFY_NUMERIC
+}
+
+sentry_value_t
+sentry__value_clone(sentry_value_t value)
+{
+    const thing_t *thing = value_as_thing(value);
+    if (!thing) {
+        return value;
+    }
+    switch (thing_get_type(thing)) {
+    case THING_TYPE_LIST: {
+        const list_t *list = thing->payload._ptr;
+        sentry_value_t rv = sentry__value_new_list_with_size(list->len);
+        for (size_t i = 0; i < list->len; i++) {
+            sentry_value_incref(list->items[i]);
+            sentry_value_append(rv, list->items[i]);
+        }
+        return rv;
+    }
+    case THING_TYPE_OBJECT: {
+        const obj_t *obj = thing->payload._ptr;
+        sentry_value_t rv = sentry__value_new_object_with_size(obj->len);
+        for (size_t i = 0; i < obj->len; i++) {
+            sentry_value_incref(obj->pairs[i].v);
+            sentry_value_set_by_key(rv, obj->pairs[i].k, obj->pairs[i].v);
+        }
+        return rv;
+    }
+    case THING_TYPE_STRING:
+    case THING_TYPE_DOUBLE:
+    case THING_TYPE_INT64:
+    case THING_TYPE_UINT64:
+        sentry_value_incref(value);
+        return value;
+    default:
+        return sentry_value_new_null();
+    }
+}
+
+int
+sentry_value_set_by_index(sentry_value_t value, size_t index, sentry_value_t v)
+{
+    thing_t *thing = value_as_unfrozen_thing(value);
+    if (!thing || thing_get_type(thing) != THING_TYPE_LIST) {
+        goto fail;
+    }
+
+    list_t *l = thing->payload._ptr;
+    if (!reserve(
+            (void *)&l->items, sizeof(l->items[0]), &l->allocated, index + 1)) {
+        goto fail;
+    }
+
+    if (index >= l->len) {
+        for (size_t i = l->len; i < index + 1; i++) {
+            l->items[i] = sentry_value_new_null();
+        }
+        l->len = index + 1;
+    }
+
+    sentry_value_decref(l->items[index]);
+    l->items[index] = v;
+    return 0;
+
+fail:
+    sentry_value_decref(v);
+    return 1;
+}
+
+int
+sentry_value_remove_by_index(sentry_value_t value, size_t index)
+{
+    thing_t *thing = value_as_unfrozen_thing(value);
+    if (!thing || thing_get_type(thing) != THING_TYPE_LIST) {
+        return 1;
+    }
+
+    list_t *l = thing->payload._ptr;
+    if (index >= l->len) {
+        return 0;
+    }
+
+    sentry_value_decref(l->items[index]);
+    memmove(l->items + index, l->items + index + 1,
+        (l->len - index - 1) * sizeof(l->items[0]));
+    l->len--;
+    return 0;
+}
+
+sentry_value_t
+sentry_value_get_by_key_n(sentry_value_t value, const char *k, size_t k_len)
+{
+    if (!k) {
+        return sentry_value_new_null();
+    }
+    const thing_t *thing = value_as_thing(value);
+    if (thing && thing_get_type(thing) == THING_TYPE_OBJECT) {
+        obj_t *o = thing->payload._ptr;
+        for (size_t i = 0; i < o->len; i++) {
+            obj_pair_t *pair = &o->pairs[i];
+            if (sentry__slice_eqs((sentry_slice_t) { k, k_len }, pair->k)) {
+                return pair->v;
+            }
+        }
+    }
+    return sentry_value_new_null();
+}
+
+sentry_value_t
+sentry_value_get_by_key(sentry_value_t value, const char *k)
+{
+    return sentry_value_get_by_key_n(value, k, sentry__guarded_strlen(k));
+}
+
+sentry_value_t
+sentry_value_get_by_key_owned_n(
+    sentry_value_t value, const char *k, size_t k_len)
+{
+    sentry_value_t rv = sentry_value_get_by_key_n(value, k, k_len);
+    sentry_value_incref(rv);
+    return rv;
+}
+
+sentry_value_t
+sentry_value_get_by_key_owned(sentry_value_t value, const char *k)
+{
+    if (k) {
+        return sentry_value_get_by_key_owned_n(value, k, strlen(k));
+    }
+
+    sentry_value_t rv = sentry_value_new_null();
+    sentry_value_incref(rv);
+    return rv;
+}
+
+sentry_value_t
+sentry_value_get_by_index(sentry_value_t value, size_t index)
+{
+    const thing_t *thing = value_as_thing(value);
+    if (thing && thing_get_type(thing) == THING_TYPE_LIST) {
+        list_t *l = thing->payload._ptr;
+        if (index < l->len) {
+            return l->items[index];
+        }
+    }
+    return sentry_value_new_null();
+}
+
+void
+sentry__value_foreach_key_value(sentry_value_t value,
+    void (*callback)(const char *key, sentry_value_t value, void *userdata),
+    void *userdata)
+{
+    const thing_t *thing = value_as_thing(value);
+    if (!thing || thing_get_type(thing) != THING_TYPE_OBJECT) {
+        return;
+    }
+    const obj_t *o = thing->payload._ptr;
+    for (size_t i = 0; i < o->len; i++) {
+        callback(o->pairs[i].k, o->pairs[i].v, userdata);
+    }
+}
+
+sentry_value_t
+sentry_value_get_by_index_owned(sentry_value_t value, size_t index)
+{
+    sentry_value_t rv = sentry_value_get_by_index(value, index);
+    sentry_value_incref(rv);
+    return rv;
+}
+
+size_t
+sentry_value_get_length(sentry_value_t value)
+{
+    const thing_t *thing = value_as_thing(value);
+    if (thing) {
+        switch (thing_get_type(thing)) {
+        case THING_TYPE_STRING:
+            return strlen(thing->payload._ptr);
+        case THING_TYPE_LIST:
+            return ((const list_t *)thing->payload._ptr)->len;
+        case THING_TYPE_OBJECT:
+            return ((const obj_t *)thing->payload._ptr)->len;
+        }
+    }
+    return 0;
+}
+
+int32_t
+sentry_value_as_int32(sentry_value_t value)
+{
+    if ((value._bits & TAG_MASK) == TAG_INT32) {
+        return (int32_t)((int64_t)value._bits >> 32);
+    }
+    const thing_t *thing = value_as_thing(value);
+    if (thing && thing_get_type(thing) == THING_TYPE_INT64) {
+        SENTRY_WARN("Cannot convert int64 into int32, returning 0");
+    }
+    if (thing && thing_get_type(thing) == THING_TYPE_UINT64) {
+        SENTRY_WARN("Cannot convert uint64 into int32, returning 0");
+    }
+    if (thing && thing_get_type(thing) == THING_TYPE_DOUBLE) {
+        SENTRY_WARN("Cannot convert double into int32, returning 0");
+    }
+    return 0;
+}
+
+double
+sentry_value_as_double(sentry_value_t value)
+{
+    if ((value._bits & TAG_MASK) == TAG_INT32) {
+        return (double)(int64_t)sentry_value_as_int32(value);
+    }
+
+    const thing_t *thing = value_as_thing(value);
+    if (thing && thing_get_type(thing) == THING_TYPE_DOUBLE) {
+        return thing->payload._double;
+    }
+    if (thing && thing_get_type(thing) == THING_TYPE_INT64) {
+        SENTRY_WARN("Cannot convert int64 into double, returning NAN");
+    }
+    if (thing && thing_get_type(thing) == THING_TYPE_UINT64) {
+        SENTRY_WARN("Cannot convert uint64 into double, returning NAN");
+    }
+
+    return (double)NAN;
+}
+
+int64_t
+sentry_value_as_int64(sentry_value_t value)
+{
+    if ((value._bits & TAG_MASK) == TAG_INT32) {
+        return (int64_t)sentry_value_as_int32(value);
+    }
+
+    const thing_t *thing = value_as_thing(value);
+    if (thing && thing_get_type(thing) == THING_TYPE_INT64) {
+        return thing->payload._i64;
+    }
+    if (thing && thing_get_type(thing) == THING_TYPE_UINT64) {
+        SENTRY_WARN("Cannot convert uint64 into int64, returning 0");
+    }
+    if (thing && thing_get_type(thing) == THING_TYPE_DOUBLE) {
+        SENTRY_WARN("Cannot convert double into int64, returning 0");
+    }
+    return 0;
+}
+
+uint64_t
+sentry_value_as_uint64(sentry_value_t value)
+{
+    if ((value._bits & TAG_MASK) == TAG_INT32) {
+        SENTRY_WARN("Cannot convert int32 into uint64, returning 0");
+        return 0;
+    }
+
+    const thing_t *thing = value_as_thing(value);
+    if (thing && thing_get_type(thing) == THING_TYPE_UINT64) {
+        return thing->payload._u64;
+    }
+    if (thing && thing_get_type(thing) == THING_TYPE_INT64) {
+        SENTRY_WARN("Cannot convert int64 into uint64, returning 0");
+    }
+    if (thing && thing_get_type(thing) == THING_TYPE_DOUBLE) {
+        SENTRY_WARN("Cannot convert double into uint64, returning 0");
+    }
+    return 0;
+}
+
+const char *
+sentry_value_as_string(sentry_value_t value)
+{
+    const thing_t *thing = value_as_thing(value);
+    if (thing && thing_get_type(thing) == THING_TYPE_STRING) {
+        return (const char *)thing->payload._ptr;
+    }
+    return "";
+}
+
+int
+sentry_value_is_true(sentry_value_t value)
+{
+    if (value._bits == CONST_TRUE) {
+        return 1;
+    }
+    switch (sentry_value_get_type(value)) {
+    case SENTRY_VALUE_TYPE_BOOL:
+    case SENTRY_VALUE_TYPE_NULL:
+        return 0;
+    case SENTRY_VALUE_TYPE_INT32:
+        return sentry_value_as_int32(value) != 0;
+    case SENTRY_VALUE_TYPE_INT64:
+        return sentry_value_as_int64(value) != 0;
+    case SENTRY_VALUE_TYPE_UINT64:
+        return sentry_value_as_uint64(value) != 0;
+    case SENTRY_VALUE_TYPE_DOUBLE:
+        return sentry_value_as_double(value) != 0.0;
+    case SENTRY_VALUE_TYPE_STRING:
+    case SENTRY_VALUE_TYPE_LIST:
+    case SENTRY_VALUE_TYPE_OBJECT:
+    default:
+        return sentry_value_get_length(value) > 0;
+    }
+}
+
+int
+sentry_value_is_null(sentry_value_t value)
+{
+    return value._bits == CONST_NULL;
+}
+
+int
+sentry__value_merge_objects(sentry_value_t dst, sentry_value_t src)
+{
+    if (sentry_value_is_null(src)) {
+        return 0;
+    }
+    if (sentry_value_get_type(dst) != SENTRY_VALUE_TYPE_OBJECT
+        || sentry_value_get_type(src) != SENTRY_VALUE_TYPE_OBJECT
+        || sentry_value_is_frozen(dst)) {
+        return 1;
+    }
+    thing_t *thing = value_as_thing(src);
+    if (!thing) {
+        return 1;
+    }
+    obj_t *obj = thing->payload._ptr;
+    for (size_t i = 0; i < obj->len; i++) {
+        char *key = obj->pairs[i].k;
+        sentry_value_t src_val = obj->pairs[i].v;
+        sentry_value_t dst_val = sentry_value_get_by_key(dst, key);
+        if (sentry_value_get_type(dst_val) == SENTRY_VALUE_TYPE_OBJECT
+            && sentry_value_get_type(src_val) == SENTRY_VALUE_TYPE_OBJECT) {
+            if (sentry__value_merge_objects(dst_val, src_val) != 0) {
+                return 1;
+            }
+        } else if (sentry_value_is_null(dst_val)) {
+            sentry_value_incref(src_val);
+            if (sentry_value_set_by_key(dst, key, src_val) != 0) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+void
+sentry__jsonwriter_write_value(sentry_jsonwriter_t *jw, sentry_value_t value)
+{
+    switch (sentry_value_get_type(value)) {
+    case SENTRY_VALUE_TYPE_NULL:
+        sentry__jsonwriter_write_null(jw);
+        break;
+    case SENTRY_VALUE_TYPE_BOOL:
+        sentry__jsonwriter_write_bool(jw, sentry_value_is_true(value));
+        break;
+    case SENTRY_VALUE_TYPE_INT32:
+        sentry__jsonwriter_write_int32(jw, sentry_value_as_int32(value));
+        break;
+    case SENTRY_VALUE_TYPE_INT64:
+        sentry__jsonwriter_write_int64(jw, sentry_value_as_int64(value));
+        break;
+    case SENTRY_VALUE_TYPE_UINT64:
+        sentry__jsonwriter_write_uint64(jw, sentry_value_as_uint64(value));
+        break;
+    case SENTRY_VALUE_TYPE_DOUBLE:
+        sentry__jsonwriter_write_double(jw, sentry_value_as_double(value));
+        break;
+    case SENTRY_VALUE_TYPE_STRING:
+        sentry__jsonwriter_write_str(jw, sentry_value_as_string(value));
+        break;
+    case SENTRY_VALUE_TYPE_LIST: {
+        const thing_t *thing = value_as_thing(value);
+        if (!thing) {
+            UNREACHABLE("thing of a list is NULL during serialization");
+            return;
+        }
+
+        const list_t *l = thing->payload._ptr;
+        sentry__jsonwriter_write_list_start(jw);
+        for (size_t i = 0; i < l->len; i++) {
+            sentry__jsonwriter_write_value(jw, l->items[i]);
+        }
+        sentry__jsonwriter_write_list_end(jw);
+        break;
+    }
+    case SENTRY_VALUE_TYPE_OBJECT: {
+        const thing_t *thing = value_as_thing(value);
+        if (!thing) {
+            UNREACHABLE("thing of an object is NULL during serialization");
+            return;
+        }
+
+        const obj_t *o = thing->payload._ptr;
+        sentry__jsonwriter_write_object_start(jw);
+        for (size_t i = 0; i < o->len; i++) {
+            sentry__jsonwriter_write_key(jw, o->pairs[i].k);
+            sentry__jsonwriter_write_value(jw, o->pairs[i].v);
+        }
+        sentry__jsonwriter_write_object_end(jw);
+        break;
+    }
+    }
+}
+
+char *
+sentry__value_to_json(sentry_value_t value, size_t *len_out)
+{
+    sentry_jsonwriter_t *jw = sentry__jsonwriter_new_sb(NULL);
+    if (!jw) {
+        if (len_out) {
+            *len_out = 0;
+        }
+        return NULL;
+    }
+    sentry__jsonwriter_write_value(jw, value);
+    return sentry__jsonwriter_into_string(jw, len_out);
+}
+
+char *
+sentry_value_to_json(sentry_value_t value)
+{
+    return sentry__value_to_json(value, NULL);
+}
+
+static void
+value_to_msgpack(mpack_writer_t *writer, sentry_value_t value)
+{
+    switch (sentry_value_get_type(value)) {
+    case SENTRY_VALUE_TYPE_NULL:
+        mpack_write_nil(writer);
+        break;
+    case SENTRY_VALUE_TYPE_BOOL:
+        mpack_write_bool(writer, sentry_value_is_true(value) ? true : false);
+        break;
+    case SENTRY_VALUE_TYPE_INT32:
+        mpack_write_i32(writer, sentry_value_as_int32(value));
+        break;
+    case SENTRY_VALUE_TYPE_INT64:
+        mpack_write_i64(writer, sentry_value_as_int64(value));
+        break;
+    case SENTRY_VALUE_TYPE_UINT64:
+        mpack_write_u64(writer, sentry_value_as_uint64(value));
+        break;
+    case SENTRY_VALUE_TYPE_DOUBLE:
+        mpack_write_double(writer, sentry_value_as_double(value));
+        break;
+    case SENTRY_VALUE_TYPE_STRING: {
+        mpack_write_cstr_or_nil(writer, sentry_value_as_string(value));
+        break;
+    }
+    case SENTRY_VALUE_TYPE_LIST: {
+        const list_t *l = value_as_thing(value)->payload._ptr;
+
+        mpack_start_array(writer, (uint32_t)l->len);
+        for (size_t i = 0; i < l->len; i++) {
+            value_to_msgpack(writer, l->items[i]);
+        }
+        mpack_finish_array(writer);
+        break;
+    }
+    case SENTRY_VALUE_TYPE_OBJECT: {
+        const obj_t *o = value_as_thing(value)->payload._ptr;
+
+        mpack_start_map(writer, (uint32_t)o->len);
+        for (size_t i = 0; i < o->len; i++) {
+            mpack_write_cstr(writer, o->pairs[i].k);
+            value_to_msgpack(writer, o->pairs[i].v);
+        }
+        mpack_finish_map(writer);
+        break;
+    }
+    }
+}
+
+char *
+sentry_value_to_msgpack(sentry_value_t value, size_t *size_out)
+{
+    mpack_writer_t writer;
+    char *buf;
+    size_t size;
+    mpack_writer_init_growable(&writer, &buf, &size);
+    value_to_msgpack(&writer, value);
+    mpack_writer_destroy(&writer);
+    *size_out = size;
+    return buf;
+}
+
+sentry_value_t
+sentry__value_new_string_owned(char *s)
+{
+    if (!s) {
+        return sentry_value_new_null();
+    }
+    sentry_value_t rv
+        = new_thing_value(s, THING_TYPE_STRING | THING_TYPE_FROZEN);
+    if (sentry_value_is_null(rv)) {
+        sentry_free(s);
+    }
+    return rv;
+}
+
+#ifdef SENTRY_PLATFORM_WINDOWS
+sentry_value_t
+sentry__value_new_string_from_wstr(const wchar_t *s)
+{
+    char *rv = sentry__string_from_wstr(s);
+    return rv ? sentry__value_new_string_owned(rv) : sentry_value_new_null();
+}
+#endif
+
+sentry_value_t
+sentry__value_new_addr(uint64_t addr)
+{
+    char buf[32];
+    sentry__addr_to_string(buf, sizeof(buf), addr);
+    return sentry_value_new_string(buf);
+}
+
+sentry_value_t
+sentry__value_new_hexstring(const uint8_t *bytes, size_t len)
+{
+    size_t buf_len = len * 2 + 1;
+    char *buf = sentry_malloc(buf_len);
+    if (!buf) {
+        return sentry_value_new_null();
+    }
+    size_t written = 0;
+
+    for (size_t i = 0; i < len; i++) {
+        size_t rv = (size_t)snprintf(
+            buf + written, buf_len - written, "%02hhx", bytes[i]);
+        if (rv >= buf_len - written) {
+            sentry_free(buf);
+            return sentry_value_new_null();
+        }
+        written += rv;
+    }
+    buf[written] = '\0';
+    return sentry__value_new_string_owned(buf);
+}
+
+sentry_value_t
+sentry__value_new_span_uuid(const sentry_uuid_t *uuid)
+{
+    char *buf = sentry_malloc(17);
+    if (!buf) {
+        return sentry_value_new_null();
+    }
+    sentry__span_uuid_as_string(uuid, buf);
+    buf[16] = '\0';
+    return sentry__value_new_string_owned(buf);
+}
+
+sentry_value_t
+sentry__value_new_internal_uuid(const sentry_uuid_t *uuid)
+{
+    char *buf = sentry_malloc(33);
+    if (!buf) {
+        return sentry_value_new_null();
+    }
+    sentry__internal_uuid_as_string(uuid, buf);
+    buf[32] = '\0';
+    return sentry__value_new_string_owned(buf);
+}
+
+sentry_value_t
+sentry__value_new_uuid(const sentry_uuid_t *uuid)
+{
+    char *buf = sentry_malloc(37);
+    if (!buf) {
+        return sentry_value_new_null();
+    }
+    sentry_uuid_as_string(uuid, buf);
+    buf[36] = '\0';
+    return sentry__value_new_string_owned(buf);
+}
+
+sentry_value_t
+sentry__value_new_level(sentry_level_t level)
+{
+    return sentry_value_new_string(level_as_string(level));
+}
+
+sentry_value_t
+sentry__value_new_event_with_id(const sentry_uuid_t *event_id)
+{
+    sentry_value_t rv = sentry_value_new_object();
+
+    sentry_value_set_by_key(rv, "event_id", sentry__value_new_uuid(event_id));
+
+    sentry_value_set_by_key(rv, "timestamp",
+        sentry__value_new_string_owned(
+            sentry__usec_time_to_iso8601(sentry__usec_time())));
+
+    sentry_value_set_by_key(rv, "platform", sentry_value_new_string("native"));
+
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_event(void)
+{
+    sentry_uuid_t event_id = sentry__new_event_id();
+    return sentry__value_new_event_with_id(&event_id);
+}
+
+sentry_value_t
+sentry_value_new_message_event_n(sentry_level_t level, const char *logger,
+    size_t logger_len, const char *text, size_t text_len)
+{
+    sentry_value_t rv = sentry_value_new_event();
+    sentry_value_set_by_key(rv, "level", sentry__value_new_level(level));
+    if (logger) {
+        sentry_value_set_by_key(
+            rv, "logger", sentry_value_new_string_n(logger, logger_len));
+    }
+    if (text) {
+        sentry_value_t container = sentry_value_new_object();
+        sentry_value_set_by_key(
+            container, "formatted", sentry_value_new_string_n(text, text_len));
+        sentry_value_set_by_key(rv, "message", container);
+    }
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_message_event(
+    sentry_level_t level, const char *logger, const char *text)
+{
+    return sentry_value_new_message_event_n(level, logger,
+        sentry__guarded_strlen(logger), text, sentry__guarded_strlen(text));
+}
+
+static void
+timestamp_value(sentry_value_t value)
+{
+    sentry_value_set_by_key(value, "timestamp",
+        sentry__value_new_string_owned(
+            sentry__usec_time_to_iso8601(sentry__usec_time())));
+}
+
+sentry_value_t
+sentry_value_new_breadcrumb_n(
+    const char *type, size_t type_len, const char *message, size_t message_len)
+{
+    sentry_value_t rv = sentry_value_new_object();
+    timestamp_value(rv);
+
+    if (type) {
+        sentry_value_set_by_key(
+            rv, "type", sentry_value_new_string_n(type, type_len));
+    }
+    if (message) {
+        sentry_value_set_by_key(
+            rv, "message", sentry_value_new_string_n(message, message_len));
+    }
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_breadcrumb(const char *type, const char *message)
+{
+    return sentry_value_new_breadcrumb_n(type, sentry__guarded_strlen(type),
+        message, sentry__guarded_strlen(message));
+}
+
+sentry_value_t
+sentry_value_new_exception_n(
+    const char *type, size_t type_len, const char *value, size_t value_len)
+{
+    sentry_value_t exc = sentry_value_new_object();
+    sentry_value_set_by_key(
+        exc, "type", sentry_value_new_string_n(type, type_len));
+    sentry_value_set_by_key(
+        exc, "value", sentry_value_new_string_n(value, value_len));
+    return exc;
+}
+
+sentry_value_t
+sentry_value_new_exception(const char *type, const char *value)
+{
+    return sentry_value_new_exception_n(type, sentry__guarded_strlen(type),
+        value, sentry__guarded_strlen(value));
+}
+
+sentry_value_t
+sentry_value_new_thread_n(uint64_t id, const char *name, size_t name_len)
+{
+    sentry_value_t thread = sentry_value_new_object();
+
+    // NOTE: values end up as JSON, which has no support for `u64`.
+    char buf[20 + 1];
+    size_t written
+        = (size_t)snprintf(buf, sizeof(buf), "%llu", (unsigned long long)id);
+    if (written < sizeof(buf)) {
+        buf[written] = '\0';
+        sentry_value_set_by_key(thread, "id", sentry_value_new_string(buf));
+    }
+
+    if (name) {
+        sentry_value_set_by_key(
+            thread, "name", sentry_value_new_string_n(name, name_len));
+    }
+
+    return thread;
+}
+
+sentry_value_t
+sentry_value_new_thread(uint64_t id, const char *name)
+{
+    return sentry_value_new_thread_n(id, name, sentry__guarded_strlen(name));
+}
+
+sentry_value_t
+sentry_value_new_stacktrace(void **ips, size_t len)
+{
+    void *walked_backtrace[256];
+
+    // if nobody gave us a backtrace, walk now.
+    if (!ips) {
+        len = sentry_unwind_stack(NULL, walked_backtrace, 256);
+        ips = walked_backtrace;
+    }
+
+    sentry_value_t frames = sentry__value_new_list_with_size(len);
+    for (size_t i = 0; i < len; i++) {
+        sentry_value_t frame = sentry_value_new_object();
+        sentry_value_set_by_key(frame, "instruction_addr",
+            sentry__value_new_addr((uint64_t)(size_t)ips[len - i - 1]));
+        sentry_value_append(frames, frame);
+    }
+
+    sentry_value_t stacktrace = sentry_value_new_object();
+    sentry_value_set_by_key(stacktrace, "frames", frames);
+
+    return stacktrace;
+}
+
+sentry_value_t
+sentry_value_new_user_feedback(const sentry_uuid_t *uuid, const char *name,
+    const char *email, const char *comments)
+{
+    SENTRY_SUPPRESS_DEPRECATED
+    return sentry_value_new_user_feedback_n(uuid, name,
+        sentry__guarded_strlen(name), email, sentry__guarded_strlen(email),
+        comments, sentry__guarded_strlen(comments));
+    SENTRY_RESTORE_DEPRECATED
+}
+
+sentry_value_t
+sentry_value_new_user_feedback_n(const sentry_uuid_t *uuid, const char *name,
+    size_t name_len, const char *email, size_t email_len, const char *comments,
+    size_t comments_len)
+{
+    sentry_value_t rv = sentry_value_new_object();
+
+    sentry_value_set_by_key(rv, "event_id", sentry__value_new_uuid(uuid));
+
+    if (name) {
+        sentry_value_set_by_key(
+            rv, "name", sentry_value_new_string_n(name, name_len));
+    }
+    if (email) {
+        sentry_value_set_by_key(
+            rv, "email", sentry_value_new_string_n(email, email_len));
+    }
+    if (comments) {
+        sentry_value_set_by_key(
+            rv, "comments", sentry_value_new_string_n(comments, comments_len));
+    }
+
+    return rv;
+}
+
+sentry_value_t
+sentry_value_new_feedback(const char *message, const char *contact_email,
+    const char *name, const sentry_uuid_t *associated_event_id)
+{
+    return sentry_value_new_feedback_n(message, sentry__guarded_strlen(message),
+        contact_email, sentry__guarded_strlen(contact_email), name,
+        sentry__guarded_strlen(name), associated_event_id);
+}
+
+sentry_value_t
+sentry_value_new_feedback_n(const char *message, size_t message_len,
+    const char *contact_email, size_t contact_email_len, const char *name,
+    size_t name_len, const sentry_uuid_t *associated_event_id)
+{
+    sentry_value_t rv = sentry_value_new_object();
+
+    if (message) {
+        sentry_value_set_by_key(
+            rv, "message", sentry_value_new_string_n(message, message_len));
+    }
+    if (contact_email) {
+        sentry_value_set_by_key(rv, "contact_email",
+            sentry_value_new_string_n(contact_email, contact_email_len));
+    }
+    if (name) {
+        sentry_value_set_by_key(
+            rv, "name", sentry_value_new_string_n(name, name_len));
+    }
+    if (associated_event_id) {
+        sentry_value_set_by_key(rv, "associated_event_id",
+            sentry__value_new_internal_uuid(associated_event_id));
+    }
+
+    return rv;
+}
+
+static sentry_value_t
+sentry__get_or_insert_values_list(sentry_value_t parent, const char *key)
+{
+    sentry_value_t obj = sentry_value_get_by_key(parent, key);
+    if (sentry_value_is_null(obj)) {
+        obj = sentry_value_new_object();
+        sentry_value_set_by_key(parent, key, obj);
+    }
+
+    sentry_value_type_t type = sentry_value_get_type(obj);
+    sentry_value_t values = sentry_value_new_null();
+    if (type == SENTRY_VALUE_TYPE_OBJECT) {
+        values = sentry_value_get_by_key(obj, "values");
+        if (sentry_value_is_null(values)) {
+            values = sentry_value_new_list();
+            sentry_value_set_by_key(obj, "values", values);
+        }
+    } else if (type == SENTRY_VALUE_TYPE_LIST) {
+        values = obj;
+    }
+
+    return values;
+}
+
+void
+sentry_event_add_exception(sentry_value_t event, sentry_value_t exception)
+{
+    sentry_value_t exceptions
+        = sentry__get_or_insert_values_list(event, "exception");
+    sentry_value_append(exceptions, exception);
+}
+
+void
+sentry_event_add_thread(sentry_value_t event, sentry_value_t thread)
+{
+    sentry_value_t threads
+        = sentry__get_or_insert_values_list(event, "threads");
+    sentry_value_append(threads, thread);
+}
+
+void
+sentry_value_set_stacktrace(sentry_value_t value, void **ips, size_t len)
+{
+    sentry_value_t stacktrace = sentry_value_new_stacktrace(ips, len);
+    sentry_value_set_by_key(value, "stacktrace", stacktrace);
+}
+
+void
+sentry_event_value_add_stacktrace(sentry_value_t event, void **ips, size_t len)
+{
+    sentry_value_t thread = sentry_value_new_object();
+    sentry_value_set_stacktrace(thread, ips, len);
+    sentry_event_add_thread(event, thread);
+}
+
+#define SENTRY_MPACK_MAX_DEPTH 64
+
+static sentry_value_t
+value_from_mpack(mpack_node_t node, size_t depth, bool *ok)
+{
+    switch (mpack_node_type(node)) {
+    case mpack_type_nil:
+        return sentry_value_new_null();
+    case mpack_type_bool:
+        return sentry_value_new_bool(mpack_node_bool(node));
+    case mpack_type_int: {
+        int64_t i64_val = mpack_node_i64(node);
+        if (i64_val >= INT32_MIN && i64_val <= INT32_MAX) {
+            return sentry_value_new_int32((int32_t)i64_val);
+        } else {
+            return sentry_value_new_int64(i64_val);
+        }
+    }
+    case mpack_type_uint: {
+        uint64_t u64_val = mpack_node_u64(node);
+        if (u64_val <= INT32_MAX) {
+            return sentry_value_new_int32((int32_t)u64_val);
+        } else if (u64_val <= INT64_MAX) {
+            return sentry_value_new_int64((int64_t)u64_val);
+        } else {
+            return sentry_value_new_uint64(u64_val);
+        }
+    }
+    case mpack_type_float:
+    case mpack_type_double:
+        return sentry_value_new_double(mpack_node_double(node));
+    case mpack_type_str: {
+        size_t str_len = mpack_node_strlen(node);
+        return sentry_value_new_string_n(mpack_node_str(node), str_len);
+    }
+    case mpack_type_array: {
+        if (depth >= SENTRY_MPACK_MAX_DEPTH) {
+            *ok = false;
+            return sentry_value_new_null();
+        }
+        size_t arr_len = mpack_node_array_length(node);
+        sentry_value_t arr = sentry_value_new_list();
+        for (size_t i = 0; i < arr_len; i++) {
+            sentry_value_t child
+                = value_from_mpack(mpack_node_array_at(node, i), depth + 1, ok);
+            if (!*ok) {
+                sentry_value_decref(child);
+                sentry_value_decref(arr);
+                return sentry_value_new_null();
+            }
+            sentry_value_append(arr, child);
+        }
+        return arr;
+    }
+    case mpack_type_map: {
+        if (depth >= SENTRY_MPACK_MAX_DEPTH) {
+            *ok = false;
+            return sentry_value_new_null();
+        }
+        size_t map_len = mpack_node_map_count(node);
+        sentry_value_t obj = sentry_value_new_object();
+        for (size_t i = 0; i < map_len; i++) {
+            mpack_node_t key_node = mpack_node_map_key_at(node, i);
+            if (mpack_node_type(key_node) != mpack_type_str) {
+                continue; // skip non-string keys
+            }
+            mpack_node_t val_node = mpack_node_map_value_at(node, i);
+            size_t key_len = mpack_node_strlen(key_node);
+            sentry_value_t child = value_from_mpack(val_node, depth + 1, ok);
+            if (!*ok) {
+                sentry_value_decref(child);
+                sentry_value_decref(obj);
+                return sentry_value_new_null();
+            }
+            sentry_value_set_by_key_n(
+                obj, mpack_node_str(key_node), key_len, child);
+        }
+        return obj;
+    }
+    case mpack_type_missing:
+    case mpack_type_bin:
+    default:
+        return sentry_value_new_null();
+    }
+}
+
+sentry_value_t
+sentry__value_from_msgpack(const char *buf, size_t buf_len)
+{
+    if (!buf || buf_len == 0) {
+        return sentry_value_new_null();
+    }
+
+    size_t offset = 0;
+    sentry_value_t result = sentry_value_new_null();
+
+    while (offset < buf_len) {
+        mpack_tree_t tree;
+        mpack_tree_init_data(&tree, buf + offset, buf_len - offset);
+        mpack_tree_parse(&tree);
+
+        if (mpack_tree_error(&tree) != mpack_ok) {
+            mpack_tree_destroy(&tree);
+            break;
+        }
+
+        size_t size = mpack_tree_size(&tree);
+        bool ok = true;
+        sentry_value_t value = value_from_mpack(mpack_tree_root(&tree), 0, &ok);
+        if (!ok) {
+            mpack_tree_destroy(&tree);
+            sentry_value_decref(value);
+            sentry_value_decref(result);
+            return sentry_value_new_null();
+        }
+        mpack_tree_destroy(&tree);
+
+        if (offset == 0 && sentry_value_is_null(result)) {
+            if (offset + size < buf_len) {
+                result = sentry_value_new_list();
+                sentry_value_append(result, value);
+            } else {
+                result = value;
+            }
+        } else {
+            sentry_value_append(result, value);
+        }
+
+        offset += size;
+    }
+
+    return result;
+}
+
+static int
+cmp_breadcrumb(sentry_value_t a, sentry_value_t b, bool *error)
+{
+    sentry_value_t timestamp_a = sentry_value_get_by_key(a, "timestamp");
+    sentry_value_t timestamp_b = sentry_value_get_by_key(b, "timestamp");
+    if (sentry_value_is_null(timestamp_a)) {
+        *error = true;
+        return -1;
+    }
+    if (sentry_value_is_null(timestamp_b)) {
+        *error = true;
+        return 1;
+    }
+
+    return strcmp(sentry_value_as_string(timestamp_a),
+        sentry_value_as_string(timestamp_b));
+}
+
+static bool
+append_breadcrumb(sentry_value_t target, sentry_value_t source, size_t index)
+{
+    int rv = sentry_value_append(
+        target, sentry_value_get_by_index_owned(source, index));
+    if (rv != 0) {
+        SENTRY_ERROR("Failed to merge breadcrumbs");
+        sentry_value_decref(target);
+        return false;
+    }
+    return true;
+}
+
+sentry_value_t
+sentry__value_merge_breadcrumbs(
+    sentry_value_t list_a, sentry_value_t list_b, size_t max)
+{
+    size_t len_a = sentry_value_get_type(list_a) == SENTRY_VALUE_TYPE_LIST
+        ? sentry_value_get_length(list_a)
+        : 0;
+    size_t len_b = sentry_value_get_type(list_b) == SENTRY_VALUE_TYPE_LIST
+        ? sentry_value_get_length(list_b)
+        : 0;
+
+    if (len_a == 0 && len_b == 0) {
+        return sentry_value_new_null();
+    } else if (len_a == 0) {
+        sentry_value_incref(list_b);
+        return list_b;
+    } else if (len_b == 0) {
+        sentry_value_incref(list_a);
+        return list_a;
+    }
+
+    bool error = false;
+    size_t idx_a = 0;
+    size_t idx_b = 0;
+    size_t total = len_a + len_b;
+    size_t skip = total > max ? total - max : 0;
+    sentry_value_t result = sentry__value_new_list_with_size(total - skip);
+
+    // skip oldest breadcrumbs to fit max
+    while (idx_a < len_a && idx_b < len_b && idx_a + idx_b < skip) {
+        sentry_value_t item_a = sentry_value_get_by_index(list_a, idx_a);
+        sentry_value_t item_b = sentry_value_get_by_index(list_b, idx_b);
+
+        if (cmp_breadcrumb(item_a, item_b, &error) <= 0) {
+            idx_a++;
+        } else {
+            idx_b++;
+        }
+    }
+    while (idx_a < len_a && idx_a + idx_b < skip) {
+        idx_a++;
+    }
+    while (idx_b < len_b && idx_a + idx_b < skip) {
+        idx_b++;
+    }
+
+    // merge the remaining breadcrumbs in timestamp order
+    while (idx_a < len_a && idx_b < len_b) {
+        sentry_value_t item_a = sentry_value_get_by_index(list_a, idx_a);
+        sentry_value_t item_b = sentry_value_get_by_index(list_b, idx_b);
+
+        if (cmp_breadcrumb(item_a, item_b, &error) <= 0) {
+            if (!append_breadcrumb(result, list_a, idx_a++)) {
+                return sentry_value_new_null();
+            }
+        } else {
+            if (!append_breadcrumb(result, list_b, idx_b++)) {
+                return sentry_value_new_null();
+            }
+        }
+    }
+    while (idx_a < len_a) {
+        if (!append_breadcrumb(result, list_a, idx_a++)) {
+            return sentry_value_new_null();
+        }
+    }
+    while (idx_b < len_b) {
+        if (!append_breadcrumb(result, list_b, idx_b++)) {
+            return sentry_value_new_null();
+        }
+    }
+
+    if (error) {
+        SENTRY_WARN("Detected missing timestamps while merging breadcrumbs. "
+                    "This may lead to unexpected results.");
+    }
+
+    return result;
+}

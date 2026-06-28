@@ -13,6 +13,9 @@ TOOLCHAIN?=5.7.119
 ifneq ($(filter debug,$(FEATURES)),)
 DEFINES += CONFIG+="debug"
 endif
+ifneq ($(filter sentry,$(FEATURES)),)
+DEFINES += DEFINES+=SENTRY
+endif
 
 OBJ = oxide.pro
 OBJ += $(wildcard applications/**)
@@ -27,7 +30,8 @@ clean-base:
 	rm -rf \
 		$(DIST) \
 		$(BUILD)/$(BUILDNAME)/Makefile \
-		$(BUILD)/$(BUILDNAME)/shared/cpptrace/src
+		$(BUILD)/$(BUILDNAME)/shared/cpptrace/src \
+		$(BUILD)/$(BUILDNAME)/shared/sentry/src
 
 .PHONY: clean
 clean: clean-base
@@ -35,8 +39,13 @@ clean: clean-base
 
 .PHONY: release
 release: clean-base build $(DIST)
-	# Force cpptrace makefile to regenerate so that install targets get when being built in vbuild
+ifneq ($(filter sentry,$(FEATURES)),)
+	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
+	cd $(BUILD)/$(BUILDNAME)/shared/sentry && make qmake $(DEFINES)
+else
+	# Force cpptrace/sentry makefile to regenerate so that install targets get when being built in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/cpptrace && make qmake $(DEFINES)
+endif
 	# Force liboxide makefile to regenerate so that install targets get when being built in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/liboxide && make qmake $(DEFINES)
 	# Force libblight makefile to regenerate so that install targets get when being built in vbuild

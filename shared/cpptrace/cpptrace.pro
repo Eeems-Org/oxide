@@ -2,6 +2,10 @@ TEMPLATE = aux
 
 include(../../qmake/common.pri)
 
+contains(DEFINES, SENTRY) {
+    error("SENTRY is defined -- build sentry instead of cpptrace")
+}
+
 PRE_TARGETDEPS += $$OUT_PWD/src/Makefile
 cpptrace_makefile.target = $$OUT_PWD/src/Makefile
 cpptrace_makefile.commands = \
