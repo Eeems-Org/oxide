@@ -11,7 +11,9 @@ Item {
     state: "released"
     signal clicked;
     signal longPress;
-    property string source: "qrc:/img/icon.png"
+    property string imgFile: ""
+    property string defaultImage: "qrc:/img/icon.png"
+    readonly property string source: imgFile || defaultImage
     property string text: ""
     property bool bold: false
     Item {

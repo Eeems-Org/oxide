@@ -266,7 +266,7 @@ OxideWindow {
             }
             delegate: AppItem {
                 enabled: appsView.enabled
-                source: model.modelData.imgFile
+                imgFile: model.modelData.imgFile
                 text: (model.modelData.running ? "* " : "") + model.modelData.displayName
                 bold: model.modelData.running
                 width: appsView.cellWidth
@@ -328,7 +328,7 @@ OxideWindow {
                     height: itemContent.height
                     Image {
                         fillMode: Image.PreserveAspectFit
-                        source: itemInfo.model ? itemInfo.model.imgFile : ""
+                        source: itemInfo.model ? (itemInfo.model.imgFile || "qrc:/img/icon.png") : ""
                         anchors.centerIn: parent
                         width: parent.width - itemInfo.textPadding
                         height: parent.height - itemInfo.textPadding

@@ -43,7 +43,7 @@ OxideWindow {
             anchors.fill: parent
             AppItem {
                 text: "Home"
-                source: "qrc:/img/home.svg"
+                imgFile: "qrc:/img/home.svg"
                 height: parent.height
                 onClicked: {
                     controller.breadcrumb("appsView.home", "click", "ui");
@@ -53,7 +53,7 @@ OxideWindow {
             AppItemSeperator {}
             AppItem {
                 text: ""
-                source: "qrc:/img/left.svg"
+                imgFile: "qrc:/img/left.svg"
                 enabled: appsView.currentIndex > 0
                 opacity: enabled ? 1 : 0.5
                 height: parent.height
@@ -91,7 +91,7 @@ OxideWindow {
                         visible: model.modelData.running
                         enabled: visible && appsView.enabled
                         height: visible ? appsView.height : 0
-                        source: model.modelData.imgFile
+                        imgFile: model.modelData.imgFile
                         text: model.modelData.displayName
                         onClicked: {
                             controller.breadcrumb("appsView.app", "click", "ui");
@@ -114,7 +114,7 @@ OxideWindow {
             }
             AppItem {
                 text: ""
-                source: "qrc:/img/right.svg"
+                imgFile: "qrc:/img/right.svg"
                 enabled: !appsView.rightBound()
                 opacity: enabled ? 1 : 0.5
                 height: parent.height
