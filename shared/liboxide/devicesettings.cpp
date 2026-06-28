@@ -556,13 +556,20 @@ namespace Oxide {
     static QString version;
     static std::once_flag flag;
     std::call_once(flag, [] {
-      QSettings settings(
-        "/usr/share/remarkable/update.conf", QSettings::IniFormat
-      );
-      version = settings.value("REMARKABLE_RELEASE_VERSION").toString();
-      if (version.isEmpty()) {
-        qWarning() << "Failed to read version from update.conf";
+      QFile file("/etc/os-release");
+      if (!file.open(QFile::ReadOnly | QFile::Text)) {
+        qWarning() << "Failed to open /etc/os-release";
+        return;
       }
+      QTextStream in(&file);
+      while (!in.atEnd()) {
+        QString line = in.readLine();
+        if (line.startsWith("IMG_VERSION=")) {
+          version = line.section('=', 1).trimmed().remove('"').remove('\'');
+          return;
+        }
+      }
+      qWarning() << "Failed to read IMG_VERSION from /etc/os-release";
     });
     return version;
   }

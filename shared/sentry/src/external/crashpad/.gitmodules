@@ -1,0 +1,9 @@
+[submodule "third_party/mini_chromium/mini_chromium"]
+	path = third_party/mini_chromium/mini_chromium
+	url = https://github.com/getsentry/mini_chromium.git
+[submodule "third_party/zlib/zlib"]
+	path = third_party/zlib/zlib
+	url = https://github.com/getsentry/chromium-zlib
+[submodule "third_party/lss/lss"]
+	path = third_party/lss/lss
+	url = https://github.com/getsentry/chromium-linux-syscall-support

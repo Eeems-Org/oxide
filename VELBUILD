@@ -3,8 +3,6 @@ fbinfo
 inject_evdev
 liboxide
 liboxide-dev:liboxide_dev
-cpptrace
-cpptrace-dev:cpptrace_dev
 oxide-display:oxide_display
 oxide-display-dev:oxide_display_dev
 oxide-extra:oxide_extra
@@ -18,7 +16,6 @@ launcherctl-oxide:launcherctl_oxide
 pkgname=oxide
 pkgver="~VERSION~"
 pkgrel=~TIMESTAMP~
-_cpptracever=0.8.3
 upstream_author="Eeems-org"
 maintainer="Eeems <eeems@eeems.email>"
 url=https://oxide.eeems.codes
@@ -62,7 +59,7 @@ build() {
         exit 1
         ;;
     esac
-    make release
+    make FEATURES=sentry release
 }
 
 package() {
@@ -383,9 +380,7 @@ fbinfo() {
 liboxide() {
     pkgdesc="Shared library for oxide applications"
     category="framework"
-    depends="
-    cpptrace=$_cpptracever-r$pkgrel
-    "
+    depends=""
 
     package() {
         cd "$srcdir"/release
@@ -395,6 +390,13 @@ liboxide() {
             home/root/.vellum/lib/libblight.so*
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
             home/root/.vellum/lib/libblight_protocol.so*
+        if [ -f home/root/.vellum/lib/libsentry.so ]; then
+            install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
+                home/root/.vellum/lib/libsentry.so
+        else
+            install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
+                home/root/.vellum/lib/libcpptrace.so
+        fi
     }
 }
 
@@ -415,35 +417,6 @@ liboxide_dev() {
             home/root/.vellum/include/liboxide.h
         cp -ar home/root/.vellum/include/liboxide/ \
             "$subpkgdir"/home/root/.vellum/include/
-    }
-}
-
-cpptrace() {
-    pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
-    category="framework"
-    url=https://github.com/jeremy-rifkin/cpptrace
-    pkgver="$_cpptracever"
-
-    package() {
-        cd "$srcdir"/release
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
-            home/root/.vellum/lib/libcpptrace.so
-    }
-}
-
-cpptrace_dev() {
-    pkgdesc="Simple, portable, and self-contained stacktrace library for C++11 and newer"
-    category="framework"
-    url=https://github.com/jeremy-rifkin/cpptrace
-    pkgver="$_cpptracever"
-    depends="
-    cpptrace=$_cpptracever-r$pkgrel
-    "
-
-    package() {
-        cd "$srcdir"/release
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
-            home/root/.vellum/lib/libcpptrace.so
     }
 }
 

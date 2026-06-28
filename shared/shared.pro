@@ -12,8 +12,13 @@ liboxide.depends = libblight
 libblight.depends = libblight_protocol
 libblight_client.depends = libblight
 qpa.depends = libblight liboxide
-SUBDIRS += cpptrace
-liboxide.depends += cpptrace
+!contains(DEFINES, SENTRY) {
+    SUBDIRS += cpptrace
+    liboxide.depends += cpptrace
+} else {
+    SUBDIRS += sentry
+    liboxide.depends += sentry
+}
 linux-oe-g++{
     SUBDIRS += epaper
     liboxide.depends += epaper
