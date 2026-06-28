@@ -328,7 +328,7 @@ OxideWindow {
                     height: itemContent.height
                     Image {
                         fillMode: Image.PreserveAspectFit
-                        source: itemInfo.model ? itemInfo.model.imgFile : ""
+                        source: itemInfo.model ? (itemInfo.model.imgFile || "qrc:/img/icon.png") : ""
                         anchors.centerIn: parent
                         width: parent.width - itemInfo.textPadding
                         height: parent.height - itemInfo.textPadding

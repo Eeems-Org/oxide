@@ -118,13 +118,14 @@ _install-%:
 		if [ ! -f "/home/root/.vellum/etc/apk/keys/$$key" ];then
 			cp "/home/root/packages/$*/$$key" "/home/root/.vellum/etc/apk/keys/$$key"
 		fi
-		vellum update
-		vellum add launcherctl-oxide@oxide
-		vellum upgrade
-		echo "Starting oxide"
-		if [[ "$(launcherctl current-launcher)" == "oxide" ]];then
+		vellum --interactive=no update
+		vellum --interactive=no add launcherctl-oxide@oxide || vellum --interactive=no fix
+		vellum --interactive=no upgrade || vellum --interactive=no fix
+		if [[ "$$(launcherctl current-launcher)" == "oxide" ]];then
+			echo "Restarting oxide"
 			launcherctl restart-launcher
 		else
+			echo "Switching to oxide"
 			launcherctl switch-launcher --start oxide
 		fi
 	EOT
