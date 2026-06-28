@@ -2,6 +2,10 @@ TEMPLATE = aux
 
 include(../../qmake/common.pri)
 
+!contains(DEFINES, SENTRY) {
+    error("Not configured to build sentry")
+}
+
 PRE_TARGETDEPS += $$OUT_PWD/src/Makefile
 sentry_makefile.target = $$OUT_PWD/src/Makefile
 sentry_makefile.commands = \
