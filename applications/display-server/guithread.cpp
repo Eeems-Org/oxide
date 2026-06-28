@@ -7,7 +7,9 @@
 #include <liboxide/devicesettings.h>
 #include <liboxide/oxideqml.h>
 #include <liboxide/threading.h>
+#include <mutex>
 #include <mxcfb.h>
+#include <pthread.h>
 #include <sys/mman.h>
 
 #include <QAbstractEventDispatcher>
@@ -50,6 +52,8 @@ GUIThread::run() {
     }
   });
   clearFrameBuffer();
+  setObjectName("GUIThread");
+  pthread_setname_np(pthread_self(), "GUIThread");
   auto res = exec();
   O_DEBUG("Thread stopped with exit code:" << res);
 }
@@ -57,10 +61,13 @@ GUIThread::run() {
 GUIThread*
 GUIThread::singleton() {
   static GUIThread* instance = nullptr;
-  if (instance == nullptr) {
+  static std::once_flag initFlag;
+  std::call_once(initFlag, []() {
     instance = new GUIThread(getFrameBuffer()->rect());
+    // Handle renaming libqsgepaper worker threads that will start here
+    instance->setObjectName("update-worker");
     Oxide::startThreadWithPriority(instance, QThread::TimeCriticalPriority);
-  }
+  });
   return instance;
 }
 

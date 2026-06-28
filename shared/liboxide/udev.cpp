@@ -5,6 +5,7 @@
 #include <QThread>
 #include <QtConcurrent/QtConcurrentRun>
 #include <cerrno>
+#include <mutex>
 
 #include "debug.h"
 #include "liboxide.h"

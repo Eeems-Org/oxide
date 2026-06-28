@@ -1,14 +1,16 @@
 #include "eventlistener.h"
 
 #include <QMutexLocker>
+#include <mutex>
 
 EventListener*
 EventListener::instance() {
   static EventListener* instance = nullptr;
-  if (instance == nullptr) {
+  static std::once_flag initFlag;
+  std::call_once(initFlag, []() {
     instance = new EventListener();
     qApp->installEventFilter(static_cast<QObject*>(instance));
-  }
+  });
   return instance;
 }
 

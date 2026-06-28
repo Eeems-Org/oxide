@@ -1,5 +1,6 @@
 #include "dbusservice.h"
 
+#include <mutex>
 #include <systemd/sd-daemon.h>
 
 #include "appsapi.h"
@@ -14,7 +15,8 @@ using namespace std::chrono;
 DBusService*
 DBusService::singleton() {
   static DBusService* instance;
-  if (instance == nullptr) {
+  static std::once_flag initFlag;
+  std::call_once(initFlag, []() {
     qRegisterMetaType<QMap<QString, QDBusObjectPath>>();
     O_DEBUG("Creating DBusService instance");
     instance = new DBusService(qApp);
@@ -59,7 +61,7 @@ DBusService::singleton() {
       SLOT(serviceOwnerChanged(QString, QString, QString))
     );
     O_DEBUG("Registered");
-  }
+  });
   return instance;
 }
 
