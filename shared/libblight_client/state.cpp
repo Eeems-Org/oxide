@@ -1,4 +1,5 @@
 #include "state.h"
+#include "fb.h"
 
 #include <cstdlib>
 #include <fstream>
@@ -74,21 +75,39 @@ namespace Client {
       // We ignore this executable
       set_blight_debug_level(0);
     }
-    _INFO("Debug Level: %s", debugLevelString().c_str());
-    _INFO("Device: %s", deviceTypeName().c_str());
-    _INFO("FB: %s", bool_str(isFbEnabled()));
-    _INFO("Input: %s", bool_str(isInputEnabled()));
-    _INFO("Power Button: %s", bool_str(isPowerButtonEnabled()));
-    _INFO("Dump FB: %s", bool_str(isDumpFb()));
-    _INFO("Fake rM1: %s", bool_str(isFakeRM1()));
-    _INFO("Fake rM1 Name: %s", bool_str(isFakeRM1Name()));
-    _INFO("Fake rM1 FB: %s", bool_str(isFakeRM1Fb()));
-    _INFO("Fake rM1 Input: %s", bool_str(isFakeRM1Input()));
-    _INFO("Force RGB16: %s", bool_str(forceRGB16()));
-    _INFO("RM2FB Allowed: %s", bool_str(isRM2FBAllowed()));
-    _INFO("Fake RM2FB: %s", bool_str(isFakeRM2FB()));
-    _INFO("Force Qt: %s", bool_str(forceQt()));
-    _INFO("Ghost Control: %s", bool_str(isGhostControlEnabled()));
+    _INFO(
+      "\nDebug Level: %s"
+      "\nDevice: %s\nFB: %s"
+      "\nInput: %s"
+      "\nPower Button: %s"
+      "\nDump FB: %s"
+      "\nFake rM1: %s"
+      "\nFake rM1 Name: %s"
+      "\nFake rM1 FB: %s"
+      "\nFake rM1 Input: %s"
+      "\nForce RGB16: %s"
+      "\nRM2FB Allowed: %s"
+      "\nFake RM2FB: %s"
+      "\nForce Qt: %s"
+      "\nGhost Control: %s"
+      "\nScale: %f\n",
+      debugLevelString().c_str(),
+      deviceTypeName().c_str(),
+      bool_str(isFbEnabled()),
+      bool_str(isInputEnabled()),
+      bool_str(isPowerButtonEnabled()),
+      bool_str(isDumpFb()),
+      bool_str(isFakeRM1()),
+      bool_str(isFakeRM1Name()),
+      bool_str(isFakeRM1Fb()),
+      bool_str(isFakeRM1Input()),
+      bool_str(forceRGB16()),
+      bool_str(isRM2FBAllowed()),
+      bool_str(isFakeRM2FB()),
+      bool_str(forceQt()),
+      bool_str(isGhostControlEnabled()),
+      FB::deviceScale()
+    );
     return true;
   }
 #undef bool_str
