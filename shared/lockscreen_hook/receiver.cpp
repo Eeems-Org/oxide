@@ -5,13 +5,16 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QVariant>
+#include <mutex>
 #include <unistd.h>
 
 Q_LOGGING_CATEGORY(loggingCategory, "lockscreen_hook");
 
 LockscreenHookReceiver*
 LockscreenHookReceiver::singleton() {
-  static LockscreenHookReceiver* instance = new LockscreenHookReceiver();
+  static LockscreenHookReceiver* instance = nullptr;
+  static std::once_flag initFlag;
+  std::call_once(initFlag, []() { instance = new LockscreenHookReceiver(); });
   return instance;
 }
 

@@ -17,6 +17,7 @@
 #include <QProcess>
 #include <QQuickWindow>
 #include <cstring>
+#include <mutex>
 
 #include "oxidebackingstore.h"
 #include "oxideeventfilter.h"

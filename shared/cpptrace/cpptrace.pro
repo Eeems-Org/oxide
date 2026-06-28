@@ -1,44 +1,41 @@
 TEMPLATE = aux
+!contains(DEFINES, SENTRY) {
+    include(../../qmake/common.pri)
 
-include(../../qmake/common.pri)
+    PRE_TARGETDEPS += $$OUT_PWD/src/Makefile
+    cpptrace_makefile.target = $$OUT_PWD/src/Makefile
+    cpptrace_makefile.commands = \
+        cmake -B $$OUT_PWD/src \
+            -S $$PWD/src \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCPPTRACE_UNWIND_WITH_EXECINFO=on \
+            -DCPPTRACE_GET_SYMBOLS_WITH_LIBDL=on \
+            -DCPPTRACE_BUILD_SHARED=on
+    QMAKE_EXTRA_TARGETS += cpptrace_makefile
 
-contains(DEFINES, SENTRY) {
-    error("Not configured to build cpptrace")
+    PRE_TARGETDEPS += $$OUT_PWD/src/libcpptrace.so
+    cpptrace_build.target = $$OUT_PWD/src/libcpptrace.so
+    cpptrace_build.depends = cpptrace_makefile
+    cpptrace_build.commands = \
+        cmake --build $$OUT_PWD/src --parallel
+    QMAKE_EXTRA_TARGETS += cpptrace_build
+
+    PRE_TARGETDEPS += $$OUT_PWD/lib/libcpptrace.so
+    cpptrace_install.target = $$OUT_PWD/lib/libcpptrace.so
+    cpptrace_install.depends = cpptrace_build
+    cpptrace_install.commands = \
+        cmake --install $$OUT_PWD/src \
+            --prefix $$OUT_PWD \
+            --config RelWithDebInfo
+    QMAKE_EXTRA_TARGETS += cpptrace_install
+
+    QMAKE_CLEAN += -r $$OUT_PWD/src/
+
+    target.files = \
+        $$OUT_PWD/lib/libcpptrace.so \
+        $$OUT_PWD/lib/libcpptrace.so.*
+    target.depends = cpptrace_install
+    target.path = $$LIB_INSTALL_PATH/
+    INSTALLS += target
 }
-
-PRE_TARGETDEPS += $$OUT_PWD/src/Makefile
-cpptrace_makefile.target = $$OUT_PWD/src/Makefile
-cpptrace_makefile.commands = \
-    cmake -B $$OUT_PWD/src \
-        -S $$PWD/src \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DCPPTRACE_UNWIND_WITH_EXECINFO=on \
-        -DCPPTRACE_GET_SYMBOLS_WITH_LIBDL=on \
-        -DCPPTRACE_BUILD_SHARED=on
-QMAKE_EXTRA_TARGETS += cpptrace_makefile
-
-PRE_TARGETDEPS += $$OUT_PWD/src/libcpptrace.so
-cpptrace_build.target = $$OUT_PWD/src/libcpptrace.so
-cpptrace_build.depends = cpptrace_makefile
-cpptrace_build.commands = \
-    cmake --build $$OUT_PWD/src --parallel
-QMAKE_EXTRA_TARGETS += cpptrace_build
-
-PRE_TARGETDEPS += $$OUT_PWD/lib/libcpptrace.so
-cpptrace_install.target = $$OUT_PWD/lib/libcpptrace.so
-cpptrace_install.depends = cpptrace_build
-cpptrace_install.commands = \
-    cmake --install $$OUT_PWD/src \
-        --prefix $$OUT_PWD \
-        --config RelWithDebInfo
-QMAKE_EXTRA_TARGETS += cpptrace_install
-
-QMAKE_CLEAN += -r $$OUT_PWD/src/
-
-target.files = \
-    $$OUT_PWD/lib/libcpptrace.so \
-    $$OUT_PWD/lib/libcpptrace.so.*
-target.depends = cpptrace_install
-target.path = $$LIB_INSTALL_PATH/
-INSTALLS += target

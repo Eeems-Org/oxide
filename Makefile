@@ -37,21 +37,22 @@ clean-base:
 clean: clean-base
 	rm -rf $(BUILD)
 
+.NOTPARALLEL: release
 .PHONY: release
 release: clean-base build $(DIST)
 ifneq ($(filter sentry,$(FEATURES)),)
 	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
-	cd $(BUILD)/$(BUILDNAME)/shared/sentry && make qmake $(DEFINES)
+	cd $(BUILD)/$(BUILDNAME)/shared/sentry && make qmake
 else
 	# Force cpptrace/sentry makefile to regenerate so that install targets get when being built in vbuild
-	cd $(BUILD)/$(BUILDNAME)/shared/cpptrace && make qmake $(DEFINES)
+	cd $(BUILD)/$(BUILDNAME)/shared/cpptrace && make qmake
 endif
 	# Force liboxide makefile to regenerate so that install targets get when being built in vbuild
-	cd $(BUILD)/$(BUILDNAME)/shared/liboxide && make qmake $(DEFINES)
+	cd $(BUILD)/$(BUILDNAME)/shared/liboxide && make qmake
 	# Force libblight makefile to regenerate so that install targets get when being built in vbuild
-	cd $(BUILD)/$(BUILDNAME)/shared/libblight && make qmake $(DEFINES)
+	cd $(BUILD)/$(BUILDNAME)/shared/libblight && make qmake
 	# Force libblight_protocol makefile to regenerate so that install targets get when being built in vbuild
-	cd $(BUILD)/$(BUILDNAME)/shared/libblight_protocol && make qmake $(DEFINES)
+	cd $(BUILD)/$(BUILDNAME)/shared/libblight_protocol && make qmake
 	INSTALL_ROOT=$(DIST) $(MAKE) --output-sync=target -C $(BUILD)/$(BUILDNAME) install
 
 .PHONY: build

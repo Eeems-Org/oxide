@@ -17,6 +17,7 @@
 #include <QFileInfo>
 #include <QQmlComponent>
 #include <cstring>
+#include <mutex>
 
 #include "connection.h"
 #include "evdevhandler.h"
@@ -83,12 +84,13 @@ DbusInterface::DbusInterface(QObject* parent)
 DbusInterface*
 DbusInterface::singleton() {
   static DbusInterface* instance = nullptr;
-  if (instance == nullptr) {
+  static std::once_flag initFlag;
+  std::call_once(initFlag, []() {
     instance = Oxide::dispatchToMainThread<DbusInterface*>([] {
       O_DEBUG("Initializing DBus interface");
       return new DbusInterface(qApp);
     });
-  }
+  });
   return instance;
 }
 

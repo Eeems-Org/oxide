@@ -1,5 +1,6 @@
 #include "devicesettings.h"
 
+#include <mutex>
 #include <private/qguiapplication_p.h>
 #include <private/qinputdevicemanager_p.h>
 
