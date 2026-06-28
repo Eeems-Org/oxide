@@ -90,7 +90,7 @@ namespace Client {
       "\nFake RM2FB: %s"
       "\nForce Qt: %s"
       "\nGhost Control: %s"
-      "\nScale: %s\n",
+      "\nScale: %f\n",
       debugLevelString().c_str(),
       deviceTypeName().c_str(),
       bool_str(isFbEnabled()),
