@@ -7,7 +7,6 @@ TEMPLATE = aux
     cpptrace_makefile.commands = \
         cmake -B $$OUT_PWD/src \
             -S $$PWD/src \
-            -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCPPTRACE_UNWIND_WITH_EXECINFO=on \
             -DCPPTRACE_GET_SYMBOLS_WITH_LIBDL=on \
