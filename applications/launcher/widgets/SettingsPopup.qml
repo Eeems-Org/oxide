@@ -24,7 +24,7 @@ Item {
             }
             GridLayout {
             columns: 3
-            rows: 20
+            rows: 22
             anchors.fill: parent
                 RowLayout {
                     Layout.columnSpan: parent.columns
@@ -378,6 +378,24 @@ Item {
                     stepSize: 10
                     value: controller.swipeLengthDown
                     onValueChanged: controller.swipeLengthDown = this.value
+                    Layout.preferredWidth: 300
+                }
+            }
+            RowLayout {
+                Layout.columnSpan: parent.columns
+                Layout.preferredWidth: parent.width
+                Label {
+                    text: "Notification display time (seconds)"
+                    Layout.fillWidth: true
+                }
+                BetterSpinBox {
+                    id: notificationDisplayTimeSpinBox
+                    objectName: "notificationDisplayTimeSpinBox"
+                    from: 1
+                    to: 60
+                    stepSize: 1
+                    value: controller.notificationDisplayTime
+                    onValueChanged: controller.notificationDisplayTime = this.value
                     Layout.preferredWidth: 300
                 }
             }

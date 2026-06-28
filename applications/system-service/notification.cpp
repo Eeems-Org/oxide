@@ -206,16 +206,18 @@ Notification::paintNotification() {
   auto notification = notificationAPI->paintNotification(m_text, m_icon);
   O_INFO("Painted notification" << identifier());
   emit displayed();
-  QTimer::singleShot(2000, [this, notification] {
-    O_INFO("Finished displaying notification" << identifier());
-    if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
-      notificationAPI->notificationDisplayQueue.takeFirst()
-        ->paintNotification();
-      return;
-    } else {
-      notification->setProperty("notificationVisible", false);
+  QTimer::singleShot(
+    notificationAPI->displayTime() * 1000, [this, notification] {
+      O_INFO("Finished displaying notification" << identifier());
+      if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
+        notificationAPI->notificationDisplayQueue.takeFirst()
+          ->paintNotification();
+        return;
+      } else {
+        notification->setProperty("notificationVisible", false);
+      }
+      notificationAPI->unlock();
     }
-    notificationAPI->unlock();
-  });
+  );
 }
 #include "moc_notification.cpp"

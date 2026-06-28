@@ -89,6 +89,7 @@ Controller::loadSettings() {
     delete configFile;
   }
   qDebug() << "Finished parsing config file.";
+  setNotificationDisplayTime(notificationApi->displayTime());
   auto sleepAfter = systemApi->autoSleep();
   qDebug() << "Automatic sleep" << sleepAfter;
   setAutomaticSleep(sleepAfter);
@@ -246,6 +247,7 @@ Controller::saveSettings() {
   for (short i = 1; i <= 4; i++) {
     systemApi->setSwipeLength(i, getSwipeLength(i));
   }
+  notificationApi->setDisplayTime(m_notificationDisplayTime);
   qDebug() << "Done saving configuration.";
 }
 QList<QObject*>

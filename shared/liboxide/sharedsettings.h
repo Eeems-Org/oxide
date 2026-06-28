@@ -145,6 +145,21 @@ namespace Oxide {
      */
     O_SETTINGS_PROPERTY(int, General, autoLock, 5)
     /*!
+     * \property notificationDisplayTime
+     * \brief How long (in seconds) a notification is displayed on the screen
+     * \sa set_notificationDisplayTime, notificationDisplayTimeChanged
+     */
+    /*!
+     * \fn set_notificationDisplayTime
+     * \param _arg_notificationDisplayTime
+     * \brief Change notificationDisplayTime
+     */
+    /*!
+     * \fn notificationDisplayTimeChanged
+     * \brief If notificationDisplayTime has been changed
+     */
+    O_SETTINGS_PROPERTY(uint, General, notificationDisplayTime, 5)
+    /*!
      * \property pin
      * \brief The lockscreen pin
      * \sa set_pin, pinChanged

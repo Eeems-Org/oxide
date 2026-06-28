@@ -4,6 +4,7 @@
     <property name="enabled" type="b" access="read"/>
     <property name="allNotifications" type="ao" access="read"/>
     <property name="unownedNotifications" type="ao" access="read"/>
+    <property name="displayTime" type="u" access="readwrite"/>
     <signal name="notificationAdded">
       <arg type="o" direction="out"/>
     </signal>
@@ -12,6 +13,9 @@
     </signal>
     <signal name="notificationChanged">
       <arg type="o" direction="out"/>
+    </signal>
+    <signal name="displayTimeChanged">
+      <arg type="u" direction="out"/>
     </signal>
     <method name="add">
       <arg type="o" direction="out"/>

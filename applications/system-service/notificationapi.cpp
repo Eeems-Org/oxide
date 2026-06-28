@@ -162,6 +162,17 @@ NotificationAPI::paintNotification(
   return m_window;
 }
 
+uint
+NotificationAPI::displayTime() {
+  return sharedSettings.notificationDisplayTime();
+}
+
+void
+NotificationAPI::setDisplayTime(uint seconds) {
+  sharedSettings.set_notificationDisplayTime(seconds);
+  emit displayTimeChanged(seconds);
+}
+
 void
 NotificationAPI::errorNotification(const QString& text) {
   O_DEBUG("Displaying error text");
