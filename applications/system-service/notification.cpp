@@ -250,12 +250,12 @@ Notification::paintNotification() {
 void
 Notification::nextNotification(QQuickWindow* window) {
   O_INFO("Finished displaying notification" << identifier());
+  disconnect(window, SIGNAL(clicked(QString)), nullptr, nullptr);
   if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
     notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification();
     return;
   } else {
     window->setProperty("notificationVisible", false);
-    disconnect(window, SIGNAL(clicked(QString)), nullptr, nullptr);
   }
   notificationAPI->unlock();
 }

@@ -149,6 +149,15 @@ Controller::loadSettings() {
   } else {
     swipeLengthDownSpinBox->setProperty("value", this->swipeLengthDown());
   }
+  QObject* notificationDisplayTimeSpinBox =
+    root->findChild<QObject*>("notificationDisplayTimeSpinBox");
+  if (!notificationDisplayTimeSpinBox) {
+    qDebug() << "Can't find notificationDisplayTimeSpinBox";
+  } else {
+    notificationDisplayTimeSpinBox->setProperty(
+      "value", this->notificationDisplayTime()
+    );
+  }
   qDebug() << "Finished updating UI.";
 }
 void

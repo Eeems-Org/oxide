@@ -183,10 +183,11 @@ main(int argc, char* argv[]) {
     QTextStream qStdOut(stdout, QIODevice::WriteOnly);
     qStdOut << guid << Qt::endl;
   }
+  bool transient = parser.isSet(transientOption);
   if (!parser.isSet(waitOption) && actionMap.isEmpty()) {
     qDebug() << "Displaying notification" << guid;
     notification.display().waitForFinished();
-    if (parser.isSet(transientOption)) {
+    if (transient) {
       notification.remove();
     }
     return qExit(EXIT_SUCCESS);
@@ -228,7 +229,7 @@ main(int argc, char* argv[]) {
   if (!Oxide::DBusConnect(
         &notification,
         "displayed",
-        [&notification, timeout](QVariantList args) {
+        [&notification, timeout, transient](QVariantList args) {
           Q_UNUSED(args);
           qDebug() << "Waiting for notification to be closed";
           if (!Oxide::DBusConnect(
@@ -261,9 +262,11 @@ main(int argc, char* argv[]) {
           if (timeout) {
             qDebug()
               << ("Timeout set to " + std::to_string(timeout) + "ms").c_str();
-            QTimer::singleShot(timeout, [&notification] {
+            QTimer::singleShot(timeout, [&notification, transient] {
               qDebug() << "Notification wait timed out";
-              notification.remove().waitForFinished();
+              if (transient) {
+                notification.remove().waitForFinished();
+              }
               qApp->exit(EXIT_SUCCESS);
             });
           }
