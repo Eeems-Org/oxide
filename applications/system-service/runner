@@ -8,7 +8,13 @@ puzzles)
 tilem | yaft)
   export OXIDE_PRELOAD_FORCE_RM1=1
   ;;
-chessmarkable | doommarkable)
+chessmarkable)
+  if [[ "$(cat /sys/devices/soc0/machine)" != "reMarkable 2.0" ]]; then
+    export OXIDE_PRELOAD_FORCE_RM1=1
+  fi
+  export OXIDE_PRELOAD_FORCE_32BIT_FSCREEN=1
+  ;;
+doommarkable)
   if [[ "$(cat /sys/devices/soc0/machine)" != "reMarkable 2.0" ]]; then
     export OXIDE_PRELOAD_FORCE_RM1=1
   fi
