@@ -22,6 +22,7 @@ class Notification : public QObject {
   Q_PROPERTY(QString application READ application WRITE setApplication)
   Q_PROPERTY(QString text READ text WRITE setText)
   Q_PROPERTY(QString icon READ icon WRITE setIcon)
+  Q_PROPERTY(QVariantMap actions READ actions WRITE setActions)
 
 public:
   Notification(
@@ -53,14 +54,17 @@ public:
 
   Q_INVOKABLE void display();
   Q_INVOKABLE void remove();
-  Q_INVOKABLE void click();
+  Q_INVOKABLE void click(const QString& action = "");
   void paintNotification();
+
+  QVariantMap actions();
+  void setActions(const QVariantMap& actions);
 
 signals:
   void changed(QVariantMap);
   void removed();
   void displayed();
-  void clicked();
+  void clicked(const QString& action);
 
 private:
   QString m_path;
@@ -70,9 +74,11 @@ private:
   QString m_application;
   QString m_text;
   QString m_icon;
+  QVariantMap m_actions;
 
   bool
   hasPermission(QString permission, const char* sender = __builtin_FUNCTION());
+  void nextNotification(QQuickWindow* window);
 };
 
 #endif // NOTIFICATION_H

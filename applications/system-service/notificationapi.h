@@ -48,7 +48,11 @@ public:
     const QString& icon
   );
   Notification* getByIdentifier(const QString& identifier);
-  QQuickWindow* paintNotification(const QString& text, const QString& iconPath);
+  QQuickWindow* paintNotification(
+    const QString& text,
+    const QString& iconPath,
+    const QVariantMap& actions = QVariantMap()
+  );
   void errorNotification(const QString& text);
   uint displayTime();
   void setDisplayTime(uint seconds);

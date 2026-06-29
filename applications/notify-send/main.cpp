@@ -79,7 +79,12 @@ main(int argc, char* argv[]) {
   );
   parser.addOption(urgencyOption);
   QCommandLineOption appOption(
-    {"A", "action"}, "NOT IMPLEMENTED", "[NAME=]TEXT"
+    {"A", "action"},
+    "Specifies the actions to display to the user. Implies --wait to wait for "
+    "user input. May be set multiple times. The NAME of the action is output "
+    "to stdout. If NAME is not specified, the numerical index of the option is "
+    "used (starting with 1).",
+    "NAME=TEXT"
   );
   parser.addOption(appOption);
   QCommandLineOption selectedActionFdOption(
@@ -157,6 +162,18 @@ main(int argc, char* argv[]) {
     }
   }
   Notification notification(OXIDE_SERVICE, path.path(), bus);
+  QVariantMap actionMap;
+  for (const auto& a : parser.values(appOption)) {
+    int eq = a.indexOf('=');
+    if (eq == -1) {
+      actionMap[a] = a;
+    } else {
+      actionMap[a.left(eq)] = a.mid(eq + 1);
+    }
+  }
+  if (!actionMap.isEmpty()) {
+    notification.setActions(actionMap);
+  }
   if (parser.isSet(printOption)) {
     QTextStream qStdOut(stdout, QIODevice::WriteOnly);
     qStdOut << guid << Qt::endl;
@@ -188,9 +205,15 @@ main(int argc, char* argv[]) {
             qExit(EXIT_FAILURE);
           }
           if (!Oxide::DBusConnect(
-                &notification, "clicked", [](QVariantList args) {
-                  Q_UNUSED(args);
-                  qDebug() << "Clicked";
+                &notification, "clicked", [&notification](QVariantList args) {
+                  notification.remove();
+                  QString action = args.value(0).toString();
+                  qDebug() << "clicked" << action;
+                  if (!action.isEmpty()) {
+                    QTextStream qStdOut(stdout, QIODevice::WriteOnly);
+                    qStdOut << action << Qt::endl;
+                  }
+                  qApp->exit(EXIT_SUCCESS);
                 }
               )) {
             qDebug() << "Failed to connect Notification::clicked";
@@ -208,7 +231,7 @@ main(int argc, char* argv[]) {
             QTimer::singleShot(timeout, [&notification] {
               qDebug() << "Notification wait timed out";
               notification.remove().waitForFinished();
-              qApp->exit(EXIT_FAILURE);
+              qApp->exit(EXIT_SUCCESS);
             });
           }
         }

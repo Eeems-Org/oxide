@@ -991,9 +991,14 @@ SystemAPI::toggleSwipes() {
       return;
     }
   } else {
-    connect(notification, &Notification::clicked, [notification] {
-      notification->remove();
-    });
+    connect(
+      notification,
+      &Notification::clicked,
+      [notification](const QString& action) {
+        Q_UNUSED(action);
+        notification->remove();
+      }
+    );
   }
   notification->setText(message);
   notification->display();

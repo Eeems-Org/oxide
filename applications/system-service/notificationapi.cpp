@@ -149,15 +149,16 @@ NotificationAPI::getByIdentifier(const QString& identifier) {
 QQuickWindow*
 NotificationAPI::paintNotification(
   const QString& text,
-  const QString& iconPath
+  const QString& iconPath,
+  const QVariantMap& actions
 ) {
-  disconnect(m_window, SIGNAL(clicked()), nullptr, nullptr);
   m_window->setProperty("text", text);
   if (!iconPath.isEmpty() && QFileInfo(iconPath).exists()) {
     m_window->setProperty("image", QUrl::fromLocalFile(iconPath));
   } else {
     m_window->setProperty("image", "");
   }
+  m_window->setProperty("actions", QVariant::fromValue(actions));
   m_window->show();
   m_window->raise();
   m_window->setProperty("notificationVisible", true);
@@ -178,7 +179,7 @@ NotificationAPI::setDisplayTime(uint seconds) {
 void
 NotificationAPI::errorNotification(const QString& text) {
   O_DEBUG("Displaying error text");
-  notificationAPI->paintNotification(text, "");
+  notificationAPI->paintNotification(text, "", QVariantMap());
 }
 
 QDBusObjectPath

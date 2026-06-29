@@ -2,6 +2,7 @@
 #define NOTIFICATIONLIST_H
 
 #include <QAbstractListModel>
+#include <QVariant>
 
 using namespace codes::eeems::oxide1;
 
@@ -11,6 +12,7 @@ class NotificationItem : public QObject {
   Q_PROPERTY(QString text READ text NOTIFY textChanged)
   Q_PROPERTY(QString icon READ icon NOTIFY iconChanged)
   Q_PROPERTY(int created READ created NOTIFY createdChanged)
+  Q_PROPERTY(QVariantMap actions READ actions NOTIFY actionsChanged)
 
 public:
   NotificationItem(Notification* notification, QObject* parent)
@@ -45,13 +47,23 @@ public:
     }
     return m_notification->created();
   }
+  QVariantMap actions() {
+    if (m_notification == nullptr) {
+      return {};
+    }
+    return m_notification->actions();
+  }
   bool is(Notification* notification) { return notification == m_notification; }
   Notification* notification() { return m_notification; }
   Q_INVOKABLE void click() { notification()->click(); }
+  Q_INVOKABLE void click(const QString& action) {
+    notification()->click(action);
+  }
 signals:
   void textChanged(QString);
   void iconChanged(QString);
   void createdChanged(int);
+  void actionsChanged(QVariantMap);
 
 public slots:
   void changed(const QVariantMap& properties) {
@@ -60,6 +72,8 @@ public slots:
         emit textChanged(properties.value(key, "").toString());
       } else if (key == "icon") {
         emit iconChanged(properties.value(key, "").toString());
+      } else if (key == "actions") {
+        emit actionsChanged(properties.value(key, QVariantMap()).toMap());
       }
     }
   }
