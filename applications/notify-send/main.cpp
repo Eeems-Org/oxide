@@ -1,3 +1,4 @@
+#include <csignal>
 #include <cstdlib>
 #include <liboxide.h>
 
@@ -178,7 +179,7 @@ main(int argc, char* argv[]) {
     QTextStream qStdOut(stdout, QIODevice::WriteOnly);
     qStdOut << guid << Qt::endl;
   }
-  if (!parser.isSet(waitOption)) {
+  if (!parser.isSet(waitOption) && actionMap.isEmpty()) {
     qDebug() << "Displaying notification" << guid;
     notification.display().waitForFinished();
     if (parser.isSet(transientOption)) {
@@ -186,6 +187,31 @@ main(int argc, char* argv[]) {
     }
     return qExit(EXIT_SUCCESS);
   }
+  Oxide::SignalHandler::setup_unix_signal_handlers();
+  QObject::connect(
+    signalHandler, &Oxide::SignalHandler::sigTerm, [&notification] {
+      notification.remove().waitForFinished();
+      qApp->exit(128 + SIGTERM);
+    }
+  );
+  QObject::connect(
+    signalHandler, &Oxide::SignalHandler::sigInt, [&notification] {
+      notification.remove().waitForFinished();
+      qApp->exit(128 + SIGINT);
+    }
+  );
+  QObject::connect(
+    signalHandler, &Oxide::SignalHandler::sigSegv, [&notification] {
+      notification.remove().waitForFinished();
+      qApp->exit(128 + SIGSEGV);
+    }
+  );
+  QObject::connect(
+    signalHandler, &Oxide::SignalHandler::sigBus, [&notification] {
+      notification.remove().waitForFinished();
+      qApp->exit(128 + SIGBUS);
+    }
+  );
   if (!Oxide::DBusConnect(
         &notification,
         "displayed",
