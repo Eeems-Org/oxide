@@ -40,13 +40,10 @@ clean: clean-base
 .NOTPARALLEL: release
 .PHONY: release
 release: clean-base build $(DIST)
-ifneq ($(filter sentry,$(FEATURES)),)
 	# Force sentry makefile to regenerate so that install targets get when being build in toltecmk
 	cd $(BUILD)/$(BUILDNAME)/shared/sentry && make qmake
-else
 	# Force cpptrace/sentry makefile to regenerate so that install targets get when being built in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/cpptrace && make qmake
-endif
 	# Force liboxide makefile to regenerate so that install targets get when being built in vbuild
 	cd $(BUILD)/$(BUILDNAME)/shared/liboxide && make qmake
 	# Force libblight makefile to regenerate so that install targets get when being built in vbuild

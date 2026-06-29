@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 case "$(basename "${EXECUTABLE:?EXECUTABLE missing}")" in
 puzzles)
@@ -9,7 +9,9 @@ tilem | yaft)
   export OXIDE_PRELOAD_FORCE_RM1=1
   ;;
 chessmarkable | doommarkable)
-  export OXIDE_PRELOAD_FORCE_RM1=1
+  if [[ "$(cat /sys/devices/soc0/machine)" != "reMarkable 2.0" ]]; then
+    export OXIDE_PRELOAD_FORCE_RM1=1
+  fi
   export OXIDE_PRELOAD_FORCE_32BIT_FSCREEN=1
   ;;
 esac

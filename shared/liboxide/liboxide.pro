@@ -95,7 +95,7 @@ liboxide_liboxide_h.target = include/liboxide/liboxide.h
 for(h, HEADERS){
     liboxide_liboxide_h.depends += $${RELATIVE_PWD}/$${h}
 }
-INTERFACE_HEADERS = $$system(echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename {} .xml | xargs -rI {} echo $$OUT_PWD/{}_interface.h)
+INTERFACE_HEADERS = $$system(echo $$DBUS_INTERFACES | xargs -rn1 | xargs -rI {} basename {} .xml | xargs -rI {} echo {}_interface.h)
 for(h, INTERFACE_HEADERS){
     liboxide_liboxide_h.depends += $$h
 }
