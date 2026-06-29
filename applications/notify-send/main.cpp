@@ -187,6 +187,15 @@ main(int argc, char* argv[]) {
     }
     return qExit(EXIT_SUCCESS);
   }
+  unsigned int timeout = 0;
+  if (parser.isSet(expireOption)) {
+    bool ok = false;
+    timeout = parser.value(expireOption).toUInt(&ok);
+    if (!ok) {
+      qDebug() << "Invalid --expire-time value";
+      return qExit(EXIT_FAILURE);
+    }
+  }
   Oxide::SignalHandler::setup_unix_signal_handlers();
   QObject::connect(
     signalHandler, &Oxide::SignalHandler::sigTerm, [&notification] {
@@ -215,7 +224,7 @@ main(int argc, char* argv[]) {
   if (!Oxide::DBusConnect(
         &notification,
         "displayed",
-        [&notification, &parser, &expireOption](QVariantList args) {
+        [&notification, timeout](QVariantList args) {
           Q_UNUSED(args);
           qDebug() << "Waiting for notification to be closed";
           if (!Oxide::DBusConnect(
@@ -245,13 +254,7 @@ main(int argc, char* argv[]) {
             qDebug() << "Failed to connect Notification::clicked";
             qExit(EXIT_FAILURE);
           }
-          if (parser.isSet(expireOption)) {
-            bool ok = false;
-            auto timeout = parser.value(expireOption).toInt(&ok);
-            if (!ok || timeout < 0) {
-              qDebug() << "Invalid --expire-time value";
-              qExit(EXIT_FAILURE);
-            }
+          if (timeout) {
             qDebug()
               << ("Timeout set to " + std::to_string(timeout) + "ms").c_str();
             QTimer::singleShot(timeout, [&notification] {
