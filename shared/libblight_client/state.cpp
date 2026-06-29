@@ -137,10 +137,16 @@ namespace Client {
     return getenv("OXIDE_PRELOAD_DUMP_FB") != nullptr;
   }
   bool isFakeRM1() {
+    if (deviceType == DeviceType::RM1) {
+      return false;
+    }
     static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RM1") != nullptr;
     return enabled;
   }
   bool isFakeRM1Name() {
+    if (deviceType == DeviceType::RM1) {
+      return false;
+    }
     if (isFakeRM1()) {
       return true;
     }
@@ -148,13 +154,16 @@ namespace Client {
     return enabled;
   }
   bool isFakeRM2Name() {
-    if (isFakeRM1()) {
+    if (isFakeRM1() || deviceType == DeviceType::RM2) {
       return false;
     }
     static bool enabled = getenv("OXIDE_PRELOAD_FORCE_RM2_NAME") != nullptr;
     return enabled;
   }
   bool isFakeRM1Fb() {
+    if (deviceType == DeviceType::RM1) {
+      return false;
+    }
     if (isFakeRM1()) {
       return true;
     }
@@ -162,6 +171,9 @@ namespace Client {
     return enabled;
   }
   bool isFakeRM1Input() {
+    if (deviceType == DeviceType::RM1) {
+      return false;
+    }
     if (isFakeRM1()) {
       return true;
     }
@@ -181,6 +193,9 @@ namespace Client {
     return enabled;
   }
   bool force32bitFscreenInfo() {
+    if (deviceType == DeviceType::RM1 || deviceType == DeviceType::RM2) {
+      return false;
+    }
     static bool enabled =
       getenv("OXIDE_PRELOAD_FORCE_32BIT_FSCREENINFO") != nullptr;
     return enabled;
@@ -193,8 +208,8 @@ namespace Client {
     return enabled;
   }
   bool isFakeRM2FB() {
-    if (Client::deviceType != Client::DeviceType::RM1) {
-      return true;
+    if (Client::deviceType == Client::DeviceType::RM1) {
+      return false;
     }
     static bool enabled = getenv("OXIDE_PRELOAD_NO_FAKE_RM2FB") == nullptr;
     return enabled;
