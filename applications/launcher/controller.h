@@ -125,6 +125,10 @@ class Controller : public QObject {
     bool showDate MEMBER m_showDate WRITE setShowDate NOTIFY showDateChanged
   )
   Q_PROPERTY(
+    uint notificationDisplayTime MEMBER m_notificationDisplayTime WRITE
+      setNotificationDisplayTime NOTIFY notificationDisplayTimeChanged
+  )
+  Q_PROPERTY(
     bool hasNotification MEMBER m_hasNotification NOTIFY hasNotificationChanged
   )
   Q_PROPERTY(
@@ -359,6 +363,12 @@ public:
       this,
       &Controller::notificationsUpdated
     );
+    connect(
+      notificationApi,
+      &Notifications::displayTimeChanged,
+      this,
+      [this](uint displayTime) { setNotificationDisplayTime(displayTime); }
+    );
 
     uiTimer = new QTimer(this);
     uiTimer->setSingleShot(false);
@@ -469,6 +479,14 @@ public:
     clock->setProperty("text", text + QTime::currentTime().toString("h:mm a"));
   }
   bool showDate() { return m_showDate; }
+  uint notificationDisplayTime() const { return m_notificationDisplayTime; }
+  void setNotificationDisplayTime(uint displayTime) {
+    if (m_notificationDisplayTime == displayTime) {
+      return;
+    }
+    m_notificationDisplayTime = displayTime;
+    emit notificationDisplayTimeChanged(displayTime);
+  }
   void setNotification(QString notificationText) {
     if (m_notificationText == notificationText) {
       return;
@@ -576,6 +594,7 @@ signals:
   void powerOffInhibitedChanged(bool);
   void sleepInhibitedChanged(bool);
   void showDateChanged(bool);
+  void notificationDisplayTimeChanged(uint);
   void hasNotificationChanged(bool);
   void notificationTextChanged(QString);
   void notificationsChanged(NotificationList*);
@@ -871,6 +890,7 @@ private:
   bool m_showBatteryTemperature = false;
   bool m_showDate = false;
   QString m_autoStartApplication = "";
+  uint m_notificationDisplayTime = 5;
   bool m_hasNotification = false;
   QString m_notificationText = "";
 

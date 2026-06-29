@@ -1,5 +1,7 @@
 #include "notification.h"
 
+#include <memory>
+
 #include <liboxide/oxideqml.h>
 
 #include <QFontDatabase>
@@ -152,11 +154,11 @@ Notification::remove() {
 }
 
 void
-Notification::click() {
+Notification::click(const QString& action) {
   if (!hasPermission("notification")) {
     return;
   }
-  emit clicked();
+  emit clicked(action);
 }
 
 void
@@ -195,6 +197,25 @@ Notification::setOwner(QString owner) {
   emit changed(result);
 }
 
+QVariantMap
+Notification::actions() {
+  if (!hasPermission("notification")) {
+    return QVariantMap();
+  }
+  return m_actions;
+}
+
+void
+Notification::setActions(const QVariantMap& actions) {
+  if (!hasPermission("notification")) {
+    return;
+  }
+  m_actions = actions;
+  QVariantMap result;
+  result.insert("actions", m_actions);
+  emit changed(result);
+}
+
 bool
 Notification::hasPermission(QString permission, const char* sender) {
   return notificationAPI->hasPermission(permission, sender);
@@ -203,19 +224,39 @@ Notification::hasPermission(QString permission, const char* sender) {
 void
 Notification::paintNotification() {
   O_INFO("Painting notification" << identifier());
-  auto notification = notificationAPI->paintNotification(m_text, m_icon);
+  auto window = notificationAPI->paintNotification(m_text, m_icon, m_actions);
+  QObject::connect(
+    window, SIGNAL(clicked(QString)), this, SIGNAL(clicked(QString))
+  );
+  auto connection = std::make_shared<QMetaObject::Connection>(QObject::connect(
+    this,
+    &Notification::removed,
+    this,
+    [this, window]() { nextNotification(window); },
+    Qt::SingleShotConnection
+  ));
   O_INFO("Painted notification" << identifier());
   emit displayed();
-  QTimer::singleShot(2000, [this, notification] {
-    O_INFO("Finished displaying notification" << identifier());
-    if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
-      notificationAPI->notificationDisplayQueue.takeFirst()
-        ->paintNotification();
-      return;
-    } else {
-      notification->setProperty("notificationVisible", false);
+  QTimer::singleShot(
+    notificationAPI->displayTime() * 1000, [this, window, connection] {
+      if (!QObject::disconnect(*connection)) {
+        return;
+      }
+      nextNotification(window);
     }
-    notificationAPI->unlock();
-  });
+  );
+}
+
+void
+Notification::nextNotification(QQuickWindow* window) {
+  O_INFO("Finished displaying notification" << identifier());
+  disconnect(window, SIGNAL(clicked(QString)), nullptr, nullptr);
+  if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
+    notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification();
+    return;
+  } else {
+    window->setProperty("notificationVisible", false);
+  }
+  notificationAPI->unlock();
 }
 #include "moc_notification.cpp"

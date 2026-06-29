@@ -6,6 +6,9 @@
     <property name="application" type="s" access="readwrite"/>
     <property name="text" type="s" access="readwrite"/>
     <property name="icon" type="s" access="readwrite"/>
+    <property name="actions" type="a{sv}" access="readwrite">
+      <annotation name="org.qtproject.QtDBus.QtTypeName" value="QVariantMap"/>
+    </property>
     <signal name="changed">
       <arg type="a{sv}" direction="out"/>
       <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
@@ -15,10 +18,14 @@
     <signal name="displayed">
     </signal>
     <signal name="clicked">
+      <arg name="action" type="s" direction="out"/>
     </signal>
     <method name="display">
     </method>
     <method name="remove">
+    </method>
+    <method name="click">
+      <arg name="action" type="s" direction="in"/>
     </method>
     <method name="click">
     </method>

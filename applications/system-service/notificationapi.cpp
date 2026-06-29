@@ -6,6 +6,7 @@
 #include <QPainterPath>
 
 #include "dbusservice.h"
+#include "notification.h"
 #include "systemapi.h"
 
 NotificationAPI*
@@ -127,7 +128,7 @@ NotificationAPI::add(
   );
   m_notifications.insert(identifier, notification);
   auto path = notification->qPath();
-  connect(notification, &Notification::changed, this, [this, path] {
+  QObject::connect(notification, &Notification::changed, this, [this, path] {
     emit notificationChanged(path);
   });
   if (m_enabled) {
@@ -148,7 +149,8 @@ NotificationAPI::getByIdentifier(const QString& identifier) {
 QQuickWindow*
 NotificationAPI::paintNotification(
   const QString& text,
-  const QString& iconPath
+  const QString& iconPath,
+  const QVariantMap& actions
 ) {
   m_window->setProperty("text", text);
   if (!iconPath.isEmpty() && QFileInfo(iconPath).exists()) {
@@ -156,16 +158,28 @@ NotificationAPI::paintNotification(
   } else {
     m_window->setProperty("image", "");
   }
+  m_window->setProperty("actions", QVariant::fromValue(actions));
   m_window->show();
   m_window->raise();
   m_window->setProperty("notificationVisible", true);
   return m_window;
 }
 
+uint
+NotificationAPI::displayTime() {
+  return sharedSettings.notificationDisplayTime();
+}
+
+void
+NotificationAPI::setDisplayTime(uint seconds) {
+  sharedSettings.set_notificationDisplayTime(seconds);
+  emit displayTimeChanged(seconds);
+}
+
 void
 NotificationAPI::errorNotification(const QString& text) {
   O_DEBUG("Displaying error text");
-  notificationAPI->paintNotification(text, "");
+  notificationAPI->paintNotification(text, "", QVariantMap());
 }
 
 QDBusObjectPath

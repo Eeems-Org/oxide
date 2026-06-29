@@ -13,7 +13,7 @@ namespace Oxide {
     QDBusAbstractInterface* interface,
     const QString& slotName,
     std::function<void(QVariantList)> onMessage,
-    const bool& once = false
+    const bool& once
   ) {
     return DBusConnect(interface, slotName, onMessage, [] {}, once);
   }

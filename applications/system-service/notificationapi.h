@@ -21,6 +21,10 @@ class NotificationAPI : public APIBase {
   Q_PROPERTY(
     QList<QDBusObjectPath> unownedNotifications READ getUnownedNotifications
   )
+  Q_PROPERTY(
+    uint displayTime READ displayTime WRITE setDisplayTime NOTIFY
+      displayTimeChanged
+  )
 
 public:
   static NotificationAPI* singleton(NotificationAPI* self = nullptr);
@@ -44,8 +48,14 @@ public:
     const QString& icon
   );
   Notification* getByIdentifier(const QString& identifier);
-  QQuickWindow* paintNotification(const QString& text, const QString& iconPath);
+  QQuickWindow* paintNotification(
+    const QString& text,
+    const QString& iconPath,
+    const QVariantMap& actions = QVariantMap()
+  );
   void errorNotification(const QString& text);
+  uint displayTime();
+  void setDisplayTime(uint seconds);
 
 public slots:
   QDBusObjectPath add(
@@ -66,6 +76,7 @@ signals:
   void notificationAdded(QDBusObjectPath);
   void notificationRemoved(QDBusObjectPath);
   void notificationChanged(QDBusObjectPath);
+  void displayTimeChanged(uint);
 
 private:
   bool m_enabled;

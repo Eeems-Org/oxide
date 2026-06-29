@@ -1,3 +1,5 @@
+#include <csignal>
+#include <cstdlib>
 #include <liboxide.h>
 
 #include <QCommandLineParser>
@@ -78,9 +80,24 @@ main(int argc, char* argv[]) {
   );
   parser.addOption(urgencyOption);
   QCommandLineOption appOption(
-    {"A", "action"}, "NOT IMPLEMENTED", "[NAME=]TEXT"
+    {"A", "action"},
+    "Specifies the actions to display to the user. Implies --wait to wait for "
+    "user input. May be set multiple times. The NAME of the action is output "
+    "to stdout. If NAME is not specified, the numerical index of the option is "
+    "used (starting with 0).",
+    "NAME=TEXT"
   );
   parser.addOption(appOption);
+  QCommandLineOption selectedActionFdOption(
+    "selected-action-fd", "NOT IMPLEMENTED", "FILE_DESCRIPTOR"
+  );
+  parser.addOption(selectedActionFdOption);
+  QCommandLineOption activationTokenFdOption(
+    "activation-token-fd", "NOT IMPLEMENTED", "FILE_DESCRIPTOR"
+  );
+  parser.addOption(activationTokenFdOption);
+  QCommandLineOption idFdOption("id-fd", "NOT IMPLEMENTED", "FILE_DESCRIPTOR");
+  parser.addOption(idFdOption);
   QCommandLineOption categoryOption(
     {"c", "category"}, "NOT IMPLEMENTED", "TYPE[,TYPE]"
   );
@@ -146,43 +163,120 @@ main(int argc, char* argv[]) {
     }
   }
   Notification notification(OXIDE_SERVICE, path.path(), bus);
+  QVariantMap actionMap;
+  unsigned int optionIndex = 0;
+  for (const auto& a : parser.values(appOption)) {
+    int eq = a.indexOf('=');
+    if (eq == -1) {
+      actionMap[QString::number(optionIndex)] = a;
+    } else if (eq == 0) {
+      actionMap[QString::number(optionIndex)] = a.mid(eq + 1);
+    } else {
+      actionMap[a.left(eq)] = a.mid(eq + 1);
+    }
+    optionIndex++;
+  }
+  if (!actionMap.isEmpty()) {
+    notification.setActions(actionMap);
+  }
   if (parser.isSet(printOption)) {
     QTextStream qStdOut(stdout, QIODevice::WriteOnly);
     qStdOut << guid << Qt::endl;
   }
-  qDebug() << "Displaying notification" << guid;
-  notification.display().waitForFinished();
-  if (parser.isSet(waitOption)) {
-    qDebug() << "Waiting for notification to be closed";
-    if (!Oxide::DBusConnect(
-          &notification,
-          "removed",
-          [](QVariantList args) {
-            Q_UNUSED(args);
-            qApp->exit(EXIT_SUCCESS);
-          },
-          true
-        )) {
-      qDebug() << "Failed to wait for notification to exit";
+  bool transient = parser.isSet(transientOption);
+  if (!parser.isSet(waitOption) && actionMap.isEmpty()) {
+    qDebug() << "Displaying notification" << guid;
+    notification.display().waitForFinished();
+    if (transient) {
+      notification.remove();
+    }
+    return qExit(EXIT_SUCCESS);
+  }
+  unsigned int timeout = 0;
+  if (parser.isSet(expireOption)) {
+    bool ok = false;
+    timeout = parser.value(expireOption).toUInt(&ok);
+    if (!ok) {
+      qDebug() << "Invalid --expire-time value";
       return qExit(EXIT_FAILURE);
     }
-    if (parser.isSet(expireOption)) {
-      bool ok = false;
-      auto timeout = parser.value(expireOption).toInt(&ok);
-      if (!ok || timeout < 0) {
-        qDebug() << "Invalid --expire-time value";
-        return qExit(EXIT_FAILURE);
-      }
-      qDebug() << ("Timeout set to " + std::to_string(timeout) + "ms").c_str();
-      QTimer::singleShot(timeout, [&notification] {
-        qDebug() << "Notification wait timed out";
-        notification.remove().waitForFinished();
-        qApp->exit(EXIT_FAILURE);
-      });
-    }
-    return app.exec();
-  } else if (parser.isSet(transientOption)) {
-    notification.remove();
   }
-  return qExit(EXIT_SUCCESS);
+  Oxide::SignalHandler::setup_unix_signal_handlers();
+  QObject::connect(
+    signalHandler, &Oxide::SignalHandler::sigTerm, [&notification] {
+      notification.remove().waitForFinished();
+      qApp->exit(128 + SIGTERM);
+    }
+  );
+  QObject::connect(
+    signalHandler, &Oxide::SignalHandler::sigInt, [&notification] {
+      notification.remove().waitForFinished();
+      qApp->exit(128 + SIGINT);
+    }
+  );
+  QObject::connect(
+    signalHandler, &Oxide::SignalHandler::sigSegv, [&notification] {
+      notification.remove().waitForFinished();
+      qApp->exit(128 + SIGSEGV);
+    }
+  );
+  QObject::connect(
+    signalHandler, &Oxide::SignalHandler::sigBus, [&notification] {
+      notification.remove().waitForFinished();
+      qApp->exit(128 + SIGBUS);
+    }
+  );
+  if (!Oxide::DBusConnect(
+        &notification,
+        "displayed",
+        [&notification, timeout, transient](QVariantList args) {
+          Q_UNUSED(args);
+          qDebug() << "Waiting for notification to be closed";
+          if (!Oxide::DBusConnect(
+                &notification,
+                "removed",
+                [](QVariantList args) {
+                  Q_UNUSED(args);
+                  qApp->exit(EXIT_SUCCESS);
+                },
+                true
+              )) {
+            qDebug() << "Failed to wait for notification to exit";
+            qExit(EXIT_FAILURE);
+          }
+          if (!Oxide::DBusConnect(
+                &notification, "clicked", [&notification](QVariantList args) {
+                  notification.remove();
+                  QString action = args.value(0).toString();
+                  qDebug() << "clicked" << action;
+                  if (!action.isEmpty()) {
+                    QTextStream qStdOut(stdout, QIODevice::WriteOnly);
+                    qStdOut << action << Qt::endl;
+                  }
+                  qApp->exit(EXIT_SUCCESS);
+                }
+              )) {
+            qDebug() << "Failed to connect Notification::clicked";
+            qExit(EXIT_FAILURE);
+          }
+          if (timeout) {
+            qDebug()
+              << ("Timeout set to " + std::to_string(timeout) + "ms").c_str();
+            QTimer::singleShot(timeout, [&notification, transient] {
+              qDebug() << "Notification wait timed out";
+              if (transient) {
+                notification.remove().waitForFinished();
+              }
+              qApp->exit(EXIT_SUCCESS);
+            });
+          }
+        }
+      )) {
+    qDebug() << "Failed to connect Notification::displayed";
+    return qExit(EXIT_FAILURE);
+  }
+  qDebug() << "Displaying notification" << guid;
+  notification.display().waitForFinished();
+  qDebug() << "Waiting for notification to be be displayed";
+  return app.exec();
 }

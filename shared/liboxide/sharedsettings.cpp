@@ -16,6 +16,13 @@ namespace Oxide {
   O_SETTINGS_PROPERTY_BODY(SharedSettings, bool, General, lockOnSuspend, true)
   O_SETTINGS_PROPERTY_BODY(SharedSettings, int, General, autoSleep, 5)
   O_SETTINGS_PROPERTY_BODY(SharedSettings, int, General, autoLock, 5)
+  O_SETTINGS_PROPERTY_BODY(
+    SharedSettings,
+    uint,
+    General,
+    notificationDisplayTime,
+    5
+  )
   O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, pin)
   O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, onLogin)
   O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, onFailedLogin)
