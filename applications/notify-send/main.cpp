@@ -84,7 +84,7 @@ main(int argc, char* argv[]) {
     "Specifies the actions to display to the user. Implies --wait to wait for "
     "user input. May be set multiple times. The NAME of the action is output "
     "to stdout. If NAME is not specified, the numerical index of the option is "
-    "used (starting with 1).",
+    "used (starting with 0).",
     "NAME=TEXT"
   );
   parser.addOption(appOption);
@@ -164,13 +164,17 @@ main(int argc, char* argv[]) {
   }
   Notification notification(OXIDE_SERVICE, path.path(), bus);
   QVariantMap actionMap;
+  unsigned int optionIndex = 0;
   for (const auto& a : parser.values(appOption)) {
     int eq = a.indexOf('=');
     if (eq == -1) {
-      actionMap[a] = a;
+      actionMap[QString::number(optionIndex)] = a;
+    } else if (eq == 0) {
+      actionMap[QString::number(optionIndex)] = a.mid(eq + 1);
     } else {
       actionMap[a.left(eq)] = a.mid(eq + 1);
     }
+    optionIndex++;
   }
   if (!actionMap.isEmpty()) {
     notification.setActions(actionMap);
