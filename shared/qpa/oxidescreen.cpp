@@ -12,9 +12,6 @@ OxideScreen::geometry() const {
   return m_geometry;
 }
 
-static QTransform m_tabletTransform =
-  QTransform::fromTranslate(0.5, 0.5).rotate(90).translate(-0.5, -0.5);
-
 void
 OxideScreen::setGeometry(QRect geometry) {
   if (m_geometry != geometry) {
@@ -44,8 +41,7 @@ OxideScreen::physicalSize() const {
 
 Qt::ScreenOrientation
 OxideScreen::orientation() const {
-  // TODO - allow rotation
-  return Qt::PortraitOrientation;
+  return nativeOrientation();
 }
 
 Qt::ScreenOrientation

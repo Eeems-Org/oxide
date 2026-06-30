@@ -8,7 +8,6 @@
 #include <QPainter>
 #include <QQuickWindow>
 #include <atomic>
-#include <mutex>
 
 #include "liboxide.h"
 
