@@ -101,7 +101,7 @@ namespace Oxide {
     }
     QTextStream in(&file);
     QString modelName = in.readLine();
-    if (modelName.startsWith("reMarkable 2")) {
+    if (modelName.startsWith("reMarkable 2.0")) {
       O_DEBUG("RM2 detected...");
       _deviceType = DeviceType::RM2;
       return;
@@ -121,8 +121,15 @@ namespace Oxide {
       _deviceType = DeviceType::RMPPURE;
       return;
     }
-    O_DEBUG("RM1 detected...");
-    _deviceType = DeviceType::RM1;
+    if (
+      modelName.startsWith("reMarkable 1.0") ||
+      modelName.startsWith("reMarkable Prototype 1")
+    ) {
+      O_DEBUG("RM1 detected...");
+      _deviceType = DeviceType::RM1;
+      return;
+    }
+    O_DEBUG("Unknown device");
   }
 
   DeviceSettings::DeviceType DeviceSettings::getDeviceType() const {

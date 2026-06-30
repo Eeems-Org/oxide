@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+device="$(cat /sys/devices/soc0/machine)"
 case "$(basename "${EXECUTABLE:?EXECUTABLE missing}")" in
 puzzles)
   export OXIDE_PRELOAD_FORCE_INVERT_TOUCH_X=1
@@ -9,16 +10,26 @@ tilem | yaft)
   export OXIDE_PRELOAD_FORCE_RM1=1
   ;;
 chessmarkable)
-  if [[ "$(cat /sys/devices/soc0/machine)" != "reMarkable 2.0" ]]; then
+  if [[ "$device" != "reMarkable 2.0" ]]; then
     export OXIDE_PRELOAD_FORCE_RM1=1
   fi
   export OXIDE_PRELOAD_FORCE_32BIT_FSCREEN=1
   ;;
 doommarkable)
-  if [[ "$(cat /sys/devices/soc0/machine)" != "reMarkable 2.0" ]]; then
+  if [[ "$device" != "reMarkable 2.0" ]]; then
     export OXIDE_PRELOAD_FORCE_RM1=1
   fi
   export OXIDE_PRELOAD_FORCE_32BIT_FSCREEN=1
+  ;;
+koreader.sh)
+  if [[ "$device" == "reMarkable Chiappa" ]]; then
+    export OXIDE_PRELOAD_FORCE_RM1=1
+  elif [[ "$device" != "reMarkable 1.0" ]] &&
+    [[ "$device" != "reMarkable Prototype 1" ]] &&
+    [[ "$device" != "reMarkable 2.0" ]]; then
+    export OXIDE_PRELOAD_FORCE_RM1_INPUT=1
+  fi
+  export LD_LIBRARY_PATH="$(dirname "$EXECUTABLE")/libs"
   ;;
 esac
 eval "set -- $ARGUMENTS"
