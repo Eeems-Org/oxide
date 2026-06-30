@@ -170,12 +170,9 @@ namespace Oxide {
         return "rotate=180";
       case DeviceType::RM2:
         return "rotate=180:invertx";
-      case DeviceType::RMPP:
-        return "";
       case DeviceType::RMPPM:
-        return "";
+      case DeviceType::RMPP:
       case DeviceType::RMPPURE:
-        return "";
       default:
         return "";
     }
