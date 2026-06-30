@@ -43,37 +43,39 @@ namespace Client {
         _WARN("OXIDE_PRELOAD_DEBUG invalid value");
       }
     }
-    std::ios_base::Init i;
-    std::ifstream deviceIdFile{"/sys/devices/soc0/machine"};
-    std::string deviceId;
-    std::getline(deviceIdFile, deviceId);
-    if (deviceId == "reMarkable 1.0" || deviceId == "reMarkable Prototype 1") {
-      Client::deviceType = Client::DeviceType::RM1;
-    } else if (deviceId == "reMarkable 2.0") {
-      Client::deviceType = Client::DeviceType::RM2;
-    } else if (deviceId == "reMarkable Ferrari") {
-      Client::deviceType = Client::DeviceType::RMPP;
-    } else if (deviceId == "reMarkable Chiappa") {
-      Client::deviceType = Client::DeviceType::RMPPM;
-    } else if (deviceId == "reMarkable Tatsu") {
-      Client::deviceType = Client::DeviceType::RMPPURE;
-    } else {
-      _WARN("Unknown device: %s", deviceId.c_str());
-      Client::deviceType = Client::DeviceType::UNKNOWN;
-    }
     std::string path;
     realpath("/proc/self/exe", path);
     if (path == "/usr/bin/xochitl") {
-      Client::IS_XOCHITL = true;
+      IS_XOCHITL = true;
     }
     if (
-      !Client::IS_XOCHITL && path != "/usr/bin/evtest" &&
+      !IS_XOCHITL && path != "/usr/bin/evtest" &&
       (!path.starts_with("/opt") || path.starts_with("/opt/sbin")) &&
       (!path.starts_with("/home") ||
        path.starts_with("/home/root/.entware/sbin"))
     ) {
       // We ignore this executable
       set_blight_debug_level(0);
+      FAILED_INIT = false;
+      return false;
+    }
+    std::ios_base::Init i;
+    std::ifstream deviceIdFile{"/sys/devices/soc0/machine"};
+    std::string deviceId;
+    std::getline(deviceIdFile, deviceId);
+    if (deviceId == "reMarkable 1.0" || deviceId == "reMarkable Prototype 1") {
+      deviceType = DeviceType::RM1;
+    } else if (deviceId == "reMarkable 2.0") {
+      deviceType = DeviceType::RM2;
+    } else if (deviceId == "reMarkable Ferrari") {
+      deviceType = DeviceType::RMPP;
+    } else if (deviceId == "reMarkable Chiappa") {
+      deviceType = DeviceType::RMPPM;
+    } else if (deviceId == "reMarkable Tatsu") {
+      deviceType = DeviceType::RMPPURE;
+    } else {
+      _WARN("Unknown device: %s", deviceId.c_str());
+      deviceType = DeviceType::UNKNOWN;
     }
     _INFO(
       "\nDebug Level: %s"
