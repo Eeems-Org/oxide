@@ -580,6 +580,49 @@ test_blight_surface_id_list(int fd) {
   assert(res == 0);
   blight_connection_thread_deref(thread);
 }
+void
+test_blight_surface_id_list_multiple(int fd) {
+  struct blight_thread_t* thread = blight_start_connection_thread(fd);
+  assert(thread != NULL);
+  blight_surface_id_t expected[3];
+  for (int i = 0; i < 3; i++) {
+    blight_buf_t* buf =
+      blight_create_buffer(10, 10, 100, 100, 100 * 3, Format_RGB32, 1.0);
+    assert(buf != NULL);
+    expected[i] = blight_add_surface(bus, buf);
+    assert(expected[i] > 0);
+  }
+  struct blight_surface_id_list_t* list;
+  int res = blight_list_surfaces(fd, &list);
+  assert(res == 0);
+  assert(list != NULL);
+  assert(blight_surface_id_list_count(list) == 3);
+  blight_surface_id_t* data = blight_surface_id_list_data(list);
+  assert(data != NULL);
+  for (int i = 0; i < 3; i++) {
+    int found = 0;
+    for (unsigned int j = 0; j < blight_surface_id_list_count(list); j++) {
+      if (data[j] == expected[i]) {
+        found = 1;
+        break;
+      }
+    }
+    assert(found);
+  }
+  res = blight_surface_id_list_deref(list);
+  assert(res == 0);
+  for (int i = 0; i < 3; i++) {
+    res = blight_remove_surface(fd, expected[i]);
+    assert(res == 0);
+  }
+  res = blight_list_surfaces(fd, &list);
+  assert(res == 0);
+  assert(list != NULL);
+  assert(blight_surface_id_list_count(list) == 0);
+  res = blight_surface_id_list_deref(list);
+  assert(res == 0);
+  blight_connection_thread_deref(thread);
+}
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclobbered"
@@ -639,6 +682,11 @@ test_c() {
   );
   TEST_EXPR(
     test_blight_surface_id_list, test_blight_surface_id_list(fd), fd > 0
+  );
+  TEST_EXPR(
+    test_blight_surface_id_list_multiple,
+    test_blight_surface_id_list_multiple(fd),
+    fd > 0
   );
 
   if (fd > 0) {

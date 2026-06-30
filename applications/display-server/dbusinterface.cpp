@@ -9,6 +9,8 @@
 #include <sys/poll.h>
 #include <unistd.h>
 
+#include <algorithm>
+
 #include <QCoreApplication>
 #include <QDBusArgument>
 #include <QDBusConnection>
@@ -166,6 +168,7 @@ DbusInterface::open(QDBusMessage message) {
   auto connection = getConnection(message);
   if (connection != nullptr) {
     O_DEBUG("Found existing for: " << connection->pid());
+    connection->enablePing();
     return QDBusUnixFileDescriptor(connection->socketDescriptor());
   }
   connection = createConnection(pid);
@@ -325,10 +328,29 @@ DbusInterface::setFlags(
   auto connection = getConnection(identifier);
   if (connection != nullptr) {
     for (auto& flag : flags) {
-      O_DEBUG("Flag" << flag << "set for connection" << identifier);
+      O_INFO("Flag" << flag << "set for connection" << identifier);
       connection->set(flag);
     }
     sortZ();
+    if (!connection->has("unified")) {
+      return;
+    }
+    auto pgid = connection->pgid();
+    {
+      QReadLocker _locker(&connectionsLock);
+      if (
+        std::any_of(connections.begin(), connections.end(), [pgid](auto& conn) {
+          return conn->pid() == pgid;
+        })
+      ) {
+        return;
+      }
+    }
+    auto parentConnection = createConnection(pgid);
+    if (parentConnection != nullptr) {
+      parentConnection->set("unified");
+      parentConnection->disablePing();
+    }
     return;
   }
   auto surface = getSurface(identifier);
@@ -337,6 +359,7 @@ DbusInterface::setFlags(
     return;
   }
   for (auto& flag : flags) {
+    O_INFO("Flag" << flag << "set for surface" << identifier);
     surface->set(flag);
   }
   sortZ();

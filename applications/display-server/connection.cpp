@@ -258,6 +258,7 @@ Connection::close() {
   }
   m_pingTimer.stop();
   m_notRespondingTimer.stop();
+  m_notifier->setEnabled(false);
   QList<std::shared_ptr<Surface>> allSurfaces;
   {
     QReadLocker _locker(&surfacesLock);
@@ -293,6 +294,18 @@ Connection::close() {
     surfaces.clear();
   }
   emit finished();
+}
+
+void
+Connection::disablePing() {
+  m_pingTimer.stop();
+  m_notRespondingTimer.stop();
+}
+
+void
+Connection::enablePing() {
+  m_pingTimer.start();
+  m_notRespondingTimer.start();
 }
 
 std::shared_ptr<Surface>
@@ -776,7 +789,7 @@ Connection::ack(
   Blight::data_t data
 ) {
   auto ack = Blight::message_t::create_ack(message.get(), size);
-  if (send(ack, nullptr, 0)) {
+  if (send(ack, data, size)) {
     C_DEBUG("Acked:" << ack.ackid << size);
   }
 }

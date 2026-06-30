@@ -1,4 +1,5 @@
 #include "debug.h"
+#include <cstdlib>
 
 static int BLIGHT_DEBUG_LOGGING = LOG_WARNING;
 
@@ -20,14 +21,14 @@ __printf_header(int priority) {
   }
   char name[16];
   prctl(PR_GET_NAME, name);
-  auto selfpath = realpath("/proc/self/exe", NULL);
+  auto selfpath = realpath("/proc/self/exe", nullptr);
   fprintf(
     stderr,
     "[%i:%i:%i %s - %s] %s: ",
     getpgrp(),
     getpid(),
     gettid(),
-    selfpath,
+    selfpath == nullptr ? "(unknown)" : selfpath,
     name,
     level.c_str()
   );

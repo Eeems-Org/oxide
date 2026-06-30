@@ -118,7 +118,9 @@ namespace Blight {
     disconnectCallbacks.push_back(callback);
   }
 
-  void Connection::onSurfaceDeleted(std::function<void(surface_id_t)> callback) {
+  void Connection::onSurfaceDeleted(
+    std::function<void(surface_id_t)> callback
+  ) {
     surfaceDeletedCallbacks.push_back(callback);
   }
 
@@ -456,7 +458,7 @@ namespace Blight {
       _WARN("Missing list data pointer!");
       return std::vector<surface_id_t>();
     }
-    auto buf = ack->data.get();
+    auto buf = reinterpret_cast<surface_id_t*>(ack->data.get());
     return std::vector<surface_id_t>(
       buf, buf + (ack->data_size / sizeof(surface_id_t))
     );

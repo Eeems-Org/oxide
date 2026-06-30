@@ -241,7 +241,7 @@ namespace Client {
     }
   }
   bool isUnified() {
-    static bool enabled = getenv("OXIDE_PRELOAD_DISABLE_UNIFIED") != nullptr;
+    static bool enabled = getenv("OXIDE_PRELOAD_DISABLE_UNIFIED") == nullptr;
     return enabled;
   }
   int forcedWaveform() {

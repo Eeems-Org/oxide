@@ -73,6 +73,8 @@ signals:
 
 public slots:
   void close();
+  void disablePing();
+  void enablePing();
 
 private slots:
   void readSocket();

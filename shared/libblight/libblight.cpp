@@ -336,7 +336,7 @@ namespace Blight {
       errno = EINVAL;
       return -1;
     }
-    _DEBUG("[Blight::repaint(%d)]", identifier);
+    _DEBUG("[Blight::getSurface(%d)]", identifier);
     auto reply = dbus->call_method(
       BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "getSurface", "q", identifier
     );
