@@ -22,14 +22,13 @@ doommarkable)
   export OXIDE_PRELOAD_FORCE_32BIT_FSCREEN=1
   ;;
 koreader.sh)
-  if [[ "$device" == "reMarkable Chiappa" ]]; then
+  if [[ "$device" == "reMarkable Chiappa" ]] || [[ "$device" == "reMarkable Ferrari" ]]; then
     export OXIDE_PRELOAD_FORCE_RM1=1
-  elif [[ "$device" != "reMarkable 1.0" ]] &&
-    [[ "$device" != "reMarkable Prototype 1" ]] &&
-    [[ "$device" != "reMarkable 2.0" ]]; then
+  elif [[ "$device" == "reMarkable Tatsu" ]]; then
     export OXIDE_PRELOAD_FORCE_RM1_INPUT=1
   fi
   export LD_LIBRARY_PATH="$(dirname "$EXECUTABLE")/libs"
+  export PATH="/home/root/.vellum/bin:/usr/bin"
   ;;
 esac
 eval "set -- $ARGUMENTS"
