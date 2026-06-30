@@ -139,6 +139,7 @@ postosupgrade() {
     cp -a /home/root/.vellum/share/oxide/systemd/system/tarnish.service \
         /etc/systemd/system/
     systemctl daemon-reload
+    systemctl reload dbus
 }
 
 predeinstall() {
@@ -215,6 +216,7 @@ oxide_display() {
         cp -a /home/root/.vellum/share/oxide/systemd/system/blight.service \
             /etc/systemd/system/
         systemctl daemon-reload
+        systemctl reload dbus
     }
 
     predeinstall() {
