@@ -79,8 +79,8 @@ namespace Blight {
     : m_fd(fcntl(fd, F_DUPFD_CLOEXEC, 3))
     , stop_requested(false)
     , thread(run, this) {
-    int flags = fcntl(fd, F_GETFD, NULL);
-    fcntl(fd, F_SETFD, flags | O_NONBLOCK);
+    int flags = fcntl(m_fd, F_GETFD, NULL);
+    fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
   }
 
   Connection::~Connection() {
