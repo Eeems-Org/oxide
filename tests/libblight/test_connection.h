@@ -2,12 +2,12 @@
 #include "autotest.h"
 
 class test_Connection : public QObject {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    test_Connection();
-    ~test_Connection();
+  test_Connection();
+  ~test_Connection();
 
 private slots:
-    void test_surfaces_data_parsing();
+  void test_surfaces_data_parsing();
 };

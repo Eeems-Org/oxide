@@ -591,6 +591,7 @@ test_blight_surface_id_list_multiple(int fd) {
     assert(buf != NULL);
     expected[i] = blight_add_surface(bus, buf);
     assert(expected[i] > 0);
+    blight_buffer_deref(buf);
   }
   struct blight_surface_id_list_t* list;
   int res = blight_list_surfaces(fd, &list);

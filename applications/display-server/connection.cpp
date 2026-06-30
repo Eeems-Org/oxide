@@ -283,7 +283,8 @@ Connection::close() {
             }
           );
         }
-      )
+      ),
+      allSurfaces.end()
     );
   }
   for (auto& surface : allSurfaces) {

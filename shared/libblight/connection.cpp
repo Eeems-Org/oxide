@@ -454,6 +454,13 @@ namespace Blight {
     if (!ack->data_size) {
       return std::vector<surface_id_t>();
     }
+    if (ack->data_size % sizeof(surface_id_t) != 0) {
+      _WARN(
+        "Surface list size is not multiple of sizeof(surface_id_t): size=%u",
+        ack->data_size
+      );
+      return std::vector<surface_id_t>();
+    }
     if (ack->data == nullptr) {
       _WARN("Missing list data pointer!");
       return std::vector<surface_id_t>();
