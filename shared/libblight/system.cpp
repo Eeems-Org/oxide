@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <systemd/sd-bus-protocol.h>
 #include <systemd/sd-bus.h>
 #include <unistd.h>
 
@@ -238,7 +239,8 @@ namespace Blight {
       return false;
     }
     sd_bus_error error = SD_BUS_ERROR_NULL;
-    res = sd_bus_call(dbus->bus(), message, 0, &error, NULL);
+    sd_bus_message* reply = nullptr;
+    res = sd_bus_call(dbus->bus(), message, 0, &error, &reply);
     sd_bus_message_unref(message);
     if (res < 0) {
       _WARN(
@@ -249,6 +251,7 @@ namespace Blight {
       return false;
     }
     sd_bus_error_free(&error);
+    sd_bus_message_unref(reply);
     return true;
   }
 

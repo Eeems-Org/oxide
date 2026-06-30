@@ -88,6 +88,11 @@ namespace Blight {
      */
     void onDisconnect(std::function<void(int)> callback);
     /*!
+     * \brief Run a callback when a surface is deleted by another connection
+     * \param callback Callback to run.
+     */
+    void onSurfaceDeleted(std::function<void(surface_id_t)> callback);
+    /*!
      * \brief Read a message from the display server connection
      * \return A message
      */
@@ -293,6 +298,7 @@ namespace Blight {
     std::map<unsigned short, std::shared_ptr<input_buffer_t>> m_inputBuffers;
     std::atomic<bool> stop_requested;
     std::vector<std::function<void(int)>> disconnectCallbacks;
+    std::vector<std::function<void(surface_id_t)>> surfaceDeletedCallbacks;
     std::thread thread;
     std::mutex mutex;
     static void run(Connection* connection);

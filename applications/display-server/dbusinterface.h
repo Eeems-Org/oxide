@@ -60,6 +60,8 @@ public:
 #endif
   std::shared_ptr<Surface> getSurface(QString identifier);
   std::shared_ptr<Connection> getConnection(Connection* ptr);
+  const QList<std::shared_ptr<Connection>> getConnections();
+  void removeSurface(QString identifier);
   QList<std::shared_ptr<Surface>> surfaces();
   QList<std::shared_ptr<Surface>> sortedSurfaces();
   QList<std::shared_ptr<Surface>> visibleSurfaces();
@@ -68,6 +70,7 @@ public:
   void setFocus(std::shared_ptr<Connection> connection);
   void inputEvents(unsigned int device, const std::vector<input_event>& events);
   bool inExclusiveMode();
+  bool hasRunningConnection(pid_t pgid);
 
   // Property getter/setters
   const QByteArray& clipboard();

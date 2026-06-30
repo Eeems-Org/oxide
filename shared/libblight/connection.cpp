@@ -79,8 +79,8 @@ namespace Blight {
     : m_fd(fcntl(fd, F_DUPFD_CLOEXEC, 3))
     , stop_requested(false)
     , thread(run, this) {
-    int flags = fcntl(fd, F_GETFD, NULL);
-    fcntl(fd, F_SETFD, flags | O_NONBLOCK);
+    int flags = fcntl(m_fd, F_GETFD, NULL);
+    fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
   }
 
   Connection::~Connection() {
@@ -116,6 +116,12 @@ namespace Blight {
 
   void Connection::onDisconnect(std::function<void(int)> callback) {
     disconnectCallbacks.push_back(callback);
+  }
+
+  void Connection::onSurfaceDeleted(
+    std::function<void(surface_id_t)> callback
+  ) {
+    surfaceDeletedCallbacks.push_back(callback);
   }
 
   std::optional<input_event>
@@ -448,11 +454,18 @@ namespace Blight {
     if (!ack->data_size) {
       return std::vector<surface_id_t>();
     }
+    if (ack->data_size % sizeof(surface_id_t) != 0) {
+      _WARN(
+        "Surface list size is not multiple of sizeof(surface_id_t): size=%u",
+        ack->data_size
+      );
+      return std::vector<surface_id_t>();
+    }
     if (ack->data == nullptr) {
       _WARN("Missing list data pointer!");
       return std::vector<surface_id_t>();
     }
-    auto buf = ack->data.get();
+    auto buf = reinterpret_cast<surface_id_t*>(ack->data.get());
     return std::vector<surface_id_t>(
       buf, buf + (ack->data_size / sizeof(surface_id_t))
     );
@@ -563,6 +576,14 @@ namespace Blight {
           );
           if (!maybe.has_value()) {
             _WARN("Failed to ack ping: %s", std::strerror(errno));
+          }
+          break;
+        }
+        case MessageType::Delete: {
+          auto identifier = scalar_cast<surface_id_t>(message).value();
+          _DEBUG("Surface deleted: %u", identifier);
+          for (auto& callback : connection->surfaceDeletedCallbacks) {
+            callback(identifier);
           }
           break;
         }

@@ -79,6 +79,12 @@ namespace FB {
     }
     if (Client::isFbEnabled()) {
       FB::buffer = Blight::buf_t::new_ptr();
+      if (Client::isUnified()) {
+        Blight::setFlags(
+          std::string("connection/") + std::to_string(getpid()),
+          std::vector<std::string>{"unified"}
+        );
+      }
     } else {
       Blight::setFlags(
         std::string("connection/") + std::to_string(getpid()),
@@ -539,14 +545,14 @@ namespace FB {
     }
     _DEBUG("Checking existing surfaces for buffer");
     for (auto& identifier : connection->surfaces()) {
-      _DEBUG("Checking buffer for surface %s", identifier);
+      _DEBUG("Checking buffer for surface %hu", identifier);
       auto maybe = connection->getBuffer(identifier);
       if (!maybe.has_value()) {
         continue;
       }
       auto surfaceBuffer = maybe.value();
       if (surfaceBuffer->data == nullptr) {
-        _DEBUG("Buffer for surface %s missing", identifier);
+        _DEBUG("Buffer for surface %hu missing", identifier);
         continue;
       }
       if (
@@ -556,7 +562,7 @@ namespace FB {
         surfaceBuffer->format != format || surfaceBuffer->scale != scale
       ) {
         _DEBUG(
-          "Buffer for surface %s does not match: (%d,%d) %dx%d %dbytes %d %f",
+          "Buffer for surface %hu does not match: (%d,%d) %dx%d %dbytes %d %f",
           identifier,
           surfaceBuffer->x,
           surfaceBuffer->y,
@@ -568,7 +574,7 @@ namespace FB {
         );
         continue;
       }
-      _INFO("Reusing existing surface: %s", identifier);
+      _INFO("Reusing existing surface: %hu", identifier);
       buffer = surfaceBuffer;
       break;
     }

@@ -1,5 +1,6 @@
 #include "connection.h"
 
+#include <algorithm>
 #include <assert.h>
 #include <libblight/socket.h>
 #include <liboxide/debug.h>
@@ -15,6 +16,7 @@
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <cstring>
+#include <utility>
 
 #include "dbusinterface.h"
 
@@ -251,21 +253,60 @@ Connection::resume() {
 
 void
 Connection::close() {
-  if (!m_closed.test_and_set()) {
-    m_pingTimer.stop();
-    m_notRespondingTimer.stop();
-    {
-      QReadLocker _locker(&surfacesLock);
-      for (auto& item : surfaces) {
-        item.second->removed();
-      }
-    }
-    {
-      QWriteLocker _locker(&surfacesLock);
-      surfaces.clear();
-    }
-    emit finished();
+  if (m_closed.test_and_set()) {
+    return;
   }
+  m_pingTimer.stop();
+  m_notRespondingTimer.stop();
+  m_notifier->setEnabled(false);
+  QList<std::shared_ptr<Surface>> allSurfaces;
+  {
+    QReadLocker _locker(&surfacesLock);
+    for (auto& [id, surface] : surfaces) {
+      allSurfaces.append(surface);
+    }
+  }
+  if (has("unified") && dbusInterface->hasRunningConnection(m_pgid)) {
+    const auto& connections = dbusInterface->getConnections();
+    allSurfaces.erase(
+      std::remove_if(
+        allSurfaces.begin(),
+        allSurfaces.end(),
+        [this, connections](std::shared_ptr<Surface> surface) {
+          auto identifier = surface->id();
+          return std::any_of(
+            connections.begin(),
+            connections.end(),
+            [this, identifier](auto& connection) {
+              return connection != nullptr && connection.get() != this &&
+                     connection->getSurface(identifier) != nullptr;
+            }
+          );
+        }
+      ),
+      allSurfaces.end()
+    );
+  }
+  for (auto& surface : allSurfaces) {
+    surface->removed();
+  }
+  {
+    QWriteLocker _locker(&surfacesLock);
+    surfaces.clear();
+  }
+  emit finished();
+}
+
+void
+Connection::disablePing() {
+  m_pingTimer.stop();
+  m_notRespondingTimer.stop();
+}
+
+void
+Connection::enablePing() {
+  m_pingTimer.start();
+  m_notRespondingTimer.start();
 }
 
 std::shared_ptr<Surface>
@@ -299,6 +340,36 @@ Connection::addSurface(
   dbusInterface->sortZ();
   surface->repaint();
   return surface;
+}
+
+void
+Connection::addSurface(std::shared_ptr<Surface> surface) {
+  auto identifier = surface->identifier();
+  {
+    QWriteLocker _locker(&surfacesLock);
+    surfaces.insert_or_assign(identifier, surface);
+  }
+}
+
+void
+Connection::removeSurface(Blight::surface_id_t id) {
+  std::shared_ptr<Surface> surface;
+  {
+    QWriteLocker _locker(&surfacesLock);
+    auto it = surfaces.find(id);
+    if (it == surfaces.end()) {
+      return;
+    }
+    surface = it->second;
+    surfaces.erase(it);
+  }
+  surface->removed();
+  {
+    Blight::header_t header{
+      {.type = Blight::MessageType::Delete, .ackid = 0, .size = sizeof(id)}
+    };
+    send(header, reinterpret_cast<Blight::data_t>(&id), sizeof(id));
+  }
 }
 
 std::shared_ptr<Surface>
@@ -542,19 +613,15 @@ Connection::readSocket() {
         break;
       }
       case Blight::MessageType::Delete: {
-        auto identifier =
+        auto surfaceId =
           Blight::scalar_cast<Blight::surface_id_t>(message).value();
-        C_DEBUG("Delete requested:" << identifier);
-        auto surface = getSurface(identifier);
+        C_DEBUG("Delete requested:" << surfaceId);
+        auto surface = getSurface(surfaceId);
         if (surface == nullptr) {
-          C_WARNING("Could not find surface" << identifier);
+          C_WARNING("Could not find surface" << surfaceId);
           break;
         }
-        surface->removed();
-        {
-          QWriteLocker _locker(&surfacesLock);
-          surfaces.erase(identifier);
-        }
+        dbusInterface->removeSurface(surface->id());
         guiThread->notify();
         break;
       }
@@ -723,15 +790,7 @@ Connection::ack(
   Blight::data_t data
 ) {
   auto ack = Blight::message_t::create_ack(message.get(), size);
-  if (!Blight::send_blocking(
-        m_serverFd,
-        reinterpret_cast<Blight::data_t>(&ack),
-        sizeof(Blight::header_t)
-      )) {
-    C_WARNING("Failed to write ack header to socket:" << strerror(errno));
-  } else if (size && !Blight::send_blocking(m_serverFd, data, size)) {
-    C_WARNING("Failed to write ack data to socket:" << strerror(errno));
-  } else {
+  if (send(ack, data, size)) {
     C_DEBUG("Acked:" << ack.ackid << size);
   }
 }
@@ -745,18 +804,31 @@ Connection::ping() {
     Blight::header_t ping{
       {.type = Blight::MessageType::Ping, .ackid = ++pingId, .size = 0}
     };
-    if (!Blight::send_blocking(
-          m_serverFd,
-          reinterpret_cast<Blight::data_t>(&ping),
-          sizeof(Blight::header_t)
-        )) {
-      C_WARNING("Failed to write to socket:" << strerror(errno));
-    } else {
+    if (send(ping, nullptr, 0)) {
 #ifdef ACK_DEBUG
       C_DEBUG("Ping" << ping.ackid);
 #endif
     }
   }
   m_pingTimer.start();
+}
+
+bool
+Connection::send(Blight::header_t header, Blight::data_t data, ssize_t size) {
+  if (!Blight::send_blocking(
+        m_serverFd,
+        reinterpret_cast<Blight::data_t>(&header),
+        sizeof(Blight::header_t)
+      )) {
+    C_WARNING("Failed to write message header:" << strerror(errno));
+    return false;
+  }
+  if (
+    data != nullptr && size && !Blight::send_blocking(m_serverFd, data, size)
+  ) {
+    C_WARNING("Failed to write message data:" << strerror(errno));
+    return false;
+  }
+  return true;
 }
 #include "moc_connection.cpp"

@@ -130,9 +130,6 @@ Surface::isValid() {
 
 std::shared_ptr<QImage>
 Surface::image() {
-  if (m_connection == nullptr || !m_connection->isRunning()) {
-    return std::shared_ptr<QImage>();
-  }
   return m_image;
 }
 
@@ -282,10 +279,7 @@ Surface::unset(const QString& flag) {
 
 std::shared_ptr<Connection>
 Surface::connection() {
-  if (m_connection == nullptr) {
-    return nullptr;
-  }
-  return dbusInterface->getConnection(m_connection.get());
+  return m_connection;
 }
 
 bool

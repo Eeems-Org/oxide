@@ -9,6 +9,8 @@
 #include <sys/poll.h>
 #include <unistd.h>
 
+#include <algorithm>
+
 #include <QCoreApplication>
 #include <QDBusArgument>
 #include <QDBusConnection>
@@ -166,6 +168,7 @@ DbusInterface::open(QDBusMessage message) {
   auto connection = getConnection(message);
   if (connection != nullptr) {
     O_DEBUG("Found existing for: " << connection->pid());
+    connection->enablePing();
     return QDBusUnixFileDescriptor(connection->socketDescriptor());
   }
   connection = createConnection(pid);
@@ -236,6 +239,19 @@ DbusInterface::addSurface(
     sendErrorReply(QDBusError::InternalError, "Surface buffer is not valid");
     return 0;
   }
+  if (connection->has("unified")) {
+    auto pgid = connection->pgid();
+    QReadLocker _locker(&connectionsLock);
+    for (auto& other : std::as_const(connections)) {
+      if (other.get() == connection.get()) {
+        continue;
+      }
+      if (other->pgid() != pgid || !other->has("unified")) {
+        continue;
+      }
+      other->addSurface(surface);
+    }
+  }
   return surface->identifier();
 }
 
@@ -301,7 +317,10 @@ DbusInterface::setFlags(
       );
       return;
     }
-    if (!connection->has("system")) {
+    if (
+      !connection->has("system") &&
+      (flags.contains("system") || connection->id() != identifier)
+    ) {
       sendErrorReply(QDBusError::AccessDenied, "Must be system connection");
       return;
     }
@@ -309,10 +328,29 @@ DbusInterface::setFlags(
   auto connection = getConnection(identifier);
   if (connection != nullptr) {
     for (auto& flag : flags) {
-      O_DEBUG("Flag" << flag << "set for connection" << identifier);
+      O_INFO("Flag" << flag << "set for connection" << identifier);
       connection->set(flag);
     }
     sortZ();
+    if (!connection->has("unified")) {
+      return;
+    }
+    auto pgid = connection->pgid();
+    {
+      QReadLocker _locker(&connectionsLock);
+      if (
+        std::any_of(connections.begin(), connections.end(), [pgid](auto& conn) {
+          return conn->pid() == pgid;
+        })
+      ) {
+        return;
+      }
+    }
+    auto parentConnection = createConnection(pgid);
+    if (parentConnection != nullptr) {
+      parentConnection->set("unified");
+      parentConnection->disablePing();
+    }
     return;
   }
   auto surface = getSurface(identifier);
@@ -321,6 +359,7 @@ DbusInterface::setFlags(
     return;
   }
   for (auto& flag : flags) {
+    O_INFO("Flag" << flag << "set for surface" << identifier);
     surface->set(flag);
   }
   sortZ();
@@ -748,6 +787,13 @@ DbusInterface::getConnection(QString identifier) {
   }
   return nullptr;
 }
+
+const QList<std::shared_ptr<Connection>>
+DbusInterface::getConnections() {
+  QReadLocker _locker(&connectionsLock);
+  return std::as_const(connections);
+}
+
 std::shared_ptr<Connection>
 DbusInterface::getConnection(Connection* ptr) {
   QReadLocker _locker(&connectionsLock);
@@ -847,9 +893,45 @@ DbusInterface::createConnection(int pid) {
       }
     }
   });
+  {
+    QReadLocker _locker(&connectionsLock);
+    for (auto& _connection : std::as_const(connections)) {
+      if (_connection->pgid() != pgid || !_connection->has("unified")) {
+        continue;
+      }
+      connection->set("unified");
+      for (auto& surface : _connection->getSurfaces()) {
+        if (connection->getSurface(surface->identifier()) == nullptr) {
+          connection->addSurface(surface);
+        }
+      }
+    }
+  }
   QWriteLocker _locker(&connectionsLock);
   connections.append(connection);
   return connection;
+}
+
+bool
+DbusInterface::hasRunningConnection(pid_t pgid) {
+  QReadLocker _locker(&connectionsLock);
+  for (auto& connection : std::as_const(connections)) {
+    if (connection->pgid() == pgid && connection->isRunning()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void
+DbusInterface::removeSurface(QString identifier) {
+  QReadLocker _locker(&connectionsLock);
+  for (auto& connection : std::as_const(connections)) {
+    auto surface = connection->getSurface(identifier);
+    if (surface != nullptr) {
+      connection->removeSurface(surface->identifier());
+    }
+  }
 }
 
 QList<std::shared_ptr<Surface>>
@@ -858,7 +940,9 @@ DbusInterface::surfaces() {
   QReadLocker _locker(&connectionsLock);
   for (auto& connection : std::as_const(connections)) {
     for (auto& surface : connection->getSurfaces()) {
-      surfaces.append(surface);
+      if (!surfaces.contains(surface)) {
+        surfaces.append(surface);
+      }
     }
   }
   return surfaces;
@@ -894,8 +978,12 @@ DbusInterface::visibleSurfaces() {
   QList<std::shared_ptr<Surface>> surfaces;
   for (auto& surface : sortedSurfaces()) {
     auto connection = surface->connection();
+    if (connection == nullptr || !surface->visible()) {
+      continue;
+    }
     if (
-      connection != nullptr && surface->visible() && connection->isRunning()
+      connection->isRunning() ||
+      (connection->has("unified") && hasRunningConnection(connection->pgid()))
     ) {
       surfaces.append(surface);
     }

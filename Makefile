@@ -126,8 +126,10 @@ _install-%:
 			cp "/home/root/packages/$*/$$key" "/home/root/.vellum/etc/apk/keys/$$key"
 		fi
 		vellum --interactive=no update
-		vellum --interactive=no add launcherctl-oxide@oxide || vellum --interactive=no fix
+		vellum --interactive=no add launcherctl-oxide@oxide oxide-tests@oxide || vellum --interactive=no fix
 		vellum --interactive=no upgrade || vellum --interactive=no fix
+		launcherctl stop-launcher
+		find /home/root/.local/share/tests/ -type f -executable -exec {} \;
 		if [[ "$$(launcherctl current-launcher)" == "oxide" ]];then
 			echo "Restarting oxide"
 			launcherctl restart-launcher

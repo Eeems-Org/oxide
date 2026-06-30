@@ -906,6 +906,11 @@ connection_thread(
         completed.push_back(message);
         break;
       }
+      case BlightMessageType::Delete: {
+        // TODO expose to client that a surface was removed
+        blight_message_deref(message);
+        break;
+      }
       default:
         _WARN("Unexpected message type: %d", message->header.type);
         blight_message_deref(message);

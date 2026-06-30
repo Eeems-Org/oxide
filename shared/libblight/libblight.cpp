@@ -336,7 +336,7 @@ namespace Blight {
       errno = EINVAL;
       return -1;
     }
-    _DEBUG("[Blight::repaint(%d)]", identifier);
+    _DEBUG("[Blight::getSurface(%d)]", identifier);
     auto reply = dbus->call_method(
       BLIGHT_SERVICE, "/", BLIGHT_INTERFACE, "getSurface", "q", identifier
     );
@@ -351,7 +351,7 @@ namespace Blight {
     auto fd = reply->read_value<int>("h");
     if (!fd.has_value()) {
       _WARN(
-        "[Blight::addSurface(%d)::read_value(\"h\")] Error: %s",
+        "[Blight::getSurface(%d)::read_value(\"h\")] Error: %s",
         identifier,
         reply->error_message().c_str()
       );
@@ -360,7 +360,7 @@ namespace Blight {
     int dfd = dup(fd.value());
     if (dfd == -1) {
       _WARN(
-        "[Blight::addSurface(%d)::dup(%d)] Error: %s",
+        "[Blight::getSurface(%d)::dup(%d)] Error: %s",
         identifier,
         fd.value(),
         reply->error_message().c_str()

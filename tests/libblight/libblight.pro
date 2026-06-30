@@ -14,12 +14,14 @@ TEMPLATE = app
 SOURCES +=  \
     main.cpp \
     test_clock.cpp \
+    test_connection.cpp \
     test_socket.cpp \
     test_types.cpp
 
 HEADERS += \
     autotest.h \
     test_clock.h \
+    test_connection.h \
     test_socket.h \
     test_types.h
 
