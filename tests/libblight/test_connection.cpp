@@ -29,8 +29,12 @@ test_Connection::test_surfaces_data_parsing() {
        .ackid = req.ackid,
        .size = (uint32_t)data_size}
     };
-    ::send(sockets[1], &resp, sizeof(resp), MSG_EOR);
-    ::send(sockets[1], expected, data_size, MSG_EOR);
+    assert(
+      ::send(sockets[1], &resp, sizeof(resp), MSG_EOR) == (ssize_t)sizeof(resp)
+    );
+    assert(
+      ::send(sockets[1], expected, data_size, MSG_EOR) == (ssize_t)data_size
+    );
   });
   Blight::Connection conn(sockets[0]);
   ::close(sockets[0]);
