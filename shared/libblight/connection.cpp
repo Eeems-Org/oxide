@@ -118,6 +118,10 @@ namespace Blight {
     disconnectCallbacks.push_back(callback);
   }
 
+  void Connection::onSurfaceDeleted(std::function<void(surface_id_t)> callback) {
+    surfaceDeletedCallbacks.push_back(callback);
+  }
+
   std::optional<input_event>
   Connection::read_event(unsigned short device, bool blocking) {
     auto buf = open_input(device);
@@ -563,6 +567,14 @@ namespace Blight {
           );
           if (!maybe.has_value()) {
             _WARN("Failed to ack ping: %s", std::strerror(errno));
+          }
+          break;
+        }
+        case MessageType::Delete: {
+          auto identifier = scalar_cast<surface_id_t>(message).value();
+          _DEBUG("Surface deleted: %u", identifier);
+          for (auto& callback : connection->surfaceDeletedCallbacks) {
+            callback(identifier);
           }
           break;
         }

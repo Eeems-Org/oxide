@@ -79,6 +79,12 @@ namespace FB {
     }
     if (Client::isFbEnabled()) {
       FB::buffer = Blight::buf_t::new_ptr();
+      if (Client::isUnified()) {
+        Blight::setFlags(
+          std::string("connection/") + std::to_string(getpid()),
+          std::vector<std::string>{"unified"}
+        );
+      }
     } else {
       Blight::setFlags(
         std::string("connection/") + std::to_string(getpid()),

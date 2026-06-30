@@ -56,6 +56,8 @@ public:
     QImage::Format format,
     double scale
   );
+  void addSurface(std::shared_ptr<Surface> surface);
+  void removeSurface(Blight::surface_id_t id);
   std::shared_ptr<Surface> getSurface(QString identifier);
   std::shared_ptr<Surface> getSurface(Blight::surface_id_t id);
   QStringList getSurfaceIdentifiers();
@@ -98,4 +100,5 @@ private:
 
   void
   ack(Blight::message_ptr_t message, unsigned int size, Blight::data_t data);
+  bool send(Blight::header_t header, Blight::data_t data, ssize_t size);
 };

@@ -406,7 +406,14 @@ GUIThread::visibleSurfaces() {
       visibleSurfaces.end(),
       [](std::shared_ptr<Surface> surface) {
         auto connection = surface->connection();
-        if (connection == nullptr || !connection->isRunning()) {
+        if (connection == nullptr) {
+          return true;
+        }
+        if (
+          !connection->isRunning() &&
+          (!connection->has("unified") ||
+           !dbusInterface->hasRunningConnection(connection->pgid()))
+        ) {
           return true;
         }
         if (!surface->has("system") && getpgid(connection->pgid()) < 0) {

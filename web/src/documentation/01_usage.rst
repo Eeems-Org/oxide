@@ -335,6 +335,7 @@ When running an application from the command line, you can force it to use the d
 - ``OXIDE_PRELOAD_ALLOW_RM2FB`` Do not disable the rm2fb client shim.
 - ``OXIDE_PRELOAD_ALLOW_POWER_BUTTON`` Allow the application to recieve power button input events.
 - ``OXIDE_PRELOAD_DUMP_FB`` Dump the various framebuffers to ``/tmp/*.raw``.
+- ``OXIDE_PRELOAD_DISABLE_UNIFIED`` Do not set the unified flag on the connection, which allows all child applications to access this application's buffer.
 - ``OXIDE_PRELOAD_FORCE_RM1_NAME`` Return ``reMarkable 1.0`` for any reads to ``/sys/devices/soc0/machine``.
 - ``OXIDE_PRELOAD_FORCE_RM2_NAME`` Return ``reMarkable 2.0`` for any reads to ``/sys/devices/soc0/machine``.
 - ``OXIDE_PRELOAD_FORCE_RM1_FB`` Force the framebuffer size to be the reMarkable 1 framebuffer size, scaled to the current screen.

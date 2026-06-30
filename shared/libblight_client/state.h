@@ -33,6 +33,7 @@ namespace Client {
   bool isFakeRM2FB();
   bool forceQt();
   bool isGhostControlEnabled();
+  bool isUnified();
   const std::string deviceTypeName();
   int forcedWaveform();
 }

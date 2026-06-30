@@ -240,6 +240,10 @@ namespace Client {
         return "Unknown Device";
     }
   }
+  bool isUnified() {
+    static bool enabled = getenv("OXIDE_PRELOAD_DISABLE_UNIFIED") != nullptr;
+    return enabled;
+  }
   int forcedWaveform() {
     static char* waveform = getenv("OXIDE_PRELOAD_FORCE_WAVEFORM");
     if (waveform == nullptr) {
