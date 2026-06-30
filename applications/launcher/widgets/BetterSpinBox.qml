@@ -5,7 +5,11 @@ SpinBox {
     id: control
     property bool upPressed: up.pressed
     property bool downPressed: down.pressed
-    leftPadding: padding + (down.indicator ? down.indicator.width : 0)
+    leftPadding: padding + (
+        control.mirrored
+        ? (down.indicator ? down.indicator.width : 0)
+        : (up.indicator ? up.indicator.width : 0)
+    )
     up.indicator: Rectangle {
         x: control.mirrored ? 0 : control.width - width
         height: control.height

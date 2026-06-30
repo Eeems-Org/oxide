@@ -51,7 +51,6 @@ GUIThread::run() {
       eventDispatcher()->processEvents(QEventLoop::AllEvents);
     }
   });
-  clearFrameBuffer();
   setObjectName("GUIThread");
   pthread_setname_np(pthread_self(), "GUIThread");
   auto res = exec();
