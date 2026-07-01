@@ -130,7 +130,9 @@ jobs:
     needs:
       - build
       - lint
-    environment: apk.eeems.codes
+    environment:
+      name: apk.eeems.codes
+      url: https://apk.eeems.codes
     if: github.repository == 'Eeems-org/oxide' && (github.ref == 'refs/heads/master' || github.event_name == 'release')
     strategy:
       matrix:
