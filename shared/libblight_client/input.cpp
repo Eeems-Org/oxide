@@ -13,7 +13,6 @@
 #include <fcntl.h>
 #include <libblight/debug.h>
 #include <linux/input-event-codes.h>
-#include <linux/input.h>
 #include <linux/prctl.h>
 #include <map>
 #include <mutex>
@@ -100,6 +99,24 @@ namespace Input {
     }
     thread = nullptr;
     _DEBUG("Input[%d] Stopped", device);
+  }
+  std::optional<input_event> DeviceInfo::read(bool blocking) {
+    std::optional<input_event> maybe;
+    if (blocking) {
+      maybe = ringBuffer->wait_for_values();
+    } else {
+      maybe = ringBuffer->take();
+    }
+    if (maybe.has_value()) {
+      uint64_t val;
+      Libc::read(eventFd, &val, sizeof(val));
+    }
+    return maybe;
+  }
+  void DeviceInfo::write(const input_event& event) {
+    ringBuffer->insert(event);
+    uint64_t val = 1;
+    Libc::write(eventFd, &val, sizeof(val));
   }
 
   int getEventFd(int fd) {
@@ -599,7 +616,6 @@ namespace Input {
     auto& ringBuffer = info.ringBuffer;
     auto& eventFd = info.eventFd;
     auto& state = info.state;
-    uint64_t eventFdVal = 1;
     _DEBUG(
       "%s reading input buffer for event%d on fd %d",
       name,
@@ -610,8 +626,7 @@ namespace Input {
       if (inputBuffer->ringBuffer->overflowed()) {
         _WARN("%s overflowed", name);
         inputBuffer->read();
-        ringBuffer->insert({.type = EV_SYN, .code = SYN_DROPPED, .value = 1});
-        Libc::write(eventFd, &eventFdVal, sizeof(eventFdVal));
+        info.write({.type = EV_SYN, .code = SYN_DROPPED, .value = 1});
         pending.clear();
       }
       auto maybe = inputBuffer->read(true);
@@ -628,8 +643,7 @@ namespace Input {
         event.value = 0;
       }
       if (!Client::isFakeRM1Input()) {
-        ringBuffer->insert(event);
-        Libc::write(eventFd, &eventFdVal, sizeof(eventFdVal));
+        info.write(event);
         continue;
       }
       pending.push_back(event);
@@ -810,8 +824,7 @@ namespace Input {
         ) {
           continue;
         }
-        ringBuffer->insert(pendingEvent);
-        Libc::write(eventFd, &eventFdVal, sizeof(eventFdVal));
+        info.write(pendingEvent);
       }
       pending.clear();
     }
@@ -878,7 +891,7 @@ namespace Input {
       info.ringBuffer = std::make_shared<Blight::EvdevRingBuffer>(true);
     }
     if (info.eventFd == -1) {
-      int eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+      int eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC | EFD_SEMAPHORE);
       if (eventFd < 0) {
         _WARN("Failed to create eventfd: %s", std::strerror(errno));
         return -1;
@@ -1222,17 +1235,13 @@ namespace Input {
       device = info.device;
       flags = info.flags;
     }
-    // TODO only implement after blocking getdents and getdents64 reults
-    // if (Client::isFakeRM1Input() && device > 2 && flags & O_NONBLOCK) {
-    //   errno = EAGAIN;
-    //   return -1;
-    // }
     auto* events = static_cast<input_event*>(buf);
     size_t count = 0;
     auto& info = *devices.at(device);
     auto& ringBuffer = info.ringBuffer;
+    uint64_t val;
     if (ringBuffer->overflowed()) {
-      ringBuffer->take();
+      info.read();
       events[count] = {};
       events[count].type = EV_SYN;
       events[count].code = SYN_DROPPED;
@@ -1241,20 +1250,18 @@ namespace Input {
     }
     while (count < size / sizeof(input_event)) {
       if (flags & O_NONBLOCK) {
-        auto maybe = ringBuffer->take();
+        auto maybe = info.read();
         if (!maybe.has_value()) {
           break;
         }
         events[count] = *maybe;
       } else {
-        auto maybe = ringBuffer->wait_for_values();
+        auto maybe = info.read(true);
         if (!maybe.has_value()) {
           break;
         }
         events[count] = *maybe;
       }
-      uint64_t val;
-      Libc::read(info.eventFd, &val, sizeof(val));
       count++;
       if (ringBuffer->empty()) {
         break;

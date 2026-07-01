@@ -531,6 +531,29 @@ poll(struct pollfd* fds, nfds_t nfds, int timeout) {
   return res;
 }
 
+#ifdef __aarch64__
+__attribute__((visibility("default"))) int
+ppoll(
+  struct pollfd* fds,
+  nfds_t nfds,
+  const struct timespec* tmo,
+  const sigset_t* sigmask
+) {
+  struct pollfd* backup = nullptr;
+  if (Client::INITIALIZED && Client::isInputEnabled()) {
+    backup = Input::translatePollfds(fds, nfds);
+  }
+  int res = Libc::ppoll(fds, nfds, tmo, sigmask);
+  if (res == 0 && nfds > 0 && tmo == nullptr) {
+    _WARN("ppoll exited early with no revents");
+  }
+  if (backup != nullptr) {
+    Input::restorePollfds(fds, nfds, backup);
+  }
+  return res;
+}
+#endif
+
 __attribute__((visibility("default"))) int
 __ppoll64(
   struct pollfd* fds,

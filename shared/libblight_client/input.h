@@ -6,7 +6,9 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <linux/input.h>
 #include <memory>
+#include <optional>
 #include <poll.h>
 #include <string>
 #include <sys/epoll.h>
@@ -56,6 +58,8 @@ namespace Input {
     );
     ~DeviceInfo();
     void stop();
+    std::optional<input_event> read(bool blocking = false);
+    void write(const input_event& event);
   };
   struct DeviceMap {
     unsigned short device;
