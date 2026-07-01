@@ -13,7 +13,6 @@
 #include <fcntl.h>
 #include <libblight/debug.h>
 #include <linux/input-event-codes.h>
-#include <linux/input.h>
 #include <linux/prctl.h>
 #include <map>
 #include <mutex>
@@ -100,6 +99,19 @@ namespace Input {
     }
     thread = nullptr;
     _DEBUG("Input[%d] Stopped", device);
+  }
+  std::optional<input_event> DeviceInfo::read(bool blocking) {
+    std::optional<input_event> maybe;
+    if (blocking) {
+      maybe = ringBuffer->wait_for_values();
+    } else {
+      maybe = ringBuffer->take();
+    }
+    if (maybe.has_value()) {
+      uint64_t val;
+      Libc::read(info.eventFd, &val, sizeof(val));
+    }
+    return maybe;
   }
 
   int getEventFd(int fd) {
@@ -1233,8 +1245,7 @@ namespace Input {
     auto& ringBuffer = info.ringBuffer;
     uint64_t val;
     if (ringBuffer->overflowed()) {
-      ringBuffer->take();
-      Libc::read(info.eventFd, &val, sizeof(val));
+      info.read();
       events[count] = {};
       events[count].type = EV_SYN;
       events[count].code = SYN_DROPPED;
@@ -1243,19 +1254,18 @@ namespace Input {
     }
     while (count < size / sizeof(input_event)) {
       if (flags & O_NONBLOCK) {
-        auto maybe = ringBuffer->take();
+        auto maybe = info.read();
         if (!maybe.has_value()) {
           break;
         }
         events[count] = *maybe;
       } else {
-        auto maybe = ringBuffer->wait_for_values();
+        auto maybe = info.read(true);
         if (!maybe.has_value()) {
           break;
         }
         events[count] = *maybe;
       }
-      Libc::read(info.eventFd, &val, sizeof(val));
       count++;
       if (ringBuffer->empty()) {
         break;
