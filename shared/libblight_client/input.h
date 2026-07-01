@@ -59,6 +59,7 @@ namespace Input {
     ~DeviceInfo();
     void stop();
     std::optional<input_event> read(bool blocking = false);
+    void write(const input_event& event);
   };
   struct DeviceMap {
     unsigned short device;
