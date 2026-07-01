@@ -14,9 +14,12 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstring>
+#include <mutex>
 #include <string>
+#include <vector>
 
 namespace Qt {
   qregion_begin_t qregion_begin() {
@@ -316,11 +319,9 @@ dump_qimage_buffer(void* qimage, const std::string& path) {
 }
 
 static std::atomic<bool> hook_installed = false;
-static std::atomic<void*> epframebufferCandidate{nullptr};
+static std::mutex candidatesMutex;
+static std::vector<void*> epframebufferCandidates;
 static std::atomic<void*> epframebufferInstance{nullptr};
-static std::atomic<void*> lastBadCandidate{nullptr};
-static std::atomic<void*> lastBadVtable{nullptr};
-static std::atomic<int> badCandidateCount{0};
 
 static void* originalQtMetacall = nullptr;
 
@@ -1005,157 +1006,129 @@ hook_check_candidate() {
   ) {
     return;
   }
-  _DEBUG("%s", "QObject::QObject(QObject*)");
-  // Re-check the EPFramebuffer candidate (discovered via QImage hook).
-  // Its vtable may have been updated from a temporary to the final
-  // class vtable since the last time we checked.
-  void* candidate = epframebufferCandidate.load(std::memory_order_acquire);
-  if (candidate == nullptr) {
-    return; // QImage hook hasn't fired yet
-  }
-  auto vtable = *static_cast<void**>(candidate);
-  _DEBUG("EPFramebuffer candidate at %p, vtable=%p", candidate, vtable);
-  if (vtable == 0) {
-    _DEBUG("%s", "vtable is null, skipping");
+  std::lock_guard<std::mutex> lock(candidatesMutex);
+  for (void* candidate : epframebufferCandidates) {
+    if (candidate == nullptr) {
+      continue;
+    }
+    auto vtable = *static_cast<void**>(candidate);
+    _DEBUG("EPFramebuffer candidate at %p, vtable=%p", candidate, vtable);
+    if (!vtable) {
+      _DEBUG("%s", "vtable is null, skipping");
+      continue;
+    }
+    void* func_swapBuffers_qregion = nullptr;
+    if (!safe_read(
+          static_cast<char*>(vtable) + swapBuffersOffset(),
+          &func_swapBuffers_qregion,
+          sizeof(func_swapBuffers_qregion)
+        )) {
+      _DEBUG(
+        "EPFramebuffer candidate vtable offset invalid candidate %p, "
+        "vtable=%p",
+        candidate,
+        vtable
+      );
+      continue;
+    }
+    _DEBUG("swapBuffers candidate function at %p", func_swapBuffers_qregion);
+    if (!validate_swapbuffers(func_swapBuffers_qregion)) {
+      _DEBUG(
+        "validate_swapbuffers(%p) FAILED for QRegion candidate %p, vtable=%p",
+        func_swapBuffers_qregion,
+        candidate,
+        vtable
+      );
+      continue;
+    }
+    _DEBUG(
+      "Found EPFramebuffer at %p, vtable=%p, swapBuffers_QRegion=%p",
+      candidate,
+      vtable,
+      func_swapBuffers_qregion
+    );
+    if (Client::IS_XOCHITL) {
+      install_hook(
+        func_swapBuffers_qregion,
+        reinterpret_cast<void*>(&hook_swapBuffers_QRegion)
+      );
+      _DEBUG(
+        "Hooked swapBuffers(QRegion,...) at %p with offset=0x%x",
+        func_swapBuffers_qregion,
+        swapBuffersOffset()
+      );
+      auto func_syncAfterUpdate = *reinterpret_cast<void**>(
+        static_cast<char*>(vtable) + syncAfterUpdateOffset()
+      );
+      if (func_syncAfterUpdate != nullptr) {
+        install_hook(
+          func_syncAfterUpdate, reinterpret_cast<void*>(&hook_syncAfterUpdate)
+        );
+        _DEBUG(
+          "Hooked syncAfterUpdate at %p with offset=0x%x",
+          func_syncAfterUpdate,
+          syncAfterUpdateOffset()
+        );
+      } else {
+        _WARN("syncAfterUpdate vtable entry is null, cannot hook");
+      }
+      void** func_ghostControl = reinterpret_cast<void**>(
+        static_cast<char*>(vtable) + ghostControlOffset()
+      );
+      if (*func_ghostControl != nullptr) {
+        auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
+        auto page = reinterpret_cast<void*>(
+          reinterpret_cast<uintptr_t>(func_ghostControl) &
+          ~(static_cast<uintptr_t>(ps) - 1)
+        );
+        while (reinterpret_cast<uintptr_t>(page) + ps <
+               reinterpret_cast<uintptr_t>(func_ghostControl) + sizeof(void*)) {
+          ps += sysconf(_SC_PAGESIZE);
+        }
+        mprotect(page, ps, PROT_READ | PROT_WRITE);
+        *func_ghostControl = reinterpret_cast<void*>(&hook_ghostControl);
+        _DEBUG(
+          "Hooked ghostControl at %p with offset=0x%x",
+          func_ghostControl,
+          ghostControlOffset()
+        );
+      } else {
+        _WARN("ghostControl vtable entry is null, skipping hook");
+      }
+      void** func_metacall = reinterpret_cast<void**>(
+        static_cast<char*>(vtable) + qtMetacallOffset()
+      );
+      if (*func_metacall != nullptr) {
+        originalQtMetacall = *func_metacall;
+        auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
+        auto page = reinterpret_cast<void*>(
+          reinterpret_cast<uintptr_t>(func_metacall) &
+          ~(static_cast<uintptr_t>(ps) - 1)
+        );
+        while (reinterpret_cast<uintptr_t>(page) + ps <
+               reinterpret_cast<uintptr_t>(func_metacall) + sizeof(void*)) {
+          ps += sysconf(_SC_PAGESIZE);
+        }
+        mprotect(page, ps, PROT_READ | PROT_WRITE);
+        *func_metacall = reinterpret_cast<void*>(&hook_qt_metacall);
+        _DEBUG(
+          "Hooked qt_metacall at %p with offset=0x%x and original=%p",
+          func_metacall,
+          qtMetacallOffset(),
+          originalQtMetacall
+        );
+      } else {
+        _WARN("qt_metacall vtable entry is null, skipping hook");
+      }
+    }
+    void* empty = nullptr;
+    epframebufferInstance.compare_exchange_strong(
+      empty, candidate, std::memory_order_relaxed
+    );
+    hook_installed = true;
+    epframebufferCandidates.clear();
     return;
   }
-  void* func_swapBuffers_qregion = nullptr;
-  if (!safe_read(
-        static_cast<char*>(vtable) + swapBuffersOffset(),
-        &func_swapBuffers_qregion,
-        sizeof(func_swapBuffers_qregion)
-      )) {
-    _DEBUG(
-      "EPFramebuffer candidate vtable offset invalid candidate %p, vtable=%p",
-      candidate,
-      vtable
-    );
-  }
-  _DEBUG("swapBuffers candidate function at %p", func_swapBuffers_qregion);
-  if (!validate_swapbuffers(func_swapBuffers_qregion)) {
-    _DEBUG(
-      "validate_swapbuffers(%p) FAILED for QRegion candidate %p, vtable=%p",
-      func_swapBuffers_qregion,
-      candidate,
-      vtable
-    );
-    // When the candidate address or its vtable changes, reset the
-    // failure count. This handles multi-stage vtable initialization
-    void* lastCandidate = lastBadCandidate.load(std::memory_order_relaxed);
-    void* lastVtable = lastBadVtable.load(std::memory_order_relaxed);
-    if (candidate != lastCandidate || vtable != lastVtable) {
-      _WARN(
-        "EPFramebuffer candidate %p or vtable %p changed", candidate, vtable
-      );
-      lastBadCandidate.store(candidate, std::memory_order_relaxed);
-      lastBadVtable.store(vtable, std::memory_order_relaxed);
-      badCandidateCount.store(1, std::memory_order_relaxed);
-      return;
-    }
-    int n = badCandidateCount.fetch_add(1, std::memory_order_relaxed) + 1;
-    _WARN("EPFramebuffer candidate check count %d", n);
-    if (n >= 10) {
-      _WARN(
-        "EPFramebuffer candidate %p failed %d times with same vtable "
-        "-- clearing (likely wrong object)",
-        candidate,
-        n
-      );
-      epframebufferCandidate.store(nullptr, std::memory_order_release);
-      lastBadCandidate.store(nullptr, std::memory_order_relaxed);
-      lastBadVtable.store(nullptr, std::memory_order_relaxed);
-      badCandidateCount.store(0, std::memory_order_relaxed);
-    }
-    return; // try again next QObject
-  }
-  _DEBUG(
-    "Found EPFramebuffer at %p, vtable=%p, swapBuffers_QRegion=%p",
-    candidate,
-    vtable,
-    func_swapBuffers_qregion
-  );
-  if (Client::IS_XOCHITL) {
-    install_hook(
-      func_swapBuffers_qregion,
-      reinterpret_cast<void*>(&hook_swapBuffers_QRegion)
-    );
-    _DEBUG(
-      "Hooked swapBuffers(QRegion,...) at %p with offset=0x%x",
-      func_swapBuffers_qregion,
-      swapBuffersOffset()
-    );
-    auto func_syncAfterUpdate = *reinterpret_cast<void**>(
-      static_cast<char*>(vtable) + syncAfterUpdateOffset()
-    );
-    if (func_syncAfterUpdate != nullptr) {
-      install_hook(
-        func_syncAfterUpdate, reinterpret_cast<void*>(&hook_syncAfterUpdate)
-      );
-      _DEBUG(
-        "Hooked syncAfterUpdate at %p with offset=0x%x",
-        func_syncAfterUpdate,
-        syncAfterUpdateOffset()
-      );
-    } else {
-      _WARN("syncAfterUpdate vtable entry is null, cannot hook");
-    }
-    void** func_ghostControl = reinterpret_cast<void**>(
-      static_cast<char*>(vtable) + ghostControlOffset()
-    );
-    if (*func_ghostControl != nullptr) {
-      auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
-      auto page = reinterpret_cast<void*>(
-        reinterpret_cast<uintptr_t>(func_ghostControl) &
-        ~(static_cast<uintptr_t>(ps) - 1)
-      );
-      while (reinterpret_cast<uintptr_t>(page) + ps <
-             reinterpret_cast<uintptr_t>(func_ghostControl) + sizeof(void*)) {
-        ps += sysconf(_SC_PAGESIZE);
-      }
-      mprotect(page, ps, PROT_READ | PROT_WRITE);
-      *func_ghostControl = reinterpret_cast<void*>(&hook_ghostControl);
-      _DEBUG(
-        "Hooked ghostControl at %p with offset=0x%x",
-        func_ghostControl,
-        ghostControlOffset()
-      );
-    } else {
-      _WARN("ghostControl vtable entry is null, skipping hook");
-    }
-    void** func_metacall =
-      reinterpret_cast<void**>(static_cast<char*>(vtable) + qtMetacallOffset());
-    if (*func_metacall != nullptr) {
-      originalQtMetacall = *func_metacall;
-      auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
-      auto page = reinterpret_cast<void*>(
-        reinterpret_cast<uintptr_t>(func_metacall) &
-        ~(static_cast<uintptr_t>(ps) - 1)
-      );
-      while (reinterpret_cast<uintptr_t>(page) + ps <
-             reinterpret_cast<uintptr_t>(func_metacall) + sizeof(void*)) {
-        ps += sysconf(_SC_PAGESIZE);
-      }
-      mprotect(page, ps, PROT_READ | PROT_WRITE);
-      *func_metacall = reinterpret_cast<void*>(&hook_qt_metacall);
-      _DEBUG(
-        "Hooked qt_metacall at %p with offset=0x%x and original=%p",
-        func_metacall,
-        qtMetacallOffset(),
-        originalQtMetacall
-      );
-    } else {
-      _WARN("qt_metacall vtable entry is null, skipping hook");
-    }
-  }
-  void* empty = nullptr;
-  epframebufferInstance.compare_exchange_strong(
-    empty, candidate, std::memory_order_relaxed
-  );
-  hook_installed = true;
-  epframebufferCandidate.store(nullptr, std::memory_order_release);
-  lastBadCandidate.store(nullptr, std::memory_order_relaxed);
-  lastBadVtable.store(nullptr, std::memory_order_relaxed);
-  badCandidateCount.store(0, std::memory_order_relaxed);
 }
 
 /*!
@@ -1223,7 +1196,7 @@ _ZN6QImageC1Ev(void* this_ptr) {
   }
   _DEBUG("QImage::QImage() default");
   for (int offset : {previousBufferOffset(), frameBufferOffset()}) {
-    if (offset == 0) {
+    if (offset == 0x00) {
       continue; // skip unsupported arch placeholder
     }
     void* candidate = static_cast<char*>(this_ptr) - offset;
@@ -1260,7 +1233,18 @@ _ZN6QImageC1Ev(void* this_ptr) {
       vtable,
       info.dli_fname
     );
-    epframebufferCandidate.store(candidate, std::memory_order_release);
+    {
+      std::lock_guard<std::mutex> lock(candidatesMutex);
+      if (
+        std::none_of(
+          epframebufferCandidates.begin(),
+          epframebufferCandidates.end(),
+          [candidate](void* c) { return c == candidate; }
+        )
+      ) {
+        epframebufferCandidates.push_back(candidate);
+      }
+    }
     break;
   }
 }
