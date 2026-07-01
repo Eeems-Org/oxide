@@ -824,7 +824,7 @@ namespace Input {
         ) {
           continue;
         }
-        info.write(pendingEvent);
+        write(pendingEvent);
       }
       pending.clear();
     }
@@ -891,7 +891,7 @@ namespace Input {
       info.ringBuffer = std::make_shared<Blight::EvdevRingBuffer>(true);
     }
     if (info.eventFd == -1) {
-      int eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+      int eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC | EFD_SEMAPHORE);
       if (eventFd < 0) {
         _WARN("Failed to create eventfd: %s", std::strerror(errno));
         return -1;
