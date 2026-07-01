@@ -824,7 +824,7 @@ namespace Input {
         ) {
           continue;
         }
-        write(pendingEvent);
+        info.write(pendingEvent);
       }
       pending.clear();
     }
