@@ -1203,7 +1203,8 @@ _ZN6QImageC1Ev(void* this_ptr) {
     auto vtable = *static_cast<void**>(candidate);
     // Quick pre-filter: aligned, non-null, reasonable address
     if (
-      vtable == nullptr || reinterpret_cast<uintptr_t>(vtable) & 3 ||
+      vtable == nullptr ||
+      reinterpret_cast<uintptr_t>(vtable) & (sizeof(void*) - 1) ||
       reinterpret_cast<uintptr_t>(vtable) < 0x00010000
     ) {
       continue;
