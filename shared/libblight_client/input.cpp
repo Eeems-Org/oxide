@@ -109,7 +109,7 @@ namespace Input {
     }
     if (maybe.has_value()) {
       uint64_t val;
-      Libc::read(info.eventFd, &val, sizeof(val));
+      Libc::read(eventFd, &val, sizeof(val));
     }
     return maybe;
   }
