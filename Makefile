@@ -140,7 +140,7 @@ _install-%:
 	EOT
 
 .PHONY: build-rm1
-build-rm1: clean-base $(DIST)
+build-rm1: $(DIST)
 	podman run \
 		--env BUILDNAME=oxide-rm1 \
 		--rm \
@@ -150,7 +150,7 @@ build-rm1: clean-base $(DIST)
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm1/$(TOOLCHAIN)/environment-setup-cortexa9hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
 
 .PHONY: build-rm2
-build-rm2: clean-base $(DIST)
+build-rm2: $(DIST)
 	podman run \
 		--env BUILDNAME=oxide-rm2 \
 		--rm \
@@ -160,7 +160,7 @@ build-rm2: clean-base $(DIST)
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/rm2/$(TOOLCHAIN)/environment-setup-cortexa7hf-neon-remarkable-linux-gnueabi; make FEATURES=$(FEATURES) release'
 
 .PHONY: build-rmpp
-build-rmpp: clean-base $(DIST)
+build-rmpp: $(DIST)
 	podman run \
 		--env BUILDNAME=oxide-rmpp \
 		--rm \
@@ -170,7 +170,7 @@ build-rmpp: clean-base $(DIST)
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/ferrari/$(TOOLCHAIN)/environment-setup-cortexa53-crypto-remarkable-linux; make FEATURES=$(FEATURES) release'
 
 .PHONY: build-rmppm
-build-rmppm: clean-base $(DIST)
+build-rmppm: $(DIST)
 	podman run \
 		--env BUILDNAME=oxide-rmppm \
 		--rm \
@@ -180,7 +180,7 @@ build-rmppm: clean-base $(DIST)
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/chiappa/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
 .PHONY: build-rmppure
-build-rmppure: clean-base $(DIST)
+build-rmppure: $(DIST)
 	podman run \
 		--env BUILDNAME=oxide-rmppure \
 		--rm \
