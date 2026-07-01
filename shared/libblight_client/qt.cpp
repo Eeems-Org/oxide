@@ -514,6 +514,11 @@ validate_swapbuffers(void* func) {
     _WARN("swapBuffers: nullptr")
     return false;
   }
+  Dl_info info;
+  if (dladdr(func, &info) == 0) {
+    _WARN("swapBuffers: address %p not in process address space", func);
+    return false;
+  }
 #if defined(__arm__)
   // Check arm32 prologue for the swapBuffers(QRegion) variant:
   //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
