@@ -56,6 +56,13 @@ namespace Qt {
   }
 }
 
+bool
+safe_read(void* addr, void* buffer, size_t size) {
+  struct iovec local = {.iov_base = buffer, .iov_len = size};
+  struct iovec remote = {.iov_base = addr, .iov_len = size};
+  return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) == size;
+}
+
 // Runtime pointers to real QImage methods (resolved once via dlsym).
 struct QImageFuncs {
 #ifdef __arm__
@@ -536,9 +543,7 @@ validate_swapbuffers(void* func) {
     return false;
   }
   uint32_t data[2];
-  struct iovec local = {.iov_base = data, .iov_len = sizeof(data)};
-  struct iovec remote = {.iov_base = func, .iov_len = sizeof(data)};
-  if (process_vm_readv(getpid(), &local, 1, &remote, 1, 0) != sizeof(data)) {
+  if (!safe_read(func, &data, sizeof(data))) {
     _WARN("swapBuffers: address %p not readable", func);
     return false;
   }
@@ -1014,13 +1019,22 @@ hook_check_candidate() {
     _DEBUG("%s", "vtable is null, skipping");
     return;
   }
-  auto func_swapBuffers_qregion =
-    *reinterpret_cast<void**>(static_cast<char*>(vtable) + swapBuffersOffset());
+  void* func_swapBuffers_qregion = nullptr;
+  if (!safe_read(
+        static_cast<char*>(vtable) + swapBuffersOffset(),
+        &func_swapBuffers_qregion,
+        sizeof(func_swapBuffers_qregion)
+      )) {
+    _DEBUG(
+      "EPFramebuffer candidate vtable offset invalid candidate %p, vtable=%p",
+      candidate,
+      vtable
+    );
+  }
   _DEBUG("swapBuffers candidate function at %p", func_swapBuffers_qregion);
   if (!validate_swapbuffers(func_swapBuffers_qregion)) {
     _DEBUG(
-      "validate_swapbuffers(%p) FAILED for QRegion candidate %p, "
-      "vtable=%p",
+      "validate_swapbuffers(%p) FAILED for QRegion candidate %p, vtable=%p",
       func_swapBuffers_qregion,
       candidate,
       vtable
