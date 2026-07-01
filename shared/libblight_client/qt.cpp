@@ -336,10 +336,19 @@ cast_function(const char* name) {
   return func;
 }
 
+void**
+vtable_ptr(void* vtable, int offset) {
+  void* value = nullptr;
+  void* addr = static_cast<char*>(vtable) + offset;
+  return safe_read(addr, &value, sizeof(value)) ? reinterpret_cast<void**>(addr)
+                                                : nullptr;
+}
+
 struct QMetaMethod {
   const void* mobj; // const QMetaObject*
   const uint* data; // Data::d
 };
+
 struct alignas(8) QByteArray {
   void* d;
   const char* ptr;
@@ -476,7 +485,7 @@ install_hook(void* target, void* hook) {
   auto page = reinterpret_cast<void*>(
     reinterpret_cast<uintptr_t>(target) & ~(static_cast<uintptr_t>(ps) - 1)
   );
-  size_t len = 8;
+  size_t len;
 #if defined(__arm__)
   len = 8;
 #elif defined(__aarch64__)
@@ -598,7 +607,9 @@ validate_swapbuffers(void* func) {
 #endif
 }
 
-// Runtime pointers to real QPainter methods (resolved once via dlsym).
+/*!
+ * \brief Runtime pointers to real QPainter methods (resolved once via dlsym).
+ */
 struct QPainterFuncs {
   void (*constructor)(void*, void*);
   void (*destructor)(void*);
@@ -995,6 +1006,20 @@ _ZN19EPFramebufferSwtcon4syncEv(void* this_ptr) {
   Blight::waitForNoRepaints();
 }
 
+void
+install_hook_ptr(void** target_ptr, void* hook) {
+  auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
+  auto page = reinterpret_cast<void*>(
+    reinterpret_cast<uintptr_t>(target_ptr) & ~(static_cast<uintptr_t>(ps) - 1)
+  );
+  while (reinterpret_cast<uintptr_t>(page) + ps <
+         reinterpret_cast<uintptr_t>(target_ptr) + sizeof(void*)) {
+    ps += sysconf(_SC_PAGESIZE);
+  }
+  mprotect(page, ps, PROT_READ | PROT_WRITE);
+  *target_ptr = hook;
+}
+
 /*!
  * \brief Hook to run on QObject::QObject(QObject*) call
  */
@@ -1057,12 +1082,10 @@ hook_check_candidate() {
         func_swapBuffers_qregion,
         swapBuffersOffset()
       );
-      auto func_syncAfterUpdate = *reinterpret_cast<void**>(
-        static_cast<char*>(vtable) + syncAfterUpdateOffset()
-      );
-      if (func_syncAfterUpdate != nullptr) {
+      void** func_syncAfterUpdate = vtable_ptr(vtable, syncAfterUpdateOffset());
+      if (func_syncAfterUpdate != nullptr && *func_syncAfterUpdate != nullptr) {
         install_hook(
-          func_syncAfterUpdate, reinterpret_cast<void*>(&hook_syncAfterUpdate)
+          *func_syncAfterUpdate, reinterpret_cast<void*>(&hook_syncAfterUpdate)
         );
         _DEBUG(
           "Hooked syncAfterUpdate at %p with offset=0x%x",
@@ -1072,21 +1095,11 @@ hook_check_candidate() {
       } else {
         _WARN("syncAfterUpdate vtable entry is null, cannot hook");
       }
-      void** func_ghostControl = reinterpret_cast<void**>(
-        static_cast<char*>(vtable) + ghostControlOffset()
-      );
-      if (*func_ghostControl != nullptr) {
-        auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
-        auto page = reinterpret_cast<void*>(
-          reinterpret_cast<uintptr_t>(func_ghostControl) &
-          ~(static_cast<uintptr_t>(ps) - 1)
+      void** func_ghostControl = vtable_ptr(vtable, ghostControlOffset());
+      if (func_ghostControl != nullptr && *func_ghostControl != nullptr) {
+        install_hook_ptr(
+          func_ghostControl, reinterpret_cast<void*>(hook_ghostControl)
         );
-        while (reinterpret_cast<uintptr_t>(page) + ps <
-               reinterpret_cast<uintptr_t>(func_ghostControl) + sizeof(void*)) {
-          ps += sysconf(_SC_PAGESIZE);
-        }
-        mprotect(page, ps, PROT_READ | PROT_WRITE);
-        *func_ghostControl = reinterpret_cast<void*>(&hook_ghostControl);
         _DEBUG(
           "Hooked ghostControl at %p with offset=0x%x",
           func_ghostControl,
@@ -1095,22 +1108,12 @@ hook_check_candidate() {
       } else {
         _WARN("ghostControl vtable entry is null, skipping hook");
       }
-      void** func_metacall = reinterpret_cast<void**>(
-        static_cast<char*>(vtable) + qtMetacallOffset()
-      );
-      if (*func_metacall != nullptr) {
+      void** func_metacall = vtable_ptr(vtable, qtMetacallOffset());
+      if (func_metacall != nullptr && *func_metacall != nullptr) {
         originalQtMetacall = *func_metacall;
-        auto ps = static_cast<long>(sysconf(_SC_PAGESIZE));
-        auto page = reinterpret_cast<void*>(
-          reinterpret_cast<uintptr_t>(func_metacall) &
-          ~(static_cast<uintptr_t>(ps) - 1)
+        install_hook_ptr(
+          func_metacall, reinterpret_cast<void*>(hook_qt_metacall)
         );
-        while (reinterpret_cast<uintptr_t>(page) + ps <
-               reinterpret_cast<uintptr_t>(func_metacall) + sizeof(void*)) {
-          ps += sysconf(_SC_PAGESIZE);
-        }
-        mprotect(page, ps, PROT_READ | PROT_WRITE);
-        *func_metacall = reinterpret_cast<void*>(&hook_qt_metacall);
         _DEBUG(
           "Hooked qt_metacall at %p with offset=0x%x and original=%p",
           func_metacall,
@@ -1234,19 +1237,16 @@ _ZN6QImageC1Ev(void* this_ptr) {
       vtable,
       info.dli_fname
     );
-    {
-      std::lock_guard<std::mutex> lock(candidatesMutex);
-      if (
-        std::none_of(
-          epframebufferCandidates.begin(),
-          epframebufferCandidates.end(),
-          [candidate](void* c) { return c == candidate; }
-        )
-      ) {
-        epframebufferCandidates.push_back(candidate);
-      }
+    std::lock_guard<std::mutex> lock(candidatesMutex);
+    if (
+      std::none_of(
+        epframebufferCandidates.begin(),
+        epframebufferCandidates.end(),
+        [candidate](void* c) { return c == candidate; }
+      )
+    ) {
+      epframebufferCandidates.push_back(candidate);
     }
-    break;
   }
 }
 void*
