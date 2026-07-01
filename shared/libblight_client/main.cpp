@@ -531,6 +531,7 @@ poll(struct pollfd* fds, nfds_t nfds, int timeout) {
   return res;
 }
 
+#ifdef __aarch64__
 __attribute__((visibility("default"))) int
 ppoll(
   struct pollfd* fds,
@@ -551,6 +552,7 @@ ppoll(
   }
   return res;
 }
+#endif
 
 __attribute__((visibility("default"))) int
 __ppoll64(
