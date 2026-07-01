@@ -11,6 +11,7 @@
 #include <libblight/system.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 #include <atomic>
@@ -532,6 +533,15 @@ validate_swapbuffers(void* func) {
   Dl_info info;
   if (dladdr(func, &info) == 0) {
     _WARN("swapBuffers: address %p not in process address space", func);
+    return false;
+  }
+  char buf[4];
+  struct iovec local = {.iov_base = buf, .iov_len = sizeof(uint32_t)};
+  struct iovec remote = {.iov_base = func, .iov_len = sizeof(uint32_t)};
+  if (
+    process_vm_readv(getpid(), &local, 1, &remote, 1, 0) != sizeof(uint32_t)
+  ) {
+    _WARN("swapBuffers: address %p not readable", func);
     return false;
   }
 #if defined(__arm__)
