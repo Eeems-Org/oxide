@@ -514,6 +514,21 @@ validate_swapbuffers(void* func) {
     _WARN("swapBuffers: nullptr")
     return false;
   }
+#if defined(__arm__)
+  if (reinterpret_cast<uintptr_t>(func) & 2) {
+    _WARN("swapBuffers: address %p is not 2-byte aligned", func);
+    return false;
+  }
+#elif defined(__aarch64__)
+  if (reinterpret_cast<uintptr_t>(func) & 3) {
+    _WARN("swapBuffers: address %p is not 4-byte aligned", func);
+    return false;
+  }
+#else
+  _CRIT("%s", "Unsupported architecture");
+  std::exit(EXIT_FAILURE);
+  return false;
+#endif
   Dl_info info;
   if (dladdr(func, &info) == 0) {
     _WARN("swapBuffers: address %p not in process address space", func);
@@ -567,10 +582,6 @@ validate_swapbuffers(void* func) {
     }
   }
   _WARN("swapBuffers: PAC prologue not found")
-  return false;
-#else
-  _CRIT("%s", "Unsupported architecture");
-  std::exit(EXIT_FAILURE);
   return false;
 #endif
 }
