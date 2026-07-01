@@ -1231,8 +1231,10 @@ namespace Input {
     size_t count = 0;
     auto& info = *devices.at(device);
     auto& ringBuffer = info.ringBuffer;
+    uint64_t val;
     if (ringBuffer->overflowed()) {
       ringBuffer->take();
+      Libc::read(info.eventFd, &val, sizeof(val));
       events[count] = {};
       events[count].type = EV_SYN;
       events[count].code = SYN_DROPPED;
@@ -1253,7 +1255,6 @@ namespace Input {
         }
         events[count] = *maybe;
       }
-      uint64_t val;
       Libc::read(info.eventFd, &val, sizeof(val));
       count++;
       if (ringBuffer->empty()) {
