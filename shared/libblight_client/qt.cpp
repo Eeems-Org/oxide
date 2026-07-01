@@ -512,7 +512,7 @@ install_hook(void* target, void* hook) {
 bool
 validate_swapbuffers(void* func) {
   if (func == nullptr) {
-    _WARN("swapBuffers: nullptr")
+    _WARN("swapBuffers: nullptr");
     return false;
   }
 #if defined(__arm__)
@@ -535,12 +535,10 @@ validate_swapbuffers(void* func) {
     _WARN("swapBuffers: address %p not in process address space", func);
     return false;
   }
-  char buf[4];
-  struct iovec local = {.iov_base = buf, .iov_len = sizeof(uint32_t)};
-  struct iovec remote = {.iov_base = func, .iov_len = sizeof(uint32_t)};
-  if (
-    process_vm_readv(getpid(), &local, 1, &remote, 1, 0) != sizeof(uint32_t)
-  ) {
+  uint32_t data[2];
+  struct iovec local = {.iov_base = data, .iov_len = sizeof(data)};
+  struct iovec remote = {.iov_base = func, .iov_len = sizeof(data)};
+  if (process_vm_readv(getpid(), &local, 1, &remote, 1, 0) != sizeof(data)) {
     _WARN("swapBuffers: address %p not readable", func);
     return false;
   }
@@ -548,7 +546,6 @@ validate_swapbuffers(void* func) {
   // Check arm32 prologue for the swapBuffers(QRegion) variant:
   //   stmdb sp!,{r4-r11,lr}   (0xE92D4FF0)
   //   sub sp, sp, #0x44       (0xE24DD044)
-  auto data = reinterpret_cast<uint32_t*>(func);
   // Try the QRegion pattern: STMDB SP!,{...,LR} / SUB SP,#0x44
   if ((data[0] & 0xFFFF0000) == 0xE92D0000 && (data[0] & 0x4000)) {
     if (data[1] == 0xE24DD044) {
@@ -578,7 +575,6 @@ validate_swapbuffers(void* func) {
   // followed by either:
   //   stp x29, x30, [sp, #-imm]!  (frame pointer)
   //   sub sp, sp, #imm             (no frame pointer)
-  auto data = reinterpret_cast<uint32_t*>(func);
   if ((data[0] & 0xFFC00000) == 0xA9800000) {
     return true;
   }
@@ -591,7 +587,7 @@ validate_swapbuffers(void* func) {
       return true;
     }
   }
-  _WARN("swapBuffers: PAC prologue not found")
+  _WARN("swapBuffers: PAC prologue not found");
   return false;
 #endif
 }
