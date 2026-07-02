@@ -90,7 +90,7 @@ namespace Oxide {
   }
   void SignalHandler::handleSignal(int signal, siginfo_t* si, void* vcontext) {
     Q_UNUSED(si);
-#if defined(__arm__) || defined(__aarch64__)
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
     if (signal == SIGPIPE || signal == SIGSEGV || signal == SIGBUS) {
       constexpr int depth = 10;
       auto uc = (ucontext_t*)vcontext;
@@ -99,6 +99,8 @@ namespace Oxide {
         (void*)uc->uc_mcontext.arm_pc;
 #elif defined(__aarch64__)
         (void*)uc->uc_mcontext.pc;
+#elif defined(__x86_64__)
+        (void*)uc->uc_mcontext.gregs[REG_RIP];
 #endif
       void* array[depth];
       size_t size = ::backtrace(array, depth);

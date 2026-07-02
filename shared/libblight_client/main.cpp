@@ -41,6 +41,7 @@
 
 namespace {
 #ifdef DEBUG
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
   struct sigaction originalSigsegv{};
   struct sigaction originalSigabrt{};
 
@@ -72,6 +73,8 @@ namespace {
       reinterpret_cast<void*>(uc->uc_mcontext.arm_pc);
 #elif defined(__aarch64__)
       reinterpret_cast<void*>(uc->uc_mcontext.pc);
+#elif defined(__x86_64__)
+      (void*)uc->uc_mcontext.gregs[REG_RIP];
 #endif
     constexpr int depth = 50;
     void* array[depth];
@@ -90,6 +93,7 @@ namespace {
         _Exit(1);
     }
   }
+#endif
 #endif
 
   int __open(const char* pathname, int flags) {
@@ -653,6 +657,7 @@ system(const char* command) {
 }
 
 #ifdef DEBUG
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
 __attribute__((visibility("default"))) sighandler_t
 signal(int signum, sighandler_t handler) {
   if (signum != SIGSEGV && signum != SIGABRT) {
@@ -701,6 +706,7 @@ sigaction(
   sigemptyset(&action.sa_mask);
   return Libc::sigaction(signum, &action, nullptr);
 }
+#endif
 #endif
 
 void __attribute__((constructor)) static init(void) {
