@@ -259,9 +259,8 @@ Application Object
 |                      |                             | See the              |
 |                      |                             | :ref:`registration   |
 |                      |                             | format               |
-|                      |                             | <registration-       |
-|                      |                             | flags>` for          |
-|                      |                             | possible values.     |
+|                      |                             | <registration-flags>`|
+|                      |                             | for possible values. |
 +----------------------+-----------------------------+----------------------+
 | icon                 | ``STRING`` property         | Path to the icon     |
 |                      | (read/write)                | used to represent    |
@@ -357,7 +356,7 @@ Application Object
 | launch               | method                      | Launch or resume the |
 |                      |                             | application.         |
 +----------------------+-----------------------------+----------------------+
-| launchWithArgs       | method                      | Launch the          |
+| launchWithArgs       | method                      | Launch the           |
 |                      |                             | application with the |
 |                      | - (in) args                 | given arguments. If  |
 |                      |   ``ARRAY STRING``          | the application is   |

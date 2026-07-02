@@ -31,3 +31,4 @@ MACRO_EXPANSION = YES
 EXAMPLE_PATH = examples
 GENERATE_TAGFILE = html/libblight_protocol.tag
 ALLEXTERNALS = Yes
+INCLUDE_PATH += vendor/fbg/src
