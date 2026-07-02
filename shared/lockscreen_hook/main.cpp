@@ -41,6 +41,9 @@ __signal_handler(int signal, siginfo_t* si, void* vcontext) {
     reinterpret_cast<void*>(uc->uc_mcontext.arm_pc);
 #elif defined(__aarch64__)
     reinterpret_cast<void*>(uc->uc_mcontext.pc);
+#else
+    nullptr;
+  _Exit(128 + signal);
 #endif
   void* array[depth];
   size_t size = backtrace(array, depth);
@@ -49,16 +52,7 @@ __signal_handler(int signal, siginfo_t* si, void* vcontext) {
   ::write(STDERR_FILENO, msg, std::strlen(msg));
   ::write(STDERR_FILENO, "\n", std::strlen("\n"));
   backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
-  switch (signal) {
-    case SIGSEGV:
-      _Exit(139);
-    case SIGABRT:
-      _Exit(134);
-    case SIGBUS:
-      _Exit(138);
-    default:
-      _Exit(1);
-  }
+  _Exit(128 + signal);
 }
 
 #endif

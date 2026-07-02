@@ -1,24 +1,25 @@
 TEMPLATE = subdirs
 
 SUBDIRS = \
-    liboxide \
-    libblight_protocol \
-    libblight \
-    libblight_client \
-    qpa \
-    lockscreen_hook \
     cpptrace \
+    libblight \
+    libblight_protocol \
+    liboxide \
+    qpa \
     sentry
 
 liboxide.depends = \
-    libblight \
     cpptrace \
+    libblight \
     sentry
 libblight.depends = libblight_protocol
-libblight_client.depends = libblight
 qpa.depends = libblight liboxide
 linux-oe-g++{
-    SUBDIRS += epaper
+    SUBDIRS += \
+        epaper \
+        libblight_client \
+        lockscreen_hook
     liboxide.depends += epaper
+    libblight_client.depends = libblight
 }
 INSTALLS += $$SUBDIRS

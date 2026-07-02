@@ -189,6 +189,10 @@ build-rmppure: $(DIST)
 		eeems/remarkable-toolchain:$(TOOLCHAIN)-rmppure \
 		bash -exc 'apt-get update; apt-get install -y clang-format;source /opt/codex/tatsu/$(TOOLCHAIN)/environment-setup-cortexa55-remarkable-linux; make FEATURES=$(FEATURES) release'
 
+.PHONY: build-amd64
+build-amd64: BUILDNAME=oxide-amd64
+build-amd64: release
+
 $(DIST):
 	mkdir -p $(DIST)
 

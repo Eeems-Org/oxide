@@ -47,7 +47,11 @@ target.path = $$BIN_INSTALL_PATH
 INSTALLS += target
 
 !system("pkg-config --exists libevdev"): error("Could not find libevdev package via pkg-config")
-LIBS += -Wl,-Bstatic $$system("pkg-config --static --libs libevdev") -Wl,-Bdynamic
+contains(DEFINES,EPAPER){
+    LIBS += -Wl,-Bstatic $$system("pkg-config --static --libs libevdev") -Wl,-Bdynamic
+}else{
+    LIBS += $$system("pkg-config --libs libevdev")
+}
 QMAKE_CXXFLAGS += $$system("pkg-config --cflags libevdev")
 
 HEADERS += \

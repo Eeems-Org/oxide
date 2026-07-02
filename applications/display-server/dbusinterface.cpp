@@ -5,6 +5,7 @@
 #include <liboxide/dbus_types.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
+#include <liboxide/threading.h>
 #include <memory>
 #include <sys/poll.h>
 #include <unistd.h>
@@ -408,12 +409,19 @@ DbusInterface::frameBuffer(QDBusMessage message) {
     );
     return QDBusUnixFileDescriptor();
   }
+#ifdef EPAPER
   auto frameBuffer = guiThread->framebuffer();
   if (frameBuffer == nullptr) {
     sendErrorReply(QDBusError::InternalError, "Framebuffer is missing");
     return QDBusUnixFileDescriptor();
   }
   return QDBusUnixFileDescriptor(frameBuffer->fd);
+#else
+  sendErrorReply(
+    QDBusError::InternalError, "Framebuffer not supported on this platform"
+  );
+  return QDBusUnixFileDescriptor();
+#endif
 }
 
 FrameBufferInfo
@@ -431,6 +439,7 @@ DbusInterface::frameBufferInfo(QDBusMessage message) {
     );
     return {-1, -1, -1, Blight::Format::Format_Invalid};
   }
+#ifdef EPAPER
   auto frameBuffer = guiThread->framebuffer();
   if (frameBuffer == nullptr) {
     sendErrorReply(QDBusError::InternalError, "Framebuffer is missing");
@@ -442,6 +451,9 @@ DbusInterface::frameBufferInfo(QDBusMessage message) {
     frameBuffer->stride,
     frameBuffer->format
   };
+#else
+  return {1024, 1024, 1024 * 2, Blight::Format::Format_RGB16};
+#endif
 }
 
 void
@@ -850,7 +862,9 @@ DbusInterface::createConnection(int pid) {
         found = connections.contains(connection);
         if (found) {
           connections.removeAll(connection);
+#ifdef EPAPER
           guiThread->notify();
+#endif
         }
       }
       {

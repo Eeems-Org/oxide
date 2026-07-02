@@ -581,7 +581,7 @@ Connection::readSocket() {
         );
         do_ack = false;
 #else
-        surface->move(move.header.x, move.header.y);
+        surface->move(move.x, move.y);
 #endif
         break;
       }
@@ -622,7 +622,9 @@ Connection::readSocket() {
           break;
         }
         dbusInterface->removeSurface(surface->id());
+#ifdef EPAPER
         guiThread->notify();
+#endif
         break;
       }
       case Blight::MessageType::List: {

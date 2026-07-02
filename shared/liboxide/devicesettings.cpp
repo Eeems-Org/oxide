@@ -333,7 +333,11 @@ namespace Oxide {
       case DeviceType::RMPPM:
         return 954;
       default:
+#ifdef EPAPER
         return 0;
+#else
+        return 1024;
+#endif
     }
   }
 
@@ -348,7 +352,11 @@ namespace Oxide {
       case DeviceType::RMPPM:
         return 1696;
       default:
+#ifdef EPAPER
         return 0;
+#else
+        return 1024;
+#endif
     }
   }
 

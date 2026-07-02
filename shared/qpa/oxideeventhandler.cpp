@@ -3,8 +3,10 @@
 #include <libblight.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
-#include <private/qevdevtouchfilter_p.h>
 #include <private/qhighdpiscaling_p.h>
+#if defined(__arm__) || defined(__aarch64__)
+#include <private/qevdevtouchfilter_p.h>
+#endif
 
 #include <QFile>
 
@@ -384,12 +386,12 @@ OxideEventHandler::processKeyboardEvent(
   bool pressed = event->value;
   bool autorepeat = event->value == 2;
   bool first_press = pressed && !autorepeat;
-  const QEvdevKeyboardMap::Mapping* map_plain = 0;
-  const QEvdevKeyboardMap::Mapping* map_withmod = 0;
+  const KeyboardMap::Mapping* map_plain = 0;
+  const KeyboardMap::Mapping* map_withmod = 0;
   quint8 modifiers = keyboardData->m_modifiers;
 
   for (int i = 0; i < m_keymap_size && !(map_plain && map_withmod); ++i) {
-    const QEvdevKeyboardMap::Mapping* m = m_keymap + i;
+    const KeyboardMap::Mapping* m = m_keymap + i;
     if (m->keycode == keycode) {
       if (m->modifiers == 0) {
         map_plain = m;
@@ -397,9 +399,9 @@ OxideEventHandler::processKeyboardEvent(
       quint8 testmods = keyboardData->m_modifiers;
       if (
         keyboardData->m_locks[0] /*CapsLock*/
-        && (m->flags & QEvdevKeyboardMap::IsLetter)
+        && (m->flags & KeyboardMap::IsLetter)
       ) {
-        testmods ^= QEvdevKeyboardMap::ModShift;
+        testmods ^= KeyboardMap::ModShift;
       }
       if (m->modifiers == testmods) {
         map_withmod = m;
@@ -409,11 +411,11 @@ OxideEventHandler::processKeyboardEvent(
 
   if (
     keyboardData->m_locks[0] /*CapsLock*/
-    && map_withmod && (map_withmod->flags & QEvdevKeyboardMap::IsLetter)
+    && map_withmod && (map_withmod->flags & KeyboardMap::IsLetter)
   ) {
-    modifiers ^= QEvdevKeyboardMap::ModShift;
+    modifiers ^= KeyboardMap::ModShift;
   }
-  const QEvdevKeyboardMap::Mapping* it = map_withmod ? map_withmod : map_plain;
+  const KeyboardMap::Mapping* it = map_withmod ? map_withmod : map_plain;
   // we couldn't even find a plain mapping
   if (!it) {
     O_WARNING("No mapping for keycode found:" << keycode);
@@ -421,7 +423,7 @@ OxideEventHandler::processKeyboardEvent(
   }
   quint16 unicode = it->unicode;
   quint32 qtcode = it->qtcode;
-  if (it->flags & QEvdevKeyboardMap::IsModifier && it->special) {
+  if (it->flags & KeyboardMap::IsModifier && it->special) {
     // this is a modifier, i.e. Shift, Alt, ...
     if (pressed) {
       keyboardData->m_modifiers |= it->special;
@@ -435,10 +437,10 @@ OxideEventHandler::processKeyboardEvent(
       lock ^= 1;
     }
   } else if (
-    (it->flags & QEvdevKeyboardMap::IsSystem) && it->special && first_press
+    (it->flags & KeyboardMap::IsSystem) && it->special && first_press
   ) {
     switch (it->special) {
-      case QEvdevKeyboardMap::SystemZap:
+      case KeyboardMap::SystemZap:
         if (!m_no_zap) {
           qApp->quit();
         }
@@ -451,7 +453,7 @@ OxideEventHandler::processKeyboardEvent(
       keyboardData->m_composing = 2;
     }
     return;
-  } else if (it->flags & QEvdevKeyboardMap::IsDead && m_do_compose) {
+  } else if (it->flags & KeyboardMap::IsDead && m_do_compose) {
     // a Dead key was pressed twice
     if (
       first_press && keyboardData->m_composing == 1 &&
@@ -482,7 +484,7 @@ OxideEventHandler::processKeyboardEvent(
   }
   if (
     keyboardData->m_composing == 2 && first_press &&
-    !(it->flags & QEvdevKeyboardMap::IsModifier)
+    !(it->flags & KeyboardMap::IsModifier)
   ) {
     // the last key press was the Compose key
     if (unicode != 0xffff) {
@@ -507,7 +509,7 @@ OxideEventHandler::processKeyboardEvent(
     }
   } else if (
     keyboardData->m_composing == 1 && first_press &&
-    !(it->flags & QEvdevKeyboardMap::IsModifier)
+    !(it->flags & KeyboardMap::IsModifier)
   ) {
     // the last key press was a Dead key
     bool valid = false;
@@ -1162,19 +1164,16 @@ OxideEventHandler::loadKeymap(const QString& file) {
   QDataStream ds(&f);
   ds >> qmap_magic >> qmap_version >> qmap_keymap_size >> qmap_keycompose_size;
   if (
-    ds.status() != QDataStream::Ok ||
-    qmap_magic != QEvdevKeyboardMap::FileMagic || qmap_version != 1 ||
-    qmap_keymap_size == 0
+    ds.status() != QDataStream::Ok || qmap_magic != KeyboardMap::FileMagic ||
+    qmap_version != 1 || qmap_keymap_size == 0
   ) {
     O_WARNING(qUtf16Printable(file) << " is not a valid .qmap keymap file");
     return false;
   }
-  QEvdevKeyboardMap::Mapping* qmap_keymap =
-    new QEvdevKeyboardMap::Mapping[qmap_keymap_size];
-  QEvdevKeyboardMap::Composing* qmap_keycompose =
-    qmap_keycompose_size
-      ? new QEvdevKeyboardMap::Composing[qmap_keycompose_size]
-      : 0;
+  KeyboardMap::Mapping* qmap_keymap =
+    new KeyboardMap::Mapping[qmap_keymap_size];
+  KeyboardMap::Composing* qmap_keycompose =
+    qmap_keycompose_size ? new KeyboardMap::Composing[qmap_keycompose_size] : 0;
   for (quint32 i = 0; i < qmap_keymap_size; ++i) {
     ds >> qmap_keymap[i];
   }

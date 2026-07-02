@@ -90,6 +90,7 @@ namespace Oxide {
   }
   void SignalHandler::handleSignal(int signal, siginfo_t* si, void* vcontext) {
     Q_UNUSED(si);
+#if defined(__arm__) || defined(__aarch64__)
     if (signal == SIGPIPE || signal == SIGSEGV || signal == SIGBUS) {
       constexpr int depth = 10;
       auto uc = (ucontext_t*)vcontext;
@@ -98,8 +99,6 @@ namespace Oxide {
         (void*)uc->uc_mcontext.arm_pc;
 #elif defined(__aarch64__)
         (void*)uc->uc_mcontext.pc;
-#else
-#error "Unsupported architecture"
 #endif
       void* array[depth];
       size_t size = ::backtrace(array, depth);
@@ -109,6 +108,7 @@ namespace Oxide {
       ::write(STDERR_FILENO, "\n", std::strlen("\n"));
       ::backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
     }
+#endif
     if (!hasNotifier(signal)) {
       ::signal(signal, SIG_DFL);
       ::raise(signal);
