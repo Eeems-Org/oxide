@@ -79,19 +79,15 @@ namespace {
     constexpr int depth = 50;
     void* array[depth];
     size_t size = backtrace(array, depth);
-    array[1] = caller_address;
-    backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
-    chain_to_original_handler(signal, siginfo, context);
-    switch (signal) {
-      case SIGSEGV:
-        _Exit(139);
-      case SIGABRT:
-        _Exit(134);
-      case SIGBUS:
-        _Exit(138);
-      default:
-        _Exit(1);
+    if (size > 1) {
+      array[1] = caller_address;
+      backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
+    } else {
+      const char* msg2 = "Unable to get backtrace\n";
+      ::write(STDERR_FILENO, msg2, std::strlen(msg2));
     }
+    chain_to_original_handler(signal, siginfo, context);
+    _Exit(128 + signal);
   }
 #endif
 #endif

@@ -41,17 +41,24 @@ __signal_handler(int signal, siginfo_t* si, void* vcontext) {
     reinterpret_cast<void*>(uc->uc_mcontext.arm_pc);
 #elif defined(__aarch64__)
     reinterpret_cast<void*>(uc->uc_mcontext.pc);
+#elif defined(__x86_64__)
+    (void*)uc->uc_mcontext.gregs[REG_RIP];
 #else
     nullptr;
   _Exit(128 + signal);
 #endif
   void* array[depth];
   size_t size = backtrace(array, depth);
-  array[1] = caller_address;
   const char* msg = strsignal(signal);
   ::write(STDERR_FILENO, msg, std::strlen(msg));
   ::write(STDERR_FILENO, "\n", std::strlen("\n"));
-  backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
+  if (size > 1) {
+    array[1] = caller_address;
+    backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
+  } else {
+    const char* msg2 = "Unable to get backtrace\n";
+    ::write(STDERR_FILENO, msg2, std::strlen(msg2));
+  }
   _Exit(128 + signal);
 }
 

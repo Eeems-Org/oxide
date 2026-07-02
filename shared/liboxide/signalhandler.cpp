@@ -104,11 +104,16 @@ namespace Oxide {
 #endif
       void* array[depth];
       size_t size = ::backtrace(array, depth);
-      array[1] = caller_address;
       const char* msg = strsignal(signal);
       ::write(STDERR_FILENO, msg, std::strlen(msg));
       ::write(STDERR_FILENO, "\n", std::strlen("\n"));
-      ::backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
+      if (size > 1) {
+        array[1] = caller_address;
+        ::backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
+      } else {
+        const char* msg2 = "Unable to get backtrace\n";
+        ::write(STDERR_FILENO, msg2, std::strlen(msg2));
+      }
     }
 #endif
     if (!hasNotifier(signal)) {
