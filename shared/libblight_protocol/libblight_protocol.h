@@ -692,6 +692,7 @@ blight_surface_id_list_data(struct blight_surface_id_list_t* list);
  * \param width Width of area on the surface to repaint
  * \param height Height of area on the surface to repaint
  * \param waveform Waveform to use when repainting
+ * \param contenttype Content type to use when repainting
  * \param mode Update mode to use when repainting
  * \return 0 on error otherwise the marker used for the repaint call
  */
@@ -711,6 +712,7 @@ blight_surface_repaint(
  * \brief blight_raise Make a surface visible, and put it on top of the
  * stack
  * \param fd File descriptor for the connection socket
+ * \param identifier Surface identifier to raise
  * \return 0 on success, negative number on failure
  * \sa blight_add_surface
  * \sa blight_service_open
@@ -720,6 +722,7 @@ blight_raise(int fd, blight_surface_id_t identifier);
 /*!
  * \brief blight_lower Hide a surface
  * \param fd File descriptor for the connection socket
+ * \param identifier Surface identifier to hide
  * \return 0 on success, negative number on failure
  * \sa blight_add_surface
  * \sa blight_service_open
