@@ -1036,9 +1036,13 @@ hook_check_candidate() {
     if (candidate == nullptr) {
       continue;
     }
-    auto vtable = *static_cast<void**>(candidate);
+    void* vtable = nullptr;
+    if (!safe_read(candidate, &vtable, sizeof(vtable))) {
+      _DEBUG("Candidate at %p not readable, skipping", candidate);
+      continue;
+    }
     _DEBUG("EPFramebuffer candidate at %p, vtable=%p", candidate, vtable);
-    if (!vtable) {
+    if (vtable == nullptr) {
       _DEBUG("%s", "vtable is null, skipping");
       continue;
     }
@@ -1203,7 +1207,10 @@ _ZN6QImageC1Ev(void* this_ptr) {
       continue; // skip unsupported arch placeholder
     }
     void* candidate = static_cast<char*>(this_ptr) - offset;
-    auto vtable = *static_cast<void**>(candidate);
+    void* vtable = nullptr;
+    if (!safe_read(candidate, &vtable, sizeof(vtable))) {
+      continue;
+    }
     // Quick pre-filter: aligned, non-null, reasonable address
     if (
       vtable == nullptr ||
