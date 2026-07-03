@@ -2,8 +2,8 @@
 
 #include <libblight_protocol.h>
 
-extern "C" {
 #ifdef __cplusplus
+extern "C" {
 BlightProtocol::blight_input_buffer_t*
 #else
 blight_input_buffer_t*
@@ -11,4 +11,6 @@ blight_input_buffer_t*
 create_test_input_buffer();
 int
 test_c();
+#ifdef __cplusplus
 }
+#endif

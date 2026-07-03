@@ -19,6 +19,12 @@
 #include <thread>
 #include <vector>
 
+#if defined(__arm__) || defined(__aarch64__)
+namespace KeyboardMap = QEvdevKeyboardMap;
+#else
+namespace KeyboardMap = QKeyboardMap;
+#endif
+
 class OxideEventManager;
 
 class DeviceData : public std::enable_shared_from_this<DeviceData> {
@@ -79,16 +85,16 @@ private:
 
   OxideEventManager* m_manager;
   QMap<unsigned int, std::shared_ptr<DeviceData>> m_devices;
-  const QEvdevKeyboardMap::Mapping* m_keymap;
+  const KeyboardMap::Mapping* m_keymap;
   int m_keymap_size;
-  const QEvdevKeyboardMap::Composing* m_keycompose;
+  const KeyboardMap::Composing* m_keycompose;
   int m_keycompose_size;
   bool m_no_zap;
   bool m_do_compose;
   QTransform m_rotate;
 
-  static const QEvdevKeyboardMap::Mapping s_keymap_default[];
-  static const QEvdevKeyboardMap::Composing s_keycompose_default[];
+  static const KeyboardMap::Mapping s_keymap_default[];
+  static const KeyboardMap::Composing s_keycompose_default[];
   static Qt::KeyboardModifiers toQtModifiers(quint16 mod);
 
   void unloadKeymap();

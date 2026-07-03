@@ -1,4 +1,5 @@
 #include <asm-generic/fcntl.h>
+#include <csignal>
 #ifdef __aarch64__
 #include "drm.h"
 #endif
@@ -41,12 +42,27 @@
 
 namespace {
 #ifdef DEBUG
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
   struct sigaction originalSigsegv{};
   struct sigaction originalSigabrt{};
+  struct sigaction originalSigbus{};
 
   static void
   chain_to_original_handler(int signum, siginfo_t* siginfo, void* context) {
-    auto* action = signum == SIGSEGV ? &originalSigsegv : &originalSigabrt;
+    struct sigaction* action;
+    switch (signum) {
+      case SIGSEGV:
+        action = &originalSigsegv;
+        break;
+      case SIGABRT:
+        action = &originalSigabrt;
+        break;
+      case SIGBUS:
+        action = &originalSigbus;
+        break;
+      default:
+        return;
+    }
     if ((action->sa_flags & SA_SIGINFO) && action->sa_sigaction) {
       action->sa_sigaction(signum, siginfo, context);
     } else if (
@@ -72,24 +88,23 @@ namespace {
       reinterpret_cast<void*>(uc->uc_mcontext.arm_pc);
 #elif defined(__aarch64__)
       reinterpret_cast<void*>(uc->uc_mcontext.pc);
+#elif defined(__x86_64__)
+      (void*)uc->uc_mcontext.gregs[REG_RIP];
 #endif
     constexpr int depth = 50;
     void* array[depth];
     size_t size = backtrace(array, depth);
-    array[1] = caller_address;
-    backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
-    chain_to_original_handler(signal, siginfo, context);
-    switch (signal) {
-      case SIGSEGV:
-        _Exit(139);
-      case SIGABRT:
-        _Exit(134);
-      case SIGBUS:
-        _Exit(138);
-      default:
-        _Exit(1);
+    if (size > 1) {
+      array[1] = caller_address;
+      backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
+    } else {
+      const char* msg2 = "Unable to get backtrace\n";
+      ::write(STDERR_FILENO, msg2, std::strlen(msg2));
     }
+    chain_to_original_handler(signal, siginfo, context);
+    _Exit(128 + signal);
   }
+#endif
 #endif
 
   int __open(const char* pathname, int flags) {
@@ -653,13 +668,23 @@ system(const char* command) {
 }
 
 #ifdef DEBUG
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
 __attribute__((visibility("default"))) sighandler_t
 signal(int signum, sighandler_t handler) {
-  if (signum != SIGSEGV && signum != SIGABRT) {
-    return Libc::signal(signum, handler);
+  struct sigaction* originalAction;
+  switch (signum) {
+    case SIGSEGV:
+      originalAction = &originalSigsegv;
+      break;
+    case SIGABRT:
+      originalAction = &originalSigabrt;
+      break;
+    case SIGBUS:
+      originalAction = &originalSigbus;
+      break;
+    default:
+      return Libc::signal(signum, handler);
   }
-  auto* originalAction =
-    signum == SIGSEGV ? &originalSigsegv : &originalSigabrt;
   struct sigaction newAction{};
   newAction.sa_handler = handler;
   auto previousHandler = originalAction->sa_flags & SA_SIGINFO
@@ -682,8 +707,13 @@ sigaction(
   const struct sigaction* newAction,
   struct sigaction* oldAction
 ) {
-  if (signum != SIGSEGV && signum != SIGABRT) {
-    return Libc::sigaction(signum, newAction, oldAction);
+  switch (signum) {
+    case SIGSEGV:
+    case SIGABRT:
+    case SIGBUS:
+      break;
+    default:
+      return Libc::sigaction(signum, newAction, oldAction);
   }
   if (oldAction != nullptr) {
     int result = Libc::sigaction(signum, nullptr, oldAction);
@@ -694,7 +724,17 @@ sigaction(
   if (newAction == nullptr) {
     return 0;
   }
-  *(signum == SIGSEGV ? &originalSigsegv : &originalSigabrt) = *newAction;
+  switch (signum) {
+    case SIGSEGV:
+      originalSigsegv = *newAction;
+      break;
+    case SIGABRT:
+      originalSigabrt = *newAction;
+      break;
+    case SIGBUS:
+      originalSigbus = *newAction;
+      break;
+  }
   struct sigaction action{};
   action.sa_sigaction = __signal_handler;
   action.sa_flags = SA_SIGINFO;
@@ -702,9 +742,11 @@ sigaction(
   return Libc::sigaction(signum, &action, nullptr);
 }
 #endif
+#endif
 
 void __attribute__((constructor)) static init(void) {
 #ifdef DEBUG
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
   struct sigaction intercept_sigaction{};
   intercept_sigaction.sa_flags = SA_SIGINFO;
   intercept_sigaction.sa_sigaction = __signal_handler;
@@ -713,6 +755,7 @@ void __attribute__((constructor)) static init(void) {
   Libc::sigaction(SIGABRT, &intercept_sigaction, NULL);
   intercept_sigaction.sa_sigaction = __signal_handler;
   Libc::sigaction(SIGBUS, &intercept_sigaction, NULL);
+#endif
 #endif
   if (Client::init() && FB::init() && Input::init()) {
     Client::FAILED_INIT = false;

@@ -30,7 +30,7 @@
 #endif
 
 #ifdef DEBUG
-
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
 void
 __signal_handler(int signal, siginfo_t* si, void* vcontext) {
   Q_UNUSED(si);
@@ -41,26 +41,27 @@ __signal_handler(int signal, siginfo_t* si, void* vcontext) {
     reinterpret_cast<void*>(uc->uc_mcontext.arm_pc);
 #elif defined(__aarch64__)
     reinterpret_cast<void*>(uc->uc_mcontext.pc);
+#elif defined(__x86_64__)
+    (void*)uc->uc_mcontext.gregs[REG_RIP];
+#else
+    nullptr;
+  _Exit(128 + signal);
 #endif
   void* array[depth];
   size_t size = backtrace(array, depth);
-  array[1] = caller_address;
   const char* msg = strsignal(signal);
   ::write(STDERR_FILENO, msg, std::strlen(msg));
   ::write(STDERR_FILENO, "\n", std::strlen("\n"));
-  backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
-  switch (signal) {
-    case SIGSEGV:
-      _Exit(139);
-    case SIGABRT:
-      _Exit(134);
-    case SIGBUS:
-      _Exit(138);
-    default:
-      _Exit(1);
+  if (size > 1) {
+    array[1] = caller_address;
+    backtrace_symbols_fd(array + 1, size - 1, STDERR_FILENO);
+  } else {
+    const char* msg2 = "Unable to get backtrace\n";
+    ::write(STDERR_FILENO, msg2, std::strlen(msg2));
   }
+  _Exit(128 + signal);
 }
-
+#endif
 #endif
 
 static std::atomic<bool> enabled = false;
@@ -236,6 +237,7 @@ _ZN6QImageC2ERK7QStringPKc(
 void __attribute__((constructor))
 init(void) {
 #ifdef DEBUG
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
   QLoggingCategory::setFilterRules("lockscreen_hook=true");
   struct sigaction action{};
   action.sa_flags = SA_SIGINFO;
@@ -245,6 +247,7 @@ init(void) {
   sigaction(SIGABRT, &action, nullptr);
   action.sa_sigaction = __signal_handler;
   sigaction(SIGBUS, &action, nullptr);
+#endif
 #endif
   enabled = true;
 }

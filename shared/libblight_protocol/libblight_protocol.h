@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include <linux/input.h>
 #include <linux/types.h>
 #include <systemd/sd-bus.h>
 

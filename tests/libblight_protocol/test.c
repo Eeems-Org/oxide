@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <errno.h>
-#include <libblight_protocol.h>
 #include <libblight_protocol/socket.h>
 #include <linux/input.h>
 #include <pthread.h>
@@ -13,6 +12,8 @@
 #include <sys/time.h>
 #include <sys/un.h>
 #include <unistd.h>
+
+#include "test.h"
 
 #define __RIGHT_HERE__                                                         \
   fprintf(stderr, "<============================ %s:%d\n", __FILE__, __LINE__)

@@ -1,3 +1,6 @@
+!linux-oe-g++{
+    error("epaper is only supported on the reMarkable")
+}
 TARGET = lockscreen_hook
 TEMPLATE = lib
 
