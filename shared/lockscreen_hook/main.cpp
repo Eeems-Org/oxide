@@ -30,7 +30,7 @@
 #endif
 
 #ifdef DEBUG
-
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
 void
 __signal_handler(int signal, siginfo_t* si, void* vcontext) {
   Q_UNUSED(si);
@@ -61,7 +61,7 @@ __signal_handler(int signal, siginfo_t* si, void* vcontext) {
   }
   _Exit(128 + signal);
 }
-
+#endif
 #endif
 
 static std::atomic<bool> enabled = false;
@@ -237,6 +237,7 @@ _ZN6QImageC2ERK7QStringPKc(
 void __attribute__((constructor))
 init(void) {
 #ifdef DEBUG
+#if defined(__arm__) || defined(__aarch64__) || defined(__x86_64__)
   QLoggingCategory::setFilterRules("lockscreen_hook=true");
   struct sigaction action{};
   action.sa_flags = SA_SIGINFO;
@@ -246,6 +247,7 @@ init(void) {
   sigaction(SIGABRT, &action, nullptr);
   action.sa_sigaction = __signal_handler;
   sigaction(SIGBUS, &action, nullptr);
+#endif
 #endif
   enabled = true;
 }
