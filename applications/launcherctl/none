@@ -19,6 +19,9 @@ start | launch)
 stop | close)
 	systemctl stop xochitl.service
 	;;
+kill)
+	systemctl kill xochitl.service
+	;;
 apps)
 	echo "xochitl"
 	;;

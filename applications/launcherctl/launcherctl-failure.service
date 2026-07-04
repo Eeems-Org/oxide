@@ -1,0 +1,6 @@
+[Unit]
+Description=Launcherctl failure service
+After=home.mount
+
+[Service]
+ExecStart=/home/root/.vellum/sbin/launcherctl-failure

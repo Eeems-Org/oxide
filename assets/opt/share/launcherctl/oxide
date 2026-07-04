@@ -20,6 +20,9 @@ stop)
     systemctl stop tarnish.service
     systemctl stop blight.service
     ;;
+kill)
+    systemctl kill tarnish.service blight.service
+    ;;
 apps)
     if ! "$0" is-active; then
         find /home/root/.local/share/applications -maxdepth 1 -name '*.oxide' |

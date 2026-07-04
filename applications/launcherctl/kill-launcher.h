@@ -2,11 +2,11 @@
 
 #include "common.h"
 
-class StopLauncherCommand : ICommand {
+class KillLauncherCommand : ICommand {
   O_COMMAND(
-    StopLauncherCommand,
-    "stop-launcher",
-    "Stop the active launcher",
+    KillLauncherCommand,
+    "kill-launcher",
+    "Force stop the active launcher",
     true
   )
   int arguments(QCommandLineParser& parser) override {
@@ -17,7 +17,7 @@ class StopLauncherCommand : ICommand {
     if (!args.isEmpty()) {
       parser.showHelp(EXIT_FAILURE);
     }
-    queryActive({"stop"});
+    queryActive({"kill"});
     return EXIT_SUCCESS;
   }
 };

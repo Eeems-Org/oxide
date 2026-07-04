@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+log() {
+  printf "%s lockscreen_hook\t%s\n" "$(date --utc '+%H:%M:%S')" "$1" 1>&2
+}
+if [ -f /tmp/lockscreen_hook.disable ]; then
+  log "/tmp/lockscreen_hook.disable exists"
+  exit 1
+fi
