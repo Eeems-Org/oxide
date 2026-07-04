@@ -382,6 +382,7 @@ public:
   }
   Q_INVOKABLE void clearPin() {
     qDebug() << "Clearing PIN";
+    setStoredPin(" "); // Ensure empty pin in conf file
     setStoredPin("");
     startup();
   }
@@ -444,6 +445,7 @@ private slots:
     if (getPinEntryUI()) {
       pinEntryUI->setProperty("message", "");
       pinEntryUI->setProperty("pin", "");
+      pinEntryUI->setProperty("value", "");
     }
     if (state() == "confirmPin") {
       confirmPin = "";

@@ -196,14 +196,6 @@ SystemAPI::PrepareForSleep(bool suspending) {
           "rm_keyboard_backlight", "keyboard", m_savedKeyboardBrightness
         );
 #endif
-        if (m_buffer != nullptr) {
-          Blight::connection()->remove(m_buffer);
-          m_buffer = nullptr;
-        }
-        O_INFO("Resuming...");
-        Oxide::Sentry::sentry_span(t, "process", "Process events", [] {
-          QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-        });
         Oxide::Sentry::sentry_span(
           t,
           "resume",
@@ -240,6 +232,13 @@ SystemAPI::PrepareForSleep(bool suspending) {
             }
           }
         );
+        if (m_buffer != nullptr) {
+          Blight::connection()->remove(m_buffer);
+          m_buffer = nullptr;
+        }
+        Oxide::Sentry::sentry_span(t, "process", "Process events", [] {
+          QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        });
         Oxide::Sentry::sentry_span(
           t, "enable", "Enable various services", [this] {
             emit deviceResuming();
