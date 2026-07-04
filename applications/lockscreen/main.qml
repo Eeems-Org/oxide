@@ -10,8 +10,8 @@ OxideWindow {
     backgroundColor: "white"
     color: "black"
     id: window
+    visible: true
     objectName: "window"
-    visible: stateController.state != "loading"
     title: qsTr("Oxide")
     property int itemPadding: 10
     FontLoader { id: iconFont; source: "/font/icomoon.ttf" }
@@ -132,9 +132,11 @@ OxideWindow {
         }
     ]
     initialItem: Item {
-        anchors.fill: parent
+        width: parent.width
+        height: parent.height
         PinPad {
             id: pinEntry
+            visible: stateController.state != "loading"
             focus: true
             objectName: "pinEntry"
             buttonsVisible: !window.landscape
@@ -458,6 +460,7 @@ OxideWindow {
                     ScriptAction { script: {
                         controller.breadcrumb("navigation", "loading", "navigation");
                         console.log("Loading display");
+                        controller.startup();
                         window.stack.pop(window.stack.initialItem);
                     } }
                 }

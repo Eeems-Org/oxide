@@ -382,6 +382,7 @@ public:
   }
   Q_INVOKABLE void clearPin() {
     qDebug() << "Clearing PIN";
+    setStoredPin(" "); // Ensure empty pin in conf file
     setStoredPin("");
     startup();
   }
@@ -451,7 +452,6 @@ private slots:
       setState("pinPrompt");
     } else {
       setState("loading");
-      startup();
     }
   }
   void updateClock() {
