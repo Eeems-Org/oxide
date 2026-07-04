@@ -458,7 +458,6 @@ OxideWindow {
                     ScriptAction { script: {
                         controller.breadcrumb("navigation", "loading", "navigation");
                         console.log("Loading display");
-                        controller.startup();
                         window.stack.pop(window.stack.initialItem);
                     } }
                 }

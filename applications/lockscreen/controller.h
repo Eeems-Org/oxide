@@ -444,12 +444,14 @@ private slots:
     if (getPinEntryUI()) {
       pinEntryUI->setProperty("message", "");
       pinEntryUI->setProperty("pin", "");
+      pinEntryUI->setProperty("value", "");
     }
     if (state() == "confirmPin") {
       confirmPin = "";
       setState("pinPrompt");
     } else {
       setState("loading");
+      startup();
     }
   }
   void updateClock() {
