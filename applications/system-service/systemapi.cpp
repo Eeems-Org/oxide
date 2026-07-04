@@ -196,7 +196,6 @@ SystemAPI::PrepareForSleep(bool suspending) {
           "rm_keyboard_backlight", "keyboard", m_savedKeyboardBrightness
         );
 #endif
-        O_INFO("Resuming...");
         Oxide::Sentry::sentry_span(
           t,
           "resume",
