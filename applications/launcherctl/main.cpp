@@ -5,7 +5,6 @@
 #include "is-active-launcher.h"
 #include "is-current-launcher.h"
 #include "is-enabled-launcher.h"
-#include "kill-launcher.h"
 #include "list-apps.h"
 #include "list-launchers.h"
 #include "list-paused-apps.h"
@@ -54,7 +53,6 @@ main(int argc, char* argv[]) {
   STATIC_INSTANCE(IsActiveLauncherCommand);
   STATIC_INSTANCE(IsCurrentLauncherCommand);
   STATIC_INSTANCE(IsEnabledLauncherCommand);
-  STATIC_INSTANCE(KillLauncherCommand);
   STATIC_INSTANCE(ListAppsCommand);
   STATIC_INSTANCE(ListLaunchersCommand);
   STATIC_INSTANCE(ListPausedAppsCommand);

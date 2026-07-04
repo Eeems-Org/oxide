@@ -17,7 +17,6 @@ HEADERS += \
     is-active-launcher.h \
     is-current-launcher.h \
     is-enabled-launcher.h \
-    kill-launcher.h \
     list-apps.h \
     list-launchers.h \
     list-paused-apps.h \

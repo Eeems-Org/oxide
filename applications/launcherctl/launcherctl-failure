@@ -1,4 +1,4 @@
 #!/bin/bash
-/home/root/.vellum/bin/launcherctl kill-launcher
+/home/root/.vellum/bin/launcherctl stop-launcher
 touch /tmp/lockscreen_hook.disable
 /home/root/.vellum/share/launcherctl/none start
