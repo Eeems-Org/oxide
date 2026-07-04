@@ -46,5 +46,5 @@ include(../../qmake/liboxide.pri)
 DEFINES += LIBBLIGHT_PRIVATE
 include(../../qmake/libblight.pri)
 
-target.path += $$USRLIB_INSTALL_PATH/plugins/platforms
+target.path += $$LIB_INSTALL_PATH/plugins/platforms
 INSTALLS += target

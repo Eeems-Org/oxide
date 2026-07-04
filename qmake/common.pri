@@ -27,7 +27,6 @@ linux-oe-g++{
 }
 ROOT_INSTALL_PATH = /home/root/.vellum
 LIB_INSTALL_PATH = $$ROOT_INSTALL_PATH/lib
-USRLIB_INSTALL_PATH = $$ROOT_INSTALL_PATH/usr/lib
 INCLUDE_INSTALL_PATH = $$ROOT_INSTALL_PATH/include
 BIN_INSTALL_PATH = $$ROOT_INSTALL_PATH/bin
 SHARE_INSTALL_PATH = $$ROOT_INSTALL_PATH/share
@@ -37,7 +36,10 @@ ICONS_INSTALL_PATH = /home/root/.local/share/icons/oxide/48x48/apps
 SPLASH_INSTALL_PATH = /home/root/.local/share/icons/oxide/702x702/splash
 TESTS_INSTALL_PATH = /home/root/.local/share/tests
 
-QMAKE_RPATHDIR += /lib /usr/lib $$LIB_INSTALL_PATH $$USRLIB_INSTALL_PATH
+QMAKE_RPATHDIR += \
+    /lib \
+    /usr/lib \
+    $$LIB_INSTALL_PATH
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 DEFINES += SPLASH_INSTALL_PATH=\\\"$$SPLASH_INSTALL_PATH\\\"
 DEFINES += ICONS_INSTALL_PATH=\\\"$$ICONS_INSTALL_PATH\\\"

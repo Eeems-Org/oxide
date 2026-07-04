@@ -66,7 +66,7 @@ If you are using liboxide, a call to `deviceSettings.setupQtEnvironment()` will 
 .. code:: cpp
 
    void setup(){
-     QCoreApplication::addLibraryPath("/opt/usr/lib/plugins");
+     QCoreApplication::addLibraryPath("/home/root/.vellum/lib/plugins");
      qputenv("QMLSCENE_DEVICE", "software");
      qputenv("QT_QUICK_BACKEND","software");
      QString platform(

@@ -191,8 +191,8 @@ oxide_display() {
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/blight-client
         # QPA
-        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/usr/lib/plugins/platforms \
-            home/root/.vellum/usr/lib/plugins/platforms/liboxide.so*
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib/plugins/platforms \
+            home/root/.vellum/lib/plugins/platforms/liboxide.so*
         install -Dm644 "$srcdir/LICENSE.md" \
             "$subpkgdir/home/root/.vellum/licenses/oxide-display/LICENSE"
         echo "https://github.com/Eeems/oxide" > \

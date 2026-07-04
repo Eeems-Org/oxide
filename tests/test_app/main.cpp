@@ -28,7 +28,7 @@ main(int argc, char* argv[]) {
   qputenv("QMLSCENE_DEVICE", "software");
   qputenv("QT_QUICK_BACKEND", "software");
   qputenv("QT_QPA_PLATFORM", "oxide:enable_fonts");
-  QCoreApplication::addLibraryPath("/home/root/.vellum/usr/lib/plugins");
+  QCoreApplication::addLibraryPath("/home/root/.vellum/lib/plugins");
   QGuiApplication app(argc, argv);
   sentry_init("test_app", argv);
   app.setOrganizationName("Eeems");
