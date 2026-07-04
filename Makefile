@@ -18,6 +18,7 @@ DEFINES += DEFINES+=SENTRY
 endif
 
 OBJ = oxide.pro
+OBJ = LICENSE.md
 OBJ += $(wildcard applications/**)
 OBJ += $(wildcard assets/**)
 OBJ += $(wildcard interfaces/**)
@@ -227,7 +228,8 @@ $(BUILD)/package/oxide.tar.gz: $(OBJ) $(BUILD)/package
 		shared \
 		tests \
 		oxide.pro \
-		Makefile
+		Makefile \
+		LICENSE.md
 
 $(BUILD)/package/VELBUILD: $(BUILD)/package $(OBJ) VELBUILD
 	VERSION="$${VERSION:-$$(grep 'VERSION =' qmake/common.pri | awk '{print $$3}')}"

@@ -106,6 +106,10 @@ package() {
     # Keyd configuration
     install -o root -g root -Dm644 -t "$pkgdir"/home/root/.config/keyd \
         home/root/.config/keyd/oxide.conf
+    install -Dm644 "$srcdir/LICENSE.md" \
+        "$pkgdir/home/root/.vellum/licenses/$pkgname/LICENSE"
+    echo "https://github.com/Eeems/oxide" > \
+        "$pkgdir/home/root/.vellum/licenses/$pkgname/SOURCES"
 }
 
 postinstall() {
@@ -189,6 +193,10 @@ oxide_display() {
         # QPA
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/usr/lib/plugins/platforms \
             home/root/.vellum/usr/lib/plugins/platforms/liboxide.so*
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-display/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-display/SOURCES"
     }
 
     postinstall() {
@@ -263,6 +271,10 @@ oxide_display_dev() {
             home/root/.vellum/include/libblight_protocol.h
         cp -ar home/root/.vellum/include/libblight_protocol/ \
             "$subpkgdir"/home/root/.vellum/include/
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-display-dev/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-display-dev/SOURCES"
     }
 }
 
@@ -291,6 +303,10 @@ oxide_extra() {
             home/root/.local/share/applications/codes.eeems.ether.oxide
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/icons/oxide/48x48/apps \
             home/root/.local/share/icons/oxide/48x48/apps/ether.png
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-extra/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-extra/SOURCES"
     }
 
     postinstall() {
@@ -339,6 +355,10 @@ oxide_utils() {
             home/root/.vellum/bin/xdg-settings
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/xdg-icon-resource
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-utils/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-utils/SOURCES"
     }
 
     postinstall() {
@@ -365,6 +385,10 @@ inject_evdev() {
         cd "$srcdir"/release
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/inject_evdev
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/inject-evdev/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/inject-evdev/SOURCES"
     }
 }
 
@@ -376,6 +400,10 @@ fbinfo() {
         cd "$srcdir"/release
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/fbinfo
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/fbinfo/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/fbinfo/SOURCES"
     }
 }
 
@@ -399,6 +427,10 @@ liboxide() {
             install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/lib \
                 home/root/.vellum/lib/libcpptrace.so
         fi
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/liboxide/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/liboxide/SOURCES"
     }
 }
 
@@ -419,6 +451,10 @@ liboxide_dev() {
             home/root/.vellum/include/liboxide.h
         cp -ar home/root/.vellum/include/liboxide/ \
             "$subpkgdir"/home/root/.vellum/include/
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/liboxide-dev/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/liboxide-dev/SOURCES"
     }
 }
 
@@ -442,6 +478,10 @@ oxide_tests() {
             home/root/.vellum/bin/test_app
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
             home/root/.local/share/applications/test_app.oxide
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-tests/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-tests/SOURCES"
     }
 
     postinstall() {
@@ -466,6 +506,10 @@ oxide_xovi() {
         cd "$srcdir"/release
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
             home/root/.local/share/applications/xovi.oxide
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-xovi/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/oxide-xovi/SOURCES"
     }
 
     postinstall() {
@@ -493,6 +537,10 @@ lockscreen_hook() {
             etc/systemd/system/xochitl.service.d/lockscreen_hook.conf
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/lockscreen_hook/ \
             usr/libexec/lockscreen-hook
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/lockscreen-hook/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/lockscreen-hook/SOURCES"
     }
 
     postinstall() {
@@ -561,6 +609,10 @@ launcherctl() {
             home/root/.local/share/lockscreen_hook.d/success
         install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/share/launcherctl/systemd \
             etc/systemd/system/launcherctl-failure.service
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/launcherctl/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/launcherctl/SOURCES"
     }
     postinstall() {
         set -e
@@ -610,6 +662,10 @@ launcherctl_oxide() {
         cd "$srcdir"/release
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/launcherctl \
             home/root/.vellum/share/launcherctl/oxide
+        install -Dm644 "$srcdir/LICENSE.md" \
+            "$subpkgdir/home/root/.vellum/licenses/launcherctl-oxide/LICENSE"
+        echo "https://github.com/Eeems/oxide" > \
+            "$subpkgdir/home/root/.vellum/licenses/launcherctl-oxide/SOURCES"
     }
 
     predeinstall() {
