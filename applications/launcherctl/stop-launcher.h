@@ -6,7 +6,7 @@ class StopLauncherCommand : ICommand {
   O_COMMAND(
     StopLauncherCommand,
     "stop-launcher",
-    "Stop the current launcher",
+    "Stop the active launcher",
     true
   )
   int arguments(QCommandLineParser& parser) override {

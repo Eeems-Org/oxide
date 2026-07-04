@@ -440,7 +440,7 @@ oxide_tests() {
             home/root/.local/share/tests/liboxide
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/test_app
-        install -o root -g root -Dm644 -t "$pkgdir"/home/root/.local/share/applications \
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.local/share/applications \
             home/root/.local/share/applications/test_app.oxide
     }
 
@@ -549,12 +549,18 @@ launcherctl() {
         cd "$srcdir"/release
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/bin \
             home/root/.vellum/bin/launcherctl
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/sbin \
+            home/root/.vellum/sbin/launcherctl-failure
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/launcherctl \
             home/root/.vellum/share/launcherctl/none
+        install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.local/share/lockscreen_hook.d \
+            home/root/.local/share/lockscreen_hook.d/setup
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.local/share/lockscreen_hook.d \
             home/root/.local/share/lockscreen_hook.d/unlock
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.local/share/lockscreen_hook.d \
             home/root/.local/share/lockscreen_hook.d/success
+        install -o root -g root -Dm644 -t "$subpkgdir"/home/root/.vellum/share/launcherctl/systemd \
+            etc/systemd/system/launcherctl-failure.service
     }
     postinstall() {
         set -e
@@ -566,18 +572,26 @@ launcherctl() {
     }
     postosupgrade() {
         set -e
+        rm -f /var/volatile/etc/systemd/system/launcherctl-failure.service
+        cp -a /home/root/.vellum/share/launcherctl/systemd/launcherctl-failure.service \
+            /etc/systemd/system/
+        systemctl daemon-reload
         /home/root/.vellum/bin/launcherctl status
     }
     predeinstall() {
-        if [[ "$(/home/root/.vellum/bin/launcherctl current-launcher)" != "none" ]]; then
+        set -e
+        if [[ "$(/home/root/.vellum/bin/launcherctl active-launcher)" != "none" ]]; then
             /home/root/.vellum/bin/launcherctl stop-launcher
+            /home/root/.vellum/share/launcherctl/none start
         fi
-        /home/root/.vellum/bin/launcherctl switch-launcher none
+        rm -f /etc/systemd/system/launcherctl-failure.service
+        systemctl daemon-reload
         if [ "$VELLUM_PURGE" = "1" ]; then
             rm -f /home/root/.vellum/share/launcherctl/current
         fi
     }
     postdeinstall() {
+        set -e
         if [ "$(systemctl --quiet list-unit-files xochitl.service | /bin/grep -c xochitl.service 2> /dev/null)" -ne 1 ]; then
             systemctl enable --now xochitl
         fi
@@ -596,5 +610,12 @@ launcherctl_oxide() {
         cd "$srcdir"/release
         install -o root -g root -Dm755 -t "$subpkgdir"/home/root/.vellum/share/launcherctl \
             home/root/.vellum/share/launcherctl/oxide
+    }
+
+    predeinstall() {
+        set -e
+        if [[ "$(/home/root/.vellum/bin/launcherctl current-launcher)" == "oxide" ]]; then
+            /home/root/.vellum/bin/launcherctl switch-launcher none
+        fi
     }
 }

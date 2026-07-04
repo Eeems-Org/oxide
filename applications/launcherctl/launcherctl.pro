@@ -44,12 +44,22 @@ none_install.path = $$SHARE_INSTALL_PATH/launcherctl
 INSTALLS += none_install
 
 hooks_install.files = \
-    unlock \
-    success
+    setup \
+    success \
+    unlock
 hooks_install.path = /home/root/.local/share/lockscreen_hook.d
 INSTALLS += hooks_install
 
+service.files = launcherctl-failure.service
+service.path = /etc/systemd/system/
+INSTALLS += service
+
+failure.files = launcherctl-failure
+failure.path = $$ROOT_INSTALL_PATH/sbin
+INSTALLS += failure
+
 DISTFILES += \
     none \
-    unlock \
-    success
+    setup \
+    success \
+    unlock
