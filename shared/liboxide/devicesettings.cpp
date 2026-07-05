@@ -1,5 +1,6 @@
 #include "devicesettings.h"
 
+#include <linux/input-event-codes.h>
 #include <mutex>
 #include <private/qguiapplication_p.h>
 #include <private/qinputdevicemanager_p.h>
@@ -499,6 +500,42 @@ namespace Oxide {
         callback();
       }
     );
+  }
+
+  QList<event_device> DeviceSettings::switches() {
+    QList<event_device> switches;
+    for (auto device : inputDevices()) {
+      if (
+        device.device == buttonsPath || device.device == wacomPath ||
+        device.device == touchPath
+      ) {
+        continue;
+      }
+      int fd = device.fd;
+      unsigned long bit[EV_MAX];
+      ioctl(fd, EVIOCGBIT(0, EV_MAX), bit);
+      if (!test_bit(EV_SW, bit)) {
+        continue;
+      }
+      if (
+        !checkBitSet(fd, EV_SW, SW_LID) ||
+        !checkBitSet(fd, EV_SW, SW_PEN_INSERTED)
+      ) {
+        continue;
+      }
+      auto name = QFileInfo(device.device.c_str()).baseName();
+      SysObject sys("/sys/class/input/" + name + "/device");
+      auto vendor = sys.strProperty("id/vendor");
+      if (vendor == "0000") {
+        continue;
+      }
+      auto product = sys.strProperty("id/product");
+      if (product == "0000") {
+        continue;
+      }
+      switches.append(device);
+    }
+    return switches;
   }
 
   QList<event_device> DeviceSettings::keyboards() {

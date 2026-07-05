@@ -64,6 +64,12 @@ Window{
             }
         }
     }
+    Connections{
+        target: controller
+        function onLidClosed(){
+            controller.suspend()
+        }
+    }
     Timer{
         id: leftHeldTimer
         running: false

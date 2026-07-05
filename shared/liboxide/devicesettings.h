@@ -196,6 +196,11 @@ namespace Oxide {
      */
     void onInputDevicesChanged(std::function<void()> callback);
     /*!
+     * \brief Get the list of all switches evdev devices
+     * \return All switches devices
+     */
+    QList<event_device> switches();
+    /*!
      * \brief Get the list of all keyboard evdev devices
      * \return All keyboard devices
      */

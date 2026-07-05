@@ -61,7 +61,15 @@ NotificationAPI::setEnabled(bool enabled) {
 void
 NotificationAPI::startup() {
   auto engine = dbusService->engine();
-  engine->load("qrc:/notification.qml");
+  QUrl overlayUrl(sharedSettings.notificationOverlay());
+  engine->load(overlayUrl);
+  if (engine->rootObjects().count() < 2) {
+    O_WARNING("Failed to load notification overlay:" << overlayUrl);
+    engine->load(QUrl(QStringLiteral("qrc:/notification.qml")));
+    if (engine->rootObjects().count() < 2) {
+      qFatal("Failed to load notification overlay");
+    }
+  }
   m_window = static_cast<QQuickWindow*>(engine->rootObjects().last());
   auto buffer = Oxide::QML::getSurfaceForWindow(m_window);
   getCompositorDBus()->setFlags(

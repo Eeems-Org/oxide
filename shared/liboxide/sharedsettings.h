@@ -219,6 +219,42 @@ namespace Oxide {
      * \brief If the lockscreen onFailedLogin has been changed
      */
     O_SETTINGS_PROPERTY(QString, Lockscreen, onFailedLogin)
+    /*!
+     * \property systemOverlay
+     * \brief The QML file used for the system overlay (gestures, keyboard
+     * shortcuts, etc)
+     * \sa set_systemOverlay, systemOverlayChanged
+     */
+    /*!
+     * \fn set_systemOverlay
+     * \param _arg_systemOverlay
+     * \brief Change the system overlay QML file
+     */
+    /*!
+     * \fn systemOverlayChanged
+     * \brief If the system overlay QML file has been changed
+     */
+    O_SETTINGS_PROPERTY(QString, General, systemOverlay, "qrc:/main.qml")
+    /*!
+     * \property notificationOverlay
+     * \brief The QML file used for the notification overlay
+     * \sa set_notificationOverlay, notificationOverlayChanged
+     */
+    /*!
+     * \fn set_notificationOverlay
+     * \param _arg_notificationOverlay
+     * \brief Change the notification overlay QML file
+     */
+    /*!
+     * \fn notificationOverlayChanged
+     * \brief If the notification overlay QML file has been changed
+     */
+    O_SETTINGS_PROPERTY(
+      QString,
+      General,
+      notificationOverlay,
+      "qrc:/notification.qml"
+    )
 
   private:
     ~SharedSettings();

@@ -26,4 +26,18 @@ namespace Oxide {
   O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, pin)
   O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, onLogin)
   O_SETTINGS_PROPERTY_BODY(SharedSettings, QString, Lockscreen, onFailedLogin)
+  O_SETTINGS_PROPERTY_BODY(
+    SharedSettings,
+    QString,
+    General,
+    systemOverlay,
+    "qrc:/main.qml"
+  )
+  O_SETTINGS_PROPERTY_BODY(
+    SharedSettings,
+    QString,
+    General,
+    notificationOverlay,
+    "qrc:/notification.qml"
+  )
 } // namespace Oxide
