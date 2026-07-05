@@ -214,7 +214,7 @@ Window{
             if(resumeApplication != ""){
                 controller.resumeApplication(resumeApplication);
             }else{
-                controller.bac();
+                controller.back();
             }
         }
         contentItem: ColumnLayout {
@@ -245,7 +245,10 @@ Window{
             OxideButton {
                 text: "Lock"
                 Layout.fillWidth: true
+                visible: powerMenu.resumeApplication != controller.lockscreenApplication()
+                enabled: visible
                 onClicked: {
+                    powerMenu.resumeApplication = "";
                     controller.lock();
                     powerMenu.close();
                 }

@@ -115,6 +115,11 @@ public:
     auto app = getCurrentApplication();
     return app == nullptr ? "" : app->name();
   }
+  Q_INVOKABLE QString lockscreenApplication() {
+    auto path = appsAPI->lockscreenApplication();
+    auto app = path.path() == "/" ? nullptr : appsAPI->getApplication(path);
+    return app == nullptr ? "" : app->name();
+  }
 
   QString deviceName() { return deviceSettings.getDeviceName(); }
   bool leftSwipeEnabled() {
