@@ -3,6 +3,9 @@
 #include <liboxide/oxideqml.h>
 
 #include <QObject>
+#include <QSocketNotifier>
+
+#include <fcntl.h>
 
 #include "appsapi.h"
 #include "screenapi.h"
@@ -102,6 +105,15 @@ public:
   int upSwipeLength() { return systemAPI->getSwipeLength(SystemAPI::Up); }
   int downSwipeLength() { return systemAPI->getSwipeLength(SystemAPI::Down); }
 
+  ~Controller() {
+    for (auto& monitor : m_switchMonitors) {
+      delete monitor.notifier;
+      if (monitor.fd >= 0) {
+        ::close(monitor.fd);
+      }
+    }
+  }
+
 signals:
   void keyPressed(int, int, const QString&);
   void keyReleased(int, int, const QString&);
@@ -113,8 +125,69 @@ signals:
   void rightSwipeLengthChanged(int);
   void upSwipeLengthChanged(int);
   void downSwipeLengthChanged(int);
+  void lidClosed();
+  void lidOpened();
+  void penAttached();
+  void penDetached();
 
 private:
+  struct SwitchMonitor {
+    int fd = -1;
+    QSocketNotifier* notifier = nullptr;
+  };
+  QList<SwitchMonitor> m_switchMonitors;
+
+  void readEvents() {
+    auto notifier = qobject_cast<QSocketNotifier*>(sender());
+    if (notifier == nullptr) {
+      return;
+    }
+    int fd = notifier->socket();
+    struct input_event ev;
+    while (::read(fd, &ev, sizeof(ev)) == sizeof(ev)) {
+      if (ev.type != EV_SW) {
+        continue;
+      }
+      switch (ev.code) {
+        case SW_LID:
+          if (ev.value) {
+            emit lidClosed();
+          } else {
+            emit lidOpened();
+          }
+          break;
+        case SW_PEN_INSERTED:
+          if (ev.value) {
+            emit penAttached();
+          } else {
+            emit penDetached();
+          }
+          break;
+      }
+    }
+  }
+
+  void inputDevicesChanged() {
+    for (auto& monitor : m_switchMonitors) {
+      delete monitor.notifier;
+      if (monitor.fd >= 0) {
+        ::close(monitor.fd);
+      }
+    }
+    m_switchMonitors.clear();
+    for (auto& sw : deviceSettings.switches()) {
+      int fd = ::open(sw.device.c_str(), O_RDONLY | O_NONBLOCK);
+      if (fd < 0) {
+        continue;
+      }
+      auto notifier = new QSocketNotifier(fd, QSocketNotifier::Read, this);
+      connect(
+        notifier, &QSocketNotifier::activated, this, &Controller::readEvents
+      );
+      m_switchMonitors.append({fd, notifier});
+    }
+  }
+
   explicit Controller(QObject* parent = nullptr)
     : QObject(parent) {
     connect(
@@ -188,5 +261,7 @@ private:
       }
       return false;
     });
+    inputDevicesChanged();
+    deviceSettings.onInputDevicesChanged([this] { inputDevicesChanged(); });
   }
 };

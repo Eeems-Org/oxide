@@ -227,9 +227,15 @@ main(int argc, char* argv[]) {
   registerQML(&engine);
   QQmlContext* context = engine.rootContext();
   context->setContextProperty("controller", Controller::singleton());
-  engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+  QUrl overlayUrl(sharedSettings.systemOverlay());
+  engine.load(overlayUrl);
   if (engine.rootObjects().isEmpty()) {
-    qFatal("Failed to load main layout");
+    qWarning() << "Failed to load system overlay:" << overlayUrl
+               << "- falling back to qrc:/main.qml";
+    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+    if (engine.rootObjects().isEmpty()) {
+      qFatal("Failed to load main layout");
+    }
   }
   QTimer::singleShot(0, [&engine, &buffer] {
     dbusService->startup(&engine);
