@@ -97,6 +97,29 @@ public:
   }
   Q_INVOKABLE void toggleSwipes() { systemAPI->toggleSwipes(); }
   Q_INVOKABLE void suspend() { systemAPI->suspend(); }
+  Q_INVOKABLE void powerOff() { systemAPI->powerOff(); }
+  Q_INVOKABLE void reboot() { systemAPI->reboot(); }
+  Q_INVOKABLE void pauseApplication(const QString& name, bool startIfNone) {
+    auto app = appsAPI->getApplication(name);
+    if (app != nullptr) {
+      app->pauseNoSecurityCheck(startIfNone);
+    }
+  }
+  Q_INVOKABLE void resumeApplication(const QString& name) {
+    auto app = appsAPI->getApplication(name);
+    if (app != nullptr) {
+      app->resumeNoSecurityCheck();
+    }
+  }
+  Q_INVOKABLE QString currentApplication() {
+    auto app = getCurrentApplication();
+    return app == nullptr ? "" : app->name();
+  }
+  Q_INVOKABLE QString lockscreenApplication() {
+    auto path = appsAPI->lockscreenApplication();
+    auto app = path.path() == "/" ? nullptr : appsAPI->getApplication(path);
+    return app == nullptr ? "" : app->name();
+  }
 
   QString deviceName() { return deviceSettings.getDeviceName(); }
   bool leftSwipeEnabled() {
@@ -235,6 +258,11 @@ private:
       );
       m_switchMonitors.append({fd, notifier});
     }
+  }
+
+  Application* getCurrentApplication() {
+    auto path = appsAPI->currentApplicationNoSecurityCheck();
+    return path.path() == "/" ? nullptr : appsAPI->getApplication(path);
   }
 
   explicit Controller(QObject* parent = nullptr)
