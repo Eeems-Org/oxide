@@ -1,5 +1,8 @@
 import QtQuick 2.15
 import QtQuick.Window 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.0
+import "qrc:/codes.eeems.oxide"
 
 Window{
     id: window
@@ -8,7 +11,7 @@ Window{
     width: Screen.width
     height: Screen.height
     visible: true
-    color: "transparent"
+    color: powerMenu.opened ? "white" : "transparent"
     property bool enableHeldKeys: controller.deviceName === "reMarkable 1"
 
     Connections{
@@ -63,9 +66,6 @@ Window{
                     break;
             }
         }
-    }
-    Connections{
-        target: controller
         function onLidClosed(){
             controller.suspend()
         }
@@ -96,9 +96,7 @@ Window{
         running: false
         repeat: false
         interval: 700
-        onTriggered:{
-            // TODO - power menu app
-        }
+        onTriggered: powerMenu.open()
     }
 
     Item{
@@ -196,5 +194,67 @@ Window{
         sequences: ["End+Alt+4", "Alt+F4", "Meta+Alt+4"]
         context: Qt.ApplicationShortcut
         onActivated: controller.close()
+    }
+    Popup {
+        id: powerMenu
+        modal: true
+        anchors.centerIn: parent
+        closePolicy: Popup.NoAutoClose
+        font.pixelSize: 48
+        implicitWidth: 500
+        implicitHeight: 500
+        Overlay.modal: Rectangle { color: "white" }
+        background: Rectangle { color: "white" }
+        property string resumeApplication: ""
+        onOpened: {
+            resumeApplication = controller.currentApplication();
+            controller.pauseApplication(resumeApplication, false);
+        }
+        onClosed: {
+            if(resumeApplication != ""){
+                controller.resumeApplication(resumeApplication);
+            }else{
+                controller.bac();
+            }
+        }
+        contentItem: ColumnLayout {
+            OxideButton {
+                text: "Suspend"
+                Layout.fillWidth: true
+                onClicked: {
+                    controller.suspend();
+                    powerMenu.close();
+                }
+            }
+            OxideButton {
+                text: "Reboot"
+                Layout.fillWidth: true
+                onClicked: {
+                    controller.reboot();
+                    powerMenu.close();
+                }
+            }
+            OxideButton {
+                text: "Shutdown"
+                Layout.fillWidth: true
+                onClicked: {
+                    controller.powerOff();
+                    powerMenu.close();
+                }
+            }
+            OxideButton {
+                text: "Lock"
+                Layout.fillWidth: true
+                onClicked: {
+                    controller.lock();
+                    powerMenu.close();
+                }
+            }
+            OxideButton {
+                text: "Cancel"
+                Layout.fillWidth: true
+                onClicked: powerMenu.close()
+            }
+        }
     }
 }
