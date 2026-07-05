@@ -1,13 +1,22 @@
 #pragma once
 
-#include <liboxide/oxideqml.h>
+#include <liboxide/debug.h>
+#include <liboxide/devicesettings.h>
 
+#include <QKeyEvent>
+#include <QList>
 #include <QObject>
 #include <QSocketNotifier>
 
+#include <cerrno>
 #include <fcntl.h>
+#include <linux/input-event-codes.h>
+#include <linux/input.h>
+#include <unistd.h>
 
+#include "application.h"
 #include "appsapi.h"
+#include "eventlistener.h"
 #include "screenapi.h"
 #include "systemapi.h"
 
@@ -144,26 +153,66 @@ private:
     }
     int fd = notifier->socket();
     struct input_event ev;
-    while (::read(fd, &ev, sizeof(ev)) == sizeof(ev)) {
-      if (ev.type != EV_SW) {
+    int lidState = -1;
+    int penState = -1;
+    while (true) {
+      auto res = ::read(fd, &ev, sizeof(ev));
+      if (res == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          break;
+        }
+        O_WARNING("Failed reading event device, disabling it");
+        for (int i = 0; i < m_switchMonitors.size(); i++) {
+          auto& monitor = m_switchMonitors[i];
+          if (monitor.fd != fd) {
+            continue;
+          }
+          monitor.notifier->setEnabled(false);
+          monitor.notifier->deleteLater();
+          ::close(m_switchMonitors[i].fd);
+          m_switchMonitors.removeAt(i);
+          break;
+        }
+        return;
+      }
+      if (res != sizeof(ev)) {
+        break;
+      }
+      if (ev.type == EV_SW) {
+        switch (ev.code) {
+          case SW_LID:
+            lidState = ev.value;
+            break;
+          case SW_PEN_INSERTED:
+            penState = ev.value;
+            break;
+        }
         continue;
       }
-      switch (ev.code) {
-        case SW_LID:
-          if (ev.value) {
-            emit lidClosed();
-          } else {
-            emit lidOpened();
-          }
-          break;
-        case SW_PEN_INSERTED:
-          if (ev.value) {
-            emit penAttached();
-          } else {
-            emit penDetached();
-          }
-          break;
+      if (ev.type != EV_SYN) {
+        continue;
       }
+      if (ev.code == SYN_DROPPED) {
+        lidState = -1;
+        penState = -1;
+        continue;
+      }
+      if (lidState != -1) {
+        if (lidState) {
+          emit lidClosed();
+        } else {
+          emit lidOpened();
+        }
+      }
+      if (penState != -1) {
+        if (penState) {
+          emit penAttached();
+        } else {
+          emit penDetached();
+        }
+      }
+      lidState = -1;
+      penState = -1;
     }
   }
 
