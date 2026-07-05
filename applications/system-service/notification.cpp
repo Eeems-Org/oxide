@@ -225,9 +225,11 @@ void
 Notification::paintNotification() {
   O_INFO("Painting notification" << identifier());
   auto window = notificationAPI->paintNotification(m_text, m_icon, m_actions);
-  QObject::connect(
-    window, SIGNAL(clicked(QString)), this, SIGNAL(clicked(QString))
-  );
+  if (window != nullptr) {
+    QObject::connect(
+      window, SIGNAL(clicked(QString)), this, SIGNAL(clicked(QString))
+    );
+  }
   auto connection = std::make_shared<QMetaObject::Connection>(QObject::connect(
     this,
     &Notification::removed,
@@ -250,11 +252,13 @@ Notification::paintNotification() {
 void
 Notification::nextNotification(QQuickWindow* window) {
   O_INFO("Finished displaying notification" << identifier());
-  disconnect(window, SIGNAL(clicked(QString)), nullptr, nullptr);
+  if (window != nullptr) {
+    disconnect(window, SIGNAL(clicked(QString)), nullptr, nullptr);
+  }
   if (!notificationAPI->notificationDisplayQueue.isEmpty()) {
     notificationAPI->notificationDisplayQueue.takeFirst()->paintNotification();
     return;
-  } else {
+  } else if (window != nullptr) {
     window->setProperty("notificationVisible", false);
   }
   notificationAPI->unlock();

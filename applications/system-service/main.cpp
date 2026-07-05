@@ -225,19 +225,18 @@ main(int argc, char* argv[]) {
 
   QQmlApplicationEngine engine;
   registerQML(&engine);
-  QQmlContext* context = engine.rootContext();
-  context->setContextProperty("controller", Controller::singleton());
-  QUrl overlayUrl(sharedSettings.systemOverlay());
-  engine.load(overlayUrl);
-  if (engine.rootObjects().isEmpty()) {
-    O_WARNING("Failed to load system overlay:" << overlayUrl);
-    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-    if (engine.rootObjects().isEmpty()) {
-      qWarning("Failed to load main layout");
-      return EXIT_FAILURE;
-    }
-  }
   QTimer::singleShot(0, [&engine, &buffer] {
+    QQmlContext* context = engine.rootContext();
+    context->setContextProperty("controller", Controller::singleton());
+    QUrl overlayUrl(sharedSettings.systemOverlay());
+    if (loadQml(&engine, overlayUrl) == nullptr) {
+      O_WARNING("Failed to load system overlay:" << overlayUrl);
+      if (loadQml(&engine, QUrl(QStringLiteral("qrc:/main.qml"))) == nullptr) {
+        qWarning("Failed to load main layout");
+        qApp->exit(EXIT_FAILURE);
+        return;
+      }
+    }
     dbusService->startup(&engine);
     Blight::connection()->remove(buffer);
   });

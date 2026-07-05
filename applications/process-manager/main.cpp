@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <fcntl.h>
 #include <liboxide.h>
 #include <liboxide/eventfilter.h>
@@ -33,17 +34,20 @@ main(int argc, char* argv[]) {
   QQmlContext* context = engine.rootContext();
   Controller controller(&engine);
   context->setContextProperty("controller", &controller);
-  engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-  if (engine.rootObjects().isEmpty()) {
-    qDebug() << "Nothing to display";
-    return -1;
-  }
-  QObject* root = engine.rootObjects().first();
-  root->installEventFilter(new EventFilter(&app));
-  QQuickItem* tasksView = root->findChild<QQuickItem*>("tasksView");
-  if (!tasksView) {
-    qDebug() << "Can't find tasksView";
-    return -1;
-  }
+  QTimer::singleShot(0, [&app, &engine] {
+    QObject* root = loadQml(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
+    if (root == nullptr) {
+      qDebug() << "Nothing to display";
+      qApp->exit(EXIT_FAILURE);
+      return;
+    }
+    root->installEventFilter(new EventFilter(&app));
+    QQuickItem* tasksView = root->findChild<QQuickItem*>("tasksView");
+    if (!tasksView) {
+      qDebug() << "Can't find tasksView";
+      qApp->exit(EXIT_FAILURE);
+      return;
+    }
+  });
   return app.exec();
 }

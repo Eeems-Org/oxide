@@ -37,17 +37,19 @@ main(int argc, char* argv[]) {
     "apps", QVariant::fromValue(controller.getApps())
   );
   context->setContextProperty("controller", &controller);
-  engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-  if (engine.rootObjects().isEmpty()) {
-    qDebug() << "Nothing to display";
-    return -1;
-  }
-  auto root = engine.rootObjects().first();
-  controller.setRoot(root);
 
   signal(SIGINT, sigHandler);
   signal(SIGSEGV, sigHandler);
   signal(SIGTERM, sigHandler);
 
+  QTimer::singleShot(0, [&engine, &controller] {
+    QObject* root = loadQml(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
+    if (root == nullptr) {
+      qDebug() << "Nothing to display";
+      qApp->exit(EXIT_FAILURE);
+      return;
+    }
+    controller.setRoot(root);
+  });
   return app.exec();
 }

@@ -3,12 +3,15 @@
 #include <libblight.h>
 #include <libblight/connection.h>
 
+#include <QCoreApplication>
+#include <QEventLoop>
 #include <QFunctionPointer>
 #include <QGuiApplication>
 #include <QPainter>
 #include <QQuickWindow>
 #include <atomic>
 
+#include "debug.h"
 #include "liboxide.h"
 
 static std::atomic<unsigned int> marker = 0;
@@ -87,6 +90,49 @@ namespace Oxide {
       context->setContextProperty("Oxide", getSingleton());
       engine->addImportPath("qrc:/codes.eeems.oxide");
       qmlRegisterType<OxideCanvas>("codes.eeems.oxide", 3, 0, "OxideCanvas");
+    }
+
+    QObject* loadQml(QQmlApplicationEngine* engine, const QUrl& url) {
+      QObject* rootObject = nullptr;
+      QEventLoop loop;
+      QTimer timer;
+      timer.setSingleShot(true);
+      timer.setInterval(30 * 1000);
+      timer.callOnTimeout([&loop]() { loop.exit(1); });
+      QTimer::singleShot(0, [&engine, &url, &timer]() {
+        engine->load(url);
+        timer.start();
+      });
+      QMetaObject::Connection connection;
+      connection = QObject::connect(
+        engine,
+        &QQmlApplicationEngine::objectCreated,
+        [&rootObject, &loop, &url, &timer](
+          QObject* object, const QUrl& objectUrl
+        ) {
+          O_INFO(
+            "Object created: " << object << objectUrl << " expected:" << url
+          );
+          auto flags = QUrl::PreferLocalFile | QUrl::StripTrailingSlash |
+                       QUrl::NormalizePathSegments;
+          if (url.url(flags) != objectUrl.url(flags)) {
+            return;
+          }
+          rootObject = object;
+          timer.stop();
+          loop.quit();
+        }
+      );
+      if (!connection) {
+        O_WARNING("Failed to connect to QQmlApplicationEngine::objectCreated");
+        return nullptr;
+      }
+      if (loop.exec(QEventLoop::ExcludeUserInputEvents)) {
+        O_WARNING("Timed out waiting for qml to load:" << url);
+        return nullptr;
+      }
+      QObject::disconnect(connection);
+      return rootObject;
     }
 
     OxideCanvas::OxideCanvas(QQuickItem* parent)

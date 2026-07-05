@@ -253,19 +253,26 @@ main(int argc, char* argv[]) {
   }
   QQmlApplicationEngine engine;
   registerQML(&engine);
-  engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-  if (engine.rootObjects().isEmpty()) {
-    O_WARNING("Nothing to display");
-    return EXIT_FAILURE;
-  }
-  engine.load(QUrl(QStringLiteral("qrc:/notification.qml")));
-  auto notification = static_cast<QQuickWindow*>(engine.rootObjects().last());
-  notification->setProperty("text", "Testing");
-  notification->setProperty(
-    "image", QUrl::fromLocalFile(SPLASH_INSTALL_PATH "/oxide.png")
-  );
-  notification->setProperty("notificationVisible", true);
-  notification->raise();
+  QTimer::singleShot(0, [&engine] {
+    if (loadQml(&engine, QUrl(QStringLiteral("qrc:/main.qml"))) == nullptr) {
+      O_WARNING("Nothing to display");
+      qApp->quit();
+      return;
+    }
+    QObject* notificationObj =
+      loadQml(&engine, QUrl(QStringLiteral("qrc:/notification.qml")));
+    if (notificationObj == nullptr) {
+      qApp->quit();
+      return;
+    }
+    auto notification = qobject_cast<QQuickWindow*>(notificationObj);
+    notification->setProperty("text", "Testing");
+    notification->setProperty(
+      "image", QUrl::fromLocalFile(SPLASH_INSTALL_PATH "/oxide.png")
+    );
+    notification->setProperty("notificationVisible", true);
+    notification->raise();
+  });
   app.setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents, false);
   int res = app.exec();
   O_INFO("Exit:" << res);

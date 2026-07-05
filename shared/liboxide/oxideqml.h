@@ -335,6 +335,18 @@ namespace Oxide {
      * with `import codes.eeems.oxide 3.0`
      */
     LIBOXIDE_EXPORT void registerQML(QQmlApplicationEngine* engine);
+    /*!
+     * \brief Load a QML file and return the created root object.
+     * \param engine The QQmlApplicationEngine to load into
+     * \param url The URL of the QML file to load
+     * \return The created QObject, or nullptr on failure
+     * \sa registerQML
+     *
+     * Loads QML synchronously. For asynchronous URLs (user-provided),
+     * use QQmlApplicationEngine::objectCreated directly.
+     */
+    LIBOXIDE_EXPORT QObject*
+    loadQml(QQmlApplicationEngine* engine, const QUrl& url);
   } // namespace QML
 } // namespace Oxide
 /*! @} */
