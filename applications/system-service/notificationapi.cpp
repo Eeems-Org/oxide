@@ -35,9 +35,11 @@ NotificationAPI::NotificationAPI(QObject* parent)
 
 void
 NotificationAPI::shutdown() {
-  m_window->close();
-  delete m_window;
-  m_window = nullptr;
+  if (m_window != nullptr) {
+    m_window->close();
+    delete m_window;
+    m_window = nullptr;
+  }
 }
 
 bool
@@ -61,16 +63,24 @@ NotificationAPI::setEnabled(bool enabled) {
 void
 NotificationAPI::startup() {
   auto engine = dbusService->engine();
-  QUrl overlayUrl(sharedSettings.notificationOverlay());
-  engine->load(overlayUrl);
-  if (engine->rootObjects().count() < 2) {
-    O_WARNING("Failed to load notification overlay:" << overlayUrl);
-    engine->load(QUrl(QStringLiteral("qrc:/notification.qml")));
-    if (engine->rootObjects().count() < 2) {
+  auto url = QUrl::fromUserInput(
+    sharedSettings.notificationOverlay(),
+    QDir::currentPath(),
+    QUrl::AssumeLocalFile
+  );
+  if (url.scheme().isEmpty()) {
+    url.setScheme("file");
+  }
+  m_window = qobject_cast<QQuickWindow*>(Oxide::QML::loadQML(engine, url));
+  if (m_window == nullptr) {
+    O_WARNING("Failed to load notification overlay:" << url);
+    m_window = qobject_cast<QQuickWindow*>(
+      Oxide::QML::loadQML(engine, QUrl(QStringLiteral("qrc:/notification.qml")))
+    );
+    if (m_window == nullptr) {
       qFatal("Failed to load notification overlay");
     }
   }
-  m_window = static_cast<QQuickWindow*>(engine->rootObjects().last());
   auto buffer = Oxide::QML::getSurfaceForWindow(m_window);
   getCompositorDBus()->setFlags(
     QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),
@@ -160,6 +170,9 @@ NotificationAPI::paintNotification(
   const QString& iconPath,
   const QVariantMap& actions
 ) {
+  if (m_window == nullptr) {
+    return nullptr;
+  }
   m_window->setProperty("text", text);
   if (!iconPath.isEmpty() && QFileInfo(iconPath).exists()) {
     m_window->setProperty("image", QUrl::fromLocalFile(iconPath));

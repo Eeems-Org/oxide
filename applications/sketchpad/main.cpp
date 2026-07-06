@@ -24,14 +24,16 @@ main(int argc, char* argv[]) {
   app.setApplicationVersion(APP_VERSION);
   QQmlApplicationEngine engine;
   registerQML(&engine);
-  engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-  if (engine.rootObjects().isEmpty()) {
-    qDebug() << "Nothing to display";
-    return -1;
-  }
-  auto root = engine.rootObjects().first();
-  root->installEventFilter(new EventFilter(&app));
-  qDebug() << root;
+  QTimer::singleShot(0, [&app, &engine] {
+    QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
+    if (root == nullptr) {
+      qDebug() << "Nothing to display";
+      qApp->exit(EXIT_FAILURE);
+      return;
+    }
+    root->installEventFilter(new EventFilter(&app));
+    qDebug() << root;
+  });
   app.setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents, false);
   return app.exec();
 }

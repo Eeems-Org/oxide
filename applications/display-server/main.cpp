@@ -143,6 +143,7 @@ main(int argc, char* argv[]) {
   });
   dbusInterface;
   evdevHandler;
+  QTimer::singleShot(0, [] { dbusInterface->startup(); });
   ::signal(SIGPIPE, SIG_IGN);
   ::signal(SIGBUS, SIG_IGN);
   return app.exec();

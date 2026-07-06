@@ -52,48 +52,52 @@ main(int argc, char* argv[]) {
     "apps", QVariant::fromValue(controller->getApps())
   );
   context->setContextProperty("controller", controller);
-  engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-  if (engine.rootObjects().isEmpty()) {
-    qDebug() << "Nothing to display";
-    return -1;
-  }
-  QObject* root = engine.rootObjects().first();
-  controller->root = root;
-  root->installEventFilter(new EventFilter(&app));
-  QObject* stateController = root->findChild<QObject*>("stateController");
-  if (!stateController) {
-    qDebug() << "Can't find stateController";
-    return -1;
-  }
-  controller->stateController = stateController;
-  QObject* clock = root->findChild<QObject*>("clock");
-  if (!clock) {
-    qDebug() << "Can't find clock";
-    return -1;
-  }
-  // Update UI
-  clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
-  controller->updateUIElements();
-  // Setup clock
-  QTimer* clockTimer = new QTimer(root);
-  auto currentTime = QTime::currentTime();
-  QTime nextTime = currentTime.addSecs(60 - currentTime.second());
-  clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
-  QObject::connect(
-    clockTimer, &QTimer::timeout, [clock, &clockTimer, controller]() {
-      QString text = "";
-      if (controller->showDate()) {
-        text = QDate::currentDate().toString(Qt::TextDate) + " ";
-      }
-      clock->setProperty(
-        "text", text + QTime::currentTime().toString("h:mm a")
-      );
-      if (clockTimer->interval() != 60 * 1000) {
-        clockTimer->setInterval(60 * 1000); // 1 minute
-      }
+  QTimer::singleShot(0, [&app, &engine, controller] {
+    QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
+    if (root == nullptr) {
+      qDebug() << "Nothing to display";
+      qApp->exit(EXIT_FAILURE);
+      return;
     }
-  );
-  clockTimer->start();
+    controller->root = root;
+    root->installEventFilter(new EventFilter(&app));
+    QObject* stateController = root->findChild<QObject*>("stateController");
+    if (!stateController) {
+      qDebug() << "Can't find stateController";
+      qApp->exit(EXIT_FAILURE);
+      return;
+    }
+    controller->stateController = stateController;
+    QObject* clock = root->findChild<QObject*>("clock");
+    if (!clock) {
+      qDebug() << "Can't find clock";
+      qApp->exit(EXIT_FAILURE);
+      return;
+    }
+    // Update UI
+    clock->setProperty("text", QTime::currentTime().toString("h:mm a"));
+    controller->updateUIElements();
+    // Setup clock
+    QTimer* clockTimer = new QTimer(root);
+    auto currentTime = QTime::currentTime();
+    QTime nextTime = currentTime.addSecs(60 - currentTime.second());
+    clockTimer->setInterval(currentTime.msecsTo(nextTime)); // nearest minute
+    QObject::connect(
+      clockTimer, &QTimer::timeout, [clock, clockTimer, controller]() {
+        QString text = "";
+        if (controller->showDate()) {
+          text = QDate::currentDate().toString(Qt::TextDate) + " ";
+        }
+        clock->setProperty(
+          "text", text + QTime::currentTime().toString("h:mm a")
+        );
+        if (clockTimer->interval() != 60 * 1000) {
+          clockTimer->setInterval(60 * 1000); // 1 minute
+        }
+      }
+    );
+    clockTimer->start();
+  });
   shutdown_handler = [&controller](int signum) {
     Q_UNUSED(signum)
     QTimer::singleShot(300, [=]() { emit controller->reload(); });

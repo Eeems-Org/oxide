@@ -8,11 +8,13 @@
 
 #include "liboxide_global.h"
 
+#include <functional>
 #include <libblight/clock.h>
 #include <libblight/types.h>
 #include <mutex>
 
 #include <QBrush>
+#include <QFileSystemWatcher>
 #include <QImage>
 #include <QObject>
 #include <QPen>
@@ -335,6 +337,15 @@ namespace Oxide {
      * with `import codes.eeems.oxide 3.0`
      */
     LIBOXIDE_EXPORT void registerQML(QQmlApplicationEngine* engine);
+    /*!
+     * \brief Load a QML file and return the created root object.
+     * \param engine The QQmlApplicationEngine to load into
+     * \param url The URL of the QML file to load
+     * \return The created QObject, or nullptr on failure
+     * \sa enableHotReload
+     */
+    LIBOXIDE_EXPORT QObject*
+    loadQML(QQmlApplicationEngine* engine, const QUrl& url);
   } // namespace QML
 } // namespace Oxide
 /*! @} */

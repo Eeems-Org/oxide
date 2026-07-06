@@ -36,18 +36,20 @@ main(int argc, char* argv[]) {
   registerQML(&engine);
   QQmlContext* context = engine.rootContext();
   context->setContextProperty("controller", &controller);
-  engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-  if (engine.rootObjects().isEmpty()) {
-    qDebug() << "Nothing to display";
-    return -1;
-  }
-  auto root = engine.rootObjects().first();
-  root->installEventFilter(new EventFilter(&app));
-  controller.setRoot(root);
 
   signal(SIGINT, sigHandler);
   signal(SIGSEGV, sigHandler);
   signal(SIGTERM, sigHandler);
 
+  QTimer::singleShot(0, [&app, &engine, &controller] {
+    QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
+    if (root == nullptr) {
+      qDebug() << "Nothing to display";
+      qApp->exit(EXIT_FAILURE);
+      return;
+    }
+    root->installEventFilter(new EventFilter(&app));
+    controller.setRoot(root);
+  });
   return app.exec();
 }

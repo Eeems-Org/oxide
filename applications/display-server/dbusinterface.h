@@ -50,6 +50,7 @@ class DbusInterface
 public:
   static DbusInterface* singleton();
 
+  void startup();
   int pid();
 #ifndef EPAPER
   QObject* loadComponent(

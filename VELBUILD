@@ -59,7 +59,7 @@ build() {
         exit 1
         ;;
     esac
-    make FEATURES=sentry release
+    make FEATURES=sentry,debug release
 }
 
 package() {
@@ -616,7 +616,9 @@ launcherctl() {
     }
     postinstall() {
         set -e
+        /home/root/.vellum/bin/mount-rw
         postosupgrade
+        /home/root/.vellum/bin/mount-restore
     }
     postupgrade() {
         set -e

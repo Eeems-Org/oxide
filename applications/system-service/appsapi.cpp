@@ -1022,7 +1022,9 @@ AppsAPI::shutdown() {
       if (app->stateNoSecurityCheck() != Application::Inactive) {
         auto text = "Stopping " + app->displayName() + "...";
         O_DEBUG(text.toStdString().c_str());
-        notification->setProperty("text", text);
+        if (notification != nullptr) {
+          notification->setProperty("text", text);
+        }
       }
       app->stopNoSecurityCheck();
     }
@@ -1032,7 +1034,9 @@ AppsAPI::shutdown() {
       app->deleteLater();
     }
     applications.clear();
-    notification->setProperty("notificationVisible", false);
+    if (notification != nullptr) {
+      notification->setProperty("notificationVisible", false);
+    }
     if (buffer != nullptr) {
       auto image = Oxide::QML::getImageForSurface(buffer);
       QPainter painter(&image);

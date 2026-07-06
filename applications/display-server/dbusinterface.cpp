@@ -5,6 +5,7 @@
 #include <liboxide/dbus_types.h>
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
+#include <liboxide/oxideqml.h>
 #include <liboxide/threading.h>
 #include <memory>
 #include <sys/poll.h>
@@ -36,11 +37,6 @@ DbusInterface::DbusInterface(QObject* parent)
   }
 #ifdef EPAPER
   guiThread;
-#else
-  engine.load(QUrl(QStringLiteral("qrc:/Workspace.qml")));
-  if (engine.rootObjects().isEmpty()) {
-    qFatal("Failed to load main layout");
-  }
 #endif
   // Needed to trick QtDBus into exposing the object
   setProperty("__init__", true);
@@ -95,6 +91,18 @@ DbusInterface::singleton() {
     });
   });
   return instance;
+}
+
+void
+DbusInterface::startup() {
+#ifndef EPAPER
+  if (
+    Oxide::QML::loadQML(&engine, QUrl(QStringLiteral("qrc:/Workspace.qml"))) ==
+    nullptr
+  ) {
+    qFatal("Failed to load main layout");
+  }
+#endif
 }
 
 int

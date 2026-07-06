@@ -11,11 +11,11 @@ ApplicationWindow {
     y: 0
     visible: true
     function loadComponent(url: string, props): string{
-        var comp = Qt.createComponent(url, Component.PreferSynchronous);
-        if(comp.status === Component.Error){
-            return comp.errorString();
+        var component = Qt.createComponent(url, Component.PreferSynchronous);
+        if(component.status === Component.Error){
+            return component.errorString();
         }
-        return comp.createObject(workspace, props).objectName;
+        return component.createObject(workspace, props).objectName;
     }
     background: Rectangle{
         color: "white"
