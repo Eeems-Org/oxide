@@ -97,7 +97,7 @@ void
 DbusInterface::startup() {
 #ifndef EPAPER
   if (
-    Oxide::QML::loadQml(&engine, QUrl(QStringLiteral("qrc:/Workspace.qml"))) ==
+    Oxide::QML::loadQML(&engine, QUrl(QStringLiteral("qrc:/Workspace.qml"))) ==
     nullptr
   ) {
     qFatal("Failed to load main layout");

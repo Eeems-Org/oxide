@@ -43,7 +43,7 @@ main(int argc, char* argv[]) {
   signal(SIGTERM, sigHandler);
 
   QTimer::singleShot(0, [&engine, &controller] {
-    QObject* root = loadQml(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
+    QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
     if (root == nullptr) {
       qDebug() << "Nothing to display";
       qApp->exit(EXIT_FAILURE);

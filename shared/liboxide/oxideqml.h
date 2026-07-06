@@ -8,11 +8,13 @@
 
 #include "liboxide_global.h"
 
+#include <functional>
 #include <libblight/clock.h>
 #include <libblight/types.h>
 #include <mutex>
 
 #include <QBrush>
+#include <QFileSystemWatcher>
 #include <QImage>
 #include <QObject>
 #include <QPen>
@@ -340,13 +342,10 @@ namespace Oxide {
      * \param engine The QQmlApplicationEngine to load into
      * \param url The URL of the QML file to load
      * \return The created QObject, or nullptr on failure
-     * \sa registerQML
-     *
-     * Loads QML synchronously. For asynchronous URLs (user-provided),
-     * use QQmlApplicationEngine::objectCreated directly.
+     * \sa enableHotReload
      */
     LIBOXIDE_EXPORT QObject*
-    loadQml(QQmlApplicationEngine* engine, const QUrl& url);
+    loadQML(QQmlApplicationEngine* engine, const QUrl& url);
   } // namespace QML
 } // namespace Oxide
 /*! @} */

@@ -63,18 +63,25 @@ NotificationAPI::setEnabled(bool enabled) {
 void
 NotificationAPI::startup() {
   auto engine = dbusService->engine();
-  QUrl overlayUrl(sharedSettings.notificationOverlay());
-  QObject* obj = Oxide::QML::loadQml(engine, overlayUrl);
-  if (obj == nullptr) {
-    O_WARNING("Failed to load notification overlay:" << overlayUrl);
-    obj = Oxide::QML::loadQml(
-      engine, QUrl(QStringLiteral("qrc:/notification.qml"))
+  auto url = QUrl::fromUserInput(
+    sharedSettings.notificationOverlay(),
+    QDir::currentPath(),
+    QUrl::AssumeLocalFile
+  );
+  if (url.scheme().isEmpty()) {
+    url.setScheme("file");
+  }
+  m_window = qobject_cast<QQuickWindow*>(Oxide::QML::loadQML(engine, url));
+  if (m_window == nullptr) {
+    O_WARNING("Failed to load notification overlay:" << url);
+    m_window = qobject_cast<QQuickWindow*>(
+      Oxide::QML::loadQML(engine, QUrl(QStringLiteral("qrc:/notification.qml")))
     );
-    if (obj == nullptr) {
+    if (m_window == nullptr) {
       qFatal("Failed to load notification overlay");
     }
   }
-  m_window = qobject_cast<QQuickWindow*>(obj);
+  m_window = qobject_cast<QQuickWindow*>(rootObject);
   auto buffer = Oxide::QML::getSurfaceForWindow(m_window);
   getCompositorDBus()->setFlags(
     QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),

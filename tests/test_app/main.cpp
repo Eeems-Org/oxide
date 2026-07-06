@@ -254,13 +254,13 @@ main(int argc, char* argv[]) {
   QQmlApplicationEngine engine;
   registerQML(&engine);
   QTimer::singleShot(0, [&engine] {
-    if (loadQml(&engine, QUrl(QStringLiteral("qrc:/main.qml"))) == nullptr) {
+    if (loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml"))) == nullptr) {
       O_WARNING("Nothing to display");
       qApp->quit();
       return;
     }
     QObject* notificationObj =
-      loadQml(&engine, QUrl(QStringLiteral("qrc:/notification.qml")));
+      loadQML(&engine, QUrl(QStringLiteral("qrc:/notification.qml")));
     if (notificationObj == nullptr) {
       qApp->quit();
       return;

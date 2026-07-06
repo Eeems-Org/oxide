@@ -30,7 +30,7 @@ main(int argc, char* argv[]) {
   QQmlContext* context = engine.rootContext();
   context->setContextProperty("controller", &controller);
   QTimer::singleShot(0, [&app, &engine, &controller] {
-    QObject* root = loadQml(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
+    QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
     if (root == nullptr) {
       qDebug() << "Nothing to display";
       qApp->exit(EXIT_FAILURE);

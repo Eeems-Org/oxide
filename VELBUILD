@@ -59,7 +59,7 @@ build() {
         exit 1
         ;;
     esac
-    make FEATURES=sentry release
+    make FEATURES=sentry,debug release
 }
 
 package() {

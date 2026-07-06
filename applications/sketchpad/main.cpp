@@ -25,7 +25,7 @@ main(int argc, char* argv[]) {
   QQmlApplicationEngine engine;
   registerQML(&engine);
   QTimer::singleShot(0, [&app, &engine] {
-    QObject* root = loadQml(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
+    QObject* root = loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")));
     if (root == nullptr) {
       qDebug() << "Nothing to display";
       qApp->exit(EXIT_FAILURE);

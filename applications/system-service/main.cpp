@@ -159,16 +159,16 @@ main(int argc, char* argv[]) {
   });
   QTimer::singleShot(0, &app, [] {
     QObject::connect(signalHandler, &SignalHandler::sigTerm, qApp, [] {
-      dbusService->exit(SIGTERM);
+      dbusService->exit(0);
     });
     QObject::connect(signalHandler, &SignalHandler::sigInt, qApp, [] {
-      dbusService->exit(SIGINT);
+      dbusService->exit(0);
     });
     QObject::connect(signalHandler, &SignalHandler::sigSegv, qApp, [] {
-      dbusService->exit(SIGSEGV);
+      dbusService->exit(128 + SIGSEGV);
     });
     QObject::connect(signalHandler, &SignalHandler::sigBus, qApp, [] {
-      dbusService->exit(SIGBUS);
+      dbusService->exit(128 + SIGBUS);
     });
   });
 
@@ -228,10 +228,19 @@ main(int argc, char* argv[]) {
   QTimer::singleShot(0, [&engine, &buffer] {
     QQmlContext* context = engine.rootContext();
     context->setContextProperty("controller", Controller::singleton());
-    QUrl overlayUrl(sharedSettings.systemOverlay());
-    if (loadQml(&engine, overlayUrl) == nullptr) {
-      O_WARNING("Failed to load system overlay:" << overlayUrl);
-      if (loadQml(&engine, QUrl(QStringLiteral("qrc:/main.qml"))) == nullptr) {
+    auto url = QUrl::fromUserInput(
+      sharedSettings.systemOverlay(), QDir::currentPath(), QUrl::AssumeLocalFile
+    );
+    if (url.scheme().isEmpty()) {
+      url.setScheme("file");
+    }
+    QWindow* root = qobject_cast<QWindow*>(loadQML(&engine, url));
+    if (root == nullptr) {
+      O_WARNING("Failed to load system overlay:" << url);
+      root = qobject_cast<QWindow*>(
+        loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml")))
+      );
+      if (root == nullptr) {
         qWarning("Failed to load main layout");
         qApp->exit(EXIT_FAILURE);
         return;
