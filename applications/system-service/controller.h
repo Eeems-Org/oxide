@@ -132,6 +132,9 @@ public:
       return object;
     }
     auto buffer = Oxide::QML::getSurfaceForWindow(window);
+    if (buffer == nullptr) {
+      return object;
+    }
     getCompositorDBus()->setFlags(
       QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),
       QStringList() << "system"
