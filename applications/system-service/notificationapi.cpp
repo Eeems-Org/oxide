@@ -81,7 +81,6 @@ NotificationAPI::startup() {
       qFatal("Failed to load notification overlay");
     }
   }
-  m_window = qobject_cast<QQuickWindow*>(rootObject);
   auto buffer = Oxide::QML::getSurfaceForWindow(m_window);
   getCompositorDBus()->setFlags(
     QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),

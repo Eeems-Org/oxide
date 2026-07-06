@@ -345,6 +345,7 @@ namespace Oxide {
       }
       if (loop.exec(QEventLoop::ExcludeUserInputEvents)) {
         O_WARNING("Timed out waiting for qml to load:" << url);
+        QObject::disconnect(connection);
         return nullptr;
       }
       QObject::disconnect(connection);

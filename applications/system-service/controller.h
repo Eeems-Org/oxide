@@ -2,6 +2,7 @@
 
 #include <liboxide/debug.h>
 #include <liboxide/devicesettings.h>
+#include <liboxide/oxideqml.h>
 
 #include <QKeyEvent>
 #include <QList>
@@ -16,6 +17,7 @@
 
 #include "application.h"
 #include "appsapi.h"
+#include "dbusservice.h"
 #include "eventlistener.h"
 #include "screenapi.h"
 #include "systemapi.h"
@@ -119,6 +121,22 @@ public:
     auto path = appsAPI->lockscreenApplication();
     auto app = path.path() == "/" ? nullptr : appsAPI->getApplication(path);
     return app == nullptr ? "" : app->name();
+  }
+  Q_INVOKABLE QObject* loadQML(QUrl url) {
+    auto* object = Oxide::QML::loadQML(dbusService->engine(), url);
+    if (object == nullptr) {
+      return nullptr;
+    }
+    QWindow* window = qobject_cast<QQuickWindow*>(object);
+    if (window == nullptr) {
+      return object;
+    }
+    auto buffer = Oxide::QML::getSurfaceForWindow(window);
+    getCompositorDBus()->setFlags(
+      QString("connection/%1/surface/%2").arg(getpid()).arg(buffer->surface),
+      QStringList() << "system"
+    );
+    return object;
   }
 
   QString deviceName() { return deviceSettings.getDeviceName(); }

@@ -256,16 +256,17 @@ main(int argc, char* argv[]) {
   QTimer::singleShot(0, [&engine] {
     if (loadQML(&engine, QUrl(QStringLiteral("qrc:/main.qml"))) == nullptr) {
       O_WARNING("Nothing to display");
-      qApp->quit();
+      qApp->exit(EXIT_FAILURE);
       return;
     }
-    QObject* notificationObj =
-      loadQML(&engine, QUrl(QStringLiteral("qrc:/notification.qml")));
-    if (notificationObj == nullptr) {
-      qApp->quit();
+    auto* notification = qobject_cast<QQuickWindow*>(
+      loadQML(&engine, QUrl(QStringLiteral("qrc:/notification.qml")))
+    );
+    if (notification == nullptr) {
+      O_WARNING("Could not load notification.qml");
+      qApp->exit(EXIT_FAILURE);
       return;
     }
-    auto notification = qobject_cast<QQuickWindow*>(notificationObj);
     notification->setProperty("text", "Testing");
     notification->setProperty(
       "image", QUrl::fromLocalFile(SPLASH_INSTALL_PATH "/oxide.png")
